@@ -9,14 +9,54 @@ Available commands:
 from __future__ import annotations
 
 import asyncio
+import os as _bootstrap_os
+from pathlib import Path as _BootstrapPath
 
 import typer
 import uvicorn
 from rich.console import Console
 from rich.table import Table
 
-from .agents.llm import default_provider
-from .engine import GameConfig, generate_universe
+
+def _bootstrap_dotenv() -> None:
+    """Populate os.environ from a project-root .env file if one exists.
+
+    Intentionally lightweight — no python-dotenv dependency. The loader
+    runs ONCE at CLI import time so every downstream component
+    (`default_provider`, `_handle_*`, the LLM client) sees the keys
+    without any per-process wiring. Existing environment variables
+    always win over .env so CI / explicit shell exports still override.
+
+    Format: KEY=VALUE per line, blank lines and `#` comments ignored.
+    Optional surrounding quotes on VALUE are stripped. No interpolation.
+    This is enough for API keys and model overrides; complex config
+    stays in pyproject/typer.
+    """
+    try:
+        root = _BootstrapPath(__file__).resolve().parents[2]
+    except IndexError:
+        return
+    env_path = root / ".env"
+    if not env_path.is_file():
+        return
+    try:
+        for raw in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in _bootstrap_os.environ:
+                _bootstrap_os.environ[key] = value
+    except OSError:
+        return
+
+
+_bootstrap_dotenv()
+
+from .agents.llm import default_provider  # noqa: E402  imported after .env load
+from .engine import GameConfig, generate_universe  # noqa: E402
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="TW2K-AI — TradeWars 2002 played by LLM agents.")
 console = Console()
