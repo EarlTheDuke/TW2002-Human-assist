@@ -468,6 +468,27 @@ def _action_hint(
         if unread:
             hints.append(f"{unread} unread hail(s) in inbox — consider `hail` to respond.")
 
+    # End-of-day safety: if the agent has fewer turns left than the cheapest
+    # useful action (warp=2), just tell them to wait. Without this nudge, LLM
+    # agents routinely spam warp at turns=58/60 and eat 4+ failed actions per
+    # day on "out of turns for this day". Threshold is warp.cost (2) because
+    # that's the most common verb the agent will try to squeeze in.
+    if player is not None:
+        turns_left = (
+            getattr(player, "turns_per_day", 0) or 0
+        ) - (getattr(player, "turns_today", 0) or 0)
+        warp_cost = K.TURN_COST.get("warp", 2)
+        if 0 < turns_left < warp_cost:
+            hints.append(
+                f"END OF DAY: only {turns_left} turn(s) left, warp costs "
+                f"{warp_cost}. Emit `{{\"kind\":\"wait\",\"args\":{{}}}}` to "
+                "rest — new day refills your turn pool."
+            )
+        elif turns_left <= 0:
+            hints.append(
+                "END OF DAY: 0 turns left — only `wait` will succeed until the next day_tick."
+            )
+
     # Recent failure feedback — surface the LAST failure since the player's last successful action
     if universe is not None and player is not None:
         err = _recent_self_error(universe, player.id)

@@ -2107,10 +2107,30 @@ def _advance_planets(universe: Universe) -> None:
 
 
 def _record_port_intel(player, sector_id: int, port) -> None:
+    """Persist a per-port intel snapshot the player's observation will show next
+    turn. We include live buy/sell prices so the LLM can compare ports across
+    sectors without re-visiting — this is the mechanic that lets it plan
+    trade routes like `buy fuel_ore@13 at s46, sell@22 at s44, profit=9/unit`.
+    """
+    from .economy import port_buy_price, port_sell_price
+
+    stock: dict[str, dict[str, int | str]] = {}
+    for c, s in port.stock.items():
+        entry: dict[str, int | str] = {
+            "current": s.current,
+            "max": s.maximum,
+        }
+        if port.buys(c):
+            entry["price"] = port_buy_price(port, c)
+            entry["side"] = "buys_from_player"
+        elif port.sells(c):
+            entry["price"] = port_sell_price(port, c)
+            entry["side"] = "sells_to_player"
+        stock[c.value] = entry
     snapshot = {
         "class": port.class_id.code,
-        "stock": {c.value: {"current": s.current, "max": s.maximum} for c, s in port.stock.items()},
-        "last_seen_day": None,  # filled by caller if desired
+        "stock": stock,
+        "last_seen_day": None,
     }
     player.known_ports[sector_id] = snapshot
 

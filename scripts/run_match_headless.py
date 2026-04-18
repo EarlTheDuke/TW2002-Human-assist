@@ -133,8 +133,10 @@ class HeadlessRunner:
         gate: bool = True,
         verbose: bool = True,
         turns_per_day: int | None = None,
+        starting_credits: int | None = None,
     ):
         self.turns_per_day_override = turns_per_day
+        self.starting_credits_override = starting_credits
         cfg_kwargs = {"seed": seed, "universe_size": universe_size, "max_days": max_days}
         if turns_per_day is not None:
             cfg_kwargs["turns_per_day"] = turns_per_day
@@ -178,6 +180,8 @@ class HeadlessRunner:
             player = Player(id=pid, name=name, ship=Ship())
             if self.turns_per_day_override is not None:
                 player.turns_per_day = self.turns_per_day_override
+            if self.starting_credits_override is not None:
+                player.credits = self.starting_credits_override
             self.universe.players[pid] = player
             self.universe.sectors[1].occupant_ids.append(pid)
             player.known_sectors.add(1)
@@ -540,6 +544,16 @@ def main(argv: list[str] | None = None) -> int:
             "end-of-day rollover after fewer actions."
         ),
     )
+    ap.add_argument(
+        "--starting-credits",
+        type=int,
+        default=None,
+        help=(
+            "Override each player's starting credit balance (default 20,000). "
+            "Raise to ~50-100k for sanity matches so agents can actually reach "
+            "a ship-upgrade or Genesis-deploy decision point in a 2-day run."
+        ),
+    )
     args = ap.parse_args(argv)
 
     try:
@@ -554,6 +568,7 @@ def main(argv: list[str] | None = None) -> int:
             gate=not args.no_gate,
             verbose=not args.quiet,
             turns_per_day=args.turns_per_day,
+            starting_credits=args.starting_credits,
         )
         t0 = time.time()
         summary = asyncio.run(runner.run())

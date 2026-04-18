@@ -52,6 +52,19 @@ def _first_non_fed_sector(u, min_id: int = 30) -> int:
     return next(sid for sid in u.sectors if sid >= min_id and sid not in K.FEDSPACE_SECTORS)
 
 
+def _fresh_port(*, sector_id, code, class_id, stock):
+    """Build a standalone Port for pricing tests without generating a full
+    universe. Keeps the economy tests self-contained and deterministic."""
+    from tw2k.engine.models import Port
+    return Port(
+        sector_id=sector_id,
+        class_id=class_id,
+        code=code,
+        name=f"TestPort{sector_id}",
+        stock=stock,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Phase A
 # ---------------------------------------------------------------------------
@@ -375,3 +388,164 @@ class TestPhaseC:
         res = apply_action(u, "A", Action(kind=ActionKind.PROBE, args={"target": target}))
         assert res.ok, res.error
         assert a.ship.ether_probes == 1
+
+
+# ---------------------------------------------------------------------------
+# Phase D - economy pricing + observation feedback loops
+# ---------------------------------------------------------------------------
+
+
+class TestPhaseDEconomy:
+    """Regression guards for the trading margin & observation hints.
+
+    These exist because the v6 sanity run surfaced two issues:
+      1. Port pricing margins were too narrow (±10-20%) so profit per round
+         trip was ~1 cr/unit. Widened to 0.70x-1.30x so typical pairs yield
+         6-10 cr/unit margins and a full-holds trip earns visible credits.
+      2. LLM agents ran warps when turns_today was within 1 of the per-day
+         cap and the engine silently rejected the action. Now the
+         action_hint explicitly tells them to `wait`.
+    """
+
+    def test_d1_sell_port_cheaper_when_full_stock(self):
+        """A full-stock SELL port should unload inventory below base price."""
+        from tw2k.engine.economy import port_sell_price
+        from tw2k.engine.models import Commodity, PortClass, PortStock
+
+        port = _fresh_port(
+            sector_id=100,
+            code="BBS",
+            class_id=PortClass.CLASS_6_BBS,  # BBS: buys FO+Org, sells Eq
+            stock={
+                Commodity.FUEL_ORE: PortStock(current=0, maximum=3000),
+                Commodity.ORGANICS: PortStock(current=0, maximum=2500),
+                Commodity.EQUIPMENT: PortStock(current=2000, maximum=2000),  # full
+            },
+        )
+        full_price = port_sell_price(port, Commodity.EQUIPMENT)
+        port.stock[Commodity.EQUIPMENT].current = 0  # empty
+        empty_price = port_sell_price(port, Commodity.EQUIPMENT)
+        base = K.COMMODITY_BASE_PRICE["equipment"]
+        # Full stock should be UNDER base, empty should be OVER base
+        assert full_price < base, f"full-stock sell port should discount (got {full_price} vs base {base})"
+        assert empty_price > base, f"empty sell port should premium (got {empty_price} vs base {base})"
+        # Widened band: spread must be at least 20% of base to be meaningful
+        assert empty_price - full_price >= int(base * 0.20), (
+            f"price swing too narrow: {empty_price} - {full_price} < 20% of {base}"
+        )
+
+    def test_d1_buy_port_pays_more_when_starved(self):
+        """A buy port with low stock pays a premium (demand > supply)."""
+        from tw2k.engine.economy import port_buy_price
+        from tw2k.engine.models import Commodity, PortClass, PortStock
+
+        port = _fresh_port(
+            sector_id=100,
+            code="BBS",
+            class_id=PortClass.CLASS_6_BBS,
+            stock={
+                Commodity.FUEL_ORE: PortStock(current=0, maximum=3000),
+                Commodity.ORGANICS: PortStock(current=0, maximum=2500),
+                Commodity.EQUIPMENT: PortStock(current=0, maximum=2000),
+            },
+        )
+        starved = port_buy_price(port, Commodity.FUEL_ORE)
+        port.stock[Commodity.FUEL_ORE].current = 3000  # glutted
+        glutted = port_buy_price(port, Commodity.FUEL_ORE)
+        base = K.COMMODITY_BASE_PRICE["fuel_ore"]
+        assert starved > base, f"starved buy port should pay premium (got {starved} vs base {base})"
+        assert glutted < base, f"glutted buy port should pay discount (got {glutted} vs base {base})"
+        assert starved - glutted >= int(base * 0.20), (
+            f"buy-price swing too narrow: {starved} - {glutted} < 20% of {base}"
+        )
+
+    def test_d2_round_trip_is_visibly_profitable(self):
+        """End-to-end: buy full holds at a well-stocked SELL port then sell at
+        an empty BUY port. A 20-hold ship should net at least 100 cr per
+        round trip under typical conditions."""
+        from tw2k.engine.economy import port_buy_price, port_sell_price
+        from tw2k.engine.models import Commodity, PortClass, PortStock
+
+        sell_port = _fresh_port(
+            sector_id=5, code="SBB", class_id=PortClass.CLASS_3_SBB,  # sells FO
+            stock={
+                Commodity.FUEL_ORE: PortStock(current=2400, maximum=3000),  # ~80% full
+                Commodity.ORGANICS: PortStock(current=0, maximum=2500),
+                Commodity.EQUIPMENT: PortStock(current=0, maximum=2000),
+            },
+        )
+        buy_port = _fresh_port(
+            sector_id=7, code="BBS", class_id=PortClass.CLASS_6_BBS,  # buys FO
+            stock={
+                Commodity.FUEL_ORE: PortStock(current=600, maximum=3000),  # ~20% stocked
+                Commodity.ORGANICS: PortStock(current=0, maximum=2500),
+                Commodity.EQUIPMENT: PortStock(current=0, maximum=2000),
+            },
+        )
+        buy_price = port_sell_price(sell_port, Commodity.FUEL_ORE)   # pay this
+        sell_price = port_buy_price(buy_port, Commodity.FUEL_ORE)    # receive this
+        per_unit = sell_price - buy_price
+        round_trip_20_holds = per_unit * 20
+        assert per_unit >= 5, (
+            f"per-unit margin too thin: buy {buy_price} -> sell {sell_price} (diff {per_unit})"
+        )
+        assert round_trip_20_holds >= 100, (
+            f"20-hold round trip should earn >=100 cr, got {round_trip_20_holds}"
+        )
+
+    def test_d3_end_of_day_nudge_appears(self):
+        """When turns_today has fewer turns remaining than the cost of a warp
+        (2), action_hint should say END OF DAY / wait. Threshold matches warp
+        cost because warp is by far the most common verb agents try to
+        squeeze in at end of day. Regression for v7 run where 58/60 turns
+        burned 4 failed warps before the unstick kicked in."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe()
+        a.turns_per_day = 60
+        a.turns_today = 59  # 1 turn left, warp (cost=2) will fail
+        obs = build_observation(u, "A")
+        assert "END OF DAY" in obs.action_hint, (
+            f"missing end-of-day nudge in action_hint: {obs.action_hint}"
+        )
+        assert "wait" in obs.action_hint.lower()
+        # Also trigger at exactly 1-below-warp (should still fire since 58/60=2
+        # turns left meets the warp cost, so NO nudge at that edge).
+        a.turns_today = 58
+        obs = build_observation(u, "A")
+        assert "END OF DAY" not in obs.action_hint, (
+            "nudge fired too early — with 2 turns left and warp cost 2 a warp is valid"
+        )
+
+    def test_d3_no_end_of_day_nudge_midday(self):
+        """Inverse: mid-day, the nudge must NOT appear or agents will wait
+        forever on every turn."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe()
+        a.turns_per_day = 20
+        a.turns_today = 5
+        obs = build_observation(u, "A")
+        assert "END OF DAY" not in obs.action_hint
+
+    def test_d4_known_ports_include_prices(self):
+        """Intel snapshot must persist prices so agents can compare pairs
+        across sectors without revisiting. This is what enables route
+        planning — without per-port prices the LLM has to guess."""
+        from tw2k.engine.models import PortClass
+        from tw2k.engine.observation import build_observation
+        from tw2k.engine.runner import _record_port_intel
+
+        u, (a, *_) = _make_universe()
+        skip = {PortClass.STARDOCK, PortClass.FEDERAL}
+        for sid, sector in u.sectors.items():
+            if sector.port is not None and sector.port.class_id not in skip:
+                _record_port_intel(a, sid, sector.port)
+                break
+        obs = build_observation(u, "A")
+        assert obs.known_ports, "expected at least one port intel entry"
+        sample_stock = obs.known_ports[0]["stock"]
+        # At least one stock entry must carry a numeric price.
+        assert any("price" in v for v in sample_stock.values()), (
+            f"no price field in stock intel: {sample_stock}"
+        )
