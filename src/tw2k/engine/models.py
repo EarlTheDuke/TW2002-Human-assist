@@ -285,6 +285,14 @@ class Player(BaseModel):
     inbox: list[dict] = Field(default_factory=list)
     # Agent's own working scratchpad (opaque to engine)
     scratchpad: str = ""
+    # Structured 3-horizon goals the agent writes on each turn and sees in the
+    # next turn's observation. Separated from the free-form scratchpad so the
+    # observation can surface them prominently and so behavior over many
+    # turns is anchored in an explicit target ("reach 45k and buy cargotran")
+    # rather than drifting. Each field stays <=240 chars — the engine trims.
+    goal_short: str = ""   # this turn + next ~2-3 (e.g. "finish trip, warp 267->181->487")
+    goal_medium: str = ""  # next in-game day (e.g. "grind org pair to 45k, buy cargotran")
+    goal_long: str = ""    # whole-match plan (e.g. "100M cr victory via 2 citadel L3 planets")
     # Metadata — agent kind for display
     agent_kind: str = "heuristic"
     color: str = "#6ee7ff"

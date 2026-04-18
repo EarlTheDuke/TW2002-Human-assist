@@ -33,6 +33,11 @@ class Observation(BaseModel):
     corp_ticker: str | None
     planet_landed: int | None
     scratchpad: str
+    # Persistent 3-horizon goals the agent itself wrote last turn. Surfacing
+    # them in the observation forces commitment: if the agent said "save for
+    # cargotran" yesterday and today is at StarDock with 45k, the goal is
+    # right there at the top reminding them to execute.
+    goals: dict[str, str] = Field(default_factory=dict)
     alive: bool = True
     net_worth: int = 0
     # Planets this player owns (subset view; one entry per planet).
@@ -232,6 +237,11 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
         corp_ticker=player.corp_ticker,
         planet_landed=player.planet_landed,
         scratchpad=player.scratchpad,
+        goals={
+            "short": getattr(player, "goal_short", "") or "",
+            "medium": getattr(player, "goal_medium", "") or "",
+            "long": getattr(player, "goal_long", "") or "",
+        },
         alive=player.alive,
         net_worth=player.net_worth,
         owned_planets=owned_planets,
@@ -362,9 +372,34 @@ def _action_hint(
     """
     from . import constants as K
 
-    hints: list[str] = [
-        "Verbs available: warp trade scan wait + 29 more (see system prompt).",
-    ]
+    hints: list[str] = []
+
+    # Prior-turn goals FIRST — this is the commitment mechanism. If the agent
+    # said last turn "save 45k for cargotran", we want that to be the very
+    # first thing in the hint stream this turn, not buried below movement/
+    # port notes. An unwritten goal is a drifting goal.
+    if player is not None:
+        g_short = (getattr(player, "goal_short", "") or "").strip()
+        g_med = (getattr(player, "goal_medium", "") or "").strip()
+        g_long = (getattr(player, "goal_long", "") or "").strip()
+        if g_short or g_med or g_long:
+            parts: list[str] = []
+            if g_short:
+                parts.append(f"NOW: {g_short}")
+            if g_med:
+                parts.append(f"DAY: {g_med}")
+            if g_long:
+                parts.append(f"MATCH: {g_long}")
+            hints.append("YOUR GOALS — " + " / ".join(parts))
+        else:
+            hints.append(
+                "GOALS EMPTY — set `goal_short`/`goal_medium`/`goal_long` in "
+                "your JSON output so future you knows the plan."
+            )
+
+    hints.append(
+        "Verbs available: warp trade scan wait + 29 more (see system prompt)."
+    )
 
     # Movement
     warps_out = sector_info.get("warps_out") or []

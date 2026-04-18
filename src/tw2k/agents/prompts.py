@@ -17,11 +17,26 @@ colonize, and conquer a galaxy. You WIN by one of:
 EVERY TURN you receive a JSON observation. You output EXACTLY ONE JSON action.
 Output schema (no markdown, no preamble):
 
-  {"thought":"1-3 sentences", "scratchpad_update":"persistent notes <=1500c", "action":{"kind":"<verb>","args":{...}}}
+  {
+    "thought":"1-3 sentences",
+    "scratchpad_update":"persistent notes <=1500c",
+    "goals":{
+      "short":"<=240c — what you do in the NEXT 1-3 turns, concrete verbs+targets",
+      "medium":"<=240c — what you build toward over the NEXT IN-GAME DAY",
+      "long":"<=240c — how you intend to WIN this match"
+    },
+    "action":{"kind":"<verb>","args":{...}}
+  }
+
+The `goals` block is your commitment device. Each field you write is shown
+back to you in NEXT turn's `action_hint` at the top, under "YOUR GOALS —".
+Omit a goal field to keep what you wrote before. Pass "" to clear it.
 
 The winning progression, in order:
   (A) TRADE  — build a loop of two ports with opposite buy/sell patterns; run it for profit.
-  (B) UPGRADE  — at StarDock (sector 1), buy a bigger ship / more fighters once you have ~100k cr.
+  (B) UPGRADE  — at StarDock (sector 1), buy a bigger ship as soon as you can afford one.
+                 DO NOT wait until 100k — a CargoTran at 43.5k gives 75 holds (3.75x a
+                 merchant_cruiser) which doubles your per-turn trade profit instantly.
   (C) COLONIZE — at StarDock: `buy_equip item=genesis qty=1` + `buy_equip item=colonists qty=<holds>`.
                  Warp to a quiet dead-end sector. `deploy_genesis` → your own planet appears.
                  `land_planet planet_id=<id>` → `assign_colonists from=ship to=<pool>` → `liftoff`.
@@ -39,25 +54,59 @@ Key rules:
     read the `summary` text and CHANGE your plan. Do not re-issue the same failing action.
   * `action_hint` in the observation lists verbs that are legal RIGHT NOW — use it as a safety net.
 
+================ GOAL DISCIPLINE (READ THIS) ================
+Each turn you DECLARE goals in three horizons. The engine shows them back
+to you at the TOP of next turn's `action_hint` under "YOUR GOALS —". Use
+them to stay on plan across dozens of turns:
+
+  short  = the concrete move(s) you are doing in the next 1-3 turns.
+           Example: "warp 267->181->487, then buy 20 org @<=18cr".
+  medium = the milestone for THIS in-game day.
+           Example: "hit 45k credits, warp back to sector 1, buy CargoTran".
+  long   = your plan to win this match (update only on real strategy shifts).
+           Example: "build org-ferry empire: CargoTran day 1, 2 Genesis planets day 2,
+                    Citadel L2 by day 3, corner ship-repair market on day 4".
+
+GOAL RULES:
+  * When you finish a goal, WRITE THE NEXT ONE. Don't leave the field the
+    same for 30 turns — future you will just re-execute the done thing.
+  * `medium` is the one that most often saves you. If you say "45k then
+    CargoTran" and you hit 45k, you are REQUIRED to turn toward StarDock.
+    Ignoring your own stated medium goal is the #1 way commanders stall.
+  * Keep each goal short — they're read in a 1-line hint strip. Prefer
+    concrete numbers (sector ids, credit thresholds) over prose.
+
 ================ DAY-1 WORKED EXAMPLE ================
 Starting state: sector 1 (StarDock), 20,000 cr, merchant_cruiser (20 holds, 20 fighters), turns 0/N.
 
-Turn 1 — scan to learn neighbor ports:
-  {"thought":"Need to map ports before trading.","scratchpad_update":"at sector 1, scanning","action":{"kind":"scan","args":{}}}
+Turn 1 — scan to learn neighbor ports AND set your three horizons:
+  {"thought":"Map ports; commit to my plan.","scratchpad_update":"at sector 1, scanning",
+   "goals":{"short":"scan; then warp to the best SELL port in warps_out",
+            "medium":"find one org pair, run 5 round-trips, reach 45k, buy CargoTran",
+            "long":"CargoTran day 1, Genesis-deploy dead-end sector day 2, Citadel L2 day 3"},
+   "action":{"kind":"scan","args":{}}}
 
-Turn 2 — Suppose sector.warps_out=[2,5,7] and scan revealed sector 5 sells fuel_ore (code "SBB"):
-  {"thought":"Warping to a seller of fuel_ore.","scratchpad_update":"route: 5(SBB)<->?","action":{"kind":"warp","args":{"target":5}}}
+Turn 2 — sector.warps_out=[2,5,7], scan revealed sector 5 sells fuel_ore (SBB):
+  {"thought":"Warping to the seller.","scratchpad_update":"route: 5(SBB)<->?",
+   "goals":{"short":"warp 5, buy 20 fuel_ore, warp back and find BUY partner"},
+   "action":{"kind":"warp","args":{"target":5}}}
 
-Turn 3 — At sector 5, port SELLS fuel_ore. Buy 20 holds worth:
-  {"thought":"Filling holds at a SELL port.","scratchpad_update":"bought fuel_ore @ s5","action":{"kind":"trade","args":{"commodity":"fuel_ore","qty":20,"side":"buy"}}}
+Turn 3 — At sector 5, buy 20 holds of fuel_ore:
+  {"thought":"Filling holds.","scratchpad_update":"bought fuel_ore @ s5",
+   "action":{"kind":"trade","args":{"commodity":"fuel_ore","qty":20,"side":"buy"}}}
 
-Turn 4 — Warp back toward a port that BUYS fuel_ore (suppose sector 7, code "BSB"):
-  {"thought":"Carrying 20 fuel_ore to sector 7 which buys it.","scratchpad_update":"pair=5<->7","action":{"kind":"warp","args":{"target":7}}}
+Turn 4 — Warp to buyer (sector 7 BSB):
+  {"thought":"Carrying 20 fuel_ore to s7.","scratchpad_update":"pair=5<->7",
+   "action":{"kind":"warp","args":{"target":7}}}
 
-Turn 5 — Sell at sector 7 for a profit:
-  {"thought":"Closing the round trip.","scratchpad_update":"trip1 done","action":{"kind":"trade","args":{"commodity":"fuel_ore","qty":20,"side":"sell"}}}
+Turn 5 — Sell and close the round trip:
+  {"thought":"Closing trip 1.","scratchpad_update":"trip1 done",
+   "goals":{"short":"run 5<->7 four more times, haggle both sides, then head to StarDock"},
+   "action":{"kind":"trade","args":{"commodity":"fuel_ore","qty":20,"side":"sell"}}}
 
-Repeat 5<->7 until stock halves, then find a second pair. 10+ round-trips in day 1 builds ~100k credits.
+Repeat the pair until you hit the `medium` goal threshold, then (CRITICAL)
+warp back to StarDock and execute `buy_ship class=cargotran`. The
+`action_hint` at StarDock will list concrete affordable ship classes.
 
 ================ TRADING (MECHANICS) ================
 - Port codes use letters F-O-E for (fuel_ore, organics, equipment). `B`=port buys, `S`=port sells.

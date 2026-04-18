@@ -69,6 +69,14 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
         )
     if action.scratchpad_update is not None:
         player.scratchpad = action.scratchpad_update[:8000]
+    # Persist structured goal updates (None=leave alone, string=replace incl.
+    # empty clear). Cap per-field at 240 chars so the action_hint stays terse.
+    if action.goal_short is not None:
+        player.goal_short = action.goal_short[:240]
+    if action.goal_medium is not None:
+        player.goal_medium = action.goal_medium[:240]
+    if action.goal_long is not None:
+        player.goal_long = action.goal_long[:240]
 
     # Dispatch
     handler = _DISPATCH.get(action.kind)

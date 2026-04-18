@@ -605,3 +605,123 @@ class TestPhaseDEconomy:
         assert any("price" in v for v in sample_stock.values()), (
             f"no price field in stock intel: {sample_stock}"
         )
+
+
+class TestPhaseEGoals:
+    """Phase E — structured agent goals (short / medium / long) that
+    survive across turns. Parsed from LLM output, persisted on Player,
+    surfaced back to the agent at the top of next turn's action_hint."""
+
+    def test_e1_llm_parser_reads_nested_goals_block(self):
+        """Canonical shape: a `goals` object inside the JSON response
+        carrying short/medium/long strings."""
+        from tw2k.agents.llm import _parse_response
+
+        raw = (
+            '{"thought":"scan first","scratchpad_update":"s=1",'
+            '"goals":{"short":"scan then warp","medium":"45k + buy cargotran","long":"100M cr"},'
+            '"action":{"kind":"scan","args":{}}}'
+        )
+        act = _parse_response(raw)
+        assert act is not None
+        assert act.goal_short == "scan then warp"
+        assert act.goal_medium == "45k + buy cargotran"
+        assert act.goal_long == "100M cr"
+
+    def test_e1_llm_parser_reads_flat_goal_fields(self):
+        """Tolerant shape: some models flatten to `goal_short`/etc. at the
+        top level. Must be accepted so behavior doesn't depend on the LLM
+        picking one shape."""
+        from tw2k.agents.llm import _parse_response
+
+        raw = (
+            '{"thought":"t","goal_short":"a","goal_medium":"b","goal_long":"c",'
+            '"action":{"kind":"wait","args":{}}}'
+        )
+        act = _parse_response(raw)
+        assert act is not None
+        assert (act.goal_short, act.goal_medium, act.goal_long) == ("a", "b", "c")
+
+    def test_e1_llm_parser_omitted_goal_stays_none(self):
+        """None means 'don't touch the stored goal'. An omitted field must
+        NOT overwrite a prior-turn goal with empty string."""
+        from tw2k.agents.llm import _parse_response
+
+        raw = '{"thought":"t","goals":{"short":"keep trading"},"action":{"kind":"wait","args":{}}}'
+        act = _parse_response(raw)
+        assert act is not None
+        assert act.goal_short == "keep trading"
+        assert act.goal_medium is None
+        assert act.goal_long is None
+
+    def test_e2_observation_surfaces_prior_goals(self):
+        """Goals written last turn must appear at the TOP of action_hint
+        so the agent re-reads them before deciding."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe()
+        a.goal_short = "warp 5, buy 20 org"
+        a.goal_medium = "hit 45k, buy cargotran"
+        a.goal_long = "100M cr via citadel L3"
+        obs = build_observation(u, "A")
+        assert "YOUR GOALS" in obs.action_hint
+        assert "warp 5, buy 20 org" in obs.action_hint
+        assert "hit 45k, buy cargotran" in obs.action_hint
+        assert "100M cr via citadel L3" in obs.action_hint
+        # And the machine-readable mirror in obs.goals is available.
+        assert obs.goals["short"] == "warp 5, buy 20 org"
+        assert obs.goals["medium"] == "hit 45k, buy cargotran"
+        assert obs.goals["long"] == "100M cr via citadel L3"
+
+    def test_e2_observation_empty_goals_nudges_agent(self):
+        """If the agent hasn't set goals yet, the hint should tell them to
+        — otherwise new agents ignore the field forever."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe()
+        # fresh player — no goals set
+        obs = build_observation(u, "A")
+        assert "GOALS EMPTY" in obs.action_hint, (
+            f"missing empty-goals nudge in hint: {obs.action_hint}"
+        )
+
+    def test_e3_runner_persists_goal_update_on_action(self):
+        """When an Action carries goal_medium, apply_action must write it
+        onto the Player so it reappears in the next observation."""
+        from tw2k.engine.actions import Action, ActionKind
+        from tw2k.engine.runner import apply_action
+
+        u, (a, *_) = _make_universe()
+        act = Action(
+            kind=ActionKind.WAIT,
+            goal_short="do thing",
+            goal_medium="save 45k",
+            goal_long="win match",
+        )
+        apply_action(u, "A", act)
+        assert a.goal_short == "do thing"
+        assert a.goal_medium == "save 45k"
+        assert a.goal_long == "win match"
+
+    def test_e3_runner_leaves_goal_alone_when_action_omits(self):
+        """None on the Action field is the 'keep existing goal' signal.
+        Only an explicit "" clears."""
+        from tw2k.engine.actions import Action, ActionKind
+        from tw2k.engine.runner import apply_action
+
+        u, (a, *_) = _make_universe()
+        a.goal_medium = "original plan"
+        apply_action(u, "A", Action(kind=ActionKind.WAIT))  # no goals
+        assert a.goal_medium == "original plan"
+        apply_action(u, "A", Action(kind=ActionKind.WAIT, goal_medium=""))
+        assert a.goal_medium == ""
+
+    def test_e4_system_prompt_teaches_goal_schema(self):
+        """Prompt must document the goals block + three horizons so a
+        fresh LLM knows what to emit."""
+        from tw2k.agents.prompts import SYSTEM_PROMPT
+
+        assert '"goals"' in SYSTEM_PROMPT
+        for horizon in ("short", "medium", "long"):
+            assert horizon in SYSTEM_PROMPT, f"prompt missing '{horizon}' horizon"
+        assert "GOAL DISCIPLINE" in SYSTEM_PROMPT or "GOAL RULES" in SYSTEM_PROMPT

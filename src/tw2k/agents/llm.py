@@ -429,6 +429,23 @@ def _parse_response(raw: str) -> Action | None:
         elif kind_raw == "sell":
             args.setdefault("side", "sell")
 
+    # Structured 3-horizon goals. Accept either a top-level `goals` object or
+    # per-field siblings so different LLMs' preferred shapes work. The engine
+    # treats None as "don't change my prior goal", "" as "clear", otherwise replace.
+    goals_obj = data.get("goals") if isinstance(data.get("goals"), dict) else {}
+
+    def _goal(key: str) -> str | None:
+        # Prefer the nested form `goals.short`, fall back to top-level
+        # `goal_short`. If neither is supplied, leave the goal untouched.
+        if key in goals_obj:
+            v = goals_obj[key]
+            return str(v)[:240] if v is not None else ""
+        top = f"goal_{key}"
+        if top in data:
+            v = data[top]
+            return str(v)[:240] if v is not None else ""
+        return None
+
     return Action(
         kind=kind,
         args=args,
@@ -438,4 +455,7 @@ def _parse_response(raw: str) -> Action | None:
             if "scratchpad_update" in data and data["scratchpad_update"] is not None
             else None
         ),
+        goal_short=_goal("short"),
+        goal_medium=_goal("medium"),
+        goal_long=_goal("long"),
     )

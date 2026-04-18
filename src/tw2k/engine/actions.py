@@ -47,6 +47,13 @@ class Action(BaseModel):
     args: dict[str, Any] = Field(default_factory=dict)
     thought: str = ""
     scratchpad_update: str | None = None
+    # Optional 3-horizon goal updates the agent wrote this turn. Each is
+    # persisted on the Player model and surfaced in its *next* observation's
+    # action_hint so the plan survives across turns. None = "don't change
+    # what I wrote last turn"; "" = "clear this goal"; a string = "replace".
+    goal_short: str | None = None
+    goal_medium: str | None = None
+    goal_long: str | None = None
 
 
 class ActionResult(BaseModel):
