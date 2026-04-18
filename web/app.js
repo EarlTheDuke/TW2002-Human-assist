@@ -840,6 +840,8 @@
         <div class="cargo-legend">${cargoLabel}</div>
         ${extraEquip.length ? `<div class="equip-row">${extraEquip.join("")}</div>` : ""}
         ${allianceTags ? `<div class="alliance-row">${allianceTags}</div>` : ""}
+        ${renderGoalsBlock(p)}
+        ${renderTradesBlock(p)}
         ${renderSparklineRow(p.id, p.color)}
         ${p.scratchpad ? `<div class="thought" title="Agent scratchpad">${esc(p.scratchpad).slice(0, 400)}</div>` : ""}
       `;
@@ -850,17 +852,22 @@
   function cargoBreakdown(p) {
     const holds = p.holds || 20;
     const cargo = p.cargo || {};
+    const costs = p.cargo_cost_avg || {};
     const fo = cargo.fuel_ore || 0;
     const org = cargo.organics || 0;
     const eq = cargo.equipment || 0;
     const col = cargo.colonists || 0;
+    const tag = (name, qty) => {
+      const avg = costs[name];
+      return qty > 0 && avg ? ` <span class="cargo-basis" title="avg paid ${avg} cr/unit">@${avg}</span>` : "";
+    };
     const used = fo + org + eq + col;
     const items = [
-      `<span class="cargo-item"><i class="cargo-dot fuel_ore"></i>FO ${fo}</span>`,
-      `<span class="cargo-item"><i class="cargo-dot organics"></i>Org ${org}</span>`,
-      `<span class="cargo-item"><i class="cargo-dot equipment"></i>Eq ${eq}</span>`,
+      `<span class="cargo-item"><i class="cargo-dot fuel_ore"></i>FO ${fo}${tag("fuel_ore", fo)}</span>`,
+      `<span class="cargo-item"><i class="cargo-dot organics"></i>Org ${org}${tag("organics", org)}</span>`,
+      `<span class="cargo-item"><i class="cargo-dot equipment"></i>Eq ${eq}${tag("equipment", eq)}</span>`,
     ];
-    if (col > 0) items.push(`<span class="cargo-item"><i class="cargo-dot colonists"></i>Col ${col}</span>`);
+    if (col > 0) items.push(`<span class="cargo-item"><i class="cargo-dot colonists"></i>Col ${col}${tag("colonists", col)}</span>`);
     items.push(`<span class="cargo-item cargo-total">Holds ${used}/${holds}</span>`);
     return items.join("");
   }
@@ -886,6 +893,54 @@
   function shipShort(s) {
     if (!s) return "—";
     return String(s).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).replace(/ship/i, "Ship");
+  }
+
+  function renderGoalsBlock(p) {
+    const s = (p.goal_short || "").trim();
+    const m = (p.goal_medium || "").trim();
+    const l = (p.goal_long || "").trim();
+    if (!s && !m && !l) return "";
+    const line = (label, text, cls) => {
+      if (!text) return "";
+      const short = text.length > 110 ? text.slice(0, 108) + "…" : text;
+      return `<div class="goal-line ${cls}" title="${esc(text)}"><span class="goal-chip">${label}</span><span class="goal-text">${esc(short)}</span></div>`;
+    };
+    return `
+      <details class="player-goals" open>
+        <summary>Goals</summary>
+        ${line("S", s, "short")}
+        ${line("M", m, "medium")}
+        ${line("L", l, "long")}
+      </details>
+    `;
+  }
+
+  function renderTradesBlock(p) {
+    const trades = p.recent_trades || [];
+    if (!trades.length) return "";
+    const commAbbrev = { fuel_ore: "FO", organics: "Org", equipment: "Eq", colonists: "Col" };
+    const rows = trades.slice(-3).reverse().map((t) => {
+      const side = t.side === "sell" ? "▲" : "▼";
+      const comm = commAbbrev[t.commodity] || t.commodity;
+      const prof = t.realized_profit;
+      let profTag = "";
+      if (t.side === "sell" && prof != null) {
+        const cls = prof >= 0 ? "positive" : "negative";
+        const sign = prof >= 0 ? "+" : "";
+        profTag = `<span class="trade-profit ${cls}">${sign}${fmt(prof)}</span>`;
+      }
+      const dayTick = `<span class="trade-when">d${t.day}·t${t.tick}</span>`;
+      const sideCls = t.side === "sell" ? "sell" : "buy";
+      const body = `<span class="trade-side ${sideCls}">${side} ${t.qty}${comm}</span><span class="trade-price">@${t.unit}</span>`;
+      const sector = t.sector_id ? `<span class="trade-sector">s${t.sector_id}</span>` : "";
+      return `<li class="trade-row">${dayTick}${sector}${body}${profTag}</li>`;
+    }).join("");
+    return `
+      <details class="recent-trades">
+        <summary>Recent trades (${trades.length})</summary>
+        <ul class="trade-list">${rows}</ul>
+      </details>
+    `;
   }
 
   // ----------------- Events ------------------------
