@@ -1,0 +1,424 @@
+{
+  "day": 1,
+  "tick": 11,
+  "max_days": 3,
+  "finished": false,
+  "self_id": "P1",
+  "self_name": "Captain Reyes",
+  "credits": 44360,
+  "alignment": 0,
+  "alignment_label": "Neutral",
+  "experience": 3,
+  "rank": "Civilian",
+  "turns_remaining": 71,
+  "turns_per_day": 80,
+  "ship": {
+    "class": "merchant_cruiser",
+    "holds": 20,
+    "cargo": {
+      "fuel_ore": 0,
+      "organics": 0,
+      "equipment": 20,
+      "colonists": 0
+    },
+    "cargo_cost_avg": {
+      "equipment": 32
+    },
+    "cargo_value_at_cost": {
+      "equipment": 640
+    },
+    "fighters": 620,
+    "shields": 0,
+    "mines": {
+      "armid": 0,
+      "limpet": 0,
+      "atomic": 0
+    },
+    "genesis": 0,
+    "photon_missiles": 0,
+    "ether_probes": 0,
+    "photon_disabled_ticks": 0,
+    "cargo_free": 0
+  },
+  "corp_ticker": null,
+  "planet_landed": null,
+  "scratchpad": "sec 5(SBB fo@21, eq@40) <-> sec 7(BSB fo@27, eq@35) paired.\nCargoTran 43.5k @ sec 1 once cr>=45k. Genesis plan: any dead-end\nsector with 1 warp-out in the outer ring. Vex last seen sec 395.",
+  "goals": {
+    "short": "warp 7 -> sell 20 fuel_ore @>=26cr; warp 5 buy 20 fo @<=22cr; repeat until cr>=45k",
+    "medium": "hit 45k cr, warp back to sector 1, buy_ship cargotran (43.5k), fill holds with colonists for Genesis run",
+    "long": "CargoTran day 1, Genesis a dead-end sector day 2, Citadel L2 by day 3; ferry colonists to compound planet production."
+  },
+  "alive": true,
+  "net_worth": 96730,
+  "owned_planets": [],
+  "sector": {
+    "id": 338,
+    "warps_out": [
+      736,
+      845,
+      874
+    ],
+    "is_fedspace": false,
+    "occupants": [
+      "P1"
+    ],
+    "fighter_group": null,
+    "mines": [],
+    "planets": [],
+    "port": {
+      "class_id": 1,
+      "code": "BSS",
+      "name": "Andros-338",
+      "buys": [
+        "fuel_ore"
+      ],
+      "sells": [
+        "organics",
+        "equipment"
+      ],
+      "stock": {
+        "fuel_ore": {
+          "current": 3058,
+          "max": 4068,
+          "price": 17,
+          "side": "buys_from_player"
+        },
+        "organics": {
+          "current": 1116,
+          "max": 2617,
+          "price": 25,
+          "side": "sells_to_player"
+        },
+        "equipment": {
+          "current": 3793,
+          "max": 4148,
+          "price": 27,
+          "side": "sells_to_player"
+        }
+      }
+    },
+    "ferrengi": []
+  },
+  "adjacent": [
+    {
+      "id": 736,
+      "port": "BSS",
+      "fighter_count": 0,
+      "fighter_owner": null,
+      "mines": 0,
+      "has_planets": false,
+      "occupants": [],
+      "known": false
+    },
+    {
+      "id": 845,
+      "port": null,
+      "fighter_count": 0,
+      "fighter_owner": null,
+      "mines": 0,
+      "has_planets": false,
+      "occupants": [],
+      "known": false
+    },
+    {
+      "id": 874,
+      "port": "SBS",
+      "fighter_count": 0,
+      "fighter_owner": null,
+      "mines": 0,
+      "has_planets": false,
+      "occupants": [
+        "P2"
+      ],
+      "known": true
+    }
+  ],
+  "known_ports": [
+    {
+      "sector_id": 338,
+      "class": "BSS",
+      "stock": {
+        "fuel_ore": {
+          "current": 3058,
+          "max": 4068,
+          "price": 17,
+          "side": "buys_from_player"
+        },
+        "organics": {
+          "current": 1116,
+          "max": 2617,
+          "price": 25,
+          "side": "sells_to_player"
+        },
+        "equipment": {
+          "current": 3793,
+          "max": 4148,
+          "price": 27,
+          "side": "sells_to_player"
+        }
+      },
+      "last_seen_day": 1,
+      "age_days": 0
+    },
+    {
+      "sector_id": 874,
+      "class": "SBS",
+      "stock": {
+        "fuel_ore": {
+          "current": 2039,
+          "max": 4139,
+          "price": 17,
+          "side": "sells_to_player"
+        },
+        "organics": {
+          "current": 1818,
+          "max": 2888,
+          "price": 25,
+          "side": "buys_from_player"
+        },
+        "equipment": {
+          "current": 2011,
+          "max": 3197,
+          "price": 32,
+          "side": "sells_to_player"
+        }
+      },
+      "last_seen_day": 1,
+      "age_days": 0
+    }
+  ],
+  "trade_log": [
+    {
+      "day": 1,
+      "tick": 9,
+      "sector_id": 874,
+      "commodity": "equipment",
+      "qty": 20,
+      "side": "buy",
+      "unit": 32,
+      "total": 640,
+      "realized_profit": null
+    },
+    {
+      "day": 1,
+      "tick": 4,
+      "sector_id": 5,
+      "commodity": "fuel_ore",
+      "qty": 20,
+      "side": "buy",
+      "unit": 21,
+      "total": 420,
+      "realized_profit": null
+    },
+    {
+      "day": 1,
+      "tick": 8,
+      "sector_id": 7,
+      "commodity": "fuel_ore",
+      "qty": 20,
+      "side": "sell",
+      "unit": 27,
+      "total": 540,
+      "realized_profit": 120
+    }
+  ],
+  "other_players": [
+    {
+      "id": "P2",
+      "name": "Admiral Vex",
+      "is_corpmate": false,
+      "alive": true,
+      "corp_ticker": null
+    }
+  ],
+  "inbox": [],
+  "recent_events": [
+    {
+      "seq": 3,
+      "day": 1,
+      "tick": 2,
+      "kind": "agent_thought",
+      "actor_id": "P2",
+      "sector_id": 1,
+      "summary": "Load up on 200 fighters before heading out."
+    },
+    {
+      "seq": 4,
+      "day": 1,
+      "tick": 2,
+      "kind": "buy_equip",
+      "actor_id": "P2",
+      "sector_id": 1,
+      "summary": "Admiral Vex bought 200 fighters for 10000cr"
+    },
+    {
+      "seq": 5,
+      "day": 1,
+      "tick": 3,
+      "kind": "agent_thought",
+      "actor_id": "P1",
+      "sector_id": 1,
+      "summary": "Load up on 200 fighters before heading out."
+    },
+    {
+      "seq": 6,
+      "day": 1,
+      "tick": 3,
+      "kind": "buy_equip",
+      "actor_id": "P1",
+      "sector_id": 1,
+      "summary": "Captain Reyes bought 200 fighters for 10000cr"
+    },
+    {
+      "seq": 7,
+      "day": 1,
+      "tick": 4,
+      "kind": "agent_thought",
+      "actor_id": "P2",
+      "sector_id": 1,
+      "summary": "Load up on 200 fighters before heading out."
+    },
+    {
+      "seq": 8,
+      "day": 1,
+      "tick": 4,
+      "kind": "buy_equip",
+      "actor_id": "P2",
+      "sector_id": 1,
+      "summary": "Admiral Vex bought 200 fighters for 10000cr"
+    },
+    {
+      "seq": 9,
+      "day": 1,
+      "tick": 5,
+      "kind": "agent_thought",
+      "actor_id": "P1",
+      "sector_id": 1,
+      "summary": "Load up on 200 fighters before heading out."
+    },
+    {
+      "seq": 10,
+      "day": 1,
+      "tick": 5,
+      "kind": "buy_equip",
+      "actor_id": "P1",
+      "sector_id": 1,
+      "summary": "Captain Reyes bought 200 fighters for 10000cr"
+    },
+    {
+      "seq": 11,
+      "day": 1,
+      "tick": 6,
+      "kind": "agent_thought",
+      "actor_id": "P2",
+      "sector_id": 1,
+      "summary": "Load up on 200 fighters before heading out."
+    },
+    {
+      "seq": 12,
+      "day": 1,
+      "tick": 6,
+      "kind": "buy_equip",
+      "actor_id": "P2",
+      "sector_id": 1,
+      "summary": "Admiral Vex bought 200 fighters for 10000cr"
+    },
+    {
+      "seq": 13,
+      "day": 1,
+      "tick": 7,
+      "kind": "agent_thought",
+      "actor_id": "P1",
+      "sector_id": 1,
+      "summary": "Warping to 874 (scouting, port=SBS)."
+    },
+    {
+      "seq": 14,
+      "day": 1,
+      "tick": 7,
+      "kind": "warp",
+      "actor_id": "P1",
+      "sector_id": 874,
+      "summary": "Captain Reyes warped 1 → 874"
+    },
+    {
+      "seq": 15,
+      "day": 1,
+      "tick": 8,
+      "kind": "agent_thought",
+      "actor_id": "P2",
+      "sector_id": 1,
+      "summary": "Warping to 874 (scouting, port=SBS)."
+    },
+    {
+      "seq": 16,
+      "day": 1,
+      "tick": 8,
+      "kind": "warp",
+      "actor_id": "P2",
+      "sector_id": 874,
+      "summary": "Admiral Vex warped 1 → 874"
+    },
+    {
+      "seq": 17,
+      "day": 1,
+      "tick": 9,
+      "kind": "agent_thought",
+      "actor_id": "P1",
+      "sector_id": 874,
+      "summary": "Buying 20 equipment at SBS for 32cr/u."
+    },
+    {
+      "seq": 18,
+      "day": 1,
+      "tick": 9,
+      "kind": "trade",
+      "actor_id": "P1",
+      "sector_id": 874,
+      "summary": "Captain Reyes buy 20 equipment @ 32cr = 640cr"
+    },
+    {
+      "seq": 19,
+      "day": 1,
+      "tick": 10,
+      "kind": "agent_thought",
+      "actor_id": "P2",
+      "sector_id": 874,
+      "summary": "Buying 20 equipment at SBS for 32cr/u."
+    },
+    {
+      "seq": 20,
+      "day": 1,
+      "tick": 10,
+      "kind": "trade",
+      "actor_id": "P2",
+      "sector_id": 874,
+      "summary": "Admiral Vex buy 20 equipment @ 32cr = 640cr"
+    },
+    {
+      "seq": 21,
+      "day": 1,
+      "tick": 11,
+      "kind": "agent_thought",
+      "actor_id": "P1",
+      "sector_id": 874,
+      "summary": "Warping to 338 (scouting, port=BSS)."
+    },
+    {
+      "seq": 22,
+      "day": 1,
+      "tick": 11,
+      "kind": "warp",
+      "actor_id": "P1",
+      "sector_id": 338,
+      "summary": "Captain Reyes warped 874 → 338"
+    }
+  ],
+  "alliances": [],
+  "corp": null,
+  "deaths": 0,
+  "max_deaths": 3,
+  "limpets_owned": [],
+  "probe_log": [],
+  "action_hint": "YOUR GOALS — NOW: warp 7 -> sell 20 fuel_ore @>=26cr; warp 5 buy 20 fo @<=22cr; repeat until cr>=45k / DAY: hit 45k cr, warp back to sector 1, buy_ship cargotran (43.5k), fill holds with colonists for Genesis run / MATCH: CargoTran day 1, Genesis a dead-end sector day 2, Citadel L2 by day 3; ferry colonists to compound planet production. | Verbs available: warp trade scan wait + 29 more (see system prompt). | warp target MUST be in [736, 845, 874]. | port BUYS fuel_ore / port SELLS organics,equipment — use trade."
+}

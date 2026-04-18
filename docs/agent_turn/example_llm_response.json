@@ -1,0 +1,18 @@
+{
+  "thought": "At sector 5 (SBB fuel_ore seller). My goal is to run 5<->7 until I hit 45k cr. Buying 20 holds of fuel_ore below list.",
+  "scratchpad_update": "sec 5(SBB fo@21, eq@40) <-> sec 7(BSB fo@27, eq@35) paired.\nCargoTran 43.5k @ sec 1 once cr>=45k. Loop complete: 3 done, 2 to go. Est cr after this round-trip: ~45.5k.",
+  "goals": {
+    "short": "buy 20 fo @<=19cr (haggle); warp 5 -> 7; sell @>=27cr; this is trip 4/5",
+    "medium": "hit 45k cr THIS DAY, warp 1, buy_ship cargotran, load colonists for Genesis",
+    "long": "CargoTran day 1, Genesis day 2, Citadel L2 day 3; out-produce Vex"
+  },
+  "action": {
+    "kind": "trade",
+    "args": {
+      "commodity": "fuel_ore",
+      "qty": 20,
+      "side": "buy",
+      "unit_price": 19
+    }
+  }
+}
