@@ -28,6 +28,8 @@
     win_reason: "",
     selectedSectorId: null,
     selectedPlayerId: null,
+    followPlayerId: null,      // map camera locks on this player when set
+    drawer: { kind: null, id: null }, // kind = "player" | "sector" | null
     recentWarp: [],            // [{from,to,t}]
     filters: {
       combat: true, trade: true, move: true, thought: true, system: true, diplomacy: true,
@@ -52,6 +54,10 @@
   const mapZoomReadout = document.getElementById("mapZoomReadout");
   const miniMap = document.getElementById("miniMap");
   const miniMapSvg = document.getElementById("miniMapSvg");
+  const detailDrawer = document.getElementById("detailDrawer");
+  const drawerBody = document.getElementById("drawerBody");
+  const drawerTitle = document.getElementById("drawerTitle");
+  const drawerFollowBtn = document.getElementById("drawerFollowBtn");
   const playersPanel = document.getElementById("panelPlayers") || document.getElementById("playersPanel");
   const messageFeed = document.getElementById("messageFeed");
   const eventFeed = document.getElementById("eventFeed");
@@ -350,7 +356,7 @@
       g.addEventListener("mouseleave", hideSectorTip);
       g.addEventListener("click", () => {
         state.selectedSectorId = s.id;
-        render();
+        openDrawer("sector", s.id);
       });
       sectorsLayer.appendChild(g);
     }
@@ -719,6 +725,16 @@
       ring.setAttribute("stroke-width", "0.4");
       ring.setAttribute("opacity", "0.5");
       shipsLayer.appendChild(ring);
+
+      // Follow-camera indicator ring (Phase 3).
+      if (state.followPlayerId === p.id) {
+        const followRing = document.createElementNS(svgNS, "circle");
+        followRing.setAttribute("cx", s.x);
+        followRing.setAttribute("cy", s.y);
+        followRing.setAttribute("r", 9);
+        followRing.setAttribute("class", "ship-follow-ring");
+        shipsLayer.appendChild(followRing);
+      }
     }
   }
 
@@ -1056,6 +1072,8 @@
       renderPlayers();
       renderEvents();
       renderMessages();
+      renderDrawer();
+      updateFollowCamera();
     });
   }
 
@@ -1272,6 +1290,12 @@
           toggleFullscreenMap(false);
           return;
         }
+        if (detailDrawer && !detailDrawer.hidden && state.drawer.kind) {
+          e.preventDefault();
+          setFollow(null);
+          closeDrawer();
+          return;
+        }
         if (gameOverModal && !gameOverModal.hidden) {
           e.preventDefault();
           gameOverModal.hidden = true;
@@ -1331,8 +1355,9 @@
         const players = Array.from(state.players.values());
         const p = players[idx];
         if (!p) return;
-        // Phase 3 will follow-camera; for now: select + flash the card.
-        state.selectedPlayerId = p.id;
+        e.preventDefault();
+        openDrawer("player", p.id);
+        setFollow(p.id);
         const card = document.querySelector(`.player-card[data-pid="${p.id}"]`);
         if (card) {
           card.classList.add("flash");
@@ -1340,6 +1365,224 @@
         }
       }
     });
+  }
+
+  // ------------- Detail drawer + follow camera (Phase 3) -------------
+
+  function openDrawer(kind, id) {
+    state.drawer = { kind, id };
+    if (kind === "player") state.selectedPlayerId = id;
+    else if (kind === "sector") state.selectedSectorId = id;
+    if (detailDrawer) detailDrawer.hidden = false;
+    renderDrawer();
+  }
+
+  function closeDrawer() {
+    state.drawer = { kind: null, id: null };
+    if (detailDrawer) detailDrawer.hidden = true;
+  }
+
+  function setFollow(playerId) {
+    state.followPlayerId = playerId;
+    updateFollowCamera(true);
+    if (drawerFollowBtn) drawerFollowBtn.classList.toggle("active", state.followPlayerId != null);
+  }
+
+  function toggleFollow() {
+    if (state.drawer.kind !== "player") return;
+    setFollow(state.followPlayerId === state.drawer.id ? null : state.drawer.id);
+  }
+
+  // Recenter the viewBox on the followed player. Only pans when the player
+  // is outside the visible area (or a margin), so gentle moves don't jitter.
+  let _lastFollowSector = null;
+  function updateFollowCamera(forceCenter) {
+    if (!state.followPlayerId) { _lastFollowSector = null; return; }
+    const p = state.players.get(state.followPlayerId);
+    if (!p || !p.alive) return;
+    const s = state.sectors.get(p.sector_id);
+    if (!s) return;
+    // If forced or the followed player changed sector, recenter.
+    const changedSector = _lastFollowSector !== p.sector_id;
+    if (!forceCenter && !changedSector) {
+      // Also recenter if the player drifted outside a safety margin of the view.
+      const margin = 0.15;
+      const minX = viewBoxState.x + viewBoxState.w * margin;
+      const maxX = viewBoxState.x + viewBoxState.w * (1 - margin);
+      const minY = viewBoxState.y + viewBoxState.h * margin;
+      const maxY = viewBoxState.y + viewBoxState.h * (1 - margin);
+      if (s.x >= minX && s.x <= maxX && s.y >= minY && s.y <= maxY) return;
+    }
+    _lastFollowSector = p.sector_id;
+    viewBoxState.x = s.x - viewBoxState.w / 2;
+    viewBoxState.y = s.y - viewBoxState.h / 2;
+    updateViewBox();
+  }
+
+  function renderDrawer() {
+    if (!drawerBody) return;
+    const { kind, id } = state.drawer;
+    if (!kind) {
+      if (detailDrawer) detailDrawer.hidden = true;
+      if (drawerFollowBtn) drawerFollowBtn.style.display = "none";
+      return;
+    }
+    if (detailDrawer) detailDrawer.hidden = false;
+    if (kind === "player") {
+      if (drawerFollowBtn) {
+        drawerFollowBtn.style.display = "";
+        drawerFollowBtn.classList.toggle("active", state.followPlayerId === id);
+      }
+      renderPlayerDrawer(id);
+    } else if (kind === "sector") {
+      if (drawerFollowBtn) drawerFollowBtn.style.display = "none";
+      renderSectorDrawer(id);
+    }
+  }
+
+  function renderPlayerDrawer(playerId) {
+    const p = state.players.get(playerId);
+    if (!p) { drawerBody.innerHTML = "<em>Player not found.</em>"; return; }
+    if (drawerTitle) {
+      const rk = p.rank ? ` · ${p.rank}` : "";
+      drawerTitle.textContent = `${p.name}${rk}`;
+      drawerTitle.style.color = p.color || "";
+    }
+    const fo = p.cargo?.fuel_ore || 0;
+    const org = p.cargo?.organics || 0;
+    const eq = p.cargo?.equipment || 0;
+    const photon = p.photon_torpedoes || 0;
+    const probes = p.probes || 0;
+    const mines = p.atomic_mines || 0;
+    const deaths = p.deaths || 0;
+    const sec = state.sectors.get(p.sector_id);
+    const secPort = sec && sec.port ? sec.port : "—";
+    const allianceInfo = (() => {
+      if (!p.alliance_id) return "none";
+      const a = state.alliances ? state.alliances.get(p.alliance_id) : null;
+      if (!a) return `pending (${esc(p.alliance_id)})`;
+      return `${a.active ? "NAP" : "proposed"} with ${esc(a.partner_name || p.alliance_id)}`;
+    })();
+
+    drawerBody.innerHTML = `
+      <div class="drawer-section">
+        <h3>Vitals</h3>
+        <div class="drawer-stat-grid">
+          <span class="k">Kind</span><span class="v">${esc(p.kind || "?")}</span>
+          <span class="k">Ship</span><span class="v">${esc(p.ship || "?")}</span>
+          <span class="k">Alive</span><span class="v">${p.alive ? "yes" : "KIA"}</span>
+          <span class="k">Sector</span><span class="v">${p.sector_id || "—"}${secPort !== "—" ? ` (Port ${esc(secPort)})` : ""}</span>
+          <span class="k">Credits</span><span class="v">${fmt(p.credits || 0)}</span>
+          <span class="k">Net Worth</span><span class="v">${fmt(p.net_worth || p.credits || 0)}</span>
+          <span class="k">Experience</span><span class="v">${fmt(p.experience || 0)}</span>
+          <span class="k">Alignment</span><span class="v">${p.alignment != null ? p.alignment : "—"}</span>
+          <span class="k">Turns</span><span class="v">${fmt(p.turns || 0)}/${fmt(p.turns_max || p.turns || 0)}</span>
+          <span class="k">Deaths</span><span class="v">${deaths}</span>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h3>Ship loadout</h3>
+        <div class="drawer-stat-grid">
+          <span class="k">Fighters</span><span class="v">${fmt(p.fighters || 0)}</span>
+          <span class="k">Shields</span><span class="v">${fmt(p.shields || 0)}</span>
+          <span class="k">Holds</span><span class="v">${fmt(p.holds || 0)}</span>
+          <span class="k">Fuel Ore</span><span class="v">${fmt(fo)}</span>
+          <span class="k">Organics</span><span class="v">${fmt(org)}</span>
+          <span class="k">Equipment</span><span class="v">${fmt(eq)}</span>
+          <span class="k">Photon</span><span class="v">${fmt(photon)}</span>
+          <span class="k">Probes</span><span class="v">${fmt(probes)}</span>
+          <span class="k">Atomic mines</span><span class="v">${fmt(mines)}</span>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h3>Diplomacy</h3>
+        <div>Corporation: ${p.corp_ticker ? `<strong style="color:${p.color}">${esc(p.corp_ticker)}</strong>` : "none"}</div>
+        <div>Alliance: ${allianceInfo}</div>
+      </div>
+      <div class="drawer-section">
+        <h3>Press <kbd>◎ Follow</kbd> above</h3>
+        <div>Camera will lock on ${esc(p.name)} and pan with every warp.</div>
+      </div>
+    `;
+  }
+
+  function renderSectorDrawer(sectorId) {
+    const s = state.sectors.get(sectorId);
+    if (!s) { drawerBody.innerHTML = "<em>Sector not found.</em>"; return; }
+    if (drawerTitle) {
+      drawerTitle.textContent = `Sector ${s.id}${s.id === 1 ? " · StarDock" : ""}`;
+      drawerTitle.style.color = "";
+    }
+    const planetsHere = Array.from(state.planets.values()).filter((pl) => pl.sector_id === s.id);
+    const occupants = [];
+    for (const p of state.players.values()) {
+      if (p.sector_id === s.id) {
+        const rk = p.rank ? ` [${p.rank}]` : "";
+        occupants.push(`<li><span style="color:${p.color || "inherit"}">${esc(p.name)}</span>${rk} (${esc(p.ship || "?")})</li>`);
+      }
+    }
+    const warpBits = (s.warps_dir && Array.isArray(s.warps_dir))
+      ? s.warps_dir.map((w) => `<li>${w.two_way ? "↔" : "↛"} sector ${w.to}</li>`).join("")
+      : (s.warps || []).map((w) => `<li>↔ sector ${w}</li>`).join("");
+    const portLine = s.port && s.port !== "STARDOCK"
+      ? `<div>Class ${esc(s.port)}${s.port_name ? ` · ${esc(s.port_name)}` : ""}</div>`
+      : (s.id === 1 ? "<div>StarDock — Federation HQ</div>" : "<em>No port.</em>");
+    const planetHtml = planetsHere.length
+      ? `<ul class="drawer-list">${planetsHere.map((pl) => {
+          const owner = pl.owner_id ? state.players.get(pl.owner_id) : null;
+          const ownerLabel = owner ? `<span style="color:${owner.color}">${esc(owner.name)}</span>` : (pl.owner_id ? esc(pl.owner_id) : "unowned");
+          const cit = pl.citadel_level
+            ? `Citadel L${pl.citadel_level}`
+            : (pl.citadel_target ? `Citadel L${pl.citadel_target} (D${pl.citadel_complete_day})` : "—");
+          return `<li><strong>${esc(pl.name || pl.id)}</strong> [${esc(pl.class || pl.planet_class || "?")}] · ${ownerLabel}<br/><span class="muted">${cit}</span></li>`;
+        }).join("")}</ul>`
+      : "<em>No planets.</em>";
+    drawerBody.innerHTML = `
+      <div class="drawer-section">
+        <h3>Port</h3>
+        ${portLine}
+      </div>
+      <div class="drawer-section">
+        <h3>Planets</h3>
+        ${planetHtml}
+      </div>
+      <div class="drawer-section">
+        <h3>Warps out (${(s.warps || []).length})</h3>
+        <ul class="drawer-list">${warpBits || "<li><em>none</em></li>"}</ul>
+      </div>
+      <div class="drawer-section">
+        <h3>Occupants</h3>
+        ${occupants.length ? `<ul class="drawer-list">${occupants.join("")}</ul>` : "<em>Empty.</em>"}
+      </div>
+    `;
+  }
+
+  function initDrawer() {
+    if (!detailDrawer) return;
+    detailDrawer.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-drawer-action]");
+      if (!btn) return;
+      const action = btn.dataset.drawerAction;
+      if (action === "close") {
+        setFollow(null);
+        closeDrawer();
+      } else if (action === "toggle-follow") {
+        toggleFollow();
+      }
+    });
+    // Make player cards open the drawer on click. We use delegation off the
+    // players panel so we don't have to re-wire after every renderPlayers().
+    const playersPanelEl = document.getElementById("panelPlayers");
+    if (playersPanelEl) {
+      playersPanelEl.addEventListener("click", (e) => {
+        const card = e.target.closest(".player-card[data-pid]");
+        if (!card) return;
+        const pid = card.dataset.pid;
+        if (!pid) return;
+        openDrawer("player", pid);
+        setFollow(pid);
+      });
+    }
   }
 
   function initLayout() {
@@ -1350,6 +1593,7 @@
     initCollapseButtons();
     initShortcuts();
     initMapControls();
+    initDrawer();
   }
 
   // Kick off

@@ -111,6 +111,17 @@
     </div>
   </main>
 
+  <aside id="detailDrawer" class="detail-drawer" hidden aria-label="Detail drawer">
+    <div class="drawer-head">
+      <div class="drawer-title" id="drawerTitle">Detail</div>
+      <div class="drawer-head-right">
+        <button class="drawer-btn" id="drawerFollowBtn" data-drawer-action="toggle-follow" title="Follow this player on the map">◎ Follow</button>
+        <button class="drawer-btn" data-drawer-action="close" title="Close (Esc)" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>
+
   <div id="shortcutsToast" class="shortcuts-toast" hidden>
     <strong>Shortcuts</strong>
     <div><kbd>Space</kbd> pause / resume</div>
@@ -119,7 +130,8 @@
     <div><kbd>+</kbd> / <kbd>−</kbd> zoom map in / out</div>
     <div><kbd>0</kbd> fit galaxy</div>
     <div><kbd>M</kbd> toggle mini-map</div>
-    <div><kbd>1</kbd>–<kbd>9</kbd> focus player <i>(P3)</i></div>
+    <div><kbd>1</kbd>–<kbd>9</kbd> follow Nth player</div>
+    <div><kbd>click</kbd> sector / player → detail drawer</div>
     <div><kbd>?</kbd> toggle this help</div>
     <div><kbd>R</kbd> reset layout</div>
   </div>

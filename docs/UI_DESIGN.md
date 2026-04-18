@@ -180,10 +180,66 @@ initMapControls      -- wire the floating toolbar
 updateLODClasses     -- apply zoom-far/mid/near to #galaxy
 ```
 
-## Phase 3 — Follow-camera + drawer (planned)
+## Phase 3 — Follow-camera + drawer (shipped)
 
-Click a player card → camera locks to them (auto-pan on warp).
-Click a sector → right-drawer detail pane.
+### Goals
+1. First-class "zoom in on this player" affordance — the user shouldn't
+   have to manually chase ships across the galaxy.
+2. A dedicated side drawer for deep-dive info (ship loadout, diplomacy,
+   sector contents) without squeezing the rest of the UI.
+3. Clear visual cue on the map when follow mode is active.
+
+### Interaction surfaces
+
+| Trigger | Effect |
+|---------|--------|
+| Click a player card in the Commanders panel | Opens player drawer, starts following |
+| Press `1`–`9` | Opens player drawer for the Nth commander, starts following |
+| Click any sector node on the map | Opens sector drawer (no follow) |
+| Drawer `◎ Follow` button | Toggles follow-camera on/off for the open player |
+| Drawer `✕` button, or `Esc` | Closes drawer and clears follow |
+
+### Follow-camera behavior
+* When a player is followed, `updateFollowCamera()` runs after every
+  render. It only re-centers the viewBox when either:
+  * the followed player's sector changed since last centering, OR
+  * the player drifted outside a 15% margin of the current view.
+* This keeps the camera smooth during pans/zooms and snaps back only
+  on meaningful movement.
+* A dashed accent ring (`.ship-follow-ring`) pulses around the
+  followed ship so the spectator knows follow is active.
+
+### Drawer DOM contract
+```
+<aside id="detailDrawer" class="detail-drawer" hidden>
+  <div class="drawer-head">
+    <div class="drawer-title" id="drawerTitle">…</div>
+    <div class="drawer-head-right">
+      <button class="drawer-btn" id="drawerFollowBtn" data-drawer-action="toggle-follow">◎ Follow</button>
+      <button class="drawer-btn" data-drawer-action="close">✕</button>
+    </div>
+  </div>
+  <div class="drawer-body" id="drawerBody">…</div>
+</aside>
+```
+
+`drawer-body` content is regenerated on every `render()` via
+`renderDrawer()`, so live stats (credits, fighters, followed player's
+current sector) stay in sync automatically.
+
+### JS public surface (Phase 3)
+
+```
+openDrawer(kind, id)   -- kind = "player" | "sector"
+closeDrawer()
+renderDrawer()         -- route to player/sector renderer
+renderPlayerDrawer(id)
+renderSectorDrawer(id)
+setFollow(playerId)    -- null to clear
+toggleFollow()         -- based on drawer's current player
+updateFollowCamera()
+initDrawer()           -- event wiring
+```
 
 ## Phase 4 — Player trajectory (planned)
 

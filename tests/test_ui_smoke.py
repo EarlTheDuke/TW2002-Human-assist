@@ -285,6 +285,65 @@ def test_phase2_js_zoom_shortcuts(js_text):
         assert frag in js_text, f"missing keybinding for {frag}"
 
 
+# ---------------------------------------------------------------------------
+# Phase 3 contract (follow-camera + detail drawer)
+# ---------------------------------------------------------------------------
+
+
+PHASE3_REQUIRED_IDS = {"detailDrawer", "drawerBody", "drawerTitle", "drawerFollowBtn"}
+
+
+def test_phase3_drawer_elements_present(html_text):
+    tags = parse_html(html_text)
+    present = ids(tags)
+    missing = PHASE3_REQUIRED_IDS - present
+    assert not missing, f"index.html missing Phase 3 drawer IDs: {sorted(missing)}"
+
+
+def test_phase3_css_has_drawer_rules(css_text):
+    required = [
+        ".detail-drawer",
+        ".drawer-head",
+        ".drawer-body",
+        ".drawer-btn",
+        ".ship-follow-ring",
+    ]
+    missing = [s for s in required if s not in css_text]
+    assert not missing, f"style.css missing Phase 3 selectors: {missing}"
+
+
+def test_phase3_js_has_drawer_api(js_text):
+    for name in (
+        "openDrawer",
+        "closeDrawer",
+        "renderDrawer",
+        "renderPlayerDrawer",
+        "renderSectorDrawer",
+        "setFollow",
+        "toggleFollow",
+        "updateFollowCamera",
+        "initDrawer",
+    ):
+        assert name in js_text, f"app.js missing Phase 3 helper `{name}`"
+
+
+def test_phase3_state_has_follow_and_drawer_fields(js_text):
+    assert "followPlayerId" in js_text, "state.followPlayerId missing"
+    assert "drawer:" in js_text or "drawer :" in js_text, "state.drawer missing"
+
+
+def test_phase3_drawer_actions_defined(html_text):
+    tags = parse_html(html_text)
+    actions = {
+        attrs.get("data-drawer-action")
+        for _, attrs in tags
+        if attrs.get("data-drawer-action")
+    }
+    expected = {"close", "toggle-follow"}
+    missing = expected - actions
+    assert not missing, f"missing drawer actions: {sorted(missing)}"
+
+
 def test_js_players_panel_lookup_matches_html(js_text, html_text):
     """Regression test: the JS must look up the players panel by an ID
     that actually exists in index.html.
