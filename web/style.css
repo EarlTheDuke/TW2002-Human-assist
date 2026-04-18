@@ -95,28 +95,72 @@ html, body {
   font-weight: 600;
 }
 
-/* ---------- Layout ---------- */
+/* ---------- Layout (Phase 1: resizable flex) ---------- */
 .layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
-  grid-template-areas:
-    "map side"
-    "events side";
-  gap: 10px;
+  display: flex;
+  flex-direction: row;
   padding: 10px;
+  gap: 0; /* gaps replaced by .resize-handle */
   height: calc(100vh - 52px);
+  overflow: hidden;
 }
-
-.map-panel   { grid-area: map; }
-.events-panel { grid-area: events; }
-.side-column {
-  grid-area: side;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 240px);
-  gap: 10px;
+.col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   min-height: 0;
+  gap: 0;
 }
+.col-left  { flex: 1 1 auto; }                  /* flex-basis set by JS */
+.col-right { flex: 0 0 380px; min-width: 240px; } /* flex-basis set by JS */
+
+/* Each panel fills the flex row given it. flex:1 is the default; specific
+ * ratios are injected by JS via inline style on the top-level panels. */
+.map-panel      { flex: 3 1 0; min-height: 0; }
+.events-panel   { flex: 2 1 0; min-height: 0; }
+.players-panel  { flex: 1 1 0; min-height: 0; }
+.messaging-panel{ flex: 0 0 240px; min-height: 0; }
+
+/* Fullscreen-map mode: hide everything except the map panel. */
+.layout.fullscreen-map .resize-handle,
+.layout.fullscreen-map .events-panel,
+.layout.fullscreen-map .col-right { display: none; }
+.layout.fullscreen-map .map-panel { flex: 1 1 auto; }
+
+/* Collapsed panels keep their header visible. */
+.panel.collapsed { flex: 0 0 auto !important; min-height: 0; }
+.panel.collapsed .panel-body { display: none; }
+.panel.collapsed .collapse-btn { transform: rotate(-90deg); }
+
+/* Drag handles */
+.resize-handle {
+  flex: 0 0 8px;
+  background: transparent;
+  position: relative;
+  transition: background 120ms ease;
+}
+.resize-handle.resize-horizontal { cursor: row-resize; margin: 2px 0; }
+.resize-handle.resize-vertical   { cursor: col-resize; margin: 0 2px; }
+.resize-handle:hover,
+.resize-handle.dragging { background: rgba(110, 231, 255, 0.35); }
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  background: var(--line-bright);
+  border-radius: 2px;
+  opacity: 0.5;
+  transition: opacity 120ms ease;
+}
+.resize-handle.resize-horizontal::after {
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 40px; height: 2px;
+}
+.resize-handle.resize-vertical::after {
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 2px; height: 40px;
+}
+.resize-handle:hover::after,
+.resize-handle.dragging::after { opacity: 1; }
 
 .panel {
   background: rgba(14, 21, 36, 0.65);
@@ -128,6 +172,13 @@ html, body {
   overflow: hidden;
   box-shadow: var(--shadow-soft);
 }
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -135,6 +186,71 @@ html, body {
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
   background: rgba(18, 26, 46, 0.7);
+  flex: 0 0 auto;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.collapse-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  width: 24px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  transition: transform 150ms ease, border-color 120ms ease, color 120ms ease;
+}
+.collapse-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Shortcut toast (triggered by `?`) */
+.shortcuts-toast {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 20;
+  background: rgba(8, 12, 22, 0.92);
+  border: 1px solid var(--line-bright);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-soft);
+}
+.shortcuts-toast strong {
+  display: block;
+  color: var(--text);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.shortcuts-toast kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 6px;
+  margin-right: 6px;
+  border: 1px solid var(--line-bright);
+  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--text);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 11px;
+  text-align: center;
+}
+.shortcuts-toast i {
+  color: var(--text-faint);
+  font-style: italic;
 }
 .panel-header h2 {
   margin: 0;
@@ -223,6 +339,17 @@ html, body {
   box-shadow: 0 0 8px var(--player-color, var(--accent));
 }
 .player-card.dead { opacity: 0.5; }
+.player-card.selected {
+  border-color: var(--player-color, var(--accent));
+  box-shadow: 0 0 0 1px var(--player-color, var(--accent)),
+              0 0 14px -2px var(--player-color, var(--accent));
+}
+.player-card.flash { animation: cardFlash 0.7s ease; }
+@keyframes cardFlash {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.015); box-shadow: 0 0 20px -2px var(--player-color, var(--accent)); }
+  100% { transform: scale(1); }
+}
 .player-header { display: flex; justify-content: space-between; align-items: baseline; }
 .player-name { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
 .player-tag {

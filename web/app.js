@@ -27,6 +27,7 @@
     winner_id: null,
     win_reason: "",
     selectedSectorId: null,
+    selectedPlayerId: null,
     recentWarp: [],            // [{from,to,t}]
     filters: {
       combat: true, trade: true, move: true, thought: true, system: true, diplomacy: true,
@@ -572,25 +573,38 @@
     if (!header) {
       header = document.createElement("div");
       header.className = "panel-header";
-      header.innerHTML = "<h2>Commanders</h2><span class='muted' id='playerCountLabel'></span>";
+      header.innerHTML = `
+        <h2>Commanders <span class='muted' id='playerCountLabel'></span></h2>
+        <div class="header-right">
+          <button class="collapse-btn" data-collapse="players" title="Collapse commanders">▾</button>
+        </div>
+      `;
       container.appendChild(header);
     }
     const countLabel = container.querySelector("#playerCountLabel");
     const alive = Array.from(state.players.values()).filter((p) => p.alive);
     if (countLabel) countLabel.textContent = `${alive.length}/${state.players.size}`;
 
-    let grid = container.querySelector(".players-grid");
+    let body = container.querySelector(".panel-body");
+    if (!body) {
+      body = document.createElement("div");
+      body.className = "panel-body";
+      container.appendChild(body);
+    }
+    let grid = body.querySelector(".players-grid");
     if (!grid) {
       grid = document.createElement("div");
       grid.className = "players-grid";
-      container.appendChild(grid);
+      body.appendChild(grid);
     }
 
     // Re-render simple; 2-4 players is cheap
     grid.innerHTML = "";
     for (const p of state.players.values()) {
       const card = document.createElement("div");
-      card.className = "player-card" + (p.alive ? "" : " dead");
+      card.className = "player-card" + (p.alive ? "" : " dead")
+        + (state.selectedPlayerId === p.id ? " selected" : "");
+      card.dataset.pid = p.id;
       card.style.setProperty("--player-color", p.color || "#6ee7ff");
       const netWorth = fmt(p.net_worth || p.credits || 0);
       const cargoSegs = cargoBar(p);
@@ -936,7 +950,220 @@
     });
   });
 
+  // ----------------- Layout: resize / collapse / shortcuts (Phase 1) ------
+
+  const LAYOUT_KEY = "tw2k:layout:v1";
+
+  function loadLayout() {
+    try {
+      const raw = localStorage.getItem(LAYOUT_KEY);
+      if (!raw) return {};
+      return JSON.parse(raw) || {};
+    } catch (_e) { return {}; }
+  }
+  function saveLayout(patch) {
+    try {
+      const cur = loadLayout();
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify(Object.assign(cur, patch)));
+    } catch (_e) { /* quota / disabled storage */ }
+  }
+
+  function applyLayout(cfg) {
+    const layout = document.getElementById("layout");
+    if (!layout) return;
+    const left = document.getElementById("colLeft");
+    const right = document.getElementById("colRight");
+    if (cfg.rightWidthPx != null && right) {
+      right.style.flex = `0 0 ${clamp(cfg.rightWidthPx, 240, 900)}px`;
+    }
+    const mapPanel = document.getElementById("panelMap");
+    const eventsPanel = document.getElementById("panelEvents");
+    if (mapPanel && cfg.mapFlex != null) mapPanel.style.flex = `${cfg.mapFlex} 1 0`;
+    if (eventsPanel && cfg.eventsFlex != null) eventsPanel.style.flex = `${cfg.eventsFlex} 1 0`;
+    const playersPanelEl = document.getElementById("panelPlayers");
+    const messagesPanel = document.getElementById("panelMessages");
+    if (playersPanelEl && cfg.playersFlex != null) playersPanelEl.style.flex = `${cfg.playersFlex} 1 0`;
+    if (messagesPanel && cfg.messagesFlex != null) messagesPanel.style.flex = `${cfg.messagesFlex} 1 0`;
+
+    const collapsed = cfg.collapsed || {};
+    document.querySelectorAll(".panel[data-panel]").forEach((panel) => {
+      const key = panel.dataset.panel;
+      panel.classList.toggle("collapsed", !!collapsed[key]);
+    });
+  }
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function resetLayout() {
+    try { localStorage.removeItem(LAYOUT_KEY); } catch (_e) {}
+    // clear inline styles that we previously set
+    ["colLeft","colRight","panelMap","panelEvents","panelPlayers","panelMessages"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.flex = "";
+    });
+    document.querySelectorAll(".panel.collapsed").forEach((p) => p.classList.remove("collapsed"));
+  }
+
+  function initResizers() {
+    document.querySelectorAll(".resize-handle").forEach((handle) => {
+      handle.addEventListener("pointerdown", (e) => startResize(e, handle));
+    });
+  }
+
+  function startResize(e, handle) {
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    handle.classList.add("dragging");
+    const kind = handle.dataset.resize;
+    const horizontal = handle.classList.contains("resize-horizontal");
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    // Capture adjacent panels' initial sizes
+    const prev = handle.previousElementSibling;
+    const next = handle.nextElementSibling;
+    const prevRect = prev ? prev.getBoundingClientRect() : null;
+    const nextRect = next ? next.getBoundingClientRect() : null;
+
+    function onMove(ev) {
+      if (kind === "left-right") {
+        const delta = ev.clientX - startX;
+        const right = document.getElementById("colRight");
+        if (!right) return;
+        const rightStart = right.getBoundingClientRect().width;
+        const newWidth = clamp(rightStart - delta, 240, 900);
+        right.style.flex = `0 0 ${newWidth}px`;
+        saveLayout({ rightWidthPx: newWidth });
+        return;
+      }
+      if (!prev || !next || !prevRect || !nextRect) return;
+      if (horizontal) {
+        const total = prevRect.height + nextRect.height;
+        if (total < 50) return;
+        const newPrev = clamp(prevRect.height + (ev.clientY - startY), 44, total - 44);
+        const newNext = total - newPrev;
+        const ratio = newPrev / newNext;
+        prev.style.flex = `${ratio.toFixed(3)} 1 0`;
+        next.style.flex = `1 1 0`;
+        if (kind === "map-events") {
+          saveLayout({ mapFlex: +ratio.toFixed(3), eventsFlex: 1 });
+        } else if (kind === "players-messages") {
+          saveLayout({ playersFlex: +ratio.toFixed(3), messagesFlex: 1 });
+        }
+      }
+    }
+    function onUp() {
+      handle.classList.remove("dragging");
+      try { handle.releasePointerCapture(e.pointerId); } catch (_e) {}
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
+  function togglePanel(key) {
+    const panel = document.querySelector(`.panel[data-panel="${key}"]`);
+    if (!panel) return;
+    panel.classList.toggle("collapsed");
+    const cfg = loadLayout();
+    const collapsed = Object.assign({}, cfg.collapsed || {});
+    collapsed[key] = panel.classList.contains("collapsed");
+    saveLayout({ collapsed });
+  }
+
+  function initCollapseButtons() {
+    // Use event delegation: static buttons exist in HTML, players-panel
+    // button is injected by renderPlayers().
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest(".collapse-btn");
+      if (!btn) return;
+      togglePanel(btn.dataset.collapse);
+    });
+  }
+
+  function toggleFullscreenMap(force) {
+    const layout = document.getElementById("layout");
+    if (!layout) return;
+    const next = force != null ? force : !layout.classList.contains("fullscreen-map");
+    layout.classList.toggle("fullscreen-map", next);
+    saveLayout({ fullscreenMap: next });
+  }
+
+  function toggleShortcutsToast() {
+    const toast = document.getElementById("shortcutsToast");
+    if (!toast) return;
+    toast.hidden = !toast.hidden;
+  }
+
+  function initShortcuts() {
+    document.addEventListener("keydown", (e) => {
+      // Don't hijack typing in inputs
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        if (pauseBtn) pauseBtn.click();
+        return;
+      }
+      if (e.key === "Escape") {
+        const layout = document.getElementById("layout");
+        if (layout && layout.classList.contains("fullscreen-map")) {
+          toggleFullscreenMap(false);
+          return;
+        }
+        if (gameOverModal && !gameOverModal.hidden) {
+          gameOverModal.hidden = true;
+          return;
+        }
+        const toast = document.getElementById("shortcutsToast");
+        if (toast && !toast.hidden) toast.hidden = true;
+        return;
+      }
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        toggleFullscreenMap();
+        return;
+      }
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        toggleShortcutsToast();
+        return;
+      }
+      if (e.key === "r" || e.key === "R") {
+        if (e.ctrlKey || e.metaKey || e.altKey) return; // don't catch reload
+        e.preventDefault();
+        resetLayout();
+        return;
+      }
+      if (/^[1-9]$/.test(e.key)) {
+        const idx = parseInt(e.key, 10) - 1;
+        const players = Array.from(state.players.values());
+        const p = players[idx];
+        if (!p) return;
+        // Phase 3 will follow-camera; for now: select + flash the card.
+        state.selectedPlayerId = p.id;
+        const card = document.querySelector(`.player-card[data-pid="${p.id}"]`);
+        if (card) {
+          card.classList.add("flash");
+          setTimeout(() => card.classList.remove("flash"), 700);
+        }
+      }
+    });
+  }
+
+  function initLayout() {
+    const cfg = loadLayout();
+    applyLayout(cfg);
+    if (cfg.fullscreenMap) toggleFullscreenMap(true);
+    initResizers();
+    initCollapseButtons();
+    initShortcuts();
+  }
+
   // Kick off
+  initLayout();
   setupScrubber();
   connect();
   render();
