@@ -350,7 +350,19 @@ def _obs_max_citadel(obs: Observation) -> int:
 
 
 def format_observation(obs: Observation, compact: bool = True) -> str:
-    """Render the observation as a JSON-ish blob for the model."""
+    """Render the observation as a JSON-ish blob for the model.
+
+    IMPORTANT — what ships here is what the LLM CAN read. Any field on the
+    Observation model that isn't included here is invisible to the agent
+    even if the system prompt references it. See docs/AGENT_TURN_ANATOMY.md
+    for the forensic history of this surface.
+
+    Token budget note: full payload for a mid-day-1 state is ~5-6 KB
+    (~1,500 tokens). We intentionally include `goals`, `trade_log`, and
+    `owned_planets` even though they also surface textually elsewhere,
+    because structured fields are easier for the model to reason about
+    than prose-embedded numbers.
+    """
     payload = {
         "day": obs.day,
         "tick": obs.tick,
@@ -359,20 +371,46 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
             "id": obs.self_id,
             "name": obs.self_name,
             "credits": obs.credits,
+            "net_worth": obs.net_worth,
             "alignment": obs.alignment,
+            "alignment_label": obs.alignment_label,
+            "experience": obs.experience,
+            "rank": obs.rank,
             "turns_remaining": obs.turns_remaining,
             "turns_per_day": obs.turns_per_day,
             "ship": obs.ship,
             "corp_ticker": obs.corp_ticker,
             "planet_landed": obs.planet_landed,
+            # Survival state. When deaths approaches max_deaths the agent
+            # should play more defensively — losing a life drops them to
+            # a starter hull at StarDock minus 25% credits.
+            "alive": obs.alive,
+            "deaths": obs.deaths,
+            "max_deaths": obs.max_deaths,
         },
         "stage_hint": stage_hint(obs),
+        # Structured goals — also surfaced as prose in action_hint[YOUR GOALS]
+        # but including them here lets the agent reason about them without
+        # re-parsing a hint string. Omit-to-keep semantics still live in
+        # the action parser (runner.py), not here.
+        "goals": obs.goals,
         "scratchpad": obs.scratchpad,
         "sector": obs.sector,
         "adjacent": obs.adjacent,
+        # Own planets. Without this, a multi-planet commander has no way
+        # to enumerate their holdings — they'd have to warp to each sector
+        # individually to rediscover what they own.
+        "owned_planets": obs.owned_planets,
         "other_players": obs.other_players,
+        "alliances": obs.alliances,
+        "corp": obs.corp,
         "inbox": obs.inbox[-10:],
         "known_ports_top": _top_known_ports(obs, limit=15),
+        # Last 5 trades the player executed. `realized_profit` is None on
+        # buys and an int (can be negative) on sells. This is what the
+        # system prompt teaches the agent to audit against their cost
+        # basis before committing to another round-trip on the same pair.
+        "trade_log": obs.trade_log[-5:],
         "recent_events": obs.recent_events[-12:],
         "action_hint": obs.action_hint,
     }

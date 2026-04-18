@@ -261,68 +261,73 @@ visible actions. This is how the agent "remembers" what it just did.
 
 ## 4. What the LLM does NOT see — the gap between Observation and user message
 
-**This is the headline finding of the audit.** The `Observation`
-pydantic model has 22+ fields. The `format_observation` function
-currently ships only a subset to the LLM.
+**This section documents a gap found during the audit, and the fix
+shipped the same day. Kept here so the history is readable.**
 
-Fields present on `Observation` but stripped by `format_observation`
-before the payload is sent:
+### What was missing (audit finding, 2026-04-17)
 
-| Field on `Observation` | System prompt references it? | Currently reachable to LLM via? |
+The `Observation` pydantic model has 22+ fields. The original
+`format_observation` shipped only ~10 of them to the LLM. Fields
+stripped before the payload was sent:
+
+| Field on `Observation` | System prompt references it? | Was reachable via? |
 |---|---|---|
 | `goals` | YES — §"GOAL DISCIPLINE" | Only as text at top of `action_hint` |
-| `trade_log` | **YES — "trade_log (last 5) — your own recent trades with realized_profit"** | **NOT DIRECTLY SENT.** Partial surface via `action_hint`'s "P&L at this port" line, which only appears when standing at a port that buys the current cargo. |
-| `owned_planets` | **YES — "self.owned_planets — your planets (id, sector_id, citadel_level, ...)"** | **NOT DIRECTLY SENT.** Partial surface via `action_hint` when landed or when adjacent planets are yours. |
-| `net_worth` | YES — §"OBSERVATION FIELDS YOU MUST READ" | Only as prose in `stage_hint.reason` ("net worth $96,730") |
+| `trade_log` | YES — "trade_log (last 5) — your own recent trades with realized_profit" | Only partial, via `action_hint`'s "P&L at this port" line |
+| `owned_planets` | YES — "self.owned_planets — your planets (id, sector_id, citadel_level, ...)" | Only when standing in-sector via `action_hint` |
+| `net_worth` | YES — §"OBSERVATION FIELDS YOU MUST READ" | Only as prose in `stage_hint.reason` |
 | `alive`, `deaths`, `max_deaths` | Combat section | Not sent |
 | `experience`, `rank`, `alignment_label` | Prompt mentions rank/alignment | Not sent |
 | `alliances`, `corp` (full) | Diplomacy section | Not sent |
 | `limpets_owned`, `probe_log` | Recon section | Not sent |
 
-Dump script output confirming this:
+### Fix shipped (commit after `1cc7b5b`)
+
+`format_observation` now ships everything the system prompt references.
+Current dump script output:
 
 ```
+[info] user_message top-level keys:
+  ['action_hint', 'adjacent', 'alliances', 'corp', 'day', 'goals',
+   'inbox', 'known_ports_top', 'max_days', 'other_players',
+   'owned_planets', 'recent_events', 'scratchpad', 'sector', 'self',
+   'stage_hint', 'tick', 'trade_log']
+
+[info] self.* keys:
+  ['alignment', 'alignment_label', 'alive', 'corp_ticker', 'credits',
+   'deaths', 'experience', 'id', 'max_deaths', 'name', 'net_worth',
+   'planet_landed', 'rank', 'ship', 'turns_per_day', 'turns_remaining']
+
 [info] fields on Observation BUT NOT in user_message:
-  ['alignment_label', 'alive', 'alliances', 'corp', 'deaths',
-   'experience', 'finished', 'goals', 'known_ports', 'limpets_owned',
-   'max_deaths', 'net_worth', 'owned_planets', 'probe_log', 'rank',
-   'trade_log']
+  ['finished', 'limpets_owned', 'probe_log']
 ```
 
-(Note: `known_ports` is replaced in the payload by `known_ports_top`, a
-curated subset — that's intentional and fine.)
+Remaining three un-sent fields are intentional:
+- `finished` — redundant with the turn loop itself.
+- `limpets_owned` — specialized, add when limpet tracking gameplay
+  is active.
+- `probe_log` — same story for ether probes.
 
-### Impact assessment
+### Cost of the fix
 
-- **Critical gap — `trade_log`**: the system prompt explicitly teaches
-  the agent to "check cost basis before selling" and references
-  `trade_log (last 5)`. Today the agent can only see P&L _if_ it's
-  standing at a buying port (via `action_hint`). When planning a route
-  ("should I keep running this loop?"), it's flying blind on realized
-  profitability. The data is computed and persisted — it just never
-  ships.
-- **Critical gap — `owned_planets`**: once the agent deploys a
-  Genesis, the system prompt tells it to `land_planet planet_id=<id>`.
-  The ID only appears in `action_hint` text _and only when standing in
-  that exact sector_. If the agent has three planets scattered, it has
-  no structured inventory of them.
-- **Medium gap — `net_worth`**: agents have to parse a number out of
-  `stage_hint.reason` prose to get their own net worth. Cheap to fix.
-- **Low gap — `alliances`, `corp`, `deaths`**: useful but not blocking
-  the current basic-play loop.
+User-message payload grew **5,095 → 6,055 chars** (+19%, ~+240 tokens
+per turn on grok-4-fast). Well under 1% of the ~400k input token/min
+limit. The `goals` / `trade_log` / `owned_planets` fields are the
+three with the highest signal-to-token ratio — their inclusion
+directly closes the "system prompt told me to read this but I can't
+see it" loop.
 
-### Recommended fix (pending)
+### Regression protection
 
-Extend `format_observation` to ship the following inside `self.*`:
-- `net_worth`, `alignment_label`, `rank`, `experience`
-- `alive`, `deaths`, `max_deaths`
-- `trade_log` (last 5)
-- `owned_planets`
-- `goals` block (the agent can already see them as text, but structured
-  is nicer for the model to reason about)
+Four tests in `tests/test_phase_abc.py::TestPhaseGObservationSurface`
+now lock this in:
+- `test_g1_user_message_has_top_level_goals`
+- `test_g2_user_message_has_trade_log`
+- `test_g3_user_message_has_owned_planets`
+- `test_g4_user_message_self_has_net_worth_and_survival`
 
-Estimated token cost: ~600 additional characters ≈ 150 tokens per
-turn. Under 5% overhead.
+Any future `format_observation` refactor that drops these fields will
+fail CI.
 
 ---
 
@@ -395,20 +400,23 @@ every user message tells them which of the 5 stages they're currently
 in with a named `next_milestone`.
 
 ### "Do they see good memory?"
-Partially. Concrete breakdown:
+Yes, after the 2026-04-17 fix. Concrete breakdown:
 - **`scratchpad`** ✅ — up to 1,500 chars of free-form notes they wrote
   last turn. Shown back verbatim.
-- **`goals` (3 horizons)** ✅ — via `action_hint` text.
+- **`goals` (3 horizons)** ✅ — as a top-level structured block in the
+  user message AND as prose at the top of `action_hint`.
 - **Cargo cost basis** ✅ — `self.ship.cargo_cost_avg` and
   `cargo_value_at_cost` (added commit `18972af`).
 - **Known ports with age** ✅ — `known_ports_top` with `age_days`.
 - **Recent events (last 12)** ✅ — global feed, includes own thoughts
   and actions.
 - **Inbox** ✅ — last 10 hails.
-- **`trade_log`** ❌ — **computed and persisted, but NOT sent to the
-  LLM in the user message.** Only partially surfaced via
-  `action_hint`'s "P&L at this port" line.
-- **`owned_planets`** ❌ — likewise persisted but not sent structurally.
+- **`trade_log`** ✅ — last 5 trades with `realized_profit` on sells.
+- **`owned_planets`** ✅ — full structured list: id, sector, citadel
+  level + target, colonist pools, fighters, shields.
+- **`self.net_worth`**, **`self.alive/deaths/max_deaths`**,
+  **`self.rank/experience/alignment_label`**, **`alliances`**,
+  **`corp`** ✅ — all now present.
 
 ### "Do they know how much they paid for something?"
 **Yes.** See `self.ship.cargo_cost_avg` in the user message. For our
@@ -503,10 +511,10 @@ What the engine does with each field, in order:
 
 ## 8. Open follow-ups identified by this audit
 
-1. **Ship the already-persisted memory to the LLM.** Extend
-   `format_observation` to include `trade_log`, `owned_planets`,
-   `net_worth`, structured `goals`, and `deaths/max_deaths`. Rough cost:
-   +150 tokens/turn. Big unlock for agent self-audit.
+1. ~~**Ship the already-persisted memory to the LLM.**~~ **DONE.**
+   `format_observation` now includes `trade_log`, `owned_planets`,
+   structured `goals`, `net_worth`, and survival fields. +240 tokens
+   per turn. Regression tests in `TestPhaseGObservationSurface`.
 2. **Parallelize the two agents' LLM calls within one match.** Currently
    serial; LLM latency ≈ 4s per agent per turn. Concurrent calls would
    roughly halve wall-clock per match.
@@ -514,6 +522,7 @@ What the engine does with each field, in order:
    payload. Some sections (price sheet, full verb list) could move to
    the user message and be surfaced only when relevant (e.g. ship
    menu only when at StarDock).
-
-Each of these is a separate commit candidate. The first one is the
-cleanest fix and most directly addresses the headline finding.
+4. **Re-check grok's goal-discipline behavior after the fix.** With
+   `goals` now shipping as a structured block, the model may lean on
+   it more reliably than it did when goals were only in prose. Worth a
+   before/after match comparison at the same seed.

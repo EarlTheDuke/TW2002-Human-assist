@@ -50,7 +50,6 @@ from tw2k.engine import (  # noqa: E402
 )
 from tw2k.engine.models import Player, Ship  # noqa: E402
 
-
 TARGET_TURNS = 40  # how many heuristic rounds before we snapshot
 SEED = 42
 UNIVERSE_SIZE = 1000
@@ -271,16 +270,15 @@ def main() -> None:
     sent_keys = sorted(user_message_obj.keys())
     obs_keys = sorted(obs.model_dump().keys())
     sent_self_keys = sorted((user_message_obj.get("self") or {}).keys())
-    obs_sent_as_self = {
-        "id", "name", "credits", "alignment", "turns_remaining",
-        "turns_per_day", "ship", "corp_ticker", "planet_landed",
-    }
-    not_sent = sorted(
-        k for k in obs_keys
-        if k not in sent_keys
-        and k not in obs_sent_as_self
-        and k not in {"self_id", "self_name"}
-    )
+    # Any Observation field whose NAME appears as a key in user_message OR
+    # as a key nested under user_message.self is considered "sent". The
+    # obs field `self_id` / `self_name` project to `self.id` / `self.name`.
+    reachable = set(sent_keys) | set(sent_self_keys) | {"self_id", "self_name"}
+    # `known_ports` ships as `known_ports_top` (a curated subset). That's
+    # intentional — mark it reachable.
+    if "known_ports_top" in sent_keys:
+        reachable.add("known_ports")
+    not_sent = sorted(k for k in obs_keys if k not in reachable)
 
     print(f"[ok] wrote artifacts to {out_dir}")
     print(f"[info] player: {target_pid} ({obs.self_name})")

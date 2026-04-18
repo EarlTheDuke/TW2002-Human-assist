@@ -1,13 +1,17 @@
 {
   "day": 1,
-  "tick": 11,
+  "tick": 13,
   "max_days": 3,
   "self": {
     "id": "P1",
     "name": "Captain Reyes",
     "credits": 44360,
+    "net_worth": 96730,
     "alignment": 0,
-    "turns_remaining": 71,
+    "alignment_label": "Neutral",
+    "experience": 4,
+    "rank": "Civilian",
+    "turns_remaining": 68,
     "turns_per_day": 80,
     "ship": {
       "class": "merchant_cruiser",
@@ -38,7 +42,10 @@
       "cargo_free": 0
     },
     "corp_ticker": null,
-    "planet_landed": null
+    "planet_landed": null,
+    "alive": true,
+    "deaths": 0,
+    "max_deaths": 3
   },
   "stage_hint": {
     "stage": "S1",
@@ -46,13 +53,18 @@
     "reason": "Day 1, net worth $96,730 \u2014 still establishing port pair",
     "next_milestone": "Complete 3 profitable round-trips on one port pair"
   },
+  "goals": {
+    "short": "warp 7 -> sell 20 fuel_ore @>=26cr; warp 5 buy 20 fo @<=22cr; repeat until cr>=45k",
+    "medium": "hit 45k cr, warp back to sector 1, buy_ship cargotran (43.5k), fill holds with colonists for Genesis run",
+    "long": "CargoTran day 1, Genesis a dead-end sector day 2, Citadel L2 by day 3; ferry colonists to compound planet production."
+  },
   "scratchpad": "sec 5(SBB fo@21, eq@40) <-> sec 7(BSB fo@27, eq@35) paired.\nCargoTran 43.5k @ sec 1 once cr>=45k. Genesis plan: any dead-end\nsector with 1 warp-out in the outer ring. Vex last seen sec 395.",
   "sector": {
-    "id": 338,
+    "id": 371,
     "warps_out": [
-      736,
-      845,
-      874
+      393,
+      521,
+      655
     ],
     "is_fedspace": false,
     "occupants": [
@@ -64,7 +76,7 @@
     "port": {
       "class_id": 1,
       "code": "BSS",
-      "name": "Andros-338",
+      "name": "Wolf-371",
       "buys": [
         "fuel_ore"
       ],
@@ -74,21 +86,21 @@
       ],
       "stock": {
         "fuel_ore": {
-          "current": 3058,
-          "max": 4068,
-          "price": 17,
+          "current": 1156,
+          "max": 2811,
+          "price": 20,
           "side": "buys_from_player"
         },
         "organics": {
-          "current": 1116,
-          "max": 2617,
-          "price": 25,
+          "current": 2101,
+          "max": 2914,
+          "price": 21,
           "side": "sells_to_player"
         },
         "equipment": {
-          "current": 3793,
-          "max": 4148,
-          "price": 27,
+          "current": 1530,
+          "max": 2665,
+          "price": 33,
           "side": "sells_to_player"
         }
       }
@@ -97,17 +109,7 @@
   },
   "adjacent": [
     {
-      "id": 736,
-      "port": "BSS",
-      "fighter_count": 0,
-      "fighter_owner": null,
-      "mines": 0,
-      "has_planets": false,
-      "occupants": [],
-      "known": false
-    },
-    {
-      "id": 845,
+      "id": 393,
       "port": null,
       "fighter_count": 0,
       "fighter_owner": null,
@@ -117,18 +119,27 @@
       "known": false
     },
     {
-      "id": 874,
-      "port": "SBS",
+      "id": 521,
+      "port": "BSB",
       "fighter_count": 0,
       "fighter_owner": null,
       "mines": 0,
       "has_planets": false,
-      "occupants": [
-        "P2"
-      ],
+      "occupants": [],
+      "known": false
+    },
+    {
+      "id": 655,
+      "port": null,
+      "fighter_count": 0,
+      "fighter_owner": null,
+      "mines": 0,
+      "has_planets": false,
+      "occupants": [],
       "known": true
     }
   ],
+  "owned_planets": [],
   "other_players": [
     {
       "id": "P2",
@@ -138,28 +149,30 @@
       "corp_ticker": null
     }
   ],
+  "alliances": [],
+  "corp": null,
   "inbox": [],
   "known_ports_top": [
     {
-      "sector_id": 338,
+      "sector_id": 371,
       "class": "BSS",
       "stock": {
         "fuel_ore": {
-          "current": 3058,
-          "max": 4068,
-          "price": 17,
+          "current": 1156,
+          "max": 2811,
+          "price": 20,
           "side": "buys_from_player"
         },
         "organics": {
-          "current": 1116,
-          "max": 2617,
-          "price": 25,
+          "current": 2101,
+          "max": 2914,
+          "price": 21,
           "side": "sells_to_player"
         },
         "equipment": {
-          "current": 3793,
-          "max": 4148,
-          "price": 27,
+          "current": 1530,
+          "max": 2665,
+          "price": 33,
           "side": "sells_to_player"
         }
       },
@@ -193,43 +206,42 @@
       "age_days": 0
     }
   ],
-  "recent_events": [
+  "trade_log": [
     {
-      "seq": 11,
       "day": 1,
-      "tick": 6,
-      "kind": "agent_thought",
-      "actor_id": "P2",
-      "sector_id": 1,
-      "summary": "Load up on 200 fighters before heading out."
-    },
-    {
-      "seq": 12,
-      "day": 1,
-      "tick": 6,
-      "kind": "buy_equip",
-      "actor_id": "P2",
-      "sector_id": 1,
-      "summary": "Admiral Vex bought 200 fighters for 10000cr"
-    },
-    {
-      "seq": 13,
-      "day": 1,
-      "tick": 7,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 1,
-      "summary": "Warping to 874 (scouting, port=SBS)."
-    },
-    {
-      "seq": 14,
-      "day": 1,
-      "tick": 7,
-      "kind": "warp",
-      "actor_id": "P1",
+      "tick": 9,
       "sector_id": 874,
-      "summary": "Captain Reyes warped 1 \u2192 874"
+      "commodity": "equipment",
+      "qty": 20,
+      "side": "buy",
+      "unit": 32,
+      "total": 640,
+      "realized_profit": null
     },
+    {
+      "day": 1,
+      "tick": 4,
+      "sector_id": 5,
+      "commodity": "fuel_ore",
+      "qty": 20,
+      "side": "buy",
+      "unit": 21,
+      "total": 420,
+      "realized_profit": null
+    },
+    {
+      "day": 1,
+      "tick": 8,
+      "sector_id": 7,
+      "commodity": "fuel_ore",
+      "qty": 20,
+      "side": "sell",
+      "unit": 27,
+      "total": 540,
+      "realized_profit": 120
+    }
+  ],
+  "recent_events": [
     {
       "seq": 15,
       "day": 1,
@@ -291,7 +303,7 @@
       "kind": "agent_thought",
       "actor_id": "P1",
       "sector_id": 874,
-      "summary": "Warping to 338 (scouting, port=BSS)."
+      "summary": "Warping to 655 (scouting, port=None)."
     },
     {
       "seq": 22,
@@ -299,9 +311,45 @@
       "tick": 11,
       "kind": "warp",
       "actor_id": "P1",
-      "sector_id": 338,
-      "summary": "Captain Reyes warped 874 \u2192 338"
+      "sector_id": 655,
+      "summary": "Captain Reyes warped 874 \u2192 655"
+    },
+    {
+      "seq": 23,
+      "day": 1,
+      "tick": 12,
+      "kind": "agent_thought",
+      "actor_id": "P2",
+      "sector_id": 874,
+      "summary": "Warping to 87 (scouting, port=None)."
+    },
+    {
+      "seq": 24,
+      "day": 1,
+      "tick": 12,
+      "kind": "warp",
+      "actor_id": "P2",
+      "sector_id": 87,
+      "summary": "Admiral Vex warped 874 \u2192 87"
+    },
+    {
+      "seq": 25,
+      "day": 1,
+      "tick": 13,
+      "kind": "agent_thought",
+      "actor_id": "P1",
+      "sector_id": 655,
+      "summary": "Warping to 371 (scouting, port=BSS)."
+    },
+    {
+      "seq": 26,
+      "day": 1,
+      "tick": 13,
+      "kind": "warp",
+      "actor_id": "P1",
+      "sector_id": 371,
+      "summary": "Captain Reyes warped 655 \u2192 371"
     }
   ],
-  "action_hint": "YOUR GOALS \u2014 NOW: warp 7 -> sell 20 fuel_ore @>=26cr; warp 5 buy 20 fo @<=22cr; repeat until cr>=45k / DAY: hit 45k cr, warp back to sector 1, buy_ship cargotran (43.5k), fill holds with colonists for Genesis run / MATCH: CargoTran day 1, Genesis a dead-end sector day 2, Citadel L2 by day 3; ferry colonists to compound planet production. | Verbs available: warp trade scan wait + 29 more (see system prompt). | warp target MUST be in [736, 845, 874]. | port BUYS fuel_ore / port SELLS organics,equipment \u2014 use trade."
+  "action_hint": "YOUR GOALS \u2014 NOW: warp 7 -> sell 20 fuel_ore @>=26cr; warp 5 buy 20 fo @<=22cr; repeat until cr>=45k / DAY: hit 45k cr, warp back to sector 1, buy_ship cargotran (43.5k), fill holds with colonists for Genesis run / MATCH: CargoTran day 1, Genesis a dead-end sector day 2, Citadel L2 by day 3; ferry colonists to compound planet production. | Verbs available: warp trade scan wait + 29 more (see system prompt). | warp target MUST be in [393, 521, 655]. | port BUYS fuel_ore / port SELLS organics,equipment \u2014 use trade."
 }

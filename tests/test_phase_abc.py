@@ -1009,3 +1009,98 @@ class TestPhaseFCostBasis:
             agent_kind="heuristic", color="#fff",
         )
         assert p.turns_per_day == 80
+
+
+class TestPhaseGObservationSurface:
+    """format_observation ships the right fields to the LLM.
+
+    Prompts.py repeatedly instructs the agent to read things like
+    `self.net_worth`, `owned_planets`, `trade_log`, `goals`. The
+    Observation model populates all of them, but prior to 2026-04-17
+    `format_observation` stripped most of them before building the
+    user-message JSON, so the prompt was writing checks the payload
+    couldn't cash. docs/AGENT_TURN_ANATOMY.md §4 tells that story.
+    These tests lock the fix in place."""
+
+    def test_g1_user_message_has_top_level_goals(self):
+        """goals block ships as a structured field, not just as
+        action_hint text. Critical for multi-horizon planning."""
+        import json as _json
+
+        from tw2k.agents.prompts import format_observation
+
+        u, (a, *_) = _make_universe(seed=3101)
+        a.goal_short = "warp 5, buy fuel_ore"
+        a.goal_medium = "hit 45k cr, buy cargotran"
+        a.goal_long = "Citadel L2 by day 3"
+        from tw2k.engine.observation import build_observation
+        obs = build_observation(u, "A")
+        payload = _json.loads(format_observation(obs))
+        assert "goals" in payload, "goals must be a top-level key"
+        assert payload["goals"]["short"] == "warp 5, buy fuel_ore"
+        assert payload["goals"]["medium"] == "hit 45k cr, buy cargotran"
+        assert payload["goals"]["long"] == "Citadel L2 by day 3"
+
+    def test_g2_user_message_has_trade_log(self):
+        """trade_log (last 5) must reach the LLM. Prompt §OBSERVATION
+        FIELDS teaches agents to self-audit off this list."""
+        import json as _json
+
+        from tw2k.agents.prompts import format_observation
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=3102)
+        for i in range(7):
+            a.trade_log.append({
+                "day": 1, "tick": i, "sector_id": 7,
+                "commodity": "organics", "qty": 10,
+                "side": "sell" if i % 2 else "buy",
+                "unit": 20, "total": 200,
+                "realized_profit": 50 if i % 2 else None,
+            })
+        obs = build_observation(u, "A")
+        payload = _json.loads(format_observation(obs))
+        assert "trade_log" in payload, "trade_log must be a top-level key"
+        assert len(payload["trade_log"]) == 5
+        assert payload["trade_log"][-1]["tick"] == 6, "newest last"
+
+    def test_g3_user_message_has_owned_planets(self):
+        """owned_planets must ship. Without it, a multi-planet commander
+        has no structured inventory of what they own and would have to
+        warp-and-rediscover each one."""
+        import json as _json
+
+        from tw2k.agents.prompts import format_observation
+        from tw2k.engine.models import Planet, PlanetClass
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=3103)
+        u.planets[99] = Planet(
+            id=99, sector_id=5, name="Phoenix-test",
+            class_id=PlanetClass.M, owner_id="A",
+        )
+        obs = build_observation(u, "A")
+        payload = _json.loads(format_observation(obs))
+        assert "owned_planets" in payload
+        ids = [p["id"] for p in payload["owned_planets"]]
+        assert 99 in ids, "the planet the player owns must appear"
+
+    def test_g4_user_message_self_has_net_worth_and_survival(self):
+        """self.net_worth, self.alive, self.deaths, self.max_deaths all
+        ship. Without net_worth the agent had to parse a number out of
+        stage_hint.reason prose."""
+        import json as _json
+
+        from tw2k.agents.prompts import format_observation
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=3104)
+        a.credits = 50_000
+        obs = build_observation(u, "A")
+        payload = _json.loads(format_observation(obs))
+        self_block = payload.get("self") or {}
+        for key in ("net_worth", "alive", "deaths", "max_deaths",
+                    "alignment_label", "rank", "experience"):
+            assert key in self_block, f"self.{key} must ship to the LLM"
+        assert isinstance(self_block["net_worth"], int)
+        assert self_block["net_worth"] >= 50_000, "net_worth >= credits at start"

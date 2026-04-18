@@ -1,0 +1,25 @@
+Close the Observation/format_observation gap for LLM agents
+
+The audit documented in docs/AGENT_TURN_ANATOMY.md found that the
+SYSTEM_PROMPT instructed agents to reason about trade_log,
+owned_planets, net_worth, structured goals, and survival fields, but
+format_observation was stripping all of those before the user message
+went out. Agents were literally being told "read your trade_log" with
+no trade_log in their input.
+
+format_observation now ships everything the prompt references:
+
+  top-level: goals, trade_log (last 5), owned_planets, alliances, corp
+  self.*:    net_worth, alignment_label, rank, experience,
+             alive, deaths, max_deaths
+
+User-message payload grew 5095 -> 6055 chars (+19 percent, approx
++240 tokens per turn). Trivial cost relative to the 400k token/min
+limit and the 3500-token system prompt. The three remaining un-sent
+Observation fields (finished, limpets_owned, probe_log) are genuinely
+niche.
+
+Four regression tests locked this in under TestPhaseGObservationSurface
+so no future refactor can silently drop these fields again. Doc section
+4 and section 8 updated to reflect the fix; artifacts in
+docs/agent_turn/ regenerated.
