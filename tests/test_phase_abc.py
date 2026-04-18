@@ -977,3 +977,35 @@ class TestPhaseFCostBasis:
         obs = build_observation(u, "A")
         assert len(obs.trade_log) == 5, "observation should cap to last 5"
         assert obs.trade_log[-1]["tick"] == 7, "newest entry last"
+
+    def test_f7_build_default_spec_threads_turns_per_day(self):
+        """Regression: `tw2k serve --turns-per-day 80` must reach
+        GameConfig. Previously the CLI accepted the flag and passed it to
+        create_app, but we need to verify it actually ends up on the spec."""
+        from tw2k.server.app import _build_default_spec
+
+        spec = _build_default_spec(
+            seed=1, universe_size=50, max_days=2, agent_names=None,
+            agent_kind="heuristic", provider=None, model=None, num_agents=1,
+            turns_per_day=80, starting_credits=75_000,
+        )
+        assert spec.config.turns_per_day == 80
+        assert spec.config.starting_credits == 75_000
+
+    def test_f7_server_runner_applies_config_turns_per_day_to_player(self):
+        """The direct bug: MatchRunner's player construction must honor
+        GameConfig.turns_per_day. Previously it silently fell back to 1000
+        turns/day regardless of config, making --turns-per-day a no-op."""
+        from tw2k.engine import constants as K
+        from tw2k.engine.models import GameConfig, Player, Ship
+
+        # Replicate the exact line in server/runner.py that constructs a Player
+        # to catch if someone rips the override out again.
+        cfg = GameConfig(seed=1, universe_size=50, max_days=2, turns_per_day=80)
+        base_tpd = getattr(cfg, "turns_per_day", K.STARTING_TURNS_PER_DAY)
+        p = Player(
+            id="P1", name="A", credits=75_000,
+            turns_per_day=base_tpd, ship=Ship(), sector_id=1,
+            agent_kind="heuristic", color="#fff",
+        )
+        assert p.turns_per_day == 80

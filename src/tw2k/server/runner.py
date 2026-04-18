@@ -302,10 +302,16 @@ class MatchRunner:
             # so `tw2k serve --starting-credits 75000` actually changes the
             # opening bankroll. Defaults to the canonical K.STARTING_CREDITS.
             base_credits = getattr(spec.config, "starting_credits", K.STARTING_CREDITS)
+            # Likewise honor the per-match turns_per_day override. Without this,
+            # `--turns-per-day 80` silently had no effect because Player() fell
+            # back to K.STARTING_TURNS_PER_DAY = 1000, which meant day 1 never
+            # actually ended in watchable sanity runs.
+            base_tpd = getattr(spec.config, "turns_per_day", K.STARTING_TURNS_PER_DAY)
             player = Player(
                 id=ag.player_id,
                 name=ag.name,
                 credits=base_credits + credit_skew,
+                turns_per_day=base_tpd,
                 ship=ship,
                 sector_id=start_sid,
                 agent_kind=ag.kind,
