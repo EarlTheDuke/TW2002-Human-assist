@@ -637,6 +637,14 @@ class MatchRunner:
                     "fighters": p.ship.fighters,
                     "shields": p.ship.shields,
                     "cargo": {c.value: p.ship.cargo.get(c, 0) for c in p.ship.cargo},
+                    # Per-commodity weighted-avg cost basis (ints rounded).
+                    # The UI shows this next to the cargo count so spectators
+                    # can see each commander's unrealized P&L in real time.
+                    "cargo_cost_avg": {
+                        c.value: round(float(p.ship.cargo_cost.get(c, 0.0) or 0.0))
+                        for c in p.ship.cargo
+                        if p.ship.cargo.get(c, 0) > 0
+                    },
                     "holds": p.ship.holds,
                     "cargo_free": p.ship.cargo_free,
                     "photon_disabled_ticks": p.ship.photon_disabled_ticks,
@@ -648,6 +656,10 @@ class MatchRunner:
                     "turns_today": p.turns_today,
                     "turns_per_day": p.turns_per_day,
                     "scratchpad": p.scratchpad,
+                    "goal_short": getattr(p, "goal_short", "") or "",
+                    "goal_medium": getattr(p, "goal_medium", "") or "",
+                    "goal_long": getattr(p, "goal_long", "") or "",
+                    "recent_trades": list(getattr(p, "trade_log", []) or [])[-3:],
                     "net_worth": p.net_worth,
                     "alliances": list(p.alliances),
                 }

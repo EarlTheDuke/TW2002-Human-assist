@@ -50,6 +50,13 @@ class Observation(BaseModel):
     # Port intel database (persistent across turns)
     known_ports: list[dict[str, Any]]
 
+    # Last N trades this player executed (capped at 5 in the observation —
+    # full 50-entry ledger lives on the Player). Each entry carries the
+    # post-haggle unit price AND the realized profit on sells so the
+    # agent can answer "what did my loop actually earn me?" without
+    # reconstructing from the rolling global event feed.
+    trade_log: list[dict[str, Any]] = Field(default_factory=list)
+
     # Other players — corp mates show full state, others show last-known summary
     other_players: list[dict[str, Any]]
 
@@ -102,10 +109,18 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
             "known": wid in player.known_sectors,
         })
 
-    # Known ports database (most profitable view first)
+    # Known ports database (most profitable view first). Each entry also
+    # gets an `age_days` field derived from `last_seen_day` so the agent
+    # can tell stale-vs-fresh intel at a glance. Prices/stock can drift
+    # significantly between visits; without this the LLM happily commits
+    # to plans built on 3-day-old snapshots.
     known_ports: list[dict[str, Any]] = []
     for sid, entry in sorted(player.known_ports.items()):
-        known_ports.append({"sector_id": sid, **entry})
+        e = {"sector_id": sid, **entry}
+        lsd = entry.get("last_seen_day")
+        if isinstance(lsd, int):
+            e["age_days"] = max(0, universe.day - lsd)
+        known_ports.append(e)
 
     # Other players visibility
     others: list[dict[str, Any]] = []
@@ -248,6 +263,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
         sector=sector_info,
         adjacent=adjacent,
         known_ports=known_ports,
+        trade_log=list(getattr(player, "trade_log", []) or [])[-5:],
         other_players=others,
         inbox=list(player.inbox[-40:]),
         recent_events=recent_events,
@@ -268,10 +284,28 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
 
 
 def _ship_dict(ship) -> dict[str, Any]:
+    # Per-commodity cost basis. `cargo_cost_avg` is the weighted-average
+    # unit price the player actually paid for what's currently in the hold
+    # (ints, rounded for readability — float precision isn't meaningful
+    # at the 1-cr granularity the LLM reasons at). `cargo_value_at_cost` is
+    # the product qty*avg, so the agent has an immediate "break-even sell"
+    # number right next to the cargo qty.
+    cargo_qty = {c.value: ship.cargo.get(c, 0) for c in Commodity}
+    cargo_cost = getattr(ship, "cargo_cost", {}) or {}
+    cost_avg: dict[str, int] = {}
+    cost_total: dict[str, int] = {}
+    for c in Commodity:
+        qty = ship.cargo.get(c, 0)
+        if qty > 0:
+            avg = float(cargo_cost.get(c, 0.0) or 0.0)
+            cost_avg[c.value] = round(avg)
+            cost_total[c.value] = round(avg * qty)
     return {
         "class": ship.ship_class.value,
         "holds": ship.holds,
-        "cargo": {c.value: ship.cargo.get(c, 0) for c in Commodity},
+        "cargo": cargo_qty,
+        "cargo_cost_avg": cost_avg,
+        "cargo_value_at_cost": cost_total,
         "fighters": ship.fighters,
         "shields": ship.shields,
         "mines": {m.value: ship.mines.get(m, 0) for m in ship.mines},
@@ -420,6 +454,38 @@ def _action_hint(
             bits.append(f"port SELLS {','.join(sells)}")
         if bits:
             hints.append(" / ".join(bits) + " — use trade.")
+
+        # Cargo P&L vs. this port: if the player is carrying commodities the
+        # port buys, show break-even + expected realized profit at LIST price.
+        # This is the concrete number that protects against selling at a loss
+        # and lets the agent decide "actually, haggle up — this port's offer
+        # is under my cost basis."
+        ship = getattr(player, "ship", None) if player is not None else None
+        cargo = getattr(ship, "cargo", None) if ship is not None else None
+        cargo_cost = getattr(ship, "cargo_cost", None) if ship is not None else None
+        if cargo and cargo_cost:
+            buys_set = set(port.get("buys") or [])
+            stock_map = port.get("stock") or {}
+            pnl_parts: list[str] = []
+            for commodity_name, qty in cargo.items():
+                key = getattr(commodity_name, "value", str(commodity_name))
+                if not isinstance(qty, int) or qty <= 0:
+                    continue
+                if key not in buys_set:
+                    continue
+                avg = float(cargo_cost.get(commodity_name, 0.0) or 0.0)
+                stock_entry = stock_map.get(key) or {}
+                bid = stock_entry.get("price")
+                if not isinstance(bid, int):
+                    continue
+                delta = bid - avg
+                realized = round(delta * qty)
+                sign = "+" if realized >= 0 else ""
+                pnl_parts.append(
+                    f"{qty} {key} cost={avg:.0f}cr, port bids {bid}cr -> {sign}{realized}cr"
+                )
+            if pnl_parts:
+                hints.append("P&L at this port: " + " | ".join(pnl_parts))
 
     # StarDock-specific — the set of verbs that ONLY work at sector 1
     sector_id = sector_info.get("id")

@@ -313,7 +313,7 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
         player.known_sectors.add(target_id)
         # Log port if present
         if dest.port is not None:
-            _record_port_intel(player, dest.id, dest.port)
+            _record_port_intel(player, dest.id, dest.port, universe=universe)
 
         universe.emit(
             EventKind.WARP,
@@ -352,7 +352,9 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error="out of turns for this day")
 
     rng = _rng_for(universe)
-    ok, total, unit, msg = execute_trade(universe, player, port, commodity, qty, side, offered, rng)
+    ok, total, unit, msg, realized = execute_trade(
+        universe, player, port, commodity, qty, side, offered, rng
+    )
 
     if not ok:
         universe.emit(
@@ -364,10 +366,36 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
         )
         return ActionResult(ok=False, error=msg, turns_spent=cost)
 
-    _record_port_intel(player, sector.id, port)
+    _record_port_intel(player, sector.id, port, universe=universe)
+    # Persistent trade ledger — last 50 entries per player. The observation
+    # surfaces the last 5 so the agent can audit "what did my loop actually
+    # earn me?" without re-deriving from the global rolling feed which can
+    # scroll them out of view in a busy match.
+    entry = {
+        "day": universe.day,
+        "tick": universe.tick,
+        "sector_id": sector.id,
+        "commodity": commodity.value,
+        "qty": qty,
+        "side": side,
+        "unit": unit,
+        "total": total,
+        "realized_profit": realized,  # None on buy, int (can be negative) on sell
+    }
+    player.trade_log.append(entry)
+    if len(player.trade_log) > 50:
+        del player.trade_log[: len(player.trade_log) - 50]
+
     note = ""
     if msg and msg != "ok":
         note = f"  [{msg}]"
+    # On sells, suffix the summary with realized profit so the spectator feed
+    # shows per-trade P&L directly — no mental math needed to know whether
+    # the trade was actually good.
+    pnl_tag = ""
+    if side == "sell" and realized is not None:
+        sign = "+" if realized >= 0 else ""
+        pnl_tag = f"  ({sign}{realized}cr profit)"
     universe.emit(
         EventKind.TRADE,
         actor_id=pid,
@@ -379,8 +407,9 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
             "total": total,
             "unit": unit,
             "note": msg,
+            "realized_profit": realized,
         },
-        summary=f"{player.name} {side} {qty} {commodity.value} @ {unit}cr = {total}cr{note}",
+        summary=f"{player.name} {side} {qty} {commodity.value} @ {unit}cr = {total}cr{note}{pnl_tag}",
     )
     _award_xp(universe, pid, "trade")
     return ActionResult(ok=True, turns_spent=cost)
@@ -417,7 +446,7 @@ def _handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
             })
             player.known_sectors.add(wid)
             if w.port is not None:
-                _record_port_intel(player, wid, w.port)
+                _record_port_intel(player, wid, w.port, universe=universe)
         summary = f"{player.name} scanned {sector.id}"
     elif tier == K.SCAN_TIER_DENSITY:
         # 2-hop sector density — only counts, no detail
@@ -462,7 +491,7 @@ def _handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
                     }
                     for c, s in w.port.stock.items()
                 }
-                _record_port_intel(player, wid, w.port)
+                _record_port_intel(player, wid, w.port, universe=universe)
             player.known_sectors.add(wid)
             neigh_info.append(entry)
         summary = f"{player.name} ran HoloScan from {sector.id}"
@@ -1482,7 +1511,7 @@ def _handle_probe(universe: Universe, pid: str, action: Action) -> ActionResult:
     player.probe_log[target_id] = {"day": universe.day, "tick": universe.tick, "intel": intel}
     player.known_sectors.add(target_id)
     if sector.port is not None:
-        _record_port_intel(player, target_id, sector.port)
+        _record_port_intel(player, target_id, sector.port, universe=universe)
 
     universe.emit(
         EventKind.PROBE,
@@ -2114,11 +2143,17 @@ def _advance_planets(universe: Universe) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _record_port_intel(player, sector_id: int, port) -> None:
+def _record_port_intel(player, sector_id: int, port, *, universe=None) -> None:
     """Persist a per-port intel snapshot the player's observation will show next
     turn. We include live buy/sell prices so the LLM can compare ports across
     sectors without re-visiting — this is the mechanic that lets it plan
     trade routes like `buy fuel_ore@13 at s46, sell@22 at s44, profit=9/unit`.
+
+    `last_seen_day` is stamped from `universe.day` when available so the
+    observation can show staleness ("intel is 2 days old") — critical
+    because ports regenerate / drain between visits and a 3-day-old
+    stock snapshot is often misleading. Falls back to preserving the
+    existing value when no universe is passed (a few legacy callers).
     """
     from .economy import port_buy_price, port_sell_price
 
@@ -2135,10 +2170,17 @@ def _record_port_intel(player, sector_id: int, port) -> None:
             entry["price"] = port_sell_price(port, c)
             entry["side"] = "sells_to_player"
         stock[c.value] = entry
+    # Prefer live universe.day, fall back to whatever was last recorded
+    # (so a callsite that forgot to pass universe doesn't wipe freshness).
+    last_day = (
+        getattr(universe, "day", None)
+        if universe is not None
+        else (player.known_ports.get(sector_id) or {}).get("last_seen_day")
+    )
     snapshot = {
         "class": port.class_id.code,
         "stock": stock,
-        "last_seen_day": None,
+        "last_seen_day": last_day,
     }
     player.known_ports[sector_id] = snapshot
 

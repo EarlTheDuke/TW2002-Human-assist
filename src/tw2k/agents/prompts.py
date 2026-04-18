@@ -54,6 +54,27 @@ Key rules:
     read the `summary` text and CHANGE your plan. Do not re-issue the same failing action.
   * `action_hint` in the observation lists verbs that are legal RIGHT NOW — use it as a safety net.
 
+================ WHAT'S IN YOUR OBSERVATION (READ THIS) ================
+The observation contains everything you need. Stop guessing from memory:
+
+  self.ship.cargo          — qty of each commodity in your hold
+  self.ship.cargo_cost_avg — weighted-avg cr/unit you PAID for each (your breakeven)
+  self.ship.cargo_value_at_cost — qty * avg, so you see your unrealized risk
+  self.ship.fighters/shields/holds/cargo_free/genesis/photon_missiles/ether_probes
+  self.credits / self.net_worth / self.alignment / self.rank / self.experience
+  known_ports[*]           — every port you've visited, with live buy/sell prices,
+                             stock levels, AND `age_days` — intel older than 2
+                             days is likely stale, re-scan before committing
+  trade_log (last 5)       — your own recent trades with realized_profit on sells
+                             (can be negative — you dumped below cost basis!)
+  action_hint              — starts with YOUR GOALS, then a "P&L at this port"
+                             line showing expected realized profit on cargo the
+                             current port will buy. USE THIS before you sell.
+
+Before every sell, check cost basis: if the port bids < cargo_cost_avg, DO NOT
+sell at list price — haggle up or warp to a better buyer. Selling at a loss
+shows up as negative realized_profit in trade_log and is worse than waiting.
+
 ================ GOAL DISCIPLINE (READ THIS) ================
 Each turn you DECLARE goals in three horizons. The engine shows them back
 to you at the TOP of next turn's `action_hint` under "YOUR GOALS —". Use

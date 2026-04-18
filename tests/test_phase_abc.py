@@ -725,3 +725,255 @@ class TestPhaseEGoals:
         for horizon in ("short", "medium", "long"):
             assert horizon in SYSTEM_PROMPT, f"prompt missing '{horizon}' horizon"
         assert "GOAL DISCIPLINE" in SYSTEM_PROMPT or "GOAL RULES" in SYSTEM_PROMPT
+
+
+class TestPhaseFCostBasis:
+    """Phase F — cargo cost basis, trade ledger, port-intel staleness.
+
+    These three wire-up the agent's 'receipt book': the engine now tracks
+    what was actually paid for cargo, realizes P&L on every sell, writes a
+    rolling 50-entry trade log on the Player, and stamps every port-intel
+    snapshot with the day it was captured. Together they remove the need
+    for the LLM to keep mental-ledger notes in scratchpad (brittle) and
+    prevent stale-intel planning errors.
+    """
+
+    def _trade_setup(self):
+        """Universe + player + one BSS port (buys organics, sells fuel/equip)
+        adjacent to the start sector so we can run buy/sell cycles without
+        navigation noise. Returns (u, player, port, sector_id)."""
+        from tw2k.engine.models import Port, PortClass, PortStock
+
+        u, (a, *_) = _make_universe(seed=2027)
+        # Find a non-Federal port sector to host our custom port.
+        sid = next(
+            s for s in u.sectors if s >= 30 and s not in K.FEDSPACE_SECTORS
+        )
+        # SBS: sells fuel_ore, buys organics, sells equipment.
+        u.sectors[sid].port = Port(
+            sector_id=sid,
+            class_id=PortClass.CLASS_5_SBS,
+            code="SBS",
+            name="Test SBS",
+            stock={
+                Commodity.FUEL_ORE: PortStock(current=5000, maximum=10000),
+                Commodity.ORGANICS: PortStock(current=2000, maximum=10000),
+                Commodity.EQUIPMENT: PortStock(current=5000, maximum=10000),
+            },
+        )
+        a.sector_id = sid
+        a.credits = 50_000
+        return u, a, u.sectors[sid].port, sid
+
+    def test_f1_cost_basis_updates_on_buy(self):
+        """Cost basis on a freshly-bought commodity must equal the post-haggle
+        unit price we actually paid."""
+        import random
+
+        from tw2k.engine.economy import execute_trade
+
+        u, a, port, _ = self._trade_setup()
+        rng = random.Random(42)
+        ok, total, unit, msg, realized = execute_trade(
+            u, a, port, Commodity.FUEL_ORE, qty=10, side="buy",
+            offered_unit_price=None, rng=rng,
+        )
+        assert ok, msg
+        assert realized is None, "buy should not realize profit"
+        assert a.ship.cargo[Commodity.FUEL_ORE] == 10
+        assert a.ship.cargo_cost[Commodity.FUEL_ORE] == pytest.approx(unit)
+
+    def test_f1_weighted_avg_on_second_buy(self):
+        """Two buys at different prices must produce a weighted average, not
+        replace the stored basis."""
+        import random
+
+        from tw2k.engine.economy import execute_trade
+
+        u, a, port, _ = self._trade_setup()
+        rng = random.Random(42)
+        # First buy 10 units
+        execute_trade(u, a, port, Commodity.FUEL_ORE, 10, "buy", None, rng)
+        first_avg = a.ship.cargo_cost[Commodity.FUEL_ORE]
+        # Drain port stock a bit so the price goes UP (scarcer = pricier)
+        port.stock[Commodity.FUEL_ORE].current = max(0, port.stock[Commodity.FUEL_ORE].current - 4000)
+        # Buy another 10 at the new, higher price
+        ok, _, second_unit, _, _ = execute_trade(
+            u, a, port, Commodity.FUEL_ORE, 10, "buy", None, rng
+        )
+        assert ok
+        new_avg = a.ship.cargo_cost[Commodity.FUEL_ORE]
+        expected = (10 * first_avg + 10 * second_unit) / 20
+        assert new_avg == pytest.approx(expected, abs=0.01)
+        assert first_avg < new_avg < second_unit, (
+            "weighted avg must lie between the two unit prices"
+        )
+
+    def test_f1_realized_profit_on_sell(self):
+        """Selling above the stored basis returns positive realized_profit;
+        selling below returns negative. Must propagate to trade_log."""
+        import random
+
+        from tw2k.engine.actions import Action, ActionKind
+        from tw2k.engine.runner import apply_action
+
+        u, a, port, _ = self._trade_setup()
+        rng = random.Random(42)
+        # Force a buy at a KNOWN price by draining stock so sell_price is high,
+        # THEN manipulate basis to test both profit and loss. Simplest: set
+        # basis manually, put cargo, then sell via apply_action so trade_log
+        # gets the real integration path.
+        a.ship.cargo[Commodity.ORGANICS] = 20
+        a.ship.cargo_cost[Commodity.ORGANICS] = 15.0
+        # BSS-style port? We're on SBS which buys organics — perfect.
+        before_log = len(a.trade_log)
+        # Sell at list (no offered price). port_buy_price for organics will
+        # vary; we just check the logged profit matches (unit - 15) * 20.
+        res = apply_action(
+            u,
+            a.id,
+            Action(kind=ActionKind.TRADE, args={
+                "commodity": "organics", "qty": 20, "side": "sell",
+            }),
+        )
+        assert res.ok
+        assert len(a.trade_log) == before_log + 1
+        entry = a.trade_log[-1]
+        assert entry["side"] == "sell"
+        assert entry["qty"] == 20
+        assert entry["realized_profit"] is not None
+        expected_profit = (entry["unit"] - 15) * 20
+        assert entry["realized_profit"] == expected_profit
+        # Selling all units must clear the basis so a future buy is fresh.
+        assert a.ship.cargo[Commodity.ORGANICS] == 0
+        assert a.ship.cargo_cost[Commodity.ORGANICS] == 0.0
+
+    def test_f2_trade_log_capped_at_fifty(self):
+        """Ledger must cap to the most recent 50 entries so it never balloons
+        in long matches."""
+        u, (a, *_) = _make_universe(seed=2028)
+        # Stuff 60 fake entries
+        for i in range(60):
+            a.trade_log.append({"seq": i})
+        # Run one real trade to exercise the capping path. Simpler: simulate
+        # the append-and-trim logic directly since we're testing the invariant.
+        from tw2k.engine.models import Port, PortClass, PortStock
+        sid = next(s for s in u.sectors if s >= 30 and s not in K.FEDSPACE_SECTORS)
+        u.sectors[sid].port = Port(
+            sector_id=sid, class_id=PortClass.CLASS_5_SBS, code="SBS", name="T",
+            stock={
+                Commodity.FUEL_ORE: PortStock(current=5000, maximum=10000),
+                Commodity.ORGANICS: PortStock(current=2000, maximum=10000),
+                Commodity.EQUIPMENT: PortStock(current=5000, maximum=10000),
+            },
+        )
+        a.sector_id = sid
+        a.credits = 50_000
+        from tw2k.engine.actions import Action, ActionKind
+        from tw2k.engine.runner import apply_action
+        apply_action(u, a.id, Action(kind=ActionKind.TRADE, args={
+            "commodity": "fuel_ore", "qty": 5, "side": "buy",
+        }))
+        assert len(a.trade_log) == 50, (
+            f"expected cap at 50, got {len(a.trade_log)}"
+        )
+        # Oldest entries dropped first — the new real trade is last.
+        assert a.trade_log[-1].get("commodity") == "fuel_ore"
+        # The first entries in the buffer should be the tail of the fake ones.
+        assert a.trade_log[0].get("seq") == 11  # we kept 60 - 50 + 1 = 11..59 + 1 new
+
+    def test_f3_port_intel_stamps_last_seen_day(self):
+        """Intel must carry the day it was captured so the observation can
+        compute `age_days`. Regression for the hardcoded None bug."""
+        from tw2k.engine.models import PortClass
+        from tw2k.engine.runner import _record_port_intel
+
+        u, (a, *_) = _make_universe(seed=2029)
+        u.day = 3
+        skip = {PortClass.STARDOCK, PortClass.FEDERAL}
+        for sid, sector in u.sectors.items():
+            if sector.port is not None and sector.port.class_id not in skip:
+                _record_port_intel(a, sid, sector.port, universe=u)
+                break
+        entry = next(iter(a.known_ports.values()))
+        assert entry["last_seen_day"] == 3, (
+            f"expected last_seen_day=3, got {entry['last_seen_day']}"
+        )
+
+    def test_f3_observation_exposes_intel_age(self):
+        """Staleness must bubble up to the observation so the LLM sees it
+        inline — not just buried in a last_seen_day int it has to diff."""
+        from tw2k.engine.models import PortClass
+        from tw2k.engine.observation import build_observation
+        from tw2k.engine.runner import _record_port_intel
+
+        u, (a, *_) = _make_universe(seed=2030)
+        u.day = 1
+        skip = {PortClass.STARDOCK, PortClass.FEDERAL}
+        for sid, sector in u.sectors.items():
+            if sector.port is not None and sector.port.class_id not in skip:
+                _record_port_intel(a, sid, sector.port, universe=u)
+                break
+        # Advance in-game days; the snapshot should now be 2 days old.
+        u.day = 3
+        obs = build_observation(u, "A")
+        entry = obs.known_ports[0]
+        assert entry.get("age_days") == 2, (
+            f"expected age_days=2, got entry={entry}"
+        )
+
+    def test_f4_observation_ship_dict_has_cost_basis(self):
+        """The ship block in the observation must carry per-commodity cost
+        avg + value so agents see breakeven next to quantity."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=2031)
+        a.ship.cargo[Commodity.ORGANICS] = 25
+        a.ship.cargo_cost[Commodity.ORGANICS] = 17.4
+        obs = build_observation(u, "A")
+        assert obs.ship["cargo_cost_avg"].get("organics") == 17  # rounded
+        assert obs.ship["cargo_value_at_cost"].get("organics") == round(25 * 17.4)
+
+    def test_f5_action_hint_shows_pnl_at_current_port(self):
+        """At a port that buys the player's cargo, the hint must show cost
+        basis vs. port bid with the sign of realized profit. Protects
+        against auto-sell at a loss."""
+        from tw2k.engine.models import Port, PortClass, PortStock
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=2032)
+        sid = next(s for s in u.sectors if s >= 30 and s not in K.FEDSPACE_SECTORS)
+        # BBS buys organics (and fuel_ore), sells equipment.
+        u.sectors[sid].port = Port(
+            sector_id=sid, class_id=PortClass.CLASS_6_BBS, code="BBS", name="Buyer",
+            stock={
+                Commodity.FUEL_ORE: PortStock(current=1000, maximum=10000),
+                Commodity.ORGANICS: PortStock(current=1000, maximum=10000),
+                Commodity.EQUIPMENT: PortStock(current=5000, maximum=10000),
+            },
+        )
+        a.sector_id = sid
+        a.ship.cargo[Commodity.ORGANICS] = 20
+        a.ship.cargo_cost[Commodity.ORGANICS] = 18.0
+        obs = build_observation(u, "A")
+        hint = obs.action_hint
+        assert "P&L at this port" in hint, f"missing P&L hint: {hint}"
+        assert "organics" in hint
+        assert "cost=18cr" in hint
+
+    def test_f6_trade_log_surfaces_in_observation(self):
+        """Last N trades must reach the agent's obs.trade_log so they can
+        audit their own recent activity without consulting the global feed."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=2033)
+        for i in range(8):
+            a.trade_log.append({
+                "day": 1, "tick": i, "sector_id": 7,
+                "commodity": "organics", "qty": 10, "side": "sell" if i % 2 else "buy",
+                "unit": 20 + i, "total": (20 + i) * 10,
+                "realized_profit": 25 if i % 2 else None,
+            })
+        obs = build_observation(u, "A")
+        assert len(obs.trade_log) == 5, "observation should cap to last 5"
+        assert obs.trade_log[-1]["tick"] == 7, "newest entry last"

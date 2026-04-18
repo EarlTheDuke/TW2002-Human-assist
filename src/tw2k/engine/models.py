@@ -256,6 +256,18 @@ class Ship(BaseModel):
     ether_probes: int = 0
     # If > 0, fighters are disabled for this many remaining ticks (photon hit).
     photon_disabled_ticks: int = 0
+    # Weighted-average unit cost paid for the current holdings of each
+    # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
+    # when planning a sell — without this they have to reconstruct cost
+    # basis from their scratchpad or a rolling event feed which scrolls.
+    # Only meaningful for commodities with cargo[c] > 0; on buy we do a
+    # weighted-avg update; on sell the avg stays put (we're just reducing
+    # qty, not changing what we paid for what's left); on assign_colonists /
+    # genesis / other non-trade consumption qty hits zero and the cost is
+    # cleared. Seeded "free" cargo (e.g. starter colonists) has cost 0.
+    cargo_cost: dict[Commodity, float] = Field(
+        default_factory=lambda: {c: 0.0 for c in Commodity}
+    )
 
     @property
     def cargo_used(self) -> int:
@@ -293,6 +305,13 @@ class Player(BaseModel):
     goal_short: str = ""   # this turn + next ~2-3 (e.g. "finish trip, warp 267->181->487")
     goal_medium: str = ""  # next in-game day (e.g. "grind org pair to 45k, buy cargotran")
     goal_long: str = ""    # whole-match plan (e.g. "100M cr victory via 2 citadel L3 planets")
+    # Rolling ledger of this player's own trades — last 50 entries. Each is
+    # a dict of {day, tick, sector_id, commodity, qty, side, unit, total,
+    # realized_profit}. realized_profit is non-None only on `sell` and is the
+    # (unit - basis_avg) * qty the sell actually realized, using the cargo
+    # cost basis at time of sale. Lets the agent audit "what did my last 5
+    # trades actually earn me?" without re-deriving from the global feed.
+    trade_log: list[dict] = Field(default_factory=list)
     # Metadata — agent kind for display
     agent_kind: str = "heuristic"
     color: str = "#6ee7ff"

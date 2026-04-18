@@ -83,18 +83,22 @@ def execute_trade(
     side: str,
     offered_unit_price: int | None,
     rng: random.Random,
-) -> tuple[bool, int, int, str]:
+) -> tuple[bool, int, int, str, int | None]:
     """Run a haggle + settle.
 
-    Returns (success, total_price, per_unit_price, message).
+    Returns (success, total_price, per_unit_price, message, realized_profit).
+    `realized_profit` is None for buys (you haven't realized anything yet,
+    just shifted cost basis) and is (unit - basis_avg_at_sale) * qty for
+    sells, rounded to int. It CAN be negative if the agent dumped cargo
+    below its cost — that's a valuable signal we want in the trade_log.
     Does not modify state if unsuccessful.
     """
     if qty <= 0:
-        return False, 0, 0, "Quantity must be positive"
+        return False, 0, 0, "Quantity must be positive", None
 
     ok, err = can_trade(port, commodity, qty, side)
     if not ok:
-        return False, 0, 0, err
+        return False, 0, 0, err, None
 
     listed = port_sell_price(port, commodity) if side == "buy" else port_buy_price(port, commodity)
     offered = offered_unit_price if offered_unit_price is not None else listed
@@ -129,22 +133,40 @@ def execute_trade(
             haggled = True
 
     total = final_unit * qty
+    realized_profit: int | None = None
 
     # Apply state changes
     if side == "buy":
         if player.credits < total:
-            return False, 0, 0, f"Insufficient credits ({player.credits} < {total})"
+            return False, 0, 0, f"Insufficient credits ({player.credits} < {total})", None
         if player.ship.cargo_free < qty:
-            return False, 0, 0, f"Not enough free holds ({player.ship.cargo_free} < {qty})"
+            return False, 0, 0, f"Not enough free holds ({player.ship.cargo_free} < {qty})", None
         player.credits -= total
-        player.ship.cargo[commodity] = player.ship.cargo.get(commodity, 0) + qty
+        # Weighted-average cost basis update: (old_qty*old_avg + buy_qty*unit) / new_qty.
+        # This is the standard inventory-accounting approach — it means buying
+        # the same commodity at two different ports blends the basis so the
+        # agent's "profit at next sell" reflects the full round trip, not just
+        # the final leg. Uses the post-haggle unit price (what we actually paid).
+        old_qty = player.ship.cargo.get(commodity, 0)
+        old_avg = player.ship.cargo_cost.get(commodity, 0.0) if old_qty > 0 else 0.0
+        new_qty = old_qty + qty
+        new_avg = ((old_qty * old_avg) + (qty * final_unit)) / new_qty if new_qty > 0 else 0.0
+        player.ship.cargo[commodity] = new_qty
+        player.ship.cargo_cost[commodity] = new_avg
         port.stock[commodity].current -= qty
     else:  # sell
         have = player.ship.cargo.get(commodity, 0)
         if have < qty:
-            return False, 0, 0, f"Not enough cargo ({have} < {qty})"
+            return False, 0, 0, f"Not enough cargo ({have} < {qty})", None
+        basis_avg = player.ship.cargo_cost.get(commodity, 0.0)
+        realized_profit = round((final_unit - basis_avg) * qty)
         player.credits += total
-        player.ship.cargo[commodity] = have - qty
+        remaining = have - qty
+        player.ship.cargo[commodity] = remaining
+        # If the last holds of this commodity are sold out, clear the basis so
+        # future buys start fresh instead of blending into stale average.
+        if remaining <= 0:
+            player.ship.cargo_cost[commodity] = 0.0
         port.stock[commodity].current += qty
 
     # Build experience
@@ -156,7 +178,7 @@ def execute_trade(
         msg = f"haggle won at {final_unit}cr (list {listed})"
     else:
         msg = "ok"
-    return True, total, final_unit, msg
+    return True, total, final_unit, msg, realized_profit
 
 
 def regenerate_ports(universe: Universe) -> None:
