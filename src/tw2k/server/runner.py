@@ -770,5 +770,22 @@ class MatchRunner:
                 }
                 for pl in u.planets.values()
             ],
+            # Living Ferrengi raiders so spectators can see the threat layer
+            # (dead ones are filtered). Includes sector, aggression, and
+            # fighter count so the UI can render them on the map and in the
+            # event ticker.
+            "ferrengi": [
+                {
+                    "id": f.id,
+                    "name": f.name,
+                    "sector_id": f.sector_id,
+                    "aggression": f.aggression,
+                    "fighters": f.fighters,
+                    "shields": f.shields,
+                    "ship_class": f.ship_class.value if hasattr(f.ship_class, "value") else str(f.ship_class),
+                }
+                for f in u.ferrengi.values()
+                if f.alive
+            ],
             "last_error": self.state.last_error,
         }
