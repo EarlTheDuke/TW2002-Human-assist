@@ -199,6 +199,9 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
     (160_000, 32_000,  4),
 ]
 GENESIS_DEPLOY_TURN_COST = 4
+# Founding population Genesis torpedoes bring to life. Tuned so Citadel L1
+# (1,000 colonists) is immediately buildable and natural growth can start.
+GENESIS_SEED_COLONISTS = 2_500
 PLANET_CLASS_WEIGHTS = {
     "M": 0.32, "K": 0.14, "L": 0.14, "O": 0.14,
     "H": 0.10, "U": 0.10, "C": 0.06,

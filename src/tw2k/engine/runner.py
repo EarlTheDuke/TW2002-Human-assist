@@ -957,6 +957,30 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         owner_id=pid,
         corp_ticker=player.corp_ticker,
     )
+    # Seed a founding population so the citadel/production path is actually
+    # reachable. Without this, new planets had 0 colonists and growth = 0 * 5%
+    # forever — locking out the entire S3/S4/S5 progression arc.
+    #
+    # Distribution favors fuel-ore workers (most broadly useful commodity) but
+    # leaves a healthy construction reserve in the "colonists" pool so the
+    # first Citadel L1 (which costs 1,000 colonists) can be built immediately
+    # after the player ferries the standard tier if they choose, or from the
+    # seed alone in a pinch.
+    seed_total = K.GENESIS_SEED_COLONISTS
+    planet.colonists[Commodity.FUEL_ORE] = int(seed_total * 0.40)
+    planet.colonists[Commodity.ORGANICS] = int(seed_total * 0.25)
+    planet.colonists[Commodity.EQUIPMENT] = int(seed_total * 0.15)
+    planet.colonists[Commodity.COLONISTS] = (
+        seed_total
+        - planet.colonists[Commodity.FUEL_ORE]
+        - planet.colonists[Commodity.ORGANICS]
+        - planet.colonists[Commodity.EQUIPMENT]
+    )
+    # Small organics stockpile so colonist growth can start immediately —
+    # growth is gated on `stockpile[ORGANICS] > 0`.
+    planet.stockpile[Commodity.ORGANICS] = max(
+        planet.stockpile.get(Commodity.ORGANICS, 0), 25
+    )
     universe.planets[pid_planet] = planet
     sector.planet_ids.append(pid_planet)
     player.ship.genesis -= 1

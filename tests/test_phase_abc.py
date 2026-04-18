@@ -84,6 +84,9 @@ class TestPhaseA:
         a.sector_id = _first_non_fed_sector(u)
         apply_action(u, "A", Action(kind=ActionKind.DEPLOY_GENESIS))
         new_p = max(u.planets.values(), key=lambda p: p.id)
+        # Genesis now seeds a founding population (see GENESIS_SEED_COLONISTS).
+        # Snapshot the pool before moving cargo in so we can check the delta.
+        fuel_before = new_p.colonists.get(Commodity.FUEL_ORE, 0)
 
         a.ship.cargo[Commodity.COLONISTS] = 5000
         apply_action(u, "A", Action(kind=ActionKind.LAND_PLANET, args={"planet_id": new_p.id}))
@@ -92,7 +95,7 @@ class TestPhaseA:
             args={"planet_id": new_p.id, "from": "ship", "to": "fuel_ore", "qty": 2000},
         ))
         assert res.ok, res.error
-        assert new_p.colonists.get(Commodity.FUEL_ORE) == 2000
+        assert new_p.colonists.get(Commodity.FUEL_ORE) == fuel_before + 2000
         assert a.ship.cargo[Commodity.COLONISTS] == 3000
 
     def test_a2_build_citadel_completes_after_days(self):
@@ -115,6 +118,30 @@ class TestPhaseA:
         for _ in range(5):
             tick_day(u)
         assert new_p.citadel_level == 1
+
+    def test_a_genesis_seeds_population_enough_for_l1_citadel(self):
+        """Regression guard: fresh Genesis planet must ship with enough
+        founding colonists to immediately build Citadel L1 (1,000 colonists)
+        without the player ferrying any from elsewhere. Before the seed fix
+        the engine locked out S3+ progression because planets started empty
+        and colonist growth is 0 * 5% = 0 forever."""
+        u, (a, *_) = _make_universe()
+        a.ship.genesis = 1
+        a.sector_id = _first_non_fed_sector(u)
+        apply_action(u, "A", Action(kind=ActionKind.DEPLOY_GENESIS))
+        new_p = max(u.planets.values(), key=lambda p: p.id)
+        total = sum(new_p.colonists.values())
+        l1_cost_col = K.CITADEL_TIER_COST[0][1]
+        assert total >= l1_cost_col, (
+            f"Genesis seed ({total}) < Citadel L1 colonist cost ({l1_cost_col})"
+        )
+        assert new_p.stockpile.get(Commodity.ORGANICS, 0) > 0, "need organics to start population growth"
+
+        a.credits = 50_000
+        apply_action(u, "A", Action(kind=ActionKind.LAND_PLANET, args={"planet_id": new_p.id}))
+        res = apply_action(u, "A", Action(kind=ActionKind.BUILD_CITADEL, args={"planet_id": new_p.id}))
+        assert res.ok, f"L1 citadel must be buildable from seed population alone: {res.error}"
+        assert new_p.citadel_target == 1
 
     def test_a4_player_eliminated_after_max_deaths(self):
         u, (a, *_) = _make_universe()

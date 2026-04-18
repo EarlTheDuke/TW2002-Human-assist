@@ -247,7 +247,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
         max_deaths=K.MAX_DEATHS_BEFORE_ELIM,
         limpets_owned=limpets_owned,
         probe_log=probe_log,
-        action_hint=_action_hint(sector_info),
+        action_hint=_action_hint(sector_info, player, owned_planets, universe),
     )
     return obs
 
@@ -346,15 +346,153 @@ def _fedspace_set(universe: Universe) -> set[int]:
     return K.FEDSPACE_SECTORS
 
 
-def _action_hint(sector_info: dict[str, Any]) -> str:
-    hints = [
-        "Core actions: warp(target=<sector_id>), trade(commodity=<fuel_ore|organics|equipment>, qty=<int>, side=<buy|sell>, unit_price=<optional>), scan(), wait()",
-        "Movement is only to sectors in sector.warps_out. Trade only at ports that buy/sell that commodity.",
+def _action_hint(
+    sector_info: dict[str, Any],
+    player: Any = None,
+    owned_planets: list[dict[str, Any]] | None = None,
+    universe: Any = None,
+) -> str:
+    """State-aware legal-action hint string shown to the LLM every turn.
+
+    The goal is to remind the agent of verbs that are LEGAL RIGHT NOW given
+    its concrete state (ship cargo, StarDock proximity, owned planets, inbox
+    backlog, recent failures). Large LLMs skim the system prompt; a targeted
+    per-turn nudge is much more reliable for activating rarely-used verbs
+    like deploy_genesis / assign_colonists / build_citadel.
+    """
+    from . import constants as K
+
+    hints: list[str] = [
+        "Verbs available: warp trade scan wait + 29 more (see system prompt).",
     ]
-    if sector_info.get("port"):
-        hints.append("You are at a port — use TRADE.")
-    if sector_info.get("planets"):
-        hints.append("Planets are landable with LAND_PLANET(planet_id=<id>).")
+
+    # Movement
+    warps_out = sector_info.get("warps_out") or []
+    if warps_out:
+        sample = ", ".join(str(w) for w in warps_out[:5])
+        more = "" if len(warps_out) <= 5 else f" (+{len(warps_out) - 5} more)"
+        hints.append(f"warp target MUST be in [{sample}{more}].")
+
+    # Port / trade
+    port = sector_info.get("port") or {}
+    if port:
+        buys = port.get("buys") or []
+        sells = port.get("sells") or []
+        bits = []
+        if buys:
+            bits.append(f"port BUYS {','.join(buys)}")
+        if sells:
+            bits.append(f"port SELLS {','.join(sells)}")
+        if bits:
+            hints.append(" / ".join(bits) + " — use trade.")
+
+    # StarDock-specific — the set of verbs that ONLY work at sector 1
+    sector_id = sector_info.get("id")
+    if sector_id == K.STARDOCK_SECTOR:
+        hints.append(
+            "At StarDock: buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/genesis/photon_missile/ether_probe), corp_create legal here."
+        )
+
+    # Ship inventory → actionable verbs
+    if player is not None:
+        ship = getattr(player, "ship", None)
+        if ship is not None:
+            genesis = getattr(ship, "genesis", 0) or 0
+            if genesis > 0 and sector_id not in K.FEDSPACE_SECTORS and getattr(player, "planet_landed", None) is None:
+                hints.append(
+                    f"You carry {genesis} genesis torpedo(es) — `deploy_genesis` HERE creates a planet you own (4 turns)."
+                )
+            colonists = 0
+            cargo = getattr(ship, "cargo", None)
+            if cargo is not None:
+                try:
+                    colonists = int(cargo.get(Commodity.COLONISTS, 0))
+                except Exception:
+                    pass
+            if colonists > 0:
+                hints.append(
+                    f"You have {colonists} colonists in cargo — land on a planet you own and use "
+                    f"`assign_colonists from=ship to=<fuel_ore|organics|equipment|colonists> qty=<n>` to deposit."
+                )
+            photon = getattr(ship, "photon_missiles", 0) or 0
+            if photon > 0:
+                hints.append(f"{photon} photon missile(s) loaded — `photon_missile target=<player_id>`.")
+            probes = getattr(ship, "ether_probes", 0) or 0
+            if probes > 0:
+                hints.append(f"{probes} probe(s) loaded — `probe target=<sector_id>` to remote-scan.")
+
+    # Owned planets — land / build / assign
+    if owned_planets:
+        here_planets = [p for p in owned_planets if p.get("sector_id") == sector_id]
+        if here_planets and getattr(player, "planet_landed", None) is None:
+            ids = ", ".join(str(p["id"]) for p in here_planets)
+            hints.append(f"You own planet(s) in this sector: [{ids}] — `land_planet planet_id=<id>`.")
+        landed_id = getattr(player, "planet_landed", None) if player is not None else None
+        if landed_id is not None:
+            plan = next((p for p in owned_planets if p.get("id") == landed_id), None)
+            if plan is not None:
+                lvl = int(plan.get("citadel_level", 0) or 0)
+                tgt = int(plan.get("citadel_target", 0) or 0)
+                if tgt > lvl:
+                    hints.append(f"Citadel L{tgt} already building on planet {landed_id}; use `liftoff` and return when done.")
+                elif lvl < 6:
+                    hints.append(
+                        f"Landed on planet {landed_id} (citadel L{lvl}). `build_citadel planet_id={landed_id}` starts L{lvl + 1}; "
+                        f"`assign_colonists` to rebalance; `liftoff` to leave."
+                    )
+
+    # Planets in sector (unowned) → exploration hint only
+    planets_here = sector_info.get("planets") or []
+    if planets_here and not (owned_planets and any(p.get("sector_id") == sector_id for p in owned_planets)):
+        hints.append(f"{len(planets_here)} unowned planet(s) here — land_planet to inspect.")
+
+    # Ferrengi presence
     if sector_info.get("ferrengi"):
-        hints.append("Ferrengi present — consider ATTACK or WARP out.")
+        hints.append("Ferrengi present — attack for XP or warp out.")
+
+    # Inbox backlog
+    inbox = getattr(player, "inbox", None) if player is not None else None
+    if inbox:
+        unread = sum(1 for m in inbox[-20:] if not m.get("read"))
+        if unread:
+            hints.append(f"{unread} unread hail(s) in inbox — consider `hail` to respond.")
+
+    # Recent failure feedback — surface the LAST failure since the player's last successful action
+    if universe is not None and player is not None:
+        err = _recent_self_error(universe, player.id)
+        if err:
+            hints.append(f"YOUR LAST ACTION FAILED: {err} — change approach this turn.")
+
     return " | ".join(hints)
+
+
+def _recent_self_error(universe: Any, player_id: str) -> str:
+    """Return the most recent self-caused failure summary since the player's
+    last *successful* gameplay action. Returns '' if their last action was OK.
+
+    This lets the LLM see e.g. `trade_failed: port rejected` or
+    `agent_error: must be landed on the planet first` on the very next turn
+    without having to scan the global recent_events feed.
+    """
+    try:
+        from .models import EventKind as E
+    except Exception:
+        return ""
+
+    success_kinds = {
+        E.WARP, E.TRADE, E.SCAN, E.DEPLOY_FIGHTERS, E.DEPLOY_MINES,
+        E.LAND_PLANET, E.LIFTOFF, E.ASSIGN_COLONISTS, E.BUILD_CITADEL,
+        E.GENESIS_DEPLOYED, E.BUY_SHIP, E.BUY_EQUIP, E.CORP_CREATE,
+        E.CORP_INVITE, E.CORP_JOIN, E.CORP_LEAVE,
+    }
+    error_kinds = {E.AGENT_ERROR, E.TRADE_FAILED, E.WARP_BLOCKED}
+
+    events = getattr(universe, "events", None) or []
+    for ev in reversed(events[-80:]):
+        if ev.actor_id != player_id:
+            continue
+        if ev.kind in error_kinds:
+            return (ev.summary or ev.payload.get("error", "") or str(ev.kind.value))[:220]
+        if ev.kind in success_kinds:
+            return ""
+    return ""
