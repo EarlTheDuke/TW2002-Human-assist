@@ -1265,18 +1265,23 @@
         if (pauseBtn) pauseBtn.click();
         return;
       }
-      if (e.key === "Escape") {
+      if (e.key === "Escape" || e.code === "Escape") {
         const layout = document.getElementById("layout");
         if (layout && layout.classList.contains("fullscreen-map")) {
+          e.preventDefault();
           toggleFullscreenMap(false);
           return;
         }
         if (gameOverModal && !gameOverModal.hidden) {
+          e.preventDefault();
           gameOverModal.hidden = true;
           return;
         }
         const toast = document.getElementById("shortcutsToast");
-        if (toast && !toast.hidden) toast.hidden = true;
+        if (toast && !toast.hidden) {
+          e.preventDefault();
+          toast.hidden = true;
+        }
         return;
       }
       if (e.key === "f" || e.key === "F") {
@@ -1305,7 +1310,12 @@
         setMiniMapVisible(!miniMapVisible);
         return;
       }
-      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+      if (
+        e.key === "?" ||
+        (e.shiftKey && e.key === "/") ||
+        (e.shiftKey && e.code === "Slash") ||
+        e.code === "Slash" && e.shiftKey
+      ) {
         e.preventDefault();
         toggleShortcutsToast();
         return;
