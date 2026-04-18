@@ -938,12 +938,31 @@
   }
 
   function renderPlanetsBlock(p) {
-    // Filter the universe-wide planets list down to what this commander
-    // owns. We render only if they own >=1 — keeps early-game cards clean
-    // before anyone has deployed Genesis. The block is closed by default
-    // because most users glance at cards; power users can pop it open.
+    // Filter the universe-wide planets list down to what this commander owns.
+    // We ALWAYS render the block so spectators can see the planet slot on the
+    // card — the placeholder state doubles as a teaching tool (shows the
+    // 25k-credit gate to Genesis and how close the commander is).
     const owned = Array.from(state.planets.values()).filter((pl) => pl.owner_id === p.id);
-    if (!owned.length) return "";
+    if (!owned.length) {
+      const genesisCount = p.genesis || 0;
+      const credits = p.credits || 0;
+      const GENESIS_COST = 25000;
+      let status;
+      if (genesisCount > 0) {
+        status = `<span class="planet-empty-hint">${genesisCount} Genesis torpedo loaded — warp deep (3+ hops from StarDock) and deploy</span>`;
+      } else if (credits >= GENESIS_COST) {
+        status = `<span class="planet-empty-hint">Can afford Genesis torpedo (25k cr) at StarDock — ${fmt(credits)} credits on hand</span>`;
+      } else {
+        const needed = GENESIS_COST - credits;
+        status = `<span class="planet-empty-hint">Grinding to 25k cr for first Genesis — ${fmt(needed)} cr short</span>`;
+      }
+      return `
+        <details class="commander-planets empty" open>
+          <summary>Planets (0)</summary>
+          <div class="planet-empty">${status}</div>
+        </details>
+      `;
+    }
 
     // Sort by citadel level desc, then by planet id — makes the biggest
     // investment show first and is stable across ticks.

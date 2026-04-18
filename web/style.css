@@ -688,6 +688,20 @@ svg.spark { display: block; }
 .recent-trades[open] > summary::before,
 .commander-planets[open] > summary::before { content: "▾ "; }
 
+.commander-planets.empty > summary {
+  color: var(--text-faint);
+}
+.planet-empty {
+  padding: 6px 10px 8px 10px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.planet-empty-hint {
+  opacity: 0.85;
+}
+
 .goal-line {
   display: flex;
   align-items: baseline;
