@@ -55,7 +55,7 @@ def main() -> int:
     a.ship.genesis = 1
     if a.sector_id in K.FEDSPACE_SECTORS:
         # warp out to non-fedspace
-        for hop in [a.sector_id] + u.sectors[a.sector_id].warps:
+        for hop in [a.sector_id, *u.sectors[a.sector_id].warps]:
             if hop not in K.FEDSPACE_SECTORS:
                 a.sector_id = hop
                 break
@@ -176,7 +176,7 @@ def main() -> int:
     inbound_src = next((s.id for s in u.sectors.values() if sid_l in s.warps and s.id != sid_l), None)
     if inbound_src is not None:
         c.sector_id = inbound_src
-        u.sectors[inbound_src].occupant_ids = list(set(u.sectors[inbound_src].occupant_ids + ["C"]))
+        u.sectors[inbound_src].occupant_ids = list(set([*u.sectors[inbound_src].occupant_ids, "C"]))
         c.turns_today = 0
         res = apply_action(u, "C", Action(kind=ActionKind.WARP, args={"target": sid_l}))
         check("carol warped through limpet sector", res.ok, str(res.error))

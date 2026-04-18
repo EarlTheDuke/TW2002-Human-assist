@@ -45,7 +45,25 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # line-too-long: handled by formatter in practice
+    "E741",   # ambiguous-variable-name: too aggressive for math/short loops
+    "E702",   # multiple-statements-on-one-line-semicolon: used in tight inline helpers
+    "N812",   # lowercase-imported-as-non-lowercase (NumPy/matplotlib style imports)
+    "N817",   # camelcase-imported-as-acronym (typer/pydantic ergonomics)
+    "UP042",  # replace-str-enum: StrEnum has different equality semantics we rely on
+    "SIM105", # suppressible-exception: explicit try/except/pass is more readable
+    "SIM102", # collapsible-if: nested ifs often more readable
+    "SIM103", # needless-bool: readability > terseness for branching returns
+    "RUF003", # ambiguous-unicode in comments: we intentionally ship unicode art
+    "RUF059", # unused-unpacked-variable: fixtures often destructure and discard
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests routinely destructure fixtures and use short names.
+"tests/**" = ["F841", "B007", "RUF005", "RUF046"]
+# Scripts often have ad-hoc globbing / one-off helpers.
+"scripts/**" = ["SIM115"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

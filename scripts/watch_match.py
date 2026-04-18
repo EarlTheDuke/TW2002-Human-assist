@@ -173,7 +173,7 @@ def render_scorecard(player_name: str, day: int, checks: list[tuple[str, bool, s
 
 def render_arc_report(arcs: dict[str, PlayerArc], max_day: int) -> list[str]:
     lines = ["", "=" * 66, "  ARC REPORT — days-on-arc per player", "=" * 66]
-    for pid, arc in sorted(arcs.items(), key=lambda kv: -kv[1].days_on_arc):
+    for _pid, arc in sorted(arcs.items(), key=lambda kv: -kv[1].days_on_arc):
         lines.append(f"  {arc.name:<22s} on-arc {arc.days_on_arc}/{arc.days_scored} days")
         for d in range(1, max_day + 1):
             st = arc.days.get(d)

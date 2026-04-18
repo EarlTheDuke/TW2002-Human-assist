@@ -98,7 +98,7 @@ def main() -> None:
 
     # ---------- Day 2 ----------
     # Seed nw_start for day 2 from day 1 end
-    for pid, arc in arcs.items():
+    for _pid, arc in arcs.items():
         arc.stats_for(2).nw_start = arc.stats_for(1).nw_end
 
     # Blake: buys density, 3 port pairs, ends at 280k

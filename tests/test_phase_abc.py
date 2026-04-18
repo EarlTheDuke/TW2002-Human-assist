@@ -39,7 +39,7 @@ def _make_universe(seed: int = 2026, size: int = 200, players: int = 3):
     names = ["Alice", "Bob", "Carol", "Dave"][:players]
     pids = ["A", "B", "C", "D"][:players]
     ps = []
-    for pid, name in zip(pids, names):
+    for pid, name in zip(pids, names, strict=True):
         p = Player(id=pid, name=name, ship=Ship(holds=40, fighters=200, shields=100), sector_id=1)
         u.players[pid] = p
         u.sectors[1].occupant_ids.append(pid)

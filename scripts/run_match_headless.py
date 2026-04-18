@@ -31,12 +31,22 @@ import sys
 import time
 import traceback
 from dataclasses import asdict, is_dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
+
+from watch_match import (  # noqa: E402
+    RUBRIC,
+    PlayerArc,
+    evaluate,
+    render_arc_report,
+    render_scorecard,
+    resolve_actor,
+    update_from_event,
+)
 
 from tw2k.agents import BaseAgent, HeuristicAgent  # noqa: E402
 from tw2k.engine import (  # noqa: E402
@@ -50,17 +60,6 @@ from tw2k.engine import (  # noqa: E402
     tick_day,
 )
 from tw2k.engine.models import Player, Ship  # noqa: E402
-
-from watch_match import (  # noqa: E402
-    RUBRIC,
-    PlayerArc,
-    evaluate,
-    render_arc_report,
-    render_scorecard,
-    resolve_actor,
-    update_from_event,
-)
-
 
 # ---------------------------------------------------------------------------
 # Event → dict helper
@@ -250,6 +249,9 @@ class HeadlessRunner:
         max_steps = self.config.max_days * 2000 * self.num_agents + 1000
         steps = 0
         last_day = self.universe.day
+        # Progress heartbeat so long-running (LLM) matches show liveness.
+        heartbeat_every = 5  # steps
+        t_start = time.time()
 
         # Two-layer day-length cap. Port trades cost zero turns so agents can
         # take many more actions than `turns_per_day` per day; we still need
@@ -300,12 +302,24 @@ class HeadlessRunner:
                 continue
 
             obs = build_observation(self.universe, agent.player_id)
+            t_act = time.time()
             try:
                 action = await agent.act(obs)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 action = Action(kind=ActionKind.END_TURN, thought=f"agent error: {e}")
+            act_dt = time.time() - t_act
             apply_action(self.universe, agent.player_id, action)
             self.handle_events(self.drain_events())
+
+            if steps % heartbeat_every == 0:
+                elapsed = time.time() - t_start
+                p = self.universe.players[agent.player_id]
+                self.log(
+                    f"[progress] step={steps} day={self.universe.day} "
+                    f"{agent.player_id}@sector{p.sector_id} "
+                    f"credits={p.credits} turns={p.turns_today}/{p.turns_per_day} "
+                    f"last_act_dt={act_dt:.1f}s elapsed={elapsed:.0f}s"
+                )
 
             day_iters += 1
             now_total = total_turns_today()
@@ -379,7 +393,7 @@ class HeadlessRunner:
             "win_reason": self.universe.win_reason,
             "num_events": self.universe.seq,
             "players": players,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
     def _write_artifacts(self, summary: dict) -> None:
@@ -438,7 +452,7 @@ def _slug(s: str) -> str:
 
 
 def _make_out_dir(suffix: str) -> Path:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     name = f"run-{ts}" + (f"-{_slug(suffix)}" if suffix else "")
     return ROOT / "artifacts" / name
 
@@ -489,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.no_gate:
             return 0
         return 0 if gate_passed(summary) else 1
-    except Exception:  # noqa: BLE001
+    except Exception:
         traceback.print_exc()
         return 2
 

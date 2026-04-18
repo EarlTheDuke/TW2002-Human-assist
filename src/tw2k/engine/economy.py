@@ -23,7 +23,7 @@ def port_sell_price(port: Port, commodity: Commodity) -> int:
     # Well stocked port sells at near base, empty port discounts because it can't move product
     frac = _stock_fraction(port, commodity)
     mult = 0.90 + 0.20 * frac
-    return max(1, int(round(base * mult)))
+    return max(1, round(base * mult))
 
 
 def port_buy_price(port: Port, commodity: Commodity) -> int:
@@ -35,7 +35,7 @@ def port_buy_price(port: Port, commodity: Commodity) -> int:
     # how much it has already purchased; we treat low stock as high demand -> pays more.)
     frac = _stock_fraction(port, commodity)
     mult = 1.20 - 0.30 * frac
-    return max(1, int(round(base * mult)))
+    return max(1, round(base * mult))
 
 
 def can_trade(port: Port, commodity: Commodity, qty: int, side: str) -> tuple[bool, str]:

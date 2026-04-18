@@ -197,8 +197,8 @@ def _compute_layout(adj: dict[int, set[int]], n: int, rng: random.Random) -> dic
         theta = i * 2.39996  # golden-angle spiral
         positions[i] = [r * math.cos(theta), r * math.sin(theta)]
 
-    # Few rounds of force-directed relaxation
-    k_rep = 180.0
+    # Few rounds of force-directed relaxation (attraction-only; repulsion disabled
+    # for n>>100 performance — grid-accelerated repulsion is a future optimization).
     k_attr = 0.02
     iterations = 60
     for _ in range(iterations):

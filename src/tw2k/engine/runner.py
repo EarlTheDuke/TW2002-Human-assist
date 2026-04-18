@@ -1382,7 +1382,7 @@ def _handle_photon_missile(universe: Universe, pid: str, action: Action) -> Acti
 def _handle_query_limpets(universe: Universe, pid: str, action: Action) -> ActionResult:
     """Read-out of where every limpet you've placed currently is."""
     reports: list[dict] = []
-    for key, lt in universe.limpets.items():
+    for _key, lt in universe.limpets.items():
         if lt.owner_id != pid:
             continue
         target = universe.players.get(lt.target_id)
