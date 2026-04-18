@@ -57,6 +57,58 @@ SHIP_UPGRADES_FROM_STARTER = {
     "merchant_freighter", "havoc_gunstar", "imperial_starship",
 }
 
+# The canonical TW2002 day has 1,000 turns. The rubric thresholds above were
+# written assuming that full-length day. Sanity runs often use 60-200
+# turns/day; at those settings a "+20% net worth/day" or "net worth >=150k
+# by day 2" target is structurally unreachable no matter how well the AI
+# plays. `scale_rubric_for_turns()` rewrites the numeric thresholds
+# proportionally so the scorecard stays meaningful at any day length.
+CANONICAL_TURNS_PER_DAY = 1000
+
+
+def scale_rubric_for_turns(
+    rubric: dict[int, list[dict]], turns_per_day: int | None
+) -> dict[int, list[dict]]:
+    """Return a deep-ish copy of `rubric` with numeric thresholds scaled for
+    a short-turn sanity run. Non-numeric checks (event_seen etc.) pass
+    through unchanged.
+
+    Scaling rule:
+      factor = clamp(turns_per_day / 1000, 0.05, 1.0)
+      net_worth targets    * factor   (linear with trade-turns)
+      trade/sector counts  * factor   (linear)
+      pct targets          * factor   (a 20%/day goal at 60tpd becomes ~1%)
+
+    Citadel/Genesis/build-level checks are NOT scaled — you either
+    deployed a genesis or you didn't.
+    """
+    if turns_per_day is None or turns_per_day >= CANONICAL_TURNS_PER_DAY:
+        return rubric
+    factor = max(0.05, min(1.0, turns_per_day / CANONICAL_TURNS_PER_DAY))
+    scaled_ids = {
+        "net_worth_gain_pct",
+        "distinct_trades",
+        "distinct_sectors",
+        "distinct_port_pairs",
+        "net_worth",
+    }
+    out: dict[int, list[dict]] = {}
+    for day, checks in rubric.items():
+        scaled_checks: list[dict] = []
+        for c in checks:
+            if c.get("id") in scaled_ids and "threshold" in c:
+                new_t = max(1, round(c["threshold"] * factor))
+                scaled = dict(c)
+                scaled["threshold"] = new_t
+                # Keep the label honest so the scorecard shows the scaled target.
+                orig_label = scaled.get("label", "")
+                scaled["label"] = orig_label + f" [tpd={turns_per_day}→{new_t}]"
+                scaled_checks.append(scaled)
+            else:
+                scaled_checks.append(c)
+        out[day] = scaled_checks
+    return out
+
 
 # ---------------------------------------------------------------------------
 # Per-player per-day accumulators
@@ -107,9 +159,25 @@ def _pct(start: int, end: int) -> float:
     return (end - start) / start * 100.0
 
 
+_ACTIVE_RUBRIC: dict[int, list[dict]] | None = None
+
+
+def set_active_rubric(rubric: dict[int, list[dict]] | None) -> None:
+    """Override the RUBRIC used by evaluate() for the rest of the process.
+    Pass `None` to revert to the canonical rubric. Used by the headless
+    runner to install a turns_per_day-scaled rubric so short sanity runs
+    don't auto-fail on structurally unreachable thresholds."""
+    global _ACTIVE_RUBRIC
+    _ACTIVE_RUBRIC = rubric
+
+
+def active_rubric() -> dict[int, list[dict]]:
+    return _ACTIVE_RUBRIC if _ACTIVE_RUBRIC is not None else RUBRIC
+
+
 def evaluate(stats: DayStats, day: int) -> list[tuple[str, bool, str]]:
     """Returns list of (label, ok, measured_text)."""
-    checks = RUBRIC.get(day)
+    checks = active_rubric().get(day)
     if not checks:
         return []
     out: list[tuple[str, bool, str]] = []
@@ -303,7 +371,7 @@ def main() -> None:
     log(f"=== watcher starting · target={args.url} · log={args.out} ===")
     if not args.no_scorecards:
         log("=== scorecard rubric loaded from docs/HEALTHY_GAME_PLAYBOOK.md §8 ===")
-        for d, checks in RUBRIC.items():
+        for d, checks in active_rubric().items():
             labels = ", ".join(c["label"] for c in checks)
             log(f"    Day {d}: {labels}")
 

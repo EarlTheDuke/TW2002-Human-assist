@@ -298,10 +298,14 @@ class MatchRunner:
             # otherwise-identical LLMs don't produce bit-for-bit identical plays.
             credit_skew = (i * 317) % 2001 - 1000  # ±1000 cr
             ship = Ship()
+            # Respect the per-match starting_credits override from GameConfig
+            # so `tw2k serve --starting-credits 75000` actually changes the
+            # opening bankroll. Defaults to the canonical K.STARTING_CREDITS.
+            base_credits = getattr(spec.config, "starting_credits", K.STARTING_CREDITS)
             player = Player(
                 id=ag.player_id,
                 name=ag.name,
-                credits=K.STARTING_CREDITS + credit_skew,
+                credits=base_credits + credit_skew,
                 ship=ship,
                 sector_id=start_sid,
                 agent_kind=ag.kind,

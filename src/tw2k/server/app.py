@@ -41,6 +41,8 @@ def create_app(
     model: str | None = None,
     num_agents: int = 2,
     auto_start: bool = True,
+    turns_per_day: int | None = None,
+    starting_credits: int | None = None,
 ) -> FastAPI:
     broadcaster = Broadcaster()
     runner = MatchRunner(broadcaster)
@@ -59,6 +61,8 @@ def create_app(
                 provider=provider,
                 model=model,
                 num_agents=num_agents,
+                turns_per_day=turns_per_day,
+                starting_credits=starting_credits,
             )
             await runner.start(spec)
         yield
@@ -134,6 +138,8 @@ def create_app(
             provider=body.get("provider", provider),
             model=body.get("model", model),
             num_agents=int(body.get("num_agents", num_agents)),
+            turns_per_day=(int(body["turns_per_day"]) if "turns_per_day" in body else turns_per_day),
+            starting_credits=(int(body["starting_credits"]) if "starting_credits" in body else starting_credits),
         )
         await runner.start(spec)
         return {"status": runner.state.status}
@@ -186,6 +192,8 @@ def _build_default_spec(
     provider: str | None,
     model: str | None,
     num_agents: int,
+    turns_per_day: int | None = None,
+    starting_credits: int | None = None,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -196,12 +204,17 @@ def _build_default_spec(
     if resolved_kind == "auto":
         resolved_kind = "llm" if default_provider() != "none" else "heuristic"
 
-    cfg = GameConfig(
+    cfg_kwargs: dict = dict(
         seed=seed,
         universe_size=universe_size,
         max_days=max_days,
         corp_max_members=max(2, num_agents),
     )
+    if turns_per_day is not None:
+        cfg_kwargs["turns_per_day"] = turns_per_day
+    if starting_credits is not None:
+        cfg_kwargs["starting_credits"] = starting_credits
+    cfg = GameConfig(**cfg_kwargs)
 
     agents = [
         AgentSpec(

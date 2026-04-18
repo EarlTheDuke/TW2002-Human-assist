@@ -528,6 +528,62 @@ class TestPhaseDEconomy:
         obs = build_observation(u, "A")
         assert "END OF DAY" not in obs.action_hint
 
+    def test_d5_affordable_ships_hint_at_stardock(self):
+        """At StarDock with 75k cash, the action_hint must enumerate at
+        least one affordable ship class (Merchant Cruiser 41k, Cargotran
+        43k, Colonial Transport 63k are all under budget) so the LLM sees
+        concrete buy_ship targets rather than trying to infer from memory."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe()
+        a.sector_id = K.STARDOCK_SECTOR
+        a.credits = 75_000
+        obs = build_observation(u, "A")
+        hint = obs.action_hint
+        assert "afford" in hint.lower(), f"missing affordable-ship hint: {hint}"
+        # Cargotran is the star pick (43k, 75 holds, 3.75x starter capacity).
+        assert "CargoTran" in hint or "cargotran" in hint.lower() or "Merchant" in hint, (
+            f"expected at least one sub-75k ship in hint: {hint}"
+        )
+        assert "buy_ship" in hint
+
+    def test_d5_no_affordable_ships_hint_shows_next_target(self):
+        """With only 10k credits, none of the upgrade ships fit. The hint
+        should show the nearest unaffordable ship as a savings target."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe()
+        a.sector_id = K.STARDOCK_SECTOR
+        a.credits = 10_000
+        obs = build_observation(u, "A")
+        hint = obs.action_hint
+        assert "Next ship in budget" in hint, (
+            f"expected 'Next ship in budget' savings target: {hint}"
+        )
+
+    def test_d6_scorecard_scales_with_turns_per_day(self):
+        """Short sanity runs need scaled thresholds. 60 tpd = 6% of 1000 tpd
+        so a 150k nw target should scale toward ~9k. Non-numeric checks
+        (Genesis deployed, Citadel built) must NOT scale — binary events."""
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        from watch_match import RUBRIC, scale_rubric_for_turns
+
+        scaled = scale_rubric_for_turns(RUBRIC, turns_per_day=60)
+        nw_check_day2 = next(c for c in scaled[2] if c["id"] == "net_worth")
+        assert nw_check_day2["threshold"] <= 15_000, (
+            f"net_worth threshold didn't shrink enough at tpd=60: {nw_check_day2['threshold']}"
+        )
+        # Genesis deployed must remain a binary event check.
+        genesis_check = next(c for c in scaled[3] if c.get("kind") == "genesis_deployed")
+        assert "threshold" not in genesis_check or genesis_check.get("kind") == "genesis_deployed"
+
+        # At tpd=1000 (canonical) rubric should be untouched.
+        unchanged = scale_rubric_for_turns(RUBRIC, turns_per_day=1000)
+        assert unchanged is RUBRIC, "canonical tpd should not modify rubric"
+
     def test_d4_known_ports_include_prices(self):
         """Intel snapshot must persist prices so agents can compare pairs
         across sectors without revisiting. This is what enables route

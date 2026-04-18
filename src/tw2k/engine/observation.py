@@ -404,6 +404,63 @@ def _action_hint(
                 )
         hints.append(" ".join(bits))
 
+        # Affordable-ship menu: list the ship classes the player can ACTUALLY
+        # afford right now, sorted by hold count. V7 showed LLM agents sitting
+        # on 50k cash without upgrading because the prompt said "upgrade around
+        # 100-150k" and they took it literally. This surfaces the concrete set
+        # of legal buy_ship targets and the cargo/fighter trade-offs so the
+        # agent can make a grounded decision on day 1-2.
+        if player is not None:
+            credits = int(getattr(player, "credits", 0) or 0)
+            cur_ship = getattr(player, "ship", None)
+            cur_class_val = getattr(getattr(cur_ship, "ship_class", None), "value", None)
+            cur_holds = int(getattr(cur_ship, "holds", 0) or 0) if cur_ship is not None else 0
+            alignment = int(getattr(player, "alignment", 0) or 0)
+            in_corp = bool(getattr(player, "corp_ticker", None))
+            affordable: list[str] = []
+            for class_key, spec in K.SHIP_SPECS.items():
+                if class_key == cur_class_val:
+                    continue
+                cost = int(spec.get("cost", 0))
+                if cost <= 0 or cost > credits:
+                    continue
+                if spec.get("corp_only") and not in_corp:
+                    continue
+                min_align = int(spec.get("min_alignment", -10**9))
+                if alignment < min_align:
+                    continue
+                holds = int(spec.get("holds", 0))
+                disp = spec.get("display_name", class_key)
+                tag = f"{disp} ({cost:,}cr, {holds}h)"
+                if holds > cur_holds and cur_holds > 0:
+                    tag += f" x{holds / cur_holds:.1f}"
+                affordable.append(tag)
+            if affordable:
+                # Keep the list short so it doesn't dominate the hint stream.
+                shown = ", ".join(affordable[:4])
+                hints.append(
+                    f"Ships you can afford NOW ({credits:,}cr): {shown}. "
+                    f"Use `buy_ship class=<snake_case_name>` to upgrade."
+                )
+            else:
+                # Give a concrete ladder target so they know what to save for.
+                next_up = min(
+                    (
+                        (int(s["cost"]), k, s.get("display_name", k))
+                        for k, s in K.SHIP_SPECS.items()
+                        if k != cur_class_val
+                        and int(s.get("cost", 0)) > credits
+                        and not s.get("corp_only", False)
+                    ),
+                    default=None,
+                )
+                if next_up is not None:
+                    cost, _, disp = next_up
+                    hints.append(
+                        f"Next ship in budget: {disp} at {cost:,}cr "
+                        f"(need {cost - credits:,} more) — keep trading."
+                    )
+
     # Ship inventory → actionable verbs
     if player is not None:
         ship = getattr(player, "ship", None)

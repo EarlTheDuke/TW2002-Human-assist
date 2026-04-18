@@ -45,6 +45,8 @@ from watch_match import (  # noqa: E402
     render_arc_report,
     render_scorecard,
     resolve_actor,
+    scale_rubric_for_turns,
+    set_active_rubric,
     update_from_event,
 )
 
@@ -140,7 +142,15 @@ class HeadlessRunner:
         cfg_kwargs = {"seed": seed, "universe_size": universe_size, "max_days": max_days}
         if turns_per_day is not None:
             cfg_kwargs["turns_per_day"] = turns_per_day
+        if starting_credits is not None:
+            cfg_kwargs["starting_credits"] = starting_credits
         self.config = GameConfig(**cfg_kwargs)
+        # Scale the rubric so scorecard thresholds track the actual match
+        # length. A 20%/day net-worth gain is reasonable at 1000 tpd but
+        # unreachable at 60 tpd no matter how well the AI plays.
+        set_active_rubric(
+            scale_rubric_for_turns(RUBRIC, cfg_kwargs.get("turns_per_day"))
+        )
         self.universe = generate_universe(self.config)
         self.num_agents = num_agents
         self.agent_factory = agent_factory or (

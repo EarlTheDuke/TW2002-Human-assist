@@ -394,6 +394,11 @@ class GameConfig(BaseModel):
     one_way_fraction: float = K.DEFAULT_ONE_WAY_FRACTION
     max_days: int = K.VICTORY_DEFAULT_MAX_DAYS
     turns_per_day: int = K.STARTING_TURNS_PER_DAY
+    # Per-player starting credit balance. Defaults to the canonical 20k so a
+    # fresh match feels "authentic TW2002", but we allow overrides so sanity
+    # runs can skip the 2-day trade ramp-up and land on a ship-upgrade /
+    # genesis-deploy decision inside the observable window.
+    starting_credits: int = K.STARTING_CREDITS
     action_delay_s: float = 0.6
     llm_think_cap_s: float = 20.0
     enable_ferrengi: bool = True

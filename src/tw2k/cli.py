@@ -34,6 +34,17 @@ def serve(
     provider: str = typer.Option(None, help="anthropic | openai | xai | deepseek | custom (else auto-detect)"),
     model: str = typer.Option(None, help="Override the LLM model name."),
     no_auto_start: bool = typer.Option(False, help="Don't auto-start the match at boot."),
+    turns_per_day: int = typer.Option(
+        None,
+        help="Override per-player turns_per_day (default ~1000). Use ~80-120 "
+             "for watchable sanity runs that still let agents make visible progress.",
+    ),
+    starting_credits: int = typer.Option(
+        None,
+        help="Override per-player starting credits (default 20,000). Raise to "
+             "75-100k for sanity runs so agents can reach ship-upgrade / Genesis "
+             "decisions inside the observation window.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -68,6 +79,8 @@ def serve(
         provider=provider,
         model=model,
         auto_start=not no_auto_start,
+        turns_per_day=turns_per_day,
+        starting_credits=starting_credits,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 
