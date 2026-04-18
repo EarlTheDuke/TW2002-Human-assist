@@ -223,3 +223,25 @@ def test_js_shortcuts_cover_expected_keys(js_text):
     # handler. Grep is enough.
     for frag in ('"Space"', 'Escape', '"f"', '"F"', '"?"', '"R"', "/^[1-9]$/"):
         assert frag in js_text, f"missing shortcut handling for {frag}"
+
+
+def test_js_players_panel_lookup_matches_html(js_text, html_text):
+    """Regression test: the JS must look up the players panel by an ID
+    that actually exists in index.html.
+
+    Browser verification (2026-04-17) caught the first pass of Phase 1 wiring
+    `playersPanel` in JS while the HTML used `panelPlayers`. This assertion
+    would have failed immediately for that mismatch.
+    """
+    tags = parse_html(html_text)
+    html_ids = ids(tags)
+    # Pull out the IDs referenced for the players panel in app.js.
+    import re
+    refs = set(re.findall(r'getElementById\("([^"]+)"\)', js_text))
+    player_refs = {r for r in refs if "player" in r.lower() or "panelPlayers" in r}
+    # At least one of the IDs the JS looks up for the players panel
+    # must actually exist in the HTML.
+    assert any(r in html_ids for r in player_refs), (
+        f"No players-panel lookup in app.js resolves to an HTML id. "
+        f"JS looked up {sorted(player_refs)}; HTML has {sorted(html_ids)}."
+    )

@@ -48,7 +48,7 @@
   // ----------------- DOM refs ------------------
   const svg = document.getElementById("galaxy");
   const sectorTip = document.getElementById("sectorTip");
-  const playersPanel = document.getElementById("playersPanel");
+  const playersPanel = document.getElementById("panelPlayers") || document.getElementById("playersPanel");
   const messageFeed = document.getElementById("messageFeed");
   const eventFeed = document.getElementById("eventFeed");
   const statusDot = document.getElementById("statusDot");
@@ -569,6 +569,7 @@
 
   function renderPlayers() {
     const container = playersPanel;
+    if (!container) return;
     let header = container.querySelector(".panel-header");
     if (!header) {
       header = document.createElement("div");

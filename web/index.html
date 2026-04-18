@@ -53,7 +53,7 @@
           <div id="sectorTip" class="sector-tip" hidden></div>
         </div>
       </section>
-      <div class="resize-handle resize-horizontal" data-resize="map-events" title="Drag to resize"></div>
+      <div class="resize-handle resize-horizontal" data-resize="map-events" role="separator" aria-orientation="horizontal" aria-label="Resize map / events" title="Drag to resize"></div>
       <section class="panel events-panel" data-panel="events" id="panelEvents">
         <div class="panel-header">
           <h2>Event Feed</h2>
@@ -80,13 +80,13 @@
       </section>
     </div>
 
-    <div class="resize-handle resize-vertical" data-resize="left-right" title="Drag to resize"></div>
+    <div class="resize-handle resize-vertical" data-resize="left-right" role="separator" aria-orientation="vertical" aria-label="Resize columns" title="Drag to resize"></div>
 
     <div class="col col-right" id="colRight">
       <section class="panel players-panel" data-panel="players" id="panelPlayers">
         <!-- header + body injected by app.js -->
       </section>
-      <div class="resize-handle resize-horizontal" data-resize="players-messages" title="Drag to resize"></div>
+      <div class="resize-handle resize-horizontal" data-resize="players-messages" role="separator" aria-orientation="horizontal" aria-label="Resize commanders / transmissions" title="Drag to resize"></div>
       <section class="panel messaging-panel" data-panel="messages" id="panelMessages">
         <div class="panel-header">
           <h2>Transmissions</h2>
