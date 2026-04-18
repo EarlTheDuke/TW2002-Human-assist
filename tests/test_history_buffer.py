@@ -96,3 +96,63 @@ def test_history_samples_track_credit_changes():
     samples = r.history_snapshot()["samples"][pid]
     creds = [s["credits"] for s in samples]
     assert creds == [100, 250, 175]
+
+
+def test_snapshot_planet_block_includes_colonists_and_stockpile():
+    """The spectator UI's per-commander Planets section renders
+    citadel progress, colonist pools, and commodity stockpile. Those
+    three fields all live inside the `planets` array in the server
+    snapshot. If a refactor drops them, the UI silently shows only
+    names + treasury and the spectator can't tell if Citadel L2 is
+    actually progressing.
+
+    Locks the contract: every planet in snapshot()['planets'] must
+    expose `colonists` (dict of commodity->int) and `stockpile`
+    (dict of commodity->int), with the idle-colonists key present
+    in `colonists`.
+    """
+    from tw2k.engine.models import Commodity, Planet, PlanetClass
+
+    r = _fresh_runner()
+    universe = r.state.universe
+    # Seed a fake player-owned planet with a real idle pool + stockpile
+    # so the test asserts non-empty structures, not just presence of keys.
+    universe.planets[99] = Planet(
+        id=99,
+        sector_id=5,
+        name="TestPlanet-99",
+        class_id=PlanetClass.M,
+        owner_id="P1",
+        citadel_level=1,
+        citadel_target=2,
+        colonists={
+            Commodity.FUEL_ORE: 120,
+            Commodity.ORGANICS: 80,
+            Commodity.EQUIPMENT: 40,
+            Commodity.COLONISTS: 500,  # idle pool
+        },
+        stockpile={
+            Commodity.FUEL_ORE: 25,
+            Commodity.ORGANICS: 10,
+            Commodity.EQUIPMENT: 5,
+        },
+        fighters=200,
+        shields=50,
+        treasury=4200,
+    )
+    snap = r.snapshot()
+    planet_blocks = {pl["id"]: pl for pl in snap["planets"]}
+    assert 99 in planet_blocks, "planet 99 must show up in snapshot"
+    block = planet_blocks[99]
+    assert block["name"] == "TestPlanet-99"
+    assert block["owner_id"] == "P1"
+    assert block["citadel_level"] == 1
+    assert block["citadel_target"] == 2
+
+    assert "colonists" in block, "UI planet section needs colonist pool"
+    assert "stockpile" in block, "UI planet section needs stockpile"
+    assert block["colonists"]["colonists"] == 500, "idle pool must surface"
+    assert block["colonists"]["fuel_ore"] == 120
+    assert block["stockpile"]["fuel_ore"] == 25
+    assert block["fighters"] == 200
+    assert block["treasury"] == 4200

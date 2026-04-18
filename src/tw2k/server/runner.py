@@ -687,6 +687,14 @@ class MatchRunner:
                     "fighters": pl.fighters,
                     "shields": pl.shields,
                     "treasury": pl.treasury,
+                    # Idle-colonist pool + per-commodity productive pools.
+                    # Spectators need this to see a commander's Citadel-L2
+                    # progress (needs 2k idle + 10k cr) without parsing the
+                    # event feed. Keys are commodity enum strings.
+                    "colonists": {c.value: pl.colonists.get(c, 0) for c in pl.colonists},
+                    # Commodity stockpile produced on-planet. Separate from
+                    # colonists; these are surplus for trade or build-out.
+                    "stockpile": {c.value: pl.stockpile.get(c, 0) for c in pl.stockpile},
                 }
                 for pl in u.planets.values()
             ],

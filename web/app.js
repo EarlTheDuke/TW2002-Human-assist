@@ -841,6 +841,7 @@
         ${extraEquip.length ? `<div class="equip-row">${extraEquip.join("")}</div>` : ""}
         ${allianceTags ? `<div class="alliance-row">${allianceTags}</div>` : ""}
         ${renderGoalsBlock(p)}
+        ${renderPlanetsBlock(p)}
         ${renderTradesBlock(p)}
         ${renderSparklineRow(p.id, p.color)}
         ${p.scratchpad ? `<div class="thought" title="Agent scratchpad">${esc(p.scratchpad).slice(0, 400)}</div>` : ""}
@@ -911,6 +912,92 @@
         ${line("S", s, "short")}
         ${line("M", m, "medium")}
         ${line("L", l, "long")}
+      </details>
+    `;
+  }
+
+  function renderPlanetsBlock(p) {
+    // Filter the universe-wide planets list down to what this commander
+    // owns. We render only if they own >=1 — keeps early-game cards clean
+    // before anyone has deployed Genesis. The block is closed by default
+    // because most users glance at cards; power users can pop it open.
+    const owned = Array.from(state.planets.values()).filter((pl) => pl.owner_id === p.id);
+    if (!owned.length) return "";
+
+    // Sort by citadel level desc, then by planet id — makes the biggest
+    // investment show first and is stable across ticks.
+    owned.sort((a, b) => (b.citadel_level || 0) - (a.citadel_level || 0) || a.id - b.id);
+
+    const commAbbrev = { fuel_ore: "FO", organics: "Org", equipment: "Eq", colonists: "Col" };
+    const totalIdle = owned.reduce((acc, pl) => acc + ((pl.colonists && pl.colonists.colonists) || 0), 0);
+    const totalCitadels = owned.reduce((acc, pl) => acc + (pl.citadel_level || 0), 0);
+
+    const rows = owned.map((pl) => {
+      const col = pl.colonists || {};
+      const stock = pl.stockpile || {};
+      const idle = col.colonists || 0;
+      // Each commodity pool shows abbreviated qty. The colonists-on-X
+      // pools (fuel_ore/organics/equipment) are productive assignments;
+      // the `colonists` key is the idle pool waiting to be assigned.
+      const assigned = ["fuel_ore", "organics", "equipment"].map((c) => {
+        const n = col[c] || 0;
+        if (!n) return "";
+        return `<span class="planet-pool" title="${n} colonists assigned to ${c}"><i class="cargo-dot ${c}"></i>${commAbbrev[c]} ${fmt(n)}</span>`;
+      }).filter(Boolean).join("");
+      const stocks = ["fuel_ore", "organics", "equipment"].map((c) => {
+        const n = stock[c] || 0;
+        if (!n) return "";
+        return `<span class="planet-stock" title="${n} ${c} stockpiled for sale/build"><i class="cargo-dot ${c}"></i>${commAbbrev[c]} ${fmt(n)}</span>`;
+      }).filter(Boolean).join("");
+
+      // Citadel progress chip. When target > level the citadel is mid-build.
+      const level = pl.citadel_level || 0;
+      const target = pl.citadel_target || 0;
+      const inProgress = target > level;
+      const citadelLabel = inProgress
+        ? `L${level} → L${target}`
+        : `L${level}`;
+      const citadelCls = inProgress ? "citadel-chip building" : "citadel-chip";
+      const citadelTitle = inProgress
+        ? (pl.citadel_complete_day != null
+            ? `upgrading to L${target}, completes day ${pl.citadel_complete_day}`
+            : `upgrading to L${target}`)
+        : (level > 0 ? `Citadel L${level} built` : "no citadel");
+
+      // Defense / treasury line only renders if there's something to show.
+      const defenseBits = [];
+      if (pl.fighters) defenseBits.push(`<span class="planet-def">✈ ${fmt(pl.fighters)}</span>`);
+      if (pl.shields) defenseBits.push(`<span class="planet-def">◈ ${fmt(pl.shields)}</span>`);
+      if (pl.treasury) defenseBits.push(`<span class="planet-def">¢ ${fmt(pl.treasury)}</span>`);
+      const defenseRow = defenseBits.length
+        ? `<div class="planet-defense">${defenseBits.join("")}</div>`
+        : "";
+
+      const classTag = pl.class ? `<span class="planet-class" title="class ${pl.class}">${esc(pl.class)}</span>` : "";
+
+      return `
+        <li class="planet-row">
+          <div class="planet-header">
+            <span class="planet-name" title="${esc(pl.name)}">${esc(pl.name)}</span>
+            ${classTag}
+            <span class="planet-sector" title="sector ${pl.sector_id}">s${pl.sector_id}</span>
+            <span class="${citadelCls}" title="${esc(citadelTitle)}">${citadelLabel}</span>
+          </div>
+          <div class="planet-pools">
+            <span class="planet-idle" title="idle colonists waiting to be assigned">👥 ${fmt(idle)}</span>
+            ${assigned}
+          </div>
+          ${stocks ? `<div class="planet-stocks" title="commodity stockpile produced on-planet">${stocks}</div>` : ""}
+          ${defenseRow}
+        </li>
+      `;
+    }).join("");
+
+    const summary = `Planets (${owned.length}) · ${totalCitadels} Cit · ${fmt(totalIdle)} idle`;
+    return `
+      <details class="commander-planets">
+        <summary>${summary}</summary>
+        <ul class="planet-list">${rows}</ul>
       </details>
     `;
   }
