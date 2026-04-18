@@ -35,6 +35,32 @@ AGENT_COLORS = [
 ]
 
 
+def _is_day_done(player) -> bool:
+    """Player has no meaningful actions left for the day.
+
+    Classic TW2002 deducts 3 turns per warp for most ships. If a player has
+    `turns_remaining < ship.turns_per_warp` AND can't afford a trade (cost=3),
+    they can only wait/scan — treat as day-done so the server doesn't burn
+    LLM calls on an agent that can't usefully move. This is the safety net
+    that prevents an infinite out-of-turns loop (bug: D1·56..D1·91 flooding).
+    """
+    from ..engine import constants as K
+
+    remaining = player.turns_per_day - player.turns_today
+    if remaining <= 0:
+        return True
+    ship = getattr(player, "ship", None)
+    warp_cost = K.TURN_COST["warp"]
+    if ship is not None:
+        spec = K.SHIP_SPECS.get(ship.ship_class.value)
+        if spec and "turns_per_warp" in spec:
+            warp_cost = int(spec["turns_per_warp"])
+    trade_cost = K.TURN_COST["trade"]
+    # If the agent can't warp AND can't trade, everything it could do is a
+    # stall (wait/scan/transmit). Shut the day down so we tick forward.
+    return remaining < warp_cost and remaining < trade_cost
+
+
 @dataclass
 class AgentSpec:
     player_id: str
@@ -180,10 +206,10 @@ class MatchRunner:
                     self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
                     continue
 
-                if player.turns_today >= player.turns_per_day:
+                if _is_day_done(player):
                     # This player is done for the day. Advance to next; if all are done, tick day.
                     all_done = all(
-                        universe.players[a.player_id].turns_today >= universe.players[a.player_id].turns_per_day
+                        _is_day_done(universe.players[a.player_id])
                         or not universe.players[a.player_id].alive
                         for a in agents
                     )
@@ -253,6 +279,40 @@ class MatchRunner:
                             summary=f"{player.name} ends the day early ({remaining} turns skipped).",
                         )
                         waits[agent.player_id] = 0
+
+                # OUT-OF-TURNS streak guard: if the agent repeatedly submits
+                # actions that cost more turns than it has left, force-end its
+                # day. Without this the server would loop forever asking Grok
+                # to try again, burning LLM budget and flooding the feed
+                # (observed bug: 36 straight "out of turns" errors on one day).
+                oot_streak = getattr(self, "_oot_streak", {})
+                failed_oot = (
+                    not result.ok
+                    and isinstance(result.error, str)
+                    and "out of turns" in result.error.lower()
+                )
+                if failed_oot:
+                    oot_streak[agent.player_id] = oot_streak.get(agent.player_id, 0) + 1
+                else:
+                    oot_streak[agent.player_id] = 0
+                self._oot_streak = oot_streak
+                if oot_streak.get(agent.player_id, 0) >= 2:
+                    remaining = player.turns_per_day - player.turns_today
+                    if remaining > 0:
+                        player.turns_today = player.turns_per_day
+                        universe.emit(
+                            EventKind.AGENT_THOUGHT,
+                            actor_id=agent.player_id,
+                            sector_id=player.sector_id,
+                            payload={
+                                "thought": (
+                                    f"Out of turns ({remaining} left, but needed more) — "
+                                    f"ending day to avoid stall."
+                                )
+                            },
+                            summary=f"{player.name} ends the day (insufficient turns for next action).",
+                        )
+                    oot_streak[agent.player_id] = 0
 
                 await self._flush_events()
                 self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)

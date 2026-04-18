@@ -1231,3 +1231,83 @@ class TestPhaseGObservationSurface:
             assert key in self_block, f"self.{key} must ship to the LLM"
         assert isinstance(self_block["net_worth"], int)
         assert self_block["net_worth"] >= 50_000, "net_worth >= credits at start"
+
+
+class TestPhaseHTurnsStarvation:
+    """Regression tests for the D1·56..91 infinite "out of turns" loop.
+
+    Bug: CargoTran has turns_per_warp=3, so at turns_today=78 (2 remaining)
+    the player couldn't warp, couldn't trade (cost 3), but the server kept
+    asking them to act because 78 < 80. Grok retried warp 36 times in a row.
+    """
+
+    def test_h1_is_day_done_catches_low_turns_for_slow_ship(self):
+        """With CargoTran (3/warp) and only 2 turns left, the server must
+        treat the day as done even though turns_today < turns_per_day."""
+        from tw2k.engine.models import ShipClass
+        from tw2k.server.runner import _is_day_done
+
+        u, (a, *_) = _make_universe(seed=7001)
+        a.ship.ship_class = ShipClass.CARGOTRAN
+        a.turns_per_day = 80
+        a.turns_today = 78  # 2 left — can't warp (needs 3), can't trade (needs 3)
+        assert _is_day_done(a), (
+            "agent with <3 turns in a CargoTran (warp=3, trade=3) should "
+            "be treated as day-done; otherwise the server spins forever."
+        )
+
+    def test_h2_is_day_done_false_when_agent_can_still_warp(self):
+        from tw2k.engine.models import ShipClass
+        from tw2k.server.runner import _is_day_done
+
+        u, (a, *_) = _make_universe(seed=7002)
+        a.ship.ship_class = ShipClass.CARGOTRAN
+        a.turns_per_day = 80
+        a.turns_today = 77  # 3 left — exactly enough to warp
+        assert not _is_day_done(a), "agent with 3 turns left in CargoTran can still warp"
+
+    def test_h3_is_day_done_respects_scout_marauder_fast_warp(self):
+        """Scout Marauder has turns_per_warp=2. Should still be able to warp
+        with 2 turns left — the helper must not over-trigger for fast ships."""
+        from tw2k.engine.models import ShipClass
+        from tw2k.server.runner import _is_day_done
+
+        u, (a, *_) = _make_universe(seed=7003)
+        a.ship.ship_class = ShipClass.SCOUT_MARAUDER
+        a.turns_per_day = 80
+        a.turns_today = 78
+        assert not _is_day_done(a), "Scout Marauder (warp=2) with 2 turns left can still warp"
+
+    def test_h4_action_hint_warns_when_cannot_warp(self):
+        """The action_hint must loudly tell the LLM that warp is unaffordable
+        so it stops spamming warp attempts. Without this warning, Grok burned
+        36 LLM calls in a row retrying the same impossible action."""
+        from tw2k.engine.models import ShipClass
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=7004)
+        a.ship.ship_class = ShipClass.CARGOTRAN
+        a.turns_per_day = 80
+        a.turns_today = 78
+        obs = build_observation(u, a.id)
+        assert "LOW TURNS" in obs.action_hint, (
+            "action_hint must include a LOW TURNS warning when "
+            "turns_remaining < warp_cost. Full hint:\n" + obs.action_hint
+        )
+        assert "warp" in obs.action_hint.lower()
+        assert "wait" in obs.action_hint.lower()
+
+    def test_h5_action_hint_silent_when_turns_plentiful(self):
+        """Early in the day the warning should NOT fire — otherwise the hint
+        stream becomes noise."""
+        from tw2k.engine.models import ShipClass
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=7005)
+        a.ship.ship_class = ShipClass.CARGOTRAN
+        a.turns_per_day = 80
+        a.turns_today = 0
+        obs = build_observation(u, a.id)
+        assert "LOW TURNS" not in obs.action_hint, (
+            "LOW TURNS warning should not fire when turns_remaining >= warp_cost"
+        )

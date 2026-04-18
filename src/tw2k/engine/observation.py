@@ -440,6 +440,37 @@ def _action_hint(
         "Verbs available: warp trade scan wait + 29 more (see system prompt)."
     )
 
+    # Low-turns warning: loudly tell the agent what it CANNOT do this turn.
+    # Without this, agents (esp. CargoTran with 3-turns/warp) repeatedly
+    # submit warps when turns_remaining < 3 and the engine rejects them,
+    # which flooded the feed with 30+ consecutive "out of turns" errors.
+    turns_rem: int | None = None
+    if player is not None:
+        tpd = getattr(player, "turns_per_day", None)
+        tod = getattr(player, "turns_today", None)
+        if isinstance(tpd, int) and isinstance(tod, int):
+            turns_rem = tpd - tod
+    ship = getattr(player, "ship", None) if player is not None else None
+    warp_cost = K.TURN_COST.get("warp", 2)
+    if ship is not None:
+        spec = K.SHIP_SPECS.get(getattr(ship.ship_class, "value", ""))
+        if spec and "turns_per_warp" in spec:
+            warp_cost = int(spec["turns_per_warp"])
+    trade_cost = K.TURN_COST.get("trade", 3)
+    if isinstance(turns_rem, int) and turns_rem >= 0:
+        blocked: list[str] = []
+        if turns_rem < warp_cost:
+            blocked.append(f"warp (needs {warp_cost})")
+        if turns_rem < trade_cost:
+            blocked.append(f"trade (needs {trade_cost})")
+        if blocked:
+            hints.append(
+                f"LOW TURNS — turns_remaining={turns_rem}. "
+                f"Cannot: {', '.join(blocked)}. "
+                f"End the day with `wait` (burns 1 turn) or do a 1-turn action "
+                f"like `scan` / `transmit`. Do NOT spam warp/trade."
+            )
+
     # Movement
     warps_out = sector_info.get("warps_out") or []
     if warps_out:
