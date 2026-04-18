@@ -1338,9 +1338,11 @@
       }
       if (
         e.key === "?" ||
+        e.key === "/" ||
         (e.shiftKey && e.key === "/") ||
         (e.shiftKey && e.code === "Slash") ||
-        e.code === "Slash" && e.shiftKey
+        (e.code === "Slash" && e.shiftKey) ||
+        e.code === "Slash"
       ) {
         e.preventDefault();
         toggleShortcutsToast();
@@ -1663,6 +1665,16 @@
     initShortcuts();
     initMapControls();
     initDrawer();
+    initHelpButton();
+  }
+
+  function initHelpButton() {
+    const btn = document.getElementById("helpBtn");
+    if (!btn) return;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleShortcutsToast();
+    });
   }
 
   // Kick off

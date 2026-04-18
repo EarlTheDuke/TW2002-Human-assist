@@ -132,8 +132,13 @@ class HeadlessRunner:
         out_dir: Path | None = None,
         gate: bool = True,
         verbose: bool = True,
+        turns_per_day: int | None = None,
     ):
-        self.config = GameConfig(seed=seed, universe_size=universe_size, max_days=max_days)
+        self.turns_per_day_override = turns_per_day
+        cfg_kwargs = {"seed": seed, "universe_size": universe_size, "max_days": max_days}
+        if turns_per_day is not None:
+            cfg_kwargs["turns_per_day"] = turns_per_day
+        self.config = GameConfig(**cfg_kwargs)
         self.universe = generate_universe(self.config)
         self.num_agents = num_agents
         self.agent_factory = agent_factory or (
@@ -171,6 +176,8 @@ class HeadlessRunner:
             pid = f"P{i+1}"
             name = f"Agent-{i+1}"
             player = Player(id=pid, name=name, ship=Ship())
+            if self.turns_per_day_override is not None:
+                player.turns_per_day = self.turns_per_day_override
             self.universe.players[pid] = player
             self.universe.sectors[1].occupant_ids.append(pid)
             player.known_sectors.add(1)
@@ -478,6 +485,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-artifacts", action="store_true", help="Skip writing artifacts.")
     ap.add_argument("--no-gate", action="store_true", help="Don't exit 1 on rubric miss.")
     ap.add_argument("--quiet", action="store_true", help="Suppress live stdout.")
+    ap.add_argument(
+        "--turns-per-day",
+        type=int,
+        default=None,
+        help=(
+            "Override the per-player turns_per_day. Lower values (e.g. 40) make "
+            "LLM sanity matches finish in minutes instead of hours by forcing "
+            "end-of-day rollover after fewer actions."
+        ),
+    )
     args = ap.parse_args(argv)
 
     try:
@@ -491,6 +508,7 @@ def main(argv: list[str] | None = None) -> int:
             out_dir=out_dir,
             gate=not args.no_gate,
             verbose=not args.quiet,
+            turns_per_day=args.turns_per_day,
         )
         t0 = time.time()
         summary = asyncio.run(runner.run())

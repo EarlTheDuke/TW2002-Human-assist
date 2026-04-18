@@ -369,6 +369,20 @@ def test_phase4_state_has_history_map(js_text):
     assert "history: new Map(" in js_text, "state.history must be a Map"
 
 
+def test_help_button_present_and_wired(html_text, js_text):
+    """The top-bar `?` help button + the `/` keyboard fallback are the two
+    user-facing paths into the shortcuts toast; at least one of them has to
+    survive automation tests. The button is the click path, `initHelpButton`
+    is the JS hookup, and the `/` branch is the keyboard fallback."""
+    tags = parse_html(html_text)
+    html_ids = ids(tags)
+    assert "helpBtn" in html_ids, "index.html must expose the #helpBtn help button"
+    assert "initHelpButton" in js_text, "app.js must wire up the help button"
+    # `/` (solo) must route to the shortcuts toast so headless automators that
+    # can't reliably send Shift+/ still have a way in.
+    assert 'e.key === "/"' in js_text, "`/` keyboard fallback missing"
+
+
 def test_js_players_panel_lookup_matches_html(js_text, html_text):
     """Regression test: the JS must look up the players panel by an ID
     that actually exists in index.html.
