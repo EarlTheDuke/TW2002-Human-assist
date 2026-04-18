@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TW2K-AI — Spectator</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-mark">◈</span>
+      <div>
+        <h1>TW2K-AI</h1>
+        <p class="tagline">TradeWars 2002 · AI Exhibition Match</p>
+      </div>
+    </div>
+    <div class="match-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusLabel">connecting…</span>
+      <span class="pill" id="dayLabel">Day —</span>
+      <span class="pill" id="tickLabel">Tick —</span>
+    </div>
+    <div class="controls">
+      <button id="pauseBtn" title="Pause / resume">⏸</button>
+      <div class="speed-group" role="group" aria-label="Speed">
+        <button data-speed="0.5">0.5×</button>
+        <button data-speed="1" class="active">1×</button>
+        <button data-speed="2">2×</button>
+        <button data-speed="5">5×</button>
+      </div>
+      <button id="restartBtn" title="Restart match">⟳ New Match</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel map-panel">
+      <div class="panel-header">
+        <h2>Galaxy <span class="muted">· 1000 sectors</span></h2>
+        <div class="map-legend">
+          <span><i class="dot port"></i> Port</span>
+          <span><i class="dot fed"></i> FedSpace</span>
+          <span><i class="dot planet"></i> Planet</span>
+          <span><i class="dot stardock"></i> StarDock</span>
+        </div>
+      </div>
+      <div class="map-wrap">
+        <svg id="galaxy" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="sectorTip" class="sector-tip" hidden></div>
+      </div>
+    </section>
+
+    <aside class="side-column">
+      <section class="panel players-panel" id="playersPanel"></section>
+
+      <section class="panel messaging-panel">
+        <div class="panel-header">
+          <h2>Transmissions</h2>
+        </div>
+        <div class="messages" id="messageFeed"></div>
+      </section>
+    </aside>
+
+    <section class="panel events-panel">
+      <div class="panel-header">
+        <h2>Event Feed</h2>
+        <div class="filter-group">
+          <label><input type="checkbox" data-filter="combat" checked> Combat</label>
+          <label><input type="checkbox" data-filter="trade" checked> Trade</label>
+          <label><input type="checkbox" data-filter="move" checked> Movement</label>
+          <label><input type="checkbox" data-filter="thought" checked> Thoughts</label>
+          <label><input type="checkbox" data-filter="system" checked> System</label>
+          <label><input type="checkbox" data-filter="diplomacy" checked> Diplomacy</label>
+        </div>
+      </div>
+      <div class="replay-bar">
+        <button id="replayLive" title="Jump to live" class="replay-btn live">⊙ LIVE</button>
+        <input id="replayScrub" type="range" min="0" max="0" value="0" step="1" />
+        <span id="replayLabel" class="replay-label">live</span>
+      </div>
+      <ol id="eventFeed" class="event-feed"></ol>
+    </section>
+  </main>
+
+  <div id="gameOverModal" class="modal" hidden>
+    <div class="modal-card">
+      <h2>Game Over</h2>
+      <p id="gameOverSummary"></p>
+      <button id="modalClose">Close</button>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

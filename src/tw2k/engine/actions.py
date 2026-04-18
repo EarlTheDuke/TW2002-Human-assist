@@ -1,0 +1,57 @@
+"""Action schema — the contract between agents and the engine."""
+
+from __future__ import annotations
+
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class ActionKind(str, Enum):
+    WARP = "warp"
+    TRADE = "trade"
+    SCAN = "scan"
+    DEPLOY_FIGHTERS = "deploy_fighters"
+    DEPLOY_MINES = "deploy_mines"
+    ATTACK = "attack"
+    LAND_PLANET = "land_planet"
+    LIFTOFF = "liftoff"
+    ASSIGN_COLONISTS = "assign_colonists"
+    BUILD_CITADEL = "build_citadel"
+    DEPLOY_GENESIS = "deploy_genesis"
+    PLOT_COURSE = "plot_course"
+    PHOTON_MISSILE = "photon_missile"
+    DEPLOY_ATOMIC = "deploy_atomic"
+    QUERY_LIMPETS = "query_limpets"
+    PROBE = "probe"
+    CORP_DEPOSIT = "corp_deposit"
+    CORP_WITHDRAW = "corp_withdraw"
+    CORP_MEMO = "corp_memo"
+    PROPOSE_ALLIANCE = "propose_alliance"
+    ACCEPT_ALLIANCE = "accept_alliance"
+    BREAK_ALLIANCE = "break_alliance"
+    BUY_SHIP = "buy_ship"
+    BUY_EQUIP = "buy_equip"
+    CORP_CREATE = "corp_create"
+    CORP_INVITE = "corp_invite"
+    CORP_JOIN = "corp_join"
+    CORP_LEAVE = "corp_leave"
+    HAIL = "hail"
+    BROADCAST = "broadcast"
+    WAIT = "wait"
+
+
+class Action(BaseModel):
+    kind: ActionKind
+    args: dict[str, Any] = Field(default_factory=dict)
+    thought: str = ""
+    scratchpad_update: str | None = None
+
+
+class ActionResult(BaseModel):
+    ok: bool
+    error: str | None = None
+    turns_spent: int = 0
+    # Event sequence numbers emitted as part of applying this action (for callers to broadcast)
+    event_seqs: list[int] = Field(default_factory=list)
