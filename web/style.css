@@ -866,6 +866,83 @@ svg.spark { display: block; }
   font-family: "JetBrains Mono", "Consolas", monospace;
 }
 .planet-def { font-variant-numeric: tabular-nums; }
+.planet-stock.zero {
+  opacity: 0.35;
+}
+
+/* Citadel ladder — visualizes the 6-tier progression in a single row.
+   done = solid amber, building = pulsing cyan, next = dashed outline,
+   future = dim. Gives spectators an at-a-glance "how far along" bar. */
+.citadel-ladder {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+}
+.citadel-tier {
+  flex: 1;
+  text-align: center;
+  padding: 2px 0;
+  border-radius: 3px;
+  background: rgba(40, 50, 75, 0.35);
+  color: rgba(180, 195, 220, 0.35);
+  border: 1px solid transparent;
+  cursor: help;
+}
+.citadel-tier.done {
+  background: rgba(243, 195, 78, 0.22);
+  color: #f3c34e;
+  font-weight: 600;
+}
+.citadel-tier.building {
+  background: rgba(110, 231, 255, 0.18);
+  color: #6ee7ff;
+  font-weight: 600;
+  border-color: rgba(110, 231, 255, 0.5);
+  animation: citadel-building 1.4s ease-in-out infinite;
+}
+.citadel-tier.next {
+  border: 1px dashed rgba(243, 195, 78, 0.45);
+  color: rgba(243, 195, 78, 0.75);
+}
+.citadel-tier.future { opacity: 0.55; }
+
+.planet-next-tier {
+  margin-top: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+  background: rgba(40, 50, 75, 0.3);
+  border-left: 2px solid rgba(243, 195, 78, 0.5);
+  border-radius: 3px;
+  line-height: 1.4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+.planet-next-tier.building-hint {
+  border-left-color: rgba(110, 231, 255, 0.6);
+}
+.planet-next-tier .nt-label {
+  font-weight: 600;
+  color: #f3c34e;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.planet-next-tier.building-hint .nt-label { color: #6ee7ff; }
+.planet-next-tier .nt-cost {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.planet-next-tier .nt-perk {
+  font-style: italic;
+  color: var(--text-faint);
+  flex-basis: 100%;
+  font-size: 9.5px;
+}
 
 /* ---------- Event feed ---------- */
 .events-panel { display: flex; flex-direction: column; }

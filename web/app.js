@@ -972,31 +972,29 @@
     const totalIdle = owned.reduce((acc, pl) => acc + ((pl.colonists && pl.colonists.colonists) || 0), 0);
     const totalCitadels = owned.reduce((acc, pl) => acc + (pl.citadel_level || 0), 0);
 
+    // Citadel tier table mirrors engine K.CITADEL_TIER_COST (1..6).
+    // Kept in sync with constants.py so the UI can show "next tier costs X".
+    // [credits, colonists, days_to_build, perks]
+    const CITADEL_TIERS = [
+      { cr:   5000, col:  1000, days: 1, perk: "Basic fortifications" },
+      { cr:  10000, col:  2000, days: 1, perk: "Quasar Cannons — free planet fighters + shields" },
+      { cr:  20000, col:  4000, days: 2, perk: "Transwarp emissions damping" },
+      { cr:  40000, col:  8000, days: 2, perk: "Genesis torpedoes manufactured on-site" },
+      { cr:  80000, col: 16000, days: 3, perk: "Planetary Interdictor — blocks hostile warps" },
+      { cr: 160000, col: 32000, days: 4, perk: "MAX — full fortress" },
+    ];
+
     const rows = owned.map((pl) => {
       const col = pl.colonists || {};
       const stock = pl.stockpile || {};
       const idle = col.colonists || 0;
-      // Each commodity pool shows abbreviated qty. The colonists-on-X
-      // pools (fuel_ore/organics/equipment) are productive assignments;
-      // the `colonists` key is the idle pool waiting to be assigned.
-      const assigned = ["fuel_ore", "organics", "equipment"].map((c) => {
-        const n = col[c] || 0;
-        if (!n) return "";
-        return `<span class="planet-pool" title="${n} colonists assigned to ${c}"><i class="cargo-dot ${c}"></i>${commAbbrev[c]} ${fmt(n)}</span>`;
-      }).filter(Boolean).join("");
-      const stocks = ["fuel_ore", "organics", "equipment"].map((c) => {
-        const n = stock[c] || 0;
-        if (!n) return "";
-        return `<span class="planet-stock" title="${n} ${c} stockpiled for sale/build"><i class="cargo-dot ${c}"></i>${commAbbrev[c]} ${fmt(n)}</span>`;
-      }).filter(Boolean).join("");
-
-      // Citadel progress chip. When target > level the citadel is mid-build.
       const level = pl.citadel_level || 0;
       const target = pl.citadel_target || 0;
       const inProgress = target > level;
-      const citadelLabel = inProgress
-        ? `L${level} → L${target}`
-        : `L${level}`;
+      const totalCol = (col.fuel_ore || 0) + (col.organics || 0) + (col.equipment || 0) + idle;
+
+      // --- Citadel chip header ---
+      const citadelLabel = inProgress ? `L${level} → L${target}` : `L${level}`;
       const citadelCls = inProgress ? "citadel-chip building" : "citadel-chip";
       const citadelTitle = inProgress
         ? (pl.citadel_complete_day != null
@@ -1004,14 +1002,56 @@
             : `upgrading to L${target}`)
         : (level > 0 ? `Citadel L${level} built` : "no citadel");
 
-      // Defense / treasury line only renders if there's something to show.
-      const defenseBits = [];
-      if (pl.fighters) defenseBits.push(`<span class="planet-def">✈ ${fmt(pl.fighters)}</span>`);
-      if (pl.shields) defenseBits.push(`<span class="planet-def">◈ ${fmt(pl.shields)}</span>`);
-      if (pl.treasury) defenseBits.push(`<span class="planet-def">¢ ${fmt(pl.treasury)}</span>`);
-      const defenseRow = defenseBits.length
-        ? `<div class="planet-defense">${defenseBits.join("")}</div>`
-        : "";
+      // --- Per-tier ladder: show each L1..L6 with cost/status ---
+      const ladderCells = CITADEL_TIERS.map((t, i) => {
+        const tierNum = i + 1;
+        let state = "future";
+        if (tierNum <= level) state = "done";
+        else if (tierNum === target && inProgress) state = "building";
+        else if (tierNum === level + 1) state = "next";
+        return `<span class="citadel-tier ${state}" title="L${tierNum}: ${t.cr.toLocaleString()}cr + ${t.col.toLocaleString()} col, ${t.days}d — ${esc(t.perk)}">L${tierNum}</span>`;
+      }).join("");
+
+      // --- Next-tier cost hint (if still upgradable and not already building) ---
+      let nextTierHint = "";
+      if (level < 6 && !inProgress) {
+        const next = CITADEL_TIERS[level];
+        nextTierHint = `<div class="planet-next-tier" title="cost + build time for next citadel level">
+          <span class="nt-label">Next L${level + 1}:</span>
+          <span class="nt-cost">${fmt(next.cr)}cr + ${fmt(next.col)} col · ${next.days}d</span>
+          <span class="nt-perk">${esc(next.perk)}</span>
+        </div>`;
+      } else if (inProgress && pl.citadel_complete_day != null) {
+        const daysLeft = Math.max(0, pl.citadel_complete_day - (state.day || 1));
+        nextTierHint = `<div class="planet-next-tier building-hint" title="citadel construction in progress">
+          <span class="nt-label">Building L${target}:</span>
+          <span class="nt-cost">ETA day ${pl.citadel_complete_day}${daysLeft > 0 ? ` (${daysLeft}d left)` : " (completing)"}</span>
+        </div>`;
+      }
+
+      // --- Colonist pools: ALL four (fuel_ore, organics, equipment, idle) always shown ---
+      const assignedPools = ["fuel_ore", "organics", "equipment"].map((c) => {
+        const n = col[c] || 0;
+        const pct = totalCol > 0 ? Math.round((n / totalCol) * 100) : 0;
+        return `<span class="planet-pool" title="${n} colonists producing ${c} (${pct}% of total)">
+          <i class="cargo-dot ${c}"></i>${commAbbrev[c]} ${fmt(n)}
+        </span>`;
+      }).join("");
+
+      // --- Stockpile: ALL three commodities always shown, zeros muted ---
+      const stockCells = ["fuel_ore", "organics", "equipment"].map((c) => {
+        const n = stock[c] || 0;
+        const cls = n > 0 ? "planet-stock" : "planet-stock zero";
+        return `<span class="${cls}" title="${n} ${c} stockpiled on planet"><i class="cargo-dot ${c}"></i>${commAbbrev[c]} ${fmt(n)}</span>`;
+      }).join("");
+
+      // --- Defense / economy line — always rendered with all three stats ---
+      const defenseRow = `<div class="planet-defense">
+        <span class="planet-def" title="planet defensive fighters">✈ ${fmt(pl.fighters || 0)}</span>
+        <span class="planet-def" title="planet shields">◈ ${fmt(pl.shields || 0)}</span>
+        <span class="planet-def" title="planet treasury (credits held by planet, usable for citadel builds)">¢ ${fmt(pl.treasury || 0)}</span>
+        <span class="planet-def" title="total population (productive + idle)">👥 ${fmt(totalCol)}</span>
+      </div>`;
 
       const classTag = pl.class ? `<span class="planet-class" title="class ${pl.class}">${esc(pl.class)}</span>` : "";
 
@@ -1023,11 +1063,15 @@
             <span class="planet-sector" title="sector ${pl.sector_id}">s${pl.sector_id}</span>
             <span class="${citadelCls}" title="${esc(citadelTitle)}">${citadelLabel}</span>
           </div>
-          <div class="planet-pools">
-            <span class="planet-idle" title="idle colonists waiting to be assigned">👥 ${fmt(idle)}</span>
-            ${assigned}
+          <div class="citadel-ladder" title="Citadel tiers — done / building / next / future">
+            ${ladderCells}
           </div>
-          ${stocks ? `<div class="planet-stocks" title="commodity stockpile produced on-planet">${stocks}</div>` : ""}
+          ${nextTierHint}
+          <div class="planet-pools">
+            <span class="planet-idle" title="idle colonists waiting to be assigned to production or citadel build">💤 ${fmt(idle)} idle</span>
+            ${assignedPools}
+          </div>
+          <div class="planet-stocks" title="commodity stockpile produced on-planet (available for citadel build, planet trade, or ferry)">${stockCells}</div>
           ${defenseRow}
         </li>
       `;
