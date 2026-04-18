@@ -122,11 +122,14 @@ every observation.
   claim on day 2 when net_worth > 100k, so the heuristic baseline also
   exercises the full stack. This will catch future regressions where the
   claim path breaks even when the LLM isn't flaky.
-- **Real Terra port (optional, nostalgia).** Authentic TW2002 had a unique
-  Sol/Terra port that sold Colonists for a price. We sidestepped that by
-  seeding Genesis planets directly, which is simpler and preserves all the
-  downstream mechanics. Revisit if we want the classic "race to sector 1
-  with a Colonial Transport" subgame.
+- ~~**Real Terra port (optional, nostalgia).**~~ **SHIPPED.** Colonists are
+  now sold at StarDock via `buy_equip item=colonists qty=<N>` at 10 cr each
+  (classic TW2002 price). They load into ship cargo and are deposited on
+  owned planets via `assign_colonists from=ship to=<pool>`. The Genesis
+  seed population still exists as a safety net so L1 is immediately
+  buildable, but past L1 the authentic Terra-ferry loop is how you scale.
+  Regression tests: `test_a_buy_colonists_at_stardock_and_ferry_to_own_planet`
+  and `test_a_buy_colonists_rejects_if_cargo_full` in `tests/test_phase_abc.py`.
 - **Structured `last_action_error` field.** Today we surface it via the
   `action_hint` string. A dedicated `Observation.last_action_error` field
   (cleared on next successful action) would be more reliable for model

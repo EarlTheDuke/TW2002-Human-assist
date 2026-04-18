@@ -389,9 +389,20 @@ def _action_hint(
     # StarDock-specific — the set of verbs that ONLY work at sector 1
     sector_id = sector_info.get("id")
     if sector_id == K.STARDOCK_SECTOR:
-        hints.append(
-            "At StarDock: buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/genesis/photon_missile/ether_probe), corp_create legal here."
-        )
+        bits = [
+            "At StarDock: buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/"
+            "genesis/photon_missile/ether_probe/colonists), corp_create legal here."
+        ]
+        # Concrete colonist-ferry nudge: the player can load holds with
+        # colonists for 10 cr each and fly them out to their own planet.
+        ship = getattr(player, "ship", None) if player is not None else None
+        if ship is not None:
+            free = getattr(ship, "cargo_free", None)
+            if isinstance(free, int) and free > 0:
+                bits.append(
+                    f"Cargo free={free} — `buy_equip item=colonists qty={free}` loads Terra colonists at 10 cr each."
+                )
+        hints.append(" ".join(bits))
 
     # Ship inventory → actionable verbs
     if player is not None:

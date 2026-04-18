@@ -267,11 +267,21 @@ class HeadlessRunner:
         #       `stuck_limit` iterations, force a tick.
         #   (b) hard per-day iteration cap: no day may take more than
         #       `max_iters_per_day` total actions.
-        stuck_limit = 200 * self.num_agents
+        # Stall guards scale with day length so short LLM sanity matches
+        # (turns_per_day=20) don't wait 400 failing actions before forcing
+        # rollover. 6x per-agent per-day is enough headroom for zero-cost
+        # verbs (scan, trade haggles, hails) while still cutting off genuine
+        # stuck-LLM loops in reasonable wall time.
+        stuck_limit = max(20, self.config.turns_per_day * self.num_agents // 2)
         stuck_counter = 0
         last_total_turns = 0
-        max_iters_per_day = self.config.turns_per_day * self.num_agents * 4
+        max_iters_per_day = max(40, self.config.turns_per_day * self.num_agents * 6)
         day_iters = 0
+        # Per-player consecutive-failure counter. If an agent issues N failing
+        # actions in a row we force-WAIT one of their turns to unstick the
+        # player without letting them spin forever at ~10s/call.
+        fail_streak: dict[str, int] = {a.player_id: 0 for a in agents}
+        fail_streak_limit = 4
 
         def total_turns_today() -> int:
             return sum(
@@ -315,18 +325,52 @@ class HeadlessRunner:
             except Exception as e:
                 action = Action(kind=ActionKind.END_TURN, thought=f"agent error: {e}")
             act_dt = time.time() - t_act
-            apply_action(self.universe, agent.player_id, action)
+            result = apply_action(self.universe, agent.player_id, action)
             self.handle_events(self.drain_events())
+
+            # Track consecutive failures per-player so a flailing LLM doesn't
+            # burn 10 minutes of wall time re-issuing the same invalid verb.
+            action_kind = getattr(action.kind, "value", str(action.kind))
+            if not result.ok:
+                fail_streak[agent.player_id] = fail_streak.get(agent.player_id, 0) + 1
+                # Surface failures to the progress stream immediately — crucial
+                # for diagnosing "why is the LLM not making money?" without
+                # waiting for the full events.jsonl dump at match end.
+                self.log(
+                    f"[fail] step={steps} {agent.player_id} {action_kind} "
+                    f"-> {result.error} (streak={fail_streak[agent.player_id]})"
+                )
+                if fail_streak[agent.player_id] >= fail_streak_limit:
+                    p = self.universe.players[agent.player_id]
+                    forced_wait = Action(kind=ActionKind.WAIT)
+                    wait_res = apply_action(self.universe, agent.player_id, forced_wait)
+                    self.handle_events(self.drain_events())
+                    self.log(
+                        f"[unstick] step={steps} {agent.player_id} had "
+                        f"{fail_streak_limit} consecutive failures; forced WAIT "
+                        f"(ok={wait_res.ok}, turns={p.turns_today}/{p.turns_per_day})"
+                    )
+                    fail_streak[agent.player_id] = 0
+            else:
+                fail_streak[agent.player_id] = 0
 
             if steps % heartbeat_every == 0:
                 elapsed = time.time() - t_start
                 p = self.universe.players[agent.player_id]
+                ok_tag = "ok" if result.ok else f"FAIL:{result.error}"
                 self.log(
                     f"[progress] step={steps} day={self.universe.day} "
                     f"{agent.player_id}@sector{p.sector_id} "
                     f"credits={p.credits} turns={p.turns_today}/{p.turns_per_day} "
-                    f"last_act_dt={act_dt:.1f}s elapsed={elapsed:.0f}s"
+                    f"act={action_kind}({ok_tag}) "
+                    f"dt={act_dt:.1f}s elapsed={elapsed:.0f}s"
                 )
+
+            # Incrementally checkpoint events / log every 25 steps so the
+            # artifacts/<run>/events.jsonl is inspectable mid-match (helpful
+            # for long LLM runs where the final dump might be an hour away).
+            if steps % 25 == 0:
+                self._write_artifacts(summary=None)
 
             day_iters += 1
             now_total = total_turns_today()
@@ -403,7 +447,7 @@ class HeadlessRunner:
             "generated_at": datetime.now(UTC).isoformat(),
         }
 
-    def _write_artifacts(self, summary: dict) -> None:
+    def _write_artifacts(self, summary: dict | None = None) -> None:
         if self.out_dir is None:
             return
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -414,9 +458,10 @@ class HeadlessRunner:
         (self.out_dir / "scorecards.txt").write_text(
             "\n".join(self._scorecard_lines) + "\n", encoding="utf-8"
         )
-        (self.out_dir / "summary.json").write_text(
-            json.dumps(summary, indent=2, default=_json_default), encoding="utf-8"
-        )
+        if summary is not None:
+            (self.out_dir / "summary.json").write_text(
+                json.dumps(summary, indent=2, default=_json_default), encoding="utf-8"
+            )
         (self.out_dir / "run.log").write_text(
             "\n".join(self._log_lines) + "\n", encoding="utf-8"
         )

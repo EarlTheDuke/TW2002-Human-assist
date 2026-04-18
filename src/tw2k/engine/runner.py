@@ -1076,6 +1076,10 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "ether_probes": K.ETHER_PROBE_COST,
         "genesis": K.GENESIS_TORPEDO_COST,
         "holds": K.SHIP_SPECS[player.ship.ship_class.value]["base_hold_cost"],
+        # Colonists are sold by Terra (classic TW2002: ~10 cr/unit). StarDock
+        # doubles as the Federation's colonist exchange here — fold them into
+        # buy_equip so the ferry-to-your-planet loop actually exists in game.
+        "colonists": K.COLONIST_PRICE,
     }
     unit = prices.get(item or "")
     if unit is None:
@@ -1110,6 +1114,18 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         if new_holds > 150:
             return ActionResult(ok=False, error="max holds reached")
         player.ship.holds = new_holds
+    elif item == "colonists":
+        # Buying colonists loads them as cargo. They must fit — each colonist
+        # is 1 unit of hold capacity, same as any commodity.
+        used = player.ship.cargo_used
+        if used + qty > player.ship.holds:
+            return ActionResult(
+                ok=False,
+                error=f"not enough cargo holds (need {qty}, free {player.ship.holds - used})",
+            )
+        player.ship.cargo[Commodity.COLONISTS] = (
+            player.ship.cargo.get(Commodity.COLONISTS, 0) + qty
+        )
     player.credits -= total
 
     universe.emit(

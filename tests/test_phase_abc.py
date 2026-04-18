@@ -119,6 +119,57 @@ class TestPhaseA:
             tick_day(u)
         assert new_p.citadel_level == 1
 
+    def test_a_buy_colonists_at_stardock_and_ferry_to_own_planet(self):
+        """End-to-end Terra ferry: at StarDock `buy_equip item=colonists` loads
+        them into cargo, then `assign_colonists from=ship to=<pool>` deposits
+        them on an owned planet. This is the authentic TW2002 loop that
+        unlocks scaling Citadel construction past the Genesis seed pool."""
+        u, (a, *_) = _make_universe()
+        # Plant a Genesis planet in the first non-fed sector.
+        a.ship.genesis = 1
+        a.sector_id = _first_non_fed_sector(u)
+        apply_action(u, "A", Action(kind=ActionKind.DEPLOY_GENESIS))
+        new_p = max(u.planets.values(), key=lambda p: p.id)
+
+        # Return to StarDock and buy 30 colonists (fills fixture's 40-hold ship).
+        a.sector_id = K.STARDOCK_SECTOR
+        a.credits = 10_000
+        a.ship.cargo = {Commodity.FUEL_ORE: 0, Commodity.ORGANICS: 0,
+                         Commodity.EQUIPMENT: 0, Commodity.COLONISTS: 0}
+        qty = 30
+        res = apply_action(u, "A", Action(
+            kind=ActionKind.BUY_EQUIP,
+            args={"item": "colonists", "qty": qty},
+        ))
+        assert res.ok, f"buy_equip colonists failed: {res.error}"
+        assert a.ship.cargo[Commodity.COLONISTS] == qty
+        assert a.credits == 10_000 - qty * K.COLONIST_PRICE
+
+        # Fly to the owned planet and drop them into the organics pool.
+        a.sector_id = new_p.sector_id
+        apply_action(u, "A", Action(kind=ActionKind.LAND_PLANET, args={"planet_id": new_p.id}))
+        organics_before = new_p.colonists.get(Commodity.ORGANICS, 0)
+        res = apply_action(u, "A", Action(
+            kind=ActionKind.ASSIGN_COLONISTS,
+            args={"planet_id": new_p.id, "from": "ship", "to": "organics", "qty": qty},
+        ))
+        assert res.ok, f"assign_colonists ship->organics failed: {res.error}"
+        assert a.ship.cargo[Commodity.COLONISTS] == 0
+        assert new_p.colonists[Commodity.ORGANICS] == organics_before + qty
+
+    def test_a_buy_colonists_rejects_if_cargo_full(self):
+        u, (a, *_) = _make_universe()
+        a.sector_id = K.STARDOCK_SECTOR
+        a.credits = 100_000
+        a.ship.holds = 20  # starter ship
+        a.ship.cargo[Commodity.FUEL_ORE] = 20  # fully loaded
+        res = apply_action(u, "A", Action(
+            kind=ActionKind.BUY_EQUIP,
+            args={"item": "colonists", "qty": 1},
+        ))
+        assert not res.ok
+        assert "cargo" in (res.error or "").lower()
+
     def test_a_genesis_seeds_population_enough_for_l1_citadel(self):
         """Regression guard: fresh Genesis planet must ship with enough
         founding colonists to immediately build Citadel L1 (1,000 colonists)

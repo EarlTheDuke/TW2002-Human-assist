@@ -202,6 +202,10 @@ GENESIS_DEPLOY_TURN_COST = 4
 # Founding population Genesis torpedoes bring to life. Tuned so Citadel L1
 # (1,000 colonists) is immediately buildable and natural growth can start.
 GENESIS_SEED_COLONISTS = 2_500
+# Price per colonist when buying from Terra/StarDock (classic TW2002: ~10 cr).
+# Cheap enough that you can fully load a 20-hold merchant cruiser for 200 cr,
+# but the REAL cost is the turns spent ferrying them to a distant planet.
+COLONIST_PRICE = 10
 PLANET_CLASS_WEIGHTS = {
     "M": 0.32, "K": 0.14, "L": 0.14, "O": 0.14,
     "H": 0.10, "U": 0.10, "C": 0.06,

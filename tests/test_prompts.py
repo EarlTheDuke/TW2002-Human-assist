@@ -61,17 +61,38 @@ def _obs(**overrides: Any) -> Observation:
 # ---------------------------------------------------------------------------
 
 
-def test_system_prompt_contains_all_five_stages():
-    for label in (
-        "S1 Opening Trades",
-        "S2 Capital Build",
-        "S3 Establish a Home",
-        "S4 Fortify & Form",
-        "S5 Project Power",
-    ):
-        assert label in SYSTEM_PROMPT, f"missing stage label in SYSTEM_PROMPT: {label}"
-    assert "YOUR ROADMAP (5 STAGES)" in SYSTEM_PROMPT
-    assert "Turns = money" in SYSTEM_PROMPT
+def test_system_prompt_contains_core_progression_steps():
+    """The prompt must teach the full A-B-C-D-E arc so agents know how to win.
+    Concrete anchors (exact substrings so we fail fast if the wording drifts
+    into something an LLM can't parse)."""
+    required_substrings = (
+        "(A) TRADE",
+        "(B) UPGRADE",
+        "(C) COLONIZE",
+        "(D) FORTIFY",
+        "(E) WIN",
+        "DAY-1 WORKED EXAMPLE",
+        "STARDOCK (SECTOR 1) PRICE SHEET",
+        "COLONIZE — THE PLANET/CITADEL LOOP",
+        "buy_equip",
+        "deploy_genesis",
+        "assign_colonists",
+        "build_citadel",
+        "COMPLETE ACTION VERB LIST",
+    )
+    for needle in required_substrings:
+        assert needle in SYSTEM_PROMPT, f"missing anchor {needle!r} in SYSTEM_PROMPT"
+
+
+def test_system_prompt_teaches_terra_colonist_ferry():
+    """User-critical authenticity: the prompt must explicitly teach that
+    colonists are bought at StarDock and ferried to your own planet. This
+    is the missing-mechanic bug we fixed; a regression here means the LLM
+    is back to not knowing how to populate its citadel."""
+    assert "colonists" in SYSTEM_PROMPT.lower()
+    assert "Terra" in SYSTEM_PROMPT or "ferry" in SYSTEM_PROMPT
+    assert '"item":"colonists"' in SYSTEM_PROMPT or 'item="colonists"' in SYSTEM_PROMPT
+    assert 'from="ship"' in SYSTEM_PROMPT or '"from":"ship"' in SYSTEM_PROMPT
 
 
 # ---------------------------------------------------------------------------
