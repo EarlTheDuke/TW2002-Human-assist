@@ -34,11 +34,12 @@ ENV/
 *.swo
 .cursor/
 
-# Game state / logs
+# Game state / logs / match artifacts
 saves/
 logs/
 *.log
 *.tw2k
+artifacts/
 
 # Env / secrets
 .env
