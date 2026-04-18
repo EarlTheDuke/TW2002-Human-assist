@@ -188,6 +188,14 @@
       const existing = state.players.get(patch.player.id) || {};
       state.players.set(patch.player.id, Object.assign({}, existing, patch.player));
     }
+    // Planet delta — created or mutated by genesis / assign / citadel events.
+    // Merge into state.planets so the commander-card Planets block, the map
+    // sector tooltips, and the drawer all see it on the NEXT render tick
+    // without needing a page reload.
+    if (patch.planet) {
+      const prev = state.planets.get(patch.planet.id) || {};
+      state.planets.set(patch.planet.id, Object.assign({}, prev, patch.planet));
+    }
     if (patch.day) state.day = patch.day;
     if (patch.finished) {
       state.finished = true;

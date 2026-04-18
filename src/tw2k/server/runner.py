@@ -610,6 +610,37 @@ class MatchRunner:
             patch["finished"] = True
             patch["winner_id"] = u.winner_id
             patch["win_reason"] = u.win_reason
+        # Planet delta: any event that creates / mutates a planet needs to
+        # ship the latest planet snapshot so the client Map stays fresh
+        # WITHOUT a page reload. Previously the client only populated
+        # state.planets from the initial snapshot, so newly-Genesised
+        # planets never appeared on commander cards until refresh.
+        planet_events = {
+            EventKind.GENESIS_DEPLOYED,
+            EventKind.ASSIGN_COLONISTS,
+            EventKind.BUILD_CITADEL,
+            EventKind.CITADEL_COMPLETE,
+        }
+        if ev.kind in planet_events:
+            planet_id = (ev.payload or {}).get("planet_id")
+            if planet_id is not None and planet_id in u.planets:
+                pl = u.planets[planet_id]
+                patch["planet"] = {
+                    "id": pl.id,
+                    "name": pl.name,
+                    "sector_id": pl.sector_id,
+                    "owner_id": pl.owner_id,
+                    "corp_ticker": pl.corp_ticker,
+                    "class": pl.class_id.value,
+                    "citadel_level": pl.citadel_level,
+                    "citadel_target": pl.citadel_target,
+                    "citadel_complete_day": pl.citadel_complete_day,
+                    "fighters": pl.fighters,
+                    "shields": pl.shields,
+                    "treasury": pl.treasury,
+                    "colonists": {c.value: pl.colonists.get(c, 0) for c in pl.colonists},
+                    "stockpile": {c.value: pl.stockpile.get(c, 0) for c in pl.stockpile},
+                }
         return patch
 
     async def _sleep_scaled(self, base: float) -> None:

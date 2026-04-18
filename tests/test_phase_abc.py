@@ -1390,3 +1390,75 @@ class TestPhaseJEarlyCombat:
         will hunt (8 of 10 levels) instead of 4-10 (7 of 10) — roughly
         +14% hostile raiders. Guard the constant so we notice regressions."""
         assert K.FERRENGI_HUNT_AGGRESSION_THRESHOLD == 3
+
+
+class TestPhaseKPlanetPatch:
+    """Ensure planet-mutating events ship a `planet` key in state_patch so
+    the spectator UI sees newly-Genesised planets without a page reload.
+    Historically the client only populated state.planets from the initial
+    snapshot; new planets were invisible until F5."""
+
+    def _make_patch_runner(self):
+        # Lightweight runner wrapper that only exposes what _state_patch_for
+        # needs. We reach into the universe builder and Drive a fake event.
+        from types import SimpleNamespace
+        from tw2k.server.runner import MatchRunner
+
+        u, (_a, *_) = _make_universe(seed=9201)
+        runner = MatchRunner.__new__(MatchRunner)
+        runner.state = SimpleNamespace(universe=u, last_error=None)
+        return runner, u
+
+    def test_k1_genesis_event_includes_planet_patch(self):
+        """GENESIS_DEPLOYED with a valid planet_id must emit patch.planet."""
+        from tw2k.engine.models import Commodity, Event, EventKind, Planet, PlanetClass
+
+        runner, u = self._make_patch_runner()
+        planet = Planet(
+            id=42,
+            sector_id=123,
+            name="Test Planet",
+            class_id=PlanetClass.M,
+            owner_id="P1",
+        )
+        planet.colonists[Commodity.COLONISTS] = 500
+        u.planets[42] = planet
+
+        ev = Event(
+            seq=1,
+            kind=EventKind.GENESIS_DEPLOYED,
+            day=1,
+            tick=0,
+            actor_id="P1",
+            sector_id=123,
+            payload={"planet_id": 42, "class": "M", "name": "Test Planet"},
+            summary="genesis",
+        )
+        patch = runner._state_patch_for(ev)
+        assert "planet" in patch, (
+            "state_patch must include a 'planet' key for GENESIS_DEPLOYED "
+            "so client can update state.planets without a reload"
+        )
+        assert patch["planet"]["id"] == 42
+        assert patch["planet"]["owner_id"] == "P1"
+        assert patch["planet"]["name"] == "Test Planet"
+        assert patch["planet"]["colonists"].get("colonists") == 500
+
+    def test_k2_non_planet_event_omits_planet_patch(self):
+        """Routine events (warp, trade) must NOT bloat the patch with planet
+        data — this keeps the WS pipe cheap."""
+        from tw2k.engine.models import Event, EventKind
+
+        runner, _u = self._make_patch_runner()
+        ev = Event(
+            seq=1,
+            kind=EventKind.WARP,
+            day=1,
+            tick=0,
+            actor_id="P1",
+            sector_id=5,
+            payload={"from": 1, "to": 5},
+            summary="warp",
+        )
+        patch = runner._state_patch_for(ev)
+        assert "planet" not in patch, "warp events should not emit planet deltas"

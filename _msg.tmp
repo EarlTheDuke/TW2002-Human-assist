@@ -1,0 +1,18 @@
+﻿fix: planet state_patch so UI sees new planets without reload
+
+Bug: Reyes Genesis-deployed Wyrd 238-19 on day 2 but the spectator UI
+never showed the planet on his commander card. Investigation: the
+client populates state.planets ONLY from the initial snapshot; live
+state_patch frames only carried patch.player, so any planet created
+mid-match was invisible until F5.
+
+Fix:
+- server/runner.py: GENESIS_DEPLOYED, ASSIGN_COLONISTS, BUILD_CITADEL,
+  and CITADEL_COMPLETE events now ship a `planet` field in the
+  state_patch with the full planet snapshot.
+- web/app.js: onEvent() merges patch.planet into state.planets, same
+  shape as patch.player -> state.players. Drawer, sector tooltips,
+  and the commander-card Planets block all update on the next render
+  tick without a reload.
+
+Tests: +2 regressions in TestPhaseKPlanetPatch (151/151 pass).
