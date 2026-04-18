@@ -48,6 +48,10 @@
   // ----------------- DOM refs ------------------
   const svg = document.getElementById("galaxy");
   const sectorTip = document.getElementById("sectorTip");
+  const mapControls = document.getElementById("mapControls");
+  const mapZoomReadout = document.getElementById("mapZoomReadout");
+  const miniMap = document.getElementById("miniMap");
+  const miniMapSvg = document.getElementById("miniMapSvg");
   const playersPanel = document.getElementById("panelPlayers") || document.getElementById("playersPanel");
   const messageFeed = document.getElementById("messageFeed");
   const eventFeed = document.getElementById("eventFeed");
@@ -247,6 +251,10 @@
 
   const svgNS = "http://www.w3.org/2000/svg";
   let viewBoxState = { x: -600, y: -600, w: 1200, h: 1200 };
+  // Full-galaxy extent ("fit" target). Populated by buildMap().
+  let galaxyExtent = { x: -600, y: -600, w: 1200, h: 1200 };
+  // Mini-map visibility (persisted to localStorage). Defaults to visible.
+  let miniMapVisible = true;
 
   function buildMap() {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -254,12 +262,13 @@
     if (state.sectors.size === 0) return;
     const b = state.bounds;
     const pad = 30;
-    viewBoxState = {
+    galaxyExtent = {
       x: b.minX - pad,
       y: b.minY - pad,
       w: (b.maxX - b.minX) + 2 * pad,
       h: (b.maxY - b.minY) + 2 * pad,
     };
+    viewBoxState = { ...galaxyExtent };
     updateViewBox();
 
     // Defs with arrowhead markers for warp arrows
@@ -347,10 +356,153 @@
     }
 
     enablePanZoom();
+    buildMiniMap();
+    updateViewBox();
+  }
+
+  // Return a zoom ratio in [0, +inf) where 1.0 = full galaxy visible.
+  // Smaller numbers = zoomed OUT (wider view than galaxy), larger = zoomed IN.
+  function currentZoom() {
+    if (!galaxyExtent.w || !viewBoxState.w) return 1;
+    return galaxyExtent.w / viewBoxState.w;
+  }
+
+  function updateLODClasses() {
+    if (!svg) return;
+    const z = currentZoom();
+    svg.classList.remove("zoom-far", "zoom-mid", "zoom-near");
+    if (z < 0.75) svg.classList.add("zoom-far");
+    else if (z < 2.2) svg.classList.add("zoom-mid");
+    else svg.classList.add("zoom-near");
+  }
+
+  function updateZoomReadout() {
+    if (!mapZoomReadout) return;
+    const pct = Math.round(currentZoom() * 100);
+    mapZoomReadout.textContent = `${pct}%`;
+  }
+
+  function updateMiniViewport() {
+    if (!miniMapSvg) return;
+    const rect = miniMapSvg.querySelector(".mini-viewport");
+    if (!rect) return;
+    rect.setAttribute("x", viewBoxState.x);
+    rect.setAttribute("y", viewBoxState.y);
+    rect.setAttribute("width", viewBoxState.w);
+    rect.setAttribute("height", viewBoxState.h);
   }
 
   function updateViewBox() {
     svg.setAttribute("viewBox", `${viewBoxState.x} ${viewBoxState.y} ${viewBoxState.w} ${viewBoxState.h}`);
+    updateLODClasses();
+    updateZoomReadout();
+    updateMiniViewport();
+  }
+
+  function fitGalaxy() {
+    viewBoxState = { ...galaxyExtent };
+    updateViewBox();
+  }
+
+  function zoomBy(factor, cx, cy) {
+    // Clamp so we can't zoom past useful limits.
+    const minW = galaxyExtent.w * 0.08;   // 12.5x zoom-in max
+    const maxW = galaxyExtent.w * 3;      // 3x zoom-out max
+    const newW = Math.max(minW, Math.min(maxW, viewBoxState.w * factor));
+    const realFactor = newW / viewBoxState.w;
+    if (cx == null) cx = viewBoxState.x + viewBoxState.w / 2;
+    if (cy == null) cy = viewBoxState.y + viewBoxState.h / 2;
+    viewBoxState.w *= realFactor;
+    viewBoxState.h *= realFactor;
+    viewBoxState.x = cx - (cx - viewBoxState.x) * realFactor;
+    viewBoxState.y = cy - (cy - viewBoxState.y) * realFactor;
+    updateViewBox();
+  }
+
+  function buildMiniMap() {
+    if (!miniMapSvg) return;
+    while (miniMapSvg.firstChild) miniMapSvg.removeChild(miniMapSvg.firstChild);
+    miniMapSvg.setAttribute(
+      "viewBox",
+      `${galaxyExtent.x} ${galaxyExtent.y} ${galaxyExtent.w} ${galaxyExtent.h}`
+    );
+    // Static sector dots (no warps — keep it clean).
+    const dots = document.createElementNS(svgNS, "g");
+    for (const s of state.sectors.values()) {
+      const c = document.createElementNS(svgNS, "circle");
+      c.setAttribute("cx", s.x);
+      c.setAttribute("cy", s.y);
+      c.setAttribute("r", s.id === 1 ? 6 : (s.port ? 3.5 : 2.2));
+      let cls = "mini-sector";
+      if (s.id === 1) cls += " stardock";
+      else if (s.port) cls += " port";
+      c.setAttribute("class", cls);
+      dots.appendChild(c);
+    }
+    miniMapSvg.appendChild(dots);
+    // Dynamic ship + viewport group (refreshed each render).
+    const shipsG = document.createElementNS(svgNS, "g");
+    shipsG.setAttribute("id", "mini-ships-layer");
+    miniMapSvg.appendChild(shipsG);
+    const vp = document.createElementNS(svgNS, "rect");
+    vp.setAttribute("class", "mini-viewport");
+    miniMapSvg.appendChild(vp);
+    updateMiniViewport();
+
+    // Click-to-center: recenter viewBox at click point in galaxy coords.
+    miniMapSvg.onclick = (e) => {
+      const rect = miniMapSvg.getBoundingClientRect();
+      const gx = galaxyExtent.x + ((e.clientX - rect.left) / rect.width) * galaxyExtent.w;
+      const gy = galaxyExtent.y + ((e.clientY - rect.top) / rect.height) * galaxyExtent.h;
+      viewBoxState.x = gx - viewBoxState.w / 2;
+      viewBoxState.y = gy - viewBoxState.h / 2;
+      updateViewBox();
+    };
+  }
+
+  function refreshMiniShips() {
+    if (!miniMapSvg) return;
+    const layer = miniMapSvg.querySelector("#mini-ships-layer");
+    if (!layer) return;
+    while (layer.firstChild) layer.removeChild(layer.firstChild);
+    for (const p of state.players.values()) {
+      if (!p.alive) continue;
+      const s = state.sectors.get(p.sector_id);
+      if (!s) continue;
+      const c = document.createElementNS(svgNS, "circle");
+      c.setAttribute("cx", s.x);
+      c.setAttribute("cy", s.y);
+      c.setAttribute("r", 4.5);
+      c.setAttribute("fill", p.color || "#6ee7ff");
+      c.setAttribute("stroke", "#0a0f1c");
+      c.setAttribute("stroke-width", "0.6");
+      c.setAttribute("class", "mini-ship");
+      layer.appendChild(c);
+    }
+  }
+
+  function setMiniMapVisible(visible) {
+    miniMapVisible = !!visible;
+    if (miniMap) miniMap.classList.toggle("hidden", !miniMapVisible);
+    try { localStorage.setItem("tw2k:map:mini", miniMapVisible ? "1" : "0"); } catch {}
+  }
+
+  function initMapControls() {
+    if (!mapControls) return;
+    mapControls.addEventListener("click", (e) => {
+      const btn = e.target.closest(".map-btn");
+      if (!btn) return;
+      const action = btn.dataset.mapAction;
+      if (action === "zoom-in") zoomBy(0.8);
+      else if (action === "zoom-out") zoomBy(1.25);
+      else if (action === "fit") fitGalaxy();
+      else if (action === "toggle-mini") setMiniMapVisible(!miniMapVisible);
+    });
+    // Restore persisted mini-map visibility.
+    try {
+      const saved = localStorage.getItem("tw2k:map:mini");
+      if (saved === "0") setMiniMapVisible(false);
+    } catch {}
   }
 
   function enablePanZoom() {
@@ -378,8 +530,12 @@
       const mx = viewBoxState.x + ((e.clientX - rect.left) / rect.width) * viewBoxState.w;
       const my = viewBoxState.y + ((e.clientY - rect.top) / rect.height) * viewBoxState.h;
       const factor = e.deltaY > 0 ? 1.2 : 0.82;
-      viewBoxState.w *= factor;
-      viewBoxState.h *= factor;
+      const minW = galaxyExtent.w * 0.08;
+      const maxW = galaxyExtent.w * 3;
+      const targetW = Math.max(minW, Math.min(maxW, viewBoxState.w * factor));
+      const realFactor = targetW / viewBoxState.w;
+      viewBoxState.w *= realFactor;
+      viewBoxState.h *= realFactor;
       viewBoxState.x = mx - ((e.clientX - rect.left) / rect.width) * viewBoxState.w;
       viewBoxState.y = my - ((e.clientY - rect.top) / rect.height) * viewBoxState.h;
       updateViewBox();
@@ -434,6 +590,7 @@
 
   function renderDynamicMap() {
     if (state.sectors.size === 0) return;
+    refreshMiniShips();
     const shipsLayer = document.getElementById("ships-layer");
     const recentLayer = document.getElementById("recent-layer");
     const fxLayer = document.getElementById("fx-layer");
@@ -1127,6 +1284,27 @@
         toggleFullscreenMap();
         return;
       }
+      // Map zoom shortcuts
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        zoomBy(0.8);
+        return;
+      }
+      if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        zoomBy(1.25);
+        return;
+      }
+      if (e.key === "0") {
+        e.preventDefault();
+        fitGalaxy();
+        return;
+      }
+      if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        setMiniMapVisible(!miniMapVisible);
+        return;
+      }
       if (e.key === "?" || (e.shiftKey && e.key === "/")) {
         e.preventDefault();
         toggleShortcutsToast();
@@ -1161,6 +1339,7 @@
     initResizers();
     initCollapseButtons();
     initShortcuts();
+    initMapControls();
   }
 
   // Kick off

@@ -119,10 +119,66 @@ toggleFullscreenMap(force?) -- toggle or force fullscreen mode
 
 ---
 
-## Phase 2 — Map clarity (planned)
+## Phase 2 — Map clarity (shipped)
 
-Level-of-detail rendering, floating map toolbar with layer toggles,
-minimap (off by default), zoom-to-fit buttons, sector/player search.
+### Goals
+1. Reduce visual clutter at default zoom so the galaxy is readable.
+2. Give the user first-class zoom/pan controls — no hidden gestures.
+3. Provide an always-visible orientation aid (mini-map) for long pans.
+4. Scale detail with zoom level so close-ups show more, overview shows less.
+
+### Level-of-detail (LOD)
+The `#galaxy` SVG gets one of three classes depending on the ratio of the
+full-galaxy extent to the current viewBox width:
+
+| Class | When | Visual effect |
+|-------|------|---------------|
+| `zoom-far`  | galaxy/view < 0.75 (zoomed out past overview) | warps dimmed to 25% / sector labels hidden |
+| `zoom-mid`  | 0.75 ≤ galaxy/view < 2.2  | warps at 55% opacity, labels dimmed |
+| `zoom-near` | galaxy/view ≥ 2.2 | warps fully drawn, sector strokes heavier |
+
+LOD is driven entirely by CSS (see `#galaxy.zoom-*` rules in `style.css`),
+so future phases can re-theme without touching the zoom math.
+
+### Floating controls
+A `.map-controls` toolbar is anchored to the bottom-right of the map panel:
+
+| Button | `data-map-action` | Action |
+|--------|-------------------|--------|
+| `+` | `zoom-in`       | Zoom in 25% (clamped at 12× in)  |
+| `−` | `zoom-out`      | Zoom out 25% (clamped at 3× out) |
+| `⤢` | `fit`           | Reset viewBox to full-galaxy extent |
+| `▣` | `toggle-mini`   | Show/hide the mini-map (persisted to `tw2k:map:mini`) |
+| `NN%` | (readout)     | Current zoom ratio (100% = fit) |
+
+Wheel-zoom respects the same clamp limits as the buttons.
+
+### Mini-map
+`#miniMap > svg#miniMapSvg` renders a static dot-cloud of every sector
+plus a dynamic ship layer and a viewport rectangle indicating the part
+of the galaxy the main map is showing. Clicking anywhere on the mini-map
+recenters the main viewBox on that galaxy coordinate.
+
+### Keyboard shortcuts (Phase 2 additions)
+
+| Key | Action |
+|-----|--------|
+| `+` / `=` | Zoom in |
+| `-` / `_` | Zoom out |
+| `0` | Fit galaxy |
+| `M` | Toggle mini-map |
+
+### JS public surface (Phase 2)
+
+```
+fitGalaxy            -- reset viewBox to galaxyExtent
+zoomBy(factor, cx?, cy?) -- scale viewBox around (cx,cy) with clamping
+buildMiniMap         -- build static mini-map SVG once per match
+refreshMiniShips     -- re-draw ship dots on the mini-map (per render)
+setMiniMapVisible    -- show/hide + persist
+initMapControls      -- wire the floating toolbar
+updateLODClasses     -- apply zoom-far/mid/near to #galaxy
+```
 
 ## Phase 3 — Follow-camera + drawer (planned)
 

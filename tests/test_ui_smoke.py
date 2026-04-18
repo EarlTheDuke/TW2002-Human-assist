@@ -225,6 +225,66 @@ def test_js_shortcuts_cover_expected_keys(js_text):
         assert frag in js_text, f"missing shortcut handling for {frag}"
 
 
+# ---------------------------------------------------------------------------
+# Phase 2 contract (map clarity: mini-map, zoom controls, LOD classes)
+# ---------------------------------------------------------------------------
+
+
+PHASE2_REQUIRED_IDS = {"mapControls", "mapZoomReadout", "miniMap", "miniMapSvg"}
+
+
+def test_phase2_map_elements_present(html_text):
+    tags = parse_html(html_text)
+    present = ids(tags)
+    missing = PHASE2_REQUIRED_IDS - present
+    assert not missing, f"index.html missing Phase 2 map element IDs: {sorted(missing)}"
+
+
+def test_phase2_map_controls_have_actions(html_text):
+    tags = parse_html(html_text)
+    actions = {
+        attrs.get("data-map-action")
+        for _, attrs in tags
+        if attrs.get("data-map-action")
+    }
+    expected = {"zoom-in", "zoom-out", "fit", "toggle-mini"}
+    missing = expected - actions
+    assert not missing, f"missing map-control actions: {sorted(missing)}"
+
+
+def test_phase2_css_has_lod_and_minimap_rules(css_text):
+    required = [
+        "#galaxy.zoom-far",
+        "#galaxy.zoom-mid",
+        "#galaxy.zoom-near",
+        ".map-controls",
+        ".map-btn",
+        ".mini-map",
+        ".mini-viewport",
+    ]
+    missing = [s for s in required if s not in css_text]
+    assert not missing, f"style.css missing Phase 2 selectors: {missing}"
+
+
+def test_phase2_js_has_map_api(js_text):
+    for name in (
+        "fitGalaxy",
+        "zoomBy",
+        "buildMiniMap",
+        "setMiniMapVisible",
+        "initMapControls",
+        "updateLODClasses",
+        "refreshMiniShips",
+    ):
+        assert name in js_text, f"app.js missing Phase 2 map helper `{name}`"
+
+
+def test_phase2_js_zoom_shortcuts(js_text):
+    # + / - / 0 / M should be wired as keyboard shortcuts.
+    for frag in ('"+"', '"-"', '"0"', '"m"', '"M"'):
+        assert frag in js_text, f"missing keybinding for {frag}"
+
+
 def test_js_players_panel_lookup_matches_html(js_text, html_text):
     """Regression test: the JS must look up the players panel by an ID
     that actually exists in index.html.

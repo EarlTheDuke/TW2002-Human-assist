@@ -51,6 +51,16 @@
         <div class="map-wrap panel-body">
           <svg id="galaxy" preserveAspectRatio="xMidYMid meet"></svg>
           <div id="sectorTip" class="sector-tip" hidden></div>
+          <div class="map-controls" id="mapControls" role="toolbar" aria-label="Map controls">
+            <button class="map-btn" data-map-action="zoom-in" title="Zoom in (+)" aria-label="Zoom in">+</button>
+            <button class="map-btn" data-map-action="zoom-out" title="Zoom out (−)" aria-label="Zoom out">−</button>
+            <button class="map-btn" data-map-action="fit" title="Fit galaxy (0)" aria-label="Fit galaxy">⤢</button>
+            <button class="map-btn" data-map-action="toggle-mini" title="Toggle mini-map (M)" aria-label="Toggle mini-map">▣</button>
+            <span class="map-zoom-readout" id="mapZoomReadout" title="Current zoom">100%</span>
+          </div>
+          <div class="mini-map" id="miniMap" aria-label="Mini-map">
+            <svg id="miniMapSvg" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
         </div>
       </section>
       <div class="resize-handle resize-horizontal" data-resize="map-events" role="separator" aria-orientation="horizontal" aria-label="Resize map / events" title="Drag to resize"></div>
@@ -106,6 +116,9 @@
     <div><kbd>Space</kbd> pause / resume</div>
     <div><kbd>F</kbd> fullscreen map</div>
     <div><kbd>Esc</kbd> exit fullscreen / close modal</div>
+    <div><kbd>+</kbd> / <kbd>−</kbd> zoom map in / out</div>
+    <div><kbd>0</kbd> fit galaxy</div>
+    <div><kbd>M</kbd> toggle mini-map</div>
     <div><kbd>1</kbd>–<kbd>9</kbd> focus player <i>(P3)</i></div>
     <div><kbd>?</kbd> toggle this help</div>
     <div><kbd>R</kbd> reset layout</div>
