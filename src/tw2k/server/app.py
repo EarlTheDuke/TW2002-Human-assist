@@ -34,7 +34,7 @@ def create_app(
     *,
     seed: int = 42,
     universe_size: int = 1000,
-    max_days: int = 10,
+    max_days: int = 15,
     agent_names: list[str] | None = None,
     agent_kind: str = "auto",  # "llm" | "heuristic" | "auto"
     provider: str | None = None,

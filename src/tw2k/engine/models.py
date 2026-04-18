@@ -329,14 +329,52 @@ class Player(BaseModel):
 
     @property
     def net_worth(self) -> int:
+        """Ship-side net worth (credits + everything on this Player's ship).
+
+        Does NOT include owned planets — for full net worth use the
+        `full_net_worth(universe, player)` helper in engine.runner which
+        layers planet assets on top. We keep two flavors because:
+
+          * Many internal uses (tests, quick sampling, history tick)
+            don't have a universe reference handy.
+          * Victory checks / observation / spectator snapshot always
+            have the universe and should use the full number so planet
+            investment actually wins you the game.
+
+        Composition:
+          credits
+          + tradable cargo at base prices (FO/Org/Eq/Colonists)
+          + ship hull resale (50% of buy price)
+          + fighters, shields, mines, photon missiles, ether probes,
+            genesis torpedoes at their StarDock prices
+        """
         cargo_value = (
             self.ship.cargo.get(Commodity.FUEL_ORE, 0) * K.COMMODITY_BASE_PRICE["fuel_ore"]
             + self.ship.cargo.get(Commodity.ORGANICS, 0) * K.COMMODITY_BASE_PRICE["organics"]
             + self.ship.cargo.get(Commodity.EQUIPMENT, 0) * K.COMMODITY_BASE_PRICE["equipment"]
+            # Colonists in cargo were almost certainly bought from StarDock
+            # at K.COLONIST_PRICE per head — value them at what they cost
+            # to acquire, not at zero.
+            + self.ship.cargo.get(Commodity.COLONISTS, 0) * K.COLONIST_PRICE
         )
         ship_value = int(K.SHIP_SPECS[self.ship.ship_class.value]["cost"] * 0.5)
-        fighters_value = self.ship.fighters * K.FIGHTER_COST
-        return self.credits + cargo_value + ship_value + fighters_value
+        # Ship equipment — all valued at StarDock buy price (mirrors
+        # _handle_buy_equip). Shields are 10cr/unit, mines/missiles/probes
+        # at their respective constants. This means a player who just
+        # bought a Genesis torpedo (25,000cr) shows up 25,000cr richer in
+        # net worth UNTIL they deploy it, at which point the value flips
+        # to a (potentially much larger) planet asset.
+        equip_value = (
+            self.ship.fighters * K.FIGHTER_COST
+            + self.ship.shields * 10
+            + self.ship.mines.get(MineType.ARMID, 0) * K.ARMID_MINE_COST
+            + self.ship.mines.get(MineType.LIMPET, 0) * K.LIMPET_MINE_COST
+            + self.ship.mines.get(MineType.ATOMIC, 0) * K.ATOMIC_MINE_COST
+            + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
+            + self.ship.ether_probes * K.ETHER_PROBE_COST
+            + self.ship.genesis * K.GENESIS_TORPEDO_COST
+        )
+        return self.credits + cargo_value + ship_value + equip_value
 
 
 # ---------------------------------------------------------------------------

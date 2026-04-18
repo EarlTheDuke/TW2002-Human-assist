@@ -1085,6 +1085,133 @@ class TestPhaseGObservationSurface:
         ids = [p["id"] for p in payload["owned_planets"]]
         assert 99 in ids, "the planet the player owns must appear"
 
+    def test_g5_net_worth_counts_equipment(self):
+        """Player.net_worth must include shields, mines, photon missiles,
+        ether probes, genesis torpedoes, and colonists in cargo at their
+        StarDock buy prices. Regression from the discovery that a player
+        with a Genesis torpedo (25,000cr at StarDock) showed zero value
+        for it in net worth, causing the victory scorer to under-count
+        investment-heavy strategies."""
+        from tw2k.engine.models import Commodity, MineType
+
+        u, (a, *_) = _make_universe(seed=5101)
+        a.credits = 1000
+        # _make_universe seeds ship.shields=100 and fighters=200, so the
+        # baseline already reflects SOME equipment value under the fixed
+        # formula. We bump each field by a known delta so the math is
+        # unambiguous: the INCREASE in net_worth should equal the
+        # INCREASE in StarDock-priced equipment.
+        shields_before = a.ship.shields
+        baseline = a.net_worth
+
+        a.ship.shields = shields_before + 100  # +100 shields = +1000 cr
+        a.ship.mines[MineType.ATOMIC] = 2
+        a.ship.photon_missiles = 1
+        a.ship.ether_probes = 3
+        a.ship.genesis = 1
+        a.ship.cargo[Commodity.COLONISTS] = 50
+
+        after = a.net_worth
+        # +100 shields * 10 = 1000
+        # +2 atomic mines * 4000 = 8000
+        # +1 photon * 12000 = 12000
+        # +3 probes * 5000 = 15000
+        # +1 genesis * 25000 = 25000
+        # +50 colonists cargo * 10 = 500
+        expected_delta = 1000 + 8000 + 12000 + 15000 + 25000 + 500
+        assert after - baseline == expected_delta, (
+            f"net_worth delta {after - baseline} != expected {expected_delta}"
+        )
+
+    def test_g6_full_net_worth_includes_owned_planets(self):
+        """full_net_worth must add value from every planet the player
+        owns: citadel investment (cumulative tier costs), colonist pools,
+        stockpile, treasury, and planet defense. Without this, a player
+        who sinks 30k+ credits into a Citadel L1 + colonist ferry shows
+        up poorer in the victory ranking than one who hoarded cash."""
+        from tw2k.engine.models import Commodity, Planet, PlanetClass
+        from tw2k.engine.runner import full_net_worth
+
+        u, (a, *_) = _make_universe(seed=5102)
+        a.credits = 1000
+        ship_side = a.net_worth
+
+        u.planets[501] = Planet(
+            id=501, sector_id=5, name="TestCapital",
+            class_id=PlanetClass.M, owner_id=a.id,
+            citadel_level=1, citadel_target=1,
+            colonists={
+                Commodity.COLONISTS: 500,   # idle pool
+                Commodity.FUEL_ORE: 100,
+                Commodity.ORGANICS: 100,
+                Commodity.EQUIPMENT: 50,
+            },
+            stockpile={
+                Commodity.FUEL_ORE: 20,
+                Commodity.ORGANICS: 0,
+                Commodity.EQUIPMENT: 5,
+            },
+            fighters=50,
+            shields=100,
+            treasury=2500,
+        )
+
+        total = full_net_worth(u, a)
+        # Citadel L1 investment: 5000cr + 1000 colonists * 10cr = 15,000
+        # Colonist pools: (500+100+100+50) * 10 = 7,500
+        # Stockpile: 20 fo @ 18 = 360, 5 eq @ 36 = 180  -> 540
+        # Treasury: 2500
+        # Defense: 50*50 + 100*10 = 2500 + 1000 = 3500
+        planet_value = 15000 + 7500 + 540 + 2500 + 3500
+        assert total == ship_side + planet_value, (
+            f"total={total} ship={ship_side} planet_add={total - ship_side} "
+            f"expected_planet_value={planet_value}"
+        )
+
+    def test_g7_full_net_worth_ignores_planets_owned_by_others(self):
+        """full_net_worth for player A must NOT count planets that
+        belong to player B. Regression guard against summing everyone's
+        planets into everyone's total."""
+        from tw2k.engine.models import Planet, PlanetClass
+        from tw2k.engine.runner import full_net_worth
+
+        u, (a, b, *_) = _make_universe(seed=5103)
+        a_before = full_net_worth(u, a)
+        u.planets[601] = Planet(
+            id=601, sector_id=5, name="BsCapital",
+            class_id=PlanetClass.M, owner_id=b.id,
+            citadel_level=3, citadel_target=3,
+            treasury=999_999,
+        )
+        a_after = full_net_worth(u, a)
+        assert a_after == a_before, "player A's net worth changed when player B got a planet"
+
+    def test_g8_victory_summary_splits_ship_vs_planets(self):
+        """When the game ends on time, the GAME_OVER payload should
+        include net_worth_ship and net_worth_planets so spectators can
+        see whether the winner won on cash or on citadel investment."""
+        from tw2k.engine import tick_day
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+
+        u, (a, b, *_) = _make_universe(seed=5104, players=2)
+        # Make b win decisively on planet value.
+        u.planets[701] = Planet(
+            id=701, sector_id=5, name="WinnerCapital",
+            class_id=PlanetClass.M, owner_id=b.id,
+            citadel_level=2, citadel_target=2,
+        )
+        # Force the day cap.
+        u.day = u.config.max_days + 1
+        tick_day(u)
+
+        game_over = [e for e in u.events if e.kind == EventKind.GAME_OVER]
+        assert game_over, "expected a GAME_OVER event"
+        ev = game_over[-1]
+        assert ev.payload.get("reason") == "time_net_worth"
+        assert "net_worth_ship" in ev.payload
+        assert "net_worth_planets" in ev.payload
+        assert ev.payload["net_worth_planets"] > 0, "b owned a planet, should show on split"
+
     def test_g4_user_message_self_has_net_worth_and_survival(self):
         """self.net_worth, self.alive, self.deaths, self.max_deaths all
         ship. Without net_worth the agent had to parse a number out of

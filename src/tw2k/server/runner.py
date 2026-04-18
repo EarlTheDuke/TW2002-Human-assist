@@ -501,7 +501,7 @@ class MatchRunner:
         u = self.state.universe
         if u is None:
             return {}
-        from ..engine.runner import alignment_label, rank_for
+        from ..engine.runner import alignment_label, full_net_worth, rank_for
         patch: dict = {}
         if ev.actor_id and ev.actor_id in u.players:
             p = u.players[ev.actor_id]
@@ -530,7 +530,7 @@ class MatchRunner:
                 "turns_today": p.turns_today,
                 "turns_per_day": p.turns_per_day,
                 "scratchpad": p.scratchpad,
-                "net_worth": p.net_worth,
+                "net_worth": full_net_worth(u, p),
                 "alliances": list(p.alliances),
             }
         if ev.sector_id is not None and ev.sector_id in u.sectors:
@@ -570,6 +570,7 @@ class MatchRunner:
         u = self.state.universe
         if u is None:
             return
+        from ..engine.runner import full_net_worth
         seq = int(getattr(u, "seq", u.tick))
         for p in u.players.values():
             buf = self._history.get(p.id)
@@ -582,7 +583,7 @@ class MatchRunner:
                     "day": u.day,
                     "tick": u.tick,
                     "credits": int(p.credits),
-                    "net_worth": int(p.net_worth),
+                    "net_worth": int(full_net_worth(u, p)),
                     "fighters": int(p.ship.fighters),
                     "shields": int(p.ship.shields),
                     "experience": int(p.experience),
@@ -616,7 +617,7 @@ class MatchRunner:
         u = self.state.universe
         if u is None:
             return {"status": self.state.status}
-        from ..engine.runner import alignment_label, rank_for
+        from ..engine.runner import alignment_label, full_net_worth, rank_for
         return {
             "status": self.state.status,
             "speed": self.state.speed_multiplier,
@@ -666,7 +667,12 @@ class MatchRunner:
                     "goal_medium": getattr(p, "goal_medium", "") or "",
                     "goal_long": getattr(p, "goal_long", "") or "",
                     "recent_trades": list(getattr(p, "trade_log", []) or [])[-3:],
-                    "net_worth": p.net_worth,
+                    # Full net worth — ship assets + every owned planet.
+                    # `net_worth_ship` is broken out so the UI can show
+                    # "30k ship + 15k planets" and spectators understand
+                    # why Citadel-investor commanders are climbing.
+                    "net_worth": full_net_worth(u, p),
+                    "net_worth_ship": p.net_worth,
                     "alliances": list(p.alliances),
                 }
                 for p in u.players.values()

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .economy import port_buy_price, port_sell_price
 from .models import Commodity, PortClass, Universe
+from .runner import full_net_worth
 
 
 class Observation(BaseModel):
@@ -258,7 +259,11 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
             "long": getattr(player, "goal_long", "") or "",
         },
         alive=player.alive,
-        net_worth=player.net_worth,
+        # Full net worth (ship assets + every owned planet). Using the
+        # universe-aware helper so the agent's self-reported number
+        # matches the victory check exactly — no more "I had 24k in the
+        # UI but actually won/lost on a different total" surprises.
+        net_worth=full_net_worth(universe, player),
         owned_planets=owned_planets,
         sector=sector_info,
         adjacent=adjacent,

@@ -781,7 +781,19 @@
         + (state.selectedPlayerId === p.id ? " selected" : "");
       card.dataset.pid = p.id;
       card.style.setProperty("--player-color", p.color || "#6ee7ff");
-      const netWorth = fmt(p.net_worth || p.credits || 0);
+      // Net worth = ship assets + planets owned. We show a tooltip
+      // with the breakdown so spectators can see "this commander's 40k
+      // is 10k cash + 5k cargo + 25k in Citadel investment" at a glance.
+      const totalNet = p.net_worth || p.credits || 0;
+      const shipNet = p.net_worth_ship != null ? p.net_worth_ship : totalNet;
+      const planetNet = Math.max(0, totalNet - shipNet);
+      const netWorthTitle = planetNet > 0
+        ? `ship ${fmt(shipNet)} cr + planets ${fmt(planetNet)} cr`
+        : `ship-side only (no owned planets)`;
+      const netWorthSuffix = planetNet > 0
+        ? ` <span class="net-worth-planet" title="${netWorthTitle}">+${fmt(planetNet)}p</span>`
+        : "";
+      const netWorth = `<span title="${netWorthTitle}">${fmt(totalNet)}</span>${netWorthSuffix}`;
       const cargoSegs = cargoBar(p);
       const cargoLabel = cargoBreakdown(p);
       const turnsLabel = (p.turns_today != null && p.turns_per_day)

@@ -741,6 +741,16 @@ svg.spark { display: block; }
 .trade-profit.positive { color: var(--good, #5cc06a); }
 .trade-profit.negative { color: var(--danger, #ff5d6e); }
 
+/* Net-worth planet suffix — e.g. "40k +15kp" with the +15kp in gold
+   to signal "this is planet-investment value, not liquid credits". */
+.net-worth-planet {
+  margin-left: 4px;
+  font-size: 9.5px;
+  color: #f3c34e;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  cursor: help;
+}
+
 /* ---------- Commander planets ---------- */
 .planet-list {
   list-style: none;

@@ -28,7 +28,15 @@ def serve(
     port: int = typer.Option(8000, help="Port to bind."),
     seed: int = typer.Option(42, help="Universe seed."),
     universe_size: int = typer.Option(1000, help="Number of sectors."),
-    max_days: int = typer.Option(10, help="Max in-game days before time victory."),
+    max_days: int = typer.Option(
+        15,
+        help=(
+            "Max in-game days before time victory. Default 15 gives enough "
+            "runway for a full economy arc: upgrade ship (~day 2-3), deploy "
+            "first Genesis (~day 4-6), reach Citadel L2 (~day 8-10), L3 "
+            "(~day 12-14). Bump higher for late-game raiding/corp dynamics."
+        ),
+    ),
     num_agents: int = typer.Option(2, help="Number of agents (default 2)."),
     agent_kind: str = typer.Option("auto", help="auto | llm | heuristic"),
     provider: str = typer.Option(None, help="anthropic | openai | xai | deepseek | custom (else auto-detect)"),
