@@ -30,6 +30,7 @@
     selectedPlayerId: null,
     followPlayerId: null,      // map camera locks on this player when set
     drawer: { kind: null, id: null }, // kind = "player" | "sector" | null
+    history: new Map(),        // pid -> [{seq, day, credits, net_worth, fighters, ...}]
     recentWarp: [],            // [{from,to,t}]
     filters: {
       combat: true, trade: true, move: true, thought: true, system: true, diplomacy: true,
@@ -839,6 +840,7 @@
         <div class="cargo-legend">${cargoLabel}</div>
         ${extraEquip.length ? `<div class="equip-row">${extraEquip.join("")}</div>` : ""}
         ${allianceTags ? `<div class="alliance-row">${allianceTags}</div>` : ""}
+        ${renderSparklineRow(p.id, p.color)}
         ${p.scratchpad ? `<div class="thought" title="Agent scratchpad">${esc(p.scratchpad).slice(0, 400)}</div>` : ""}
       `;
       grid.appendChild(card);
@@ -1367,6 +1369,72 @@
     });
   }
 
+  // ------------- History + sparklines (Phase 4) -------------
+
+  const SPARK_METRICS = [
+    { key: "credits",    label: "cr",   color: "var(--accent)" },
+    { key: "net_worth",  label: "net",  color: "#ffd166" },
+    { key: "fighters",   label: "fgt",  color: "#ff6e6e" },
+  ];
+
+  async function fetchHistory() {
+    try {
+      const r = await fetch("/history?limit=120");
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data && data.samples) {
+        state.history.clear();
+        for (const [pid, samples] of Object.entries(data.samples)) {
+          state.history.set(pid, samples);
+        }
+        // Re-render affected surfaces so sparklines update in place.
+        renderPlayers();
+        renderDrawer();
+      }
+    } catch (e) {
+      // Non-fatal; just try again on the next tick.
+    }
+  }
+
+  function sparklineSvg(series, color, width = 72, height = 18) {
+    if (!series || series.length < 2) {
+      return `<svg class="spark" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><text x="4" y="12" fill="var(--text-faint)" font-size="9">—</text></svg>`;
+    }
+    const lo = Math.min(...series);
+    const hi = Math.max(...series);
+    const span = (hi - lo) || 1;
+    const step = width / (series.length - 1);
+    const pts = series.map((v, i) => {
+      const x = (i * step).toFixed(1);
+      const y = (height - 1 - ((v - lo) / span) * (height - 2)).toFixed(1);
+      return `${x},${y}`;
+    }).join(" ");
+    const last = series[series.length - 1];
+    const dx = (width - 1).toFixed(1);
+    const dy = (height - 1 - ((last - lo) / span) * (height - 2)).toFixed(1);
+    return `<svg class="spark" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <polyline fill="none" stroke="${color}" stroke-width="1.2" points="${pts}" />
+      <circle cx="${dx}" cy="${dy}" r="1.6" fill="${color}" />
+    </svg>`;
+  }
+
+  function renderSparklineRow(pid) {
+    const samples = state.history.get(pid);
+    if (!samples || samples.length < 2) {
+      return `<div class="spark-row spark-row-empty" title="history will appear after the first round">
+        <span class="spark-label muted">history</span>
+      </div>`;
+    }
+    const parts = SPARK_METRICS.map((m) => {
+      const series = samples.map((s) => Number(s[m.key] || 0));
+      return `<span class="spark-cell" title="${m.label}: ${fmt(series[0])} → ${fmt(series[series.length - 1])}">
+        <span class="spark-label" style="color:${m.color}">${m.label}</span>
+        ${sparklineSvg(series, m.color)}
+      </span>`;
+    }).join("");
+    return `<div class="spark-row">${parts}</div>`;
+  }
+
   // ------------- Detail drawer + follow camera (Phase 3) -------------
 
   function openDrawer(kind, id) {
@@ -1479,6 +1547,7 @@
           <span class="k">Turns</span><span class="v">${fmt(p.turns || 0)}/${fmt(p.turns_max || p.turns || 0)}</span>
           <span class="k">Deaths</span><span class="v">${deaths}</span>
         </div>
+        ${renderSparklineRow(p.id)}
       </div>
       <div class="drawer-section">
         <h3>Ship loadout</h3>
@@ -1601,4 +1670,7 @@
   setupScrubber();
   connect();
   render();
+  // Phase 4: prime the history buffer + poll for updates.
+  fetchHistory();
+  setInterval(fetchHistory, 4000);
 })();

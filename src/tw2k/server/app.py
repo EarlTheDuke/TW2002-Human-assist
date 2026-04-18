@@ -97,6 +97,16 @@ def create_app(
     async def events(since: int = 0, limit: int = 200) -> dict[str, Any]:
         return {"events": runner.recent_events(since=since, limit=limit)}
 
+    @app.get("/history")
+    async def history(limit: int = 120) -> dict[str, Any]:
+        """Per-player sparkline data.
+
+        Phase 4 of the UI overhaul. Each sample carries credits / net_worth /
+        fighters / shields / experience / alignment / sector_id so the client
+        can render inline SVG sparklines on player cards and in the drawer.
+        """
+        return runner.history_snapshot(limit=limit)
+
     @app.post("/control/pause")
     async def pause() -> dict[str, Any]:
         runner.pause()

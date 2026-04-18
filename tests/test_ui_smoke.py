@@ -344,6 +344,31 @@ def test_phase3_drawer_actions_defined(html_text):
     assert not missing, f"missing drawer actions: {sorted(missing)}"
 
 
+# ---------------------------------------------------------------------------
+# Phase 4 contract (history + sparklines)
+# ---------------------------------------------------------------------------
+
+
+def test_phase4_js_has_sparkline_api(js_text):
+    for name in (
+        "fetchHistory",
+        "sparklineSvg",
+        "renderSparklineRow",
+        "SPARK_METRICS",
+    ):
+        assert name in js_text, f"app.js missing Phase 4 helper `{name}`"
+
+
+def test_phase4_css_has_spark_rules(css_text):
+    for sel in (".spark-row", ".spark-cell", ".spark-label", "svg.spark"):
+        assert sel in css_text, f"style.css missing Phase 4 selector `{sel}`"
+
+
+def test_phase4_state_has_history_map(js_text):
+    # state.history must be a Map so we can lookup by pid.
+    assert "history: new Map(" in js_text, "state.history must be a Map"
+
+
 def test_js_players_panel_lookup_matches_html(js_text, html_text):
     """Regression test: the JS must look up the players panel by an ID
     that actually exists in index.html.

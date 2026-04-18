@@ -241,10 +241,74 @@ updateFollowCamera()
 initDrawer()           -- event wiring
 ```
 
-## Phase 4 — Player trajectory (planned)
+## Phase 4 — Player trajectory (shipped)
 
-Thin `/history` ring buffer on the server + inline SVG sparklines on
-each player card.
+### Goals
+1. Give spectators a "where has this player been going?" signal at a glance.
+2. Avoid client-side accumulation: if you reload the page the trend
+   should still be there.
+3. Keep the wire format small — this is spectator flavor, not telemetry.
+
+### Server: `/history` ring buffer
+
+`MatchRunner._history: dict[pid, collections.deque]` is sized by
+`MatchRunner.HISTORY_MAX_SAMPLES` (default 240). After every full
+round-robin pass through agents the runner calls
+`_record_history_sample()`, which appends:
+
+```json
+{
+  "seq": 1234,
+  "day": 3,
+  "tick": 42,
+  "credits": 12500,
+  "net_worth": 17800,
+  "fighters": 40,
+  "shields": 250,
+  "experience": 5,
+  "alignment": 2,
+  "sector_id": 17,
+  "alive": true
+}
+```
+
+`/history?limit=N` returns `{"samples": {pid: [...]}, "max_samples": 240}`
+with at most N samples per player (default 120). The buffer is reset
+on `await runner.start(spec)`.
+
+### Client: inline sparklines
+
+`state.history: Map<pid, Sample[]>` is populated by `fetchHistory()`,
+called once at boot and every 4 seconds thereafter. Three sparklines
+render inline on each player card (and inside the detail drawer):
+
+| Metric | Color |
+|--------|-------|
+| credits | var(--accent) |
+| net_worth | `#ffd166` |
+| fighters | `#ff6e6e` |
+
+`sparklineSvg(series, color)` produces a tight 72×18 polyline with a
+dot at the right end. `.spark-row` / `.spark-cell` / `.spark-label`
+are the CSS hooks. When history hasn't been seeded yet the row shows
+an italicised "history" placeholder instead of an empty SVG.
+
+### JS public surface (Phase 4)
+
+```
+fetchHistory()              -- poll the server for the latest buffer
+sparklineSvg(series, color) -- pure fn; returns an <svg> string
+renderSparklineRow(pid)     -- 3-up sparkline row for a player card / drawer
+SPARK_METRICS               -- frozen config: which keys to graph, in order
+```
+
+### Tests
+
+* `tests/test_history_buffer.py` — 5 unit tests on the server side
+  (ring buffer cap, limit parameter, sampling tracks credit changes,
+  required fields present, empty state).
+* `tests/test_ui_smoke.py` — 3 new static assertions: JS helpers exist,
+  CSS selectors exist, `state.history` is a `Map`.
 
 ---
 

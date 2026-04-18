@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections import deque
 from dataclasses import dataclass, field
 
 from ..agents.base import BaseAgent
@@ -70,6 +71,11 @@ class RunnerState:
 class MatchRunner:
     """Owns the game loop. Safe to start/stop/pause from the server app."""
 
+    # How many history samples to keep per player (Phase 4). Sampled once per
+    # round-robin pass through all agents, so ~2 actions per sample with 2
+    # agents; 240 samples covers the last several in-game days.
+    HISTORY_MAX_SAMPLES = 240
+
     def __init__(self, broadcaster: Broadcaster):
         self.broadcaster = broadcaster
         self.state = RunnerState()
@@ -78,6 +84,10 @@ class MatchRunner:
         self._stop = asyncio.Event()
         self._pause = asyncio.Event()
         self._pause.set()  # starts un-paused
+        # Phase 4: per-player ring buffer of (seq, day, credits, net_worth,
+        # fighters, experience, alignment, sector_id). Populated by
+        # _record_history_sample() on every round-robin rollover.
+        self._history: dict[str, deque] = {}
 
     # ---------------- lifecycle ---------------- #
 
@@ -89,6 +99,7 @@ class MatchRunner:
         self._pause.set()
         self.state = RunnerState()
         self._last_published_seq = 0
+        self._history = {}
         self.broadcaster.reset_history()
         self._task = asyncio.create_task(self._run(), name="tw2k-match")
 
@@ -245,6 +256,9 @@ class MatchRunner:
 
                 await self._flush_events()
                 self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
+                # Sample history once per full round-robin pass.
+                if self.state.current_player_idx == 0:
+                    self._record_history_sample()
                 await self._sleep_scaled(self._spec.action_delay_s)
 
             self.state.status = "finished"
@@ -533,6 +547,50 @@ class MatchRunner:
         await asyncio.sleep(base / mult)
 
     # ---------------- snapshot ---------------- #
+
+    # ---------------- history (Phase 4) ---------------- #
+
+    def _record_history_sample(self) -> None:
+        """Append one sample per living player to the ring buffer.
+
+        Called by the game loop once per round-robin pass (i.e. after every
+        agent has been given a chance to act). Keeping a small per-player
+        deque makes the /history endpoint O(samples) and stable.
+        """
+        u = self.state.universe
+        if u is None:
+            return
+        seq = int(getattr(u, "seq", u.tick))
+        for p in u.players.values():
+            buf = self._history.get(p.id)
+            if buf is None:
+                buf = deque(maxlen=self.HISTORY_MAX_SAMPLES)
+                self._history[p.id] = buf
+            buf.append(
+                {
+                    "seq": seq,
+                    "day": u.day,
+                    "tick": u.tick,
+                    "credits": int(p.credits),
+                    "net_worth": int(p.net_worth),
+                    "fighters": int(p.ship.fighters),
+                    "shields": int(p.ship.shields),
+                    "experience": int(p.experience),
+                    "alignment": int(p.alignment),
+                    "sector_id": int(p.sector_id) if p.sector_id else 0,
+                    "alive": bool(p.alive),
+                }
+            )
+
+    def history_snapshot(self, limit: int | None = None) -> dict:
+        """Return the per-player history buffer for the /history endpoint."""
+        out: dict[str, list] = {}
+        for pid, buf in self._history.items():
+            samples = list(buf)
+            if limit is not None and limit > 0:
+                samples = samples[-limit:]
+            out[pid] = samples
+        return {"samples": out, "max_samples": self.HISTORY_MAX_SAMPLES}
 
     def recent_events(self, since: int = 0, limit: int = 200) -> list[dict]:
         """Return event-log entries with seq > since, newest last."""

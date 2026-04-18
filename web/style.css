@@ -467,6 +467,44 @@ html, body {
 .drawer-list li { padding: 3px 0; border-bottom: 1px dotted rgba(80, 96, 140, 0.25); }
 .drawer-list li:last-child { border-bottom: 0; }
 
+/* ---------- Phase 4: sparklines on player cards ---------- */
+.spark-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+  padding: 4px 6px;
+  background: rgba(12, 18, 34, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.spark-row-empty {
+  opacity: 0.55;
+  font-style: italic;
+}
+.spark-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.spark-label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+svg.spark { display: block; }
+
+/* Also inside the drawer we may render a larger sparkline. */
+.drawer-section .spark-row {
+  margin-top: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
 /* Visual cue on a sector node that is currently following */
 #galaxy .ship-follow-ring {
   fill: none;
