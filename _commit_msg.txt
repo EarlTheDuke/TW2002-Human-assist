@@ -1,0 +1,29 @@
+﻿feat: planet UI visibility + haggle push + deeper genesis + earlier Ferrengi
+
+Four related improvements driven by day-2 live-match evaluation.
+
+1. Planet info UI
+- The commander-card `Planets` block auto-opens (was collapsed) so
+  spectators notice when an agent owns planets.
+- Added a "Ports Seen" stat chip powered by `known_ports_count` in the
+  snapshot. Previously the UI had no way to show intel footprint; the
+  number always read as 0.
+
+2. Push haggle aggression (thin margins -> wider margins)
+- System prompt now says "20-30% past list is the sweet spot, not 5-10%",
+  with a worked example. Auto-settle-at-list guarantees zero downside
+  on failed haggles, so aggressive asks are free money when they land.
+
+3. Genesis must be deep
+- New constant GENESIS_MIN_HOPS_FROM_STARDOCK = 3. FedSpace alone
+  (sectors 1..10) wasn't enough buffer — some non-FedSpace sectors are
+  1 hop from StarDock. Now genesis requires BFS distance >= 3 hops.
+
+4. Earlier/more combat
+- FERRENGI_SPAWN_PER_DAY: 2 -> 3
+- FERRENGI_HUNT_AGGRESSION_THRESHOLD: 4 -> 3 (~+14% hostile raiders)
+- NEW: FERRENGI_INITIAL_SPAWN = 4 raiders seeded at universe
+  generation so day 1 has real threat instead of a safe grind.
+
+Tests: +6 regression tests across two new classes (TestPhaseI*, TestPhaseJ*).
+149/149 pass (was 143/143).

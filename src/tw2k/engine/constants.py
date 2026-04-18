@@ -199,6 +199,12 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
     (160_000, 32_000,  4),
 ]
 GENESIS_DEPLOY_TURN_COST = 4
+# Minimum hops from sector 1 (StarDock) for legal Genesis deployment.
+# Classic TW2002 required planets to be "deep" — you couldn't drop one in
+# the Federation's back yard. FedSpace only covers 1..10, but many of those
+# sectors have >10-hop reachability paths and some outer sectors are
+# 1-hop from StarDock; a hops-based rule guarantees real distance.
+GENESIS_MIN_HOPS_FROM_STARDOCK = 3
 # Founding population Genesis torpedoes bring to life. Tuned so Citadel L1
 # (1,000 colonists) is immediately buildable and natural growth can start.
 GENESIS_SEED_COLONISTS = 2_500
@@ -253,13 +259,15 @@ XP_AWARDS = {
 
 # --- Ferrengi behaviour -------------------------------------------------------
 FERRENGI_MOVE_PROB = 0.6              # chance per day each Ferrengi moves
-FERRENGI_HUNT_AGGRESSION_THRESHOLD = 4 # below this they ignore players
+FERRENGI_HUNT_AGGRESSION_THRESHOLD = 3 # below this they ignore players (was 4)
 FERRENGI_FLEE_FIGHTER_RATIO = 1.5     # if player.fighters > theirs * this, they flee
 
 # --- Ferrengi -----------------------------------------------------------------
 
 FERRENGI_MAX_AGGRESSION = 10
-FERRENGI_SPAWN_PER_DAY = 2
+FERRENGI_SPAWN_PER_DAY = 3
+# Pre-seed at match start so there's tension from day 1 instead of day 2.
+FERRENGI_INITIAL_SPAWN = 4
 FERRENGI_BOUNTY_PER_AGG = 1000
 
 # --- Corp ---------------------------------------------------------------------

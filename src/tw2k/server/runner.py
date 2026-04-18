@@ -734,6 +734,12 @@ class MatchRunner:
                     "net_worth": full_net_worth(u, p),
                     "net_worth_ship": p.net_worth,
                     "alliances": list(p.alliances),
+                    # Intel footprint: how many sectors / ports this
+                    # commander has physically visited. Lets spectators
+                    # see "explorer vs. grinder" at a glance without
+                    # dumping the full known_ports dict over the wire.
+                    "known_sectors_count": len(p.known_sectors),
+                    "known_ports_count": len(p.known_ports),
                 }
                 for p in u.players.values()
             ],

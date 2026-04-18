@@ -1034,6 +1034,19 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         return ActionResult(ok=False, error="no genesis torpedoes loaded")
     if sector.id in K.FEDSPACE_SECTORS:
         return ActionResult(ok=False, error="cannot deploy genesis in FedSpace")
+    # Enforce real distance from StarDock. In classic TW2002 planets had to
+    # be built "deep" — you couldn't park a citadel next to Sol. Without
+    # this check a single-hop-from-StarDock sector would qualify just by
+    # being outside FedSpace, trivializing the colonist-ferry phase.
+    hops_from_stardock = len(_bfs_path(universe, K.STARDOCK_SECTOR, sector.id))
+    if hops_from_stardock > 0 and hops_from_stardock < K.GENESIS_MIN_HOPS_FROM_STARDOCK:
+        return ActionResult(
+            ok=False,
+            error=(
+                f"too close to StarDock ({hops_from_stardock} hops, "
+                f"need >={K.GENESIS_MIN_HOPS_FROM_STARDOCK}); warp deeper"
+            ),
+        )
     if player.planet_landed is not None:
         return ActionResult(ok=False, error="must be in space to deploy genesis")
     cost = K.GENESIS_DEPLOY_TURN_COST

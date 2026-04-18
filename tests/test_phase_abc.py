@@ -1311,3 +1311,82 @@ class TestPhaseHTurnsStarvation:
         assert "LOW TURNS" not in obs.action_hint, (
             "LOW TURNS warning should not fire when turns_remaining >= warp_cost"
         )
+
+
+class TestPhaseIGenesisDistance:
+    """Genesis torpedoes must detonate well away from StarDock — FedSpace
+    alone is not enough of a buffer (some outer sectors are 1 hop from
+    sector 1 even though they're outside sectors 1..10). Classic TW2002
+    required planets to be "deep"; we enforce this at >= 3 hops."""
+
+    def test_i1_genesis_blocked_in_fedspace(self):
+        """FedSpace rejection still fires (pre-existing behavior)."""
+        u, (a, *_) = _make_universe(seed=9001)
+        a.ship.genesis = 1
+        a.sector_id = 2  # FedSpace
+        a.turns_today = 0
+        r = apply_action(u, a.id, Action(kind=ActionKind.DEPLOY_GENESIS, args={}))
+        assert not r.ok
+        assert "FedSpace" in (r.error or "")
+
+    def test_i2_genesis_blocked_at_direct_stardock_neighbor(self):
+        """A sector 1 hop from StarDock but outside FedSpace must still
+        be rejected by the new distance rule."""
+        u, (a, *_) = _make_universe(seed=9002)
+        # Find a sector that is 1-hop from stardock AND not in FedSpace.
+        sd_warps = u.sectors[K.STARDOCK_SECTOR].warps
+        candidate = next((s for s in sd_warps if s not in K.FEDSPACE_SECTORS), None)
+        if candidate is None:
+            pytest.skip("seed has no non-FedSpace sector adjacent to StarDock")
+        a.ship.genesis = 1
+        a.sector_id = candidate
+        a.turns_today = 0
+        r = apply_action(u, a.id, Action(kind=ActionKind.DEPLOY_GENESIS, args={}))
+        assert not r.ok
+        assert "StarDock" in (r.error or "") or "hops" in (r.error or "")
+
+    def test_i3_genesis_allowed_far_from_stardock(self):
+        """Deep space must still permit genesis."""
+        from tw2k.engine.runner import _bfs_path
+
+        u, (a, *_) = _make_universe(seed=9003)
+        deep = None
+        for sid in range(K.GENESIS_MIN_HOPS_FROM_STARDOCK + 1, u.config.universe_size + 1):
+            if sid in K.FEDSPACE_SECTORS:
+                continue
+            hops = len(_bfs_path(u, K.STARDOCK_SECTOR, sid))
+            if hops >= K.GENESIS_MIN_HOPS_FROM_STARDOCK:
+                deep = sid
+                break
+        assert deep is not None, "expected some deep sector in a 500-sector universe"
+        a.ship.genesis = 1
+        a.sector_id = deep
+        a.turns_today = 0
+        r = apply_action(u, a.id, Action(kind=ActionKind.DEPLOY_GENESIS, args={}))
+        assert r.ok, f"genesis at deep sector {deep} should succeed, got: {r.error}"
+
+
+class TestPhaseJEarlyCombat:
+    """Ferrengi should pose a threat from day 1, not day 2+. The universe
+    generator now pre-seeds raiders at match start."""
+
+    def test_j1_initial_ferrengi_spawned_at_generation(self):
+        u, _ = _make_universe(seed=9101)
+        assert len(u.ferrengi) >= K.FERRENGI_INITIAL_SPAWN, (
+            f"expected >= {K.FERRENGI_INITIAL_SPAWN} Ferrengi at game start, "
+            f"got {len(u.ferrengi)}"
+        )
+
+    def test_j2_initial_ferrengi_are_outside_fedspace(self):
+        u, _ = _make_universe(seed=9102)
+        for ferr in u.ferrengi.values():
+            assert ferr.sector_id not in K.FEDSPACE_SECTORS, (
+                f"Ferrengi {ferr.id} spawned in FedSpace at {ferr.sector_id} — "
+                f"must be deep space only (otherwise Federation would wipe them)."
+            )
+
+    def test_j3_hunt_threshold_lowered(self):
+        """Lowering the threshold from 4 to 3 means aggression levels 3-10
+        will hunt (8 of 10 levels) instead of 4-10 (7 of 10) — roughly
+        +14% hostile raiders. Guard the constant so we notice regressions."""
+        assert K.FERRENGI_HUNT_AGGRESSION_THRESHOLD == 3

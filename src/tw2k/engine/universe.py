@@ -278,7 +278,35 @@ def generate_universe(config: GameConfig) -> Universe:
     if config.enable_planets:
         _seed_planets(rng, universe)
 
+    # Pre-seed Ferrengi raiders so the first day has genuine threat. Without
+    # this the first Ferrengi don't appear until the end of day 1 (tick_day),
+    # which historically gave agents a full safe day of grinding. Distributed
+    # across deep space so they don't all cluster on one trade lane.
+    if config.enable_ferrengi and K.FERRENGI_INITIAL_SPAWN > 0:
+        _seed_initial_ferrengi(rng, universe)
+
     return universe
+
+
+def _seed_initial_ferrengi(rng: random.Random, universe: Universe) -> None:
+    from .models import FerrengiShip, ShipClass
+
+    deep_start = max(K.FEDSPACE_SECTORS) + 1
+    max_sid = universe.config.universe_size
+    for i in range(K.FERRENGI_INITIAL_SPAWN):
+        sid = rng.randint(deep_start, max_sid)
+        aggr = rng.randint(2, K.FERRENGI_MAX_AGGRESSION)
+        fid = f"ferr_d0_{i}_{sid}"
+        ship = FerrengiShip(
+            id=fid,
+            name=f"Ferrengi Raider {fid[-4:].upper()}",
+            sector_id=sid,
+            aggression=aggr,
+            fighters=100 + aggr * 300,
+            shields=aggr * 50,
+            ship_class=ShipClass.BATTLESHIP if aggr >= 8 else ShipClass.MISSILE_FRIGATE,
+        )
+        universe.ferrengi[fid] = ship
 
 
 def _seed_planets(rng: random.Random, universe: Universe) -> None:

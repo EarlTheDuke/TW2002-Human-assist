@@ -847,6 +847,7 @@
           <div class="stat"><span class="k">XP</span><span class="v">${fmt(p.experience || 0)}</span></div>
           <div class="stat"><span class="k">Turns</span><span class="v">${turnsLabel}</span></div>
           <div class="stat"><span class="k">Lives</span><span class="v">${Math.max(0, maxDeaths - deaths)}/${maxDeaths}</span></div>
+          <div class="stat" title="Ports this commander has visited and has intel on"><span class="k">Ports Seen</span><span class="v">${fmt(p.known_ports_count || 0)}</span></div>
         </div>
         <div class="cargo-bar" title="Cargo holds">${cargoSegs}</div>
         <div class="cargo-legend">${cargoLabel}</div>
@@ -1007,7 +1008,7 @@
 
     const summary = `Planets (${owned.length}) · ${totalCitadels} Cit · ${fmt(totalIdle)} idle`;
     return `
-      <details class="commander-planets">
+      <details class="commander-planets" open>
         <summary>${summary}</summary>
         <ul class="planet-list">${rows}</ul>
       </details>
