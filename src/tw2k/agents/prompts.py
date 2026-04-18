@@ -7,7 +7,6 @@ from typing import Any
 
 from ..engine import Observation
 
-
 SYSTEM_PROMPT = """You are a player in TRADEWARS 2002, a space-trading and conquest game.
 
 ================ THE GALAXY ================

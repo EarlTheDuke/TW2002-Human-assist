@@ -92,7 +92,7 @@ def test_toll_trade_payload_skipped_for_port_pair_counting():
 # ---------------------------------------------------------------------------
 
 
-def _build_day1_perfect_stats() -> "wm.DayStats":
+def _build_day1_perfect_stats() -> wm.DayStats:
     st = wm.DayStats()
     st.nw_start = 40_000
     st.nw_end = 52_000  # +30%

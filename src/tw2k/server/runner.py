@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 
 from ..agents.base import BaseAgent
 from ..engine import (
-    Action,
     ActionKind,
     EventKind,
     GameConfig,
@@ -21,7 +20,6 @@ from ..engine import (
 )
 from ..engine.models import Player, Ship
 from .broadcaster import Broadcaster
-
 
 # Distinct colors for players on the map
 AGENT_COLORS = [
@@ -101,7 +99,7 @@ class MatchRunner:
         self._pause.set()
         try:
             await asyncio.wait_for(self._task, timeout=5)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._task.cancel()
         # Close agents
         for agent in self.state.agents:
@@ -189,7 +187,7 @@ class MatchRunner:
                 try:
                     obs = build_observation(universe, agent.player_id)
                     action = await agent.act(obs)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     universe.emit(
                         EventKind.AGENT_ERROR,
                         actor_id=agent.player_id,
@@ -250,7 +248,7 @@ class MatchRunner:
                 await self._sleep_scaled(self._spec.action_delay_s)
 
             self.state.status = "finished"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             import traceback
 
             self.state.status = "error"

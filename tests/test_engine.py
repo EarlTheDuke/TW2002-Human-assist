@@ -20,7 +20,7 @@ from tw2k.engine import (
     is_finished,
     tick_day,
 )
-from tw2k.engine.models import Commodity, Player, Ship
+from tw2k.engine.models import Player, Ship
 
 
 def _build_universe_with_agent():

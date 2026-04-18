@@ -36,9 +36,9 @@ def serve(
     no_auto_start: bool = typer.Option(False, help="Don't auto-start the match at boot."),
 ) -> None:
     """Start the spectator web server."""
-    from .server.app import create_app
-
     import os as _os
+
+    from .server.app import create_app
     provider_display = provider or default_provider()
     console.rule("[bold cyan]TW2K-AI Server")
     console.print(f"[cyan]Host:[/] {host}:{port}")

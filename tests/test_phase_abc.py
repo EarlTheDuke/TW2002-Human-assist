@@ -27,7 +27,6 @@ from tw2k.engine.models import (
 )
 from tw2k.engine.runner import _destroy_ship, alignment_label, rank_for
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

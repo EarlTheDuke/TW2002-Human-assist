@@ -22,7 +22,6 @@ from .base import BaseAgent
 from .heuristic import HeuristicAgent
 from .prompts import SYSTEM_PROMPT, format_observation
 
-
 # ---------------------------------------------------------------------------
 # Provider detection
 # ---------------------------------------------------------------------------
@@ -140,9 +139,9 @@ class LLMAgent(BaseAgent):
             )
             self._warmed = True
             return (True, (raw or "").strip()[:80] or "ok")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return (False, f"warmup timed out after {self.warmup_timeout_s:.0f}s")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return (False, f"{type(exc).__name__}: {exc}")
 
     async def _call_warmup(self) -> str:
@@ -226,12 +225,12 @@ class LLMAgent(BaseAgent):
         try:
             raw = await asyncio.wait_for(self._call(prompt), timeout=timeout)
             self._warmed = True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._consecutive_failures += 1
             if self._consecutive_failures >= 5:
                 return await self._fallback.act(obs)
             return Action(kind=ActionKind.WAIT, thought=f"[LLM timeout after {timeout:.0f}s] resting a tick.")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._consecutive_failures += 1
             if self._consecutive_failures >= 5:
                 return await self._fallback.act(obs)

@@ -3,4 +3,4 @@
 from .app import create_app
 from .runner import MatchRunner
 
-__all__ = ["create_app", "MatchRunner"]
+__all__ = ["MatchRunner", "create_app"]

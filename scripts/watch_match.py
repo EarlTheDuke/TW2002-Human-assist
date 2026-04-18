@@ -21,7 +21,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 
-
 # ---------------------------------------------------------------------------
 # Rubric (kept in lockstep with docs/HEALTHY_GAME_PLAYBOOK.md §8)
 # ---------------------------------------------------------------------------
@@ -441,7 +440,7 @@ def main() -> None:
 
         except urllib.error.URLError as e:
             log(f"!! server unreachable: {e}")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log(f"!! watcher error: {type(e).__name__}: {e}")
 
         time.sleep(args.poll_ms / 1000.0)

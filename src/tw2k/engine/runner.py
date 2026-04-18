@@ -31,7 +31,6 @@ from .models import (
     Universe,
 )
 
-
 # Per-universe PRNG. We attach it lazily to avoid touching models.
 _rngs: dict[int, random.Random] = {}
 
@@ -291,7 +290,7 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
                 )
 
     # If destroyed by fighters, handler already ejected player
-    if not player.alive or player.sector_id == K.STARDOCK_SECTOR and damage > 0:
+    if not player.alive or (player.sector_id == K.STARDOCK_SECTOR and damage > 0):
         # Leave as-is after destruction
         pass
 

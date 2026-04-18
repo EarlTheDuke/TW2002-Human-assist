@@ -16,13 +16,9 @@ from tw2k.engine.models import (
     Commodity,
     FerrengiShip,
     MineType,
-    Planet,
-    PlanetClass,
     Player,
     Ship,
-    ShipClass,
 )
-
 
 PASS = []
 FAIL = []
