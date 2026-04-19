@@ -709,7 +709,15 @@ class MatchRunner:
         u = self.state.universe
         if u is None:
             return {"status": self.state.status}
+        from ..agents.llm import LLMAgent
         from ..engine.runner import alignment_label, full_net_worth, rank_for
+        # Pull {player_id: (provider, model)} from the live agent instances so
+        # the UI can render a "running model" badge per commander. Heuristic
+        # agents get (None, None) and the UI can fall back to the kind label.
+        agent_model: dict[str, tuple[str | None, str | None]] = {}
+        for ag in self.state.agents:
+            if isinstance(ag, LLMAgent):
+                agent_model[ag.player_id] = (ag.provider, ag.model)
         return {
             "status": self.state.status,
             "speed": self.state.speed_multiplier,
@@ -772,6 +780,11 @@ class MatchRunner:
                     # dumping the full known_ports dict over the wire.
                     "known_sectors_count": len(p.known_sectors),
                     "known_ports_count": len(p.known_ports),
+                    # Which LLM is piloting this commander — lets the UI show
+                    # a model badge ("Grok" vs "Sonnet") so head-to-head
+                    # matches are legible at a glance. None for heuristic.
+                    "provider": agent_model.get(p.id, (None, None))[0],
+                    "model": agent_model.get(p.id, (None, None))[1],
                 }
                 for p in u.players.values()
             ],

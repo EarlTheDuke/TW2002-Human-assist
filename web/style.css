@@ -628,6 +628,64 @@ html, body {
   text-transform: uppercase;
   color: var(--text);
 }
+/* Collapsible drawer sections (Plans, Memory). Uses native <details> so
+   open/closed state is preserved per-session without JS plumbing. */
+details.drawer-section { padding-bottom: 10px; }
+details.drawer-section > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+details.drawer-section > summary::-webkit-details-marker { display: none; }
+details.drawer-section > summary::before {
+  content: "▸";
+  color: var(--text-dim);
+  font-size: 11px;
+  transition: transform 120ms ease;
+  display: inline-block;
+}
+details.drawer-section[open] > summary::before { transform: rotate(90deg); }
+details.drawer-section > summary > h3 { margin: 0; }
+details.drawer-section > summary:hover > h3 { color: var(--accent); }
+.drawer-hint {
+  color: var(--text-faint);
+  font-size: 9px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  margin-left: 4px;
+}
+.drawer-empty {
+  color: var(--text-faint);
+  font-style: italic;
+  font-size: 11px;
+  padding: 4px 0;
+}
+/* Plans: reuse goal-chip look from the card but let long text wrap. */
+.goal-text.goal-text-full {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.4;
+}
+.drawer-plans .goal-line { padding: 6px 0; }
+/* Memory: full scratchpad readable, monospaced for tight format. */
+.drawer-scratchpad {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: rgba(20, 28, 46, 0.6);
+  border-radius: 4px;
+  border-left: 3px solid rgba(182, 110, 255, 0.4);
+  font-size: 12px;
+}
 .drawer-stat-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -852,6 +910,25 @@ svg.spark { display: block; }
   padding: 1px 6px; border: 1px solid var(--line); border-radius: 999px;
   text-transform: uppercase; letter-spacing: 0.08em;
 }
+
+/* Model badge — who is piloting this commander. Color-coded per provider
+   so a Grok-vs-Sonnet match is legible at a glance without reading the
+   tooltip. Hover shows the full provider + model string. */
+.model-badge {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.04);
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.model-badge.model-xai        { color: #b990ff; background: rgba(185, 144, 255, 0.10); }
+.model-badge.model-anthropic  { color: #ffa766; background: rgba(255, 167, 102, 0.10); }
+.model-badge.model-openai     { color: #5cd7a8; background: rgba(92, 215, 168, 0.10); }
+.model-badge.model-deepseek   { color: #6bb6ff; background: rgba(107, 182, 255, 0.10); }
+.model-badge.model-custom     { color: #9aa3b4; background: rgba(154, 163, 180, 0.10); }
 .player-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1206,9 +1283,31 @@ svg.spark { display: block; }
 
 /* ---------- Event feed ---------- */
 .events-panel { display: flex; flex-direction: column; }
-.filter-group { display: flex; gap: 10px; font-size: 10.5px; color: var(--text-dim); }
+.filter-group { display: flex; gap: 10px; font-size: 10.5px; color: var(--text-dim); align-items: center; flex-wrap: wrap; }
 .filter-group label { cursor: pointer; user-select: none; }
 .filter-group input { margin-right: 3px; }
+.actor-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(100, 120, 160, 0.25);
+}
+.actor-filter-select {
+  background: rgba(20, 28, 46, 0.8);
+  color: var(--text);
+  border: 1px solid rgba(100, 120, 160, 0.35);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 10.5px;
+  font-family: inherit;
+  cursor: pointer;
+  max-width: 180px;
+  transition: border-color 140ms ease;
+}
+.actor-filter-select:hover,
+.actor-filter-select:focus { outline: none; border-color: var(--accent); }
 .event-feed {
   list-style: none;
   margin: 0;

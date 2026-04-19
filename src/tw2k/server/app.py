@@ -140,6 +140,11 @@ def create_app(
             num_agents=int(body.get("num_agents", num_agents)),
             turns_per_day=(int(body["turns_per_day"]) if "turns_per_day" in body else turns_per_day),
             starting_credits=(int(body["starting_credits"]) if "starting_credits" in body else starting_credits),
+            # Per-agent overrides: a list of dicts, each with optional
+            # `provider`, `model`, `name`, `kind`. Slot N in the list maps to
+            # player PN+1. Missing slots fall back to the global provider/model.
+            # This is the hook for multi-model matches (e.g., Grok vs Claude).
+            agent_overrides=body.get("agents"),
         )
         await runner.start(spec)
         return {"status": runner.state.status}
@@ -194,6 +199,7 @@ def _build_default_spec(
     num_agents: int,
     turns_per_day: int | None = None,
     starting_credits: int | None = None,
+    agent_overrides: list[dict] | None = None,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -216,16 +222,26 @@ def _build_default_spec(
         cfg_kwargs["starting_credits"] = starting_credits
     cfg = GameConfig(**cfg_kwargs)
 
-    agents = [
-        AgentSpec(
-            player_id=f"P{i+1}",
-            name=names[i],
-            kind=resolved_kind,
-            provider=provider,
-            model=model,
+    # Per-agent overrides — slot N of the list maps to player P(N+1). Each
+    # entry may specify any of: provider, model, name, kind. Missing fields
+    # fall back to the global values. Missing slots use globals entirely.
+    # Enables matches like "P1 = Grok, P2 = Claude Sonnet 4.5".
+    overrides = list(agent_overrides or [])
+
+    agents: list[AgentSpec] = []
+    for i in range(num_agents):
+        ov = overrides[i] if i < len(overrides) else {}
+        if not isinstance(ov, dict):
+            ov = {}
+        agents.append(
+            AgentSpec(
+                player_id=f"P{i+1}",
+                name=str(ov.get("name") or names[i]),
+                kind=str(ov.get("kind") or resolved_kind),
+                provider=ov.get("provider", provider),
+                model=ov.get("model", model),
+            )
         )
-        for i in range(num_agents)
-    ]
     return MatchSpec(config=cfg, agents=agents, action_delay_s=cfg.action_delay_s)
 
 

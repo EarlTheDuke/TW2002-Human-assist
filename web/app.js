@@ -41,6 +41,8 @@
     recentWarp: [],            // [{from,to,t}]
     filters: {
       combat: true, trade: true, move: true, thought: true, system: true, diplomacy: true,
+      // actor: "all" (default) | "players" (any actor that's a player) | "<pid>" (specific)
+      actor: "all",
     },
     replay: {
       mode: "live",            // "live" | "scrub"
@@ -189,6 +191,9 @@
     if (Array.isArray(snap.alliances)) {
       state.alliances = snap.alliances;
     }
+    // Re-populate the event feed's actor filter so new/changed rosters
+    // (match restart, late-arriving snapshot) always have correct options.
+    refreshActorFilterOptions();
   }
 
   function onEvent(msg) {
@@ -1237,6 +1242,7 @@
           <span class="pc-sum-main">
             <span class="pc-sum-name">${esc(p.name)}</span>
             <span class="rank-chip">${esc(rankLabel)}</span>
+            ${renderModelBadge(p)}
             ${p.alive ? "" : '<span class="player-tag" style="color:var(--danger); border-color:var(--danger)">KIA</span>'}
           </span>
           <span class="pc-sum-stats">
@@ -1256,6 +1262,7 @@
             <div class="player-name">${esc(p.name)}<span class="rank-chip">${esc(rankLabel)}</span></div>
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
               <span class="player-tag">${p.kind || "?"}</span>
+              ${renderModelBadge(p)}
               ${corpInfo}
               ${p.alive ? "" : '<span class="player-tag" style="color:var(--danger); border-color:var(--danger)">KIA</span>'}
             </div>
@@ -1606,7 +1613,58 @@
     if (cat === "thought" && !f.thought) return false;
     if (cat === "system" && !f.system) return false;
     if (cat === "diplomacy" && !f.diplomacy) return false;
+    // Actor filter — applied LAST so it can cut across every category.
+    //   "all"     → pass (no actor restriction)
+    //   "players" → only events whose actor_id is a known player (hides
+    //               Ferrengi, system-level events like game_start, etc.)
+    //   "<pid>"   → only events where actor_id == that player id
+    const actorFilter = f.actor || "all";
+    if (actorFilter !== "all") {
+      const aid = ev.actor_id || null;
+      if (actorFilter === "players") {
+        if (!aid || !state.players.has(aid)) return false;
+      } else if (aid !== actorFilter) {
+        return false;
+      }
+    }
     return true;
+  }
+
+  // Rebuild the actor filter dropdown whenever the player roster changes
+  // (match restart, match start, etc.). Preserves the user's current choice
+  // when possible so a selected player survives a WebSocket reconnect.
+  function refreshActorFilterOptions() {
+    const sel = document.getElementById("eventActorFilter");
+    if (!sel) return;
+    const prev = state.filters.actor || "all";
+    // Build options fresh: "All" + "All players" + one per player.
+    const frag = document.createDocumentFragment();
+    const addOpt = (value, label) => {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      frag.appendChild(opt);
+    };
+    addOpt("all", "All");
+    addOpt("players", "All players");
+    // Sort by player id so P1, P2, P3, P4 order is stable across renders.
+    const players = Array.from(state.players.values())
+      .slice()
+      .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+    for (const p of players) {
+      addOpt(p.id, `${p.name} (${p.id})`);
+    }
+    sel.innerHTML = "";
+    sel.appendChild(frag);
+    // Restore selection if still valid; else fall back to "all".
+    const stillValid = Array.from(sel.options).some((o) => o.value === prev);
+    sel.value = stillValid ? prev : "all";
+    if (!stillValid) state.filters.actor = "all";
+    // Visual cue: when filtered to a single player, color the dropdown
+    // border with that player's color so spectators always see the active
+    // lens at a glance, even if the select is scrolled off.
+    const selectedPlayer = state.players.get(sel.value);
+    sel.style.borderColor = selectedPlayer?.color || "";
   }
 
   // ----------------- Replay scrubber ---------------
@@ -1715,6 +1773,51 @@
     return String(Math.round(n));
   }
 
+  // Model badge helpers — render a compact "who's piloting this agent" chip
+  // on every commander card. Supports head-to-head matches (e.g. Grok vs
+  // Sonnet) where spectators need to tell at a glance which model is driving
+  // which ship. Returns `{ short, full, cls }` or null if the player is
+  // heuristic / no model assigned yet.
+  function modelBadge(p) {
+    if (!p || !p.provider || p.provider === "none") return null;
+    const prov = String(p.provider).toLowerCase();
+    const model = String(p.model || "");
+    let short = model;
+    if (!short) short = prov;
+    // Keep it legible — strip date suffixes, version prefixes, etc.
+    const nameMap = [
+      [/claude-sonnet-4-?5/i, "Sonnet 4.5"],
+      [/claude-sonnet-4-?6/i, "Sonnet 4.6"],
+      [/claude-sonnet-4/i,   "Sonnet 4"],
+      [/claude-opus-4/i,     "Opus 4"],
+      [/claude-haiku/i,      "Haiku"],
+      [/grok-4-1-fast-reasoning/i, "Grok-4.1 fast"],
+      [/grok-4/i,            "Grok-4"],
+      [/grok-3/i,            "Grok-3"],
+      [/gpt-4o-mini/i,       "GPT-4o-mini"],
+      [/gpt-4o/i,            "GPT-4o"],
+      [/gpt-4/i,             "GPT-4"],
+      [/gpt-5/i,             "GPT-5"],
+      [/deepseek-(reason|r1)/i, "DeepSeek R1"],
+      [/deepseek-chat/i,     "DeepSeek V3"],
+    ];
+    for (const [re, label] of nameMap) {
+      if (re.test(model)) { short = label; break; }
+    }
+    if (short === prov) {
+      short = prov.charAt(0).toUpperCase() + prov.slice(1);
+    }
+    const providerClass = "model-badge model-" + prov;
+    const full = `${prov} · ${model || "(default model)"}`;
+    return { short, full, cls: providerClass };
+  }
+
+  function renderModelBadge(p) {
+    const m = modelBadge(p);
+    if (!m) return "";
+    return `<span class="${m.cls}" title="${esc(m.full)}">${esc(m.short)}</span>`;
+  }
+
   function esc(s) {
     return String(s == null ? "" : s)
       .replaceAll("&", "&amp;")
@@ -1791,6 +1894,29 @@
       render();
     });
   });
+
+  // Actor filter — select dropdown (rebuilt whenever the roster changes
+  // via refreshActorFilterOptions). Selection persists across reloads so
+  // spectators keep their lens between sessions. Restore the saved choice
+  // BEFORE the first snapshot arrives so early events render correctly.
+  const ACTOR_FILTER_KEY = "tw2k:actorFilter";
+  try {
+    const saved = localStorage.getItem(ACTOR_FILTER_KEY);
+    if (saved) state.filters.actor = saved;
+  } catch (_e) { /* storage disabled */ }
+  const actorFilterEl = document.getElementById("eventActorFilter");
+  if (actorFilterEl) {
+    actorFilterEl.value = state.filters.actor || "all";
+    actorFilterEl.addEventListener("change", () => {
+      state.filters.actor = actorFilterEl.value;
+      // Visual: border-color the dropdown with the selected player's color.
+      const p = state.players.get(actorFilterEl.value);
+      actorFilterEl.style.borderColor = p?.color || "";
+      try { localStorage.setItem(ACTOR_FILTER_KEY, state.filters.actor); }
+      catch (_e) { /* quota */ }
+      render();
+    });
+  }
 
   // ----------------- Layout: resize / collapse / shortcuts (Phase 1) ------
 
@@ -2255,10 +2381,64 @@
         <div>Corporation: ${p.corp_ticker ? `<strong style="color:${p.color}">${esc(p.corp_ticker)}</strong>` : "none"}</div>
         <div>Alliance: ${allianceInfo}</div>
       </div>
+      ${renderDrawerPlansBlock(p)}
+      ${renderDrawerMemoryBlock(p)}
       <div class="drawer-section">
         <h3>Press <kbd>◎ Follow</kbd> above</h3>
         <div>Camera will lock on ${esc(p.name)} and pan with every warp.</div>
       </div>
+    `;
+  }
+
+  function renderDrawerPlansBlock(p) {
+    // The commander's 3-horizon goals. Surfaced in full (no truncation)
+    // since the drawer has more vertical room than the card. Closed by
+    // default to keep the drawer short; spectators who want to peek at
+    // strategic intent can expand.
+    const s = (p.goal_short || "").trim();
+    const m = (p.goal_medium || "").trim();
+    const l = (p.goal_long || "").trim();
+    if (!s && !m && !l) {
+      return `
+        <details class="drawer-section drawer-plans">
+          <summary><h3>Plans</h3></summary>
+          <div class="drawer-empty">No current goals on record.</div>
+        </details>
+      `;
+    }
+    const line = (label, text, cls) => {
+      if (!text) return "";
+      return `<div class="goal-line ${cls}"><span class="goal-chip">${label}</span><span class="goal-text goal-text-full">${esc(text)}</span></div>`;
+    };
+    return `
+      <details class="drawer-section drawer-plans">
+        <summary><h3>Plans</h3></summary>
+        ${line("Short", s, "short")}
+        ${line("Medium", m, "medium")}
+        ${line("Long", l, "long")}
+      </details>
+    `;
+  }
+
+  function renderDrawerMemoryBlock(p) {
+    // The scratchpad is the agent's private note-to-self from the end of
+    // their last turn — effectively working memory passed forward. Shown
+    // in full here (card truncates to 400ch) so observers can see the
+    // full strategic narrative the LLM is writing for itself.
+    const pad = (p.scratchpad || "").trim();
+    if (!pad) {
+      return `
+        <details class="drawer-section drawer-memory">
+          <summary><h3>Memory</h3></summary>
+          <div class="drawer-empty">No scratchpad yet — agent hasn't written private notes.</div>
+        </details>
+      `;
+    }
+    return `
+      <details class="drawer-section drawer-memory">
+        <summary><h3>Memory <span class="drawer-hint">(scratchpad, ${pad.length} chars)</span></h3></summary>
+        <div class="thought drawer-scratchpad">${esc(pad)}</div>
+      </details>
     `;
   }
 
