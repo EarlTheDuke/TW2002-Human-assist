@@ -334,6 +334,32 @@ html, body {
 #galaxy.zoom-near .warp { stroke: #22305a; stroke-width: 0.75; opacity: 0.9; }
 #galaxy.zoom-near .sector-node { stroke-width: 0.7; }
 
+/* Focus highlight — when a sector is selected or hovered, dim everything that
+ * isn't part of its immediate neighborhood so the user can actually see what
+ * connects to what. Kicks in only when #galaxy has `.has-focus`. */
+#galaxy.has-focus .warp {
+  opacity: 0.05 !important;
+  stroke: #1a2440 !important;
+  stroke-width: 0.45 !important;
+}
+#galaxy.has-focus .warp.focused-warp {
+  opacity: 0.95 !important;
+  stroke: var(--accent) !important;
+  stroke-width: 1.4 !important;
+}
+#galaxy.has-focus #sectors-layer g.unfocused .sector-node {
+  opacity: 0.2;
+}
+#galaxy.has-focus #sectors-layer g.focused-self .sector-node {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 3px var(--accent));
+}
+#galaxy.has-focus #sectors-layer g.focused-neighbor .sector-node {
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+
 /* ---------- Map overlay controls (zoom +/-, fit, mini toggle) ---------- */
 .map-controls {
   position: absolute;
@@ -496,6 +522,41 @@ html, body {
 .drawer-list { list-style: none; padding: 0; margin: 0; }
 .drawer-list li { padding: 3px 0; border-bottom: 1px dotted rgba(80, 96, 140, 0.25); }
 .drawer-list li:last-child { border-bottom: 0; }
+
+/* Warp list — clickable sector links walk the graph like web links.
+ * Pills give a quick at-a-glance sense of what each neighbor contains. */
+.drawer-list.warp-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 5px 0;
+}
+a.sector-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  border-bottom: 1px dotted rgba(110, 231, 255, 0.35);
+}
+a.sector-link:hover {
+  color: #fff;
+  border-bottom-color: #fff;
+}
+.pill {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  background: rgba(80, 96, 140, 0.2);
+  color: var(--text-dim);
+  border: 1px solid rgba(80, 96, 140, 0.25);
+}
+.pill-port     { background: rgba(255, 190, 80, 0.15); color: #ffd68a; border-color: rgba(255, 190, 80, 0.35); }
+.pill-fed      { background: rgba(90, 140, 255, 0.18); color: #a7c4ff; border-color: rgba(90, 140, 255, 0.4); }
+.pill-planet   { background: rgba(255, 100, 220, 0.15); color: #ffb0ea; border-color: rgba(255, 100, 220, 0.4); }
+.pill-stardock { background: rgba(255, 255, 255, 0.18); color: #fff; border-color: rgba(255, 255, 255, 0.4); }
 
 /* ---------- Phase 4: sparklines on player cards ---------- */
 .spark-row {

@@ -29,6 +29,8 @@
     selectedSectorId: null,
     selectedPlayerId: null,
     followPlayerId: null,      // map camera locks on this player when set
+    hoverSectorId: null,       // transient; highlights a sector neighborhood while hovering
+    reverseWarps: new Map(),   // id -> Set(ids that warp TO id). Built in buildMap.
     drawer: { kind: null, id: null }, // kind = "player" | "sector" | null
     history: new Map(),        // pid -> [{seq, day, credits, net_worth, fighters, ...}]
     recentWarp: [],            // [{from,to,t}]
@@ -316,7 +318,17 @@
     svg.appendChild(shipsLayer);
 
     // Build warps. Show one-way warps (asymmetric) with directional arrows,
-    // two-way warps as simple lines.
+    // two-way warps as simple lines. Each line is tagged with data-a/data-b
+    // so focus highlighting can pick out warps touching a given sector in O(1).
+    // Also build the reverse-warp index (who warps TO each sector) so
+    // applyFocusHighlight() can show "warps IN" as well as "warps OUT".
+    state.reverseWarps.clear();
+    for (const s of state.sectors.values()) {
+      for (const w of s.warps || []) {
+        if (!state.reverseWarps.has(w)) state.reverseWarps.set(w, new Set());
+        state.reverseWarps.get(w).add(s.id);
+      }
+    }
     const drawn = new Set();
     for (const s of state.sectors.values()) {
       for (const w of s.warps) {
@@ -335,6 +347,8 @@
         line.setAttribute("y1", s.y + (dy / len) * shrink);
         line.setAttribute("x2", other.x - (dx / len) * shrink);
         line.setAttribute("y2", other.y - (dy / len) * shrink);
+        line.setAttribute("data-a", s.id);
+        line.setAttribute("data-b", w);
         if (reverse) {
           line.setAttribute("class", "warp");
         } else {
@@ -361,9 +375,27 @@
       c.setAttribute("class", cls);
       g.appendChild(c);
 
-      g.addEventListener("mouseenter", (e) => showSectorTip(s, e));
-      g.addEventListener("mouseleave", hideSectorTip);
-      g.addEventListener("click", () => {
+      g.addEventListener("mouseenter", (e) => {
+        showSectorTip(s, e);
+        state.hoverSectorId = s.id;
+        applyFocusHighlight();
+      });
+      g.addEventListener("mouseleave", () => {
+        hideSectorTip();
+        if (state.hoverSectorId === s.id) {
+          state.hoverSectorId = null;
+          applyFocusHighlight();
+        }
+      });
+      g.addEventListener("click", (e) => {
+        e.stopPropagation();
+        // Toggle: clicking the already-selected sector clears focus.
+        if (state.selectedSectorId === s.id && state.drawer.kind === "sector") {
+          state.selectedSectorId = null;
+          closeDrawer();
+          applyFocusHighlight();
+          return;
+        }
         state.selectedSectorId = s.id;
         openDrawer("sector", s.id);
       });
@@ -373,6 +405,45 @@
     enablePanZoom();
     buildMiniMap();
     updateViewBox();
+    applyFocusHighlight();
+  }
+
+  // Apply focus classes so the map visually isolates one sector's
+  // neighborhood from the 1,500-edge background spaghetti. Called whenever
+  // selection or hover changes. An explicit selection (click) beats hover;
+  // hover only highlights when no sector is selected.
+  function applyFocusHighlight() {
+    if (!svg) return;
+    const fid = state.selectedSectorId != null ? state.selectedSectorId : state.hoverSectorId;
+    if (fid == null) {
+      svg.classList.remove("has-focus");
+      svg.querySelectorAll(
+        ".focused-self, .focused-neighbor, .focused-warp, .unfocused"
+      ).forEach((el) => {
+        el.classList.remove("focused-self", "focused-neighbor", "focused-warp", "unfocused");
+      });
+      return;
+    }
+    svg.classList.add("has-focus");
+    const sector = state.sectors.get(fid);
+    const neighbors = new Set();
+    if (sector && sector.warps) for (const w of sector.warps) neighbors.add(w);
+    const rev = state.reverseWarps.get(fid);
+    if (rev) for (const w of rev) neighbors.add(w);
+
+    svg.querySelectorAll("#sectors-layer [data-id]").forEach((g) => {
+      const id = Number(g.getAttribute("data-id"));
+      g.classList.remove("focused-self", "focused-neighbor", "unfocused");
+      if (id === fid) g.classList.add("focused-self");
+      else if (neighbors.has(id)) g.classList.add("focused-neighbor");
+      else g.classList.add("unfocused");
+    });
+    svg.querySelectorAll("#warps-layer line.warp").forEach((ln) => {
+      const a = Number(ln.getAttribute("data-a"));
+      const b = Number(ln.getAttribute("data-b"));
+      if (a === fid || b === fid) ln.classList.add("focused-warp");
+      else ln.classList.remove("focused-warp");
+    });
   }
 
   // Return a zoom ratio in [0, +inf) where 1.0 = full galaxy visible.
@@ -522,15 +593,30 @@
 
   function enablePanZoom() {
     let dragging = false;
+    let didDrag = false;
     let lastX = 0, lastY = 0;
+    let downX = 0, downY = 0;
     svg.addEventListener("mousedown", (e) => {
       dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
+      didDrag = false;
+      lastX = downX = e.clientX;
+      lastY = downY = e.clientY;
     });
     window.addEventListener("mouseup", () => { dragging = false; });
+    // Click on the SVG background (not a sector — sector clicks stopPropagation)
+    // clears focus. We only treat a true tap as a click: if the pointer moved
+    // more than 4px between down and up, it was a pan, not a click.
+    svg.addEventListener("click", (e) => {
+      if (didDrag) return;
+      if (state.selectedSectorId != null) {
+        state.selectedSectorId = null;
+        if (state.drawer.kind === "sector") closeDrawer();
+        else applyFocusHighlight();
+      }
+    });
     window.addEventListener("mousemove", (e) => {
       if (!dragging) return;
+      if (Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) > 4) didDrag = true;
       const rect = svg.getBoundingClientRect();
       const scale = viewBoxState.w / rect.width;
       viewBoxState.x -= (e.clientX - lastX) * scale;
@@ -1733,11 +1819,14 @@
     else if (kind === "sector") state.selectedSectorId = id;
     if (detailDrawer) detailDrawer.hidden = false;
     renderDrawer();
+    applyFocusHighlight();
   }
 
   function closeDrawer() {
     state.drawer = { kind: null, id: null };
+    state.selectedSectorId = null;
     if (detailDrawer) detailDrawer.hidden = true;
+    applyFocusHighlight();
   }
 
   function setFollow(playerId) {
@@ -1877,12 +1966,56 @@
     for (const p of state.players.values()) {
       if (p.sector_id === s.id) {
         const rk = p.rank ? ` [${p.rank}]` : "";
-        occupants.push(`<li><span style="color:${p.color || "inherit"}">${esc(p.name)}</span>${rk} (${esc(p.ship || "?")})</li>`);
+        const aliveMark = p.alive ? "" : " †";
+        occupants.push(`<li><span style="color:${p.color || "inherit"}">${esc(p.name)}</span>${rk}${aliveMark} (${esc(p.ship || "?")})</li>`);
       }
     }
-    const warpBits = (s.warps_dir && Array.isArray(s.warps_dir))
-      ? s.warps_dir.map((w) => `<li>${w.two_way ? "↔" : "↛"} sector ${w.to}</li>`).join("")
-      : (s.warps || []).map((w) => `<li>↔ sector ${w}</li>`).join("");
+
+    // Warps OUT — sectors this one leads to. Keep two-way/one-way indicators.
+    const warpsOut = (s.warps_dir && Array.isArray(s.warps_dir))
+      ? s.warps_dir.map((w) => ({ to: w.to, twoWay: !!w.two_way }))
+      : (s.warps || []).map((w) => ({ to: w, twoWay: true }));
+    // Warps IN — sectors that reach THIS one but it doesn't reach back. Only
+    // one-way inbound is interesting; bidirectional already shown in Out.
+    const reverseIds = state.reverseWarps.get(s.id) || new Set();
+    const outSet = new Set(warpsOut.map((w) => w.to));
+    const warpsInOnly = [];
+    for (const rid of reverseIds) {
+      if (!outSet.has(rid)) warpsInOnly.push(rid);
+    }
+
+    // Per-neighbor 1-line summary: tells you at a glance whether warping there
+    // lands you on a port, planet, or a ship. Makes "reading the graph" fast.
+    const neighborSummary = (nid) => {
+      const ns = state.sectors.get(nid);
+      const bits = [];
+      if (!ns) return "<em>unknown</em>";
+      if (ns.id === 1) bits.push(`<span class="pill pill-stardock">StarDock</span>`);
+      else if (ns.is_fedspace) bits.push(`<span class="pill pill-fed">FedSpace</span>`);
+      if (ns.port && ns.port !== "STARDOCK") bits.push(`<span class="pill pill-port">${esc(ns.port)}</span>`);
+      if (ns.has_planets) bits.push(`<span class="pill pill-planet">planet</span>`);
+      const shipsHere = [];
+      for (const p of state.players.values()) {
+        if (p.sector_id === nid && p.alive) {
+          shipsHere.push(`<span style="color:${p.color || "inherit"}">${esc(p.name)}</span>`);
+        }
+      }
+      if (shipsHere.length) bits.push(shipsHere.join(", "));
+      return bits.length ? bits.join(" ") : `<span class="muted">empty</span>`;
+    };
+
+    const warpOutHtml = warpsOut.length
+      ? `<ul class="drawer-list warp-list">${warpsOut.map((w) => {
+          const arrow = w.twoWay ? "↔" : "↛";
+          return `<li>${arrow} <a class="sector-link" data-sector="${w.to}">sector ${w.to}</a> · ${neighborSummary(w.to)}</li>`;
+        }).join("")}</ul>`
+      : "<em>none</em>";
+    const warpInHtml = warpsInOnly.length
+      ? `<ul class="drawer-list warp-list">${warpsInOnly.map((nid) =>
+          `<li>↞ <a class="sector-link" data-sector="${nid}">sector ${nid}</a> · ${neighborSummary(nid)}</li>`
+        ).join("")}</ul>`
+      : "";
+
     const portLine = s.port && s.port !== "STARDOCK"
       ? `<div>Class ${esc(s.port)}${s.port_name ? ` · ${esc(s.port_name)}` : ""}</div>`
       : (s.id === 1 ? "<div>StarDock — Federation HQ</div>" : "<em>No port.</em>");
@@ -1906,11 +2039,16 @@
         ${planetHtml}
       </div>
       <div class="drawer-section">
-        <h3>Warps out (${(s.warps || []).length})</h3>
-        <ul class="drawer-list">${warpBits || "<li><em>none</em></li>"}</ul>
+        <h3>Warps out (${warpsOut.length})</h3>
+        ${warpOutHtml}
       </div>
+      ${warpsInOnly.length ? `
       <div class="drawer-section">
-        <h3>Occupants</h3>
+        <h3>Warps in — one-way only (${warpsInOnly.length})</h3>
+        ${warpInHtml}
+      </div>` : ""}
+      <div class="drawer-section">
+        <h3>Ships here (${occupants.length})</h3>
         ${occupants.length ? `<ul class="drawer-list">${occupants.join("")}</ul>` : "<em>Empty.</em>"}
       </div>
     `;
@@ -1919,6 +2057,31 @@
   function initDrawer() {
     if (!detailDrawer) return;
     detailDrawer.addEventListener("click", (e) => {
+      // Walk-the-graph: clicking a sector ID anywhere in the drawer
+      // recenters the drawer (and map focus) on that sector.
+      const link = e.target.closest(".sector-link[data-sector]");
+      if (link) {
+        e.preventDefault();
+        const sid = Number(link.getAttribute("data-sector"));
+        if (!Number.isNaN(sid) && state.sectors.has(sid)) {
+          openDrawer("sector", sid);
+          // Also pan the map to show the newly-focused sector if it's offscreen.
+          const ns = state.sectors.get(sid);
+          if (ns) {
+            const pad = viewBoxState.w * 0.2;
+            const onScreen = ns.x >= viewBoxState.x + pad
+              && ns.x <= viewBoxState.x + viewBoxState.w - pad
+              && ns.y >= viewBoxState.y + pad
+              && ns.y <= viewBoxState.y + viewBoxState.h - pad;
+            if (!onScreen) {
+              viewBoxState.x = ns.x - viewBoxState.w / 2;
+              viewBoxState.y = ns.y - viewBoxState.h / 2;
+              updateViewBox();
+            }
+          }
+        }
+        return;
+      }
       const btn = e.target.closest("[data-drawer-action]");
       if (!btn) return;
       const action = btn.dataset.drawerAction;
