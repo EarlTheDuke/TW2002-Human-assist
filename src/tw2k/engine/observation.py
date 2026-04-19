@@ -7,8 +7,157 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from .economy import port_buy_price, port_sell_price
-from .models import Commodity, PortClass, Universe
+from .models import Commodity, Event, EventKind, PortClass, Universe
 from .runner import full_net_worth
+
+# ---------------------------------------------------------------------------
+# Fog of war — per-agent event visibility rules.
+#
+# The full universe.events feed is god-mode data for the spectator UI. Agents
+# must see a filtered view: their own actions, events in their own sector,
+# and things explicitly addressed to them (hails, corp/alliance traffic).
+# Leaking other players' warps/genesis/citadel/trade events breaks the core
+# TW2002 intel loop — if opponents' moves show up in your turn, there's no
+# reason to scout or probe. Fix: classify each EventKind and filter.
+# ---------------------------------------------------------------------------
+
+# Visible to every player. Galaxy-wide drama / public channels.
+_PUBLIC_EVENTS: frozenset[EventKind] = frozenset({
+    EventKind.GAME_START,
+    EventKind.DAY_TICK,
+    EventKind.GAME_OVER,
+    EventKind.PLAYER_ELIMINATED,
+    EventKind.PLANET_ORPHANED,
+    EventKind.BROADCAST,
+    EventKind.PORT_DESTROYED,
+    EventKind.ATOMIC_DETONATION,
+    EventKind.FERRENGI_SPAWN,
+})
+
+# Visible ONLY to actor_id. Personal actions, internal errors, private intel.
+_ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
+    EventKind.SCAN,
+    EventKind.PROBE,
+    EventKind.BUY_SHIP,
+    EventKind.BUY_EQUIP,
+    EventKind.AGENT_THOUGHT,
+    EventKind.AGENT_ERROR,
+    EventKind.WARP_BLOCKED,
+    EventKind.TRADE_FAILED,
+    EventKind.AUTOPILOT,
+    EventKind.LIMPET_REPORT,
+    EventKind.PHOTON_FIRED,
+    EventKind.FED_RESPONSE,
+})
+
+# Party-restricted events — visibility derived from payload.
+_HAIL_EVENTS: frozenset[EventKind] = frozenset({EventKind.HAIL})
+_CORP_EVENTS: frozenset[EventKind] = frozenset({
+    EventKind.CORP_CREATE,
+    EventKind.CORP_INVITE,
+    EventKind.CORP_JOIN,
+    EventKind.CORP_LEAVE,
+    EventKind.CORP_DEPOSIT,
+    EventKind.CORP_WITHDRAW,
+    EventKind.CORP_MEMO,
+})
+_ALLIANCE_EVENTS: frozenset[EventKind] = frozenset({
+    EventKind.ALLIANCE_PROPOSED,
+    EventKind.ALLIANCE_FORMED,
+    EventKind.ALLIANCE_BROKEN,
+})
+
+
+def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
+    """Return True if `event` is visible to `player_id` under fog of war.
+
+    Default rule for anything not matched by the tables above is
+    "witnessed" — the actor always sees their own events, plus anyone who
+    was in `event.sector_id` at emit time (captured via payload._witnesses).
+    """
+    kind = event.kind
+    if kind in _PUBLIC_EVENTS:
+        return True
+    if kind in _ACTOR_ONLY_EVENTS:
+        return event.actor_id == player_id
+    if kind in _HAIL_EVENTS:
+        target = event.payload.get("target")
+        return event.actor_id == player_id or target == player_id
+    if kind in _CORP_EVENTS:
+        if event.actor_id == player_id:
+            return True
+        ticker = event.payload.get("ticker")
+        if not ticker:
+            return False
+        corp = universe.corporations.get(ticker)
+        if corp is None:
+            return False
+        # Members AND invited players can see corp traffic relevant to them.
+        return player_id in corp.member_ids or player_id in corp.invited_ids
+    if kind in _ALLIANCE_EVENTS:
+        if event.actor_id == player_id:
+            return True
+        # ALLIANCE_PROPOSED addresses a specific target.
+        if event.payload.get("target") == player_id:
+            return True
+        aid = event.payload.get("alliance_id")
+        if aid is not None:
+            ally = universe.alliances.get(aid)
+            if ally is not None and player_id in ally.member_ids:
+                return True
+        # Fallback — some payloads ship `members` directly.
+        members = event.payload.get("members")
+        if isinstance(members, (list, tuple)) and player_id in members:
+            return True
+        return False
+    # Default — sector witnesses + actor.
+    if event.actor_id == player_id:
+        return True
+    witnesses = event.payload.get("_witnesses")
+    if isinstance(witnesses, (list, tuple, set)):
+        return player_id in witnesses
+    # If we have no witness list (very old events, or emitted without
+    # sector_id), fall back to "actor only" — safest default, prevents leaks.
+    return False
+
+
+def _filter_visible_events(
+    events: list[Event], player_id: str, universe: Universe, limit: int
+) -> list[Event]:
+    """Walk backwards from the newest event, collecting up to `limit`
+    that are visible to `player_id`."""
+    out: list[Event] = []
+    for ev in reversed(events):
+        if _event_visible_to(ev, player_id, universe):
+            out.append(ev)
+            if len(out) >= limit:
+                break
+    out.reverse()
+    return out
+
+
+def _event_to_dict(event: Event) -> dict[str, Any]:
+    """Convert an Event to the dict shape exposed in observations, stripping
+    private-metadata keys (anything starting with underscore, like _witnesses).
+    """
+    clean_payload: dict[str, Any] = {}
+    for k, v in (event.payload or {}).items():
+        if isinstance(k, str) and k.startswith("_"):
+            continue
+        clean_payload[k] = v
+    return {
+        "seq": event.seq,
+        "day": event.day,
+        "tick": event.tick,
+        "kind": event.kind.value,
+        "actor_id": event.actor_id,
+        "sector_id": event.sector_id,
+        "summary": event.summary,
+        # Payload is not currently included in the observation schema
+        # (see class Observation below), but if we ever start exposing it,
+        # this ensures _witnesses never leaks.
+        # "payload": clean_payload,
+    }
 
 
 class Observation(BaseModel):
@@ -160,20 +309,13 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
                 })
             others.append(entry)
 
-    # Recent events (global feed — truncated)
-    recent = universe.events[-event_history:]
-    recent_events = [
-        {
-            "seq": e.seq,
-            "day": e.day,
-            "tick": e.tick,
-            "kind": e.kind.value,
-            "actor_id": e.actor_id,
-            "sector_id": e.sector_id,
-            "summary": e.summary,
-        }
-        for e in recent
-    ]
+    # Recent events — filtered by per-agent fog of war. Agents only see
+    # events they witnessed, acted upon, or were explicitly addressed by
+    # (hails, corp/alliance traffic, public broadcasts). Other commanders'
+    # warps, planet deploys, and citadel builds are NOT leaked here — that
+    # forces the classic TW2002 intel loop (scouting, probes, limpets).
+    recent = _filter_visible_events(universe.events, player_id, universe, event_history)
+    recent_events = [_event_to_dict(e) for e in recent]
 
     turns_remaining = player.turns_per_day - player.turns_today
 

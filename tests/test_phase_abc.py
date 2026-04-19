@@ -1777,3 +1777,344 @@ class TestPhaseLHintsAndSafety:
         _destroy_ship(u, a.id, reason="test", killer_id=None)
         elim = next(e for e in u.events if e.kind == EventKind.PLAYER_ELIMINATED)
         assert 77 in elim.payload["orphaned_planets"]
+
+
+# ---------------------------------------------------------------------------
+# Phase M — Fog of War (per-agent event visibility)
+#
+# Agents must not see the raw universe.events stream. build_observation
+# filters events so each player sees only:
+#   - public/galaxy-wide drama (GAME_OVER, PLAYER_ELIMINATED, BROADCAST, ...)
+#   - their own actions (actor_id == them)
+#   - events they witnessed (they were in event.sector_id at emit time)
+#   - party traffic addressed to them (hails, corp, alliance)
+# Everything else is hidden. These tests verify the classification.
+# ---------------------------------------------------------------------------
+
+
+class TestPhaseMFogOfWar:
+    def test_m1_public_events_visible_to_everyone(self):
+        """PUBLIC events (GAME_START, BROADCAST, PLAYER_ELIMINATED, etc.)
+        should be visible to every player regardless of location."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, c) = _make_universe(seed=500)
+        a.sector_id = 100
+        b.sector_id = 200
+        c.sector_id = 300
+        ev = u.emit(
+            EventKind.BROADCAST,
+            actor_id=a.id,
+            summary="A broadcasts: hello galaxy",
+        )
+        assert _event_visible_to(ev, a.id, u)
+        assert _event_visible_to(ev, b.id, u)
+        assert _event_visible_to(ev, c.id, u)
+
+    def test_m2_actor_only_events_hidden_from_others(self):
+        """SCAN/PROBE/AGENT_THOUGHT/BUY_* should only be visible to the actor."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, _) = _make_universe(seed=501)
+        for kind in (
+            EventKind.SCAN,
+            EventKind.PROBE,
+            EventKind.BUY_SHIP,
+            EventKind.BUY_EQUIP,
+            EventKind.AGENT_THOUGHT,
+            EventKind.AGENT_ERROR,
+            EventKind.AUTOPILOT,
+            EventKind.LIMPET_REPORT,
+            EventKind.PHOTON_FIRED,
+            EventKind.FED_RESPONSE,
+            EventKind.WARP_BLOCKED,
+            EventKind.TRADE_FAILED,
+        ):
+            ev = u.emit(kind, actor_id=a.id, summary="test")
+            assert _event_visible_to(ev, a.id, u), f"{kind} should be visible to actor"
+            assert not _event_visible_to(ev, b.id, u), (
+                f"{kind} must NOT be visible to non-actor"
+            )
+
+    def test_m3_witnessed_events_visible_to_sector_occupants_only(self):
+        """Default-category events (GENESIS_DEPLOYED, BUILD_CITADEL, WARP, ...)
+        are visible to the actor AND anyone present in the sector at emit
+        time, but NOT to players elsewhere."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, c) = _make_universe(seed=502)
+        # Move A and C together to sector 500. B stays in sector 1.
+        u.sectors[1].occupant_ids = [b.id]
+        b.sector_id = 1
+        u.sectors[500] = u.sectors.get(500) or u.sectors[list(u.sectors.keys())[5]]
+        # Find a non-fed sector to stage in (reuse an existing one).
+        stage = _first_non_fed_sector(u, min_id=50)
+        u.sectors[stage].occupant_ids = [a.id, c.id]
+        a.sector_id = stage
+        c.sector_id = stage
+
+        ev = u.emit(
+            EventKind.GENESIS_DEPLOYED,
+            actor_id=a.id,
+            sector_id=stage,
+            payload={"planet_id": 1},
+            summary=f"{a.name} deploys a Genesis torpedo",
+        )
+        assert _event_visible_to(ev, a.id, u), "actor sees own event"
+        assert _event_visible_to(ev, c.id, u), "same-sector occupant witnesses event"
+        assert not _event_visible_to(ev, b.id, u), "distant player must NOT see it"
+
+    def test_m4_witnesses_snapshot_at_emit_time(self):
+        """Moving AFTER an event fires must not change visibility — the
+        witness list is frozen at emit time."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, _) = _make_universe(seed=503)
+        stage = _first_non_fed_sector(u, min_id=50)
+        u.sectors[stage].occupant_ids = [a.id, b.id]
+        a.sector_id = stage
+        b.sector_id = stage
+
+        ev = u.emit(
+            EventKind.BUILD_CITADEL,
+            actor_id=a.id,
+            sector_id=stage,
+            payload={"planet_id": 7},
+            summary=f"{a.name} builds Level 1 citadel",
+        )
+        # B leaves the sector AFTER the event. Should still see it in history.
+        u.sectors[stage].occupant_ids.remove(b.id)
+        far = _first_non_fed_sector(u, min_id=stage + 10)
+        u.sectors[far].occupant_ids.append(b.id)
+        b.sector_id = far
+        assert _event_visible_to(ev, b.id, u), "witness snapshot is historical"
+
+    def test_m5_late_arrivals_do_not_see_past_events(self):
+        """A player who warps INTO a sector after an event happened must
+        NOT see the historical event (witness list doesn't auto-update)."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, _) = _make_universe(seed=504)
+        stage = _first_non_fed_sector(u, min_id=50)
+        # Only A is in the sector at emit time.
+        u.sectors[stage].occupant_ids = [a.id]
+        a.sector_id = stage
+        ev = u.emit(
+            EventKind.ASSIGN_COLONISTS,
+            actor_id=a.id,
+            sector_id=stage,
+            payload={"planet_id": 3, "amount": 5000},
+            summary=f"{a.name} assigns colonists",
+        )
+        # B shows up AFTER.
+        u.sectors[stage].occupant_ids.append(b.id)
+        b.sector_id = stage
+        assert not _event_visible_to(ev, b.id, u), (
+            "latecomers must not see historical events"
+        )
+
+    def test_m6_hail_visible_only_to_sender_and_recipient(self):
+        """HAIL events are private to the two parties involved."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, c) = _make_universe(seed=505)
+        ev = u.emit(
+            EventKind.HAIL,
+            actor_id=a.id,
+            payload={"target": b.id, "message": "secret handshake"},
+            summary=f"{a.name} hails {b.name}",
+        )
+        assert _event_visible_to(ev, a.id, u), "sender sees own hail"
+        assert _event_visible_to(ev, b.id, u), "recipient sees hail"
+        assert not _event_visible_to(ev, c.id, u), "third parties do NOT see hail"
+
+    def test_m7_corp_events_visible_only_to_members(self):
+        """CORP_* events are visible to actor + members (+ invited for INVITE)."""
+        from tw2k.engine.models import Corporation, EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, c) = _make_universe(seed=506)
+        corp = Corporation(
+            ticker="XYZ", name="XYZ Corp", ceo_id=a.id,
+            member_ids=[a.id, b.id], formed_day=0,
+        )
+        u.corporations["XYZ"] = corp
+        a.corp_ticker = "XYZ"
+        b.corp_ticker = "XYZ"
+
+        ev = u.emit(
+            EventKind.CORP_DEPOSIT,
+            actor_id=a.id,
+            payload={"ticker": "XYZ", "amount": 10_000},
+            summary=f"{a.name} deposits to XYZ",
+        )
+        assert _event_visible_to(ev, a.id, u), "actor sees corp event"
+        assert _event_visible_to(ev, b.id, u), "co-member sees corp event"
+        assert not _event_visible_to(ev, c.id, u), "non-member must NOT see"
+
+        # Invited (non-member) should see the INVITE.
+        invite_ev = u.emit(
+            EventKind.CORP_INVITE,
+            actor_id=a.id,
+            payload={"ticker": "XYZ", "target": c.id},
+            summary=f"{a.name} invited {c.name}",
+        )
+        corp.invited_ids.append(c.id)
+        assert _event_visible_to(invite_ev, c.id, u), (
+            "invitee sees their own invite via invited_ids membership"
+        )
+
+    def test_m8_alliance_events_visible_only_to_members(self):
+        """ALLIANCE_* events are visible to members; others are kept dark."""
+        from tw2k.engine.models import Alliance, EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, c) = _make_universe(seed=507)
+        ally = Alliance(
+            id="AL1",
+            member_ids=[a.id, b.id],
+            proposed_by=a.id,
+            formed_day=0,
+            active=True,
+        )
+        u.alliances["AL1"] = ally
+        a.alliances.append("AL1")
+        b.alliances.append("AL1")
+
+        ev = u.emit(
+            EventKind.ALLIANCE_FORMED,
+            actor_id=b.id,
+            payload={"alliance_id": "AL1", "members": [a.id, b.id]},
+            summary="Alliance formed",
+        )
+        assert _event_visible_to(ev, a.id, u)
+        assert _event_visible_to(ev, b.id, u)
+        assert not _event_visible_to(ev, c.id, u), (
+            "outsiders must not learn of private alliance formation"
+        )
+
+    def test_m9_alliance_proposed_visible_to_proposer_and_target(self):
+        """ALLIANCE_PROPOSED should be visible to the proposer and target
+        (so the target can decide), but not to unrelated players."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, c) = _make_universe(seed=508)
+        ev = u.emit(
+            EventKind.ALLIANCE_PROPOSED,
+            actor_id=a.id,
+            payload={"alliance_id": "AL9", "target": b.id},
+            summary=f"{a.name} proposed alliance to {b.name}",
+        )
+        assert _event_visible_to(ev, a.id, u)
+        assert _event_visible_to(ev, b.id, u)
+        assert not _event_visible_to(ev, c.id, u)
+
+    def test_m10_build_observation_filters_events(self):
+        """Integration: build_observation must NOT leak other players'
+        private actions into `recent_events`."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import build_observation
+
+        u, (a, b, _) = _make_universe(seed=509)
+        # A is alone in a distant sector, doing secret work.
+        stage = _first_non_fed_sector(u, min_id=50)
+        u.sectors[1].occupant_ids = [p.id for p in (u.players[pid] for pid in ("B", "C"))]
+        u.sectors[stage].occupant_ids = [a.id]
+        a.sector_id = stage
+        b.sector_id = 1
+        u.emit(
+            EventKind.GENESIS_DEPLOYED,
+            actor_id=a.id,
+            sector_id=stage,
+            payload={"planet_id": 1},
+            summary=f"{a.name} deploys Genesis in secret sector",
+        )
+        u.emit(
+            EventKind.BUILD_CITADEL,
+            actor_id=a.id,
+            sector_id=stage,
+            payload={"planet_id": 1},
+            summary=f"{a.name} builds citadel",
+        )
+        obs_a = build_observation(u, a.id)
+        obs_b = build_observation(u, b.id)
+
+        a_kinds = [e["kind"] for e in obs_a.recent_events]
+        b_kinds = [e["kind"] for e in obs_b.recent_events]
+        assert EventKind.GENESIS_DEPLOYED.value in a_kinds, "actor sees own Genesis"
+        assert EventKind.BUILD_CITADEL.value in a_kinds, "actor sees own citadel"
+        assert EventKind.GENESIS_DEPLOYED.value not in b_kinds, (
+            "B must not see A's secret Genesis — core fog-of-war guarantee"
+        )
+        assert EventKind.BUILD_CITADEL.value not in b_kinds, (
+            "B must not see A's secret citadel build"
+        )
+
+    def test_m11_witnesses_never_leak_to_observation(self):
+        """The internal _witnesses payload key must be stripped before any
+        event dict reaches the agent — it's bookkeeping, not game state."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_to_dict
+
+        u, (a, _, _) = _make_universe(seed=510)
+        ev = u.emit(
+            EventKind.WARP,
+            actor_id=a.id,
+            sector_id=1,
+            summary="A warps",
+        )
+        # Witnesses should be stored on the raw event...
+        assert "_witnesses" in ev.payload
+        # ...but must NEVER appear in the agent-facing dict.
+        d = _event_to_dict(ev)
+        assert "_witnesses" not in d
+        # And the Observation schema doesn't currently surface payload at
+        # all — double-check that assumption so we don't silently regress.
+        assert "payload" not in d
+
+    def test_m12_build_observation_public_events_still_reach_everyone(self):
+        """Fog of war must not crush public signals — PLAYER_ELIMINATED,
+        PLANET_ORPHANED, BROADCAST, PORT_DESTROYED must show up for every
+        player's observation."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import build_observation
+
+        u, (a, b, c) = _make_universe(seed=511)
+        u.emit(
+            EventKind.BROADCAST,
+            actor_id=a.id,
+            payload={"message": "all hands"},
+            summary="A broadcasts: all hands",
+        )
+        u.emit(
+            EventKind.PORT_DESTROYED,
+            actor_id=a.id,
+            sector_id=77,
+            payload={"sector_id": 77},
+            summary="port destroyed in 77",
+        )
+        for pid in (a.id, b.id, c.id):
+            obs = build_observation(u, pid)
+            kinds = {e["kind"] for e in obs.recent_events}
+            assert EventKind.BROADCAST.value in kinds, (
+                "broadcasts are public by design"
+            )
+            assert EventKind.PORT_DESTROYED.value in kinds, (
+                "port destruction is galaxy-wide news"
+            )
+
+    def test_m13_emit_without_sector_has_no_witnesses(self):
+        """Events emitted without a sector_id (e.g. GAME_START, DAY_TICK)
+        get no witness list — they're classified by kind only."""
+        from tw2k.engine.models import EventKind
+
+        u, _ = _make_universe(seed=512)
+        ev = u.emit(EventKind.DAY_TICK, summary="day 1")
+        assert "_witnesses" not in ev.payload

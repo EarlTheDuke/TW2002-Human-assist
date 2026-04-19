@@ -511,6 +511,21 @@ class Universe(BaseModel):
         summary: str = "",
     ) -> Event:
         self.seq += 1
+        pl = dict(payload) if payload else {}
+        # Snapshot who was in the sector AT emit time. Used by the fog-of-war
+        # filter in observation.build_observation so that players can only see
+        # events that happened in rooms they were actually present in. Using
+        # a frozen snapshot (rather than re-reading sector occupants at
+        # observation time) keeps visibility correct even if players move
+        # away before the event leaves the recent-events window.
+        # Prefix underscore marks this as private metadata — it's scrubbed
+        # before the event dict is exposed to any LLM agent.
+        if sector_id is not None and "_witnesses" not in pl:
+            sector = self.sectors.get(sector_id) if isinstance(sector_id, int) else None
+            if sector is not None:
+                pl["_witnesses"] = list(sector.occupant_ids)
+            else:
+                pl["_witnesses"] = []
         ev = Event(
             seq=self.seq,
             tick=self.tick,
@@ -518,7 +533,7 @@ class Universe(BaseModel):
             kind=kind,
             actor_id=actor_id,
             sector_id=sector_id,
-            payload=payload or {},
+            payload=pl,
             summary=summary,
         )
         self.events.append(ev)
