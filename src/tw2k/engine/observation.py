@@ -655,12 +655,99 @@ def _action_hint(
     if sector_info.get("ferrengi"):
         hints.append("Ferrengi present — attack for XP or warp out.")
 
-    # Inbox backlog
+    # Inbox backlog — FYI only. Distinguishing direct hails from broadcasts
+    # matters because a private DM is usually more relevant than a shout to
+    # all. Framing is "you have N messages" not "you must respond" — the
+    # agent decides if any are worth a detour.
     inbox = getattr(player, "inbox", None) if player is not None else None
     if inbox:
-        unread = sum(1 for m in inbox[-20:] if not m.get("read"))
-        if unread:
-            hints.append(f"{unread} unread hail(s) in inbox — consider `hail` to respond.")
+        recent = inbox[-20:]
+        unread_hails = sum(
+            1 for m in recent if not m.get("read") and m.get("kind") == "hail"
+        )
+        unread_bcasts = sum(
+            1 for m in recent if not m.get("read") and m.get("kind") == "broadcast"
+        )
+        total_unread = unread_hails + unread_bcasts
+        if total_unread:
+            parts = []
+            if unread_hails:
+                parts.append(f"{unread_hails} hail(s)")
+            if unread_bcasts:
+                parts.append(f"{unread_bcasts} broadcast(s)")
+            hints.append(
+                f"FYI: {' + '.join(parts)} in inbox — see `inbox` field. "
+                "No obligation to reply; respond only if it serves your goals."
+            )
+
+    # Soft situational awareness — these are FYI nudges, not mandates. The
+    # philosophy: surface state the agent might have missed; let it decide
+    # whether to act. A smarter LLM should route around these correctly.
+    if player is not None and ship is not None:
+        # Unarmed-in-deep-space awareness. Post-match forensics on seed 7777
+        # showed both eliminated players died with 0 ship fighters / 0 shields
+        # against Ferrengi battleships. This is pure information, no nudge
+        # to do something specific.
+        ship_fighters = int(getattr(ship, "fighters", 0) or 0)
+        ship_shields = int(getattr(ship, "shields", 0) or 0)
+        cur_sid = sector_info.get("id")
+        in_fedspace = cur_sid in K.FEDSPACE_SECTORS if cur_sid is not None else False
+        if ship_fighters == 0 and ship_shields == 0:
+            if in_fedspace:
+                hints.append(
+                    f"FYI: ship has 0 fighters / 0 shields. StarDock sells "
+                    f"fighters (~{K.FIGHTER_COST}cr ea). Deep-space Ferrengi "
+                    f"favor unarmed targets."
+                )
+            else:
+                hints.append(
+                    "FYI: in deep space with 0 fighters / 0 shields — "
+                    "Ferrengi that enter this sector will likely attack. "
+                    "StarDock (sec 1) has the fighter shop."
+                )
+
+        # Second-planet reminder. The observation already shows owned_planets
+        # and credits; this just cross-references them on one line so a
+        # focused "save for 2nd Genesis" goal is one prompt-read away.
+        genesis_loaded = int(getattr(ship, "genesis", 0) or 0)
+        credits_now = int(getattr(player, "credits", 0) or 0)
+        if (
+            owned_planets
+            and len(owned_planets) >= 1
+            and genesis_loaded == 0
+            and credits_now >= K.GENESIS_TORPEDO_COST
+        ):
+            hints.append(
+                f"FYI: you own {len(owned_planets)} planet(s) and could afford "
+                f"another Genesis ({K.GENESIS_TORPEDO_COST}cr at StarDock). "
+                "Multi-planet economies compound."
+            )
+
+        # Citadel-tier gap hint. Only fire when credits/treasury clearly
+        # permit the next tier but the planet is noticeably short on idle
+        # colonists — that exact shape is what capped Vex at L2 in the
+        # last 30-day match.
+        if owned_planets:
+            for plan in owned_planets:
+                lvl = int(plan.get("citadel_level", 0) or 0)
+                tgt = int(plan.get("citadel_target", 0) or 0)
+                if tgt > lvl or lvl >= 6:
+                    continue  # already building OR maxed
+                next_cost = K.CITADEL_TIER_COST[lvl]
+                need_cr, need_col, _days = next_cost
+                treasury = int(plan.get("treasury", 0) or 0)
+                colonists = plan.get("colonists") or {}
+                idle = int(colonists.get("colonists", 0) or 0)
+                have_cr = treasury + credits_now
+                if have_cr >= need_cr and idle < need_col and idle >= need_col // 2:
+                    gap = need_col - idle
+                    pid = plan.get("id")
+                    hints.append(
+                        f"FYI: planet {pid} is credit-ready for Citadel L{lvl + 1} "
+                        f"({need_cr}cr, have {have_cr}). Short ~{gap} idle colonists "
+                        f"(idle={idle}/{need_col})."
+                    )
+                    break  # only flag the first such planet to keep hint short
 
     # End-of-day safety: if the agent has fewer turns left than the cheapest
     # useful action (warp=2), just tell them to wait. Without this nudge, LLM

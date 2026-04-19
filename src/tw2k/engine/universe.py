@@ -69,7 +69,18 @@ def _build_connected_graph(rng: random.Random, n: int, avg_warps: float) -> dict
 def _one_way_some_edges(
     rng: random.Random, adj: dict[int, set[int]], fraction: float
 ) -> dict[int, set[int]]:
-    """Convert a fraction of undirected edges to one-way, preserving global reachability from sector 1."""
+    """Convert a fraction of undirected edges to one-way, preserving global reachability from sector 1.
+
+    Guarantees in addition to "sec 1 reaches everyone":
+      - Every sector keeps ≥1 outbound warp (no dead-ends). A previous bug let a
+        sector lose its sole outbound edge, stranding any player who spawned
+        there (observed: Blake trapped 30 days in sector 3 with warps_out=[]).
+      - FedSpace-internal edges (both endpoints in sectors 1..10) are never
+        converted to one-way — FedSpace is meant to be a safe, fully-traversable
+        hub where players can always return to StarDock.
+      - FedSpace → deep-space edges also preserve the outbound direction from
+        the FedSpace side (a player landing in FedSpace must be able to leave).
+    """
     # Collect unique pairs
     pairs: list[tuple[int, int]] = []
     seen: set[tuple[int, int]] = set()
@@ -87,13 +98,31 @@ def _one_way_some_edges(
     for a, b in pairs:
         if converted >= target:
             break
+
+        a_fed = a in K.FEDSPACE_SECTORS
+        b_fed = b in K.FEDSPACE_SECTORS
+        # Rule 1: FedSpace-internal edges stay bidirectional.
+        if a_fed and b_fed:
+            continue
+
         # Randomly pick which direction survives
         if rng.random() < 0.5:
             keep_from, keep_to = a, b
         else:
             keep_from, keep_to = b, a
 
+        # Rule 2: if the losing side is a FedSpace sector, force the keep
+        # direction to flow FedSpace → deep (so FedSpace retains the
+        # outbound link and returning players can depart again).
+        if keep_to in K.FEDSPACE_SECTORS and keep_from not in K.FEDSPACE_SECTORS:
+            keep_from, keep_to = keep_to, keep_from
+
         adj[keep_to].discard(keep_from)
+
+        # Rule 3: never leave ANY sector with zero outbound warps.
+        if len(adj[keep_to]) == 0:
+            adj[keep_to].add(keep_from)  # revert
+            continue
 
         # Verify sector 1 still reaches everyone. If not, revert.
         if not _all_reachable_from(adj, 1, len(adj)):

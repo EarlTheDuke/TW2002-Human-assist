@@ -1402,6 +1402,7 @@ class TestPhaseKPlanetPatch:
         # Lightweight runner wrapper that only exposes what _state_patch_for
         # needs. We reach into the universe builder and Drive a fake event.
         from types import SimpleNamespace
+
         from tw2k.server.runner import MatchRunner
 
         u, (_a, *_) = _make_universe(seed=9201)
@@ -1462,3 +1463,294 @@ class TestPhaseKPlanetPatch:
         )
         patch = runner._state_patch_for(ev)
         assert "planet" not in patch, "warp events should not emit planet deltas"
+
+
+class TestPhaseLHintsAndSafety:
+    """Soft-hint architecture: the observation surfaces awareness cues
+    (0-fighters, citadel gap, 2nd genesis affordability, inbox) without
+    forcing the agent to act. Also covers the FedSpace dead-end bug fix,
+    opportunistic-Ferrengi hunting, and the planet-orphan event.
+    """
+
+    def test_l1_fedspace_has_no_dead_ends(self):
+        """Every FedSpace sector must have ≥1 outbound warp. Guards against
+        the seed-7777 bug where sector 3 lost its only outbound edge and
+        trapped P3 Blake for 30 days."""
+        # Try several seeds — the bug was seed-specific so we sample.
+        for seed in [7777, 1234, 9999, 4242, 31415]:
+            u, _ = _make_universe(seed=seed, size=400)
+            for fed_sid in K.FEDSPACE_SECTORS:
+                warps = u.sectors[fed_sid].warps
+                assert len(warps) >= 1, (
+                    f"seed={seed}: FedSpace sector {fed_sid} has 0 outbound warps "
+                    f"(dead-end); would trap any player starting there"
+                )
+
+    def test_l2_every_sector_has_outbound_warp(self):
+        """Stronger invariant: NO sector should be a dead-end. The one-way
+        conversion guard now refuses to strip the last outbound edge."""
+        for seed in [7777, 1234, 9999]:
+            u, _ = _make_universe(seed=seed, size=400)
+            dead_ends = [
+                sid for sid, sec in u.sectors.items() if len(sec.warps) == 0
+            ]
+            assert not dead_ends, (
+                f"seed={seed}: dead-end sectors found: {dead_ends[:10]}"
+            )
+
+    def test_l3_fedspace_internal_edges_are_bidirectional(self):
+        """FedSpace-internal warps must remain two-way so players can always
+        return to StarDock."""
+        for seed in [7777, 1234, 9999]:
+            u, _ = _make_universe(seed=seed, size=400)
+            for a_sid in K.FEDSPACE_SECTORS:
+                for b_sid in u.sectors[a_sid].warps:
+                    if b_sid in K.FEDSPACE_SECTORS:
+                        assert a_sid in u.sectors[b_sid].warps, (
+                            f"seed={seed}: FedSpace edge {a_sid}→{b_sid} is one-way"
+                        )
+
+    def test_l4_hint_zero_fighters_in_fedspace(self):
+        """When a player sits in FedSpace with 0 fighters + 0 shields,
+        the action_hint should FYI them about StarDock's fighter shop.
+        No mandate verbiage."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=9301)
+        a.ship.fighters = 0
+        a.ship.shields = 0
+        a.sector_id = 1  # FedSpace
+        sec_info = {"id": 1, "warps_out": [2, 3]}
+        hint = _action_hint(sec_info, player=a, owned_planets=[], universe=u)
+        assert "0 fighters" in hint or "unarmed" in hint.lower(), hint
+        assert "FYI" in hint, "hint should use FYI framing (no mandate)"
+        # Must NOT use coercive language
+        assert "MUST buy" not in hint
+        assert "REQUIRED" not in hint
+
+    def test_l5_hint_zero_fighters_in_deep_space(self):
+        """Deep-space phrasing emphasizes imminent danger; still informational."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=9302)
+        a.ship.fighters = 0
+        a.ship.shields = 0
+        a.sector_id = 50  # deep space
+        sec_info = {"id": 50, "warps_out": [51]}
+        hint = _action_hint(sec_info, player=a, owned_planets=[], universe=u)
+        assert "deep space" in hint.lower() and "0 fighters" in hint, hint
+
+    def test_l6_hint_does_not_fire_when_armed(self):
+        """Armed ships shouldn't get the unarmed warning."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=9303)
+        a.ship.fighters = 100
+        a.ship.shields = 50
+        a.sector_id = 50
+        sec_info = {"id": 50, "warps_out": [51]}
+        hint = _action_hint(sec_info, player=a, owned_planets=[], universe=u)
+        assert "0 fighters" not in hint
+
+    def test_l7_hint_second_genesis_when_affordable(self):
+        """Already-owns-planet + 25k+ credits + no genesis loaded → FYI hint."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=9304)
+        a.ship.genesis = 0
+        a.credits = K.GENESIS_TORPEDO_COST + 5000
+        a.ship.fighters = 100  # avoid the unarmed hint noise
+        a.sector_id = 30
+        owned = [{"id": 1, "sector_id": 44, "citadel_level": 1, "citadel_target": 1}]
+        sec_info = {"id": 30, "warps_out": [31]}
+        hint = _action_hint(sec_info, player=a, owned_planets=owned, universe=u)
+        assert "another Genesis" in hint, hint
+        assert "FYI" in hint
+
+    def test_l8_hint_citadel_colonist_gap(self):
+        """Credit-ready but colonist-short → gap hint."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=9305)
+        a.credits = 50_000  # plenty for L3 (needs 20k)
+        a.ship.fighters = 100
+        a.sector_id = 30
+        owned = [{
+            "id": 7,
+            "sector_id": 44,
+            "citadel_level": 2,
+            "citadel_target": 2,  # NOT currently building
+            "treasury": 0,
+            "colonists": {"colonists": 2500, "fuel_ore": 0, "organics": 0, "equipment": 0},
+        }]
+        sec_info = {"id": 30, "warps_out": [31]}
+        hint = _action_hint(sec_info, player=a, owned_planets=owned, universe=u)
+        assert "credit-ready" in hint, hint
+        assert "colonists" in hint
+
+    def test_l9_citadel_gap_hint_silent_while_building(self):
+        """If citadel is actively upgrading (target > level), skip the hint —
+        nothing to nudge, the work is already in-flight."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=9306)
+        a.credits = 50_000
+        a.ship.fighters = 100
+        owned = [{
+            "id": 7,
+            "sector_id": 44,
+            "citadel_level": 2,
+            "citadel_target": 3,  # BUILDING
+            "treasury": 0,
+            "colonists": {"colonists": 2500},
+        }]
+        sec_info = {"id": 30, "warps_out": [31]}
+        hint = _action_hint(sec_info, player=a, owned_planets=owned, universe=u)
+        assert "credit-ready" not in hint
+
+    def test_l10_inbox_hint_uses_no_obligation_language(self):
+        """Inbox hint should say 'No obligation to reply' — we want agents
+        to CHOOSE whether a hail is worth a detour, not feel forced."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=9307)
+        a.inbox.append({
+            "from": "B",
+            "kind": "broadcast",
+            "message": "rescue bounty",
+            "day": 1,
+            "tick": 10,
+        })
+        sec_info = {"id": 30, "warps_out": [31]}
+        hint = _action_hint(sec_info, player=a, owned_planets=[], universe=u)
+        assert "broadcast" in hint.lower(), hint
+        assert "No obligation" in hint or "no obligation" in hint.lower()
+
+    def test_l11_ferrengi_opportunist_attacks_unarmed(self):
+        """A low-aggression Ferrengi (below the normal hunt threshold)
+        should STILL attack a victim with 0 fighters + 0 shields."""
+        from tw2k.engine.models import ShipClass
+        from tw2k.engine.runner import _ferrengi_roam_and_hunt
+
+        u, (a, *_) = _make_universe(seed=9308)
+        # Plant player in deep space with no defenses.
+        deep_sid = _first_non_fed_sector(u, min_id=50)
+        a.sector_id = deep_sid
+        # Move them to their sector's occupant list properly
+        for s in u.sectors.values():
+            if a.id in s.occupant_ids and s.id != deep_sid:
+                s.occupant_ids.remove(a.id)
+        u.sectors[deep_sid].occupant_ids.append(a.id)
+        a.ship.fighters = 0
+        a.ship.shields = 0
+
+        # Timid Ferrengi in same sector — aggression below normal threshold
+        # but above the opportunist threshold.
+        timid = FerrengiShip(
+            id="ferr_timid",
+            name="Ferrengi Raider TIMID",
+            sector_id=deep_sid,
+            aggression=K.FERRENGI_OPPORTUNIST_AGGRESSION_THRESHOLD,
+            fighters=500,
+            shields=100,
+            ship_class=ShipClass.MISSILE_FRIGATE,
+        )
+        # Make sure aggression is BELOW the normal hunt threshold
+        assert timid.aggression < K.FERRENGI_HUNT_AGGRESSION_THRESHOLD
+        u.ferrengi["ferr_timid"] = timid
+        # Disable random movement so the test is deterministic
+        import tw2k.engine.constants as K_mod
+        original_move = K_mod.FERRENGI_MOVE_PROB
+        K_mod.FERRENGI_MOVE_PROB = 0.0
+        try:
+            before = len([e for e in u.events if e.kind.value == "ferrengi_attack"])
+            _ferrengi_roam_and_hunt(u)
+            after = len([e for e in u.events if e.kind.value == "ferrengi_attack"])
+        finally:
+            K_mod.FERRENGI_MOVE_PROB = original_move
+        assert after > before, (
+            "low-aggression Ferrengi should attack a defenseless target "
+            "(0 fighters, 0 shields) per the opportunist threshold"
+        )
+
+    def test_l12_ferrengi_leaves_armed_target_alone(self):
+        """Low-aggression Ferrengi must still ignore a properly-armed target.
+        The opportunist rule should ONLY activate on 0-defense victims."""
+        import tw2k.engine.constants as K_mod
+        from tw2k.engine.models import ShipClass
+        from tw2k.engine.runner import _ferrengi_roam_and_hunt
+
+        u, (a, *_) = _make_universe(seed=9309)
+        deep_sid = _first_non_fed_sector(u, min_id=50)
+        a.sector_id = deep_sid
+        for s in u.sectors.values():
+            if a.id in s.occupant_ids and s.id != deep_sid:
+                s.occupant_ids.remove(a.id)
+        u.sectors[deep_sid].occupant_ids.append(a.id)
+        a.ship.fighters = 500  # armed
+        a.ship.shields = 100
+
+        timid = FerrengiShip(
+            id="ferr_timid2",
+            name="Ferrengi Raider TIMID2",
+            sector_id=deep_sid,
+            aggression=K.FERRENGI_OPPORTUNIST_AGGRESSION_THRESHOLD,
+            fighters=100,
+            shields=30,
+            ship_class=ShipClass.MISSILE_FRIGATE,
+        )
+        assert timid.aggression < K.FERRENGI_HUNT_AGGRESSION_THRESHOLD
+        u.ferrengi["ferr_timid2"] = timid
+        original_move = K_mod.FERRENGI_MOVE_PROB
+        K_mod.FERRENGI_MOVE_PROB = 0.0
+        try:
+            before = len([e for e in u.events if e.kind.value == "ferrengi_attack"])
+            _ferrengi_roam_and_hunt(u)
+            after = len([e for e in u.events if e.kind.value == "ferrengi_attack"])
+        finally:
+            K_mod.FERRENGI_MOVE_PROB = original_move
+        assert after == before, (
+            "armed target should NOT trigger an opportunist hunt "
+            "(flee-check may move the Ferrengi but no attack expected)"
+        )
+
+    def test_l13_planet_orphan_event_on_elimination(self):
+        """When a solo-owned planet's owner is eliminated, the engine must
+        emit a discrete planet_orphaned event (UI/spectator visibility)."""
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+
+        u, (a, *_) = _make_universe(seed=9310)
+        a.deaths = K.MAX_DEATHS_BEFORE_ELIM - 1  # one more death eliminates
+        planet = Planet(
+            id=99,
+            sector_id=150,
+            name="OrphanTest",
+            class_id=PlanetClass.M,
+            owner_id=a.id,
+            citadel_level=2,
+            fighters=2000,
+        )
+        u.planets[99] = planet
+        _destroy_ship(u, a.id, reason="test", killer_id=None)
+        orphan_events = [e for e in u.events if e.kind == EventKind.PLANET_ORPHANED]
+        assert len(orphan_events) == 1
+        ev = orphan_events[0]
+        assert ev.payload["planet_id"] == 99
+        assert ev.payload["former_owner"] == a.id
+        assert ev.payload["citadel_level"] == 2
+        assert u.planets[99].owner_id is None
+
+    def test_l14_elimination_payload_lists_orphans(self):
+        """The PLAYER_ELIMINATED event should include the orphaned planet ids
+        in its payload for convenient post-match analysis."""
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+
+        u, (a, *_) = _make_universe(seed=9311)
+        a.deaths = K.MAX_DEATHS_BEFORE_ELIM - 1
+        u.planets[77] = Planet(
+            id=77, sector_id=222, name="P77", class_id=PlanetClass.M,
+            owner_id=a.id, citadel_level=1,
+        )
+        _destroy_ship(u, a.id, reason="test", killer_id=None)
+        elim = next(e for e in u.events if e.kind == EventKind.PLAYER_ELIMINATED)
+        assert 77 in elim.payload["orphaned_planets"]

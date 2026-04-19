@@ -106,6 +106,7 @@ class EventKind(str, Enum):
     COMBAT = "combat"
     SHIP_DESTROYED = "ship_destroyed"
     PLAYER_ELIMINATED = "player_eliminated"
+    PLANET_ORPHANED = "planet_orphaned"
     FERRENGI_SPAWN = "ferrengi_spawn"
     FERRENGI_MOVE = "ferrengi_move"
     FERRENGI_ATTACK = "ferrengi_attack"

@@ -259,7 +259,11 @@ XP_AWARDS = {
 
 # --- Ferrengi behaviour -------------------------------------------------------
 FERRENGI_MOVE_PROB = 0.6              # chance per day each Ferrengi moves
-FERRENGI_HUNT_AGGRESSION_THRESHOLD = 3 # below this they ignore players (was 4)
+FERRENGI_HUNT_AGGRESSION_THRESHOLD = 3 # below this they ignore armed players (was 4)
+# Opportunistic threshold: when a target has 0 fighters AND 0 shields, even
+# low-aggression Ferrengi pounce. Makes "unarmed in deep space" a real risk
+# every turn, not a 1-in-130 event (observed attack rate in seed 7777).
+FERRENGI_OPPORTUNIST_AGGRESSION_THRESHOLD = 1
 FERRENGI_FLEE_FIGHTER_RATIO = 1.5     # if player.fighters > theirs * this, they flee
 
 # --- Ferrengi -----------------------------------------------------------------

@@ -620,6 +620,7 @@ class MatchRunner:
             EventKind.ASSIGN_COLONISTS,
             EventKind.BUILD_CITADEL,
             EventKind.CITADEL_COMPLETE,
+            EventKind.PLANET_ORPHANED,
         }
         if ev.kind in planet_events:
             planet_id = (ev.payload or {}).get("planet_id")

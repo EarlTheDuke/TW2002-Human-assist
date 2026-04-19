@@ -1991,14 +1991,41 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
             universe.sectors[K.STARDOCK_SECTOR].occupant_ids.remove(pid)
         except ValueError:
             pass
-        # Release any planets they owned solo
+        # Release any planets they owned solo, and emit a discrete
+        # planet_orphaned event for each — spectators and the UI need to
+        # see which specific planets are now unclaimed (the previous
+        # behavior silently cleared owner_id, leaving orphan citadels
+        # invisible on commander cards and in the event feed).
+        orphaned_ids: list[int] = []
         for planet in universe.planets.values():
             if planet.owner_id == pid and planet.corp_ticker is None:
                 planet.owner_id = None
+                orphaned_ids.append(planet.id)
+                universe.emit(
+                    EventKind.PLANET_ORPHANED,
+                    actor_id=pid,
+                    sector_id=planet.sector_id,
+                    payload={
+                        "planet_id": planet.id,
+                        "planet_name": planet.name,
+                        "former_owner": pid,
+                        "citadel_level": planet.citadel_level,
+                        "fighters": planet.fighters,
+                    },
+                    summary=(
+                        f"Planet {planet.name} (L{planet.citadel_level} citadel, "
+                        f"{planet.fighters} fighters) is now UNCLAIMED after "
+                        f"{player.name}'s elimination."
+                    ),
+                )
         universe.emit(
             EventKind.PLAYER_ELIMINATED,
             actor_id=pid,
-            payload={"killer": killer_id, "deaths": player.deaths},
+            payload={
+                "killer": killer_id,
+                "deaths": player.deaths,
+                "orphaned_planets": orphaned_ids,
+            },
             summary=f"!!! {player.name} ELIMINATED — {player.deaths} ship losses, removed from match !!!",
         )
 
@@ -2061,8 +2088,6 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
                     payload={"id": ferr.id, "from": old_sid, "to": ferr.sector_id},
                     summary=f"Ferrengi {ferr.name} prowled {old_sid} → {ferr.sector_id}",
                 )
-        if ferr.aggression < K.FERRENGI_HUNT_AGGRESSION_THRESHOLD:
-            continue
         # Attack a player in the same sector if any
         victims = [
             p for p in universe.players.values()
@@ -2071,6 +2096,19 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
         if not victims:
             continue
         victim = min(victims, key=lambda p: p.ship.fighters)
+        # Opportunistic hunt: a clearly defenseless target (0 fighters + 0
+        # shields) lowers the aggression bar. Even timid raiders will pounce
+        # when the victim can't shoot back — matches real TW2002, where
+        # unarmed cargo haulers are Ferrengi bait regardless of aggression
+        # rating. Armed targets still need the normal threshold.
+        unarmed = victim.ship.fighters == 0 and victim.ship.shields == 0
+        required_aggression = (
+            K.FERRENGI_OPPORTUNIST_AGGRESSION_THRESHOLD
+            if unarmed
+            else K.FERRENGI_HUNT_AGGRESSION_THRESHOLD
+        )
+        if ferr.aggression < required_aggression:
+            continue
         # Flee if outclassed
         if victim.ship.fighters > ferr.fighters * K.FERRENGI_FLEE_FIGHTER_RATIO:
             choices = [w for w in sec.warps if w not in K.FEDSPACE_SECTORS]
