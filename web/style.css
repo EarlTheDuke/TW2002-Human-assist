@@ -326,9 +326,27 @@ html, body {
    The map toggles these classes on #galaxy based on current zoom level,
    so visual clutter scales with how much the user is actually looking at.
    See Phase 2 of docs/UI_DESIGN.md. */
-#galaxy.zoom-far .warp { stroke: #141c34; stroke-width: 0.35; opacity: 0.25; }
-#galaxy.zoom-far .warp.oneway { opacity: 0.2; }
+/* Zoom-far LOD — at wide zoom, interior edges are a meaningless blob of lines.
+ * Hide them entirely and keep only the visual anchors: recent movement trails,
+ * FedSpace, ports, planets, StarDock, and ship markers (separate layer). The
+ * overview becomes "where is everyone and what's special," not "trace one
+ * warp through 1,500." Focus overrides this — if a sector is selected, its
+ * neighborhood stays visible even when zoomed out. */
+#galaxy.zoom-far .warp { display: none; }
+#galaxy.zoom-far .warp.recent { display: block; opacity: 0.95; stroke-width: 1.6; }
+#galaxy.zoom-far.has-focus .warp.focused-warp {
+  display: block !important;
+  opacity: 0.95 !important;
+  stroke: var(--accent) !important;
+  stroke-width: 1.4 !important;
+}
 #galaxy.zoom-far .sector-label { display: none; }
+/* Plain (non-port, non-fed, non-planet) sectors fade out at wide zoom so
+ * the visual anchors stand alone. The selected sector and its neighbors
+ * always stay fully visible via .has-focus rules further down. */
+#galaxy.zoom-far #sectors-layer g:not(.focused-self):not(.focused-neighbor) .sector-node:not(.port):not(.fed):not(.has-planet):not(.stardock) {
+  opacity: 0.1;
+}
 #galaxy.zoom-mid .warp { stroke: #1a2440; stroke-width: 0.55; opacity: 0.55; }
 #galaxy.zoom-mid .sector-label { opacity: 0.5; }
 #galaxy.zoom-near .warp { stroke: #22305a; stroke-width: 0.75; opacity: 0.9; }
