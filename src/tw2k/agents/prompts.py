@@ -249,10 +249,20 @@ Once you own a planet AND can afford another Genesis (25k cr), go get one
 - `hail {"target":"<pid>","message":"..."}` — private DM. CHECK `inbox` every turn.
 - `broadcast {"message":"..."}` — open galaxy channel.
 - `propose_alliance {"target":"<pid>","terms":"..."}` / `accept_alliance` / `break_alliance`.
+- Alliance = mutual friendly-fire immunity (mines don't trigger, fighter fields pass).
 - `corp_create {"ticker":"XYZ","name":"..."}` — 500k cr at StarDock. Unlocks corporate_flagship.
 - `corp_invite`, `corp_join {"ticker":"XYZ"}`, `corp_leave`.
-- `corp_deposit {"amount":N}` / `corp_withdraw {"amount":N}` — shared treasury pays for citadels.
-- `corp_memo {"message":"..."}` — team channel.
+- `corp_deposit {"amount":N}` / `corp_withdraw {"amount":N}` — treasury pays for citadels
+  and is split EQUALLY across alive members in net-worth scoring (see your
+  `corp.treasury_share`). Depositing is NOT a score sink any more — your share
+  counts toward time-net-worth victory. Economic-victory (100M credits) still
+  uses personal `credits` only, so deposits won't close that gap.
+- `corp_memo {"message":"..."}` — team channel; last 5 appear in `corp.recent_memos`.
+- Corp benefits beyond treasury: friendly-fire immunity with mates, shared access
+  to corp-flagged planets (any member can land/build citadels), corporate_flagship
+  ship unlock (650k, 85 holds, 20k fighters — strongest combat hull outside Admiral
+  tier), and full intel sharing in `other_players` (mates show full state, rivals
+  show only name/alive/corp).
 - Silence is a strategy. Betrayal is a strategy. The other commander is ALSO reasoning about this.
 
 ================ OBSERVATION FIELDS YOU MUST READ ================

@@ -2118,3 +2118,263 @@ class TestPhaseMFogOfWar:
         u, _ = _make_universe(seed=512)
         ev = u.emit(EventKind.DAY_TICK, summary="day 1")
         assert "_witnesses" not in ev.payload
+
+
+# ---------------------------------------------------------------------------
+# Phase N — Corporations (treasury share + hints + memo surfacing)
+#
+# The corp layer used to be a score sink: `corp_deposit` moved personal
+# credits into an orphan pool nobody got credit for, and only the CEO could
+# withdraw. That made corps rationally dominated for non-CEO members. The
+# fix: full_net_worth now adds `corp.treasury // alive_members` to every
+# alive member's total, so deposits preserve value in time-net-worth
+# scoring. Plus three soft hints at moments where corps are mechanically
+# useful: 500k+ solo cash, unread corp_invite, running 2+ planets solo.
+# ---------------------------------------------------------------------------
+
+
+class TestPhaseNCorp:
+    def _make_corp(self, u, ceo_id: str, members: list[str], treasury: int = 0,
+                   ticker: str = "XYZ"):
+        """Helper — build a corp and wire members' corp_ticker."""
+        from tw2k.engine.models import Corporation
+
+        corp = Corporation(
+            ticker=ticker, name=f"{ticker} Corp", ceo_id=ceo_id,
+            member_ids=list(members), treasury=treasury, formed_day=0,
+        )
+        u.corporations[ticker] = corp
+        for mid in members:
+            if mid in u.players:
+                u.players[mid].corp_ticker = ticker
+        return corp
+
+    def test_n1_treasury_share_split_across_alive_members(self):
+        """full_net_worth gives every alive corp member an equal slice of
+        the treasury. Two members, 20k treasury -> each counts 10k."""
+        from tw2k.engine.runner import full_net_worth
+
+        u, (a, b, _c) = _make_universe(seed=600)
+        # Establish a baseline BEFORE forming the corp — net_worth of a
+        # fresh player includes their credits + ship valuation, so we
+        # capture that number and then verify the delta equals the share.
+        base_a = full_net_worth(u, a)
+        base_b = full_net_worth(u, b)
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id], treasury=20_000)
+        nw_a = full_net_worth(u, a)
+        nw_b = full_net_worth(u, b)
+        assert nw_a - base_a == 10_000, "A should gain 10k share"
+        assert nw_b - base_b == 10_000, "B should gain 10k share"
+
+    def test_n2_treasury_share_excludes_dead_members(self):
+        """Eliminated members drop out of the share denominator so alive
+        members' slices grow — a natural consequence of rivals dying off."""
+        from tw2k.engine.runner import full_net_worth
+
+        u, (a, b, c) = _make_universe(seed=601)
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id, c.id], treasury=30_000)
+        base_a = full_net_worth(u, a) - 10_000  # strip the 30k/3 share
+        # Simulate C's elimination.
+        c.alive = False
+        # Now alive members = {a, b}, treasury 30k / 2 = 15k share for A.
+        assert full_net_worth(u, a) - base_a == 15_000, (
+            "A's share should grow when C is eliminated"
+        )
+        # Dead C should not get any share credited.
+        assert full_net_worth(u, c) == c.net_worth, (
+            "Eliminated player gets no treasury share"
+        )
+
+    def test_n3_non_member_sees_zero_share(self):
+        """A player NOT in the corp never gets credited for treasury."""
+        from tw2k.engine.runner import _corp_treasury_share
+
+        u, (a, b, c) = _make_universe(seed=602)
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id], treasury=50_000)
+        assert _corp_treasury_share(u, c) == 0, (
+            "outsider must get no treasury share"
+        )
+
+    def test_n4_share_is_integer_division(self):
+        """Treasury that doesn't divide evenly gets floor-divided. 10001/3
+        -> 3333 each, total 9999; the 2cr rounding residue is an engine
+        bookkeeping artifact that's fine to lose from sum (and it reverts
+        to whole numbers when withdrawn)."""
+        from tw2k.engine.runner import _corp_treasury_share
+
+        u, (a, b, c) = _make_universe(seed=603)
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id, c.id], treasury=10_001)
+        assert _corp_treasury_share(u, a) == 3333
+        assert _corp_treasury_share(u, b) == 3333
+        assert _corp_treasury_share(u, c) == 3333
+
+    def test_n5_observation_surfaces_treasury_share(self):
+        """The corp summary in the Observation must expose the member's
+        slice, not just the raw treasury, so the LLM can reason about
+        deposits as value-preserving."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, b, _c) = _make_universe(seed=604)
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id], treasury=40_000)
+        obs_a = build_observation(u, a.id)
+        assert obs_a.corp is not None
+        assert obs_a.corp["treasury"] == 40_000
+        assert obs_a.corp["treasury_share"] == 20_000, (
+            "corp summary should surface per-member share"
+        )
+
+    def test_n6_observation_surfaces_recent_corp_memos(self):
+        """The last 5 corp_memos should appear in corp.recent_memos so
+        team chatter is at-a-glance visible without scanning the inbox."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, b, _c) = _make_universe(seed=605)
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id], ticker="AAA")
+        # Add 7 memos; only the last 5 should surface.
+        for i in range(7):
+            a.inbox.append({
+                "from": b.id,
+                "kind": "corp_memo",
+                "ticker": "AAA",
+                "message": f"memo {i}",
+                "day": 1,
+                "tick": i,
+            })
+        obs = build_observation(u, a.id)
+        memos = obs.corp["recent_memos"]
+        assert len(memos) == 5, "should surface last 5, not all 7"
+        assert memos[0]["message"] == "memo 2", "oldest of the kept slice"
+        assert memos[-1]["message"] == "memo 6", "newest memo"
+
+    def test_n7_recent_memos_scoped_to_own_ticker(self):
+        """If an agent has corp_memo entries in inbox from a DIFFERENT
+        corp (e.g. they've switched corps), they should not appear in
+        the current corp's recent_memos window."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, b, _c) = _make_universe(seed=606)
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id], ticker="NEW")
+        # Legacy memo from an old corp still in the inbox.
+        a.inbox.append({
+            "from": b.id,
+            "kind": "corp_memo",
+            "ticker": "OLD",
+            "message": "from old corp",
+            "day": 1,
+            "tick": 1,
+        })
+        a.inbox.append({
+            "from": b.id,
+            "kind": "corp_memo",
+            "ticker": "NEW",
+            "message": "current corp",
+            "day": 1,
+            "tick": 2,
+        })
+        obs = build_observation(u, a.id)
+        memos = obs.corp["recent_memos"]
+        assert len(memos) == 1
+        assert memos[0]["message"] == "current corp"
+
+    def test_n8_inbox_hint_counts_corp_memos_and_invites(self):
+        """The inbox FYI hint used to count only hails and broadcasts;
+        corp memos and invites must now also bump the counter so the
+        agent knows team chatter is waiting."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=607)
+        a.inbox.append({"from": "B", "kind": "corp_memo", "ticker": "XYZ",
+                        "message": "plan", "day": 1, "tick": 1})
+        a.inbox.append({"from": "C", "kind": "corp_invite", "ticker": "XYZ",
+                        "message": "join?", "day": 1, "tick": 2})
+        sec_info = {"id": a.sector_id, "warps_out": [2]}
+        hint = _action_hint(sec_info, player=a, universe=u)
+        assert "corp memo(s)" in hint
+        assert "corp invite(s)" in hint
+
+    def test_n9_hint_a_solo_with_500k_cash(self):
+        """Hint A: solo commander with enough cash for corp_create should
+        see an FYI describing the corp benefits + new treasury math."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=608)
+        a.credits = 600_000
+        a.corp_ticker = None
+        a.ship.fighters = 100  # silence the unarmed hint
+        sec_info = {"id": a.sector_id, "warps_out": [2]}
+        hint = _action_hint(sec_info, player=a, universe=u)
+        assert "corp_create" in hint
+        assert "500000" in hint or "500,000" in hint or "500_000" in hint \
+            or "500k" in hint.lower()
+        assert "corporate_flagship" in hint
+        assert "share counts" in hint, (
+            "hint must emphasize the new treasury-share scoring so the agent "
+            "knows deposits aren't a score sink any more"
+        )
+
+    def test_n10_hint_a_suppressed_once_in_corp(self):
+        """Hint A fires only for SOLO commanders. Once in a corp, the
+        nudge should stop — they've made the choice."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, b) = _make_universe(seed=609, players=2)
+        a.credits = 600_000
+        a.ship.fighters = 100
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id])
+        sec_info = {"id": a.sector_id, "warps_out": [2]}
+        hint = _action_hint(sec_info, player=a, universe=u)
+        # The word "corp_create" should not appear as a nudge.
+        assert "`corp_create`" not in hint
+
+    def test_n11_hint_b_pending_corp_invite(self):
+        """Hint B: an unread corp_invite in inbox fires a concrete-
+        mechanics hint explaining cost/benefit of joining."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=610)
+        a.ship.fighters = 100
+        a.inbox.append({
+            "from": "B", "kind": "corp_invite", "ticker": "BLU",
+            "message": "join us", "day": 1,
+        })
+        sec_info = {"id": a.sector_id, "warps_out": [2]}
+        hint = _action_hint(sec_info, player=a, universe=u)
+        assert "corp invite" in hint.lower()
+        assert "BLU" in hint, "hint should echo the ticker"
+        assert "corp_join" in hint
+
+    def test_n12_hint_c_two_planets_solo(self):
+        """Hint C: an empire-builder running 2+ planets solo should see
+        an FYI that a corp partner accelerates the build."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=611)
+        a.ship.fighters = 100
+        a.corp_ticker = None
+        a.credits = 100_000
+        owned = [
+            {"id": 1, "sector_id": 44, "citadel_level": 1, "citadel_target": 1},
+            {"id": 2, "sector_id": 91, "citadel_level": 1, "citadel_target": 1},
+        ]
+        sec_info = {"id": a.sector_id, "warps_out": [2]}
+        hint = _action_hint(sec_info, player=a, owned_planets=owned, universe=u)
+        assert "run 2 planets solo" in hint or "2 planets" in hint
+        assert "corp" in hint.lower()
+
+    def test_n13_victory_ranking_uses_share(self):
+        """Integration: at time-expiry the winner is chosen by full_net_worth.
+        A non-CEO corp member whose deposits would otherwise have vanished
+        should now benefit from their share, potentially flipping the
+        ranking vs the old (sink) behavior."""
+        from tw2k.engine.runner import full_net_worth
+
+        u, (a, b, _c) = _make_universe(seed=612, players=3)
+        # Start-of-match players all have comparable net worth. Form a corp
+        # and heavily fund the treasury via B's credits (as a member, not
+        # CEO — the old scoring would have burned this).
+        self._make_corp(u, ceo_id=a.id, members=[a.id, b.id], treasury=200_000)
+        b_share = full_net_worth(u, b) - b.net_worth
+        assert b_share == 100_000, (
+            "B should be credited 200k/2 = 100k for time-net-worth purposes, "
+            "even though only A (CEO) can mechanically withdraw"
+        )

@@ -237,8 +237,36 @@ def _planet_asset_value(planet) -> int:
     return citadel_cost + colonist_value + stockpile_value + planet.treasury + defense_value
 
 
+def _corp_treasury_share(universe: Universe, player) -> int:
+    """Per-member share of the corp treasury, for net_worth attribution.
+
+    Corp treasury used to be orphaned value — credits got deposited and
+    never showed up in anyone's score. That made `corp_deposit` a
+    strictly-dominated action for non-CEO members (who can't withdraw).
+    Now every ALIVE member gets an equal share of the treasury credited
+    to their net worth. Eliminated members drop out so the share grows
+    as rivals die. Deposit still moves credits out of player.credits,
+    so you won't satisfy the economic-victory threshold by hoarding in
+    the treasury — but you WILL get credit for it under time net worth.
+    """
+    ticker = getattr(player, "corp_ticker", None)
+    if not ticker:
+        return 0
+    corp = universe.corporations.get(ticker)
+    if corp is None or corp.treasury <= 0:
+        return 0
+    alive_members = [
+        mid for mid in corp.member_ids
+        if mid in universe.players and universe.players[mid].alive
+    ]
+    if not alive_members or player.id not in alive_members:
+        return 0
+    return corp.treasury // len(alive_members)
+
+
 def full_net_worth(universe: Universe, player) -> int:
-    """Total net worth = ship-side (Player.net_worth) + all planet assets.
+    """Total net worth = ship-side (Player.net_worth) + all planet assets
+    + per-member share of corp treasury.
 
     Every call site that has a universe reference (victory check,
     observation build, server snapshot) should use this so the three
@@ -248,11 +276,16 @@ def full_net_worth(universe: Universe, player) -> int:
     planet contribution reads zero — which is what caused
     time_net_worth = 24.2k to misrepresent Captain Reyes's actual
     value after deploying and building two planets.
+
+    Corp treasury is now split equally across alive members so that
+    `corp_deposit` isn't a strictly dominated action for non-CEOs —
+    see `_corp_treasury_share`.
     """
     total = player.net_worth
     for planet in universe.planets.values():
         if planet.owner_id == player.id:
             total += _planet_asset_value(planet)
+    total += _corp_treasury_share(universe, player)
     return total
 
 

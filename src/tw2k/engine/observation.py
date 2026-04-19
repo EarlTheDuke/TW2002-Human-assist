@@ -335,13 +335,40 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
     corp_summary: dict[str, Any] | None = None
     if player.corp_ticker and player.corp_ticker in universe.corporations:
         c = universe.corporations[player.corp_ticker]
+        # Compute YOUR share of the treasury. Now that full_net_worth
+        # attributes treasury proportionally, members need to see their
+        # own slice directly so they can reason about deposits as a
+        # value-preserving team investment rather than a score sink.
+        alive_members = [
+            mid for mid in c.member_ids
+            if mid in universe.players and universe.players[mid].alive
+        ]
+        treasury_share = (
+            c.treasury // len(alive_members) if alive_members else 0
+        )
+        # Pull the last 5 corp_memos out of the inbox so the team channel
+        # is at-a-glance visible without scanning all 40 inbox entries.
+        # Memos appear in every member's inbox, so reading from the
+        # current player's inbox gives a consistent feed.
+        recent_memos = [
+            {
+                "from": m.get("from"),
+                "day": m.get("day"),
+                "tick": m.get("tick"),
+                "message": m.get("message"),
+            }
+            for m in (player.inbox or [])
+            if m.get("kind") == "corp_memo" and m.get("ticker") == c.ticker
+        ][-5:]
         corp_summary = {
             "ticker": c.ticker,
             "name": c.name,
             "ceo_id": c.ceo_id,
             "members": list(c.member_ids),
             "treasury": c.treasury,
+            "treasury_share": treasury_share,
             "planet_ids": list(c.planet_ids),
+            "recent_memos": recent_memos,
         }
 
     limpets_owned: list[dict[str, Any]] = []
@@ -798,9 +825,10 @@ def _action_hint(
         hints.append("Ferrengi present — attack for XP or warp out.")
 
     # Inbox backlog — FYI only. Distinguishing direct hails from broadcasts
-    # matters because a private DM is usually more relevant than a shout to
-    # all. Framing is "you have N messages" not "you must respond" — the
-    # agent decides if any are worth a detour.
+    # and corp memos matters because each channel has different relevance:
+    # hails are 1:1 intent, broadcasts are galaxy noise, corp_memos are team
+    # coordination from a group you've already committed to. Framing is
+    # "you have N messages" not "you must respond" — the agent decides.
     inbox = getattr(player, "inbox", None) if player is not None else None
     if inbox:
         recent = inbox[-20:]
@@ -810,13 +838,23 @@ def _action_hint(
         unread_bcasts = sum(
             1 for m in recent if not m.get("read") and m.get("kind") == "broadcast"
         )
-        total_unread = unread_hails + unread_bcasts
+        unread_memos = sum(
+            1 for m in recent if not m.get("read") and m.get("kind") == "corp_memo"
+        )
+        unread_invites = sum(
+            1 for m in recent if not m.get("read") and m.get("kind") == "corp_invite"
+        )
+        total_unread = unread_hails + unread_bcasts + unread_memos + unread_invites
         if total_unread:
             parts = []
             if unread_hails:
                 parts.append(f"{unread_hails} hail(s)")
             if unread_bcasts:
                 parts.append(f"{unread_bcasts} broadcast(s)")
+            if unread_memos:
+                parts.append(f"{unread_memos} corp memo(s)")
+            if unread_invites:
+                parts.append(f"{unread_invites} corp invite(s)")
             hints.append(
                 f"FYI: {' + '.join(parts)} in inbox — see `inbox` field. "
                 "No obligation to reply; respond only if it serves your goals."
@@ -912,6 +950,63 @@ def _action_hint(
                         f"(idle={idle}/{need_col})."
                     )
                     break  # only flag the first such planet to keep hint short
+
+        # ---------- Corp awareness hints ----------
+        # Soft nudges at moments where a corp would mechanically help. All
+        # FYI-framed so an agent that prefers to fly solo can ignore them.
+        # These fire only when the agent is NOT already in a corp, except
+        # the invite-pending hint which fires from the inbox signal.
+        in_corp = bool(getattr(player, "corp_ticker", None))
+        corp_create_cost = getattr(K, "CORP_FORMATION_COST", 500_000)
+
+        # Hint A — you have enough cash to form a corp and don't have one.
+        # The purpose is to ensure the agent knows this branch exists at
+        # the moment they're mechanically capable of taking it. The prompt
+        # already explains corps; this just activates the verb at the
+        # right cash threshold.
+        if not in_corp and credits_now >= corp_create_cost:
+            hints.append(
+                f"FYI: you have {credits_now}cr (>= {corp_create_cost} cr for "
+                "`corp_create` at StarDock). A corp unlocks corporate_flagship "
+                "(20k fighters, 650k cr), pools treasury across members (your "
+                "share counts toward net worth), grants mates friendly-fire "
+                "immunity + shared planet access. Not required — solo is fine."
+            )
+
+        # Hint B — a corp invite is sitting unread in the inbox. The
+        # invitee needs concrete mechanics to decide, not just "you have
+        # an invite." This surfaces the cost/benefit inline so they don't
+        # have to ask.
+        inbox_now = getattr(player, "inbox", None) or []
+        pending_invites = [
+            m for m in inbox_now
+            if m.get("kind") == "corp_invite" and not m.get("read")
+        ]
+        if pending_invites and not in_corp:
+            inv = pending_invites[-1]  # most recent
+            ticker = inv.get("ticker") or "?"
+            hints.append(
+                f"FYI: corp invite to [{ticker}] in inbox. Joining is free. "
+                "Benefits: treasury share counts toward your net worth, "
+                "friendly-fire immunity with mates, shared planet access, "
+                "corporate_flagship unlock. Costs: deposits are one-way for "
+                "non-CEO members (only CEO may withdraw). `corp_join "
+                f'{{"ticker":"{ticker}"}}\' to accept.'
+            )
+
+        # Hint C — 2+ planets still solo. At this scale the coordination
+        # costs of running an empire alone (colonist ferries, citadel
+        # upgrade funding, defense coverage) start to bite. A corp partner
+        # is one strategic answer; not the only one, so soft-frame it.
+        if not in_corp and n_planets >= 2:
+            hints.append(
+                f"FYI: you run {n_planets} planets solo. A corp partner would "
+                "pool treasury for faster citadel upgrades (your share of "
+                "treasury counts), cover your planets with friendly fighters, "
+                "and share colonist-ferry routes. `corp_create` (500k at "
+                "StarDock) then `corp_invite` — or wait for someone to "
+                "approach you."
+            )
 
     # End-of-day safety: if the agent has fewer turns left than the cheapest
     # useful action (warp=2), just tell them to wait. Without this nudge, LLM
