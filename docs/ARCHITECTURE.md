@@ -169,7 +169,7 @@ async def run_match(config):
 
 Pacing controls (default):
 - `action_delay_s = 0.6` — spectators need time to read the event log.
-- `llm_think_cap_s = 15` — if the LLM hasn't responded, default to WAIT.
+- `llm_think_cap_s = 60` — if the LLM hasn't responded, default to WAIT.
 - `day_ticks_per_hour = 120` — roughly 30s per in-game day.
 
 ## Spectator UI

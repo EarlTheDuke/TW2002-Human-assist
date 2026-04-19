@@ -1313,6 +1313,12 @@ svg.spark { display: block; }
 .combat-flash { pointer-events: none; }
 .hail-bubble { pointer-events: none; }
 .warp.oneway { stroke: #3a4c82; opacity: 0.45; }
+.event-feed .actor {
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
 .event-feed .msg { color: var(--text); flex: 1; }
 .event-feed .dot { color: var(--player-color, var(--accent)); }
 

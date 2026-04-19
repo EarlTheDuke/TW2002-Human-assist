@@ -466,7 +466,14 @@ class GameConfig(BaseModel):
     # genesis-deploy decision inside the observable window.
     starting_credits: int = K.STARTING_CREDITS
     action_delay_s: float = 0.6
-    llm_think_cap_s: float = 20.0
+    # 60s is the steady-state per-turn cap. The 20s value that used to live
+    # here pre-dated 6-player universes with larger observations and
+    # reasoning-model providers like xAI Grok-4-fast-reasoning, which
+    # routinely spend 20-40s of reasoning tokens on a complex turn
+    # (multi-planet empire + corp decision + enemy in sector). 60s gives
+    # comfortable headroom for all current providers without letting a
+    # hung call freeze the match — override per-match via TW2K_THINK_CAP_S.
+    llm_think_cap_s: float = 60.0
     enable_ferrengi: bool = True
     enable_planets: bool = True
     enable_corps: bool = True

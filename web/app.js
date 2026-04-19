@@ -1559,9 +1559,18 @@
       const color = actor ? actor.color : "#8794b4";
       li.style.setProperty("--player-color", color);
       const kindClass = kindCategoryClass(ev.kind);
+      // Prefix the message with the actor's name (colored) when the event
+      // has a known player. Without this, rows like "agent thought: warp
+      // to 438" were indistinguishable between 4-6 commanders talking at
+      // once. The name is part of .actor (flex: 0) so long thought text
+      // still wraps correctly in .msg.
+      const actorBadge = actor
+        ? `<span class="actor" style="color:${color}">${esc(actor.name)}</span>`
+        : "";
       li.innerHTML = `
         <span class="time">D${ev.day || 0}·${ev.tick || 0}</span>
         <span class="kind ${kindClass}">${escKind(ev.kind)}</span>
+        ${actorBadge}
         <span class="msg">${esc(ev.summary || "")}</span>
       `;
       eventFeed.appendChild(li);
