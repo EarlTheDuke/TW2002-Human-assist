@@ -759,10 +759,24 @@
       header.innerHTML = `
         <h2>Commanders <span class='muted' id='playerCountLabel'></span></h2>
         <div class="header-right">
+          <button class="mini-btn" id="cardsCollapseAll" title="Collapse all commander cards">⇡ All</button>
+          <button class="mini-btn" id="cardsExpandAll" title="Expand all commander cards">⇣ All</button>
           <button class="collapse-btn" data-collapse="players" title="Collapse commanders">▾</button>
         </div>
       `;
       container.appendChild(header);
+      // Wire up the bulk toggles once. Writing to localStorage and then
+      // calling renderPlayers() rebuilds every <details> with the correct
+      // open state, so the UI and persistence stay in sync.
+      header.querySelector("#cardsCollapseAll")?.addEventListener("click", () => {
+        const ids = Array.from(state.players.keys()).join(",");
+        localStorage.setItem("tw2k_collapsed_cards", ids);
+        renderPlayers();
+      });
+      header.querySelector("#cardsExpandAll")?.addEventListener("click", () => {
+        localStorage.setItem("tw2k_collapsed_cards", "");
+        renderPlayers();
+      });
     }
     const countLabel = container.querySelector("#playerCountLabel");
     const alive = Array.from(state.players.values()).filter((p) => p.alive);
@@ -783,11 +797,18 @@
 
     // Re-render simple; 2-4 players is cheap
     grid.innerHTML = "";
+    // Per-card collapse state lives in localStorage keyed by player id.
+    // Absence of the key -> card starts open (default). Spectators can
+    // collapse cards they don't care about and the choice survives refresh.
+    const collapsedIds = new Set(
+      (localStorage.getItem("tw2k_collapsed_cards") || "").split(",").filter(Boolean)
+    );
     for (const p of state.players.values()) {
-      const card = document.createElement("div");
+      const card = document.createElement("details");
       card.className = "player-card" + (p.alive ? "" : " dead")
         + (state.selectedPlayerId === p.id ? " selected" : "");
       card.dataset.pid = p.id;
+      if (!collapsedIds.has(p.id)) card.open = true;
       card.style.setProperty("--player-color", p.color || "#6ee7ff");
       // Net worth = ship assets + planets owned. We show a tooltip
       // with the breakdown so spectators can see "this commander's 40k
@@ -835,38 +856,79 @@
         const tag = alliance.active ? "⚭" : "⋯";
         return `<span class="alliance-chip${alliance.active ? "" : " pending"}" title="${esc(alliance.active ? "NAP active" : "proposed")}">${tag} ${esc(label.slice(0, 12))}</span>`;
       }).join("");
-      card.innerHTML = `
-        <div class="player-header">
-          <div class="player-name">${esc(p.name)}<span class="rank-chip">${esc(rankLabel)}</span></div>
-          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <span class="player-tag">${p.kind || "?"}</span>
-            ${corpInfo}
+      // Compact summary shown both in collapsed and expanded states.
+      // Must be the first child of <details> for native click-to-toggle.
+      // Mini-stats give at-a-glance comparison across 4 cards without
+      // needing to expand everything.
+      const shipShortLabel = shipShort(p.ship);
+      const sectorLabel = p.sector_id != null ? p.sector_id : "—";
+      const planetCount = Array.from(state.planets.values()).filter((pl) => pl.owner_id === p.id).length;
+      const planetChip = planetCount > 0
+        ? `<span class="pc-sum-chip" title="${planetCount} owned planet(s)">🪐 ${planetCount}</span>`
+        : "";
+      const summaryHtml = `
+        <summary class="player-card-summary" title="click to collapse/expand ${esc(p.name)}">
+          <span class="pc-sum-main">
+            <span class="pc-sum-name">${esc(p.name)}</span>
+            <span class="rank-chip">${esc(rankLabel)}</span>
             ${p.alive ? "" : '<span class="player-tag" style="color:var(--danger); border-color:var(--danger)">KIA</span>'}
-          </div>
-        </div>
-        <div class="player-stats">
-          <div class="stat"><span class="k">Credits</span><span class="v">${fmt(p.credits || 0)}</span></div>
-          <div class="stat"><span class="k">Net Worth</span><span class="v">${netWorth}</span></div>
-          <div class="stat"><span class="k">Ship</span><span class="v">${shipShort(p.ship)}</span></div>
-          <div class="stat"><span class="k">Sector</span><span class="v">${p.sector_id || "—"}</span></div>
-          <div class="stat"><span class="k">Fighters</span><span class="v">${fmt(p.fighters || 0)}</span></div>
-          <div class="stat"><span class="k">Shields</span><span class="v">${fmt(p.shields || 0)}</span></div>
-          <div class="stat"><span class="k">Align</span><span class="v">${alignValue}</span></div>
-          <div class="stat"><span class="k">XP</span><span class="v">${fmt(p.experience || 0)}</span></div>
-          <div class="stat"><span class="k">Turns</span><span class="v">${turnsLabel}</span></div>
-          <div class="stat"><span class="k">Lives</span><span class="v">${Math.max(0, maxDeaths - deaths)}/${maxDeaths}</span></div>
-          <div class="stat" title="Ports this commander has visited and has intel on"><span class="k">Ports Seen</span><span class="v">${fmt(p.known_ports_count || 0)}</span></div>
-        </div>
-        <div class="cargo-bar" title="Cargo holds">${cargoSegs}</div>
-        <div class="cargo-legend">${cargoLabel}</div>
-        ${extraEquip.length ? `<div class="equip-row">${extraEquip.join("")}</div>` : ""}
-        ${allianceTags ? `<div class="alliance-row">${allianceTags}</div>` : ""}
-        ${renderGoalsBlock(p)}
-        ${renderPlanetsBlock(p)}
-        ${renderTradesBlock(p)}
-        ${renderSparklineRow(p.id, p.color)}
-        ${p.scratchpad ? `<div class="thought" title="Agent scratchpad">${esc(p.scratchpad).slice(0, 400)}</div>` : ""}
+          </span>
+          <span class="pc-sum-stats">
+            <span class="pc-sum-chip" title="credits on hand">💰 ${fmt(p.credits || 0)}</span>
+            <span class="pc-sum-chip" title="total net worth (ship + planets)">📈 ${fmt(totalNet)}</span>
+            <span class="pc-sum-chip" title="${esc(p.ship || "—")}">🛸 ${esc(shipShortLabel)}</span>
+            <span class="pc-sum-chip" title="current sector">📍 s${sectorLabel}</span>
+            ${planetChip}
+          </span>
+        </summary>
       `;
+
+      card.innerHTML = `
+        ${summaryHtml}
+        <div class="player-card-body">
+          <div class="player-header">
+            <div class="player-name">${esc(p.name)}<span class="rank-chip">${esc(rankLabel)}</span></div>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <span class="player-tag">${p.kind || "?"}</span>
+              ${corpInfo}
+              ${p.alive ? "" : '<span class="player-tag" style="color:var(--danger); border-color:var(--danger)">KIA</span>'}
+            </div>
+          </div>
+          <div class="player-stats">
+            <div class="stat"><span class="k">Credits</span><span class="v">${fmt(p.credits || 0)}</span></div>
+            <div class="stat"><span class="k">Net Worth</span><span class="v">${netWorth}</span></div>
+            <div class="stat"><span class="k">Ship</span><span class="v">${shipShort(p.ship)}</span></div>
+            <div class="stat"><span class="k">Sector</span><span class="v">${p.sector_id || "—"}</span></div>
+            <div class="stat"><span class="k">Fighters</span><span class="v">${fmt(p.fighters || 0)}</span></div>
+            <div class="stat"><span class="k">Shields</span><span class="v">${fmt(p.shields || 0)}</span></div>
+            <div class="stat"><span class="k">Align</span><span class="v">${alignValue}</span></div>
+            <div class="stat"><span class="k">XP</span><span class="v">${fmt(p.experience || 0)}</span></div>
+            <div class="stat"><span class="k">Turns</span><span class="v">${turnsLabel}</span></div>
+            <div class="stat"><span class="k">Lives</span><span class="v">${Math.max(0, maxDeaths - deaths)}/${maxDeaths}</span></div>
+            <div class="stat" title="Ports this commander has visited and has intel on"><span class="k">Ports Seen</span><span class="v">${fmt(p.known_ports_count || 0)}</span></div>
+          </div>
+          <div class="cargo-bar" title="Cargo holds">${cargoSegs}</div>
+          <div class="cargo-legend">${cargoLabel}</div>
+          ${extraEquip.length ? `<div class="equip-row">${extraEquip.join("")}</div>` : ""}
+          ${allianceTags ? `<div class="alliance-row">${allianceTags}</div>` : ""}
+          ${renderGoalsBlock(p)}
+          ${renderPlanetsBlock(p)}
+          ${renderTradesBlock(p)}
+          ${renderSparklineRow(p.id, p.color)}
+          ${p.scratchpad ? `<div class="thought" title="Agent scratchpad">${esc(p.scratchpad).slice(0, 400)}</div>` : ""}
+        </div>
+      `;
+      // Persist collapse state on toggle. Delegating to 'toggle' event
+      // because details/summary fires it natively, and this survives
+      // re-renders since the event handler is re-bound each frame.
+      card.addEventListener("toggle", () => {
+        const ids = new Set(
+          (localStorage.getItem("tw2k_collapsed_cards") || "").split(",").filter(Boolean)
+        );
+        if (card.open) ids.delete(p.id);
+        else ids.add(p.id);
+        localStorage.setItem("tw2k_collapsed_cards", Array.from(ids).join(","));
+      });
       grid.appendChild(card);
     }
   }
@@ -1872,6 +1934,11 @@
     const playersPanelEl = document.getElementById("panelPlayers");
     if (playersPanelEl) {
       playersPanelEl.addEventListener("click", (e) => {
+        // Summary clicks are reserved for native collapse/expand — don't
+        // also fire the drawer. Clicking anywhere in the body (stats,
+        // cargo bar, planets block, etc.) still opens the drawer and
+        // follows the commander, keeping the old shortcut.
+        if (e.target.closest("summary.player-card-summary")) return;
         const card = e.target.closest(".player-card[data-pid]");
         if (!card) return;
         const pid = card.dataset.pid;

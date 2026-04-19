@@ -217,6 +217,24 @@ html, body {
   border-color: var(--accent);
   color: var(--text);
 }
+.mini-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 10.5px;
+  line-height: 1;
+  font-family: inherit;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.mini-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(110, 231, 255, 0.06);
+}
 
 /* Shortcut toast (triggered by `?`) */
 .shortcuts-toast {
@@ -560,12 +578,77 @@ svg.spark { display: block; }
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   position: relative;
   overflow: hidden;
 }
+.player-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+/* Default <details>/<summary> marker is an ugly triangle; kill it and
+   render our own caret in the summary background via ::before. */
+.player-card > summary {
+  list-style: none;
+  cursor: pointer;
+  outline: none;
+}
+.player-card > summary::-webkit-details-marker { display: none; }
+
+.player-card-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  user-select: none;
+}
+.player-card-summary::before {
+  content: "▸";
+  color: var(--text-dim);
+  font-size: 10px;
+  margin-right: 4px;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+.player-card[open] > .player-card-summary::before {
+  transform: rotate(90deg);
+}
+.pc-sum-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.pc-sum-name {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.pc-sum-stats {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.pc-sum-chip {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(100, 120, 160, 0.12);
+  color: var(--text-dim);
+  border: 1px solid rgba(100, 120, 160, 0.15);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.player-card:not([open]) .pc-sum-chip {
+  background: rgba(100, 120, 160, 0.08);
+}
+
 .player-card::before {
   content: "";
   position: absolute; top: 0; left: 0; bottom: 0;
