@@ -1553,7 +1553,8 @@ class TestPhaseLHintsAndSafety:
         assert "0 fighters" not in hint
 
     def test_l7_hint_second_genesis_when_affordable(self):
-        """Already-owns-planet + 25k+ credits + no genesis loaded → FYI hint."""
+        """1 planet + 25k+ credits + no genesis loaded → FYI hint
+        with BOTH cluster-vs-diversify framing, mentioning the sector."""
         from tw2k.engine.observation import _action_hint
 
         u, (a, *_) = _make_universe(seed=9304)
@@ -1566,6 +1567,28 @@ class TestPhaseLHintsAndSafety:
         hint = _action_hint(sec_info, player=a, owned_planets=owned, universe=u)
         assert "another Genesis" in hint, hint
         assert "FYI" in hint
+        assert "s44" in hint, "hint should reference the planet's sector"
+        assert "Cluster" in hint and "risk spread" in hint, \
+            "hint should surface cluster-vs-diversify tradeoff"
+
+    def test_l7b_hint_third_genesis_tier(self):
+        """2 planets → hint uses '3rd Genesis' + 'Empire forming' framing."""
+        from tw2k.engine.observation import _action_hint
+
+        u, (a, *_) = _make_universe(seed=9304)
+        a.ship.genesis = 0
+        a.credits = K.GENESIS_TORPEDO_COST + 5000
+        a.ship.fighters = 100
+        a.sector_id = 30
+        owned = [
+            {"id": 1, "sector_id": 44, "citadel_level": 2, "citadel_target": 2},
+            {"id": 2, "sector_id": 77, "citadel_level": 1, "citadel_target": 1},
+        ]
+        sec_info = {"id": 30, "warps_out": [31]}
+        hint = _action_hint(sec_info, player=a, owned_planets=owned, universe=u)
+        assert "3rd Genesis" in hint, hint
+        assert "Empire forming" in hint
+        assert "s44" in hint and "s77" in hint
 
     def test_l8_hint_citadel_colonist_gap(self):
         """Credit-ready but colonist-short → gap hint."""

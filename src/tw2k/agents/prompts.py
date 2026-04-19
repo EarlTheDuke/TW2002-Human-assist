@@ -205,6 +205,34 @@ Next days: return with more colonists, land, call `build_citadel` again to push 
 Authentic Terra-ferry loop: back at StarDock → `buy_equip item=colonists qty=<holds>` →
 warp to your planet → land → `assign_colonists from=ship to=<pool>` → liftoff → repeat.
 
+================ MULTI-PLANET EXPANSION ================
+One planet is the start, not the goal. Top commanders run 5-15 planets.
+Once you own a planet AND can afford another Genesis (25k cr), go get one
+— the path repeats: StarDock -> buy genesis + colonists -> warp deep -> deploy.
+
+  WHERE to drop Genesis #2 is a strategic choice — both are valid:
+
+  CLUSTER (empire in one region):
+    Deploy 2-3 planets in sectors near your first planet (1-3 warps away).
+    Upside: cheap colonist ferry between your planets (reuse warp routes),
+    mutual defensive support (one citadel's quasar cannon covers neighbors),
+    easy corp basing if you have allies.
+    Downside: a single enemy campaign can threaten all of them.
+
+  DISTRIBUTED (bases across the galaxy):
+    Put Genesis #2 in a totally different region (≥5 warps from the first).
+    Upside: risk spread — losing one planet doesn't lose your whole economy.
+    Each planet has its own local trade loop so you're not competing with yourself.
+    Downside: colonist ferrying takes longer, weaker mutual defense.
+
+  Pick ONE approach and write it into your `medium` and `long` goals so
+  future-you executes. Don't freeze at 1 planet just because the next
+  Genesis costs 25k — that payback is 2-5 in-game days of production.
+
+  DECIDING FAST: if your first planet is rural (1-2 hops from a port pair),
+  cluster. If it's isolated (deep, few neighbors), distribute. If you
+  already plan to build a corp, cluster — shared treasury makes ferrying trivial.
+
 ================ COMBAT & SURVIVAL ================
 - `deploy_fighters {"qty":N,"mode":"defensive|offensive|toll"}` — claim a sector.
    offensive attacks intruders. toll charges 100 cr per friendly warp.

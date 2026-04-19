@@ -706,22 +706,44 @@ def _action_hint(
                     "StarDock (sec 1) has the fighter shop."
                 )
 
-        # Second-planet reminder. The observation already shows owned_planets
-        # and credits; this just cross-references them on one line so a
-        # focused "save for 2nd Genesis" goal is one prompt-read away.
+        # Multi-planet expansion hint. Tiered by how many planets the agent
+        # already owns, because the strategic tradeoff shifts:
+        #   1 planet  -> "cluster near it (easy ferry) OR diversify (risk spread)"
+        #   2 planets -> "empire forming; a 3rd roughly doubles production headroom"
+        #   3+ planets-> "dominant builder path — each new planet compounds"
+        # In every case it's a one-line FYI. The agent decides WHERE and WHEN.
+        # Names surface the sectors they already own so the LLM can reason
+        # about "near here vs far away" without re-reading owned_planets[*].
         genesis_loaded = int(getattr(ship, "genesis", 0) or 0)
         credits_now = int(getattr(player, "credits", 0) or 0)
+        n_planets = len(owned_planets) if owned_planets else 0
         if (
-            owned_planets
-            and len(owned_planets) >= 1
+            n_planets >= 1
             and genesis_loaded == 0
             and credits_now >= K.GENESIS_TORPEDO_COST
         ):
-            hints.append(
-                f"FYI: you own {len(owned_planets)} planet(s) and could afford "
-                f"another Genesis ({K.GENESIS_TORPEDO_COST}cr at StarDock). "
-                "Multi-planet economies compound."
+            sector_list = ", ".join(
+                f"s{p.get('sector_id')}" for p in owned_planets[:3] if p.get("sector_id") is not None
             )
+            if n_planets == 1:
+                hints.append(
+                    f"FYI: you own 1 planet ({sector_list}) and could afford "
+                    f"another Genesis ({K.GENESIS_TORPEDO_COST}cr at StarDock). "
+                    f"Cluster near {sector_list} = cheap colonist ferry; "
+                    f"build far away = risk spread if one planet falls."
+                )
+            elif n_planets == 2:
+                hints.append(
+                    f"FYI: you own 2 planets ({sector_list}) and could afford "
+                    f"a 3rd Genesis ({K.GENESIS_TORPEDO_COST}cr). Empire forming — "
+                    "a 3rd planet roughly doubles daily production capacity."
+                )
+            else:
+                hints.append(
+                    f"FYI: you own {n_planets} planets and could afford another "
+                    f"Genesis ({K.GENESIS_TORPEDO_COST}cr). Top-tier commanders "
+                    "run 5-15 planets; each new one compounds your income."
+                )
 
         # Citadel-tier gap hint. Only fire when credits/treasury clearly
         # permit the next tier but the planet is noticeably short on idle
