@@ -299,6 +299,104 @@ html, body {
 }
 #galaxy { width: 100%; height: 100%; cursor: grab; display: block; }
 #galaxy:active { cursor: grabbing; }
+
+/* ---------- Local View (neighborhood subgraph) ---------- */
+#localMap {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: default;
+}
+#localMap[hidden] { display: none; }
+.local-map-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 40px;
+  line-height: 1.5;
+}
+.local-map-empty[hidden] { display: none; }
+.local-ring {
+  fill: none;
+  stroke: rgba(110, 231, 255, 0.09);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 4;
+}
+.local-ring-label {
+  fill: rgba(110, 231, 255, 0.35);
+  font-size: 9px;
+  text-anchor: middle;
+  font-family: inherit;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.local-warp {
+  stroke: #3a4c82;
+  stroke-width: 1.3;
+  opacity: 0.85;
+}
+.local-warp.oneway {
+  stroke: #e8b85a;
+  stroke-dasharray: 3 4;
+  opacity: 0.9;
+}
+.local-node { cursor: pointer; }
+.local-halo {
+  fill: rgba(110, 231, 255, 0.12);
+  stroke: var(--accent);
+  stroke-width: 1.2;
+}
+.local-dot {
+  fill: #5a6b93;
+  stroke: #1a2240;
+  stroke-width: 1.2;
+}
+.local-dot.port     { fill: var(--port); }
+.local-dot.fed      { fill: var(--fed); }
+.local-dot.has-planet { stroke: var(--planet); stroke-width: 2.5; }
+.local-dot.stardock { fill: var(--stardock); stroke: var(--stardock); filter: drop-shadow(0 0 5px var(--stardock)); }
+.local-node.center .local-dot {
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+.local-label {
+  fill: var(--text);
+  font-size: 11px;
+  text-anchor: middle;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.local-node:hover .local-label {
+  fill: #fff;
+}
+.local-node:hover .local-dot {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+.local-ship { pointer-events: none; stroke: #000; stroke-width: 0.5; }
+
+.map-mode-btn.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+.map-hops-readout {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.map-ctrl-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 3px;
+}
 .map-legend { display: flex; gap: 14px; font-size: 11px; color: var(--text-dim); }
 .map-legend .dot {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%;

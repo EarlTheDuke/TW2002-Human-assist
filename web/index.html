@@ -58,13 +58,24 @@
         </div>
         <div class="map-wrap panel-body">
           <svg id="galaxy" preserveAspectRatio="xMidYMid meet"></svg>
+          <svg id="localMap" preserveAspectRatio="xMidYMid meet" hidden></svg>
+          <div id="localMapEmpty" class="local-map-empty" hidden>
+            Click any sector on the Galaxy map (or a sector ID in the drawer)
+            to open its neighborhood in Local View.
+          </div>
           <div id="sectorTip" class="sector-tip" hidden></div>
           <div class="map-controls" id="mapControls" role="toolbar" aria-label="Map controls">
-            <button class="map-btn" data-map-action="zoom-in" title="Zoom in (+)" aria-label="Zoom in">+</button>
-            <button class="map-btn" data-map-action="zoom-out" title="Zoom out (−)" aria-label="Zoom out">−</button>
-            <button class="map-btn" data-map-action="fit" title="Fit galaxy (0)" aria-label="Fit galaxy">⤢</button>
-            <button class="map-btn" data-map-action="toggle-mini" title="Toggle mini-map (M)" aria-label="Toggle mini-map">▣</button>
-            <span class="map-zoom-readout" id="mapZoomReadout" title="Current zoom">100%</span>
+            <button class="map-btn map-mode-btn" data-map-action="toggle-local" id="localViewBtn" title="Toggle Local / Galaxy view (L)" aria-label="Toggle local view">◎ Local</button>
+            <span class="map-ctrl-sep local-only" hidden></span>
+            <button class="map-btn local-only" data-map-action="hops-dec" title="Fewer hops" aria-label="Fewer hops" hidden>−</button>
+            <span class="map-hops-readout local-only" id="localHopsReadout" title="Hop radius" hidden>3 hops</span>
+            <button class="map-btn local-only" data-map-action="hops-inc" title="More hops" aria-label="More hops" hidden>+</button>
+            <span class="map-ctrl-sep galaxy-only"></span>
+            <button class="map-btn galaxy-only" data-map-action="zoom-in" title="Zoom in (+)" aria-label="Zoom in">+</button>
+            <button class="map-btn galaxy-only" data-map-action="zoom-out" title="Zoom out (−)" aria-label="Zoom out">−</button>
+            <button class="map-btn galaxy-only" data-map-action="fit" title="Fit galaxy (0)" aria-label="Fit galaxy">⤢</button>
+            <button class="map-btn galaxy-only" data-map-action="toggle-mini" title="Toggle mini-map (M)" aria-label="Toggle mini-map">▣</button>
+            <span class="map-zoom-readout galaxy-only" id="mapZoomReadout" title="Current zoom">100%</span>
           </div>
           <div class="mini-map" id="miniMap" aria-label="Mini-map">
             <svg id="miniMapSvg" preserveAspectRatio="xMidYMid meet"></svg>

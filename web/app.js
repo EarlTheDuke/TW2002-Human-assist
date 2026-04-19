@@ -31,6 +31,11 @@
     followPlayerId: null,      // map camera locks on this player when set
     hoverSectorId: null,       // transient; highlights a sector neighborhood while hovering
     reverseWarps: new Map(),   // id -> Set(ids that warp TO id). Built in buildMap.
+    localView: {               // neighborhood subgraph mode
+      active: false,
+      centerId: null,
+      hops: 3,                 // 1..5
+    },
     drawer: { kind: null, id: null }, // kind = "player" | "sector" | null
     history: new Map(),        // pid -> [{seq, day, credits, net_worth, fighters, ...}]
     recentWarp: [],            // [{from,to,t}]
@@ -52,6 +57,10 @@
 
   // ----------------- DOM refs ------------------
   const svg = document.getElementById("galaxy");
+  const localSvg = document.getElementById("localMap");
+  const localEmpty = document.getElementById("localMapEmpty");
+  const localViewBtn = document.getElementById("localViewBtn");
+  const localHopsReadout = document.getElementById("localHopsReadout");
   const sectorTip = document.getElementById("sectorTip");
   const mapControls = document.getElementById("mapControls");
   const mapZoomReadout = document.getElementById("mapZoomReadout");
@@ -446,6 +455,246 @@
     });
   }
 
+  // ----------------- Local View (neighborhood subgraph) -----------------
+  // Drill-in mode: pick a center sector, BFS out `hops` steps, lay the
+  // resulting small subgraph out on concentric rings, render clean SVG.
+  // No spaghetti, no zoom dance, just 20-50 nodes you can actually read.
+
+  function setLocalView(active, centerId) {
+    state.localView.active = !!active;
+    if (centerId != null) state.localView.centerId = centerId;
+    document.body.classList.toggle("local-mode", state.localView.active);
+    if (svg) svg.hidden = state.localView.active;
+    if (localSvg) localSvg.hidden = !state.localView.active;
+    // Toggle which control-strip buttons are visible.
+    document.querySelectorAll(".local-only").forEach((el) => {
+      el.hidden = !state.localView.active;
+    });
+    document.querySelectorAll(".galaxy-only").forEach((el) => {
+      el.hidden = state.localView.active;
+    });
+    if (miniMap) miniMap.style.display = state.localView.active ? "none" : "";
+    if (localViewBtn) localViewBtn.classList.toggle("active", state.localView.active);
+    if (localHopsReadout) localHopsReadout.textContent = `${state.localView.hops} hop${state.localView.hops === 1 ? "" : "s"}`;
+    if (state.localView.active) renderLocalView();
+  }
+
+  function bfsSubgraph(startId, maxHops) {
+    const hop = new Map();  // id -> hop distance
+    if (!state.sectors.has(startId)) return hop;
+    hop.set(startId, 0);
+    let frontier = [startId];
+    for (let d = 1; d <= maxHops; d++) {
+      const next = [];
+      for (const id of frontier) {
+        const s = state.sectors.get(id);
+        if (!s) continue;
+        for (const w of s.warps || []) {
+          if (hop.has(w)) continue;
+          hop.set(w, d);
+          next.push(w);
+        }
+        // Also follow reverse edges so we can see one-way inbound neighbors.
+        const rev = state.reverseWarps.get(id);
+        if (rev) {
+          for (const w of rev) {
+            if (hop.has(w)) continue;
+            hop.set(w, d);
+            next.push(w);
+          }
+        }
+      }
+      frontier = next;
+      if (!frontier.length) break;
+    }
+    return hop;
+  }
+
+  function renderLocalView() {
+    if (!localSvg) return;
+    while (localSvg.firstChild) localSvg.removeChild(localSvg.firstChild);
+    const centerId = state.localView.centerId;
+    if (centerId == null || !state.sectors.has(centerId)) {
+      if (localEmpty) localEmpty.hidden = false;
+      return;
+    }
+    if (localEmpty) localEmpty.hidden = true;
+
+    const hops = state.localView.hops;
+    const hopMap = bfsSubgraph(centerId, hops);
+
+    // Concentric ring layout. Center = hop 0 at origin. Each subsequent ring
+    // has radius R*hop. Nodes in each ring are distributed evenly around the
+    // circle, sorted by id for determinism (so reloading with the same
+    // center gives the same picture).
+    const byHop = new Map();
+    for (const [id, h] of hopMap) {
+      if (!byHop.has(h)) byHop.set(h, []);
+      byHop.get(h).push(id);
+    }
+    for (const arr of byHop.values()) arr.sort((a, b) => a - b);
+
+    const R = 90;              // ring spacing in SVG units
+    const pos = new Map();     // id -> {x, y}
+    pos.set(centerId, { x: 0, y: 0 });
+    for (let h = 1; h <= hops; h++) {
+      const ring = byHop.get(h) || [];
+      if (!ring.length) continue;
+      const radius = R * h;
+      // Start angle varies per ring so node labels don't stack vertically.
+      const startAngle = (h % 2 === 0) ? 0 : (Math.PI / ring.length);
+      for (let i = 0; i < ring.length; i++) {
+        const theta = startAngle + (2 * Math.PI * i) / ring.length;
+        pos.set(ring[i], { x: radius * Math.cos(theta), y: radius * Math.sin(theta) });
+      }
+    }
+
+    // Viewbox padded around the outer ring with room for labels.
+    const outer = R * hops + 60;
+    localSvg.setAttribute("viewBox", `${-outer} ${-outer} ${2 * outer} ${2 * outer}`);
+
+    // Defs — reuse the warp arrow marker from the galaxy map, scoped to this svg.
+    const defs = document.createElementNS(svgNS, "defs");
+    defs.innerHTML = `
+      <marker id="local-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#e8b85a" opacity="0.95"/>
+      </marker>
+      <radialGradient id="local-bg" cx="50%" cy="50%" r="55%">
+        <stop offset="0%"  stop-color="#131a2e" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#0a0e1c" stop-opacity="1"/>
+      </radialGradient>
+    `;
+    localSvg.appendChild(defs);
+    // Background fill
+    const bg = document.createElementNS(svgNS, "rect");
+    bg.setAttribute("x", -outer);
+    bg.setAttribute("y", -outer);
+    bg.setAttribute("width", 2 * outer);
+    bg.setAttribute("height", 2 * outer);
+    bg.setAttribute("fill", "url(#local-bg)");
+    localSvg.appendChild(bg);
+
+    // Ring guides — faint circles at each hop distance.
+    for (let h = 1; h <= hops; h++) {
+      const circle = document.createElementNS(svgNS, "circle");
+      circle.setAttribute("cx", 0);
+      circle.setAttribute("cy", 0);
+      circle.setAttribute("r", R * h);
+      circle.setAttribute("class", "local-ring");
+      localSvg.appendChild(circle);
+      const label = document.createElementNS(svgNS, "text");
+      label.setAttribute("x", 0);
+      label.setAttribute("y", -R * h - 3);
+      label.setAttribute("class", "local-ring-label");
+      label.textContent = `${h} hop${h === 1 ? "" : "s"}`;
+      localSvg.appendChild(label);
+    }
+
+    // Warps — draw each edge within the subgraph exactly once, with one-way
+    // styling when appropriate.
+    const drawnEdges = new Set();
+    for (const [id, p] of pos) {
+      const s = state.sectors.get(id);
+      if (!s) continue;
+      const neighbors = new Set(s.warps || []);
+      const revFromHere = state.reverseWarps.get(id) || new Set();
+      const related = new Set([...neighbors, ...revFromHere]);
+      for (const w of related) {
+        if (!pos.has(w)) continue;
+        const key = [Math.min(id, w), Math.max(id, w)].join("-");
+        if (drawnEdges.has(key)) continue;
+        drawnEdges.add(key);
+        const goesForward = neighbors.has(w);
+        const goesBackward = (state.sectors.get(w)?.warps || []).includes(id);
+        const bothWays = goesForward && goesBackward;
+        const q = pos.get(w);
+        const line = document.createElementNS(svgNS, "line");
+        line.setAttribute("x1", p.x);
+        line.setAttribute("y1", p.y);
+        line.setAttribute("x2", q.x);
+        line.setAttribute("y2", q.y);
+        if (bothWays) {
+          line.setAttribute("class", "local-warp");
+        } else {
+          line.setAttribute("class", "local-warp oneway");
+          // Arrowhead points in the legal direction.
+          if (goesForward) {
+            line.setAttribute("marker-end", "url(#local-arrow)");
+          } else {
+            line.setAttribute("marker-start", "url(#local-arrow)");
+          }
+        }
+        localSvg.appendChild(line);
+      }
+    }
+
+    // Nodes. Center gets a double-ring, others get standard styling by role.
+    for (const [id, p] of pos) {
+      const s = state.sectors.get(id);
+      if (!s) continue;
+      const g = document.createElementNS(svgNS, "g");
+      g.setAttribute("data-id", id);
+      g.setAttribute("transform", `translate(${p.x}, ${p.y})`);
+      g.setAttribute("class", "local-node" + (id === centerId ? " center" : ""));
+
+      // Halo for center.
+      if (id === centerId) {
+        const halo = document.createElementNS(svgNS, "circle");
+        halo.setAttribute("r", 16);
+        halo.setAttribute("class", "local-halo");
+        g.appendChild(halo);
+      }
+
+      // Role-based fill: stardock > fed > port > planet-ring > plain.
+      const dot = document.createElementNS(svgNS, "circle");
+      dot.setAttribute("r", id === 1 ? 9 : (s.port ? 7 : 5));
+      let dotCls = "local-dot";
+      if (id === 1) dotCls += " stardock";
+      else if (s.is_fedspace) dotCls += " fed";
+      else if (s.port) dotCls += " port";
+      if (s.has_planets) dotCls += " has-planet";
+      dot.setAttribute("class", dotCls);
+      g.appendChild(dot);
+
+      // Label: sector id, plus port code if any
+      const lbl = document.createElementNS(svgNS, "text");
+      lbl.setAttribute("y", (id === 1 ? 20 : 16));
+      lbl.setAttribute("class", "local-label");
+      const portTag = (s.port && s.port !== "STARDOCK") ? ` ${s.port}` : "";
+      lbl.textContent = `s${id}${portTag}`;
+      g.appendChild(lbl);
+
+      // Ship markers — if a player is in this sector, show a small colored triangle.
+      let shipOffset = 0;
+      for (const pl of state.players.values()) {
+        if (pl.sector_id === id && pl.alive) {
+          const tri = document.createElementNS(svgNS, "circle");
+          tri.setAttribute("cx", 10 + shipOffset * 6);
+          tri.setAttribute("cy", -10);
+          tri.setAttribute("r", 3);
+          tri.setAttribute("fill", pl.color || "#fff");
+          tri.setAttribute("class", "local-ship");
+          g.appendChild(tri);
+          shipOffset++;
+        }
+      }
+
+      g.addEventListener("click", (e) => {
+        e.stopPropagation();
+        // Clicking any node in local view re-centers there — the graph-walking
+        // UX the user asked for.
+        state.localView.centerId = id;
+        state.selectedSectorId = id;
+        openDrawer("sector", id);
+        renderLocalView();
+      });
+      g.addEventListener("mouseenter", (e) => showSectorTip(s, e));
+      g.addEventListener("mouseleave", hideSectorTip);
+
+      localSvg.appendChild(g);
+    }
+  }
+
   // Return a zoom ratio in [0, +inf) where 1.0 = full galaxy visible.
   // Smaller numbers = zoomed OUT (wider view than galaxy), larger = zoomed IN.
   function currentZoom() {
@@ -583,11 +832,42 @@
       else if (action === "zoom-out") zoomBy(1.25);
       else if (action === "fit") fitGalaxy();
       else if (action === "toggle-mini") setMiniMapVisible(!miniMapVisible);
+      else if (action === "toggle-local") {
+        // If no center yet, default to the currently selected/followed sector,
+        // then to sector 1 as a fallback — gives something to look at.
+        if (!state.localView.active && state.localView.centerId == null) {
+          if (state.selectedSectorId != null) state.localView.centerId = state.selectedSectorId;
+          else if (state.followPlayerId) {
+            const p = state.players.get(state.followPlayerId);
+            if (p && p.sector_id != null) state.localView.centerId = p.sector_id;
+          } else if (state.sectors.has(1)) state.localView.centerId = 1;
+        }
+        setLocalView(!state.localView.active);
+      } else if (action === "hops-dec") {
+        if (state.localView.hops > 1) {
+          state.localView.hops -= 1;
+          try { localStorage.setItem("tw2k:map:hops", String(state.localView.hops)); } catch {}
+          renderLocalView();
+          if (localHopsReadout) localHopsReadout.textContent = `${state.localView.hops} hop${state.localView.hops === 1 ? "" : "s"}`;
+        }
+      } else if (action === "hops-inc") {
+        if (state.localView.hops < 5) {
+          state.localView.hops += 1;
+          try { localStorage.setItem("tw2k:map:hops", String(state.localView.hops)); } catch {}
+          renderLocalView();
+          if (localHopsReadout) localHopsReadout.textContent = `${state.localView.hops} hop${state.localView.hops === 1 ? "" : "s"}`;
+        }
+      }
     });
     // Restore persisted mini-map visibility.
     try {
       const saved = localStorage.getItem("tw2k:map:mini");
       if (saved === "0") setMiniMapVisible(false);
+      const hopsSaved = localStorage.getItem("tw2k:map:hops");
+      if (hopsSaved) {
+        const n = Number(hopsSaved);
+        if (n >= 1 && n <= 5) state.localView.hops = n;
+      }
     } catch {}
   }
 
@@ -1450,6 +1730,7 @@
       renderMessages();
       renderDrawer();
       updateFollowCamera();
+      if (state.localView.active) renderLocalView();
     });
   }
 
@@ -1710,6 +1991,19 @@
         setMiniMapVisible(!miniMapVisible);
         return;
       }
+      if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        // Same defaulting logic as the button.
+        if (!state.localView.active && state.localView.centerId == null) {
+          if (state.selectedSectorId != null) state.localView.centerId = state.selectedSectorId;
+          else if (state.followPlayerId) {
+            const p = state.players.get(state.followPlayerId);
+            if (p && p.sector_id != null) state.localView.centerId = p.sector_id;
+          } else if (state.sectors.has(1)) state.localView.centerId = 1;
+        }
+        setLocalView(!state.localView.active);
+        return;
+      }
       if (
         e.key === "?" ||
         e.key === "/" ||
@@ -1820,6 +2114,11 @@
     if (detailDrawer) detailDrawer.hidden = false;
     renderDrawer();
     applyFocusHighlight();
+    // Keep Local View in sync — selecting a sector makes IT the center.
+    if (kind === "sector" && state.localView.active) {
+      state.localView.centerId = id;
+      renderLocalView();
+    }
   }
 
   function closeDrawer() {
