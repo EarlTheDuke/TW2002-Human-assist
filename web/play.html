@@ -13,7 +13,7 @@
       <span class="logo-mark">◈</span>
       <div>
         <h1>TW2K-AI · Cockpit</h1>
-        <p class="tagline" id="cockpitSub">Human player interface · Phase H3 (voice input)</p>
+        <p class="tagline" id="cockpitSub">Human player interface · Phase H4 (voice in + out)</p>
       </div>
     </div>
     <div class="match-status">
@@ -149,10 +149,30 @@
       <div class="panel-header">
         <h2>Copilot &amp; Events</h2>
         <div class="header-right">
+          <button
+            type="button"
+            class="tts-toggle"
+            id="ttsToggleBtn"
+            title="Toggle copilot voice output (H4)"
+            aria-pressed="false"
+          >
+            <span class="tts-icon" aria-hidden="true">🔈</span>
+            <span class="tts-label">Voice</span>
+          </button>
           <span class="muted" id="copilotModePill">mode: advisory</span>
         </div>
       </div>
       <div class="panel-body">
+
+        <!-- H4: safety escalation banner -->
+        <div class="copilot-escalation" id="copilotEscalation" hidden role="alert">
+          <span class="esc-icon" aria-hidden="true">⚠</span>
+          <div class="esc-body">
+            <strong class="esc-title" id="copilotEscalationTitle">Autopilot paused</strong>
+            <span class="esc-reason" id="copilotEscalationReason"></span>
+          </div>
+          <button type="button" class="esc-dismiss" id="copilotEscalationDismiss" title="Dismiss">✕</button>
+        </div>
 
         <!-- mode toggle -->
         <div class="copilot-mode-row" id="copilotModeRow" role="radiogroup" aria-label="Copilot mode">

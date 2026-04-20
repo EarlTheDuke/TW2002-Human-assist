@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 
 from ..engine import Observation
 from . import provider as prov
+from . import safety as _safety
 from .tools import ToolCall
 
 # ---------------------------------------------------------------------------
@@ -209,6 +210,8 @@ class TaskAgent:
         report_fn: ProgressReporter,
         iter_delay_s: float = 0.05,
         max_consecutive_errors: int = 3,
+        safety_fn: Callable[[Observation], _safety.SafetySignal] | None = None,
+        on_escalation: Callable[[_safety.SafetySignal], Awaitable[None]] | None = None,
     ):
         self.status = status
         self._obs_fn = obs_fn
@@ -217,6 +220,8 @@ class TaskAgent:
         self._report = report_fn
         self._iter_delay_s = iter_delay_s
         self._max_consecutive_errors = max_consecutive_errors
+        self._safety_fn = safety_fn or _safety.evaluate_observation
+        self._on_escalation = on_escalation
         self.cancel_event = asyncio.Event()
         self.history: list[dict[str, Any]] = []
 
@@ -239,6 +244,34 @@ class TaskAgent:
             while not self.cancel_event.is_set():
                 self.status.iterations += 1
                 obs = self._obs_fn()
+
+                # Safety check runs BEFORE the LLM call so hostile sectors,
+                # low-turn exhaustion, and player-elimination events hard-stop
+                # the autopilot before we waste another step. Critical signals
+                # cancel the task and let the session surface an escalation.
+                try:
+                    sig = self._safety_fn(obs)
+                except Exception:  # pragma: no cover — defensive
+                    sig = _safety.OK
+                if sig.level != "ok":
+                    await self._report(
+                        "safety_signal",
+                        {
+                            "level": sig.level,
+                            "reason": sig.reason,
+                            "code": sig.code,
+                            "detail": sig.detail or {},
+                        },
+                    )
+                if sig.is_stop:
+                    if self._on_escalation is not None:
+                        try:
+                            await self._on_escalation(sig)
+                        except Exception:  # pragma: no cover
+                            pass
+                    self.status.state = "cancelled"
+                    self.status.reason_finished = f"safety_stop: {sig.reason}"
+                    break
 
                 # Terminal-condition check before spending another LLM call.
                 reason = _terminal_for(self.status, obs)

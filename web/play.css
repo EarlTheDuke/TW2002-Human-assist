@@ -716,6 +716,95 @@
   text-overflow: ellipsis;
 }
 
+/* ---------- TTS toggle + escalation banner (H4) ---------- */
+
+.tts-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  margin-right: 8px;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: background 0.08s ease, color 0.08s ease;
+}
+.tts-toggle:hover {
+  background: var(--bg-2);
+  color: var(--text);
+}
+.tts-toggle.is-on {
+  background: var(--accent);
+  color: #02100a;
+  border-color: var(--accent);
+}
+.tts-toggle.is-speaking {
+  animation: tts-speaking 0.9s ease-in-out infinite;
+}
+@keyframes tts-speaking {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(121, 255, 200, 0.4); }
+  50%      { box-shadow: 0 0 0 1px rgba(121, 255, 200, 0.9), 0 0 14px rgba(121, 255, 200, 0.45); }
+}
+
+.copilot-escalation {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  margin: 0 0 10px 0;
+  background: #3a1212;
+  border: 1px solid var(--bad);
+  border-left-width: 4px;
+  border-radius: 3px;
+  color: #ffd7d7;
+  animation: esc-flash 1.1s ease-in-out 3;
+}
+.copilot-escalation[hidden] { display: none; }
+.copilot-escalation .esc-icon {
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--bad);
+}
+.copilot-escalation .esc-body { flex: 1; }
+.copilot-escalation .esc-title {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ff9090;
+  margin-bottom: 2px;
+}
+.copilot-escalation .esc-reason {
+  font-size: 11px;
+  color: #ffe8e8;
+  line-height: 1.35;
+}
+.copilot-escalation .esc-dismiss {
+  background: none;
+  border: none;
+  color: #ffa0a0;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+}
+.copilot-escalation .esc-dismiss:hover { color: #fff; }
+@keyframes esc-flash {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.3); }
+  50%      { box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.9), 0 0 22px rgba(255, 107, 107, 0.5); }
+}
+
+.ptt-btn.is-interrupt-listen {
+  border-style: dashed;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1200px) {
   .cockpit { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }

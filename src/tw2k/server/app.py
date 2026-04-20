@@ -79,6 +79,19 @@ def create_app(
                 human_deadline_s=human_deadline_s,
             )
             await runner.start(spec)
+            # runner.start kicks off the scheduler loop in a background
+            # task; `runner.state.agents` isn't populated synchronously.
+            # Poll briefly so the copilot registry has human sessions
+            # wired up before any API request (and the UI) arrives. A
+            # live server happily reaches this point within a few ticks
+            # so the wait is invisible in practice; tests exercising the
+            # lifespan see deterministic readiness here.
+            import asyncio as _asyncio
+
+            for _ in range(200):
+                if runner.state.agents and runner.state.universe is not None:
+                    break
+                await _asyncio.sleep(0.02)
             copilot_registry.rebuild(runner=runner, broadcaster=broadcaster)
         yield
         await runner.stop()
@@ -414,6 +427,24 @@ def create_app(
         if not ok:
             raise HTTPException(status_code=404, detail="no such order")
         return {"ok": True, "orders": [o.model_dump() for o in sess.standing_orders]}
+
+    @app.get("/api/copilot/safety")
+    async def copilot_safety(player_id: str) -> dict[str, Any]:
+        """H4: one-shot safety evaluation for the named human player.
+
+        The `/play` cockpit polls this on mode change and uses the
+        returned level to render an escalation banner before any
+        autopilot actions fire.
+        """
+        registry = getattr(app.state, "copilot_registry", None)
+        if registry is None:
+            raise HTTPException(status_code=503, detail="copilot not ready")
+        sess = registry.get(player_id)
+        if sess is None:
+            raise HTTPException(
+                status_code=404, detail=f"no copilot session for {player_id}"
+            )
+        return sess.safety_snapshot()
 
     @app.get("/api/copilot/hints")
     async def copilot_hints(player_id: str) -> dict[str, Any]:

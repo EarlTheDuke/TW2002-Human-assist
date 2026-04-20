@@ -710,6 +710,12 @@
     orderForm: $("copilotOrderForm"),
     orderKind: $("copilotOrderKind"),
     orderValue: $("copilotOrderValue"),
+    // H4
+    escalation: $("copilotEscalation"),
+    escalationTitle: $("copilotEscalationTitle"),
+    escalationReason: $("copilotEscalationReason"),
+    escalationDismiss: $("copilotEscalationDismiss"),
+    ttsBtn: $("ttsToggleBtn"),
   };
 
   const copilotState = {
@@ -808,11 +814,22 @@
   }
 
   function setCopilotMode(mode) {
+    const prev = copilotState.mode;
     copilotState.mode = mode;
     copilotEls.modePill.textContent = `mode: ${mode}`;
     document
       .querySelectorAll(".mode-btn")
       .forEach((b) => b.classList.toggle("is-active", b.dataset.mode === mode));
+    // H4: keep the always-on interrupt listener aligned with Autopilot.
+    if (typeof syncInterruptListenerToMode === "function") {
+      syncInterruptListenerToMode(mode);
+    }
+    // H4: probe safety on the one-shot endpoint when the user *enters*
+    // autopilot so the escalation banner raises even if no TaskAgent is
+    // running yet. Leaving autopilot clears it.
+    if (prev !== mode && typeof pollSafetyForMode === "function") {
+      pollSafetyForMode(mode);
+    }
   }
 
   async function fetchCopilotState() {
@@ -953,6 +970,14 @@
     const m = msg.message;
     renderChatMessage(m);
     if (!m || !m.kind) return;
+    // H4: TTS + escalation banner
+    if (typeof maybeSpeakMessage === "function") maybeSpeakMessage(m);
+    if (m.kind === "escalation" && typeof showEscalation === "function") {
+      showEscalation({
+        title: "Autopilot paused",
+        reason: (m.payload && m.payload.reason) || m.text || "",
+      });
+    }
     if (m.kind === "plan_preview" && m.payload) {
       renderPendingPlan({
         id: m.payload.plan_id,
@@ -1239,6 +1264,334 @@
     normalize: normalizeVoiceTranscript,
   };
 
+  // ---------------- Voice OUTPUT / TTS (H4) ----------------
+  //
+  // Browser `speechSynthesis` is our free MVP. Off by default so the
+  // cockpit doesn't surprise anyone with noise on first load. User
+  // preference persists in localStorage.
+  //
+  // Messages routed through speakCopilot() pass a de-dup + min-gap
+  // filter so rapid-fire task_progress events don't overlap each
+  // other — only one utterance plays at a time and very-short
+  // messages can be coalesced.
+
+  const TTS_STORAGE_KEY = "tw2k.tts.enabled";
+
+  const ttsState = {
+    supported: "speechSynthesis" in window,
+    enabled: false,
+    lastUtteranceTs: 0,
+    lastText: "",
+    voice: null,
+    // Kinds that are worth speaking. "plan_step" and very high-frequency
+    // task_progress messages are filtered out — they're noise for voice.
+    speakKinds: new Set([
+      "speak",
+      "clarify",
+      "escalation",
+      "task_started",
+      "task_finished",
+      "task_idle",
+      "standing_order_block",
+      "confirm_rejected",
+      "advisory",
+    ]),
+    // Critical kinds bypass all filters and get spoken urgently.
+    urgentKinds: new Set(["escalation"]),
+  };
+
+  function _loadTtsPref() {
+    try {
+      const v = localStorage.getItem(TTS_STORAGE_KEY);
+      ttsState.enabled = v === "1";
+    } catch (_e) {
+      ttsState.enabled = false;
+    }
+  }
+
+  function _saveTtsPref() {
+    try {
+      localStorage.setItem(TTS_STORAGE_KEY, ttsState.enabled ? "1" : "0");
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function setTtsEnabled(on) {
+    ttsState.enabled = Boolean(on);
+    _saveTtsPref();
+    _renderTtsButton();
+    if (!ttsState.enabled) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_e) {
+        /* ignore */
+      }
+    }
+  }
+
+  function _renderTtsButton() {
+    if (!copilotEls.ttsBtn) return;
+    copilotEls.ttsBtn.classList.toggle("is-on", ttsState.enabled);
+    copilotEls.ttsBtn.setAttribute("aria-pressed", ttsState.enabled ? "true" : "false");
+    const lbl = copilotEls.ttsBtn.querySelector(".tts-label");
+    const icon = copilotEls.ttsBtn.querySelector(".tts-icon");
+    if (lbl) lbl.textContent = ttsState.enabled ? "Voice" : "Mute";
+    if (icon) icon.textContent = ttsState.enabled ? "🔊" : "🔈";
+    if (!ttsState.supported) {
+      copilotEls.ttsBtn.disabled = true;
+      copilotEls.ttsBtn.title = "Browser has no speechSynthesis — TTS disabled.";
+      if (lbl) lbl.textContent = "No TTS";
+    }
+  }
+
+  function _pickVoice() {
+    if (!ttsState.supported) return null;
+    if (ttsState.voice) return ttsState.voice;
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+    // Prefer an English, local (native) voice; fall back to first.
+    ttsState.voice =
+      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("en") && v.localService) ||
+      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("en")) ||
+      voices[0];
+    return ttsState.voice;
+  }
+
+  function speakCopilot(text, { urgent = false } = {}) {
+    if (!ttsState.supported || !ttsState.enabled) return;
+    const now = Date.now();
+    const clean = String(text || "").trim();
+    if (!clean) return;
+    // De-dup identical text within 2.5s.
+    if (!urgent && clean === ttsState.lastText && now - ttsState.lastUtteranceTs < 2500) {
+      return;
+    }
+    try {
+      if (urgent) window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(clean);
+      u.rate = urgent ? 1.05 : 1.0;
+      u.pitch = urgent ? 1.1 : 1.0;
+      u.volume = 1.0;
+      const v = _pickVoice();
+      if (v) u.voice = v;
+      u.onstart = () => {
+        if (copilotEls.ttsBtn) copilotEls.ttsBtn.classList.add("is-speaking");
+      };
+      u.onend = u.onerror = () => {
+        if (copilotEls.ttsBtn) copilotEls.ttsBtn.classList.remove("is-speaking");
+      };
+      window.speechSynthesis.speak(u);
+      ttsState.lastText = clean;
+      ttsState.lastUtteranceTs = now;
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function maybeSpeakMessage(msg) {
+    if (!msg || !ttsState.enabled) return;
+    const role = msg.role;
+    const kind = msg.kind || "speak";
+    const urgent = ttsState.urgentKinds.has(kind);
+    if (!urgent) {
+      if (role !== "copilot" && role !== "system") return;
+      if (!ttsState.speakKinds.has(kind)) return;
+    }
+    const text = String(msg.text || "").replace(/\s+/g, " ").trim();
+    // Trim obvious prefixes like arrows that read poorly.
+    const cleaned = text
+      .replace(/^→\s*/, "")
+      .replace(/^\?\s*/, "")
+      .replace(/\(.*?\)/g, "")
+      .trim();
+    if (!cleaned) return;
+    speakCopilot(cleaned, { urgent });
+  }
+
+  function wireTts() {
+    _loadTtsPref();
+    _renderTtsButton();
+    if (!copilotEls.ttsBtn) return;
+    copilotEls.ttsBtn.addEventListener("click", () => setTtsEnabled(!ttsState.enabled));
+    // Some browsers load voices asynchronously.
+    if (ttsState.supported && typeof window.speechSynthesis.addEventListener === "function") {
+      window.speechSynthesis.addEventListener("voiceschanged", () => {
+        ttsState.voice = null;
+        _pickVoice();
+      });
+    }
+  }
+
+  window.__tw2kTts = { state: ttsState, speak: speakCopilot, setEnabled: setTtsEnabled };
+
+  // ---------------- Autopilot always-on listener + interrupt words (H4) ----------------
+  //
+  // In autopilot mode we keep a SECOND SpeechRecognition instance
+  // open in continuous mode so the human can yell "stop" / "hold" /
+  // "pause" and have the copilot cancel immediately. This is a
+  // parallel channel to the PTT recogniser — browsers allow at most
+  // one at a time, so we pause the interrupt listener while PTT is
+  // active.
+
+  const INTERRUPT_WORDS = [
+    "stop",
+    "hold",
+    "hold on",
+    "pause",
+    "cancel",
+    "abort",
+    "halt",
+    "belay",
+  ];
+  const INTERRUPT_RE = new RegExp(
+    "\\b(" + INTERRUPT_WORDS.map((w) => w.replace(/\s+/g, "\\s+")).join("|") + ")\\b",
+    "i"
+  );
+
+  const interruptState = {
+    supported: false,
+    recognition: null,
+    active: false,
+    shouldBeActive: false,
+    lastHit: 0,
+  };
+
+  function initInterruptListener() {
+    const Ctor = _speechCtor();
+    if (!Ctor) {
+      interruptState.supported = false;
+      return;
+    }
+    interruptState.supported = true;
+    const rec = new Ctor();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = (navigator.language || "en-US").startsWith("en")
+      ? navigator.language || "en-US"
+      : "en-US";
+    rec.onstart = () => {
+      interruptState.active = true;
+      if (pttEls.btn && !voiceState.listening) pttEls.btn.classList.add("is-interrupt-listen");
+    };
+    rec.onerror = (ev) => {
+      // "no-speech" / "aborted" in continuous mode are normal when the
+      // user hasn't spoken — the onend handler will restart us.
+      if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+        interruptState.supported = false;
+        interruptState.shouldBeActive = false;
+      }
+    };
+    rec.onresult = (ev) => {
+      let text = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        text += ev.results[i][0] ? ev.results[i][0].transcript || "" : "";
+      }
+      const lower = text.toLowerCase();
+      if (!lower) return;
+      if (INTERRUPT_RE.test(lower)) {
+        const now = Date.now();
+        if (now - interruptState.lastHit < 2500) return; // debounce
+        interruptState.lastHit = now;
+        cancelAny("voice_interrupt");
+        speakCopilot("Stopping.", { urgent: true });
+        try {
+          // Clear partial transcript so we don't re-trigger.
+          rec.stop();
+        } catch (_e) {
+          /* ignore */
+        }
+      }
+    };
+    rec.onend = () => {
+      interruptState.active = false;
+      if (pttEls.btn) pttEls.btn.classList.remove("is-interrupt-listen");
+      if (interruptState.shouldBeActive && !voiceState.listening) {
+        try {
+          rec.start();
+        } catch (_e) {
+          /* ignore */
+        }
+      }
+    };
+    interruptState.recognition = rec;
+  }
+
+  function startInterruptListening() {
+    if (!interruptState.supported || !interruptState.recognition) return;
+    interruptState.shouldBeActive = true;
+    if (voiceState.listening) return; // PTT has the mic; will resume later
+    try {
+      interruptState.recognition.start();
+    } catch (_e) {
+      /* already running */
+    }
+  }
+
+  function stopInterruptListening() {
+    interruptState.shouldBeActive = false;
+    if (!interruptState.recognition) return;
+    try {
+      interruptState.recognition.stop();
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function syncInterruptListenerToMode(mode) {
+    if (mode === "autopilot") startInterruptListening();
+    else stopInterruptListening();
+  }
+
+  window.__tw2kInterrupt = {
+    state: interruptState,
+    start: startInterruptListening,
+    stop: stopInterruptListening,
+    test: (s) => INTERRUPT_RE.test(String(s || "").toLowerCase()),
+  };
+
+  // ---------------- Escalation banner (H4) ----------------
+
+  function showEscalation({ title, reason }) {
+    if (!copilotEls.escalation) return;
+    copilotEls.escalation.hidden = false;
+    copilotEls.escalationTitle.textContent = title || "Autopilot paused";
+    copilotEls.escalationReason.textContent = reason || "";
+  }
+
+  function hideEscalation() {
+    if (!copilotEls.escalation) return;
+    copilotEls.escalation.hidden = true;
+  }
+
+  async function pollSafetyForMode(mode) {
+    if (!playerId) return;
+    if (mode !== "autopilot") {
+      hideEscalation();
+      return;
+    }
+    try {
+      const r = await fetch(
+        `/api/copilot/safety?player_id=${encodeURIComponent(playerId)}`
+      );
+      if (!r.ok) return;
+      const sig = await r.json();
+      if (sig.level === "critical" || sig.level === "warning") {
+        showEscalation({
+          title: sig.level === "critical" ? "Autopilot paused" : "Autopilot warning",
+          reason: sig.reason || "",
+        });
+        if (sig.level === "critical") {
+          speakCopilot(`Warning. ${sig.reason}`, { urgent: true });
+        }
+      } else {
+        hideEscalation();
+      }
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
   // ---------------- Wiring ----------------
   function wire() {
     els.actionBtns.forEach((btn) => {
@@ -1254,6 +1607,12 @@
     wireCopilot();
     initVoice();
     wirePtt();
+    // H4 — voice output + interrupt listener + escalation dismiss.
+    wireTts();
+    initInterruptListener();
+    if (copilotEls.escalationDismiss) {
+      copilotEls.escalationDismiss.addEventListener("click", hideEscalation);
+    }
     // Global Space = push-to-talk hold, as long as no input is focused
     // and the action form is not open. We use keyup/keydown at the
     // document level so the user can hold Space from anywhere on the

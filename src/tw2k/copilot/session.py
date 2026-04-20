@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from ..agents.human import HumanAgent
 from ..engine import Action, ActionKind, Observation, Universe, build_observation
+from . import safety
 from . import standing_orders as so
 from .chat_agent import ChatAgent, ChatResponse
 from .task_agent import TaskAgent, TaskStatus, llm_next_step
@@ -290,6 +291,39 @@ class CopilotSession:
         t.cancel(reason=reason)
         return True
 
+    def safety_snapshot(self) -> dict[str, Any]:
+        """Return a SafetySignal for the human's current Observation.
+
+        Used by GET /api/copilot/safety and by the `/play` panel to
+        render the escalation banner BEFORE a task is even spawned
+        (e.g. when the human switches to Autopilot in a hostile sector).
+        Falls back to `level="unknown"` if no match is running.
+        """
+        obs = self._fetch_observation()
+        if obs is None:
+            return {"level": "unknown", "reason": "no match running", "code": ""}
+        # Pull tail of universe events for richer signals.
+        u = self._universe_fn()
+        tail: list[dict[str, Any]] = []
+        if u is not None:
+            for ev in list(u.events)[-20:]:
+                tail.append(
+                    {
+                        "kind": ev.kind.value,
+                        "actor_id": ev.actor_id,
+                        "actor_kind": ev.actor_kind,
+                        "summary": ev.summary,
+                        "payload": dict(ev.payload or {}),
+                    }
+                )
+        sig = safety.evaluate_observation(obs, recent_events=tail)
+        return {
+            "level": sig.level,
+            "reason": sig.reason,
+            "code": sig.code,
+            "detail": sig.detail or {},
+        }
+
     # --------------------- internals -------------------------------------
 
     def _fetch_observation(self) -> Observation | None:
@@ -465,12 +499,42 @@ class CopilotSession:
                 raise RuntimeError("observation unavailable (match stopped)")
             return o
 
+        # H4: track the timestamp of the last progress emission per-task for
+        # the idle-report watchdog.
+        last_progress_ts = [time.time()]
+
         async def report(kind_: str, payload: dict[str, Any]) -> None:
+            last_progress_ts[0] = time.time()
             await self._log_system(
                 f"task {status.id}: {kind_}",
                 kind=kind_,
                 payload=payload,
             )
+
+        async def on_escalation(sig: safety.SafetySignal) -> None:
+            """Critical safety signal → switch to ADVISORY + emit escalation.
+
+            The UI listens for `kind=escalation` messages and raises a
+            modal banner + triggers urgent TTS. Switching to ADVISORY
+            stops the copilot from auto-dispatching further actions
+            until the human confirms they want to keep going.
+            """
+            await self._log_system(
+                safety.describe_short(sig)
+                or f"escalation: {sig.reason} — switching to advisory mode",
+                kind="escalation",
+                payload={
+                    "level": sig.level,
+                    "code": sig.code,
+                    "reason": sig.reason,
+                    "detail": sig.detail or {},
+                    "task_id": status.id,
+                },
+            )
+            # Force the mode back so subsequent human utterances don't auto-
+            # dispatch while the human is reading the banner.
+            if self.mode == CopilotMode.AUTOPILOT:
+                await self.set_mode(CopilotMode.ADVISORY)
 
         task = TaskAgent(
             status,
@@ -479,13 +543,62 @@ class CopilotSession:
             next_step_fn=self._task_next_step_factory(),
             report_fn=report,
             iter_delay_s=self._iter_delay_s,
+            safety_fn=safety.evaluate_observation,
+            on_escalation=on_escalation,
         )
         self._active_task = task
+
+        # H4: idle-report watchdog — if no progress for `idle_report_s`, push
+        # a one-liner status so the voice channel doesn't go silent while
+        # the LLM is thinking. Cancels automatically when the task finishes.
+        idle_report_s = 7.5
+
+        async def idle_watchdog() -> None:
+            try:
+                while self._active_task is task and task.status.state in (
+                    "pending",
+                    "running",
+                ):
+                    await asyncio.sleep(idle_report_s / 2)
+                    gap = time.time() - last_progress_ts[0]
+                    if gap >= idle_report_s:
+                        last_progress_ts[0] = time.time()
+                        msg = (
+                            f"still on it — iter {task.status.iterations}"
+                            + (
+                                f", last action {task.status.last_action}"
+                                if task.status.last_action
+                                else ""
+                            )
+                        )
+                        await self._log_system(
+                            msg,
+                            kind="task_idle",
+                            payload={
+                                "task_id": status.id,
+                                "idle_s": round(gap, 1),
+                                "iterations": task.status.iterations,
+                                "last_action": task.status.last_action,
+                            },
+                        )
+            except asyncio.CancelledError:
+                return
+            except Exception:  # pragma: no cover
+                return
+
+        watchdog_task = asyncio.create_task(
+            idle_watchdog(), name=f"tw2k-idle-watchdog-{status.id}"
+        )
 
         async def runner() -> TaskStatus:
             try:
                 return await task.run()
             finally:
+                watchdog_task.cancel()
+                try:
+                    await watchdog_task
+                except (asyncio.CancelledError, Exception):
+                    pass
                 self._task_history.append(status)
                 if self._active_task is task:
                     self._active_task = None
