@@ -638,6 +638,84 @@
 }
 .orders-form input { flex: 1; }
 
+/* ---------- Push-to-talk (H3) ---------- */
+
+.ptt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: background 0.08s ease, color 0.08s ease, box-shadow 0.08s ease;
+}
+.ptt-btn:hover:not(:disabled) {
+  background: var(--bg-2);
+  border-color: var(--line-bright);
+}
+.ptt-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ptt-btn.is-listening {
+  background: var(--bad);
+  color: #1a0606;
+  border-color: var(--bad);
+  box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.4), 0 0 12px rgba(255, 107, 107, 0.35);
+  animation: ptt-pulse 1.1s ease-in-out infinite;
+}
+.ptt-btn.is-unsupported {
+  background: var(--bg-0);
+  color: var(--text-faint);
+  border-style: dashed;
+}
+.ptt-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+@keyframes ptt-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.4), 0 0 10px rgba(255, 107, 107, 0.3); }
+  50%      { box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.8), 0 0 22px rgba(255, 107, 107, 0.6); }
+}
+
+.ptt-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  margin: 0 0 10px 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  border: 1px dashed var(--line);
+  border-radius: 3px;
+  background: var(--bg-0);
+}
+.ptt-status[hidden] { display: none; }
+.ptt-state {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: var(--warn);
+}
+.ptt-state.is-listening { color: var(--bad); }
+.ptt-state.is-error    { color: var(--bad); }
+.ptt-partial {
+  flex: 1;
+  font-style: italic;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1200px) {
   .cockpit { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }

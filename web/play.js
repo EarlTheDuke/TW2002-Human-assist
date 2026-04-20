@@ -1011,6 +1011,234 @@
     });
   }
 
+  // ---------------- Voice input / Push-to-talk (H3) ----------------
+  //
+  // Browser Web Speech API is sufficient for the MVP — no Pipecat, no
+  // server-side STT. On browsers without support (Firefox, some Safari
+  // versions) the button renders as a disabled "no mic" indicator and
+  // the text form still works, so the feature degrades gracefully.
+
+  const pttEls = {
+    btn: $("pttBtn"),
+    status: $("pttStatus"),
+    state: $("pttState"),
+    partial: $("pttPartial"),
+  };
+
+  const voiceState = {
+    supported: false,
+    recognition: null,
+    listening: false,
+    interim: "",
+    final: "",
+    lastError: null,
+    // When listening started via a held Space key. We distinguish so
+    // release-to-submit only fires if the start was a keydown (matches
+    // the "walkie-talkie" UX — tap-to-toggle via button is also OK).
+    startedFromKey: false,
+  };
+
+  function _speechCtor() {
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  }
+
+  function initVoice() {
+    const Ctor = _speechCtor();
+    if (!pttEls.btn) return;
+    if (!Ctor) {
+      voiceState.supported = false;
+      pttEls.btn.classList.add("is-unsupported");
+      pttEls.btn.disabled = true;
+      pttEls.btn.title =
+        "Voice input requires a Chromium-based browser (Chrome/Edge). Keyboard + text still work.";
+      const lbl = pttEls.btn.querySelector(".ptt-label");
+      if (lbl) lbl.textContent = "No mic";
+      return;
+    }
+    voiceState.supported = true;
+    const rec = new Ctor();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = (navigator.language || "en-US").startsWith("en")
+      ? navigator.language || "en-US"
+      : "en-US";
+    rec.maxAlternatives = 1;
+    rec.onstart = () => {
+      voiceState.listening = true;
+      voiceState.interim = "";
+      voiceState.final = "";
+      voiceState.lastError = null;
+      pttEls.btn.classList.add("is-listening");
+      pttEls.btn.setAttribute("aria-pressed", "true");
+      pttEls.status.hidden = false;
+      pttEls.state.textContent = "listening";
+      pttEls.state.className = "ptt-state is-listening";
+      pttEls.partial.textContent = "";
+    };
+    rec.onerror = (ev) => {
+      voiceState.lastError = ev.error || "error";
+      pttEls.state.textContent = `error: ${voiceState.lastError}`;
+      pttEls.state.className = "ptt-state is-error";
+      // no-speech / aborted are benign — user released quickly.
+      if (["no-speech", "aborted"].includes(voiceState.lastError)) {
+        return;
+      }
+    };
+    rec.onresult = (ev) => {
+      let interim = "";
+      let final = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        const transcript = r[0] && r[0].transcript ? r[0].transcript : "";
+        if (r.isFinal) final += transcript;
+        else interim += transcript;
+      }
+      if (final) voiceState.final += final;
+      voiceState.interim = interim;
+      pttEls.partial.textContent = voiceState.final + (interim ? " …" + interim : "");
+    };
+    rec.onend = () => {
+      voiceState.listening = false;
+      pttEls.btn.classList.remove("is-listening");
+      pttEls.btn.setAttribute("aria-pressed", "false");
+      const combined = normalizeVoiceTranscript(
+        (voiceState.final + " " + voiceState.interim).trim()
+      );
+      if (combined) {
+        pttEls.state.textContent = "sent";
+        pttEls.state.className = "ptt-state";
+        pttEls.partial.textContent = combined;
+        sendChat(combined);
+        // Auto-hide the status pill after a beat so it doesn't linger.
+        setTimeout(() => {
+          if (!voiceState.listening) {
+            pttEls.status.hidden = true;
+            pttEls.partial.textContent = "";
+          }
+        }, 2200);
+      } else if (voiceState.lastError) {
+        // Keep the error visible for a moment, then reset.
+        setTimeout(() => {
+          if (!voiceState.listening) {
+            pttEls.status.hidden = true;
+            pttEls.state.textContent = "idle";
+            pttEls.state.className = "ptt-state";
+          }
+        }, 2500);
+      } else {
+        pttEls.status.hidden = true;
+      }
+    };
+    voiceState.recognition = rec;
+  }
+
+  function startListening({ fromKey = false } = {}) {
+    if (!voiceState.supported || voiceState.listening) return;
+    voiceState.startedFromKey = fromKey;
+    voiceState.final = "";
+    voiceState.interim = "";
+    try {
+      voiceState.recognition.start();
+    } catch (err) {
+      // start() throws if already started; ignore.
+    }
+  }
+
+  function stopListening() {
+    if (!voiceState.supported || !voiceState.listening) return;
+    try {
+      voiceState.recognition.stop();
+    } catch (err) {
+      /* ignore */
+    }
+  }
+
+  function toggleListening() {
+    if (voiceState.listening) stopListening();
+    else startListening({ fromKey: false });
+  }
+
+  // Grammar / normalization — cheap phonetic fixups for sector numbers
+  // and commodity names so "eight seventy four" -> "874", "fuel ore"
+  // -> "fuel_ore". Extend opportunistically; we favour recall over
+  // precision because the ChatAgent can still understand raw English.
+  const _NUMBER_WORDS = {
+    zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5,
+    six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+    eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+    sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+    twenty: 20, thirty: 30, forty: 40, fifty: 50,
+    sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+    hundred: 100, thousand: 1000,
+  };
+
+  function normalizeVoiceTranscript(raw) {
+    if (!raw) return raw;
+    let s = String(raw).toLowerCase().trim();
+    // Commodity aliases.
+    s = s.replace(/\bfuel\s+ore\b/g, "fuel_ore");
+    s = s.replace(/\bequipment\b/g, "equipment");
+    s = s.replace(/\borganics?\b/g, "organics");
+    // Number-word collapse for small counts. This is intentionally a
+    // lightweight pass — if the user says "874" the STT usually emits
+    // the digits directly anyway. We handle the common spoken forms.
+    s = s.replace(
+      /\b(zero|one|two|three|four|five|six|seven|eight|nine)\s+(hundred)(\s+(and\s+)?(\w+(\s+\w+)?))?\b/g,
+      (_m, h, _hundred, _r3, _r4, rest) => {
+        const hundreds = _NUMBER_WORDS[h] * 100;
+        let tail = 0;
+        if (rest) {
+          const parts = rest.trim().split(/\s+/);
+          for (const p of parts) {
+            if (p in _NUMBER_WORDS) tail += _NUMBER_WORDS[p];
+          }
+        }
+        return String(hundreds + tail);
+      }
+    );
+    // Two-word compounds like "eight seventy four" -> "874".
+    s = s.replace(
+      /\b(one|two|three|four|five|six|seven|eight|nine)\s+(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\s+(one|two|three|four|five|six|seven|eight|nine)\b/g,
+      (_m, a, b, c) => String(_NUMBER_WORDS[a] * 100 + _NUMBER_WORDS[b] + _NUMBER_WORDS[c])
+    );
+    // "sector eight seventy four" or "to eight seventy four" — collapse
+    // trailing digit-digit pairs too.
+    s = s.replace(
+      /\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\s+(one|two|three|four|five|six|seven|eight|nine)\b/g,
+      (_m, b, c) => String(_NUMBER_WORDS[b] + _NUMBER_WORDS[c])
+    );
+    s = s.replace(/\s{2,}/g, " ").trim();
+    return s;
+  }
+
+  function wirePtt() {
+    if (pttEls.btn) {
+      pttEls.btn.addEventListener("click", toggleListening);
+      pttEls.btn.addEventListener("keydown", (ev) => {
+        // Space while button is focused acts like PTT hold.
+        if (ev.key === " " || ev.code === "Space") {
+          ev.preventDefault();
+          startListening({ fromKey: true });
+        }
+      });
+      pttEls.btn.addEventListener("keyup", (ev) => {
+        if (ev.key === " " || ev.code === "Space") {
+          ev.preventDefault();
+          stopListening();
+        }
+      });
+    }
+  }
+
+  // Expose for tests + console debugging.
+  window.__tw2kVoice = {
+    state: voiceState,
+    startListening,
+    stopListening,
+    toggleListening,
+    normalize: normalizeVoiceTranscript,
+  };
+
   // ---------------- Wiring ----------------
   function wire() {
     els.actionBtns.forEach((btn) => {
@@ -1024,6 +1252,31 @@
     });
     document.addEventListener("keydown", handleKey);
     wireCopilot();
+    initVoice();
+    wirePtt();
+    // Global Space = push-to-talk hold, as long as no input is focused
+    // and the action form is not open. We use keyup/keydown at the
+    // document level so the user can hold Space from anywhere on the
+    // cockpit, not just while the button is focused.
+    let _spaceActive = false;
+    document.addEventListener("keydown", (ev) => {
+      if (ev.repeat) return;
+      if (!(ev.key === " " || ev.code === "Space")) return;
+      const tag = (ev.target && ev.target.tagName) || "";
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      if (els.actionForm && !els.actionForm.hidden) return;
+      if (!voiceState.supported) return;
+      ev.preventDefault();
+      _spaceActive = true;
+      startListening({ fromKey: true });
+    });
+    document.addEventListener("keyup", (ev) => {
+      if (!(ev.key === " " || ev.code === "Space")) return;
+      if (!_spaceActive) return;
+      _spaceActive = false;
+      ev.preventDefault();
+      stopListening();
+    });
   }
 
   // ---------------- Init ----------------

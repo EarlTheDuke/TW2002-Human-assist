@@ -13,7 +13,7 @@
       <span class="logo-mark">◈</span>
       <div>
         <h1>TW2K-AI · Cockpit</h1>
-        <p class="tagline" id="cockpitSub">Human player interface · Phase H2 (text copilot)</p>
+        <p class="tagline" id="cockpitSub">Human player interface · Phase H3 (voice input)</p>
       </div>
     </div>
     <div class="match-status">
@@ -193,8 +193,23 @@
             placeholder="Ask or instruct… (e.g. 'sell fuel_ore' or 'run my trade loop to 30k cr')"
             autocomplete="off"
           />
+          <button
+            type="button"
+            class="ptt-btn"
+            id="pttBtn"
+            title="Push-to-talk: hold Space or click to dictate (Phase H3)"
+            aria-label="Push to talk"
+            aria-pressed="false"
+          >
+            <span class="ptt-icon" aria-hidden="true">◉</span>
+            <span class="ptt-label">Talk</span>
+          </button>
           <button type="submit" class="submit-btn">Send</button>
         </form>
+        <div class="ptt-status" id="pttStatus" hidden>
+          <span class="ptt-state" id="pttState">idle</span>
+          <span class="ptt-partial" id="pttPartial"></span>
+        </div>
 
         <!-- standing orders -->
         <details class="copilot-orders">
@@ -240,6 +255,7 @@
     <div><kbd>?</kbd> toggle this help</div>
     <div><kbd>/</kbd> focus copilot chat</div>
     <div><kbd>Ctrl+Enter</kbd> send copilot message</div>
+    <div><kbd>Space</kbd> push-to-talk (hold)</div>
   </div>
 
   <script src="/static/play.js"></script>
