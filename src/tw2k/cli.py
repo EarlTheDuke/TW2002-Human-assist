@@ -1,10 +1,11 @@
 """Command-line entry points for TW2K-AI.
 
 Available commands:
-    tw2k serve   — start the web server + auto-run a match (default 2 agents)
-    tw2k replay  — replay a saved match in the spectator UI (Phase 6)
-    tw2k sim     — run a headless simulation with heuristic agents (for testing)
-    tw2k probe   — print a universe summary for a given seed
+    tw2k serve      — start the web server + auto-run a match (default 2 agents)
+    tw2k replay     — replay a saved match in the spectator UI (Phase 6)
+    tw2k sim        — run a headless simulation with heuristic agents (for testing)
+    tw2k human-sim  — run a full copilot pipeline headless (Phase H2.5)
+    tw2k probe      — print a universe summary for a given seed
 """
 
 from __future__ import annotations
@@ -373,6 +374,177 @@ def sim(
     console.print(table)
     if universe.winner_id:
         console.print(f"[bold green]Winner:[/] {universe.winner_id} ({universe.win_reason})")
+
+
+@app.command("human-sim")
+def human_sim(
+    seed: int = typer.Argument(..., help="Universe seed (deterministic universe)."),
+    intent: str = typer.Argument(
+        ...,
+        help=(
+            "The human utterance fed to the copilot, e.g. "
+            "'run my trade loop until 30k credits'. In --demo pass mode the "
+            "intent is still logged but the scripted responder ignores it; "
+            "in --demo trade mode it kicks off a profit_loop autopilot task."
+        ),
+    ),
+    provider: str = typer.Option(
+        None,
+        "--provider",
+        help=(
+            "Live LLM provider (anthropic | openai | xai | deepseek | custom). "
+            "If unset AND no --script, uses the built-in --demo responder so "
+            "the CLI works with zero API keys configured."
+        ),
+    ),
+    model: str = typer.Option(None, "--model", help="Override the LLM model slug."),
+    mode: str = typer.Option(
+        "delegated",
+        "--mode",
+        help="Initial copilot mode: manual | advisory | delegated | autopilot.",
+    ),
+    demo: str = typer.Option(
+        "pass",
+        "--demo",
+        help=(
+            "Built-in scripted responder: 'pass' emits pass_turn every call, "
+            "'trade' kicks off a short profit_loop autopilot task. Ignored "
+            "when --provider or --script is supplied."
+        ),
+    ),
+    script: str = typer.Option(
+        None,
+        "--script",
+        help=(
+            "Path to a JSON file containing a list of raw LLM response strings "
+            "to cycle through (overrides --demo). Useful for reproducing bugs."
+        ),
+    ),
+    max_iterations: int = typer.Option(
+        20, "--max-iterations", help="Hard cap on TaskAgent iterations."
+    ),
+    max_wall_s: float = typer.Option(
+        120.0, "--max-wall-s", help="Wall-clock deadline for the whole sim."
+    ),
+    universe_size: int = typer.Option(40, "--universe-size"),
+    max_days: int = typer.Option(2, "--max-days"),
+    turns_per_day: int = typer.Option(80, "--turns-per-day"),
+    starting_credits: int = typer.Option(50_000, "--starting-credits"),
+    auto_confirm: bool = typer.Option(
+        True,
+        "--auto-confirm/--no-auto-confirm",
+        help="Skip the Confirm step on plans and task proposals.",
+    ),
+    json_only: bool = typer.Option(
+        False,
+        "--json",
+        help="Print only the structured JSON summary (quiet mode for CI).",
+    ),
+    stream: bool = typer.Option(
+        False,
+        "--stream",
+        help="Print every broadcast event to stderr as they happen (noisy).",
+    ),
+) -> None:
+    """Run a full copilot pipeline headlessly and print a structured summary.
+
+    Exit criterion (Phase H2.5 in docs/HUMAN_COPILOT_PLAN.md): the command
+    boots a match with one human + one heuristic, feeds the intent to the
+    copilot, waits for the resulting task (if any) to finish, and prints a
+    JSON summary including iteration count, dispatched actions with
+    actor_kind, final credits/sector, and the tail of the engine event log.
+
+    Examples:
+
+        tw2k human-sim 42 "warp somewhere and pass" --demo pass --json
+        tw2k human-sim 42 "run a short trade loop" --demo trade
+        tw2k human-sim 7  "take off for the adventure" --provider anthropic
+    """
+    from pathlib import Path as _Path
+
+    from .copilot.human_sim import run_human_sim
+    from .copilot.session import CopilotMode
+
+    try:
+        cop_mode = CopilotMode(mode)
+    except ValueError as exc:
+        raise typer.BadParameter(
+            f"invalid --mode {mode!r}: expected one of manual/advisory/delegated/autopilot"
+        ) from exc
+
+    if demo not in ("pass", "trade"):
+        raise typer.BadParameter(f"invalid --demo {demo!r}: expected pass|trade")
+
+    script_path = _Path(script) if script else None
+    if script_path is not None and not script_path.is_file():
+        raise typer.BadParameter(f"--script not found: {script_path}")
+
+    def _echo_event(msg: dict) -> None:
+        import sys
+
+        kind = msg.get("type") or msg.get("kind") or "?"
+        extra = ""
+        if kind == "event" and "event" in msg:
+            ev = msg["event"]
+            extra = f" [{ev.get('kind')}] actor={ev.get('actor_kind')} {ev.get('summary', '')[:80]}"
+        elif kind == "copilot_chat" and "message" in msg:
+            m = msg["message"]
+            extra = f" [{m.get('role')}/{m.get('kind')}] {m.get('text', '')[:100]}"
+        print(f"· {kind}{extra}", file=sys.stderr, flush=True)
+
+    if not json_only:
+        console.rule("[bold magenta]TW2K-AI human-sim")
+        console.print(f"[magenta]Seed:[/] {seed}  [magenta]Intent:[/] {intent!r}")
+        src = (
+            f"--script {script_path}"
+            if script_path
+            else (f"--provider {provider}" if provider else f"--demo {demo}")
+        )
+        console.print(f"[magenta]Mode:[/] {mode}  [magenta]Source:[/] {src}")
+        console.rule()
+
+    result = asyncio.run(
+        run_human_sim(
+            seed=seed,
+            intent=intent,
+            provider=provider,
+            model=model,
+            mode=cop_mode,
+            auto_confirm=auto_confirm,
+            demo=demo,
+            script_file=script_path,
+            max_iterations=max_iterations,
+            max_wall_s=max_wall_s,
+            universe_size=universe_size,
+            max_days=max_days,
+            turns_per_day=turns_per_day,
+            starting_credits=starting_credits,
+            on_event=_echo_event if stream else None,
+        )
+    )
+
+    summary = result.to_json()
+    payload = __import__("json").dumps(summary, indent=2 if not json_only else None)
+
+    if json_only:
+        print(payload)
+    else:
+        console.print(
+            f"[bold {'green' if result.outcome == 'completed' else 'yellow'}]"
+            f"outcome:[/] {result.outcome}   "
+            f"[dim]iters={result.iterations} actions={len(result.actions_dispatched)} "
+            f"copilot_events={result.copilot_event_count} human_events={result.human_event_count}[/]"
+        )
+        if result.final_credits is not None:
+            console.print(
+                f"[cyan]final:[/] credits={result.final_credits:,} sector={result.final_sector}"
+            )
+        if result.error:
+            console.print(f"[red]error:[/] {result.error}")
+        console.rule("JSON summary")
+        print(payload)
+
+    raise typer.Exit(code=0 if result.outcome in ("completed", "cancelled") else 1)
 
 
 @app.command()
