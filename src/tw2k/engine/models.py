@@ -6,6 +6,7 @@ in-place (wrapped by apply_action) and emits Events describing every change.
 
 from __future__ import annotations
 
+import contextvars
 import random
 from enum import Enum
 from typing import Any
@@ -13,6 +14,49 @@ from typing import Any
 from pydantic import BaseModel, Field, PrivateAttr
 
 from . import constants as K
+
+# ---------------------------------------------------------------------------
+# actor_kind override (H2 copilot path)
+#
+# When the AI copilot dispatches an action on behalf of a human, every
+# downstream event emitted inside apply_action must carry
+# actor_kind="copilot" (not "human") so replay / forensics / spectator UI
+# can distinguish "the human typed warp 874" from "the copilot executed
+# warp 874 for the human".
+#
+# We thread the override via contextvar rather than plumbing an extra
+# parameter through apply_action's ~500 lines of branches. Any code path
+# can wrap a call site with `actor_kind_override("copilot")` and every
+# Universe.emit() inside will pick it up. The contextvar nesting is
+# async-safe (each task/subtask gets its own copy).
+# ---------------------------------------------------------------------------
+
+_actor_kind_override: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "tw2k_actor_kind_override", default=None
+)
+
+
+class actor_kind_override:  # noqa: N801 - contextmanager style
+    """Scope a non-None actor_kind onto every Universe.emit() in the with-block.
+
+    Used by the copilot path to tag events it triggered on behalf of a
+    HUMAN player. Nested scopes stack — innermost wins until exit.
+    """
+
+    __slots__ = ("_kind", "_token")
+
+    def __init__(self, kind: str) -> None:
+        self._kind = kind
+        self._token: contextvars.Token | None = None
+
+    def __enter__(self) -> actor_kind_override:
+        self._token = _actor_kind_override.set(self._kind)
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        if self._token is not None:
+            _actor_kind_override.reset(self._token)
+            self._token = None
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -596,9 +640,14 @@ class Universe(BaseModel):
         pl = dict(payload) if payload else {}
         # Auto-tag actor_kind from the player record if not explicitly
         # provided. The copilot path (H2+) will pass actor_kind="copilot"
-        # explicitly so downstream consumers (replay, forensics, spectator
-        # UI) can distinguish a human's manual action from one dispatched
-        # on their behalf by the AI assistant. Unknown actor_id -> None.
+        # — usually via the actor_kind_override() contextmanager so every
+        # emit inside a single apply_action picks it up without threading
+        # an extra parameter through the whole engine. Explicit kwarg
+        # wins over contextvar wins over the player record default.
+        if actor_kind is None:
+            override = _actor_kind_override.get()
+            if override is not None and actor_id is not None:
+                actor_kind = override
         if actor_kind is None and actor_id is not None:
             p = self.players.get(actor_id) if isinstance(actor_id, str) else None
             if p is not None:

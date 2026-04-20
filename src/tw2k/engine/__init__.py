@@ -15,6 +15,7 @@ from .models import (
     Ship,
     ShipClass,
     Universe,
+    actor_kind_override,
 )
 from .observation import Observation, build_observation
 from .runner import apply_action, is_finished, tick_day
@@ -38,6 +39,7 @@ __all__ = [
     "Ship",
     "ShipClass",
     "Universe",
+    "actor_kind_override",
     "apply_action",
     "build_observation",
     "generate_universe",

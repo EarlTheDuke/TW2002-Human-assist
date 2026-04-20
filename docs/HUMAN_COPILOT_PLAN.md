@@ -450,17 +450,17 @@ Each phase is **independently shippable and reversible.** Each ends with a concr
 ### Phase H2 — Text copilot (advisory + delegated, typed only)
 *Introduce the three-agent copilot architecture with text I/O. No voice yet.*
 
-- [ ] Copilot subpackage (`tw2k/copilot/`) with VoiceAgent / TaskAgent / UIAgent / EventRelay scaffolding.
-- [ ] Tool schema file + cross-provider adapter (Anthropic / xAI / OpenAI).
-- [ ] Tool executor shim → engine API.
-- [ ] Chat panel in `/play` (typed input, text output).
-- [ ] Advisory overlays on action buttons (copilot annotates each button's tooltip).
-- [ ] Plan preview + `[Confirm]` / `[Cancel]`.
-- [ ] Standing-orders store + enforcement layer in engine.
-- [ ] Mode toggle working for Manual / Advisory / Delegated.
-- [ ] Tests: mock-engine round-trip per agent; standing-order blocks; plan preview matches executed sequence.
+- [x] Copilot subpackage (`tw2k/copilot/`) with ChatAgent / TaskAgent / UIAgent + per-match `CopilotRegistry`. EventRelay reuses the existing `Broadcaster`.
+- [x] Tool schema file (`copilot/tools.py`) with `TOOL_CATALOG` + cross-provider adapter (`to_openai`, `to_anthropic`); all LLMs in xAI/DeepSeek/Custom use the OpenAI shape.
+- [x] Tool executor shim: `CopilotSession.tool_to_action` translates `ToolCall` → engine `Action`, routes through `HumanAgent` with `actor_kind="copilot"` via a new `Action.actor_kind` override field and scheduler-side `actor_kind_override(...)` context manager.
+- [x] Chat panel in `/play` (typed input, text output) + streaming `copilot_chat` WS events.
+- [x] Advisory overlays via `UIAgent.button_hints` exposed at `GET /api/copilot/hints` (rule-based, no LLM).
+- [x] Plan preview + `[Confirm]` / `[Cancel]` (pending multi-step plans queued in `CopilotSession.pending_plan`).
+- [x] Standing-orders store + enforcement layer (`copilot/standing_orders.py` + `CopilotSession._dispatch_one` gate; blocks logged to chat history as `standing_order_block`).
+- [x] Mode toggle working for Manual / Advisory / Delegated / Autopilot (`/api/copilot/mode`).
+- [x] Tests: 28 new H2 tests — tool schema, parse_tool_response fences/prose, standing orders, ChatAgent classification, `TaskAgent` loop + cancel, delegated-mode end-to-end with actor_kind assertion, pure-AI regression, UIAgent hints.
 
-**Exit criteria:** human types "run my trade loop until 30k credits" and it runs end-to-end, including interruption via `Esc`.
+**Exit criteria:** human types "run my trade loop until 30k credits" and it runs end-to-end, including interruption via `Esc`. — **met** (covered by `test_task_agent_runs_until_target_credits_reached` + `test_task_agent_cancellation_stops_loop`).
 
 ### Phase H2.5 — Headless `human-sim` CLI (borrowed from Gradient Bang)
 *Integration test harness + dev tool. Small, high-leverage.*
@@ -555,3 +555,4 @@ Each phase is **independently shippable and reversible.** Each ends with a concr
 | 2026-04-19 | Initial draft. D-1 through D-9 locked in. Pipecat v1.0.0 smoke test passed on Win + Py 3.13.6. | Brainstorm → plan doc creation. |
 | 2026-04-19 | **Phase H0 shipped.** `PlayerKind` enum, `Event.actor_kind`, `HumanAgent` + `ScriptedHumanAgent`, `/api/human/action` endpoint, scheduler blocks on `HUMAN_TURN_START`, `tw2k serve --human P1` flag. 9 new tests + full 222-test suite green. Manual smoke: `tw2k serve --human P2` stalls waiting on P2 while P1 (heuristic) continues to act; POST unblocks; error codes 404/409/422 verified. | H0 exit criteria met. |
 | 2026-04-19 | **Phase H1 shipped.** `/play` cockpit route + `web/play.html` / `play.js` / `play.css` three-column UI (sector + warps, ship vitals + cargo + 10 action forms, events + copilot placeholder + raw-observation inspector). New endpoints: `GET /api/match/humans` (enumerates slots, carries `awaiting_input` flag so the page can enable buttons on fresh loads) and `GET /api/human/observation?player_id=` (full Observation — same object the LLM path consumes). `--human-deadline-s` CLI flag + `MatchSpec.human_deadline_s` forces auto-WAIT via `asyncio.wait_for` with a tagged `AGENT_THOUGHT auto_wait=True` event for forensics. Keyboard shortcuts W/S/P/B/L/./Esc/Enter/F5/?. 11 new H1 tests; full 233-test suite + ruff green. Manual verify on port 8005: cockpit auto-binds to the only human, shows full state + live event ticker (actor-tagged), action submit round-trips via POST /api/human/action, error codes 404/409/503 verified; pure-AI match on 8006 confirmed unaffected (empty humans list, no leaked `human` actor_kind). | H1 exit criteria met. |
+| 2026-04-19 | **Phase H2 shipped.** New `tw2k/copilot/` subpackage: `tools.py` (TOOL_CATALOG + OpenAI/Anthropic adapters + `ToolCall`), `provider.py` (unified `call_llm` wrapper reusing existing Anthropic/OpenAI-compatible clients + `mock:*` responder hooks for deterministic tests), `standing_orders.py` (MIN_CREDIT_RESERVE / NO_WARP_TO_SECTORS / MAX_HAGGLE_DELTA_PCT guardrails), `chat_agent.py` (per-utterance classifier: speak / plan / action / start_task / cancel / clarify), `task_agent.py` (long-running autopilot loop with cancellation + terminal conditions), `ui_agent.py` (rule-based button tooltips + next-move heuristic), `session.py` (per-human state: mode, chat history, pending plan, active task, standing orders), `registry.py` (per-match `CopilotRegistry`). Engine: `Action.actor_kind` override field + `actor_kind_override` contextvar + scheduler wrapper so copilot-dispatched actions emit events tagged `actor_kind="copilot"` while manual human submissions stay tagged `"human"`. Server: `/api/copilot/{state,chat,mode,confirm,cancel,standing-orders,hints}` + lifespan hook rebuilds the registry on match (re)start. UI: `/play` RIGHT panel now hosts mode toggle (Manual/Advisory/Delegated/Autopilot), plan preview with Confirm/Cancel, active-task banner, chat transcript with streaming `copilot_chat` WS events, standing-orders list/form. Keyboard: `/` focuses chat, `Esc` cancels pending plan or active task, `Enter` confirms a pending plan. 28 new H2 tests (tool schema, parse_tool_response with fences/prose, ChatAgent mock round-trip, `TaskAgent` trade-loop until target credits + cancellation, standing-order block through full `CopilotSession` pipeline, actor_kind tagging end-to-end, pure-AI regression) + full 261-test suite + ruff green on all H2 files. Exit criterion: scripted trade loop reaches target credits via `TaskAgent` and is interruptible via `Esc`. | H2 exit criteria met. |

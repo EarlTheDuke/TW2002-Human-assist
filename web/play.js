@@ -611,6 +611,8 @@
             state.day = msg.snapshot.day;
             els.dayLabel.textContent = `Day ${msg.snapshot.day}`;
           }
+        } else if (msg.type === "copilot_chat") {
+          handleCopilotWsEvent(msg);
         }
       } catch (err) {
         /* ignore malformed */
@@ -632,18 +634,38 @@
     const tag = (ev.target && ev.target.tagName) || "";
     if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
       if (ev.key === "Escape") {
+        // Esc in the copilot chat input cancels the active plan/task
+        // even while focused in the text field — matches the UI hint.
+        if (ev.target === copilotEls.chatInput) {
+          cancelAny("human_cancel");
+          return;
+        }
         closeActionForm();
-      } else if (ev.key === "Enter" && ev.target.form === els.actionForm) {
-        // Let the form handler run normally.
       }
       return;
     }
     if (ev.key === "Escape") {
       closeActionForm();
+      // Also kill any in-flight copilot plan/task so Esc is a universal
+      // "stop whatever you were doing" chord (per exit-criterion §12).
+      if (copilotState.pendingPlan || copilotState.activeTask) {
+        cancelAny("human_cancel");
+      }
       return;
     }
-    if (ev.key === "?" || ev.key === "/") {
+    if (ev.key === "?") {
       els.shortcutsToast.hidden = !els.shortcutsToast.hidden;
+      return;
+    }
+    if (ev.key === "/") {
+      // Focus the copilot chat input, like many dev tools.
+      ev.preventDefault();
+      if (copilotEls.chatInput) copilotEls.chatInput.focus();
+      return;
+    }
+    if (ev.key === "Enter" && copilotState.pendingPlan) {
+      ev.preventDefault();
+      confirmPending();
       return;
     }
     if (ev.key === "F5") {
@@ -666,6 +688,329 @@
     }
   }
 
+  // ---------------- Copilot (H2) ----------------
+
+  const copilotEls = {
+    modeRow: $("copilotModeRow"),
+    modePill: $("copilotModePill"),
+    planPreview: $("copilotPlanPreview"),
+    planTitle: $("copilotPlanTitle"),
+    planThought: $("copilotPlanThought"),
+    planSteps: $("copilotPlanSteps"),
+    confirmBtn: $("copilotConfirmBtn"),
+    cancelPlanBtn: $("copilotCancelPlanBtn"),
+    taskBanner: $("copilotTaskBanner"),
+    taskSummary: $("copilotTaskSummary"),
+    cancelTaskBtn: $("copilotCancelTaskBtn"),
+    chat: $("copilotChat"),
+    chatForm: $("copilotChatForm"),
+    chatInput: $("copilotChatInput"),
+    ordersCount: $("copilotOrdersCount"),
+    ordersList: $("copilotOrdersList"),
+    orderForm: $("copilotOrderForm"),
+    orderKind: $("copilotOrderKind"),
+    orderValue: $("copilotOrderValue"),
+  };
+
+  const copilotState = {
+    mode: "advisory",
+    pendingPlan: null,
+    activeTask: null,
+    orders: [],
+    seenMessageIds: new Set(),
+  };
+
+  function renderChatMessage(msg) {
+    if (!msg || !msg.id) return;
+    if (copilotState.seenMessageIds.has(msg.id)) return;
+    copilotState.seenMessageIds.add(msg.id);
+
+    const li = document.createElement("div");
+    li.className = `chat-msg role-${msg.role} kind-${msg.kind || "speak"}`;
+    const role = document.createElement("span");
+    role.className = "chat-role";
+    role.textContent = msg.role;
+    const body = document.createElement("span");
+    body.className = "chat-body";
+    body.textContent = " " + (msg.text || "");
+    li.appendChild(role);
+    li.appendChild(body);
+    const thought = msg.payload && msg.payload.thought;
+    if (thought) {
+      const t = document.createElement("span");
+      t.className = "chat-thought";
+      t.textContent = thought;
+      li.appendChild(t);
+    }
+    copilotEls.chat.appendChild(li);
+    copilotEls.chat.scrollTop = copilotEls.chat.scrollHeight;
+  }
+
+  function renderPendingPlan(pp) {
+    copilotState.pendingPlan = pp;
+    if (!pp) {
+      copilotEls.planPreview.hidden = true;
+      copilotEls.planSteps.innerHTML = "";
+      return;
+    }
+    copilotEls.planPreview.hidden = false;
+    const isTask = !!pp.task_kind;
+    copilotEls.planTitle.textContent = isTask
+      ? `Autopilot proposal: ${pp.task_kind}`
+      : `Pending plan (${(pp.plan || []).length} steps)`;
+    copilotEls.planThought.textContent = pp.thought || "";
+    copilotEls.planSteps.innerHTML = "";
+    if (isTask) {
+      const li = document.createElement("li");
+      li.textContent = `${pp.task_kind} ${JSON.stringify(pp.task_params || {})}`;
+      copilotEls.planSteps.appendChild(li);
+    } else {
+      (pp.plan || []).forEach((c) => {
+        const li = document.createElement("li");
+        li.textContent = `${c.name}(${JSON.stringify(c.arguments || {})})`;
+        copilotEls.planSteps.appendChild(li);
+      });
+    }
+  }
+
+  function renderActiveTask(task) {
+    copilotState.activeTask = task;
+    if (!task) {
+      copilotEls.taskBanner.hidden = true;
+      return;
+    }
+    copilotEls.taskBanner.hidden = false;
+    const iter = task.iterations || 0;
+    copilotEls.taskSummary.textContent =
+      `autopilot: ${task.kind} ${JSON.stringify(task.params || {})} — ` +
+      `iter ${iter}` + (task.last_action ? ` · last ${task.last_action}` : "");
+  }
+
+  function renderOrders(orders) {
+    copilotState.orders = orders || [];
+    copilotEls.ordersCount.textContent =
+      copilotState.orders.length ? `(${copilotState.orders.length})` : "";
+    copilotEls.ordersList.innerHTML = "";
+    copilotState.orders.forEach((o) => {
+      const li = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = o.description || `${o.kind} ${JSON.stringify(o.params || {})}`;
+      const btn = document.createElement("button");
+      btn.className = "remove-order";
+      btn.type = "button";
+      btn.textContent = "✕";
+      btn.title = "Remove order";
+      btn.addEventListener("click", () => removeOrder(o.id));
+      li.appendChild(label);
+      li.appendChild(btn);
+      copilotEls.ordersList.appendChild(li);
+    });
+  }
+
+  function setCopilotMode(mode) {
+    copilotState.mode = mode;
+    copilotEls.modePill.textContent = `mode: ${mode}`;
+    document
+      .querySelectorAll(".mode-btn")
+      .forEach((b) => b.classList.toggle("is-active", b.dataset.mode === mode));
+  }
+
+  async function fetchCopilotState() {
+    if (!playerId) return;
+    try {
+      const r = await fetch(
+        `/api/copilot/state?player_id=${encodeURIComponent(playerId)}`
+      );
+      if (!r.ok) return;
+      const s = await r.json();
+      setCopilotMode(s.mode || "advisory");
+      (s.chat || []).forEach(renderChatMessage);
+      renderPendingPlan(s.pending_plan || null);
+      renderActiveTask(s.active_task || null);
+      renderOrders(s.standing_orders || []);
+    } catch (err) {
+      /* ignore */
+    }
+  }
+
+  async function sendChat(text) {
+    if (!text || !playerId) return;
+    try {
+      await fetch("/api/copilot/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: playerId, message: text }),
+      });
+    } catch (err) {
+      console.error("chat failed", err);
+    }
+  }
+
+  async function changeMode(mode) {
+    try {
+      const r = await fetch("/api/copilot/mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: playerId, mode }),
+      });
+      if (r.ok) setCopilotMode(mode);
+    } catch (err) {
+      console.error("mode change failed", err);
+    }
+  }
+
+  async function confirmPending() {
+    const pp = copilotState.pendingPlan;
+    if (!pp) return;
+    try {
+      await fetch("/api/copilot/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: playerId, plan_id: pp.id }),
+      });
+      renderPendingPlan(null);
+    } catch (err) {
+      console.error("confirm failed", err);
+    }
+  }
+
+  async function cancelAny(reason) {
+    try {
+      await fetch("/api/copilot/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: playerId, reason: reason || "human_cancel" }),
+      });
+    } catch (err) {
+      console.error("cancel failed", err);
+    }
+  }
+
+  async function addOrder() {
+    const kind = copilotEls.orderKind.value;
+    const raw = (copilotEls.orderValue.value || "").trim();
+    if (!raw) return;
+    let params = {};
+    if (kind === "min_credit_reserve") {
+      const n = parseInt(raw, 10);
+      if (isNaN(n)) return;
+      params = { credits: n };
+    } else if (kind === "no_warp_to_sectors") {
+      params = {
+        sectors: raw
+          .split(",")
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => !isNaN(n)),
+      };
+    } else if (kind === "max_haggle_delta_pct") {
+      const n = parseFloat(raw);
+      if (isNaN(n)) return;
+      params = { pct: n };
+    }
+    const order = {
+      id: `u-${Date.now().toString(36)}`,
+      kind,
+      params,
+      description: "",
+      active: true,
+    };
+    try {
+      const r = await fetch("/api/copilot/standing-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: playerId, order }),
+      });
+      if (r.ok) {
+        const s = await r.json();
+        renderOrders(s.orders || []);
+        copilotEls.orderValue.value = "";
+      }
+    } catch (err) {
+      console.error("add order failed", err);
+    }
+  }
+
+  async function removeOrder(orderId) {
+    try {
+      const r = await fetch(
+        `/api/copilot/standing-orders?player_id=${encodeURIComponent(
+          playerId
+        )}&order_id=${encodeURIComponent(orderId)}`,
+        { method: "DELETE" }
+      );
+      if (r.ok) {
+        const s = await r.json();
+        renderOrders(s.orders || []);
+      }
+    } catch (err) {
+      console.error("remove order failed", err);
+    }
+  }
+
+  function handleCopilotWsEvent(msg) {
+    if (msg.type !== "copilot_chat") return;
+    if (msg.player_id && playerId && msg.player_id !== playerId) return;
+    const m = msg.message;
+    renderChatMessage(m);
+    if (!m || !m.kind) return;
+    if (m.kind === "plan_preview" && m.payload) {
+      renderPendingPlan({
+        id: m.payload.plan_id,
+        plan: m.payload.plan,
+        thought: m.payload.thought || "",
+      });
+    } else if (m.kind === "task_preview" && m.payload) {
+      renderPendingPlan({
+        id: m.payload.plan_id,
+        task_kind: m.payload.task_kind,
+        task_params: m.payload.task_params || {},
+        plan: [],
+      });
+    } else if (m.kind === "plan_cancelled" || m.kind === "confirm_rejected") {
+      renderPendingPlan(null);
+    } else if (m.kind === "task_started" && m.payload && m.payload.task) {
+      renderPendingPlan(null);
+      renderActiveTask(m.payload.task);
+    } else if (m.kind === "task_progress" && m.payload) {
+      renderActiveTask({
+        kind: (copilotState.activeTask && copilotState.activeTask.kind) || "autopilot",
+        params: (copilotState.activeTask && copilotState.activeTask.params) || {},
+        iterations: m.payload.iter,
+        last_action: m.payload.last_action || m.payload.tool,
+      });
+    } else if (m.kind === "task_finished") {
+      renderActiveTask(null);
+    } else if (m.kind === "mode_change") {
+      // state endpoint is authoritative; just re-fetch.
+      fetchCopilotState();
+    } else if (
+      m.kind === "standing_order_added" ||
+      m.kind === "standing_order_removed"
+    ) {
+      fetchCopilotState();
+    }
+  }
+
+  function wireCopilot() {
+    copilotEls.chatForm.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const text = copilotEls.chatInput.value.trim();
+      if (!text) return;
+      copilotEls.chatInput.value = "";
+      sendChat(text);
+    });
+    document.querySelectorAll(".mode-btn").forEach((btn) => {
+      btn.addEventListener("click", () => changeMode(btn.dataset.mode));
+    });
+    copilotEls.confirmBtn.addEventListener("click", confirmPending);
+    copilotEls.cancelPlanBtn.addEventListener("click", () => cancelAny("plan_cancel"));
+    copilotEls.cancelTaskBtn.addEventListener("click", () => cancelAny("task_cancel"));
+    copilotEls.orderForm.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      addOrder();
+    });
+  }
+
   // ---------------- Wiring ----------------
   function wire() {
     els.actionBtns.forEach((btn) => {
@@ -678,6 +1023,7 @@
       els.shortcutsToast.hidden = !els.shortcutsToast.hidden;
     });
     document.addEventListener("keydown", handleKey);
+    wireCopilot();
   }
 
   // ---------------- Init ----------------
@@ -688,6 +1034,8 @@
     setButtonsEnabled(false);
     await resolveSlot();
     connectWS();
+    // H2: fetch copilot session state once bound.
+    if (playerId) await fetchCopilotState();
     // Poll /state every 5s as a keepalive fallback (WS is authoritative)
     setInterval(async () => {
       try {

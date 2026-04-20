@@ -30,6 +30,7 @@ from ..engine import (
     EventKind,
     GameConfig,
     Universe,
+    actor_kind_override,
     apply_action,
     build_observation,
     generate_universe,
@@ -453,7 +454,20 @@ class MatchRunner:
                     await self._sleep_scaled(self._spec.action_delay_s)
                     continue
 
-                result = apply_action(universe, agent.player_id, action)
+                # If the submitted Action carries an actor_kind override
+                # (e.g. the copilot dispatched this on behalf of a human),
+                # scope it onto the contextvar Universe.emit checks so every
+                # event emitted during apply_action inherits the tag. Keeps
+                # replay / spectator UI honest about who actually pulled
+                # the trigger. Default None means we use the player's
+                # agent_kind (unchanged behaviour for heuristic / llm /
+                # manual-human submissions).
+                override = getattr(action, "actor_kind", None)
+                if override:
+                    with actor_kind_override(override):
+                        result = apply_action(universe, agent.player_id, action)
+                else:
+                    result = apply_action(universe, agent.player_id, action)
                 # Record the action (success or failure) to actions.jsonl so
                 # replay can re-execute the exact same submission sequence,
                 # including invalid ones the engine rejected. Invalid actions

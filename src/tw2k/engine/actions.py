@@ -54,6 +54,13 @@ class Action(BaseModel):
     goal_short: str | None = None
     goal_medium: str | None = None
     goal_long: str | None = None
+    # Override for `actor_kind` on every event emitted while this Action is
+    # being applied. Set by the copilot path (H2+) to "copilot" so spectator
+    # UI / replay / forensics can distinguish "the human warped to 874"
+    # from "the copilot warped to 874 for the human". Scheduler wraps the
+    # apply_action call in `actor_kind_override(...)` when this is non-None.
+    # Default None means: use the player's agent_kind (same as today).
+    actor_kind: str | None = None
 
 
 class ActionResult(BaseModel):

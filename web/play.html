@@ -13,7 +13,7 @@
       <span class="logo-mark">◈</span>
       <div>
         <h1>TW2K-AI · Cockpit</h1>
-        <p class="tagline" id="cockpitSub">Human player interface · Phase H1</p>
+        <p class="tagline" id="cockpitSub">Human player interface · Phase H2 (text copilot)</p>
       </div>
     </div>
     <div class="match-status">
@@ -144,19 +144,74 @@
       </div>
     </section>
 
-    <!-- RIGHT: event ticker + copilot placeholder + observation inspector -->
+    <!-- RIGHT: copilot chat + event ticker + observation inspector -->
     <section class="panel cockpit-panel" id="panelCopilot">
       <div class="panel-header">
-        <h2>Events &amp; Copilot</h2>
+        <h2>Copilot &amp; Events</h2>
         <div class="header-right">
-          <span class="muted">Copilot: <span class="copilot-mode-pill">Manual (H1)</span></span>
+          <span class="muted" id="copilotModePill">mode: advisory</span>
         </div>
       </div>
       <div class="panel-body">
-        <div class="copilot-placeholder">
-          <strong>Copilot</strong> — arriving in H2. For now you're flying manually.
+
+        <!-- mode toggle -->
+        <div class="copilot-mode-row" id="copilotModeRow" role="radiogroup" aria-label="Copilot mode">
+          <button type="button" class="mode-btn" data-mode="manual"    title="Copilot silent; you click every action">Manual</button>
+          <button type="button" class="mode-btn is-active" data-mode="advisory"  title="Copilot suggests; you execute">Advisory</button>
+          <button type="button" class="mode-btn" data-mode="delegated" title="Copilot executes single actions from typed intent">Delegated</button>
+          <button type="button" class="mode-btn" data-mode="autopilot" title="Copilot runs long tasks in the background">Autopilot</button>
         </div>
 
+        <!-- pending plan / task preview -->
+        <div class="copilot-plan-preview" id="copilotPlanPreview" hidden>
+          <div class="plan-head">
+            <strong id="copilotPlanTitle">Pending plan</strong>
+            <span class="muted" id="copilotPlanThought"></span>
+          </div>
+          <ol class="plan-steps" id="copilotPlanSteps"></ol>
+          <div class="plan-actions">
+            <button type="button" class="submit-btn" id="copilotConfirmBtn">Confirm (Enter)</button>
+            <button type="button" class="close-btn" id="copilotCancelPlanBtn">Cancel (Esc)</button>
+          </div>
+        </div>
+
+        <!-- active task banner -->
+        <div class="copilot-task-banner" id="copilotTaskBanner" hidden>
+          <span class="task-dot"></span>
+          <span id="copilotTaskSummary">autopilot running…</span>
+          <button type="button" class="close-btn" id="copilotCancelTaskBtn" title="Stop autopilot (Esc)">Stop</button>
+        </div>
+
+        <!-- chat transcript -->
+        <h3 class="subhead">Copilot chat</h3>
+        <div class="copilot-chat" id="copilotChat" aria-live="polite"></div>
+
+        <form class="copilot-chat-form" id="copilotChatForm">
+          <input
+            type="text"
+            id="copilotChatInput"
+            placeholder="Ask or instruct… (e.g. 'sell fuel_ore' or 'run my trade loop to 30k cr')"
+            autocomplete="off"
+          />
+          <button type="submit" class="submit-btn">Send</button>
+        </form>
+
+        <!-- standing orders -->
+        <details class="copilot-orders">
+          <summary>Standing orders <span class="muted" id="copilotOrdersCount"></span></summary>
+          <ul class="orders-list" id="copilotOrdersList"></ul>
+          <form class="orders-form" id="copilotOrderForm">
+            <select id="copilotOrderKind">
+              <option value="min_credit_reserve">Min credit reserve</option>
+              <option value="no_warp_to_sectors">No-warp sectors (comma list)</option>
+              <option value="max_haggle_delta_pct">Max haggle delta %</option>
+            </select>
+            <input type="text" id="copilotOrderValue" placeholder="value" autocomplete="off" />
+            <button type="submit" class="submit-btn">Add</button>
+          </form>
+        </details>
+
+        <!-- event ticker -->
         <h3 class="subhead">Event ticker</h3>
         <ol class="cockpit-event-feed" id="cockpitEvents"></ol>
 
@@ -183,6 +238,8 @@
     <div><kbd>Esc</kbd> cancel action form</div>
     <div><kbd>F5</kbd> refresh observation</div>
     <div><kbd>?</kbd> toggle this help</div>
+    <div><kbd>/</kbd> focus copilot chat</div>
+    <div><kbd>Ctrl+Enter</kbd> send copilot message</div>
   </div>
 
   <script src="/static/play.js"></script>

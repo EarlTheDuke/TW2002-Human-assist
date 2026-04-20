@@ -14,6 +14,10 @@ from fastapi.staticfiles import StaticFiles
 
 from ..agents.human import HumanAgent
 from ..agents.llm import default_provider
+from ..copilot import CopilotMode
+from ..copilot.registry import CopilotRegistry
+from ..copilot.standing_orders import StandingOrder
+from ..copilot.ui_agent import button_hints, suggest_next_move
 from ..engine import GameConfig, build_observation
 from ..engine.actions import Action
 from .broadcaster import Broadcaster
@@ -52,6 +56,7 @@ def create_app(
 ) -> FastAPI:
     broadcaster = Broadcaster()
     runner = MatchRunner(broadcaster)
+    copilot_registry = CopilotRegistry()
 
     web_root = _web_root()
 
@@ -74,8 +79,10 @@ def create_app(
                 human_deadline_s=human_deadline_s,
             )
             await runner.start(spec)
+            copilot_registry.rebuild(runner=runner, broadcaster=broadcaster)
         yield
         await runner.stop()
+        copilot_registry.clear()
 
     app = FastAPI(title="TW2K-AI", version="0.1.0", lifespan=lifespan)
     # Expose the runner on app.state so tests (and potentially future
@@ -84,6 +91,7 @@ def create_app(
     # close over `runner` directly.
     app.state.runner = runner
     app.state.broadcaster = broadcaster
+    app.state.copilot_registry = copilot_registry
 
     # Static files
     app.mount("/static", StaticFiles(directory=str(web_root)), name="static")
@@ -292,6 +300,143 @@ def create_app(
             ) from exc
         return obs.model_dump(mode="json")
 
+    # ------------------------------------------------------------------
+    # Copilot endpoints (Phase H2 — text-only)
+    # ------------------------------------------------------------------
+
+    def _get_session(player_id: str):
+        sess = copilot_registry.get(player_id)
+        if sess is None:
+            # Distinguish "no such player" from "not a human slot"
+            # mirroring the /api/human/action error model.
+            agents_list = runner.state.agents
+            if not agents_list:
+                raise HTTPException(status_code=503, detail="match not running")
+            if not any(a.player_id == player_id for a in agents_list):
+                raise HTTPException(
+                    status_code=404, detail=f"no such player {player_id}"
+                )
+            raise HTTPException(
+                status_code=409,
+                detail=f"player {player_id} has no copilot session (not a human slot)",
+            )
+        return sess
+
+    @app.get("/api/copilot/state")
+    async def copilot_state(player_id: str) -> dict[str, Any]:
+        """Full session snapshot for the cockpit chat panel."""
+        sess = _get_session(player_id)
+        return sess.state_snapshot()
+
+    @app.post("/api/copilot/chat")
+    async def copilot_chat(body: dict[str, Any]) -> dict[str, Any]:
+        player_id = body.get("player_id")
+        message = body.get("message")
+        if not isinstance(player_id, str) or not isinstance(message, str):
+            raise HTTPException(
+                status_code=400, detail="body requires player_id + message strings"
+            )
+        sess = _get_session(player_id)
+        resp = await sess.handle_chat(message)
+        return {"ok": True, "response": resp.model_dump()}
+
+    @app.post("/api/copilot/mode")
+    async def copilot_mode(body: dict[str, Any]) -> dict[str, Any]:
+        player_id = body.get("player_id")
+        mode = body.get("mode")
+        if not isinstance(player_id, str) or not isinstance(mode, str):
+            raise HTTPException(status_code=400, detail="body requires player_id + mode")
+        try:
+            mode_enum = CopilotMode(mode)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"unknown mode {mode!r} (expected one of "
+                + ", ".join(m.value for m in CopilotMode)
+                + ")",
+            ) from exc
+        sess = _get_session(player_id)
+        await sess.set_mode(mode_enum)
+        return {"ok": True, "mode": sess.mode.value}
+
+    @app.post("/api/copilot/confirm")
+    async def copilot_confirm(body: dict[str, Any]) -> dict[str, Any]:
+        player_id = body.get("player_id")
+        plan_id = body.get("plan_id")
+        if not isinstance(player_id, str) or not isinstance(plan_id, str):
+            raise HTTPException(
+                status_code=400, detail="body requires player_id + plan_id"
+            )
+        sess = _get_session(player_id)
+        ok = await sess.confirm_pending(plan_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="no matching pending plan")
+        return {"ok": True}
+
+    @app.post("/api/copilot/cancel")
+    async def copilot_cancel(body: dict[str, Any]) -> dict[str, Any]:
+        """Cancel the pending plan OR the active autopilot task — whichever
+        is live. If both are live, cancels both (Esc in the UI maps here).
+        """
+        player_id = body.get("player_id")
+        plan_id = body.get("plan_id")
+        if not isinstance(player_id, str):
+            raise HTTPException(status_code=400, detail="body requires player_id")
+        sess = _get_session(player_id)
+        cancelled_plan = await sess.cancel_pending(
+            plan_id if isinstance(plan_id, str) else None
+        )
+        cancelled_task = await sess.cancel_active_task(
+            reason=str(body.get("reason") or "human_cancel")
+        )
+        return {"ok": True, "cancelled_plan": cancelled_plan, "cancelled_task": cancelled_task}
+
+    @app.post("/api/copilot/standing-orders")
+    async def copilot_add_order(body: dict[str, Any]) -> dict[str, Any]:
+        player_id = body.get("player_id")
+        order_raw = body.get("order")
+        if not isinstance(player_id, str) or not isinstance(order_raw, dict):
+            raise HTTPException(
+                status_code=400, detail="body requires player_id + order object"
+            )
+        sess = _get_session(player_id)
+        try:
+            order = StandingOrder.model_validate(order_raw)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"invalid order: {exc}") from exc
+        await sess.add_standing_order(order)
+        return {"ok": True, "orders": [o.model_dump() for o in sess.standing_orders]}
+
+    @app.delete("/api/copilot/standing-orders")
+    async def copilot_remove_order(player_id: str, order_id: str) -> dict[str, Any]:
+        sess = _get_session(player_id)
+        ok = await sess.remove_standing_order(order_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="no such order")
+        return {"ok": True, "orders": [o.model_dump() for o in sess.standing_orders]}
+
+    @app.get("/api/copilot/hints")
+    async def copilot_hints(player_id: str) -> dict[str, Any]:
+        """Rule-based UIAgent hints for the cockpit button row.
+
+        Fast + no LLM call, so the UI can re-request this on every
+        observation refresh without cost.
+        """
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        if player_id not in u.players:
+            raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+        if u.players[player_id].agent_kind != "human":
+            raise HTTPException(
+                status_code=409, detail=f"player {player_id} is not a human slot"
+            )
+        obs = build_observation(u, player_id)
+        return {
+            "hints": button_hints(obs),
+            "suggest": suggest_next_move(obs),
+        }
+
     @app.get("/play", response_class=HTMLResponse)
     async def play_page() -> HTMLResponse:
         """Human cockpit. One page for every human slot in the match.
@@ -345,6 +490,11 @@ def create_app(
             action_delay_s=(float(body["action_delay_s"]) if "action_delay_s" in body else action_delay_s),
         )
         await runner.start(spec)
+        # Rebuild copilot sessions — old ones held references to the
+        # previous match's HumanAgent queues which are now garbage. Chat
+        # history from the prior match is intentionally wiped; if we
+        # ever want persistence across restarts, that's a future knob.
+        copilot_registry.rebuild(runner=runner, broadcaster=broadcaster)
         return {"status": runner.state.status}
 
     @app.websocket("/ws")
