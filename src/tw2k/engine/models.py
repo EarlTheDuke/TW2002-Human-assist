@@ -6,10 +6,11 @@ in-place (wrapped by apply_action) and emits Events describing every change.
 
 from __future__ import annotations
 
+import random
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from . import constants as K
 
@@ -295,6 +296,17 @@ class Player(BaseModel):
     # Persistent knowledge / memory
     known_ports: dict[int, dict] = Field(default_factory=dict)  # sector_id -> {class, stock_snapshot, last_seen_day}
     known_sectors: set[int] = Field(default_factory=set)
+    # Warp graph for sectors this player has VISITED or SCANNED. Key is the
+    # source sector_id, value is the list of direct warps out of that sector
+    # as the player observed them. This is the single most important piece
+    # of navigational memory: without it, an LLM agent deadloops between
+    # a pair of sectors because it cannot remember that "406.warps_out =
+    # [475]" meant it had to backtrack first to reach a third sector.
+    # Populated on warp entry (for the DESTINATION's warps) and on every
+    # scan (for the scanned sector's warps). Never pruned — the map only
+    # grows. Stale data is not a concern: sector warps are static in this
+    # engine. Port stock drifts, warps don't.
+    known_warps: dict[int, list[int]] = Field(default_factory=dict)
     inbox: list[dict] = Field(default_factory=list)
     # Agent's own working scratchpad (opaque to engine)
     scratchpad: str = ""
@@ -506,6 +518,31 @@ class Universe(BaseModel):
     finished: bool = False
     winner_id: str | None = None
     win_reason: str = ""
+
+    # Per-universe deterministic PRNG. PrivateAttr so it's instance-scoped
+    # (not shared across Universe objects, not serialized by model_dump), and
+    # lazy-initialized on first `rng` access from `config.seed`. The multiplier
+    # matches the legacy module-level _rngs dict (`seed * 7919 + 1`) so any
+    # existing seeded match reproduces byte-for-byte after this refactor.
+    #
+    # Deserializing a saved Universe (model_validate) resets the PRNG to a
+    # fresh seeded instance — intentional: we never persisted RNG state under
+    # the old global-dict scheme either, and replay rebuilds from seed + the
+    # recorded action log rather than from live RNG state.
+    _rng: random.Random | None = PrivateAttr(default=None)
+
+    @property
+    def rng(self) -> random.Random:
+        """Deterministic per-universe PRNG seeded from `config.seed`.
+
+        Replaces the legacy module-level `_rngs: dict[id(universe), Random]`
+        singleton in `engine.runner`, which (a) leaked memory as Universe
+        objects were GC'd and (b) could in principle collide on recycled
+        `id()` values. Instance-scoped is the right scope.
+        """
+        if self._rng is None:
+            self._rng = random.Random(self.config.seed * 7919 + 1)
+        return self._rng
 
     # ------------- event helpers ------------- #
     def emit(

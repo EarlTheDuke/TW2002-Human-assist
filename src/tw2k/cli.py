@@ -2,6 +2,7 @@
 
 Available commands:
     tw2k serve   — start the web server + auto-run a match (default 2 agents)
+    tw2k replay  — replay a saved match in the spectator UI (Phase 6)
     tw2k sim     — run a headless simulation with heuristic agents (for testing)
     tw2k probe   — print a universe summary for a given seed
 """
@@ -93,16 +94,80 @@ def serve(
              "75-100k for sanity runs so agents can reach ship-upgrade / Genesis "
              "decisions inside the observation window.",
     ),
+    agent_providers: str = typer.Option(
+        None,
+        help=(
+            "Comma-separated per-agent providers (slot N -> player PN+1). "
+            "Example: 'xai,anthropic' runs P1 on Grok, P2 on Claude. "
+            "Missing slots fall back to --provider. Use this for cross-model "
+            "matches."
+        ),
+    ),
+    agent_models: str = typer.Option(
+        None,
+        help=(
+            "Comma-separated per-agent model slugs aligned to --agent-providers. "
+            "Example: 'grok-4-1-fast-reasoning,claude-sonnet-4-5-20250929'. "
+            "Leave a slot empty to use the provider default (e.g. ',claude-...' "
+            "keeps Grok's default model)."
+        ),
+    ),
+    agent_names: str = typer.Option(
+        None,
+        help="Comma-separated per-agent display names (slot N -> player PN+1).",
+    ),
+    action_delay_s: float = typer.Option(
+        None,
+        help=(
+            "Override the per-action artificial delay (default 0.6 s). Set to "
+            "0 for maximum throughput on long matches. LLM API latency still "
+            "applies — this only controls the extra pacing delay."
+        ),
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
 
     from .server.app import create_app
     provider_display = provider or default_provider()
+
+    # Parse per-agent overrides from comma lists. Blanks in a slot fall
+    # back to the global --provider / --model, so 'xai,anthropic' + no
+    # --agent-models means both agents take their provider's default
+    # model. Lists are right-padded with empties so missing slots
+    # silently default instead of raising.
+    providers_list = [s.strip() or None for s in (agent_providers.split(",") if agent_providers else [])]
+    models_list = [s.strip() or None for s in (agent_models.split(",") if agent_models else [])]
+    names_list = [s.strip() for s in (agent_names.split(",") if agent_names else []) if s.strip()]
+
+    overrides: list[dict] = []
+    max_slots = max(len(providers_list), len(models_list), num_agents) if (providers_list or models_list) else 0
+    for i in range(max_slots):
+        entry: dict = {}
+        if i < len(providers_list) and providers_list[i]:
+            entry["provider"] = providers_list[i]
+            # If the user set a specific provider for a slot, also force
+            # kind=llm so agent_kind=auto doesn't downgrade to heuristic
+            # on a slot that explicitly names an LLM.
+            entry["kind"] = "llm"
+        if i < len(models_list) and models_list[i]:
+            entry["model"] = models_list[i]
+        if entry:
+            overrides.append(entry)
+        else:
+            overrides.append({})
     console.rule("[bold cyan]TW2K-AI Server")
     console.print(f"[cyan]Host:[/] {host}:{port}")
     console.print(f"[cyan]Seed:[/] {seed}  [cyan]Sectors:[/] {universe_size}  [cyan]Max days:[/] {max_days}")
     console.print(f"[cyan]Agents:[/] {num_agents}  [cyan]Kind:[/] {agent_kind}  [cyan]LLM provider:[/] {provider_display}")
+    if overrides:
+        for i, ov in enumerate(overrides[:num_agents]):
+            if ov:
+                tag_prov = ov.get("provider") or provider_display
+                tag_model = ov.get("model") or "<provider default>"
+                console.print(
+                    f"  [dim]P{i+1}:[/] provider=[cyan]{tag_prov}[/]  model=[cyan]{tag_model}[/]"
+                )
     if provider_display == "custom":
         base = _os.environ.get("TW2K_CUSTOM_BASE_URL", "<unset>")
         mdl = model or _os.environ.get("TW2K_CUSTOM_MODEL", "<default>")
@@ -129,7 +194,68 @@ def serve(
         auto_start=not no_auto_start,
         turns_per_day=turns_per_day,
         starting_credits=starting_credits,
+        agent_overrides=overrides or None,
+        agent_names=names_list or None,
+        action_delay_s=action_delay_s,
     )
+    uvicorn.run(application, host=host, port=port, log_level="info")
+
+
+@app.command()
+def replay(
+    run_dir: str = typer.Argument(
+        ...,
+        help=(
+            "Path to a saved run directory containing meta.json + actions.jsonl. "
+            "Relative paths resolve against CWD and then against TW2K_SAVES_DIR "
+            "/ <repo>/saves. Pass the run-id (e.g. '20260419-120000-seed42') to "
+            "resolve relative to the saves root."
+        ),
+    ),
+    host: str = typer.Option("127.0.0.1", help="Host to bind."),
+    port: int = typer.Option(8000, help="Port to bind."),
+    speed: float = typer.Option(
+        1.0,
+        help=(
+            "Playback speed multiplier. 1.0 plays at recorded pace, 2.0 = "
+            "twice as fast, 0.5 = half speed. Honors live pause/resume/speed "
+            "controls from the spectator UI too."
+        ),
+    ),
+) -> None:
+    """Replay a saved match (seed + actions.jsonl) in the spectator UI."""
+    from pathlib import Path
+
+    from .server.app import create_replay_app
+    from .server.runner import _default_saves_root
+
+    candidate = Path(run_dir)
+    search = [candidate, Path.cwd() / run_dir]
+    saves_root = _default_saves_root()
+    search.append(saves_root / run_dir)
+    resolved: Path | None = None
+    for c in search:
+        if (c / "meta.json").is_file():
+            resolved = c.resolve()
+            break
+    if resolved is None:
+        console.print(f"[red]No meta.json found under[/] {run_dir}")
+        console.print(f"[dim]Searched: {[str(c) for c in search]}[/dim]")
+        raise typer.Exit(code=1)
+
+    meta = __import__("json").loads((resolved / "meta.json").read_text(encoding="utf-8"))
+    console.rule(f"[bold magenta]TW2K-AI Replay — {meta.get('run_id', resolved.name)}")
+    console.print(f"[magenta]Run dir:[/] {resolved}")
+    console.print(
+        f"[magenta]Seed:[/] {meta['config']['seed']}  "
+        f"[magenta]Sectors:[/] {meta['config']['universe_size']}  "
+        f"[magenta]Max days:[/] {meta['config']['max_days']}"
+    )
+    console.print(f"[magenta]Agents:[/] {len(meta.get('agents', []))}  [magenta]Speed:[/] {speed}x")
+    console.print(f"[magenta]Open:[/] http://{host}:{port}")
+    console.rule()
+
+    application = create_replay_app(resolved, speed=speed)
     uvicorn.run(application, host=host, port=port, log_level="info")
 
 
@@ -154,6 +280,7 @@ def sim(
         universe.players[pid] = p
         universe.sectors[1].occupant_ids.append(pid)
         p.known_sectors.add(1)
+        p.known_warps[1] = list(universe.sectors[1].warps)
         agents.append(HeuristicAgent(pid, p.name))
 
     async def loop():

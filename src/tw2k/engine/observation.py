@@ -200,12 +200,36 @@ class Observation(BaseModel):
     # Port intel database (persistent across turns)
     known_ports: list[dict[str, Any]]
 
-    # Last N trades this player executed (capped at 5 in the observation —
-    # full 50-entry ledger lives on the Player). Each entry carries the
-    # post-haggle unit price AND the realized profit on sells so the
-    # agent can answer "what did my loop actually earn me?" without
-    # reconstructing from the rolling global event feed.
+    # Warp graph for every sector the agent has VISITED, SCANNED, or PROBED.
+    # Key is the source sector_id (as a string for JSON safety in LLM
+    # payloads — Python ints round-trip fine but some model providers
+    # normalize dict keys), value is the list of sector_ids that sector's
+    # warps go to. This is the single most important piece of navigational
+    # memory: without it, a 12-event horizon means an LLM that entered
+    # sector 406 three turns ago and learned "warps_out = [475]" cannot
+    # remember that fact when planning this turn's move. Result: deadloops.
+    # Data only grows; sector warps are static in this engine.
+    known_warps: dict[str, list[int]] = Field(default_factory=dict)
+
+    # Last N trades this player executed. Observation carries the last 25
+    # (engine stores 50 on the Player). 5 was too short to see haggle
+    # patterns on a 300-tick/day match — by trade 6 the earliest haggle
+    # failures scroll out and the agent can't tell its "asked +30%" was
+    # being rejected 80% of the time.
     trade_log: list[dict[str, Any]] = Field(default_factory=list)
+
+    # Rolling aggregate of trade_log so the agent has one number per thing
+    # it should track: total_trades, total_profit (cr), avg_margin (%),
+    # haggle_win_rate (%), best_pair / worst_pair (port-class tuples with
+    # their realized profit). Keeps the LLM from having to do arithmetic
+    # over 25 json rows to answer "is this pair actually earning?"
+    trade_summary: dict[str, Any] = Field(default_factory=dict)
+
+    # Grouped recent-failure counter: same (kind, target) pairs that
+    # failed >=2 times in the last ~40 events are surfaced here so the
+    # LLM can explicitly see "I tried warp 406->712 four times, all
+    # blocked — STOP trying." Fixes the Grok 406-475 deadloop class.
+    recent_failures: list[dict[str, Any]] = Field(default_factory=list)
 
     # Other players — corp mates show full state, others show last-known summary
     other_players: list[dict[str, Any]]
@@ -235,7 +259,7 @@ class Observation(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def build_observation(universe: Universe, player_id: str, event_history: int = 20) -> Observation:
+def build_observation(universe: Universe, player_id: str, event_history: int = 40) -> Observation:
     player = universe.players[player_id]
     sector = universe.sectors[player.sector_id]
 
@@ -437,7 +461,10 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 2
         sector=sector_info,
         adjacent=adjacent,
         known_ports=known_ports,
-        trade_log=list(getattr(player, "trade_log", []) or [])[-5:],
+        known_warps={str(sid): list(warps) for sid, warps in (player.known_warps or {}).items()},
+        trade_log=list(getattr(player, "trade_log", []) or [])[-25:],
+        trade_summary=_summarize_trade_log(getattr(player, "trade_log", []) or []),
+        recent_failures=_aggregate_recent_failures(universe, player_id),
         other_players=others,
         inbox=list(player.inbox[-40:]),
         recent_events=recent_events,
@@ -562,6 +589,153 @@ _FEDSPACE_CACHE: set[int] | None = None
 def _fedspace_set(universe: Universe) -> set[int]:
     from . import constants as K
     return K.FEDSPACE_SECTORS
+
+
+def _summarize_trade_log(trade_log: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate the full (up to 50-entry) trade ledger into a single row
+    the LLM can read in one glance.
+
+    Why: the 25-entry `trade_log` slice still requires the agent to do
+    mental arithmetic to answer "am I actually making money on this
+    loop?" Providing total_profit, avg_margin, and haggle_win_rate as
+    precomputed numbers frees the LLM to focus on strategy rather than
+    pretending to be a spreadsheet.
+
+    Fields:
+      total_trades       : int — total number of trade events (buys+sells)
+      sells              : int — subset that were sells (realized_profit != None)
+      total_profit_cr    : int — sum of realized_profit across all sells
+      avg_margin_pct     : float — mean of (realized_profit / unit_basis * 100) over sells
+      haggle_win_rate_pct: float — % of trades where the note is NOT "haggle countered"
+      best_pair          : {commodity, total_profit_cr, n_trades} | None
+      worst_pair         : {commodity, total_profit_cr, n_trades} | None
+    """
+    if not trade_log:
+        return {
+            "total_trades": 0,
+            "sells": 0,
+            "total_profit_cr": 0,
+            "avg_margin_pct": 0.0,
+            "haggle_win_rate_pct": 0.0,
+            "best_pair": None,
+            "worst_pair": None,
+        }
+
+    total = len(trade_log)
+    sells = [t for t in trade_log if t.get("side") == "sell" and t.get("realized_profit") is not None]
+    total_profit = sum(int(t.get("realized_profit") or 0) for t in sells)
+
+    # Margin % per sell — realized_profit / (unit * qty - realized_profit)
+    # is the cost-basis total; (realized_profit / cost_basis) is the margin.
+    # Skip entries with zero cost_basis (shouldn't happen for a real sell).
+    margins: list[float] = []
+    for t in sells:
+        unit = int(t.get("unit") or 0)
+        qty = int(t.get("qty") or 0)
+        gross = unit * qty
+        profit = int(t.get("realized_profit") or 0)
+        cost_basis = gross - profit
+        if cost_basis > 0:
+            margins.append(100.0 * profit / cost_basis)
+    avg_margin = sum(margins) / len(margins) if margins else 0.0
+
+    # Haggle win rate — note is "haggle countered" when the port rejected
+    # our ask and settled at list. Any other note (or empty) means the
+    # haggle either wasn't attempted or was accepted.
+    haggle_losses = sum(
+        1 for t in trade_log
+        if "haggle countered" in str(t.get("note") or "").lower()
+    )
+    haggle_rate = 100.0 * (total - haggle_losses) / total if total else 0.0
+
+    # Best / worst pair by commodity (crude but actionable).
+    by_commodity: dict[str, dict[str, int]] = {}
+    for t in sells:
+        c = str(t.get("commodity") or "?")
+        row = by_commodity.setdefault(c, {"total_profit_cr": 0, "n_trades": 0})
+        row["total_profit_cr"] += int(t.get("realized_profit") or 0)
+        row["n_trades"] += 1
+    best_pair: dict[str, Any] | None = None
+    worst_pair: dict[str, Any] | None = None
+    if by_commodity:
+        best_key = max(by_commodity, key=lambda k: by_commodity[k]["total_profit_cr"])
+        worst_key = min(by_commodity, key=lambda k: by_commodity[k]["total_profit_cr"])
+        best_pair = {"commodity": best_key, **by_commodity[best_key]}
+        worst_pair = {"commodity": worst_key, **by_commodity[worst_key]}
+
+    return {
+        "total_trades": total,
+        "sells": len(sells),
+        "total_profit_cr": total_profit,
+        "avg_margin_pct": round(avg_margin, 1),
+        "haggle_win_rate_pct": round(haggle_rate, 1),
+        "best_pair": best_pair,
+        "worst_pair": worst_pair,
+    }
+
+
+def _aggregate_recent_failures(
+    universe: Universe, player_id: str, lookback: int = 40
+) -> list[dict[str, Any]]:
+    """Group the player's recent failure events by (kind, target) and
+    surface any group seen >= 2 times.
+
+    This is the direct fix for the "Grok tried warp 406->712 four times
+    in a row" pathology. The _recent_self_error helper already surfaces
+    the MOST RECENT failure in the action_hint, but that doesn't help
+    an agent that's been failing the SAME action repeatedly — it just
+    keeps seeing the same error text and keeps retrying.
+
+    Target extraction:
+      - warp_blocked / autopilot  -> payload.target  (target sector_id)
+      - trade_failed              -> payload.commodity + payload.side
+      - agent_error               -> payload.kind    (attempted verb)
+    """
+    try:
+        from .models import EventKind as E
+    except Exception:
+        return []
+
+    fail_kinds: set = {E.WARP_BLOCKED, E.TRADE_FAILED, E.AGENT_ERROR}
+
+    events = getattr(universe, "events", None) or []
+    buckets: dict[tuple, dict[str, Any]] = {}
+    # Walk backwards over the tail; only count events where this player
+    # is the actor, and give up once we've considered `lookback` events.
+    considered = 0
+    for ev in reversed(events):
+        if considered >= lookback:
+            break
+        considered += 1
+        if ev.actor_id != player_id:
+            continue
+        if ev.kind not in fail_kinds:
+            continue
+        payload = ev.payload or {}
+        if ev.kind == E.WARP_BLOCKED:
+            key = ("warp_blocked", payload.get("target"))
+            label = f"warp → {payload.get('target')}"
+        elif ev.kind == E.TRADE_FAILED:
+            key = ("trade_failed", payload.get("commodity"), payload.get("side"))
+            label = f"trade {payload.get('side')} {payload.get('commodity')}"
+        else:  # AGENT_ERROR
+            key = ("agent_error", payload.get("kind"))
+            label = f"{payload.get('kind') or 'unknown'} rejected"
+
+        row = buckets.setdefault(key, {
+            "kind": ev.kind.value,
+            "target_label": label,
+            "count": 0,
+            "last_summary": ev.summary or "",
+            "last_day": ev.day,
+            "last_tick": ev.tick,
+        })
+        row["count"] += 1
+
+    # Only surface groups with >=2 hits, sorted descending by count.
+    out = [row for row in buckets.values() if row["count"] >= 2]
+    out.sort(key=lambda r: (-r["count"], -r["last_tick"]))
+    return out
 
 
 def _action_hint(
@@ -1034,6 +1208,21 @@ def _action_hint(
         err = _recent_self_error(universe, player.id)
         if err:
             hints.append(f"YOUR LAST ACTION FAILED: {err} — change approach this turn.")
+
+        # Grouped-failure counter — anything attempted >=2 times and still
+        # failing is almost certainly a dead end. Surface the counts so
+        # the LLM cannot pretend it hasn't tried yet. This is the
+        # specific fix for the Grok 406-475 deadloop class: 4x
+        # warp_blocked on same target should STOP retries, not invite
+        # attempt #5.
+        failures = _aggregate_recent_failures(universe, player.id)
+        if failures:
+            top = failures[:3]
+            parts = [f"{f['target_label']} x{f['count']}" for f in top]
+            hints.append(
+                "REPEATED FAILURES (stop retrying — try a different target): "
+                + ", ".join(parts)
+            )
 
     return " | ".join(hints)
 

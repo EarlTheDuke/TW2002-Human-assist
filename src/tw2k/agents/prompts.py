@@ -62,14 +62,36 @@ The observation contains everything you need. Stop guessing from memory:
   self.ship.cargo_value_at_cost — qty * avg, so you see your unrealized risk
   self.ship.fighters/shields/holds/cargo_free/genesis/photon_missiles/ether_probes
   self.credits / self.net_worth / self.alignment / self.rank / self.experience
-  known_ports[*]           — every port you've visited, with live buy/sell prices,
+  known_ports_top          — every port you've visited, with live buy/sell prices,
                              stock levels, AND `age_days` — intel older than 2
                              days is likely stale, re-scan before committing
-  trade_log (last 5)       — your own recent trades with realized_profit on sells
+  known_warps              — { "<sector_id>": [warps_out,...] } for every sector
+                             you've VISITED, SCANNED, or PROBED. THIS IS YOUR
+                             MAP — consult it before every warp/plot_course.
+                             To find a path from A to B: check known_warps[A]
+                             for neighbors whose known_warps list contains B.
+                             If A's neighbors aren't in your known_warps yet,
+                             you need to scan them (warp in, then scan).
+  trade_log (last 25)      — your own recent trades with realized_profit on sells
                              (can be negative — you dumped below cost basis!)
+                             Each entry's `note` says "haggle countered" when
+                             the port rejected your ask and auto-settled at list.
+  trade_summary            — one-line roll-up: total_profit_cr, avg_margin_pct,
+                             haggle_win_rate_pct, best_pair/worst_pair. Read
+                             this BEFORE starting another round-trip on the
+                             same commodity — if haggle_win_rate < 30% your
+                             asks are too aggressive; if best_pair profit <
+                             worst_pair profit, your plan is losing money.
+  recent_failures          — grouped (kind, target) pairs you attempted and
+                             FAILED >= 2 times in the last ~40 events. If a
+                             row shows `warp -> 712 x4` your path to 712
+                             DOES NOT EXIST from here — try a different
+                             intermediate sector or give up on 712.
   action_hint              — starts with YOUR GOALS, then a "P&L at this port"
                              line showing expected realized profit on cargo the
-                             current port will buy. USE THIS before you sell.
+                             current port will buy. Includes a REPEATED FAILURES
+                             line listing any (kind, target) attempted >=2x
+                             lately. USE THIS before you sell OR warp.
 
 Before every sell, check cost basis: if the port bids < cargo_cost_avg, DO NOT
 sell at list price — haggle up or warp to a better buyer. Selling at a loss
@@ -446,12 +468,34 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
         "corp": obs.corp,
         "inbox": obs.inbox[-10:],
         "known_ports_top": _top_known_ports(obs, limit=15),
-        # Last 5 trades the player executed. `realized_profit` is None on
-        # buys and an int (can be negative) on sells. This is what the
-        # system prompt teaches the agent to audit against their cost
-        # basis before committing to another round-trip on the same pair.
-        "trade_log": obs.trade_log[-5:],
-        "recent_events": obs.recent_events[-12:],
+        # Warp graph the agent has observed so far — key is source sector,
+        # value is list of direct-warp destinations. This is the
+        # navigational memory that ends 406-475-style deadloops: with
+        # it, plotting a course out of a two-sector pair just means
+        # looking up "which of known_warps[my_sector] goes to a sector
+        # whose warps contain what I want to reach?" The agent can do
+        # that in one reasoning step; without the graph it gets stuck.
+        "known_warps": obs.known_warps,
+        # Last 25 trades — bumped from 5 so haggle patterns over a full
+        # day are visible to the agent. Each entry includes
+        # realized_profit (sells only) + note ("haggle countered" means
+        # the port rejected our ask and auto-settled at list).
+        "trade_log": obs.trade_log[-25:],
+        # One-row roll-up of the trade log so the agent doesn't have to
+        # re-compute "am I actually making money?" from 25 rows every
+        # turn. See observation.py::_summarize_trade_log for schema.
+        "trade_summary": obs.trade_summary,
+        # Grouped recent-failure counter — any (kind, target) pair the
+        # agent attempted and failed >=2 times in the last ~40 events.
+        # Used in tandem with action_hint's REPEATED FAILURES line to
+        # break retry loops.
+        "recent_failures": obs.recent_failures,
+        # Recent events bumped 12 → 30: 12 covered ~6 real actions on a
+        # 300-tick day because every action emits 2-3 events
+        # (agent_thought + action + side-effects). 30 covers ~14 actions
+        # which is roughly half a day — enough to see "I've been warping
+        # in circles" without having to rely on the scratchpad alone.
+        "recent_events": obs.recent_events[-30:],
         "action_hint": obs.action_hint,
     }
     return json.dumps(payload, separators=(",", ":") if compact else (", ", ": "))

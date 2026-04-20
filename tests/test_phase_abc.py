@@ -967,7 +967,10 @@ class TestPhaseFCostBasis:
         from tw2k.engine.observation import build_observation
 
         u, (a, *_) = _make_universe(seed=2033)
-        for i in range(8):
+        # Observation cap is 25 (bumped from 5 on 2026-04-19 so haggle
+        # patterns over a full 300-tick day are visible). Still a
+        # bounded slice of the 50-entry Player ledger.
+        for i in range(30):
             a.trade_log.append({
                 "day": 1, "tick": i, "sector_id": 7,
                 "commodity": "organics", "qty": 10, "side": "sell" if i % 2 else "buy",
@@ -975,8 +978,8 @@ class TestPhaseFCostBasis:
                 "realized_profit": 25 if i % 2 else None,
             })
         obs = build_observation(u, "A")
-        assert len(obs.trade_log) == 5, "observation should cap to last 5"
-        assert obs.trade_log[-1]["tick"] == 7, "newest entry last"
+        assert len(obs.trade_log) == 25, "observation should cap to last 25"
+        assert obs.trade_log[-1]["tick"] == 29, "newest entry last"
 
     def test_f7_build_default_spec_threads_turns_per_day(self):
         """Regression: `tw2k serve --turns-per-day 80` must reach
@@ -1042,15 +1045,17 @@ class TestPhaseGObservationSurface:
         assert payload["goals"]["long"] == "Citadel L2 by day 3"
 
     def test_g2_user_message_has_trade_log(self):
-        """trade_log (last 5) must reach the LLM. Prompt §OBSERVATION
-        FIELDS teaches agents to self-audit off this list."""
+        """trade_log (last 25) must reach the LLM. Prompt §OBSERVATION
+        FIELDS teaches agents to self-audit off this list. Cap bumped
+        from 5 on 2026-04-19 because 5 trades is <1 full day of trading
+        at 300 tpd — haggle patterns were invisible to the agent."""
         import json as _json
 
         from tw2k.agents.prompts import format_observation
         from tw2k.engine.observation import build_observation
 
         u, (a, *_) = _make_universe(seed=3102)
-        for i in range(7):
+        for i in range(30):
             a.trade_log.append({
                 "day": 1, "tick": i, "sector_id": 7,
                 "commodity": "organics", "qty": 10,
@@ -1061,8 +1066,12 @@ class TestPhaseGObservationSurface:
         obs = build_observation(u, "A")
         payload = _json.loads(format_observation(obs))
         assert "trade_log" in payload, "trade_log must be a top-level key"
-        assert len(payload["trade_log"]) == 5
-        assert payload["trade_log"][-1]["tick"] == 6, "newest last"
+        assert len(payload["trade_log"]) == 25
+        assert payload["trade_log"][-1]["tick"] == 29, "newest last"
+        # The companion aggregate must ship so the LLM doesn't have to
+        # re-compute totals from the 25 rows every turn.
+        assert "trade_summary" in payload
+        assert payload["trade_summary"]["total_trades"] == 30
 
     def test_g3_user_message_has_owned_planets(self):
         """owned_planets must ship. Without it, a multi-planet commander

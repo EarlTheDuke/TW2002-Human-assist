@@ -1,11 +1,27 @@
-"""Match runner — owns the game loop and streams events to subscribers."""
+"""Match runner — owns the game loop and streams events to subscribers.
+
+Also owns the per-match save writer (Phase 6). Every live match persists:
+
+    saves/<run-id>/meta.json     — seed, config, agent specs, start time
+    saves/<run-id>/actions.jsonl — every submitted Action + day_tick markers
+    saves/<run-id>/events.jsonl  — every emitted Event (analysis/debug)
+
+The actions log is authoritative for `tw2k replay` — because the engine is
+deterministic given (seed, action sequence), re-executing actions.jsonl
+on a fresh Universe reconstructs state bit-for-bit. The events log is
+kept alongside for offline analysis and because it's free once we're
+flushing events through the broadcaster anyway.
+"""
 
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 
 from ..agents.base import BaseAgent
 from ..engine import (
@@ -21,6 +37,22 @@ from ..engine import (
 )
 from ..engine.models import Player, Ship
 from .broadcaster import Broadcaster
+
+
+def _default_saves_root() -> Path:
+    """Where `tw2k serve` drops saves/<run-id>/ dirs.
+
+    Defaults to `<repo-root>/saves` so `tw2k replay saves/<id>` just works
+    from the project checkout. Can be overridden with the TW2K_SAVES_DIR
+    env var (absolute or relative; relative resolves against CWD).
+    """
+    import os
+
+    override = os.environ.get("TW2K_SAVES_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+    # Repo-root heuristic: src/tw2k/server/runner.py → up 4 = repo root.
+    return Path(__file__).resolve().parents[3] / "saves"
 
 # Distinct colors for players on the map
 AGENT_COLORS = [
@@ -84,9 +116,14 @@ class RunnerState:
     agents: list[BaseAgent] = field(default_factory=list)
     current_player_idx: int = 0
     started_at: float = 0.0
-    status: str = "idle"  # idle, running, paused, finished, error
+    status: str = "idle"  # idle, running, paused, finished, error, replaying
     last_error: str = ""
     speed_multiplier: float = 1.0
+    # Save sink — set by MatchRunner.start() for live matches. Unset (None)
+    # for ReplayRunner and for any future headless runner that doesn't want
+    # a save trail. The replay CLI uses this same directory layout in reverse.
+    save_dir: Path | None = None
+    run_id: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +139,7 @@ class MatchRunner:
     # agents; 240 samples covers the last several in-game days.
     HISTORY_MAX_SAMPLES = 240
 
-    def __init__(self, broadcaster: Broadcaster):
+    def __init__(self, broadcaster: Broadcaster, saves_root: Path | None = None):
         self.broadcaster = broadcaster
         self.state = RunnerState()
         self._spec: MatchSpec | None = None
@@ -114,6 +151,12 @@ class MatchRunner:
         # fighters, experience, alignment, sector_id). Populated by
         # _record_history_sample() on every round-robin rollover.
         self._history: dict[str, deque] = {}
+        # Phase 6: save sink wiring. `saves_root` is the parent dir; each
+        # match gets its own run-id subdir written there. `_actions_fp`
+        # and `_events_fp` are opened/closed in start()/stop() respectively.
+        self._saves_root: Path = saves_root or _default_saves_root()
+        self._actions_fp = None  # type: ignore[assignment]
+        self._events_fp = None  # type: ignore[assignment]
 
     # ---------------- lifecycle ---------------- #
 
@@ -127,10 +170,12 @@ class MatchRunner:
         self._last_published_seq = 0
         self._history = {}
         self.broadcaster.reset_history()
+        self._open_save_sink(spec)
         self._task = asyncio.create_task(self._run(), name="tw2k-match")
 
     async def stop(self) -> None:
         if self._task is None:
+            self._close_save_sink()
             return
         self._stop.set()
         self._pause.set()
@@ -145,6 +190,108 @@ class MatchRunner:
             except Exception:
                 pass
         self._task = None
+        self._close_save_sink()
+
+    # ---------------- save sink (Phase 6) ---------------- #
+
+    def _open_save_sink(self, spec: MatchSpec) -> None:
+        """Create saves/<run-id>/ and open append-mode writers.
+
+        Run-id is `YYYYMMDD-HHMMSS-seed<N>` which sorts well and encodes
+        both when and what. Meta.json is written eagerly so a crash before
+        any action still leaves enough to re-open the run manifest.
+        """
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        run_id = f"{ts}-seed{spec.config.seed}"
+        save_dir = self._saves_root / run_id
+        try:
+            save_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            # Disk full / permission denied shouldn't kill the match.
+            # Fall through to no-save mode.
+            self.state.last_error = f"save dir create failed: {exc}"
+            return
+        meta = {
+            "run_id": run_id,
+            "started_at": time.time(),
+            "started_at_iso": datetime.now().isoformat(timespec="seconds"),
+            "config": spec.config.model_dump(),
+            "agents": [
+                {
+                    "player_id": a.player_id,
+                    "name": a.name,
+                    "kind": a.kind,
+                    "provider": a.provider,
+                    "model": a.model,
+                }
+                for a in spec.agents
+            ],
+            "action_delay_s": spec.action_delay_s,
+            "schema_version": 1,
+        }
+        try:
+            (save_dir / "meta.json").write_text(
+                json.dumps(meta, indent=2, default=str), encoding="utf-8"
+            )
+            self._actions_fp = (save_dir / "actions.jsonl").open(
+                "a", encoding="utf-8", buffering=1  # line-buffered
+            )
+            self._events_fp = (save_dir / "events.jsonl").open(
+                "a", encoding="utf-8", buffering=1
+            )
+            self.state.save_dir = save_dir
+            self.state.run_id = run_id
+        except OSError as exc:
+            self.state.last_error = f"save file open failed: {exc}"
+            self._close_save_sink()
+
+    def _close_save_sink(self) -> None:
+        for fp in (self._actions_fp, self._events_fp):
+            if fp is not None:
+                try:
+                    fp.flush()
+                    fp.close()
+                except OSError:
+                    pass
+        self._actions_fp = None
+        self._events_fp = None
+
+    def _record_action(self, player_id: str, action, ok: bool, error: str) -> None:
+        """Append one line to actions.jsonl. No-op if save sink is absent."""
+        if self._actions_fp is None:
+            return
+        u = self.state.universe
+        rec = {
+            "kind": "action",
+            "t": time.time() - self.state.started_at,
+            "day": u.day if u is not None else 0,
+            "tick": u.tick if u is not None else 0,
+            "seq_before": getattr(self, "_last_published_seq", 0),
+            "player_id": player_id,
+            "action": action.model_dump(mode="json"),
+            "ok": ok,
+            "error": error,
+        }
+        try:
+            self._actions_fp.write(json.dumps(rec, default=str) + "\n")
+        except OSError:
+            pass
+
+    def _record_day_tick(self) -> None:
+        """Append a day_tick marker so replay knows when to call tick_day."""
+        if self._actions_fp is None:
+            return
+        u = self.state.universe
+        rec = {
+            "kind": "day_tick",
+            "t": time.time() - self.state.started_at,
+            "day": u.day if u is not None else 0,
+            "tick": u.tick if u is not None else 0,
+        }
+        try:
+            self._actions_fp.write(json.dumps(rec, default=str) + "\n")
+        except OSError:
+            pass
 
     def pause(self) -> None:
         self._pause.clear()
@@ -215,6 +362,7 @@ class MatchRunner:
                     )
                     if all_done:
                         tick_day(universe)
+                        self._record_day_tick()
                         await self._flush_events()
                         # brief pause between days for spectators
                         await self._sleep_scaled(1.0)
@@ -238,6 +386,12 @@ class MatchRunner:
                     continue
 
                 result = apply_action(universe, agent.player_id, action)
+                # Record the action (success or failure) to actions.jsonl so
+                # replay can re-execute the exact same submission sequence,
+                # including invalid ones the engine rejected. Invalid actions
+                # mutate alignment / trigger FED_RESPONSE on replay, so we
+                # MUST include them to stay bit-for-bit faithful.
+                self._record_action(agent.player_id, action, result.ok, result.error or "")
                 if not result.ok:
                     # Avoid duplicating detailed failure events. The engine already
                     # emits TRADE_FAILED for bad trades and WARP_BLOCKED for bad
@@ -384,6 +538,9 @@ class MatchRunner:
             # removes the awkward "scan FedSpace first" opening move.
             player.known_sectors.add(start_sid)
             sector = universe.sectors[start_sid]
+            # Seed the warp graph for the start sector so the LLM has
+            # navigational memory from turn 1 without having to scan.
+            player.known_warps[start_sid] = list(sector.warps)
             if sector.port is not None:
                 player.known_ports[start_sid] = {
                     "class": sector.port.code,
@@ -541,7 +698,12 @@ class MatchRunner:
         })
 
     async def _flush_events(self) -> None:
-        """Publish any Events appended to the universe since last flush."""
+        """Publish any Events appended to the universe since last flush.
+
+        Also mirrors each event to `events.jsonl` so the saves dir doubles as
+        an offline feed/log viewer target. Writing here (not inside apply_action)
+        keeps the engine pure and lets ReplayRunner reuse the same flush path.
+        """
         assert self.state.universe is not None
         u = self.state.universe
         last_published = getattr(self, "_last_published_seq", 0)
@@ -555,6 +717,13 @@ class MatchRunner:
                 "state_patch": self._state_patch_for(ev),
             })
             self._last_published_seq = ev.seq
+            if self._events_fp is not None:
+                try:
+                    self._events_fp.write(
+                        json.dumps(ev.model_dump(mode="json"), default=str) + "\n"
+                    )
+                except OSError:
+                    pass
 
     def _state_patch_for(self, ev) -> dict:
         """Produce a minimal state delta hint so the UI can update without rebuilding."""

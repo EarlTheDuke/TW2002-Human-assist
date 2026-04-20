@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from ..agents.llm import default_provider
 from ..engine import GameConfig
 from .broadcaster import Broadcaster
+from .replay import ReplayRunner
 from .runner import AgentSpec, MatchRunner, MatchSpec
 
 
@@ -43,6 +44,8 @@ def create_app(
     auto_start: bool = True,
     turns_per_day: int | None = None,
     starting_credits: int | None = None,
+    agent_overrides: list[dict] | None = None,
+    action_delay_s: float | None = None,
 ) -> FastAPI:
     broadcaster = Broadcaster()
     runner = MatchRunner(broadcaster)
@@ -63,6 +66,8 @@ def create_app(
                 num_agents=num_agents,
                 turns_per_day=turns_per_day,
                 starting_credits=starting_credits,
+                agent_overrides=agent_overrides,
+                action_delay_s=action_delay_s,
             )
             await runner.start(spec)
         yield
@@ -144,7 +149,8 @@ def create_app(
             # `provider`, `model`, `name`, `kind`. Slot N in the list maps to
             # player PN+1. Missing slots fall back to the global provider/model.
             # This is the hook for multi-model matches (e.g., Grok vs Claude).
-            agent_overrides=body.get("agents"),
+            agent_overrides=body.get("agents", agent_overrides),
+            action_delay_s=(float(body["action_delay_s"]) if "action_delay_s" in body else action_delay_s),
         )
         await runner.start(spec)
         return {"status": runner.state.status}
@@ -200,6 +206,7 @@ def _build_default_spec(
     turns_per_day: int | None = None,
     starting_credits: int | None = None,
     agent_overrides: list[dict] | None = None,
+    action_delay_s: float | None = None,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -220,6 +227,8 @@ def _build_default_spec(
         cfg_kwargs["turns_per_day"] = turns_per_day
     if starting_credits is not None:
         cfg_kwargs["starting_credits"] = starting_credits
+    if action_delay_s is not None:
+        cfg_kwargs["action_delay_s"] = action_delay_s
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each
@@ -251,3 +260,122 @@ def _default_agent_names(n: int) -> list[str]:
         "Baron Solari", "Lady Ferrix", "Ace Thorne", "Orion Duskwright",
     ]
     return pool[:max(n, 2)]
+
+
+def create_replay_app(replay_dir: Path, *, speed: float = 1.0) -> FastAPI:
+    """Return a spectator-UI app wired to replay a saved run-dir.
+
+    The UI is byte-identical to the live spectator; only the runner
+    differs. `/control/restart` is disabled in replay mode because
+    there's nothing to start — you'd want `tw2k replay <other-dir>` for
+    a different match.
+    """
+    broadcaster = Broadcaster()
+    runner = ReplayRunner(broadcaster, replay_dir)
+    runner.set_speed(speed)
+
+    web_root = _web_root()
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        await runner.start()
+        yield
+        await runner.stop()
+
+    app = FastAPI(title=f"TW2K-AI Replay · {replay_dir.name}", version="0.1.0", lifespan=lifespan)
+    app.mount("/static", StaticFiles(directory=str(web_root)), name="static")
+
+    @app.get("/", response_class=HTMLResponse)
+    async def index() -> HTMLResponse:
+        html = (web_root / "index.html").read_text(encoding="utf-8")
+        try:
+            js_v = int((web_root / "app.js").stat().st_mtime)
+            css_v = int((web_root / "style.css").stat().st_mtime)
+        except OSError:
+            js_v = css_v = 0
+        html = html.replace("/static/app.js", f"/static/app.js?v={js_v}")
+        html = html.replace("/static/style.css", f"/static/style.css?v={css_v}")
+        return HTMLResponse(
+            html,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
+    @app.get("/state")
+    async def state() -> dict[str, Any]:
+        snap = runner.snapshot()
+        snap["mode"] = "replay"
+        snap["run_id"] = runner.state.run_id
+        return snap
+
+    @app.get("/events")
+    async def events(since: int = 0, limit: int = 200) -> dict[str, Any]:
+        return {"events": runner.recent_events(since=since, limit=limit)}
+
+    @app.get("/history")
+    async def history(limit: int = 120) -> dict[str, Any]:
+        return runner.history_snapshot(limit=limit)
+
+    @app.post("/control/pause")
+    async def pause() -> dict[str, Any]:
+        runner.pause()
+        return {"status": runner.state.status}
+
+    @app.post("/control/resume")
+    async def resume() -> dict[str, Any]:
+        runner.resume()
+        return {"status": runner.state.status}
+
+    @app.post("/control/speed")
+    async def speed_route(body: dict[str, Any]) -> dict[str, Any]:
+        runner.set_speed(float(body.get("multiplier", 1.0)))
+        return {"speed": runner.state.speed_multiplier}
+
+    @app.post("/control/restart")
+    async def restart_disabled() -> dict[str, Any]:
+        # Replay mode: restart would need a fresh match spec. Surface
+        # a clear error instead of silently re-running the same log.
+        return {
+            "status": "unsupported",
+            "error": "restart is disabled in replay mode — use `tw2k replay <dir>` for a different run",
+        }
+
+    @app.websocket("/ws")
+    async def ws(sock: WebSocket) -> None:
+        await sock.accept()
+        queue = await broadcaster.subscribe()
+        try:
+            await sock.send_text(
+                json.dumps({"type": "snapshot", "snapshot": runner.snapshot()}, default=str)
+            )
+        except Exception:
+            await broadcaster.unsubscribe(queue)
+            return
+
+        async def pump() -> None:
+            try:
+                while True:
+                    msg = await queue.get()
+                    await sock.send_text(msg)
+            except (WebSocketDisconnect, asyncio.CancelledError):
+                pass
+            except Exception:
+                pass
+
+        task = asyncio.create_task(pump())
+        try:
+            while True:
+                try:
+                    msg = await sock.receive_text()
+                    if msg == "ping":
+                        await sock.send_text("pong")
+                except WebSocketDisconnect:
+                    break
+        finally:
+            task.cancel()
+            await broadcaster.unsubscribe(queue)
+
+    return app

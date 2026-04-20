@@ -14,7 +14,15 @@ from collections.abc import Callable
 
 from . import constants as K
 from .actions import Action, ActionKind, ActionResult
+from .combat import (
+    _are_allied,
+    _attach_limpet,
+    _destroy_ship,
+    _resolve_fighter_sector_combat,
+    _resolve_ship_combat,
+)
 from .economy import execute_trade, regenerate_ports
+from .ferrengi import _ferrengi_by_name, _ferrengi_roam_and_hunt, _spawn_ferrengi
 from .models import (
     Alliance,
     Commodity,
@@ -22,7 +30,6 @@ from .models import (
     EventKind,
     FighterDeployment,
     FighterMode,
-    LimpetTrack,
     MineDeployment,
     MineType,
     Planet,
@@ -30,18 +37,62 @@ from .models import (
     PortClass,
     Universe,
 )
+from .planets import _advance_planets, _complete_citadels
+from .victory import (
+    _award_xp,
+    _check_victory,
+    _corp_treasury_share,
+    _planet_asset_value,
+    alignment_label,
+    check_victory,
+    full_net_worth,
+    rank_for,
+)
 
-# Per-universe PRNG. We attach it lazily to avoid touching models.
-_rngs: dict[int, random.Random] = {}
+# Public re-exports for callers that used to import these names from
+# `tw2k.engine.runner`. Keeps the Phase 6 runner-split backward-compatible
+# for server/runner.py, scripts/, tests/, and engine/observation.py.
+__all__ = [  # noqa: RUF022 — grouped by origin module, not alphabetized
+    "apply_action",
+    "is_finished",
+    "tick_day",
+    # Re-exported combat helpers
+    "_are_allied",
+    "_attach_limpet",
+    "_destroy_ship",
+    "_resolve_fighter_sector_combat",
+    "_resolve_ship_combat",
+    # Re-exported ferrengi
+    "_ferrengi_by_name",
+    "_ferrengi_roam_and_hunt",
+    "_spawn_ferrengi",
+    # Re-exported planet tick helpers
+    "_advance_planets",
+    "_complete_citadels",
+    # Re-exported victory / progression
+    "_award_xp",
+    "_check_victory",
+    "_corp_treasury_share",
+    "_planet_asset_value",
+    "alignment_label",
+    "check_victory",
+    "full_net_worth",
+    "rank_for",
+    # Local utilities kept in runner (still used by tests/callers)
+    "_bfs_path",
+    "_record_port_intel",
+    "_rng_for",
+]
 
 
 def _rng_for(universe: Universe) -> random.Random:
-    key = id(universe)
-    rng = _rngs.get(key)
-    if rng is None:
-        rng = random.Random(universe.config.seed * 7919 + 1)
-        _rngs[key] = rng
-    return rng
+    """Return the deterministic per-universe PRNG.
+
+    Thin back-compat shim over `Universe.rng` (which now holds the RNG as a
+    `PrivateAttr`, instance-scoped). Kept so any external/legacy code still
+    importing this name from `tw2k.engine.runner` continues to work.
+    """
+    return universe.rng
 
 
 # ---------------------------------------------------------------------------
@@ -139,168 +190,36 @@ def _truncate_for_feed(s: str, limit: int = 140) -> str:
     return s[: limit - 1] + "…"
 
 
+def _learn_sector(player, universe: Universe, sector_id: int) -> None:
+    """Record `sector_id` AND its warp edges in the player's persistent memory.
+
+    Every site that used to do `player.known_sectors.add(sid)` gets upgraded
+    to this helper so the `known_warps` graph stays in sync with the sector
+    set. Idempotent: re-visiting a known sector just overwrites the same
+    warp list with identical contents (sector warps are static).
+
+    Why it matters: without the warp graph, an LLM agent that visits
+    sector 406 and sees warps_out=[475] has no way to remember that fact
+    after the observation scrolls past the event. Agents deadloop because
+    the map they're trying to plan against lives only in the scratchpad
+    (if they remembered to write it there) or the last 12 events
+    (if the relevant warp intel hasn't aged out yet).
+    """
+    if sector_id not in universe.sectors:
+        return
+    player.known_sectors.add(sector_id)
+    sec = universe.sectors[sector_id]
+    # Copy to list to avoid sharing mutable state with the engine's sector
+    # warps, and to survive Pydantic round-trips on save/replay.
+    player.known_warps[sector_id] = list(sec.warps)
+
+
 def _warp_cost_for(player) -> int:
     """Per-ship turns/warp; falls back to global TURN_COST['warp']."""
     spec = K.SHIP_SPECS.get(player.ship.ship_class.value)
     if spec and "turns_per_warp" in spec:
         return int(spec["turns_per_warp"])
     return K.TURN_COST["warp"]
-
-
-def _are_allied(universe: Universe, a_id: str, b_id: str) -> bool:
-    """True if a and b are corp mates OR in the same active alliance."""
-    if a_id == b_id:
-        return True
-    a = universe.players.get(a_id)
-    b = universe.players.get(b_id)
-    if a is None or b is None:
-        return False
-    if a.corp_ticker is not None and a.corp_ticker == b.corp_ticker:
-        return True
-    for ally_id in a.alliances:
-        ally = universe.alliances.get(ally_id)
-        if ally is not None and ally.active and b_id in ally.member_ids:
-            return True
-    return False
-
-
-def _award_xp(universe: Universe, pid: str, key: str, multiplier: int = 1) -> None:
-    """Bump experience for the named achievement; safe no-op for unknown keys."""
-    amount = K.XP_AWARDS.get(key, 0) * multiplier
-    if amount <= 0:
-        return
-    p = universe.players.get(pid)
-    if p is None or not p.alive:
-        return
-    p.experience += amount
-
-
-def rank_for(experience: int) -> str:
-    name = "Civilian"
-    for thresh, label in K.RANK_TABLE:
-        if experience >= thresh:
-            name = label
-        else:
-            break
-    return name
-
-
-def alignment_label(alignment: int) -> str:
-    label = "Neutral"
-    for thresh, name in K.ALIGNMENT_TIERS:
-        if alignment >= thresh:
-            label = name
-        else:
-            break
-    return label
-
-
-def _planet_asset_value(planet) -> int:
-    """Value of a single owned planet, used in full_net_worth.
-
-    Breakdown:
-      * Citadel investment: the sum of all tier costs the player has
-        actually paid for to reach `citadel_level`. L1 alone is 5,000 cr;
-        L6 is 315,000 cr cumulative. This is sunk-cost valuation —
-        the player can't actually liquidate a citadel, but for
-        victory-scoring purposes it's the most defensible number.
-      * Colonist pools: every colonist (idle + productively assigned)
-        valued at K.COLONIST_PRICE. The agent paid that to acquire them
-        at Terra; ferrying them here didn't make them cheaper, if
-        anything it made them worth more because they now produce.
-      * Stockpile: commodity inventory at base prices.
-      * Treasury: raw credits sitting on-planet.
-      * Planet defense: fighters/shields at StarDock equivalent prices.
-    """
-    citadel_cost = 0
-    for tier_idx in range(planet.citadel_level):
-        if tier_idx < len(K.CITADEL_TIER_COST):
-            credit_cost, colonist_cost, _days = K.CITADEL_TIER_COST[tier_idx]
-            citadel_cost += credit_cost
-            # Colonists consumed by the citadel build are baked in at
-            # COLONIST_PRICE — same valuation as colonists in cargo or
-            # in the idle pool, keeps the math consistent.
-            citadel_cost += colonist_cost * K.COLONIST_PRICE
-
-    colonist_total = sum(planet.colonists.values()) if planet.colonists else 0
-    colonist_value = colonist_total * K.COLONIST_PRICE
-
-    stockpile_value = 0
-    if planet.stockpile:
-        for commodity, qty in planet.stockpile.items():
-            if qty <= 0:
-                continue
-            base = K.COMMODITY_BASE_PRICE.get(commodity.value, 0)
-            stockpile_value += qty * base
-
-    defense_value = planet.fighters * K.FIGHTER_COST + planet.shields * 10
-    return citadel_cost + colonist_value + stockpile_value + planet.treasury + defense_value
-
-
-def _corp_treasury_share(universe: Universe, player) -> int:
-    """Per-member share of the corp treasury, for net_worth attribution.
-
-    Corp treasury used to be orphaned value — credits got deposited and
-    never showed up in anyone's score. That made `corp_deposit` a
-    strictly-dominated action for non-CEO members (who can't withdraw).
-    Now every ALIVE member gets an equal share of the treasury credited
-    to their net worth. Eliminated members drop out so the share grows
-    as rivals die. Deposit still moves credits out of player.credits,
-    so you won't satisfy the economic-victory threshold by hoarding in
-    the treasury — but you WILL get credit for it under time net worth.
-    """
-    ticker = getattr(player, "corp_ticker", None)
-    if not ticker:
-        return 0
-    corp = universe.corporations.get(ticker)
-    if corp is None or corp.treasury <= 0:
-        return 0
-    alive_members = [
-        mid for mid in corp.member_ids
-        if mid in universe.players and universe.players[mid].alive
-    ]
-    if not alive_members or player.id not in alive_members:
-        return 0
-    return corp.treasury // len(alive_members)
-
-
-def full_net_worth(universe: Universe, player) -> int:
-    """Total net worth = ship-side (Player.net_worth) + all planet assets
-    + per-member share of corp treasury.
-
-    Every call site that has a universe reference (victory check,
-    observation build, server snapshot) should use this so the three
-    sources of "net worth" all agree. Without it, a commander who
-    ferries 3,000 colonists into a Citadel L1 planet sees their visible
-    net worth go DOWN by 30,000 cr (the credits they spent) while the
-    planet contribution reads zero — which is what caused
-    time_net_worth = 24.2k to misrepresent Captain Reyes's actual
-    value after deploying and building two planets.
-
-    Corp treasury is now split equally across alive members so that
-    `corp_deposit` isn't a strictly dominated action for non-CEOs —
-    see `_corp_treasury_share`.
-    """
-    total = player.net_worth
-    for planet in universe.planets.values():
-        if planet.owner_id == player.id:
-            total += _planet_asset_value(planet)
-    total += _corp_treasury_share(universe, player)
-    return total
-
-
-def _attach_limpet(universe: Universe, owner_id: str, target_id: str) -> None:
-    """Place a limpet so `owner_id` can later query `target_id`'s sector."""
-    key = f"{owner_id}:{target_id}"
-    target = universe.players.get(target_id)
-    if target is None:
-        return
-    universe.limpets[key] = LimpetTrack(
-        owner_id=owner_id,
-        target_id=target_id,
-        placed_sector=target.sector_id,
-        placed_day=universe.day,
-    )
 
 
 def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
@@ -404,7 +323,7 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
             pass
         player.sector_id = target_id
         dest.occupant_ids.append(pid)
-        player.known_sectors.add(target_id)
+        _learn_sector(player, universe, target_id)
         # Log port if present
         if dest.port is not None:
             _record_port_intel(player, dest.id, dest.port, universe=universe)
@@ -525,6 +444,11 @@ def _handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
     tier = (action.args.get("tier") or K.SCAN_TIER_BASIC).lower()
     if tier not in (K.SCAN_TIER_BASIC, K.SCAN_TIER_DENSITY, K.SCAN_TIER_HOLO):
         return ActionResult(ok=False, error=f"unknown scan tier {tier!r}")
+
+    # Scanning your current sector reveals its warp lanes — persist them
+    # into known_warps so the agent can plan routes turn after turn.
+    # Adjacent sectors' warps stay unknown (fog-of-war on topology).
+    _learn_sector(player, universe, sector.id)
 
     neigh_info: list[dict] = []
     if tier == K.SCAN_TIER_BASIC:
@@ -1616,7 +1540,10 @@ def _handle_probe(universe: Universe, pid: str, action: Action) -> ActionResult:
         "ferrengi_count": sum(1 for f in universe.ferrengi.values() if f.sector_id == target_id and f.alive),
     }
     player.probe_log[target_id] = {"day": universe.day, "tick": universe.tick, "intel": intel}
-    player.known_sectors.add(target_id)
+    # Probe reveals the target's warps_out → feed the warp graph too, not
+    # just the sector set. Otherwise the agent would see the probe intel
+    # in the short-lived event feed and lose the topology once it scrolls.
+    _learn_sector(player, universe, target_id)
     if sector.port is not None:
         _record_port_intel(player, target_id, sector.port, universe=universe)
 
@@ -1819,471 +1746,6 @@ _DISPATCH: dict[ActionKind, Callable] = {
 
 
 # ---------------------------------------------------------------------------
-# Combat helpers
-# ---------------------------------------------------------------------------
-
-
-def _resolve_fighter_sector_combat(
-    universe: Universe,
-    attacker_id: str,
-    sector_id: int,
-    incoming_fighters: int | None = None,
-    incoming_mode: FighterMode | None = None,
-) -> None:
-    """Attacker tries to displace the sector's fighter deployment."""
-    sector = universe.sectors[sector_id]
-    defender_dep = sector.fighters
-    if defender_dep is None:
-        return
-    attacker = universe.players[attacker_id]
-    attack_pool = incoming_fighters if incoming_fighters is not None else attacker.ship.fighters
-
-    defender_count = defender_dep.count
-    rng = _rng_for(universe)
-    # Stochastic duel — each side loses losses proportional to opposing pool
-    att_losses = min(attack_pool, int(defender_count * rng.uniform(0.8, 1.1)))
-    def_losses = min(defender_count, int(attack_pool * rng.uniform(0.8, 1.1)))
-
-    attack_pool -= att_losses
-    defender_count -= def_losses
-
-    if incoming_fighters is None:
-        attacker.ship.fighters = attack_pool
-
-    if defender_count <= 0:
-        sector.fighters = None
-        if attack_pool > 0 and incoming_fighters is not None:
-            sector.fighters = FighterDeployment(
-                owner_id=attacker_id,
-                count=attack_pool,
-                mode=incoming_mode or FighterMode.DEFENSIVE,
-            )
-    else:
-        defender_dep.count = defender_count
-
-    universe.emit(
-        EventKind.COMBAT,
-        actor_id=attacker_id,
-        sector_id=sector_id,
-        payload={
-            "vs": "fighter_sector",
-            "defender_owner": defender_dep.owner_id,
-            "attacker_losses": att_losses,
-            "defender_losses": def_losses,
-            "sector_claimed": defender_count <= 0,
-        },
-        summary=(
-            f"Fighter clash in {sector_id}: {attacker.name} lost {att_losses}, "
-            f"defenders lost {def_losses}"
-            + (" — SECTOR SEIZED" if defender_count <= 0 else "")
-        ),
-    )
-
-
-def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
-    rng = _rng_for(universe)
-    attacker = universe.players[attacker_id]
-    if hasattr(target, "alive") and not target.alive:
-        return
-
-    a_fighters = attacker.ship.fighters
-    a_shields = attacker.ship.shields
-    d_fighters = target.fighters if hasattr(target, "fighters") else target.ship.fighters
-    d_shields = getattr(target, "shields", None)
-    if d_shields is None:
-        d_shields = target.ship.shields
-
-    # Photon disable: fighters present but cannot fire OR absorb (offline).
-    a_disabled = getattr(attacker.ship, "photon_disabled_ticks", 0) > 0
-    d_disabled = (
-        hasattr(target, "ship")
-        and getattr(target.ship, "photon_disabled_ticks", 0) > 0
-    )
-    a_offense = 0 if a_disabled else a_fighters
-    d_offense = 0 if d_disabled else d_fighters
-
-    # 3 exchanges
-    for _ in range(3):
-        a_damage = int(a_offense * rng.uniform(0.8, 1.2))
-        d_damage = int(d_offense * rng.uniform(0.8, 1.2))
-
-        def apply(dmg: int, shields: int, fighters: int, disabled: bool) -> tuple[int, int]:
-            if disabled:
-                # Disabled fighters can't even absorb hits — they take losses raw,
-                # bypassing shields too (helpless target).
-                fighters = max(0, fighters - dmg)
-                return shields, fighters
-            absorbed = min(dmg, shields)
-            shields -= absorbed
-            dmg -= absorbed
-            fighters = max(0, fighters - dmg)
-            return shields, fighters
-
-        d_shields, d_fighters = apply(a_damage, d_shields, d_fighters, d_disabled)
-        a_shields, a_fighters = apply(d_damage, a_shields, a_fighters, a_disabled)
-        # After the first exchange the disable wears off (1 tick of vulnerability).
-        a_disabled = False
-        d_disabled = False
-        a_offense = a_fighters
-        d_offense = d_fighters
-        if d_fighters <= 0 or a_fighters <= 0:
-            break
-
-    attacker.ship.fighters = a_fighters
-    attacker.ship.shields = a_shields
-    if hasattr(target, "ship"):
-        target.ship.fighters = d_fighters
-        target.ship.shields = d_shields
-    else:
-        target.fighters = d_fighters
-        target.shields = d_shields
-
-    summary = (
-        f"Combat in {attacker.sector_id}: "
-        f"{attacker.name}[F{a_fighters} S{a_shields}] vs "
-        f"{getattr(target, 'name', 'target')}[F{d_fighters} S{d_shields}]"
-    )
-    universe.emit(
-        EventKind.COMBAT,
-        actor_id=attacker_id,
-        sector_id=attacker.sector_id,
-        payload={
-            "attacker": attacker_id,
-            "defender": getattr(target, "id", None),
-            "attacker_f": a_fighters, "attacker_s": a_shields,
-            "defender_f": d_fighters, "defender_s": d_shields,
-        },
-        summary=summary,
-    )
-
-    # Destruction check
-    if d_fighters <= 0:
-        if hasattr(target, "alive"):
-            # Ferrengi
-            target.alive = False
-            bounty = K.FERRENGI_BOUNTY_PER_AGG * target.aggression
-            attacker.credits += bounty
-            attacker.alignment += 10
-            _award_xp(universe, attacker_id, "kill_ferr", multiplier=target.aggression)
-            universe.emit(
-                EventKind.SHIP_DESTROYED,
-                actor_id=attacker_id,
-                sector_id=attacker.sector_id,
-                payload={"victim": target.id, "kind": "ferrengi", "bounty": bounty},
-                summary=f"{attacker.name} destroyed {target.name} (+{bounty}cr bounty)",
-            )
-        else:
-            _award_xp(universe, attacker_id, "kill_player")
-            _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id)
-    if a_fighters <= 0:
-        _destroy_ship(universe, attacker_id, reason="combat", killer_id=getattr(target, "id", None))
-
-
-def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | None = None) -> None:
-    player = universe.players[pid]
-    if not player.alive:
-        return
-
-    player.deaths += 1
-    # Eject pilot to StarDock, downgrade ship, lose 25 % credits.
-    try:
-        universe.sectors[player.sector_id].occupant_ids.remove(pid)
-    except ValueError:
-        pass
-    player.sector_id = K.STARDOCK_SECTOR
-    universe.sectors[K.STARDOCK_SECTOR].occupant_ids.append(pid)
-    player.ship.cargo = {c: 0 for c in player.ship.cargo}
-    from .models import ShipClass as SC
-    player.ship.ship_class = SC.MERCHANT_CRUISER
-    player.ship.holds = K.STARTING_HOLDS
-    player.ship.fighters = K.STARTING_FIGHTERS
-    player.ship.shields = 0
-    player.ship.photon_disabled_ticks = 0
-    player.ship.genesis = 0
-    player.ship.photon_missiles = 0
-    player.ship.ether_probes = 0
-    player.ship.mines = {MineType.ARMID: 0, MineType.LIMPET: 0, MineType.ATOMIC: 0}
-    player.credits = int(player.credits * 0.75)
-    player.planet_landed = None
-
-    universe.emit(
-        EventKind.SHIP_DESTROYED,
-        actor_id=killer_id,
-        sector_id=player.sector_id,
-        payload={"victim": pid, "reason": reason, "deaths": player.deaths},
-        summary=(
-            f"*** {player.name}'s ship destroyed ({reason}); "
-            f"ejected to StarDock [death #{player.deaths}/{K.MAX_DEATHS_BEFORE_ELIM}] ***"
-        ),
-    )
-
-    if player.deaths >= K.MAX_DEATHS_BEFORE_ELIM:
-        player.alive = False
-        # Drop them off the StarDock occupant list — they're out of the game.
-        try:
-            universe.sectors[K.STARDOCK_SECTOR].occupant_ids.remove(pid)
-        except ValueError:
-            pass
-        # Release any planets they owned solo, and emit a discrete
-        # planet_orphaned event for each — spectators and the UI need to
-        # see which specific planets are now unclaimed (the previous
-        # behavior silently cleared owner_id, leaving orphan citadels
-        # invisible on commander cards and in the event feed).
-        orphaned_ids: list[int] = []
-        for planet in universe.planets.values():
-            if planet.owner_id == pid and planet.corp_ticker is None:
-                planet.owner_id = None
-                orphaned_ids.append(planet.id)
-                universe.emit(
-                    EventKind.PLANET_ORPHANED,
-                    actor_id=pid,
-                    sector_id=planet.sector_id,
-                    payload={
-                        "planet_id": planet.id,
-                        "planet_name": planet.name,
-                        "former_owner": pid,
-                        "citadel_level": planet.citadel_level,
-                        "fighters": planet.fighters,
-                    },
-                    summary=(
-                        f"Planet {planet.name} (L{planet.citadel_level} citadel, "
-                        f"{planet.fighters} fighters) is now UNCLAIMED after "
-                        f"{player.name}'s elimination."
-                    ),
-                )
-        universe.emit(
-            EventKind.PLAYER_ELIMINATED,
-            actor_id=pid,
-            payload={
-                "killer": killer_id,
-                "deaths": player.deaths,
-                "orphaned_planets": orphaned_ids,
-            },
-            summary=f"!!! {player.name} ELIMINATED — {player.deaths} ship losses, removed from match !!!",
-        )
-
-
-# ---------------------------------------------------------------------------
-# Day-tick helpers
-# ---------------------------------------------------------------------------
-
-
-def _spawn_ferrengi(universe: Universe) -> None:
-    rng = _rng_for(universe)
-    from .models import FerrengiShip, ShipClass
-
-    for _ in range(universe.config.ferrengi_per_day):
-        sid = rng.randint(max(K.FEDSPACE_SECTORS) + 1, universe.config.universe_size)
-        aggr = rng.randint(1, K.FERRENGI_MAX_AGGRESSION)
-        fid = f"ferr_{universe.day}_{sid}"
-        ship = FerrengiShip(
-            id=fid,
-            name=f"Ferrengi Raider {fid[-4:].upper()}",
-            sector_id=sid,
-            aggression=aggr,
-            fighters=100 + aggr * 300,
-            shields=aggr * 50,
-            ship_class=ShipClass.BATTLESHIP if aggr >= 8 else ShipClass.MISSILE_FRIGATE,
-        )
-        universe.ferrengi[fid] = ship
-        universe.emit(
-            EventKind.FERRENGI_SPAWN,
-            sector_id=sid,
-            payload={"id": fid, "aggression": aggr, "fighters": ship.fighters},
-            summary=f"Ferrengi raider appeared in {sid} (aggression {aggr})",
-        )
-
-
-def _ferrengi_by_name(universe: Universe, key: str):
-    for f in universe.ferrengi.values():
-        if f.id == key or f.name == key:
-            return f
-    return None
-
-
-def _ferrengi_roam_and_hunt(universe: Universe) -> None:
-    """Each living Ferrengi: maybe move 1 sector; if a player is co-located, attack."""
-    rng = _rng_for(universe)
-    for ferr in list(universe.ferrengi.values()):
-        if not ferr.alive:
-            continue
-        sec = universe.sectors.get(ferr.sector_id)
-        if sec is None:
-            continue
-        if rng.random() < K.FERRENGI_MOVE_PROB:
-            choices = [w for w in sec.warps if w not in K.FEDSPACE_SECTORS]
-            if choices:
-                old_sid = ferr.sector_id
-                ferr.sector_id = rng.choice(choices)
-                universe.emit(
-                    EventKind.FERRENGI_MOVE,
-                    sector_id=ferr.sector_id,
-                    payload={"id": ferr.id, "from": old_sid, "to": ferr.sector_id},
-                    summary=f"Ferrengi {ferr.name} prowled {old_sid} → {ferr.sector_id}",
-                )
-        # Attack a player in the same sector if any
-        victims = [
-            p for p in universe.players.values()
-            if p.alive and p.sector_id == ferr.sector_id and p.sector_id not in K.FEDSPACE_SECTORS
-        ]
-        if not victims:
-            continue
-        victim = min(victims, key=lambda p: p.ship.fighters)
-        # Opportunistic hunt: a clearly defenseless target (0 fighters + 0
-        # shields) lowers the aggression bar. Even timid raiders will pounce
-        # when the victim can't shoot back — matches real TW2002, where
-        # unarmed cargo haulers are Ferrengi bait regardless of aggression
-        # rating. Armed targets still need the normal threshold.
-        unarmed = victim.ship.fighters == 0 and victim.ship.shields == 0
-        required_aggression = (
-            K.FERRENGI_OPPORTUNIST_AGGRESSION_THRESHOLD
-            if unarmed
-            else K.FERRENGI_HUNT_AGGRESSION_THRESHOLD
-        )
-        if ferr.aggression < required_aggression:
-            continue
-        # Flee if outclassed
-        if victim.ship.fighters > ferr.fighters * K.FERRENGI_FLEE_FIGHTER_RATIO:
-            choices = [w for w in sec.warps if w not in K.FEDSPACE_SECTORS]
-            if choices:
-                old_sid = ferr.sector_id
-                ferr.sector_id = rng.choice(choices)
-                universe.emit(
-                    EventKind.FERRENGI_MOVE,
-                    sector_id=ferr.sector_id,
-                    payload={"id": ferr.id, "from": old_sid, "to": ferr.sector_id, "reason": "fled"},
-                    summary=f"Ferrengi {ferr.name} fled {victim.name}: {old_sid} → {ferr.sector_id}",
-                )
-            continue
-        universe.emit(
-            EventKind.FERRENGI_ATTACK,
-            actor_id=ferr.id,
-            sector_id=ferr.sector_id,
-            payload={"victim": victim.id},
-            summary=f"!!! Ferrengi {ferr.name} attacks {victim.name} in {ferr.sector_id} !!!",
-        )
-        # Reuse ship-vs-ship combat with ferrengi as attacker (treat victim as defender)
-        _resolve_ship_combat_attacker_npc(universe, ferr, victim)
-
-
-def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) -> None:
-    """Same shape as _resolve_ship_combat but the attacker is a Ferrengi NPC."""
-    rng = _rng_for(universe)
-    a_fighters = attacker_npc.fighters
-    a_shields = attacker_npc.shields
-    d_fighters = victim.ship.fighters
-    d_shields = victim.ship.shields
-    d_disabled = getattr(victim.ship, "photon_disabled_ticks", 0) > 0
-    a_offense = a_fighters
-    d_offense = 0 if d_disabled else d_fighters
-
-    for _ in range(3):
-        a_dmg = int(a_offense * rng.uniform(0.8, 1.2))
-        d_dmg = int(d_offense * rng.uniform(0.8, 1.2))
-        # damage on victim
-        if d_disabled:
-            d_fighters = max(0, d_fighters - a_dmg)
-        else:
-            absorbed = min(a_dmg, d_shields)
-            d_shields -= absorbed
-            d_fighters = max(0, d_fighters - (a_dmg - absorbed))
-        # damage on Ferrengi
-        absorbed = min(d_dmg, a_shields)
-        a_shields -= absorbed
-        a_fighters = max(0, a_fighters - (d_dmg - absorbed))
-        d_disabled = False
-        a_offense = a_fighters
-        d_offense = d_fighters
-        if d_fighters <= 0 or a_fighters <= 0:
-            break
-
-    attacker_npc.fighters = a_fighters
-    attacker_npc.shields = a_shields
-    victim.ship.fighters = d_fighters
-    victim.ship.shields = d_shields
-
-    universe.emit(
-        EventKind.COMBAT,
-        actor_id=attacker_npc.id,
-        sector_id=victim.sector_id,
-        payload={
-            "attacker": attacker_npc.id,
-            "defender": victim.id,
-            "attacker_f": a_fighters, "attacker_s": a_shields,
-            "defender_f": d_fighters, "defender_s": d_shields,
-        },
-        summary=(
-            f"Ferrengi combat in {victim.sector_id}: "
-            f"{attacker_npc.name}[F{a_fighters} S{a_shields}] vs "
-            f"{victim.name}[F{d_fighters} S{d_shields}]"
-        ),
-    )
-
-    if d_fighters <= 0:
-        _destroy_ship(universe, victim.id, reason="ferrengi", killer_id=attacker_npc.id)
-    if a_fighters <= 0:
-        attacker_npc.alive = False
-
-
-def _complete_citadels(universe: Universe) -> None:
-    """Promote planets whose citadel build window has elapsed."""
-    for planet in universe.planets.values():
-        if (
-            planet.citadel_target > planet.citadel_level
-            and planet.citadel_complete_day is not None
-            and universe.day >= planet.citadel_complete_day
-        ):
-            old = planet.citadel_level
-            planet.citadel_level = planet.citadel_target
-            planet.citadel_complete_day = None
-            # L2 = Quasar Cannons → big planet fighter boost
-            if planet.citadel_level >= 2:
-                planet.fighters = max(planet.fighters, 1000 * planet.citadel_level)
-                planet.shields = max(planet.shields, 250 * planet.citadel_level)
-            universe.emit(
-                EventKind.CITADEL_COMPLETE,
-                sector_id=planet.sector_id,
-                payload={"planet_id": planet.id, "from": old, "to": planet.citadel_level},
-                summary=f"=== Citadel L{planet.citadel_level} on {planet.name} now operational ===",
-            )
-            if planet.owner_id is not None:
-                _award_xp(universe, planet.owner_id, "build_citadel_lvl",
-                          multiplier=planet.citadel_level)
-
-
-def _advance_planets(universe: Universe) -> None:
-    from .models import PlanetClass
-
-    prod_matrix = {
-        PlanetClass.M: {Commodity.FUEL_ORE: 3, Commodity.ORGANICS: 5, Commodity.EQUIPMENT: 3},
-        PlanetClass.K: {Commodity.FUEL_ORE: 6, Commodity.ORGANICS: 1, Commodity.EQUIPMENT: 1},
-        PlanetClass.L: {Commodity.FUEL_ORE: 5, Commodity.ORGANICS: 3, Commodity.EQUIPMENT: 1},
-        PlanetClass.O: {Commodity.FUEL_ORE: 1, Commodity.ORGANICS: 6, Commodity.EQUIPMENT: 3},
-        PlanetClass.H: {Commodity.FUEL_ORE: 8, Commodity.ORGANICS: 0, Commodity.EQUIPMENT: 1},
-        PlanetClass.U: {Commodity.FUEL_ORE: 1, Commodity.ORGANICS: 1, Commodity.EQUIPMENT: 6},
-        PlanetClass.C: {Commodity.FUEL_ORE: 1, Commodity.ORGANICS: 3, Commodity.EQUIPMENT: 5},
-    }
-    for planet in universe.planets.values():
-        coeffs = prod_matrix[planet.class_id]
-        for commodity, coeff in coeffs.items():
-            colonists = planet.colonists.get(commodity, 0)
-            produced = int(colonists * coeff / 100)
-            planet.stockpile[commodity] = planet.stockpile.get(commodity, 0) + produced
-        # Growth — only if organics stockpile positive
-        if planet.stockpile.get(Commodity.ORGANICS, 0) > 0:
-            total_col = sum(planet.colonists.values())
-            growth = int(total_col * 0.05)
-            # Distribute growth proportionally
-            if total_col > 0 and growth > 0:
-                for c in list(planet.colonists.keys()):
-                    share = int(growth * planet.colonists[c] / total_col)
-                    planet.colonists[c] += share
-            planet.stockpile[Commodity.ORGANICS] = max(
-                0, planet.stockpile[Commodity.ORGANICS] - max(1, total_col // 100)
-            )
-
-
-# ---------------------------------------------------------------------------
 # Intel / observation helpers
 # ---------------------------------------------------------------------------
 
@@ -2329,84 +1791,3 @@ def _record_port_intel(player, sector_id: int, port, *, universe=None) -> None:
     }
     player.known_ports[sector_id] = snapshot
 
-
-# ---------------------------------------------------------------------------
-# Victory
-# ---------------------------------------------------------------------------
-
-
-def _check_victory(universe: Universe) -> None:
-    if universe.finished:
-        return
-    alive = [p for p in universe.players.values() if p.alive]
-
-    # Elimination
-    if len(alive) == 1 and len(universe.players) > 1:
-        universe.finished = True
-        universe.winner_id = alive[0].id
-        universe.win_reason = "elimination"
-        winner_worth = full_net_worth(universe, alive[0])
-        universe.emit(
-            EventKind.GAME_OVER,
-            actor_id=alive[0].id,
-            payload={"reason": "elimination", "net_worth": winner_worth},
-            summary=f"GAME OVER — {alive[0].name} is the last player standing",
-        )
-        return
-
-    # Credits victory — scale the bar to match length so short matches can
-    # actually finish economically. Default 30-day match keeps the classic 100M
-    # target; a 3-day match shrinks to ~1M (still hard to hit with pure trading
-    # but attainable with aggressive upgrades + raiding + planet farming).
-    threshold = int(
-        K.VICTORY_CREDITS_THRESHOLD
-        * (universe.config.max_days / K.VICTORY_DEFAULT_MAX_DAYS)
-    )
-    threshold = max(500_000, threshold)
-    for p in alive:
-        if p.credits >= threshold:
-            universe.finished = True
-            universe.winner_id = p.id
-            universe.win_reason = "economic"
-            universe.emit(
-                EventKind.GAME_OVER,
-                actor_id=p.id,
-                payload={"reason": "economic", "credits": p.credits, "threshold": threshold},
-                summary=f"GAME OVER — {p.name} achieved economic dominance ({p.credits}cr, target {threshold}cr)",
-            )
-            return
-
-    # Day cap. Rank by the FULL net worth (ship assets + every planet
-    # the commander owns) so investing in Genesis + Citadels is the
-    # winning strategy, not just hoarding cash at StarDock.
-    if universe.day > universe.config.max_days:
-        universe.finished = True
-        if alive:
-            worths = {p.id: full_net_worth(universe, p) for p in alive}
-            winner = max(alive, key=lambda p: worths[p.id])
-            winner_worth = worths[winner.id]
-            # Show the breakdown in the summary so spectators can see
-            # WHY the winner won — ship vs planets. Crucial feedback for
-            # tuning agent behavior.
-            ship_side = winner.net_worth
-            planet_side = winner_worth - ship_side
-            universe.winner_id = winner.id
-            universe.win_reason = "time_net_worth"
-            summary = (
-                f"GAME OVER — time expired; {winner.name} wins on net worth "
-                f"({winner_worth}cr = {ship_side}cr ship + {planet_side}cr planets)"
-            )
-            universe.emit(
-                EventKind.GAME_OVER,
-                actor_id=winner.id,
-                payload={
-                    "reason": "time_net_worth",
-                    "net_worth": winner_worth,
-                    "net_worth_ship": ship_side,
-                    "net_worth_planets": planet_side,
-                    "all_worths": worths,
-                },
-                summary=summary,
-            )
-        else:
-            universe.emit(EventKind.GAME_OVER, summary="GAME OVER — no survivors")
