@@ -124,6 +124,18 @@ def serve(
             "applies — this only controls the extra pacing delay."
         ),
     ),
+    human: str = typer.Option(
+        None,
+        help=(
+            "Comma-separated player IDs to flag as HUMAN (Phase H0). "
+            "Example: '--human P1' makes P1 a human slot the scheduler "
+            "blocks on every turn until POST /api/human/action delivers an "
+            "Action for that player. '--human P1,P3' flags two slots. "
+            "Unknown IDs are ignored with a warning. Implies kind=human on "
+            "the listed slots, overriding --agent-kind and per-slot LLM "
+            "overrides."
+        ),
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -140,8 +152,30 @@ def serve(
     models_list = [s.strip() or None for s in (agent_models.split(",") if agent_models else [])]
     names_list = [s.strip() for s in (agent_names.split(",") if agent_names else []) if s.strip()]
 
+    # Parse --human into a set of player-id tags. Slot index is (id - 1),
+    # so "P1,P3" -> {0, 2}. We tag by id (not index) at the CLI surface
+    # because that's how spectators refer to players everywhere else.
+    human_ids: set[str] = {
+        s.strip().upper() for s in (human.split(",") if human else []) if s.strip()
+    }
+    human_slot_idx: set[int] = set()
+    for pid in human_ids:
+        if not (pid.startswith("P") and pid[1:].isdigit()):
+            console.print(f"[yellow]warn:[/] ignoring malformed --human id {pid!r}")
+            continue
+        idx = int(pid[1:]) - 1
+        if 0 <= idx < num_agents:
+            human_slot_idx.add(idx)
+        else:
+            console.print(
+                f"[yellow]warn:[/] --human {pid} out of range for {num_agents} agents — ignored"
+            )
+
     overrides: list[dict] = []
-    max_slots = max(len(providers_list), len(models_list), num_agents) if (providers_list or models_list) else 0
+    max_slots_src = num_agents if human_slot_idx else 0
+    max_slots = max(
+        len(providers_list), len(models_list), max_slots_src, num_agents
+    ) if (providers_list or models_list or human_slot_idx) else 0
     for i in range(max_slots):
         entry: dict = {}
         if i < len(providers_list) and providers_list[i]:
@@ -152,6 +186,12 @@ def serve(
             entry["kind"] = "llm"
         if i < len(models_list) and models_list[i]:
             entry["model"] = models_list[i]
+        # --human takes precedence over any provider/model hint on this
+        # slot: a human slot never has an LLM wired up.
+        if i in human_slot_idx:
+            entry["kind"] = "human"
+            entry.pop("provider", None)
+            entry.pop("model", None)
         if entry:
             overrides.append(entry)
         else:
@@ -162,7 +202,9 @@ def serve(
     console.print(f"[cyan]Agents:[/] {num_agents}  [cyan]Kind:[/] {agent_kind}  [cyan]LLM provider:[/] {provider_display}")
     if overrides:
         for i, ov in enumerate(overrides[:num_agents]):
-            if ov:
+            if ov.get("kind") == "human":
+                console.print(f"  [dim]P{i+1}:[/] [bold magenta]HUMAN[/] (awaits POST /api/human/action)")
+            elif ov:
                 tag_prov = ov.get("provider") or provider_display
                 tag_model = ov.get("model") or "<provider default>"
                 console.print(

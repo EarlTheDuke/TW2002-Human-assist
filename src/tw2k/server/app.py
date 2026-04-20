@@ -8,12 +8,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from ..agents.human import HumanAgent
 from ..agents.llm import default_provider
 from ..engine import GameConfig
+from ..engine.actions import Action
 from .broadcaster import Broadcaster
 from .replay import ReplayRunner
 from .runner import AgentSpec, MatchRunner, MatchSpec
@@ -130,6 +132,71 @@ def create_app(
     async def speed(body: dict[str, Any]) -> dict[str, Any]:
         runner.set_speed(float(body.get("multiplier", 1.0)))
         return {"speed": runner.state.speed_multiplier}
+
+    @app.post("/api/human/action")
+    async def submit_human_action(body: dict[str, Any]) -> dict[str, Any]:
+        """Queue an Action for a HUMAN-kind player.
+
+        Phase H0 contract:
+          body = {"player_id": "P3", "action": {...Action JSON...}}
+
+        The scheduler is already sitting on `await agent.act(obs)` for
+        a human slot on its turn; pushing an Action here unblocks that
+        call. Off-turn submissions are also accepted — they queue up
+        and are consumed on the next time it becomes that player's
+        turn. This keeps the endpoint idempotent and lets the /play
+        UI stay ahead of the round-robin without racing the scheduler.
+
+        Returns on success:
+          {"queued": true, "player_id": "...", "pending": N,
+           "observation_seq": K}
+        Raises HTTPException on:
+          * 404 — no such player_id in the live match
+          * 409 — that player is not a HUMAN slot
+          * 503 — match isn't running / no agents yet
+          * 422 — action body failed Action.model_validate
+          * 429 — agent's queue is full
+        """
+        player_id = body.get("player_id")
+        raw_action = body.get("action")
+        if not isinstance(player_id, str) or not player_id:
+            raise HTTPException(status_code=400, detail="missing player_id")
+        if not isinstance(raw_action, dict):
+            raise HTTPException(status_code=400, detail="missing action body")
+
+        agents_list = runner.state.agents
+        if not agents_list:
+            raise HTTPException(status_code=503, detail="match not running")
+
+        agent: HumanAgent | None = None
+        for a in agents_list:
+            if a.player_id == player_id and isinstance(a, HumanAgent):
+                agent = a
+                break
+        if agent is None:
+            # Distinguish "no such player" from "player exists but isn't
+            # a human" so the UI can show the right error.
+            exists = any(a.player_id == player_id for a in agents_list)
+            if not exists:
+                raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+            raise HTTPException(status_code=409, detail=f"player {player_id} is not a human slot")
+
+        try:
+            action = Action.model_validate(raw_action)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"invalid action: {exc}") from exc
+
+        try:
+            await agent.submit_action(action)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=429, detail=str(exc)) from exc
+
+        return {
+            "queued": True,
+            "player_id": player_id,
+            "pending": agent.pending,
+            "observation_seq": agent.last_observation_seq,
+        }
 
     @app.post("/control/restart")
     async def restart(body: dict[str, Any] | None = None) -> dict[str, Any]:

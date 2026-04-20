@@ -553,3 +553,4 @@ Each phase is **independently shippable and reversible.** Each ends with a concr
 | Date | Change | Reason |
 |---|---|---|
 | 2026-04-19 | Initial draft. D-1 through D-9 locked in. Pipecat v1.0.0 smoke test passed on Win + Py 3.13.6. | Brainstorm → plan doc creation. |
+| 2026-04-19 | **Phase H0 shipped.** `PlayerKind` enum, `Event.actor_kind`, `HumanAgent` + `ScriptedHumanAgent`, `/api/human/action` endpoint, scheduler blocks on `HUMAN_TURN_START`, `tw2k serve --human P1` flag. 9 new tests + full 222-test suite green. Manual smoke: `tw2k serve --human P2` stalls waiting on P2 while P1 (heuristic) continues to act; POST unblocks; error codes 404/409/422 verified. | H0 exit criteria met. |

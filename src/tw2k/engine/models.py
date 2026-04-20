@@ -19,6 +19,27 @@ from . import constants as K
 # ---------------------------------------------------------------------------
 
 
+class PlayerKind(str, Enum):
+    """What is driving a Player's actions.
+
+    Added in Phase H0 for the human-player feature. The runner branches
+    on this to decide how to source the next action for a player:
+      * HEURISTIC -> call the deterministic rule engine
+      * LLM       -> send the observation to the configured provider
+      * HUMAN     -> wait on the HumanAgent queue (blocking) until the
+                     /api/human/action endpoint or UI posts an Action.
+
+    Stored on the Player as `agent_kind: str` (not this enum) for backward
+    compatibility with replay meta.json and existing spectator snapshots
+    that already serialize the string form. Construct this enum lazily
+    with `PlayerKind(player.agent_kind)` when you need an exhaustive match.
+    """
+
+    HEURISTIC = "heuristic"
+    LLM = "llm"
+    HUMAN = "human"
+
+
 class Commodity(str, Enum):
     FUEL_ORE = "fuel_ore"
     ORGANICS = "organics"
@@ -135,6 +156,12 @@ class EventKind(str, Enum):
     AGENT_ERROR = "agent_error"
     FED_RESPONSE = "fed_response"
     GAME_OVER = "game_over"
+    # Emitted by the scheduler right before it blocks waiting for a human
+    # player's Action (Phase H0). Lets the /play UI pop a "your move"
+    # banner and the spectator UI render a "waiting on human" idle state
+    # instead of looking frozen. Payload: {"turns_today", "turns_per_day",
+    # "sector_id"}. The scheduler then awaits HumanAgent.submit_action().
+    HUMAN_TURN_START = "human_turn_start"
 
 
 # ---------------------------------------------------------------------------
@@ -454,6 +481,16 @@ class Event(BaseModel):
     day: int
     kind: EventKind
     actor_id: str | None = None
+    # Who originated the action, categorically. Set by `Universe.emit()`:
+    #   * "heuristic" / "llm" / "human"  -> normal autonomous Player action
+    #   * "copilot"                      -> action executed on behalf of a
+    #                                       human by the AI copilot (H2+)
+    #   * "engine" / "ferrengi" / None   -> non-player or unknown origin
+    # Auto-resolved from the player's `agent_kind` when actor_id is a known
+    # player id; callers can override (e.g. copilot-mediated human turns)
+    # by passing `actor_kind=` into `emit`. Optional so existing event
+    # logs from before H0 still decode cleanly.
+    actor_kind: str | None = None
     sector_id: int | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     # Short human-readable summary for the event feed
@@ -550,12 +587,22 @@ class Universe(BaseModel):
         kind: EventKind,
         *,
         actor_id: str | None = None,
+        actor_kind: str | None = None,
         sector_id: int | None = None,
         payload: dict | None = None,
         summary: str = "",
     ) -> Event:
         self.seq += 1
         pl = dict(payload) if payload else {}
+        # Auto-tag actor_kind from the player record if not explicitly
+        # provided. The copilot path (H2+) will pass actor_kind="copilot"
+        # explicitly so downstream consumers (replay, forensics, spectator
+        # UI) can distinguish a human's manual action from one dispatched
+        # on their behalf by the AI assistant. Unknown actor_id -> None.
+        if actor_kind is None and actor_id is not None:
+            p = self.players.get(actor_id) if isinstance(actor_id, str) else None
+            if p is not None:
+                actor_kind = p.agent_kind
         # Snapshot who was in the sector AT emit time. Used by the fog-of-war
         # filter in observation.build_observation so that players can only see
         # events that happened in rooms they were actually present in. Using
@@ -576,6 +623,7 @@ class Universe(BaseModel):
             day=self.day,
             kind=kind,
             actor_id=actor_id,
+            actor_kind=actor_kind,
             sector_id=sector_id,
             payload=pl,
             summary=summary,

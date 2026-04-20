@@ -97,7 +97,7 @@ def _is_day_done(player) -> bool:
 class AgentSpec:
     player_id: str
     name: str
-    kind: str  # "llm" or "heuristic"
+    kind: str  # "llm" | "heuristic" | "human"
     provider: str | None = None
     model: str | None = None
 
@@ -371,7 +371,31 @@ class MatchRunner:
 
                 try:
                     obs = build_observation(universe, agent.player_id)
+                    # Human slots: emit HUMAN_TURN_START so the /play UI
+                    # knows "it's your move" before the scheduler blocks
+                    # inside agent.act(). The scheduler main loop stays
+                    # serial so all other players naturally pause. A
+                    # run-level stop (runner.stop) cancels the enclosing
+                    # task and CancelledError propagates out of queue.get
+                    # cleanly — no sentinel needed.
+                    if getattr(agent, "kind", None) == "human":
+                        universe.emit(
+                            EventKind.HUMAN_TURN_START,
+                            actor_id=agent.player_id,
+                            sector_id=player.sector_id,
+                            payload={
+                                "turns_today": player.turns_today,
+                                "turns_per_day": player.turns_per_day,
+                                "turns_remaining": player.turns_per_day - player.turns_today,
+                            },
+                            summary=f"[{player.name}] human turn — awaiting input.",
+                        )
+                        await self._flush_events()
                     action = await agent.act(obs)
+                except asyncio.CancelledError:
+                    # Clean shutdown (runner.stop). Don't emit an error —
+                    # just exit the loop.
+                    raise
                 except Exception as exc:
                     universe.emit(
                         EventKind.AGENT_ERROR,
@@ -573,6 +597,10 @@ class MatchRunner:
                         think_cap_s=universe.config.llm_think_cap_s,
                     )
                 )
+            elif ag.kind == "human":
+                from ..agents.human import HumanAgent
+
+                agents.append(HumanAgent(player_id=ag.player_id, name=ag.name))
             else:
                 agents.append(HeuristicAgent(player_id=ag.player_id, name=ag.name))
         return agents
