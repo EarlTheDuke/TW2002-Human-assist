@@ -336,7 +336,7 @@
         { key: "to", label: "Target sector", type: "number", required: true, hint: "Must be in adjacent warps" },
       ],
       hint: "Move one hop. Costs per-ship turns_per_warp.",
-      buildArgs: (v) => ({ to: parseInt(v.to, 10) }),
+      buildArgs: (v) => ({ target: parseInt(v.to, 10) }),
     },
     "scan": {
       kind: "scan",
@@ -352,7 +352,7 @@
         { key: "to", label: "Target sector", type: "number", required: true, hint: "Any sector, doesn't need to be adjacent" },
       ],
       hint: "Launch ether probe. Consumes 1 probe from inventory.",
-      buildArgs: (v) => ({ to: parseInt(v.to, 10) }),
+      buildArgs: (v) => ({ target: parseInt(v.to, 10) }),
     },
     "trade-buy": {
       kind: "trade",
@@ -417,7 +417,7 @@
         { key: "message", label: "Message", type: "text", required: true },
       ],
       hint: "Private message to one player (they must be in range).",
-      buildArgs: (v) => ({ to: v.to_player, message: v.message }),
+      buildArgs: (v) => ({ target: v.to_player, message: v.message }),
     },
     "broadcast": {
       kind: "broadcast",

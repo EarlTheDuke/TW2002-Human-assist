@@ -105,7 +105,7 @@ TOOL_CATALOG: dict[str, ToolSpec] = {
             "Auto-pilot through the shortest known-warps path to a target sector. "
             "Consumes turns for each hop until arrival or out-of-turns."
         ),
-        parameters=_obj(target={"type": "integer", "description": "Destination sector id"}),
+        parameters=_obj(target={"type": "integer", "description": "Target sector id (final destination)"}),
         engine_action="plot_course",
     ),
     "scan": ToolSpec(
@@ -326,6 +326,21 @@ def tools_by_group(group: ToolGroup) -> list[ToolSpec]:
 # ---------------------------------------------------------------------------
 
 
+# Canonical-param → accepted LLM synonyms. We normalise *into* the canonical
+# key before validation, so Grok / Claude / GPT / etc. can say
+# `{destination: 42}` or `{to: 42}` and still produce a valid warp/plot_course.
+# Rule: only rewrite if the canonical key is NOT already present and the
+# canonical key actually exists on the target tool's schema.
+_ARG_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "target": ("destination", "dest", "to", "sector", "sector_id", "goal"),
+    "planet_id": ("planet", "planet_idx"),
+    "target_id": ("player", "opponent", "enemy", "other"),
+    "ship_class": ("ship", "class", "model"),
+    "qty": ("quantity", "amount", "count", "n"),
+    "message": ("text", "msg", "body"),
+}
+
+
 class ToolCall(BaseModel):
     name: str
     arguments: dict[str, Any] = Field(default_factory=dict)
@@ -335,6 +350,30 @@ class ToolCall(BaseModel):
 
     def spec(self) -> ToolSpec | None:
         return TOOL_CATALOG.get(self.name)
+
+    def _normalize_synonyms(self) -> None:
+        """In-place rewrite of common LLM synonyms to canonical param names.
+
+        Covers the standard LLM tool-use slop patterns (``destination`` for
+        ``target``, ``planet`` for ``planet_id``, ``quantity`` for ``qty``,
+        etc.). Only rewrites when the canonical key exists on this tool's
+        schema AND isn't already present — we never overwrite an explicit
+        canonical value, and we never invent parameters on tools that don't
+        accept them.
+        """
+        spec = self.spec()
+        if spec is None:
+            return
+        props = spec.parameters.get("properties", {})
+        for canonical, synonyms in _ARG_SYNONYMS.items():
+            if canonical not in props:
+                continue
+            if canonical in self.arguments:
+                continue
+            for alias in synonyms:
+                if alias in self.arguments:
+                    self.arguments[canonical] = self.arguments.pop(alias)
+                    break
 
     def validate_against_catalog(self) -> str | None:
         """Return None if OK, else a human-readable error reason.
@@ -347,6 +386,7 @@ class ToolCall(BaseModel):
         spec = self.spec()
         if spec is None:
             return f"unknown tool {self.name!r}"
+        self._normalize_synonyms()
         props = spec.parameters.get("properties", {})
         unknown = [k for k in self.arguments if k not in props]
         if unknown:
