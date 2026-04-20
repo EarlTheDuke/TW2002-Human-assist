@@ -191,10 +191,131 @@
       const obs = await r.json();
       state.observation = obs;
       renderObservation(obs);
+      // H6.4 — keep the economy panel in sync with the observation.
+      // `refreshEconomy` is cheap (two JSON fetches) and the dashboard
+      // only materialises inside a collapsed <details>, so running it
+      // on every observation refresh is fine.
+      refreshEconomy();
     } catch (err) {
       console.error("refreshObservation failed", err);
     }
   }
+
+  // ---------------- H6.4 economy dashboards ----------------
+  const ecoEls = {
+    panel: document.getElementById("economyPanel"),
+    badge: document.getElementById("economyBadge"),
+    routes: document.getElementById("economyRoutes"),
+    heatmapBody: document.getElementById("economyHeatmapBody"),
+  };
+
+  async function refreshEconomy() {
+    if (!playerId || !ecoEls.panel) return;
+    try {
+      const [pricesRes, routesRes] = await Promise.all([
+        fetch(`/api/economy/prices?player_id=${encodeURIComponent(playerId)}`),
+        fetch(
+          `/api/economy/routes?player_id=${encodeURIComponent(playerId)}&max_routes=5`
+        ),
+      ]);
+      const prices = pricesRes.ok ? await pricesRes.json() : null;
+      const routes = routesRes.ok ? await routesRes.json() : null;
+      renderEconomy(prices, routes);
+    } catch (err) {
+      /* non-fatal — panel just stays stale */
+    }
+  }
+
+  function renderEconomy(prices, routes) {
+    if (!ecoEls.panel) return;
+    const portCount = prices && Array.isArray(prices.ports) ? prices.ports.length : 0;
+    const routeList = (routes && Array.isArray(routes.routes)) ? routes.routes : [];
+    if (ecoEls.badge) {
+      if (portCount > 0) {
+        ecoEls.badge.hidden = false;
+        ecoEls.badge.textContent = `${portCount} port${portCount === 1 ? "" : "s"} · ${routeList.length} route${routeList.length === 1 ? "" : "s"}`;
+      } else {
+        ecoEls.badge.hidden = true;
+      }
+    }
+
+    // Routes
+    if (ecoEls.routes) {
+      ecoEls.routes.innerHTML = "";
+      if (routeList.length === 0) {
+        const li = document.createElement("li");
+        li.className = "economy-empty";
+        li.textContent = portCount < 2
+          ? "Scout a second port to unlock route suggestions."
+          : "No profitable round-trips between your known ports yet.";
+        ecoEls.routes.appendChild(li);
+      } else {
+        routeList.forEach((r, i) => {
+          const li = document.createElement("li");
+          const rank = document.createElement("span");
+          rank.className = "eco-rank";
+          rank.textContent = `#${i + 1}`;
+          const route = document.createElement("span");
+          route.className = "eco-route";
+          route.textContent = `s${r.from_sector} → s${r.to_sector} · ${r.commodity}`;
+          const ppt = document.createElement("span");
+          ppt.className = "eco-ppt";
+          ppt.textContent = `+${Math.round(r.profit_per_turn)}/turn`;
+          const detail = document.createElement("span");
+          detail.className = "eco-route-detail";
+          detail.textContent =
+            `buy ${r.buy_price}c · sell ${r.sell_price}c · ` +
+            `${r.qty} holds · ${r.turns} turns · +${r.profit_per_trip.toLocaleString()} / trip`;
+          li.appendChild(rank);
+          li.appendChild(route);
+          li.appendChild(ppt);
+          li.appendChild(detail);
+          li.title = `Click to plot course to sector ${r.from_sector}`;
+          li.addEventListener("click", () => {
+            openActionForm("plot_course", { to: r.from_sector });
+          });
+          ecoEls.routes.appendChild(li);
+        });
+      }
+    }
+
+    // Heatmap
+    if (ecoEls.heatmapBody) {
+      ecoEls.heatmapBody.innerHTML = "";
+      const commodities = ["fuel_ore", "organics", "equipment"];
+      const ports = prices && Array.isArray(prices.ports) ? prices.ports : [];
+      ports.forEach((p) => {
+        const tr = document.createElement("tr");
+        if (typeof p.age_days === "number" && p.age_days > 3) {
+          tr.className = "eco-stale";
+          tr.title = `Last scouted ${p.age_days}d ago — data may be stale.`;
+        }
+        const td0 = document.createElement("td");
+        td0.textContent = `s${p.sector_id}`;
+        const td1 = document.createElement("td");
+        td1.textContent = p.class || "?";
+        tr.appendChild(td0);
+        tr.appendChild(td1);
+        commodities.forEach((c) => {
+          const td = document.createElement("td");
+          const cell = p.prices ? p.prices[c] : null;
+          if (!cell) {
+            td.innerHTML = `<span class="eco-cell eco-none">—</span>`;
+          } else {
+            const cls = cell.side === "sell" ? "eco-sell" : "eco-buy";
+            const pctStr = Number.isFinite(cell.pct) ? `${Math.round(cell.pct * 100)}%` : "";
+            td.innerHTML =
+              `<span class="eco-cell ${cls}" title="${cell.side === "sell" ? "Port sells" : "Port buys"} · stock ${pctStr}">` +
+              `${cell.price}c</span>`;
+          }
+          tr.appendChild(td);
+        });
+        ecoEls.heatmapBody.appendChild(tr);
+      });
+    }
+  }
+
+  window.__tw2kEconomy = { refresh: refreshEconomy, render: renderEconomy };
 
   function renderObservation(obs) {
     // Header pills

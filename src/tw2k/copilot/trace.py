@@ -23,7 +23,10 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .otel import CopilotOtelBridge
 
 TRACE_FILE_PREFIX = "copilot_trace_"
 TRACE_EVENT_VERSION = 1
@@ -50,17 +53,36 @@ class CopilotTracer:
         player_id: str,
         root_dir: Path | str | None = None,
         enable: bool | None = None,
+        otel_bridge: CopilotOtelBridge | None = None,
     ) -> None:
         self.player_id = player_id
         self._root = Path(root_dir) if root_dir is not None else None
         if enable is None:
             enable = _env_enabled() and self._root is not None
-        self._enabled = bool(enable and self._root is not None)
+        # The tracer is "active" if EITHER the JSONL sink is enabled OR
+        # the OTEL bridge is wired — we want OTEL-only configurations
+        # (no disk writes) to still flow events through emit().
+        self._jsonl_enabled = bool(enable and self._root is not None)
+        self._otel_bridge = otel_bridge
         self._lock = asyncio.Lock()
         # Keep an in-memory ring for tests that don't want to read from
         # disk. Only populated when tracing is enabled.
         self._ring: list[dict[str, Any]] = []
         self._ring_cap = 1024
+
+    @property
+    def _enabled(self) -> bool:
+        return self._jsonl_enabled or (self._otel_bridge is not None and self._otel_bridge.enabled)
+
+    @property
+    def otel_bridge(self) -> CopilotOtelBridge | None:
+        return self._otel_bridge
+
+    def shutdown(self) -> None:
+        """Release any attached sinks. Safe to call multiple times."""
+        if self._otel_bridge is not None:
+            self._otel_bridge.shutdown()
+            self._otel_bridge = None
 
     @property
     def enabled(self) -> bool:
@@ -107,8 +129,22 @@ class CopilotTracer:
             # Drop oldest ~10% in one shot instead of on every append.
             drop = max(1, self._ring_cap // 10)
             del self._ring[:drop]
+
+        # Phase H6.3: fan out to the OTEL bridge alongside disk writes.
+        # The bridge swallows its own exceptions so a bad OTLP collector
+        # can never crash the hot path.
+        if self._otel_bridge is not None and self._otel_bridge.enabled:
+            self._otel_bridge.emit_event(event, payload, level=level)
+            if event == "action_dispatched" and payload is not None:
+                self._otel_bridge.emit_action_span(
+                    tool=str(payload.get("tool", "unknown")),
+                    args=dict(payload.get("args") or {}),
+                    ok=bool(payload.get("ok", False)),
+                    reason=str(payload.get("reason") or ""),
+                )
+
         p = self.path
-        if p is None:
+        if not self._jsonl_enabled or p is None:
             return
         async with self._lock:
             try:

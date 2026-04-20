@@ -563,5 +563,50 @@ def probe(seed: int = typer.Option(42), universe_size: int = typer.Option(1000))
         console.print(f"  {code:8s} {n}")
 
 
+@app.command()
+def mcp(
+    base_url: str = typer.Option(
+        None,
+        "--base-url",
+        help=(
+            "Base URL of the running tw2k serve instance. Overrides "
+            "TW2K_MCP_BASE_URL. Defaults to http://127.0.0.1:8000."
+        ),
+    ),
+    token: str = typer.Option(
+        None,
+        "--token",
+        help="Bearer token to send on every request. Overrides TW2K_MCP_TOKEN.",
+    ),
+) -> None:
+    """Start an MCP server that drives a running `tw2k serve` match (Phase H6.1).
+
+    Exposes 14 copilot tools over MCP stdio so Cursor, Claude Code, or any
+    MCP-aware client can observe + control the live match (read
+    observations, chat with the copilot, flip modes, confirm plans,
+    submit manual actions, read memory / safety / what-if).
+
+    Usage in a client's mcpServers config::
+
+        "tw2k": {
+          "command": "tw2k",
+          "args": ["mcp"],
+          "env": { "TW2K_MCP_BASE_URL": "http://127.0.0.1:8000" }
+        }
+
+    Requires the `mcp` package::
+
+        pip install "tw2k-ai[mcp]"   # or
+        pip install mcp
+    """
+    from .mcp_server import start_mcp_server
+
+    try:
+        start_mcp_server(base_url=base_url, token=token)
+    except RuntimeError as exc:
+        console.print(f"[red]MCP server failed to start:[/] {exc}")
+        raise typer.Exit(code=1) from exc
+
+
 if __name__ == "__main__":
     app()

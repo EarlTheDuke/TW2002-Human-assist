@@ -7,7 +7,9 @@ A faithful, from-scratch reimplementation of Chris Sherrick's **TradeWars 2002**
 - A full-fidelity TW2002 game engine written in Python (sectors, warps, ports, ships, combat, fighters, mines, planets, Ferrengi, corporations).
 - A pluggable **agent layer** where each player is an LLM that reasons about strategy, trades, scouts, wages war, and can form or betray alliances.
 - A **spectator-first web UI** — a live galaxy map, event feed, per-agent status panels, and a "thought log" window into each agent's reasoning so you can enjoy watching the match unfold.
-- A **human cockpit at `/play`** (Phase H) — manual controls, live observation feed, and a voice-aware AI copilot along a *Manual → Advisory → Delegated → Autopilot* spectrum, with long-term memory, what-if preview, 9-language voice, mobile-friendly layout, and structured JSONL decision tracing. Full story in `docs/HUMAN_COPILOT_PLAN.md`.
+- A **human cockpit at `/play`** (Phase H) — manual controls, live observation feed, and a voice-aware AI copilot along a *Manual → Advisory → Delegated → Autopilot* spectrum, with long-term memory, what-if preview, 9-language voice, mobile-friendly layout, an economy dashboard (top trade routes + price heatmap), and structured JSONL decision tracing. Full story in `docs/HUMAN_COPILOT_PLAN.md`.
+- An **MCP server** (`tw2k mcp`) that exposes the copilot surface as 14 Model Context Protocol tools, so Cursor / Claude Code / any MCP client can drive a live match programmatically while you watch.
+- Optional **OpenTelemetry** streaming of every copilot decision to Jaeger / Weave / Honeycomb.
 
 ## What this is NOT
 
@@ -54,9 +56,41 @@ tw2k serve `
 # Then open http://localhost:8000/play in Chrome or Edge
 ```
 
-From `/play` you can manually click/type actions, push-to-talk voice commands, flip to Autopilot to have the copilot run a trade loop hands-off, and say "stop" to take the wheel back. The spectator view (`/`) and the cockpit are linked both ways (`🧑 Cockpit` / `◎ Spectator` buttons in the headers).
+From `/play` you can manually click/type actions, push-to-talk voice commands, flip to Autopilot to have the copilot run a trade loop hands-off, and say "stop" to take the wheel back. The spectator view (`/`) and the cockpit are linked both ways (`🧑 Cockpit` / `◎ Spectator` buttons in the headers). The right-column **Economy** panel surfaces the top profitable round-trips between ports you've scouted — click a route to auto-plot course to its buy port.
 
-See `docs/USER_GUIDE.md` §8.5 for the full human-copilot walkthrough, `docs/HUMAN_COPILOT_PLAN.md` for the design doc + changelog, and `docs/DESIGN.md` for the underlying game mechanics.
+## Drive the copilot from Cursor / Claude Code (MCP, Phase H6.1)
+
+```powershell
+pip install -e ".[mcp]"
+
+# In one terminal:
+tw2k serve --human P1 --num-agents 3
+
+# In your MCP client's config (Cursor / Claude Code):
+{
+  "mcpServers": {
+    "tw2k": {
+      "command": "tw2k",
+      "args": ["mcp"],
+      "env": { "TW2K_MCP_BASE_URL": "http://127.0.0.1:8000" }
+    }
+  }
+}
+```
+
+Claude/Cursor now has 14 typed tools: read the live observation, chat with the copilot, flip modes, confirm plans, submit raw actions, read memory / safety / what-if. Optional bearer auth via `TW2K_MCP_TOKEN`.
+
+## Trace every copilot decision (OpenTelemetry, Phase H6.3)
+
+```powershell
+pip install -e ".[otel]"
+$env:TW2K_OTEL_ENDPOINT = "http://localhost:4318"   # OTLP HTTP
+tw2k serve --human P1
+```
+
+Every chat utterance, LLM call, action dispatch, safety signal, and mode change appears as a span event on a long-lived `copilot.session` trace. Works with Jaeger, Weave, Honeycomb, or any OTLP-HTTP collector. Set `TW2K_OTEL_CONSOLE=1` to mirror spans to stdout for debugging.
+
+See `docs/USER_GUIDE.md` §8.5 for the full human-copilot walkthrough, `docs/HUMAN_COPILOT_PLAN.md` for the design doc + changelog, `docs/LOCAL_STT_PLAN.md` for the upcoming faster-whisper voice pipeline, `docs/MULTI_HUMAN_PLAN.md` for the upcoming team-play design, and `docs/DESIGN.md` for the underlying game mechanics.
 
 ## Project layout
 

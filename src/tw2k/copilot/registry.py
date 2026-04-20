@@ -12,6 +12,7 @@ from typing import Any
 from ..agents.human import HumanAgent
 from .chat_agent import ChatAgent
 from .memory import MemoryStore
+from .otel import build_bridge as _build_otel_bridge
 from .session import CopilotSession
 from .trace import CopilotTracer, _env_enabled
 
@@ -28,6 +29,10 @@ class CopilotRegistry:
         self._trace_dir = Path(trace_dir) if trace_dir is not None else None
 
     def clear(self) -> None:
+        for sess in self._sessions.values():
+            # Release OTEL session spans cleanly; JSONL sink has no
+            # close phase. Failures are swallowed inside shutdown().
+            sess.tracer.shutdown()
         self._sessions.clear()
 
     def get(self, player_id: str) -> CopilotSession | None:
@@ -66,12 +71,20 @@ class CopilotRegistry:
             if not isinstance(ag, HumanAgent):
                 continue
             chat_agent = (chat_agent_factory or ChatAgent)()
+            # Phase H6.3: if TW2K_OTEL_ENDPOINT (or TW2K_OTEL_CONSOLE) is
+            # set, build a long-lived OTEL session span for this player.
+            # `build_bridge` returns None when OTEL is disabled/missing.
+            otel_bridge = _build_otel_bridge(
+                player_id=ag.player_id,
+                attributes={"tw2k.agent_name": ag.name},
+            )
             tracer = CopilotTracer(
                 player_id=ag.player_id,
                 root_dir=self._trace_dir,
                 # enable tracer when root is set AND env opt-in fires; when
                 # no root is set, the tracer is a cheap no-op.
                 enable=(self._trace_dir is not None and _env_enabled()),
+                otel_bridge=otel_bridge,
             )
             self._sessions[ag.player_id] = CopilotSession(
                 player_id=ag.player_id,

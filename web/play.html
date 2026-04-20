@@ -299,6 +299,40 @@
 
         <h3 class="subhead">Known ports</h3>
         <ul class="known-ports" id="knownPorts"></ul>
+
+        <!-- H6.4 Economy dashboards: top trade routes + mini price heatmap -->
+        <details class="economy-panel" id="economyPanel">
+          <summary>
+            Economy <span class="economy-badge" id="economyBadge" hidden></span>
+          </summary>
+          <div class="economy-body">
+            <h4 class="economy-subhead">Top trade routes</h4>
+            <ol class="economy-routes" id="economyRoutes">
+              <li class="economy-empty">Scout a second port to unlock route suggestions.</li>
+            </ol>
+            <h4 class="economy-subhead">Price heatmap</h4>
+            <div class="economy-heatmap-wrap">
+              <table class="economy-heatmap" id="economyHeatmap">
+                <thead>
+                  <tr>
+                    <th>Sector</th>
+                    <th>Class</th>
+                    <th>Fuel</th>
+                    <th>Org.</th>
+                    <th>Equip.</th>
+                  </tr>
+                </thead>
+                <tbody id="economyHeatmapBody"></tbody>
+              </table>
+            </div>
+            <p class="economy-note">
+              Prices are live from the universe; cells tinted
+              <span class="eco-cell eco-sell">green</span> are bargains
+              (port sells cheap), <span class="eco-cell eco-buy">amber</span>
+              are demand (port pays a premium).
+            </p>
+          </div>
+        </details>
       </div>
     </section>
   </main>

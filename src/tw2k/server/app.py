@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from ..agents.human import HumanAgent
 from ..agents.llm import default_provider
 from ..copilot import CopilotMode
+from ..copilot.dashboards import build_price_table, build_route_table
 from ..copilot.registry import CopilotRegistry
 from ..copilot.standing_orders import StandingOrder
 from ..copilot.ui_agent import button_hints, suggest_next_move
@@ -502,6 +503,41 @@ def create_app(
         if snap is None:
             return {"pending": False}
         return {"pending": True, **snap}
+
+    @app.get("/api/economy/prices")
+    async def economy_prices(player_id: str) -> dict[str, Any]:
+        """H6.4: per-port live prices + stock for every port the player has scouted.
+
+        Returns 404 if the player doesn't exist, 503 if no match is
+        running. Respects fog-of-war (only ports in ``known_ports``
+        appear). Prices are recomputed from current universe state so
+        the UI matches what a trade would actually execute at.
+        """
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        if player_id not in u.players:
+            raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+        return build_price_table(u, player_id)
+
+    @app.get("/api/economy/routes")
+    async def economy_routes(
+        player_id: str, max_routes: int = 10
+    ) -> dict[str, Any]:
+        """H6.4: top-N trade routes across the player's known ports.
+
+        Computes credits-per-turn for every (port_A sells X → port_B
+        buys X) pair the player has discovered, subject to the player's
+        current cargo-hold capacity and BFS round-trip distance.
+        Returns empty ``routes`` list when the player has seen fewer
+        than 2 ports or no profitable pair exists yet.
+        """
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        if player_id not in u.players:
+            raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+        return build_route_table(u, player_id, max_routes=max(1, min(50, max_routes)))
 
     @app.get("/api/copilot/hints")
     async def copilot_hints(player_id: str) -> dict[str, Any]:

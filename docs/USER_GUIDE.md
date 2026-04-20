@@ -298,7 +298,110 @@ tw2k serve --human P1 --agent-kind heuristic
 
 No native app — just open `/play` in mobile Safari/Chrome on the same LAN.
 
-### 8.5.10. Headless human-sim (no browser, no uvicorn)
+### 8.5.10. Economy dashboard (Phase H6.4)
+
+The right column of `/play` now has an **Economy** `<details>` panel with two
+sub-views:
+
+- **Top trade routes.** Up to five profitable round-trips between ports you've
+  scouted, ranked by credits-per-turn. Each row shows
+  `s<A> → s<B> · <commodity>` with the per-trip profit and round-trip turn
+  count. **Click a row to auto-plot course to its buy port.** If you've only
+  scouted one port, the panel tells you to go find another.
+- **Price heatmap.** A mini table of your known ports × the three tradable
+  commodities. Green cells = port **sells** that commodity cheap (bargain to
+  buy). Amber cells = port **buys** at a premium (great to sell to).
+  Dashes = commodity not traded at that port. Rows are dimmed after 3 days
+  without a fresh scan.
+
+The panel re-queries `/api/economy/prices` + `/api/economy/routes` every time
+the observation refreshes (warp, scan, trade), so the heatmap always reflects
+live universe state — not stale intel. Respects fog-of-war: ports you haven't
+visited never appear.
+
+### 8.5.11. Driving the copilot from Cursor or Claude Code (Phase H6.1 MCP)
+
+`tw2k mcp` starts a Model Context Protocol server that exposes the copilot
+surface as typed tools for any MCP client. Install the optional extra and wire
+it up:
+
+```powershell
+pip install -e ".[mcp]"
+
+# In one terminal, start a match with at least one human slot:
+tw2k serve --human P1 --num-agents 3
+```
+
+Then add this block to your client's `mcpServers` config (Cursor
+`~/.cursor/mcp.json`, Claude Code `~/.config/claude-code/config.json`, etc.):
+
+```json
+{
+  "mcpServers": {
+    "tw2k": {
+      "command": "tw2k",
+      "args": ["mcp"],
+      "env": {
+        "TW2K_MCP_BASE_URL": "http://127.0.0.1:8000",
+        "TW2K_MCP_TOKEN": ""
+      }
+    }
+  }
+}
+```
+
+Fourteen tools are exposed:
+
+| Tool | Purpose |
+|---|---|
+| `tw2k_list_humans` | Enumerate human slots and which is awaiting input. |
+| `tw2k_get_observation` | Full Observation JSON (sector, ship, cargo, adjacents, hints). |
+| `tw2k_get_copilot_state` | Mode, chat history, pending plan, memory, what-if. |
+| `tw2k_send_chat` | Send a natural-language message to the copilot. |
+| `tw2k_set_mode` | Flip between `manual` / `advisory` / `delegated` / `autopilot`. |
+| `tw2k_confirm_plan` | Execute a pending plan by id. |
+| `tw2k_cancel_plan` | Cancel pending plan or active task. |
+| `tw2k_submit_action` | Submit a raw engine action (warp, trade, probe, …). |
+| `tw2k_get_memory` | Read the player's long-term memory. |
+| `tw2k_remember` | Store a preference (`key`, `value`). |
+| `tw2k_forget` | Drop a preference by key. |
+| `tw2k_get_whatif` | Predicted outcome of the pending plan. |
+| `tw2k_get_safety` | Current safety signal (ok / notice / warning / critical). |
+| `tw2k_get_hints` | Rule-based UI hints + next-move suggestion. |
+
+For a bearer-token-protected setup, set `TW2K_MCP_TOKEN` on both the server
+(`tw2k serve`) and the client env so every MCP request carries
+`Authorization: Bearer …`.
+
+### 8.5.12. OpenTelemetry decision tracing (Phase H6.3)
+
+The same events the JSONL tracer writes to disk can be streamed as OpenTelemetry
+spans to any OTLP-compatible collector (Jaeger, Weave, Honeycomb, SigNoz, …).
+Install and point at your collector:
+
+```powershell
+pip install -e ".[otel]"
+$env:TW2K_OTEL_ENDPOINT     = "http://localhost:4318"   # OTLP HTTP
+$env:TW2K_OTEL_SERVICE_NAME = "tw2k-ai"                 # optional
+$env:TW2K_OTEL_CONSOLE      = "1"                       # optional: mirror to stdout
+
+tw2k serve --human P1
+```
+
+Each copilot session opens a long-lived `copilot.session` span tagged with the
+player id + agent name. Every chat utterance, LLM call, action dispatch,
+standing-order block, safety signal, escalation, mode change, memory update, and
+task state transition shows up as a **span event** on that session span, so you
+can filter a Jaeger search by `tw2k.tool=warp` or
+`tw2k.signal_level=critical` and jump straight to the moment things happened.
+Action dispatches *also* create a short child span named
+`copilot.action.<tool>` for flamegraph-style timelines.
+
+The OTEL integration is a **soft dependency**: leave the env vars unset (or skip
+`pip install "tw2k-ai[otel]"`) and the bridge stays disabled — zero overhead on
+the hot path.
+
+### 8.5.13. Headless human-sim (no browser, no uvicorn)
 
 For CI or scripted regressions, drive the entire copilot pipeline from the
 CLI with zero API keys:
@@ -334,6 +437,7 @@ tw2k serve --human P1 --agent-kind heuristic --starting-credits 75000   # play a
 tw2k sim --seed 1 --max-days 2                    # headless simulation, prints summary
 tw2k probe --seed 42                              # inspect universe generation
 tw2k human-sim 7 "run a quick trade loop" --demo trade   # headless copilot pipeline (no browser)
+tw2k mcp                                            # MCP server for Cursor / Claude Code (H6.1)
 ```
 
 Then browse to [http://localhost:8000](http://localhost:8000) and enjoy the show.

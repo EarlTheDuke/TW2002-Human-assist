@@ -69,7 +69,7 @@ Goal: A seeded universe of 1000 sectors with 2 agents trading commodities, visib
 - [ ] Configurable ruleset YAML
 - [x] USER_GUIDE.md finalized
 
-## Phase H — Human Player + AI Copilot ✅ (through H5.5)
+## Phase H — Human Player + AI Copilot ✅ (through H6.4)
 
 Goal: add a real human player to the live multi-agent match with a dedicated
 cockpit UI, voice I/O, and an AI copilot that can plan, execute, and narrate
@@ -111,19 +111,45 @@ spectrum. Full design doc: `docs/HUMAN_COPILOT_PLAN.md`.
       `dest`/`sector` → `target`, `planet` → `planet_id`, `quantity` → `qty`, …)
       so autopilot survives LLM tool-use slop, added reciprocal `🧑 Cockpit`
       link in spectator header.
+- [x] **H6.1 MCP server** — `src/tw2k/mcp_server.py` + `tw2k mcp` CLI exposes
+      the copilot surface as a Model Context Protocol server (14 tools: list
+      humans, get observation / copilot state / memory / safety / hints /
+      whatif, send chat, set mode, confirm/cancel plans, submit raw action,
+      remember/forget). Thin HTTP proxy over the running `tw2k serve`; optional
+      `TW2K_MCP_TOKEN` bearer auth. Ships under the `mcp` optional extra
+      (`pip install "tw2k-ai[mcp]"`). Drop-in for Cursor / Claude Code.
+- [x] **H6.3 OpenTelemetry tracing** — `CopilotOtelBridge` bolts onto the
+      existing `CopilotTracer` as an optional sink. One long-lived
+      `copilot.session` span per player, every JSONL event attached as a span
+      event, plus a discrete `copilot.action.<tool>` child span per action
+      dispatch. Env-toggled via `TW2K_OTEL_ENDPOINT` (OTLP HTTP) +
+      `TW2K_OTEL_CONSOLE`. Soft import; `pip install "tw2k-ai[otel]"` is
+      opt-in. Jaeger / Weave / Honeycomb compatible.
+- [x] **H6.4 Economy dashboards** — new `/api/economy/prices` +
+      `/api/economy/routes` endpoints + `/play` right-panel
+      `<details class="economy-panel">` with top-5 trade routes (click to plot
+      course) + mini price heatmap (sector × commodity, green = cheap sell,
+      amber = premium buy, stale rows dimmed after 3 days). Respects
+      fog-of-war (`known_ports` only); route ranking by credits-per-turn over
+      BFS round-trip distance honouring cargo holds.
 
 **Exit criteria:** a human can open `/play`, manually move + trade, hand control
 to Grok/Claude/GPT-4o via voice or text, watch a `profit_loop` task run hands-off
-with TTS narration, interrupt with "stop", and have preferences remembered across
-sessions. ✅
+with TTS narration, interrupt with "stop", have preferences remembered across
+sessions, spot a profitable trade route on the economy panel, and optionally drive
+the whole session from Cursor via MCP while every decision is exported as OTEL
+spans. ✅
 
-### Phase H deferred (next session / H6+)
-- Deepgram STT / Cartesia / ElevenLabs TTS upgrades (currently browser-only).
-- MCP-exposed copilot tools (let Claude Code / Cursor drive the game).
-- Weave / OpenTelemetry streaming of the existing JSONL trace events.
-- Multi-human multiplayer in one match, with per-human voice channels.
-- Economy dashboards on `/play` (price heatmaps, trade-route suggestions
-  backed by the what-if heuristic).
+### Phase H deferred (H6.2 / H6.5 and beyond)
+- **H6.2 Local STT** — replace Web Speech API with `faster-whisper` over a
+  `/ws/stt` WebSocket for privacy, offline use, and vocabulary biasing.
+  Plan committed: `docs/LOCAL_STT_PLAN.md`. Implementation deferred.
+- **H6.5 Multi-human multiplayer** — slot picker with soft-lock claim /
+  release / kick, team chat sub-channel, per-slot turn timers, cross-slot
+  `team_broadcast` copilot tool. Plan committed: `docs/MULTI_HUMAN_PLAN.md`.
+  Implementation deferred; WebRTC voice deferred further.
+- Deepgram / Cartesia / ElevenLabs premium voice upgrades (currently
+  browser-only — partially superseded by H6.2).
 
 ## Backlog / stretch
 - Multi-agent matches (3–8 players)
