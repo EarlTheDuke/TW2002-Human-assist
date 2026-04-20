@@ -25,6 +25,7 @@ from pathlib import Path
 
 from ..agents.base import BaseAgent
 from ..engine import (
+    Action,
     ActionKind,
     EventKind,
     GameConfig,
@@ -108,6 +109,13 @@ class MatchSpec:
     agents: list[AgentSpec]
     action_delay_s: float = 0.6
     paused: bool = False
+    # Per-turn deadline for HUMAN slots. None (default) = wait forever;
+    # a float = force-submit a WAIT action on behalf of the human if
+    # nothing arrives in that many seconds. Added Phase H1 so the match
+    # doesn't grind to a permanent halt if the human closes the tab or
+    # steps away. AI slots are unaffected — they already have
+    # GameConfig.llm_think_cap_s as their provider-call budget.
+    human_deadline_s: float | None = None
 
 
 @dataclass
@@ -378,7 +386,8 @@ class MatchRunner:
                     # run-level stop (runner.stop) cancels the enclosing
                     # task and CancelledError propagates out of queue.get
                     # cleanly — no sentinel needed.
-                    if getattr(agent, "kind", None) == "human":
+                    is_human = getattr(agent, "kind", None) == "human"
+                    if is_human:
                         universe.emit(
                             EventKind.HUMAN_TURN_START,
                             actor_id=agent.player_id,
@@ -387,11 +396,46 @@ class MatchRunner:
                                 "turns_today": player.turns_today,
                                 "turns_per_day": player.turns_per_day,
                                 "turns_remaining": player.turns_per_day - player.turns_today,
+                                "deadline_s": self._spec.human_deadline_s,
                             },
                             summary=f"[{player.name}] human turn — awaiting input.",
                         )
                         await self._flush_events()
-                    action = await agent.act(obs)
+                    # Phase H1: honor --human-deadline-s if set, so a
+                    # match with a human slot doesn't hang forever when
+                    # the player steps away. On timeout we synthesize a
+                    # WAIT action and emit an AGENT_THOUGHT event so the
+                    # replay / spectator can tell "this was an idle
+                    # auto-WAIT" from "this was a human-chosen WAIT".
+                    deadline = self._spec.human_deadline_s if is_human else None
+                    if deadline is not None and deadline > 0:
+                        try:
+                            action = await asyncio.wait_for(
+                                agent.act(obs), timeout=deadline
+                            )
+                        except TimeoutError:
+                            action = Action(
+                                kind=ActionKind.WAIT,
+                                thought=(
+                                    f"auto-WAIT: no human input within "
+                                    f"{deadline:.0f}s"
+                                ),
+                            )
+                            universe.emit(
+                                EventKind.AGENT_THOUGHT,
+                                actor_id=agent.player_id,
+                                sector_id=player.sector_id,
+                                payload={
+                                    "thought": (
+                                        f"No action from {agent.player_id} in "
+                                        f"{deadline:.0f}s — auto-WAIT."
+                                    ),
+                                    "auto_wait": True,
+                                },
+                                summary=f"[{player.name}] idle — auto-WAIT.",
+                            )
+                    else:
+                        action = await agent.act(obs)
                 except asyncio.CancelledError:
                     # Clean shutdown (runner.stop). Don't emit an error —
                     # just exit the loop.

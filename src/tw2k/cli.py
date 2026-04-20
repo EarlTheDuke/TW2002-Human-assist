@@ -136,6 +136,18 @@ def serve(
             "overrides."
         ),
     ),
+    human_deadline_s: float = typer.Option(
+        None,
+        "--human-deadline-s",
+        help=(
+            "Optional per-turn deadline for HUMAN slots, in seconds. "
+            "If the human doesn't submit an action within this many "
+            "seconds, the scheduler auto-submits a WAIT on their behalf "
+            "and the match keeps moving. Default: no deadline (blocks "
+            "indefinitely - good for dev; set 60-180s for demos). Has "
+            "no effect on AI slots."
+        ),
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -200,6 +212,16 @@ def serve(
     console.print(f"[cyan]Host:[/] {host}:{port}")
     console.print(f"[cyan]Seed:[/] {seed}  [cyan]Sectors:[/] {universe_size}  [cyan]Max days:[/] {max_days}")
     console.print(f"[cyan]Agents:[/] {num_agents}  [cyan]Kind:[/] {agent_kind}  [cyan]LLM provider:[/] {provider_display}")
+    any_human = any(ov.get("kind") == "human" for ov in overrides)
+    if any_human:
+        deadline_note = (
+            f"auto-WAIT after {human_deadline_s:.0f}s idle"
+            if human_deadline_s and human_deadline_s > 0
+            else "no deadline"
+        )
+        console.print(
+            f"[magenta]Human cockpit:[/] http://{host}:{port}/play   [dim]({deadline_note})[/]"
+        )
     if overrides:
         for i, ov in enumerate(overrides[:num_agents]):
             if ov.get("kind") == "human":
@@ -239,6 +261,7 @@ def serve(
         agent_overrides=overrides or None,
         agent_names=names_list or None,
         action_delay_s=action_delay_s,
+        human_deadline_s=human_deadline_s,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

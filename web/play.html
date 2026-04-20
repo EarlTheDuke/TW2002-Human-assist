@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TW2K-AI · Cockpit</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/play.css" />
+</head>
+<body class="play-body">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-mark">◈</span>
+      <div>
+        <h1>TW2K-AI · Cockpit</h1>
+        <p class="tagline" id="cockpitSub">Human player interface · Phase H1</p>
+      </div>
+    </div>
+    <div class="match-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusLabel">connecting…</span>
+      <span class="pill" id="dayLabel">Day —</span>
+      <span class="pill" id="tickLabel">Tick —</span>
+      <span class="pill turn-indicator" id="turnIndicator">—</span>
+    </div>
+    <div class="controls">
+      <a href="/" id="spectatorLink" class="link-btn" title="Switch to spectator view">◎ Spectator</a>
+      <button id="refreshBtn" title="Force refresh observation (F5)">⟳</button>
+      <button id="helpBtn" class="help-btn" title="Keyboard shortcuts (?)">?</button>
+    </div>
+  </header>
+
+  <!-- Shown when more than one HUMAN slot is in the match. -->
+  <div id="slotChooser" class="slot-chooser" hidden>
+    <div class="chooser-card">
+      <h2>Select your slot</h2>
+      <p class="muted">This match has multiple human players. Pick which commander to fly.</p>
+      <ul id="slotChooserList" class="slot-chooser-list"></ul>
+    </div>
+  </div>
+
+  <!-- Shown when this match has no HUMAN slots at all. -->
+  <div id="noHuman" class="no-human" hidden>
+    <div class="chooser-card">
+      <h2>No human slot in this match</h2>
+      <p class="muted">
+        This match is running fully autonomously — there's no HUMAN player for you to fly.
+        Start a new match with a HUMAN slot via the CLI:
+      </p>
+      <pre><code>tw2k serve --num-agents 3 --human P1</code></pre>
+      <p class="muted">Or switch to the <a href="/">spectator view</a> to watch.</p>
+    </div>
+  </div>
+
+  <main class="cockpit" id="cockpit" hidden>
+    <!-- LEFT: sector + map -->
+    <section class="panel cockpit-panel" id="panelSector">
+      <div class="panel-header">
+        <h2>Sector</h2>
+        <div class="header-right">
+          <span class="muted" id="sectorSummary">—</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="sector-line">
+          <span class="label">Current</span>
+          <span class="value sector-current" id="sectorCurrent">—</span>
+        </div>
+        <div class="sector-line">
+          <span class="label">Port</span>
+          <span class="value" id="sectorPort">—</span>
+        </div>
+        <div class="sector-line">
+          <span class="label">Occupants</span>
+          <span class="value" id="sectorOccupants">—</span>
+        </div>
+        <div class="sector-line">
+          <span class="label">Planets</span>
+          <span class="value" id="sectorPlanets">—</span>
+        </div>
+
+        <h3 class="subhead">Adjacent warps</h3>
+        <ul class="adjacent-list" id="adjacentList"></ul>
+
+        <h3 class="subhead">Known warp graph <span class="muted" id="knownWarpsCount"></span></h3>
+        <div class="known-warps" id="knownWarps"></div>
+      </div>
+    </section>
+
+    <!-- MIDDLE: ship + actions -->
+    <section class="panel cockpit-panel" id="panelShip">
+      <div class="panel-header">
+        <h2>Ship & Actions</h2>
+        <div class="header-right">
+          <span class="muted" id="commanderBadge">—</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <!-- Vitals grid -->
+        <div class="vitals-grid">
+          <div><span class="label">Credits</span><span class="value" id="vCredits">—</span></div>
+          <div><span class="label">Net worth</span><span class="value" id="vNetWorth">—</span></div>
+          <div><span class="label">Turns</span><span class="value" id="vTurns">—</span></div>
+          <div><span class="label">Day</span><span class="value" id="vDay">—</span></div>
+          <div><span class="label">Align.</span><span class="value" id="vAlign">—</span></div>
+          <div><span class="label">Rank</span><span class="value" id="vRank">—</span></div>
+        </div>
+
+        <h3 class="subhead">Cargo <span class="muted" id="cargoFree"></span></h3>
+        <ul class="cargo-list" id="cargoList"></ul>
+
+        <h3 class="subhead">Recent failures <span class="muted" id="failuresMuted"></span></h3>
+        <ul class="failures-list" id="failuresList"></ul>
+
+        <h3 class="subhead">Action</h3>
+        <div class="action-buttons" id="actionButtons">
+          <button data-action-kind="warp"  class="act-btn" title="Warp to adjacent sector [W]">Warp</button>
+          <button data-action-kind="scan"  class="act-btn" title="Scan current sector [S]">Scan</button>
+          <button data-action-kind="probe" class="act-btn" title="Launch ether probe to remote sector [P]">Probe</button>
+          <button data-action-kind="trade-buy"  class="act-btn" title="Buy at current port [B]">Buy</button>
+          <button data-action-kind="trade-sell" class="act-btn" title="Sell at current port [L]">Sell</button>
+          <button data-action-kind="wait"  class="act-btn" title="Wait this turn [.]">Wait</button>
+          <button data-action-kind="land"  class="act-btn" title="Land on planet">Land</button>
+          <button data-action-kind="liftoff" class="act-btn" title="Lift off planet">Liftoff</button>
+          <button data-action-kind="hail"  class="act-btn" title="Hail a player in this sector">Hail</button>
+          <button data-action-kind="broadcast" class="act-btn" title="Broadcast to galaxy">Broadcast</button>
+        </div>
+
+        <!-- Dynamic form for the chosen action -->
+        <form id="actionForm" class="action-form" hidden>
+          <div class="action-form-head">
+            <span class="action-title" id="actionTitle">—</span>
+            <button type="button" class="close-btn" id="actionCancelBtn" title="Cancel [Esc]">✕</button>
+          </div>
+          <div id="actionFields" class="action-fields"></div>
+          <div class="action-form-foot">
+            <span class="muted" id="actionHint"></span>
+            <button type="submit" class="submit-btn" id="actionSubmitBtn">Submit (Enter)</button>
+          </div>
+        </form>
+
+        <!-- Last submit status line -->
+        <div class="submit-status" id="submitStatus"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT: event ticker + copilot placeholder + observation inspector -->
+    <section class="panel cockpit-panel" id="panelCopilot">
+      <div class="panel-header">
+        <h2>Events &amp; Copilot</h2>
+        <div class="header-right">
+          <span class="muted">Copilot: <span class="copilot-mode-pill">Manual (H1)</span></span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="copilot-placeholder">
+          <strong>Copilot</strong> — arriving in H2. For now you're flying manually.
+        </div>
+
+        <h3 class="subhead">Event ticker</h3>
+        <ol class="cockpit-event-feed" id="cockpitEvents"></ol>
+
+        <details class="copilot-view">
+          <summary>Copilot's view (raw observation)</summary>
+          <pre><code id="rawObservation">—</code></pre>
+        </details>
+
+        <h3 class="subhead">Known ports</h3>
+        <ul class="known-ports" id="knownPorts"></ul>
+      </div>
+    </section>
+  </main>
+
+  <div id="shortcutsToast" class="shortcuts-toast" hidden>
+    <strong>Cockpit shortcuts</strong>
+    <div><kbd>W</kbd> warp</div>
+    <div><kbd>S</kbd> scan current sector</div>
+    <div><kbd>P</kbd> probe to remote sector</div>
+    <div><kbd>B</kbd> buy at port</div>
+    <div><kbd>L</kbd> sell at port</div>
+    <div><kbd>.</kbd> wait one tick</div>
+    <div><kbd>Enter</kbd> submit action</div>
+    <div><kbd>Esc</kbd> cancel action form</div>
+    <div><kbd>F5</kbd> refresh observation</div>
+    <div><kbd>?</kbd> toggle this help</div>
+  </div>
+
+  <script src="/static/play.js"></script>
+</body>
+</html>

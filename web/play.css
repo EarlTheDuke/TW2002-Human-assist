@@ -1,0 +1,448 @@
+/* Cockpit-specific layering on top of style.css.
+   Only overrides + additions live here — shared tokens & topbar come
+   from style.css. The cockpit's own 3-column grid + action-form UI is
+   self-contained below. */
+
+.play-body {
+  overflow: hidden;
+}
+
+.turn-indicator {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.turn-indicator.your-turn {
+  background: var(--good);
+  color: #03110a;
+  box-shadow: 0 0 0 1px rgba(121, 255, 176, 0.35), 0 0 14px rgba(121, 255, 176, 0.25);
+  animation: turn-pulse 1.6s ease-in-out infinite;
+}
+.turn-indicator.waiting {
+  background: var(--bg-3);
+  color: var(--text-dim);
+}
+.turn-indicator.others {
+  background: var(--bg-3);
+  color: var(--text-dim);
+}
+@keyframes turn-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(121, 255, 176, 0.35), 0 0 14px rgba(121, 255, 176, 0.25); }
+  50% { box-shadow: 0 0 0 1px rgba(121, 255, 176, 0.7),  0 0 22px rgba(121, 255, 176, 0.55); }
+}
+
+.link-btn {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid var(--line-bright);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--bg-2);
+  text-decoration: none;
+  font-size: 12px;
+}
+.link-btn:hover { background: var(--bg-3); }
+
+/* ---------- Slot chooser overlay (>1 human) and no-human page ---------- */
+/* [hidden] must win over our display:flex/grid so the cockpit's
+   three sibling containers (#slotChooser, #noHuman, #cockpit) can
+   be mutually exclusive. The UA stylesheet already sets `display:
+   none` for [hidden], but class rules have higher specificity than
+   element-name rules — ours would win and paint all three. */
+[hidden] { display: none !important; }
+
+.slot-chooser,
+.no-human {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 56px);
+  padding: 40px;
+}
+.chooser-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line-bright);
+  border-radius: 6px;
+  padding: 28px 32px;
+  max-width: 520px;
+  box-shadow: var(--shadow-soft);
+}
+.chooser-card h2 { margin-top: 0; }
+.chooser-card pre {
+  background: var(--bg-0);
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 12px;
+}
+.slot-chooser-list { list-style: none; padding: 0; margin: 8px 0 0; }
+.slot-chooser-list li { margin: 8px 0; }
+.slot-chooser-list a {
+  display: block;
+  padding: 10px 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--line-bright);
+  border-radius: 4px;
+  color: var(--text);
+  text-decoration: none;
+}
+.slot-chooser-list a:hover { background: var(--bg-1); border-color: var(--accent); }
+
+/* ---------- 3-column cockpit grid ---------- */
+.cockpit {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+.cockpit-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  min-height: 0;
+}
+.cockpit-panel .panel-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cockpit-panel .panel-header h2 { margin: 0; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--accent); }
+.cockpit-panel .panel-body {
+  overflow-y: auto;
+  padding: 10px 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ---------- Sector panel ---------- */
+.sector-line {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12px;
+}
+.sector-line:last-of-type { border-bottom: none; }
+.sector-line .label {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 11px;
+}
+.sector-line .value {
+  color: var(--text);
+  font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+.sector-current {
+  font-size: 18px;
+  color: var(--accent-warm);
+  font-weight: 600;
+}
+
+.subhead {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+}
+
+.adjacent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.adjacent-list li {
+  background: var(--bg-3);
+  border: 1px solid var(--line-bright);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  cursor: pointer;
+}
+.adjacent-list li:hover { background: var(--bg-2); border-color: var(--accent); }
+.adjacent-list .adj-port { color: var(--port); margin-left: 4px; font-weight: 600; }
+.adjacent-list .adj-oneway {
+  color: var(--danger);
+  margin-left: 4px;
+}
+
+.known-warps {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--bg-0);
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.known-warps div { padding: 1px 0; }
+.known-warps .warp-cur { color: var(--accent-warm); font-weight: 600; }
+
+/* ---------- Ship & Actions panel ---------- */
+.vitals-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.vitals-grid > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 12px;
+}
+.vitals-grid .label {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 10px;
+}
+.vitals-grid .value { color: var(--text); font-weight: 600; }
+
+.cargo-list,
+.failures-list,
+.known-ports {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+.cargo-list li,
+.failures-list li,
+.known-ports li {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 6px;
+  border-bottom: 1px dashed var(--line);
+}
+.cargo-list li:last-child,
+.failures-list li:last-child,
+.known-ports li:last-child { border-bottom: none; }
+.failures-list .fail-count { color: var(--danger); font-weight: 600; }
+
+.known-ports {
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 4px 6px;
+}
+.known-ports .port-sid { color: var(--accent-warm); margin-right: 6px; }
+
+/* ---------- Action buttons ---------- */
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.act-btn {
+  background: var(--bg-3);
+  border: 1px solid var(--line-bright);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+}
+.act-btn:hover:not(:disabled) { background: var(--bg-2); border-color: var(--accent); color: var(--accent); }
+.act-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.act-btn.primary { background: var(--accent); color: #03212a; border-color: var(--accent); }
+.act-btn.active { background: var(--bg-2); border-color: var(--accent-warm); color: var(--accent-warm); }
+
+/* ---------- Action form (inline, below the buttons) ---------- */
+.action-form {
+  background: var(--bg-2);
+  border: 1px solid var(--line-bright);
+  border-left: 3px solid var(--accent-warm);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.action-form[hidden] { display: none; }
+.action-form-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.action-title { font-weight: 600; color: var(--accent-warm); text-transform: uppercase; letter-spacing: 0.6px; font-size: 12px; }
+.close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 14px;
+}
+.close-btn:hover { color: var(--danger); }
+
+.action-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.action-fields label {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.action-fields input,
+.action-fields select {
+  background: var(--bg-0);
+  border: 1px solid var(--line-bright);
+  color: var(--text);
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12px;
+}
+.action-fields input:focus,
+.action-fields select:focus { outline: none; border-color: var(--accent); }
+
+.action-form-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.submit-btn {
+  background: var(--accent);
+  color: #03212a;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.submit-btn:hover:not(:disabled) { background: #95f0ff; }
+
+.submit-status {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  min-height: 18px;
+  padding: 4px 6px;
+}
+.submit-status.ok { color: var(--good); }
+.submit-status.err { color: var(--danger); }
+.submit-status.pending { color: var(--text-dim); }
+
+/* ---------- Copilot / events panel ---------- */
+.copilot-placeholder {
+  background: var(--bg-0);
+  border: 1px dashed var(--line-bright);
+  border-radius: 3px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.copilot-mode-pill {
+  background: var(--bg-3);
+  border: 1px solid var(--line-bright);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.cockpit-event-feed {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+.cockpit-event-feed li {
+  padding: 3px 8px;
+  border-bottom: 1px dashed var(--line);
+  display: grid;
+  grid-template-columns: 56px 58px 1fr;
+  gap: 6px;
+  align-items: baseline;
+}
+.cockpit-event-feed li:last-child { border-bottom: none; }
+.cockpit-event-feed .ev-time { color: var(--text-faint); }
+.cockpit-event-feed .ev-actor { color: var(--accent); }
+.cockpit-event-feed .ev-actor-human { color: var(--good); }
+.cockpit-event-feed .ev-actor-llm { color: var(--planet); }
+.cockpit-event-feed .ev-actor-heuristic { color: var(--accent-warm); }
+.cockpit-event-feed .ev-actor-engine { color: var(--text-dim); }
+.cockpit-event-feed .ev-kind { color: var(--text); }
+.cockpit-event-feed li.ev-highlight { background: rgba(110, 231, 255, 0.08); }
+
+.copilot-view {
+  margin-top: 12px;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.copilot-view summary {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--line);
+}
+.copilot-view[open] summary { border-bottom-color: var(--line-bright); }
+.copilot-view pre {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--text-dim);
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1200px) {
+  .cockpit { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+  #panelCopilot { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  .cockpit { grid-template-columns: 1fr; }
+}

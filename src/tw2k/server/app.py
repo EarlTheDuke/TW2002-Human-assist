@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from ..agents.human import HumanAgent
 from ..agents.llm import default_provider
-from ..engine import GameConfig
+from ..engine import GameConfig, build_observation
 from ..engine.actions import Action
 from .broadcaster import Broadcaster
 from .replay import ReplayRunner
@@ -48,6 +48,7 @@ def create_app(
     starting_credits: int | None = None,
     agent_overrides: list[dict] | None = None,
     action_delay_s: float | None = None,
+    human_deadline_s: float | None = None,
 ) -> FastAPI:
     broadcaster = Broadcaster()
     runner = MatchRunner(broadcaster)
@@ -70,12 +71,19 @@ def create_app(
                 starting_credits=starting_credits,
                 agent_overrides=agent_overrides,
                 action_delay_s=action_delay_s,
+                human_deadline_s=human_deadline_s,
             )
             await runner.start(spec)
         yield
         await runner.stop()
 
     app = FastAPI(title="TW2K-AI", version="0.1.0", lifespan=lifespan)
+    # Expose the runner on app.state so tests (and potentially future
+    # admin endpoints) can reach it without grabbing closure handles.
+    # In production nothing reads this attribute; the endpoints all
+    # close over `runner` directly.
+    app.state.runner = runner
+    app.state.broadcaster = broadcaster
 
     # Static files
     app.mount("/static", StaticFiles(directory=str(web_root)), name="static")
@@ -198,6 +206,123 @@ def create_app(
             "observation_seq": agent.last_observation_seq,
         }
 
+    @app.get("/api/match/humans")
+    async def list_humans() -> dict[str, Any]:
+        """Enumerate HUMAN slots in the current match.
+
+        Used by the /play cockpit to decide which player the user is
+        flying. If no ?player= query-param is passed and exactly one
+        human slot exists, the cockpit auto-binds to it. Multiple
+        humans or zero humans both result in a chooser page.
+
+        Each entry also carries `awaiting_input: bool`. This is the
+        scheduler's ground truth for "it's this player's turn right
+        now" — true iff the scheduler's current_player_idx points at
+        this slot, the slot's action queue is empty, and the match is
+        running. The /play page uses it to enable the action buttons
+        on initial load (a HUMAN_TURN_START event fired before the WS
+        connected is otherwise lost).
+        """
+        u = runner.state.universe
+        if u is None:
+            return {"humans": [], "status": runner.state.status}
+        idx = runner.state.current_player_idx
+        cur_player_id = (
+            runner.state.agents[idx].player_id
+            if 0 <= idx < len(runner.state.agents)
+            else None
+        )
+        out: list[dict[str, Any]] = []
+        for ag in runner.state.agents:
+            if not isinstance(ag, HumanAgent):
+                continue
+            p = u.players.get(ag.player_id)
+            if p is None:
+                continue
+            awaiting = (
+                runner.state.status == "running"
+                and cur_player_id == ag.player_id
+                and ag.pending == 0
+                and p.alive
+            )
+            out.append(
+                {
+                    "player_id": ag.player_id,
+                    "name": ag.name,
+                    "color": p.color,
+                    "alive": p.alive,
+                    "sector_id": p.sector_id,
+                    "turns_today": p.turns_today,
+                    "turns_per_day": p.turns_per_day,
+                    "pending_actions": ag.pending,
+                    "awaiting_input": awaiting,
+                }
+            )
+        return {"humans": out, "status": runner.state.status, "day": u.day, "tick": u.tick}
+
+    @app.get("/api/human/observation")
+    async def human_observation(player_id: str) -> dict[str, Any]:
+        """Full Observation for a human slot.
+
+        Returns what `build_observation(universe, player_id)` would give
+        the scheduler — same fields, same fog-of-war filtering, same
+        action_hint. The /play cockpit renders a human-friendly subset
+        (sector, ship, cargo, known ports, recent failures) AND lets
+        the power user expand a "Copilot's view" panel to see the raw
+        JSON exactly as an LLM agent would. That transparency is core
+        to making the human/copilot split legible later on.
+
+        Returns 404 if player_id doesn't exist, 409 if the player is
+        not a HUMAN slot, 503 if no match is running.
+        """
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        if player_id not in u.players:
+            raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+        if u.players[player_id].agent_kind != "human":
+            raise HTTPException(
+                status_code=409, detail=f"player {player_id} is not a human slot"
+            )
+        try:
+            obs = build_observation(u, player_id)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500, detail=f"failed to build observation: {exc}"
+            ) from exc
+        return obs.model_dump(mode="json")
+
+    @app.get("/play", response_class=HTMLResponse)
+    async def play_page() -> HTMLResponse:
+        """Human cockpit. One page for every human slot in the match.
+
+        The page itself is stateless; all state comes from /api endpoints
+        and the /ws event stream. Navigate with ?player=P2 to bind a
+        browser session to a specific human slot; with no query param
+        and exactly one human slot, the cockpit auto-binds.
+        """
+        play_path = web_root / "play.html"
+        if not play_path.is_file():
+            raise HTTPException(status_code=404, detail="play.html not found")
+        html = play_path.read_text(encoding="utf-8")
+        try:
+            js_v = int((web_root / "play.js").stat().st_mtime)
+            css_v = int((web_root / "play.css").stat().st_mtime)
+            shared_css_v = int((web_root / "style.css").stat().st_mtime)
+        except OSError:
+            js_v = css_v = shared_css_v = 0
+        html = html.replace("/static/play.js", f"/static/play.js?v={js_v}")
+        html = html.replace("/static/play.css", f"/static/play.css?v={css_v}")
+        html = html.replace("/static/style.css", f"/static/style.css?v={shared_css_v}")
+        return HTMLResponse(
+            html,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
     @app.post("/control/restart")
     async def restart(body: dict[str, Any] | None = None) -> dict[str, Any]:
         body = body or {}
@@ -274,6 +399,7 @@ def _build_default_spec(
     starting_credits: int | None = None,
     agent_overrides: list[dict] | None = None,
     action_delay_s: float | None = None,
+    human_deadline_s: float | None = None,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -318,7 +444,12 @@ def _build_default_spec(
                 model=ov.get("model", model),
             )
         )
-    return MatchSpec(config=cfg, agents=agents, action_delay_s=cfg.action_delay_s)
+    return MatchSpec(
+        config=cfg,
+        agents=agents,
+        action_delay_s=cfg.action_delay_s,
+        human_deadline_s=human_deadline_s,
+    )
 
 
 def _default_agent_names(n: int) -> list[str]:
