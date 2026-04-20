@@ -175,8 +175,13 @@ class ChatAgent:
         *,
         provider: str | None = None,
         model: str | None = None,
-        timeout_s: float = 25.0,
+        timeout_s: float = 45.0,
     ):
+        # Bumped 25s → 45s after the H6 test campaign observed timeouts
+        # when ChatAgent competes with two LLMAgent pilots (P2+P3) on the
+        # same provider. 45s gives Grok/Claude/GPT room to emit a full
+        # plan envelope even under contention without feeling sluggish to
+        # the human.
         self.provider = provider
         self.model = model
         self.timeout_s = timeout_s

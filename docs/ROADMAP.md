@@ -132,6 +132,14 @@ spectrum. Full design doc: `docs/HUMAN_COPILOT_PLAN.md`.
       amber = premium buy, stale rows dimmed after 3 days). Respects
       fog-of-war (`known_ports` only); route ranking by credits-per-turn over
       BFS round-trip distance honouring cargo holds.
+- [x] **H6 polish** — post-campaign fixes from `docs/TEST_REPORT_H6.md`:
+      rewrote `copilot/ui_agent.py` to match the current observation schema
+      (`warps_out`, `port.buys`/`sells`, structured stock dict) so button
+      hints stop saying "no visible warps" when warps are visible; bumped
+      `ChatAgent.timeout_s` 25 s → 45 s so the copilot survives LLM contention
+      against two LLMAgent pilots on the same provider; routed
+      `TW2K_OTEL_CONSOLE=1` span dumps to stderr so `tw2k … --json` CLIs
+      stay parseable.
 
 **Exit criteria:** a human can open `/play`, manually move + trade, hand control
 to Grok/Claude/GPT-4o via voice or text, watch a `profit_loop` task run hands-off

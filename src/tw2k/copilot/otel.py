@@ -30,8 +30,10 @@ Env toggles
   Setting this enables the bridge. Unset → disabled.
 * ``TW2K_OTEL_SERVICE_NAME`` — service name in span resource. Defaults
   to ``tw2k-ai``.
-* ``TW2K_OTEL_CONSOLE`` — if truthy, *also* prints spans to stdout (nice
-  for debugging without an OTLP collector running).
+* ``TW2K_OTEL_CONSOLE`` — if truthy, *also* prints spans to **stderr**
+  (nice for debugging without an OTLP collector running). Routed to
+  stderr rather than stdout so ``tw2k …``, ``--json`` CLI surfaces stay
+  parseable when OTEL is globally on in the shell.
 
 All other standard ``OTEL_*`` env vars (``OTEL_EXPORTER_OTLP_HEADERS``,
 ``OTEL_EXPORTER_OTLP_PROTOCOL``, …) are respected by the SDK directly.
@@ -41,6 +43,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from contextlib import suppress
 from typing import Any
 
@@ -108,7 +111,12 @@ def _ensure_tracer_provider() -> Any | None:
             )
 
     if _is_truthy(os.environ.get(ENV_CONSOLE)):
-        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+        # Route to stderr so JSON-emitting CLIs (e.g. `tw2k human-sim
+        # --json`) keep stdout clean when operators leave
+        # TW2K_OTEL_CONSOLE=1 in their shell.
+        provider.add_span_processor(
+            BatchSpanProcessor(ConsoleSpanExporter(out=sys.stderr))
+        )
 
     trace.set_tracer_provider(provider)
     _PROVIDER_READY = True

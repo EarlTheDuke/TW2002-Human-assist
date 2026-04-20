@@ -12,18 +12,79 @@ from typing import Any
 from ..engine import Observation
 
 
+def _warps(sector: dict[str, Any]) -> list[int]:
+    """Extract adjacent sector IDs from a sector dict.
+
+    The engine's observation builder emits ``warps_out`` (current schema);
+    some older test fixtures still use ``warps``. Accept both so the hint
+    surface stays correct against real game state and legacy test data.
+    """
+    raw = sector.get("warps_out")
+    if not raw:
+        raw = sector.get("warps")
+    return [int(w) for w in (raw or [])]
+
+
+def _port_buys(port: dict[str, Any]) -> list[str]:
+    raw = port.get("buys")
+    if raw is None:
+        raw = port.get("buying")
+    return list(raw or [])
+
+
+def _port_sells(port: dict[str, Any]) -> list[str]:
+    raw = port.get("sells")
+    if raw is None:
+        raw = port.get("selling")
+    return list(raw or [])
+
+
+def _stock_qty(port: dict[str, Any], commodity: str) -> int:
+    """Return current stock for a commodity regardless of schema shape.
+
+    Real engine stock is ``{commodity: {"current": int, "max": int,
+    "price": int, "side": "…"}}``. Legacy/test fixtures may emit a flat
+    ``{commodity: int}`` map. Handle both.
+    """
+    stock = port.get("stock") or {}
+    v = stock.get(commodity)
+    if isinstance(v, dict):
+        return int(v.get("current", 0) or 0)
+    if isinstance(v, (int, float)):
+        return int(v)
+    return 0
+
+
+def _stock_price(port: dict[str, Any], commodity: str) -> int | None:
+    """Return best-known price for a commodity, checking both schemas."""
+    stock = port.get("stock") or {}
+    v = stock.get(commodity)
+    if isinstance(v, dict):
+        p = v.get("price")
+        if p is not None:
+            return int(p)
+    prices = port.get("prices") or {}
+    p = prices.get(commodity)
+    if p is not None:
+        return int(p)
+    return None
+
+
 def summarize_status(obs: Observation) -> str:
     """One-line status string for the chat panel header."""
-    s = obs.ship
-    port_text = ""
+    s = obs.ship or {}
+    holds = int(s.get("holds") or s.get("cargo_max") or 0)
+    used = _holds_used(s)
     sec = obs.sector or {}
     port = sec.get("port") if isinstance(sec, dict) else None
+    port_text = ""
     if port:
-        port_text = f", port class {port.get('class_id')}"
+        code = port.get("code") or port.get("class_id")
+        port_text = f", port {code}"
     return (
         f"Day {obs.day} tick {obs.tick} — {obs.credits:,} cr, "
-        f"hull {s.get('hull', 0)}/{s.get('max_hull', 0)}, "
-        f"holds {_holds_used(s)}/{s.get('cargo_max', 0)}{port_text}"
+        f"fighters {int(s.get('fighters', 0))}, "
+        f"holds {used}/{holds}{port_text}"
     )
 
 
@@ -41,34 +102,30 @@ def button_hints(obs: Observation) -> dict[str, str]:
     hints: dict[str, str] = {}
 
     sec = obs.sector or {}
-    warps = sec.get("warps") or []
-    port = sec.get("port")
+    warps = _warps(sec)
+    port = sec.get("port") if isinstance(sec, dict) else None
 
-    # Warp / plot_course
     if warps:
-        hints["warp"] = f"Adjacent sectors: {', '.join(map(str, warps[:8]))}"
+        preview = ", ".join(map(str, warps[:8]))
+        more = "" if len(warps) <= 8 else f" (+{len(warps) - 8} more)"
+        hints["warp"] = f"Adjacent sectors: {preview}{more}"
     else:
         hints["warp"] = "No visible warps — try scanning first."
 
-    # Trade
     if port is not None:
-        prices = port.get("prices") or {}
-        bits = []
-        for k in ("fuel_ore", "organics", "equipment"):
-            p = prices.get(k)
-            if p:
-                bits.append(f"{k}={p}")
+        bits: list[str] = []
+        for c in ("fuel_ore", "organics", "equipment"):
+            p = _stock_price(port, c)
+            if p is not None:
+                bits.append(f"{c}={p}")
         hints["trade"] = "Port prices: " + ", ".join(bits) if bits else "Port here."
     else:
         hints["trade"] = "No trading port in this sector."
 
-    # Scan is always useful
     hints["scan"] = "Reveals port class + commodities in current sector."
 
-    # Pass turn
     hints["wait"] = "Skip this tick."
 
-    # Suggested move
     suggest = suggest_next_move(obs)
     if suggest:
         hints["_suggest"] = suggest
@@ -87,30 +144,21 @@ def suggest_next_move(obs: Observation) -> str:
     - Else suggest WARP to a known warp.
     """
     sec = obs.sector or {}
-    port = sec.get("port")
-    ship_cargo = obs.ship.get("cargo", {}) or {}
+    port = sec.get("port") if isinstance(sec, dict) else None
+    ship_cargo = (obs.ship or {}).get("cargo", {}) or {}
 
     if port is not None:
-        # Sell side — if we have any of the port's buy commodities
-        buying = port.get("buying") or []
-        for c in buying:
+        for c in _port_buys(port):
             if int(ship_cargo.get(c, 0)) > 0:
                 return f"Port here buys {c} — consider SELL {c}."
-        # Buy side — if we have credits and the port is selling something
-        selling = port.get("selling") or []
-        if selling and obs.credits >= 1000:
-            stock = port.get("stock") or {}
-            best = None
-            for c in selling:
-                q = int(stock.get(c, 0))
-                if q > 0:
-                    best = c
-                    break
-            if best:
-                return f"Port here sells {best} — consider BUY {best}."
+        sells = _port_sells(port)
+        if sells and obs.credits >= 1000:
+            for c in sells:
+                if _stock_qty(port, c) > 0:
+                    return f"Port here sells {c} — consider BUY {c}."
 
-    if sec.get("warps"):
-        first = sec["warps"][0]
-        return f"No local action — WARP {first} to keep moving."
+    warps = _warps(sec)
+    if warps:
+        return f"No local action — WARP {warps[0]} to keep moving."
 
     return "Consider SCAN to reveal neighbours."
