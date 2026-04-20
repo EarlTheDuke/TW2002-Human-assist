@@ -13,7 +13,7 @@
       <span class="logo-mark">◈</span>
       <div>
         <h1>TW2K-AI · Cockpit</h1>
-        <p class="tagline" id="cockpitSub">Human player interface · Phase H4 (voice in + out)</p>
+        <p class="tagline" id="cockpitSub">Human player interface · Phase H5 (memory · what-if · i18n · mobile)</p>
       </div>
     </div>
     <div class="match-status">
@@ -159,6 +159,22 @@
             <span class="tts-icon" aria-hidden="true">🔈</span>
             <span class="tts-label">Voice</span>
           </button>
+          <select
+            class="voice-lang"
+            id="voiceLangSelect"
+            title="Voice input/output language (H5)"
+            aria-label="Voice language"
+          >
+            <option value="en-US">EN</option>
+            <option value="en-GB">EN-GB</option>
+            <option value="es-ES">ES</option>
+            <option value="fr-FR">FR</option>
+            <option value="de-DE">DE</option>
+            <option value="it-IT">IT</option>
+            <option value="pt-BR">PT-BR</option>
+            <option value="ja-JP">JA</option>
+            <option value="zh-CN">ZH</option>
+          </select>
           <span class="muted" id="copilotModePill">mode: advisory</span>
         </div>
       </div>
@@ -189,6 +205,14 @@
             <span class="muted" id="copilotPlanThought"></span>
           </div>
           <ol class="plan-steps" id="copilotPlanSteps"></ol>
+          <!-- H5.4: what-if predicted outcome -->
+          <div class="whatif-summary" id="copilotWhatIf" hidden>
+            <div class="whatif-head">
+              <strong>Predicted outcome</strong>
+              <span class="whatif-oneliner" id="copilotWhatIfOneLiner"></span>
+            </div>
+            <ul class="whatif-warnings" id="copilotWhatIfWarnings"></ul>
+          </div>
           <div class="plan-actions">
             <button type="button" class="submit-btn" id="copilotConfirmBtn">Confirm (Enter)</button>
             <button type="button" class="close-btn" id="copilotCancelPlanBtn">Cancel (Esc)</button>
@@ -230,6 +254,24 @@
           <span class="ptt-state" id="pttState">idle</span>
           <span class="ptt-partial" id="pttPartial"></span>
         </div>
+
+        <!-- H5.1: long-term memory -->
+        <details class="copilot-memory">
+          <summary>Memory <span class="muted" id="copilotMemoryChip">empty</span></summary>
+          <div class="memory-body">
+            <h4 class="micro-head">Preferences</h4>
+            <ul class="memory-prefs" id="copilotMemoryPrefs"></ul>
+            <form class="memory-form" id="copilotMemoryForm">
+              <input type="text" id="copilotMemoryKey" placeholder="key (e.g. min_reserve)" autocomplete="off" />
+              <input type="text" id="copilotMemoryValue" placeholder="value (e.g. 5000)" autocomplete="off" />
+              <button type="submit" class="submit-btn">Remember</button>
+            </form>
+            <h4 class="micro-head">Learned rules</h4>
+            <ul class="memory-rules" id="copilotMemoryRules"></ul>
+            <h4 class="micro-head">Favorite sectors</h4>
+            <div class="memory-favs" id="copilotMemoryFavs"></div>
+          </div>
+        </details>
 
         <!-- standing orders -->
         <details class="copilot-orders">

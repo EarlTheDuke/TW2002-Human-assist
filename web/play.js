@@ -716,6 +716,18 @@
     escalationReason: $("copilotEscalationReason"),
     escalationDismiss: $("copilotEscalationDismiss"),
     ttsBtn: $("ttsToggleBtn"),
+    // H5
+    voiceLangSelect: $("voiceLangSelect"),
+    whatif: $("copilotWhatIf"),
+    whatifOneLiner: $("copilotWhatIfOneLiner"),
+    whatifWarnings: $("copilotWhatIfWarnings"),
+    memoryChip: $("copilotMemoryChip"),
+    memoryPrefs: $("copilotMemoryPrefs"),
+    memoryRules: $("copilotMemoryRules"),
+    memoryFavs: $("copilotMemoryFavs"),
+    memoryForm: $("copilotMemoryForm"),
+    memoryKey: $("copilotMemoryKey"),
+    memoryValue: $("copilotMemoryValue"),
   };
 
   const copilotState = {
@@ -724,6 +736,16 @@
     activeTask: null,
     orders: [],
     seenMessageIds: new Set(),
+    // H5.1 — memory snapshot mirror for the right-panel details.
+    memory: {
+      summary: "empty",
+      preferences: {},
+      learned_rules: [],
+      favorite_sectors: [],
+      stats: {},
+    },
+    // H5.4 — last what-if preview for the pending plan.
+    whatif: null,
   };
 
   function renderChatMessage(msg) {
@@ -757,6 +779,7 @@
     if (!pp) {
       copilotEls.planPreview.hidden = true;
       copilotEls.planSteps.innerHTML = "";
+      renderWhatIf(null);
       return;
     }
     copilotEls.planPreview.hidden = false;
@@ -776,6 +799,138 @@
         li.textContent = `${c.name}(${JSON.stringify(c.arguments || {})})`;
         copilotEls.planSteps.appendChild(li);
       });
+    }
+    fetchWhatIf();
+  }
+
+  // H5.4 — what-if predicted outcome ---------------------------------
+  function renderWhatIf(wi) {
+    copilotState.whatif = wi;
+    if (!copilotEls.whatif) return;
+    if (!wi || !wi.pending) {
+      copilotEls.whatif.hidden = true;
+      if (copilotEls.whatifOneLiner) copilotEls.whatifOneLiner.textContent = "";
+      if (copilotEls.whatifWarnings) copilotEls.whatifWarnings.innerHTML = "";
+      return;
+    }
+    copilotEls.whatif.hidden = false;
+    const one = wi.one_liner || "";
+    if (copilotEls.whatifOneLiner) {
+      copilotEls.whatifOneLiner.textContent = one;
+      copilotEls.whatifOneLiner.classList.toggle(
+        "is-positive",
+        typeof wi.credit_delta === "number" && wi.credit_delta > 0
+      );
+      copilotEls.whatifOneLiner.classList.toggle(
+        "is-negative",
+        typeof wi.credit_delta === "number" && wi.credit_delta < 0
+      );
+    }
+    if (copilotEls.whatifWarnings) {
+      copilotEls.whatifWarnings.innerHTML = "";
+      (wi.warnings || []).forEach((w) => {
+        const li = document.createElement("li");
+        li.textContent = w;
+        copilotEls.whatifWarnings.appendChild(li);
+      });
+    }
+  }
+
+  async function fetchWhatIf() {
+    if (!playerId) return;
+    try {
+      const r = await fetch(
+        `/api/copilot/whatif?player_id=${encodeURIComponent(playerId)}`
+      );
+      if (!r.ok) return;
+      const wi = await r.json();
+      renderWhatIf(wi);
+    } catch (err) {
+      /* non-fatal; preview stays empty */
+    }
+  }
+
+  // H5.1 — memory panel ---------------------------------------------
+  function renderMemory(m) {
+    copilotState.memory = m || copilotState.memory;
+    const mem = copilotState.memory;
+    if (copilotEls.memoryChip) {
+      copilotEls.memoryChip.textContent = mem.summary || "empty";
+    }
+    if (copilotEls.memoryPrefs) {
+      copilotEls.memoryPrefs.innerHTML = "";
+      Object.entries(mem.preferences || {}).forEach(([k, v]) => {
+        const li = document.createElement("li");
+        const key = document.createElement("span");
+        key.className = "mem-key";
+        key.textContent = k;
+        const eq = document.createTextNode(" = ");
+        const val = document.createElement("span");
+        val.className = "mem-val";
+        val.textContent = v;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "mem-forget";
+        btn.textContent = "forget";
+        btn.title = `Forget ${k}`;
+        btn.addEventListener("click", () => memoryForget(k));
+        li.appendChild(key);
+        li.appendChild(eq);
+        li.appendChild(val);
+        li.appendChild(btn);
+        copilotEls.memoryPrefs.appendChild(li);
+      });
+    }
+    if (copilotEls.memoryRules) {
+      copilotEls.memoryRules.innerHTML = "";
+      (mem.learned_rules || []).forEach((r) => {
+        const li = document.createElement("li");
+        li.textContent = r;
+        copilotEls.memoryRules.appendChild(li);
+      });
+    }
+    if (copilotEls.memoryFavs) {
+      copilotEls.memoryFavs.innerHTML = "";
+      (mem.favorite_sectors || []).slice(-16).forEach((sid) => {
+        const s = document.createElement("span");
+        s.className = "fav-chip";
+        s.textContent = `#${sid}`;
+        copilotEls.memoryFavs.appendChild(s);
+      });
+    }
+  }
+
+  async function memoryRemember(key, value) {
+    if (!playerId || !key || !value) return;
+    try {
+      const r = await fetch("/api/copilot/memory/remember", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: playerId, key, value }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        renderMemory(j.memory || null);
+      }
+    } catch (err) {
+      console.error("remember failed", err);
+    }
+  }
+
+  async function memoryForget(key) {
+    if (!playerId || !key) return;
+    try {
+      const r = await fetch("/api/copilot/memory/forget", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: playerId, key }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        renderMemory(j.memory || null);
+      }
+    } catch (err) {
+      console.error("forget failed", err);
     }
   }
 
@@ -845,6 +1000,10 @@
       renderPendingPlan(s.pending_plan || null);
       renderActiveTask(s.active_task || null);
       renderOrders(s.standing_orders || []);
+      if (s.memory) renderMemory(s.memory);
+      if (s.whatif) {
+        renderWhatIf({ pending: true, ...s.whatif });
+      }
     } catch (err) {
       /* ignore */
     }
@@ -1013,6 +1172,23 @@
       m.kind === "standing_order_removed"
     ) {
       fetchCopilotState();
+    } else if (m.kind === "memory_update") {
+      // H5.1 — refresh memory chip + prefs list whenever the session
+      // logs a remember/forget. Cheap endpoint; avoids re-broadcasting
+      // the whole snapshot for every keystroke.
+      fetchMemorySnapshot();
+    }
+  }
+
+  async function fetchMemorySnapshot() {
+    if (!playerId) return;
+    try {
+      const r = await fetch(
+        `/api/copilot/memory?player_id=${encodeURIComponent(playerId)}`
+      );
+      if (r.ok) renderMemory(await r.json());
+    } catch (err) {
+      /* ignore */
     }
   }
 
@@ -1034,6 +1210,30 @@
       ev.preventDefault();
       addOrder();
     });
+    // H5.1 — memory form (remember key = value).
+    if (copilotEls.memoryForm) {
+      copilotEls.memoryForm.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const k = (copilotEls.memoryKey.value || "").trim();
+        const v = (copilotEls.memoryValue.value || "").trim();
+        if (!k || !v) return;
+        memoryRemember(k, v);
+        copilotEls.memoryKey.value = "";
+        copilotEls.memoryValue.value = "";
+      });
+    }
+    // H5.3 — voice language selector. Persists in localStorage and
+    // applies to both the PTT `SpeechRecognition.lang` AND the
+    // `SpeechSynthesisUtterance.lang` so input and output stay aligned.
+    if (copilotEls.voiceLangSelect) {
+      const saved = _loadVoiceLang();
+      if (saved) copilotEls.voiceLangSelect.value = saved;
+      applyVoiceLang(copilotEls.voiceLangSelect.value);
+      copilotEls.voiceLangSelect.addEventListener("change", () => {
+        _saveVoiceLang(copilotEls.voiceLangSelect.value);
+        applyVoiceLang(copilotEls.voiceLangSelect.value);
+      });
+    }
   }
 
   // ---------------- Voice input / Push-to-talk (H3) ----------------
@@ -1067,6 +1267,46 @@
     return window.SpeechRecognition || window.webkitSpeechRecognition || null;
   }
 
+  // H5.3 — voice language -------------------------------------------------
+  // BCP-47 tag (e.g. "en-US", "ja-JP"). Persisted in localStorage so it
+  // survives reloads. Applied to BOTH SpeechRecognition.lang AND
+  // SpeechSynthesisUtterance.lang.
+  const VOICE_LANG_KEY = "tw2k.voice.lang";
+  function _loadVoiceLang() {
+    try {
+      return window.localStorage.getItem(VOICE_LANG_KEY) || "";
+    } catch {
+      return "";
+    }
+  }
+  function _saveVoiceLang(lang) {
+    try {
+      window.localStorage.setItem(VOICE_LANG_KEY, lang);
+    } catch {
+      /* ignore */
+    }
+  }
+  function applyVoiceLang(lang) {
+    if (!lang) return;
+    if (voiceState && voiceState.recognition) {
+      try {
+        voiceState.recognition.lang = lang;
+      } catch {
+        /* ignore */
+      }
+    }
+    if (interruptState && interruptState.recognition) {
+      try {
+        interruptState.recognition.lang = lang;
+      } catch {
+        /* ignore */
+      }
+    }
+    if (ttsState) {
+      ttsState.lang = lang;
+    }
+  }
+
   function initVoice() {
     const Ctor = _speechCtor();
     if (!pttEls.btn) return;
@@ -1084,9 +1324,14 @@
     const rec = new Ctor();
     rec.continuous = false;
     rec.interimResults = true;
-    rec.lang = (navigator.language || "en-US").startsWith("en")
-      ? navigator.language || "en-US"
-      : "en-US";
+    // H5.3 — honour the saved voice language if any, else default to the
+    // browser language if it's English, else fall back to en-US.
+    const savedLang = _loadVoiceLang();
+    rec.lang =
+      savedLang ||
+      ((navigator.language || "en-US").startsWith("en")
+        ? navigator.language || "en-US"
+        : "en-US");
     rec.maxAlternatives = 1;
     rec.onstart = () => {
       voiceState.listening = true;
@@ -1283,6 +1528,9 @@
     lastUtteranceTs: 0,
     lastText: "",
     voice: null,
+    // H5.3 — BCP-47 language tag the selector + recognition are aligned
+    // to. Picked up lazily by _pickVoice / speakCopilot.
+    lang: "",
     // Kinds that are worth speaking. "plan_step" and very high-frequency
     // task_progress messages are filtered out — they're noise for voice.
     speakKinds: new Set([
@@ -1347,10 +1595,22 @@
 
   function _pickVoice() {
     if (!ttsState.supported) return null;
-    if (ttsState.voice) return ttsState.voice;
     const voices = window.speechSynthesis.getVoices() || [];
     if (!voices.length) return null;
-    // Prefer an English, local (native) voice; fall back to first.
+    // H5.3 — if a language has been explicitly chosen, always honour it.
+    // Prefer an exact BCP-47 match, else a base-language match (e.g.
+    // "ja" out of "ja-JP"), else a local voice, else the first voice.
+    const want = (ttsState.lang || "").toLowerCase();
+    if (want) {
+      const base = want.split("-")[0];
+      const exact = voices.find((v) => v.lang && v.lang.toLowerCase() === want);
+      if (exact) return exact;
+      const partial = voices.find(
+        (v) => v.lang && v.lang.toLowerCase().startsWith(base)
+      );
+      if (partial) return partial;
+    }
+    if (ttsState.voice) return ttsState.voice;
     ttsState.voice =
       voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("en") && v.localService) ||
       voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("en")) ||
@@ -1375,6 +1635,7 @@
       u.volume = 1.0;
       const v = _pickVoice();
       if (v) u.voice = v;
+      if (ttsState.lang) u.lang = ttsState.lang;
       u.onstart = () => {
         if (copilotEls.ttsBtn) copilotEls.ttsBtn.classList.add("is-speaking");
       };
@@ -1425,6 +1686,27 @@
 
   window.__tw2kTts = { state: ttsState, speak: speakCopilot, setEnabled: setTtsEnabled };
 
+  // H5.1 / H5.4 — memory + what-if debug hooks for Playwright + console.
+  window.__tw2kMem = {
+    state: () => copilotState.memory,
+    remember: memoryRemember,
+    forget: memoryForget,
+    refresh: fetchMemorySnapshot,
+  };
+  window.__tw2kWhatIf = {
+    state: () => copilotState.whatif,
+    refresh: fetchWhatIf,
+    render: renderWhatIf,
+  };
+  // H5.3 — voice language helper.
+  window.__tw2kVoiceLang = {
+    get: _loadVoiceLang,
+    set: (lang) => {
+      _saveVoiceLang(lang);
+      applyVoiceLang(lang);
+    },
+  };
+
   // ---------------- Autopilot always-on listener + interrupt words (H4) ----------------
   //
   // In autopilot mode we keep a SECOND SpeechRecognition instance
@@ -1467,9 +1749,13 @@
     const rec = new Ctor();
     rec.continuous = true;
     rec.interimResults = true;
-    rec.lang = (navigator.language || "en-US").startsWith("en")
-      ? navigator.language || "en-US"
-      : "en-US";
+    // H5.3 — align interrupt listener to the chosen voice language.
+    const interruptLang = _loadVoiceLang();
+    rec.lang =
+      interruptLang ||
+      ((navigator.language || "en-US").startsWith("en")
+        ? navigator.language || "en-US"
+        : "en-US");
     rec.onstart = () => {
       interruptState.active = true;
       if (pttEls.btn && !voiceState.listening) pttEls.btn.classList.add("is-interrupt-listen");

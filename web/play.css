@@ -805,11 +805,162 @@
   color: var(--accent);
 }
 
+/* ---------- H5: voice language selector ---------- */
+.voice-lang {
+  appearance: none;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.voice-lang:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---------- H5.4: what-if predicted outcome ---------- */
+.whatif-summary {
+  margin: 8px 0 6px;
+  padding: 6px 8px;
+  border: 1px dashed var(--line-bright);
+  border-radius: 4px;
+  background: rgba(92, 160, 255, 0.04);
+}
+.whatif-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.whatif-oneliner {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--text);
+}
+.whatif-oneliner.is-positive { color: var(--good); }
+.whatif-oneliner.is-negative { color: var(--bad, #ff6b6b); }
+.whatif-warnings {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--bad, #ff6b6b);
+  font-size: 11px;
+}
+.whatif-warnings:empty { display: none; }
+
+/* ---------- H5.1: memory panel ---------- */
+.copilot-memory {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 6px;
+  background: var(--bg-2);
+}
+.copilot-memory summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+.memory-body {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.memory-body .micro-head {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.memory-prefs,
+.memory-rules {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+.memory-prefs li,
+.memory-rules li {
+  margin: 2px 0;
+}
+.memory-prefs .mem-key { color: var(--accent); }
+.memory-prefs .mem-forget {
+  margin-left: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+}
+.memory-prefs .mem-forget:hover { color: var(--bad, #ff6b6b); }
+.memory-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+}
+.memory-form input {
+  background: var(--bg-1);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+.memory-favs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.memory-favs .fav-chip {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 11px;
+  background: var(--bg-1);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1200px) {
   .cockpit { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
   #panelCopilot { grid-column: 1 / -1; }
 }
+@media (max-width: 900px) {
+  /* H5.3: tablet layout — stack panels, keep actions reachable. */
+  .cockpit { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  #panelCopilot { grid-column: 1 / -1; }
+  .panel { min-height: unset; }
+  .ptt-btn {
+    min-width: 64px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  .tts-toggle {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  .copilot-chat-form {
+    flex-wrap: wrap;
+  }
+  .copilot-chat-form input {
+    flex: 1 1 100%;
+  }
+  .memory-form {
+    grid-template-columns: 1fr;
+  }
+}
 @media (max-width: 720px) {
+  /* H5.3: phone layout — larger touch targets; hide dense side-info. */
   .cockpit { grid-template-columns: 1fr; }
+  .known-ports { max-height: 140px; overflow: auto; }
+  .ptt-btn, .submit-btn, .tts-toggle, .voice-lang {
+    min-height: 40px;
+  }
+  .voice-lang { font-size: 14px; padding: 6px 10px; }
+  .tts-label, .ptt-label { display: none; }
+  .copilot-mode-row { overflow-x: auto; }
+  .mode-btn { white-space: nowrap; }
+  .subhead { margin-top: 12px; }
 }

@@ -25,11 +25,14 @@ from pydantic import BaseModel, Field
 
 from ..agents.human import HumanAgent
 from ..engine import Action, ActionKind, Observation, Universe, build_observation
+from . import memory as mem_mod
 from . import safety
 from . import standing_orders as so
+from . import whatif as wi
 from .chat_agent import ChatAgent, ChatResponse
 from .task_agent import TaskAgent, TaskStatus, llm_next_step
 from .tools import TOOL_CATALOG, ToolCall
+from .trace import CopilotTracer
 
 # ---------------------------------------------------------------------------
 # Mode
@@ -89,6 +92,8 @@ class CopilotSession:
         chat_agent: ChatAgent | None = None,
         task_next_step_factory=None,  # () -> NextStepFn; default = llm_next_step()
         iter_delay_s: float = 0.05,
+        memory_store: mem_mod.MemoryStore | None = None,
+        tracer: CopilotTracer | None = None,
     ):
         self.player_id = player_id
         self.human_agent = human_agent
@@ -108,6 +113,16 @@ class CopilotSession:
         self._active_task: TaskAgent | None = None
         self._task_handle: asyncio.Task[TaskStatus] | None = None
         self._task_history: list[TaskStatus] = []
+
+        # H5.1/H5.2 — long-term memory + decision tracer. Both degrade
+        # gracefully to in-memory / no-op when no store/tracer is wired.
+        self._memory_store = memory_store or mem_mod.MemoryStore()
+        self.memory: mem_mod.CopilotMemory = self._memory_store.load(player_id)
+        self.memory.bump_stat("session_count")
+        self._memory_store.save(self.memory)
+        self.tracer: CopilotTracer = tracer or CopilotTracer(
+            player_id=player_id, root_dir=None, enable=False
+        )
 
         # Optional auto-confirm (tests / --copilot-autoconfirm CLI flag). When
         # True, plans and start_task proposals skip the Confirm step.
@@ -134,12 +149,110 @@ class CopilotSession:
             ),
             "tool_catalog": sorted(TOOL_CATALOG.keys()),
             "task_history": [t.model_dump() for t in self._task_history[-10:]],
+            "memory": {
+                "summary": self.memory.summary_line(),
+                "preferences": dict(self.memory.preferences),
+                "learned_rules": list(self.memory.learned_rules),
+                "favorite_sectors": list(self.memory.favorite_sectors),
+                "stats": dict(self.memory.stats),
+            },
+            "whatif": (
+                self.whatif_snapshot() if self.pending_plan is not None else None
+            ),
+        }
+
+    # --------------------- memory API (H5.1) -----------------------------
+
+    async def remember(self, key: str, value: str) -> bool:
+        key = (key or "").strip()
+        value = (value or "").strip()
+        if not key or not value:
+            return False
+        self.memory.remember(key, value)
+        self._memory_store.save(self.memory)
+        await self.tracer.trace_memory_update("remember", key, value)
+        await self._log_system(
+            f"remembered {key}={value}",
+            kind="memory_update",
+            payload={"op": "remember", "key": key, "value": value},
+        )
+        return True
+
+    async def forget(self, key: str) -> bool:
+        had = self.memory.forget(key)
+        self._memory_store.save(self.memory)
+        await self.tracer.trace_memory_update("forget", key)
+        await self._log_system(
+            f"forgot {key}" if had else f"(nothing to forget for {key!r})",
+            kind="memory_update",
+            payload={"op": "forget", "key": key, "existed": had},
+        )
+        return had
+
+    async def add_learned_rule(self, rule: str) -> None:
+        rule = (rule or "").strip()
+        if not rule:
+            return
+        self.memory.add_learned_rule(rule)
+        self._memory_store.save(self.memory)
+        await self.tracer.trace_memory_update("learn", rule[:80])
+
+    def memory_snapshot(self) -> dict[str, Any]:
+        return {
+            "player_id": self.player_id,
+            "summary": self.memory.summary_line(),
+            "prompt_block": self.memory.prompt_block(),
+            "preferences": dict(self.memory.preferences),
+            "learned_rules": list(self.memory.learned_rules),
+            "favorite_sectors": list(self.memory.favorite_sectors),
+            "stats": dict(self.memory.stats),
+            "created_at": self.memory.created_at,
+            "updated_at": self.memory.updated_at,
+        }
+
+    # --------------------- what-if (H5.4) --------------------------------
+
+    def whatif_snapshot(self) -> dict[str, Any] | None:
+        """Predict the outcome of the current pending plan, if any."""
+        u = self._universe_fn()
+        if u is None:
+            return None
+        if self.pending_plan is None:
+            return None
+        plan = self.pending_plan.plan
+        if not plan:
+            return {
+                "plan_id": self.pending_plan.id,
+                "steps": [],
+                "credit_delta": 0,
+                "turn_cost": 0,
+                "cargo_delta": {},
+                "warnings": [],
+                "one_liner": "≈ autopilot task (outcome depends on runtime)",
+            }
+        try:
+            summary = wi.preview_plan(u, self.player_id, plan)
+        except Exception as exc:  # pragma: no cover — defensive
+            return {
+                "plan_id": self.pending_plan.id,
+                "steps": [],
+                "credit_delta": 0,
+                "turn_cost": 0,
+                "cargo_delta": {},
+                "warnings": [f"preview failed: {exc}"],
+                "one_liner": "preview unavailable",
+            }
+        return {
+            "plan_id": self.pending_plan.id,
+            "one_liner": summary.one_liner(),
+            **summary.model_dump(),
         }
 
     async def set_mode(self, mode: CopilotMode | str) -> None:
         if not isinstance(mode, CopilotMode):
             mode = CopilotMode(mode)
         self.mode = mode
+        await self.tracer.trace_mode_change(mode.value)
         await self._log_system(f"mode → {mode.value}", kind="mode_change")
 
     async def add_standing_order(self, order: so.StandingOrder) -> None:
@@ -172,6 +285,38 @@ class CopilotSession:
             return ChatResponse(kind="noop", message="(empty message)")
 
         await self._log(role="human", text=utterance, kind="utterance")
+        await self.tracer.trace_utterance(utterance, self.mode.value)
+
+        # H5.1 — "remember X = Y" / "forget X" directives short-circuit
+        # the LLM. Keeps ChatAgent free of memory-housekeeping prompts
+        # and lets memory ops work even in mock-only test runs.
+        remember = mem_mod.parse_remember_directive(utterance)
+        if remember is not None:
+            k, v = remember
+            ok = await self.remember(k, v)
+            resp = ChatResponse(
+                kind="speak",
+                message=(
+                    f"Got it — I'll remember {k} = {v}."
+                    if ok
+                    else "(couldn't parse that remember directive)"
+                ),
+                thought="memory.remember",
+            )
+            await self._log_response(resp)
+            return resp
+        forget_key = mem_mod.parse_forget_directive(utterance)
+        if forget_key is not None:
+            had = await self.forget(forget_key)
+            resp = ChatResponse(
+                kind="speak",
+                message=(
+                    f"Forgot {forget_key}." if had else f"(nothing to forget for {forget_key!r})"
+                ),
+                thought="memory.forget",
+            )
+            await self._log_response(resp)
+            return resp
 
         if self.mode == CopilotMode.MANUAL:
             resp = ChatResponse(
@@ -197,6 +342,7 @@ class CopilotSession:
 
         resp = await self.chat_agent.respond(utterance, obs, mode=self.mode.value)
         await self._log_response(resp)
+        await self.tracer.trace_chat_response(resp.kind, resp.message, resp.thought)
 
         # Dispatch according to mode.
         if resp.kind == "cancel":
@@ -264,6 +410,11 @@ class CopilotSession:
             )
             return False
         self.pending_plan = None
+        # H5.1 — auto-learn: each confirmed plan reinforces its thought.
+        if pp.thought:
+            await self.add_learned_rule(pp.thought[:160])
+        self.memory.bump_stat("plans_confirmed")
+        self._memory_store.save(self.memory)
         if pp.task_kind is not None:
             await self._start_task(pp.task_kind, pp.task_params)
         else:
@@ -416,6 +567,9 @@ class CopilotSession:
         # Standing-order gate.
         verdict = so.evaluate(self.standing_orders, u, self.player_id, call)
         if not verdict.allowed:
+            await self.tracer.trace_standing_order_block(
+                call.name, verdict.blocked_by, verdict.reasons
+            )
             await self._log_system(
                 "blocked by standing order(s): " + "; ".join(verdict.reasons),
                 kind="standing_order_block",
@@ -452,6 +606,17 @@ class CopilotSession:
         # The scheduler advances u.seq as it emits events, so we watch for
         # it to move AND for the HumanAgent queue to be empty.
         ok, reason = await self._wait_for_applied(u, pre_seq)
+        await self.tracer.trace_action_dispatched(
+            call.name, dict(call.arguments), ok, reason
+        )
+        # H5.1 — remember sectors we've warped to, so the cockpit can
+        # show "favourite" markers and the LLM can bias plans toward
+        # known-good spots.
+        if ok and call.name in ("warp", "plot_course"):
+            tgt = call.arguments.get("target")
+            if isinstance(tgt, int):
+                self.memory.mark_favorite_sector(tgt)
+                self._memory_store.save(self.memory)
         return (ok, reason)
 
     async def _wait_for_applied(
@@ -519,6 +684,7 @@ class CopilotSession:
             stops the copilot from auto-dispatching further actions
             until the human confirms they want to keep going.
             """
+            await self.tracer.trace_escalation(sig.reason, sig.code)
             await self._log_system(
                 safety.describe_short(sig)
                 or f"escalation: {sig.reason} — switching to advisory mode",

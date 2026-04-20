@@ -6,16 +6,26 @@ Owned by the FastAPI app's state. Rebuilt whenever the match
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from ..agents.human import HumanAgent
 from .chat_agent import ChatAgent
+from .memory import MemoryStore
 from .session import CopilotSession
+from .trace import CopilotTracer, _env_enabled
 
 
 class CopilotRegistry:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        memory_dir: Path | str | None = None,
+        trace_dir: Path | str | None = None,
+    ) -> None:
         self._sessions: dict[str, CopilotSession] = {}
+        self._memory_store = MemoryStore(memory_dir)
+        self._trace_dir = Path(trace_dir) if trace_dir is not None else None
 
     def clear(self) -> None:
         self._sessions.clear()
@@ -25,6 +35,10 @@ class CopilotRegistry:
 
     def all(self) -> list[CopilotSession]:
         return list(self._sessions.values())
+
+    @property
+    def memory_store(self) -> MemoryStore:
+        return self._memory_store
 
     def rebuild(
         self,
@@ -52,6 +66,13 @@ class CopilotRegistry:
             if not isinstance(ag, HumanAgent):
                 continue
             chat_agent = (chat_agent_factory or ChatAgent)()
+            tracer = CopilotTracer(
+                player_id=ag.player_id,
+                root_dir=self._trace_dir,
+                # enable tracer when root is set AND env opt-in fires; when
+                # no root is set, the tracer is a cheap no-op.
+                enable=(self._trace_dir is not None and _env_enabled()),
+            )
             self._sessions[ag.player_id] = CopilotSession(
                 player_id=ag.player_id,
                 human_agent=ag,
@@ -59,4 +80,6 @@ class CopilotRegistry:
                 broadcast_fn=broadcast_fn,
                 chat_agent=chat_agent,
                 task_next_step_factory=task_next_step_factory,
+                memory_store=self._memory_store,
+                tracer=tracer,
             )

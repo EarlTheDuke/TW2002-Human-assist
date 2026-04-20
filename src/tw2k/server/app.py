@@ -54,9 +54,17 @@ def create_app(
     action_delay_s: float | None = None,
     human_deadline_s: float | None = None,
 ) -> FastAPI:
+    from .runner import _default_saves_root
+
     broadcaster = Broadcaster()
     runner = MatchRunner(broadcaster)
-    copilot_registry = CopilotRegistry()
+    # H5.1/H5.2 — per-player memory + decision traces live alongside
+    # match saves so cleaning `saves/` wipes everything in one shot.
+    _saves_root = _default_saves_root()
+    copilot_registry = CopilotRegistry(
+        memory_dir=_saves_root / "copilot_memory",
+        trace_dir=_saves_root / "copilot_traces",
+    )
 
     web_root = _web_root()
 
@@ -445,6 +453,55 @@ def create_app(
                 status_code=404, detail=f"no copilot session for {player_id}"
             )
         return sess.safety_snapshot()
+
+    @app.get("/api/copilot/memory")
+    async def copilot_memory(player_id: str) -> dict[str, Any]:
+        """H5.1: per-player long-term memory snapshot."""
+        sess = _get_session(player_id)
+        return sess.memory_snapshot()
+
+    @app.post("/api/copilot/memory/remember")
+    async def copilot_memory_remember(body: dict[str, Any]) -> dict[str, Any]:
+        player_id = body.get("player_id")
+        key = body.get("key")
+        value = body.get("value")
+        if not isinstance(player_id, str) or not isinstance(key, str) or not isinstance(
+            value, str
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="body requires player_id + key + value strings",
+            )
+        sess = _get_session(player_id)
+        ok = await sess.remember(key, value)
+        if not ok:
+            raise HTTPException(status_code=422, detail="empty key or value")
+        return {"ok": True, "memory": sess.memory_snapshot()}
+
+    @app.post("/api/copilot/memory/forget")
+    async def copilot_memory_forget(body: dict[str, Any]) -> dict[str, Any]:
+        player_id = body.get("player_id")
+        key = body.get("key")
+        if not isinstance(player_id, str) or not isinstance(key, str):
+            raise HTTPException(
+                status_code=400, detail="body requires player_id + key strings"
+            )
+        sess = _get_session(player_id)
+        had = await sess.forget(key)
+        return {"ok": True, "existed": had, "memory": sess.memory_snapshot()}
+
+    @app.get("/api/copilot/whatif")
+    async def copilot_whatif(player_id: str) -> dict[str, Any]:
+        """H5.4: predicted outcome for the player's current pending plan.
+
+        Returns ``{pending: false}`` when there's nothing to preview —
+        the cockpit renders nothing in that case.
+        """
+        sess = _get_session(player_id)
+        snap = sess.whatif_snapshot()
+        if snap is None:
+            return {"pending": False}
+        return {"pending": True, **snap}
 
     @app.get("/api/copilot/hints")
     async def copilot_hints(player_id: str) -> dict[str, Any]:
