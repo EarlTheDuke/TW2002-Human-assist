@@ -43,6 +43,8 @@ turn, for one player, in a live simulated match:
 | [`stage_hint.json`](agent_turn/stage_hint.json) | Auto-computed arc stage (S1..S5) |
 | [`example_llm_response.json`](agent_turn/example_llm_response.json) | Plausible grok-4-fast response with goals + action |
 
+**`cursor` provider:** the same `get_system_prompt()` + `format_observation()` strings are concatenated into one headless prompt for the Cursor Agent CLI (`agent -p --mode ask --output-format json`, model e.g. `composer-2-fast`). Auth: `agent login` or `CURSOR_API_KEY`. Env: `TW2K_CURSOR_*` in `.env.example`. If the combined prompt would exceed the Windows command-line budget, the engine temporarily uses the minimal system prompt for that turn only.
+
 ---
 
 ## 1. The pipeline, end to end

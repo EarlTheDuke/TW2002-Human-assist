@@ -15,6 +15,7 @@ import asyncio
 import json
 import os
 import re
+import shutil
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -126,6 +127,61 @@ def _coalesce_message_text(
     return "", diag
 
 
+def _cursor_cmdline_budget() -> int:
+    try:
+        return int(os.environ.get("TW2K_CURSOR_CMDLINE_BUDGET", "30000"))
+    except ValueError:
+        return 30000
+
+
+def _cursor_system_prompt_for(observation_json: str) -> str:
+    """Return the system prompt for a Cursor CLI turn.
+
+    Windows `CreateProcess` command lines are capped (~32k chars). Full
+    coaching prompt + observation can exceed that, so we temporarily
+    switch to `TW2K_HINT_LEVEL=minimal` for this read only when needed.
+    """
+    full = get_system_prompt()
+    overhead = 600  # delimiter text + safety margin
+    if len(full) + len(observation_json) + overhead <= _cursor_cmdline_budget():
+        return full
+    old = os.environ.get("TW2K_HINT_LEVEL")
+    os.environ["TW2K_HINT_LEVEL"] = "minimal"
+    try:
+        return get_system_prompt()
+    finally:
+        if old is None:
+            os.environ.pop("TW2K_HINT_LEVEL", None)
+        else:
+            os.environ["TW2K_HINT_LEVEL"] = old
+
+
+def _unwrap_agent_print_json(stdout: str) -> str:
+    """Extract assistant text from `agent --print --output-format json` stdout."""
+    s = (stdout or "").strip()
+    if not s:
+        return ""
+    try:
+        outer = json.loads(s)
+    except json.JSONDecodeError:
+        return s
+    if isinstance(outer, str):
+        return outer
+    if not isinstance(outer, dict):
+        return s
+    for key in ("text", "message", "content", "result", "output", "response", "answer"):
+        v = outer.get(key)
+        if isinstance(v, str) and v.strip():
+            return v
+    msg = outer.get("message")
+    if isinstance(msg, dict):
+        for key in ("content", "text"):
+            v = msg.get(key)
+            if isinstance(v, str) and v.strip():
+                return v
+    return s
+
+
 # ---------------------------------------------------------------------------
 # Provider detection
 # ---------------------------------------------------------------------------
@@ -158,6 +214,8 @@ XAI_BASE_URL = os.environ.get("TW2K_XAI_BASE_URL", "https://api.x.ai/v1")
 # Keep Ollama-resident models from unloading between turns. Ollama's native arg
 # is passed via `extra_body` since the OpenAI-compat endpoint accepts it.
 CUSTOM_KEEP_ALIVE = os.environ.get("TW2K_CUSTOM_KEEP_ALIVE", "30m")
+# Cursor Agent CLI (`agent` from https://cursor.com/install) — subprocess provider.
+DEFAULT_CURSOR_MODEL = os.environ.get("TW2K_CURSOR_MODEL", "composer-2-fast")
 
 
 # ---------------------------------------------------------------------------
@@ -186,11 +244,20 @@ class LLMAgent(BaseAgent):
             default_timeout = 300.0  # local 30–120B models can be slow per-token
         if self.provider == "xai":
             default_timeout = 120.0  # reasoning models think before replying
+        if self.provider == "cursor":
+            default_timeout = 120.0  # Cursor Agent CLI round-trip + cloud model
         try:
             env_cap = float(os.environ.get("TW2K_THINK_CAP_S", ""))
         except ValueError:
             env_cap = 0.0
         self.think_cap_s = think_cap_s if think_cap_s is not None else (env_cap or default_timeout)
+        if self.provider == "cursor":
+            try:
+                ccap = float(os.environ.get("TW2K_CURSOR_THINK_CAP_S", ""))
+            except ValueError:
+                ccap = 0.0
+            if ccap > 0:
+                self.think_cap_s = ccap
         # Warmup timeout — how long we'll wait for a cold model to first respond.
         try:
             self.warmup_timeout_s = float(os.environ.get("TW2K_WARMUP_TIMEOUT_S", "900"))
@@ -217,6 +284,8 @@ class LLMAgent(BaseAgent):
             return DEFAULT_CUSTOM_MODEL
         if self.provider == "xai":
             return DEFAULT_XAI_MODEL
+        if self.provider == "cursor":
+            return DEFAULT_CURSOR_MODEL
         return ""
 
     # ---------- lifecycle ---------- #
@@ -255,6 +324,10 @@ class LLMAgent(BaseAgent):
 
     async def _call_warmup(self) -> str:
         """Tiny prompt just to trigger model loading. Minimal token budget."""
+        if self.provider == "cursor":
+            return await self._invoke_cursor_cli(
+                "Reply with the single word ok and nothing else."
+            )
         messages = [{"role": "user", "content": "Reply with just: ok"}]
         if self.provider == "anthropic":
             if self._client is None:
@@ -396,7 +469,70 @@ class LLMAgent(BaseAgent):
             return await self._call_custom(observation_json)
         if self.provider == "xai":
             return await self._call_xai(observation_json)
+        if self.provider == "cursor":
+            return await self._call_cursor(observation_json)
         raise RuntimeError(f"Unknown provider {self.provider}")
+
+    async def _invoke_cursor_cli(self, prompt: str) -> str:
+        """Run `agent -p` headlessly; return raw assistant text (may be JSON-wrapped)."""
+        cli = (os.environ.get("TW2K_CURSOR_CLI") or "").strip() or shutil.which("agent")
+        if not cli:
+            raise RuntimeError(
+                "Cursor Agent CLI not found on PATH. Install: "
+                "irm 'https://cursor.com/install?win32=true' | iex "
+                "(PowerShell) — then `agent login` or set CURSOR_API_KEY."
+            )
+        ws = (os.environ.get("TW2K_CURSOR_WORKSPACE") or "").strip() or os.getcwd()
+        argv: list[str] = [
+            cli,
+            "-p",
+            "--output-format",
+            "json",
+            "--mode",
+            "ask",
+            "--model",
+            self.model,
+            "--trust",
+            "--workspace",
+            ws,
+            prompt,
+        ]
+        proc = await asyncio.create_subprocess_exec(
+            *argv,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=os.environ.copy(),
+        )
+        out_b, err_b = await proc.communicate()
+        out = out_b.decode("utf-8", errors="replace")
+        err = err_b.decode("utf-8", errors="replace").strip()
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"agent exited {proc.returncode}"
+                + (f": {err}" if err else "")
+            )
+        return _unwrap_agent_print_json(out)
+
+    async def _call_cursor(self, observation_json: str) -> str:
+        sys_prompt = _cursor_system_prompt_for(observation_json)
+        body = (
+            "=== TW2K system instructions ===\n"
+            f"{sys_prompt}\n\n"
+            "=== Current observation (JSON) ===\n"
+            f"{observation_json}\n\n"
+            "Respond with ONLY one JSON object matching the TW2K agent schema: "
+            "`thought`, `scratchpad_update`, `goals` {short,medium,long}, and "
+            "`action` {kind, args}. No markdown code fences, no prose before or after."
+        )
+        text = await self._invoke_cursor_cli(body)
+        diag = _ResponseDiag(
+            finish_reason="agent_cli",
+            source="content" if text.strip() else "empty",
+            content_len=len(text),
+            content_preview=_preview(text),
+        )
+        self._last_diag = diag
+        return text
 
     async def _call_anthropic(self, observation_json: str) -> str:
         if self._client is None:

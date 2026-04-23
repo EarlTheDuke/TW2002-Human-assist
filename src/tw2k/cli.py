@@ -81,7 +81,10 @@ def serve(
     ),
     num_agents: int = typer.Option(2, help="Number of agents (default 2)."),
     agent_kind: str = typer.Option("auto", help="auto | llm | heuristic"),
-    provider: str = typer.Option(None, help="anthropic | openai | xai | deepseek | custom (else auto-detect)"),
+    provider: str = typer.Option(
+        None,
+        help="anthropic | openai | xai | deepseek | custom | cursor (else auto-detect)",
+    ),
     model: str = typer.Option(None, help="Override the LLM model name."),
     no_auto_start: bool = typer.Option(False, help="Don't auto-start the match at boot."),
     turns_per_day: int = typer.Option(
@@ -100,6 +103,7 @@ def serve(
         help=(
             "Comma-separated per-agent providers (slot N -> player PN+1). "
             "Example: 'xai,anthropic' runs P1 on Grok, P2 on Claude. "
+            "'cursor,xai,custom' runs P1 via Cursor Agent CLI (Composer, etc.). "
             "Missing slots fall back to --provider. Use this for cross-model "
             "matches."
         ),
@@ -274,6 +278,23 @@ def serve(
         key = _os.environ.get("XAI_API_KEY") or _os.environ.get("GROK_API_KEY") or ""
         masked = (key[:6] + "***" + key[-4:]) if len(key) > 12 else ("<unset>" if not key else "<short>")
         console.print(f"[cyan]xAI model:[/] {mdl}  [cyan]xAI key:[/] {masked}")
+    if overrides and any(ov.get("provider") == "cursor" for ov in overrides):
+        import shutil as _shutil
+
+        from .agents.llm import DEFAULT_CURSOR_MODEL
+
+        cli_path = _os.environ.get("TW2K_CURSOR_CLI") or _shutil.which("agent") or "<not on PATH>"
+        cm: str | None = None
+        for ov in overrides:
+            if ov.get("provider") == "cursor":
+                cm = ov.get("model")
+                if cm:
+                    break
+        cm = cm or _os.environ.get("TW2K_CURSOR_MODEL", DEFAULT_CURSOR_MODEL)
+        console.print(f"[cyan]Cursor Agent CLI:[/] {cli_path}  [cyan]model:[/] {cm}")
+        console.print(
+            "[dim]Cursor auth:[/] run [cyan]agent login[/] once, or set [cyan]CURSOR_API_KEY[/]"
+        )
     console.print(f"[cyan]Open:[/] http://{host}:{port}")
     console.rule()
 
