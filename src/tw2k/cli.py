@@ -174,6 +174,17 @@ def serve(
             "immediate access to buy_ship / buy_equip for every slot."
         ),
     ),
+    one_way_fraction: float | None = typer.Option(
+        None,
+        "--one-way-fraction",
+        help=(
+            "Override the fraction of warps that are one-way (default 0.15 "
+            "— some warps only go outbound, occasionally creating isolated "
+            "pockets that trap early-game agents). Use 0.0 for fully "
+            "bidirectional maps in model-vs-model comparisons so all "
+            "players have symmetric mobility from StarDock."
+        ),
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -240,6 +251,10 @@ def serve(
     console.print(f"[cyan]Agents:[/] {num_agents}  [cyan]Kind:[/] {agent_kind}  [cyan]LLM provider:[/] {provider_display}")
     st_all1 = "ON (everyone sector 1)" if all_start_stardock else "OFF (FedSpace cycle)"
     console.print(f"[cyan]All start StarDock:[/] {st_all1}")
+    if one_way_fraction is not None:
+        _owf = max(0.0, min(1.0, float(one_way_fraction)))
+        _owf_note = "all warps bidirectional" if _owf == 0.0 else f"{_owf:.0%} one-way"
+        console.print(f"[cyan]One-way warp fraction:[/] {_owf:.2f}  [dim]({_owf_note})[/]")
     pcap = "ON (time_net_worth only)" if play_to_day_cap else "OFF (early wins allowed)"
     console.print(f"[cyan]Play to day cap:[/] {pcap}")
     _hl = (_os.environ.get("TW2K_HINT_LEVEL") or "full").strip().lower()
@@ -310,6 +325,7 @@ def serve(
         turns_per_day=turns_per_day,
         starting_credits=starting_credits,
         all_start_stardock=all_start_stardock,
+        one_way_fraction=one_way_fraction,
         agent_overrides=overrides or None,
         agent_names=names_list or None,
         action_delay_s=action_delay_s,

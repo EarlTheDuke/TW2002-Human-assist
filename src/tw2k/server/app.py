@@ -85,6 +85,7 @@ def create_app(
     turns_per_day: int | None = None,
     starting_credits: int | None = None,
     all_start_stardock: bool = False,
+    one_way_fraction: float | None = None,
     agent_overrides: list[dict] | None = None,
     action_delay_s: float | None = None,
     human_deadline_s: float | None = None,
@@ -119,6 +120,7 @@ def create_app(
                 turns_per_day=turns_per_day,
                 starting_credits=starting_credits,
                 all_start_stardock=all_start_stardock,
+                one_way_fraction=one_way_fraction,
                 agent_overrides=agent_overrides,
                 action_delay_s=action_delay_s,
                 human_deadline_s=human_deadline_s,
@@ -769,6 +771,7 @@ def _build_default_spec(
     turns_per_day: int | None = None,
     starting_credits: int | None = None,
     all_start_stardock: bool = False,
+    one_way_fraction: float | None = None,
     agent_overrides: list[dict] | None = None,
     action_delay_s: float | None = None,
     human_deadline_s: float | None = None,
@@ -795,6 +798,9 @@ def _build_default_spec(
         cfg_kwargs["starting_credits"] = starting_credits
     if all_start_stardock:
         cfg_kwargs["all_start_stardock"] = True
+    if one_way_fraction is not None:
+        # Clamp to [0.0, 1.0] — universe.py expects a probability.
+        cfg_kwargs["one_way_fraction"] = max(0.0, min(1.0, float(one_way_fraction)))
     if action_delay_s is not None:
         cfg_kwargs["action_delay_s"] = action_delay_s
     if play_to_day_cap:
