@@ -6,6 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from .agency import is_minimal
 from .economy import port_buy_price, port_sell_price
 from .models import Commodity, Event, EventKind, PortClass, Universe
 from .runner import full_net_worth
@@ -26,6 +27,7 @@ _PUBLIC_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.GAME_START,
     EventKind.DAY_TICK,
     EventKind.GAME_OVER,
+    EventKind.MATCH_METRICS,
     EventKind.PLAYER_ELIMINATED,
     EventKind.PLANET_ORPHANED,
     EventKind.PLANET_CLAIMED,
@@ -878,6 +880,7 @@ def _action_hint(
     from . import constants as K
 
     hints: list[str] = []
+    full_hints = not is_minimal()
 
     # Phase D.2 — post-timeout discontinuity hint. If the previous turn was
     # a WAIT synthesized from an LLM timeout, the tick was wasted and the
@@ -907,23 +910,24 @@ def _action_hint(
         if last_death_day is not None:
             # Still under-armed? Keep the hint loud.
             if ship_fighters_now < 500 or ship_shields_now < 1:
-                last_fighters = int(getattr(player, "last_death_fighters", 0) or 0)
-                last_reason = str(getattr(player, "last_death_reason", "") or "attack")
-                credits_now = int(getattr(player, "credits", 0) or 0)
-                target_fighters = 500
-                fighter_cost_total = target_fighters * K.FIGHTER_COST
-                afford_line = (
-                    f"you have {credits_now:,}cr — {target_fighters} fighters = "
-                    f"{fighter_cost_total:,}cr at StarDock"
-                )
-                hints.append(
-                    f"YOU JUST DIED to {last_reason} on day {last_death_day} "
-                    f"(ship had {last_fighters} fighters). Before warping outside "
-                    f"FedSpace again, consider buying at least {target_fighters} "
-                    f"fighters and >=1 shield at StarDock (sec "
-                    f"{K.STARDOCK_SECTOR}). {afford_line}. This hint auto-"
-                    f"clears once you're back above that threshold."
-                )
+                if full_hints:
+                    last_fighters = int(getattr(player, "last_death_fighters", 0) or 0)
+                    last_reason = str(getattr(player, "last_death_reason", "") or "attack")
+                    credits_now = int(getattr(player, "credits", 0) or 0)
+                    target_fighters = 500
+                    fighter_cost_total = target_fighters * K.FIGHTER_COST
+                    afford_line = (
+                        f"you have {credits_now:,}cr — {target_fighters} fighters = "
+                        f"{fighter_cost_total:,}cr at StarDock"
+                    )
+                    hints.append(
+                        f"YOU JUST DIED to {last_reason} on day {last_death_day} "
+                        f"(ship had {last_fighters} fighters). Before warping outside "
+                        f"FedSpace again, consider buying at least {target_fighters} "
+                        f"fighters and >=1 shield at StarDock (sec "
+                        f"{K.STARDOCK_SECTOR}). {afford_line}. This hint auto-"
+                        f"clears once you're back above that threshold."
+                    )
             else:
                 # Re-armed: clear the persistent flag so the hint stops.
                 # Safe to mutate player here — build_observation is read-
@@ -953,7 +957,7 @@ def _action_hint(
             if g_long:
                 parts.append(f"MATCH: {g_long}")
             hints.append("YOUR GOALS — " + " / ".join(parts))
-        else:
+        elif full_hints:
             hints.append(
                 "GOALS EMPTY — set `goal_short`/`goal_medium`/`goal_long` in "
                 "your JSON output so future you knows the plan."
@@ -1052,37 +1056,34 @@ def _action_hint(
         if bits:
             hints.append(" / ".join(bits) + " — use trade.")
 
-        # Cargo P&L vs. this port: if the player is carrying commodities the
-        # port buys, show break-even + expected realized profit at LIST price.
-        # This is the concrete number that protects against selling at a loss
-        # and lets the agent decide "actually, haggle up — this port's offer
-        # is under my cost basis."
-        ship = getattr(player, "ship", None) if player is not None else None
-        cargo = getattr(ship, "cargo", None) if ship is not None else None
-        cargo_cost = getattr(ship, "cargo_cost", None) if ship is not None else None
-        if cargo and cargo_cost:
-            buys_set = set(port.get("buys") or [])
-            stock_map = port.get("stock") or {}
-            pnl_parts: list[str] = []
-            for commodity_name, qty in cargo.items():
-                key = getattr(commodity_name, "value", str(commodity_name))
-                if not isinstance(qty, int) or qty <= 0:
-                    continue
-                if key not in buys_set:
-                    continue
-                avg = float(cargo_cost.get(commodity_name, 0.0) or 0.0)
-                stock_entry = stock_map.get(key) or {}
-                bid = stock_entry.get("price")
-                if not isinstance(bid, int):
-                    continue
-                delta = bid - avg
-                realized = round(delta * qty)
-                sign = "+" if realized >= 0 else ""
-                pnl_parts.append(
-                    f"{qty} {key} cost={avg:.0f}cr, port bids {bid}cr -> {sign}{realized}cr"
-                )
-            if pnl_parts:
-                hints.append("P&L at this port: " + " | ".join(pnl_parts))
+        if full_hints:
+            # Cargo P&L vs. this port (strategy — omitted in minimal agency mode).
+            ship = getattr(player, "ship", None) if player is not None else None
+            cargo = getattr(ship, "cargo", None) if ship is not None else None
+            cargo_cost = getattr(ship, "cargo_cost", None) if ship is not None else None
+            if cargo and cargo_cost:
+                buys_set = set(port.get("buys") or [])
+                stock_map = port.get("stock") or {}
+                pnl_parts: list[str] = []
+                for commodity_name, qty in cargo.items():
+                    key = getattr(commodity_name, "value", str(commodity_name))
+                    if not isinstance(qty, int) or qty <= 0:
+                        continue
+                    if key not in buys_set:
+                        continue
+                    avg = float(cargo_cost.get(commodity_name, 0.0) or 0.0)
+                    stock_entry = stock_map.get(key) or {}
+                    bid = stock_entry.get("price")
+                    if not isinstance(bid, int):
+                        continue
+                    delta = bid - avg
+                    realized = round(delta * qty)
+                    sign = "+" if realized >= 0 else ""
+                    pnl_parts.append(
+                        f"{qty} {key} cost={avg:.0f}cr, port bids {bid}cr -> {sign}{realized}cr"
+                    )
+                if pnl_parts:
+                    hints.append("P&L at this port: " + " | ".join(pnl_parts))
 
     # StarDock-specific — the set of verbs that ONLY work at sector 1
     sector_id = sector_info.get("id")
@@ -1091,15 +1092,14 @@ def _action_hint(
             "At StarDock: buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/"
             "genesis/photon_missile/ether_probe/colonists), corp_create legal here."
         ]
-        # Concrete colonist-ferry nudge: the player can load holds with
-        # colonists for 10 cr each and fly them out to their own planet.
-        ship = getattr(player, "ship", None) if player is not None else None
-        if ship is not None:
-            free = getattr(ship, "cargo_free", None)
-            if isinstance(free, int) and free > 0:
-                bits.append(
-                    f"Cargo free={free} — `buy_equip item=colonists qty={free}` loads Terra colonists at 10 cr each."
-                )
+        if full_hints:
+            ship_sd = getattr(player, "ship", None) if player is not None else None
+            if ship_sd is not None:
+                free = getattr(ship_sd, "cargo_free", None)
+                if isinstance(free, int) and free > 0:
+                    bits.append(
+                        f"Cargo free={free} — `buy_equip item=colonists qty={free}` loads Terra colonists at 10 cr each."
+                    )
         hints.append(" ".join(bits))
 
         # Affordable-ship menu: list the ship classes the player can ACTUALLY
@@ -1108,7 +1108,7 @@ def _action_hint(
         # 100-150k" and they took it literally. This surfaces the concrete set
         # of legal buy_ship targets and the cargo/fighter trade-offs so the
         # agent can make a grounded decision on day 1-2.
-        if player is not None:
+        if full_hints and player is not None:
             credits = int(getattr(player, "credits", 0) or 0)
             cur_ship = getattr(player, "ship", None)
             cur_class_val = getattr(getattr(cur_ship, "ship_class", None), "value", None)
@@ -1169,7 +1169,8 @@ def _action_hint(
     # Threshold is 1.25x cheapest affordable non-corp ship so we don't nag
     # players who are just barely above the merchant_cruiser cost.
     if (
-        player is not None
+        full_hints
+        and player is not None
         and sector_id is not None
         and sector_id != K.STARDOCK_SECTOR
     ):
@@ -1301,7 +1302,7 @@ def _action_hint(
     # Soft situational awareness — these are FYI nudges, not mandates. The
     # philosophy: surface state the agent might have missed; let it decide
     # whether to act. A smarter LLM should route around these correctly.
-    if player is not None and ship is not None:
+    if full_hints and player is not None and ship is not None:
         # Match 13 — tiered Ferrengi defense hint. Raiders spawn with
         # 100 + aggression*300 fighters (aggression 1..10), i.e. 400..3,100
         # fighters each. Agents must be AWARE of that number to decide
@@ -1529,35 +1530,41 @@ def _action_hint(
     # decide whether to warp-and-claim. Fires every turn (not just when in
     # the orphan's sector) so planning horizon covers it. FYI-framed.
     if orphaned_planets:
-        shown = orphaned_planets[:3]
-        parts: list[str] = []
-        for op in shown:
-            label = (
-                f"{op.get('name')} s{op.get('sector_id')} "
-                f"L{op.get('citadel_level', 0)} citadel, "
-                f"{op.get('fighters', 0)} fighters"
+        if full_hints:
+            shown = orphaned_planets[:3]
+            parts: list[str] = []
+            for op in shown:
+                label = (
+                    f"{op.get('name')} s{op.get('sector_id')} "
+                    f"L{op.get('citadel_level', 0)} citadel, "
+                    f"{op.get('fighters', 0)} fighters"
+                )
+                if op.get("former_owner_id"):
+                    label += f" (was {op['former_owner_id']})"
+                parts.append(label)
+            more = (
+                ""
+                if len(orphaned_planets) <= 3
+                else f" (+{len(orphaned_planets) - 3} more)"
             )
-            if op.get("former_owner_id"):
-                label += f" (was {op['former_owner_id']})"
-            parts.append(label)
-        more = (
-            ""
-            if len(orphaned_planets) <= 3
-            else f" (+{len(orphaned_planets) - 3} more)"
-        )
-        hints.append(
-            "ORPHANED PLANETS (claimable): "
-            + "; ".join(parts)
-            + more
-            + ". Warp to the sector, `land_planet`, then `claim_planet` (2 "
-            "turns) to inherit citadel + fighters + stockpile. Free of "
-            "Genesis cost."
-        )
+            hints.append(
+                "ORPHANED PLANETS (claimable): "
+                + "; ".join(parts)
+                + more
+                + ". Warp to the sector, `land_planet`, then `claim_planet` (2 "
+                "turns) to inherit citadel + fighters + stockpile. Free of "
+                "Genesis cost."
+            )
+        else:
+            hints.append(
+                "ORPHANED PLANETS — see `orphaned_planets` in observation; "
+                "`land_planet` then `claim_planet` to inherit."
+            )
 
     # Match 13 — rivals gap awareness. If any alive rival is more than 2x
     # your net worth OR you lead the field by >2x, prompt a decision.
     # Strictly informational — lists the 4 interaction verbs available.
-    if rivals and player is not None:
+    if full_hints and rivals and player is not None:
         my_nw = max(1, int(full_net_worth(universe, player)))
         alive_rivals = [r for r in rivals if r.get("alive") and r.get("net_worth")]
         if alive_rivals:

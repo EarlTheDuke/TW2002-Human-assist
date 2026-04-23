@@ -39,7 +39,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 from tw2k.agents import HeuristicAgent  # noqa: E402
-from tw2k.agents.prompts import SYSTEM_PROMPT, format_observation, stage_hint  # noqa: E402
+from tw2k.agents.prompts import format_observation, get_system_prompt, stage_hint  # noqa: E402
 from tw2k.engine import (  # noqa: E402
     GameConfig,
     apply_action,
@@ -231,12 +231,12 @@ def main() -> None:
     user_message_obj = json.loads(user_message_str)
 
     # -- System prompt (verbatim) --
+    _sys = get_system_prompt()
     (out_dir / "system_prompt.md").write_text(
         "# SYSTEM PROMPT (verbatim string sent as `role: system`)\n\n"
-        "This is the exact text of `tw2k.agents.prompts.SYSTEM_PROMPT` that\n"
-        "is passed to the LLM on every single turn. It is static across\n"
-        "turns — only the user message changes.\n\n"
-        "```\n" + SYSTEM_PROMPT + "\n```\n",
+        "This is the text from `tw2k.agents.prompts.get_system_prompt()` for\n"
+        "the current `TW2K_HINT_LEVEL` (`full` default, `minimal` for agency mode).\n\n"
+        "```\n" + _sys + "\n```\n",
         encoding="utf-8",
     )
 

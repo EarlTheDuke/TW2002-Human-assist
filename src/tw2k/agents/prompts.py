@@ -6,8 +6,9 @@ import json
 from typing import Any
 
 from ..engine import Observation
+from ..engine.agency import is_minimal
 
-SYSTEM_PROMPT = """You are a commander in TRADEWARS 2002. You compete with rival commanders to trade,
+_MATCH_PROMPT_FULL = """You are a commander in TRADEWARS 2002. You compete with rival commanders to trade,
 colonize, and conquer a galaxy. You WIN by one of:
   * reaching 100,000,000 credits (economic victory), OR
   * being the last commander standing (others eliminated), OR
@@ -356,8 +357,100 @@ ANY other `action.kind` string is an error.
 6. PRECONDITIONS: actions like `build_citadel`, `assign_colonists`, `land_planet`, `liftoff`, `buy_ship`, `buy_equip`, `claim_planet` require specific state (landed/unlanded, at StarDock, enough colonists, etc.). The engine does NOT charge a turn when a precondition fails — but the same mistake twice in a row still wastes that turn's thought budget. Before submitting one of these, verify the relevant field in the observation: `self.credits`, `self.planet_landed`, `owned_planets[].colonists`, `sector.id == 1` (StarDock), `orphaned_planets[]`.
 """
 
+_MATCH_PROMPT_MINIMAL = """You are a commander in TRADEWARS 2002. You compete with rival commanders to trade,
+colonize, and conquer a galaxy. You WIN by one of:
+  * reaching 100,000,000 credits (economic victory), OR
+  * being the last commander standing (others eliminated), OR
+  * owning the highest net worth when max_days expires.
+
+================ ONE-SCREEN CONTRACT ================
+EVERY TURN you receive a JSON observation. You output EXACTLY ONE JSON object.
+Output schema (no markdown, no preamble):
+
+  {
+    "thought":"1-3 sentences",
+    "scratchpad_update":"persistent notes <=1500c",
+    "goals":{
+      "short":"<=240c — near-term focus (use if helpful)",
+      "medium":"<=240c — this in-game day",
+      "long":"<=240c — how you might win"
+    },
+    "action":{"kind":"<verb>","args":{...}}
+  }
+
+The `goals` block is optional psychology — use it as working memory across turns. Omit a field to keep
+the prior value; pass "" to clear it. The engine does not enforce that you follow your own goals.
+
+================ STRATEGIC ARC (DESCRIPTIVE, NOT A SCRIPT) ================
+Classic arcs: trade for credits → upgrade at StarDock (sector 1) → colonize (`deploy_genesis` outside
+FedSpace) → fortify (`build_citadel`) → expand via corps, diplomacy, or combat. You are **not** required
+to follow that order. Only the win conditions above are mandatory.
+
+Key **mechanical** rules:
+  * Warp target MUST be in `sector.warps_out`.
+  * Trade only at PORTS for commodities they buy/sell (`sector.port`).
+  * StarDock (sector 1): `buy_ship`, `buy_equip`, `corp_create`.
+  * `known_warps` is your **personal** exploration map — a short graph means you have not scanned/warped
+    widely yet, not that the universe is tiny. `sector.warps_count` is the true out-warp count here.
+  * On failure, read `recent_events`, `recent_failures`, and `action_hint`; change plan.
+
+Deeper mechanics, price tables, worked examples, and long diplomacy copy live in **docs/PLAYBOOK.md**
+(reference only — not a mandatory checklist).
+
+================ OBSERVATION (READ THE JSON) ================
+`self`, `sector`, `adjacent`, `owned_planets`, `other_players`, `rivals`, `orphaned_planets`,
+`known_ports_top`, `known_warps`, `trade_log`, `trade_summary`, `recent_events`, `recent_failures`,
+`action_hint`, `stage_hint`, `inbox`, `alliances`, `corp`, `day`, `tick`, `max_days`.
+
+`stage_hint` under minimal mode is **advisory** (no `next_milestone` coaching).
+
+================ TRADING (SHORT) ================
+Ports use F/O/E for commodities; class codes encode buys/sells (e.g. SSB). `trade` with commodity,
+qty, side, optional `unit_price` to haggle. Check `cargo_cost_avg` before selling — dumping below cost
+loses money.
+
+================ COMBAT & SURVIVAL ================
+`deploy_fighters`, `deploy_mines`, `attack`, `photon_missile`, `probe`, `plot_course`, `query_limpets`.
+FERRENGI are NPC pirates. Ship loss → respawn at StarDock; third death → elimination.
+
+================ COMPLETE ACTION VERB LIST ================
+Core:        warp trade scan wait
+Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
+Recon:       probe query_limpets plot_course
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists claim_planet
+StarDock:    buy_ship buy_equip
+Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
+Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
+
+ANY other `action.kind` string is an error.
+
+================ OUTPUT RULES ================
+1. Respond with ONLY the JSON object. No markdown fences, no prose.
+2. `action.kind` MUST be one of the verbs above.
+3. `warp.target` MUST be in `sector.warps_out`.
+4. If your last action failed, CHANGE your plan; don't retry blindly.
+5. If you truly have no good move, use `{"kind":"wait","args":{}}`.
+6. Precondition-only failures cost 0 turns — verify `self.credits`, `planet_landed`, `owned_planets`,
+   `sector.id`, `orphaned_planets` before repeating the same verb.
+"""
+
+# Default export for scripts/tests/docs that expect a single string.
+SYSTEM_PROMPT = _MATCH_PROMPT_FULL
+
+
+def get_system_prompt() -> str:
+    """System message for the current `TW2K_HINT_LEVEL` (``full`` or ``minimal``)."""
+    return _MATCH_PROMPT_MINIMAL if is_minimal() else _MATCH_PROMPT_FULL
+
 
 _FLAGSHIP_CLASSES: frozenset[str] = frozenset({"imperial_starship", "corporate_flagship"})
+
+
+def _finalize_stage_hint(d: dict[str, Any]) -> dict[str, Any]:
+    if is_minimal():
+        d = dict(d)
+        d.pop("next_milestone", None)
+    return d
 
 
 def stage_hint(obs: Observation) -> dict[str, Any]:
@@ -366,12 +459,12 @@ def stage_hint(obs: Observation) -> dict[str, Any]:
     LLM call so the agent never loses the thread of the arc."""
     alive = _obs_alive(obs)
     if not alive:
-        return {
+        return _finalize_stage_hint({
             "stage": "ELIMINATED",
             "label": "Eliminated",
             "reason": f"Player is dead ({obs.deaths}/{obs.max_deaths} deaths)",
             "next_milestone": "Respawn (wait for game)",
-        }
+        })
 
     net_worth = _obs_net_worth(obs)
     max_cit = _obs_max_citadel(obs)
@@ -379,46 +472,46 @@ def stage_hint(obs: Observation) -> dict[str, Any]:
     ship_class = str((obs.ship or {}).get("class", "") or "")
 
     if max_cit >= 3 or net_worth >= 3_000_000 or ship_class in _FLAGSHIP_CLASSES:
-        return {
+        return _finalize_stage_hint({
             "stage": "S5",
             "label": "Project Power",
             "reason": (
                 f"Citadel L{max_cit}, net worth ${net_worth:,}, ship={ship_class or 'unknown'} — endgame"
             ),
             "next_milestone": "Citadel L4/L5, hunt rivals, push economic or elimination victory",
-        }
+        })
     if max_cit >= 2 or obs.corp_ticker:
         corp_bit = f", corp={obs.corp_ticker}" if obs.corp_ticker else ""
-        return {
+        return _finalize_stage_hint({
             "stage": "S4",
             "label": "Fortify & Form",
             "reason": f"Citadel L{max_cit}{corp_bit} — hardening phase",
             "next_milestone": "Citadel L3 (quasar), >=1M net worth, secure a corp or alliance",
-        }
+        })
     if has_own_planet or max_cit >= 1:
         if has_own_planet:
             reason = f"You own {len(obs.owned_planets)} planet(s); citadel L{max_cit} in progress"
         else:
             reason = f"Citadel L{max_cit} but no planet entry — home established"
-        return {
+        return _finalize_stage_hint({
             "stage": "S3",
             "label": "Establish a Home",
             "reason": reason,
             "next_milestone": "Finish Citadel L1, then L2 (Combat Control)",
-        }
+        })
     if net_worth >= 200_000 or obs.day >= 2:
-        return {
+        return _finalize_stage_hint({
             "stage": "S2",
             "label": "Capital Build",
             "reason": f"Day {obs.day}, net worth ${net_worth:,} — scaling trade circuit",
             "next_milestone": "Reach ~500k, buy density scanner / ship upgrade, then pick a home sector",
-        }
-    return {
+        })
+    return _finalize_stage_hint({
         "stage": "S1",
         "label": "Opening Trades",
         "reason": f"Day {obs.day}, net worth ${net_worth:,} — still establishing port pair",
         "next_milestone": "Complete 3 profitable round-trips on one port pair",
-    }
+    })
 
 
 def _obs_alive(obs: Observation) -> bool:

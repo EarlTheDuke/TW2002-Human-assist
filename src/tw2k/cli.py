@@ -238,6 +238,10 @@ def serve(
     console.print(f"[cyan]All start StarDock:[/] {st_all1}")
     pcap = "ON (time_net_worth only)" if play_to_day_cap else "OFF (early wins allowed)"
     console.print(f"[cyan]Play to day cap:[/] {pcap}")
+    _hl = (_os.environ.get("TW2K_HINT_LEVEL") or "full").strip().lower()
+    if _hl not in ("full", "minimal"):
+        _hl = "full"
+    console.print(f"[cyan]LLM hint level:[/] {_hl}  [dim](TW2K_HINT_LEVEL)[/]")
     any_human = any(ov.get("kind") == "human" for ov in overrides)
     if any_human:
         deadline_note = (

@@ -201,6 +201,9 @@ class EventKind(str, Enum):
     AGENT_ERROR = "agent_error"
     FED_RESPONSE = "fed_response"
     GAME_OVER = "game_over"
+    # Tier 0 agency metrics — emitted once when the match runner stops. Payload
+    # from `match_metrics.build_match_metrics_payload` (counts, LLM health).
+    MATCH_METRICS = "match_metrics"
     # Emitted by the scheduler right before it blocks waiting for a human
     # player's Action (Phase H0). Lets the /play UI pop a "your move"
     # banner and the spectator UI render a "waiting on human" idle state

@@ -2008,6 +2008,7 @@
     human_turn_start:  { cat: "system",    icon: "\u25b6",  label: "HUMAN TURN" },
     game_start:        { cat: "game_start", icon: "\u25c9", label: "MATCH START", big: true },
     game_over:         { cat: "game_over",  icon: "\u25c8", label: "MATCH END", big: true },
+    match_metrics:     { cat: "system",     icon: "\u25a4", label: "MATCH METRICS" },
   };
 
   function kindMeta(kind) {

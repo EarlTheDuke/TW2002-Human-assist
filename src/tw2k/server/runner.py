@@ -37,6 +37,7 @@ from ..engine import (
     is_finished,
     tick_day,
 )
+from ..engine.match_metrics import build_match_metrics_payload
 from ..engine.models import Player, Ship
 from .broadcaster import Broadcaster
 
@@ -605,6 +606,24 @@ class MatchRunner:
                 if self.state.current_player_idx == 0:
                     self._record_history_sample()
                 await self._sleep_scaled(self._spec.action_delay_s)
+
+            u = self.state.universe
+            if u is not None and u.events:
+                payload = build_match_metrics_payload(
+                    u.events,
+                    winner_id=u.winner_id,
+                    win_reason=u.win_reason or "",
+                )
+                u.emit(
+                    EventKind.MATCH_METRICS,
+                    payload=payload,
+                    summary=(
+                        f"Match metrics — {payload['event_count']} events, "
+                        f"{payload['llm_health']['parse_error_thoughts']} parse errors, "
+                        f"hint_level={payload['hint_level']!r}"
+                    ),
+                )
+                await self._flush_events()
 
             self.state.status = "finished"
         except Exception as exc:

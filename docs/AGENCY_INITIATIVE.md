@@ -190,3 +190,4 @@ Agency work on **spectator match** agents should focus on `prompts.py` + `observ
 ## Document history
 
 - **2026-04-23** — Initial `AGENCY_INITIATIVE.md` from the Agent agency initiative plan; baseline sizes from `dump_turn_anatomy.py` run on the same date.
+- **2026-04-23** — Tier 0–3 execution: `TW2K_HINT_LEVEL=full|minimal`, slim `_MATCH_PROMPT_MINIMAL` + `docs/PLAYBOOK.md`, `stage_hint` drops `next_milestone` in minimal, `_action_hint` omits strategy coaching in minimal, `match_metrics` event + `scripts/summarize_match.py`, server banner shows hint level.

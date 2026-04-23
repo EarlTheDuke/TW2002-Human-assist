@@ -21,7 +21,7 @@ from typing import Any
 from ..engine import Action, ActionKind, Observation
 from .base import BaseAgent
 from .heuristic import HeuristicAgent
-from .prompts import SYSTEM_PROMPT, format_observation
+from .prompts import format_observation, get_system_prompt
 
 # ---------------------------------------------------------------------------
 # Provider-response diagnostics (M3-1 proper fix)
@@ -406,7 +406,7 @@ class LLMAgent(BaseAgent):
         msg = await self._client.messages.create(  # type: ignore[union-attr]
             model=self.model,
             max_tokens=900,
-            system=SYSTEM_PROMPT,
+            system=get_system_prompt(),
             messages=[{"role": "user", "content": observation_json}],
         )
         parts = []
@@ -433,7 +433,7 @@ class LLMAgent(BaseAgent):
             temperature=0.6,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": get_system_prompt()},
                 {"role": "user", "content": observation_json},
             ],
         )
@@ -478,7 +478,7 @@ class LLMAgent(BaseAgent):
             "max_tokens": max_tokens,
             "temperature": 0.6,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": get_system_prompt()},
                 {"role": "user", "content": observation_json},
             ],
             "extra_body": extra_body,
@@ -499,7 +499,7 @@ class LLMAgent(BaseAgent):
             temperature=0.6,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": get_system_prompt()},
                 {"role": "user", "content": observation_json},
             ],
         )
@@ -524,7 +524,7 @@ class LLMAgent(BaseAgent):
             "max_tokens": max_tokens,
             "temperature": 0.6,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": get_system_prompt()},
                 {"role": "user", "content": observation_json},
             ],
         }
