@@ -51,6 +51,10 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.LIMPET_REPORT,
     EventKind.PHOTON_FIRED,
     EventKind.FED_RESPONSE,
+    # Out-of-band meta event — belongs to actor only (keeps opponents
+    # from reading each other's token spend, which would be a weird
+    # side-channel and also clutter their observation feed).
+    EventKind.LLM_USAGE,
 })
 
 # Party-restricted events — visibility derived from payload.

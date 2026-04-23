@@ -1,16 +1,16 @@
 {
   "day": 1,
-  "tick": 160,
+  "tick": 11,
   "max_days": 3,
   "finished": false,
   "self_id": "P1",
   "self_name": "Captain Reyes",
-  "credits": 44300,
+  "credits": 44320,
   "alignment": 0,
   "alignment_label": "Neutral",
-  "experience": 26,
+  "experience": 3,
   "rank": "Civilian",
-  "turns_remaining": 2,
+  "turns_remaining": 71,
   "turns_per_day": 80,
   "ship": {
     "class": "merchant_cruiser",
@@ -22,10 +22,10 @@
       "colonists": 0
     },
     "cargo_cost_avg": {
-      "equipment": 35
+      "equipment": 34
     },
     "cargo_value_at_cost": {
-      "equipment": 700
+      "equipment": 680
     },
     "fighters": 620,
     "shields": 0,
@@ -49,14 +49,17 @@
     "long": "CargoTran day 1, Genesis a dead-end sector day 2, Citadel L2 by day 3; ferry colonists to compound planet production."
   },
   "alive": true,
-  "net_worth": 96670,
+  "net_worth": 96690,
   "owned_planets": [],
   "sector": {
-    "id": 406,
+    "id": 139,
     "warps_out": [
-      475
+      65,
+      217,
+      726,
+      874
     ],
-    "warps_count": 1,
+    "warps_count": 4,
     "is_fedspace": false,
     "occupants": [
       "P1"
@@ -67,7 +70,7 @@
     "port": {
       "class_id": 5,
       "code": "SBS",
-      "name": "Wolf-406",
+      "name": "Hydra-139",
       "buys": [
         "organics"
       ],
@@ -77,21 +80,21 @@
       ],
       "stock": {
         "fuel_ore": {
-          "current": 1239,
-          "max": 3007,
-          "price": 18,
+          "current": 1760,
+          "max": 2830,
+          "price": 16,
           "side": "sells_to_player"
         },
         "organics": {
-          "current": 1684,
-          "max": 4235,
-          "price": 28,
+          "current": 3830,
+          "max": 4386,
+          "price": 22,
           "side": "buys_from_player"
         },
         "equipment": {
-          "current": 1924,
-          "max": 4039,
-          "price": 35,
+          "current": 2896,
+          "max": 3142,
+          "price": 27,
           "side": "sells_to_player"
         }
       }
@@ -100,8 +103,38 @@
   },
   "adjacent": [
     {
-      "id": 475,
+      "id": 65,
       "port": null,
+      "fighter_count": 0,
+      "fighter_owner": null,
+      "mines": 0,
+      "has_planets": false,
+      "occupants": [],
+      "known": false
+    },
+    {
+      "id": 217,
+      "port": "SBS",
+      "fighter_count": 0,
+      "fighter_owner": null,
+      "mines": 0,
+      "has_planets": false,
+      "occupants": [],
+      "known": false
+    },
+    {
+      "id": 726,
+      "port": null,
+      "fighter_count": 0,
+      "fighter_owner": null,
+      "mines": 0,
+      "has_planets": false,
+      "occupants": [],
+      "known": false
+    },
+    {
+      "id": 874,
+      "port": "BBS",
       "fighter_count": 0,
       "fighter_owner": null,
       "mines": 0,
@@ -112,25 +145,51 @@
   ],
   "known_ports": [
     {
-      "sector_id": 406,
+      "sector_id": 139,
       "class": "SBS",
       "stock": {
         "fuel_ore": {
-          "current": 1239,
-          "max": 3007,
-          "price": 18,
+          "current": 1760,
+          "max": 2830,
+          "price": 16,
           "side": "sells_to_player"
         },
         "organics": {
-          "current": 1684,
-          "max": 4235,
-          "price": 28,
+          "current": 3830,
+          "max": 4386,
+          "price": 22,
           "side": "buys_from_player"
         },
         "equipment": {
-          "current": 1924,
-          "max": 4039,
-          "price": 35,
+          "current": 2896,
+          "max": 3142,
+          "price": 27,
+          "side": "sells_to_player"
+        }
+      },
+      "last_seen_day": 1,
+      "age_days": 0
+    },
+    {
+      "sector_id": 874,
+      "class": "BBS",
+      "stock": {
+        "fuel_ore": {
+          "current": 2079,
+          "max": 2651,
+          "price": 16,
+          "side": "buys_from_player"
+        },
+        "organics": {
+          "current": 1897,
+          "max": 3338,
+          "price": 25,
+          "side": "buys_from_player"
+        },
+        "equipment": {
+          "current": 1721,
+          "max": 3247,
+          "price": 34,
           "side": "sells_to_player"
         }
       },
@@ -139,23 +198,34 @@
     }
   ],
   "known_warps": {
-    "406": [
-      475
+    "874": [
+      1,
+      87,
+      115,
+      139,
+      338,
+      344,
+      508,
+      655,
+      696
     ],
-    "475": [
-      406
+    "139": [
+      65,
+      217,
+      726,
+      874
     ]
   },
   "trade_log": [
     {
       "day": 1,
       "tick": 9,
-      "sector_id": 406,
+      "sector_id": 874,
       "commodity": "equipment",
       "qty": 20,
       "side": "buy",
-      "unit": 35,
-      "total": 700,
+      "unit": 34,
+      "total": 680,
       "realized_profit": null
     },
     {
@@ -214,7 +284,7 @@
       "name": "Admiral Vex",
       "alive": true,
       "corp_ticker": null,
-      "net_worth": 97290,
+      "net_worth": 96670,
       "ship_class": "merchant_cruiser",
       "deaths": 0
     }
@@ -274,364 +344,112 @@
   "inbox": [],
   "recent_events": [
     {
-      "seq": 139,
+      "seq": 1,
       "day": 1,
-      "tick": 81,
+      "tick": 1,
       "kind": "agent_thought",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 1,
+      "summary": "Load up on 200 fighters before heading out."
     },
     {
-      "seq": 141,
+      "seq": 2,
       "day": 1,
-      "tick": 83,
-      "kind": "agent_thought",
+      "tick": 1,
+      "kind": "buy_equip",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 1,
+      "summary": "Captain Reyes bought 200 fighters for 10000cr"
     },
     {
-      "seq": 143,
+      "seq": 5,
       "day": 1,
-      "tick": 85,
+      "tick": 3,
       "kind": "agent_thought",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 1,
+      "summary": "Load up on 200 fighters before heading out."
     },
     {
-      "seq": 145,
+      "seq": 6,
       "day": 1,
-      "tick": 87,
-      "kind": "agent_thought",
+      "tick": 3,
+      "kind": "buy_equip",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 1,
+      "summary": "Captain Reyes bought 200 fighters for 10000cr"
     },
     {
-      "seq": 147,
+      "seq": 9,
       "day": 1,
-      "tick": 89,
+      "tick": 5,
       "kind": "agent_thought",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 1,
+      "summary": "Load up on 200 fighters before heading out."
     },
     {
-      "seq": 149,
+      "seq": 10,
       "day": 1,
-      "tick": 91,
-      "kind": "agent_thought",
+      "tick": 5,
+      "kind": "buy_equip",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 1,
+      "summary": "Captain Reyes bought 200 fighters for 10000cr"
     },
     {
-      "seq": 151,
+      "seq": 13,
       "day": 1,
-      "tick": 93,
+      "tick": 7,
       "kind": "agent_thought",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 1,
+      "summary": "Warping to 874 (scouting, port=BBS)."
     },
     {
-      "seq": 153,
+      "seq": 14,
       "day": 1,
-      "tick": 95,
-      "kind": "agent_thought",
+      "tick": 7,
+      "kind": "warp",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 874,
+      "summary": "Captain Reyes warped 1 → 874"
     },
     {
-      "seq": 155,
+      "seq": 17,
       "day": 1,
-      "tick": 97,
+      "tick": 9,
       "kind": "agent_thought",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 874,
+      "summary": "Buying 20 equipment at BBS for 34cr/u."
     },
     {
-      "seq": 157,
+      "seq": 18,
       "day": 1,
-      "tick": 99,
-      "kind": "agent_thought",
+      "tick": 9,
+      "kind": "trade",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 874,
+      "summary": "Captain Reyes buy 20 equipment @ 34cr = 680cr"
     },
     {
-      "seq": 159,
+      "seq": 21,
       "day": 1,
-      "tick": 101,
+      "tick": 11,
       "kind": "agent_thought",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 874,
+      "summary": "Warping to 139 (scouting, port=SBS)."
     },
     {
-      "seq": 161,
+      "seq": 22,
       "day": 1,
-      "tick": 103,
-      "kind": "agent_thought",
+      "tick": 11,
+      "kind": "warp",
       "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 163,
-      "day": 1,
-      "tick": 105,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 165,
-      "day": 1,
-      "tick": 107,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 167,
-      "day": 1,
-      "tick": 109,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 169,
-      "day": 1,
-      "tick": 111,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 171,
-      "day": 1,
-      "tick": 113,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 173,
-      "day": 1,
-      "tick": 115,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 175,
-      "day": 1,
-      "tick": 117,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 177,
-      "day": 1,
-      "tick": 119,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 179,
-      "day": 1,
-      "tick": 121,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 181,
-      "day": 1,
-      "tick": 123,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 183,
-      "day": 1,
-      "tick": 125,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 185,
-      "day": 1,
-      "tick": 127,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 187,
-      "day": 1,
-      "tick": 129,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 189,
-      "day": 1,
-      "tick": 131,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 191,
-      "day": 1,
-      "tick": 133,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 193,
-      "day": 1,
-      "tick": 135,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 195,
-      "day": 1,
-      "tick": 137,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 197,
-      "day": 1,
-      "tick": 139,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 199,
-      "day": 1,
-      "tick": 141,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 201,
-      "day": 1,
-      "tick": 143,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 203,
-      "day": 1,
-      "tick": 145,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 205,
-      "day": 1,
-      "tick": 147,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 207,
-      "day": 1,
-      "tick": 149,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 209,
-      "day": 1,
-      "tick": 151,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 211,
-      "day": 1,
-      "tick": 153,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 213,
-      "day": 1,
-      "tick": 155,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 215,
-      "day": 1,
-      "tick": 157,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
-    },
-    {
-      "seq": 217,
-      "day": 1,
-      "tick": 159,
-      "kind": "agent_thought",
-      "actor_id": "P1",
-      "sector_id": 406,
-      "summary": "Warping to 475 (drifting, port=None)."
+      "sector_id": 139,
+      "summary": "Captain Reyes warped 874 → 139"
     }
   ],
   "alliances": [],
@@ -640,5 +458,5 @@
   "max_deaths": 3,
   "limpets_owned": [],
   "probe_log": [],
-  "action_hint": "YOUR GOALS — NOW: warp 7 -> sell 20 fuel_ore @>=26cr; warp 5 buy 20 fo @<=22cr; repeat until cr>=45k / DAY: hit 45k cr, warp back to sector 1, buy_ship cargotran (43.5k), fill holds with colonists for Genesis run / MATCH: CargoTran day 1, Genesis a dead-end sector day 2, Citadel L2 by day 3; ferry colonists to compound planet production. | MAP COVERAGE — you have `known_warps` for 2 of ~1000 sectors. The universe is fully connected; SCAN from new sectors or spend 5k on a PROBE to grow your map before assuming you're trapped. | DEAD-END POCKET — sectors 406 and 475 only warp to each other. Only a Citadel L4 transwarp drive can exit. Do NOT broadcast a rescue bounty — no ship can reach you here. | Verbs available: warp trade scan wait + 29 more (see system prompt). | LOW TURNS — turns_remaining=2. Cannot: warp (needs 3), trade (needs 3). End the day with `wait` (burns 1 turn) or do a 1-turn action like `scan` / `transmit`. Do NOT spam warp/trade. | warp target MUST be in [475]. | port BUYS organics / port SELLS fuel_ore,equipment — use trade. | FYI: ship has 620 fighters in deep space. Ferrengi raiders carry 400-3,100 fighters. You'll likely win vs. aggression 1-3 raiders but lose to higher. StarDock sells fighters at 50cr ea. | ORPHANED PLANETS (claimable): Little Eden #1 s26 L0 citadel, 0 fighters; Great Athena #2 s57 L0 citadel, 0 fighters; Northern Aurora #3 s94 L0 citadel, 0 fighters (+2 more). Warp to the sector, `land_planet`, then `claim_planet` (2 turns) to inherit citadel + fighters + stockpile. Free of Genesis cost."
+  "action_hint": "YOUR GOALS — NOW: warp 7 -> sell 20 fuel_ore @>=26cr; warp 5 buy 20 fo @<=22cr; repeat until cr>=45k / DAY: hit 45k cr, warp back to sector 1, buy_ship cargotran (43.5k), fill holds with colonists for Genesis run / MATCH: CargoTran day 1, Genesis a dead-end sector day 2, Citadel L2 by day 3; ferry colonists to compound planet production. | MAP COVERAGE — you have `known_warps` for 2 of ~1000 sectors. The universe is fully connected; SCAN from new sectors or spend 5k on a PROBE to grow your map before assuming you're trapped. | Verbs available: warp trade scan wait + 29 more (see system prompt). | warp target MUST be in [65, 217, 726, 874]. | port BUYS organics / port SELLS fuel_ore,equipment — use trade. | FYI: ship has 620 fighters in deep space. Ferrengi raiders carry 400-3,100 fighters. You'll likely win vs. aggression 1-3 raiders but lose to higher. StarDock sells fighters at 50cr ea. | ORPHANED PLANETS (claimable): Little Eden #1 s26 L0 citadel, 0 fighters; Great Athena #2 s57 L0 citadel, 0 fighters; Northern Aurora #3 s94 L0 citadel, 0 fighters (+2 more). Warp to the sector, `land_planet`, then `claim_planet` (2 turns) to inherit citadel + fighters + stockpile. Free of Genesis cost."
 }

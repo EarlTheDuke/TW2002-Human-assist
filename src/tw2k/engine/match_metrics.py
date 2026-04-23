@@ -27,6 +27,14 @@ def build_match_metrics_payload(
     game_start_payload: dict[str, Any] | None = None
     game_over_payload: dict[str, Any] | None = None
 
+    # Per-player LLM cost rollup. Keyed by actor_id; each row
+    # accumulates provider/model + token totals + USD so the final
+    # metrics payload mirrors /api/cost without requiring the runner
+    # to serialize MatchCostTracker separately.
+    cost_by_actor: dict[str, dict[str, Any]] = {}
+    grand_cost_usd = 0.0
+    grand_calls = 0
+
     for ev in events:
         k = ev.kind.value
         by_kind[k] = by_kind.get(k, 0) + 1
@@ -35,6 +43,39 @@ def build_match_metrics_payload(
             game_start_payload = dict(ev.payload or {})
         if ev.kind is EventKind.GAME_OVER:
             game_over_payload = dict(ev.payload or {})
+
+        if ev.kind is EventKind.LLM_USAGE:
+            aid_cost = ev.actor_id or "_engine"
+            row = cost_by_actor.setdefault(
+                aid_cost,
+                {
+                    "provider": "",
+                    "model": "",
+                    "calls": 0,
+                    "input_tokens": 0,
+                    "cached_input_tokens": 0,
+                    "cache_write_tokens": 0,
+                    "output_tokens": 0,
+                    "cost_usd": 0.0,
+                    "price_is_fallback": False,
+                },
+            )
+            pay = ev.payload or {}
+            if not row["provider"]:
+                row["provider"] = str(pay.get("provider") or "")
+            if not row["model"]:
+                row["model"] = str(pay.get("model") or "")
+            usage_pay = pay.get("usage") or {}
+            row["calls"] += 1
+            row["input_tokens"] += int(usage_pay.get("input_tokens") or 0)
+            row["cached_input_tokens"] += int(usage_pay.get("cached_input_tokens") or 0)
+            row["cache_write_tokens"] += int(usage_pay.get("cache_write_tokens") or 0)
+            row["output_tokens"] += int(usage_pay.get("output_tokens") or 0)
+            row["cost_usd"] += float(pay.get("cost_usd") or 0.0)
+            if pay.get("price_is_fallback"):
+                row["price_is_fallback"] = True
+            grand_cost_usd += float(pay.get("cost_usd") or 0.0)
+            grand_calls += 1
 
         aid = ev.actor_id or "_engine"
         row = by_actor.setdefault(aid, {})
@@ -60,6 +101,15 @@ def build_match_metrics_payload(
             row["agent_error"] = row.get("agent_error", 0) + 1
 
     last = events[-1] if events else None
+    # Round USD totals to 6 decimals — more than enough for tiny
+    # per-call numbers, and keeps the JSON diffable turn-over-turn.
+    cost_rollup = {
+        pid: {
+            **row,
+            "cost_usd": round(float(row["cost_usd"]), 6),
+        }
+        for pid, row in sorted(cost_by_actor.items())
+    }
     return {
         "hint_level": os.environ.get("TW2K_HINT_LEVEL", "full"),
         "event_count": len(events),
@@ -72,6 +122,13 @@ def build_match_metrics_payload(
             "standing_down_thoughts": standing_down,
             "warmup_thoughts": warmup_thoughts,
             "agent_error_events": by_kind.get("agent_error", 0),
+        },
+        "llm_cost": {
+            "per_player": cost_rollup,
+            "total": {
+                "calls": grand_calls,
+                "cost_usd": round(float(grand_cost_usd), 6),
+            },
         },
         "final_day": int(last.day) if last else 0,
         "final_tick": int(last.tick) if last else 0,

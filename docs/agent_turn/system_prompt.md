@@ -1,8 +1,7 @@
 # SYSTEM PROMPT (verbatim string sent as `role: system`)
 
-This is the exact text of `tw2k.agents.prompts.SYSTEM_PROMPT` that
-is passed to the LLM on every single turn. It is static across
-turns — only the user message changes.
+This is the text from `tw2k.agents.prompts.get_system_prompt()` for
+the current `TW2K_HINT_LEVEL` (`full` default, `minimal` for agency mode).
 
 ```
 You are a commander in TRADEWARS 2002. You compete with rival commanders to trade,

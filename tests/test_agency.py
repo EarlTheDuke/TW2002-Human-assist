@@ -142,6 +142,86 @@ def test_match_metrics_counts_parse_errors() -> None:
     assert p["event_count"] == 2
 
 
+def test_match_metrics_rolls_up_llm_usage_events() -> None:
+    """Two llm_usage events for P1 and one for P2 → per-player cost rollup."""
+    events = [
+        Event(
+            seq=1,
+            tick=1,
+            day=1,
+            kind=EventKind.LLM_USAGE,
+            actor_id="P1",
+            payload={
+                "provider": "cursor",
+                "model": "composer-2-fast",
+                "usage": {
+                    "input_tokens": 1000,
+                    "cached_input_tokens": 2000,
+                    "cache_write_tokens": 0,
+                    "output_tokens": 500,
+                },
+                "cost_usd": 0.0058,
+                "running_total_usd": 0.0058,
+                "price_is_fallback": False,
+            },
+            summary="",
+        ),
+        Event(
+            seq=2,
+            tick=2,
+            day=1,
+            kind=EventKind.LLM_USAGE,
+            actor_id="P1",
+            payload={
+                "provider": "cursor",
+                "model": "composer-2-fast",
+                "usage": {
+                    "input_tokens": 500,
+                    "cached_input_tokens": 0,
+                    "cache_write_tokens": 0,
+                    "output_tokens": 100,
+                },
+                "cost_usd": 0.00150,
+                "running_total_usd": 0.0073,
+                "price_is_fallback": False,
+            },
+            summary="",
+        ),
+        Event(
+            seq=3,
+            tick=3,
+            day=1,
+            kind=EventKind.LLM_USAGE,
+            actor_id="P2",
+            payload={
+                "provider": "custom",
+                "model": "qwen3.5:122b",
+                "usage": {
+                    "input_tokens": 5000,
+                    "cached_input_tokens": 0,
+                    "cache_write_tokens": 0,
+                    "output_tokens": 1000,
+                },
+                "cost_usd": 0.0,
+                "running_total_usd": 0.0,
+                "price_is_fallback": False,
+            },
+            summary="",
+        ),
+    ]
+    p = build_match_metrics_payload(events)
+    cost = p["llm_cost"]
+    assert set(cost["per_player"]) == {"P1", "P2"}
+    assert cost["per_player"]["P1"]["calls"] == 2
+    assert cost["per_player"]["P1"]["input_tokens"] == 1500
+    assert cost["per_player"]["P1"]["cached_input_tokens"] == 2000
+    assert cost["per_player"]["P1"]["output_tokens"] == 600
+    assert cost["per_player"]["P1"]["cost_usd"] == pytest.approx(0.0073)
+    assert cost["per_player"]["P2"]["cost_usd"] == pytest.approx(0.0)
+    assert cost["total"]["calls"] == 3
+    assert cost["total"]["cost_usd"] == pytest.approx(0.0073)
+
+
 def test_events_jsonl_roundtrip_for_metrics() -> None:
     ev = Event(
         seq=1,

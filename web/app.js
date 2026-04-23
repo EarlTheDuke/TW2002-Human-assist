@@ -60,6 +60,13 @@
     // Agent-thought events the user has clicked to expand. Keyed by
     // event seq so the "show full" state survives re-renders.
     expandedThoughts: new Set(),
+    // Drawer sections the user has opened (<details>). We rebuild the
+    // drawer HTML on every state tick, which otherwise collapses
+    // <details> back to closed — so we persist open keys here and
+    // re-apply the `open` attribute on each render. Defaults set in
+    // renderDrawer() so Plans/Memory start expanded when they have
+    // content.
+    drawerOpenSections: new Set(["plans", "memory"]),
     // Phase B HUD state -------------------------------------------
     // Living corporations / Ferrengi raiders, sourced from each
     // /state snapshot. Previously dropped on the floor in onSnapshot.
@@ -2009,6 +2016,7 @@
     game_start:        { cat: "game_start", icon: "\u25c9", label: "MATCH START", big: true },
     game_over:         { cat: "game_over",  icon: "\u25c8", label: "MATCH END", big: true },
     match_metrics:     { cat: "system",     icon: "\u25a4", label: "MATCH METRICS" },
+    llm_usage:         { cat: "system",     icon: "\u00a4",  label: "LLM USAGE" },
   };
 
   function kindMeta(kind) {
@@ -2817,6 +2825,23 @@
 
   // ------------- Detail drawer + follow camera (Phase 3) -------------
 
+  // One-time delegated listener: whenever ANY <details data-section="..">
+  // inside the drawer toggles, record the user's preference so the next
+  // render() (which rewrites drawerBody.innerHTML) can restore it via
+  // the `open` attribute. Without this, websocket ticks collapse Plans
+  // and Memory the instant you click them, making Plans look empty.
+  if (drawerBody && !drawerBody._toggleWired) {
+    drawerBody.addEventListener("toggle", (ev) => {
+      const tgt = ev.target;
+      if (!tgt || tgt.tagName !== "DETAILS") return;
+      const key = tgt.getAttribute("data-section");
+      if (!key) return;
+      if (tgt.open) state.drawerOpenSections.add(key);
+      else state.drawerOpenSections.delete(key);
+    }, true);
+    drawerBody._toggleWired = true;
+  }
+
   function openDrawer(kind, id) {
     state.drawer = { kind, id };
     if (kind === "player") state.selectedPlayerId = id;
@@ -2967,17 +2992,19 @@
 
   function renderDrawerPlansBlock(p) {
     // The commander's 3-horizon goals. Surfaced in full (no truncation)
-    // since the drawer has more vertical room than the card. Closed by
-    // default to keep the drawer short; spectators who want to peek at
-    // strategic intent can expand.
+    // since the drawer has more vertical room than the card. We default
+    // to OPEN when any goal exists so the first view of a player
+    // immediately shows their strategic plan (closing the "is this
+    // empty?" confusion where the <details> gave no hint of content).
     const s = (p.goal_short || "").trim();
     const m = (p.goal_medium || "").trim();
     const l = (p.goal_long || "").trim();
+    const openAttr = state.drawerOpenSections.has("plans") ? " open" : "";
     if (!s && !m && !l) {
       return `
-        <details class="drawer-section drawer-plans">
-          <summary><h3>Plans</h3></summary>
-          <div class="drawer-empty">No current goals on record.</div>
+        <details class="drawer-section drawer-plans" data-section="plans"${openAttr}>
+          <summary><h3>Plans <span class="drawer-hint">(none yet)</span></h3></summary>
+          <div class="drawer-empty">No current goals on record — agent hasn't written short/medium/long goals yet.</div>
         </details>
       `;
     }
@@ -2985,9 +3012,12 @@
       if (!text) return "";
       return `<div class="goal-line ${cls}"><span class="goal-chip">${label}</span><span class="goal-text goal-text-full">${esc(text)}</span></div>`;
     };
+    // Summary hint mirrors the Memory block's "(scratchpad, N chars)"
+    // so spectators can see at a glance how many horizons are filled.
+    const flags = [s ? "S" : "-", m ? "M" : "-", l ? "L" : "-"].join("/");
     return `
-      <details class="drawer-section drawer-plans">
-        <summary><h3>Plans</h3></summary>
+      <details class="drawer-section drawer-plans" data-section="plans"${openAttr}>
+        <summary><h3>Plans <span class="drawer-hint">(${flags})</span></h3></summary>
         ${line("Short", s, "short")}
         ${line("Medium", m, "medium")}
         ${line("Long", l, "long")}
@@ -3001,16 +3031,17 @@
     // in full here (card truncates to 400ch) so observers can see the
     // full strategic narrative the LLM is writing for itself.
     const pad = (p.scratchpad || "").trim();
+    const openAttr = state.drawerOpenSections.has("memory") ? " open" : "";
     if (!pad) {
       return `
-        <details class="drawer-section drawer-memory">
-          <summary><h3>Memory</h3></summary>
+        <details class="drawer-section drawer-memory" data-section="memory"${openAttr}>
+          <summary><h3>Memory <span class="drawer-hint">(none yet)</span></h3></summary>
           <div class="drawer-empty">No scratchpad yet — agent hasn't written private notes.</div>
         </details>
       `;
     }
     return `
-      <details class="drawer-section drawer-memory">
+      <details class="drawer-section drawer-memory" data-section="memory"${openAttr}>
         <summary><h3>Memory <span class="drawer-hint">(scratchpad, ${pad.length} chars)</span></h3></summary>
         <div class="thought drawer-scratchpad">${esc(pad)}</div>
       </details>

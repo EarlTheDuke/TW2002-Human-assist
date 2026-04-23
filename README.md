@@ -90,6 +90,32 @@ tw2k serve --human P1
 
 Every chat utterance, LLM call, action dispatch, safety signal, and mode change appears as a span event on a long-lived `copilot.session` trace. Works with Jaeger, Weave, Honeycomb, or any OTLP-HTTP collector. Set `TW2K_OTEL_CONSOLE=1` to mirror spans to stdout for debugging.
 
+## Live per-player LLM cost tracking
+
+Every LLM call now emits an `llm_usage` event carrying provider, model,
+fresh/cached/output token counts, and a USD cost computed from the
+baked-in pricing table (`src/tw2k/engine/llm_pricing.py`). The runner
+accumulates a per-player tally you can query any time:
+
+```powershell
+# Live match snapshot
+Invoke-RestMethod http://127.0.0.1:8765/api/cost
+
+# Offline report from a save's events.jsonl
+python scripts/cost_report.py                         # latest match
+python scripts/cost_report.py saves/<run>/events.jsonl --by-day
+python scripts/cost_report.py --json                  # for piping
+```
+
+Default prices cover **Cursor Composer 2 Fast**, **Claude Sonnet 4.5**,
+**GPT-5**, **xAI Grok-4-1-fast-reasoning**, **DeepSeek Chat/Reasoner**,
+and `$0` for self-hosted `custom` endpoints. Override the whole table
+by setting `TW2K_COST_OVERRIDES_PATH` to a JSON file shaped like
+`{"cursor": {"composer-2-fast": {"input": 1.50, "output": 7.50}}}`
+(USD per 1M tokens). The final `match_metrics` event carries an
+`llm_cost.per_player` rollup so `scripts/summarize_match.py` can show
+dollars alongside the other end-of-match stats.
+
 See `docs/USER_GUIDE.md` §8.5 for the full human-copilot walkthrough, `docs/HUMAN_COPILOT_PLAN.md` for the design doc + changelog, `docs/LOCAL_STT_PLAN.md` for the upcoming faster-whisper voice pipeline, `docs/MULTI_HUMAN_PLAN.md` for the upcoming team-play design, and `docs/DESIGN.md` for the underlying game mechanics.
 
 ## Project layout

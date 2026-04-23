@@ -37,6 +37,7 @@ from ..engine import (
     is_finished,
     tick_day,
 )
+from ..engine.llm_pricing import MatchCostTracker
 from ..engine.match_metrics import build_match_metrics_payload
 from ..engine.models import Player, Ship
 from .broadcaster import Broadcaster
@@ -134,6 +135,11 @@ class RunnerState:
     # a save trail. The replay CLI uses this same directory layout in reverse.
     save_dir: Path | None = None
     run_id: str = ""
+    # Per-player LLM cost tracker. One MatchCostTracker per match,
+    # accumulated across every `agent.act()` call that returns usage.
+    # Surfaced live via /api/cost, frozen into the final match_metrics
+    # event, and re-derivable offline via scripts/cost_report.py.
+    cost_tracker: MatchCostTracker = field(default_factory=MatchCostTracker)
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +292,57 @@ class MatchRunner:
             self._actions_fp.write(json.dumps(rec, default=str) + "\n")
         except OSError:
             pass
+
+    def _record_llm_usage(self, agent: BaseAgent, sector_id: int, player_name: str) -> None:
+        """Emit an LLM_USAGE event + update the cost tracker after agent.act().
+
+        Looks at ``agent._last_usage`` (populated by `LLMAgent._call_*`).
+        Heuristic / human agents never set it — we silently skip them.
+        Each successful LLM call contributes one event + one tally
+        bump so the spectator UI, /api/cost, and the final
+        match_metrics payload stay in sync.
+        """
+        universe = self.state.universe
+        if universe is None:
+            return
+        usage = getattr(agent, "_last_usage", None)
+        if usage is None:
+            return
+        provider = str(getattr(agent, "provider", "") or "")
+        model = str(getattr(agent, "model", "") or "")
+        tracker = self.state.cost_tracker
+        inc_cost, tally = tracker.record_call(
+            agent.player_id,
+            provider=provider,
+            model=model,
+            input_tokens=usage.input_tokens,
+            cached_input_tokens=usage.cached_input_tokens,
+            cache_write_tokens=usage.cache_write_tokens,
+            output_tokens=usage.output_tokens,
+        )
+        universe.emit(
+            EventKind.LLM_USAGE,
+            actor_id=agent.player_id,
+            sector_id=sector_id,
+            payload={
+                "provider": provider,
+                "model": model,
+                "usage": usage.to_payload(),
+                "cost_usd": round(float(inc_cost), 6),
+                "running_total_usd": round(float(tally.cost_usd), 6),
+                "running_calls": int(tally.calls),
+                "price_is_fallback": bool(tally.price_is_fallback),
+            },
+            summary=(
+                f"[{player_name}] {provider}/{model} "
+                f"+{usage.input_tokens}in/{usage.output_tokens}out "
+                f"(cache:{usage.cached_input_tokens}) ${inc_cost:.4f} "
+                f"run=${tally.cost_usd:.3f}"
+            ),
+        )
+        # Don't clear _last_usage here — LLMAgent.act() resets it on the
+        # next turn, and leaving it set lets late observers (debug probes)
+        # inspect the last call.
 
     def _record_day_tick(self) -> None:
         """Append a day_tick marker so replay knows when to call tick_day."""
@@ -454,6 +511,16 @@ class MatchRunner:
                     self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
                     await self._sleep_scaled(self._spec.action_delay_s)
                     continue
+
+                # Capture per-call LLM usage + cost if the agent exposes
+                # it. LLMAgent populates ``_last_usage`` in each _call_*
+                # path (anthropic/openai/xai/deepseek/custom/cursor).
+                # Heuristic / human agents never set it, so this block
+                # is a no-op for them. We emit BEFORE apply_action so
+                # the usage event precedes the resulting game-state
+                # events (warps, trades, ...) in the feed — makes replay
+                # easy to audit turn-by-turn.
+                self._record_llm_usage(agent, player.sector_id, player.name)
 
                 # If the submitted Action carries an actor_kind override
                 # (e.g. the copilot dispatched this on behalf of a human),

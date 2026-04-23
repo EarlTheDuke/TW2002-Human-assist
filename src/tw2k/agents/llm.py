@@ -22,6 +22,12 @@ from typing import Any
 from ..engine import Action, ActionKind, Observation
 from .base import BaseAgent
 from .heuristic import HeuristicAgent
+from .llm_usage import (
+    LLMUsage,
+    from_anthropic,
+    from_cursor_outer_json,
+    from_openai_like,
+)
 from .prompts import format_observation, get_system_prompt
 
 # ---------------------------------------------------------------------------
@@ -311,6 +317,17 @@ class LLMAgent(BaseAgent):
         # finish_reason / content-vs-reasoning info in the agent thought
         # instead of a bare "[parse error] couldn't parse:" line.
         self._last_diag: _ResponseDiag | None = None
+        # Last call's normalized token usage. Populated by each _call_*
+        # path so the runner can emit an ``llm_usage`` event after the
+        # agent returns an action. Cleared at the top of every `act()`
+        # so a heuristic fallback doesn't accidentally reuse an older
+        # reading and double-count cost.
+        self._last_usage: LLMUsage | None = None
+        # For the Cursor CLI path only — raw `agent -p --output-format json`
+        # stdout from the last invocation. Captured in `_invoke_cursor_cli`
+        # and parsed in `_call_cursor` so we can pull the outer envelope's
+        # `usage` block without re-running the CLI.
+        self._last_cursor_raw_stdout: str = ""
 
     def _default_model(self) -> str:
         if self.provider == "anthropic":
@@ -441,6 +458,10 @@ class LLMAgent(BaseAgent):
         if self.provider == "none":
             return await self._fallback.act(obs)
 
+        # Reset per-turn usage before we (maybe) populate it below.
+        # If the call errors out / times out, _last_usage stays None
+        # and the runner skips the llm_usage event for this turn.
+        self._last_usage = None
         prompt = format_observation(obs)
         # First call on a cold model gets extra grace so we don't punish warmup.
         timeout = self.warmup_timeout_s if not self._warmed else self.think_cap_s
@@ -561,6 +582,12 @@ class LLMAgent(BaseAgent):
                 f"agent exited {proc.returncode}"
                 + (f": {err}" if err else "")
             )
+        # Stash the raw stdout so _call_cursor can parse the outer
+        # JSON envelope's `usage` block for real-time cost tracking.
+        # We can't do it here because this helper is also used by
+        # warmup and we don't want warmup tokens to count against
+        # the per-player match cost.
+        self._last_cursor_raw_stdout = out
         return _unwrap_agent_print_json(out)
 
     async def _call_cursor(self, observation_json: str) -> str:
@@ -582,6 +609,19 @@ class LLMAgent(BaseAgent):
             content_preview=_preview(text),
         )
         self._last_diag = diag
+        # Parse token usage from the outer envelope the CLI printed
+        # (inputTokens / outputTokens / cacheReadTokens / cacheWriteTokens).
+        # Silently skips if the envelope is malformed or missing — cost
+        # tracking is observational, never fatal.
+        raw = self._last_cursor_raw_stdout
+        self._last_cursor_raw_stdout = ""
+        if raw:
+            try:
+                outer = json.loads(raw.strip())
+            except json.JSONDecodeError:
+                outer = None
+            if outer is not None:
+                self._last_usage = from_cursor_outer_json(outer)
         return text
 
     async def _call_anthropic(self, observation_json: str) -> str:
@@ -609,6 +649,7 @@ class LLMAgent(BaseAgent):
             content_preview=_preview(text),
         )
         self._last_diag = diag
+        self._last_usage = from_anthropic(msg)
         return text
 
     async def _call_openai(self, observation_json: str) -> str:
@@ -625,6 +666,7 @@ class LLMAgent(BaseAgent):
         )
         text, diag = _coalesce_message_text(resp)
         self._last_diag = diag
+        self._last_usage = from_openai_like(resp, provider="openai")
         return text
 
     async def _call_custom(self, observation_json: str) -> str:
@@ -674,6 +716,7 @@ class LLMAgent(BaseAgent):
         resp = await client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
         text, diag = _coalesce_message_text(resp)
         self._last_diag = diag
+        self._last_usage = from_openai_like(resp, provider="custom")
         return text
 
     async def _call_deepseek(self, observation_json: str) -> str:
@@ -691,6 +734,7 @@ class LLMAgent(BaseAgent):
         )
         text, diag = _coalesce_message_text(resp)
         self._last_diag = diag
+        self._last_usage = from_openai_like(resp, provider="deepseek")
         return text
 
     async def _call_xai(self, observation_json: str) -> str:
@@ -719,6 +763,7 @@ class LLMAgent(BaseAgent):
         resp = await client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
         text, diag = _coalesce_message_text(resp)
         self._last_diag = diag
+        self._last_usage = from_openai_like(resp, provider="xai")
         return text
 
 

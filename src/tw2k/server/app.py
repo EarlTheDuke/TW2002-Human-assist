@@ -185,6 +185,22 @@ def create_app(
     async def events(since: int = 0, limit: int = 200) -> dict[str, Any]:
         return {"events": runner.recent_events(since=since, limit=limit)}
 
+    @app.get("/api/cost")
+    async def cost() -> dict[str, Any]:
+        """Live per-player LLM cost tally.
+
+        Payload: ``{per_player: {pid: {provider, model, calls,
+        input_tokens, cached_input_tokens, cache_write_tokens,
+        output_tokens, cost_usd, price_is_fallback}}, total: {...}}``.
+        Empty per-player dict means nothing's been spent yet (heuristic
+        match, or LLM agent still in warmup). Provider/model reflect
+        the most recent call from each player.
+        """
+        tracker = getattr(runner.state, "cost_tracker", None)
+        if tracker is None:
+            return {"per_player": {}, "total": {"calls": 0, "cost_usd": 0.0}}
+        return tracker.totals()
+
     @app.get("/highlights")
     async def highlights(limit: int = 200) -> dict[str, Any]:
         """Phase C.2 — BIG_MOMENT_KINDS subset for the highlight reel.
@@ -895,6 +911,14 @@ def create_replay_app(replay_dir: Path, *, speed: float = 1.0) -> FastAPI:
     @app.get("/events")
     async def events(since: int = 0, limit: int = 200) -> dict[str, Any]:
         return {"events": runner.recent_events(since=since, limit=limit)}
+
+    @app.get("/api/cost")
+    async def cost() -> dict[str, Any]:
+        """Replay-mode cost snapshot (derived from llm_usage events)."""
+        tracker = getattr(runner.state, "cost_tracker", None)
+        if tracker is None:
+            return {"per_player": {}, "total": {"calls": 0, "cost_usd": 0.0}}
+        return tracker.totals()
 
     @app.get("/highlights")
     async def highlights(limit: int = 200) -> dict[str, Any]:
