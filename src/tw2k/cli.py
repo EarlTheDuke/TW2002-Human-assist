@@ -149,6 +149,27 @@ def serve(
             "no effect on AI slots."
         ),
     ),
+    play_to_day_cap: bool = typer.Option(
+        False,
+        "--play-to-day-cap/--allow-early-win",
+        help=(
+            "Suppress the elimination and economic sudden-death wins so "
+            "the match always runs the full --max-days and is decided on "
+            "time_net_worth. Use this for overnight watch-matches where "
+            "the point is to see late-game mechanics (citadels, corp "
+            "share, stockpile growth). If every player dies the match "
+            "still ends immediately with a no_survivors verdict."
+        ),
+    ),
+    all_start_stardock: bool = typer.Option(
+        False,
+        "--all-start-stardock",
+        help=(
+            "Spawn every agent at StarDock (sector 1) on day 1. Default cycles "
+            "through FedSpace 1..10 so openings diverge; all-at-1 gives "
+            "immediate access to buy_ship / buy_equip for every slot."
+        ),
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -213,6 +234,10 @@ def serve(
     console.print(f"[cyan]Host:[/] {host}:{port}")
     console.print(f"[cyan]Seed:[/] {seed}  [cyan]Sectors:[/] {universe_size}  [cyan]Max days:[/] {max_days}")
     console.print(f"[cyan]Agents:[/] {num_agents}  [cyan]Kind:[/] {agent_kind}  [cyan]LLM provider:[/] {provider_display}")
+    st_all1 = "ON (everyone sector 1)" if all_start_stardock else "OFF (FedSpace cycle)"
+    console.print(f"[cyan]All start StarDock:[/] {st_all1}")
+    pcap = "ON (time_net_worth only)" if play_to_day_cap else "OFF (early wins allowed)"
+    console.print(f"[cyan]Play to day cap:[/] {pcap}")
     any_human = any(ov.get("kind") == "human" for ov in overrides)
     if any_human:
         deadline_note = (
@@ -259,10 +284,12 @@ def serve(
         auto_start=not no_auto_start,
         turns_per_day=turns_per_day,
         starting_credits=starting_credits,
+        all_start_stardock=all_start_stardock,
         agent_overrides=overrides or None,
         agent_names=names_list or None,
         action_delay_s=action_delay_s,
         human_deadline_s=human_deadline_s,
+        play_to_day_cap=play_to_day_cap,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

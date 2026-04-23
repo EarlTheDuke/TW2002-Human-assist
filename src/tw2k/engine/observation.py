@@ -28,6 +28,7 @@ _PUBLIC_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.GAME_OVER,
     EventKind.PLAYER_ELIMINATED,
     EventKind.PLANET_ORPHANED,
+    EventKind.PLANET_CLAIMED,
     EventKind.BROADCAST,
     EventKind.PORT_DESTROYED,
     EventKind.ATOMIC_DETONATION,
@@ -234,6 +235,20 @@ class Observation(BaseModel):
     # Other players — corp mates show full state, others show last-known summary
     other_players: list[dict[str, Any]]
 
+    # Match 13 — rivals: every other alive player summarized with public
+    # state (net_worth, ship_class, corp_ticker, alive) plus fog-of-war
+    # gated location (last_seen_sector/last_seen_day only if we've
+    # witnessed them recently). Separate from other_players because the
+    # latter's schema is optimized for corp-mate visibility rules;
+    # rivals is the symmetric "public leaderboard" view every agent sees.
+    rivals: list[dict[str, Any]] = Field(default_factory=list)
+
+    # Match 13 — orphaned planets currently in the universe. A new
+    # `claim_planet` action lets surviving players inherit the citadel /
+    # fighters / stockpile of planets whose owner was eliminated. Capped
+    # to 5 most-valuable entries to keep observation size bounded.
+    orphaned_planets: list[dict[str, Any]] = Field(default_factory=list)
+
     # Messaging
     inbox: list[dict[str, Any]]
 
@@ -262,6 +277,17 @@ class Observation(BaseModel):
 def build_observation(universe: Universe, player_id: str, event_history: int = 40) -> Observation:
     player = universe.players[player_id]
     sector = universe.sectors[player.sector_id]
+
+    # Match 13 — payload-shrink under timeout pressure. If this player has
+    # timed out 3+ times in a row the model is demonstrably struggling
+    # with context size; we halve the event history, trade log, and known
+    # ports list for THIS observation so the next LLM call has less to
+    # chew through. Clears automatically on the next non-timeout action
+    # (see server/runner.py where recent_timeouts gets reset to 0).
+    timeouts_recent = int(getattr(player, "recent_timeouts", 0) or 0)
+    trim_payload = timeouts_recent >= 3
+    if trim_payload:
+        event_history = min(event_history, 20)
 
     ship = _ship_dict(player.ship)
 
@@ -295,6 +321,12 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         if isinstance(lsd, int):
             e["age_days"] = max(0, universe.day - lsd)
         known_ports.append(e)
+    # Match 13 — under timeout pressure cap to 15 most-recently-seen ports
+    # (lowest age_days). Full list only matters to tactically fresh planning,
+    # and the agent is obviously missing the window on "tactical" right now.
+    if trim_payload and len(known_ports) > 15:
+        known_ports.sort(key=lambda p: int(p.get("age_days", 10**9)))
+        known_ports = known_ports[:15]
 
     # Other players visibility
     others: list[dict[str, Any]] = []
@@ -427,6 +459,78 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "shields": planet.shields,
         })
 
+    # Match 13 — orphaned planets. owner_id is None AND corp_ticker is
+    # None (corp-owned planets aren't claimable via claim_planet even
+    # if the CEO dies). Former-owner is pulled from the latest
+    # PLANET_ORPHANED event for this planet, if present.
+    orphan_former: dict[int, str] = {}
+    for ev in universe.events:
+        if ev.kind is EventKind.PLANET_ORPHANED:
+            plid = ev.payload.get("planet_id")
+            former = ev.payload.get("former_owner")
+            if isinstance(plid, int) and isinstance(former, str):
+                orphan_former[plid] = former
+    orphaned_planets: list[dict[str, Any]] = []
+    for planet in universe.planets.values():
+        if planet.owner_id is not None or planet.corp_ticker is not None:
+            continue
+        orphaned_planets.append({
+            "id": planet.id,
+            "sector_id": planet.sector_id,
+            "name": planet.name,
+            "class": planet.class_id.value,
+            "citadel_level": planet.citadel_level,
+            "fighters": planet.fighters,
+            "shields": planet.shields,
+            "former_owner_id": orphan_former.get(planet.id),
+        })
+    # Rank orphans by citadel level + fighters so the most strategically
+    # valuable ones appear first; cap to 5 entries.
+    orphaned_planets.sort(
+        key=lambda p: (-p["citadel_level"], -p["fighters"])
+    )
+    orphaned_planets = orphaned_planets[:5]
+
+    # Match 13 — rivals block. Every other alive player summarized with
+    # public numbers (net_worth, ship_class, corp_ticker, alive). We also
+    # include a last_seen_sector / last_seen_day if our event history
+    # contains a WARP / SCAN / PROBE / LAND_PLANET event witnessed by us
+    # that reveals the rival's location. This is strict fog-of-war —
+    # agents can only see location when they've actually witnessed it,
+    # preserving the TW2002 scouting loop while still giving them a
+    # leaderboard-level awareness of who they're competing against.
+    rivals: list[dict[str, Any]] = []
+    last_seen: dict[str, tuple[int, int, int]] = {}  # pid -> (day, tick, sector)
+    for ev in universe.events:
+        if ev.actor_id is None or ev.actor_id == player_id:
+            continue
+        if ev.actor_id not in universe.players:
+            continue
+        # Require a concrete sector_id AND fog-of-war visibility for US
+        if ev.sector_id is None:
+            continue
+        if not _event_visible_to(ev, player_id, universe):
+            continue
+        last_seen[ev.actor_id] = (ev.day, ev.tick, ev.sector_id)
+    for other_id, other in universe.players.items():
+        if other_id == player_id:
+            continue
+        entry: dict[str, Any] = {
+            "id": other_id,
+            "name": other.name,
+            "alive": other.alive,
+            "corp_ticker": other.corp_ticker,
+            "net_worth": full_net_worth(universe, other) if other.alive else 0,
+            "ship_class": other.ship.ship_class.value,
+            "deaths": other.deaths,
+        }
+        seen = last_seen.get(other_id)
+        if seen is not None:
+            entry["last_seen_day"] = seen[0]
+            entry["last_seen_tick"] = seen[1]
+            entry["last_seen_sector"] = seen[2]
+        rivals.append(entry)
+
     from .runner import alignment_label, rank_for
     obs = Observation(
         day=universe.day,
@@ -462,10 +566,12 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         adjacent=adjacent,
         known_ports=known_ports,
         known_warps={str(sid): list(warps) for sid, warps in (player.known_warps or {}).items()},
-        trade_log=list(getattr(player, "trade_log", []) or [])[-25:],
+        trade_log=list(getattr(player, "trade_log", []) or [])[-(10 if trim_payload else 25):],
         trade_summary=_summarize_trade_log(getattr(player, "trade_log", []) or []),
         recent_failures=_aggregate_recent_failures(universe, player_id),
         other_players=others,
+        rivals=rivals,
+        orphaned_planets=orphaned_planets,
         inbox=list(player.inbox[-40:]),
         recent_events=recent_events,
         alliances=alliances,
@@ -474,7 +580,14 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         max_deaths=K.MAX_DEATHS_BEFORE_ELIM,
         limpets_owned=limpets_owned,
         probe_log=probe_log,
-        action_hint=_action_hint(sector_info, player, owned_planets, universe),
+        action_hint=_action_hint(
+            sector_info,
+            player,
+            owned_planets,
+            universe,
+            orphaned_planets=orphaned_planets,
+            rivals=rivals,
+        ),
     )
     return obs
 
@@ -522,6 +635,14 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
     info: dict[str, Any] = {
         "id": sector.id,
         "warps_out": list(sector.warps),
+        # Total out-warps from this sector. Same as len(warps_out); surfaced
+        # as a first-class field so reasoning models (M4-12) notice it and
+        # can distinguish "I have 1 known warp because I only explored one"
+        # from "this sector is a genuine 1-warp dead-end pocket". Without
+        # this, agents in 2-sector dead-end tunnels broadcast false "trapped"
+        # alerts — Match 4 P2 sent 8+ distress hails from a real pocket but
+        # also claimed a 999k bounty that confused rivals into wasting turns.
+        "warps_count": len(sector.warps),
         "is_fedspace": sector.id in _fedspace_set(universe),
         "occupants": list(sector.occupant_ids),
         "fighter_group": None,
@@ -743,6 +864,8 @@ def _action_hint(
     player: Any = None,
     owned_planets: list[dict[str, Any]] | None = None,
     universe: Any = None,
+    orphaned_planets: list[dict[str, Any]] | None = None,
+    rivals: list[dict[str, Any]] | None = None,
 ) -> str:
     """State-aware legal-action hint string shown to the LLM every turn.
 
@@ -755,6 +878,63 @@ def _action_hint(
     from . import constants as K
 
     hints: list[str] = []
+
+    # Phase D.2 — post-timeout discontinuity hint. If the previous turn was
+    # a WAIT synthesized from an LLM timeout, the tick was wasted and the
+    # agent's chain-of-thought context was truncated. Tell it loudly so it
+    # re-anchors on its scratchpad plan instead of silently drifting.
+    # Comes FIRST so it's unmissable.
+    if player is not None and getattr(player, "last_action_was_timeout", False):
+        hints.append(
+            "PREVIOUS TURN LOST TO LLM TIMEOUT — your last tick was a forced "
+            "WAIT; no decision was actually made. Re-read your `scratchpad` "
+            "and `goal_*` fields before acting so a multi-step plan isn't "
+            "silently abandoned."
+        )
+
+    # Match 13 — POST-DEATH re-arm hint. Fires on the FIRST observation
+    # after a SHIP_DESTROYED, and persists until ship fighters >= 500 AND
+    # shields >= 1. Purpose: Match 12's "no_survivors" wipeout happened
+    # because agents kept warping back into deep space with <100 fighters
+    # after each death. We surface the concrete "you had X fighters when
+    # you died" number so they can't hand-wave the under-defense problem.
+    # Cleared automatically once the re-arm threshold is met (see below).
+    if player is not None:
+        ship_now = getattr(player, "ship", None)
+        ship_fighters_now = int(getattr(ship_now, "fighters", 0) or 0) if ship_now is not None else 0
+        ship_shields_now = int(getattr(ship_now, "shields", 0) or 0) if ship_now is not None else 0
+        last_death_day = getattr(player, "last_death_day", None)
+        if last_death_day is not None:
+            # Still under-armed? Keep the hint loud.
+            if ship_fighters_now < 500 or ship_shields_now < 1:
+                last_fighters = int(getattr(player, "last_death_fighters", 0) or 0)
+                last_reason = str(getattr(player, "last_death_reason", "") or "attack")
+                credits_now = int(getattr(player, "credits", 0) or 0)
+                target_fighters = 500
+                fighter_cost_total = target_fighters * K.FIGHTER_COST
+                afford_line = (
+                    f"you have {credits_now:,}cr — {target_fighters} fighters = "
+                    f"{fighter_cost_total:,}cr at StarDock"
+                )
+                hints.append(
+                    f"YOU JUST DIED to {last_reason} on day {last_death_day} "
+                    f"(ship had {last_fighters} fighters). Before warping outside "
+                    f"FedSpace again, consider buying at least {target_fighters} "
+                    f"fighters and >=1 shield at StarDock (sec "
+                    f"{K.STARDOCK_SECTOR}). {afford_line}. This hint auto-"
+                    f"clears once you're back above that threshold."
+                )
+            else:
+                # Re-armed: clear the persistent flag so the hint stops.
+                # Safe to mutate player here — build_observation is read-
+                # after-write from the engine's POV; subsequent observations
+                # just see the cleared value.
+                try:
+                    player.last_death_day = None
+                    player.last_death_fighters = 0
+                    player.last_death_reason = ""
+                except Exception:
+                    pass
 
     # Prior-turn goals FIRST — this is the commitment mechanism. If the agent
     # said last turn "save 45k for cargotran", we want that to be the very
@@ -779,6 +959,44 @@ def _action_hint(
                 "your JSON output so future you knows the plan."
             )
 
+    # M4-12: Map-coverage / dead-end hint. Without this, reasoning models
+    # read `known_warps` (size N) and conclude "the universe has N sectors",
+    # broadcast false "I'm trapped" alerts, and stop scanning. The engine
+    # always generates a fully-connected universe, but individual sectors
+    # can be 1-warp dead-end pockets — we surface both facts.
+    if universe is not None and player is not None:
+        try:
+            known_n = len(getattr(player, "known_warps", {}) or {})
+            total_n = len(getattr(universe, "sectors", {}) or {})
+        except Exception:
+            known_n = 0
+            total_n = 0
+        if total_n > 0 and known_n > 0 and known_n < max(8, total_n // 50):
+            hints.append(
+                f"MAP COVERAGE — you have `known_warps` for {known_n} of ~"
+                f"{total_n} sectors. The universe is fully connected; "
+                f"SCAN from new sectors or spend 5k on a PROBE to grow your "
+                f"map before assuming you're trapped."
+            )
+        # Dead-end pocket detection: current sector has 1 warp AND that
+        # destination also has 1 warp back here -> genuine 2-sector pocket.
+        warps_out = sector_info.get("warps_out") or []
+        if len(warps_out) == 1:
+            dest_id = int(warps_out[0])
+            try:
+                dest = universe.sectors.get(dest_id)
+            except Exception:
+                dest = None
+            if dest is not None:
+                dest_warps = list(getattr(dest, "warps", []) or [])
+                here_id = sector_info.get("id")
+                if len(dest_warps) == 1 and int(dest_warps[0]) == here_id:
+                    hints.append(
+                        f"DEAD-END POCKET — sectors {here_id} and {dest_id} "
+                        "only warp to each other. Only a Citadel L4 "
+                        "transwarp drive can exit. Do NOT broadcast a "
+                        "rescue bounty — no ship can reach you here."
+                    )
     hints.append(
         "Verbs available: warp trade scan wait + 29 more (see system prompt)."
     )
@@ -941,6 +1159,52 @@ def _action_hint(
                         f"(need {cost - credits:,} more) — keep trading."
                     )
 
+    # Phase D.1 — away-from-StarDock upgrade nudge. If the player is still in
+    # the starter merchant_cruiser AND is currently NOT at StarDock AND has
+    # more than enough credits to afford a meaningful upgrade, remind them
+    # that `buy_ship` is a 0-turn action at sector 1. Without this hint the
+    # affordable-ships list only fires when they happen to already be at
+    # StarDock — agents who warp out on day 1 to start trading stay in the
+    # starter hull for the rest of the match despite sitting on 500k+ cr.
+    # Threshold is 1.25x cheapest affordable non-corp ship so we don't nag
+    # players who are just barely above the merchant_cruiser cost.
+    if (
+        player is not None
+        and sector_id is not None
+        and sector_id != K.STARDOCK_SECTOR
+    ):
+        cur_ship = getattr(player, "ship", None)
+        cur_class_val = getattr(getattr(cur_ship, "ship_class", None), "value", None)
+        if cur_class_val == K.STARTING_SHIP:
+            credits = int(getattr(player, "credits", 0) or 0)
+            alignment = int(getattr(player, "alignment", 0) or 0)
+            in_corp = bool(getattr(player, "corp_ticker", None))
+            affordable: list[tuple[int, int, str]] = []
+            for class_key, spec in K.SHIP_SPECS.items():
+                if class_key == cur_class_val:
+                    continue
+                cost = int(spec.get("cost", 0))
+                if cost <= 0:
+                    continue
+                if spec.get("corp_only") and not in_corp:
+                    continue
+                if int(spec.get("min_alignment", -10**9)) > alignment:
+                    continue
+                if credits < int(cost * 1.25):
+                    continue
+                holds = int(spec.get("holds", 0))
+                disp = spec.get("display_name", class_key)
+                affordable.append((holds, cost, f"{disp} ({cost:,}cr, {holds}h)"))
+            if affordable:
+                affordable.sort(key=lambda t: (-t[0], t[1]))
+                picks = ", ".join(tag for _h, _c, tag in affordable[:2])
+                hints.append(
+                    f"STILL IN STARTER HULL with {credits:,}cr — you can "
+                    f"afford {picks}. `buy_ship` is a 0-turn action at "
+                    f"StarDock (sector {K.STARDOCK_SECTOR}); warp back to "
+                    f"upgrade before burning more days trading in 20 holds."
+                )
+
     # Ship inventory → actionable verbs
     if player is not None:
         ship = getattr(player, "ship", None)
@@ -1038,27 +1302,44 @@ def _action_hint(
     # philosophy: surface state the agent might have missed; let it decide
     # whether to act. A smarter LLM should route around these correctly.
     if player is not None and ship is not None:
-        # Unarmed-in-deep-space awareness. Post-match forensics on seed 7777
-        # showed both eliminated players died with 0 ship fighters / 0 shields
-        # against Ferrengi battleships. This is pure information, no nudge
-        # to do something specific.
+        # Match 13 — tiered Ferrengi defense hint. Raiders spawn with
+        # 100 + aggression*300 fighters (aggression 1..10), i.e. 400..3,100
+        # fighters each. Agents must be AWARE of that number to decide
+        # whether their own fighter count is safe. Three tiers:
+        #   * in FedSpace              -> optional advice (FYI)
+        #   * outside FedSpace, <500   -> LOUD: UNDEFENDED IN DEEP SPACE
+        #   * outside FedSpace, <1000  -> FYI: stay sharp, stock up
+        # Match 12 wipeout happened with Tanis at 0 fighters, Mira/Eris
+        # with only ~20 fighters purchased once. Concrete numbers help.
         ship_fighters = int(getattr(ship, "fighters", 0) or 0)
         ship_shields = int(getattr(ship, "shields", 0) or 0)
         cur_sid = sector_info.get("id")
         in_fedspace = cur_sid in K.FEDSPACE_SECTORS if cur_sid is not None else False
-        if ship_fighters == 0 and ship_shields == 0:
-            if in_fedspace:
-                hints.append(
-                    f"FYI: ship has 0 fighters / 0 shields. StarDock sells "
-                    f"fighters (~{K.FIGHTER_COST}cr ea). Deep-space Ferrengi "
-                    f"favor unarmed targets."
-                )
-            else:
-                hints.append(
-                    "FYI: in deep space with 0 fighters / 0 shields — "
-                    "Ferrengi that enter this sector will likely attack. "
-                    "StarDock (sec 1) has the fighter shop."
-                )
+        credits_now = int(getattr(player, "credits", 0) or 0)
+        buy_500_cost = 500 * K.FIGHTER_COST
+        if not in_fedspace and ship_fighters < 500:
+            # Louder text for the most dangerous case.
+            hints.append(
+                f"UNDEFENDED IN DEEP SPACE — ship has {ship_fighters} fighters "
+                f"/ {ship_shields} shields. Ferrengi raiders spawn with "
+                f"400-3,100 fighters (aggression 1-10). Any warp from here "
+                f"could meet one. StarDock (sec {K.STARDOCK_SECTOR}) sells "
+                f"fighters at {K.FIGHTER_COST}cr ea — 500 fighters = "
+                f"{buy_500_cost:,}cr, you have {credits_now:,}cr."
+            )
+        elif not in_fedspace and ship_fighters < 1000:
+            hints.append(
+                f"FYI: ship has {ship_fighters} fighters in deep space. "
+                f"Ferrengi raiders carry 400-3,100 fighters. You'll likely "
+                f"win vs. aggression 1-3 raiders but lose to higher. "
+                f"StarDock sells fighters at {K.FIGHTER_COST}cr ea."
+            )
+        elif in_fedspace and ship_fighters == 0 and ship_shields == 0:
+            hints.append(
+                f"FYI: ship has 0 fighters / 0 shields. StarDock sells "
+                f"fighters ({K.FIGHTER_COST}cr ea). Ferrengi raiders (400-"
+                f"3,100 fighters) patrol deep space and favor unarmed targets."
+            )
 
         # Multi-planet expansion hint. Tiered by how many planets the agent
         # already owns, because the strategic tradeoff shifts:
@@ -1223,6 +1504,88 @@ def _action_hint(
                 "REPEATED FAILURES (stop retrying — try a different target): "
                 + ", ".join(parts)
             )
+
+        # Match 13 — precondition-failed-last-turn emphasis. If the most
+        # recent self-error was a precondition (e.g. "need 2000 colonists"
+        # / "not landed"), engine no longer charges turns for it, but
+        # repeating it still costs a thought budget this turn. Surface
+        # a gentle reminder to read the concrete state fields.
+        err_text = (err or "").lower()
+        pre_markers = (
+            "need", "must be", "not landed", "not owned", "no such planet",
+            "invalid", "insufficient", "exceeds", "only ",
+        )
+        if err_text and any(m in err_text for m in pre_markers):
+            hints.append(
+                "Note: precondition failures are FREE (no turn charged in the "
+                "engine) — but check `owned_planets[].colonists` / "
+                "`ship.cargo` / `credits` BEFORE re-submitting the same "
+                "verb. Repeating the same mistake wastes this turn's "
+                "thought budget."
+            )
+
+    # Match 13 — orphaned-planet awareness. If any planet has owner_id=None,
+    # mention up to 3 by name with citadel level + sector so the agent can
+    # decide whether to warp-and-claim. Fires every turn (not just when in
+    # the orphan's sector) so planning horizon covers it. FYI-framed.
+    if orphaned_planets:
+        shown = orphaned_planets[:3]
+        parts: list[str] = []
+        for op in shown:
+            label = (
+                f"{op.get('name')} s{op.get('sector_id')} "
+                f"L{op.get('citadel_level', 0)} citadel, "
+                f"{op.get('fighters', 0)} fighters"
+            )
+            if op.get("former_owner_id"):
+                label += f" (was {op['former_owner_id']})"
+            parts.append(label)
+        more = (
+            ""
+            if len(orphaned_planets) <= 3
+            else f" (+{len(orphaned_planets) - 3} more)"
+        )
+        hints.append(
+            "ORPHANED PLANETS (claimable): "
+            + "; ".join(parts)
+            + more
+            + ". Warp to the sector, `land_planet`, then `claim_planet` (2 "
+            "turns) to inherit citadel + fighters + stockpile. Free of "
+            "Genesis cost."
+        )
+
+    # Match 13 — rivals gap awareness. If any alive rival is more than 2x
+    # your net worth OR you lead the field by >2x, prompt a decision.
+    # Strictly informational — lists the 4 interaction verbs available.
+    if rivals and player is not None:
+        my_nw = max(1, int(full_net_worth(universe, player)))
+        alive_rivals = [r for r in rivals if r.get("alive") and r.get("net_worth")]
+        if alive_rivals:
+            top = max(alive_rivals, key=lambda r: int(r.get("net_worth") or 0))
+            top_nw = int(top.get("net_worth") or 0)
+            # Are we already allied / corp-mates with them?
+            my_corp = getattr(player, "corp_ticker", None)
+            their_corp = top.get("corp_ticker")
+            same_corp = bool(my_corp and my_corp == their_corp)
+            if not same_corp:
+                if top_nw > my_nw * 2:
+                    hints.append(
+                        f"TRAILING: {top.get('name')} leads at "
+                        f"{top_nw:,}cr ({top_nw / my_nw:.1f}x your "
+                        f"{my_nw:,}cr). Interaction verbs: "
+                        f"`propose_alliance` (non-aggression pact), "
+                        f"`corp_create`+`corp_invite` (pooled treasury), "
+                        f"`hail` (diplomacy), or direct `attack`/"
+                        f"`photon_missile`. Acting on the gap is optional."
+                    )
+                elif my_nw > top_nw * 2 and len(alive_rivals) >= 1:
+                    hints.append(
+                        f"YOU LEAD the field at {my_nw:,}cr (next: "
+                        f"{top.get('name')} {top_nw:,}cr). Watch for "
+                        f"rivals forming alliances against you; a corp "
+                        f"or alliance of your own locks in friendly-fire "
+                        f"immunity with any partner."
+                    )
 
     return " | ".join(hints)
 

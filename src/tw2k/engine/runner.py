@@ -109,14 +109,18 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
     universe.tick += 1
 
-    # Always log the thought; never validate
+    # Always log the thought; never validate.
+    # Feed-summary cap is intentionally generous for thoughts (500 chars
+    # vs. the 140-char default for trade/combat/etc.) so spectators
+    # actually see the reasoning instead of "...in adjac…". Full text
+    # is always available in payload.thought (cap 2000).
     if action.thought:
         universe.emit(
             EventKind.AGENT_THOUGHT,
             actor_id=player_id,
             sector_id=player.sector_id,
             payload={"thought": action.thought[:2000]},
-            summary=_truncate_for_feed(action.thought),
+            summary=_truncate_for_feed(action.thought, limit=500),
         )
     if action.scratchpad_update is not None:
         player.scratchpad = action.scratchpad_update[:8000]
@@ -188,6 +192,21 @@ def _truncate_for_feed(s: str, limit: int = 140) -> str:
     if len(s) <= limit:
         return s
     return s[: limit - 1] + "…"
+
+
+def _reject_free(error: str) -> ActionResult:
+    """Reject an action on a precondition without consuming turns.
+
+    Audit result for Match 13: existing handlers already return
+    `turns_spent=0` (the default) on precondition-fail paths — only
+    trade-haggle-rejected (line 405) and planet-defense-repelled (line
+    795) charge turns on failure, and both are correct because real
+    game work was resolved there. This helper codifies the free-reject
+    pattern for the new `claim_planet` handler and any future addition,
+    so the convention is explicit instead of implicit. It also makes
+    the intent greppable for later auditing (`_reject_free`).
+    """
+    return ActionResult(ok=False, error=error, turns_spent=0)
 
 
 def _learn_sector(player, universe: Universe, sector_id: int) -> None:
@@ -1064,6 +1083,64 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def _handle_claim_planet(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Claim an ORPHANED planet (owner_id is None) the player is already
+    landed on.
+
+    Match 13 addition. Orphaned planets accumulate when a player is
+    eliminated (see combat.py _destroy_ship) and previously were
+    strategically dead — genesis_deploy was the only way to gain a new
+    planet, leaving the citadel / fighters / stockpile the dead player
+    built to rot. claim_planet lets survivors inherit that investment.
+
+    Preconditions (all free-reject):
+      * must be landed
+      * landed planet's owner_id must be None
+      * corp-owned planets can't be claimed this way (corp_ticker != None)
+
+    Cost: 2 turns. No combat (orphan has no owner to defend it).
+    """
+    player = universe.players[pid]
+    planet_id = player.planet_landed
+    if planet_id is None:
+        return _reject_free("must be landed on the orphaned planet first")
+    planet = universe.planets.get(int(planet_id))
+    if planet is None:
+        return _reject_free(f"unknown planet {planet_id}")
+    if planet.owner_id is not None:
+        return _reject_free(
+            f"planet {planet.name} is already owned by {planet.owner_id}"
+        )
+    if planet.corp_ticker is not None:
+        return _reject_free(
+            f"planet {planet.name} is corp-owned ([{planet.corp_ticker}]); "
+            "cannot claim an abandoned corp holding this way"
+        )
+    cost = K.TURN_COST.get("claim_planet", 2)
+    if player.turns_today + cost > player.turns_per_day:
+        return _reject_free("out of turns")
+
+    planet.owner_id = pid
+    planet.corp_ticker = player.corp_ticker
+    universe.emit(
+        EventKind.PLANET_CLAIMED,
+        actor_id=pid,
+        sector_id=planet.sector_id,
+        payload={
+            "planet_id": planet.id,
+            "planet_name": planet.name,
+            "citadel_level": planet.citadel_level,
+            "fighters": planet.fighters,
+        },
+        summary=(
+            f"{player.name} claimed orphaned {planet.name} "
+            f"(L{planet.citadel_level} citadel, {planet.fighters} fighters)"
+        ),
+    )
+    _award_xp(universe, pid, "claim_planet")
+    return ActionResult(ok=True, turns_spent=cost)
+
+
 def _weighted_choice(rng: random.Random, weights: dict[str, float]) -> str:
     total = sum(weights.values())
     roll = rng.uniform(0.0, total)
@@ -1723,6 +1800,7 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.ASSIGN_COLONISTS: _handle_assign_colonists,
     ActionKind.BUILD_CITADEL: _handle_build_citadel,
     ActionKind.DEPLOY_GENESIS: _handle_deploy_genesis,
+    ActionKind.CLAIM_PLANET: _handle_claim_planet,
     ActionKind.PLOT_COURSE: _handle_plot_course,
     ActionKind.PHOTON_MISSILE: _handle_photon_missile,
     ActionKind.QUERY_LIMPETS: _handle_query_limpets,

@@ -812,12 +812,50 @@ svg.spark { display: block; }
 
 /* ---------- Players panel ---------- */
 .players-panel { padding: 6px; overflow: hidden; display: flex; flex-direction: column; }
+/* Commanders panel body must ALSO scroll. We used to clip here (.panel-body
+   is `overflow: hidden` globally for every panel) which meant leaderboard
+   + ferrengi-alert + players-grid could push taller than the panel and
+   the bottom of the last commander card fell off. Scoping overflow-y:
+   auto here lets the whole stack scroll as one — simpler than forcing
+   only the grid to scroll, and the sticky leaderboard still works below
+   because we let the whole stack scroll together. */
+.players-panel > .panel-body {
+  overflow-y: auto;
+}
 .players-grid {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 6px;
+  /* Belt-and-suspenders: if the browser still honors the old .panel-body
+     overflow:hidden for any reason, the grid itself is also a scroll
+     container. Combined with `flex:1 1 auto; min-height:0` this works
+     whether the grid is the only flex child or sits next to the
+     leaderboard strip / Ferrengi alert. */
   overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* Make the scrollbar discoverable so spectators can see there's more
+   content below. Default overlay scrollbars on some platforms are
+   invisible until you hover, which led to "the card just gets cut off"
+   bug reports. */
+.players-panel > .panel-body::-webkit-scrollbar,
+.players-grid::-webkit-scrollbar {
+  width: 10px;
+}
+.players-panel > .panel-body::-webkit-scrollbar-thumb,
+.players-grid::-webkit-scrollbar-thumb {
+  background: rgba(110, 231, 255, 0.25);
+  border-radius: 5px;
+}
+.players-panel > .panel-body::-webkit-scrollbar-thumb:hover,
+.players-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(110, 231, 255, 0.45);
+}
+.players-panel > .panel-body::-webkit-scrollbar-track,
+.players-grid::-webkit-scrollbar-track {
+  background: transparent;
 }
 .player-card {
   background: var(--bg-2);
@@ -1495,4 +1533,669 @@ svg.spark { display: block; }
       "side";
   }
   .side-column { grid-template-rows: auto auto; }
+}
+
+
+/* ==========================================================================
+ * Phase A — event feed UX enrichment
+ * ========================================================================== */
+
+/* A2 — icon glyph inside the kind badge. Flex-wrap so long labels line up. */
+.event-feed .kind-icon {
+  display: inline-block;
+  margin-right: 3px;
+  font-size: 10.5px;
+  line-height: 1;
+  opacity: 0.95;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.event-feed .kind { display: inline-flex; align-items: center; }
+
+/* A3 — big-moment accent styling. Red-gold band on the row plus a subtle
+ * left-border emphasis. Used for eliminations, port/atomic destruction,
+ * citadel completions, alliance formation, game_start/over. */
+.event-feed li.big-moment,
+.highlights-list li.big-moment {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 179, 110, 0.12) 0%,
+    rgba(255, 93, 110, 0.08) 55%,
+    transparent 100%
+  );
+  border-left: 3px solid var(--accent-warm);
+  padding-left: 6px;
+  margin-left: -6px;
+  font-size: 12px;
+  box-shadow: inset 0 0 0 1px rgba(255, 179, 110, 0.14);
+}
+.event-feed li.big-moment .msg,
+.highlights-list li.big-moment .msg {
+  color: var(--text);
+  font-weight: 500;
+}
+.event-feed li.big-moment .kind,
+.highlights-list li.big-moment .kind {
+  background: rgba(255, 179, 110, 0.25);
+  color: var(--accent-warm);
+  font-weight: 600;
+}
+
+/* Specific override — eliminations and ship destructions skew red. */
+.event-feed li.kind-player_eliminated,
+.event-feed li.kind-ship_destroyed,
+.event-feed li.kind-port_destroyed,
+.event-feed li.kind-atomic_detonation {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 93, 110, 0.16) 0%,
+    rgba(255, 93, 110, 0.05) 60%,
+    transparent 100%
+  );
+  border-left-color: var(--danger);
+  box-shadow: inset 0 0 0 1px rgba(255, 93, 110, 0.2);
+}
+.event-feed li.kind-player_eliminated .kind,
+.event-feed li.kind-ship_destroyed .kind,
+.event-feed li.kind-port_destroyed .kind,
+.event-feed li.kind-atomic_detonation .kind {
+  background: rgba(255, 93, 110, 0.3);
+  color: var(--danger);
+}
+
+/* A4 — FIRST-of-match chip. Gold pill, slightly louder than rank-chip. */
+.event-feed .first-chip,
+.highlights-list .first-chip {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--bg-0);
+  background: var(--accent-warm);
+  padding: 0 5px;
+  border-radius: 3px;
+  margin: 0 4px 0 2px;
+  line-height: 14px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 8px rgba(255, 179, 110, 0.45);
+}
+
+/* A5 — clickable affordances. Actor names become obviously interactive;
+ * sector links get a tuned color so spectators see the hotspot. */
+.event-feed .actor[data-actor],
+.highlights-list .actor[data-actor] { cursor: pointer; }
+.event-feed .actor[data-actor]:hover,
+.highlights-list .actor[data-actor]:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.event-feed .event-sector-link,
+.highlights-list .event-sector-link {
+  display: inline-block;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 10.5px;
+  color: var(--accent);
+  background: rgba(110, 231, 255, 0.1);
+  border: 1px solid rgba(110, 231, 255, 0.25);
+  padding: 0 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 120ms ease;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.event-feed .event-sector-link:hover,
+.highlights-list .event-sector-link:hover {
+  background: rgba(110, 231, 255, 0.25);
+  border-color: var(--accent);
+}
+
+/* A6 — thought expander. Tiny plus/minus button at the end of the row. */
+.event-feed .thought-expander {
+  background: rgba(182, 110, 255, 0.12);
+  border: 1px solid rgba(182, 110, 255, 0.3);
+  color: #d7b8ff;
+  font-size: 11px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+  flex: 0 0 auto;
+}
+.event-feed .thought-expander:hover {
+  background: rgba(182, 110, 255, 0.25);
+  border-color: #d7b8ff;
+}
+.event-feed li.kind-agent_thought .msg.expanded {
+  background: rgba(20, 28, 46, 0.55);
+  padding: 5px 8px;
+  border-radius: 4px;
+  border-left: 2px solid rgba(182, 110, 255, 0.45);
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: 11.2px;
+}
+
+/* A7 — day-tick divider. Always spans the full row regardless of filters
+ * (we let it render even when System is off — see .day-divider in
+ * eventPassesFilter below). */
+.event-feed li.day-divider {
+  display: flex;
+  align-items: center;
+  padding: 10px 0 8px;
+  border-bottom: none;
+  gap: 10px;
+  opacity: 0.8;
+}
+.event-feed li.day-divider .day-divider-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 179, 110, 0.45) 50%,
+    transparent 100%
+  );
+}
+.event-feed li.day-divider .day-divider-label {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.25em;
+  font-weight: 600;
+  color: var(--accent-warm);
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(255, 179, 110, 0.45);
+  padding: 0 6px;
+  flex: 0 0 auto;
+}
+
+/* A8 — Highlights reel. Collapsible details element at the top of the
+ * events panel body. Keeps big moments visible even when the main feed
+ * is filtered down. */
+.highlights-reel {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 179, 110, 0.05) 0%,
+    rgba(12, 18, 32, 0.85) 100%
+  );
+  border-bottom: 1px solid var(--line);
+  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.highlights-reel > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-dim);
+  background: rgba(12, 18, 32, 0.45);
+  list-style: none;
+}
+.highlights-reel > summary::-webkit-details-marker { display: none; }
+.highlights-reel > summary::before {
+  content: "\25b8";
+  font-size: 10px;
+  color: var(--accent-warm);
+  transition: transform 120ms ease;
+  display: inline-block;
+}
+.highlights-reel[open] > summary::before { transform: rotate(90deg); }
+.highlights-reel .reel-title {
+  color: var(--accent-warm);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+.highlights-reel .reel-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-warm);
+  background: rgba(255, 179, 110, 0.15);
+  border: 1px solid rgba(255, 179, 110, 0.35);
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 16px;
+}
+.highlights-reel .reel-hint {
+  color: var(--text-faint);
+  font-size: 10px;
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.highlights-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 10px 6px;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 11.2px;
+  overflow-y: auto;
+  flex: 1;
+}
+.highlights-list li {
+  padding: 3px 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  border-bottom: 1px dashed rgba(255, 179, 110, 0.12);
+}
+.highlights-list li:last-child { border-bottom: none; }
+.highlights-list li.reel-row { cursor: pointer; }
+.highlights-list li.reel-row:hover {
+  background: rgba(255, 179, 110, 0.08);
+}
+.highlights-list .reel-empty {
+  color: var(--text-faint);
+  font-style: italic;
+  padding: 8px 4px;
+  font-size: 10.5px;
+  border-bottom: none;
+}
+.highlights-list .time { color: var(--text-faint); white-space: nowrap; flex: 0 0 auto; }
+.highlights-list .kind {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(30, 40, 66, 0.6);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.highlights-list .kind-icon {
+  display: inline-block;
+  margin-right: 3px;
+  font-size: 10.5px;
+  line-height: 1;
+}
+.highlights-list .kind.combat    { background: rgba(255, 93, 110, 0.18); color: var(--danger); }
+.highlights-list .kind.trade     { background: rgba(121, 255, 176, 0.15); color: var(--good); }
+.highlights-list .kind.warp      { background: rgba(110, 231, 255, 0.15); color: var(--accent); }
+.highlights-list .kind.thought   { background: rgba(182, 110, 255, 0.18); color: #d7b8ff; }
+.highlights-list .kind.diplomacy { background: rgba(110, 180, 255, 0.18); color: #a4cbff; }
+.highlights-list .kind.system,
+.highlights-list .kind.game_start,
+.highlights-list .kind.game_over { background: rgba(255, 179, 110, 0.2); color: var(--accent-warm); font-weight: 600; }
+.highlights-list .actor {
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+.highlights-list .msg {
+  color: var(--text);
+  flex: 1;
+  /* Reel rows clip to one line — full text is always in the main feed */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.highlights-list .thought-expander { display: none; }
+
+/* Click-pulse FX — reuse combat-flashes layer for the A5 sector click. */
+.combat-flash.click_pulse { filter: drop-shadow(0 0 4px var(--accent)); }
+
+
+/* ==========================================================================
+ * Phase B — HUD completeness
+ * ========================================================================== */
+
+/* B.1 — Leaderboard strip (above player cards) */
+.leaderboard-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(30, 40, 66, 0.35) 0%, rgba(14, 21, 36, 0.1) 100%);
+}
+.leaderboard-strip .lb-title {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.leaderboard-strip .lb-hint {
+  font-size: 9.5px;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  font-style: italic;
+}
+.leaderboard-strip .lb-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.leaderboard-strip .lb-row {
+  display: grid;
+  grid-template-columns: 14px 10px minmax(70px, 1fr) 56px minmax(40px, 1fr) 42px 42px 36px 32px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: rgba(12, 18, 32, 0.5);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: all 120ms ease;
+}
+.leaderboard-strip .lb-row:hover {
+  border-color: var(--line-bright);
+  background: rgba(30, 40, 66, 0.75);
+}
+.leaderboard-strip .lb-row.dead { opacity: 0.45; }
+.leaderboard-strip .lb-rank {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  color: var(--accent-warm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.leaderboard-strip .lb-row:first-child .lb-rank,
+.leaderboard-strip .lb-row[data-lb-player]:nth-child(1) .lb-rank { color: gold; }
+.leaderboard-strip .lb-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+.leaderboard-strip .lb-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.leaderboard-strip .lb-nw {
+  font-variant-numeric: tabular-nums;
+  color: var(--good);
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  text-align: right;
+}
+.leaderboard-strip .lb-bar {
+  display: inline-block;
+  height: 4px;
+  background: rgba(100, 120, 160, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.leaderboard-strip .lb-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 250ms ease;
+}
+.leaderboard-strip .lb-stat {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* B.2 — Corporation panel (below player grid) */
+.corp-panel {
+  margin: 8px 12px 12px;
+  background: rgba(12, 18, 32, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.corp-panel > summary,
+.corp-panel-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: rgba(30, 40, 66, 0.4);
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.corp-panel > summary::-webkit-details-marker { display: none; }
+.corp-panel > summary::before {
+  content: "\25b8";
+  color: var(--accent-warm);
+  transition: transform 120ms ease;
+}
+.corp-panel[open] > summary::before { transform: rotate(90deg); }
+.corp-panel .cp-title {
+  color: var(--accent-warm);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+.corp-panel .cp-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-warm);
+  background: rgba(255, 179, 110, 0.15);
+  border: 1px solid rgba(255, 179, 110, 0.35);
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 16px;
+}
+.corp-panel .cp-empty {
+  padding: 10px 12px;
+  color: var(--text-faint);
+  font-style: italic;
+  font-size: 11px;
+}
+.corp-panel .cp-list {
+  list-style: none;
+  padding: 4px 8px 8px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.corp-panel .cp-row {
+  background: rgba(20, 28, 46, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 6px 8px;
+}
+.corp-panel .cp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.corp-panel .cp-ticker {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent-warm);
+}
+.corp-panel .cp-name {
+  color: var(--text);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.corp-panel .cp-meta {
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.corp-panel .cp-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.corp-panel .cp-member {
+  font-size: 10px;
+  color: var(--player-color, var(--text-dim));
+  background: rgba(12, 18, 32, 0.7);
+  border: 1px solid var(--player-color, var(--line));
+  padding: 1px 6px;
+  border-radius: 3px;
+  opacity: 0.95;
+}
+.corp-panel .cp-member.dead { opacity: 0.4; text-decoration: line-through; }
+.corp-panel .cp-invited {
+  font-size: 10px;
+  color: var(--text-faint);
+  border: 1px dashed rgba(100, 120, 160, 0.4);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+/* B.3 — Ferrengi alert row + map marker + header chip */
+.ferrengi-alert {
+  display: none;
+  padding: 6px 12px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 93, 110, 0.18);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 93, 110, 0.12) 0%,
+    rgba(255, 93, 110, 0.02) 100%
+  );
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 10.5px;
+}
+.ferrengi-alert.active { display: flex; }
+.ferrengi-alert .ferr-label {
+  color: var(--danger);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.ferrengi-alert .ferr-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--danger);
+  background: rgba(255, 93, 110, 0.18);
+  border: 1px solid rgba(255, 93, 110, 0.35);
+  border-radius: 999px;
+  padding: 0 7px;
+  line-height: 16px;
+}
+.ferrengi-alert .ferr-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ferrengi-alert .ferr-chip {
+  background: rgba(20, 28, 46, 0.6);
+  border: 1px solid rgba(255, 93, 110, 0.35);
+  color: var(--danger);
+  font-size: 10px;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+.ferrengi-alert .ferr-chip:hover {
+  background: rgba(255, 93, 110, 0.18);
+  border-color: var(--danger);
+}
+.ferrengi-alert .ferr-chip.agg-3 { box-shadow: 0 0 0 1px rgba(255, 93, 110, 0.3) inset; }
+.ferrengi-alert .ferr-chip.agg-4 { box-shadow: 0 0 0 1px rgba(255, 93, 110, 0.55) inset; }
+.ferrengi-alert .ferr-chip.agg-5 {
+  box-shadow: 0 0 8px rgba(255, 93, 110, 0.4), 0 0 0 1px var(--danger) inset;
+}
+
+/* Map-panel header chip */
+.map-panel .map-ferrengi-chip {
+  background: rgba(255, 93, 110, 0.14);
+  border: 1px solid rgba(255, 93, 110, 0.4);
+  color: var(--danger);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+/* Ferrengi map marker (SVG polygon, hit-tested via title only) */
+#galaxy .ferrengi-marker,
+#localMap .ferrengi-marker {
+  fill: rgba(255, 93, 110, 0.85);
+  stroke: #4a0a12;
+  stroke-width: 0.4;
+}
+#galaxy .ferrengi-marker.agg-4 { fill: #ff3d52; }
+#galaxy .ferrengi-marker.agg-5 {
+  fill: #ff5c7a;
+  filter: drop-shadow(0 0 3px rgba(255, 93, 110, 0.8));
+}
+
+/* B.4 — Per-card victory progress bars */
+.pc-victory {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(100, 120, 160, 0.18);
+}
+.pc-victory .pc-vic-bar {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+}
+.pc-victory .pc-vic-label { font-size: 11px; line-height: 1; }
+.pc-victory .pc-vic-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(100, 120, 160, 0.18);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pc-victory .pc-vic-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 300ms ease;
+}
+.pc-victory .pc-vic-fill.econ { background: linear-gradient(90deg, #ffd166, #ff9f43); }
+.pc-victory .pc-vic-fill.cit  { background: linear-gradient(90deg, #a6d8ff, #6ee7ff); }
+.pc-victory .pc-vic-fill.nw   { background: var(--accent); }
+.pc-victory .pc-vic-pct {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  font-size: 9.5px;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* Flash used to highlight the card when leaderboard row clicked */
+.player-card.flash {
+  animation: pc-flash 700ms ease-out;
+}
+@keyframes pc-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(110, 231, 255, 0.0); }
+  40%  { box-shadow: 0 0 0 3px rgba(110, 231, 255, 0.45); }
+  100% { box-shadow: 0 0 0 0 rgba(110, 231, 255, 0.0); }
 }

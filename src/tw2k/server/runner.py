@@ -474,6 +474,30 @@ class MatchRunner:
                 # mutate alignment / trigger FED_RESPONSE on replay, so we
                 # MUST include them to stay bit-for-bit faithful.
                 self._record_action(agent.player_id, action, result.ok, result.error or "")
+
+                # Phase D.2 — track LLM-timeout WAITs so the NEXT observation
+                # can nudge the agent to re-read its scratchpad. A timeout
+                # silently wastes a tick and often breaks a multi-step plan
+                # (observed: day-1 "create corp THEN buy ship" sequences
+                # where the timeout landed between steps 1 and 2). See
+                # observation._action_hint for the hint rendering.
+                thought_text = getattr(action, "thought", "") or ""
+                is_timeout_wait = (
+                    action.kind == ActionKind.WAIT
+                    and isinstance(thought_text, str)
+                    and thought_text.startswith("[LLM timeout")
+                )
+                player.last_action_was_timeout = bool(is_timeout_wait)
+                # Match 13 — track consecutive timeouts per-player so
+                # build_observation can shrink the observation payload
+                # once the model is demonstrably struggling. Reset on
+                # any non-timeout action (including non-LLM heuristics).
+                if is_timeout_wait:
+                    player.recent_timeouts = int(
+                        getattr(player, "recent_timeouts", 0) or 0
+                    ) + 1
+                else:
+                    player.recent_timeouts = 0
                 if not result.ok:
                     # Avoid duplicating detailed failure events. The engine already
                     # emits TRADE_FAILED for bad trades and WARP_BLOCKED for bad
@@ -507,12 +531,37 @@ class MatchRunner:
                     remaining = player.turns_per_day - player.turns_today
                     if remaining > 0:
                         player.turns_today = player.turns_per_day
+                        # M2-7 fix: drop any leading WAIT actions from a
+                        # HumanAgent's queue so queued productive actions
+                        # (scan, warp, attack, build_citadel, ...) don't
+                        # sit behind a wait streak and get re-triggered
+                        # by this same guard tomorrow, stalling for days.
+                        flushed = 0
+                        drop_fn = getattr(agent, "drop_leading_waits", None)
+                        if callable(drop_fn):
+                            try:
+                                flushed = int(drop_fn())
+                            except Exception:
+                                flushed = 0
+                        thought = (
+                            f"Standing down for the day ({remaining} turns skipped)."
+                        )
+                        summary = (
+                            f"{player.name} ends the day early ({remaining} turns skipped)."
+                        )
+                        if flushed:
+                            thought += f" Flushed {flushed} queued WAIT(s)."
+                            summary += f" flushed {flushed} queued WAIT(s)."
                         universe.emit(
                             EventKind.AGENT_THOUGHT,
                             actor_id=agent.player_id,
                             sector_id=player.sector_id,
-                            payload={"thought": f"Standing down for the day ({remaining} turns skipped)."},
-                            summary=f"{player.name} ends the day early ({remaining} turns skipped).",
+                            payload={
+                                "thought": thought,
+                                "turns_skipped": remaining,
+                                "waits_flushed": flushed,
+                            },
+                            summary=summary,
                         )
                         waits[agent.player_id] = 0
 
@@ -583,13 +632,18 @@ class MatchRunner:
         # other in the opening. Sector 1 (StarDock) is the canonical start; the
         # rest of FedSpace (2..10) sees Federal ports at ~60% spawn rate and is
         # safe from PvP. If we run out of FedSpace slots (>=10 agents) we cycle.
+        # Optional: `GameConfig.all_start_stardock` places everyone at sector 1
+        # so StarDock verbs are legal on turn 1 for every slot.
         fed_sectors = sorted(K.FEDSPACE_SECTORS)
         start_order = [fed_sectors[0]] + [s for s in fed_sectors if s != fed_sectors[0]]
 
         agents: list[BaseAgent] = []
         for i, ag in enumerate(spec.agents):
             color = AGENT_COLORS[i % len(AGENT_COLORS)]
-            start_sid = start_order[i % len(start_order)]
+            if bool(getattr(spec.config, "all_start_stardock", False)):
+                start_sid = K.STARDOCK_SECTOR
+            else:
+                start_sid = start_order[i % len(start_order)]
             # Tiny deterministic loadout variance per player slot so two
             # otherwise-identical LLMs don't produce bit-for-bit identical plays.
             credit_skew = (i * 317) % 2001 - 1000  # ±1000 cr
@@ -1013,6 +1067,13 @@ class MatchRunner:
                     "photon_missiles": p.ship.photon_missiles,
                     "ether_probes": p.ship.ether_probes,
                     "genesis": p.ship.genesis,
+                    # C3 — atomic_mines count so the "☠ atomic" equip chip
+                    # actually fires. Previously the UI read p.atomic_mines
+                    # but the snapshot never populated it.
+                    "atomic_mines": sum(
+                        v for k, v in p.ship.mines.items()
+                        if getattr(k, "value", str(k)) == "atomic"
+                    ),
                     "corp_ticker": p.corp_ticker,
                     "alive": p.alive,
                     "turns_today": p.turns_today,

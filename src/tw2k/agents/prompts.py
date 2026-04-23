@@ -67,7 +67,15 @@ The observation contains everything you need. Stop guessing from memory:
                              days is likely stale, re-scan before committing
   known_warps              — { "<sector_id>": [warps_out,...] } for every sector
                              you've VISITED, SCANNED, or PROBED. THIS IS YOUR
-                             MAP — consult it before every warp/plot_course.
+                             PERSONAL MAP — consult it before every warp/
+                             plot_course. TW2K universes are ALWAYS fully
+                             connected: if known_warps has only 2-3 entries
+                             that is YOUR lack of exploration, NOT the map's
+                             limit. Current sector's full out-warp count is
+                             in `sector.warps_count` — if it's 1 and the
+                             only destination's `warps_count` is also 1,
+                             you ARE in a genuine 2-sector dead-end pocket
+                             (only Citadel L4 transwarp exits that).
                              To find a path from A to B: check known_warps[A]
                              for neighbors whose known_warps list contains B.
                              If A's neighbors aren't in your known_warps yet,
@@ -255,6 +263,27 @@ Once you own a planet AND can afford another Genesis (25k cr), go get one
   cluster. If it's isolated (deep, few neighbors), distribute. If you
   already plan to build a corp, cluster — shared treasury makes ferrying trivial.
 
+================ INHERITING ORPHANED PLANETS ================
+When a rival is eliminated (3 deaths) their solo-owned planets become
+ORPHANED. The citadel, fighters, shields, and stockpile stay intact;
+only `owner_id` resets to None. You can inherit them for 2 turns of work
+instead of 25k+ and a Genesis deploy:
+
+  1. Observation's `orphaned_planets` lists up to 5 orphans. Each entry
+     shows `id`, `sector_id`, `name`, `citadel_level`, `fighters`,
+     `former_owner_id`.
+  2. `warp` to the orphan's sector.
+  3. `land_planet {"planet_id":<id>}` — no siege needed, orphans have
+     no owner to defend them (fighters sit idle in planetary defense).
+  4. `claim_planet {}` — 2 turns. `owner_id` is now YOU; citadel +
+     fighters + stockpile + colonists are yours.
+
+Corp-owned planets (corp_ticker != None) can't be claimed this way,
+even if the CEO is dead — they stay flagged to the corp. A high-level
+citadel inherited this way is worth far more than what you could build
+from scratch in the same wall-clock time, so scan your `orphaned_planets`
+list every turn once it starts populating.
+
 ================ COMBAT & SURVIVAL ================
 - `deploy_fighters {"qty":N,"mode":"defensive|offensive|toll"}` — claim a sector.
    offensive attacks intruders. toll charges 100 cr per friendly warp.
@@ -268,6 +297,14 @@ Once you own a planet AND can afford another Genesis (25k cr), go get one
 - Losing your ship → ejected to StarDock, -25% credits, no cargo, starter hull. Third death = eliminated.
 
 ================ DIPLOMACY ================
+- The `rivals` observation block lists every alive opponent with their
+  public net_worth, ship_class, and corp_ticker. Use it before any
+  diplomatic move — "who is ahead of me, who is behind, who is already
+  in someone's corp". When a rival's net_worth is > 2x yours the
+  `action_hint` carries an explicit TRAILING nudge with your options.
+  These tools are SITUATIONAL — a solo trader who never allies or
+  attacks can still win an economic victory. But if you fall behind by
+  2x+ on net worth, pure trade is unlikely to close the gap on its own.
 - `hail {"target":"<pid>","message":"..."}` — private DM. CHECK `inbox` every turn.
 - `broadcast {"message":"..."}` — open galaxy channel.
 - `propose_alliance {"target":"<pid>","terms":"..."}` / `accept_alliance` / `break_alliance`.
@@ -303,7 +340,7 @@ Once you own a planet AND can afford another Genesis (25k cr), go get one
 Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
 Recon:       probe query_limpets plot_course
-Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists claim_planet
 StarDock:    buy_ship buy_equip
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
@@ -316,6 +353,7 @@ ANY other `action.kind` string is an error.
 3. `warp.target` MUST be in `sector.warps_out`.
 4. If your last action failed (see `action_hint` / `recent_events`), CHANGE your plan; don't retry blindly.
 5. If you truly have no good move, use `{"kind":"wait","args":{}}` — wasting 1 turn beats 5 failed actions.
+6. PRECONDITIONS: actions like `build_citadel`, `assign_colonists`, `land_planet`, `liftoff`, `buy_ship`, `buy_equip`, `claim_planet` require specific state (landed/unlanded, at StarDock, enough colonists, etc.). The engine does NOT charge a turn when a precondition fails — but the same mistake twice in a row still wastes that turn's thought budget. Before submitting one of these, verify the relevant field in the observation: `self.credits`, `self.planet_landed`, `owned_planets[].colonists`, `sector.id == 1` (StarDock), `orphaned_planets[]`.
 """
 
 
@@ -464,6 +502,18 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
         # individually to rediscover what they own.
         "owned_planets": obs.owned_planets,
         "other_players": obs.other_players,
+        # Match 13 — rivals block (separate from other_players). Every
+        # alive opponent with their public net_worth + ship_class + corp
+        # ticker + fog-of-war-gated last_seen_sector. Use this to decide
+        # when to propose_alliance / corp / attack vs. stay focused on
+        # trade/build. If any rival's net_worth is > 2x yours, the
+        # action_hint will carry a "TRAILING" nudge.
+        "rivals": obs.rivals,
+        # Match 13 — planets currently ownerless (previous owner died).
+        # `claim_planet` (2 turns) while landed inherits citadel +
+        # fighters + stockpile. Free of Genesis cost. Capped to 5
+        # highest-value entries.
+        "orphaned_planets": obs.orphaned_planets,
         "alliances": obs.alliances,
         "corp": obs.corp,
         "inbox": obs.inbox[-10:],

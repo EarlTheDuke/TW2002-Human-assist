@@ -21,6 +21,7 @@ from __future__ import annotations
 from . import constants as K
 from .models import (
     EventKind,
+    FerrengiShip,
     FighterDeployment,
     FighterMode,
     LimpetTrack,
@@ -194,10 +195,18 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
         summary=summary,
     )
 
-    # Destruction check
+    # Destruction check.
+    #
+    # IMPORTANT: both Player and FerrengiShip carry `alive: bool` on their
+    # models, so `hasattr(target, "alive")` is NOT a valid discriminator —
+    # an earlier version of this code used that check and crashed with
+    # AttributeError on `target.aggression` the first time a player was
+    # killed in PvP (match 2, seed 17, d1t49 — see docs/MATCH_PLAY_NOTES.md
+    # "M2-1"). Worse, it had already mutated `target.alive = False` before
+    # the raise, leaving the victim as a permanently-frozen zombie (no
+    # respawn, no death count). Use isinstance() for type-safe branching.
     if d_fighters <= 0:
-        if hasattr(target, "alive"):
-            # Ferrengi
+        if isinstance(target, FerrengiShip):
             target.alive = False
             bounty = K.FERRENGI_BOUNTY_PER_AGG * target.aggression
             attacker.credits += bounty
@@ -211,6 +220,9 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
                 summary=f"{attacker.name} destroyed {target.name} (+{bounty}cr bounty)",
             )
         else:
+            # Player target: route through _destroy_ship so respawn,
+            # death-count, elimination, credit penalty, ship downgrade
+            # all fire correctly.
             _award_xp(universe, attacker_id, "kill_player")
             _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id)
     if a_fighters <= 0:
@@ -282,6 +294,14 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
         return
 
     player.deaths += 1
+    # Match 13 — snapshot pre-reset defense state so the NEXT observation's
+    # post-death re-arm hint can say "you had only {Y} fighters when you
+    # died to {reason}". Without this, the hint loses the concrete number
+    # (ship fighters get reset to STARTING_FIGHTERS one line below) and
+    # becomes generic — which agents have already proven they ignore.
+    player.last_death_day = universe.day
+    player.last_death_fighters = int(player.ship.fighters)
+    player.last_death_reason = str(reason)
     # Eject pilot to StarDock, downgrade ship, lose 25 % credits.
     try:
         universe.sectors[player.sector_id].occupant_ids.remove(pid)

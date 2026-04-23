@@ -26,6 +26,39 @@ from .replay import ReplayRunner
 from .runner import AgentSpec, MatchRunner, MatchSpec
 
 
+
+# Phase C.2 — kinds that end up in the /highlights feed. Mirrors
+# web/app.js BIG_MOMENT_KINDS so the two stay in lockstep. These are
+# the match-shaping events the UI highlight reel surfaces above the
+# normal filter buckets.
+_HIGHLIGHT_EVENT_KINDS = {
+    "player_eliminated",
+    "ship_destroyed",
+    "port_destroyed",
+    "atomic_detonation",
+    "citadel_complete",
+    "alliance_formed",
+    "genesis_deployed",
+    "corp_create",
+    "game_over",
+    "game_start",
+}
+
+
+def _collect_highlights(runner, limit: int) -> list[dict]:
+    u = runner.state.universe
+    if u is None:
+        return []
+    out: list[dict] = []
+    for e in u.events:
+        kv = e.kind.value if hasattr(e.kind, "value") else str(e.kind)
+        if kv in _HIGHLIGHT_EVENT_KINDS:
+            out.append(e.model_dump())
+    if limit and len(out) > limit:
+        out = out[-limit:]
+    return out
+
+
 def _web_root() -> Path:
     """Locate the shipped web/ directory regardless of install layout."""
     candidates = [
@@ -51,9 +84,11 @@ def create_app(
     auto_start: bool = True,
     turns_per_day: int | None = None,
     starting_credits: int | None = None,
+    all_start_stardock: bool = False,
     agent_overrides: list[dict] | None = None,
     action_delay_s: float | None = None,
     human_deadline_s: float | None = None,
+    play_to_day_cap: bool = False,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -83,9 +118,11 @@ def create_app(
                 num_agents=num_agents,
                 turns_per_day=turns_per_day,
                 starting_credits=starting_credits,
+                all_start_stardock=all_start_stardock,
                 agent_overrides=agent_overrides,
                 action_delay_s=action_delay_s,
                 human_deadline_s=human_deadline_s,
+                play_to_day_cap=play_to_day_cap,
             )
             await runner.start(spec)
             # runner.start kicks off the scheduler loop in a background
@@ -145,6 +182,17 @@ def create_app(
     @app.get("/events")
     async def events(since: int = 0, limit: int = 200) -> dict[str, Any]:
         return {"events": runner.recent_events(since=since, limit=limit)}
+
+    @app.get("/highlights")
+    async def highlights(limit: int = 200) -> dict[str, Any]:
+        """Phase C.2 — BIG_MOMENT_KINDS subset for the highlight reel.
+
+        The spectator UI already filters the full event stream client
+        side; this endpoint exists so a fresh browser connection can
+        back-fill the reel without replaying all of /events and then
+        discarding 90%.
+        """
+        return {"highlights": _collect_highlights(runner, max(1, min(1000, limit)))}
 
     @app.get("/history")
     async def history(limit: int = 120) -> dict[str, Any]:
@@ -235,6 +283,45 @@ def create_app(
             "pending": agent.pending,
             "observation_seq": agent.last_observation_seq,
         }
+
+    @app.delete("/api/human/queue")
+    async def flush_human_queue(player_id: str) -> dict[str, Any]:
+        """Drop every pending action for a HUMAN slot.
+
+        Phase H6 addition (M2-8 fix). Recovers a stuck human queue without
+        restarting the server — e.g., when an external driver agent has
+        jammed the queue with waits it can no longer clear, or the /play UI
+        got out of sync with the scheduler.
+
+        Response:
+          {"player_id": "P1", "dropped": N, "pending": 0}
+        Raises HTTPException on:
+          * 400 — missing/empty player_id
+          * 404 — no such player_id
+          * 409 — player exists but isn't a HUMAN slot
+          * 503 — match isn't running
+
+        Safe to call while the scheduler is blocked on the agent's turn:
+        ``await queue.get()`` just keeps waiting for the next push after
+        the flush.
+        """
+        if not player_id:
+            raise HTTPException(status_code=400, detail="missing player_id")
+        agents_list = runner.state.agents
+        if not agents_list:
+            raise HTTPException(status_code=503, detail="match not running")
+        agent: HumanAgent | None = None
+        for a in agents_list:
+            if a.player_id == player_id and isinstance(a, HumanAgent):
+                agent = a
+                break
+        if agent is None:
+            exists = any(a.player_id == player_id for a in agents_list)
+            if not exists:
+                raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+            raise HTTPException(status_code=409, detail=f"player {player_id} is not a human slot")
+        dropped = agent.clear_queue()
+        return {"player_id": player_id, "dropped": dropped, "pending": agent.pending}
 
     @app.get("/api/match/humans")
     async def list_humans() -> dict[str, Any]:
@@ -606,12 +693,22 @@ def create_app(
             num_agents=int(body.get("num_agents", num_agents)),
             turns_per_day=(int(body["turns_per_day"]) if "turns_per_day" in body else turns_per_day),
             starting_credits=(int(body["starting_credits"]) if "starting_credits" in body else starting_credits),
+            all_start_stardock=(
+                bool(body["all_start_stardock"])
+                if "all_start_stardock" in body
+                else all_start_stardock
+            ),
             # Per-agent overrides: a list of dicts, each with optional
             # `provider`, `model`, `name`, `kind`. Slot N in the list maps to
             # player PN+1. Missing slots fall back to the global provider/model.
             # This is the hook for multi-model matches (e.g., Grok vs Claude).
             agent_overrides=body.get("agents", agent_overrides),
             action_delay_s=(float(body["action_delay_s"]) if "action_delay_s" in body else action_delay_s),
+            play_to_day_cap=(
+                bool(body["play_to_day_cap"])
+                if "play_to_day_cap" in body
+                else play_to_day_cap
+            ),
         )
         await runner.start(spec)
         # Rebuild copilot sessions — old ones held references to the
@@ -671,9 +768,11 @@ def _build_default_spec(
     num_agents: int,
     turns_per_day: int | None = None,
     starting_credits: int | None = None,
+    all_start_stardock: bool = False,
     agent_overrides: list[dict] | None = None,
     action_delay_s: float | None = None,
     human_deadline_s: float | None = None,
+    play_to_day_cap: bool = False,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -694,8 +793,12 @@ def _build_default_spec(
         cfg_kwargs["turns_per_day"] = turns_per_day
     if starting_credits is not None:
         cfg_kwargs["starting_credits"] = starting_credits
+    if all_start_stardock:
+        cfg_kwargs["all_start_stardock"] = True
     if action_delay_s is not None:
         cfg_kwargs["action_delay_s"] = action_delay_s
+    if play_to_day_cap:
+        cfg_kwargs["play_to_day_cap"] = True
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each
@@ -786,6 +889,10 @@ def create_replay_app(replay_dir: Path, *, speed: float = 1.0) -> FastAPI:
     @app.get("/events")
     async def events(since: int = 0, limit: int = 200) -> dict[str, Any]:
         return {"events": runner.recent_events(since=since, limit=limit)}
+
+    @app.get("/highlights")
+    async def highlights(limit: int = 200) -> dict[str, Any]:
+        return {"highlights": _collect_highlights(runner, max(1, min(1000, limit)))}
 
     @app.get("/history")
     async def history(limit: int = 120) -> dict[str, Any]:

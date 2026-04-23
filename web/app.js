@@ -48,6 +48,23 @@
       mode: "live",            // "live" | "scrub"
       cursorIndex: -1,         // event index when scrubbing (-1 = live)
     },
+    // Phase A UX state --------------------------------------------
+    // Firsts-of-match — whenever a FIRST_CHIP_KIND kind/key fires for
+    // the first time, we stamp a FIRST chip on the row so spectators
+    // can spot match milestones (first corp, first citadel L3, first
+    // kill) at a glance.
+    seenFirsts: new Set(),
+    // Highlight reel — chronological list of BIG_MOMENT_KINDS (server
+    // seq included so reel -> scrubber jump works deterministically).
+    highlights: [],
+    // Agent-thought events the user has clicked to expand. Keyed by
+    // event seq so the "show full" state survives re-renders.
+    expandedThoughts: new Set(),
+    // Phase B HUD state -------------------------------------------
+    // Living corporations / Ferrengi raiders, sourced from each
+    // /state snapshot. Previously dropped on the floor in onSnapshot.
+    corporations: new Map(),  // ticker -> Corporation dict
+    ferrengi: new Map(),      // id -> FerrengiShip dict
   };
 
   const MAX_EVENTS = 600;
@@ -191,6 +208,23 @@
     if (Array.isArray(snap.alliances)) {
       state.alliances = snap.alliances;
     }
+    // Phase B — keep corporations + Ferrengi raiders in sync with the
+    // authoritative snapshot. These fields used to be dropped on the
+    // floor, which is why corps and NPC threats never surfaced in the
+    // HUD. We clear before refill so dead Ferrengi and disbanded corps
+    // fall out.
+    if (Array.isArray(snap.corporations)) {
+      state.corporations.clear();
+      for (const c of snap.corporations) {
+        if (c && c.ticker) state.corporations.set(c.ticker, c);
+      }
+    }
+    if (Array.isArray(snap.ferrengi)) {
+      state.ferrengi.clear();
+      for (const f of snap.ferrengi) {
+        if (f && f.id) state.ferrengi.set(f.id, f);
+      }
+    }
     // Re-populate the event feed's actor filter so new/changed rosters
     // (match restart, late-arriving snapshot) always have correct options.
     refreshActorFilterOptions();
@@ -257,6 +291,28 @@
         });
         if (state.hailBubbles.length > 12) state.hailBubbles.shift();
       }
+    }
+
+    // Phase A.4 / C.1 — tag first-of-match milestones BEFORE pushing
+    // so render sees the stamp on the very first paint. We prefer the
+    // authoritative `payload.is_first` stamp emitted by the backend
+    // (Universe.emit, Phase C.1) and fall back to the client-side
+    // detector for older servers / pre-C.1 replays. We mutate the
+    // event here (not the server's copy) because replay events come
+    // pre-serialized and we want the chip to survive scrub-jumps.
+    const firstKey = firstChipKey(ev);
+    if (ev.payload && ev.payload.is_first) {
+      ev._isFirst = true;
+      if (firstKey) state.seenFirsts.add(firstKey);
+    } else if (firstKey && !state.seenFirsts.has(firstKey)) {
+      state.seenFirsts.add(firstKey);
+      ev._isFirst = true;
+    }
+    // Phase A.8 — big-moment events feed the Highlights reel so they
+    // survive category-filter toggles and scrubber jumps.
+    if (BIG_MOMENT_KINDS.has(ev.kind)) {
+      state.highlights.push(ev);
+      if (state.highlights.length > 80) state.highlights.shift();
     }
 
     pushEvent(ev);
@@ -1116,6 +1172,30 @@
         shipsLayer.appendChild(followRing);
       }
     }
+
+    // Phase B.3 — Ferrengi raider markers. Distinct red triangle so
+    // they don't visually collide with player dots. Size scales with
+    // aggression tier; tooltip shows fighter count + aggression so the
+    // spectator understands threat level at a glance.
+    for (const f of state.ferrengi.values()) {
+      const s = state.sectors.get(f.sector_id);
+      if (!s) continue;
+      const agg = Math.max(1, Math.min(5, f.aggression || 1));
+      const size = 3.2 + agg * 0.4;
+      const tri = document.createElementNS(svgNS, "polygon");
+      tri.setAttribute(
+        "points",
+        `${s.x},${(s.y - size).toFixed(2)} `
+        + `${(s.x - size).toFixed(2)},${(s.y + size * 0.8).toFixed(2)} `
+        + `${(s.x + size).toFixed(2)},${(s.y + size * 0.8).toFixed(2)}`
+      );
+      tri.setAttribute("class", `ferrengi-marker agg-${agg}`);
+      const title = document.createElementNS(svgNS, "title");
+      title.textContent = `Ferrengi ${f.name} \u00b7 aggression ${f.aggression} \u00b7 `
+        + `${f.fighters || 0} fighters @ sector ${f.sector_id}`;
+      tri.appendChild(title);
+      shipsLayer.appendChild(tri);
+    }
   }
 
   // ----------------- Players ------------------------
@@ -1166,6 +1246,26 @@
       body.appendChild(grid);
     }
 
+    // Phase B.1 — Leaderboard strip above the grid. We ensure the
+    // container exists and refresh it every frame. Cheap for 3-6
+    // commanders and keeps rank stable across resort/alive toggle.
+    let lbStrip = body.querySelector(".leaderboard-strip");
+    if (!lbStrip) {
+      lbStrip = document.createElement("div");
+      lbStrip.className = "leaderboard-strip";
+      body.insertBefore(lbStrip, grid);
+    }
+    renderLeaderboardInto(lbStrip);
+    // Phase B.3 — Ferrengi alert row (compact, above the grid, red
+    // when live threats exist). Also updates the map-panel header
+    // chip as a glanceable aggregate.
+    let ferrAlert = body.querySelector(".ferrengi-alert");
+    if (!ferrAlert) {
+      ferrAlert = document.createElement("div");
+      ferrAlert.className = "ferrengi-alert";
+      body.insertBefore(ferrAlert, grid);
+    }
+    renderFerrengiAlertInto(ferrAlert);
     // Re-render simple; 2-4 players is cheap
     grid.innerHTML = "";
     // Per-card collapse state lives in localStorage keyed by player id.
@@ -1252,6 +1352,7 @@
             <span class="pc-sum-chip" title="current sector">📍 s${sectorLabel}</span>
             ${planetChip}
           </span>
+          ${renderVictoryProgress(p)}
         </summary>
       `;
 
@@ -1279,6 +1380,9 @@
             <div class="stat"><span class="k">Turns</span><span class="v">${turnsLabel}</span></div>
             <div class="stat"><span class="k">Lives</span><span class="v">${Math.max(0, maxDeaths - deaths)}/${maxDeaths}</span></div>
             <div class="stat" title="Ports this commander has visited and has intel on"><span class="k">Ports Seen</span><span class="v">${fmt(p.known_ports_count || 0)}</span></div>
+            <div class="stat" title="Sectors this commander has personally scouted"><span class="k">Sectors Seen</span><span class="v">${fmt(p.known_sectors_count || 0)}</span></div>
+            <div class="stat" title="Genesis torpedoes loaded (spawns new planets)"><span class="k">Genesis</span><span class="v">${fmt(p.genesis || 0)}</span></div>
+            <div class="stat" title="Atomic mines in magazine (tap-to-arm, heavy damage)"><span class="k">Atomic</span><span class="v">${fmt(p.atomic_mines || 0)}</span></div>
           </div>
           <div class="cargo-bar" title="Cargo holds">${cargoSegs}</div>
           <div class="cargo-legend">${cargoLabel}</div>
@@ -1304,6 +1408,199 @@
       });
       grid.appendChild(card);
     }
+    // Phase B.2 — Corporation panel below the grid. Rebuild each
+    // frame so member colors / treasury track the live snapshot.
+    let corpPanel = body.querySelector(".corp-panel");
+    if (!corpPanel) {
+      corpPanel = document.createElement("details");
+      corpPanel.className = "corp-panel";
+      corpPanel.open = true;
+      body.appendChild(corpPanel);
+    }
+    renderCorporationsInto(corpPanel);
+  }
+
+  // ----------------- Phase B HUD helpers ---------------------------
+
+  // B.1 — Leaderboard strip. Sorted by total net worth descending,
+  // shows the compact "comparison card": rank, color dot, name,
+  // net worth, planets owned, total citadel investment, kills (ship
+  // destructions we have attributed to them), deaths.
+  function renderLeaderboardInto(root) {
+    const players = Array.from(state.players.values());
+    if (!players.length) {
+      root.innerHTML = "";
+      return;
+    }
+    // Kill count — attributed via the event feed so we don't need a
+    // backend field. Cheap because MAX_EVENTS caps the walk.
+    const kills = new Map();
+    for (const ev of state.events) {
+      if (ev.kind === "ship_destroyed" || ev.kind === "player_eliminated") {
+        const k = ev.payload && (ev.payload.killer || ev.payload.attacker || ev.payload.by);
+        if (!k) continue;
+        kills.set(k, (kills.get(k) || 0) + 1);
+      }
+    }
+    // Planet + citadel summaries, grouped by owner.
+    const owned = new Map();
+    const citLevels = new Map();
+    for (const pl of state.planets.values()) {
+      if (!pl.owner_id) continue;
+      owned.set(pl.owner_id, (owned.get(pl.owner_id) || 0) + 1);
+      citLevels.set(pl.owner_id, (citLevels.get(pl.owner_id) || 0) + (pl.citadel_level || 0));
+    }
+    const ranked = players.slice().sort((a, b) => {
+      if (a.alive !== b.alive) return a.alive ? -1 : 1;
+      return (b.net_worth || 0) - (a.net_worth || 0);
+    });
+    const top = ranked[0] ? (ranked[0].net_worth || 0) : 0;
+    root.innerHTML = `<div class="lb-title">Leaderboard <span class="lb-hint">click row to follow</span></div>`
+      + `<div class="lb-rows">${ranked.map((p, i) => {
+          const nw = p.net_worth || p.credits || 0;
+          const pct = top > 0 ? Math.max(2, Math.round((nw / top) * 100)) : 0;
+          const dead = !p.alive ? " dead" : "";
+          return `<button class="lb-row${dead}" data-lb-player="${esc(p.id)}" title="${esc(p.name)} — click to open details and follow">
+            <span class="lb-rank">${i + 1}</span>
+            <span class="lb-dot" style="background:${p.color || "#6ee7ff"}"></span>
+            <span class="lb-name">${esc(p.name)}${p.alive ? "" : " †"}</span>
+            <span class="lb-nw" title="net worth">${fmt(nw)}</span>
+            <span class="lb-bar"><span class="lb-bar-fill" style="width:${pct}%; background:${p.color || "#6ee7ff"}"></span></span>
+            <span class="lb-stat" title="planets owned">🪐 ${owned.get(p.id) || 0}</span>
+            <span class="lb-stat" title="sum of all citadel levels">🏰 ${citLevels.get(p.id) || 0}</span>
+            <span class="lb-stat" title="ship destructions credited">⚔ ${kills.get(p.id) || 0}</span>
+            <span class="lb-stat" title="own deaths / lives lost">☠ ${p.deaths || 0}</span>
+          </button>`;
+        }).join("")}</div>`;
+  }
+
+  // B.2 — Corporations. Renders all active corps with member chips and
+  // treasury. Empty state is an educational nudge so spectators know
+  // corps can form once a player issues corp_create.
+  function renderCorporationsInto(root) {
+    const corps = Array.from(state.corporations.values());
+    if (!corps.length) {
+      root.innerHTML = `<summary class="corp-panel-summary"><span class="cp-title">🏢 Corporations</span>`
+        + `<span class="cp-count">0</span></summary>`
+        + `<div class="cp-empty">No corporations yet — any player can charter one via a <code>corp_create</code> action.</div>`;
+      return;
+    }
+    // Attribute planets owned per corp via ownership → corp_ticker.
+    const corpPlanets = new Map();
+    for (const pl of state.planets.values()) {
+      if (!pl.owner_id) continue;
+      const owner = state.players.get(pl.owner_id);
+      if (!owner || !owner.corp_ticker) continue;
+      corpPlanets.set(owner.corp_ticker, (corpPlanets.get(owner.corp_ticker) || 0) + 1);
+    }
+    const rows = corps.map((c) => {
+      const members = (c.member_ids || []).map((mid) => {
+        const pp = state.players.get(mid);
+        const color = pp ? pp.color : "#8794b4";
+        const name = pp ? pp.name : mid;
+        const dead = pp && !pp.alive ? " dead" : "";
+        const ceo = mid === c.ceo_id ? " (CEO)" : "";
+        return `<span class="cp-member${dead}" style="--player-color:${color}" title="${esc(name)}${ceo}">${esc(name)}${ceo}</span>`;
+      }).join("");
+      const invited = (c.invited_ids || []).length
+        ? `<span class="cp-invited" title="${(c.invited_ids || []).map(esc).join(", ")}">+${(c.invited_ids || []).length} invited</span>`
+        : "";
+      return `<li class="cp-row">
+        <div class="cp-head">
+          <span class="cp-ticker">${esc(c.ticker)}</span>
+          <span class="cp-name">${esc(c.name)}</span>
+          <span class="cp-meta" title="credits in the shared treasury">💵 ${fmt(c.treasury || 0)}</span>
+          <span class="cp-meta" title="corporate planets">🪐 ${corpPlanets.get(c.ticker) || 0}</span>
+          <span class="cp-meta" title="formed on day ${c.formed_day}">d${c.formed_day || "?"}</span>
+        </div>
+        <div class="cp-members">${members}${invited}</div>
+      </li>`;
+    }).join("");
+    root.innerHTML = `<summary class="corp-panel-summary">`
+      + `<span class="cp-title">🏢 Corporations</span>`
+      + `<span class="cp-count">${corps.length}</span>`
+      + `</summary><ul class="cp-list">${rows}</ul>`;
+  }
+
+  // B.3 — Ferrengi alert row inside the players panel + map-header
+  // chip. Both feed from state.ferrengi.
+  function renderFerrengiAlertInto(root) {
+    const ferr = Array.from(state.ferrengi.values());
+    updateFerrengiHeaderChip(ferr);
+    if (!ferr.length) {
+      root.innerHTML = "";
+      root.classList.remove("active");
+      return;
+    }
+    root.classList.add("active");
+    // Worst offender first so spectators see the actual threat.
+    ferr.sort((a, b) => (b.aggression || 0) - (a.aggression || 0) || (b.fighters || 0) - (a.fighters || 0));
+    const chips = ferr.slice(0, 8).map((f) => {
+      const agg = Math.max(1, Math.min(5, f.aggression || 1));
+      return `<button class="ferr-chip agg-${agg}" data-ferr-sector="${f.sector_id}" `
+        + `title="${esc(f.name)} · aggression ${f.aggression} · ${fmt(f.fighters || 0)} fighters — click to locate on map">`
+        + `s${f.sector_id} · ✈${fmt(f.fighters || 0)}</button>`;
+    }).join("");
+    const more = ferr.length > 8 ? ` <span class="muted">+${ferr.length - 8} more</span>` : "";
+    root.innerHTML = `<span class="ferr-label">⚠ Ferrengi active</span>`
+      + `<span class="ferr-count">${ferr.length}</span>`
+      + `<div class="ferr-chips">${chips}${more}</div>`;
+  }
+
+  function updateFerrengiHeaderChip(list) {
+    // Renders / toggles the map-panel header chip. Cheap DOM probe.
+    const headerRight = document.querySelector(".map-panel .panel-header .header-right");
+    if (!headerRight) return;
+    let chip = headerRight.querySelector("#mapFerrengiChip");
+    if (!list.length) {
+      if (chip) chip.remove();
+      return;
+    }
+    if (!chip) {
+      chip = document.createElement("span");
+      chip.id = "mapFerrengiChip";
+      chip.className = "map-ferrengi-chip";
+      chip.title = "Ferrengi raiders active — red triangles on the map";
+      headerRight.insertBefore(chip, headerRight.firstChild);
+    }
+    chip.textContent = `⚠ ${list.length} Ferrengi`;
+  }
+
+  // B.4 — Per-card victory progress. Three tiny bars:
+  //   econ    — credits / scaled threshold
+  //   citadel — max owned citadel level / 6
+  //   net     — net_worth / current leader net_worth (relative rank)
+  // A muted footer row so it doesn't fight the existing stat chips.
+  function renderVictoryProgress(p) {
+    if (!p) return "";
+    const maxDaysCfg = state.maxDays || 30;
+    // Matches src/tw2k/engine/victory.py::check_victory (economic path).
+    const econThresh = Math.max(500000, Math.round(100000000 * (maxDaysCfg / 30)));
+    const creds = p.credits || 0;
+    const econPct = Math.max(0, Math.min(100, Math.round((creds / econThresh) * 100)));
+    const ownedPlanets = Array.from(state.planets.values()).filter((pl) => pl.owner_id === p.id);
+    const maxCit = ownedPlanets.reduce((acc, pl) => Math.max(acc, pl.citadel_level || 0), 0);
+    const citPct = Math.round((maxCit / 6) * 100);
+    const topNw = Math.max(1, ...Array.from(state.players.values()).map((x) => x.net_worth || x.credits || 0));
+    const nw = p.net_worth || p.credits || 0;
+    const nwPct = Math.round((nw / topNw) * 100);
+    return `<span class="pc-victory" title="victory dashboards — click card for drawer detail">
+      <span class="pc-vic-bar" title="Economic victory (${fmt(creds)} / ${fmt(econThresh)} cr)">
+        <span class="pc-vic-label">💰</span>
+        <span class="pc-vic-track"><span class="pc-vic-fill econ" style="width:${econPct}%"></span></span>
+        <span class="pc-vic-pct">${econPct}%</span>
+      </span>
+      <span class="pc-vic-bar" title="Highest owned citadel L${maxCit}/L6 (unlocks Genesis + interdictor)">
+        <span class="pc-vic-label">🏰</span>
+        <span class="pc-vic-track"><span class="pc-vic-fill cit" style="width:${citPct}%"></span></span>
+        <span class="pc-vic-pct">L${maxCit}</span>
+      </span>
+      <span class="pc-vic-bar" title="Relative net worth vs. current match leader">
+        <span class="pc-vic-label">📈</span>
+        <span class="pc-vic-track"><span class="pc-vic-fill nw" style="width:${nwPct}%; background:${p.color || "var(--accent)"}"></span></span>
+        <span class="pc-vic-pct">${nwPct}%</span>
+      </span>
+    </span>`;
   }
 
   function cargoBreakdown(p) {
@@ -1553,7 +1850,6 @@
 
   function renderEvents() {
     eventFeed.innerHTML = "";
-    // If scrubbing, only render up to cursorIndex
     let source = state.events;
     if (state.replay.mode === "scrub" && state.replay.cursorIndex >= 0) {
       source = state.events.slice(0, state.replay.cursorIndex + 1);
@@ -1561,47 +1857,196 @@
     const ordered = source.slice(-180);
     for (const ev of ordered) {
       if (!eventPassesFilter(ev)) continue;
-      const li = document.createElement("li");
-      const actor = ev.actor_id ? state.players.get(ev.actor_id) : null;
-      const color = actor ? actor.color : "#8794b4";
-      li.style.setProperty("--player-color", color);
-      const kindClass = kindCategoryClass(ev.kind);
-      // Prefix the message with the actor's name (colored) when the event
-      // has a known player. Without this, rows like "agent thought: warp
-      // to 438" were indistinguishable between 4-6 commanders talking at
-      // once. The name is part of .actor (flex: 0) so long thought text
-      // still wraps correctly in .msg.
-      const actorBadge = actor
-        ? `<span class="actor" style="color:${color}">${esc(actor.name)}</span>`
-        : "";
-      li.innerHTML = `
-        <span class="time">D${ev.day || 0}·${ev.tick || 0}</span>
-        <span class="kind ${kindClass}">${escKind(ev.kind)}</span>
-        ${actorBadge}
-        <span class="msg">${esc(ev.summary || "")}</span>
-      `;
-      eventFeed.appendChild(li);
+      eventFeed.appendChild(renderEventRow(ev));
     }
     eventFeed.scrollTop = eventFeed.scrollHeight;
     renderScrubber();
+    renderHighlightsReel();
+  }
+
+  // Build a single <li> for the feed. Split out of renderEvents so
+  // the Highlight Reel (A8) can reuse the exact same row format.
+  function renderEventRow(ev, opts) {
+    opts = opts || {};
+    const meta = kindMeta(ev.kind);
+    const li = document.createElement("li");
+    li.dataset.kind = ev.kind;
+    li.dataset.seq = ev.seq != null ? String(ev.seq) : "";
+    if (ev.actor_id) li.dataset.actor = ev.actor_id;
+    if (ev.sector_id != null) li.dataset.sector = String(ev.sector_id);
+
+    // Day-tick renders as a wide horizontal divider, NOT a text row (A7).
+    if (meta.special === "day") {
+      li.className = "day-divider";
+      const dayN = (ev.payload && ev.payload.day) || ev.day || 0;
+      li.innerHTML = `<span class="day-divider-line"></span>`
+        + `<span class="day-divider-label">☀ Day ${dayN}</span>`
+        + `<span class="day-divider-line"></span>`;
+      return li;
+    }
+
+    const actor = ev.actor_id ? state.players.get(ev.actor_id) : null;
+    const color = actor ? actor.color : "#8794b4";
+    li.style.setProperty("--player-color", color);
+    li.className = `event-row kind-${ev.kind}`;
+    if (meta.big || BIG_MOMENT_KINDS.has(ev.kind)) li.classList.add("big-moment");
+    if (ev._isFirst) li.classList.add("is-first");
+    if (opts.inReel) li.classList.add("reel-row");
+
+    const kindClass = meta.cat;
+    const iconHtml = meta.icon
+      ? `<span class="kind-icon" aria-hidden="true">${esc(meta.icon)}</span>`
+      : "";
+    const firstChipHtml = ev._isFirst
+      ? `<span class="first-chip" title="first of the match">FIRST</span>`
+      : "";
+    const actorBadge = actor
+      ? `<span class="actor" data-actor="${esc(actor.id)}" style="color:${color}" title="Click to filter feed & open details">${esc(actor.name)}</span>`
+      : "";
+
+    // Sector link — event has sector_id -> clickable chip that opens
+    // the sector drawer and pans the map. Keeps summary text untouched
+    // since summaries vary wildly in format.
+    let sectorLinkHtml = "";
+    if (ev.sector_id != null && state.sectors.has(ev.sector_id)) {
+      sectorLinkHtml = `<span class="sector-link event-sector-link" data-sector="${ev.sector_id}" title="Jump to sector ${ev.sector_id}">s${ev.sector_id}</span>`;
+    }
+
+    // Agent-thought gets a "show full" expander (A6). When expanded,
+    // we render payload.thought (up to 2000 chars, already on the wire)
+    // instead of the 500-char summary.
+    const seq = ev.seq != null ? String(ev.seq) : null;
+    const isExpandable = ev.kind === "agent_thought"
+      && ev.payload && ev.payload.thought
+      && ev.payload.thought.length > (ev.summary || "").length;
+    const expanded = isExpandable && seq && state.expandedThoughts.has(seq);
+    const body = expanded ? ev.payload.thought : (ev.summary || "");
+    const expanderHtml = isExpandable
+      ? `<button class="thought-expander" data-thought-toggle title="${expanded ? "Collapse" : "Show full thought"}">${expanded ? "−" : "+"}</button>`
+      : "";
+
+    li.innerHTML = `
+      <span class="time">D${ev.day || 0}·${ev.tick || 0}</span>
+      <span class="kind ${kindClass}">${iconHtml}${esc(meta.label)}</span>
+      ${firstChipHtml}
+      ${actorBadge}
+      ${sectorLinkHtml}
+      <span class="msg${expanded ? " expanded" : ""}">${esc(body)}</span>
+      ${expanderHtml}
+    `;
+    return li;
+  }
+
+  // ----------------- Event kind metadata (Phase A, A1+A2+A3) ------
+  // Single source of truth for every EventKind the spectator UI
+  // knows about. `cat` drives the filter-checkbox bucket; `icon`
+  // is the leading glyph in the kind badge; `label` is the
+  // display name (replaces naive underscore->space); `big` flags
+  // match-shaping moments so the row gets full-width accent
+  // styling. Unknown kinds fall through to a neutral System entry.
+  const KIND_META = {
+    // --- Combat ---------------------------------------------------
+    combat:            { cat: "combat",    icon: "\u2694",  label: "COMBAT" },
+    ship_destroyed:    { cat: "combat",    icon: "\ud83d\udc80", label: "SHIP DESTROYED", big: true },
+    player_eliminated: { cat: "combat",    icon: "\u2620",  label: "ELIMINATED", big: true },
+    mine_detonated:    { cat: "combat",    icon: "\ud83d\udca5", label: "MINE HIT" },
+    atomic_detonation: { cat: "combat",    icon: "\u2622",  label: "ATOMIC", big: true },
+    port_destroyed:    { cat: "combat",    icon: "\ud83d\udd25", label: "PORT DESTROYED", big: true },
+    photon_fired:      { cat: "combat",    icon: "\ud83d\ude80", label: "PHOTON FIRED" },
+    photon_hit:        { cat: "combat",    icon: "\u26a1",  label: "PHOTON HIT" },
+    ferrengi_attack:   { cat: "combat",    icon: "\ud83d\udc7e", label: "FERRENGI ATTACK" },
+    fed_response:      { cat: "combat",    icon: "\ud83d\udee1", label: "FED WARN" },
+    // deploy_* and ferrengi_spawn used to fall into System. They are
+    // fundamentally combat-posture events — rebucketed to Combat (A1).
+    deploy_fighters:   { cat: "combat",    icon: "\u2708",  label: "DEPLOY FIGHTERS" },
+    deploy_mines:      { cat: "combat",    icon: "\u2699",  label: "DEPLOY MINES" },
+    ferrengi_spawn:    { cat: "combat",    icon: "\ud83d\udc41", label: "FERRENGI SPAWN" },
+    // --- Trade ----------------------------------------------------
+    trade:             { cat: "trade",     icon: "\u21c4",  label: "TRADE" },
+    trade_failed:      { cat: "trade",     icon: "\u2716",  label: "TRADE FAIL" },
+    buy_ship:          { cat: "trade",     icon: "\ud83d\udef8", label: "BUY SHIP" },
+    buy_equip:         { cat: "trade",     icon: "\u2699",  label: "BUY EQUIP" },
+    corp_deposit:      { cat: "trade",     icon: "\u2193",  label: "CORP DEPOSIT" },
+    corp_withdraw:     { cat: "trade",     icon: "\u2191",  label: "CORP WITHDRAW" },
+    // --- Movement (warp bucket) ----------------------------------
+    warp:              { cat: "warp",      icon: "\u2192",  label: "WARP" },
+    warp_blocked:      { cat: "warp",      icon: "\u2298",  label: "WARP BLOCKED" },
+    scan:              { cat: "warp",      icon: "\u2315",  label: "SCAN" },
+    probe:             { cat: "warp",      icon: "\u25cc",  label: "PROBE" },
+    autopilot:         { cat: "warp",      icon: "\u27f2",  label: "AUTOPILOT" },
+    limpet_report:     { cat: "warp",      icon: "\u25c9",  label: "LIMPET" },
+    ferrengi_move:     { cat: "warp",      icon: "\u02dc",  label: "FERRENGI MOVE" },
+    // land_planet/liftoff/planet_orphaned used to fall into System.
+    // They belong with Movement (A1) — they describe ship movement
+    // to/from planetary surfaces and loss-of-access events.
+    land_planet:       { cat: "warp",      icon: "\ud83e\ude90", label: "LAND" },
+    liftoff:           { cat: "warp",      icon: "\u21d1",  label: "LIFTOFF" },
+    planet_orphaned:   { cat: "warp",      icon: "\ud83c\udf11", label: "PLANET LOST" },
+    // --- Thoughts -------------------------------------------------
+    agent_thought:     { cat: "thought",   icon: "\u25c7",  label: "THOUGHT" },
+    // --- Diplomacy ------------------------------------------------
+    hail:              { cat: "diplomacy", icon: "\ud83d\udce1", label: "HAIL" },
+    broadcast:         { cat: "diplomacy", icon: "\ud83d\udce2", label: "BROADCAST" },
+    corp_memo:         { cat: "diplomacy", icon: "\ud83d\udcdd", label: "CORP MEMO" },
+    // corp_create/invite/join/leave used to fall into System. They
+    // are social/political events — rebucketed to Diplomacy (A1).
+    corp_create:       { cat: "diplomacy", icon: "\ud83c\udfe2", label: "CORP FORMED" },
+    corp_invite:       { cat: "diplomacy", icon: "\u2709",  label: "CORP INVITE" },
+    corp_join:         { cat: "diplomacy", icon: "\u2795",  label: "CORP JOIN" },
+    corp_leave:        { cat: "diplomacy", icon: "\u2796",  label: "CORP LEAVE" },
+    alliance_proposed: { cat: "diplomacy", icon: "\u26ad",  label: "NAP PROPOSED" },
+    alliance_formed:   { cat: "diplomacy", icon: "\ud83e\udd1d", label: "NAP FORMED", big: true },
+    alliance_broken:   { cat: "diplomacy", icon: "\u2702",  label: "NAP BROKEN" },
+    assign_colonists:  { cat: "diplomacy", icon: "\ud83d\udc65", label: "ASSIGN COLS" },
+    build_citadel:     { cat: "diplomacy", icon: "\ud83c\udfd7", label: "CITADEL BUILD" },
+    citadel_complete:  { cat: "diplomacy", icon: "\ud83c\udff0", label: "CITADEL BUILT", big: true },
+    genesis_deployed:  { cat: "diplomacy", icon: "\ud83c\udf31", label: "GENESIS", big: true },
+    // --- System (truly admin-only now) ----------------------------
+    day_tick:          { cat: "system",    icon: "\u263c",  label: "DAY", special: "day" },
+    agent_error:       { cat: "system",    icon: "\u26a0",  label: "AGENT ERROR" },
+    system_error:      { cat: "system",    icon: "\u26a0",  label: "SYSTEM ERROR" },
+    human_turn_start:  { cat: "system",    icon: "\u25b6",  label: "HUMAN TURN" },
+    game_start:        { cat: "game_start", icon: "\u25c9", label: "MATCH START", big: true },
+    game_over:         { cat: "game_over",  icon: "\u25c8", label: "MATCH END", big: true },
+  };
+
+  function kindMeta(kind) {
+    return KIND_META[kind] || {
+      cat: "system",
+      icon: "\u00b7",
+      label: String(kind || "").replace(/_/g, " ").toUpperCase(),
+    };
   }
 
   function kindCategoryClass(kind) {
-    if (!kind) return "system";
-    if (kind.includes("combat") || kind === "mine_detonated" || kind === "ship_destroyed" || kind === "fed_response"
-        || kind === "atomic_detonation" || kind === "port_destroyed" || kind === "photon_fired" || kind === "photon_hit"
-        || kind === "ferrengi_attack" || kind === "player_eliminated") return "combat";
-    if (kind === "trade" || kind === "trade_failed" || kind === "buy_ship" || kind === "buy_equip"
-        || kind === "corp_deposit" || kind === "corp_withdraw") return "trade";
-    if (kind === "warp" || kind === "warp_blocked" || kind === "scan" || kind === "probe"
-        || kind === "autopilot" || kind === "ferrengi_move" || kind === "limpet_report") return "warp";
-    if (kind === "agent_thought") return "thought";
-    if (kind === "hail" || kind === "broadcast" || kind === "corp_memo"
-        || kind === "alliance_proposed" || kind === "alliance_formed" || kind === "alliance_broken"
-        || kind === "assign_colonists" || kind === "build_citadel" || kind === "citadel_complete"
-        || kind === "genesis_deployed") return "diplomacy";
-    if (kind === "game_over" || kind === "game_start") return kind;
-    return "system";
+    return kindMeta(kind).cat;
+  }
+
+  // Big-moment kinds survive category filters in the highlight reel
+  // and get `.big-moment` accent styling in the main feed (A3).
+  const BIG_MOMENT_KINDS = new Set([
+    "player_eliminated", "ship_destroyed", "port_destroyed",
+    "atomic_detonation", "citadel_complete", "alliance_formed",
+    "genesis_deployed", "game_over", "game_start",
+  ]);
+
+  // Kinds eligible for a FIRST-of-match chip (A4). `citadel_complete`
+  // is tracked per LEVEL so L1/L2/L3/L4 each get their own stamp —
+  // "first Citadel L3" is a meaningfully different milestone from
+  // "first Citadel L1".
+  const FIRST_CHIP_KINDS = new Set([
+    "corp_create", "alliance_formed", "citadel_complete",
+    "ship_destroyed", "player_eliminated", "genesis_deployed",
+    "atomic_detonation", "port_destroyed",
+  ]);
+
+  function firstChipKey(ev) {
+    if (!ev || !FIRST_CHIP_KINDS.has(ev.kind)) return null;
+    if (ev.kind === "citadel_complete") {
+      const lvl = ev.payload && (ev.payload.to || ev.payload.level_target || ev.payload.level);
+      return lvl ? `citadel_complete:${lvl}` : "citadel_complete";
+    }
+    return ev.kind;
   }
 
   function eventPassesFilter(ev) {
@@ -1708,9 +2153,138 @@
         render();
       });
     }
+    // Phase A.5 — event feed click delegation. One listener handles
+    // actor filter, sector drawer, and thought expansion so we don't
+    // re-wire after every renderEvents() pass.
+    if (eventFeed) eventFeed.addEventListener("click", handleEventRowClick);
+    const reelList = document.getElementById("highlightsList");
+    if (reelList) reelList.addEventListener("click", handleEventRowClick);
+    // Phase B click delegation — leaderboard rows + Ferrengi chips.
+    // Both mount inside the players panel so one listener suffices.
+    if (playersPanel) playersPanel.addEventListener("click", handleHudClick);
+  }
+
+  function handleHudClick(e) {
+    const lbRow = e.target.closest("[data-lb-player]");
+    if (lbRow) {
+      e.preventDefault();
+      e.stopPropagation();
+      const pid = lbRow.getAttribute("data-lb-player");
+      if (!pid) return;
+      openDrawer("player", pid);
+      setFollow(pid);
+      const card = document.querySelector(`.player-card[data-pid="${pid}"]`);
+      if (card) {
+        card.classList.add("flash");
+        setTimeout(() => card.classList.remove("flash"), 700);
+      }
+      return;
+    }
+    const ferrChip = e.target.closest("[data-ferr-sector]");
+    if (ferrChip) {
+      e.preventDefault();
+      e.stopPropagation();
+      const sid = Number(ferrChip.getAttribute("data-ferr-sector"));
+      if (Number.isNaN(sid) || !state.sectors.has(sid)) return;
+      openDrawer("sector", sid);
+      const ns = state.sectors.get(sid);
+      if (ns) {
+        viewBoxState.x = ns.x - viewBoxState.w / 2;
+        viewBoxState.y = ns.y - viewBoxState.h / 2;
+        updateViewBox();
+        state.combatFlashes.push({ sector_id: sid, t: Date.now(), kind: "click_pulse" });
+        renderDynamicMap();
+      }
+    }
+  }
+
+  function handleEventRowClick(e) {
+    // Thought expander toggles — checked FIRST so the button doesn't
+    // also fire the actor/sector handlers.
+    const expander = e.target.closest("[data-thought-toggle]");
+    if (expander) {
+      e.stopPropagation();
+      const row = expander.closest("[data-seq]");
+      const seq = row && row.dataset.seq;
+      if (!seq) return;
+      if (state.expandedThoughts.has(seq)) state.expandedThoughts.delete(seq);
+      else state.expandedThoughts.add(seq);
+      render();
+      return;
+    }
+    const actorBadge = e.target.closest(".actor[data-actor]");
+    if (actorBadge) {
+      e.stopPropagation();
+      const pid = actorBadge.dataset.actor;
+      if (!pid) return;
+      // Update actor filter dropdown + state + visual border color.
+      state.filters.actor = pid;
+      const sel = document.getElementById("eventActorFilter");
+      if (sel) {
+        sel.value = pid;
+        const p = state.players.get(pid);
+        sel.style.borderColor = p?.color || "";
+      }
+      try { localStorage.setItem("tw2k:actorFilter", pid); } catch (_e) {}
+      openDrawer("player", pid);
+      render();
+      return;
+    }
+    const sectorLink = e.target.closest(".event-sector-link[data-sector]");
+    if (sectorLink) {
+      e.stopPropagation();
+      const sid = Number(sectorLink.dataset.sector);
+      if (Number.isNaN(sid) || !state.sectors.has(sid)) return;
+      openDrawer("sector", sid);
+      // Pan the map so the focused sector is visible, with a brief
+      // pulse via the combat-flashes layer (reused for click-pulse).
+      const ns = state.sectors.get(sid);
+      if (ns) {
+        viewBoxState.x = ns.x - viewBoxState.w / 2;
+        viewBoxState.y = ns.y - viewBoxState.h / 2;
+        updateViewBox();
+        state.combatFlashes.push({ sector_id: sid, t: Date.now(), kind: "click_pulse" });
+        renderDynamicMap();
+      }
+      return;
+    }
+    // Reel row click (not on a chip): jump the scrubber to that event.
+    const reelRow = e.target.closest(".reel-row[data-seq]");
+    if (reelRow) {
+      const seq = reelRow.dataset.seq;
+      if (!seq) return;
+      const idx = state.events.findIndex((x) => String(x.seq) === seq);
+      if (idx < 0) return;
+      state.replay.mode = "scrub";
+      state.replay.cursorIndex = idx;
+      render();
+      return;
+    }
   }
 
   function escKind(k) { return String(k || "").replace(/_/g, " "); }
+
+  // ----------------- Highlights reel (Phase A.8) ------------------
+  // A short, category-filter-proof ticker of match-shaping moments.
+  // Lives above the replay scrubber. Clicking a row jumps the main
+  // feed scrubber to that event.
+  function renderHighlightsReel() {
+    const reel = document.getElementById("highlightsReel");
+    const list = document.getElementById("highlightsList");
+    const count = document.getElementById("highlightsCount");
+    if (!reel || !list) return;
+    const moments = state.highlights.slice(-24).reverse();
+    if (count) count.textContent = String(state.highlights.length);
+    if (!moments.length) {
+      list.innerHTML = `<li class="reel-empty">No big moments yet — spawns, first corp, alliance, atomic strike, elimination will appear here.</li>`;
+      return;
+    }
+    list.innerHTML = "";
+    for (const ev of moments) {
+      const row = renderEventRow(ev, { inReel: true });
+      list.appendChild(row);
+    }
+  }
 
   // ----------------- Messaging ---------------------
 

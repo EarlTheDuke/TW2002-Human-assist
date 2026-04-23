@@ -173,6 +173,7 @@ class EventKind(str, Enum):
     SHIP_DESTROYED = "ship_destroyed"
     PLAYER_ELIMINATED = "player_eliminated"
     PLANET_ORPHANED = "planet_orphaned"
+    PLANET_CLAIMED = "planet_claimed"
     FERRENGI_SPAWN = "ferrengi_spawn"
     FERRENGI_MOVE = "ferrengi_move"
     FERRENGI_ATTACK = "ferrengi_attack"
@@ -405,6 +406,26 @@ class Player(BaseModel):
     alliances: list[str] = Field(default_factory=list)
     # Recent ether-probe readings keyed by sector_id -> {day, payload}.
     probe_log: dict[int, dict] = Field(default_factory=dict)
+    # Phase D.2 — set to True by the runner when the PREVIOUS turn's action
+    # was a WAIT synthesized from an LLM timeout (i.e. the tick was lost
+    # with no real decision made). The next observation surfaces this as a
+    # "your last turn was lost to a timeout — re-read your scratchpad"
+    # hint so the agent notices the discontinuity instead of silently
+    # skipping over it. Cleared after any non-timeout action.
+    last_action_was_timeout: bool = False
+    # Match 13 — consecutive LLM timeouts for this player. Reset to 0 on any
+    # non-timeout action, incremented on each timeout WAIT. Used by
+    # build_observation to shrink the observation payload once the agent is
+    # demonstrably struggling under 90s (trade_log, known_ports, recent_events).
+    recent_timeouts: int = 0
+    # Match 13 — captured by _destroy_ship BEFORE the ship gets reset so the
+    # post-death re-arm hint can say "you had only {Y} fighters when you
+    # died" on the NEXT observation. last_death_day stays set until the
+    # player is back to fighters >= 500 AND shields >= 1, at which point
+    # the hint self-clears (see observation.py).
+    last_death_day: int | None = None
+    last_death_fighters: int = 0
+    last_death_reason: str = ""
 
     def model_post_init(self, __context: Any) -> None:
         # Ensure known_sectors is a set after Pydantic deserialization
@@ -558,21 +579,32 @@ class GameConfig(BaseModel):
     # runs can skip the 2-day trade ramp-up and land on a ship-upgrade /
     # genesis-deploy decision inside the observable window.
     starting_credits: int = K.STARTING_CREDITS
+    # When True, every agent spawns at StarDock (sector 1) instead of cycling
+    # through FedSpace 1..10. Preserves full freedom of action after spawn;
+    # only the opening geometry changes (useful when you want immediate
+    # access to buy_ship / buy_equip without a navigation slog back to 1).
+    all_start_stardock: bool = False
     action_delay_s: float = 0.6
-    # 60s is the steady-state per-turn cap. The 20s value that used to live
-    # here pre-dated 6-player universes with larger observations and
-    # reasoning-model providers like xAI Grok-4-fast-reasoning, which
-    # routinely spend 20-40s of reasoning tokens on a complex turn
-    # (multi-planet empire + corp decision + enemy in sector). 60s gives
-    # comfortable headroom for all current providers without letting a
-    # hung call freeze the match — override per-match via TW2K_THINK_CAP_S.
-    llm_think_cap_s: float = 60.0
+    # Match 13: bumped 60s -> 90s. Match 12 logged 241 LLM timeouts (P2 alone
+    # took 145) against qwen3.5:122b — heavy late-match observations were
+    # hitting the 60s cap and forcing a WAIT, losing the decision. 90s is
+    # empirically enough headroom for 79-day observations on local GPUs.
+    # A match can still override per-run via TW2K_THINK_CAP_S.
+    llm_think_cap_s: float = 90.0
     enable_ferrengi: bool = True
     enable_planets: bool = True
     enable_corps: bool = True
     corp_max_members: int = K.CORP_MAX_MEMBERS_DEFAULT
     planet_spawn_probability: float = 0.03
     ferrengi_per_day: int = K.FERRENGI_SPAWN_PER_DAY
+    # If True, suppress the elimination and economic sudden-death wins so
+    # the match always runs the full `max_days` and is decided by
+    # `time_net_worth`. Useful for long watch-mode matches where the
+    # point is to exercise late-game mechanics (citadels, corp share,
+    # stockpile growth) rather than crown an early winner. The "0 alive"
+    # safety branch still fires so a fully-wiped match can't hang the
+    # scheduler, and the Universe.finished flag still trips on day cap.
+    play_to_day_cap: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -611,6 +643,14 @@ class Universe(BaseModel):
     # the old global-dict scheme either, and replay rebuilds from seed + the
     # recorded action log rather than from live RNG state.
     _rng: random.Random | None = PrivateAttr(default=None)
+
+    # C1 — first-of-match dedup set. Each kind/key inserted here
+    # the first time it is seen gets `is_first: true` stamped on
+    # its payload; later emits of the same key pass through unmarked.
+    # Private because we never want to persist/serialize this and
+    # rebuild it from the event log on replay instead (replays replay
+    # emits in order, so the dedup set naturally re-accumulates).
+    _firsts_seen: set[str] = PrivateAttr(default_factory=set)
 
     @property
     def rng(self) -> random.Random:
@@ -666,6 +706,13 @@ class Universe(BaseModel):
                 pl["_witnesses"] = list(sector.occupant_ids)
             else:
                 pl["_witnesses"] = []
+        # C1 — stamp `is_first` on notable-kind payloads the first time
+        # they are emitted. Spectators key the FIRST chip off this flag
+        # (A4 previously heuristic-detected client-side; now authoritative).
+        fkey = _first_chip_key(kind, pl)
+        if fkey and fkey not in self._firsts_seen:
+            self._firsts_seen.add(fkey)
+            pl["is_first"] = True
         ev = Event(
             seq=self.seq,
             tick=self.tick,
@@ -679,3 +726,33 @@ class Universe(BaseModel):
         )
         self.events.append(ev)
         return ev
+
+# ---------------------------------------------------------------------
+# Phase C.1 helpers — which event kinds qualify for a FIRST-of-match
+# stamp, and how to dedup multi-instance kinds like citadel_complete
+# (each level counts as a separate milestone).
+# Kept at module scope so Universe.emit can call without paying a bound
+# method lookup per event.
+# ---------------------------------------------------------------------
+_FIRST_CHIP_KINDS: set[EventKind] = {
+    EventKind.CORP_CREATE,
+    EventKind.ALLIANCE_FORMED,
+    EventKind.CITADEL_COMPLETE,
+    EventKind.SHIP_DESTROYED,
+    EventKind.PLAYER_ELIMINATED,
+    EventKind.GENESIS_DEPLOYED,
+    EventKind.ATOMIC_DETONATION,
+    EventKind.PORT_DESTROYED,
+    EventKind.GAME_OVER,
+}
+
+
+def _first_chip_key(kind: EventKind, payload: dict) -> str | None:
+    if kind not in _FIRST_CHIP_KINDS:
+        return None
+    if kind is EventKind.CITADEL_COMPLETE:
+        # planets.py emits `{"from": old_level, "to": new_level}`.
+        # Treat each *new* level as its own first — L1 -> L2 -> L3 -> L4.
+        lvl = payload.get("to") or payload.get("level_target") or payload.get("level")
+        return f"citadel_complete:{lvl}" if lvl is not None else "citadel_complete"
+    return kind.value

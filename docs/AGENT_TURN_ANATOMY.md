@@ -7,6 +7,8 @@ Every claim in this doc is backed by a live artifact in `docs/agent_turn/`._
 > The script runs a small heuristic sim to day 1 tick ~11 and dumps
 > the full pipeline for one player.
 
+**See also:** [AGENCY_INITIATIVE.md](AGENCY_INITIATIVE.md) — initiative to map directive prompt layers, baseline token budgets, and a phased path toward more model agency while keeping engine contracts.
+
 ---
 
 ## TL;DR

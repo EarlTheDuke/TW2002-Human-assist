@@ -642,6 +642,41 @@ class TestPhaseEGoals:
         assert act is not None
         assert (act.goal_short, act.goal_medium, act.goal_long) == ("a", "b", "c")
 
+    def test_e1_llm_parser_strips_think_block(self):
+        """Reasoning models (Qwen3.5, QwQ, DeepSeek-R1) often wrap their
+        chain-of-thought in <think>...</think> inside the message content
+        BEFORE the actual JSON. Must be stripped before JSON parsing so
+        we don't fall back to WAIT on every reasoning-model turn. Regression
+        for M3-1 (qwen3.5:122b parse-error storm).
+        """
+        from tw2k.agents.llm import _parse_response
+
+        raw = (
+            "<think>\nLet me consider my options. Scanning is cheap and\n"
+            "tells me about adjacent sectors. I'll do that.\n</think>\n"
+            '{"thought":"scan first","action":{"kind":"scan","args":{}}}'
+        )
+        act = _parse_response(raw)
+        assert act is not None, "must recover the JSON after a <think> block"
+        assert act.kind.value == "scan"
+
+    def test_e1_llm_parser_finds_json_with_trailing_prose(self):
+        """Some reasoning-model turns emit the JSON block FOLLOWED by
+        chatty commentary. The parser must locate the last balanced
+        `{...}` object anyway. Regression for M3-1.
+        """
+        from tw2k.agents.llm import _parse_response
+
+        raw = (
+            "Here is my decision:\n"
+            '{"thought":"t","action":{"kind":"warp","args":{"to":42}}}\n'
+            "Let me know if you need me to explain further."
+        )
+        act = _parse_response(raw)
+        assert act is not None
+        assert act.kind.value == "warp"
+        assert act.args.get("to") == 42
+
     def test_e1_llm_parser_omitted_goal_stays_none(self):
         """None means 'don't touch the stored goal'. An omitted field must
         NOT overwrite a prior-turn goal with empty string."""
@@ -994,6 +1029,22 @@ class TestPhaseFCostBasis:
         )
         assert spec.config.turns_per_day == 80
         assert spec.config.starting_credits == 75_000
+
+    def test_f8_all_start_stardock_threads_to_game_config(self):
+        from tw2k.server.app import _build_default_spec
+
+        spec = _build_default_spec(
+            seed=1,
+            universe_size=50,
+            max_days=2,
+            agent_names=None,
+            agent_kind="heuristic",
+            provider=None,
+            model=None,
+            num_agents=2,
+            all_start_stardock=True,
+        )
+        assert spec.config.all_start_stardock is True
 
     def test_f7_server_runner_applies_config_turns_per_day_to_player(self):
         """The direct bug: MatchRunner's player construction must honor
@@ -1550,16 +1601,23 @@ class TestPhaseLHintsAndSafety:
         assert "deep space" in hint.lower() and "0 fighters" in hint, hint
 
     def test_l6_hint_does_not_fire_when_armed(self):
-        """Armed ships shouldn't get the unarmed warning."""
+        """Well-armed ships in deep space shouldn't get the Ferrengi warning.
+
+        Match 13 raised the threshold from 'only when 0 fighters / 0 shields'
+        to a tiered model (<500 loud, <1000 FYI, >=1000 silent). This test
+        now validates the top tier stays silent — a 1500-fighter ship in
+        deep space is properly defended against typical raiders.
+        """
         from tw2k.engine.observation import _action_hint
 
         u, (a, *_) = _make_universe(seed=9303)
-        a.ship.fighters = 100
-        a.ship.shields = 50
+        a.ship.fighters = 1500
+        a.ship.shields = 100
         a.sector_id = 50
         sec_info = {"id": 50, "warps_out": [51]}
         hint = _action_hint(sec_info, player=a, owned_planets=[], universe=u)
-        assert "0 fighters" not in hint
+        assert "UNDEFENDED IN DEEP SPACE" not in hint
+        assert "Ferrengi raiders" not in hint
 
     def test_l7_hint_second_genesis_when_affordable(self):
         """1 planet + 25k+ credits + no genesis loaded → FYI hint
@@ -2387,3 +2445,188 @@ class TestPhaseNCorp:
             "B should be credited 200k/2 = 100k for time-net-worth purposes, "
             "even though only A (CEO) can mechanically withdraw"
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase O — Match 13 post-mortem fixes
+#
+# Covers the five observable behavior changes landed for Match 13:
+#   * post-death re-arm hint fires with concrete "you had X fighters" number
+#   * claim_planet handler transfers ownership on orphaned planets
+#   * corp-owned planets cannot be claimed even after elimination
+#   * observation.trade_log / known_ports shrink under timeout pressure
+#   * build_citadel on a precondition-fail does NOT charge a turn
+# ---------------------------------------------------------------------------
+
+
+class TestPhaseOMatch13:
+    def test_o1_post_death_hint_surfaces_last_fighters(self):
+        """_destroy_ship must snapshot pre-reset fighters so the next
+        observation can say 'you had only X fighters' — without this,
+        the hint reverts to the post-reset STARTING_FIGHTERS number
+        (which is always the same and loses information)."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=1301)
+        a.ship.fighters = 37  # unusual number to prove capture works
+        a.sector_id = 50 if 50 in u.sectors else _first_non_fed_sector(u)
+        u.sectors[a.sector_id].occupant_ids.append(a.id) if a.id not in u.sectors[a.sector_id].occupant_ids else None
+        _destroy_ship(u, a.id, reason="ferrengi", killer_id=None)
+        assert a.last_death_fighters == 37
+        assert a.last_death_day == u.day
+        assert a.last_death_reason == "ferrengi"
+        # Ship fighters are now reset; re-arm hint should fire.
+        a.ship.fighters = 50  # still below threshold
+        a.ship.shields = 0
+        obs = build_observation(u, a.id)
+        assert "YOU JUST DIED" in obs.action_hint
+        assert "37 fighters" in obs.action_hint
+        # Re-arming above threshold clears the flag on next observation.
+        a.ship.fighters = 600
+        a.ship.shields = 5
+        obs2 = build_observation(u, a.id)
+        assert a.last_death_day is None
+        assert "YOU JUST DIED" not in obs2.action_hint
+
+    def test_o2_claim_planet_transfers_orphan(self):
+        """Core happy-path: B lands on an orphan created by A's elimination
+        and claims it. owner_id flips to B, PLANET_CLAIMED event fires."""
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+
+        u, (a, b, *_) = _make_universe(seed=1302, players=3)
+        a.deaths = K.MAX_DEATHS_BEFORE_ELIM - 1  # next death eliminates
+        orphan = Planet(
+            id=501, sector_id=150, name="OrphanA",
+            class_id=PlanetClass.M, owner_id=a.id, citadel_level=2,
+            fighters=1500,
+        )
+        u.planets[501] = orphan
+        if 150 in u.sectors:
+            u.sectors[150].planet_ids.append(501)
+        else:
+            pytest.skip("seed didn't yield sector 150")
+        _destroy_ship(u, a.id, reason="test", killer_id=None)
+        assert orphan.owner_id is None  # now an orphan
+        # B warps to 150, lands, claims.
+        b.sector_id = 150
+        u.sectors[150].occupant_ids.append(b.id)
+        b.planet_landed = 501
+        b.turns_today = 0
+        res = apply_action(u, b.id, Action(kind=ActionKind.CLAIM_PLANET))
+        assert res.ok, res.error
+        assert u.planets[501].owner_id == b.id
+        assert res.turns_spent == K.TURN_COST["claim_planet"]
+        claimed_ev = [e for e in u.events if e.kind == EventKind.PLANET_CLAIMED]
+        assert len(claimed_ev) == 1
+        assert claimed_ev[0].payload["planet_id"] == 501
+
+    def test_o3_claim_planet_not_landed_is_free(self):
+        """Attempting claim_planet without being landed must NOT charge
+        turns (precondition rejection is free per Match 13 policy)."""
+        u, (a, *_) = _make_universe(seed=1303)
+        a.planet_landed = None
+        a.turns_today = 5
+        res = apply_action(u, a.id, Action(kind=ActionKind.CLAIM_PLANET))
+        assert not res.ok
+        assert res.turns_spent == 0
+        assert a.turns_today == 5  # unchanged
+
+    def test_o4_claim_planet_rejects_corp_orphan(self):
+        """Corp-owned planets must not be claimable via claim_planet even
+        if every member is eliminated — that route is reserved for
+        proper corp dissolution / takeover paths."""
+        from tw2k.engine.models import Planet, PlanetClass
+
+        u, (a, *_) = _make_universe(seed=1304)
+        planet = Planet(
+            id=777, sector_id=200, name="CorpP",
+            class_id=PlanetClass.M, owner_id=None,
+            corp_ticker="ACME", citadel_level=1,
+        )
+        u.planets[777] = planet
+        if 200 not in u.sectors:
+            pytest.skip("seed didn't yield sector 200")
+        u.sectors[200].planet_ids.append(777)
+        a.sector_id = 200
+        a.planet_landed = 777
+        res = apply_action(u, a.id, Action(kind=ActionKind.CLAIM_PLANET))
+        assert not res.ok
+        assert res.turns_spent == 0
+        assert "corp-owned" in (res.error or "").lower()
+
+    def test_o5_observation_payload_shrinks_under_timeout_pressure(self):
+        """When recent_timeouts >= 3 the trade_log + known_ports caps
+        should drop from 25/unbounded to 10/15."""
+        from tw2k.engine.models import PortClass
+        from tw2k.engine.observation import build_observation
+        from tw2k.engine.runner import _record_port_intel
+
+        u, (a, *_) = _make_universe(seed=1305)
+        u.day = 5
+        # Seed 30 trade entries so the cap is observable.
+        a.trade_log = [
+            {"seq": i, "commodity": "fuel_ore", "qty": 1, "side": "buy", "unit": 15}
+            for i in range(30)
+        ]
+        # Seed intel on many ports.
+        skip = {PortClass.STARDOCK, PortClass.FEDERAL}
+        recorded = 0
+        for sid, sector in u.sectors.items():
+            if sector.port is not None and sector.port.class_id not in skip:
+                _record_port_intel(a, sid, sector.port, universe=u)
+                recorded += 1
+                if recorded >= 20:
+                    break
+        if recorded < 16:
+            pytest.skip("seed didn't yield 16+ non-special ports")
+        obs_normal = build_observation(u, a.id)
+        assert len(obs_normal.trade_log) == 25
+        normal_ports = len(obs_normal.known_ports)
+        # Now trip the trim branch.
+        a.recent_timeouts = 3
+        obs_trim = build_observation(u, a.id)
+        assert len(obs_trim.trade_log) == 10
+        assert len(obs_trim.known_ports) == 15
+        assert normal_ports > 15  # sanity: trim actually changed the count
+
+    def test_o6_build_citadel_precondition_is_free(self):
+        """Regression lock: build_citadel with insufficient colonists must
+        return ok=False with turns_spent=0 — no retry-spam penalty."""
+        from tw2k.engine.models import Planet, PlanetClass
+
+        u, (a, *_) = _make_universe(seed=1306)
+        planet = Planet(
+            id=88, sector_id=120, name="P88",
+            class_id=PlanetClass.M, owner_id=a.id,
+            citadel_level=0,
+        )
+        planet.colonists[Commodity.COLONISTS] = 10  # far below L1's 1000
+        u.planets[88] = planet
+        if 120 not in u.sectors:
+            pytest.skip("seed didn't yield sector 120")
+        u.sectors[120].planet_ids.append(88)
+        a.sector_id = 120
+        a.planet_landed = 88
+        a.credits = 1_000_000
+        a.turns_today = 3
+        res = apply_action(u, a.id, Action(kind=ActionKind.BUILD_CITADEL, args={"planet_id": 88}))
+        assert not res.ok
+        assert res.turns_spent == 0
+        assert a.turns_today == 3  # unchanged — no punitive charge
+
+    def test_o7_rivals_block_fog_of_war(self):
+        """rivals[] must always show net_worth + ship_class, but location
+        (last_seen_sector) only when we've actually witnessed a recent
+        event from them (fog of war preserved)."""
+        from tw2k.engine.observation import build_observation
+
+        u, (a, b, _c) = _make_universe(seed=1307, players=3)
+        # No events involving B yet — we should see B publicly but without
+        # last_seen_sector.
+        obs = build_observation(u, a.id)
+        rivals_by_id = {r["id"]: r for r in obs.rivals}
+        assert b.id in rivals_by_id
+        rb = rivals_by_id[b.id]
+        assert "net_worth" in rb
+        assert "ship_class" in rb
+        assert "last_seen_sector" not in rb

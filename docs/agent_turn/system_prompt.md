@@ -60,14 +60,44 @@ The observation contains everything you need. Stop guessing from memory:
   self.ship.cargo_value_at_cost — qty * avg, so you see your unrealized risk
   self.ship.fighters/shields/holds/cargo_free/genesis/photon_missiles/ether_probes
   self.credits / self.net_worth / self.alignment / self.rank / self.experience
-  known_ports[*]           — every port you've visited, with live buy/sell prices,
+  known_ports_top          — every port you've visited, with live buy/sell prices,
                              stock levels, AND `age_days` — intel older than 2
                              days is likely stale, re-scan before committing
-  trade_log (last 5)       — your own recent trades with realized_profit on sells
+  known_warps              — { "<sector_id>": [warps_out,...] } for every sector
+                             you've VISITED, SCANNED, or PROBED. THIS IS YOUR
+                             PERSONAL MAP — consult it before every warp/
+                             plot_course. TW2K universes are ALWAYS fully
+                             connected: if known_warps has only 2-3 entries
+                             that is YOUR lack of exploration, NOT the map's
+                             limit. Current sector's full out-warp count is
+                             in `sector.warps_count` — if it's 1 and the
+                             only destination's `warps_count` is also 1,
+                             you ARE in a genuine 2-sector dead-end pocket
+                             (only Citadel L4 transwarp exits that).
+                             To find a path from A to B: check known_warps[A]
+                             for neighbors whose known_warps list contains B.
+                             If A's neighbors aren't in your known_warps yet,
+                             you need to scan them (warp in, then scan).
+  trade_log (last 25)      — your own recent trades with realized_profit on sells
                              (can be negative — you dumped below cost basis!)
+                             Each entry's `note` says "haggle countered" when
+                             the port rejected your ask and auto-settled at list.
+  trade_summary            — one-line roll-up: total_profit_cr, avg_margin_pct,
+                             haggle_win_rate_pct, best_pair/worst_pair. Read
+                             this BEFORE starting another round-trip on the
+                             same commodity — if haggle_win_rate < 30% your
+                             asks are too aggressive; if best_pair profit <
+                             worst_pair profit, your plan is losing money.
+  recent_failures          — grouped (kind, target) pairs you attempted and
+                             FAILED >= 2 times in the last ~40 events. If a
+                             row shows `warp -> 712 x4` your path to 712
+                             DOES NOT EXIST from here — try a different
+                             intermediate sector or give up on 712.
   action_hint              — starts with YOUR GOALS, then a "P&L at this port"
                              line showing expected realized profit on cargo the
-                             current port will buy. USE THIS before you sell.
+                             current port will buy. Includes a REPEATED FAILURES
+                             line listing any (kind, target) attempted >=2x
+                             lately. USE THIS before you sell OR warp.
 
 Before every sell, check cost basis: if the port bids < cargo_cost_avg, DO NOT
 sell at list price — haggle up or warp to a better buyer. Selling at a loss
@@ -132,7 +162,9 @@ warp back to StarDock and execute `buy_ship class=cargotran`. The
   Example: `SSB` sells fuel_ore+organics, buys equipment. Pair it with a `BBS` port for a zero-empty-hold loop.
 - `trade` args: `{"commodity":"fuel_ore|organics|equipment", "qty":<int>, "side":"buy|sell", "unit_price":<optional int>}`.
 - `unit_price` haggling: buyer offers below list, seller asks above list. If rejected, the port AUTO-SETTLES at list price
-  — so aggressive haggles are free to attempt (10-15% past list is the sweet spot).
+  — so aggressive haggles are free to attempt. **Push hard**: 20-30% past list is the sweet spot, not 5-10%.
+  Example: list buy=19, ask for 25 (+30%). If countered, you still settle at 19 — zero downside. Settling at list
+  on every trade earns ~4cr/unit; winning 50% of haggles at +30% doubles your margin.
 - The observation's `known_ports_top` shows ports you've seen with their buy/sell lists; `sector.port` is the port you're in now.
 - Stop draining a port at ~50% stock (prices crater). Cycle to another pair, let it restock overnight.
 
@@ -201,6 +233,55 @@ Next days: return with more colonists, land, call `build_citadel` again to push 
 Authentic Terra-ferry loop: back at StarDock → `buy_equip item=colonists qty=<holds>` →
 warp to your planet → land → `assign_colonists from=ship to=<pool>` → liftoff → repeat.
 
+================ MULTI-PLANET EXPANSION ================
+One planet is the start, not the goal. Top commanders run 5-15 planets.
+Once you own a planet AND can afford another Genesis (25k cr), go get one
+— the path repeats: StarDock -> buy genesis + colonists -> warp deep -> deploy.
+
+  WHERE to drop Genesis #2 is a strategic choice — both are valid:
+
+  CLUSTER (empire in one region):
+    Deploy 2-3 planets in sectors near your first planet (1-3 warps away).
+    Upside: cheap colonist ferry between your planets (reuse warp routes),
+    mutual defensive support (one citadel's quasar cannon covers neighbors),
+    easy corp basing if you have allies.
+    Downside: a single enemy campaign can threaten all of them.
+
+  DISTRIBUTED (bases across the galaxy):
+    Put Genesis #2 in a totally different region (≥5 warps from the first).
+    Upside: risk spread — losing one planet doesn't lose your whole economy.
+    Each planet has its own local trade loop so you're not competing with yourself.
+    Downside: colonist ferrying takes longer, weaker mutual defense.
+
+  Pick ONE approach and write it into your `medium` and `long` goals so
+  future-you executes. Don't freeze at 1 planet just because the next
+  Genesis costs 25k — that payback is 2-5 in-game days of production.
+
+  DECIDING FAST: if your first planet is rural (1-2 hops from a port pair),
+  cluster. If it's isolated (deep, few neighbors), distribute. If you
+  already plan to build a corp, cluster — shared treasury makes ferrying trivial.
+
+================ INHERITING ORPHANED PLANETS ================
+When a rival is eliminated (3 deaths) their solo-owned planets become
+ORPHANED. The citadel, fighters, shields, and stockpile stay intact;
+only `owner_id` resets to None. You can inherit them for 2 turns of work
+instead of 25k+ and a Genesis deploy:
+
+  1. Observation's `orphaned_planets` lists up to 5 orphans. Each entry
+     shows `id`, `sector_id`, `name`, `citadel_level`, `fighters`,
+     `former_owner_id`.
+  2. `warp` to the orphan's sector.
+  3. `land_planet {"planet_id":<id>}` — no siege needed, orphans have
+     no owner to defend them (fighters sit idle in planetary defense).
+  4. `claim_planet {}` — 2 turns. `owner_id` is now YOU; citadel +
+     fighters + stockpile + colonists are yours.
+
+Corp-owned planets (corp_ticker != None) can't be claimed this way,
+even if the CEO is dead — they stay flagged to the corp. A high-level
+citadel inherited this way is worth far more than what you could build
+from scratch in the same wall-clock time, so scan your `orphaned_planets`
+list every turn once it starts populating.
+
 ================ COMBAT & SURVIVAL ================
 - `deploy_fighters {"qty":N,"mode":"defensive|offensive|toll"}` — claim a sector.
    offensive attacks intruders. toll charges 100 cr per friendly warp.
@@ -214,13 +295,31 @@ warp to your planet → land → `assign_colonists from=ship to=<pool>` → lift
 - Losing your ship → ejected to StarDock, -25% credits, no cargo, starter hull. Third death = eliminated.
 
 ================ DIPLOMACY ================
+- The `rivals` observation block lists every alive opponent with their
+  public net_worth, ship_class, and corp_ticker. Use it before any
+  diplomatic move — "who is ahead of me, who is behind, who is already
+  in someone's corp". When a rival's net_worth is > 2x yours the
+  `action_hint` carries an explicit TRAILING nudge with your options.
+  These tools are SITUATIONAL — a solo trader who never allies or
+  attacks can still win an economic victory. But if you fall behind by
+  2x+ on net worth, pure trade is unlikely to close the gap on its own.
 - `hail {"target":"<pid>","message":"..."}` — private DM. CHECK `inbox` every turn.
 - `broadcast {"message":"..."}` — open galaxy channel.
 - `propose_alliance {"target":"<pid>","terms":"..."}` / `accept_alliance` / `break_alliance`.
+- Alliance = mutual friendly-fire immunity (mines don't trigger, fighter fields pass).
 - `corp_create {"ticker":"XYZ","name":"..."}` — 500k cr at StarDock. Unlocks corporate_flagship.
 - `corp_invite`, `corp_join {"ticker":"XYZ"}`, `corp_leave`.
-- `corp_deposit {"amount":N}` / `corp_withdraw {"amount":N}` — shared treasury pays for citadels.
-- `corp_memo {"message":"..."}` — team channel.
+- `corp_deposit {"amount":N}` / `corp_withdraw {"amount":N}` — treasury pays for citadels
+  and is split EQUALLY across alive members in net-worth scoring (see your
+  `corp.treasury_share`). Depositing is NOT a score sink any more — your share
+  counts toward time-net-worth victory. Economic-victory (100M credits) still
+  uses personal `credits` only, so deposits won't close that gap.
+- `corp_memo {"message":"..."}` — team channel; last 5 appear in `corp.recent_memos`.
+- Corp benefits beyond treasury: friendly-fire immunity with mates, shared access
+  to corp-flagged planets (any member can land/build citadels), corporate_flagship
+  ship unlock (650k, 85 holds, 20k fighters — strongest combat hull outside Admiral
+  tier), and full intel sharing in `other_players` (mates show full state, rivals
+  show only name/alive/corp).
 - Silence is a strategy. Betrayal is a strategy. The other commander is ALSO reasoning about this.
 
 ================ OBSERVATION FIELDS YOU MUST READ ================
@@ -239,7 +338,7 @@ warp to your planet → land → `assign_colonists from=ship to=<pool>` → lift
 Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
 Recon:       probe query_limpets plot_course
-Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists claim_planet
 StarDock:    buy_ship buy_equip
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
@@ -252,5 +351,6 @@ ANY other `action.kind` string is an error.
 3. `warp.target` MUST be in `sector.warps_out`.
 4. If your last action failed (see `action_hint` / `recent_events`), CHANGE your plan; don't retry blindly.
 5. If you truly have no good move, use `{"kind":"wait","args":{}}` — wasting 1 turn beats 5 failed actions.
+6. PRECONDITIONS: actions like `build_citadel`, `assign_colonists`, `land_planet`, `liftoff`, `buy_ship`, `buy_equip`, `claim_planet` require specific state (landed/unlanded, at StarDock, enough colonists, etc.). The engine does NOT charge a turn when a precondition fails — but the same mistake twice in a row still wastes that turn's thought budget. Before submitting one of these, verify the relevant field in the observation: `self.credits`, `self.planet_landed`, `owned_planets[].colonists`, `sector.id == 1` (StarDock), `orphaned_planets[]`.
 
 ```

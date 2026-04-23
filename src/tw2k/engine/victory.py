@@ -162,9 +162,23 @@ def check_victory(universe: Universe) -> None:
     if universe.finished:
         return
     alive = [p for p in universe.players.values() if p.alive]
+    play_to_cap = getattr(universe.config, "play_to_day_cap", False)
 
-    # Elimination
-    if len(alive) == 1 and len(universe.players) > 1:
+    # Safety: if EVERYONE is dead we end immediately regardless of flag,
+    # otherwise the scheduler would idle for the rest of the match.
+    if not alive and len(universe.players) > 0:
+        universe.finished = True
+        universe.win_reason = "no_survivors"
+        universe.emit(
+            EventKind.GAME_OVER,
+            payload={"reason": "no_survivors"},
+            summary="GAME OVER — all players eliminated",
+        )
+        return
+
+    # Elimination — skipped when play_to_day_cap is set so the remaining
+    # survivor keeps playing solo until time runs out.
+    if not play_to_cap and len(alive) == 1 and len(universe.players) > 1:
         universe.finished = True
         universe.winner_id = alive[0].id
         universe.win_reason = "elimination"
@@ -181,23 +195,26 @@ def check_victory(universe: Universe) -> None:
     # actually finish economically. Default 30-day match keeps the classic 100M
     # target; a 3-day match shrinks to ~1M (still hard to hit with pure trading
     # but attainable with aggressive upgrades + raiding + planet farming).
-    threshold = int(
-        K.VICTORY_CREDITS_THRESHOLD
-        * (universe.config.max_days / K.VICTORY_DEFAULT_MAX_DAYS)
-    )
-    threshold = max(500_000, threshold)
-    for p in alive:
-        if p.credits >= threshold:
-            universe.finished = True
-            universe.winner_id = p.id
-            universe.win_reason = "economic"
-            universe.emit(
-                EventKind.GAME_OVER,
-                actor_id=p.id,
-                payload={"reason": "economic", "credits": p.credits, "threshold": threshold},
-                summary=f"GAME OVER — {p.name} achieved economic dominance ({p.credits}cr, target {threshold}cr)",
-            )
-            return
+    # Also gated by play_to_day_cap so a long watch-match can't be cut short
+    # by a credit spike.
+    if not play_to_cap:
+        threshold = int(
+            K.VICTORY_CREDITS_THRESHOLD
+            * (universe.config.max_days / K.VICTORY_DEFAULT_MAX_DAYS)
+        )
+        threshold = max(500_000, threshold)
+        for p in alive:
+            if p.credits >= threshold:
+                universe.finished = True
+                universe.winner_id = p.id
+                universe.win_reason = "economic"
+                universe.emit(
+                    EventKind.GAME_OVER,
+                    actor_id=p.id,
+                    payload={"reason": "economic", "credits": p.credits, "threshold": threshold},
+                    summary=f"GAME OVER — {p.name} achieved economic dominance ({p.credits}cr, target {threshold}cr)",
+                )
+                return
 
     # Day cap. Rank by the FULL net worth (ship assets + every planet
     # the commander owns) so investing in Genesis + Citadels is the

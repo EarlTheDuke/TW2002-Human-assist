@@ -20,6 +20,7 @@ class ActionKind(str, Enum):
     ASSIGN_COLONISTS = "assign_colonists"
     BUILD_CITADEL = "build_citadel"
     DEPLOY_GENESIS = "deploy_genesis"
+    CLAIM_PLANET = "claim_planet"
     PLOT_COURSE = "plot_course"
     PHOTON_MISSILE = "photon_missile"
     DEPLOY_ATOMIC = "deploy_atomic"

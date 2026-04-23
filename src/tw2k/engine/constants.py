@@ -161,6 +161,11 @@ TURN_COST = {
     "transmit": 0,
     "hyperwarp": 5,
     "wait": 1,
+    # Match 13: claim an orphaned planet (was owned by an eliminated player,
+    # owner_id currently None). Must already be landed on it — same
+    # land-first gating as build_citadel. Cheap because the siege cost
+    # (if any) was already paid at land-time combat.
+    "claim_planet": 2,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -252,6 +257,7 @@ XP_AWARDS = {
     "kill_ferr":  20,   # per aggression point
     "build_citadel_lvl": 50,
     "deploy_genesis": 100,
+    "claim_planet": 75,  # 0.75x genesis — reward salvage, but less than creation
     "alliance":   25,
     "scan":       1,
     "probe":      3,

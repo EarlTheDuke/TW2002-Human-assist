@@ -15,12 +15,116 @@ import asyncio
 import json
 import os
 import re
+from dataclasses import dataclass, field
 from typing import Any
 
 from ..engine import Action, ActionKind, Observation
 from .base import BaseAgent
 from .heuristic import HeuristicAgent
 from .prompts import SYSTEM_PROMPT, format_observation
+
+# ---------------------------------------------------------------------------
+# Provider-response diagnostics (M3-1 proper fix)
+# ---------------------------------------------------------------------------
+#
+# Reasoning models served through OpenWebUI + Ollama (e.g. qwen3.5:122b) often
+# return an empty `choices[0].message.content` and place the actual answer
+# in `choices[0].message.reasoning` — especially when upstream enforces
+# `response_format=json_object`. A naive `.content or ''` read therefore
+# silently dropped 335/1168 turns in Match 4 (~29% of all LLM calls).
+#
+# `_coalesce_message_text` falls back to `reasoning` when `content` is empty
+# and returns a `_ResponseDiag` we surface in the parse-error thought, so
+# spectators (and us) can see WHY a turn was wasted instead of just a bare
+# "[parse error] couldn't parse:".
+
+
+@dataclass
+class _ResponseDiag:
+    """Structured summary of one chat-completion response for error logs."""
+
+    finish_reason: str = ""
+    source: str = ""  # "content" | "reasoning" | "empty"
+    content_len: int = 0
+    reasoning_len: int = 0
+    content_preview: str = ""
+    reasoning_preview: str = ""
+    extras: dict[str, Any] = field(default_factory=dict)
+
+    def short(self) -> str:
+        parts = [
+            f"finish={self.finish_reason or '?'}",
+            f"src={self.source or 'empty'}",
+            f"content_len={self.content_len}",
+            f"reasoning_len={self.reasoning_len}",
+        ]
+        if self.content_preview:
+            parts.append(f'content="{self.content_preview}"')
+        if self.reasoning_preview:
+            parts.append(f'reasoning="{self.reasoning_preview}"')
+        return " ".join(parts)
+
+
+def _preview(s: str | None, limit: int = 180) -> str:
+    if not s:
+        return ""
+    s = s.replace("\n", " ").replace("\r", " ").strip()
+    if len(s) > limit:
+        s = s[:limit] + "..."
+    return s
+
+
+def _coalesce_message_text(
+    resp: Any, *, prefer: str = "content"
+) -> tuple[str, _ResponseDiag]:
+    """Return (text, diag) from a chat-completion response.
+
+    Preference order (with prefer="content"):
+      1. message.content
+      2. message.reasoning   -- OWUI/Ollama reasoning models push JSON here
+      3. ""                  -- diag.source == "empty"
+    """
+    diag = _ResponseDiag()
+    try:
+        choice = resp.choices[0]
+    except (AttributeError, IndexError, TypeError):
+        return "", diag
+    msg = getattr(choice, "message", None)
+    if msg is None:
+        diag.finish_reason = str(getattr(choice, "finish_reason", "") or "")
+        return "", diag
+
+    content = getattr(msg, "content", None) or ""
+    reasoning = getattr(msg, "reasoning", None) or ""
+    if not reasoning:
+        # OWUI variants nest reasoning in model_extra under various names.
+        extra = getattr(msg, "model_extra", None)
+        if isinstance(extra, dict):
+            reasoning = str(
+                extra.get("reasoning")
+                or extra.get("reasoning_content")
+                or extra.get("thinking")
+                or ""
+            )
+
+    diag.finish_reason = str(getattr(choice, "finish_reason", "") or "")
+    diag.content_len = len(content)
+    diag.reasoning_len = len(reasoning)
+    diag.content_preview = _preview(content)
+    diag.reasoning_preview = _preview(reasoning)
+
+    if prefer == "reasoning" and reasoning.strip():
+        diag.source = "reasoning"
+        return reasoning, diag
+    if content.strip():
+        diag.source = "content"
+        return content, diag
+    if reasoning.strip():
+        diag.source = "reasoning"
+        return reasoning, diag
+    diag.source = "empty"
+    return "", diag
+
 
 # ---------------------------------------------------------------------------
 # Provider detection
@@ -96,6 +200,11 @@ class LLMAgent(BaseAgent):
         self._client = None
         self._consecutive_failures = 0
         self._warmed = False
+        # Last provider-response diagnostics. Populated by every _call_* path
+        # and consumed by act() when the parser fails so we can surface
+        # finish_reason / content-vs-reasoning info in the agent thought
+        # instead of a bare "[parse error] couldn't parse:" line.
+        self._last_diag: _ResponseDiag | None = None
 
     def _default_model(self) -> str:
         if self.provider == "anthropic":
@@ -173,7 +282,8 @@ class LLMAgent(BaseAgent):
         if self.provider == "custom":
             kwargs["extra_body"] = {"keep_alive": CUSTOM_KEEP_ALIVE}
         resp = await client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
-        return resp.choices[0].message.content or ""
+        text, _ = _coalesce_message_text(resp)
+        return text
 
     async def _ensure_openai_client(self):
         """Lazily build the right AsyncOpenAI client for current provider."""
@@ -229,6 +339,21 @@ class LLMAgent(BaseAgent):
             self._consecutive_failures += 1
             if self._consecutive_failures >= 5:
                 return await self._fallback.act(obs)
+            # Match 13 — early-warning thought at exactly 3 consecutive
+            # timeouts so the spectator feed surfaces the problem BEFORE
+            # the silent heuristic fallback kicks in at 5. Without this,
+            # operators only notice the fallback AFTER it's happened
+            # (agent stops using LLM-grade reasoning, hard to diagnose
+            # mid-match because the heuristic's thoughts look coherent).
+            if self._consecutive_failures == 3:
+                return Action(
+                    kind=ActionKind.WAIT,
+                    thought=(
+                        f"[LLM timeout after {timeout:.0f}s] *** 3 consecutive "
+                        f"timeouts — 2 more will trigger heuristic fallback. "
+                        f"Operator: check model health. ***"
+                    ),
+                )
             return Action(kind=ActionKind.WAIT, thought=f"[LLM timeout after {timeout:.0f}s] resting a tick.")
         except Exception as exc:
             self._consecutive_failures += 1
@@ -240,7 +365,21 @@ class LLMAgent(BaseAgent):
 
         parsed = _parse_response(raw)
         if parsed is None:
-            return Action(kind=ActionKind.WAIT, thought=f"[parse error] couldn't parse: {raw[:200]}")
+            # Enriched parse-error thought: surface finish_reason + which
+            # channel (content vs reasoning) the text came from + a short
+            # preview of each so we can diagnose M3-1-class issues directly
+            # from the event feed. If no diag (e.g. Anthropic path that
+            # doesn't populate one yet), fall back to the raw preview.
+            diag = self._last_diag
+            if diag is not None:
+                return Action(
+                    kind=ActionKind.WAIT,
+                    thought=f"[parse error] {diag.short()}",
+                )
+            return Action(
+                kind=ActionKind.WAIT,
+                thought=f"[parse error] couldn't parse: {raw[:200]}",
+            )
 
         return parsed
 
@@ -274,7 +413,17 @@ class LLMAgent(BaseAgent):
         for block in msg.content:
             if getattr(block, "type", None) == "text":
                 parts.append(block.text)
-        return "".join(parts)
+        text = "".join(parts)
+        # Mirror the OpenAI-shape diag so the parse-error path still has
+        # something useful to print even on the Anthropic backend.
+        diag = _ResponseDiag(
+            finish_reason=str(getattr(msg, "stop_reason", "") or ""),
+            source="content" if text.strip() else "empty",
+            content_len=len(text),
+            content_preview=_preview(text),
+        )
+        self._last_diag = diag
+        return text
 
     async def _call_openai(self, observation_json: str) -> str:
         client = await self._ensure_openai_client()
@@ -288,7 +437,9 @@ class LLMAgent(BaseAgent):
                 {"role": "user", "content": observation_json},
             ],
         )
-        return resp.choices[0].message.content or ""
+        text, diag = _coalesce_message_text(resp)
+        self._last_diag = diag
+        return text
 
     async def _call_custom(self, observation_json: str) -> str:
         """Self-hosted OpenAI-compatible endpoint.
@@ -300,13 +451,28 @@ class LLMAgent(BaseAgent):
           TW2K_CUSTOM_KEEP_ALIVE  — Ollama keep_alive duration (default 30m)
           TW2K_CUSTOM_JSON_MODE   — "1" to request JSON response_format (default off —
                                     many self-hosted servers reject unknown fields)
-          TW2K_CUSTOM_MAX_TOKENS  — output token budget per turn (default 700)
+          TW2K_CUSTOM_MAX_TOKENS  — output token budget per turn (default 4000).
+                                    Reasoning models (qwen3.5:122b, DeepSeek-R1,
+                                    QwQ) frequently spend 800-1500 tokens on a
+                                    hidden reasoning pass BEFORE emitting the JSON
+                                    action. Match 5 smoke at 1200 saw 12.5% of turns
+                                    truncated with finish_reason=length; at 2000
+                                    still ~10%. 4000 is safe on local GPUs (cost is
+                                    wall-time, not $) and drives the rate toward 0.
         """
         client = await self._ensure_openai_client()
         try:
-            max_tokens = int(os.environ.get("TW2K_CUSTOM_MAX_TOKENS", "700"))
+            max_tokens = int(os.environ.get("TW2K_CUSTOM_MAX_TOKENS", "4000"))
         except ValueError:
-            max_tokens = 700
+            max_tokens = 4000
+        # Ollama native: num_predict caps output tokens below the server's
+        # own default (often 128). Without this, OpenAI-compat `max_tokens`
+        # is sometimes ignored by the Ollama backend and the model runs
+        # out of budget mid-JSON.
+        extra_body: dict[str, Any] = {
+            "keep_alive": CUSTOM_KEEP_ALIVE,
+            "num_predict": max_tokens,
+        }
         kwargs: dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -315,14 +481,14 @@ class LLMAgent(BaseAgent):
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": observation_json},
             ],
-            # Keep Ollama-resident models pinned between turns so we don't pay
-            # the cold-load tax on every call.
-            "extra_body": {"keep_alive": CUSTOM_KEEP_ALIVE},
+            "extra_body": extra_body,
         }
         if os.environ.get("TW2K_CUSTOM_JSON_MODE", "").strip() in ("1", "true", "yes"):
             kwargs["response_format"] = {"type": "json_object"}
         resp = await client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
-        return resp.choices[0].message.content or ""
+        text, diag = _coalesce_message_text(resp)
+        self._last_diag = diag
+        return text
 
     async def _call_deepseek(self, observation_json: str) -> str:
         """DeepSeek is OpenAI-API-compatible — same SDK, different base_url."""
@@ -337,7 +503,9 @@ class LLMAgent(BaseAgent):
                 {"role": "user", "content": observation_json},
             ],
         )
-        return resp.choices[0].message.content or ""
+        text, diag = _coalesce_message_text(resp)
+        self._last_diag = diag
+        return text
 
     async def _call_xai(self, observation_json: str) -> str:
         """xAI Grok is OpenAI-API-compatible at https://api.x.ai/v1.
@@ -363,7 +531,9 @@ class LLMAgent(BaseAgent):
         if os.environ.get("TW2K_XAI_JSON_MODE", "").strip() in ("1", "true", "yes"):
             kwargs["response_format"] = {"type": "json_object"}
         resp = await client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
-        return resp.choices[0].message.content or ""
+        text, diag = _coalesce_message_text(resp)
+        self._last_diag = diag
+        return text
 
 
 # ---------------------------------------------------------------------------
@@ -372,10 +542,43 @@ class LLMAgent(BaseAgent):
 
 
 _JSON_BLOCK_RE = re.compile(r"\{[\s\S]*\}\s*$")
+# Reasoning models (Qwen3.5, QwQ, DeepSeek-R1, ...) often emit visible
+# reasoning inside their `content` wrapped in <think>...</think> tags.
+# We strip those before JSON parsing so the trailing action JSON can be
+# located. Without this, ~50% of qwen3.5:122b turns failed strict parse
+# and the agent fell back to WAIT (Match 3 / M3-1).
+_THINK_BLOCK_RE = re.compile(r"<think>[\s\S]*?</think>", re.IGNORECASE)
+_LEFTOVER_THINK_RE = re.compile(r"</?think>", re.IGNORECASE)
+
+
+def _extract_last_json_object(text: str) -> str | None:
+    """Return the substring of `text` that is the last balanced `{...}`
+    block, or None if none is found. Unlike a trailing-anchored regex
+    this tolerates prose AFTER the JSON block (e.g. a reasoning model
+    that forgot to stop after its answer)."""
+    end = text.rfind("}")
+    while end >= 0:
+        depth = 0
+        for i in range(end, -1, -1):
+            ch = text[i]
+            if ch == "}":
+                depth += 1
+            elif ch == "{":
+                depth -= 1
+                if depth == 0:
+                    return text[i : end + 1]
+        end = text.rfind("}", 0, end)
+    return None
 
 
 def _parse_response(raw: str) -> Action | None:
     raw = raw.strip()
+    if not raw:
+        return None
+
+    # Strip reasoning-model <think>...</think> blocks before anything else.
+    raw = _THINK_BLOCK_RE.sub("", raw)
+    raw = _LEFTOVER_THINK_RE.sub("", raw).strip()
     if not raw:
         return None
 
@@ -390,9 +593,12 @@ def _parse_response(raw: str) -> Action | None:
         data = json.loads(raw)
     except json.JSONDecodeError:
         m = _JSON_BLOCK_RE.search(raw)
-        if m:
+        candidate: str | None = m.group(0) if m else None
+        if candidate is None:
+            candidate = _extract_last_json_object(raw)
+        if candidate:
             try:
-                data = json.loads(m.group(0))
+                data = json.loads(candidate)
             except json.JSONDecodeError:
                 return None
     if not isinstance(data, dict):

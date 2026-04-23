@@ -101,6 +101,51 @@ class HumanAgent(BaseAgent):
     def pending(self) -> int:
         return self._queue.qsize()
 
+    def drop_leading_waits(self) -> int:
+        """Remove any contiguous run of WAIT actions from the head of the queue.
+
+        Called by the scheduler after its 4-wait auto-end-day guard fires.
+        Without this, queued waits sitting behind productive actions (scan,
+        warp, attack, build_citadel, ...) re-trigger the same guard on the
+        next day, stalling the productive action for multiple days until
+        the wait streak drains. This is the M2-7 regression.
+
+        Returns the number of waits dropped (for logging / tests).
+        """
+        drained: list[Action] = []
+        while not self._queue.empty():
+            try:
+                drained.append(self._queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        dropped = 0
+        while drained and drained[0].kind == ActionKind.WAIT:
+            drained.pop(0)
+            dropped += 1
+        for action in drained:
+            try:
+                self._queue.put_nowait(action)
+            except asyncio.QueueFull:
+                break
+        return dropped
+
+    def clear_queue(self) -> int:
+        """Drop every pending action. Returns the count dropped.
+
+        Used by the admin-facing ``DELETE /api/human/queue`` endpoint to
+        recover from a stuck external client (M2-8). Safe to call while
+        ``act()`` is blocked on ``queue.get()`` — that coroutine just
+        keeps waiting for the next push.
+        """
+        dropped = 0
+        while not self._queue.empty():
+            try:
+                self._queue.get_nowait()
+                dropped += 1
+            except asyncio.QueueEmpty:
+                break
+        return dropped
+
     # ---- outbound: called by the match runner's main loop ----
 
     async def act(self, observation: Observation) -> Action:
