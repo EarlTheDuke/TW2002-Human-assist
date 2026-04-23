@@ -156,6 +156,45 @@ def _cursor_system_prompt_for(observation_json: str) -> str:
             os.environ["TW2K_HINT_LEVEL"] = old
 
 
+def _resolve_cursor_cli() -> tuple[str | None, str | None, str | None]:
+    """Locate the Cursor Agent CLI entry points.
+
+    Returns ``(node_exe, index_js, wrapper_cli)``. Prefer the first pair
+    when non-None — invoking ``node.exe index.js ...`` bypasses the
+    ``.cmd`` wrapper and its 8191-char `cmd.exe` command-line cap, which
+    would otherwise break any real TW2K observation payload.
+    """
+    node = (os.environ.get("TW2K_CURSOR_NODE") or "").strip() or None
+    js = (os.environ.get("TW2K_CURSOR_JS") or "").strip() or None
+    if node and js and os.path.isfile(node) and os.path.isfile(js):
+        return node, js, None
+
+    cli = (os.environ.get("TW2K_CURSOR_CLI") or "").strip() or shutil.which("agent")
+    if not cli:
+        return None, None, None
+
+    base = os.path.dirname(cli)
+    versions_dir = os.path.join(base, "versions")
+    if os.path.isdir(versions_dir):
+        try:
+            entries = [
+                os.path.join(versions_dir, name)
+                for name in os.listdir(versions_dir)
+                if os.path.isdir(os.path.join(versions_dir, name))
+            ]
+            # Version dir names are YYYY.MM.DD-commit — lexicographic sort
+            # correctly identifies the latest build.
+            entries.sort(reverse=True)
+            for ver in entries:
+                cand_node = os.path.join(ver, "node.exe")
+                cand_js = os.path.join(ver, "index.js")
+                if os.path.isfile(cand_node) and os.path.isfile(cand_js):
+                    return cand_node, cand_js, cli
+        except OSError:
+            pass
+    return None, None, cli
+
+
 def _unwrap_agent_print_json(stdout: str) -> str:
     """Extract assistant text from `agent --print --output-format json` stdout."""
     s = (stdout or "").strip()
@@ -474,17 +513,28 @@ class LLMAgent(BaseAgent):
         raise RuntimeError(f"Unknown provider {self.provider}")
 
     async def _invoke_cursor_cli(self, prompt: str) -> str:
-        """Run `agent -p` headlessly; return raw assistant text (may be JSON-wrapped)."""
-        cli = (os.environ.get("TW2K_CURSOR_CLI") or "").strip() or shutil.which("agent")
-        if not cli:
-            raise RuntimeError(
-                "Cursor Agent CLI not found on PATH. Install: "
-                "irm 'https://cursor.com/install?win32=true' | iex "
-                "(PowerShell) — then `agent login` or set CURSOR_API_KEY."
-            )
+        """Run `agent -p` headlessly; return raw assistant text (may be JSON-wrapped).
+
+        Windows `cmd.exe` caps command lines at ~8191 chars, and the
+        `agent` entry point is a `.cmd` wrapper — so any non-trivial
+        TW2K observation overflows it. We avoid that by locating the
+        bundled ``node.exe`` + ``index.js`` next to the wrapper and
+        invoking them directly via `CreateProcess` (32767-char limit).
+        Override paths with ``TW2K_CURSOR_NODE`` / ``TW2K_CURSOR_JS``.
+        """
         ws = (os.environ.get("TW2K_CURSOR_WORKSPACE") or "").strip() or os.getcwd()
-        argv: list[str] = [
-            cli,
+        node_exe, index_js, cli_fallback = _resolve_cursor_cli()
+        if not node_exe or not index_js:
+            if not cli_fallback:
+                raise RuntimeError(
+                    "Cursor Agent CLI not found. Install: "
+                    "irm 'https://cursor.com/install?win32=true' | iex "
+                    "(PowerShell) — then `agent login` or set CURSOR_API_KEY."
+                )
+            argv_base: list[str] = [cli_fallback]
+        else:
+            argv_base = [node_exe, index_js]
+        argv = argv_base + [
             "-p",
             "--output-format",
             "json",
