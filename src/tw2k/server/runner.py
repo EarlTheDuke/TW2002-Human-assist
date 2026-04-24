@@ -344,6 +344,42 @@ class MatchRunner:
         # next turn, and leaving it set lets late observers (debug probes)
         # inspect the last call.
 
+    def _record_agent_fallback(
+        self, agent: BaseAgent, sector_id: int, player_name: str
+    ) -> None:
+        """Emit a one-shot AGENT_FALLBACK event when an LLMAgent gives up.
+
+        The flag is set by `LLMAgent._mark_fallback()` on the turn where
+        consecutive-failure count hits 5. We consume-and-clear it here so
+        the event fires exactly once per fallback transition. Agents that
+        aren't LLMAgent (heuristic, human) lack the method and are skipped.
+        """
+        universe = self.state.universe
+        if universe is None:
+            return
+        consume = getattr(agent, "consume_fallback_reason", None)
+        if not callable(consume):
+            return
+        reason = consume()
+        if reason is None:
+            return
+        provider = str(getattr(agent, "provider", "") or "")
+        model = str(getattr(agent, "model", "") or "")
+        universe.emit(
+            EventKind.AGENT_FALLBACK,
+            actor_id=agent.player_id,
+            sector_id=sector_id,
+            payload={
+                "provider": provider,
+                "model": model,
+                "reason": reason,
+            },
+            summary=(
+                f"*** [{player_name}] {provider}/{model} fell back to heuristic "
+                f"(reason: {reason}) ***"
+            ),
+        )
+
     def _record_day_tick(self) -> None:
         """Append a day_tick marker so replay knows when to call tick_day."""
         if self._actions_fp is None:
@@ -521,6 +557,13 @@ class MatchRunner:
                 # events (warps, trades, ...) in the feed — makes replay
                 # easy to audit turn-by-turn.
                 self._record_llm_usage(agent, player.sector_id, player.name)
+
+                # If the LLMAgent just switched to its heuristic fallback
+                # (5 consecutive failures), surface a one-shot event so the
+                # spectator / operator sees which slot went dark and why.
+                # Otherwise the heuristic's coherent-looking thoughts make
+                # the failure invisible mid-match.
+                self._record_agent_fallback(agent, player.sector_id, player.name)
 
                 # If the submitted Action carries an actor_kind override
                 # (e.g. the copilot dispatched this on behalf of a human),

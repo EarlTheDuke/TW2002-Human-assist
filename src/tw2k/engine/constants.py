@@ -279,6 +279,23 @@ FERRENGI_SPAWN_PER_DAY = 3
 # Pre-seed at match start so there's tension from day 1 instead of day 2.
 FERRENGI_INITIAL_SPAWN = 4
 FERRENGI_BOUNTY_PER_AGG = 1000
+# Grace window (in-game days) during which Ferrengi will NOT engage
+# players when the match started everyone at StarDock. Without this,
+# an initial-spawn raider in sector 11 can jump a fresh cargotran on
+# turn 1 of day 0 before the agent has even decided which port to
+# visit — which destroys the LLM evaluation signal for the first day.
+# Set to 0 to disable. Only applies when config.all_start_stardock.
+#
+# NB: extended from 2 to 5 after a match where a single raider camped
+# StarDock (sector 1) from day 6 onward and destroyed one commander's
+# ship once (death #1) and eliminated another commander entirely
+# across days 7/8/10 after StarDock-respawn. 5 days of safety gives
+# agents enough time to Genesis, build at least L1 citadel, and
+# choose whether to stay near StarDock or push out before raiders
+# become a threat. The LLM-evaluation signal for early-game trading
+# / planet-building remains clean while still leaving the majority
+# of a 30-365 day match for genuine ferrengi pressure.
+FERRENGI_STARTUP_GRACE_DAYS = 5
 
 # --- Corp ---------------------------------------------------------------------
 

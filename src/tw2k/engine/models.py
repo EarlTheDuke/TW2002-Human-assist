@@ -209,6 +209,11 @@ class EventKind(str, Enum):
     # and the player's running total so the spectator UI / cost report can
     # render a live budget meter without rescanning the full event log.
     LLM_USAGE = "llm_usage"
+    # Emitted once when an LLMAgent gives up after consecutive failures and
+    # switches to its HeuristicAgent fallback. Payload carries provider,
+    # model, the final failure reason, and the player id. Pairs with the
+    # AGENT_THOUGHT "heuristic fallback" lines for operator visibility.
+    AGENT_FALLBACK = "agent_fallback"
     # Emitted by the scheduler right before it blocks waiting for a human
     # player's Action (Phase H0). Lets the /play UI pop a "your move"
     # banner and the spectator UI render a "waiting on human" idle state

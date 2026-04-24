@@ -1278,15 +1278,28 @@
     // Per-card collapse state lives in localStorage keyed by player id.
     // Absence of the key -> card starts open (default). Spectators can
     // collapse cards they don't care about and the choice survives refresh.
+    //
+    // Accordion invariant: at most ONE card is open at a time. If the
+    // persisted state has multiple cards open (e.g. from an older build,
+    // or if the user wiped localStorage), we keep the first alive card
+    // open and collapse the rest. The toggle handler below maintains
+    // the same invariant for subsequent user clicks.
     const collapsedIds = new Set(
       (localStorage.getItem("tw2k_collapsed_cards") || "").split(",").filter(Boolean)
     );
+    let openSoFar = false;
     for (const p of state.players.values()) {
       const card = document.createElement("details");
       card.className = "player-card" + (p.alive ? "" : " dead")
         + (state.selectedPlayerId === p.id ? " selected" : "");
       card.dataset.pid = p.id;
-      if (!collapsedIds.has(p.id)) card.open = true;
+      const wantOpen = !collapsedIds.has(p.id);
+      if (wantOpen && !openSoFar) {
+        card.open = true;
+        openSoFar = true;
+      } else {
+        collapsedIds.add(p.id);
+      }
       card.style.setProperty("--player-color", p.color || "#6ee7ff");
       // Net worth = ship assets + planets owned. We show a tooltip
       // with the breakdown so spectators can see "this commander's 40k
@@ -1358,6 +1371,10 @@
             <span class="pc-sum-chip" title="${esc(p.ship || "—")}">🛸 ${esc(shipShortLabel)}</span>
             <span class="pc-sum-chip" title="current sector">📍 s${sectorLabel}</span>
             ${planetChip}
+            <button type="button"
+                    class="pc-details-btn"
+                    data-pc-details="${esc(p.id)}"
+                    title="Open detail drawer (VITALS, ship loadout, diplomacy, plans, memory)">⛶ Details</button>
           </span>
           ${renderVictoryProgress(p)}
         </summary>
@@ -1405,12 +1422,34 @@
       // Persist collapse state on toggle. Delegating to 'toggle' event
       // because details/summary fires it natively, and this survives
       // re-renders since the event handler is re-bound each frame.
+      //
+      // Accordion mode: opening one card auto-collapses the others so the
+      // active card can claim the whole panel height. Spectators kept
+      // losing the bottom of the third card when 3 cards fought for the
+      // same vertical space, so we now trade "see three at once" for
+      // "see one fully". Collapsing a card simply leaves everything
+      // collapsed (user can re-open whichever they want next).
       card.addEventListener("toggle", () => {
         const ids = new Set(
           (localStorage.getItem("tw2k_collapsed_cards") || "").split(",").filter(Boolean)
         );
-        if (card.open) ids.delete(p.id);
-        else ids.add(p.id);
+        if (card.open) {
+          ids.delete(p.id);
+          for (const sibling of grid.querySelectorAll(".player-card[open]")) {
+            if (sibling === card) continue;
+            const sid = sibling.dataset.pid;
+            if (!sid) continue;
+            sibling.open = false;
+            ids.add(sid);
+          }
+          requestAnimationFrame(() => {
+            try {
+              card.scrollIntoView({ block: "start", behavior: "smooth" });
+            } catch { card.scrollIntoView(true); }
+          });
+        } else {
+          ids.add(p.id);
+        }
         localStorage.setItem("tw2k_collapsed_cards", Array.from(ids).join(","));
       });
       grid.appendChild(card);
@@ -3186,21 +3225,33 @@
         toggleFollow();
       }
     });
-    // Make player cards open the drawer on click. We use delegation off the
-    // players panel so we don't have to re-wire after every renderPlayers().
+    // Opening the detail drawer is now EXPLICIT — only the "⛶ Details"
+    // button in each commander summary (and the leaderboard rows + map
+    // player dots elsewhere) will pop the right-side drawer. Previously
+    // any body click also opened it, which covered the bottom of the
+    // player card with a tall drawer and made planets / trades
+    // unscrollable on shorter windows. Body-clicks now just set follow
+    // (pan the map camera to that commander) without shoving a drawer
+    // over the panel.
     const playersPanelEl = document.getElementById("panelPlayers");
     if (playersPanelEl) {
       playersPanelEl.addEventListener("click", (e) => {
-        // Summary clicks are reserved for native collapse/expand — don't
-        // also fire the drawer. Clicking anywhere in the body (stats,
-        // cargo bar, planets block, etc.) still opens the drawer and
-        // follows the commander, keeping the old shortcut.
+        const detailsBtn = e.target.closest("button[data-pc-details]");
+        if (detailsBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const pid = detailsBtn.getAttribute("data-pc-details");
+          if (pid) {
+            openDrawer("player", pid);
+            setFollow(pid);
+          }
+          return;
+        }
         if (e.target.closest("summary.player-card-summary")) return;
         const card = e.target.closest(".player-card[data-pid]");
         if (!card) return;
         const pid = card.dataset.pid;
         if (!pid) return;
-        openDrawer("player", pid);
         setFollow(pid);
       });
     }

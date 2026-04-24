@@ -59,6 +59,14 @@ def _ferrengi_by_name(universe: Universe, key: str):
 def _ferrengi_roam_and_hunt(universe: Universe) -> None:
     """Each living Ferrengi: maybe move 1 sector; if a player is co-located, attack."""
     rng = universe.rng
+    # Startup grace when everyone starts at StarDock — Ferrengi can still
+    # roam (keeps the event feed honest) but skip attacking for the first
+    # few days. Without this, a day-0 initial raider in a sector adjacent
+    # to StarDock routinely one-shots the first player who warps out.
+    grace_active = bool(
+        getattr(universe.config, "all_start_stardock", False)
+        and universe.day < K.FERRENGI_STARTUP_GRACE_DAYS
+    )
     for ferr in list(universe.ferrengi.values()):
         if not ferr.alive:
             continue
@@ -76,6 +84,9 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
                     payload={"id": ferr.id, "from": old_sid, "to": ferr.sector_id},
                     summary=f"Ferrengi {ferr.name} prowled {old_sid} → {ferr.sector_id}",
                 )
+        if grace_active:
+            # Roam is fine; no hunting during startup grace.
+            continue
         # Attack a player in the same sector if any
         victims = [
             p for p in universe.players.values()

@@ -162,6 +162,63 @@ def _cursor_system_prompt_for(observation_json: str) -> str:
             os.environ["TW2K_HINT_LEVEL"] = old
 
 
+def _cursor_wellknown_install_dirs() -> list[str]:
+    """Well-known install locations for the Cursor Agent CLI.
+
+    Used as a last-resort probe when the `agent` wrapper isn't on
+    `PATH` (common on Windows when the Cursor installer doesn't add
+    its script dir). Each returned path is the *base* install dir
+    that contains a ``versions/`` subfolder.
+    """
+    candidates: list[str] = []
+    if os.name == "nt":
+        for var in ("LOCALAPPDATA", "APPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)"):
+            root = os.environ.get(var)
+            if root:
+                candidates.append(os.path.join(root, "cursor-agent"))
+                candidates.append(os.path.join(root, "Programs", "cursor-agent"))
+    else:
+        home = os.path.expanduser("~")
+        candidates.extend(
+            [
+                os.path.join(home, ".local", "share", "cursor-agent"),
+                "/usr/local/share/cursor-agent",
+                "/opt/cursor-agent",
+            ]
+        )
+    seen: set[str] = set()
+    out: list[str] = []
+    for c in candidates:
+        if c and c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
+def _scan_versions_dir(base: str) -> tuple[str | None, str | None]:
+    """Find the newest ``(node_exe, index_js)`` pair under ``<base>/versions/``."""
+    versions_dir = os.path.join(base, "versions")
+    if not os.path.isdir(versions_dir):
+        return None, None
+    try:
+        entries = [
+            os.path.join(versions_dir, name)
+            for name in os.listdir(versions_dir)
+            if os.path.isdir(os.path.join(versions_dir, name))
+        ]
+    except OSError:
+        return None, None
+    # Version dir names are YYYY.MM.DD-commit — lexicographic sort
+    # correctly identifies the latest build.
+    entries.sort(reverse=True)
+    for ver in entries:
+        cand_node = os.path.join(ver, "node.exe" if os.name == "nt" else "node")
+        cand_js = os.path.join(ver, "index.js")
+        if os.path.isfile(cand_node) and os.path.isfile(cand_js):
+            return cand_node, cand_js
+    return None, None
+
+
 def _resolve_cursor_cli() -> tuple[str | None, str | None, str | None]:
     """Locate the Cursor Agent CLI entry points.
 
@@ -169,6 +226,14 @@ def _resolve_cursor_cli() -> tuple[str | None, str | None, str | None]:
     when non-None — invoking ``node.exe index.js ...`` bypasses the
     ``.cmd`` wrapper and its 8191-char `cmd.exe` command-line cap, which
     would otherwise break any real TW2K observation payload.
+
+    Resolution order:
+      1. ``TW2K_CURSOR_NODE`` + ``TW2K_CURSOR_JS`` env vars (explicit).
+      2. ``TW2K_CURSOR_CLI`` env var or ``shutil.which("agent")`` —
+         then scan its sibling ``versions/`` dir for the newest
+         ``node.exe`` + ``index.js``.
+      3. Well-known install dirs (``%LOCALAPPDATA%\\cursor-agent``, etc.)
+         — last-resort probe for when the wrapper isn't on PATH.
     """
     node = (os.environ.get("TW2K_CURSOR_NODE") or "").strip() or None
     js = (os.environ.get("TW2K_CURSOR_JS") or "").strip() or None
@@ -176,28 +241,19 @@ def _resolve_cursor_cli() -> tuple[str | None, str | None, str | None]:
         return node, js, None
 
     cli = (os.environ.get("TW2K_CURSOR_CLI") or "").strip() or shutil.which("agent")
-    if not cli:
-        return None, None, None
+    if cli:
+        base = os.path.dirname(cli)
+        cand_node, cand_js = _scan_versions_dir(base)
+        if cand_node and cand_js:
+            return cand_node, cand_js, cli
 
-    base = os.path.dirname(cli)
-    versions_dir = os.path.join(base, "versions")
-    if os.path.isdir(versions_dir):
-        try:
-            entries = [
-                os.path.join(versions_dir, name)
-                for name in os.listdir(versions_dir)
-                if os.path.isdir(os.path.join(versions_dir, name))
-            ]
-            # Version dir names are YYYY.MM.DD-commit — lexicographic sort
-            # correctly identifies the latest build.
-            entries.sort(reverse=True)
-            for ver in entries:
-                cand_node = os.path.join(ver, "node.exe")
-                cand_js = os.path.join(ver, "index.js")
-                if os.path.isfile(cand_node) and os.path.isfile(cand_js):
-                    return cand_node, cand_js, cli
-        except OSError:
-            pass
+    # Fallback: probe well-known install locations for machines where
+    # the `agent` wrapper isn't on PATH (common Windows case when the
+    # installer doesn't register its Scripts dir).
+    for base in _cursor_wellknown_install_dirs():
+        cand_node, cand_js = _scan_versions_dir(base)
+        if cand_node and cand_js:
+            return cand_node, cand_js, cli
     return None, None, cli
 
 
@@ -296,13 +352,25 @@ class LLMAgent(BaseAgent):
         except ValueError:
             env_cap = 0.0
         self.think_cap_s = think_cap_s if think_cap_s is not None else (env_cap or default_timeout)
-        if self.provider == "cursor":
+        # Per-provider override env vars let operators tune cold/slow models
+        # (tinybox qwen3.5:122b loves 600s, Grok-fast wants 90s) without
+        # touching the global TW2K_THINK_CAP_S which would punish everyone.
+        provider_env_map = {
+            "cursor": "TW2K_CURSOR_THINK_CAP_S",
+            "custom": "TW2K_CUSTOM_THINK_CAP_S",
+            "xai": "TW2K_XAI_THINK_CAP_S",
+            "anthropic": "TW2K_ANTHROPIC_THINK_CAP_S",
+            "openai": "TW2K_OPENAI_THINK_CAP_S",
+            "deepseek": "TW2K_DEEPSEEK_THINK_CAP_S",
+        }
+        env_name = provider_env_map.get(self.provider)
+        if env_name:
             try:
-                ccap = float(os.environ.get("TW2K_CURSOR_THINK_CAP_S", ""))
+                pcap = float(os.environ.get(env_name, ""))
             except ValueError:
-                ccap = 0.0
-            if ccap > 0:
-                self.think_cap_s = ccap
+                pcap = 0.0
+            if pcap > 0:
+                self.think_cap_s = pcap
         # Warmup timeout — how long we'll wait for a cold model to first respond.
         try:
             self.warmup_timeout_s = float(os.environ.get("TW2K_WARMUP_TIMEOUT_S", "900"))
@@ -312,6 +380,16 @@ class LLMAgent(BaseAgent):
         self._client = None
         self._consecutive_failures = 0
         self._warmed = False
+        # Set True on the first turn we hand off to the heuristic fallback.
+        # The runner reads-and-clears this so it can emit a one-shot
+        # agent_fallback event (operator visibility) instead of the
+        # spectator silently seeing heuristic-shaped thoughts from what
+        # was supposed to be an LLM slot.
+        self._just_fell_back = False
+        # Accumulates the last error string that triggered the fallback —
+        # surfaced in the fallback event's `reason` so it's clear *why*
+        # we gave up (timeout, CLI missing, auth, etc.).
+        self._last_fallback_reason: str = ""
         # Last provider-response diagnostics. Populated by every _call_* path
         # and consumed by act() when the parser fails so we can surface
         # finish_reason / content-vs-reasoning info in the agent thought
@@ -452,6 +530,30 @@ class LLMAgent(BaseAgent):
             raise RuntimeError(f"no OpenAI-compat client for provider {self.provider}")
         return self._client
 
+    # ---------- fallback bookkeeping ---------- #
+
+    def _mark_fallback(self, reason: str) -> None:
+        """Record that this agent has just switched to heuristic fallback.
+
+        The flag survives only until the runner consumes it via
+        `consume_fallback_reason()`. We truncate the reason so a multi-line
+        traceback doesn't bloat the event log.
+        """
+        self._just_fell_back = True
+        r = (reason or "").splitlines()[0] if reason else ""
+        self._last_fallback_reason = r[:240]
+
+    def consume_fallback_reason(self) -> str | None:
+        """One-shot: return fallback reason and clear the flag.
+
+        Returns None if the agent has not just fallen back since the
+        previous call. Idempotent thereafter.
+        """
+        if not self._just_fell_back:
+            return None
+        self._just_fell_back = False
+        return self._last_fallback_reason or "unknown"
+
     # ---------- act ---------- #
 
     async def act(self, obs: Observation) -> Action:
@@ -471,6 +573,7 @@ class LLMAgent(BaseAgent):
         except TimeoutError:
             self._consecutive_failures += 1
             if self._consecutive_failures >= 5:
+                self._mark_fallback(f"LLM timeout after {timeout:.0f}s (x5)")
                 return await self._fallback.act(obs)
             # Match 13 — early-warning thought at exactly 3 consecutive
             # timeouts so the spectator feed surfaces the problem BEFORE
@@ -491,6 +594,7 @@ class LLMAgent(BaseAgent):
         except Exception as exc:
             self._consecutive_failures += 1
             if self._consecutive_failures >= 5:
+                self._mark_fallback(f"{type(exc).__name__}: {exc}")
                 return await self._fallback.act(obs)
             return Action(kind=ActionKind.WAIT, thought=f"[LLM error] {type(exc).__name__}: {exc}")
 

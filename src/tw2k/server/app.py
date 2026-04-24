@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,36 @@ from .runner import AgentSpec, MatchRunner, MatchSpec
 # web/app.js BIG_MOMENT_KINDS so the two stay in lockstep. These are
 # the match-shaping events the UI highlight reel surfaces above the
 # normal filter buckets.
+# /history TTL cache. The web UI polls this endpoint aggressively (~1s
+# intervals per open browser tab per player card for sparkline data),
+# and history_snapshot() serializes the full per-player ring buffer —
+# ~240 samples * N players * 7 fields = ~1700 dict entries per call. A
+# ~300ms cache coalesces every bunched concurrent poll into one compute
+# without making the UI feel stale (sparklines tick once/sec at most).
+# Keyed by `(runner_id, limit)` so /play and /replay don't share entries.
+_HISTORY_CACHE_TTL_S = 0.3
+_history_cache: dict[tuple[int, int], tuple[float, dict[str, Any]]] = {}
+
+
+def _cached_history(runner, limit: int) -> dict[str, Any]:
+    key = (id(runner), int(limit))
+    now = time.monotonic()
+    hit = _history_cache.get(key)
+    if hit is not None and (now - hit[0]) < _HISTORY_CACHE_TTL_S:
+        return hit[1]
+    snap = runner.history_snapshot(limit=limit)
+    _history_cache[key] = (now, snap)
+    # Cheap GC: when the cache grows past ~32 keys, drop stale ones.
+    # Real cardinality is typically 2-4 (live match + maybe one replay),
+    # so this only fires in test suites / pathological scripts.
+    if len(_history_cache) > 32:
+        stale_cutoff = now - (_HISTORY_CACHE_TTL_S * 4)
+        for k, (ts, _v) in list(_history_cache.items()):
+            if ts < stale_cutoff:
+                _history_cache.pop(k, None)
+    return snap
+
+
 _HIGHLIGHT_EVENT_KINDS = {
     "player_eliminated",
     "ship_destroyed",
@@ -42,6 +73,9 @@ _HIGHLIGHT_EVENT_KINDS = {
     "corp_create",
     "game_over",
     "game_start",
+    # Operator-visibility signals — not strictly "match-shaping" but
+    # critical for spotting when a slot's LLM went dark mid-match.
+    "agent_fallback",
 }
 
 
@@ -219,8 +253,9 @@ def create_app(
         Phase 4 of the UI overhaul. Each sample carries credits / net_worth /
         fighters / shields / experience / alignment / sector_id so the client
         can render inline SVG sparklines on player cards and in the drawer.
+        Cached for ~300ms — see `_cached_history`.
         """
-        return runner.history_snapshot(limit=limit)
+        return _cached_history(runner, limit)
 
     @app.post("/control/pause")
     async def pause() -> dict[str, Any]:
@@ -926,7 +961,7 @@ def create_replay_app(replay_dir: Path, *, speed: float = 1.0) -> FastAPI:
 
     @app.get("/history")
     async def history(limit: int = 120) -> dict[str, Any]:
-        return runner.history_snapshot(limit=limit)
+        return _cached_history(runner, limit)
 
     @app.post("/control/pause")
     async def pause() -> dict[str, Any]:

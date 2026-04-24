@@ -620,14 +620,31 @@ def _ship_dict(ship) -> dict[str, Any]:
             avg = float(cargo_cost.get(c, 0.0) or 0.0)
             cost_avg[c.value] = round(avg)
             cost_total[c.value] = round(avg * qty)
+    # Fighter/shield capacity + headroom — without these the LLM had to
+    # mental-map ship_class → max-fighters tables, which Match-5 showed it
+    # can't do reliably (GrokFast kept submitting buy_equip fighters 500
+    # on a cargotran whose cap was 400; 4 rejected buys in 8 days).
+    # Surfacing `fighter_cap` / `fighter_headroom` as first-class fields
+    # gives the agent a direct "can I buy N more?" read.
+    from .constants import SHIP_SPECS  # local import to avoid cycle
+
+    spec = SHIP_SPECS.get(ship.ship_class.value, {}) or {}
+    fighter_cap = int(spec.get("max_fighters", 0) or 0)
+    shield_cap = int(spec.get("max_shields", 0) or 0)
+    cur_fighters = int(getattr(ship, "fighters", 0) or 0)
+    cur_shields = int(getattr(ship, "shields", 0) or 0)
     return {
         "class": ship.ship_class.value,
         "holds": ship.holds,
         "cargo": cargo_qty,
         "cargo_cost_avg": cost_avg,
         "cargo_value_at_cost": cost_total,
-        "fighters": ship.fighters,
-        "shields": ship.shields,
+        "fighters": cur_fighters,
+        "fighter_cap": fighter_cap,
+        "fighter_headroom": max(0, fighter_cap - cur_fighters),
+        "shields": cur_shields,
+        "shield_cap": shield_cap,
+        "shield_headroom": max(0, shield_cap - cur_shields),
         "mines": {m.value: ship.mines.get(m, 0) for m in ship.mines},
         "genesis": ship.genesis,
         "photon_missiles": getattr(ship, "photon_missiles", 0),
@@ -693,6 +710,37 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
 
 
 def _planet_brief(planet) -> dict[str, Any]:
+    from . import constants as K
+
+    colonist_totals = {c.value: planet.colonists.get(c, 0) for c in planet.colonists}
+    available_colonists = sum(colonist_totals.values())
+    # Next-level citadel build requirements — precomputed so LLMs don't
+    # have to memorize the (credit, colonist, days) cost tiers. Keeps
+    # GrokFast-class "build_citadel fails → agent keeps retrying" loops
+    # out of the action feed (Match-5 had 2 rejected L2 attempts in
+    # 3 turns because colonists hadn't accumulated yet).
+    cur_level = int(planet.citadel_level or 0)
+    cur_target = int(getattr(planet, "citadel_target", 0) or 0)
+    next_build: dict[str, Any] | None = None
+    if cur_level < K.CITADEL_LEVELS and cur_target <= cur_level:
+        nl = cur_level + 1
+        tier = K.CITADEL_TIER_COST[nl - 1]
+        cred_need, col_need, days = tier
+        blocker: str | None = None
+        if available_colonists < col_need:
+            blocker = (
+                f"colonists {available_colonists}/{col_need} on planet"
+            )
+        next_build = {
+            "level": nl,
+            "credits": cred_need,
+            "colonists": col_need,
+            "days": days,
+            "colonists_have": available_colonists,
+            "colonists_short": max(0, col_need - available_colonists),
+            "possible": blocker is None,
+            "blocker": blocker,
+        }
     return {
         "id": planet.id,
         "name": planet.name,
@@ -700,13 +748,15 @@ def _planet_brief(planet) -> dict[str, Any]:
         "owner_id": planet.owner_id,
         "corp_ticker": planet.corp_ticker,
         "citadel_level": planet.citadel_level,
-        "citadel_target": getattr(planet, "citadel_target", 0),
+        "citadel_target": cur_target,
         "citadel_complete_day": getattr(planet, "citadel_complete_day", None),
+        "citadel_next_build": next_build,
         "fighters": planet.fighters,
         "shields": planet.shields,
         "treasury": planet.treasury,
         "stockpile": {c.value: planet.stockpile.get(c, 0) for c in planet.stockpile},
-        "colonists": {c.value: planet.colonists.get(c, 0) for c in planet.colonists},
+        "colonists": colonist_totals,
+        "colonists_total": available_colonists,
     }
 
 

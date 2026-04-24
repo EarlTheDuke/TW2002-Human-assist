@@ -870,7 +870,30 @@ svg.spark { display: block; }
   flex-direction: column;
   gap: 6px;
   margin-top: 8px;
+  /* Hard cap relative to viewport. Three nested scroll containers
+     (panel-body > players-grid > planet-list) still left spectators
+     unable to reach the bottom of a tall expanded card when col-right
+     was resized wider. Giving the card body its OWN bounded scroll
+     guarantees everything in the card is reachable regardless of how
+     the surrounding panels are sized: cap at viewport minus header /
+     leaderboard / summary, and fall back to a sensible min. */
+  max-height: min(calc(100vh - 260px), 820px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 4px; /* keep content from hugging the scrollbar */
 }
+/* Make the inner scrollbar discoverable — same cyan affordance as the
+   outer players-grid so users know they can scroll inside the card. */
+.player-card-body::-webkit-scrollbar { width: 10px; }
+.player-card-body::-webkit-scrollbar-thumb {
+  background: rgba(110, 231, 255, 0.3);
+  border-radius: 5px;
+}
+.player-card-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(110, 231, 255, 0.55);
+}
+.player-card-body::-webkit-scrollbar-track { background: transparent; }
 /* Default <details>/<summary> marker is an ugly triangle; kill it and
    render our own caret in the summary background via ::before. */
 .player-card > summary {
@@ -931,6 +954,32 @@ svg.spark { display: block; }
 }
 .player-card:not([open]) .pc-sum-chip {
   background: rgba(100, 120, 160, 0.08);
+}
+/* Explicit "open detail drawer" button in each commander summary.
+   Drawer no longer pops open on any body click — spectators press this
+   affordance (or the leaderboard row / map dot) when they actually
+   want the tall VITALS+LOADOUT+MEMORY drawer. Keeps the panel usable
+   on shorter windows where the drawer used to cover the cards. */
+.pc-details-btn {
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(110, 231, 255, 0.12);
+  color: var(--accent, #6ee7ff);
+  border: 1px solid rgba(110, 231, 255, 0.35);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.3;
+  font-family: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.pc-details-btn:hover {
+  background: rgba(110, 231, 255, 0.22);
+  border-color: var(--accent, #6ee7ff);
+}
+.pc-details-btn:active {
+  background: rgba(110, 231, 255, 0.35);
 }
 
 .player-card::before {
@@ -1151,7 +1200,12 @@ svg.spark { display: block; }
   cursor: help;
 }
 
-/* ---------- Commander planets ---------- */
+/* ---------- Commander planets ----------
+   The planet-list used to have its own max-height + inner scroll, but
+   combined with the bounded player-card-body scroll it became nested
+   scrolling hell (wheel events stuck on the wrong container). The
+   player-card-body now owns the single card-level scroll container
+   and the planet-list just flows naturally inside it. */
 .planet-list {
   list-style: none;
   margin: 4px 0 0;
