@@ -318,21 +318,27 @@ def generate_universe(config: GameConfig) -> Universe:
 
 
 def _seed_initial_ferrengi(rng: random.Random, universe: Universe) -> None:
+    from .ferrengi import _scaled_ferrengi_stats
     from .models import FerrengiShip, ShipClass
 
     deep_start = max(K.FEDSPACE_SECTORS) + 1
     max_sid = universe.config.universe_size
-    for i in range(K.FERRENGI_INITIAL_SPAWN):
+    initial = K.FERRENGI_INITIAL_SPAWN
+    max_alive = getattr(universe.config, "ferrengi_max_alive", None)
+    if max_alive is not None:
+        initial = min(initial, max(0, int(max_alive)))
+    for i in range(initial):
         sid = rng.randint(deep_start, max_sid)
         aggr = rng.randint(2, K.FERRENGI_MAX_AGGRESSION)
         fid = f"ferr_d0_{i}_{sid}"
+        fighters, shields = _scaled_ferrengi_stats(universe, aggr)
         ship = FerrengiShip(
             id=fid,
             name=f"Ferrengi Raider {fid[-4:].upper()}",
             sector_id=sid,
             aggression=aggr,
-            fighters=100 + aggr * 300,
-            shields=aggr * 50,
+            fighters=fighters,
+            shields=shields,
             ship_class=ShipClass.BATTLESHIP if aggr >= 8 else ShipClass.MISSILE_FRIGATE,
         )
         universe.ferrengi[fid] = ship

@@ -24,20 +24,52 @@ from .combat import _resolve_ship_combat_attacker_npc
 from .models import EventKind, FerrengiShip, ShipClass, Universe
 
 
+def _ferrengi_strength_scale(universe: Universe) -> float:
+    """Return the spawn-time Ferrengi strength multiplier for the current day."""
+    ramp_days = max(0, int(getattr(universe.config, "ferrengi_strength_ramp_days", 0) or 0))
+    min_scale = float(
+        getattr(universe.config, "ferrengi_min_strength_scale", K.FERRENGI_MIN_STRENGTH_SCALE)
+    )
+    min_scale = max(0.0, min(1.0, min_scale))
+    if ramp_days <= 0:
+        return 1.0
+    progress = max(0.0, min(1.0, float(universe.day) / float(ramp_days)))
+    return min_scale + (1.0 - min_scale) * progress
+
+
+def _scaled_ferrengi_stats(universe: Universe, aggression: int) -> tuple[int, int]:
+    """Scale base Ferrengi fighters/shields by the configured day ramp."""
+    scale = _ferrengi_strength_scale(universe)
+    fighters = max(1, int((100 + aggression * 300) * scale))
+    shields = max(0, int(aggression * 50 * scale))
+    return fighters, shields
+
+
 def _spawn_ferrengi(universe: Universe) -> None:
     rng = universe.rng
+    per_day = max(0, int(getattr(universe.config, "ferrengi_per_day", 0) or 0))
+    max_alive = getattr(universe.config, "ferrengi_max_alive", None)
+    if max_alive is not None:
+        max_alive = max(0, int(max_alive))
+        alive = sum(1 for f in universe.ferrengi.values() if f.alive)
+        if alive >= max_alive:
+            return
+        per_day = min(per_day, max_alive - alive)
 
-    for _ in range(universe.config.ferrengi_per_day):
+    for i in range(per_day):
         sid = rng.randint(max(K.FEDSPACE_SECTORS) + 1, universe.config.universe_size)
         aggr = rng.randint(1, K.FERRENGI_MAX_AGGRESSION)
-        fid = f"ferr_{universe.day}_{sid}"
+        fid = f"ferr_{universe.day}_{i}_{sid}"
+        while fid in universe.ferrengi:
+            fid = f"ferr_{universe.day}_{i}_{sid}_{rng.randint(1, 9999)}"
+        fighters, shields = _scaled_ferrengi_stats(universe, aggr)
         ship = FerrengiShip(
             id=fid,
             name=f"Ferrengi Raider {fid[-4:].upper()}",
             sector_id=sid,
             aggression=aggr,
-            fighters=100 + aggr * 300,
-            shields=aggr * 50,
+            fighters=fighters,
+            shields=shields,
             ship_class=ShipClass.BATTLESHIP if aggr >= 8 else ShipClass.MISSILE_FRIGATE,
         )
         universe.ferrengi[fid] = ship
@@ -63,9 +95,14 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
     # roam (keeps the event feed honest) but skip attacking for the first
     # few days. Without this, a day-0 initial raider in a sector adjacent
     # to StarDock routinely one-shots the first player who warps out.
+    grace_days = getattr(universe.config, "ferrengi_grace_days", None)
+    if grace_days is None:
+        grace_days = K.FERRENGI_STARTUP_GRACE_DAYS
+    else:
+        grace_days = max(0, int(grace_days))
     grace_active = bool(
         getattr(universe.config, "all_start_stardock", False)
-        and universe.day < K.FERRENGI_STARTUP_GRACE_DAYS
+        and universe.day < grace_days
     )
     for ferr in list(universe.ferrengi.values()):
         if not ferr.alive:

@@ -20,7 +20,7 @@ from ..copilot.dashboards import build_price_table, build_route_table
 from ..copilot.registry import CopilotRegistry
 from ..copilot.standing_orders import StandingOrder
 from ..copilot.ui_agent import button_hints, suggest_next_move
-from ..engine import GameConfig, build_observation
+from ..engine import EventKind, GameConfig, build_observation
 from ..engine.actions import Action
 from .broadcaster import Broadcaster
 from .replay import ReplayRunner
@@ -68,6 +68,7 @@ _HIGHLIGHT_EVENT_KINDS = {
     "port_destroyed",
     "atomic_detonation",
     "citadel_complete",
+    "planet_tax_payout",
     "alliance_formed",
     "genesis_deployed",
     "corp_create",
@@ -76,6 +77,9 @@ _HIGHLIGHT_EVENT_KINDS = {
     # Operator-visibility signals — not strictly "match-shaping" but
     # critical for spotting when a slot's LLM went dark mid-match.
     "agent_fallback",
+    "operator_directive_set",
+    "operator_directive_cleared",
+    "operator_message",
 }
 
 
@@ -91,6 +95,18 @@ def _collect_highlights(runner, limit: int) -> list[dict]:
     if limit and len(out) > limit:
         out = out[-limit:]
     return out
+
+
+def _directive_state(player) -> dict[str, Any]:
+    return {
+        "player_id": player.id,
+        "player_name": player.name,
+        "kind": player.agent_kind,
+        "operator_directive": getattr(player, "operator_directive", "") or "",
+        "operator_directive_updated_day": getattr(player, "operator_directive_updated_day", None),
+        "operator_directive_updated_tick": getattr(player, "operator_directive_updated_tick", None),
+        "operator_dialogue": list(getattr(player, "operator_dialogue", []) or []),
+    }
 
 
 def _web_root() -> Path:
@@ -124,6 +140,12 @@ def create_app(
     action_delay_s: float | None = None,
     human_deadline_s: float | None = None,
     play_to_day_cap: bool = False,
+    enable_ferrengi: bool | None = None,
+    ferrengi_per_day: int | None = None,
+    ferrengi_max_alive: int | None = None,
+    ferrengi_grace_days: int | None = None,
+    ferrengi_strength_ramp_days: int | None = None,
+    ferrengi_min_strength_scale: float | None = None,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -159,6 +181,12 @@ def create_app(
                 action_delay_s=action_delay_s,
                 human_deadline_s=human_deadline_s,
                 play_to_day_cap=play_to_day_cap,
+                enable_ferrengi=enable_ferrengi,
+                ferrengi_per_day=ferrengi_per_day,
+                ferrengi_max_alive=ferrengi_max_alive,
+                ferrengi_grace_days=ferrengi_grace_days,
+                ferrengi_strength_ramp_days=ferrengi_strength_ramp_days,
+                ferrengi_min_strength_scale=ferrengi_min_strength_scale,
             )
             await runner.start(spec)
             # runner.start kicks off the scheduler loop in a background
@@ -234,6 +262,121 @@ def create_app(
         if tracker is None:
             return {"per_player": {}, "total": {"calls": 0, "cost_usd": 0.0}}
         return tracker.totals()
+
+    def _require_ai_directive_player(player_id: str):
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        if not player_id:
+            raise HTTPException(status_code=400, detail="missing player_id")
+        player = u.players.get(player_id)
+        if player is None:
+            raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+        if player.agent_kind != "llm":
+            raise HTTPException(status_code=409, detail=f"player {player_id} is not an autonomous LLM slot")
+        return u, player
+
+    async def _publish_operator_event(ev) -> None:
+        await broadcaster.publish({
+            "type": "event",
+            "event": ev.model_dump(),
+            "state_patch": runner._state_patch_for(ev),
+        })
+        events_fp = getattr(runner, "_events_fp", None)
+        if events_fp is not None:
+            try:
+                events_fp.write(json.dumps(ev.model_dump(mode="json"), default=str) + "\n")
+                events_fp.flush()
+            except OSError:
+                pass
+        if getattr(runner, "_last_published_seq", 0) < ev.seq:
+            runner._last_published_seq = ev.seq
+
+    @app.get("/api/ai-directives")
+    async def get_ai_directives(player_id: str | None = None) -> dict[str, Any]:
+        """Return current operator directive state for autonomous LLM players."""
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        players = list(u.players.values())
+        if player_id:
+            player = u.players.get(player_id)
+            if player is None:
+                raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+            players = [player]
+        return {
+            "players": [
+                _directive_state(p)
+                for p in players
+                if p.agent_kind == "llm" or player_id
+            ]
+        }
+
+    @app.post("/api/ai-directives")
+    async def set_ai_directive(body: dict[str, Any]) -> dict[str, Any]:
+        player_id = str(body.get("player_id") or "")
+        directive = body.get("directive")
+        if not isinstance(directive, str):
+            raise HTTPException(status_code=400, detail="missing directive")
+        u, player = _require_ai_directive_player(player_id)
+        stored = player.set_operator_directive(directive, day=u.day, tick=u.tick)
+        await runner._flush_events()
+        ev = u.emit(
+            EventKind.OPERATOR_DIRECTIVE_SET,
+            actor_id=player.id,
+            actor_kind="operator",
+            payload={"player_id": player.id, "directive": stored},
+            summary=f"Operator directive set for {player.name}",
+        )
+        await _publish_operator_event(ev)
+        return _directive_state(player)
+
+    @app.delete("/api/ai-directives")
+    async def clear_ai_directive(player_id: str) -> dict[str, Any]:
+        u, player = _require_ai_directive_player(player_id)
+        had_directive = bool(getattr(player, "operator_directive", "") or "")
+        player.clear_operator_directive(day=u.day, tick=u.tick)
+        await runner._flush_events()
+        ev = u.emit(
+            EventKind.OPERATOR_DIRECTIVE_CLEARED,
+            actor_id=player.id,
+            actor_kind="operator",
+            payload={"player_id": player.id, "had_directive": had_directive},
+            summary=f"Operator directive cleared for {player.name}",
+        )
+        await _publish_operator_event(ev)
+        return _directive_state(player)
+
+    @app.post("/api/ai-directives/chat")
+    async def chat_ai_directive(body: dict[str, Any]) -> dict[str, Any]:
+        player_id = str(body.get("player_id") or "")
+        message = body.get("message")
+        if not isinstance(message, str) or not message.strip():
+            raise HTTPException(status_code=400, detail="missing message")
+        u, player = _require_ai_directive_player(player_id)
+        entry = player.append_operator_dialogue(
+            role="operator",
+            message=message,
+            day=u.day,
+            tick=u.tick,
+        )
+        await runner._flush_events()
+        ev = u.emit(
+            EventKind.OPERATOR_MESSAGE,
+            actor_id=player.id,
+            actor_kind="operator",
+            payload={"player_id": player.id, "message": entry["message"]},
+            summary=f"Operator message queued for {player.name}",
+        )
+        await _publish_operator_event(ev)
+        return {
+            **_directive_state(player),
+            "operator_message": entry,
+            "ai_response": (
+                "Message stored. The AI will consider it on its next normal turn "
+                "and respond through thought, goals, and action."
+            ),
+        }
 
     @app.get("/highlights")
     async def highlights(limit: int = 200) -> dict[str, Any]:
@@ -762,6 +905,36 @@ def create_app(
                 if "play_to_day_cap" in body
                 else play_to_day_cap
             ),
+            enable_ferrengi=(
+                bool(body["enable_ferrengi"])
+                if "enable_ferrengi" in body
+                else enable_ferrengi
+            ),
+            ferrengi_per_day=(
+                int(body["ferrengi_per_day"])
+                if "ferrengi_per_day" in body
+                else ferrengi_per_day
+            ),
+            ferrengi_max_alive=(
+                int(body["ferrengi_max_alive"])
+                if "ferrengi_max_alive" in body and body["ferrengi_max_alive"] is not None
+                else ferrengi_max_alive
+            ),
+            ferrengi_grace_days=(
+                int(body["ferrengi_grace_days"])
+                if "ferrengi_grace_days" in body and body["ferrengi_grace_days"] is not None
+                else ferrengi_grace_days
+            ),
+            ferrengi_strength_ramp_days=(
+                int(body["ferrengi_strength_ramp_days"])
+                if "ferrengi_strength_ramp_days" in body and body["ferrengi_strength_ramp_days"] is not None
+                else ferrengi_strength_ramp_days
+            ),
+            ferrengi_min_strength_scale=(
+                float(body["ferrengi_min_strength_scale"])
+                if "ferrengi_min_strength_scale" in body and body["ferrengi_min_strength_scale"] is not None
+                else ferrengi_min_strength_scale
+            ),
         )
         await runner.start(spec)
         # Rebuild copilot sessions — old ones held references to the
@@ -827,6 +1000,12 @@ def _build_default_spec(
     action_delay_s: float | None = None,
     human_deadline_s: float | None = None,
     play_to_day_cap: bool = False,
+    enable_ferrengi: bool | None = None,
+    ferrengi_per_day: int | None = None,
+    ferrengi_max_alive: int | None = None,
+    ferrengi_grace_days: int | None = None,
+    ferrengi_strength_ramp_days: int | None = None,
+    ferrengi_min_strength_scale: float | None = None,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -856,6 +1035,18 @@ def _build_default_spec(
         cfg_kwargs["action_delay_s"] = action_delay_s
     if play_to_day_cap:
         cfg_kwargs["play_to_day_cap"] = True
+    if enable_ferrengi is not None:
+        cfg_kwargs["enable_ferrengi"] = bool(enable_ferrengi)
+    if ferrengi_per_day is not None:
+        cfg_kwargs["ferrengi_per_day"] = max(0, int(ferrengi_per_day))
+    if ferrengi_max_alive is not None:
+        cfg_kwargs["ferrengi_max_alive"] = max(0, int(ferrengi_max_alive))
+    if ferrengi_grace_days is not None:
+        cfg_kwargs["ferrengi_grace_days"] = max(0, int(ferrengi_grace_days))
+    if ferrengi_strength_ramp_days is not None:
+        cfg_kwargs["ferrengi_strength_ramp_days"] = max(0, int(ferrengi_strength_ramp_days))
+    if ferrengi_min_strength_scale is not None:
+        cfg_kwargs["ferrengi_min_strength_scale"] = max(0.0, min(1.0, float(ferrengi_min_strength_scale)))
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each

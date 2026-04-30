@@ -181,8 +181,10 @@ class EventKind(str, Enum):
     LIFTOFF = "liftoff"
     GENESIS_DEPLOYED = "genesis_deployed"
     ASSIGN_COLONISTS = "assign_colonists"
+    PLANET_CARGO_TRANSFER = "planet_cargo_transfer"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
+    PLANET_TAX_PAYOUT = "planet_tax_payout"
     BUY_SHIP = "buy_ship"
     BUY_EQUIP = "buy_equip"
     CORP_CREATE = "corp_create"
@@ -220,6 +222,11 @@ class EventKind(str, Enum):
     # instead of looking frozen. Payload: {"turns_today", "turns_per_day",
     # "sector_id"}. The scheduler then awaits HumanAgent.submit_action().
     HUMAN_TURN_START = "human_turn_start"
+    # Operator-facing controls for autonomous LLM players. These are out-of-band
+    # directives, not in-game hails or forced actions.
+    OPERATOR_DIRECTIVE_SET = "operator_directive_set"
+    OPERATOR_DIRECTIVE_CLEARED = "operator_directive_cleared"
+    OPERATOR_MESSAGE = "operator_message"
 
 
 # ---------------------------------------------------------------------------
@@ -321,6 +328,7 @@ class Planet(BaseModel):
     fighters: int = 0
     shields: int = 0
     treasury: int = 0
+    last_tax_value: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -403,6 +411,12 @@ class Player(BaseModel):
     goal_short: str = ""   # this turn + next ~2-3 (e.g. "finish trip, warp 267->181->487")
     goal_medium: str = ""  # next in-game day (e.g. "grind org pair to 45k, buy cargotran")
     goal_long: str = ""    # whole-match plan (e.g. "100M cr victory via 2 citadel L3 planets")
+    # Human operator steering for autonomous LLM slots. Empty directive means
+    # normal AI play; non-empty text is high-priority context on the next turn.
+    operator_directive: str = ""
+    operator_directive_updated_day: int | None = None
+    operator_directive_updated_tick: int | None = None
+    operator_dialogue: list[dict[str, Any]] = Field(default_factory=list)
     # Rolling ledger of this player's own trades — last 50 entries. Each is
     # a dict of {day, tick, sector_id, commodity, qty, side, unit, total,
     # realized_profit}. realized_profit is non-None only on `sell` and is the
@@ -437,6 +451,8 @@ class Player(BaseModel):
     # player is back to fighters >= 500 AND shields >= 1, at which point
     # the hint self-clears (see observation.py).
     last_death_day: int | None = None
+    last_death_sector: int | None = None
+    last_death_killer_id: str = ""
     last_death_fighters: int = 0
     last_death_reason: str = ""
 
@@ -444,6 +460,44 @@ class Player(BaseModel):
         # Ensure known_sectors is a set after Pydantic deserialization
         if isinstance(self.known_sectors, list):
             self.known_sectors = set(self.known_sectors)
+        self.operator_directive = _cap_text(self.operator_directive, K.OPERATOR_DIRECTIVE_MAX_CHARS)
+        self.operator_dialogue = [
+            _cap_operator_dialogue_entry(entry) for entry in (self.operator_dialogue or [])
+            if isinstance(entry, dict)
+        ][-K.OPERATOR_DIALOGUE_MAX_MESSAGES:]
+
+    def set_operator_directive(self, text: str, *, day: int, tick: int) -> str:
+        """Replace the active operator directive and return the stored text."""
+        self.operator_directive = _cap_text(text, K.OPERATOR_DIRECTIVE_MAX_CHARS)
+        self.operator_directive_updated_day = day
+        self.operator_directive_updated_tick = tick
+        return self.operator_directive
+
+    def clear_operator_directive(self, *, day: int, tick: int) -> None:
+        """Clear the active directive while retaining its last update timestamp."""
+        self.operator_directive = ""
+        self.operator_directive_updated_day = day
+        self.operator_directive_updated_tick = tick
+
+    def append_operator_dialogue(
+        self,
+        *,
+        role: str,
+        message: str,
+        day: int,
+        tick: int,
+    ) -> dict[str, Any]:
+        """Append one capped operator/AI planning note and trim history."""
+        entry = _cap_operator_dialogue_entry({
+            "role": role,
+            "message": message,
+            "day": day,
+            "tick": tick,
+        })
+        self.operator_dialogue.append(entry)
+        if len(self.operator_dialogue) > K.OPERATOR_DIALOGUE_MAX_MESSAGES:
+            self.operator_dialogue = self.operator_dialogue[-K.OPERATOR_DIALOGUE_MAX_MESSAGES:]
+        return entry
 
     @property
     def net_worth(self) -> int:
@@ -493,6 +547,26 @@ class Player(BaseModel):
             + self.ship.genesis * K.GENESIS_TORPEDO_COST
         )
         return self.credits + cargo_value + ship_value + equip_value
+
+
+def _cap_text(text: str | None, limit: int) -> str:
+    """Normalize and cap operator-controlled text before it reaches prompts."""
+    cleaned = " ".join(str(text or "").replace("\r", " ").split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: max(0, limit - 1)].rstrip() + "…"
+
+
+def _cap_operator_dialogue_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    role = str(entry.get("role") or "operator")
+    if role not in {"operator", "ai"}:
+        role = "operator"
+    return {
+        "role": role,
+        "message": _cap_text(entry.get("message"), K.OPERATOR_DIALOGUE_MESSAGE_MAX_CHARS),
+        "day": entry.get("day"),
+        "tick": entry.get("tick"),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -610,6 +684,13 @@ class GameConfig(BaseModel):
     corp_max_members: int = K.CORP_MAX_MEMBERS_DEFAULT
     planet_spawn_probability: float = 0.03
     ferrengi_per_day: int = K.FERRENGI_SPAWN_PER_DAY
+    # Evaluation-match knobs. Defaults preserve normal game behavior, while
+    # CLI/API callers can slow Ferrengi pressure enough for the economy arc to
+    # develop before NPC attrition crowns a winner.
+    ferrengi_max_alive: int | None = None
+    ferrengi_grace_days: int | None = None
+    ferrengi_strength_ramp_days: int = K.FERRENGI_STRENGTH_RAMP_DAYS
+    ferrengi_min_strength_scale: float = K.FERRENGI_MIN_STRENGTH_SCALE
     # If True, suppress the elimination and economic sudden-death wins so
     # the match always runs the full `max_days` and is decided by
     # `time_net_worth`. Useful for long watch-mode matches where the

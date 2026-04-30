@@ -147,6 +147,14 @@ STARTING_FIGHTERS = 20
 STARTING_HOLDS = 20
 STARTING_TURNS_PER_DAY = 1000
 
+# --- Operator directives ------------------------------------------------------
+
+# Human steering text is injected into LLM observations, so cap it at the model
+# boundary rather than letting UI/API callers grow prompt size without limit.
+OPERATOR_DIRECTIVE_MAX_CHARS = 1200
+OPERATOR_DIALOGUE_MESSAGE_MAX_CHARS = 600
+OPERATOR_DIALOGUE_MAX_MESSAGES = 8
+
 # --- Turn costs ---------------------------------------------------------------
 
 TURN_COST = {
@@ -217,6 +225,8 @@ GENESIS_SEED_COLONISTS = 2_500
 # Cheap enough that you can fully load a 20-hold merchant cruiser for 200 cr,
 # but the REAL cost is the turns spent ferrying them to a distant planet.
 COLONIST_PRICE = 10
+PLANET_VALUE_TAX_RATE = 0.30
+PLANET_VALUE_TAX_MIN_PAYOUT = 1
 PLANET_CLASS_WEIGHTS = {
     "M": 0.32, "K": 0.14, "L": 0.14, "O": 0.14,
     "H": 0.10, "U": 0.10, "C": 0.06,
@@ -279,6 +289,8 @@ FERRENGI_SPAWN_PER_DAY = 3
 # Pre-seed at match start so there's tension from day 1 instead of day 2.
 FERRENGI_INITIAL_SPAWN = 4
 FERRENGI_BOUNTY_PER_AGG = 1000
+FERRENGI_STRENGTH_RAMP_DAYS = 100
+FERRENGI_MIN_STRENGTH_SCALE = 0.25
 # Grace window (in-game days) during which Ferrengi will NOT engage
 # players when the match started everyone at StarDock. Without this,
 # an initial-spawn raider in sector 11 can jump a fresh cargotran on

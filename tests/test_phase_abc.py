@@ -183,6 +183,226 @@ class TestPhaseA:
         assert not res.ok
         assert "cargo" in (res.error or "").lower()
 
+    def test_a_planet_load_stockpile_to_ship_cargo(self):
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+
+        u, (a, *_) = _make_universe(seed=2101)
+        planet = Planet(
+            id=2101, sector_id=120, name="LoadFuel",
+            class_id=PlanetClass.M, owner_id=a.id,
+        )
+        planet.stockpile[Commodity.FUEL_ORE] = 50
+        u.planets[planet.id] = planet
+        u.sectors[120].planet_ids.append(planet.id)
+        a.sector_id = 120
+        a.planet_landed = planet.id
+        a.ship.cargo = {c: 0 for c in Commodity}
+        a.ship.cargo_cost = {c: 0.0 for c in Commodity}
+
+        res = apply_action(u, a.id, Action(
+            kind=ActionKind.LOAD_PLANET_CARGO,
+            args={"planet_id": planet.id, "commodity": "fuel_ore", "qty": 20},
+        ))
+
+        assert res.ok, res.error
+        assert planet.stockpile[Commodity.FUEL_ORE] == 30
+        assert a.ship.cargo[Commodity.FUEL_ORE] == 20
+        assert a.ship.cargo_cost[Commodity.FUEL_ORE] == 0.0
+        ev = next(e for e in u.events if e.kind == EventKind.PLANET_CARGO_TRANSFER)
+        assert ev.payload["direction"] == "load"
+        assert ev.payload["commodity"] == "fuel_ore"
+
+    def test_a_planet_dump_ship_cargo_to_stockpile(self):
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+
+        u, (a, *_) = _make_universe(seed=2102)
+        planet = Planet(
+            id=2102, sector_id=120, name="DumpEquipment",
+            class_id=PlanetClass.M, owner_id=a.id,
+        )
+        u.planets[planet.id] = planet
+        u.sectors[120].planet_ids.append(planet.id)
+        a.sector_id = 120
+        a.planet_landed = planet.id
+        a.ship.cargo[Commodity.EQUIPMENT] = 25
+        a.ship.cargo_cost[Commodity.EQUIPMENT] = 31.0
+
+        res = apply_action(u, a.id, Action(
+            kind=ActionKind.DUMP_PLANET_CARGO,
+            args={"planet_id": planet.id, "commodity": "equipment", "qty": 15},
+        ))
+
+        assert res.ok, res.error
+        assert planet.stockpile[Commodity.EQUIPMENT] == 15
+        assert a.ship.cargo[Commodity.EQUIPMENT] == 10
+        assert a.ship.cargo_cost[Commodity.EQUIPMENT] == 31.0
+        ev = next(e for e in u.events if e.kind == EventKind.PLANET_CARGO_TRANSFER)
+        assert ev.payload["direction"] == "dump"
+        assert ev.payload["commodity"] == "equipment"
+
+    def test_a_planet_load_and_dump_colonist_pools(self):
+        from tw2k.engine.models import Planet, PlanetClass
+
+        u, (a, *_) = _make_universe(seed=2103)
+        planet = Planet(
+            id=2103, sector_id=120, name="ColonistDepot",
+            class_id=PlanetClass.M, owner_id=a.id,
+        )
+        planet.colonists[Commodity.COLONISTS] = 100
+        u.planets[planet.id] = planet
+        u.sectors[120].planet_ids.append(planet.id)
+        a.sector_id = 120
+        a.planet_landed = planet.id
+        a.ship.cargo = {c: 0 for c in Commodity}
+
+        res = apply_action(u, a.id, Action(
+            kind=ActionKind.LOAD_PLANET_CARGO,
+            args={"planet_id": planet.id, "commodity": "colonists", "qty": 40},
+        ))
+        assert res.ok, res.error
+        assert planet.colonists[Commodity.COLONISTS] == 60
+        assert a.ship.cargo[Commodity.COLONISTS] == 40
+
+        res = apply_action(u, a.id, Action(
+            kind=ActionKind.DUMP_PLANET_CARGO,
+            args={
+                "planet_id": planet.id,
+                "commodity": "colonists",
+                "pool": "fuel_ore",
+                "qty": 25,
+            },
+        ))
+        assert res.ok, res.error
+        assert a.ship.cargo[Commodity.COLONISTS] == 15
+        assert planet.colonists[Commodity.FUEL_ORE] == 25
+
+    def test_a_planet_cargo_transfer_rejects_bad_state(self):
+        from tw2k.engine.models import Planet, PlanetClass
+
+        u, (a, b, *_) = _make_universe(seed=2104)
+        planet = Planet(
+            id=2104, sector_id=120, name="GuardedDepot",
+            class_id=PlanetClass.M, owner_id=a.id,
+        )
+        planet.stockpile[Commodity.FUEL_ORE] = 50
+        planet.colonists[Commodity.COLONISTS] = 50
+        u.planets[planet.id] = planet
+        u.sectors[120].planet_ids.append(planet.id)
+        a.sector_id = 120
+
+        not_landed = apply_action(u, a.id, Action(
+            kind=ActionKind.LOAD_PLANET_CARGO,
+            args={"planet_id": planet.id, "commodity": "fuel_ore", "qty": 1},
+        ))
+        assert not not_landed.ok
+        assert "landed" in (not_landed.error or "")
+
+        a.planet_landed = planet.id
+        a.ship.cargo[Commodity.EQUIPMENT] = a.ship.holds
+        full = apply_action(u, a.id, Action(
+            kind=ActionKind.LOAD_PLANET_CARGO,
+            args={"planet_id": planet.id, "commodity": "fuel_ore", "qty": 1},
+        ))
+        assert not full.ok
+        assert "cargo holds" in (full.error or "")
+        a.ship.cargo[Commodity.EQUIPMENT] = 0
+
+        bad_pool = apply_action(u, a.id, Action(
+            kind=ActionKind.LOAD_PLANET_CARGO,
+            args={
+                "planet_id": planet.id,
+                "commodity": "colonists",
+                "pool": "fighters",
+                "qty": 1,
+            },
+        ))
+        assert not bad_pool.ok
+        assert "pool" in (bad_pool.error or "")
+
+        bad_commodity = apply_action(u, a.id, Action(
+            kind=ActionKind.LOAD_PLANET_CARGO,
+            args={"planet_id": planet.id, "commodity": "fighters", "qty": 1},
+        ))
+        assert not bad_commodity.ok
+        assert "commodity" in (bad_commodity.error or "")
+
+        b.sector_id = 120
+        b.planet_landed = planet.id
+        not_owner = apply_action(u, b.id, Action(
+            kind=ActionKind.LOAD_PLANET_CARGO,
+            args={"planet_id": planet.id, "commodity": "fuel_ore", "qty": 1},
+        ))
+        assert not not_owner.ok
+        assert "not owned" in (not_owner.error or "")
+
+    def test_a_assign_colonists_behavior_unchanged_after_cargo_actions(self):
+        from tw2k.engine.models import Planet, PlanetClass
+
+        u, (a, *_) = _make_universe(seed=2105)
+        planet = Planet(
+            id=2105, sector_id=120, name="LaborPools",
+            class_id=PlanetClass.M, owner_id=a.id,
+        )
+        planet.colonists[Commodity.FUEL_ORE] = 10
+        u.planets[planet.id] = planet
+        u.sectors[120].planet_ids.append(planet.id)
+        a.sector_id = 120
+        a.planet_landed = planet.id
+
+        res = apply_action(u, a.id, Action(
+            kind=ActionKind.ASSIGN_COLONISTS,
+            args={"planet_id": planet.id, "from": "fuel_ore", "to": "ship", "qty": 5},
+        ))
+
+        assert res.ok, res.error
+        assert planet.colonists[Commodity.FUEL_ORE] == 5
+        assert a.ship.cargo[Commodity.COLONISTS] == 5
+        assert a.ship.cargo[Commodity.FUEL_ORE] == 0
+
+    def test_a_planet_stockpile_can_be_loaded_and_sold_at_port(self):
+        from tw2k.engine.models import Planet, PlanetClass, Port, PortClass, PortStock
+
+        u, (a, *_) = _make_universe(seed=2106)
+        planet = Planet(
+            id=2106, sector_id=120, name="SellDepot",
+            class_id=PlanetClass.M, owner_id=a.id,
+        )
+        planet.stockpile[Commodity.FUEL_ORE] = 20
+        u.planets[planet.id] = planet
+        u.sectors[120].planet_ids.append(planet.id)
+        u.sectors[120].warps = [121]
+        u.sectors[121].warps = [120]
+        u.sectors[121].port = Port(
+            class_id=PortClass.CLASS_1_BSS,
+            stock={
+                Commodity.FUEL_ORE: PortStock(current=0, maximum=1_000),
+                Commodity.ORGANICS: PortStock(current=1_000, maximum=1_000),
+                Commodity.EQUIPMENT: PortStock(current=1_000, maximum=1_000),
+            },
+        )
+        a.sector_id = 120
+        a.planet_landed = planet.id
+        a.ship.cargo = {c: 0 for c in Commodity}
+        a.credits = 1_000
+
+        load = apply_action(u, a.id, Action(
+            kind=ActionKind.LOAD_PLANET_CARGO,
+            args={"planet_id": planet.id, "commodity": "fuel_ore", "qty": 20},
+        ))
+        assert load.ok, load.error
+        liftoff = apply_action(u, a.id, Action(kind=ActionKind.LIFTOFF))
+        assert liftoff.ok, liftoff.error
+        warp = apply_action(u, a.id, Action(kind=ActionKind.WARP, args={"target": 121}))
+        assert warp.ok, warp.error
+        sell = apply_action(u, a.id, Action(
+            kind=ActionKind.TRADE,
+            args={"commodity": "fuel_ore", "qty": 20, "side": "sell"},
+        ))
+
+        assert sell.ok, sell.error
+        assert a.ship.cargo[Commodity.FUEL_ORE] == 0
+        assert a.credits > 1_000
+
     def test_a_genesis_seeds_population_enough_for_l1_citadel(self):
         """Regression guard: fresh Genesis planet must ship with enough
         founding colonists to immediately build Citadel L1 (1,000 colonists)
@@ -676,6 +896,23 @@ class TestPhaseEGoals:
         assert act is not None
         assert act.kind.value == "warp"
         assert act.args.get("to") == 42
+
+    def test_e1_llm_parser_recovers_complete_action_from_truncated_json(self):
+        """qwen-style length truncation often cuts off scratchpad/goals after
+        a complete nested action object. Recover only that safe action rather
+        than burning the turn as a parse-error WAIT."""
+        from tw2k.agents.llm import _parse_response
+
+        raw = (
+            '{"thought":"long analysis begins",'
+            '"action":{"kind":"warp","args":{"to":42}},'
+            '"scratchpad_update":"this string gets truncated before closing'
+        )
+        act = _parse_response(raw)
+        assert act is not None
+        assert act.kind == ActionKind.WARP
+        assert act.args.get("to") == 42
+        assert "recovered partial JSON" in act.thought
 
     def test_e1_llm_parser_omitted_goal_stays_none(self):
         """None means 'don't touch the stored goal'. An omitted field must
@@ -1272,6 +1509,176 @@ class TestPhaseGObservationSurface:
         assert "net_worth_planets" in ev.payload
         assert ev.payload["net_worth_planets"] > 0, "b owned a planet, should show on split"
 
+    def test_g9_planet_growth_tax_pays_owner_on_new_value(self):
+        """Daily planet value gains should produce liquid credits for the owner."""
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+        from tw2k.engine.runner import _planet_asset_value
+
+        u, (a, *_) = _make_universe(seed=5105)
+        a.credits = 1_000
+        planet = Planet(
+            id=801,
+            sector_id=120,
+            name="DividendMine",
+            class_id=PlanetClass.H,
+            owner_id=a.id,
+        )
+        planet.colonists[Commodity.FUEL_ORE] = 1_000
+        planet.last_tax_value = _planet_asset_value(planet)
+        u.planets[planet.id] = planet
+
+        tick_day(u)
+
+        # H-class fuel production: int(1000 * 8 / 100) = 80 fuel ore.
+        # Stockpile value delta: 80 * 18 = 1440. 30% payout = 432cr.
+        assert a.credits == 1_432
+        ev = next(e for e in u.events if e.kind == EventKind.PLANET_TAX_PAYOUT)
+        assert ev.payload["planet_id"] == planet.id
+        assert ev.payload["gain"] == 1_440
+        assert ev.payload["payout"] == 432
+        assert planet.last_tax_value == _planet_asset_value(planet)
+
+    def test_g10_planet_growth_tax_ignores_unowned_planets(self):
+        """Neutral/orphaned planets can grow, but no player should receive credits."""
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+        from tw2k.engine.runner import _planet_asset_value
+
+        u, (a, *_) = _make_universe(seed=5106)
+        a.credits = 1_000
+        planet = Planet(
+            id=802,
+            sector_id=121,
+            name="NeutralMine",
+            class_id=PlanetClass.H,
+            owner_id=None,
+        )
+        planet.colonists[Commodity.FUEL_ORE] = 1_000
+        planet.last_tax_value = _planet_asset_value(planet)
+        u.planets[planet.id] = planet
+
+        tick_day(u)
+
+        assert a.credits == 1_000
+        assert not any(e.kind == EventKind.PLANET_TAX_PAYOUT for e in u.events)
+        assert planet.last_tax_value == _planet_asset_value(planet)
+
+    def test_g11_genesis_seed_value_does_not_pay_immediately(self):
+        """Genesis baseline is initialized after seed colonists/stockpile."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.planets import _pay_planet_value_tax
+        from tw2k.engine.runner import _planet_asset_value
+
+        u, (a, *_) = _make_universe(seed=5107)
+        a.credits = 100_000
+        a.ship.genesis = 1
+        a.sector_id = _first_non_fed_sector(u)
+        res = apply_action(u, a.id, Action(kind=ActionKind.DEPLOY_GENESIS))
+        assert res.ok, res.error
+        planet = max(u.planets.values(), key=lambda p: p.id)
+        assert planet.last_tax_value == _planet_asset_value(planet)
+
+        before = a.credits
+        _pay_planet_value_tax(u)
+
+        assert a.credits == before
+        assert not any(e.kind == EventKind.PLANET_TAX_PAYOUT for e in u.events)
+
+    def test_g12_citadel_completion_tax_pays_once(self):
+        """Citadel completion value can pay once, but old value must not repeat."""
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+        from tw2k.engine.runner import _planet_asset_value
+
+        u, (a, *_) = _make_universe(seed=5108)
+        a.credits = 10_000
+        planet = Planet(
+            id=803,
+            sector_id=122,
+            name="CitadelDividend",
+            class_id=PlanetClass.M,
+            owner_id=a.id,
+            citadel_level=1,
+            citadel_target=2,
+            citadel_complete_day=u.day + 1,
+        )
+        planet.last_tax_value = _planet_asset_value(planet)
+        u.planets[planet.id] = planet
+
+        tick_day(u)
+        after_first = a.credits
+        payout_events = [e for e in u.events if e.kind == EventKind.PLANET_TAX_PAYOUT]
+        assert len(payout_events) == 1
+        assert payout_events[0].payload["payout"] > 0
+
+        tick_day(u)
+        assert a.credits == after_first
+        payout_events = [e for e in u.events if e.kind == EventKind.PLANET_TAX_PAYOUT]
+        assert len(payout_events) == 1
+
+    def test_g13_claim_orphan_resets_tax_baseline(self):
+        """A claimant should not receive a windfall for inherited old value."""
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+        from tw2k.engine.planets import _pay_planet_value_tax
+        from tw2k.engine.runner import _planet_asset_value
+
+        u, (a, _b, *_rest) = _make_universe(seed=5109)
+        a.credits = 1_000
+        sector_id = 123
+        planet = Planet(
+            id=804,
+            sector_id=sector_id,
+            name="InheritedDividend",
+            class_id=PlanetClass.M,
+            owner_id=None,
+            citadel_level=2,
+            fighters=2_000,
+            shields=500,
+        )
+        u.planets[planet.id] = planet
+        u.sectors[sector_id].planet_ids.append(planet.id)
+        u.emit(
+            EventKind.PLANET_ORPHANED,
+            actor_id="B",
+            sector_id=sector_id,
+            payload={"planet_id": planet.id},
+        )
+        a.sector_id = sector_id
+        a.planet_landed = planet.id
+
+        res = apply_action(u, a.id, Action(kind=ActionKind.CLAIM_PLANET))
+        assert res.ok, res.error
+        assert planet.last_tax_value == _planet_asset_value(planet)
+
+        _pay_planet_value_tax(u)
+
+        assert a.credits == 1_000
+        assert not any(e.kind == EventKind.PLANET_TAX_PAYOUT for e in u.events)
+
+    def test_g14_negative_planet_value_gain_updates_baseline_without_payout(self):
+        """Damage/loss should not pay credits, but future growth can recover."""
+        from tw2k.engine.models import EventKind, Planet, PlanetClass
+        from tw2k.engine.planets import _pay_planet_value_tax
+        from tw2k.engine.runner import _planet_asset_value
+
+        u, (a, *_) = _make_universe(seed=5110)
+        a.credits = 1_000
+        planet = Planet(
+            id=805,
+            sector_id=124,
+            name="DamagedDividend",
+            class_id=PlanetClass.M,
+            owner_id=a.id,
+            fighters=100,
+        )
+        current = _planet_asset_value(planet)
+        planet.last_tax_value = current + 10_000
+        u.planets[planet.id] = planet
+
+        _pay_planet_value_tax(u)
+
+        assert a.credits == 1_000
+        assert planet.last_tax_value == current
+        assert not any(e.kind == EventKind.PLANET_TAX_PAYOUT for e in u.events)
+
     def test_g4_user_message_self_has_net_worth_and_survival(self):
         """self.net_worth, self.alive, self.deaths, self.max_deaths all
         ship. Without net_worth the agent had to parse a number out of
@@ -1445,6 +1852,27 @@ class TestPhaseJEarlyCombat:
                 f"must be deep space only (otherwise Federation would wipe them)."
             )
 
+    def test_j2b_initial_ferrengi_respects_alive_cap(self):
+        cfg = GameConfig(seed=9102, universe_size=200, ferrengi_max_alive=2)
+        u = generate_universe(cfg)
+        assert len([f for f in u.ferrengi.values() if f.alive]) == 2
+
+    def test_j2c_daily_ferrengi_spawn_respects_alive_cap(self):
+        from tw2k.engine.ferrengi import _spawn_ferrengi
+
+        cfg = GameConfig(
+            seed=9103,
+            universe_size=200,
+            ferrengi_per_day=3,
+            ferrengi_max_alive=5,
+        )
+        u = generate_universe(cfg)
+        assert len([f for f in u.ferrengi.values() if f.alive]) == 4
+        _spawn_ferrengi(u)
+        assert len([f for f in u.ferrengi.values() if f.alive]) == 5
+        _spawn_ferrengi(u)
+        assert len([f for f in u.ferrengi.values() if f.alive]) == 5
+
     def test_j3_hunt_threshold_lowered(self):
         """Lowering the threshold from 4 to 3 means aggression levels 3-10
         will hunt (8 of 10 levels) instead of 4-10 (7 of 10) — roughly
@@ -1587,6 +2015,113 @@ class TestPhaseLHintsAndSafety:
         # Must NOT use coercive language
         assert "MUST buy" not in hint
         assert "REQUIRED" not in hint
+
+    def test_l4a_death_intel_marks_hot_route_without_forcing_response(self):
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=9301)
+        try:
+            u.sectors[a.sector_id].occupant_ids.remove(a.id)
+        except ValueError:
+            pass
+        a.sector_id = 50
+        u.sectors[50].occupant_ids.append(a.id)
+        a.ship.fighters = 0
+
+        _destroy_ship(u, "A", reason="ferrengi", killer_id="ferr_test")
+
+        death_event = u.events[-1]
+        assert death_event.sector_id == 50
+        assert death_event.payload["death_sector"] == 50
+        obs = build_observation(u, "A")
+        hint = obs.action_hint
+        assert "ROUTE RISK" in hint
+        assert "sector 50" in hint
+        assert "ferr_test" in hint
+        assert "reroute" in hint
+        assert "hunt the threat" in hint
+
+    def test_l4a_repeat_death_intel_escalates_on_last_life(self):
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=9301)
+        for _ in range(2):
+            try:
+                u.sectors[a.sector_id].occupant_ids.remove(a.id)
+            except ValueError:
+                pass
+            a.sector_id = 50
+            u.sectors[50].occupant_ids.append(a.id)
+            a.ship.fighters = 0
+            _destroy_ship(u, "A", reason="ferrengi", killer_id="ferr_test")
+
+        obs = build_observation(u, "A")
+        hint = obs.action_hint
+        assert "LAST-LIFE RISK" in hint
+        assert "2 deaths in sector 50" in hint
+        assert "2 deaths to ferr_test" in hint
+
+    def test_l4b_action_hint_shows_trade_precheck_max_quantities(self):
+        from tw2k.engine.observation import _action_hint
+
+        _u, (a, *_) = _make_universe(seed=9301)
+        a.credits = 100
+        a.ship.holds = 20
+        sec_info = {
+            "id": 50,
+            "warps_out": [51],
+            "port": {
+                "buys": [],
+                "sells": ["organics"],
+                "stock": {
+                    "organics": {
+                        "current": 100,
+                        "max": 2500,
+                        "price": 10,
+                        "side": "sells_to_player",
+                    }
+                },
+            },
+        }
+        hint = _action_hint(sec_info, player=a, owned_planets=[])
+        assert "TRADE PRECHECK" in hint
+        assert "buy 10 organics" in hint
+        assert "max=min" in hint
+
+    def test_l4c_stardock_hint_uses_valid_plural_equipment_names(self):
+        from tw2k.engine.observation import _action_hint
+
+        _u, (a, *_) = _make_universe(seed=9301)
+        a.sector_id = K.STARDOCK_SECTOR
+        a.credits = 100_000
+        hint = _action_hint({"id": K.STARDOCK_SECTOR, "warps_out": [2]}, player=a, owned_planets=[])
+        assert "photon_missiles" in hint
+        assert "ether_probes" in hint
+        assert "photon_missile/" not in hint
+
+    def test_l4d_landed_citadel_hint_shows_blocker_counts(self):
+        from tw2k.engine.observation import _action_hint
+
+        _u, (a, *_) = _make_universe(seed=9301)
+        a.planet_landed = 7
+        owned = [{
+            "id": 7,
+            "sector_id": a.sector_id,
+            "citadel_level": 1,
+            "citadel_target": 1,
+            "citadel_next_build": {
+                "level": 2,
+                "credits": 10_000,
+                "colonists": 2_000,
+                "colonists_have": 145,
+                "colonists_short": 1_855,
+                "blocker": "colonists 145/2000 on planet",
+            },
+        }]
+        hint = _action_hint({"id": a.sector_id, "warps_out": [2]}, player=a, owned_planets=owned)
+        assert "L2 precheck" in hint
+        assert "have 145" in hint
+        assert "short 1855" in hint
 
     def test_l5_hint_zero_fighters_in_deep_space(self):
         """Deep-space phrasing emphasizes imminent danger; still informational."""
@@ -2489,8 +3024,9 @@ class TestPhaseOMatch13:
         assert "YOU JUST DIED" not in obs2.action_hint
 
     def test_o2_claim_planet_transfers_orphan(self):
-        """Core happy-path: B lands on an orphan created by A's elimination
-        and claims it. owner_id flips to B, PLANET_CLAIMED event fires."""
+        """Core happy-path: B lands on a true orphan created by A's
+        elimination, then explicitly claims it. owner_id flips to B,
+        PLANET_CLAIMED event fires."""
         from tw2k.engine.models import EventKind, Planet, PlanetClass
 
         u, (a, b, *_) = _make_universe(seed=1302, players=3)
@@ -2507,11 +3043,16 @@ class TestPhaseOMatch13:
             pytest.skip("seed didn't yield sector 150")
         _destroy_ship(u, a.id, reason="test", killer_id=None)
         assert orphan.owner_id is None  # now an orphan
-        # B warps to 150, lands, claims.
+        # B warps to 150, lands, claims. True orphans should NOT auto-claim
+        # on land; claim_planet is the explicit inheritance step.
         b.sector_id = 150
         u.sectors[150].occupant_ids.append(b.id)
-        b.planet_landed = 501
         b.turns_today = 0
+        land = apply_action(u, b.id, Action(kind=ActionKind.LAND_PLANET, args={"planet_id": 501}))
+        assert land.ok, land.error
+        assert orphan.owner_id is None
+        assert b.planet_landed == 501
+
         res = apply_action(u, b.id, Action(kind=ActionKind.CLAIM_PLANET))
         assert res.ok, res.error
         assert u.planets[501].owner_id == b.id
@@ -2519,6 +3060,39 @@ class TestPhaseOMatch13:
         claimed_ev = [e for e in u.events if e.kind == EventKind.PLANET_CLAIMED]
         assert len(claimed_ev) == 1
         assert claimed_ev[0].payload["planet_id"] == 501
+
+    def test_o2b_neutral_planets_auto_claim_and_are_not_orphans(self):
+        """Startup neutral planets are empty map objects, not inherited
+        player holdings. Landing claims them, and observations must not
+        list them as orphaned_planets."""
+        from tw2k.engine.models import Planet, PlanetClass
+        from tw2k.engine.observation import build_observation
+
+        u, (a, *_) = _make_universe(seed=1312)
+        neutral = Planet(
+            id=502, sector_id=150, name="NeutralEmpty",
+            class_id=PlanetClass.K, owner_id=None, citadel_level=0,
+            fighters=0,
+        )
+        u.planets[502] = neutral
+        if 150 not in u.sectors:
+            pytest.skip("seed didn't yield sector 150")
+        u.sectors[150].planet_ids.append(502)
+        a.sector_id = 150
+        u.sectors[150].occupant_ids.append(a.id)
+
+        obs_before = build_observation(u, a.id)
+        assert obs_before.orphaned_planets == []
+
+        land = apply_action(u, a.id, Action(kind=ActionKind.LAND_PLANET, args={"planet_id": 502}))
+        assert land.ok, land.error
+        assert neutral.owner_id == a.id
+        assert a.planet_landed == 502
+
+        claim = apply_action(u, a.id, Action(kind=ActionKind.CLAIM_PLANET))
+        assert not claim.ok
+        assert claim.turns_spent == 0
+        assert "already owned" in (claim.error or "").lower()
 
     def test_o3_claim_planet_not_landed_is_free(self):
         """Attempting claim_planet without being landed must NOT charge

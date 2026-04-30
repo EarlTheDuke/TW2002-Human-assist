@@ -185,6 +185,36 @@ def serve(
             "players have symmetric mobility from StarDock."
         ),
     ),
+    no_ferrengi: bool = typer.Option(
+        False,
+        "--no-ferrengi",
+        help="Disable Ferrengi NPC raiders for this match.",
+    ),
+    ferrengi_per_day: int | None = typer.Option(
+        None,
+        "--ferrengi-per-day",
+        help="Override Ferrengi raiders spawned per in-game day. Use 1 for evaluation matches.",
+    ),
+    ferrengi_max_alive: int | None = typer.Option(
+        None,
+        "--ferrengi-max-alive",
+        help="Cap active Ferrengi raiders. Use ~24 for long evaluation matches.",
+    ),
+    ferrengi_grace_days: int | None = typer.Option(
+        None,
+        "--ferrengi-grace-days",
+        help="Override no-attack startup grace when all players start at StarDock.",
+    ),
+    ferrengi_strength_ramp_days: int | None = typer.Option(
+        None,
+        "--ferrengi-strength-ramp-days",
+        help="In-game days for new Ferrengi spawns to reach full fighter/shield strength.",
+    ),
+    ferrengi_min_strength_scale: float | None = typer.Option(
+        None,
+        "--ferrengi-min-strength-scale",
+        help="Starting Ferrengi strength multiplier before the ramp, e.g. 0.25 for 25%.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -257,6 +287,23 @@ def serve(
         console.print(f"[cyan]One-way warp fraction:[/] {_owf:.2f}  [dim]({_owf_note})[/]")
     pcap = "ON (time_net_worth only)" if play_to_day_cap else "OFF (early wins allowed)"
     console.print(f"[cyan]Play to day cap:[/] {pcap}")
+    if no_ferrengi:
+        console.print("[cyan]Ferrengi:[/] OFF")
+    elif (
+        ferrengi_per_day is not None
+        or ferrengi_max_alive is not None
+        or ferrengi_grace_days is not None
+        or ferrengi_strength_ramp_days is not None
+        or ferrengi_min_strength_scale is not None
+    ):
+        console.print(
+            "[cyan]Ferrengi:[/] "
+            f"per_day={ferrengi_per_day if ferrengi_per_day is not None else 'default'} "
+            f"max_alive={ferrengi_max_alive if ferrengi_max_alive is not None else 'uncapped'} "
+            f"grace_days={ferrengi_grace_days if ferrengi_grace_days is not None else 'default'} "
+            f"ramp_days={ferrengi_strength_ramp_days if ferrengi_strength_ramp_days is not None else 'default'} "
+            f"min_scale={ferrengi_min_strength_scale if ferrengi_min_strength_scale is not None else 'default'}"
+        )
     _hl = (_os.environ.get("TW2K_HINT_LEVEL") or "full").strip().lower()
     if _hl not in ("full", "minimal"):
         _hl = "full"
@@ -331,6 +378,12 @@ def serve(
         action_delay_s=action_delay_s,
         human_deadline_s=human_deadline_s,
         play_to_day_cap=play_to_day_cap,
+        enable_ferrengi=False if no_ferrengi else None,
+        ferrengi_per_day=ferrengi_per_day,
+        ferrengi_max_alive=ferrengi_max_alive,
+        ferrengi_grace_days=ferrengi_grace_days,
+        ferrengi_strength_ramp_days=ferrengi_strength_ramp_days,
+        ferrengi_min_strength_scale=ferrengi_min_strength_scale,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 
