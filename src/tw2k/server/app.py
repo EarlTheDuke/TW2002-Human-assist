@@ -217,6 +217,11 @@ def create_app(
     app.state.broadcaster = broadcaster
     app.state.copilot_registry = copilot_registry
 
+    # External (Grok Bot) seats — token-authenticated loopback REST.
+    from .harness import build_harness_router
+
+    app.include_router(build_harness_router(runner))
+
     # Static files
     app.mount("/static", StaticFiles(directory=str(web_root)), name="static")
 

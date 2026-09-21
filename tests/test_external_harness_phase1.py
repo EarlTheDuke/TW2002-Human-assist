@@ -314,3 +314,205 @@ def test_09_meta_json_records_kind_but_never_token(tmp_path: Path) -> None:
     assert kinds["P2"] == "external"
     assert "secret-token-2222222222" not in meta_text
     assert not any("token" in k.lower() for a in meta["agents"] for k in a)
+
+
+# ---------------------------------------------------------------------------
+# 10–14, 16. HTTP surface
+# ---------------------------------------------------------------------------
+
+TOK2 = "secret-token-2222222222"
+TOK3 = "secret-token-3333333333"
+
+
+def _http_spec(external_timeout_s: float = 30.0) -> MatchSpec:
+    cfg = GameConfig(
+        seed=42,
+        universe_size=60,
+        max_days=2,
+        turns_per_day=12,
+        starting_credits=25_000,
+        enable_ferrengi=False,
+        enable_planets=False,
+        action_delay_s=0.0,
+    )
+    return MatchSpec(
+        config=cfg,
+        agents=[
+            AgentSpec(player_id="P1", name="HBot", kind="heuristic"),
+            AgentSpec(player_id="P2", name="GrokBot2", kind="external", external_token=TOK2),
+            AgentSpec(player_id="P3", name="GrokBot3", kind="external", external_token=TOK3),
+        ],
+        action_delay_s=0.0,
+        external_timeout_s=external_timeout_s,
+    )
+
+
+def _app_and_client(tmp_path: Path, *, client_host: str = "127.0.0.1"):
+    import httpx
+
+    from tw2k.server.app import create_app
+
+    app = create_app(auto_start=False)
+    app.state.runner._saves_root = tmp_path / "saves"
+    transport = httpx.ASGITransport(app=app, client=(client_host, 5555))
+    client = httpx.AsyncClient(transport=transport, base_url="http://harness.test")
+    return app, client
+
+
+def _auth(tok: str) -> dict[str, str]:
+    return {"authorization": f"Bearer {tok}"}
+
+
+def test_10_auth_matrix(tmp_path: Path) -> None:
+    app, client = _app_and_client(tmp_path)
+    runner = app.state.runner
+
+    async def _go() -> None:
+        # Before any match: 503 even with a token-looking header.
+        r = await client.get("/harness/v1/P2/status", headers=_auth(TOK2))
+        assert r.status_code == 503
+
+        await runner.start(_http_spec())
+        assert await _wait_until(lambda: bool(runner.state.agents) and runner.state.universe is not None)
+
+        r = await client.get("/harness/v1/P2/status")
+        assert r.status_code == 401
+        r = await client.get("/harness/v1/P2/status", headers=_auth("nope-nope-nope-nope"))
+        assert r.status_code == 401
+        r = await client.get("/harness/v1/P3/status", headers=_auth(TOK2))
+        assert r.status_code == 403
+        r = await client.get("/harness/v1/P1/status", headers=_auth(TOK2))
+        assert r.status_code == 409 and r.json()["detail"] == "not_external"
+        r = await client.get("/harness/v1/P9/status", headers=_auth(TOK2))
+        assert r.status_code == 404
+        r = await client.get("/harness/v1/P2/status", headers=_auth(TOK2))
+        assert r.status_code == 200
+        body = r.json()
+        assert body["player_id"] == "P2" and body["match_status"] == "running"
+        assert "token" not in json.dumps(body).lower() or TOK2 not in json.dumps(body)
+
+        r = await client.get("/harness/v1/seats", headers=_auth(TOK3))
+        assert r.status_code == 200
+        assert {s["player_id"] for s in r.json()["seats"]} == {"P2", "P3"}
+        await runner.stop()
+        await client.aclose()
+
+    asyncio.run(_go())
+
+
+def test_11_12_13_long_poll_observation_then_post_action(tmp_path: Path) -> None:
+    app, client = _app_and_client(tmp_path)
+    runner = app.state.runner
+
+    async def _go() -> None:
+        await runner.start(_http_spec())
+        assert await _wait_until(lambda: bool(runner.state.agents) and runner.state.universe is not None)
+        u = runner.state.universe
+        assert u is not None
+
+        # 11. long-poll until P2's turn
+        r = await client.get(
+            "/harness/v1/P2/observation", params={"wait_s": 5, "format": "both"}, headers=_auth(TOK2)
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["awaiting_input"] is True
+        assert body["turn_seq"] == 1
+        assert body["deadline_at"] is not None
+        obs = body["observation"]
+        assert obs["self_id"] == "P2"
+        assert isinstance(body["llm_user_message"], str) and '"self"' in body["llm_user_message"]
+        target = obs["sector"]["warps_out"][0]
+
+        # 12a. stale turn_seq → 409 stale_turn with current_turn_seq
+        r = await client.post(
+            "/harness/v1/P2/action",
+            json={"turn_seq": 0, "action": {"kind": "warp", "args": {"target": target}}},
+            headers=_auth(TOK2),
+        )
+        assert r.status_code == 409
+        assert r.json()["detail"]["code"] == "stale_turn"
+        assert r.json()["detail"]["current_turn_seq"] == 1
+
+        # 12b/13. valid post with actor_kind smuggled in → accepted, stripped
+        r = await client.post(
+            "/harness/v1/P2/action",
+            json={
+                "turn_seq": 1,
+                "action": {"kind": "warp", "args": {"target": target}, "actor_kind": "copilot", "thought": "go"},
+            },
+            headers=_auth(TOK2),
+        )
+        assert r.status_code == 200 and r.json()["accepted"] is True
+        p2 = u.players["P2"]
+        assert await _wait_until(lambda: p2.sector_id == target)
+        warp = next(e for e in u.events if e.kind == EK.WARP and e.actor_id == "P2")
+        assert warp.actor_kind == "external"
+
+        # status now shows last_result ok
+        assert await _wait_until(
+            lambda: (runner.state.agents[1].last_result or {}).get("ok") is True  # type: ignore[attr-defined]
+        )
+        r = await client.get("/harness/v1/P2/status", headers=_auth(TOK2))
+        assert r.json()["last_result"]["ok"] is True
+
+        # 12c. posting when not awaiting → 409 not_awaiting (P2 just acted;
+        # scheduler is on P3 or P1 now)
+        if not runner.state.agents[1].awaiting_input:  # type: ignore[attr-defined]
+            r = await client.post(
+                "/harness/v1/P2/action", json={"action": {"kind": "wait"}}, headers=_auth(TOK2)
+            )
+            assert r.status_code == 409 and r.json()["detail"]["code"] == "not_awaiting"
+
+        # 422 on garbage
+        r = await client.get("/harness/v1/P3/observation", params={"wait_s": 5}, headers=_auth(TOK3))
+        assert r.json()["awaiting_input"] is True
+        r = await client.post(
+            "/harness/v1/P3/action", json={"action": {"kind": "teleport"}}, headers=_auth(TOK3)
+        )
+        assert r.status_code == 422
+
+        await runner.stop()
+        await client.aclose()
+
+    asyncio.run(_go())
+
+
+def test_14_rules_endpoint(tmp_path: Path) -> None:
+    app, client = _app_and_client(tmp_path)
+    runner = app.state.runner
+
+    async def _go() -> None:
+        await runner.start(_http_spec())
+        assert await _wait_until(lambda: bool(runner.state.agents) and runner.state.universe is not None)
+        r = await client.get("/harness/v1/rules", headers=_auth(TOK2))
+        assert r.status_code == 200
+        body = r.json()
+        from tw2k.agents.prompts import get_system_prompt
+
+        assert body["system_prompt"] == get_system_prompt()
+        assert set(body["verbs"]) == {k.value for k in ActionKind}
+        assert body["action_schema"]["title"] == "Action"
+        await runner.stop()
+        await client.aclose()
+
+    asyncio.run(_go())
+
+
+def test_16_loopback_only_unless_allowed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TW2K_HARNESS_ALLOW_REMOTE", raising=False)
+    app, client = _app_and_client(tmp_path, client_host="10.0.0.5")
+    runner = app.state.runner
+
+    async def _go() -> None:
+        await runner.start(_http_spec())
+        assert await _wait_until(lambda: bool(runner.state.agents) and runner.state.universe is not None)
+        r = await client.get("/harness/v1/P2/status", headers=_auth(TOK2))
+        assert r.status_code == 403
+        monkeypatch.setenv("TW2K_HARNESS_ALLOW_REMOTE", "1")
+        r = await client.get("/harness/v1/P2/status", headers=_auth(TOK2))
+        assert r.status_code == 200
+        await runner.stop()
+        await client.aclose()
+
+    asyncio.run(_go())
