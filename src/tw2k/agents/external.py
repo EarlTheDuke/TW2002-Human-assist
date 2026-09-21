@@ -71,6 +71,21 @@ class ExternalAgent(BaseAgent):
         self.current_observation: Observation | None = None
         self.last_result: dict[str, Any] | None = None
         self.closed: bool = False
+        # Wall-clock of the last authenticated harness request for this seat.
+        # The runner uses it to tell an *attended* seat (a bot / the /bot
+        # page is polling) from an *unattended* one, so idle seats can
+        # auto-WAIT quickly instead of burning the full external timeout.
+        self.last_client_seen_at: float | None = None
+
+    # ---- attendance --------------------------------------------------------
+
+    def touch_client(self) -> None:
+        self.last_client_seen_at = time.time()
+
+    def is_attended(self, window_s: float) -> bool:
+        if self.last_client_seen_at is None or window_s <= 0:
+            return False
+        return (time.time() - self.last_client_seen_at) <= window_s
 
     # ---- auth ------------------------------------------------------------
 
@@ -130,6 +145,7 @@ class ExternalAgent(BaseAgent):
             "turn_started_at": self.turn_started_at,
             "pending": self.pending,
             "last_result": self.last_result,
+            "last_client_seen_at": self.last_client_seen_at,
         }
 
     # ---- outbound: scheduler ---------------------------------------------

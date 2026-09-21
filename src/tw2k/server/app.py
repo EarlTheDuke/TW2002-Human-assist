@@ -147,6 +147,7 @@ def create_app(
     ferrengi_min_strength_scale: float | None = None,
     external_timeout_s: float | None = None,
     external_tokens_file: str | None = None,
+    external_idle_wait_s: float | None = None,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -190,6 +191,7 @@ def create_app(
                 ferrengi_min_strength_scale=ferrengi_min_strength_scale,
                 external_timeout_s=external_timeout_s,
                 external_tokens_file=external_tokens_file,
+                external_idle_wait_s=external_idle_wait_s,
             )
             await runner.start(spec)
             # runner.start kicks off the scheduler loop in a background
@@ -972,6 +974,11 @@ def create_app(
                 else external_timeout_s
             ),
             external_tokens_file=body.get("external_tokens_file", external_tokens_file),
+            external_idle_wait_s=(
+                float(body["external_idle_wait_s"])
+                if body.get("external_idle_wait_s") is not None
+                else external_idle_wait_s
+            ),
         )
         await runner.start(spec)
         # Rebuild copilot sessions — old ones held references to the
@@ -1045,6 +1052,7 @@ def _build_default_spec(
     ferrengi_min_strength_scale: float | None = None,
     external_timeout_s: float | None = None,
     external_tokens_file: str | None = None,
+    external_idle_wait_s: float | None = None,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -1148,12 +1156,19 @@ def _build_default_spec(
         except ValueError:
             external_timeout_s = 120.0
 
+    if external_idle_wait_s is None:
+        try:
+            external_idle_wait_s = float(os.environ.get("TW2K_EXTERNAL_IDLE_WAIT_S", "").strip() or "0")
+        except ValueError:
+            external_idle_wait_s = 0.0
+
     return MatchSpec(
         config=cfg,
         agents=agents,
         action_delay_s=cfg.action_delay_s,
         human_deadline_s=human_deadline_s,
         external_timeout_s=max(1.0, float(external_timeout_s)),
+        external_idle_wait_s=max(0.0, float(external_idle_wait_s)),
     )
 
 

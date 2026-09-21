@@ -120,7 +120,49 @@ def build_harness_router(runner) -> APIRouter:
             raise HTTPException(status_code=403, detail="token does not belong to this seat")
         if owner.closed:
             raise HTTPException(status_code=503, detail="seat closed")
+        # Mark the seat attended: the runner shortens the idle auto-WAIT for
+        # seats nobody is polling (Phase D P0).
+        owner.touch_client()
         return owner
+
+    def _current_turn() -> dict[str, Any] | None:
+        """Who the scheduler is blocked on right now (any kind), with a deadline if known."""
+        u = runner.state.universe
+        agents = runner.state.agents
+        idx = runner.state.current_player_idx
+        if u is None or not agents or not (0 <= idx < len(agents)):
+            return None
+        cur = agents[idx]
+        p = u.players.get(cur.player_id)
+        out: dict[str, Any] = {
+            "player_id": cur.player_id,
+            "name": cur.name,
+            "kind": getattr(cur, "kind", None) or (p.agent_kind if p is not None else None),
+            "started_at": None,
+            "deadline_at": None,
+            "attended": None,
+        }
+        spec = runner._spec
+        if isinstance(cur, ExternalAgent):
+            out["started_at"] = cur.turn_started_at
+            out["awaiting_input"] = cur.awaiting_input
+            window = float(getattr(spec, "external_attend_window_s", 45.0) or 0.0) if spec else 45.0
+            out["attended"] = cur.is_attended(window)
+            timeout_s = float(getattr(spec, "external_timeout_s", 0.0) or 0.0) if spec else 0.0
+            idle_s = float(getattr(spec, "external_idle_wait_s", 0.0) or 0.0) if spec else 0.0
+            eff = timeout_s
+            if idle_s > 0 and not out["attended"]:
+                eff = min(timeout_s, idle_s) if timeout_s else idle_s
+            if cur.awaiting_input and cur.turn_started_at and eff > 0:
+                out["deadline_at"] = cur.turn_started_at + eff
+        else:
+            phase = runner.state.llm_phase or {}
+            if phase.get("player_id") == cur.player_id and phase.get("started_at"):
+                out["started_at"] = float(phase["started_at"])
+                cap = float(getattr(u.config, "llm_think_cap_s", 0.0) or 0.0)
+                if cap > 0:
+                    out["deadline_at"] = out["started_at"] + cap
+        return out
 
     def _seat_status(agent: ExternalAgent) -> dict[str, Any]:
         u = runner.state.universe
@@ -130,6 +172,7 @@ def build_harness_router(runner) -> APIRouter:
         if agent.awaiting_input and agent.turn_started_at and timeout_s > 0:
             deadline_at = agent.turn_started_at + timeout_s
         return {
+            "current_turn": _current_turn(),
             **agent.status(),
             "alive": bool(p.alive) if p is not None else False,
             "sector_id": p.sector_id if p is not None else None,

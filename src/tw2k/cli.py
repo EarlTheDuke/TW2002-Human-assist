@@ -177,6 +177,16 @@ def serve(
         "--external-tokens-file",
         help="Path to the per-seat tokens JSON (default .tw2k/external_tokens.json; gitignored).",
     ),
+    external_idle_wait_s: float = typer.Option(
+        None,
+        "--external-idle-wait-s",
+        help=(
+            "Seconds before an UNATTENDED external seat (no harness client seen in the "
+            "last 45s) auto-WAITs, instead of the full --external-timeout-s. Keeps a "
+            "hosted match moving when only one bot is connected. 0/unset = off "
+            "(env TW2K_EXTERNAL_IDLE_WAIT_S)."
+        ),
+    ),
     play_to_day_cap: bool = typer.Option(
         False,
         "--play-to-day-cap/--allow-early-win",
@@ -457,6 +467,7 @@ def serve(
         ferrengi_min_strength_scale=ferrengi_min_strength_scale,
         external_timeout_s=external_timeout_s,
         external_tokens_file=external_tokens_file,
+        external_idle_wait_s=external_idle_wait_s,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

@@ -1,4 +1,4 @@
-"""Match runner — owns the game loop and streams events to subscribers.
+﻿"""Match runner — owns the game loop and streams events to subscribers.
 
 Also owns the per-match save writer (Phase 6). Every live match persists:
 
@@ -16,6 +16,7 @@ flushing events through the broadcaster anyway.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import time
 from collections import deque
@@ -69,6 +70,10 @@ AGENT_COLORS = [
     "#a56eff",  # purple
     "#ff6e6e",  # red
 ]
+
+
+class ExternalIdleTimeoutError(TimeoutError):
+    """An unattended external seat exhausted its short idle window (Phase D P0)."""
 
 
 def _is_day_done(player) -> bool:
@@ -140,6 +145,14 @@ class MatchSpec:
     # match. On timeout the runner applies WAIT and emits AGENT_ERROR; the
     # existing 4-WAIT streak guard then ends that seat's day.
     external_timeout_s: float = 120.0
+    # Phase D (computer-use playtest): if an external seat has had NO
+    # authenticated harness traffic within `external_attend_window_s`, treat
+    # it as unattended and give it only `external_idle_wait_s` before the
+    # auto-WAIT, instead of the full external_timeout_s. Stops a 3-seat
+    # hosted match from freezing for 180 s x 2 idle seats between the one
+    # bot's turns. 0 disables (legacy behaviour).
+    external_idle_wait_s: float = 0.0
+    external_attend_window_s: float = 45.0
 
 
 @dataclass
@@ -568,6 +581,7 @@ class MatchRunner:
                     # External (Grok Bot) seats share the deadline mechanism
                     # but always have one, and a miss is an error (the bot
                     # is broken/slow) rather than an idle human.
+                    external_idle = False
                     if is_human:
                         deadline = self._spec.human_deadline_s
                     elif is_external:
@@ -576,11 +590,42 @@ class MatchRunner:
                         deadline = None
                     if deadline is not None and deadline > 0:
                         try:
-                            action = await asyncio.wait_for(
-                                agent.act(obs), timeout=deadline
-                            )
-                        except TimeoutError:
                             if is_external:
+                                action, external_idle = await self._await_external(
+                                    agent, obs, float(deadline)
+                                )
+                            else:
+                                action = await asyncio.wait_for(
+                                    agent.act(obs), timeout=deadline
+                                )
+                        except TimeoutError as _texc:
+                            external_idle = isinstance(_texc, ExternalIdleTimeoutError)
+                            if is_external and external_idle:
+                                # Unattended seat: not an error, just nobody
+                                # home. Quiet WAIT so the round-robin moves on.
+                                action = Action(
+                                    kind=ActionKind.WAIT,
+                                    thought=(
+                                        f"[external idle] no client attached to "
+                                        f"{agent.player_id}; auto-WAIT after {deadline:.0f}s"
+                                    ),
+                                )
+                                universe.emit(
+                                    EventKind.AGENT_THOUGHT,
+                                    actor_id=agent.player_id,
+                                    sector_id=player.sector_id,
+                                    payload={
+                                        "thought": (
+                                            f"No bot attached to {agent.player_id} "
+                                            f"({deadline:.0f}s) - idle auto-WAIT."
+                                        ),
+                                        "auto_wait": True,
+                                        "external_idle": True,
+                                        "turn_seq": getattr(agent, "turn_seq", None),
+                                    },
+                                    summary=f"[{player.name}] unattended external seat - auto-WAIT.",
+                                )
+                            elif is_external:
                                 action = Action(
                                     kind=ActionKind.WAIT,
                                     thought=(
@@ -712,6 +757,7 @@ class MatchRunner:
                     and (
                         thought_text.startswith("[LLM timeout")
                         or thought_text.startswith("[external timeout")
+                        or thought_text.startswith("[external idle")
                     )
                 )
                 player.last_action_was_timeout = bool(is_timeout_wait)
@@ -868,6 +914,48 @@ class MatchRunner:
                     pass
 
     # ---------------- helpers ---------------- #
+
+    async def _await_external(self, agent: BaseAgent, obs, full_s: float) -> tuple[Action, bool]:
+        """Wait for an external seat's action with the Phase D idle rule.
+
+        Returns ``(action, idle_flag)``. Raises ``TimeoutError`` when no action
+        arrived; the caller synthesizes the WAIT and picks the event kind from
+        ``idle_flag`` (quiet AGENT_THOUGHT when nobody was attached, AGENT_ERROR
+        when an attended bot was simply too slow).
+
+        Rule: if the seat is *unattended* (no authenticated harness request in
+        the last ``external_attend_window_s``) we only wait ``external_idle_wait_s``.
+        When that short window expires we re-check attendance: a bot that
+        connected mid-wait gets the remainder of the full timeout instead of
+        losing the turn.
+        """
+        spec = self._spec
+        idle_s = float(getattr(spec, "external_idle_wait_s", 0.0) or 0.0)
+        window_s = float(getattr(spec, "external_attend_window_s", 45.0) or 0.0)
+        attended_fn = getattr(agent, "is_attended", None)
+        idle_rule = idle_s > 0 and callable(attended_fn)
+
+        if not idle_rule or attended_fn(window_s):
+            return await asyncio.wait_for(agent.act(obs), timeout=full_s), False
+
+        act_task = asyncio.ensure_future(agent.act(obs))
+        try:
+            return await asyncio.wait_for(asyncio.shield(act_task), timeout=min(idle_s, full_s)), True
+        except TimeoutError:
+            if attended_fn(window_s):
+                # Someone showed up during the idle window - honour the full budget.
+                remaining = max(0.1, full_s - min(idle_s, full_s))
+                try:
+                    return await asyncio.wait_for(asyncio.shield(act_task), timeout=remaining), False
+                except TimeoutError:
+                    act_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError, Exception):
+                        await act_task
+                    raise
+            act_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await act_task
+            raise ExternalIdleTimeoutError() from None
 
     def _build_agents(self, spec: MatchSpec, universe: Universe) -> list[BaseAgent]:
         from ..agents import HeuristicAgent, LLMAgent
