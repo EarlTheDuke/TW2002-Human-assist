@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Started | 2026-09-20 (PT) |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **AFK LOOP — Phase 2 queued** |
+| Status | **COMPLETE — Phase 2 accepted** |
 
 ---
 
@@ -88,10 +88,10 @@ Non-goals: public multi-human net play; rewrite engine language; Cursor on-deman
 
 ## 4. Acceptance criteria
 
-- [ ] 2× custom Qwen + 4× external starts
-- [ ] 401 on bad token; timeout → WAIT; valid Action applies
-- [ ] Smoke script green; no secrets in git
-- [ ] AFK mailbox ends at COMPLETE
+- [x] 2× custom Qwen + 4× external starts
+- [x] 401 on bad token; timeout → WAIT; valid Action applies
+- [x] Smoke script green; no secrets in git
+- [x] AFK mailbox ends at COMPLETE
 
 ---
 
@@ -104,7 +104,10 @@ _2026-09-20 21:30 PT — Commander: Phase 0 plan accepted (sane: ExternalAgent=H
 
 _2026-09-20 21:58 PT — Commander: Phase 1 accepted (ExternalAgent+REST+tests+smoke; tip `e700ea6`; 486 tests; smoke PASS). Queued Phase 2 in COMMANDER_NEXT.md → machine_state COMMANDER_QUEUED, phase 2. Scope: `run_2qwen_4external.ps1` + `gen_external_tokens.py` + `docs/GROK_BOT_PLAYER_GUIDE.md` + ARCHITECTURE/ROADMAP touch._
 
+_2026-09-20 22:16 PT — Commander: Phase 2 accepted (`run_2qwen_4external.ps1` + `gen_external_tokens.py` + `GROK_BOT_PLAYER_GUIDE.md`; tip `e1fa90b`; live mixed match + P3 turn ok). Handoff §4 acceptance met. Skipping optional Phase 3 polish. Set machine_state COMPLETE; pausing TW2K AFK handoff watch._
+
 ---
+
 
 ## 6. Changelog
 
@@ -180,3 +183,9 @@ _2026-09-20 21:58 PT — Commander: Phase 1 accepted (ExternalAgent+REST+tests+s
 - **Handoff §4 acceptance status:** 2×Qwen+4×external starts ✅ · 401 bad token / timeout→WAIT / valid Action applies ✅ (tests 8, 10, 12) · smoke green, no secrets in git ✅ · mailbox COMPLETE — Commander's call.
 - **Next (on COMMANDER_QUEUED):** Phase 3 optional — `WS /harness/v1/{pid}/ws` turn_due push, spectator `EXTERNAL` badge, cost `n/a` column, MCP `tw2k_list_external_seats`. Or COMPLETE.
 - **Blockers:** none.
+
+### 2026-09-20 22:16 PT — Commander — Phase 2 ACK → COMPLETE
+- **Ack:** Phase 2 on `feature/grok-bot-harness` @ `e1fa90b` accepted (mixed 6-seat script, tokens helper, player guide, live P3 warp ok, smoke/tests green, no secrets in git).
+- **Decision:** Optional Phase 3 (WS / spectator badge / cost n/a / MCP seats) deferred. Core acceptance criteria met.
+- **mailbox:** `machine_state` → `COMPLETE`. AFK watch paused. Cursor should exit the loop cleanly.
+- **Artifacts for Ben:** `scripts/run_2qwen_4external.ps1`, `scripts/gen_external_tokens.py`, `docs/GROK_BOT_PLAYER_GUIDE.md`, branch tip `e1fa90b`.
