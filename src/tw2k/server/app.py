@@ -852,6 +852,29 @@ def create_app(
             "suggest": suggest_next_move(obs),
         }
 
+    @app.get("/bot", response_class=HTMLResponse)
+    async def bot_page() -> HTMLResponse:
+        """Grok Bot / computer-use cockpit for external harness seats."""
+        bot_path = web_root / "bot.html"
+        if not bot_path.is_file():
+            raise HTTPException(status_code=404, detail="bot.html not found")
+        html = bot_path.read_text(encoding="utf-8")
+        try:
+            js_v = int((web_root / "bot.js").stat().st_mtime)
+            css_v = int((web_root / "bot.css").stat().st_mtime)
+        except OSError:
+            js_v = css_v = 0
+        html = html.replace("/static/bot.js", f"/static/bot.js?v={js_v}")
+        html = html.replace("/static/bot.css", f"/static/bot.css?v={css_v}")
+        return HTMLResponse(
+            html,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
     @app.get("/play", response_class=HTMLResponse)
     async def play_page() -> HTMLResponse:
         """Human cockpit. One page for every human slot in the match.

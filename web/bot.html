@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TW2K - Grok Bot Cockpit</title>
+  <link rel="stylesheet" href="/static/bot.css" />
+</head>
+<body class="bot-body">
+  <header class="bot-top">
+    <h1>Grok Bot Cockpit</h1>
+    <div id="turnBanner" class="banner idle">PASTE TOKEN + CONNECT</div>
+    <a class="auth-bar" href="/" style="padding:8px 12px;text-decoration:none;color:#93a0c0">Spectator</a>
+  </header>
+
+  <section class="auth-bar" id="authBar">
+    <label>Seat
+      <select id="seatSelect">
+        <option value="P3">P3 Commander</option>
+        <option value="P4">P4 GrokPilot2</option>
+        <option value="P5">P5 GrokPilot3</option>
+      </select>
+    </label>
+    <label style="flex:1 1 280px">Harness bearer token
+      <input id="tokenInput" type="password" autocomplete="off" placeholder="paste seat token from .tw2k/external_tokens.json" />
+    </label>
+    <button id="connectBtn" class="primary" type="button">Connect</button>
+    <button id="pollBtn" type="button" disabled>Refresh</button>
+  </section>
+
+  <p id="err" class="error"></p>
+
+  <main class="bot-main" id="main" hidden>
+    <section class="card">
+      <h2>Ship / sector</h2>
+      <div class="stats">
+        <div class="stat"><div class="k">Credits</div><div class="v" id="vCredits">-</div></div>
+        <div class="stat"><div class="k">Sector</div><div class="v" id="vSector">-</div></div>
+        <div class="stat"><div class="k">Turns left</div><div class="v" id="vTurns">-</div></div>
+        <div class="stat"><div class="k">Day / tick</div><div class="v" id="vDayTick">-</div></div>
+        <div class="stat"><div class="k">Cargo free</div><div class="v" id="vFree">-</div></div>
+        <div class="stat"><div class="k">Ship</div><div class="v" id="vShip">-</div></div>
+      </div>
+      <div id="rivals" class="rivals"></div>
+      <h2 style="margin-top:16px">Port</h2>
+      <div id="portLine" class="hint">-</div>
+      <h2 style="margin-top:16px">Action hint</h2>
+      <div id="hint" class="hint">-</div>
+    </section>
+
+    <section class="card">
+      <h2>Warp (tap a sector)</h2>
+      <div class="warps" id="warpBtns"></div>
+      <h2 style="margin-top:16px">Actions</h2>
+      <div class="actions" id="actionBtns">
+        <button type="button" data-kind="scan" class="primary">SCAN</button>
+        <button type="button" data-kind="wait">WAIT</button>
+        <button type="button" id="sellBtn" class="sell" hidden>SELL ALL PORT BUYS</button>
+        <button type="button" id="buyBtn" class="buy" hidden>BUY FIRST SELL</button>
+      </div>
+      <h2 style="margin-top:16px">Last result</h2>
+      <div id="lastResult" class="hint">-</div>
+      <h2 style="margin-top:16px">Log</h2>
+      <div id="log" class="log"></div>
+    </section>
+  </main>
+
+  <script src="/static/bot.js"></script>
+</body>
+</html>

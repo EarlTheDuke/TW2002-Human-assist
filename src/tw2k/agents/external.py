@@ -1,24 +1,24 @@
-"""ExternalAgent — a seat driven by an out-of-process bot over REST.
+﻿"""ExternalAgent â€” a seat driven by an out-of-process bot over REST.
 
-Plan: docs/plans/2026-09-20-external-harness.md (§1, §2.1).
+Plan: docs/plans/2026-09-20-external-harness.md (Â§1, Â§2.1).
 
 The agent plugs into the same ``BaseAgent.act(Observation) -> Action``
 contract as heuristic / LLM / human agents. It is ``HumanAgent`` plus:
 
-* ``turn_seq`` — increments every time the scheduler enters ``act()``. A
+* ``turn_seq`` â€” increments every time the scheduler enters ``act()``. A
   bot must echo the current value when it POSTs, so a slow reply meant
   for an earlier turn is rejected instead of being applied out of context.
-* ``turn_due`` — an ``asyncio.Event`` the REST layer long-polls on, so a
+* ``turn_due`` â€” an ``asyncio.Event`` the REST layer long-polls on, so a
   bot can block on "is it my turn?" without hammering the server.
-* ``token`` — the per-seat bearer secret. Stored on the instance only;
+* ``token`` â€” the per-seat bearer secret. Stored on the instance only;
   never serialized into meta.json, events, or snapshots.
-* ``last_result`` — the engine's verdict on the previous action, recorded
+* ``last_result`` â€” the engine's verdict on the previous action, recorded
   by the runner so the bot can see "warp ok" / "not enough turns" on its
   next status call without parsing the event feed.
 
 The agent does **not** enforce a timeout itself. The runner owns the
 deadline (``MatchSpec.external_timeout_s``) exactly the way it owns
-``human_deadline_s`` — on timeout it synthesizes a WAIT and emits
+``human_deadline_s`` â€” on timeout it synthesizes a WAIT and emits
 AGENT_ERROR. Keeping the deadline in one place means replay, tests and
 the spectator all agree about who decided the bot was too slow.
 """
@@ -26,6 +26,7 @@ the spectator all agree about who decided the bot was too slow.
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from typing import Any
 
@@ -133,12 +134,50 @@ class ExternalAgent(BaseAgent):
 
     # ---- outbound: scheduler ---------------------------------------------
 
+    def _webhook_urls(self) -> list[str]:
+        urls: list[str] = []
+        per = (os.environ.get(f"TW2K_GROKBOT_WEBHOOK_{self.player_id}") or "").strip()
+        if per:
+            urls.append(per)
+        shared = (os.environ.get("TW2K_GROKBOT_WEBHOOK_URL") or "").strip()
+        if shared and shared not in urls:
+            urls.append(shared)
+        return urls
+
+    async def _fire_turn_due_webhook(self, observation: Observation) -> None:
+        """Notify Grok Bot (webhook routine) that this seat needs a decision."""
+        urls = self._webhook_urls()
+        if not urls:
+            return
+        try:
+            import httpx
+        except ImportError:
+            return
+        payload = {
+            "event": "turn_due",
+            "player_id": self.player_id,
+            "name": self.name,
+            "turn_seq": self.turn_seq,
+            "deadline_at": (self.turn_started_at or time.time())
+            + float(os.environ.get("TW2K_EXTERNAL_TIMEOUT_S", "180")),
+            "observation": observation.model_dump(mode="json"),
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            for url in urls:
+                try:
+                    await client.post(url, json=payload)
+                except Exception:
+                    # Never block the match on notify failure.
+                    pass
+
     async def act(self, observation: Observation) -> Action:
         self.turn_seq += 1
         self.current_observation = observation
         self.turn_started_at = time.time()
         self.awaiting_input = True
         self.turn_due.set()
+        # Fire-and-forget; keep a reference so the task isn't GC'd mid-flight.
+        self._webhook_task = asyncio.create_task(self._fire_turn_due_webhook(observation))
         try:
             return await self._queue.get()
         finally:
@@ -162,3 +201,4 @@ class ExternalAgent(BaseAgent):
         # Wake any long-pollers so they can observe `closed` and return.
         self.turn_due.set()
         self._drain()
+
