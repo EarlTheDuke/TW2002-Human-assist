@@ -38,21 +38,35 @@ Env alternate: `TW2K_BIND_HOST=0.0.0.0` if your `tw2k serve` path reads it (scri
 
 As of 2026-09-21 Tailscale is **not** installed on VENGEANCE; option B below works without admin and is what Phase B used.
 
-### B) Cloudflare quick tunnel — `scripts/expose_hosted_bot.ps1` (no account, no admin)
+### B) Public tunnel — `scripts/expose_hosted_bot.ps1` (no account, no admin)
 ```powershell
-powershell -File scripts/expose_hosted_bot.ps1 -Port 8031 -Detach   # leaves tunnel running
-powershell -File scripts/expose_hosted_bot.ps1 -Stop                 # tear it down
+powershell -File scripts/expose_hosted_bot.ps1 -Port 8031 -Detach                        # localhost.run (default)
+powershell -File scripts/expose_hosted_bot.ps1 -Port 8031 -Detach -Provider cloudflare   # Cloudflare quick tunnel
+powershell -File scripts/expose_hosted_bot.ps1 -Stop                                     # tear down all tunnels
 ```
-What it does:
+Two providers, same flow:
+
+| Provider | URL | How | Use when |
+|---|---|---|---|
+| `localhostrun` (default) | `https://<id>.lhr.life` | `ssh -R 80:127.0.0.1:8031 nokey@localhost.run` with the built-in Windows OpenSSH client | **Computer-use / headless / datacenter browsers.** Verified 2026-09-21: `/bot`, assets, `/state`, harness auth (200/401) and WebSocket upgrade (101) all pass. |
+| `cloudflare` | `https://<words>.trycloudflare.com` | portable `cloudflared` downloaded to `.tw2k\bin\` | Human browsers. **Cloudflare's bot-fight WAF returns `403 Your request was blocked` to many datacenter/automation browsers** (curl still works) and cannot be disabled on account-less quick tunnels — this is what blocked Commander's box on 2026-09-21. |
+
+What the script does:
 1. Confirms `http://127.0.0.1:8031/bot` answers 200 (start the match first with `run_hosted_grokbot.ps1`).
-2. Finds `cloudflared` on PATH, else `.tw2k\bin\cloudflared.exe`, else downloads the portable exe there (user-writable; gitignored). No UAC.
-3. Runs `cloudflared tunnel --url http://127.0.0.1:8031`, captures the `https://*.trycloudflare.com` URL, writes it to **`.tw2k\public_base_url.txt`** (gitignored), and prints `/bot?seat=P3|P4|P5` + spectator URLs.
-4. Verifies `GET {base}/bot` through the tunnel. A brand-new hostname can take ~1 min to reach *this* box's resolver; the script falls back to pinning Cloudflare's edge IP so the check proves the tunnel, not local DNS. Remote boxes usually resolve immediately.
-5. Without `-Detach` it stays in the foreground (Ctrl+C stops and removes the URL file). `-Detach` writes `.tw2k\cloudflared.pid` and returns.
+2. Starts the tunnel as a hidden child process, captures the public URL, writes it to **`.tw2k\public_base_url.txt`** (plus `public_base_url.<provider>.txt`; all gitignored), prints `/bot?seat=P3|P4|P5` + spectator URLs.
+3. Verifies `GET {base}/bot` with a Chrome-like User-Agent. A brand-new hostname can take ~1 min to reach *this* box's resolver; the script falls back to pinning the edge IP from 1.1.1.1. A `403` here means the provider is bot-blocking — switch provider.
+4. `-Detach` writes `.tw2k\<provider>.pid` and returns; otherwise Ctrl+C stops the tunnel and removes the URL file.
 
 Hand Commander: the contents of `.tw2k\public_base_url.txt` + the P3 token (read from `.tw2k\external_tokens.json` on VENGEANCE; never paste tokens into git or chat logs that get committed).
 
-Notes: quick tunnels are semi-public — the bearer token is the only gate, so keep `TW2K_HARNESS_ALLOW_REMOTE=1` paired with strong tokens and rotate after a session. The URL changes every time the tunnel restarts; re-run the script and re-send. WebSocket (`/ws` spectator feed) works through quick tunnels.
+Notes: both tunnels are semi-public — the bearer token is the only gate, so keep `TW2K_HARNESS_ALLOW_REMOTE=1` paired with strong tokens and rotate after a session (`python scripts/gen_external_tokens.py --seats P3,P4,P5 --rotate`). URLs change on every tunnel restart; re-run the script and re-send. The tunnel is a child of whatever shell launched it — a reboot or closed session drops it.
+
+### Playtest stall: external seats out of turns
+If P3–P5 show `turns_remaining=0` before anyone drove them, the external seats timed out (`--external-timeout-s`) four times each and the runner ended their day; the day only rolls when the Qwen seats also finish their 1000 turns, which can take hours. For playtests start the match with a short day, e.g. `run_hosted_grokbot.ps1 -TurnsPerDay 120`, or restart in place (tokens are stable):
+```powershell
+$body = '{"num_agents":5,"provider":"custom","model":"qwen3.8:latest","agent_kind":"llm","turns_per_day":120,"starting_credits":100000,"max_days":10,"external_timeout_s":180,"agents":[{"name":"QwenA"},{"name":"QwenB"},{"name":"Commander","kind":"external"},{"name":"GrokPilot2","kind":"external"},{"name":"GrokPilot3","kind":"external"}]}'
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8031/control/restart -ContentType application/json -Body $body
+```
 
 ### C) VPS
 1. Deploy the repo + `.env` (custom Qwen endpoint must be reachable from the VPS, or run heuristic seats for a UI-only smoke).

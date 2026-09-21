@@ -14,6 +14,9 @@ param(
   [int]$StartingCredits = 100000,
   [int]$MaxDays = 10,
   [int]$TimeoutS = 180,
+  # Turns per in-game day. Default engine value is 1000; for computer-use playtests use ~120 so
+  # a day rolls over in minutes even when the external seats idle out (see HOSTING_GROKBOT.md).
+  [int]$TurnsPerDay = 0,
   [int]$Seed = 210922,
   [string]$Model = "qwen3.8:latest",
   [string]$Names = "QwenA,QwenB,Commander,GrokPilot2,GrokPilot3"
@@ -45,16 +48,14 @@ foreach ($seat in "P3","P4","P5") {
 }
 Write-Host ""
 
+$serveArgs = @(
+  "serve", "--host", $HostAddr, "--port", $Port, "--provider", "custom", "--model", $Model,
+  "--num-agents", "5", "--agent-kind", "llm", "--agent-names", $Names,
+  "--external", "P3,P4,P5", "--external-timeout-s", $TimeoutS,
+  "--starting-credits", $StartingCredits, "--max-days", $MaxDays, "--seed", $Seed
+)
+if ($TurnsPerDay -gt 0) { $serveArgs += @("--turns-per-day", $TurnsPerDay) }
+
 # Prefer python -m in case Scripts not on PATH after pip --user
 $tw2k = Get-Command tw2k -EA SilentlyContinue
-if ($tw2k) {
-  & tw2k serve --host $HostAddr --port $Port --provider custom --model $Model `
-    --num-agents 5 --agent-kind llm --agent-names $Names `
-    --external P3,P4,P5 --external-timeout-s $TimeoutS `
-    --starting-credits $StartingCredits --max-days $MaxDays --seed $Seed
-} else {
-  python -m tw2k.cli serve --host $HostAddr --port $Port --provider custom --model $Model `
-    --num-agents 5 --agent-kind llm --agent-names $Names `
-    --external P3,P4,P5 --external-timeout-s $TimeoutS `
-    --starting-credits $StartingCredits --max-days $MaxDays --seed $Seed
-}
+if ($tw2k) { & tw2k @serveArgs } else { python -m tw2k.cli @serveArgs }
