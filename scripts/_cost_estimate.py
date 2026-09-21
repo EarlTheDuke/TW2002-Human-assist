@@ -8,11 +8,8 @@ tokens-per-char ratio is within ~10% of OpenAI's on English text).
 """
 from __future__ import annotations
 
-import json
-import os
 import pathlib
 import sys
-import urllib.request
 
 # Ensure we can import the tw2k engine without starting the server.
 WS = pathlib.Path(__file__).resolve().parent.parent
@@ -58,7 +55,7 @@ def main() -> None:
     # history of 30. We don't need to run an actual game — we just
     # inflate the relevant Player/Universe fields.
     for p in (p1, p2):
-        for i, sid in enumerate(list(u.sectors.keys())[:40]):
+        for sid in list(u.sectors.keys())[:40]:
             p.known_sectors.add(sid)
             p.known_warps[sid] = list(u.sectors[sid].warps)
         for i in range(25):
@@ -146,7 +143,7 @@ def main() -> None:
     print(f"  Total output:              {total_output:,} tok")
     print(f"  Input cost:                ${cost_in:6.2f}  @ $3.00/M")
     print(f"  Output cost:               ${cost_out:6.2f}  @ $15.00/M")
-    print(f"  ---")
+    print("  ---")
     print(f"  CLAUDE TOTAL:              ${cost_total:6.2f}")
 
     # Worst-case bound: Claude maxes output every call AND input is 20%

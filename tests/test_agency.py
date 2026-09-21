@@ -7,8 +7,8 @@ import json
 import pytest
 
 from tw2k.agents.prompts import (
-    SYSTEM_PROMPT,
     _MATCH_PROMPT_MINIMAL,
+    SYSTEM_PROMPT,
     get_system_prompt,
     stage_hint,
 )

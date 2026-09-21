@@ -54,8 +54,8 @@ def main() -> None:
         return
 
     sys.path.insert(0, str(REPO / "src"))
-    from tw2k.engine.match_metrics import build_match_metrics_payload  # noqa: E402
-    from tw2k.engine.models import Event, EventKind  # noqa: E402
+    from tw2k.engine.match_metrics import build_match_metrics_payload
+    from tw2k.engine.models import Event, EventKind
 
     events: list[Event] = []
     for line in lines:

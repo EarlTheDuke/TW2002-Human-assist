@@ -732,7 +732,8 @@ class LLMAgent(BaseAgent):
             argv_base: list[str] = [cli_fallback]
         else:
             argv_base = [node_exe, index_js]
-        argv = argv_base + [
+        argv = [
+            *argv_base,
             "-p",
             "--output-format",
             "json",

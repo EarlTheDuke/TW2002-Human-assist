@@ -12,6 +12,8 @@ from tw2k.agents.llm import (
     _cursor_system_prompt_for,
     _unwrap_agent_print_json,
 )
+
+
 def test_unwrap_agent_print_json_prefers_text_key() -> None:
     inner = '{"thought":"t","action":{"kind":"wait","args":{}}}'
     wrapped = json.dumps({"text": inner})

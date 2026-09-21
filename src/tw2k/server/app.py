@@ -27,8 +27,6 @@ from .broadcaster import Broadcaster
 from .replay import ReplayRunner
 from .runner import AgentSpec, MatchRunner, MatchSpec
 
-
-
 # Phase C.2 — kinds that end up in the /highlights feed. Mirrors
 # web/app.js BIG_MOMENT_KINDS so the two stay in lockstep. These are
 # the match-shaping events the UI highlight reel surfaces above the

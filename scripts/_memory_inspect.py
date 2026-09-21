@@ -8,7 +8,6 @@ much more the agent reads than the scratchpad string the user sees.
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 import sys
 import urllib.request
@@ -59,7 +58,7 @@ def main() -> None:
     # Simpler: build a fresh universe with same seed, give P1 the same
     # known_warps/scratchpad/trade_log from /state, and render the obs.
     from tw2k.engine import GameConfig, build_observation, generate_universe
-    from tw2k.engine.models import EventKind, Player, Ship
+    from tw2k.engine.models import Player, Ship
 
     meta = json.loads((latest / "meta.json").read_text(encoding="utf-8-sig"))
     seed = int(meta.get("seed", 42))

@@ -138,8 +138,8 @@ def _human_table(agg: dict[str, Any]) -> str:
         r = rows[pid]
         note = "~estimate" if r.get("price_is_fallback") else ""
         lines.append(
-            f"{pid:<14.14} {str(r.get('provider') or ''):<10.10} "
-            f"{str(r.get('model') or ''):<28.28} "
+            f"{pid:<14.14} {r.get('provider') or ''!s:<10.10} "
+            f"{r.get('model') or ''!s:<28.28} "
             f"{r.get('calls', 0):>6} "
             f"{r.get('input_tokens', 0):>9} "
             f"{r.get('cached_input_tokens', 0):>8} "

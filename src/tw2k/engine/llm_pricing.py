@@ -51,9 +51,9 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Iterable
 
 # USD per 1M tokens.
 _M = 1_000_000.0
@@ -195,7 +195,7 @@ def _load_overrides_from_env() -> None:
     if not path:
         return
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             raw = json.load(fh)
     except Exception:
         # Any problem with the file means we silently stick with

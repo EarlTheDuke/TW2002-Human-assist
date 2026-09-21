@@ -8,7 +8,6 @@ from types import SimpleNamespace
 import pytest
 
 from tw2k.agents.llm_usage import (
-    LLMUsage,
     from_anthropic,
     from_cursor_outer_json,
     from_openai_like,
@@ -18,7 +17,6 @@ from tw2k.engine.llm_pricing import (
     TokenPrices,
     lookup_prices,
 )
-
 
 # ---------------------------------------------------------------------------
 # Pricing lookup

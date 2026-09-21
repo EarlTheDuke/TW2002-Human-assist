@@ -96,10 +96,7 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
     # few days. Without this, a day-0 initial raider in a sector adjacent
     # to StarDock routinely one-shots the first player who warps out.
     grace_days = getattr(universe.config, "ferrengi_grace_days", None)
-    if grace_days is None:
-        grace_days = K.FERRENGI_STARTUP_GRACE_DAYS
-    else:
-        grace_days = max(0, int(grace_days))
+    grace_days = K.FERRENGI_STARTUP_GRACE_DAYS if grace_days is None else max(0, int(grace_days))
     grace_active = bool(
         getattr(universe.config, "all_start_stardock", False)
         and universe.day < grace_days
