@@ -382,7 +382,7 @@ def serve(
         external_tokens_masked = {pid: _ht.mask(tok) for pid, tok in resolved.items()}
         console.print(
             f"[magenta]External harness:[/] http://{host}:{port}/harness/v1/<pid>/...  "
-            f"[dim](timeout {_eto:.0f}s · tokens in {_ht.tokens_file_path(external_tokens_file)})[/]"
+            f"[dim](timeout {_eto:.0f}s; tokens in {_ht.tokens_file_path(external_tokens_file)})[/]"
         )
     if overrides:
         for i, ov in enumerate(overrides[:num_agents]):

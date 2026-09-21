@@ -68,7 +68,7 @@ def mask(token: str | None) -> str:
         return "<unset>"
     if len(token) <= 12:
         return "<short>"
-    return f"{token[:4]}…{token[-4:]}"
+    return f"{token[:4]}...{token[-4:]}"
 
 
 def verify(candidate: str | None, expected: str | None) -> bool:

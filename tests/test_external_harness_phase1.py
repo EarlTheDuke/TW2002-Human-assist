@@ -172,7 +172,8 @@ def test_06_token_resolution_order_and_persistence(tmp_path: Path, monkeypatch: 
     assert again["P6"] == out["P6"]
 
     m = ht.mask(out["P6"])
-    assert "…" in m and len(m) == 9
+    assert "..." in m and len(m) == 11
+    assert out["P6"] not in m
     assert ht.verify(out["P6"], out["P6"]) and not ht.verify("x", out["P6"]) and not ht.verify("", "")
 
 
@@ -572,7 +573,7 @@ def test_15_build_default_spec_and_cli_external_flag(tmp_path: Path, monkeypatch
     assert [o.get("kind") for o in ov] == [None, None, "external", "external"]
     assert "provider" not in ov[2] and "model" not in ov[2]
     assert captured["external_timeout_s"] == 33.0
-    assert "EXTERNAL" in res.output and "…" in res.output  # masked token in banner
+    assert "EXTERNAL" in res.output and "token=" in res.output  # masked token in banner
     for tok in json.loads(tokens_file.read_text(encoding="utf-8")).values():
         assert tok not in res.output  # never printed unmasked
 
