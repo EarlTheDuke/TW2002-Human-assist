@@ -23,6 +23,8 @@ from tw2k.engine.actions import Action
 from tw2k.engine.models import EventKind as EK
 from tw2k.engine.models import Player
 from tw2k.server import harness_tokens as ht
+from tw2k.server.broadcaster import Broadcaster
+from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
 
 
 def _fake_obs():
@@ -178,3 +180,137 @@ def test_06b_gitignore_covers_tokens() -> None:
     gi = (Path(__file__).resolve().parents[1] / ".gitignore").read_text(encoding="utf-8")
     assert ".tw2k/" in gi
     assert "*external_tokens*.json" in gi
+
+
+# ---------------------------------------------------------------------------
+# 7–9. Runner integration
+# ---------------------------------------------------------------------------
+
+
+def _tiny_spec(*, external_timeout_s: float = 30.0, seed: int = 42) -> MatchSpec:
+    cfg = GameConfig(
+        seed=seed,
+        universe_size=60,
+        max_days=2,
+        turns_per_day=12,
+        starting_credits=25_000,
+        enable_ferrengi=False,
+        enable_planets=False,
+        action_delay_s=0.0,
+    )
+    return MatchSpec(
+        config=cfg,
+        agents=[
+            AgentSpec(player_id="P1", name="HBot", kind="heuristic"),
+            AgentSpec(
+                player_id="P2", name="GrokBot", kind="external", external_token="secret-token-2222222222"
+            ),
+        ],
+        action_delay_s=0.0,
+        external_timeout_s=external_timeout_s,
+    )
+
+
+async def _wait_until(pred, *, tries: int = 150, dt: float = 0.02) -> bool:
+    for _ in range(tries):
+        if pred():
+            return True
+        await asyncio.sleep(dt)
+    return pred()
+
+
+def test_07_scheduler_blocks_on_external_seat_and_applies_submitted_warp(tmp_path: Path) -> None:
+    runner = MatchRunner(Broadcaster(), saves_root=tmp_path / "saves")
+
+    async def _go() -> None:
+        await runner.start(_tiny_spec())
+        ext = None
+
+        def _ready() -> bool:
+            nonlocal ext
+            if not runner.state.agents:
+                return False
+            ext = next(a for a in runner.state.agents if a.player_id == "P2")
+            return bool(getattr(ext, "awaiting_input", False))
+
+        assert await _wait_until(_ready), "scheduler never reached the external seat"
+        assert isinstance(ext, ExternalAgent)
+        assert ext.token == "secret-token-2222222222"
+        u = runner.state.universe
+        assert u is not None
+        p2 = u.players["P2"]
+        assert p2.agent_kind == "external"
+        start_sector = p2.sector_id
+        obs = ext.current_observation
+        assert obs is not None and obs.self_id == "P2"
+        target = obs.sector["warps_out"][0]
+
+        await ext.submit_action(Action(kind=ActionKind.WARP, args={"target": target}), turn_seq=ext.turn_seq)
+        assert await _wait_until(lambda: p2.sector_id == target), "warp not applied"
+        assert p2.sector_id != start_sector
+        assert await _wait_until(lambda: ext.last_result is not None and ext.last_result["ok"])
+        warp_events = [e for e in u.events if e.kind == EK.WARP and e.actor_id == "P2"]
+        assert warp_events and warp_events[0].actor_kind == "external"
+        await runner.stop()
+
+    asyncio.run(_go())
+
+
+def test_08_timeout_applies_wait_emits_agent_error_and_streak_ends_day(tmp_path: Path) -> None:
+    runner = MatchRunner(Broadcaster(), saves_root=tmp_path / "saves")
+
+    async def _go() -> None:
+        await runner.start(_tiny_spec(external_timeout_s=0.15))
+        u = None
+
+        def _errors() -> list:
+            nonlocal u
+            u = runner.state.universe
+            if u is None:
+                return []
+            return [
+                e
+                for e in u.events
+                if e.kind == EK.AGENT_ERROR and e.actor_id == "P2" and e.payload.get("external_timeout")
+            ]
+
+        assert await _wait_until(lambda: len(_errors()) >= 4, tries=400, dt=0.03)
+        assert u is not None
+
+        # Four consecutive timeout-WAITs trip the streak guard -> "ends the
+        # day early" thought with turns_skipped. (turns_today itself resets
+        # as soon as the day ticks, so assert on the event, not the counter.)
+        def _day_ended() -> bool:
+            return any(
+                e.kind == EK.AGENT_THOUGHT
+                and e.actor_id == "P2"
+                and e.payload.get("turns_skipped") is not None
+                for e in u.events
+            )
+
+        assert await _wait_until(_day_ended, tries=300, dt=0.03)
+        ext = next(a for a in runner.state.agents if a.player_id == "P2")
+        assert isinstance(ext, ExternalAgent)
+        assert ext.last_result is not None and ext.last_result["ok"] is True  # WAIT applied fine
+        await runner.stop()
+
+    asyncio.run(_go())
+
+
+def test_09_meta_json_records_kind_but_never_token(tmp_path: Path) -> None:
+    runner = MatchRunner(Broadcaster(), saves_root=tmp_path / "saves")
+
+    async def _go() -> None:
+        await runner.start(_tiny_spec())
+        assert await _wait_until(lambda: runner.state.save_dir is not None and runner.state.universe is not None)
+        await runner.stop()
+
+    asyncio.run(_go())
+    save_dir = runner.state.save_dir
+    assert save_dir is not None
+    meta_text = (save_dir / "meta.json").read_text(encoding="utf-8")
+    meta = json.loads(meta_text)
+    kinds = {a["player_id"]: a["kind"] for a in meta["agents"]}
+    assert kinds["P2"] == "external"
+    assert "secret-token-2222222222" not in meta_text
+    assert not any("token" in k.lower() for a in meta["agents"] for k in a)

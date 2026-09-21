@@ -116,6 +116,10 @@ class AgentSpec:
     # only on that slot lets the reasoning model finish without ballooning
     # cost or wall-time on the small local Qwens that don't need it.
     custom_max_tokens: int | None = None
+    # Bearer token for kind=="external" seats (Grok Bot harness). SECRET:
+    # deliberately excluded from meta.json / snapshots / events. Resolved
+    # via server.harness_tokens when None (env -> tokens file -> generated).
+    external_token: str | None = None
 
 
 @dataclass
@@ -131,6 +135,11 @@ class MatchSpec:
     # steps away. AI slots are unaffected — they already have
     # GameConfig.llm_think_cap_s as their provider-call budget.
     human_deadline_s: float | None = None
+    # Per-turn deadline for EXTERNAL (Grok Bot) seats. Unlike humans this
+    # always has a value: a bot that never answers must not stall the
+    # match. On timeout the runner applies WAIT and emits AGENT_ERROR; the
+    # existing 4-WAIT streak guard then ends that seat's day.
+    external_timeout_s: float = 120.0
 
 
 @dataclass
@@ -535,6 +544,7 @@ class MatchRunner:
                     # task and CancelledError propagates out of queue.get
                     # cleanly — no sentinel needed.
                     is_human = getattr(agent, "kind", None) == "human"
+                    is_external = getattr(agent, "kind", None) == "external"
                     if is_human:
                         universe.emit(
                             EventKind.HUMAN_TURN_START,
@@ -555,33 +565,67 @@ class MatchRunner:
                     # WAIT action and emit an AGENT_THOUGHT event so the
                     # replay / spectator can tell "this was an idle
                     # auto-WAIT" from "this was a human-chosen WAIT".
-                    deadline = self._spec.human_deadline_s if is_human else None
+                    # External (Grok Bot) seats share the deadline mechanism
+                    # but always have one, and a miss is an error (the bot
+                    # is broken/slow) rather than an idle human.
+                    if is_human:
+                        deadline = self._spec.human_deadline_s
+                    elif is_external:
+                        deadline = self._spec.external_timeout_s
+                    else:
+                        deadline = None
                     if deadline is not None and deadline > 0:
                         try:
                             action = await asyncio.wait_for(
                                 agent.act(obs), timeout=deadline
                             )
                         except TimeoutError:
-                            action = Action(
-                                kind=ActionKind.WAIT,
-                                thought=(
-                                    f"auto-WAIT: no human input within "
-                                    f"{deadline:.0f}s"
-                                ),
-                            )
-                            universe.emit(
-                                EventKind.AGENT_THOUGHT,
-                                actor_id=agent.player_id,
-                                sector_id=player.sector_id,
-                                payload={
-                                    "thought": (
-                                        f"No action from {agent.player_id} in "
-                                        f"{deadline:.0f}s — auto-WAIT."
+                            if is_external:
+                                action = Action(
+                                    kind=ActionKind.WAIT,
+                                    thought=(
+                                        f"[external timeout] no action from "
+                                        f"client within {deadline:.0f}s"
                                     ),
-                                    "auto_wait": True,
-                                },
-                                summary=f"[{player.name}] idle — auto-WAIT.",
-                            )
+                                )
+                                universe.emit(
+                                    EventKind.AGENT_ERROR,
+                                    actor_id=agent.player_id,
+                                    sector_id=player.sector_id,
+                                    payload={
+                                        "error": (
+                                            f"external seat {agent.player_id} did not "
+                                            f"submit an action within {deadline:.0f}s"
+                                        ),
+                                        "external_timeout": True,
+                                        "turn_seq": getattr(agent, "turn_seq", None),
+                                    },
+                                    summary=(
+                                        f"[{player.name}] external bot timed out "
+                                        f"({deadline:.0f}s) — auto-WAIT."
+                                    ),
+                                )
+                            else:
+                                action = Action(
+                                    kind=ActionKind.WAIT,
+                                    thought=(
+                                        f"auto-WAIT: no human input within "
+                                        f"{deadline:.0f}s"
+                                    ),
+                                )
+                                universe.emit(
+                                    EventKind.AGENT_THOUGHT,
+                                    actor_id=agent.player_id,
+                                    sector_id=player.sector_id,
+                                    payload={
+                                        "thought": (
+                                            f"No action from {agent.player_id} in "
+                                            f"{deadline:.0f}s — auto-WAIT."
+                                        ),
+                                        "auto_wait": True,
+                                    },
+                                    summary=f"[{player.name}] idle — auto-WAIT.",
+                                )
                     else:
                         if not is_human and hasattr(agent, "provider"):
                             started_at = time.time()
@@ -646,6 +690,14 @@ class MatchRunner:
                 # mutate alignment / trigger FED_RESPONSE on replay, so we
                 # MUST include them to stay bit-for-bit faithful.
                 self._record_action(agent.player_id, action, result.ok, result.error or "")
+                # External seats surface the engine verdict to their bot via
+                # /harness/v1/{pid}/status so it doesn't have to scrape events.
+                record_fn = getattr(agent, "record_result", None)
+                if callable(record_fn):
+                    try:
+                        record_fn(result.ok, result.error, list(result.event_seqs))
+                    except Exception:
+                        pass
 
                 # Phase D.2 — track LLM-timeout WAITs so the NEXT observation
                 # can nudge the agent to re-read its scratchpad. A timeout
@@ -657,7 +709,10 @@ class MatchRunner:
                 is_timeout_wait = (
                     action.kind == ActionKind.WAIT
                     and isinstance(thought_text, str)
-                    and thought_text.startswith("[LLM timeout")
+                    and (
+                        thought_text.startswith("[LLM timeout")
+                        or thought_text.startswith("[external timeout")
+                    )
                 )
                 player.last_action_was_timeout = bool(is_timeout_wait)
                 # Match 13 — track consecutive timeouts per-player so
@@ -906,6 +961,16 @@ class MatchRunner:
                 from ..agents.human import HumanAgent
 
                 agents.append(HumanAgent(player_id=ag.player_id, name=ag.name))
+            elif ag.kind == "external":
+                from ..agents.external import ExternalAgent
+
+                agents.append(
+                    ExternalAgent(
+                        player_id=ag.player_id,
+                        name=ag.name,
+                        token=ag.external_token or "",
+                    )
+                )
             else:
                 agents.append(HeuristicAgent(player_id=ag.player_id, name=ag.name))
         return agents
