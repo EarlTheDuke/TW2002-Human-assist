@@ -12,8 +12,10 @@
                              │
  ┌───────────────────────────────────────────────────────────────┐
  │                 server/  (FastAPI + asyncio)                  │
- │  • HTTP:   / (index), /state (snapshot), /static/*            │
- │  • WS:     /ws (event stream), /ws/agent/:id (optional)       │
+ │  • HTTP:   / (index), /play (cockpit), /state, /static/*      │
+ │  • Harness:/harness/v1/{pid}/{status,observation,action}      │
+ │            bearer-token, loopback-only REST for external seats│
+ │  • WS:     /ws (event stream)                                 │
  │  • Runner: game loop, tick scheduler, agent dispatcher        │
  └───────────────────────────────────────────────────────────────┘
                              ▲
@@ -21,7 +23,11 @@
  ┌──────────────────────────┴────────────────────────────────────┐
  │                      agents/                                  │
  │  BaseAgent  ◄─ HeuristicAgent                                 │
- │             ◄─ LLMAgent (Anthropic / OpenAI backend)          │
+ │             ◄─ LLMAgent (xai / openai / anthropic / deepseek /│
+ │                          custom OpenAI-compat / cursor CLI)   │
+ │             ◄─ HumanAgent   (blocks on /api/human/action)     │
+ │             ◄─ ExternalAgent (blocks on /harness/v1 REST —    │
+ │                               out-of-process Grok Bot seats)  │
  │  Each agent: Observation → Action + thought log               │
  └───────────────────────────────────────────────────────────────┘
                              ▲
@@ -137,6 +143,18 @@ class BaseAgent(Protocol):
 
 ### HeuristicAgent
 Rule-based baseline for tests + fallback when no API key is configured. Implements a competent trade-loop player so we can validate combat & economy without LLM costs.
+
+### ExternalAgent (Grok Bot harness)
+Seat driven by an out-of-process bot. The scheduler enters `act()`, bumps a
+`turn_seq`, and blocks; the bot long-polls
+`GET /harness/v1/{pid}/observation?wait_s=30`, decides, and
+`POST /harness/v1/{pid}/action {turn_seq, action}`. Per-seat bearer tokens
+live in the gitignored `.tw2k/external_tokens.json`. On
+`MatchSpec.external_timeout_s` (default 120 s) the runner applies WAIT and
+emits `AGENT_ERROR{external_timeout}`. Engine untouched — same
+`apply_action` path, events tagged `actor_kind="external"`. Plan:
+`docs/plans/2026-09-20-external-harness.md`; bot guide:
+`docs/GROK_BOT_PLAYER_GUIDE.md`.
 
 ### LLMAgent
 - Holds a **scratchpad** — a rolling journal of what the agent has "noticed" and planned. Passed to the LLM each turn as persistent memory.

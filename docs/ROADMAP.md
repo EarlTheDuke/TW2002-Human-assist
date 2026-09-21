@@ -159,6 +159,23 @@ spans. ✅
 - Deepgram / Cartesia / ElevenLabs premium voice upgrades (currently
   browser-only — partially superseded by H6.2).
 
+## Phase X — External harness (Grok Bot seats) ✅ (Phases 0–2)
+
+Goal: keep custom/Qwen LLM seats and add up to four out-of-process bot
+seats driven over token-authenticated loopback REST. Plan:
+`docs/plans/2026-09-20-external-harness.md`. Guide:
+`docs/GROK_BOT_PLAYER_GUIDE.md`.
+
+- [x] **X0** plan
+- [x] **X1** `ExternalAgent` + `PlayerKind.EXTERNAL`; `/harness/v1/{seats,rules,{pid}/status,{pid}/observation,{pid}/action}`;
+      per-seat tokens (`.tw2k/external_tokens.json`, gitignored); `--external P3,P4`,
+      `--external-timeout-s`; timeout → WAIT + `AGENT_ERROR`; `tests/test_external_harness_phase1.py`;
+      `scripts/smoke_external_harness.py` in CI; `scripts/external_client_example.py`.
+- [x] **X2** `scripts/run_2qwen_4external.ps1`, `scripts/gen_external_tokens.py`, player guide.
+- [ ] **X3 (optional)** `WS /harness/v1/{pid}/ws` turn_due push; spectator `EXTERNAL` badge; cost `n/a`.
+
+**Acceptance:** 2× custom Qwen + 4× external boots; 401 on bad token; timeout → WAIT; valid Action applies; smoke green; no secrets in git.
+
 ## Backlog / stretch
 - Multi-agent matches (3–8 players)
 - Fine-grained ground assault
