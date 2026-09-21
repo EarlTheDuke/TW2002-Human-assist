@@ -80,7 +80,7 @@ def serve(
         ),
     ),
     num_agents: int = typer.Option(2, help="Number of agents (default 2)."),
-    agent_kind: str = typer.Option("auto", help="auto | llm | heuristic"),
+    agent_kind: str = typer.Option("auto", help="auto | llm | heuristic | external"),
     provider: str = typer.Option(
         None,
         help="anthropic | openai | xai | deepseek | custom | cursor (else auto-detect)",
@@ -152,6 +152,30 @@ def serve(
             "indefinitely - good for dev; set 60-180s for demos). Has "
             "no effect on AI slots."
         ),
+    ),
+    external: str = typer.Option(
+        None,
+        help=(
+            "Comma-separated player IDs driven by out-of-process bots over the "
+            "token-authenticated /harness/v1 REST surface (Grok Bot seats). "
+            "Example: '--external P3,P4,P5,P6'. Forces kind=external on those "
+            "slots; other slots keep --provider/--agent-kind. Tokens are read "
+            "from / generated into the gitignored tokens file."
+        ),
+    ),
+    external_timeout_s: float = typer.Option(
+        None,
+        "--external-timeout-s",
+        help=(
+            "Per-turn deadline for external seats (default 120, or "
+            "TW2K_EXTERNAL_TIMEOUT_S). On timeout the seat auto-WAITs and an "
+            "AGENT_ERROR is emitted; four in a row end its day."
+        ),
+    ),
+    external_tokens_file: str = typer.Option(
+        None,
+        "--external-tokens-file",
+        help="Path to the per-seat tokens JSON (default .tw2k/external_tokens.json; gitignored).",
     ),
     play_to_day_cap: bool = typer.Option(
         False,
@@ -250,11 +274,31 @@ def serve(
                 f"[yellow]warn:[/] --human {pid} out of range for {num_agents} agents — ignored"
             )
 
+    # --external mirrors --human: a set of slot indexes forced to kind=external.
+    external_ids: set[str] = {
+        s.strip().upper() for s in (external.split(",") if external else []) if s.strip()
+    }
+    external_slot_idx: set[int] = set()
+    for pid in external_ids:
+        if not (pid.startswith("P") and pid[1:].isdigit()):
+            console.print(f"[yellow]warn:[/] ignoring malformed --external id {pid!r}")
+            continue
+        idx = int(pid[1:]) - 1
+        if 0 <= idx < num_agents:
+            if idx in human_slot_idx:
+                console.print(f"[yellow]warn:[/] {pid} is both --human and --external; keeping human")
+                continue
+            external_slot_idx.add(idx)
+        else:
+            console.print(
+                f"[yellow]warn:[/] --external {pid} out of range for {num_agents} agents — ignored"
+            )
+
     overrides: list[dict] = []
-    max_slots_src = num_agents if human_slot_idx else 0
+    max_slots_src = num_agents if (human_slot_idx or external_slot_idx) else 0
     max_slots = max(
         len(providers_list), len(models_list), max_slots_src, num_agents
-    ) if (providers_list or models_list or human_slot_idx) else 0
+    ) if (providers_list or models_list or human_slot_idx or external_slot_idx) else 0
     for i in range(max_slots):
         entry: dict = {}
         if i < len(providers_list) and providers_list[i]:
@@ -269,6 +313,10 @@ def serve(
         # slot: a human slot never has an LLM wired up.
         if i in human_slot_idx:
             entry["kind"] = "human"
+            entry.pop("provider", None)
+            entry.pop("model", None)
+        elif i in external_slot_idx:
+            entry["kind"] = "external"
             entry.pop("provider", None)
             entry.pop("model", None)
         if entry:
@@ -318,10 +366,33 @@ def serve(
         console.print(
             f"[magenta]Human cockpit:[/] http://{host}:{port}/play   [dim]({deadline_note})[/]"
         )
+    any_external = any(ov.get("kind") == "external" for ov in overrides)
+    external_tokens_masked: dict[str, str] = {}
+    if any_external:
+        from .server import harness_tokens as _ht
+
+        _eto = external_timeout_s
+        if _eto is None:
+            try:
+                _eto = float(_os.environ.get("TW2K_EXTERNAL_TIMEOUT_S", "").strip() or "120")
+            except ValueError:
+                _eto = 120.0
+        seats = {f"P{i+1}": None for i, ov in enumerate(overrides[:num_agents]) if ov.get("kind") == "external"}
+        resolved = _ht.resolve_seat_tokens(seats, tokens_file=external_tokens_file)
+        external_tokens_masked = {pid: _ht.mask(tok) for pid, tok in resolved.items()}
+        console.print(
+            f"[magenta]External harness:[/] http://{host}:{port}/harness/v1/<pid>/...  "
+            f"[dim](timeout {_eto:.0f}s · tokens in {_ht.tokens_file_path(external_tokens_file)})[/]"
+        )
     if overrides:
         for i, ov in enumerate(overrides[:num_agents]):
             if ov.get("kind") == "human":
                 console.print(f"  [dim]P{i+1}:[/] [bold magenta]HUMAN[/] (awaits POST /api/human/action)")
+            elif ov.get("kind") == "external":
+                console.print(
+                    f"  [dim]P{i+1}:[/] [bold magenta]EXTERNAL[/] "
+                    f"token=[dim]{external_tokens_masked.get(f'P{i+1}', '<unset>')}[/]"
+                )
             elif ov:
                 tag_prov = ov.get("provider") or provider_display
                 tag_model = ov.get("model") or "<provider default>"
@@ -384,6 +455,8 @@ def serve(
         ferrengi_grace_days=ferrengi_grace_days,
         ferrengi_strength_ramp_days=ferrengi_strength_ramp_days,
         ferrengi_min_strength_scale=ferrengi_min_strength_scale,
+        external_timeout_s=external_timeout_s,
+        external_tokens_file=external_tokens_file,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

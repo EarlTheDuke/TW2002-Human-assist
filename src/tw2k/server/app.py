@@ -147,6 +147,8 @@ def create_app(
     ferrengi_grace_days: int | None = None,
     ferrengi_strength_ramp_days: int | None = None,
     ferrengi_min_strength_scale: float | None = None,
+    external_timeout_s: float | None = None,
+    external_tokens_file: str | None = None,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -188,6 +190,8 @@ def create_app(
                 ferrengi_grace_days=ferrengi_grace_days,
                 ferrengi_strength_ramp_days=ferrengi_strength_ramp_days,
                 ferrengi_min_strength_scale=ferrengi_min_strength_scale,
+                external_timeout_s=external_timeout_s,
+                external_tokens_file=external_tokens_file,
             )
             await runner.start(spec)
             # runner.start kicks off the scheduler loop in a background
@@ -941,6 +945,12 @@ def create_app(
                 if "ferrengi_min_strength_scale" in body and body["ferrengi_min_strength_scale"] is not None
                 else ferrengi_min_strength_scale
             ),
+            external_timeout_s=(
+                float(body["external_timeout_s"])
+                if body.get("external_timeout_s") is not None
+                else external_timeout_s
+            ),
+            external_tokens_file=body.get("external_tokens_file", external_tokens_file),
         )
         await runner.start(spec)
         # Rebuild copilot sessions — old ones held references to the
@@ -1012,6 +1022,8 @@ def _build_default_spec(
     ferrengi_grace_days: int | None = None,
     ferrengi_strength_ramp_days: int | None = None,
     ferrengi_min_strength_scale: float | None = None,
+    external_timeout_s: float | None = None,
+    external_tokens_file: str | None = None,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -1089,13 +1101,38 @@ def _build_default_spec(
                     if ov.get("custom_max_tokens") is not None
                     else None
                 ),
+                # Secret; resolved below for external seats only. Never
+                # copied into meta.json (see runner._open_save_sink).
+                external_token=(str(ov["token"]) if ov.get("token") else None),
             )
         )
+
+    # External (Grok Bot) seats: make sure every one has a bearer token.
+    # Explicit body token > env TW2K_EXTERNAL_TOKEN_<PID> > tokens file >
+    # generated-and-persisted. Only touches the tokens file when a seat
+    # actually needs a new token, so heuristic/LLM-only matches never
+    # create `.tw2k/`.
+    external_seats = {a.player_id: a.external_token for a in agents if a.kind == "external"}
+    if external_seats:
+        from . import harness_tokens as _ht
+
+        resolved = _ht.resolve_seat_tokens(external_seats, tokens_file=external_tokens_file)
+        for a in agents:
+            if a.kind == "external":
+                a.external_token = resolved[a.player_id]
+
+    if external_timeout_s is None:
+        try:
+            external_timeout_s = float(os.environ.get("TW2K_EXTERNAL_TIMEOUT_S", "").strip() or "120")
+        except ValueError:
+            external_timeout_s = 120.0
+
     return MatchSpec(
         config=cfg,
         agents=agents,
         action_delay_s=cfg.action_delay_s,
         human_deadline_s=human_deadline_s,
+        external_timeout_s=max(1.0, float(external_timeout_s)),
     )
 
 

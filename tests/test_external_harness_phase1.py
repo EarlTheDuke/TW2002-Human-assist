@@ -499,6 +499,84 @@ def test_14_rules_endpoint(tmp_path: Path) -> None:
     asyncio.run(_go())
 
 
+def test_15_build_default_spec_and_cli_external_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tw2k.server.app import _build_default_spec
+
+    tokens_file = tmp_path / "tok.json"
+    monkeypatch.setenv("TW2K_EXTERNAL_TOKENS_FILE", str(tokens_file))
+    monkeypatch.delenv("TW2K_EXTERNAL_TIMEOUT_S", raising=False)
+
+    spec = _build_default_spec(
+        seed=1,
+        universe_size=40,
+        max_days=2,
+        agent_names=None,
+        agent_kind="heuristic",
+        provider=None,
+        model=None,
+        num_agents=6,
+        agent_overrides=[
+            {"provider": "custom", "model": "qwen3.8:latest", "kind": "llm"},
+            {"provider": "custom", "model": "qwen3.8:latest", "kind": "llm"},
+            {"kind": "external", "token": "explicit-token-333333333"},
+            {"kind": "external"},
+            {"kind": "external"},
+            {"kind": "external"},
+        ],
+        external_timeout_s=45,
+    )
+    kinds = [a.kind for a in spec.agents]
+    assert kinds == ["llm", "llm", "external", "external", "external", "external"]
+    assert spec.agents[0].provider == "custom" and spec.agents[0].model == "qwen3.8:latest"
+    assert spec.agents[2].external_token == "explicit-token-333333333"
+    gen = {a.player_id: a.external_token for a in spec.agents[3:]}
+    assert all(t and len(t) >= 32 for t in gen.values())
+    assert len(set(gen.values())) == 3
+    assert spec.external_timeout_s == 45.0
+    on_disk = json.loads(tokens_file.read_text(encoding="utf-8"))
+    assert set(on_disk) == {"P4", "P5", "P6"}  # explicit P3 never persisted
+
+    # Heuristic-only spec must not touch the tokens file.
+    tokens_file.unlink()
+    _build_default_spec(
+        seed=1, universe_size=40, max_days=2, agent_names=None, agent_kind="heuristic",
+        provider=None, model=None, num_agents=2,
+    )
+    assert not tokens_file.exists()
+
+    # CLI: --external P3,P4 -> kind=external overrides without provider/model.
+    captured: dict = {}
+
+    def _fake_create_app(**kw):
+        captured.update(kw)
+
+        class _App:  # minimal stand-in for uvicorn.run
+            pass
+
+        return _App()
+
+    import tw2k.cli as cli_mod
+    import tw2k.server.app as app_mod
+
+    monkeypatch.setattr(app_mod, "create_app", _fake_create_app)
+    monkeypatch.setattr(cli_mod.uvicorn, "run", lambda *a, **k: None)
+    from typer.testing import CliRunner
+
+    res = CliRunner().invoke(
+        cli_mod.app,
+        ["serve", "--agent-kind", "heuristic", "--num-agents", "4", "--external", "P3,P4",
+         "--external-timeout-s", "33", "--no-auto-start"],
+    )
+    assert res.exit_code == 0, res.output
+    ov = captured["agent_overrides"]
+    assert [o.get("kind") for o in ov] == [None, None, "external", "external"]
+    assert "provider" not in ov[2] and "model" not in ov[2]
+    assert captured["external_timeout_s"] == 33.0
+    assert "EXTERNAL" in res.output and "…" in res.output  # masked token in banner
+    for tok in json.loads(tokens_file.read_text(encoding="utf-8")).values():
+        assert tok not in res.output  # never printed unmasked
+
+
 def test_16_loopback_only_unless_allowed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("TW2K_HARNESS_ALLOW_REMOTE", raising=False)
     app, client = _app_and_client(tmp_path, client_host="10.0.0.5")
