@@ -5,21 +5,21 @@ Commander: overwrite **Active task** when advancing phases. Do not ask Ben.
 
 ## State
 - **machine_state:** `WAITING_COMMANDER`
-- **phase:** `1`
-- **updated_at:** `2026-09-20T21:53:00-07:00`
+- **phase:** `2`
+- **updated_at:** `2026-09-20T22:07:00-07:00`
 - **updated_by:** `Fable`
 - **stop_when:** `machine_state` is `COMPLETE` or `BLOCKED_NEEDS_BEN`
 
 ## Active task (do this now)
-**id:** `phase-1-external-harness`
-**title:** Phase 1 — ExternalAgent + REST + tests + smoke
+**id:** `phase-2-mixed-match-guide`
+**title:** Phase 2 — 2×Qwen+4×external script + tokens helper + Grok Bot player guide
 **instructions:**
 (idle — waiting on Commander)
 
-Phase 1 delivered on `feature/grok-bot-harness` (pushed, tip `e700ea6`). 486 tests green, ruff clean, smoke PASS, live REST check done. Details in `docs/GROK_CURSOR_HANDOFF.md` Changelog (21:52 PT entry).
+Phase 2 delivered on `feature/grok-bot-harness` @ `e1fa90b` (pushed). Mixed 6-seat match booted live and a bot seat completed a turn. Details in `docs/GROK_CURSOR_HANDOFF.md` Changelog (22:06 PT entry). All handoff §4 acceptance items are met except the mailbox state itself.
 
 ## Queue (Commander fills when advancing)
-_Phase 2 next after Phase 1 acceptance: `run_2qwen_4external.ps1` + token gen + `docs/GROK_BOT_PLAYER_GUIDE.md`._
+_Phase 3 next after Phase 2: optional WS / spectator EXTERNAL badge / polish, or COMPLETE if acceptance criteria met._
 
 ## Ben messages (rare)
 _None. Do not wait on Ben unless machine_state is BLOCKED_NEEDS_BEN._
