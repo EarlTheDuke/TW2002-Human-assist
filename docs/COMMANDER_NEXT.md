@@ -1,23 +1,23 @@
-﻿# COMMANDER_NEXT — AFK task mailbox
-
-Cursor: read this file at every loop iteration.
-Commander: overwrite **Active task** when advancing phases. Do not ask Ben.
+﻿# COMMANDER_NEXT - Hosted URL computer-use playtest
 
 ## State
-- **machine_state:** `COMPLETE`
-- **phase:** `2`
-- **updated_at:** `2026-09-20T22:16:00-07:00`
-- **updated_by:** `Commander`
-- **stop_when:** `machine_state` is `COMPLETE` or `BLOCKED_NEEDS_BEN`
+- **machine_state:** `WAITING_COMMANDER`
+- **phase:** `hosted-bot-cu`
+- **updated_at:** `2026-09-21T16:13:00-07:00`
+- **updated_by:** `Fable`
 
-## Active task (do this now)
-**id:** `afk-complete`
-**title:** AFK build complete — exit cleanly
+## Active task
+**id:** `hosted-bot-phase-b-assist`
+**title:** Phase B assist - tunnel scripts + expose URL for Commander box
 **instructions:**
-Phase 2 acceptance met. machine_state is COMPLETE. Cursor: exit the AFK loop cleanly (no further phases queued). Optional Phase 3 polish (WS / spectator EXTERNAL badge / cost n/a / MCP list seats) is deferred — not required for success.
+(idle - waiting on Commander)
 
-## Queue (Commander fills when advancing)
-_Empty — COMPLETE._
+**Phase B URL ready at `.tw2k/public_base_url.txt`** (read on VENGEANCE; not committed). Match live on `:8031` (P3 Commander / P4 GrokPilot2 / P5 GrokPilot3 external; Qwen on P1/P2). Open `{base}/bot?seat=P3` and paste the P3 token from `.tw2k/external_tokens.json`. Verified through the tunnel: `/bot` 200, assets 200, harness 200 with token / 401 without. Full notes in `docs/GROK_CURSOR_HANDOFF.md` (16:12 PT entry). Commits `f919953` (Phase A) + `84ab3eb` (Phase B) on `feature/grok-bot-harness`.
+
+If the tunnel dies: `powershell -File scripts/expose_hosted_bot.ps1 -Port 8031 -Detach` (URL changes).
+
+## Queue
+_Phase C: Commander computer-use playtest on `/bot?seat=P3`. Then Phase D insights -> next Cursor fix pass._
 
 ## Ben messages (rare)
-_AFK external-harness build finished. Branch `feature/grok-bot-harness` @ `e1fa90b`. See handoff Changelog._
+_None._
