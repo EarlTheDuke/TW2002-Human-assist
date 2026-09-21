@@ -104,6 +104,18 @@ class AgentSpec:
     kind: str  # "llm" | "heuristic" | "human"
     provider: str | None = None
     model: str | None = None
+    # Optional OpenAI-compat overrides for provider=="custom" only. When set,
+    # they replace TW2K_CUSTOM_BASE_URL / TW2K_CUSTOM_API_KEY for that slot so
+    # one match can mix e.g. TinyBox qwen3.5:122b + local Ollama qwen3:14b.
+    custom_base_url: str | None = None
+    custom_api_key: str | None = None
+    # Optional per-slot output token cap for provider=="custom". Reasoning
+    # models (Kimi-K2.5 in particular) can spend 10k+ tokens of internal
+    # reasoning before emitting JSON; the global default of 4000 then trims
+    # mid-thought and every turn parse-errors. Bumping this to e.g. 12000
+    # only on that slot lets the reasoning model finish without ballooning
+    # cost or wall-time on the small local Qwens that don't need it.
+    custom_max_tokens: int | None = None
 
 
 @dataclass
@@ -140,6 +152,10 @@ class RunnerState:
     # Surfaced live via /api/cost, frozen into the final match_metrics
     # event, and re-derivable offline via scripts/cost_report.py.
     cost_tracker: MatchCostTracker = field(default_factory=MatchCostTracker)
+    # Transient spectator heartbeat while an LLM call is in flight. This is
+    # not an engine event because no game state changed yet; it just tells the
+    # browser the scheduler is waiting on a provider response.
+    llm_phase: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +223,43 @@ class MatchRunner:
                 pass
         self._task = None
         self._close_save_sink()
+
+    async def _publish_llm_phase(
+        self,
+        agent: BaseAgent,
+        player: Player,
+        phase: str,
+        started_at: float | None = None,
+    ) -> None:
+        if phase == "start":
+            started_at = started_at or time.time()
+            payload = {
+                "type": "llm_phase",
+                "phase": "start",
+                "player_id": player.id,
+                "player_name": player.name,
+                "provider": getattr(agent, "provider", None),
+                "model": getattr(agent, "model", None),
+                "started_at": started_at,
+                "day": getattr(self.state.universe, "day", None),
+                "tick": getattr(self.state.universe, "tick", None),
+            }
+            self.state.llm_phase = payload.copy()
+        else:
+            payload = {
+                "type": "llm_phase",
+                "phase": "end",
+                "player_id": player.id,
+                "player_name": player.name,
+                "provider": getattr(agent, "provider", None),
+                "model": getattr(agent, "model", None),
+                "started_at": started_at,
+                "elapsed_s": max(0.0, time.time() - started_at) if started_at else None,
+                "day": getattr(self.state.universe, "day", None),
+                "tick": getattr(self.state.universe, "tick", None),
+            }
+            self.state.llm_phase = None
+        await self.broadcaster.publish(payload)
 
     # ---------------- save sink (Phase 6) ---------------- #
 
@@ -530,7 +583,15 @@ class MatchRunner:
                                 summary=f"[{player.name}] idle — auto-WAIT.",
                             )
                     else:
-                        action = await agent.act(obs)
+                        if not is_human and hasattr(agent, "provider"):
+                            started_at = time.time()
+                            await self._publish_llm_phase(agent, player, "start", started_at)
+                            try:
+                                action = await agent.act(obs)
+                            finally:
+                                await self._publish_llm_phase(agent, player, "end", started_at)
+                        else:
+                            action = await agent.act(obs)
                 except asyncio.CancelledError:
                     # Clean shutdown (runner.stop). Don't emit an error —
                     # just exit the loop.
@@ -836,6 +897,9 @@ class MatchRunner:
                         provider=ag.provider,
                         model=ag.model,
                         think_cap_s=universe.config.llm_think_cap_s,
+                        custom_base_url=ag.custom_base_url,
+                        custom_api_key=ag.custom_api_key,
+                        custom_max_tokens=ag.custom_max_tokens,
                     )
                 )
             elif ag.kind == "human":
@@ -856,16 +920,18 @@ class MatchRunner:
         if not llm_agents:
             return
 
-        # Dedupe by (provider, model) — no need to warm the same model twice if
-        # multiple agents share it.
-        seen: dict[tuple[str, str], LLMAgent] = {}
+        # Dedupe by (provider, model, endpoint) — same model on different OpenAI
+        # compat URLs (e.g. mixed TinyBox + local Ollama) needs separate warmups.
+        seen: dict[tuple[str, str, str], LLMAgent] = {}
         for a in llm_agents:
-            seen.setdefault((a.provider, a.model), a)
+            ep = a._effective_custom_base()  # type: ignore[attr-defined]
+            seen.setdefault((a.provider, a.model, ep), a)
 
         u = self.state.universe
         assert u is not None
 
-        for (prov, mdl), agent in seen.items():
+        for key, agent in seen.items():
+            prov, mdl, _ep = key
             u.emit(
                 EventKind.AGENT_THOUGHT,
                 actor_id=agent.player_id,
@@ -1028,6 +1094,20 @@ class MatchRunner:
                 "turns_today": p.turns_today,
                 "turns_per_day": p.turns_per_day,
                 "scratchpad": p.scratchpad,
+                # 3-horizon goals — MUST be in the patch or a client that
+                # connected before the agent first wrote goals will keep
+                # showing "No current goals on record" indefinitely even
+                # though the agent is actively updating them every turn.
+                # (Initial snapshot has them, but event patches previously
+                # dropped them, so late-connecting or early-connecting
+                # clients fell out of sync with the live strategic plan.)
+                "goal_short": getattr(p, "goal_short", "") or "",
+                "goal_medium": getattr(p, "goal_medium", "") or "",
+                "goal_long": getattr(p, "goal_long", "") or "",
+                "operator_directive": getattr(p, "operator_directive", "") or "",
+                "operator_directive_updated_day": getattr(p, "operator_directive_updated_day", None),
+                "operator_directive_updated_tick": getattr(p, "operator_directive_updated_tick", None),
+                "operator_dialogue": list(getattr(p, "operator_dialogue", []) or []),
                 "net_worth": full_net_worth(u, p),
                 "alliances": list(p.alliances),
             }
@@ -1164,6 +1244,7 @@ class MatchRunner:
             "finished": u.finished,
             "winner_id": u.winner_id,
             "win_reason": u.win_reason,
+            "llm_phase": self.state.llm_phase,
             "players": [
                 {
                     "id": p.id,
@@ -1211,6 +1292,10 @@ class MatchRunner:
                     "goal_short": getattr(p, "goal_short", "") or "",
                     "goal_medium": getattr(p, "goal_medium", "") or "",
                     "goal_long": getattr(p, "goal_long", "") or "",
+                    "operator_directive": getattr(p, "operator_directive", "") or "",
+                    "operator_directive_updated_day": getattr(p, "operator_directive_updated_day", None),
+                    "operator_directive_updated_tick": getattr(p, "operator_directive_updated_tick", None),
+                    "operator_dialogue": list(getattr(p, "operator_dialogue", []) or []),
                     "recent_trades": list(getattr(p, "trade_log", []) or [])[-3:],
                     # Full net worth — ship assets + every owned planet.
                     # `net_worth_ship` is broken out so the UI can show

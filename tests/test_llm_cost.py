@@ -51,6 +51,15 @@ def test_lookup_custom_is_free_by_default() -> None:
     assert p.output == 0.0
 
 
+def test_lookup_xai_grok_4_3_not_grok_4_flagship() -> None:
+    """grok-4.3 must match its own row, not the substring `grok-4` tier."""
+    p = lookup_prices("xai", "grok-4.3")
+    assert p.is_fallback is False
+    assert p.input == pytest.approx(1.25)
+    assert p.cached_input == pytest.approx(0.20)
+    assert p.output == pytest.approx(2.50)
+
+
 def test_lookup_provider_default_fallback() -> None:
     """Unknown model inside a known provider hits the 'default' row."""
     p = lookup_prices("xai", "grok-999-unreleased")

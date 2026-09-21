@@ -16,8 +16,9 @@ Does NOT import `runner`.
 
 from __future__ import annotations
 
+from . import constants as K
 from .models import Commodity, EventKind, PlanetClass, Universe
-from .victory import _award_xp
+from .victory import _award_xp, _planet_asset_value
 
 
 def _complete_citadels(universe: Universe) -> None:
@@ -74,3 +75,39 @@ def _advance_planets(universe: Universe) -> None:
             planet.stockpile[Commodity.ORGANICS] = max(
                 0, planet.stockpile[Commodity.ORGANICS] - max(1, total_col // 100)
             )
+
+
+def _pay_planet_value_tax(universe: Universe) -> None:
+    """Pay owners a small credit dividend on new planet value only."""
+    for planet in universe.planets.values():
+        current_value = _planet_asset_value(planet)
+        previous_value = max(0, int(getattr(planet, "last_tax_value", 0) or 0))
+        owner_id = planet.owner_id
+        owner = universe.players.get(owner_id) if owner_id is not None else None
+
+        if owner is not None and owner.alive:
+            gain = max(0, current_value - previous_value)
+            payout = int(gain * K.PLANET_VALUE_TAX_RATE)
+            if payout >= K.PLANET_VALUE_TAX_MIN_PAYOUT:
+                owner.credits += payout
+                universe.emit(
+                    EventKind.PLANET_TAX_PAYOUT,
+                    actor_id=owner.id,
+                    sector_id=planet.sector_id,
+                    payload={
+                        "planet_id": planet.id,
+                        "planet_name": planet.name,
+                        "owner_id": owner.id,
+                        "previous_value": previous_value,
+                        "current_value": current_value,
+                        "gain": gain,
+                        "rate": K.PLANET_VALUE_TAX_RATE,
+                        "payout": payout,
+                    },
+                    summary=(
+                        f"{owner.name} collected {payout}cr planet growth dividend "
+                        f"from {planet.name} (+{gain} value)"
+                    ),
+                )
+
+        planet.last_tax_value = current_value

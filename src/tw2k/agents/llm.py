@@ -319,6 +319,52 @@ CUSTOM_KEEP_ALIVE = os.environ.get("TW2K_CUSTOM_KEEP_ALIVE", "30m")
 DEFAULT_CURSOR_MODEL = os.environ.get("TW2K_CURSOR_MODEL", "composer-2-fast")
 
 
+def _custom_ollama_context_options(effective_base: str | None = None) -> dict[str, Any] | None:
+    """Ollama-only ``options`` block for OpenAI-compat ``/v1/chat/completions``.
+
+    Ollama reads ``options.num_ctx`` as the KV/context window for the request.
+    TW2K sends large system prompts, fat observation JSON, and up to thousands of
+    completion tokens on Qwen — values near Ollama's low-VRAM defaults (e.g. 4k)
+    can truncate mid-turn. See https://docs.ollama.com/context-length
+
+    Resolution order:
+      * ``TW2K_CUSTOM_NUM_CTX`` — positive int forces ``num_ctx``; ``0`` / ``off`` /
+        ``false`` skips attaching ``options`` (let the server decide).
+      * Else if the effective base URL looks like local Ollama (``localhost``,
+        ``127.0.0.1``, or ``[::1]``), default ``num_ctx=32768`` (fits prompt + ~6k gen on 24GB
+        class GPUs without jumping straight to 128k+ KV usage).
+      * Remote/custom gateways omit ``options`` unless ``TW2K_CUSTOM_NUM_CTX`` is
+        set — some proxies 400 on unknown JSON keys.
+
+    ``effective_base`` is the per-agent custom URL when set; otherwise
+    ``TW2K_CUSTOM_BASE_URL`` env is used.
+
+    Also set ``OLLAMA_CONTEXT_LENGTH`` / the Ollama app slider if you want the
+    daemon's global default aligned; per-request ``num_ctx`` still caps KV for
+    that inference.
+    """
+    raw = (os.environ.get("TW2K_CUSTOM_NUM_CTX") or "").strip()
+    if raw:
+        low = raw.lower()
+        if low in ("0", "off", "false", "none", "no"):
+            return None
+        try:
+            n = int(raw, 10)
+        except ValueError:
+            return None
+        if n <= 0:
+            return None
+        return {"num_ctx": n}
+    base = (effective_base or os.environ.get("TW2K_CUSTOM_BASE_URL") or "").strip().lower()
+    if (
+        "127.0.0.1" in base
+        or "localhost" in base
+        or "[::1]" in base
+    ):
+        return {"num_ctx": 32768}
+    return None
+
+
 # ---------------------------------------------------------------------------
 # LLM agent
 # ---------------------------------------------------------------------------
@@ -334,10 +380,25 @@ class LLMAgent(BaseAgent):
         provider: str | None = None,
         model: str | None = None,
         think_cap_s: float | None = None,
+        custom_base_url: str | None = None,
+        custom_api_key: str | None = None,
+        custom_max_tokens: int | None = None,
     ):
         super().__init__(player_id, name)
         self.provider = provider or default_provider()
         self.model = model or self._default_model()
+        cb = (custom_base_url or "").strip()
+        self._custom_base_url: str | None = cb or None
+        self._custom_api_key: str | None = (
+            custom_api_key if custom_api_key is not None else None
+        )
+        # Per-slot output cap for provider="custom". Beats the default
+        # is_qwen/is_other heuristic and the TW2K_CUSTOM_MAX_TOKENS env when
+        # both are present. Useful for Kimi-K2.5 which needs ~12k to finish
+        # reasoning + emit JSON, while the rest of the table stays at 4-6k.
+        self._custom_max_tokens: int | None = (
+            int(custom_max_tokens) if custom_max_tokens is not None else None
+        )
         # Per-turn timeout. Cold-load is handled separately by warmup(); this budget
         # covers steady-state generation once the model is resident.
         default_timeout = 20.0
@@ -406,6 +467,9 @@ class LLMAgent(BaseAgent):
         # and parsed in `_call_cursor` so we can pull the outer envelope's
         # `usage` block without re-running the CLI.
         self._last_cursor_raw_stdout: str = ""
+
+    def _effective_custom_base(self) -> str:
+        return (self._custom_base_url or os.environ.get("TW2K_CUSTOM_BASE_URL") or "").strip()
 
     def _default_model(self) -> str:
         if self.provider == "anthropic":
@@ -487,7 +551,11 @@ class LLMAgent(BaseAgent):
             "messages": messages,
         }
         if self.provider == "custom":
-            kwargs["extra_body"] = {"keep_alive": CUSTOM_KEEP_ALIVE}
+            eb: dict[str, Any] = {"keep_alive": CUSTOM_KEEP_ALIVE}
+            ctx = _custom_ollama_context_options(self._effective_custom_base())
+            if ctx:
+                eb["options"] = ctx
+            kwargs["extra_body"] = eb
         resp = await client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
         text, _ = _coalesce_message_text(resp)
         return text
@@ -516,15 +584,20 @@ class LLMAgent(BaseAgent):
                 )
             self._client = openai.AsyncOpenAI(api_key=api_key, base_url=XAI_BASE_URL)
         elif self.provider == "custom":
-            base_url = os.environ.get("TW2K_CUSTOM_BASE_URL", CUSTOM_BASE_URL)
+            base_url = self._effective_custom_base() or CUSTOM_BASE_URL
             if not base_url:
-                raise RuntimeError("TW2K_CUSTOM_BASE_URL is not set")
-            api_key = (
-                os.environ.get("TW2K_CUSTOM_API_KEY")
-                or os.environ.get("OPENAI_API_KEY")
-                or os.environ.get("DEEPSEEK_API_KEY")
-                or "sk-placeholder"
-            )
+                raise RuntimeError(
+                    "TW2K_CUSTOM_BASE_URL is not set (or pass custom_base_url for this agent)"
+                )
+            if self._custom_api_key is not None:
+                api_key = self._custom_api_key or "sk-placeholder"
+            else:
+                api_key = (
+                    os.environ.get("TW2K_CUSTOM_API_KEY")
+                    or os.environ.get("OPENAI_API_KEY")
+                    or os.environ.get("DEEPSEEK_API_KEY")
+                    or "sk-placeholder"
+                )
             self._client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
         else:
             raise RuntimeError(f"no OpenAI-compat client for provider {self.provider}")
@@ -781,6 +854,8 @@ class LLMAgent(BaseAgent):
           TW2K_CUSTOM_API_KEY     — bearer token (falls back to OPENAI_API_KEY)
           TW2K_CUSTOM_MODEL       — model name to request
           TW2K_CUSTOM_KEEP_ALIVE  — Ollama keep_alive duration (default 30m)
+          TW2K_CUSTOM_NUM_CTX     — Ollama options.num_ctx (optional). Localhost
+                                    custom URLs default to 32768 unless set to 0/off.
           TW2K_CUSTOM_JSON_MODE   — "1" to request JSON response_format (default off —
                                     many self-hosted servers reject unknown fields)
           TW2K_CUSTOM_MAX_TOKENS  — output token budget per turn (default 4000).
@@ -793,10 +868,22 @@ class LLMAgent(BaseAgent):
                                     wall-time, not $) and drives the rate toward 0.
         """
         client = await self._ensure_openai_client()
+        is_qwen = "qwen" in (self.model or "").lower()
+        default_max_tokens = 6000 if is_qwen else 4000
+        if self._custom_max_tokens is not None and self._custom_max_tokens > 0:
+            max_tokens = self._custom_max_tokens
+        else:
+            try:
+                max_tokens = int(
+                    os.environ.get("TW2K_CUSTOM_MAX_TOKENS", str(default_max_tokens))
+                )
+            except ValueError:
+                max_tokens = default_max_tokens
+        default_temperature = 0.2 if is_qwen else 0.6
         try:
-            max_tokens = int(os.environ.get("TW2K_CUSTOM_MAX_TOKENS", "4000"))
+            temperature = float(os.environ.get("TW2K_CUSTOM_TEMPERATURE", str(default_temperature)))
         except ValueError:
-            max_tokens = 4000
+            temperature = default_temperature
         # Ollama native: num_predict caps output tokens below the server's
         # own default (often 128). Without this, OpenAI-compat `max_tokens`
         # is sometimes ignored by the Ollama backend and the model runs
@@ -805,12 +892,23 @@ class LLMAgent(BaseAgent):
             "keep_alive": CUSTOM_KEEP_ALIVE,
             "num_predict": max_tokens,
         }
+        ctx_opts = _custom_ollama_context_options(self._effective_custom_base())
+        if ctx_opts:
+            extra_body["options"] = ctx_opts
+        system_prompt = get_system_prompt()
+        if is_qwen:
+            system_prompt += (
+                "\n\nCUSTOM QWEN OUTPUT CONTRACT: Return exactly one complete JSON "
+                "object matching the schema. Do not use markdown fences. Do not "
+                "write analysis before or after the JSON. Keep `thought` and "
+                "`scratchpad_update` concise so the `action` object is never truncated."
+            )
         kwargs: dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens,
-            "temperature": 0.6,
+            "temperature": temperature,
             "messages": [
-                {"role": "system", "content": get_system_prompt()},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": observation_json},
             ],
             "extra_body": extra_body,
@@ -819,6 +917,10 @@ class LLMAgent(BaseAgent):
             kwargs["response_format"] = {"type": "json_object"}
         resp = await client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
         text, diag = _coalesce_message_text(resp)
+        if is_qwen and diag.source == "content" and diag.reasoning_len > 0:
+            reasoning_text, reasoning_diag = _coalesce_message_text(resp, prefer="reasoning")
+            if reasoning_text.strip() and _parse_response(text) is None and _parse_response(reasoning_text) is not None:
+                text, diag = reasoning_text, reasoning_diag
         self._last_diag = diag
         self._last_usage = from_openai_like(resp, provider="custom")
         return text
@@ -906,39 +1008,39 @@ def _extract_last_json_object(text: str) -> str | None:
     return None
 
 
-def _parse_response(raw: str) -> Action | None:
-    raw = raw.strip()
-    if not raw:
+def _extract_object_after_key(text: str, key: str) -> str | None:
+    """Extract a balanced object assigned to a JSON key, if that object is complete."""
+    m = re.search(rf'"{re.escape(key)}"\s*:\s*\{{', text)
+    if not m:
         return None
-
-    # Strip reasoning-model <think>...</think> blocks before anything else.
-    raw = _THINK_BLOCK_RE.sub("", raw)
-    raw = _LEFTOVER_THINK_RE.sub("", raw).strip()
-    if not raw:
+    start = text.find("{", m.end() - 1)
+    if start < 0:
         return None
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return None
 
-    # Strip ```json fences if present
-    if raw.startswith("```"):
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```\s*$", "", raw)
 
-    # Fallback: find the last top-level { ... } block
-    data: dict[str, Any] | None = None
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        m = _JSON_BLOCK_RE.search(raw)
-        candidate: str | None = m.group(0) if m else None
-        if candidate is None:
-            candidate = _extract_last_json_object(raw)
-        if candidate:
-            try:
-                data = json.loads(candidate)
-            except json.JSONDecodeError:
-                return None
-    if not isinstance(data, dict):
-        return None
-
+def _parse_action_mapping(data: dict[str, Any], *, recovered: bool = False) -> Action | None:
     action_obj = data.get("action")
     if not isinstance(action_obj, dict):
         return None
@@ -987,10 +1089,17 @@ def _parse_response(raw: str) -> Action | None:
             return str(v)[:240] if v is not None else ""
         return None
 
+    thought = str(data.get("thought") or "")[:1500]
+    if recovered and not thought:
+        thought = "[recovered partial JSON: complete action object found]"
+    elif recovered:
+        thought = "[recovered partial JSON] " + thought
+        thought = thought[:1500]
+
     return Action(
         kind=kind,
         args=args,
-        thought=str(data.get("thought") or "")[:1500],
+        thought=thought,
         scratchpad_update=(
             str(data["scratchpad_update"])[:8000]
             if "scratchpad_update" in data and data["scratchpad_update"] is not None
@@ -1000,3 +1109,61 @@ def _parse_response(raw: str) -> Action | None:
         goal_medium=_goal("medium"),
         goal_long=_goal("long"),
     )
+
+
+def _parse_partial_action_response(raw: str) -> Action | None:
+    """Recover from qwen-style truncation when the nested action object is complete.
+
+    We intentionally do NOT invent args or close arbitrary JSON strings. Recovery
+    only fires when the `action` object itself is balanced and valid JSON, which
+    makes the submitted engine action as safe as a normal parsed response.
+    """
+    action_text = _extract_object_after_key(raw, "action")
+    if not action_text:
+        return None
+    try:
+        action_obj = json.loads(action_text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(action_obj, dict):
+        return None
+    return _parse_action_mapping({"action": action_obj}, recovered=True)
+
+
+def _parse_response(raw: str) -> Action | None:
+    raw = raw.strip()
+    if not raw:
+        return None
+
+    # Strip reasoning-model <think>...</think> blocks before anything else.
+    raw = _THINK_BLOCK_RE.sub("", raw)
+    raw = _LEFTOVER_THINK_RE.sub("", raw).strip()
+    if not raw:
+        return None
+
+    # Strip ```json fences if present
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```\s*$", "", raw)
+
+    # Fallback: find the last top-level { ... } block
+    data: dict[str, Any] | None = None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        m = _JSON_BLOCK_RE.search(raw)
+        candidate: str | None = m.group(0) if m else None
+        if candidate is None:
+            candidate = _extract_last_json_object(raw)
+        if candidate:
+            try:
+                data = json.loads(candidate)
+            except json.JSONDecodeError:
+                return _parse_partial_action_response(raw)
+    if not isinstance(data, dict):
+        return _parse_partial_action_response(raw)
+
+    parsed = _parse_action_mapping(data)
+    if parsed is not None:
+        return parsed
+    return _parse_partial_action_response(raw)

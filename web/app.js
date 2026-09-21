@@ -23,6 +23,7 @@
     maxDays: 30,
     status: "connecting",
     speed: 1,
+    llmPhase: null,             // transient {player_id, player_name, provider, model, started_at}
     finished: false,
     winner_id: null,
     win_reason: "",
@@ -72,6 +73,8 @@
     // /state snapshot. Previously dropped on the floor in onSnapshot.
     corporations: new Map(),  // ticker -> Corporation dict
     ferrengi: new Map(),      // id -> FerrengiShip dict
+    directiveDrafts: new Map(), // pid -> textarea content while editing
+    directiveChatDrafts: new Map(), // pid -> pending operator chat text
   };
 
   const MAX_EVENTS = 600;
@@ -151,6 +154,9 @@
       case "event":
         onEvent(msg);
         break;
+      case "llm_phase":
+        onLlmPhase(msg);
+        break;
       case "error":
         pushEvent({
           kind: "system_error",
@@ -177,8 +183,19 @@
     }
     state.bounds = { minX, minY, maxX, maxY };
     state.maxDays = msg.max_days || state.maxDays;
-    state.players.clear();
-    for (const p of msg.players) state.players.set(p.id, p);
+    // Merge the init player payload rather than replacing. The broadcaster
+    // retains the match-start "init" message and replays it to every late
+    // subscriber AFTER the fresh "snapshot" has already delivered the
+    // current state (including goal_short/medium/long, scratchpad, rank,
+    // net_worth, etc.). A naive .set(p.id, p) would clobber those richer
+    // fields with the minimal init record {id,name,color,kind,sector_id,
+    // credits,ship,alive}, which is why the drawer's Plans block kept
+    // showing "No current goals on record" after every browser refresh
+    // even though the agents were actively writing goals each turn.
+    for (const p of msg.players) {
+      const cur = state.players.get(p.id) || {};
+      state.players.set(p.id, Object.assign({}, cur, p));
+    }
     state.events = [];
     state.messages = [];
     state.recentWarp = [];
@@ -199,6 +216,7 @@
     if (snap.tick) state.tick = snap.tick;
     if (snap.status) state.status = snap.status;
     if (snap.speed) state.speed = snap.speed;
+    if ("llm_phase" in snap) state.llmPhase = snap.llm_phase || null;
     if (snap.finished) state.finished = true;
     if (snap.winner_id) state.winner_id = snap.winner_id;
     if (snap.win_reason) state.win_reason = snap.win_reason;
@@ -235,6 +253,22 @@
     // Re-populate the event feed's actor filter so new/changed rosters
     // (match restart, late-arriving snapshot) always have correct options.
     refreshActorFilterOptions();
+  }
+
+  function onLlmPhase(msg) {
+    if (!msg || msg.phase === "end") {
+      state.llmPhase = null;
+      return;
+    }
+    state.llmPhase = {
+      player_id: msg.player_id || null,
+      player_name: msg.player_name || msg.player_id || "agent",
+      provider: msg.provider || "",
+      model: msg.model || "",
+      started_at: msg.started_at || (Date.now() / 1000),
+      day: msg.day,
+      tick: msg.tick,
+    };
   }
 
   function onEvent(msg) {
@@ -1210,6 +1244,8 @@
   function renderPlayers() {
     const container = playersPanel;
     if (!container) return;
+    const existingBody = container.querySelector(".panel-body");
+    const prevScrollTop = existingBody ? existingBody.scrollTop : 0;
     let header = container.querySelector(".panel-header");
     if (!header) {
       header = document.createElement("div");
@@ -1408,10 +1444,17 @@
             <div class="stat" title="Genesis torpedoes loaded (spawns new planets)"><span class="k">Genesis</span><span class="v">${fmt(p.genesis || 0)}</span></div>
             <div class="stat" title="Atomic mines in magazine (tap-to-arm, heavy damage)"><span class="k">Atomic</span><span class="v">${fmt(p.atomic_mines || 0)}</span></div>
           </div>
-          <div class="cargo-bar" title="Cargo holds">${cargoSegs}</div>
-          <div class="cargo-legend">${cargoLabel}</div>
+          <div class="player-cargo-hold" aria-label="Cargo hold">
+            <div class="player-cargo-hold-head">
+              <span class="player-cargo-hold-title">Cargo hold</span>
+              <span class="player-cargo-hold-meta">${cargoHoldMeta(p)}</span>
+            </div>
+            <div class="cargo-bar" title="Cargo by commodity vs total holds">${cargoSegs}</div>
+            <div class="cargo-legend">${cargoLabel}</div>
+          </div>
           ${extraEquip.length ? `<div class="equip-row">${extraEquip.join("")}</div>` : ""}
           ${allianceTags ? `<div class="alliance-row">${allianceTags}</div>` : ""}
+          ${renderOperatorDirectiveCard(p)}
           ${renderGoalsBlock(p)}
           ${renderPlanetsBlock(p)}
           ${renderTradesBlock(p)}
@@ -1430,6 +1473,7 @@
       // "see one fully". Collapsing a card simply leaves everything
       // collapsed (user can re-open whichever they want next).
       card.addEventListener("toggle", () => {
+        const userToggled = card.dataset.userToggled === "1";
         const ids = new Set(
           (localStorage.getItem("tw2k_collapsed_cards") || "").split(",").filter(Boolean)
         );
@@ -1442,15 +1486,23 @@
             sibling.open = false;
             ids.add(sid);
           }
-          requestAnimationFrame(() => {
-            try {
-              card.scrollIntoView({ block: "start", behavior: "smooth" });
-            } catch { card.scrollIntoView(true); }
-          });
+          if (userToggled) {
+            requestAnimationFrame(() => {
+              try {
+                card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+              } catch { card.scrollIntoView(false); }
+            });
+          }
         } else {
           ids.add(p.id);
         }
         localStorage.setItem("tw2k_collapsed_cards", Array.from(ids).join(","));
+      });
+      card.addEventListener("pointerdown", () => {
+        card.dataset.userToggled = "1";
+      });
+      card.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") card.dataset.userToggled = "1";
       });
       grid.appendChild(card);
     }
@@ -1464,6 +1516,7 @@
       body.appendChild(corpPanel);
     }
     renderCorporationsInto(corpPanel);
+    body.scrollTop = prevScrollTop;
   }
 
   // ----------------- Phase B HUD helpers ---------------------------
@@ -1649,6 +1702,23 @@
     </span>`;
   }
 
+  /** One-line summary for the cargo-hold panel header (filled / capacity · free). */
+  function cargoHoldMeta(p) {
+    const holds = Math.max(0, p.holds || 0);
+    const cargo = p.cargo || {};
+    const used =
+      (cargo.fuel_ore || 0) +
+      (cargo.organics || 0) +
+      (cargo.equipment || 0) +
+      (cargo.colonists || 0);
+    const free =
+      p.cargo_free != null && p.cargo_free !== undefined
+        ? Math.max(0, p.cargo_free)
+        : Math.max(0, holds - used);
+    if (!holds) return `${used} units`;
+    return `${used}/${holds} filled · ${free} free`;
+  }
+
   function cargoBreakdown(p) {
     const holds = p.holds || 20;
     const cargo = p.cargo || {};
@@ -1666,8 +1736,8 @@
       `<span class="cargo-item"><i class="cargo-dot fuel_ore"></i>FO ${fo}${tag("fuel_ore", fo)}</span>`,
       `<span class="cargo-item"><i class="cargo-dot organics"></i>Org ${org}${tag("organics", org)}</span>`,
       `<span class="cargo-item"><i class="cargo-dot equipment"></i>Eq ${eq}${tag("equipment", eq)}</span>`,
+      `<span class="cargo-item"><i class="cargo-dot colonists"></i>Col ${col}${tag("colonists", col)}</span>`,
     ];
-    if (col > 0) items.push(`<span class="cargo-item"><i class="cargo-dot colonists"></i>Col ${col}${tag("colonists", col)}</span>`);
     items.push(`<span class="cargo-item cargo-total">Holds ${used}/${holds}</span>`);
     return items.join("");
   }
@@ -1686,6 +1756,7 @@
     seg("fuel_ore", cargo.fuel_ore || 0);
     seg("organics", cargo.organics || 0);
     seg("equipment", cargo.equipment || 0);
+    seg("colonists", cargo.colonists || 0);
     seg("empty", free);
     return segs.join("");
   }
@@ -1713,6 +1784,16 @@
         ${line("L", l, "long")}
       </details>
     `;
+  }
+
+  function renderOperatorDirectiveCard(p) {
+    const text = (p.operator_directive || "").trim();
+    if (!text) return "";
+    const short = text.length > 170 ? text.slice(0, 168) + "…" : text;
+    return `<div class="operator-directive-card" title="${esc(text)}">
+      <span class="operator-label">Operator Directive</span>
+      <span class="operator-text">${esc(short)}</span>
+    </div>`;
   }
 
   function renderPlanetsBlock(p) {
@@ -1894,6 +1975,38 @@
 
   // ----------------- Events ------------------------
 
+  function formatCombatExchangeKind(k) {
+    if (k === "planet_siege") return "Planet siege";
+    if (k === "ferrengi_vs_ship") return "Ferrengi vs ship";
+    if (k === "ship_vs_ship") return "Ship vs ship";
+    return k || "Combat";
+  }
+
+  /** Rich per-volley log from `payload.rounds` (engine combat + planet siege). */
+  function formatCombatRoundsHtml(payload) {
+    if (!payload || !Array.isArray(payload.rounds) || !payload.rounds.length) return "";
+    const ek = formatCombatExchangeKind(payload.exchange_kind);
+    const maxR = payload.exchange_max_rounds || 3;
+    const planet = payload.exchange_kind === "planet_siege";
+    const atkLabel = planet ? "Attacker ship" : payload.exchange_kind === "ferrengi_vs_ship" ? "Ferrengi" : "Attacker";
+    const defLabel = planet ? "Citadel defense" : payload.exchange_kind === "ferrengi_vs_ship" ? "Player ship" : "Defender";
+    let h = `<div class="combat-rounds" role="region" aria-label="Combat volley log">`;
+    h += `<div class="combat-rounds-head">${esc(ek)} · up to ${maxR} volleys</div>`;
+    for (const r of payload.rounds) {
+      const atkDis = r.attacker_photon_disabled ? " (photon-off)" : "";
+      const defDis = r.defender_photon_disabled ? " (photon-off)" : "";
+      h += `<div class="combat-round">`;
+      h += `<div class="cr-line cr-title">Volley ${r.round}${r.ended_here ? " — ended here" : ""}</div>`;
+      h += `<div class="cr-line">${esc(atkLabel)}: mult ${r.attacker_damage_mult} × ${r.attacker_offense}F → <b>${r.attacker_volley}</b> dmg${atkDis}</div>`;
+      h += `<div class="cr-line">${esc(defLabel)}: mult ${r.defender_damage_mult} × ${r.defender_offense}F → <b>${r.defender_volley}</b> dmg${defDis}</div>`;
+      h += `<div class="cr-sub">${esc(defLabel)} absorbed −${r.defender_shield_absorbed}S / −${r.defender_fighters_lost}F → <b>F${r.defender_f_after} S${r.defender_s_after}</b></div>`;
+      h += `<div class="cr-sub">${esc(atkLabel)} absorbed −${r.attacker_shield_absorbed}S / −${r.attacker_fighters_lost}F → <b>F${r.attacker_f_after} S${r.attacker_s_after}</b></div>`;
+      h += `</div>`;
+    }
+    h += `</div>`;
+    return h;
+  }
+
   function renderEvents() {
     eventFeed.innerHTML = "";
     let source = state.events;
@@ -1970,6 +2083,10 @@
     const expanderHtml = isExpandable
       ? `<button class="thought-expander" data-thought-toggle title="${expanded ? "Collapse" : "Show full thought"}">${expanded ? "−" : "+"}</button>`
       : "";
+    const combatDetailHtml = (ev.kind === "combat" && ev.payload)
+      ? formatCombatRoundsHtml(ev.payload)
+      : "";
+    if (combatDetailHtml) li.classList.add("combat-with-rounds");
 
     li.innerHTML = `
       <span class="time">D${ev.day || 0}·${ev.tick || 0}</span>
@@ -1979,6 +2096,7 @@
       ${sectorLinkHtml}
       <span class="msg${expanded ? " expanded" : ""}">${esc(body)}</span>
       ${expanderHtml}
+      ${combatDetailHtml}
     `;
     return li;
   }
@@ -2046,6 +2164,7 @@
     assign_colonists:  { cat: "diplomacy", icon: "\ud83d\udc65", label: "ASSIGN COLS" },
     build_citadel:     { cat: "diplomacy", icon: "\ud83c\udfd7", label: "CITADEL BUILD" },
     citadel_complete:  { cat: "diplomacy", icon: "\ud83c\udff0", label: "CITADEL BUILT", big: true },
+    planet_tax_payout: { cat: "trade",     icon: "$",      label: "PLANET TAX", big: true },
     genesis_deployed:  { cat: "diplomacy", icon: "\ud83c\udf31", label: "GENESIS", big: true },
     // --- System (truly admin-only now) ----------------------------
     day_tick:          { cat: "system",    icon: "\u263c",  label: "DAY", special: "day" },
@@ -2056,6 +2175,9 @@
     game_over:         { cat: "game_over",  icon: "\u25c8", label: "MATCH END", big: true },
     match_metrics:     { cat: "system",     icon: "\u25a4", label: "MATCH METRICS" },
     llm_usage:         { cat: "system",     icon: "\u00a4",  label: "LLM USAGE" },
+    operator_directive_set:     { cat: "system", icon: "\u2691", label: "DIRECTIVE SET", big: true },
+    operator_directive_cleared: { cat: "system", icon: "\u2691", label: "DIRECTIVE CLEAR" },
+    operator_message:           { cat: "system", icon: "\u2709", label: "OPERATOR MSG" },
   };
 
   function kindMeta(kind) {
@@ -2075,7 +2197,8 @@
   const BIG_MOMENT_KINDS = new Set([
     "player_eliminated", "ship_destroyed", "port_destroyed",
     "atomic_detonation", "citadel_complete", "alliance_formed",
-    "genesis_deployed", "game_over", "game_start",
+    "planet_tax_payout", "genesis_deployed", "game_over", "game_start",
+    "operator_directive_set", "operator_directive_cleared", "operator_message",
   ]);
 
   // Kinds eligible for a FIRST-of-match chip (A4). `citadel_complete`
@@ -2367,6 +2490,11 @@
       mapHeader.innerHTML = `Galaxy <span class="muted">· ${state.sectors.size} sectors</span>`;
     }
     if (state.finished) setStatus("finished", "match complete");
+    else if (state.llmPhase && state.status === "running") {
+      const elapsed = Math.max(0, Math.floor(Date.now() / 1000 - (state.llmPhase.started_at || 0)));
+      const model = state.llmPhase.model ? ` · ${state.llmPhase.model}` : "";
+      setStatus("running", `thinking ${elapsed}s · ${state.llmPhase.player_name}${model}`);
+    }
     else if (state.status === "running") setStatus("running", "live");
     else if (state.status === "paused") setStatus("paused", "paused");
     else if (state.status === "error") setStatus("error", "error");
@@ -2470,6 +2598,11 @@
 
   // Animate the warp trail fade even without events
   setInterval(renderDynamicMap, 400);
+  // Keep the "thinking Ns" heartbeat fresh during long qwen/custom calls even
+  // when no engine events arrive while the scheduler awaits agent.act().
+  setInterval(() => {
+    if (state.llmPhase && state.status === "running" && !state.finished) renderHeader();
+  }, 1000);
 
   // ----------------- Control events -----------------
 
@@ -2942,6 +3075,7 @@
   function renderDrawer() {
     if (!drawerBody) return;
     const { kind, id } = state.drawer;
+    if (operatorEditorHasFocus(kind, id)) return;
     if (!kind) {
       if (detailDrawer) detailDrawer.hidden = true;
       if (drawerFollowBtn) drawerFollowBtn.style.display = "none";
@@ -2958,6 +3092,16 @@
       if (drawerFollowBtn) drawerFollowBtn.style.display = "none";
       renderSectorDrawer(id);
     }
+  }
+
+  function operatorEditorHasFocus(kind, id) {
+    if (kind !== "player" || !id || !drawerBody) return false;
+    const active = document.activeElement;
+    if (!active || !drawerBody.contains(active)) return false;
+    if (!active.closest(".drawer-operator")) return false;
+    const editorPid = active.getAttribute("data-operator-directive")
+      || active.getAttribute("data-operator-chat");
+    return editorPid === id;
   }
 
   function renderPlayerDrawer(playerId) {
@@ -3020,12 +3164,58 @@
         <div>Corporation: ${p.corp_ticker ? `<strong style="color:${p.color}">${esc(p.corp_ticker)}</strong>` : "none"}</div>
         <div>Alliance: ${allianceInfo}</div>
       </div>
+      ${renderDrawerOperatorBlock(p)}
       ${renderDrawerPlansBlock(p)}
       ${renderDrawerMemoryBlock(p)}
       <div class="drawer-section">
         <h3>Press <kbd>◎ Follow</kbd> above</h3>
         <div>Camera will lock on ${esc(p.name)} and pan with every warp.</div>
       </div>
+    `;
+  }
+
+  function renderDrawerOperatorBlock(p) {
+    const openAttr = state.drawerOpenSections.has("operator") ? " open" : "";
+    const directive = (p.operator_directive || "").trim();
+    const draft = state.directiveDrafts.has(p.id) ? state.directiveDrafts.get(p.id) : directive;
+    const chatDraft = state.directiveChatDrafts.get(p.id) || "";
+    const updated = p.operator_directive_updated_day != null
+      ? `updated D${p.operator_directive_updated_day}·${p.operator_directive_updated_tick ?? 0}`
+      : "no active directive";
+    const dialogue = Array.isArray(p.operator_dialogue) ? p.operator_dialogue.slice(-8) : [];
+    const dialogueHtml = dialogue.length
+      ? `<ul class="operator-dialogue">${dialogue.map((m) => {
+          const role = m.role === "ai" ? "AI" : "Operator";
+          const when = m.day != null ? `D${m.day}·${m.tick ?? 0}` : "";
+          return `<li><span class="op-role">${esc(role)}</span><span class="op-time">${esc(when)}</span><div>${esc(m.message || "")}</div></li>`;
+        }).join("")}</ul>`
+      : `<div class="drawer-empty">No operator messages yet.</div>`;
+    const isLlm = String(p.kind || p.agent_kind || "").toLowerCase() === "llm";
+    const disabled = isLlm ? "" : " disabled";
+    const help = isLlm
+      ? "Directive is injected into this AI player's next normal LLM observation."
+      : "Only autonomous LLM slots can receive operator directives.";
+    return `
+      <details class="drawer-section drawer-operator" data-section="operator"${openAttr}>
+        <summary><h3>Operator Directive <span class="drawer-hint">(${esc(updated)})</span></h3></summary>
+        <div class="operator-help">${esc(help)}</div>
+        <form class="operator-form" data-operator-form="${esc(p.id)}">
+          <textarea data-operator-directive="${esc(p.id)}" maxlength="1200" rows="4"${disabled}
+            placeholder="High-level instruction for this AI commander...">${esc(draft || "")}</textarea>
+          <div class="operator-actions">
+            <button type="submit"${disabled}>Set Directive</button>
+            <button type="button" data-operator-clear="${esc(p.id)}"${disabled}>Clear</button>
+          </div>
+        </form>
+        <form class="operator-form operator-chat-form" data-operator-chat-form="${esc(p.id)}">
+          <textarea data-operator-chat="${esc(p.id)}" maxlength="600" rows="2"${disabled}
+            placeholder="Add planning note/question for the AI to consider...">${esc(chatDraft)}</textarea>
+          <div class="operator-actions">
+            <button type="submit"${disabled}>Add Message</button>
+          </div>
+        </form>
+        ${dialogueHtml}
+      </details>
     `;
   }
 
@@ -3189,6 +3379,34 @@
 
   function initDrawer() {
     if (!detailDrawer) return;
+    document.addEventListener("input", (e) => {
+      const directiveEl = e.target.closest("textarea[data-operator-directive]");
+      if (directiveEl) {
+        state.directiveDrafts.set(directiveEl.dataset.operatorDirective, directiveEl.value);
+        return;
+      }
+      const chatEl = e.target.closest("textarea[data-operator-chat]");
+      if (chatEl) {
+        state.directiveChatDrafts.set(chatEl.dataset.operatorChat, chatEl.value);
+      }
+    });
+    document.addEventListener("submit", async (e) => {
+      const form = e.target.closest("form[data-operator-form]");
+      if (form) {
+        e.preventDefault();
+        const pid = form.dataset.operatorForm;
+        const textarea = form.querySelector("textarea[data-operator-directive]");
+        await setOperatorDirective(pid, textarea ? textarea.value : "");
+        return;
+      }
+      const chatForm = e.target.closest("form[data-operator-chat-form]");
+      if (chatForm) {
+        e.preventDefault();
+        const pid = chatForm.dataset.operatorChatForm;
+        const textarea = chatForm.querySelector("textarea[data-operator-chat]");
+        await sendOperatorMessage(pid, textarea ? textarea.value : "");
+      }
+    });
     detailDrawer.addEventListener("click", (e) => {
       // Walk-the-graph: clicking a sector ID anywhere in the drawer
       // recenters the drawer (and map focus) on that sector.
@@ -3213,6 +3431,12 @@
             }
           }
         }
+        return;
+      }
+      const clearBtn = e.target.closest("[data-operator-clear]");
+      if (clearBtn) {
+        e.preventDefault();
+        clearOperatorDirective(clearBtn.dataset.operatorClear);
         return;
       }
       const btn = e.target.closest("[data-drawer-action]");
@@ -3255,6 +3479,56 @@
         setFollow(pid);
       });
     }
+  }
+
+  async function setOperatorDirective(playerId, directive) {
+    if (!playerId) return;
+    const res = await fetch("/api/ai-directives", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_id: playerId, directive: directive || "" }),
+    });
+    if (!res.ok) {
+      alert(`Failed to set directive: ${await res.text()}`);
+      return;
+    }
+    const payload = await res.json();
+    const existing = state.players.get(playerId) || {};
+    state.players.set(playerId, Object.assign({}, existing, payload));
+    state.directiveDrafts.delete(playerId);
+    render();
+  }
+
+  async function clearOperatorDirective(playerId) {
+    if (!playerId) return;
+    const res = await fetch(`/api/ai-directives?player_id=${encodeURIComponent(playerId)}`, { method: "DELETE" });
+    if (!res.ok) {
+      alert(`Failed to clear directive: ${await res.text()}`);
+      return;
+    }
+    const payload = await res.json();
+    const existing = state.players.get(playerId) || {};
+    state.players.set(playerId, Object.assign({}, existing, payload));
+    state.directiveDrafts.delete(playerId);
+    render();
+  }
+
+  async function sendOperatorMessage(playerId, message) {
+    if (!playerId || !String(message || "").trim()) return;
+    const res = await fetch("/api/ai-directives/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_id: playerId, message }),
+    });
+    if (!res.ok) {
+      alert(`Failed to add operator message: ${await res.text()}`);
+      return;
+    }
+    const payload = await res.json();
+    const existing = state.players.get(playerId) || {};
+    state.players.set(playerId, Object.assign({}, existing, payload));
+    state.directiveChatDrafts.delete(playerId);
+    render();
   }
 
   function initLayout() {

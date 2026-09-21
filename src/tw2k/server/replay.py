@@ -69,6 +69,8 @@ class ReplayRunner(MatchRunner):
                 kind=a["kind"],
                 provider=a.get("provider"),
                 model=a.get("model"),
+                custom_base_url=a.get("custom_base_url"),
+                custom_api_key=a.get("custom_api_key"),
             )
             for a in self._meta["agents"]  # type: ignore[index]
         ]

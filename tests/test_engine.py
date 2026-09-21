@@ -20,7 +20,7 @@ from tw2k.engine import (
     is_finished,
     tick_day,
 )
-from tw2k.engine.models import Player, Ship
+from tw2k.engine.models import EventKind, Player, Ship
 
 
 def _build_universe_with_agent():
@@ -50,6 +50,48 @@ def test_universe_is_fully_reachable_from_sector_1():
                 visited.add(w)
                 stack.append(w)
     assert len(visited) == 500
+
+
+def test_universe_has_no_stardock_traps():
+    """Every sector must be able to reach sector 1 (StarDock), not just the other way.
+
+    Regression: at the default `one_way_fraction=0.15`, several seeds (most
+    famously seed 42) produced ~17 sectors with no return path to sec 1 —
+    e.g. the {406, 475} pocket where `1 → 406` was one-way and 406's only
+    outbound was back to 475, which also couldn't reach sec 1. Players who
+    warped in were stranded until death; in a real match this caused P2 to
+    burn 1k+ LLM calls trying to escape. The fix added a reverse-reachability
+    check to `_one_way_some_edges`. This test pins it for several seeds at
+    the production default.
+    """
+    seeds = [1, 7, 42, 123, 7777]
+    for seed in seeds:
+        u = generate_universe(GameConfig(seed=seed, universe_size=500))
+        adj = {sid: set(s.warps) for sid, s in u.sectors.items()}
+        rev: dict[int, list[int]] = {i: [] for i in adj}
+        for a, neigh in adj.items():
+            for b in neigh:
+                rev[b].append(a)
+        stack = [1]
+        seen = {1}
+        while stack:
+            cur = stack.pop()
+            for nxt in rev[cur]:
+                if nxt not in seen:
+                    seen.add(nxt)
+                    stack.append(nxt)
+        trapped = sorted(set(adj) - seen)
+        assert not trapped, f"seed={seed}: {len(trapped)} sectors cannot reach sec 1: {trapped[:10]}"
+
+
+def test_one_way_fraction_zero_produces_fully_bidirectional_map():
+    """one_way_fraction=0.0 must yield a strictly undirected graph (every edge symmetric)."""
+    u = generate_universe(GameConfig(seed=42, universe_size=200, one_way_fraction=0.0))
+    adj = {sid: set(s.warps) for sid, s in u.sectors.items()}
+    asymmetric = [
+        (a, b) for a, neigh in adj.items() for b in neigh if a not in adj[b]
+    ]
+    assert not asymmetric, f"found {len(asymmetric)} asymmetric edges with fraction=0.0"
 
 
 def test_stardock_is_in_sector_one():
@@ -196,6 +238,10 @@ def test_pvp_kill_respawns_victim_without_crash():
     result = apply_action(u, "A", Action(kind=ActionKind.ATTACK, args={"target": "B"}))
 
     assert result.ok is True, f"attack returned not-ok: {result.error!r}"
+    combats = [e for e in u.events if e.kind == EventKind.COMBAT]
+    assert combats, "expected a combat event"
+    assert combats[-1].payload.get("rounds"), "combat should include per-round exchange log"
+    assert combats[-1].payload.get("exchange_kind") == "ship_vs_ship"
     # Victim was routed through _destroy_ship (NOT the Ferrengi branch).
     assert vic.alive is True, "victim should respawn, not be permanently dead"
     assert vic.deaths == 1

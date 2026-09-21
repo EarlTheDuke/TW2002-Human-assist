@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -895,9 +896,9 @@ def create_app(
                 else all_start_stardock
             ),
             # Per-agent overrides: a list of dicts, each with optional
-            # `provider`, `model`, `name`, `kind`. Slot N in the list maps to
-            # player PN+1. Missing slots fall back to the global provider/model.
-            # This is the hook for multi-model matches (e.g., Grok vs Claude).
+            # `provider`, `model`, `name`, `kind`, and for custom only
+            # `custom_base_url`, `custom_api_key` (per-slot OpenAI-compat URL/key).
+            # Slot N maps to player PN+1. Missing slots use globals.
             agent_overrides=body.get("agents", agent_overrides),
             action_delay_s=(float(body["action_delay_s"]) if "action_delay_s" in body else action_delay_s),
             play_to_day_cap=(
@@ -1047,6 +1048,15 @@ def _build_default_spec(
         cfg_kwargs["ferrengi_strength_ramp_days"] = max(0, int(ferrengi_strength_ramp_days))
     if ferrengi_min_strength_scale is not None:
         cfg_kwargs["ferrengi_min_strength_scale"] = max(0.0, min(1.0, float(ferrengi_min_strength_scale)))
+    # Match-level think budget (seconds per LLM turn). Documented on GameConfig;
+    # without this, TW2K_THINK_CAP_S was ignored because LLMAgent always received
+    # the constructor override from GameConfig.llm_think_cap_s (default 90s).
+    try:
+        env_think = float(os.environ.get("TW2K_THINK_CAP_S", "").strip() or "0")
+    except ValueError:
+        env_think = 0.0
+    if env_think > 0:
+        cfg_kwargs["llm_think_cap_s"] = env_think
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each
@@ -1067,6 +1077,13 @@ def _build_default_spec(
                 kind=str(ov.get("kind") or resolved_kind),
                 provider=ov.get("provider", provider),
                 model=ov.get("model", model),
+                custom_base_url=ov.get("custom_base_url"),
+                custom_api_key=ov.get("custom_api_key"),
+                custom_max_tokens=(
+                    int(ov["custom_max_tokens"])
+                    if ov.get("custom_max_tokens") is not None
+                    else None
+                ),
             )
         )
     return MatchSpec(

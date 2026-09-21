@@ -697,6 +697,100 @@ details.drawer-section > summary:hover > h3 { color: var(--accent); }
   border-left: 3px solid rgba(182, 110, 255, 0.4);
   font-size: 12px;
 }
+.operator-directive-card {
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 179, 110, 0.45);
+  border-left: 3px solid var(--accent-warm);
+  border-radius: 6px;
+  background: rgba(255, 179, 110, 0.08);
+  color: var(--text);
+  line-height: 1.35;
+}
+.operator-label {
+  display: block;
+  color: var(--accent-warm);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 3px;
+}
+.operator-text {
+  color: var(--text);
+}
+.drawer-operator textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 54px;
+  background: rgba(12, 18, 34, 0.9);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 7px 8px;
+  font: inherit;
+  line-height: 1.4;
+}
+.drawer-operator textarea:focus {
+  outline: none;
+  border-color: var(--accent-warm);
+  box-shadow: 0 0 0 1px rgba(255, 179, 110, 0.18);
+}
+.operator-help {
+  color: var(--text-faint);
+  font-size: 11px;
+  margin: 2px 0 8px;
+}
+.operator-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+.operator-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.operator-actions button {
+  background: rgba(24, 32, 54, 0.9);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.operator-actions button:hover { border-color: var(--accent-warm); }
+.operator-actions button:disabled,
+.drawer-operator textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.operator-dialogue {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.operator-dialogue li {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(20, 28, 46, 0.58);
+  border: 1px solid rgba(80, 96, 140, 0.25);
+  color: var(--text);
+}
+.op-role {
+  color: var(--accent-warm);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 6px;
+}
+.op-time {
+  color: var(--text-faint);
+  font-size: 10px;
+}
 .drawer-stat-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -827,14 +921,13 @@ svg.spark { display: block; }
   flex-direction: column;
   gap: 8px;
   padding: 6px;
-  /* Belt-and-suspenders: if the browser still honors the old .panel-body
-     overflow:hidden for any reason, the grid itself is also a scroll
-     container. Combined with `flex:1 1 auto; min-height:0` this works
-     whether the grid is the only flex child or sits next to the
-     leaderboard strip / Ferrengi alert. */
-  overflow-y: auto;
-  flex: 1 1 auto;
-  min-height: 0;
+  /* Single-scroll-container model: the grid flows naturally at its full
+     content height and the parent .players-panel > .panel-body does the
+     scrolling. Previously we had overflow-y:auto here AND on panel-body,
+     which created two competing scroll containers — wheel events often
+     landed on the wrong one and users reported "can't scroll to the
+     bottom of the card." The outer panel-body is the one and only
+     scroll container now. */
 }
 /* Make the scrollbar discoverable so spectators can see there's more
    content below. Default overlay scrollbars on some platforms are
@@ -870,30 +963,19 @@ svg.spark { display: block; }
   flex-direction: column;
   gap: 6px;
   margin-top: 8px;
-  /* Hard cap relative to viewport. Three nested scroll containers
-     (panel-body > players-grid > planet-list) still left spectators
-     unable to reach the bottom of a tall expanded card when col-right
-     was resized wider. Giving the card body its OWN bounded scroll
-     guarantees everything in the card is reachable regardless of how
-     the surrounding panels are sized: cap at viewport minus header /
-     leaderboard / summary, and fall back to a sensible min. */
-  max-height: min(calc(100vh - 260px), 820px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  padding-right: 4px; /* keep content from hugging the scrollbar */
+  /* NO inner scroll on the card body. We tried two rounds of nested
+     scrolling (planet-list, then card-body) and both broke in subtle
+     ways — sometimes the outer panel would hijack the mousewheel,
+     sometimes the card body wouldn't detect overflow, and on short
+     landscape viewports the body's max-height computation produced
+     ~340px even though the content was ~600-700px, with the
+     scrollbar never appearing reliably. Single-scroll model is much
+     simpler: the outer .players-panel > .panel-body is the one and
+     only scroll container, and when a card opens we scrollIntoView
+     so the summary lands at the top. User can then scroll the panel
+     naturally to reach any block below (goals, planets, trades,
+     sparkline, scratchpad). */
 }
-/* Make the inner scrollbar discoverable — same cyan affordance as the
-   outer players-grid so users know they can scroll inside the card. */
-.player-card-body::-webkit-scrollbar { width: 10px; }
-.player-card-body::-webkit-scrollbar-thumb {
-  background: rgba(110, 231, 255, 0.3);
-  border-radius: 5px;
-}
-.player-card-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(110, 231, 255, 0.55);
-}
-.player-card-body::-webkit-scrollbar-track { background: transparent; }
 /* Default <details>/<summary> marker is an ugly triangle; kill it and
    render our own caret in the summary background via ::before. */
 .player-card > summary {
@@ -1036,6 +1118,47 @@ svg.spark { display: block; }
 .stat { display: flex; flex-direction: column; }
 .stat .k { color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; font-size: 9.5px; }
 .stat .v { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* Cargo hold — dedicated band under the vitals grid (player card body). */
+.player-cargo-hold {
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(100, 120, 160, 0.2);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 52px;
+}
+.player-cargo-hold-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.player-cargo-hold-title {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.player-cargo-hold-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.player-cargo-hold .cargo-bar {
+  height: 10px;
+  border-radius: 5px;
+}
+.player-cargo-hold .cargo-legend {
+  margin-top: 0;
+}
+
 .cargo-bar {
   display: flex; gap: 2px; height: 8px; background: var(--bg-3); border-radius: 4px; overflow: hidden;
 }
@@ -1043,6 +1166,7 @@ svg.spark { display: block; }
 .cargo-seg.fuel_ore  { background: #e05858; }
 .cargo-seg.organics  { background: #5cc06a; }
 .cargo-seg.equipment { background: #5f9dff; }
+.cargo-seg.colonists { background: #f3c34e; }
 .cargo-seg.empty     { background: var(--bg-3); }
 
 .cargo-legend {
@@ -1523,6 +1647,53 @@ svg.spark { display: block; }
 }
 .event-feed .msg { color: var(--text); flex: 1; }
 .event-feed .dot { color: var(--player-color, var(--accent)); }
+
+/* Per-volley combat log (engine `payload.rounds`) */
+.event-feed li.combat-with-rounds {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.event-feed .combat-rounds {
+  flex: 1 1 100%;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(12, 18, 32, 0.85);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--danger);
+  border-radius: 4px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.event-feed .combat-rounds-head {
+  font-weight: 600;
+  color: var(--accent-warm);
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+.event-feed .combat-round {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(47, 62, 101, 0.5);
+}
+.event-feed .combat-round:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.event-feed .combat-round .cr-title {
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.event-feed .combat-round .cr-line { color: var(--text-dim); }
+.event-feed .combat-round .cr-sub {
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.event-feed .combat-round b { color: var(--accent); font-weight: 600; }
 
 /* Messaging */
 .messaging-panel { overflow: hidden; }

@@ -18,6 +18,8 @@ class ActionKind(str, Enum):
     LAND_PLANET = "land_planet"
     LIFTOFF = "liftoff"
     ASSIGN_COLONISTS = "assign_colonists"
+    LOAD_PLANET_CARGO = "load_planet_cargo"
+    DUMP_PLANET_CARGO = "dump_planet_cargo"
     BUILD_CITADEL = "build_citadel"
     DEPLOY_GENESIS = "deploy_genesis"
     CLAIM_PLANET = "claim_planet"

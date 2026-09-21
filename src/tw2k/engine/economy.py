@@ -20,17 +20,17 @@ def port_sell_price(port: Port, commodity: Commodity) -> int:
 
     Classic TW2002 swings: a full-stock port unloads cheaply (wants to
     clear inventory), an empty one charges a premium. Range roughly
-    0.70x -> 1.20x base. Widened from the previous 0.90x-1.10x band
-    because the narrow spread made trade profit invisible in short
-    sanity matches — a single round trip now moves visibly.
+    0.60x -> 1.25x base. Widened because the day-33 evaluation match
+    showed agents abandoning port trade for planet/orphan play after only
+    a few tiny loops; a starter 20-hold trip needs to produce visible cash.
     """
     base = K.COMMODITY_BASE_PRICE[commodity.value]
     if port.class_id == PortClass.FEDERAL:
         return base  # fixed, no discount
     frac = _stock_fraction(port, commodity)
-    # frac=1 (full stock): mult=0.70 (fire sale to clear inventory)
-    # frac=0 (empty):      mult=1.20 (premium for scarcity)
-    mult = 1.20 - 0.50 * frac
+    # frac=1 (full stock): mult=0.60 (fire sale to clear inventory)
+    # frac=0 (empty):      mult=1.25 (premium for scarcity)
+    mult = 1.25 - 0.65 * frac
     return max(1, round(base * mult))
 
 
@@ -39,15 +39,16 @@ def port_buy_price(port: Port, commodity: Commodity) -> int:
 
     A buy-port's `stock.current` counts how many units it has already
     purchased; low stock = high demand = the port pays MORE. Range
-    roughly 0.80x (glut) -> 1.30x (starved). Widened from 0.90-1.20.
+    roughly 0.75x (glut) -> 1.45x (starved). This keeps early routes
+    competitive with Genesis/orphan openings during evaluation matches.
     """
     base = K.COMMODITY_BASE_PRICE[commodity.value]
     if port.class_id == PortClass.FEDERAL:
         return base
     frac = _stock_fraction(port, commodity)
-    # frac=0 (empty, starved): mult=1.30 (pays premium)
-    # frac=1 (glutted):        mult=0.80 (pays bargain)
-    mult = 1.30 - 0.50 * frac
+    # frac=0 (empty, starved): mult=1.45 (pays premium)
+    # frac=1 (glutted):        mult=0.75 (pays bargain)
+    mult = 1.45 - 0.70 * frac
     return max(1, round(base * mult))
 
 

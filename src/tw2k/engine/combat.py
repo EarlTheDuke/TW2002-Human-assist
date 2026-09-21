@@ -31,6 +31,25 @@ from .models import (
 from .victory import _award_xp
 
 
+def _apply_volley(
+    dmg: int, shields: int, fighters: int, disabled: bool
+) -> tuple[int, int, int, int]:
+    """Apply one volley of damage; return (new_shields, new_fighters, shield_absorbed, fighters_lost).
+
+    Mirrors the shield-first absorption used in ship and planet combat. When
+    ``disabled`` is True (photon-offline fighters), damage bypasses shields
+    and hits fighters directly.
+    """
+    if disabled:
+        new_f = max(0, fighters - dmg)
+        return shields, new_f, 0, fighters - new_f
+    absorbed = min(dmg, shields)
+    new_s = shields - absorbed
+    rem = dmg - absorbed
+    new_f = max(0, fighters - rem)
+    return new_s, new_f, absorbed, fighters - new_f
+
+
 def _are_allied(universe: Universe, a_id: str, b_id: str) -> bool:
     """True if a and b are corp mates OR in the same active alliance."""
     if a_id == b_id:
@@ -141,31 +160,48 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
     a_offense = 0 if a_disabled else a_fighters
     d_offense = 0 if d_disabled else d_fighters
 
-    # 3 exchanges
-    for _ in range(3):
-        a_damage = int(a_offense * rng.uniform(0.8, 1.2))
-        d_damage = int(d_offense * rng.uniform(0.8, 1.2))
+    rounds: list[dict] = []
+    for round_idx in range(1, 4):
+        a_mult = rng.uniform(0.8, 1.2)
+        d_mult = rng.uniform(0.8, 1.2)
+        a_damage = int(a_offense * a_mult)
+        d_damage = int(d_offense * d_mult)
 
-        def apply(dmg: int, shields: int, fighters: int, disabled: bool) -> tuple[int, int]:
-            if disabled:
-                # Disabled fighters can't even absorb hits — they take losses raw,
-                # bypassing shields too (helpless target).
-                fighters = max(0, fighters - dmg)
-                return shields, fighters
-            absorbed = min(dmg, shields)
-            shields -= absorbed
-            dmg -= absorbed
-            fighters = max(0, fighters - dmg)
-            return shields, fighters
-
-        d_shields, d_fighters = apply(a_damage, d_shields, d_fighters, d_disabled)
-        a_shields, a_fighters = apply(d_damage, a_shields, a_fighters, a_disabled)
+        d_shields, d_fighters, d_sh_abs, d_f_lost = _apply_volley(
+            a_damage, d_shields, d_fighters, d_disabled
+        )
+        a_shields, a_fighters, a_sh_abs, a_f_lost = _apply_volley(
+            d_damage, a_shields, a_fighters, a_disabled
+        )
+        ended = d_fighters <= 0 or a_fighters <= 0
+        rounds.append(
+            {
+                "round": round_idx,
+                "attacker_damage_mult": round(a_mult, 4),
+                "defender_damage_mult": round(d_mult, 4),
+                "attacker_offense": a_offense,
+                "defender_offense": d_offense,
+                "attacker_volley": a_damage,
+                "defender_volley": d_damage,
+                "defender_shield_absorbed": d_sh_abs,
+                "defender_fighters_lost": d_f_lost,
+                "attacker_shield_absorbed": a_sh_abs,
+                "attacker_fighters_lost": a_f_lost,
+                "defender_f_after": d_fighters,
+                "defender_s_after": d_shields,
+                "attacker_f_after": a_fighters,
+                "attacker_s_after": a_shields,
+                "attacker_photon_disabled": a_disabled,
+                "defender_photon_disabled": d_disabled,
+                "ended_here": ended,
+            }
+        )
         # After the first exchange the disable wears off (1 tick of vulnerability).
         a_disabled = False
         d_disabled = False
         a_offense = a_fighters
         d_offense = d_fighters
-        if d_fighters <= 0 or a_fighters <= 0:
+        if ended:
             break
 
     attacker.ship.fighters = a_fighters
@@ -182,15 +218,22 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
         f"{attacker.name}[F{a_fighters} S{a_shields}] vs "
         f"{getattr(target, 'name', 'target')}[F{d_fighters} S{d_shields}]"
     )
+    defender_id = getattr(target, "id", None)
+    exchange_kind = "ferrengi_vs_ship" if isinstance(target, FerrengiShip) else "ship_vs_ship"
     universe.emit(
         EventKind.COMBAT,
         actor_id=attacker_id,
         sector_id=attacker.sector_id,
         payload={
+            "exchange_kind": exchange_kind,
+            "exchange_max_rounds": 3,
             "attacker": attacker_id,
-            "defender": getattr(target, "id", None),
-            "attacker_f": a_fighters, "attacker_s": a_shields,
-            "defender_f": d_fighters, "defender_s": d_shields,
+            "defender": defender_id,
+            "attacker_f": a_fighters,
+            "attacker_s": a_shields,
+            "defender_f": d_fighters,
+            "defender_s": d_shields,
+            "rounds": rounds,
         },
         summary=summary,
     )
@@ -240,24 +283,50 @@ def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) 
     a_offense = a_fighters
     d_offense = 0 if d_disabled else d_fighters
 
-    for _ in range(3):
-        a_dmg = int(a_offense * rng.uniform(0.8, 1.2))
-        d_dmg = int(d_offense * rng.uniform(0.8, 1.2))
-        # damage on victim
+    rounds: list[dict] = []
+    for round_idx in range(1, 4):
+        a_mult = rng.uniform(0.8, 1.2)
+        d_mult = rng.uniform(0.8, 1.2)
+        a_dmg = int(a_offense * a_mult)
+        d_dmg = int(d_offense * d_mult)
+
         if d_disabled:
-            d_fighters = max(0, d_fighters - a_dmg)
+            d_shields, d_fighters, d_sh_abs, d_f_lost = _apply_volley(
+                a_dmg, d_shields, d_fighters, True
+            )
         else:
-            absorbed = min(a_dmg, d_shields)
-            d_shields -= absorbed
-            d_fighters = max(0, d_fighters - (a_dmg - absorbed))
-        # damage on Ferrengi
-        absorbed = min(d_dmg, a_shields)
-        a_shields -= absorbed
-        a_fighters = max(0, a_fighters - (d_dmg - absorbed))
+            d_shields, d_fighters, d_sh_abs, d_f_lost = _apply_volley(
+                a_dmg, d_shields, d_fighters, False
+            )
+        a_shields, a_fighters, a_sh_abs, a_f_lost = _apply_volley(
+            d_dmg, a_shields, a_fighters, False
+        )
+        ended = d_fighters <= 0 or a_fighters <= 0
+        rounds.append(
+            {
+                "round": round_idx,
+                "attacker_damage_mult": round(a_mult, 4),
+                "defender_damage_mult": round(d_mult, 4),
+                "attacker_offense": a_offense,
+                "defender_offense": d_offense,
+                "attacker_volley": a_dmg,
+                "defender_volley": d_dmg,
+                "defender_shield_absorbed": d_sh_abs,
+                "defender_fighters_lost": d_f_lost,
+                "attacker_shield_absorbed": a_sh_abs,
+                "attacker_fighters_lost": a_f_lost,
+                "defender_f_after": d_fighters,
+                "defender_s_after": d_shields,
+                "attacker_f_after": a_fighters,
+                "attacker_s_after": a_shields,
+                "defender_photon_disabled": d_disabled,
+                "ended_here": ended,
+            }
+        )
         d_disabled = False
         a_offense = a_fighters
         d_offense = d_fighters
-        if d_fighters <= 0 or a_fighters <= 0:
+        if ended:
             break
 
     attacker_npc.fighters = a_fighters
@@ -270,10 +339,15 @@ def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) 
         actor_id=attacker_npc.id,
         sector_id=victim.sector_id,
         payload={
+            "exchange_kind": "ferrengi_vs_ship",
+            "exchange_max_rounds": 3,
             "attacker": attacker_npc.id,
             "defender": victim.id,
-            "attacker_f": a_fighters, "attacker_s": a_shields,
-            "defender_f": d_fighters, "defender_s": d_shields,
+            "attacker_f": a_fighters,
+            "attacker_s": a_shields,
+            "defender_f": d_fighters,
+            "defender_s": d_shields,
+            "rounds": rounds,
         },
         summary=(
             f"Ferrengi combat in {victim.sector_id}: "
@@ -293,6 +367,7 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
     if not player.alive:
         return
 
+    death_sector = player.sector_id
     player.deaths += 1
     # Match 13 — snapshot pre-reset defense state so the NEXT observation's
     # post-death re-arm hint can say "you had only {Y} fighters when you
@@ -300,6 +375,8 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
     # (ship fighters get reset to STARTING_FIGHTERS one line below) and
     # becomes generic — which agents have already proven they ignore.
     player.last_death_day = universe.day
+    player.last_death_sector = death_sector
+    player.last_death_killer_id = str(killer_id or "")
     player.last_death_fighters = int(player.ship.fighters)
     player.last_death_reason = str(reason)
     # Eject pilot to StarDock, downgrade ship, lose 25 % credits.
@@ -326,8 +403,14 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
     universe.emit(
         EventKind.SHIP_DESTROYED,
         actor_id=killer_id,
-        sector_id=player.sector_id,
-        payload={"victim": pid, "reason": reason, "deaths": player.deaths},
+        sector_id=death_sector,
+        payload={
+            "victim": pid,
+            "reason": reason,
+            "deaths": player.deaths,
+            "death_sector": death_sector,
+            "killer_id": killer_id,
+        },
         summary=(
             f"*** {player.name}'s ship destroyed ({reason}); "
             f"ejected to StarDock [death #{player.deaths}/{K.MAX_DEATHS_BEFORE_ELIM}] ***"

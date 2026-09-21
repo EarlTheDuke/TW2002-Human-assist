@@ -62,9 +62,12 @@ _M = 1_000_000.0
 # substring match — put more-specific model slugs *before* broader
 # ones, and keep "default" last so it only fires on miss.
 DEFAULT_PRICES: dict[str, list[tuple[str, dict[str, float]]]] = {
-    # xAI Grok. Prices from https://x.ai/api (fast-reasoning tier,
-    # 2026-04). JSON mode adds no surcharge.
+    # xAI Grok. Tier ≤200k tokens per request unless noted; see
+    # https://docs.x.ai/docs/models and console. Higher tiers (>200k) are
+    # not modeled here — TW2K uses the standard tier only.
     "xai": [
+        # Must precede "grok-4" — otherwise substring match picks flagship rates.
+        ("grok-4.3", {"input": 1.25, "cached_input": 0.20, "output": 2.50}),
         ("grok-4-1-fast-reasoning", {"input": 0.20, "output": 0.50}),
         ("grok-4-1-fast", {"input": 0.20, "output": 0.50}),
         ("grok-4", {"input": 3.00, "output": 15.00}),

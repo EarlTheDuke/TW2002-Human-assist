@@ -51,10 +51,14 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.LIMPET_REPORT,
     EventKind.PHOTON_FIRED,
     EventKind.FED_RESPONSE,
+    EventKind.PLANET_TAX_PAYOUT,
     # Out-of-band meta event — belongs to actor only (keeps opponents
     # from reading each other's token spend, which would be a weird
     # side-channel and also clutter their observation feed).
     EventKind.LLM_USAGE,
+    EventKind.OPERATOR_DIRECTIVE_SET,
+    EventKind.OPERATOR_DIRECTIVE_CLEARED,
+    EventKind.OPERATOR_MESSAGE,
 })
 
 # Party-restricted events — visibility derived from payload.
@@ -195,6 +199,12 @@ class Observation(BaseModel):
     # cargotran" yesterday and today is at StarDock with 45k, the goal is
     # right there at the top reminding them to execute.
     goals: dict[str, str] = Field(default_factory=dict)
+    # Out-of-band human operator context for autonomous LLM players. This is
+    # not an engine action; it steers the next normal LLM decision.
+    operator_directive: str = ""
+    operator_directive_updated_day: int | None = None
+    operator_directive_updated_tick: int | None = None
+    operator_dialogue: list[dict[str, Any]] = Field(default_factory=list)
     alive: bool = True
     net_worth: int = 0
     # Planets this player owns (subset view; one entry per planet).
@@ -249,10 +259,10 @@ class Observation(BaseModel):
     # rivals is the symmetric "public leaderboard" view every agent sees.
     rivals: list[dict[str, Any]] = Field(default_factory=list)
 
-    # Match 13 — orphaned planets currently in the universe. A new
-    # `claim_planet` action lets surviving players inherit the citadel /
-    # fighters / stockpile of planets whose owner was eliminated. Capped
-    # to 5 most-valuable entries to keep observation size bounded.
+    # Match 13 — true orphaned planets currently in the universe: planets
+    # that became ownerless because a player was eliminated. Empty neutral
+    # map-start planets are intentionally excluded so agents don't mistake
+    # them for valuable former-player holdings.
     orphaned_planets: list[dict[str, Any]] = Field(default_factory=list)
 
     # Messaging
@@ -465,10 +475,11 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "shields": planet.shields,
         })
 
-    # Match 13 — orphaned planets. owner_id is None AND corp_ticker is
-    # None (corp-owned planets aren't claimable via claim_planet even
-    # if the CEO dies). Former-owner is pulled from the latest
-    # PLANET_ORPHANED event for this planet, if present.
+    # Match 13 — true orphaned planets. owner_id is None AND corp_ticker is
+    # None AND we have a PLANET_ORPHANED event proving this was a former
+    # player's holding. Startup neutral planets also have owner_id=None,
+    # but they are empty and auto-claimed by landing; keep them out of the
+    # orphan list so agents don't chase them as free citadel prizes.
     orphan_former: dict[int, str] = {}
     for ev in universe.events:
         if ev.kind is EventKind.PLANET_ORPHANED:
@@ -480,6 +491,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     for planet in universe.planets.values():
         if planet.owner_id is not None or planet.corp_ticker is not None:
             continue
+        former_owner = orphan_former.get(planet.id)
+        if former_owner is None:
+            continue
         orphaned_planets.append({
             "id": planet.id,
             "sector_id": planet.sector_id,
@@ -488,7 +502,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "citadel_level": planet.citadel_level,
             "fighters": planet.fighters,
             "shields": planet.shields,
-            "former_owner_id": orphan_former.get(planet.id),
+            "former_owner_id": former_owner,
         })
     # Rank orphans by citadel level + fighters so the most strategically
     # valuable ones appear first; cap to 5 entries.
@@ -561,6 +575,10 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "medium": getattr(player, "goal_medium", "") or "",
             "long": getattr(player, "goal_long", "") or "",
         },
+        operator_directive=getattr(player, "operator_directive", "") or "",
+        operator_directive_updated_day=getattr(player, "operator_directive_updated_day", None),
+        operator_directive_updated_tick=getattr(player, "operator_directive_updated_tick", None),
+        operator_dialogue=list(getattr(player, "operator_dialogue", []) or []),
         alive=player.alive,
         # Full net worth (ship assets + every owned planet). Using the
         # universe-aware helper so the agent's self-reported number
@@ -936,6 +954,16 @@ def _action_hint(
     hints: list[str] = []
     full_hints = not is_minimal()
 
+    # Operator directives outrank routine strategic drift but do not override
+    # the legal action system or common-sense survival constraints.
+    directive = str(getattr(player, "operator_directive", "") or "").strip() if player is not None else ""
+    if directive:
+        short = directive if len(directive) <= 260 else directive[:257].rstrip() + "..."
+        hints.append(
+            "OPERATOR DIRECTIVE ACTIVE — treat this as your most important "
+            f"strategic consideration unless illegal, suicidal, or impossible: {short}"
+        )
+
     # Phase D.2 — post-timeout discontinuity hint. If the previous turn was
     # a WAIT synthesized from an LLM timeout, the tick was wasted and the
     # agent's chain-of-thought context was truncated. Tell it loudly so it
@@ -962,11 +990,48 @@ def _action_hint(
         ship_shields_now = int(getattr(ship_now, "shields", 0) or 0) if ship_now is not None else 0
         last_death_day = getattr(player, "last_death_day", None)
         if last_death_day is not None:
+            last_sector = getattr(player, "last_death_sector", None)
+            last_killer = str(getattr(player, "last_death_killer_id", "") or "")
+            last_reason = str(getattr(player, "last_death_reason", "") or "attack")
+            death_events: list[Any] = []
+            if universe is not None:
+                death_events = [
+                    ev for ev in (getattr(universe, "events", []) or [])
+                    if ev.kind is EventKind.SHIP_DESTROYED
+                    and ev.payload.get("victim") == getattr(player, "id", None)
+                ]
+            same_sector = sum(
+                1 for ev in death_events
+                if last_sector is not None and ev.payload.get("death_sector") == last_sector
+            )
+            same_killer = sum(
+                1 for ev in death_events
+                if last_killer and ev.payload.get("killer_id") == last_killer
+            )
+            deaths_remaining = max(0, int(K.MAX_DEATHS_BEFORE_ELIM) - int(getattr(player, "deaths", 0) or 0))
+            if full_hints and last_sector is not None:
+                severity = "REPEATED ROUTE DEATH" if same_sector >= 2 or same_killer >= 2 else "ROUTE RISK"
+                if deaths_remaining <= 1:
+                    severity = "LAST-LIFE RISK"
+                repeat_bits: list[str] = []
+                if same_sector >= 2:
+                    repeat_bits.append(f"{same_sector} deaths in sector {last_sector}")
+                if same_killer >= 2:
+                    repeat_bits.append(f"{same_killer} deaths to {last_killer}")
+                repeat_line = f" ({'; '.join(repeat_bits)})" if repeat_bits else ""
+                attacker_line = f" by {last_killer}" if last_killer else ""
+                hints.append(
+                    f"{severity} — last ship loss was {last_reason}{attacker_line} "
+                    f"in sector {last_sector}{repeat_line}. Treat that sector/route "
+                    "as hot until avoided, scouted, re-armed for, or cleared. "
+                    "Options include reroute, safer local trade, probe/scan, "
+                    "buy fighters/shields or a combat hull, hunt the threat if "
+                    "you can outgun it, or knowingly accept the risk."
+                )
             # Still under-armed? Keep the hint loud.
             if ship_fighters_now < 500 or ship_shields_now < 1:
                 if full_hints:
                     last_fighters = int(getattr(player, "last_death_fighters", 0) or 0)
-                    last_reason = str(getattr(player, "last_death_reason", "") or "attack")
                     credits_now = int(getattr(player, "credits", 0) or 0)
                     target_fighters = 500
                     fighter_cost_total = target_fighters * K.FIGHTER_COST
@@ -989,6 +1054,8 @@ def _action_hint(
                 # just see the cleared value.
                 try:
                     player.last_death_day = None
+                    player.last_death_sector = None
+                    player.last_death_killer_id = ""
                     player.last_death_fighters = 0
                     player.last_death_reason = ""
                 except Exception:
@@ -1111,13 +1178,49 @@ def _action_hint(
             hints.append(" / ".join(bits) + " — use trade.")
 
         if full_hints:
-            # Cargo P&L vs. this port (strategy — omitted in minimal agency mode).
             ship = getattr(player, "ship", None) if player is not None else None
+            cargo_free = int(getattr(ship, "cargo_free", 0) or 0) if ship is not None else 0
+            credits = int(getattr(player, "credits", 0) or 0) if player is not None else 0
             cargo = getattr(ship, "cargo", None) if ship is not None else None
+            stock_map = port.get("stock") or {}
+            buy_opts: list[str] = []
+            sell_opts: list[str] = []
+            for commodity_name, stock_entry in stock_map.items():
+                if not isinstance(stock_entry, dict):
+                    continue
+                price = int(stock_entry.get("price", 0) or 0)
+                current = int(stock_entry.get("current", 0) or 0)
+                maximum = int(stock_entry.get("max", 0) or 0)
+                if price <= 0:
+                    continue
+                if stock_entry.get("side") == "sells_to_player":
+                    qty = min(cargo_free, credits // price, current)
+                    if qty > 0:
+                        buy_opts.append(
+                            f"buy {qty} {commodity_name} @ {price}cr "
+                            f"(max=min(free {cargo_free}, credits//price {credits // price}, stock {current}))"
+                        )
+                elif stock_entry.get("side") == "buys_from_player" and cargo:
+                    have = 0
+                    for key, qty_have in cargo.items():
+                        if getattr(key, "value", str(key)) == commodity_name:
+                            have = int(qty_have or 0)
+                            break
+                    capacity = max(0, maximum - current)
+                    qty = min(have, capacity)
+                    if qty > 0:
+                        sell_opts.append(
+                            f"sell {qty} {commodity_name} @ {price}cr "
+                            f"(max=min(cargo {have}, port_capacity {capacity}))"
+                        )
+            if buy_opts or sell_opts:
+                opts = buy_opts[:2] + sell_opts[:2]
+                hints.append("TRADE PRECHECK — " + " | ".join(opts))
+
+            # Cargo P&L vs. this port (strategy — omitted in minimal agency mode).
             cargo_cost = getattr(ship, "cargo_cost", None) if ship is not None else None
             if cargo and cargo_cost:
                 buys_set = set(port.get("buys") or [])
-                stock_map = port.get("stock") or {}
                 pnl_parts: list[str] = []
                 for commodity_name, qty in cargo.items():
                     key = getattr(commodity_name, "value", str(commodity_name))
@@ -1144,7 +1247,7 @@ def _action_hint(
     if sector_id == K.STARDOCK_SECTOR:
         bits = [
             "At StarDock: buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/"
-            "genesis/photon_missile/ether_probe/colonists), corp_create legal here."
+            "genesis/photon_missiles/ether_probes/colonists), corp_create legal here."
         ]
         if full_hints:
             ship_sd = getattr(player, "ship", None) if player is not None else None
@@ -1154,6 +1257,21 @@ def _action_hint(
                     bits.append(
                         f"Cargo free={free} — `buy_equip item=colonists qty={free}` loads Terra colonists at 10 cr each."
                     )
+                credits_now = int(getattr(player, "credits", 0) or 0)
+                spec = K.SHIP_SPECS.get(getattr(getattr(ship_sd, "ship_class", None), "value", ""), {}) or {}
+                fighter_cap = int(spec.get("max_fighters", 0) or 0)
+                shield_cap = int(spec.get("max_shields", 0) or 0)
+                fighter_headroom = max(0, fighter_cap - int(getattr(ship_sd, "fighters", 0) or 0))
+                shield_headroom = max(0, shield_cap - int(getattr(ship_sd, "shields", 0) or 0))
+                max_fighters = min(fighter_headroom, credits_now // K.FIGHTER_COST)
+                max_shields = min(shield_headroom, credits_now // 10)
+                max_colonists = min(int(free or 0), credits_now // K.COLONIST_PRICE)
+                bits.append(
+                    "StarDock max buy_equip now: "
+                    f"fighters {max_fighters}, shields {max_shields}, colonists {max_colonists}; "
+                    "valid items are fighters, shields, holds, armid_mines, limpet_mines, "
+                    "atomic_mines, genesis, photon_missiles, ether_probes, colonists."
+                )
         hints.append(" ".join(bits))
 
         # Affordable-ship menu: list the ship classes the player can ACTUALLY
@@ -1303,15 +1421,41 @@ def _action_hint(
                 if tgt > lvl:
                     hints.append(f"Citadel L{tgt} already building on planet {landed_id}; use `liftoff` and return when done.")
                 elif lvl < 6:
-                    hints.append(
-                        f"Landed on planet {landed_id} (citadel L{lvl}). `build_citadel planet_id={landed_id}` starts L{lvl + 1}; "
-                        f"`assign_colonists` to rebalance; `liftoff` to leave."
-                    )
+                    next_build = plan.get("citadel_next_build") or {}
+                    if isinstance(next_build, dict) and next_build:
+                        blocker = next_build.get("blocker")
+                        have = next_build.get("colonists_have")
+                        need = next_build.get("colonists")
+                        short = next_build.get("colonists_short")
+                        credits_need = next_build.get("credits")
+                        if blocker:
+                            hints.append(
+                                f"Landed on planet {landed_id} (citadel L{lvl}). "
+                                f"L{lvl + 1} precheck: need {need} colonists (have {have}, short {short}) "
+                                f"and {credits_need}cr; blocker={blocker}. Use `assign_colonists` or ferry more first."
+                            )
+                        else:
+                            hints.append(
+                                f"Landed on planet {landed_id} (citadel L{lvl}). "
+                                f"`build_citadel planet_id={landed_id}` is legal for L{lvl + 1} "
+                                f"(needs {credits_need}cr and {need} colonists); `liftoff` to leave."
+                            )
+                    else:
+                        hints.append(
+                            f"Landed on planet {landed_id} (citadel L{lvl}). `build_citadel planet_id={landed_id}` starts L{lvl + 1}; "
+                            f"`assign_colonists` to rebalance; `liftoff` to leave."
+                        )
 
-    # Planets in sector (unowned) → exploration hint only
+    # Planets in sector (unowned) → local opportunity only. These are
+    # usually empty neutral map-start planets, not true former-player
+    # orphans. Landing claims neutral planets automatically, but they
+    # still need imported colonists before citadel work.
     planets_here = sector_info.get("planets") or []
     if planets_here and not (owned_planets and any(p.get("sector_id") == sector_id for p in owned_planets)):
-        hints.append(f"{len(planets_here)} unowned planet(s) here — land_planet to inspect.")
+        hints.append(
+            f"{len(planets_here)} neutral/unowned planet(s) here — `land_planet` claims an empty neutral planet. "
+            "Bring/ferry colonists before `build_citadel`; do NOT use `claim_planet` unless it is listed in `orphaned_planets`."
+        )
 
     # Ferrengi presence
     if sector_info.get("ferrengi"):
@@ -1579,10 +1723,9 @@ def _action_hint(
                 "thought budget."
             )
 
-    # Match 13 — orphaned-planet awareness. If any planet has owner_id=None,
-    # mention up to 3 by name with citadel level + sector so the agent can
-    # decide whether to warp-and-claim. Fires every turn (not just when in
-    # the orphan's sector) so planning horizon covers it. FYI-framed.
+    # Match 13 — true orphaned-planet awareness. Only planets made
+    # ownerless by an eliminated player reach `orphaned_planets`; empty
+    # neutral map-start planets do not.
     if orphaned_planets:
         if full_hints:
             shown = orphaned_planets[:3]

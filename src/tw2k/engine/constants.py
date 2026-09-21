@@ -289,7 +289,7 @@ FERRENGI_SPAWN_PER_DAY = 3
 # Pre-seed at match start so there's tension from day 1 instead of day 2.
 FERRENGI_INITIAL_SPAWN = 4
 FERRENGI_BOUNTY_PER_AGG = 1000
-FERRENGI_STRENGTH_RAMP_DAYS = 100
+FERRENGI_STRENGTH_RAMP_DAYS = 200
 FERRENGI_MIN_STRENGTH_SCALE = 0.25
 # Grace window (in-game days) during which Ferrengi will NOT engage
 # players when the match started everyone at StarDock. Without this,

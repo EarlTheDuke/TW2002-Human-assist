@@ -15,6 +15,7 @@ from collections.abc import Callable
 from . import constants as K
 from .actions import Action, ActionKind, ActionResult
 from .combat import (
+    _apply_volley,
     _are_allied,
     _attach_limpet,
     _destroy_ship,
@@ -37,7 +38,7 @@ from .models import (
     PortClass,
     Universe,
 )
-from .planets import _advance_planets, _complete_citadels
+from .planets import _advance_planets, _complete_citadels, _pay_planet_value_tax
 from .victory import (
     _award_xp,
     _check_victory,
@@ -62,6 +63,7 @@ __all__ = [  # noqa: RUF022 — grouped by origin module, not alphabetized
     "_destroy_ship",
     "_resolve_fighter_sector_combat",
     "_resolve_ship_combat",
+    "_apply_volley",
     # Re-exported ferrengi
     "_ferrengi_by_name",
     "_ferrengi_roam_and_hunt",
@@ -69,6 +71,7 @@ __all__ = [  # noqa: RUF022 — grouped by origin module, not alphabetized
     # Re-exported planet tick helpers
     "_advance_planets",
     "_complete_citadels",
+    "_pay_planet_value_tax",
     # Re-exported victory / progression
     "_award_xp",
     "_check_victory",
@@ -169,6 +172,7 @@ def tick_day(universe: Universe) -> None:
     if universe.config.enable_planets:
         _advance_planets(universe)
         _complete_citadels(universe)
+        _pay_planet_value_tax(universe)
 
     universe.emit(
         EventKind.DAY_TICK,
@@ -750,17 +754,42 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         a_shields = player.ship.shields
         d_fighters = planet.fighters
         d_shields = planet.shields
-        # 3 exchanges, planet absorbs first via shields then fighters, just like ships.
-        for _ in range(3):
-            a_dmg = int(a_fighters * rng.uniform(0.8, 1.2))
-            d_dmg = int(d_fighters * rng.uniform(0.8, 1.2))
-            absorbed = min(a_dmg, d_shields)
-            d_shields -= absorbed
-            d_fighters = max(0, d_fighters - (a_dmg - absorbed))
-            absorbed = min(d_dmg, a_shields)
-            a_shields -= absorbed
-            a_fighters = max(0, a_fighters - (d_dmg - absorbed))
-            if a_fighters <= 0 or d_fighters <= 0:
+        rounds: list[dict] = []
+        for round_idx in range(1, 4):
+            a_off = a_fighters
+            d_off = d_fighters
+            a_mult = rng.uniform(0.8, 1.2)
+            d_mult = rng.uniform(0.8, 1.2)
+            a_dmg = int(a_off * a_mult)
+            d_dmg = int(d_off * d_mult)
+            d_shields, d_fighters, d_sh_abs, d_f_lost = _apply_volley(
+                a_dmg, d_shields, d_fighters, False
+            )
+            a_shields, a_fighters, a_sh_abs, a_f_lost = _apply_volley(
+                d_dmg, a_shields, a_fighters, False
+            )
+            ended = a_fighters <= 0 or d_fighters <= 0
+            rounds.append(
+                {
+                    "round": round_idx,
+                    "attacker_damage_mult": round(a_mult, 4),
+                    "defender_damage_mult": round(d_mult, 4),
+                    "attacker_offense": a_off,
+                    "defender_offense": d_off,
+                    "attacker_volley": a_dmg,
+                    "defender_volley": d_dmg,
+                    "defender_shield_absorbed": d_sh_abs,
+                    "defender_fighters_lost": d_f_lost,
+                    "attacker_shield_absorbed": a_sh_abs,
+                    "attacker_fighters_lost": a_f_lost,
+                    "defender_f_after": d_fighters,
+                    "defender_s_after": d_shields,
+                    "attacker_f_after": a_fighters,
+                    "attacker_s_after": a_shields,
+                    "ended_here": ended,
+                }
+            )
+            if ended:
                 break
         player.ship.fighters = a_fighters
         player.ship.shields = a_shields
@@ -771,10 +800,18 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             actor_id=pid,
             sector_id=sector.id,
             payload={
+                "exchange_kind": "planet_siege",
+                "exchange_max_rounds": 3,
                 "vs": "planet",
                 "planet_id": planet.id,
-                "attacker_f": a_fighters, "attacker_s": a_shields,
-                "defender_f": d_fighters, "defender_s": d_shields,
+                "planet_name": planet.name,
+                "citadel_level": planet.citadel_level,
+                "defender_owner_id": planet.owner_id,
+                "attacker_f": a_fighters,
+                "attacker_s": a_shields,
+                "defender_f": d_fighters,
+                "defender_s": d_shields,
+                "rounds": rounds,
             },
             summary=(
                 f"Siege of {planet.name}: "
@@ -792,13 +829,23 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         planet.corp_ticker = player.corp_ticker
         planet.citadel_level = max(0, planet.citadel_level - 1)  # damaged in siege
         planet.treasury = int(planet.treasury * 0.5)
+        planet.last_tax_value = _planet_asset_value(planet)
     elif hostile:
         # Hostile but no defenders — block per legacy behavior (was outright refusal).
         planet.owner_id = pid
         planet.corp_ticker = player.corp_ticker
+        planet.last_tax_value = _planet_asset_value(planet)
     elif planet.owner_id is None:
-        planet.owner_id = pid
-        planet.corp_ticker = player.corp_ticker
+        # Empty neutral map-start planets are claimed by landing. True
+        # orphans from an eliminated player keep owner_id=None until the
+        # explicit claim_planet action, so the citadel/fighter inheritance
+        # step remains visible and intentional.
+        if _planet_was_orphaned(universe, planet.id):
+            pass
+        else:
+            planet.owner_id = pid
+            planet.corp_ticker = player.corp_ticker
+            planet.last_tax_value = _planet_asset_value(planet)
 
     player.planet_landed = planet.id
     universe.emit(
@@ -812,6 +859,14 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         ),
     )
     return ActionResult(ok=True, turns_spent=cost)
+
+
+def _planet_was_orphaned(universe: Universe, planet_id: int) -> bool:
+    """Return True for planets made ownerless by a player elimination."""
+    for ev in reversed(universe.events):
+        if ev.kind is EventKind.PLANET_ORPHANED and ev.payload.get("planet_id") == planet_id:
+            return True
+    return False
 
 
 def _handle_liftoff(universe: Universe, pid: str, action: Action) -> ActionResult:
@@ -829,6 +884,160 @@ def _handle_liftoff(universe: Universe, pid: str, action: Action) -> ActionResul
         sector_id=player.sector_id,
         payload={"planet_id": planet_id},
         summary=f"{player.name} lifted off",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _require_landed_owned_planet(universe: Universe, pid: str, planet_id_raw):
+    player = universe.players[pid]
+    sector = universe.sectors[player.sector_id]
+    if planet_id_raw is None:
+        return None, ActionResult(ok=False, error="planet_id is required")
+    try:
+        planet_id = int(planet_id_raw)
+    except (TypeError, ValueError):
+        return None, ActionResult(ok=False, error=f"invalid planet_id {planet_id_raw!r}")
+    if planet_id not in sector.planet_ids:
+        return None, ActionResult(ok=False, error="no such planet in this sector")
+    planet = universe.planets[planet_id]
+    if planet.owner_id != pid and not (
+        planet.corp_ticker
+        and player.corp_ticker
+        and planet.corp_ticker == player.corp_ticker
+    ):
+        return None, ActionResult(ok=False, error="planet not owned by you or your corp")
+    if player.planet_landed != planet.id:
+        return None, ActionResult(ok=False, error="must be landed on the planet first")
+    return planet, None
+
+
+def _parse_transfer_commodity(action: Action) -> tuple[Commodity | None, ActionResult | None]:
+    raw = (action.args.get("commodity") or "").lower()
+    try:
+        commodity = Commodity(raw)
+    except ValueError:
+        return None, ActionResult(ok=False, error=f"invalid commodity {raw!r}")
+    return commodity, None
+
+
+def _parse_colonist_pool(action: Action) -> tuple[Commodity | None, ActionResult | None]:
+    raw = (action.args.get("pool") or "colonists").lower()
+    pool_keys = {
+        "fuel_ore": Commodity.FUEL_ORE,
+        "organics": Commodity.ORGANICS,
+        "equipment": Commodity.EQUIPMENT,
+        "colonists": Commodity.COLONISTS,
+    }
+    pool = pool_keys.get(raw)
+    if pool is None:
+        return None, ActionResult(ok=False, error=f"invalid colonist pool {raw!r}")
+    return pool, None
+
+
+def _handle_load_planet_cargo(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return error
+    commodity, error = _parse_transfer_commodity(action)
+    if error is not None:
+        return error
+    qty = int(action.args.get("qty", 0))
+    if qty <= 0:
+        return ActionResult(ok=False, error="qty must be positive")
+
+    cost = K.TURN_COST.get("liftoff", 1)
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    if player.ship.cargo_used + qty > player.ship.holds:
+        return ActionResult(ok=False, error="not enough cargo holds")
+
+    pool_label = None
+    if commodity == Commodity.COLONISTS:
+        pool, error = _parse_colonist_pool(action)
+        if error is not None:
+            return error
+        pool_label = pool.value
+        avail = planet.colonists.get(pool, 0)
+        if avail < qty:
+            return ActionResult(ok=False, error=f"only {avail} colonists in {pool_label} pool")
+        planet.colonists[pool] = avail - qty
+    else:
+        avail = planet.stockpile.get(commodity, 0)
+        if avail < qty:
+            return ActionResult(ok=False, error=f"only {avail} {commodity.value} in stockpile")
+        planet.stockpile[commodity] = avail - qty
+
+    old_qty = player.ship.cargo.get(commodity, 0)
+    old_avg = player.ship.cargo_cost.get(commodity, 0.0) if old_qty > 0 else 0.0
+    new_qty = old_qty + qty
+    # Planet-produced goods have no ship-side purchase cost. If mixed with
+    # bought cargo, preserve a weighted basis so later trade P&L is honest.
+    player.ship.cargo[commodity] = new_qty
+    player.ship.cargo_cost[commodity] = (old_qty * old_avg) / new_qty if new_qty > 0 else 0.0
+
+    universe.emit(
+        EventKind.PLANET_CARGO_TRANSFER,
+        actor_id=pid,
+        sector_id=planet.sector_id,
+        payload={
+            "planet_id": planet.id,
+            "commodity": commodity.value,
+            "qty": qty,
+            "direction": "load",
+            "pool": pool_label,
+        },
+        summary=f"{player.name} loaded {qty} {commodity.value} from {planet.name}",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return error
+    commodity, error = _parse_transfer_commodity(action)
+    if error is not None:
+        return error
+    qty = int(action.args.get("qty", 0))
+    if qty <= 0:
+        return ActionResult(ok=False, error="qty must be positive")
+
+    cost = K.TURN_COST.get("liftoff", 1)
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    avail = player.ship.cargo.get(commodity, 0)
+    if avail < qty:
+        return ActionResult(ok=False, error=f"only {avail} {commodity.value} in cargo")
+
+    pool_label = None
+    if commodity == Commodity.COLONISTS:
+        pool, error = _parse_colonist_pool(action)
+        if error is not None:
+            return error
+        pool_label = pool.value
+        planet.colonists[pool] = planet.colonists.get(pool, 0) + qty
+    else:
+        planet.stockpile[commodity] = planet.stockpile.get(commodity, 0) + qty
+
+    remaining = avail - qty
+    player.ship.cargo[commodity] = remaining
+    if remaining <= 0:
+        player.ship.cargo_cost[commodity] = 0.0
+
+    universe.emit(
+        EventKind.PLANET_CARGO_TRANSFER,
+        actor_id=pid,
+        sector_id=planet.sector_id,
+        payload={
+            "planet_id": planet.id,
+            "commodity": commodity.value,
+            "qty": qty,
+            "direction": "dump",
+            "pool": pool_label,
+        },
+        summary=f"{player.name} dumped {qty} {commodity.value} onto {planet.name}",
     )
     return ActionResult(ok=True, turns_spent=cost)
 
@@ -1068,6 +1277,7 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
     planet.stockpile[Commodity.ORGANICS] = max(
         planet.stockpile.get(Commodity.ORGANICS, 0), 25
     )
+    planet.last_tax_value = _planet_asset_value(planet)
     universe.planets[pid_planet] = planet
     sector.planet_ids.append(pid_planet)
     player.ship.genesis -= 1
@@ -1116,12 +1326,18 @@ def _handle_claim_planet(universe: Universe, pid: str, action: Action) -> Action
             f"planet {planet.name} is corp-owned ([{planet.corp_ticker}]); "
             "cannot claim an abandoned corp holding this way"
         )
+    if not _planet_was_orphaned(universe, planet.id):
+        return _reject_free(
+            f"planet {planet.name} is neutral, not a former-player orphan; "
+            "land_planet claims neutral planets automatically"
+        )
     cost = K.TURN_COST.get("claim_planet", 2)
     if player.turns_today + cost > player.turns_per_day:
         return _reject_free("out of turns")
 
     planet.owner_id = pid
     planet.corp_ticker = player.corp_ticker
+    planet.last_tax_value = _planet_asset_value(planet)
     universe.emit(
         EventKind.PLANET_CLAIMED,
         actor_id=pid,
@@ -1798,6 +2014,8 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.LAND_PLANET: _handle_land_planet,
     ActionKind.LIFTOFF: _handle_liftoff,
     ActionKind.ASSIGN_COLONISTS: _handle_assign_colonists,
+    ActionKind.LOAD_PLANET_CARGO: _handle_load_planet_cargo,
+    ActionKind.DUMP_PLANET_CARGO: _handle_dump_planet_cargo,
     ActionKind.BUILD_CITADEL: _handle_build_citadel,
     ActionKind.DEPLOY_GENESIS: _handle_deploy_genesis,
     ActionKind.CLAIM_PLANET: _handle_claim_planet,

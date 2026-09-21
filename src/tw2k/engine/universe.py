@@ -69,7 +69,7 @@ def _build_connected_graph(rng: random.Random, n: int, avg_warps: float) -> dict
 def _one_way_some_edges(
     rng: random.Random, adj: dict[int, set[int]], fraction: float
 ) -> dict[int, set[int]]:
-    """Convert a fraction of undirected edges to one-way, preserving global reachability from sector 1.
+    """Convert a fraction of undirected edges to one-way, preserving STRONG connectivity to sector 1.
 
     Guarantees in addition to "sec 1 reaches everyone":
       - Every sector keeps ≥1 outbound warp (no dead-ends). A previous bug let a
@@ -80,6 +80,13 @@ def _one_way_some_edges(
         hub where players can always return to StarDock.
       - FedSpace → deep-space edges also preserve the outbound direction from
         the FedSpace side (a player landing in FedSpace must be able to leave).
+      - **Every sector can also reach sector 1.** Without this, a 0.15 default
+        seed (e.g. seed 42) produces ~17 "stardock-trap" sectors with no path
+        back to sec 1 — e.g. the {406, 475} pocket where a single one-way
+        `1 → 406` edge funnels players in but nothing leads out. Match data
+        showed P2 (LocalQwenA) burning 1k+ LLM calls trying to escape sec 648
+        because the map literally had no return path. Now any conversion that
+        breaks reverse reachability is reverted.
     """
     # Collect unique pairs
     pairs: list[tuple[int, int]] = []
@@ -94,6 +101,7 @@ def _one_way_some_edges(
     rng.shuffle(pairs)
     target = int(len(pairs) * fraction)
     converted = 0
+    n = len(adj)
 
     for a, b in pairs:
         if converted >= target:
@@ -124,8 +132,10 @@ def _one_way_some_edges(
             adj[keep_to].add(keep_from)  # revert
             continue
 
-        # Verify sector 1 still reaches everyone. If not, revert.
-        if not _all_reachable_from(adj, 1, len(adj)):
+        # Rule 4: keep the graph strongly connected w.r.t. sector 1 — i.e.
+        # sector 1 must still reach everyone, AND everyone must still reach
+        # sector 1. If either invariant breaks, revert this conversion.
+        if not _all_reachable_from(adj, 1, n) or not _all_can_reach(adj, 1, n):
             adj[keep_to].add(keep_from)  # revert
         else:
             converted += 1
@@ -140,6 +150,23 @@ def _all_reachable_from(adj: dict[int, set[int]], start: int, n: int) -> bool:
     while stack:
         cur = stack.pop()
         for nxt in adj[cur]:
+            if nxt not in seen:
+                seen.add(nxt)
+                stack.append(nxt)
+    return len(seen) == n
+
+
+def _all_can_reach(adj: dict[int, set[int]], target: int, n: int) -> bool:
+    """BFS on the reverse graph — can all n sectors reach `target` via directed warps?"""
+    rev: dict[int, list[int]] = {i: [] for i in range(1, n + 1)}
+    for a, neigh in adj.items():
+        for b in neigh:
+            rev[b].append(a)
+    stack = [target]
+    seen = {target}
+    while stack:
+        cur = stack.pop()
+        for nxt in rev[cur]:
             if nxt not in seen:
                 seen.add(nxt)
                 stack.append(nxt)
