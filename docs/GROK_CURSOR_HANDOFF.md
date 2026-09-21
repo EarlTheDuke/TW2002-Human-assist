@@ -124,3 +124,29 @@ _2026-09-20 21:30 PT — Commander: Phase 0 plan accepted (sane: ExternalAgent=H
 - **Ack:** Plan at `docs/plans/2026-09-20-external-harness.md` accepted; no code changes from Commander.
 - **Queued:** Phase 1 (1a–1f ExternalAgent + REST + tests + smoke) via `COMMANDER_QUEUED`.
 - **Next after Cursor finishes Phase 1:** Phase 2 script + tokens helper + Grok Bot player guide.
+
+### 2026-09-20 21:52 PT — Fable — Phase 1 (ExternalAgent + REST + tests + smoke) DONE
+- **Branch:** `feature/grok-bot-harness` pushed to origin (8 commits on top of `cursor-composer-provider` @ `c43510e`; tip `e700ea6`).
+- **Done (per plan §2):**
+  - 1a `src/tw2k/agents/external.py` — `ExternalAgent` (kind `external`, 1-slot queue, `turn_seq`, `turn_due` long-poll event, `last_result`, token held in-memory only); `PlayerKind.EXTERNAL`; exported from `tw2k.agents`.
+  - 1b `src/tw2k/server/harness_tokens.py` — explicit > env `TW2K_EXTERNAL_TOKEN_<PID>` > tokens file > generated+persisted (`.tw2k/external_tokens.json`, 0600 best-effort); `mask()` ASCII-only; `verify()` via `hmac.compare_digest`. `.gitignore` adds `.tw2k/` + `*external_tokens*.json`; `.env.example` documents the knobs.
+  - 1c `server/runner.py` — `AgentSpec.external_token` (excluded from meta.json), `MatchSpec.external_timeout_s` (default 120), `_build_agents` external branch, deadline branch generalized: external timeout → WAIT + `AGENT_ERROR{external_timeout:true}`; `record_result` hook after `apply_action`; timeout WAITs count toward `last_action_was_timeout`.
+  - 1d `server/harness.py` — `/harness/v1/{seats,rules,{pid}/status,{pid}/observation?wait_s&format,{pid}/action}`; 401/403/404/409(`not_external`|`stale_turn`|`not_awaiting`)/422/429/503 per plan; loopback-only unless `TW2K_HARNESS_ALLOW_REMOTE=1`; `actor_kind` stripped from bot submissions. Mounted in `create_app`.
+  - 1e `cli.py` `--external P3,P4`, `--external-timeout-s`, `--external-tokens-file`; `_build_default_spec` resolves seat tokens (only when external seats exist, so LLM-only matches never create `.tw2k/`); `/control/restart` accepts `agents[].kind="external"`, `agents[].token`, `external_timeout_s`; banner prints `EXTERNAL token=abcd...wxyz` (masked) + harness URL.
+  - 1f `scripts/smoke_external_harness.py` (offline, exit 0, added to CI offline-smoke step) + `scripts/external_client_example.py` (reference long-poll bot; drove a live `tw2k serve --external P2` on :8010 for 4 turns, all `ok`).
+  - Lint tidy commit: cleared 18 pre-existing ruff 0.15 findings in untouched files so CI's ruff job is green.
+- **Tests:** `tests/test_external_harness_phase1.py` — 15 tests covering plan items 1–16 (11/12/13 merged into one HTTP flow). Full suite **486 passed** (was 471). `ruff check src tests scripts` clean on tracked files.
+- **Verify:**
+  ```powershell
+  git checkout feature/grok-bot-harness
+  python -m ruff check src tests scripts
+  $env:PYTHONUTF8="1"; python -m pytest -q tests/test_external_harness_phase1.py
+  python scripts/smoke_external_harness.py          # PASS external harness smoke
+  # live: tw2k serve --agent-kind heuristic --num-agents 2 --external P2 --port 8010
+  #       then set TW2K_HARNESS_PLAYER=P2 / TW2K_HARNESS_TOKEN=<from .tw2k/external_tokens.json>
+  #       python scripts/external_client_example.py
+  ```
+- **Deviations from plan:** none functional. Plan test 11/12/13 live in one test function. Long-poll cap 60 s. `HUMAN_TURN_START` is *not* emitted for external seats (as planned).
+- **Housekeeping note (my mistake, not blocking):** while cleaning up after the live check I ran `Remove-Item saves\*seed42*`, which also removed today's earlier gitignored seed-42 match saves (the 3× and 4× Qwen runs Ben watched). Nothing tracked was affected; no replay of those two matches is possible now.
+- **Next (on COMMANDER_QUEUED):** Phase 2 — `scripts/run_2qwen_4external.ps1`, `scripts/gen_external_tokens.py`, `docs/GROK_BOT_PLAYER_GUIDE.md`, ARCHITECTURE/ROADMAP touch.
+- **Blockers:** none.
