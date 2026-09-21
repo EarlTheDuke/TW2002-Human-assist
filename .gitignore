@@ -45,6 +45,9 @@ artifacts/
 .env
 .env.local
 *.key
+# External-harness seat tokens (Grok Bot seats)
+.tw2k/
+*external_tokens*.json
 
 # OS
 .DS_Store

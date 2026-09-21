@@ -72,6 +72,9 @@ class PlayerKind(str, Enum):
       * LLM       -> send the observation to the configured provider
       * HUMAN     -> wait on the HumanAgent queue (blocking) until the
                      /api/human/action endpoint or UI posts an Action.
+      * EXTERNAL  -> wait on the ExternalAgent queue until an out-of-process
+                     bot pulls its observation and POSTs an Action over the
+                     token-authenticated /harness/v1 REST surface.
 
     Stored on the Player as `agent_kind: str` (not this enum) for backward
     compatibility with replay meta.json and existing spectator snapshots
@@ -82,6 +85,7 @@ class PlayerKind(str, Enum):
     HEURISTIC = "heuristic"
     LLM = "llm"
     HUMAN = "human"
+    EXTERNAL = "external"
 
 
 class Commodity(str, Enum):
