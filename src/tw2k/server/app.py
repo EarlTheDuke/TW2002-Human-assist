@@ -226,6 +226,16 @@ def create_app(
 
     app.include_router(build_harness_router(runner))
 
+    # Parity S1 — spectator gate. No-op unless TW2K_SPECTATOR_TOKEN is set;
+    # then `/`, `/state`, `/events`, `/history`, `/highlights`, `/ws`,
+    # `/play`, `/control/*` and `/api/*` need the token (header, ?token=,
+    # or the cookie set by /spectate?token=). `/bot`, `/harness/*` and
+    # `/static/*` stay per-seat / open. Registered as raw ASGI middleware so
+    # the WebSocket handshake is covered too.
+    from .spectator_gate import SpectatorGate
+
+    app.add_middleware(SpectatorGate)
+
     # Static files
     app.mount("/static", StaticFiles(directory=str(web_root)), name="static")
 
