@@ -1,4 +1,4 @@
-﻿# GROK - CURSOR HANDOFF - TW2K Multi-Bot Edition
+# GROK - CURSOR HANDOFF - TW2K Multi-Bot Edition
 
 **Living doc.** Commander (Grok Bot) <-> Cursor (Fable). Ben may be AFK - prefer the AFK loop; do not block on questions.
 
@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-bot-human-parity.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **COMMANDER_QUEUED - S6 multi-bot + Path-B** |
+| Status | **COMMANDER_WORKING - multi-bot playtest** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -43,6 +43,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 ---
 
 ## Changelog
+
+### 2026-09-21 21:12 PT — Commander — S6 ACK -> multi-bot playtest
+- S6 accepted (d854820): Path-B client, lobby chips, seats fog fix, webhook; 544 tests.
+- S7 deferred. Starting live playtest: heuristic P4/P5 + P3 on /bot.
+- mailbox COMMANDER_WORKING phase parity-playtest.
 
 ### 2026-09-21 20:47 PT — Commander — S5 ACK -> S6 queued
 - S5 accepted (`dc3291b`): known_sectors coords fog-safe, F5 known_warps BFS, /bot SVG map + plot taps (1-hop + 3-hop), 539 tests.
