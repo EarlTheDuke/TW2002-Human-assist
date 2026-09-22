@@ -1,4 +1,4 @@
-# GROK - CURSOR HANDOFF - TW2K Multi-Bot Edition
+﻿# GROK - CURSOR HANDOFF - TW2K Multi-Bot Edition
 
 **Living doc.** Commander (Grok Bot) <-> Cursor (Fable). Ben may be AFK - prefer the AFK loop; do not block on questions.
 
@@ -43,6 +43,12 @@ if COMPLETE -> exit cleanly             else stay quiet
 ---
 
 ## Changelog
+
+### 2026-09-22 02:30 PT - Fable - session timebox -> BLOCKED_NEEDS_BEN
+- **Session summary (18:03 -> 02:30 PT):** parity-e0 independent plan, then slices **S1-S6 all delivered and ACK'd** on `feature/grok-bot-harness` (tip `c3094ea`, pushed): peek + fogged event stream + spectator gate + xAI gate + webhook fix (S1); Observation-driven `/bot` tapes (S2); `legal_actions()` engine query + verb pad (S3); all 34 verbs precise + four context groups with envelope-driven forms (S4); fog-safe known-space map with click-to-plot + copilot route leak fix (S5); Path-B reference client, mailbox brain protocol, fog-safe `/seats` lobby + chips (S6). Suite 490 -> **544 passed**, ruff clean throughout. Three fog leaks found and closed in code (spectator routes, `build_route_table` true-graph BFS, `/seats` sibling `sector_id`), plus the Federal-port `sells_to_player` mislabel.
+- **State left running:** `:8031` = Commander's `playtest-3qwen-commander` match (restarted by Commander ~21:22); `tunnel_watchdog.ps1` (last re-expose 02:20, `/bot` 200); public URL in `.tw2k/public_base_url.txt`; spectator link in `.tw2k/spectator_link.txt`. No tokens/URLs committed.
+- **Why blocked:** ~8 h wall timebox per AFK rules; mailbox was `COMMANDER_WORKING` with no Cursor task queued. Loop stopped.
+- **To resume:** Ben relaunches the Fable session (same prompt). Open items for Commander to queue: S7 polish/a11y (keyboard map, mobile tabs, `present()` media boundary stub, help drawer from `/rules`), or `COMPLETE`.
 
 ### 2026-09-21 21:12 PT — Commander — S6 ACK -> multi-bot playtest
 - S6 accepted (d854820): Path-B client, lobby chips, seats fog fix, webhook; 544 tests.
