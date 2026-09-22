@@ -24,6 +24,7 @@
     buy: $("buyBtn"),
     last: $("lastResult"),
     log: $("log"),
+    whose: $("whoseTurn"),
   };
 
   const state = {
@@ -32,18 +33,44 @@
     turnSeq: null,
     awaiting: false,
     obs: null,
-    timer: null,
     busy: false,
     connected: false,
+    // Phase D: scheduler view + countdown.
+    current: null,        // current_turn from /status: {player_id,name,kind,deadline_at,...}
+    clockSkew: 0,         // server_time - Date.now()/1000
+    matchStatus: "",
+    day: null,
+    tick: null,
+    lastResult: null,
+    watchGen: 0,          // bump to cancel an in-flight watch loop (reconnect)
+    tickTimer: null,
   };
 
-  els.seat.value = state.seat;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const nowS = () => Date.now() / 1000 + state.clockSkew;
+
+  // The dropdown ships with the canonical P3-P5 names, but any seat id from the
+  // URL / localStorage must be selectable, otherwise Connect silently falls
+  // back to the first option (observed with ?seat=P2 during Phase D).
+  function ensureSeatOption(seat) {
+    const s = String(seat || "").toUpperCase();
+    if (!s) return;
+    if (![...els.seat.options].some((o) => o.value === s)) {
+      const o = document.createElement("option");
+      o.value = s;
+      o.textContent = s;
+      els.seat.appendChild(o);
+    }
+    els.seat.value = s;
+  }
+
+  ensureSeatOption(state.seat);
   if (state.token) els.token.value = state.token;
 
   const params = new URLSearchParams(location.search);
   if (params.get("seat")) {
     state.seat = params.get("seat").toUpperCase();
-    els.seat.value = state.seat;
+    ensureSeatOption(state.seat);
   }
   if (params.get("token")) {
     state.token = params.get("token");
@@ -104,9 +131,48 @@
     return data;
   }
 
-  function setBanner(mode, text) {
-    els.banner.className = `banner ${mode}`;
+  function setBanner(mode, text, sub, flash) {
+    els.banner.className = `banner ${mode}${flash ? " flash" : ""}`;
     els.banner.textContent = text;
+    if (sub) {
+      const who = document.createElement("span");
+      who.className = "who";
+      who.textContent = sub;
+      els.banner.appendChild(who);
+    }
+  }
+
+  function describeCurrent(ct) {
+    if (!ct || !ct.player_id) return "scheduler idle";
+    const kind = ct.kind || "?";
+    const who = `${ct.player_id} ${ct.name || ""}`.trim();
+    if (ct.player_id === state.seat) return `${who} (you)`;
+    let s = `${who} (${kind})`;
+    if (kind === "external") s += ct.attended === false ? " - no bot attached" : " - bot attached";
+    return s;
+  }
+
+  function countdownText(ct) {
+    if (!ct || !ct.deadline_at) return "";
+    const rem = Math.max(0, Math.round(ct.deadline_at - nowS()));
+    return `${rem}s`;
+  }
+
+  // Re-render the WAITING banner every second so the countdown moves between polls.
+  function renderIdleBanner() {
+    if (state.busy || state.awaiting) return;
+    if (state.matchStatus === "finished" || state.matchStatus === "error") return;
+    const ct = state.current;
+    const cd = countdownText(ct);
+    const head = `WAITING  day=${state.day ?? "-"} tick=${state.tick ?? "-"}`;
+    const sub = `${describeCurrent(ct)}${cd ? "  ·  " + cd : ""}`;
+    setBanner("idle", head, sub);
+    if (els.whose) els.whose.textContent = `${describeCurrent(ct)}${cd ? "\ndeadline in " + cd : ""}`;
+  }
+
+  function startTicker() {
+    if (state.tickTimer) clearInterval(state.tickTimer);
+    state.tickTimer = setInterval(renderIdleBanner, 1000);
   }
 
   function setActionsEnabled(on) {
@@ -148,17 +214,26 @@
       }
     }
 
-    els.warps.innerHTML = "";
     const warps = sector.warps_out || [];
     const canAct = state.awaiting && !state.busy;
-    warps.forEach((w) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = `WARP ${w}`;
-      b.disabled = !canAct;
-      b.addEventListener("click", () => submit({ kind: "warp", args: { target: Number(w) }, thought: `Grok Bot: warp to ${w}` }));
-      els.warps.appendChild(b);
-    });
+    // Phase D P1: only rebuild the warp buttons when the warp list changes.
+    // Recreating them on every poll replaced the DOM node under a
+    // computer-use click between "snapshot" and "click", so clicks missed.
+    const warpKey = warps.join(",");
+    if (els.warps.getAttribute("data-warp-key") !== warpKey) {
+      els.warps.innerHTML = "";
+      warps.forEach((w) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = `WARP ${w}`;
+        b.setAttribute("data-testid", `warp-${w}`);
+        b.setAttribute("data-target", String(w));
+        b.addEventListener("click", () => submit({ kind: "warp", args: { target: Number(w) }, thought: `Grok Bot: warp to ${w}` }));
+        els.warps.appendChild(b);
+      });
+      els.warps.setAttribute("data-warp-key", warpKey);
+    }
+    els.warps.querySelectorAll("button").forEach((b) => { b.disabled = !canAct; });
 
     const cargo = ship.cargo || {};
     const buys = (port && port.buys) || [];
@@ -192,35 +267,86 @@
     }
   }
 
+  // Apply a /status or /observation payload (both carry the same status fields).
+  function applyStatus(st) {
+    if (typeof st.server_time === "number") state.clockSkew = st.server_time - Date.now() / 1000;
+    state.matchStatus = st.match_status || "";
+    state.day = st.day; state.tick = st.tick;
+    state.current = st.current_turn || null;
+    state.lastResult = st.last_result || state.lastResult;
+    const wasAwaiting = state.awaiting;
+    state.awaiting = !!st.awaiting_input;
+    state.turnSeq = st.turn_seq ?? state.turnSeq;
+
+    if (state.matchStatus === "finished" || state.matchStatus === "error") {
+      setBanner("dead", `MATCH ${state.matchStatus.toUpperCase()}`);
+      setActionsEnabled(false);
+      return;
+    }
+    if (state.busy) { setBanner("busy", "SUBMITTING…"); return; }
+
+    if (state.awaiting) {
+      const flash = !wasAwaiting;
+      setBanner("turn", `YOUR TURN  seq=${state.turnSeq}  day=${state.day}`,
+        state.current && state.current.deadline_at ? `respond within ${countdownText(state.current)}` : "", flash);
+      if (els.whose) els.whose.textContent = `${state.seat} (you) - act now`;
+      if (flash) log(`YOUR TURN (seq ${state.turnSeq})`);
+      if (st.observation) render(st.observation, { last_result: state.lastResult });
+      else if (state.obs) render(state.obs, { last_result: state.lastResult });
+    } else {
+      renderIdleBanner();
+      if (state.obs) render(state.obs, { last_result: state.lastResult });
+      else setActionsEnabled(false);
+      if (wasAwaiting) log(`turn ${state.turnSeq} closed; waiting on ${describeCurrent(state.current)}`);
+    }
+    els.main.hidden = false;
+  }
+
+  // One-shot status fetch (Refresh button + fallback).
   async function refresh() {
     if (!state.token) return;
     try {
       const st = await api(`/${state.seat}/status`);
       setErr("");
-      state.awaiting = !!st.awaiting_input;
-      state.turnSeq = st.turn_seq;
-      if (st.match_status === "finished" || st.match_status === "error") {
-        setBanner("dead", `MATCH ${String(st.match_status).toUpperCase()}`);
-        setActionsEnabled(false);
-        return;
-      }
-      if (state.busy) {
-        setBanner("busy", "SUBMITTING…");
-      } else if (state.awaiting) {
-        setBanner("turn", `YOUR TURN  seq=${st.turn_seq}  day=${st.day}`);
-        const r = await api(`/${state.seat}/observation?wait_s=2&format=json`);
-        if (r.observation) render(r.observation, { last_result: st.last_result });
-        state.turnSeq = r.turn_seq ?? state.turnSeq;
+      if (st.awaiting_input && !state.obs) {
+        const r = await api(`/${state.seat}/observation?wait_s=0&format=json`);
+        applyStatus(r);
       } else {
-        setBanner("idle", `WAITING  day=${st.day} tick=${st.tick}`);
-        if (state.obs) render(state.obs, { last_result: st.last_result });
-        else setActionsEnabled(false);
+        applyStatus(st);
       }
-      els.main.hidden = false;
     } catch (e) {
       setErr(String(e.message || e));
       setBanner("dead", "ERROR");
       setActionsEnabled(false);
+    }
+  }
+
+  // Phase D: long-poll loop. While it's someone else's turn we block on
+  // /observation?wait_s=20 so YOUR TURN flips the moment the scheduler reaches
+  // this seat (no reload, no 2.5s polling). While it IS our turn we re-check
+  // status every 1.5s so an expired turn (timeout) is noticed promptly.
+  async function watchLoop(gen) {
+    while (state.connected && gen === state.watchGen) {
+      if (state.busy) { await sleep(250); continue; }
+      try {
+        if (state.awaiting) {
+          const st = await api(`/${state.seat}/status`);
+          if (gen !== state.watchGen) return;
+          applyStatus(st);
+          await sleep(1500);
+        } else {
+          const r = await api(`/${state.seat}/observation?wait_s=20&format=json`);
+          if (gen !== state.watchGen) return;
+          setErr("");
+          applyStatus(r);
+        }
+      } catch (e) {
+        if (gen !== state.watchGen) return;
+        setErr(String(e.message || e));
+        setBanner("dead", "ERROR - retrying");
+        setActionsEnabled(false);
+        await sleep(3000);
+      }
     }
   }
 
@@ -238,6 +364,7 @@
       });
       log(`${action.kind} posted (seq ${seq})`);
       state.awaiting = false;
+      state.busy = false;
       await refresh();
     } catch (e) {
       setErr(String(e.message || e));
@@ -260,11 +387,13 @@
     localStorage.setItem("tw2k_bot_token", state.token);
     els.poll.disabled = false;
     state.connected = true;
-    if (state.timer) clearInterval(state.timer);
+    state.obs = null;
+    state.awaiting = false;
+    state.watchGen += 1;
     setErr("");
-    refresh();
-    state.timer = setInterval(refresh, 2500);
     log(`connected as ${state.seat}`);
+    startTicker();
+    refresh().then(() => watchLoop(state.watchGen));
   });
   els.poll.addEventListener("click", () => { setErr(""); refresh(); });
 

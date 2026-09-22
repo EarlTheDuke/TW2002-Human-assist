@@ -9,59 +9,61 @@
 <body class="bot-body">
   <header class="bot-top">
     <h1>Grok Bot Cockpit</h1>
-    <div id="turnBanner" class="banner idle">PASTE TOKEN + CONNECT</div>
-    <a class="auth-bar" href="/" style="padding:8px 12px;text-decoration:none;color:#93a0c0">Spectator</a>
+    <div id="turnBanner" class="banner idle" data-testid="turn-banner" role="status" aria-live="polite">PASTE TOKEN + CONNECT</div>
+    <a class="auth-bar" href="/" data-testid="spectator-link" style="padding:8px 12px;text-decoration:none;color:#93a0c0">Spectator</a>
   </header>
 
   <section class="auth-bar" id="authBar">
     <label>Seat
-      <select id="seatSelect">
+      <select id="seatSelect" data-testid="seat">
         <option value="P3">P3 Commander</option>
         <option value="P4">P4 GrokPilot2</option>
         <option value="P5">P5 GrokPilot3</option>
       </select>
     </label>
     <label style="flex:1 1 280px">Harness bearer token
-      <input id="tokenInput" type="password" autocomplete="off" placeholder="paste seat token from .tw2k/external_tokens.json" />
+      <input id="tokenInput" data-testid="token" type="password" autocomplete="off" placeholder="paste seat token from .tw2k/external_tokens.json" />
     </label>
-    <button id="connectBtn" class="primary" type="button">Connect</button>
-    <button id="pollBtn" type="button" disabled>Refresh</button>
+    <button id="connectBtn" data-testid="connect" class="primary" type="button">Connect</button>
+    <button id="pollBtn" data-testid="refresh" type="button" disabled>Refresh</button>
   </section>
 
-  <p id="err" class="error"></p>
+  <p id="err" class="error" data-testid="error"></p>
 
   <main class="bot-main" id="main" hidden>
     <section class="card">
       <h2>Ship / sector</h2>
       <div class="stats">
-        <div class="stat"><div class="k">Credits</div><div class="v" id="vCredits">-</div></div>
-        <div class="stat"><div class="k">Sector</div><div class="v" id="vSector">-</div></div>
-        <div class="stat"><div class="k">Turns left</div><div class="v" id="vTurns">-</div></div>
-        <div class="stat"><div class="k">Day / tick</div><div class="v" id="vDayTick">-</div></div>
-        <div class="stat"><div class="k">Cargo free</div><div class="v" id="vFree">-</div></div>
-        <div class="stat"><div class="k">Ship</div><div class="v" id="vShip">-</div></div>
+        <div class="stat"><div class="k">Credits</div><div class="v" id="vCredits" data-testid="credits">-</div></div>
+        <div class="stat"><div class="k">Sector</div><div class="v" id="vSector" data-testid="sector">-</div></div>
+        <div class="stat"><div class="k">Turns left</div><div class="v" id="vTurns" data-testid="turns-left">-</div></div>
+        <div class="stat"><div class="k">Day / tick</div><div class="v" id="vDayTick" data-testid="day-tick">-</div></div>
+        <div class="stat"><div class="k">Cargo free</div><div class="v" id="vFree" data-testid="cargo-free">-</div></div>
+        <div class="stat"><div class="k">Ship</div><div class="v" id="vShip" data-testid="ship">-</div></div>
       </div>
       <div id="rivals" class="rivals"></div>
+      <h2 style="margin-top:16px">Scheduler</h2>
+      <div id="whoseTurn" class="hint" data-testid="whose-turn">-</div>
       <h2 style="margin-top:16px">Port</h2>
-      <div id="portLine" class="hint">-</div>
+      <div id="portLine" class="hint" data-testid="port-line">-</div>
       <h2 style="margin-top:16px">Action hint</h2>
-      <div id="hint" class="hint">-</div>
+      <div id="hint" class="hint" data-testid="action-hint">-</div>
     </section>
 
     <section class="card">
       <h2>Warp (tap a sector)</h2>
-      <div class="warps" id="warpBtns"></div>
+      <div class="warps" id="warpBtns" data-testid="warps"></div>
       <h2 style="margin-top:16px">Actions</h2>
       <div class="actions" id="actionBtns">
-        <button type="button" data-kind="scan" class="primary">SCAN</button>
-        <button type="button" data-kind="wait">WAIT</button>
-        <button type="button" id="sellBtn" class="sell" hidden>SELL ALL PORT BUYS</button>
-        <button type="button" id="buyBtn" class="buy" hidden>BUY FIRST SELL</button>
+        <button type="button" data-kind="scan" data-testid="action-scan" class="primary">SCAN</button>
+        <button type="button" data-kind="wait" data-testid="action-wait">WAIT</button>
+        <button type="button" id="sellBtn" data-testid="action-sell" class="sell" hidden>SELL ALL PORT BUYS</button>
+        <button type="button" id="buyBtn" data-testid="action-buy" class="buy" hidden>BUY FIRST SELL</button>
       </div>
       <h2 style="margin-top:16px">Last result</h2>
-      <div id="lastResult" class="hint">-</div>
+      <div id="lastResult" class="hint" data-testid="last-result">-</div>
       <h2 style="margin-top:16px">Log</h2>
-      <div id="log" class="log"></div>
+      <div id="log" class="log" data-testid="log"></div>
     </section>
   </main>
 
