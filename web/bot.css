@@ -115,6 +115,7 @@ main.bot-main.cols3 { grid-template-columns: 1fr 1.05fr 1fr; max-width: 1800px; 
   background: #182447; border: 1px solid var(--btn-border); color: var(--text); vertical-align: middle;
 }
 .badge.fed { background: #143d2a; border-color: var(--go); color: #b8ffd9; }
+.badge[hidden], .chip[hidden], [hidden].tape, [hidden].result { display: none !important; }
 .badge.warn { background: #3a2a10; border-color: var(--wait); color: #ffd27a; }
 .badge.bad { background: #3a1520; border-color: var(--danger); color: #ffb3c4; }
 .sub { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; margin: 12px 0 6px; }
@@ -163,6 +164,29 @@ footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
 .ev.mine { border-left: 3px solid var(--go); }
 .ev.combat { border-left: 3px solid var(--danger); }
 .ev.new { background: #101a36; }
+/* ---- Parity S3: verb pad + forms ---- */
+.verbpad button[data-legal="false"] { opacity: 0.4; }
+.verbpad button.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
+.verb-form {
+  margin-top: 12px; background: #0b1020; border: 1px solid #243056; border-radius: 12px; padding: 14px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+@media (max-width: 700px) { .verb-form { grid-template-columns: 1fr; } }
+.verb-form h3 { grid-column: 1 / -1; margin: 0; color: var(--accent); font-size: 1rem; }
+.verb-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+.verb-form input, .verb-form select {
+  min-height: 48px; font-size: 1.05rem; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--btn-border); background: #141a2e; color: var(--text);
+}
+.verb-form .radios { display: flex; gap: 8px; flex-wrap: wrap; }
+.verb-form .radios label { flex-direction: row; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; border: 1px solid var(--btn-border); border-radius: 10px; color: var(--text); font-size: 1rem; cursor: pointer; }
+.verb-form .radios input { min-height: 0; width: 20px; height: 20px; }
+.verb-form .preview { grid-column: 1 / -1; color: #d5def5; font-size: 0.95rem; background: #141a2e; border-radius: 10px; padding: 10px 12px; }
+.verb-form .preview.warn { color: #ffd27a; }
+.verb-form .buttons { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; }
+.verb-form .buttons button { min-height: 56px; min-width: 140px; padding: 12px 18px; font-size: 1.05rem; font-weight: 700; border-radius: 12px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); cursor: pointer; }
+.verb-form .buttons button.primary { background: #1a4d3a; border-color: var(--go); color: #b8ffd9; }
+.verb-form .buttons button:disabled { opacity: 0.35; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   .banner.turn, .banner.turn.flash { animation: none; }
 }

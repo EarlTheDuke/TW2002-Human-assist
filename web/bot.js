@@ -59,6 +59,9 @@
     eventsSince: 0,
     eventFilter: "all",
     lastSeenSeq: 0,      // for the "new since your last turn" highlight
+    legal: {},           // S3: kind -> LegalAction from the Observation
+    openVerb: null,
+    openPrefill: null,
   };
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -200,7 +203,7 @@
   function tbody(tableId) { const t = $(tableId); const b = t.querySelector("tbody"); b.innerHTML = ""; return b; }
   function td(tr, text, cls) { const c = document.createElement("td"); if (cls) c.className = cls; c.textContent = text; tr.appendChild(c); return c; }
   function emptyRow(b, cols, text) { const tr = document.createElement("tr"); tr.className = "empty"; const c = document.createElement("td"); c.colSpan = cols; c.textContent = text; tr.appendChild(c); b.appendChild(tr); }
-  const sideWord = (side) => (side === "buys_from_player" ? "BUYS" : side === "sells_to_player" ? "SELLS" : "-");
+  const sideWord = (side) => (side === "buys_from_player" ? "BUYS" : side === "sells_to_player" ? "SELLS" : side === "not_traded" ? "no trade" : "-");
 
   // ---------------------------------------------------------------- panels
   function renderScoreboard(obs) {
@@ -265,11 +268,11 @@
       if (!st) continue;
       any = true;
       const tr = document.createElement("tr");
-      tr.className = st.side === "buys_from_player" ? "buys" : "sells";
+      tr.className = st.side === "buys_from_player" ? "buys" : st.side === "sells_to_player" ? "sells" : "empty";
       tr.setAttribute("data-testid", `port-row-${c}`);
       td(tr, c);
       td(tr, sideWord(st.side));
-      td(tr, `${fmt(st.price)} cr`, "num");
+      td(tr, st.price === null || st.price === undefined ? "-" : `${fmt(st.price)} cr`, "num");
       td(tr, `${fmt(st.current)} / ${fmt(st.max)}`, "num");
       td(tr, fmt(cargo[c] || 0), "num");
       b.appendChild(tr);
@@ -431,13 +434,32 @@
     els.rawObs.textContent = JSON.stringify(obs, null, 2);
   }
 
-  // Warp / trade controls (S3 will replace the fixed trade shapes with a real form).
-  function renderControls(obs) {
-    const sector = obs.sector || {};
-    const ship = obs.ship || {};
-    const port = sector.port || null;
-    const warps = sector.warps_out || [];
-    const canAct = state.awaiting && !state.busy;
+  // ---------------------------------------------------------------- legality (S3)
+  // Everything below reads state.legal = { kind: LegalAction } straight from the
+  // Observation. No rule lives here: if the engine says a verb is blocked we show
+  // the button disabled with the engine's reason; if it says legal we offer the
+  // engine's own parameter envelope (choices / min / max / listed prices).
+  const S3_VERBS = ["warp", "scan", "wait", "trade", "plot_course", "probe"];
+  function legalOf(kind) { return (state.legal && state.legal[kind]) || { kind, legal: false, reason: "no legality data", params: {} }; }
+  function canUse(kind) { return state.awaiting && !state.busy && !!legalOf(kind).legal; }
+
+  function renderVerbPad(obs) {
+    state.legal = {};
+    for (const la of obs.legal_actions || []) state.legal[la.kind] = la;
+    const reasons = [];
+    $("verbPad").querySelectorAll("button[data-verb]").forEach((btn) => {
+      const kind = btn.getAttribute("data-verb");
+      const la = legalOf(kind);
+      btn.setAttribute("data-legal", la.legal ? "true" : "false");
+      btn.setAttribute("data-detail", la.detail || "");
+      if (la.legal) { btn.removeAttribute("data-reason"); btn.title = `${kind} · ${la.turn_cost || 0} turn(s)`; }
+      else { btn.setAttribute("data-reason", la.reason || "not legal now"); btn.title = la.reason || "not legal now"; reasons.push(`${kind.toUpperCase()}: ${la.reason || "not legal now"}`); }
+      btn.disabled = !canUse(kind);
+      btn.classList.toggle("selected", state.openVerb === kind);
+    });
+    // Warp chips are the warp verb's form; gate them from legal_actions.warp.
+    const warp = legalOf("warp");
+    const warps = (warp.params && warp.params.target && warp.params.target.choices) || [];
     const warpKey = warps.join(",");
     if (els.warps.getAttribute("data-warp-key") !== warpKey) {
       els.warps.innerHTML = "";
@@ -447,34 +469,186 @@
         b.textContent = `WARP ${w}`;
         b.setAttribute("data-testid", `warp-${w}`);
         b.setAttribute("data-target", String(w));
-        b.addEventListener("click", () => submit({ kind: "warp", args: { target: Number(w) }, thought: `Grok Bot: warp to ${w}` }));
+        b.addEventListener("click", () => { if (canUse("warp")) submit({ kind: "warp", args: { target: Number(w) }, thought: `Grok Bot: warp to ${w}` }); });
         els.warps.appendChild(b);
       });
       els.warps.setAttribute("data-warp-key", warpKey);
     }
-    els.warps.querySelectorAll("button").forEach((b) => { b.disabled = !canAct; });
+    els.warps.querySelectorAll("button").forEach((b) => {
+      b.disabled = !canUse("warp");
+      if (!warp.legal) b.setAttribute("data-reason", warp.reason || ""); else b.removeAttribute("data-reason");
+    });
+    if (!warp.legal && warp.reason && !warps.length) reasons.push(`WARP: ${warp.reason}`);
 
-    const cargo = ship.cargo || {};
-    const buys = (port && port.buys) || [];
-    const sells = (port && port.sells) || [];
-    let canSell = null;
-    for (const c of buys) if ((cargo[c] || 0) > 0) { canSell = { c, q: cargo[c] }; break; }
-    els.sell.hidden = !canSell;
-    els.sell.textContent = canSell ? `SELL ${canSell.q} ${SHORT[canSell.c] || canSell.c}` : "SELL";
-    els.sell.onclick = () => { if (canSell && state.awaiting && !state.busy) submit({ kind: "trade", args: { commodity: canSell.c, qty: canSell.q, side: "sell" }, thought: `Grok Bot: sell ${canSell.q} ${canSell.c}` }); };
-    const free = ship.cargo_free || 0;
-    const canBuy = sells.length && free > 0 && (obs.credits || 0) > 500;
-    els.buy.hidden = !canBuy;
-    if (canBuy) els.buy.textContent = `BUY ${Math.min(free, 15)} ${SHORT[sells[0]] || sells[0]}`;
-    els.buy.onclick = () => { if (canBuy && state.awaiting && !state.busy) submit({ kind: "trade", args: { commodity: sells[0], qty: Math.min(free, 15), side: "buy" }, thought: `Grok Bot: buy ${sells[0]}` }); };
-    setActionsEnabled(canAct);
+    // Quick trade shortcuts: prefilled forms, gated by the trade envelope.
+    const trade = legalOf("trade");
+    const tp = trade.params || {};
+    const sellChoices = (tp.commodity && tp.commodity.sell_choices) || [];
+    const buyChoices = (tp.commodity && tp.commodity.buy_choices) || [];
+    els.sell.hidden = !(trade.legal && sellChoices.length);
+    els.buy.hidden = !(trade.legal && buyChoices.length);
+    if (!els.sell.hidden) { const c = sellChoices[0]; els.sell.textContent = `SELL ${SHORT[c] || c}`; els.sell.onclick = () => openVerb("trade", { side: "sell", commodity: c }); }
+    if (!els.buy.hidden) { const c = buyChoices[0]; els.buy.textContent = `BUY ${SHORT[c] || c}`; els.buy.onclick = () => openVerb("trade", { side: "buy", commodity: c }); }
+    els.sell.disabled = !canUse("trade"); els.buy.disabled = !canUse("trade");
+
+    rows($("verbReasons"), reasons, (r) => row(r, [], "stale"), state.awaiting ? "all shown verbs are legal now" : "waiting for your turn - buttons enable when the scheduler reaches you");
+    // Coarse / S4 verbs: visible, disabled, with the engine's reason.
+    const more = $("moreVerbs"); more.innerHTML = "";
+    for (const la of obs.legal_actions || []) {
+      if (S3_VERBS.includes(la.kind)) continue;
+      const c = document.createElement("button");
+      c.type = "button"; c.className = "chip"; c.disabled = true;
+      c.setAttribute("data-testid", `verb-${la.kind}`);
+      c.setAttribute("data-legal", la.legal ? "true" : "false");
+      c.setAttribute("data-reason", la.legal ? "form arrives in S4" : (la.reason || "not legal now"));
+      c.title = c.getAttribute("data-reason");
+      c.textContent = `${la.kind}${la.legal ? " ✓" : ""}`;
+      more.appendChild(c);
+    }
+    // Keep an open form stable across polls: only rebuild when the engine's
+    // envelope for that verb changed (otherwise typed values and CU refs would
+    // be wiped every 1.5 s). Enabled/disabled state is refreshed separately.
+    if (state.openVerb) {
+      const env = JSON.stringify(legalOf(state.openVerb));
+      if (env !== state.openVerbEnvelope) renderVerbForm(state.openVerb, state.openPrefill || {});
+      else { const go = $("verbForm").querySelector("button.primary"); if (go) go.disabled = !canUse(state.openVerb); }
+    }
   }
+
   function setActionsEnabled(on) {
-    document.querySelectorAll("#actionBtns [data-kind]").forEach((btn) => { btn.disabled = !on; });
-    els.sell.disabled = !on;
-    els.buy.disabled = !on;
-    els.warps.querySelectorAll("button").forEach((b) => { b.disabled = !on; });
+    $("verbPad").querySelectorAll("button[data-verb]").forEach((btn) => { btn.disabled = !on || !legalOf(btn.getAttribute("data-verb")).legal; });
+    els.sell.disabled = !on || !legalOf("trade").legal;
+    els.buy.disabled = !on || !legalOf("trade").legal;
+    els.warps.querySelectorAll("button").forEach((b) => { b.disabled = !on || !legalOf("warp").legal; });
+    const go = $("verbForm").querySelector("button.primary");
+    if (go) go.disabled = !on;
   }
+
+  function openVerb(kind, prefill) {
+    state.openVerb = kind;
+    state.openPrefill = prefill || {};
+    renderVerbForm(kind, state.openPrefill);
+    $("verbPad").querySelectorAll("button[data-verb]").forEach((b) => b.classList.toggle("selected", b.getAttribute("data-verb") === kind));
+  }
+  function closeVerb() { state.openVerb = null; state.openPrefill = null; state.openVerbEnvelope = null; const f = $("verbForm"); f.hidden = true; f.innerHTML = ""; $("verbPad").querySelectorAll("button").forEach((b) => b.classList.remove("selected")); }
+
+  function field(labelText, inputEl, testid) {
+    const l = document.createElement("label");
+    l.textContent = labelText;
+    inputEl.setAttribute("data-testid", testid);
+    l.appendChild(inputEl);
+    return l;
+  }
+  function selectEl(name, choices, value) {
+    const s = document.createElement("select"); s.name = name;
+    for (const c of choices) { const o = document.createElement("option"); o.value = String(c); o.textContent = String(c); s.appendChild(o); }
+    if (value !== undefined && value !== null) s.value = String(value);
+    return s;
+  }
+  function numberEl(name, { min, max, value, placeholder }) {
+    const i = document.createElement("input"); i.type = "number"; i.name = name; i.inputMode = "numeric";
+    if (min !== undefined) i.min = String(min); if (max !== undefined) i.max = String(max);
+    if (value !== undefined && value !== null) i.value = String(value); if (placeholder) i.placeholder = placeholder;
+    return i;
+  }
+
+  function renderVerbForm(kind, prefill) {
+    const f = $("verbForm");
+    const la = legalOf(kind);
+    const p = la.params || {};
+    state.openVerbEnvelope = JSON.stringify(la);
+    f.innerHTML = ""; f.hidden = false; f.setAttribute("data-verb", kind);
+    const h = document.createElement("h3"); h.textContent = `${kind.replace("_", " ").toUpperCase()} · ${la.turn_cost || 0} turn(s)${la.legal ? "" : " · " + (la.reason || "not legal now")}`; f.appendChild(h);
+    const preview = document.createElement("div"); preview.className = "preview"; preview.setAttribute("data-testid", "verb-preview");
+    const buttons = document.createElement("div"); buttons.className = "buttons";
+    const go = document.createElement("button"); go.type = "submit"; go.className = "primary"; go.setAttribute("data-testid", "verb-submit"); go.textContent = "CONFIRM";
+    const cancel = document.createElement("button"); cancel.type = "button"; cancel.setAttribute("data-testid", "verb-cancel"); cancel.textContent = "Cancel"; cancel.onclick = closeVerb;
+    buttons.appendChild(go); buttons.appendChild(cancel);
+    let build = () => null;   // -> action or null; sets preview text
+
+    if (kind === "trade") {
+      const sides = (p.side && p.side.choices) || ["buy", "sell"];
+      const buyC = (p.commodity && p.commodity.buy_choices) || [];
+      const sellC = (p.commodity && p.commodity.sell_choices) || [];
+      const maxBy = (p.qty && p.qty.max_by) || {};
+      const listedBy = (p.unit_price && p.unit_price.listed_by) || {};
+      const radios = document.createElement("div"); radios.className = "radios";
+      let side = prefill.side || (sellC.length && !buyC.length ? "sell" : "buy");
+      for (const s of sides) {
+        const l = document.createElement("label"); const r = document.createElement("input"); r.type = "radio"; r.name = "side"; r.value = s; r.checked = s === side;
+        r.setAttribute("data-testid", `trade-side-${s}`); r.disabled = s === "buy" ? !buyC.length : !sellC.length;
+        l.appendChild(r); l.appendChild(document.createTextNode(s.toUpperCase())); radios.appendChild(l);
+      }
+      const sideWrap = document.createElement("label"); sideWrap.textContent = "Side"; sideWrap.appendChild(radios); f.appendChild(sideWrap);
+      const commSel = selectEl("commodity", side === "buy" ? buyC : sellC, prefill.commodity);
+      f.appendChild(field("Commodity", commSel, "trade-commodity"));
+      const qty = numberEl("qty", { min: 1 }); f.appendChild(field("Quantity", qty, "trade-qty"));
+      const price = numberEl("unit_price", {}); f.appendChild(field("Your price per unit (optional haggle; blank = list)", price, "trade-price"));
+      const maxBtn = document.createElement("button"); maxBtn.type = "button"; maxBtn.textContent = "MAX"; maxBtn.setAttribute("data-testid", "trade-max");
+      const sync = () => {
+        const c = commSel.value; const mx = ((maxBy[c] || {})[side]) ?? 0; const listed = ((listedBy[c] || {})[side]);
+        qty.max = String(mx); if (!qty.value || Number(qty.value) > mx) qty.value = String(mx);
+        price.placeholder = listed !== undefined ? `list ${listed}` : "";
+        const q = Number(qty.value) || 0; const unit = Number(price.value) || listed || 0;
+        const basis = ((state.obs && state.obs.ship && state.obs.ship.cargo_cost_avg) || {})[c];
+        let txt = `${side.toUpperCase()} ${q} ${c} @ ${unit} = ${fmt(q * unit)} cr (engine cap ${mx}; list ${listed ?? "?"})`;
+        if (side === "sell" && basis !== undefined) txt += ` · cost basis ${basis} → est. ${fmt((unit - basis) * q)} cr`;
+        if (price.value && listed !== undefined) { const off = side === "buy" ? (listed - unit) / listed : (unit - listed) / listed; if (off > 0) txt += ` · haggle ${Math.round(off * 100)}% off list - rejected asks settle at list price`; }
+        preview.textContent = txt; preview.classList.toggle("warn", q <= 0 || q > mx);
+      };
+      radios.addEventListener("change", (e) => { side = e.target.value; const opts = side === "buy" ? buyC : sellC; commSel.innerHTML = ""; for (const c of opts) { const o = document.createElement("option"); o.value = c; o.textContent = c; commSel.appendChild(o); } qty.value = ""; sync(); });
+      commSel.addEventListener("change", () => { qty.value = ""; sync(); }); qty.addEventListener("input", sync); price.addEventListener("input", sync);
+      maxBtn.onclick = () => { qty.value = qty.max; sync(); };
+      buttons.insertBefore(maxBtn, cancel);
+      build = () => { const q = Number(qty.value) || 0; if (q <= 0 || q > Number(qty.max)) return null; const a = { kind: "trade", args: { commodity: commSel.value, qty: q, side }, thought: `Grok Bot: ${side} ${q} ${commSel.value}` }; if (price.value) a.args.unit_price = Number(price.value); return a; };
+      sync();
+    } else if (kind === "plot_course") {
+      const suggested = (p.target && p.target.suggested) || [];
+      const target = numberEl("target", { min: 1, value: prefill.target }); f.appendChild(field("Target sector", target, "plot-target"));
+      const known = selectEl("known", ["(known sectors)", ...suggested]); f.appendChild(field("Pick from known space", known, "plot-known"));
+      known.addEventListener("change", () => { if (known.selectedIndex > 0) { target.value = known.value; sync(); } });
+      const exec = document.createElement("input"); exec.type = "checkbox"; exec.checked = true; exec.setAttribute("data-testid", "plot-execute");
+      const execWrap = document.createElement("label"); execWrap.className = "radios"; const el2 = document.createElement("label"); el2.appendChild(exec); el2.appendChild(document.createTextNode("Execute (fly the route now, one warp cost per hop)")); execWrap.appendChild(el2); f.appendChild(execWrap);
+      const sync = () => { const t = Number(target.value) || 0; const kw = (state.obs && state.obs.known_warps) || {}; const hops = t ? bfsKnown(kw, (state.obs.sector || {}).id, t) : null; preview.textContent = t ? `Route ${state.obs.sector.id} → ${t}: ${hops === null ? "not through known space (engine may still find one)" : hops + " hop(s) through known warps"}${exec.checked ? " · executes" : " · plan only (0 turns)"}` : "enter a target sector"; };
+      target.addEventListener("input", sync); exec.addEventListener("change", sync); sync();
+      build = () => { const t = Number(target.value) || 0; return t > 0 ? { kind: "plot_course", args: { target: t, execute: exec.checked }, thought: `Grok Bot: plot to ${t}` } : null; };
+    } else if (kind === "probe") {
+      const target = numberEl("target", { min: (p.target && p.target.min) || 1, max: p.target && p.target.max, value: prefill.target }); f.appendChild(field("Sector to probe", target, "probe-target"));
+      const sync = () => { const t = Number(target.value) || 0; preview.textContent = t ? `Probe sector ${t} (uses 1 of ${(state.obs.ship || {}).ether_probes ?? "?"} probes, ${la.turn_cost} turn)` : "enter a sector id"; };
+      target.addEventListener("input", sync); sync();
+      build = () => { const t = Number(target.value) || 0; return t > 0 ? { kind: "probe", args: { target: t }, thought: `Grok Bot: probe ${t}` } : null; };
+    } else if (kind === "scan") {
+      const tiers = (p.tier && p.tier.choices) || ["basic"];
+      const tier = selectEl("tier", tiers, "basic"); f.appendChild(field("Scan tier", tier, "scan-tier"));
+      preview.textContent = `Scan ${tier.value} from sector ${(state.obs.sector || {}).id} (${la.turn_cost} turn)`;
+      tier.addEventListener("change", () => { preview.textContent = `Scan ${tier.value} (${la.turn_cost} turn)`; });
+      build = () => ({ kind: "scan", args: tier.value === "basic" ? {} : { tier: tier.value }, thought: `Grok Bot: scan ${tier.value}` });
+    } else if (kind === "wait") {
+      preview.textContent = `Pass this turn (${la.turn_cost} turn)`;
+      build = () => ({ kind: "wait", args: {}, thought: "Grok Bot: wait" });
+    } else if (kind === "warp") {
+      preview.textContent = `Tap a WARP chip above (${la.turn_cost} turns per warp). Legal targets: ${((p.target || {}).choices || []).join(", ") || "none"}`;
+      build = () => null;
+    }
+    f.appendChild(preview); f.appendChild(buttons);
+    go.disabled = !canUse(kind);
+    f.onsubmit = (ev) => { ev.preventDefault(); if (!canUse(kind)) return; const a = build(); if (!a) { preview.classList.add("warn"); return; } closeVerb(); submit(a); };
+  }
+
+  // Presentation-only BFS over the seat's OWN known_warps (memory the server sent) to
+  // label a plot preview; the engine decides the real route.
+  function bfsKnown(kw, src, dst) {
+    if (!src || !dst) return null; if (src === dst) return 0;
+    const seen = new Set([src]); let frontier = [src]; let d = 0;
+    while (frontier.length && d < 60) {
+      d += 1; const next = [];
+      for (const s of frontier) for (const n of kw[String(s)] || []) { if (n === dst) return d; if (!seen.has(n)) { seen.add(n); next.push(n); } }
+      frontier = next;
+    }
+    return null;
+  }
+
+  function renderControls(obs) { renderVerbPad(obs); }
 
   function renderObservation(obs, isPeek) {
     state.obs = obs;
@@ -680,6 +854,7 @@
       log(`${describeAction(action)} posted (seq ${seq})`);
       state.awaiting = false;
       state.busy = false;
+      closeVerb();
       await sleep(150);
       await refresh();
     } catch (e) {
@@ -715,10 +890,14 @@
     refresh().then(() => watchLoop(state.watchGen));
   });
   els.poll.addEventListener("click", () => { setErr(""); refresh(); });
-  document.querySelectorAll("#actionBtns [data-kind]").forEach((btn) => {
+  // Verb pad: SCAN / WAIT submit straight away (no parameters); the rest open a form.
+  $("verbPad").querySelectorAll("button[data-verb]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const kind = btn.getAttribute("data-kind");
-      submit({ kind, args: {}, thought: `Grok Bot: ${kind}` });
+      const kind = btn.getAttribute("data-verb");
+      if (!canUse(kind)) return;
+      if (kind === "wait") return submit({ kind: "wait", args: {}, thought: "Grok Bot: wait" });
+      if (kind === "scan") return submit({ kind: "scan", args: {}, thought: "Grok Bot: scan" });
+      openVerb(kind, {});
     });
   });
 
