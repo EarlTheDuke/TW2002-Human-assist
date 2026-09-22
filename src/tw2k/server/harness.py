@@ -193,10 +193,39 @@ def build_harness_router(runner) -> APIRouter:
 
     # ---- routes ------------------------------------------------------------
 
+    def _seat_public(agent: ExternalAgent) -> dict[str, Any]:
+        """Lobby view of a seat: who / attended / whose turn - never their intel.
+
+        Parity S6 (fog): `/seats` is readable with ANY valid seat token, so it
+        must not expose a sibling's sector, last_result or queue state. Use
+        `/{pid}/status` with that seat's own token for the full view.
+        """
+        u = runner.state.universe
+        p = u.players.get(agent.player_id) if u is not None else None
+        spec = runner._spec
+        window = float(getattr(spec, "external_attend_window_s", 45.0) or 0.0) if spec else 45.0
+        return {
+            "player_id": agent.player_id,
+            "name": agent.name,
+            "kind": "external",
+            "alive": bool(p.alive) if p is not None else False,
+            "awaiting_input": agent.awaiting_input,
+            "attended": agent.is_attended(window),
+            "turn_seq": agent.turn_seq,
+        }
+
     @router.get("/seats")
     async def seats(request: Request) -> dict[str, Any]:
         _authenticate_any(request)
-        return {"seats": [_seat_status(a) for a in _external_agents()]}
+        u = runner.state.universe
+        return {
+            "seats": [_seat_public(a) for a in _external_agents()],
+            "current_turn": _current_turn(),
+            "match_status": runner.state.status,
+            "day": u.day if u is not None else None,
+            "tick": u.tick if u is not None else None,
+            "server_time": time.time(),
+        }
 
     @router.get("/rules")
     async def rules(request: Request) -> dict[str, Any]:
