@@ -41,12 +41,18 @@ from ..agents.external import (
     StaleTurnError,
 )
 from ..agents.prompts import format_observation, get_system_prompt
+from ..engine import build_observation
 from ..engine.actions import Action, ActionKind
+from ..engine.observation import _event_visible_to, event_view
 from . import harness_tokens as ht
 
 ENV_ALLOW_REMOTE = "TW2K_HARNESS_ALLOW_REMOTE"
 _LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
 MAX_WAIT_S = 60.0
+# Parity S1: a seat may peek at its own fogged Observation between turns.
+# build_observation is pure but not free (~ms); cache per seat for this long.
+PEEK_CACHE_S = 0.5
+EVENTS_MAX_LIMIT = 500
 
 
 class ActionSubmission(BaseModel):
@@ -211,13 +217,44 @@ def build_harness_router(runner) -> APIRouter:
         agent = _require_seat(player_id, request)
         return _seat_status(agent)
 
+    _peek_cache: dict[str, tuple[float, Any]] = {}
+
+    def _peek_observation(agent: ExternalAgent):
+        """Fog-safe read of the seat's OWN current Observation, any time.
+
+        This is exactly `build_observation(universe, pid)` - the same object
+        the scheduler would hand the seat on its turn - so it cannot reveal
+        anything the seat is not entitled to. It is read-only: it does not
+        touch `awaiting_input`, `turn_seq`, or the queue.
+        """
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        now = time.time()
+        hit = _peek_cache.get(agent.player_id)
+        if hit is not None and (now - hit[0]) < PEEK_CACHE_S:
+            return hit[1]
+        obs = build_observation(u, agent.player_id)
+        _peek_cache[agent.player_id] = (now, obs)
+        return obs
+
     @router.get("/{player_id}/observation")
     async def observation(
         player_id: str,
         request: Request,
         wait_s: float = 0.0,
         format: str = "json",
+        peek: bool = False,
     ) -> dict[str, Any]:
+        """The seat's fogged Observation.
+
+        * On your turn: the exact object the scheduler handed you (`turn_seq`
+          bound); long-poll with `wait_s` while waiting.
+        * `peek=1` (Parity S1): when it is NOT your turn, return a fresh
+          read-only Observation for your seat instead of `null`, so a cockpit
+          can show ship / port / map memory between turns. `awaiting_input`
+          stays false and no action can be bound to a peeked observation.
+        """
         agent = _require_seat(player_id, request)
         wait_s = max(0.0, min(float(wait_s), MAX_WAIT_S))
         if not agent.awaiting_input and wait_s > 0:
@@ -226,11 +263,55 @@ def build_harness_router(runner) -> APIRouter:
                 raise HTTPException(status_code=503, detail="seat closed")
         body = _seat_status(agent)
         obs = agent.current_observation if agent.awaiting_input else None
+        body["peek"] = False
+        if obs is None and peek:
+            obs = _peek_observation(agent)
+            body["peek"] = True
         fmt = (format or "json").lower()
         body["observation"] = obs.model_dump(mode="json") if (obs is not None and fmt in ("json", "both")) else None
         if obs is not None and fmt in ("llm", "both"):
             body["llm_user_message"] = format_observation(obs)
         return body
+
+    @router.get("/{player_id}/events")
+    async def events(
+        player_id: str,
+        request: Request,
+        since: int = 0,
+        limit: int = 200,
+    ) -> dict[str, Any]:
+        """Fogged event stream for this seat (Parity S1 / presentation boundary).
+
+        Returns events with `seq > since`, in order, filtered by the same
+        `_event_visible_to` rule the Observation uses, rendered as
+        `event_view` (summary text always; `facts` = per-kind whitelist).
+        `next_since` is the last seq returned (or `since` if none) so a client
+        can page forward; `latest_seq` is the newest event in the match so a
+        client knows whether it is caught up.
+        """
+        agent = _require_seat(player_id, request)
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        since = max(0, int(since))
+        limit = max(1, min(int(limit), EVENTS_MAX_LIMIT))
+        out: list[dict[str, Any]] = []
+        for ev in u.events:
+            if ev.seq <= since:
+                continue
+            if not _event_visible_to(ev, agent.player_id, u):
+                continue
+            out.append(event_view(ev))
+            if len(out) >= limit:
+                break
+        latest = u.events[-1].seq if u.events else 0
+        return {
+            "player_id": agent.player_id,
+            "events": out,
+            "next_since": out[-1]["seq"] if out else since,
+            "latest_seq": latest,
+            "has_more": bool(out) and out[-1]["seq"] < latest,
+        }
 
     @router.post("/{player_id}/action")
     async def submit(player_id: str, request: Request, body: ActionSubmission) -> dict[str, Any]:
