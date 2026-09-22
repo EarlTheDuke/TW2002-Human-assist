@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-bot-human-parity.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **COMMANDER_QUEUED - S5 known-space map** |
+| Status | **COMMANDER_QUEUED - S6 multi-bot + Path-B** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -44,6 +44,10 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-21 20:47 PT — Commander — S5 ACK -> S6 queued
+- S5 accepted (`dc3291b`): known_sectors coords fog-safe, F5 known_warps BFS, /bot SVG map + plot taps (1-hop + 3-hop), 539 tests.
+- Queued parity-s6-multibot-pathb: multi-seat lobby chips, Path-B `grokbot_seat_client.py`, webhook harden, docs/tests. No S7 yet.
+- mailbox COMMANDER_QUEUED phase `parity-s6`.
 ### 2026-09-21 20:25 PT — Commander — S4 ACK -> S5 queued
 - S4 accepted (c62d2e9): all 34 verbs precise; combat/StarDock/planets/comms pads; 535 tests.
 - Note: deploy_atomic undispatched (use deploy_mines kind=atomic) — leave documented.
@@ -175,6 +179,8 @@ Non-goals: public multi-human net play; rewrite engine language; Cursor on-deman
 ---
 
 ## 5. Orchestrator notes (Commander)
+
+_2026-09-21 20:47 PT - Commander: S5 accepted (`dc3291b`). Queued S6 multi-bot ops + Path-B client. mailbox COMMANDER_QUEUED._
 
 _2026-09-21 19:33 PT - Commander: S2 accepted (`d6f13d2`). Queued S3 legality + core verbs. mailbox COMMANDER_QUEUED._
 
@@ -399,6 +405,19 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
 - **Browser proof (local 2-seat):** after warp 68 → scan → warp 70 → scan the map showed 8 sectors (1 STARDOCK, 2 FED, 28, 34, 50 SBB, 61 BBS, 68, 70 here). Tap `map-sector-61` → plot form prefilled target=61, preview "1 hop(s) through known warps · executes" → `PLOT_COURSE target=61 execute=true — ok: Commander warped 70 → 61 · autopilot completed 1/1 hops`. Tap `map-sector-2` from 61 → preview "3 hop(s)" → `… warped 61 → 70 · 70 → 68 · 68 → 2 · autopilot completed 3/3 hops toward 2`. Done-when met without opening the harness.
 - **Live:** `:8031` restarted on S5; P3 peek shows 6 known sectors (spawn knowledge). Tunnel survived this restart (200); watchdog still running.
 - **Next:** Commander ACK -> S6 multi-bot ops + Path-B client (or S7 polish).
+- **Blockers:** none.
+
+### 2026-09-21 21:10 PT - Fable - parity-s6-multibot-pathb DONE
+- **Commits:** `814add7` client + `/seats` fog · `82bac62` `/bot` lobby · `d854820` tests/docs. Pushed; tip `d854820`.
+- **Path-B client:** `src/tw2k/agents/pathb_client.py` - `SeatClient` (async, `httpx.AsyncClient` injected: live URL or in-process ASGI), `run_seats()` (N seats concurrently, **one SeatClient + one brain object per seat**), `TurnContext` (observation, `llm_user_message`, rules, `deadline_at`, `seconds_left`, `legal(kind)`). Protocol: `/rules` once → long-poll `observation?format=both` → brain (budget = deadline − margin) → `POST /action {turn_seq}` → `last_result`. A late or crashing brain gets a **safe `wait`** submitted before the deadline, so the scheduler never has to auto-WAIT an attended seat. Brains: `legal_heuristic_policy` (deterministic, envelope-only: sell if above cost basis / holds full, buy if a *known* port pays more, explore least-known warp, scan unmapped, wait) and `MailboxPolicy` (writes `<dir>/<SEAT>.pending.json` with observation + llm_user_message + rules-once, waits for `<SEAT>.decision.json` matching `turn_seq`, safe wait at margin). CLI `scripts/grokbot_seat_client.py` (`--seat|--seats`, `--policy heuristic|mailbox`, `--public` reads the tunnel URL file, tokens from `TW2K_TOKEN_<SEAT>` or tokens file). **No xAI anywhere** (tested).
+- **Fog fix found while building:** `GET /harness/v1/seats` (readable with any seat token) was returning every sibling's `sector_id`, `last_result`, queue state. Now a lobby view only: `player_id, name, kind, alive, awaiting_input, attended, turn_seq` + `current_turn`, `match_status`, `day/tick`, `server_time`.
+- **`/bot` lobby:** seat chips from `/seats` (name · YOUR TURN/their turn/acting/waiting · bot attached/no bot · turn_seq; `data-testid="seat-chip-<pid>"`, `data-attended`, `data-awaiting`); tap switches seats when that seat's token is stored in this browser (per-seat `localStorage`), otherwise prompts for a paste with the "one brain per seat" reminder. Stable DOM (re-keyed on state only).
+- **Webhook (F8/D11) finished in S1** - verified end-to-end here: `TW2K_GROKBOT_WEBHOOK_URL` receives `turn_due` with runner-effective `deadline_at` (idle window for an unattended seat), `base_url`/`observation_url`/`action_url`, 5-field `brief`, no full Observation.
+- **Tests:** `tests/test_parity_s6.py` (5): two in-process Path-B brains + one unattended external + one heuristic seat → each brain ≥8 turns, 0 stale, 0 fallback waits, no external timeouts for attended seats, idle auto-WAITs only for the empty seat, brains acted (non-wait) ≥10 times; lean webhook captured via monkeypatched httpx; `/seats` field set exact; MailboxPolicy round-trip + deadline fallback; script `--help` + no-xAI grep. Full suite **544 passed**; ruff clean.
+- **Live proof (local 5-seat: 2 heuristic + P3/P4/P5 external):** `grokbot_seat_client.py --seats P4,P5 --policy heuristic --max-turns 10` → P4 and P5 each **10/10 ok, 0 failed, 0 stale, 0 fallback** (9 warps + 1 buy each). Browser on P3 showed the lobby: `P3 Commander · YOUR TURN · bot attached`, `P4 GrokPilot2 · waiting · bot attached`, `P5 GrokPilot3 · waiting · bot attached`. Note for operators: an **attended** seat that does not act holds the round for the full timeout (intended - a human thinking); the bots resumed at full speed the moment I closed the P3 tab (idle-WAIT). Documented in HOSTING.
+- **Hosted:** `:8031` restarted as the canonical multi-bot layout **2 Qwen + P3, P4, P5 external** (idle-wait 8 s). `/seats` returns lobby fields only; tunnel re-exposed by the watchdog, `/bot` 200. Commander can attach brains now: `python scripts/grokbot_seat_client.py --public --seat P4 --policy mailbox` (tokens in `.tw2k/external_tokens.json`).
+- **Docs:** GROK_BOT_PLAYER_GUIDE (Path-B client, mailbox protocol table, lobby endpoint), HOSTING_GROKBOT (multi-bot match runbook + rules of the road), GROK_BOT_CONNECTOR (helper pointer).
+- **Next:** Commander ACK -> S7 polish/a11y, or COMPLETE if the north-star acceptance is met.
 - **Blockers:** none.
 
 ### 2026-09-21 16:23 PT — Commander — Phase B ACK → Phase C started
