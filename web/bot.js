@@ -982,6 +982,51 @@
     renderEvents();
   });
 
+  // ---------------------------------------------------------------- S6: lobby (multi-seat)
+  // /seats is readable with any seat token and returns lobby fields only
+  // (who / alive / awaiting / attended / turn_seq) - never a sibling's intel.
+  function tokenKey(seat) { return `tw2k_bot_token_${String(seat).toUpperCase()}`; }
+  async function fetchLobby() {
+    try {
+      const r = await api("/seats");
+      renderLobby(r);
+    } catch (e) {
+      /* lobby is best-effort; the seat loop reports errors */
+    }
+  }
+  function renderLobby(r) {
+    const el = $("lobby");
+    const seats = (r && r.seats) || [];
+    const ct = (r && r.current_turn) || {};
+    const key = JSON.stringify(seats.map((s) => [s.player_id, s.awaiting_input, s.attended, s.alive, s.turn_seq]).concat([ct.player_id, state.seat]));
+    if (el.getAttribute("data-lobby-key") === key) return;
+    el.setAttribute("data-lobby-key", key);
+    el.innerHTML = "";
+    if (!seats.length) { el.innerHTML = `<span class="chip static">no external seats</span>`; return; }
+    for (const s of seats) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `chip${s.player_id === state.seat ? " on" : ""}`;
+      b.setAttribute("data-testid", `seat-chip-${s.player_id}`);
+      b.setAttribute("data-attended", s.attended ? "true" : "false");
+      b.setAttribute("data-awaiting", s.awaiting_input ? "true" : "false");
+      const stateTxt = !s.alive ? "destroyed" : s.awaiting_input ? (s.player_id === state.seat ? "YOUR TURN" : "their turn") : ct.player_id === s.player_id ? "acting" : "waiting";
+      const brain = s.attended ? "bot attached" : "no bot";
+      b.textContent = `${s.player_id} ${s.name || ""} · ${stateTxt} · ${brain} · t${s.turn_seq}`;
+      const hasTok = !!localStorage.getItem(tokenKey(s.player_id));
+      b.title = s.player_id === state.seat ? "this seat" : hasTok ? `switch to ${s.player_id} (token stored here)` : `switch to ${s.player_id} - paste its token first`;
+      b.addEventListener("click", () => {
+        if (s.player_id === state.seat) return;
+        const tok = localStorage.getItem(tokenKey(s.player_id));
+        ensureSeatOption(s.player_id);
+        els.seat.value = s.player_id;
+        if (tok) { els.token.value = tok; els.connect.click(); }
+        else { els.token.value = ""; els.token.focus(); setErr(`Paste the token for ${s.player_id}, then Connect. One Grok Bot brain per seat - do not drive siblings from one session.`); }
+      });
+      el.appendChild(b);
+    }
+  }
+
   // ---------------------------------------------------------------- status loop
   function applyStatus(st) {
     if (typeof st.server_time === "number") state.clockSkew = st.server_time - Date.now() / 1000;
@@ -1027,6 +1072,7 @@
       setErr("");
       applyStatus(r);
       await fetchEvents();
+      await fetchLobby();
     } catch (e) {
       setErr(String(e.message || e));
       setBanner("dead", "ERROR");
@@ -1051,6 +1097,7 @@
           setErr("");
           applyStatus(r);
           await fetchEvents();
+          await fetchLobby();
         }
       } catch (e) {
         if (gen !== state.watchGen) return;
@@ -1099,6 +1146,7 @@
     }
     localStorage.setItem("tw2k_bot_seat", state.seat);
     localStorage.setItem("tw2k_bot_token", state.token);
+    localStorage.setItem(tokenKey(state.seat), state.token);  // per-seat store for the lobby switcher
     els.poll.disabled = false;
     state.connected = true;
     state.obs = null;

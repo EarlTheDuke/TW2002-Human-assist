@@ -95,6 +95,10 @@
       <div class="card">
         <h2>Scheduler</h2>
         <div id="whoseTurn" class="hint" data-testid="whose-turn">-</div>
+        <!-- S6 lobby: every external seat in the match (from /harness/v1/seats - lobby fields only).
+             Tap a chip to switch to that seat if its token is stored in this browser. -->
+        <div class="sub">External seats</div>
+        <div class="chips" id="lobby" data-testid="lobby"></div>
         <h2 style="margin-top:16px">Warp (tap a sector)</h2>
         <div class="warps" id="warpBtns" data-testid="warps"></div>
         <h2 style="margin-top:16px">Verbs <span class="hint small" style="display:inline;background:none;padding:0">(gated by the engine's <code>legal_actions</code>)</span></h2>
