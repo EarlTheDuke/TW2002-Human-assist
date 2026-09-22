@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-hosted-bot-computer-use.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **COMMANDER_QUEUED - complete cockpit + multi-bot parity plan** |
+| Status | **COMMANDER_QUEUED - S1 server data + fog fixes** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -43,6 +43,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 ---
 
 ## Changelog
+
+### 2026-09-21 18:25 PT — Commander — merged plans, queued S1
+- Fable E0 plan accepted. Canonical: docs/plans/2026-09-21-bot-human-parity.md
+- Accepted Fable D1–D13 (peek first, event stream, legal_actions later, spectator gate, no recommend-move, quarantine route table, gate xAI script).
+- Queued Active task parity-s1-server-data. mailbox COMMANDER_QUEUED.
 
 ### 2026-09-21 17:59 PT — Commander — complete human cockpit direction
 - Ben expanded the north star: /bot becomes a complete human interface; competitive multi-Grok-Bot parity remains core.
@@ -311,6 +316,20 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
 - **Verified while planning:** `EventKind`=58, `Observation.model_fields`=44 (`/bot` renders 8), `ActionKind`=34. No secrets/URLs in the plan (grep clean).
 - **Housekeeping:** the localhost.run tunnel from Phase D is no longer running (only cloudflared is); :8031 match is still up. Re-run `expose_hosted_bot.ps1 -Detach` before the next CU session.
 - **Next:** idle until Commander merges and queues S1 (or an amended first slice).
+- **Blockers:** none.
+
+### 2026-09-21 19:05 PT - Fable - parity-s1-server-data DONE (server data + fog fixes)
+- **Commits on `feature/grok-bot-harness`:** `c16b2b1` EventView + facts whitelist · `e061986` harness peek + `/events` · `d344687` spectator gate · `ac54a30` webhook deadline/base_url + xAI gate · `5acec2b` tests · `5065a4f` hosted script token + docs. Pushed.
+- **1. Peek:** `GET /harness/v1/{pid}/observation?peek=1` returns `build_observation(u, pid)` for your own seat when not awaiting (`peek: true`, `awaiting_input` unchanged, nothing can bind to it; 0.5 s per-seat cache). On your turn it returns the bound observation as before (`peek: false`).
+- **2. Fogged event stream:** `GET /harness/v1/{pid}/events?since=<seq>&limit<=500` -> `{events, next_since, latest_seq, has_more}`, filtered by `_event_visible_to`, rendered by new `engine/observation.py::event_view` = `summary` (always) + `facts` = per-kind whitelist `EVENT_FACTS` (51 kinds listed; 7 meta/private kinds deliberately summary-only). `Observation.recent_events` now carries the same `facts` (LLM seats get parity; `actor_kind` omitted there to stay lean). This table is the presentation/media boundary - future asset keys bind to `kind` + `facts`.
+- **3. Spectator gate:** `server/spectator_gate.py` ASGI middleware (covers the `/ws` handshake). When `TW2K_SPECTATOR_TOKEN` is set: `/`, `/state`, `/events`, `/history`, `/highlights`, `/ws`, `/play`, `/control/*`, `/api/*` -> 401 unless Bearer header / `?token=` / cookie. `GET /spectate?token=...` sets the cookie and 303s to `/` (one-click for Ben). `/bot`, `/harness/*`, `/static/*` untouched. Unset env = legacy open behaviour. `run_hosted_grokbot.ps1` now generates/keeps `.tw2k/spectator_token.txt` and writes Ben's link to `.tw2k/spectator_link.txt` (both gitignored); `-NoSpectatorGate` for LAN.
+- **4. xAI script:** `scripts/play_grok_external_seats.py` exits 2 with a loud banner unless `--allow-xai-fallback` (or `--all-commander`).
+- **5. Webhook:** `ExternalAgent.turn_due_payload()` - `deadline_at` = runner-effective deadline (`turn_deadline_at`, set by `_await_external`, includes idle rule and mid-window extension), `base_url` (`TW2K_PUBLIC_BASE_URL` > `TW2K_HARNESS_BASE_URL` > loopback), `observation_url`/`action_url`, a 5-field `brief`; full Observation only with `TW2K_GROKBOT_WEBHOOK_FULL_OBS=1`.
+- **Tests:** `tests/test_parity_s1.py` (9): facts whitelist + no private keys, recent_events facts, peek + fogged stream property check (every streamed event passes `_event_visible_to` for that seat; facts ⊆ whitelist; cursor paging), gate path table, gate 401/header/query/cookie/303, gate disabled when unset, xAI script exit 2, webhook payload, runner-set deadline (idle then mid-window extension). Full suite **499 passed**; ruff clean; `smoke_external_harness.py` PASS.
+- **Live:** `:8031` restarted on S1 code (3 seats, gate ON): `/state` 401 without token / 200 with; `/bot` 200; peek `true` for P3 between turns; `/events` shows P3 only `game_start` so far (fog holding). localhost.run re-exposed; new base in `.tw2k/public_base_url.txt`; `/bot` 200 through it. Spectator link for Ben: `.tw2k/spectator_link.txt` (loopback base - swap in the tunnel base if opening remotely).
+- **Docs:** HOSTING_GROKBOT.md (gate + Ben's link, peek/events), GROK_BOT_PLAYER_GUIDE.md (peek, events, webhook payload), `.env.example`.
+- **Not done / deferred (by plan):** `legal_actions()` (S3), `known_sectors` coords (S5), `build_route_table` quarantine is a no-op today (only `/play` calls it, which is now behind the gate) - fix it properly in S5.
+- **Next:** wait for Commander ACK; then S2 read-only tapes on `/bot` (peek-powered).
 - **Blockers:** none.
 
 ### 2026-09-21 16:23 PT — Commander — Phase B ACK → Phase C started
