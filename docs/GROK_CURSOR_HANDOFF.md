@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-hosted-bot-computer-use.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **COMPLETE - hosted /bot CU loop** |
+| Status | **COMMANDER_QUEUED - complete cockpit + multi-bot parity plan** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -43,6 +43,16 @@ if COMPLETE -> exit cleanly             else stay quiet
 ---
 
 ## Changelog
+
+### 2026-09-21 17:59 PT — Commander — complete human cockpit direction
+- Ben expanded the north star: /bot becomes a complete human interface; competitive multi-Grok-Bot parity remains core.
+- Added deferred immersive-media wish list (semantic events -> optional images/video; accessibility and CU fallbacks).
+- Refreshed Fable E0 independent-plan task + AFK bootstrap. No implementation queued until plans merge.
+
+### 2026-09-21 17:51 PT — Commander — E0 parity plans
+- Hosted CU loop COMPLETE earlier. New goal: multi-bot + human /bot info and tool parity vs API LLM seats.
+- Commander plan: docs/plans/2026-09-21-commander-parity-plan.md
+- Queued Fable independent plan: docs/plans/2026-09-21-fable-parity-plan.md (no code). mailbox COMMANDER_QUEUED.
 
 ### 2026-09-21 17:32 PT — Commander — Phase C2 PASS → COMPLETE
 - **C2 re-playtest:** 8 successful P3 WARPs on `/bot?seat=P3` (lhr.life). Phase D checks all PASS (WAITING names seat, data-testid clicks 0 misses, YOUR TURN without reload, no idle-sibling stall).
@@ -291,6 +301,16 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
   curl -H "Authorization: Bearer <P3>" {base}/harness/v1/P3/status   # has current_turn
   ```
 - **Next:** Commander re-playtest (20-40 turns). Candidate follow-ups if wanted: stale ship/sector read-out while waiting (values are from your last observation - label it), seat chips from `/seats` after connect, `EXTERNAL` badge on spectator cards.
+- **Blockers:** none.
+
+### 2026-09-21 18:40 PT - Fable - parity-e0: independent plan written
+- **Artifact:** `docs/plans/2026-09-21-fable-parity-plan.md` (planning only; no game code touched). Sections A-H as requested, plus §0 code findings and a slice table S1-S7 with acceptance tests / done-when.
+- **Code findings that change the plan (details §0):** F1 harness returns `observation: null` unless awaiting -> cockpit needs a **peek**; F2 `_event_to_dict` drops payloads and `recent_events` is capped -> need a **fogged event stream + per-kind `facts` whitelist** (this is also the media boundary); F3 legality lives only inside runner handlers -> add **`legal_actions()` engine query** onto the Observation (LLM parity, honest button gating); F5 **fog leak** in `copilot/dashboards.build_route_table` (true-graph BFS + live prices); F6 **fog leak** via unauthenticated spectator routes on a hosted URL; F7 `scripts/play_grok_external_seats.py` drives P4/P5 with **xAI** (contradicts mission; I committed it in the Phase A sweep - flagging for removal/gating); F8 webhook `deadline_at` ignores the spec; F9 `Sector.x/y` exist -> known-sector coords are fog-safe for a real map; F4 `/play` already has 10 verb forms + keyboard + economy panel to port instead of rebuild.
+- **Explicit disagreements with Commander's plan (§H1, D1-D13):** peek before E1; event endpoint in slice 1 not E3; legality must come from the engine not the UI; draw a real known-space map with server coords, not a list; human notes go to `scratchpad_update`/`goal_*` not localStorage; **no** server-side "recommend move" heuristic (asymmetric assist / second brain); spectator gate; quarantine `build_route_table`; remove xAI script; reuse `/play` forms and later fold `HumanAgent` into `ExternalAgent(kind=human)`; webhook fixes; server-data slice first.
+- **Proposed merged outline (§H2)** maps Commander E1-E5 onto S2-S7 with **S1 (server: peek, event stream, spectator token, F7/F8 fixes) as the first queued slice**.
+- **Verified while planning:** `EventKind`=58, `Observation.model_fields`=44 (`/bot` renders 8), `ActionKind`=34. No secrets/URLs in the plan (grep clean).
+- **Housekeeping:** the localhost.run tunnel from Phase D is no longer running (only cloudflared is); :8031 match is still up. Re-run `expose_hosted_bot.ps1 -Detach` before the next CU session.
+- **Next:** idle until Commander merges and queues S1 (or an amended first slice).
 - **Blockers:** none.
 
 ### 2026-09-21 16:23 PT — Commander — Phase B ACK → Phase C started

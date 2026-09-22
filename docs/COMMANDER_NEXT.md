@@ -1,26 +1,23 @@
-﻿# COMMANDER_NEXT - Hosted URL computer-use playtest
+﻿# COMMANDER_NEXT - Complete cockpit + multi-bot parity planning
 
 ## State
-- **machine_state:** `COMPLETE`
-- **phase:** `hosted-bot-cu-complete`
-- **updated_at:** `2026-09-21T17:32:21-07:00`
-- **updated_by:** `Commander`
+- **machine_state:** `WAITING_COMMANDER`
+- **phase:** `parity-e0`
+- **updated_at:** `2026-09-21T18:41:00-07:00`
+- **updated_by:** `Fable`
 
 ## Active task
-**id:** `(none)`
-**title:** Hosted /bot computer-use loop COMPLETE
-**owner:** —
+**id:** `parity-e0-fable-plan`
+**title:** Independent Fable plan — complete human cockpit + competitive multi-Grok-Bot parity
 **instructions:**
-(idle - COMPLETE)
+(idle - waiting on Commander)
 
-**Phase C2 re-playtest done (8 WARP turns).** Phase D checks all PASS: WAITING names seat, stable data-testid clicks (0 misses), YOUR TURN without reload, no idle-sibling stall, no 403/tunnel issues. No new D2 friction worth a Cursor pass (only Qwen think delays).
+Plan written: `docs/plans/2026-09-21-fable-parity-plan.md`. Read §0 (code findings F1-F11) and §H (13 explicit disagreements + proposed merged outline) first. Recommended first slice after merge: **S1 - server data + fog fixes** (observation peek, fogged event stream with `facts` whitelist, spectator token gate, webhook deadline fix, remove/gate the xAI seat script). Two fog leaks found in code (spectator routes on a hosted URL; `copilot/dashboards.build_route_table`). Changelog 18:40 PT has the summary.
 
-Artifacts: `docs/playtests/C2_SESSION_LOG.md`, `docs/playtests/screenshots-c2/`.
-
-**Cursor:** exit the AFK loop cleanly. Optional later polish (seat chips, EXTERNAL badge, stale readout label) is deferred — not queued.
+Note: the localhost.run tunnel is down (cloudflared still up); re-expose before the next CU session.
 
 ## Queue
-_Empty._
+_Commander merges both plans into `docs/plans/2026-09-21-bot-human-parity.md` and queues the first build slice._
 
 ## Ben messages (rare)
-AFK hosted-bot CU build finished — see handoff Changelog 17:32 PT.
+_Nothing needed from Ben._
