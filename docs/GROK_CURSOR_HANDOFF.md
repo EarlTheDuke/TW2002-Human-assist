@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-hosted-bot-computer-use.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **COMMANDER_QUEUED - S2 read-only cockpit tapes** |
+| Status | **COMMANDER_QUEUED - S3 legality + core verbs** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -43,11 +43,15 @@ if COMPLETE -> exit cleanly             else stay quiet
 ---
 
 ## Changelog
+### 2026-09-21 19:33 PT - Commander - S2 ACK -> S3 queued
+- **Ack:** parity-s2-readonly-tapes @ `d6f13d2` / `85d86c4` accepted (peek-powered Where/Know/Act panels, English last_result, events footer, 44-field data-obs contract; 503 tests; tunnel watchdog).
+- **Queued:** Active task `parity-s3-legality-verbs` - `engine/legality.py` + `Observation.legal_actions` + /bot core verb pad (warp/plot_course/trade qty+haggle/scan/probe/wait) with disabled+reason; no recommend-move.
+- mailbox -> `COMMANDER_QUEUED` phase `parity-s3`.
 
 ### 2026-09-21 18:53 PT — Commander — S1 ACK → S2 queued
 - **Ack:** parity-s1-server-data @ `5065a4f` accepted (peek, fogged `/events`+facts, spectator gate, xAI gate, webhook deadline; 499 tests).
 - **Queued:** Active task `parity-s2-readonly-tapes` — Where/Know panels on `/bot`, English last_result, events log; peek-powered.
-- mailbox → `COMMANDER_QUEUED` phase `parity-s2`.
+- mailbox -> `COMMANDER_QUEUED` phase `parity-s2`.
 ### 2026-09-21 18:25 PT — Commander — merged plans, queued S1
 - Fable E0 plan accepted. Canonical: docs/plans/2026-09-21-bot-human-parity.md
 - Accepted Fable D1–D13 (peek first, event stream, legal_actions later, spectator gate, no recommend-move, quarantine route table, gate xAI script).
@@ -162,6 +166,10 @@ Non-goals: public multi-human net play; rewrite engine language; Cursor on-deman
 ---
 
 ## 5. Orchestrator notes (Commander)
+
+_2026-09-21 19:33 PT - Commander: S2 accepted (`d6f13d2`). Queued S3 legality + core verbs. mailbox COMMANDER_QUEUED._
+
+_2026-09-21 19:33 PT — Commander: S2 accepted (`d6f13d2`). Queued S3 legality + core verbs. mailbox COMMANDER_QUEUED._
 
 _2026-09-21 18:53 PT — Commander: S1 accepted (`5065a4f`). Queued S2 read-only cockpit tapes. mailbox COMMANDER_QUEUED._
 
@@ -350,6 +358,19 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
 - **Next:** Commander ACK -> S3 `legal_actions()` + trade/plot/probe forms.
 - **Blockers:** none.
 
+### 2026-09-21 19:58 PT - Fable - parity-s3-legality-verbs DONE
+- **Commits:** `12a2e34` engine legality + Observation/LLM form · `e087b64` `/bot` verb pad + forms · `138a6fe` tests/guide/watchdog fix. Pushed; tip `138a6fe`.
+- **Engine:** `engine/legality.py::legal_actions(universe, pid) -> list[LegalAction{kind, legal, reason, turn_cost, detail, params}]`. Pure query, same constants as handlers, one entry per `ActionKind` (34) in engine order. `detail="precise"` for warp, scan, wait, trade, plot_course, probe, hail, broadcast (every handler precondition mirrored - including two I had to *remove* because the engine does not enforce them: warp/plot_course are NOT gated on `planet_landed`, and `wait` DOES fail at 0 turns). `detail="coarse"` for the other 26 (context precondition only; S4 promotes them). `params` = argument envelope: warp `target.choices`, trade `commodity.buy_choices/sell_choices`, `qty.max_by[c][side]` (engine cap at **list** price since a rejected haggle settles at list), `unit_price.listed_by`, probe `target.min/max`, plot `target.suggested` (known sectors), hail `target.choices`.
+- **Observation:** `Observation.legal_actions` (44 -> 45 fields; S2 coverage test forced a `data-obs` home = the verb pad). `format_observation` ships `legal_actions: {legal:[kinds], blocked:{kind: reason}}` so LLM seats reason from the same facts.
+- **Observation fix found by the UI:** `_sector_detail` labelled Federal (class 0) port stock `sells_to_player` by fallback although `can_trade` refuses both sides there -> now `side="not_traded"`, `price=null`. The S2 port tape and every LLM seat had been shown a market that did not exist.
+- **`/bot`:** verb pad (SCAN / WAIT / TRADE / PLOT COURSE / PROBE + warp chips + quick SELL/BUY) gated **only** by `legal_actions`: disabled buttons carry `data-reason` (engine text) and a reasons list; nothing hidden. Forms: **trade** (side radios enabled per envelope, commodity from `buy/sell_choices`, qty capped by `max_by` with MAX, optional haggle price with list placeholder, live estimate incl. cost-basis P&L and "rejected asks settle at list" note), **plot_course** (target + known-sector picker + execute; preview hops via BFS over the seat's own `known_warps` - presentation only), **probe**, **scan** (tier), **wait**. All 26 coarse verbs shown disabled with reasons in a "More verbs" drawer (forms in S4). Open form is stable across the 1.5 s polls (rebuilt only when the verb's envelope changes) - a second DOM-churn bug of the Phase-D class, caught by the CU browser. `.badge[hidden]` CSS fix (FedSpace badge was stuck on).
+- **Tests:** `tests/test_parity_s3.py` (12): matrix over 8 fixture states (StarDock fresh, trading port with cargo, trading port broke+empty, out of turns, one turn left, has probes, landed, dead) x 8 precise verbs asserting `legal == apply_action(...).ok` with actions built from the advertised envelope; purity/determinism/order; trade envelope caps vs list price; Observation + LLM message carry legality; UI contract (gated by `legal_actions`, `data-reason`, no rule constants, forms for all S3 verbs). Full suite **515 passed**; ruff clean.
+- **Browser proof (IDE browser, local 2-seat match, no precondition rejects):** TRADE correctly disabled at the FED port ("nothing you can buy or sell here") -> WARP 68 -> WARP 50 (SBB) -> BUY Fuel form prefilled from envelope (qty 20 = holds cap, list 16) with haggle 14 -> `BUY 20 fuel_ore @ 14 — ok … [haggle won at 14cr (list 16)]` -> TRADE re-disabled (holds full) -> WARP 68 -> SCAN -> WARP 70 -> SCAN (known-ports table now shows sector 61 BBS `B 19`) -> WARP 61 -> SELL Fuel form, ask 21 -> `SELL 20 fuel_ore @ 21 — ok … [haggle countered; settled at list 19cr] (+100cr profit)`; Trading panel 2 trades, +100 cr, 35.7 % margin. Every lit button POSTed an accepted action.
+- **Ops:** `tunnel_watchdog.ps1` fixed (the re-expose call hung on the child's pipe; now a wrapper process with a 150 s timeout) - it has since logged a clean `tunnel unhealthy (503) -> re-exposed OK` cycle unattended. `:8031` restarted on S3 code (the new `/bot` requires `legal_actions` in the Observation; on the S1 server every verb would read "no legality data"). Re-read `.tw2k/public_base_url.txt`.
+- **Not done (by plan):** S4 verb groups; `known_sectors` map (S5).
+- **Next:** Commander ACK -> S4.
+- **Blockers:** none.
+
 ### 2026-09-21 16:23 PT — Commander — Phase B ACK → Phase C started
 - **Ack:** Phase B assist @ `84ab3eb` accepted (expose script, portable cloudflared, `.tw2k/public_base_url.txt`, tunnel verified).
 - **Status:** mailbox → `COMMANDER_WORKING` (phase `hosted-bot-cu-c`). Cursor idle.
@@ -376,4 +397,4 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
 ### 2026-09-21 16:48 PT — Commander — Phase C done (1 turn) → Phase D queued
 - Connect + WARP 33 ok on `/bot?seat=P3` via lhr.life; artifacts under `docs/playtests/`.
 - Root stall: after P3, **P4 external** `awaiting_input` with no bot — UI looked stuck; Refresh correct but opaque.
-- Insights: `docs/playtests/COMPUTER_USE_INSIGHTS.md`. mailbox → `COMMANDER_QUEUED` phase `hosted-bot-cu-d`.
+- Insights: `docs/playtests/COMPUTER_USE_INSIGHTS.md`. mailbox -> `COMMANDER_QUEUED` phase `hosted-bot-cu-d`.
