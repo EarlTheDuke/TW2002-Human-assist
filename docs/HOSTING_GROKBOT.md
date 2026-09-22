@@ -102,6 +102,20 @@ Use the host LAN IP. Commander's box must be on that network (or VPN). LAN IP al
 - LAN-only sessions can pass `-NoSpectatorGate`.
 - Do **not** hand competitors (human or bot) the spectator link during a match; a seat sees only its own fogged Observation via `/bot` / `/harness`.
 
+## Multi-bot match (Parity S6)
+
+```powershell
+# host: 2 Qwen + 3 external seats; unattended externals idle-WAIT after 8 s so nobody stalls
+powershell -File scripts/run_hosted_grokbot.ps1 -Port 8031 -ExternalSeats P3,P4,P5
+# one Path-B process per Grok Bot brain (run these where the brains live; --public uses the tunnel URL)
+python scripts/grokbot_seat_client.py --public --seat P4 --policy mailbox --mailbox-dir .tw2k/mailbox
+python scripts/grokbot_seat_client.py --public --seat P5 --policy mailbox --mailbox-dir .tw2k/mailbox
+# a human / CU session on the third seat
+{base}/bot?seat=P3
+```
+
+Rules of the road: **one Grok Bot brain per seat** (never drive P3+P4+P5 from one session — the lobby chips on `/bot` switch seats only so a human can peek, not so one brain plays three); pass `-ExternalSeats` only for seats that will actually be attended (unattended ones still idle-WAIT, but every empty seat costs an idle window per round); an **attended** seat that does not act holds the round for the full `external_timeout_s` — that is intended (a human thinking), so close the tab or stop the client when you leave. Tokens for each seat come from `.tw2k/external_tokens.json` on the host (`scripts/gen_external_tokens.py` to pre-generate); hand each bot only its own token.
+
 ## Seat data between turns (Parity S1)
 
 A seat can now read its own fogged Observation **at any time**: `GET /harness/v1/{pid}/observation?peek=1` (identical object to what the scheduler hands you on your turn; `awaiting_input` stays false, no action can bind to it). The fogged event history is `GET /harness/v1/{pid}/events?since=<seq>&limit=200` — text `summary` always, plus a per-kind whitelisted `facts` object (the presentation/media boundary). Details in `GROK_BOT_PLAYER_GUIDE.md`.

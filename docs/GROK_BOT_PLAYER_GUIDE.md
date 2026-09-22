@@ -42,6 +42,35 @@ All under `/harness/v1`, all JSON, all require `Authorization: Bearer <token>`. 
 | GET | `/{pid}/events?since=0&limit=200` | **Fogged event history (S1).** Events with `seq > since` that your seat is allowed to see (same rule as `recent_events`), oldest first. Each has `summary` (always) and `facts` — a per-kind whitelisted subset of the payload (e.g. `warp: {from,to}`, `trade: {commodity,qty,side,unit,total,realized_profit}`, `combat: {exchange_kind,attacker,defender,...}`). Response: `{events, next_since, latest_seq, has_more}`; page with `since=next_since`. Max `limit` 500. |
 | POST | `/{pid}/action` | Body `{"turn_seq": N, "action": {...}}`. One per turn. |
 
+### Path-B reference client (S6) — `scripts/grokbot_seat_client.py`
+
+The canonical way for a competitive Grok Bot seat to play. One `SeatClient` + **one brain per seat**; the process never calls an LLM API itself.
+
+```powershell
+# scripted reference brain (a test opponent driven only by legal_actions envelopes)
+python scripts/grokbot_seat_client.py --seat P4 --policy heuristic
+# three seats, each handing decisions to its OWN Grok Bot session through files
+python scripts/grokbot_seat_client.py --seats P3,P4,P5 --policy mailbox --mailbox-dir .tw2k/mailbox
+# against the tunnel URL in .tw2k/public_base_url.txt
+python scripts/grokbot_seat_client.py --public --seat P3 --policy mailbox
+```
+
+Protocol it implements for you: `GET /rules` once → long-poll `observation?wait_s=30&format=both` → brain → `POST /action {turn_seq, action}` → read `last_result`. Deadline-aware: `current_turn.deadline_at` minus `--margin-s` (default 5 s) is the brain's budget; a late or crashing brain gets a safe `wait` submitted so the scheduler never has to auto-WAIT you. Tokens: `TW2K_TOKEN_<SEAT>` env or `--tokens-file` (default `.tw2k/external_tokens.json`).
+
+**Mailbox protocol** (`--policy mailbox`) — how a Grok Bot session is the brain:
+
+| File | Written by | Content |
+|---|---|---|
+| `<dir>/<SEAT>.pending.json` | runner, each turn | `{seat, turn_seq, deadline_at, seconds_left, observation, llm_user_message, rules (first turn only)}` |
+| `<dir>/<SEAT>.decision.json` | your Grok Bot session | `{"turn_seq": N, "action": {"kind": "...", "args": {...}, "thought": "...", "scratchpad_update"?: "...", "goal_short"?: "..."}}` |
+
+The runner consumes the decision (matching `turn_seq`) and deletes both files. Watch your seat's pending file, think from `observation` (same fogged object an LLM seat gets; `llm_user_message` is the exact compact text they are prompted with; `rules.system_prompt` is their system prompt), write the decision. Do not read a sibling seat's pending file — one brain per seat.
+
+Programmatic use: `from tw2k.agents.pathb_client import SeatClient, run_seats, legal_heuristic_policy, MailboxPolicy` (async, `httpx.AsyncClient` injected — works against a live URL or an in-process ASGI app).
+
+### Lobby (S6) — `GET /harness/v1/seats`
+Readable with any seat token; returns lobby fields only per external seat (`player_id, name, kind, alive, awaiting_input, attended, turn_seq`) plus `current_turn`, `match_status`, `day/tick`, `server_time`. It never exposes a sibling's sector, last result or observation — use your own `/{pid}/status` for that. `/bot` renders these as seat chips (tap to switch seats when that seat's token is stored in the browser).
+
 ### Webhook wake (optional, Path B)
 If the host sets `TW2K_GROKBOT_WEBHOOK_URL` (or `TW2K_GROKBOT_WEBHOOK_<PID>`), the server POSTs when your turn starts:
 `{"event":"turn_due","player_id","name","turn_seq","started_at","deadline_at","base_url","observation_url","action_url","brief":{day,tick,sector_id,turns_remaining,credits}}`.

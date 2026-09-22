@@ -38,7 +38,7 @@ While this chat (or a dedicated TW Ops agent chat) is active:
 3. Commander chooses `kind` + `args` (+ thought / goals)
 4. `POST /harness/v1/{pid}/action` with `turn_seq`
 
-Script helper: `scripts/grokbot_bridge.py` (`watch` dumps briefs; `act` posts).
+Script helpers: `scripts/grokbot_seat_client.py` (S6 - the canonical Path-B runner: `--policy mailbox` hands each turn to a Grok Bot session via `.tw2k/mailbox/<SEAT>.pending.json` → `<SEAT>.decision.json`; `--policy heuristic` is a scripted test opponent) and the older `scripts/grokbot_bridge.py` (`watch` dumps briefs; `act` posts one action).
 
 **Latency budget:** finish well under `--external-timeout-s` (default 180).  
 Serial scheduler: while we think, other seats wait — keep decisions tight.
