@@ -48,8 +48,10 @@ $names = @($qwen) + @($extN[0..($seats.Count - 1)])
 $namesCsv = $names -join ","
 $seatsCsv = $seats -join ","
 
-python scripts/gen_external_tokens.py --seats $seatsCsv | Out-Host
-$tokFile = ".tw2k\external_tokens.json"
+# Pin the tokens file explicitly so a stray TW2K_EXTERNAL_TOKENS_FILE in the parent shell
+# cannot send the server's tokens somewhere Commander is not reading from.
+$tokFile = if ($env:TW2K_EXTERNAL_TOKENS_FILE) { $env:TW2K_EXTERNAL_TOKENS_FILE } else { Join-Path (Get-Location) ".tw2k\external_tokens.json" }
+python scripts/gen_external_tokens.py --seats $seatsCsv --file $tokFile | Out-Host
 $tokens = Get-Content -LiteralPath $tokFile -Raw | ConvertFrom-Json
 
 $display = if ($PublicHost) { $PublicHost } else { "THIS_MACHINE_IP" }
@@ -70,7 +72,7 @@ Write-Host ""
 $serveArgs = @(
   "serve", "--host", $HostAddr, "--port", $Port, "--provider", "custom", "--model", $Model,
   "--num-agents", $numAgents, "--agent-kind", "llm", "--agent-names", $namesCsv,
-  "--external", $seatsCsv, "--external-timeout-s", $TimeoutS,
+  "--external", $seatsCsv, "--external-timeout-s", $TimeoutS, "--external-tokens-file", $tokFile,
   "--starting-credits", $StartingCredits, "--max-days", $MaxDays, "--seed", $Seed
 )
 if ($IdleWaitS -gt 0)   { $serveArgs += @("--external-idle-wait-s", $IdleWaitS) }

@@ -61,6 +61,19 @@ Hand Commander: the contents of `.tw2k\public_base_url.txt` + the P3 token (read
 
 Notes: both tunnels are semi-public — the bearer token is the only gate, so keep `TW2K_HARNESS_ALLOW_REMOTE=1` paired with strong tokens and rotate after a session (`python scripts/gen_external_tokens.py --seats P3,P4,P5 --rotate`). URLs change on every tunnel restart; re-run the script and re-send. The tunnel is a child of whatever shell launched it — a reboot or closed session drops it.
 
+### Computer-use playtest defaults (Phase D)
+Lessons from the 2026-09-21 Phase C session (`docs/playtests/COMPUTER_USE_INSIGHTS.md`), now the defaults in `run_hosted_grokbot.ps1`:
+
+| Knob | Default | Why |
+|---|---|---|
+| `-ExternalSeats P3` | one external seat | Sibling external seats nobody drives used to block the round-robin for `-TimeoutS` each. Pass `-ExternalSeats P3,P4,P5` only when every seat has a bot. |
+| `-IdleWaitS 8` (`--external-idle-wait-s`) | on | An external seat with **no harness client seen in the last 45 s** auto-WAITs after 8 s (quiet `AGENT_THOUGHT`, not an error). A seat being polled by `/bot` or a bot keeps the full `-TimeoutS`. A bot that connects mid-window gets the remainder of the full timeout, not a lost turn. |
+| `-TurnsPerDay 120` | short days | Day rolls in minutes even if seats idle out. |
+
+`/bot` (P2 fix) now long-polls the harness (`observation?wait_s=20`) so **YOUR TURN flips without a reload**, shows **whose turn it is** while waiting (`P4 GrokPilot2 (external) - no bot attached · 143s`), flashes on hand-off, and keeps warp buttons as stable DOM nodes (they were being recreated every 2.5 s, which is why computer-use clicks kept missing). Every clickable has a `data-testid`: `connect`, `refresh`, `action-scan`, `action-wait`, `action-sell`, `action-buy`, `warp-<sector>`, `seat`, `token`; read-outs: `turn-banner`, `whose-turn`, `last-result`, `credits`, `sector`, `turns-left`.
+
+**Restarting the game server:** the Cloudflare tunnel rides through an origin restart; localhost.run usually does for a quick bounce but drops the forward if the origin is down for long (returns 503 for good). If `{base}/bot` 503s after a restart, re-run `expose_hosted_bot.ps1 -Detach` and re-send the new URL.
+
 ### Playtest stall: external seats out of turns
 If P3–P5 show `turns_remaining=0` before anyone drove them, the external seats timed out (`--external-timeout-s`) four times each and the runner ended their day; the day only rolls when the Qwen seats also finish their 1000 turns, which can take hours. For playtests start the match with a short day, e.g. `run_hosted_grokbot.ps1 -TurnsPerDay 120`, or restart in place (tokens are stable):
 ```powershell
