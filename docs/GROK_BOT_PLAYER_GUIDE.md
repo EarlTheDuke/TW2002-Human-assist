@@ -114,6 +114,10 @@ Port codes are three letters in order **Fuel Ore, Organics, Equipment**; `B` = p
 
 ---
 
+## 4a. `known_sectors` — fog-safe map nodes (S5)
+
+`Observation.known_sectors` lists one entry per sector you actually know (visited, scanned, probed, or standing in): `{id, x, y, port, is_fedspace, last_seen_day, warps_known}`. `x/y` are the universe layout coordinates **for those ids only** — unexplored sectors never appear, so nothing about the rest of the galaxy can be inferred. `port` is your *remembered* code from `known_ports` (live only for the sector you are in). This is presentation data for the `/bot` map; the LLM user message does not include it (`known_warps` is the model's map). Draw edges from `known_warps`; a warp target you have never visited has no coordinates and should be drawn as a stub off its source.
+
 ## 4b. `legal_actions` — ask the engine what you may do (S3)
 
 Every Observation now carries `legal_actions`: one entry per verb, `{kind, legal, reason, turn_cost, detail, params}`. It is the same pure engine query the `/bot` verb pad is gated from, so API seats and cockpit seats reason from identical facts. Use it instead of guessing:
