@@ -492,19 +492,7 @@
     els.sell.disabled = !canUse("trade"); els.buy.disabled = !canUse("trade");
 
     rows($("verbReasons"), reasons, (r) => row(r, [], "stale"), state.awaiting ? "all shown verbs are legal now" : "waiting for your turn - buttons enable when the scheduler reaches you");
-    // Coarse / S4 verbs: visible, disabled, with the engine's reason.
-    const more = $("moreVerbs"); more.innerHTML = "";
-    for (const la of obs.legal_actions || []) {
-      if (S3_VERBS.includes(la.kind)) continue;
-      const c = document.createElement("button");
-      c.type = "button"; c.className = "chip"; c.disabled = true;
-      c.setAttribute("data-testid", `verb-${la.kind}`);
-      c.setAttribute("data-legal", la.legal ? "true" : "false");
-      c.setAttribute("data-reason", la.legal ? "form arrives in S4" : (la.reason || "not legal now"));
-      c.title = c.getAttribute("data-reason");
-      c.textContent = `${la.kind}${la.legal ? " ✓" : ""}`;
-      more.appendChild(c);
-    }
+    renderVerbGroups();
     // Keep an open form stable across polls: only rebuild when the engine's
     // envelope for that verb changed (otherwise typed values and CU refs would
     // be wiped every 1.5 s). Enabled/disabled state is refreshed separately.
@@ -515,7 +503,157 @@
     }
   }
 
+  // ---------------------------------------------------------------- S4: context verb groups
+  // Group membership is presentation (where a button lives), never legality.
+  const VERB_GROUPS = {
+    combat: ["attack", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic"],
+    stardock: ["buy_ship", "buy_equip", "corp_create"],
+    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis"],
+    comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
+  };
+  const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
+  function renderVerbGroups() {
+    document.querySelectorAll("#verbGroups details.vgroup").forEach((det) => {
+      const group = det.getAttribute("data-group");
+      const pad = det.querySelector('[data-role="pad"]');
+      const count = det.querySelector('[data-role="count"]');
+      const kinds = VERB_GROUPS[group] || [];
+      // Build buttons once; then only update state (stable DOM for CU).
+      if (!pad.children.length) {
+        for (const kind of kinds) {
+          const b = document.createElement("button");
+          b.type = "button"; b.setAttribute("data-verb", kind); b.setAttribute("data-testid", `action-${kind}`);
+          b.addEventListener("click", () => { if (!canUse(kind)) return; openVerb(kind, {}); });
+          pad.appendChild(b);
+        }
+      }
+      let legalN = 0;
+      for (const b of pad.querySelectorAll("button[data-verb]")) {
+        const kind = b.getAttribute("data-verb");
+        const la = legalOf(kind);
+        if (la.legal) legalN += 1;
+        b.setAttribute("data-legal", la.legal ? "true" : "false");
+        b.setAttribute("data-detail", la.detail || "");
+        b.innerHTML = "";
+        b.appendChild(document.createTextNode(LABEL(kind)));
+        const why = document.createElement("span"); why.className = "why";
+        why.textContent = la.legal ? `${la.turn_cost || 0} turn(s)` : (la.reason || "not legal now");
+        b.appendChild(why);
+        if (la.legal) b.removeAttribute("data-reason"); else b.setAttribute("data-reason", la.reason || "not legal now");
+        b.title = la.legal ? `${kind} · ${la.turn_cost || 0} turn(s)` : (la.reason || "not legal now");
+        b.disabled = !canUse(kind);
+        b.classList.toggle("selected", state.openVerb === kind);
+      }
+      count.textContent = legalN ? `${legalN} legal` : "none legal";
+      count.classList.toggle("on", legalN > 0);
+      if (!det.hasAttribute("data-user-toggled")) det.open = legalN > 0;
+    });
+  }
+  document.querySelectorAll("#verbGroups details.vgroup").forEach((det) => {
+    det.addEventListener("toggle", (ev) => { if (ev.isTrusted) det.setAttribute("data-user-toggled", "1"); });
+  });
+
+  // Generic, envelope-driven forms for the S4 verbs. Field kinds:
+  //   choice  -> <select> from params[name].choices (empty = nothing legal to pick)
+  //   int     -> <input type=number> with min/max from params[name] (max_by keyed on another field)
+  //   text    -> <input type=text> (max_len from params)
+  // Nothing here knows a rule; every bound comes from the engine's envelope.
+  const FORM_SPECS = {
+    attack: { fields: [{ n: "target", l: "Target (commander or Ferrengi)", t: "choice" }], note: "Ship-to-ship combat resolves immediately; losses depend on fighters and shields." },
+    photon_missile: { fields: [{ n: "target", l: "Target commander", t: "choice" }], note: "Disables the target's fighters for a tick." },
+    deploy_fighters: { fields: [{ n: "qty", l: "Fighters to leave here", t: "int", max: "max" }, { n: "mode", l: "Mode", t: "choice" }] },
+    deploy_mines: { fields: [{ n: "kind", l: "Mine type", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "kind" }], note: "Atomic mines detonate immediately." },
+    deploy_atomic: { fields: [] },
+    buy_ship: { fields: [{ n: "ship_class", l: "Ship class (affordable & allowed)", t: "choice" }] },
+    buy_equip: { fields: [{ n: "item", l: "Item", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "item" }] },
+    corp_create: { fields: [{ n: "ticker", l: "Ticker (3 letters)", t: "text", maxLen: 3 }, { n: "name", l: "Corporation name", t: "text", optional: true }] },
+    land_planet: { fields: [{ n: "planet_id", l: "Planet", t: "choice" }] },
+    liftoff: { fields: [] },
+    claim_planet: { fields: [] },
+    load_planet_cargo: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "commodity", l: "Load from planet", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "commodity" }, { n: "pool", l: "Colonist pool (colonists only)", t: "choice", optional: true }] },
+    dump_planet_cargo: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "commodity", l: "Unload from ship", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "commodity" }, { n: "pool", l: "Colonist pool (colonists only)", t: "choice", optional: true }] },
+    assign_colonists: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "from", l: "From", t: "choice" }, { n: "to", l: "To", t: "choice" }, { n: "qty", l: "Colonists", t: "int", maxBy: "from" }] },
+    build_citadel: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }] },
+    deploy_genesis: { fields: [] },
+    hail: { fields: [{ n: "target", l: "To", t: "choice" }, { n: "message", l: "Message", t: "text" }] },
+    broadcast: { fields: [{ n: "message", l: "Message to everyone", t: "text" }] },
+    propose_alliance: { fields: [{ n: "target", l: "To", t: "choice" }, { n: "terms", l: "Terms (optional)", t: "text", optional: true }] },
+    accept_alliance: { fields: [{ n: "alliance_id", l: "Proposal", t: "choice" }] },
+    break_alliance: { fields: [{ n: "alliance_id", l: "Alliance", t: "choice" }] },
+    corp_invite: { fields: [{ n: "target", l: "Invite", t: "choice" }] },
+    corp_join: { fields: [{ n: "ticker", l: "Corporation", t: "choice" }] },
+    corp_leave: { fields: [] },
+    corp_deposit: { fields: [{ n: "amount", l: "Credits to deposit", t: "int", max: "max" }] },
+    corp_withdraw: { fields: [{ n: "amount", l: "Credits to withdraw", t: "int", max: "max" }] },
+    corp_memo: { fields: [{ n: "message", l: "Memo to corp", t: "text" }] },
+    query_limpets: { fields: [] },
+  };
+
+  function renderGenericForm(kind, la, f, preview, buttons, go) {
+    const spec = FORM_SPECS[kind];
+    const p = la.params || {};
+    const inputs = {};
+    for (const fd of spec.fields) {
+      const env = p[fd.n] || {};
+      let el;
+      if (fd.t === "choice") {
+        const choices = env.choices || [];
+        el = selectEl(fd.n, choices);
+        if (!choices.length) { el.disabled = true; const o = document.createElement("option"); o.textContent = "(nothing available)"; el.appendChild(o); }
+        if (fd.auto && choices.length === 1) { inputs[fd.n] = el; continue; }  // implied single choice - not shown
+      } else if (fd.t === "int") {
+        el = numberEl(fd.n, { min: env.min ?? 1 });
+      } else {
+        el = document.createElement("input"); el.type = "text"; el.name = fd.n; if (fd.maxLen || env.max_len) el.maxLength = fd.maxLen || env.max_len;
+      }
+      inputs[fd.n] = el;
+      f.appendChild(field(fd.l + (fd.optional ? "" : ""), el, `${kind}-${fd.n}`));
+    }
+    const sync = () => {
+      const vals = {};
+      for (const fd of spec.fields) {
+        const el = inputs[fd.n]; if (!el) continue;
+        if (fd.t === "int") {
+          const env = p[fd.n] || {};
+          let mx = env.max;
+          if (fd.maxBy && env.max_by) { const key = inputs[fd.maxBy] ? inputs[fd.maxBy].value : null; mx = env.max_by[key]; }
+          if (mx !== undefined && mx !== null) { el.max = String(mx); if (!el.value || Number(el.value) > mx) el.value = String(mx); }
+          vals[fd.n] = Number(el.value) || 0;
+        } else vals[fd.n] = el.value;
+      }
+      // Per-verb preview lines: only echo envelope numbers the engine sent.
+      let txt = `${LABEL(kind)} ${Object.entries(vals).filter(([, v]) => v !== "" && v !== undefined).map(([k, v]) => `${k}=${v}`).join("  ")} · ${la.turn_cost || 0} turn(s)`;
+      if (kind === "buy_ship" && p.ship_class) { const n = (p.ship_class.net_cost_by || {})[vals.ship_class]; if (n !== undefined) txt += ` · net cost ${fmt(n)} cr (trade-in ${fmt(p.ship_class.trade_in)})`; }
+      if (kind === "buy_equip" && p.item) { const u = (p.item.unit_price_by || {})[vals.item]; if (u !== undefined) txt += ` · ${fmt(u)} cr each = ${fmt(u * (vals.qty || 0))} cr`; }
+      if (kind === "build_citadel" && p.next) txt += ` · L${p.next.level}: ${fmt(p.next.credits)} cr + ${fmt(p.next.colonists)} colonists (have ${fmt(p.next.colonists_have)}), ${p.next.days} day(s), paid from ${p.next.pay_from}`;
+      if (kind === "deploy_genesis") txt += ` · ${p.hops_from_stardock ?? "?"} hops from StarDock (min ${p.min_hops ?? "?"})`;
+      if (kind === "land_planet" && p.planet_id && (p.planet_id.contested || []).includes(Number(vals.planet_id))) txt += " · WARNING: defended hostile planet - landing means citadel combat";
+      if (kind === "assign_colonists" && p.qty) txt += ` · ship free holds ${fmt(p.qty.ship_free)}`;
+      if (kind === "query_limpets") txt = `Read your ${fmt((p.active ?? 0))} limpet beacon(s) · 0 turns`;
+      if (!la.legal) txt = `${LABEL(kind)} - ${la.reason || "not legal now"}`;
+      preview.textContent = txt;
+    };
+    for (const el of Object.values(inputs)) { el.addEventListener("input", sync); el.addEventListener("change", sync); }
+    if (spec.note) { const n = document.createElement("div"); n.className = "note"; n.textContent = spec.note; f.appendChild(n); }
+    sync();
+    return () => {
+      if (!la.legal) return null;
+      const args = {};
+      for (const fd of spec.fields) {
+        const el = inputs[fd.n]; if (!el) continue;
+        let v = fd.t === "int" ? Number(el.value) : el.value;
+        if (fd.t === "int" && (!v || v <= 0)) return null;
+        if (fd.t === "choice" && (!v || el.disabled)) { if (fd.optional) continue; return null; }
+        if (fd.t === "text" && !v) { if (fd.optional) continue; return null; }
+        if (fd.n === "planet_id" && /^\d+$/.test(String(v))) v = Number(v);  // select values are strings
+        args[fd.n] = v;
+      }
+      return { kind, args, thought: `Grok Bot: ${kind} ${JSON.stringify(args)}` };
+    };
+  }
+
   function setActionsEnabled(on) {
+    document.querySelectorAll("#verbGroups button[data-verb]").forEach((btn) => { btn.disabled = !on || !legalOf(btn.getAttribute("data-verb")).legal; });
     $("verbPad").querySelectorAll("button[data-verb]").forEach((btn) => { btn.disabled = !on || !legalOf(btn.getAttribute("data-verb")).legal; });
     els.sell.disabled = !on || !legalOf("trade").legal;
     els.buy.disabled = !on || !legalOf("trade").legal;
@@ -528,9 +666,10 @@
     state.openVerb = kind;
     state.openPrefill = prefill || {};
     renderVerbForm(kind, state.openPrefill);
-    $("verbPad").querySelectorAll("button[data-verb]").forEach((b) => b.classList.toggle("selected", b.getAttribute("data-verb") === kind));
+    document.querySelectorAll("#verbPad button[data-verb], #verbGroups button[data-verb]").forEach((b) => b.classList.toggle("selected", b.getAttribute("data-verb") === kind));
+    $("verbForm").scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
-  function closeVerb() { state.openVerb = null; state.openPrefill = null; state.openVerbEnvelope = null; const f = $("verbForm"); f.hidden = true; f.innerHTML = ""; $("verbPad").querySelectorAll("button").forEach((b) => b.classList.remove("selected")); }
+  function closeVerb() { state.openVerb = null; state.openPrefill = null; state.openVerbEnvelope = null; const f = $("verbForm"); f.hidden = true; f.innerHTML = ""; document.querySelectorAll("#verbPad button, #verbGroups button").forEach((b) => b.classList.remove("selected")); }
 
   function field(labelText, inputEl, testid) {
     const l = document.createElement("label");
@@ -629,6 +768,8 @@
     } else if (kind === "warp") {
       preview.textContent = `Tap a WARP chip above (${la.turn_cost} turns per warp). Legal targets: ${((p.target || {}).choices || []).join(", ") || "none"}`;
       build = () => null;
+    } else if (FORM_SPECS[kind]) {
+      build = renderGenericForm(kind, la, f, preview, buttons, go);
     }
     f.appendChild(preview); f.appendChild(buttons);
     go.disabled = !canUse(kind);

@@ -98,10 +98,26 @@
         </div>
         <div id="verbReasons" class="list small" data-testid="verb-reasons"></div>
         <form id="verbForm" class="verb-form" data-testid="verb-form" hidden autocomplete="off"></form>
-        <details class="drawer" data-testid="more-verbs">
-          <summary>More verbs (StarDock, combat, planets, comms, corp) - forms arrive in S4</summary>
-          <div id="moreVerbs" class="chips"></div>
-        </details>
+        <!-- S4: context verb groups. Each group opens when the engine says at least one verb in it is legal;
+             every button stays visible (disabled + data-reason) so humans learn the rules and CU can read them. -->
+        <div id="verbGroups" data-testid="more-verbs">
+          <details class="drawer vgroup" data-group="combat" data-testid="verb-group-combat">
+            <summary>Combat &amp; presence <span class="badge" data-role="count"></span></summary>
+            <div class="actions verbpad" data-role="pad"></div>
+          </details>
+          <details class="drawer vgroup" data-group="stardock" data-testid="verb-group-stardock">
+            <summary>StarDock <span class="badge" data-role="count"></span></summary>
+            <div class="actions verbpad" data-role="pad"></div>
+          </details>
+          <details class="drawer vgroup" data-group="planet" data-testid="verb-group-planet">
+            <summary>Planets <span class="badge" data-role="count"></span></summary>
+            <div class="actions verbpad" data-role="pad"></div>
+          </details>
+          <details class="drawer vgroup" data-group="comms" data-testid="verb-group-comms">
+            <summary>Comms, corp &amp; alliances <span class="badge" data-role="count"></span></summary>
+            <div class="actions verbpad" data-role="pad"></div>
+          </details>
+        </div>
         <h2 style="margin-top:16px">Last result</h2>
         <div id="lastResult" class="result" data-testid="last-result" aria-live="polite">-</div>
         <details class="drawer" data-testid="last-result-json">

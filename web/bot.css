@@ -164,6 +164,14 @@ footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
 .ev.mine { border-left: 3px solid var(--go); }
 .ev.combat { border-left: 3px solid var(--danger); }
 .ev.new { background: #101a36; }
+/* ---- Parity S4: verb groups ---- */
+.vgroup summary { font-weight: 700; color: var(--text); }
+.vgroup summary .badge { margin-left: 8px; font-size: 0.75rem; }
+.vgroup summary .badge.on { background: #1a4d3a; border-color: var(--go); color: #b8ffd9; }
+.vgroup .verbpad button { min-height: 56px; min-width: 150px; font-size: 0.95rem; }
+.vgroup .verbpad button .why { display: block; font-size: 0.7rem; font-weight: 500; color: var(--muted); margin-top: 2px; white-space: normal; max-width: 220px; }
+.verb-form .note { grid-column: 1 / -1; color: var(--muted); font-size: 0.85rem; }
+
 /* ---- Parity S3: verb pad + forms ---- */
 .verbpad button[data-legal="false"] { opacity: 0.4; }
 .verbpad button.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
