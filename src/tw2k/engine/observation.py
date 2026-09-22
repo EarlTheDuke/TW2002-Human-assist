@@ -147,28 +147,128 @@ def _filter_visible_events(
     return out
 
 
-def _event_to_dict(event: Event) -> dict[str, Any]:
-    """Convert an Event to the dict shape exposed in observations, stripping
-    private-metadata keys (anything starting with underscore, like _witnesses).
-    """
-    clean_payload: dict[str, Any] = {}
-    for k, v in (event.payload or {}).items():
-        if isinstance(k, str) and k.startswith("_"):
-            continue
-        clean_payload[k] = v
+# ---------------------------------------------------------------------------
+# Event → EventView (the presentation / media boundary)
+# ---------------------------------------------------------------------------
+#
+# Parity S1 (docs/plans/2026-09-21-bot-human-parity.md). An `EventView` is the
+# ONLY shape in which event payload data leaves the engine towards a seat:
+# the Observation's `recent_events`, the harness `/events` stream, and any
+# future cockpit media layer all consume it. Two guarantees:
+#
+#   * `summary` (plain text) is always present, so a text-only client or a
+#     screen reader never needs `facts`.
+#   * `facts` is a per-kind WHITELIST of payload keys. Anything not listed
+#     here (private `_witnesses`, bulky scan `neighbors`, probe intel dumps,
+#     LLM token usage, ...) never ships. Visibility (who may see the event
+#     at all) is decided separately by `_event_visible_to`; this table only
+#     decides which fields of a visible event are shown.
+#
+# Keep the lists small and semantic - they are the "event keys" a future
+# still/clip asset manifest will bind to (e.g. warp + facts.from/to,
+# combat + facts.exchange_kind). Never put derived game rules here.
+EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
+    EventKind.DAY_TICK: ("day",),
+    EventKind.GAME_START: (),
+    EventKind.GAME_OVER: ("reason", "net_worth", "credits"),
+    EventKind.WARP: ("from", "to"),
+    EventKind.WARP_BLOCKED: ("target",),
+    EventKind.AUTOPILOT: ("target", "executed", "hops_done"),
+    EventKind.TRADE: ("commodity", "qty", "side", "unit", "total", "realized_profit", "toll_to", "amount"),
+    EventKind.TRADE_FAILED: ("commodity", "qty", "side", "reason"),
+    EventKind.SCAN: ("tier",),
+    EventKind.PROBE: ("target", "port_code"),
+    EventKind.DEPLOY_FIGHTERS: ("qty", "mode"),
+    EventKind.DEPLOY_MINES: ("qty", "kind"),
+    EventKind.MINE_DETONATED: ("hits", "damage", "victim"),
+    EventKind.PHOTON_FIRED: ("target",),
+    EventKind.PHOTON_HIT: ("target", "disabled_ticks"),
+    EventKind.ATOMIC_DETONATION: ("qty", "port_destroyed"),
+    EventKind.PORT_DESTROYED: ("qty",),
+    EventKind.COMBAT: (
+        "exchange_kind", "vs", "attacker", "defender", "attacker_f", "attacker_s",
+        "defender_f", "defender_s", "attacker_losses", "defender_losses", "sector_claimed",
+        "planet_id", "planet_name", "citadel_level",
+    ),
+    EventKind.SHIP_DESTROYED: ("victim", "reason", "deaths", "death_sector", "killer_id", "kind", "bounty"),
+    EventKind.PLAYER_ELIMINATED: ("killer", "deaths"),
+    EventKind.PLANET_ORPHANED: ("planet_id", "planet_name", "former_owner"),
+    EventKind.PLANET_CLAIMED: ("planet_id", "planet_name", "citadel_level", "fighters"),
+    EventKind.FERRENGI_SPAWN: ("id", "aggression", "fighters"),
+    EventKind.FERRENGI_MOVE: ("id", "from", "to", "reason"),
+    EventKind.FERRENGI_ATTACK: ("victim",),
+    EventKind.LAND_PLANET: ("planet_id", "class", "seized"),
+    EventKind.LIFTOFF: ("planet_id",),
+    EventKind.GENESIS_DEPLOYED: ("planet_id", "class", "name"),
+    EventKind.ASSIGN_COLONISTS: ("planet_id", "qty", "to", "from"),
+    EventKind.PLANET_CARGO_TRANSFER: ("planet_id", "commodity", "qty", "direction"),
+    EventKind.BUILD_CITADEL: ("planet_id", "level_target", "completes_day", "cost_cr", "cost_col"),
+    EventKind.CITADEL_COMPLETE: ("planet_id", "from", "to"),
+    EventKind.PLANET_TAX_PAYOUT: ("planet_id", "planet_name", "payout"),
+    EventKind.BUY_SHIP: ("ship_class", "net_cost"),
+    EventKind.BUY_EQUIP: ("item", "qty", "total"),
+    EventKind.CORP_CREATE: ("ticker", "name"),
+    EventKind.CORP_INVITE: ("ticker", "target"),
+    EventKind.CORP_JOIN: ("ticker",),
+    EventKind.CORP_LEAVE: ("ticker",),
+    EventKind.CORP_DEPOSIT: ("ticker", "amount"),
+    EventKind.CORP_WITHDRAW: ("ticker", "amount"),
+    EventKind.CORP_MEMO: ("ticker", "message"),
+    EventKind.ALLIANCE_PROPOSED: ("alliance_id", "target"),
+    EventKind.ALLIANCE_FORMED: ("alliance_id", "members"),
+    EventKind.ALLIANCE_BROKEN: ("alliance_id", "breaker"),
+    EventKind.HAIL: ("target", "message"),
+    EventKind.BROADCAST: ("message",),
+    EventKind.AGENT_THOUGHT: ("thought", "auto_wait", "external_idle", "turns_skipped"),
+    EventKind.AGENT_ERROR: ("error", "external_timeout"),
+    EventKind.FED_RESPONSE: ("reason",),
+    EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
+}
+
+
+def event_facts(event: Event) -> dict[str, Any]:
+    """Whitelisted, JSON-safe subset of the payload for `event.kind`."""
+    keys = EVENT_FACTS.get(event.kind)
+    if not keys:
+        return {}
+    payload = event.payload or {}
+    out: dict[str, Any] = {}
+    for k in keys:
+        if k in payload and not (isinstance(k, str) and k.startswith("_")):
+            v = payload[k]
+            # Enums / other objects -> plain values; keep scalars and small lists.
+            if hasattr(v, "value") and not isinstance(v, (str, int, float, bool)):
+                v = v.value
+            out[k] = v
+    return out
+
+
+def event_view(event: Event) -> dict[str, Any]:
+    """The fog-safe presentation view of one event (see EVENT_FACTS)."""
     return {
         "seq": event.seq,
         "day": event.day,
         "tick": event.tick,
         "kind": event.kind.value,
         "actor_id": event.actor_id,
+        "actor_kind": getattr(event, "actor_kind", None),
         "sector_id": event.sector_id,
         "summary": event.summary,
-        # Payload is not currently included in the observation schema
-        # (see class Observation below), but if we ever start exposing it,
-        # this ensures _witnesses never leaks.
-        # "payload": clean_payload,
+        "facts": event_facts(event),
     }
+
+
+def _event_to_dict(event: Event) -> dict[str, Any]:
+    """Event shape inside `Observation.recent_events`.
+
+    Same as `event_view` minus `actor_kind` (LLM seats never needed it) and
+    with `facts` omitted when empty to keep the LLM payload tight.
+    """
+    view = event_view(event)
+    view.pop("actor_kind", None)
+    if not view["facts"]:
+        view.pop("facts")
+    return view
 
 
 class Observation(BaseModel):
