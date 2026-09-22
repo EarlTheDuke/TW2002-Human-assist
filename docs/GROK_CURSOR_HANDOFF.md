@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-hosted-bot-computer-use.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **COMMANDER_QUEUED - S1 server data + fog fixes** |
+| Status | **COMMANDER_QUEUED - S2 read-only cockpit tapes** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -44,6 +44,10 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-21 18:53 PT — Commander — S1 ACK → S2 queued
+- **Ack:** parity-s1-server-data @ `5065a4f` accepted (peek, fogged `/events`+facts, spectator gate, xAI gate, webhook deadline; 499 tests).
+- **Queued:** Active task `parity-s2-readonly-tapes` — Where/Know panels on `/bot`, English last_result, events log; peek-powered.
+- mailbox → `COMMANDER_QUEUED` phase `parity-s2`.
 ### 2026-09-21 18:25 PT — Commander — merged plans, queued S1
 - Fable E0 plan accepted. Canonical: docs/plans/2026-09-21-bot-human-parity.md
 - Accepted Fable D1–D13 (peek first, event stream, legal_actions later, spectator gate, no recommend-move, quarantine route table, gate xAI script).
@@ -158,6 +162,8 @@ Non-goals: public multi-human net play; rewrite engine language; Cursor on-deman
 ---
 
 ## 5. Orchestrator notes (Commander)
+
+_2026-09-21 18:53 PT — Commander: S1 accepted (`5065a4f`). Queued S2 read-only cockpit tapes. mailbox COMMANDER_QUEUED._
 
 _2026-09-21 17:32 PT — Commander: C2 re-playtest PASS (8 turns); hosted /bot CU loop COMPLETE. AFK watch paused._
 
@@ -330,6 +336,18 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
 - **Docs:** HOSTING_GROKBOT.md (gate + Ben's link, peek/events), GROK_BOT_PLAYER_GUIDE.md (peek, events, webhook payload), `.env.example`.
 - **Not done / deferred (by plan):** `legal_actions()` (S3), `known_sectors` coords (S5), `build_route_table` quarantine is a no-op today (only `/play` calls it, which is now behind the gate) - fix it properly in S5.
 - **Next:** wait for Commander ACK; then S2 read-only tapes on `/bot` (peek-powered).
+- **Blockers:** none.
+
+### 2026-09-21 19:22 PT - Fable - parity-s2-readonly-tapes DONE
+- **Commits:** `d6f13d2` S2 UI + tests, `85d86c4` tunnel watchdog. Pushed.
+- **`/bot` is now a three-column Observation renderer** (`web/bot.html/js/css`): scoreboard strip (day/turns/credits/net worth/rank/alignment/lives/corp/landed) · **Where** = Here (sector, FedSpace badge, warps, occupants, fighters/mines, planets, Ferrengi), Port tape (code/name/class + per-commodity **BUYS/SELLS · price · stock cur/max · you hold**), Adjacent strip (port code, fighters, planets, occupants, known/unexplored), Known space (adjacency count + compact list) · **Act** = scheduler line, stable warp chips, SCAN/WAIT/sell/buy, **English last result** built from the engine's own event summaries for the action's `event_seqs` (raw JSON in a drawer), Advisor (recent_failures, action_hint drawer), Notes (goals/scratchpad read-only), raw Observation drawer · **Know** = Ship loadout + cargo table with cost basis, Known ports table (age, per-commodity B/S price; stale rows dimmed), Trading (trade_summary + trade_log P&L), Commanders (rivals with fogged last-seen; corpmates), Planets (owned/orphaned), Comms (inbox, alliances, corp), Intel (limpets, probe log) · **Footer** = fogged event log from `/events` with kind-group filters, facts inline, "new since your last turn" highlight.
+- **Peek-powered:** Connect and every long-poll return use `observation?peek=1`, so panels fill immediately while WAITING and refresh each cycle; the scheduler line says "(panels show a live peek of your seat)". Turn logic from Phase D unchanged (long-poll flip, countdown, stable warp DOM).
+- **Coverage contract:** every element carries `data-obs="<Observation key>"`; `tests/test_parity_s2.py` asserts all **44** `Observation.model_fields` have a home and no `data-obs` names a non-field, plus data-testid hooks for every panel/control/filter, "no rule constants in JS", peek + `/events` usage, and a live ASGI check that the one call Connect makes returns every field the panels read. 4 tests; full suite **503 passed**; ruff clean.
+- **Browser check (IDE browser, local 3-seat match):** Connect -> all panels populated from the peek before my turn; WARP 68 -> `turn 3: WARP to 68 — ok: Commander warped 2 → 68`; adjacent strip showed port codes + known/unexplored for the new sector; events footer listed 7 fogged events with facts. Done-when #2 answerable from the port tape (SELLS fuel 18 / org 25 / equip 36 at the FED port) + known-ports table (per-commodity B/S price per remembered sector).
+- **Also:** idle auto-WAIT thought text now quotes the effective idle window, not the nominal timeout (was "after 90s" for an 8 s wait).
+- **Ops:** `scripts/tunnel_watchdog.ps1` (running in this session, 60 s) re-runs `expose_hosted_bot.ps1 -Detach` when the localhost.run session dies or `/bot` stops answering - it died twice today after ~30-60 min idle. The URL changes on each re-expose; **consumers must re-read `.tw2k/public_base_url.txt`** rather than cache it. Log: `.tw2k/tunnel_watchdog.log`. `:8031` still on S1 server code (S2 is static files, live already); the idle-text fix needs a restart - cosmetic, deferred so the running match is not disturbed.
+- **Known limits (by plan):** trade is still the two fixed shapes; known-ports rows seeded at spawn show `?` prices (the engine's start-of-match snapshot has no price/side - honest); full map is S5; verb gating is S3.
+- **Next:** Commander ACK -> S3 `legal_actions()` + trade/plot/probe forms.
 - **Blockers:** none.
 
 ### 2026-09-21 16:23 PT — Commander — Phase B ACK → Phase C started

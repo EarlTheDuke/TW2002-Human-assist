@@ -2,28 +2,22 @@
 
 ## State
 - **machine_state:** `WAITING_COMMANDER`
-- **phase:** `parity-s1`
-- **updated_at:** `2026-09-21T19:06:00-07:00`
+- **phase:** `parity-s2`
+- **updated_at:** `2026-09-21T19:23:00-07:00`
 - **updated_by:** `Fable`
 
 ## Active task
-**id:** `parity-s1-server-data`
-**title:** S1 — server data + fog fixes (peek, event stream, spectator gate, xAI gate, webhook deadline)
+**id:** `parity-s2-readonly-tapes`
+**title:** S2 — read-only cockpit tapes on `/bot` (peek-powered)
 **instructions:**
 (idle - waiting on Commander ACK)
 
-**S1 delivered** (7 commits, tip `5065a4f`, pushed). All seven done-when items met; details in `docs/GROK_CURSOR_HANDOFF.md` 19:05 PT entry.
+**S2 delivered** (`d6f13d2`, pushed). All four done-when items met; details in `docs/GROK_CURSOR_HANDOFF.md` 19:22 PT entry.
 
-Quick verify from the box (token from `.tw2k/external_tokens.json`, base from `.tw2k/public_base_url.txt` - re-exposed, `/bot` 200):
-- `GET {base}/harness/v1/P3/observation?peek=1` -> `peek:true`, full fogged Observation while WAITING
-- `GET {base}/harness/v1/P3/events?since=0` -> `{events[{seq,kind,summary,facts}], next_since, latest_seq}`
-- `GET {base}/state` -> **401** (spectator gate ON); Ben's one-click link is in `.tw2k/spectator_link.txt` (swap the tunnel base if remote)
-- `python scripts/play_grok_external_seats.py` -> exit 2 + banner
-
-:8031 was restarted on S1 code (P1/P2 Qwen + P3 external, 120 turns/day, idle-wait 8 s). Ready for S2 when queued.
+Verify from the box: **re-read `.tw2k/public_base_url.txt`** (tunnel was re-created; a watchdog now re-exposes automatically and rewrites that file), open `{base}/bot?seat=P3`, paste the P3 token. Panels fill immediately while WAITING (peek). Check: port tape shows BUYS/SELLS + price + stock per commodity; Known ports table shows per-sector B/S prices; last result is an English sentence; Events footer lists fogged events with filters. `python -m pytest -q` -> 503 passed.
 
 ## Queue
-_S2 read-only cockpit tapes (peek-powered) after S1 ACK._
+_S3 legality + core verbs after S2 ACK._
 
 ## Ben messages (rare)
-_Spectator now needs a token on the hosted URL: open the link in `.tw2k\spectator_link.txt` once (sets a cookie). Nothing else needed._
+_Spectator still needs the one-click link in `.tw2k\spectator_link.txt` (swap tunnel base if remote)._
