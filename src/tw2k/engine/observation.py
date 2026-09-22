@@ -384,6 +384,13 @@ class Observation(BaseModel):
     # Legal actions hint (textual grammar)
     action_hint: str = Field(default="")
 
+    # Parity S3 - structured legality. One entry per ActionKind:
+    # {kind, legal, reason, turn_cost, detail: precise|coarse, params}.
+    # Produced by engine.legality.legal_actions (pure query, same constants
+    # as the handlers). The cockpit gates its verb pad from this and ONLY
+    # this; LLM seats receive the compact form via format_observation.
+    legal_actions: list[dict[str, Any]] = Field(default_factory=list)
+
 
 # ---------------------------------------------------------------------------
 # Public builder
@@ -651,7 +658,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             entry["last_seen_sector"] = seen[2]
         rivals.append(entry)
 
+    from .legality import legal_actions as _legal_actions
     from .runner import alignment_label, rank_for
+    legal = [la.model_dump() for la in _legal_actions(universe, player_id)]
     obs = Observation(
         day=universe.day,
         tick=universe.tick,
@@ -704,6 +713,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         max_deaths=K.MAX_DEATHS_BEFORE_ELIM,
         limpets_owned=limpets_owned,
         probe_log=probe_log,
+        legal_actions=legal,
         action_hint=_action_hint(
             sector_info,
             player,
@@ -816,12 +826,21 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         }
         if p.class_id != PortClass.STARDOCK:
             for commodity, s in p.stock.items():
-                price = port_buy_price(p, commodity) if p.buys(commodity) else port_sell_price(p, commodity)
+                # Parity S3: report the side the engine will actually accept.
+                # Federal (class 0) ports hold stock but neither buy nor sell
+                # (can_trade rejects both); the old fallback labelled them
+                # "sells_to_player", which lit up trades the engine refused.
+                if p.buys(commodity):
+                    side, price = "buys_from_player", port_buy_price(p, commodity)
+                elif p.sells(commodity):
+                    side, price = "sells_to_player", port_sell_price(p, commodity)
+                else:
+                    side, price = "not_traded", None
                 port_info["stock"][commodity.value] = {
                     "current": s.current,
                     "max": s.maximum,
                     "price": price,
-                    "side": "buys_from_player" if p.buys(commodity) else "sells_to_player",
+                    "side": side,
                 }
         info["port"] = port_info
     return info

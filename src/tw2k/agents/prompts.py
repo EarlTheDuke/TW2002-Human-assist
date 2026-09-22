@@ -701,9 +701,21 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
         # which is roughly half a day — enough to see "I've been warping
         # in circles" without having to rely on the scratchpad alone.
         "recent_events": obs.recent_events[-30:],
+        # Parity S3 - structured legality, compact: which verbs are legal
+        # right now and a one-line reason for each blocked one. Same query
+        # the /bot cockpit gates its buttons from, so API seats and cockpit
+        # seats reason from identical facts.
+        "legal_actions": _compact_legal(obs.legal_actions),
         "action_hint": obs.action_hint,
     }
     return json.dumps(payload, separators=(",", ":") if compact else (", ", ": "))
+
+
+def _compact_legal(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "legal": [e.get("kind") for e in entries if e.get("legal")],
+        "blocked": {e.get("kind"): e.get("reason") for e in entries if not e.get("legal") and e.get("reason")},
+    }
 
 
 def _top_known_ports(obs: Observation, limit: int = 15) -> list[dict[str, Any]]:
