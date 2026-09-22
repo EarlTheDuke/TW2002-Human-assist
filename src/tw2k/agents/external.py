@@ -76,6 +76,10 @@ class ExternalAgent(BaseAgent):
         # page is polling) from an *unattended* one, so idle seats can
         # auto-WAIT quickly instead of burning the full external timeout.
         self.last_client_seen_at: float | None = None
+        # Effective wall-clock deadline for the current turn, set by the runner
+        # immediately before `act()` (already includes the idle-wait rule).
+        # Surfaced to bots via the turn_due webhook and harness status.
+        self.turn_deadline_at: float | None = None
 
     # ---- attendance --------------------------------------------------------
 
@@ -160,6 +164,56 @@ class ExternalAgent(BaseAgent):
             urls.append(shared)
         return urls
 
+    @staticmethod
+    def _base_url() -> str:
+        """Where the bot should call back. Public tunnel URL if the host set one."""
+        for key in ("TW2K_PUBLIC_BASE_URL", "TW2K_HARNESS_BASE_URL"):
+            v = (os.environ.get(key) or "").strip()
+            if v:
+                return v.rstrip("/")
+        return "http://127.0.0.1:8000"
+
+    def turn_due_payload(self, observation: Observation) -> dict[str, Any]:
+        """Webhook body (Parity S1 / F8).
+
+        * `deadline_at` is the runner's *effective* deadline for this turn
+          (`turn_deadline_at`, set by the scheduler right before `act()`, so it
+          already reflects the idle-wait rule). Falls back to the env timeout
+          only if the runner did not set it (tests / direct use).
+        * The full Observation is NOT sent: the bot pulls it with its own token
+          from `base_url` (`GET /harness/v1/{pid}/observation`). Set
+          `TW2K_GROKBOT_WEBHOOK_FULL_OBS=1` to restore the old fat payload.
+        """
+        started = self.turn_started_at or time.time()
+        deadline = self.turn_deadline_at
+        if deadline is None:
+            try:
+                deadline = started + float(os.environ.get("TW2K_EXTERNAL_TIMEOUT_S", "180"))
+            except ValueError:
+                deadline = started + 180.0
+        sector = observation.sector or {}
+        payload: dict[str, Any] = {
+            "event": "turn_due",
+            "player_id": self.player_id,
+            "name": self.name,
+            "turn_seq": self.turn_seq,
+            "started_at": started,
+            "deadline_at": deadline,
+            "base_url": self._base_url(),
+            "observation_url": f"{self._base_url()}/harness/v1/{self.player_id}/observation",
+            "action_url": f"{self._base_url()}/harness/v1/{self.player_id}/action",
+            "brief": {
+                "day": observation.day,
+                "tick": observation.tick,
+                "sector_id": sector.get("id"),
+                "turns_remaining": observation.turns_remaining,
+                "credits": observation.credits,
+            },
+        }
+        if (os.environ.get("TW2K_GROKBOT_WEBHOOK_FULL_OBS") or "").strip().lower() in ("1", "true", "yes"):
+            payload["observation"] = observation.model_dump(mode="json")
+        return payload
+
     async def _fire_turn_due_webhook(self, observation: Observation) -> None:
         """Notify Grok Bot (webhook routine) that this seat needs a decision."""
         urls = self._webhook_urls()
@@ -169,15 +223,7 @@ class ExternalAgent(BaseAgent):
             import httpx
         except ImportError:
             return
-        payload = {
-            "event": "turn_due",
-            "player_id": self.player_id,
-            "name": self.name,
-            "turn_seq": self.turn_seq,
-            "deadline_at": (self.turn_started_at or time.time())
-            + float(os.environ.get("TW2K_EXTERNAL_TIMEOUT_S", "180")),
-            "observation": observation.model_dump(mode="json"),
-        }
+        payload = self.turn_due_payload(observation)
         async with httpx.AsyncClient(timeout=8.0) as client:
             for url in urls:
                 try:

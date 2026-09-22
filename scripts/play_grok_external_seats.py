@@ -14,7 +14,7 @@ import re
 import sys
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -282,6 +282,18 @@ def seat_loop(
                     pass
 
 
+XAI_GATE_BANNER = """
+!!! =====================================================================
+!!!  play_grok_external_seats.py drives external seats with the xAI API
+!!!  (api.x.ai). That is NOT a Grok Bot brain and violates the parity
+!!!  mission ("no xAI API brain; one Grok Bot brain per seat").
+!!!  Refusing to run. If you truly want an xAI stand-in for a smoke test,
+!!!  re-run with --allow-xai-fallback and expect actions tagged as xAI.
+!!!  Canonical Path-B client: scripts/external_client_example.py
+!!! =====================================================================
+"""
+
+
 def main() -> int:
     load_dotenv()
     import argparse
@@ -293,10 +305,22 @@ def main() -> int:
     ap.add_argument("--min-xai-turns", type=int, default=12, help="stop after this many xAI calls")
     ap.add_argument("--min-commander-turns", type=int, default=3)
     ap.add_argument("--max-wall-s", type=float, default=1200)
+    ap.add_argument(
+        "--allow-xai-fallback",
+        action="store_true",
+        help="Explicitly permit api.x.ai as a seat brain (smoke tests only; NOT a Grok Bot).",
+    )
     args = ap.parse_args()
 
+    # Parity S1 (F7): xAI is not a Grok Bot. Hard gate unless explicitly allowed.
+    if not args.allow_xai_fallback and not args.all_commander:
+        print(XAI_GATE_BANNER, file=sys.stderr)
+        return 2
+    if args.allow_xai_fallback:
+        print(XAI_GATE_BANNER.replace("Refusing to run.", "RUNNING ANYWAY (--allow-xai-fallback)."), file=sys.stderr)
+
     api_key = os.environ.get("XAI_API_KEY") or os.environ.get("GROK_API_KEY")
-    if not api_key:
+    if not api_key and not args.all_commander:
         print("XAI_API_KEY missing", file=sys.stderr)
         return 2
     tokens = json.loads(TOKENS.read_text(encoding="utf-8"))

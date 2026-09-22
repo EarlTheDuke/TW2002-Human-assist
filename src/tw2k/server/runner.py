@@ -936,8 +936,12 @@ class MatchRunner:
         idle_rule = idle_s > 0 and callable(attended_fn)
 
         if not idle_rule or attended_fn(window_s):
+            agent.turn_deadline_at = time.time() + full_s  # type: ignore[attr-defined]
             return await asyncio.wait_for(agent.act(obs), timeout=full_s), False
 
+        # Unattended: the effective deadline is the short idle window (F8 - the
+        # turn_due webhook reports this value, not the nominal timeout).
+        agent.turn_deadline_at = time.time() + min(idle_s, full_s)  # type: ignore[attr-defined]
         act_task = asyncio.ensure_future(agent.act(obs))
         try:
             return await asyncio.wait_for(asyncio.shield(act_task), timeout=min(idle_s, full_s)), True
@@ -945,6 +949,7 @@ class MatchRunner:
             if attended_fn(window_s):
                 # Someone showed up during the idle window - honour the full budget.
                 remaining = max(0.1, full_s - min(idle_s, full_s))
+                agent.turn_deadline_at = time.time() + remaining  # type: ignore[attr-defined]
                 try:
                     return await asyncio.wait_for(asyncio.shield(act_task), timeout=remaining), False
                 except TimeoutError:
