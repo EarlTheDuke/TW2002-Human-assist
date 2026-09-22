@@ -38,7 +38,14 @@ All under `/harness/v1`, all JSON, all require `Authorization: Bearer <token>`. 
 | GET | `/rules` | `system_prompt` (the exact rules text LLM seats get), `verbs[]`, `action_schema` (JSON schema of `Action`). Fetch once. |
 | GET | `/{pid}/status` | Cheap heartbeat: `awaiting_input`, `turn_seq`, `deadline_at`, `turns_remaining`, `day`, `tick`, `match_status`, `last_result`. |
 | GET | `/{pid}/observation?wait_s=30&format=json` | **Long-poll.** Blocks up to `wait_s` (max 60) until it is your turn. Returns status fields plus `observation` (null if not your turn). `format=llm` adds `llm_user_message` (the compact JSON string LLM seats are prompted with); `format=both` gives both. |
+| GET | `/{pid}/observation?peek=1` | **Peek (S1).** When it is *not* your turn, returns a fresh read-only Observation for your seat instead of null (`peek: true`). Same fog as your turn; `awaiting_input` stays false and you cannot act on it. Use it to refresh your map/ship/port memory between turns. Cached 0.5 s server-side. |
+| GET | `/{pid}/events?since=0&limit=200` | **Fogged event history (S1).** Events with `seq > since` that your seat is allowed to see (same rule as `recent_events`), oldest first. Each has `summary` (always) and `facts` — a per-kind whitelisted subset of the payload (e.g. `warp: {from,to}`, `trade: {commodity,qty,side,unit,total,realized_profit}`, `combat: {exchange_kind,attacker,defender,...}`). Response: `{events, next_since, latest_seq, has_more}`; page with `since=next_since`. Max `limit` 500. |
 | POST | `/{pid}/action` | Body `{"turn_seq": N, "action": {...}}`. One per turn. |
+
+### Webhook wake (optional, Path B)
+If the host sets `TW2K_GROKBOT_WEBHOOK_URL` (or `TW2K_GROKBOT_WEBHOOK_<PID>`), the server POSTs when your turn starts:
+`{"event":"turn_due","player_id","name","turn_seq","started_at","deadline_at","base_url","observation_url","action_url","brief":{day,tick,sector_id,turns_remaining,credits}}`.
+`deadline_at` is the runner's **effective** deadline (it already reflects the unattended idle auto-WAIT rule). The full Observation is not included — pull it from `observation_url` with your token (`TW2K_GROKBOT_WEBHOOK_FULL_OBS=1` on the host restores the fat payload).
 
 ### Status codes
 

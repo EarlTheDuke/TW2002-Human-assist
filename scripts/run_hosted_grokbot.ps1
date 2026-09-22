@@ -29,7 +29,13 @@ param(
   [string]$Model = "qwen3.8:latest",
   [string]$ExternalSeats = "P3",
   [string]$QwenNames = "QwenA,QwenB",
-  [string]$ExternalNames = "Commander,GrokPilot2,GrokPilot3"
+  [string]$ExternalNames = "Commander,GrokPilot2,GrokPilot3",
+  # Parity S1: gate the whole-galaxy spectator (/, /state, /events, /ws, /play, /control, /api)
+  # behind a token on hosted URLs. Default: generate/keep one in .tw2k\spectator_token.txt
+  # (gitignored) and write Ben's one-click link to .tw2k\spectator_link.txt. -NoSpectatorGate
+  # leaves the spectator open (LAN-only use).
+  [string]$SpectatorToken = "",
+  [switch]$NoSpectatorGate
 )
 
 $ErrorActionPreference = "Stop"
@@ -55,6 +61,29 @@ python scripts/gen_external_tokens.py --seats $seatsCsv --file $tokFile | Out-Ho
 $tokens = Get-Content -LiteralPath $tokFile -Raw | ConvertFrom-Json
 
 $display = if ($PublicHost) { $PublicHost } else { "THIS_MACHINE_IP" }
+
+# Spectator gate (Parity S1 / F6)
+$tw2kDir = Join-Path (Get-Location) ".tw2k"
+New-Item -ItemType Directory -Force -Path $tw2kDir | Out-Null
+$specFile = Join-Path $tw2kDir "spectator_token.txt"
+$specLink = Join-Path $tw2kDir "spectator_link.txt"
+if ($NoSpectatorGate) {
+  Remove-Item Env:TW2K_SPECTATOR_TOKEN -ErrorAction SilentlyContinue
+  Write-Host "Spectator gate: OFF (-NoSpectatorGate) - anyone with the URL sees the whole galaxy."
+} else {
+  $spec = $SpectatorToken
+  if (-not $spec -and (Test-Path $specFile)) { $spec = (Get-Content $specFile -Raw).Trim() }
+  if (-not $spec) {
+    $bytes = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $spec = ([Convert]::ToBase64String($bytes)).TrimEnd("=").Replace("+", "-").Replace("/", "_")
+  }
+  [IO.File]::WriteAllText($specFile, $spec)
+  $env:TW2K_SPECTATOR_TOKEN = $spec
+  $publicBase = if ($PublicHost) { "http://${PublicHost}:${Port}" } else { "http://127.0.0.1:${Port}" }
+  [IO.File]::WriteAllText($specLink, "$publicBase/spectate?token=$spec")
+  $m = if ($spec.Length -gt 12) { $spec.Substring(0,4) + "..." + $spec.Substring($spec.Length-4) } else { "?" }
+  Write-Host "Spectator gate: ON  token $m  (open link in $specLink; /bot and /harness stay per-seat)"
+}
 Write-Host ""
 Write-Host "Seats: $numAgents  (Qwen: $($qwen -join ', ')  |  external: $seatsCsv)"
 Write-Host "Grok Bot cockpit:  http://${display}:${Port}/bot?seat=$($seats[0])"

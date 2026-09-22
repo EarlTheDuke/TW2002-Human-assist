@@ -91,10 +91,27 @@ Use the host LAN IP. Commander's box must be on that network (or VPN). LAN IP al
 
 ---
 
+## Spectator gate (Parity S1) — the whole-galaxy view is not free on a public URL
+
+`/`, `/state`, `/events`, `/history`, `/highlights`, `/ws`, `/play`, `/control/*` and `/api/*` show every sector, every ship and every agent thought. `run_hosted_grokbot.ps1` now sets `TW2K_SPECTATOR_TOKEN` (generated once into `.tw2k\spectator_token.txt`, gitignored) so those routes answer **401** without it. `/bot`, `/harness/v1/*` and `/static/*` are unaffected — seats still use their own bearer tokens.
+
+**Ben opens the spectator** with the one-click link the script writes to `.tw2k\spectator_link.txt`:
+`{base}/spectate?token=<token>` → sets a cookie and redirects to `/`; the WebSocket feed works from then on in that browser. Scripts can send `Authorization: Bearer <token>` or `?token=`. Replace `http://127.0.0.1:8031` with the tunnel base if opening from another machine (the tunnel forwards to the same port).
+
+- Rotate: delete `.tw2k\spectator_token.txt` and restart the hosted script (or pass `-SpectatorToken`).
+- LAN-only sessions can pass `-NoSpectatorGate`.
+- Do **not** hand competitors (human or bot) the spectator link during a match; a seat sees only its own fogged Observation via `/bot` / `/harness`.
+
+## Seat data between turns (Parity S1)
+
+A seat can now read its own fogged Observation **at any time**: `GET /harness/v1/{pid}/observation?peek=1` (identical object to what the scheduler hands you on your turn; `awaiting_input` stays false, no action can bind to it). The fogged event history is `GET /harness/v1/{pid}/events?since=<seq>&limit=200` — text `summary` always, plus a per-kind whitelisted `facts` object (the presentation/media boundary). Details in `GROK_BOT_PLAYER_GUIDE.md`.
+
 ## Security checklist
 
 - Bearer tokens required even with `TW2K_HARNESS_ALLOW_REMOTE=1`
-- Never commit `.env` or `.tw2k/external_tokens.json`
+- Spectator gate on for hosted URLs (`TW2K_SPECTATOR_TOKEN`; default in the hosted script)
+- `scripts/play_grok_external_seats.py` is **not** a Grok Bot brain (xAI API); it refuses to run without `--allow-xai-fallback`
+- Never commit `.env`, `.tw2k/external_tokens.json`, or `.tw2k/spectator_*.txt`
 - Prefer Tailscale over a public Cloudflare URL for long sessions
 - Rotate tokens (`scripts/gen_external_tokens.py`) if a URL leaked
 - `/bot?token=` is supported for automation but the page strips it from the address bar after load — prefer paste
