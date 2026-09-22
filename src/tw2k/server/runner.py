@@ -603,11 +603,15 @@ class MatchRunner:
                             if is_external and external_idle:
                                 # Unattended seat: not an error, just nobody
                                 # home. Quiet WAIT so the round-robin moves on.
+                                idle_eff = min(
+                                    float(deadline),
+                                    float(getattr(self._spec, "external_idle_wait_s", 0.0) or deadline),
+                                )
                                 action = Action(
                                     kind=ActionKind.WAIT,
                                     thought=(
                                         f"[external idle] no client attached to "
-                                        f"{agent.player_id}; auto-WAIT after {deadline:.0f}s"
+                                        f"{agent.player_id}; auto-WAIT after {idle_eff:.0f}s"
                                     ),
                                 )
                                 universe.emit(
@@ -617,7 +621,7 @@ class MatchRunner:
                                     payload={
                                         "thought": (
                                             f"No bot attached to {agent.player_id} "
-                                            f"({deadline:.0f}s) - idle auto-WAIT."
+                                            f"({idle_eff:.0f}s) - idle auto-WAIT."
                                         ),
                                         "auto_wait": True,
                                         "external_idle": True,

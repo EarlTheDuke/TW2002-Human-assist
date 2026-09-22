@@ -30,42 +30,171 @@
 
   <p id="err" class="error" data-testid="error"></p>
 
-  <main class="bot-main" id="main" hidden>
-    <section class="card">
-      <h2>Ship / sector</h2>
-      <div class="stats">
-        <div class="stat"><div class="k">Credits</div><div class="v" id="vCredits" data-testid="credits">-</div></div>
-        <div class="stat"><div class="k">Sector</div><div class="v" id="vSector" data-testid="sector">-</div></div>
-        <div class="stat"><div class="k">Turns left</div><div class="v" id="vTurns" data-testid="turns-left">-</div></div>
-        <div class="stat"><div class="k">Day / tick</div><div class="v" id="vDayTick" data-testid="day-tick">-</div></div>
-        <div class="stat"><div class="k">Cargo free</div><div class="v" id="vFree" data-testid="cargo-free">-</div></div>
-        <div class="stat"><div class="k">Ship</div><div class="v" id="vShip" data-testid="ship">-</div></div>
+  <!-- Scoreboard strip: match clock + self. Every value is a straight read of the Observation. -->
+  <section class="scoreboard" id="scoreboard" data-testid="scoreboard" hidden>
+    <div class="score" data-obs="self_name"><span class="k">Commander</span><span class="v" id="sbName" data-obs="self_id">-</span></div>
+    <div class="score"><span class="k">Day</span><span class="v"><span id="sbDay" data-obs="day">-</span> / <span id="sbMaxDays" data-obs="max_days">-</span> <small>tick <span id="sbTick" data-obs="tick">-</span></small></span></div>
+    <div class="score"><span class="k">Turns left</span><span class="v"><span id="sbTurns" data-obs="turns_remaining" data-testid="turns-left">-</span> / <span id="sbTpd" data-obs="turns_per_day">-</span></span></div>
+    <div class="score"><span class="k">Credits</span><span class="v" id="sbCredits" data-obs="credits" data-testid="credits">-</span></div>
+    <div class="score"><span class="k">Net worth</span><span class="v" id="sbNetWorth" data-obs="net_worth" data-testid="net-worth">-</span></div>
+    <div class="score"><span class="k">Rank</span><span class="v"><span id="sbRank" data-obs="rank">-</span> <small><span id="sbXp" data-obs="experience">-</span> xp</small></span></div>
+    <div class="score"><span class="k">Alignment</span><span class="v"><span id="sbAlignLabel" data-obs="alignment_label">-</span> <small>(<span id="sbAlign" data-obs="alignment">-</span>)</small></span></div>
+    <div class="score"><span class="k">Lives</span><span class="v"><span id="sbDeaths" data-obs="deaths">-</span> / <span id="sbMaxDeaths" data-obs="max_deaths">-</span> lost <small id="sbAlive" data-obs="alive"></small></span></div>
+    <div class="score"><span class="k">Corp</span><span class="v" id="sbCorp" data-obs="corp_ticker">-</span></div>
+    <div class="score"><span class="k">Landed</span><span class="v" id="sbLanded" data-obs="planet_landed">-</span></div>
+    <div class="score" hidden><span class="v" id="sbFinished" data-obs="finished"></span></div>
+  </section>
+
+  <main class="bot-main cols3" id="main" hidden>
+
+    <!-- WHERE -->
+    <section class="col" id="colWhere" data-testid="col-where">
+      <div class="card" id="hereCard" data-testid="here" data-obs="sector">
+        <h2>Here <span class="badge" id="hereId" data-testid="sector">-</span> <span class="badge fed" id="hereFed" hidden>FedSpace</span></h2>
+        <div class="kv" id="hereFacts"></div>
+        <div class="sub">Occupants</div><div class="chips" id="hereOccupants"></div>
+        <div class="sub">Defenses / hazards</div><div class="kv" id="hereDefenses"></div>
+        <div class="sub">Planets here</div><div class="list" id="herePlanets"></div>
+        <div class="sub">Ferrengi</div><div class="list" id="hereFerrengi"></div>
       </div>
-      <div id="rivals" class="rivals"></div>
-      <h2 style="margin-top:16px">Scheduler</h2>
-      <div id="whoseTurn" class="hint" data-testid="whose-turn">-</div>
-      <h2 style="margin-top:16px">Port</h2>
-      <div id="portLine" class="hint" data-testid="port-line">-</div>
-      <h2 style="margin-top:16px">Action hint</h2>
-      <div id="hint" class="hint" data-testid="action-hint">-</div>
+
+      <div class="card" id="portCard" data-testid="port" data-obs="sector.port">
+        <h2>Port <span class="badge" id="portCode" data-testid="port-line">-</span></h2>
+        <div class="kv" id="portMeta"></div>
+        <table class="tape" id="portTape" data-testid="port-tape">
+          <thead><tr><th>Commodity</th><th>Port</th><th>Price</th><th>Stock</th><th>You hold</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="hint small" id="portNone" hidden>No port in this sector.</div>
+      </div>
+
+      <div class="card" id="adjacentCard" data-testid="adjacent" data-obs="adjacent">
+        <h2>Adjacent (one warp out)</h2>
+        <div class="list" id="adjacentStrip"></div>
+      </div>
+
+      <div class="card" id="knownWarpsCard" data-testid="known-warps" data-obs="known_warps">
+        <h2>Known space <span class="badge" id="knownWarpsCount">-</span></h2>
+        <div class="hint small" id="knownWarpsList"></div>
+      </div>
     </section>
 
-    <section class="card">
-      <h2>Warp (tap a sector)</h2>
-      <div class="warps" id="warpBtns" data-testid="warps"></div>
-      <h2 style="margin-top:16px">Actions</h2>
-      <div class="actions" id="actionBtns">
-        <button type="button" data-kind="scan" data-testid="action-scan" class="primary">SCAN</button>
-        <button type="button" data-kind="wait" data-testid="action-wait">WAIT</button>
-        <button type="button" id="sellBtn" data-testid="action-sell" class="sell" hidden>SELL ALL PORT BUYS</button>
-        <button type="button" id="buyBtn" data-testid="action-buy" class="buy" hidden>BUY FIRST SELL</button>
+    <!-- ACT -->
+    <section class="col" id="colAct" data-testid="col-act">
+      <div class="card">
+        <h2>Scheduler</h2>
+        <div id="whoseTurn" class="hint" data-testid="whose-turn">-</div>
+        <h2 style="margin-top:16px">Warp (tap a sector)</h2>
+        <div class="warps" id="warpBtns" data-testid="warps"></div>
+        <h2 style="margin-top:16px">Actions</h2>
+        <div class="actions" id="actionBtns">
+          <button type="button" data-kind="scan" data-testid="action-scan" class="primary">SCAN</button>
+          <button type="button" data-kind="wait" data-testid="action-wait">WAIT</button>
+          <button type="button" id="sellBtn" data-testid="action-sell" class="sell" hidden>SELL ALL PORT BUYS</button>
+          <button type="button" id="buyBtn" data-testid="action-buy" class="buy" hidden>BUY FIRST SELL</button>
+        </div>
+        <h2 style="margin-top:16px">Last result</h2>
+        <div id="lastResult" class="result" data-testid="last-result" aria-live="polite">-</div>
+        <details class="drawer" data-testid="last-result-json">
+          <summary>Raw result JSON</summary>
+          <pre id="lastResultJson" class="json"></pre>
+        </details>
+        <h2 style="margin-top:16px">Advisor</h2>
+        <div id="failures" class="list" data-testid="recent-failures" data-obs="recent_failures"></div>
+        <details class="drawer" open data-testid="action-hint-drawer">
+          <summary>Action hint (server)</summary>
+          <div id="hint" class="hint" data-testid="action-hint" data-obs="action_hint">-</div>
+        </details>
+        <details class="drawer" data-testid="notes-drawer">
+          <summary>Your notes (goals + scratchpad)</summary>
+          <div class="kv" id="goals" data-obs="goals"></div>
+          <pre id="scratchpad" class="json" data-obs="scratchpad"></pre>
+          <div class="hint small" data-obs="operator_directive"><span id="operatorDirective"></span><span id="operatorDirectiveUpdated" data-obs="operator_directive_updated_day"></span><span data-obs="operator_directive_updated_tick"></span><span data-obs="operator_dialogue"></span></div>
+        </details>
+        <details class="drawer" data-testid="raw-obs-drawer">
+          <summary>Raw observation JSON</summary>
+          <pre id="rawObs" class="json"></pre>
+        </details>
       </div>
-      <h2 style="margin-top:16px">Last result</h2>
-      <div id="lastResult" class="hint" data-testid="last-result">-</div>
-      <h2 style="margin-top:16px">Log</h2>
-      <div id="log" class="log" data-testid="log"></div>
+    </section>
+
+    <!-- KNOW -->
+    <section class="col" id="colKnow" data-testid="col-know">
+      <div class="card" id="shipCard" data-testid="ship" data-obs="ship">
+        <h2>Ship <span class="badge" id="shipClass">-</span></h2>
+        <div class="kv" id="shipLoadout"></div>
+        <table class="tape" id="cargoTable" data-testid="cargo">
+          <thead><tr><th>Cargo</th><th>Qty</th><th>Cost avg</th><th>At cost</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="knownPortsCard" data-testid="known-ports" data-obs="known_ports">
+        <h2>Known ports <span class="badge" id="knownPortsCount">-</span></h2>
+        <table class="tape" id="knownPortsTable">
+          <thead><tr><th>Sector</th><th>Code</th><th>Age</th><th>Fuel</th><th>Org</th><th>Equip</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="tradeCard" data-testid="trade">
+        <h2>Trading</h2>
+        <div class="kv" id="tradeSummary" data-obs="trade_summary"></div>
+        <table class="tape" id="tradeLog" data-obs="trade_log">
+          <thead><tr><th>Day</th><th>Sector</th><th>Trade</th><th>Unit</th><th>Total</th><th>P&amp;L</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="rivalsCard" data-testid="rivals">
+        <h2>Commanders</h2>
+        <div class="list" id="rivals" data-obs="rivals"></div>
+        <div class="list small" id="otherPlayers" data-obs="other_players"></div>
+      </div>
+
+      <div class="card" id="planetsCard" data-testid="planets">
+        <h2>Planets</h2>
+        <div class="sub">Owned</div><div class="list" id="ownedPlanets" data-obs="owned_planets"></div>
+        <div class="sub">Orphaned (claimable)</div><div class="list" id="orphanedPlanets" data-obs="orphaned_planets"></div>
+      </div>
+
+      <div class="card" id="commsCard" data-testid="comms">
+        <h2>Comms <span class="badge" id="inboxCount">-</span></h2>
+        <div class="list" id="inbox" data-obs="inbox"></div>
+        <div class="sub">Diplomacy</div>
+        <div class="list small" id="alliances" data-obs="alliances"></div>
+        <div class="kv small" id="corp" data-obs="corp"></div>
+      </div>
+
+      <div class="card" id="intelCard" data-testid="intel">
+        <h2>Intel</h2>
+        <div class="sub">Limpets</div><div class="list small" id="limpets" data-obs="limpets_owned"></div>
+        <div class="sub">Probe log</div><div class="list small" id="probeLog" data-obs="probe_log"></div>
+      </div>
     </section>
   </main>
+
+  <!-- EVENTS (fogged stream from /harness/v1/{pid}/events) -->
+  <footer class="events" id="eventsFooter" data-testid="events" data-obs="recent_events" hidden>
+    <div class="events-head">
+      <h2>Events</h2>
+      <div class="chips filters" id="eventFilters" role="group" aria-label="Event filters">
+        <button type="button" class="chip on" data-filter="all" data-testid="filter-all">All</button>
+        <button type="button" class="chip" data-filter="move" data-testid="filter-move">Move</button>
+        <button type="button" class="chip" data-filter="trade" data-testid="filter-trade">Trade</button>
+        <button type="button" class="chip" data-filter="combat" data-testid="filter-combat">Combat</button>
+        <button type="button" class="chip" data-filter="comms" data-testid="filter-comms">Comms</button>
+        <button type="button" class="chip" data-filter="planet" data-testid="filter-planet">Planets</button>
+        <button type="button" class="chip" data-filter="system" data-testid="filter-system">System</button>
+      </div>
+      <span class="hint small" id="eventsMeta"></span>
+    </div>
+    <div id="eventLog" class="event-log" data-testid="event-log"></div>
+    <details class="drawer">
+      <summary>Client log</summary>
+      <div id="log" class="log" data-testid="log"></div>
+    </details>
+  </footer>
 
   <script src="/static/bot.js"></script>
 </body>
