@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-hosted-bot-computer-use.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **COMMANDER_QUEUED - Phase D CU fixes** |
+| Status | **COMPLETE - hosted /bot CU loop** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -43,6 +43,19 @@ if COMPLETE -> exit cleanly             else stay quiet
 ---
 
 ## Changelog
+
+### 2026-09-21 17:32 PT — Commander — Phase C2 PASS → COMPLETE
+- **C2 re-playtest:** 8 successful P3 WARPs on `/bot?seat=P3` (lhr.life). Phase D checks all PASS (WAITING names seat, data-testid clicks 0 misses, YOUR TURN without reload, no idle-sibling stall).
+- Artifacts: `docs/playtests/C2_SESSION_LOG.md`, `docs/playtests/screenshots-c2/{01-connected,02-your-turn,08-waiting-seat}.png`.
+- **Decision:** No D2 Cursor pass (no new UI friction beyond Qwen wait). Optional polish deferred.
+- mailbox → `COMPLETE`. Pausing TW2K AFK handoff watch. Cursor should exit cleanly.
+
+### 2026-09-21 17:24 PT — Commander — Phase D ACK → Phase C2 re-playtest
+- **Ack:** Phase D @ `2e4a5c2`/`e5184a9`/`db8f0be` accepted (idle auto-WAIT, `current_turn` banner, stable `data-testid`, long-poll YOUR TURN; 490 tests).
+- Tunnel 503 → re-ran `expose_hosted_bot.ps1`; new base in `.tw2k/public_base_url.txt`.
+- Match restarted (3 seats, 120 turns/day, P3 token pinned); P3 `turns_remaining=120`.
+- mailbox → `COMMANDER_WORKING` phase `hosted-bot-cu-c2`. Cursor idle.
+- **Doing:** computer-use re-playtest on `/bot?seat=P3` (≥8 turns validating D fixes).
 
 ### 2026-09-21 15:54 PT — Commander — requeue Phase B assist for Cursor paste
 - Ben asked for updated Cursor paste. Phase A still DONE; prior BLOCKED was missing Tailscale/cloudflared.
@@ -130,6 +143,12 @@ Non-goals: public multi-human net play; rewrite engine language; Cursor on-deman
 ---
 
 ## 5. Orchestrator notes (Commander)
+
+_2026-09-21 17:32 PT — Commander: C2 re-playtest PASS (8 turns); hosted /bot CU loop COMPLETE. AFK watch paused._
+
+
+_2026-09-21 17:24 PT — Commander: Phase D accepted; C2 re-playtest in progress (COMMANDER_WORKING). Cursor idle until D2 or COMPLETE._
+
 
 _2026-09-20 PT Ã¢â‚¬â€ AFK protocol enabled. Mailbox: docs/COMMANDER_NEXT.md. Commander watch routine polls ~10 min. Cursor: long session with 2-min sleep polls. First task = Phase 0 plan._
 
