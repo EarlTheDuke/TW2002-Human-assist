@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-bot-human-parity.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **COMMANDER_QUEUED - S4 full verb groups** |
+| Status | **COMMANDER_QUEUED - S5 known-space map** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -43,6 +43,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 ---
 
 ## Changelog
+
+### 2026-09-21 20:25 PT — Commander — S4 ACK -> S5 queued
+- S4 accepted (c62d2e9): all 34 verbs precise; combat/StarDock/planets/comms pads; 535 tests.
+- Note: deploy_atomic undispatched (use deploy_mines kind=atomic) — leave documented.
+- Queued parity-s5-known-map. mailbox COMMANDER_QUEUED.
 ### 2026-09-21 20:02 PT - Commander - S3 ACK -> S4 queued
 - **Ack:** parity-s3-legality-verbs @ tip `138a6fe` accepted (`engine/legality.py` precise core verbs, Observation.legal_actions, /bot verb pad + trade/plot/probe forms, Fed port `side=not_traded` fix, 515 tests).
 - **Queued:** Active task `parity-s4-verb-groups` - promote coarse legal_actions to precise + /bot forms by group: combat/presence, StarDock, planets, then comms/corp if engine-legal.
@@ -383,6 +388,17 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
 - **Browser proof (local 2-seat, zero precondition rejects):** Comms - `PROPOSE_ALLIANCE target=P1 terms=… — ok: Commander proposed alliance [A1] with HBot` (BREAK ALLIANCE lit right after, as the engine allows). StarDock - after warping 2→68→70→1 all three lit; `BUY_EQUIP item=photon_missiles qty=2 — ok … 24000cr` (ship panel Photons 2; fighters cap shown as 2,480 = headroom); `BUY_SHIP ship_class=cargotran — ok … (33175 cr)` with the choice list correctly omitting corp-only/unique hulls and the preview quoting net cost + trade-in from the envelope (holds 20→75). Combat - at 68 `DEPLOY_FIGHTERS qty=5 mode=toll — ok`, Here panel shows "Fighters 5 (toll) owner P2". Planets group verified by matrix only (no planet within reach in the test match).
 - **Live:** `:8031` restarted on S4 (peek shows 34 precise / 0 coarse). Origin restart dropped the lhr forward as documented; the watchdog re-exposed it unattended 60 s later (`re-exposed OK`), `/bot` 200 through the new URL. **Re-read `.tw2k/public_base_url.txt`.**
 - **Next:** Commander ACK -> S5 known-space map (`known_sectors` coords for known sectors only; quarantine `build_route_table`).
+- **Blockers:** none.
+
+### 2026-09-21 20:41 PT - Fable - parity-s5-known-map DONE
+- **Commits:** `5bf5bbb` engine/copilot · `42a2c0a` `/bot` map · `dc3291b` tests/guide. Pushed; tip `dc3291b`.
+- **Observation:** `known_sectors: [{id, x, y, port, is_fedspace, last_seen_day, warps_known}]` built by `_known_sectors()` from `player.known_sectors ∪ known_warps.keys ∪ {current}` - layout coords from `Sector.x/y` **for those ids only**; `port` is the remembered `known_ports[sid]["class"]` (live only for the current sector). UI-only: `format_observation` does not ship it (LLM seats keep `known_warps`). 45 -> 46 Observation fields; S2 coverage test forced the map card as its `data-obs` home.
+- **F5 fixed:** `copilot/dashboards._bfs_hops` now walks `player.known_warps` instead of `universe.sectors` (the true-graph leak). Live prices remain a documented LAN `/play` copilot convenience (`/api/*` is behind the spectator gate on hosted URLs; `/bot` uses snapshots). `test_copilot_phase_h6` fixture now seeds the tester's warp memory so the ranking test stays meaningful.
+- **`/bot` map** (`#knownMap` SVG in the Where column, replaces the bare warp list; text twin kept in a drawer): known nodes fitted to the viewBox from server coords; **you-are-here** highlighted; remembered port code under each node; FedSpace ring; edges from `known_warps` - solid when the return warp is remembered, dashed + arrowhead when one-way/return unknown; warp targets with no coordinates drawn as small dashed **stubs** placed around their source (no server coordinate used or implied). Nodes are `role=button`, `tabindex=0`, `data-testid="map-sector-<id>"`, `aria-label`, `<title>` tooltip, Enter/Space activate; click/keypress opens the S3 **plot_course** form prefilled with the target when `legal_actions.plot_course` is legal (map re-keys on legality/awaiting; stable DOM across polls). Reduced-motion respected.
+- **Tests:** `tests/test_parity_s5.py` (4): fog (known ids exactly = visited/scanned/probed/current; coords equal the layout; probed-but-unscouted far sector shows no port even if it has one; LLM message has no coords), fresh player knows only where they stand, route BFS honours memory not the true graph, map UI contract (stub placement derives only from the source node's screen position). Full suite **539 passed**; ruff clean.
+- **Browser proof (local 2-seat):** after warp 68 → scan → warp 70 → scan the map showed 8 sectors (1 STARDOCK, 2 FED, 28, 34, 50 SBB, 61 BBS, 68, 70 here). Tap `map-sector-61` → plot form prefilled target=61, preview "1 hop(s) through known warps · executes" → `PLOT_COURSE target=61 execute=true — ok: Commander warped 70 → 61 · autopilot completed 1/1 hops`. Tap `map-sector-2` from 61 → preview "3 hop(s)" → `… warped 61 → 70 · 70 → 68 · 68 → 2 · autopilot completed 3/3 hops toward 2`. Done-when met without opening the harness.
+- **Live:** `:8031` restarted on S5; P3 peek shows 6 known sectors (spawn knowledge). Tunnel survived this restart (200); watchdog still running.
+- **Next:** Commander ACK -> S6 multi-bot ops + Path-B client (or S7 polish).
 - **Blockers:** none.
 
 ### 2026-09-21 16:23 PT — Commander — Phase B ACK → Phase C started
