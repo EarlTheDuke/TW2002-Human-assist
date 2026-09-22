@@ -53,10 +53,21 @@ while ($true) {
     $why = Tunnel-Healthy
     if ($why) {
       Log "tunnel unhealthy ($why) - re-exposing"
-      $out = powershell -NoProfile -File scripts/expose_hosted_bot.ps1 -Port $Port -Provider $Provider -Detach 2>&1
-      $urlLine = ($out | Select-String -Pattern "PUBLIC BASE URL" | Select-Object -First 1)
-      if ($urlLine) { Log "re-exposed: " + ($urlLine.Line -replace 'https://[a-z0-9.-]+', 'https://<new-host>') }
-      else { Log "re-expose failed: " + (($out | Select-Object -Last 3) -join " | ") }
+      # Run the expose script as a separate process with a hard timeout. Capturing its
+      # output on a pipe hangs: the detached ssh child keeps the pipe open forever.
+      $so = Join-Path $tw2k "watchdog_expose.out.log"; $se = Join-Path $tw2k "watchdog_expose.err.log"
+      $p = Start-Process -FilePath "powershell" -PassThru -WindowStyle Hidden `
+        -ArgumentList @("-NoProfile", "-File", "scripts/expose_hosted_bot.ps1", "-Port", $Port, "-Provider", $Provider, "-Detach") `
+        -RedirectStandardOutput $so -RedirectStandardError $se
+      if (-not $p.WaitForExit(150000)) {
+        # Only the wrapper is killed; the ssh/cloudflared child it spawned keeps running.
+        Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+        Log "re-expose wrapper timed out (tunnel child left running); re-checking health"
+      }
+      Start-Sleep -Seconds 5
+      $after = Tunnel-Healthy
+      $hostTag = if (Test-Path $urlFile) { ((Get-Content $urlFile -Raw).Trim() -replace 'https://([a-z0-9]{4})[a-z0-9]*\.', 'https://$1...') } else { "?" }
+      if ($after) { Log "re-expose did not restore health ($after)" } else { Log "re-exposed OK -> $hostTag" }
     }
   }
   Start-Sleep -Seconds $IntervalS

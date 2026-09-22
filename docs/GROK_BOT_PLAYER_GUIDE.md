@@ -114,6 +114,17 @@ Port codes are three letters in order **Fuel Ore, Organics, Equipment**; `B` = p
 
 ---
 
+## 4b. `legal_actions` — ask the engine what you may do (S3)
+
+Every Observation now carries `legal_actions`: one entry per verb, `{kind, legal, reason, turn_cost, detail, params}`. It is the same pure engine query the `/bot` verb pad is gated from, so API seats and cockpit seats reason from identical facts. Use it instead of guessing:
+
+- `legal:false` → `reason` says why (e.g. `"no trading port in this sector"`, `"out of turns (2 left, needs 3)"`, `"no ether probes loaded"`).
+- `params` is the argument envelope: `warp.params.target.choices` are the only legal targets; `trade.params.commodity.buy_choices / sell_choices`, `trade.params.qty.max_by[commodity][side]` (engine cap at **list** price — a rejected haggle settles at list, so affordability is checked at list), `trade.params.unit_price.listed_by[commodity][side]`.
+- `detail:"precise"` (warp, scan, wait, trade, plot_course, probe, hail, broadcast) mirrors every handler precondition; `detail:"coarse"` (the rest, until S4) checks only context (right place / owns the thing).
+- LLM seats get the compact form in the user message: `legal_actions: {legal: [...kinds], blocked: {kind: reason}}`.
+
+Legality is a prediction, not a promise: the engine still validates every POST. Haggles (`unit_price`) never make a legal trade fail — the port counters at list price.
+
 ## 5. Action cheat sheet
 
 `{"kind": <verb>, "args": {...}, "thought": "optional", "scratchpad_update": "optional ≤1500c", "goal_short|goal_medium|goal_long": "optional"}`
