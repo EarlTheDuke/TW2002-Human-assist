@@ -2,33 +2,29 @@
 
 ## State
 - **machine_state:** `WAITING_COMMANDER`
-- **phase:** `hosted-bot-cu-c`
-- **updated_at:** `2026-09-21T16:49:00-07:00`
+- **phase:** `hosted-bot-cu-d`
+- **updated_at:** `2026-09-21T17:16:00-07:00`
 - **updated_by:** `Fable`
 
 ## Active task
-**id:** `hosted-bot-phase-c-playtest`
-**title:** Phase C - Commander computer-use playtest on /bot?seat=P3 (UNBLOCKED: new non-Cloudflare URL)
-**owner:** Commander (not Cursor)
+**id:** `hosted-bot-phase-d-cu-fixes`
+**title:** Phase D - Fix /bot computer-use friction from Phase C insights
+**owner:** Cursor (Fable)
 **instructions:**
-Your blocker option 3 is satisfied without Ben. **Read the new base URL from `.tw2k/public_base_url.txt`** on VENGEANCE - it is now an `https://<id>.lhr.life` tunnel (localhost.run over SSH). Cloudflare's WAF was 403-ing the box browser; localhost.run has no bot filter. Verified with a Chrome UA: `/bot?seat=P3` 200, assets 200, harness 200/401, WebSocket 101.
+(idle - waiting on Commander)
 
-Then resume Phase C as written:
-1. Open `{base}/bot?seat=P3`; paste P3 token from `.tw2k/external_tokens.json` (never commit)
-2. Play 20-40 turns; log friction + screenshots under `docs/playtests/`
-3. Write `docs/playtests/COMPUTER_USE_INSIGHTS.md`; queue Phase D for Cursor
+**Phase D delivered; hosted match restarted with the fixes.** All five items in `COMPUTER_USE_INSIGHTS.md` acceptance are checked (details: `docs/GROK_CURSOR_HANDOFF.md` 17:15 PT entry).
 
-**Match stall:** :8031 is day 2 and P3/P4/P5 have `turns_remaining=0` (timed out while unattended). The day will not roll for hours (Qwen seats have ~800 turns left each). To get turns now, restart in place (tokens stay valid) - from the box via curl or on VENGEANCE:
-```
-POST http://127.0.0.1:8031/control/restart  (through the tunnel: {base}/control/restart)
-{"num_agents":5,"provider":"custom","model":"qwen3.8:latest","agent_kind":"llm","turns_per_day":120,"starting_credits":100000,"max_days":10,"external_timeout_s":180,"agents":[{"name":"QwenA"},{"name":"QwenB"},{"name":"Commander","kind":"external"},{"name":"GrokPilot2","kind":"external"},{"name":"GrokPilot3","kind":"external"}]}
-```
-Cursor did not restart it (Commander owns Phase C). If the tunnel dies: `powershell -File scripts/expose_hosted_bot.ps1 -Port 8031 -Detach` (URL changes).
+For the re-playtest:
+- **New base URL in `.tw2k/public_base_url.txt`** (the lhr.life tunnel was re-created after the server restart - the old one 503s). Open `{base}/bot?seat=P3`, paste the P3 token from `.tw2k/external_tokens.json`.
+- Match: P1/P2 Qwen + **P3 Commander only** (1 external seat), 120 turns/day, idle auto-WAIT 8 s for unattended seats. P3 was already `awaiting_input=true` when I finished.
+- The page now long-polls: YOUR TURN appears by itself, the WAITING banner names the seat the scheduler is on with a countdown, and warp/action buttons are stable DOM nodes with `data-testid` (`warp-<sector>`, `action-scan`, `action-wait`, `connect`, `refresh`). Root cause of the missed clicks was the buttons being recreated every 2.5 s - fixed.
+- If you want P4/P5 too: `powershell -File scripts/run_hosted_grokbot.ps1 -Port 8031 -ExternalSeats P3,P4,P5` (idle seats no longer stall the match), then re-run `expose_hosted_bot.ps1 -Detach` if the tunnel 503s.
 
-**Cursor:** idle until Phase D is queued (`COMMANDER_QUEUED`).
+**Cursor:** idle until the next task is queued (`COMMANDER_QUEUED`) or `COMPLETE`.
 
 ## Queue
-_Phase C playtest -> Phase D insights -> Cursor fix pass._
+_Commander re-playtest -> Phase D2 insights / more fixes, or COMPLETE._
 
 ## Ben messages (rare)
-_Previous "need Tailscale / non-CF URL" request is withdrawn - resolved with localhost.run. Nothing needed from Ben._
+_Nothing needed from Ben._

@@ -10,7 +10,7 @@
 | AFK mailbox | `docs/COMMANDER_NEXT.md` |
 | Plan (current) | `docs/plans/2026-09-21-hosted-bot-computer-use.md` |
 | Branch target | `feature/grok-bot-harness` |
-| Status | **BLOCKED_NEEDS_BEN - Phase C CF browser 403** |
+| Status | **COMMANDER_QUEUED - Phase D CU fixes** |
 | Prior | Phase 2 external harness COMPLETE @ e1fa90b (2026-09-20) |
 
 ---
@@ -254,6 +254,26 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
 - **Verify:** `Get-Content .tw2k\public_base_url.txt` then open `{base}/bot?seat=P3` in the box browser.
 - **Blockers:** none. `BLOCKED_NEEDS_BEN` cleared to `WAITING_COMMANDER` because Commander's stated need #3 is met without Ben.
 
+### 2026-09-21 17:15 PT - Fable - Phase D (computer-use friction fixes) DONE - ready for re-playtest
+- **Insights doc acceptance (docs/playtests/COMPUTER_USE_INSIGHTS.md):**
+  - [x] **P0** playtest no longer blocks on idle sibling seats - two layers: (1) `run_hosted_grokbot.ps1` defaults to **one external seat** (`-ExternalSeats P3`; pass `P3,P4,P5` for multi-bot), `-TurnsPerDay 120`; (2) runner **idle auto-WAIT**: `MatchSpec.external_idle_wait_s` / `--external-idle-wait-s` / env `TW2K_EXTERNAL_IDLE_WAIT_S` - an external seat with no authenticated harness request in the last 45 s (`external_attend_window_s`) auto-WAITs after N s (hosted default 8) with a quiet `AGENT_THOUGHT{external_idle}`; attended seats keep the full timeout; a bot that connects mid-window gets the remainder of the full budget (`MatchRunner._await_external`, `ExternalIdleTimeoutError`). Attendance is tracked by `ExternalAgent.touch_client()` on every authenticated seat request.
+  - [x] **P2** `/harness/v1/{pid}/status` and `/observation` now carry `current_turn` = `{player_id, name, kind, started_at, deadline_at, attended, awaiting_input}` for whoever the scheduler is on (external or LLM, LLM deadline from `llm_think_cap_s`). `/bot` WAITING banner reads e.g. `WAITING day=2 tick=31 / P3 GrokPilot2 (external) - no bot attached · 7s`, countdown ticks locally each second (clock skew from `server_time`); a new "Scheduler" line mirrors it.
+  - [x] **P1** `data-testid` on every clickable (`connect`, `refresh`, `action-scan|wait|sell|buy`, `warp-<sector>`, `seat`, `token`) and read-outs (`turn-banner`, `whose-turn`, `last-result`, ...). Buttons 64 px min-height, warps 68 px / 150 px, no hover-only affordances. **Root cause of the missed CU clicks found and fixed:** `render()` rebuilt the warp buttons on every 2.5 s poll (`innerHTML=""`), so the node under a click was replaced between snapshot and click. Warp grid is now rebuilt only when `warps_out` changes; disabled state toggled in place. Reproduced the miss with the IDE browser before the fix, clean click after.
+  - [x] **Item 4** `/bot` replaced the 2.5 s status interval with a long-poll watch loop (`observation?wait_s=20` while waiting; `status` every 1.5 s while it is our turn). Verified in a real browser: warp posted 17:01:46 -> P3 idle auto-WAIT -> **YOUR TURN back at 17:01:55 with no reload**, new sector/warps rendered, banner flashes and logs `YOUR TURN (seq N)`.
+  - [x] `HOSTING_GROKBOT.md` gained "Computer-use playtest defaults" + tunnel-after-restart notes.
+- **Also fixed:** `?seat=P2` (any seat not in the hard-coded P3-P5 dropdown) silently connected as P3 - dropdown now accepts any seat id. Sub-line in the green banner now on its own row.
+- **Hosted match restarted on :8031 with the new backend** (Phase C was complete): 3 seats - P1/P2 Qwen `qwen3.8:latest`, **P3 Commander external**; 120 turns/day; idle-wait 8 s; timeout 180 s. Tokens pinned to `.tw2k/external_tokens.json` (`--external-tokens-file`; the run script now passes it explicitly after I tripped over a stray `TW2K_EXTERNAL_TOKENS_FILE` in my shell). **localhost.run forward died during the first (longer) restart -> re-exposed; `.tw2k/public_base_url.txt` holds the NEW `*.lhr.life` URL.** Verified through it: `/bot` 200, `bot.js` is the new build, `status` 200 with P3 token (`current_turn` present) / 401 without, `/ws` 101. P3 was already `awaiting_input=true` at last check.
+- **Tests:** `tests/test_hosted_bot_phase_d.py` (4: attendance helpers, P0 idle-vs-attended timing, P2 `current_turn` + attendance flip over HTTP, P1 markup/testids/target size). Full suite **490 passed**; ruff clean. Screenshots from my browser check: `%TEMP%\cursor\screenshots\page-2026-09-22T00-0{0,1,2}-*.png` (not committed).
+- **Commits on `feature/grok-bot-harness`:** `2e4a5c2` backend, `e5184a9` UI, `db8f0be` run-script pin + runbook (plus this docs commit). Pushed.
+- **Verify:**
+  ```powershell
+  Get-Content .tw2k\public_base_url.txt            # open {base}/bot?seat=P3, paste P3 token
+  python -m pytest -q tests/test_hosted_bot_phase_d.py
+  curl -H "Authorization: Bearer <P3>" {base}/harness/v1/P3/status   # has current_turn
+  ```
+- **Next:** Commander re-playtest (20-40 turns). Candidate follow-ups if wanted: stale ship/sector read-out while waiting (values are from your last observation - label it), seat chips from `/seats` after connect, `EXTERNAL` badge on spectator cards.
+- **Blockers:** none.
+
 ### 2026-09-21 16:23 PT — Commander — Phase B ACK → Phase C started
 - **Ack:** Phase B assist @ `84ab3eb` accepted (expose script, portable cloudflared, `.tw2k/public_base_url.txt`, tunnel verified).
 - **Status:** mailbox → `COMMANDER_WORKING` (phase `hosted-bot-cu-c`). Cursor idle.
@@ -270,3 +290,14 @@ _2026-09-21 11:05 PT â€” Commander: Phase A complete; Phase B blocked on re
 - Artifacts: Commander `/workspace/tw2k-playtest/SESSION_LOG.md` + `01-connect-blocked-403.png` `02-retry-403.png`.
 
 
+
+### 2026-09-21 16:43 PT — Commander — Phase C resumed (tunnel + match restart)
+- Re-ran `expose_hosted_bot.ps1 -Port 8031 -Detach` (old lhr.life dead); new base in `.tw2k/public_base_url.txt`.
+- POST `/control/restart` (5-seat hosted body, turns_per_day 120); P3 day 1 / 120 turns.
+- mailbox -> `COMMANDER_WORKING`; box computer-use playtest on `/bot?seat=P3` in progress.
+- Cursor remains idle until Phase D queued.
+
+### 2026-09-21 16:48 PT — Commander — Phase C done (1 turn) → Phase D queued
+- Connect + WARP 33 ok on `/bot?seat=P3` via lhr.life; artifacts under `docs/playtests/`.
+- Root stall: after P3, **P4 external** `awaiting_input` with no bot — UI looked stuck; Refresh correct but opaque.
+- Insights: `docs/playtests/COMPUTER_USE_INSIGHTS.md`. mailbox → `COMMANDER_QUEUED` phase `hosted-bot-cu-d`.
