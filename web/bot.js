@@ -296,11 +296,89 @@
   function renderKnownWarps(obs) {
     const kw = obs.known_warps || {};
     const ids = Object.keys(kw).map(Number).sort((a, b) => a - b);
-    setText("knownWarpsCount", `${ids.length} sectors`);
+    setText("knownWarpsCount", `${(obs.known_sectors || []).length} sectors`);
     const el = $("knownWarpsList");
     el.textContent = ids.length
       ? ids.map((sid) => `${sid} → ${(kw[String(sid)] || []).join(",")}`).join("   |   ")
       : "no map memory yet - scan or warp";
+    renderKnownMap(obs);
+  }
+
+  // ---------------------------------------------------------------- S5: known-space map
+  // Pure render of obs.known_sectors (server coords for KNOWN sectors only) +
+  // obs.known_warps (edges). Sectors referenced by a known warp but not yet
+  // known are drawn as dashed "stubs" placed around their source - no server
+  // coordinate is used or implied for them. Click -> plot_course prefill when
+  // the engine says plot_course is legal.
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs) { const e = document.createElementNS(SVG_NS, tag); for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, String(v)); return e; }
+  function renderKnownMap(obs) {
+    const svg = $("knownMap");
+    const nodes = obs.known_sectors || [];
+    const kw = obs.known_warps || {};
+    const here = (obs.sector || {}).id;
+    const key = JSON.stringify([nodes.map((n) => [n.id, n.port, n.warps_known]), Object.keys(kw).length, here, legalOf("plot_course").legal, state.awaiting]);
+    if (svg.getAttribute("data-map-key") === key) return;  // stable DOM across polls
+    svg.setAttribute("data-map-key", key);
+    svg.innerHTML = "";
+    if (!nodes.length) { const t = svgEl("text", { x: 50, y: 50, "text-anchor": "middle", fill: "#93a0c0", "font-size": 4 }); t.textContent = "no map memory yet"; svg.appendChild(t); return; }
+    // Fit known nodes into the viewBox with padding; stubs are placed around their source.
+    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const spanX = Math.max(1e-6, maxX - minX), spanY = Math.max(1e-6, maxY - minY);
+    const span = Math.max(spanX, spanY);
+    const pad = 12;
+    const sx = (x) => pad + ((x - minX) / span) * (100 - 2 * pad) + ((span - spanX) / span) * (100 - 2 * pad) / 2;
+    const sy = (y) => pad + ((y - minY) / span) * (100 - 2 * pad) + ((span - spanY) / span) * (100 - 2 * pad) / 2;
+    const pos = {};
+    for (const n of nodes) pos[n.id] = { x: sx(n.x), y: sy(n.y), known: true, node: n };
+    // Stubs: warp targets we have no coordinates for.
+    const stubs = {};
+    for (const [src, dsts] of Object.entries(kw)) {
+      const s = pos[Number(src)]; if (!s) continue;
+      const unknown = (dsts || []).filter((d) => !pos[d]);
+      unknown.forEach((d, i) => {
+        if (stubs[d]) return;
+        const ang = (i / Math.max(1, unknown.length)) * Math.PI * 2 + (Number(src) % 7) * 0.5;
+        stubs[d] = { x: Math.min(97, Math.max(3, s.x + Math.cos(ang) * 9)), y: Math.min(97, Math.max(3, s.y + Math.sin(ang) * 9)), known: false, src: Number(src) };
+      });
+    }
+    // Edges (known -> known; known -> stub).
+    const defs = svgEl("defs"); const marker = svgEl("marker", { id: "arrowhead", viewBox: "0 0 6 6", refX: 5, refY: 3, markerWidth: 4, markerHeight: 4, orient: "auto" });
+    marker.appendChild(svgEl("path", { d: "M0,0 L6,3 L0,6 z", class: "arrow" })); defs.appendChild(marker); svg.appendChild(defs);
+    const drawn = new Set();
+    for (const [src, dsts] of Object.entries(kw)) {
+      const a = pos[Number(src)]; if (!a) continue;
+      for (const d of dsts || []) {
+        const b = pos[d] || stubs[d]; if (!b) continue;
+        const id = `${src}>${d}`; if (drawn.has(id)) continue; drawn.add(id);
+        const back = (kw[String(d)] || []).includes(Number(src));
+        const reverseKnown = String(d) in kw;
+        const cls = !pos[d] ? "edge stub" : (back ? "edge" : "edge oneway");
+        // Shorten so arrowheads land on the circle edge.
+        const dx = b.x - a.x, dy = b.y - a.y, len = Math.max(1e-6, Math.hypot(dx, dy)), r = pos[d] ? 3.4 : 2.2;
+        const line = svgEl("line", { x1: a.x, y1: a.y, x2: b.x - (dx / len) * r, y2: b.y - (dy / len) * r, class: cls });
+        if (!back && (reverseKnown || !pos[d])) line.setAttribute("marker-end", "url(#arrowhead)");
+        if (back) drawn.add(`${d}>${src}`);
+        svg.appendChild(line);
+      }
+    }
+    // Nodes.
+    const canPlot = canUse("plot_course");
+    const addNode = (id, p, n) => {
+      const g = svgEl("g", { class: `node${p.known ? "" : " stub"}${id === here ? " here" : ""}${n && n.port ? " port" : ""}${n && n.is_fedspace ? " fed" : ""}${canPlot && id !== here ? "" : " disabled"}`, transform: `translate(${p.x.toFixed(2)},${p.y.toFixed(2)})`, tabindex: 0, role: "button", "data-testid": `map-sector-${id}`, "data-sector": id, "aria-label": `sector ${id}${n && n.port ? " port " + n.port : ""}${id === here ? " (you are here)" : ""}` });
+      g.appendChild(svgEl("circle", { r: p.known ? 3.4 : 2.2 }));
+      const t = svgEl("text", { y: 1.1 }); t.textContent = String(id); g.appendChild(t);
+      if (n && n.port) { const c = svgEl("text", { y: 6.2, class: "code" }); c.textContent = n.port; g.appendChild(c); }
+      const title = svgEl("title"); title.textContent = `Sector ${id}${n && n.port ? ` · port ${n.port}` : ""}${n && n.last_seen_day !== null && n.last_seen_day !== undefined ? ` · seen day ${n.last_seen_day}` : ""}${p.known ? "" : " · not yet visited"}${id === here ? " · you are here" : canPlot ? " · tap to plot course" : " · plot_course not legal now"}`;
+      g.appendChild(title);
+      const go = () => { if (id === here) return; if (!canUse("plot_course")) return; openVerb("plot_course", { target: id }); svg.querySelectorAll(".node").forEach((x) => x.classList.toggle("selected", x === g)); };
+      g.addEventListener("click", go);
+      g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } });
+      svg.appendChild(g);
+    };
+    for (const [id, p] of Object.entries(stubs)) addNode(Number(id), p, null);
+    for (const n of nodes) addNode(n.id, pos[n.id], n);
   }
 
   function renderShip(obs) {
@@ -493,6 +571,7 @@
 
     rows($("verbReasons"), reasons, (r) => row(r, [], "stale"), state.awaiting ? "all shown verbs are legal now" : "waiting for your turn - buttons enable when the scheduler reaches you");
     renderVerbGroups();
+    renderKnownMap(obs);  // map click-to-plot follows the same gate; re-keys on awaiting/legality
     // Keep an open form stable across polls: only rebuild when the engine's
     // envelope for that verb changed (otherwise typed values and CU refs would
     // be wiped every 1.5 s). Enabled/disabled state is refreshed separately.
@@ -794,6 +873,8 @@
   function renderObservation(obs, isPeek) {
     state.obs = obs;
     state.obsIsPeek = !!isPeek;
+    state.legal = {};
+    for (const la of obs.legal_actions || []) state.legal[la.kind] = la;
     renderScoreboard(obs);
     renderHere(obs);
     renderPort(obs);

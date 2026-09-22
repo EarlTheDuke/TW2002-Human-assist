@@ -73,9 +73,20 @@
         <div class="list" id="adjacentStrip"></div>
       </div>
 
-      <div class="card" id="knownWarpsCard" data-testid="known-warps" data-obs="known_warps">
+      <div class="card" id="mapCard" data-testid="known-map" data-obs="known_sectors">
         <h2>Known space <span class="badge" id="knownWarpsCount">-</span></h2>
-        <div class="hint small" id="knownWarpsList"></div>
+        <p class="hint small" style="margin:0 0 8px">Only sectors you have visited, scanned or probed. Tap a sector to plot a course (when legal).</p>
+        <svg id="knownMap" class="known-map" viewBox="0 0 100 100" role="img" aria-label="Known-space map" data-testid="known-map-svg"></svg>
+        <div class="chips" style="margin-top:8px">
+          <span class="chip static" style="border-color:var(--go)">● you are here</span>
+          <span class="chip static">● visited</span>
+          <span class="chip static" style="opacity:.6">○ seen, not visited</span>
+          <span class="chip static">→ one-way / return unknown</span>
+        </div>
+        <details class="drawer" data-testid="known-warps">
+          <summary>Warp list (text twin)</summary>
+          <div class="hint small" id="knownWarpsList" data-obs="known_warps"></div>
+        </details>
       </div>
     </section>
 
