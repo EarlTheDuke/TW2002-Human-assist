@@ -384,6 +384,16 @@ class Observation(BaseModel):
     # Legal actions hint (textual grammar)
     action_hint: str = Field(default="")
 
+    # Parity S5 - fog-safe layout for the known-space map. One entry per
+    # sector the player KNOWS (visited / scanned / probed, plus the current
+    # sector): {id, x, y, port, is_fedspace, last_seen_day}. Coordinates come
+    # from the universe layout, but only for these ids - a seat cannot infer
+    # where unexplored sectors sit. `port` is the REMEMBERED code from
+    # known_ports (or the live one for the current sector), never a live
+    # peek at a sector you have not scouted. UI-only presentation data:
+    # format_observation does not ship it (LLM seats reason from known_warps).
+    known_sectors: list[dict[str, Any]] = Field(default_factory=list)
+
     # Parity S3 - structured legality. One entry per ActionKind:
     # {kind, legal, reason, turn_cost, detail: precise|coarse, params}.
     # Produced by engine.legality.legal_actions (pure query, same constants
@@ -661,6 +671,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     from .legality import legal_actions as _legal_actions
     from .runner import alignment_label, rank_for
     legal = [la.model_dump() for la in _legal_actions(universe, player_id)]
+    known_sectors = _known_sectors(universe, player)
     obs = Observation(
         day=universe.day,
         tick=universe.tick,
@@ -713,6 +724,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         max_deaths=K.MAX_DEATHS_BEFORE_ELIM,
         limpets_owned=limpets_owned,
         probe_log=probe_log,
+        known_sectors=known_sectors,
         legal_actions=legal,
         action_hint=_action_hint(
             sector_info,
@@ -729,6 +741,35 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _known_sectors(universe: Universe, player) -> list[dict[str, Any]]:
+    """Fog-safe map nodes (Parity S5). See Observation.known_sectors."""
+    from . import constants as K
+
+    ids: set[int] = set(int(s) for s in (player.known_sectors or set()))
+    ids.update(int(s) for s in (player.known_warps or {}))
+    ids.add(int(player.sector_id))
+    out: list[dict[str, Any]] = []
+    for sid in sorted(ids):
+        sector = universe.sectors.get(sid)
+        if sector is None:
+            continue
+        remembered = (player.known_ports or {}).get(sid) or {}
+        if sid == player.sector_id:
+            port_code = sector.port.code if sector.port else None
+        else:
+            port_code = remembered.get("class")  # remembered code only
+        out.append({
+            "id": sid,
+            "x": round(float(getattr(sector, "x", 0.0) or 0.0), 4),
+            "y": round(float(getattr(sector, "y", 0.0) or 0.0), 4),
+            "port": port_code,
+            "is_fedspace": sid in K.FEDSPACE_SECTORS,
+            "last_seen_day": remembered.get("last_seen_day"),
+            "warps_known": sid in (player.known_warps or {}),
+        })
+    return out
 
 
 def _ship_dict(ship) -> dict[str, Any]:

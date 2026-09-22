@@ -27,6 +27,13 @@ Design notes
   trade would *actually* execute at. ``last_seen_day`` / ``age_days``
   are still reported so the UI can show "stale" warnings if the port
   was last scanned >3 days ago.
+* **Routes only through KNOWN space (Parity S5).** Hop counts are computed
+  over ``player.known_warps`` - the player's own warp memory - never the
+  true universe graph. A pair of known ports with no remembered path
+  between them is simply not a route yet. (Live prices remain a copilot
+  convenience for the LAN ``/play`` cockpit; the hosted ``/bot`` cockpit
+  renders the Observation's remembered snapshots instead, and ``/api/*``
+  sits behind the spectator gate on hosted URLs.)
 * **Route cost = round-trip.** Trade loops in TW2002 are bidirectional
   (buy at A → sell at B → deadhead back to A for next load), so
   ``turns_per_trip`` = warp(A→B) + warp(B→A) + 2 (one turn docking at
@@ -124,12 +131,14 @@ def build_price_table(universe: Universe, player_id: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _bfs_hops(universe: Universe, src: int, dst: int, *, cap: int = 40) -> int | None:
-    """Return shortest warp distance src→dst, or ``None`` if unreachable.
+def _bfs_hops(known_warps: dict, src: int, dst: int, *, cap: int = 40) -> int | None:
+    """Shortest distance src→dst over the player's OWN warp memory.
 
-    Duplicates the hop count from ``runner._bfs_path`` but returns the
-    integer directly and bails at ``cap`` hops — the dashboard only
-    cares about short round-trips (long routes are low profit-per-turn).
+    Parity S5 (fog fix F5): this used to BFS the true universe graph, which
+    told a player the hop count through sectors they had never seen. Now it
+    walks ``player.known_warps`` only - the same graph the LLM seats reason
+    from - so a route is reported only when the player actually knows a way.
+    Bails at ``cap`` hops (long routes are low profit-per-turn anyway).
     """
     if src == dst:
         return 0
@@ -139,7 +148,8 @@ def _bfs_hops(universe: Universe, src: int, dst: int, *, cap: int = 40) -> int |
         cur, d = q.popleft()
         if d >= cap:
             continue
-        for nxt in universe.sectors[cur].warps:
+        for nxt in known_warps.get(cur, known_warps.get(str(cur), ())) or ():
+            nxt = int(nxt)
             if nxt in visited:
                 continue
             if nxt == dst:
@@ -186,10 +196,12 @@ def build_route_table(
     candidates: list[dict[str, Any]] = []
     distance_cache: dict[tuple[int, int], int | None] = {}
 
+    known_warps = {int(k): list(v) for k, v in (player.known_warps or {}).items()}
+
     def _dist(a: int, b: int) -> int | None:
         key = (a, b)
         if key not in distance_cache:
-            distance_cache[key] = _bfs_hops(universe, a, b, cap=hop_cap)
+            distance_cache[key] = _bfs_hops(known_warps, a, b, cap=hop_cap)
         return distance_cache[key]
 
     for (src, commodity), (sell_price, src_stock) in sell_side.items():

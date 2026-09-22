@@ -380,6 +380,9 @@ def _make_universe_with_known_ports():
             },
             "last_seen_day": u.day,
         }
+    # Parity S5: routes are computed over the player's OWN warp memory, so
+    # give the tester the whole graph as "known" (they have scouted it all).
+    player.known_warps = {sid: list(s.warps) for sid, s in u.sectors.items()}
     return u, player, port_sids
 
 
