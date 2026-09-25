@@ -44,6 +44,10 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-25 16:05 PT - Fable - seat-bot S4 delivered (`7a9813d`, PR #1)
+- `src/tw2k/agents/seat_acceptance.py`: seat-only envelope validator (required args, choices, qty caps, plot execute), milestone tracker, recorded-trace replay, synthetic storyboards. `scripts/seat_brain_acceptance.py` CLI (synthetic / record / replay); `seat_brain_v2.py --record` tees live mailbox payloads.
+- `tests/test_seat_bot_s4.py` (9): storyboards, validator negatives (missing planet_id/qty etc.), >200-state grid sweep, record->replay with a fresh brain (identical milestones), HTTP harness e2e with request-path fog audit (only P1's own endpoints). Suite 581 passed; ruff clean.
+- Next: S5 docs when queued. Blockers: none.
 ### 2026-09-24 22:40 PT - Fable - seat-bot S3 delivered (`205bb10`, PR #1)
 - `src/tw2k/agents/seat_brain.py`: goal-driven `SeatBrain` from the seat's own observation only; `scripts/seat_brain_v2.py` runner (mailbox / `--harness`); `commander_p4_brain.py` is now a thin P4 wrapper (legacy ladder kept locally, uncommitted).
 - Offline proof: `tests/test_seat_bot_s3.py` (8) drives the real engine through `build_observation` only; CargoTran -> genesis -> deploy -> land -> citadel -> ferry, 0 rejections, home citadel >=L2 by day 6. Suite 572 passed; ruff clean.
