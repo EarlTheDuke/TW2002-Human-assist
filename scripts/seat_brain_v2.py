@@ -50,7 +50,7 @@ def _log(log_dir: Path | None, seq, obs: dict, action: dict, brain: SeatBrain) -
         f.write(json.dumps(rec) + "\n")
 
 
-def run_mailbox(seat: str, mailbox: Path, log_dir: Path | None, max_turns: int) -> int:
+def run_mailbox(seat: str, mailbox: Path, log_dir: Path | None, max_turns: int, record: Path | None = None) -> int:
     brain = SeatBrain()
     pending = mailbox / f"{seat}.pending.json"
     decision = mailbox / f"{seat}.decision.json"
@@ -68,6 +68,10 @@ def run_mailbox(seat: str, mailbox: Path, log_dir: Path | None, max_turns: int) 
             time.sleep(0.3)
             continue
         obs = data.get("observation") or {}
+        if record is not None:  # seat-only trace for scripts/seat_brain_acceptance.py replay
+            record.parent.mkdir(parents=True, exist_ok=True)
+            with record.open("a", encoding="utf-8") as f:
+                f.write(json.dumps({"seat": seat, "turn_seq": seq, "observation": obs}) + "\n")
         action = brain.decide(obs)
         tmp = decision.with_suffix(".tmp")
         tmp.write_text(json.dumps({"turn_seq": seq, "action": action}), encoding="utf-8")
@@ -106,13 +110,16 @@ def main() -> int:
     ap.add_argument("--tokens-file", default=str(ROOT / ".tw2k" / "external_tokens.json"))
     ap.add_argument("--log-dir", default=None)
     ap.add_argument("--max-turns", type=int, default=0)
+    ap.add_argument("--record", default=None,
+                    help="append each mailbox payload (seat's own observation) to this JSONL for offline replay")
     args = ap.parse_args()
     seat = args.seat.upper()
     log_dir = Path(args.log_dir) if args.log_dir else None
     try:
         if args.harness:
             return asyncio.run(run_harness(seat, args.base_url, Path(args.tokens_file), log_dir, args.max_turns))
-        return run_mailbox(seat, Path(args.mailbox_dir), log_dir, args.max_turns)
+        return run_mailbox(seat, Path(args.mailbox_dir), log_dir, args.max_turns,
+                           Path(args.record) if args.record else None)
     except KeyboardInterrupt:
         return 130
 
