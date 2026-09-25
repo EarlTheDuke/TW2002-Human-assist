@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-24 22:40 PT - Fable - seat-bot S3 delivered (`205bb10`, PR #1)
+- `src/tw2k/agents/seat_brain.py`: goal-driven `SeatBrain` from the seat's own observation only; `scripts/seat_brain_v2.py` runner (mailbox / `--harness`); `commander_p4_brain.py` is now a thin P4 wrapper (legacy ladder kept locally, uncommitted).
+- Offline proof: `tests/test_seat_bot_s3.py` (8) drives the real engine through `build_observation` only; CargoTran -> genesis -> deploy -> land -> citadel -> ferry, 0 rejections, home citadel >=L2 by day 6. Suite 572 passed; ruff clean.
+- Bugs found and fixed while building: brain spent itself to 6 cr (reserve vanished while a citadel was building; ferried without need); free infinite `plot_course` loop when the first hop is unaffordable (engine returns ok with 0 hops - reported to Commander); full holds of unsellable goods blocking the ferry (now stocked on the genesis world); second genesis world never visited to build.
+- Next: S4 acceptance harness when queued. Blockers: none.
 ### 2026-09-24 18:40 PT - Fable - seat-bot S1 + S2 ready (PR #1)
 - **PR:** https://github.com/EarlTheDuke/TW2002-Human-assist/pull/1 (head `feature/seat-bot-competitive` @ `557b780`, base `review/seat-bot-base`; commits `e04103e` S1, `557b780` S2 also on `feature/grok-bot-harness`).
 - **S1:** `Planet.origin` set on every ownership change (genesis / claim on neutral land or orphan `claim_planet` / other on seizure, map start, legacy). `owned_planets[]` adds `origin`, `colonists` per pool, `colonists_total`, `stockpile` (owner-only; same shape as `sector.planets[]`). Prompts: `assign_colonists` examples now carry `planet_id` + `qty`; `deploy_genesis` 3-hop rule; field list + neutral-vs-genesis note.
