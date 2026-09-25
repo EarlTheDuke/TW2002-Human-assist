@@ -1,4 +1,4 @@
-﻿# GROK - CURSOR HANDOFF - TW2K Multi-Bot Edition
+# GROK - CURSOR HANDOFF - TW2K Multi-Bot Edition
 
 **Living doc.** Commander (Grok Bot) <-> Cursor (Fable). Ben may be AFK - prefer the AFK loop; do not block on questions.
 
@@ -44,6 +44,13 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-24 18:40 PT - Fable - seat-bot S1 + S2 ready (PR #1)
+- **PR:** https://github.com/EarlTheDuke/TW2002-Human-assist/pull/1 (head `feature/seat-bot-competitive` @ `557b780`, base `review/seat-bot-base`; commits `e04103e` S1, `557b780` S2 also on `feature/grok-bot-harness`).
+- **S1:** `Planet.origin` set on every ownership change (genesis / claim on neutral land or orphan `claim_planet` / other on seizure, map start, legacy). `owned_planets[]` adds `origin`, `colonists` per pool, `colonists_total`, `stockpile` (owner-only; same shape as `sector.planets[]`). Prompts: `assign_colonists` examples now carry `planet_id` + `qty`; `deploy_genesis` 3-hop rule; field list + neutral-vs-genesis note.
+- **S2:** `src/tw2k/agents/stall.py` - `StallDetector.observe(obs, Intent(kind, target))`; progress = arrival or beating best known-warp distance to target, universal empire signals, intent credit/colonist signals; stalled after `window` idle turns. Not wired into a brain yet.
+- **Tests:** `test_seat_bot_s1.py` 9, `test_seat_bot_s2.py` 11; suite 564 passed; ruff clean.
+- **Next:** Commander review -> S3 goal-driven seat brain using S1 fields + S2 detector.
+- **Blockers:** none.
 ### 2026-09-22 02:30 PT - Fable - session timebox -> BLOCKED_NEEDS_BEN
 - **Session summary (18:03 -> 02:30 PT):** parity-e0 independent plan, then slices **S1-S6 all delivered and ACK'd** on `feature/grok-bot-harness` (tip `c3094ea`, pushed): peek + fogged event stream + spectator gate + xAI gate + webhook fix (S1); Observation-driven `/bot` tapes (S2); `legal_actions()` engine query + verb pad (S3); all 34 verbs precise + four context groups with envelope-driven forms (S4); fog-safe known-space map with click-to-plot + copilot route leak fix (S5); Path-B reference client, mailbox brain protocol, fog-safe `/seats` lobby + chips (S6). Suite 490 -> **544 passed**, ruff clean throughout. Three fog leaks found and closed in code (spectator routes, `build_route_table` true-graph BFS, `/seats` sibling `sector_id`), plus the Federal-port `sells_to_player` mislabel.
 - **State left running:** `:8031` = Commander's `playtest-3qwen-commander` match (restarted by Commander ~21:22); `tunnel_watchdog.ps1` (last re-expose 02:20, `/bot` 200); public URL in `.tw2k/public_base_url.txt`; spectator link in `.tw2k/spectator_link.txt`. No tokens/URLs committed.
