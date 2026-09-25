@@ -576,20 +576,28 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     for sid, entry in sorted(player.probe_log.items()):
         probe_log.append({"sector_id": sid, **entry})
 
+    # Owner-only, so exposing colonist pools / stockpile / origin is fog-safe.
+    # Empire play (ferry sizing, citadel tiers) is impossible without them.
     owned_planets: list[dict[str, Any]] = []
     for planet in universe.planets.values():
         if planet.owner_id != player.id:
             continue
+        colonists = {c.value: int(n) for c, n in planet.colonists.items()}
         owned_planets.append({
             "id": planet.id,
             "sector_id": planet.sector_id,
             "name": planet.name,
             "class": planet.class_id.value,
+            "origin": getattr(planet, "origin", "other") or "other",
             "citadel_level": planet.citadel_level,
             "citadel_target": getattr(planet, "citadel_target", 0),
             "citadel_complete_day": getattr(planet, "citadel_complete_day", None),
             "fighters": planet.fighters,
             "shields": planet.shields,
+            # Same shape as sector.planets[] (_planet_brief): per-pool dict + total.
+            "colonists": colonists,
+            "colonists_total": sum(colonists.values()),
+            "stockpile": {c.value: int(n) for c, n in planet.stockpile.items()},
         })
 
     # Match 13 — true orphaned planets. owner_id is None AND corp_ticker is

@@ -827,6 +827,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         # Planet defenders wiped — fall through and seize.
         planet.owner_id = pid
         planet.corp_ticker = player.corp_ticker
+        planet.origin = "other"
         planet.citadel_level = max(0, planet.citadel_level - 1)  # damaged in siege
         planet.treasury = int(planet.treasury * 0.5)
         planet.last_tax_value = _planet_asset_value(planet)
@@ -834,6 +835,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         # Hostile but no defenders — block per legacy behavior (was outright refusal).
         planet.owner_id = pid
         planet.corp_ticker = player.corp_ticker
+        planet.origin = "other"
         planet.last_tax_value = _planet_asset_value(planet)
     elif planet.owner_id is None:
         # Empty neutral map-start planets are claimed by landing. True
@@ -845,6 +847,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         else:
             planet.owner_id = pid
             planet.corp_ticker = player.corp_ticker
+            planet.origin = "claim"
             planet.last_tax_value = _planet_asset_value(planet)
 
     player.planet_landed = planet.id
@@ -1252,6 +1255,7 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         class_id=cls,
         owner_id=pid,
         corp_ticker=player.corp_ticker,
+        origin="genesis",
     )
     # Seed a founding population so the citadel/production path is actually
     # reachable. Without this, new planets had 0 colonists and growth = 0 * 5%
@@ -1337,6 +1341,7 @@ def _handle_claim_planet(universe: Universe, pid: str, action: Action) -> Action
 
     planet.owner_id = pid
     planet.corp_ticker = player.corp_ticker
+    planet.origin = "claim"
     planet.last_tax_value = _planet_asset_value(planet)
     universe.emit(
         EventKind.PLANET_CLAIMED,

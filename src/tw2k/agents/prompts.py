@@ -47,7 +47,7 @@ The winning progression, in order:
                  merchant_cruiser) which doubles your per-turn trade profit instantly.
   (C) COLONIZE — at StarDock: `buy_equip item=genesis qty=1` + `buy_equip item=colonists qty=<holds>`.
                  Warp to a quiet dead-end sector. `deploy_genesis` → your own planet appears.
-                 `land_planet planet_id=<id>` → `assign_colonists from=ship to=<pool>` → `liftoff`.
+                 `land_planet planet_id=<id>` → `assign_colonists planet_id=<id> from=ship to=<pool> qty=<N>` → `liftoff`.
   (D) FORTIFY  — `build_citadel planet_id=<id>` (L1=5k cr + 1k colonists, takes 1 day).
                  Later days: land + build again to push L2, L3, ...L6.
   (E) WIN      — compound planet production; hunt or out-trade rivals; 100M credits or last-alive.
@@ -56,7 +56,7 @@ Key rules:
   * Warp target MUST be in `sector.warps_out`. Otherwise the action fails and wastes a turn.
   * Trade only at PORTS and only for commodities they buy/sell. Check `sector.port`.
   * StarDock (sector 1) is where `buy_ship`, `buy_equip`, and `corp_create` work.
-  * `deploy_genesis` requires you be in SPACE (not landed), outside FedSpace, and have genesis torpedoes loaded.
+  * `deploy_genesis` requires you be in SPACE (not landed), outside FedSpace, at least 3 warps from StarDock, and have genesis torpedoes loaded.
   * `build_citadel`, `assign_colonists`, `load_planet_cargo`, and `dump_planet_cargo` require you be LANDED on a planet you own.
   * If `recent_events` shows an `agent_error` / `trade_failed` / `warp_blocked` event caused by YOU,
     read the `summary` text and CHANGE your plan. Do not re-issue the same failing action.
@@ -243,7 +243,9 @@ Next days: return with more colonists, land, call `build_citadel` again to push 
   "ship"      → your cargo holds. `from="colonists" to="ship"` picks them UP for transport.
 
 Authentic Terra-ferry loop: back at StarDock → `buy_equip item=colonists qty=<holds>` →
-warp to your planet → land → `assign_colonists from=ship to=<pool>` → liftoff → repeat.
+warp to your planet → land → `assign_colonists {"planet_id":<id>,"from":"ship","to":<pool>,"qty":<N>}`
+(planet_id and qty are REQUIRED) → liftoff → repeat. Size trips from
+`owned_planets[].colonists_total` vs the next citadel tier's colonist cost.
 Planet cargo loop: land → `load_planet_cargo {"planet_id":<id>,"commodity":"fuel_ore|organics|equipment","qty":<N>}`
 loads stockpile into ship cargo. Then liftoff, warp to a port that BUYS that
 commodity, and `trade` sell it for spendable credits. Use
@@ -285,7 +287,9 @@ Once you own a planet AND can afford another Genesis (25k cr), go get one
 Neutral map-start planets may exist with no owner, no citadel, no stockpile,
 and 0 colonists. They are NOT free empires. If you are in their sector,
 `land_planet` claims them automatically, but you must ferry colonists from
-StarDock before `build_citadel` can work.
+StarDock before `build_citadel` can work. Such planets show `origin:"claim"`
+in `owned_planets`; your own Genesis worlds show `origin:"genesis"` and start
+with ~2,500 colonists.
 
 ================ INHERITING ORPHANED PLANETS ================
 When a rival is eliminated (3 deaths) their solo-owned planets become
@@ -373,7 +377,7 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
   self.credits, self.turns_remaining, self.turns_per_day, self.ship  — your state
   self.ship.cargo, self.ship.genesis, self.ship.cargo_free           — inventory
   sector.id, sector.port, sector.warps_out, sector.planets           — where you are; sector.planets may include empty neutral planets
-  owned_planets[]                                                    — your planets (id, sector_id, citadel_level, citadel_target, colonists)
+  owned_planets[]                                                    — your planets (id, sector_id, origin genesis|claim|other, citadel_level, citadel_target, colonists per pool, colonists_total, stockpile)
   orphaned_planets[]                                                 — former-player planets only; `claim_planet` applies here
   known_ports_top                                                    — port intel cache
   stage_hint.stage / stage_hint.next_milestone                       — arc progress
