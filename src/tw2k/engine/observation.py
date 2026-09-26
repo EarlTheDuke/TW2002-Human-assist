@@ -1082,8 +1082,12 @@ def _aggregate_recent_failures(
             key = ("trade_failed", payload.get("commodity"), payload.get("side"))
             label = f"trade {payload.get('side')} {payload.get('commodity')}"
         else:  # AGENT_ERROR
-            key = ("agent_error", payload.get("kind"))
-            label = f"{payload.get('kind') or 'unknown'} rejected"
+            # The scheduler stores the rejected action under payload["action"];
+            # older emitters used payload["kind"]. Without this every rejection
+            # collapsed into one "unknown rejected" bucket.
+            verb = payload.get("kind") or (payload.get("action") or {}).get("kind")
+            key = ("agent_error", verb)
+            label = f"{verb or 'unknown'} rejected"
 
         row = buckets.setdefault(key, {
             "kind": ev.kind.value,

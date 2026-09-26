@@ -45,6 +45,14 @@ from .stall import Intent, StallDetector, known_distance
 STARDOCK = 1
 MEMORY_TAG = "SEATBRAIN "
 STALL_BREAK_TURNS = 3
+# S6: self-failure events a seat can see about its own actions.
+FAIL_KINDS = ("agent_error", "trade_failed", "warp_blocked")
+BAN_DECISIONS = 12          # a failed exact action is not retried for this many decisions
+KIND_BAN_AFTER = 2          # same verb failing this many times in a day -> verb shelved for the day
+PRESSURE_NW_RATIO = 1.15    # a rival this far ahead on public net worth = we are trailing
+PRESSURE_NW_GAP = 10_000
+ORPHAN_MAX_HOPS = 8
+CLAIM_WORLD_MIN_COLONISTS = 1_000
 
 
 @dataclass
@@ -57,11 +65,21 @@ class SeatMemory:
     break_left: int = 0
     # "sector:commodity" -> day a remembered buyer refused us (stale / full); skipped that day.
     bad_sells: dict[str, int] = field(default_factory=dict)
+    # S6 failure replanning (all derived from the seat's own events).
+    decisions: int = 0
+    last_action_sig: str | None = None
+    last_event_seq: int = 0
+    banned: dict[str, int] = field(default_factory=dict)        # action signature -> banned until decision N
+    kind_fails: dict[str, list[int]] = field(default_factory=dict)  # verb -> [day, count]
+    banned_kinds: dict[str, int] = field(default_factory=dict)  # verb -> day shelved
+    ban_day: int = 0
+    replans: int = 0
 
     def dump(self) -> str:
         return MEMORY_TAG + json.dumps({
             "home_planet": self.home_planet, "home_sector": self.home_sector,
             "deploy_sector": self.deploy_sector, "stall_breaks": self.stall_breaks,
+            "last_event_seq": self.last_event_seq, "last_action_sig": self.last_action_sig,
             # keep the scratchpad small: only the 40 most visited sectors
             "visits": dict(sorted(self.visits.items(), key=lambda kv: -kv[1])[:40]),
         }, separators=(",", ":"))
@@ -80,6 +98,8 @@ class SeatMemory:
         mem.deploy_sector = data.get("deploy_sector")
         mem.stall_breaks = int(data.get("stall_breaks") or 0)
         mem.visits = {int(k): int(v) for k, v in (data.get("visits") or {}).items()}
+        mem.last_event_seq = int(data.get("last_event_seq") or 0)
+        mem.last_action_sig = data.get("last_action_sig")
         return mem
 
 
@@ -106,6 +126,15 @@ class View:
         ks = obs.get("known_sectors")
         self.known_ids = ({int(s["id"]) for s in ks if isinstance(s, dict) and "id" in s}
                           if isinstance(ks, list) else set(self.known_warps))
+        self.self_id = obs.get("self_id")
+        self.day = int(obs.get("day") or 0)
+        self.net_worth = int(obs.get("net_worth") or self.credits)
+        self.rivals = [r for r in (obs.get("rivals") or []) if isinstance(r, dict)]
+        self.events = [e for e in (obs.get("recent_events") or []) if isinstance(e, dict)]
+        self.failures = [f for f in (obs.get("recent_failures") or []) if isinstance(f, dict)]
+        # Only planets the ENGINE lists as true former-player orphans; never inferred.
+        self.orphans = {int(p["id"]): p for p in (obs.get("orphaned_planets") or [])
+                        if isinstance(p, dict) and p.get("id") is not None}
 
     def ok(self, kind: str) -> bool:
         return bool((self.legal.get(kind) or {}).get("legal"))
@@ -136,6 +165,14 @@ class View:
     def genesis_planets(self) -> list[dict[str, Any]]:
         return [p for p in self.owned if p.get("origin") == "genesis"]
 
+    def worlds(self) -> list[dict[str, Any]]:
+        """Planets worth developing: own genesis worlds, plus claimed worlds that already
+        carry a citadel or a real colony (e.g. an inherited orphan). Empty neutral claims
+        stay excluded - that was the Kimi3 planet-20 trap."""
+        return [p for p in self.owned if p.get("origin") == "genesis"
+                or int(p.get("citadel_level") or 0) >= 1
+                or _colonists_total(p) >= CLAIM_WORLD_MIN_COLONISTS]
+
 
 def _colonists_total(p: dict[str, Any]) -> int:
     t = p.get("colonists_total")
@@ -163,6 +200,28 @@ def next_tier(planet: dict[str, Any], *, lookahead: bool = False) -> tuple[int, 
     return cred, col
 
 
+def _signature(action: dict[str, Any], v: View | None = None) -> str:
+    """Identity of an action for failure bookkeeping: verb + the argument that decides it."""
+    kind = str(action.get("kind"))
+    a = action.get("args") or {}
+    if kind in ("warp", "plot_course", "probe", "attack", "photon_missile", "hail"):
+        key = a.get("target")
+    elif kind in ("land_planet", "build_citadel", "assign_colonists", "claim_planet",
+                  "load_planet_cargo", "dump_planet_cargo"):
+        key = a.get("planet_id")
+    elif kind == "trade":
+        return f"trade:{a.get('commodity')}:{a.get('side')}"
+    elif kind == "buy_equip":
+        key = a.get("item")
+    elif kind == "buy_ship":
+        key = a.get("ship_class")
+    elif kind == "deploy_genesis" and v is not None:
+        key = v.here
+    else:
+        key = ""
+    return f"{kind}:{key}"
+
+
 class SeatBrain:
     def __init__(self, *, target_planets: int = 2, cash_buffer: int = 2_000, working_capital: int = 8_000,
                  stall_window: int = 8) -> None:
@@ -175,6 +234,7 @@ class SeatBrain:
         self.mem: SeatMemory | None = None
         self._intent = Intent()
         self.last_report = None
+        self.pressure: dict[str, Any] | None = None
 
     # ------------------------------------------------------------------ entry
     def decide(self, obs: Any) -> dict[str, Any]:
@@ -185,6 +245,9 @@ class SeatBrain:
         mem = self.mem
         if v.here is not None:
             mem.visits[int(v.here)] = mem.visits.get(int(v.here), 0) + 1
+        mem.decisions += 1
+        self._ingest_failures(v)
+        self.pressure = self._rival_pressure(v)
         self._refresh_home(v)
 
         report = self.detector.observe(o, self._intent)
@@ -198,46 +261,156 @@ class SeatBrain:
         if mem.break_left > 0:
             mem.break_left -= 1
             action, intent = self._explore(v, f"stall break ({report.summary()})")
+            if action is not None and self._banned_why(action, v):
+                action, intent = None, Intent()
         if action is None:
             action, intent = self._ladder(v)
         self._intent = intent
+        mem.last_action_sig = _signature(action, v)
         return self._finish(v, action)
+
+    # ------------------------------------------------------------------ S6: failures / rivals
+    def _ingest_failures(self, v: View) -> None:
+        """Turn the seat's own failure events into bans so a rejected action is not retried blindly.
+
+        Sources (all in the seat's observation): new `agent_error` / `trade_failed` /
+        `warp_blocked` events for this seat since the last decision (attributed to the
+        action we sent last), their `facts` (blocked warp target, failed commodity), and
+        the engine's aggregated `recent_failures` (count >= 2).
+        """
+        mem = self.mem
+        if v.day != mem.ban_day:  # a new day brings new turns/credits: give every action a fresh try
+            mem.banned.clear()
+            mem.ban_day = v.day
+        seqs = [int(e.get("seq") or 0) for e in v.events]
+        new = [e for e in v.events if int(e.get("seq") or 0) > mem.last_event_seq
+               and e.get("kind") in FAIL_KINDS and (v.self_id is None or e.get("actor_id") == v.self_id)]
+        if seqs:
+            mem.last_event_seq = max(mem.last_event_seq, max(seqs))
+        for e in new:
+            facts = e.get("facts") or {}
+            sigs: set[str] = set()
+            if e.get("kind") == "warp_blocked" and facts.get("target") is not None:
+                sigs |= {f"warp:{facts['target']}", f"plot_course:{facts['target']}"}
+            elif e.get("kind") == "trade_failed" and facts.get("commodity"):
+                sigs.add(f"trade:{facts['commodity']}:{facts.get('side')}")
+            if mem.last_action_sig:
+                sigs.add(mem.last_action_sig)
+            for sig in sigs:
+                mem.banned[sig] = mem.decisions + BAN_DECISIONS
+            verb = (mem.last_action_sig or e.get("kind") or "").split(":")[0]
+            day, count = mem.kind_fails.get(verb, [v.day, 0])
+            count = count + 1 if day == v.day else 1
+            mem.kind_fails[verb] = [v.day, count]
+            if count >= KIND_BAN_AFTER and verb not in ("wait", "liftoff"):
+                mem.banned_kinds[verb] = v.day
+            mem.replans += 1
+        for f in v.failures:
+            if int(f.get("count") or 0) < 2:
+                continue
+            label = str(f.get("target_label") or "")
+            if f.get("kind") == "warp_blocked":
+                tgt = "".join(ch for ch in label if ch.isdigit())
+                if tgt:
+                    mem.banned.setdefault(f"warp:{tgt}", mem.decisions + BAN_DECISIONS)
+                    mem.banned.setdefault(f"plot_course:{tgt}", mem.decisions + BAN_DECISIONS)
+            elif f.get("kind") == "agent_error" and label.endswith(" rejected"):
+                verb = label[: -len(" rejected")]
+                if verb and verb not in ("unknown", "wait", "liftoff"):
+                    mem.banned_kinds.setdefault(verb, v.day)
+
+    def _banned_why(self, action: dict[str, Any], v: View) -> str | None:
+        mem = self.mem
+        kind = action.get("kind")
+        if kind in ("wait", "query_limpets"):
+            return None
+        if mem.banned_kinds.get(kind) == v.day:
+            return f"{kind} failed repeatedly today"
+        sig = _signature(action, v)
+        if mem.banned.get(sig, 0) > mem.decisions:
+            return f"{sig} just failed"
+        return None
+
+    def _rival_pressure(self, v: View) -> dict[str, Any] | None:
+        """Public race signals only: rivals' net worth (public in the observation) and
+        empire events we actually witnessed (genesis / citadel / planet claims)."""
+        ahead = [r for r in v.rivals if r.get("alive", True)
+                 and int(r.get("net_worth") or 0) >= max(v.net_worth * PRESSURE_NW_RATIO, v.net_worth + PRESSURE_NW_GAP)]
+        empire_kinds = ("genesis_deployed", "build_citadel", "citadel_complete", "planet_claimed")
+        seen = [e for e in v.events if e.get("kind") in empire_kinds
+                and e.get("actor_id") not in (None, v.self_id)]
+        if not ahead and not (seen and not v.worlds()):
+            return None
+        leader = max(ahead, key=lambda r: int(r.get("net_worth") or 0)) if ahead else None
+        return {
+            "leader": leader.get("id") if leader else None,
+            "leader_nw": int(leader.get("net_worth") or 0) if leader else None,
+            "empire_signals": [e.get("kind") for e in seen][-3:],
+        }
 
     # ------------------------------------------------------------------ ladder
     def _ladder(self, v: View) -> tuple[dict[str, Any], Intent]:
-        for rung in (self._landed, self._genesis_aboard, self._land_home, self._at_stardock,
+        skipped: list[str] = []
+        for rung in (self._landed, self._genesis_aboard, self._land_home, self._land_orphan, self._at_stardock,
                      self._travel, self._explore_for_stardock, self._earn):
             out = rung(v)
-            if out is not None and out[0] is not None:
-                return out
-        return self._idle(v)
+            if out is None or out[0] is None:
+                continue
+            why = self._banned_why(out[0], v)
+            if why:
+                skipped.append(why)
+                continue
+            if skipped:
+                out[0]["thought"] += f" [replanned: {'; '.join(skipped)}]"
+            return out
+        return self._idle(v, skipped)
 
     def _landed(self, v: View):
         if v.landed is None:
             return None
+        # Claim only a planet the engine itself lists as a true orphan, while landed on it.
+        # Candidates in priority order; banned ones fall through so liftoff stays the fallback.
+        candidates: list[dict[str, Any]] = []
+        if int(v.landed) in v.orphans and v.ok("claim_planet"):
+            choices = [int(c) for c in v.choices("claim_planet", "planet_id")]
+            if not choices or int(v.landed) in choices:
+                o = v.orphans[int(v.landed)]
+                candidates.append(self._act("claim_planet", {"planet_id": int(v.landed)},
+                                            f"claim orphan {o.get('name', v.landed)} (L{o.get('citadel_level', 0)}, "
+                                            f"{o.get('fighters', 0)} fighters)"))
         planet = v.planet(v.landed)
-        work_site = planet is not None and planet.get("origin") == "genesis"
+        work_site = planet is not None and planet in v.worlds()
         if work_site:
+            pid = int(planet["id"])
             if v.colonists_aboard > 0 and v.ok("assign_colonists"):
                 qty = v.max_by("assign_colonists", "qty", "ship") or v.colonists_aboard
                 pools = planet.get("colonists") if isinstance(planet.get("colonists"), dict) else {}
                 pool = "organics" if int(pools.get("organics") or 0) < _colonists_total(planet) // 5 else "fuel_ore"
-                return self._act("assign_colonists",
-                                 {"planet_id": int(planet["id"]), "from": "ship", "to": pool, "qty": int(qty)},
-                                 f"unload {qty} colonists to {pool} on planet {planet['id']}"), Intent("colonize")
-            if v.ok("build_citadel") and int(planet["id"]) in v.choices("build_citadel", "planet_id"):
+                candidates.append(self._act("assign_colonists",
+                                            {"planet_id": pid, "from": "ship", "to": pool, "qty": int(qty)},
+                                            f"unload {qty} colonists to {pool} on planet {pid}"))
+            if v.ok("build_citadel") and pid in v.choices("build_citadel", "planet_id"):
                 nxt = v.params("build_citadel").get("next") or {}
-                return self._act("build_citadel", {"planet_id": int(planet["id"])},
-                                 f"build citadel L{nxt.get('level', '?')} on planet {planet['id']}"), Intent("colonize")
+                candidates.append(self._act("build_citadel", {"planet_id": pid},
+                                            f"build citadel L{nxt.get('level', '?')} on planet {pid}"))
             dump = self._unsellable_goods(v)
             if dump and v.ok("dump_planet_cargo") and dump[0] in v.choices("dump_planet_cargo", "commodity"):
                 c, qty = dump
                 qty = min(qty, v.max_by("dump_planet_cargo", "qty", c) or qty)
-                return self._act("dump_planet_cargo", {"planet_id": int(planet["id"]), "commodity": c, "qty": int(qty)},
-                                 f"stock {qty} unsellable {c} on planet {planet['id']} to free holds"), Intent("colonize")
+                candidates.append(self._act("dump_planet_cargo", {"planet_id": pid, "commodity": c, "qty": int(qty)},
+                                            f"stock {qty} unsellable {c} on planet {pid} to free holds"))
         if v.ok("liftoff"):
-            why = "nothing more to do here" if work_site else "not a genesis world - do not invest here"
-            return self._act("liftoff", {}, f"liftoff ({why})"), Intent("colonize")
+            why = "nothing more to do here" if work_site else "not a world worth investing in"
+            candidates.append(self._act("liftoff", {}, f"liftoff ({why})"))
+        skipped = []
+        for action in candidates:
+            why = self._banned_why(action, v)
+            if why:
+                skipped.append(why)
+                continue
+            if skipped:
+                action["thought"] += f" [replanned: {'; '.join(skipped)}]"
+            return action, Intent("colonize")
         return None
 
     def _genesis_aboard(self, v: View):
@@ -270,28 +443,55 @@ class SeatBrain:
                 return self._act("land_planet", {"planet_id": pid}, f"land home planet {pid} ({why})"), Intent("colonize")
         return None
 
+    def _land_orphan(self, v: View):
+        """Land on an engine-listed orphan in this sector when inheriting it beats the genesis path."""
+        if v.landed is not None or not v.ok("land_planet"):
+            return None
+        choices = [int(c) for c in v.choices("land_planet", "planet_id")]
+        contested = {int(c) for c in ((v.params("land_planet").get("planet_id") or {}).get("contested") or [])}
+        for pid, o in v.orphans.items():
+            if o.get("sector_id") == v.here and pid in choices and pid not in contested and self._wants_orphan(v, o):
+                return self._act("land_planet", {"planet_id": pid},
+                                 f"land on orphan {pid} to claim it (L{o.get('citadel_level', 0)})"), Intent("colonize")
+        return None
+
+    def _wants_orphan(self, v: View, o: dict[str, Any]) -> bool:
+        if int(o.get("citadel_level") or 0) >= 1:
+            return True  # an inherited citadel is worth more than a fresh genesis seed
+        if v.worlds():
+            return False
+        genesis_slow = v.credits < GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0]
+        return genesis_slow or self.pressure is not None
+
     def _at_stardock(self, v: View):
         if v.here != STARDOCK:
             return None
         reserve = self._citadel_reserve(v)
+        l1_credits = CITADEL_TIER_COST[0][0]
+        genesis_price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
+                            or GENESIS_TORPEDO_COST)
+        gplanets = v.genesis_planets()
         # Upgrade hull first: 75 holds make every later ferry trip ~4x cheaper in turns.
+        # Deliberately NOT deferred under rival pressure: offline sweeps showed
+        # genesis-before-hull cost 5-140k net worth by day 6 on every seed tried.
         if v.ok("buy_ship") and v.ship_class != "cargotran" and "cargotran" in v.choices("buy_ship", "ship_class"):
             net = int((v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {}).get("cargotran") or 10**12)
             if v.credits - net >= self.cash_buffer and v.ship_class in ("merchant_cruiser", "scout_marauder"):
                 return self._act("buy_ship", {"ship_class": "cargotran"}, f"upgrade to CargoTran ({net} cr net)"), Intent("acquire")
-        # Genesis: the first as soon as it leaves L1 money; more when rich.
-        gplanets = v.genesis_planets()
+        # Genesis: the first as soon as it leaves L1 money; more when rich (sooner when trailing).
         if v.genesis_aboard == 0 and v.ok("buy_equip") and "genesis" in v.choices("buy_equip", "item"):
-            price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis") or 10**12)
-            l1_credits = CITADEL_TIER_COST[0][0]
+            price = genesis_price
             first = not gplanets and v.credits - price >= l1_credits + self.cash_buffer
+            # A 2nd world keeps the full reserve even when trailing: funding it from working
+            # capital starved the first citadel (seed 99: -110k NW by day 6).
             more = bool(gplanets) and len(gplanets) < self.target_planets and v.credits - price >= reserve
             if first or more:
+                why = f" - trailing {self.pressure.get('leader')}" if self.pressure and self.pressure.get("leader") else ""
                 return self._act("buy_equip", {"item": "genesis", "qty": 1},
-                                 f"buy genesis #{len(gplanets) + 1} ({price} cr)"), Intent("acquire")
+                                 f"buy genesis #{len(gplanets) + 1} ({price} cr){why}"), Intent("acquire")
         # Ferry load: only what the next citadel tier still needs, never below the reserve.
         need = self._colonists_needed(v)
-        if (gplanets and need > 0 and self._buildable_elsewhere(v) is None
+        if (v.worlds() and need > 0 and self._buildable_elsewhere(v) is None
                 and v.ok("buy_equip") and "colonists" in v.choices("buy_equip", "item")):
             unit = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("colonists") or 10)
             afford = max(0, (v.credits - reserve) // max(1, unit))
@@ -320,16 +520,33 @@ class SeatBrain:
             plot = self._plot(v, home, f"no known buyer for {dump[0]} - stock it at home")
             if plot:
                 return plot, Intent("colonize", home)
+        # A listed orphan within reach that beats the genesis path: go land on it.
+        if v.colonists_aboard == 0 and v.genesis_aboard == 0:
+            for _pid, o in sorted(v.orphans.items(), key=lambda kv: -int(kv[1].get("citadel_level") or 0)):
+                sid = o.get("sector_id")
+                d = known_distance(v.known_warps, v.here, sid)
+                if sid != v.here and d is not None and d <= ORPHAN_MAX_HOPS and self._wants_orphan(v, o):
+                    plot = self._plot(v, int(sid), f"inherit orphan {o.get('name', _pid)} (L{o.get('citadel_level', 0)})")
+                    if plot:
+                        return plot, Intent("colonize", int(sid))
         if v.here != STARDOCK and v.stardock_known and self._needs_stardock(v):
             plot = self._plot(v, STARDOCK, self._stardock_reason(v))
             if plot:
-                kind = "colonize" if v.genesis_planets() else "acquire"
+                kind = "colonize" if v.worlds() else "acquire"
                 return plot, Intent(kind, STARDOCK)
         return None
 
     def _explore_for_stardock(self, v: View):
         if v.stardock_known:
             return None
+        # Sector 1 is StarDock by rule; the autopilot routes there even if our map hasn't
+        # found it yet. Sitting on genesis money while mapping loses the race (qwen2-kimi3 P6).
+        buffer = 0 if self.pressure is not None else self.cash_buffer
+        rich = v.credits >= GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + buffer
+        if rich and not v.worlds():
+            plot = self._plot(v, STARDOCK, "genesis money in hand - autopilot to StarDock (sector 1)")
+            if plot:
+                return plot, Intent("acquire", STARDOCK)
         return self._explore(v, "find StarDock")
 
     def _earn(self, v: View):
@@ -396,12 +613,14 @@ class SeatBrain:
             return a_sid, f"buy {c} at {a_sid} (~{pa}) for {b_sid} (~{pb})"
         return None, ""
 
-    def _idle(self, v: View):
+    def _idle(self, v: View, skipped: list[str] | None = None):
+        note = f" [replanned: {'; '.join(skipped)}]" if skipped else ""
         out = self._explore(v, "nothing better to do")
-        if out[0] is not None:
+        if out[0] is not None and not self._banned_why(out[0], v):
+            out[0]["thought"] += note
             return out
         if v.ok("wait"):
-            return self._act("wait", {}, "pass"), Intent()
+            return self._act("wait", {}, f"pass{note}"), Intent()
         return self._act("query_limpets", {}, "out of turns - free no-op"), Intent()
 
     # ------------------------------------------------------------------ helpers
@@ -421,11 +640,13 @@ class SeatBrain:
                 self.mem.bad_sells[f"{v.here}:{c}"] = day
 
     def _buildable_elsewhere(self, v: View) -> dict[str, Any] | None:
-        """A genesis world in another sector whose next citadel can start now (colonists + credits)."""
-        for planet in v.genesis_planets():
+        """A world in another sector whose next citadel can start now (colonists + credits).
+        Trailing a rival, we spend the working capital on citadels instead of holding it."""
+        floor = 0 if self.pressure is not None else self.working_capital
+        for planet in v.worlds():
             tier = next_tier(planet)
             if (tier and planet.get("sector_id") != v.here and _colonists_total(planet) >= tier[1]
-                    and v.credits >= tier[0] + self.working_capital):
+                    and v.credits >= tier[0] + floor):
                 return planet
         return None
 
@@ -437,7 +658,7 @@ class SeatBrain:
     def _unsellable_goods(self, v: View) -> tuple[str, int] | None:
         """Largest held commodity with no buyer here and no reachable known buyer."""
         goods = self._held_goods(v)
-        if not goods or not v.genesis_planets():
+        if not goods or not v.worlds():
             return None
         if any(c in self._sellable_here(v) for c, _ in goods):
             return None
@@ -448,16 +669,16 @@ class SeatBrain:
 
     def _refresh_home(self, v: View) -> None:
         mem = self.mem
-        gplanets = v.genesis_planets()
+        candidates = v.genesis_planets() or v.worlds()
         if mem.home_planet is not None and v.planet(mem.home_planet) is None:
             mem.home_planet = mem.home_sector = None
-        if gplanets and mem.home_planet is None:
-            best = max(gplanets, key=lambda p: (int(p.get("citadel_level") or 0), _colonists_total(p)))
+        if candidates and mem.home_planet is None:
+            best = max(candidates, key=lambda p: (int(p.get("citadel_level") or 0), _colonists_total(p)))
             mem.home_planet = int(best["id"])
             mem.home_sector = int(best["sector_id"])
 
     def _work_sites(self, v: View) -> list[dict[str, Any]]:
-        sites = [p for p in v.genesis_planets() if p.get("sector_id") == v.here]
+        sites = [p for p in v.worlds() if p.get("sector_id") == v.here]
         sites.sort(key=lambda p: p.get("id") != self.mem.home_planet)
         return sites
 
@@ -478,7 +699,7 @@ class SeatBrain:
         gplanets = v.genesis_planets()
         if v.genesis_aboard > 0:
             return False
-        if not gplanets:
+        if not v.worlds():
             return v.credits >= GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + self.cash_buffer
         reserve = self._citadel_reserve(v)
         if len(gplanets) < self.target_planets and v.credits >= GENESIS_TORPEDO_COST + reserve:
@@ -489,7 +710,7 @@ class SeatBrain:
                 and v.credits - reserve >= 250)
 
     def _stardock_reason(self, v: View) -> str:
-        return "go to StarDock for a genesis torpedo" if not v.genesis_planets() else "go to StarDock for colonists"
+        return "go to StarDock for a genesis torpedo" if not v.worlds() else "go to StarDock for colonists"
 
     def _plot(self, v: View, target: int, why: str) -> dict[str, Any] | None:
         # plot_course is "legal" even when the first hop cannot be paid for; the
@@ -501,6 +722,7 @@ class SeatBrain:
 
     def _warp_away_from_stardock(self, v: View) -> int | None:
         choices = [int(c) for c in v.choices("warp", "target")] if v.ok("warp") else []
+        choices = [t for t in choices if not self._banned_why({"kind": "warp", "args": {"target": t}}, v)]
         if not choices:
             return None
 
@@ -512,6 +734,7 @@ class SeatBrain:
 
     def _explore(self, v: View, why: str):
         choices = [int(c) for c in v.choices("warp", "target")] if v.ok("warp") else []
+        choices = [t for t in choices if not self._banned_why({"kind": "warp", "args": {"target": t}}, v)]
         if choices:
             choices.sort(key=lambda t: (t in v.known_warps, self.mem.visits.get(t, 0), t))
             return self._act("warp", {"target": choices[0]}, f"explore -> {choices[0]} ({why})"), Intent("explore")
@@ -536,6 +759,8 @@ class SeatBrain:
             short = f"Ferry colonists StarDock -> sector {mem.home_sector}; grow citadel on planet {mem.home_planet}."
         medium = (f"Home planet {mem.home_planet} (L{home.get('citadel_level')}, "
                   f"{_colonists_total(home)} colonists)" if home else "Found a genesis home world")
+        if self.pressure and self.pressure.get("leader"):
+            medium += f"; trailing {self.pressure['leader']} ({self.pressure['leader_nw']} NW) - empire rungs first"
         action["goal_short"] = short
         action["goal_medium"] = medium
         action["goal_long"] = f"Hold {self.target_planets}+ genesis worlds with rising citadels; win on net worth."
