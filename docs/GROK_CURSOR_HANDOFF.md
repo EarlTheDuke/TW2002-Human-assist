@@ -1,4 +1,4 @@
-﻿# GROK - CURSOR HANDOFF - TW2K Multi-Bot Edition
+# GROK - CURSOR HANDOFF - TW2K Multi-Bot Edition
 
 **Living doc.** Commander (Grok Bot) <-> Cursor (Fable). Ben may be AFK - prefer the AFK loop; do not block on questions.
 
@@ -44,6 +44,27 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-25 22:45 PT - Fable - seat-bot S6 delivered (`e8c2f18`, PR #1)
+- SeatBrain now reads rivals (public NW + witnessed empire events), its own failure events + `recent_failures` (ban exact retry, shelve repeated verb for the day), and `orphaned_planets` (claim only a listed orphan while landed + legal). Observation fix: `recent_failures` groups rejections by verb (was all "unknown").
+- Pressure deliberately does not defer the CargoTran or spend the citadel reserve on a 2nd genesis: offline sweeps showed -5k..-140k NW for that.
+- `tests/test_seat_bot_s6.py` 16; seat-bot 53; suite 597 passed; ruff clean. Live `:8031` untouched.
+- Blockers: none.
+### 2026-09-25 16:05 PT - Fable - seat-bot S4 delivered (`7a9813d`, PR #1)
+- `src/tw2k/agents/seat_acceptance.py`: seat-only envelope validator (required args, choices, qty caps, plot execute), milestone tracker, recorded-trace replay, synthetic storyboards. `scripts/seat_brain_acceptance.py` CLI (synthetic / record / replay); `seat_brain_v2.py --record` tees live mailbox payloads.
+- `tests/test_seat_bot_s4.py` (9): storyboards, validator negatives (missing planet_id/qty etc.), >200-state grid sweep, record->replay with a fresh brain (identical milestones), HTTP harness e2e with request-path fog audit (only P1's own endpoints). Suite 581 passed; ruff clean.
+- Next: S5 docs when queued. Blockers: none.
+### 2026-09-24 22:40 PT - Fable - seat-bot S3 delivered (`205bb10`, PR #1)
+- `src/tw2k/agents/seat_brain.py`: goal-driven `SeatBrain` from the seat's own observation only; `scripts/seat_brain_v2.py` runner (mailbox / `--harness`); `commander_p4_brain.py` is now a thin P4 wrapper (legacy ladder kept locally, uncommitted).
+- Offline proof: `tests/test_seat_bot_s3.py` (8) drives the real engine through `build_observation` only; CargoTran -> genesis -> deploy -> land -> citadel -> ferry, 0 rejections, home citadel >=L2 by day 6. Suite 572 passed; ruff clean.
+- Bugs found and fixed while building: brain spent itself to 6 cr (reserve vanished while a citadel was building; ferried without need); free infinite `plot_course` loop when the first hop is unaffordable (engine returns ok with 0 hops - reported to Commander); full holds of unsellable goods blocking the ferry (now stocked on the genesis world); second genesis world never visited to build.
+- Next: S4 acceptance harness when queued. Blockers: none.
+### 2026-09-24 18:40 PT - Fable - seat-bot S1 + S2 ready (PR #1)
+- **PR:** https://github.com/EarlTheDuke/TW2002-Human-assist/pull/1 (head `feature/seat-bot-competitive` @ `557b780`, base `review/seat-bot-base`; commits `e04103e` S1, `557b780` S2 also on `feature/grok-bot-harness`).
+- **S1:** `Planet.origin` set on every ownership change (genesis / claim on neutral land or orphan `claim_planet` / other on seizure, map start, legacy). `owned_planets[]` adds `origin`, `colonists` per pool, `colonists_total`, `stockpile` (owner-only; same shape as `sector.planets[]`). Prompts: `assign_colonists` examples now carry `planet_id` + `qty`; `deploy_genesis` 3-hop rule; field list + neutral-vs-genesis note.
+- **S2:** `src/tw2k/agents/stall.py` - `StallDetector.observe(obs, Intent(kind, target))`; progress = arrival or beating best known-warp distance to target, universal empire signals, intent credit/colonist signals; stalled after `window` idle turns. Not wired into a brain yet.
+- **Tests:** `test_seat_bot_s1.py` 9, `test_seat_bot_s2.py` 11; suite 564 passed; ruff clean.
+- **Next:** Commander review -> S3 goal-driven seat brain using S1 fields + S2 detector.
+- **Blockers:** none.
 ### 2026-09-22 02:30 PT - Fable - session timebox -> BLOCKED_NEEDS_BEN
 - **Session summary (18:03 -> 02:30 PT):** parity-e0 independent plan, then slices **S1-S6 all delivered and ACK'd** on `feature/grok-bot-harness` (tip `c3094ea`, pushed): peek + fogged event stream + spectator gate + xAI gate + webhook fix (S1); Observation-driven `/bot` tapes (S2); `legal_actions()` engine query + verb pad (S3); all 34 verbs precise + four context groups with envelope-driven forms (S4); fog-safe known-space map with click-to-plot + copilot route leak fix (S5); Path-B reference client, mailbox brain protocol, fog-safe `/seats` lobby + chips (S6). Suite 490 -> **544 passed**, ruff clean throughout. Three fog leaks found and closed in code (spectator routes, `build_route_table` true-graph BFS, `/seats` sibling `sector_id`), plus the Federal-port `sells_to_player` mislabel.
 - **State left running:** `:8031` = Commander's `playtest-3qwen-commander` match (restarted by Commander ~21:22); `tunnel_watchdog.ps1` (last re-expose 02:20, `/bot` 200); public URL in `.tw2k/public_base_url.txt`; spectator link in `.tw2k/spectator_link.txt`. No tokens/URLs committed.

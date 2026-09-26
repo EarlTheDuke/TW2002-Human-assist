@@ -576,20 +576,28 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     for sid, entry in sorted(player.probe_log.items()):
         probe_log.append({"sector_id": sid, **entry})
 
+    # Owner-only, so exposing colonist pools / stockpile / origin is fog-safe.
+    # Empire play (ferry sizing, citadel tiers) is impossible without them.
     owned_planets: list[dict[str, Any]] = []
     for planet in universe.planets.values():
         if planet.owner_id != player.id:
             continue
+        colonists = {c.value: int(n) for c, n in planet.colonists.items()}
         owned_planets.append({
             "id": planet.id,
             "sector_id": planet.sector_id,
             "name": planet.name,
             "class": planet.class_id.value,
+            "origin": getattr(planet, "origin", "other") or "other",
             "citadel_level": planet.citadel_level,
             "citadel_target": getattr(planet, "citadel_target", 0),
             "citadel_complete_day": getattr(planet, "citadel_complete_day", None),
             "fighters": planet.fighters,
             "shields": planet.shields,
+            # Same shape as sector.planets[] (_planet_brief): per-pool dict + total.
+            "colonists": colonists,
+            "colonists_total": sum(colonists.values()),
+            "stockpile": {c.value: int(n) for c, n in planet.stockpile.items()},
         })
 
     # Match 13 — true orphaned planets. owner_id is None AND corp_ticker is
@@ -1074,8 +1082,12 @@ def _aggregate_recent_failures(
             key = ("trade_failed", payload.get("commodity"), payload.get("side"))
             label = f"trade {payload.get('side')} {payload.get('commodity')}"
         else:  # AGENT_ERROR
-            key = ("agent_error", payload.get("kind"))
-            label = f"{payload.get('kind') or 'unknown'} rejected"
+            # The scheduler stores the rejected action under payload["action"];
+            # older emitters used payload["kind"]. Without this every rejection
+            # collapsed into one "unknown rejected" bucket.
+            verb = payload.get("kind") or (payload.get("action") or {}).get("kind")
+            key = ("agent_error", verb)
+            label = f"{verb or 'unknown'} rejected"
 
         row = buckets.setdefault(key, {
             "kind": ev.kind.value,
