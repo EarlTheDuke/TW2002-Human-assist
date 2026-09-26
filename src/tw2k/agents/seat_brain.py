@@ -17,8 +17,15 @@ Goal ladder (first rung that yields a legal action wins):
   3. At home with a reason (colonists aboard, citadel buildable): land.
   4. At StarDock: CargoTran upgrade -> genesis (none yet / below target) ->
      fill holds with colonists for the ferry.
-  5. Colonists aboard: plot home.  Need StarDock: plot StarDock.
-  6. Explore until StarDock is known; otherwise make money trading.
+  5. Colonists aboard: plot home. Buildable citadel / orphan: plot there.
+  6. Need StarDock (CargoTran or genesis affordable): ``plot_course`` execute
+     target 1 even when sector 1 is not on the map. Explore only if that
+     plot was rejected (S6 failure bans).
+  7. Otherwise earn: trade known ports. The first profitable pair's one-hop
+     port neighbours are priced before the route is milked.
+  8. Exploration is frontier-directed: plot through known warps to the nearest
+     known sector that still has an unvisited neighbour. Not a greedy local
+     warp (that ABA-bounces).
 
 Loops are judged by `tw2k.agents.stall.StallDetector` (no progress toward
 the declared intent), never by target alternation: StarDock <-> home ferry
@@ -38,7 +45,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..engine.constants import CITADEL_TIER_COST, GENESIS_TORPEDO_COST
+from ..engine.constants import CITADEL_TIER_COST, GENESIS_TORPEDO_COST, SHIP_SPECS
 from .pathb_client import TurnContext, legal_heuristic_policy
 from .stall import Intent, StallDetector, known_distance
 
@@ -74,6 +81,14 @@ class SeatMemory:
     banned_kinds: dict[str, int] = field(default_factory=dict)  # verb -> day shelved
     ban_day: int = 0
     replans: int = 0
+    # N1: port sectors this seat has actually seen (adjacent / known_sectors / known_ports).
+    # StarDock is never recorded - it is not a trade port.
+    ports_seen: set[int] = field(default_factory=set)
+    # (seller, buyer) of the first priced route. One-hop port neighbours of these two
+    # get priced once; the cluster does not grow when a neighbour becomes an endpoint.
+    trade_anchors: tuple[int, int] | None = None
+    # Previous local warp (from, to). Plotting clears it so a trade autopilot is not an ABA bounce.
+    last_warp: tuple[int, int] | None = None
 
     def dump(self) -> str:
         return MEMORY_TAG + json.dumps({
@@ -82,6 +97,8 @@ class SeatMemory:
             "last_event_seq": self.last_event_seq, "last_action_sig": self.last_action_sig,
             # keep the scratchpad small: only the 40 most visited sectors
             "visits": dict(sorted(self.visits.items(), key=lambda kv: -kv[1])[:40]),
+            "ports_seen": sorted(self.ports_seen)[:80],
+            "trade_anchors": list(self.trade_anchors) if self.trade_anchors else None,
         }, separators=(",", ":"))
 
     @classmethod
@@ -100,6 +117,10 @@ class SeatMemory:
         mem.visits = {int(k): int(v) for k, v in (data.get("visits") or {}).items()}
         mem.last_event_seq = int(data.get("last_event_seq") or 0)
         mem.last_action_sig = data.get("last_action_sig")
+        mem.ports_seen = {int(s) for s in (data.get("ports_seen") or []) if int(s) != STARDOCK}
+        anchors = data.get("trade_anchors")
+        if isinstance(anchors, (list, tuple)) and len(anchors) == 2:
+            mem.trade_anchors = (int(anchors[0]), int(anchors[1]))
         return mem
 
 
@@ -248,6 +269,7 @@ class SeatBrain:
         mem.decisions += 1
         self._ingest_failures(v)
         self.pressure = self._rival_pressure(v)
+        self._remember_ports(v)
         self._refresh_home(v)
 
         report = self.detector.observe(o, self._intent)
@@ -267,6 +289,10 @@ class SeatBrain:
             action, intent = self._ladder(v)
         self._intent = intent
         mem.last_action_sig = _signature(action, v)
+        if action.get("kind") == "warp" and v.here is not None and action.get("args", {}).get("target") is not None:
+            mem.last_warp = (int(v.here), int(action["args"]["target"]))
+        elif action.get("kind") == "plot_course":
+            mem.last_warp = None
         return self._finish(v, action)
 
     # ------------------------------------------------------------------ S6: failures / rivals
@@ -352,7 +378,7 @@ class SeatBrain:
     def _ladder(self, v: View) -> tuple[dict[str, Any], Intent]:
         skipped: list[str] = []
         for rung in (self._landed, self._genesis_aboard, self._land_home, self._land_orphan, self._at_stardock,
-                     self._travel, self._explore_for_stardock, self._earn):
+                     self._travel, self._go_stardock, self._earn):
             out = rung(v)
             if out is None or out[0] is None:
                 continue
@@ -481,7 +507,10 @@ class SeatBrain:
         # Genesis: the first as soon as it leaves L1 money; more when rich (sooner when trailing).
         if v.genesis_aboard == 0 and v.ok("buy_equip") and "genesis" in v.choices("buy_equip", "item"):
             price = genesis_price
-            first = not gplanets and v.credits - price >= l1_credits + self.cash_buffer
+            # Calm: keep L1 in the bank (the torpedo is wasted without it). Pressure spends
+            # that reserve - the trip gate uses the same floor so we never fly here unable to buy.
+            keep = 0 if self.pressure is not None else l1_credits
+            first = not gplanets and v.credits - price >= keep
             # A 2nd world keeps the full reserve even when trailing: funding it from working
             # capital starved the first citadel (seed 99: -110k NW by day 6).
             more = bool(gplanets) and len(gplanets) < self.target_planets and v.credits - price >= reserve
@@ -529,28 +558,44 @@ class SeatBrain:
                     plot = self._plot(v, int(sid), f"inherit orphan {o.get('name', _pid)} (L{o.get('citadel_level', 0)})")
                     if plot:
                         return plot, Intent("colonize", int(sid))
-        if v.here != STARDOCK and v.stardock_known and self._needs_stardock(v):
-            plot = self._plot(v, STARDOCK, self._stardock_reason(v))
-            if plot:
-                kind = "colonize" if v.worlds() else "acquire"
-                return plot, Intent(kind, STARDOCK)
         return None
 
-    def _explore_for_stardock(self, v: View):
-        if v.stardock_known:
+    def _go_stardock(self, v: View):
+        """Autopilot to sector 1 when the ladder can pay for CargoTran or genesis.
+
+        ``plot_course`` routes the real map, so sector 1 does not have to be
+        explored first. FedSpace headings and ether probes are not a strategy.
+        If the engine already rejected this plot, S6 bans it and we frontier-explore
+        instead of issuing it again.
+        """
+        if v.landed is not None or v.here == STARDOCK or not self._needs_stardock(v):
             return None
-        # Sector 1 is StarDock by rule; the autopilot routes there even if our map hasn't
-        # found it yet. Sitting on genesis money while mapping loses the race (qwen2-kimi3 P6).
-        buffer = 0 if self.pressure is not None else self.cash_buffer
-        rich = v.credits >= GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + buffer
-        if rich and not v.worlds():
-            plot = self._plot(v, STARDOCK, "genesis money in hand - autopilot to StarDock (sector 1)")
-            if plot:
-                return plot, Intent("acquire", STARDOCK)
-        return self._explore(v, "find StarDock")
+        plot = self._plot(v, STARDOCK, self._stardock_reason(v))
+        if plot is None:
+            return None
+        why = self._banned_why(plot, v)
+        if why:
+            return self._explore(v, f"StarDock plot rejected ({why})")
+        kind = "colonize" if v.worlds() else "acquire"
+        return plot, Intent(kind, STARDOCK)
 
     def _earn(self, v: View):
         self._note_refused_sells(v)
+        # Price the one-hop port neighbours of the first route before milking a thin pair.
+        # Empty holds only - cargo already aboard goes to a buyer first.
+        survey = None if self._held_goods(v) else self._survey_target(v)
+        if survey is not None:
+            g = self._nav_graph(v)
+            here = int(v.here)
+            act = None
+            intent_target = None
+            if survey in g.get(here, ()) and survey in self._legal_warps(v):
+                act = self._act("warp", {"target": survey}, f"earn: price the port at {survey}")
+            elif survey not in g.get(here, ()):
+                act = self._plot(v, survey, f"earn: price the port at {survey}")
+                intent_target = survey
+            if act is not None and not self._banned_why(act, v):
+                return act, Intent("trade", intent_target)
         # Trade here if the envelope-driven heuristic finds a profitable buy/sell.
         ctx = TurnContext(seat="", turn_seq=0, observation=v.obs, llm_user_message=None, rules={},
                           status={}, deadline_at=None, server_skew=0.0)
@@ -564,6 +609,132 @@ class SeatBrain:
             if plot:
                 return plot, Intent("trade", target)
         return self._explore(v, "earn: look for ports")
+
+    def _remember_ports(self, v: View) -> None:
+        """Sectors whose port this seat has seen. Fogged fields only; StarDock is not a trade port."""
+        seen = self.mem.ports_seen
+
+        def add(sid: Any, is_port: bool) -> None:
+            if not is_port or sid is None:
+                return
+            try:
+                n = int(sid)
+            except (TypeError, ValueError):
+                return
+            if n != STARDOCK:
+                seen.add(n)
+
+        for adj in v.obs.get("adjacent") or []:
+            if isinstance(adj, dict):
+                add(adj.get("id"), bool(adj.get("port")))
+        for ks in v.obs.get("known_sectors") or []:
+            if isinstance(ks, dict):
+                add(ks.get("id"), bool(ks.get("port")))
+        for kp in v.obs.get("known_ports") or []:
+            if isinstance(kp, dict):
+                add(kp.get("sector_id"), bool(kp.get("class") or kp.get("stock")))
+
+    def _priced_ports(self, v: View) -> dict[int, dict[str, Any]]:
+        out: dict[int, dict[str, Any]] = {}
+        for kp in v.obs.get("known_ports") or []:
+            if not isinstance(kp, dict) or kp.get("sector_id") is None:
+                continue
+            stock = kp.get("stock") or {}
+            if any(isinstance(st, dict) and isinstance(st.get("price"), int) for st in stock.values()):
+                out[int(kp["sector_id"])] = kp
+        return out
+
+    def _best_buy_pair(self, v: View) -> tuple[int, int, int] | None:
+        """(seller, buyer, unit margin) of the best empty-hold route over priced ports."""
+        if v.here is None:
+            return None
+        sells: dict[str, list[tuple[int, int]]] = {}
+        buys: dict[str, list[tuple[int, int]]] = {}
+        for sid, kp in self._priced_ports(v).items():
+            for c, st in (kp.get("stock") or {}).items():
+                price = st.get("price") if isinstance(st, dict) else None
+                if not isinstance(price, int):
+                    continue
+                if st.get("side") == "sells_to_player" and int(st.get("current") or 0) > 0:
+                    sells.setdefault(c, []).append((sid, price))
+                elif st.get("side") == "buys_from_player":
+                    full = st.get("max") is not None and int(st.get("current") or 0) >= int(st["max"])
+                    if not full and self.mem.bad_sells.get(f"{sid}:{c}") != int(v.obs.get("day") or 0):
+                        buys.setdefault(c, []).append((sid, price))
+        g = self._nav_graph(v)
+        holds = max(1, v.cargo_free)
+        best: tuple[float, int, int, int] | None = None
+        for c, srcs in sells.items():
+            for seller, ask in srcs:
+                for buyer, bid in buys.get(c, []):
+                    if bid <= ask or seller == buyer:
+                        continue
+                    d1 = 0 if seller == v.here else known_distance(g, v.here, seller)
+                    d2 = known_distance(g, seller, buyer)
+                    if d1 is None or d2 is None:
+                        continue
+                    margin = bid - ask
+                    score = margin * holds / (d1 + d2 + 2)
+                    if best is None or score > best[0]:
+                        best = (score, seller, buyer, margin)
+        if best is None:
+            return None
+        return best[1], best[2], best[3]
+
+    def _cluster_sectors(self, v: View) -> set[int]:
+        anchors = self.mem.trade_anchors
+        if not anchors:
+            return set()
+        g = self._nav_graph(v)
+        cluster = {int(a) for a in anchors}
+        for ep in anchors:
+            for nxt in g.get(int(ep), ()):
+                if nxt in self.mem.ports_seen and nxt != STARDOCK:
+                    cluster.add(int(nxt))
+        return cluster
+
+    def _survey_target(self, v: View) -> int | None:
+        """An unpriced port one hop off the first trade pair, nearest first.
+
+        Milking the first thin pair (and never looking at the ports beside it) is how a
+        20k seat misses the route that actually pays for genesis. The cluster is frozen
+        at that first pair so the survey cannot DFS the whole map.
+        """
+        if v.here is None or self._held_goods(v):
+            return None
+        if self.mem.trade_anchors is None:
+            pair = self._best_buy_pair(v)
+            if pair is None:
+                return None
+            self.mem.trade_anchors = (pair[0], pair[1])
+        priced = set(self._priced_ports(v))
+        g = self._nav_graph(v)
+        here = int(v.here)
+        todo: list[int] = []
+        for sid in self._cluster_sectors(v):
+            # One visit is enough. A sector with no port never gains a price; retrying it
+            # is the 4↔47 ABA that stalls the ferry (S3 offline).
+            if sid in (here, STARDOCK) or sid in priced or self.mem.visits.get(sid, 0) > 0:
+                continue
+            adjacent = sid in g.get(here, ())
+            if adjacent or known_distance(g, here, sid) is not None:
+                todo.append(sid)
+        if not todo:
+            return None
+
+        def rank(sid: int) -> tuple[int, int, int]:
+            if sid in g.get(here, ()):
+                return (0, 0, sid)
+            dist = known_distance(g, here, sid)
+            return (1, dist if dist is not None else 99, sid)
+
+        for sid in sorted(todo, key=rank):
+            adjacent = sid in g.get(here, ())
+            action = ({"kind": "warp", "args": {"target": sid}} if adjacent
+                      else {"kind": "plot_course", "args": {"target": sid, "execute": True}})
+            if not self._banned_why(action, v):
+                return sid
+        return None
 
     def _best_route(self, v: View) -> tuple[int | None, str]:
         """Route from REMEMBERED port snapshots (known_ports) over known warps only."""
@@ -583,8 +754,10 @@ class SeatBrain:
                     if not full and self.mem.bad_sells.get(f"{sid}:{c}") != day:
                         buys.setdefault(c, []).append((int(sid), price))
 
+        g = self._nav_graph(v)
+
         def dist(a, b):
-            return known_distance(v.known_warps, a, b)
+            return known_distance(g, a, b)
 
         # Carrying goods: go to the best-paying known buyer we can route to.
         for c, qty in sorted(v.cargo.items(), key=lambda kv: -int(kv[1] or 0)):
@@ -695,12 +868,35 @@ class SeatBrain:
             return 0
         return max(0, tier[1] - _colonists_total(home) - v.colonists_aboard)
 
+    def _cargotran_net(self, v: View) -> int | None:
+        """Trade-in net for CargoTran from a starter hull, or None if we already outgrew it."""
+        if v.ship_class not in ("merchant_cruiser", "scout_marauder"):
+            return None
+        spec = SHIP_SPECS.get(v.ship_class) or {}
+        trade_in = int(int(spec.get("cost", 0)) * 0.25)
+        return int(SHIP_SPECS["cargotran"]["cost"]) - trade_in
+
+    def _cargotran_affordable(self, v: View) -> bool:
+        net = self._cargotran_net(v)
+        return net is not None and v.credits - net >= self.cash_buffer
+
+    def _genesis_trip_cost(self, v: View) -> int:
+        """What 'genesis is affordable' means for the flight to StarDock.
+
+        Calm keeps the L1 citadel price in hand (seed 250925: a 20k seat can earn
+        that on day 1 and still have the turns to autopilot; waiting on the extra
+        cash buffer never arrives). Pressure drops to the torpedo price itself.
+        """
+        if self.pressure is not None:
+            return GENESIS_TORPEDO_COST
+        return GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0]
+
     def _needs_stardock(self, v: View) -> bool:
         gplanets = v.genesis_planets()
         if v.genesis_aboard > 0:
             return False
         if not v.worlds():
-            return v.credits >= GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + self.cash_buffer
+            return self._cargotran_affordable(v) or v.credits >= self._genesis_trip_cost(v)
         reserve = self._citadel_reserve(v)
         if len(gplanets) < self.target_planets and v.credits >= GENESIS_TORPEDO_COST + reserve:
             return True
@@ -710,7 +906,11 @@ class SeatBrain:
                 and v.credits - reserve >= 250)
 
     def _stardock_reason(self, v: View) -> str:
-        return "go to StarDock for a genesis torpedo" if not v.worlds() else "go to StarDock for colonists"
+        if not v.worlds():
+            if self._cargotran_affordable(v):
+                return "CargoTran is affordable - autopilot to StarDock (sector 1)"
+            return "genesis is affordable - autopilot to StarDock (sector 1)"
+        return "go to StarDock for colonists"
 
     def _plot(self, v: View, target: int, why: str) -> dict[str, Any] | None:
         # plot_course is "legal" even when the first hop cannot be paid for; the
@@ -732,15 +932,133 @@ class SeatBrain:
 
         return sorted(choices, key=score)[0]
 
+    def _legal_warps(self, v: View) -> list[int]:
+        if not v.ok("warp"):
+            return []
+        return [int(c) for c in v.choices("warp", "target")]
+
+    def _came_from(self, v: View) -> int | None:
+        last = self.mem.last_warp
+        if last and v.here is not None and last[1] == int(v.here):
+            return last[0]
+        return None
+
+    def _nav_graph(self, v: View) -> dict[int, tuple[int, ...]]:
+        """Known-warp graph, plus the live exits of the sector we are standing in."""
+        g = {int(k): tuple(int(x) for x in (n or ())) for k, n in v.known_warps.items()}
+        if v.here is not None and int(v.here) not in g:
+            outs = v.sector.get("warps_out") or v.choices("warp", "target")
+            g[int(v.here)] = tuple(int(x) for x in outs)
+        return g
+
+    def _nearest_frontiers(self, v: View) -> list[tuple[int, tuple[int, ...]]]:
+        """Known sectors, at the minimum known-warp distance, that have an unvisited neighbour.
+
+        Unvisited = a warp target whose own exits are not in the graph yet. The current
+        sector counts as known even before the engine has filed its warp list.
+        """
+        g = self._nav_graph(v)
+        if v.here is None:
+            return []
+        here = int(v.here)
+        seen = {here}
+        queue: list[tuple[int, int]] = [(here, 0)]
+        i = 0
+        best_d: int | None = None
+        found: list[tuple[int, tuple[int, ...]]] = []
+        while i < len(queue):
+            sector, dist = queue[i]
+            i += 1
+            if best_d is not None and dist > best_d:
+                break
+            unvis = tuple(n for n in g.get(sector, ()) if n not in g)
+            if unvis:
+                if best_d is None:
+                    best_d = dist
+                if dist == best_d:
+                    found.append((sector, unvis))
+                continue
+            if best_d is None:
+                for nxt in g.get(sector, ()):
+                    if nxt not in seen and nxt in g:
+                        seen.add(nxt)
+                        queue.append((nxt, dist + 1))
+        return found
+
     def _explore(self, v: View, why: str):
-        choices = [int(c) for c in v.choices("warp", "target")] if v.ok("warp") else []
-        choices = [t for t in choices if not self._banned_why({"kind": "warp", "args": {"target": t}}, v)]
+        """Move toward the nearest known sector that still has an unvisited neighbour.
+
+        Greedy 'warp to the least-visited adjacent' ABA-bounces on dead-ends. Plotting
+        through known warps to the frontier crosses that dead-end once and keeps going.
+        """
+        if v.here is None:
+            return None, Intent()
+        here = int(v.here)
+        found = self._nearest_frontiers(v)
+        came = self._came_from(v)
+        ports = self.mem.ports_seen
+
+        legal = self._legal_warps(v)
+
+        def banned_warp(target: int) -> bool:
+            return target not in legal or bool(self._banned_why({"kind": "warp", "args": {"target": target}}, v))
+
+        if found:
+            local = next((unvis for sector, unvis in found if sector == here), None)
+            if local:
+                ordered = sorted(local, key=lambda t: (t == came, t not in ports, self.mem.visits.get(t, 0), t))
+                for target in ordered:
+                    if not banned_warp(target):
+                        return self._act("warp", {"target": target}, f"explore -> {target} ({why})"), Intent("explore")
+            else:
+                ordered_sectors = sorted(found, key=lambda su: (su[0] not in ports, su[0]))
+                for sector, _unvis in ordered_sectors:
+                    plot = self._plot(v, sector, f"frontier {sector} ({why})")
+                    if plot is not None and not self._banned_why(plot, v):
+                        return plot, Intent("explore", sector)
+                    hop = self._known_hop_toward(v, sector)
+                    if hop is not None and not banned_warp(hop):
+                        return (self._act("warp", {"target": hop}, f"frontier hop {hop} toward {sector} ({why})"),
+                                Intent("explore", sector))
+        choices = [t for t in legal if not self._banned_why({"kind": "warp", "args": {"target": t}}, v)]
         if choices:
-            choices.sort(key=lambda t: (t in v.known_warps, self.mem.visits.get(t, 0), t))
+            choices.sort(key=lambda t: (t == came, self.mem.visits.get(t, 0), t))
             return self._act("warp", {"target": choices[0]}, f"explore -> {choices[0]} ({why})"), Intent("explore")
-        if v.ok("scan") and v.here not in v.known_warps:
+        if v.ok("scan") and here not in v.known_warps:
             return self._act("scan", {}, f"scan ({why})"), Intent("explore")
         return None, Intent()
+
+    def _known_hop_toward(self, v: View, target: int) -> int | None:
+        """First hop from here toward ``target`` along known warps (legal warp exits only)."""
+        g = self._nav_graph(v)
+        if v.here is None or not v.ok("warp"):
+            return None
+        here = int(v.here)
+        if target == here:
+            return None
+        parent: dict[int, int | None] = {here: None}
+        queue = [here]
+        i = 0
+        while i < len(queue) and target not in parent:
+            sector = queue[i]
+            i += 1
+            for nxt in g.get(sector, ()):
+                if nxt in parent:
+                    continue
+                if nxt != target and nxt not in g:
+                    continue
+                parent[nxt] = sector
+                if nxt != target:
+                    queue.append(nxt)
+        if target not in parent:
+            return None
+        hop: int | None = target
+        while hop is not None and parent.get(hop) != here:
+            hop = parent.get(hop)
+        legal = {int(c) for c in v.choices("warp", "target")}
+        if hop is None or hop not in legal:
+            return None
+        return hop
 
     def _act(self, kind: str, args: dict[str, Any], thought: str) -> dict[str, Any]:
         return {"kind": kind, "args": args, "thought": f"SeatBrain: {thought}"}
@@ -749,8 +1067,8 @@ class SeatBrain:
         mem = self.mem
         gplanets = v.genesis_planets()
         home = v.planet(mem.home_planet)
-        if not v.stardock_known:
-            short = "Explore until StarDock (sector 1) is known."
+        if not v.worlds() and v.genesis_aboard == 0 and not self._needs_stardock(v) and v.here != STARDOCK:
+            short = "Trade known ports until CargoTran or genesis is affordable, then autopilot to StarDock."
         elif not gplanets and v.genesis_aboard == 0:
             short = "Afford and buy a genesis torpedo at StarDock."
         elif v.genesis_aboard:
