@@ -121,12 +121,20 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"tier": {"type": "str", "required": False,
                                     "choices": [K.SCAN_TIER_BASIC, K.SCAN_TIER_DENSITY, K.SCAN_TIER_HOLO]}}))
 
-    # plot_course: legal whenever a target is given; route existence is per-target and the
-    # engine reports "no route" - we expose the known sectors as suggested choices.
+    # plot_course: a plan (execute omitted/false) is free and stays legal; route
+    # existence is per-target and the engine reports "no route". Execute is a
+    # different question: the autopilot's first hop is one warp. If that hop
+    # cannot be paid, execute used to return ok with 0 hops and cost nothing
+    # (a free loop). `params.execute.legal` mirrors the handler: false unless
+    # turns left cover one warp. Preview legality is unchanged.
     known = sorted(int(s) for s in (player.known_warps or {}) if int(s) != player.sector_id)
+    hop_block = _need_turns(player, wc)
+    execute_ok = hop_block is None
     out.append(_la(ActionKind.PLOT_COURSE, legal=True, reason=None, cost=0,
                    params={"target": {"type": "int", "required": True, "suggested": known},
-                           "execute": {"type": "bool", "required": False}}))
+                           "execute": {"type": "bool", "required": False, "legal": execute_ok,
+                                       "reason": None if execute_ok else f"first hop unaffordable: {hop_block}",
+                                       "first_hop_turns": wc}}))
 
     # probe
     probes = int(getattr(player.ship, "ether_probes", 0) or 0)

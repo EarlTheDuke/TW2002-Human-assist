@@ -1945,9 +1945,9 @@ class SeatBrain:
         return "go to StarDock for colonists"
 
     def _plot(self, v: View, target: int, why: str) -> dict[str, Any] | None:
-        # plot_course is "legal" even when the first hop cannot be paid for; the
-        # autopilot then reports ok with 0 hops and costs nothing - a free
-        # infinite loop. Only plot when a single warp is affordable.
+        # The engine rejects plot_course execute when the first hop's turn cost
+        # cannot be paid (it used to return ok with 0 hops). Still refuse to
+        # send the action unless a single warp is legal.
         if target is None or target == v.here or not v.ok("plot_course") or not v.ok("warp"):
             return None
         return self._act("plot_course", {"target": int(target), "execute": True}, f"{why} (plot {target})")

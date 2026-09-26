@@ -1690,13 +1690,26 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
         )
         return ActionResult(ok=True, turns_spent=0)
 
+    # Execute walks the path one warp at a time. The first hop must be payable
+    # up front: otherwise the loop used to stop immediately and return ok with
+    # 0 hops and 0 turns — a free action other seats could repeat forever.
+    hop_cost = _warp_cost_for(player)
+    turns_left = int(player.turns_per_day - player.turns_today)
+    if turns_left < hop_cost:
+        return ActionResult(
+            ok=False,
+            error=f"first hop unaffordable (need {hop_cost} turns, have {turns_left})",
+        )
+
     # Execute: walk path, consuming turns; stop at obstacle/out-of-turns
     turns_spent_total = 0
     hops_done = 0
+    last_error = "plot_course execute made no hops"
     for nxt in path:
         sub_action = Action(kind=ActionKind.WARP, args={"target": nxt})
         sub = _handle_warp(universe, pid, sub_action)
         if not sub.ok:
+            last_error = sub.error or last_error
             break
         turns_spent_total += sub.turns_spent
         # apply turn cost incrementally to player so subsequent _handle_warp
@@ -1706,6 +1719,9 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
         hops_done += 1
         if not player.alive or universe.players[pid].sector_id != nxt:
             break
+
+    if hops_done == 0:
+        return ActionResult(ok=False, error=last_error)
 
     universe.emit(
         EventKind.AUTOPILOT,
