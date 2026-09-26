@@ -15,6 +15,9 @@
   # 4. N1 offline proof (no live match): seed 250925, spawn sector 6, day-1 StarDock
   python scripts/seat_brain_acceptance.py n1
 
+  # 5. N2 offline proof: 10-day growth A/B vs the N1 brain, five seeds
+  python scripts/seat_brain_acceptance.py n2
+
 Exit code 0 = every action valid and the genesis -> land -> citadel -> ferry loop completed.
 Replay and synthetic modes never touch the engine state, /state, or another seat.
 """
@@ -206,6 +209,116 @@ def run_n1(seeds: list[int], credits_list: list[int]) -> int:
     return 0 if failures == 0 else 1
 
 
+N2_SEEDS = (250925, 20260925, 230923, 99, 31)
+
+
+def n1_brain():
+    """SeatBrain with the N1 citadel and organics policy (no N2 growth rules)."""
+    return SeatBrain(feed_organics=False, citadel_floor_ratio=None, citadel_fuel_shield=False,
+                     citadel_multiday_floor=False)
+
+
+def prove_growth_replay(*, seed: int, brain: SeatBrain | None = None, days: int = 10,
+                        credits: int = 20_000, spawn: int = 6, universe_size: int = 1000,
+                        turns_per_day: int = 1000, max_actions: int = 20_000) -> dict:
+    """Fogged replay. The brain sees only ``build_observation`` for its seat.
+
+    ``max_days`` stays at the default match length so the last-two-days citadel
+    exception does not fire inside a day-10 window.
+    """
+    from tw2k.engine import GameConfig, generate_universe
+    from tw2k.engine.actions import Action
+    from tw2k.engine.models import Commodity
+    from tw2k.engine.observation import build_observation
+    from tw2k.engine.runner import apply_action, tick_day
+    from tw2k.engine.victory import full_net_worth
+
+    u = generate_universe(GameConfig(
+        seed=seed, universe_size=universe_size, max_days=30, turns_per_day=turns_per_day,
+        starting_credits=credits, enable_ferrengi=False, enable_planets=True,
+    ))
+    p = _open_seat(u, "P1", spawn, credits)
+    brain = brain or SeatBrain()
+    rejected = 0
+    min_organics: int | None = None
+    zero_planets: set[int] = set()
+    samples = 0
+
+    def sample() -> None:
+        nonlocal min_organics, samples
+        for pl in u.planets.values():
+            if pl.owner_id != "P1":
+                continue
+            colonists = sum(int(n) for n in pl.colonists.values())
+            if pl.origin != "genesis" and colonists <= 0:
+                continue
+            stock = int(pl.stockpile.get(Commodity.ORGANICS, 0))
+            samples += 1
+            min_organics = stock if min_organics is None else min(min_organics, stock)
+            if stock <= 0:
+                zero_planets.add(pl.id)
+
+    for _ in range(max_actions):
+        if p.turns_today >= p.turns_per_day:
+            if u.day >= days:
+                break
+            tick_day(u)
+            sample()
+            continue
+        obs = build_observation(u, "P1").model_dump(mode="json")
+        action = brain.decide(obs)
+        if validate_action(obs, action):
+            rejected += 1
+        res = apply_action(u, "P1", Action(**action))
+        if not res.ok:
+            rejected += 1
+        sample()
+        if action["kind"] == "query_limpets":
+            tick_day(u)
+            sample()
+            if u.day >= days:
+                break
+    sample()
+    worlds = [pl for pl in u.planets.values() if pl.owner_id == "P1" and pl.origin == "genesis"]
+    return {
+        "seed": seed,
+        "day": u.day,
+        "net_worth": full_net_worth(u, p),
+        "credits": p.credits,
+        "min_organics": min_organics,
+        "zero_planets": sorted(zero_planets),
+        "organics_samples": samples,
+        "genesis_worlds": len(worlds),
+        "citadels": sorted(int(pl.citadel_level) for pl in worlds),
+        "colonists": [sum(int(n) for n in pl.colonists.values()) for pl in worlds],
+        "rejected": rejected,
+    }
+
+
+def run_n2(seeds: list[int]) -> int:
+    """N2 done-when: no genesis world organics at 0, and day-10 NW beats N1 on >= 4/5 seeds."""
+    failures = 0
+    beats = 0
+    print(f"{'seed':>8} {'N1 NW':>10} {'N2 NW':>10} {'delta':>10} {'N2 min org':>10} {'zeros':>8} {'citadels'}")
+    for seed in seeds:
+        base = prove_growth_replay(seed=seed, brain=n1_brain())
+        nxt = prove_growth_replay(seed=seed, brain=SeatBrain())
+        beat = nxt["net_worth"] > base["net_worth"]
+        beats += beat
+        clean = not nxt["zero_planets"] and nxt["rejected"] == 0
+        ok = beat and clean
+        failures += not clean
+        print(
+            f"{seed:>8} {base['net_worth']:>10} {nxt['net_worth']:>10} {nxt['net_worth'] - base['net_worth']:>10} "
+            f"{str(nxt['min_organics']):>10} {str(nxt['zero_planets'] or '-'):>8} {nxt['citadels']} "
+            f"col={nxt['colonists']} {'OK' if ok else 'FAIL'}"
+        )
+    need = 4 if len(seeds) >= 5 else len(seeds)
+    score_ok = beats >= need
+    print(f"n2: beats {beats}/{len(seeds)} (need {need}); organics {'clean' if failures == 0 else f'{failures} seeds hit 0 or rejected'}")
+    return 0 if score_ok and failures == 0 else 1
+
+
 def run_replay(path: Path, *, show_errors: int = 10) -> int:
     payloads = load_jsonl(path)
     report, _ = replay(SeatBrain(), payloads)
@@ -231,6 +344,8 @@ def main() -> int:
     n1 = sub.add_parser("n1", help="offline N1 proof: route to StarDock, earn first, frontier explore")
     n1.add_argument("--seeds", default="250925,20260925", help="comma-separated universe seeds")
     n1.add_argument("--credits", default="100000,20000", help="comma-separated starting credits")
+    n2 = sub.add_parser("n2", help="offline N2 proof: 10-day organics + net worth vs the N1 brain")
+    n2.add_argument("--seeds", default=",".join(str(s) for s in N2_SEEDS), help="comma-separated universe seeds")
     args = ap.parse_args()
     if args.cmd == "synthetic":
         return run_synthetic()
@@ -243,6 +358,9 @@ def main() -> int:
         seeds = [int(s) for s in args.seeds.split(",") if s.strip()]
         credits = [int(s) for s in args.credits.split(",") if s.strip()]
         return run_n1(seeds, credits)
+    if args.cmd == "n2":
+        seeds = [int(s) for s in args.seeds.split(",") if s.strip()]
+        return run_n2(seeds)
     return run_replay(Path(args.trace))
 
 
