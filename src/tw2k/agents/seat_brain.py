@@ -46,6 +46,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..engine.constants import CITADEL_TIER_COST, GENESIS_TORPEDO_COST, SHIP_SPECS
+from ..engine.planets import organics_coeff, organics_worker_target, planet_growth_status
 from .pathb_client import TurnContext, legal_heuristic_policy
 from .stall import Intent, StallDetector, known_distance
 
@@ -60,6 +61,16 @@ PRESSURE_NW_RATIO = 1.15    # a rival this far ahead on public net worth = we ar
 PRESSURE_NW_GAP = 10_000
 ORPHAN_MAX_HOPS = 8
 CLAIM_WORLD_MIN_COLONISTS = 1_000
+# Buy when the owner-only runway is under this many day-boundaries.
+ORGANICS_FEED_DAYS = 2
+# 75 organics at a full port (~19 cr) is about 1.4k cr and covers a 3k-colonist
+# world's burn (30/day) for two-plus days. The load is the worked example;
+# the seat still takes the cheapest known seller when nothing is that cheap.
+ORGANICS_CHEAP_PRICE = 19
+ORGANICS_LOAD = 75
+# Build the next citadel inside this many days of max_days even if it
+# spends the growth base — the match will not compound past the cap.
+CITADEL_LAST_DAYS = 2
 
 
 @dataclass
@@ -89,6 +100,8 @@ class SeatMemory:
     trade_anchors: tuple[int, int] | None = None
     # Previous local warp (from, to). Plotting clears it so a trade autopilot is not an ABA bounce.
     last_warp: tuple[int, int] | None = None
+    # Planet the organics currently in the hold were bought for. Trade cargo is not flagged.
+    organics_drop: int | None = None
 
     def dump(self) -> str:
         return MEMORY_TAG + json.dumps({
@@ -99,6 +112,7 @@ class SeatMemory:
             "visits": dict(sorted(self.visits.items(), key=lambda kv: -kv[1])[:40]),
             "ports_seen": sorted(self.ports_seen)[:80],
             "trade_anchors": list(self.trade_anchors) if self.trade_anchors else None,
+            "organics_drop": self.organics_drop,
         }, separators=(",", ":"))
 
     @classmethod
@@ -121,6 +135,8 @@ class SeatMemory:
         anchors = data.get("trade_anchors")
         if isinstance(anchors, (list, tuple)) and len(anchors) == 2:
             mem.trade_anchors = (int(anchors[0]), int(anchors[1]))
+        drop = data.get("organics_drop")
+        mem.organics_drop = int(drop) if isinstance(drop, int) else None
         return mem
 
 
@@ -221,6 +237,69 @@ def next_tier(planet: dict[str, Any], *, lookahead: bool = False) -> tuple[int, 
     return cred, col
 
 
+def next_tier_days(planet: dict[str, Any]) -> int:
+    """Build duration of the tier `next_tier` would start now (0 if none)."""
+    lvl = int(planet.get("citadel_level") or 0)
+    tgt = int(planet.get("citadel_target") or 0)
+    if tgt > lvl:
+        return 0
+    base = max(lvl, tgt)
+    if base >= len(CITADEL_TIER_COST):
+        return 0
+    return int(CITADEL_TIER_COST[base][2])
+
+
+def _pool(planet: dict[str, Any], name: str) -> int:
+    cols = planet.get("colonists")
+    if not isinstance(cols, dict):
+        return 0
+    return int(cols.get(name) or 0)
+
+
+def _class_coeff(planet: dict[str, Any]) -> int | None:
+    cls = planet.get("class")
+    if not cls:
+        return None
+    try:
+        return organics_coeff(cls)
+    except ValueError:
+        return None
+
+
+def growth_view(planet: dict[str, Any]) -> dict[str, Any] | None:
+    """Growth snapshot from the observation, or recomputed when stockpile+class are present.
+
+    Synthetic storyboards omit stockpile on purpose: those worlds are not hungry.
+    """
+    keys = ("production", "organics_days_left", "organics_consumption_per_day", "growth_active")
+    if all(k in planet for k in keys):
+        return planet
+    if "class" not in planet or "stockpile" not in planet:
+        return None
+    stock = (planet.get("stockpile") or {}).get("organics", 0)
+    cols = planet.get("colonists") if isinstance(planet.get("colonists"), dict) else {}
+    try:
+        return planet_growth_status(planet["class"], cols, int(stock or 0))
+    except (ValueError, TypeError):
+        return None
+
+
+def _unload_pool(planet: dict[str, Any], qty: int) -> str:
+    """Which labor pool a ship-load of colonists should join.
+
+    Sized from the class organics coefficient so production covers the burn.
+    No class (older fixtures): the M-class ``total // 5`` rule.
+    """
+    workers = _pool(planet, "organics")
+    total = _colonists_total(planet) + max(0, int(qty))
+    coeff = _class_coeff(planet)
+    if coeff is None:
+        return "organics" if workers < total // 5 else "fuel_ore"
+    if coeff > 0 and workers < organics_worker_target(total, coeff):
+        return "organics"
+    return "fuel_ore"
+
+
 def _signature(action: dict[str, Any], v: View | None = None) -> str:
     """Identity of an action for failure bookkeeping: verb + the argument that decides it."""
     kind = str(action.get("kind"))
@@ -245,12 +324,30 @@ def _signature(action: dict[str, Any], v: View | None = None) -> str:
 
 class SeatBrain:
     def __init__(self, *, target_planets: int = 2, cash_buffer: int = 2_000, working_capital: int = 8_000,
-                 stall_window: int = 8) -> None:
+                 stall_window: int = 8, feed_organics: bool = True,
+                 citadel_floor_ratio: float | None = None, citadel_fuel_shield: bool = False,
+                 citadel_multiday_floor: bool = True) -> None:
         self.target_planets = target_planets
         self.cash_buffer = cash_buffer
         # Never spend below this on colonists / extra genesis: it keeps a trade
         # loop funded so the seat can always earn its way back (Kimi3 lesson).
         self.working_capital = working_capital
+        # N2. feed_organics off, floor None, fuel shield off, and multiday floor
+        # off is the N1 policy (`n1_brain` in the acceptance script).
+        self.feed_organics = feed_organics
+        # Blanket floor (remaining >= ratio * tier cost on every tier). A/B'd
+        # at 1.0: it delayed the one-day L2 fighter bonus and missed 4/5
+        # day-10 seeds, so the default is off.
+        self.citadel_floor_ratio = citadel_floor_ratio
+        # Citadel drain takes fuel_ore first. Requiring that pool to cover the
+        # cost also blocked L2 on the same A/B, so the default is off.
+        self.citadel_fuel_shield = citadel_fuel_shield
+        # L3+ takes 2+ days. Credits and colonists leave net worth when the
+        # build starts; the fighter bonus arrives only when it finishes.
+        # Require remaining colonists >= that tier's cost so a fast-growing
+        # colony is not emptied for a citadel that is still under construction.
+        # Waived in the last ~2 days. This is the floor the day-10 A/B kept.
+        self.citadel_multiday_floor = citadel_multiday_floor
         self.detector = StallDetector(window=stall_window)
         self.mem: SeatMemory | None = None
         self._intent = Intent()
@@ -271,6 +368,8 @@ class SeatBrain:
         self.pressure = self._rival_pressure(v)
         self._remember_ports(v)
         self._refresh_home(v)
+        if mem.organics_drop is not None and int(v.cargo.get("organics") or 0) <= 0:
+            mem.organics_drop = None
 
         report = self.detector.observe(o, self._intent)
         self.last_report = report
@@ -378,7 +477,7 @@ class SeatBrain:
     def _ladder(self, v: View) -> tuple[dict[str, Any], Intent]:
         skipped: list[str] = []
         for rung in (self._landed, self._genesis_aboard, self._land_home, self._land_orphan, self._at_stardock,
-                     self._travel, self._go_stardock, self._earn):
+                     self._travel, self._feed_organics, self._go_stardock, self._earn):
             out = rung(v)
             if out is None or out[0] is None:
                 continue
@@ -408,17 +507,33 @@ class SeatBrain:
         work_site = planet is not None and planet in v.worlds()
         if work_site:
             pid = int(planet["id"])
-            if v.colonists_aboard > 0 and v.ok("assign_colonists"):
-                qty = v.max_by("assign_colonists", "qty", "ship") or v.colonists_aboard
-                pools = planet.get("colonists") if isinstance(planet.get("colonists"), dict) else {}
-                pool = "organics" if int(pools.get("organics") or 0) < _colonists_total(planet) // 5 else "fuel_ore"
-                candidates.append(self._act("assign_colonists",
-                                            {"planet_id": pid, "from": "ship", "to": pool, "qty": int(qty)},
-                                            f"unload {qty} colonists to {pool} on planet {pid}"))
-            if v.ok("build_citadel") and pid in v.choices("build_citadel", "planet_id"):
+            if (self._hauling_organics(v) and int(self.mem.organics_drop) == pid and v.ok("dump_planet_cargo")
+                    and "organics" in v.choices("dump_planet_cargo", "commodity")):
+                qty = int(v.cargo.get("organics") or 0)
+                qty = min(qty, v.max_by("dump_planet_cargo", "qty", "organics") or qty)
+                if qty > 0:
+                    g = growth_view(planet) or {}
+                    candidates.append(self._act(
+                        "dump_planet_cargo", {"planet_id": pid, "commodity": "organics", "qty": int(qty)},
+                        f"stock {qty} organics on planet {pid} ({g.get('organics_days_left', '?')}d left)"))
+            # Build before reshuffling. The seed fuel pool is exactly an L1
+            # payment; moving it onto organics first blocks the citadel forever.
+            if v.ok("build_citadel") and pid in v.choices("build_citadel", "planet_id") and self._citadel_ready(planet, v):
                 nxt = v.params("build_citadel").get("next") or {}
                 candidates.append(self._act("build_citadel", {"planet_id": pid},
                                             f"build citadel L{nxt.get('level', '?')} on planet {pid}"))
+            if v.colonists_aboard > 0 and v.ok("assign_colonists"):
+                qty = v.max_by("assign_colonists", "qty", "ship") or v.colonists_aboard
+                pool = self._ship_pool(planet, qty)
+                candidates.append(self._act("assign_colonists",
+                                            {"planet_id": pid, "from": "ship", "to": pool, "qty": int(qty)},
+                                            f"unload {qty} colonists to {pool} on planet {pid}"))
+            rebalance = self._rebalance_organics(v, planet) if self.feed_organics else None
+            if rebalance is not None:
+                candidates.append(rebalance)
+            shield = self._move_fuel_shield(v, planet)
+            if shield is not None:
+                candidates.append(shield)
             dump = self._unsellable_goods(v)
             if dump and v.ok("dump_planet_cargo") and dump[0] in v.choices("dump_planet_cargo", "commodity"):
                 c, qty = dump
@@ -434,6 +549,8 @@ class SeatBrain:
             if why:
                 skipped.append(why)
                 continue
+            if action["kind"] == "dump_planet_cargo" and (action.get("args") or {}).get("commodity") == "organics":
+                self.mem.organics_drop = None
             if skipped:
                 action["thought"] += f" [replanned: {'; '.join(skipped)}]"
             return action, Intent("colonize")
@@ -460,12 +577,12 @@ class SeatBrain:
             pid = int(planet["id"])
             if pid not in choices:
                 continue
-            tier = next_tier(planet)
-            can_build = tier is not None and _colonists_total(planet) >= tier[1] and v.credits >= tier[0]
+            can_build = self._citadel_ready(planet, v)
             dump = self._unsellable_goods(v)
-            if v.colonists_aboard > 0 or can_build or dump:
+            haul = self._hauling_organics(v) and int(planet["id"]) == int(self.mem.organics_drop)
+            if v.colonists_aboard > 0 or can_build or dump or haul:
                 why = ("unload colonists" if v.colonists_aboard else "citadel is buildable" if can_build
-                       else f"stock unsellable {dump[0]}")
+                       else "deliver organics" if haul else f"stock unsellable {dump[0]}")
                 return self._act("land_planet", {"planet_id": pid}, f"land home planet {pid} ({why})"), Intent("colonize")
         return None
 
@@ -490,7 +607,7 @@ class SeatBrain:
         return genesis_slow or self.pressure is not None
 
     def _at_stardock(self, v: View):
-        if v.here != STARDOCK:
+        if v.here != STARDOCK or self._hauling_organics(v):
             return None
         reserve = self._citadel_reserve(v)
         l1_credits = CITADEL_TIER_COST[0][0]
@@ -533,6 +650,16 @@ class SeatBrain:
     def _travel(self, v: View):
         if v.landed is not None:
             return None
+        if self._hauling_organics(v):
+            planet = v.planet(self.mem.organics_drop)
+            if planet is None:
+                self.mem.organics_drop = None
+            else:
+                sid = int(planet["sector_id"])
+                if v.here != sid:
+                    plot = self._plot(v, sid, f"deliver organics to planet {planet['id']}")
+                    if plot:
+                        return plot, Intent("colonize", sid)
         home = self.mem.home_sector
         if v.colonists_aboard > 0 and home is not None and v.here != home:
             plot = self._plot(v, home, "ferry colonists home")
@@ -817,9 +944,9 @@ class SeatBrain:
         Trailing a rival, we spend the working capital on citadels instead of holding it."""
         floor = 0 if self.pressure is not None else self.working_capital
         for planet in v.worlds():
-            tier = next_tier(planet)
-            if (tier and planet.get("sector_id") != v.here and _colonists_total(planet) >= tier[1]
-                    and v.credits >= tier[0] + floor):
+            if planet.get("sector_id") == v.here:
+                continue
+            if self._citadel_ready(planet, v, credit_pad=floor):
                 return planet
         return None
 
@@ -866,7 +993,226 @@ class SeatBrain:
         tier = next_tier(home, lookahead=True) if home else None
         if tier is None:
             return 0
-        return max(0, tier[1] - _colonists_total(home) - v.colonists_aboard)
+        _cred, col = tier
+        total = _colonists_total(home)
+        aboard = v.colonists_aboard
+        need_pop = col
+        if self.citadel_floor_ratio is not None and not self._last_days(v):
+            need_pop = col + int(col * self.citadel_floor_ratio)
+        need = max(0, need_pop - total - aboard)
+        if self.citadel_fuel_shield and not self._last_days(v):
+            need = max(need, max(0, col - _pool(home, "fuel_ore") - aboard))
+        return need
+
+    def _last_days(self, v: View) -> bool:
+        max_days = v.obs.get("max_days")
+        if not isinstance(max_days, int):
+            return False
+        return max_days - int(v.day) <= CITADEL_LAST_DAYS
+
+    def _citadel_ready(self, planet: dict[str, Any], v: View, *, credit_pad: int = 0) -> bool:
+        """Next tier keeps a growth base, unless the match is in its last ~2 days.
+
+        Floor: colonists remaining after the build stay at least
+        ``ratio * tier colonist cost`` (1.0 means remaining >= the cost just paid).
+        Fuel shield: the fuel_ore pool, which the engine drains first, covers
+        the whole cost so organics workers survive the build.
+        """
+        tier = next_tier(planet)
+        if tier is None:
+            return False
+        cred, col = tier
+        total = _colonists_total(planet)
+        if total < col or v.credits < cred + credit_pad:
+            return False
+        if self._last_days(v):
+            return True
+        if self.citadel_floor_ratio is not None and total - col < int(col * self.citadel_floor_ratio):
+            return False
+        if self.citadel_fuel_shield and _pool(planet, "fuel_ore") < col:
+            return False
+        # Multi-day tiers only. Remaining colonists must cover another build
+        # of the same size, so the growth base is still there while the
+        # citadel is under construction.
+        if self.citadel_multiday_floor and next_tier_days(planet) > 1 and total - col < col:
+            return False
+        return True
+
+    def _hauling_organics(self, v: View) -> bool:
+        return bool(self.feed_organics and self.mem and self.mem.organics_drop is not None
+                    and int(v.cargo.get("organics") or 0) > 0)
+
+    def _hungry_worlds(self, v: View) -> list[dict[str, Any]]:
+        if not self.feed_organics:
+            return []
+        rows: list[tuple] = []
+        for planet in v.worlds():
+            g = growth_view(planet)
+            if not g:
+                continue
+            days = int(g.get("organics_days_left") or 0)
+            if days < ORGANICS_FEED_DAYS:
+                rows.append((days, -int(g.get("organics_consumption_per_day") or 0), int(planet.get("id") or 0), planet))
+        rows.sort()
+        return [planet for *_rest, planet in rows]
+
+    def _pending_colonist_cost(self, planet: dict[str, Any]) -> int:
+        """Colonists the next citadel tier will drain (0 if no tier is coming)."""
+        tier = next_tier(planet) or next_tier(planet, lookahead=True)
+        return tier[1] if tier else 0
+
+    def _ship_pool(self, planet: dict[str, Any], qty: int) -> str:
+        """Where a ship-load of colonists goes: fuel shield first, then the organics target."""
+        if not self.feed_organics:
+            return "organics" if _pool(planet, "organics") < _colonists_total(planet) // 5 else "fuel_ore"
+        if self.citadel_fuel_shield and _pool(planet, "fuel_ore") < self._pending_colonist_cost(planet):
+            return "fuel_ore"
+        return _unload_pool(planet, qty)
+
+    def _rebalance_organics(self, v: View, planet: dict[str, Any]) -> dict[str, Any] | None:
+        """Pull labor onto the organics pool until class production beats the burn."""
+        coeff = _class_coeff(planet)
+        if coeff is None or coeff <= 0 or not v.ok("assign_colonists"):
+            return None
+        target = organics_worker_target(_colonists_total(planet), coeff)
+        workers = _pool(planet, "organics")
+        if workers >= target:
+            return None
+        short = target - workers
+        choices = {str(c) for c in v.choices("assign_colonists", "from")}
+        pid = int(planet["id"])
+        sources: list[tuple[str, int]] = []
+        for src in ("colonists", "equipment"):
+            avail = _pool(planet, src)
+            if avail > 0:
+                sources.append((src, avail))
+        # Fuel is drained first by citadel construction. Only the surplus above
+        # that payment may move onto organics.
+        fuel = _pool(planet, "fuel_ore")
+        shield = self._pending_colonist_cost(planet) if self.citadel_fuel_shield else 0
+        if fuel > shield:
+            sources.append(("fuel_ore", fuel - shield))
+        for src, avail in sources:
+            if src not in choices:
+                continue
+            cap = v.max_by("assign_colonists", "qty", src) or avail
+            qty = min(short, avail, cap)
+            if qty > 0:
+                return self._act("assign_colonists",
+                                 {"planet_id": pid, "from": src, "to": "organics", "qty": int(qty)},
+                                 f"move {qty} {src}->organics (class {planet.get('class')} needs {target})")
+        return None
+
+    def _move_fuel_shield(self, v: View, planet: dict[str, Any]) -> dict[str, Any] | None:
+        """Park the next citadel's colonist cost in fuel_ore, which the engine drains first."""
+        if not self.citadel_fuel_shield or self._last_days(v) or not v.ok("assign_colonists"):
+            return None
+        tier = next_tier(planet)
+        if tier is None:
+            return None
+        _cred, col = tier
+        fuel = _pool(planet, "fuel_ore")
+        if fuel >= col or _colonists_total(planet) < col:
+            return None
+        if self.citadel_floor_ratio is not None and _colonists_total(planet) - col < int(col * self.citadel_floor_ratio):
+            return None  # population floor still blocks the build; ferry instead of reshuffling
+        if v.credits < tier[0]:
+            return None
+        short = col - fuel
+        choices = {str(c) for c in v.choices("assign_colonists", "from")}
+        sources: list[tuple[str, int]] = []
+        coeff = _class_coeff(planet)
+        if coeff is not None and coeff > 0:
+            extra = _pool(planet, "organics") - organics_worker_target(_colonists_total(planet), coeff)
+            if extra > 0:
+                sources.append(("organics", extra))
+        for name in ("colonists", "equipment"):
+            avail = _pool(planet, name)
+            if avail > 0:
+                sources.append((name, avail))
+        pid = int(planet["id"])
+        for src, avail in sources:
+            if src not in choices:
+                continue
+            cap = v.max_by("assign_colonists", "qty", src) or avail
+            qty = min(short, avail, cap)
+            if qty > 0:
+                return self._act("assign_colonists",
+                                 {"planet_id": pid, "from": src, "to": "fuel_ore", "qty": int(qty)},
+                                 f"park {qty} {src}->fuel_ore so L{int(planet.get('citadel_level') or 0) + 1} spares organics")
+        return None
+
+    def _organics_offer_here(self, v: View) -> tuple[int, int] | None:
+        if not v.ok("trade"):
+            return None
+        params = v.params("trade")
+        comm = params.get("commodity") or {}
+        if "organics" not in (comm.get("buy_choices") or []):
+            return None
+        listed = ((params.get("unit_price") or {}).get("listed_by") or {}).get("organics") or {}
+        cap = ((params.get("qty") or {}).get("max_by") or {}).get("organics") or {}
+        price, buy_cap = listed.get("buy"), cap.get("buy") if isinstance(cap, dict) else None
+        if not isinstance(price, int) or not isinstance(buy_cap, int) or buy_cap <= 0:
+            return None
+        return price, buy_cap
+
+    def _cheapest_organics_seller(self, v: View) -> tuple[int, int] | None:
+        best: tuple[int, int] | None = None
+        here = self._organics_offer_here(v)
+        if here is not None and v.here is not None:
+            best = (int(v.here), here[0])
+        for sid, kp in self._priced_ports(v).items():
+            st = (kp.get("stock") or {}).get("organics") or {}
+            if st.get("side") != "sells_to_player" or int(st.get("current") or 0) <= 0:
+                continue
+            price = st.get("price")
+            if not isinstance(price, int):
+                continue
+            if best is None or price < best[1] or (price == best[1] and v.here is not None and sid == int(v.here)):
+                best = (int(sid), price)
+        return best
+
+    def _feed_organics(self, v: View):
+        """Buy the cheapest organics we know and haul them when a world has <2 days left."""
+        if not self.feed_organics or v.landed is not None or self._hauling_organics(v):
+            return None
+        if v.colonists_aboard > 0 or v.genesis_aboard > 0 or v.cargo_free <= 0:
+            return None
+        hungry = self._hungry_worlds(v)
+        if not hungry:
+            return None
+        world = hungry[0]
+        g = growth_view(world) or {}
+        days = int(g.get("organics_days_left") or 0)
+        # A one-day runway can wait for a StarDock trip that is already funded
+        # (genesis or the colonist ferry). An empty stockpile cannot.
+        if days > 0 and self._needs_stardock(v):
+            return None
+        burn = max(1, int(g.get("organics_consumption_per_day") or 1))
+        want = max(ORGANICS_LOAD, burn * 3)
+        offer = self._organics_offer_here(v)
+        seller = self._cheapest_organics_seller(v)
+        # Standing at a non-premium seller: fill holds. Don't detour for a
+        # cheaper port while a day of runway remains — that detour is a
+        # colonist ferry we don't get back (seeds 250925 and 31).
+        if offer is not None and offer[0] <= 25 and (days <= 0 or offer[0] <= ORGANICS_CHEAP_PRICE
+                                                     or seller is None or int(seller[0]) == int(v.here)):
+            price, cap = offer
+            keep = 0 if days <= 0 else self.cash_buffer
+            afford = max(0, (v.credits - keep) // max(1, price))
+            qty = min(want, cap, afford, v.cargo_free)
+            if qty > 0:
+                self.mem.organics_drop = int(world["id"])
+                tag = "cheap" if price <= ORGANICS_CHEAP_PRICE else "cheapest known"
+                return (self._act("trade", {"commodity": "organics", "qty": int(qty), "side": "buy"},
+                                  f"buy {qty} {tag} organics @{price} ({days}d left on planet {world['id']})"),
+                        Intent("colonize", world.get("sector_id")))
+        if days <= 0 and seller is not None and v.here is not None and int(seller[0]) != int(v.here):
+            sid, price = seller
+            plot = self._plot(v, sid, f"organics seller {sid} (~{price}) for planet {world['id']} ({days}d left)")
+            if plot is not None and not self._banned_why(plot, v):
+                return plot, Intent("colonize", sid)
+        return None
 
     def _cargotran_net(self, v: View) -> int | None:
         """Trade-in net for CargoTran from a starter hull, or None if we already outgrew it."""

@@ -48,9 +48,13 @@ def _stardock_merchant(credits=50_000):
 
 
 def _away_from_buildable_world(credits: int):
-    """In space at sector 5; our world (planet 7, sector 4) can start L1 now (1,500 colonists, 5k)."""
+    """In space at sector 5; our world (planet 7, sector 4) can start L1 now.
+
+    2,100 colonists, above the 1,000-colonist L1 cost, so the build is legal
+    whether or not a growth floor is enabled.
+    """
     world = {"id": 7, "sector_id": 4, "name": "G", "class": "M", "origin": "genesis", "citadel_level": 0,
-             "citadel_target": 0, "colonists": {"fuel_ore": 900, "organics": 300, "equipment": 150, "colonists": 150}}
+             "citadel_target": 0, "colonists": {"fuel_ore": 1200, "organics": 500, "equipment": 200, "colonists": 200}}
     obs = synthetic_obs(sector=5, planets=[world], credits=credits)
     obs["self_id"], obs["net_worth"] = "P1", 60_000
     return obs
