@@ -198,6 +198,29 @@ def replay(brain: Any, payloads: Iterable[dict[str, Any]]) -> tuple[Report, list
     return tracker.report, actions
 
 
+def aba_bounces(rows: Iterable[tuple[Any, str, Any]]) -> int:
+    """Immediate local-warp reversals in a decision log.
+
+    ``rows`` is ``(sector_before, action_kind, target)`` in decision order.
+    A bounce is warp A→B followed later by warp B→A with no ``plot_course``
+    between them. Trade and StarDock autopilots are plots, so a profitable
+    two-port run is not an ABA bounce. Greedy explore (A-B-A-B) is.
+    """
+    bounces = 0
+    last: tuple[int, int] | None = None
+    for sector, kind, target in rows:
+        if kind == "plot_course":
+            last = None
+            continue
+        if kind != "warp" or target is None or sector is None:
+            continue
+        src, dst = int(sector), int(target)
+        if last is not None and last == (dst, src):
+            bounces += 1
+        last = (src, dst)
+    return bounces
+
+
 def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     with Path(path).open(encoding="utf-8") as f:
@@ -340,6 +363,6 @@ def ferry_storyboard() -> list[tuple[str, dict[str, Any], str, dict[str, Any]]]:
 
 
 __all__ = [
-    "MILESTONES", "REQUIRED_ARGS", "STORYBOARD", "MilestoneTracker", "Report", "ferry_storyboard",
-    "load_jsonl", "replay", "synthetic_obs", "validate_action",
+    "MILESTONES", "REQUIRED_ARGS", "STORYBOARD", "MilestoneTracker", "Report", "aba_bounces",
+    "ferry_storyboard", "load_jsonl", "replay", "synthetic_obs", "validate_action",
 ]

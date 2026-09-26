@@ -117,18 +117,23 @@ def _unmapped(credits):
 
 
 def test_genesis_money_while_unmapped_autopilots_to_stardock() -> None:
+    # N1: below CargoTran / genesis affordability, do not hunt sector 1.
     poor = SeatBrain().decide(_unmapped(10_000))
-    assert poor["kind"] == "warp"  # keep mapping
+    assert poor["kind"] == "warp" and poor["args"].get("target") != 1
     rich = SeatBrain().decide(_unmapped(40_000))
     assert rich["kind"] == "plot_course" and rich["args"] == {"target": 1, "execute": True}
-    # Pressure lowers the bar (no cash buffer) but a broke seat still does not waste the trip.
-    near = _unmapped(30_500)
-    assert SeatBrain().decide(copy.deepcopy(near))["kind"] == "warp"
-    near["rivals"] = [_rival(300_000)]
-    assert SeatBrain().decide(near)["args"].get("target") == 1
+    # genesis (25k) + L1 (5k) autopilots even when sector 1 is unmapped.
+    assert SeatBrain().decide(_unmapped(30_500))["args"] == {"target": 1, "execute": True}
+    short = _unmapped(29_000)
+    assert SeatBrain().decide(copy.deepcopy(short))["args"].get("target") != 1
+    # Pressure lowers the bar to the torpedo price, not below it.
+    press = _unmapped(26_000)
+    press["rivals"] = [_rival(300_000)]
+    assert SeatBrain().decide(press)["args"].get("target") == 1
     broke = _unmapped(5_000)
     broke["rivals"] = [_rival(300_000)]
-    assert SeatBrain().decide(broke)["kind"] == "warp"
+    broke_action = SeatBrain().decide(broke)
+    assert broke_action["kind"] == "warp" and broke_action["args"].get("target") != 1
 
 
 # ---------------------------------------------------------------------------
