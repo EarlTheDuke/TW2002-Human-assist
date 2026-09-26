@@ -18,6 +18,10 @@
   # 5. N2 offline proof: 10-day growth A/B vs the N1 brain, five seeds
   python scripts/seat_brain_acceptance.py n2
 
+  # 6. N3 offline proof: value-per-turn vs the N2 ladder. Ferry turns < 40%,
+  #    day-10 net worth >= 400k on seed 250925, organics never 0.
+  python scripts/seat_brain_acceptance.py n3
+
 Exit code 0 = every action valid and the genesis -> land -> citadel -> ferry loop completed.
 Replay and synthetic modes never touch the engine state, /state, or another seat.
 """
@@ -213,9 +217,33 @@ N2_SEEDS = (250925, 20260925, 230923, 99, 31)
 
 
 def n1_brain():
-    """SeatBrain with the N1 citadel and organics policy (no N2 growth rules)."""
+    """SeatBrain with the N1 citadel and organics policy (no N2 growth rules, no N3 allocator)."""
     return SeatBrain(feed_organics=False, citadel_floor_ratio=None, citadel_fuel_shield=False,
-                     citadel_multiday_floor=False)
+                     citadel_multiday_floor=False, value_allocator=False)
+
+
+def n2_brain():
+    """N2 growth policy on the fixed ladder. ``value_allocator`` off is the pre-N3 brain."""
+    return SeatBrain(value_allocator=False)
+
+
+_FERRY_MOVE = frozenset({"plot_course", "warp", "land_planet", "assign_colonists", "liftoff"})
+
+
+def _is_ferry_action(action: dict, colonists_aboard: int) -> bool:
+    """Colonist purchase, a thought that says ferry, or a move while colonists are aboard.
+
+    ``plot_course execute`` spends warp turns inside the handler and reports
+    ``turns_spent=0``. Callers must weight this by the ``turns_today`` delta.
+    """
+    kind = action.get("kind")
+    args = action.get("args") or {}
+    thought = str(action.get("thought") or "").lower()
+    if "ferry" in thought:
+        return True
+    if kind == "buy_equip" and args.get("item") == "colonists":
+        return True
+    return colonists_aboard > 0 and kind in _FERRY_MOVE
 
 
 def prove_growth_replay(*, seed: int, brain: SeatBrain | None = None, days: int = 10,
@@ -243,6 +271,8 @@ def prove_growth_replay(*, seed: int, brain: SeatBrain | None = None, days: int 
     min_organics: int | None = None
     zero_planets: set[int] = set()
     samples = 0
+    ferry_turns = 0
+    total_turns = 0
 
     def sample() -> None:
         nonlocal min_organics, samples
@@ -266,12 +296,20 @@ def prove_growth_replay(*, seed: int, brain: SeatBrain | None = None, days: int 
             sample()
             continue
         obs = build_observation(u, "P1").model_dump(mode="json")
+        turns_before = p.turns_today
+        day_before = u.day
+        colonists_aboard = int(p.ship.cargo.get(Commodity.COLONISTS, 0))
         action = brain.decide(obs)
         if validate_action(obs, action):
             rejected += 1
         res = apply_action(u, "P1", Action(**action))
         if not res.ok:
             rejected += 1
+        if u.day == day_before:
+            spent = max(0, p.turns_today - turns_before)
+            total_turns += spent
+            if _is_ferry_action(action, colonists_aboard):
+                ferry_turns += spent
         sample()
         if action["kind"] == "query_limpets":
             tick_day(u)
@@ -292,6 +330,9 @@ def prove_growth_replay(*, seed: int, brain: SeatBrain | None = None, days: int 
         "citadels": sorted(int(pl.citadel_level) for pl in worlds),
         "colonists": [sum(int(n) for n in pl.colonists.values()) for pl in worlds],
         "rejected": rejected,
+        "ferry_turns": ferry_turns,
+        "total_turns": total_turns,
+        "ferry_pct": (100.0 * ferry_turns / total_turns) if total_turns else 0.0,
     }
 
 
@@ -302,7 +343,7 @@ def run_n2(seeds: list[int]) -> int:
     print(f"{'seed':>8} {'N1 NW':>10} {'N2 NW':>10} {'delta':>10} {'N2 min org':>10} {'zeros':>8} {'citadels'}")
     for seed in seeds:
         base = prove_growth_replay(seed=seed, brain=n1_brain())
-        nxt = prove_growth_replay(seed=seed, brain=SeatBrain())
+        nxt = prove_growth_replay(seed=seed, brain=n2_brain())
         beat = nxt["net_worth"] > base["net_worth"]
         beats += beat
         clean = not nxt["zero_planets"] and nxt["rejected"] == 0
@@ -310,13 +351,64 @@ def run_n2(seeds: list[int]) -> int:
         failures += not clean
         print(
             f"{seed:>8} {base['net_worth']:>10} {nxt['net_worth']:>10} {nxt['net_worth'] - base['net_worth']:>10} "
-            f"{str(nxt['min_organics']):>10} {str(nxt['zero_planets'] or '-'):>8} {nxt['citadels']} "
+            f"{nxt['min_organics']!s:>10} {(nxt['zero_planets'] or '-')!s:>8} {nxt['citadels']} "
             f"col={nxt['colonists']} {'OK' if ok else 'FAIL'}"
         )
     need = 4 if len(seeds) >= 5 else len(seeds)
     score_ok = beats >= need
     print(f"n2: beats {beats}/{len(seeds)} (need {need}); organics {'clean' if failures == 0 else f'{failures} seeds hit 0 or rejected'}")
     return 0 if score_ok and failures == 0 else 1
+
+
+# Kimi3 winner on this seed was ~427k. The bar is the round number under that.
+N3_BENCH_SEED = 250925
+N3_MIN_NET_WORTH = 400_000
+N3_MAX_FERRY_PCT = 40.0
+# A seed "tanks" when N3 finishes under 85% of the N2 ladder on the same map.
+N3_N2_FLOOR = 0.85
+
+
+def run_n3(seeds: list[int]) -> int:
+    """N3 done-when: ferry < 40%, seed 250925 day-10 NW >= 400k, organics never 0.
+
+    The N2 column is the fixed ladder (``value_allocator`` off) on the same seeds.
+    """
+    failures = 0
+    print(
+        f"{'seed':>8} {'N2 NW':>10} {'N3 NW':>10} {'delta':>9} "
+        f"{'N3 ferry':>9} {'N2 ferry':>9} {'org':>6} {'cit':>12} {'worlds':>6}"
+    )
+    for seed in seeds:
+        base = prove_growth_replay(seed=seed, brain=n2_brain())
+        nxt = prove_growth_replay(seed=seed, brain=SeatBrain())
+        nw_ok = nxt["net_worth"] >= N3_MIN_NET_WORTH if seed == N3_BENCH_SEED else True
+        ferry_ok = nxt["ferry_pct"] < N3_MAX_FERRY_PCT
+        org_ok = not nxt["zero_planets"] and nxt["rejected"] == 0 and nxt["min_organics"] not in (None, 0)
+        floor = int(base["net_worth"] * N3_N2_FLOOR)
+        kept = nxt["net_worth"] >= floor
+        ok = nw_ok and ferry_ok and org_ok and kept
+        failures += not ok
+        flag = "OK" if ok else "FAIL"
+        print(
+            f"{seed:>8} {base['net_worth']:>10} {nxt['net_worth']:>10} "
+            f"{nxt['net_worth'] - base['net_worth']:>9} "
+            f"{nxt['ferry_pct']:>8.1f}% {base['ferry_pct']:>8.1f}% "
+            f"{nxt['min_organics']!s:>6} {nxt['citadels']!s:>12} {nxt['genesis_worlds']:>6} {flag}"
+        )
+        if not ok:
+            print(
+                f"         nw_ok={nw_ok} ferry_ok={ferry_ok} org_ok={org_ok} "
+                f"kept_vs_n2={kept} (floor {floor}) zeros={nxt['zero_planets'] or '-'} "
+                f"rejected={nxt['rejected']} col={nxt['colonists']}"
+            )
+    if N3_BENCH_SEED not in seeds:
+        failures += 1
+        print(f"FAIL seed {N3_BENCH_SEED} missing from the N3 set")
+    print(
+        f"n3: {'PASS' if failures == 0 else f'{failures} FAIL'} "
+        f"(ferry < {N3_MAX_FERRY_PCT:.0f}%, seed {N3_BENCH_SEED} NW >= {N3_MIN_NET_WORTH}, organics != 0)"
+    )
+    return 0 if failures == 0 else 1
 
 
 def run_replay(path: Path, *, show_errors: int = 10) -> int:
@@ -346,6 +438,8 @@ def main() -> int:
     n1.add_argument("--credits", default="100000,20000", help="comma-separated starting credits")
     n2 = sub.add_parser("n2", help="offline N2 proof: 10-day organics + net worth vs the N1 brain")
     n2.add_argument("--seeds", default=",".join(str(s) for s in N2_SEEDS), help="comma-separated universe seeds")
+    n3 = sub.add_parser("n3", help="offline N3 proof: ferry share, day-10 net worth, organics vs the N2 ladder")
+    n3.add_argument("--seeds", default=",".join(str(s) for s in N2_SEEDS), help="comma-separated universe seeds")
     args = ap.parse_args()
     if args.cmd == "synthetic":
         return run_synthetic()
@@ -361,6 +455,9 @@ def main() -> int:
     if args.cmd == "n2":
         seeds = [int(s) for s in args.seeds.split(",") if s.strip()]
         return run_n2(seeds)
+    if args.cmd == "n3":
+        seeds = [int(s) for s in args.seeds.split(",") if s.strip()]
+        return run_n3(seeds)
     return run_replay(Path(args.trace))
 
 

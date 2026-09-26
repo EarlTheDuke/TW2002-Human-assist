@@ -21,7 +21,7 @@ from tw2k.agents.seat_brain import SeatBrain
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.actions import Action, ActionKind
-from tw2k.engine.models import Commodity, Player
+from tw2k.engine.models import Player
 from tw2k.engine.observation import build_observation
 from tw2k.engine.planets import ORGANICS_DAYS_SUSTAINABLE, organics_worker_target, planet_growth_status
 from tw2k.engine.runner import _bfs_path, apply_action
@@ -196,7 +196,7 @@ def test_n2_day10_beats_n1_and_keeps_organics() -> None:
     beats = 0
     for seed in mod.N2_SEEDS:
         base = mod.prove_growth_replay(seed=seed, brain=mod.n1_brain())
-        nxt = mod.prove_growth_replay(seed=seed)
+        nxt = mod.prove_growth_replay(seed=seed, brain=mod.n2_brain())
         if nxt["net_worth"] > base["net_worth"]:
             beats += 1
         else:
