@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-25 22:45 PT - Fable - seat-bot S6 delivered (`e8c2f18`, PR #1)
+- SeatBrain now reads rivals (public NW + witnessed empire events), its own failure events + `recent_failures` (ban exact retry, shelve repeated verb for the day), and `orphaned_planets` (claim only a listed orphan while landed + legal). Observation fix: `recent_failures` groups rejections by verb (was all "unknown").
+- Pressure deliberately does not defer the CargoTran or spend the citadel reserve on a 2nd genesis: offline sweeps showed -5k..-140k NW for that.
+- `tests/test_seat_bot_s6.py` 16; seat-bot 53; suite 597 passed; ruff clean. Live `:8031` untouched.
+- Blockers: none.
 ### 2026-09-25 16:05 PT - Fable - seat-bot S4 delivered (`7a9813d`, PR #1)
 - `src/tw2k/agents/seat_acceptance.py`: seat-only envelope validator (required args, choices, qty caps, plot execute), milestone tracker, recorded-trace replay, synthetic storyboards. `scripts/seat_brain_acceptance.py` CLI (synthetic / record / replay); `seat_brain_v2.py --record` tees live mailbox payloads.
 - `tests/test_seat_bot_s4.py` (9): storyboards, validator negatives (missing planet_id/qty etc.), >200-state grid sweep, record->replay with a fresh brain (identical milestones), HTTP harness e2e with request-path fog audit (only P1's own endpoints). Suite 581 passed; ruff clean.
