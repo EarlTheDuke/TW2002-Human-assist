@@ -377,7 +377,7 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
   self.credits, self.turns_remaining, self.turns_per_day, self.ship  — your state
   self.ship.cargo, self.ship.genesis, self.ship.cargo_free           — inventory
   sector.id, sector.port, sector.warps_out, sector.planets           — where you are; sector.planets may include empty neutral planets
-  owned_planets[]                                                    — your planets (id, sector_id, origin genesis|claim|other, citadel_level, citadel_target, colonists per pool, colonists_total, stockpile)
+  owned_planets[]                                                    — your planets (id, sector_id, origin genesis|claim|other, citadel_level, citadel_target, colonists per pool, colonists_total, stockpile, production per pool, organics_consumption_per_day, growth_active, organics_days_left)
   orphaned_planets[]                                                 — former-player planets only; `claim_planet` applies here
   known_ports_top                                                    — port intel cache
   stage_hint.stage / stage_hint.next_milestone                       — arc progress
