@@ -66,7 +66,9 @@ def _planet_asset_value(planet) -> int:
         valued at K.COLONIST_PRICE. The agent paid that to acquire them
         at Terra; ferrying them here didn't make them cheaper, if
         anything it made them worth more because they now produce.
-      * Stockpile: commodity inventory at base prices.
+      * Stockpile: commodity inventory at base prices. Organics in
+        this pile are also the growth gate (`planets.planet_growth_status`);
+        the score still prices them as inventory only, with no forecast.
       * Treasury: raw credits sitting on-planet.
       * Planet defense: fighters/shields at StarDock equivalent prices.
     """

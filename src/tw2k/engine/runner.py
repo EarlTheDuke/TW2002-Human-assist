@@ -827,6 +827,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         # Planet defenders wiped — fall through and seize.
         planet.owner_id = pid
         planet.corp_ticker = player.corp_ticker
+        planet.origin = "other"
         planet.citadel_level = max(0, planet.citadel_level - 1)  # damaged in siege
         planet.treasury = int(planet.treasury * 0.5)
         planet.last_tax_value = _planet_asset_value(planet)
@@ -834,6 +835,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         # Hostile but no defenders — block per legacy behavior (was outright refusal).
         planet.owner_id = pid
         planet.corp_ticker = player.corp_ticker
+        planet.origin = "other"
         planet.last_tax_value = _planet_asset_value(planet)
     elif planet.owner_id is None:
         # Empty neutral map-start planets are claimed by landing. True
@@ -845,6 +847,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         else:
             planet.owner_id = pid
             planet.corp_ticker = player.corp_ticker
+            planet.origin = "claim"
             planet.last_tax_value = _planet_asset_value(planet)
 
     player.planet_landed = planet.id
@@ -1252,6 +1255,7 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         class_id=cls,
         owner_id=pid,
         corp_ticker=player.corp_ticker,
+        origin="genesis",
     )
     # Seed a founding population so the citadel/production path is actually
     # reachable. Without this, new planets had 0 colonists and growth = 0 * 5%
@@ -1337,6 +1341,7 @@ def _handle_claim_planet(universe: Universe, pid: str, action: Action) -> Action
 
     planet.owner_id = pid
     planet.corp_ticker = player.corp_ticker
+    planet.origin = "claim"
     planet.last_tax_value = _planet_asset_value(planet)
     universe.emit(
         EventKind.PLANET_CLAIMED,
@@ -1685,13 +1690,26 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
         )
         return ActionResult(ok=True, turns_spent=0)
 
+    # Execute walks the path one warp at a time. The first hop must be payable
+    # up front: otherwise the loop used to stop immediately and return ok with
+    # 0 hops and 0 turns — a free action other seats could repeat forever.
+    hop_cost = _warp_cost_for(player)
+    turns_left = int(player.turns_per_day - player.turns_today)
+    if turns_left < hop_cost:
+        return ActionResult(
+            ok=False,
+            error=f"first hop unaffordable (need {hop_cost} turns, have {turns_left})",
+        )
+
     # Execute: walk path, consuming turns; stop at obstacle/out-of-turns
     turns_spent_total = 0
     hops_done = 0
+    last_error = "plot_course execute made no hops"
     for nxt in path:
         sub_action = Action(kind=ActionKind.WARP, args={"target": nxt})
         sub = _handle_warp(universe, pid, sub_action)
         if not sub.ok:
+            last_error = sub.error or last_error
             break
         turns_spent_total += sub.turns_spent
         # apply turn cost incrementally to player so subsequent _handle_warp
@@ -1701,6 +1719,9 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
         hops_done += 1
         if not player.alive or universe.players[pid].sector_id != nxt:
             break
+
+    if hops_done == 0:
+        return ActionResult(ok=False, error=last_error)
 
     universe.emit(
         EventKind.AUTOPILOT,

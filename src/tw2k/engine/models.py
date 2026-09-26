@@ -333,6 +333,10 @@ class Planet(BaseModel):
     shields: int = 0
     treasury: int = 0
     last_tax_value: int = 0
+    # How the CURRENT owner acquired the planet: "genesis" (their own torpedo,
+    # seeded with founding colonists), "claim" (landed on an empty neutral, or
+    # claim_planet on an orphan), "other" (map start, siege seizure, legacy saves).
+    origin: str = "other"
 
 
 # ---------------------------------------------------------------------------
