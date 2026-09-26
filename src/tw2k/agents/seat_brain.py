@@ -38,7 +38,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..engine.constants import CITADEL_TIER_COST, GENESIS_TORPEDO_COST
+from ..engine.constants import CITADEL_TIER_COST, GENESIS_TORPEDO_COST, SHIP_SPECS
 from .pathb_client import TurnContext, legal_heuristic_policy
 from .stall import Intent, StallDetector, known_distance
 
@@ -53,6 +53,11 @@ PRESSURE_NW_RATIO = 1.15    # a rival this far ahead on public net worth = we ar
 PRESSURE_NW_GAP = 10_000
 ORPHAN_MAX_HOPS = 8
 CLAIM_WORLD_MIN_COLONISTS = 1_000
+# N1: a poor seat's one worthwhile StarDock errand before a CargoTran is affordable is a
+# modest hold expansion (buy_ship later resets holds, so keep it modest).
+POOR_HOLDS_TARGET = 60
+POOR_HOLDS_MIN_BUY = 10
+POOR_TRADE_CAPITAL = 6_000
 
 
 @dataclass
@@ -352,7 +357,7 @@ class SeatBrain:
     def _ladder(self, v: View) -> tuple[dict[str, Any], Intent]:
         skipped: list[str] = []
         for rung in (self._landed, self._genesis_aboard, self._land_home, self._land_orphan, self._at_stardock,
-                     self._travel, self._explore_for_stardock, self._earn):
+                     self._travel, self._earn):
             out = rung(v)
             if out is None or out[0] is None:
                 continue
@@ -467,7 +472,6 @@ class SeatBrain:
         if v.here != STARDOCK:
             return None
         reserve = self._citadel_reserve(v)
-        l1_credits = CITADEL_TIER_COST[0][0]
         genesis_price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
                             or GENESIS_TORPEDO_COST)
         gplanets = v.genesis_planets()
@@ -481,7 +485,7 @@ class SeatBrain:
         # Genesis: the first as soon as it leaves L1 money; more when rich (sooner when trailing).
         if v.genesis_aboard == 0 and v.ok("buy_equip") and "genesis" in v.choices("buy_equip", "item"):
             price = genesis_price
-            first = not gplanets and v.credits - price >= l1_credits + self.cash_buffer
+            first = not gplanets and self._first_genesis_affordable(v, price)
             # A 2nd world keeps the full reserve even when trailing: funding it from working
             # capital starved the first citadel (seed 99: -110k NW by day 6).
             more = bool(gplanets) and len(gplanets) < self.target_planets and v.credits - price >= reserve
@@ -489,6 +493,13 @@ class SeatBrain:
                 why = f" - trailing {self.pressure.get('leader')}" if self.pressure and self.pressure.get("leader") else ""
                 return self._act("buy_equip", {"item": "genesis", "qty": 1},
                                  f"buy genesis #{len(gplanets) + 1} ({price} cr){why}"), Intent("acquire")
+        # Poor seat: expand holds so the trade loop pays more until a CargoTran is affordable.
+        holds_qty = self._poor_holds_qty(v)
+        if holds_qty and v.ok("buy_equip") and "holds" in v.choices("buy_equip", "item"):
+            holds_qty = min(holds_qty, v.max_by("buy_equip", "qty", "holds") or holds_qty)
+            if holds_qty >= POOR_HOLDS_MIN_BUY:
+                return self._act("buy_equip", {"item": "holds", "qty": int(holds_qty)},
+                                 f"buy {holds_qty} holds to grow the trade loop (CargoTran not affordable yet)"), Intent("trade")
         # Ferry load: only what the next citadel tier still needs, never below the reserve.
         need = self._colonists_needed(v)
         if (v.worlds() and need > 0 and self._buildable_elsewhere(v) is None
@@ -529,25 +540,16 @@ class SeatBrain:
                     plot = self._plot(v, int(sid), f"inherit orphan {o.get('name', _pid)} (L{o.get('citadel_level', 0)})")
                     if plot:
                         return plot, Intent("colonize", int(sid))
-        if v.here != STARDOCK and v.stardock_known and self._needs_stardock(v):
+        # N1 route, don't search: sector 1 is StarDock by rule and the engine autopilot routes
+        # there over the real warp graph whether or not our map has seen it (qwen2-kimi3 P6
+        # wandered 120 warps looking for it). If the engine rejects the plot, the S6 failure
+        # bans skip this rung and the brain earns / explores instead.
+        if v.here != STARDOCK and self._needs_stardock(v):
             plot = self._plot(v, STARDOCK, self._stardock_reason(v))
             if plot:
-                kind = "colonize" if v.worlds() else "acquire"
+                kind = "colonize" if v.worlds() else ("trade" if self._poor_holds_qty(v) else "acquire")
                 return plot, Intent(kind, STARDOCK)
         return None
-
-    def _explore_for_stardock(self, v: View):
-        if v.stardock_known:
-            return None
-        # Sector 1 is StarDock by rule; the autopilot routes there even if our map hasn't
-        # found it yet. Sitting on genesis money while mapping loses the race (qwen2-kimi3 P6).
-        buffer = 0 if self.pressure is not None else self.cash_buffer
-        rich = v.credits >= GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + buffer
-        if rich and not v.worlds():
-            plot = self._plot(v, STARDOCK, "genesis money in hand - autopilot to StarDock (sector 1)")
-            if plot:
-                return plot, Intent("acquire", STARDOCK)
-        return self._explore(v, "find StarDock")
 
     def _earn(self, v: View):
         self._note_refused_sells(v)
@@ -700,7 +702,10 @@ class SeatBrain:
         if v.genesis_aboard > 0:
             return False
         if not v.worlds():
-            return v.credits >= GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + self.cash_buffer
+            # Go only when a StarDock purchase is affordable; poor seats earn first.
+            genesis_ok = self._first_genesis_affordable(v, GENESIS_TORPEDO_COST)
+            hull_ok = v.ship_class != "cargotran" and v.credits >= self._cargotran_net(v) + self.cash_buffer
+            return genesis_ok or hull_ok or self._poor_holds_qty(v) >= POOR_HOLDS_MIN_BUY
         reserve = self._citadel_reserve(v)
         if len(gplanets) < self.target_planets and v.credits >= GENESIS_TORPEDO_COST + reserve:
             return True
@@ -710,7 +715,53 @@ class SeatBrain:
                 and v.credits - reserve >= 250)
 
     def _stardock_reason(self, v: View) -> str:
-        return "go to StarDock for a genesis torpedo" if not v.worlds() else "go to StarDock for colonists"
+        if v.worlds():
+            return "go to StarDock for colonists"
+        if v.ship_class != "cargotran" and v.credits >= self._cargotran_net(v) + self.cash_buffer:
+            return "autopilot to StarDock (sector 1) for a CargoTran"
+        if self._poor_holds_qty(v) >= POOR_HOLDS_MIN_BUY:
+            return "autopilot to StarDock (sector 1) for extra holds"
+        return "autopilot to StarDock (sector 1) for a genesis torpedo"
+
+    def _first_genesis_affordable(self, v: View, price: int) -> bool:
+        """Single source of truth for 'can buy the first genesis and still fund L1'.
+
+        Used both to decide the StarDock trip and the purchase there: when these two
+        thresholds disagreed (pressure lowered one), the seat flew to StarDock, bought
+        nothing, and flew back - hundreds of times (seed 99 regression)."""
+        buffer = 0 if self.pressure is not None else self.cash_buffer
+        return v.credits - price >= CITADEL_TIER_COST[0][0] + buffer
+
+    def _cargotran_net(self, v: View) -> int:
+        """CargoTran price minus trade-in (25% of the current hull), from the public ship table."""
+        if v.here == STARDOCK:
+            net = (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {}).get("cargotran")
+            if isinstance(net, int):
+                return net
+        cur = SHIP_SPECS.get(str(v.ship_class), {}).get("cost", 0)
+        return int(SHIP_SPECS["cargotran"]["cost"]) - int(int(cur) * 0.25)
+
+    def _has_earned(self, v: View) -> bool:
+        """Earn before StarDock: the seat has banked real trade profit (its own trade_summary),
+        not merely remembered a port pair - so extra holds have a proven loop to pay back on."""
+        ts = v.obs.get("trade_summary") or {}
+        return int(ts.get("sells") or 0) > 0 and int(ts.get("total_profit_cr") or 0) > 0
+
+    def _poor_holds_qty(self, v: View) -> int:
+        """Holds worth buying now: no world, no CargoTran in reach, a trade loop to use them on."""
+        if v.worlds() or v.ship_class == "cargotran" or v.genesis_aboard:
+            return 0
+        if v.credits >= self._cargotran_net(v) + self.cash_buffer:
+            return 0  # buy the hull instead; buy_ship would reset extra holds anyway
+        holds = int(v.ship.get("holds") or 0)
+        if holds >= POOR_HOLDS_TARGET or not self._has_earned(v):
+            return 0
+        unit = None
+        if v.here == STARDOCK:
+            unit = (v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("holds")
+        unit = int(unit or SHIP_SPECS.get(str(v.ship_class), {}).get("base_hold_cost") or 500)
+        afford = max(0, (v.credits - POOR_TRADE_CAPITAL) // max(1, unit))
+        return int(min(POOR_HOLDS_TARGET - holds, afford))
 
     def _plot(self, v: View, target: int, why: str) -> dict[str, Any] | None:
         # plot_course is "legal" even when the first hop cannot be paid for; the
@@ -733,14 +784,59 @@ class SeatBrain:
         return sorted(choices, key=score)[0]
 
     def _explore(self, v: View, why: str):
+        """N1 frontier-directed exploration over the seat's own map memory.
+
+        1. An unvisited neighbour here -> warp to it.
+        2. Otherwise plot (execute) to the nearest unvisited sector adjacent to a known
+           one, measured through known warps - one action, so dead ends and fully
+           explored pockets are left without A->B->A bouncing.
+        3. Fallback: least-visited legal warp, then scan.
+        """
+        def warp_ok(t: int) -> bool:
+            return not self._banned_why({"kind": "warp", "args": {"target": t}}, v)
+
         choices = [int(c) for c in v.choices("warp", "target")] if v.ok("warp") else []
-        choices = [t for t in choices if not self._banned_why({"kind": "warp", "args": {"target": t}}, v)]
+        choices = [t for t in choices if warp_ok(t)]
+        fresh = [t for t in choices if t not in v.known_warps]
+        if fresh:
+            fresh.sort(key=lambda t: (self.mem.visits.get(t, 0), t))
+            return self._act("warp", {"target": fresh[0]}, f"explore -> {fresh[0]} ({why})"), Intent("explore")
+        frontier = self._nearest_frontier(v)
+        if frontier is not None:
+            plot = self._plot(v, frontier, f"explore frontier ({why})")
+            if plot and not self._banned_why(plot, v):
+                return plot, Intent("explore", frontier)
         if choices:
-            choices.sort(key=lambda t: (t in v.known_warps, self.mem.visits.get(t, 0), t))
+            choices.sort(key=lambda t: (self.mem.visits.get(t, 0), t))
             return self._act("warp", {"target": choices[0]}, f"explore -> {choices[0]} ({why})"), Intent("explore")
         if v.ok("scan") and v.here not in v.known_warps:
             return self._act("scan", {}, f"scan ({why})"), Intent("explore")
         return None, Intent()
+
+    def _nearest_frontier(self, v: View) -> int | None:
+        """Closest unvisited sector (not in known_warps) adjacent to a known sector, via known warps."""
+        kw = v.known_warps
+        if v.here is None or v.here not in kw:
+            return None
+        seen = {v.here}
+        frontier = [v.here]
+        while frontier:
+            found: list[int] = []
+            nxt: list[int] = []
+            for s in frontier:
+                for n in kw.get(s, ()):
+                    if n in seen:
+                        continue
+                    seen.add(n)
+                    if n not in kw:
+                        if not self._banned_why({"kind": "plot_course", "args": {"target": n}}, v):
+                            found.append(n)
+                    else:
+                        nxt.append(n)
+            if found:
+                return sorted(found, key=lambda t: (self.mem.visits.get(t, 0), t))[0]
+            frontier = nxt
+        return None
 
     def _act(self, kind: str, args: dict[str, Any], thought: str) -> dict[str, Any]:
         return {"kind": kind, "args": args, "thought": f"SeatBrain: {thought}"}
@@ -749,10 +845,10 @@ class SeatBrain:
         mem = self.mem
         gplanets = v.genesis_planets()
         home = v.planet(mem.home_planet)
-        if not v.stardock_known:
-            short = "Explore until StarDock (sector 1) is known."
+        if not v.worlds() and v.genesis_aboard == 0 and not self._needs_stardock(v) and v.here != STARDOCK:
+            short = "Trade known ports until a CargoTran / genesis / hold upgrade is affordable; StarDock via autopilot."
         elif not gplanets and v.genesis_aboard == 0:
-            short = "Afford and buy a genesis torpedo at StarDock."
+            short = "Autopilot to StarDock (sector 1); buy CargoTran, then a genesis torpedo."
         elif v.genesis_aboard:
             short = "Deploy genesis in a legal deep sector, then land and build a citadel."
         else:

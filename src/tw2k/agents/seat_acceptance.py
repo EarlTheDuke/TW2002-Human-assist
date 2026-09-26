@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -198,6 +199,72 @@ def replay(brain: Any, payloads: Iterable[dict[str, Any]]) -> tuple[Report, list
     return tracker.report, actions
 
 
+def count_aba(sectors: list[Any]) -> int:
+    """A -> B -> A bounces in a per-decision sector trail (the qwen2-kimi3 report metric)."""
+    return sum(1 for i in range(2, len(sectors))
+               if sectors[i] is not None and sectors[i] == sectors[i - 2] and sectors[i] != sectors[i - 1])
+
+
+def _game_turns(obs_list: list[dict[str, Any]]) -> int:
+    """Game turns consumed across a decision sequence, from the seat's own turns_remaining."""
+    total = 0
+    for a, b in pairwise(obs_list):
+        ta, tb = a.get("turns_remaining"), b.get("turns_remaining")
+        if not isinstance(ta, int) or not isinstance(tb, int):
+            continue
+        total += (ta - tb) if a.get("day") == b.get("day") else ta  # rest of the day was used/forfeited
+    return total
+
+
+def _economy_moved(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    ca = (a.get("ship") or {}).get("cargo") or {}
+    cb = (b.get("ship") or {}).get("cargo") or {}
+    return a.get("credits") != b.get("credits") or ca != cb
+
+
+def route_metrics(payloads: list[dict[str, Any]]) -> dict[str, Any]:
+    """N1 metrics from the seat's OWN observations only (mailbox payloads, in order).
+
+    `aba` counts every A->B->A bounce in the per-decision sector trail; `idle_aba` only the
+    bounces with no credit/cargo change around them (pure wandering, the qwen2-kimi3 P6
+    failure) - a buy-at-A / sell-at-B trade loop is an ABA by design but not idle.
+    Rates are per 100 GAME turns (a plot_course decision can spend many turns)."""
+    obs_list = [p.get("observation") if "observation" in p else p for p in payloads]
+    sectors: list[Any] = []
+    stardock_day = None
+    day1_profit = 0
+    seen_trades: set[tuple] = set()
+    for obs in obs_list:
+        sid = (obs.get("sector") or {}).get("id")
+        sectors.append(sid)
+        if sid == 1 and stardock_day is None:
+            stardock_day = obs.get("day")
+        for t in obs.get("trade_log") or []:
+            key = (t.get("day"), t.get("tick"), t.get("sector_id"), t.get("commodity"), t.get("side"))
+            if key in seen_trades:
+                continue
+            seen_trades.add(key)
+            if t.get("day") == 1 and isinstance(t.get("realized_profit"), int):
+                day1_profit += t["realized_profit"]
+    aba = count_aba(sectors)
+    idle = sum(1 for i in range(2, len(sectors))
+               if sectors[i] is not None and sectors[i] == sectors[i - 2] and sectors[i] != sectors[i - 1]
+               and not _economy_moved(obs_list[i - 2], obs_list[i - 1])
+               and not _economy_moved(obs_list[i - 1], obs_list[i]))
+    turns = _game_turns(obs_list)
+    return {
+        "decisions": len(sectors),
+        "game_turns": turns,
+        "stardock_day": stardock_day,
+        "day1_trade_profit": day1_profit,
+        "aba": aba,
+        "aba_per_100_turns": round(100.0 * aba / max(1, turns), 2),
+        "idle_aba": idle,
+        "idle_aba_per_100_turns": round(100.0 * idle / max(1, turns), 2),
+        "unique_sectors": len({s for s in sectors if s is not None}),
+    }
+
+
 def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     with Path(path).open(encoding="utf-8") as f:
@@ -340,6 +407,6 @@ def ferry_storyboard() -> list[tuple[str, dict[str, Any], str, dict[str, Any]]]:
 
 
 __all__ = [
-    "MILESTONES", "REQUIRED_ARGS", "STORYBOARD", "MilestoneTracker", "Report", "ferry_storyboard",
-    "load_jsonl", "replay", "synthetic_obs", "validate_action",
+    "MILESTONES", "REQUIRED_ARGS", "STORYBOARD", "MilestoneTracker", "Report", "count_aba", "ferry_storyboard",
+    "load_jsonl", "replay", "route_metrics", "synthetic_obs", "validate_action",
 ]
