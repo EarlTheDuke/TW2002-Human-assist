@@ -33,6 +33,7 @@
   <!-- Scoreboard strip: match clock + self. Every value is a straight read of the Observation. -->
   <section class="scoreboard" id="scoreboard" data-testid="scoreboard" hidden>
     <div class="score" data-obs="self_name"><span class="k">Commander</span><span class="v" id="sbName" data-obs="self_id">-</span></div>
+    <div class="score" data-llm="stage_hint" data-testid="stage-hint"><span class="k">Stage (LLM hint)</span><span class="v stage" id="sbStage">-</span><small id="sbStageDetail" class="hint small" data-testid="stage-hint-detail"></small></div>
     <div class="score"><span class="k">Day</span><span class="v"><span id="sbDay" data-obs="day">-</span> / <span id="sbMaxDays" data-obs="max_days">-</span> <small>tick <span id="sbTick" data-obs="tick">-</span></small></span></div>
     <div class="score"><span class="k">Turns left</span><span class="v"><span id="sbTurns" data-obs="turns_remaining" data-testid="turns-left">-</span> / <span id="sbTpd" data-obs="turns_per_day">-</span></span></div>
     <div class="score"><span class="k">Credits</span><span class="v" id="sbCredits" data-obs="credits" data-testid="credits">-</span></div>
@@ -78,10 +79,10 @@
         <p class="hint small" style="margin:0 0 8px">Only sectors you have visited, scanned or probed. Tap a sector to plot a course (when legal).</p>
         <svg id="knownMap" class="known-map" viewBox="0 0 100 100" role="img" aria-label="Known-space map" data-testid="known-map-svg"></svg>
         <div class="chips" style="margin-top:8px">
-          <span class="chip static" style="border-color:var(--go)">â— you are here</span>
-          <span class="chip static">â— visited</span>
-          <span class="chip static" style="opacity:.6">â—‹ seen, not visited</span>
-          <span class="chip static">â†’ one-way / return unknown</span>
+          <span class="chip static" style="border-color:var(--go)">● you are here</span>
+          <span class="chip static">● visited</span>
+          <span class="chip static" style="opacity:.6">○ seen, not visited</span>
+          <span class="chip static">→ one-way / return unknown</span>
         </div>
         <details class="drawer" data-testid="known-warps">
           <summary>Warp list (text twin)</summary>
@@ -145,11 +146,23 @@
           <summary>Action hint (server)</summary>
           <div id="hint" class="hint" data-testid="action-hint" data-obs="action_hint">-</div>
         </details>
-        <details class="drawer" data-testid="notes-drawer">
-          <summary>Your notes (goals + scratchpad)</summary>
+        <details class="drawer" id="notesDrawer" data-testid="notes-drawer">
+          <summary>Your notes (goals, scratchpad, operator)</summary>
           <div class="kv" id="goals" data-obs="goals"></div>
           <pre id="scratchpad" class="json" data-obs="scratchpad"></pre>
-          <div class="hint small" data-obs="operator_directive"><span id="operatorDirective"></span><span id="operatorDirectiveUpdated" data-obs="operator_directive_updated_day"></span><span data-obs="operator_directive_updated_tick"></span><span data-obs="operator_dialogue"></span></div>
+          <div class="sub">Operator directive</div>
+          <div class="hint small" data-obs="operator_directive" data-testid="operator-directive"><span id="operatorDirective"></span><span id="operatorDirectiveUpdated" data-obs="operator_directive_updated_day" data-llm="operator_directive_updated" data-testid="operator-directive-updated"></span><span data-obs="operator_directive_updated_tick" hidden></span></div>
+          <div class="sub">Operator dialogue <span class="hint small" style="display:inline;background:none;padding:0">(last 8, as API seats see it)</span></div>
+          <div id="operatorDialogue" class="dialogue" data-obs="operator_dialogue" data-testid="operator-dialogue"></div>
+        </details>
+        <details class="drawer" data-testid="llm-twin-drawer">
+          <summary>API twin: what an LLM seat is sent this turn</summary>
+          <pre id="llmTwin" class="json" data-testid="llm-twin">-</pre>
+        </details>
+        <details class="drawer" data-testid="rules-drawer">
+          <summary>Rules the LLM seats see (system prompt)</summary>
+          <div class="hint small" id="rulesVerbs" data-testid="rules-verbs"></div>
+          <pre id="rulesPrompt" class="json" data-testid="rules-prompt">-</pre>
         </details>
         <details class="drawer" data-testid="raw-obs-drawer">
           <summary>Raw observation JSON</summary>
@@ -169,7 +182,7 @@
         </table>
       </div>
 
-      <div class="card" id="knownPortsCard" data-testid="known-ports" data-obs="known_ports">
+      <div class="card" id="knownPortsCard" data-testid="known-ports" data-obs="known_ports" data-llm="known_ports_top">
         <h2>Known ports <span class="badge" id="knownPortsCount">-</span></h2>
         <table class="tape" id="knownPortsTable">
           <thead><tr><th>Sector</th><th>Code</th><th>Age</th><th>Fuel</th><th>Org</th><th>Equip</th></tr></thead>
@@ -189,7 +202,8 @@
       <div class="card" id="rivalsCard" data-testid="rivals">
         <h2>Commanders</h2>
         <div class="list" id="rivals" data-obs="rivals"></div>
-        <div class="list small" id="otherPlayers" data-obs="other_players"></div>
+        <div class="sub">Other commanders (fog-limited: location + hull only when in your sector)</div>
+        <div class="list small" id="otherPlayers" data-obs="other_players" data-testid="other-players"></div>
       </div>
 
       <div class="card" id="planetsCard" data-testid="planets">
@@ -227,6 +241,10 @@
         <button type="button" class="chip" data-filter="planet" data-testid="filter-planet">Planets</button>
         <button type="button" class="chip" data-filter="system" data-testid="filter-system">System</button>
       </div>
+      <div class="chips" role="group" aria-label="Hidden-by-default event kinds">
+        <button type="button" class="chip toggle" data-toggle="thoughts" data-testid="filter-thoughts" aria-pressed="false" title="Your own agent_thought lines (never another seat's)">My thoughts</button>
+        <button type="button" class="chip toggle" data-toggle="usage" data-testid="filter-usage" aria-pressed="false" title="Your own llm_usage meta events">LLM usage</button>
+      </div>
       <span class="hint small" id="eventsMeta"></span>
     </div>
     <div id="eventLog" class="event-log" data-testid="event-log"></div>
@@ -237,6 +255,7 @@
   </footer>
 
   <script src="/static/media-player.js"></script>
+  <script src="/static/bot-parity.js"></script>
   <script src="/static/bot.js"></script>
 </body>
 </html>

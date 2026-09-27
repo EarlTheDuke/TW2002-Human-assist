@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-26 18:05 PT - Fable - grokbot-player G1 (cockpit parity CP1-CP5) delivered
+- `/bot` now renders every key an API LLM seat gets in `format_observation`: planet tape (id, origin, colonists per pool + total, stockpile, production, organics burn, growth, runway), all fog-visible other players (non-corpmates included; occupant chips named), operator directive `(set day D.T)` + last-8 dialogue transcript, `stage_hint` chip from the `format=both` API twin, twin JSON drawer, `/rules` system prompt drawer, and "My thoughts" / "LLM usage" event toggles (off by default, own seat only).
+- Pure formatters in new `web/bot-parity.js`; `tests/test_cockpit_parity_g1.py` runs them under Node against engine-built observations. Also repaired double-encoded UTF-8 in `web/bot.js` / `bot.html`, and cleared ruff findings in `planets.py` + 3 tracked scripts.
+- Suite 623 passed; ruff clean (src, tests, scripts). Browser-checked on a local `:8032` match; live `:8031` untouched.
+
 - **2026-09-25 PT** — Clip library ML0–ML2: web/media/ + 16 stills + media-player.js on /bot (see docs/plans/2026-09-26-clip-library.md). ML3 video pending.
 
 ### 2026-09-25 21:35 PT - Commander - voice architecture: Remote access section

@@ -132,6 +132,14 @@ main.bot-main.cols3 { grid-template-columns: 1fr 1.05fr 1fr; max-width: 1800px; 
 .row.stale { opacity: 0.7; }
 .row.good .t { color: var(--go); }
 .row.bad .t { color: var(--danger); }
+.row.warn .t { color: var(--wait); }
+.dialogue { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.dialogue .line { background: #0b1020; border-radius: 8px; padding: 6px 10px; font-size: 0.88rem; }
+.dialogue .line .who { font-weight: 700; margin-right: 6px; color: var(--accent); }
+.dialogue .line.ai .who { color: var(--go); }
+.dialogue .line .when { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
+.score .v.stage { font-size: 1rem; color: var(--accent); }
+.chip.toggle[aria-pressed="true"] { background: #3a2a10; border-color: var(--wait); color: #ffe2b0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--btn-border); background: #182447;
