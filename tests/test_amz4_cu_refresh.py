@@ -22,6 +22,17 @@ def test_cu_refresh_is_visible_and_does_not_spend_a_turn(browser, tmp_path: Path
         assert inside(box), box
         assert page.evaluate("document.getElementById('pollBtn').closest('#cuScreen') !== null")
         assert page.evaluate("document.scrollingElement.scrollHeight") <= VIEW_H
+        fit = page.evaluate("""() => {
+            const banner = document.getElementById('cuTurn');
+            banner.textContent = 'WAITING · Other (remote seat) is acting · 12s';
+            banner.className = 'cu-turn';
+            document.getElementById('cuStatusLine').textContent = 'Day 12 of 30 - 1,000 turns left today - Rank 10 of 12';
+            document.getElementById('cuSeat').textContent = 'P2 Commander';
+            const nodes = [...document.querySelectorAll('.cu-top .cu-stat .v'), document.querySelector('.cu-statusline')];
+            return nodes.map(el => ({ id: el.id || el.getAttribute('data-testid'), scroll: el.scrollWidth, client: el.clientWidth }));
+        }""")
+        overflow = [row for row in fit if row["scroll"] > row["client"] + 1]
+        assert not overflow, overflow
         before = page.evaluate("() => ({ played: TW2KMedia._state().playedKeys, hud: !!document.querySelector('[data-testid=media-hud]:not([hidden])') })")
         hits = {"obs": 0, "post": 0}
 
