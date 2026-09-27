@@ -4,6 +4,15 @@
  * two video layers, or the CU still HUD), and settings (live/stills/off live
  * on the viewport; this file only honours reduced-motion and mode=cu).
  * window.TW2KMedia keeps onEvents, onEvent, hide, playEntry.
+ *
+ * Viewport mode (TW2KViewport.state().mode), not this file's own setting:
+ *   live   — poster push-in, or a video when the variant has one
+ *   stills — poster frame only: no vp-push / tint, never a video src
+ *   off    — no viewport clip and no caption change. A resolved clip is not
+ *            copied onto the v1 HUD either. Events that resolve to no clip
+ *            still use the v1 HUD, except in Off, so the default cockpit's
+ *            dismiss button stays available in Live.
+ *   cu     — no viewport (it is hidden). The still goes on the v1 HUD.
  */
 (function () {
   "use strict";
@@ -49,7 +58,20 @@
     return root;
   }
 
-  function hide() {
+  function viewportMode() {
+    const vp = window.TW2KViewport;
+    if (!vp || typeof vp.state !== "function") return CU ? "cu" : "live";
+    const st = vp.state() || {};
+    if (st.cu) return "cu";
+    return st.mode || "live";
+  }
+
+  function clearTimer() {
+    if (state.hideTimer) clearTimeout(state.hideTimer);
+    state.hideTimer = null;
+  }
+
+  function clearVisuals() {
     const root = document.getElementById("mediaHud");
     if (root) {
       root.hidden = true;
@@ -63,10 +85,16 @@
       clip.classList.remove("is-still", "is-live");
       clip.querySelectorAll("video").forEach((v) => { try { v.pause(); v.removeAttribute("src"); } catch (_) {} });
     }
-    if (state.hideTimer) clearTimeout(state.hideTimer);
-    state.hideTimer = null;
+    clearTimer();
     state.playing = null;
     if (window.TW2KViewport && typeof window.TW2KViewport.setEventCaption === "function") window.TW2KViewport.setEventCaption(null);
+  }
+
+  // User dismiss (Skip, Esc, HUD ×). Drops the playing clip and anything waiting
+  // so the next poll cannot redraw it.
+  function hide() {
+    if (state.session && typeof state.session.stop === "function") state.session.stop();
+    clearVisuals();
   }
 
   function resolveKind(kind) {
@@ -100,8 +128,8 @@
     }
     root.hidden = false;
     requestAnimationFrame(() => root.classList.add("show"));
-    if (state.hideTimer) clearTimeout(state.hideTimer);
-    state.hideTimer = setTimeout(hide, duration);
+    clearTimer();
+    state.hideTimer = setTimeout(onClipEnded, duration);
   }
 
   function clipMeta(key) {
@@ -128,9 +156,9 @@
     img.alt = "";
     img.setAttribute("data-testid", "viewport-clip-still");
     layer.appendChild(img);
-    // Two video layers exist for real clips (crossfade). Placeholder stills never
-    // attach a src, and reduced motion never creates the elements at all.
-    if (!reduce.matches) {
+    // Two video layers exist for a Live clip that has webm/mp4. Stills, Off, and
+    // reduced motion never create them, so a poster cannot pick up a video src.
+    if (!reduce.matches && viewportMode() === "live") {
       for (const name of ["a", "b"]) {
         const v = document.createElement("video");
         v.className = name === "a" ? "vp-video vp-video-a" : "vp-video vp-video-b";
@@ -145,20 +173,29 @@
     return layer;
   }
 
+  function sectorCaption(meta, item) {
+    const sector = item && item.sector_id != null ? String(item.sector_id) : "";
+    return (meta.caption || "").replace("{sector_id}", sector);
+  }
+
   function showViewport(meta, item) {
+    const mode = viewportMode();
+    if (mode === "off" || mode === "cu") return false;
     const layer = ensureClipLayer();
     if (!layer || !meta.still) return false;
+    const stills = mode === "stills" || reduce.matches;
     const img = layer.querySelector("img");
     img.src = BASE + meta.still;
     layer.hidden = false;
-    layer.classList.toggle("is-still", !meta.webm && !meta.mp4);
-    layer.classList.toggle("is-live", !!(meta.webm || meta.mp4));
-    const caption = meta.caption.replace("{sector_id}", item.sector_id != null ? String(item.sector_id) : "");
-    if (window.TW2KViewport && typeof window.TW2KViewport.setEventCaption === "function") window.TW2KViewport.setEventCaption(caption);
+    layer.classList.toggle("is-still", !stills && !meta.webm && !meta.mp4);
+    layer.classList.toggle("is-live", !stills && !!(meta.webm || meta.mp4));
+    if (window.TW2KViewport && typeof window.TW2KViewport.setEventCaption === "function") {
+      window.TW2KViewport.setEventCaption(sectorCaption(meta, item));
+    }
     const videos = layer.querySelectorAll("video");
-    if ((meta.webm || meta.mp4) && videos.length && !reduce.matches) {
-      const idle = [...videos].find((v) => v.hidden) || videos[0];
-      videos.forEach((v) => { if (v !== idle) { try { v.pause(); } catch (_) {} v.hidden = true; } });
+    videos.forEach((v) => { try { v.pause(); v.removeAttribute("src"); } catch (_) {} v.hidden = true; });
+    if (!stills && (meta.webm || meta.mp4) && videos.length) {
+      const idle = videos[0];
       idle.hidden = false;
       idle.src = BASE + (meta.webm || meta.mp4);
       idle.play().catch(() => {});
@@ -167,25 +204,42 @@
     return true;
   }
 
-  function arm(ms) {
-    if (state.hideTimer) clearTimeout(state.hideTimer);
-    const cap = Math.min(ms || 2400, 5000);
-    state.hideTimer = setTimeout(() => {
-      const session = state.session;
-      const next = session ? session.finish(Date.now()) : null;
-      if (next) playResolved(next);
-      else hide();
-    }, cap);
+  function onClipEnded() {
+    clearTimer();
+    const next = state.session && typeof state.session.finish === "function" ? state.session.finish(Date.now()) : null;
+    if (next) playResolved(next);
+    else clearVisuals();
   }
 
-  function playResolved(key, item) {
+  function arm(ms) {
+    clearTimer();
+    const cap = Math.min(ms || 2400, 5000);
+    state.hideTimer = setTimeout(onClipEnded, cap);
+  }
+
+  function playResolved(item) {
+    const key = item && item.clip_key ? item.clip_key : item;
+    const row = item && item.clip_key ? item : { sector_id: null };
     const meta = clipMeta(key);
     if (!meta) return;
+    if (viewportMode() === "off") {
+      if (state.session && typeof state.session.stop === "function") state.session.stop();
+      clearVisuals();
+      return;
+    }
     state.playing = key;
-    const row = item || { sector_id: null };
-    const useViewport = !CU && document.getElementById("vpScreen") && !(window.TW2KViewport && window.TW2KViewport.state && window.TW2KViewport.state().cu);
-    if (useViewport && showViewport(meta, row)) return;
-    playEntry({ still: meta.still, caption: meta.caption.replace("{sector_id}", row.sector_id != null ? String(row.sector_id) : "") }, key);
+    if (showViewport(meta, row)) return;
+    playEntry({ still: meta.still, caption: sectorCaption(meta, row) }, key);
+  }
+
+  function onMode(mode) {
+    if (mode === "off") hide();
+    else if (mode === "stills") {
+      const layer = document.getElementById("vpClip");
+      if (!layer) return;
+      layer.classList.remove("is-still", "is-live");
+      layer.querySelectorAll("video").forEach((v) => { try { v.pause(); v.removeAttribute("src"); } catch (_) {} v.hidden = true; });
+    }
   }
 
   function onEvents(list, obs) {
@@ -203,16 +257,13 @@
     const view = state.obs || { self_id: null, sector: {} };
     const items = R.resolve(fresh, view, state, state.manifest);
     const hidden = typeof document !== "undefined" && document.hidden;
-    const step = state.session.consider(items, Date.now(), { hidden, maxSeq: state.lastSeq });
+    const selfSeqs = fresh.filter((ev) => ev.actor_id === view.self_id && ev.kind !== "agent_thought" && ev.kind !== "llm_usage").map((ev) => ev.seq);
+    const postedSeq = selfSeqs.length ? Math.max(...selfSeqs) : undefined;
+    const step = state.session.consider(items, Date.now(), { hidden, maxSeq: state.lastSeq, postedSeq });
     if (hidden) return;
-    if (step.playing && (step.playing !== state.playing || step.preempted)) {
-      const item = items.find((x) => x.clip_key === step.playing) || { sector_id: null };
-      playResolved(step.playing, item);
-      return;
-    }
-    // No viewport clip for this batch: keep the v1 still HUD (and its dismiss
-    // button) on the newest row, which is what the default cockpit already shows.
-    if (!step.playing) {
+    if (step.started && step.item) { playResolved(step.item); return; }
+    // No clip started. Off stays quiet. Otherwise a non-clip row keeps the v1 still HUD.
+    if (!step.playing && viewportMode() !== "off") {
       const show = [...fresh].reverse().find((ev) => ev.kind !== "agent_thought" && ev.kind !== "llm_usage");
       if (show) playEntry(resolveKind(show.kind), show.kind);
     }
@@ -238,7 +289,7 @@
   if (CU) document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") hide(); });
 
   window.TW2KMedia = {
-    loadManifest, onEvent, onEvents, playEntry, hide, ensureHud,
+    loadManifest, onEvent, onEvents, playEntry, hide, ensureHud, onMode,
     skipClip: hide,
     ready: () => !!state.ready,
     _prime: (opts) => {

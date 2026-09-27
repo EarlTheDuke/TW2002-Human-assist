@@ -44,6 +44,13 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 09:37 PT - Fable - video cockpit V2 QC fixes delivered
+- Dismiss (Skip, Esc, viewport click, HUD x) calls `session.stop()`, so the next poll cannot redraw the clip. The CU auto-hide timer uses the same finish path as the viewport timer, and a clip renders only when `consider()` actually started one.
+- Stills is a poster only (no `vp-push` / tint, no video src). Off silences a resolved clip: no viewport layer, no caption change, and that clip is not copied onto the v1 HUD. Events that resolve to no clip still use the v1 HUD, except in Off. CU stays a HUD still, not Off.
+- A waiting clip keeps `sector_id` through `finish()`, so the promoted caption is not "Docking at " with an empty sector. A newer self action drops a waiting clip (`postedSeq`).
+- `tests/test_video_cockpit_v2.py`: skip then a scan does not replay; CU timer then a scan does not restore the dock HUD; Live / Stills / Off on one resolved clip; promoted dock keeps sector 19; `_exchange_outcome` hit, miss, destroyed, attacker destroyed, both at 0, and the Ferrengi path. Suite 703 passed; ruff clean; manifest OK.
+- Left unused: manifest `max_queue` (queue is hard-coded to 1) and `crossfade_ms`. Did not chase the default `/bot` console 404.
+
 ### 2026-09-26 22:07 PT - Fable - video cockpit V1 (viewport shell) delivered
 - Default `/bot` middle column gets `#viewport`: procedural canvas starfield seeded by the seat's own sector (station glyph when a port is present, FedSpace tint), per-hull CSS cockpit frames (hauler / light / heavy / capital from `ship.class`), caption strip, Skip, Live / Stills / Off (saved in localStorage, `?viewport=` override), "Sound: off". `web/viewport.js`; `bot.js` just calls `TW2KViewport.update(obs)` (default layout only).
 - Decoration only: no fetch, no `/state`, no focus steal, ~30 fps, paused when the tab is hidden or the viewport is off-screen. Reduced motion forces Stills (no running animation, no `<video>`). `mode=cu` shows no viewport (no-op script).
