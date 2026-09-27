@@ -362,7 +362,11 @@
   async function loadManifest() {
     try {
       const r = await fetch(BASE + "manifest.json", { cache: "no-store" });
-      if (!r.ok) return;
+      if (!r.ok) {
+        state.manifestFailed = true;
+        state.pendingEvents = null;
+        return;
+      }
       state.manifest = await r.json();
       state.ready = true;
       const queued = state.pendingEvents || [];

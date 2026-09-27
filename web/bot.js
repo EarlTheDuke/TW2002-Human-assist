@@ -1352,6 +1352,7 @@
   }
   function setupCu() {
     document.body.classList.add("mode-cu");
+    document.querySelector(".cu-top").appendChild(els.poll);
     $("cuScreen").hidden = false;
     $("cuWarpSlot").appendChild(els.warps);
     $("cuVerbSlot").appendChild($("verbPad"));

@@ -77,3 +77,25 @@ def test_events_wait_for_the_manifest_and_a_failed_fetch_clears_the_queue(browse
         assert pending == 0
         assert page.evaluate("TW2KMedia._state().playedKeys") == []
         page.close()
+
+
+def test_a_404_manifest_clears_the_pending_queue(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    with CuHost(tmp_path, TOK + "-404", turns_per_day=40) as host:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.route("**/media/manifest.json", lambda route: route.fulfill(status=404, body="missing"))
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}-404")
+        page.wait_for_function("window.TW2KMedia", timeout=20_000)
+        page.evaluate("""() => {
+            const obs = { self_id: 'P2', sector: { id: 19 } };
+            TW2KMedia.onEvents([{ seq: 1, kind: 'warp', actor_id: 'P2', sector_id: 8, summary: 'warp', facts: { from: 4, to: 8 } }], obs, { history: true });
+            TW2KMedia.onEvents([{ seq: 2, kind: 'trade', actor_id: 'P2', sector_id: 19, summary: 'trade', facts: { commodity: 'fuel_ore', qty: 1, side: 'sell' } }], obs);
+        }""")
+        deadline = time.time() + 8
+        pending = 1
+        while time.time() < deadline and pending != 0:
+            time.sleep(0.1)
+            pending = page.evaluate("TW2KMedia._state().pending")
+        assert pending == 0
+        assert page.evaluate("TW2KMedia._state().playedKeys") == []
+        page.close()
