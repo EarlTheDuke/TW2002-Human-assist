@@ -104,6 +104,11 @@
     params.delete("token");
     const q = params.toString();
     history.replaceState(null, "", location.pathname + (q ? "?" + q : ""));
+  } else {
+    // G3: only reuse a token stored for THIS seat; otherwise rely on the seat claim cookie.
+    const legacy = localStorage.getItem("tw2k_bot_seat") === state.seat ? localStorage.getItem("tw2k_bot_token") : "";
+    state.token = localStorage.getItem(`tw2k_bot_token_${state.seat}`) || legacy || "";
+    els.token.value = state.token;
   }
 
   // ---------------------------------------------------------------- infra
@@ -119,6 +124,7 @@
   }
   function classifyError(status, detail) {
     const d = typeof detail === "string" ? detail : JSON.stringify(detail || "");
+    if ((status === 401 || /unauthorized|invalid.?token/i.test(d)) && !state.token) return `Not signed in as ${state.seat}: open this seat's link from .tw2k/seat_links (no paste needed), or paste the seat token and Connect.`;
     if (status === 401 || /unauthorized|invalid.?token|forbidden/i.test(d)) return "Auth failed (401). Re-paste the seat token and Connect.";
     if (status === 409 && /stale_turn/.test(d)) return "Stale turn_seq. The turn moved on; wait for YOUR TURN.";
     if (status === 409 && /not_awaiting/.test(d)) return "Not your turn yet.";
@@ -127,12 +133,16 @@
     return `${status} ${d}`.trim();
   }
   function headers() {
-    return { Authorization: `Bearer ${state.token}`, "Content-Type": "application/json" };
+    // No pasted token -> the HttpOnly seat cookie from /bot/claim authenticates (G3);
+    // X-TW2K-Seat is the harness's CSRF check for cookie-authenticated writes.
+    const h = { "Content-Type": "application/json", "X-TW2K-Seat": state.seat };
+    if (state.token) h.Authorization = `Bearer ${state.token}`;
+    return h;
   }
   async function api(path, opts = {}) {
     let r;
     try {
-      r = await fetch(`/harness/v1${path}`, { ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
+      r = await fetch(`/harness/v1${path}`, { credentials: "same-origin", ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
     } catch (net) {
       throw new Error("Network error talking to harness (is the host up?)");
     }
@@ -1240,14 +1250,14 @@
       const brain = s.attended ? "bot attached" : "no bot";
       b.textContent = `${s.player_id} ${s.name || ""} · ${stateTxt} · ${brain} · t${s.turn_seq}`;
       const hasTok = !!localStorage.getItem(tokenKey(s.player_id));
-      b.title = s.player_id === state.seat ? "this seat" : hasTok ? `switch to ${s.player_id} (token stored here)` : `switch to ${s.player_id} - paste its token first`;
+      b.title = s.player_id === state.seat ? "this seat" : hasTok ? `switch to ${s.player_id} (token stored here)` : `switch to ${s.player_id} (uses its seat link cookie, or paste its token)`;
       b.addEventListener("click", () => {
         if (s.player_id === state.seat) return;
         const tok = localStorage.getItem(tokenKey(s.player_id));
         ensureSeatOption(s.player_id);
         els.seat.value = s.player_id;
-        if (tok) { els.token.value = tok; els.connect.click(); }
-        else { els.token.value = ""; els.token.focus(); setErr(`Paste the token for ${s.player_id}, then Connect. One Grok Bot brain per seat - do not drive siblings from one session.`); }
+        els.token.value = tok || "";  // no stored token -> try this seat's claim cookie
+        els.connect.click();
       });
       el.appendChild(b);
     }
@@ -1298,7 +1308,7 @@
 
   // One-shot: status + observation (peek if not our turn) + events.
   async function refresh() {
-    if (!state.token) return;
+    if (!state.connected) return;
     try {
       const r = await api(`/${state.seat}/observation?wait_s=0&peek=1&format=both`);
       setErr("");
@@ -1378,14 +1388,11 @@
   els.connect.addEventListener("click", () => {
     state.seat = els.seat.value.toUpperCase();
     state.token = els.token.value.trim();
-    if (!state.token) {
-      setErr("Paste the harness bearer token first.");
-      setBanner("idle", "PASTE TOKEN + CONNECT");
-      return;
-    }
     localStorage.setItem("tw2k_bot_seat", state.seat);
-    localStorage.setItem("tw2k_bot_token", state.token);
-    localStorage.setItem(tokenKey(state.seat), state.token);  // per-seat store for the lobby switcher
+    if (state.token) {  // empty = sign in with the seat claim cookie (G3)
+      localStorage.setItem("tw2k_bot_token", state.token);
+      localStorage.setItem(tokenKey(state.seat), state.token);  // per-seat store for the lobby switcher
+    }
     els.poll.disabled = false;
     state.connected = true;
     state.obs = null;
@@ -1398,7 +1405,7 @@
     state.watchGen += 1;
     if (CU) document.body.classList.add("cu-connected");
     setErr("");
-    log(`connected as ${state.seat}`);
+    log(`connecting as ${state.seat} (${state.token ? "pasted token" : "seat link cookie"})`);
     startTicker();
     refresh().then(() => watchLoop(state.watchGen));
   });
@@ -1415,7 +1422,7 @@
   });
 
   if (CU) setupCu();
-  if (state.token) {
+  if (state.token || params.get("seat")) {
     els.poll.disabled = false;
     els.connect.click();
   } else {

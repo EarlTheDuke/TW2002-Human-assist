@@ -11,23 +11,18 @@ match on a free local port >= 8033 (never the live :8031 match).
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import shutil
-import socket
 import subprocess
-import threading
-import time
 from pathlib import Path
 
 import pytest
 
+from tests._cu_host import VIEW_H, VIEW_W, CuHost, inside
 from tw2k.engine import GameConfig, generate_universe
-from tw2k.engine.models import Commodity, Player
+from tw2k.engine.models import Player
 from tw2k.engine.observation import build_observation
-from tw2k.server.app import create_app
-from tw2k.server.runner import AgentSpec, MatchSpec
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")
@@ -36,7 +31,6 @@ CSS = (ROOT / "web" / "bot.css").read_text(encoding="utf-8")
 PARITY_PATH = ROOT / "web" / "bot-parity.js"
 NODE = shutil.which("node")
 TOK = "g2-cu-token-p2-0000000000000000"
-VIEW_W, VIEW_H = 1280, 800
 
 # Every decision field the G2 spec lists, by the testid that renders it.
 DECISION_FIELDS = (
@@ -95,103 +89,9 @@ def test_turn_card_summarises_decision_state() -> None:
 
 
 # ------------------------------------------------------------------ browser smoke (Playwright, 1280x800)
-def _free_port(start: int = 8033) -> int:
-    for port in range(start, start + 60):
-        with socket.socket() as s:
-            try:
-                s.bind(("127.0.0.1", port))
-                return port
-            except OSError:
-                continue
-    raise RuntimeError("no free port >= 8033")
-
-
-class _Host:
-    """A real app + match on a background thread (heuristic P1, external P2)."""
-
-    def __init__(self, tmp: Path) -> None:
-        import uvicorn
-
-        self.port = _free_port()
-        self.app = create_app(auto_start=False)
-        self.runner = self.app.state.runner
-        self.runner._saves_root = tmp / "saves"
-        self.server = uvicorn.Server(uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning"))
-        self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
-
-    async def _main(self) -> None:
-        async def start() -> None:
-            while not self.server.started:
-                await asyncio.sleep(0.05)
-            await self.runner.start(MatchSpec(
-                config=GameConfig(seed=250925, universe_size=200, max_days=3, turns_per_day=60, starting_credits=50_000,
-                                  enable_ferrengi=False, enable_planets=True, action_delay_s=0.0),
-                agents=[AgentSpec(player_id="P1", name="HBot", kind="heuristic"),
-                        AgentSpec(player_id="P2", name="Commander", kind="external", external_token=TOK)],
-                action_delay_s=0.1,
-                external_timeout_s=600.0,
-            ))
-            # Park the seat on a two-way trading port with cargo to sell, so the port
-            # tape and the quick SELL form are exercised. The first observation may
-            # predate the move; the test acts once before relying on it.
-            while self.runner.state.universe is None or "P2" not in self.runner.state.universe.players:
-                await asyncio.sleep(0.02)
-            u = self.runner.state.universe
-            me = u.players["P2"]
-            port = next(s for s in u.sectors.values() if s.id > 10 and s.port and (s.port.code or "").startswith("B")
-                        and "S" in (s.port.code or ""))
-            u.sectors[me.sector_id].occupant_ids.remove("P2")
-            me.sector_id = port.id
-            port.occupant_ids.append("P2")
-            me.ship.cargo[Commodity.FUEL_ORE] = 10
-        async def start_logged() -> None:
-            try:
-                await start()
-            except Exception:
-                import traceback
-                traceback.print_exc()
-                raise
-        task = asyncio.create_task(start_logged())
-        await self.server.serve()
-        task.cancel()
-        await self.runner.stop()
-
-    def __enter__(self) -> _Host:
-        self.thread.start()
-        deadline = time.time() + 20
-        while time.time() < deadline and not (self.server.started and self.runner.state.universe is not None):
-            time.sleep(0.1)
-        assert self.server.started, "host did not start"
-        return self
-
-    def __exit__(self, *exc) -> None:
-        self.server.should_exit = True
-        self.thread.join(timeout=15)
-
-    @property
-    def base(self) -> str:
-        return f"http://127.0.0.1:{self.port}"
-
-
-@pytest.fixture()
-def browser():
-    sync_api = pytest.importorskip("playwright.sync_api")
-    with sync_api.sync_playwright() as pw:
-        try:
-            b = pw.chromium.launch()
-        except Exception as exc:  # browser binary not installed
-            pytest.skip(f"chromium not available: {exc}")
-        yield b
-        b.close()
-
-
-def _inside(box: dict | None) -> bool:
-    return bool(box) and box["x"] >= 0 and box["y"] >= 0 and box["x"] + box["width"] <= VIEW_W + 0.5 and box["y"] + box["height"] <= VIEW_H + 0.5
-
-
 def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
-    with _Host(tmp_path) as host:
+    with CuHost(tmp_path, TOK) as host:
         page = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H})
         requests: list[str] = []
         page.on("request", lambda r: requests.append(r.url.replace(host.base, "")))
@@ -202,7 +102,7 @@ def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypa
         assert page.evaluate("document.body.classList.contains('mode-cu')")
         assert page.evaluate("document.scrollingElement.scrollHeight") <= VIEW_H, "page scrolls at 1280x800"
         outside = [tid for tid in DECISION_FIELDS
-                   if not page.get_by_test_id(tid).is_visible() or not _inside(page.get_by_test_id(tid).bounding_box())]
+                   if not page.get_by_test_id(tid).is_visible() or not inside(page.get_by_test_id(tid).bounding_box())]
         shot = tmp_path / "cu-1280x800.png"
         page.screenshot(path=str(shot))
         if os.environ.get("TW2K_SHOT_DIR"):
@@ -250,7 +150,7 @@ def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypa
         page.keyboard.press("x")
         page.wait_for_selector("#cuFormSlot #verbForm[data-verb=trade]:not([hidden])", timeout=5_000)
         submit_btn = page.get_by_test_id("verb-submit")
-        assert submit_btn.is_visible() and _inside(submit_btn.bounding_box()), submit_btn.bounding_box()
+        assert submit_btn.is_visible() and inside(submit_btn.bounding_box()), submit_btn.bounding_box()
         page.screenshot(path=str(tmp_path / "cu-sell-form.png"))
         if os.environ.get("TW2K_SHOT_DIR"):
             shutil.copy(tmp_path / "cu-sell-form.png", Path(os.environ["TW2K_SHOT_DIR"]) / "cu-sell-form.png")

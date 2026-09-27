@@ -33,7 +33,7 @@ LOGIN_PATH = "/spectate"
 
 # Paths that are always open (per-seat auth or static assets).
 _OPEN_PREFIXES = ("/static/", "/harness/")
-_OPEN_EXACT = {"/bot", LOGIN_PATH, "/healthz"}
+_OPEN_EXACT = {"/bot", "/bot/claim", LOGIN_PATH, "/healthz"}
 
 # Everything else that shows or changes global match state is gated.
 _GATED_EXACT = {"/", "/state", "/events", "/history", "/highlights", "/ws", "/play"}
