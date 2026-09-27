@@ -40,7 +40,8 @@ def test_viewport_markup_is_default_layout_only_and_decoration_only() -> None:
     assert not re.search(r"\b(animation|transition)[\w-]*\s*:", block), "no CSS motion; the canvas is the only motion"
     # Fog / decoration: the viewport reads only the Observation it is handed; no network, no spectator state.
     assert "fetch(" not in JS and "/state" not in JS and "XMLHttpRequest" not in JS
-    assert 'params.get("mode") === "cu"' in JS and "if (CU) { window.TW2KViewport = noop; return; }" in JS
+    assert 'params.get("mode") === "cu"' in JS and "if (CU)" in JS and "cu: true" in JS
+    assert JS.index("if (CU)") < JS.index("getContext"), "the starfield canvas starts only after the CU return"
 
 
 def _goto(browser, host, extra: str = "", **ctx):

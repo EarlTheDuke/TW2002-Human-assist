@@ -1342,6 +1342,10 @@
     // The clip HUD (media-player.js) is created lazily on <body>; in CU mode it lives in
     // leftover space in the action column so it never covers a decision field.
     const slot = $("cuMediaSlot");
+    const qv = params.get("viewport");
+    const cuMode = qv === "off" || qv === "live" ? qv : "stills";
+    slot.dataset.cuViewport = cuMode;
+    if (cuMode === "off") slot.classList.add("is-off");
     const dock = () => { const h = $("mediaHud"); if (h && h.parentElement !== slot) slot.appendChild(h); };
     new MutationObserver(dock).observe(document.body, { childList: true });
     dock();
@@ -1633,7 +1637,17 @@
   });
 
   if (CU) setupCu();
-  else if ($("holdBtn")) $("holdBtn").addEventListener("click", () => toggleHold());
+  else if ($("holdBtn")) {
+    $("holdBtn").addEventListener("click", () => toggleHold());
+    document.addEventListener("keydown", (ev) => {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      const tag = (ev.target && ev.target.tagName) || "";
+      if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) return;
+      if (ev.key.toLowerCase() !== "h") return;
+      ev.preventDefault();
+      toggleHold();
+    });
+  }
   if (state.token || params.get("seat")) {
     els.poll.disabled = false;
     els.connect.click();

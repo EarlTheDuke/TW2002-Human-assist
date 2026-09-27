@@ -252,7 +252,7 @@ This is the human and computer-use cockpit. The harness API above is what the pa
 
 **Status line** (`status_fields` in `src/tw2k/engine/observation.py`). One cell, built only from your Observation: `Day N of M - T turns left today - Rank R of S`. N is clamped to M. When `finished` is true the middle reads `GAME OVER` and the page shows the standings panel, hides the verb pad, and stops polling.
 
-**Keys (mode=cu).** 1–9 warp, S scan, E end the turn (wait), B buy, X sell, T trade, P plot course, M more verbs, R refresh, H hold / end slot, G repeat route, Esc closes a form or the more-verbs panel.
+**Keys.** On `mode=cu`: 1–9 warp, S scan, E end the turn (wait), B buy, X sell, T trade, P plot course, M more verbs, R refresh, G repeat route, Esc closes a form or the more-verbs panel. H (hold / end slot) works on the default layout and in `mode=cu`. The other keys are `mode=cu` only.
 
 **One-click trades.** On a port, `mode=cu` shows `cu-quick-sell-<commodity>` and `cu-quick-buy-<commodity>` for every side with quantity. They trade the engine's max at list price. Auto-accept makes B and X do the same.
 
@@ -262,4 +262,6 @@ This is the human and computer-use cockpit. The harness API above is what the pa
 
 **Reconnect.** A 401 or 403 stops polling and shows `#reconnect` (`reconnect-banner`): signed out, open the refreshed seat link from `.tw2k/seat_links/<seat>.txt`. A 502, 503, or three failed polls shows the same banner and keeps trying, because the tunnel may come back.
 
-**Viewport (default layout only).** Live is the drifting starfield plus a clip when one resolves. Stills is one poster frame (no push-in, no video). Off hides the window and does not play a resolved clip. Skip, Esc, or a click on the window returns to the sector caption. Reduced motion forces Stills and never creates a video element. Sound stays off.
+**Viewport (default layout).** Live is the drifting starfield plus a clip when one resolves. Stills is one poster frame (no push-in, no video). Off hides the window and does not play a resolved clip. Skip, Esc, or a click on the window returns to the sector caption. Reduced motion forces Stills and never creates a video element. Sound stays off. After first paint the page idle-loads P0–P2 posters (skipped on `mode=cu`, reduced motion, or `saveData`). The Raw observation drawer shows session counters: plays, skips, preemptions, stale-drops, poster-fallbacks. Nothing is sent to the server.
+
+**CU media slot.** `mode=cu` defaults to a still in `#cuMediaSlot`: the poster and its caption, swapped instantly, with no video. The caption repeats text already on the turn card and the event list. `?viewport=off` hides that slot and keeps its height so the page does not reflow. `?viewport=live` is allowed for a demo and is **not for scored CU play**.

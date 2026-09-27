@@ -89,16 +89,17 @@
     const defaults = (manifest && manifest.defaults) || {};
     const staleMs = typeof defaults.stale_ms === "number" ? defaults.stale_ms : 4000;
     const clips = (manifest && manifest.clips) || {};
-    const s = { playing: null, waiting: null, lastSeq: 0, playedAt: {} };
+    const s = { playing: null, waiting: null, lastSeq: 0, playedAt: {}, staleDrops: 0 };
 
     function cooldownOk(key, now) {
       const cd = (clips[key] && clips[key].cooldown_ms) || 0;
       return !(cd && s.playedAt[key] !== undefined && now - s.playedAt[key] < cd);
     }
     function dropStale(now, postedSeq) {
-      if (!s.waiting) return;
-      if (now - s.waiting.at > staleMs) s.waiting = null;
-      else if (typeof postedSeq === "number" && s.waiting.seq < postedSeq) s.waiting = null;
+      if (!s.waiting) return 0;
+      if (now - s.waiting.at > staleMs) { s.waiting = null; s.staleDrops += 1; return 1; }
+      if (typeof postedSeq === "number" && s.waiting.seq < postedSeq) s.waiting = null;
+      return 0;
     }
     function start(item, now, record) {
       s.playing = item;
@@ -108,11 +109,11 @@
     function consider(items, now, opts) {
       opts = opts || {};
       if (typeof opts.maxSeq === "number") s.lastSeq = Math.max(s.lastSeq, opts.maxSeq);
-      dropStale(now, opts.postedSeq);
+      const staleDropped = dropStale(now, opts.postedSeq);
       const was = s.playing && s.playing.clip_key;
       let preempted = false;
       let startedItem = null;
-      if (opts.hidden) return { playing: null, waiting: null, preempted: false, started: false, item: null, hidden: true };
+      if (opts.hidden) return { playing: null, waiting: null, preempted: false, started: false, item: null, hidden: true, staleDropped };
       for (const raw of items || []) {
         if (!cooldownOk(raw.clip_key, now)) continue;
         const item = { clip_key: raw.clip_key, priority: raw.priority, seq: raw.seq || 0, sector_id: raw.sector_id, at: now };
@@ -127,6 +128,7 @@
         preempted: preempted && !!was && s.playing.clip_key !== was,
         started: !!startedItem,
         item: startedItem,
+        staleDropped,
       };
     }
     function finish(now) {
@@ -147,7 +149,8 @@
     return {
       consider, finish, stop,
       state: () => ({ playing: s.playing && s.playing.clip_key, waiting: s.waiting && s.waiting.clip_key, lastSeq: s.lastSeq,
-        playingSector: s.playing && s.playing.sector_id, waitingSector: s.waiting && s.waiting.sector_id }),
+        playingSector: s.playing && s.playing.sector_id, waitingSector: s.waiting && s.waiting.sector_id,
+        staleDrops: s.staleDrops }),
     };
   }
 
