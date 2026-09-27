@@ -47,7 +47,8 @@ from ..agents.external import (
 from ..agents.prompts import format_observation, get_system_prompt
 from ..engine import build_observation
 from ..engine.actions import Action, ActionKind
-from ..engine.observation import _event_visible_to, event_view
+from ..engine.observation import _event_visible_to, event_view, status_fields
+from ..engine.runner import full_net_worth
 from . import harness_tokens as ht
 from . import seat_links
 
@@ -69,6 +70,18 @@ class ActionSubmission(BaseModel):
 
 class HoldRequest(BaseModel):
     hold: bool
+
+
+class MacroRequest(BaseModel):
+    """G6 `run_route`: trade a port pair for N cycles inside one held slot."""
+
+    kind: str = "run_route"
+    a: int
+    b: int
+    buy_at_a: str
+    buy_at_b: str
+    cycles: int = 3
+    turn_seq: int | None = None
 
 
 def _allow_remote() -> bool:
@@ -94,6 +107,24 @@ def _credential(request: Request, player_id: str | None = None) -> str:
         if not claimed or (player_id and claimed != player_id.upper()):
             raise HTTPException(status_code=403, detail=f"cookie auth needs the {seat_links.CSRF_HEADER} header")
     return token
+
+
+def final_standings(universe, seat: str | None = None) -> dict[str, Any]:
+    """Public end-of-match table (G6). Net worth is already public via `rivals`."""
+    rows = [{"seat": p.id, "name": p.name, "net_worth": full_net_worth(universe, p) if p.alive else 0,
+             "alive": p.alive} for p in universe.players.values()]
+    rows.sort(key=lambda r: r["net_worth"], reverse=True)
+    for i, r in enumerate(rows, start=1):
+        r["rank"] = i
+    win = next((r for r in rows if r["seat"] == universe.winner_id), None)
+    out: dict[str, Any] = {
+        "winner": {"seat": win["seat"], "name": win["name"]} if win else None,
+        "win_reason": universe.win_reason or "",
+        "standings": rows,
+    }
+    if seat is not None:
+        out["your_rank"] = next((r["rank"] for r in rows if r["seat"] == seat), None)
+    return out
 
 
 def build_harness_router(runner) -> APIRouter:
@@ -148,12 +179,22 @@ def build_harness_router(runner) -> APIRouter:
             if not any(a.player_id == player_id for a in _external_agents()):
                 raise HTTPException(status_code=409, detail="not_external")
             raise HTTPException(status_code=403, detail="token does not belong to this seat")
+        # G6: once the match is over every write is 409 game_over and reads keep
+        # working (final standings), even before the runner has closed the seat.
+        if _match_finished():
+            if request.method in ("GET", "HEAD"):
+                return owner
+            raise HTTPException(status_code=409, detail="game_over")
         if owner.closed:
             raise HTTPException(status_code=503, detail="seat closed")
         # Mark the seat attended: the runner shortens the idle auto-WAIT for
         # seats nobody is polling (Phase D P0).
         owner.touch_client()
         return owner
+
+    def _match_finished() -> bool:
+        u = runner.state.universe
+        return runner.state.status == "finished" or bool(u is not None and u.finished)
 
     def _timeout_for(agent: ExternalAgent) -> float:
         spec = runner._spec
@@ -219,7 +260,20 @@ def build_harness_router(runner) -> APIRouter:
             "timeout_s": timeout_s,
             "deadline_at": deadline_at,
             "server_time": time.time(),
+            **_status_and_result(agent),
         }
+
+    def _status_and_result(agent: ExternalAgent) -> dict[str, Any]:
+        """G6: the one status line + structured fields; after the match, the result."""
+        u = runner.state.universe
+        out: dict[str, Any] = {"game_over": _match_finished()}
+        if u is None or agent.player_id not in u.players:
+            return out
+        obs = agent.current_observation if agent.awaiting_input and agent.current_observation else _peek_observation(agent)
+        out.update(status_fields(obs))
+        if out["game_over"]:
+            out.update(final_standings(u, agent.player_id))
+        return out
 
     # ---- routes ------------------------------------------------------------
 
@@ -318,7 +372,7 @@ def build_harness_router(runner) -> APIRouter:
         wait_s = max(0.0, min(float(wait_s), MAX_WAIT_S))
         if not agent.awaiting_input and wait_s > 0:
             await agent.wait_for_turn(wait_s)
-            if agent.closed:
+            if agent.closed and not _match_finished():
                 raise HTTPException(status_code=503, detail="seat closed")
         body = _seat_status(agent)
         obs = agent.current_observation if agent.awaiting_input else None
@@ -422,6 +476,34 @@ def build_harness_router(runner) -> APIRouter:
         released = agent.set_hold(body.hold)
         return {"player_id": player_id, "hold": agent.hold_slot, "released": released,
                 "used": agent.hold_count, "max": agent.hold_max}
+
+    @router.post("/{player_id}/macro")
+    async def macro(player_id: str, request: Request, body: MacroRequest) -> dict[str, Any]:
+        """Start a route macro on this seat's turn. Each step is an ordinary
+        action applied by the engine one turn at a time; the macro stops on an
+        enemy, an empty port, low turns, a failed step, or a hold release."""
+        from ..agents.route_macro import new_plan
+
+        agent = _require_seat(player_id, request)
+        if body.kind != "run_route":
+            raise HTTPException(status_code=422, detail=f"unknown macro {body.kind!r}")
+        if agent.hold_max <= 0:
+            raise HTTPException(status_code=409, detail="hold_disabled")
+        if not agent.awaiting_input:
+            raise HTTPException(status_code=409, detail={"code": "not_awaiting", "current_turn_seq": agent.turn_seq})
+        if body.turn_seq is not None and body.turn_seq != agent.turn_seq:
+            raise HTTPException(status_code=409, detail={"code": "stale_turn", "current_turn_seq": agent.turn_seq})
+        try:
+            plan = new_plan(body.a, body.b, body.buy_at_a, body.buy_at_b, body.cycles)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        action, why = agent.start_macro(plan)
+        if action is None:
+            return {"started": False, "stopped": why}
+        bound = await agent.submit_action(action, turn_seq=agent.turn_seq)
+        await asyncio.sleep(0)
+        return {"started": True, "turn_seq": bound, "first_step": {"kind": action.kind.value, "args": action.args},
+                "plan": {k: plan[k] for k in ("a", "b", "buy_at_a", "buy_at_b", "cycles")}}
 
     @router.post("/{player_id}/webhook_test")
     async def webhook_test(player_id: str, request: Request) -> dict[str, Any]:

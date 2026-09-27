@@ -709,6 +709,7 @@ class MatchRunner:
                     # G4: the seat ended its held slot (or left it idle). No
                     # action, no turn spent; the round-robin moves on.
                     agent.hold_count = 0  # type: ignore[attr-defined]
+                    self._end_external_slot(agent, player, universe, "slot released")
                     self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
                     continue
                 except Exception as exc:
@@ -750,6 +751,7 @@ class MatchRunner:
                 # agent_kind (unchanged behaviour for heuristic / llm /
                 # manual-human submissions).
                 override = getattr(action, "actor_kind", None)
+                turns_before = player.turns_today
                 if override:
                     with actor_kind_override(override):
                         result = apply_action(universe, agent.player_id, action)
@@ -768,7 +770,8 @@ class MatchRunner:
                     try:
                         auto = str(action.thought or "").startswith("[external")
                         record_fn(result.ok, result.error, list(result.event_seqs),
-                                  action_kind=getattr(action.kind, "value", str(action.kind)), auto=auto)
+                                  action_kind=getattr(action.kind, "value", str(action.kind)), auto=auto,
+                                  turns_used=max(0, player.turns_today - turns_before))
                     except Exception:
                         pass
 
@@ -903,17 +906,22 @@ class MatchRunner:
                 await self._flush_events()
                 # G4 hold-my-slot: a holding external seat keeps the scheduler
                 # for its next action (bounded by hold_max and its turns).
+                # A running route macro has its own step cap instead of hold_max.
+                in_macro = getattr(agent, "macro", None) is not None
                 if (
                     is_external
                     and getattr(agent, "hold_slot", False)
                     and player.alive
                     and not _is_day_done(player)
-                    and agent.hold_count < agent.hold_max  # type: ignore[attr-defined]
+                    and (in_macro or agent.hold_count < agent.hold_max)  # type: ignore[attr-defined]
                 ):
                     agent.hold_count += 1  # type: ignore[attr-defined]
                     continue
                 if is_external:
+                    reason = ("ship destroyed" if not player.alive else "out of turns for today" if _is_day_done(player)
+                              else "hold cap reached" if getattr(agent, "hold_slot", False) else "slot ended")
                     agent.hold_count = 0  # type: ignore[attr-defined]
+                    self._end_external_slot(agent, player, universe, reason)
                 self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
                 # Sample history once per full round-robin pass.
                 if self.state.current_player_idx == 0:
@@ -938,6 +946,8 @@ class MatchRunner:
                 )
                 await self._flush_events()
 
+            if u is not None and u.finished:
+                await self._notify_game_over(u)
             self.state.status = "finished"
         except Exception as exc:
             import traceback
@@ -955,6 +965,26 @@ class MatchRunner:
                     pass
 
     # ---------------- helpers ---------------- #
+
+    async def _notify_game_over(self, universe) -> None:
+        """G6: final `game_over` webhook for external seats (bounded; never blocks the finish)."""
+        from .harness import final_standings
+
+        pings = [a.fire_game_over(final_standings(universe, a.player_id))
+                 for a in self.state.agents if callable(getattr(a, "fire_game_over", None))]
+        if pings:
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(asyncio.gather(*pings, return_exceptions=True), timeout=20)
+
+    @staticmethod
+    def _end_external_slot(agent, player, universe, reason: str) -> None:
+        """G6: close an external seat's slot (digest for chains / route macros)."""
+        end = getattr(agent, "end_slot", None)
+        if callable(end):
+            try:
+                end(reason, credits=player.credits, turns_left=player.turns_per_day - player.turns_today, day=universe.day)
+            except Exception:
+                pass
 
     async def _await_external(self, agent: BaseAgent, obs, full_s: float) -> tuple[Action, bool]:
         """Wait for an external seat's action with the Phase D idle rule.

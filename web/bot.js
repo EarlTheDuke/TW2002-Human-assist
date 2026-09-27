@@ -149,7 +149,11 @@
     const text = await r.text();
     let data;
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-    if (!r.ok) throw new Error(classifyError(r.status, data.detail || data.code || data.message || text.slice(0, 200)));
+    if (!r.ok) {
+      const err = new Error(classifyError(r.status, data.detail || data.code || data.message || text.slice(0, 200)));
+      err.status = r.status;
+      throw err;
+    }
     return data;
   }
 
@@ -165,10 +169,11 @@
     }
     if (CU) {
       const t = $("cuTurn");
+      const b = P.cuBanner(mode, text, sub, { current: state.current, seat: state.seat, hold: state.hold, now: nowS() });
       t.className = `cu-turn ${mode}`;
-      t.textContent = text;
-      if (sub) { const w = document.createElement("span"); w.className = "who"; w.textContent = sub; t.appendChild(w); }
-      state.cuTurnText = `${text}${sub ? " · " + sub : ""}`;
+      t.textContent = b.main;
+      if (b.sub) { const w = document.createElement("span"); w.className = "who"; w.textContent = b.sub; t.appendChild(w); }
+      state.cuTurnText = `${b.main}${b.sub ? " · " + b.sub : ""}`;
       renderCuCard();
     }
   }
@@ -641,8 +646,8 @@
     const buyChoices = (tp.commodity && tp.commodity.buy_choices) || [];
     els.sell.hidden = !(trade.legal && sellChoices.length);
     els.buy.hidden = !(trade.legal && buyChoices.length);
-    if (!els.sell.hidden) { const c = sellChoices[0]; els.sell.textContent = `SELL ${SHORT[c] || c}`; els.sell.onclick = () => openVerb("trade", { side: "sell", commodity: c }); }
-    if (!els.buy.hidden) { const c = buyChoices[0]; els.buy.textContent = `BUY ${SHORT[c] || c}`; els.buy.onclick = () => openVerb("trade", { side: "buy", commodity: c }); }
+    if (!els.sell.hidden) { const c = sellChoices[0]; els.sell.textContent = `SELL ${SHORT[c] || c}`; els.sell.onclick = () => (CU && state.autoAccept ? quickTrade("sell", c) : openVerb("trade", { side: "sell", commodity: c })); }
+    if (!els.buy.hidden) { const c = buyChoices[0]; els.buy.textContent = `BUY ${SHORT[c] || c}`; els.buy.onclick = () => (CU && state.autoAccept ? quickTrade("buy", c) : openVerb("trade", { side: "buy", commodity: c })); }
     els.sell.disabled = !canUse("trade"); els.buy.disabled = !canUse("trade");
 
     rows($("verbReasons"), reasons, (r) => row(r, [], "stale"), state.awaiting ? "all shown verbs are legal now" : "waiting for your turn - buttons enable when the scheduler reaches you");
@@ -996,7 +1001,11 @@
     els.last.textContent = `turn ${lr.turn_seq}: ${text}`;
     els.last.className = `result ${lr.ok ? "good" : "bad"}`;
     els.lastJson.textContent = JSON.stringify(lr, null, 2);
-    if (!state.toastPinned && (state.submittedSeq === undefined || lr.turn_seq >= state.submittedSeq)) setToast(els.last.textContent, lr.ok ? "good" : "bad");
+    state.lastText = text;  // CU surfaces never show turn_seq
+    if (!state.toastPinned && (state.submittedSeq === undefined || lr.turn_seq >= state.submittedSeq)) {
+      const dg = P.digestText(state.digest, lr.turn_seq);
+      setToast(dg || text, lr.ok ? "good" : "bad");
+    }
     renderCuCard();
   }
 
@@ -1090,9 +1099,10 @@
   function renderCuCard() {
     if (!CU || !state.obs) return;
     $("cuTurnCard").textContent = P.turnCard(state.obs, {
+      statusLine: state.statusLine,
       turn: state.cuTurnText,
       stage: state.twin && state.twin.stage_hint,
-      last: els.last.textContent,
+      last: P.digestText(state.digest, state.lastResult && state.lastResult.turn_seq) || state.lastText,
       events: shownEvents().slice(-5),
     });
   }
@@ -1103,8 +1113,7 @@
     const sh = obs.ship || {};
     setText("cuCredits", fmt(obs.credits));
     setText("cuNetWorth", fmt(obs.net_worth));
-    setText("cuTurnsLeft", `${fmt(obs.turns_remaining)} / ${fmt(obs.turns_per_day)}`);
-    setText("cuDay", `${obs.day} / ${obs.max_days} · t${obs.tick}`);
+    setText("cuStatusLine", state.statusLine);
     setText("cuSeat", `${obs.self_id} ${obs.self_name || ""}`);
     setText("cuSectorId", s.id);
     $("cuFed").hidden = !s.is_fedspace;
@@ -1171,6 +1180,55 @@
     if (btn.hidden) return cuDenied(`${side.toUpperCase()} not available: nothing to ${side} at this port`);
     btn.click();
   }
+  // G6 auto-accept: one key = one trade of the engine's max quantity at list price (no haggle).
+  function quickTrade(side, commodity) {
+    const p = legalOf("trade").params || {};
+    const qty = (((p.qty || {}).max_by || {})[commodity] || {})[side] || 0;
+    if (!canUse("trade") || qty <= 0) return cuDenied(`${side.toUpperCase()} ${commodity} not available: ${qty <= 0 ? "nothing to trade" : whyNot("trade")}`);
+    submit({ kind: "trade", args: { commodity, qty, side }, thought: `Grok Bot: ${side} ${qty} ${commodity} (auto-accept)` });
+  }
+  // G6 route macro: one click trades the last port pair for N cycles inside a held slot.
+  function openRouteForm() {
+    const obs = state.obs || {};
+    const r = P.routeFromTradeLog(obs.trade_log, (obs.sector || {}).id);
+    if (!state.awaiting || state.busy) return cuDenied(`ROUTE not available: ${whyNot("trade")}`);
+    if (!r) return cuDenied("ROUTE not available: trade at two ports first (buy something at each)");
+    const f = $("verbForm");
+    state.openVerb = "run_route";
+    state.openVerbEnvelope = JSON.stringify(legalOf("run_route"));
+    f.innerHTML = ""; f.hidden = false; f.setAttribute("data-verb", "run_route");
+    document.body.classList.add("cu-form-open");
+    const h = document.createElement("h3"); h.textContent = `REPEAT ROUTE ${r.a} <-> ${r.b} (one click, many turns)`; f.appendChild(h);
+    const cycles = numberEl("cycles", { min: 1, max: 10, value: 3 });
+    f.appendChild(field(`Cycles (buy ${r.buy_at_a} at ${r.a}, ${r.buy_at_b} at ${r.b})`, cycles, "route-cycles"));
+    const note = document.createElement("div"); note.className = "preview";
+    note.textContent = "Trades at list price. Stops early on another commander, an empty port, low turns, a failed step, or END SLOT.";
+    f.appendChild(note);
+    const buttons = document.createElement("div"); buttons.className = "buttons";
+    const go = document.createElement("button"); go.type = "submit"; go.className = "primary"; go.setAttribute("data-testid", "route-go"); go.textContent = "RUN ROUTE";
+    const cancel = document.createElement("button"); cancel.type = "button"; cancel.setAttribute("data-testid", "verb-cancel"); cancel.textContent = "Cancel"; cancel.onclick = closeVerb;
+    buttons.appendChild(go); buttons.appendChild(cancel); f.appendChild(buttons);
+    f.onsubmit = async (ev) => {
+      ev.preventDefault();
+      if (!state.awaiting || state.busy) return;
+      state.busy = true; state.toastPinned = false; state.submittedSeq = state.turnSeq;
+      setToast(`ROUTE ${r.a} <-> ${r.b} x${cycles.value} starting…`, "busy");
+      try {
+        const res = await api(`/${state.seat}/macro`, { method: "POST", body: JSON.stringify({ ...r, cycles: Number(cycles.value) || 3, turn_seq: state.turnSeq }) });
+        if (!res.started) { setToast(`ROUTE did not start: ${res.stopped}`, "bad"); state.toastPinned = true; }
+        state.lastAction = res.first_step || null;
+        state.awaiting = false;
+      } catch (e) {
+        setToast(`ROUTE rejected: ${e.message || e}`, "bad"); state.toastPinned = true;
+      } finally {
+        state.busy = false;
+        closeVerb();
+        await sleep(150);
+        await refresh();
+      }
+    };
+    cycles.focus();
+  }
   function onCuKey(ev) {
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     const tag = (ev.target && ev.target.tagName) || "";
@@ -1191,7 +1249,7 @@
     const act = {
       s: () => cuVerb("scan"), e: () => cuVerb("wait"), t: () => cuVerb("trade"), p: () => cuVerb("plot_course", true),
       b: () => cuQuick(els.buy, "buy"), x: () => cuQuick(els.sell, "sell"), m: () => toggleMore(), r: () => els.poll.click(),
-      h: () => toggleHold(),
+      h: () => toggleHold(), g: () => openRouteForm(),
     }[k.toLowerCase()];
     if (act) { ev.preventDefault(); act(); }
   }
@@ -1218,6 +1276,11 @@
     }
     $("cuMoreBtn").addEventListener("click", () => toggleMore());
     $("cuHoldBtn").addEventListener("click", () => toggleHold());
+    $("cuRouteBtn").addEventListener("click", () => openRouteForm());
+    const auto = $("cuAutoAccept");
+    auto.checked = localStorage.getItem("tw2k_cu_auto_accept") === "1";
+    state.autoAccept = auto.checked;
+    auto.addEventListener("change", () => { state.autoAccept = auto.checked; localStorage.setItem("tw2k_cu_auto_accept", auto.checked ? "1" : "0"); });
     renderCuHold();
     $("cuMoreClose").addEventListener("click", () => toggleMore(false));
     $("cuMoreSlot").addEventListener("click", (ev) => { if (ev.target.closest("button[data-verb]")) toggleMore(false); });
@@ -1298,6 +1361,8 @@
     state.current = st.current_turn || null;
     if (st.last_result) state.lastResult = st.last_result;
     if (st.hold) { state.hold = st.hold; renderCuHold(); }
+    if (st.status_line) state.statusLine = st.status_line;
+    if (st.digest) state.digest = st.digest;
     const wasAwaiting = state.awaiting;
     state.awaiting = !!st.awaiting_input;
     state.turnSeq = st.turn_seq ?? state.turnSeq;
@@ -1310,6 +1375,14 @@
       renderObservation(st.observation, !!st.peek);
     }
 
+    if (st.game_over) {
+      renderGameOver(st);
+      setBanner("dead", "GAME OVER");
+      setActionsEnabled(false);
+      renderLastResult();
+      state.connected = false;  // the final state will not change; stop polling
+      return;
+    }
     if (state.matchStatus === "finished" || state.matchStatus === "error") {
       setBanner("dead", `MATCH ${state.matchStatus.toUpperCase()}`);
       setActionsEnabled(false);
@@ -1350,6 +1423,26 @@
       setBanner("dead", "ERROR");
       setActionsEnabled(false);
     }
+  }
+
+  // G6: the harness keeps serving the final state after the match (200 + game_over).
+  function renderGameOver(st) {
+    const rows = st.standings || [];
+    const win = st.winner || {};
+    $("gameOverTitle").textContent = P.gameOverTitle(st.your_rank, rows.length, win.name);
+    $("gameOverWinner").textContent = st.win_reason ? `Why: ${st.win_reason}` : "";
+    const b = $("gameOverTable").querySelector("tbody");
+    b.innerHTML = "";
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+      tr.setAttribute("data-testid", `final-${r.seat}`);
+      if (r.seat === state.seat) tr.className = "me";
+      td(tr, P.ordinal(r.rank)); td(tr, `${r.name} (${r.seat})${r.seat === state.seat ? " - you" : ""}`);
+      td(tr, fmt(r.net_worth), "num"); td(tr, r.seat === win.seat ? "WINNER" : r.alive ? "" : "destroyed");
+      b.appendChild(tr);
+    }
+    document.body.classList.add("is-game-over");
+    $("gameOver").hidden = false;
   }
 
   // Long-poll loop. Not our turn: block up to 20 s for the turn, and take a
@@ -1438,6 +1531,7 @@
     refresh().then(() => watchLoop(state.watchGen));
   });
   els.poll.addEventListener("click", () => { setErr(""); refresh(); });
+  $("gameOverClose").addEventListener("click", () => { $("gameOver").hidden = true; });
   // Verb pad: SCAN / WAIT submit straight away (no parameters); the rest open a form.
   $("verbPad").querySelectorAll("button[data-verb]").forEach((btn) => {
     btn.addEventListener("click", () => {

@@ -58,6 +58,19 @@ CP4 prompt twins (stage_hint / rules), CP5 own-thought toggle, as specified in t
 - Cursor STOPS at "ready to launch" and sets `BLOCKED_NEEDS_BEN`. Ben gives the go; Commander plays from its desktop browser.
 **Done when:** dry run passes (host up, lineup verified, webhook test ping delivered), then Ben's go.
 
+### Wake-up ping setup (Ben, once) - shipped in G6
+Commander's `turn_due` endpoint is a Grok Bot webhook routine that requires an `Authorization` header.
+Fill in two gitignored files in the checkout that hosts the pilot (both under `.tw2k/`, never committed):
+
+| File | Contents | Where it comes from |
+|---|---|---|
+| `.tw2k/grokbot_webhook_url.txt` | the routine's webhook URL (one line) | Commander's webhook routine settings |
+| `.tw2k/grokbot_webhook_auth.txt` | the full header value, e.g. `Bearer <secret>` (one line) | same settings page |
+
+- `scripts/run_cu_pilot.ps1` reads the URL file (unless `-WebhookUrl` / `TW2K_GROKBOT_WEBHOOK_URL` is set) and points it at P3 only. The host reads the auth file itself (env `TW2K_GROKBOT_WEBHOOK_AUTH_P3` or `TW2K_GROKBOT_WEBHOOK_AUTH` override it) and sends it as `Authorization` on every ping. It is never logged: delivery logs keep only scheme + host.
+- `run_cu_pilot.ps1 -DryRun` sends one `turn_due_test` through them and prints only pass/fail with the HTTP status.
+- Pings: one `turn_due` at the start of each real turn for the seat (none for held continuation turns or after the match), with `status_line` in `brief`; one final `game_over` ping with the standings.
+
 ### G6 - Insights loop
 After the pilot, Commander writes `docs/playtests/cu-pilot-*/INSIGHTS.md` (what was hard to see, slow, or misleading on screen). Those become the next slices. Repeat until a full 10-day match is practical.
 

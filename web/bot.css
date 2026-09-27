@@ -223,6 +223,15 @@ footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
 @media (prefers-reduced-motion: reduce) {
   .banner.turn, .banner.turn.flash { animation: none; }
 }
+/* ---- G6: game over (only visible after the match finishes) ---- */
+.game-over { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 50; width: min(560px, 92vw);
+  background: #0e1428; border: 3px solid var(--go); border-radius: 14px; padding: 16px 20px; box-shadow: 0 16px 50px rgba(0,0,0,0.7); }
+.game-over[hidden] { display: none !important; }
+.game-over h2 { margin: 0 0 6px; color: var(--go); font-size: 1.3rem; }
+.game-over tr.me td { font-weight: 800; color: var(--accent); }
+body.is-game-over #verbPad, body.is-game-over #warpBtns, body.is-game-over #verbGroups, body.is-game-over #verbForm,
+body.is-game-over #verbReasons, body.is-game-over #cuActionsCard, body.is-game-over [data-testid="cu-shortcuts"] { display: none !important; }
+.game-over button { margin-top: 12px; min-height: 44px; padding: 8px 16px; border-radius: 10px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; cursor: pointer; }
 /* ---- G2: one-screen turn layout (body.mode-cu, /bot?mode=cu). Every rule is scoped to mode-cu. ---- */
 .cu-screen[hidden] { display: none !important; }
 body.mode-cu { overflow: hidden; }
@@ -279,8 +288,9 @@ body.mode-cu #verbPad button[data-key]::after { content: " (" attr(data-key) ")"
 body.mode-cu #verbReasons { display: none; }
 .cu-row { display: flex; gap: 6px; }
 .cu-row .cu-more-btn { flex: 1 1 0; }
-.cu-more-btn[aria-pressed="true"] { border-style: solid; border-color: var(--wait); background: #3a2a10; color: #ffe2b0; }
-body.mode-cu #verbForm { margin-top: 6px; padding: 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
+.cu-check { flex: 1 1 0; display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.8rem; color: #d5def5; }
+.cu-check input { width: 18px; height: 18px; }
+.cu-more-btn[aria-pressed="true"] { border-style: solid; border-color: var(--wait); background: #3a2a10; color: #ffe2b0; }body.mode-cu #verbForm { margin-top: 6px; padding: 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
 body.mode-cu #verbForm[hidden] { display: none; }
 body.mode-cu.cu-form-open [data-testid="cu-shortcuts"], body.mode-cu.cu-form-open #cuMediaSlot { display: none; }
 body.mode-cu #verbForm h3 { font-size: 0.9rem; }
