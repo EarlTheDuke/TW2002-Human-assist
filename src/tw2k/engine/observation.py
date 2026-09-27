@@ -771,10 +771,13 @@ def status_fields(obs: Observation) -> dict[str, Any]:
     own = obs.net_worth or 0
     rank = 1 + sum(1 for r in rivals if (r.get("net_worth") or 0) > own)
     seats = len(rivals) + 1
-    left = max(0, int(obs.turns_remaining))
+    # The day counter ticks past the last day when the match ends ("Day 3 of 2").
+    day = min(int(obs.day), int(obs.max_days)) if obs.max_days else int(obs.day)
+    left = 0 if obs.finished else max(0, int(obs.turns_remaining))
+    middle = "GAME OVER" if obs.finished else f"{left} turns left today"
     return {
-        "status_line": f"Day {obs.day} of {obs.max_days} - {left} turns left today - Rank {rank} of {seats}",
-        "day": obs.day,
+        "status_line": f"Day {day} of {obs.max_days} - {middle} - Rank {rank} of {seats}",
+        "day": day,
         "max_days": obs.max_days,
         "turns_left_today": left,
         "turns_per_day": obs.turns_per_day,

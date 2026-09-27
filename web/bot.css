@@ -262,6 +262,13 @@ footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
 .vp-modes button[aria-pressed="true"] { background: #1a4d3a; border-color: var(--go); color: #b8ffd9; }
 .vp-sound { color: var(--muted); font-size: 0.8rem; }
 .viewport[data-mode="off"] .vp-caption { color: var(--muted); }
+/* ---- G6b: reconnect banner (both layouts; only visible when the seat is unreachable / signed out) ---- */
+.reconnect { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 70; width: min(900px, 94vw);
+  display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 14px; border-radius: 12px;
+  background: #3a2a10; border: 3px solid var(--wait); color: #ffe2b0; font-size: 0.95rem; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+.reconnect[hidden] { display: none !important; }
+.reconnect strong { color: #fff1d6; }
+.reconnect button { min-height: 40px; padding: 6px 14px; border-radius: 10px; border: 2px solid var(--wait); background: #5a3a08; color: #fff1d6; font-weight: 800; cursor: pointer; }
 /* ---- G6: game over (only visible after the match finishes) ---- */
 .game-over { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 50; width: min(560px, 92vw);
   background: #0e1428; border: 3px solid var(--go); border-radius: 14px; padding: 16px 20px; box-shadow: 0 16px 50px rgba(0,0,0,0.7); }
@@ -327,6 +334,12 @@ body.mode-cu #verbPad button[data-key]::after { content: " (" attr(data-key) ")"
 body.mode-cu #verbReasons { display: none; }
 .cu-row { display: flex; gap: 6px; }
 .cu-row .cu-more-btn { flex: 1 1 0; }
+.cu-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cu-quick:empty { display: none; }
+.cu-quick button { flex: 1 1 120px; min-height: 40px; padding: 4px 8px; border-radius: 10px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+.cu-quick button.buy { border-color: var(--accent); }
+.cu-quick button.sell { border-color: var(--go); }
+.cu-quick button:disabled { opacity: 0.35; cursor: not-allowed; }
 .cu-check { flex: 1 1 0; display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.8rem; color: #d5def5; }
 .cu-check input { width: 18px; height: 18px; }
 .cu-more-btn[aria-pressed="true"] { border-style: solid; border-color: var(--wait); background: #3a2a10; color: #ffe2b0; }body.mode-cu #verbForm { margin-top: 6px; padding: 8px; gap: 6px; grid-template-columns: 1fr 1fr; }

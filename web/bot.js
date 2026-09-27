@@ -239,7 +239,7 @@
   // ---------------------------------------------------------------- panels
   function renderScoreboard(obs) {
     setText("sbName", `${obs.self_name || ""} (${obs.self_id || ""})`);
-    setText("sbDay", obs.day); setText("sbMaxDays", obs.max_days); setText("sbTick", obs.tick);
+    setText("sbDay", obs.max_days ? Math.min(obs.day, obs.max_days) : obs.day); setText("sbMaxDays", obs.max_days); setText("sbTick", obs.tick);
     setText("sbTurns", obs.turns_remaining); setText("sbTpd", obs.turns_per_day);
     setText("sbCredits", fmt(obs.credits)); setText("sbNetWorth", fmt(obs.net_worth));
     setText("sbRank", obs.rank); setText("sbXp", fmt(obs.experience));
@@ -601,6 +601,9 @@
   const S3_VERBS = ["warp", "scan", "wait", "trade", "plot_course", "probe"];
   function legalOf(kind) { return (state.legal && state.legal[kind]) || { kind, legal: false, reason: "no legality data", params: {} }; }
   function canUse(kind) { return state.awaiting && !state.busy && !!legalOf(kind).legal; }
+  // The route macro is a harness verb, not an engine one: legal_actions never lists it,
+  // so its form is gated by "your turn" only (the server re-checks every step).
+  function canUseForm(kind) { return kind === "run_route" ? state.awaiting && !state.busy : canUse(kind); }
 
   function renderVerbPad(obs) {
     state.legal = {};
@@ -659,7 +662,12 @@
     if (state.openVerb) {
       const env = JSON.stringify(legalOf(state.openVerb));
       if (env !== state.openVerbEnvelope) renderVerbForm(state.openVerb, state.openPrefill || {});
-      else { const go = $("verbForm").querySelector("button.primary"); if (go) go.disabled = !canUse(state.openVerb); }
+      else {
+        const go = $("verbForm").querySelector("button.primary");
+        if (go) go.disabled = !canUseForm(state.openVerb);
+        const why = $("verbForm").querySelector("[data-role=why]");
+        if (why) why.textContent = go && go.disabled ? `Not available: ${whyNot(state.openVerb === "run_route" ? "trade" : state.openVerb)}` : "";
+      }
     }
   }
 
@@ -950,7 +958,7 @@
     return null;
   }
 
-  function renderControls(obs) { renderVerbPad(obs); }
+  function renderControls(obs) { renderVerbPad(obs); renderCuQuickTrades(); }
 
   function renderObservation(obs, isPeek) {
     state.obs = obs;
@@ -1188,6 +1196,39 @@
     if (!canUse("trade") || qty <= 0) return cuDenied(`${side.toUpperCase()} ${commodity} not available: ${qty <= 0 ? "nothing to trade" : whyNot("trade")}`);
     submit({ kind: "trade", args: { commodity, qty, side }, thought: `Grok Bot: ${side} ${qty} ${commodity} (auto-accept)` });
   }
+  // G6b: one-click trade for EVERY commodity the port deals in (not just B/X's first choice):
+  // max quantity from the engine envelope, list price, no form.
+  function renderCuQuickTrades() {
+    if (!CU) return;
+    const box = $("cuQuickTrades");
+    const la = legalOf("trade");
+    const p = la.params || {};
+    const maxBy = (p.qty || {}).max_by || {};
+    const items = [];
+    if (la.legal) {
+      for (const side of ["sell", "buy"]) {
+        for (const c of ((p.commodity || {})[`${side}_choices`] || [])) {
+          const qty = (maxBy[c] || {})[side] || 0;
+          if (qty > 0) items.push({ side, c, qty });
+        }
+      }
+    }
+    const key = JSON.stringify(items);
+    if (box.getAttribute("data-key") !== key) {
+      box.setAttribute("data-key", key);
+      box.innerHTML = "";
+      for (const it of items) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = it.side;
+        b.setAttribute("data-testid", `cu-quick-${it.side}-${it.c}`);
+        b.textContent = `${it.side.toUpperCase()} ${SHORT[it.c] || it.c} x${fmt(it.qty)}`;
+        b.title = `one click: ${it.side} ${it.qty} ${it.c} at list price`;
+        b.addEventListener("click", () => quickTrade(it.side, it.c));
+        box.appendChild(b);
+      }
+    }
+    box.querySelectorAll("button").forEach((b) => { b.disabled = !canUse("trade"); });
+  }
   // G6 route macro: one click trades the last port pair for N cycles inside a held slot.
   function openRouteForm() {
     const obs = state.obs || {};
@@ -1205,6 +1246,8 @@
     const note = document.createElement("div"); note.className = "preview";
     note.textContent = "Trades at list price. Stops early on another commander, an empty port, low turns, a failed step, or END SLOT.";
     f.appendChild(note);
+    const why = document.createElement("div"); why.className = "preview warn"; why.setAttribute("data-role", "why"); why.setAttribute("data-testid", "route-why");
+    f.appendChild(why);
     const buttons = document.createElement("div"); buttons.className = "buttons";
     const go = document.createElement("button"); go.type = "submit"; go.className = "primary"; go.setAttribute("data-testid", "route-go"); go.textContent = "RUN ROUTE";
     const cancel = document.createElement("button"); cancel.type = "button"; cancel.setAttribute("data-testid", "verb-cancel"); cancel.textContent = "Cancel"; cancel.onclick = closeVerb;
@@ -1356,6 +1399,7 @@
 
   // ---------------------------------------------------------------- status loop
   function applyStatus(st) {
+    noteSuccess();
     if (typeof st.server_time === "number") state.clockSkew = st.server_time - Date.now() / 1000;
     state.matchStatus = st.match_status || "";
     state.day = st.day; state.tick = st.tick;
@@ -1423,8 +1467,40 @@
       document.body.classList.remove("cu-connected");
       setBanner("dead", "ERROR");
       setActionsEnabled(false);
+      noteFailure(e);
     }
   }
+
+  // G6b reconnect banner. A rejected seat credential will not fix itself by retrying (stop
+  // and say how to get back in); an unreachable host may come back (keep polling, say why).
+  const AUTH_FAIL = (e) => e && (e.status === 401 || e.status === 403);
+  function showReconnect(kind) {
+    const link = `.tw2k/seat_links/${state.seat}.txt`;
+    $("reconnectTitle").textContent = kind === "auth" ? `Signed out of ${state.seat}` : "Lost the host";
+    $("reconnectText").textContent = kind === "auth"
+      ? `This page's seat cookie or token is no longer valid here (the host link probably changed). Open the refreshed seat link from ${link}; it signs you in again.`
+      : `The host is not answering (the tunnel may have moved). This page keeps trying; if it does not come back, open the refreshed seat link from ${link}.`;
+    const box = $("reconnect");
+    box.setAttribute("data-kind", kind);
+    box.hidden = false;
+  }
+  function noteFailure(e) {
+    if (AUTH_FAIL(e)) {
+      state.connected = false;  // stop polling: retrying a rejected credential just spams 401s
+      state.watchGen += 1;
+      document.body.classList.remove("cu-connected");
+      showReconnect("auth");
+      return;
+    }
+    state.failStreak = (state.failStreak || 0) + 1;
+    if (state.failStreak >= 3 || e.status === 502 || e.status === 503) showReconnect("host");
+  }
+  function noteSuccess() {
+    state.failStreak = 0;
+    const box = $("reconnect");
+    if (!box.hidden) box.hidden = true;
+  }
+  $("reconnectRetry").addEventListener("click", () => { $("reconnect").hidden = true; els.connect.click(); });
 
   // G6: the harness keeps serving the final state after the match (200 + game_over).
   function renderGameOver(st) {
@@ -1468,6 +1544,8 @@
       } catch (e) {
         if (gen !== state.watchGen) return;
         setErr(String(e.message || e));
+        noteFailure(e);
+        if (!state.connected) { setBanner("dead", "SIGNED OUT"); setActionsEnabled(false); return; }
         setBanner("dead", "ERROR - retrying");
         setActionsEnabled(false);
         await sleep(3000);

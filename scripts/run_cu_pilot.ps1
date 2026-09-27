@@ -112,6 +112,15 @@ for ($i = 0; $i -lt 120; $i++) {
 if (-not $up) { Write-Error "Host did not come up on :$Port - see $runDir\host.err.log" }
 Start-Sleep -Seconds 2   # seats + seat links are written right after start
 
+# G6b: record which save dir this pilot produced so `cu_pilot_report.py --latest` picks it (not a test host).
+if ($Go) {
+  $scriptStart = (Get-Item $runDir).CreationTime
+  $pilotSave = Get-ChildItem $savesRoot -Directory -ErrorAction SilentlyContinue |
+    Where-Object { (Test-Path (Join-Path $_.FullName "meta.json")) -and $_.CreationTime -ge $scriptStart.AddSeconds(-5) } |
+    Sort-Object CreationTime | Select-Object -Last 1
+  if ($pilotSave) { [IO.File]::WriteAllText((Join-Path $runDir "pilot_run.txt"), $pilotSave.FullName); Write-Host "Pilot save dir: $($pilotSave.Name)" }
+}
+
 if ($DryRun) {
   python scripts/cu_pilot_check.py --base "http://127.0.0.1:$Port" --tokens-file $tokFile --spectator-token-file $specFile `
     --links-dir (Join-Path $tw2kDir "seat_links") --saves-root $savesRoot --log-dir $runDir `
