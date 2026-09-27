@@ -18,15 +18,15 @@ import os
 import sys
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 try:
     import httpx
-except ImportError:
+except ImportError as err:
     print("pip install httpx", file=sys.stderr)
-    raise SystemExit(2)
+    raise SystemExit(2) from err
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TOKENS = ROOT / ".tw2k" / "external_tokens.json"
@@ -375,7 +375,7 @@ class SeatStats:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+    return datetime.now(UTC).astimezone().isoformat(timespec="seconds")
 
 
 def _append_jsonl(path: Path, obj: dict[str, Any]) -> None:
@@ -418,7 +418,7 @@ def seat_loop(
                     f"- `{_now()}` **{pid}** connected — match={body.get('match_status')} "
                     f"awaiting={body.get('awaiting_input')}",
                 )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _append_md(md_path, f"- `{_now()}` **{pid}** status error: {exc}")
 
         while not stats.stop and (time.time() - t0) < max_wall_s:
@@ -437,7 +437,7 @@ def seat_loop(
                     f"/harness/v1/{pid}/observation",
                     params={"wait_s": 30, "format": "both"},
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _append_md(md_path, f"- `{_now()}` **{pid}** observation error: {exc}")
                 time.sleep(1.0)
                 continue
@@ -486,7 +486,7 @@ def seat_loop(
                     f"/harness/v1/{pid}/action",
                     json={"turn_seq": turn_seq, "action": action},
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _append_md(md_path, f"- `{_now()}` **{pid}** action POST error: {exc}")
                 continue
 
@@ -498,7 +498,7 @@ def seat_loop(
                 detail: dict[str, Any]
                 try:
                     detail = pr.json()
-                except Exception:  # noqa: BLE001
+                except Exception:
                     detail = {"raw": pr.text[:200]}
                 code = str(detail.get("code") or detail.get("detail") or detail)
                 note = f"409 {code}"
@@ -521,7 +521,7 @@ def seat_loop(
                 try:
                     st = client.get(f"/harness/v1/{pid}/status").json()
                     last_result = _as_dict(st.get("last_result"))
-                except Exception:  # noqa: BLE001
+                except Exception:
                     last_result = {}
                 ok = bool(last_result.get("ok", True))
                 if not ok:

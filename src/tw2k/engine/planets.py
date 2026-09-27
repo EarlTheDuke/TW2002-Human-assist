@@ -115,10 +115,7 @@ def planet_growth_status(class_id: PlanetClass | str, colonists: dict, organics_
         days = 0
     else:
         end = max(0, post - rate)
-        if end >= stock:
-            days = ORGANICS_DAYS_SUSTAINABLE
-        else:
-            days = stock // (stock - end)
+        days = ORGANICS_DAYS_SUSTAINABLE if end >= stock else stock // (stock - end)
     return {
         "production": production,
         "organics_consumption_per_day": rate,
