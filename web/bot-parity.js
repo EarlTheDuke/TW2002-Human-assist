@@ -133,6 +133,7 @@
     { key: "P", label: "plot course", verb: "plot_course" },
     { key: "E", label: "end turn (wait)", verb: "wait" },
     { key: "H", label: "hold slot (chain actions) / end slot" },
+    { key: "G", label: "repeat last route (many turns, one click)" },
     { key: "M", label: "more verbs (planets, StarDock, combat, comms)" },
     { key: "R", label: "refresh" },
     { key: "Esc", label: "close form / panel" },
@@ -160,8 +161,9 @@
     const warps = s.warps_out || [];
     const g = obs.goals || {};
     const lines = [
+      c.statusLine || "-",
       `TURN   ${c.turn || "-"}`,
-      `ME     ${obs.self_name || "?"} (${obs.self_id || "?"}) · day ${obs.day}/${obs.max_days} tick ${obs.tick} · turns ${fmt(obs.turns_remaining)}/${fmt(obs.turns_per_day)}`,
+      `ME     ${obs.self_name || "?"} (${obs.self_id || "?"})`,
       `MONEY  ${fmt(obs.credits)} cr · net worth ${fmt(obs.net_worth)}`,
       `SHIP   ${sh.class || "?"} · holds ${fmt(sh.holds)} (${fmt(sh.cargo_free)} free) · cargo ${cargoText(sh)} · fighters ${fmt(sh.fighters)} · shields ${fmt(sh.shields)}`,
       `HERE   sector ${s.id}${s.is_fedspace ? " (FedSpace)" : ""} · warps ${warps.map((w, i) => (i < 9 ? `[${i + 1}] ${w}` : String(w))).join("  ") || "none"}`,
@@ -175,7 +177,70 @@
     return lines.join("\n");
   }
 
+  // G6: net-worth standing from public numbers only (own NW + rivals' public NW).
+  function ordinal(n) {
+    const s = ["th", "st", "nd", "rd"], v = n % 100;
+    return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+  }
+  // G6: one-line outcome of a held chain or route macro (shown only for the
+  // result it belongs to, so a stale digest never mislabels a single action).
+  function digestText(d, turnSeq) {
+    if (!d || !has(turnSeq) || d.last_turn_seq !== turnSeq) return "";
+    const delta = (d.credits_after || 0) - (d.credits_before || 0);
+    const what = d.kind === "route" ? `ROUTE ${d.cycles_done || 0}/${d.cycles} cycles` : "CHAIN";
+    const turns = has(d.turns_used) ? `${fmt(d.turns_used)} turns` : "turns n/a (new day)";
+    return `${what}: ${fmt(d.actions)} actions · ${turns} · credits ${fmt(d.credits_before)} -> ${fmt(d.credits_after)} `
+      + `(${delta >= 0 ? "+" : ""}${fmt(delta)}) · stopped: ${d.stopped}`;
+  }
+
+  // G6 "Repeat route" prefill from the seat's own trade log: the last two ports
+  // it traded at, and what it bought at each. A = where you stand if on the route.
+  function routeFromTradeLog(log, here) {
+    const ports = [];
+    for (const t of [...(log || [])].reverse()) {
+      if (!ports.includes(t.sector_id)) ports.push(t.sector_id);
+      if (ports.length === 2) break;
+    }
+    if (ports.length < 2) return null;
+    const lastBuy = (sid) => { const t = [...log].reverse().find((x) => x.sector_id === sid && x.side === "buy"); return t ? t.commodity : null; };
+    let [a, b] = [ports[1], ports[0]];
+    if (here === b) [a, b] = [b, a];
+    const ba = lastBuy(a), bb = lastBuy(b);
+    if (!ba || !bb || ba === bb) return null;
+    return { a, b, buy_at_a: ba, buy_at_b: bb };
+  }
+
+  function gameOverTitle(rank, seats, winnerName) {
+    const you = has(rank) ? `You finished ${ordinal(rank)} of ${seats}` : "Game over";
+    return `GAME OVER - ${you}${winnerName ? ` - winner ${winnerName}` : ""}`;
+  }
+
+  // G6: the CU banner says only whose turn it is; day / turns / rank live in the
+  // single status line (the pilot misread seq and the global tick as its own turns).
+  // ctx: {current, seat, hold, now}. Never shows turn_seq or the tick.
+  const KIND_WORD = { llm: "LLM", external: "remote seat", heuristic: "scripted", human: "human" };
+  function cuBanner(mode, text, sub, ctx) {
+    const c = ctx || {};
+    if (mode === "turn") {
+      const h = c.hold || {};
+      return { main: `YOUR TURN${h.on ? ` · HOLDING ${h.used || 0}/${h.max}` : ""}`, sub: sub || "" };
+    }
+    if (mode === "idle") {
+      const cur = c.current;
+      if (cur && cur.player_id && cur.player_id !== c.seat) {
+        const now = c.now || 0;
+        const kind = KIND_WORD[cur.kind] || cur.kind || "seat";
+        const secs = cur.started_at ? ` · ${Math.max(0, Math.round(now - cur.started_at))}s` : "";
+        const limit = cur.deadline_at ? `their limit ${Math.max(0, Math.round(cur.deadline_at - now))}s` : "";
+        return { main: `WAITING · ${cur.name || cur.player_id} (${kind}) is ${cur.kind === "llm" ? "thinking" : "acting"}${secs}`, sub: limit };
+      }
+      return { main: "WAITING", sub: "" };
+    }
+    return { main: text.replace(/\s*seq=\d+|\s*day=\d+|\s*tick=\d+/g, ""), sub: sub || "" };
+  }
+
   return {
+    ordinal, gameOverTitle, cuBanner, digestText, routeFromTradeLog,
     planetRow, orphanRow, otherPlayerRow, occupantLabel,
     directiveMeta, dialogueLines, DIALOGUE_TAIL,
     parseTwin, stageText, stageDetail,

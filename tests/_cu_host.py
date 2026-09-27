@@ -36,10 +36,11 @@ def free_port(start: int = 8033) -> int:
 
 
 class CuHost:
-    def __init__(self, tmp: Path, token: str) -> None:
+    def __init__(self, tmp: Path, token: str, *, max_days: int = 3, turns_per_day: int = 60) -> None:
         import uvicorn
 
         self.token = token
+        self.max_days, self.turns_per_day = max_days, turns_per_day
         self.port = free_port()
         self.app = create_app(auto_start=False)
         self.runner = self.app.state.runner
@@ -51,7 +52,8 @@ class CuHost:
         while not self.server.started:
             await asyncio.sleep(0.05)
         await self.runner.start(MatchSpec(
-            config=GameConfig(seed=250925, universe_size=200, max_days=3, turns_per_day=60, starting_credits=50_000,
+            config=GameConfig(seed=250925, universe_size=200, max_days=self.max_days, turns_per_day=self.turns_per_day,
+                              starting_credits=50_000,
                               enable_ferrengi=False, enable_planets=True, action_delay_s=0.0),
             agents=[AgentSpec(player_id="P1", name="HBot", kind="heuristic"),
                     AgentSpec(player_id="P2", name="Commander", kind="external", external_token=self.token)],

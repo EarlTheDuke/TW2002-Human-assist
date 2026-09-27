@@ -30,6 +30,17 @@
 
   <p id="err" class="error" data-testid="error"></p>
 
+  <!-- G6: shown once the match has finished (harness `final`). -->
+  <section id="gameOver" class="game-over" data-testid="game-over" role="dialog" aria-labelledby="gameOverTitle" hidden>
+    <h2 id="gameOverTitle">MATCH OVER</h2>
+    <p id="gameOverWinner" class="hint small"></p>
+    <table class="tape" id="gameOverTable" data-testid="final-standings">
+      <thead><tr><th>Place</th><th>Commander</th><th>Net worth</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <button type="button" id="gameOverClose" data-testid="game-over-close">Close (the board stays readable)</button>
+  </section>
+
   <!-- G2: one-screen turn layout (/bot?mode=cu). Hidden in the default layout.
        Live controls (warps, verb pad, forms, port tape, map) are moved in here at
        start-up so behaviour and data-testids are identical to the default page. -->
@@ -38,8 +49,7 @@
       <div id="cuTurn" class="cu-turn idle" data-testid="cu-turn" role="status" aria-live="polite">PASTE TOKEN + CONNECT</div>
       <div class="cu-stat" data-testid="cu-credits"><span class="k">Credits</span><span class="v" id="cuCredits">-</span></div>
       <div class="cu-stat" data-testid="cu-networth"><span class="k">Net worth</span><span class="v" id="cuNetWorth">-</span></div>
-      <div class="cu-stat" data-testid="cu-turns"><span class="k">Turns left</span><span class="v" id="cuTurnsLeft">-</span></div>
-      <div class="cu-stat" data-testid="cu-day"><span class="k">Day</span><span class="v" id="cuDay">-</span></div>
+      <div class="cu-stat cu-statusline" data-testid="cu-status-line"><span class="k">Status</span><span class="v" id="cuStatusLine">-</span></div>
       <div class="cu-stat" data-testid="cu-seat"><span class="k">Seat</span><span class="v" id="cuSeat">-</span></div>
     </div>
     <div class="cu-col">
@@ -64,6 +74,10 @@
         <div class="cu-row">
           <button type="button" id="cuHoldBtn" data-testid="cu-hold" class="cu-more-btn" aria-pressed="false">HOLD SLOT (H)</button>
           <button type="button" id="cuMoreBtn" data-testid="cu-more" class="cu-more-btn">MORE VERBS (M)</button>
+        </div>
+        <div class="cu-row">
+          <button type="button" id="cuRouteBtn" data-testid="cu-route" class="cu-more-btn">REPEAT ROUTE (G)</button>
+          <label class="cu-check"><input type="checkbox" id="cuAutoAccept" data-testid="cu-auto-accept" /> Auto-accept price (B/X trade at once)</label>
         </div>
         <div id="cuFormSlot"></div>
       </div>

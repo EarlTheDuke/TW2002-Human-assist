@@ -44,6 +44,13 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-26 21:25 PT - Fable - grokbot-player G6 (four CU pilot fixes, revised scope) delivered
+- Status line: `status_fields()` (engine/observation.py) -> harness `status_line` + `day/max_days/turns_left_today/turns_per_day/rank/seats`. The CU top bar has one Status cell and the Turn card starts with it; the CU banner and toast no longer show seq or tick.
+- Game over: once the match ends every harness read is 200 with `game_over/winner/win_reason/standings/your_rank`, and every write is 409 `game_over`. `/bot` (both layouts) shows a GAME OVER panel, hides action controls and stops polling.
+- Speed: `run_route` macro (`agents/route_macro.py`, `POST /harness/v1/{seat}/macro`). One legal step per held turn from the seat's own observation; it stops on another commander / Ferrengi / hostile fighters, an empty port, low turns, a failed step, hold released, or leaving the route. There is a slot digest (status `digest`, toast, Turn card) and CU REPEAT ROUTE (G) + auto-accept B/X. Report adds clicks, turns/click, wall s/game turn.
+- Wake-up ping: `Authorization` from `TW2K_GROKBOT_WEBHOOK_AUTH[_<SEAT>]` or `.tw2k/grokbot_webhook_auth[_<SEAT>].txt` (never logged); `status_line` in brief; final `game_over` ping; the pilot reads `.tw2k/grokbot_webhook_url.txt`.
+- `tests/test_cu_pilot_fixes_g6.py` (12). Suite 662 passed; ruff clean; pilot dry run 23/23 on `:8032`. No pilot launched; `:8031` untouched.
+
 ### 2026-09-26 19:35 PT - Fable - grokbot-player G5 prep done -> BLOCKED_NEEDS_BEN (pilot not launched)
 - `scripts/run_cu_pilot.ps1`: P1 QwenA (LLM, custom), P2 SeatBrain (`seat_brain_v2 --harness`, 60 s), P3 Commander (external CU, 600 s, hold on); seed 250925, 2 days, 60 turns/day, `:8032` (refuses 8031), spectator gate on, tunnel watchdog on, turn_due webhook for P3 only. It needs an explicit `-DryRun` (paused host + checks) or `-Go` (the pilot, after Ben's go).
 - New: `--start-paused` (MatchSpec.paused now honoured); per-action log `saves/<run>/external_actions.jsonl` (posts incl. 4xx, engine result, think time, posts per turn, auto-WAIT, held, releases) + `scripts/cu_pilot_report.py`; `POST /harness/v1/{seat}/webhook_test`; `scripts/cu_pilot_check.py` (23 checks).

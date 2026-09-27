@@ -35,7 +35,7 @@ TOK = "g2-cu-token-p2-0000000000000000"
 # Every decision field the G2 spec lists, by the testid that renders it.
 DECISION_FIELDS = (
     "cu-turn",        # whose turn + deadline countdown
-    "cu-credits", "cu-networth", "cu-turns", "cu-day",
+    "cu-credits", "cu-networth", "cu-status-line",   # G6: day / turns left / rank in one line
     "cu-ship",        # ship / cargo
     "cu-sector", "cu-warps", "cu-port",   # sector + warps + port prices
     "cu-map",         # known-space mini map
@@ -73,7 +73,8 @@ def test_turn_card_summarises_decision_state() -> None:
     u.players["P1"] = Player(id="P1", name="Me", agent_kind="external", sector_id=1, credits=100_000)
     u.sectors[1].occupant_ids.append("P1")
     obs = build_observation(u, "P1").model_dump(mode="json")
-    ctx = {"turn": "YOUR TURN seq=4", "stage": {"stage": "S3", "label": "Establish a Home", "next_milestone": "Finish L1"},
+    ctx = {"statusLine": "Day 1 of 3 - 200 turns left today - Rank 1 of 1", "turn": "YOUR TURN",
+           "stage": {"stage": "S3", "label": "Establish a Home", "next_milestone": "Finish L1"},
            "last": "turn 3: SCAN - ok", "events": [{"day": 1, "tick": i, "summary": f"ev {i}"} for i in range(8)]}
     script = (f"const P = require({json.dumps(str(PARITY_PATH))});"
               "const d = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
@@ -81,7 +82,7 @@ def test_turn_card_summarises_decision_state() -> None:
     card = json.loads(subprocess.run([NODE, "-e", script], input=json.dumps({"obs": obs, "ctx": ctx}), capture_output=True,
                                      text=True, encoding="utf-8", check=True, timeout=30).stdout)
     s = obs["sector"]
-    assert card.startswith("TURN   YOUR TURN seq=4")
+    assert card.splitlines()[:2] == ["Day 1 of 3 - 200 turns left today - Rank 1 of 1", "TURN   YOUR TURN"]
     assert f"{obs['credits']:,} cr" in card and f"net worth {obs['net_worth']:,}" in card
     assert f"sector {s['id']}" in card and all(f"] {w}" in card for w in s["warps_out"][:9])
     assert "S3 Establish a Home - next: Finish L1" in card and "LAST   turn 3: SCAN - ok" in card
@@ -97,7 +98,7 @@ def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypa
         page.on("request", lambda r: requests.append(r.url.replace(host.base, "")))
         page.goto(f"{host.base}/bot?seat=P2&mode=cu&token={TOK}")
         page.wait_for_selector("#cuTurn.turn", timeout=20_000)
-        page.wait_for_function("document.querySelector('#cuTurnCard').textContent.startsWith('TURN')", timeout=10_000)
+        page.wait_for_function("document.querySelector('#cuTurnCard').textContent.startsWith('Day ')", timeout=10_000)
 
         assert page.evaluate("document.body.classList.contains('mode-cu')")
         assert page.evaluate("document.scrollingElement.scrollHeight") <= VIEW_H, "page scrolls at 1280x800"

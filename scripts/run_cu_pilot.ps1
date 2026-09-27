@@ -72,7 +72,14 @@ if (-not (Test-Path $specFile)) {
 $env:TW2K_SPECTATOR_TOKEN = (Get-Content $specFile -Raw).Trim()
 [IO.File]::WriteAllText((Join-Path $tw2kDir "spectator_link.txt"), "http://127.0.0.1:$Port/spectate?token=$($env:TW2K_SPECTATOR_TOKEN)")
 
-# turn_due webhook for P3 only (P2 is a bot; it must not ping Commander)
+# turn_due webhook for P3 only (P2 is a bot; it must not ping Commander).
+# Ben fills in two gitignored files once (G6): .tw2k\grokbot_webhook_url.txt and
+# .tw2k\grokbot_webhook_auth.txt (the Authorization header value). The host reads the auth file
+# itself and never logs it; this script only reads the URL.
+$urlFile = Join-Path $tw2kDir "grokbot_webhook_url.txt"
+if (-not $WebhookUrl -and (Test-Path $urlFile)) { $WebhookUrl = (Get-Content $urlFile -Raw).Trim() }
+$authFile = Join-Path $tw2kDir "grokbot_webhook_auth.txt"
+Write-Host ("Commander webhook: " + $(if ($WebhookUrl) { "URL set" } else { "none" }) + ", auth header: " + $(if ((Test-Path $authFile) -or $env:TW2K_GROKBOT_WEBHOOK_AUTH -or $env:TW2K_GROKBOT_WEBHOOK_AUTH_P3) { "set" } else { "none" }))
 Remove-Item Env:TW2K_GROKBOT_WEBHOOK_URL -ErrorAction SilentlyContinue
 $receiverArgs = @()
 if (-not $WebhookUrl) {

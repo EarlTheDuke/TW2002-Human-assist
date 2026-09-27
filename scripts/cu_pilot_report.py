@@ -61,7 +61,16 @@ def summarise(run_dir: Path) -> dict[str, dict]:
         think = [r["think_s"] for r in played if r.get("think_s") is not None]
         rejected = Counter(p["status"] for p in d["posts"] if p["status"] != 200)
         hooks_ok = sum(1 for h in d["hooks"] if h.get("ok"))
+        # G6 speed: a "click" is an accepted POST (one CU decision); macro steps need none.
+        clicks = sum(1 for p in d["posts"] if p["status"] == 200)
+        turns = sum(r.get("turns_used") or 0 for r in played)
+        wall = sum(think)
         out[seat] = {
+            "clicks": clicks,
+            "game_turns": turns,
+            "macro_steps": sum(1 for r in played if r.get("macro")),
+            "turns_per_click": round(turns / clicks, 1) if clicks else None,
+            "wall_s_per_game_turn": round(wall / turns, 1) if turns else None,
             "actions": len(played),
             "ok": sum(1 for r in played if r.get("ok")),
             "illegal": sum(1 for r in played if not r.get("ok")),
@@ -82,13 +91,15 @@ def summarise(run_dir: Path) -> dict[str, dict]:
 
 def to_markdown(run_dir: Path, summary: dict[str, dict]) -> str:
     lines = [f"### Pilot per-action summary - `{run_dir.name}`", "",
-             "| Seat | Actions | OK | Illegal | Auto-WAIT | Rejected posts | Retries | Held | Think median / p90 / max (s) | Webhook ok / failed |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "| Seat | Actions | OK | Illegal | Auto-WAIT | Rejected posts | Retries | Held | Think median / p90 / max (s) | Clicks | Turns / click | Wall s / game turn | Webhook ok / failed |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for seat, s in summary.items():
         rej = ", ".join(f"{k}x{v}" for k, v in s["rejected_posts"].items()) or "0"
         think = " / ".join("-" if s[k] is None else str(s[k]) for k in ("think_median_s", "think_p90_s", "think_max_s"))
         lines.append(f"| {seat} | {s['actions']} | {s['ok']} | {s['illegal']} | {s['auto_waits']} | {rej} | {s['retries']} | "
-                     f"{s['held_actions']} (+{s['slots_released']} released) | {think} | {s['webhook_ok']} / {s['webhook_failed_attempts']} |")
+                     f"{s['held_actions']} (+{s['slots_released']} released) | {think} | {s['clicks']} | "
+                     f"{'-' if s['turns_per_click'] is None else s['turns_per_click']} | "
+                     f"{'-' if s['wall_s_per_game_turn'] is None else s['wall_s_per_game_turn']} | {s['webhook_ok']} / {s['webhook_failed_attempts']} |")
     lines += ["", "Verbs per seat: " + "; ".join(f"{seat}: {s['kinds']}" for seat, s in summary.items())]
     return "\n".join(lines)
 

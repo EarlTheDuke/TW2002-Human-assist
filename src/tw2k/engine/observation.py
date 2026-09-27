@@ -761,6 +761,28 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
 # ---------------------------------------------------------------------------
 
 
+def status_fields(obs: Observation) -> dict[str, Any]:
+    """One unambiguous status line for a seat (grokbot-player G6).
+
+    Built from the seat's own Observation only: rank is by net worth against
+    `rivals`, whose net worth is already public to every seat.
+    """
+    rivals = obs.rivals or []
+    own = obs.net_worth or 0
+    rank = 1 + sum(1 for r in rivals if (r.get("net_worth") or 0) > own)
+    seats = len(rivals) + 1
+    left = max(0, int(obs.turns_remaining))
+    return {
+        "status_line": f"Day {obs.day} of {obs.max_days} - {left} turns left today - Rank {rank} of {seats}",
+        "day": obs.day,
+        "max_days": obs.max_days,
+        "turns_left_today": left,
+        "turns_per_day": obs.turns_per_day,
+        "rank": rank,
+        "seats": seats,
+    }
+
+
 def _known_sectors(universe: Universe, player) -> list[dict[str, Any]]:
     """Fog-safe map nodes (Parity S5). See Observation.known_sectors."""
     from . import constants as K
