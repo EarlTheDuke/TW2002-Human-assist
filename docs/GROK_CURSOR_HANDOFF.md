@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-26 22:07 PT - Fable - video cockpit V1 (viewport shell) delivered
+- Default `/bot` middle column gets `#viewport`: procedural canvas starfield seeded by the seat's own sector (station glyph when a port is present, FedSpace tint), per-hull CSS cockpit frames (hauler / light / heavy / capital from `ship.class`), caption strip, Skip, Live / Stills / Off (saved in localStorage, `?viewport=` override), "Sound: off". `web/viewport.js`; `bot.js` just calls `TW2KViewport.update(obs)` (default layout only).
+- Decoration only: no fetch, no `/state`, no focus steal, ~30 fps, paused when the tab is hidden or the viewport is off-screen. Reduced motion forces Stills (no running animation, no `<video>`). `mode=cu` shows no viewport (no-op script).
+- `tests/test_video_cockpit_v1.py` (6): baseline of 106 visible testids (captured before the change) all still visible; 1440x900 screenshot; modes/persist/override; hull mapping; Skip keeps focus; reduced motion; CU none; timing off 164 ms vs live 162 ms median. Suite 686 passed + 1 xfail; ruff clean.
+
 ### 2026-09-26 21:20 PT - Fable - video cockpit V0 (spec lock + fixtures) delivered
 - `web/media/manifest.schema.json` (2020-12, v1 + v2), `scripts/media_validate_manifest.py` extended (schema, files, known predicates, trigger->clip refs, EventKinds, public-kind locality, bytes + budget, `--probe`), `web/media/examples/manifest.v2.example.json` (placeholder poster variants).
 - `scripts/media_record_fixtures.py` -> `tests/fixtures/media_events/*.json` (11 scenarios, real engine, seed 250925, exactly what `/events` gives the viewer); resolver table in `docs/plans/2026-09-26-video-cockpit-v0-fixtures.md`.

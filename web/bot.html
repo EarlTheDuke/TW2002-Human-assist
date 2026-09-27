@@ -174,6 +174,24 @@
 
     <!-- ACT -->
     <section class="col" id="colAct" data-testid="col-act">
+      <!-- V1 video cockpit: a window out of your ship. Decoration only; text below stays the truth.
+           Procedural starfield + per-hull CSS frame. Not shown in mode=cu (#main is hidden there). -->
+      <section id="viewport" class="card viewport" data-testid="viewport" aria-label="Viewport" data-hull="hauler" data-mode="live">
+        <div id="vpScreen" class="vp-screen" role="img" aria-label="View from the cockpit">
+          <canvas id="vpStars" class="vp-stars" data-testid="viewport-stars" aria-hidden="true"></canvas>
+          <div class="vp-frame" data-testid="viewport-frame" aria-hidden="true"></div>
+        </div>
+        <div id="vpCaption" class="vp-caption" data-testid="viewport-caption" aria-live="polite">Deep space</div>
+        <div class="vp-controls">
+          <button type="button" id="vpSkip" data-testid="viewport-skip">Skip</button>
+          <div class="vp-modes" role="group" aria-label="Viewport">
+            <button type="button" data-vp-mode="live" data-testid="viewport-mode-live" aria-pressed="true">Live</button>
+            <button type="button" data-vp-mode="stills" data-testid="viewport-mode-stills" aria-pressed="false">Stills</button>
+            <button type="button" data-vp-mode="off" data-testid="viewport-mode-off" aria-pressed="false">Off</button>
+          </div>
+          <span class="vp-sound" data-testid="viewport-sound">Sound: off</span>
+        </div>
+      </section>
       <div class="card">
         <h2>Scheduler</h2>
         <div id="whoseTurn" class="hint" data-testid="whose-turn">-</div>
@@ -337,6 +355,7 @@
 
   <script src="/static/media-player.js"></script>
   <script src="/static/bot-parity.js"></script>
+  <script src="/static/viewport.js"></script>
   <script src="/static/bot.js"></script>
 </body>
 </html>

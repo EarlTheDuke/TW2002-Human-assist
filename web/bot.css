@@ -223,6 +223,45 @@ footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
 @media (prefers-reduced-motion: reduce) {
   .banner.turn, .banner.turn.flash { animation: none; }
 }
+/* ---- V1 video cockpit: viewport (default /bot only; #main is hidden in mode=cu). No CSS animation:
+   motion comes only from the canvas loop, which viewport.js never runs under reduced motion. ---- */
+.viewport { padding: 10px; }
+.vp-screen { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #02040a; cursor: pointer; }
+.vp-screen[hidden] { display: none !important; }
+.vp-stars { display: block; width: 100%; height: 100%; }
+.vp-frame { position: absolute; inset: 0; pointer-events: none; }
+.vp-frame::before, .vp-frame::after { content: ""; position: absolute; pointer-events: none; }
+/* hauler: two window struts + a deep dashboard */
+.viewport[data-hull="hauler"] .vp-frame {
+  box-shadow: inset 0 0 0 8px #1a2340;
+  background: linear-gradient(90deg, transparent 32.4%, #1a2340 32.4%, #1a2340 33.6%, transparent 33.6%, transparent 66.4%, #1a2340 66.4%, #1a2340 67.6%, transparent 67.6%);
+}
+.viewport[data-hull="hauler"] .vp-frame::after { left: 0; right: 0; bottom: 0; height: 16%; background: linear-gradient(#141c34, #0c1224); border-top: 2px solid #f5a52455; }
+/* light: narrow canopy, rounded top, one thin centre strut */
+.viewport[data-hull="light"] .vp-frame { box-shadow: inset 0 0 0 6px #18223d; border-radius: 40% 40% 12px 12px / 22% 22% 12px 12px;
+  background: linear-gradient(90deg, transparent 49.6%, #22305a 49.6%, #22305a 50.4%, transparent 50.4%); }
+.viewport[data-hull="light"] .vp-frame::after { left: 20%; right: 20%; bottom: 0; height: 9%; border-radius: 10px 10px 0 0; background: #121a30; border-top: 2px solid #6ee7ff55; }
+/* heavy: armoured frame with corner braces */
+.viewport[data-hull="heavy"] .vp-frame { box-shadow: inset 0 0 0 14px #1d2438, inset 0 0 0 16px #3a466e; }
+.viewport[data-hull="heavy"] .vp-frame::before { inset: 0; background:
+  linear-gradient(135deg, #1d2438 0 9%, transparent 9%), linear-gradient(225deg, #1d2438 0 9%, transparent 9%),
+  linear-gradient(45deg, #1d2438 0 9%, transparent 9%), linear-gradient(315deg, #1d2438 0 9%, transparent 9%); }
+.viewport[data-hull="heavy"] .vp-frame::after { left: 0; right: 0; bottom: 0; height: 12%; background: #151b2d; border-top: 3px solid #ff6b8a55; }
+/* capital: wide bridge window, horizontal mullion, side consoles */
+.viewport[data-hull="capital"] .vp-frame { box-shadow: inset 0 0 0 6px #1b2440;
+  background: linear-gradient(transparent 58.6%, #22305a 58.6%, #22305a 59.8%, transparent 59.8%); }
+.viewport[data-hull="capital"] .vp-frame::before { top: 0; bottom: 0; left: 0; width: 7%; background: linear-gradient(90deg, #121a30, #1a2340); }
+.viewport[data-hull="capital"] .vp-frame::after { top: 0; bottom: 0; right: 0; width: 7%; background: linear-gradient(270deg, #121a30, #1a2340); }
+.vp-caption { margin-top: 6px; font-size: 0.9rem; font-weight: 700; color: #d5def5; min-height: 1.3em; }
+.vp-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.vp-controls button { min-height: 36px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; cursor: pointer; }
+.vp-modes { display: inline-flex; gap: 0; }
+.vp-modes button { border-radius: 0; }
+.vp-modes button:first-child { border-radius: 8px 0 0 8px; }
+.vp-modes button:last-child { border-radius: 0 8px 8px 0; }
+.vp-modes button[aria-pressed="true"] { background: #1a4d3a; border-color: var(--go); color: #b8ffd9; }
+.vp-sound { color: var(--muted); font-size: 0.8rem; }
+.viewport[data-mode="off"] .vp-caption { color: var(--muted); }
 /* ---- G6: game over (only visible after the match finishes) ---- */
 .game-over { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 50; width: min(560px, 92vw);
   background: #0e1428; border: 3px solid var(--go); border-radius: 14px; padding: 16px 20px; box-shadow: 0 16px 50px rgba(0,0,0,0.7); }
