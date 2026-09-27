@@ -960,7 +960,7 @@
     return null;
   }
 
-  function renderControls(obs) { renderVerbPad(obs); renderCuQuickTrades(); }
+  function renderControls(obs) { renderVerbPad(obs); renderQuickTrades(); renderCuQuickTrades(); }
 
   function renderObservation(obs, isPeek) {
     state.obs = obs;
@@ -1226,23 +1226,46 @@
     if (!canUse("trade") || qty <= 0) return cuDenied(`${side.toUpperCase()} ${commodity} not available: ${qty <= 0 ? "nothing to trade" : whyNot("trade")}`);
     submit({ kind: "trade", args: { commodity, qty, side }, thought: `Grok Bot: ${side} ${qty} ${commodity} (auto-accept)` });
   }
+  function tradeQuickItems() {
+    const la = legalOf("trade");
+    const p = la.params || {};
+    const maxBy = (p.qty || {}).max_by || {};
+    const items = [];
+    if (!la.legal) return items;
+    for (const side of ["sell", "buy"]) {
+      for (const c of ((p.commodity || {})[`${side}_choices`] || [])) {
+        const qty = (maxBy[c] || {})[side] || 0;
+        if (qty > 0) items.push({ side, c, qty });
+      }
+    }
+    return items;
+  }
+  // Default layout: one click, max qty, list price. Hidden unless a trade is legal right now.
+  function renderQuickTrades() {
+    const box = $("quickTrades");
+    if (!box) return;
+    const items = canUse("trade") ? tradeQuickItems() : [];
+    const key = JSON.stringify(items);
+    if (box.getAttribute("data-key") !== key) {
+      box.setAttribute("data-key", key);
+      box.innerHTML = "";
+      for (const it of items) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = it.side;
+        b.setAttribute("data-testid", `quick-${it.side}-${it.c}`);
+        b.textContent = `${it.side.toUpperCase()} ${SHORT[it.c] || it.c} x${fmt(it.qty)}`;
+        b.title = `one click: ${it.side} ${it.qty} ${it.c} at list price`;
+        b.addEventListener("click", () => quickTrade(it.side, it.c));
+        box.appendChild(b);
+      }
+    }
+  }
   // G6b: one-click trade for EVERY commodity the port deals in (not just B/X's first choice):
   // max quantity from the engine envelope, list price, no form.
   function renderCuQuickTrades() {
     if (!CU) return;
     const box = $("cuQuickTrades");
-    const la = legalOf("trade");
-    const p = la.params || {};
-    const maxBy = (p.qty || {}).max_by || {};
-    const items = [];
-    if (la.legal) {
-      for (const side of ["sell", "buy"]) {
-        for (const c of ((p.commodity || {})[`${side}_choices`] || [])) {
-          const qty = (maxBy[c] || {})[side] || 0;
-          if (qty > 0) items.push({ side, c, qty });
-        }
-      }
-    }
+    const items = tradeQuickItems();
     const key = JSON.stringify(items);
     if (box.getAttribute("data-key") !== key) {
       box.setAttribute("data-key", key);
@@ -1592,6 +1615,7 @@
   async function submit(action) {
     if (!state.awaiting || state.busy) return;
     state.busy = true;
+    renderQuickTrades();
     setActionsEnabled(false);
     state.toastPinned = false;
     state.submittedSeq = state.turnSeq;

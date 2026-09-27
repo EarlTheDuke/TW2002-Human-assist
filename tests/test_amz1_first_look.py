@@ -241,5 +241,5 @@ def test_history_records_a_warp_before_the_manifest_is_loaded() -> None:
                          capture_output=True, text=True, encoding="utf-8", check=True, timeout=20)
     assert out.stdout.strip() == "ok"
     js = (root / "web" / "media-player.js").read_text(encoding="utf-8")
-    hist = js.split("if (opts.history)")[1].split("if (!v2)")[0]
-    assert "if (R)" in hist and "pendingHistory" in hist
+    assert "pendingEvents" in js and "manifestFailed" in js and "length > 400" in js
+    assert "R.resolve(fresh, state.obs || { self_id: null, sector: {} }, state, null)" in js
