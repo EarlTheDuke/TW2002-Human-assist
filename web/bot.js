@@ -62,7 +62,12 @@
     legal: {},           // S3: kind -> LegalAction from the Observation
     openVerb: null,
     openPrefill: null,
+    twinText: "",        // G1/CP4: llm_user_message from format=both
+    twin: null,          // parsed twin (stage_hint lives only here)
+    rulesLoaded: false,
+    show: { thoughts: false, usage: false },  // CP5 toggles, off by default
   };
+  const P = window.TW2KParity;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const nowS = () => Date.now() / 1000 + state.clockSkew;
@@ -164,7 +169,7 @@
     if (state.matchStatus === "finished" || state.matchStatus === "error") return;
     const ct = state.current;
     const cd = countdownText(ct);
-    setBanner("idle", `WAITING  day=${state.day ?? "-"} tick=${state.tick ?? "-"}`, `${describeCurrent(ct)}${cd ? "  Â·  " + cd : ""}`);
+    setBanner("idle", `WAITING  day=${state.day ?? "-"} tick=${state.tick ?? "-"}`, `${describeCurrent(ct)}${cd ? "  ·  " + cd : ""}`);
     if (els.whose) els.whose.textContent = `${describeCurrent(ct)}${cd ? "\ndeadline in " + cd : ""}${state.obsIsPeek ? "\n(panels show a live peek of your seat)" : ""}`;
   }
   function startTicker() {
@@ -218,6 +223,9 @@
     setText("sbCorp", obs.corp_ticker || "none");
     setText("sbLanded", obs.planet_landed === null || obs.planet_landed === undefined ? "in space" : `planet ${obs.planet_landed}`);
     setText("sbFinished", obs.finished ? "finished" : "");
+    const sh = state.twin && state.twin.stage_hint;
+    setText("sbStage", P.stageText(sh));
+    $("sbStageDetail").textContent = P.stageDetail(sh);
     els.scoreboard.hidden = false;
   }
 
@@ -232,7 +240,7 @@
     const occ = (s.occupants || []).filter((o) => o !== obs.self_id);
     const chips = $("hereOccupants"); chips.innerHTML = "";
     if (!occ.length) chips.innerHTML = `<span class="chip static">nobody else here</span>`;
-    for (const o of occ) { const c = document.createElement("span"); c.className = "chip static"; c.textContent = o; chips.appendChild(c); }
+    for (const o of occ) { const c = document.createElement("span"); c.className = "chip static"; c.setAttribute("data-testid", `occupant-${o}`); c.textContent = P.occupantLabel(o, obs.other_players); chips.appendChild(c); }
     const def = [];
     if (s.fighter_group) def.push(["Fighters", `${fmt(s.fighter_group.count)} (${s.fighter_group.mode}) owner ${s.fighter_group.owner_id}`]);
     for (const m of s.mines || []) def.push([`Mines (${m.kind})`, `${fmt(m.count)} owner ${m.owner}`]);
@@ -299,7 +307,7 @@
     setText("knownWarpsCount", `${(obs.known_sectors || []).length} sectors`);
     const el = $("knownWarpsList");
     el.textContent = ids.length
-      ? ids.map((sid) => `${sid} â†’ ${(kw[String(sid)] || []).join(",")}`).join("   |   ")
+      ? ids.map((sid) => `${sid} → ${(kw[String(sid)] || []).join(",")}`).join("   |   ")
       : "no map memory yet - scan or warp";
     renderKnownMap(obs);
   }
@@ -370,7 +378,7 @@
       g.appendChild(svgEl("circle", { r: p.known ? 3.4 : 2.2 }));
       const t = svgEl("text", { y: 1.1 }); t.textContent = String(id); g.appendChild(t);
       if (n && n.port) { const c = svgEl("text", { y: 6.2, class: "code" }); c.textContent = n.port; g.appendChild(c); }
-      const title = svgEl("title"); title.textContent = `Sector ${id}${n && n.port ? ` Â· port ${n.port}` : ""}${n && n.last_seen_day !== null && n.last_seen_day !== undefined ? ` Â· seen day ${n.last_seen_day}` : ""}${p.known ? "" : " Â· not yet visited"}${id === here ? " Â· you are here" : canPlot ? " Â· tap to plot course" : " Â· plot_course not legal now"}`;
+      const title = svgEl("title"); title.textContent = `Sector ${id}${n && n.port ? ` · port ${n.port}` : ""}${n && n.last_seen_day !== null && n.last_seen_day !== undefined ? ` · seen day ${n.last_seen_day}` : ""}${p.known ? "" : " · not yet visited"}${id === here ? " · you are here" : canPlot ? " · tap to plot course" : " · plot_course not legal now"}`;
       g.appendChild(title);
       const go = () => { if (id === here) return; if (!canUse("plot_course")) return; openVerb("plot_course", { target: id }); svg.querySelectorAll(".node").forEach((x) => x.classList.toggle("selected", x === g)); };
       g.addEventListener("click", go);
@@ -426,7 +434,7 @@
         const st = (p.stock || {})[c];
         if (!st) { td(tr, "-", "num"); continue; }
         const side = st.side === "buys_from_player" ? "B" : st.side === "sells_to_player" ? "S" : "";
-        td(tr, `${side}${side ? " " : ""}${st.price !== undefined ? fmt(st.price) : "?"}`, "num").title = `${sideWord(st.side)} Â· stock ${fmt(st.current)}/${fmt(st.max)}`;
+        td(tr, `${side}${side ? " " : ""}${st.price !== undefined ? fmt(st.price) : "?"}`, "num").title = `${sideWord(st.side)} · stock ${fmt(st.current)}/${fmt(st.max)}`;
       }
       b.appendChild(tr);
     }
@@ -461,19 +469,28 @@
       r.last_seen_sector !== undefined ? `last seen sector ${r.last_seen_sector} day ${r.last_seen_day}` : "location unknown",
       r.deaths ? `${r.deaths} deaths` : null,
     ], r.alive ? "" : "stale"), "no rivals");
-    rows($("otherPlayers"), (obs.other_players || []).filter((o) => o.is_corpmate), (o) => row(`Corpmate ${o.name}`, [
-      `sector ${o.sector_id}`, `${fmt(o.credits)} cr`, o.ship_class, `${fmt(o.fighters)} fighters`,
-    ]), "no corpmates");
+    const hereId = (obs.sector || {}).id;
+    const others = [...(obs.other_players || [])].sort((a, b) => Number(!!b.is_corpmate) - Number(!!a.is_corpmate)
+      || Number(b.sector_id === hereId) - Number(a.sector_id === hereId));
+    rows($("otherPlayers"), others, (o) => {
+      const r = P.otherPlayerRow(o, hereId);
+      const d = row(r.title, r.metas, r.cls);
+      d.setAttribute("data-testid", `other-player-${o.id}`);
+      return d;
+    }, "no other commanders");
   }
 
   function renderPlanets(obs) {
-    rows($("ownedPlanets"), obs.owned_planets || [], (p) => row(`${p.name} [${p.class}]`, [
-      `sector ${p.sector_id}`, `citadel L${p.citadel_level}${p.citadel_target > p.citadel_level ? ` â†’ L${p.citadel_target} day ${p.citadel_complete_day}` : ""}`,
-      `${fmt(p.fighters)} fighters`, `${fmt(p.shields)} shields`,
-    ]), "you own no planets");
-    rows($("orphanedPlanets"), obs.orphaned_planets || [], (p) => row(`${p.name} [${p.class}]`, [
-      `sector ${p.sector_id}`, `citadel L${p.citadel_level}`, `${fmt(p.fighters)} fighters`, `was ${p.former_owner_id}`,
-    ]), "none known");
+    rows($("ownedPlanets"), obs.owned_planets || [], (p) => {
+      const r = P.planetRow(p);
+      const d = row(r.title, r.metas, r.cls);
+      d.setAttribute("data-testid", `owned-planet-${p.id}`);
+      return d;
+    }, "you own no planets");
+    rows($("orphanedPlanets"), obs.orphaned_planets || [], (p) => {
+      const r = P.orphanRow(p);
+      return row(r.title, r.metas, r.cls);
+    }, "none known");
   }
 
   function renderComms(obs) {
@@ -504,12 +521,50 @@
 
   function renderAdvisor(obs) {
     els.hint.textContent = obs.action_hint || "(no hint)";
-    rows(els.failures, obs.recent_failures || [], (f) => row(`${f.target_label}`, [`${f.count}Ã— failed`, `last day ${f.last_day}.${f.last_tick}`, f.last_summary], "bad"), "no repeated failures");
+    rows(els.failures, obs.recent_failures || [], (f) => row(`${f.target_label}`, [`${f.count}× failed`, `last day ${f.last_day}.${f.last_tick}`, f.last_summary], "bad"), "no repeated failures");
     const g = obs.goals || {};
     kv(els.goals, [["Short", g.short], ["Medium", g.medium], ["Long", g.long]]);
     els.scratchpad.textContent = obs.scratchpad || "(empty)";
-    els.operatorDirective.textContent = obs.operator_directive ? `Operator directive: ${obs.operator_directive}` : "";
+    els.operatorDirective.textContent = obs.operator_directive ? `Operator directive: ${obs.operator_directive}` : "(none)";
+    $("operatorDirectiveUpdated").textContent = P.directiveMeta(obs);
+    renderDialogue(obs);
+    if ((obs.operator_directive || (obs.operator_dialogue || []).length) && !$("notesDrawer").dataset.autoOpened) {
+      $("notesDrawer").open = true;
+      $("notesDrawer").dataset.autoOpened = "1";
+    }
     els.rawObs.textContent = JSON.stringify(obs, null, 2);
+    $("llmTwin").textContent = state.twin ? JSON.stringify(state.twin, null, 2) : (state.twinText || "(not received yet)");
+  }
+
+  function renderDialogue(obs) {
+    const box = $("operatorDialogue");
+    const lines = P.dialogueLines(obs);
+    const key = JSON.stringify(lines);
+    if (box.getAttribute("data-key") === key) return;
+    box.setAttribute("data-key", key);
+    box.innerHTML = "";
+    if (!lines.length) { box.innerHTML = `<div class="line"><span class="m">no operator dialogue</span></div>`; return; }
+    for (const l of lines) {
+      const d = document.createElement("div");
+      d.className = `line${l.role === "AI" ? " ai" : ""}`;
+      const w = document.createElement("span"); w.className = "when"; w.textContent = l.when;
+      const who = document.createElement("span"); who.className = "who"; who.textContent = l.role;
+      const t = document.createElement("span"); t.textContent = l.text;
+      d.appendChild(w); d.appendChild(who); d.appendChild(t);
+      box.appendChild(d);
+    }
+  }
+
+  async function fetchRules() {
+    if (state.rulesLoaded) return;
+    try {
+      const r = await api("/rules");
+      $("rulesPrompt").textContent = r.system_prompt || "-";
+      $("rulesVerbs").textContent = (r.verbs || []).length ? `Verbs (${r.verbs.length}): ${r.verbs.join(", ")}` : "";
+      state.rulesLoaded = true;
+    } catch (e) {
+      $("rulesPrompt").textContent = `rules: ${e.message || e}`;
+    }
   }
 
   // ---------------------------------------------------------------- legality (S3)
@@ -530,7 +585,7 @@
       const la = legalOf(kind);
       btn.setAttribute("data-legal", la.legal ? "true" : "false");
       btn.setAttribute("data-detail", la.detail || "");
-      if (la.legal) { btn.removeAttribute("data-reason"); btn.title = `${kind} Â· ${la.turn_cost || 0} turn(s)`; }
+      if (la.legal) { btn.removeAttribute("data-reason"); btn.title = `${kind} · ${la.turn_cost || 0} turn(s)`; }
       else { btn.setAttribute("data-reason", la.reason || "not legal now"); btn.title = la.reason || "not legal now"; reasons.push(`${kind.toUpperCase()}: ${la.reason || "not legal now"}`); }
       btn.disabled = !canUse(kind);
       btn.classList.toggle("selected", state.openVerb === kind);
@@ -619,7 +674,7 @@
         why.textContent = la.legal ? `${la.turn_cost || 0} turn(s)` : (la.reason || "not legal now");
         b.appendChild(why);
         if (la.legal) b.removeAttribute("data-reason"); else b.setAttribute("data-reason", la.reason || "not legal now");
-        b.title = la.legal ? `${kind} Â· ${la.turn_cost || 0} turn(s)` : (la.reason || "not legal now");
+        b.title = la.legal ? `${kind} · ${la.turn_cost || 0} turn(s)` : (la.reason || "not legal now");
         b.disabled = !canUse(kind);
         b.classList.toggle("selected", state.openVerb === kind);
       }
@@ -701,14 +756,14 @@
         } else vals[fd.n] = el.value;
       }
       // Per-verb preview lines: only echo envelope numbers the engine sent.
-      let txt = `${LABEL(kind)} ${Object.entries(vals).filter(([, v]) => v !== "" && v !== undefined).map(([k, v]) => `${k}=${v}`).join("  ")} Â· ${la.turn_cost || 0} turn(s)`;
-      if (kind === "buy_ship" && p.ship_class) { const n = (p.ship_class.net_cost_by || {})[vals.ship_class]; if (n !== undefined) txt += ` Â· net cost ${fmt(n)} cr (trade-in ${fmt(p.ship_class.trade_in)})`; }
-      if (kind === "buy_equip" && p.item) { const u = (p.item.unit_price_by || {})[vals.item]; if (u !== undefined) txt += ` Â· ${fmt(u)} cr each = ${fmt(u * (vals.qty || 0))} cr`; }
-      if (kind === "build_citadel" && p.next) txt += ` Â· L${p.next.level}: ${fmt(p.next.credits)} cr + ${fmt(p.next.colonists)} colonists (have ${fmt(p.next.colonists_have)}), ${p.next.days} day(s), paid from ${p.next.pay_from}`;
-      if (kind === "deploy_genesis") txt += ` Â· ${p.hops_from_stardock ?? "?"} hops from StarDock (min ${p.min_hops ?? "?"})`;
-      if (kind === "land_planet" && p.planet_id && (p.planet_id.contested || []).includes(Number(vals.planet_id))) txt += " Â· WARNING: defended hostile planet - landing means citadel combat";
-      if (kind === "assign_colonists" && p.qty) txt += ` Â· ship free holds ${fmt(p.qty.ship_free)}`;
-      if (kind === "query_limpets") txt = `Read your ${fmt((p.active ?? 0))} limpet beacon(s) Â· 0 turns`;
+      let txt = `${LABEL(kind)} ${Object.entries(vals).filter(([, v]) => v !== "" && v !== undefined).map(([k, v]) => `${k}=${v}`).join("  ")} · ${la.turn_cost || 0} turn(s)`;
+      if (kind === "buy_ship" && p.ship_class) { const n = (p.ship_class.net_cost_by || {})[vals.ship_class]; if (n !== undefined) txt += ` · net cost ${fmt(n)} cr (trade-in ${fmt(p.ship_class.trade_in)})`; }
+      if (kind === "buy_equip" && p.item) { const u = (p.item.unit_price_by || {})[vals.item]; if (u !== undefined) txt += ` · ${fmt(u)} cr each = ${fmt(u * (vals.qty || 0))} cr`; }
+      if (kind === "build_citadel" && p.next) txt += ` · L${p.next.level}: ${fmt(p.next.credits)} cr + ${fmt(p.next.colonists)} colonists (have ${fmt(p.next.colonists_have)}), ${p.next.days} day(s), paid from ${p.next.pay_from}`;
+      if (kind === "deploy_genesis") txt += ` · ${p.hops_from_stardock ?? "?"} hops from StarDock (min ${p.min_hops ?? "?"})`;
+      if (kind === "land_planet" && p.planet_id && (p.planet_id.contested || []).includes(Number(vals.planet_id))) txt += " · WARNING: defended hostile planet - landing means citadel combat";
+      if (kind === "assign_colonists" && p.qty) txt += ` · ship free holds ${fmt(p.qty.ship_free)}`;
+      if (kind === "query_limpets") txt = `Read your ${fmt((p.active ?? 0))} limpet beacon(s) · 0 turns`;
       if (!la.legal) txt = `${LABEL(kind)} - ${la.reason || "not legal now"}`;
       preview.textContent = txt;
     };
@@ -776,7 +831,7 @@
     const p = la.params || {};
     state.openVerbEnvelope = JSON.stringify(la);
     f.innerHTML = ""; f.hidden = false; f.setAttribute("data-verb", kind);
-    const h = document.createElement("h3"); h.textContent = `${kind.replace("_", " ").toUpperCase()} Â· ${la.turn_cost || 0} turn(s)${la.legal ? "" : " Â· " + (la.reason || "not legal now")}`; f.appendChild(h);
+    const h = document.createElement("h3"); h.textContent = `${kind.replace("_", " ").toUpperCase()} · ${la.turn_cost || 0} turn(s)${la.legal ? "" : " · " + (la.reason || "not legal now")}`; f.appendChild(h);
     const preview = document.createElement("div"); preview.className = "preview"; preview.setAttribute("data-testid", "verb-preview");
     const buttons = document.createElement("div"); buttons.className = "buttons";
     const go = document.createElement("button"); go.type = "submit"; go.className = "primary"; go.setAttribute("data-testid", "verb-submit"); go.textContent = "CONFIRM";
@@ -810,8 +865,8 @@
         const q = Number(qty.value) || 0; const unit = Number(price.value) || listed || 0;
         const basis = ((state.obs && state.obs.ship && state.obs.ship.cargo_cost_avg) || {})[c];
         let txt = `${side.toUpperCase()} ${q} ${c} @ ${unit} = ${fmt(q * unit)} cr (engine cap ${mx}; list ${listed ?? "?"})`;
-        if (side === "sell" && basis !== undefined) txt += ` Â· cost basis ${basis} â†’ est. ${fmt((unit - basis) * q)} cr`;
-        if (price.value && listed !== undefined) { const off = side === "buy" ? (listed - unit) / listed : (unit - listed) / listed; if (off > 0) txt += ` Â· haggle ${Math.round(off * 100)}% off list - rejected asks settle at list price`; }
+        if (side === "sell" && basis !== undefined) txt += ` · cost basis ${basis} → est. ${fmt((unit - basis) * q)} cr`;
+        if (price.value && listed !== undefined) { const off = side === "buy" ? (listed - unit) / listed : (unit - listed) / listed; if (off > 0) txt += ` · haggle ${Math.round(off * 100)}% off list - rejected asks settle at list price`; }
         preview.textContent = txt; preview.classList.toggle("warn", q <= 0 || q > mx);
       };
       radios.addEventListener("change", (e) => { side = e.target.value; const opts = side === "buy" ? buyC : sellC; commSel.innerHTML = ""; for (const c of opts) { const o = document.createElement("option"); o.value = c; o.textContent = c; commSel.appendChild(o); } qty.value = ""; sync(); });
@@ -827,7 +882,7 @@
       known.addEventListener("change", () => { if (known.selectedIndex > 0) { target.value = known.value; sync(); } });
       const exec = document.createElement("input"); exec.type = "checkbox"; exec.checked = true; exec.setAttribute("data-testid", "plot-execute");
       const execWrap = document.createElement("label"); execWrap.className = "radios"; const el2 = document.createElement("label"); el2.appendChild(exec); el2.appendChild(document.createTextNode("Execute (fly the route now, one warp cost per hop)")); execWrap.appendChild(el2); f.appendChild(execWrap);
-      const sync = () => { const t = Number(target.value) || 0; const kw = (state.obs && state.obs.known_warps) || {}; const hops = t ? bfsKnown(kw, (state.obs.sector || {}).id, t) : null; preview.textContent = t ? `Route ${state.obs.sector.id} â†’ ${t}: ${hops === null ? "not through known space (engine may still find one)" : hops + " hop(s) through known warps"}${exec.checked ? " Â· executes" : " Â· plan only (0 turns)"}` : "enter a target sector"; };
+      const sync = () => { const t = Number(target.value) || 0; const kw = (state.obs && state.obs.known_warps) || {}; const hops = t ? bfsKnown(kw, (state.obs.sector || {}).id, t) : null; preview.textContent = t ? `Route ${state.obs.sector.id} → ${t}: ${hops === null ? "not through known space (engine may still find one)" : hops + " hop(s) through known warps"}${exec.checked ? " · executes" : " · plan only (0 turns)"}` : "enter a target sector"; };
       target.addEventListener("input", sync); exec.addEventListener("change", sync); sync();
       build = () => { const t = Number(target.value) || 0; return t > 0 ? { kind: "plot_course", args: { target: t, execute: exec.checked }, thought: `Grok Bot: plot to ${t}` } : null; };
     } else if (kind === "probe") {
@@ -911,10 +966,10 @@
     const what = describeAction(state.lastAction);
     // Prefer the engine's own event summaries for this action (from the fogged stream).
     const seqs = new Set(lr.event_seqs || []);
-    const mine = state.events.filter((e) => seqs.has(e.seq) && !["agent_thought", "llm_usage"].includes(e.kind)).map((e) => e.summary);
+    const mine = state.events.filter((e) => seqs.has(e.seq) && !(e.kind in P.HIDDEN_BY_DEFAULT)).map((e) => e.summary);
     let text;
-    if (lr.ok) text = `${what} â€” ok${mine.length ? ": " + mine.join(" Â· ") : ""}`;
-    else text = `${what} â€” FAILED: ${lr.error || "rejected"}`;
+    if (lr.ok) text = `${what} — ok${mine.length ? ": " + mine.join(" · ") : ""}`;
+    else text = `${what} — FAILED: ${lr.error || "rejected"}`;
     els.last.textContent = `turn ${lr.turn_seq}: ${text}`;
     els.last.className = `result ${lr.ok ? "good" : "bad"}`;
     els.lastJson.textContent = JSON.stringify(lr, null, 2);
@@ -950,7 +1005,7 @@
           window.TW2KMedia.onEvents(r.events);
         }
       }
-      els.eventsMeta.textContent = `${state.events.length} visible events Â· latest seq ${r.latest_seq}`;
+      els.eventsMeta.textContent = `${state.events.length} visible events · latest seq ${r.latest_seq}`;
       renderEvents();
       renderLastResult();
     } catch (e) {
@@ -959,7 +1014,8 @@
   }
   function renderEvents() {
     const filter = state.eventFilter;
-    const list = state.events.filter((e) => filter === "all" || groupOf(e.kind) === filter).slice(-200).reverse();
+    const opts = { ...state.show, seat: state.seat };
+    const list = state.events.filter((e) => P.eventShown(e, opts) && (filter === "all" || groupOf(e.kind) === filter)).slice(-200).reverse();
     els.eventLog.innerHTML = "";
     for (const e of list) {
       const d = document.createElement("div");
@@ -967,7 +1023,7 @@
       d.className = `ev${e.actor_id === state.seat ? " mine" : ""}${g === "combat" ? " combat" : ""}${e.seq > state.lastSeenSeq ? " new" : ""}`;
       d.setAttribute("data-testid", `event-${e.seq}`);
       d.setAttribute("data-kind", e.kind);
-      const when = document.createElement("span"); when.className = "when"; when.textContent = `D${e.day}Â·${e.tick}`;
+      const when = document.createElement("span"); when.className = "when"; when.textContent = `D${e.day}·${e.tick}`;
       const kind = document.createElement("span"); kind.className = "kind"; kind.textContent = e.kind;
       const text = document.createElement("span");
       text.textContent = e.summary || "";
@@ -983,6 +1039,14 @@
     state.eventFilter = btn.getAttribute("data-filter");
     els.eventFilters.querySelectorAll(".chip").forEach((c) => c.classList.toggle("on", c === btn));
     renderEvents();
+  });
+  document.querySelectorAll("[data-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const k = btn.getAttribute("data-toggle");
+      state.show[k] = !state.show[k];
+      btn.setAttribute("aria-pressed", state.show[k] ? "true" : "false");
+      renderEvents();
+    });
   });
 
   // ---------------------------------------------------------------- S6: lobby (multi-seat)
@@ -1015,7 +1079,7 @@
       b.setAttribute("data-awaiting", s.awaiting_input ? "true" : "false");
       const stateTxt = !s.alive ? "destroyed" : s.awaiting_input ? (s.player_id === state.seat ? "YOUR TURN" : "their turn") : ct.player_id === s.player_id ? "acting" : "waiting";
       const brain = s.attended ? "bot attached" : "no bot";
-      b.textContent = `${s.player_id} ${s.name || ""} Â· ${stateTxt} Â· ${brain} Â· t${s.turn_seq}`;
+      b.textContent = `${s.player_id} ${s.name || ""} · ${stateTxt} · ${brain} · t${s.turn_seq}`;
       const hasTok = !!localStorage.getItem(tokenKey(s.player_id));
       b.title = s.player_id === state.seat ? "this seat" : hasTok ? `switch to ${s.player_id} (token stored here)` : `switch to ${s.player_id} - paste its token first`;
       b.addEventListener("click", () => {
@@ -1041,7 +1105,13 @@
     state.awaiting = !!st.awaiting_input;
     state.turnSeq = st.turn_seq ?? state.turnSeq;
 
-    if (st.observation) renderObservation(st.observation, !!st.peek);
+    if (st.observation) {
+      if (typeof st.llm_user_message === "string") {
+        state.twinText = st.llm_user_message;
+        state.twin = P.parseTwin(st.llm_user_message);
+      }
+      renderObservation(st.observation, !!st.peek);
+    }
 
     if (state.matchStatus === "finished" || state.matchStatus === "error") {
       setBanner("dead", `MATCH ${state.matchStatus.toUpperCase()}`);
@@ -1049,7 +1119,7 @@
       renderLastResult();
       return;
     }
-    if (state.busy) { setBanner("busy", "SUBMITTINGâ€¦"); return; }
+    if (state.busy) { setBanner("busy", "SUBMITTING…"); return; }
 
     if (state.awaiting) {
       const flash = !wasAwaiting;
@@ -1071,11 +1141,12 @@
   async function refresh() {
     if (!state.token) return;
     try {
-      const r = await api(`/${state.seat}/observation?wait_s=0&peek=1&format=json`);
+      const r = await api(`/${state.seat}/observation?wait_s=0&peek=1&format=both`);
       setErr("");
       applyStatus(r);
       await fetchEvents();
       await fetchLobby();
+      await fetchRules();
     } catch (e) {
       setErr(String(e.message || e));
       setBanner("dead", "ERROR");
@@ -1095,7 +1166,7 @@
           applyStatus(st);
           await sleep(1500);
         } else {
-          const r = await api(`/${state.seat}/observation?wait_s=20&peek=1&format=json`);
+          const r = await api(`/${state.seat}/observation?wait_s=20&peek=1&format=both`);
           if (gen !== state.watchGen) return;
           setErr("");
           applyStatus(r);
@@ -1117,7 +1188,7 @@
     if (!state.awaiting || state.busy) return;
     state.busy = true;
     setActionsEnabled(false);
-    setBanner("busy", "SUBMITTINGâ€¦");
+    setBanner("busy", "SUBMITTING…");
     setErr("");
     try {
       const seq = state.turnSeq;
@@ -1156,6 +1227,9 @@
     state.awaiting = false;
     state.events = [];
     state.eventsSince = 0;
+    state.twin = null;
+    state.twinText = "";
+    state.rulesLoaded = false;
     state.watchGen += 1;
     setErr("");
     log(`connected as ${state.seat}`);
