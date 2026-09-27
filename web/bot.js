@@ -57,6 +57,7 @@
     tickTimer: null,
     events: [],          // fogged EventViews from /events, ascending seq
     eventsSince: 0,
+    mediaCaughtUp: false,  // the first /events batch is history and must not play a clip
     eventFilter: "all",
     lastSeenSeq: 0,      // for the "new since your last turn" highlight
     legal: {},           // S3: kind -> LegalAction from the Observation
@@ -1040,6 +1041,8 @@
   async function fetchEvents() {
     try {
       const r = await api(`/${state.seat}/events?since=${state.eventsSince}&limit=300`);
+      const history = !state.mediaCaughtUp;
+      state.mediaCaughtUp = true;
       if (r.events && r.events.length) {
         const seen = new Set(state.events.map((e) => e.seq));
         for (const ev of r.events) {
@@ -1050,7 +1053,7 @@
         if (state.events.length > 600) state.events = state.events.slice(-600);
         state.eventsSince = r.next_since;
         if (window.TW2KMedia && typeof window.TW2KMedia.onEvents === "function") {
-          window.TW2KMedia.onEvents(r.events, state.obs);
+          window.TW2KMedia.onEvents(r.events, state.obs, { history });
         }
       }
       els.eventsMeta.textContent = `${state.events.length} visible events · latest seq ${r.latest_seq}`;

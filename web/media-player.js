@@ -10,9 +10,11 @@
  *   stills — poster frame only: no vp-push / tint, never a video src
  *   off    — no viewport clip and no caption change. A resolved clip is not
  *            copied onto the v1 HUD either. Events that resolve to no clip
- *            still use the v1 HUD, except in Off, so the default cockpit's
- *            dismiss button stays available in Live.
- *   cu     — no viewport (it is hidden). The still goes on the v1 HUD.
+ *            still use the v1 HUD, except in Off (and CU Off), so the default
+ *            cockpit's dismiss button stays available in Live.
+ *   cu     — no viewport (it is hidden). The still goes in the CU slot.
+ * The first events batch after connect is history: lastSeq and visit/dock
+ * advance, and nothing plays. Later batches can play.
  */
 (function () {
   "use strict";
@@ -270,7 +272,8 @@
     }
   }
 
-  function onEvents(list, obs) {
+  function onEvents(list, obs, opts) {
+    opts = opts || {};
     if (!Array.isArray(list) || !list.length) return;
     if (obs) state.obs = obs;
     const newest = list[list.length - 1];
@@ -278,6 +281,17 @@
     const fresh = list.filter((ev) => ev && typeof ev.seq === "number" && ev.seq > state.lastSeq);
     if (!fresh.length) return;
     const v2 = state.manifest && state.manifest.version >= 2 && R;
+    // History is the batch already in the log at connect. Advance the cursor
+    // and visit/dock memory. Do not start a clip or the v1 HUD.
+    if (opts.history) {
+      state.lastSeq = Math.max(state.lastSeq, newest.seq);
+      if (state.visit_sector == null && state.obs && state.obs.sector) state.visit_sector = state.obs.sector.id;
+      if (v2) {
+        if (!state.session) state.session = R.createSession(state.manifest);
+        R.resolve(fresh, state.obs || { self_id: null, sector: {} }, state, state.manifest);
+      }
+      return;
+    }
     if (!v2) { onEvent(newest); return; }
     state.lastSeq = Math.max(state.lastSeq, newest.seq);
     if (state.visit_sector == null && state.obs && state.obs.sector) state.visit_sector = state.obs.sector.id;
@@ -295,7 +309,7 @@
     if (hidden) return;
     if (step.started && step.item) { playResolved(step.item); return; }
     // No clip started. Off stays quiet. Otherwise a non-clip row keeps the v1 still HUD.
-    if (!step.playing && viewportMode() !== "off") {
+    if (!step.playing && viewportMode() !== "off" && cuSetting() !== "off") {
       const show = [...fresh].reverse().find((ev) => ev.kind !== "agent_thought" && ev.kind !== "llm_usage");
       if (show) playEntry(resolveKind(show.kind), show.kind);
     }

@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 13:40 PT - Fable - amz-1 first look
+- The first `/events` batch after connect sets `lastSeq` and visit/dock state and does not play. Later batches still play `dock.port` in the viewport.
+- The full-window HUD stays `pointer-events: none` when shown; only the card takes clicks. CU `viewport=off` does not play a non-clip event (a scan) into the hidden slot.
+- Stage detail is a block under `#sbStage`. The default baseline no longer expects `media-hud-dismiss` visible on load. Suite 711 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 12:35 PT - Fable - V4 nits + make-it-amazing plan
 - Default H ignores key-repeat, empty `key`, and contentEditable targets.
 - `mode=cu&viewport=off` does not record a clip cooldown and does not play into the hidden slot. A witnessed combat on that page leaves `playedKeys` without `combat.witnessed` and the HUD hidden.
