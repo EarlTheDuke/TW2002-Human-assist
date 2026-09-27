@@ -288,7 +288,7 @@
     const selfSeqs = fresh.filter((ev) => ev.actor_id === view.self_id && ev.kind !== "agent_thought" && ev.kind !== "llm_usage").map((ev) => ev.seq);
     const postedSeq = selfSeqs.length ? Math.max(...selfSeqs) : undefined;
     const step = state.session.consider(items, Date.now(), {
-      hidden, maxSeq: state.lastSeq, postedSeq, recordCooldown: viewportMode() !== "off",
+      hidden, maxSeq: state.lastSeq, postedSeq, recordCooldown: viewportMode() !== "off" && cuSetting() !== "off",
     });
     if (step.staleDropped) bump("stale-drops", step.staleDropped);
     if (step.preempted) bump("preemptions");
@@ -405,15 +405,22 @@
       const obs = state.obs || { self_id: "P2", sector: { id: 19 } };
       const batch = [];
       for (let i = 0; i < 6; i++) batch.push({ seq: 1000 + i, kind: "warp", actor_id: obs.self_id || "P2", sector_id: 19, summary: "warp", facts: { from: 18, to: 19 } });
+      const cap = document.getElementById("vpCaption") || document.getElementById("mediaHudCaption");
+      const img = document.querySelector("#vpClip img") || document.getElementById("mediaHudStill");
+      const prevCap = cap ? cap.textContent : null;
+      const prevSwap = img ? img.getAttribute("data-swap") : null;
       const count = n || 40;
       for (let i = 0; i < count; i++) {
         const t0 = performance.now();
         const items = R.resolve(batch, obs, { visit_sector: 19, docked_in_visit: false }, state.manifest);
-        const cap = document.getElementById("vpCaption") || document.getElementById("mediaHudCaption");
         if (cap && items[0]) cap.textContent = items[0].clip_key;
-        const img = document.querySelector("#vpClip img") || document.getElementById("mediaHudStill");
         if (img && items[0]) img.setAttribute("data-swap", items[0].clip_key);
         samples.push(performance.now() - t0);
+      }
+      if (cap && prevCap != null) cap.textContent = prevCap;
+      if (img) {
+        if (prevSwap == null) img.removeAttribute("data-swap");
+        else img.setAttribute("data-swap", prevSwap);
       }
       samples.sort((a, b) => a - b);
       const idx = Math.min(samples.length - 1, Math.max(0, Math.ceil(samples.length * 0.95) - 1));
@@ -427,7 +434,10 @@
       state.playing = null;
       state.session = state.manifest && R ? R.createSession(state.manifest) : null;
     },
-    _state: () => ({ lastSeq: state.lastSeq, playing: state.playing, visit_sector: state.visit_sector }),
+    _state: () => ({
+      lastSeq: state.lastSeq, playing: state.playing, visit_sector: state.visit_sector,
+      playedKeys: state.session && state.session.state ? state.session.state().playedKeys || [] : [],
+    }),
   };
   renderCounters();
   loadManifest().then(() => schedulePreload());

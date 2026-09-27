@@ -1640,10 +1640,11 @@
   else if ($("holdBtn")) {
     $("holdBtn").addEventListener("click", () => toggleHold());
     document.addEventListener("keydown", (ev) => {
-      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const tag = (ev.target && ev.target.tagName) || "";
       if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) return;
-      if (ev.key.toLowerCase() !== "h") return;
+      if (ev.target && ev.target.isContentEditable) return;
+      if ((ev.key || "").toLowerCase() !== "h") return;
       ev.preventDefault();
       toggleHold();
     });

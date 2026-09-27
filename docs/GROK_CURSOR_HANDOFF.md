@@ -44,12 +44,18 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 12:35 PT - Fable - V4 nits + make-it-amazing plan
+- Default H ignores key-repeat, empty `key`, and contentEditable targets.
+- `mode=cu&viewport=off` does not record a clip cooldown and does not play into the hidden slot. A witnessed combat on that page leaves `playedKeys` without `combat.witnessed` and the HUD hidden.
+- `benchSwap` restores the caption and `data-swap` it touched. The number is resolve plus that write only (no image decode, no layout). The CU timing guard is +5% plus 25 ms.
+- Plan: `docs/plans/2026-09-27-cur-make-it-amazing.md`. Offline notes: HUD covered the ship, stage detail overlapped the stage, default SELL was an 8-control form, CU Refresh was not visible, seat brain 6/6 ok. Suite 710 passed before the plan doc; ruff clean.
+
 ### 2026-09-27 11:35 PT - Fable - grokbot-player V4-lite delivered
 - Hashed files under `web/media/` (`name.<8+ hex>.ext`) get `Cache-Control: public, max-age=31536000, immutable`. `manifest.json` and other media files get `no-cache`. Other `/static` files are unchanged. `MediaStaticFiles` in `src/tw2k/server/media_cache.py`.
 - After load, `requestIdleCallback` preloads unique posters for clip priorities 0–2, capped at 12 MB of blobs. It does not run in `mode=cu`, with reduced motion, or when `navigator.connection.saveData` is set. Bytes fetched before the document is interactive stayed at 0 (the fetch starts after `load`).
 - Session counters (plays, skips, preemptions, stale-drops, poster-fallbacks) live in `sessionStorage` and render in the Raw observation drawer. No network.
 - `mode=cu` defaults to stills in `#cuMediaSlot` (instant swap, no video). `?viewport=off` hides the slot with `visibility: hidden` so the height stays. `?viewport=live` is allowed and labeled in the player guide as not for scored CU play; with placeholders it is still a poster.
-- Resolve+swap p95 0.10 ms over 40 warp-burst iterations (budget 4 ms). CU scan-to-toast median: viewport off 168 ms, stills 161 ms (−3.7%, inside +5%).
+- Resolve+swap p95 0.10 ms over 40 warp-burst iterations (budget 4 ms). That bench is resolve plus a caption/attribute write only: it excludes image decode and layout, and it restores the caption afterwards. CU scan-to-toast median: viewport off 168 ms, stills 161 ms (−3.7%). The guard is +5% plus 25 ms slack (`stills <= off * 1.05 + 25`), the same slack as the V1 click-to-result test.
 - G7 nits: H toggles hold on the default layout as well as `mode=cu` (the button already said `(H)`). The 401 test fails only `/events` and presses R, because the refresh button is hidden once `mode=cu` is connected.
 - `tests/test_video_cockpit_v4.py` (4). Suite 709 passed; ruff clean; manifest OK (16 stills).
 
