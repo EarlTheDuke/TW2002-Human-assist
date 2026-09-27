@@ -1,0 +1,68 @@
+{
+  "name": "witnessed_combat",
+  "description": "Two rivals fight in the viewer's sector.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 14,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 14,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "combat",
+      "actor_id": "P2",
+      "actor_kind": "external",
+      "sector_id": 14,
+      "summary": "Combat in 14: Rival[F588 S0] vs Bystander[F0 S0]",
+      "facts": {
+        "exchange_kind": "ship_vs_ship",
+        "attacker": "P2",
+        "defender": "P3",
+        "attacker_f": 588,
+        "attacker_s": 0,
+        "defender_f": 0,
+        "defender_s": 0
+      }
+    },
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 1,
+      "kind": "ship_destroyed",
+      "actor_id": "P2",
+      "actor_kind": "external",
+      "sector_id": 14,
+      "summary": "*** Bystander's ship destroyed (combat); ejected to StarDock [death #1/3] ***",
+      "facts": {
+        "victim": "P3",
+        "reason": "combat",
+        "deaths": 1,
+        "death_sector": 14,
+        "killer_id": "P2"
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "combat.witnessed",
+      "priority": 3
+    }
+  ],
+  "notes": "witnessed_in_my_sector: actor != self and event sector == viewer's sector."
+}

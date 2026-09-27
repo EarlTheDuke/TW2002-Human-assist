@@ -1,0 +1,131 @@
+{
+  "name": "autopilot_burst",
+  "description": "Viewer autopilots several hops in one action.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 11,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 12,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "warp",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 148,
+      "summary": "Commander warped 11 \u2192 148",
+      "facts": {
+        "from": 11,
+        "to": 148
+      }
+    },
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 1,
+      "kind": "warp",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 186,
+      "summary": "Commander warped 148 \u2192 186",
+      "facts": {
+        "from": 148,
+        "to": 186
+      }
+    },
+    {
+      "seq": 3,
+      "day": 1,
+      "tick": 1,
+      "kind": "warp",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 84,
+      "summary": "Commander warped 186 \u2192 84",
+      "facts": {
+        "from": 186,
+        "to": 84
+      }
+    },
+    {
+      "seq": 4,
+      "day": 1,
+      "tick": 1,
+      "kind": "warp",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 138,
+      "summary": "Commander warped 84 \u2192 138",
+      "facts": {
+        "from": 84,
+        "to": 138
+      }
+    },
+    {
+      "seq": 5,
+      "day": 1,
+      "tick": 1,
+      "kind": "warp",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 6,
+      "summary": "Commander warped 138 \u2192 6",
+      "facts": {
+        "from": 138,
+        "to": 6
+      }
+    },
+    {
+      "seq": 6,
+      "day": 1,
+      "tick": 1,
+      "kind": "warp",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 12,
+      "summary": "Commander warped 6 \u2192 12",
+      "facts": {
+        "from": 6,
+        "to": 12
+      }
+    },
+    {
+      "seq": 7,
+      "day": 1,
+      "tick": 1,
+      "kind": "autopilot",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 12,
+      "summary": "Commander autopilot \u2014 completed 6/6 hops toward 12",
+      "facts": {
+        "target": 12,
+        "executed": true,
+        "hops_done": 6
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "warp.out",
+      "priority": 2
+    }
+  ],
+  "notes": "Coalesce: all hop warps + the autopilot row become ONE warp.out; the last hop sets the arrival ambient."
+}

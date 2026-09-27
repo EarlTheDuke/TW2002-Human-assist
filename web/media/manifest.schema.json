@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tw2k.local/media/manifest.schema.json",
+  "title": "TW2K media manifest (v1 stills HUD, v2 viewport)",
+  "description": "Video cockpit V0 spec lock (docs/plans/2026-09-26-video-cockpit-phase-plan.md section 4.1). v1 = kinds/groups stills read by media-player.js today. v2 keeps those blocks and adds ambient loops, keyed clips with variants, and named-predicate triggers. Semantic checks the schema cannot express (known predicates, trigger->clip references, EventKind names, public-kind locality, files, bytes, budgets) live in scripts/media_validate_manifest.py.",
+  "type": "object",
+  "required": ["version", "defaults"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "enum": [1, 2] },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "duration_ms": { "type": "integer", "minimum": 500, "maximum": 10000 },
+        "fit": { "enum": ["cover", "contain"] },
+        "muted": { "const": true },
+        "max_queue": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "stale_ms": { "type": "integer", "minimum": 0, "maximum": 60000 },
+        "crossfade_ms": { "type": "integer", "minimum": 0, "maximum": 1000 }
+      }
+    },
+    "groups": {
+      "type": "object",
+      "propertyNames": { "enum": ["move", "trade", "combat", "comms", "planet", "system"] },
+      "additionalProperties": { "$ref": "#/$defs/v1entry" }
+    },
+    "kinds": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z_]+$" },
+      "additionalProperties": { "$ref": "#/$defs/v1entry" }
+    },
+    "ambient": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9_]+$" },
+      "additionalProperties": { "$ref": "#/$defs/ambient" }
+    },
+    "clips": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+)+$" },
+      "additionalProperties": { "$ref": "#/$defs/clip" }
+    },
+    "triggers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/trigger" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "version": { "const": 1 } } },
+      "then": { "not": { "anyOf": [ { "required": ["ambient"] }, { "required": ["clips"] }, { "required": ["triggers"] } ] } }
+    },
+    {
+      "if": { "properties": { "version": { "const": 2 } } },
+      "then": { "required": ["clips", "triggers"] }
+    }
+  ],
+  "$defs": {
+    "path": {
+      "type": "string",
+      "description": "Relative to web/media. Hashed names are recommended for clips/posters: <key>_<variant>.<hash8>.<ext>.",
+      "pattern": "^(stills|clips|posters|frames)/[A-Za-z0-9_.-]+\\.(png|jpg|jpeg|webp|webm|mp4|svg)$"
+    },
+    "v1entry": {
+      "type": "object",
+      "required": ["still"],
+      "additionalProperties": false,
+      "properties": {
+        "still": { "$ref": "#/$defs/path" },
+        "clip": { "$ref": "#/$defs/path" },
+        "caption": { "type": "string", "maxLength": 60 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "type": "string" },
+        "shot_id": { "type": "string" },
+        "take": { "type": "integer", "minimum": 1 },
+        "approved_by": { "type": "string" },
+        "approved_at": { "type": "string" },
+        "prompt_file": { "type": "string" }
+      }
+    },
+    "tags": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "station": { "enum": ["std", "small", "large", "fed", "stardock", "*"] },
+        "hull": { "enum": ["hauler", "light", "heavy", "capital", "*"] },
+        "planet": { "type": "string", "pattern": "^([MKLOHUC]|\\*)$" },
+        "faction": { "type": "string", "pattern": "^[a-z_*]+$" }
+      }
+    },
+    "variant": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "anyOf": [ { "required": ["webm"] }, { "required": ["mp4"] }, { "required": ["poster"] } ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "tags": { "$ref": "#/$defs/tags" },
+        "weight": { "type": "number", "exclusiveMinimum": 0 },
+        "webm": { "$ref": "#/$defs/path" },
+        "mp4": { "$ref": "#/$defs/path" },
+        "poster": { "$ref": "#/$defs/path" },
+        "duration_ms": { "type": "integer", "minimum": 500, "maximum": 5000 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "ambientVariant": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "anyOf": [ { "required": ["webm"] }, { "required": ["mp4"] }, { "required": ["poster"] } ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "webm": { "$ref": "#/$defs/path" },
+        "mp4": { "$ref": "#/$defs/path" },
+        "poster": { "$ref": "#/$defs/path" },
+        "duration_ms": { "type": "integer", "minimum": 1000, "maximum": 30000 },
+        "loop": { "type": "boolean" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "ambient": {
+      "type": "object",
+      "required": ["variants"],
+      "additionalProperties": false,
+      "properties": {
+        "variants": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ambientVariant" } },
+        "when": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sector.fed": { "type": "boolean" },
+            "sector.port": { "enum": ["present", "absent"] },
+            "planet_landed": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "clip": {
+      "type": "object",
+      "required": ["priority", "caption", "variants"],
+      "additionalProperties": false,
+      "properties": {
+        "priority": { "type": "integer", "minimum": 0, "maximum": 4, "description": "P0 threat to self ... P4 ambient change." },
+        "cooldown_ms": { "type": "integer", "minimum": 0 },
+        "caption": { "type": "string", "maxLength": 80 },
+        "fallback_still": { "$ref": "#/$defs/path" },
+        "preload": { "enum": ["eager", "idle", "none"] },
+        "variants": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/variant" } }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["kind", "rule", "clip"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "pattern": "^[a-z_]+$" },
+        "rule": {
+          "type": "string",
+          "description": "Named predicates joined by ' && ', each optionally negated with '!'. No eval; names are checked by the validator.",
+          "pattern": "^!?[a-z_]+( && !?[a-z_]+)*$"
+        },
+        "clip": { "type": "string" },
+        "coalesce": { "type": "string", "pattern": "^[a-z_]+$" }
+      }
+    }
+  }
+}

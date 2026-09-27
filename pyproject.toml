@@ -31,6 +31,7 @@ dev = [
     "pytest-asyncio>=0.23",
     "ruff>=0.3",
     "mypy>=1.8",
+    "jsonschema>=4.18",  # web/media/manifest.schema.json (scripts/media_validate_manifest.py)
 ]
 # Phase H6.1 — MCP server adapter for Cursor/Claude Code. Install with:
 #   pip install "tw2k-ai[mcp]"

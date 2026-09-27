@@ -44,6 +44,12 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-26 21:45 PT - Fable - video cockpit V0 (spec lock + fixtures) delivered
+- `web/media/manifest.schema.json` (2020-12, v1 + v2), `scripts/media_validate_manifest.py` extended (schema, files, known predicates, trigger->clip refs, EventKinds, public-kind locality, bytes + budget, `--probe`), `web/media/examples/manifest.v2.example.json` (placeholder poster variants).
+- `scripts/media_record_fixtures.py` -> `tests/fixtures/media_events/*.json` (11 scenarios, real engine, seed 250925, exactly what `/events` gives the viewer); resolver table in `docs/plans/2026-09-26-video-cockpit-v0-fixtures.md`.
+- Finding: a destroyed seat never sees its own `ship_destroyed` (victim moved before emit). Strict xfail in `tests/test_video_cockpit_v0.py`.
+- No runtime / UI change (live manifest stays v1). Suite 680 passed + 1 xfail; ruff clean.
+
 ### 2026-09-26 21:00 PT - Fable - grokbot-player G6 (four CU pilot fixes, revised scope) delivered
 - Status line: `status_fields()` (engine/observation.py) -> harness `status_line` + `day/max_days/turns_left_today/turns_per_day/rank/seats`. The CU top bar has one Status cell and the Turn card starts with it; the CU banner and toast no longer show seq or tick.
 - Game over: once the match ends every harness read is 200 with `game_over/winner/win_reason/standings/your_rank`, and every write is 409 `game_over`. `/bot` (both layouts) shows a GAME OVER panel, hides action controls and stops polling.

@@ -1,0 +1,54 @@
+{
+  "name": "far_port_destroyed",
+  "description": "A rival nukes a port far from the viewer (public event).",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 11,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 11,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "port_destroyed",
+      "actor_id": "P2",
+      "actor_kind": "external",
+      "sector_id": 16,
+      "summary": "!!! Port in 16 OBLITERATED by 3x atomic detonation !!!",
+      "facts": {
+        "qty": 3
+      }
+    },
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 1,
+      "kind": "atomic_detonation",
+      "actor_id": "P2",
+      "actor_kind": "external",
+      "sector_id": 16,
+      "summary": "*** Rival detonated 3 atomic warheads in 16 (alignment -150) ***",
+      "facts": {
+        "qty": 3,
+        "port_destroyed": true
+      }
+    }
+  ],
+  "expected": [],
+  "notes": "Public events elsewhere never get a first-person clip (caption on the ticker at most)."
+}
