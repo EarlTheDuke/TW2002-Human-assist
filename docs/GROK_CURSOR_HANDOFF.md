@@ -44,7 +44,7 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
-### 2026-09-26 21:45 PT - Fable - video cockpit V0 (spec lock + fixtures) delivered
+### 2026-09-26 21:20 PT - Fable - video cockpit V0 (spec lock + fixtures) delivered
 - `web/media/manifest.schema.json` (2020-12, v1 + v2), `scripts/media_validate_manifest.py` extended (schema, files, known predicates, trigger->clip refs, EventKinds, public-kind locality, bytes + budget, `--probe`), `web/media/examples/manifest.v2.example.json` (placeholder poster variants).
 - `scripts/media_record_fixtures.py` -> `tests/fixtures/media_events/*.json` (11 scenarios, real engine, seed 250925, exactly what `/events` gives the viewer); resolver table in `docs/plans/2026-09-26-video-cockpit-v0-fixtures.md`.
 - Finding: a destroyed seat never sees its own `ship_destroyed` (victim moved before emit). Strict xfail in `tests/test_video_cockpit_v0.py`.
