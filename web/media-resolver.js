@@ -109,32 +109,44 @@
       opts = opts || {};
       if (typeof opts.maxSeq === "number") s.lastSeq = Math.max(s.lastSeq, opts.maxSeq);
       dropStale(now, opts.postedSeq);
-      const started = s.playing && s.playing.clip_key;
+      const was = s.playing && s.playing.clip_key;
       let preempted = false;
-      if (opts.hidden) return { playing: null, waiting: null, preempted: false, hidden: true };
+      let startedItem = null;
+      if (opts.hidden) return { playing: null, waiting: null, preempted: false, started: false, item: null, hidden: true };
       for (const raw of items || []) {
         if (!cooldownOk(raw.clip_key, now)) continue;
         const item = { clip_key: raw.clip_key, priority: raw.priority, seq: raw.seq || 0, sector_id: raw.sector_id, at: now };
-        if (!s.playing) start(item, now);
-        else if (item.priority < s.playing.priority) { start(item, now); s.waiting = null; preempted = true; }
+        if (!s.playing) { start(item, now); startedItem = s.playing; }
+        else if (item.priority < s.playing.priority) { start(item, now); s.waiting = null; preempted = true; startedItem = s.playing; }
         else s.waiting = item;
       }
       return {
         playing: s.playing && s.playing.clip_key,
         waiting: s.waiting && s.waiting.clip_key,
-        preempted: preempted && started && s.playing.clip_key !== started,
+        preempted: preempted && !!was && s.playing.clip_key !== was,
+        started: !!startedItem,
+        item: startedItem,
       };
     }
     function finish(now) {
       s.playing = null;
       dropStale(now);
-      if (s.waiting && cooldownOk(s.waiting.clip_key, now)) { start(s.waiting, now); s.waiting = null; }
-      else s.waiting = null;
-      return s.playing && s.playing.clip_key;
+      if (s.waiting && cooldownOk(s.waiting.clip_key, now)) {
+        start(s.waiting, now);
+        s.waiting = null;
+        return s.playing;
+      }
+      s.waiting = null;
+      return null;
+    }
+    function stop() {
+      s.playing = null;
+      s.waiting = null;
     }
     return {
-      consider, finish,
-      state: () => ({ playing: s.playing && s.playing.clip_key, waiting: s.waiting && s.waiting.clip_key, lastSeq: s.lastSeq }),
+      consider, finish, stop,
+      state: () => ({ playing: s.playing && s.playing.clip_key, waiting: s.waiting && s.waiting.clip_key, lastSeq: s.lastSeq,
+        playingSector: s.playing && s.playing.sector_id, waitingSector: s.waiting && s.waiting.sector_id }),
     };
   }
 

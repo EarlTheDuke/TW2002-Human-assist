@@ -97,6 +97,15 @@
     document.querySelectorAll("#viewport [data-vp-mode]").forEach((b) => b.setAttribute("aria-pressed", b.getAttribute("data-vp-mode") === st.mode ? "true" : "false"));
     if (st.mode === "off") { stop(); return; }
     size();
+    // The intersection observer can be one frame behind a scroll (a mode click
+    // scrolls the control into view, then runs). A box that is actually in the
+    // window should animate on that click.
+    if (!st.onScreen) {
+      const r = root.getBoundingClientRect();
+      const vh = window.innerHeight || 0;
+      const vw = window.innerWidth || 0;
+      if (r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw) st.onScreen = true;
+    }
     const live = st.mode === "live" && !reduce.matches && !document.hidden && st.onScreen;
     if (!live) { stop(); draw(0); return; }
     if (!st.animating) { st.animating = true; st.raf = requestAnimationFrame(loop); }
@@ -136,6 +145,7 @@
     st.mode = reduce.matches && m === "live" ? "stills" : m;
     localStorage.setItem(KEY, m);
     apply();
+    if (window.TW2KMedia && typeof window.TW2KMedia.onMode === "function") window.TW2KMedia.onMode(st.mode);
   }
 
   $("vpSkip").addEventListener("click", (ev) => { skip(); ev.currentTarget.blur(); });

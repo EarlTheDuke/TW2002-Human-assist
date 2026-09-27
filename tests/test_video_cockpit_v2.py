@@ -74,7 +74,20 @@ def test_queue_preempts_waits_drops_stale_and_respects_cooldown_and_hidden() -> 
         "const cooled=d.consider([{...seen, seq:5}], 2000);"
         "const e=R.createSession(manifest);"
         "const hidden=e.consider([warp], 0, {hidden:true, maxSeq:9});"
-        "process.stdout.write(JSON.stringify({playDock, preempt, wait, stale, cooled, hidden, hiddenSeq:e.state().lastSeq}));"
+        "const held=R.createSession(manifest);"
+        "held.consider([{clip_key:'dock.port', priority:2, seq:1, sector_id:19}], 0);"
+        "const replay=held.consider([], 50);"
+        "held.stop();"
+        "const stopped=held.consider([], 60);"
+        "const promo=R.createSession(manifest);"
+        "promo.consider([{clip_key:'warp.out', priority:2, seq:1, sector_id:11}], 0);"
+        "promo.consider([{clip_key:'dock.port', priority:2, seq:2, sector_id:19}], 10);"
+        "const promoted=promo.finish(100);"
+        "const moved=R.createSession(manifest);"
+        "moved.consider([{clip_key:'warp.out', priority:2, seq:1, sector_id:4}], 0);"
+        "moved.consider([{clip_key:'dock.port', priority:2, seq:2, sector_id:8}], 10);"
+        "const dropped=moved.consider([], 20, {postedSeq:9});"
+        "process.stdout.write(JSON.stringify({playDock, preempt, wait, stale, cooled, hidden, hiddenSeq:e.state().lastSeq, replay, stopped, promoted, dropped}));"
     )
     assert got["playDock"]["playing"] == "dock.port"
     assert got["preempt"]["playing"] == "combat.incoming" and got["preempt"]["preempted"] is True
@@ -83,6 +96,11 @@ def test_queue_preempts_waits_drops_stale_and_respects_cooldown_and_hidden() -> 
     assert got["stale"]["waiting"] is None and got["stale"]["playing"] == "warp.out"
     assert got["cooled"]["playing"] is None
     assert got["hidden"]["playing"] is None and got["hiddenSeq"] == 9
+    assert got["playDock"]["started"] is True
+    assert got["replay"]["started"] is False and got["replay"]["playing"] == "dock.port"
+    assert got["stopped"]["playing"] is None and got["stopped"]["started"] is False
+    assert got["promoted"]["clip_key"] == "dock.port" and got["promoted"]["sector_id"] == 19
+    assert got["dropped"]["waiting"] is None
 
 
 def test_ship_combat_outcome_and_own_death_are_in_the_fixtures() -> None:
@@ -166,3 +184,170 @@ def test_browser_placeholder_clip_reduced_motion_and_cu(browser, tmp_path: Path,
         assert not page.get_by_test_id("viewport").is_visible()
         assert page.evaluate("document.querySelectorAll('#viewport video').length") == 0
         assert page.evaluate("document.scrollingElement.scrollHeight") <= 800
+        page.close()
+
+
+def _prime_trade(page, trade: dict) -> None:
+    page.evaluate("""(fx) => {
+        TW2KMedia._prime({ lastSeq: 0, visit_sector: fx.state_before.visit_sector, docked_in_visit: fx.state_before.docked_in_visit });
+        TW2KMedia.onEvents(fx.batch, fx.obs);
+    }""", trade)
+
+
+def _scan_after(page, trade: dict) -> None:
+    page.evaluate("""(fx) => {
+        TW2KMedia.onEvents([{
+            seq: 900000, day: 1, tick: 9, kind: "scan", actor_id: fx.obs.self_id,
+            sector_id: fx.obs.sector.id, summary: "scan", facts: { tier: 1 }
+        }], fx.obs);
+    }""", trade)
+
+
+def test_skip_and_cu_timer_do_not_replay_a_stale_dock(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    trade = json.loads((FIXTURES / "trade_burst.json").read_text(encoding="utf-8"))
+    with CuHost(tmp_path, TOK, turns_per_day=500) as host:
+        ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+        page = ctx.new_page()
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}")
+        page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
+        _prime_trade(page, trade)
+        page.wait_for_selector("[data-testid=viewport-clip]:not([hidden])", timeout=5_000)
+        assert page.locator("[data-testid=viewport-caption]").inner_text() == "Docking at 19"
+        page.get_by_test_id("viewport-skip").click()
+        assert page.locator("[data-testid=viewport-clip]").is_hidden()
+        _scan_after(page, trade)
+        page.wait_for_timeout(400)
+        assert page.locator("[data-testid=viewport-clip]").is_hidden()
+        assert "Docking" not in page.locator("[data-testid=viewport-caption]").inner_text()
+        ctx.close()
+
+        page = browser.new_page(viewport={"width": 1280, "height": 800})
+        page.goto(f"{host.base}/bot?seat=P2&mode=cu&token={TOK}")
+        page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
+        _prime_trade(page, trade)
+        page.wait_for_selector("[data-testid=media-hud]:not([hidden])", timeout=5_000)
+        assert "docking" in page.locator("#mediaHudCaption").inner_text().casefold()
+        assert "trade_port" in (page.locator("#mediaHudStill").get_attribute("src") or "")
+        page.wait_for_timeout(3200)
+        _scan_after(page, trade)
+        page.wait_for_timeout(300)
+        hud = page.locator("[data-testid=media-hud]")
+        if hud.is_visible():
+            assert "docking" not in page.locator("#mediaHudCaption").inner_text().casefold()
+            assert "trade_port" not in (page.locator("#mediaHudStill").get_attribute("src") or "")
+        page.close()
+
+
+def test_promoted_waiting_clip_keeps_its_sector(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    with CuHost(tmp_path, TOK, turns_per_day=500) as host:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}")
+        page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
+        page.evaluate("""() => {
+            TW2KMedia._prime({ lastSeq: 0, visit_sector: 4, docked_in_visit: false });
+            TW2KMedia.onEvents([
+                { seq: 1, day: 1, tick: 1, kind: "warp", actor_id: "P1", sector_id: 11,
+                  summary: "warp", facts: { from: 4, to: 19 } },
+                { seq: 2, day: 1, tick: 2, kind: "trade", actor_id: "P1", sector_id: 19,
+                  summary: "trade", facts: { commodity: "fuel_ore", qty: 1, side: "buy" } }
+            ], { self_id: "P1", sector: { id: 19 } });
+        }""")
+        page.wait_for_selector("[data-testid=viewport-clip]:not([hidden])", timeout=5_000)
+        assert page.locator("[data-testid=viewport-caption]").inner_text() == "Warping out"
+        page.wait_for_function(
+            "() => document.querySelector('[data-testid=viewport-caption]').textContent === 'Docking at 19'",
+            timeout=6_000,
+        )
+        page.close()
+
+
+def test_live_stills_and_off_change_a_resolved_clip(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    trade = json.loads((FIXTURES / "trade_burst.json").read_text(encoding="utf-8"))
+    with CuHost(tmp_path, TOK, turns_per_day=500) as host:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}")
+        page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
+
+        page.locator("[data-vp-mode=stills]").click()
+        _prime_trade(page, trade)
+        page.wait_for_selector("[data-testid=viewport-clip]:not([hidden])", timeout=5_000)
+        anim = page.evaluate("() => getComputedStyle(document.querySelector('[data-testid=viewport-clip-still]')).animationName")
+        assert anim == "none"
+        assert page.evaluate("() => document.querySelectorAll('#vpClip video').length") == 0
+        assert "trade_port" in (page.locator("[data-testid=viewport-clip-still]").get_attribute("src") or "")
+
+        page.locator("[data-vp-mode=live]").click()
+        _prime_trade(page, trade)
+        page.wait_for_selector("[data-testid=viewport-clip].is-still", timeout=5_000)
+        anim = page.evaluate("() => getComputedStyle(document.querySelector('[data-testid=viewport-clip-still]')).animationName")
+        assert anim == "vp-push"
+        assert page.evaluate("() => [...document.querySelectorAll('#vpClip video')].every(v => !v.getAttribute('src'))")
+
+        page.locator("[data-vp-mode=off]").click()
+        _prime_trade(page, trade)
+        page.wait_for_timeout(300)
+        assert page.locator("[data-testid=viewport-clip]").is_hidden()
+        assert "Docking" not in page.locator("[data-testid=viewport-caption]").inner_text()
+        hud = page.locator("[data-testid=media-hud]")
+        if hud.count() and hud.is_visible():
+            assert "trade_port" not in (page.locator("#mediaHudStill").get_attribute("src") or "")
+            assert "docking" not in page.locator("#mediaHudCaption").inner_text().casefold()
+        page.close()
+
+
+def test_exchange_outcome_hit_miss_destroyed_and_ferrengi_path() -> None:
+    from tw2k.engine import GameConfig, generate_universe
+    from tw2k.engine.combat import _exchange_outcome, _resolve_ship_combat_attacker_npc
+    from tw2k.engine.models import EventKind, FerrengiShip, Player, ShipClass
+
+    hit = _exchange_outcome(
+        [{"attacker_fighters_lost": 2, "defender_fighters_lost": 5}], attacker_f=10, defender_f=8,
+    )
+    assert hit == {"attacker_losses": 2, "defender_losses": 5, "outcome": "hit"}
+    miss = _exchange_outcome(
+        [{"attacker_fighters_lost": 1, "defender_fighters_lost": 0}], attacker_f=10, defender_f=8,
+    )
+    assert miss["outcome"] == "miss" and miss["defender_losses"] == 0
+    destroyed = _exchange_outcome(
+        [{"attacker_fighters_lost": 1, "defender_fighters_lost": 4}], attacker_f=10, defender_f=0,
+    )
+    assert destroyed["outcome"] == "destroyed"
+    attacker_down = _exchange_outcome(
+        [{"attacker_fighters_lost": 3, "defender_fighters_lost": 2}], attacker_f=0, defender_f=8,
+    )
+    assert attacker_down["outcome"] == "miss"
+    both = _exchange_outcome(
+        [{"attacker_fighters_lost": 1, "defender_fighters_lost": 1}], attacker_f=0, defender_f=0,
+    )
+    assert both["outcome"] == "destroyed"
+    summed = _exchange_outcome(
+        [
+            {"attacker_fighters_lost": 1, "defender_fighters_lost": 2},
+            {"attacker_fighters_lost": 3, "defender_fighters_lost": 4},
+        ],
+        attacker_f=9, defender_f=7,
+    )
+    assert summed == {"attacker_losses": 4, "defender_losses": 6, "outcome": "hit"}
+
+    universe = generate_universe(GameConfig(seed=1, universe_size=40, max_days=2))
+    player = Player(id="P1", name="Commander", agent_kind="external", sector_id=1, credits=1000, turns_per_day=40)
+    player.ship.fighters = 500
+    player.ship.shields = 100
+    universe.players["P1"] = player
+    universe.sectors[1].occupant_ids.append("P1")
+    ferr = FerrengiShip(
+        id="F1", name="Raider", sector_id=1, aggression=1, fighters=40, shields=0,
+        ship_class=ShipClass.MERCHANT_CRUISER,
+    )
+    universe.ferrengi[ferr.id] = ferr
+    _resolve_ship_combat_attacker_npc(universe, ferr, player)
+    combat = next(ev for ev in reversed(universe.events) if ev.kind == EventKind.COMBAT)
+    payload = combat.payload
+    expect = _exchange_outcome(payload["rounds"], payload["attacker_f"], payload["defender_f"])
+    assert payload["exchange_kind"] == "ferrengi_vs_ship"
+    assert payload["outcome"] == expect["outcome"]
+    assert payload["attacker_losses"] == expect["attacker_losses"]
+    assert payload["defender_losses"] == expect["defender_losses"]
