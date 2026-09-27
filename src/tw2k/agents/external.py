@@ -107,6 +107,10 @@ class ExternalAgent(BaseAgent):
         # runner points at the match save dir.
         self.webhook_log: deque[dict[str, Any]] = deque(maxlen=50)
         self.webhook_log_path: Path | None = None
+        # G5 per-action log (runner points it at saves/<run>/external_actions.jsonl).
+        self.action_log_path: Path | None = None
+        self._posts: int = 0
+        self._submitted_at: float | None = None
 
     # ---- attendance --------------------------------------------------------
 
@@ -138,6 +142,7 @@ class ExternalAgent(BaseAgent):
         if self._queue.full():
             raise QueueFullError(f"seat {self.player_id} already has an action for turn {self.turn_seq}")        # Bots may never impersonate the copilot path.
         action.actor_kind = None
+        self.note_post(200, getattr(action.kind, "value", str(action.kind)))
         await self._queue.put(action)
         return self.turn_seq
 
@@ -153,7 +158,8 @@ class ExternalAgent(BaseAgent):
             return False
         return self.awaiting_input
 
-    def record_result(self, ok: bool, error: str | None, event_seqs: list[int]) -> None:
+    def record_result(self, ok: bool, error: str | None, event_seqs: list[int],
+                      action_kind: str | None = None, auto: bool = False) -> None:
         self.last_result = {
             "turn_seq": self.turn_seq,
             "ok": bool(ok),
@@ -161,6 +167,33 @@ class ExternalAgent(BaseAgent):
             "event_seqs": list(event_seqs),
             "recorded_at": time.time(),
         }
+        started = self.turn_started_at
+        submitted = self._submitted_at
+        self.log_action("result", ok=bool(ok), error=error or None, kind=action_kind, auto=auto,
+                        think_s=round(submitted - started, 3) if (submitted and started and not auto) else None,
+                        posts=self._posts, held=self.in_held_continuation)
+
+    # ---- per-action log (G5 pilot) -----------------------------------------
+
+    def log_action(self, event: str, **fields: Any) -> None:
+        """Append one line to ``action_log_path`` (set by the runner): posts,
+        rejections, engine results, slot releases. Never contains tokens."""
+        if self.action_log_path is None:
+            return
+        row = {"at": round(time.time(), 3), "seat": self.player_id, "turn_seq": self.turn_seq, "event": event, **fields}
+        try:
+            with self.action_log_path.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(row) + "\n")
+        except OSError:
+            pass
+
+    def note_post(self, status: int, detail: str | None = None) -> None:
+        """Harness hook: one POST /action attempt for the current turn."""
+        self._posts += 1
+        if status == 200:
+            self._submitted_at = time.time()
+        since = round(time.time() - self.turn_started_at, 3) if self.turn_started_at and self.awaiting_input else None
+        self.log_action("post", status=status, detail=detail, since_turn_start_s=since, attempt=self._posts)
 
     @property
     def pending(self) -> int:
@@ -296,6 +329,17 @@ class ExternalAgent(BaseAgent):
             if self.turn_seq != seq or not self.awaiting_input:
                 return  # the turn moved on; a late ping would only mislead
 
+    async def test_webhook(self, observation: Observation) -> list[dict[str, Any]]:
+        """One `turn_due_test` ping per URL via the normal delivery path. Returns the attempts."""
+        import httpx
+
+        payload = self.turn_due_payload(observation)
+        payload["event"] = "turn_due_test"
+        before = len(self.webhook_log)
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            await asyncio.gather(*(self._deliver(client, url, payload, self.turn_seq) for url in self._webhook_urls()))
+        return list(self.webhook_log)[before:]
+
     def _log_delivery(self, entry: dict[str, Any]) -> None:
         self.webhook_log.append(entry)
         log.info("turn_due %s seq=%s -> %s attempt=%s status=%s", self.player_id, entry["turn_seq"],
@@ -309,6 +353,8 @@ class ExternalAgent(BaseAgent):
 
     async def act(self, observation: Observation) -> Action:
         self.turn_seq += 1
+        self._posts = 0
+        self._submitted_at = None
         self.current_observation = observation
         self.turn_started_at = time.time()
         self.awaiting_input = True
@@ -320,6 +366,7 @@ class ExternalAgent(BaseAgent):
         try:
             got = await self._queue.get()
             if got is _RELEASE:
+                self.log_action("slot_released", held_actions=self.hold_count)
                 raise SlotReleased(self.player_id)
             return got
         finally:

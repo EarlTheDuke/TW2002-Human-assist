@@ -44,6 +44,12 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-26 19:40 PT - Fable - grokbot-player G5 prep done -> BLOCKED_NEEDS_BEN (pilot not launched)
+- `scripts/run_cu_pilot.ps1`: P1 QwenA (LLM, custom), P2 SeatBrain (`seat_brain_v2 --harness`, 60 s), P3 Commander (external CU, 600 s, hold on); seed 250925, 2 days, 60 turns/day, `:8032` (refuses 8031), spectator gate on, tunnel watchdog on, turn_due webhook for P3 only. It needs an explicit `-DryRun` (paused host + checks) or `-Go` (the pilot, after Ben's go).
+- New: `--start-paused` (MatchSpec.paused now honoured); per-action log `saves/<run>/external_actions.jsonl` (posts incl. 4xx, engine result, think time, posts per turn, auto-WAIT, held, releases) + `scripts/cu_pilot_report.py`; `POST /harness/v1/{seat}/webhook_test`; `scripts/cu_pilot_check.py` (23 checks).
+- Found by the dry run: uvicorn access logs kept `?token=` from claim/spectate URLs. Added a `uvicorn.access` redaction filter. Deleted the affected local logs and rotated the P2/P3 pilot tokens.
+- `tests/test_cu_pilot_g5.py` (5). Suite 650 passed; ruff clean. Dry run 23/23 on `:8032`; `:8031` untouched.
+
 ### 2026-09-26 19:14 PT - Fable - grokbot-player G4 (reach + turn cadence) delivered
 - Tunnel: `run_hosted_grokbot.ps1 -Tunnel [-TunnelProvider] [-TunnelIntervalS]` starts `tunnel_watchdog.ps1` hidden (pid in `.tw2k/tunnel_watchdog.pid`). The watchdog logs a health line every check, re-exposes on any non-200 (503), and re-runs `write_seat_links.py` whenever `.tw2k/public_base_url.txt` changes. The webhook `bot_url` reads the same file, so it follows the tunnel.
 - Per-seat timeouts: `AgentSpec.external_timeout_s`, CLI `--external-seat-timeouts P3=600,P4=120`, restart `agents[i].timeout_s`, wrapper `-ExternalTimeoutS` (default 600; `-TimeoutS` alias) + `-SeatTimeouts`. Status `timeout_s`/`deadline_at` are per seat. LLM think caps and the idle auto-WAIT are unchanged.
