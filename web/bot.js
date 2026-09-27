@@ -1045,7 +1045,7 @@
         if (state.events.length > 600) state.events = state.events.slice(-600);
         state.eventsSince = r.next_since;
         if (window.TW2KMedia && typeof window.TW2KMedia.onEvents === "function") {
-          window.TW2KMedia.onEvents(r.events);
+          window.TW2KMedia.onEvents(r.events, state.obs);
         }
       }
       els.eventsMeta.textContent = `${state.events.length} visible events · latest seq ${r.latest_seq}`;

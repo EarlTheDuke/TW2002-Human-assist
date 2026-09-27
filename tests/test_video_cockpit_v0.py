@@ -1,6 +1,7 @@
 """Video cockpit V0 - spec lock: manifest v2 schema + validator, event fixtures, resolver table.
 
-No runtime / UI code is involved: the live manifest stays v1 and media-player.js is untouched.
+V2 points the live manifest at the placeholder v2 set. This file still checks the schema,
+the validator, and that the recorded fixtures match the engine.
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ def test_schema_is_valid_2020_12() -> None:
 
 
 def test_live_v1_manifest_and_v2_example_validate() -> None:
-    assert V1["version"] == 1, "V0 must not change the runtime manifest"
+    assert V1["version"] == 2 and "warp" in V1["kinds"] and "dock.port" in V1["clips"]
     assert _errors(V1) == []
     assert _errors(V2) == []
 
@@ -65,8 +66,8 @@ def test_public_kind_is_fine_when_local_and_v1_cannot_carry_v2_blocks() -> None:
     ok = copy.deepcopy(V2)
     ok["triggers"].append({"kind": "port_destroyed", "rule": "witnessed_in_my_sector", "clip": "combat.witnessed"})
     assert _errors(ok) == []
-    v1_bad = copy.deepcopy(V1)
-    v1_bad["triggers"] = []
+    v1_bad = {"version": 1, "defaults": {"duration_ms": 2400, "muted": True, "fit": "cover"},
+              "kinds": {"warp": {"still": "stills/move_warp.png", "caption": "Warp"}}, "triggers": []}
     assert any(e.startswith("schema") for e in _errors(v1_bad))
 
 
@@ -154,8 +155,6 @@ def test_expected_clip_keys_exist_in_the_v2_example() -> None:
             assert e["clip_key"] in V2["clips"] and V2["clips"][e["clip_key"]]["priority"] == e["priority"], (f.name, e)
 
 
-@pytest.mark.xfail(strict=True, reason="engine fog bug (V0 finding 1): _destroy_ship moves the victim before emitting "
-                                       "ship_destroyed, so the victim is not a witness of its own death")
 def test_victim_sees_its_own_ship_destroyed() -> None:
     for name in ("self_attack_lose", "ferrengi_attack"):
         fx = _fx(name)

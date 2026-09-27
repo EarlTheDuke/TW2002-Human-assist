@@ -45,7 +45,7 @@ resolve(batch, obs, state) -> [{clip_key, priority}, ...]   # ordered, highest p
 
 ## Findings from recording (for Commander / Ben)
 
-1. **Engine fog bug: a destroyed seat never sees its own `ship_destroyed` event.** `engine/combat.py::_destroy_ship()` moves the victim to StarDock *before* emitting `ship_destroyed` with `sector_id=death_sector`, and `Universe.emit` captures `_witnesses` from that sector's occupants at emit time. The killer is the actor, so the victim is in neither set. This hides deaths from the victim's `/events` stream and from LLM seats' `recent_events` too, not just from the future viewport P0 key `self.ship_destroyed`. Suggested one-line fix (a runtime change, so not in V0): pass `_witnesses` = the death sector's occupants before the move plus the victim. `tests/test_video_cockpit_v0.py` holds a strict `xfail` that flips when it's fixed.
+1. **Fixed in V2.** A destroyed seat never saw its own `ship_destroyed` because `_destroy_ship()` moved the victim to StarDock before emit, so they were not in `_witnesses`. V2 snapshots the death-sector occupants (plus the victim) before the move and passes that list. `test_victim_sees_its_own_ship_destroyed` covers `self_attack_lose` and `ferrengi_attack`.
 2. **`outcome` is needed to tell hit from miss** (as the phase plan says): ship-vs-ship `combat` rows carry post-fight fighters/shields but no losses. `self_attack_lose` shows the attacker at 0 fighters, which a client could read as a miss, but a real `outcome` fact (V2 engine micro-change) is the reliable signal.
 
 ## Manifest v2 schema + validator

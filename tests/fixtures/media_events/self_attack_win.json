@@ -37,7 +37,10 @@
         "attacker_f": 2959,
         "attacker_s": 0,
         "defender_f": 0,
-        "defender_s": 0
+        "defender_s": 0,
+        "attacker_losses": 41,
+        "defender_losses": 40,
+        "outcome": "destroyed"
       }
     },
     {

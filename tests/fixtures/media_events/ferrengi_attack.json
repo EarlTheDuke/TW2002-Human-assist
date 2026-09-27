@@ -53,7 +53,27 @@
         "attacker_f": 400,
         "attacker_s": 95,
         "defender_f": 0,
-        "defender_s": 0
+        "defender_s": 0,
+        "attacker_losses": 0,
+        "defender_losses": 5,
+        "outcome": "destroyed"
+      }
+    },
+    {
+      "seq": 3,
+      "day": 1,
+      "tick": 0,
+      "kind": "ship_destroyed",
+      "actor_id": "F1",
+      "actor_kind": null,
+      "sector_id": 16,
+      "summary": "*** Commander's ship destroyed (ferrengi); ejected to StarDock [death #1/3] ***",
+      "facts": {
+        "victim": "P1",
+        "reason": "ferrengi",
+        "deaths": 1,
+        "death_sector": 16,
+        "killer_id": "F1"
       }
     }
   ],

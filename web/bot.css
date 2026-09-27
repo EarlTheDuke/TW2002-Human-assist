@@ -393,3 +393,14 @@ body.mode-cu #cuMediaSlot .media-hud-inner { width: auto; height: 100%; max-widt
 @media (prefers-reduced-motion: reduce) {
   .media-hud-inner { transition: none; }
 }
+/* ---- V2 event clips: placeholder stills (CSS push-in + tint). Real webm/mp4 use the two video layers. ---- */
+.vp-clip { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.vp-clip[hidden] { display: none !important; }
+.vp-clip img, .vp-clip video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.vp-clip.is-still img { animation: vp-push 2.4s ease-out forwards; }
+.vp-clip.is-still::after { content: ""; position: absolute; inset: 0; pointer-events: none; animation: vp-tint 2.4s ease-out forwards; }
+@keyframes vp-push { from { transform: scale(1); } to { transform: scale(1.03); } }
+@keyframes vp-tint { 0% { background: transparent; } 35% { background: rgba(255, 90, 40, 0.28); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .vp-clip.is-still img, .vp-clip.is-still::after { animation: none; }
+}

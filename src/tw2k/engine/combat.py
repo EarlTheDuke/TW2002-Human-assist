@@ -138,6 +138,25 @@ def _resolve_fighter_sector_combat(
     )
 
 
+def _exchange_outcome(rounds: list[dict], attacker_f: int, defender_f: int) -> dict:
+    """Attacker-point-of-view result for a ship exchange (video cockpit V2).
+
+    ``destroyed`` — the defender's fighters hit 0 (counts as a hit).
+    ``miss`` — the attacker was destroyed, or dealt no fighter damage.
+    ``hit`` — the defender lost fighters and both ships are still up.
+    Losses are the fighter counts each side actually dropped across rounds.
+    """
+    att = sum(int(r.get("attacker_fighters_lost") or 0) for r in rounds)
+    dfn = sum(int(r.get("defender_fighters_lost") or 0) for r in rounds)
+    if defender_f <= 0:
+        outcome = "destroyed"
+    elif attacker_f <= 0 or dfn <= 0:
+        outcome = "miss"
+    else:
+        outcome = "hit"
+    return {"attacker_losses": att, "defender_losses": dfn, "outcome": outcome}
+
+
 def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
     rng = universe.rng
     attacker = universe.players[attacker_id]
@@ -234,6 +253,7 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
             "defender_f": d_fighters,
             "defender_s": d_shields,
             "rounds": rounds,
+            **_exchange_outcome(rounds, a_fighters, d_fighters),
         },
         summary=summary,
     )
@@ -348,6 +368,7 @@ def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) 
             "defender_f": d_fighters,
             "defender_s": d_shields,
             "rounds": rounds,
+            **_exchange_outcome(rounds, a_fighters, d_fighters),
         },
         summary=(
             f"Ferrengi combat in {victim.sector_id}: "
@@ -368,6 +389,12 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
         return
 
     death_sector = player.sector_id
+    # Snapshot witnesses BEFORE the eject. Emit reads occupants at emit time;
+    # moving the victim to StarDock first used to hide their own ship_destroyed.
+    sector = universe.sectors.get(death_sector)
+    witnesses = list(sector.occupant_ids) if sector is not None else []
+    if pid not in witnesses:
+        witnesses.append(pid)
     player.deaths += 1
     # Match 13 — snapshot pre-reset defense state so the NEXT observation's
     # post-death re-arm hint can say "you had only {Y} fighters when you
@@ -410,6 +437,7 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
             "deaths": player.deaths,
             "death_sector": death_sector,
             "killer_id": killer_id,
+            "_witnesses": witnesses,
         },
         summary=(
             f"*** {player.name}'s ship destroyed ({reason}); "
