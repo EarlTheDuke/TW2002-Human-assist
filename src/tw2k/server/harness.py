@@ -63,6 +63,12 @@ EVENTS_MAX_LIMIT = 500
 class ActionSubmission(BaseModel):
     turn_seq: int | None = None
     action: dict[str, Any] = Field(default_factory=dict)
+    # G4: set/clear hold-my-slot together with the action (applies after it).
+    hold: bool | None = None
+
+
+class HoldRequest(BaseModel):
+    hold: bool
 
 
 def _allow_remote() -> bool:
@@ -149,6 +155,11 @@ def build_harness_router(runner) -> APIRouter:
         owner.touch_client()
         return owner
 
+    def _timeout_for(agent: ExternalAgent) -> float:
+        spec = runner._spec
+        default = float(getattr(spec, "external_timeout_s", 0.0) or 0.0) if spec else 0.0
+        return float(agent.timeout_s or default)
+
     def _current_turn() -> dict[str, Any] | None:
         """Who the scheduler is blocked on right now (any kind), with a deadline if known."""
         u = runner.state.universe
@@ -172,7 +183,7 @@ def build_harness_router(runner) -> APIRouter:
             out["awaiting_input"] = cur.awaiting_input
             window = float(getattr(spec, "external_attend_window_s", 45.0) or 0.0) if spec else 45.0
             out["attended"] = cur.is_attended(window)
-            timeout_s = float(getattr(spec, "external_timeout_s", 0.0) or 0.0) if spec else 0.0
+            timeout_s = _timeout_for(cur)
             idle_s = float(getattr(spec, "external_idle_wait_s", 0.0) or 0.0) if spec else 0.0
             eff = timeout_s
             if idle_s > 0 and not out["attended"]:
@@ -191,9 +202,10 @@ def build_harness_router(runner) -> APIRouter:
     def _seat_status(agent: ExternalAgent) -> dict[str, Any]:
         u = runner.state.universe
         p = u.players.get(agent.player_id) if u is not None else None
-        deadline_at = None
-        timeout_s = float(getattr(runner._spec, "external_timeout_s", 0.0) or 0.0) if runner._spec else 0.0
-        if agent.awaiting_input and agent.turn_started_at and timeout_s > 0:
+        timeout_s = _timeout_for(agent)
+        # The runner's effective deadline (idle rule, held slot) when it set one.
+        deadline_at = agent.turn_deadline_at if agent.awaiting_input else None
+        if deadline_at is None and agent.awaiting_input and agent.turn_started_at and timeout_s > 0:
             deadline_at = agent.turn_started_at + timeout_s
         return {
             "current_turn": _current_turn(),
@@ -369,6 +381,10 @@ def build_harness_router(runner) -> APIRouter:
             action = Action.model_validate(raw)
         except Exception as exc:
             raise HTTPException(status_code=422, detail=f"invalid action: {exc}") from exc
+        if body.hold is not None:
+            if body.hold and agent.hold_max <= 0:
+                raise HTTPException(status_code=409, detail="hold_disabled")
+            agent.hold_slot = bool(body.hold)
         try:
             bound = await agent.submit_action(action, turn_seq=body.turn_seq)
         except StaleTurnError as exc:
@@ -386,6 +402,18 @@ def build_harness_router(runner) -> APIRouter:
         # Yield once so the scheduler can pick the action up before we answer.
         await asyncio.sleep(0)
         return {"accepted": True, "player_id": player_id, "turn_seq": bound}
+
+    @router.post("/{player_id}/hold")
+    async def hold(player_id: str, request: Request, body: HoldRequest) -> dict[str, Any]:
+        """G4 hold-my-slot. `hold: true` keeps the scheduler on this seat after
+        each action (up to `max` extra actions); `hold: false` ends the slot -
+        immediately, without spending a turn, if the seat is in a held turn."""
+        agent = _require_seat(player_id, request)
+        if body.hold and agent.hold_max <= 0:
+            raise HTTPException(status_code=409, detail="hold_disabled")
+        released = agent.set_hold(body.hold)
+        return {"player_id": player_id, "hold": agent.hold_slot, "released": released,
+                "used": agent.hold_count, "max": agent.hold_max}
 
     return router
 

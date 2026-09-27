@@ -61,7 +61,10 @@
       <div id="cuToast" class="cu-toast" data-testid="cu-toast" role="status" aria-live="assertive">No action yet this session</div>
       <div class="cu-card" id="cuActionsCard" data-testid="cu-actions">
         <div id="cuVerbSlot"></div>
-        <button type="button" id="cuMoreBtn" data-testid="cu-more" class="cu-more-btn">MORE VERBS (M)</button>
+        <div class="cu-row">
+          <button type="button" id="cuHoldBtn" data-testid="cu-hold" class="cu-more-btn" aria-pressed="false">HOLD SLOT (H)</button>
+          <button type="button" id="cuMoreBtn" data-testid="cu-more" class="cu-more-btn">MORE VERBS (M)</button>
+        </div>
         <div id="cuFormSlot"></div>
       </div>
       <div class="cu-card" data-testid="cu-shortcuts">

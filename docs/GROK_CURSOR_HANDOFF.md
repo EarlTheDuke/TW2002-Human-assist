@@ -44,6 +44,13 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-26 19:14 PT - Fable - grokbot-player G4 (reach + turn cadence) delivered
+- Tunnel: `run_hosted_grokbot.ps1 -Tunnel [-TunnelProvider] [-TunnelIntervalS]` starts `tunnel_watchdog.ps1` hidden (pid in `.tw2k/tunnel_watchdog.pid`). The watchdog logs a health line every check, re-exposes on any non-200 (503), and re-runs `write_seat_links.py` whenever `.tw2k/public_base_url.txt` changes. The webhook `bot_url` reads the same file, so it follows the tunnel.
+- Per-seat timeouts: `AgentSpec.external_timeout_s`, CLI `--external-seat-timeouts P3=600,P4=120`, restart `agents[i].timeout_s`, wrapper `-ExternalTimeoutS` (default 600; `-TimeoutS` alias) + `-SeatTimeouts`. Status `timeout_s`/`deadline_at` are per seat. LLM think caps and the idle auto-WAIT are unchanged.
+- `turn_due` webhook adds `seat` + `bot_url` (`{base}/bot?seat=Pn&mode=cu`); still no observation and no token. It retries up to 4 attempts (1/2/4 s backoff) while the turn is open. Every attempt is logged to `saves/<run>/webhook_deliveries.jsonl`, the `tw2k.webhook` logger and status `webhook` (host only; the URL path/query is never logged). No ping on held turns.
+- Hold my slot: `POST /harness/v1/{seat}/hold {hold}` or `hold` on the action POST. The runner keeps a holding seat for up to `external_hold_max_actions` (10) extra actions. Releasing during a held turn, or leaving it idle past the deadline, ends the slot without spending a turn or raising AGENT_ERROR. The CU cockpit has a HOLD SLOT / END SLOT button (key H).
+- `tests/test_turn_cadence_g4.py` (9) + G2 smoke gained the H key. Suite 645 passed; ruff clean. Live `:8032` demo: 600 s deadline honored (action at 230 s accepted), webhook 503 -> retry 200 logged, hold chained 2 actions + released. `:8031` untouched.
+
 ### 2026-09-26 18:33 PT - Fable - grokbot-player G3 (seat login without pasting secrets) delivered
 - `GET /bot/claim?seat=P6&token=...` (new `build_seat_claim_router`) verifies the seat token, sets HttpOnly `tw2k_seat_P6` (Path=/harness/, SameSite=Lax, Secure behind https, 14 days) and 303s to `/bot?seat=P6&mode=cu`. 401 bad/missing token, 403 other seat's token or non-loopback without `TW2K_HARNESS_ALLOW_REMOTE`, 503 no match. Open in the spectator gate.
 - Harness auth accepts that cookie in place of the Bearer header (Bearer wins); per-seat scope unchanged (P2 cookie on P3 routes = 403). Cookie-authenticated writes must send `X-TW2K-Seat: <seat>` (CSRF guard).

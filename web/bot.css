@@ -277,6 +277,9 @@ body.mode-cu #cuGoal { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-
 body.mode-cu #verbPad button[data-key]::after { content: " (" attr(data-key) ")"; font-size: 0.78rem; opacity: 0.8; }
 .cu-more-btn { margin-top: 6px; width: 100%; min-height: 40px; border-radius: 10px; border: 2px dashed var(--btn-border); background: transparent; color: var(--text); font-weight: 700; cursor: pointer; }
 body.mode-cu #verbReasons { display: none; }
+.cu-row { display: flex; gap: 6px; }
+.cu-row .cu-more-btn { flex: 1 1 0; }
+.cu-more-btn[aria-pressed="true"] { border-style: solid; border-color: var(--wait); background: #3a2a10; color: #ffe2b0; }
 body.mode-cu #verbForm { margin-top: 6px; padding: 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
 body.mode-cu #verbForm[hidden] { display: none; }
 body.mode-cu.cu-form-open [data-testid="cu-shortcuts"], body.mode-cu.cu-form-open #cuMediaSlot { display: none; }

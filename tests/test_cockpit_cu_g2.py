@@ -146,6 +146,13 @@ def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypa
             .map(b => b.outerHTML.slice(0, 80))""")
         assert not unlabeled, unlabeled
 
+        # H toggles hold-my-slot (G4) and says so; H again turns it off.
+        page.keyboard.press("h")
+        page.wait_for_function("document.querySelector('#cuToast').textContent.startsWith('HOLDING SLOT')", timeout=5_000)
+        assert page.get_by_test_id("cu-hold").get_attribute("aria-pressed") == "true"
+        page.keyboard.press("h")
+        page.wait_for_function("document.querySelector('[data-testid=cu-hold]').getAttribute('aria-pressed') === 'false'", timeout=5_000)
+
         # X opens the quick SELL form; its CONFIRM stays on screen.
         page.keyboard.press("x")
         page.wait_for_selector("#cuFormSlot #verbForm[data-verb=trade]:not([hidden])", timeout=5_000)

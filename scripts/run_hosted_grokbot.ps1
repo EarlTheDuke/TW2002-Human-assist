@@ -23,8 +23,18 @@ param(
   [string]$PublicHost = "",
   [int]$StartingCredits = 100000,
   [int]$MaxDays = 10,
-  [int]$TimeoutS = 180,
+  # G4: per-turn deadline for external seats. 600 s suits a computer-use (screenshot) player;
+  # LLM seats keep their own think cap. -SeatTimeouts "P4=120" overrides single seats (Path-B bots).
+  [Alias("TimeoutS")]
+  [int]$ExternalTimeoutS = 600,
+  [string]$SeatTimeouts = "",
   [int]$IdleWaitS = 8,
+  # G4: -Tunnel starts scripts/tunnel_watchdog.ps1 in the background (re-exposes on 503, keeps
+  # .tw2k\public_base_url.txt + seat links current, logs to .tw2k\tunnel_watchdog.log).
+  [switch]$Tunnel,
+  [ValidateSet("localhostrun", "cloudflare")]
+  [string]$TunnelProvider = "localhostrun",
+  [int]$TunnelIntervalS = 60,
   # Turns per in-game day. Engine default is 1000; ~120 makes a day roll in minutes for playtests.
   [int]$TurnsPerDay = 120,
   [int]$Seed = 210922,
@@ -91,7 +101,10 @@ Write-Host "Seats: $numAgents  (Qwen: $($qwen -join ', ')  |  external: $seatsCs
 Write-Host "Grok Bot cockpit:  http://${display}:${Port}/bot?seat=$($seats[0])"
 Write-Host "Spectator:         http://${display}:${Port}/"
 Write-Host "Harness (remote):  http://${display}:${Port}/harness/v1/..."
-Write-Host "TW2K_HARNESS_ALLOW_REMOTE=1   external timeout ${TimeoutS}s   idle auto-WAIT ${IdleWaitS}s   turns/day $TurnsPerDay"
+$seatTimeoutNote = if ($SeatTimeouts) { " (per seat: $SeatTimeouts)" } else { "" }
+Write-Host "TW2K_HARNESS_ALLOW_REMOTE=1   external timeout ${ExternalTimeoutS}s$seatTimeoutNote   idle auto-WAIT ${IdleWaitS}s   turns/day $TurnsPerDay"
+if ($env:TW2K_GROKBOT_WEBHOOK_URL) { Write-Host "turn_due webhook: ON (deliveries logged to saves\<run>\webhook_deliveries.jsonl)" }
+else { Write-Host "turn_due webhook: off (set TW2K_GROKBOT_WEBHOOK_URL to enable)" }
 Write-Host "Seat links: .tw2k\seat_links\<seat>.txt (open once, no paste; after exposing run: python scripts/write_seat_links.py)"
 Write-Host "Tokens (masked) in $tokFile - fallback: paste into /bot Connect field."
 foreach ($seat in $seats) {
@@ -104,11 +117,26 @@ Write-Host ""
 $serveArgs = @(
   "serve", "--host", $HostAddr, "--port", $Port, "--provider", "custom", "--model", $Model,
   "--num-agents", $numAgents, "--agent-kind", "llm", "--agent-names", $namesCsv,
-  "--external", $seatsCsv, "--external-timeout-s", $TimeoutS, "--external-tokens-file", $tokFile,
+  "--external", $seatsCsv, "--external-timeout-s", $ExternalTimeoutS, "--external-tokens-file", $tokFile,
   "--starting-credits", $StartingCredits, "--max-days", $MaxDays, "--seed", $Seed
 )
 if ($IdleWaitS -gt 0)   { $serveArgs += @("--external-idle-wait-s", $IdleWaitS) }
 if ($TurnsPerDay -gt 0) { $serveArgs += @("--turns-per-day", $TurnsPerDay) }
+if ($SeatTimeouts)      { $serveArgs += @("--external-seat-timeouts", $SeatTimeouts) }
+
+if ($Tunnel) {
+  $wdPidFile = Join-Path $tw2kDir "tunnel_watchdog.pid"
+  $old = if (Test-Path $wdPidFile) { Get-Content $wdPidFile -ErrorAction SilentlyContinue | Select-Object -First 1 } else { $null }
+  if ($old -and (Get-Process -Id $old -ErrorAction SilentlyContinue)) {
+    Write-Host "Tunnel watchdog already running (pid $old)"
+  } else {
+    $wd = Start-Process -FilePath "powershell" -PassThru -WindowStyle Hidden `
+      -ArgumentList @("-NoProfile", "-File", "scripts/tunnel_watchdog.ps1", "-Port", $Port, "-Provider", $TunnelProvider, "-IntervalS", $TunnelIntervalS)
+    [IO.File]::WriteAllText($wdPidFile, [string]$wd.Id)
+    Write-Host "Tunnel watchdog started (pid $($wd.Id), $TunnelProvider, every ${TunnelIntervalS}s). Public URL -> .tw2k\public_base_url.txt; log .tw2k\tunnel_watchdog.log"
+    Write-Host "  stop: Stop-Process -Id $($wd.Id); powershell -File scripts/expose_hosted_bot.ps1 -Stop"
+  }
+}
 
 # Prefer python -m in case Scripts not on PATH after pip --user
 $tw2k = Get-Command tw2k -EA SilentlyContinue

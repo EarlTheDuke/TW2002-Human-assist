@@ -1012,6 +1012,8 @@ def create_app(
                 else external_idle_wait_s
             ),
         )
+        if body.get("external_hold_max_actions") is not None:
+            spec.external_hold_max_actions = max(0, int(body["external_hold_max_actions"]))
         await runner.start(spec)
         _write_seat_links(spec)
         # Rebuild copilot sessions — old ones held references to the
@@ -1166,6 +1168,8 @@ def _build_default_spec(
                 # Secret; resolved below for external seats only. Never
                 # copied into meta.json (see runner._open_save_sink).
                 external_token=(str(ov["token"]) if ov.get("token") else None),
+                # G4: per-seat external deadline (`agents[i].timeout_s`).
+                external_timeout_s=(float(ov["timeout_s"]) if ov.get("timeout_s") else None),
             )
         )
 
