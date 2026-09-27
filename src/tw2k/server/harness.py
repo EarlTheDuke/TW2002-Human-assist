@@ -5,7 +5,10 @@ Plan: docs/plans/2026-09-20-external-harness.md §3.
 A bot **pulls** its observation and **pushes** one Action per turn. The
 server never calls out. Every route (except nothing — all of them) needs
 ``Authorization: Bearer <seat token>``; the token must belong to the seat
-named in the path, so one bot can never move another bot's ship.
+named in the path, so one bot can never move another bot's ship. A browser
+that opened its seat claim link (G3, ``server/seat_links.py``) may send the
+``tw2k_seat_<SEAT>`` cookie instead; cookie-authenticated writes must also
+send ``X-TW2K-Seat: <SEAT>``.
 
 Loopback only by default: the request must originate from 127.0.0.1 / ::1
 unless ``TW2K_HARNESS_ALLOW_REMOTE=1``. This is belt-and-braces on top of
@@ -32,6 +35,7 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, Field
 
 from ..agents.external import (
@@ -45,6 +49,7 @@ from ..engine import build_observation
 from ..engine.actions import Action, ActionKind
 from ..engine.observation import _event_visible_to, event_view
 from . import harness_tokens as ht
+from . import seat_links
 
 ENV_ALLOW_REMOTE = "TW2K_HARNESS_ALLOW_REMOTE"
 _LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
@@ -72,6 +77,19 @@ def _bearer(request: Request) -> str:
     return token.strip()
 
 
+def _credential(request: Request, player_id: str | None = None) -> str:
+    """Bearer header, else the G3 claim cookie. Cookie writes need the CSRF header."""
+    token = _bearer(request)
+    if token:
+        return token
+    token = seat_links.cookie_token(request.cookies, player_id)
+    if token and request.method not in ("GET", "HEAD"):
+        claimed = (request.headers.get(seat_links.CSRF_HEADER) or "").strip().upper()
+        if not claimed or (player_id and claimed != player_id.upper()):
+            raise HTTPException(status_code=403, detail=f"cookie auth needs the {seat_links.CSRF_HEADER} header")
+    return token
+
+
 def build_harness_router(runner) -> APIRouter:
     router = APIRouter(prefix="/harness/v1", tags=["harness"])
 
@@ -95,7 +113,7 @@ def build_harness_router(runner) -> APIRouter:
         """Any valid seat token → returns the seat it belongs to."""
         _check_loopback(request)
         _require_match()
-        token = _bearer(request)
+        token = _credential(request)
         if not token:
             raise HTTPException(status_code=401, detail="missing bearer token")
         for a in _external_agents():
@@ -106,7 +124,7 @@ def build_harness_router(runner) -> APIRouter:
     def _require_seat(player_id: str, request: Request) -> ExternalAgent:
         _check_loopback(request)
         _require_match()
-        token = _bearer(request)
+        token = _credential(request, player_id)
         if not token:
             raise HTTPException(status_code=401, detail="missing bearer token")
         owner: ExternalAgent | None = None
@@ -368,5 +386,43 @@ def build_harness_router(runner) -> APIRouter:
         # Yield once so the scheduler can pick the action up before we answer.
         await asyncio.sleep(0)
         return {"accepted": True, "player_id": player_id, "turn_seq": bound}
+
+    return router
+
+
+def build_seat_claim_router(runner) -> APIRouter:
+    """``GET /bot/claim?seat=P6&token=...`` -> HttpOnly seat cookie + redirect to the CU cockpit (G3).
+
+    401 missing / unknown token, 403 token belongs to another seat (or
+    non-loopback client without TW2K_HARNESS_ALLOW_REMOTE), 503 no match.
+    """
+    router = APIRouter(tags=["harness"])
+
+    @router.get(seat_links.CLAIM_PATH)
+    async def claim(request: Request, seat: str = "", token: str = "", mode: str = "cu") -> Response:
+        host = (request.client.host if request.client else "") or ""
+        if not _allow_remote() and host not in _LOOPBACK:
+            raise HTTPException(status_code=403, detail="harness is loopback-only")
+        if not runner.state.agents or runner.state.universe is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        seat = seat.strip().upper()
+        token = token.strip()
+        if not seat or not token:
+            raise HTTPException(status_code=401, detail="invalid seat link (missing seat or token)")
+        owner = next((a for a in runner.state.agents if isinstance(a, ExternalAgent) and ht.verify(token, a.token)), None)
+        if owner is None:
+            raise HTTPException(status_code=401, detail="invalid seat link")
+        if owner.player_id != seat:
+            raise HTTPException(status_code=403, detail="this link belongs to a different seat")
+        target = f"/bot?seat={seat}" + ("&mode=cu" if mode == "cu" else "")
+        secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "").lower() == "https"
+        resp = RedirectResponse(target, status_code=303)
+        resp.set_cookie(
+            seat_links.cookie_name(seat), token, path=seat_links.COOKIE_PATH, httponly=True, samesite="lax",
+            secure=secure, max_age=14 * 24 * 3600,
+        )
+        resp.headers["Cache-Control"] = "no-store"
+        resp.headers["Referrer-Policy"] = "no-referrer"
+        return resp
 
     return router

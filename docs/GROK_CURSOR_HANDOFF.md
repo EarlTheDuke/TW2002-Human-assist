@@ -44,6 +44,13 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-26 18:33 PT - Fable - grokbot-player G3 (seat login without pasting secrets) delivered
+- `GET /bot/claim?seat=P6&token=...` (new `build_seat_claim_router`) verifies the seat token, sets HttpOnly `tw2k_seat_P6` (Path=/harness/, SameSite=Lax, Secure behind https, 14 days) and 303s to `/bot?seat=P6&mode=cu`. 401 bad/missing token, 403 other seat's token or non-loopback without `TW2K_HARNESS_ALLOW_REMOTE`, 503 no match. Open in the spectator gate.
+- Harness auth accepts that cookie in place of the Bearer header (Bearer wins); per-seat scope unchanged (P2 cookie on P3 routes = 403). Cookie-authenticated writes must send `X-TW2K-Seat: <seat>` (CSRF guard).
+- `tw2k serve` with external seats writes `.tw2k/seat_links/<seat>.txt` (`server/seat_links.py`; base = TW2K_PUBLIC_BASE_URL > .tw2k/public_base_url.txt > bound port). `scripts/write_seat_links.py` refreshes them after a tunnel change (prints masked tokens only). `/bot` connects with the cookie when no token is pasted and only reuses a token stored for the same seat.
+- Fixed while testing: `refresh()` skipped entirely when no token was pasted.
+- `tests/test_seat_claim_g3.py` (10, incl. Playwright one-click claim -> play); G2 browser helpers moved to `tests/_cu_host.py` + `tests/conftest.py`. Suite 636 passed; ruff clean. Live CLI check on `:8032` with temp tokens; `:8031` untouched.
+
 ### 2026-09-26 18:05 PT - Fable - grokbot-player G2 (one-screen turn layout, mode=cu) delivered
 - `/bot?seat=Pn&mode=cu` is a fixed 1280x800 grid: top bar (YOUR TURN / WAITING + deadline countdown, credits, net worth, turns, day, seat); left = sector + numbered warp buttons, port tape, known-space map; middle = result toast, big verb buttons with key hints, MORE VERBS panel, forms, keyboard legend; right = ship/cargo, goal + stage hint, last 5 events, plain-text Turn card. The live controls are moved in, so behaviour and data-testids match the default page.
 - Keys (CU only, one keymap for legend and handler): 1-9 warp, S scan, B buy, X sell, T trade, P plot course, E end turn (wait), M more verbs, R refresh, Esc close. An unavailable key says why in the toast; the toast keeps the last result or rejection until the next action. The clip HUD docks into spare space instead of covering fields.

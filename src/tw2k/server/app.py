@@ -148,8 +148,22 @@ def create_app(
     external_timeout_s: float | None = None,
     external_tokens_file: str | None = None,
     external_idle_wait_s: float | None = None,
+    seat_links: bool = False,
 ) -> FastAPI:
     from .runner import _default_saves_root
+
+    def _write_seat_links(spec: MatchSpec) -> None:
+        """G3: one claim link per external seat in .tw2k/seat_links/ (`tw2k serve` only)."""
+        if not seat_links:
+            return
+        from . import seat_links as _sl
+
+        tokens = {a.player_id: a.external_token for a in spec.agents if a.kind == "external" and a.external_token}
+        if tokens:
+            try:
+                _sl.write_seat_links(tokens)
+            except OSError:
+                pass
 
     broadcaster = Broadcaster()
     runner = MatchRunner(broadcaster)
@@ -194,6 +208,7 @@ def create_app(
                 external_idle_wait_s=external_idle_wait_s,
             )
             await runner.start(spec)
+            _write_seat_links(spec)
             # runner.start kicks off the scheduler loop in a background
             # task; `runner.state.agents` isn't populated synchronously.
             # Poll briefly so the copilot registry has human sessions
@@ -222,9 +237,10 @@ def create_app(
     app.state.copilot_registry = copilot_registry
 
     # External (Grok Bot) seats — token-authenticated loopback REST.
-    from .harness import build_harness_router
+    from .harness import build_harness_router, build_seat_claim_router
 
     app.include_router(build_harness_router(runner))
+    app.include_router(build_seat_claim_router(runner))
 
     # Parity S1 — spectator gate. No-op unless TW2K_SPECTATOR_TOKEN is set;
     # then `/`, `/state`, `/events`, `/history`, `/highlights`, `/ws`,
@@ -997,6 +1013,7 @@ def create_app(
             ),
         )
         await runner.start(spec)
+        _write_seat_links(spec)
         # Rebuild copilot sessions — old ones held references to the
         # previous match's HumanAgent queues which are now garbage. Chat
         # history from the prior match is intentionally wiped; if we

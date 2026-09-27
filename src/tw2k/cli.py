@@ -394,6 +394,14 @@ def serve(
             f"[magenta]External harness:[/] http://{host}:{port}/harness/v1/<pid>/...  "
             f"[dim](timeout {_eto:.0f}s; tokens in {_ht.tokens_file_path(external_tokens_file)})[/]"
         )
+        # G3: claim links default to the port we bind unless a public/tunnel base is set.
+        from .server import seat_links as _sl
+
+        _os.environ.setdefault("TW2K_HARNESS_BASE_URL", f"http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{port}")
+        console.print(
+            f"[magenta]Seat links:[/] {_sl.links_dir()}/<pid>.txt  "
+            f"[dim](open once in the seat's browser; no token paste; re-run scripts/write_seat_links.py after a tunnel change)[/]"
+        )
     if overrides:
         for i, ov in enumerate(overrides[:num_agents]):
             if ov.get("kind") == "human":
@@ -468,6 +476,7 @@ def serve(
         external_timeout_s=external_timeout_s,
         external_tokens_file=external_tokens_file,
         external_idle_wait_s=external_idle_wait_s,
+        seat_links=any_external,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

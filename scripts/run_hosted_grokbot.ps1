@@ -6,7 +6,9 @@
 #   powershell -File scripts/run_hosted_grokbot.ps1 -Port 8031 -PublicHost "tw2k.example.com"
 #
 # Then expose:  powershell -File scripts/expose_hosted_bot.ps1 -Port <port> -Detach
-# Then open:    {base}/bot?seat=P3  and paste the P3 token from .tw2k/external_tokens.json.
+#               python scripts/write_seat_links.py      # re-point seat links at the tunnel URL
+# Then open:    the link in .tw2k\seat_links\P3.txt once (sets the seat cookie, lands on /bot?seat=P3&mode=cu).
+#               Fallback: {base}/bot?seat=P3 and paste the P3 token from .tw2k/external_tokens.json.
 #
 # Phase D (computer-use insights): a hosted match must not freeze on external seats nobody is
 # driving. Two defences, both on by default here:
@@ -90,7 +92,8 @@ Write-Host "Grok Bot cockpit:  http://${display}:${Port}/bot?seat=$($seats[0])"
 Write-Host "Spectator:         http://${display}:${Port}/"
 Write-Host "Harness (remote):  http://${display}:${Port}/harness/v1/..."
 Write-Host "TW2K_HARNESS_ALLOW_REMOTE=1   external timeout ${TimeoutS}s   idle auto-WAIT ${IdleWaitS}s   turns/day $TurnsPerDay"
-Write-Host "Tokens (masked) in $tokFile - paste into /bot Connect field."
+Write-Host "Seat links: .tw2k\seat_links\<seat>.txt (open once, no paste; after exposing run: python scripts/write_seat_links.py)"
+Write-Host "Tokens (masked) in $tokFile - fallback: paste into /bot Connect field."
 foreach ($seat in $seats) {
   $t = [string]$tokens.$seat
   $masked = if ($t.Length -gt 12) { $t.Substring(0,4) + "..." + $t.Substring($t.Length-4) } else { "?" }
