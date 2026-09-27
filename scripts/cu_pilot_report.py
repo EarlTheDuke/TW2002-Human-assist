@@ -7,7 +7,8 @@ actions and webhook delivery health. Paste it into
 ``docs/playtests/cu-pilot-*/INSIGHTS.md``.
 
     python scripts/cu_pilot_report.py saves/<run-id>            # a run dir
-    python scripts/cu_pilot_report.py --latest                   # newest run under saves/ (or TW2K_SAVES_DIR)
+    python scripts/cu_pilot_report.py --latest                   # newest PILOT run (see latest_pilot_run)
+    python scripts/cu_pilot_report.py --latest-any               # newest run of any kind under the saves root
 """
 
 from __future__ import annotations
@@ -104,14 +105,51 @@ def to_markdown(run_dir: Path, summary: dict[str, dict]) -> str:
     return "\n".join(lines)
 
 
+PILOT_LINEUP = {"QwenA", "SeatBrain", "Commander"}  # scripts/run_cu_pilot.ps1 --agent-names
+
+
+def _has_actions(run: Path) -> bool:
+    return any(r.get("event") == "result" for r in _rows(run / "external_actions.jsonl"))
+
+
+def _is_pilot_lineup(run: Path) -> bool:
+    try:
+        meta = json.loads((run / "meta.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return {a.get("name") for a in meta.get("agents") or []}.issuperset(PILOT_LINEUP)
+
+
+def latest_pilot_run(saves_root: Path, pilot_logs: Path) -> Path | None:
+    """Newest real pilot: the run `run_cu_pilot.ps1 -Go` recorded in .tw2k/cu_pilot/*/pilot_run.txt,
+    else the newest save with the pilot lineup and at least one logged action. Dry runs (no actions)
+    and throwaway test hosts (other lineups / seeds) are skipped."""
+    markers = sorted(pilot_logs.glob("*/pilot_run.txt"), key=lambda p: p.stat().st_mtime, reverse=True) if pilot_logs.is_dir() else []
+    for m in markers:
+        run = Path(m.read_text(encoding="utf-8").strip())
+        if (run / "meta.json").is_file() and _has_actions(run):
+            return run
+    runs = [p for p in saves_root.iterdir() if (p / "meta.json").is_file()] if saves_root.is_dir() else []
+    runs = [p for p in runs if _is_pilot_lineup(p) and _has_actions(p)]
+    return max(runs, key=lambda p: p.stat().st_mtime) if runs else None
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("run_dir", nargs="?", help="saves/<run-id> directory")
-    ap.add_argument("--latest", action="store_true", help="use the newest run dir under the saves root")
+    ap.add_argument("--latest", action="store_true", help="use the newest computer-use pilot run")
+    ap.add_argument("--latest-any", action="store_true", help="use the newest run of any kind under the saves root")
     ap.add_argument("--json", action="store_true", help="print JSON instead of Markdown")
     args = ap.parse_args(argv)
+    root = Path(os.environ.get("TW2K_SAVES_DIR") or ROOT / "saves")
     if args.latest:
-        root = Path(os.environ.get("TW2K_SAVES_DIR") or ROOT / "saves")
+        found = latest_pilot_run(root, ROOT / ".tw2k" / "cu_pilot")
+        if found is None:
+            print(f"no pilot run under {root} (need the QwenA/SeatBrain/Commander lineup with logged actions)", file=sys.stderr)
+            return 1
+        run_dir = found
+        print(f"(latest pilot run: {run_dir.name})", file=sys.stderr)
+    elif args.latest_any:
         runs = sorted((p for p in root.iterdir() if (p / "meta.json").is_file()), key=lambda p: p.stat().st_mtime) if root.is_dir() else []
         if not runs:
             print(f"no runs under {root}", file=sys.stderr)
@@ -120,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.run_dir:
         run_dir = Path(args.run_dir)
     else:
-        ap.error("give a run dir or --latest")
+        ap.error("give a run dir, --latest or --latest-any")
     summary = summarise(run_dir)
     print(json.dumps(summary, indent=2) if args.json else to_markdown(run_dir, summary))
     return 0

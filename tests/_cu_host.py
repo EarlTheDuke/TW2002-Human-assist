@@ -36,11 +36,13 @@ def free_port(start: int = 8033) -> int:
 
 
 class CuHost:
-    def __init__(self, tmp: Path, token: str, *, max_days: int = 3, turns_per_day: int = 60) -> None:
+    def __init__(self, tmp: Path, token: str, *, max_days: int = 3, turns_per_day: int = 60,
+                 seed: int = 250925, park_at: int | None = None, fuel: int = 10) -> None:
         import uvicorn
 
         self.token = token
         self.max_days, self.turns_per_day = max_days, turns_per_day
+        self.seed, self.park_at, self.fuel = seed, park_at, fuel
         self.port = free_port()
         self.app = create_app(auto_start=False)
         self.runner = self.app.state.runner
@@ -52,7 +54,7 @@ class CuHost:
         while not self.server.started:
             await asyncio.sleep(0.05)
         await self.runner.start(MatchSpec(
-            config=GameConfig(seed=250925, universe_size=200, max_days=self.max_days, turns_per_day=self.turns_per_day,
+            config=GameConfig(seed=self.seed, universe_size=200, max_days=self.max_days, turns_per_day=self.turns_per_day,
                               starting_credits=50_000,
                               enable_ferrengi=False, enable_planets=True, action_delay_s=0.0),
             agents=[AgentSpec(player_id="P1", name="HBot", kind="heuristic"),
@@ -67,12 +69,16 @@ class CuHost:
             await asyncio.sleep(0.02)
         u = self.runner.state.universe
         me = u.players["P2"]
-        port = next(s for s in u.sectors.values() if s.id > 10 and s.port and (s.port.code or "").startswith("B")
-                    and "S" in (s.port.code or ""))
+        if self.park_at is not None:
+            dest = u.sectors[int(self.park_at)]
+        else:
+            dest = next(s for s in u.sectors.values() if s.id > 10 and s.port and (s.port.code or "").startswith("B")
+                        and "S" in (s.port.code or ""))
         u.sectors[me.sector_id].occupant_ids.remove("P2")
-        me.sector_id = port.id
-        port.occupant_ids.append("P2")
-        me.ship.cargo[Commodity.FUEL_ORE] = 10
+        me.sector_id = dest.id
+        dest.occupant_ids.append("P2")
+        me.known_sectors.add(dest.id)
+        me.ship.cargo[Commodity.FUEL_ORE] = self.fuel
 
     async def _main(self) -> None:
         async def start_logged() -> None:

@@ -30,6 +30,13 @@
 
   <p id="err" class="error" data-testid="error"></p>
 
+  <!-- G6b: shown when the seat can't be reached or is no longer signed in (e.g. the tunnel host changed). -->
+  <div id="reconnect" class="reconnect" data-testid="reconnect-banner" role="alert" hidden>
+    <strong id="reconnectTitle">Reconnect needed</strong>
+    <span id="reconnectText"></span>
+    <button type="button" id="reconnectRetry" data-testid="reconnect-retry">Retry now</button>
+  </div>
+
   <!-- G6: shown once the match has finished (harness `final`). -->
   <section id="gameOver" class="game-over" data-testid="game-over" role="dialog" aria-labelledby="gameOverTitle" hidden>
     <h2 id="gameOverTitle">MATCH OVER</h2>
@@ -71,6 +78,7 @@
       <div id="cuToast" class="cu-toast" data-testid="cu-toast" role="status" aria-live="assertive">No action yet this session</div>
       <div class="cu-card" id="cuActionsCard" data-testid="cu-actions">
         <div id="cuVerbSlot"></div>
+        <div id="cuQuickTrades" class="cu-quick" data-testid="cu-quick-trades"></div>
         <div class="cu-row">
           <button type="button" id="cuHoldBtn" data-testid="cu-hold" class="cu-more-btn" aria-pressed="false">HOLD SLOT (H)</button>
           <button type="button" id="cuMoreBtn" data-testid="cu-more" class="cu-more-btn">MORE VERBS (M)</button>
