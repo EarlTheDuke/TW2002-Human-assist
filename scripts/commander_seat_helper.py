@@ -27,7 +27,6 @@ def decide(obs: dict) -> dict:
     warps = list(sector.get("warps_out") or [])
     free = int(ship.get("cargo_free") or 0)
     credits = int(obs.get("credits") or 0)
-    fails = obs.get("recent_failures") or []
     adj = obs.get("adjacent") or []
 
     # Sell first
