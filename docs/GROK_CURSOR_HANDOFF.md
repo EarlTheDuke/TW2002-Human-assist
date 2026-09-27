@@ -44,7 +44,7 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
-### 2026-09-26 21:25 PT - Fable - grokbot-player G6 (four CU pilot fixes, revised scope) delivered
+### 2026-09-26 21:00 PT - Fable - grokbot-player G6 (four CU pilot fixes, revised scope) delivered
 - Status line: `status_fields()` (engine/observation.py) -> harness `status_line` + `day/max_days/turns_left_today/turns_per_day/rank/seats`. The CU top bar has one Status cell and the Turn card starts with it; the CU banner and toast no longer show seq or tick.
 - Game over: once the match ends every harness read is 200 with `game_over/winner/win_reason/standings/your_rank`, and every write is 409 `game_over`. `/bot` (both layouts) shows a GAME OVER panel, hides action controls and stops polling.
 - Speed: `run_route` macro (`agents/route_macro.py`, `POST /harness/v1/{seat}/macro`). One legal step per held turn from the seat's own observation; it stops on another commander / Ferrengi / hostile fighters, an empty port, low turns, a failed step, hold released, or leaving the route. There is a slot digest (status `digest`, toast, Turn card) and CU REPEAT ROUTE (G) + auto-accept B/X. Report adds clicks, turns/click, wall s/game turn.
