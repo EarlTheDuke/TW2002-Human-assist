@@ -78,10 +78,10 @@
         <p class="hint small" style="margin:0 0 8px">Only sectors you have visited, scanned or probed. Tap a sector to plot a course (when legal).</p>
         <svg id="knownMap" class="known-map" viewBox="0 0 100 100" role="img" aria-label="Known-space map" data-testid="known-map-svg"></svg>
         <div class="chips" style="margin-top:8px">
-          <span class="chip static" style="border-color:var(--go)">● you are here</span>
-          <span class="chip static">● visited</span>
-          <span class="chip static" style="opacity:.6">○ seen, not visited</span>
-          <span class="chip static">→ one-way / return unknown</span>
+          <span class="chip static" style="border-color:var(--go)">â— you are here</span>
+          <span class="chip static">â— visited</span>
+          <span class="chip static" style="opacity:.6">â—‹ seen, not visited</span>
+          <span class="chip static">â†’ one-way / return unknown</span>
         </div>
         <details class="drawer" data-testid="known-warps">
           <summary>Warp list (text twin)</summary>
@@ -236,6 +236,7 @@
     </details>
   </footer>
 
+  <script src="/static/media-player.js"></script>
   <script src="/static/bot.js"></script>
 </body>
 </html>
