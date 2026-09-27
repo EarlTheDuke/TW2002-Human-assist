@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 16:30 PT - Fable - CU top bar keeps the status line
+- The turn banner shrinks and ellipsizes. Credits, status, and seat do not shrink, so a long status line stays inside its cell. The CU Refresh button uses the cockpit button style. Suite 717 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 16:00 PT - Fable - visible Refresh in mode=cu
 - The Refresh button moves onto the `mode=cu` top bar (`#cuScreen`, testid `refresh`). A click refetches and does not post an action. The default layout keeps it on the auth bar.
 - A 404 or 500 from `manifest.json` sets `manifestFailed` and clears the pending event queue, same as a dropped fetch. Suite 717 passed; ruff clean; manifest OK.
