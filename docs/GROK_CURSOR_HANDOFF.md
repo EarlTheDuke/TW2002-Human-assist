@@ -44,6 +44,12 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-26 18:05 PT - Fable - grokbot-player G2 (one-screen turn layout, mode=cu) delivered
+- `/bot?seat=Pn&mode=cu` is a fixed 1280x800 grid: top bar (YOUR TURN / WAITING + deadline countdown, credits, net worth, turns, day, seat); left = sector + numbered warp buttons, port tape, known-space map; middle = result toast, big verb buttons with key hints, MORE VERBS panel, forms, keyboard legend; right = ship/cargo, goal + stage hint, last 5 events, plain-text Turn card. The live controls are moved in, so behaviour and data-testids match the default page.
+- Keys (CU only, one keymap for legend and handler): 1-9 warp, S scan, B buy, X sell, T trade, P plot course, E end turn (wait), M more verbs, R refresh, Esc close. An unavailable key says why in the toast; the toast keeps the last result or rejection until the next action. The clip HUD docks into spare space instead of covering fields.
+- Default `/bot` unchanged (all G2 CSS scoped to `mode-cu`). `tests/test_cockpit_cu_g2.py`: Playwright smoke at 1280x800 (every decision field inside the viewport, no page scroll, keys, SELL form CONFIRM on screen, HUD docked, only own-seat harness requests, default page untouched) + static scope test + Node Turn-card test. Playwright is an optional `e2e` extra; the browser test skips without it.
+- Suite 626 passed; ruff clean. Local matches on `:8032`/`:8033` only; live `:8031` untouched.
+
 ### 2026-09-26 17:30 PT - Fable - grokbot-player G1 (cockpit parity CP1-CP5) delivered
 - `/bot` now renders every key an API LLM seat gets in `format_observation`: planet tape (id, origin, colonists per pool + total, stockpile, production, organics burn, growth, runway), all fog-visible other players (non-corpmates included; occupant chips named), operator directive `(set day D.T)` + last-8 dialogue transcript, `stage_hint` chip from the `format=both` API twin, twin JSON drawer, `/rules` system prompt drawer, and "My thoughts" / "LLM usage" event toggles (off by default, own seat only).
 - Pure formatters in new `web/bot-parity.js`; `tests/test_cockpit_parity_g1.py` runs them under Node against engine-built observations. Also repaired double-encoded UTF-8 in `web/bot.js` / `bot.html`, and cleared ruff findings in `planets.py` + 3 tracked scripts.

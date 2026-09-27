@@ -66,8 +66,11 @@
     twin: null,          // parsed twin (stage_hint lives only here)
     rulesLoaded: false,
     show: { thoughts: false, usage: false },  // CP5 toggles, off by default
+    cuTurnText: "",
+    toastPinned: false,  // G2: an error toast stays until the next action
   };
   const P = window.TW2KParity;
+  const CU = new URLSearchParams(location.search).get("mode") === "cu";
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const nowS = () => Date.now() / 1000 + state.clockSkew;
@@ -149,6 +152,14 @@
       who.className = "who";
       who.textContent = sub;
       els.banner.appendChild(who);
+    }
+    if (CU) {
+      const t = $("cuTurn");
+      t.className = `cu-turn ${mode}`;
+      t.textContent = text;
+      if (sub) { const w = document.createElement("span"); w.className = "who"; w.textContent = sub; t.appendChild(w); }
+      state.cuTurnText = `${text}${sub ? " · " + sub : ""}`;
+      renderCuCard();
     }
   }
   function describeCurrent(ct) {
@@ -801,9 +812,10 @@
     state.openPrefill = prefill || {};
     renderVerbForm(kind, state.openPrefill);
     document.querySelectorAll("#verbPad button[data-verb], #verbGroups button[data-verb]").forEach((b) => b.classList.toggle("selected", b.getAttribute("data-verb") === kind));
-    $("verbForm").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (CU) document.body.classList.add("cu-form-open");
+    else $("verbForm").scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
-  function closeVerb() { state.openVerb = null; state.openPrefill = null; state.openVerbEnvelope = null; const f = $("verbForm"); f.hidden = true; f.innerHTML = ""; document.querySelectorAll("#verbPad button, #verbGroups button").forEach((b) => b.classList.remove("selected")); }
+  function closeVerb() { document.body.classList.remove("cu-form-open"); state.openVerb = null; state.openPrefill = null; state.openVerbEnvelope = null; const f = $("verbForm"); f.hidden = true; f.innerHTML = ""; document.querySelectorAll("#verbPad button, #verbGroups button").forEach((b) => b.classList.remove("selected")); }
 
   function field(labelText, inputEl, testid) {
     const l = document.createElement("label");
@@ -944,6 +956,7 @@
     renderIntel(obs);
     renderAdvisor(obs);
     renderControls(obs);
+    renderCu();
     els.main.hidden = false;
     els.eventsFooter.hidden = false;
   }
@@ -973,6 +986,8 @@
     els.last.textContent = `turn ${lr.turn_seq}: ${text}`;
     els.last.className = `result ${lr.ok ? "good" : "bad"}`;
     els.lastJson.textContent = JSON.stringify(lr, null, 2);
+    if (!state.toastPinned && (state.submittedSeq === undefined || lr.turn_seq >= state.submittedSeq)) setToast(els.last.textContent, lr.ok ? "good" : "bad");
+    renderCuCard();
   }
 
   // ---------------------------------------------------------------- events (fogged stream)
@@ -1032,6 +1047,150 @@
       d.appendChild(when); d.appendChild(kind); d.appendChild(text);
       els.eventLog.appendChild(d);
     }
+    renderCuEvents();
+    renderCuCard();
+  }
+
+  // ---------------------------------------------------------------- G2: one-screen turn layout (mode=cu)
+  // Presentation only: every value comes from state.obs / state.events / the
+  // API twin already on the page. The live controls are moved in by setupCu().
+  function shownEvents() {
+    const opts = { ...state.show, seat: state.seat };
+    return state.events.filter((e) => P.eventShown(e, opts));
+  }
+  function setToast(text, cls) {
+    if (!CU) return;
+    const t = $("cuToast");
+    t.textContent = text;
+    t.className = `cu-toast ${cls || ""}`;
+  }
+  function renderCuEvents() {
+    if (!CU) return;
+    const box = $("cuEvents");
+    const last = shownEvents().slice(-5).reverse();
+    box.innerHTML = "";
+    if (!last.length) { box.innerHTML = `<div class="ev1">no events yet</div>`; return; }
+    for (const e of last) {
+      const d = document.createElement("div"); d.className = "ev1"; d.setAttribute("data-testid", `cu-event-${e.seq}`); d.title = e.summary || e.kind;
+      const w = document.createElement("span"); w.className = "when"; w.textContent = `D${e.day}.${e.tick}`;
+      d.appendChild(w); d.appendChild(document.createTextNode(e.summary || e.kind));
+      box.appendChild(d);
+    }
+  }
+  function renderCuCard() {
+    if (!CU || !state.obs) return;
+    $("cuTurnCard").textContent = P.turnCard(state.obs, {
+      turn: state.cuTurnText,
+      stage: state.twin && state.twin.stage_hint,
+      last: els.last.textContent,
+      events: shownEvents().slice(-5),
+    });
+  }
+  function renderCu() {
+    if (!CU || !state.obs) return;
+    const obs = state.obs;
+    const s = obs.sector || {};
+    const sh = obs.ship || {};
+    setText("cuCredits", fmt(obs.credits));
+    setText("cuNetWorth", fmt(obs.net_worth));
+    setText("cuTurnsLeft", `${fmt(obs.turns_remaining)} / ${fmt(obs.turns_per_day)}`);
+    setText("cuDay", `${obs.day} / ${obs.max_days} · t${obs.tick}`);
+    setText("cuSeat", `${obs.self_id} ${obs.self_name || ""}`);
+    setText("cuSectorId", s.id);
+    $("cuFed").hidden = !s.is_fedspace;
+    const occ = (s.occupants || []).filter((o) => o !== obs.self_id).map((o) => P.occupantLabel(o, obs.other_players));
+    const facts = [`Warps: ${(s.warps_out || []).join(", ") || "none"}`, occ.length ? `With: ${occ.join(", ")}` : "Nobody else here"];
+    if ((s.planets || []).length) facts.push(`Planets: ${s.planets.map((p) => `${p.id} ${p.name}${p.owner_id ? ` (${p.owner_id})` : ""}`).join(", ")}`);
+    if (s.fighter_group) facts.push(`Fighters: ${fmt(s.fighter_group.count)} ${s.fighter_group.mode} (${s.fighter_group.owner_id})`);
+    if ((s.ferrengi || []).length) facts.push(`Ferrengi: ${s.ferrengi.length}`);
+    $("cuSectorFacts").textContent = facts.join(" · ");
+    setText("cuPortCode", s.port ? `${s.port.code} ${s.port.name || ""}`.trim() : "none");
+    setText("cuShipClass", sh.class);
+    $("cuShip").textContent = `Holds ${fmt(sh.holds)} (${fmt(sh.cargo_free)} free) · Cargo ${P.cargoText(sh)} · Fighters ${fmt(sh.fighters)} · Shields ${fmt(sh.shields)}`
+      + `${sh.genesis ? ` · Genesis ${sh.genesis}` : ""}${obs.planet_landed !== null && obs.planet_landed !== undefined ? ` · LANDED on planet ${obs.planet_landed}` : ""}`;
+    const stg = state.twin && state.twin.stage_hint;
+    setText("cuStage", P.stageText(stg));
+    const g = obs.goals || {};
+    const goal = [stg && stg.next_milestone ? `Next: ${stg.next_milestone}` : "", g.short ? `Short goal: ${g.short}` : ""].filter(Boolean).join(" · ");
+    $("cuGoal").textContent = goal || "no goal set";
+    $("cuGoal").title = goal;
+    renderCuEvents();
+    renderCuCard();
+  }
+  function toggleMore(force) {
+    const m = $("cuMore");
+    m.hidden = force === undefined ? !m.hidden : !force;
+  }
+  function whyNot(kind) {
+    if (!state.awaiting) return "not your turn yet";
+    if (state.busy) return "an action is being submitted";
+    return legalOf(kind).reason || "not legal now";
+  }
+  function cuDenied(msg) { setToast(msg, "bad"); state.toastPinned = true; }
+  function cuVerb(kind, focusInput) {
+    if (!canUse(kind)) return cuDenied(`${LABEL(kind)} not available: ${whyNot(kind)}`);
+    $("verbPad").querySelector(`button[data-verb="${kind}"]`).click();
+    if (focusInput) { const i = $("verbForm").querySelector("input"); if (i) i.focus(); }
+  }
+  function cuQuick(btn, side) {
+    if (!canUse("trade")) return cuDenied(`${side.toUpperCase()} not available: ${whyNot("trade")}`);
+    if (btn.hidden) return cuDenied(`${side.toUpperCase()} not available: nothing to ${side} at this port`);
+    btn.click();
+  }
+  function onCuKey(ev) {
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    const tag = (ev.target && ev.target.tagName) || "";
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) {
+      if (ev.key === "Escape") { ev.target.blur(); closeVerb(); }
+      return;
+    }
+    const k = ev.key;
+    if (k === "Escape") { closeVerb(); toggleMore(false); return; }
+    if (/^[1-9]$/.test(k)) {
+      ev.preventDefault();
+      const b = els.warps.querySelectorAll("button")[Number(k) - 1];
+      if (!b) return cuDenied(`No warp #${k} from this sector`);
+      if (b.disabled) return cuDenied(`WARP not available: ${whyNot("warp")}`);
+      b.click();
+      return;
+    }
+    const act = {
+      s: () => cuVerb("scan"), e: () => cuVerb("wait"), t: () => cuVerb("trade"), p: () => cuVerb("plot_course", true),
+      b: () => cuQuick(els.buy, "buy"), x: () => cuQuick(els.sell, "sell"), m: () => toggleMore(), r: () => els.poll.click(),
+    }[k.toLowerCase()];
+    if (act) { ev.preventDefault(); act(); }
+  }
+  function setupCu() {
+    document.body.classList.add("mode-cu");
+    $("cuScreen").hidden = false;
+    $("cuWarpSlot").appendChild(els.warps);
+    $("cuVerbSlot").appendChild($("verbPad"));
+    $("cuVerbSlot").appendChild($("verbReasons"));
+    $("cuFormSlot").appendChild($("verbForm"));
+    $("cuPortSlot").appendChild($("portTape"));
+    $("cuPortSlot").appendChild($("portNone"));
+    $("cuMapSlot").appendChild($("knownMap"));
+    $("cuMoreSlot").appendChild($("verbGroups"));
+    const keyOf = { scan: "S", wait: "E", trade: "T", plot_course: "P" };
+    $("verbPad").querySelectorAll("button[data-verb]").forEach((b) => { const k = keyOf[b.getAttribute("data-verb")]; if (k) b.setAttribute("data-key", k); });
+    els.buy.setAttribute("data-key", "B");
+    els.sell.setAttribute("data-key", "X");
+    const legend = $("cuKeys");
+    for (const k of P.CU_KEYS) {
+      const kb = document.createElement("kbd"); kb.textContent = k.key;
+      const t = document.createElement("span"); t.textContent = k.label;
+      legend.appendChild(kb); legend.appendChild(t);
+    }
+    $("cuMoreBtn").addEventListener("click", () => toggleMore());
+    $("cuMoreClose").addEventListener("click", () => toggleMore(false));
+    $("cuMoreSlot").addEventListener("click", (ev) => { if (ev.target.closest("button[data-verb]")) toggleMore(false); });
+    document.addEventListener("keydown", onCuKey);
+    // The clip HUD (media-player.js) is created lazily on <body>; in CU mode it lives in
+    // leftover space in the action column so it never covers a decision field.
+    const slot = $("cuMediaSlot");
+    const dock = () => { const h = $("mediaHud"); if (h && h.parentElement !== slot) slot.appendChild(h); };
+    new MutationObserver(dock).observe(document.body, { childList: true });
+    dock();
   }
   els.eventFilters.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-filter]");
@@ -1149,6 +1308,7 @@
       await fetchRules();
     } catch (e) {
       setErr(String(e.message || e));
+      document.body.classList.remove("cu-connected");
       setBanner("dead", "ERROR");
       setActionsEnabled(false);
     }
@@ -1188,6 +1348,9 @@
     if (!state.awaiting || state.busy) return;
     state.busy = true;
     setActionsEnabled(false);
+    state.toastPinned = false;
+    state.submittedSeq = state.turnSeq;
+    setToast(`SUBMITTING ${describeAction(action)}…`, "busy");
     setBanner("busy", "SUBMITTING…");
     setErr("");
     try {
@@ -1203,6 +1366,8 @@
     } catch (e) {
       setErr(String(e.message || e));
       log(`FAIL ${e.message || e}`);
+      setToast(`REJECTED ${describeAction(action)}: ${e.message || e}`, "bad");
+      state.toastPinned = true;
       setBanner("dead", "ACTION FAILED");
     } finally {
       state.busy = false;
@@ -1231,6 +1396,7 @@
     state.twinText = "";
     state.rulesLoaded = false;
     state.watchGen += 1;
+    if (CU) document.body.classList.add("cu-connected");
     setErr("");
     log(`connected as ${state.seat}`);
     startTicker();
@@ -1248,6 +1414,7 @@
     });
   });
 
+  if (CU) setupCu();
   if (state.token) {
     els.poll.disabled = false;
     els.connect.click();

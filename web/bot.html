@@ -30,6 +30,70 @@
 
   <p id="err" class="error" data-testid="error"></p>
 
+  <!-- G2: one-screen turn layout (/bot?mode=cu). Hidden in the default layout.
+       Live controls (warps, verb pad, forms, port tape, map) are moved in here at
+       start-up so behaviour and data-testids are identical to the default page. -->
+  <section id="cuScreen" class="cu-screen" data-testid="cu-screen" hidden>
+    <div class="cu-top">
+      <div id="cuTurn" class="cu-turn idle" data-testid="cu-turn" role="status" aria-live="polite">PASTE TOKEN + CONNECT</div>
+      <div class="cu-stat" data-testid="cu-credits"><span class="k">Credits</span><span class="v" id="cuCredits">-</span></div>
+      <div class="cu-stat" data-testid="cu-networth"><span class="k">Net worth</span><span class="v" id="cuNetWorth">-</span></div>
+      <div class="cu-stat" data-testid="cu-turns"><span class="k">Turns left</span><span class="v" id="cuTurnsLeft">-</span></div>
+      <div class="cu-stat" data-testid="cu-day"><span class="k">Day</span><span class="v" id="cuDay">-</span></div>
+      <div class="cu-stat" data-testid="cu-seat"><span class="k">Seat</span><span class="v" id="cuSeat">-</span></div>
+    </div>
+    <div class="cu-col">
+      <div class="cu-card" data-testid="cu-sector">
+        <h2>Sector <span class="badge" id="cuSectorId">-</span> <span class="badge fed" id="cuFed" hidden>FedSpace</span></h2>
+        <div class="cu-line" id="cuSectorFacts"></div>
+        <div id="cuWarpSlot" data-testid="cu-warps"></div>
+      </div>
+      <div class="cu-card" data-testid="cu-port">
+        <h2>Port <span class="badge" id="cuPortCode">-</span></h2>
+        <div id="cuPortSlot"></div>
+      </div>
+      <div class="cu-card cu-mapcard" data-testid="cu-map">
+        <h2>Known space <span class="hint small cu-inline">tap a sector to plot</span></h2>
+        <div id="cuMapSlot"></div>
+      </div>
+    </div>
+    <div class="cu-col">
+      <div id="cuToast" class="cu-toast" data-testid="cu-toast" role="status" aria-live="assertive">No action yet this session</div>
+      <div class="cu-card" id="cuActionsCard" data-testid="cu-actions">
+        <div id="cuVerbSlot"></div>
+        <button type="button" id="cuMoreBtn" data-testid="cu-more" class="cu-more-btn">MORE VERBS (M)</button>
+        <div id="cuFormSlot"></div>
+      </div>
+      <div class="cu-card" data-testid="cu-shortcuts">
+        <h2>Keyboard</h2>
+        <div id="cuKeys" class="cu-keys"></div>
+      </div>
+      <div id="cuMediaSlot" class="cu-media" data-testid="cu-media"></div>
+    </div>
+    <div class="cu-col">
+      <div class="cu-card" data-testid="cu-ship">
+        <h2>Ship <span class="badge" id="cuShipClass">-</span></h2>
+        <div class="cu-line" id="cuShip"></div>
+      </div>
+      <div class="cu-card" data-testid="cu-goal">
+        <h2>Goal <span class="badge" id="cuStage">-</span></h2>
+        <div class="cu-line" id="cuGoal"></div>
+      </div>
+      <div class="cu-card" data-testid="cu-events">
+        <h2>Last 5 events</h2>
+        <div id="cuEvents" class="cu-events"></div>
+      </div>
+      <div class="cu-card cu-cardtext" data-testid="cu-turn-card">
+        <h2>Turn card</h2>
+        <pre id="cuTurnCard" class="cu-pre">-</pre>
+      </div>
+    </div>
+    <div id="cuMore" class="cu-more" data-testid="cu-more-panel" hidden>
+      <div class="cu-more-head"><h2>More verbs</h2><button type="button" id="cuMoreClose" data-testid="cu-more-close">CLOSE (Esc)</button></div>
+      <div id="cuMoreSlot"></div>
+    </div>
+  </section>
+
   <!-- Scoreboard strip: match clock + self. Every value is a straight read of the Observation. -->
   <section class="scoreboard" id="scoreboard" data-testid="scoreboard" hidden>
     <div class="score" data-obs="self_name"><span class="k">Commander</span><span class="v" id="sbName" data-obs="self_id">-</span></div>
