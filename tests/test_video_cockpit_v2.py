@@ -224,8 +224,9 @@ def test_skip_and_cu_timer_do_not_replay_a_stale_dock(browser, tmp_path: Path, m
         assert page.locator("[data-testid=viewport-clip]").is_hidden()
         _scan_after(page, trade)
         page.wait_for_timeout(400)
-        assert page.locator("[data-testid=viewport-clip]").is_hidden()
         assert "Docking" not in page.locator("[data-testid=viewport-caption]").inner_text()
+        assert "trade_port" not in (page.locator("[data-testid=viewport-clip-still]").get_attribute("src") or "")
+        assert page.locator("[data-testid=media-hud]").is_hidden()
         ctx.close()
 
         page = browser.new_page(viewport={"width": 1280, "height": 800})

@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 14:30 PT - Fable - amz-1 fix
+- A scan (and any other non-clip) on the default layout plays inside the viewport. The floating HUD is not shown, so it cannot cover the ship.
+- Connect keeps paging `/events` as history until the first response's `latest_seq`, or until a page comes back empty. A 310-scan log does not play.
+- A history batch calls the resolver even when the manifest has not loaded yet, and applies it again once the manifest arrives. Nothing plays. Suite 713 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 13:40 PT - Fable - amz-1 first look
 - The first `/events` batch after connect sets `lastSeq` and visit/dock state and does not play. Later batches still play `dock.port` in the viewport.
 - The full-window HUD stays `pointer-events: none` when shown; only the card takes clicks. CU `viewport=off` does not play a non-clip event (a scan) into the hidden slot.
