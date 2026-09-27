@@ -252,7 +252,7 @@ This is the human and computer-use cockpit. The harness API above is what the pa
 
 **Status line** (`status_fields` in `src/tw2k/engine/observation.py`). One cell, built only from your Observation: `Day N of M - T turns left today - Rank R of S`. N is clamped to M. When `finished` is true the middle reads `GAME OVER` and the page shows the standings panel, hides the verb pad, and stops polling.
 
-**Keys.** On `mode=cu`: 1–9 warp, S scan, E end the turn (wait), B buy, X sell, T trade, P plot course, M more verbs, R refresh, G repeat route, Esc closes a form or the more-verbs panel. H (hold / end slot) works on the default layout and in `mode=cu`. The other keys are `mode=cu` only.
+**Keys.** On `mode=cu`: 1–9 warp, S scan, E end the turn (wait), B buy, X sell, T trade, P plot course, M more verbs, R refresh, G repeat route, Esc closes a form or the more-verbs panel. Refresh (`refresh`) also sits on the `mode=cu` top bar, so a click does the same refetch as R and does not spend a turn. H (hold / end slot) works on the default layout and in `mode=cu`. The other keys are `mode=cu` only.
 
 **One-click trades.** On a port, both layouts show one button per side with quantity: `quick-sell-<commodity>` / `quick-buy-<commodity>` on the default layout, and `cu-quick-sell-<commodity>` / `cu-quick-buy-<commodity>` in `mode=cu`. They trade the engine's max at list price. The default buttons are hidden when a trade is not legal right now (not your turn, not at a port, or nothing to trade). SELL and BUY still open the form when you want a chosen price. Auto-accept makes B and X do the same in `mode=cu`.
 

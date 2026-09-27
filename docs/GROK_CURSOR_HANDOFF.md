@@ -44,6 +44,10 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 16:00 PT - Fable - visible Refresh in mode=cu
+- The Refresh button moves onto the `mode=cu` top bar (`#cuScreen`, testid `refresh`). A click refetches and does not post an action. The default layout keeps it on the auth bar.
+- A 404 or 500 from `manifest.json` sets `manifestFailed` and clears the pending event queue, same as a dropped fetch. Suite 717 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 15:15 PT - Fable - one-click trades on the default layout
 - The default layout gets `quick-sell-<commodity>` / `quick-buy-<commodity>` under the verb pad: max qty, list price, no form. They hide when a trade is not legal right now. SELL/BUY still open the form. `mode=cu` keeps `cu-quick-*`.
 - Events that arrive before the manifest loads stay in one capped queue (history first). A failed manifest fetch clears that queue so it cannot grow or play late. Suite 715 passed; ruff clean; manifest OK.
