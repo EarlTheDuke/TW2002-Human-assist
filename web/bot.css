@@ -62,7 +62,10 @@ body.bot-body {
 .auth-bar button:not(:disabled):active, .actions button:not(:disabled):active, .warps button:not(:disabled):active {
   transform: translateY(1px); filter: brightness(1.15);
 }
-.auth-bar button.primary, .actions button.primary { background: #1a4d3a; border-color: var(--go); color: #b8ffd9; }
+.auth-bar button.primary, .actions button.primary, #cuHoldBtn.primary, #holdBtn.primary {
+  background: #1a4d3a; border: 2px solid var(--go); color: #b8ffd9; font-weight: 800;
+}
+body.mode-cu #cuHoldBtn.primary { min-height: 52px; border-style: solid; }
 .auth-bar button:disabled, .actions button:disabled, .warps button:disabled { opacity: 0.35; cursor: not-allowed; }
 main.bot-main {
   display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto;

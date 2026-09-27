@@ -1041,7 +1041,12 @@
     try {
       const r = await api(`/${state.seat}/events?since=${state.eventsSince}&limit=300`);
       if (r.events && r.events.length) {
-        state.events.push(...r.events);
+        const seen = new Set(state.events.map((e) => e.seq));
+        for (const ev of r.events) {
+          if (!ev || typeof ev.seq !== "number" || seen.has(ev.seq)) continue;
+          seen.add(ev.seq);
+          state.events.push(ev);
+        }
         if (state.events.length > 600) state.events = state.events.slice(-600);
         state.eventsSince = r.next_since;
         if (window.TW2KMedia && typeof window.TW2KMedia.onEvents === "function") {
@@ -1053,6 +1058,7 @@
       renderLastResult();
     } catch (e) {
       els.eventsMeta.textContent = `events: ${e.message || e}`;
+      if (e && (e.status === 401 || e.status === 403)) throw e;
     }
   }
   function renderEvents() {
@@ -1148,12 +1154,15 @@
   // G4 hold-my-slot: while holding, the scheduler hands this seat its next
   // action right after the last one (host cap `max`); ending it frees the slot.
   function renderCuHold() {
-    if (!CU) return;
     const h = state.hold || { on: false, used: 0, max: 0 };
-    const b = $("cuHoldBtn");
-    b.disabled = !h.max;
-    b.setAttribute("aria-pressed", h.on ? "true" : "false");
-    b.textContent = !h.max ? "HOLD OFF (host)" : h.on ? `HOLDING ${h.used}/${h.max} · END SLOT (H)` : "HOLD SLOT (H)";
+    const label = !h.max ? "HOLD OFF (host)" : h.on ? `HOLDING ${h.used}/${h.max} · END SLOT (H)` : "HOLD SLOT (H)";
+    for (const id of ["cuHoldBtn", "holdBtn"]) {
+      const b = $(id);
+      if (!b) continue;
+      b.disabled = !h.max;
+      b.setAttribute("aria-pressed", h.on ? "true" : "false");
+      b.textContent = label;
+    }
   }
   async function toggleHold() {
     const h = state.hold || { on: false, max: 0 };
@@ -1320,6 +1329,7 @@
     }
     $("cuMoreBtn").addEventListener("click", () => toggleMore());
     $("cuHoldBtn").addEventListener("click", () => toggleHold());
+    $("holdBtn").addEventListener("click", () => toggleHold());
     $("cuRouteBtn").addEventListener("click", () => openRouteForm());
     const auto = $("cuAutoAccept");
     auto.checked = localStorage.getItem("tw2k_cu_auto_accept") === "1";
@@ -1623,6 +1633,7 @@
   });
 
   if (CU) setupCu();
+  else if ($("holdBtn")) $("holdBtn").addEventListener("click", () => toggleHold());
   if (state.token || params.get("seat")) {
     els.poll.disabled = false;
     els.connect.click();

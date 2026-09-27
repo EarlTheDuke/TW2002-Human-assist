@@ -80,7 +80,7 @@
         <div id="cuVerbSlot"></div>
         <div id="cuQuickTrades" class="cu-quick" data-testid="cu-quick-trades"></div>
         <div class="cu-row">
-          <button type="button" id="cuHoldBtn" data-testid="cu-hold" class="cu-more-btn" aria-pressed="false">HOLD SLOT (H)</button>
+          <button type="button" id="cuHoldBtn" data-testid="cu-hold" class="primary" aria-pressed="false">HOLD SLOT (H)</button>
           <button type="button" id="cuMoreBtn" data-testid="cu-more" class="cu-more-btn">MORE VERBS (M)</button>
         </div>
         <div class="cu-row">
@@ -219,6 +219,7 @@
           <button type="button" id="sellBtn" data-testid="action-sell" class="sell" hidden>SELL</button>
           <button type="button" id="buyBtn" data-testid="action-buy" class="buy" hidden>BUY</button>
         </div>
+        <button type="button" id="holdBtn" data-testid="hold-slot" class="primary" aria-pressed="false" style="margin-top:8px">HOLD SLOT (H)</button>
         <div id="verbReasons" class="list small" data-testid="verb-reasons"></div>
         <form id="verbForm" class="verb-form" data-testid="verb-form" hidden autocomplete="off"></form>
         <!-- S4: context verb groups. Each group opens when the engine says at least one verb in it is legal;

@@ -100,9 +100,9 @@
       if (now - s.waiting.at > staleMs) s.waiting = null;
       else if (typeof postedSeq === "number" && s.waiting.seq < postedSeq) s.waiting = null;
     }
-    function start(item, now) {
+    function start(item, now, record) {
       s.playing = item;
-      s.playedAt[item.clip_key] = now;
+      if (record !== false) s.playedAt[item.clip_key] = now;
     }
 
     function consider(items, now, opts) {
@@ -116,8 +116,9 @@
       for (const raw of items || []) {
         if (!cooldownOk(raw.clip_key, now)) continue;
         const item = { clip_key: raw.clip_key, priority: raw.priority, seq: raw.seq || 0, sector_id: raw.sector_id, at: now };
-        if (!s.playing) { start(item, now); startedItem = s.playing; }
-        else if (item.priority < s.playing.priority) { start(item, now); s.waiting = null; preempted = true; startedItem = s.playing; }
+        const record = opts.recordCooldown !== false;
+        if (!s.playing) { start(item, now, record); startedItem = s.playing; }
+        else if (item.priority < s.playing.priority) { start(item, now, record); s.waiting = null; preempted = true; startedItem = s.playing; }
         else s.waiting = item;
       }
       return {

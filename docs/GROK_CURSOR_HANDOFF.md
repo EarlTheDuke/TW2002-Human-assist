@@ -44,6 +44,15 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 10:40 PT - Fable - grokbot-player G7 delivered
+- Player guide section 9 (`docs/GROK_BOT_PLAYER_GUIDE.md`): seat claim link, both `/bot` layouts, status line (Day N of M, GAME OVER), CU keys, one-click trades, RUN ROUTE, END SLOT, reconnect banner, Live/Stills/Off + Skip + reduced motion. No screenshots.
+- `docs/SEAT_BOT_NOTES.md`: all 46 `Observation` fields (checked against `observation.py`), banned god-state, and the `seat_brain.py` goal ladder. `status_line` is harness-only, not an Observation field.
+- Event log dedupes by `seq` (`web/bot.js`). A 401/403 from `/events` stops the `/bot` poll and shows the reconnect banner. Spectator `/history` also stops on 401/403; that page has no banner.
+- END SLOT uses the same solid green primary style as SCAN on the default layout (`hold-slot`) and in `mode=cu` (`cu-hold`).
+- A viewport clip hides the v1 HUD. Off does not record cooldown for a clip that did not play. Live manifest drops unused `max_queue` and `crossfade_ms` (schema and the v2 example still allow them).
+- `:8031` host logs in the main folder had host/tunnel URLs replaced with `<redacted>`. Those files are not in git.
+- `tests/test_g7_pilot_items.py` (2) plus tighter HUD asserts and an Off-cooldown replay in `tests/test_video_cockpit_v2.py`. Suite 705 passed; ruff clean; manifest OK (16 stills).
+
 ### 2026-09-27 09:37 PT - Fable - video cockpit V2 QC fixes delivered
 - Dismiss (Skip, Esc, viewport click, HUD x) calls `session.stop()`, so the next poll cannot redraw the clip. The CU auto-hide timer uses the same finish path as the viewport timer, and a clip renders only when `consider()` actually started one.
 - Stills is a poster only (no `vp-push` / tint, no video src). Off silences a resolved clip: no viewport layer, no caption change, and that clip is not copied onto the v1 HUD. Events that resolve to no clip still use the v1 HUD, except in Off. CU stays a HUD still, not Off.

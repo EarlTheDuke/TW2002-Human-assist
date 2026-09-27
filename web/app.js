@@ -2937,9 +2937,15 @@
     { key: "fighters",   label: "fgt",  color: "#ff6e6e" },
   ];
 
+  let historyTimer = 0;
   async function fetchHistory() {
     try {
       const r = await fetch("/history?limit=120");
+      if (r.status === 401 || r.status === 403) {
+        if (historyTimer) clearInterval(historyTimer);
+        historyTimer = 0;
+        return;
+      }
       if (!r.ok) return;
       const data = await r.json();
       if (data && data.samples) {
@@ -3558,6 +3564,6 @@
   connect();
   render();
   // Phase 4: prime the history buffer + poll for updates.
+  historyTimer = setInterval(fetchHistory, 4000);
   fetchHistory();
-  setInterval(fetchHistory, 4000);
 })();
