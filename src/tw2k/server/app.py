@@ -921,6 +921,11 @@ def create_app(
         except OSError:
             parity_v = 0
         html = html.replace("/static/bot-parity.js", f"/static/bot-parity.js?v={parity_v}")
+        try:
+            vp_v = int((web_root / "viewport.js").stat().st_mtime)
+        except OSError:
+            vp_v = 0
+        html = html.replace("/static/viewport.js", f"/static/viewport.js?v={vp_v}")
         html = html.replace("/static/bot.js", f"/static/bot.js?v={js_v}")
         html = html.replace("/static/bot.css", f"/static/bot.css?v={css_v}")
         return HTMLResponse(

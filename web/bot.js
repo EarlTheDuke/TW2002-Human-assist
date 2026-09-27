@@ -972,6 +972,7 @@
     renderAdvisor(obs);
     renderControls(obs);
     renderCu();
+    if (!CU && window.TW2KViewport) window.TW2KViewport.update(obs);  // V1 viewport (default layout only)
     els.main.hidden = false;
     els.eventsFooter.hidden = false;
   }
