@@ -876,6 +876,7 @@ def create_app(
             css_v = int((web_root / "bot.css").stat().st_mtime)
         except OSError:
             js_v = css_v = 0
+        html = html.replace("/static/media-player.js", f"/static/media-player.js?v={js_v}")
         html = html.replace("/static/bot.js", f"/static/bot.js?v={js_v}")
         html = html.replace("/static/bot.css", f"/static/bot.css?v={css_v}")
         return HTMLResponse(

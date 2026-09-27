@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "defaults": {
+    "duration_ms": 2400,
+    "fit": "cover",
+    "muted": true
+  },
+  "groups": {
+    "move": {
+      "still": "stills/move_warp.png",
+      "caption": "Transit"
+    },
+    "trade": {
+      "still": "stills/trade_port.png",
+      "caption": "Trade"
+    },
+    "combat": {
+      "still": "stills/combat_alert.png",
+      "caption": "Combat"
+    },
+    "comms": {
+      "still": "stills/comms_hail.png",
+      "caption": "Comms"
+    },
+    "planet": {
+      "still": "stills/planet_surface.png",
+      "caption": "Planet"
+    },
+    "system": {
+      "still": "stills/system_scan.png",
+      "caption": "System"
+    }
+  },
+  "kinds": {
+    "warp": { "still": "stills/move_warp.png", "caption": "Warp" },
+    "warp_blocked": { "still": "stills/move_blocked.png", "caption": "Warp blocked" },
+    "scan": { "still": "stills/system_scan.png", "caption": "Scan" },
+    "probe": { "still": "stills/system_probe.png", "caption": "Probe" },
+    "trade": { "still": "stills/trade_port.png", "caption": "Trade" },
+    "trade_failed": { "still": "stills/trade_failed.png", "caption": "Trade failed" },
+    "buy_ship": { "still": "stills/stardock_bay.png", "caption": "Shipyard" },
+    "buy_equip": { "still": "stills/stardock_bay.png", "caption": "Equipment" },
+    "combat": { "still": "stills/combat_alert.png", "caption": "Combat" },
+    "mine_detonated": { "still": "stills/combat_mine.png", "caption": "Mine" },
+    "photon_fired": { "still": "stills/combat_photon.png", "caption": "Photon" },
+    "ferrengi_attack": { "still": "stills/combat_alert.png", "caption": "Ferrengi" },
+    "hail": { "still": "stills/comms_hail.png", "caption": "Hail" },
+    "broadcast": { "still": "stills/comms_hail.png", "caption": "Broadcast" },
+    "land_planet": { "still": "stills/planet_surface.png", "caption": "Landing" },
+    "liftoff": { "still": "stills/planet_liftoff.png", "caption": "Liftoff" },
+    "genesis_deployed": { "still": "stills/planet_genesis.png", "caption": "Genesis" },
+    "build_citadel": { "still": "stills/planet_citadel.png", "caption": "Citadel" },
+    "planet_claimed": { "still": "stills/planet_claim.png", "caption": "Claimed" }
+  }
+}
