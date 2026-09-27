@@ -375,6 +375,14 @@ def build_harness_router(runner) -> APIRouter:
     @router.post("/{player_id}/action")
     async def submit(player_id: str, request: Request, body: ActionSubmission) -> dict[str, Any]:
         agent = _require_seat(player_id, request)
+        try:
+            return await _submit(agent, player_id, body)
+        except HTTPException as exc:
+            code = exc.detail.get("code") if isinstance(exc.detail, dict) else str(exc.detail)[:80]
+            agent.note_post(exc.status_code, code)  # G5 per-action log: rejected attempt
+            raise
+
+    async def _submit(agent: ExternalAgent, player_id: str, body: ActionSubmission) -> dict[str, Any]:
         raw = dict(body.action or {})
         raw.pop("actor_kind", None)
         try:
@@ -414,6 +422,17 @@ def build_harness_router(runner) -> APIRouter:
         released = agent.set_hold(body.hold)
         return {"player_id": player_id, "hold": agent.hold_slot, "released": released,
                 "used": agent.hold_count, "max": agent.hold_max}
+
+    @router.post("/{player_id}/webhook_test")
+    async def webhook_test(player_id: str, request: Request) -> dict[str, Any]:
+        """G5 dry run: send one `turn_due_test` ping through the real delivery
+        path (retry + log) without a turn. 409 when no webhook URL is set."""
+        agent = _require_seat(player_id, request)
+        if not agent._webhook_urls():
+            raise HTTPException(status_code=409, detail="no_webhook_url")
+        u = runner.state.universe
+        entries = await agent.test_webhook(build_observation(u, agent.player_id))
+        return {"player_id": player_id, "deliveries": entries, "delivered": any(e["ok"] for e in entries)}
 
     return router
 

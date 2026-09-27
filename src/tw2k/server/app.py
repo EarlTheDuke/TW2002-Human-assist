@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -120,6 +122,23 @@ def _web_root() -> Path:
     raise FileNotFoundError(f"Couldn't locate web/ assets. Tried: {candidates}")
 
 
+class _RedactTokenQuery(logging.Filter):
+    """Access logs record full request paths; claim/spectate links carry `?token=`."""
+
+    _pat = re.compile(r"(token=)[^&\s\"]+")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(self._pat.sub(r"\1<redacted>", a) if isinstance(a, str) else a for a in record.args)
+        return True
+
+
+def _install_access_log_redaction() -> None:
+    access = logging.getLogger("uvicorn.access")
+    if not any(isinstance(f, _RedactTokenQuery) for f in access.filters):
+        access.addFilter(_RedactTokenQuery())
+
+
 def create_app(
     *,
     seed: int = 42,
@@ -149,8 +168,11 @@ def create_app(
     external_tokens_file: str | None = None,
     external_idle_wait_s: float | None = None,
     seat_links: bool = False,
+    start_paused: bool = False,
 ) -> FastAPI:
     from .runner import _default_saves_root
+
+    _install_access_log_redaction()
 
     def _write_seat_links(spec: MatchSpec) -> None:
         """G3: one claim link per external seat in .tw2k/seat_links/ (`tw2k serve` only)."""
@@ -207,6 +229,7 @@ def create_app(
                 external_tokens_file=external_tokens_file,
                 external_idle_wait_s=external_idle_wait_s,
             )
+            spec.paused = start_paused
             await runner.start(spec)
             _write_seat_links(spec)
             # runner.start kicks off the scheduler loop in a background

@@ -172,6 +172,11 @@ def serve(
             "AGENT_ERROR is emitted; four in a row end its day."
         ),
     ),
+    start_paused: bool = typer.Option(
+        False,
+        "--start-paused",
+        help="Build the match and seats but hold the turn loop until POST /control/resume (dry runs).",
+    ),
     external_seat_timeouts: str = typer.Option(
         "",
         "--external-seat-timeouts",
@@ -499,6 +504,7 @@ def serve(
         external_tokens_file=external_tokens_file,
         external_idle_wait_s=external_idle_wait_s,
         seat_links=any_external,
+        start_paused=start_paused,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

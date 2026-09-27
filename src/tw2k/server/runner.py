@@ -226,7 +226,12 @@ class MatchRunner:
             await self.stop()
         self._spec = spec
         self._stop.clear()
-        self._pause.set()
+        # `spec.paused` (G5 dry run): build the universe and seats, then hold
+        # the turn loop before anyone acts until /control/resume.
+        if spec.paused:
+            self._pause.clear()
+        else:
+            self._pause.set()
         self.state = RunnerState()
         self._last_published_seq = 0
         self._history = {}
@@ -495,7 +500,7 @@ class MatchRunner:
     async def _run(self) -> None:
         assert self._spec is not None
         try:
-            self.state.status = "running"
+            self.state.status = "running" if self._pause.is_set() else "paused"
             self.state.started_at = time.time()
 
             universe = generate_universe(self._spec.config)
@@ -761,7 +766,9 @@ class MatchRunner:
                 record_fn = getattr(agent, "record_result", None)
                 if callable(record_fn):
                     try:
-                        record_fn(result.ok, result.error, list(result.event_seqs))
+                        auto = str(action.thought or "").startswith("[external")
+                        record_fn(result.ok, result.error, list(result.event_seqs),
+                                  action_kind=getattr(action.kind, "value", str(action.kind)), auto=auto)
                     except Exception:
                         pass
 
@@ -1096,6 +1103,7 @@ class MatchRunner:
                 ext.hold_max = max(0, int(spec.external_hold_max_actions))
                 if self.state.save_dir is not None:
                     ext.webhook_log_path = self.state.save_dir / "webhook_deliveries.jsonl"
+                    ext.action_log_path = self.state.save_dir / "external_actions.jsonl"
                 agents.append(ext)
             else:
                 agents.append(HeuristicAgent(player_id=ag.player_id, name=ag.name))
