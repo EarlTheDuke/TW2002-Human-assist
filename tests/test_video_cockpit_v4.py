@@ -53,6 +53,13 @@ def test_hashed_media_is_immutable_and_other_media_revalidates(tmp_path: Path) -
     assert "immutable" not in script.headers.get("cache-control", "")
 
 
+def test_default_hold_key_ignores_repeat_and_editable() -> None:
+    js = (ROOT / "web" / "bot.js").read_text(encoding="utf-8")
+    assert "if (ev.repeat" in js
+    assert "isContentEditable" in js
+    assert '(ev.key || "").toLowerCase()' in js
+
+
 def test_guide_labels_cu_live_as_not_for_scored_play() -> None:
     assert "not for scored CU play" in GUIDE
     assert "?viewport=off" in GUIDE
@@ -164,7 +171,18 @@ def test_preload_counters_cu_slot_and_timing(browser, tmp_path: Path, monkeypatc
         }""")
         assert box["mode"] == "off" and box["off"] is True and box["vis"] == "hidden"
         assert box["h"] > 0 and abs(box["h"] - h_stills) <= 2, (box["h"], h_stills)
+        off.wait_for_function("window.TW2KMedia && TW2KMedia.ready()", timeout=10_000)
         assert off.evaluate("document.querySelectorAll('video').length") == 0
+        quiet = off.evaluate("""() => {
+            TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
+            const obs = { self_id: 'P2', sector: { id: 19 } };
+            TW2KMedia.onEvents([{ seq: 3, kind: 'combat', actor_id: 'P3', sector_id: 19, summary: 'fight',
+              facts: { attacker: 'P3', defender: 'P9' } }], obs);
+            const hud = document.getElementById('mediaHud');
+            return { hidden: !hud || hud.hidden === true, played: TW2KMedia._state().playedKeys };
+        }""")
+        assert quiet["hidden"] is True
+        assert "combat.witnessed" not in quiet["played"], quiet
         off.close()
 
         live = open_cu("&viewport=live")

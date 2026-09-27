@@ -150,7 +150,7 @@
       consider, finish, stop,
       state: () => ({ playing: s.playing && s.playing.clip_key, waiting: s.waiting && s.waiting.clip_key, lastSeq: s.lastSeq,
         playingSector: s.playing && s.playing.sector_id, waitingSector: s.waiting && s.waiting.sector_id,
-        staleDrops: s.staleDrops }),
+        staleDrops: s.staleDrops, playedKeys: Object.keys(s.playedAt) }),
     };
   }
 
