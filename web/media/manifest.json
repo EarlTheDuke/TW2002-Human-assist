@@ -1,9 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "defaults": {
     "duration_ms": 2400,
     "fit": "cover",
-    "muted": true
+    "muted": true,
+    "max_queue": 1,
+    "stale_ms": 4000,
+    "crossfade_ms": 150
   },
   "groups": {
     "move": {
@@ -32,24 +35,238 @@
     }
   },
   "kinds": {
-    "warp": { "still": "stills/move_warp.png", "caption": "Warp" },
-    "warp_blocked": { "still": "stills/move_blocked.png", "caption": "Warp blocked" },
-    "scan": { "still": "stills/system_scan.png", "caption": "Scan" },
-    "probe": { "still": "stills/system_probe.png", "caption": "Probe" },
-    "trade": { "still": "stills/trade_port.png", "caption": "Trade" },
-    "trade_failed": { "still": "stills/trade_failed.png", "caption": "Trade failed" },
-    "buy_ship": { "still": "stills/stardock_bay.png", "caption": "Shipyard" },
-    "buy_equip": { "still": "stills/stardock_bay.png", "caption": "Equipment" },
-    "combat": { "still": "stills/combat_alert.png", "caption": "Combat" },
-    "mine_detonated": { "still": "stills/combat_mine.png", "caption": "Mine" },
-    "photon_fired": { "still": "stills/combat_photon.png", "caption": "Photon" },
-    "ferrengi_attack": { "still": "stills/combat_alert.png", "caption": "Ferrengi" },
-    "hail": { "still": "stills/comms_hail.png", "caption": "Hail" },
-    "broadcast": { "still": "stills/comms_hail.png", "caption": "Broadcast" },
-    "land_planet": { "still": "stills/planet_surface.png", "caption": "Landing" },
-    "liftoff": { "still": "stills/planet_liftoff.png", "caption": "Liftoff" },
-    "genesis_deployed": { "still": "stills/planet_genesis.png", "caption": "Genesis" },
-    "build_citadel": { "still": "stills/planet_citadel.png", "caption": "Citadel" },
-    "planet_claimed": { "still": "stills/planet_claim.png", "caption": "Claimed" }
-  }
+    "warp": {
+      "still": "stills/move_warp.png",
+      "caption": "Warp"
+    },
+    "warp_blocked": {
+      "still": "stills/move_blocked.png",
+      "caption": "Warp blocked"
+    },
+    "scan": {
+      "still": "stills/system_scan.png",
+      "caption": "Scan"
+    },
+    "probe": {
+      "still": "stills/system_probe.png",
+      "caption": "Probe"
+    },
+    "trade": {
+      "still": "stills/trade_port.png",
+      "caption": "Trade"
+    },
+    "trade_failed": {
+      "still": "stills/trade_failed.png",
+      "caption": "Trade failed"
+    },
+    "buy_ship": {
+      "still": "stills/stardock_bay.png",
+      "caption": "Shipyard"
+    },
+    "buy_equip": {
+      "still": "stills/stardock_bay.png",
+      "caption": "Equipment"
+    },
+    "combat": {
+      "still": "stills/combat_alert.png",
+      "caption": "Combat"
+    },
+    "mine_detonated": {
+      "still": "stills/combat_mine.png",
+      "caption": "Mine"
+    },
+    "photon_fired": {
+      "still": "stills/combat_photon.png",
+      "caption": "Photon"
+    },
+    "ferrengi_attack": {
+      "still": "stills/combat_alert.png",
+      "caption": "Ferrengi"
+    },
+    "hail": {
+      "still": "stills/comms_hail.png",
+      "caption": "Hail"
+    },
+    "broadcast": {
+      "still": "stills/comms_hail.png",
+      "caption": "Broadcast"
+    },
+    "land_planet": {
+      "still": "stills/planet_surface.png",
+      "caption": "Landing"
+    },
+    "liftoff": {
+      "still": "stills/planet_liftoff.png",
+      "caption": "Liftoff"
+    },
+    "genesis_deployed": {
+      "still": "stills/planet_genesis.png",
+      "caption": "Genesis"
+    },
+    "build_citadel": {
+      "still": "stills/planet_citadel.png",
+      "caption": "Citadel"
+    },
+    "planet_claimed": {
+      "still": "stills/planet_claim.png",
+      "caption": "Claimed"
+    }
+  },
+  "ambient": {
+    "deep_space": {
+      "variants": [
+        {
+          "id": "amb_deep_still",
+          "poster": "stills/move_warp.png",
+          "duration_ms": 8000,
+          "loop": true
+        }
+      ]
+    },
+    "port_near": {
+      "variants": [
+        {
+          "id": "amb_port_still",
+          "poster": "stills/trade_port.png",
+          "duration_ms": 8000,
+          "loop": true
+        }
+      ],
+      "when": {
+        "sector.port": "present"
+      }
+    }
+  },
+  "clips": {
+    "dock.port": {
+      "priority": 2,
+      "cooldown_ms": 0,
+      "caption": "Docking at {sector_id}",
+      "fallback_still": "stills/trade_port.png",
+      "preload": "eager",
+      "variants": [
+        {
+          "id": "dock_port_placeholder",
+          "tags": {
+            "station": "*",
+            "hull": "*"
+          },
+          "weight": 1,
+          "poster": "stills/trade_port.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "warp.out": {
+      "priority": 2,
+      "caption": "Warping out",
+      "fallback_still": "stills/move_warp.png",
+      "preload": "eager",
+      "variants": [
+        {
+          "id": "warp_out_placeholder",
+          "poster": "stills/move_warp.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "combat.hit": {
+      "priority": 1,
+      "caption": "Hits on target",
+      "fallback_still": "stills/combat_photon.png",
+      "variants": [
+        {
+          "id": "combat_hit_placeholder",
+          "poster": "stills/combat_photon.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "combat.miss": {
+      "priority": 1,
+      "caption": "Attack repelled",
+      "fallback_still": "stills/combat_alert.png",
+      "variants": [
+        {
+          "id": "combat_miss_placeholder",
+          "poster": "stills/combat_alert.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "combat.incoming": {
+      "priority": 0,
+      "caption": "Under attack",
+      "fallback_still": "stills/combat_alert.png",
+      "preload": "eager",
+      "variants": [
+        {
+          "id": "combat_incoming_placeholder",
+          "poster": "stills/combat_alert.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "combat.witnessed": {
+      "priority": 3,
+      "cooldown_ms": 10000,
+      "caption": "Fighting nearby",
+      "fallback_still": "stills/combat_alert.png",
+      "variants": [
+        {
+          "id": "combat_witnessed_placeholder",
+          "poster": "stills/combat_alert.png",
+          "duration_ms": 2400
+        }
+      ]
+    }
+  },
+  "triggers": [
+    {
+      "kind": "trade",
+      "rule": "self && first_in_visit",
+      "clip": "dock.port"
+    },
+    {
+      "kind": "trade_failed",
+      "rule": "self && first_in_visit",
+      "clip": "dock.port"
+    },
+    {
+      "kind": "warp",
+      "rule": "self",
+      "clip": "warp.out"
+    },
+    {
+      "kind": "autopilot",
+      "rule": "self",
+      "clip": "warp.out",
+      "coalesce": "warp"
+    },
+    {
+      "kind": "combat",
+      "rule": "self_attacker && outcome_hit",
+      "clip": "combat.hit"
+    },
+    {
+      "kind": "combat",
+      "rule": "self_attacker && !outcome_hit",
+      "clip": "combat.miss"
+    },
+    {
+      "kind": "combat",
+      "rule": "self_defender",
+      "clip": "combat.incoming"
+    },
+    {
+      "kind": "ferrengi_attack",
+      "rule": "self_victim",
+      "clip": "combat.incoming"
+    },
+    {
+      "kind": "combat",
+      "rule": "witnessed_in_my_sector",
+      "clip": "combat.witnessed"
+    }
+  ]
 }

@@ -187,7 +187,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.PORT_DESTROYED: ("qty",),
     EventKind.COMBAT: (
         "exchange_kind", "vs", "attacker", "defender", "attacker_f", "attacker_s",
-        "defender_f", "defender_s", "attacker_losses", "defender_losses", "sector_claimed",
+        "defender_f", "defender_s", "attacker_losses", "defender_losses", "outcome", "sector_claimed",
         "planet_id", "planet_name", "citadel_level",
     ),
     EventKind.SHIP_DESTROYED: ("victim", "reason", "deaths", "death_sector", "killer_id", "kind", "bounty"),

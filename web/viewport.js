@@ -121,8 +121,13 @@
     apply();
   }
 
+  function setEventCaption(text) {
+    st.event = text ? { caption: text } : null;
+    setCaption();
+  }
   function skip() {
-    st.event = null;  // V2: stops the event clip; V1 has only ambient
+    st.event = null;
+    if (window.TW2KMedia && typeof window.TW2KMedia.skipClip === "function") window.TW2KMedia.skipClip();
     setCaption();
   }
 
@@ -150,7 +155,7 @@
   reseed();
   apply();
   window.TW2KViewport = {
-    update, skip, setMode,
+    update, skip, setMode, setEventCaption,
     state: () => ({ mode: st.mode, animating: st.animating, sector: st.sector, hull: st.hull, caption: caption.textContent,
       reducedMotion: !!reduce.matches, cu: false }),
   };
