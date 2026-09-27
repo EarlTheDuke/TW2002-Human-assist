@@ -1,0 +1,67 @@
+{
+  "name": "ferrengi_attack",
+  "description": "A Ferrengi attacks the viewer.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 16,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 0,
+    "sector": {
+      "id": 1,
+      "is_fedspace": true,
+      "port": {
+        "code": "STARDOCK",
+        "class_id": 8
+      }
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 0,
+      "kind": "ferrengi_attack",
+      "actor_id": "F1",
+      "actor_kind": null,
+      "sector_id": 16,
+      "summary": "!!! Ferrengi Grakk attacks Commander in 16 !!!",
+      "facts": {
+        "victim": "P1"
+      }
+    },
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 0,
+      "kind": "combat",
+      "actor_id": "F1",
+      "actor_kind": null,
+      "sector_id": 16,
+      "summary": "Ferrengi combat in 16: Grakk[F400 S95] vs Commander[F0 S0]",
+      "facts": {
+        "exchange_kind": "ferrengi_vs_ship",
+        "attacker": "F1",
+        "defender": "P1",
+        "attacker_f": 400,
+        "attacker_s": 95,
+        "defender_f": 0,
+        "defender_s": 0
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "combat.incoming",
+      "priority": 0
+    }
+  ],
+  "notes": "ferrengi_attack + the combat row (defender=self) coalesce into one P0 combat.incoming."
+}

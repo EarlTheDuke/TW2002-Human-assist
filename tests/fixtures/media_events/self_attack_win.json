@@ -1,0 +1,68 @@
+{
+  "name": "self_attack_win",
+  "description": "Viewer attacks a rival (3000 vs 40 fighters).",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 14,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 14,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "combat",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 14,
+      "summary": "Combat in 14: Commander[F2959 S0] vs Rival[F0 S0]",
+      "facts": {
+        "exchange_kind": "ship_vs_ship",
+        "attacker": "P1",
+        "defender": "P2",
+        "attacker_f": 2959,
+        "attacker_s": 0,
+        "defender_f": 0,
+        "defender_s": 0
+      }
+    },
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 1,
+      "kind": "ship_destroyed",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 14,
+      "summary": "*** Rival's ship destroyed (combat); ejected to StarDock [death #1/3] ***",
+      "facts": {
+        "victim": "P2",
+        "reason": "combat",
+        "deaths": 1,
+        "death_sector": 14,
+        "killer_id": "P1"
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "combat.hit",
+      "priority": 1
+    }
+  ],
+  "notes": "outcome_hit: the defender lost more. Until the V2 `outcome` fact lands, unknown outcome also maps to combat.hit."
+}

@@ -1,0 +1,54 @@
+{
+  "name": "self_attack_lose",
+  "description": "Viewer attacks a rival (30 vs 3000 fighters).",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 14,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 1,
+      "is_fedspace": true,
+      "port": {
+        "code": "STARDOCK",
+        "class_id": 8
+      }
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "combat",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 14,
+      "summary": "Combat in 14: Commander[F0 S0] vs Rival[F2966 S0]",
+      "facts": {
+        "exchange_kind": "ship_vs_ship",
+        "attacker": "P1",
+        "defender": "P2",
+        "attacker_f": 0,
+        "attacker_s": 0,
+        "defender_f": 2966,
+        "defender_s": 0
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "combat.miss",
+      "priority": 1
+    }
+  ],
+  "notes": "Needs the V2 `outcome`/losses fact to tell miss from hit (pre-V2 fallback: combat.hit). If the viewer's ship is destroyed, ship_destroyed(victim=self) is the V7 key self.ship_destroyed (P0), not part of the V2 set."
+}

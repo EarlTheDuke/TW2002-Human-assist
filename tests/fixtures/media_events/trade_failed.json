@@ -1,0 +1,51 @@
+{
+  "name": "trade_failed",
+  "description": "Viewer's first trade attempt at a port is rejected.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 19,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 19,
+      "is_fedspace": false,
+      "port": {
+        "code": "SSB",
+        "class_id": 4
+      }
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "trade_failed",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 19,
+      "summary": "Commander trade failed: Port does not buy fuel_ore",
+      "facts": {
+        "commodity": "fuel_ore",
+        "qty": 10,
+        "side": "sell",
+        "reason": "Port does not buy fuel_ore"
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "dock.port",
+      "priority": 2
+    }
+  ],
+  "notes": "trade_failed also counts as docking (the ship still pulled up to the port)."
+}

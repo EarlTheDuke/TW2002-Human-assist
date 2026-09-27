@@ -1,0 +1,89 @@
+{
+  "name": "trade_burst",
+  "description": "Viewer's first three trades after arriving at a port.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 19,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 3,
+    "sector": {
+      "id": 19,
+      "is_fedspace": false,
+      "port": {
+        "code": "SSB",
+        "class_id": 4
+      }
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "trade",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 19,
+      "summary": "Commander buy 5 fuel_ore @ 14cr = 70cr",
+      "facts": {
+        "commodity": "fuel_ore",
+        "qty": 5,
+        "side": "buy",
+        "unit": 14,
+        "total": 70,
+        "realized_profit": null
+      }
+    },
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 2,
+      "kind": "trade",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 19,
+      "summary": "Commander buy 5 fuel_ore @ 14cr = 70cr",
+      "facts": {
+        "commodity": "fuel_ore",
+        "qty": 5,
+        "side": "buy",
+        "unit": 14,
+        "total": 70,
+        "realized_profit": null
+      }
+    },
+    {
+      "seq": 3,
+      "day": 1,
+      "tick": 3,
+      "kind": "trade",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 19,
+      "summary": "Commander buy 5 fuel_ore @ 14cr = 70cr",
+      "facts": {
+        "commodity": "fuel_ore",
+        "qty": 5,
+        "side": "buy",
+        "unit": 14,
+        "total": 70,
+        "realized_profit": null
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "dock.port",
+      "priority": 2
+    }
+  ],
+  "notes": "Coalesce: several trades at one port in one batch = one dock.port."
+}
