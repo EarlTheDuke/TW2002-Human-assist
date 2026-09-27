@@ -122,10 +122,63 @@
     return !!o[gate];
   }
 
+  // G2 (mode=cu) - one keymap drives both the on-screen legend and the key
+  // handler, so the legend can never drift from behaviour.
+  const CU_KEYS = [
+    { key: "1-9", label: "warp to listed sector #n" },
+    { key: "S", label: "scan", verb: "scan" },
+    { key: "B", label: "buy (quick trade form)", verb: "trade" },
+    { key: "X", label: "sell (quick trade form)", verb: "trade" },
+    { key: "T", label: "trade form", verb: "trade" },
+    { key: "P", label: "plot course", verb: "plot_course" },
+    { key: "E", label: "end turn (wait)", verb: "wait" },
+    { key: "M", label: "more verbs (planets, StarDock, combat, comms)" },
+    { key: "R", label: "refresh" },
+    { key: "Esc", label: "close form / panel" },
+  ];
+
+  function cargoText(ship) {
+    const c = Object.entries((ship && ship.cargo) || {}).filter(([, n]) => n);
+    return c.length ? c.map(([k, n]) => `${SHORT[k] || k} ${fmt(n)}`).join(", ") : "empty";
+  }
+  function portText(port, cargo) {
+    if (!port) return "no port";
+    const rows = Object.entries(port.stock || {}).filter(([, st]) => st && st.side && st.side !== "not_traded").map(([c, st]) => {
+      const side = st.side === "buys_from_player" ? "buys" : "sells";
+      return `${SHORT[c] || c} ${side} @${has(st.price) ? fmt(st.price) : "?"} (stock ${fmt(st.current)}${cargo && cargo[c] ? `, you hold ${fmt(cargo[c])}` : ""})`;
+    });
+    return `${port.code || "?"} ${port.name || ""}`.trim() + (rows.length ? `: ${rows.join("; ")}` : " (no commodity trade)");
+  }
+
+  // Plain-text summary of the same decision state the CU grid shows.
+  // ctx: { turn: string, stage: stage_hint|null, last: string, events: [{day,tick,summary}] }
+  function turnCard(obs, ctx) {
+    const c = ctx || {};
+    const sh = obs.ship || {};
+    const s = obs.sector || {};
+    const warps = s.warps_out || [];
+    const g = obs.goals || {};
+    const lines = [
+      `TURN   ${c.turn || "-"}`,
+      `ME     ${obs.self_name || "?"} (${obs.self_id || "?"}) · day ${obs.day}/${obs.max_days} tick ${obs.tick} · turns ${fmt(obs.turns_remaining)}/${fmt(obs.turns_per_day)}`,
+      `MONEY  ${fmt(obs.credits)} cr · net worth ${fmt(obs.net_worth)}`,
+      `SHIP   ${sh.class || "?"} · holds ${fmt(sh.holds)} (${fmt(sh.cargo_free)} free) · cargo ${cargoText(sh)} · fighters ${fmt(sh.fighters)} · shields ${fmt(sh.shields)}`,
+      `HERE   sector ${s.id}${s.is_fedspace ? " (FedSpace)" : ""} · warps ${warps.map((w, i) => (i < 9 ? `[${i + 1}] ${w}` : String(w))).join("  ") || "none"}`,
+      `PORT   ${portText(s.port, sh.cargo)}`,
+      `GOAL   ${c.stage && c.stage.stage ? `${stageText(c.stage)} - next: ${c.stage.next_milestone || "-"}` : "-"}${g.short ? ` · short: ${g.short}` : ""}`,
+      `LAST   ${c.last || "-"}`,
+    ];
+    const evs = (c.events || []).slice(-5);
+    lines.push(`EVENTS ${evs.length ? "" : "none yet"}`);
+    for (const e of evs) lines.push(`  D${e.day}.${e.tick} ${e.summary || e.kind || ""}`);
+    return lines.join("\n");
+  }
+
   return {
     planetRow, orphanRow, otherPlayerRow, occupantLabel,
     directiveMeta, dialogueLines, DIALOGUE_TAIL,
     parseTwin, stageText, stageDetail,
     eventShown, HIDDEN_BY_DEFAULT,
+    CU_KEYS, turnCard, cargoText, portText,
   };
 });

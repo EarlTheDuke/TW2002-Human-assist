@@ -223,6 +223,81 @@ footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
 @media (prefers-reduced-motion: reduce) {
   .banner.turn, .banner.turn.flash { animation: none; }
 }
+/* ---- G2: one-screen turn layout (body.mode-cu, /bot?mode=cu). Every rule is scoped to mode-cu. ---- */
+.cu-screen[hidden] { display: none !important; }
+body.mode-cu { overflow: hidden; }
+body.mode-cu .bot-top, body.mode-cu #scoreboard, body.mode-cu #main, body.mode-cu #eventsFooter { display: none !important; }
+body.mode-cu.cu-connected #authBar { display: none; }
+body.mode-cu #authBar { padding: 6px 10px; gap: 8px; }
+body.mode-cu #authBar input, body.mode-cu #authBar select, body.mode-cu #authBar button { min-height: 40px; padding: 6px 12px; font-size: 0.95rem; }
+body.mode-cu #err { min-height: 0; padding: 0; }
+body.mode-cu #err.visible { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 30; margin: 0; padding: 8px 12px; }
+body.mode-cu .cu-screen {
+  display: grid; grid-template-columns: 400px 440px minmax(0, 1fr); grid-template-rows: 58px minmax(0, 1fr);
+  gap: 8px; padding: 8px; height: 100vh; max-height: 800px; max-width: 1280px; box-sizing: border-box; overflow: hidden;
+}
+.cu-top { grid-column: 1 / -1; display: flex; gap: 8px; align-items: stretch; min-width: 0; }
+.cu-turn {
+  flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 4px 14px;
+  border-radius: 10px; font-weight: 800; font-size: 1.15rem; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: #2a2410; color: var(--wait); border: 2px solid var(--wait);
+}
+.cu-turn .who { font-size: 0.8rem; font-weight: 600; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; }
+.cu-turn.turn { background: #143d2a; color: var(--go); border-color: var(--go); }
+.cu-turn.busy { background: #102a3d; color: var(--accent); border-color: var(--accent); }
+.cu-turn.dead { background: #3a1520; color: var(--danger); border-color: var(--danger); }
+.cu-stat { background: var(--panel); border: 1px solid #243056; border-radius: 10px; padding: 4px 10px; min-width: 96px; display: flex; flex-direction: column; justify-content: center; }
+.cu-stat .k { color: var(--muted); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.cu-stat .v { font-weight: 800; font-size: 1.02rem; white-space: nowrap; }
+body.mode-cu .cu-col { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; overflow: hidden; }
+.cu-card { background: var(--panel); border: 1px solid #243056; border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.cu-card h2 { margin: 0 0 6px; font-size: 0.9rem; color: var(--accent); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.cu-inline { display: inline; background: none; padding: 0; font-weight: 400; }
+.cu-line { font-size: 0.84rem; line-height: 1.35; color: #d5def5; }
+.cu-line b { color: var(--text); }
+.cu-mapcard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.cu-cardtext { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.cu-pre { margin: 0; flex: 1 1 auto; min-height: 0; overflow: auto; font-family: ui-monospace, Consolas, monospace; font-size: 0.7rem; line-height: 1.3; white-space: pre-wrap; word-break: break-word; color: #d5def5; background: #0b1020; border-radius: 8px; padding: 6px 8px; }
+.cu-events { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; }
+.cu-events .ev1 { background: #0b1020; border-radius: 6px; padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cu-events .ev1 .when { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
+.cu-toast { border-radius: 10px; padding: 8px 12px; font-weight: 800; font-size: 0.98rem; background: #141a2e; border: 2px solid #3a466e; min-height: 44px; overflow-wrap: anywhere; }
+.cu-toast.good { color: var(--go); border-color: var(--go); background: #0f2a1e; }
+.cu-toast.bad { color: var(--danger); border-color: var(--danger); background: #2a1018; }
+.cu-toast.busy { color: var(--accent); border-color: var(--accent); }
+.cu-keys { display: grid; grid-template-columns: max-content 1fr max-content 1fr; gap: 4px 8px; font-size: 0.76rem; color: #d5def5; align-items: center; }
+.cu-keys kbd { font-family: ui-monospace, Consolas, monospace; font-weight: 800; background: #0b1020; border: 1px solid #3a466e; border-radius: 6px; padding: 1px 7px; color: var(--accent); }
+body.mode-cu #cuWarpSlot .warps { gap: 6px; counter-reset: cuwarp; }
+body.mode-cu #cuWarpSlot .warps button { min-width: 108px; min-height: 52px; padding: 6px 10px; font-size: 1.05rem; counter-increment: cuwarp; }
+body.mode-cu #cuWarpSlot .warps button:nth-child(-n+9)::before { content: "[" counter(cuwarp) "] "; color: var(--accent); }
+body.mode-cu #verbPad { gap: 6px; }
+body.mode-cu #verbPad button { min-width: 0; flex: 1 1 92px; min-height: 52px; padding: 4px 8px; font-size: 0.95rem; }
+body.mode-cu #cuActionsCard { flex: 0 1 auto; min-height: 0; overflow: auto; }
+body.mode-cu #cuGoal { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+body.mode-cu #verbPad button[data-key]::after { content: " (" attr(data-key) ")"; font-size: 0.78rem; opacity: 0.8; }
+.cu-more-btn { margin-top: 6px; width: 100%; min-height: 40px; border-radius: 10px; border: 2px dashed var(--btn-border); background: transparent; color: var(--text); font-weight: 700; cursor: pointer; }
+body.mode-cu #verbReasons { display: none; }
+body.mode-cu #verbForm { margin-top: 6px; padding: 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
+body.mode-cu #verbForm[hidden] { display: none; }
+body.mode-cu.cu-form-open [data-testid="cu-shortcuts"], body.mode-cu.cu-form-open #cuMediaSlot { display: none; }
+body.mode-cu #verbForm h3 { font-size: 0.9rem; }
+body.mode-cu #verbForm input, body.mode-cu #verbForm select { min-height: 38px; padding: 4px 8px; font-size: 0.95rem; }
+body.mode-cu #verbForm .radios { flex-wrap: nowrap; }
+body.mode-cu #verbForm .radios label { min-height: 36px; padding: 0 10px; font-size: 0.9rem; }
+body.mode-cu #verbForm .preview { font-size: 0.8rem; padding: 6px 8px; }
+body.mode-cu #verbForm .buttons button { min-height: 44px; min-width: 110px; padding: 6px 12px; font-size: 0.95rem; }
+body.mode-cu #cuPortSlot table.tape { margin-top: 0; font-size: 0.82rem; }
+body.mode-cu #cuPortSlot table.tape td, body.mode-cu #cuPortSlot table.tape th { padding: 3px 6px; }
+body.mode-cu #cuMapSlot { flex: 1 1 auto; min-height: 0; display: flex; }
+body.mode-cu #cuMapSlot .known-map { height: 100%; min-height: 150px; }
+body.mode-cu .cu-media { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; }
+body.mode-cu #cuMediaSlot .media-hud { position: static; inset: auto; padding: 0; width: 100%; height: 100%; justify-content: center; align-items: flex-start; }
+body.mode-cu #cuMediaSlot .media-hud-inner { width: auto; height: 100%; max-width: 100%; max-height: 250px; }
+.cu-more { position: fixed; top: 74px; left: 416px; width: 760px; max-height: 700px; overflow: auto; z-index: 20; background: #0e1428; border: 2px solid var(--accent); border-radius: 12px; padding: 10px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+.cu-more[hidden] { display: none !important; }
+.cu-more-head { display: flex; justify-content: space-between; align-items: center; }
+.cu-more-head h2 { margin: 0; color: var(--accent); font-size: 1rem; }
+.cu-more-head button { min-height: 40px; padding: 6px 14px; border-radius: 10px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; cursor: pointer; }
 /* ---- media HUD (clip library) ---- */
 .media-hud {
   position: fixed; inset: 0; z-index: 40; pointer-events: none;

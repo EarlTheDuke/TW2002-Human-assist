@@ -37,6 +37,11 @@ dev = [
 mcp = [
     "mcp>=1.2",
 ]
+# G2 — /bot?mode=cu browser smoke test (tests/test_cockpit_cu_g2.py). Install with:
+#   pip install "tw2k-ai[e2e]" && python -m playwright install chromium
+e2e = [
+    "playwright>=1.40",
+]
 # Phase H6.3 — OpenTelemetry tracing (Weave/Jaeger/Honeycomb). Install with:
 #   pip install "tw2k-ai[otel]"
 otel = [
