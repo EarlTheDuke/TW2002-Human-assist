@@ -254,7 +254,7 @@ This is the human and computer-use cockpit. The harness API above is what the pa
 
 **Keys.** On `mode=cu`: 1–9 warp, S scan, E end the turn (wait), B buy, X sell, T trade, P plot course, M more verbs, R refresh, G repeat route, Esc closes a form or the more-verbs panel. H (hold / end slot) works on the default layout and in `mode=cu`. The other keys are `mode=cu` only.
 
-**One-click trades.** On a port, `mode=cu` shows `cu-quick-sell-<commodity>` and `cu-quick-buy-<commodity>` for every side with quantity. They trade the engine's max at list price. Auto-accept makes B and X do the same.
+**One-click trades.** On a port, both layouts show one button per side with quantity: `quick-sell-<commodity>` / `quick-buy-<commodity>` on the default layout, and `cu-quick-sell-<commodity>` / `cu-quick-buy-<commodity>` in `mode=cu`. They trade the engine's max at list price. The default buttons are hidden when a trade is not legal right now (not your turn, not at a port, or nothing to trade). SELL and BUY still open the form when you want a chosen price. Auto-accept makes B and X do the same in `mode=cu`.
 
 **RUN ROUTE.** REPEAT ROUTE (G) posts the `run_route` macro: one legal step per held turn between two ports. It stops on another commander, a Ferrengi, hostile fighters, an empty port, low turns, a failed step, or END SLOT. The toast and turn card end with the digest.
 

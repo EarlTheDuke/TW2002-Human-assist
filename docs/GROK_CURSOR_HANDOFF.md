@@ -44,6 +44,10 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 15:15 PT - Fable - one-click trades on the default layout
+- The default layout gets `quick-sell-<commodity>` / `quick-buy-<commodity>` under the verb pad: max qty, list price, no form. They hide when a trade is not legal right now. SELL/BUY still open the form. `mode=cu` keeps `cu-quick-*`.
+- Events that arrive before the manifest loads stay in one capped queue (history first). A failed manifest fetch clears that queue so it cannot grow or play late. Suite 715 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 14:30 PT - Fable - amz-1 fix
 - A scan (and any other non-clip) on the default layout plays inside the viewport. The floating HUD is not shown, so it cannot cover the ship.
 - Connect keeps paging `/events` as history until the first response's `latest_seq`, or until a page comes back empty. A 310-scan log does not play.

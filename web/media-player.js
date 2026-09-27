@@ -281,6 +281,22 @@
     const fresh = list.filter((ev) => ev && typeof ev.seq === "number" && ev.seq > state.lastSeq);
     if (!fresh.length) return;
     const v2 = state.manifest && state.manifest.version >= 2 && R;
+    // No manifest yet: keep history and live events in one queue (history first)
+    // so a live clip cannot play ahead of the backlog. A failed fetch clears it.
+    if (!state.manifest) {
+      if (state.manifestFailed) return;
+      if (!state.pendingEvents) state.pendingEvents = [];
+      for (const ev of fresh) {
+        state.pendingEvents.push({ ev, history: !!opts.history });
+        if (state.pendingEvents.length > 400) state.pendingEvents.shift();
+      }
+      if (opts.history) {
+        state.lastSeq = Math.max(state.lastSeq, newest.seq);
+        if (state.visit_sector == null && state.obs && state.obs.sector) state.visit_sector = state.obs.sector.id;
+        if (R) R.resolve(fresh, state.obs || { self_id: null, sector: {} }, state, null);
+      }
+      return;
+    }
     // History is the batch already in the log at connect. Advance the cursor
     // and visit/dock memory. Do not start a clip or the v1 HUD.
     if (opts.history) {
@@ -288,9 +304,8 @@
       if (state.visit_sector == null && state.obs && state.obs.sector) state.visit_sector = state.obs.sector.id;
       if (R) {
         const view = state.obs || { self_id: null, sector: {} };
-        if (!state.manifest) state.pendingHistory = (state.pendingHistory || []).concat(fresh);
         R.resolve(fresh, view, state, state.manifest);
-        if (state.manifest && !state.session) state.session = R.createSession(state.manifest);
+        if (!state.session) state.session = R.createSession(state.manifest);
       }
       return;
     }
@@ -350,12 +365,19 @@
       if (!r.ok) return;
       state.manifest = await r.json();
       state.ready = true;
-      if (state.pendingHistory && R) {
-        R.resolve(state.pendingHistory, state.obs || { self_id: null, sector: {} }, state, state.manifest);
-        state.pendingHistory = null;
+      const queued = state.pendingEvents || [];
+      state.pendingEvents = null;
+      if (R && queued.length) {
+        const hist = queued.filter((row) => row.history).map((row) => row.ev);
+        const live = queued.filter((row) => !row.history).map((row) => row.ev);
+        if (hist.length) R.resolve(hist, state.obs || { self_id: null, sector: {} }, state, state.manifest);
         if (!state.session) state.session = R.createSession(state.manifest);
+        if (live.length) onEvents(live, state.obs);
       }
-    } catch (_) { /* optional */ }
+    } catch (_) {
+      state.manifestFailed = true;
+      state.pendingEvents = null;
+    }
   }
 
   if (CU) document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") hide(); });
@@ -477,6 +499,7 @@
     _state: () => ({
       lastSeq: state.lastSeq, playing: state.playing, visit_sector: state.visit_sector,
       playedKeys: state.session && state.session.state ? state.session.state().playedKeys || [] : [],
+      pending: state.pendingEvents ? state.pendingEvents.length : 0,
     }),
   };
   renderCounters();
