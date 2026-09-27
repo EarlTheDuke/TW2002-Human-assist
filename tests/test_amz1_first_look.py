@@ -27,11 +27,11 @@ TRADE = json.loads(
 )
 
 
-def _api(base: str, method: str, path: str, body: dict | None = None) -> dict:
+def _api(base: str, method: str, path: str, body: dict | None = None, token: str = TOK) -> dict:
     data = None if body is None else json.dumps(body).encode()
     req = urllib.request.Request(
         base + path, data=data, method=method,
-        headers={"Authorization": f"Bearer {TOK}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read().decode())
@@ -91,7 +91,26 @@ def test_history_does_not_cover_the_ship_and_a_later_trade_still_plays(browser, 
         assert quiet["ship"] is True
         assert not _overlaps(quiet["shipBox"], quiet["hudBox"]), quiet
 
-        page.get_by_test_id("action-scan").click()
+        overlap = page.evaluate("""async () => {
+            const btn = document.querySelector('[data-testid=action-scan]');
+            btn.click();
+            const deadline = performance.now() + 3000;
+            let hit = false;
+            while (performance.now() < deadline) {
+                const ship = document.querySelector('[data-testid=ship]');
+                const hud = document.querySelector('[data-testid=media-hud]');
+                const card = document.querySelector('.media-hud-inner');
+                const vis = hud && !hud.hidden && hud.classList.contains('show') && card;
+                if (vis && ship) {
+                    const a = ship.getBoundingClientRect();
+                    const b = card.getBoundingClientRect();
+                    if (a.width > 0 && b.width > 0 && a.x < b.right && a.right > b.x && a.y < b.bottom && a.bottom > b.y) hit = true;
+                }
+                await new Promise((r) => setTimeout(r, 40));
+            }
+            return hit;
+        }""")
+        assert overlap is False
         page.wait_for_function(
             "() => { const t = document.querySelector('#lastResult').textContent || ''; return t.indexOf('SCAN') !== -1 && t.indexOf('ok') !== -1; }",
             timeout=15_000,
@@ -157,3 +176,70 @@ def test_history_does_not_cover_the_ship_and_a_later_trade_still_plays(browser, 
         assert quiet_off["hidden"] is True
         assert quiet_off["played"] == [], quiet_off
         off.close()
+
+
+def _scans(host, n: int) -> None:
+    for i in range(n):
+        deadline = time.time() + 30
+        status: dict = {}
+        while time.time() < deadline:
+            status = _api(host.base, "GET", "/harness/v1/P2/status", token=host.token)
+            if status.get("awaiting_input"):
+                break
+            time.sleep(0.05)
+        assert status.get("awaiting_input"), (i, status)
+        obs = _api(host.base, "GET", "/harness/v1/P2/observation?wait_s=0&peek=1", token=host.token)
+        posted = _api(host.base, "POST", "/harness/v1/P2/action", {
+            "turn_seq": obs["turn_seq"], "action": {"kind": "scan", "args": {}, "thought": "backlog"},
+        }, token=host.token)
+        assert posted.get("accepted") is True, (i, posted)
+
+
+def test_a_long_backlog_does_not_replay_on_connect(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    with CuHost(tmp_path, TOK + "-b", turns_per_day=500) as host:
+        _scans(host, 310)
+        visible = _api(host.base, "GET", "/harness/v1/P2/events?since=0&limit=500", token=host.token).get("events") or []
+        assert len(visible) >= 310, len(visible)
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}-b")
+        page.wait_for_selector("#turnBanner.turn", timeout=20_000)
+        page.wait_for_function(
+            "() => { const t = document.getElementById('eventsMeta').textContent || ''; const n = parseInt(t, 10); return n >= 310; }",
+            timeout=20_000,
+        )
+        quiet = page.evaluate("""() => {
+            const hud = document.querySelector('[data-testid=media-hud]');
+            const clip = document.querySelector('[data-testid=viewport-clip]');
+            const vis = (el) => !!(el && !el.hidden && el.getClientRects().length);
+            return { played: TW2KMedia._state().playedKeys, hud: vis(hud), clip: vis(clip),
+                     n: parseInt(document.getElementById('eventsMeta').textContent, 10) };
+        }""")
+        assert quiet["n"] >= 310, quiet
+        assert quiet["played"] == [], quiet
+        assert quiet["hud"] is False and quiet["clip"] is False, quiet
+        page.close()
+
+
+def test_history_records_a_warp_before_the_manifest_is_loaded() -> None:
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if node is None:
+        return
+    root = Path(__file__).resolve().parents[1]
+    script = (
+        "const R=require(process.argv[1]);"
+        "const st={visit_sector:null,docked_in_visit:false};"
+        "R.resolve([{seq:1,kind:'warp',actor_id:'P2',sector_id:8,facts:{from:4,to:8}}],"
+        "{self_id:'P2',sector:{id:4}}, st, null);"
+        "if(st.visit_sector!==8) throw new Error(JSON.stringify(st));"
+        "process.stdout.write('ok');"
+    )
+    out = subprocess.run([node, "-e", script, str(root / "web" / "media-resolver.js")],
+                         capture_output=True, text=True, encoding="utf-8", check=True, timeout=20)
+    assert out.stdout.strip() == "ok"
+    js = (root / "web" / "media-player.js").read_text(encoding="utf-8")
+    hist = js.split("if (opts.history)")[1].split("if (!v2)")[0]
+    assert "if (R)" in hist and "pendingHistory" in hist

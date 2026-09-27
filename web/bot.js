@@ -57,7 +57,8 @@
     tickTimer: null,
     events: [],          // fogged EventViews from /events, ascending seq
     eventsSince: 0,
-    mediaCaughtUp: false,  // the first /events batch is history and must not play a clip
+    mediaCaughtUp: false,     // history pages are done
+    mediaHistoryUntil: null,  // latest_seq from the first /events response
     eventFilter: "all",
     lastSeenSeq: 0,      // for the "new since your last turn" highlight
     legal: {},           // S3: kind -> LegalAction from the Observation
@@ -1040,23 +1041,40 @@
   }
   async function fetchEvents() {
     try {
-      const r = await api(`/${state.seat}/events?since=${state.eventsSince}&limit=300`);
-      const history = !state.mediaCaughtUp;
-      state.mediaCaughtUp = true;
-      if (r.events && r.events.length) {
-        const seen = new Set(state.events.map((e) => e.seq));
-        for (const ev of r.events) {
-          if (!ev || typeof ev.seq !== "number" || seen.has(ev.seq)) continue;
-          seen.add(ev.seq);
-          state.events.push(ev);
+      // The server pages oldest-first (300 per call). Everything up to the
+      // first response's latest_seq was already in the log at connect.
+      // has_more stays true when later events are invisible, so an empty page
+      // means the visible backlog is done.
+      for (let page = 0; page < 20; page++) {
+        const r = await api(`/${state.seat}/events?since=${state.eventsSince}&limit=300`);
+        if (state.mediaHistoryUntil == null) state.mediaHistoryUntil = typeof r.latest_seq === "number" ? r.latest_seq : 0;
+        const catchingUp = !state.mediaCaughtUp && state.eventsSince < state.mediaHistoryUntil;
+        const fresh = [];
+        if (r.events && r.events.length) {
+          const seen = new Set(state.events.map((e) => e.seq));
+          for (const ev of r.events) {
+            if (!ev || typeof ev.seq !== "number" || seen.has(ev.seq)) continue;
+            seen.add(ev.seq);
+            state.events.push(ev);
+            fresh.push(ev);
+          }
+          if (state.events.length > 600) state.events = state.events.slice(-600);
+          const prior = state.eventsSince;
+          state.eventsSince = r.next_since;
+          if (prior === r.next_since) state.mediaCaughtUp = true;
+        } else {
+          state.mediaCaughtUp = true;
         }
-        if (state.events.length > 600) state.events = state.events.slice(-600);
-        state.eventsSince = r.next_since;
-        if (window.TW2KMedia && typeof window.TW2KMedia.onEvents === "function") {
-          window.TW2KMedia.onEvents(r.events, state.obs, { history });
+        if (window.TW2KMedia && typeof window.TW2KMedia.onEvents === "function" && fresh.length) {
+          const hist = catchingUp ? fresh.filter((ev) => ev.seq <= state.mediaHistoryUntil) : [];
+          const live = catchingUp ? fresh.filter((ev) => ev.seq > state.mediaHistoryUntil) : fresh;
+          if (hist.length) window.TW2KMedia.onEvents(hist, state.obs, { history: true });
+          if (live.length) window.TW2KMedia.onEvents(live, state.obs);
         }
+        if (typeof r.next_since === "number" && r.next_since >= state.mediaHistoryUntil) state.mediaCaughtUp = true;
+        els.eventsMeta.textContent = `${state.events.length} visible events · latest seq ${r.latest_seq}`;
+        if (state.mediaCaughtUp) break;
       }
-      els.eventsMeta.textContent = `${state.events.length} visible events · latest seq ${r.latest_seq}`;
       renderEvents();
       renderLastResult();
     } catch (e) {
@@ -1616,6 +1634,8 @@
     state.awaiting = false;
     state.events = [];
     state.eventsSince = 0;
+    state.mediaCaughtUp = false;
+    state.mediaHistoryUntil = null;
     state.twin = null;
     state.twinText = "";
     state.rulesLoaded = false;

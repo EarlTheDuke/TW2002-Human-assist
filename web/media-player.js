@@ -286,9 +286,11 @@
     if (opts.history) {
       state.lastSeq = Math.max(state.lastSeq, newest.seq);
       if (state.visit_sector == null && state.obs && state.obs.sector) state.visit_sector = state.obs.sector.id;
-      if (v2) {
-        if (!state.session) state.session = R.createSession(state.manifest);
-        R.resolve(fresh, state.obs || { self_id: null, sector: {} }, state, state.manifest);
+      if (R) {
+        const view = state.obs || { self_id: null, sector: {} };
+        if (!state.manifest) state.pendingHistory = (state.pendingHistory || []).concat(fresh);
+        R.resolve(fresh, view, state, state.manifest);
+        if (state.manifest && !state.session) state.session = R.createSession(state.manifest);
       }
       return;
     }
@@ -308,11 +310,30 @@
     if (step.preempted) bump("preemptions");
     if (hidden) return;
     if (step.started && step.item) { playResolved(step.item); return; }
-    // No clip started. Off stays quiet. Otherwise a non-clip row keeps the v1 still HUD.
+    // No clip started. Off stays quiet. CU still uses the slot. The default
+    // layout plays the still inside the viewport so it cannot cover the ship.
     if (!step.playing && viewportMode() !== "off" && cuSetting() !== "off") {
       const show = [...fresh].reverse().find((ev) => ev.kind !== "agent_thought" && ev.kind !== "llm_usage");
-      if (show) playEntry(resolveKind(show.kind), show.kind);
+      if (show) showFallback(resolveKind(show.kind), show.kind);
     }
+  }
+
+  function showFallback(entry, kind) {
+    if (viewportMode() === "cu") { playEntry(entry, kind); return; }
+    if (!entry || !entry.still) return;
+    hideHudOnly();
+    const layer = ensureClipLayer();
+    if (!layer) return;
+    const stills = viewportMode() === "stills" || reduce.matches;
+    const img = layer.querySelector("img");
+    img.src = BASE + entry.still;
+    layer.hidden = false;
+    layer.classList.toggle("is-still", !stills);
+    layer.classList.remove("is-live");
+    if (window.TW2KViewport && typeof window.TW2KViewport.setEventCaption === "function") {
+      window.TW2KViewport.setEventCaption(entry.caption || kind || "");
+    }
+    arm((state.manifest && state.manifest.defaults && state.manifest.defaults.duration_ms) || 2400);
   }
 
   function onEvent(ev) {
@@ -329,6 +350,11 @@
       if (!r.ok) return;
       state.manifest = await r.json();
       state.ready = true;
+      if (state.pendingHistory && R) {
+        R.resolve(state.pendingHistory, state.obs || { self_id: null, sector: {} }, state, state.manifest);
+        state.pendingHistory = null;
+        if (!state.session) state.session = R.createSession(state.manifest);
+      }
     } catch (_) { /* optional */ }
   }
 
