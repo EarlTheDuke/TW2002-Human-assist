@@ -6,7 +6,9 @@
 #   powershell -File scripts/tunnel_watchdog.ps1                 # foreground loop, Ctrl+C to stop
 #   powershell -File scripts/tunnel_watchdog.ps1 -Port 8031 -IntervalS 60 -Provider localhostrun
 #
-# Log: .tw2k\tunnel_watchdog.log (gitignored). Stop the tunnel itself with expose_hosted_bot.ps1 -Stop.
+# Log: .tw2k\tunnel_watchdog.log (gitignored): one health line per check. Whenever the public URL
+# changes it re-runs scripts/write_seat_links.py so .tw2k\seat_links\*.txt point at the live tunnel.
+# Started for you by run_hosted_grokbot.ps1 -Tunnel. Stop the tunnel itself with expose_hosted_bot.ps1 -Stop.
 
 param(
   [int]$Port = 8031,
@@ -43,6 +45,24 @@ function Tunnel-Healthy {
   return $null
 }
 
+function Host-Tag {
+  if (Test-Path $urlFile) { return ((Get-Content $urlFile -Raw).Trim() -replace 'https://([a-z0-9]{4})[a-z0-9]*\.', 'https://$1...') }
+  return "?"
+}
+
+# G4: seat claim links (and the turn_due webhook's bot_url) must follow the current tunnel URL.
+$linksBase = ""
+function Sync-SeatLinks {
+  if (-not (Test-Path $urlFile)) { return }
+  $base = (Get-Content $urlFile -Raw).Trim()
+  if (-not $base -or $base -eq $script:linksBase) { return }
+  $py = Get-Command python -ErrorAction SilentlyContinue
+  if (-not $py) { Log "seat links: python not found - not refreshed"; return }
+  $null = & $py.Source "scripts/write_seat_links.py" --base $base 2>&1
+  if ($LASTEXITCODE -eq 0) { $script:linksBase = $base; Log "seat links refreshed -> $(Host-Tag)" }
+  else { Log "seat links refresh failed (exit $LASTEXITCODE)" }
+}
+
 Log "watchdog start port=$Port provider=$Provider interval=${IntervalS}s"
 while ($true) {
   # Origin must be up; otherwise re-exposing is pointless.
@@ -66,8 +86,10 @@ while ($true) {
       }
       Start-Sleep -Seconds 5
       $after = Tunnel-Healthy
-      $hostTag = if (Test-Path $urlFile) { ((Get-Content $urlFile -Raw).Trim() -replace 'https://([a-z0-9]{4})[a-z0-9]*\.', 'https://$1...') } else { "?" }
-      if ($after) { Log "re-expose did not restore health ($after)" } else { Log "re-exposed OK -> $hostTag" }
+      if ($after) { Log "re-expose did not restore health ($after)" } else { Log "re-exposed OK -> $(Host-Tag)"; Sync-SeatLinks }
+    } else {
+      Log "health ok (/bot 200) -> $(Host-Tag)"
+      Sync-SeatLinks
     }
   }
   Start-Sleep -Seconds $IntervalS

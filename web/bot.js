@@ -1127,6 +1127,30 @@
     renderCuEvents();
     renderCuCard();
   }
+  // G4 hold-my-slot: while holding, the scheduler hands this seat its next
+  // action right after the last one (host cap `max`); ending it frees the slot.
+  function renderCuHold() {
+    if (!CU) return;
+    const h = state.hold || { on: false, used: 0, max: 0 };
+    const b = $("cuHoldBtn");
+    b.disabled = !h.max;
+    b.setAttribute("aria-pressed", h.on ? "true" : "false");
+    b.textContent = !h.max ? "HOLD OFF (host)" : h.on ? `HOLDING ${h.used}/${h.max} · END SLOT (H)` : "HOLD SLOT (H)";
+  }
+  async function toggleHold() {
+    const h = state.hold || { on: false, max: 0 };
+    if (!h.max) return cuDenied("Hold slot is disabled on this host");
+    try {
+      const r = await api(`/${state.seat}/hold`, { method: "POST", body: JSON.stringify({ hold: !h.on }) });
+      state.hold = { on: r.hold, used: r.used, max: r.max };
+      renderCuHold();
+      setToast(r.hold ? `HOLDING SLOT: your next ${r.max} action(s) follow immediately. H ends the slot.`
+        : r.released ? "SLOT ENDED: the scheduler moved on (no turn spent)." : "Hold off: the slot ends after your next action.", "busy");
+      state.toastPinned = true;
+    } catch (e) {
+      cuDenied(`HOLD failed: ${e.message || e}`);
+    }
+  }
   function toggleMore(force) {
     const m = $("cuMore");
     m.hidden = force === undefined ? !m.hidden : !force;
@@ -1167,6 +1191,7 @@
     const act = {
       s: () => cuVerb("scan"), e: () => cuVerb("wait"), t: () => cuVerb("trade"), p: () => cuVerb("plot_course", true),
       b: () => cuQuick(els.buy, "buy"), x: () => cuQuick(els.sell, "sell"), m: () => toggleMore(), r: () => els.poll.click(),
+      h: () => toggleHold(),
     }[k.toLowerCase()];
     if (act) { ev.preventDefault(); act(); }
   }
@@ -1192,6 +1217,8 @@
       legend.appendChild(kb); legend.appendChild(t);
     }
     $("cuMoreBtn").addEventListener("click", () => toggleMore());
+    $("cuHoldBtn").addEventListener("click", () => toggleHold());
+    renderCuHold();
     $("cuMoreClose").addEventListener("click", () => toggleMore(false));
     $("cuMoreSlot").addEventListener("click", (ev) => { if (ev.target.closest("button[data-verb]")) toggleMore(false); });
     document.addEventListener("keydown", onCuKey);
@@ -1270,6 +1297,7 @@
     state.day = st.day; state.tick = st.tick;
     state.current = st.current_turn || null;
     if (st.last_result) state.lastResult = st.last_result;
+    if (st.hold) { state.hold = st.hold; renderCuHold(); }
     const wasAwaiting = state.awaiting;
     state.awaiting = !!st.awaiting_input;
     state.turnSeq = st.turn_seq ?? state.turnSeq;

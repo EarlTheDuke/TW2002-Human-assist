@@ -25,6 +25,7 @@ from datetime import datetime
 from pathlib import Path
 
 from ..agents.base import BaseAgent
+from ..agents.external import SlotReleased
 from ..engine import (
     Action,
     ActionKind,
@@ -125,6 +126,9 @@ class AgentSpec:
     # deliberately excluded from meta.json / snapshots / events. Resolved
     # via server.harness_tokens when None (env -> tokens file -> generated).
     external_token: str | None = None
+    # G4: per-seat deadline for kind=="external" (e.g. 600 s for a computer-use
+    # seat next to 120 s Path-B bots). None = MatchSpec.external_timeout_s.
+    external_timeout_s: float | None = None
 
 
 @dataclass
@@ -153,6 +157,9 @@ class MatchSpec:
     # bot's turns. 0 disables (legacy behaviour).
     external_idle_wait_s: float = 0.0
     external_attend_window_s: float = 45.0
+    # G4 hold-my-slot: max extra actions an external seat may chain in one
+    # scheduler slot while holding. 0 disables holding.
+    external_hold_max_actions: int = 10
 
 
 @dataclass
@@ -585,7 +592,7 @@ class MatchRunner:
                     if is_human:
                         deadline = self._spec.human_deadline_s
                     elif is_external:
-                        deadline = self._spec.external_timeout_s
+                        deadline = getattr(agent, "timeout_s", None) or self._spec.external_timeout_s
                     else:
                         deadline = None
                     if deadline is not None and deadline > 0:
@@ -599,6 +606,10 @@ class MatchRunner:
                                     agent.act(obs), timeout=deadline
                                 )
                         except TimeoutError as _texc:
+                            if is_external and getattr(agent, "in_held_continuation", False):
+                                # Held slot left idle: end the slot, spend nothing.
+                                agent.hold_slot = False  # type: ignore[attr-defined]
+                                raise SlotReleased(agent.player_id) from None
                             external_idle = isinstance(_texc, ExternalIdleTimeoutError)
                             if is_external and external_idle:
                                 # Unattended seat: not an error, just nobody
@@ -689,6 +700,12 @@ class MatchRunner:
                     # Clean shutdown (runner.stop). Don't emit an error —
                     # just exit the loop.
                     raise
+                except SlotReleased:
+                    # G4: the seat ended its held slot (or left it idle). No
+                    # action, no turn spent; the round-robin moves on.
+                    agent.hold_count = 0  # type: ignore[attr-defined]
+                    self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
+                    continue
                 except Exception as exc:
                     universe.emit(
                         EventKind.AGENT_ERROR,
@@ -877,6 +894,19 @@ class MatchRunner:
                     oot_streak[agent.player_id] = 0
 
                 await self._flush_events()
+                # G4 hold-my-slot: a holding external seat keeps the scheduler
+                # for its next action (bounded by hold_max and its turns).
+                if (
+                    is_external
+                    and getattr(agent, "hold_slot", False)
+                    and player.alive
+                    and not _is_day_done(player)
+                    and agent.hold_count < agent.hold_max  # type: ignore[attr-defined]
+                ):
+                    agent.hold_count += 1  # type: ignore[attr-defined]
+                    continue
+                if is_external:
+                    agent.hold_count = 0  # type: ignore[attr-defined]
                 self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
                 # Sample history once per full round-robin pass.
                 if self.state.current_player_idx == 0:
@@ -1061,13 +1091,12 @@ class MatchRunner:
             elif ag.kind == "external":
                 from ..agents.external import ExternalAgent
 
-                agents.append(
-                    ExternalAgent(
-                        player_id=ag.player_id,
-                        name=ag.name,
-                        token=ag.external_token or "",
-                    )
-                )
+                ext = ExternalAgent(player_id=ag.player_id, name=ag.name, token=ag.external_token or "")
+                ext.timeout_s = ag.external_timeout_s
+                ext.hold_max = max(0, int(spec.external_hold_max_actions))
+                if self.state.save_dir is not None:
+                    ext.webhook_log_path = self.state.save_dir / "webhook_deliveries.jsonl"
+                agents.append(ext)
             else:
                 agents.append(HeuristicAgent(player_id=ag.player_id, name=ag.name))
         return agents

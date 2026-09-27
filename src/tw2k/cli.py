@@ -172,6 +172,14 @@ def serve(
             "AGENT_ERROR is emitted; four in a row end its day."
         ),
     ),
+    external_seat_timeouts: str = typer.Option(
+        "",
+        "--external-seat-timeouts",
+        help=(
+            "Per-seat deadlines overriding --external-timeout-s, e.g. 'P3=600,P4=120' "
+            "(a computer-use seat needs minutes; a Path-B bot seconds). LLM seats are unaffected."
+        ),
+    ),
     external_tokens_file: str = typer.Option(
         None,
         "--external-tokens-file",
@@ -304,6 +312,17 @@ def serve(
                 f"[yellow]warn:[/] --external {pid} out of range for {num_agents} agents — ignored"
             )
 
+    # G4: per-seat external deadlines, e.g. "P3=600,P4=120" (computer-use vs Path-B bots).
+    seat_timeouts: dict[str, float] = {}
+    for item in (external_seat_timeouts or "").split(","):
+        pid, _, secs = item.strip().partition("=")
+        if not pid:
+            continue
+        try:
+            seat_timeouts[pid.strip().upper()] = max(1.0, float(secs))
+        except ValueError:
+            console.print(f"[yellow]warn:[/] ignoring malformed --external-seat-timeouts entry {item!r}")
+
     overrides: list[dict] = []
     max_slots_src = num_agents if (human_slot_idx or external_slot_idx) else 0
     max_slots = max(
@@ -329,6 +348,8 @@ def serve(
             entry["kind"] = "external"
             entry.pop("provider", None)
             entry.pop("model", None)
+            if f"P{i+1}" in seat_timeouts:
+                entry["timeout_s"] = seat_timeouts[f"P{i+1}"]
         if entry:
             overrides.append(entry)
         else:
@@ -410,6 +431,7 @@ def serve(
                 console.print(
                     f"  [dim]P{i+1}:[/] [bold magenta]EXTERNAL[/] "
                     f"token=[dim]{external_tokens_masked.get(f'P{i+1}', '<unset>')}[/]"
+                    f"  timeout=[dim]{ov.get('timeout_s') or _eto:.0f}s[/]"
                 )
             elif ov:
                 tag_prov = ov.get("provider") or provider_display

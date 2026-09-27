@@ -132,6 +132,7 @@
     { key: "T", label: "trade form", verb: "trade" },
     { key: "P", label: "plot course", verb: "plot_course" },
     { key: "E", label: "end turn (wait)", verb: "wait" },
+    { key: "H", label: "hold slot (chain actions) / end slot" },
     { key: "M", label: "more verbs (planets, StarDock, combat, comms)" },
     { key: "R", label: "refresh" },
     { key: "Esc", label: "close form / panel" },
