@@ -178,9 +178,19 @@
     return (meta.caption || "").replace("{sector_id}", sector);
   }
 
+  function hideHudOnly() {
+    const root = document.getElementById("mediaHud");
+    if (!root) return;
+    root.hidden = true;
+    root.classList.remove("show");
+    const v = document.getElementById("mediaHudVideo");
+    if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch (_) {} }
+  }
+
   function showViewport(meta, item) {
     const mode = viewportMode();
     if (mode === "off" || mode === "cu") return false;
+    hideHudOnly();
     const layer = ensureClipLayer();
     if (!layer || !meta.still) return false;
     const stills = mode === "stills" || reduce.matches;
@@ -259,7 +269,9 @@
     const hidden = typeof document !== "undefined" && document.hidden;
     const selfSeqs = fresh.filter((ev) => ev.actor_id === view.self_id && ev.kind !== "agent_thought" && ev.kind !== "llm_usage").map((ev) => ev.seq);
     const postedSeq = selfSeqs.length ? Math.max(...selfSeqs) : undefined;
-    const step = state.session.consider(items, Date.now(), { hidden, maxSeq: state.lastSeq, postedSeq });
+    const step = state.session.consider(items, Date.now(), {
+      hidden, maxSeq: state.lastSeq, postedSeq, recordCooldown: viewportMode() !== "off",
+    });
     if (hidden) return;
     if (step.started && step.item) { playResolved(step.item); return; }
     // No clip started. Off stays quiet. Otherwise a non-clip row keeps the v1 still HUD.

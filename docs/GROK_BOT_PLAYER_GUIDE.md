@@ -239,3 +239,27 @@ with httpx.Client(base_url=BASE, headers=H, timeout=70) as c:
 | `warp` → `ok:false` "not a warp from here" | You used a sector not in `sector.warps_out`. |
 | `deploy_genesis` → "too close to StarDock" | Need ≥3 hops from sector 1; warp deeper. |
 | Spectator shows your seat idling | You are not long-polling; `awaiting_input` was true and nobody answered. |
+
+---
+
+## 9. Playing on the screen (`/bot`)
+
+This is the human and computer-use cockpit. The harness API above is what the page calls. You do not paste a token if you open the seat link.
+
+**Open it.** The operator's seat link is `.tw2k/seat_links/<seat>.txt`. That URL is `GET /bot/claim?seat=P3&token=...`. The server checks the token, sets an HttpOnly cookie `tw2k_seat_<seat>` (Path `/harness/`), and redirects to `/bot?seat=P3&mode=cu`. A rejected or missing token is 401. Another seat's token is 403. Cookie writes also send `X-TW2K-Seat`.
+
+**Two layouts.** `/bot?seat=P3` is the three-column cockpit (Where / Act / Know) plus the viewport. `/bot?seat=P3&mode=cu` is the one-screen turn layout: turn banner, credits, net worth, one status line, sector, warps, port, ship, goal, the last events, and the verb pad. The viewport is not shown in `mode=cu`.
+
+**Status line** (`status_fields` in `src/tw2k/engine/observation.py`). One cell, built only from your Observation: `Day N of M - T turns left today - Rank R of S`. N is clamped to M. When `finished` is true the middle reads `GAME OVER` and the page shows the standings panel, hides the verb pad, and stops polling.
+
+**Keys (mode=cu).** 1–9 warp, S scan, E end the turn (wait), B buy, X sell, T trade, P plot course, M more verbs, R refresh, H hold / end slot, G repeat route, Esc closes a form or the more-verbs panel.
+
+**One-click trades.** On a port, `mode=cu` shows `cu-quick-sell-<commodity>` and `cu-quick-buy-<commodity>` for every side with quantity. They trade the engine's max at list price. Auto-accept makes B and X do the same.
+
+**RUN ROUTE.** REPEAT ROUTE (G) posts the `run_route` macro: one legal step per held turn between two ports. It stops on another commander, a Ferrengi, hostile fighters, an empty port, low turns, a failed step, or END SLOT. The toast and turn card end with the digest.
+
+**END SLOT.** HOLD SLOT (H) asks the host to hand you the next actions immediately, up to the host cap. While it is on, the button reads `HOLDING used/max · END SLOT (H)` and uses the same solid green primary style as SCAN, on the default layout (`hold-slot`) and in `mode=cu` (`cu-hold`). Ending the slot does not spend a turn.
+
+**Reconnect.** A 401 or 403 stops polling and shows `#reconnect` (`reconnect-banner`): signed out, open the refreshed seat link from `.tw2k/seat_links/<seat>.txt`. A 502, 503, or three failed polls shows the same banner and keeps trying, because the tunnel may come back.
+
+**Viewport (default layout only).** Live is the drifting starfield plus a clip when one resolves. Stills is one poster frame (no push-in, no video). Off hides the window and does not play a resolved clip. Skip, Esc, or a click on the window returns to the sector caption. Reduced motion forces Stills and never creates a video element. Sound stays off.

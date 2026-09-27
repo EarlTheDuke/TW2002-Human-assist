@@ -87,7 +87,11 @@ def test_queue_preempts_waits_drops_stale_and_respects_cooldown_and_hidden() -> 
         "moved.consider([{clip_key:'warp.out', priority:2, seq:1, sector_id:4}], 0);"
         "moved.consider([{clip_key:'dock.port', priority:2, seq:2, sector_id:8}], 10);"
         "const dropped=moved.consider([], 20, {postedSeq:9});"
-        "process.stdout.write(JSON.stringify({playDock, preempt, wait, stale, cooled, hidden, hiddenSeq:e.state().lastSeq, replay, stopped, promoted, dropped}));"
+        "const quiet=R.createSession(manifest);"
+        "quiet.consider([{clip_key:'combat.witnessed', priority:3, seq:1}], 0, {recordCooldown:false});"
+        "quiet.stop();"
+        "const replayed=quiet.consider([{clip_key:'combat.witnessed', priority:3, seq:2}], 100);"
+        "process.stdout.write(JSON.stringify({playDock, preempt, wait, stale, cooled, hidden, hiddenSeq:e.state().lastSeq, replay, stopped, promoted, dropped, replayed}));"
     )
     assert got["playDock"]["playing"] == "dock.port"
     assert got["preempt"]["playing"] == "combat.incoming" and got["preempt"]["preempted"] is True
@@ -101,6 +105,7 @@ def test_queue_preempts_waits_drops_stale_and_respects_cooldown_and_hidden() -> 
     assert got["stopped"]["playing"] is None and got["stopped"]["started"] is False
     assert got["promoted"]["clip_key"] == "dock.port" and got["promoted"]["sector_id"] == 19
     assert got["dropped"]["waiting"] is None
+    assert got["replayed"]["started"] is True and got["replayed"]["playing"] == "combat.witnessed"
 
 
 def test_ship_combat_outcome_and_own_death_are_in_the_fixtures() -> None:
@@ -149,6 +154,7 @@ def test_browser_placeholder_clip_reduced_motion_and_cu(browser, tmp_path: Path,
             TW2KMedia.onEvents(fx.batch, fx.obs);
         }""", trade)
         page.wait_for_selector("[data-testid=viewport-clip]:not([hidden])", timeout=5_000)
+        assert page.locator("[data-testid=media-hud]").is_hidden()
         assert "trade_port" in page.locator("[data-testid=viewport-clip-still]").get_attribute("src")
         assert page.locator("[data-testid=viewport-caption]").inner_text().startswith("Docking")
         page.get_by_test_id("viewport-skip").click()
@@ -230,6 +236,7 @@ def test_skip_and_cu_timer_do_not_replay_a_stale_dock(browser, tmp_path: Path, m
         assert "docking" in page.locator("#mediaHudCaption").inner_text().casefold()
         assert "trade_port" in (page.locator("#mediaHudStill").get_attribute("src") or "")
         page.wait_for_timeout(3200)
+        assert page.locator("[data-testid=media-hud]").is_hidden()
         _scan_after(page, trade)
         page.wait_for_timeout(300)
         hud = page.locator("[data-testid=media-hud]")
@@ -291,10 +298,7 @@ def test_live_stills_and_off_change_a_resolved_clip(browser, tmp_path: Path, mon
         page.wait_for_timeout(300)
         assert page.locator("[data-testid=viewport-clip]").is_hidden()
         assert "Docking" not in page.locator("[data-testid=viewport-caption]").inner_text()
-        hud = page.locator("[data-testid=media-hud]")
-        if hud.count() and hud.is_visible():
-            assert "trade_port" not in (page.locator("#mediaHudStill").get_attribute("src") or "")
-            assert "docking" not in page.locator("#mediaHudCaption").inner_text().casefold()
+        assert page.locator("[data-testid=media-hud]").is_hidden()
         page.close()
 
 
