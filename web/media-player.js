@@ -47,7 +47,7 @@
     root.innerHTML = [
       '<div class="media-hud-inner">',
       '  <img id="mediaHudStill" alt="" />',
-      '  <video id="mediaHudVideo" muted playsinline aria-hidden="true"></video>',
+      CU ? "" : '  <video id="mediaHudVideo" muted playsinline aria-hidden="true"></video>',
       '  <div id="mediaHudCaption" class="media-hud-caption"></div>',
       '  <button type="button" id="mediaHudDismiss" class="media-hud-dismiss" data-testid="media-hud-dismiss" aria-label="Dismiss">×</button>',
       "</div>",
@@ -64,6 +64,15 @@
     const st = vp.state() || {};
     if (st.cu) return "cu";
     return st.mode || "live";
+  }
+
+  // CU keeps the renderer on the HUD ("cu"). The URL picks stills (default),
+  // off (slot stays, nothing plays), or live (demo only; still a poster here).
+  function cuSetting() {
+    if (!CU) return "";
+    const vp = window.TW2KViewport;
+    const st = vp && typeof vp.state === "function" ? (vp.state() || {}) : {};
+    return st.mode || "stills";
   }
 
   function clearTimer() {
@@ -93,6 +102,7 @@
   // User dismiss (Skip, Esc, HUD ×). Drops the playing clip and anything waiting
   // so the next poll cannot redraw it.
   function hide() {
+    if (state.playing) bump("skips");
     if (state.session && typeof state.session.stop === "function") state.session.stop();
     clearVisuals();
   }
@@ -113,8 +123,8 @@
     const duration = (state.manifest && state.manifest.defaults && state.manifest.defaults.duration_ms) || 2400;
     cap.textContent = entry.caption || kind || "";
     img.hidden = true;
-    vid.hidden = true;
-    if (!state.reduced && entry.clip) {
+    if (vid) vid.hidden = true;
+    if (!state.reduced && entry.clip && vid) {
       vid.muted = true;
       vid.src = BASE + entry.clip;
       vid.hidden = false;
@@ -216,7 +226,10 @@
 
   function onClipEnded() {
     clearTimer();
+    const before = state.session && state.session.state ? state.session.state().staleDrops || 0 : 0;
     const next = state.session && typeof state.session.finish === "function" ? state.session.finish(Date.now()) : null;
+    const after = state.session && state.session.state ? state.session.state().staleDrops || 0 : 0;
+    if (after > before) bump("stale-drops", after - before);
     if (next) playResolved(next);
     else clearVisuals();
   }
@@ -232,14 +245,19 @@
     const row = item && item.clip_key ? item : { sector_id: null };
     const meta = clipMeta(key);
     if (!meta) return;
-    if (viewportMode() === "off") {
+    if (viewportMode() === "off" || cuSetting() === "off") {
       if (state.session && typeof state.session.stop === "function") state.session.stop();
       clearVisuals();
       return;
     }
     state.playing = key;
-    if (showViewport(meta, row)) return;
+    if (showViewport(meta, row)) {
+      bump("plays");
+      if (viewportMode() === "live" && !meta.webm && !meta.mp4) bump("poster-fallbacks");
+      return;
+    }
     playEntry({ still: meta.still, caption: sectorCaption(meta, row) }, key);
+    bump("plays");
   }
 
   function onMode(mode) {
@@ -272,6 +290,8 @@
     const step = state.session.consider(items, Date.now(), {
       hidden, maxSeq: state.lastSeq, postedSeq, recordCooldown: viewportMode() !== "off",
     });
+    if (step.staleDropped) bump("stale-drops", step.staleDropped);
+    if (step.preempted) bump("preemptions");
     if (hidden) return;
     if (step.started && step.item) { playResolved(step.item); return; }
     // No clip started. Off stays quiet. Otherwise a non-clip row keeps the v1 still HUD.
@@ -300,10 +320,105 @@
 
   if (CU) document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") hide(); });
 
+  const COUNTER_KEY = "tw2k.media.counters";
+  const COUNTER_NAMES = ["plays", "skips", "preemptions", "stale-drops", "poster-fallbacks"];
+  const PRELOAD_CAP = 12 * 1024 * 1024;
+  const FIRST_LOAD_CAP = 150 * 1024;
+  const preload = { skipped: "", bytes: 0, beforeInteractive: 0, done: false, urls: 0 };
+
+  function readCounters() {
+    try { return JSON.parse(sessionStorage.getItem(COUNTER_KEY)) || {}; } catch (_) { return {}; }
+  }
+  function renderCounters() {
+    const el = document.getElementById("mediaCounters");
+    if (!el) return;
+    const c = readCounters();
+    el.textContent = COUNTER_NAMES.map((n) => `${n} ${c[n] || 0}`).join("  ");
+  }
+  function bump(name, n) {
+    const c = readCounters();
+    c[name] = (c[name] || 0) + (n || 1);
+    try { sessionStorage.setItem(COUNTER_KEY, JSON.stringify(c)); } catch (_) {}
+    renderCounters();
+  }
+
+  function posterUrls() {
+    const clips = (state.manifest && state.manifest.clips) || {};
+    const seen = new Set();
+    const out = [];
+    for (const clip of Object.values(clips)) {
+      if (typeof clip.priority !== "number" || clip.priority > 2) continue;
+      const poster = clip.fallback_still || (clip.variants && clip.variants[0] && clip.variants[0].poster);
+      if (!poster || seen.has(poster)) continue;
+      seen.add(poster);
+      out.push(BASE + poster);
+    }
+    return out;
+  }
+  function preloadSkipReason() {
+    if (CU || viewportMode() === "cu") return "cu";
+    if (reduce.matches) return "reduce";
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn && conn.saveData) return "saveData";
+    return "";
+  }
+  async function preloadPosters() {
+    const reason = preloadSkipReason();
+    if (reason) { preload.skipped = reason; preload.done = true; renderCounters(); return; }
+    const urls = posterUrls();
+    preload.urls = urls.length;
+    for (const url of urls) {
+      if (preload.bytes >= PRELOAD_CAP) break;
+      if (document.readyState === "loading" && preload.beforeInteractive >= FIRST_LOAD_CAP) break;
+      try {
+        const r = await fetch(url);
+        if (!r.ok) continue;
+        const blob = await r.blob();
+        if (preload.bytes + blob.size > PRELOAD_CAP) break;
+        if (document.readyState === "loading" && preload.beforeInteractive + blob.size > FIRST_LOAD_CAP) break;
+        preload.bytes += blob.size;
+        if (document.readyState === "loading") preload.beforeInteractive += blob.size;
+        const img = new Image();
+        img.src = URL.createObjectURL(blob);
+      } catch (_) {}
+    }
+    preload.done = true;
+  }
+  function schedulePreload() {
+    const run = () => { void preloadPosters(); };
+    const kick = () => {
+      if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 1500 });
+      else setTimeout(run, 50);
+    };
+    if (document.readyState === "complete") kick();
+    else window.addEventListener("load", kick, { once: true });
+  }
+
   window.TW2KMedia = {
     loadManifest, onEvent, onEvents, playEntry, hide, ensureHud, onMode,
     skipClip: hide,
     ready: () => !!state.ready,
+    preloadState: () => ({ skipped: preload.skipped, bytes: preload.bytes, beforeInteractive: preload.beforeInteractive, done: preload.done, urls: preload.urls }),
+    benchSwap: (n) => {
+      if (!R || !state.manifest) return { p95: 999, max: 999, n: 0 };
+      const samples = [];
+      const obs = state.obs || { self_id: "P2", sector: { id: 19 } };
+      const batch = [];
+      for (let i = 0; i < 6; i++) batch.push({ seq: 1000 + i, kind: "warp", actor_id: obs.self_id || "P2", sector_id: 19, summary: "warp", facts: { from: 18, to: 19 } });
+      const count = n || 40;
+      for (let i = 0; i < count; i++) {
+        const t0 = performance.now();
+        const items = R.resolve(batch, obs, { visit_sector: 19, docked_in_visit: false }, state.manifest);
+        const cap = document.getElementById("vpCaption") || document.getElementById("mediaHudCaption");
+        if (cap && items[0]) cap.textContent = items[0].clip_key;
+        const img = document.querySelector("#vpClip img") || document.getElementById("mediaHudStill");
+        if (img && items[0]) img.setAttribute("data-swap", items[0].clip_key);
+        samples.push(performance.now() - t0);
+      }
+      samples.sort((a, b) => a - b);
+      const idx = Math.min(samples.length - 1, Math.max(0, Math.ceil(samples.length * 0.95) - 1));
+      return { p95: samples[idx], max: samples[samples.length - 1], n: samples.length };
+    },
     _prime: (opts) => {
       opts = opts || {};
       if (opts.lastSeq != null) state.lastSeq = opts.lastSeq;
@@ -314,5 +429,6 @@
     },
     _state: () => ({ lastSeq: state.lastSeq, playing: state.playing, visit_sector: state.visit_sector }),
   };
-  loadManifest();
+  renderCounters();
+  loadManifest().then(() => schedulePreload());
 })();

@@ -24,7 +24,15 @@
     stars: [], seed: 1, onScreen: true, frames: 0, ambientCaption: "Deep space", event: null };
 
   const noop = { update() {}, skip() {}, setMode() {}, state: () => ({ mode: "off", animating: false, cu: true }) };
-  if (CU) { window.TW2KViewport = noop; return; }
+  if (CU) {
+    // No canvas and no animation. Default is a still. ?viewport=off keeps the
+    // slot's box; ?viewport=live is allowed for a demo and is not scored play.
+    const q = params.get("viewport");
+    let mode = q === "off" || q === "live" ? q : "stills";
+    if (reduce.matches && mode === "live") mode = "stills";
+    window.TW2KViewport = { update() {}, skip() {}, setMode() {}, state: () => ({ mode, animating: false, cu: true }) };
+    return;
+  }
 
   const $ = (id) => document.getElementById(id);
   const root = $("viewport");

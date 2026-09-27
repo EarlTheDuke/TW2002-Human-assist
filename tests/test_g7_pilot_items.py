@@ -60,10 +60,14 @@ def test_duplicate_warp_seq_is_shown_once_and_401_stops(browser, tmp_path: Path,
         hits = {"n": 0}
 
         def unauth(route):
+            if "/events" not in route.request.url:
+                route.fallback()
+                return
             hits["n"] += 1
             route.fulfill(status=401, content_type="application/json", body='{"detail":"unauthorized"}')
 
         cu.route("**/harness/v1/**", unauth)
+        cu.keyboard.press("r")
         cu.wait_for_selector("[data-testid=reconnect-banner]:not([hidden])", timeout=15_000)
         assert cu.locator("#reconnect").get_attribute("data-kind") == "auth"
         cu.wait_for_timeout(2000)

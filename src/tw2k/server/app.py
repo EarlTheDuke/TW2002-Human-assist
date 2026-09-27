@@ -14,7 +14,6 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 
 from ..agents.human import HumanAgent
 from ..agents.llm import default_provider
@@ -26,6 +25,7 @@ from ..copilot.ui_agent import button_hints, suggest_next_move
 from ..engine import EventKind, GameConfig, build_observation
 from ..engine.actions import Action
 from .broadcaster import Broadcaster
+from .media_cache import MediaStaticFiles
 from .replay import ReplayRunner
 from .runner import AgentSpec, MatchRunner, MatchSpec
 
@@ -276,7 +276,7 @@ def create_app(
     app.add_middleware(SpectatorGate)
 
     # Static files
-    app.mount("/static", StaticFiles(directory=str(web_root)), name="static")
+    app.mount("/static", MediaStaticFiles(directory=str(web_root)), name="static")
 
     @app.get("/", response_class=HTMLResponse)
     async def index() -> HTMLResponse:
@@ -1266,7 +1266,7 @@ def create_replay_app(replay_dir: Path, *, speed: float = 1.0) -> FastAPI:
         await runner.stop()
 
     app = FastAPI(title=f"TW2K-AI Replay · {replay_dir.name}", version="0.1.0", lifespan=lifespan)
-    app.mount("/static", StaticFiles(directory=str(web_root)), name="static")
+    app.mount("/static", MediaStaticFiles(directory=str(web_root)), name="static")
 
     @app.get("/", response_class=HTMLResponse)
     async def index() -> HTMLResponse:
