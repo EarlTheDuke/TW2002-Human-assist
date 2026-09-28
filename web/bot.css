@@ -442,3 +442,8 @@ body.mode-cu #cuMediaSlot .media-hud-inner { width: auto; height: 100%; max-widt
 @media (prefers-reduced-motion: reduce) {
   .vp-clip.is-still img, .vp-clip.is-still::after { animation: none; }
 }
+.media-moments { margin-top: 8px; }
+.media-moments li { display: flex; gap: 8px; align-items: center; list-style: none; margin: 4px 0; }
+.media-moments .live-badge { background: #c45c26; color: #fff; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; }
+.media-moments .trust-auto { font-size: 0.75rem; border: 1px solid #c45c26; padding: 2px 6px; border-radius: 4px; }
+body.mode-cu #mediaMoments { position: absolute; width: 0; height: 0; max-height: 0; overflow: hidden; margin: 0; padding: 0; border: 0; }

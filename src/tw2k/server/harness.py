@@ -540,14 +540,14 @@ def build_harness_router(runner) -> APIRouter:
         return Response(content=body, media_type="video/webm", headers={"Cache-Control": "private"})
 
     @router.get("/{player_id}/media/moments")
-    async def custom_moments(player_id: str, request: Request) -> dict[str, Any]:
+    async def custom_moments(player_id: str, request: Request, since: int = 0) -> dict[str, Any]:
         agent = _require_seat(player_id, request)
         from ..media.custom_queue import current as custom_current
 
         q = custom_current()
         if q is None:
             raise HTTPException(status_code=404, detail="custom queue off")
-        return {"player_id": agent.player_id, **q.feed_for(agent.player_id)}
+        return {"player_id": agent.player_id, **q.feed_for(agent.player_id, since)}
 
     return router
 

@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 13:10 PT - Fable - the citadel owner gets the custom clip
+- Citadel completion names the planet owner, so the custom job reaches them away from that sector. A ready clip replaces the placeholder while it is still up. A late clip is one Moments row. mode=cu stays 800 px and does not request the video. Suite 768 passed; ruff clean; manifest OK. Flag-on cockpit and bot browser rerun 150 passed.
+
 ### 2026-09-28 11:32 PT - Fable - custom clips queue on a fake provider
 - Rare moments can queue a custom clip only when TW2K_VIDEO_CUSTOM=1. The provider is local and fake. Caps refuse a fourth job in a match and a job past the day budget. An identical prompt is reused. A late clip stays in that seat's reel. Suite 764 passed; ruff clean; manifest OK.
 

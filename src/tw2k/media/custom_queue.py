@@ -162,6 +162,8 @@ class CustomQueue:
         self._thread: threading.Thread | None = None
         self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA synchronous=NORMAL")
         self._conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS jobs (
@@ -262,7 +264,11 @@ class CustomQueue:
             )
             cached = self.cache_dir / f"{digest}.webm"
             if cached.is_file():
-                self._insert_job(digest, seat, match_id, "cached", 0, event.seq, clip, day, swap=0)
+                blocked = self._later_than(match_id, seat, event.seq)
+                self._insert_job(
+                    digest, seat, match_id, "late" if blocked else "cached", 0,
+                    event.seq, clip, day, swap=0 if blocked else 1,
+                )
                 self._conn.commit()
                 return
             existing = self._conn.execute(
@@ -344,11 +350,6 @@ class CustomQueue:
         swap = 0
         if data:
             (self.cache_dir / f"{digest}.webm").write_bytes(data)
-            blocked = True
-            # The universe is not stored on the row. The hook recorded the seq;
-            # the caller passes events through a side table updated at finish
-            # only when we still hold the universe. Re-read is done by the
-            # finish path below via the last universe the hook saw.
             blocked = self._blocked_for(job)
             status = "late" if blocked else "ready"
             swap = 0 if blocked else 1
@@ -365,12 +366,10 @@ class CustomQueue:
             self._conn.execute("UPDATE jobs SET status=?, swap=? WHERE id=?", (status, swap, job["id"]))
             self._conn.commit()
 
-    def _blocked_for(self, job: sqlite3.Row) -> bool:
-        universe = self._universes.get(job["match_id"])
+    def _later_than(self, match_id: str, seat: str, seq: int) -> bool:
+        universe = self._universes.get(match_id)
         if universe is None:
             return False
-        seat = job["seat"]
-        seq = job["trigger_seq"]
         for ev in universe.events:
             if ev.seq <= seq:
                 continue
@@ -379,6 +378,9 @@ class CustomQueue:
             if ev.actor_id == seat or ev.kind in HOT_KINDS:
                 return True
         return False
+
+    def _blocked_for(self, job: sqlite3.Row) -> bool:
+        return self._later_than(job["match_id"], job["seat"], job["trigger_seq"])
 
     def placeholder(self, seat: str, seq: int) -> str | None:
         with self._lock:
@@ -398,21 +400,32 @@ class CustomQueue:
             ).fetchone()
         return dict(row) if row else None
 
-    def feed_for(self, seat: str) -> dict[str, list[dict[str, Any]]]:
+    def feed_for(self, seat: str, since: int = 0) -> dict[str, Any]:
         ready, moments = [], []
         with self._lock:
-            rows = self._conn.execute(
-                """SELECT jobs.* FROM jobs JOIN seen ON seen.hash=jobs.hash AND seen.seat=?
-                   AND seen.match_id=jobs.match_id WHERE jobs.status IN ('ready','late')""",
-                (seat,),
-            ).fetchall()
+            # A cache hit inserted while an earlier job is still running must
+            # not advance the cursor past that job, or its ready note is lost.
+            pending = self._conn.execute(
+                "SELECT MIN(id) FROM jobs WHERE seat=? AND id>? AND status IN ('queued','running')",
+                (seat, int(since)),
+            ).fetchone()[0]
+            sql = """SELECT jobs.* FROM jobs JOIN seen ON seen.hash=jobs.hash AND seen.seat=?
+                     AND seen.match_id=jobs.match_id
+                     WHERE jobs.id > ? AND jobs.status IN ('ready','late','cached')"""
+            args: list[Any] = [seat, int(since)]
+            if pending is not None:
+                sql += " AND jobs.id < ?"
+                args.append(int(pending))
+            rows = self._conn.execute(sql, args).fetchall()
+        newest = int(since)
         for row in rows:
+            newest = max(newest, int(row["id"]))
             note = self._note(row)
-            if row["status"] == "ready" and row["swap"]:
+            if row["status"] in ("ready", "cached") and row["swap"]:
                 ready.append(note)
-            elif row["status"] == "late":
+            elif row["status"] in ("late", "cached"):
                 moments.append(note)
-        return {"ready": ready, "moments": moments}
+        return {"ready": ready, "moments": moments, "next_since": newest}
 
     def moments_for(self, seat: str) -> list[dict[str, Any]]:
         return self.feed_for(seat)["moments"]
@@ -426,6 +439,7 @@ class CustomQueue:
             "trust": "auto",
             "approved_by": None,
             "badge": "live-generated",
+            "status": row["status"],
         }
 
     def clip_bytes(self, seat: str, digest: str) -> bytes | None:
@@ -442,12 +456,6 @@ class CustomQueue:
 
     def promote_to_library(self, digest: str) -> bool:
         """A trust:auto clip never enters the base manifest from this queue."""
-        meta_path = self.cache_dir / f"{digest}.json"
-        if not meta_path.is_file():
-            return False
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        if not meta.get("approved_by"):
-            return False
         return False
 
 

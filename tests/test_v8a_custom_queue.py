@@ -167,10 +167,54 @@ def test_identical_prompt_does_not_call_the_provider_twice(tmp_path) -> None:
         _citadel(u, 1)
         _wait(lambda: provider.calls == 1)
         _wait(lambda: any(tmp_path.glob("*.webm")))
-        _citadel(u, 1)
+        again = _citadel(u, 1)
         time.sleep(0.2)
         assert provider.calls == 1
+        cached = q.feed_for("A")
+        assert any(note["status"] == "cached" and note["swap"] is True for note in cached["ready"])
+        assert q.placeholder("A", again.seq) == "planet.citadel"
     finally:
+        q.stop()
+
+
+def test_a_cache_hit_does_not_skip_a_running_job(tmp_path) -> None:
+    from tw2k.media.custom_queue import CustomQueue
+
+    warmed = tmp_path / "warm"
+    provider = FakeProvider()
+    q = CustomQueue(warmed, provider).start()
+    try:
+        u, _, _ = _universe()
+        _citadel(u, 1)
+        _wait(lambda: provider.calls == 1)
+        _wait(lambda: any(warmed.glob("*.webm")))
+    finally:
+        q.stop()
+
+    live = tmp_path / "live"
+    live.mkdir()
+    for webm in warmed.glob("*.webm"):
+        (live / webm.name).write_bytes(webm.read_bytes())
+    gate = Gate()
+    q = CustomQueue(live, gate).start()
+    try:
+        u, _, _ = _universe()
+        _citadel(u, 2)
+        assert gate.started.wait(2)
+        hit = _citadel(u, 1)
+        early = q.feed_for("A")
+        assert early["ready"] == [] and early["moments"] == []
+        assert early["next_since"] == 0
+        assert q.placeholder("A", hit.seq) == "planet.citadel"
+        gate.release.set()
+        _wait(lambda: q.feed_for("A")["ready"] or q.feed_for("A")["moments"])
+        done = q.feed_for("A")
+        statuses = {note["status"] for note in done["ready"] + done["moments"]}
+        assert {"late", "cached"} <= statuses
+        later = q.feed_for("A", done["next_since"])
+        assert later["ready"] == [] and later["moments"] == []
+    finally:
+        gate.release.set()
         q.stop()
 
 
@@ -255,31 +299,81 @@ def test_ready_clip_can_swap_only_while_the_placeholder_shows(tmp_path) -> None:
         q.stop()
 
 
+def test_complete_citadels_reaches_the_owner(tmp_path) -> None:
+    from tw2k.engine.models import Planet, PlanetClass
+    from tw2k.engine.planets import _complete_citadels
+    from tw2k.media.custom_queue import CustomQueue
+
+    provider = FakeProvider()
+    u, a, b = _universe()
+    c = Player(id="C", name="Witness", ship=Ship(holds=20), sector_id=5)
+    u.players["C"] = c
+    u.sectors[5].occupant_ids.append("C")
+    a.sector_id = 1
+    planet = Planet(
+        id=7, sector_id=5, name="Haven", class_id=PlanetClass.M, owner_id="A",
+        citadel_level=0, citadel_target=1, citadel_complete_day=1,
+    )
+    u.planets[7] = planet
+    u.day = 1
+    q = CustomQueue(tmp_path, provider).start()
+    try:
+        _complete_citadels(u)
+        ev = next(e for e in u.events if e.kind == EventKind.CITADEL_COMPLETE)
+        assert ev.actor_id == "A"
+        assert q.placeholder("A", ev.seq) == "planet.citadel"
+        assert q.placeholder("B", ev.seq) is None
+        assert q.placeholder("C", ev.seq) is None
+        _wait(lambda: provider.calls == 1)
+    finally:
+        q.stop()
+
+
+def test_emit_with_the_queue_stays_close_to_flag_off(tmp_path) -> None:
+    from tw2k.media.custom_queue import CustomQueue
+
+    u, _, _ = _universe()
+
+    def burst() -> float:
+        started = time.perf_counter()
+        for n in range(40):
+            u.emit(EventKind.WARP, actor_id="A", sector_id=1, payload={"from": 1, "to": 2}, summary="warp")
+        return time.perf_counter() - started
+
+    off = burst()
+    q = CustomQueue(tmp_path, FakeProvider()).start()
+    try:
+        on = burst()
+    finally:
+        q.stop()
+    assert on < off + 0.5
+
+
 def test_prompts_omit_facts_the_seat_cannot_see() -> None:
+    from tw2k.engine.models import Event
+
     u, a, _ = _universe()
-    samples = [
-        _citadel(u, 1),
-        u.emit(
-            EventKind.GENESIS_DEPLOYED,
-            actor_id="A",
-            sector_id=1,
-            payload={"planet_id": 3, "class": "M", "name": "Eden", "secret_scan": "HIDDENINTEL"},
-            summary="BobSecretName detonated a Genesis",
-        ),
-        u.emit(
-            EventKind.SHIP_DESTROYED,
-            actor_id="B",
-            sector_id=1,
-            payload={"victim": "A", "reason": "guns", "secret_scan": "HIDDENINTEL", "_witnesses": ["A"]},
-            summary="BobSecretName destroyed a ship",
-        ),
-    ]
-    for ev in samples:
-        text = json.dumps(prompt_for(u, a.id, ev, "planet.citadel"))
-        assert "HIDDENINTEL" not in text
-        assert "BobSecretName" not in text
-        assert "_witnesses" not in text
-        assert "secret_scan" not in text
+    files = list((ROOT / "tests" / "fixtures" / "media_events").glob("*.json"))
+    assert len(files) >= 10
+    checked = 0
+    for path in files:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for row in data.get("batch") or []:
+            payload = dict(row.get("facts") or {})
+            payload["secret_scan"] = "HIDDENINTEL"
+            ev = Event(
+                seq=row["seq"], tick=row.get("tick") or 1, day=row.get("day") or 1,
+                kind=EventKind(row["kind"]), actor_id=row.get("actor_id"),
+                sector_id=row.get("sector_id"), payload=payload, summary=row.get("summary") or "",
+            )
+            text = json.dumps(prompt_for(u, a.id, ev, "planet.citadel"))
+            assert "HIDDENINTEL" not in text and "secret_scan" not in text
+            assert "_witnesses" not in text
+            summary = row.get("summary") or ""
+            if summary and summary not in json.dumps(row.get("facts") or {}):
+                assert summary not in text
+            checked += 1
+    assert checked >= 10
 
 
 def test_a_hidden_seat_gets_no_job(tmp_path) -> None:
@@ -335,11 +429,9 @@ process.stdout.write(JSON.stringify({
   off: off.map(h => h.clip_key),
   on: on.map(h => h.clip_key),
   gen: gen.map(h => h.clip_key),
-  swap: R.considerCustomSwap('planet.citadel', note, 1, 1),
-  gone: R.considerCustomSwap(null, note, 1, 1),
-  newer: R.considerCustomSwap('planet.citadel', note, 4, 1),
-  hot: R.considerCustomSwap('planet.citadel', note, 1, 4),
-  late: R.considerCustomSwap('planet.citadel', late, 1, 1),
+  swap: R.considerCustomSwap('planet.citadel', note),
+  gone: R.considerCustomSwap(null, note),
+  late: R.considerCustomSwap('planet.citadel', late),
   card: R.momentCard(late),
   library: R.momentCard({trust:'auto', approved_by:'Ben', hash:'abc'})
 }));
@@ -351,7 +443,7 @@ process.stdout.write(JSON.stringify({
     assert got["off"] == []
     assert got["on"] == ["planet.citadel"]
     assert got["gen"] == ["planet.genesis"]
-    assert got["swap"] is True and got["gone"] is False and got["newer"] is False and got["hot"] is False
+    assert got["swap"] is True and got["gone"] is False
     assert got["late"] is False
     assert got["card"]["badge"] == "live-generated" and got["card"]["trust"] == "auto"
     assert got["library"] is None
