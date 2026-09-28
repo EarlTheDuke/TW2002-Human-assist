@@ -318,9 +318,21 @@ def test_macro_endpoint_guards(tmp_path: Path, monkeypatch) -> None:
 def test_route_prefill_and_digest_text() -> None:
     log = [{"sector_id": 408, "side": "buy", "commodity": "fuel_ore"}, {"sector_id": 410, "side": "sell", "commodity": "fuel_ore"},
            {"sector_id": 410, "side": "buy", "commodity": "equipment"}]
-    assert _node("P.routeFromTradeLog(d, 410)", log) == {"a": 410, "b": 408, "buy_at_a": "equipment", "buy_at_b": "fuel_ore"}
-    assert _node("P.routeFromTradeLog(d, 3)", log) == {"a": 408, "b": 410, "buy_at_a": "fuel_ore", "buy_at_b": "equipment"}
-    assert _node("P.routeFromTradeLog(d, 3)", log[:1]) is None
+    ports = [
+        {"sector_id": 408, "stock": {"fuel_ore": {"side": "sells_to_player"}, "equipment": {"side": "buys_from_player"}}},
+        {"sector_id": 410, "stock": {"equipment": {"side": "sells_to_player"}, "fuel_ore": {"side": "buys_from_player"}}},
+    ]
+    assert _node("P.routeFromTradeLog(d.log, 410, d.ports)", {"log": log, "ports": ports}) == {
+        "a": 410, "b": 408, "buy_at_a": "equipment", "buy_at_b": "fuel_ore"}
+    assert _node("P.routeFromTradeLog(d.log, 3, d.ports)", {"log": log, "ports": ports}) == {
+        "a": 408, "b": 410, "buy_at_a": "fuel_ore", "buy_at_b": "equipment"}
+    assert _node("P.routeFromTradeLog(d.log, 3, d.ports)", {"log": log[:1], "ports": ports}) is None
+    mismatch = [
+        ports[0],
+        {"sector_id": 410, "stock": {"equipment": {"side": "sells_to_player"}, "fuel_ore": {"side": "sells_to_player"}}},
+    ]
+    bad = _node("P.routeFromTradeLog(d.log, 410, d.ports)", {"log": log, "ports": mismatch})
+    assert "a" not in bad and "do not buy" in bad["reason"]
     dg = {"kind": "route", "actions": 11, "turns_used": 30, "credits_before": 49317, "credits_after": 52117,
           "stopped": "route complete (2 cycles)", "cycles_done": 2, "cycles": 2, "last_turn_seq": 16}
     t = _node("[P.digestText(d, 16), P.digestText(d, 15)]", dg)

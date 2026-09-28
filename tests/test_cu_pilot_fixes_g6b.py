@@ -24,12 +24,29 @@ from tests._cu_host import CuHost
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.models import Player
 from tw2k.engine.observation import build_observation, status_fields
+from tw2k.engine.runner import _record_port_intel
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
 
 ROOT = Path(__file__).resolve().parents[1]
 TOK = "g6b-token-p2-00000000000000000"
 A, B = 29, 35  # seed 1 / 200 sectors: adjacent fuel/equipment pair (same as G6)
+
+
+def _remember_pair(host) -> None:
+    """This seat has seen both ports, so the route check can read its own intel."""
+    u = host.runner.state.universe
+    me = u.players["P2"]
+    for sid in (A, B):
+        _record_port_intel(me, sid, u.sectors[sid].port, universe=u)
+
+
+def _trade_log() -> list[dict]:
+    return [
+        {"sector_id": A, "side": "buy", "commodity": "fuel_ore"},
+        {"sector_id": B, "side": "sell", "commodity": "fuel_ore"},
+        {"sector_id": B, "side": "buy", "commodity": "equipment"},
+    ]
 
 
 def _report():
@@ -165,11 +182,8 @@ def test_browser_run_route_button_is_enabled_and_clicks(browser, tmp_path: Path,
     monkeypatch.delenv("TW2K_GROKBOT_WEBHOOK_URL", raising=False)
     with CuHost(tmp_path, TOK, seed=1, park_at=A, fuel=0, max_days=2, turns_per_day=80) as host:
         me = host.runner.state.universe.players["P2"]
-        me.trade_log = [
-            {"sector_id": A, "side": "buy", "commodity": "fuel_ore"},
-            {"sector_id": B, "side": "sell", "commodity": "fuel_ore"},
-            {"sector_id": B, "side": "buy", "commodity": "equipment"},
-        ]
+        me.trade_log = _trade_log()
+        _remember_pair(host)
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         page.goto(f"{host.base}/bot?seat=P2&mode=cu&token={TOK}")
         page.wait_for_selector("#cuTurn.turn", timeout=20_000)
@@ -185,6 +199,54 @@ def test_browser_run_route_button_is_enabled_and_clicks(browser, tmp_path: Path,
             " return t && /ROUTE/.test(t.textContent) && !/rejected|did not start/i.test(t.textContent); })()",
             timeout=20_000,
         )
+
+
+def test_browser_route_form_drops_a_stale_refusal_and_skips_a_bad_pair(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    monkeypatch.delenv("TW2K_GROKBOT_WEBHOOK_URL", raising=False)
+    with CuHost(tmp_path, TOK, seed=1, park_at=A, fuel=0, max_days=2, turns_per_day=80) as host:
+        me = host.runner.state.universe.players["P2"]
+        me.trade_log = _trade_log()
+        _remember_pair(host)
+        me.known_ports[B]["stock"]["fuel_ore"] = {"side": "sells_to_player", "price": 10, "current": 10, "max": 40}
+
+        mismatch = browser.new_page(viewport={"width": 1280, "height": 800})
+        mismatch.goto(f"{host.base}/bot?seat=P2&mode=cu&token={TOK}")
+        mismatch.wait_for_selector("#cuTurn.turn", timeout=20_000)
+        mismatch.locator("[data-testid=cu-route]").click()
+        mismatch.wait_for_function(
+            "() => /do not buy/.test((document.querySelector('#cuToast') || {}).textContent || '')",
+            timeout=5_000,
+        )
+        assert mismatch.locator("[data-testid=route-go]").count() == 0
+        assert mismatch.locator("#verbForm").is_hidden()
+        mismatch.close()
+
+        me.known_ports[B]["stock"]["fuel_ore"] = {"side": "buys_from_player", "price": 20, "current": 20, "max": 40}
+        page = browser.new_page(viewport={"width": 1280, "height": 800})
+        page.goto(f"{host.base}/bot?seat=P2&mode=cu&token={TOK}")
+        page.wait_for_selector("#cuTurn.turn", timeout=20_000)
+
+        def refuse(route) -> None:
+            path = route.request.url.split("?", 1)[0]
+            if route.request.method == "POST" and path.endswith("/action"):
+                route.fulfill(status=422, content_type="application/json", body=json.dumps({"detail": "cannot sell that here"}))
+                return
+            route.continue_()
+
+        page.route("**/harness/v1/**", refuse)
+        page.locator("[data-testid=action-scan]").click()
+        page.wait_for_function(
+            "() => /cannot sell that here/.test((document.querySelector('#cuToast') || {}).textContent || '')",
+            timeout=10_000,
+        )
+        page.unroute("**/harness/v1/**", refuse)
+        page.locator("[data-testid=cu-route]").click()
+        page.locator("[data-testid=route-go]").wait_for(timeout=5_000)
+        toast = page.locator("#cuToast")
+        assert toast.is_hidden() or "cannot sell that here" not in toast.inner_text()
+        assert "REJECTED" not in (toast.inner_text() or "")
+        page.close()
 
 
 def test_browser_one_click_trades_for_every_commodity(browser, tmp_path: Path, monkeypatch) -> None:
