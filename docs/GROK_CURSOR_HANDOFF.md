@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 20:05 PT - Fable - CU banner countdown stays whole
+- The WAITING line is a phrase plus a separate countdown. A long actor name ellipsizes. The seconds stay fully visible. Suite 717 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 16:30 PT - Fable - CU top bar keeps the status line
 - The turn banner shrinks and ellipsizes. Credits, status, and seat do not shrink, so a long status line stays inside its cell. The CU Refresh button uses the cockpit button style. Suite 717 passed; ruff clean; manifest OK.
 
