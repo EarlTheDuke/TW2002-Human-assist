@@ -1694,8 +1694,10 @@
   const customSeen = new Set();
   function armCustomMoments() {
     if (customPoll) return;
+    let customBusy = false;
     const tick = async () => {
-      if (!state.connected) return;
+      if (customBusy || !state.connected) return;
+      customBusy = true;
       try {
         const body = await api(`/${state.seat}/media/moments?since=${customSince}`);
         const media = window.TW2KMedia;
@@ -1720,6 +1722,7 @@
         clearInterval(customPoll);
         customPoll = setInterval(tick, wait);
       } catch (e) { /* the reel is optional and must not break the turn loop */ }
+      finally { customBusy = false; }
     };
     customPoll = setInterval(tick, 3000);
     void tick();

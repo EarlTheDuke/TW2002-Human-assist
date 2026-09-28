@@ -8,6 +8,7 @@ import threading
 from pathlib import Path
 
 import pytest
+from playwright.sync_api import sync_playwright
 
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
 from tw2k.engine.models import EventKind
@@ -23,6 +24,13 @@ CIT = {
     "sector_id": 19,
     "facts": {"planet_id": 1, "from": 0, "to": 1},
 }
+GEN = {
+    "seq": 900,
+    "kind": "genesis_deployed",
+    "actor_id": "P2",
+    "sector_id": 19,
+    "facts": {"planet_id": 1, "class": "M", "name": "Eden", "is_first": True},
+}
 OBS = {"self_id": "P2", "sector": {"id": 19}}
 
 
@@ -37,9 +45,10 @@ class Gate:
         return b"fake-webm"
 
 
-def _repo_cache_is_clean() -> None:
-    names = [p.name for p in CACHE.iterdir()] if CACHE.is_dir() else []
-    assert names == [".gitkeep"] or names == [] or set(names) <= {".gitkeep"}
+def _cache_names() -> set[str]:
+    if not CACHE.is_dir():
+        return set()
+    return {p.name for p in CACHE.iterdir()}
 
 
 def _hold_first(bucket: list):
@@ -58,14 +67,14 @@ def _urls(page) -> list[str]:
     return seen
 
 
-def _arm_citadel(page) -> None:
+def _arm_genesis(page) -> None:
     page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
     page.evaluate(
         """(pack) => {
             TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
             TW2KMedia.onEvents([pack.ev], pack.obs);
         }""",
-        {"ev": CIT, "obs": OBS},
+        {"ev": GEN, "obs": OBS},
     )
 
 
@@ -73,6 +82,7 @@ def _arm_citadel(page) -> None:
 def test_custom_clip_plays_or_lands_in_moments(browser, tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("TW2K_VIDEO_CUSTOM", "1")
     monkeypatch.setenv("TW2K_VIDEO_CUSTOM_CACHE", str(tmp_path / "custom"))
+    before = _cache_names()
     gate = Gate()
     held: list = []
     with CuHost(tmp_path, TOK) as host:
@@ -93,28 +103,33 @@ def test_custom_clip_plays_or_lands_in_moments(browser, tmp_path, monkeypatch) -
                 break
             live.wait_for_timeout(100)
         assert held, "moments poll never started"
-        _arm_citadel(live)
-        live.wait_for_function("() => window.TW2KMedia._state().playing === 'planet.citadel'", timeout=10_000)
+        live.evaluate(
+            """(pack) => TW2KMedia.onEvents([pack.ev], pack.obs)""",
+            {"ev": CIT, "obs": OBS},
+        )
+        assert live.evaluate("() => window.TW2KMedia._state().playing") != "planet.citadel"
+        _arm_genesis(live)
+        live.wait_for_function("() => window.TW2KMedia._state().playing === 'planet.genesis'", timeout=10_000)
 
         universe = host.runner.state.universe
         me = universe.players["P2"]
         universe.emit(
-            EventKind.CITADEL_COMPLETE,
+            EventKind.GENESIS_DEPLOYED,
             actor_id="P2",
             sector_id=me.sector_id,
-            payload={"planet_id": 1, "from": 0, "to": 1},
-            summary="citadel",
+            payload={"planet_id": 1, "class": "M", "name": "Eden", "is_first": True},
+            summary="genesis",
         )
         assert gate.started.wait(5)
         gate.release.set()
         feed = {}
         for _ in range(50):
             feed = queue.feed_for("P2")
-            if any(note.get("swap") and note.get("placeholder") == "planet.citadel" for note in feed["ready"]):
+            if any(note.get("swap") and note.get("placeholder") == "planet.genesis" for note in feed["ready"]):
                 break
             live.wait_for_timeout(100)
-        assert any(note.get("placeholder") == "planet.citadel" and note.get("swap") for note in feed["ready"])
-        assert live.evaluate("() => window.TW2KMedia._state().playing") == "planet.citadel"
+        assert any(note.get("placeholder") == "planet.genesis" and note.get("swap") for note in feed["ready"])
+        assert live.evaluate("() => window.TW2KMedia._state().playing") == "planet.genesis"
         held[0].fulfill(status=200, content_type="application/json", body=json.dumps(feed))
         live.wait_for_function("() => !!document.querySelector('video[data-custom]')", timeout=10_000)
         assert any("/media/custom/" in url for url in live_urls)
@@ -126,9 +141,9 @@ def test_custom_clip_plays_or_lands_in_moments(browser, tmp_path, monkeypatch) -
             "() => window.TW2KMedia && TW2KMedia._state && TW2KMedia._state().videoCustom === true",
             timeout=20_000,
         )
-        _arm_citadel(quiet)
-        quiet.wait_for_function("() => window.TW2KMedia._state().playing === 'planet.citadel'", timeout=10_000)
-        quiet.wait_for_function("() => window.TW2KMedia._state().playing !== 'planet.citadel'", timeout=8_000)
+        _arm_genesis(quiet)
+        quiet.wait_for_function("() => window.TW2KMedia._state().playing === 'planet.genesis'", timeout=10_000)
+        quiet.wait_for_function("() => window.TW2KMedia._state().playing !== 'planet.genesis'", timeout=8_000)
         quiet.wait_for_selector("#mediaMoments li", timeout=15_000)
         quiet.wait_for_timeout(10_000)
         rows = quiet.locator("#mediaMoments li")
@@ -159,7 +174,7 @@ def test_custom_clip_plays_or_lands_in_moments(browser, tmp_path, monkeypatch) -
         quiet.close()
         live.close()
         ctx.close()
-    _repo_cache_is_clean()
+    assert _cache_names() == before
 
 
 CLIP = ROOT / "web" / "media" / "clips" / "placeholder" / "ph_combat_miss_a.webm"
@@ -173,6 +188,7 @@ def _moments(route, body: dict) -> None:
 def test_custom_clip_plays_out_and_a_failed_fetch_stays_one_row(browser, tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("TW2K_VIDEO_CUSTOM", "1")
     monkeypatch.setenv("TW2K_VIDEO_CUSTOM_CACHE", str(tmp_path / "custom"))
+    cache_before = _cache_names()
     clip = CLIP.read_bytes()
     gate = Gate()
     with CuHost(tmp_path, TOK + "-end") as host:
@@ -209,19 +225,20 @@ def test_custom_clip_plays_out_and_a_failed_fetch_stays_one_row(browser, tmp_pat
                   TW2KMedia._prime({ lastSeq: pack.seq - 1, visit_sector: 19, docked_in_visit: false });
                   TW2KMedia.onEvents([pack.ev], pack.obs);
                 }""",
-                {"seq": seq, "ev": {**CIT, "seq": seq, "facts": {"planet_id": 1, "from": level - 1, "to": level}}, "obs": OBS},
+                {"seq": seq, "ev": {**GEN, "seq": seq, "facts": {"planet_id": level, "class": "M", "name": f"Eden{level}", "is_first": True}}, "obs": OBS},
             )
-            live.wait_for_function("() => window.TW2KMedia._state().playing === 'planet.citadel'", timeout=10_000)
+            live.wait_for_function("() => window.TW2KMedia._state().playing === 'planet.genesis'", timeout=10_000)
             universe.emit(
-                EventKind.CITADEL_COMPLETE, actor_id="P2", sector_id=me.sector_id,
-                payload={"planet_id": 1, "from": level - 1, "to": level}, summary="citadel",
+                EventKind.GENESIS_DEPLOYED, actor_id="P2", sector_id=me.sector_id,
+                payload={"planet_id": level, "class": "M", "name": f"Eden{level}", "is_first": True},
+                summary="genesis",
             )
             assert gate.started.wait(5)
             gate.release.set()
             feed = {}
             for _ in range(50):
                 feed = queue.feed_for("P2")
-                ready = [n for n in feed["ready"] if n.get("placeholder") == "planet.citadel" and n.get("swap")]
+                ready = [n for n in feed["ready"] if n.get("placeholder") == "planet.genesis" and n.get("swap")]
                 if len(ready) >= level:
                     break
                 live.wait_for_timeout(100)
@@ -265,9 +282,9 @@ def test_custom_clip_plays_out_and_a_failed_fetch_stays_one_row(browser, tmp_pat
               TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
               TW2KMedia.onEvents([pack.ev], pack.obs);
             }""",
-            {"ev": {**CIT, "seq": 910}, "obs": OBS},
+            {"ev": {**GEN, "seq": 910}, "obs": OBS},
         )
-        bad.wait_for_function("() => window.TW2KMedia._state().playing === 'planet.citadel'", timeout=10_000)
+        bad.wait_for_function("() => window.TW2KMedia._state().playing === 'planet.genesis'", timeout=10_000)
         full = queue.feed_for("P2")
         _moments(held[0], {
             "ready": full["ready"][:1], "moments": [],
@@ -280,4 +297,109 @@ def test_custom_clip_plays_out_and_a_failed_fetch_stays_one_row(browser, tmp_pat
         bad.close()
         live.close()
         ctx.close()
-    _repo_cache_is_clean()
+    assert _cache_names() == cache_before
+
+
+DEATH = {
+    "seq": 1,
+    "kind": "ship_destroyed",
+    "actor_id": "P3",
+    "sector_id": 19,
+    "facts": {"victim": "P2"},
+}
+DEATH_HASH = "abc123dead"
+
+
+@pytest.mark.skipif(os.environ.get("TW2K_VIDEO_CUSTOM") == "1", reason="this test owns the flag")
+def test_skip_during_a_death_custom_clip_keeps_the_pod(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("TW2K_VIDEO_CUSTOM", "1")
+    monkeypatch.setenv("TW2K_VIDEO_CUSTOM_CACHE", str(tmp_path / "custom"))
+    cache_before = _cache_names()
+    clip = CLIP.read_bytes()
+    with CuHost(tmp_path, TOK + "-skip") as host, sync_playwright() as pw:
+            launched = []
+            for name in ("chromium", "firefox"):
+                try:
+                    launched.append(getattr(pw, name).launch())
+                except Exception as exc:
+                    pytest.fail(f"{name} did not launch: {exc}")
+            try:
+                for browser in launched:
+                    for action in ("button", "escape", "viewport"):
+                        held: list = []
+                        page = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H})
+                        page.route(
+                            "**/media/custom/**",
+                            lambda route: route.fulfill(status=200, content_type="video/webm", body=clip),
+                        )
+                        page.route("**/media/moments**", _hold_first(held))
+                        page.goto(f"{host.base}/bot?seat=P2&viewport=live&token={TOK}-skip")
+                        page.wait_for_function(
+                            "() => window.TW2KMedia && TW2KMedia._state && TW2KMedia._state().videoCustom === true",
+                            timeout=20_000,
+                        )
+                        for _ in range(50):
+                            if held:
+                                break
+                            page.wait_for_timeout(100)
+                        assert held, action
+                        page.evaluate(
+                            """(pack) => {
+                                TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
+                                TW2KMedia.onEvents([pack.ev], pack.obs);
+                            }""",
+                            {"ev": DEATH, "obs": OBS},
+                        )
+                        page.wait_for_function(
+                            """() => {
+                                const s = TW2KMedia._state();
+                                return s.playing === 'self.ship_destroyed' && s.waiting === 'self.escape_pod';
+                            }""",
+                            timeout=5_000,
+                        )
+                        held[0].fulfill(
+                            status=200,
+                            content_type="application/json",
+                            body=json.dumps({
+                                "ready": [{
+                                    "hash": DEATH_HASH,
+                                    "seq": 1,
+                                    "placeholder": "self.ship_destroyed",
+                                    "swap": True,
+                                    "trust": "auto",
+                                    "approved_by": None,
+                                    "badge": "live-generated",
+                                    "caption": "ship destroyed",
+                                    "status": "ready",
+                                }],
+                                "moments": [],
+                                "next_since": 1,
+                                "pending": False,
+                            }),
+                        )
+                        page.wait_for_function(
+                            "() => String(TW2KMedia._state().playing || '').indexOf('custom:') === 0",
+                            timeout=5_000,
+                        )
+                        if action == "button":
+                            page.get_by_test_id("viewport-skip").click()
+                        elif action == "escape":
+                            page.keyboard.press("Escape")
+                        else:
+                            page.locator("#vpScreen").click(position={"x": 8, "y": 8})
+                        page.wait_for_function(
+                            "() => TW2KMedia._state().playing === 'self.escape_pod'",
+                            timeout=5_000,
+                        )
+                        assert page.locator(f"#mediaMoments li[data-hash='{DEATH_HASH}']").count() == 1
+                        page.get_by_test_id("viewport-skip").click()
+                        page.wait_for_function(
+                            "() => TW2KMedia._state().playing !== 'self.escape_pod'",
+                            timeout=5_000,
+                        )
+                        assert page.locator(f"#mediaMoments li[data-hash='{DEATH_HASH}']").count() == 1
+                        page.close()
+            finally:
+                for browser in launched:
+                    browser.close()
+    assert _cache_names() == cache_before

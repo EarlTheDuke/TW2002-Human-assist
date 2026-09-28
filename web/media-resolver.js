@@ -75,6 +75,10 @@
       let matched = null;
       for (const t of triggers) {
         if (t.custom_only && !(state && state.videoCustom)) continue;
+        // Citadel completion is emitted with no actor, so this self rule never
+        // matches a real event. The owner's clip is listed in Moments and is
+        // not swapped into the cockpit.
+        if (t.clip === "planet.citadel") continue;
         if (t.kind === ev.kind && ruleMatches(t.rule, ev, obs, st)) { matched = t; break; }
       }
       if (!matched) continue;

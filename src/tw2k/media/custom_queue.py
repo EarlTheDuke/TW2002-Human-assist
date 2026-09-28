@@ -390,6 +390,10 @@ class CustomQueue:
 
     def _finish(self, job: sqlite3.Row, data: bytes | None) -> None:
         digest = job["hash"]
+        with self._lock:
+            row = self._conn.execute("SELECT status FROM jobs WHERE id=?", (job["id"],)).fetchone()
+            if row is None or row["status"] != "running":
+                return
         status = "late"
         swap = 0
         if data:
@@ -407,7 +411,10 @@ class CustomQueue:
         }
         (self.cache_dir / f"{digest}.json").write_text(json.dumps(meta), encoding="utf-8")
         with self._lock:
-            self._conn.execute("UPDATE jobs SET status=?, swap=? WHERE id=?", (status, swap, job["id"]))
+            self._conn.execute(
+                "UPDATE jobs SET status=?, swap=? WHERE id=? AND status='running'",
+                (status, swap, job["id"]),
+            )
             self._conn.commit()
 
     def _later_than(self, match_id: str, seat: str, seq: int) -> bool:

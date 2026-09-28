@@ -126,16 +126,41 @@
 
   // User dismiss from the HUD (×, a failed still). Drops the playing clip and
   // anything waiting so the next poll cannot redraw it.
+  function customPlaying() {
+    return typeof state.playing === "string" && state.playing.indexOf("custom:") === 0;
+  }
+
+  // A custom clip that leaves the screen by any path still gets its Moments row.
+  function dropCustom() {
+    if (!customPlaying()) return;
+    const note = state.customNote;
+    const finish = state.customFinish;
+    state.customFinish = null;
+    state.customNote = null;
+    if (finish) finish({ silent: true });
+    keepMoment(note);
+  }
+
   function hide() {
+    dropCustom();
     if (state.playing) bump("skips");
     if (state.session && typeof state.session.stop === "function") state.session.stop();
     clearVisuals();
   }
   // Skip (button, click, Esc). Death ends only the death clip; the chained
-  // escape pod then plays. A later Skip ends the pod. Any other clip clears
-  // the queue, which is what Skip did before.
+  // escape pod then plays. A custom clip that replaced that death clip is the
+  // same: Skip ends the custom clip, keeps its Moments row, and the pod plays.
+  // A later Skip ends the pod. Any other clip clears the queue.
   function skipClip() {
     const waiting = state.session && typeof state.session.state === "function" ? state.session.state().waiting : null;
+    if (customPlaying() && waiting === "self.escape_pod") {
+      bump("skips");
+      const finish = state.customFinish;
+      state.customFinish = null;
+      if (finish) finish();
+      else onClipEnded();
+      return;
+    }
     if (state.playing === "self.ship_destroyed" && waiting === "self.escape_pod") {
       bump("skips");
       onClipEnded();
@@ -338,10 +363,12 @@
     const meta = clipMeta(key);
     if (!meta) return;
     if (viewportMode() === "off" || cuSetting() === "off") {
+      dropCustom();
       if (state.session && typeof state.session.stop === "function") state.session.stop();
       clearVisuals();
       return;
     }
+    dropCustom();
     state.playing = key;
     if (meta.overlay) {
       const layer = document.getElementById("vpClip");
@@ -672,23 +699,37 @@
     vid.muted = true;
     vid.setAttribute("data-custom", note.hash);
     state.playing = "custom:" + note.hash;
+    state.customNote = note;
     layer.hidden = false;
     layer.classList.add("is-live");
     layer.classList.remove("is-still");
     let done = false;
-    const finish = () => {
+    // Short webm blobs often stall on the last frame and never fire `ended`
+    // (currentTime sits ~0.01 short of duration). End on that last frame.
+    // The 5s timer is only a backstop.
+    const finish = (opts) => {
       if (done) return;
       done = true;
+      state.customFinish = null;
       vid.dataset.customEnded = "1";
       vid.dataset.customAt = String(Number(vid.currentTime) || 0);
       vid.dataset.customDur = String(Number(vid.duration) || 0);
       vid.removeEventListener("ended", finish);
+      vid.removeEventListener("timeupdate", onTime);
       clearTimer();
       revokeBlob(vid);
+      if (opts && opts.silent) return;
       keepMoment(note);
+      state.customNote = null;
       onClipEnded();
     };
+    const onTime = () => {
+      const dur = Number(vid.duration);
+      if (Number.isFinite(dur) && dur > 0 && vid.currentTime >= dur - 0.15) finish();
+    };
+    state.customFinish = finish;
     vid.addEventListener("ended", finish);
+    vid.addEventListener("timeupdate", onTime);
     state.hideTimer = setTimeout(finish, 5000);
     vid.play().catch(() => {});
     return true;
