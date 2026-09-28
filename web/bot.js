@@ -1145,8 +1145,18 @@
   function setToast(text, cls) {
     if (!CU) return;
     const t = $("cuToast");
+    t.hidden = false;
     t.textContent = text;
     t.className = `cu-toast ${cls || ""}`;
+  }
+  function clearRefusalToast() {
+    if (!CU) return;
+    const t = $("cuToast");
+    if (!t.classList.contains("bad")) return;
+    t.textContent = "";
+    t.className = "cu-toast";
+    t.hidden = true;
+    state.toastPinned = true;
   }
   function renderCuEvents() {
     if (!CU) return;
@@ -1314,9 +1324,11 @@
   // G6 route macro: one click trades the last port pair for N cycles inside a held slot.
   function openRouteForm() {
     const obs = state.obs || {};
-    const r = P.routeFromTradeLog(obs.trade_log, (obs.sector || {}).id);
+    const r = P.routeFromTradeLog(obs.trade_log, (obs.sector || {}).id, obs.known_ports);
     if (!state.awaiting || state.busy) return cuDenied(`ROUTE not available: ${whyNot("trade")}`);
     if (!r) return cuDenied("ROUTE not available: trade at two ports first (buy something at each)");
+    if (r.reason) return cuDenied(r.reason);
+    clearRefusalToast();
     const f = $("verbForm");
     state.openVerb = "run_route";
     state.openVerbEnvelope = JSON.stringify(legalOf("run_route"));

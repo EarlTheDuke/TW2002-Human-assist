@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 20:41 PT - Fable - route form clears a stale refusal
+- Opening REPEAT ROUTE hides a previous rejection. A pair is suggested only when each known port buys what the other sells. Suite 718 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 20:05 PT - Fable - CU banner countdown stays whole
 - The WAITING line is a phrase plus a separate countdown. A long actor name ellipsizes. The seconds stay fully visible. Suite 717 passed; ruff clean; manifest OK.
 

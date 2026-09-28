@@ -195,18 +195,28 @@
 
   // G6 "Repeat route" prefill from the seat's own trade log: the last two ports
   // it traded at, and what it bought at each. A = where you stand if on the route.
-  function routeFromTradeLog(log, here) {
-    const ports = [];
+  // `ports` is this seat's known_ports only. A route is suggested when A sells
+  // what you buy there and buys what B sells, and B does the reverse.
+  function routeFromTradeLog(log, here, ports) {
+    const seen = [];
     for (const t of [...(log || [])].reverse()) {
-      if (!ports.includes(t.sector_id)) ports.push(t.sector_id);
-      if (ports.length === 2) break;
+      if (!seen.includes(t.sector_id)) seen.push(t.sector_id);
+      if (seen.length === 2) break;
     }
-    if (ports.length < 2) return null;
+    if (seen.length < 2) return null;
     const lastBuy = (sid) => { const t = [...log].reverse().find((x) => x.sector_id === sid && x.side === "buy"); return t ? t.commodity : null; };
-    let [a, b] = [ports[1], ports[0]];
+    let [a, b] = [seen[1], seen[0]];
     if (here === b) [a, b] = [b, a];
     const ba = lastBuy(a), bb = lastBuy(b);
     if (!ba || !bb || ba === bb) return null;
+    const side = (sid, commodity) => {
+      const p = (ports || []).find((x) => Number(x.sector_id) === Number(sid));
+      const st = p && p.stock ? p.stock[commodity] : null;
+      return st ? st.side || "" : "";
+    };
+    const fits = side(a, ba) === "sells_to_player" && side(a, bb) === "buys_from_player"
+      && side(b, bb) === "sells_to_player" && side(b, ba) === "buys_from_player";
+    if (!fits) return { reason: `No route: port ${a} and port ${b} do not buy what the other sells` };
     return { a, b, buy_at_a: ba, buy_at_b: bb };
   }
 
