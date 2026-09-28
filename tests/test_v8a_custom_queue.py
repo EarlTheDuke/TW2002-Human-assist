@@ -417,6 +417,27 @@ def test_a_restart_expires_a_job_left_running(tmp_path) -> None:
         q2.stop()
 
 
+def test_finish_does_not_revive_an_expired_job(tmp_path) -> None:
+    from tw2k.media.custom_queue import CustomQueue
+
+    gate = Gate()
+    q = CustomQueue(tmp_path, gate).start()
+    try:
+        u, _, _ = _universe()
+        _citadel(u, 1)
+        assert gate.started.wait(2)
+        q._conn.execute("UPDATE jobs SET status='expired', swap=0 WHERE status='running'")
+        q._conn.commit()
+        row = q._conn.execute("SELECT * FROM jobs").fetchone()
+        assert row["status"] == "expired"
+        q._finish(row, b"fake-webm")
+        again = q._conn.execute("SELECT status, swap FROM jobs WHERE id=?", (row["id"],)).fetchone()
+        assert again["status"] == "expired" and again["swap"] == 0
+    finally:
+        gate.release.set()
+        q.stop()
+
+
 def test_emit_with_the_queue_stays_close_to_flag_off(tmp_path) -> None:
     from tw2k.media.custom_queue import CustomQueue
 
@@ -536,7 +557,9 @@ process.stdout.write(JSON.stringify({
         capture_output=True, text=True, check=True, timeout=30,
     ).stdout)
     assert got["off"] == []
-    assert got["on"] == ["planet.citadel"]
+    # The citadel self rule is dead: the engine emits no actor, and the client
+    # does not swap that clip into the cockpit. It is listed in Moments.
+    assert got["on"] == []
     assert got["gen"] == ["planet.genesis"]
     assert got["swap"] is True and got["gone"] is False
     assert got["late"] is False

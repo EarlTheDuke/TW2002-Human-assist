@@ -44,6 +44,12 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 16:21 PT - Fable - Skip during a death custom clip keeps the escape pod
+- Skip while a custom death clip is on screen ends only that clip. The escape pod plays, and the clip gets one Moments row. A second Skip ends the pod. The Skip button, Escape, and a viewport click all do this.
+- A job the deadline already marked expired is not revived when the provider returns. A short webm that stalls on the last frame and never fires `ended` ends on that frame; the 5 s timer stays a backstop. The moments poll ignores a tick that is already in flight. The repo cache check compares the folder before and after, so a stray file does not fail the suite.
+- Citadel completion is emitted with no actor, so the client self rule never matches. The owner's clip is listed in Moments and is not swapped into the cockpit. The resolver skips that trigger.
+- Suite 774 passed; ruff clean; manifest OK. Flag-on cockpit and bot browser rerun 150 passed.
+
 ### 2026-09-28 14:59 PT - Fable - custom clips play out, and citadel stays off the engine
 - A custom clip runs until it ends, then lands in Moments, and its blob URL is revoked. A failed fetch still leaves one row. A job left running is expired on restart so the feed cannot stick. Citadel completion is emitted with no actor again; the queue finds the planet owner itself. Suite 772 passed; ruff clean; manifest OK. Flag-on cockpit and bot browser rerun 150 passed.
 
