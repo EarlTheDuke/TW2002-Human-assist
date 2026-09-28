@@ -332,7 +332,7 @@
     }
     if (showViewport(meta, row)) {
       bump("plays");
-      if (viewportMode() === "live" && !meta.webm && !meta.mp4) bump("poster-fallbacks");
+      if (viewportMode() === "live" && !meta.webm && !meta.mp4) bump("stills");
       return;
     }
     playEntry({ still: meta.still, caption: sectorCaption(meta, row) }, key);
@@ -466,7 +466,7 @@
   if (CU) document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") hide(); });
 
   const COUNTER_KEY = "tw2k.media.counters";
-  const COUNTER_NAMES = ["plays", "skips", "preemptions", "stale-drops", "poster-fallbacks"];
+  const COUNTER_NAMES = ["plays", "skips", "preemptions", "stale-drops", "poster-fallbacks", "stills"];
   const MEMORY_CAP = 12 * 1024 * 1024;
   const PILOT_CAP = 3500000;
   const FIRST_LOAD_CAP = 150 * 1024;

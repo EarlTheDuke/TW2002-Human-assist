@@ -17,6 +17,7 @@
         "muted": { "const": true },
         "max_queue": { "type": "integer", "minimum": 0, "maximum": 2 },
         "stale_ms": { "type": "integer", "minimum": 0, "maximum": 60000 },
+        "stardock_sector": { "type": "integer", "minimum": 1 },
         "crossfade_ms": { "type": "integer", "minimum": 0, "maximum": 1000 }
       }
     },

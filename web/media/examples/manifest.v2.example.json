@@ -6,7 +6,8 @@
     "muted": true,
     "max_queue": 1,
     "stale_ms": 4000,
-    "crossfade_ms": 150
+    "crossfade_ms": 150,
+    "stardock_sector": 1
   },
   "ambient": {
     "deep_space": {

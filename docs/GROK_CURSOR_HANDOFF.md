@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 03:20 PT - Fable - death then the escape pod stay in order
+- Incoming fire no longer skips the death clip, and a later action from this seat no longer drops the queued pod. StarDock's sector comes from the manifest. Designed stills count on their own. Suite 737 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 02:26 PT - Fable - placeholder triggers for later viewport moments
 - StarDock, planets, weapons, mines, death and the escape pod, hail, and game over each resolve to a still. Death keeps the pod ahead of anything less urgent. Preload fetches clip video only in Live, posters only when the viewport is not Off, and drops the blobs after the fetch. Suite 733 passed; ruff clean; manifest OK.
 
