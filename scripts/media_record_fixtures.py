@@ -153,9 +153,9 @@ def main(argv: list[str] | None = None) -> int:
     for name, mine, theirs, exp, note in (
         ("self_attack_win", 3000, 40, [clip("combat.hit", 1)],
          "outcome_hit: the defender lost more. Until the V2 `outcome` fact lands, unknown outcome also maps to combat.hit."),
-        ("self_attack_lose", 30, 3000, [clip("combat.miss", 1)],
-         "Needs the V2 `outcome`/losses fact to tell miss from hit (pre-V2 fallback: combat.hit). If the viewer's ship is "
-         "destroyed, ship_destroyed(victim=self) is the V7 key self.ship_destroyed (P0), not part of the V2 set."),
+        ("self_attack_lose", 30, 3000,
+         [clip("self.ship_destroyed", 0), clip("self.escape_pod", 0), clip("combat.miss", 1)],
+         "The viewer dies. ship_destroyed chains self.escape_pod, and a lower priority cannot replace that wait. combat.miss stays behind the pair."),
     ):
         u = _universe()
         arena = _deep(u)[3]
@@ -183,7 +183,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         K.FERRENGI_MOVE_PROB = saved
     _write("ferrengi_attack", "A Ferrengi attacks the viewer.", u, m, {"visit_sector": lair, "docked_in_visit": False},
-           [clip("combat.incoming", 0)], "ferrengi_attack + the combat row (defender=self) coalesce into one P0 combat.incoming.")
+           [clip("combat.incoming", 0), clip("self.ship_destroyed", 0), clip("self.escape_pod", 0)],
+           "Incoming fire, then the viewer's death, then the escape pod. The pod stays queued ahead of any lower priority.")
 
     # 8. witnessed combat in the viewer's sector
     u = _universe()
@@ -220,6 +221,133 @@ def main(argv: list[str] | None = None) -> int:
     _write("other_trade_in_sector", "A rival trades at the port the viewer is at.", u, m,
            {"visit_sector": port, "docked_in_visit": False}, [],
            "Not self: no dock clip for someone else's trade.")
+
+    # 11. warp into StarDock (sector 1). Trading there emits nothing, so arrival is the dock.
+    u = _universe()
+    origin = u.sectors[1].warps[0]
+    _move(u, "P1", origin)
+    m = len(u.events)
+    _act(u, "P1", ActionKind.WARP, target=1)
+    _write("dock_stardock", "Viewer warps into StarDock.", u, m,
+           {"visit_sector": origin, "docked_in_visit": False}, [clip("dock.stardock", 2)])
+
+    # 12-13. own purchase at StarDock, and a rival's purchase the viewer must not see
+    def cheap_ship() -> str:
+        for key, spec in K.SHIP_SPECS.items():
+            if spec.get("corp_only") or spec.get("unique") or spec.get("min_alignment", 0) > 0:
+                continue
+            if key != "merchant_cruiser" and spec["cost"] <= 100_000:
+                return key
+        raise AssertionError("no ship")
+
+    u = _universe()
+    _move(u, "P1", 1)
+    m = len(u.events)
+    _act(u, "P1", ActionKind.BUY_SHIP, ship_class=cheap_ship())
+    _write("buy_ship", "Viewer buys a ship at StarDock.", u, m,
+           {"visit_sector": 1, "docked_in_visit": False}, [clip("stardock.buy_ship", 2)])
+    m = len(u.events)
+    _act(u, "P1", ActionKind.BUY_EQUIP, item="fighters", qty=1)
+    _write("buy_equip", "Viewer buys fighters at StarDock.", u, m,
+           {"visit_sector": 1, "docked_in_visit": False}, [clip("stardock.buy_equip", 2)])
+
+    u = _universe()
+    _move(u, "P1", start)
+    _move(u, "P2", 1)
+    u.players["P2"].credits = 500_000
+    m = len(u.events)
+    _act(u, "P2", ActionKind.BUY_SHIP, ship_class=cheap_ship())
+    _write("other_buy_ship", "A rival buys a ship. The viewer is elsewhere.", u, m,
+           {"visit_sector": start, "docked_in_visit": False}, [],
+           "buy_ship is actor-only, so another seat's purchase is not in this batch.")
+
+    # 14-15. photon fired by the viewer, and a photon that hits the viewer
+    u = _universe()
+    arena = _deep(u)[4]
+    for pid in ("P1", "P2"):
+        _move(u, pid, arena)
+    u.players["P1"].ship.photon_missiles = 1
+    m = len(u.events)
+    _act(u, "P1", ActionKind.PHOTON_MISSILE, target="P2")
+    _write("photon_fired", "Viewer fires a photon missile.", u, m,
+           {"visit_sector": arena, "docked_in_visit": False}, [clip("weapon.photon_fired", 2)],
+           "The hit row is not self_target, so only the firing clip plays.")
+
+    u = _universe()
+    for pid in ("P1", "P2"):
+        _move(u, pid, arena)
+    u.players["P2"].ship.photon_missiles = 1
+    m = len(u.events)
+    _act(u, "P2", ActionKind.PHOTON_MISSILE, target="P1")
+    _write("photon_hit", "A rival's photon hits the viewer.", u, m,
+           {"visit_sector": arena, "docked_in_visit": False}, [clip("weapon.photon_hit", 0)],
+           "photon_fired is actor-only, so the viewer sees the hit, not the launch.")
+
+    # 16. armid mine hits the viewer on arrival
+    u = _universe()
+    src = _deep(u)[0]
+    dest = next(s for s in u.sectors[src].warps if s not in K.FEDSPACE_SECTORS)
+    _move(u, "P2", dest)
+    u.players["P2"].ship.mines[MineType.ARMID] = 3
+    _act(u, "P2", ActionKind.DEPLOY_MINES, kind="armid", qty=1)
+    _move(u, "P1", src)
+    u.players["P1"].ship.shields = 500
+    m = len(u.events)
+    _act(u, "P1", ActionKind.WARP, target=dest)
+    _write("mine_detonated", "Viewer warps onto a rival's armid mine.", u, m,
+           {"visit_sector": src, "docked_in_visit": False},
+           [clip("hazard.mine_detonated", 0), clip("warp.out", 2)])
+
+    # 17-19. land, liftoff, genesis
+    from tw2k.engine.models import Planet, PlanetClass
+
+    def plant(u, sid: int) -> int:
+        pid = max(u.planets) + 1 if u.planets else 1
+        u.planets[pid] = Planet(id=pid, sector_id=sid, name="Haven", class_id=PlanetClass.M)
+        u.sectors[sid].planet_ids.append(pid)
+        return pid
+
+    u = _universe()
+    ground = _deep(u)[6]
+    planet_id = plant(u, ground)
+    _move(u, "P1", ground)
+    m = len(u.events)
+    _act(u, "P1", ActionKind.LAND_PLANET, planet_id=planet_id)
+    _write("planet_land", "Viewer lands on a neutral planet.", u, m,
+           {"visit_sector": ground, "docked_in_visit": False}, [clip("planet.land", 2)])
+    m = len(u.events)
+    _act(u, "P1", ActionKind.LIFTOFF)
+    _write("planet_liftoff", "Viewer lifts off.", u, m,
+           {"visit_sector": ground, "docked_in_visit": False}, [clip("planet.liftoff", 2)])
+
+    u = _universe()
+    far = next(s for s in _deep(u) if len(_bfs_path(u, 1, s)) >= 3)
+    _move(u, "P1", far)
+    u.players["P1"].ship.genesis = 1
+    m = len(u.events)
+    _act(u, "P1", ActionKind.DEPLOY_GENESIS)
+    _write("planet_genesis", "Viewer deploys a Genesis torpedo.", u, m,
+           {"visit_sector": far, "docked_in_visit": False}, [clip("planet.genesis", 2)])
+
+    # 20. hail is an overlay for either party; a bystander does not see it
+    u = _universe()
+    _move(u, "P1", start)
+    m = len(u.events)
+    _act(u, "P1", ActionKind.HAIL, target="P2", message="hold fire")
+    _write("hail", "Viewer hails another seat.", u, m,
+           {"visit_sector": start, "docked_in_visit": False}, [clip("comms.hail", 3)])
+
+    # 21. match end is public, and this seat still gets the clip
+    from tw2k.engine.victory import check_victory
+
+    u = _universe()
+    _move(u, "P1", start)
+    u.players["P2"].alive = False
+    u.players["P3"].alive = False
+    m = len(u.events)
+    check_victory(u)
+    _write("game_over", "The match ends by elimination.", u, m,
+           {"visit_sector": start, "docked_in_visit": False}, [clip("match.game_over", 2)])
     return 0
 
 

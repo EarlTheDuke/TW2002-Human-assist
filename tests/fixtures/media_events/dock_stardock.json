@@ -1,0 +1,49 @@
+{
+  "name": "dock_stardock",
+  "description": "Viewer warps into StarDock.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 25,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 1,
+      "is_fedspace": true,
+      "port": {
+        "code": "STARDOCK",
+        "class_id": 8
+      }
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "warp",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 1,
+      "summary": "Commander warped 25 \u2192 1",
+      "facts": {
+        "from": 25,
+        "to": 1
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "dock.stardock",
+      "priority": 2
+    }
+  ],
+  "notes": ""
+}

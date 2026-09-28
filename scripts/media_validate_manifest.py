@@ -32,9 +32,12 @@ sys.path.insert(0, str(ROOT / "src"))
 # Named predicates the V2 resolver implements (phase plan section 4.1 / 4.2). No eval.
 PREDICATES = frozenset({
     "self", "self_attacker", "self_defender", "self_victim", "first_in_visit", "outcome_hit", "witnessed_in_my_sector",
+    "at_stardock", "self_target", "hail_party", "match_end",
 })
 # A trigger on a public-only kind must require one of these (the event happened at the seat's own ship).
-LOCAL_PREDICATES = frozenset({"self", "self_attacker", "self_defender", "self_victim", "witnessed_in_my_sector"})
+LOCAL_PREDICATES = frozenset({
+    "self", "self_attacker", "self_defender", "self_victim", "witnessed_in_my_sector", "match_end",
+})
 RULE_RE = re.compile(r"^!?[a-z_]+( && !?[a-z_]+)*$")
 EVENT_CLIP_MAX_BYTES = 600_000   # hard cap per event clip file (budget section 6)
 AMBIENT_MAX_BYTES = 900_000
@@ -112,7 +115,10 @@ def _selected_budgets(data: dict[str, Any], media_root: Path) -> tuple[int, int]
             continue
         webm = _file_size(media_root, variant.get("webm"))
         mp4 = _file_size(media_root, variant.get("mp4"))
-        poster = _file_size(media_root, variant.get("poster"))
+        # Shared library stills are the fallback image, not a downloaded clip.
+        # Counting one PNG again for every placeholder key would blow the pilot budget.
+        poster_rel = str(variant.get("poster") or "").replace("\\", "/")
+        poster = 0 if poster_rel.startswith("stills/") else _file_size(media_root, variant.get("poster"))
         one += (webm or mp4) + poster
         all_formats += webm + mp4 + poster
     return one, all_formats
@@ -181,6 +187,8 @@ def validate(data: dict[str, Any], media_root: Path = MEDIA, *, probe: bool = Fa
             errors.append(f"{where}: coalesce {t['coalesce']!r} is not an EventKind")
         if t.get("clip") not in clips:
             errors.append(f"{where}: clip key {t.get('clip')!r} is not defined in clips")
+        if t.get("chain") and t["chain"] not in clips:
+            errors.append(f"{where}: chain {t['chain']!r} is not defined in clips")
         positive = {p for p in rule.split(" && ") if p and not p.startswith("!")}
         if t.get("kind") in public and not (positive & LOCAL_PREDICATES):
             errors.append(f"{where}: {t['kind']!r} is public (seen galaxy-wide); a first-person clip needs one of "

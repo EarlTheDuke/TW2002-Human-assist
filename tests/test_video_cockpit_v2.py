@@ -108,6 +108,29 @@ def test_queue_preempts_waits_drops_stale_and_respects_cooldown_and_hidden() -> 
     assert got["replayed"]["started"] is True and got["replayed"]["playing"] == "combat.witnessed"
 
 
+@pytest.mark.skipif(NODE is None, reason="node not installed")
+def test_death_then_pod_is_not_replaced_by_a_lower_priority() -> None:
+    script = (
+        f"const R = require({json.dumps(str(ROOT / 'web' / 'media-resolver.js'))});"
+        "const s = R.createSession({defaults:{stale_ms:8000}, clips:{"
+        "'self.ship_destroyed':{priority:0}, 'self.escape_pod':{priority:0},"
+        "'dock.port':{priority:2}, 'combat.hit':{priority:1}}});"
+        "const started = s.consider(["
+        "{clip_key:'self.ship_destroyed', priority:0, seq:1},"
+        "{clip_key:'self.escape_pod', priority:0, seq:1, chain:true}"
+        "], 0);"
+        "const dock = s.consider([{clip_key:'dock.port', priority:2, seq:2}], 100);"
+        "const hit = s.consider([{clip_key:'combat.hit', priority:1, seq:3}], 200);"
+        "const next = s.finish(3000);"
+        "process.stdout.write(JSON.stringify({started, dock, hit, next: next && next.clip_key}));"
+    )
+    got = json.loads(subprocess.run([NODE, "-e", script], capture_output=True, text=True, check=True, timeout=30).stdout)
+    assert got["started"]["playing"] == "self.ship_destroyed" and got["started"]["waiting"] == "self.escape_pod"
+    assert got["dock"]["waiting"] == "self.escape_pod" and got["dock"]["playing"] == "self.ship_destroyed"
+    assert got["hit"]["waiting"] == "self.escape_pod"
+    assert got["next"] == "self.escape_pod"
+
+
 def test_ship_combat_outcome_and_own_death_are_in_the_fixtures() -> None:
     lose = json.loads((FIXTURES / "self_attack_lose.json").read_text(encoding="utf-8"))
     win = json.loads((FIXTURES / "self_attack_win.json").read_text(encoding="utf-8"))
@@ -356,3 +379,25 @@ def test_exchange_outcome_hit_miss_destroyed_and_ferrengi_path() -> None:
     assert payload["outcome"] == expect["outcome"]
     assert payload["attacker_losses"] == expect["attacker_losses"]
     assert payload["defender_losses"] == expect["defender_losses"]
+
+
+def test_hail_plays_in_the_hud_not_the_viewport(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    with CuHost(tmp_path, TOK, turns_per_day=500) as host:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{host.base}/bot?seat=P2&viewport=live&token={TOK}")
+        page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
+        page.evaluate("""() => {
+            TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
+            TW2KMedia.onEvents([{
+                seq: 1, kind: "hail", actor_id: "P2", sector_id: 19, summary: "hail",
+                facts: { target: "P3", message: "hold fire" }
+            }], { self_id: "P2", sector: { id: 19 } });
+        }""")
+        page.wait_for_function("""() => {
+            const hud = document.getElementById("mediaHud");
+            const clip = document.getElementById("vpClip");
+            const still = document.getElementById("mediaHudStill");
+            return hud && hud.hidden === false && (!clip || clip.hidden) && still && still.src.includes("comms_hail");
+        }""", timeout=5_000)
+        page.close()

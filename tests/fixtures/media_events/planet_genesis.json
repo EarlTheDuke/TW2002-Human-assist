@@ -1,0 +1,47 @@
+{
+  "name": "planet_genesis",
+  "description": "Viewer deploys a Genesis torpedo.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 11,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 11,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "genesis_deployed",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 11,
+      "summary": "Commander detonated a Genesis torpedo \u2014 new U-class planet Eden 11-1 forms in 11",
+      "facts": {
+        "planet_id": 1,
+        "class": "U",
+        "name": "Eden 11-1"
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "planet.genesis",
+      "priority": 2
+    }
+  ],
+  "notes": ""
+}

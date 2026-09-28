@@ -1,0 +1,46 @@
+{
+  "name": "game_over",
+  "description": "The match ends by elimination.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 11,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 0,
+    "sector": {
+      "id": 11,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 0,
+      "kind": "game_over",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": null,
+      "summary": "GAME OVER \u2014 Commander is the last player standing",
+      "facts": {
+        "reason": "elimination",
+        "net_worth": 121650
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "match.game_over",
+      "priority": 2
+    }
+  ],
+  "notes": ""
+}

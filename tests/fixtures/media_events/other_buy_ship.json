@@ -1,0 +1,26 @@
+{
+  "name": "other_buy_ship",
+  "description": "A rival buys a ship. The viewer is elsewhere.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 11,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 11,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [],
+  "expected": [],
+  "notes": "buy_ship is actor-only, so another seat's purchase is not in this batch."
+}

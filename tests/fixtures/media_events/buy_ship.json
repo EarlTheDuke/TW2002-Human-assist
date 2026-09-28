@@ -1,0 +1,49 @@
+{
+  "name": "buy_ship",
+  "description": "Viewer buys a ship at StarDock.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 1,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 1,
+      "is_fedspace": true,
+      "port": {
+        "code": "STARDOCK",
+        "class_id": 8
+      }
+    },
+    "ship": {
+      "class": "scout_marauder"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "buy_ship",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 1,
+      "summary": "Commander bought a Scout Marauder (64675 cr)",
+      "facts": {
+        "ship_class": "scout_marauder",
+        "net_cost": 64675
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "stardock.buy_ship",
+      "priority": 2
+    }
+  ],
+  "notes": ""
+}

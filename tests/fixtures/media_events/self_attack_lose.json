@@ -66,9 +66,17 @@
   ],
   "expected": [
     {
+      "clip_key": "self.ship_destroyed",
+      "priority": 0
+    },
+    {
+      "clip_key": "self.escape_pod",
+      "priority": 0
+    },
+    {
       "clip_key": "combat.miss",
       "priority": 1
     }
   ],
-  "notes": "Needs the V2 `outcome`/losses fact to tell miss from hit (pre-V2 fallback: combat.hit). If the viewer's ship is destroyed, ship_destroyed(victim=self) is the V7 key self.ship_destroyed (P0), not part of the V2 set."
+  "notes": "The viewer dies. ship_destroyed chains self.escape_pod, and a lower priority cannot replace that wait. combat.miss stays behind the pair."
 }

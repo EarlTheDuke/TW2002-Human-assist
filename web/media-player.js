@@ -182,6 +182,7 @@
       webm: variant.webm || "", mp4: variant.mp4 || "",
       duration: variant.duration_ms || fallback,
       bakedFrame: !!variant.baked_frame,
+      overlay: !!c.overlay,
     };
   }
 
@@ -321,6 +322,14 @@
       return;
     }
     state.playing = key;
+    if (meta.overlay) {
+      const layer = document.getElementById("vpClip");
+      if (layer) layer.hidden = true;
+      playEntry({ still: meta.still, caption: sectorCaption(meta, row) }, key);
+      arm(meta.duration);
+      bump("plays");
+      return;
+    }
     if (showViewport(meta, row)) {
       bump("plays");
       if (viewportMode() === "live" && !meta.webm && !meta.mp4) bump("poster-fallbacks");
@@ -463,7 +472,7 @@
   const FIRST_LOAD_CAP = 150 * 1024;
   const preload = {
     skipped: "", bytes: 0, clipBytes: 0, beforeInteractive: 0,
-    done: false, urls: 0, capped: false, kept: [],
+    done: false, urls: 0, capped: false,
   };
 
   function memoryCap() {
@@ -493,7 +502,8 @@
     const out = [];
     for (const clip of Object.values(clips)) {
       if (typeof clip.priority !== "number" || clip.priority > 2) continue;
-      const poster = clip.fallback_still || (clip.variants && clip.variants[0] && clip.variants[0].poster);
+      const variant = pickVariant(clip.variants);
+      const poster = (variant.poster && String(variant.poster).endsWith(".webp")) ? variant.poster : "";
       if (!poster || seen.has(poster)) continue;
       seen.add(poster);
       out.push(BASE + poster);
@@ -545,12 +555,6 @@
       preload.bytes += blob.size;
       if (clip) preload.clipBytes += blob.size;
       if (document.readyState === "loading") preload.beforeInteractive += blob.size;
-      const blobUrl = URL.createObjectURL(blob);
-      preload.kept.push(blobUrl);
-      if (!clip) {
-        const img = new Image();
-        img.src = blobUrl;
-      }
       return true;
     } catch (_) {
       return true;
@@ -559,8 +563,15 @@
   async function preloadPosters() {
     const reason = preloadSkipReason();
     if (reason) { preload.skipped = reason; preload.done = true; renderCounters(); return; }
-    const posters = posterUrls();
-    const clips = selectedClipUrls();
+    const mode = viewportMode();
+    const posters = mode === "off" ? [] : posterUrls();
+    const clips = mode === "live" ? selectedClipUrls() : [];
+    if (!posters.length && !clips.length) {
+      preload.skipped = mode === "off" ? "off" : "";
+      preload.done = true;
+      renderCounters();
+      return;
+    }
     preload.urls = posters.length + clips.length;
     for (const url of posters) {
       if (!(await keepBlob(url, false))) break;

@@ -35,6 +35,10 @@
     if (name === "first_in_visit") return state.visit_sector === ev.sector_id && !state.docked_in_visit;
     if (name === "outcome_hit") return outcomeHit(facts);
     if (name === "witnessed_in_my_sector") return ev.actor_id !== self && ev.sector_id === here;
+    if (name === "at_stardock") return Number(ev.sector_id) === 1;
+    if (name === "self_target") return facts.target === self;
+    if (name === "hail_party") return ev.actor_id === self || facts.target === self;
+    if (name === "match_end") return ev.kind === "game_over" && !!self;
     return false;
   }
 
@@ -70,7 +74,14 @@
         clip_key: matched.clip, priority: pri, seq: ev.seq || 0, sector_id: ev.sector_id,
         group: matched.clip.indexOf("combat.") === 0 ? "combat" : (matched.coalesce === "warp" || matched.clip === "warp.out" ? "warp" : matched.clip),
       });
-      if (matched.clip === "dock.port") st.docked_in_visit = true;
+      if (matched.clip === "dock.port" || matched.clip === "dock.stardock") st.docked_in_visit = true;
+      if (matched.chain && clips[matched.chain]) {
+        const chainPri = typeof clips[matched.chain].priority === "number" ? clips[matched.chain].priority : pri;
+        hits.push({
+          clip_key: matched.chain, priority: chainPri, seq: ev.seq || 0, sector_id: ev.sector_id,
+          group: matched.chain, chain: true,
+        });
+      }
     }
     const grouped = new Map();
     for (const h of hits) {
@@ -82,7 +93,9 @@
     if (state) { state.visit_sector = st.visit_sector; state.docked_in_visit = st.docked_in_visit; }
     return [...grouped.values()]
       .sort((a, b) => a.priority - b.priority || a.seq - b.seq)
-      .map((h) => ({ clip_key: h.clip_key, priority: h.priority, seq: h.seq, sector_id: h.sector_id }));
+      .map((h) => ({
+        clip_key: h.clip_key, priority: h.priority, seq: h.seq, sector_id: h.sector_id, chain: !!h.chain,
+      }));
   }
 
   function createSession(manifest) {
@@ -116,11 +129,19 @@
       if (opts.hidden) return { playing: null, waiting: null, preempted: false, started: false, item: null, hidden: true, staleDropped };
       for (const raw of items || []) {
         if (!cooldownOk(raw.clip_key, now)) continue;
-        const item = { clip_key: raw.clip_key, priority: raw.priority, seq: raw.seq || 0, sector_id: raw.sector_id, at: now };
+        const item = {
+          clip_key: raw.clip_key, priority: raw.priority, seq: raw.seq || 0,
+          sector_id: raw.sector_id, at: now, chain: !!raw.chain,
+        };
         const record = opts.recordCooldown !== false;
+        const chained = s.waiting && s.waiting.chain && !(item.priority < s.waiting.priority);
         if (!s.playing) { start(item, now, record); startedItem = s.playing; }
-        else if (item.priority < s.playing.priority) { start(item, now, record); s.waiting = null; preempted = true; startedItem = s.playing; }
-        else s.waiting = item;
+        else if (item.priority < s.playing.priority) {
+          start(item, now, record);
+          if (!chained) s.waiting = null;
+          preempted = true;
+          startedItem = s.playing;
+        } else if (!chained) s.waiting = item;
       }
       return {
         playing: s.playing && s.playing.clip_key,

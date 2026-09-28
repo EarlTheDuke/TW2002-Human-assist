@@ -78,10 +78,10 @@ def _selected_ids() -> dict[str, str]:
         chosen = next(v for v in amb["variants"] if (v.get("provenance") or {}).get("approved_by"))
         out["ambient." + key] = chosen["id"]
     for key, clip in LIVE["clips"].items():
-        if key == "combat.witnessed":
+        approved = [v for v in clip["variants"] if (v.get("provenance") or {}).get("approved_by")]
+        if not approved:
             continue
-        chosen = next(v for v in clip["variants"] if (v.get("provenance") or {}).get("approved_by"))
-        out[key] = chosen["id"]
+        out[key] = approved[0]["id"]
     return out
 
 

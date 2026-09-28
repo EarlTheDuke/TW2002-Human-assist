@@ -81,7 +81,15 @@
     {
       "clip_key": "combat.incoming",
       "priority": 0
+    },
+    {
+      "clip_key": "self.ship_destroyed",
+      "priority": 0
+    },
+    {
+      "clip_key": "self.escape_pod",
+      "priority": 0
     }
   ],
-  "notes": "ferrengi_attack + the combat row (defender=self) coalesce into one P0 combat.incoming."
+  "notes": "Incoming fire, then the viewer's death, then the escape pod. The pod stays queued ahead of any lower priority."
 }

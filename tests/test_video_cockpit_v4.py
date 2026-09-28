@@ -364,3 +364,25 @@ def test_hashed_clips_cache_preload_cap_and_live_timing(browser, tmp_path: Path,
         assert small["capped"] is True, small
         assert small["bytes"] <= 1024 and small["clipBytes"] == 0, small
         capped.close()
+
+
+def test_preload_skips_clips_unless_live_and_uses_webp_posters(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    with CuHost(tmp_path, TOK, turns_per_day=500) as host:
+        stills = browser.new_page(viewport={"width": 1440, "height": 900})
+        stills.goto(f"{host.base}/bot?seat=P2&viewport=stills&token={TOK}")
+        stills.wait_for_function("window.TW2KMedia && TW2KMedia.preloadState().done === true", timeout=20_000)
+        pre = stills.evaluate("TW2KMedia.preloadState()")
+        assert pre["clipBytes"] == 0 and pre["bytes"] > 0 and pre["skipped"] == "", pre
+        posters = stills.evaluate("""() => performance.getEntriesByType('resource')
+            .filter((e) => e.name.includes('/static/media/')).map((e) => e.name)""")
+        assert any(name.endswith(".webp") for name in posters), posters
+        assert not any("/stills/" in name and name.endswith(".png") for name in posters), posters
+        stills.close()
+
+        off = browser.new_page(viewport={"width": 1440, "height": 900})
+        off.goto(f"{host.base}/bot?seat=P2&viewport=off&token={TOK}")
+        off.wait_for_function("window.TW2KMedia && TW2KMedia.preloadState().done === true", timeout=20_000)
+        quiet = off.evaluate("TW2KMedia.preloadState()")
+        assert quiet["skipped"] == "off" and quiet["bytes"] == 0 and quiet["clipBytes"] == 0, quiet
+        off.close()
