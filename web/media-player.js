@@ -458,9 +458,18 @@
 
   const COUNTER_KEY = "tw2k.media.counters";
   const COUNTER_NAMES = ["plays", "skips", "preemptions", "stale-drops", "poster-fallbacks"];
-  const PRELOAD_CAP = 12 * 1024 * 1024;
+  const MEMORY_CAP = 12 * 1024 * 1024;
+  const PILOT_CAP = 3500000;
   const FIRST_LOAD_CAP = 150 * 1024;
-  const preload = { skipped: "", bytes: 0, beforeInteractive: 0, done: false, urls: 0 };
+  const preload = {
+    skipped: "", bytes: 0, clipBytes: 0, beforeInteractive: 0,
+    done: false, urls: 0, capped: false, kept: [],
+  };
+
+  function memoryCap() {
+    const n = Number(window.__TW2K_PRELOAD_CAP);
+    return Number.isFinite(n) && n >= 0 ? n : MEMORY_CAP;
+  }
 
   function readCounters() {
     try { return JSON.parse(sessionStorage.getItem(COUNTER_KEY)) || {}; } catch (_) { return {}; }
@@ -491,6 +500,20 @@
     }
     return out;
   }
+  // The take the player will actually play: approved webm, else the stand-in.
+  function selectedClipUrls() {
+    const clips = (state.manifest && state.manifest.clips) || {};
+    const seen = new Set();
+    const out = [];
+    for (const clip of Object.values(clips)) {
+      if (typeof clip.priority !== "number" || clip.priority > 2) continue;
+      const path = pickVariant(clip.variants).webm || "";
+      if (!path || seen.has(path)) continue;
+      seen.add(path);
+      out.push(BASE + path);
+    }
+    return out;
+  }
   function preloadSkipReason() {
     if (CU || viewportMode() === "cu") return "cu";
     if (reduce.matches) return "reduce";
@@ -498,25 +521,54 @@
     if (conn && conn.saveData) return "saveData";
     return "";
   }
+  function overCap(extra, clip) {
+    const cap = memoryCap();
+    if (preload.bytes >= cap || preload.bytes + extra > cap) return true;
+    if (clip && (preload.clipBytes >= PILOT_CAP || preload.clipBytes + extra > PILOT_CAP)) return true;
+    const early = document.readyState === "loading";
+    if (early && (preload.beforeInteractive >= FIRST_LOAD_CAP || preload.beforeInteractive + extra > FIRST_LOAD_CAP)) return true;
+    return false;
+  }
+  async function keepBlob(url, clip) {
+    if (overCap(0, clip)) { preload.capped = true; return false; }
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return true;
+      const len = Number(r.headers.get("content-length"));
+      if (Number.isFinite(len) && len > 0 && overCap(len, clip)) {
+        preload.capped = true;
+        try { if (r.body && r.body.cancel) await r.body.cancel(); } catch (_) {}
+        return false;
+      }
+      const blob = await r.blob();
+      if (overCap(blob.size, clip)) { preload.capped = true; return false; }
+      preload.bytes += blob.size;
+      if (clip) preload.clipBytes += blob.size;
+      if (document.readyState === "loading") preload.beforeInteractive += blob.size;
+      const blobUrl = URL.createObjectURL(blob);
+      preload.kept.push(blobUrl);
+      if (!clip) {
+        const img = new Image();
+        img.src = blobUrl;
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
   async function preloadPosters() {
     const reason = preloadSkipReason();
     if (reason) { preload.skipped = reason; preload.done = true; renderCounters(); return; }
-    const urls = posterUrls();
-    preload.urls = urls.length;
-    for (const url of urls) {
-      if (preload.bytes >= PRELOAD_CAP) break;
-      if (document.readyState === "loading" && preload.beforeInteractive >= FIRST_LOAD_CAP) break;
-      try {
-        const r = await fetch(url);
-        if (!r.ok) continue;
-        const blob = await r.blob();
-        if (preload.bytes + blob.size > PRELOAD_CAP) break;
-        if (document.readyState === "loading" && preload.beforeInteractive + blob.size > FIRST_LOAD_CAP) break;
-        preload.bytes += blob.size;
-        if (document.readyState === "loading") preload.beforeInteractive += blob.size;
-        const img = new Image();
-        img.src = URL.createObjectURL(blob);
-      } catch (_) {}
+    const posters = posterUrls();
+    const clips = selectedClipUrls();
+    preload.urls = posters.length + clips.length;
+    for (const url of posters) {
+      if (!(await keepBlob(url, false))) break;
+    }
+    if (!preload.capped) {
+      for (const url of clips) {
+        if (!(await keepBlob(url, true))) break;
+      }
     }
     preload.done = true;
   }
@@ -534,7 +586,10 @@
     loadManifest, onEvent, onEvents, playEntry, hide, ensureHud, onMode,
     skipClip: hide,
     ready: () => !!state.ready,
-    preloadState: () => ({ skipped: preload.skipped, bytes: preload.bytes, beforeInteractive: preload.beforeInteractive, done: preload.done, urls: preload.urls }),
+    preloadState: () => ({
+      skipped: preload.skipped, bytes: preload.bytes, clipBytes: preload.clipBytes,
+      beforeInteractive: preload.beforeInteractive, done: preload.done, urls: preload.urls, capped: preload.capped,
+    }),
     benchSwap: (n) => {
       if (!R || !state.manifest) return { p95: 999, max: 999, n: 0 };
       const samples = [];

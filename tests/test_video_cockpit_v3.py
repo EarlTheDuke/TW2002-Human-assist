@@ -357,7 +357,12 @@ def test_a_failed_clip_does_not_hide_the_next_one(tmp_path: Path, monkeypatch) -
         page.evaluate("""() => { sessionStorage.removeItem("tw2k.media.counters"); }""")
         _prime(page, trade)
         page.evaluate("""(fx) => { TW2KMedia.onEvents(fx.batch, fx.obs); }""", trade)
-        page.wait_for_timeout(1000)
+        page.wait_for_function("""() => {
+            const raw = sessionStorage.getItem("tw2k.media.counters");
+            const count = raw ? (JSON.parse(raw)["poster-fallbacks"] || 0) : 0;
+            const video = document.querySelector("#vpClip video");
+            return count === 1 && video && video.hidden;
+        }""", timeout=5_000)
         page.evaluate("""() => {
             TW2KMedia.onEvents([{
                 seq: 90, kind: "combat", actor_id: "P1", sector_id: 19, summary: "combat",

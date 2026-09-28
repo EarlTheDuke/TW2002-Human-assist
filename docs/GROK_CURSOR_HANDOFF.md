@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 01:05 PT - Fable - hashed clips preload from cache
+- Idle preload fetches the approved P0–P2 webms after the page is interactive, stops at the 12 MB / 3.5 MB caps, and skips that work when saveData is on. A second load plays those clips with 0 bytes transferred. A missing-port route says there isn't enough port intel. Suite 730 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 00:20 PT - Fable - a failed clip cannot hide the next one
 - Each clip has its own token, so a leftover play error from a missing file does not hide or double-count the clip that replaced it. The approve catalog stays beside the manifest you pass in. Suite 729 passed; ruff clean; manifest OK.
 
