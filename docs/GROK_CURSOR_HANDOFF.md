@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 08:03 PT - Fable - trade names stay whole on the button
+- Quick-trade buttons keep the short name and the credit total, wrapping to another row or a second line instead of shrinking the name away. Plotting the sector you are in says you are already here. A negative or zero target asks for a valid sector. Suite 748 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 06:45 PT - Fable - trade buttons show the list-price total
 - One-click sell and buy buttons include price times quantity. The plot form names the hop count and first sector from warps this seat already has, or says the route is shown after plotting. The mode=cu turn card uses the same remembered port codes as the warp buttons. An SBB port marks organics and equipment, not fuel, and an empty hold marks nothing. STARDOCK on the neighbour buttons stays inside 1440x900, 1280x800, and the one-screen CU page. Suite 746 passed; ruff clean; manifest OK.
 
