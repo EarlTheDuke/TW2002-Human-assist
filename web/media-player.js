@@ -36,6 +36,7 @@
   const state = {
     manifest: null, lastSeq: 0, hideTimer: null, reduced: false, obs: null,
     visit_sector: null, docked_in_visit: false, session: null, playing: null, clipToken: 0,
+    videoCustom: false,
   };
 
   function ensureHud() {
@@ -607,34 +608,63 @@
   }
 
   function showMoment(card) {
-    if (!card) return;
+    if (!card || !card.hash) return;
     let root = document.getElementById("mediaMoments");
-    if (!root) {
-      root = document.createElement("details");
-      root.id = "mediaMoments";
-      root.className = "media-moments";
-      root.setAttribute("data-testid", "media-moments");
-      root.innerHTML = "<summary>Moments</summary><ul></ul>";
-      document.body.appendChild(root);
-    }
+    if (!root) return;
+    const list = root.querySelector("ul");
+    if (list.querySelector(`[data-hash="${card.hash}"]`)) return;
     const li = document.createElement("li");
+    li.setAttribute("data-hash", card.hash);
     li.setAttribute("data-trust", card.trust);
-    li.textContent = card.badge + " " + card.hash;
-    root.querySelector("ul").appendChild(li);
+    li.innerHTML = '<span class="live-badge">live-generated</span><span class="trust-auto">trust: auto</span>';
+    list.appendChild(li);
     root.hidden = false;
+    root.open = true;
+  }
+
+  function setVideoCustom(on) {
+    state.videoCustom = !!on;
+  }
+
+  function canPlayCustom(note) {
+    if (!state.videoCustom || !note || note.swap !== true) return false;
+    if (state.playing !== note.placeholder) return false;
+    if (reduce.matches || viewportMode() !== "live") return false;
+    return true;
+  }
+
+  function playCustomBlob(note, url) {
+    if (!canPlayCustom(note)) {
+      try { URL.revokeObjectURL(url); } catch (e) { /* already gone */ }
+      return false;
+    }
+    const layer = ensureClipLayer();
+    const vid = layer && layer.querySelector("video");
+    if (!vid) {
+      try { URL.revokeObjectURL(url); } catch (e) { /* already gone */ }
+      return false;
+    }
+    vid.src = url;
+    vid.hidden = false;
+    vid.muted = true;
+    vid.setAttribute("data-custom", note.hash);
+    layer.hidden = false;
+    layer.classList.add("is-live");
+    layer.classList.remove("is-still");
+    vid.play().catch(() => {});
+    return true;
   }
 
   function noteCustom(note) {
-    const swap = R && typeof R.considerCustomSwap === "function"
-      ? R.considerCustomSwap(state.playing, note, note && note.latest_own, note && note.latest_hot)
-      : false;
-    if (!swap && R && typeof R.momentCard === "function") showMoment(R.momentCard(note));
+    if (!note || !note.hash) return false;
+    const swap = canPlayCustom(note);
+    if (!swap) showMoment(R && R.momentCard ? R.momentCard(note) : null);
     return swap;
   }
 
   window.TW2KMedia = {
     loadManifest, onEvent, onEvents, playEntry, hide, ensureHud, onMode,
-    skipClip, noteCustom,
+    skipClip, noteCustom, setVideoCustom, canPlayCustom, playCustomBlob,
     ready: () => !!state.ready,
     preloadState: () => ({
       skipped: preload.skipped, bytes: preload.bytes, clipBytes: preload.clipBytes,
@@ -677,6 +707,7 @@
     },
     _state: () => ({
       lastSeq: state.lastSeq, playing: state.playing, visit_sector: state.visit_sector,
+      videoCustom: state.videoCustom,
       playedKeys: state.session && state.session.state ? state.session.state().playedKeys || [] : [],
       waiting: state.session && state.session.state ? state.session.state().waiting || null : null,
       pending: state.pendingEvents ? state.pendingEvents.length : 0,

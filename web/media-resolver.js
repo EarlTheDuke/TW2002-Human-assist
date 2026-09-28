@@ -202,11 +202,9 @@
 
   // Server already refused a swap that landed after a newer own action or a P0/P1 event.
   // The client still refuses unless that placeholder is the clip on screen.
-  function considerCustomSwap(playing, note, latestOwn, latestHot) {
+  function considerCustomSwap(playing, note) {
     if (!note || note.swap !== true) return false;
     if (!playing || playing !== note.placeholder) return false;
-    if (typeof latestOwn === "number" && typeof note.seq === "number" && latestOwn > note.seq) return false;
-    if (typeof latestHot === "number" && typeof note.seq === "number" && latestHot > note.seq) return false;
     return true;
   }
 

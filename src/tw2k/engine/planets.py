@@ -141,6 +141,7 @@ def _complete_citadels(universe: Universe) -> None:
                 planet.shields = max(planet.shields, 250 * planet.citadel_level)
             universe.emit(
                 EventKind.CITADEL_COMPLETE,
+                actor_id=planet.owner_id,
                 sector_id=planet.sector_id,
                 payload={"planet_id": planet.id, "from": old, "to": planet.citadel_level},
                 summary=f"=== Citadel L{planet.citadel_level} on {planet.name} now operational ===",

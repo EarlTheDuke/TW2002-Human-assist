@@ -1561,7 +1561,10 @@
   // ---------------------------------------------------------------- status loop
   function applyStatus(st) {
     noteSuccess();
-    if (st.video_custom === true) armCustomMoments();
+    if (st.video_custom === true && window.TW2KMedia && TW2KMedia.setVideoCustom) {
+      TW2KMedia.setVideoCustom(true);
+      armCustomMoments();
+    }
     if (typeof st.server_time === "number") state.clockSkew = st.server_time - Date.now() / 1000;
     state.matchStatus = st.match_status || "";
     state.day = st.day; state.tick = st.tick;
@@ -1687,16 +1690,32 @@
   // Long-poll loop. Not our turn: block up to 20 s for the turn, and take a
   // peek when the poll returns so panels stay fresh. Our turn: status every 1.5 s.
   let customPoll = 0;
+  let customSince = 0;
+  const customSeen = new Set();
   function armCustomMoments() {
     if (customPoll) return;
     const tick = async () => {
       if (!state.connected) return;
       try {
-        const body = await api(`/${state.seat}/media/moments`);
+        const body = await api(`/${state.seat}/media/moments?since=${customSince}`);
         const media = window.TW2KMedia;
-        if (!media || typeof media.noteCustom !== "function") return;
+        if (!media) return;
+        if (typeof body.next_since === "number") customSince = body.next_since;
         const notes = (body.ready || []).concat(body.moments || []);
-        for (const note of notes) media.noteCustom(note);
+        for (const note of notes) {
+          if (!note || !note.hash || customSeen.has(note.hash)) continue;
+          customSeen.add(note.hash);
+          if (media.canPlayCustom && media.canPlayCustom(note)) {
+            const clip = await fetch(`/harness/v1/${state.seat}/media/custom/${note.hash}`, {
+              credentials: "same-origin", headers: headers(),
+            });
+            if (!clip.ok) { media.noteCustom(note); continue; }
+            const url = URL.createObjectURL(await clip.blob());
+            if (!media.playCustomBlob(note, url)) media.noteCustom(note);
+          } else {
+            media.noteCustom(note);
+          }
+        }
       } catch (e) { /* the reel is optional and must not break the turn loop */ }
     };
     customPoll = setInterval(tick, 3000);
