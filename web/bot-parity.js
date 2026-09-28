@@ -166,7 +166,11 @@
       `ME     ${obs.self_name || "?"} (${obs.self_id || "?"})`,
       `MONEY  ${fmt(obs.credits)} cr · net worth ${fmt(obs.net_worth)}`,
       `SHIP   ${sh.class || "?"} · holds ${fmt(sh.holds)} (${fmt(sh.cargo_free)} free) · cargo ${cargoText(sh)} · fighters ${fmt(sh.fighters)} · shields ${fmt(sh.shields)}`,
-      `HERE   sector ${s.id}${s.is_fedspace ? " (FedSpace)" : ""} · warps ${warps.map((w, i) => (i < 9 ? `[${i + 1}] ${w}` : String(w))).join("  ") || "none"}`,
+      `HERE   sector ${s.id}${s.is_fedspace ? " (FedSpace)" : ""} · warps ${warps.map((w, i) => {
+        const code = typeof c.warpCode === "function" ? c.warpCode(w) : "";
+        const n = code ? `${w} ${code}` : String(w);
+        return i < 9 ? `[${i + 1}] ${n}` : n;
+      }).join("  ") || "none"}`,
       `PORT   ${portText(s.port, sh.cargo)}`,
       `GOAL   ${c.stage && c.stage.stage ? `${stageText(c.stage)} - next: ${c.stage.next_milestone || "-"}` : "-"}${g.short ? ` · short: ${g.short}` : ""}`,
       `LAST   ${c.last || "-"}`,

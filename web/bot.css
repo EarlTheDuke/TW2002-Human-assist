@@ -84,7 +84,7 @@ main.bot-main {
   background: #0b1020; border-radius: 10px; padding: 12px; max-height: 180px; overflow: auto;
 }
 .warps, .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.warps button { min-width: 150px; max-width: 100%; min-height: 68px; background: #182447; font-size: 1.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.warps button { min-width: 150px; max-width: 100%; min-height: 68px; background: #182447; font-size: 1.25rem; white-space: normal; }
 .can-sell-mark { color: var(--go); margin-left: 6px; font-weight: 800; }
 body:not(.mode-cu) #warpBtns { counter-reset: warpkey; }
 body:not(.mode-cu) #warpBtns button:nth-child(-n+9) { counter-increment: warpkey; }
@@ -94,9 +94,11 @@ body:not(.mode-cu) #verbPad button[data-key]::after { content: " (" attr(data-ke
 .actions button.buy { border-color: #6ee7ff; }
 .quick-trades { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .quick-trades:empty { display: none; }
-.quick-trades button { flex: 1 1 140px; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; cursor: pointer; }
+.quick-trades button { display: inline-flex; align-items: center; justify-content: center; flex: 1 1 140px; max-width: 100%; min-width: 0; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; cursor: pointer; overflow: hidden; white-space: nowrap; }
 .quick-trades button.sell { border-color: #3dd68c; }
 .quick-trades button.buy { border-color: #6ee7ff; }
+.quick-trades button .qlabel, .cu-quick button .qlabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.quick-trades button .qnum, .cu-quick button .qnum { flex: none; white-space: nowrap; }
 .log {
   font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; color: var(--muted);
   max-height: 220px; overflow: auto; background: #0b1020; border-radius: 10px; padding: 10px;
@@ -357,7 +359,7 @@ body.mode-cu .cu-col { display: flex; flex-direction: column; gap: 8px; min-heig
 .cu-keys { display: grid; grid-template-columns: max-content 1fr max-content 1fr; gap: 4px 8px; font-size: 0.76rem; color: #d5def5; align-items: center; }
 .cu-keys kbd { font-family: ui-monospace, Consolas, monospace; font-weight: 800; background: #0b1020; border: 1px solid #3a466e; border-radius: 6px; padding: 1px 7px; color: var(--accent); }
 body.mode-cu #cuWarpSlot .warps { gap: 6px; counter-reset: cuwarp; }
-body.mode-cu #cuWarpSlot .warps button { min-width: 108px; max-width: 100%; min-height: 52px; padding: 6px 10px; font-size: 1.05rem; counter-increment: cuwarp; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.mode-cu #cuWarpSlot .warps button { min-width: 108px; max-width: 100%; min-height: 52px; padding: 6px 10px; font-size: 1.05rem; counter-increment: cuwarp; white-space: normal; }
 body.mode-cu #cuWarpSlot .warps button:nth-child(-n+9)::before { content: "[" counter(cuwarp) "] "; color: var(--accent); }
 body.mode-cu #verbPad { gap: 6px; }
 body.mode-cu #verbPad button { min-width: 0; flex: 1 1 92px; min-height: 52px; padding: 4px 8px; font-size: 0.95rem; }
@@ -370,7 +372,7 @@ body.mode-cu #verbReasons { display: none; }
 .cu-row .cu-more-btn { flex: 1 1 0; }
 .cu-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .cu-quick:empty { display: none; }
-.cu-quick button { flex: 1 1 120px; min-height: 40px; padding: 4px 8px; border-radius: 10px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+.cu-quick button { display: inline-flex; align-items: center; justify-content: center; flex: 1 1 120px; max-width: 100%; min-width: 0; min-height: 40px; padding: 4px 8px; border-radius: 10px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; font-size: 0.85rem; cursor: pointer; overflow: hidden; white-space: nowrap; }
 .cu-quick button.buy { border-color: var(--accent); }
 .cu-quick button.sell { border-color: var(--go); }
 .cu-quick button:disabled { opacity: 0.35; cursor: not-allowed; }
