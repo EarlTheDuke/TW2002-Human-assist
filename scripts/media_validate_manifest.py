@@ -39,6 +39,14 @@ RULE_RE = re.compile(r"^!?[a-z_]+( && !?[a-z_]+)*$")
 EVENT_CLIP_MAX_BYTES = 600_000   # hard cap per event clip file (budget section 6)
 AMBIENT_MAX_BYTES = 900_000
 EVENT_CLIP_MAX_MS = 5_000
+# Selected playback set (first approved variant, else variants[0]). Stand-ins and
+# unapproved takes are not added on top of the clip that will actually play.
+ONE_BROWSER_MAX_BYTES = 3_500_000
+ALL_FORMATS_MAX_BYTES = 6_000_000
+REVIEW_CODES = frozenset({
+    "OFF_MODEL", "STYLE_DRIFT", "WRONG_ACTION", "ARTIFACT", "TEXT_OR_LOGO",
+    "FLASH", "LOOP_SEAM", "FOG_RISK", "TOO_BIG", "MODERATION",
+})
 
 
 def _event_kinds() -> tuple[set[str], set[str]]:
@@ -69,6 +77,64 @@ def _media_paths(data: dict[str, Any]) -> list[tuple[str, str, dict | None, str]
                 if v.get(role):
                     out.append((f"clips.{key}.{v.get('id')}.{role}", v[role], v, "clip"))
     return out
+
+
+def _approved(variant: dict) -> bool:
+    who = (variant.get("provenance") or {}).get("approved_by")
+    return isinstance(who, str) and bool(who.strip())
+
+
+def _selected(variants: list) -> dict | None:
+    for variant in variants:
+        if _approved(variant):
+            return variant
+    return variants[0] if variants else None
+
+
+def _file_size(media_root: Path, rel: str | None) -> int:
+    if not rel:
+        return 0
+    f = media_root / rel
+    return f.stat().st_size if f.is_file() else 0
+
+
+def _selected_budgets(data: dict[str, Any], media_root: Path) -> tuple[int, int]:
+    """(one browser, all formats) for the variant each key will actually play."""
+    one = all_formats = 0
+    groups: list[list] = []
+    for amb in (data.get("ambient") or {}).values():
+        groups.append(amb.get("variants") or [])
+    for clip in (data.get("clips") or {}).values():
+        groups.append(clip.get("variants") or [])
+    for variants in groups:
+        variant = _selected(variants)
+        if not variant:
+            continue
+        webm = _file_size(media_root, variant.get("webm"))
+        mp4 = _file_size(media_root, variant.get("mp4"))
+        poster = _file_size(media_root, variant.get("poster"))
+        one += (webm or mp4) + poster
+        all_formats += webm + mp4 + poster
+    return one, all_formats
+
+
+def _review_errors(data: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    rows: list[tuple[str, dict]] = []
+    for key, amb in (data.get("ambient") or {}).items():
+        for variant in amb.get("variants") or []:
+            rows.append((f"ambient.{key}.{variant.get('id')}", variant))
+    for key, clip in (data.get("clips") or {}).items():
+        for variant in clip.get("variants") or []:
+            rows.append((f"clips.{key}.{variant.get('id')}", variant))
+    for where, variant in rows:
+        review = variant.get("review")
+        if not isinstance(review, dict):
+            continue
+        unknown = [c for c in (review.get("codes") or []) if c not in REVIEW_CODES]
+        if unknown:
+            errors.append(f"{where}: unknown review code(s) {unknown}; known: {sorted(REVIEW_CODES)}")
+    return errors
 
 
 def _probe_ms(path: Path) -> int | None:
@@ -143,6 +209,12 @@ def validate(data: dict[str, Any], media_root: Path = MEDIA, *, probe: bool = Fa
                 errors.append(f"{where}: duration_ms {variant['duration_ms']} but ffprobe says {ms}")
             if role == "clip" and ms is not None and ms > EVENT_CLIP_MAX_MS:
                 errors.append(f"{where}: {ms} ms is over the {EVENT_CLIP_MAX_MS} ms event clip cap")
+    errors.extend(_review_errors(data))
+    one, all_formats = _selected_budgets(data, media_root)
+    if one > ONE_BROWSER_MAX_BYTES:
+        errors.append(f"selected set is {one} bytes over the {ONE_BROWSER_MAX_BYTES} one-browser budget")
+    if all_formats > ALL_FORMATS_MAX_BYTES:
+        errors.append(f"selected set is {all_formats} bytes over the {ALL_FORMATS_MAX_BYTES} all-formats budget")
     return errors, {"present": sorted(set(present)), "missing": sorted(set(missing))}
 
 

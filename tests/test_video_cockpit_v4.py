@@ -111,7 +111,7 @@ def test_preload_counters_cu_slot_and_timing(browser, tmp_path: Path, monkeypatc
             return document.getElementById('mediaCounters').textContent;
         }""")
         assert "plays 2" in counters and "skips 1" in counters
-        assert "preemptions 1" in counters and "poster-fallbacks 2" in counters
+        assert "preemptions 1" in counters and "poster-fallbacks 0" in counters
         assert "stale-drops 0" in counters
         page.keyboard.press("h")
         page.wait_for_function("document.querySelector('[data-testid=hold-slot]').getAttribute('aria-pressed') === 'true'", timeout=5_000)

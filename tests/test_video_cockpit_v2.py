@@ -68,7 +68,7 @@ def test_queue_preempts_waits_drops_stale_and_respects_cooldown_and_hidden() -> 
         "const wait=b.consider([dock], 50);"
         "const c=R.createSession(manifest);"
         "c.consider([warp], 0); c.consider([dock], 10);"
-        "const stale=c.consider([], 5000);"
+        "const stale=c.consider([], 9000);"
         "const d=R.createSession(manifest);"
         "d.consider([seen], 0); d.finish(1000);"
         "const cooled=d.consider([{...seen, seq:5}], 2000);"
@@ -289,10 +289,10 @@ def test_live_stills_and_off_change_a_resolved_clip(browser, tmp_path: Path, mon
 
         page.locator("[data-vp-mode=live]").click()
         _prime_trade(page, trade)
-        page.wait_for_selector("[data-testid=viewport-clip].is-still", timeout=5_000)
-        anim = page.evaluate("() => getComputedStyle(document.querySelector('[data-testid=viewport-clip-still]')).animationName")
-        assert anim == "vp-push"
-        assert page.evaluate("() => [...document.querySelectorAll('#vpClip video')].every(v => !v.getAttribute('src'))")
+        page.wait_for_selector("[data-testid=viewport-clip].is-live", timeout=5_000)
+        src = page.locator("#vpClip video source").first.get_attribute("src") or ""
+        assert "dock_port_std_a" in src and src.endswith(".webm")
+        assert page.locator("#vpClip video source").nth(1).get_attribute("type") == "video/mp4"
 
         page.locator("[data-vp-mode=off]").click()
         _prime_trade(page, trade)

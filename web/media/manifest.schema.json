@@ -59,7 +59,7 @@
     "path": {
       "type": "string",
       "description": "Relative to web/media. Hashed names are recommended for clips/posters: <key>_<variant>.<hash8>.<ext>.",
-      "pattern": "^(stills|clips|posters|frames)/[A-Za-z0-9_.-]+\\.(png|jpg|jpeg|webp|webm|mp4|svg)$"
+      "pattern": "^(stills|clips|posters|frames)/(?:[A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+\\.(png|jpg|jpeg|webp|webm|mp4|svg)$"
     },
     "v1entry": {
       "type": "object",
@@ -78,9 +78,27 @@
         "tool": { "type": "string" },
         "shot_id": { "type": "string" },
         "take": { "type": "integer", "minimum": 1 },
-        "approved_by": { "type": "string" },
-        "approved_at": { "type": "string" },
+        "model": { "type": "string" },
+        "tmpl_v": { "type": "string" },
+        "approved_by": { "type": ["string", "null"] },
+        "approved_at": { "type": ["string", "null"] },
+        "hash": { "type": "string", "pattern": "^[a-f0-9]{8,64}$" },
         "prompt_file": { "type": "string" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reviewer": { "type": "string" },
+        "result": { "type": "string" },
+        "notes": { "type": "string" },
+        "codes": {
+          "type": "array",
+          "items": {
+            "enum": ["OFF_MODEL", "STYLE_DRIFT", "WRONG_ACTION", "ARTIFACT", "TEXT_OR_LOGO", "FLASH", "LOOP_SEAM", "FOG_RISK", "TOO_BIG", "MODERATION"]
+          }
+        }
       }
     },
     "tags": {
@@ -107,7 +125,9 @@
         "poster": { "$ref": "#/$defs/path" },
         "duration_ms": { "type": "integer", "minimum": 500, "maximum": 5000 },
         "bytes": { "type": "integer", "minimum": 1 },
-        "provenance": { "$ref": "#/$defs/provenance" }
+        "baked_frame": { "type": "boolean" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "review": { "$ref": "#/$defs/review" }
       }
     },
     "ambientVariant": {
@@ -123,7 +143,9 @@
         "duration_ms": { "type": "integer", "minimum": 1000, "maximum": 30000 },
         "loop": { "type": "boolean" },
         "bytes": { "type": "integer", "minimum": 1 },
-        "provenance": { "$ref": "#/$defs/provenance" }
+        "baked_frame": { "type": "boolean" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "review": { "$ref": "#/$defs/review" }
       }
     },
     "ambient": {

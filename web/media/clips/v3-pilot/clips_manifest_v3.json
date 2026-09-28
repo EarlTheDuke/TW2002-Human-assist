@@ -1,0 +1,573 @@
+{
+  "version": 1,
+  "set": "tw2k-v3-pilot",
+  "base": "clips/v3-pilot/",
+  "generated": "2026-09-27",
+  "delivery": {
+    "size": "960x540",
+    "fps": 24,
+    "webm": "VP9 yuv420p 2-pass, no audio",
+    "mp4": "H.264 High yuv420p 2-pass +faststart, no audio",
+    "poster": "WebP q72 from output frame 0"
+  },
+  "totals": {
+    "webm_bytes": 2529714,
+    "mp4_bytes": 2598729,
+    "poster_bytes": 454420,
+    "one_browser_webm_plus_posters": 2984134,
+    "one_browser_mp4_plus_posters": 3053149,
+    "all_formats": 5582863,
+    "budget": {
+      "one_browser_max": 3500000,
+      "all_formats_max": 6000000
+    }
+  },
+  "clips": [
+    {
+      "key": "ambient.deep_space",
+      "variant": "amb_deep_a",
+      "take": 1,
+      "webm": "amb_deep_a.8b820496.webm",
+      "mp4": "amb_deep_a.8b820496.mp4",
+      "poster": "amb_deep_a.8b820496.webp",
+      "duration_s": 7.5,
+      "loop": true,
+      "bytes": {
+        "webm": 243711,
+        "mp4": 259194,
+        "poster": 29092
+      },
+      "trim": {
+        "source_start_s": 0.0,
+        "source_len_s": 8,
+        "loop_crossfade_s": 0.5
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 8,
+        "prompt": "Locked camera looking out into deep space. Stars drift very slowly with gentle parallax, the nebula gas softly shimmers and breathes. Calm, meditative, nearly static, seamless loop that ends exactly where it began. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "REF-DEEP-WINDOW-v1 (first=last)",
+        "generated_at": "2026-09-27T19:58:18-07:00",
+        "request_id": "9b929ee4-8227-908a-b286-d3ecf26c3a4a",
+        "billed_usd": 0.66,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Calm near-static starfield/nebula drift out the window. Generated with first=last pinned to REF-DEEP-WINDOW-v1; raw first/last SSIM was only 0.92, so a 0.5 s tail-to-head crossfade was applied (7.5 s loop, seam invisible in my check). Very subtle motion; could read as a still at a glance."
+      }
+    },
+    {
+      "key": "ambient.port_near",
+      "variant": "amb_port_a",
+      "take": 1,
+      "webm": "amb_port_a.d4d93dc0.webm",
+      "mp4": "amb_port_a.d4d93dc0.mp4",
+      "poster": "amb_port_a.d4d93dc0.webp",
+      "duration_s": 7.5,
+      "loop": true,
+      "bytes": {
+        "webm": 245812,
+        "mp4": 254266,
+        "poster": 41328
+      },
+      "trim": {
+        "source_start_s": 0.0,
+        "source_len_s": 8,
+        "loop_crossfade_s": 0.5
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 8,
+        "prompt": "Locked camera on the orbital trading port bay. Subtle ambient life: amber bay lights pulse gently, a few distant cargo drones drift slowly, faint haze moves. Calm, nearly static, seamless loop that ends exactly where it began. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "stills/trade_port.png (first=last)",
+        "generated_at": "2026-09-27T19:58:18-07:00",
+        "request_id": "2fd99e3e-c644-9384-86d0-6d976096263d",
+        "billed_usd": 0.66,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Trading-port bay from stills/trade_port.png. Gentle light pulses, drifting haze and small drones. first=last pinned; raw SSIM 0.94, fixed with a 0.5 s crossfade (7.5 s loop)."
+      }
+    },
+    {
+      "key": "dock.port",
+      "variant": "dock_port_std_a",
+      "take": 1,
+      "webm": "dock_port_std_a.8d5213fb.webm",
+      "mp4": "dock_port_std_a.8d5213fb.mp4",
+      "poster": "dock_port_std_a.8d5213fb.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 172177,
+        "mp4": 176643,
+        "poster": 36000
+      },
+      "trim": {
+        "source_start_s": 0,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "Slow steady push-in toward the docking bay of the orbital trading port. Amber guide lights blink in sequence along the bay, heavy mechanical docking clamps swing inward and lock into place, cargo crates stacked on the deck. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "stills/trade_port.png (first frame)",
+        "generated_at": "2026-09-27T19:58:18-07:00",
+        "request_id": "275ec6c5-67fd-980b-999f-1362187e408d",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Slow push-in on the trade_port bay while the clamps shift. Reads as arriving at a port but is quiet; weakest of the dock set for 'docking reads as docking'. Poster is the same image as amb_port_a."
+      }
+    },
+    {
+      "key": "dock.port",
+      "variant": "dock_port_std_b",
+      "take": 1,
+      "webm": "dock_port_std_b.519127b1.webm",
+      "mp4": "dock_port_std_b.519127b1.mp4",
+      "poster": "dock_port_std_b.519127b1.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 173240,
+        "mp4": 175115,
+        "poster": 42936
+      },
+      "trim": {
+        "source_start_s": 1,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "View out of our cockpit window as we glide slowly toward a large dark orbital trading station with amber bay lights. A docking arm extends toward us, a bright amber-lit bay door opens and we drift inside, clamps closing around us. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "stills/trade_port.png (reference)",
+        "generated_at": "2026-09-27T19:58:18-07:00",
+        "request_id": "01d4d362-7f0d-9215-b979-8d865b9351c7",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass (note)",
+        "notes": "Strong read: glide into an amber-lit bay, then a corridor with clamps. Trimmed 1.0-5.0 s. A cockpit window frame and dashboard are baked into the video and may clash with the CSS cockpit overlay. The dashboard displays have tiny glyphs that aren't readable at 560 px."
+      }
+    },
+    {
+      "key": "dock.port",
+      "variant": "dock_port_std_c",
+      "take": 1,
+      "webm": "dock_port_std_c.b3a00291.webm",
+      "mp4": "dock_port_std_c.b3a00291.mp4",
+      "poster": "dock_port_std_c.b3a00291.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 173906,
+        "mp4": 177113,
+        "poster": 40930
+      },
+      "trim": {
+        "source_start_s": 1,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "View out of our cockpit window: a huge ring-shaped orbital trading station rotates slowly ahead against deep space; amber approach beacons light a docking lane and we line up and slide smoothly into a bay. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "stills/trade_port.png (reference)",
+        "generated_at": "2026-09-27T19:58:51-07:00",
+        "request_id": "20b17772-750a-9a2c-a936-b4080a814188",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass (note)",
+        "notes": "Ring station approach, then slide into the bay; reads clearly. Trimmed 1.0-5.0 s. Cockpit frame is baked in (same overlay caveat as dock_b)."
+      }
+    },
+    {
+      "key": "warp.out",
+      "variant": "warp_out_a",
+      "take": 1,
+      "webm": "warp_out_a.51a4577a.webm",
+      "mp4": "warp_out_a.51a4577a.mp4",
+      "poster": "warp_out_a.51a4577a.webp",
+      "duration_s": 4.042,
+      "loop": false,
+      "bytes": {
+        "webm": 175397,
+        "mp4": 186861,
+        "poster": 53184
+      },
+      "trim": {
+        "source_start_s": 0.6,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "The starship accelerates forward into the blue-white warp corridor, light streaks stretch longer and rush past, the ship shrinks toward the bright vanishing point and vanishes in a soft glow. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "stills/move_warp.png (first frame)",
+        "generated_at": "2026-09-27T19:59:11-07:00",
+        "request_id": "becebdba-41fd-9802-b0e7-4628ab12100f",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Exterior shot: the move_warp hull accelerates down the blue-white corridor and shrinks to the vanishing point. On-model with the existing still. Trimmed 0.6-4.6 s. No flashes detected."
+      }
+    },
+    {
+      "key": "warp.out",
+      "variant": "warp_out_b",
+      "take": 2,
+      "webm": "warp_out_b.8aad1b3b.webm",
+      "mp4": "warp_out_b.8aad1b3b.mp4",
+      "poster": "warp_out_b.8aad1b3b.webp",
+      "duration_s": 3.0,
+      "loop": false,
+      "bytes": {
+        "webm": 176898,
+        "mp4": 146770,
+        "poster": 37344
+      },
+      "trim": {
+        "source_start_s": 2,
+        "source_len_s": 3,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "First-person view from our cockpit into deep space. We jump to warp: every star stretches smoothly into long blue-white streaks radiating from the center of the view, forming a bright tunnel of light that rushes past us, then steadies. The small orange star stretches exactly like the other stars. No beams, no lasers, no weapons fire. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "REF-DEEP-WINDOW-v1 (first frame)",
+        "generated_at": "2026-09-27T20:02:02-07:00",
+        "request_id": "d43f8673-7a9a-915a-a6a8-045b7ef5f8fb",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass (weak)",
+        "notes": "Take 2. Take 1 failed (ARTIFACT: the distant star turned into an orange beam, plus a heavy swirl). Take 2 still starts with a thin beam from the star, so I trimmed to 2.0-5.0 s: stars stretch into hyperspace streaks and shift from blue to amber. A faint beam is still visible in the poster frame, which makes it the weakest poster. Retake candidate if Ben dislikes it; this clip has 1 retake left."
+      }
+    },
+    {
+      "key": "warp.out",
+      "variant": "warp_out_c",
+      "take": 1,
+      "webm": "warp_out_c.32af7830.webm",
+      "mp4": "warp_out_c.32af7830.mp4",
+      "poster": "warp_out_c.32af7830.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 169347,
+        "mp4": 179064,
+        "poster": 38672
+      },
+      "trim": {
+        "source_start_s": 0,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "First-person from our cockpit, flying through a swirling blue-white warp tunnel, light streaks rushing past; the tunnel opens and we glide out into a calm starfield. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "stills/move_warp.png (reference)",
+        "generated_at": "2026-09-27T19:59:12-07:00",
+        "request_id": "4df7aa78-8157-919f-b9df-be36ab1502fb",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass (note)",
+        "notes": "First-person inside a swirl tunnel, then out into a calm starfield. Cockpit dashboard with orange analog gauges is baked in; the gauge numerals aren't readable at 560 px. Ends on arrival, so it reads more as a warp transit than a pure departure."
+      }
+    },
+    {
+      "key": "combat.hit",
+      "variant": "combat_hit_a",
+      "take": 1,
+      "webm": "combat_hit_a.88c81a31.webm",
+      "mp4": "combat_hit_a.88c81a31.mp4",
+      "poster": "combat_hit_a.88c81a31.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 172031,
+        "mp4": 162376,
+        "poster": 14578
+      },
+      "trim": {
+        "source_start_s": 1,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "An orange plasma torpedo streaks away from the starship bow toward a distant angular raider ship and strikes it; the raider's shield flares blue, hull plating sparks and small metal fragments drift away. Stylized space combat between vehicles only. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "stills/combat_photon.png (first frame)",
+        "generated_at": "2026-09-27T19:59:44-07:00",
+        "request_id": "049317fb-ef79-9ea7-a2d7-ba7677195bc2",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Plasma torpedo from the combat_photon still hits the raider; blue shield bubble, then sparks and debris. Trimmed 1.0-5.0 s so the hit lands at about 2.1 s. Vehicle-only, no gore."
+      }
+    },
+    {
+      "key": "combat.hit",
+      "variant": "combat_hit_b",
+      "take": 1,
+      "webm": "combat_hit_b.adc9fc0a.webm",
+      "mp4": "combat_hit_b.adc9fc0a.mp4",
+      "poster": "combat_hit_b.adc9fc0a.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 170859,
+        "mp4": 182050,
+        "poster": 24690
+      },
+      "trim": {
+        "source_start_s": 0,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "Orange plasma bolts streak from our position toward the raider ahead and hit it; its shield ripples blue, then a small fiery burst on its hull and pieces of armor plating tumble away. The raider lurches but stays intact. Stylized space combat between vehicles only. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "REF-RAIDER-AHEAD-v1 (first frame)",
+        "generated_at": "2026-09-27T19:59:45-07:00",
+        "request_id": "29d9ad1a-5b6e-9f93-b320-ff5732055ba5",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Bolts hit the REF-RAIDER-AHEAD raider: shield flares, then a fiery hull burst and plating flies off (more destruction than the prompt asked for, but still vehicle-only). Faint cockpit-frame corner slivers from the cropped ref are visible at the top corners."
+      }
+    },
+    {
+      "key": "combat.miss",
+      "variant": "combat_miss_a",
+      "take": 1,
+      "webm": "combat_miss_a.2210c89e.webm",
+      "mp4": "combat_miss_a.2210c89e.mp4",
+      "poster": "combat_miss_a.2210c89e.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 169988,
+        "mp4": 176046,
+        "poster": 24698
+      },
+      "trim": {
+        "source_start_s": 0,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "Orange plasma bolts streak toward the raider ahead, but it banks sharply away and the bolts pass wide into empty space; the raider escapes unharmed into the dark. Stylized space combat between vehicles only. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "REF-RAIDER-AHEAD-v1 (first frame)",
+        "generated_at": "2026-09-27T19:59:45-07:00",
+        "request_id": "88a309c0-4ce4-95c8-8d9f-c7570f07e21b",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass (weak)",
+        "notes": "Orange bolts sweep past and the raider banks away unharmed; reads as a miss. The bolts come in from upper left rather than clearly from our position, and there's an odd orange glow at the star in frame 0."
+      }
+    },
+    {
+      "key": "combat.miss",
+      "variant": "combat_miss_b",
+      "take": 1,
+      "webm": "combat_miss_b.d9588d8d.webm",
+      "mp4": "combat_miss_b.d9588d8d.mp4",
+      "poster": "combat_miss_b.d9588d8d.webp",
+      "duration_s": 3.5,
+      "loop": false,
+      "bytes": {
+        "webm": 146031,
+        "mp4": 159995,
+        "poster": 24576
+      },
+      "trim": {
+        "source_start_s": 0,
+        "source_len_s": 3.5,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "Our orange plasma bolts hit the raider's shield bubble and splash harmlessly off in a gentle ripple of blue light; the raider is undamaged and holds its position, menacing. Stylized space combat between vehicles only. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "REF-RAIDER-AHEAD-v1 (first frame)",
+        "generated_at": "2026-09-27T20:00:05-07:00",
+        "request_id": "6905c00e-6c1a-945a-9fbe-393627e12fa3",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Bolts splash off the raider's shield bubble and the raider holds position; clear 'attack repelled'. Trimmed to 3.5 s."
+      }
+    },
+    {
+      "key": "combat.incoming",
+      "variant": "combat_incoming_a",
+      "take": 2,
+      "webm": "combat_incoming_a.1957816c.webm",
+      "mp4": "combat_incoming_a.1957816c.mp4",
+      "poster": "combat_incoming_a.1957816c.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 169466,
+        "mp4": 184579,
+        "poster": 24624
+      },
+      "trim": {
+        "source_start_s": 0,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "The raider ahead fires two red plasma bolts straight toward the camera. Just outside our window a thin transparent glowing blue hexagonal force-field grid flickers into view and the bolts burst against it in bright blue-white sparks; the view jolts once and steadies. The force-field is a faint grid of light in empty space, not liquid, not water, no splashes. Stylized space combat between vehicles only. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "REF-RAIDER-AHEAD-v1 (first frame)",
+        "generated_at": "2026-09-27T20:02:02-07:00",
+        "request_id": "8b906d87-15e5-9e49-a3c7-06faa54006bc",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Take 2. Take 1 failed (ARTIFACT: the shield rendered as a water surface with splashes). Take 2: the raider fires red beams into a blue hex force-field just outside the window, sparks, then the view steadies. The hex grid is bold and HUD-like but reads well as incoming fire."
+      }
+    },
+    {
+      "key": "combat.incoming",
+      "variant": "combat_incoming_b",
+      "take": 3,
+      "webm": "combat_incoming_b.31338eb5.webm",
+      "mp4": "combat_incoming_b.31338eb5.mp4",
+      "poster": "combat_incoming_b.31338eb5.webp",
+      "duration_s": 4.0,
+      "loop": false,
+      "bytes": {
+        "webm": 170851,
+        "mp4": 178657,
+        "poster": 21768
+      },
+      "trim": {
+        "source_start_s": 0,
+        "source_len_s": 4,
+        "loop_crossfade_s": null
+      },
+      "provenance": {
+        "service": "xai grok-imagine-video",
+        "model": "grok-imagine-video-1.5",
+        "model_requested": "grok-imagine-video-1.5-2026-05-30",
+        "resolution": "480p (848x480 raw), upscaled to 960x540",
+        "generated_duration_s": 5,
+        "prompt": "Within the first second, two small angular enemy fighter craft streak toward us out of deep space, firing red plasma bolts; the bolts burst into blue-white sparks against our invisible forward shield just in front of the camera; the view shakes briefly as the fighters roar past overhead and out of view. Open view of space the whole time: no cockpit frame, no window frame, no grid, no panels. Stylized space combat between vehicles only. Cinematic retro space-trader concept art, dark navy and ink-black palette with amber accents, warm key light from a distant star upper left, 35mm lens feel, smooth steady camera, horizon level. No readable text, no logos, no people, no faces, no strobing or rapid flashing.",
+        "reference_still": "REF-DEEP-WINDOW-v1 (first frame)",
+        "generated_at": "2026-09-27T20:03:16-07:00",
+        "request_id": "77f4497b-1168-9309-9242-2a8eda77daad",
+        "billed_usd": 0.41,
+        "respect_moderation": true
+      },
+      "approved_by": "ben 2026-09-27T20:18:00-07:00 (approve all, starting point)",
+      "review": {
+        "reviewer": "grok-bot",
+        "result": "pass",
+        "notes": "Take 3 (final allowed). Take 1 failed (glass panels and water ripples); take 2 failed (a window frame and hex grid morphed in mid-clip). Take 3: two fighters close in, fire, spark on the shield, then pass overhead. Vehicle-only."
+      }
+    }
+  ]
+}
