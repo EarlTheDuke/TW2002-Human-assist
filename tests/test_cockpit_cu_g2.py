@@ -185,8 +185,6 @@ def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypa
 
         # Default layout unchanged: no mode-cu, CU screen hidden, controls in their original columns.
         page2 = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H})
-        posts: list[str] = []
-        page2.on("request", lambda r: posts.append(r.url) if r.method == "POST" else None)
         page2.goto(f"{host.base}/bot?seat=P2&token={TOK}")
         page2.wait_for_selector("#main:not([hidden])", timeout=20_000)
         assert not page2.evaluate("document.body.classList.contains('mode-cu')")
@@ -194,6 +192,6 @@ def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypa
         assert page2.evaluate("!!document.querySelector('#colAct #warpBtns') && !!document.querySelector('#colAct #verbPad')"
                               " && !!document.querySelector('#colWhere #knownMap') && !!document.querySelector('#portCard #portTape')")
         page2.wait_for_selector("#turnBanner.turn", timeout=20_000)
-        page2.keyboard.press("s")  # CU shortcuts are not bound on the default page
-        page2.wait_for_timeout(500)
-        assert not posts, posts
+        with page2.expect_request(lambda r: r.method == "POST" and r.url.endswith("/action"), timeout=15_000) as posted:
+            page2.keyboard.press("s")
+        assert '"scan"' in (posted.value.post_data or "")

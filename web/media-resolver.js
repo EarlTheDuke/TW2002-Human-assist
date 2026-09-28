@@ -172,11 +172,16 @@
     function finish(now) {
       s.playing = null;
       dropStale(now);
-      while (s.waiting && !cooldownOk(s.waiting.clip_key, now)) s.waiting = s.waiting.next || null;
+      while (s.waiting && !cooldownOk(s.waiting.clip_key, now)) {
+        const skipped = s.waiting.next || null;
+        if (skipped) skipped.at = now;
+        s.waiting = skipped;
+      }
       if (s.waiting) {
         const next = s.waiting.next || null;
         s.waiting.next = null;
         start(s.waiting, now);
+        if (next) next.at = now;
         s.waiting = next;
         return s.playing;
       }

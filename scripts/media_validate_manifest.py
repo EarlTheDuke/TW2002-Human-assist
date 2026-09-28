@@ -101,14 +101,16 @@ def _file_size(media_root: Path, rel: str | None) -> int:
     return f.stat().st_size if f.is_file() else 0
 
 
-def _selected_budgets(data: dict[str, Any], media_root: Path) -> tuple[int, int]:
-    """(one browser, all formats) for the variant each key will actually play.
+def _selected_budgets(data: dict[str, Any], media_root: Path) -> tuple[int, int, int]:
+    """(one browser, all formats, unique on-demand stills).
 
     A stills/ poster is a shared library image. Counting it once per clip key
     blew the 3.5 MB cap. Counting each file once is still about 2.6 MB of PNGs
-    on top of the clips (4.2 MB together), so those posters stay at 0 here.
+    on top of the clips (4.2 MB together), so those posters stay out of the
+    one-browser total and are reported on their own.
     """
-    one = all_formats = 0
+    one = all_formats = stills = 0
+    seen_stills: set[str] = set()
     groups: list[list] = []
     for amb in (data.get("ambient") or {}).values():
         groups.append(amb.get("variants") or [])
@@ -121,10 +123,16 @@ def _selected_budgets(data: dict[str, Any], media_root: Path) -> tuple[int, int]
         webm = _file_size(media_root, variant.get("webm"))
         mp4 = _file_size(media_root, variant.get("mp4"))
         poster_rel = str(variant.get("poster") or "").replace("\\", "/")
-        poster = 0 if poster_rel.startswith("stills/") else _file_size(media_root, variant.get("poster"))
+        if poster_rel.startswith("stills/"):
+            if poster_rel not in seen_stills:
+                seen_stills.add(poster_rel)
+                stills += _file_size(media_root, poster_rel)
+            poster = 0
+        else:
+            poster = _file_size(media_root, variant.get("poster"))
         one += (webm or mp4) + poster
         all_formats += webm + mp4 + poster
-    return one, all_formats
+    return one, all_formats, stills
 
 
 def _review_errors(data: dict[str, Any]) -> list[str]:
@@ -221,12 +229,15 @@ def validate(data: dict[str, Any], media_root: Path = MEDIA, *, probe: bool = Fa
             if role == "clip" and ms is not None and ms > EVENT_CLIP_MAX_MS:
                 errors.append(f"{where}: {ms} ms is over the {EVENT_CLIP_MAX_MS} ms event clip cap")
     errors.extend(_review_errors(data))
-    one, all_formats = _selected_budgets(data, media_root)
+    one, all_formats, stills = _selected_budgets(data, media_root)
     if one > ONE_BROWSER_MAX_BYTES:
         errors.append(f"selected set is {one} bytes over the {ONE_BROWSER_MAX_BYTES} one-browser budget")
     if all_formats > ALL_FORMATS_MAX_BYTES:
         errors.append(f"selected set is {all_formats} bytes over the {ALL_FORMATS_MAX_BYTES} all-formats budget")
-    return errors, {"present": sorted(set(present)), "missing": sorted(set(missing))}
+    return errors, {
+        "present": sorted(set(present)), "missing": sorted(set(missing)),
+        "one": one, "stills": stills,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -239,6 +250,8 @@ def main(argv: list[str] | None = None) -> int:
     data = json.loads(path.read_text(encoding="utf-8-sig"))
     errors, report = validate(data, Path(args.media_root) if args.media_root else MEDIA, probe=args.probe)
     print(f"manifest: {path.name} (version {data.get('version')})")
+    print(f"pilot clips + webp posters, one format: {report['one']} / {ONE_BROWSER_MAX_BYTES}")
+    print(f"on-demand stills: {report['stills']}")
     print(f"manifest assets: {len(report['present']) + len(report['missing'])} unique")
     print(f"present: {len(report['present'])}")
     print(f"missing: {len(report['missing'])}")
