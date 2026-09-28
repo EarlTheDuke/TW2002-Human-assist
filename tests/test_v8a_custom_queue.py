@@ -320,13 +320,101 @@ def test_complete_citadels_reaches_the_owner(tmp_path) -> None:
     try:
         _complete_citadels(u)
         ev = next(e for e in u.events if e.kind == EventKind.CITADEL_COMPLETE)
-        assert ev.actor_id == "A"
+        assert ev.actor_id is None
         assert q.placeholder("A", ev.seq) == "planet.citadel"
         assert q.placeholder("B", ev.seq) is None
         assert q.placeholder("C", ev.seq) is None
         _wait(lambda: provider.calls == 1)
     finally:
         q.stop()
+
+
+def test_flag_off_citadel_matches_the_engine_without_an_actor() -> None:
+    from types import SimpleNamespace
+
+    from tw2k.agents.seat_brain import SeatBrain
+    from tw2k.engine.models import Planet, PlanetClass
+    from tw2k.engine.observation import event_view
+    from tw2k.engine.planets import _complete_citadels
+
+    emit = (ROOT / "src/tw2k/engine/planets.py").read_text(encoding="utf-8")
+    body = emit.split("EventKind.CITADEL_COMPLETE", 1)[1].split("summary=", 1)[0]
+    assert "actor_id" not in body
+    u, a, _ = _universe()
+    for planet in u.planets.values():
+        planet.citadel_complete_day = None
+    u.planets[7] = Planet(
+        id=7, sector_id=5, name="Haven", class_id=PlanetClass.M, owner_id="A",
+        citadel_level=0, citadel_target=1, citadel_complete_day=1,
+    )
+    u.day = 1
+    _complete_citadels(u)
+    ev = next(e for e in u.events if e.kind == EventKind.CITADEL_COMPLETE)
+    view = event_view(ev)
+    assert json.dumps({"actor_id": view["actor_id"]}) == '{"actor_id": null}'
+    witness = SimpleNamespace(rivals=[], net_worth=0, self_id="C", events=[view], worlds=lambda: [])
+    assert SeatBrain._rival_pressure(None, witness) is None
+    stamped = dict(view)
+    stamped["actor_id"] = "A"
+    pressured = SimpleNamespace(rivals=[], net_worth=0, self_id="C", events=[stamped], worlds=lambda: [])
+    got = SeatBrain._rival_pressure(None, pressured)
+    assert got and "citadel_complete" in got["empire_signals"]
+
+
+def test_an_engine_citadel_does_not_late_another_job(tmp_path) -> None:
+    from tw2k.engine.models import Planet, PlanetClass
+    from tw2k.engine.planets import _complete_citadels
+    from tw2k.media.custom_queue import CustomQueue
+
+    gate = Gate()
+    q = CustomQueue(tmp_path, gate).start()
+    try:
+        u, a, _ = _universe()
+        first = _citadel(u, 1)
+        assert gate.started.wait(2)
+        for planet in u.planets.values():
+            planet.citadel_complete_day = None
+        u.planets[8] = Planet(
+            id=8, sector_id=5, name="Haven", class_id=PlanetClass.M, owner_id="A",
+            citadel_level=0, citadel_target=1, citadel_complete_day=1,
+        )
+        a.sector_id = 1
+        u.day = 1
+        _complete_citadels(u)
+        gate.release.set()
+        _wait(lambda: (q.job_for("A", first.seq) or {}).get("status") == "ready")
+    finally:
+        gate.release.set()
+        q.stop()
+
+
+def test_a_restart_expires_a_job_left_running(tmp_path) -> None:
+    from tw2k.media.custom_queue import CustomQueue
+
+    gate = Gate()
+    q = CustomQueue(tmp_path, gate).start()
+    u, _, _ = _universe()
+    _citadel(u, 1)
+    assert gate.started.wait(2)
+    q.stop()
+    q2 = CustomQueue(tmp_path, FakeProvider()).start()
+    try:
+        u2, _, _ = _universe()
+        _citadel(u2, 2)
+        _wait(lambda: q2.feed_for("A")["ready"])
+        assert q2.feed_for("A", -4)["ready"]
+        assert q2.feed_for("A", 10**9)["ready"]
+        q2._conn.execute(
+            """INSERT INTO jobs (hash, seat, match_id, status, created, cost_cents, trigger_seq, clip_key, day, swap)
+               VALUES ('old', 'A', 'm', 'running', ?, 0, 1, 'planet.citadel', '2026-09-28', 0)""",
+            (time.time() - 700,),
+        )
+        q2._conn.commit()
+        q2._expire_deadlines()
+        assert q2._conn.execute("SELECT status FROM jobs WHERE hash='old'").fetchone()["status"] == "expired"
+    finally:
+        gate.release.set()
+        q2.stop()
 
 
 def test_emit_with_the_queue_stays_close_to_flag_off(tmp_path) -> None:
@@ -336,21 +424,24 @@ def test_emit_with_the_queue_stays_close_to_flag_off(tmp_path) -> None:
 
     def burst() -> float:
         started = time.perf_counter()
-        for n in range(40):
-            u.emit(EventKind.WARP, actor_id="A", sector_id=1, payload={"from": 1, "to": 2}, summary="warp")
+        for n in range(12):
+            _citadel(u, n + 1)
         return time.perf_counter() - started
 
     off = burst()
-    q = CustomQueue(tmp_path, FakeProvider()).start()
+    gate = Gate()
+    q = CustomQueue(tmp_path, gate).start()
     try:
         on = burst()
     finally:
+        gate.release.set()
         q.stop()
-    assert on < off + 0.5
+    assert on < off + 0.15
 
 
 def test_prompts_omit_facts_the_seat_cannot_see() -> None:
     from tw2k.engine.models import Event
+    from tw2k.engine.observation import _PUBLIC_EVENTS, _event_visible_to
 
     u, a, _ = _universe()
     files = list((ROOT / "tests" / "fixtures" / "media_events").glob("*.json"))
@@ -367,6 +458,10 @@ def test_prompts_omit_facts_the_seat_cannot_see() -> None:
                 sector_id=row.get("sector_id"), payload=payload, summary=row.get("summary") or "",
             )
             text = json.dumps(prompt_for(u, a.id, ev, "planet.citadel"))
+            if ev.actor_id:
+                assert _event_visible_to(ev, ev.actor_id, u) is True
+            if ev.kind not in _PUBLIC_EVENTS:
+                assert _event_visible_to(ev, "nobody", u) is False
             assert "HIDDENINTEL" not in text and "secret_scan" not in text
             assert "_witnesses" not in text
             summary = row.get("summary") or ""
