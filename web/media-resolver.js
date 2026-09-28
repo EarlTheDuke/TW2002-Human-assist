@@ -35,7 +35,10 @@
     if (name === "first_in_visit") return state.visit_sector === ev.sector_id && !state.docked_in_visit;
     if (name === "outcome_hit") return outcomeHit(facts);
     if (name === "witnessed_in_my_sector") return ev.actor_id !== self && ev.sector_id === here;
-    if (name === "at_stardock") return Number(ev.sector_id) === 1;
+    if (name === "at_stardock") {
+      const dock = state && state.stardock_sector;
+      return typeof dock === "number" && Number(ev.sector_id) === dock;
+    }
     if (name === "self_target") return facts.target === self;
     if (name === "hail_party") return ev.actor_id === self || facts.target === self;
     if (name === "match_end") return ev.kind === "game_over" && !!self;
@@ -52,7 +55,12 @@
   }
 
   function resolve(batch, obs, state, manifest) {
-    const st = { visit_sector: state.visit_sector, docked_in_visit: !!state.docked_in_visit };
+    const dockSector = manifest && manifest.defaults && manifest.defaults.stardock_sector;
+    const st = {
+      visit_sector: state.visit_sector,
+      docked_in_visit: !!state.docked_in_visit,
+      stardock_sector: typeof dockSector === "number" ? dockSector : null,
+    };
     const self = obs && obs.self_id;
     const triggers = (manifest && manifest.triggers) || [];
     const clips = (manifest && manifest.clips) || {};
@@ -111,7 +119,10 @@
     function dropStale(now, postedSeq) {
       if (!s.waiting) return 0;
       if (now - s.waiting.at > staleMs) { s.waiting = null; s.staleDrops += 1; return 1; }
-      if (typeof postedSeq === "number" && s.waiting.seq < postedSeq) s.waiting = null;
+      // The escape pod, and the death clip that is holding it, stay queued
+      // until stale_ms. A newer action from this seat must not skip them.
+      const holdsChain = s.waiting.chain || (s.waiting.next && s.waiting.next.chain);
+      if (typeof postedSeq === "number" && s.waiting.seq < postedSeq && !holdsChain) s.waiting = null;
       return 0;
     }
     function start(item, now, record) {
@@ -133,8 +144,14 @@
           clip_key: raw.clip_key, priority: raw.priority, seq: raw.seq || 0,
           sector_id: raw.sector_id, at: now, chain: !!raw.chain,
         };
+        // One waiting slot. A chain hangs behind its parent (same seq) instead
+        // of replacing the parent, and finish() promotes that next clip.
+        if (raw.chain && s.waiting && !s.waiting.chain && s.waiting.seq === item.seq && !s.waiting.next) {
+          s.waiting.next = item;
+          continue;
+        }
         const record = opts.recordCooldown !== false;
-        const chained = s.waiting && s.waiting.chain && !(item.priority < s.waiting.priority);
+        const chained = s.waiting && (s.waiting.chain || s.waiting.next) && !(item.priority < s.waiting.priority);
         if (!s.playing) { start(item, now, record); startedItem = s.playing; }
         else if (item.priority < s.playing.priority) {
           start(item, now, record);
@@ -155,12 +172,14 @@
     function finish(now) {
       s.playing = null;
       dropStale(now);
-      if (s.waiting && cooldownOk(s.waiting.clip_key, now)) {
+      while (s.waiting && !cooldownOk(s.waiting.clip_key, now)) s.waiting = s.waiting.next || null;
+      if (s.waiting) {
+        const next = s.waiting.next || null;
+        s.waiting.next = null;
         start(s.waiting, now);
-        s.waiting = null;
+        s.waiting = next;
         return s.playing;
       }
-      s.waiting = null;
       return null;
     }
     function stop() {

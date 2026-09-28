@@ -121,14 +121,57 @@ def test_death_then_pod_is_not_replaced_by_a_lower_priority() -> None:
         "], 0);"
         "const dock = s.consider([{clip_key:'dock.port', priority:2, seq:2}], 100);"
         "const hit = s.consider([{clip_key:'combat.hit', priority:1, seq:3}], 200);"
+        "const newer = s.consider([], 400, {postedSeq: 9});"
         "const next = s.finish(3000);"
-        "process.stdout.write(JSON.stringify({started, dock, hit, next: next && next.clip_key}));"
+        "process.stdout.write(JSON.stringify({started, dock, hit, newer, next: next && next.clip_key}));"
     )
     got = json.loads(subprocess.run([NODE, "-e", script], capture_output=True, text=True, check=True, timeout=30).stdout)
     assert got["started"]["playing"] == "self.ship_destroyed" and got["started"]["waiting"] == "self.escape_pod"
     assert got["dock"]["waiting"] == "self.escape_pod" and got["dock"]["playing"] == "self.ship_destroyed"
     assert got["hit"]["waiting"] == "self.escape_pod"
+    assert got["newer"]["waiting"] == "self.escape_pod" and got["newer"]["playing"] == "self.ship_destroyed"
     assert got["next"] == "self.escape_pod"
+
+
+@needs_node
+def test_ferrengi_plays_incoming_then_death_then_the_pod() -> None:
+    got = _node(
+        "const R=require(process.argv[1]); const fs=require('fs'); const path=require('path');"
+        "const manifest=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));"
+        "const fx=JSON.parse(fs.readFileSync(path.join(process.argv[3], 'ferrengi_attack.json'),'utf8'));"
+        "const state=Object.assign({}, fx.state_before);"
+        "const items=R.resolve(fx.batch, fx.obs, state, manifest);"
+        "const s=R.createSession(manifest);"
+        "const started=s.consider(items, 0);"
+        "const death=s.finish(1000);"
+        "const pod=s.finish(5000);"
+        "process.stdout.write(JSON.stringify({"
+        "keys:items.map(x=>x.clip_key), startedPlaying:started.playing, startedWaiting:started.waiting,"
+        "death:death&&death.clip_key, pod:pod&&pod.clip_key, left:s.state().waiting}));"
+    )
+    assert got["keys"] == ["combat.incoming", "self.ship_destroyed", "self.escape_pod"]
+    assert got["startedPlaying"] == "combat.incoming" and got["startedWaiting"] == "self.ship_destroyed"
+    assert got["death"] == "self.ship_destroyed"
+    assert got["pod"] == "self.escape_pod"
+    assert got["left"] is None
+
+
+@needs_node
+def test_at_stardock_reads_the_manifest_sector() -> None:
+    from tw2k.engine import constants as K
+
+    live = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    assert live["defaults"]["stardock_sector"] == K.STARDOCK_SECTOR
+    got = _node(
+        "const R=require(process.argv[1]);"
+        "const manifest={defaults:{stardock_sector:7}, clips:{'dock.stardock':{priority:2}},"
+        "triggers:[{kind:'warp', rule:'self && at_stardock', clip:'dock.stardock'}]};"
+        "const warp=(sector)=>R.resolve([{seq:1, kind:'warp', actor_id:'P1', sector_id:sector, facts:{to:sector}}],"
+        "{self_id:'P1', sector:{id:sector}}, {}, manifest).map(x=>x.clip_key);"
+        "process.stdout.write(JSON.stringify({match:warp(7), other:warp(1)}));"
+    )
+    assert got["match"] == ["dock.stardock"]
+    assert got["other"] == []
 
 
 def test_ship_combat_outcome_and_own_death_are_in_the_fixtures() -> None:
@@ -142,6 +185,15 @@ def test_ship_combat_outcome_and_own_death_are_in_the_fixtures() -> None:
     for fx in (lose, ferr):
         assert fx["obs"]["sector"]["id"] == 1
         assert any(r["kind"] == "ship_destroyed" and r["facts"].get("victim") == "P1" for r in fx["batch"])
+
+
+def test_designed_stills_have_their_own_counter() -> None:
+    html = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")
+    player = (ROOT / "web" / "media-player.js").read_text(encoding="utf-8")
+    assert "poster-fallbacks 0  stills 0" in html
+    assert '"stills"' in player
+    assert 'bump("stills")' in player
+    assert 'bump("poster-fallbacks")' in player
 
 
 def test_placeholder_manifest_points_at_existing_stills() -> None:

@@ -4,7 +4,8 @@
     "duration_ms": 2400,
     "fit": "cover",
     "muted": true,
-    "stale_ms": 8000
+    "stale_ms": 8000,
+    "stardock_sector": 1
   },
   "groups": {
     "move": {

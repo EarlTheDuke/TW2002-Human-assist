@@ -2520,6 +2520,29 @@ class TestPhaseMFogOfWar:
             "latecomers must not see historical events"
         )
 
+    def test_m8_victim_sees_the_hit_without_being_a_witness(self):
+        """A mine can detonate before the ship is in the witness list.
+        The named victim still sees it. A seat that was not there does not."""
+        from tw2k.engine.models import EventKind
+        from tw2k.engine.observation import _event_visible_to
+
+        u, (a, b, c) = _make_universe(seed=508)
+        stage = _first_non_fed_sector(u, min_id=50)
+        u.sectors[stage].occupant_ids = [b.id]
+        b.sector_id = stage
+        for kind in (EventKind.MINE_DETONATED, EventKind.SHIP_DESTROYED):
+            ev = u.emit(
+                kind,
+                actor_id=b.id,
+                sector_id=stage,
+                payload={"victim": a.id, "hits": 1, "damage": 40, "reason": "mine", "deaths": 1},
+                summary="hit",
+            )
+            assert a.id not in ev.payload["_witnesses"]
+            assert c.id not in ev.payload["_witnesses"]
+            assert _event_visible_to(ev, a.id, u), kind
+            assert not _event_visible_to(ev, c.id, u), kind
+
     def test_m6_hail_visible_only_to_sender_and_recipient(self):
         """HAIL events are private to the two parties involved."""
         from tw2k.engine.models import EventKind

@@ -102,7 +102,12 @@ def _file_size(media_root: Path, rel: str | None) -> int:
 
 
 def _selected_budgets(data: dict[str, Any], media_root: Path) -> tuple[int, int]:
-    """(one browser, all formats) for the variant each key will actually play."""
+    """(one browser, all formats) for the variant each key will actually play.
+
+    A stills/ poster is a shared library image. Counting it once per clip key
+    blew the 3.5 MB cap. Counting each file once is still about 2.6 MB of PNGs
+    on top of the clips (4.2 MB together), so those posters stay at 0 here.
+    """
     one = all_formats = 0
     groups: list[list] = []
     for amb in (data.get("ambient") or {}).values():
@@ -115,8 +120,6 @@ def _selected_budgets(data: dict[str, Any], media_root: Path) -> tuple[int, int]
             continue
         webm = _file_size(media_root, variant.get("webm"))
         mp4 = _file_size(media_root, variant.get("mp4"))
-        # Shared library stills are the fallback image, not a downloaded clip.
-        # Counting one PNG again for every placeholder key would blow the pilot budget.
         poster_rel = str(variant.get("poster") or "").replace("\\", "/")
         poster = 0 if poster_rel.startswith("stills/") else _file_size(media_root, variant.get("poster"))
         one += (webm or mp4) + poster
