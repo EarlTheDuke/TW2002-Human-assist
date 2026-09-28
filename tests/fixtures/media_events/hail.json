@@ -1,0 +1,46 @@
+{
+  "name": "hail",
+  "description": "Viewer hails another seat.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 11,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 11,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "hail",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": null,
+      "summary": "Commander \u2192 Rival: hold fire",
+      "facts": {
+        "target": "P2",
+        "message": "hold fire"
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "comms.hail",
+      "priority": 3
+    }
+  ],
+  "notes": ""
+}

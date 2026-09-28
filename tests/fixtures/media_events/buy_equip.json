@@ -1,0 +1,50 @@
+{
+  "name": "buy_equip",
+  "description": "Viewer buys fighters at StarDock.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 1,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 2,
+    "sector": {
+      "id": 1,
+      "is_fedspace": true,
+      "port": {
+        "code": "STARDOCK",
+        "class_id": 8
+      }
+    },
+    "ship": {
+      "class": "scout_marauder"
+    }
+  },
+  "batch": [
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 2,
+      "kind": "buy_equip",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 1,
+      "summary": "Commander bought 1 fighters for 50cr",
+      "facts": {
+        "item": "fighters",
+        "qty": 1,
+        "total": 50
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "stardock.buy_equip",
+      "priority": 2
+    }
+  ],
+  "notes": ""
+}

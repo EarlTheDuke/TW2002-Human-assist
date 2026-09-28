@@ -1,0 +1,48 @@
+{
+  "name": "planet_liftoff",
+  "description": "Viewer lifts off.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 17,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 2,
+    "sector": {
+      "id": 17,
+      "is_fedspace": false,
+      "port": {
+        "code": "BSB",
+        "class_id": 2
+      }
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 2,
+      "kind": "liftoff",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 17,
+      "summary": "Commander lifted off",
+      "facts": {
+        "planet_id": 1
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "planet.liftoff",
+      "priority": 2
+    }
+  ],
+  "notes": ""
+}

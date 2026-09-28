@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 02:26 PT - Fable - placeholder triggers for later viewport moments
+- StarDock, planets, weapons, mines, death and the escape pod, hail, and game over each resolve to a still. Death keeps the pod ahead of anything less urgent. Preload fetches clip video only in Live, posters only when the viewport is not Off, and drops the blobs after the fetch. Suite 733 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 01:05 PT - Fable - hashed clips preload from cache
 - Idle preload fetches the approved P0–P2 webms after the page is interactive, stops at the 12 MB / 3.5 MB caps, and skips that work when saveData is on. A second load plays those clips with 0 bytes transferred. A missing-port route says there isn't enough port intel. Suite 730 passed; ruff clean; manifest OK.
 

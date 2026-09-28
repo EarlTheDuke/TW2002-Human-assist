@@ -47,7 +47,7 @@ def test_live_v1_manifest_and_v2_example_validate() -> None:
 @pytest.mark.parametrize("mutate, needle", [
     (lambda m: m["triggers"][0].update(rule="self && outcome_bribe"), "unknown predicate"),
     (lambda m: m["triggers"][0].update(rule="self || first_in_visit"), "is not 'pred && !pred"),
-    (lambda m: m["triggers"][0].update(clip="dock.stardock"), "not defined in clips"),
+    (lambda m: m["triggers"][0].update(clip="no.such.clip"), "not defined in clips"),
     (lambda m: m["triggers"][0].update(kind="teleport"), "is not an EventKind"),
     (lambda m: m["triggers"].append({"kind": "port_destroyed", "rule": "outcome_hit", "clip": "combat.hit"}), "is public"),
     (lambda m: m["clips"]["warp.out"]["variants"][0].update(poster="stills/nope.png"), "missing file stills/nope.png"),
@@ -139,7 +139,15 @@ def test_fixture_semantics_match_their_scenario() -> None:
     # expected table in fixtures = the documented V2 outcomes
     assert [e["clip_key"] for e in _fx("autopilot_burst")["expected"]] == ["warp.out"]
     assert _fx("far_port_destroyed")["expected"] == [] and _fx("other_trade_in_sector")["expected"] == []
-    assert _fx("ferrengi_attack")["expected"] == [{"clip_key": "combat.incoming", "priority": 0}]
+    assert _fx("other_buy_ship")["expected"] == [] and _fx("other_buy_ship")["batch"] == []
+    assert _fx("ferrengi_attack")["expected"] == [
+        {"clip_key": "combat.incoming", "priority": 0},
+        {"clip_key": "self.ship_destroyed", "priority": 0},
+        {"clip_key": "self.escape_pod", "priority": 0},
+    ]
+    assert [e["clip_key"] for e in _fx("self_attack_lose")["expected"]] == [
+        "self.ship_destroyed", "self.escape_pod", "combat.miss",
+    ]
 
 
 def test_fixtures_are_reproducible_from_the_engine(tmp_path: Path) -> None:

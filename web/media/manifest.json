@@ -686,9 +686,240 @@
           "duration_ms": 2400
         }
       ]
+    },
+    "dock.stardock": {
+      "priority": 2,
+      "caption": "Docking at StarDock",
+      "fallback_still": "stills/stardock_bay.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "stardock_bay_ph",
+          "poster": "stills/stardock_bay.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "stardock.buy_ship": {
+      "priority": 2,
+      "caption": "A new hull",
+      "fallback_still": "stills/stardock_bay.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "stardock_bay_ph",
+          "poster": "stills/stardock_bay.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "stardock.buy_equip": {
+      "priority": 2,
+      "caption": "Outfitting at StarDock",
+      "fallback_still": "stills/stardock_bay.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "stardock_bay_ph",
+          "poster": "stills/stardock_bay.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "weapon.photon_fired": {
+      "priority": 2,
+      "caption": "Photon away",
+      "fallback_still": "stills/combat_photon.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "combat_photon_ph",
+          "poster": "stills/combat_photon.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "weapon.photon_hit": {
+      "priority": 0,
+      "caption": "Photon hit",
+      "fallback_still": "stills/combat_photon.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "combat_photon_ph",
+          "poster": "stills/combat_photon.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "hazard.mine_detonated": {
+      "priority": 0,
+      "caption": "Mine strike",
+      "fallback_still": "stills/combat_mine.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "combat_mine_ph",
+          "poster": "stills/combat_mine.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "planet.land": {
+      "priority": 2,
+      "caption": "Landing",
+      "fallback_still": "stills/planet_surface.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "planet_surface_ph",
+          "poster": "stills/planet_surface.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "planet.liftoff": {
+      "priority": 2,
+      "caption": "Liftoff",
+      "fallback_still": "stills/planet_liftoff.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "planet_liftoff_ph",
+          "poster": "stills/planet_liftoff.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "planet.genesis": {
+      "priority": 2,
+      "caption": "Genesis",
+      "fallback_still": "stills/planet_genesis.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "planet_genesis_ph",
+          "poster": "stills/planet_genesis.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "self.ship_destroyed": {
+      "priority": 0,
+      "caption": "Ship destroyed",
+      "fallback_still": "stills/combat_alert.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "combat_alert_ph",
+          "poster": "stills/combat_alert.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "self.escape_pod": {
+      "priority": 0,
+      "caption": "Escape pod",
+      "fallback_still": "stills/stardock_bay.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "stardock_bay_ph",
+          "poster": "stills/stardock_bay.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
+    "comms.hail": {
+      "priority": 3,
+      "caption": "Incoming hail",
+      "fallback_still": "stills/comms_hail.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "comms_hail_ph",
+          "poster": "stills/comms_hail.png",
+          "duration_ms": 2400
+        }
+      ],
+      "overlay": true
+    },
+    "match.game_over": {
+      "priority": 2,
+      "caption": "Game over",
+      "fallback_still": "stills/system_scan.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "system_scan_ph",
+          "poster": "stills/system_scan.png",
+          "duration_ms": 2400
+        }
+      ]
     }
   },
   "triggers": [
+    {
+      "kind": "warp",
+      "rule": "self && at_stardock",
+      "clip": "dock.stardock"
+    },
+    {
+      "kind": "buy_ship",
+      "rule": "self",
+      "clip": "stardock.buy_ship"
+    },
+    {
+      "kind": "buy_equip",
+      "rule": "self",
+      "clip": "stardock.buy_equip"
+    },
+    {
+      "kind": "photon_fired",
+      "rule": "self",
+      "clip": "weapon.photon_fired"
+    },
+    {
+      "kind": "photon_hit",
+      "rule": "self_target",
+      "clip": "weapon.photon_hit"
+    },
+    {
+      "kind": "mine_detonated",
+      "rule": "self_victim",
+      "clip": "hazard.mine_detonated"
+    },
+    {
+      "kind": "land_planet",
+      "rule": "self",
+      "clip": "planet.land"
+    },
+    {
+      "kind": "liftoff",
+      "rule": "self",
+      "clip": "planet.liftoff"
+    },
+    {
+      "kind": "genesis_deployed",
+      "rule": "self",
+      "clip": "planet.genesis"
+    },
+    {
+      "kind": "ship_destroyed",
+      "rule": "self_victim",
+      "clip": "self.ship_destroyed",
+      "chain": "self.escape_pod"
+    },
+    {
+      "kind": "hail",
+      "rule": "hail_party",
+      "clip": "comms.hail"
+    },
+    {
+      "kind": "game_over",
+      "rule": "match_end",
+      "clip": "match.game_over"
+    },
     {
       "kind": "trade",
       "rule": "self && first_in_visit",

@@ -1,0 +1,59 @@
+{
+  "name": "photon_fired",
+  "description": "Viewer fires a photon missile.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 15,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 1,
+    "sector": {
+      "id": 15,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 1,
+      "day": 1,
+      "tick": 1,
+      "kind": "photon_fired",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 15,
+      "summary": "Commander launched a PHOTON MISSILE at Rival!",
+      "facts": {
+        "target": "P2"
+      }
+    },
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 1,
+      "kind": "photon_hit",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 15,
+      "summary": "!!! Rival's fighters scrambled \u2014 offline for 2 ticks !!!",
+      "facts": {
+        "target": "P2",
+        "disabled_ticks": 2
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "weapon.photon_fired",
+      "priority": 2
+    }
+  ],
+  "notes": "The hit row is not self_target, so only the firing clip plays."
+}

@@ -1,0 +1,65 @@
+{
+  "name": "mine_detonated",
+  "description": "Viewer warps onto a rival's armid mine.",
+  "seed": 250925,
+  "viewer": "P1",
+  "state_before": {
+    "visit_sector": 11,
+    "docked_in_visit": false
+  },
+  "obs": {
+    "self_id": "P1",
+    "day": 1,
+    "tick": 2,
+    "sector": {
+      "id": 148,
+      "is_fedspace": false,
+      "port": null
+    },
+    "ship": {
+      "class": "merchant_cruiser"
+    }
+  },
+  "batch": [
+    {
+      "seq": 2,
+      "day": 1,
+      "tick": 2,
+      "kind": "mine_detonated",
+      "actor_id": "P2",
+      "actor_kind": "external",
+      "sector_id": 148,
+      "summary": "1 armid mines hit Commander entering 148 (100 dmg)",
+      "facts": {
+        "hits": 1,
+        "damage": 100,
+        "victim": "P1"
+      }
+    },
+    {
+      "seq": 3,
+      "day": 1,
+      "tick": 2,
+      "kind": "warp",
+      "actor_id": "P1",
+      "actor_kind": "external",
+      "sector_id": 148,
+      "summary": "Commander warped 11 \u2192 148",
+      "facts": {
+        "from": 11,
+        "to": 148
+      }
+    }
+  ],
+  "expected": [
+    {
+      "clip_key": "hazard.mine_detonated",
+      "priority": 0
+    },
+    {
+      "clip_key": "warp.out",
+      "priority": 2
+    }
+  ],
+  "notes": ""
+}

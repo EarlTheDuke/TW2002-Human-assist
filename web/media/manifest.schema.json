@@ -175,6 +175,7 @@
         "caption": { "type": "string", "maxLength": 80 },
         "fallback_still": { "$ref": "#/$defs/path" },
         "preload": { "enum": ["eager", "idle", "none"] },
+        "overlay": { "type": "boolean", "description": "HUD overlay, not the full viewport frame." },
         "variants": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/variant" } }
       }
     },
@@ -190,7 +191,8 @@
           "pattern": "^!?[a-z_]+( && !?[a-z_]+)*$"
         },
         "clip": { "type": "string" },
-        "coalesce": { "type": "string", "pattern": "^[a-z_]+$" }
+        "coalesce": { "type": "string", "pattern": "^[a-z_]+$" },
+        "chain": { "type": "string", "description": "Next clip. A lower priority cannot replace it while it waits." }
       }
     }
   }

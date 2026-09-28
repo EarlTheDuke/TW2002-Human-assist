@@ -121,8 +121,12 @@ def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
         if isinstance(members, (list, tuple)) and player_id in members:
             return True
         return False
-    # Default — sector witnesses + actor.
+    # Default — sector witnesses + actor. The victim of a mine or a killing
+    # blow also sees it: a mine can detonate before the ship is in the
+    # witness list, and you always know that you were the one who was hit.
     if event.actor_id == player_id:
+        return True
+    if event.payload.get("victim") == player_id:
         return True
     witnesses = event.payload.get("_witnesses")
     if isinstance(witnesses, (list, tuple, set)):
