@@ -210,7 +210,7 @@
 
   function momentCard(row) {
     if (!row || row.trust !== "auto" || row.approved_by) return null;
-    return { trust: "auto", badge: "live-generated", hash: row.hash || "" };
+    return { trust: "auto", badge: "live-generated", hash: row.hash || "", caption: row.caption || row.placeholder || "" };
   }
 
   return { resolve, createSession, outcomeHit, considerCustomSwap, momentCard };

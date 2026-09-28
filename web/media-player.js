@@ -83,7 +83,15 @@
     state.hideTimer = null;
   }
 
+  function revokeBlob(v) {
+    const url = v && v.dataset ? v.dataset.blobUrl : "";
+    if (!url) return;
+    delete v.dataset.blobUrl;
+    try { URL.revokeObjectURL(url); } catch (e) { /* already gone */ }
+  }
+
   function stopVideo(v) {
+    revokeBlob(v);
     state.clipToken += 1;
     v.onerror = null;
     delete v.dataset.fell;
@@ -617,6 +625,10 @@
     li.setAttribute("data-hash", card.hash);
     li.setAttribute("data-trust", card.trust);
     li.innerHTML = '<span class="live-badge">live-generated</span><span class="trust-auto">trust: auto</span>';
+    const cap = document.createElement("span");
+    cap.className = "moment-caption";
+    cap.textContent = card.caption || "";
+    li.appendChild(cap);
     list.appendChild(li);
     root.hidden = false;
     root.open = true;
@@ -633,6 +645,11 @@
     return true;
   }
 
+  function keepMoment(note) {
+    if (!note || !note.hash) return;
+    showMoment(R && R.momentCard ? R.momentCard(note) : null);
+  }
+
   function playCustomBlob(note, url) {
     if (!canPlayCustom(note)) {
       try { URL.revokeObjectURL(url); } catch (e) { /* already gone */ }
@@ -644,13 +661,35 @@
       try { URL.revokeObjectURL(url); } catch (e) { /* already gone */ }
       return false;
     }
-    vid.src = url;
+    clearTimer();
+    stopVideo(vid);
+    delete vid.dataset.customEnded;
+    delete vid.dataset.customAt;
+    delete vid.dataset.customDur;
+    vid.src = url
+    vid.dataset.blobUrl = url;
     vid.hidden = false;
     vid.muted = true;
     vid.setAttribute("data-custom", note.hash);
+    state.playing = "custom:" + note.hash;
     layer.hidden = false;
     layer.classList.add("is-live");
     layer.classList.remove("is-still");
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      vid.dataset.customEnded = "1";
+      vid.dataset.customAt = String(Number(vid.currentTime) || 0);
+      vid.dataset.customDur = String(Number(vid.duration) || 0);
+      vid.removeEventListener("ended", finish);
+      clearTimer();
+      revokeBlob(vid);
+      keepMoment(note);
+      onClipEnded();
+    };
+    vid.addEventListener("ended", finish);
+    state.hideTimer = setTimeout(finish, 5000);
     vid.play().catch(() => {});
     return true;
   }
@@ -664,7 +703,7 @@
 
   window.TW2KMedia = {
     loadManifest, onEvent, onEvents, playEntry, hide, ensureHud, onMode,
-    skipClip, noteCustom, setVideoCustom, canPlayCustom, playCustomBlob,
+    skipClip, noteCustom, keepMoment, setVideoCustom, canPlayCustom, playCustomBlob,
     ready: () => !!state.ready,
     preloadState: () => ({
       skipped: preload.skipped, bytes: preload.bytes, clipBytes: preload.clipBytes,

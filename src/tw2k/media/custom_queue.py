@@ -25,6 +25,8 @@ from ..engine.observation import _event_visible_to, event_view
 log = logging.getLogger("tw2k.media.custom")
 
 ENV_FLAG = "TW2K_VIDEO_CUSTOM"
+ENV_CACHE = "TW2K_VIDEO_CUSTOM_CACHE"
+JOB_DEADLINE_S = 600
 JOB_CENTS = 33  # 4s * $0.08 + $0.01 image, in cents. $1/match allows 3.
 MATCH_CAP_CENTS = 100
 DAY_CAP_CENTS = 500
@@ -109,6 +111,17 @@ def prompt_for(universe: Universe, seat: str, event: Event, template_id: str) ->
 def prompt_hash(prompt: dict[str, Any]) -> str:
     raw = json.dumps(prompt, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _citadel_owner(universe: Universe, event: Event) -> str | None:
+    """Citadel completion has no actor. The planet owner is the seat that sees it."""
+    if event.kind != EventKind.CITADEL_COMPLETE:
+        return None
+    pid = (event.payload or {}).get("planet_id")
+    planet = universe.planets.get(pid) if isinstance(pid, int) else None
+    if planet is None:
+        return None
+    return planet.owner_id
 
 
 def _rule_ok(rule: str, event: Event, seat: str) -> bool:
@@ -205,6 +218,11 @@ class CustomQueue:
         global _current
         if self._thread is not None:
             return self
+        with self._lock:
+            self._conn.execute(
+                "UPDATE jobs SET status='expired', swap=0 WHERE status IN ('queued','running')"
+            )
+            self._conn.commit()
         set_media_custom_hook(self._hook)
         _current = self
         self._stop.clear()
@@ -218,11 +236,15 @@ class CustomQueue:
         self._wake.set()
         if self._thread is not None:
             self._thread.join(timeout=2)
-            self._thread = None
+            if not self._thread.is_alive():
+                self._thread = None
         if _current is self:
             _current = None
             set_media_custom_hook(None)
-        self._conn.close()
+        try:
+            self._conn.close()
+        except sqlite3.ProgrammingError:
+            pass
 
     def _hook(self, universe: Universe, event: Event) -> None:
         try:
@@ -237,9 +259,12 @@ class CustomQueue:
             self._consider(universe, event, seat)
 
     def _consider(self, universe: Universe, event: Event, seat: str) -> None:
-        if not _event_visible_to(event, seat, universe):
+        owner = _citadel_owner(universe, event)
+        if owner != seat and not _event_visible_to(event, seat, universe):
             return
         trigger = next((t for t in self.triggers if t["kind"] == event.kind.value and _rule_ok(t["rule"], event, seat)), None)
+        if trigger is None and owner == seat:
+            trigger = next((t for t in self.triggers if t.get("clip") == "planet.citadel" and t["kind"] == event.kind.value), None)
         if trigger is None:
             return
         clip = str(trigger["clip"])
@@ -315,7 +340,11 @@ class CustomQueue:
 
     def _loop(self) -> None:
         while not self._stop.is_set():
-            job = self._claim()
+            try:
+                self._expire_deadlines()
+                job = self._claim()
+            except sqlite3.ProgrammingError:
+                break
             if job is None:
                 self._wake.wait(0.05)
                 self._wake.clear()
@@ -325,7 +354,22 @@ class CustomQueue:
             except Exception:
                 log.exception("custom provider failed")
                 data = None
-            self._finish(job, data)
+            if self._stop.is_set():
+                break
+            try:
+                self._finish(job, data)
+            except sqlite3.ProgrammingError:
+                break
+
+    def _expire_deadlines(self) -> None:
+        cutoff = time.time() - JOB_DEADLINE_S
+        with self._lock:
+            self._conn.execute(
+                """UPDATE jobs SET status='expired', swap=0
+                   WHERE status IN ('queued','running') AND created < ?""",
+                (cutoff,),
+            )
+            self._conn.commit()
 
     def _claim(self) -> sqlite3.Row | None:
         with self._lock:
@@ -375,6 +419,8 @@ class CustomQueue:
                 continue
             if not _event_visible_to(ev, seat, universe):
                 continue
+            if ev.kind == EventKind.CITADEL_COMPLETE and ev.actor_id is None:
+                continue
             if ev.actor_id == seat or ev.kind in HOT_KINDS:
                 return True
         return False
@@ -403,29 +449,46 @@ class CustomQueue:
     def feed_for(self, seat: str, since: int = 0) -> dict[str, Any]:
         ready, moments = [], []
         with self._lock:
-            # A cache hit inserted while an earlier job is still running must
-            # not advance the cursor past that job, or its ready note is lost.
+            since = int(since)
+            if since < 0:
+                since = 0
+            newest_id = int(self._conn.execute(
+                "SELECT COALESCE(MAX(id), 0) FROM jobs WHERE seat=?", (seat,)
+            ).fetchone()[0])
+            if since > newest_id:
+                since = 0
+            # A running job blocks only its own match. The cursor still stops
+            # at that hole so a later poll can deliver it when it finishes.
             pending = self._conn.execute(
-                "SELECT MIN(id) FROM jobs WHERE seat=? AND id>? AND status IN ('queued','running')",
-                (seat, int(since)),
-            ).fetchone()[0]
+                """SELECT id, match_id FROM jobs
+                   WHERE seat=? AND id>? AND status IN ('queued','running')
+                   ORDER BY id LIMIT 1""",
+                (seat, since),
+            ).fetchone()
             sql = """SELECT jobs.* FROM jobs JOIN seen ON seen.hash=jobs.hash AND seen.seat=?
                      AND seen.match_id=jobs.match_id
-                     WHERE jobs.id > ? AND jobs.status IN ('ready','late','cached')"""
-            args: list[Any] = [seat, int(since)]
+                     WHERE jobs.seat=? AND jobs.id > ? AND jobs.status IN ('ready','late','cached')"""
+            args: list[Any] = [seat, seat, since]
             if pending is not None:
-                sql += " AND jobs.id < ?"
-                args.append(int(pending))
+                sql += " AND (jobs.id < ? OR jobs.match_id != ?)"
+                args.extend([int(pending["id"]), pending["match_id"]])
             rows = self._conn.execute(sql, args).fetchall()
-        newest = int(since)
+            pending_flag = self._conn.execute(
+                "SELECT 1 FROM jobs WHERE seat=? AND status IN ('queued','running') LIMIT 1",
+                (seat,),
+            ).fetchone() is not None
+        hole = int(pending["id"]) if pending is not None else None
+        newest = since
         for row in rows:
-            newest = max(newest, int(row["id"]))
+            rid = int(row["id"])
+            if hole is None or rid < hole:
+                newest = max(newest, rid)
             note = self._note(row)
             if row["status"] in ("ready", "cached") and row["swap"]:
                 ready.append(note)
             elif row["status"] in ("late", "cached"):
                 moments.append(note)
-        return {"ready": ready, "moments": moments, "next_since": newest}
+        return {"ready": ready, "moments": moments, "next_since": newest, "pending": pending_flag}
 
     def moments_for(self, seat: str) -> list[dict[str, Any]]:
         return self.feed_for(seat)["moments"]
@@ -440,6 +503,7 @@ class CustomQueue:
             "approved_by": None,
             "badge": "live-generated",
             "status": row["status"],
+            "caption": str(row["clip_key"]).rsplit(".", 1)[-1].replace("_", " "),
         }
 
     def clip_bytes(self, seat: str, digest: str) -> bytes | None:
@@ -463,5 +527,6 @@ def start_if_enabled(cache_dir: Path | None = None) -> CustomQueue | None:
     """Start the worker only when the flag is exactly \"1\". Otherwise do nothing."""
     if os.environ.get(ENV_FLAG) != "1":
         return None
-    folder = cache_dir or (_repo_manifest().parent / "clips" / "custom")
+    override = os.environ.get(ENV_CACHE)
+    folder = cache_dir or (Path(override) if override else (_repo_manifest().parent / "clips" / "custom"))
     return CustomQueue(folder).start()

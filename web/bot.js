@@ -1709,13 +1709,16 @@
             const clip = await fetch(`/harness/v1/${state.seat}/media/custom/${note.hash}`, {
               credentials: "same-origin", headers: headers(),
             });
-            if (!clip.ok) { media.noteCustom(note); continue; }
+            if (!clip.ok) { if (media.keepMoment) media.keepMoment(note); continue; }
             const url = URL.createObjectURL(await clip.blob());
-            if (!media.playCustomBlob(note, url)) media.noteCustom(note);
+            if (!media.playCustomBlob(note, url) && media.keepMoment) media.keepMoment(note);
           } else {
             media.noteCustom(note);
           }
         }
+        const wait = body.pending ? 500 : 3000;
+        clearInterval(customPoll);
+        customPoll = setInterval(tick, wait);
       } catch (e) { /* the reel is optional and must not break the turn loop */ }
     };
     customPoll = setInterval(tick, 3000);

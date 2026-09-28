@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 14:59 PT - Fable - custom clips play out, and citadel stays off the engine
+- A custom clip runs until it ends, then lands in Moments, and its blob URL is revoked. A failed fetch still leaves one row. A job left running is expired on restart so the feed cannot stick. Citadel completion is emitted with no actor again; the queue finds the planet owner itself. Suite 772 passed; ruff clean; manifest OK. Flag-on cockpit and bot browser rerun 150 passed.
+
 ### 2026-09-28 13:10 PT - Fable - the citadel owner gets the custom clip
 - Citadel completion names the planet owner, so the custom job reaches them away from that sector. A ready clip replaces the placeholder while it is still up. A late clip is one Moments row. mode=cu stays 800 px and does not request the video. Suite 768 passed; ruff clean; manifest OK. Flag-on cockpit and bot browser rerun 150 passed.
 
