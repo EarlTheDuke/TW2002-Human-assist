@@ -312,10 +312,18 @@ body.mode-cu .cu-top #pollBtn {
 }
 .cu-turn {
   flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 4px 14px;
-  border-radius: 10px; font-weight: 800; font-size: 1.15rem; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-radius: 10px; font-weight: 800; font-size: 1.15rem; letter-spacing: 0.02em; overflow: hidden;
   background: #2a2410; color: var(--wait); border: 2px solid var(--wait);
 }
-.cu-turn .who { font-size: 0.8rem; font-weight: 600; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; }
+.cu-turn .line { display: flex; min-width: 0; align-items: baseline; }
+.cu-turn .main {
+  display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.cu-turn .cd { flex: 0 0 auto; white-space: pre; }
+.cu-turn .who {
+  display: block; min-width: 0; font-size: 0.8rem; font-weight: 600; opacity: 0.9;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
 .cu-turn.turn { background: #143d2a; color: var(--go); border-color: var(--go); }
 .cu-turn.busy { background: #102a3d; color: var(--accent); border-color: var(--accent); }
 .cu-turn.dead { background: #3a1520; color: var(--danger); border-color: var(--danger); }

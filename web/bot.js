@@ -160,6 +160,37 @@
   }
 
   // ---------------------------------------------------------------- banner
+  // Trailing " · 12s" is the countdown. It has to be its own box: a text node
+  // in the flex column never ellipsizes, so a long actor name was cut through
+  // the seconds.
+  function splitCountdown(main) {
+    const m = /^(.*)( · \d+s)$/.exec(main || "");
+    return m ? { text: m[1], cd: m[2] } : { text: main || "", cd: "" };
+  }
+  function paintCuTurn(el, mode, banner) {
+    const parts = splitCountdown(banner.main);
+    el.className = `cu-turn ${mode}`;
+    el.replaceChildren();
+    const line = document.createElement("span");
+    line.className = "line";
+    const main = document.createElement("span");
+    main.className = "main";
+    main.textContent = parts.text;
+    line.appendChild(main);
+    if (parts.cd) {
+      const cd = document.createElement("span");
+      cd.className = "cd";
+      cd.textContent = parts.cd;
+      line.appendChild(cd);
+    }
+    el.appendChild(line);
+    if (banner.sub) {
+      const who = document.createElement("span");
+      who.className = "who";
+      who.textContent = banner.sub;
+      el.appendChild(who);
+    }
+  }
   function setBanner(mode, text, sub, flash) {
     els.banner.className = `banner ${mode}${flash ? " flash" : ""}`;
     els.banner.textContent = text;
@@ -172,9 +203,7 @@
     if (CU) {
       const t = $("cuTurn");
       const b = P.cuBanner(mode, text, sub, { current: state.current, seat: state.seat, hold: state.hold, now: nowS() });
-      t.className = `cu-turn ${mode}`;
-      t.textContent = b.main;
-      if (b.sub) { const w = document.createElement("span"); w.className = "who"; w.textContent = b.sub; t.appendChild(w); }
+      paintCuTurn(t, mode, b);
       state.cuTurnText = `${b.main}${b.sub ? " · " + b.sub : ""}`;
       renderCuCard();
     }
