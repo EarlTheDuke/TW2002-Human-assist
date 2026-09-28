@@ -55,8 +55,8 @@
       "</div>",
     ].join("");
     document.body.appendChild(root);
-    document.getElementById("mediaHudDismiss").addEventListener("click", hide);
-    root.addEventListener("click", (ev) => { if (ev.target === root) hide(); });
+    document.getElementById("mediaHudDismiss").addEventListener("click", skipClip);
+    root.addEventListener("click", (ev) => { if (ev.target === root) skipClip(); });
     return root;
   }
 
