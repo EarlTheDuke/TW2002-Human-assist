@@ -244,6 +244,8 @@ footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
 .vp-screen[hidden] { display: none !important; }
 .vp-stars { display: block; width: 100%; height: 100%; }
 .vp-frame { position: absolute; inset: 0; pointer-events: none; }
+/* A take that already has a cockpit window in the picture hides this overlay. */
+.viewport.is-baked-frame .vp-frame { visibility: hidden; }
 .vp-frame::before, .vp-frame::after { content: ""; position: absolute; pointer-events: none; }
 /* hauler: two window struts + a deep dashboard */
 .viewport[data-hull="hauler"] .vp-frame {

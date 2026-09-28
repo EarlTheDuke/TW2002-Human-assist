@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 22:30 PT - Fable - approved clips play, stand-ins stay the fallback
+- The 14 pilot clips play by default. A ffmpeg stand-in stays first with approved_by null, and fallback_still stays. Approve or unapprove one take or the batch with scripts/media_approve_clips.py. Swap a file with scripts/media_swap_clip.py. The window background stays the canvas starfield. Suite 725 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 20:41 PT - Fable - route form clears a stale refusal
 - Opening REPEAT ROUTE hides a previous rejection. A pair is suggested only when each known port buys what the other sells. Suite 718 passed; ruff clean; manifest OK.
 

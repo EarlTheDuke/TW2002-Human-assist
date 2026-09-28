@@ -82,20 +82,31 @@
     state.hideTimer = null;
   }
 
+  function stopVideo(v) {
+    v.onerror = null;
+    try { v.pause(); } catch (_) {}
+    v.removeAttribute("src");
+    v.querySelectorAll("source").forEach((s) => s.remove());
+    try { v.load(); } catch (_) {}
+    v.hidden = true;
+  }
+
   function clearVisuals() {
     const root = document.getElementById("mediaHud");
     if (root) {
       root.hidden = true;
       root.classList.remove("show");
       const v = document.getElementById("mediaHudVideo");
-      if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch (_) {} }
+      if (v) stopVideo(v);
     }
     const clip = document.getElementById("vpClip");
     if (clip) {
       clip.hidden = true;
       clip.classList.remove("is-still", "is-live");
-      clip.querySelectorAll("video").forEach((v) => { try { v.pause(); v.removeAttribute("src"); } catch (_) {} });
+      clip.querySelectorAll("video").forEach(stopVideo);
     }
+    const vp = document.getElementById("viewport");
+    if (vp) vp.classList.remove("is-baked-frame");
     clearTimer();
     state.playing = null;
     if (window.TW2KViewport && typeof window.TW2KViewport.setEventCaption === "function") window.TW2KViewport.setEventCaption(null);
@@ -144,19 +155,51 @@
     state.hideTimer = setTimeout(onClipEnded, duration);
   }
 
+  function approvedBy(variant) {
+    const who = variant && variant.provenance && variant.provenance.approved_by;
+    return typeof who === "string" && who.trim() ? who : "";
+  }
+
+  // An approved take plays. Otherwise the first variant, which is the stand-in.
+  function pickVariant(variants) {
+    const list = variants || [];
+    for (let i = 0; i < list.length; i++) if (approvedBy(list[i])) return list[i];
+    return list[0] || {};
+  }
+
   function clipMeta(key) {
     const c = state.manifest && state.manifest.clips && state.manifest.clips[key];
     if (!c) return null;
-    const variant = (c.variants && c.variants[0]) || {};
+    const variant = pickVariant(c.variants);
+    const fallback = (state.manifest.defaults && state.manifest.defaults.duration_ms) || 2400;
     return {
-      key, caption: c.caption || key, still: variant.poster || c.fallback_still || "",
-      webm: variant.webm || "", mp4: variant.mp4 || "", duration: variant.duration_ms || (state.manifest.defaults && state.manifest.defaults.duration_ms) || 2400,
+      key, caption: c.caption || key,
+      still: c.fallback_still || variant.poster || "",
+      poster: variant.poster || c.fallback_still || "",
+      webm: variant.webm || "", mp4: variant.mp4 || "",
+      duration: variant.duration_ms || fallback,
+      bakedFrame: !!variant.baked_frame,
     };
+  }
+
+  function addLiveVideos(layer) {
+    // Stills, Off, and reduced motion never create these, so a poster cannot
+    // pick up a video src. Switching Stills -> Live adds them on the next clip.
+    if (reduce.matches || viewportMode() !== "live" || layer.querySelector("video")) return;
+    for (const name of ["a", "b"]) {
+      const v = document.createElement("video");
+      v.className = name === "a" ? "vp-video vp-video-a" : "vp-video vp-video-b";
+      v.muted = true;
+      v.playsInline = true;
+      v.setAttribute("aria-hidden", "true");
+      v.hidden = true;
+      layer.appendChild(v);
+    }
   }
 
   function ensureClipLayer() {
     let layer = document.getElementById("vpClip");
-    if (layer) return layer;
+    if (layer) { addLiveVideos(layer); return layer; }
     const screen = document.getElementById("vpScreen");
     if (!screen) return null;
     layer = document.createElement("div");
@@ -168,19 +211,7 @@
     img.alt = "";
     img.setAttribute("data-testid", "viewport-clip-still");
     layer.appendChild(img);
-    // Two video layers exist for a Live clip that has webm/mp4. Stills, Off, and
-    // reduced motion never create them, so a poster cannot pick up a video src.
-    if (!reduce.matches && viewportMode() === "live") {
-      for (const name of ["a", "b"]) {
-        const v = document.createElement("video");
-        v.className = name === "a" ? "vp-video vp-video-a" : "vp-video vp-video-b";
-        v.muted = true;
-        v.playsInline = true;
-        v.setAttribute("aria-hidden", "true");
-        v.hidden = true;
-        layer.appendChild(v);
-      }
-    }
+    addLiveVideos(layer);
     screen.appendChild(layer);
     return layer;
   }
@@ -214,13 +245,37 @@
     if (window.TW2KViewport && typeof window.TW2KViewport.setEventCaption === "function") {
       window.TW2KViewport.setEventCaption(sectorCaption(meta, item));
     }
+    const vp = document.getElementById("viewport");
+    const showBaked = !stills && !!(meta.bakedFrame && (meta.webm || meta.mp4));
+    if (vp) vp.classList.toggle("is-baked-frame", showBaked);
     const videos = layer.querySelectorAll("video");
-    videos.forEach((v) => { try { v.pause(); v.removeAttribute("src"); } catch (_) {} v.hidden = true; });
+    videos.forEach(stopVideo);
     if (!stills && (meta.webm || meta.mp4) && videos.length) {
       const idle = videos[0];
       idle.hidden = false;
-      idle.src = BASE + (meta.webm || meta.mp4);
-      idle.play().catch(() => {});
+      if (meta.webm) {
+        const s = document.createElement("source");
+        s.src = BASE + meta.webm;
+        s.type = "video/webm";
+        idle.appendChild(s);
+      }
+      if (meta.mp4) {
+        const s = document.createElement("source");
+        s.src = BASE + meta.mp4;
+        s.type = "video/mp4";
+        idle.appendChild(s);
+      }
+      const fail = () => {
+        if (idle.dataset.fell) return;
+        idle.dataset.fell = "1";
+        idle.hidden = true;
+        bump("poster-fallbacks");
+      };
+      idle.onerror = fail;
+      try { idle.load(); } catch (_) {}
+      idle.play().catch(() => {
+        if (idle.error || idle.networkState === 3) fail();
+      });
     }
     arm(meta.duration);
     return true;
@@ -268,7 +323,9 @@
       const layer = document.getElementById("vpClip");
       if (!layer) return;
       layer.classList.remove("is-still", "is-live");
-      layer.querySelectorAll("video").forEach((v) => { try { v.pause(); v.removeAttribute("src"); } catch (_) {} v.hidden = true; });
+      layer.querySelectorAll("video").forEach(stopVideo);
+      const vp = document.getElementById("viewport");
+      if (vp) vp.classList.remove("is-baked-frame");
     }
   }
 
