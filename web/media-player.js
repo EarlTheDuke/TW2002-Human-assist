@@ -35,7 +35,7 @@
   const reduce = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
   const state = {
     manifest: null, lastSeq: 0, hideTimer: null, reduced: false, obs: null,
-    visit_sector: null, docked_in_visit: false, session: null, playing: null,
+    visit_sector: null, docked_in_visit: false, session: null, playing: null, clipToken: 0,
   };
 
   function ensureHud() {
@@ -83,6 +83,7 @@
   }
 
   function stopVideo(v) {
+    state.clipToken += 1;
     v.onerror = null;
     delete v.dataset.fell;
     v.querySelectorAll("source").forEach((s) => { s.onerror = null; });
@@ -254,6 +255,7 @@
     videos.forEach(stopVideo);
     if (!stills && (meta.webm || meta.mp4) && videos.length) {
       const idle = videos[0];
+      const token = ++state.clipToken;
       delete idle.dataset.fell;
       idle.hidden = false;
       const sources = [];
@@ -272,7 +274,7 @@
         sources.push(s);
       }
       const fail = () => {
-        if (idle.dataset.fell) return;
+        if (token !== state.clipToken || idle.dataset.fell) return;
         idle.dataset.fell = "1";
         idle.hidden = true;
         bump("poster-fallbacks");
@@ -282,7 +284,9 @@
       if (sources.length) sources[sources.length - 1].onerror = fail;
       idle.onerror = fail;
       try { idle.load(); } catch (_) {}
-      idle.play().catch(() => {
+      idle.play().catch((err) => {
+        if (token !== state.clipToken) return;
+        if (err && err.name === "AbortError") return;
         if (idle.error || idle.networkState === 3) fail();
       });
     }
