@@ -827,6 +827,11 @@ class Universe(BaseModel):
             summary=summary,
         )
         self.events.append(ev)
+        # None unless TW2K_VIDEO_CUSTOM=1 installed a queue. The flag-off path
+        # does not set this, so emit stays a plain append.
+        hook = _MEDIA_CUSTOM_HOOK
+        if hook is not None:
+            hook(self, ev)
         return ev
 
 # ---------------------------------------------------------------------
@@ -836,6 +841,15 @@ class Universe(BaseModel):
 # Kept at module scope so Universe.emit can call without paying a bound
 # method lookup per event.
 # ---------------------------------------------------------------------
+# Set by the custom-clip queue when TW2K_VIDEO_CUSTOM=1. Left None otherwise.
+_MEDIA_CUSTOM_HOOK = None
+
+
+def set_media_custom_hook(fn) -> None:
+    global _MEDIA_CUSTOM_HOOK
+    _MEDIA_CUSTOM_HOOK = fn
+
+
 _FIRST_CHIP_KINDS: set[EventKind] = {
     EventKind.CORP_CREATE,
     EventKind.ALLIANCE_FORMED,

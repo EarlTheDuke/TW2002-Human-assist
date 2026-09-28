@@ -246,7 +246,14 @@ def create_app(
                     break
                 await _asyncio.sleep(0.02)
             copilot_registry.rebuild(runner=runner, broadcaster=broadcaster)
+        custom_queue = None
+        if os.environ.get("TW2K_VIDEO_CUSTOM") == "1":
+            from ..media.custom_queue import start_if_enabled
+
+            custom_queue = start_if_enabled()
         yield
+        if custom_queue is not None:
+            custom_queue.stop()
         await runner.stop()
         copilot_registry.clear()
 

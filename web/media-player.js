@@ -352,6 +352,7 @@
   }
 
   function onMode(mode) {
+    // Viewport Off drops a queued escape pod on purpose: media off means nothing plays.
     if (mode === "off") hide();
     else if (mode === "stills") {
       const layer = document.getElementById("vpClip");
@@ -605,9 +606,35 @@
     else window.addEventListener("load", kick, { once: true });
   }
 
+  function showMoment(card) {
+    if (!card) return;
+    let root = document.getElementById("mediaMoments");
+    if (!root) {
+      root = document.createElement("details");
+      root.id = "mediaMoments";
+      root.className = "media-moments";
+      root.setAttribute("data-testid", "media-moments");
+      root.innerHTML = "<summary>Moments</summary><ul></ul>";
+      document.body.appendChild(root);
+    }
+    const li = document.createElement("li");
+    li.setAttribute("data-trust", card.trust);
+    li.textContent = card.badge + " " + card.hash;
+    root.querySelector("ul").appendChild(li);
+    root.hidden = false;
+  }
+
+  function noteCustom(note) {
+    const swap = R && typeof R.considerCustomSwap === "function"
+      ? R.considerCustomSwap(state.playing, note, note && note.latest_own, note && note.latest_hot)
+      : false;
+    if (!swap && R && typeof R.momentCard === "function") showMoment(R.momentCard(note));
+    return swap;
+  }
+
   window.TW2KMedia = {
     loadManifest, onEvent, onEvents, playEntry, hide, ensureHud, onMode,
-    skipClip,
+    skipClip, noteCustom,
     ready: () => !!state.ready,
     preloadState: () => ({
       skipped: preload.skipped, bytes: preload.bytes, clipBytes: preload.clipBytes,

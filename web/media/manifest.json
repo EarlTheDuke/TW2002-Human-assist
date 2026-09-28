@@ -805,6 +805,19 @@
         }
       ]
     },
+    "planet.citadel": {
+      "priority": 2,
+      "caption": "Citadel",
+      "fallback_still": "stills/planet_citadel.png",
+      "preload": "none",
+      "variants": [
+        {
+          "id": "planet_citadel_ph",
+          "poster": "stills/planet_citadel.png",
+          "duration_ms": 2400
+        }
+      ]
+    },
     "self.ship_destroyed": {
       "priority": 0,
       "caption": "Ship destroyed",
@@ -903,13 +916,22 @@
     {
       "kind": "genesis_deployed",
       "rule": "self",
-      "clip": "planet.genesis"
+      "clip": "planet.genesis",
+      "custom": true
+    },
+    {
+      "kind": "citadel_complete",
+      "rule": "self",
+      "clip": "planet.citadel",
+      "custom": true,
+      "custom_only": true
     },
     {
       "kind": "ship_destroyed",
       "rule": "self_victim",
       "clip": "self.ship_destroyed",
-      "chain": "self.escape_pod"
+      "chain": "self.escape_pod",
+      "custom": true
     },
     {
       "kind": "hail",

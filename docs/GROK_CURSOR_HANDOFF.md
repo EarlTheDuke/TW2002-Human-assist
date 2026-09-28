@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 11:32 PT - Fable - custom clips queue on a fake provider
+- Rare moments can queue a custom clip only when TW2K_VIDEO_CUSTOM=1. The provider is local and fake. Caps refuse a fourth job in a match and a job past the day budget. An identical prompt is reused. A late clip stays in that seat's reel. Suite 764 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 10:25 PT - Fable - the death-card close keeps the escape pod
 - The × on the death card, and a click on the card backdrop, use the same Skip path as Escape. The escape pod still plays. A second close ends the pod. Turning the viewport off, or a still that fails to load, still clears everything. Suite 750 passed; ruff clean; manifest OK.
 
