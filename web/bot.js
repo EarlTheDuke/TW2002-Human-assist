@@ -335,7 +335,16 @@
       const tr = document.createElement("tr");
       tr.className = st.side === "buys_from_player" ? "buys" : st.side === "sells_to_player" ? "sells" : "empty";
       tr.setAttribute("data-testid", `port-row-${c}`);
-      td(tr, c);
+      const canSell = st.side === "buys_from_player" && Number(cargo[c] || 0) > 0;
+      if (canSell) tr.setAttribute("data-can-sell", "true");
+      const name = td(tr, c);
+      if (canSell) {
+        const mark = document.createElement("span");
+        mark.className = "can-sell-mark";
+        mark.textContent = "●";
+        mark.title = "You hold this, and the port buys it";
+        name.appendChild(mark);
+      }
       td(tr, sideWord(st.side));
       td(tr, st.price === null || st.price === undefined ? "-" : `${fmt(st.price)} cr`, "num");
       td(tr, `${fmt(st.current)} / ${fmt(st.max)}`, "num");
@@ -631,6 +640,14 @@
   // engine's own parameter envelope (choices / min / max / listed prices).
   const S3_VERBS = ["warp", "scan", "wait", "trade", "plot_course", "probe"];
   function legalOf(kind) { return (state.legal && state.legal[kind]) || { kind, legal: false, reason: "no legality data", params: {} }; }
+  function rememberedPortCode(obs, sid) {
+    const id = Number(sid);
+    const remembered = (obs.known_ports || []).find((p) => Number(p.sector_id) === id);
+    const fromPort = remembered && remembered.class ? String(remembered.class) : "";
+    if (fromPort) return fromPort;
+    const sec = (obs.known_sectors || []).find((s) => Number(s.id) === id);
+    return sec && sec.port ? String(sec.port) : "";
+  }
   function canUse(kind) { return state.awaiting && !state.busy && !!legalOf(kind).legal; }
   // The route macro is a harness verb, not an engine one: legal_actions never lists it,
   // so its form is gated by "your turn" only (the server re-checks every step).
@@ -651,15 +668,20 @@
       btn.classList.toggle("selected", state.openVerb === kind);
     });
     // Warp chips are the warp verb's form; gate them from legal_actions.warp.
+    // A port code is shown only when this seat remembers that sector.
     const warp = legalOf("warp");
     const warps = (warp.params && warp.params.target && warp.params.target.choices) || [];
-    const warpKey = warps.join(",");
+    const warpLabel = (w) => {
+      const code = rememberedPortCode(obs, w);
+      return code ? `WARP ${w} ${code}` : `WARP ${w}`;
+    };
+    const warpKey = warps.map(warpLabel).join("|");
     if (els.warps.getAttribute("data-warp-key") !== warpKey) {
       els.warps.innerHTML = "";
       warps.forEach((w) => {
         const b = document.createElement("button");
         b.type = "button";
-        b.textContent = `WARP ${w}`;
+        b.textContent = warpLabel(w);
         b.setAttribute("data-testid", `warp-${w}`);
         b.setAttribute("data-target", String(w));
         b.addEventListener("click", () => { if (canUse("warp")) submit({ kind: "warp", args: { target: Number(w) }, thought: `Grok Bot: warp to ${w}` }); });

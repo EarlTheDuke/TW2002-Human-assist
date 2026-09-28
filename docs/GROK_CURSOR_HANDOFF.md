@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 05:45 PT - Fable - warp buttons show a remembered port code
+- A warp button names the port only when this seat already remembers that sector. The port table marks a commodity you hold when the port buys it. Default and mode=cu stay inside 1280x800, and the S / 1-9 hints stay. Suite 742 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 04:45 PT - Fable - default cockpit scans with S and warps with 1-9
 - S and 1-9 on the default page do what they do in mode=cu, and they stay quiet in a form, on a repeated key, or when the verb is not legal. A chained pod's timer restarts when it reaches the front of the queue. The manifest report prints the clip budget and the stills total separately. Suite 740 passed; ruff clean; manifest OK.
 
