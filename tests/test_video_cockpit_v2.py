@@ -157,6 +157,27 @@ def test_ferrengi_plays_incoming_then_death_then_the_pod() -> None:
 
 
 @needs_node
+def test_a_long_incoming_and_death_still_play_the_pod() -> None:
+    script = (
+        "const R=require(process.argv[1]);"
+        "const s=R.createSession({defaults:{stale_ms:8000}, clips:{"
+        "'combat.incoming':{priority:0},'self.ship_destroyed':{priority:0},'self.escape_pod':{priority:0}}});"
+        "s.consider(["
+        "{clip_key:'combat.incoming', priority:0, seq:1},"
+        "{clip_key:'self.ship_destroyed', priority:0, seq:2},"
+        "{clip_key:'self.escape_pod', priority:0, seq:2, chain:true}"
+        "], 0);"
+        "const death=s.finish(5000);"
+        "const pod=s.finish(10000);"
+        "process.stdout.write(JSON.stringify({death:death&&death.clip_key, pod:pod&&pod.clip_key, drops:s.state().staleDrops}));"
+    )
+    got = json.loads(subprocess.run([NODE, "-e", script, str(RESOLVER)], capture_output=True, text=True, check=True, timeout=30).stdout)
+    assert got["death"] == "self.ship_destroyed"
+    assert got["pod"] == "self.escape_pod"
+    assert got["drops"] == 0
+
+
+@needs_node
 def test_at_stardock_reads_the_manifest_sector() -> None:
     from tw2k.engine import constants as K
 
@@ -187,13 +208,25 @@ def test_ship_combat_outcome_and_own_death_are_in_the_fixtures() -> None:
         assert any(r["kind"] == "ship_destroyed" and r["facts"].get("victim") == "P1" for r in fx["batch"])
 
 
-def test_designed_stills_have_their_own_counter() -> None:
-    html = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")
-    player = (ROOT / "web" / "media-player.js").read_text(encoding="utf-8")
-    assert "poster-fallbacks 0  stills 0" in html
-    assert '"stills"' in player
-    assert 'bump("stills")' in player
-    assert 'bump("poster-fallbacks")' in player
+def test_designed_stills_have_their_own_counter(browser, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    fx = json.loads((FIXTURES / "planet_land.json").read_text(encoding="utf-8"))
+    with CuHost(tmp_path, TOK, turns_per_day=500) as host:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}&viewport=live")
+        page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
+        text = page.evaluate(
+            """(fx) => {
+                sessionStorage.removeItem('tw2k.media.counters');
+                if (window.TW2KViewport) TW2KViewport.setMode('live');
+                TW2KMedia._prime({ lastSeq: 0, visit_sector: fx.state_before.visit_sector, docked_in_visit: false });
+                TW2KMedia.onEvents(fx.batch, fx.obs);
+                return document.getElementById('mediaCounters').textContent;
+            }""",
+            fx,
+        )
+        page.close()
+    assert "stills 1" in text and "poster-fallbacks 0" in text
 
 
 def test_placeholder_manifest_points_at_existing_stills() -> None:

@@ -1729,10 +1729,28 @@
   else if ($("holdBtn")) {
     $("holdBtn").addEventListener("click", () => toggleHold());
     document.addEventListener("keydown", (ev) => {
-      if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
       const tag = (ev.target && ev.target.tagName) || "";
       if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) return;
       if (ev.target && ev.target.isContentEditable) return;
+      const form = $("verbForm");
+      if (form && !form.hidden) return;
+      if (document.querySelector("[role=dialog]:not([hidden])")) return;
+      const k = ev.key || "";
+      if (/^[1-9]$/.test(k)) {
+        const b = els.warps.querySelectorAll("button")[Number(k) - 1];
+        if (!b || b.disabled || !canUse("warp")) return;
+        ev.preventDefault();
+        b.click();
+        return;
+      }
+      if (k.toLowerCase() === "s") {
+        if (!canUse("scan")) return;
+        ev.preventDefault();
+        const btn = $("verbPad").querySelector("button[data-verb=scan]");
+        if (btn && !btn.disabled) btn.click();
+        return;
+      }
       if ((ev.key || "").toLowerCase() !== "h") return;
       ev.preventDefault();
       toggleHold();

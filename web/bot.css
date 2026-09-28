@@ -85,6 +85,10 @@ main.bot-main {
 }
 .warps, .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .warps button { min-width: 150px; min-height: 68px; background: #182447; font-size: 1.25rem; }
+body:not(.mode-cu) #warpBtns { counter-reset: warpkey; }
+body:not(.mode-cu) #warpBtns button:nth-child(-n+9) { counter-increment: warpkey; }
+body:not(.mode-cu) #warpBtns button:nth-child(-n+9)::before { content: "[" counter(warpkey) "] "; color: var(--accent); }
+body:not(.mode-cu) #verbPad button[data-key]::after { content: " (" attr(data-key) ")"; font-size: 0.78rem; opacity: 0.8; }
 .actions button.sell { border-color: #3dd68c; }
 .actions button.buy { border-color: #6ee7ff; }
 .quick-trades { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }

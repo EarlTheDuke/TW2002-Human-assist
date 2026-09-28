@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 04:45 PT - Fable - default cockpit scans with S and warps with 1-9
+- S and 1-9 on the default page do what they do in mode=cu, and they stay quiet in a form, on a repeated key, or when the verb is not legal. A chained pod's timer restarts when it reaches the front of the queue. The manifest report prints the clip budget and the stills total separately. Suite 740 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 03:20 PT - Fable - death then the escape pod stay in order
 - Incoming fire no longer skips the death clip, and a later action from this seat no longer drops the queued pod. StarDock's sector comes from the manifest. Designed stills count on their own. Suite 737 passed; ruff clean; manifest OK.
 
