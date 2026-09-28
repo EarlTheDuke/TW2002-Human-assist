@@ -970,7 +970,14 @@
       known.addEventListener("change", () => { if (known.selectedIndex > 0) { target.value = known.value; sync(); } });
       const exec = document.createElement("input"); exec.type = "checkbox"; exec.checked = true; exec.setAttribute("data-testid", "plot-execute");
       const execWrap = document.createElement("label"); execWrap.className = "radios"; const el2 = document.createElement("label"); el2.appendChild(exec); el2.appendChild(document.createTextNode("Execute (fly the route now, one warp cost per hop)")); execWrap.appendChild(el2); f.appendChild(execWrap);
-      const sync = () => { const t = Number(target.value) || 0; const kw = (state.obs && state.obs.known_warps) || {}; const hops = t ? bfsKnown(kw, (state.obs.sector || {}).id, t) : null; preview.textContent = t ? `Route ${state.obs.sector.id} → ${t}: ${hops === null ? "not through known space (engine may still find one)" : hops + " hop(s) through known warps"}${exec.checked ? " · executes" : " · plan only (0 turns)"}` : "enter a target sector"; };
+      const sync = () => {
+        const t = Number(target.value) || 0;
+        if (!t) { preview.textContent = "enter a target sector"; return; }
+        const path = knownRoute(state.obs, t);
+        if (!path) { preview.textContent = "route shown after plotting"; return; }
+        const fly = exec.checked ? " · executes" : " · plan only (0 turns)";
+        preview.textContent = `${path.hops} hop(s), first sector ${path.first}${fly}`;
+      };
       target.addEventListener("input", sync); exec.addEventListener("change", sync); sync();
       build = () => { const t = Number(target.value) || 0; return t > 0 ? { kind: "plot_course", args: { target: t, execute: exec.checked }, thought: `Grok Bot: plot to ${t}` } : null; };
     } else if (kind === "probe") {
@@ -998,14 +1005,28 @@
     f.onsubmit = (ev) => { ev.preventDefault(); if (!canUse(kind)) return; const a = build(); if (!a) { preview.classList.add("warn"); return; } closeVerb(); submit(a); };
   }
 
-  // Presentation-only BFS over the seat's OWN known_warps (memory the server sent) to
-  // label a plot preview; the engine decides the real route.
-  function bfsKnown(kw, src, dst) {
-    if (!src || !dst) return null; if (src === dst) return 0;
-    const seen = new Set([src]); let frontier = [src]; let d = 0;
+  // Presentation-only BFS over warps this seat already has: its remembered
+  // graph, plus the exits of the sector it is standing in. No server call.
+  function knownRoute(obs, dst) {
+    const src = (obs && obs.sector && obs.sector.id) || 0;
+    if (!src || !dst) return null;
+    const kw = Object.assign({}, (obs && obs.known_warps) || {});
+    const here = (obs.sector && obs.sector.warps_out) || [];
+    if (here.length && !kw[String(src)]) kw[String(src)] = here;
+    if (src === dst) return { hops: 0, first: src };
+    const seen = new Set([src]);
+    let frontier = [{ id: src, first: null }];
+    let d = 0;
     while (frontier.length && d < 60) {
-      d += 1; const next = [];
-      for (const s of frontier) for (const n of kw[String(s)] || []) { if (n === dst) return d; if (!seen.has(n)) { seen.add(n); next.push(n); } }
+      d += 1;
+      const next = [];
+      for (const node of frontier) {
+        for (const n of kw[String(node.id)] || []) {
+          const first = node.first === null ? n : node.first;
+          if (n === dst) return { hops: d, first };
+          if (!seen.has(n)) { seen.add(n); next.push({ id: n, first }); }
+        }
+      }
       frontier = next;
     }
     return null;
@@ -1201,6 +1222,7 @@
       stage: state.twin && state.twin.stage_hint,
       last: P.digestText(state.digest, state.lastResult && state.lastResult.turn_seq) || state.lastText,
       events: shownEvents().slice(-5),
+      warpCode: (w) => rememberedPortCode(state.obs, w),
     });
   }
   function renderCu() {
@@ -1293,13 +1315,26 @@
     const maxBy = (p.qty || {}).max_by || {};
     const items = [];
     if (!la.legal) return items;
+    const listedBy = (p.unit_price || {}).listed_by || {};
     for (const side of ["sell", "buy"]) {
       for (const c of ((p.commodity || {})[`${side}_choices`] || [])) {
         const qty = (maxBy[c] || {})[side] || 0;
-        if (qty > 0) items.push({ side, c, qty });
+        if (qty <= 0) continue;
+        const unit = (listedBy[c] || {})[side];
+        const total = unit === undefined || unit === null ? null : Number(unit) * qty;
+        items.push({ side, c, qty, total });
       }
     }
     return items;
+  }
+  function paintTradeButton(b, it) {
+    const label = document.createElement("span");
+    label.className = "qlabel";
+    label.textContent = `${it.side.toUpperCase()} ${SHORT[it.c] || it.c}`;
+    const num = document.createElement("span");
+    num.className = "qnum";
+    num.textContent = it.total === null ? ` x${fmt(it.qty)}` : ` x${fmt(it.qty)} - ${fmt(it.total)} cr`;
+    b.replaceChildren(label, num);
   }
   // Default layout: one click, max qty, list price. Hidden unless a trade is legal right now.
   function renderQuickTrades() {
@@ -1314,7 +1349,7 @@
         const b = document.createElement("button");
         b.type = "button"; b.className = it.side;
         b.setAttribute("data-testid", `quick-${it.side}-${it.c}`);
-        b.textContent = `${it.side.toUpperCase()} ${SHORT[it.c] || it.c} x${fmt(it.qty)}`;
+        paintTradeButton(b, it);
         b.title = `one click: ${it.side} ${it.qty} ${it.c} at list price`;
         b.addEventListener("click", () => quickTrade(it.side, it.c));
         box.appendChild(b);
@@ -1335,7 +1370,7 @@
         const b = document.createElement("button");
         b.type = "button"; b.className = it.side;
         b.setAttribute("data-testid", `cu-quick-${it.side}-${it.c}`);
-        b.textContent = `${it.side.toUpperCase()} ${SHORT[it.c] || it.c} x${fmt(it.qty)}`;
+        paintTradeButton(b, it);
         b.title = `one click: ${it.side} ${it.qty} ${it.c} at list price`;
         b.addEventListener("click", () => quickTrade(it.side, it.c));
         box.appendChild(b);

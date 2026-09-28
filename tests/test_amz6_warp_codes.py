@@ -110,3 +110,101 @@ def test_cu_page_stays_one_screen_when_warp_buttons_show_codes(browser, tmp_path
         assert fit["scroll"] <= VIEW_H
         assert fit["wide"] and "S" in fit["scan"] and "counter(cuwarp)" in fit["warp"]
         page.close()
+
+
+def _move(universe, me, dest: int) -> None:
+    universe.sectors[me.sector_id].occupant_ids.remove("P2")
+    me.sector_id = dest
+    universe.sectors[dest].occupant_ids.append("P2")
+
+
+def test_sbb_marks_organics_and_equipment_and_an_empty_hold_marks_nothing(browser, tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    with CuHost(tmp_path, TOK + "-sbb") as host:
+        universe, me = _wait_parked(host)
+        dest = next(s for s in universe.sectors.values() if s.port and s.port.code == "SBB")
+        _move(universe, me, dest.id)
+        me.ship.cargo[Commodity.FUEL_ORE] = 10
+        me.ship.cargo[Commodity.ORGANICS] = 5
+        me.ship.cargo[Commodity.EQUIPMENT] = 4
+        _replace_snapshot(host, universe)
+
+        page = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H})
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}-sbb")
+        page.wait_for_selector("#turnBanner.turn", timeout=20_000)
+        page.wait_for_function(
+            "() => document.querySelector('[data-testid=port-row-organics]')?.getAttribute('data-can-sell') === 'true'",
+            timeout=15_000,
+        )
+        assert page.locator("[data-testid=port-row-equipment]").get_attribute("data-can-sell") == "true"
+        assert page.locator("[data-testid=port-row-fuel_ore]").get_attribute("data-can-sell") is None
+        assert page.locator("[data-testid=port-row-organics] .can-sell-mark").is_visible()
+        assert page.locator("[data-testid=port-row-equipment] .can-sell-mark").is_visible()
+
+        for commodity in (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT):
+            me.ship.cargo[commodity] = 0
+        _replace_snapshot(host, universe)
+        page.get_by_test_id("refresh").click()
+        page.wait_for_function(
+            "() => ![...document.querySelectorAll('#portTape tbody tr')].some((r) => r.getAttribute('data-can-sell'))",
+            timeout=10_000,
+        )
+        page.close()
+
+
+def test_stardock_codes_on_every_neighbour_do_not_overflow(browser, tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    with CuHost(tmp_path, TOK + "-sd") as host:
+        universe, me = _wait_parked(host)
+        warps = list(universe.sectors[me.sector_id].warps)
+        assert warps
+        bare = warps[-1] if len(warps) > 1 else None
+        for sid in warps:
+            if sid != bare:
+                me.known_ports[sid] = {"class": "STARDOCK", "stock": {}, "last_seen_day": universe.day}
+        _replace_snapshot(host, universe)
+
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}-sd")
+        page.wait_for_selector("#turnBanner.turn", timeout=20_000)
+        page.wait_for_function(
+            "() => [...document.querySelectorAll('#warpBtns button')].some((b) => b.textContent.includes('STARDOCK'))",
+            timeout=15_000,
+        )
+        for width, height in ((1440, 900), (1280, 800)):
+            page.set_viewport_size({"width": width, "height": height})
+            fit = page.evaluate("""() => ({
+                wide: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+                clipped: [...document.querySelectorAll('#warpBtns button')].some((b) => b.scrollWidth > b.clientWidth + 2),
+                scan: getComputedStyle(document.querySelector('[data-testid=action-scan]'), '::after').content,
+                warp: getComputedStyle(document.querySelector('#warpBtns button'), '::before').content,
+            })""")
+            assert fit["wide"] and not fit["clipped"], fit
+            assert "S" in fit["scan"] and "counter(warpkey)" in fit["warp"]
+        if bare is not None:
+            bare_label = page.evaluate(f"() => document.querySelector('[data-testid=warp-{bare}]').textContent")
+            assert bare_label == f"WARP {bare}"
+        page.close()
+
+        cu = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H})
+        cu.goto(f"{host.base}/bot?mode=cu&seat=P2&token={TOK}-sd")
+        cu.wait_for_function("() => document.querySelector('[data-testid=cu-turn]')?.textContent.includes('YOUR TURN')", timeout=20_000)
+        cu.wait_for_function(
+            "() => document.querySelector('#cuTurnCard')?.textContent.includes('STARDOCK')",
+            timeout=15_000,
+        )
+        card = cu.locator("#cuTurnCard").inner_text()
+        coded = next(sid for sid in warps if sid != bare)
+        assert f"{coded} STARDOCK" in card
+        if bare is not None:
+            assert f"{bare} STARDOCK" not in card
+        fit = cu.evaluate("""() => ({
+            scroll: document.scrollingElement.scrollHeight,
+            wide: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+            clipped: [...document.querySelectorAll('#warpBtns button')].some((b) => b.scrollWidth > b.clientWidth + 2),
+            scan: getComputedStyle(document.querySelector('[data-testid=action-scan]'), '::after').content,
+            warp: getComputedStyle(document.querySelector('#warpBtns button'), '::before').content,
+        })""")
+        assert fit["scroll"] <= VIEW_H and fit["wide"] and not fit["clipped"], fit
+        assert "S" in fit["scan"] and "counter(cuwarp)" in fit["warp"]
+        cu.close()

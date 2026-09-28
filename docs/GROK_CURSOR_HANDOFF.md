@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 06:45 PT - Fable - trade buttons show the list-price total
+- One-click sell and buy buttons include price times quantity. The plot form names the hop count and first sector from warps this seat already has, or says the route is shown after plotting. The mode=cu turn card uses the same remembered port codes as the warp buttons. An SBB port marks organics and equipment, not fuel, and an empty hold marks nothing. STARDOCK on the neighbour buttons stays inside 1440x900, 1280x800, and the one-screen CU page. Suite 746 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 05:45 PT - Fable - warp buttons show a remembered port code
 - A warp button names the port only when this seat already remembers that sector. The port table marks a commodity you hold when the port buys it. Default and mode=cu stay inside 1280x800, and the S / 1-9 hints stay. Suite 742 passed; ruff clean; manifest OK.
 
