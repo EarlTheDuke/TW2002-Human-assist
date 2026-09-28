@@ -1561,6 +1561,7 @@
   // ---------------------------------------------------------------- status loop
   function applyStatus(st) {
     noteSuccess();
+    if (st.video_custom === true) armCustomMoments();
     if (typeof st.server_time === "number") state.clockSkew = st.server_time - Date.now() / 1000;
     state.matchStatus = st.match_status || "";
     state.day = st.day; state.tick = st.tick;
@@ -1685,6 +1686,23 @@
 
   // Long-poll loop. Not our turn: block up to 20 s for the turn, and take a
   // peek when the poll returns so panels stay fresh. Our turn: status every 1.5 s.
+  let customPoll = 0;
+  function armCustomMoments() {
+    if (customPoll) return;
+    const tick = async () => {
+      if (!state.connected) return;
+      try {
+        const body = await api(`/${state.seat}/media/moments`);
+        const media = window.TW2KMedia;
+        if (!media || typeof media.noteCustom !== "function") return;
+        const notes = (body.ready || []).concat(body.moments || []);
+        for (const note of notes) media.noteCustom(note);
+      } catch (e) { /* the reel is optional and must not break the turn loop */ }
+    };
+    customPoll = setInterval(tick, 3000);
+    void tick();
+  }
+
   async function watchLoop(gen) {
     while (state.connected && gen === state.watchGen) {
       if (state.busy) { await sleep(250); continue; }

@@ -127,6 +127,15 @@ def final_standings(universe, seat: str | None = None) -> dict[str, Any]:
     return out
 
 
+def _video_custom_flag() -> dict[str, Any]:
+    """Omit the key entirely when the custom queue was never started."""
+    from ..media.custom_queue import current as custom_current
+
+    if custom_current() is None:
+        return {}
+    return {"video_custom": True}
+
+
 def build_harness_router(runner) -> APIRouter:
     router = APIRouter(prefix="/harness/v1", tags=["harness"])
 
@@ -261,6 +270,7 @@ def build_harness_router(runner) -> APIRouter:
             "deadline_at": deadline_at,
             "server_time": time.time(),
             **_status_and_result(agent),
+            **_video_custom_flag(),
         }
 
     def _status_and_result(agent: ExternalAgent) -> dict[str, Any]:
@@ -515,6 +525,29 @@ def build_harness_router(runner) -> APIRouter:
         u = runner.state.universe
         entries = await agent.test_webhook(build_observation(u, agent.player_id))
         return {"player_id": player_id, "deliveries": entries, "delivered": any(e["ok"] for e in entries)}
+
+    @router.get("/{player_id}/media/custom/{prompt_hash}")
+    async def custom_clip(player_id: str, prompt_hash: str, request: Request) -> Response:
+        agent = _require_seat(player_id, request)
+        from ..media.custom_queue import current as custom_current
+
+        q = custom_current()
+        if q is None:
+            raise HTTPException(status_code=404, detail="custom queue off")
+        body = q.clip_bytes(agent.player_id, prompt_hash)
+        if body is None:
+            raise HTTPException(status_code=404, detail="no such clip")
+        return Response(content=body, media_type="video/webm", headers={"Cache-Control": "private"})
+
+    @router.get("/{player_id}/media/moments")
+    async def custom_moments(player_id: str, request: Request) -> dict[str, Any]:
+        agent = _require_seat(player_id, request)
+        from ..media.custom_queue import current as custom_current
+
+        q = custom_current()
+        if q is None:
+            raise HTTPException(status_code=404, detail="custom queue off")
+        return {"player_id": agent.player_id, **q.feed_for(agent.player_id)}
 
     return router
 

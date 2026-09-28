@@ -62,3 +62,7 @@ htmlcov/
 .ruff_cache/
 
 .commitmsg.tmp
+
+# Live custom clips are generated per match and are not part of the base library.
+web/media/clips/custom/*
+!web/media/clips/custom/.gitkeep

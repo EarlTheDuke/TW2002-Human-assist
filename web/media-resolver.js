@@ -74,6 +74,7 @@
       }
       let matched = null;
       for (const t of triggers) {
+        if (t.custom_only && !(state && state.videoCustom)) continue;
         if (t.kind === ev.kind && ruleMatches(t.rule, ev, obs, st)) { matched = t; break; }
       }
       if (!matched) continue;
@@ -199,5 +200,20 @@
     };
   }
 
-  return { resolve, createSession, outcomeHit };
+  // Server already refused a swap that landed after a newer own action or a P0/P1 event.
+  // The client still refuses unless that placeholder is the clip on screen.
+  function considerCustomSwap(playing, note, latestOwn, latestHot) {
+    if (!note || note.swap !== true) return false;
+    if (!playing || playing !== note.placeholder) return false;
+    if (typeof latestOwn === "number" && typeof note.seq === "number" && latestOwn > note.seq) return false;
+    if (typeof latestHot === "number" && typeof note.seq === "number" && latestHot > note.seq) return false;
+    return true;
+  }
+
+  function momentCard(row) {
+    if (!row || row.trust !== "auto" || row.approved_by) return null;
+    return { trust: "auto", badge: "live-generated", hash: row.hash || "" };
+  }
+
+  return { resolve, createSession, outcomeHit, considerCustomSwap, momentCard };
 });

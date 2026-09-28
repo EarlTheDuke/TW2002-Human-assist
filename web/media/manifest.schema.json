@@ -193,7 +193,9 @@
         },
         "clip": { "type": "string" },
         "coalesce": { "type": "string", "pattern": "^[a-z_]+$" },
-        "chain": { "type": "string", "description": "Next clip. A lower priority cannot replace it while it waits." }
+        "chain": { "type": "string", "description": "Next clip. A lower priority cannot replace it while it waits." },
+        "custom": { "type": "boolean", "description": "Also enqueue a live custom clip. The base placeholder still plays." },
+        "custom_only": { "type": "boolean", "description": "Resolver skips this trigger unless state.videoCustom is set." }
       }
     }
   }
