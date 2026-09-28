@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-27 23:21 PT - Fable - approve refuses stand-ins; missing clips fall back each time
+- The approve script only touches real pilot takes and writes the same approval into the clip catalog, so a rewire cannot restore an old one. A missing video falls back on the last source, and the next missing clip does too. Suite 727 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 22:30 PT - Fable - approved clips play, stand-ins stay the fallback
 - The 14 pilot clips play by default. A ffmpeg stand-in stays first with approved_by null, and fallback_still stays. Approve or unapprove one take or the batch with scripts/media_approve_clips.py. Swap a file with scripts/media_swap_clip.py. The window background stays the canvas starfield. Suite 725 passed; ruff clean; manifest OK.
 
