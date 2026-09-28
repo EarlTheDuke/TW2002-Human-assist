@@ -337,8 +337,84 @@ def test_three_missing_clips_each_fall_back(tmp_path: Path, monkeypatch) -> None
                 const count = raw ? (JSON.parse(raw)["poster-fallbacks"] || 0) : 0;
                 const video = document.querySelector("#vpClip video");
                 const img = document.querySelector("[data-testid=viewport-clip-still]");
-                return count >= n && video && video.hidden && img && img.src.includes(still);
+                return count === n && video && video.hidden && img && img.src.includes(still);
             }""", arg=[n, still], timeout=1_500)
             if n < len(events):
                 page.get_by_test_id("viewport-skip").click()
         browser.close()
+
+
+def test_a_failed_clip_does_not_hide_the_next_one(tmp_path: Path, monkeypatch) -> None:
+    sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    trade = _trade()
+    with CuHost(tmp_path, TOK) as host, sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1280, "height": 800})
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}")
+        page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
+        page.route("**/*dock_port*", lambda route: route.fulfill(status=404, body="missing"))
+        page.evaluate("""() => { sessionStorage.removeItem("tw2k.media.counters"); }""")
+        _prime(page, trade)
+        page.evaluate("""(fx) => { TW2KMedia.onEvents(fx.batch, fx.obs); }""", trade)
+        page.wait_for_timeout(1000)
+        page.evaluate("""() => {
+            TW2KMedia.onEvents([{
+                seq: 90, kind: "combat", actor_id: "P1", sector_id: 19, summary: "combat",
+                facts: { attacker: "P1", defender: "P2", outcome: "destroyed" }
+            }], { self_id: "P1", sector: { id: 19 } });
+        }""")
+        page.wait_for_function("""() => {
+            const video = document.querySelector("#vpClip video");
+            const src = video && video.querySelector("source") ? video.querySelector("source").src : "";
+            const raw = sessionStorage.getItem("tw2k.media.counters");
+            const count = raw ? (JSON.parse(raw)["poster-fallbacks"] || 0) : 0;
+            return video && !video.hidden && video.currentTime > 0 && src.includes("combat_hit") && count === 1;
+        }""", timeout=5_000)
+        page.get_by_test_id("viewport-skip").click()
+        page.evaluate("""() => {
+            TW2KMedia._prime({ lastSeq: 90, visit_sector: 19, docked_in_visit: false });
+            TW2KMedia.onEvents([{
+                seq: 91, kind: "trade", actor_id: "P1", sector_id: 19, summary: "trade",
+                facts: { commodity: "fuel_ore", qty: 1, side: "buy" }
+            }], { self_id: "P1", sector: { id: 19 } });
+        }""")
+        page.wait_for_function("""() => {
+            const raw = sessionStorage.getItem("tw2k.media.counters");
+            const count = raw ? (JSON.parse(raw)["poster-fallbacks"] || 0) : 0;
+            const video = document.querySelector("#vpClip video");
+            const img = document.querySelector("[data-testid=viewport-clip-still]");
+            return count === 2 && video && video.hidden && img && img.src.includes("trade_port");
+        }""", timeout=1_500)
+        browser.close()
+
+
+def test_catalog_defaults_beside_the_manifest(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(LIVE), encoding="utf-8")
+    real = MEDIA / "clips" / "v3-pilot" / "clips_manifest_v3.json"
+    before = real.read_bytes()
+    script = ROOT / "scripts" / "media_approve_clips.py"
+
+    def run(*extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(script), "--manifest", str(manifest_path), *extra],
+            capture_output=True, text=True, timeout=60,
+        )
+    cleared = run("--all-pending", "--clear")
+    assert cleared.returncode == 0, cleared.stderr
+    assert real.read_bytes() == before
+    local = tmp_path / "clips" / "v3-pilot" / "clips_manifest_v3.json"
+    local.parent.mkdir(parents=True)
+    local.write_text(json.dumps(CATALOG), encoding="utf-8")
+    approved = run("--all-pending", "--by", "qc")
+    assert approved.returncode == 0, approved.stderr
+    assert real.read_bytes() == before
+    saved = json.loads(local.read_text(encoding="utf-8"))
+    assert all(row.get("approved_by") == "qc" and row.get("approved_at") for row in saved["clips"])
+    wired = copy.deepcopy(LIVE)
+    tools.wire_pilot(wired, saved["clips"], MEDIA)
+    take = next(v for v in wired["clips"]["dock.port"]["variants"] if v["id"] == "dock_port_std_a")
+    row = next(r for r in saved["clips"] if r["variant"] == "dock_port_std_a")
+    assert take["provenance"]["approved_by"] == "qc"
+    assert take["provenance"]["approved_at"] == row["approved_at"]

@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 00:20 PT - Fable - a failed clip cannot hide the next one
+- Each clip has its own token, so a leftover play error from a missing file does not hide or double-count the clip that replaced it. The approve catalog stays beside the manifest you pass in. Suite 729 passed; ruff clean; manifest OK.
+
 ### 2026-09-27 23:21 PT - Fable - approve refuses stand-ins; missing clips fall back each time
 - The approve script only touches real pilot takes and writes the same approval into the clip catalog, so a rewire cannot restore an old one. A missing video falls back on the last source, and the next missing clip does too. Suite 727 passed; ruff clean; manifest OK.
 

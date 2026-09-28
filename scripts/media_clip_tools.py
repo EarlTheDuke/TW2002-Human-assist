@@ -141,7 +141,9 @@ def _real_variant(row: dict[str, Any], media: Path) -> dict[str, Any]:
     model = (row.get("provenance") or {}).get("model")
     if model:
         provenance["model"] = model
-    if found:
+    if row.get("approved_at") and provenance["approved_by"]:
+        provenance["approved_at"] = row["approved_at"]
+    elif found and provenance["approved_by"]:
         provenance["approved_at"] = found.group(0)
     if hashed:
         provenance["hash"] = hashed.group(1)
@@ -227,12 +229,20 @@ def sync_catalog_approvals(catalog: dict[str, Any], manifest: dict[str, Any]) ->
     ``--wire-pilot`` rebuilds the manifest from that catalog, so the catalog has to
     move with every approve or clear. Otherwise a rewire would put the old approval back.
     """
-    by_id = {v["id"]: (v.get("provenance") or {}).get("approved_by") for v in iter_variants(manifest) if is_real_take(v)}
+    by_id = {}
+    for variant in iter_variants(manifest):
+        if is_real_take(variant):
+            prov = variant.get("provenance") or {}
+            by_id[variant["id"]] = (prov.get("approved_by"), prov.get("approved_at"))
     n = 0
     for row in catalog.get("clips") or []:
         vid = row.get("variant")
-        if vid in by_id and row.get("approved_by") != by_id[vid]:
-            row["approved_by"] = by_id[vid]
+        if vid not in by_id:
+            continue
+        who, when = by_id[vid]
+        if row.get("approved_by") != who or row.get("approved_at") != when:
+            row["approved_by"] = who
+            row["approved_at"] = when
             n += 1
     return n
 

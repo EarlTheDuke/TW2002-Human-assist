@@ -1,7 +1,8 @@
 """Approve or unapprove a real pilot take. Stand-ins and placeholders are refused.
 
-The catalog ``clips_manifest_v3.json`` is updated with the same ``approved_by`` so
-``media_swap_clip.py --wire-pilot`` cannot put an old approval back.
+The catalog beside ``--manifest`` (``clips/v3-pilot/clips_manifest_v3.json``) gets the
+same ``approved_by`` and ``approved_at``. ``--wire-pilot`` reads that catalog, so a
+rewire keeps the change. A temp manifest does not touch the live catalog.
 
     python scripts/media_approve_clips.py --key dock.port --variant dock_port_std_b --by ben
     python scripts/media_approve_clips.py --key dock.port --variant 2 --by ben
@@ -17,7 +18,6 @@ import sys
 from pathlib import Path
 
 from media_clip_tools import (
-    CATALOG,
     MANIFEST,
     _entry,
     approve_pending,
@@ -32,7 +32,8 @@ from media_clip_tools import (
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--manifest", default=str(MANIFEST))
-    ap.add_argument("--catalog", default=str(CATALOG), help="clips_manifest_v3.json kept in sync with the manifest")
+    ap.add_argument("--catalog", default=None,
+                    help="defaults to clips/v3-pilot/clips_manifest_v3.json beside --manifest")
     ap.add_argument("--key", help="clip key, or ambient.deep_space")
     ap.add_argument("--variant", help="variant id, or 1-based index among real takes")
     ap.add_argument("--by", default="ben")
@@ -44,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def _save() -> None:
         save_json(path, data)
-        catalog_path = Path(args.catalog)
+        catalog_path = Path(args.catalog) if args.catalog else path.parent / "clips" / "v3-pilot" / "clips_manifest_v3.json"
         if catalog_path.is_file():
             catalog = load_json(catalog_path)
             sync_catalog_approvals(catalog, data)
