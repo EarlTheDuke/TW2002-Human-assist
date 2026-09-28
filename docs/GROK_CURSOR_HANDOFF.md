@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 09:24 PT - Fable - Skip ends the death clip and leaves the escape pod
+- Skip during ship destruction plays the escape pod. A second Skip ends the pod. Skip on any other clip still clears the queue, and each Skip is counted. Quick-trade names and totals sit a space apart. Suite 749 passed; ruff clean; manifest OK.
+
 ### 2026-09-28 08:03 PT - Fable - trade names stay whole on the button
 - Quick-trade buttons keep the short name and the credit total, wrapping to another row or a second line instead of shrinking the name away. Plotting the sector you are in says you are already here. A negative or zero target asks for a valid sector. Suite 748 passed; ruff clean; manifest OK.
 

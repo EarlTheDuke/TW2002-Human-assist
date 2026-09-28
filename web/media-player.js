@@ -115,12 +115,24 @@
     if (window.TW2KViewport && typeof window.TW2KViewport.setEventCaption === "function") window.TW2KViewport.setEventCaption(null);
   }
 
-  // User dismiss (Skip, Esc, HUD ×). Drops the playing clip and anything waiting
-  // so the next poll cannot redraw it.
+  // User dismiss from the HUD (×, a failed still). Drops the playing clip and
+  // anything waiting so the next poll cannot redraw it.
   function hide() {
     if (state.playing) bump("skips");
     if (state.session && typeof state.session.stop === "function") state.session.stop();
     clearVisuals();
+  }
+  // Skip (button, click, Esc). Death ends only the death clip; the chained
+  // escape pod then plays. A later Skip ends the pod. Any other clip clears
+  // the queue, which is what Skip did before.
+  function skipClip() {
+    const waiting = state.session && typeof state.session.state === "function" ? state.session.state().waiting : null;
+    if (state.playing === "self.ship_destroyed" && waiting === "self.escape_pod") {
+      bump("skips");
+      onClipEnded();
+      return;
+    }
+    hide();
   }
 
   function resolveKind(kind) {
@@ -463,7 +475,7 @@
     }
   }
 
-  if (CU) document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") hide(); });
+  if (CU) document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") skipClip(); });
 
   const COUNTER_KEY = "tw2k.media.counters";
   const COUNTER_NAMES = ["plays", "skips", "preemptions", "stale-drops", "poster-fallbacks", "stills"];
@@ -595,7 +607,7 @@
 
   window.TW2KMedia = {
     loadManifest, onEvent, onEvents, playEntry, hide, ensureHud, onMode,
-    skipClip: hide,
+    skipClip,
     ready: () => !!state.ready,
     preloadState: () => ({
       skipped: preload.skipped, bytes: preload.bytes, clipBytes: preload.clipBytes,
@@ -639,6 +651,7 @@
     _state: () => ({
       lastSeq: state.lastSeq, playing: state.playing, visit_sector: state.visit_sector,
       playedKeys: state.session && state.session.state ? state.session.state().playedKeys || [] : [],
+      waiting: state.session && state.session.state ? state.session.state().waiting || null : null,
       pending: state.pendingEvents ? state.pendingEvents.length : 0,
     }),
   };

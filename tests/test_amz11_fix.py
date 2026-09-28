@@ -78,7 +78,8 @@ def _fit(page, cu: bool) -> dict:
         timeout=15_000,
     )
     return page.evaluate("""() => {
-        const buttons = [...document.querySelectorAll('#quickTrades button, #cuQuickTrades button')];
+        const buttons = [...document.querySelectorAll('#quickTrades button, #cuQuickTrades button')]
+            .filter((b) => b.offsetParent !== null);
         const bad = [];
         for (const b of buttons) {
             const label = b.querySelector('.qlabel');
@@ -88,7 +89,9 @@ def _fit(page, cu: bool) -> dict:
             const labelCut = label.scrollWidth > label.clientWidth + 1;
             const numCut = num.scrollWidth > num.clientWidth + 1
                 || nr.left < br.left - 1 || nr.right > br.right + 1 || nr.bottom > br.bottom + 1;
-            if (labelCut || numCut) bad.push(b.textContent);
+            const lr = label.getBoundingClientRect();
+            const gap = nr.top >= lr.bottom - 1 ? nr.top - lr.bottom : nr.left - lr.right;
+            if (labelCut || numCut || gap <= 0) bad.push(b.textContent);
         }
         return {
             n: buttons.length,
