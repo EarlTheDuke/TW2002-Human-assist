@@ -51,6 +51,7 @@ def test_hashed_media_is_immutable_and_other_media_revalidates(tmp_path: Path) -
     assert still.headers["cache-control"] == REVALIDATE
     assert manifest.headers["cache-control"] == REVALIDATE
     assert "immutable" not in script.headers.get("cache-control", "")
+    assert media_cache_control("media/clips/v3-pilot/dock_port_std_a.8d5213fb.webm") == IMMUTABLE
 
 
 def test_default_hold_key_ignores_repeat_and_editable() -> None:
@@ -223,3 +224,143 @@ def test_preload_counters_cu_slot_and_timing(browser, tmp_path: Path, monkeypatc
         off_med, still_med = statistics.median(off_ms), statistics.median(still_ms)
         print(f"[v4 cu timing] scan->toast median: off {off_med:.0f} ms, stills {still_med:.0f} ms ({(still_med / off_med - 1) * 100:+.1f}%)")
         assert still_med <= off_med * 1.05 + 25, (off_med, still_med)
+
+
+def _approved_webm(key: str) -> str:
+    manifest = json.loads((ROOT / "web" / "media" / "manifest.json").read_text(encoding="utf-8"))
+    for variant in manifest["clips"][key]["variants"]:
+        who = (variant.get("provenance") or {}).get("approved_by")
+        webm = variant.get("webm") or ""
+        if isinstance(who, str) and who.strip() and webm:
+            return webm
+    raise AssertionError(key)
+
+
+def _clip_transfers(page) -> list[dict]:
+    return page.evaluate("""() => performance.getEntriesByType('resource')
+        .filter((e) => /\\/clips\\/.+\\.(webm|mp4)(?:\\?|$)/.test(e.name))
+        .map((e) => ({ name: e.name, transfer: e.transferSize, encoded: e.encodedBodySize }))""")
+
+
+def _round_trip_ms(page) -> float:
+    page.wait_for_selector("#turnBanner.turn", timeout=20_000)
+    return page.evaluate("""async () => {
+        const last = document.querySelector('#lastResult');
+        const before = last.textContent;
+        const t0 = performance.now();
+        document.querySelector('[data-testid=action-scan]').click();
+        const deadline = t0 + 8000;
+        while (performance.now() < deadline && last.textContent === before) {
+            await new Promise((r) => setTimeout(r, 5));
+        }
+        if (last.textContent === before) return -1;
+        return performance.now() - t0;
+    }""")
+
+
+def test_hashed_clips_cache_preload_cap_and_live_timing(browser, tmp_path: Path, monkeypatch) -> None:
+    """Second load plays hashed clips from cache. Preload stops at a tiny cap.
+
+    A 4x CPU throttle still meets the 4 ms resolve budget, and 10 scans with
+    the viewport live stay within 5% of viewport off.
+    """
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    dock = _approved_webm("dock.port")
+    assert media_cache_control("media/" + dock) == IMMUTABLE
+    with CuHost(tmp_path, TOK, turns_per_day=500) as host:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{host.base}/bot?seat=P2&viewport=live&token={TOK}")
+        page.wait_for_function("window.TW2KMedia && TW2KMedia.preloadState().done === true", timeout=20_000)
+        pre = page.evaluate("TW2KMedia.preloadState()")
+        assert pre["skipped"] == "" and pre["capped"] is False
+        assert 0 < pre["clipBytes"] <= 3_500_000, pre
+        assert pre["bytes"] <= 12 * 1024 * 1024
+        assert pre["beforeInteractive"] <= 150 * 1024
+        assert page.evaluate("document.querySelectorAll('#viewport video').length") <= 2
+        header = page.evaluate(
+            """async (path) => (await fetch('/static/media/' + path)).headers.get('cache-control')""",
+            dock,
+        )
+        assert header == IMMUTABLE, header
+        page.evaluate("""() => {
+            TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
+            TW2KMedia.onEvents([{
+                seq: 1, kind: 'trade', actor_id: 'P2', sector_id: 19, summary: 'trade',
+                facts: { commodity: 'fuel_ore', qty: 1, side: 'buy' }
+            }], { self_id: 'P2', sector: { id: 19 } });
+        }""")
+        page.wait_for_function("""() => {
+            const video = document.querySelector('#vpClip video');
+            const src = video && video.querySelector('source') ? video.querySelector('source').src : '';
+            return video && !video.hidden && video.currentTime > 0 && src.includes('.webm');
+        }""", timeout=8_000)
+        page.wait_for_function(
+            """() => performance.getEntriesByType('resource')
+                .some((e) => /\\/clips\\/.+\\.webm(?:\\?|$)/.test(e.name) && e.transferSize > 0)""",
+            timeout=8_000,
+        )
+        first = _clip_transfers(page)
+        assert any(row["transfer"] > 0 and row["encoded"] > 0 for row in first), first
+        page.reload()
+        page.wait_for_function("window.TW2KMedia && TW2KMedia.preloadState().done === true", timeout=20_000)
+        page.evaluate("""() => {
+            TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
+            TW2KMedia.onEvents([{
+                seq: 1, kind: 'trade', actor_id: 'P2', sector_id: 19, summary: 'trade',
+                facts: { commodity: 'fuel_ore', qty: 1, side: 'buy' }
+            }], { self_id: 'P2', sector: { id: 19 } });
+        }""")
+        page.wait_for_function("""() => {
+            const video = document.querySelector('#vpClip video');
+            const src = video && video.querySelector('source') ? video.querySelector('source').src : '';
+            return video && !video.hidden && video.currentTime > 0 && src.includes('.webm');
+        }""", timeout=8_000)
+        page.wait_for_function(
+            """() => {
+                const rows = performance.getEntriesByType('resource')
+                    .filter((e) => /\\/clips\\/.+\\.(webm|mp4)(?:\\?|$)/.test(e.name));
+                return rows.length > 0 && rows.every((e) => e.transferSize === 0 && e.encodedBodySize > 0);
+            }""",
+            timeout=8_000,
+        )
+        second = _clip_transfers(page)
+        assert second and all(row["transfer"] == 0 and row["encoded"] > 0 for row in second), second
+        client = page.context.new_cdp_session(page)
+        client.send("Emulation.setCPUThrottlingRate", {"rate": 4})
+        bench = page.evaluate("TW2KMedia.benchSwap(40)")
+        client.send("Emulation.setCPUThrottlingRate", {"rate": 1})
+        print(f"[v4 throttle] resolve+swap p95 {bench['p95']:.2f} ms")
+        assert bench["n"] == 40 and bench["p95"] <= 4.0, bench
+        page.close()
+
+        results: dict[str, list[float]] = {}
+        for mode in ("off", "live", "off", "live"):
+            p = browser.new_page(viewport={"width": 1440, "height": 900})
+            p.goto(f"{host.base}/bot?seat=P2&viewport={mode}&token={TOK}")
+            assert p.evaluate("TW2KViewport.state().mode") == mode
+            if mode == "live":
+                p.wait_for_function("window.TW2KMedia && TW2KMedia.ready()", timeout=20_000)
+                p.evaluate("""() => {
+                    TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
+                    TW2KMedia.onEvents([{
+                        seq: 1, kind: 'warp', actor_id: 'P2', sector_id: 19, summary: 'warp',
+                        facts: { from: 18, to: 19 }
+                    }], { self_id: 'P2', sector: { id: 19 } });
+                }""")
+            samples = [_round_trip_ms(p) for _ in range(5)]
+            assert all(ms >= 0 for ms in samples), samples
+            results.setdefault(mode, []).extend(samples)
+            p.close()
+        off_med, live_med = statistics.median(results["off"]), statistics.median(results["live"])
+        print(f"[v4 live timing] scan->result median: off {off_med:.0f} ms, live {live_med:.0f} ms")
+        assert len(results["off"]) == len(results["live"]) == 10
+        assert live_med <= off_med * 1.05 + 25, (off_med, live_med)
+
+        capped = browser.new_page(viewport={"width": 1440, "height": 900})
+        capped.add_init_script("window.__TW2K_PRELOAD_CAP = 1024;")
+        capped.goto(f"{host.base}/bot?seat=P2&viewport=live&token={TOK}")
+        capped.wait_for_function("window.TW2KMedia && TW2KMedia.preloadState().done === true", timeout=20_000)
+        small = capped.evaluate("TW2KMedia.preloadState()")
+        assert small["capped"] is True, small
+        assert small["bytes"] <= 1024 and small["clipBytes"] == 0, small
+        capped.close()

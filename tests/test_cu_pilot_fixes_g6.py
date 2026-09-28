@@ -333,6 +333,10 @@ def test_route_prefill_and_digest_text() -> None:
     ]
     bad = _node("P.routeFromTradeLog(d.log, 410, d.ports)", {"log": log, "ports": mismatch})
     assert "a" not in bad and "do not buy" in bad["reason"]
+    thin = [ports[0], {"sector_id": 410, "stock": {}}]
+    intel = _node("P.routeFromTradeLog(d.log, 410, d.ports)", {"log": log, "ports": thin})
+    assert "a" not in intel and "there isn't enough port intel" in intel["reason"]
+    assert "do not buy" not in intel["reason"]
     dg = {"kind": "route", "actions": 11, "turns_used": 30, "credits_before": 49317, "credits_after": 52117,
           "stopped": "route complete (2 cycles)", "cycles_done": 2, "cycles": 2, "last_turn_seq": 16}
     t = _node("[P.digestText(d, 16), P.digestText(d, 15)]", dg)

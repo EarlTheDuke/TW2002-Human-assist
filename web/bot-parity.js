@@ -214,9 +214,15 @@
       const st = p && p.stock ? p.stock[commodity] : null;
       return st ? st.side || "" : "";
     };
-    const fits = side(a, ba) === "sells_to_player" && side(a, bb) === "buys_from_player"
-      && side(b, bb) === "sells_to_player" && side(b, ba) === "buys_from_player";
-    if (!fits) return { reason: `No route: port ${a} and port ${b} do not buy what the other sells` };
+    const sides = [side(a, ba), side(a, bb), side(b, bb), side(b, ba)];
+    const knownPort = (sid) => (ports || []).some((x) => Number(x.sector_id) === Number(sid));
+    const fits = sides[0] === "sells_to_player" && sides[1] === "buys_from_player"
+      && sides[2] === "sells_to_player" && sides[3] === "buys_from_player";
+    if (!fits) {
+      const intel = knownPort(a) && knownPort(b) && sides.every(Boolean);
+      if (!intel) return { reason: `No route: there isn't enough port intel for port ${a} and port ${b}` };
+      return { reason: `No route: port ${a} and port ${b} do not buy what the other sells` };
+    }
     return { a, b, buy_at_a: ba, buy_at_b: bb };
   }
 
