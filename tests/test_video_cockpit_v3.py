@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -146,21 +147,62 @@ def test_swap_changes_the_file_and_approve_roundtrips(tmp_path: Path) -> None:
     webm = tmp_path / "incoming.webm"
     webm.write_bytes(b"\0" * 1500)
     data = {"clips": {"warp.out": {"variants": [
-        {"id": "ph_warp_out_a", "provenance": {"tool": tools.STANDIN_TOOL, "approved_by": None}},
-        {"id": "warp_out_a", "webm": "clips/old.webm", "provenance": {"approved_by": "ben"}},
+        {"id": "ph_warp_out_a", "webm": "clips/placeholder/ph_warp_out_a.webm",
+         "provenance": {"tool": tools.STANDIN_TOOL, "approved_by": None}},
+        {"id": "warp_out_a", "webm": "clips/v3-pilot/warp_out_a.webm",
+         "provenance": {"tool": "xai grok-imagine-video", "approved_by": "ben"}},
     ]}}}
+    assert tools.find_variant(data["clips"]["warp.out"], "1")["id"] == "warp_out_a"
+    with pytest.raises(SystemExit, match="refusing ph_warp_out_a"):
+        tools.find_variant(data["clips"]["warp.out"], "ph_warp_out_a")
     swapped = tools.swap_variant(data, "warp.out", "warp_out_a", webm=webm, media_root=media)
     assert swapped["webm"] == "clips/swapped/warp_out_a.webm"
     assert swapped["bytes"] == 1500
     assert (media / swapped["webm"]).is_file()
     tools.set_approval(swapped, None)
     assert swapped["provenance"]["approved_by"] is None
-    assert tools.approve_pending(data, "ben") == 1
-    assert swapped["provenance"]["approved_by"] == "ben"
+    assert tools.approve_pending(data, "ben") == 0
     assert data["clips"]["warp.out"]["variants"][0]["provenance"]["approved_by"] is None
-    assert tools.find_variant(data["clips"]["warp.out"], "1")["id"] == "warp_out_a"
-    tools.set_approval(swapped, None)
-    assert tools.approve_pending(data, "ben", clear=True) == 0
+
+
+def test_approve_refuses_standins_and_keeps_the_catalog(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    catalog_path = tmp_path / "clips_manifest_v3.json"
+    manifest_path.write_text(json.dumps(LIVE), encoding="utf-8")
+    catalog_path.write_text(json.dumps(CATALOG), encoding="utf-8")
+    script = ROOT / "scripts" / "media_approve_clips.py"
+
+    def run(*extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(script), "--manifest", str(manifest_path), "--catalog", str(catalog_path), *extra],
+            capture_output=True, text=True, timeout=60,
+        )
+
+    cleared = run("--all-pending", "--clear")
+    assert cleared.returncode == 0, cleared.stderr
+    again = run("--all-pending", "--by", "qc")
+    assert again.returncode == 0 and "14" in again.stdout, again.stdout + again.stderr
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    approved = [v["id"] for v in tools.iter_variants(data)
+                if isinstance((v.get("provenance") or {}).get("approved_by"), str)
+                and (v.get("provenance") or {})["approved_by"].strip()]
+    assert len(approved) == 14
+    assert "combat_witnessed_placeholder" not in approved
+    assert not any(vid.startswith("ph_") for vid in approved)
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    assert all(row.get("approved_by") == "qc" for row in catalog["clips"])
+    refused = run("--key", "dock.port", "--variant", "ph_dock_port_std_a")
+    assert refused.returncode != 0
+    assert "refusing ph_dock_port_std_a" in (refused.stderr + refused.stdout)
+    for row in catalog["clips"]:
+        if row["variant"] == "dock_port_std_a":
+            row["approved_by"] = None
+    wired = copy.deepcopy(data)
+    tools.wire_pilot(wired, catalog["clips"], MEDIA)
+    take = next(v for v in wired["clips"]["dock.port"]["variants"] if v["id"] == "dock_port_std_a")
+    assert take["provenance"]["approved_by"] is None
+    standin = next(v for v in wired["clips"]["dock.port"]["variants"] if v["id"] == "ph_dock_port_std_a")
+    assert standin["provenance"]["approved_by"] is None
 
 
 def test_fourteen_clips_play_in_chromium_firefox_and_webkit(tmp_path: Path, monkeypatch) -> None:
@@ -263,4 +305,40 @@ def test_approved_clip_plays_and_a_missing_file_falls_back(tmp_path: Path, monke
         page.wait_for_selector("[data-testid=media-hud]:not([hidden])", timeout=5_000)
         assert page.evaluate("document.querySelectorAll('#viewport video').length") == 0
         assert "trade_port" in (page.locator("#mediaHudStill").get_attribute("src") or "")
+        browser.close()
+
+
+def test_three_missing_clips_each_fall_back(tmp_path: Path, monkeypatch) -> None:
+    sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
+    monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
+    events = [
+        ({"seq": 1, "kind": "trade", "actor_id": "P2", "sector_id": 19, "summary": "trade",
+          "facts": {"commodity": "fuel_ore", "qty": 1, "side": "buy"}}, "trade_port"),
+        ({"seq": 2, "kind": "warp", "actor_id": "P2", "sector_id": 19, "summary": "warp",
+          "facts": {"from": 18, "to": 19}}, "move_warp"),
+        ({"seq": 3, "kind": "combat", "actor_id": "P2", "sector_id": 19, "summary": "combat",
+          "facts": {"attacker": "P2", "defender": "P3", "outcome": "hit"}}, "combat_photon"),
+    ]
+    with CuHost(tmp_path, TOK) as host, sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1280, "height": 800})
+        page.goto(f"{host.base}/bot?seat=P2&token={TOK}")
+        page.wait_for_function("window.TW2KMedia && window.TW2KMedia.ready()", timeout=20_000)
+        page.route("**/*.webm", lambda route: route.fulfill(status=404, body="missing"))
+        page.route("**/*.mp4", lambda route: route.fulfill(status=404, body="missing"))
+        page.evaluate("""() => {
+            sessionStorage.removeItem("tw2k.media.counters");
+            TW2KMedia._prime({ lastSeq: 0, visit_sector: 19, docked_in_visit: false });
+        }""")
+        for n, (ev, still) in enumerate(events, start=1):
+            page.evaluate("""(ev) => { TW2KMedia.onEvents([ev], { self_id: "P2", sector: { id: 19 } }); }""", ev)
+            page.wait_for_function("""([n, still]) => {
+                const raw = sessionStorage.getItem("tw2k.media.counters");
+                const count = raw ? (JSON.parse(raw)["poster-fallbacks"] || 0) : 0;
+                const video = document.querySelector("#vpClip video");
+                const img = document.querySelector("[data-testid=viewport-clip-still]");
+                return count >= n && video && video.hidden && img && img.src.includes(still);
+            }""", arg=[n, still], timeout=1_500)
+            if n < len(events):
+                page.get_by_test_id("viewport-skip").click()
         browser.close()

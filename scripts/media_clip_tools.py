@@ -33,9 +33,27 @@ def save_json(path: Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
+def _media_paths(variant: dict[str, Any]) -> list[str]:
+    return [str(variant.get(role) or "") for role in ("webm", "mp4", "poster")]
+
+
 def is_standin(variant: dict[str, Any]) -> bool:
+    """Ffmpeg stand-ins, files under clips/placeholder/, and old poster-only placeholders."""
+    vid = str(variant.get("id") or "")
     tool = str((variant.get("provenance") or {}).get("tool") or "")
-    return str(variant.get("id") or "").startswith("ph_") or tool == STANDIN_TOOL
+    paths = " ".join(_media_paths(variant))
+    return (vid.startswith("ph_") or "placeholder" in vid or tool == STANDIN_TOOL or "clips/placeholder/" in paths)
+
+
+def is_real_take(variant: dict[str, Any]) -> bool:
+    """A generated pilot take: a clips/v3-pilot file plus real provenance. Nothing else can be approved."""
+    if is_standin(variant):
+        return False
+    prov = variant.get("provenance")
+    tool = str((prov or {}).get("tool") or "") if isinstance(prov, dict) else ""
+    if not tool:
+        return False
+    return any(path.startswith("clips/v3-pilot/") for path in _media_paths(variant))
 
 
 def still_for(variant_id: str) -> str:
@@ -162,16 +180,26 @@ def wire_pilot(manifest: dict[str, Any], rows: list[dict[str, Any]], media: Path
         _entry(manifest, key)["variants"] = standins + reals
 
 
+def _refuse(variant: dict[str, Any]) -> None:
+    vid = variant.get("id") or "?"
+    raise SystemExit(
+        f"refusing {vid}: only clips/v3-pilot takes with provenance can be approved; "
+        "stand-ins, placeholders, and takes with no provenance stay unapproved"
+    )
+
+
 def find_variant(entry: dict[str, Any], spec: str) -> dict[str, Any]:
     variants = entry.get("variants") or []
     if spec.isdigit():
-        reals = [v for v in variants if not is_standin(v)]
+        reals = [v for v in variants if is_real_take(v)]
         idx = int(spec) - 1
         if idx < 0 or idx >= len(reals):
             raise SystemExit(f"variant {spec} is out of range ({len(reals)} real takes)")
         return reals[idx]
     for variant in variants:
         if variant.get("id") == spec:
+            if not is_real_take(variant):
+                _refuse(variant)
             return variant
     raise SystemExit(f"no variant {spec}")
 
@@ -193,11 +221,27 @@ def iter_variants(manifest: dict[str, Any]):
         yield from clip.get("variants") or []
 
 
+def sync_catalog_approvals(catalog: dict[str, Any], manifest: dict[str, Any]) -> int:
+    """Copy each real take's approved_by onto clips_manifest_v3.json.
+
+    ``--wire-pilot`` rebuilds the manifest from that catalog, so the catalog has to
+    move with every approve or clear. Otherwise a rewire would put the old approval back.
+    """
+    by_id = {v["id"]: (v.get("provenance") or {}).get("approved_by") for v in iter_variants(manifest) if is_real_take(v)}
+    n = 0
+    for row in catalog.get("clips") or []:
+        vid = row.get("variant")
+        if vid in by_id and row.get("approved_by") != by_id[vid]:
+            row["approved_by"] = by_id[vid]
+            n += 1
+    return n
+
+
 def approve_pending(manifest: dict[str, Any], by: str, *, clear: bool = False) -> int:
-    """Approve (or unapprove) every real take. Stand-ins stay unapproved."""
+    """Approve (or unapprove) every real pilot take. Stand-ins and placeholders are skipped."""
     n = 0
     for variant in iter_variants(manifest):
-        if is_standin(variant):
+        if not is_real_take(variant):
             continue
         who = (variant.get("provenance") or {}).get("approved_by")
         if clear:

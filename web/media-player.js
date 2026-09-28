@@ -84,6 +84,8 @@
 
   function stopVideo(v) {
     v.onerror = null;
+    delete v.dataset.fell;
+    v.querySelectorAll("source").forEach((s) => { s.onerror = null; });
     try { v.pause(); } catch (_) {}
     v.removeAttribute("src");
     v.querySelectorAll("source").forEach((s) => s.remove());
@@ -252,18 +254,22 @@
     videos.forEach(stopVideo);
     if (!stills && (meta.webm || meta.mp4) && videos.length) {
       const idle = videos[0];
+      delete idle.dataset.fell;
       idle.hidden = false;
+      const sources = [];
       if (meta.webm) {
         const s = document.createElement("source");
         s.src = BASE + meta.webm;
         s.type = "video/webm";
         idle.appendChild(s);
+        sources.push(s);
       }
       if (meta.mp4) {
         const s = document.createElement("source");
         s.src = BASE + meta.mp4;
         s.type = "video/mp4";
         idle.appendChild(s);
+        sources.push(s);
       }
       const fail = () => {
         if (idle.dataset.fell) return;
@@ -271,6 +277,9 @@
         idle.hidden = true;
         bump("poster-fallbacks");
       };
+      // A <source> error does not fire on the video element. The last source
+      // failing means WebM and MP4 are both gone, so the still shows at once.
+      if (sources.length) sources[sources.length - 1].onerror = fail;
       idle.onerror = fail;
       try { idle.load(); } catch (_) {}
       idle.play().catch(() => {
