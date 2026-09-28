@@ -971,8 +971,12 @@
       const exec = document.createElement("input"); exec.type = "checkbox"; exec.checked = true; exec.setAttribute("data-testid", "plot-execute");
       const execWrap = document.createElement("label"); execWrap.className = "radios"; const el2 = document.createElement("label"); el2.appendChild(exec); el2.appendChild(document.createTextNode("Execute (fly the route now, one warp cost per hop)")); execWrap.appendChild(el2); f.appendChild(execWrap);
       const sync = () => {
-        const t = Number(target.value) || 0;
-        if (!t) { preview.textContent = "enter a target sector"; return; }
+        const raw = target.value;
+        if (raw === "") { preview.textContent = "enter a target sector"; return; }
+        const t = Number(raw);
+        if (!Number.isFinite(t) || !Number.isInteger(t) || t < 1) { preview.textContent = "enter a valid sector"; return; }
+        const here = Number((state.obs.sector || {}).id) || 0;
+        if (t === here) { preview.textContent = "you are already here"; return; }
         const path = knownRoute(state.obs, t);
         if (!path) { preview.textContent = "route shown after plotting"; return; }
         const fly = exec.checked ? " · executes" : " · plan only (0 turns)";
