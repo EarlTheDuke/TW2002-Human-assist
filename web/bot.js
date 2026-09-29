@@ -448,13 +448,10 @@
     }
     if (state.routePath && state.routePath.length > 1) {
       const pts = [];
-      let prev = pos[here] || null;
       for (const id of state.routePath) {
-        let p = pos[id] || stubs[id];
-        if (!p && prev) p = { x: Math.min(97, prev.x + 8), y: Math.min(97, prev.y + 6) };
+        const p = pos[id] || stubs[id];
         if (!p) continue;
         pts.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
-        prev = p;
       }
       if (pts.length > 1) svg.appendChild(svgEl("polyline", { points: pts.join(" "), class: "edge route", "data-testid": "route-line" }));
     }

@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-29 14:07 PT - Fable - the four polish nits
+- Five tabs sit on one row, the ship name is whole, Moments Play uses the clip when there is one, and the route line skips a hop that has no map point. The map stays under the video.
+
 ### 2026-09-29 13:06 PT - Fable - the next cockpit slices are ranked
 - `docs/plans/2026-09-28-next-slices.md` ranks the four polish nits first, then local brackets, the map sitting below a 900 px window, and the leftover warp ring, hull, and computer page. The layout shift, webp, and the Moments move already shipped. Docs only.
 

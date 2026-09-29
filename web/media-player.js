@@ -661,9 +661,15 @@
     return "";
   }
   function replayMoment(card) {
+    const key = (card && card.caption) || "";
+    const meta = clipMeta(key);
+    if (meta && (meta.webm || meta.mp4 || meta.still)) {
+      playResolved(key);
+      return;
+    }
     const rel = stillForCard(card);
     if (!rel) return;
-    showFallback({ still: rel, caption: card.caption || "" }, card.caption || "");
+    showFallback({ still: rel, caption: key }, key);
   }
   function showMoment(card) {
     if (!card || !card.hash) return;
