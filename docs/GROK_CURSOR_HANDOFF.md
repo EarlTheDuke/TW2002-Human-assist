@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-29 13:06 PT - Fable - the next cockpit slices are ranked
+- `docs/plans/2026-09-28-next-slices.md` ranks the four polish nits first, then local brackets, the map sitting below a 900 px window, and the leftover warp ring, hull, and computer page. The layout shift, webp, and the Moments move already shipped. Docs only.
+
 ### 2026-09-29 12:39 PT - Fable - the cockpit reads as a deck
 - The full cockpit has an instrument bar and a fixed side screen (Ship, Port, Planets, Bridge, Moments). The video stays above the map. Port color and the route line use only this seat's memory. The computer-use page still fits in 800 px.
 
