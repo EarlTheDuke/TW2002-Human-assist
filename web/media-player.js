@@ -192,9 +192,8 @@
       vid.hidden = false;
       vid.play().catch(() => {});
     } else if (entry.still) {
-      img.src = BASE + entry.still;
+      preferStill(img, entry.still, () => hide());
       img.hidden = false;
-      img.onerror = () => { hide(); };
     } else {
       return;
     }
@@ -288,7 +287,7 @@
     if (!layer || !meta.still) return false;
     const stills = mode === "stills" || reduce.matches;
     const img = layer.querySelector("img");
-    img.src = BASE + meta.still;
+    preferStill(img, meta.still);
     layer.hidden = false;
     layer.classList.toggle("is-still", !stills && !meta.webm && !meta.mp4);
     layer.classList.toggle("is-live", !stills && !!(meta.webm || meta.mp4));
@@ -469,7 +468,7 @@
     if (!layer) return;
     const stills = viewportMode() === "stills" || reduce.matches;
     const img = layer.querySelector("img");
-    img.src = BASE + entry.still;
+    preferStill(img, entry.still);
     layer.hidden = false;
     layer.classList.toggle("is-still", !stills);
     layer.classList.remove("is-live");
@@ -642,6 +641,30 @@
     else window.addEventListener("load", kick, { once: true });
   }
 
+  function preferStill(img, rel, onFail) {
+    if (!img || !rel) return;
+    const png = String(rel);
+    const webp = /\.png$/i.test(png) ? png.replace(/\.png$/i, ".webp") : png;
+    img.dataset.pngFallback = "";
+    img.onerror = () => {
+      if (img.dataset.pngFallback === "1") { if (onFail) onFail(); return; }
+      img.dataset.pngFallback = "1";
+      img.src = BASE + png;
+    };
+    img.src = BASE + webp;
+  }
+  function stillForCard(card) {
+    const manifest = state.manifest || {};
+    const key = (card && card.caption) || "";
+    if (manifest.kinds && manifest.kinds[key] && manifest.kinds[key].still) return manifest.kinds[key].still;
+    if (manifest.clips && manifest.clips[key] && manifest.clips[key].fallback_still) return manifest.clips[key].fallback_still;
+    return "";
+  }
+  function replayMoment(card) {
+    const rel = stillForCard(card);
+    if (!rel) return;
+    showFallback({ still: rel, caption: card.caption || "" }, card.caption || "");
+  }
   function showMoment(card) {
     if (!card || !card.hash) return;
     let root = document.getElementById("mediaMoments");
@@ -656,9 +679,25 @@
     cap.className = "moment-caption";
     cap.textContent = card.caption || "";
     li.appendChild(cap);
+    const play = document.createElement("button");
+    play.type = "button";
+    play.className = "moment-play";
+    play.textContent = "Play";
+    play.addEventListener("click", () => replayMoment(card));
+    li.appendChild(play);
     list.appendChild(li);
     root.hidden = false;
     root.open = true;
+    const tab = document.getElementById("mfdTabMoments");
+    const panel = document.getElementById("mfdPanelMoments");
+    if (tab && panel && panel.hidden) {
+      document.querySelectorAll("#mfd [role=tab]").forEach((el) => {
+        const on = el === tab;
+        el.setAttribute("aria-selected", on ? "true" : "false");
+        const pane = document.getElementById(el.getAttribute("aria-controls"));
+        if (pane) pane.hidden = !on;
+      });
+    }
   }
 
   function setVideoCustom(on) {

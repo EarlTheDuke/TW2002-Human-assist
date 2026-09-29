@@ -51,6 +51,7 @@ def test_warp_code_comes_from_memory_and_fuel_row_can_sell(browser, tmp_path, mo
             "() => document.querySelector('[data-testid=port-row-fuel_ore]')?.getAttribute('data-can-sell') === 'true'",
             timeout=15_000,
         )
+        page.get_by_test_id("mfd-tab-port").click()
         fuel = page.locator("[data-testid=port-row-fuel_ore]")
         assert fuel.locator(".can-sell-mark").is_visible()
         rows = page.locator("#portTape tbody tr[data-testid^='port-row-']")
@@ -136,6 +137,7 @@ def test_sbb_marks_organics_and_equipment_and_an_empty_hold_marks_nothing(browse
             "() => document.querySelector('[data-testid=port-row-organics]')?.getAttribute('data-can-sell') === 'true'",
             timeout=15_000,
         )
+        page.get_by_test_id("mfd-tab-port").click()
         assert page.locator("[data-testid=port-row-equipment]").get_attribute("data-can-sell") == "true"
         assert page.locator("[data-testid=port-row-fuel_ore]").get_attribute("data-can-sell") is None
         assert page.locator("[data-testid=port-row-organics] .can-sell-mark").is_visible()
