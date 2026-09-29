@@ -114,7 +114,7 @@ body:not(.mode-cu) #verbPad button[data-key]::after { content: " (" attr(data-ke
 .rivals { font-size: 0.9rem; color: var(--muted); margin-top: 8px; }
 
 /* ---- Parity S2: three-column cockpit ---- */
-main.bot-main.cols3 { grid-template-columns: 1fr 1.05fr 1fr; max-width: 1800px; }
+main.bot-main.cols3 { grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.7fr) minmax(220px, 0.72fr); max-width: 2200px; }
 @media (max-width: 1250px) { main.bot-main.cols3 { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 900px) { main.bot-main.cols3 { grid-template-columns: 1fr; } }
 .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -182,7 +182,7 @@ table.tape tr.empty td { color: var(--muted); font-style: italic; }
 .drawer summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; padding: 8px 0; min-height: 40px; display: flex; align-items: center; }
 .json { font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: #d5def5; background: #0b1020; border-radius: 10px; padding: 10px; max-height: 320px; overflow: auto; margin: 0; }
 .hint.small { font-size: 0.85rem; max-height: none; }
-footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
+footer.events { max-width: 2200px; margin: 0 auto; padding: 16px; }
 .events-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .events-head h2 { margin: 0; color: var(--accent); font-size: 1.05rem; }
 .event-log { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; max-height: 360px; overflow: auto; }
@@ -195,6 +195,12 @@ footer.events { max-width: 1800px; margin: 0 auto; padding: 16px; }
 .ev.new { background: #101a36; }
 /* ---- Parity S5: known-space map ---- */
 .known-map { width: 100%; height: 340px; background: #070b18; border: 1px solid #243056; border-radius: 12px; display: block; touch-action: manipulation; }
+body:not(.mode-cu) #colAct .known-map {
+  width: min(100%, 760px);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+}
 .known-map .edge { stroke: #3a4a7a; stroke-width: 0.6; fill: none; }
 .known-map .edge.oneway { stroke-dasharray: 1.6 1.2; }
 .known-map .edge.stub { stroke: #2a3557; stroke-dasharray: 0.8 1.2; }

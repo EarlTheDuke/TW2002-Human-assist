@@ -183,14 +183,15 @@ def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypa
         api = [r for r in requests if not r.startswith(("/static/", "/bot"))]
         assert api and all(r.startswith(("/harness/v1/P2/", "/harness/v1/rules", "/harness/v1/seats")) for r in api), api
 
-        # Default layout unchanged: no mode-cu, CU screen hidden, controls in their original columns.
+        # Default layout: no mode-cu, CU screen hidden. The map sits under the viewport.
         page2 = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H})
         page2.goto(f"{host.base}/bot?seat=P2&token={TOK}")
         page2.wait_for_selector("#main:not([hidden])", timeout=20_000)
         assert not page2.evaluate("document.body.classList.contains('mode-cu')")
         assert not page2.get_by_test_id("cu-screen").is_visible()
         assert page2.evaluate("!!document.querySelector('#colAct #warpBtns') && !!document.querySelector('#colAct #verbPad')"
-                              " && !!document.querySelector('#colWhere #knownMap') && !!document.querySelector('#portCard #portTape')")
+                              " && !!document.querySelector('#colAct #viewport + #mapCard #knownMap')"
+                              " && !!document.querySelector('#portCard #portTape')")
         page2.wait_for_selector("#turnBanner.turn", timeout=20_000)
         with page2.expect_request(lambda r: r.method == "POST" and r.url.endswith("/action"), timeout=15_000) as posted:
             page2.keyboard.press("s")
