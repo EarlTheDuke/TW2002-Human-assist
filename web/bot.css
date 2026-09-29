@@ -338,6 +338,11 @@ body:not(.mode-cu) #colAct .known-map {
 .viewport[data-hull="capital"] .vp-frame::before { top: 0; bottom: 0; left: 0; width: 7%; background: linear-gradient(90deg, #121a30, #1a2340); }
 .viewport[data-hull="capital"] .vp-frame::after { top: 0; bottom: 0; right: 0; width: 7%; background: linear-gradient(270deg, #121a30, #1a2340); }
 .vp-caption { margin-top: 6px; font-size: 0.9rem; font-weight: 700; color: #d5def5; min-height: 1.3em; }
+body:not(.mode-cu) .local-brackets {
+  height: 1.4em; min-height: 1.4em; max-height: 1.4em; margin-top: 4px;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 0.85rem; color: #d5def5;
+}
 .vp-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
 .vp-controls button { min-height: 36px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; cursor: pointer; }
 .vp-modes { display: inline-flex; gap: 0; }
