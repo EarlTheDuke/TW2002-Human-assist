@@ -725,7 +725,7 @@
     };
     const onTime = () => {
       const dur = Number(vid.duration);
-      if (Number.isFinite(dur) && dur > 0 && vid.currentTime >= dur - 0.15) finish();
+      if (Number.isFinite(dur) && dur > 0 && vid.currentTime >= dur - 0.05) finish();
     };
     state.customFinish = finish;
     vid.addEventListener("ended", finish);

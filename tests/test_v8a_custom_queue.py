@@ -433,9 +433,39 @@ def test_finish_does_not_revive_an_expired_job(tmp_path) -> None:
         q._finish(row, b"fake-webm")
         again = q._conn.execute("SELECT status, swap FROM jobs WHERE id=?", (row["id"],)).fetchone()
         assert again["status"] == "expired" and again["swap"] == 0
+        assert not (tmp_path / f"{row['hash']}.webm").exists()
+        assert not (tmp_path / f"{row['hash']}.json").exists()
     finally:
         gate.release.set()
         q.stop()
+
+
+def test_a_failed_cache_write_removes_the_clip(tmp_path, monkeypatch) -> None:
+    from tw2k.media.custom_queue import CustomQueue
+
+    q = CustomQueue(tmp_path, FakeProvider())
+    q._conn.execute(
+        """INSERT INTO jobs (hash, seat, match_id, status, created, cost_cents, trigger_seq, clip_key, day, swap)
+           VALUES ('abcd', 'A', 'm', 'running', ?, 33, 1, 'planet.genesis', '2026-09-28', 0)""",
+        (time.time(),),
+    )
+    q._conn.commit()
+    row = q._conn.execute("SELECT * FROM jobs WHERE hash='abcd'").fetchone()
+    original = Path.write_bytes
+
+    def boom(self, data):
+        if self.suffix == ".webm":
+            original(self, data)
+            raise OSError("disk")
+        return original(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", boom)
+    q._finish(row, b"fake-webm")
+    assert not (tmp_path / "abcd.webm").exists()
+    assert not (tmp_path / "abcd.json").exists()
+    status = q._conn.execute("SELECT status, swap FROM jobs WHERE hash='abcd'").fetchone()
+    assert status["status"] == "discarded" and status["swap"] == 0
+    q.stop()
 
 
 def test_emit_with_the_queue_stays_close_to_flag_off(tmp_path) -> None:
