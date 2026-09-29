@@ -102,7 +102,7 @@
     root.setAttribute("data-mode", st.mode);
     root.setAttribute("data-hull", st.hull);
     screen.hidden = st.mode === "off";
-    document.querySelectorAll("#viewport [data-vp-mode]").forEach((b) => b.setAttribute("aria-pressed", b.getAttribute("data-vp-mode") === st.mode ? "true" : "false"));
+    document.querySelectorAll("#vpControls [data-vp-mode]").forEach((b) => b.setAttribute("aria-pressed", b.getAttribute("data-vp-mode") === st.mode ? "true" : "false"));
     if (st.mode === "off") { stop(); return; }
     size();
     // The intersection observer can be one frame behind a scroll (a mode click
@@ -159,7 +159,7 @@
   $("vpSkip").addEventListener("click", (ev) => { skip(); ev.currentTarget.blur(); });
   screen.addEventListener("click", skip);
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") skip(); });
-  document.querySelectorAll("#viewport [data-vp-mode]").forEach((b) => b.addEventListener("click", (ev) => {
+  document.querySelectorAll("#vpControls [data-vp-mode]").forEach((b) => b.addEventListener("click", (ev) => {
     setMode(b.getAttribute("data-vp-mode")); ev.currentTarget.blur();
   }));
   document.addEventListener("visibilitychange", apply);
