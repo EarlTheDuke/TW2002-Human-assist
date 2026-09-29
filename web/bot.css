@@ -121,6 +121,43 @@ main.bot-main.cols3 { grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.7
 .scoreboard {
   display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #0e1428; border-bottom: 1px solid #243056;
 }
+body:not(.mode-cu) .banner { height: 92px; min-height: 92px; max-height: 92px; overflow: hidden; }
+body:not(.mode-cu) .scoreboard .score { flex: 0 0 156px; width: 156px; overflow: hidden; }
+body:not(.mode-cu) .scoreboard .score .v { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body:not(.mode-cu) #authBar { min-height: 96px; height: 96px; overflow: hidden; }
+body:not(.mode-cu) .scoreboard {
+  height: 88px; min-height: 88px; max-height: 88px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; align-items: stretch;
+}
+body:not(.mode-cu) #sbStageDetail { flex: 0 0 auto; min-height: 1.3em; max-height: 1.3em; overflow: hidden; }
+body:not(.mode-cu) { --seat-frame: #7eb6ff; }
+body:not(.mode-cu)[data-seat="P2"] { --seat-frame: #e2b15a; }
+body:not(.mode-cu)[data-seat="P3"] { --seat-frame: #6ee7ff; }
+body:not(.mode-cu)[data-seat="P4"] { --seat-frame: #c79bff; }
+body:not(.mode-cu)[data-seat="P5"] { --seat-frame: #7dcea0; }
+body:not(.mode-cu) .card { border-color: var(--seat-frame); box-shadow: inset 0 0 24px rgba(126, 182, 255, 0.05); }
+body:not(.mode-cu) .mfd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-width: 0; }
+body:not(.mode-cu) .scoreboard { width: 100%; max-width: 100%; }
+body:not(.mode-cu) #mfd table.tape td,
+body:not(.mode-cu) #mfd table.tape th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body:not(.mode-cu) .mfd-tabs [role="tab"] {
+  min-height: 36px; padding: 4px 10px; border-radius: 999px; border: 1px solid #3a466e;
+  background: #141a2e; color: var(--text); font-weight: 800; cursor: pointer;
+}
+body:not(.mode-cu) .mfd-tabs [role="tab"][aria-selected="true"] { border-color: var(--seat-frame); color: var(--seat-frame); }
+body:not(.mode-cu) .mfd-body { height: 420px; overflow: auto; }
+body:not(.mode-cu) .spool { flex: 0 0 88px; align-self: center; height: 10px; border-radius: 999px; border: 1px solid var(--seat-frame); overflow: hidden; background: #0b1020; }
+body:not(.mode-cu) .spool span { display: block; height: 100%; width: 0; background: var(--seat-frame); }
+body:not(.mode-cu) #alertLamp[data-level="alert"] { color: #ffd27a; }
+body:not(.mode-cu) #alertLamp[data-level="dead"] { color: #ffb3c4; }
+body:not(.mode-cu) .warps button.tint-bbb { border-color: #3dd68c; }
+body:not(.mode-cu) .warps button.tint-sss { border-color: #6ee7ff; }
+body:not(.mode-cu) .warps button.tint-mix { border-color: #e2b15a; }
+body:not(.mode-cu) .actions button:hover:not(:disabled),
+body:not(.mode-cu) .warps button:hover:not(:disabled) { filter: brightness(1.08); }
+@media (prefers-reduced-motion: reduce) {
+  body:not(.mode-cu) .card { box-shadow: none; }
+  body:not(.mode-cu) .spool span { transition: none; }
+}
 .score { background: #141a2e; border: 1px solid #243056; border-radius: 10px; padding: 8px 12px; min-width: 120px; }
 .score .k { display: block; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
 .score .v { display: block; font-size: 1.15rem; font-weight: 800; margin-top: 2px; }
@@ -174,6 +211,8 @@ table.tape td { padding: 6px 8px; border-bottom: 1px solid #1a2240; white-space:
 body:not(.mode-cu) #colKnow table.tape { table-layout: fixed; width: 100%; }
 body:not(.mode-cu) #colKnow table.tape td,
 body:not(.mode-cu) #colKnow table.tape th { white-space: normal; overflow-wrap: anywhere; }
+body:not(.mode-cu) #mfd table.tape td,
+body:not(.mode-cu) #mfd table.tape th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 table.tape td.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.tape tr.buys td:first-child { border-left: 3px solid var(--go); }
 table.tape tr.sells td:first-child { border-left: 3px solid var(--accent); }
@@ -210,6 +249,10 @@ body:not(.mode-cu) #colAct .known-map {
 .known-map .edge { stroke: #3a4a7a; stroke-width: 0.6; fill: none; }
 .known-map .edge.oneway { stroke-dasharray: 1.6 1.2; }
 .known-map .edge.stub { stroke: #2a3557; stroke-dasharray: 0.8 1.2; }
+.known-map .edge.route { stroke: #ffe08a; stroke-width: 1.1; }
+.known-map .node.tint-bbb circle { stroke: #3dd68c; }
+.known-map .node.tint-sss circle { stroke: #6ee7ff; }
+.known-map .node.tint-mix circle { stroke: #e2b15a; }
 .known-map .node { cursor: pointer; }
 .known-map .node circle { fill: #182447; stroke: var(--btn-border); stroke-width: 0.7; }
 .known-map .node.here circle { fill: #1a4d3a; stroke: var(--go); stroke-width: 1.2; }

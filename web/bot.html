@@ -128,22 +128,26 @@
   </section>
 
   <!-- Scoreboard strip: match clock + self. Every value is a straight read of the Observation. -->
-  <section class="scoreboard" id="scoreboard" data-testid="scoreboard" hidden>
+  <section class="scoreboard" id="scoreboard" data-testid="scoreboard">
+    <div class="score"><span class="k">Credits</span><span class="v" id="sbCredits" data-obs="credits" data-testid="credits">-</span></div>
+    <div class="score"><span class="k">Turns left</span><span class="v"><span id="sbTurns" data-obs="turns_remaining" data-testid="turns-left">-</span> / <span id="sbTpd" data-obs="turns_per_day">-</span></span></div>
+    <div class="score"><span class="k">Day</span><span class="v"><span id="sbDay" data-obs="day">-</span> / <span id="sbMaxDays" data-obs="max_days">-</span> <small>tick <span id="sbTick" data-obs="tick">-</span></small></span></div>
+    <div class="score" data-testid="inst-sector"><span class="k">Sector</span><span class="v" id="sbSector">-</span></div>
+    <div class="score" data-testid="inst-ship"><span class="k">Ship</span><span class="v" id="sbShip">-</span></div>
+    <div class="score"><span class="k">Alignment</span><span class="v"><span id="sbAlignLabel" data-obs="alignment_label">-</span> <small>(<span id="sbAlign" data-obs="alignment">-</span>)</small></span></div>
+    <div class="score" data-testid="alert-lamp"><span class="k">Alert</span><span class="v" id="alertLamp" data-level="quiet">quiet</span></div>
     <div class="score" data-obs="self_name"><span class="k">Commander</span><span class="v" id="sbName" data-obs="self_id">-</span></div>
     <div class="score" data-llm="stage_hint" data-testid="stage-hint"><span class="k">Stage (LLM hint)</span><span class="v stage" id="sbStage">-</span><small id="sbStageDetail" class="hint small" data-testid="stage-hint-detail"></small></div>
-    <div class="score"><span class="k">Day</span><span class="v"><span id="sbDay" data-obs="day">-</span> / <span id="sbMaxDays" data-obs="max_days">-</span> <small>tick <span id="sbTick" data-obs="tick">-</span></small></span></div>
-    <div class="score"><span class="k">Turns left</span><span class="v"><span id="sbTurns" data-obs="turns_remaining" data-testid="turns-left">-</span> / <span id="sbTpd" data-obs="turns_per_day">-</span></span></div>
-    <div class="score"><span class="k">Credits</span><span class="v" id="sbCredits" data-obs="credits" data-testid="credits">-</span></div>
     <div class="score"><span class="k">Net worth</span><span class="v" id="sbNetWorth" data-obs="net_worth" data-testid="net-worth">-</span></div>
     <div class="score"><span class="k">Rank</span><span class="v"><span id="sbRank" data-obs="rank">-</span> <small><span id="sbXp" data-obs="experience">-</span> xp</small></span></div>
-    <div class="score"><span class="k">Alignment</span><span class="v"><span id="sbAlignLabel" data-obs="alignment_label">-</span> <small>(<span id="sbAlign" data-obs="alignment">-</span>)</small></span></div>
+    <div class="spool" id="turnSpool" data-testid="turn-spool" aria-hidden="true"><span id="turnSpoolBar"></span></div>
     <div class="score"><span class="k">Lives</span><span class="v"><span id="sbDeaths" data-obs="deaths">-</span> / <span id="sbMaxDeaths" data-obs="max_deaths">-</span> lost <small id="sbAlive" data-obs="alive"></small></span></div>
     <div class="score"><span class="k">Corp</span><span class="v" id="sbCorp" data-obs="corp_ticker">-</span></div>
     <div class="score"><span class="k">Landed</span><span class="v" id="sbLanded" data-obs="planet_landed">-</span></div>
     <div class="score" hidden><span class="v" id="sbFinished" data-obs="finished"></span></div>
   </section>
 
-  <main class="bot-main cols3" id="main" hidden>
+  <main class="bot-main cols3" id="main">
 
     <!-- WHERE -->
     <section class="col" id="colWhere" data-testid="col-where">
@@ -154,16 +158,6 @@
         <div class="sub">Defenses / hazards</div><div class="kv" id="hereDefenses"></div>
         <div class="sub">Planets here</div><div class="list" id="herePlanets"></div>
         <div class="sub">Ferrengi</div><div class="list" id="hereFerrengi"></div>
-      </div>
-
-      <div class="card" id="portCard" data-testid="port" data-obs="sector.port">
-        <h2>Port <span class="badge" id="portCode" data-testid="port-line">-</span></h2>
-        <div class="kv" id="portMeta"></div>
-        <table class="tape" id="portTape" data-testid="port-tape">
-          <thead><tr><th>Commodity</th><th>Port</th><th>Price</th><th>Stock</th><th>You hold</th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <div class="hint small" id="portNone" hidden>No port in this sector.</div>
       </div>
 
       <div class="card" id="adjacentCard" data-testid="adjacent" data-obs="adjacent">
@@ -285,23 +279,21 @@
           <div id="mediaCounters" data-testid="media-counters" class="hint small">plays 0  skips 0  preemptions 0  stale-drops 0  poster-fallbacks 0  stills 0</div>
           <pre id="rawObs" class="json"></pre>
         </details>
-        <details id="mediaMoments" class="drawer media-moments" data-testid="media-moments" hidden>
-          <summary>Moments</summary>
-          <ul></ul>
-        </details>
       </div>
     </section>
 
     <!-- KNOW -->
     <section class="col" id="colKnow" data-testid="col-know">
-      <details class="card" id="bridgePanel" data-testid="bridge-panel">
-        <summary>Bridge <span class="badge" id="bridgeBadge" data-testid="bridge-badge" hidden>0</span></summary>
-        <div id="bridgeList" class="bridge-list" data-testid="bridge-list"></div>
-        <form id="bridgeForm" class="bridge-form" autocomplete="off">
-          <input id="bridgeInput" data-testid="bridge-input" maxlength="500" placeholder="Order or idea for the pilot">
-          <button type="submit" data-testid="bridge-send">Send</button>
-        </form>
-      </details>
+      <div class="card mfd" id="mfd" data-testid="mfd">
+        <div class="mfd-tabs" role="tablist" aria-label="Side screen">
+          <button type="button" role="tab" id="mfdTabShip" data-tab="ship" aria-selected="true" aria-controls="mfdPanelShip" tabindex="0" data-testid="mfd-tab-ship">Ship</button>
+          <button type="button" role="tab" id="mfdTabPort" data-tab="port" aria-selected="false" aria-controls="mfdPanelPort" tabindex="0" data-testid="mfd-tab-port">Port</button>
+          <button type="button" role="tab" id="mfdTabPlanets" data-tab="planets" aria-selected="false" aria-controls="mfdPanelPlanets" tabindex="0" data-testid="mfd-tab-planets">Planets</button>
+          <button type="button" role="tab" id="mfdTabBridge" data-tab="bridge" aria-selected="false" aria-controls="mfdPanelBridge" tabindex="0" data-testid="mfd-tab-bridge">Bridge <span class="badge" id="mfdBridgeBadge" data-testid="mfd-bridge-badge" hidden>0</span></button>
+          <button type="button" role="tab" id="mfdTabMoments" data-tab="moments" aria-selected="false" aria-controls="mfdPanelMoments" tabindex="0" data-testid="mfd-tab-moments">Moments</button>
+        </div>
+        <div class="mfd-body">
+          <div role="tabpanel" id="mfdPanelShip" aria-labelledby="mfdTabShip">
       <div class="card" id="shipCard" data-testid="ship" data-obs="ship">
         <h2>Ship <span class="badge" id="shipClass">-</span></h2>
         <div class="kv" id="shipLoadout"></div>
@@ -309,6 +301,43 @@
           <thead><tr><th>Cargo</th><th>Qty</th><th>Cost avg</th><th>At cost</th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+          </div>
+          <div role="tabpanel" id="mfdPanelPort" aria-labelledby="mfdTabPort" hidden>
+            <div class="card" id="portCard" data-testid="port" data-obs="sector.port">
+              <h2>Port <span class="badge" id="portCode" data-testid="port-line">-</span></h2>
+              <div class="kv" id="portMeta"></div>
+              <table class="tape" id="portTape" data-testid="port-tape">
+                <thead><tr><th>Commodity</th><th>Port</th><th>Price</th><th>Stock</th><th>You hold</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <div class="hint small" id="portNone" hidden>No port in this sector.</div>
+            </div>
+          </div>
+          <div role="tabpanel" id="mfdPanelPlanets" aria-labelledby="mfdTabPlanets" hidden>
+            <div class="card" id="planetsCard" data-testid="planets">
+              <h2>Planets</h2>
+              <div class="sub">Owned</div><div class="list" id="ownedPlanets" data-obs="owned_planets"></div>
+              <div class="sub">Orphaned (claimable)</div><div class="list" id="orphanedPlanets" data-obs="orphaned_planets"></div>
+            </div>
+          </div>
+          <div role="tabpanel" id="mfdPanelBridge" aria-labelledby="mfdTabBridge" hidden>
+            <div class="card" id="bridgePanel" data-testid="bridge-panel">
+              <h2>Bridge <span class="badge" id="bridgeBadge" data-testid="bridge-badge" hidden>0</span></h2>
+              <div id="bridgeList" class="bridge-list" data-testid="bridge-list"></div>
+              <form id="bridgeForm" class="bridge-form" autocomplete="off">
+                <input id="bridgeInput" data-testid="bridge-input" maxlength="500" placeholder="Order or idea for the pilot">
+                <button type="submit" data-testid="bridge-send">Send</button>
+              </form>
+            </div>
+          </div>
+          <div role="tabpanel" id="mfdPanelMoments" aria-labelledby="mfdTabMoments" hidden>
+            <div id="mediaMoments" class="media-moments" data-testid="media-moments">
+              <h2>Moments</h2>
+              <ul></ul>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card" id="knownPortsCard" data-testid="known-ports" data-obs="known_ports" data-llm="known_ports_top">
@@ -335,12 +364,6 @@
         <div class="list small" id="otherPlayers" data-obs="other_players" data-testid="other-players"></div>
       </div>
 
-      <div class="card" id="planetsCard" data-testid="planets">
-        <h2>Planets</h2>
-        <div class="sub">Owned</div><div class="list" id="ownedPlanets" data-obs="owned_planets"></div>
-        <div class="sub">Orphaned (claimable)</div><div class="list" id="orphanedPlanets" data-obs="orphaned_planets"></div>
-      </div>
-
       <div class="card" id="commsCard" data-testid="comms">
         <h2>Comms <span class="badge" id="inboxCount">-</span></h2>
         <div class="list" id="inbox" data-obs="inbox"></div>
@@ -358,7 +381,7 @@
   </main>
 
   <!-- EVENTS (fogged stream from /harness/v1/{pid}/events) -->
-  <footer class="events" id="eventsFooter" data-testid="events" data-obs="recent_events" hidden>
+  <footer class="events" id="eventsFooter" data-testid="events" data-obs="recent_events">
     <div class="events-head">
       <h2>Events</h2>
       <div class="chips filters" id="eventFilters" role="group" aria-label="Event filters">

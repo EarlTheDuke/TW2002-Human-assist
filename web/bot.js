@@ -275,6 +275,15 @@
     setText("sbCredits", fmt(obs.credits)); setText("sbNetWorth", fmt(obs.net_worth));
     setText("sbRank", obs.rank); setText("sbXp", fmt(obs.experience));
     setText("sbAlignLabel", obs.alignment_label); setText("sbAlign", obs.alignment);
+    setText("sbSector", (obs.sector || {}).id);
+    setText("sbShip", (obs.ship || {}).class);
+    if (obs.self_id) document.body.dataset.seat = obs.self_id;
+    const spool = $("turnSpoolBar");
+    const cap = Number(obs.turns_per_day) || 1;
+    const left = Number(obs.turns_remaining) || 0;
+    if (spool) spool.style.width = `${Math.max(0, Math.min(100, (left / cap) * 100))}%`;
+    const saved = obs.self_id && sessionStorage.getItem("tw2k_mfd_" + obs.self_id);
+    if (saved && !state.mfdReady) { state.mfdReady = true; selectMfd(saved, false); }
     setText("sbDeaths", obs.deaths); setText("sbMaxDeaths", obs.max_deaths);
     setText("sbAlive", obs.alive === false ? "DESTROYED" : "");
     setText("sbCorp", obs.corp_ticker || "none");
@@ -283,7 +292,6 @@
     const sh = state.twin && state.twin.stage_hint;
     setText("sbStage", P.stageText(sh));
     $("sbStageDetail").textContent = P.stageDetail(sh);
-    els.scoreboard.hidden = false;
   }
 
   function renderHere(obs) {
@@ -391,7 +399,8 @@
     const nodes = obs.known_sectors || [];
     const kw = obs.known_warps || {};
     const here = (obs.sector || {}).id;
-    const key = JSON.stringify([nodes.map((n) => [n.id, n.port, n.warps_known]), Object.keys(kw).length, here, legalOf("plot_course").legal, state.awaiting]);
+    const routeKey = (state.routePath || []).join(",");
+    const key = JSON.stringify([nodes.map((n) => [n.id, n.port, n.warps_known]), Object.keys(kw).length, here, legalOf("plot_course").legal, state.awaiting, routeKey]);
     if (svg.getAttribute("data-map-key") === key) return;  // stable DOM across polls
     svg.setAttribute("data-map-key", key);
     svg.innerHTML = "";
@@ -437,10 +446,23 @@
         svg.appendChild(line);
       }
     }
+    if (state.routePath && state.routePath.length > 1) {
+      const pts = [];
+      let prev = pos[here] || null;
+      for (const id of state.routePath) {
+        let p = pos[id] || stubs[id];
+        if (!p && prev) p = { x: Math.min(97, prev.x + 8), y: Math.min(97, prev.y + 6) };
+        if (!p) continue;
+        pts.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
+        prev = p;
+      }
+      if (pts.length > 1) svg.appendChild(svgEl("polyline", { points: pts.join(" "), class: "edge route", "data-testid": "route-line" }));
+    }
     // Nodes.
     const canPlot = canUse("plot_course");
     const addNode = (id, p, n) => {
-      const g = svgEl("g", { class: `node${p.known ? "" : " stub"}${id === here ? " here" : ""}${n && n.port ? " port" : ""}${n && n.is_fedspace ? " fed" : ""}${canPlot && id !== here ? "" : " disabled"}`, transform: `translate(${p.x.toFixed(2)},${p.y.toFixed(2)})`, tabindex: 0, role: "button", "data-testid": `map-sector-${id}`, "data-sector": id, "aria-label": `sector ${id}${n && n.port ? " port " + n.port : ""}${id === here ? " (you are here)" : ""}` });
+      const tint = portTint(rememberedPortCode(obs, id));
+      const g = svgEl("g", { class: `node${p.known ? "" : " stub"}${id === here ? " here" : ""}${n && n.port ? " port" : ""}${tint ? " " + tint : ""}${n && n.is_fedspace ? " fed" : ""}${canPlot && id !== here ? "" : " disabled"}`, transform: `translate(${p.x.toFixed(2)},${p.y.toFixed(2)})`, tabindex: 0, role: "button", "data-testid": `map-sector-${id}`, "data-sector": id, "aria-label": `sector ${id}${n && n.port ? " port " + n.port : ""}${id === here ? " (you are here)" : ""}` });
       g.appendChild(svgEl("circle", { r: p.known ? 3.4 : 2.2 }));
       const t = svgEl("text", { y: 1.1 }); t.textContent = String(id); g.appendChild(t);
       if (n && n.port) { const c = svgEl("text", { y: 6.2, class: "code" }); c.textContent = n.port; g.appendChild(c); }
@@ -648,6 +670,14 @@
     const sec = (obs.known_sectors || []).find((s) => Number(s.id) === id);
     return sec && sec.port ? String(sec.port) : "";
   }
+  function portTint(code) {
+    const c = String(code || "");
+    if (!/^[BS]{3}$/.test(c)) return "";
+    const buys = (c.match(/B/g) || []).length;
+    if (buys === 3) return "tint-bbb";
+    if (buys === 0) return "tint-sss";
+    return "tint-mix";
+  }
   function canUse(kind) { return state.awaiting && !state.busy && !!legalOf(kind).legal; }
   // The route macro is a harness verb, not an engine one: legal_actions never lists it,
   // so its form is gated by "your turn" only (the server re-checks every step).
@@ -682,6 +712,8 @@
         const b = document.createElement("button");
         b.type = "button";
         b.textContent = warpLabel(w);
+        const tint = portTint(rememberedPortCode(obs, w));
+        if (tint) b.classList.add(tint);
         b.setAttribute("data-testid", `warp-${w}`);
         b.setAttribute("data-target", String(w));
         b.addEventListener("click", () => { if (canUse("warp")) submit({ kind: "warp", args: { target: Number(w) }, thought: `Grok Bot: warp to ${w}` }); });
@@ -972,12 +1004,14 @@
       const execWrap = document.createElement("label"); execWrap.className = "radios"; const el2 = document.createElement("label"); el2.appendChild(exec); el2.appendChild(document.createTextNode("Execute (fly the route now, one warp cost per hop)")); execWrap.appendChild(el2); f.appendChild(execWrap);
       const sync = () => {
         const raw = target.value;
-        if (raw === "") { preview.textContent = "enter a target sector"; return; }
+        if (raw === "") { state.routePath = null; if (state.obs) renderKnownMap(state.obs); preview.textContent = "enter a target sector"; return; }
         const t = Number(raw);
         if (!Number.isFinite(t) || !Number.isInteger(t) || t < 1) { preview.textContent = "enter a valid sector"; return; }
         const here = Number((state.obs.sector || {}).id) || 0;
         if (t === here) { preview.textContent = "you are already here"; return; }
         const path = knownRoute(state.obs, t);
+        state.routePath = path && path.path && path.path.length > 1 ? path.path : null;
+        if (state.obs) renderKnownMap(state.obs);
         if (!path) { preview.textContent = "route shown after plotting"; return; }
         const fly = exec.checked ? " · executes" : " · plan only (0 turns)";
         preview.textContent = `${path.hops} hop(s), first sector ${path.first}${fly}`;
@@ -1017,9 +1051,9 @@
     const kw = Object.assign({}, (obs && obs.known_warps) || {});
     const here = (obs.sector && obs.sector.warps_out) || [];
     if (here.length && !kw[String(src)]) kw[String(src)] = here;
-    if (src === dst) return { hops: 0, first: src };
+    if (src === dst) return { hops: 0, first: src, path: [src] };
     const seen = new Set([src]);
-    let frontier = [{ id: src, first: null }];
+    let frontier = [{ id: src, first: null, path: [src] }];
     let d = 0;
     while (frontier.length && d < 60) {
       d += 1;
@@ -1027,8 +1061,9 @@
       for (const node of frontier) {
         for (const n of kw[String(node.id)] || []) {
           const first = node.first === null ? n : node.first;
-          if (n === dst) return { hops: d, first };
-          if (!seen.has(n)) { seen.add(n); next.push({ id: n, first }); }
+          const path = node.path.concat(n);
+          if (n === dst) return { hops: d, first, path };
+          if (!seen.has(n)) { seen.add(n); next.push({ id: n, first, path }); }
         }
       }
       frontier = next;
@@ -1180,6 +1215,24 @@
     }
     renderCuEvents();
     renderCuCard();
+    renderAlert();
+  }
+  function renderAlert() {
+    const lamp = $("alertLamp");
+    if (!lamp) return;
+    let level = "quiet";
+    let text = "quiet";
+    if (state.obs && state.obs.alive === false) { level = "dead"; text = "destroyed"; }
+    else {
+      const own = state.events.filter((e) => e.actor_id === state.seat);
+      for (let i = own.length - 1; i >= 0; i--) {
+        const kind = String(own[i].kind || "");
+        if (/destroyed|escape_pod/.test(kind)) { level = "dead"; text = "destroyed"; break; }
+        if (/mine|photon|combat|hit|attack/.test(kind)) { level = "alert"; text = kind; break; }
+      }
+    }
+    lamp.dataset.level = level;
+    lamp.textContent = text;
   }
 
   // ---------------------------------------------------------------- G2: one-screen turn layout (mode=cu)
@@ -1614,7 +1667,7 @@
       if (wasAwaiting) log(`turn ${state.turnSeq} closed; waiting on ${describeCurrent(state.current)}`);
     }
     renderLastResult();
-    els.main.hidden = !state.obs;
+    if (!CU) { els.main.hidden = false; els.eventsFooter.hidden = false; }
   }
 
   // One-shot: status + observation (peek if not our turn) + events.
@@ -1855,18 +1908,36 @@
       }
       list.append(row);
     }
-    const panel = $("bridgePanel");
     const badge = $("bridgeBadge");
+    const tabBadge = $("mfdBridgeBadge");
     const maxId = messages.reduce((n, msg) => Math.max(n, msg.id), 0);
     const seenKey = "tw2k_bridge_seen_" + (state.seat || "");
-    if (panel && panel.open) {
+    const sigKey = "tw2k_bridge_sig_" + (state.seat || "");
+    const sig = messages.map((msg) => `${msg.id}:${msg.role}:${msg.status || ""}`).join("|");
+    const bridgeOn = $("mfdTabBridge") && $("mfdTabBridge").getAttribute("aria-selected") === "true";
+    const prev = sessionStorage.getItem(sigKey);
+    const changed = prev !== null && prev !== sig;
+    const unread = messages.filter((msg) => msg.role === "pilot" && msg.id > Number(sessionStorage.getItem(seenKey) || 0)).length;
+    const show = !bridgeOn && (changed || unread > 0);
+    if (bridgeOn) {
       sessionStorage.setItem(seenKey, String(maxId));
-      if (badge) badge.hidden = true;
-    } else if (badge) {
-      const unread = messages.filter((msg) => msg.id > Number(sessionStorage.getItem(seenKey) || 0)).length;
-      badge.hidden = unread === 0;
-      badge.textContent = unread ? String(unread) : "";
+      sessionStorage.setItem(sigKey, sig);
     }
+    for (const el of [badge, tabBadge]) {
+      if (!el) continue;
+      el.hidden = !show;
+      el.textContent = show ? String(Math.max(unread, changed ? 1 : 0)) : "";
+    }
+  }
+  function selectMfd(name, remember) {
+    document.querySelectorAll("#mfd [role=tab]").forEach((tab) => {
+      const on = tab.dataset.tab === name;
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      const panel = document.getElementById(tab.getAttribute("aria-controls"));
+      if (panel) panel.hidden = !on;
+    });
+    if (remember && state.seat) sessionStorage.setItem("tw2k_mfd_" + state.seat, name);
+    if (name === "bridge") paintBridge(bridgeState.messages);
   }
   function paintCuOrders(orders) {
     const box = $("cuBridge");
@@ -1919,6 +1990,10 @@
     });
     $("bridgePanel").addEventListener("toggle", () => paintBridge(bridgeState.messages));
   }
+  document.querySelectorAll("#mfd [role=tab]").forEach((tab) => {
+    tab.addEventListener("click", () => selectMfd(tab.dataset.tab, true));
+    tab.addEventListener("focus", () => selectMfd(tab.dataset.tab, true));
+  });
   const cuBridgeForm = $("cuBridgeForm");
   if (cuBridgeForm) {
     cuBridgeForm.addEventListener("submit", (ev) => {

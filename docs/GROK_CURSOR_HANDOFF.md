@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-29 12:39 PT - Fable - the cockpit reads as a deck
+- The full cockpit has an instrument bar and a fixed side screen (Ship, Port, Planets, Bridge, Moments). The video stays above the map. Port color and the route line use only this seat's memory. The computer-use page still fits in 800 px.
+
 ### 2026-09-29 10:44 PT - Fable - a first pass at the cockpit
 - Fifteen cockpit ideas, three layouts, and a top five are in `docs/plans/2026-09-29-cockpit-design.md`. The map stays under the video. The computer-use page is left alone. Nothing here is built yet.
 

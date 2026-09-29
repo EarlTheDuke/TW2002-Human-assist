@@ -154,7 +154,7 @@ def test_bridge_panel_stays_off_the_map_and_cu_stays_800(tmp_path, monkeypatch) 
                     "() => !!document.querySelector('#colAct #viewport + #mapCard')"
                     " && !!document.querySelector('#colKnow #bridgePanel')"
                 )
-                page.get_by_test_id("bridge-panel").locator("summary").click()
+                page.get_by_test_id("mfd-tab-bridge").click()
                 nasty = "<img src=x onerror=alert(1)>"
                 page.get_by_test_id("bridge-input").fill(nasty)
                 page.get_by_test_id("bridge-send").click()
