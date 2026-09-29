@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-29 15:09 PT - Fable - a line under the video for who is here
+- The cockpit lists ships and planets from this sector's observation only, on one reserved line. An empty sector stays blank. The map and the side screen stay where they were.
+
 ### 2026-09-29 14:07 PT - Fable - the four polish nits
 - Five tabs sit on one row, the ship name is whole, Moments Play uses the clip when there is one, and the route line skips a hop that has no map point. The map stays under the video.
 

@@ -318,6 +318,25 @@
     rows($("hereFerrengi"), s.ferrengi || [], (f) => row(f.name || f.id, [`aggression ${f.aggression}`, `${fmt(f.fighters)} fighters`], "bad"), "none");
   }
 
+  function renderLocalBrackets(obs) {
+    const line = $("localBrackets");
+    if (!line) return;
+    const sector = obs.sector || {};
+    const others = obs.other_players || [];
+    const parts = [];
+    for (const id of (sector.occupants || [])) {
+      if (id === obs.self_id) continue;
+      const who = others.find((o) => o.id === id);
+      const name = (who && who.name) || id;
+      parts.push(`${name} · ${who && who.is_corpmate ? "corpmate" : "ship"}`);
+    }
+    for (const planet of sector.planets || []) {
+      const rel = planet.owner_id && planet.owner_id === obs.self_id ? "yours" : planet.owner_id ? "theirs" : "unowned";
+      parts.push(`${planet.name || "planet"} · ${rel}`);
+    }
+    line.textContent = parts.join("   ");
+  }
+
   function renderPort(obs) {
     const s = obs.sector || {};
     const port = s.port;
@@ -1077,6 +1096,7 @@
     for (const la of obs.legal_actions || []) state.legal[la.kind] = la;
     renderScoreboard(obs);
     renderHere(obs);
+    renderLocalBrackets(obs);
     renderPort(obs);
     renderAdjacent(obs);
     renderKnownWarps(obs);
