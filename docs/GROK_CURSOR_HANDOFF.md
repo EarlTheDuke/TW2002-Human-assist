@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-29 10:44 PT - Fable - a first pass at the cockpit
+- Fifteen cockpit ideas, three layouts, and a top five are in `docs/plans/2026-09-29-cockpit-design.md`. The map stays under the video. The computer-use page is left alone. Nothing here is built yet.
+
 ### 2026-09-29 09:35 PT - Fable - the captain can write to the pilot
 - Bridge is a collapsed panel in the side column, so the video and the map stay put. Notes are plain text for that seat only. The computer-use turn card lists open orders and the page still fits in 800 px.
 - The adapter tests take the queue lock, or write their rows before the worker starts. That file passed 10 times in a row.
