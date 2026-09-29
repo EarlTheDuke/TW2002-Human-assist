@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 17:40 PT - Fable - the xAI video adapter stays behind a switch
+- The live adapter uses `grok-imagine-video-1.5-2026-05-30` at 480p, 4 seconds, no audio, with moderation on. It loads only when the custom flag is on, `TW2K_VIDEO_CUSTOM_PROVIDER=xai`, and `TW2K_XAI_VIDEO_KEY` is set. The key stays in that env var. A clip is kept only after moderation, duration, resolution, flash-rate, and palette checks. A failed check is discarded and the placeholder stays. Tests use a fake HTTP transport.
+- A custom clip ends within about 0.05 s of its real length. Cache files are written only after the job update sticks, and removed if that write fails. The death-custom viewport test clicks the centre of the screen.
+- Suite 788 passed; ruff clean; manifest OK. Flag-on cockpit and bot browser rerun 150 passed.
+
 ### 2026-09-28 16:21 PT - Fable - Skip during a death custom clip keeps the escape pod
 - Skip while a custom death clip is on screen ends only that clip. The escape pod plays, and the clip gets one Moments row. A second Skip ends the pod. The Skip button, Escape, and a viewport click all do this.
 - A job the deadline already marked expired is not revived when the provider returns. A short webm that stalls on the last frame and never fires `ended` ends on that frame; the 5 s timer stays a backstop. The moments poll ignores a tick that is already in flight. The repo cache check compares the folder before and after, so a stray file does not fail the suite.

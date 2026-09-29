@@ -1,4 +1,8 @@
-"""Live custom clips. Off unless TW2K_VIDEO_CUSTOM=1. Fake provider only.
+"""Live custom clips. Off unless TW2K_VIDEO_CUSTOM=1.
+
+The default provider is local and fake. The xAI adapter loads only when
+TW2K_VIDEO_CUSTOM_PROVIDER=xai and TW2K_XAI_VIDEO_KEY is set, and that module
+is not imported otherwise.
 
 The game thread does one SQLite insert for a flagged trigger. The provider
 runs on a worker thread and never opens a network connection. Caps, the
@@ -26,6 +30,9 @@ log = logging.getLogger("tw2k.media.custom")
 
 ENV_FLAG = "TW2K_VIDEO_CUSTOM"
 ENV_CACHE = "TW2K_VIDEO_CUSTOM_CACHE"
+ENV_PROVIDER = "TW2K_VIDEO_CUSTOM_PROVIDER"
+ENV_XAI_KEY = "TW2K_XAI_VIDEO_KEY"
+XAI_MODEL = "grok-imagine-video-1.5-2026-05-30"
 JOB_DEADLINE_S = 600
 JOB_CENTS = 33  # 4s * $0.08 + $0.01 image, in cents. $1/match allows 3.
 MATCH_CAP_CENTS = 100
@@ -33,7 +40,7 @@ DAY_CAP_CENTS = 500
 JOBS_PER_MATCH = 3
 MODEL = "fake-local"
 PARAMS = {"resolution": "480p", "duration_s": 4, "generate_audio": False}
-COUNTED = ("queued", "running", "ready", "late")
+COUNTED = ("queued", "running", "ready", "late", "discarded")
 HOT_KINDS = {
     EventKind.SHIP_DESTROYED,
     EventKind.PLAYER_ELIMINATED,
@@ -103,9 +110,16 @@ def prompt_for(universe: Universe, seat: str, event: Event, template_id: str) ->
         "template_id": template_id,
         "fields": {"kind": view.get("kind"), "facts": facts, "sector_id": view.get("sector_id")},
         "refs": {"hull": hull_family(str(class_value)), "sector_look": sector_look(universe, event.sector_id)},
-        "model": MODEL,
+        "model": _prompt_model(),
         "params": PARAMS,
     }
+
+
+def _prompt_model() -> str:
+    """The dated xAI alias only when that adapter is actually armed."""
+    if os.environ.get(ENV_PROVIDER) == "xai" and (os.environ.get(ENV_XAI_KEY) or "").strip():
+        return XAI_MODEL
+    return MODEL
 
 
 def prompt_hash(prompt: dict[str, Any]) -> str:
@@ -190,7 +204,8 @@ class CustomQueue:
               trigger_seq INTEGER NOT NULL,
               clip_key TEXT NOT NULL,
               day TEXT NOT NULL,
-              swap INTEGER NOT NULL DEFAULT 0
+              swap INTEGER NOT NULL DEFAULT 0,
+              prompt TEXT NOT NULL DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS seen (
               hash TEXT NOT NULL,
@@ -208,6 +223,10 @@ class CustomQueue:
             """
         )
         self._conn.commit()
+        cols = {row[1] for row in self._conn.execute("PRAGMA table_info(jobs)")}
+        if "prompt" not in cols:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN prompt TEXT NOT NULL DEFAULT ''")
+            self._conn.commit()
         self._universes: dict[str, Universe] = {}
 
     @property
@@ -274,9 +293,9 @@ class CustomQueue:
         digest = prompt_hash(prompt)
         match_id = f"{getattr(universe.config, 'seed', 0)}:{id(universe)}"
         self._universes[match_id] = universe
-        self._enqueue(seat, event, clip, digest, match_id)
+        self._enqueue(seat, event, clip, digest, match_id, json.dumps(prompt, sort_keys=True))
 
-    def _enqueue(self, seat, event, clip, digest, match_id) -> None:
+    def _enqueue(self, seat, event, clip, digest, match_id, prompt_json: str) -> None:
         day = date.today().isoformat()
         with self._lock:
             self._conn.execute(
@@ -292,7 +311,7 @@ class CustomQueue:
                 blocked = self._later_than(match_id, seat, event.seq)
                 self._insert_job(
                     digest, seat, match_id, "late" if blocked else "cached", 0,
-                    event.seq, clip, day, swap=0 if blocked else 1,
+                    event.seq, clip, day, swap=0 if blocked else 1, prompt=prompt_json,
                 )
                 self._conn.commit()
                 return
@@ -327,15 +346,18 @@ class CustomQueue:
                 self._conn.commit()
                 log.warning("custom job refused: day cap for seat %s", seat)
                 return
-            self._insert_job(digest, seat, match_id, "queued", JOB_CENTS, event.seq, clip, day, swap=0)
+            self._insert_job(
+                digest, seat, match_id, "queued", JOB_CENTS, event.seq, clip, day,
+                swap=0, prompt=prompt_json,
+            )
             self._conn.commit()
         self._wake.set()
 
-    def _insert_job(self, digest, seat, match_id, status, cost, seq, clip, day, *, swap: int) -> None:
+    def _insert_job(self, digest, seat, match_id, status, cost, seq, clip, day, *, swap: int, prompt: str = "") -> None:
         self._conn.execute(
-            """INSERT INTO jobs (hash, seat, match_id, status, created, cost_cents, trigger_seq, clip_key, day, swap)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (digest, seat, match_id, status, time.time(), cost, seq, clip, day, swap),
+            """INSERT INTO jobs (hash, seat, match_id, status, created, cost_cents, trigger_seq, clip_key, day, swap, prompt)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (digest, seat, match_id, status, time.time(), cost, seq, clip, day, swap, prompt),
         )
 
     def _loop(self) -> None:
@@ -390,17 +412,24 @@ class CustomQueue:
 
     def _finish(self, job: sqlite3.Row, data: bytes | None) -> None:
         digest = job["hash"]
-        with self._lock:
-            row = self._conn.execute("SELECT status FROM jobs WHERE id=?", (job["id"],)).fetchone()
-            if row is None or row["status"] != "running":
-                return
-        status = "late"
+        status = "discarded"
         swap = 0
         if data:
-            (self.cache_dir / f"{digest}.webm").write_bytes(data)
             blocked = self._blocked_for(job)
             status = "late" if blocked else "ready"
             swap = 0 if blocked else 1
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE jobs SET status=?, swap=? WHERE id=? AND status='running'",
+                (status, swap, job["id"]),
+            )
+            self._conn.commit()
+            if cur.rowcount != 1:
+                return
+        if not data:
+            return
+        webm = self.cache_dir / f"{digest}.webm"
+        meta_path = self.cache_dir / f"{digest}.json"
         meta = {
             "hash": digest,
             "trust": "auto",
@@ -409,13 +438,19 @@ class CustomQueue:
             "clip_key": job["clip_key"],
             "badge": "live-generated",
         }
-        (self.cache_dir / f"{digest}.json").write_text(json.dumps(meta), encoding="utf-8")
-        with self._lock:
-            self._conn.execute(
-                "UPDATE jobs SET status=?, swap=? WHERE id=? AND status='running'",
-                (status, swap, job["id"]),
-            )
-            self._conn.commit()
+        try:
+            webm.write_bytes(data)
+            meta_path.write_text(json.dumps(meta), encoding="utf-8")
+        except Exception:
+            webm.unlink(missing_ok=True)
+            meta_path.unlink(missing_ok=True)
+            with self._lock:
+                self._conn.execute(
+                    "UPDATE jobs SET status='discarded', swap=0 WHERE id=?",
+                    (job["id"],),
+                )
+                self._conn.commit()
+            log.exception("custom clip cache write failed")
 
     def _later_than(self, match_id: str, seat: str, seq: int) -> bool:
         universe = self._universes.get(match_id)
@@ -536,4 +571,11 @@ def start_if_enabled(cache_dir: Path | None = None) -> CustomQueue | None:
         return None
     override = os.environ.get(ENV_CACHE)
     folder = cache_dir or (Path(override) if override else (_repo_manifest().parent / "clips" / "custom"))
-    return CustomQueue(folder).start()
+    provider = None
+    if os.environ.get(ENV_PROVIDER) == "xai" and (os.environ.get(ENV_XAI_KEY) or "").strip():
+        from .xai_video import XaiImagineProvider
+
+        provider = XaiImagineProvider(key=(os.environ.get(ENV_XAI_KEY) or "").strip())
+    elif os.environ.get(ENV_PROVIDER) == "xai":
+        log.warning("xai video provider requested without a key; using the local stand-in")
+    return CustomQueue(folder, provider).start()

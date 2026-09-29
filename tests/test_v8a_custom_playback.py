@@ -386,7 +386,9 @@ def test_skip_during_a_death_custom_clip_keeps_the_pod(tmp_path, monkeypatch) ->
                         elif action == "escape":
                             page.keyboard.press("Escape")
                         else:
-                            page.locator("#vpScreen").click(position={"x": 8, "y": 8})
+                            box = page.locator("#vpScreen").bounding_box()
+                            assert box is not None
+                            page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
                         page.wait_for_function(
                             "() => TW2KMedia._state().playing === 'self.escape_pod'",
                             timeout=5_000,
