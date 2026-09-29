@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 20:55 PT - Fable - the map sits under the video
+- On the full cockpit the Known space map is the card under the viewport, in the wider center column. The video stays 16:9. The map is a larger square so the sector labels have more room. `mode=cu` still hides that page and keeps its own map slot.
+
 ### 2026-09-28 19:12 PT - Fable - real clips, a private key, and spend that sticks
 - Flash, duration, and resolution checks read the whole file with ffprobe and ffmpeg. A strobe, a late strobe, and a 1080p 10 s clip are discarded. A calm 480p clip is kept. The request uses the documented model `grok-imagine-video-1.5` and omits undocumented fields. A redirect drops the key unless the next host is `api.x.ai`. Downloads are https on `*.x.ai` only, typed, and capped.
 - A job counts toward the cap once the POST returns an id, including after a deadline or a restart. The prompt sent is fog-safe prose, not internal JSON. The clip file is renamed into place only after the job row updates. Under pytest the live transport is not armed unless a test injects one.
