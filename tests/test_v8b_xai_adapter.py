@@ -11,6 +11,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -32,6 +33,7 @@ from tw2k.media.xai_video import (
     MODEL,
     XaiImagineProvider,
     _bible_mean,
+    _host_allowed,
     pack_clip,
     urllib_transport,
 )
@@ -553,16 +555,21 @@ def test_restart_mid_call_keeps_the_spend(tmp_path) -> None:
             return 200, {"content-type": "application/json"}, b'{"request_id":"req-1"}'
         entered.set()
         assert release.wait(5)
-        return 200, {"content-type": "application/json"}, b'{"status":"pending"}'
+        return 200, {"content-type": "application/json"}, b'{"status":"expired"}'
 
-    provider = XaiImagineProvider(key=KEY, transport=blocking, stills_dir=STILLS, sleep=lambda _s: None)
+    provider = XaiImagineProvider(
+        key=KEY, transport=blocking, stills_dir=STILLS, sleep=lambda _s: None, timeout_s=1,
+    )
     queue = CustomQueue(tmp_path, provider, match_cap_cents=33).start()
     universe, _, _ = _universe()
     _citadel(universe, 1)
     assert entered.wait(3)
     queue.stop()
     release.set()
-    time.sleep(0.3)
+    worker = queue._thread
+    if worker is not None:
+        worker.join(timeout=3)
+        assert not worker.is_alive()
     posts = {"n": 0}
 
     def counting(method, url, headers, body):
@@ -639,6 +646,91 @@ def test_jobs_report_prints_template_status_reason_cost_and_latency(tmp_path, ca
     assert "secret" not in line
     assert KEY not in line
     queue.stop()
+
+
+def test_a_userinfo_url_is_not_a_download_host() -> None:
+    assert not _host_allowed("https://evil.com\\@vidgen.x.ai/")
+    assert not _host_allowed("https://evil.com@vidgen.x.ai/a.webm")
+    assert _host_allowed("https://vidgen.x.ai/a.webm")
+
+
+def test_a_slow_drip_stops_inside_the_budget() -> None:
+    class Drip(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", str(1024 * 1024))
+            self.end_headers()
+            try:
+                for _ in range(40):
+                    time.sleep(0.2)
+                    self.wfile.write(b"x")
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionError, OSError):
+                return
+
+        def log_message(self, *_args: object) -> None:
+            return
+
+    server = _serve(Drip)
+    started = time.monotonic()
+    try:
+        raised = False
+        try:
+            urllib_transport(
+                "GET",
+                f"http://127.0.0.1:{server.server_address[1]}/drip",
+                {"Accept": "application/octet-stream"},
+                None,
+                budget_s=2,
+            )
+        except TimeoutError:
+            raised = True
+        elapsed = time.monotonic() - started
+    finally:
+        server.shutdown()
+    assert raised
+    assert elapsed < 4
+
+
+def test_day_cap_counts_a_reserved_job_before_the_post(tmp_path) -> None:
+    running = current()
+    if running is not None:
+        running.stop()
+    posts = {"n": 0}
+
+    def counting(method, url, headers, body):
+        if method == "POST":
+            posts["n"] += 1
+            return 200, {"content-type": "application/json"}, b'{"request_id":"req-day"}'
+        return 200, {"content-type": "application/json"}, (
+            b'{"status":"failed","error":{"code":"internal_error"}}'
+        )
+
+    queue = CustomQueue(
+        tmp_path,
+        XaiImagineProvider(key=KEY, transport=counting, stills_dir=STILLS, sleep=lambda _s: None),
+    ).start()
+    try:
+        today = date.today().isoformat()
+        for n in range(14):
+            queue._conn.execute(
+                """INSERT INTO jobs
+                   (hash, seat, match_id, status, created, cost_cents, trigger_seq, clip_key, day, swap, prompt)
+                   VALUES (?, 'A', ?, 'ready', ?, 33, ?, 'planet.citadel', ?, 0, '')""",
+                (f"spent-{n}", f"old-{n}", time.time(), n, today),
+            )
+        queue._conn.commit()
+        universe, _, _ = _universe()
+        for level in (1, 2, 3):
+            queue.on_emit(universe, _citadel(universe, level))
+        end = time.time() + 3
+        while time.time() < end and posts["n"] < 1:
+            time.sleep(0.05)
+        time.sleep(0.3)
+        assert posts["n"] == 1
+    finally:
+        queue.stop()
 
 
 def _serve(handler) -> ThreadingHTTPServer:

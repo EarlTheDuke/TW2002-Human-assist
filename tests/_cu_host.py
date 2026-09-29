@@ -106,6 +106,11 @@ class CuHost:
     def __exit__(self, *exc) -> None:
         self.server.should_exit = True
         self.thread.join(timeout=15)
+        from tw2k.media.custom_queue import current
+
+        running = current()
+        if running is not None:
+            running.stop()
 
     @property
     def base(self) -> str:

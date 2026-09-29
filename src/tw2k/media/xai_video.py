@@ -52,11 +52,20 @@ def _scrub(text: str, key: str) -> str:
     return text
 
 
+def _asked_to_stop(job: dict[str, Any]) -> bool:
+    stop = job.get("should_stop")
+    return callable(stop) and bool(stop())
+
+
 def _host_allowed(url: str) -> bool:
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https":
+    if "\\" in url or "@" in url:
         return False
-    host = (parsed.hostname or "").lower()
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or parsed.username or parsed.password:
+        return False
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if not host or ".." in host:
+        return False
     return host == "api.x.ai" or host == "vidgen.x.ai" or host.endswith(".x.ai")
 
 
@@ -119,13 +128,38 @@ def _skip_body(request_headers: dict[str, str], response_headers: dict[str, str]
     return length > max_bytes
 
 
+def _arm_timeout(resp: Any, seconds: float) -> None:
+    fp = getattr(resp, "fp", None)
+    raw = getattr(fp, "raw", None) if fp is not None else None
+    sock = getattr(raw, "_sock", None) if raw is not None else None
+    if sock is None and fp is not None:
+        sock = getattr(fp, "_sock", None)
+    if sock is None:
+        return
+    try:
+        sock.settimeout(max(0.05, seconds))
+    except OSError:
+        pass
+
+
 def _read_capped(resp: Any, max_bytes: int, deadline: float) -> tuple[bytes, bool]:
+    """Read until the body ends, the size cap, or the wall-clock budget.
+
+    A slow drip must not reset a 30s socket timeout on every byte. Each read
+    uses the time still left, and read1 returns whatever has arrived.
+    """
     chunks: list[bytes] = []
     total = 0
+    reader = getattr(resp, "read1", None) or resp.read
     while total <= max_bytes:
-        if time.monotonic() > deadline:
-            break
-        block = resp.read(64 * 1024)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("download budget")
+        _arm_timeout(resp, remaining)
+        try:
+            block = reader(8 * 1024)
+        except TimeoutError:
+            raise TimeoutError("download budget") from None
         if not block:
             break
         total += len(block)
@@ -365,11 +399,14 @@ class XaiImagineProvider:
         backoff = 5.0
         done: dict[str, Any] | None = None
         while done is None:
-            if self._clock() - started >= self._timeout_s:
+            if _asked_to_stop(job) or self._clock() - started >= self._timeout_s:
                 self.last_reject = "timeout"
                 return None
             status, body = self._request("GET", poll, None)
             if status in (429, 503):
+                if _asked_to_stop(job):
+                    self.last_reject = "timeout"
+                    return None
                 self._sleep(backoff)
                 backoff = min(backoff * 2, 30.0)
                 continue
@@ -392,6 +429,9 @@ class XaiImagineProvider:
                 break
             if state not in ("pending", "queued", "in_progress", ""):
                 self.last_reject = "transport"
+                return None
+            if _asked_to_stop(job):
+                self.last_reject = "timeout"
                 return None
             self._sleep(backoff)
             backoff = min(backoff * 2, 30.0)
