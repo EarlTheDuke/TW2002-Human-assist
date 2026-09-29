@@ -84,5 +84,14 @@ def test_port_tint_ignores_another_seat_and_a_route_line_uses_known_warps(browse
         )
         page.get_by_test_id("action-plot-course").click()
         page.get_by_test_id("plot-target").fill(str(unknown))
+        page.wait_for_timeout(400)
+        assert page.locator("[data-testid=route-line]").count() == 0
+        me.known_sectors.add(unknown)
+        _replace_snapshot(host, universe)
+        page.get_by_test_id("refresh").click()
+        page.wait_for_timeout(400)
+        page.get_by_test_id("action-plot-course").click()
+        page.get_by_test_id("plot-target").fill(str(unknown))
         page.wait_for_selector("[data-testid=route-line]", timeout=8_000)
+        assert page.locator("[data-testid=route-line]").count() == 1
         page.close()

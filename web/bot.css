@@ -123,7 +123,13 @@ main.bot-main.cols3 { grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.7
 }
 body:not(.mode-cu) .banner { height: 92px; min-height: 92px; max-height: 92px; overflow: hidden; }
 body:not(.mode-cu) .scoreboard .score { flex: 0 0 156px; width: 156px; overflow: hidden; }
+body:not(.mode-cu) .scoreboard .score:has(#sbShip),
+body:not(.mode-cu) .scoreboard .score:has(#sbName),
+body:not(.mode-cu) .scoreboard .score:has(#sbStage) { flex: 0 0 230px; width: 230px; }
 body:not(.mode-cu) .scoreboard .score .v { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body:not(.mode-cu) #sbShip,
+body:not(.mode-cu) #sbName,
+body:not(.mode-cu) #sbStage { overflow: visible; text-overflow: clip; }
 body:not(.mode-cu) #authBar { min-height: 96px; height: 96px; overflow: hidden; }
 body:not(.mode-cu) .scoreboard {
   height: 88px; min-height: 88px; max-height: 88px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; align-items: stretch;
@@ -135,13 +141,14 @@ body:not(.mode-cu)[data-seat="P3"] { --seat-frame: #6ee7ff; }
 body:not(.mode-cu)[data-seat="P4"] { --seat-frame: #c79bff; }
 body:not(.mode-cu)[data-seat="P5"] { --seat-frame: #7dcea0; }
 body:not(.mode-cu) .card { border-color: var(--seat-frame); box-shadow: inset 0 0 24px rgba(126, 182, 255, 0.05); }
-body:not(.mode-cu) .mfd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-width: 0; }
+body:not(.mode-cu) .mfd-tabs { display: flex; flex-wrap: nowrap; gap: 4px; margin-bottom: 8px; min-width: 0; }
 body:not(.mode-cu) .scoreboard { width: 100%; max-width: 100%; }
 body:not(.mode-cu) #mfd table.tape td,
 body:not(.mode-cu) #mfd table.tape th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body:not(.mode-cu) .mfd-tabs [role="tab"] {
-  min-height: 36px; padding: 4px 10px; border-radius: 999px; border: 1px solid #3a466e;
-  background: #141a2e; color: var(--text); font-weight: 800; cursor: pointer;
+  flex: 1 1 auto; min-width: 0; min-height: 36px; padding: 4px 6px; border-radius: 999px;
+  border: 1px solid #3a466e; background: #141a2e; color: var(--text); font-size: 12px;
+  font-weight: 800; letter-spacing: 0; white-space: nowrap; cursor: pointer;
 }
 body:not(.mode-cu) .mfd-tabs [role="tab"][aria-selected="true"] { border-color: var(--seat-frame); color: var(--seat-frame); }
 body:not(.mode-cu) .mfd-body { height: 420px; overflow: auto; }
