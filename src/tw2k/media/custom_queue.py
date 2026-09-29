@@ -275,7 +275,8 @@ class CustomQueue:
         with self._lock:
             self._conn.execute(
                 """UPDATE jobs SET status='expired', swap=0,
-                   reason=CASE WHEN reason='' THEN 'timeout' ELSE reason END
+                   reason=CASE WHEN reason='' THEN 'timeout' ELSE reason END,
+                   cost_cents=CASE WHEN started_at IS NULL THEN 0 ELSE cost_cents END
                    WHERE status IN ('queued','running')"""
             )
             self._conn.commit()
@@ -384,9 +385,8 @@ class CustomQueue:
                 self._conn.commit()
                 log.warning("custom job refused: day cap for seat %s", seat)
                 return
-            paid = type(self.provider).__module__ == "tw2k.media.xai_video"
             self._insert_job(
-                digest, seat, match_id, "queued", 0 if paid else JOB_CENTS, event.seq, clip, day,
+                digest, seat, match_id, "queued", JOB_CENTS, event.seq, clip, day,
                 swap=0, prompt=prompt_json,
             )
             self._conn.commit()
@@ -404,7 +404,7 @@ class CustomQueue:
             try:
                 self._expire_deadlines()
                 job = self._claim()
-            except sqlite3.ProgrammingError:
+            except (sqlite3.ProgrammingError, sqlite3.OperationalError):
                 break
             if job is None:
                 self._wake.wait(0.05)
@@ -412,6 +412,7 @@ class CustomQueue:
                 continue
             payload = dict(job)
             payload["on_post"] = lambda cost, job_id=job["id"]: self._mark_posted(job_id, cost)
+            payload["should_stop"] = self._stop.is_set
             reason = "transport"
             try:
                 data = self.provider(payload)
@@ -424,7 +425,7 @@ class CustomQueue:
                 break
             try:
                 self._finish(job, data, reason)
-            except sqlite3.ProgrammingError:
+            except (sqlite3.ProgrammingError, sqlite3.OperationalError):
                 break
 
     def _expire_deadlines(self) -> None:
@@ -432,7 +433,8 @@ class CustomQueue:
         with self._lock:
             self._conn.execute(
                 """UPDATE jobs SET status='expired', swap=0,
-                   reason=CASE WHEN reason='' THEN 'timeout' ELSE reason END
+                   reason=CASE WHEN reason='' THEN 'timeout' ELSE reason END,
+                   cost_cents=CASE WHEN started_at IS NULL THEN 0 ELSE cost_cents END
                    WHERE status IN ('queued','running') AND created < ?""",
                 (cutoff,),
             )
@@ -483,9 +485,10 @@ class CustomQueue:
                 return
         with self._lock:
             cur = self._conn.execute(
-                """UPDATE jobs SET status=?, swap=?, reason=?, finished_at=?
+                """UPDATE jobs SET status=?, swap=?, reason=?, finished_at=?,
+                   cost_cents=CASE WHEN ? = 1 AND started_at IS NULL THEN 0 ELSE cost_cents END
                    WHERE id=? AND status='running'""",
-                (status, swap, stored, time.time(), job["id"]),
+                (status, swap, stored, time.time(), 0 if data else 1, job["id"]),
             )
             self._conn.commit()
             stuck = cur.rowcount != 1

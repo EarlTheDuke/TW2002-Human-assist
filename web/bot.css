@@ -171,6 +171,9 @@ main.bot-main.cols3 { grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.7
 table.tape { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 8px; }
 table.tape th { text-align: left; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 8px; border-bottom: 1px solid #243056; }
 table.tape td { padding: 6px 8px; border-bottom: 1px solid #1a2240; white-space: nowrap; }
+body:not(.mode-cu) #colKnow table.tape { table-layout: fixed; width: 100%; }
+body:not(.mode-cu) #colKnow table.tape td,
+body:not(.mode-cu) #colKnow table.tape th { white-space: normal; overflow-wrap: anywhere; }
 table.tape td.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.tape tr.buys td:first-child { border-left: 3px solid var(--go); }
 table.tape tr.sells td:first-child { border-left: 3px solid var(--accent); }
@@ -200,6 +203,9 @@ body:not(.mode-cu) #colAct .known-map {
   height: auto;
   aspect-ratio: 1 / 1;
   margin-inline: auto;
+}
+@media (max-height: 920px) {
+  body:not(.mode-cu) #colAct .vp-screen { width: min(100%, 604px); margin-inline: auto; }
 }
 .known-map .edge { stroke: #3a4a7a; stroke-width: 0.6; fill: none; }
 .known-map .edge.oneway { stroke-dasharray: 1.6 1.2; }

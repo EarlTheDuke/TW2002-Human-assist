@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 21:03 PT - Fable - a slow download and a reserved clip both stop
+- A download that drips one byte at a time fails when the request budget runs out, instead of waiting for a full buffer. A queued paid job counts toward the day cap before the POST returns, and a POST that never gets an id drops that reservation. The restart test joins its worker, so the timing checks still pass in the same session. The side-column trade tables fit the narrower column, and on a short window the video stays 16:9 and fully on screen.
+
 ### 2026-09-28 20:55 PT - Fable - the map sits under the video
 - On the full cockpit the Known space map is the card under the viewport, in the wider center column. The video stays 16:9. The map is a larger square so the sector labels have more room. `mode=cu` still hides that page and keeps its own map slot.
 
