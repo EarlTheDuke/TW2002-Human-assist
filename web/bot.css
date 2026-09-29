@@ -251,7 +251,8 @@ body:not(.mode-cu) #colAct .known-map {
   margin-inline: auto;
 }
 @media (max-height: 920px) {
-  body:not(.mode-cu) #colAct .vp-screen { width: min(100%, 604px); margin-inline: auto; }
+  body:not(.mode-cu) #colAct .vp-screen,
+  body:not(.mode-cu) #colAct #vpCaption { width: min(100%, 604px); margin-inline: auto; }
 }
 .known-map .edge { stroke: #3a4a7a; stroke-width: 0.6; fill: none; }
 .known-map .edge.oneway { stroke-dasharray: 1.6 1.2; }
@@ -338,8 +339,30 @@ body:not(.mode-cu) #colAct .known-map {
 .viewport[data-hull="capital"] .vp-frame::before { top: 0; bottom: 0; left: 0; width: 7%; background: linear-gradient(90deg, #121a30, #1a2340); }
 .viewport[data-hull="capital"] .vp-frame::after { top: 0; bottom: 0; right: 0; width: 7%; background: linear-gradient(270deg, #121a30, #1a2340); }
 .vp-caption { margin-top: 6px; font-size: 0.9rem; font-weight: 700; color: #d5def5; min-height: 1.3em; }
+body:not(.mode-cu) #viewport {
+  display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center;
+  padding-top: 4px; padding-bottom: 2px;
+}
+body:not(.mode-cu) #vpScreen,
+body:not(.mode-cu) #vpCaption { grid-area: 1 / 1; width: 100%; }
+body:not(.mode-cu) #vpCaption {
+  align-self: end; z-index: 3; margin: 0; min-height: 1.35em; max-height: 1.35em;
+  padding: 2px 8px; font-size: 12px; line-height: 1.35; background: rgba(2, 4, 10, 0.72);
+  border-radius: 0 0 12px 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  pointer-events: none;
+}
+body:not(.mode-cu) #localBrackets { grid-row: 2; width: 100%; justify-self: stretch; }
+body:not(.mode-cu) #mapCard { margin-top: -12px; padding-top: 8px; }
+body:not(.mode-cu) #mapCard > h2 { margin: 0 0 2px; }
+body:not(.mode-cu) #mapCard .map-hint {
+  margin: 0 0 4px; padding: 0; background: none; border-radius: 0; max-height: none;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 12px; line-height: 1.3; color: var(--muted);
+}
+body:not(.mode-cu) #vpControls { margin-top: 0; }
+body:not(.mode-cu) #vpControls button { min-height: 32px; }
 body:not(.mode-cu) .local-brackets {
-  height: 1.4em; min-height: 1.4em; max-height: 1.4em; margin-top: 4px;
+  height: 1.4em; min-height: 1.4em; max-height: 1.4em; margin-top: 2px;
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   font-size: 0.85rem; color: #d5def5;
 }

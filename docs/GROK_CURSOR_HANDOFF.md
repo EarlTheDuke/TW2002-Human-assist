@@ -44,7 +44,10 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
-### 2026-09-29 15:09 PT - Fable - a line under the video for who is here
+### 2026-09-29 16:36 PT - Fable - the map sits higher under the video
+- The sector caption is a slim strip on the bottom edge of the video. Skip, Live, Stills, Off, and Sound sit in one row under the map. The map card is about 96 px higher. The video size is unchanged.
+
+
 - The cockpit lists ships and planets from this sector's observation only, on one reserved line. An empty sector stays blank. The map and the side screen stay where they were.
 
 ### 2026-09-29 14:07 PT - Fable - the four polish nits

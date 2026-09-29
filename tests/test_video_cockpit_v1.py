@@ -93,7 +93,10 @@ def test_modes_hull_skip_and_focus(browser, tmp_path: Path, monkeypatch) -> None
         page.wait_for_function("window.TW2KViewport && window.TW2KViewport.state().sector !== null", timeout=20_000)
         assert page.evaluate("TW2KViewport.state().mode") == "off", "mode persists"
         page.get_by_test_id("viewport-mode-live").click()
-        assert page.evaluate("TW2KViewport.state().animating") is True
+        # Live sits under the map now, so the click scrolls the video off screen.
+        # The starfield starts once the window is back in view.
+        page.get_by_test_id("viewport").scroll_into_view_if_needed()
+        page.wait_for_function("() => window.TW2KViewport.state().animating === true", timeout=3_000)
         # per-hull frame follows the seat's own ship class
         page.evaluate("TW2KViewport.update({sector:{id:77,port:null}, ship:{class:'battleship'}})")
         assert page.get_by_test_id("viewport").get_attribute("data-hull") == "heavy"
