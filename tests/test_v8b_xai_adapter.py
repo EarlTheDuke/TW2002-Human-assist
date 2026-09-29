@@ -262,7 +262,8 @@ def test_a_failed_check_does_not_enter_the_feed(tmp_path) -> None:
         deadline = time.time() + 3
         status = None
         while time.time() < deadline:
-            row = queue._conn.execute("SELECT status FROM jobs").fetchone()
+            with queue._lock:
+                row = queue._conn.execute("SELECT status FROM jobs").fetchone()
             if row is not None and row["status"] == "discarded":
                 status = row["status"]
                 break
@@ -528,8 +529,9 @@ def test_an_expired_inflight_job_still_counts(tmp_path) -> None:
         universe, _, _ = _universe()
         _citadel(universe, 1)
         assert entered.wait(3)
-        queue._conn.execute("UPDATE jobs SET status='expired' WHERE status='running'")
-        queue._conn.commit()
+        with queue._lock:
+            queue._conn.execute("UPDATE jobs SET status='expired' WHERE status='running'")
+            queue._conn.commit()
         for level in (2, 3, 4):
             queue.on_emit(universe, _citadel(universe, level))
         release.set()
@@ -583,7 +585,8 @@ def test_restart_mid_call_keeps_the_spend(tmp_path) -> None:
         match_cap_cents=33,
     ).start()
     try:
-        row = again._conn.execute("SELECT status, cost_cents FROM jobs").fetchone()
+        with again._lock:
+            row = again._conn.execute("SELECT status, cost_cents FROM jobs").fetchone()
         assert row["status"] == "expired" and row["cost_cents"] == 33
         again.on_emit(universe, _citadel(universe, 2))
         time.sleep(0.3)
@@ -598,30 +601,30 @@ def test_a_never_started_expired_job_does_not_use_the_cap(tmp_path) -> None:
         running.stop()
     script = Script([(200, {"status": "failed", "error": {"code": "internal_error"}})])
     queue = CustomQueue(tmp_path, _provider(script))
+    universe, _, _ = _universe()
+    match_id = f"{universe.config.seed}:{id(universe)}"
     queue._conn.execute(
         """INSERT INTO jobs (hash, seat, match_id, status, created, cost_cents, trigger_seq, clip_key, day, swap, prompt)
-           VALUES ('old', 'A', 'm', 'queued', ?, 0, 1, 'planet.genesis', '2026-09-28', 0, '')""",
-        (time.time(),),
+           VALUES ('old', 'A', ?, 'queued', ?, 0, 1, 'planet.genesis', '2026-09-28', 0, '')""",
+        (match_id, time.time()),
     )
     queue._conn.commit()
     queue.start()
     try:
-        universe, _, _ = _universe()
-        match_id = f"{universe.config.seed}:{id(universe)}"
-        queue._conn.execute("UPDATE jobs SET match_id=? WHERE hash='old'", (match_id,))
-        queue._conn.commit()
         queue.on_emit(universe, _citadel(universe, 1))
         end = time.time() + 3
         saw = False
         while time.time() < end:
-            rows = queue._conn.execute("SELECT hash, status, cost_cents FROM jobs").fetchall()
+            with queue._lock:
+                rows = queue._conn.execute("SELECT hash, status, cost_cents FROM jobs").fetchall()
             fresh = [row for row in rows if row["hash"] != "old"]
             if fresh:
                 saw = True
                 break
             time.sleep(0.05)
         assert saw
-        old = queue._conn.execute("SELECT status, cost_cents FROM jobs WHERE hash='old'").fetchone()
+        with queue._lock:
+            old = queue._conn.execute("SELECT status, cost_cents FROM jobs WHERE hash='old'").fetchone()
         assert old["status"] == "expired" and old["cost_cents"] == 0
     finally:
         queue.stop()
@@ -710,17 +713,18 @@ def test_day_cap_counts_a_reserved_job_before_the_post(tmp_path) -> None:
     queue = CustomQueue(
         tmp_path,
         XaiImagineProvider(key=KEY, transport=counting, stills_dir=STILLS, sleep=lambda _s: None),
-    ).start()
+    )
+    today = date.today().isoformat()
+    for n in range(14):
+        queue._conn.execute(
+            """INSERT INTO jobs
+               (hash, seat, match_id, status, created, cost_cents, trigger_seq, clip_key, day, swap, prompt)
+               VALUES (?, 'A', ?, 'ready', ?, 33, ?, 'planet.citadel', ?, 0, '')""",
+            (f"spent-{n}", f"old-{n}", time.time(), n, today),
+        )
+    queue._conn.commit()
+    queue.start()
     try:
-        today = date.today().isoformat()
-        for n in range(14):
-            queue._conn.execute(
-                """INSERT INTO jobs
-                   (hash, seat, match_id, status, created, cost_cents, trigger_seq, clip_key, day, swap, prompt)
-                   VALUES (?, 'A', ?, 'ready', ?, 33, ?, 'planet.citadel', ?, 0, '')""",
-                (f"spent-{n}", f"old-{n}", time.time(), n, today),
-            )
-        queue._conn.commit()
         universe, _, _ = _universe()
         for level in (1, 2, 3):
             queue.on_emit(universe, _citadel(universe, level))

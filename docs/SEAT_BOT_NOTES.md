@@ -33,6 +33,17 @@ Anything not on that list. In particular the brain must not use:
 
 `build_observation` is the filter. `_event_visible_to` in the same module decides which events become `recent_events`. Public kinds (game start, day tick, game over, planet claimed, broadcast, port destroyed, and the rest of `_PUBLIC_EVENTS`) are visible to every seat. Actor-only kinds (scan, probe, buy, warp blocked, trade failed, autopilot, and the rest of `_ACTOR_ONLY_EVENTS`) are visible to the actor. Everything else is sector-local or party-local.
 
+## Bridge
+
+Before each turn, an external seat checks its own Bridge and answers in plain words. Heuristic and LLM seats are not given this log.
+
+- `GET /harness/v1/bridge?since=N` — this seat's notes with id greater than N.
+- `GET /harness/v1/bridge/pending` — captain orders still pending or taken.
+- `POST /harness/v1/bridge/reply` body `{"text": "...", "ack_of": <id or omit>}` — a pilot reply, 500 characters max.
+- `POST /harness/v1/bridge/ack` body `{"id": <id>, "status": "taken"|"done"|"declined"}`.
+
+The same seat token (or the claim cookie plus `X-TW2K-Seat`) is required. Another seat and a spectator get 403. The text is plain; the cockpit shows it as text, not HTML.
+
 ## Goal ladder
 
 `SeatBrain.decide` takes the first rung that returns a legal action (`src/tw2k/agents/seat_brain.py`):

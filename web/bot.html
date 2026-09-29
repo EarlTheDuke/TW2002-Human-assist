@@ -110,6 +110,14 @@
       </div>
       <div class="cu-card cu-cardtext" data-testid="cu-turn-card">
         <h2>Turn card</h2>
+        <div id="cuBridge" class="cu-bridge" data-testid="cu-bridge" hidden>
+          <div class="cu-line">Orders from the Bridge</div>
+          <div id="cuBridgeList"></div>
+          <form id="cuBridgeForm" class="bridge-form" autocomplete="off">
+            <input id="cuBridgeInput" data-testid="cu-bridge-reply" maxlength="500" placeholder="Reply">
+            <button type="submit" data-testid="cu-bridge-send">Send</button>
+          </form>
+        </div>
         <pre id="cuTurnCard" class="cu-pre">-</pre>
       </div>
     </div>
@@ -286,6 +294,14 @@
 
     <!-- KNOW -->
     <section class="col" id="colKnow" data-testid="col-know">
+      <details class="card" id="bridgePanel" data-testid="bridge-panel">
+        <summary>Bridge <span class="badge" id="bridgeBadge" data-testid="bridge-badge" hidden>0</span></summary>
+        <div id="bridgeList" class="bridge-list" data-testid="bridge-list"></div>
+        <form id="bridgeForm" class="bridge-form" autocomplete="off">
+          <input id="bridgeInput" data-testid="bridge-input" maxlength="500" placeholder="Order or idea for the pilot">
+          <button type="submit" data-testid="bridge-send">Send</button>
+        </form>
+      </details>
       <div class="card" id="shipCard" data-testid="ship" data-obs="ship">
         <h2>Ship <span class="badge" id="shipClass">-</span></h2>
         <div class="kv" id="shipLoadout"></div>

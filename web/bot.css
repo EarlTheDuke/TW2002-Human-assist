@@ -313,6 +313,18 @@ body:not(.mode-cu) #colAct .known-map {
 body.is-game-over #verbPad, body.is-game-over #warpBtns, body.is-game-over #verbGroups, body.is-game-over #verbForm,
 body.is-game-over #verbReasons, body.is-game-over #cuActionsCard, body.is-game-over [data-testid="cu-shortcuts"] { display: none !important; }
 .game-over button { margin-top: 12px; min-height: 44px; padding: 8px 16px; border-radius: 10px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); font-weight: 700; cursor: pointer; }
+/* ---- Bridge: captain notes in the side column. The computer-use strip is scoped under G2. ---- */
+#bridgePanel summary { cursor: pointer; font-weight: 800; color: var(--accent); }
+.bridge-list { max-height: 220px; overflow: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.bridge-msg { border-radius: 10px; padding: 8px 10px; background: #0b1020; }
+.bridge-msg.captain { border-left: 3px solid var(--accent); }
+.bridge-msg.pilot { border-left: 3px solid var(--go); }
+.bridge-msg .who { font-weight: 800; margin-right: 8px; }
+.bridge-msg .when { color: var(--muted); font-size: 0.75rem; }
+.bridge-msg p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bridge-form { display: flex; gap: 8px; margin-top: 8px; }
+.bridge-form input { flex: 1 1 auto; min-width: 0; min-height: 36px; }
+
 /* ---- G2: one-screen turn layout (body.mode-cu, /bot?mode=cu). Every rule is scoped to mode-cu. ---- */
 .cu-screen[hidden] { display: none !important; }
 body.mode-cu { overflow: hidden; }
@@ -361,6 +373,10 @@ body.mode-cu .cu-col { display: flex; flex-direction: column; gap: 8px; min-heig
 .cu-mapcard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .cu-cardtext { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .cu-pre { margin: 0; flex: 1 1 auto; min-height: 0; overflow: auto; font-family: ui-monospace, Consolas, monospace; font-size: 0.7rem; line-height: 1.3; white-space: pre-wrap; word-break: break-word; color: #d5def5; background: #0b1020; border-radius: 8px; padding: 6px 8px; }
+.cu-bridge { flex: 0 0 auto; max-height: 96px; overflow: auto; margin-bottom: 6px; }
+.cu-bridge[hidden] { display: none !important; }
+.cu-bridge .bridge-form { margin-top: 4px; }
+.cu-bridge button.ack { min-height: 28px; margin-right: 4px; padding: 2px 8px; }
 .cu-events { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; }
 .cu-events .ev1 { background: #0b1020; border-radius: 6px; padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cu-events .ev1 .when { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }

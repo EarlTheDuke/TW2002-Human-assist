@@ -44,6 +44,10 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-29 09:35 PT - Fable - the captain can write to the pilot
+- Bridge is a collapsed panel in the side column, so the video and the map stay put. Notes are plain text for that seat only. The computer-use turn card lists open orders and the page still fits in 800 px.
+- The adapter tests take the queue lock, or write their rows before the worker starts. That file passed 10 times in a row.
+
 ### 2026-09-28 21:03 PT - Fable - a slow download and a reserved clip both stop
 - A download that drips one byte at a time fails when the request budget runs out, instead of waiting for a full buffer. A queued paid job counts toward the day cap before the POST returns, and a POST that never gets an id drops that reservation. The restart test joins its worker, so the timing checks still pass in the same session. The side-column trade tables fit the narrower column, and on a short window the video stays 16:9 and fully on screen.
 

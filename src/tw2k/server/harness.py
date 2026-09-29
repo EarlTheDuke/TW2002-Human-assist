@@ -549,6 +549,101 @@ def build_harness_router(runner) -> APIRouter:
             raise HTTPException(status_code=404, detail="custom queue off")
         return {"player_id": agent.player_id, **q.feed_for(agent.player_id, since)}
 
+    def _match_key() -> str:
+        universe = runner.state.universe
+        return f"{universe.config.seed}-{id(universe)}"
+
+    def _bridge_seat(request: Request) -> str:
+        from .spectator_gate import COOKIE_NAME
+
+        if not _credential(request) and request.cookies.get(COOKIE_NAME):
+            raise HTTPException(status_code=403, detail="spectator")
+        agent = _authenticate_any(request)
+        asked = (request.query_params.get("seat") or "").strip().upper()
+        if asked and asked != agent.player_id:
+            raise HTTPException(status_code=403, detail="other seat")
+        return agent.player_id
+
+    async def _bridge_body(request: Request, seat: str) -> dict[str, Any]:
+        try:
+            body = await request.json()
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="text") from exc
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="text")
+        asked = str(body.get("seat") or "").strip().upper()
+        if asked and asked != seat:
+            raise HTTPException(status_code=403, detail="other seat")
+        return body
+
+    def _bridge_fail(exc: Exception) -> None:
+        if isinstance(exc, ValueError):
+            raise HTTPException(status_code=400, detail="text" if str(exc) == "text" else str(exc)) from exc
+        if isinstance(exc, PermissionError):
+            raise HTTPException(status_code=429, detail="rate") from exc
+        if isinstance(exc, LookupError):
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise exc
+
+    @router.get("/bridge")
+    async def bridge_since(request: Request, since: int = 0) -> dict[str, Any]:
+        from . import bridge
+
+        seat = _bridge_seat(request)
+        return {"seat": seat, "messages": bridge.since(_match_key(), seat, since)}
+
+    @router.get("/bridge/pending")
+    async def bridge_pending(request: Request) -> dict[str, Any]:
+        from . import bridge
+
+        seat = _bridge_seat(request)
+        return {"seat": seat, "orders": bridge.pending(_match_key(), seat)}
+
+    @router.post("/bridge")
+    async def bridge_post(request: Request) -> dict[str, Any]:
+        from . import bridge
+
+        seat = _bridge_seat(request)
+        body = await _bridge_body(request, seat)
+        try:
+            return bridge.post(_match_key(), seat, "captain", str(body.get("text") or ""))
+        except (ValueError, PermissionError, LookupError) as exc:
+            _bridge_fail(exc)
+            raise
+
+    @router.post("/bridge/reply")
+    async def bridge_reply(request: Request) -> dict[str, Any]:
+        from . import bridge
+
+        seat = _bridge_seat(request)
+        body = await _bridge_body(request, seat)
+        ack_of = body.get("ack_of")
+        try:
+            linked = None if ack_of in (None, "") else int(ack_of)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="ack_of") from exc
+        try:
+            return bridge.post(_match_key(), seat, "pilot", str(body.get("text") or ""), linked)
+        except (ValueError, PermissionError, LookupError) as exc:
+            _bridge_fail(exc)
+            raise
+
+    @router.post("/bridge/ack")
+    async def bridge_ack(request: Request) -> dict[str, Any]:
+        from . import bridge
+
+        seat = _bridge_seat(request)
+        body = await _bridge_body(request, seat)
+        try:
+            msg_id = int(body.get("id"))
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="id") from exc
+        try:
+            return bridge.ack(_match_key(), seat, msg_id, str(body.get("status") or ""))
+        except (ValueError, PermissionError, LookupError) as exc:
+            _bridge_fail(exc)
+            raise
+
     return router
 
 
