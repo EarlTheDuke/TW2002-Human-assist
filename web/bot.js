@@ -1829,6 +1829,105 @@
     });
   });
 
+  const bridgeState = { messages: [], since: 0 };
+  function paintBridge(messages) {
+    const list = $("bridgeList");
+    if (!list) return;
+    list.replaceChildren();
+    for (const msg of messages) {
+      const row = document.createElement("div");
+      row.className = "bridge-msg " + (msg.role === "captain" ? "captain" : "pilot");
+      const who = document.createElement("span");
+      who.className = "who";
+      who.textContent = msg.role === "captain" ? "Captain" : "Pilot";
+      const when = document.createElement("span");
+      when.className = "when";
+      when.textContent = new Date(msg.created * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const body = document.createElement("p");
+      body.textContent = msg.text;
+      row.append(who, when, body);
+      if (msg.role === "captain" && msg.status) {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.dataset.testid = "bridge-status";
+        chip.textContent = msg.status;
+        row.append(chip);
+      }
+      list.append(row);
+    }
+    const panel = $("bridgePanel");
+    const badge = $("bridgeBadge");
+    const maxId = messages.reduce((n, msg) => Math.max(n, msg.id), 0);
+    const seenKey = "tw2k_bridge_seen_" + (state.seat || "");
+    if (panel && panel.open) {
+      sessionStorage.setItem(seenKey, String(maxId));
+      if (badge) badge.hidden = true;
+    } else if (badge) {
+      const unread = messages.filter((msg) => msg.id > Number(sessionStorage.getItem(seenKey) || 0)).length;
+      badge.hidden = unread === 0;
+      badge.textContent = unread ? String(unread) : "";
+    }
+  }
+  function paintCuOrders(orders) {
+    const box = $("cuBridge");
+    const list = $("cuBridgeList");
+    if (!box || !list) return;
+    list.replaceChildren();
+    box.hidden = !orders.length;
+    for (const order of orders) {
+      const row = document.createElement("div");
+      const text = document.createElement("div");
+      text.className = "cu-line";
+      text.textContent = order.text;
+      row.append(text);
+      for (const status of ["taken", "done", "declined"]) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "ack";
+        btn.textContent = status[0].toUpperCase() + status.slice(1);
+        btn.addEventListener("click", () => api("/bridge/ack", {
+          method: "POST", body: JSON.stringify({ id: order.id, status: status }),
+        }).then(refreshBridge).catch((err) => setErr(err.message)));
+        row.append(btn);
+      }
+      list.append(row);
+    }
+  }
+  async function refreshBridge() {
+    if (!state.seat) return;
+    const data = await api("/bridge?since=" + bridgeState.since);
+    if (data.messages && data.messages.length) {
+      bridgeState.messages.push(...data.messages);
+      bridgeState.since = data.messages[data.messages.length - 1].id;
+    }
+    paintBridge(bridgeState.messages);
+    if (CU) paintCuOrders((await api("/bridge/pending")).orders || []);
+  }
+  async function sendBridge(input) {
+    const text = (input.value || "").trim();
+    if (!text) return;
+    const path = CU && input.id === "cuBridgeInput" ? "/bridge/reply" : "/bridge";
+    await api(path, { method: "POST", body: JSON.stringify({ text: text }) });
+    input.value = "";
+    await refreshBridge();
+  }
+  const bridgeForm = $("bridgeForm");
+  if (bridgeForm) {
+    bridgeForm.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      sendBridge($("bridgeInput")).catch((err) => setErr(err.message));
+    });
+    $("bridgePanel").addEventListener("toggle", () => paintBridge(bridgeState.messages));
+  }
+  const cuBridgeForm = $("cuBridgeForm");
+  if (cuBridgeForm) {
+    cuBridgeForm.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      sendBridge($("cuBridgeInput")).catch((err) => setErr(err.message));
+    });
+  }
+  setInterval(() => { refreshBridge().catch(() => {}); }, 2500);
+
   if (CU) setupCu();
   else if ($("holdBtn")) {
     $("holdBtn").addEventListener("click", () => toggleHold());
