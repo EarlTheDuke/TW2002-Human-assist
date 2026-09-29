@@ -454,7 +454,7 @@ def test_a_failed_cache_write_removes_the_clip(tmp_path, monkeypatch) -> None:
     original = Path.write_bytes
 
     def boom(self, data):
-        if self.suffix == ".webm":
+        if ".webm" in self.name:
             original(self, data)
             raise OSError("disk")
         return original(self, data)

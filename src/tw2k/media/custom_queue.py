@@ -32,7 +32,11 @@ ENV_FLAG = "TW2K_VIDEO_CUSTOM"
 ENV_CACHE = "TW2K_VIDEO_CUSTOM_CACHE"
 ENV_PROVIDER = "TW2K_VIDEO_CUSTOM_PROVIDER"
 ENV_XAI_KEY = "TW2K_XAI_VIDEO_KEY"
-XAI_MODEL = "grok-imagine-video-1.5-2026-05-30"
+XAI_MODEL = "grok-imagine-video-1.5"
+STYLE_LINE = (
+    "cinematic retro space-trader concept art, dark navy and amber, "
+    "no readable text, no logos, no people"
+)
 JOB_DEADLINE_S = 600
 JOB_CENTS = 33  # 4s * $0.08 + $0.01 image, in cents. $1/match allows 3.
 MATCH_CAP_CENTS = 100
@@ -106,20 +110,45 @@ def prompt_for(universe: Universe, seat: str, event: Event, template_id: str) ->
     ship = getattr(player, "ship", None) if player is not None else None
     class_value = getattr(getattr(ship, "ship_class", None), "value", "") or ""
     facts = view.get("facts") or {}
+    safe = facts if isinstance(facts, dict) else {}
     return {
         "template_id": template_id,
         "fields": {"kind": view.get("kind"), "facts": facts, "sector_id": view.get("sector_id")},
         "refs": {"hull": hull_family(str(class_value)), "sector_look": sector_look(universe, event.sector_id)},
         "model": _prompt_model(),
         "params": PARAMS,
+        "prose": render_visual(template_id, safe),
     }
 
 
 def _prompt_model() -> str:
-    """The dated xAI alias only when that adapter is actually armed."""
+    """The documented xAI model only when that adapter is actually armed."""
     if os.environ.get(ENV_PROVIDER) == "xai" and (os.environ.get(ENV_XAI_KEY) or "").strip():
         return XAI_MODEL
     return MODEL
+
+
+def render_visual(template_id: str, facts: dict[str, Any] | None) -> str:
+    """One or two sentences a painter can use. Fog-safe fields only, no ids."""
+    facts = facts or {}
+    if template_id == "planet.genesis":
+        world = facts.get("class") or "uncharted"
+        line = f"A genesis device greens a class {world} world, seen from the cockpit."
+    elif template_id == "planet.citadel":
+        line = (
+            f"A planetary citadel finishes construction, from level {facts.get('from', 0)} "
+            f"to level {facts.get('to', 1)}."
+        )
+    elif template_id == "self.ship_destroyed":
+        line = "Our ship breaks apart. Debris drifts away from the cockpit window."
+    else:
+        line = "A rare moment plays out beyond the cockpit window."
+    return f"{line} {STYLE_LINE}"
+
+
+def _spent_where() -> str:
+    names = ",".join("?" * len(COUNTED))
+    return f"(status IN ({names}) OR (status='expired' AND cost_cents > 0))"
 
 
 def prompt_hash(prompt: dict[str, Any]) -> str:
@@ -226,7 +255,13 @@ class CustomQueue:
         cols = {row[1] for row in self._conn.execute("PRAGMA table_info(jobs)")}
         if "prompt" not in cols:
             self._conn.execute("ALTER TABLE jobs ADD COLUMN prompt TEXT NOT NULL DEFAULT ''")
-            self._conn.commit()
+        if "reason" not in cols:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN reason TEXT NOT NULL DEFAULT ''")
+        if "started_at" not in cols:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN started_at REAL")
+        if "finished_at" not in cols:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN finished_at REAL")
+        self._conn.commit()
         self._universes: dict[str, Universe] = {}
 
     @property
@@ -239,7 +274,9 @@ class CustomQueue:
             return self
         with self._lock:
             self._conn.execute(
-                "UPDATE jobs SET status='expired', swap=0 WHERE status IN ('queued','running')"
+                """UPDATE jobs SET status='expired', swap=0,
+                   reason=CASE WHEN reason='' THEN 'timeout' ELSE reason END
+                   WHERE status IN ('queued','running')"""
             )
             self._conn.commit()
         set_media_custom_hook(self._hook)
@@ -293,7 +330,7 @@ class CustomQueue:
         digest = prompt_hash(prompt)
         match_id = f"{getattr(universe.config, 'seed', 0)}:{id(universe)}"
         self._universes[match_id] = universe
-        self._enqueue(seat, event, clip, digest, match_id, json.dumps(prompt, sort_keys=True))
+        self._enqueue(seat, event, clip, digest, match_id, prompt["prose"])
 
     def _enqueue(self, seat, event, clip, digest, match_id, prompt_json: str) -> None:
         day = date.today().isoformat()
@@ -322,8 +359,9 @@ class CustomQueue:
             if existing is not None:
                 self._conn.commit()
                 return
+            spent = _spent_where()
             count = self._conn.execute(
-                f"SELECT COUNT(*) FROM jobs WHERE match_id=? AND status IN ({','.join('?' * len(COUNTED))})",
+                f"SELECT COUNT(*) FROM jobs WHERE match_id=? AND {spent}",
                 (match_id, *COUNTED),
             ).fetchone()[0]
             if count >= self.jobs_per_match:
@@ -331,11 +369,11 @@ class CustomQueue:
                 log.warning("custom job refused: match cap of %s for seat %s", self.jobs_per_match, seat)
                 return
             spent_match = self._conn.execute(
-                f"SELECT COALESCE(SUM(cost_cents),0) FROM jobs WHERE match_id=? AND status IN ({','.join('?' * len(COUNTED))})",
+                f"SELECT COALESCE(SUM(cost_cents),0) FROM jobs WHERE match_id=? AND {spent}",
                 (match_id, *COUNTED),
             ).fetchone()[0]
             spent_day = self._conn.execute(
-                f"SELECT COALESCE(SUM(cost_cents),0) FROM jobs WHERE day=? AND status IN ({','.join('?' * len(COUNTED))})",
+                f"SELECT COALESCE(SUM(cost_cents),0) FROM jobs WHERE day=? AND {spent}",
                 (day, *COUNTED),
             ).fetchone()[0]
             if spent_match + JOB_CENTS > self.match_cap_cents:
@@ -346,8 +384,9 @@ class CustomQueue:
                 self._conn.commit()
                 log.warning("custom job refused: day cap for seat %s", seat)
                 return
+            paid = type(self.provider).__module__ == "tw2k.media.xai_video"
             self._insert_job(
-                digest, seat, match_id, "queued", JOB_CENTS, event.seq, clip, day,
+                digest, seat, match_id, "queued", 0 if paid else JOB_CENTS, event.seq, clip, day,
                 swap=0, prompt=prompt_json,
             )
             self._conn.commit()
@@ -371,15 +410,20 @@ class CustomQueue:
                 self._wake.wait(0.05)
                 self._wake.clear()
                 continue
+            payload = dict(job)
+            payload["on_post"] = lambda cost, job_id=job["id"]: self._mark_posted(job_id, cost)
+            reason = "transport"
             try:
-                data = self.provider(dict(job))
+                data = self.provider(payload)
             except Exception:
                 log.exception("custom provider failed")
                 data = None
+            else:
+                reason = None if data else (getattr(self.provider, "last_reject", None) or "transport")
             if self._stop.is_set():
                 break
             try:
-                self._finish(job, data)
+                self._finish(job, data, reason)
             except sqlite3.ProgrammingError:
                 break
 
@@ -387,7 +431,8 @@ class CustomQueue:
         cutoff = time.time() - JOB_DEADLINE_S
         with self._lock:
             self._conn.execute(
-                """UPDATE jobs SET status='expired', swap=0
+                """UPDATE jobs SET status='expired', swap=0,
+                   reason=CASE WHEN reason='' THEN 'timeout' ELSE reason END
                    WHERE status IN ('queued','running') AND created < ?""",
                 (cutoff,),
             )
@@ -410,23 +455,46 @@ class CustomQueue:
                 return row
         return None
 
-    def _finish(self, job: sqlite3.Row, data: bytes | None) -> None:
+    def _mark_posted(self, job_id: int, cost: int) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE jobs SET cost_cents=?, started_at=COALESCE(started_at, ?) WHERE id=?",
+                (int(cost), time.time(), job_id),
+            )
+            self._conn.commit()
+
+    def _finish(self, job: sqlite3.Row, data: bytes | None, reason: str | None = None) -> None:
         digest = job["hash"]
         status = "discarded"
         swap = 0
+        stored = reason or ""
+        partial = self.cache_dir / f"{digest}.webm.partial"
         if data:
             blocked = self._blocked_for(job)
             status = "late" if blocked else "ready"
             swap = 0 if blocked else 1
+            stored = ""
+            try:
+                partial.write_bytes(data)
+            except Exception:
+                partial.unlink(missing_ok=True)
+                self._mark_discarded(job["id"], "transport")
+                log.exception("custom clip cache write failed")
+                return
         with self._lock:
             cur = self._conn.execute(
-                "UPDATE jobs SET status=?, swap=? WHERE id=? AND status='running'",
-                (status, swap, job["id"]),
+                """UPDATE jobs SET status=?, swap=?, reason=?, finished_at=?
+                   WHERE id=? AND status='running'""",
+                (status, swap, stored, time.time(), job["id"]),
             )
             self._conn.commit()
-            if cur.rowcount != 1:
-                return
+            stuck = cur.rowcount != 1
+        if stuck:
+            partial.unlink(missing_ok=True)
+            return
         if not data:
+            if stored:
+                log.info("custom clip discarded: %s", stored)
             return
         webm = self.cache_dir / f"{digest}.webm"
         meta_path = self.cache_dir / f"{digest}.json"
@@ -439,18 +507,22 @@ class CustomQueue:
             "badge": "live-generated",
         }
         try:
-            webm.write_bytes(data)
+            partial.replace(webm)
             meta_path.write_text(json.dumps(meta), encoding="utf-8")
         except Exception:
+            partial.unlink(missing_ok=True)
             webm.unlink(missing_ok=True)
             meta_path.unlink(missing_ok=True)
-            with self._lock:
-                self._conn.execute(
-                    "UPDATE jobs SET status='discarded', swap=0 WHERE id=?",
-                    (job["id"],),
-                )
-                self._conn.commit()
+            self._mark_discarded(job["id"], "transport")
             log.exception("custom clip cache write failed")
+
+    def _mark_discarded(self, job_id: int, reason: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE jobs SET status='discarded', swap=0, reason=?, finished_at=? WHERE id=?",
+                (reason, time.time(), job_id),
+            )
+            self._conn.commit()
 
     def _later_than(self, match_id: str, seat: str, seq: int) -> bool:
         universe = self._universes.get(match_id)
@@ -565,17 +637,21 @@ class CustomQueue:
         return False
 
 
-def start_if_enabled(cache_dir: Path | None = None) -> CustomQueue | None:
+def start_if_enabled(cache_dir: Path | None = None, transport: Any | None = None) -> CustomQueue | None:
     """Start the worker only when the flag is exactly \"1\". Otherwise do nothing."""
     if os.environ.get(ENV_FLAG) != "1":
         return None
     override = os.environ.get(ENV_CACHE)
     folder = cache_dir or (Path(override) if override else (_repo_manifest().parent / "clips" / "custom"))
     provider = None
-    if os.environ.get(ENV_PROVIDER) == "xai" and (os.environ.get(ENV_XAI_KEY) or "").strip():
+    key = (os.environ.get(ENV_XAI_KEY) or "").strip()
+    switched = os.environ.get(ENV_PROVIDER) == "xai"
+    if switched and key and (transport is not None or not os.environ.get("PYTEST_CURRENT_TEST")):
         from .xai_video import XaiImagineProvider
 
-        provider = XaiImagineProvider(key=(os.environ.get(ENV_XAI_KEY) or "").strip())
-    elif os.environ.get(ENV_PROVIDER) == "xai":
+        provider = XaiImagineProvider(key=key, transport=transport)
+    elif switched and key:
+        log.warning("xai video provider is not armed under tests without an injected transport")
+    elif switched:
         log.warning("xai video provider requested without a key; using the local stand-in")
     return CustomQueue(folder, provider).start()

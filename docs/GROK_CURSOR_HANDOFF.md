@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-28 19:12 PT - Fable - real clips, a private key, and spend that sticks
+- Flash, duration, and resolution checks read the whole file with ffprobe and ffmpeg. A strobe, a late strobe, and a 1080p 10 s clip are discarded. A calm 480p clip is kept. The request uses the documented model `grok-imagine-video-1.5` and omits undocumented fields. A redirect drops the key unless the next host is `api.x.ai`. Downloads are https on `*.x.ai` only, typed, and capped.
+- A job counts toward the cap once the POST returns an id, including after a deadline or a restart. The prompt sent is fog-safe prose, not internal JSON. The clip file is renamed into place only after the job row updates. Under pytest the live transport is not armed unless a test injects one.
+- Suite 802 passed and 1 timing check failed under load, then passed alone. Ruff clean. Manifest OK. Flag-on cockpit and bot browser rerun 150 passed.
+
 ### 2026-09-28 17:40 PT - Fable - the xAI video adapter stays behind a switch
 - The live adapter uses `grok-imagine-video-1.5-2026-05-30` at 480p, 4 seconds, no audio, with moderation on. It loads only when the custom flag is on, `TW2K_VIDEO_CUSTOM_PROVIDER=xai`, and `TW2K_XAI_VIDEO_KEY` is set. The key stays in that env var. A clip is kept only after moderation, duration, resolution, flash-rate, and palette checks. A failed check is discarded and the placeholder stays. Tests use a fake HTTP transport.
 - A custom clip ends within about 0.05 s of its real length. Cache files are written only after the job update sticks, and removed if that write fails. The death-custom viewport test clicks the centre of the screen.
