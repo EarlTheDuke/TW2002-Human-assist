@@ -217,6 +217,10 @@ body:not(.mode-cu) .warps button.tint-sss,
 body:not(.mode-cu) .warp-ring button.tint-sss { border-color: #6ee7ff; }
 body:not(.mode-cu) .warps button.tint-mix,
 body:not(.mode-cu) .warp-ring button.tint-mix { border-color: #e2b15a; }
+body:not(.mode-cu) .pc-b { color: #7dcea0; font-weight: 800; font-style: normal; }
+body:not(.mode-cu) .pc-s { color: #9ec9ef; font-weight: 600; font-style: italic; }
+body:not(.mode-cu) .known-map .pc-b { fill: #7dcea0; font-weight: 800; font-style: normal; }
+body:not(.mode-cu) .known-map .pc-s { fill: #9ec9ef; font-weight: 600; font-style: italic; }
 body:not(.mode-cu) .warp-ring {
   position: absolute; inset: 10% 8% 18% 8%; z-index: 4; pointer-events: none;
 }

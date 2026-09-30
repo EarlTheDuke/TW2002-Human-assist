@@ -536,7 +536,11 @@
       const g = svgEl("g", { class: `node${p.known ? "" : " stub"}${id === here ? " here" : ""}${n && n.port ? " port" : ""}${tint ? " " + tint : ""}${n && n.is_fedspace ? " fed" : ""}${canPlot && id !== here ? "" : " disabled"}`, transform: `translate(${p.x.toFixed(2)},${p.y.toFixed(2)})`, tabindex: 0, role: "button", "data-testid": `map-sector-${id}`, "data-sector": id, "aria-label": `sector ${id}${n && n.port ? " port " + n.port : ""}${id === here ? " (you are here)" : ""}` });
       g.appendChild(svgEl("circle", { r: p.known ? 3.4 : 2.2 }));
       const t = svgEl("text", { y: 1.1 }); t.textContent = String(id); g.appendChild(t);
-      if (n && n.port) { const c = svgEl("text", { y: 6.2, class: "code" }); c.textContent = n.port; g.appendChild(c); }
+      if (n && n.port) {
+        const c = svgEl("text", { y: 6.2, class: "code" });
+        appendCode(c, rememberedPortCode(obs, id) || String(n.port), true);
+        g.appendChild(c);
+      }
       const title = svgEl("title"); title.textContent = `Sector ${id}${n && n.port ? ` · port ${n.port}` : ""}${n && n.last_seen_day !== null && n.last_seen_day !== undefined ? ` · seen day ${n.last_seen_day}` : ""}${p.known ? "" : " · not yet visited"}${id === here ? " · you are here" : canPlot ? " · tap to plot course" : " · plot_course not legal now"}`;
       g.appendChild(title);
       const go = () => { if (id === here) return; if (!canUse("plot_course")) return; openVerb("plot_course", { target: id }); svg.querySelectorAll(".node").forEach((x) => x.classList.toggle("selected", x === g)); };
@@ -767,6 +771,32 @@
     if (buys === 0) return "tint-sss";
     return "tint-mix";
   }
+  function appendCode(parent, code, svg) {
+    const c = String(code || "");
+    if (!c) return;
+    if (CU || !/^[BS]{3}$/.test(c)) {
+      if (svg) parent.textContent = c;
+      else parent.appendChild(document.createTextNode(c));
+      return;
+    }
+    for (const ch of c) {
+      const cls = ch === "B" ? "pc-b" : "pc-s";
+      if (svg) {
+        const ts = svgEl("tspan", { class: cls });
+        ts.textContent = ch;
+        parent.appendChild(ts);
+      } else {
+        const s = document.createElement("span");
+        s.className = cls;
+        s.textContent = ch;
+        parent.appendChild(s);
+      }
+    }
+  }
+  function fillLabeled(el, prefix, code) {
+    el.replaceChildren(document.createTextNode(code ? `${prefix} ` : prefix));
+    appendCode(el, code, false);
+  }
   function canUse(kind) { return state.awaiting && !state.busy && !!legalOf(kind).legal; }
   function renderWarpRing(obs, warps, warp) {
     const ring = $("warpRing");
@@ -785,7 +815,7 @@
         const b = document.createElement("button");
         b.type = "button";
         const code = rememberedPortCode(obs, w);
-        b.textContent = code ? `${i + 1} ${w} ${code}` : `${i + 1} ${w}`;
+        fillLabeled(b, `${i + 1} ${w}`, code);
         const tint = portTint(code);
         if (tint) b.classList.add(tint);
         b.setAttribute("data-testid", `exit-ring-${w}`);
@@ -836,8 +866,9 @@
       warps.forEach((w) => {
         const b = document.createElement("button");
         b.type = "button";
-        b.textContent = warpLabel(w);
-        const tint = portTint(rememberedPortCode(obs, w));
+        const code = rememberedPortCode(obs, w);
+        fillLabeled(b, `WARP ${w}`, code);
+        const tint = portTint(code);
         if (tint) b.classList.add(tint);
         b.setAttribute("data-testid", `warp-${w}`);
         b.setAttribute("data-target", String(w));
