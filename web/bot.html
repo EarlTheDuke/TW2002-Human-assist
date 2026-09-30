@@ -287,6 +287,7 @@
     <!-- KNOW -->
     <section class="col" id="colKnow" data-testid="col-know">
       <div class="card mfd" id="mfd" data-testid="mfd">
+        <button type="button" id="computerToggle" class="computer-toggle" data-testid="computer-toggle" aria-pressed="false" aria-controls="computerPage">Computer</button>
         <div class="mfd-tabs" role="tablist" aria-label="Side screen">
           <button type="button" role="tab" id="mfdTabShip" data-tab="ship" aria-selected="true" aria-controls="mfdPanelShip" tabindex="0" data-testid="mfd-tab-ship">Ship</button>
           <button type="button" role="tab" id="mfdTabPort" data-tab="port" aria-selected="false" aria-controls="mfdPanelPort" tabindex="0" data-testid="mfd-tab-port">Port</button>
@@ -295,6 +296,7 @@
           <button type="button" role="tab" id="mfdTabMoments" data-tab="moments" aria-selected="false" aria-controls="mfdPanelMoments" tabindex="0" data-testid="mfd-tab-moments">Moments</button>
         </div>
         <div class="mfd-body">
+          <pre id="computerPage" class="computer-page" data-testid="computer-page" hidden></pre>
           <div role="tabpanel" id="mfdPanelShip" aria-labelledby="mfdTabShip">
       <div class="card" id="shipCard" data-testid="ship" data-obs="ship">
         <h2>Ship <span class="badge" id="shipClass">-</span></h2>

@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 06:12 PT - Fable - a computer page on the side screen
+- A Computer button above the side-screen tabs opens a monospace readout of this seat's sector, port, warps, holds, credits, turns, and ship. It stays off until opened, and the map stays where it was.
+
 ### 2026-09-29 18:46 PT - Fable - warp exits sit on the video
 - Numbered chips on the video follow this seat's warp buttons, including a remembered port code. A chip click is that button's click. The caption and the map stay where they were.
 

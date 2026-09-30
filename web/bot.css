@@ -151,7 +151,18 @@ body:not(.mode-cu) .mfd-tabs [role="tab"] {
   font-weight: 800; letter-spacing: 0; white-space: nowrap; cursor: pointer;
 }
 body:not(.mode-cu) .mfd-tabs [role="tab"][aria-selected="true"] { border-color: var(--seat-frame); color: var(--seat-frame); }
-body:not(.mode-cu) .mfd-body { height: 420px; overflow: auto; }
+body:not(.mode-cu) .mfd-body { position: relative; height: 420px; overflow: auto; }
+body:not(.mode-cu) .computer-toggle {
+  display: inline-flex; align-items: center; min-height: 22px; margin: 0 0 4px; padding: 1px 8px;
+  border-radius: 999px; border: 1px solid #3a466e; background: #141a2e; color: var(--text);
+  font-size: 11px; font-weight: 800; cursor: pointer;
+}
+body:not(.mode-cu) .computer-toggle[aria-pressed="true"] { border-color: var(--seat-frame); color: var(--seat-frame); }
+body:not(.mode-cu) .computer-page {
+  position: absolute; inset: 0; z-index: 3; margin: 0; padding: 8px 10px; overflow: auto;
+  background: #070b16; color: #d7e0ff; font: 12px/1.35 ui-monospace, Consolas, monospace; white-space: pre;
+}
+body:not(.mode-cu) .computer-page[hidden] { display: none !important; }
 body:not(.mode-cu) .hull-bars { display: grid; gap: 4px; margin: 0 0 8px; }
 body:not(.mode-cu) .hull-bar { display: grid; grid-template-columns: 4.6rem 1fr auto; gap: 6px; align-items: center; font-size: 12px; }
 body:not(.mode-cu) .hull-bar .track { height: 8px; border-radius: 999px; background: #0b1020; border: 1px solid #3a466e; overflow: hidden; }
