@@ -2499,6 +2499,25 @@
     else if (state.status === "paused") setStatus("paused", "paused");
     else if (state.status === "error") setStatus("error", "error");
     else setStatus("running", state.status || "waiting");
+    paintPausedBanner();
+  }
+
+  const SEAT_DROP_LINE = /^seat \S+ disconnected - match paused$/;
+  function paintPausedBanner() {
+    const el = document.getElementById("pausedBanner");
+    const reason = document.getElementById("pausedReason");
+    if (!el || !reason) return;
+    const paused = state.status === "paused";
+    let line = "";
+    if (paused) {
+      for (let i = state.events.length - 1; i >= 0; i--) {
+        const summary = String((state.events[i] && state.events[i].summary) || "");
+        if (SEAT_DROP_LINE.test(summary)) { line = summary; break; }
+      }
+    }
+    el.hidden = !paused;
+    reason.hidden = !line;
+    reason.textContent = line;
   }
 
   // ----------------- Game over ---------------------
@@ -2603,6 +2622,19 @@
   setInterval(() => {
     if (state.llmPhase && state.status === "running" && !state.finished) renderHeader();
   }, 1000);
+  // The opening snapshot and the pause button already carry match status. A pause
+  // from another client (or a dropped seat) only shows up on the next /state read.
+  setInterval(async () => {
+    try {
+      const r = await fetch("/state");
+      if (!r.ok) return;
+      const snap = await r.json();
+      const next = snap && snap.status;
+      if (!next || next === state.status) return;
+      state.status = next;
+      render();
+    } catch (e) { /* the strip just waits for the next read */ }
+  }, 2000);
 
   // ----------------- Control events -----------------
 
