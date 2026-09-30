@@ -120,6 +120,17 @@
   }
 
   function setCaption() {
+    if (!caption) return;
+    const until = Number(caption.getAttribute("data-result-until") || 0);
+    const line = caption.getAttribute("data-result");
+    if (line && until > Date.now()) {
+      caption.textContent = line;
+      return;
+    }
+    if (line) {
+      caption.removeAttribute("data-result");
+      caption.removeAttribute("data-result-until");
+    }
     caption.textContent = st.event ? st.event.caption : st.ambientCaption;
   }
 

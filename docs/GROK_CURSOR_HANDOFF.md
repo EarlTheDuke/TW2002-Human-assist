@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 11:50 PT - Fable - the last result on the video caption
+- This seat's last action shows as one line on the video caption, then the sector line comes back after about six seconds.
+
 ### 2026-09-30 10:48 PT - Fable - a countdown inside the turn banner
 - While it is this seat's turn, a thin bar inside the existing turn banner drains toward the deadline the page already shows. It turns amber under a minute and red under 20 seconds, and it is gone when the turn is not ours.
 
