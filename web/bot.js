@@ -452,7 +452,7 @@
   function renderKnownWarps(obs) {
     const kw = obs.known_warps || {};
     const ids = Object.keys(kw).map(Number).sort((a, b) => a - b);
-    setText("knownWarpsCount", `${(obs.known_sectors || []).length} sectors`);
+    setText("knownWarpsCount", CU ? "" : `Explored ${(obs.known_sectors || []).length}`);
     const el = $("knownWarpsList");
     el.textContent = ids.length
       ? ids.map((sid) => `${sid} → ${(kw[String(sid)] || []).join(",")}`).join("   |   ")
