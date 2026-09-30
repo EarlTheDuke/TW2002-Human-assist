@@ -133,7 +133,7 @@
     <div class="score"><span class="k">Turns left</span><span class="v"><span id="sbTurns" data-obs="turns_remaining" data-testid="turns-left">-</span> / <span id="sbTpd" data-obs="turns_per_day">-</span></span></div>
     <div class="score"><span class="k">Day</span><span class="v"><span id="sbDay" data-obs="day">-</span> / <span id="sbMaxDays" data-obs="max_days">-</span> <small>tick <span id="sbTick" data-obs="tick">-</span></small></span></div>
     <div class="score" data-testid="inst-sector"><span class="k">Sector</span><span class="v" id="sbSector">-</span></div>
-    <div class="score" data-testid="inst-ship"><span class="k">Ship</span><span class="v" id="sbShip">-</span></div>
+    <div class="score" data-testid="inst-ship"><span class="k">Ship</span><span class="v" id="sbShip">-</span><button type="button" id="keysHelpBtn" class="keys-help-btn" data-testid="keys-help" aria-expanded="false" aria-controls="keysHelp">?</button></div>
     <div class="score"><span class="k">Alignment</span><span class="v"><span id="sbAlignLabel" data-obs="alignment_label">-</span> <small>(<span id="sbAlign" data-obs="alignment">-</span>)</small></span></div>
     <div class="score" data-testid="alert-lamp"><span class="k">Alert</span><span class="v" id="alertLamp" data-level="quiet">quiet</span></div>
     <div class="score" data-obs="self_name"><span class="k">Commander</span><span class="v" id="sbName" data-obs="self_id">-</span></div>
@@ -146,6 +146,11 @@
     <div class="score"><span class="k">Landed</span><span class="v" id="sbLanded" data-obs="planet_landed">-</span></div>
     <div class="score" hidden><span class="v" id="sbFinished" data-obs="finished"></span></div>
   </section>
+
+  <div id="keysHelp" class="keys-help" data-testid="keys-help-overlay" role="dialog" aria-label="Hotkeys" hidden>
+    <p>Hotkeys</p>
+    <ul id="keysHelpList"></ul>
+  </div>
 
   <main class="bot-main cols3" id="main">
 

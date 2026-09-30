@@ -2133,33 +2133,95 @@
   }
   setInterval(() => { refreshBridge().catch(() => {}); }, 2500);
 
+  // Default-cockpit keys. The help overlay is painted from this list.
+  const HOTKEYS = [
+    ["S", "Scan"],
+    ["1-9", "Warp"],
+    ["H", "Hold slot"],
+    ["?", "This list"],
+    ["Esc", "Close this list"],
+  ];
+  function paintKeys() {
+    const list = $("keysHelpList");
+    if (!list || list.childElementCount) return;
+    for (const [id, label] of HOTKEYS) {
+      const li = document.createElement("li");
+      li.setAttribute("data-hotkey", id);
+      const kbd = document.createElement("kbd");
+      kbd.textContent = id;
+      li.append(kbd, document.createTextNode(` ${label}`));
+      list.appendChild(li);
+    }
+  }
+  function keysOpen() {
+    const box = $("keysHelp");
+    return !!(box && !box.hidden);
+  }
+  function setKeys(on) {
+    const box = $("keysHelp");
+    const btn = $("keysHelpBtn");
+    if (!box || !btn) return;
+    if (on) {
+      const r = btn.getBoundingClientRect();
+      box.style.top = `${Math.round(r.bottom + 6)}px`;
+      box.style.left = `${Math.round(Math.min(r.left, window.innerWidth - 200))}px`;
+    }
+    box.hidden = !on;
+    btn.setAttribute("aria-expanded", on ? "true" : "false");
+  }
+  function hotkeyId(ev) {
+    const low = (ev.key || "").toLowerCase();
+    if (ev.key === "Escape") return "Esc";
+    if (ev.key === "?") return "?";
+    if (/^[1-9]$/.test(ev.key || "")) return "1-9";
+    if (low === "s") return "S";
+    if (low === "h") return "H";
+    return "";
+  }
+  paintKeys();
+  const keysBtn = $("keysHelpBtn");
+  if (keysBtn && !CU) keysBtn.addEventListener("click", () => setKeys(!keysOpen()));
   if (CU) setupCu();
   else if ($("holdBtn")) {
     $("holdBtn").addEventListener("click", () => toggleHold());
     document.addEventListener("keydown", (ev) => {
-      if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
+      if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const tag = (ev.target && ev.target.tagName) || "";
       if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) return;
       if (ev.target && ev.target.isContentEditable) return;
       const form = $("verbForm");
       if (form && !form.hidden) return;
-      if (document.querySelector("[role=dialog]:not([hidden])")) return;
-      const k = ev.key || "";
-      if (/^[1-9]$/.test(k)) {
-        const b = els.warps.querySelectorAll("button")[Number(k) - 1];
+      const id = hotkeyId(ev);
+      if (!HOTKEYS.some(([key]) => key === id)) return;
+      const otherDialog = [...document.querySelectorAll("[role=dialog]:not([hidden])")].some((el) => el.id !== "keysHelp");
+      if (id === "Esc") {
+        if (!keysOpen()) return;
+        ev.preventDefault();
+        setKeys(false);
+        return;
+      }
+      if (id === "?") {
+        if (otherDialog) return;
+        ev.preventDefault();
+        setKeys(!keysOpen());
+        return;
+      }
+      if (ev.shiftKey || keysOpen() || otherDialog) return;
+      if (id === "1-9") {
+        const b = els.warps.querySelectorAll("button")[Number(ev.key) - 1];
         if (!b || b.disabled || !canUse("warp")) return;
         ev.preventDefault();
         b.click();
         return;
       }
-      if (k.toLowerCase() === "s") {
+      if (id === "S") {
         if (!canUse("scan")) return;
         ev.preventDefault();
         const btn = $("verbPad").querySelector("button[data-verb=scan]");
         if (btn && !btn.disabled) btn.click();
         return;
       }
-      if ((ev.key || "").toLowerCase() !== "h") return;
+      if (id !== "H") return;
       ev.preventDefault();
       toggleHold();
     });

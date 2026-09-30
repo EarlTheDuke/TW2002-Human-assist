@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 08:06 PT - Fable - a hotkey list on the ship bar
+- A ? on the ship cell opens a short list of the keys this cockpit already uses. Esc or ? closes it. The map and the side screen stay where they were.
+
 ### 2026-09-30 07:13 PT - Fable - a dropped seat can pause the match
 - With `--pause-on-seat-drop` (off unless asked), an external seat that stops polling harness status or observation pauses the match. That seat polling again resumes it. A manual pause stays paused. Two dropped seats both have to come back.
 
