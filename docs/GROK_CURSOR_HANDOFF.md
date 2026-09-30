@@ -44,10 +44,13 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-29 17:24 PT - Fable - the ship tab shows filled bars
+- Holds, fighters, shields, and genesis on the Ship tab are bars drawn from this seat's own ship numbers. The written counts stay. Nothing was added above the map.
+
 ### 2026-09-29 16:36 PT - Fable - the map sits higher under the video
 - The sector caption is a slim strip on the bottom edge of the video. Skip, Live, Stills, Off, and Sound sit in one row under the map. The map card is about 96 px higher. The video size is unchanged.
 
-
+### 2026-09-29 15:09 PT - Fable - a line under the video for who is here
 - The cockpit lists ships and planets from this sector's observation only, on one reserved line. An empty sector stays blank. The map and the side screen stay where they were.
 
 ### 2026-09-29 14:07 PT - Fable - the four polish nits
