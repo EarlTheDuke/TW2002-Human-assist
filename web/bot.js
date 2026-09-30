@@ -284,6 +284,10 @@
     if (spool) spool.style.width = `${Math.max(0, Math.min(100, (left / cap) * 100))}%`;
     const saved = obs.self_id && sessionStorage.getItem("tw2k_mfd_" + obs.self_id);
     if (saved && !state.mfdReady) { state.mfdReady = true; selectMfd(saved, false); }
+    if (obs.self_id && !state.computerReady) {
+      state.computerReady = true;
+      setComputer(sessionStorage.getItem("tw2k_computer_" + obs.self_id) === "1", false);
+    }
     setText("sbDeaths", obs.deaths); setText("sbMaxDeaths", obs.max_deaths);
     setText("sbAlive", obs.alive === false ? "DESTROYED" : "");
     setText("sbCorp", obs.corp_ticker || "none");
@@ -1144,6 +1148,55 @@
 
   function renderControls(obs) { renderVerbPad(obs); renderQuickTrades(); renderCuQuickTrades(); }
 
+  function computerText(obs) {
+    const sector = obs.sector || {};
+    const ship = obs.ship || {};
+    const port = sector.port;
+    const lines = [`Sector  ${sector.id ?? "-"}`];
+    if (!port) lines.push("Port    none");
+    else {
+      lines.push(`Port    ${port.code || "-"}  class ${port.class_id ?? "-"}`);
+      const stock = port.stock || {};
+      for (const name of COMMODITIES) {
+        const row = stock[name];
+        if (!row) continue;
+        const side = row.side === "buys_from_player" ? "BUYS" : row.side === "sells_to_player" ? "SELLS" : row.side === "not_traded" ? "no trade" : "-";
+        const price = row.price === null || row.price === undefined ? "-" : `${fmt(row.price)} cr`;
+        lines.push(`  ${name}  ${side}  ${price}  ${fmt(row.current)} / ${fmt(row.max)}`);
+      }
+    }
+    const warps = sector.warps_out || [];
+    lines.push(warps.length ? "Warps" : "Warps   -");
+    for (const dest of warps) {
+      const code = rememberedPortCode(obs, dest);
+      lines.push(code ? `  ${dest}  ${code}` : `  ${dest}`);
+    }
+    const cargo = ship.cargo || {};
+    const held = [...COMMODITIES, "colonists"].filter((name) => cargo[name]).map((name) => `${name} ${fmt(cargo[name])}`);
+    lines.push(`Holds   ${fmt(ship.holds)}  (${fmt(ship.cargo_free)} free)`);
+    lines.push(`Cargo   ${held.join(", ") || "empty"}`);
+    lines.push(`Credits ${fmt(obs.credits)}`);
+    lines.push(`Turns   ${fmt(obs.turns_remaining)}`);
+    lines.push(`Fighters ${fmt(ship.fighters)} / ${fmt(ship.fighter_cap)}`);
+    lines.push(`Shields  ${fmt(ship.shields)} / ${fmt(ship.shield_cap)}`);
+    lines.push(`Genesis ${fmt(ship.genesis)}`);
+    return lines.join("\n");
+  }
+  function setComputer(on, remember) {
+    const btn = $("computerToggle");
+    const page = $("computerPage");
+    if (!btn || !page || CU) return;
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    page.hidden = !on;
+    if (remember && state.seat) sessionStorage.setItem("tw2k_computer_" + state.seat, on ? "1" : "0");
+    if (on && state.obs) page.textContent = computerText(state.obs);
+  }
+  function paintComputer(obs) {
+    const page = $("computerPage");
+    if (!page || page.hidden) return;
+    page.textContent = computerText(obs);
+  }
+
   function renderObservation(obs, isPeek) {
     state.obs = obs;
     state.obsIsPeek = !!isPeek;
@@ -1164,6 +1217,7 @@
     renderIntel(obs);
     renderAdvisor(obs);
     renderControls(obs);
+    paintComputer(obs);
     renderCu();
     if (!CU && window.TW2KViewport) window.TW2KViewport.update(obs);  // V1 viewport (default layout only)
     els.main.hidden = false;
@@ -2066,6 +2120,10 @@
     tab.addEventListener("click", () => selectMfd(tab.dataset.tab, true));
     tab.addEventListener("focus", () => selectMfd(tab.dataset.tab, true));
   });
+  const computerBtn = $("computerToggle");
+  if (computerBtn && !CU) {
+    computerBtn.addEventListener("click", () => setComputer(computerBtn.getAttribute("aria-pressed") !== "true", true));
+  }
   const cuBridgeForm = $("cuBridgeForm");
   if (cuBridgeForm) {
     cuBridgeForm.addEventListener("submit", (ev) => {
