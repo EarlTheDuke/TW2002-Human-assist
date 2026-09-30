@@ -302,7 +302,7 @@
     setText("sbName", `${obs.self_name || ""} (${obs.self_id || ""})`);
     setText("sbDay", obs.max_days ? Math.min(obs.day, obs.max_days) : obs.day); setText("sbMaxDays", obs.max_days); setText("sbTick", obs.tick);
     setText("sbTurns", obs.turns_remaining); setText("sbTpd", obs.turns_per_day);
-    setText("sbCredits", fmt(obs.credits)); setText("sbNetWorth", fmt(obs.net_worth));
+    paintCredits(obs); setText("sbNetWorth", fmt(obs.net_worth));
     setText("sbRank", obs.rank); setText("sbXp", fmt(obs.experience));
     setText("sbAlignLabel", obs.alignment_label); setText("sbAlign", obs.alignment);
     setText("sbSector", (obs.sector || {}).id);
@@ -326,6 +326,27 @@
     const sh = state.twin && state.twin.stage_hint;
     setText("sbStage", P.stageText(sh));
     $("sbStageDetail").textContent = P.stageDetail(sh);
+  }
+  function paintCredits(obs) {
+    const el = $("sbCredits");
+    const next = Number(obs && obs.credits);
+    if (el) el.textContent = Number.isFinite(next) ? fmt(next) : "-";
+    const delta = $("creditsDelta");
+    if (!delta || CU || !Number.isFinite(next)) return;
+    if (!state.creditsReady) {
+      state.creditsReady = true;
+      state.creditsSeen = next;
+      delta.hidden = true;
+      return;
+    }
+    if (next === state.creditsSeen) return;
+    const diff = next - state.creditsSeen;
+    state.creditsSeen = next;
+    delta.textContent = `${diff > 0 ? "+" : "-"}${Math.abs(Math.round(diff)).toLocaleString("en-US")}`;
+    delta.setAttribute("data-sign", diff > 0 ? "up" : "down");
+    delta.hidden = false;
+    if (state.creditsTimer) clearTimeout(state.creditsTimer);
+    state.creditsTimer = setTimeout(() => { delta.hidden = true; }, 3000);
   }
 
   function renderHere(obs) {

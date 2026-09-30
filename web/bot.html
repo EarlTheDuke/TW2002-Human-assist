@@ -129,7 +129,7 @@
 
   <!-- Scoreboard strip: match clock + self. Every value is a straight read of the Observation. -->
   <section class="scoreboard" id="scoreboard" data-testid="scoreboard">
-    <div class="score"><span class="k">Credits</span><span class="v" id="sbCredits" data-obs="credits" data-testid="credits">-</span></div>
+    <div class="score credits-cell"><span class="k">Credits</span><span class="v" id="sbCredits" data-obs="credits" data-testid="credits">-</span><span id="creditsDelta" class="credits-delta" data-testid="credits-delta" hidden></span></div>
     <div class="score"><span class="k">Turns left</span><span class="v"><span id="sbTurns" data-obs="turns_remaining" data-testid="turns-left">-</span> / <span id="sbTpd" data-obs="turns_per_day">-</span></span></div>
     <div class="score"><span class="k">Day</span><span class="v"><span id="sbDay" data-obs="day">-</span> / <span id="sbMaxDays" data-obs="max_days">-</span> <small>tick <span id="sbTick" data-obs="tick">-</span></small></span></div>
     <div class="score" data-testid="inst-sector"><span class="k">Sector</span><span class="v" id="sbSector">-</span></div>
