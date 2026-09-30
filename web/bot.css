@@ -121,7 +121,15 @@ main.bot-main.cols3 { grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.7
 .scoreboard {
   display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #0e1428; border-bottom: 1px solid #243056;
 }
-body:not(.mode-cu) .banner { height: 92px; min-height: 92px; max-height: 92px; overflow: hidden; }
+body:not(.mode-cu) .banner { position: relative; height: 92px; min-height: 92px; max-height: 92px; overflow: hidden; }
+body:not(.mode-cu) .turn-timer {
+  position: absolute; left: 14px; right: 14px; bottom: 6px; height: 4px; border-radius: 999px;
+  background: #0b1020; overflow: hidden; pointer-events: none;
+}
+body:not(.mode-cu) .turn-timer-fill { display: block; height: 100%; width: 0; background: var(--go); }
+body:not(.mode-cu) .turn-timer[data-level="amber"] .turn-timer-fill { background: var(--wait); }
+body:not(.mode-cu) .turn-timer[data-level="red"] .turn-timer-fill { background: var(--danger); }
+body.mode-cu .turn-timer { display: none !important; }
 body:not(.mode-cu) .scoreboard .score { flex: 0 0 156px; width: 156px; overflow: hidden; }
 body:not(.mode-cu) .scoreboard .score:has(#sbShip),
 body:not(.mode-cu) .scoreboard .score:has(#sbName),

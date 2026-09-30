@@ -207,6 +207,36 @@
       state.cuTurnText = `${b.main}${b.sub ? " · " + b.sub : ""}`;
       renderCuCard();
     }
+    paintTurnTimer();
+  }
+  function paintTurnTimer() {
+    const banner = els.banner;
+    if (!banner) return;
+    let bar = banner.querySelector("[data-testid=turn-timer]");
+    const ct = state.current;
+    const ours = banner.classList.contains("turn") && state.awaiting && ct
+      && ct.player_id === state.seat && ct.deadline_at;
+    if (!ours) {
+      if (bar) bar.remove();
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement("span");
+      bar.className = "turn-timer";
+      bar.setAttribute("data-testid", "turn-timer");
+      bar.setAttribute("aria-hidden", "true");
+      const fill = document.createElement("span");
+      fill.className = "turn-timer-fill";
+      bar.appendChild(fill);
+      banner.appendChild(bar);
+    }
+    const end = Number(ct.deadline_at);
+    const start = Number(ct.started_at);
+    const remain = Math.max(0, end - nowS());
+    const windowS = start && end > start ? end - start : remain;
+    const pct = windowS > 0 ? Math.max(0, Math.min(1, remain / windowS)) * 100 : 0;
+    bar.firstElementChild.style.width = `${pct}%`;
+    bar.setAttribute("data-level", remain < 20 ? "red" : remain < 60 ? "amber" : "ok");
   }
   function describeCurrent(ct) {
     if (!ct || !ct.player_id) return "scheduler idle";
@@ -231,7 +261,7 @@
   }
   function startTicker() {
     if (state.tickTimer) clearInterval(state.tickTimer);
-    state.tickTimer = setInterval(renderIdleBanner, 1000);
+    state.tickTimer = setInterval(() => { renderIdleBanner(); paintTurnTimer(); }, 1000);
   }
 
   // ---------------------------------------------------------------- helpers
