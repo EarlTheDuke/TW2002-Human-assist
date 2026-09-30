@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 14:50 PT - Fable - cargo on the holds bar
+- Hovering or focusing the holds bar lists this seat's cargo. An empty hold says empty. The bar does not grow.
+
 ### 2026-09-30 13:50 PT - Fable - port letters in two calm colors
 - Remembered B and S letters take their own color and weight. A neighbor this seat has not recalled stays a bare number.
 
