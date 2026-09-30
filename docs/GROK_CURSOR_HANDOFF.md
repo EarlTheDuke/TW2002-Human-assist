@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 13:50 PT - Fable - port letters in two calm colors
+- Remembered B and S letters take their own color and weight. A neighbor this seat has not recalled stays a bare number.
+
 ### 2026-09-30 12:50 PT - Fable - a credit change beside the balance
 - When this seat's credits change, the difference shows beside the number for about three seconds. The first look shows nothing.
 
