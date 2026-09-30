@@ -338,6 +338,7 @@ def build_harness_router(runner) -> APIRouter:
     @router.get("/{player_id}/status")
     async def status(player_id: str, request: Request) -> dict[str, Any]:
         agent = _require_seat(player_id, request)
+        runner.note_harness_poll(agent.player_id)
         return _seat_status(agent)
 
     _peek_cache: dict[str, tuple[float, Any]] = {}
@@ -379,6 +380,7 @@ def build_harness_router(runner) -> APIRouter:
           stays false and no action can be bound to a peeked observation.
         """
         agent = _require_seat(player_id, request)
+        runner.note_harness_poll(agent.player_id)
         wait_s = max(0.0, min(float(wait_s), MAX_WAIT_S))
         if not agent.awaiting_input and wait_s > 0:
             await agent.wait_for_turn(wait_s)

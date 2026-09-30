@@ -169,6 +169,8 @@ def create_app(
     external_idle_wait_s: float | None = None,
     seat_links: bool = False,
     start_paused: bool = False,
+    pause_on_seat_drop: bool = False,
+    seat_drop_after_s: float = 45.0,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -228,6 +230,8 @@ def create_app(
                 external_timeout_s=external_timeout_s,
                 external_tokens_file=external_tokens_file,
                 external_idle_wait_s=external_idle_wait_s,
+                pause_on_seat_drop=pause_on_seat_drop,
+                seat_drop_after_s=seat_drop_after_s,
             )
             spec.paused = start_paused
             await runner.start(spec)
@@ -1046,6 +1050,8 @@ def create_app(
                 if body.get("external_idle_wait_s") is not None
                 else external_idle_wait_s
             ),
+            pause_on_seat_drop=pause_on_seat_drop,
+            seat_drop_after_s=seat_drop_after_s,
         )
         if body.get("external_hold_max_actions") is not None:
             spec.external_hold_max_actions = max(0, int(body["external_hold_max_actions"]))
@@ -1123,6 +1129,8 @@ def _build_default_spec(
     external_timeout_s: float | None = None,
     external_tokens_file: str | None = None,
     external_idle_wait_s: float | None = None,
+    pause_on_seat_drop: bool = False,
+    seat_drop_after_s: float = 45.0,
 ) -> MatchSpec:
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
@@ -1241,6 +1249,8 @@ def _build_default_spec(
         human_deadline_s=human_deadline_s,
         external_timeout_s=max(1.0, float(external_timeout_s)),
         external_idle_wait_s=max(0.0, float(external_idle_wait_s)),
+        pause_on_seat_drop=bool(pause_on_seat_drop),
+        seat_drop_after_s=max(0.05, float(seat_drop_after_s)),
     )
 
 

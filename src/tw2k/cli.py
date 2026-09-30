@@ -177,6 +177,20 @@ def serve(
         "--start-paused",
         help="Build the match and seats but hold the turn loop until POST /control/resume (dry runs).",
     ),
+    pause_on_seat_drop: bool = typer.Option(
+        False,
+        "--pause-on-seat-drop",
+        help=(
+            "When an external seat has not polled harness status or observation for "
+            "--seat-drop-after-s seconds, pause the match until that seat polls again. "
+            "Default off. A manual /control/pause is never undone by a returning seat."
+        ),
+    ),
+    seat_drop_after_s: float = typer.Option(
+        45.0,
+        "--seat-drop-after-s",
+        help="Seconds without a harness status or observation poll before --pause-on-seat-drop fires.",
+    ),
     external_seat_timeouts: str = typer.Option(
         "",
         "--external-seat-timeouts",
@@ -505,6 +519,8 @@ def serve(
         external_idle_wait_s=external_idle_wait_s,
         seat_links=any_external,
         start_paused=start_paused,
+        pause_on_seat_drop=pause_on_seat_drop,
+        seat_drop_after_s=seat_drop_after_s,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 
