@@ -92,6 +92,9 @@ class ExternalAgent(BaseAgent):
         # page is polling) from an *unattended* one, so idle seats can
         # auto-WAIT quickly instead of burning the full external timeout.
         self.last_client_seen_at: float | None = None
+        # Wall-clock of the last harness status or observation poll. Seat-drop
+        # pause uses only this, not every authenticated request.
+        self.last_poll_at: float | None = None
         # Effective wall-clock deadline for the current turn, set by the runner
         # immediately before `act()` (already includes the idle-wait rule).
         # Surfaced to bots via the turn_due webhook and harness status.

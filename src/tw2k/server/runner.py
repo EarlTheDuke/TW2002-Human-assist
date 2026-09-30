@@ -160,6 +160,10 @@ class MatchSpec:
     # G4 hold-my-slot: max extra actions an external seat may chain in one
     # scheduler slot while holding. 0 disables holding.
     external_hold_max_actions: int = 10
+    # Opt-in: pause the match when an external seat stops polling harness
+    # status or observation. Off leaves every match exactly as it is today.
+    pause_on_seat_drop: bool = False
+    seat_drop_after_s: float = 45.0
 
 
 @dataclass
@@ -218,12 +222,22 @@ class MatchRunner:
         self._saves_root: Path = saves_root or _default_saves_root()
         self._actions_fp = None  # type: ignore[assignment]
         self._events_fp = None  # type: ignore[assignment]
+        self._manual_pause = False
+        self._seat_drop_cause: set[str] = set()
+        self._drop_task: asyncio.Task | None = None
 
     # ---------------- lifecycle ---------------- #
 
     async def start(self, spec: MatchSpec) -> None:
         if self._task is not None and not self._task.done():
             await self.stop()
+        else:
+            old_drop = self._drop_task
+            self._drop_task = None
+            if old_drop is not None:
+                old_drop.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await old_drop
         self._spec = spec
         self._stop.clear()
         # `spec.paused` (G5 dry run): build the universe and seats, then hold
@@ -232,19 +246,29 @@ class MatchRunner:
             self._pause.clear()
         else:
             self._pause.set()
+        self._manual_pause = bool(spec.paused)
+        self._seat_drop_cause = set()
         self.state = RunnerState()
         self._last_published_seq = 0
         self._history = {}
         self.broadcaster.reset_history()
         self._open_save_sink(spec)
         self._task = asyncio.create_task(self._run(), name="tw2k-match")
+        if spec.pause_on_seat_drop:
+            self._drop_task = asyncio.create_task(self._watch_seat_drops(), name="tw2k-seat-drop")
 
     async def stop(self) -> None:
+        self._stop.set()
+        self._pause.set()
+        drop = self._drop_task
+        self._drop_task = None
+        if drop is not None:
+            drop.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await drop
         if self._task is None:
             self._close_save_sink()
             return
-        self._stop.set()
-        self._pause.set()
         try:
             await asyncio.wait_for(self._task, timeout=5)
         except TimeoutError:
@@ -484,13 +508,93 @@ class MatchRunner:
             pass
 
     def pause(self) -> None:
+        """Operator pause. A later seat poll must not undo this."""
+        self._manual_pause = True
         self._pause.clear()
         self.state.status = "paused"
 
     def resume(self) -> None:
+        """Operator resume. Clears a seat-drop cause so it cannot resume itself later."""
+        self._manual_pause = False
+        self._seat_drop_cause.clear()
         self._pause.set()
         if self.state.status == "paused":
             self.state.status = "running"
+
+    def note_harness_poll(self, player_id: str) -> None:
+        """A seat polled harness status or observation. May lift a seat-drop pause."""
+        for agent in self.state.agents:
+            if agent.player_id == player_id and getattr(agent, "kind", None) == "external":
+                agent.last_poll_at = time.time()
+                break
+        if player_id not in self._seat_drop_cause:
+            return
+        self._seat_drop_cause.discard(player_id)
+        if self._seat_drop_cause or self._manual_pause or self.state.status != "paused":
+            return
+        self._pause.set()
+        self.state.status = "running"
+
+    def _dropped_seat_ids(self, window: float) -> list[str]:
+        now = time.time()
+        dropped: list[str] = []
+        for agent in self.state.agents:
+            if getattr(agent, "kind", None) != "external":
+                continue
+            seen = getattr(agent, "last_poll_at", None)
+            if seen is None:
+                agent.last_poll_at = now
+                continue
+            if now - float(seen) >= window:
+                dropped.append(agent.player_id)
+        return dropped
+
+    async def _emit_seat_drops(self, pids: list[str]) -> None:
+        universe = self.state.universe
+        if universe is None:
+            return
+        for pid in pids:
+            universe.emit(
+                EventKind.OPERATOR_MESSAGE,
+                actor_id=pid,
+                actor_kind="system",
+                payload={"reason": "seat_drop"},
+                summary=f"seat {pid} disconnected - match paused",
+            )
+        await self._flush_events()
+
+    async def _mark_new_drops(self, window: float, *, pause: bool) -> None:
+        new = [pid for pid in self._dropped_seat_ids(window) if pid not in self._seat_drop_cause]
+        if not new:
+            return
+        self._seat_drop_cause.update(new)
+        if pause:
+            self._manual_pause = False
+            self._pause.clear()
+            self.state.status = "paused"
+        await self._emit_seat_drops(new)
+
+    async def _watch_seat_drops(self) -> None:
+        spec = self._spec
+        if spec is None or not spec.pause_on_seat_drop:
+            return
+        window = max(0.05, float(spec.seat_drop_after_s))
+        tick = min(1.0, max(0.05, window / 4))
+        try:
+            while not self._stop.is_set():
+                try:
+                    await asyncio.wait_for(self._stop.wait(), timeout=tick)
+                    return
+                except TimeoutError:
+                    pass
+                if self.state.universe is None:
+                    continue
+                if self.state.status == "running":
+                    await self._mark_new_drops(window, pause=True)
+                elif self.state.status == "paused" and self._seat_drop_cause and not self._manual_pause:
+                    await self._mark_new_drops(window, pause=False)
+        except asyncio.CancelledError:
+            return
 
     def set_speed(self, multiplier: float) -> None:
         self.state.speed_multiplier = max(0.1, min(10.0, multiplier))

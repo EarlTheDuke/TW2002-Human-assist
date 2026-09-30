@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 07:13 PT - Fable - a dropped seat can pause the match
+- With `--pause-on-seat-drop` (off unless asked), an external seat that stops polling harness status or observation pauses the match. That seat polling again resumes it. A manual pause stays paused. Two dropped seats both have to come back.
+
 ### 2026-09-30 06:12 PT - Fable - a computer page on the side screen
 - A Computer button above the side-screen tabs opens a monospace readout of this seat's sector, port, warps, holds, credits, turns, and ship. It stays off until opened, and the map stays where it was.
 
