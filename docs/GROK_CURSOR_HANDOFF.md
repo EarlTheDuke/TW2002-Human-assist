@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 10:48 PT - Fable - a countdown inside the turn banner
+- While it is this seat's turn, a thin bar inside the existing turn banner drains toward the deadline the page already shows. It turns amber under a minute and red under 20 seconds, and it is gone when the turn is not ours.
+
 ### 2026-09-30 09:55 PT - Fable - a pause strip on the video and the spectator map
 - When the match is paused, a strip on the cockpit video and the spectator page says Match paused. If the feed already has a seat-drop line, that line is on the strip too. It goes away when the match runs, and the map stays where it was.
 
