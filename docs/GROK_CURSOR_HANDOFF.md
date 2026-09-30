@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-29 18:46 PT - Fable - warp exits sit on the video
+- Numbered chips on the video follow this seat's warp buttons, including a remembered port code. A chip click is that button's click. The caption and the map stay where they were.
+
 ### 2026-09-29 17:24 PT - Fable - the ship tab shows filled bars
 - Holds, fighters, shields, and genesis on the Ship tab are bars drawn from this seat's own ship numbers. The written counts stay. Nothing was added above the map.
 
