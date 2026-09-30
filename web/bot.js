@@ -713,6 +713,42 @@
     return "tint-mix";
   }
   function canUse(kind) { return state.awaiting && !state.busy && !!legalOf(kind).legal; }
+  function renderWarpRing(obs, warps, warp) {
+    const ring = $("warpRing");
+    if (!ring) return;
+    if (CU || !warp.legal || !warps.length) {
+      ring.hidden = true;
+      ring.replaceChildren();
+      ring.removeAttribute("data-warp-key");
+      return;
+    }
+    const key = warps.map((w) => `${w}:${rememberedPortCode(obs, w)}`).join("|");
+    if (ring.getAttribute("data-warp-key") !== key) {
+      ring.replaceChildren();
+      const n = warps.length;
+      warps.forEach((w, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        const code = rememberedPortCode(obs, w);
+        b.textContent = code ? `${i + 1} ${w} ${code}` : `${i + 1} ${w}`;
+        const tint = portTint(code);
+        if (tint) b.classList.add(tint);
+        b.setAttribute("data-testid", `exit-ring-${w}`);
+        b.setAttribute("data-target", String(w));
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+        b.style.left = `${(50 + 42 * Math.cos(angle)).toFixed(2)}%`;
+        b.style.top = `${(50 + 38 * Math.sin(angle)).toFixed(2)}%`;
+        b.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const match = els.warps.querySelector(`button[data-target="${w}"]`);
+          if (match && !match.disabled) match.click();
+        });
+        ring.appendChild(b);
+      });
+      ring.setAttribute("data-warp-key", key);
+    }
+    ring.hidden = false;
+  }
   // The route macro is a harness verb, not an engine one: legal_actions never lists it,
   // so its form is gated by "your turn" only (the server re-checks every step).
   function canUseForm(kind) { return kind === "run_route" ? state.awaiting && !state.busy : canUse(kind); }
@@ -759,6 +795,7 @@
       b.disabled = !canUse("warp");
       if (!warp.legal) b.setAttribute("data-reason", warp.reason || ""); else b.removeAttribute("data-reason");
     });
+    renderWarpRing(obs, warps, warp);
     if (!warp.legal && warp.reason && !warps.length) reasons.push(`WARP: ${warp.reason}`);
 
     // Quick trade shortcuts: prefilled forms, gated by the trade envelope.
