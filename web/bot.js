@@ -1280,11 +1280,37 @@
     els.last.className = `result ${lr.ok ? "good" : "bad"}`;
     els.lastJson.textContent = JSON.stringify(lr, null, 2);
     state.lastText = text;  // CU surfaces never show turn_seq
+    paintResultCaption(lr);
     if (!state.toastPinned && (state.submittedSeq === undefined || lr.turn_seq >= state.submittedSeq)) {
       const dg = P.digestText(state.digest, lr.turn_seq);
       setToast(dg || text, lr.ok ? "good" : "bad");
     }
     renderCuCard();
+  }
+  function resultLine(lr) {
+    const seqs = new Set(lr.event_seqs || []);
+    const mine = state.events.filter((e) => seqs.has(e.seq) && e.summary && !(e.kind in P.HIDDEN_BY_DEFAULT)).map((e) => e.summary);
+    if (lr.ok) return mine.length ? mine.join(" · ") : "";
+    return String(lr.error || "rejected");
+  }
+  function paintResultCaption(lr) {
+    if (CU || !lr) return;
+    const cap = $("vpCaption");
+    const line = resultLine(lr);
+    if (!cap || !line) return;
+    const key = `${lr.turn_seq}:${line}`;
+    if (state.resultKey === key) return;
+    state.resultKey = key;
+    cap.setAttribute("data-result", line);
+    cap.setAttribute("data-result-until", String(Date.now() + 6000));
+    cap.textContent = line;
+    if (state.resultTimer) clearTimeout(state.resultTimer);
+    state.resultTimer = setTimeout(() => {
+      if (Number(cap.getAttribute("data-result-until") || 0) > Date.now()) return;
+      cap.removeAttribute("data-result");
+      cap.removeAttribute("data-result-until");
+      if (window.TW2KViewport && state.obs) window.TW2KViewport.update(state.obs);
+    }, 6000);
   }
 
   // ---------------------------------------------------------------- events (fogged stream)

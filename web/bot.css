@@ -130,6 +130,7 @@ body:not(.mode-cu) .turn-timer-fill { display: block; height: 100%; width: 0; ba
 body:not(.mode-cu) .turn-timer[data-level="amber"] .turn-timer-fill { background: var(--wait); }
 body:not(.mode-cu) .turn-timer[data-level="red"] .turn-timer-fill { background: var(--danger); }
 body.mode-cu .turn-timer { display: none !important; }
+body:not(.mode-cu) #vpCaption[data-result] { color: #ffe7b8; }
 body:not(.mode-cu) .scoreboard .score { flex: 0 0 156px; width: 156px; overflow: hidden; }
 body:not(.mode-cu) .scoreboard .score:has(#sbShip),
 body:not(.mode-cu) .scoreboard .score:has(#sbName),
