@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 12:50 PT - Fable - a credit change beside the balance
+- When this seat's credits change, the difference shows beside the number for about three seconds. The first look shows nothing.
+
 ### 2026-09-30 11:50 PT - Fable - the last result on the video caption
 - This seat's last action shows as one line on the video caption, then the sector line comes back after about six seconds.
 
