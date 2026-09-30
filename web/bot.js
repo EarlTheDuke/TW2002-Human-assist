@@ -493,6 +493,20 @@
     for (const n of nodes) addNode(n.id, pos[n.id], n);
   }
 
+  function paintHull(id, value, max) {
+    const row = document.querySelector(`[data-testid="${id}"]`);
+    if (!row) return;
+    const n = Number(value) || 0;
+    const cap = Number(max) || 0;
+    const pct = cap > 0 ? Math.max(0, Math.min(100, (n / cap) * 100)) : 0;
+    const fill = row.querySelector(".fill");
+    if (fill) fill.style.width = `${pct}%`;
+    const label = row.querySelector(".n");
+    if (label) label.textContent = id === "hull-genesis" ? fmt(n) : `${fmt(n)}/${fmt(cap)}`;
+    row.dataset.value = String(n);
+    row.dataset.max = String(cap);
+  }
+
   function renderShip(obs) {
     const sh = obs.ship || {};
     setText("shipClass", sh.class);
@@ -504,6 +518,10 @@
       ["Genesis", sh.genesis], ["Photons", sh.photon_missiles], ["Probes", sh.ether_probes],
       ["Fighters offline", sh.photon_disabled_ticks ? `${sh.photon_disabled_ticks} ticks` : "no"],
     ]);
+    paintHull("hull-holds", (Number(sh.holds) || 0) - (Number(sh.cargo_free) || 0), sh.holds);
+    paintHull("hull-fighters", sh.fighters, sh.fighter_cap);
+    paintHull("hull-shields", sh.shields, sh.shield_cap);
+    paintHull("hull-genesis", sh.genesis, sh.genesis);
     const b = tbody("cargoTable");
     const cargo = sh.cargo || {};
     const avg = sh.cargo_cost_avg || {};

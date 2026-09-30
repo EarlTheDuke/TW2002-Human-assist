@@ -297,6 +297,12 @@
           <div role="tabpanel" id="mfdPanelShip" aria-labelledby="mfdTabShip">
       <div class="card" id="shipCard" data-testid="ship" data-obs="ship">
         <h2>Ship <span class="badge" id="shipClass">-</span></h2>
+        <div id="hullBars" class="hull-bars" data-testid="hull-bars">
+          <div class="hull-bar" data-testid="hull-holds"><span class="k">Holds</span><span class="track"><span class="fill"></span></span><span class="n"></span></div>
+          <div class="hull-bar" data-testid="hull-fighters"><span class="k">Fighters</span><span class="track"><span class="fill"></span></span><span class="n"></span></div>
+          <div class="hull-bar" data-testid="hull-shields"><span class="k">Shields</span><span class="track"><span class="fill"></span></span><span class="n"></span></div>
+          <div class="hull-bar" data-testid="hull-genesis"><span class="k">Genesis</span><span class="track"><span class="fill"></span></span><span class="n"></span></div>
+        </div>
         <div class="kv" id="shipLoadout"></div>
         <table class="tape" id="cargoTable" data-testid="cargo">
           <thead><tr><th>Cargo</th><th>Qty</th><th>Cost avg</th><th>At cost</th></tr></thead>
