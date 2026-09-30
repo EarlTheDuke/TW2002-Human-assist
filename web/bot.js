@@ -578,6 +578,7 @@
       ["Fighters offline", sh.photon_disabled_ticks ? `${sh.photon_disabled_ticks} ticks` : "no"],
     ]);
     paintHull("hull-holds", (Number(sh.holds) || 0) - (Number(sh.cargo_free) || 0), sh.holds);
+    paintCargoTip(sh);
     paintHull("hull-fighters", sh.fighters, sh.fighter_cap);
     paintHull("hull-shields", sh.shields, sh.shield_cap);
     paintHull("hull-genesis", sh.genesis, sh.genesis);
@@ -596,6 +597,23 @@
       b.appendChild(tr);
     }
     if (!any) emptyRow(b, 4, "holds empty");
+  }
+
+  function paintCargoTip(sh) {
+    const tip = $("cargoTip");
+    if (!tip || CU) return;
+    const cargo = sh.cargo || {};
+    const names = { fuel_ore: "Fuel ore", organics: "Organics", equipment: "Equipment" };
+    const parts = COMMODITIES.map((c) => ({ name: names[c], n: Number(cargo[c]) || 0 }));
+    const held = parts.reduce((sum, p) => sum + p.n, 0);
+    if (!held) {
+      tip.textContent = "empty";
+      return;
+    }
+    const free = Number(sh.cargo_free);
+    const holds = Number(sh.holds);
+    const tail = Number.isFinite(free) && Number.isFinite(holds) ? `, empty ${fmt(free)} of ${fmt(holds)}` : "";
+    tip.textContent = parts.map((p) => `${p.name} ${fmt(p.n)}`).join(", ") + tail;
   }
 
   function renderKnownPorts(obs) {
