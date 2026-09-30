@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 09:55 PT - Fable - a pause strip on the video and the spectator map
+- When the match is paused, a strip on the cockpit video and the spectator page says Match paused. If the feed already has a seat-drop line, that line is on the strip too. It goes away when the match runs, and the map stays where it was.
+
 ### 2026-09-30 08:06 PT - Fable - a hotkey list on the ship bar
 - A ? on the ship cell opens a short list of the keys this cockpit already uses. Esc or ? closes it. The map and the side screen stay where they were.
 

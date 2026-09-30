@@ -176,6 +176,14 @@ body:not(.mode-cu) .keys-help {
   font: 12px/1.4 ui-monospace, Consolas, monospace;
 }
 body:not(.mode-cu) .keys-help[hidden] { display: none !important; }
+body:not(.mode-cu) .paused-banner {
+  position: absolute; left: 8%; right: 8%; top: 10px; z-index: 6; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+  padding: 6px 12px; border-radius: 999px; border: 1px solid #e2b15a;
+  background: rgba(58, 42, 16, 0.92); color: #ffd27a; font-size: 13px; font-weight: 800;
+}
+body:not(.mode-cu) .paused-banner[hidden], body.mode-cu .paused-banner { display: none !important; }
+body:not(.mode-cu) .paused-banner .paused-reason { font-size: 12px; font-weight: 650; color: #ffe7b8; }
 body:not(.mode-cu) .keys-help ul { list-style: none; margin: 4px 0 0; padding: 0; }
 body:not(.mode-cu) .keys-help kbd { display: inline-block; min-width: 2.6em; font-weight: 800; }
 body:not(.mode-cu) .hull-bars { display: grid; gap: 4px; margin: 0 0 8px; }

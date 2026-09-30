@@ -1319,6 +1319,25 @@
       if (e && (e.status === 401 || e.status === 403)) throw e;
     }
   }
+  const SEAT_DROP_LINE = /^seat \S+ disconnected - match paused$/;
+  function seatDropLine(events) {
+    const list = events || [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const summary = String((list[i] && list[i].summary) || "");
+      if (SEAT_DROP_LINE.test(summary)) return summary;
+    }
+    return "";
+  }
+  function paintPausedBanner() {
+    const el = $("pausedBanner");
+    const reason = $("pausedReason");
+    if (!el || !reason) return;
+    const paused = state.matchStatus === "paused";
+    const line = paused ? seatDropLine(state.events) : "";
+    el.hidden = !paused;
+    reason.hidden = !line;
+    reason.textContent = line;
+  }
   function renderEvents() {
     const filter = state.eventFilter;
     const opts = { ...state.show, seat: state.seat };
@@ -1342,6 +1361,7 @@
     renderCuEvents();
     renderCuCard();
     renderAlert();
+    paintPausedBanner();
   }
   function renderAlert() {
     const lamp = $("alertLamp");
@@ -1746,6 +1766,7 @@
     }
     if (typeof st.server_time === "number") state.clockSkew = st.server_time - Date.now() / 1000;
     state.matchStatus = st.match_status || "";
+    paintPausedBanner();
     state.day = st.day; state.tick = st.tick;
     state.current = st.current_turn || null;
     if (st.last_result) state.lastResult = st.last_result;
