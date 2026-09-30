@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 17:00 PT - Fable - explored count in the known-space header
+- The Known space header shows how many sectors this seat already has on its map. Another seat's memory is not included.
+
 ### 2026-09-30 14:50 PT - Fable - cargo on the holds bar
 - Hovering or focusing the holds bar lists this seat's cargo. An empty hold says empty. The bar does not grow.
 

@@ -215,6 +215,7 @@ body:not(.mode-cu) .cargo-tip {
 body:not(.mode-cu) [data-testid="hull-holds"]:hover .cargo-tip,
 body:not(.mode-cu) [data-testid="hull-holds"]:focus-within .cargo-tip { display: block; }
 body.mode-cu .cargo-tip { display: none !important; }
+body.mode-cu #knownWarpsCount { display: none !important; }
 body:not(.mode-cu) .hull-bar .track { height: 8px; border-radius: 999px; background: #0b1020; border: 1px solid #3a466e; overflow: hidden; }
 body:not(.mode-cu) .hull-bar .fill { display: block; height: 100%; width: 0; background: var(--seat-frame); }
 body:not(.mode-cu) .spool { flex: 0 0 88px; align-self: center; height: 10px; border-radius: 999px; border: 1px solid var(--seat-frame); overflow: hidden; background: #0b1020; }
