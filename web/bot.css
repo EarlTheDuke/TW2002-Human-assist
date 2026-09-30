@@ -163,6 +163,21 @@ body:not(.mode-cu) .computer-page {
   background: #070b16; color: #d7e0ff; font: 12px/1.35 ui-monospace, Consolas, monospace; white-space: pre;
 }
 body:not(.mode-cu) .computer-page[hidden] { display: none !important; }
+body:not(.mode-cu) [data-testid=inst-ship] { position: relative; }
+body:not(.mode-cu) .keys-help-btn {
+  position: absolute; top: 2px; right: 2px; z-index: 2; width: 22px; height: 22px; padding: 0;
+  border-radius: 999px; border: 1px solid #3a466e; background: #141a2e; color: var(--text);
+  font-size: 13px; font-weight: 800; line-height: 20px; cursor: pointer;
+}
+body.mode-cu .keys-help, body.mode-cu .keys-help-btn { display: none !important; }
+body:not(.mode-cu) .keys-help {
+  position: fixed; z-index: 30; margin: 0; padding: 8px 12px; width: max-content; max-width: 240px;
+  background: #070b16; color: #d7e0ff; border: 1px solid var(--seat-frame); border-radius: 8px;
+  font: 12px/1.4 ui-monospace, Consolas, monospace;
+}
+body:not(.mode-cu) .keys-help[hidden] { display: none !important; }
+body:not(.mode-cu) .keys-help ul { list-style: none; margin: 4px 0 0; padding: 0; }
+body:not(.mode-cu) .keys-help kbd { display: inline-block; min-width: 2.6em; font-weight: 800; }
 body:not(.mode-cu) .hull-bars { display: grid; gap: 4px; margin: 0 0 8px; }
 body:not(.mode-cu) .hull-bar { display: grid; grid-template-columns: 4.6rem 1fr auto; gap: 6px; align-items: center; font-size: 12px; }
 body:not(.mode-cu) .hull-bar .track { height: 8px; border-radius: 999px; background: #0b1020; border: 1px solid #3a466e; overflow: hidden; }
