@@ -2943,9 +2943,30 @@
     el.addEventListener("change", () => {
       state.filters[key] = el.checked;
       rememberFeedFilters();
+      paintFeedReset();
       render();
     });
   });
+  function paintFeedReset() {
+    const btn = document.querySelector("[data-testid=feed-filter-reset]");
+    if (!btn) return;
+    btn.hidden = FEED_FILTERS.every((k) => state.filters[k] !== false);
+  }
+  const feedReset = document.querySelector("[data-testid=feed-filter-reset]");
+  if (feedReset) {
+    feedReset.addEventListener("click", () => {
+      document.querySelectorAll(".filter-group input[data-filter]").forEach((el) => {
+        const key = el.dataset.filter;
+        if (!FEED_FILTERS.includes(key)) return;
+        el.checked = true;
+        state.filters[key] = true;
+      });
+      rememberFeedFilters();
+      paintFeedReset();
+      render();
+    });
+  }
+  paintFeedReset();
 
   // Actor filter — select dropdown (rebuilt whenever the roster changes
   // via refreshActorFilterOptions). Selection persists across reloads so
