@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 06:10 PT - Fable - the key list includes Enter and Space
+- The ? overlay now also lists Enter, which confirms a trade from the quantity box, and Space, which plots the focused sector. The keys themselves are unchanged.
+
 ### 2026-10-01 04:55 PT - Fable - a dot on sectors this seat has scanned
 - A sector this seat has scanned from the inside gets a small filled dot beside its number. A sector it only passed through keeps the dashed ring and no dot.
 
