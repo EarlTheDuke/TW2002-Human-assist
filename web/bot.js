@@ -2473,6 +2473,7 @@
     ["S", "Scan"],
     ["1-9", "Warp"],
     ["H", "Hold slot"],
+    ["P", "Plot course"],
     ["?", "This list"],
     ["Esc", "Close this list"],
     ["Enter", "Confirm trade"],
@@ -2513,6 +2514,7 @@
     if (/^[1-9]$/.test(ev.key || "")) return "1-9";
     if (low === "s") return "S";
     if (low === "h") return "H";
+    if (low === "p") return "P";
     return "";
   }
   paintKeys();
@@ -2556,6 +2558,15 @@
         ev.preventDefault();
         const btn = $("verbPad").querySelector("button[data-verb=scan]");
         if (btn && !btn.disabled) btn.click();
+        return;
+      }
+      if (id === "P") {
+        const btn = $("verbPad").querySelector("button[data-verb=plot_course]");
+        if (!btn || btn.disabled || !canUse("plot_course")) return;
+        ev.preventDefault();
+        btn.click();
+        const input = $("verbForm").querySelector("[data-testid=plot-target]");
+        if (input) input.focus();
         return;
       }
       if (id !== "H") return;

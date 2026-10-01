@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 12:35 PT - Fable - P opens the plot course box
+- On the cockpit, P opens the plot course form that is already on the page and focuses its target field. It does nothing while you are typing or while an overlay is open. The computer-use page is unchanged and still has its own P. The ? list includes it.
+
 ### 2026-10-01 11:30 PT - Fable - a net-worth arrow on the spectator leaderboard
 - Each commander's net worth gets a small green up arrow or red down arrow when it moves from the last number the page showed. A commander whose worth has not moved has no arrow.
 
