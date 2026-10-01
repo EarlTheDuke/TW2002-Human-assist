@@ -140,7 +140,10 @@
             <input id="replayScrub" type="range" min="0" max="0" value="0" step="1" />
             <span id="replayLabel" class="replay-label">live</span>
           </div>
-          <ol id="eventFeed" class="event-feed"></ol>
+          <div class="event-feed-wrap">
+            <ol id="eventFeed" class="event-feed"></ol>
+            <button type="button" class="feed-jump" data-testid="feed-jump-latest" hidden>Jump to latest</button>
+          </div>
         </div>
       </section>
     </div>

@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 09:50 PT - Fable - jump back to the newest spectator event
+- When the event feed is scrolled up, a small Jump to latest link sits on its bottom edge. Clicking it returns to the newest event and the link goes away. It stays hidden while the feed is already at the bottom, and it does not make the page taller.
+
 ### 2026-10-01 09:10 PT - Fable - a quiet line for this seat's last trade
 - The Moments tab shows one line for this seat's latest trade, such as Last trade: BUY 10 equipment @ 30 = 300 cr. It stays blank until this seat has traded, and it is absent on the computer-use page.
 

@@ -2230,7 +2230,19 @@
     return h;
   }
 
+  function feedPinned() {
+    if (!eventFeed) return true;
+    if (eventFeed.scrollHeight <= eventFeed.clientHeight + 1) return true;
+    return eventFeed.scrollHeight - eventFeed.clientHeight - eventFeed.scrollTop <= 8;
+  }
+  function paintFeedJump() {
+    const btn = document.querySelector("[data-testid=feed-jump-latest]");
+    if (!btn) return;
+    btn.hidden = feedPinned();
+  }
   function renderEvents() {
+    const pinned = feedPinned();
+    const saved = eventFeed.scrollTop;
     eventFeed.innerHTML = "";
     let source = state.events;
     if (state.replay.mode === "scrub" && state.replay.cursorIndex >= 0) {
@@ -2241,7 +2253,9 @@
       if (!eventPassesFilter(ev)) continue;
       eventFeed.appendChild(renderEventRow(ev));
     }
-    eventFeed.scrollTop = eventFeed.scrollHeight;
+    if (pinned) eventFeed.scrollTop = eventFeed.scrollHeight;
+    else eventFeed.scrollTop = saved;
+    paintFeedJump();
     renderScrubber();
     renderHighlightsReel();
   }
@@ -2554,6 +2568,14 @@
     // actor filter, sector drawer, and thought expansion so we don't
     // re-wire after every renderEvents() pass.
     if (eventFeed) eventFeed.addEventListener("click", handleEventRowClick);
+    if (eventFeed) eventFeed.addEventListener("scroll", paintFeedJump);
+    const feedJump = document.querySelector("[data-testid=feed-jump-latest]");
+    if (feedJump) {
+      feedJump.addEventListener("click", () => {
+        eventFeed.scrollTop = eventFeed.scrollHeight;
+        paintFeedJump();
+      });
+    }
     const reelList = document.getElementById("highlightsList");
     if (reelList) reelList.addEventListener("click", handleEventRowClick);
     // Phase B click delegation — leaderboard rows + Ferrengi chips.
