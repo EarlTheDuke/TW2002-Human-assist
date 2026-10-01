@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 11:30 PT - Fable - a net-worth arrow on the spectator leaderboard
+- Each commander's net worth gets a small green up arrow or red down arrow when it moves from the last number the page showed. A commander whose worth has not moved has no arrow.
+
 ### 2026-10-01 10:50 PT - Fable - a count when the spectator feed is filtered
 - The filter row says showing 42 of 120 when a category or the actor filter hides events. The count goes away when every event in the feed is still showing.
 

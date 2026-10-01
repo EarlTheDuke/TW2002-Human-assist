@@ -1748,6 +1748,18 @@
   // shows the compact "comparison card": rank, color dot, name,
   // net worth, planets owned, total citadel investment, kills (ship
   // destructions we have attributed to them), deaths.
+  const prevNet = new Map();
+  const netTrend = new Map();
+  function netTrendDir(pid, nw) {
+    const prev = prevNet.get(pid);
+    let dir = netTrend.get(pid) || "";
+    if (prev == null) dir = "";
+    else if (nw > prev) dir = "up";
+    else if (nw < prev) dir = "down";
+    prevNet.set(pid, nw);
+    netTrend.set(pid, dir);
+    return dir;
+  }
   function renderLeaderboardInto(root) {
     const players = Array.from(state.players.values());
     if (!players.length) {
@@ -1780,13 +1792,17 @@
     root.innerHTML = `<div class="lb-title">Leaderboard <span class="lb-hint">click row to follow</span></div>`
       + `<div class="lb-rows">${ranked.map((p, i) => {
           const nw = p.net_worth || p.credits || 0;
+          const dir = netTrendDir(p.id, nw);
+          const arrow = dir
+            ? `<span class="lb-trend ${dir}" data-trend="${dir}" aria-label="${dir}">${dir === "up" ? "▲" : "▼"}</span>`
+            : "";
           const pct = top > 0 ? Math.max(2, Math.round((nw / top) * 100)) : 0;
           const dead = !p.alive ? " dead" : "";
           return `<button class="lb-row${dead}" data-lb-player="${esc(p.id)}" title="${esc(p.name)} — click to open details and follow">
             <span class="lb-rank">${i + 1}</span>
             <span class="lb-dot" style="background:${p.color || "#6ee7ff"}"></span>
             <span class="lb-name">${esc(p.name)}${p.alive ? "" : " †"}</span>
-            <span class="lb-nw" title="net worth">${fmt(nw)}</span>
+            <span class="lb-nw" title="net worth">${fmt(nw)}${arrow}</span>
             <span class="lb-bar"><span class="lb-bar-fill" style="width:${pct}%; background:${p.color || "#6ee7ff"}"></span></span>
             <span class="lb-stat" title="planets owned">🪐 ${owned.get(p.id) || 0}</span>
             <span class="lb-stat" title="sum of all citadel levels">🏰 ${citLevels.get(p.id) || 0}</span>
