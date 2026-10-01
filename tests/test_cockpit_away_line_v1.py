@@ -45,6 +45,32 @@ def _action(request) -> dict:
     return json.loads(request.post_data or "{}").get("action") or {}
 
 
+def _hits(a: dict | None, b: dict | None) -> bool:
+    if not a or not b or a["w"] <= 0 or b["w"] <= 0 or a["h"] <= 0 or b["h"] <= 0:
+        return False
+    return a["x"] < b["right"] and b["x"] < a["right"] and a["y"] < b["bottom"] and b["y"] < a["bottom"]
+
+
+def _assert_clear(page) -> None:
+    boxes = page.evaluate(
+        """() => {
+          const box = (el) => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return {x: r.x, y: r.y, right: r.right, bottom: r.bottom, w: r.width, h: r.height};
+          };
+          return {
+            away: box(document.querySelector('[data-testid=away-line]')),
+            who: box(document.querySelector('#turnBanner .who')),
+            timer: box(document.querySelector('[data-testid=turn-timer]')),
+          };
+        }"""
+    )
+    assert boxes["away"] and boxes["who"] and boxes["timer"], boxes
+    assert not _hits(boxes["away"], boxes["who"]), boxes
+    assert not _hits(boxes["away"], boxes["timer"]), boxes
+
+
 def test_away_line_counts_events_from_before_the_load(browser, tmp_path, monkeypatch) -> None:
     monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
     with CuHost(tmp_path, TOK) as host:
@@ -74,6 +100,12 @@ def test_away_line_counts_events_from_before_the_load(browser, tmp_path, monkeyp
         assert text.startswith("While you were away:")
         assert "warp" in text
         _assert_layout(page, 1440)
+        _assert_clear(page)
+        page.set_viewport_size({"width": 1920, "height": 1080})
+        page.evaluate("() => window.scrollTo(0, 0)")
+        _assert_layout(page, 1920)
+        _assert_clear(page)
+        page.set_viewport_size({"width": 1440, "height": 900})
 
         with page.expect_request(
             lambda r: r.method == "POST" and r.url.endswith("/action"), timeout=15_000,

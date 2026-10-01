@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 03:10 PT - Fable - the away line sits beside the countdown
+- The line that counts what happened before the page loaded now shares a row with the respond-within text, one on each side, and stays above the timer. The banner stays 92 px tall.
+
 ### 2026-10-01 02:30 PT - Fable - a line for what happened while the page was closed
 - When the cockpit loads onto events that already happened, one quiet line under the turn banner counts them. It goes away on the next action, or after 20 seconds. A quiet match shows nothing.
 
