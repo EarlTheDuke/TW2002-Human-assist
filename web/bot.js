@@ -301,7 +301,7 @@
   function renderScoreboard(obs) {
     setText("sbName", `${obs.self_name || ""} (${obs.self_id || ""})`);
     setText("sbDay", obs.max_days ? Math.min(obs.day, obs.max_days) : obs.day); setText("sbMaxDays", obs.max_days); setText("sbTick", obs.tick);
-    setText("sbTurns", obs.turns_remaining); setText("sbTpd", obs.turns_per_day);
+    paintTurnsLeft(obs);
     paintCredits(obs); setText("sbNetWorth", fmt(obs.net_worth));
     setText("sbRank", obs.rank); setText("sbXp", fmt(obs.experience));
     setText("sbAlignLabel", obs.alignment_label); setText("sbAlign", obs.alignment);
@@ -327,6 +327,19 @@
     setText("sbStage", P.stageText(sh));
     $("sbStageDetail").textContent = P.stageDetail(sh);
   }
+  function paintTurnsLeft(obs) {
+    setText("sbTurns", obs.turns_remaining);
+    setText("sbTpd", obs.turns_per_day);
+    const el = $("sbTurns");
+    if (!el) return;
+    el.removeAttribute("data-level");
+    if (CU) return;
+    const n = Number(obs.turns_remaining);
+    if (!Number.isFinite(n)) return;
+    if (n <= 3) el.setAttribute("data-level", "red");
+    else if (n <= 10) el.setAttribute("data-level", "amber");
+  }
+
   function paintCredits(obs) {
     const el = $("sbCredits");
     const next = Number(obs && obs.credits);

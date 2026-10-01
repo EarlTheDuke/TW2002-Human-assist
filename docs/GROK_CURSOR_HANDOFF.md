@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 17:50 PT - Fable - a warning on low turns
+- Turns Left turns amber at 10 and red at 3. At 3 or fewer a mark appears in front of the number. The digits stay the same.
+
 ### 2026-09-30 17:00 PT - Fable - explored count in the known-space header
 - The Known space header shows how many sectors this seat already has on its map. Another seat's memory is not included.
 
