@@ -1234,13 +1234,14 @@
       const execWrap = document.createElement("label"); execWrap.className = "radios"; const el2 = document.createElement("label"); el2.appendChild(exec); el2.appendChild(document.createTextNode("Execute (fly the route now, one warp cost per hop)")); execWrap.appendChild(el2); f.appendChild(execWrap);
       const sync = () => {
         const raw = target.value;
-        if (raw === "") { state.routePath = null; if (state.obs) renderKnownMap(state.obs); preview.textContent = "enter a target sector"; return; }
+        if (raw === "") { state.routePath = null; paintRouteCost(); if (state.obs) renderKnownMap(state.obs); preview.textContent = "enter a target sector"; return; }
         const t = Number(raw);
         if (!Number.isFinite(t) || !Number.isInteger(t) || t < 1) { preview.textContent = "enter a valid sector"; return; }
         const here = Number((state.obs.sector || {}).id) || 0;
         if (t === here) { preview.textContent = "you are already here"; return; }
         const path = knownRoute(state.obs, t);
         state.routePath = path && path.path && path.path.length > 1 ? path.path : null;
+        paintRouteCost();
         if (state.obs) renderKnownMap(state.obs);
         if (!path) { preview.textContent = "route shown after plotting"; return; }
         const fly = exec.checked ? " · executes" : " · plan only (0 turns)";
@@ -1275,6 +1276,27 @@
 
   // Presentation-only BFS over warps this seat already has: its remembered
   // graph, plus the exits of the sector it is standing in. No server call.
+  function paintRouteCost() {
+    const el = $("routeCost");
+    if (!el) return;
+    const path = state.routePath;
+    if (CU || !path || path.length < 2) {
+      el.hidden = true;
+      el.textContent = "";
+      el.removeAttribute("data-hops");
+      el.removeAttribute("data-turns");
+      return;
+    }
+    const hops = path.length - 1;
+    const per = Number(legalOf("warp").turn_cost) || 0;
+    const exec = document.querySelector("[data-testid=plot-execute]");
+    const turns = exec && !exec.checked ? 0 : hops * per;
+    el.hidden = false;
+    el.dataset.hops = String(hops);
+    el.dataset.turns = String(turns);
+    el.textContent = `${hops} hop${hops === 1 ? "" : "s"} · ${turns} turn${turns === 1 ? "" : "s"}`;
+  }
+
   function knownRoute(obs, dst) {
     const src = (obs && obs.sector && obs.sector.id) || 0;
     if (!src || !dst) return null;
