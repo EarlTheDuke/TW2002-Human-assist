@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 20:30 PT - Fable - a mark when the hold is full
+- When this seat's holds are completely full, the used number turns amber and a mark sits in front of it. The digits stay the same.
+
 ### 2026-09-30 18:50 PT - Fable - the tab title follows the turn
 - While it is this seat's turn the browser tab starts with YOUR TURN. When the turn is over, that prefix goes away. The page itself does not move.
 

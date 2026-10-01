@@ -141,6 +141,8 @@ body:not(.mode-cu) .credits-delta[hidden], body.mode-cu .credits-delta { display
 body:not(.mode-cu) #sbTurns[data-level="amber"] { color: var(--wait); }
 body:not(.mode-cu) #sbTurns[data-level="red"] { color: var(--danger); }
 body:not(.mode-cu) #sbTurns[data-level="red"]::before { content: "!"; }
+body:not(.mode-cu) [data-testid="hull-holds"][data-level="full"] .n { color: var(--wait); }
+body:not(.mode-cu) [data-testid="hull-holds"][data-level="full"] .n::before { content: "!"; }
 body:not(.mode-cu) #vpCaption[data-result] { color: #ffe7b8; }
 body:not(.mode-cu) .scoreboard .score { flex: 0 0 156px; width: 156px; overflow: hidden; }
 body:not(.mode-cu) .scoreboard .score:has(#sbShip),
