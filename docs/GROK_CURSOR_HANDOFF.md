@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 16:15 PT - Fable - a ports list on the Computer page
+- The Computer page lists every port this seat has already seen, with its code, prices, and how many days ago it was seen, plus the best buy-then-sell pair and how many warps apart those ports are. Clicking a row opens plot course and does not send it. The list stays inside the side screen.
+
 ### 2026-10-01 15:10 PT - Fable - a hover line on each feed category
 - Hovering a spectator feed category box names what that box shows, such as Trade: buys and sells at ports. The boxes themselves look the same.
 

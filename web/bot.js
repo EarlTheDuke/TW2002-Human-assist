@@ -1401,6 +1401,122 @@
     return null;
   }
 
+  function hopsBetween(obs, src, dst) {
+    src = Number(src);
+    dst = Number(dst);
+    if (!src || !dst) return null;
+    if (src === dst) return 0;
+    const kw = Object.assign({}, (obs && obs.known_warps) || {});
+    const hereId = (obs.sector && obs.sector.id) || 0;
+    const here = (obs.sector && obs.sector.warps_out) || [];
+    if (here.length && hereId && !kw[String(hereId)]) kw[String(hereId)] = here;
+    const seen = new Set([src]);
+    let frontier = [src];
+    let d = 0;
+    while (frontier.length && d < 60) {
+      d += 1;
+      const next = [];
+      for (const id of frontier) {
+        for (const n of kw[String(id)] || []) {
+          if (n === dst) return d;
+          if (!seen.has(n)) { seen.add(n); next.push(n); }
+        }
+      }
+      frontier = next;
+    }
+    return null;
+  }
+
+  function portAge(p) {
+    if (p.age_days === undefined || p.age_days === null) return "seen -";
+    if (Number(p.age_days) === 0) return "seen today";
+    return `seen ${p.age_days}d ago`;
+  }
+
+  function portSidePrice(p, commodity) {
+    const st = (p.stock || {})[commodity];
+    if (!st || st.price === undefined || st.price === null) return "-";
+    const side = st.side === "buys_from_player" ? "sell" : st.side === "sells_to_player" ? "buy" : "";
+    return side ? `${side} ${fmt(st.price)}` : fmt(st.price);
+  }
+
+  function bestPortPairs(obs) {
+    const ports = obs.known_ports || [];
+    const found = [];
+    for (const c of COMMODITIES) {
+      const buys = [];
+      const sells = [];
+      for (const p of ports) {
+        const st = (p.stock || {})[c];
+        if (!st || st.price === undefined || st.price === null) continue;
+        const quote = { sector: Number(p.sector_id), price: Number(st.price) };
+        if (st.side === "sells_to_player") buys.push(quote);
+        else if (st.side === "buys_from_player") sells.push(quote);
+      }
+      let best = null;
+      for (const b of buys) {
+        for (const s of sells) {
+          if (b.sector === s.sector) continue;
+          const margin = s.price - b.price;
+          if (margin <= 0) continue;
+          const hops = hopsBetween(obs, b.sector, s.sector);
+          const cand = { c, b, s, margin, hops };
+          if (!best || margin > best.margin || (margin === best.margin && b.sector < best.b.sector)) best = cand;
+        }
+      }
+      if (best) found.push(best);
+    }
+    found.sort((a, b) => b.margin - a.margin || a.b.sector - b.b.sector);
+    return found;
+  }
+
+  function pairLine(pair) {
+    const apart = pair.hops === null ? "route unknown" : `${pair.hops} warp${pair.hops === 1 ? "" : "s"} apart`;
+    return `buy ${pair.c} at sector ${pair.b.sector} @ ${fmt(pair.b.price)}, sell at sector ${pair.s.sector} @ ${fmt(pair.s.price)}, +${fmt(pair.margin)} per unit, ${apart}`;
+  }
+
+  function paintKnownPortBook(obs) {
+    const book = $("knownPortBook");
+    if (!book || CU) return;
+    book.innerHTML = "";
+    const ports = [...(obs.known_ports || [])].sort((a, b) => (a.age_days ?? 999) - (b.age_days ?? 999) || a.sector_id - b.sector_id);
+    const head = document.createElement("div");
+    head.className = "book-h";
+    head.textContent = "Ports this ship has seen";
+    book.appendChild(head);
+    if (!ports.length) {
+      const empty = document.createElement("div");
+      empty.setAttribute("data-testid", "known-port-empty");
+      empty.textContent = "no ports visited yet";
+      book.appendChild(empty);
+    }
+    const here = (obs.sector || {}).id;
+    for (const p of ports) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("data-testid", `known-port-row-${p.sector_id}`);
+      const prices = COMMODITIES.map((c) => `${SHORT[c]} ${portSidePrice(p, c)}`).join("  ");
+      const where = Number(p.sector_id) === Number(here) ? `${p.sector_id} (here)` : String(p.sector_id);
+      btn.textContent = `${where}  ${p.class || "?"}  ${portAge(p)}  ${prices}`;
+      btn.addEventListener("click", () => {
+        const id = Number(p.sector_id);
+        if (id === Number(here)) return;
+        if (!canUse("plot_course")) return;
+        openVerb("plot_course", { target: id });
+      });
+      book.appendChild(btn);
+    }
+    const pairsHead = document.createElement("div");
+    pairsHead.className = "book-h";
+    pairsHead.textContent = "Best pairs";
+    book.appendChild(pairsHead);
+    const pairs = document.createElement("div");
+    pairs.setAttribute("data-testid", "known-port-pairs");
+    const lines = bestPortPairs(obs);
+    pairs.textContent = lines.length ? lines.map(pairLine).join("\n") : "no pair yet";
+    book.appendChild(pairs);
+  }
+
   function renderControls(obs) { renderVerbPad(obs); renderQuickTrades(); renderCuQuickTrades(); }
 
   function computerText(obs) {
@@ -1443,13 +1559,19 @@
     if (!btn || !page || CU) return;
     btn.setAttribute("aria-pressed", on ? "true" : "false");
     page.hidden = !on;
+    const book = $("knownPortBook");
+    if (book) book.hidden = !on;
     if (remember && state.seat) sessionStorage.setItem("tw2k_computer_" + state.seat, on ? "1" : "0");
-    if (on && state.obs) page.textContent = computerText(state.obs);
+    if (on && state.obs) {
+      page.textContent = computerText(state.obs);
+      paintKnownPortBook(state.obs);
+    }
   }
   function paintComputer(obs) {
     const page = $("computerPage");
     if (!page || page.hidden) return;
     page.textContent = computerText(obs);
+    paintKnownPortBook(obs);
   }
 
   function renderObservation(obs, isPeek) {
