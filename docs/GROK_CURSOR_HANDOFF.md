@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 04:55 PT - Fable - a dot on sectors this seat has scanned
+- A sector this seat has scanned from the inside gets a small filled dot beside its number. A sector it only passed through keeps the dashed ring and no dot.
+
 ### 2026-10-01 03:50 PT - Fable - a color mark on the followed player's events
 - On the spectator feed, lines from the player the map is following get a thin mark in that player's color. Choosing All players leaves every line plain.
 
