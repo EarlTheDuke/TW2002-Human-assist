@@ -2296,6 +2296,7 @@
     opts = opts || {};
     const meta = kindMeta(ev.kind);
     const li = document.createElement("li");
+    li.title = `Day ${ev.day || 0}, turn ${ev.tick || 0}`;
     li.dataset.kind = ev.kind;
     li.dataset.seq = ev.seq != null ? String(ev.seq) : "";
     if (ev.actor_id) li.dataset.actor = ev.actor_id;
