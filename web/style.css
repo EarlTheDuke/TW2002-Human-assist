@@ -2221,6 +2221,9 @@ svg.spark { display: block; }
   font-family: "JetBrains Mono", "Consolas", monospace;
   text-align: right;
 }
+.leaderboard-strip .lb-trend { font-size: 9px; margin-left: 2px; }
+.leaderboard-strip .lb-trend.up { color: var(--good); }
+.leaderboard-strip .lb-trend.down { color: var(--danger); }
 .leaderboard-strip .lb-bar {
   display: inline-block;
   height: 4px;
