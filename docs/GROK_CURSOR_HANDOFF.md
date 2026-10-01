@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 15:10 PT - Fable - a hover line on each feed category
+- Hovering a spectator feed category box names what that box shows, such as Trade: buys and sells at ports. The boxes themselves look the same.
+
 ### 2026-10-01 13:55 PT - Fable - a time tooltip on spectator feed rows
 - Hovering a spectator feed row shows the full day and turn, such as Day 2, turn 14, from the day and tick the row already has. The row itself looks the same.
 
