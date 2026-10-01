@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 07:10 PT - Fable - the spectator tab shows the match day
+- The spectator browser tab reads TW2K - Day N/M - live, or paused, from the day and status the page already has. Until those are known, the tab keeps its plain title. The cockpit tab is unchanged.
+
 ### 2026-10-01 06:10 PT - Fable - the key list includes Enter and Space
 - The ? overlay now also lists Enter, which confirms a trade from the quantity box, and Space, which plots the focused sector. The keys themselves are unchanged.
 
