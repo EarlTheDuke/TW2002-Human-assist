@@ -2902,9 +2902,31 @@
   });
   modalClose.addEventListener("click", () => { gameOverModal.hidden = true; });
 
-  document.querySelectorAll(".filter-group input").forEach((el) => {
+  const FEED_FILTER_KEY = "tw2k:eventFilters";
+  const FEED_FILTERS = ["combat", "trade", "move", "thought", "system", "diplomacy"];
+  let unchecked = new Set();
+  try {
+    const raw = localStorage.getItem(FEED_FILTER_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(list)) unchecked = new Set(list.filter((k) => FEED_FILTERS.includes(k)));
+  } catch (_e) { /* storage disabled */ }
+  function rememberFeedFilters() {
+    const off = FEED_FILTERS.filter((k) => state.filters[k] === false);
+    try {
+      if (off.length) localStorage.setItem(FEED_FILTER_KEY, JSON.stringify(off));
+      else localStorage.removeItem(FEED_FILTER_KEY);
+    } catch (_e) { /* quota */ }
+  }
+  document.querySelectorAll(".filter-group input[data-filter]").forEach((el) => {
+    const key = el.dataset.filter;
+    if (!FEED_FILTERS.includes(key)) return;
+    if (unchecked.has(key)) {
+      el.checked = false;
+      state.filters[key] = false;
+    }
     el.addEventListener("change", () => {
-      state.filters[el.dataset.filter] = el.checked;
+      state.filters[key] = el.checked;
+      rememberFeedFilters();
       render();
     });
   });

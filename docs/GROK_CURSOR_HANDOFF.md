@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 00:30 PT - Fable - the spectator feed remembers its filters
+- Unchecked event-feed boxes stay unchecked after a reload. The choice lives in the browser, and a fresh visit still starts with every box on.
+
 ### 2026-09-30 23:50 PT - Fable - amber when credits fall under a thousand
 - The Credits box turns amber while this seat has fewer than 1,000 credits, and returns to normal at 1,000 or more. The number and the credit-change flash stay as they were.
 
