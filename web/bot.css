@@ -198,6 +198,17 @@ body:not(.mode-cu) .computer-page {
   background: #070b16; color: #d7e0ff; font: 12px/1.35 ui-monospace, Consolas, monospace; white-space: pre;
 }
 body:not(.mode-cu) .computer-page[hidden] { display: none !important; }
+body:not(.mode-cu) .known-port-book {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; max-height: 46%; overflow: auto;
+  margin: 0; padding: 6px 10px; background: #070b16; color: #d7e0ff;
+  border-top: 1px solid #243056; font: 12px/1.35 ui-monospace, Consolas, monospace;
+}
+body:not(.mode-cu) .known-port-book[hidden], body.mode-cu .known-port-book { display: none !important; }
+body:not(.mode-cu) .known-port-book .book-h { margin: 4px 0 2px; color: var(--muted); font-size: 11px; }
+body:not(.mode-cu) .known-port-book button {
+  display: block; width: 100%; margin: 0; padding: 1px 0; border: 0; background: transparent;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
 body:not(.mode-cu) [data-testid=inst-ship] { position: relative; }
 body:not(.mode-cu) .keys-help-btn {
   position: absolute; top: 2px; right: 2px; z-index: 2; width: 22px; height: 22px; padding: 0;
