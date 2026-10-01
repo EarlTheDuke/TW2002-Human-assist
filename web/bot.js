@@ -2447,6 +2447,8 @@
     ["H", "Hold slot"],
     ["?", "This list"],
     ["Esc", "Close this list"],
+    ["Enter", "Confirm trade"],
+    ["Space", "Plot sector"],
   ];
   function paintKeys() {
     const list = $("keysHelpList");

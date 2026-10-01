@@ -10,7 +10,7 @@ from tests._cu_host import VIEW_H, VIEW_W, CuHost
 
 TOK = "keys-help-v1-token-p2-000000000000"
 MAP_TOP = {1440: 714, 1920: 927}
-BOUND = ["S", "1-9", "H", "?", "Esc"]
+BOUND = ["S", "1-9", "H", "?", "Esc", "Enter", "Space"]
 
 
 def _open(page, host) -> None:
