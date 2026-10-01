@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 23:15 PT - Fable - hop and turn cost on a plotted route
+- Tapping a sector on the cockpit map shows how many hops the route is and how many turns flying it would cost. Clearing the route hides that line.
+
 ### 2026-09-30 22:00 PT - Fable - a ring on sectors this seat has left
 - On the cockpit map, a sector this seat has been through gets a dashed ring. The sector you are in stays as it was.
 

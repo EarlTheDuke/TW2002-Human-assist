@@ -331,7 +331,14 @@ footer.events { max-width: 2200px; margin: 0 auto; padding: 16px; }
 .ev.combat { border-left: 3px solid var(--danger); }
 .ev.new { background: #101a36; }
 /* ---- Parity S5: known-space map ---- */
+.known-map-frame { position: relative; }
 .known-map { width: 100%; height: 340px; background: #070b18; border: 1px solid #243056; border-radius: 12px; display: block; touch-action: manipulation; }
+body:not(.mode-cu) .route-cost {
+  position: absolute; left: 8px; bottom: 8px; z-index: 2; margin: 0; pointer-events: none;
+  padding: 3px 8px; border-radius: 999px; border: 1px solid #3a4a7a;
+  background: rgba(7, 11, 24, 0.92); color: #d5def6; font-size: 12px; font-weight: 700;
+}
+body:not(.mode-cu) .route-cost[hidden], body.mode-cu .route-cost { display: none !important; }
 body:not(.mode-cu) #colAct .known-map {
   width: min(100%, 760px);
   height: auto;
