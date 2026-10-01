@@ -209,6 +209,54 @@
     }
     paintTurnTimer();
     paintTabTitle();
+    paintAway();
+  }
+  function awaySummary(events) {
+    const counts = new Map();
+    for (const ev of events || []) {
+      if (!ev || !ev.kind || groupOf(ev.kind) === "system") continue;
+      counts.set(ev.kind, (counts.get(ev.kind) || 0) + 1);
+    }
+    if (!counts.size) return "";
+    const rank = (k) => (k === "warp" ? 0 : k === "trade" ? 1 : 2);
+    const parts = [...counts.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    const bits = parts.map(([k, n]) => {
+      const word = k.replace(/_/g, " ");
+      return `${n} ${word}${n === 1 ? "" : "s"}`;
+    });
+    return `While you were away: ${bits.join(", ")}`;
+  }
+  function paintAway() {
+    const banner = els.banner;
+    if (!banner) return;
+    let el = banner.querySelector("[data-testid=away-line]");
+    if (CU || !state.awayText) {
+      if (el) el.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement("span");
+      el.className = "away-line";
+      el.setAttribute("data-testid", "away-line");
+      banner.appendChild(el);
+    }
+    el.textContent = state.awayText;
+  }
+  function hideAway() {
+    state.awayText = "";
+    state.awayNoted = true;
+    if (state.awayTimer) { clearTimeout(state.awayTimer); state.awayTimer = 0; }
+    paintAway();
+  }
+  function noteAway(events) {
+    if (CU || state.awayNoted) return;
+    const text = awaySummary(events);
+    state.awayNoted = true;
+    if (!text) return;
+    state.awayText = text;
+    if (state.awayTimer) clearTimeout(state.awayTimer);
+    state.awayTimer = setTimeout(hideAway, 20000);
+    paintAway();
   }
   const BASE_TITLE = document.title;
   function paintTabTitle() {
@@ -1525,6 +1573,7 @@
         els.eventsMeta.textContent = `${state.events.length} visible events · latest seq ${r.latest_seq}`;
         if (state.mediaCaughtUp) break;
       }
+      if (!state.awayNoted) noteAway(state.events.filter((ev) => ev.seq <= state.mediaHistoryUntil));
       renderEvents();
       renderLastResult();
     } catch (e) {
@@ -2173,6 +2222,7 @@
   // ---------------------------------------------------------------- submit
   async function submit(action) {
     if (!state.awaiting || state.busy) return;
+    hideAway();
     state.busy = true;
     renderQuickTrades();
     setActionsEnabled(false);
@@ -2217,6 +2267,9 @@
     state.awaiting = false;
     state.events = [];
     state.eventsSince = 0;
+    state.awayNoted = false;
+    state.awayText = "";
+    if (state.awayTimer) { clearTimeout(state.awayTimer); state.awayTimer = 0; }
     state.mediaCaughtUp = false;
     state.mediaHistoryUntil = null;
     state.twin = null;

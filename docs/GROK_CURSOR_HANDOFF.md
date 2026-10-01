@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 02:30 PT - Fable - a line for what happened while the page was closed
+- When the cockpit loads onto events that already happened, one quiet line under the turn banner counts them. It goes away on the next action, or after 20 seconds. A quiet match shows nothing.
+
 ### 2026-10-01 01:30 PT - Fable - Enter confirms a trade quantity
 - In the cockpit trade form, Enter in the quantity box presses Confirm. A disabled Confirm does nothing. The computer-use page is unchanged.
 
