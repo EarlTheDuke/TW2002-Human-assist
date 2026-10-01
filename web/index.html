@@ -64,6 +64,20 @@
         </div>
         <div class="map-wrap panel-body">
           <svg id="galaxy" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="map-filters" id="mapFilters" data-testid="map-filters">
+            <button type="button" class="map-btn map-filter-btn" id="galaxyToggle" data-testid="galaxy-toggle" aria-pressed="false" title="Show the full galaxy">Galaxy</button>
+            <select id="mapFollowMode" data-testid="map-follow-mode" aria-label="Who to follow">
+              <option value="follow">Follow</option>
+              <option value="all">All players</option>
+              <option value="discovered">Only discovered</option>
+            </select>
+            <select id="mapFollowWho" data-testid="map-follow-player" aria-label="Follow player">
+              <option value="moving">Moving</option>
+            </select>
+            <label class="map-filter-check"><input type="checkbox" id="togglePlanets" data-testid="toggle-planets" checked> Planets</label>
+            <label class="map-filter-check"><input type="checkbox" id="togglePorts" data-testid="toggle-ports" checked> Ports</label>
+            <label class="map-filter-check"><input type="checkbox" id="toggleFerrengi" data-testid="toggle-ferrengi" checked> Ferrengi</label>
+          </div>
           <svg id="localMap" preserveAspectRatio="xMidYMid meet" hidden></svg>
           <div id="localMapEmpty" class="local-map-empty" hidden>
             Click any sector on the Galaxy map (or a sector ID in the drawer)

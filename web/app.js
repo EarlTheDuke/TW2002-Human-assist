@@ -30,6 +30,18 @@
     selectedSectorId: null,
     selectedPlayerId: null,
     followPlayerId: null,      // map camera locks on this player when set
+    moverId: null,             // last player who warped
+    seenSectors: new Set(),    // sectors learned from positions and public events
+    trail: [],                 // recent warps for the fading path
+    iconGlow: [],              // brief glow on trade, tax, or fight
+    mapClean: {
+      galaxy: false,
+      mode: "follow",          // follow | all | discovered
+      who: "moving",           // "moving" or a player id
+      planets: true,
+      ports: true,
+      ferrengi: true,
+    },
     hoverSectorId: null,       // transient; highlights a sector neighborhood while hovering
     reverseWarps: new Map(),   // id -> Set(ids that warp TO id). Built in buildMap.
     localView: {               // neighborhood subgraph mode
@@ -81,6 +93,8 @@
   const MAX_MESSAGES = 200;
   const MAX_RECENT_WARPS = 30;
   const RECENT_WARP_MS = 3500;
+  const TRAIL_MS = 12000;
+  const GLOW_MS = 2200;
   const COMBAT_FLASH_MS = 2200;
   const HAIL_BUBBLE_MS = 4500;
 
@@ -199,6 +213,11 @@
     state.events = [];
     state.messages = [];
     state.recentWarp = [];
+    state.seenSectors = new Set();
+    state.trail = [];
+    state.iconGlow = [];
+    state.moverId = null;
+    for (const p of state.players.values()) noteSeen(p.sector_id);
     state.day = 0;
     state.tick = 0;
     state.finished = false;
@@ -224,6 +243,7 @@
       for (const p of snap.players) {
         const cur = state.players.get(p.id) || {};
         state.players.set(p.id, Object.assign({}, cur, p));
+        noteSeen(p.sector_id);
       }
     }
     if (Array.isArray(snap.planets)) {
@@ -296,10 +316,24 @@
     if (ev.tick) state.tick = ev.tick;
     if (ev.day) state.day = ev.day;
 
-    // Track warps for animation
+    // Track warps for animation and for the discovered-sector filter.
+    noteSeen(eventSector(ev));
     if (ev.kind === "warp" && ev.payload && ev.payload.from && ev.payload.to) {
-      state.recentWarp.push({ from: ev.payload.from, to: ev.payload.to, t: Date.now(), actor: ev.actor_id });
+      noteSeen(ev.payload.from);
+      noteSeen(ev.payload.to);
+      const hop = { from: ev.payload.from, to: ev.payload.to, t: Date.now(), actor: ev.actor_id };
+      state.recentWarp.push(hop);
       if (state.recentWarp.length > MAX_RECENT_WARPS) state.recentWarp.shift();
+      state.trail.push(hop);
+      if (state.players.has(ev.actor_id)) {
+        state.moverId = ev.actor_id;
+        if (state.mapClean.mode === "follow" && state.mapClean.who === "moving") setFollow(ev.actor_id);
+      }
+    }
+    if (ev.kind === "trade" || ev.kind === "planet_tax_payout" || ev.kind === "combat"
+        || ev.kind === "ferrengi_attack") {
+      const sec = eventSector(ev);
+      if (sec != null) state.iconGlow.push({ sector_id: sec, t: Date.now(), kind: ev.kind });
     }
     // Combat flash triggers
     if (ev.kind === "combat" || ev.kind === "ship_destroyed" || ev.kind === "mine_detonated"
@@ -485,6 +519,23 @@
       if (s.has_planets) cls += " has-planet";
       c.setAttribute("class", cls);
       g.appendChild(c);
+      if (s.port) {
+        const mark = document.createElementNS(svgNS, "rect");
+        mark.setAttribute("x", s.x + 2.2);
+        mark.setAttribute("y", s.y - 3.4);
+        mark.setAttribute("width", "1.6");
+        mark.setAttribute("height", "1.6");
+        mark.setAttribute("class", "poi poi-port");
+        g.appendChild(mark);
+      }
+      if (s.has_planets) {
+        const mark = document.createElementNS(svgNS, "circle");
+        mark.setAttribute("cx", s.x - 2.6);
+        mark.setAttribute("cy", s.y - 2.2);
+        mark.setAttribute("r", "1.1");
+        mark.setAttribute("class", "poi poi-planet");
+        g.appendChild(mark);
+      }
 
       g.addEventListener("mouseenter", (e) => {
         showSectorTip(s, e);
@@ -517,6 +568,13 @@
     buildMiniMap();
     updateViewBox();
     applyFocusHighlight();
+    applyCleanMap();
+    if (!state.mapClean.galaxy && state.mapClean.mode === "follow" && !state.followPlayerId) {
+      const id = defaultFollowId();
+      if (id) setFollow(id);
+    } else if (!state.mapClean.galaxy) {
+      fitVisible();
+    }
   }
 
   // Apply focus classes so the map visually isolates one sector's
@@ -555,6 +613,146 @@
       if (a === fid || b === fid) ln.classList.add("focused-warp");
       else ln.classList.remove("focused-warp");
     });
+  }
+
+  function noteSeen(id) {
+    const n = Number(id);
+    if (!Number.isFinite(n)) return;
+    state.seenSectors.add(n);
+  }
+
+  function eventSector(ev) {
+    if (!ev) return null;
+    if (ev.sector_id != null) return ev.sector_id;
+    const payload = ev.payload || {};
+    return payload.sector_id || payload.sector || payload.to || null;
+  }
+
+  function defaultFollowId() {
+    if (state.mapClean.who !== "moving") return state.mapClean.who;
+    if (state.moverId && state.players.has(state.moverId)) return state.moverId;
+    const alive = Array.from(state.players.values()).filter((p) => p.alive);
+    return alive.length ? alive[0].id : null;
+  }
+
+  function discoveredIds() {
+    const seen = new Set(state.seenSectors);
+    for (const p of state.players.values()) noteSeen(p.sector_id);
+    for (const id of state.seenSectors) seen.add(id);
+    return seen;
+  }
+
+  // null means every sector (Galaxy toggle). Otherwise discovered sectors,
+  // plus one hop of neighbors unless the filter is "only discovered".
+  function visibleIds() {
+    if (state.mapClean.galaxy) return null;
+    const seen = discoveredIds();
+    if (state.mapClean.mode === "discovered") return seen;
+    const vis = new Set(seen);
+    for (const id of seen) {
+      const s = state.sectors.get(id);
+      if (s) for (const w of s.warps || []) vis.add(w);
+      const rev = state.reverseWarps.get(id);
+      if (rev) for (const w of rev) vis.add(w);
+    }
+    return vis;
+  }
+
+  function shownCount() {
+    if (state.mapClean.galaxy || state.sectors.size === 0) return state.sectors.size;
+    const vis = visibleIds();
+    return vis ? vis.size : state.sectors.size;
+  }
+
+  function applyCleanMap() {
+    if (!svg) return;
+    svg.classList.toggle("galaxy-full", !!state.mapClean.galaxy);
+    svg.classList.toggle("hide-ports", !state.mapClean.ports);
+    svg.classList.toggle("hide-planets", !state.mapClean.planets);
+    svg.classList.toggle("hide-ferrengi", !state.mapClean.ferrengi);
+    const vis = visibleIds();
+    svg.querySelectorAll("#sectors-layer > g[data-id]").forEach((g) => {
+      const id = Number(g.getAttribute("data-id"));
+      g.classList.toggle("map-off", vis != null && !vis.has(id));
+    });
+    const active = state.followPlayerId || state.moverId;
+    const player = active ? state.players.get(active) : null;
+    const sid = player ? player.sector_id : null;
+    const path = new Set();
+    for (const hop of state.trail) {
+      if (hop.actor !== active) continue;
+      path.add(`${hop.from}-${hop.to}`);
+      path.add(`${hop.to}-${hop.from}`);
+    }
+    svg.querySelectorAll("#warps-layer line.warp").forEach((ln) => {
+      const a = Number(ln.getAttribute("data-a"));
+      const b = Number(ln.getAttribute("data-b"));
+      const onPath = path.has(`${a}-${b}`);
+      const neighbor = sid != null && (a === sid || b === sid);
+      ln.classList.toggle("warp-live", onPath || neighbor);
+    });
+    const now = Date.now();
+    state.iconGlow = state.iconGlow.filter((g) => now - g.t < GLOW_MS);
+    const glowing = new Set(state.iconGlow.map((g) => Number(g.sector_id)));
+    svg.querySelectorAll("#sectors-layer .poi").forEach((el) => {
+      const id = Number(el.parentNode && el.parentNode.getAttribute("data-id"));
+      el.classList.toggle("poi-glow", glowing.has(id));
+    });
+    const galaxyBtn = document.getElementById("galaxyToggle");
+    if (galaxyBtn) {
+      galaxyBtn.classList.toggle("active", !!state.mapClean.galaxy);
+      galaxyBtn.setAttribute("aria-pressed", state.mapClean.galaxy ? "true" : "false");
+    }
+    const who = document.getElementById("mapFollowWho");
+    if (who) who.disabled = state.mapClean.mode !== "follow";
+  }
+
+  function fitVisible() {
+    if (!svg || state.mapClean.galaxy) return;
+    const nodes = svg.querySelectorAll("#sectors-layer > g[data-id]:not(.map-off)");
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, n = 0;
+    nodes.forEach((g) => {
+      const c = g.querySelector("circle");
+      if (!c) return;
+      const x = Number(c.getAttribute("cx"));
+      const y = Number(c.getAttribute("cy"));
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+      n += 1;
+    });
+    if (!n) return;
+    const pad = 36;
+    viewBoxState = {
+      x: minX - pad,
+      y: minY - pad,
+      w: Math.max(80, maxX - minX + 2 * pad),
+      h: Math.max(80, maxY - minY + 2 * pad),
+    };
+    updateViewBox();
+  }
+
+  function refreshFollowWho() {
+    const sel = document.getElementById("mapFollowWho");
+    if (!sel) return;
+    const ids = Array.from(state.players.keys());
+    const want = ["moving"].concat(ids).join(",");
+    const have = Array.from(sel.options).map((o) => o.value).join(",");
+    if (have === want) return;
+    const prev = sel.value || state.mapClean.who || "moving";
+    sel.innerHTML = "";
+    const moving = document.createElement("option");
+    moving.value = "moving";
+    moving.textContent = "Moving";
+    sel.appendChild(moving);
+    for (const p of state.players.values()) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name || p.id;
+      sel.appendChild(opt);
+    }
+    sel.value = Array.from(sel.options).some((o) => o.value === prev) ? prev : "moving";
   }
 
   // ----------------- Local View (neighborhood subgraph) -----------------
@@ -1073,6 +1271,7 @@
 
   function renderDynamicMap() {
     if (state.sectors.size === 0) return;
+    applyCleanMap();
     refreshMiniShips();
     const shipsLayer = document.getElementById("ships-layer");
     const recentLayer = document.getElementById("recent-layer");
@@ -1108,6 +1307,30 @@
       line.setAttribute("marker-end", "url(#warp-arrow-oneway)");
       recentLayer.appendChild(line);
     }
+
+    // Short fading trail of the player we are following.
+    const nowTrail = Date.now();
+    state.trail = state.trail.filter((w) => nowTrail - w.t < TRAIL_MS);
+    const trailActor = state.followPlayerId || state.moverId;
+    const hops = state.trail.filter((w) => w.actor === trailActor).slice(-5);
+    hops.forEach((w, i) => {
+      const from = state.sectors.get(Number(w.from));
+      const to = state.sectors.get(Number(w.to));
+      if (!from || !to) return;
+      const line = document.createElementNS(svgNS, "line");
+      line.setAttribute("x1", from.x);
+      line.setAttribute("y1", from.y);
+      line.setAttribute("x2", to.x);
+      line.setAttribute("y2", to.y);
+      const actor = state.players.get(w.actor);
+      line.setAttribute("stroke", actor ? actor.color : "#ffe27a");
+      line.setAttribute("stroke-width", "2.2");
+      line.setAttribute("stroke-linecap", "round");
+      line.setAttribute("fill", "none");
+      line.setAttribute("opacity", (0.28 + 0.72 * ((i + 1) / hops.length)).toFixed(2));
+      line.setAttribute("class", "follow-trail");
+      recentLayer.appendChild(line);
+    });
 
     // Combat flashes
     state.combatFlashes = state.combatFlashes.filter((f) => now - f.t < COMBAT_FLASH_MS);
@@ -1174,15 +1397,22 @@
       }
     }
 
-    // Occupancy highlights + ship markers
+    // Occupancy highlights + ship markers. The followed player gets the
+    // bright ring. Everyone else is a small colored dot.
+    const featured = state.followPlayerId || state.moverId;
+    const nowGlow = Date.now();
+    const glowSectors = new Set(
+      state.iconGlow.filter((g) => nowGlow - g.t < GLOW_MS).map((g) => Number(g.sector_id))
+    );
     for (const p of state.players.values()) {
       if (!p.alive) continue;
       const s = state.sectors.get(p.sector_id);
       if (!s) continue;
+      const isFeatured = p.id === featured;
       const dot = document.createElementNS(svgNS, "circle");
       dot.setAttribute("cx", s.x);
       dot.setAttribute("cy", s.y);
-      dot.setAttribute("r", 3.5);
+      dot.setAttribute("r", isFeatured ? 4 : 2);
       dot.setAttribute("class", "ship-marker");
       dot.setAttribute("fill", p.color || "#6ee7ff");
       dot.setAttribute("stroke", "#0a0f1c");
@@ -1193,23 +1423,14 @@
       dot.appendChild(title);
       shipsLayer.appendChild(dot);
 
-      const ring = document.createElementNS(svgNS, "circle");
-      ring.setAttribute("cx", s.x);
-      ring.setAttribute("cy", s.y);
-      ring.setAttribute("r", 6);
-      ring.setAttribute("fill", "none");
-      ring.setAttribute("stroke", p.color || "#6ee7ff");
-      ring.setAttribute("stroke-width", "0.4");
-      ring.setAttribute("opacity", "0.5");
-      shipsLayer.appendChild(ring);
-
-      // Follow-camera indicator ring (Phase 3).
-      if (state.followPlayerId === p.id) {
+      if (isFeatured) {
         const followRing = document.createElementNS(svgNS, "circle");
         followRing.setAttribute("cx", s.x);
         followRing.setAttribute("cy", s.y);
         followRing.setAttribute("r", 9);
         followRing.setAttribute("class", "ship-follow-ring");
+        followRing.setAttribute("data-testid", "follow-ring");
+        followRing.setAttribute("data-player", p.id);
         shipsLayer.appendChild(followRing);
       }
     }
@@ -1221,6 +1442,8 @@
     for (const f of state.ferrengi.values()) {
       const s = state.sectors.get(f.sector_id);
       if (!s) continue;
+      const vis = visibleIds();
+      if (vis && !vis.has(f.sector_id)) continue;
       const agg = Math.max(1, Math.min(5, f.aggression || 1));
       const size = 3.2 + agg * 0.4;
       const tri = document.createElementNS(svgNS, "polygon");
@@ -1230,7 +1453,7 @@
         + `${(s.x - size).toFixed(2)},${(s.y + size * 0.8).toFixed(2)} `
         + `${(s.x + size).toFixed(2)},${(s.y + size * 0.8).toFixed(2)}`
       );
-      tri.setAttribute("class", `ferrengi-marker agg-${agg}`);
+      tri.setAttribute("class", `ferrengi-marker agg-${agg}${glowSectors.has(Number(f.sector_id)) ? " poi-glow" : ""}`);
       const title = document.createElementNS(svgNS, "title");
       title.textContent = `Ferrengi ${f.name} \u00b7 aggression ${f.aggression} \u00b7 `
         + `${f.fighters || 0} fighters @ sector ${f.sector_id}`;
@@ -2487,7 +2710,10 @@
     tickLabel.textContent = `Tick ${state.tick}`;
     const mapHeader = document.querySelector(".map-panel .panel-header h2");
     if (mapHeader && state.sectors.size > 0) {
-      mapHeader.innerHTML = `Galaxy <span class="muted">· ${state.sectors.size} sectors</span>`;
+      const label = state.mapClean.galaxy
+        ? `· ${state.sectors.size} sectors`
+        : `· ${shownCount()} shown`;
+      mapHeader.innerHTML = `Galaxy <span class="muted" id="mapSectorCount">${label}</span>`;
     }
     if (state.finished) setStatus("finished", "match complete");
     else if (state.llmPhase && state.status === "running") {
@@ -2604,6 +2830,7 @@
     rafPending = true;
     requestAnimationFrame(() => {
       rafPending = false;
+      refreshFollowWho();
       renderHeader();
       renderDynamicMap();
       renderPlayers();
@@ -3088,6 +3315,7 @@
   // is outside the visible area (or a margin), so gentle moves don't jitter.
   let _lastFollowSector = null;
   function updateFollowCamera(forceCenter) {
+    if (state.mapClean.galaxy) return;
     if (!state.followPlayerId) { _lastFollowSector = null; return; }
     const p = state.players.get(state.followPlayerId);
     if (!p || !p.alive) return;
@@ -3105,6 +3333,12 @@
       if (s.x >= minX && s.x <= maxX && s.y >= minY && s.y <= maxY) return;
     }
     _lastFollowSector = p.sector_id;
+    if (viewBoxState.w > 280) {
+      const span = 240;
+      const ratio = galaxyExtent.h / Math.max(1, galaxyExtent.w);
+      viewBoxState.w = span;
+      viewBoxState.h = span * ratio;
+    }
     viewBoxState.x = s.x - viewBoxState.w / 2;
     viewBoxState.y = s.y - viewBoxState.h / 2;
     updateViewBox();
@@ -3569,6 +3803,62 @@
     render();
   }
 
+  function initMapFilters() {
+    const mode = document.getElementById("mapFollowMode");
+    const who = document.getElementById("mapFollowWho");
+    const galaxyBtn = document.getElementById("galaxyToggle");
+    const planets = document.getElementById("togglePlanets");
+    const ports = document.getElementById("togglePorts");
+    const ferrengi = document.getElementById("toggleFerrengi");
+    if (mode) {
+      mode.addEventListener("change", () => {
+        state.mapClean.mode = mode.value;
+        if (state.mapClean.mode === "follow") {
+          const id = defaultFollowId();
+          if (id) setFollow(id);
+        } else {
+          setFollow(null);
+          applyCleanMap();
+          if (!state.mapClean.galaxy) fitVisible();
+        }
+        applyCleanMap();
+        render();
+      });
+    }
+    if (who) {
+      who.addEventListener("change", () => {
+        state.mapClean.who = who.value;
+        if (state.mapClean.mode !== "follow") return;
+        const id = who.value === "moving" ? defaultFollowId() : who.value;
+        if (id) setFollow(id);
+        render();
+      });
+    }
+    if (galaxyBtn) {
+      galaxyBtn.addEventListener("click", () => {
+        state.mapClean.galaxy = !state.mapClean.galaxy;
+        if (state.mapClean.galaxy) fitGalaxy();
+        else if (state.followPlayerId) updateFollowCamera(true);
+        else {
+          applyCleanMap();
+          fitVisible();
+        }
+        applyCleanMap();
+        render();
+      });
+    }
+    function bindCheck(el, key) {
+      if (!el) return;
+      el.addEventListener("change", () => {
+        state.mapClean[key] = !!el.checked;
+        applyCleanMap();
+      });
+    }
+    bindCheck(planets, "planets");
+    bindCheck(ports, "ports");
+    bindCheck(ferrengi, "ferrengi");
+  }
+
   function initLayout() {
     const cfg = loadLayout();
     applyLayout(cfg);
@@ -3577,6 +3867,7 @@
     initCollapseButtons();
     initShortcuts();
     initMapControls();
+    initMapFilters();
     initDrawer();
     initHelpButton();
   }

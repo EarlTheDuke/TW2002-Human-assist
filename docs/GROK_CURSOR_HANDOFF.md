@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 21:20 PT - Fable - a quieter spectator map
+- The spectator galaxy starts on sectors anyone has already passed through, plus the ones next to those. A bright ring follows whoever just warped, with a short fading trail. Galaxy brings the full map back.
+
 ### 2026-09-30 20:30 PT - Fable - a mark when the hold is full
 - When this seat's holds are completely full, the used number turns amber and a mark sits in front of it. The digits stay the same.
 
