@@ -2708,6 +2708,18 @@
 
   // ----------------- Top bar state -----------------
 
+  const BASE_TITLE = document.title;
+  function paintTabTitle() {
+    const known = !state.finished && state.day && state.maxDays
+      && (state.status === "running" || state.status === "paused");
+    if (!known) {
+      document.title = BASE_TITLE;
+      return;
+    }
+    const word = state.status === "paused" ? "paused" : "live";
+    document.title = `TW2K - Day ${state.day}/${state.maxDays} - ${word}`;
+  }
+
   function renderHeader() {
     dayLabel.textContent = `Day ${state.day}/${state.maxDays}`;
     tickLabel.textContent = `Tick ${state.tick}`;
@@ -2729,6 +2741,7 @@
     else if (state.status === "error") setStatus("error", "error");
     else setStatus("running", state.status || "waiting");
     paintPausedBanner();
+    paintTabTitle();
   }
 
   const SEAT_DROP_LINE = /^seat \S+ disconnected - match paused$/;
