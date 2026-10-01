@@ -418,6 +418,8 @@ body.mode-cu .known-map .scan-mark { display: none !important; }
 .verb-form .buttons button { min-height: 56px; min-width: 140px; padding: 12px 18px; font-size: 1.05rem; font-weight: 700; border-radius: 12px; border: 2px solid var(--btn-border); background: var(--btn); color: var(--text); cursor: pointer; }
 .verb-form .buttons button.primary { background: #1a4d3a; border-color: var(--go); color: #b8ffd9; }
 .verb-form .buttons button:disabled { opacity: 0.35; cursor: not-allowed; }
+.last-trade { margin: 0 0 8px; color: var(--muted); font-size: 0.85rem; }
+body.mode-cu .last-trade { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .banner.turn, .banner.turn.flash { animation: none; }
 }
