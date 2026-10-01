@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 07:50 PT - Fable - a reset for the spectator feed filters
+- Next to the event-feed category boxes, Reset re-checks every category and forgets the saved choice. It stays hidden while every box is already checked. The actor filter is unchanged.
+
 ### 2026-10-01 07:10 PT - Fable - the spectator tab shows the match day
 - The spectator browser tab reads TW2K - Day N/M - live, or paused, from the day and status the page already has. Until those are known, the tab keeps its plain title. The cockpit tab is unchanged.
 

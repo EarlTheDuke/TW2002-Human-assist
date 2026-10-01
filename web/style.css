@@ -1573,6 +1573,10 @@ svg.spark { display: block; }
 .filter-group { display: flex; gap: 10px; font-size: 10.5px; color: var(--text-dim); align-items: center; flex-wrap: wrap; }
 .filter-group label { cursor: pointer; user-select: none; }
 .filter-group input { margin-right: 3px; }
+.filter-group .filter-reset {
+  background: none; border: none; padding: 0; font: inherit; color: inherit;
+  text-decoration: underline; cursor: pointer;
+}
 .actor-filter-label {
   display: inline-flex;
   align-items: center;
