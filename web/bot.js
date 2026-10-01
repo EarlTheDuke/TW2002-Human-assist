@@ -208,6 +208,15 @@
       renderCuCard();
     }
     paintTurnTimer();
+    paintTabTitle();
+  }
+  const BASE_TITLE = document.title;
+  function paintTabTitle() {
+    if (CU) return;
+    const seat = state.seat || "";
+    const ours = !!(els.banner && els.banner.classList.contains("turn"));
+    const tail = seat ? `${seat} - ${BASE_TITLE}` : BASE_TITLE;
+    document.title = ours ? `* YOUR TURN - ${tail}` : tail;
   }
   function paintTurnTimer() {
     const banner = els.banner;
