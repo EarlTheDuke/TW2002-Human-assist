@@ -2274,6 +2274,9 @@
     if (meta.big || BIG_MOMENT_KINDS.has(ev.kind)) li.classList.add("big-moment");
     if (ev._isFirst) li.classList.add("is-first");
     if (opts.inReel) li.classList.add("reel-row");
+    if (!opts.inReel && state.mapClean.mode === "follow" && state.followPlayerId && ev.actor_id === state.followPlayerId) {
+      li.classList.add("follow-accent");
+    }
 
     const kindClass = meta.cat;
     const iconHtml = meta.icon

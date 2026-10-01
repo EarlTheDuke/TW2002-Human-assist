@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 03:50 PT - Fable - a color mark on the followed player's events
+- On the spectator feed, lines from the player the map is following get a thin mark in that player's color. Choosing All players leaves every line plain.
+
 ### 2026-10-01 03:10 PT - Fable - the away line sits beside the countdown
 - The line that counts what happened before the page loaded now shares a row with the respond-within text, one on each side, and stays above the timer. The banner stays 92 px tall.
 
