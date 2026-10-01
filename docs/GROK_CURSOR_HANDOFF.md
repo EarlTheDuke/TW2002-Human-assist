@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 23:50 PT - Fable - amber when credits fall under a thousand
+- The Credits box turns amber while this seat has fewer than 1,000 credits, and returns to normal at 1,000 or more. The number and the credit-change flash stay as they were.
+
 ### 2026-09-30 23:15 PT - Fable - hop and turn cost on a plotted route
 - Tapping a sector on the cockpit map shows how many hops the route is and how many turns flying it would cost. Clearing the route hides that line.
 

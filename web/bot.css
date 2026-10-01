@@ -138,6 +138,8 @@ body:not(.mode-cu) .credits-delta {
 body:not(.mode-cu) .credits-delta[data-sign="up"] { color: var(--go); }
 body:not(.mode-cu) .credits-delta[data-sign="down"] { color: var(--danger); }
 body:not(.mode-cu) .credits-delta[hidden], body.mode-cu .credits-delta { display: none !important; }
+body:not(.mode-cu) #sbCredits[data-level="low"] { color: var(--wait); }
+body:not(.mode-cu) .credits-cell:has(#sbCredits[data-level="low"]) { border-color: var(--wait); }
 body:not(.mode-cu) #sbTurns[data-level="amber"] { color: var(--wait); }
 body:not(.mode-cu) #sbTurns[data-level="red"] { color: var(--danger); }
 body:not(.mode-cu) #sbTurns[data-level="red"]::before { content: "!"; }
