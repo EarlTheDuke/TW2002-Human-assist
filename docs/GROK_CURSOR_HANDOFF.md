@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 18:50 PT - Fable - the tab title follows the turn
+- While it is this seat's turn the browser tab starts with YOUR TURN. When the turn is over, that prefix goes away. The page itself does not move.
+
 ### 2026-09-30 17:50 PT - Fable - a warning on low turns
 - Turns Left turns amber at 10 and red at 3. At 3 or fewer a mark appears in front of the number. The digits stay the same.
 
