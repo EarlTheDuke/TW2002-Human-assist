@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 09:10 PT - Fable - a quiet line for this seat's last trade
+- The Moments tab shows one line for this seat's latest trade, such as Last trade: BUY 10 equipment @ 30 = 300 cr. It stays blank until this seat has traded, and it is absent on the computer-use page.
+
 ### 2026-10-01 07:50 PT - Fable - a reset for the spectator feed filters
 - Next to the event-feed category boxes, Reset re-checks every category and forgets the saved choice. It stays hidden while every box is already checked. The actor filter is unchanged.
 

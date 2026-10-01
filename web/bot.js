@@ -1474,6 +1474,7 @@
     renderControls(obs);
     paintComputer(obs);
     renderCu();
+    paintLastTrade();
     if (!CU && window.TW2KViewport) window.TW2KViewport.update(obs);  // V1 viewport (default layout only)
     els.main.hidden = false;
     els.eventsFooter.hidden = false;
@@ -1661,6 +1662,33 @@
     }
     lamp.dataset.level = level;
     lamp.textContent = text;
+    paintLastTrade();
+  }
+  function lastTradeText() {
+    if (CU) return "";
+    const obs = state.obs;
+    const me = (obs && obs.self_id) || state.seat;
+    let best = null;
+    const take = (ev) => {
+      if (!ev || ev.kind !== "trade" || ev.actor_id !== me) return;
+      const facts = ev.facts || {};
+      if (facts.side == null || facts.commodity == null || facts.qty == null) return;
+      if (facts.unit == null || facts.total == null) return;
+      if (!best || Number(ev.seq) >= Number(best.seq)) best = ev;
+    };
+    for (const ev of (obs && obs.recent_events) || []) take(ev);
+    for (const ev of state.events || []) take(ev);
+    if (!best) return "";
+    const f = best.facts;
+    const side = String(f.side).toUpperCase();
+    return `Last trade: ${side} ${f.qty} ${f.commodity} @ ${f.unit} = ${f.total} cr`;
+  }
+  function paintLastTrade() {
+    const el = $("lastTrade");
+    if (!el) return;
+    const text = lastTradeText();
+    el.hidden = !text;
+    el.textContent = text;
   }
 
   // ---------------------------------------------------------------- G2: one-screen turn layout (mode=cu)
