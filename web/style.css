@@ -1611,6 +1611,7 @@ svg.spark { display: block; }
   gap: 8px;
   align-items: baseline;
 }
+.event-feed li.follow-accent { box-shadow: inset 3px 0 0 var(--player-color); }
 .event-feed li:last-child { border-bottom: none; }
 .event-feed .time { color: var(--text-faint); white-space: nowrap; }
 .event-feed .kind {
