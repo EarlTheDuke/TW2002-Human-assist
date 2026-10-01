@@ -563,6 +563,19 @@
     if (Number.isFinite(here)) ids.delete(here);
     return ids;
   }
+  function scannedSectorIds(obs) {
+    const ids = new Set();
+    if (CU || !obs) return ids;
+    const me = obs.self_id || state.seat;
+    const take = (ev) => {
+      if (!ev || ev.kind !== "scan" || ev.actor_id !== me) return;
+      const sid = Number(ev.sector_id);
+      if (Number.isFinite(sid)) ids.add(sid);
+    };
+    for (const ev of obs.recent_events || []) take(ev);
+    for (const ev of state.events || []) take(ev);
+    return ids;
+  }
 
   function renderKnownMap(obs) {
     const svg = $("knownMap");
@@ -570,9 +583,11 @@
     const kw = obs.known_warps || {};
     const here = (obs.sector || {}).id;
     const visited = visitedSectorIds(obs);
+    const scanned = scannedSectorIds(obs);
     const routeKey = (state.routePath || []).join(",");
     const visitKey = [...visited].sort((a, b) => a - b).join(",");
-    const key = JSON.stringify([nodes.map((n) => [n.id, n.port, n.warps_known]), Object.keys(kw).length, here, legalOf("plot_course").legal, state.awaiting, routeKey, visitKey]);
+    const scanKey = [...scanned].sort((a, b) => a - b).join(",");
+    const key = JSON.stringify([nodes.map((n) => [n.id, n.port, n.warps_known]), Object.keys(kw).length, here, legalOf("plot_course").legal, state.awaiting, routeKey, visitKey, scanKey]);
     if (svg.getAttribute("data-map-key") === key) return;  // stable DOM across polls
     svg.setAttribute("data-map-key", key);
     svg.innerHTML = "";
@@ -637,6 +652,11 @@
         g.classList.add("visited");
         g.setAttribute("data-visited", "1");
         g.appendChild(svgEl("circle", { class: "visit-mark", r: 5 }));
+      }
+      if (p.known && scanned.has(Number(id))) {
+        g.classList.add("scanned");
+        g.setAttribute("data-scanned", "1");
+        g.appendChild(svgEl("circle", { class: "scan-mark", cx: 4.4, cy: -1.6, r: 0.7 }));
       }
       const t = svgEl("text", { y: 1.1 }); t.textContent = String(id); g.appendChild(t);
       if (n && n.port) {
