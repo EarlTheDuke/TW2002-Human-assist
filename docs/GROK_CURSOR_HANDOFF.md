@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 01:30 PT - Fable - Enter confirms a trade quantity
+- In the cockpit trade form, Enter in the quantity box presses Confirm. A disabled Confirm does nothing. The computer-use page is unchanged.
+
 ### 2026-10-01 00:30 PT - Fable - the spectator feed remembers its filters
 - Unchecked event-feed boxes stay unchecked after a reload. The choice lives in the browser, and a fresh visit still starts with every box on.
 
