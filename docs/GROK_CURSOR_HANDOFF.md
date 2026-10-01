@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 10:50 PT - Fable - a count when the spectator feed is filtered
+- The filter row says showing 42 of 120 when a category or the actor filter hides events. The count goes away when every event in the feed is still showing.
+
 ### 2026-10-01 09:50 PT - Fable - jump back to the newest spectator event
 - When the event feed is scrolled up, a small Jump to latest link sits on its bottom edge. Clicking it returns to the newest event and the link goes away. It stays hidden while the feed is already at the bottom, and it does not make the page taller.
 

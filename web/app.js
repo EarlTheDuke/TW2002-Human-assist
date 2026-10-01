@@ -2240,6 +2240,17 @@
     if (!btn) return;
     btn.hidden = feedPinned();
   }
+  function paintFeedCount(shown, total) {
+    const el = document.querySelector("[data-testid=feed-filter-count]");
+    if (!el) return;
+    if (!total || shown === total) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    el.textContent = `showing ${shown} of ${total}`;
+  }
   function renderEvents() {
     const pinned = feedPinned();
     const saved = eventFeed.scrollTop;
@@ -2249,10 +2260,13 @@
       source = state.events.slice(0, state.replay.cursorIndex + 1);
     }
     const ordered = source.slice(-180);
+    let shown = 0;
     for (const ev of ordered) {
       if (!eventPassesFilter(ev)) continue;
+      shown += 1;
       eventFeed.appendChild(renderEventRow(ev));
     }
+    paintFeedCount(shown, ordered.length);
     if (pinned) eventFeed.scrollTop = eventFeed.scrollHeight;
     else eventFeed.scrollTop = saved;
     paintFeedJump();
