@@ -353,6 +353,10 @@
     const el = $("sbCredits");
     const next = Number(obs && obs.credits);
     if (el) el.textContent = Number.isFinite(next) ? fmt(next) : "-";
+    if (el) {
+      if (!CU && Number.isFinite(next) && next < 1000) el.setAttribute("data-level", "low");
+      else el.removeAttribute("data-level");
+    }
     const delta = $("creditsDelta");
     if (!delta || CU || !Number.isFinite(next)) return;
     if (!state.creditsReady) {
