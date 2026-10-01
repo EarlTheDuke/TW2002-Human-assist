@@ -352,6 +352,10 @@ body:not(.mode-cu) #colAct .known-map {
 .known-map .node { cursor: pointer; }
 .known-map .node circle { fill: #182447; stroke: var(--btn-border); stroke-width: 0.7; }
 .known-map .node.here circle { fill: #1a4d3a; stroke: var(--go); stroke-width: 1.2; }
+body:not(.mode-cu) .known-map .node.visited .visit-mark {
+  fill: none; stroke: #d5def6; stroke-width: 0.55; stroke-dasharray: 0.85 0.65;
+}
+body.mode-cu .known-map .visit-mark { display: none !important; }
 .known-map .node.port circle { fill: #1f2e5a; }
 .known-map .node.stub circle { fill: #0b1020; stroke: #3a4a7a; stroke-dasharray: 1 0.8; }
 .known-map .node.fed circle { stroke: #6fd3a0; }

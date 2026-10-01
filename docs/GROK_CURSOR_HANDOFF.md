@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-09-30 22:00 PT - Fable - a ring on sectors this seat has left
+- On the cockpit map, a sector this seat has been through gets a dashed ring. The sector you are in stays as it was.
+
 ### 2026-09-30 21:20 PT - Fable - a quieter spectator map
 - The spectator galaxy starts on sectors anyone has already passed through, plus the ones next to those. A bright ring follows whoever just warped, with a short fading trail. Galaxy brings the full map back.
 

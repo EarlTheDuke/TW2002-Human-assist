@@ -490,13 +490,37 @@
   // the engine says plot_course is legal.
   const SVG_NS = "http://www.w3.org/2000/svg";
   function svgEl(tag, attrs) { const e = document.createElementNS(SVG_NS, tag); for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, String(v)); return e; }
+  // Sectors this seat has actually been through, from memory the page already
+  // holds: lanes it learned, plus its own warp events. The current sector
+  // stays unmarked so the "you are here" node does not change.
+  function visitedSectorIds(obs) {
+    const ids = new Set();
+    if (CU || !obs) return ids;
+    const me = obs.self_id || state.seat;
+    for (const n of obs.known_sectors || []) {
+      if (n && n.warps_known) ids.add(Number(n.id));
+    }
+    for (const key of Object.keys(obs.known_warps || {})) ids.add(Number(key));
+    for (const ev of obs.recent_events || []) {
+      if (!ev || ev.kind !== "warp" || ev.actor_id !== me) continue;
+      const facts = ev.facts || {};
+      if (facts.from != null) ids.add(Number(facts.from));
+      if (facts.to != null) ids.add(Number(facts.to));
+    }
+    const here = Number((obs.sector || {}).id);
+    if (Number.isFinite(here)) ids.delete(here);
+    return ids;
+  }
+
   function renderKnownMap(obs) {
     const svg = $("knownMap");
     const nodes = obs.known_sectors || [];
     const kw = obs.known_warps || {};
     const here = (obs.sector || {}).id;
+    const visited = visitedSectorIds(obs);
     const routeKey = (state.routePath || []).join(",");
-    const key = JSON.stringify([nodes.map((n) => [n.id, n.port, n.warps_known]), Object.keys(kw).length, here, legalOf("plot_course").legal, state.awaiting, routeKey]);
+    const visitKey = [...visited].sort((a, b) => a - b).join(",");
+    const key = JSON.stringify([nodes.map((n) => [n.id, n.port, n.warps_known]), Object.keys(kw).length, here, legalOf("plot_course").legal, state.awaiting, routeKey, visitKey]);
     if (svg.getAttribute("data-map-key") === key) return;  // stable DOM across polls
     svg.setAttribute("data-map-key", key);
     svg.innerHTML = "";
@@ -557,6 +581,11 @@
       const tint = portTint(rememberedPortCode(obs, id));
       const g = svgEl("g", { class: `node${p.known ? "" : " stub"}${id === here ? " here" : ""}${n && n.port ? " port" : ""}${tint ? " " + tint : ""}${n && n.is_fedspace ? " fed" : ""}${canPlot && id !== here ? "" : " disabled"}`, transform: `translate(${p.x.toFixed(2)},${p.y.toFixed(2)})`, tabindex: 0, role: "button", "data-testid": `map-sector-${id}`, "data-sector": id, "aria-label": `sector ${id}${n && n.port ? " port " + n.port : ""}${id === here ? " (you are here)" : ""}` });
       g.appendChild(svgEl("circle", { r: p.known ? 3.4 : 2.2 }));
+      if (p.known && visited.has(Number(id))) {
+        g.classList.add("visited");
+        g.setAttribute("data-visited", "1");
+        g.appendChild(svgEl("circle", { class: "visit-mark", r: 5 }));
+      }
       const t = svgEl("text", { y: 1.1 }); t.textContent = String(id); g.appendChild(t);
       if (n && n.port) {
         const c = svgEl("text", { y: 6.2, class: "code" });
