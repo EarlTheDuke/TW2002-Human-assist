@@ -122,6 +122,11 @@ main.bot-main.cols3 { grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.7
   display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #0e1428; border-bottom: 1px solid #243056;
 }
 body:not(.mode-cu) .banner { position: relative; height: 92px; min-height: 92px; max-height: 92px; overflow: hidden; }
+body:not(.mode-cu) .banner .away-line {
+  position: absolute; left: 12px; right: 12px; bottom: 14px; margin: 0;
+  font-size: 12px; font-weight: 600; letter-spacing: 0; line-height: 1.2;
+  color: #c5d0ea; pointer-events: none;
+}
 body:not(.mode-cu) .turn-timer {
   position: absolute; left: 14px; right: 14px; bottom: 6px; height: 4px; border-radius: 999px;
   background: #0b1020; overflow: hidden; pointer-events: none;
