@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 13:55 PT - Fable - a time tooltip on spectator feed rows
+- Hovering a spectator feed row shows the full day and turn, such as Day 2, turn 14, from the day and tick the row already has. The row itself looks the same.
+
 ### 2026-10-01 12:35 PT - Fable - P opens the plot course box
 - On the cockpit, P opens the plot course form that is already on the page and focuses its target field. It does nothing while you are typing or while an overlay is open. The computer-use page is unchanged and still has its own P. The ? list includes it.
 
