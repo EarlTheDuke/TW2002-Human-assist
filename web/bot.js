@@ -586,6 +586,10 @@
     if (label) label.textContent = id === "hull-genesis" ? fmt(n) : `${fmt(n)}/${fmt(cap)}`;
     row.dataset.value = String(n);
     row.dataset.max = String(cap);
+    if (id === "hull-holds") {
+      row.removeAttribute("data-level");
+      if (!CU && cap > 0 && n === cap) row.setAttribute("data-level", "full");
+    }
   }
 
   function renderShip(obs) {
