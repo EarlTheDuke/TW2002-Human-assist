@@ -1225,6 +1225,12 @@
       };
       radios.addEventListener("change", (e) => { side = e.target.value; const opts = side === "buy" ? buyC : sellC; commSel.innerHTML = ""; for (const c of opts) { const o = document.createElement("option"); o.value = c; o.textContent = c; commSel.appendChild(o); } qty.value = ""; sync(); });
       commSel.addEventListener("change", () => { qty.value = ""; sync(); }); qty.addEventListener("input", sync); price.addEventListener("input", sync);
+      qty.addEventListener("keydown", (ev) => {
+        if (CU || ev.key !== "Enter" || ev.repeat) return;
+        ev.preventDefault();
+        if (go.disabled) return;
+        go.click();
+      });
       maxBtn.onclick = () => { qty.value = qty.max; sync(); };
       buttons.insertBefore(maxBtn, cancel);
       build = () => { const q = Number(qty.value) || 0; if (q <= 0 || q > Number(qty.max)) return null; const a = { kind: "trade", args: { commodity: commSel.value, qty: q, side }, thought: `Grok Bot: ${side} ${q} ${commSel.value}` }; if (price.value) a.args.unit_price = Number(price.value); return a; };
