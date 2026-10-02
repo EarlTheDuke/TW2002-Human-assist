@@ -1808,18 +1808,12 @@
   function tradeProfitText() {
     if (CU) return "";
     const obs = state.obs;
-    if (!obs) return "";
-    let net = 0;
-    let n = 0;
-    for (const t of obs.trade_log || []) {
-      const total = Number(t.total);
-      if (!Number.isFinite(total)) continue;
-      const side = String(t.side || "").toLowerCase();
-      if (side === "sell") { net += total; n += 1; }
-      else if (side === "buy") { net -= total; n += 1; }
-    }
-    if (!n) return "";
+    const summary = (obs && obs.trade_summary) || {};
+    const trades = Number(summary.total_trades) || 0;
+    if (!trades) return "";
+    const net = Number(summary.total_profit_cr) || 0;
     const shown = net < 0 ? fmt(net) : `+${fmt(net)}`;
+    if (trades >= 50) return `Trade profit, last 50 trades: ${shown} cr`;
     const perDay = Number(obs.turns_per_day) || 0;
     const left = Number(obs.turns_remaining) || 0;
     const day = Number(obs.day) || 1;
