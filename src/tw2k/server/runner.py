@@ -1472,9 +1472,14 @@ class MatchRunner:
             EventKind.BUILD_CITADEL,
             EventKind.CITADEL_COMPLETE,
             EventKind.PLANET_ORPHANED,
+            EventKind.LAND_PLANET,
+            EventKind.COMBAT,
         }
-        if ev.kind in planet_events:
-            planet_id = (ev.payload or {}).get("planet_id")
+        payload = ev.payload or {}
+        seized_landing = ev.kind == EventKind.LAND_PLANET and payload.get("seized")
+        planet_combat = ev.kind == EventKind.COMBAT and payload.get("exchange_kind") == "planet_siege"
+        if ev.kind in planet_events and (ev.kind not in (EventKind.LAND_PLANET, EventKind.COMBAT) or seized_landing or planet_combat):
+            planet_id = payload.get("planet_id")
             if planet_id is not None and planet_id in u.planets:
                 pl = u.planets[planet_id]
                 patch["planet"] = {

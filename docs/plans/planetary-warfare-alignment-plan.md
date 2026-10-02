@@ -60,3 +60,20 @@ The goal is to prove each mechanic works in a real game, not only in unit tests.
 - Bots may not learn the new actions. Every slice must add a prompt line and be checked in a test game before the next phase.
 - The TWGS atmospheric factor and the meaning of "20:1" for shields are unresolved. Defaults are in the section above; keep them constants.
 - Balance can drift. The scenario lab outcome tables are the check, and a tuning slice follows each phase.
+## FINAL MERGED ORDER (Commander, 2026-10-01 23:30 PT, after Cursor's review in planetary-warfare-cursor-review.md)
+Agreed changes from Cursor's review: A2 first; the spectator fix is just adding LAND_PLANET (and planet COMBAT) to the server's planet-patch event list, no new event fields (the patch copies owner, corp ticker and citadel level from the live planet); B3 splits into B3a labels only and B3b free-garrison removal after B1 and B4; C1 before C2; D3 after D1; D5 splits into transwarp and transporter; E1 stays dark until Ben accepts credit costs; a thin E4 (hide fighters, shields, treasury and stockpile of other players' planets from non-owners) moves early because the current planet brief leaks them to every ship in the sector.
+Commander additions: a headless scenario lab slice goes right after E4-thin so we have a baseline win-rate table of today's dice before any rule changes, and is re-run after each Phase C and D slice. Class fighter factors for B4 will be written as numbers by Commander from the report (section 1.1) before B4 starts.
+
+Order of work:
+1. siege-gap-fixes-v1 (A2 plus the patch-list fix)
+2. planet-brief-fog-thin-v1 (thin E4)
+3. planetary-scenario-lab-v1 (baseline table of today's sieges, tool only)
+4. planet-defense-stocking-v1 (B1)
+5. citadel-level-labels-v1 (B3a)
+6. siege-shield-gate-v1 (C1), then re-run the lab
+7. siege-odds-and-reaction-v1 (C2), then re-run the lab
+8. planet-treasury-actions-v1 (B2)
+9. planet-fighter-production-v1 (B4)
+10. siege-sector-phase-v1 (C3), siege-events-and-cockpit-v1 (C4)
+11. scripted bot match on :8036 for phases B and C (one finished-slice check), then D1 quasar-sector-shot, D2 atmospheric, D3 photon, D4 interdictor, D5a transwarp, D5b transporter
+12. citadel-gift tuning (B3b), E1 class tables (dark), E2 destruction, E3 corp edge cases, full scanner fog

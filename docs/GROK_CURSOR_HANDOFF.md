@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 23:40 PT - Fable - a repelled siege spends a turn and the planet row updates
+- A landing the citadel fights off still fails, and it now spends the landing turn. A capture drops the citadel target with the level. A seized landing patches the spectator planet row from the live planet, with no new event fields.
+
 ### 2026-10-01 23:05 PT - Fable - a review of the planetary warfare roadmap
 - The weekend plan is reviewed in docs/plans/planetary-warfare-cursor-review.md. No rules changed. The two known siege gaps should be fixed before new siege math, and the spectator planet row needs a server patch, not a guess from the landing event.
 
