@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 18:10 PT - Fable - trade profit uses the realized summary
+- The Moments profit line now uses this seat's realized profit from the trade summary, not the last 25 rows of the log. Under 50 trades it still shows the per-turn rate. At 50 it names the last 50 trades and drops the rate. A buy that has not been sold does not count as a loss.
+
 ### 2026-10-01 17:30 PT - Fable - trade profit per turn on Moments
 - The Moments tab shows this seat's own sell-minus-buy total and that amount per turn already used, such as Trade profit +4,200 cr, 84 cr per turn. It stays hidden until this seat has traded, and it does not divide when no turn has been used.
 
