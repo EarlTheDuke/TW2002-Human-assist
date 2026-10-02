@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 08:10 PT - Fable - a citadel can hold credits
+- The owner or a corp mate can deposit and withdraw planet treasury at citadel level 1 or higher. The bank earns 2% a day, capped. An empty ship no longer dies on a shield-only planet.
+
 ### 2026-10-02 07:20 PT - Fable - planet landings use odds instead of dice
 - After the shield soak, reaction fighters attack at 2:1 and the rest defend at 3:1. A landed owner can set that percent. Ship-versus-ship combat still uses the old dice.
 

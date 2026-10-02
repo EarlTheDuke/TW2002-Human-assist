@@ -89,7 +89,8 @@ def test_corp_mate_can_set_reaction_and_an_outsider_cannot() -> None:
     assert mate.turns_today == before + res.turns_spent
     assert planet.military_reaction_pct == 40
     ev = next(e for e in u.events if e.kind is EventKind.PLANET_MILITARY_REACTION)
-    assert event_facts(ev) == {"planet_id": planet.id, "pct": 40}
+    assert event_facts(ev) == {"planet_id": planet.id}
+    assert "40" not in (ev.summary or "")
     denied = apply_action(u, outsider.id, Action(
         kind=ActionKind.SET_MILITARY_REACTION, args={"planet_id": planet.id, "pct": 90},
     ))

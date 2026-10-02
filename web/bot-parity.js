@@ -38,6 +38,7 @@
       has(p.organics_days_left) ? `organics last ${fmt(p.organics_days_left)} day(s)` : null,
       `${fmt(p.fighters)} fighters`,
       `${fmt(p.shields)} shields`,
+      has(p.treasury) ? `${fmt(p.treasury)} treasury` : null,
     ];
     return { title: `${p.name} [${p.class}]`, metas: metas.filter(has), cls: p.growth_active === false ? "warn" : "" };
   }
