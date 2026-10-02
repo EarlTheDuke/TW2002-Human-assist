@@ -887,7 +887,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         "fighter_group": None,
         "mines": [{"owner": m.owner_id, "kind": m.kind.value, "count": m.count} for m in sector.mines],
         "planets": [
-            _planet_brief(universe.planets[pid]) for pid in sector.planet_ids if pid in universe.planets
+            _planet_brief(universe.planets[pid], universe.players.get(player_id))
+            for pid in sector.planet_ids
+            if pid in universe.planets
         ],
         "port": None,
         "ferrengi": [
@@ -934,7 +936,18 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
     return info
 
 
-def _planet_brief(planet) -> dict[str, Any]:
+def _planet_numbers_visible(planet, viewer) -> bool:
+    """Owner and corp mates still read the garrison. Everyone else does not."""
+    if viewer is None:
+        return False
+    if planet.owner_id is not None and planet.owner_id == viewer.id:
+        return True
+    theirs = planet.corp_ticker or None
+    mine = getattr(viewer, "corp_ticker", None) or None
+    return bool(theirs and mine and theirs == mine)
+
+
+def _planet_brief(planet, viewer=None) -> dict[str, Any]:
     from . import constants as K
 
     colonist_totals = {c.value: planet.colonists.get(c, 0) for c in planet.colonists}
@@ -966,7 +979,7 @@ def _planet_brief(planet) -> dict[str, Any]:
             "possible": blocker is None,
             "blocker": blocker,
         }
-    return {
+    brief = {
         "id": planet.id,
         "name": planet.name,
         "class": planet.class_id.value,
@@ -976,13 +989,17 @@ def _planet_brief(planet) -> dict[str, Any]:
         "citadel_target": cur_target,
         "citadel_complete_day": getattr(planet, "citadel_complete_day", None),
         "citadel_next_build": next_build,
-        "fighters": planet.fighters,
-        "shields": planet.shields,
-        "treasury": planet.treasury,
-        "stockpile": {c.value: planet.stockpile.get(c, 0) for c in planet.stockpile},
         "colonists": colonist_totals,
         "colonists_total": available_colonists,
     }
+    # Outsiders keep identity and citadel level. The landing warning is the
+    # contested id list on land_planet, computed from the live planet.
+    if _planet_numbers_visible(planet, viewer):
+        brief["fighters"] = planet.fighters
+        brief["shields"] = planet.shields
+        brief["treasury"] = planet.treasury
+        brief["stockpile"] = {c.value: planet.stockpile.get(c, 0) for c in planet.stockpile}
+    return brief
 
 
 _FEDSPACE_CACHE: set[int] | None = None

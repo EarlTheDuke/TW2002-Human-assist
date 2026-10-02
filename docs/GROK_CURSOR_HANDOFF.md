@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 00:50 PT - Fable - a sector planet brief hides another owner's garrison
+- A ship that does not own the planet and is not in its corp no longer sees fighters, shields, treasury, or stockpile on the sector brief. The owner and corp mates still do. The landing warning stays the contested planet id.
+
 ### 2026-10-01 23:40 PT - Fable - a repelled siege spends a turn and the planet row updates
 - A landing the citadel fights off still fails, and it now spends the landing turn. A capture drops the citadel target with the level. A seized landing patches the spectator planet row from the live planet, with no new event fields.
 
