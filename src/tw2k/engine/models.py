@@ -189,6 +189,7 @@ class EventKind(str, Enum):
     PLANET_DEFENSE_TRANSFER = "planet_defense_transfer"
     PLANET_MILITARY_REACTION = "planet_military_reaction"
     PLANET_TREASURY = "planet_treasury"
+    QUASAR_FIRE = "quasar_fire"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"
@@ -336,6 +337,8 @@ class Planet(BaseModel):
     shields: int = 0
     # 0-100. This percent of planet fighters attack at 2:1 after shields fall.
     military_reaction_pct: int = 0
+    # 0-100. Percent of fuel stockpile a sector quasar burns on a hostile warp.
+    quasar_sector_pct: int = 0
     treasury: int = 0
     last_tax_value: int = 0
     # How the CURRENT owner acquired the planet: "genesis" (their own torpedo,

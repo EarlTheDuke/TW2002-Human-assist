@@ -612,6 +612,18 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     _treasury_la(ActionKind.DEPOSIT_TREASURY, deposit_max, "not enough credits, or the planet treasury is full")
     _treasury_la(ActionKind.WITHDRAW_TREASURY, withdraw_max, "nothing in the planet treasury")
 
+    quasar_cost = int(K.TURN_COST["set_quasar_sector"])
+    if owned_reason:
+        quasar_reason = owned_reason
+    elif owned_landed and int(landed_planet.citadel_level or 0) < K.QUASAR_MIN_LEVEL:
+        quasar_reason = "quasar requires citadel level 3"
+    else:
+        quasar_reason = _need_turns(player, quasar_cost)
+    out.append(_la(ActionKind.SET_QUASAR_SECTOR, legal=quasar_reason is None, reason=quasar_reason,
+                   cost=quasar_cost,
+                   params={"planet_id": pid_param,
+                           "pct": {"type": "int", "required": True, "min": 0, "max": 100}}))
+
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}
     out.sort(key=lambda la: order.get(la.kind, 999))
