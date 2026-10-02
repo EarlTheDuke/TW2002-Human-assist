@@ -325,7 +325,7 @@ class Planet(BaseModel):
         Commodity.FUEL_ORE: 0,
         Commodity.ORGANICS: 0,
         Commodity.EQUIPMENT: 0,
-        Commodity.COLONISTS: 0,  # "fighters" pool — colonists assigned to defense
+        Commodity.COLONISTS: 0,  # construction reserve; does not mint fighters
     })
     stockpile: dict[Commodity, int] = Field(default_factory=lambda: {
         Commodity.FUEL_ORE: 0,

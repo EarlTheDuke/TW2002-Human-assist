@@ -164,8 +164,29 @@ def _accrue_planet_treasury(universe: Universe) -> None:
         planet.treasury = min(cap, int(planet.treasury) + gain)
 
 
+def fighters_from_colonists(class_id: PlanetClass | str, colonists: dict) -> int:
+    """Fighters one day of product-pool colonists would add, before the cap.
+
+    Each pool divides on its own, then the rate scales the sum. A divisor of
+    0 adds nothing. The idle colonists pool is not a product pool.
+    """
+    table = K.PLANET_FIGHTER_COLONISTS_PER[_class_id(class_id).value]
+    made = 0
+    for name, divisor in table.items():
+        if int(divisor) <= 0:
+            continue
+        made += _pool_count(colonists, name) // int(divisor)
+    return made * int(K.PLANET_FIGHTER_RATE_PCT) // 100
+
+
 def _advance_planets(universe: Universe) -> None:
     for planet in universe.planets.values():
+        # Snapshot before growth. Newborns from today's 5% do not make fighters
+        # until the next day, so 1500 fuel colonists on class M stay 50 fighters.
+        worked = {
+            name: _pool_count(planet.colonists, name)
+            for name in ("fuel_ore", "organics", "equipment")
+        }
         coeffs = PLANET_PROD_COEFF[planet.class_id]
         for commodity, coeff in coeffs.items():
             colonists = planet.colonists.get(commodity, 0)
@@ -183,6 +204,13 @@ def _advance_planets(universe: Universe) -> None:
             planet.stockpile[Commodity.ORGANICS] = max(
                 0, planet.stockpile[Commodity.ORGANICS] - organics_consumption(total_col)
             )
+        if planet.owner_id is None:
+            continue
+        gain = fighters_from_colonists(planet.class_id, worked)
+        if gain <= 0:
+            continue
+        room = max(0, K.PLANET_FIGHTER_CAP - int(planet.fighters))
+        planet.fighters = int(planet.fighters) + min(room, gain)
 
 
 def _pay_planet_value_tax(universe: Universe) -> None:

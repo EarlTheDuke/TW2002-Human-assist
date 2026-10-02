@@ -286,9 +286,29 @@ def _ints(text: str) -> tuple[int, ...]:
     return tuple(int(part) for part in text.split(",") if part.strip() != "")
 
 
+def format_production_table() -> str:
+    """Fighters per day for 1000 and 10000 colonists, one product pool at a time."""
+    from tw2k.engine.planets import fighters_from_colonists
+
+    counts = (1000, 10000)
+    lines = [
+        "Fighters per day from one product pool. Rate 100. Divisor 0 stays 0. "
+        "Class U makes stock and no fighters. Cap is 1,000,000.",
+        "",
+        "| Class | Pool | 1000 colonists | 10000 colonists |",
+        "|---|---|---:|---:|",
+    ]
+    for class_id in ("M", "K", "O", "L", "C", "H", "U"):
+        for pool in ("fuel_ore", "organics", "equipment"):
+            made = [fighters_from_colonists(class_id, {pool: count}) for count in counts]
+            lines.append(f"| {class_id} | {pool} | {made[0]} | {made[1]} |")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
+    parser.add_argument("--production", action="store_true", help="print the fighter production table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -296,6 +316,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--attacker-shields", type=int, default=DEFAULT_ATTACKER_SHIELDS)
     parser.add_argument("--citadel-level", type=int, default=DEFAULT_CITADEL_LEVEL)
     args = parser.parse_args(argv)
+    if args.production:
+        print(format_production_table())
+        return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,
         planet_shields=args.planet_shields,
