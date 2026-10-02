@@ -44,6 +44,11 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 20:25 PT - Fable - planet siege behaviour is pinned by tests
+- Engine tests record what a planet landing does today. A win captures the planet. A loss destroys the ship and adds a death. Shields with no fighters are captured with no fight.
+- KNOWN GAP: a repelled landing sets turns_spent but apply_action only charges turns when ok is true, so the player is not charged.
+- KNOWN GAP: a capture lowers citadel_level and leaves citadel_target, so build_citadel is refused as if construction were still underway.
+
 ### 2026-10-01 18:55 PT - Fable - since-last-turn counts new trades and skips own drops
 - The trades line counts rows dated after the previous turn and adds realized profit on the new sells only. A full trade list still shows those new rows. This seat laying its own fighters, mines, or a photon does not count as a hostile event.
 
