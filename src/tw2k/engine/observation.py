@@ -610,6 +610,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "shields": planet.shields,
             "military_reaction_pct": int(getattr(planet, "military_reaction_pct", 0) or 0),
             "quasar_sector_pct": int(getattr(planet, "quasar_sector_pct", 0) or 0),
+            "quasar_atm_pct": int(getattr(planet, "quasar_atm_pct", 0) or 0),
             # Same shape as sector.planets[] (_planet_brief): per-pool dict + total.
             "colonists": colonists,
             "colonists_total": sum(colonists.values()),
@@ -1005,6 +1006,7 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
         brief["shields"] = planet.shields
         brief["military_reaction_pct"] = int(getattr(planet, "military_reaction_pct", 0) or 0)
         brief["quasar_sector_pct"] = int(getattr(planet, "quasar_sector_pct", 0) or 0)
+        brief["quasar_atm_pct"] = int(getattr(planet, "quasar_atm_pct", 0) or 0)
         brief["treasury"] = planet.treasury
         brief["stockpile"] = {c.value: planet.stockpile.get(c, 0) for c in planet.stockpile}
     return brief

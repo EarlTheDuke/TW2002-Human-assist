@@ -339,6 +339,8 @@ class Planet(BaseModel):
     military_reaction_pct: int = 0
     # 0-100. Percent of fuel stockpile a sector quasar burns on a hostile warp.
     quasar_sector_pct: int = 0
+    # 0-100. Percent of fuel stockpile an atmospheric quasar burns on a hostile landing.
+    quasar_atm_pct: int = 0
     treasury: int = 0
     last_tax_value: int = 0
     # How the CURRENT owner acquired the planet: "genesis" (their own torpedo,

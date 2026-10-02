@@ -2075,7 +2075,7 @@
     const CITADEL_TIERS = [
       { cr:   5000, col:  1000, days: 1, perk: "Treasury: deposit and withdraw credits while landed, plus 2% daily interest" },
       { cr:  10000, col:  2000, days: 1, perk: "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level" },
-      { cr:  20000, col:  4000, days: 2, perk: "Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship" },
+      { cr:  20000, col:  4000, days: 2, perk: "Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall" },
       { cr:  40000, col:  8000, days: 2, perk: "Planet TransWarp (not yet in this game)" },
       { cr:  80000, col: 16000, days: 3, perk: "Planetary shields (not yet in this game)" },
       { cr: 160000, col: 32000, days: 4, perk: "Interdictor (not yet in this game)" },

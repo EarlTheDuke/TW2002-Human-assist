@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 16:40 PT - Fable - atmospheric quasar fires on a hostile landing
+- A citadel can set an atmosphere percent. A hostile landing burns that fuel before the shield gate and again after shields fall.
+
 ### 2026-10-02 15:40 PT - Fable - sector quasar burns fuel on a hostile warp
 - A citadel of level 3 or higher can set a fuel percent. A hostile warp burns that percent and hits shields, then fighters.
 

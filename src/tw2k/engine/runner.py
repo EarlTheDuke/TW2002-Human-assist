@@ -745,7 +745,7 @@ def _handle_wait(universe: Universe, pid: str, action: Action) -> ActionResult:
     return ActionResult(ok=True, turns_spent=cost)
 
 
-def _planet_odds_fight(player, planet) -> tuple[int, int, int, list[dict]]:
+def _planet_odds_fight(player, planet, on_shields_down=None) -> tuple[int, int, int, list[dict]]:
     """One shield soak, then reaction waves, then the defensive grind.
 
     The survivor rule is the comment on PLANET_OFFENSE_ODDS.
@@ -771,6 +771,12 @@ def _planet_odds_fight(player, planet) -> tuple[int, int, int, list[dict]]:
         n += 1
         if d_shields > 0:
             return a_fighters, d_fighters, d_shields, rounds
+        if on_shields_down is not None:
+            deaths = player.deaths
+            on_shields_down()
+            if player.deaths > deaths or int(player.ship.fighters) <= 0:
+                return 0, d_fighters, d_shields, rounds
+            a_fighters = int(player.ship.fighters)
     pct = max(0, min(100, int(getattr(planet, "military_reaction_pct", 0) or 0)))
     reaction = d_fighters * pct // 100
     defenders = d_fighters - reaction
@@ -854,14 +860,26 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             killer = sector.fighters.owner_id if sector.fighters is not None else None
             _destroy_ship(universe, pid, reason="sector_fighters", killer_id=killer)
             return ActionResult(ok=True, turns_spent=cost)
+        if _fire_atmospheric_quasar(universe, pid, planet):
+            return ActionResult(ok=True, turns_spent=cost)
+        if int(planet.shields) <= 0 and _fire_atmospheric_quasar(universe, pid, planet):
+            return ActionResult(ok=True, turns_spent=cost)
 
+    shields_already_down = hostile and int(planet.shields) <= 0
     if hostile and planet.fighters <= 0 and planet.shields > 0 and player.ship.fighters <= 0:
         # An empty ship cannot break shields, and there are no planet fighters
         # to destroy it. Repel with the shields and the ship unchanged.
         return ActionResult(ok=False, error="planetary defenses repelled landing", turns_spent=cost)
     if hostile and (planet.fighters > 0 or planet.shields > 0):
-        a_fighters, d_fighters, d_shields, rounds = _planet_odds_fight(player, planet)
-        player.ship.fighters = a_fighters
+        def _atm_after_shields() -> None:
+            _fire_atmospheric_quasar(universe, pid, planet)
+
+        deaths_at_fight = player.deaths
+        a_fighters, d_fighters, d_shields, rounds = _planet_odds_fight(
+            player, planet, None if shields_already_down else _atm_after_shields,
+        )
+        if player.deaths == deaths_at_fight:
+            player.ship.fighters = a_fighters
         planet.fighters = d_fighters
         planet.shields = d_shields
         universe.emit(
@@ -888,8 +906,9 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
                 f"[F{d_fighters} S{d_shields}]"
             ),
         )
-        if a_fighters <= 0:
-            _destroy_ship(universe, pid, reason="planet_defense", killer_id=planet.owner_id)
+        if a_fighters <= 0 or player.deaths > deaths_at_fight:
+            if player.deaths == deaths_at_fight:
+                _destroy_ship(universe, pid, reason="planet_defense", killer_id=planet.owner_id)
             return ActionResult(ok=True, turns_spent=cost)
         if d_shields > 0 or d_fighters > 0:
             return ActionResult(ok=False, error="planetary defenses repelled landing", turns_spent=cost)
@@ -2229,7 +2248,7 @@ def _quasar_shot(fuel: int, pct: int) -> tuple[int, int]:
     return burned, burned // 3
 
 
-def _apply_quasar_to_ship(universe: Universe, pid: str, damage: int, planet) -> None:
+def _apply_quasar_to_ship(universe: Universe, pid: str, damage: int, planet, mode: str) -> None:
     """Shields soak first, then fighters. Destroy when both are gone.
 
     This is not the sector-fighter clash (fighters only) and not the mine
@@ -2245,7 +2264,7 @@ def _apply_quasar_to_ship(universe: Universe, pid: str, damage: int, planet) -> 
         EventKind.QUASAR_FIRE,
         actor_id=planet.owner_id,
         sector_id=planet.sector_id,
-        payload={"planet_id": planet.id, "mode": "sector", "damage": damage},
+        payload={"planet_id": planet.id, "mode": mode, "damage": damage},
         summary=f"Quasar on {planet.name} hit {player.name} for {damage}",
     )
     if damage > 0 and player.ship.shields <= 0 and player.ship.fighters <= 0:
@@ -2274,7 +2293,38 @@ def _apply_sector_quasar(universe: Universe, pid: str, sector) -> None:
         if burned <= 0:
             continue
         planet.stockpile[Commodity.FUEL_ORE] = fuel - burned
-        _apply_quasar_to_ship(universe, pid, damage, planet)
+        _apply_quasar_to_ship(universe, pid, damage, planet, "sector")
+
+
+def _atm_quasar_shot(fuel: int, pct: int) -> tuple[int, int]:
+    """pct is an integer 0-100.
+
+    Burned fuel is fuel * pct // 100. Damage is that fuel times QUASAR_ATM_FACTOR.
+    10,000 fuel at 10% burns 1,000 and deals 2,000. The next shot on the
+    remaining 9,000 burns 900 and deals 1,800.
+    """
+    burned = fuel * pct // 100
+    return burned, burned * K.QUASAR_ATM_FACTOR
+
+
+def _fire_atmospheric_quasar(universe: Universe, pid: str, planet) -> bool:
+    """One atmosphere shot. True when this shot destroyed the ship."""
+    player = universe.players[pid]
+    if int(planet.citadel_level or 0) < K.QUASAR_MIN_LEVEL:
+        return False
+    pct = int(planet.quasar_atm_pct or 0)
+    if pct <= 0:
+        return False
+    fuel = int(planet.stockpile.get(Commodity.FUEL_ORE, 0))
+    if fuel <= 0:
+        return False
+    burned, damage = _atm_quasar_shot(fuel, pct)
+    if burned <= 0:
+        return False
+    deaths = player.deaths
+    planet.stockpile[Commodity.FUEL_ORE] = fuel - burned
+    _apply_quasar_to_ship(universe, pid, damage, planet, "atmosphere")
+    return player.deaths > deaths
 
 
 def _handle_set_quasar_sector(universe: Universe, pid: str, action: Action) -> ActionResult:
@@ -2294,6 +2344,26 @@ def _handle_set_quasar_sector(universe: Universe, pid: str, action: Action) -> A
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     planet.quasar_sector_pct = pct
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _handle_set_quasar_atm(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return error
+    if int(planet.citadel_level or 0) < K.QUASAR_MIN_LEVEL:
+        return ActionResult(ok=False, error="quasar requires citadel level 3")
+    try:
+        pct = int(action.args.get("pct", -1))
+    except (TypeError, ValueError):
+        return ActionResult(ok=False, error="pct must be from 0 to 100")
+    if pct < 0 or pct > 100:
+        return ActionResult(ok=False, error="pct must be from 0 to 100")
+    cost = int(K.TURN_COST["set_quasar_atm"])
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    planet.quasar_atm_pct = pct
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -2406,6 +2476,7 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.DEPOSIT_PLANET_DEFENSE: _handle_deposit_planet_defense,
     ActionKind.WITHDRAW_PLANET_DEFENSE: _handle_withdraw_planet_defense,
     ActionKind.SET_QUASAR_SECTOR: _handle_set_quasar_sector,
+    ActionKind.SET_QUASAR_ATM: _handle_set_quasar_atm,
 }
 
 

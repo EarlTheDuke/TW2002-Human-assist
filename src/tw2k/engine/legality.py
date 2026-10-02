@@ -623,6 +623,17 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    cost=quasar_cost,
                    params={"planet_id": pid_param,
                            "pct": {"type": "int", "required": True, "min": 0, "max": 100}}))
+    atm_cost = int(K.TURN_COST["set_quasar_atm"])
+    if owned_reason:
+        atm_reason = owned_reason
+    elif owned_landed and int(landed_planet.citadel_level or 0) < K.QUASAR_MIN_LEVEL:
+        atm_reason = "quasar requires citadel level 3"
+    else:
+        atm_reason = _need_turns(player, atm_cost)
+    out.append(_la(ActionKind.SET_QUASAR_ATM, legal=atm_reason is None, reason=atm_reason,
+                   cost=atm_cost,
+                   params={"planet_id": pid_param,
+                           "pct": {"type": "int", "required": True, "min": 0, "max": 100}}))
 
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}

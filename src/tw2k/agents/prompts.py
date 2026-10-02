@@ -229,7 +229,7 @@ Full sequence from StarDock, ~30-50 turns for your first planet:
 
 Next days: return with more colonists, land, call `build_citadel` again to push levels:
   L1→L2  10k cr +  2k col, 1 day   (Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level)
-  L2→L3  20k cr +  4k col, 2 days  (Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship)
+  L2→L3  20k cr +  4k col, 2 days  (Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall)
   L3→L4  40k cr +  8k col, 2 days  (Planet TransWarp (not yet in this game))
   L4→L5  80k cr + 16k col, 3 days  (Planetary shields (not yet in this game))
   L5→L6 160k cr + 32k col, 4 days  (Interdictor (not yet in this game))
@@ -391,7 +391,7 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
 Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
 Recon:       probe query_limpets plot_course
-Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm
 StarDock:    buy_ship buy_equip
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
@@ -448,7 +448,7 @@ Key **mechanical** rules:
   * `known_warps` is your **personal** exploration map — a short graph means you have not scanned/warped
     widely yet, not that the universe is tiny. `sector.warps_count` is the true out-warp count here.
   * On failure, read `recent_events`, `recent_failures`, and `action_hint`; change plan.
-  * sector.planets lists fighters, shields, treasury, and stockpile only for a planet you own or share a corp with. Defended hostile landings are planet ids on land_planet contested. Hostile planet shields are fought first: one planet shield absorbs 20 attacker damage, and planet fighters do not fire while shields remain. Shields still standing repel the landing, including a planet with no fighters. `set_military_reaction` `{"planet_id":<id>,"pct":0-100}` while landed on your planet or your corp's sets the percent of planet fighters that attack at 2:1 after shields fall. The rest defend at 3:1. Costs 1 turn. `deposit_treasury` / `withdraw_treasury` `{"planet_id":<id>,"amount":N}` move credits into or out of that planet's treasury at citadel level 1 or higher. 2% daily interest. Costs 1 turn. `set_quasar_sector` `{"planet_id":<id>,"pct":0-100}` while landed at citadel level 3 or higher. A hostile warp into the sector burns that percent of the fuel stockpile and deals that fuel // 3 as damage. Own, corp, and allied ships are not shot. Costs 1 turn. The percent and the fuel stay off other commanders' briefs.
+  * sector.planets lists fighters, shields, treasury, and stockpile only for a planet you own or share a corp with. Defended hostile landings are planet ids on land_planet contested. Hostile planet shields are fought first: one planet shield absorbs 20 attacker damage, and planet fighters do not fire while shields remain. Shields still standing repel the landing, including a planet with no fighters. `set_military_reaction` `{"planet_id":<id>,"pct":0-100}` while landed on your planet or your corp's sets the percent of planet fighters that attack at 2:1 after shields fall. The rest defend at 3:1. Costs 1 turn. `deposit_treasury` / `withdraw_treasury` `{"planet_id":<id>,"amount":N}` move credits into or out of that planet's treasury at citadel level 1 or higher. 2% daily interest. Costs 1 turn. `set_quasar_sector` `{"planet_id":<id>,"pct":0-100}` while landed at citadel level 3 or higher. A hostile warp into the sector burns that percent of the fuel stockpile and deals that fuel // 3 as damage. Own, corp, and allied ships are not shot. Costs 1 turn. `set_quasar_atm` `{"planet_id":<id>,"pct":0-100}` while landed at citadel level 3 or higher. A hostile landing burns that percent of the fuel stockpile before the shield gate and again after shields fall. Damage is that fuel times 2. Costs 1 turn. The percent and the fuel stay off other commanders' briefs.
 
 Deeper mechanics, price tables, worked examples, and long diplomacy copy live in **docs/PLAYBOOK.md**
 (reference only — not a mandatory checklist).
@@ -476,7 +476,7 @@ reroute, scout/probe, re-arm, buy a combat-capable ship, hunt the threat, or kno
 Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
 Recon:       probe query_limpets plot_course
-Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm
 StarDock:    buy_ship buy_equip
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
@@ -547,7 +547,7 @@ def stage_hint(obs: Observation) -> dict[str, Any]:
             "stage": "S4",
             "label": "Fortify & Form",
             "reason": f"Citadel L{max_cit}{corp_bit} — hardening phase",
-            "next_milestone": "Citadel L3 (Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship), >=1M net worth, secure a corp or alliance",
+            "next_milestone": "Citadel L3 (Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall), >=1M net worth, secure a corp or alliance",
         })
     if has_own_planet or max_cit >= 1:
         if has_own_planet:
