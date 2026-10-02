@@ -7,6 +7,7 @@ from tests.test_siege_path_v1 import SECTOR, _place, _planet
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.constants import TURN_COST
 from tw2k.engine.models import (
+    Alliance,
     EventKind,
     FighterDeployment,
     FighterMode,
@@ -56,6 +57,7 @@ def test_mines_kill_a_weak_ship_before_the_planet_fight() -> None:
     )
     mine = next(ev for ev in u.events if ev.kind is EventKind.MINE_DETONATED)
     assert event_facts(mine) == {"hits": 1, "damage": 100, "victim": attacker.id}
+    assert mine.summary == f"1 armid mines hit {attacker.name} landing {SECTOR} (100 dmg)"
     assert "planet_id" not in mine.payload
     hidden = next(p for p in build_observation(u, outsider.id).sector["planets"] if p["id"] == planet.id)
     assert "fighters" not in hidden
@@ -137,3 +139,81 @@ def test_own_and_corp_hazards_do_not_fire() -> None:
     assert attacker.ship.fighters == 80
     assert not any(ev.kind is EventKind.MINE_DETONATED for ev in u.events)
     assert not any(ev.payload.get("vs") == "fighter_sector" for ev in u.events)
+
+
+def _quiet(u, attacker, planet) -> None:
+    assert attacker.ship.fighters == 80
+    assert attacker.ship.shields == 0
+    assert attacker.credits == 5_000
+    assert attacker.deaths == 0
+    assert attacker.planet_landed == planet.id
+    assert not any(ev.kind is EventKind.MINE_DETONATED for ev in u.events)
+    assert not any(ev.payload.get("vs") == "fighter_sector" for ev in u.events)
+    assert not any(ev.payload.get("toll_to") for ev in u.events)
+    assert u.sectors[SECTOR].mines[0].count == 1
+
+
+def test_friendly_landings_do_not_touch_sector_hazards() -> None:
+    u, (attacker, owner, outsider) = _make_universe(seed=9611)
+    attacker.ship.fighters = 80
+    attacker.ship.shields = 0
+    attacker.credits = 5_000
+    planet = _planet(9611, fighters=30, shields=10)
+    planet.owner_id = attacker.id
+    _place(u, planet, attacker)
+    _armids(u, outsider.id, 1)
+    _sector_fighters(u, outsider.id, 100, FighterMode.OFFENSIVE)
+    res = _land(u, attacker.id, planet.id)
+    assert res.ok, res.error
+    assert planet.owner_id == attacker.id
+    _quiet(u, attacker, planet)
+
+    u, (attacker, mate, outsider) = _make_universe(seed=9612)
+    attacker.corp_ticker = mate.corp_ticker = "ACE"
+    attacker.ship.fighters = 80
+    attacker.ship.shields = 0
+    attacker.credits = 5_000
+    planet = _planet(9612, fighters=30, shields=10)
+    planet.owner_id = mate.id
+    planet.corp_ticker = "ACE"
+    _place(u, planet, attacker)
+    _armids(u, outsider.id, 1)
+    _sector_fighters(u, outsider.id, 40, FighterMode.TOLL)
+    res = _land(u, attacker.id, planet.id)
+    assert res.ok, res.error
+    assert planet.owner_id == mate.id
+    _quiet(u, attacker, planet)
+
+    u, (attacker, owner, outsider) = _make_universe(seed=9613)
+    attacker.ship.fighters = 80
+    attacker.ship.shields = 0
+    attacker.credits = 5_000
+    planet = _planet(9613, fighters=0, shields=0)
+    planet.owner_id = None
+    planet.corp_ticker = None
+    _place(u, planet, attacker)
+    _armids(u, outsider.id, 1)
+    _sector_fighters(u, outsider.id, 100, FighterMode.OFFENSIVE)
+    res = _land(u, attacker.id, planet.id)
+    assert res.ok, res.error
+    assert planet.owner_id == attacker.id
+    _quiet(u, attacker, planet)
+
+    u, (attacker, ally, outsider) = _make_universe(seed=9614)
+    attacker.ship.fighters = 80
+    attacker.ship.shields = 0
+    attacker.credits = 5_000
+    planet = _planet(9614, fighters=30, shields=10)
+    planet.owner_id = ally.id
+    planet.corp_ticker = "OTHER"
+    u.alliances["A1"] = Alliance(
+        id="A1", member_ids=[attacker.id, ally.id], proposed_by=attacker.id, formed_day=0, active=True,
+    )
+    attacker.alliances.append("A1")
+    _place(u, planet, attacker)
+    _armids(u, outsider.id, 1)
+    _sector_fighters(u, outsider.id, 100, FighterMode.OFFENSIVE)
+    res = _land(u, attacker.id, planet.id)
+    assert res.ok, res.error
+    assert planet.owner_id == ally.id
+    _quiet(u, attacker, planet)

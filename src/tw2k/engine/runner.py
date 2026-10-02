@@ -248,12 +248,13 @@ def _warp_cost_for(player) -> int:
     return K.TURN_COST["warp"]
 
 
-def _apply_sector_hazards(universe: Universe, pid: str, sector) -> int:
+def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: str = "entering") -> int:
     """Mines, then the other side's sector fighters. Same math as a warp entry.
 
     Returns the armid damage dealt. A mine kill ejects through `_destroy_ship`.
     Offensive fighters clash. Toll fighters charge. Defensive fighters do not
     attack, matching warp. Own, corp, and alliance hazards are skipped.
+    `entry_verb` is "entering" on a warp and "landing" on a hostile landing.
     """
     player = universe.players[pid]
     rng = _rng_for(universe)
@@ -275,7 +276,7 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector) -> int:
                 actor_id=md.owner_id,
                 sector_id=sector.id,
                 payload={"hits": hits, "damage": hits * K.ARMID_DAMAGE, "victim": pid},
-                summary=f"{hits} armid mines hit {player.name} entering {sector.id} ({hits * K.ARMID_DAMAGE} dmg)",
+                summary=f"{hits} armid mines hit {player.name} {entry_verb} {sector.id} ({hits * K.ARMID_DAMAGE} dmg)",
             )
         elif md.kind == MineType.LIMPET:
             # Silently attach 1 limpet tracker; consume one mine.
@@ -832,25 +833,24 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
 
-    deaths_before = player.deaths
-    fighters_before = player.ship.fighters
-    _apply_sector_hazards(universe, pid, sector)
-    if player.deaths > deaths_before:
-        return ActionResult(ok=True, turns_spent=cost)
-    if fighters_before > 0 and player.ship.fighters <= 0:
-        killer = sector.fighters.owner_id if sector.fighters is not None else None
-        _destroy_ship(universe, pid, reason="sector_fighters", killer_id=killer)
-        return ActionResult(ok=True, turns_spent=cost)
-
-    hostile = (
-        planet.owner_id is not None
-        and planet.owner_id != pid
-        and not (
-            planet.corp_ticker
-            and player.corp_ticker
-            and planet.corp_ticker == player.corp_ticker
-        )
+    same_corp = bool(
+        planet.corp_ticker
+        and player.corp_ticker
+        and planet.corp_ticker == player.corp_ticker
     )
+    allied_owner = planet.owner_id is not None and _are_allied(universe, pid, planet.owner_id)
+    hostile = planet.owner_id is not None and planet.owner_id != pid and not same_corp and not allied_owner
+    if hostile:
+        deaths_before = player.deaths
+        fighters_before = player.ship.fighters
+        _apply_sector_hazards(universe, pid, sector, entry_verb="landing")
+        if player.deaths > deaths_before:
+            return ActionResult(ok=True, turns_spent=cost)
+        if fighters_before > 0 and player.ship.fighters <= 0:
+            killer = sector.fighters.owner_id if sector.fighters is not None else None
+            _destroy_ship(universe, pid, reason="sector_fighters", killer_id=killer)
+            return ActionResult(ok=True, turns_spent=cost)
+
     if hostile and planet.fighters <= 0 and planet.shields > 0 and player.ship.fighters <= 0:
         # An empty ship cannot break shields, and there are no planet fighters
         # to destroy it. Repel with the shields and the ship unchanged.
