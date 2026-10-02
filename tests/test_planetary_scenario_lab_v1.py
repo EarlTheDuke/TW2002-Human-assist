@@ -29,7 +29,7 @@ def test_two_cells_three_seeds_cover_a_shield_repel_and_a_fighter_loss() -> None
     destroyed = lab.run_grid(
         planet_fighters=(10000,),
         planet_shields=(0,),
-        attacker_fighters=(100,),
+        attacker_fighters=(99,),
         seeds=3,
     )[0]
     assert repelled.n == 3 and repelled.other == 0

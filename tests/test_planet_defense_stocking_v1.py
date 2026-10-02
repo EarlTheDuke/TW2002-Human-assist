@@ -166,7 +166,7 @@ def test_stocked_fighters_are_what_the_siege_fights() -> None:
     owner.ship.fighters = 2000
     assert _move(u, owner.id, "fighters", 2000).ok
     owner.planet_landed = None
-    outsider.ship.fighters = 20
+    outsider.ship.fighters = 21
     outsider.ship.shields = 0
     landed = apply_action(u, outsider.id, Action(
         kind=ActionKind.LAND_PLANET, args={"planet_id": planet.id},

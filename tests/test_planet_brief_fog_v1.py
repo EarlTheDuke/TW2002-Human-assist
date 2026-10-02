@@ -75,6 +75,7 @@ def test_outsider_loses_garrison_numbers_and_keeps_the_contested_flag() -> None:
 
     shown = _brief(u, owner.id)
     assert shown["fighters"] == 4321
+    assert shown["military_reaction_pct"] == 0
     assert shown["shields"] == 87
     assert shown["treasury"] == 6543
     assert shown["stockpile"]["fuel_ore"] == 19
@@ -85,12 +86,22 @@ def test_outsider_loses_garrison_numbers_and_keeps_the_contested_flag() -> None:
     assert _contested(u, mate.id) == []
 
 
-def test_zero_fighters_stays_hidden_and_is_not_contested() -> None:
+def test_shields_only_is_contested_without_showing_the_numbers() -> None:
     u, (outsider, *_) = _make_universe(seed=77022)
-    _plant(u, owner="B", corp="QQ", fighters=0, shields=87)
+    planet = _plant(u, owner="B", corp="QQ", fighters=0, shields=87)
     _stand(u, outsider)
     hidden = _brief(u, outsider.id)
     assert "shields" not in hidden and "fighters" not in hidden
+    assert "military_reaction_pct" not in hidden
+    assert _contested(u, outsider.id) == [planet.id]
+
+
+def test_empty_hostile_planet_is_not_contested() -> None:
+    u, (outsider, *_) = _make_universe(seed=77023)
+    _plant(u, owner="B", corp="QQ", fighters=0, shields=0)
+    _stand(u, outsider)
+    hidden = _brief(u, outsider.id)
+    assert "military_reaction_pct" not in hidden
     assert _contested(u, outsider.id) == []
 
 
