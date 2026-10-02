@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 12:10 PT - Fable - friendly landings skip sector hazards
+- Mines and sector fighters fire only when the landing is hostile. A mine hit while landing says landing, and a warp still says entering.
+
 ### 2026-10-02 11:10 PT - Fable - landing checks sector hazards first
 - A landing now trips the same mines and sector fighters a warp would, before the planet fight. A ship that dies there does not capture.
 
