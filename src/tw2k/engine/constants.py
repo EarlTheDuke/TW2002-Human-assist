@@ -177,6 +177,8 @@ TURN_COST = {
     "deposit_planet_defense": 1,
     "withdraw_planet_defense": 1,
     "set_military_reaction": 1,
+    "deposit_treasury": 1,
+    "withdraw_treasury": 1,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -218,7 +220,7 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
 # whether this game does that thing today. Completing level 2 or
 # higher still grants the garrison in planets._complete_citadels.
 CITADEL_PERK: list[tuple[int, str, str]] = [
-    (1, "Treasury", "Treasury (not yet in this game)"),
+    (1, "Treasury", "Treasury: deposit and withdraw credits while landed, plus 2% daily interest"),
     (2, "Combat Control Computer",
      "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level"),
     (3, "Quasar cannon", "Quasar cannon (not yet in this game)"),
@@ -233,6 +235,11 @@ GENESIS_DEPLOY_TURN_COST = 4
 PLANET_FIGHTER_CAP = 1_000_000
 PLANET_SHIELD_SHIP_COST = 10
 PLANET_DEFENSE_MIN_LEVEL = 0
+# Daily interest is this percent of planet.treasury, integer division, at citadel level >= 1.
+PLANET_TREASURY_INTEREST_PCT = 2
+# Cap so 2% daily interest cannot grow a planet bank toward the 100,000,000 credit victory by itself.
+# Ten million is a stockpile the owner can withdraw, not a second win.
+PLANET_TREASURY_CAP = 10_000_000
 # One planet shield absorbs 20 points of attacker damage, so the attacker needs 20 fighters per planet shield.
 PLANET_SHIELD_ODDS = 20
 # Planet fighter odds. The 3-round dice path is retired. Ship-vs-ship dice stay.

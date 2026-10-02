@@ -2073,7 +2073,7 @@
     // Citadel tier table mirrors engine K.CITADEL_TIER_COST (1..6).
     // Perk text matches CITADEL_PERK. Costs and days are unchanged.
     const CITADEL_TIERS = [
-      { cr:   5000, col:  1000, days: 1, perk: "Treasury (not yet in this game)" },
+      { cr:   5000, col:  1000, days: 1, perk: "Treasury: deposit and withdraw credits while landed, plus 2% daily interest" },
       { cr:  10000, col:  2000, days: 1, perk: "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level" },
       { cr:  20000, col:  4000, days: 2, perk: "Quasar cannon (not yet in this game)" },
       { cr:  40000, col:  8000, days: 2, perk: "Planet TransWarp (not yet in this game)" },
@@ -2434,6 +2434,7 @@
     assign_colonists:  { cat: "diplomacy", icon: "\ud83d\udc65", label: "ASSIGN COLS" },
     planet_defense_transfer: { cat: "diplomacy", icon: "\u2694", label: "PLANET DEFENSE" },
     planet_military_reaction: { cat: "diplomacy", icon: "\u2694", label: "REACTION" },
+    planet_treasury: { cat: "diplomacy", icon: "\u2696", label: "TREASURY" },
     build_citadel:     { cat: "diplomacy", icon: "\ud83c\udfd7", label: "CITADEL BUILD" },
     citadel_complete:  { cat: "diplomacy", icon: "\ud83c\udff0", label: "CITADEL BUILT", big: true },
     planet_tax_payout: { cat: "trade",     icon: "$",      label: "PLANET TAX", big: true },

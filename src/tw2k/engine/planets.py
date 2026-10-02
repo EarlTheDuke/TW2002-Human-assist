@@ -151,6 +151,19 @@ def _complete_citadels(universe: Universe) -> None:
                           multiplier=planet.citadel_level)
 
 
+def _accrue_planet_treasury(universe: Universe) -> None:
+    """2% interest, once per day, for citadels at level 1 or higher."""
+    cap = K.PLANET_TREASURY_CAP
+    pct = K.PLANET_TREASURY_INTEREST_PCT
+    for planet in universe.planets.values():
+        if int(planet.citadel_level or 0) < 1 or int(planet.treasury) <= 0:
+            continue
+        gain = int(planet.treasury) * pct // 100
+        if gain <= 0:
+            continue
+        planet.treasury = min(cap, int(planet.treasury) + gain)
+
+
 def _advance_planets(universe: Universe) -> None:
     for planet in universe.planets.values():
         coeffs = PLANET_PROD_COEFF[planet.class_id]

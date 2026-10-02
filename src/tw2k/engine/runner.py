@@ -38,7 +38,7 @@ from .models import (
     PortClass,
     Universe,
 )
-from .planets import _advance_planets, _complete_citadels, _pay_planet_value_tax
+from .planets import _accrue_planet_treasury, _advance_planets, _complete_citadels, _pay_planet_value_tax
 from .victory import (
     _award_xp,
     _check_victory,
@@ -175,6 +175,7 @@ def tick_day(universe: Universe) -> None:
         _advance_planets(universe)
         _complete_citadels(universe)
         _pay_planet_value_tax(universe)
+        _accrue_planet_treasury(universe)
 
     universe.emit(
         EventKind.DAY_TICK,
@@ -829,6 +830,10 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             and planet.corp_ticker == player.corp_ticker
         )
     )
+    if hostile and planet.fighters <= 0 and planet.shields > 0 and player.ship.fighters <= 0:
+        # An empty ship cannot break shields, and there are no planet fighters
+        # to destroy it. Repel with the shields and the ship unchanged.
+        return ActionResult(ok=False, error="planetary defenses repelled landing", turns_spent=cost)
     if hostile and (planet.fighters > 0 or planet.shields > 0):
         a_fighters, d_fighters, d_shields, rounds = _planet_odds_fight(player, planet)
         player.ship.fighters = a_fighters
@@ -2098,6 +2103,71 @@ def _emit_defense_transfer(universe: Universe, player, planet, kind: str, qty: i
     )
 
 
+def _parse_treasury_amount(action: Action) -> tuple[int | None, ActionResult | None]:
+    try:
+        amount = int(action.args.get("amount", 0))
+    except (TypeError, ValueError):
+        return None, ActionResult(ok=False, error="amount must be positive")
+    if amount <= 0:
+        return None, ActionResult(ok=False, error="amount must be positive")
+    return amount, None
+
+
+def _treasury_ready(universe: Universe, pid: str, action: Action, cost_key: str):
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return player, None, error
+    if int(planet.citadel_level or 0) < 1:
+        return player, planet, ActionResult(ok=False, error="treasury requires citadel level 1")
+    amount, error = _parse_treasury_amount(action)
+    if error is not None:
+        return player, planet, error
+    cost = int(K.TURN_COST[cost_key])
+    if player.turns_today + cost > player.turns_per_day:
+        return player, planet, ActionResult(ok=False, error="out of turns")
+    return player, planet, amount
+
+
+def _emit_treasury(universe: Universe, player, planet, direction: str, amount: int) -> None:
+    word = "deposited" if direction == "deposit" else "withdrew"
+    universe.emit(
+        EventKind.PLANET_TREASURY,
+        actor_id=player.id,
+        sector_id=planet.sector_id,
+        payload={"planet_id": planet.id, "direction": direction, "amount": amount},
+        summary=f"{player.name} {word} {amount} cr in {planet.name}'s treasury",
+    )
+
+
+def _handle_deposit_treasury(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player, planet, ready = _treasury_ready(universe, pid, action, "deposit_treasury")
+    if isinstance(ready, ActionResult):
+        return ready
+    amount = ready
+    if int(player.credits) < amount:
+        return ActionResult(ok=False, error="not enough credits")
+    if int(planet.treasury) + amount > K.PLANET_TREASURY_CAP:
+        return ActionResult(ok=False, error=f"planet treasury cap is {K.PLANET_TREASURY_CAP}")
+    player.credits -= amount
+    planet.treasury += amount
+    _emit_treasury(universe, player, planet, "deposit", amount)
+    return ActionResult(ok=True, turns_spent=int(K.TURN_COST["deposit_treasury"]))
+
+
+def _handle_withdraw_treasury(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player, planet, ready = _treasury_ready(universe, pid, action, "withdraw_treasury")
+    if isinstance(ready, ActionResult):
+        return ready
+    amount = ready
+    if int(planet.treasury) < amount:
+        return ActionResult(ok=False, error="cannot take planet treasury below 0")
+    planet.treasury -= amount
+    player.credits += amount
+    _emit_treasury(universe, player, planet, "withdraw", amount)
+    return ActionResult(ok=True, turns_spent=int(K.TURN_COST["withdraw_treasury"]))
+
+
 def _handle_set_military_reaction(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
@@ -2117,8 +2187,8 @@ def _handle_set_military_reaction(universe: Universe, pid: str, action: Action) 
         EventKind.PLANET_MILITARY_REACTION,
         actor_id=player.id,
         sector_id=planet.sector_id,
-        payload={"planet_id": planet.id, "pct": pct},
-        summary=f"{player.name} set military reaction on {planet.name} to {pct}%",
+        payload={"planet_id": planet.id},
+        summary=f"{player.name} set military reaction on {planet.name}",
     )
     return ActionResult(ok=True, turns_spent=cost)
 
@@ -2227,6 +2297,8 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.BROADCAST: _handle_broadcast,
     ActionKind.WAIT: _handle_wait,
     ActionKind.SET_MILITARY_REACTION: _handle_set_military_reaction,
+    ActionKind.DEPOSIT_TREASURY: _handle_deposit_treasury,
+    ActionKind.WITHDRAW_TREASURY: _handle_withdraw_treasury,
     ActionKind.DEPOSIT_PLANET_DEFENSE: _handle_deposit_planet_defense,
     ActionKind.WITHDRAW_PLANET_DEFENSE: _handle_withdraw_planet_defense,
 }

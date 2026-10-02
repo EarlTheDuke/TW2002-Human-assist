@@ -22,7 +22,9 @@ NAMES = [
 def test_perk_list_is_the_original_order() -> None:
     assert [level for level, _, _ in CITADEL_PERK] == [1, 2, 3, 4, 5, 6]
     assert [name for _, name, _ in CITADEL_PERK] == NAMES
-    for _, _, perk in CITADEL_PERK:
+    assert "deposit and withdraw" in CITADEL_PERK[0][2]
+    assert "2% daily interest" in CITADEL_PERK[0][2]
+    for _, _, perk in CITADEL_PERK[1:]:
         assert "not yet in this game" in perk
     garrison = CITADEL_PERK[1][2]
     assert "garrison of 1000 fighters and 250 shields per level" in garrison

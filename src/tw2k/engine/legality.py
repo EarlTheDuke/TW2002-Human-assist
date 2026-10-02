@@ -590,6 +590,28 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"planet_id": pid_param,
                            "pct": {"type": "int", "required": True, "min": 0, "max": 100}}))
 
+    level_ok = owned_landed and int(landed_planet.citadel_level or 0) >= 1
+    room = max(0, K.PLANET_TREASURY_CAP - int(landed_planet.treasury)) if owned_landed else 0
+    deposit_max = min(int(player.credits), room) if level_ok else 0
+    withdraw_max = int(landed_planet.treasury) if level_ok else 0
+
+    def _treasury_la(kind: ActionKind, maxima: int, empty_reason: str) -> None:
+        cost = int(K.TURN_COST[kind.value])
+        if owned_reason:
+            reason = owned_reason
+        elif owned_landed and int(landed_planet.citadel_level or 0) < 1:
+            reason = "treasury requires citadel level 1"
+        elif maxima < 1:
+            reason = empty_reason
+        else:
+            reason = _need_turns(player, cost)
+        out.append(_la(kind, legal=reason is None, reason=reason, cost=cost,
+                       params={"planet_id": pid_param,
+                               "amount": {"type": "int", "required": True, "min": 1, "max": max(1, maxima)}}))
+
+    _treasury_la(ActionKind.DEPOSIT_TREASURY, deposit_max, "not enough credits, or the planet treasury is full")
+    _treasury_la(ActionKind.WITHDRAW_TREASURY, withdraw_max, "nothing in the planet treasury")
+
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}
     out.sort(key=lambda la: order.get(la.kind, 999))

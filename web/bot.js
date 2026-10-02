@@ -1063,7 +1063,7 @@
   const VERB_GROUPS = {
     combat: ["attack", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic"],
     stardock: ["buy_ship", "buy_equip", "corp_create"],
-    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction"],
+    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury"],
     comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
   };
   const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
@@ -1132,6 +1132,8 @@
     deposit_planet_defense: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "kind", l: "Stock", t: "choice" }, { n: "qty", l: "Planet qty", t: "int", maxBy: "kind" }], note: "Fighters 1:1. 10 ship shields = 1 planet shield." },
     withdraw_planet_defense: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "kind", l: "Take back", t: "choice" }, { n: "qty", l: "Planet qty", t: "int", maxBy: "kind" }], note: "Fighters 1:1. 10 ship shields = 1 planet shield. Cannot pass the ship cap." },
     set_military_reaction: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "pct", l: "Reaction %", t: "int", max: "max" }], note: "After shields fall, this percent of planet fighters attack at 2:1. The rest defend at 3:1." },
+    deposit_treasury: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "amount", l: "Credits", t: "int", max: "max" }], note: "Citadel L1 or higher. Credits move into the planet treasury." },
+    withdraw_treasury: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "amount", l: "Credits", t: "int", max: "max" }], note: "Cannot take the treasury below 0." },
     deploy_genesis: { fields: [] },
     hail: { fields: [{ n: "target", l: "To", t: "choice" }, { n: "message", l: "Message", t: "text" }] },
     broadcast: { fields: [{ n: "message", l: "Message to everyone", t: "text" }] },
@@ -1674,7 +1676,7 @@
     ferrengi_attack: "combat", ferrengi_spawn: "combat", fed_response: "combat",
     hail: "comms", broadcast: "comms", corp_memo: "comms", corp_create: "comms", corp_invite: "comms", corp_join: "comms",
     corp_leave: "comms", corp_deposit: "comms", corp_withdraw: "comms", alliance_proposed: "comms", alliance_formed: "comms", alliance_broken: "comms",
-    land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet", planet_defense_transfer: "planet", planet_military_reaction: "planet",
+    land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet", planet_defense_transfer: "planet", planet_military_reaction: "planet", planet_treasury: "planet",
     build_citadel: "planet", citadel_complete: "planet", planet_claimed: "planet", planet_orphaned: "planet",
   };
   function groupOf(kind) { return KIND_GROUP[kind] || "system"; }
