@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 23:05 PT - Fable - a review of the planetary warfare roadmap
+- The weekend plan is reviewed in docs/plans/planetary-warfare-cursor-review.md. No rules changed. The two known siege gaps should be fixed before new siege math, and the spectator planet row needs a server patch, not a guess from the landing event.
+
 ### 2026-10-01 21:05 PT - Fable - a seized landing does not refresh the planet row
 - The spectator planet row stays on the old owner and citadel after a seized landing. The public event has the planet id, class, seized flag, and the actor. It does not carry corp ticker or citadel level, so the row was left unchanged. No engine change.
 
