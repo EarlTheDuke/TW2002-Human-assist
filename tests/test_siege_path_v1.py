@@ -89,19 +89,17 @@ def test_repelled_landing_does_not_charge_turns() -> None:
 
     res = _land(u, attacker.id, planet.id)
 
-    # The handler returns ok=False with turns_spent set to the landing cost.
-    # apply_action only adds turns when ok is True, so the turn counter does
-    # not move. KNOWN GAP: a three-round siege that fails still reports a
-    # turn cost the player is never charged.
+    # The landing failed, so ok stays False, and this one failure still
+    # spends the landing turn.
     assert res.ok is False
     assert res.turns_spent == LAND_COST
-    assert "repelled" in (res.error or "")
-    assert attacker.turns_today == before
+    assert res.error == "planetary defenses repelled landing"
+    assert attacker.turns_today == before + LAND_COST
     assert planet.owner_id == "B"
     assert attacker.planet_landed is None
 
 
-def test_capture_leaves_citadel_target_above_the_damaged_level() -> None:
+def test_capture_lowers_citadel_target_with_the_level() -> None:
     u, (attacker, *_) = _make_universe(seed=8804)
     attacker.ship.fighters = 1_000
     attacker.ship.shields = 0
@@ -112,18 +110,13 @@ def test_capture_leaves_citadel_target_above_the_damaged_level() -> None:
     landed = _land(u, attacker.id, planet.id)
     assert landed.ok, landed.error
     assert planet.citadel_level == 1
-    assert planet.citadel_target == 2
+    assert planet.citadel_target == 1
+    assert planet.citadel_complete_day is None
 
     built = apply_action(u, attacker.id, Action(
         kind=ActionKind.BUILD_CITADEL, args={"planet_id": planet.id},
     ))
-    # KNOWN GAP: the siege lowers citadel_level and leaves citadel_target
-    # where it was, so a finished citadel looks like it is still under
-    # construction and build_citadel is refused.
-    assert built.ok is False
-    assert "already under construction" in (built.error or "")
-    assert planet.citadel_level == 1
-    assert planet.citadel_target == 2
+    assert "already under construction" not in (built.error or "")
 
 
 def test_undefended_planet_with_shields_is_captured_without_a_fight() -> None:

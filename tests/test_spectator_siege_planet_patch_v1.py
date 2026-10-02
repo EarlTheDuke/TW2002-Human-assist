@@ -47,6 +47,8 @@ def _seize(host: CuHost) -> None:
         planet.owner_id = "P2"
         planet.corp_ticker = "ACE"
         planet.citadel_level = 1
+        planet.citadel_target = 1
+        planet.citadel_complete_day = None
         universe.emit(
             EventKind.LAND_PLANET,
             actor_id="P2",
@@ -80,7 +82,7 @@ def _row(page) -> dict:
     )
 
 
-def test_seized_landing_leaves_the_planet_row_unchanged(browser, tmp_path, monkeypatch) -> None:
+def test_seized_landing_moves_the_planet_row(browser, tmp_path, monkeypatch) -> None:
     monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
     with CuHost(tmp_path, TOK) as host:
         page = browser.new_page(viewport={"width": 1440, "height": 900})
@@ -92,27 +94,35 @@ def test_seized_landing_leaves_the_planet_row_unchanged(browser, tmp_path, monke
               .some((el) => el.textContent === "SiegeHold")""",
             timeout=20_000,
         )
-        quiet = page.evaluate("() => document.documentElement.scrollHeight")
         before = _row(page)
         assert before["p1"] == {"owner": "P1", "citadel": "L2"}
         assert before["p2"] is None
 
         _seize(host)
-        page.wait_for_timeout(600)
+        page.wait_for_function(
+                """() => {
+                  const card = document.querySelector('.player-card[data-pid="P2"]');
+                  if (!card) return false;
+                  const hit = [...card.querySelectorAll(".planet-name")].find((el) => el.textContent === "SiegeHold");
+                  if (!hit) return false;
+                  return hit.closest(".planet-row").querySelector(".citadel-chip").textContent === "L1";
+                }""",
+                timeout=10_000,
+            )
         after = _row(page)
-        # The universe already has the new owner and the damaged citadel.
-        # The public landing event carries planet_id, class, and seized, plus
-        # the actor id. It does not carry corp_ticker or citadel_level, and
-        # the spectator planet patch list omits LAND_PLANET, so the row stays.
-        assert after == before
-        assert page.evaluate("() => document.documentElement.scrollHeight") == quiet
+        assert after["p1"] is None
+        assert after["p2"] == {"owner": "P2", "citadel": "L1"}
 
         universe = host.runner.state.universe
         assert universe is not None
         ev = next(e for e in universe.events if e.kind is EventKind.LAND_PLANET and e.payload.get("seized"))
         public = {key: value for key, value in ev.payload.items() if not str(key).startswith("_")}
         assert public == {"planet_id": PLANET_ID, "class": "M", "seized": True}
-        assert "planet" not in host.runner._state_patch_for(ev)
+        patch = host.runner._state_patch_for(ev)
+        assert patch["planet"]["id"] == PLANET_ID
+        assert patch["planet"]["owner_id"] == "P2"
+        assert patch["planet"]["citadel_level"] == 1
+        assert patch["planet"]["corp_ticker"] == "ACE"
         assert universe.planets[PLANET_ID].owner_id == "P2"
         assert universe.planets[PLANET_ID].citadel_level == 1
         page.close()

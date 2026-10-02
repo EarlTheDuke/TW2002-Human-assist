@@ -145,8 +145,10 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     result = handler(universe, player_id, action)
     result.event_seqs = [e.seq for e in universe.events if e.seq > before_seq]
 
-    # Count turns
-    if result.ok and result.turns_spent > 0:
+    # Count turns. A repelled planet landing stays ok=False so callers
+    # still see that the ship did not land, but the fight spent the turn.
+    repelled = (not result.ok) and result.error == "planetary defenses repelled landing"
+    if result.turns_spent > 0 and (result.ok or repelled):
         player.turns_today += result.turns_spent
 
     # Check victory after every applied action
@@ -829,6 +831,8 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         planet.corp_ticker = player.corp_ticker
         planet.origin = "other"
         planet.citadel_level = max(0, planet.citadel_level - 1)  # damaged in siege
+        planet.citadel_target = planet.citadel_level
+        planet.citadel_complete_day = None
         planet.treasury = int(planet.treasury * 0.5)
         planet.last_tax_value = _planet_asset_value(planet)
     elif hostile:
