@@ -248,6 +248,77 @@ def _warp_cost_for(player) -> int:
     return K.TURN_COST["warp"]
 
 
+def _apply_sector_hazards(universe: Universe, pid: str, sector) -> int:
+    """Mines, then the other side's sector fighters. Same math as a warp entry.
+
+    Returns the armid damage dealt. A mine kill ejects through `_destroy_ship`.
+    Offensive fighters clash. Toll fighters charge. Defensive fighters do not
+    attack, matching warp. Own, corp, and alliance hazards are skipped.
+    """
+    player = universe.players[pid]
+    rng = _rng_for(universe)
+    damage = 0
+    for md in list(sector.mines):
+        if md.owner_id == pid:
+            continue
+        # Corp mate / ally mines don't trigger
+        if _are_allied(universe, pid, md.owner_id):
+            continue
+        if md.kind == MineType.ARMID:
+            hits = min(md.count, rng.randint(1, K.MINE_MAX_HITS_PER_MOVE))
+            damage += hits * K.ARMID_DAMAGE
+            md.count -= hits
+            if md.count <= 0:
+                sector.mines.remove(md)
+            universe.emit(
+                EventKind.MINE_DETONATED,
+                actor_id=md.owner_id,
+                sector_id=sector.id,
+                payload={"hits": hits, "damage": hits * K.ARMID_DAMAGE, "victim": pid},
+                summary=f"{hits} armid mines hit {player.name} entering {sector.id} ({hits * K.ARMID_DAMAGE} dmg)",
+            )
+        elif md.kind == MineType.LIMPET:
+            # Silently attach 1 limpet tracker; consume one mine.
+            md.count -= 1
+            if md.count <= 0:
+                sector.mines.remove(md)
+            _attach_limpet(universe, md.owner_id, pid)
+
+    if damage > 0:
+        player.ship.shields = max(0, player.ship.shields - damage)
+        overflow = damage - player.ship.shields
+        if player.ship.shields == 0 and overflow > 0:
+            player.ship.fighters = max(0, player.ship.fighters - overflow)
+
+    if player.ship.fighters == 0 and damage > 0:
+        # Ship destroyed on entry; player ejected and respawns at StarDock
+        _destroy_ship(universe, pid, reason="mines")
+
+    # Hostile sector fighter check
+    if sector.fighters and sector.fighters.owner_id != pid:
+        f_mode = sector.fighters.mode
+        owner = universe.players.get(sector.fighters.owner_id)
+        allied = owner is not None and _are_allied(universe, pid, owner.id)
+        if not allied:
+            if f_mode == FighterMode.OFFENSIVE:
+                # Auto-attack
+                _resolve_fighter_sector_combat(universe, pid, sector.id)
+            elif f_mode == FighterMode.TOLL:
+                toll = sector.fighters.count  # 1 cr / fighter simplified = high disincentive
+                toll = min(player.credits, max(10, min(10000, sector.fighters.count)))
+                player.credits -= toll
+                if owner is not None:
+                    owner.credits += toll
+                universe.emit(
+                    EventKind.TRADE,
+                    actor_id=pid,
+                    sector_id=sector.id,
+                    payload={"toll_to": sector.fighters.owner_id, "amount": toll},
+                    summary=f"{player.name} paid {toll} cr toll to pass through {sector.id}",
+                )
+    return damage
+
+
 def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     target = action.args.get("target")
@@ -273,68 +344,8 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns for this day")
 
-    # Mine check
     dest = universe.sectors[target_id]
-    rng = _rng_for(universe)
-    damage = 0
-    for md in list(dest.mines):
-        if md.owner_id == pid:
-            continue
-        # Corp mate / ally mines don't trigger
-        if _are_allied(universe, pid, md.owner_id):
-            continue
-        if md.kind == MineType.ARMID:
-            hits = min(md.count, rng.randint(1, K.MINE_MAX_HITS_PER_MOVE))
-            damage += hits * K.ARMID_DAMAGE
-            md.count -= hits
-            if md.count <= 0:
-                dest.mines.remove(md)
-            universe.emit(
-                EventKind.MINE_DETONATED,
-                actor_id=md.owner_id,
-                sector_id=target_id,
-                payload={"hits": hits, "damage": hits * K.ARMID_DAMAGE, "victim": pid},
-                summary=f"{hits} armid mines hit {player.name} entering {target_id} ({hits * K.ARMID_DAMAGE} dmg)",
-            )
-        elif md.kind == MineType.LIMPET:
-            # Silently attach 1 limpet tracker; consume one mine.
-            md.count -= 1
-            if md.count <= 0:
-                dest.mines.remove(md)
-            _attach_limpet(universe, md.owner_id, pid)
-
-    if damage > 0:
-        player.ship.shields = max(0, player.ship.shields - damage)
-        overflow = damage - player.ship.shields
-        if player.ship.shields == 0 and overflow > 0:
-            player.ship.fighters = max(0, player.ship.fighters - overflow)
-
-    if player.ship.fighters == 0 and damage > 0:
-        # Ship destroyed on entry; player ejected and respawns at StarDock
-        _destroy_ship(universe, pid, reason="mines")
-
-    # Hostile sector fighter check
-    if dest.fighters and dest.fighters.owner_id != pid:
-        f_mode = dest.fighters.mode
-        owner = universe.players.get(dest.fighters.owner_id)
-        allied = owner is not None and _are_allied(universe, pid, owner.id)
-        if not allied:
-            if f_mode == FighterMode.OFFENSIVE:
-                # Auto-attack
-                _resolve_fighter_sector_combat(universe, pid, target_id)
-            elif f_mode == FighterMode.TOLL:
-                toll = dest.fighters.count  # 1 cr / fighter simplified = high disincentive
-                toll = min(player.credits, max(10, min(10000, dest.fighters.count)))
-                player.credits -= toll
-                if owner is not None:
-                    owner.credits += toll
-                universe.emit(
-                    EventKind.TRADE,
-                    actor_id=pid,
-                    sector_id=target_id,
-                    payload={"toll_to": dest.fighters.owner_id, "amount": toll},
-                    summary=f"{player.name} paid {toll} cr toll to pass through {target_id}",
-                )
+    damage = _apply_sector_hazards(universe, pid, dest)
 
     # If destroyed by fighters, handler already ejected player
     if not player.alive or (player.sector_id == K.STARDOCK_SECTOR and damage > 0):
@@ -820,6 +831,16 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
     cost = K.TURN_COST["land_planet"]
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
+
+    deaths_before = player.deaths
+    fighters_before = player.ship.fighters
+    _apply_sector_hazards(universe, pid, sector)
+    if player.deaths > deaths_before:
+        return ActionResult(ok=True, turns_spent=cost)
+    if fighters_before > 0 and player.ship.fighters <= 0:
+        killer = sector.fighters.owner_id if sector.fighters is not None else None
+        _destroy_ship(universe, pid, reason="sector_fighters", killer_id=killer)
+        return ActionResult(ok=True, turns_spent=cost)
 
     hostile = (
         planet.owner_id is not None

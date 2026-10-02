@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 11:10 PT - Fable - landing checks sector hazards first
+- A landing now trips the same mines and sector fighters a warp would, before the planet fight. A ship that dies there does not capture.
+
 ### 2026-10-02 09:30 PT - Fable - planets mint fighters from colonists
 - An owned planet turns product-pool colonists into fighters once a day, using the original divisors. Class U still makes stock and no fighters.
 

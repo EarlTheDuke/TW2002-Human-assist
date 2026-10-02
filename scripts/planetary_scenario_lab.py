@@ -18,7 +18,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
-from tw2k.engine.models import Planet, PlanetClass, Player, Ship
+from tw2k.engine.models import (
+    FighterDeployment,
+    FighterMode,
+    MineDeployment,
+    MineType,
+    Planet,
+    PlanetClass,
+    Player,
+    Ship,
+)
 
 SECTOR_ID = 40
 PLANET_ID = 88001
@@ -169,8 +178,19 @@ def run_landing(
     citadel_level: int = DEFAULT_CITADEL_LEVEL,
     reaction_pct: int = 0,
     quasar: bool = False,
+    mines: int = 0,
+    sector_fighters: int = 0,
 ) -> tuple[str, int]:
     """Return (capture|repelled|attacker_destroyed|other, fighters left)."""
+    sector = universe.sectors[SECTOR_ID]
+    sector.mines.clear()
+    sector.fighters = None
+    if mines > 0:
+        sector.mines.append(MineDeployment(owner_id=DEFENDER_ID, kind=MineType.ARMID, count=mines))
+    if sector_fighters > 0:
+        sector.fighters = FighterDeployment(
+            owner_id=DEFENDER_ID, count=sector_fighters, mode=FighterMode.OFFENSIVE,
+        )
     configure_defender_planet(
         planet,
         owner_id=DEFENDER_ID,
@@ -204,6 +224,8 @@ def run_grid(
     citadel_level: int = DEFAULT_CITADEL_LEVEL,
     reaction_pct: int = 0,
     quasar: bool = False,
+    mines: int = 0,
+    sector_fighters: int = 0,
 ) -> list[SiegeCell]:
     if seeds < 1:
         raise ValueError("seeds must be at least 1")
@@ -225,6 +247,8 @@ def run_grid(
                         citadel_level=citadel_level,
                         reaction_pct=reaction_pct,
                         quasar=quasar,
+                        mines=mines,
+                        sector_fighters=sector_fighters,
                     )
                     left_sum += left
                     if outcome == "capture":
@@ -286,6 +310,40 @@ def _ints(text: str) -> tuple[int, ...]:
     return tuple(int(part) for part in text.split(",") if part.strip() != "")
 
 
+def format_hazard_table(*, seeds: int = 30) -> str:
+    """Short grid: clear sector, 10 armids, and 100 offensive sector fighters."""
+    rows = (
+        (100, 0, 0),
+        (100, 100, 0),
+        (1000, 0, 0),
+        (1000, 100, 0),
+    )
+    lines = [
+        "Citadel level 2. Attacker shields 0. Reaction 0. "
+        f"{seeds} seeds. Mines are armids owned by the planet owner. "
+        "Sector fighters are offensive and owned by the planet owner.",
+        "",
+        "| Attacker | Planet fighters | Planet shields | Clear capture | 10 mines capture | 100 sector fighters capture |",
+        "|---:|---:|---:|---:|---:|---:|",
+    ]
+    for attacker_f, planet_f, planet_s in rows:
+        rates = []
+        for mines, sector_f in ((0, 0), (10, 0), (0, 100)):
+            cell = run_grid(
+                planet_fighters=(planet_f,),
+                planet_shields=(planet_s,),
+                attacker_fighters=(attacker_f,),
+                seeds=seeds,
+                mines=mines,
+                sector_fighters=sector_f,
+            )[0]
+            rates.append(f"{cell.capture_rate * 100:.1f}%")
+        lines.append(
+            f"| {attacker_f} | {planet_f} | {planet_s} | {rates[0]} | {rates[1]} | {rates[2]} |"
+        )
+    return "\n".join(lines)
+
+
 def format_production_table() -> str:
     """Fighters per day for 1000 and 10000 colonists, one product pool at a time."""
     from tw2k.engine.planets import fighters_from_colonists
@@ -309,6 +367,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
     parser.add_argument("--production", action="store_true", help="print the fighter production table")
+    parser.add_argument("--hazards", action="store_true", help="print the sector-hazard landing table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -318,6 +377,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.production:
         print(format_production_table())
+        return 0
+    if args.hazards:
+        print(format_hazard_table(seeds=args.seeds))
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,
