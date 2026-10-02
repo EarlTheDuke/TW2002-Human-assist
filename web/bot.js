@@ -1187,7 +1187,13 @@
       if (kind === "buy_equip" && p.item) { const u = (p.item.unit_price_by || {})[vals.item]; if (u !== undefined) txt += ` · ${fmt(u)} cr each = ${fmt(u * (vals.qty || 0))} cr`; }
       if (kind === "build_citadel" && p.next) txt += ` · L${p.next.level}: ${fmt(p.next.credits)} cr + ${fmt(p.next.colonists)} colonists (have ${fmt(p.next.colonists_have)}), ${p.next.days} day(s), paid from ${p.next.pay_from}`;
       if (kind === "deploy_genesis") txt += ` · ${p.hops_from_stardock ?? "?"} hops from StarDock (min ${p.min_hops ?? "?"})`;
-      if (kind === "land_planet" && p.planet_id && (p.planet_id.contested || []).includes(Number(vals.planet_id))) txt += " · WARNING: defended hostile planet - landing means citadel combat";
+      if (kind === "land_planet" && p.planet_id && (p.planet_id.contested || []).includes(Number(vals.planet_id))) {
+        const ship = (state.obs && state.obs.ship) || {};
+        const phases = landRoundNote(Number(vals.planet_id));
+        txt += ` · planet ${vals.planet_id} · your fighters ${fmt(ship.fighters)} · your shields ${fmt(ship.shields)}`;
+        if (phases) txt += ` · ${phases}`;
+        txt += " · WARNING: defended hostile planet - landing means citadel combat";
+      }
       if (kind === "assign_colonists" && p.qty) txt += ` · ship free holds ${fmt(p.qty.ship_free)}`;
       if (kind === "query_limpets") txt = `Read your ${fmt((p.active ?? 0))} limpet beacon(s) · 0 turns`;
       if (!la.legal) txt = `${LABEL(kind)} - ${la.reason || "not legal now"}`;
@@ -1680,6 +1686,31 @@
     build_citadel: "planet", citadel_complete: "planet", planet_claimed: "planet", planet_orphaned: "planet",
   };
   function groupOf(kind) { return KIND_GROUP[kind] || "system"; }
+  function phaseWord(phase) {
+    if (phase === "shields") return "Shields";
+    if (phase === "offense") return "Offense";
+    if (phase === "defense") return "Defense";
+    if (phase === "sector") return "Sector";
+    return "";
+  }
+  function roundPhaseLine(rounds) {
+    if (!Array.isArray(rounds)) return "";
+    return rounds.map((r) => phaseWord(r.phase)).filter(Boolean).join(", ");
+  }
+  function landRoundNote(planetId) {
+    const lr = state.lastResult;
+    if (!lr) return "";
+    const seqs = new Set(lr.event_seqs || []);
+    for (let i = state.events.length - 1; i >= 0; i--) {
+      const e = state.events[i];
+      if (!seqs.has(e.seq) || e.kind !== "combat") continue;
+      const payload = e.payload || {};
+      if (planetId && payload.planet_id != null && Number(payload.planet_id) !== planetId) continue;
+      const line = roundPhaseLine(payload.rounds);
+      if (line) return line;
+    }
+    return "";
+  }
   function factsText(e) {
     const f = e.facts || {};
     const keys = Object.keys(f);
@@ -1765,7 +1796,17 @@
       const text = document.createElement("span");
       text.textContent = e.summary || "";
       const ft = factsText(e);
-      if (ft) { const m = document.createElement("span"); m.className = "m"; m.style.marginLeft = "8px"; m.style.color = "var(--muted)"; m.textContent = ft; text.appendChild(m); }
+      const phases = roundPhaseLine((e.payload && e.payload.rounds) || e.rounds);
+      const extra = [phases, ft].filter(Boolean).join("  ");
+      if (extra) {
+        const m = document.createElement("span");
+        m.className = "m";
+        if (phases) m.setAttribute("data-testid", "event-phases");
+        m.style.marginLeft = "8px";
+        m.style.color = "var(--muted)";
+        m.textContent = extra;
+        text.appendChild(m);
+      }
       d.appendChild(when); d.appendChild(kind); d.appendChild(text);
       els.eventLog.appendChild(d);
     }

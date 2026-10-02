@@ -13,10 +13,8 @@ from tw2k.engine.observation import build_observation
 SECTOR = 120
 HIDDEN = ("fighters", "shields", "treasury", "stockpile")
 KEPT = ("id", "name", "class", "owner_id", "corp_ticker", "citadel_level")
-WARNING = (
-    'if (kind === "land_planet" && p.planet_id && (p.planet_id.contested || []).includes(Number(vals.planet_id))) '
-    'txt += " · WARNING: defended hostile planet - landing means citadel combat";'
-)
+CONTESTED_GATE = "(p.planet_id.contested || []).includes(Number(vals.planet_id))"
+WARNING = 'txt += " · WARNING: defended hostile planet - landing means citadel combat";'
 
 
 def _stand(u, player) -> None:
@@ -108,6 +106,7 @@ def test_empty_hostile_planet_is_not_contested() -> None:
 def test_prompts_and_cockpit_warning_use_the_contested_flag() -> None:
     assert "only for a planet you own or share a corp with" in SYSTEM_PROMPT
     js = (Path(__file__).resolve().parents[1] / "web" / "bot.js").read_text(encoding="utf-8")
+    assert CONTESTED_GATE in js
     assert WARNING in js
 
 

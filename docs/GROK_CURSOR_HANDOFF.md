@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 13:20 PT - Fable - siege phases have plain names
+- The spectator volley log names Shields, Offense, and Defense. An ally is a hostile landing again. The land form shows this ship's fighters and shields, not the planet's.
+
 ### 2026-10-02 12:10 PT - Fable - friendly landings skip sector hazards
 - Mines and sector fighters fire only when the landing is hostile. A mine hit while landing says landing, and a warp still says entering.
 
