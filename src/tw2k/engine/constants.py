@@ -232,7 +232,23 @@ GENESIS_DEPLOY_TURN_COST = 4
 # Fighters move 1:1 onto a planet, up to this cap. Shields move
 # PLANET_SHIELD_SHIP_COST ship shields per 1 planet shield, both ways.
 # MIN_LEVEL 0: any planet can hold fighters. A later slice can raise it.
+# Same ceiling as the original per-planet max of 1,000,000. Daily production stops here.
 PLANET_FIGHTER_CAP = 1_000_000
+# Colonists in a product pool to make 1 fighter. 0 means that pool makes none.
+# Fuel, organics, equipment. The idle colonists pool is not in this table.
+# M 30/70/130, K 30/1500/7500, O 300/30/1500, L 24/60/240,
+# C 1250/2500/12500, H 50/0/25000, U 0/0/0.
+PLANET_FIGHTER_COLONISTS_PER: dict[str, dict[str, int]] = {
+    "M": {"fuel_ore": 30, "organics": 70, "equipment": 130},
+    "K": {"fuel_ore": 30, "organics": 1500, "equipment": 7500},
+    "O": {"fuel_ore": 300, "organics": 30, "equipment": 1500},
+    "L": {"fuel_ore": 24, "organics": 60, "equipment": 240},
+    "C": {"fuel_ore": 1250, "organics": 2500, "equipment": 12500},
+    "H": {"fuel_ore": 50, "organics": 0, "equipment": 25000},
+    "U": {"fuel_ore": 0, "organics": 0, "equipment": 0},
+}
+# 100 keeps the original daily count. Lower it to slow fighter growth in a short match.
+PLANET_FIGHTER_RATE_PCT = 100
 PLANET_SHIELD_SHIP_COST = 10
 PLANET_DEFENSE_MIN_LEVEL = 0
 # Daily interest is this percent of planet.treasury, integer division, at citadel level >= 1.

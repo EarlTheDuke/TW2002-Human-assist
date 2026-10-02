@@ -1530,12 +1530,14 @@ class TestPhaseGObservationSurface:
         tick_day(u)
 
         # H-class fuel production: int(1000 * 8 / 100) = 80 fuel ore.
-        # Stockpile value delta: 80 * 18 = 1440. 30% payout = 432cr.
-        assert a.credits == 1_432
+        # Stockpile value delta: 80 * 18 = 1440.
+        # Fighters from the same pool: 1000 // 50 = 20, valued at 50cr = 1000.
+        # Gain 2440. 30% payout = 732cr.
+        assert a.credits == 1_732
         ev = next(e for e in u.events if e.kind == EventKind.PLANET_TAX_PAYOUT)
         assert ev.payload["planet_id"] == planet.id
-        assert ev.payload["gain"] == 1_440
-        assert ev.payload["payout"] == 432
+        assert ev.payload["gain"] == 2_440
+        assert ev.payload["payout"] == 732
         assert planet.last_tax_value == _planet_asset_value(planet)
 
     def test_g10_planet_growth_tax_ignores_unowned_planets(self):

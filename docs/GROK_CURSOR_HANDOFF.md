@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 09:30 PT - Fable - planets mint fighters from colonists
+- An owned planet turns product-pool colonists into fighters once a day, using the original divisors. Class U still makes stock and no fighters.
+
 ### 2026-10-02 08:10 PT - Fable - a citadel can hold credits
 - The owner or a corp mate can deposit and withdraw planet treasury at citadel level 1 or higher. The bank earns 2% a day, capped. An empty ship no longer dies on a shield-only planet.
 
