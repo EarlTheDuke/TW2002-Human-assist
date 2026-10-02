@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 02:10 PT - Fable - a headless grid of today's planet landings
+- scripts/planetary_scenario_lab.py lands on one planted planet across a fighter and shield grid and prints capture, repel, attacker-destroyed, and fighters left. The baseline table is in docs/playtests/planetary-warfare/baseline-siege-v0.md. No engine change.
+
 ### 2026-10-02 00:50 PT - Fable - a sector planet brief hides another owner's garrison
 - A ship that does not own the planet and is not in its corp no longer sees fighters, shields, treasury, or stockpile on the sector brief. The owner and corp mates still do. The landing warning stays the contested planet id.
 
