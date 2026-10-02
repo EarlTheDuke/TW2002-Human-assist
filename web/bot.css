@@ -431,6 +431,8 @@ body.mode-cu .known-map .scan-mark { display: none !important; }
 .verb-form .buttons button:disabled { opacity: 0.35; cursor: not-allowed; }
 .last-trade { margin: 0 0 8px; color: var(--muted); font-size: 0.85rem; }
 body.mode-cu .last-trade { display: none !important; }
+.trade-profit { margin: 0 0 8px; color: var(--muted); font-size: 0.85rem; }
+body.mode-cu .trade-profit { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .banner.turn, .banner.turn.flash { animation: none; }
 }

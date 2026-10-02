@@ -1805,12 +1805,43 @@
     const side = String(f.side).toUpperCase();
     return `Last trade: ${side} ${f.qty} ${f.commodity} @ ${f.unit} = ${f.total} cr`;
   }
+  function tradeProfitText() {
+    if (CU) return "";
+    const obs = state.obs;
+    if (!obs) return "";
+    let net = 0;
+    let n = 0;
+    for (const t of obs.trade_log || []) {
+      const total = Number(t.total);
+      if (!Number.isFinite(total)) continue;
+      const side = String(t.side || "").toLowerCase();
+      if (side === "sell") { net += total; n += 1; }
+      else if (side === "buy") { net -= total; n += 1; }
+    }
+    if (!n) return "";
+    const shown = net < 0 ? fmt(net) : `+${fmt(net)}`;
+    const perDay = Number(obs.turns_per_day) || 0;
+    const left = Number(obs.turns_remaining) || 0;
+    const day = Number(obs.day) || 1;
+    const used = Math.max(0, (day - 1) * perDay + (perDay - left));
+    if (used <= 0) return `Trade profit ${shown} cr`;
+    const per = Math.round(net / used);
+    return `Trade profit ${shown} cr, ${fmt(per)} cr per turn`;
+  }
+  function paintTradeProfit() {
+    const el = $("tradeProfit");
+    if (!el) return;
+    const text = tradeProfitText();
+    el.hidden = !text;
+    el.textContent = text;
+  }
   function paintLastTrade() {
     const el = $("lastTrade");
     if (!el) return;
     const text = lastTradeText();
     el.hidden = !text;
     el.textContent = text;
+    paintTradeProfit();
   }
 
   // ---------------------------------------------------------------- G2: one-screen turn layout (mode=cu)
