@@ -213,6 +213,18 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
     (80_000,  16_000,  3),
     (160_000, 32_000,  4),
 ]
+# (level, name, one-line perk). Original order. The perk line says
+# whether this game does that thing today. Completing level 2 or
+# higher still grants the garrison in planets._complete_citadels.
+CITADEL_PERK: list[tuple[int, str, str]] = [
+    (1, "Treasury", "Treasury (not yet in this game)"),
+    (2, "Combat Control Computer",
+     "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level"),
+    (3, "Quasar cannon", "Quasar cannon (not yet in this game)"),
+    (4, "Planet TransWarp", "Planet TransWarp (not yet in this game)"),
+    (5, "Planetary shields", "Planetary shields (not yet in this game)"),
+    (6, "Interdictor", "Interdictor (not yet in this game)"),
+]
 GENESIS_DEPLOY_TURN_COST = 4
 # Fighters move 1:1 onto a planet, up to this cap. Shields move
 # PLANET_SHIELD_SHIP_COST ship shields per 1 planet shield, both ways.

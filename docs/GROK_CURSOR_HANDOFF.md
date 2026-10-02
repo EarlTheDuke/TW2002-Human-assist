@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 04:10 PT - Fable - citadel names follow one list
+- One perk list names Treasury through Interdictor. The prompt, spectator tiers, and design notes use that list and say those powers are not in this game yet. Completing L2 or higher still grants the same garrison.
+
 ### 2026-10-02 02:45 PT - Fable - ships can stock fighters and shields on a planet
 - While landed, the owner or a corp mate can move fighters 1:1 and shields 10 ship shields per planet shield. The transfer event shows planet id, kind, qty, and direction. Siege math is unchanged and uses the stocked fighters.
 
