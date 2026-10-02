@@ -179,6 +179,7 @@ TURN_COST = {
     "set_military_reaction": 1,
     "deposit_treasury": 1,
     "withdraw_treasury": 1,
+    "set_quasar_sector": 1,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -219,11 +220,14 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
 # (level, name, one-line perk). Original order. The perk line says
 # whether this game does that thing today. Completing level 2 or
 # higher still grants the garrison in planets._complete_citadels.
+# Sector quasar and set_quasar_sector both require this citadel level.
+QUASAR_MIN_LEVEL = 3
 CITADEL_PERK: list[tuple[int, str, str]] = [
     (1, "Treasury", "Treasury: deposit and withdraw credits while landed, plus 2% daily interest"),
     (2, "Combat Control Computer",
      "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level"),
-    (3, "Quasar cannon", "Quasar cannon (not yet in this game)"),
+    (3, "Quasar cannon",
+     "Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship"),
     (4, "Planet TransWarp", "Planet TransWarp (not yet in this game)"),
     (5, "Planetary shields", "Planetary shields (not yet in this game)"),
     (6, "Interdictor", "Interdictor (not yet in this game)"),

@@ -2,7 +2,7 @@
 
 Each cell reseeds the combat dice, plants one defended planet, and calls
 apply_action land_planet. reaction_pct is written onto the planet.
-quasar still raises until a later slice.
+--quasar prints a short sector-quasar warp table.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.models import (
+    Commodity,
     FighterDeployment,
     FighterMode,
     MineDeployment,
@@ -128,9 +129,9 @@ def configure_defender_planet(
     citadel_level: int,
     reaction_pct: int = 0,
     quasar: bool = False,
+    quasar_sector_pct: int = 0,
+    fuel_ore: int = 0,
 ) -> None:
-    if quasar:
-        raise NotImplementedError("quasar is a later slice")
     if reaction_pct < 0 or reaction_pct > 100:
         raise ValueError("reaction_pct must be from 0 to 100")
     planet.owner_id = owner_id
@@ -142,6 +143,8 @@ def configure_defender_planet(
     planet.citadel_complete_day = None
     planet.origin = "other"
     planet.military_reaction_pct = reaction_pct
+    planet.quasar_sector_pct = 10 if quasar and quasar_sector_pct <= 0 else quasar_sector_pct
+    planet.stockpile[Commodity.FUEL_ORE] = fuel_ore
 
 
 def place_attacker(universe, attacker: Player, *, sector_id: int, fighters: int, shields: int) -> None:
@@ -363,11 +366,54 @@ def format_production_table() -> str:
     return "\n".join(lines)
 
 
+def format_quasar_table() -> str:
+    """One hostile warp per row. Percent is 0-100. Damage is burned fuel // 3."""
+    universe, attacker, planet = build_lab_universe()
+    origin = 1
+    if SECTOR_ID not in universe.sectors[origin].warps:
+        universe.sectors[origin].warps.append(SECTOR_ID)
+    if origin not in universe.sectors[SECTOR_ID].warps:
+        universe.sectors[SECTOR_ID].warps.append(origin)
+    rows = (
+        ("10% of 10000", 3, 10, 10000, 0, 1000),
+        ("second shot", 3, 10, 9000, 0, 667),
+        ("level 2", 2, 10, 10000, 0, 1000),
+        ("pct 0", 3, 0, 10000, 0, 1000),
+        ("no fuel", 3, 10, 0, 0, 1000),
+        ("shields first", 3, 10, 10000, 100, 500),
+    )
+    lines = [
+        "Sector quasar on a hostile warp. pct is 0-100. "
+        "Burned fuel is fuel * pct // 100. Damage is that fuel // 3. "
+        "Shields soak first, then fighters.",
+        "",
+        "| Case | Level | Pct | Fuel before | Shields | Fighters before | Damage | Fuel after | Fighters after | Shields after |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for label, level, pct, fuel, shields, fighters in rows:
+        configure_defender_planet(
+            planet, owner_id=DEFENDER_ID, fighters=0, shields=0, citadel_level=level,
+            quasar_sector_pct=pct, fuel_ore=fuel,
+        )
+        place_attacker(universe, attacker, sector_id=origin, fighters=fighters, shields=shields)
+        attacker.deaths = 0
+        apply_action(universe, attacker.id, Action(kind=ActionKind.WARP, args={"target": SECTOR_ID}))
+        fired = [ev for ev in universe.events if ev.kind.value == "quasar_fire"]
+        damage = fired[-1].payload["damage"] if fired else 0
+        universe.events.clear()
+        lines.append(
+            f"| {label} | {level} | {pct} | {fuel} | {shields} | {fighters} | {damage} | "
+            f"{int(planet.stockpile.get(Commodity.FUEL_ORE, 0))} | {attacker.ship.fighters} | {attacker.ship.shields} |"
+        )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
     parser.add_argument("--production", action="store_true", help="print the fighter production table")
     parser.add_argument("--hazards", action="store_true", help="print the sector-hazard landing table")
+    parser.add_argument("--quasar", action="store_true", help="print the sector quasar warp table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -380,6 +426,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.hazards:
         print(format_hazard_table(seeds=args.seeds))
+        return 0
+    if args.quasar:
+        print(format_quasar_table())
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,

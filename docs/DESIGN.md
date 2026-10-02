@@ -192,7 +192,7 @@ Created by Genesis Torpedoes or pre-existing in ~3% of sectors.
 Constructed in stages 1-6. Build costs are unchanged. Named powers, in the original order. The parenthetical says whether this game does that thing today:
 - Level 1: Treasury: deposit and withdraw credits while landed, plus 2% daily interest
 - Level 2: Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level
-- Level 3: Quasar cannon (not yet in this game)
+- Level 3: Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship
 - Level 4: Planet TransWarp (not yet in this game)
 - Level 5: Planetary shields (not yet in this game)
 - Level 6: Interdictor (not yet in this game)

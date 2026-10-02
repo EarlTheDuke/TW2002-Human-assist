@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 15:40 PT - Fable - sector quasar burns fuel on a hostile warp
+- A citadel of level 3 or higher can set a fuel percent. A hostile warp burns that percent and hits shields, then fighters.
+
 ### 2026-10-02 13:20 PT - Fable - siege phases have plain names
 - The spectator volley log names Shields, Offense, and Defense. An ally is a hostile landing again. The land form shows this ship's fighters and shields, not the planet's.
 
