@@ -18,22 +18,24 @@ def _lab():
     return mod
 
 
-def test_two_cells_three_seeds_cover_a_free_capture_and_a_loss() -> None:
+def test_two_cells_three_seeds_cover_a_shield_repel_and_a_fighter_loss() -> None:
     lab = _lab()
-    cells = lab.run_grid(
-        planet_fighters=(0, 10000),
+    repelled = lab.run_grid(
+        planet_fighters=(0,),
         planet_shields=(200,),
         attacker_fighters=(100,),
         seeds=3,
-    )
-    assert len(cells) == 2
-    assert all(cell.n == 3 and cell.other == 0 for cell in cells)
-    free, hopeless = cells
-    assert free.planet_fighters == 0 and free.planet_shields == 200
-    assert free.capture_rate == 1.0
-    assert free.repelled_rate == 0.0
-    assert free.attacker_destroyed_rate == 0.0
-    assert hopeless.planet_fighters == 10000
-    assert hopeless.attacker_destroyed_rate == 1.0
-    assert hopeless.capture_rate == 0.0
-    assert hopeless.mean_fighters_left == 0
+    )[0]
+    destroyed = lab.run_grid(
+        planet_fighters=(10000,),
+        planet_shields=(0,),
+        attacker_fighters=(100,),
+        seeds=3,
+    )[0]
+    assert repelled.n == 3 and repelled.other == 0
+    assert repelled.repelled_rate == 1.0
+    assert repelled.capture_rate == 0.0
+    assert destroyed.n == 3 and destroyed.other == 0
+    assert destroyed.attacker_destroyed_rate == 1.0
+    assert destroyed.capture_rate == 0.0
+    assert destroyed.mean_fighters_left == 0

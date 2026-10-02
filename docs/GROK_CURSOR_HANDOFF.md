@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 05:30 PT - Fable - planet shields stop a landing before the fighters shoot
+- A hostile landing spends attacker damage on planet shields first, 20 damage per shield. Planet fighters shoot only after those shields are gone. Three rounds of shields still standing repel the landing.
+
 ### 2026-10-02 04:10 PT - Fable - citadel names follow one list
 - One perk list names Treasury through Interdictor. The prompt, spectator tiers, and design notes use that list and say those powers are not in this game yet. Completing L2 or higher still grants the same garrison.
 
