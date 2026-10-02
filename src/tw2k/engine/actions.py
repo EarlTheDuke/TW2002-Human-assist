@@ -43,6 +43,8 @@ class ActionKind(str, Enum):
     HAIL = "hail"
     BROADCAST = "broadcast"
     WAIT = "wait"
+    DEPOSIT_PLANET_DEFENSE = "deposit_planet_defense"
+    WITHDRAW_PLANET_DEFENSE = "withdraw_planet_defense"
 
 
 class Action(BaseModel):

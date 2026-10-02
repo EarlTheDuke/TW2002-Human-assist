@@ -1063,7 +1063,7 @@
   const VERB_GROUPS = {
     combat: ["attack", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic"],
     stardock: ["buy_ship", "buy_equip", "corp_create"],
-    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis"],
+    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense"],
     comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
   };
   const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
@@ -1129,6 +1129,8 @@
     dump_planet_cargo: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "commodity", l: "Unload from ship", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "commodity" }, { n: "pool", l: "Colonist pool (colonists only)", t: "choice", optional: true }] },
     assign_colonists: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "from", l: "From", t: "choice" }, { n: "to", l: "To", t: "choice" }, { n: "qty", l: "Colonists", t: "int", maxBy: "from" }] },
     build_citadel: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }] },
+    deposit_planet_defense: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "kind", l: "Stock", t: "choice" }, { n: "qty", l: "Planet qty", t: "int", maxBy: "kind" }], note: "Fighters 1:1. 10 ship shields = 1 planet shield." },
+    withdraw_planet_defense: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "kind", l: "Take back", t: "choice" }, { n: "qty", l: "Planet qty", t: "int", maxBy: "kind" }], note: "Fighters 1:1. 10 ship shields = 1 planet shield. Cannot pass the ship cap." },
     deploy_genesis: { fields: [] },
     hail: { fields: [{ n: "target", l: "To", t: "choice" }, { n: "message", l: "Message", t: "text" }] },
     broadcast: { fields: [{ n: "message", l: "Message to everyone", t: "text" }] },
@@ -1671,7 +1673,7 @@
     ferrengi_attack: "combat", ferrengi_spawn: "combat", fed_response: "combat",
     hail: "comms", broadcast: "comms", corp_memo: "comms", corp_create: "comms", corp_invite: "comms", corp_join: "comms",
     corp_leave: "comms", corp_deposit: "comms", corp_withdraw: "comms", alliance_proposed: "comms", alliance_formed: "comms", alliance_broken: "comms",
-    land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet",
+    land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet", planet_defense_transfer: "planet",
     build_citadel: "planet", citadel_complete: "planet", planet_claimed: "planet", planet_orphaned: "planet",
   };
   function groupOf(kind) { return KIND_GROUP[kind] || "system"; }

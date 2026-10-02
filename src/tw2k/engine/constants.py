@@ -174,6 +174,8 @@ TURN_COST = {
     # land-first gating as build_citadel. Cheap because the siege cost
     # (if any) was already paid at land-time combat.
     "claim_planet": 2,
+    "deposit_planet_defense": 1,
+    "withdraw_planet_defense": 1,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -212,6 +214,12 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
     (160_000, 32_000,  4),
 ]
 GENESIS_DEPLOY_TURN_COST = 4
+# Fighters move 1:1 onto a planet, up to this cap. Shields move
+# PLANET_SHIELD_SHIP_COST ship shields per 1 planet shield, both ways.
+# MIN_LEVEL 0: any planet can hold fighters. A later slice can raise it.
+PLANET_FIGHTER_CAP = 1_000_000
+PLANET_SHIELD_SHIP_COST = 10
+PLANET_DEFENSE_MIN_LEVEL = 0
 # Minimum hops from sector 1 (StarDock) for legal Genesis deployment.
 # Classic TW2002 required planets to be "deep" — you couldn't drop one in
 # the Federation's back yard. FedSpace only covers 1..10, but many of those
