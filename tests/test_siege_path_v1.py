@@ -79,7 +79,7 @@ def test_attacker_loses_and_the_ship_is_destroyed() -> None:
     assert destroyed.payload["victim"] == attacker.id
 
 
-def test_repelled_landing_does_not_charge_turns() -> None:
+def test_repelled_landing_charges_the_landing_turn() -> None:
     u, (attacker, *_) = _make_universe(seed=8803)
     attacker.ship.fighters = 20
     attacker.ship.shields = 100_000
