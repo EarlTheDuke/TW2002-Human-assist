@@ -2029,6 +2029,107 @@ def _handle_break_alliance(universe: Universe, pid: str, action: Action) -> Acti
     return ActionResult(ok=True, turns_spent=0)
 
 
+def _parse_defense_kind(action: Action) -> tuple[str | None, ActionResult | None]:
+    kind = str(action.args.get("kind") or "").lower()
+    if kind not in ("fighters", "shields"):
+        return None, ActionResult(ok=False, error="kind must be fighters or shields")
+    return kind, None
+
+
+def _parse_defense_qty(action: Action) -> tuple[int | None, ActionResult | None]:
+    try:
+        qty = int(action.args.get("qty", 0))
+    except (TypeError, ValueError):
+        return None, ActionResult(ok=False, error="qty must be positive")
+    if qty <= 0:
+        return None, ActionResult(ok=False, error="qty must be positive")
+    return qty, None
+
+
+def _ship_defense_caps(player) -> tuple[int, int]:
+    spec = K.SHIP_SPECS.get(player.ship.ship_class.value, {}) or {}
+    return int(spec.get("max_fighters", 0) or 0), int(spec.get("max_shields", 0) or 0)
+
+
+def _emit_defense_transfer(universe: Universe, player, planet, kind: str, qty: int, direction: str) -> None:
+    universe.emit(
+        EventKind.PLANET_DEFENSE_TRANSFER,
+        actor_id=player.id,
+        sector_id=planet.sector_id,
+        payload={"planet_id": planet.id, "kind": kind, "qty": qty, "direction": direction},
+        summary=f"{player.name} {'deposited' if direction == 'deposit' else 'withdrew'} {qty} {kind} on {planet.name}",
+    )
+
+
+def _handle_deposit_planet_defense(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return error
+    kind, error = _parse_defense_kind(action)
+    if error is not None:
+        return error
+    qty, error = _parse_defense_qty(action)
+    if error is not None:
+        return error
+    cost = int(K.TURN_COST["deposit_planet_defense"])
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    if int(planet.citadel_level or 0) < K.PLANET_DEFENSE_MIN_LEVEL:
+        return ActionResult(ok=False, error="planet citadel level is below the defense stocking minimum")
+    if kind == "fighters":
+        if int(player.ship.fighters) < qty:
+            return ActionResult(ok=False, error="not enough fighters on the ship")
+        if int(planet.fighters) + qty > K.PLANET_FIGHTER_CAP:
+            return ActionResult(ok=False, error=f"planet fighter cap is {K.PLANET_FIGHTER_CAP}")
+        player.ship.fighters -= qty
+        planet.fighters += qty
+    else:
+        need = qty * K.PLANET_SHIELD_SHIP_COST
+        if int(player.ship.shields) < need:
+            return ActionResult(ok=False, error="not enough shields on the ship (10 ship shields = 1 planet shield)")
+        player.ship.shields -= need
+        planet.shields += qty
+    _emit_defense_transfer(universe, player, planet, kind, qty, "deposit")
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _handle_withdraw_planet_defense(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return error
+    kind, error = _parse_defense_kind(action)
+    if error is not None:
+        return error
+    qty, error = _parse_defense_qty(action)
+    if error is not None:
+        return error
+    cost = int(K.TURN_COST["withdraw_planet_defense"])
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    if int(planet.citadel_level or 0) < K.PLANET_DEFENSE_MIN_LEVEL:
+        return ActionResult(ok=False, error="planet citadel level is below the defense stocking minimum")
+    fighter_cap, shield_cap = _ship_defense_caps(player)
+    if kind == "fighters":
+        if int(planet.fighters) < qty:
+            return ActionResult(ok=False, error="cannot take planet fighters below 0")
+        if int(player.ship.fighters) + qty > fighter_cap:
+            return ActionResult(ok=False, error="that would put the ship over its fighter cap")
+        planet.fighters -= qty
+        player.ship.fighters += qty
+    else:
+        gain = qty * K.PLANET_SHIELD_SHIP_COST
+        if int(planet.shields) < qty:
+            return ActionResult(ok=False, error="cannot take planet shields below 0")
+        if int(player.ship.shields) + gain > shield_cap:
+            return ActionResult(ok=False, error="that would put the ship over its shield cap")
+        planet.shields -= qty
+        player.ship.shields += gain
+    _emit_defense_transfer(universe, player, planet, kind, qty, "withdraw")
+    return ActionResult(ok=True, turns_spent=cost)
+
+
 _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.WARP: _handle_warp,
     ActionKind.TRADE: _handle_trade,
@@ -2063,6 +2164,8 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.HAIL: _handle_hail,
     ActionKind.BROADCAST: _handle_broadcast,
     ActionKind.WAIT: _handle_wait,
+    ActionKind.DEPOSIT_PLANET_DEFENSE: _handle_deposit_planet_defense,
+    ActionKind.WITHDRAW_PLANET_DEFENSE: _handle_withdraw_planet_defense,
 }
 
 

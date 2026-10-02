@@ -254,6 +254,7 @@ store ship cargo on the planet. For colonists, `load_planet_cargo` /
 `dump_planet_cargo` move colonist cargo to/from a specific planet labor pool
 using optional `pool:"fuel_ore|organics|equipment|colonists"`; `assign_colonists`
 is still for rearranging colonist labor pools while landed.
+While landed on your planet or your corp's, `deposit_planet_defense` / `withdraw_planet_defense` `{"planet_id":<id>,"kind":"fighters|shields","qty":N}` move fighters 1:1, or 10 ship shields per 1 planet shield. Planet fighters cap at 1,000,000. Costs 1 turn.
 
 ================ MULTI-PLANET EXPANSION ================
 One planet is the start, not the goal. Top commanders run 5-15 planets.
@@ -391,7 +392,7 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
 Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
 Recon:       probe query_limpets plot_course
-Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense
 StarDock:    buy_ship buy_equip
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
@@ -476,7 +477,7 @@ reroute, scout/probe, re-arm, buy a combat-capable ship, hunt the threat, or kno
 Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
 Recon:       probe query_limpets plot_course
-Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense
 StarDock:    buy_ship buy_equip
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast

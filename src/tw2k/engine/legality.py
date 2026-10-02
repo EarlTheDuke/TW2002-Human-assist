@@ -540,6 +540,49 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"alliance_id": {"type": "str", "required": True, "choices": breakable,
                                            "active": [a.id for a in universe.alliances.values() if a.active and player_id in a.member_ids]}}))
 
+    # Planet defense stocking. qty is planet fighters, or planet shields.
+    # Ship shields move PLANET_SHIELD_SHIP_COST at a time.
+    ratio = int(K.PLANET_SHIELD_SHIP_COST)
+    fighter_cap = int(my_spec.get("max_fighters", 0) or 0)
+    shield_cap = int(my_spec.get("max_shields", 0) or 0)
+    ship_fighters = int(player.ship.fighters or 0)
+    ship_shields = int(player.ship.shields or 0)
+    planet_fighters = int(landed_planet.fighters) if owned_landed else 0
+    planet_shields = int(landed_planet.shields) if owned_landed else 0
+    level_block = None
+    if owned_landed and int(landed_planet.citadel_level or 0) < K.PLANET_DEFENSE_MIN_LEVEL:
+        level_block = "planet citadel level is below the defense stocking minimum"
+    deposit_max = {
+        "fighters": max(0, min(ship_fighters, K.PLANET_FIGHTER_CAP - planet_fighters)),
+        "shields": ship_shields // ratio,
+    }
+    withdraw_max = {
+        "fighters": max(0, min(planet_fighters, fighter_cap - ship_fighters)),
+        "shields": max(0, min(planet_shields, (shield_cap - ship_shields) // ratio)),
+    }
+
+    def _defense_la(kind: ActionKind, maxima: dict[str, int], empty_reason: str) -> None:
+        cost = int(K.TURN_COST[kind.value])
+        choices = [name for name, n in maxima.items() if n >= 1]
+        if owned_reason:
+            reason = owned_reason
+        elif level_block:
+            reason = level_block
+        elif not choices:
+            reason = empty_reason
+        else:
+            reason = _need_turns(player, cost)
+        out.append(_la(kind, legal=reason is None, reason=reason, cost=cost,
+                       params={"planet_id": pid_param,
+                               "kind": {"type": "str", "required": True, "choices": choices},
+                               "qty": {"type": "int", "required": True, "min": 1,
+                                       "max_by": {name: maxima[name] for name in choices}}}))
+
+    _defense_la(ActionKind.DEPOSIT_PLANET_DEFENSE, deposit_max,
+                "nothing on the ship to stock (fighters, or 10 shields per planet shield)")
+    _defense_la(ActionKind.WITHDRAW_PLANET_DEFENSE, withdraw_max,
+                "nothing on the planet to withdraw, or the ship cap is full")
+
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}
     out.sort(key=lambda la: order.get(la.kind, 999))
