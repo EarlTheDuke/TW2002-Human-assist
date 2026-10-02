@@ -838,8 +838,9 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         and player.corp_ticker
         and planet.corp_ticker == player.corp_ticker
     )
-    allied_owner = planet.owner_id is not None and _are_allied(universe, pid, planet.owner_id)
-    hostile = planet.owner_id is not None and planet.owner_id != pid and not same_corp and not allied_owner
+    # An ally is still hostile for the landing. Sector hazards skip allied
+    # mines and fighters on their own.
+    hostile = planet.owner_id is not None and planet.owner_id != pid and not same_corp
     if hostile:
         deaths_before = player.deaths
         fighters_before = player.ship.fighters

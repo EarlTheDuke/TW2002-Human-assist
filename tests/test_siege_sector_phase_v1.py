@@ -199,11 +199,12 @@ def test_friendly_landings_do_not_touch_sector_hazards() -> None:
     assert planet.owner_id == attacker.id
     _quiet(u, attacker, planet)
 
-    u, (attacker, ally, outsider) = _make_universe(seed=9614)
-    attacker.ship.fighters = 80
+
+def test_allied_owner_still_fights() -> None:
+    u, (attacker, ally, _) = _make_universe(seed=9614)
+    attacker.ship.fighters = 1000
     attacker.ship.shields = 0
-    attacker.credits = 5_000
-    planet = _planet(9614, fighters=30, shields=10)
+    planet = _planet(9614, fighters=10, shields=0)
     planet.owner_id = ally.id
     planet.corp_ticker = "OTHER"
     u.alliances["A1"] = Alliance(
@@ -211,9 +212,12 @@ def test_friendly_landings_do_not_touch_sector_hazards() -> None:
     )
     attacker.alliances.append("A1")
     _place(u, planet, attacker)
-    _armids(u, outsider.id, 1)
-    _sector_fighters(u, outsider.id, 100, FighterMode.OFFENSIVE)
+    _armids(u, ally.id, 3)
+
     res = _land(u, attacker.id, planet.id)
+
     assert res.ok, res.error
-    assert planet.owner_id == ally.id
-    _quiet(u, attacker, planet)
+    assert planet.owner_id == attacker.id
+    assert attacker.ship.fighters == 970
+    assert not any(ev.kind is EventKind.MINE_DETONATED for ev in u.events)
+    assert any(ev.payload.get("exchange_kind") == "planet_siege" for ev in u.events)

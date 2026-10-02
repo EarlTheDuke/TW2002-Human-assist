@@ -2220,6 +2220,14 @@
     return k || "Combat";
   }
 
+  function phaseWord(phase) {
+    if (phase === "shields") return "Shields";
+    if (phase === "offense") return "Offense";
+    if (phase === "defense") return "Defense";
+    if (phase === "sector") return "Sector";
+    return "";
+  }
+
   /** Rich per-volley log from `payload.rounds` (engine combat + planet siege). */
   function formatCombatRoundsHtml(payload) {
     if (!payload || !Array.isArray(payload.rounds) || !payload.rounds.length) return "";
@@ -2231,10 +2239,24 @@
     let h = `<div class="combat-rounds" role="region" aria-label="Combat volley log">`;
     h += `<div class="combat-rounds-head">${esc(ek)} · up to ${maxR} volleys</div>`;
     for (const r of payload.rounds) {
+      const word = phaseWord(r.phase);
+      if (word && r.attacker_volley == null && r.attacker_damage_mult == null) {
+        const bits = [];
+        if (r.shields_removed != null) bits.push(`${r.shields_removed} shields removed`);
+        if (r.attacker_fighters_lost != null) bits.push(`attacker lost ${r.attacker_fighters_lost} fighters`);
+        if (r.defender_fighters_lost != null) bits.push(`defenders lost ${r.defender_fighters_lost} fighters`);
+        if (r.attacker_f_after != null) bits.push(`attacker fighters ${r.attacker_f_after}`);
+        h += `<div class="combat-round">`;
+        h += `<div class="cr-line cr-title" data-phase="${esc(r.phase)}">${esc(word)}</div>`;
+        if (bits.length) h += `<div class="cr-line">${esc(bits.join(" · "))}</div>`;
+        h += `</div>`;
+        continue;
+      }
       const atkDis = r.attacker_photon_disabled ? " (photon-off)" : "";
       const defDis = r.defender_photon_disabled ? " (photon-off)" : "";
+      const title = word ? `Volley ${r.round} · ${word}` : `Volley ${r.round}`;
       h += `<div class="combat-round">`;
-      h += `<div class="cr-line cr-title">Volley ${r.round}${r.ended_here ? " — ended here" : ""}</div>`;
+      h += `<div class="cr-line cr-title">${esc(title)}${r.ended_here ? " — ended here" : ""}</div>`;
       h += `<div class="cr-line">${esc(atkLabel)}: mult ${r.attacker_damage_mult} × ${r.attacker_offense}F → <b>${r.attacker_volley}</b> dmg${atkDis}</div>`;
       h += `<div class="cr-line">${esc(defLabel)}: mult ${r.defender_damage_mult} × ${r.defender_offense}F → <b>${r.defender_volley}</b> dmg${defDis}</div>`;
       h += `<div class="cr-sub">${esc(defLabel)} absorbed −${r.defender_shield_absorbed}S / −${r.defender_fighters_lost}F → <b>F${r.defender_f_after} S${r.defender_s_after}</b></div>`;
