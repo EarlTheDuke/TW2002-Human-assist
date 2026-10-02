@@ -1928,7 +1928,7 @@
         <span class="pc-vic-track"><span class="pc-vic-fill econ" style="width:${econPct}%"></span></span>
         <span class="pc-vic-pct">${econPct}%</span>
       </span>
-      <span class="pc-vic-bar" title="Highest owned citadel L${maxCit}/L6 (unlocks Genesis + interdictor)">
+      <span class="pc-vic-bar" title="Highest owned citadel L${maxCit}/L6">
         <span class="pc-vic-label">🏰</span>
         <span class="pc-vic-track"><span class="pc-vic-fill cit" style="width:${citPct}%"></span></span>
         <span class="pc-vic-pct">L${maxCit}</span>
@@ -2071,15 +2071,14 @@
     const totalCitadels = owned.reduce((acc, pl) => acc + (pl.citadel_level || 0), 0);
 
     // Citadel tier table mirrors engine K.CITADEL_TIER_COST (1..6).
-    // Kept in sync with constants.py so the UI can show "next tier costs X".
-    // [credits, colonists, days_to_build, perks]
+    // Perk text matches CITADEL_PERK. Costs and days are unchanged.
     const CITADEL_TIERS = [
-      { cr:   5000, col:  1000, days: 1, perk: "Basic fortifications" },
-      { cr:  10000, col:  2000, days: 1, perk: "Quasar Cannons — free planet fighters + shields" },
-      { cr:  20000, col:  4000, days: 2, perk: "Transwarp emissions damping" },
-      { cr:  40000, col:  8000, days: 2, perk: "Genesis torpedoes manufactured on-site" },
-      { cr:  80000, col: 16000, days: 3, perk: "Planetary Interdictor — blocks hostile warps" },
-      { cr: 160000, col: 32000, days: 4, perk: "MAX — full fortress" },
+      { cr:   5000, col:  1000, days: 1, perk: "Treasury (not yet in this game)" },
+      { cr:  10000, col:  2000, days: 1, perk: "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level" },
+      { cr:  20000, col:  4000, days: 2, perk: "Quasar cannon (not yet in this game)" },
+      { cr:  40000, col:  8000, days: 2, perk: "Planet TransWarp (not yet in this game)" },
+      { cr:  80000, col: 16000, days: 3, perk: "Planetary shields (not yet in this game)" },
+      { cr: 160000, col: 32000, days: 4, perk: "Interdictor (not yet in this game)" },
     ];
 
     const rows = owned.map((pl) => {

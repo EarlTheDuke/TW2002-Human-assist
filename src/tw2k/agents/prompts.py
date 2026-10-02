@@ -82,8 +82,7 @@ The observation contains everything you need. Stop guessing from memory:
                              limit. Current sector's full out-warp count is
                              in `sector.warps_count` — if it's 1 and the
                              only destination's `warps_count` is also 1,
-                             you ARE in a genuine 2-sector dead-end pocket
-                             (only Citadel L4 transwarp exits that).
+                             you ARE in a genuine 2-sector dead-end pocket.
                              To find a path from A to B: check known_warps[A]
                              for neighbors whose known_warps list contains B.
                              If A's neighbors aren't in your known_warps yet,
@@ -222,18 +221,18 @@ Full sequence from StarDock, ~30-50 turns for your first planet:
         organics pool = food, keeps population growing daily (~5%). Keep it positive.
   7. assign_colonists {"planet_id":<id>,"from":"ship","to":"fuel_ore","qty":<N>}
         fuel_ore pool = daily fuel ore production (most valuable).
-  8. build_citadel {"planet_id":<id>}                 ← L1 costs 5k cr + 1k colonists. Done NEXT day.
+  8. build_citadel {"planet_id":<id>}                 ← L1 costs 5k cr + 1k colonists, 1 day (Treasury (not yet in this game)).
   9. liftoff {}                                       ← back to space; go trade or defend
  10. Drop 1 defensive fighter in the sector as a tripwire:
      deploy_fighters {"qty":1,"mode":"defensive"}
-     DO NOT put ship-fighters on the planet pre-L2 (L1 doesn't protect them).
+     You can deposit fighters and shields on a planet you own at any citadel level.
 
 Next days: return with more colonists, land, call `build_citadel` again to push levels:
-  L1→L2  10k cr +  2k col, 1 day   (Combat Control — safe to stash ship fighters here)
-  L2→L3  20k cr +  4k col, 2 days  (Quasar Cannon — sector-wide weapon)
-  L3→L4  40k cr +  8k col, 2 days  (TransWarp drive — instant travel)
-  L4→L5  80k cr + 16k col, 3 days  (planet shields)
-  L5→L6 160k cr + 32k col, 4 days  (endgame bunker)
+  L1→L2  10k cr +  2k col, 1 day   (Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level)
+  L2→L3  20k cr +  4k col, 2 days  (Quasar cannon (not yet in this game))
+  L3→L4  40k cr +  8k col, 2 days  (Planet TransWarp (not yet in this game))
+  L4→L5  80k cr + 16k col, 3 days  (Planetary shields (not yet in this game))
+  L5→L6 160k cr + 32k col, 4 days  (Interdictor (not yet in this game))
 
 `assign_colonists` pools and what they do:
   "fuel_ore"  → planet produces FUEL ORE daily (most valuable of the three)
@@ -548,7 +547,7 @@ def stage_hint(obs: Observation) -> dict[str, Any]:
             "stage": "S4",
             "label": "Fortify & Form",
             "reason": f"Citadel L{max_cit}{corp_bit} — hardening phase",
-            "next_milestone": "Citadel L3 (quasar), >=1M net worth, secure a corp or alliance",
+            "next_milestone": "Citadel L3 (Quasar cannon is not in this game yet), >=1M net worth, secure a corp or alliance",
         })
     if has_own_planet or max_cit >= 1:
         if has_own_planet:
@@ -559,7 +558,7 @@ def stage_hint(obs: Observation) -> dict[str, Any]:
             "stage": "S3",
             "label": "Establish a Home",
             "reason": reason,
-            "next_milestone": "Finish Citadel L1, then L2 (Combat Control)",
+            "next_milestone": "Finish Citadel L1, then L2 (Combat Control Computer is not in this game yet)",
         })
     if net_worth >= 200_000 or obs.day >= 2:
         return _finalize_stage_hint({

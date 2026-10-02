@@ -189,13 +189,13 @@ Created by Genesis Torpedoes or pre-existing in ~3% of sectors.
 - Population growth: `+5%/day` if enough food (Organics) in stockpile, else stagnation or decline.
 
 ### 6.3 Citadels
-Constructed in stages 1–6; each stage costs cumulative resources and unlocks:
-- Level 1: planetary treasury
-- Level 2: military command — defensive fighters
-- Level 3: quasar cannon — sector defense
-- Level 4: planetary shields
-- Level 5: transwarp drive — jump your ship to the planet from anywhere
-- Level 6: interdictor generator — prevent enemy warp-out
+Constructed in stages 1-6. Build costs are unchanged. Named powers, in the original order. The parenthetical says whether this game does that thing today:
+- Level 1: Treasury (not yet in this game)
+- Level 2: Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level
+- Level 3: Quasar cannon (not yet in this game)
+- Level 4: Planet TransWarp (not yet in this game)
+- Level 5: Planetary shields (not yet in this game)
+- Level 6: Interdictor (not yet in this game)
 
 ### 6.4 Planet ownership
 - Owner is the player who lands first on an unowned planet.

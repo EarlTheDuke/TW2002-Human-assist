@@ -4,7 +4,7 @@ Pulled out of `engine.runner` during the Phase 6 split. Called from
 `runner.tick_day` after port regen + Ferrengi movement:
 
     * `_complete_citadels(universe)` — promote any planet whose
-      `citadel_complete_day` has arrived; grant the L2+ defense bonus
+      `citadel_complete_day` has arrived; grant the L2+ garrison bonus
       and award XP to the owner.
     * `_advance_planets(universe)` — per-class production matrix
       converts colonist head-count into commodity stockpile, plus a
@@ -135,7 +135,8 @@ def _complete_citadels(universe: Universe) -> None:
             old = planet.citadel_level
             planet.citadel_level = planet.citadel_target
             planet.citadel_complete_day = None
-            # L2 = Quasar Cannons → big planet fighter boost
+            # Garrison bonus at L2 and up. Not a named CITADEL_PERK power.
+            # Fighters floor is 1000 * level. Shields floor is 250 * level.
             if planet.citadel_level >= 2:
                 planet.fighters = max(planet.fighters, 1000 * planet.citadel_level)
                 planet.shields = max(planet.shields, 250 * planet.citadel_level)
