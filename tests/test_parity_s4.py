@@ -236,6 +236,8 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
     if ak in (ActionKind.DEPOSIT_PLANET_DEFENSE, ActionKind.WITHDRAW_PLANET_DEFENSE):
         kind_ = first("kind", "fighters")
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "kind": kind_, "qty": qty_for(kind_)})
+    if ak is ActionKind.SET_MILITARY_REACTION:
+        return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "pct": first("pct", 0)})
     raise AssertionError(f"no builder for {kind}")
 
 
@@ -266,7 +268,7 @@ def test_bot_has_forms_for_all_groups() -> None:
     assert 'data-obs="legal_actions"' in HTML
     for kind in ("attack", "photon_missile", "deploy_fighters", "deploy_mines", "buy_ship", "buy_equip", "corp_create",
                  "land_planet", "liftoff", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel",
-                 "deposit_planet_defense", "withdraw_planet_defense",
+                 "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction",
                  "deploy_genesis", "claim_planet", "hail", "broadcast", "corp_invite", "corp_join", "corp_leave",
                  "corp_deposit", "corp_withdraw", "corp_memo", "propose_alliance", "accept_alliance", "break_alliance",
                  "query_limpets"):

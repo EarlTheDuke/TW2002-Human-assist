@@ -376,7 +376,7 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
 ================ OBSERVATION FIELDS YOU MUST READ ================
   self.credits, self.turns_remaining, self.turns_per_day, self.ship  — your state
   self.ship.cargo, self.ship.genesis, self.ship.cargo_free           — inventory
-  sector.id, sector.port, sector.warps_out, sector.planets           — where you are; sector.planets may include empty neutral planets. fighters, shields, treasury, and stockpile are on that list only for a planet you own or share a corp with. A defended hostile landing is the planet id in land_planet contested, not those numbers. Hostile planet shields are fought first: one planet shield absorbs 20 attacker damage, and planet fighters do not fire while shields remain. Shields still standing after 3 rounds repel the landing, including a planet with no fighters.
+  sector.id, sector.port, sector.warps_out, sector.planets           — where you are; sector.planets may include empty neutral planets. fighters, shields, treasury, and stockpile are on that list only for a planet you own or share a corp with. A defended hostile landing is the planet id in land_planet contested, not those numbers. Hostile planet shields are fought first: one planet shield absorbs 20 attacker damage, and planet fighters do not fire while shields remain. Shields still standing repel the landing, including a planet with no fighters. `set_military_reaction` `{"planet_id":<id>,"pct":0-100}` while landed on your planet or your corp's sets the percent of planet fighters that attack at 2:1 after shields fall. The rest defend at 3:1. Costs 1 turn.
   owned_planets[]                                                    — your planets (id, sector_id, origin genesis|claim|other, citadel_level, citadel_target, colonists per pool, colonists_total, stockpile, production per pool, organics_consumption_per_day, growth_active, organics_days_left)
   orphaned_planets[]                                                 — former-player planets only; `claim_planet` applies here
   known_ports_top                                                    — port intel cache
@@ -391,7 +391,7 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
 Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
 Recon:       probe query_limpets plot_course
-Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction
 StarDock:    buy_ship buy_equip
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
@@ -448,7 +448,7 @@ Key **mechanical** rules:
   * `known_warps` is your **personal** exploration map — a short graph means you have not scanned/warped
     widely yet, not that the universe is tiny. `sector.warps_count` is the true out-warp count here.
   * On failure, read `recent_events`, `recent_failures`, and `action_hint`; change plan.
-  * sector.planets lists fighters, shields, treasury, and stockpile only for a planet you own or share a corp with. Defended hostile landings are planet ids on land_planet contested. Hostile planet shields are fought first: one planet shield absorbs 20 attacker damage, and planet fighters do not fire while shields remain. Shields still standing after 3 rounds repel the landing, including a planet with no fighters.
+  * sector.planets lists fighters, shields, treasury, and stockpile only for a planet you own or share a corp with. Defended hostile landings are planet ids on land_planet contested. Hostile planet shields are fought first: one planet shield absorbs 20 attacker damage, and planet fighters do not fire while shields remain. Shields still standing repel the landing, including a planet with no fighters. `set_military_reaction` `{"planet_id":<id>,"pct":0-100}` while landed on your planet or your corp's sets the percent of planet fighters that attack at 2:1 after shields fall. The rest defend at 3:1. Costs 1 turn.
 
 Deeper mechanics, price tables, worked examples, and long diplomacy copy live in **docs/PLAYBOOK.md**
 (reference only — not a mandatory checklist).
@@ -476,7 +476,7 @@ reroute, scout/probe, re-arm, buy a combat-capable ship, hunt the threat, or kno
 Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
 Recon:       probe query_limpets plot_course
-Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense
+Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction
 StarDock:    buy_ship buy_equip
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast

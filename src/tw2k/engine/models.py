@@ -187,6 +187,7 @@ class EventKind(str, Enum):
     ASSIGN_COLONISTS = "assign_colonists"
     PLANET_CARGO_TRANSFER = "planet_cargo_transfer"
     PLANET_DEFENSE_TRANSFER = "planet_defense_transfer"
+    PLANET_MILITARY_REACTION = "planet_military_reaction"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"
@@ -332,6 +333,8 @@ class Planet(BaseModel):
     })
     fighters: int = 0
     shields: int = 0
+    # 0-100. This percent of planet fighters attack at 2:1 after shields fall.
+    military_reaction_pct: int = 0
     treasury: int = 0
     last_tax_value: int = 0
     # How the CURRENT owner acquired the planet: "genesis" (their own torpedo,

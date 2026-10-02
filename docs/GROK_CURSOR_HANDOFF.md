@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 07:20 PT - Fable - planet landings use odds instead of dice
+- After the shield soak, reaction fighters attack at 2:1 and the rest defend at 3:1. A landed owner can set that percent. Ship-versus-ship combat still uses the old dice.
+
 ### 2026-10-02 05:30 PT - Fable - planet shields stop a landing before the fighters shoot
 - A hostile landing spends attacker damage on planet shields first, 20 damage per shield. Planet fighters shoot only after those shields are gone. Three rounds of shields still standing repel the landing.
 

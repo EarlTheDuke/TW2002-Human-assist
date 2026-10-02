@@ -1,8 +1,8 @@
 """Headless planet-siege grid. No server, no paid call, not collected by pytest.
 
 Each cell reseeds the combat dice, plants one defended planet, and calls
-apply_action land_planet. reaction_pct and quasar are accepted so a later
-slice can turn them on; today's landing raises if either is set.
+apply_action land_planet. reaction_pct is written onto the planet.
+quasar still raises until a later slice.
 """
 
 from __future__ import annotations
@@ -120,8 +120,10 @@ def configure_defender_planet(
     reaction_pct: int = 0,
     quasar: bool = False,
 ) -> None:
-    if reaction_pct != 0 or quasar:
-        raise NotImplementedError("reaction_pct and quasar are later slices; today's landing ignores them")
+    if quasar:
+        raise NotImplementedError("quasar is a later slice")
+    if reaction_pct < 0 or reaction_pct > 100:
+        raise ValueError("reaction_pct must be from 0 to 100")
     planet.owner_id = owner_id
     planet.corp_ticker = None
     planet.fighters = fighters
@@ -130,6 +132,7 @@ def configure_defender_planet(
     planet.citadel_target = citadel_level
     planet.citadel_complete_day = None
     planet.origin = "other"
+    planet.military_reaction_pct = reaction_pct
 
 
 def place_attacker(universe, attacker: Player, *, sector_id: int, fighters: int, shields: int) -> None:

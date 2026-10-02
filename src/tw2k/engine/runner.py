@@ -729,6 +729,86 @@ def _handle_wait(universe: Universe, pid: str, action: Action) -> ActionResult:
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def _planet_odds_fight(player, planet) -> tuple[int, int, int, list[dict]]:
+    """One shield soak, then reaction waves, then the defensive grind.
+
+    The survivor rule is the comment on PLANET_OFFENSE_ODDS.
+    """
+    a_fighters = int(player.ship.fighters)
+    d_fighters = int(planet.fighters)
+    d_shields = int(planet.shields)
+    rounds: list[dict] = []
+    n = 1
+    if d_shields > 0:
+        removed = min(d_shields, a_fighters // K.PLANET_SHIELD_ODDS)
+        d_shields -= removed
+        rounds.append({
+            "round": n,
+            "phase": "shields",
+            "shields_removed": removed,
+            "attacker_fighters_lost": 0,
+            "defender_fighters_lost": 0,
+            "defender_f_after": d_fighters,
+            "defender_s_after": d_shields,
+            "attacker_f_after": a_fighters,
+        })
+        n += 1
+        if d_shields > 0:
+            return a_fighters, d_fighters, d_shields, rounds
+    pct = max(0, min(100, int(getattr(planet, "military_reaction_pct", 0) or 0)))
+    reaction = d_fighters * pct // 100
+    defenders = d_fighters - reaction
+    spec = K.SHIP_SPECS.get(player.ship.ship_class.value, {}) or {}
+    wave_cap = (K.PLANET_OFFENSE_WAVE_NUM * (
+        int(spec.get("max_fighters", 0) or 0) + int(spec.get("max_shields", 0) or 0)
+    )) // K.PLANET_OFFENSE_WAVE_DEN
+    if wave_cap < 1:
+        wave_cap = 1
+    while reaction > 0 and a_fighters > 0:
+        sent = min(reaction, wave_cap)
+        kill = sent * K.PLANET_OFFENSE_ODDS
+        if kill >= a_fighters:
+            needed = min(sent, (a_fighters + K.PLANET_OFFENSE_ODDS - 1) // K.PLANET_OFFENSE_ODDS)
+            lost = a_fighters
+            a_fighters = 0
+            reaction -= needed
+        else:
+            needed = sent
+            lost = kill
+            a_fighters -= kill
+            reaction -= sent
+        d_fighters = defenders + reaction
+        rounds.append({
+            "round": n,
+            "phase": "offense",
+            "wave": needed,
+            "attacker_fighters_lost": lost,
+            "defender_fighters_lost": needed,
+            "defender_f_after": d_fighters,
+            "defender_s_after": d_shields,
+            "attacker_f_after": a_fighters,
+        })
+        n += 1
+        if a_fighters <= 0:
+            return 0, d_fighters, d_shields, rounds
+    d_fighters = defenders + reaction
+    if d_fighters > 0 and a_fighters > 0:
+        killed = min(d_fighters, a_fighters // K.PLANET_DEFENSE_ODDS)
+        spent = killed * K.PLANET_DEFENSE_ODDS
+        a_fighters -= spent
+        d_fighters -= killed
+        rounds.append({
+            "round": n,
+            "phase": "defense",
+            "attacker_fighters_lost": spent,
+            "defender_fighters_lost": killed,
+            "defender_f_after": d_fighters,
+            "defender_s_after": d_shields,
+            "attacker_f_after": a_fighters,
+        })
+    return a_fighters, d_fighters, d_shields, rounds
+
+
 def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     sector = universe.sectors[player.sector_id]
@@ -750,87 +830,8 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         )
     )
     if hostile and (planet.fighters > 0 or planet.shields > 0):
-        # Shields first, at PLANET_SHIELD_ODDS damage per shield. Planet
-        # fighters do not shoot while any shield remains. Fighter rounds
-        # keep the old dice and the 1:1 ship-style volley.
-        rng = _rng_for(universe)
-        odds = K.PLANET_SHIELD_ODDS
-        a_fighters = player.ship.fighters
-        a_shields = player.ship.shields
-        d_fighters = planet.fighters
-        d_shields = planet.shields
-        rounds: list[dict] = []
-        for round_idx in range(1, 4):
-            a_off = a_fighters
-            a_mult = rng.uniform(0.8, 1.2)
-            a_dmg = int(a_off * a_mult)
-            if d_shields > 0:
-                removed = min(d_shields, a_dmg // odds)
-                spent = removed * odds
-                d_shields -= removed
-                leftover = a_dmg - spent
-                shields_down = d_shields <= 0
-                rounds.append(
-                    {
-                        "round": round_idx,
-                        "phase": "shields",
-                        "attacker_damage_mult": round(a_mult, 4),
-                        "defender_damage_mult": 0.0,
-                        "attacker_offense": a_off,
-                        "defender_offense": 0,
-                        "attacker_volley": a_dmg,
-                        "defender_volley": 0,
-                        "defender_shield_absorbed": spent,
-                        "defender_fighters_lost": 0,
-                        "attacker_shield_absorbed": 0,
-                        "attacker_fighters_lost": 0,
-                        "defender_f_after": d_fighters,
-                        "defender_s_after": d_shields,
-                        "attacker_f_after": a_fighters,
-                        "attacker_s_after": a_shields,
-                        "ended_here": shields_down and d_fighters <= 0,
-                    }
-                )
-                if not shields_down or d_fighters <= 0:
-                    if shields_down and d_fighters <= 0:
-                        break
-                    continue
-                a_dmg = leftover
-            d_off = d_fighters
-            d_mult = rng.uniform(0.8, 1.2)
-            d_dmg = int(d_off * d_mult)
-            d_shields, d_fighters, d_sh_abs, d_f_lost = _apply_volley(
-                a_dmg, d_shields, d_fighters, False
-            )
-            a_shields, a_fighters, a_sh_abs, a_f_lost = _apply_volley(
-                d_dmg, a_shields, a_fighters, False
-            )
-            ended = a_fighters <= 0 or d_fighters <= 0
-            rounds.append(
-                {
-                    "round": round_idx,
-                    "phase": "fighters",
-                    "attacker_damage_mult": round(a_mult, 4),
-                    "defender_damage_mult": round(d_mult, 4),
-                    "attacker_offense": a_off,
-                    "defender_offense": d_off,
-                    "attacker_volley": a_dmg,
-                    "defender_volley": d_dmg,
-                    "defender_shield_absorbed": d_sh_abs,
-                    "defender_fighters_lost": d_f_lost,
-                    "attacker_shield_absorbed": a_sh_abs,
-                    "attacker_fighters_lost": a_f_lost,
-                    "defender_f_after": d_fighters,
-                    "defender_s_after": d_shields,
-                    "attacker_f_after": a_fighters,
-                    "attacker_s_after": a_shields,
-                    "ended_here": ended,
-                }
-            )
-            if ended:
-                break
+        a_fighters, d_fighters, d_shields, rounds = _planet_odds_fight(player, planet)
         player.ship.fighters = a_fighters
-        player.ship.shields = a_shields
         planet.fighters = d_fighters
         planet.shields = d_shields
         universe.emit(
@@ -839,21 +840,21 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             sector_id=sector.id,
             payload={
                 "exchange_kind": "planet_siege",
-                "exchange_max_rounds": 3,
+                "exchange_max_rounds": len(rounds),
                 "vs": "planet",
                 "planet_id": planet.id,
                 "planet_name": planet.name,
                 "citadel_level": planet.citadel_level,
                 "defender_owner_id": planet.owner_id,
                 "attacker_f": a_fighters,
-                "attacker_s": a_shields,
+                "attacker_s": player.ship.shields,
                 "defender_f": d_fighters,
                 "defender_s": d_shields,
                 "rounds": rounds,
             },
             summary=(
                 f"Siege of {planet.name}: "
-                f"{player.name}[F{a_fighters} S{a_shields}] vs Citadel L{planet.citadel_level}"
+                f"{player.name}[F{a_fighters} S{player.ship.shields}] vs Citadel L{planet.citadel_level}"
                 f"[F{d_fighters} S{d_shields}]"
             ),
         )
@@ -2097,6 +2098,31 @@ def _emit_defense_transfer(universe: Universe, player, planet, kind: str, qty: i
     )
 
 
+def _handle_set_military_reaction(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return error
+    try:
+        pct = int(action.args.get("pct", -1))
+    except (TypeError, ValueError):
+        return ActionResult(ok=False, error="pct must be from 0 to 100")
+    if pct < 0 or pct > 100:
+        return ActionResult(ok=False, error="pct must be from 0 to 100")
+    cost = int(K.TURN_COST["set_military_reaction"])
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    planet.military_reaction_pct = pct
+    universe.emit(
+        EventKind.PLANET_MILITARY_REACTION,
+        actor_id=player.id,
+        sector_id=planet.sector_id,
+        payload={"planet_id": planet.id, "pct": pct},
+        summary=f"{player.name} set military reaction on {planet.name} to {pct}%",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
 def _handle_deposit_planet_defense(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
@@ -2200,6 +2226,7 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.HAIL: _handle_hail,
     ActionKind.BROADCAST: _handle_broadcast,
     ActionKind.WAIT: _handle_wait,
+    ActionKind.SET_MILITARY_REACTION: _handle_set_military_reaction,
     ActionKind.DEPOSIT_PLANET_DEFENSE: _handle_deposit_planet_defense,
     ActionKind.WITHDRAW_PLANET_DEFENSE: _handle_withdraw_planet_defense,
 }

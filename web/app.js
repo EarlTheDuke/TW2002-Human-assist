@@ -2433,6 +2433,7 @@
     alliance_broken:   { cat: "diplomacy", icon: "\u2702",  label: "NAP BROKEN" },
     assign_colonists:  { cat: "diplomacy", icon: "\ud83d\udc65", label: "ASSIGN COLS" },
     planet_defense_transfer: { cat: "diplomacy", icon: "\u2694", label: "PLANET DEFENSE" },
+    planet_military_reaction: { cat: "diplomacy", icon: "\u2694", label: "REACTION" },
     build_citadel:     { cat: "diplomacy", icon: "\ud83c\udfd7", label: "CITADEL BUILD" },
     citadel_complete:  { cat: "diplomacy", icon: "\ud83c\udff0", label: "CITADEL BUILT", big: true },
     planet_tax_payout: { cat: "trade",     icon: "$",      label: "PLANET TAX", big: true },

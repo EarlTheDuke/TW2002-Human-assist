@@ -207,6 +207,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.ASSIGN_COLONISTS: ("planet_id", "qty", "to", "from"),
     EventKind.PLANET_CARGO_TRANSFER: ("planet_id", "commodity", "qty", "direction"),
     EventKind.PLANET_DEFENSE_TRANSFER: ("planet_id", "kind", "qty", "direction"),
+    EventKind.PLANET_MILITARY_REACTION: ("planet_id", "pct"),
     EventKind.BUILD_CITADEL: ("planet_id", "level_target", "completes_day", "cost_cr", "cost_col"),
     EventKind.CITADEL_COMPLETE: ("planet_id", "from", "to"),
     EventKind.PLANET_TAX_PAYOUT: ("planet_id", "planet_name", "payout"),
@@ -605,6 +606,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "citadel_complete_day": getattr(planet, "citadel_complete_day", None),
             "fighters": planet.fighters,
             "shields": planet.shields,
+            "military_reaction_pct": int(getattr(planet, "military_reaction_pct", 0) or 0),
             # Same shape as sector.planets[] (_planet_brief): per-pool dict + total.
             "colonists": colonists,
             "colonists_total": sum(colonists.values()),
@@ -998,6 +1000,7 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
     if _planet_numbers_visible(planet, viewer):
         brief["fighters"] = planet.fighters
         brief["shields"] = planet.shields
+        brief["military_reaction_pct"] = int(getattr(planet, "military_reaction_pct", 0) or 0)
         brief["treasury"] = planet.treasury
         brief["stockpile"] = {c.value: planet.stockpile.get(c, 0) for c in planet.stockpile}
     return brief

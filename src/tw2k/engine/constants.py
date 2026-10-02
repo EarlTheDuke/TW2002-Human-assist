@@ -176,6 +176,7 @@ TURN_COST = {
     "claim_planet": 2,
     "deposit_planet_defense": 1,
     "withdraw_planet_defense": 1,
+    "set_military_reaction": 1,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -234,6 +235,21 @@ PLANET_SHIELD_SHIP_COST = 10
 PLANET_DEFENSE_MIN_LEVEL = 0
 # One planet shield absorbs 20 points of attacker damage, so the attacker needs 20 fighters per planet shield.
 PLANET_SHIELD_ODDS = 20
+# Planet fighter odds. The 3-round dice path is retired. Ship-vs-ship dice stay.
+# Offense: each reaction fighter destroys this many attacker fighters.
+# Defense: this many attacker fighters destroy one planet fighter.
+PLANET_OFFENSE_ODDS = 2
+PLANET_DEFENSE_ODDS = 3
+# Offensive wave size is int(1.25 * (fighter cap + shield cap)) of the attacker
+# ship class. Reaction fighters above one wave wait for the next wave.
+PLANET_OFFENSE_WAVE_NUM = 5
+PLANET_OFFENSE_WAVE_DEN = 4
+# After one shield soak (attacker fighters // PLANET_SHIELD_ODDS), shields still
+# above 0 repel the landing and planet fighters do not shoot. Ship shields are
+# not spent. If attacker fighters are 0 after the odds, the existing destroy
+# path runs and the planet is not captured, even when planet fighters also hit
+# 0. If both sides still have fighters, those survivors stay and the landing
+# is repelled.
 # Minimum hops from sector 1 (StarDock) for legal Genesis deployment.
 # Classic TW2002 required planets to be "deep" — you couldn't drop one in
 # the Federation's back yard. FedSpace only covers 1..10, but many of those

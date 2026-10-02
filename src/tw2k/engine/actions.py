@@ -45,6 +45,7 @@ class ActionKind(str, Enum):
     WAIT = "wait"
     DEPOSIT_PLANET_DEFENSE = "deposit_planet_defense"
     WITHDRAW_PLANET_DEFENSE = "withdraw_planet_defense"
+    SET_MILITARY_REACTION = "set_military_reaction"
 
 
 class Action(BaseModel):

@@ -337,7 +337,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         pl = universe.planets[plid]
         hostile = pl.owner_id is not None and pl.owner_id != player_id and not (
             pl.corp_ticker and player.corp_ticker and pl.corp_ticker == player.corp_ticker)
-        if hostile and pl.fighters > 0:
+        if hostile and (pl.fighters > 0 or pl.shields > 0):
             contested.append(plid)
     reason = "no planet in this sector" if not planets_here else _need_turns(player, lp_cost)
     out.append(_la(ActionKind.LAND_PLANET, legal=reason is None, reason=reason, cost=lp_cost,
@@ -582,6 +582,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 "nothing on the ship to stock (fighters, or 10 shields per planet shield)")
     _defense_la(ActionKind.WITHDRAW_PLANET_DEFENSE, withdraw_max,
                 "nothing on the planet to withdraw, or the ship cap is full")
+
+    react_cost = int(K.TURN_COST["set_military_reaction"])
+    react_reason = owned_reason or _need_turns(player, react_cost)
+    out.append(_la(ActionKind.SET_MILITARY_REACTION, legal=react_reason is None, reason=react_reason,
+                   cost=react_cost,
+                   params={"planet_id": pid_param,
+                           "pct": {"type": "int", "required": True, "min": 0, "max": 100}}))
 
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}

@@ -57,12 +57,13 @@ def test_attacker_captures_a_defended_planet() -> None:
     assert attacker.planet_landed == planet.id
     combat = next(ev for ev in u.events if ev.kind is EventKind.COMBAT)
     assert combat.payload["rounds"]
-    assert all(row["phase"] == "fighters" for row in combat.payload["rounds"])
+    assert [row["phase"] for row in combat.payload["rounds"]] == ["defense"]
+    assert attacker.ship.fighters == 970
 
 
 def test_attacker_loses_and_the_ship_is_destroyed() -> None:
     u, (attacker, *_) = _make_universe(seed=8802)
-    attacker.ship.fighters = 5
+    attacker.ship.fighters = 300
     attacker.ship.shields = 0
     deaths = attacker.deaths
     planet = _planet(8802, fighters=5_000, shields=0)
@@ -165,7 +166,7 @@ def test_shields_only_weak_attacker_is_repelled() -> None:
     assert planet.shields > 90
     assert attacker.ship.fighters == 40
     assert attacker.planet_landed is None
-    assert _phases(u) == ["shields", "shields", "shields"]
+    assert _phases(u) == ["shields"]
     assert not any(ev.kind is EventKind.LAND_PLANET for ev in u.events)
 
 
@@ -183,12 +184,13 @@ def test_shields_and_fighters_need_both_phases() -> None:
     assert planet.fighters == 0
     assert planet.shields == 0
     phases = _phases(u)
-    assert "shields" in phases and "fighters" in phases
+    assert phases == ["shields", "defense"]
     combat = next(ev for ev in u.events if ev.kind is EventKind.COMBAT)
-    shield_rows = [row for row in combat.payload["rounds"] if row["phase"] == "shields"]
-    fighter_rows = [row for row in combat.payload["rounds"] if row["phase"] == "fighters"]
-    assert all(row["defender_volley"] == 0 and row["defender_fighters_lost"] == 0 for row in shield_rows)
-    assert fighter_rows[0]["defender_fighters_lost"] == 30
+    shield_row = combat.payload["rounds"][0]
+    defense_row = combat.payload["rounds"][1]
+    assert shield_row["attacker_fighters_lost"] == 0 and shield_row["defender_fighters_lost"] == 0
+    assert defense_row["defender_fighters_lost"] == 30
+    assert attacker.ship.fighters == 7910
 
 
 def test_planet_fighters_do_not_fire_while_shields_remain() -> None:
@@ -206,4 +208,4 @@ def test_planet_fighters_do_not_fire_while_shields_remain() -> None:
     assert planet.fighters == 400
     assert planet.shields < 80
     assert planet.owner_id == "B"
-    assert _phases(u) == ["shields", "shields", "shields"]
+    assert _phases(u) == ["shields"]
