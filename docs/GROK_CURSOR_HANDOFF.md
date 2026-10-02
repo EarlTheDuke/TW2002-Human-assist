@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 18:50 PT - Fable - a since-last-turn note on the Bridge
+- The Bridge tab lists what changed for this seat since the previous turn: credits, the sector moved, trades, new ports and sectors, and hostile events already on the page. The first turn and a turn where nothing changed stay blank. The note is stored in this seat's own page.
+
 ### 2026-10-01 18:10 PT - Fable - trade profit uses the realized summary
 - The Moments profit line now uses this seat's realized profit from the trade summary, not the last 25 rows of the log. Under 50 trades it still shows the per-turn rate. At 50 it names the last 50 trades and drops the rate. A buy that has not been sold does not count as a loss.
 
