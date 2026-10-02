@@ -130,6 +130,7 @@ def configure_defender_planet(
     reaction_pct: int = 0,
     quasar: bool = False,
     quasar_sector_pct: int = 0,
+    quasar_atm_pct: int = 0,
     fuel_ore: int = 0,
 ) -> None:
     if reaction_pct < 0 or reaction_pct > 100:
@@ -144,6 +145,7 @@ def configure_defender_planet(
     planet.origin = "other"
     planet.military_reaction_pct = reaction_pct
     planet.quasar_sector_pct = 10 if quasar and quasar_sector_pct <= 0 else quasar_sector_pct
+    planet.quasar_atm_pct = quasar_atm_pct
     planet.stockpile[Commodity.FUEL_ORE] = fuel_ore
 
 
@@ -408,12 +410,51 @@ def format_quasar_table() -> str:
     return "\n".join(lines)
 
 
+def format_atmosphere_table() -> str:
+    """Hostile landings. Damage is burned fuel times 2. Shields soak the ship first."""
+    universe, attacker, planet = build_lab_universe()
+    sector = universe.sectors[SECTOR_ID]
+    rows = (
+        ("both shots, shields already down", 0, 0, 10_000, 0),
+        ("shields hold, one shot", 0, 500, 10, 8_000),
+        ("first shot kills", 0, 0, 100, 0),
+    )
+    lines = [
+        "Atmospheric quasar on a hostile landing. pct 10, citadel 3, fuel 10,000. "
+        "Burned fuel is fuel * pct // 100. Damage is that fuel times 2. "
+        "The second shot waits until planet shields are already down or fall.",
+        "",
+        "| Case | Planet shields | Ship fighters | Ship shields | Shots | Damage | Fuel after | Died |",
+        "|---|---:|---:|---:|---:|---|---:|---|",
+    ]
+    for label, planet_f, planet_s, ship_f, ship_s in rows:
+        sector.mines.clear()
+        sector.fighters = None
+        configure_defender_planet(
+            planet, owner_id=DEFENDER_ID, fighters=planet_f, shields=planet_s,
+            citadel_level=3, quasar_atm_pct=10, fuel_ore=10_000,
+        )
+        place_attacker(universe, attacker, sector_id=SECTOR_ID, fighters=ship_f, shields=ship_s)
+        attacker.deaths = 0
+        universe.events.clear()
+        land_on_planet(universe, attacker.id, planet.id, seed=1)
+        shots = [ev for ev in universe.events if ev.kind.value == "quasar_fire"]
+        damage = ", ".join(str(ev.payload["damage"]) for ev in shots) or "0"
+        died = "yes" if attacker.deaths else "no"
+        lines.append(
+            f"| {label} | {planet_s} | {ship_f} | {ship_s} | {len(shots)} | {damage} | "
+            f"{int(planet.stockpile.get(Commodity.FUEL_ORE, 0))} | {died} |"
+        )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
     parser.add_argument("--production", action="store_true", help="print the fighter production table")
     parser.add_argument("--hazards", action="store_true", help="print the sector-hazard landing table")
     parser.add_argument("--quasar", action="store_true", help="print the sector quasar warp table")
+    parser.add_argument("--atmosphere", action="store_true", help="print the atmospheric quasar landing table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -429,6 +470,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.quasar:
         print(format_quasar_table())
+        return 0
+    if args.atmosphere:
+        print(format_atmosphere_table())
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,

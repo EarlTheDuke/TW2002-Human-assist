@@ -49,6 +49,7 @@ class ActionKind(str, Enum):
     DEPOSIT_TREASURY = "deposit_treasury"
     WITHDRAW_TREASURY = "withdraw_treasury"
     SET_QUASAR_SECTOR = "set_quasar_sector"
+    SET_QUASAR_ATM = "set_quasar_atm"
 
 
 class Action(BaseModel):

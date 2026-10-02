@@ -11,7 +11,7 @@ from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.observation import build_observation
 
 SECTOR = 120
-HIDDEN = ("fighters", "shields", "treasury", "stockpile", "quasar_sector_pct")
+HIDDEN = ("fighters", "shields", "treasury", "stockpile", "quasar_sector_pct", "quasar_atm_pct")
 KEPT = ("id", "name", "class", "owner_id", "corp_ticker", "citadel_level")
 CONTESTED_GATE = "(p.planet_id.contested || []).includes(Number(vals.planet_id))"
 WARNING = 'txt += " · WARNING: defended hostile planet - landing means citadel combat";'
@@ -75,6 +75,7 @@ def test_outsider_loses_garrison_numbers_and_keeps_the_contested_flag() -> None:
     assert shown["fighters"] == 4321
     assert shown["military_reaction_pct"] == 0
     assert shown["quasar_sector_pct"] == 0
+    assert shown["quasar_atm_pct"] == 0
     assert shown["shields"] == 87
     assert shown["treasury"] == 6543
     assert shown["stockpile"]["fuel_ore"] == 19
