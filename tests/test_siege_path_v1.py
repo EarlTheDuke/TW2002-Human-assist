@@ -1,4 +1,4 @@
-"""Pin today's planet-siege behaviour. These tests do not change the rules."""
+"""Planet siege, including the shield gate."""
 
 from __future__ import annotations
 
@@ -55,6 +55,9 @@ def test_attacker_captures_a_defended_planet() -> None:
     landed = next(ev for ev in u.events if ev.kind is EventKind.LAND_PLANET)
     assert landed.payload["seized"] is True
     assert attacker.planet_landed == planet.id
+    combat = next(ev for ev in u.events if ev.kind is EventKind.COMBAT)
+    assert combat.payload["rounds"]
+    assert all(row["phase"] == "fighters" for row in combat.payload["rounds"])
 
 
 def test_attacker_loses_and_the_ship_is_destroyed() -> None:
@@ -119,10 +122,17 @@ def test_capture_lowers_citadel_target_with_the_level() -> None:
     assert "already under construction" not in (built.error or "")
 
 
-def test_undefended_planet_with_shields_is_captured_without_a_fight() -> None:
+def _phases(u) -> list[str]:
+    combat = next(ev for ev in u.events if ev.kind is EventKind.COMBAT)
+    return [row["phase"] for row in combat.payload["rounds"]]
+
+
+def test_shields_only_strong_attacker_captures() -> None:
     u, (attacker, *_) = _make_universe(seed=8805)
     attacker.corp_ticker = "ACE"
-    planet = _planet(8805, fighters=0, shields=40, level=3, treasury=90)
+    attacker.ship.fighters = 20_000
+    attacker.ship.shields = 0
+    planet = _planet(8805, fighters=0, shields=15, level=3, treasury=90)
     _place(u, planet, attacker)
 
     res = _land(u, attacker.id, planet.id)
@@ -130,10 +140,70 @@ def test_undefended_planet_with_shields_is_captured_without_a_fight() -> None:
     assert res.ok, res.error
     assert planet.owner_id == attacker.id
     assert planet.corp_ticker == "ACE"
-    assert planet.shields == 40
+    assert planet.shields == 0
     assert planet.fighters == 0
-    assert planet.citadel_level == 3
-    assert planet.treasury == 90
-    assert not any(ev.kind is EventKind.COMBAT for ev in u.events)
-    landed = next(ev for ev in u.events if ev.kind is EventKind.LAND_PLANET)
-    assert landed.payload["seized"] is True
+    assert planet.citadel_level == 2
+    assert planet.treasury == 45
+    assert _phases(u) == ["shields"]
+
+
+def test_shields_only_weak_attacker_is_repelled() -> None:
+    u, (attacker, *_) = _make_universe(seed=8806)
+    attacker.ship.fighters = 40
+    attacker.ship.shields = 0
+    planet = _planet(8806, fighters=0, shields=100, level=3, treasury=90)
+    _place(u, planet, attacker)
+    before = attacker.turns_today
+
+    res = _land(u, attacker.id, planet.id)
+
+    assert res.ok is False
+    assert res.error == "planetary defenses repelled landing"
+    assert attacker.turns_today == before + LAND_COST
+    assert planet.owner_id == "B"
+    assert planet.fighters == 0
+    assert planet.shields > 90
+    assert attacker.ship.fighters == 40
+    assert attacker.planet_landed is None
+    assert _phases(u) == ["shields", "shields", "shields"]
+    assert not any(ev.kind is EventKind.LAND_PLANET for ev in u.events)
+
+
+def test_shields_and_fighters_need_both_phases() -> None:
+    u, (attacker, *_) = _make_universe(seed=8807)
+    attacker.ship.fighters = 8_000
+    attacker.ship.shields = 0
+    planet = _planet(8807, fighters=30, shields=4, level=2, treasury=80)
+    _place(u, planet, attacker)
+
+    res = _land(u, attacker.id, planet.id)
+
+    assert res.ok, res.error
+    assert planet.owner_id == attacker.id
+    assert planet.fighters == 0
+    assert planet.shields == 0
+    phases = _phases(u)
+    assert "shields" in phases and "fighters" in phases
+    combat = next(ev for ev in u.events if ev.kind is EventKind.COMBAT)
+    shield_rows = [row for row in combat.payload["rounds"] if row["phase"] == "shields"]
+    fighter_rows = [row for row in combat.payload["rounds"] if row["phase"] == "fighters"]
+    assert all(row["defender_volley"] == 0 and row["defender_fighters_lost"] == 0 for row in shield_rows)
+    assert fighter_rows[0]["defender_fighters_lost"] == 30
+
+
+def test_planet_fighters_do_not_fire_while_shields_remain() -> None:
+    u, (attacker, *_) = _make_universe(seed=8808)
+    attacker.ship.fighters = 25
+    attacker.ship.shields = 0
+    planet = _planet(8808, fighters=400, shields=80)
+    _place(u, planet, attacker)
+
+    res = _land(u, attacker.id, planet.id)
+
+    assert res.ok is False
+    assert res.error == "planetary defenses repelled landing"
+    assert attacker.ship.fighters == 25
+    assert planet.fighters == 400
+    assert planet.shields < 80
+    assert planet.owner_id == "B"
+    assert _phases(u) == ["shields", "shields", "shields"]

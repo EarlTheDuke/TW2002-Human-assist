@@ -749,9 +749,12 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             and planet.corp_ticker == player.corp_ticker
         )
     )
-    if hostile and planet.fighters > 0:
-        # Citadel combat: planet fights back with its own fighters/shields.
+    if hostile and (planet.fighters > 0 or planet.shields > 0):
+        # Shields first, at PLANET_SHIELD_ODDS damage per shield. Planet
+        # fighters do not shoot while any shield remains. Fighter rounds
+        # keep the old dice and the 1:1 ship-style volley.
         rng = _rng_for(universe)
+        odds = K.PLANET_SHIELD_ODDS
         a_fighters = player.ship.fighters
         a_shields = player.ship.shields
         d_fighters = planet.fighters
@@ -759,10 +762,42 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         rounds: list[dict] = []
         for round_idx in range(1, 4):
             a_off = a_fighters
-            d_off = d_fighters
             a_mult = rng.uniform(0.8, 1.2)
-            d_mult = rng.uniform(0.8, 1.2)
             a_dmg = int(a_off * a_mult)
+            if d_shields > 0:
+                removed = min(d_shields, a_dmg // odds)
+                spent = removed * odds
+                d_shields -= removed
+                leftover = a_dmg - spent
+                shields_down = d_shields <= 0
+                rounds.append(
+                    {
+                        "round": round_idx,
+                        "phase": "shields",
+                        "attacker_damage_mult": round(a_mult, 4),
+                        "defender_damage_mult": 0.0,
+                        "attacker_offense": a_off,
+                        "defender_offense": 0,
+                        "attacker_volley": a_dmg,
+                        "defender_volley": 0,
+                        "defender_shield_absorbed": spent,
+                        "defender_fighters_lost": 0,
+                        "attacker_shield_absorbed": 0,
+                        "attacker_fighters_lost": 0,
+                        "defender_f_after": d_fighters,
+                        "defender_s_after": d_shields,
+                        "attacker_f_after": a_fighters,
+                        "attacker_s_after": a_shields,
+                        "ended_here": shields_down and d_fighters <= 0,
+                    }
+                )
+                if not shields_down or d_fighters <= 0:
+                    if shields_down and d_fighters <= 0:
+                        break
+                    continue
+                a_dmg = leftover
+            d_off = d_fighters
+            d_mult = rng.uniform(0.8, 1.2)
             d_dmg = int(d_off * d_mult)
             d_shields, d_fighters, d_sh_abs, d_f_lost = _apply_volley(
                 a_dmg, d_shields, d_fighters, False
@@ -774,6 +809,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             rounds.append(
                 {
                     "round": round_idx,
+                    "phase": "fighters",
                     "attacker_damage_mult": round(a_mult, 4),
                     "defender_damage_mult": round(d_mult, 4),
                     "attacker_offense": a_off,
@@ -824,7 +860,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         if a_fighters <= 0:
             _destroy_ship(universe, pid, reason="planet_defense", killer_id=planet.owner_id)
             return ActionResult(ok=True, turns_spent=cost)
-        if d_fighters > 0:
+        if d_shields > 0 or d_fighters > 0:
             return ActionResult(ok=False, error="planetary defenses repelled landing", turns_spent=cost)
         # Planet defenders wiped — fall through and seize.
         planet.owner_id = pid

@@ -232,6 +232,8 @@ GENESIS_DEPLOY_TURN_COST = 4
 PLANET_FIGHTER_CAP = 1_000_000
 PLANET_SHIELD_SHIP_COST = 10
 PLANET_DEFENSE_MIN_LEVEL = 0
+# One planet shield absorbs 20 points of attacker damage, so the attacker needs 20 fighters per planet shield.
+PLANET_SHIELD_ODDS = 20
 # Minimum hops from sector 1 (StarDock) for legal Genesis deployment.
 # Classic TW2002 required planets to be "deep" — you couldn't drop one in
 # the Federation's back yard. FedSpace only covers 1..10, but many of those

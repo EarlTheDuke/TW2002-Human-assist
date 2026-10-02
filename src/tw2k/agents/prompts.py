@@ -376,7 +376,7 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
 ================ OBSERVATION FIELDS YOU MUST READ ================
   self.credits, self.turns_remaining, self.turns_per_day, self.ship  — your state
   self.ship.cargo, self.ship.genesis, self.ship.cargo_free           — inventory
-  sector.id, sector.port, sector.warps_out, sector.planets           — where you are; sector.planets may include empty neutral planets. fighters, shields, treasury, and stockpile are on that list only for a planet you own or share a corp with. A defended hostile landing is the planet id in land_planet contested, not those numbers.
+  sector.id, sector.port, sector.warps_out, sector.planets           — where you are; sector.planets may include empty neutral planets. fighters, shields, treasury, and stockpile are on that list only for a planet you own or share a corp with. A defended hostile landing is the planet id in land_planet contested, not those numbers. Hostile planet shields are fought first: one planet shield absorbs 20 attacker damage, and planet fighters do not fire while shields remain. Shields still standing after 3 rounds repel the landing, including a planet with no fighters.
   owned_planets[]                                                    — your planets (id, sector_id, origin genesis|claim|other, citadel_level, citadel_target, colonists per pool, colonists_total, stockpile, production per pool, organics_consumption_per_day, growth_active, organics_days_left)
   orphaned_planets[]                                                 — former-player planets only; `claim_planet` applies here
   known_ports_top                                                    — port intel cache
@@ -448,7 +448,7 @@ Key **mechanical** rules:
   * `known_warps` is your **personal** exploration map — a short graph means you have not scanned/warped
     widely yet, not that the universe is tiny. `sector.warps_count` is the true out-warp count here.
   * On failure, read `recent_events`, `recent_failures`, and `action_hint`; change plan.
-  * sector.planets lists fighters, shields, treasury, and stockpile only for a planet you own or share a corp with. Defended hostile landings are planet ids on land_planet contested.
+  * sector.planets lists fighters, shields, treasury, and stockpile only for a planet you own or share a corp with. Defended hostile landings are planet ids on land_planet contested. Hostile planet shields are fought first: one planet shield absorbs 20 attacker damage, and planet fighters do not fire while shields remain. Shields still standing after 3 rounds repel the landing, including a planet with no fighters.
 
 Deeper mechanics, price tables, worked examples, and long diplomacy copy live in **docs/PLAYBOOK.md**
 (reference only — not a mandatory checklist).
