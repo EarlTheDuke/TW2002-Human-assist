@@ -1597,6 +1597,7 @@
     paintComputer(obs);
     renderCu();
     paintLastTrade();
+    paintSinceTurn(obs);
     if (!CU && window.TW2KViewport) window.TW2KViewport.update(obs);  // V1 viewport (default layout only)
     els.main.hidden = false;
     els.eventsFooter.hidden = false;
@@ -1821,6 +1822,90 @@
     if (used <= 0) return `Trade profit ${shown} cr`;
     const per = Math.round(net / used);
     return `Trade profit ${shown} cr, ${fmt(per)} cr per turn`;
+  }
+  const HOSTILE_KINDS = new Set([
+    "combat", "ship_destroyed", "player_eliminated", "mine_detonated",
+    "atomic_detonation", "port_destroyed", "photon_fired", "photon_hit",
+    "ferrengi_attack", "deploy_fighters", "deploy_mines", "ferrengi_spawn",
+  ]);
+  function sinceTurnKey() {
+    const seat = state.seat || (state.obs && state.obs.self_id) || "";
+    return seat ? `tw2k_since_${seat}` : "";
+  }
+  function sinceTurnSnap(obs) {
+    let seq = 0;
+    const note = (ev) => { seq = Math.max(seq, Number(ev && ev.seq) || 0); };
+    for (const ev of (obs.recent_events || [])) note(ev);
+    for (const ev of state.events || []) note(ev);
+    let tradeNet = 0;
+    const trades = obs.trade_log || [];
+    for (const t of trades) {
+      const total = Number(t.total);
+      if (!Number.isFinite(total)) continue;
+      const side = String(t.side || "").toLowerCase();
+      if (side === "sell") tradeNet += total;
+      else if (side === "buy") tradeNet -= total;
+    }
+    return {
+      day: Number(obs.day) || 0,
+      tick: Number(obs.tick) || 0,
+      credits: Number(obs.credits) || 0,
+      sector: Number((obs.sector || {}).id) || 0,
+      ports: (obs.known_ports || []).map((p) => Number(p.sector_id)),
+      sectors: (obs.known_sectors || []).map((s) => Number(s.id)),
+      trades: trades.length,
+      tradeNet,
+      seq,
+    };
+  }
+  function paintSinceTurn(obs) {
+    const el = $("sinceTurn");
+    if (!el || CU) return;
+    const key = sinceTurnKey();
+    if (!key || !obs) { el.hidden = true; el.textContent = ""; return; }
+    const now = sinceTurnSnap(obs);
+    const raw = sessionStorage.getItem(key);
+    if (!raw) {
+      sessionStorage.setItem(key, JSON.stringify(now));
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    let prev = null;
+    try { prev = JSON.parse(raw); } catch (e) { prev = null; }
+    if (!prev || (prev.day === now.day && prev.tick === now.tick)) return;
+    const lines = [];
+    if (now.credits !== prev.credits) lines.push(`Credits ${now.credits < prev.credits ? fmt(now.credits - prev.credits) : `+${fmt(now.credits - prev.credits)}`} cr`);
+    if (now.sector && prev.sector && now.sector !== prev.sector) lines.push(`Moved from ${prev.sector} to ${now.sector}`);
+    const tradeCount = now.trades - (Number(prev.trades) || 0);
+    if (tradeCount > 0) {
+      const net = now.tradeNet - (Number(prev.tradeNet) || 0);
+      lines.push(`Trades ${tradeCount}, net ${net < 0 ? fmt(net) : `+${fmt(net)}`} cr`);
+    }
+    const oldPorts = new Set(prev.ports || []);
+    const newPorts = now.ports.filter((id) => !oldPorts.has(id));
+    if (newPorts.length) lines.push(`New ports ${newPorts.join(", ")}`);
+    const oldSectors = new Set(prev.sectors || []);
+    const newSectors = now.sectors.filter((id) => id && !oldSectors.has(id));
+    if (newSectors.length) lines.push(`New sectors ${newSectors.slice(0, 8).join(", ")}`);
+    const seen = new Set();
+    let hostile = 0;
+    const take = (ev) => {
+      if (!ev || !HOSTILE_KINDS.has(ev.kind)) return;
+      const seq = Number(ev.seq) || 0;
+      if (seq && seq <= (Number(prev.seq) || 0)) return;
+      const mark = seq || `${ev.kind}:${ev.summary || ""}`;
+      if (seen.has(mark)) return;
+      seen.add(mark);
+      hostile += 1;
+    };
+    for (const ev of obs.recent_events || []) take(ev);
+    for (const ev of state.events || []) take(ev);
+    if (hostile) lines.push(`Hostile events ${hostile}`);
+    sessionStorage.setItem(key, JSON.stringify(now));
+    const shown = lines.slice(0, 6);
+    el.hidden = !shown.length;
+    el.textContent = shown.join("\n");
   }
   function paintTradeProfit() {
     const el = $("tradeProfit");

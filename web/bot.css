@@ -433,6 +433,8 @@ body.mode-cu .known-map .scan-mark { display: none !important; }
 body.mode-cu .last-trade { display: none !important; }
 .trade-profit { margin: 0 0 8px; color: var(--muted); font-size: 0.85rem; }
 body.mode-cu .trade-profit { display: none !important; }
+.since-turn { margin: 0 0 8px; color: var(--muted); font-size: 0.85rem; white-space: pre-line; }
+body.mode-cu .since-turn { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .banner.turn, .banner.turn.flash { animation: none; }
 }
