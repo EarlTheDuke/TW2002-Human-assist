@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from tests._cu_host import VIEW_H, CuHost
 from tests.test_amz6_warp_codes import _replace_snapshot, _wait_parked
+from tw2k.engine.models import EventKind
 
 TOK = "what-changed-v1-token-p2-0000000000"
 MAP_TOP = {1440: 714, 1920: 927}
@@ -59,9 +60,13 @@ def test_since_turn_is_this_seat_and_hidden_at_first(browser, tmp_path, monkeypa
 
         me.credits += 500
         me.sector_id = dest
+        trade_tick = universe.tick + 1
         me.trade_log.extend([
-            {"side": "buy", "total": 100, "commodity": "equipment"},
-            {"side": "sell", "total": 300, "commodity": "equipment"},
+            {"side": "buy", "total": 100, "commodity": "equipment", "day": universe.day, "tick": trade_tick},
+            {
+                "side": "sell", "total": 300, "commodity": "equipment",
+                "day": universe.day, "tick": trade_tick, "realized_profit": 200,
+            },
         ])
         me.known_ports[port_id] = {"class": "BSS", "stock": {}, "last_seen_day": universe.day}
         universe.tick += 100
@@ -77,7 +82,7 @@ def test_since_turn_is_this_seat_and_hidden_at_first(browser, tmp_path, monkeypa
             arg=[
                 "Credits +500 cr",
                 f"Moved from {origin} to {dest}",
-                "Trades 2, net +200 cr",
+                "Trades 2, profit +200 cr",
                 f"New ports {port_id}",
             ],
             timeout=10_000,
@@ -85,6 +90,42 @@ def test_since_turn_is_this_seat_and_hidden_at_first(browser, tmp_path, monkeypa
         text = page.get_by_test_id("since-turn").inner_text()
         assert "424242" not in text
         assert len(text.splitlines()) <= 6
+
+        filled_tick = universe.tick
+        me.trade_log = [
+            {"side": "buy", "total": 1, "commodity": "fuel_ore", "day": universe.day, "tick": filled_tick}
+            for _ in range(10)
+        ]
+        me.trade_log.append({
+            "side": "buy", "total": 10, "commodity": "fuel_ore",
+            "day": universe.day, "tick": filled_tick + 1,
+        })
+        me.trade_log.append({
+            "side": "sell", "total": 50, "commodity": "fuel_ore",
+            "day": universe.day, "tick": filled_tick + 1, "realized_profit": 40,
+        })
+        universe.emit(
+            EventKind.DEPLOY_MINES, actor_id="P2", sector_id=me.sector_id,
+            payload={"qty": 1, "kind": "armid"}, summary="P2 laid a mine",
+        )
+        universe.emit(
+            EventKind.MINE_DETONATED, actor_id="P2", sector_id=me.sector_id,
+            payload={"hits": 1, "damage": 1, "victim": "P1"}, summary="a mine hit",
+        )
+        universe.tick += 100
+        _replace_snapshot(host, universe)
+        page.get_by_test_id("refresh").click()
+        page.get_by_test_id("mfd-tab-bridge").click()
+        page.wait_for_function(
+            """() => {
+              const el = document.querySelector('[data-testid=since-turn]');
+              return el && !el.hidden && el.textContent.includes('Trades 2, profit +40 cr');
+            }""",
+            timeout=10_000,
+        )
+        later = page.get_by_test_id("since-turn").inner_text()
+        assert "Hostile events 1" in later
+        assert "Hostile events 2" not in later
         page.evaluate("() => window.scrollTo(0, 0)")
         _assert_layout(page, 1440)
         page.set_viewport_size({"width": 1920, "height": 1080})

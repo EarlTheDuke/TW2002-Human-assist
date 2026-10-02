@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-01 18:55 PT - Fable - since-last-turn counts new trades and skips own drops
+- The trades line counts rows dated after the previous turn and adds realized profit on the new sells only. A full trade list still shows those new rows. This seat laying its own fighters, mines, or a photon does not count as a hostile event.
+
 ### 2026-10-01 18:50 PT - Fable - a since-last-turn note on the Bridge
 - The Bridge tab lists what changed for this seat since the previous turn: credits, the sector moved, trades, new ports and sectors, and hostile events already on the page. The first turn and a turn where nothing changed stay blank. The note is stored in this seat's own page.
 

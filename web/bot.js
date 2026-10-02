@@ -1828,24 +1828,22 @@
     "atomic_detonation", "port_destroyed", "photon_fired", "photon_hit",
     "ferrengi_attack", "deploy_fighters", "deploy_mines", "ferrengi_spawn",
   ]);
+  const OWN_LAY_KINDS = new Set(["deploy_fighters", "deploy_mines", "photon_fired"]);
   function sinceTurnKey() {
     const seat = state.seat || (state.obs && state.obs.self_id) || "";
     return seat ? `tw2k_since_${seat}` : "";
+  }
+  function tradeAfter(row, day, tick) {
+    const d = Number(row && row.day);
+    const t = Number(row && row.tick);
+    if (!Number.isFinite(d) || !Number.isFinite(t)) return false;
+    return d > day || (d === day && t > tick);
   }
   function sinceTurnSnap(obs) {
     let seq = 0;
     const note = (ev) => { seq = Math.max(seq, Number(ev && ev.seq) || 0); };
     for (const ev of (obs.recent_events || [])) note(ev);
     for (const ev of state.events || []) note(ev);
-    let tradeNet = 0;
-    const trades = obs.trade_log || [];
-    for (const t of trades) {
-      const total = Number(t.total);
-      if (!Number.isFinite(total)) continue;
-      const side = String(t.side || "").toLowerCase();
-      if (side === "sell") tradeNet += total;
-      else if (side === "buy") tradeNet -= total;
-    }
     return {
       day: Number(obs.day) || 0,
       tick: Number(obs.tick) || 0,
@@ -1853,8 +1851,6 @@
       sector: Number((obs.sector || {}).id) || 0,
       ports: (obs.known_ports || []).map((p) => Number(p.sector_id)),
       sectors: (obs.known_sectors || []).map((s) => Number(s.id)),
-      trades: trades.length,
-      tradeNet,
       seq,
     };
   }
@@ -1877,10 +1873,15 @@
     const lines = [];
     if (now.credits !== prev.credits) lines.push(`Credits ${now.credits < prev.credits ? fmt(now.credits - prev.credits) : `+${fmt(now.credits - prev.credits)}`} cr`);
     if (now.sector && prev.sector && now.sector !== prev.sector) lines.push(`Moved from ${prev.sector} to ${now.sector}`);
-    const tradeCount = now.trades - (Number(prev.trades) || 0);
-    if (tradeCount > 0) {
-      const net = now.tradeNet - (Number(prev.tradeNet) || 0);
-      lines.push(`Trades ${tradeCount}, net ${net < 0 ? fmt(net) : `+${fmt(net)}`} cr`);
+    const fresh = (obs.trade_log || []).filter((row) => tradeAfter(row, Number(prev.day) || 0, Number(prev.tick) || 0));
+    if (fresh.length) {
+      let profit = 0;
+      for (const row of fresh) {
+        if (String(row.side || "").toLowerCase() !== "sell") continue;
+        const gain = Number(row.realized_profit);
+        if (Number.isFinite(gain)) profit += gain;
+      }
+      lines.push(`Trades ${fresh.length}, profit ${profit < 0 ? fmt(profit) : `+${fmt(profit)}`} cr`);
     }
     const oldPorts = new Set(prev.ports || []);
     const newPorts = now.ports.filter((id) => !oldPorts.has(id));
@@ -1890,8 +1891,10 @@
     if (newSectors.length) lines.push(`New sectors ${newSectors.slice(0, 8).join(", ")}`);
     const seen = new Set();
     let hostile = 0;
+    const selfId = state.seat || obs.self_id || "";
     const take = (ev) => {
       if (!ev || !HOSTILE_KINDS.has(ev.kind)) return;
+      if (OWN_LAY_KINDS.has(ev.kind) && ev.actor_id && ev.actor_id === selfId) return;
       const seq = Number(ev.seq) || 0;
       if (seq && seq <= (Number(prev.seq) || 0)) return;
       const mark = seq || `${ev.kind}:${ev.summary || ""}`;
