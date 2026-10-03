@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-03 06:51 PT - Fable - one page on what the planet work changed
+- The summary lists each planet slice in plain words. One script runs every planet lab and fails if a key line moves.
+
 ### 2026-10-03 05:44 PT - Fable - the seat brain no longer prices a free citadel garrison
 - A finished citadel adds no fighters and no shields. The planner scores the credit cost the engine charges, and buys fighters and shields as their own purchases.
 
