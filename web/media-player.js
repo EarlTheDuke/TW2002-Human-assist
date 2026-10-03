@@ -24,7 +24,7 @@
   const KIND_GROUP = {
     warp: "move", warp_blocked: "move", autopilot: "move", scan: "move", probe: "move", ferrengi_move: "move",
     trade: "trade", trade_failed: "trade", buy_ship: "trade", buy_equip: "trade", planet_tax_payout: "trade",
-    combat: "combat", ship_destroyed: "combat", player_eliminated: "combat", mine_detonated: "combat", quasar_fire: "combat", photon_fired: "combat",
+    combat: "combat", ship_destroyed: "combat", player_eliminated: "combat", mine_detonated: "combat", quasar_fire: "combat", quasar_damped: "combat", photon_fired: "combat",
     photon_hit: "combat", atomic_detonation: "combat", port_destroyed: "combat", deploy_fighters: "combat", deploy_mines: "combat",
     ferrengi_attack: "combat", ferrengi_spawn: "combat", fed_response: "combat",
     hail: "comms", broadcast: "comms", corp_memo: "comms", corp_create: "comms", corp_invite: "comms", corp_join: "comms",

@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 18:15 PT - Fable - a photon damps planet cannons for one approach
+- A photon hit in a planet sector marks that ship. Below citadel L5, or below 200 shields, the sector cannon, atmosphere cannon, and offensive fighters skip once. L5 with 200 shields ignores it.
+
 ### 2026-10-02 16:40 PT - Fable - atmospheric quasar fires on a hostile landing
 - A citadel can set an atmosphere percent. A hostile landing burns that fuel before the shield gate and again after shields fall.
 

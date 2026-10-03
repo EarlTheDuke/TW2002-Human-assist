@@ -192,9 +192,9 @@ Created by Genesis Torpedoes or pre-existing in ~3% of sectors.
 Constructed in stages 1-6. Build costs are unchanged. Named powers, in the original order. The parenthetical says whether this game does that thing today:
 - Level 1: Treasury: deposit and withdraw credits while landed, plus 2% daily interest
 - Level 2: Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level
-- Level 3: Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall
+- Level 3: Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall. A photon damps these cannons for that ship's one approach unless the planet is citadel L5 with 200 shields.
 - Level 4: Planet TransWarp (not yet in this game)
-- Level 5: Planetary shields (not yet in this game)
+- Level 5: Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp.
 - Level 6: Interdictor (not yet in this game)
 
 ### 6.4 Planet ownership

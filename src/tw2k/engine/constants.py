@@ -225,14 +225,17 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
 QUASAR_MIN_LEVEL = 3
 # Atmospheric damage is burned fuel times this factor. Burned fuel is fuel * pct // 100.
 QUASAR_ATM_FACTOR = 2
+# Citadel L5 with at least this many shields ignores a photon damp.
+QUASAR_PHOTON_SHIELD_MIN = 200
 CITADEL_PERK: list[tuple[int, str, str]] = [
     (1, "Treasury", "Treasury: deposit and withdraw credits while landed, plus 2% daily interest"),
     (2, "Combat Control Computer",
      "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level"),
     (3, "Quasar cannon",
-     "Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall"),
+     "Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall. A photon damps these cannons for that ship's one approach unless the planet is citadel L5 with 200 shields."),
     (4, "Planet TransWarp", "Planet TransWarp (not yet in this game)"),
-    (5, "Planetary shields", "Planetary shields (not yet in this game)"),
+    (5, "Planetary shields",
+     "Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp."),
     (6, "Interdictor", "Interdictor (not yet in this game)"),
 ]
 GENESIS_DEPLOY_TURN_COST = 4
