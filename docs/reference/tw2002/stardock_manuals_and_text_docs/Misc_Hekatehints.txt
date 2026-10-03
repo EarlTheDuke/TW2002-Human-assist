@@ -1,0 +1,88 @@
+August 21, 1998 at 11:27:26
+
+Since I started exploring evil tactics about a year ago, this is what i've
+come up with. This is ONLY for MBBS v2.03 and v2.03a (as I have not played
+the older versions in years)
+
+If any part of this information turns up incorrect I apologize, and Please 
+post corrections. This is MY findings, based on actual input from players
+and game play over the past year! 
+I in no way am affiliated with Martech or HVS, nor am I a programer.
+
+* All ports clear every 14 days (clearing the first day of next cycle) 
+This means that ALL BUSTS are cleared that nights cleanup and ready to go days:(15, 29, 43...)
+(ability to return to yesterdays (day 14) bust)
+If you bust on day 14, ALL are cleared at Extern and you may return to your last busted port
+
+* All but your last bust are cleared at cleanup
+(do not return to your last busted port the following day)
+
+* A "stupid bust" can simply be cleared by port and thievery at another port. 
+You may then return to your "stupid" busted port and continue on with sst etc.
+"stupid bust" = returning to your last thievery port and trying agin, thereby busting for being remembered
+
+* Busts are remembered for the day! Only rarely have I not rebusted at a port after someone tried to clear it for me.
+
+* Directly after a bust you may port and trade (90% of the time)to reload ship of goods. but do NOT return to port if you move to another sector
+
+* You still bust using MegaRob. Your chances are the same as normal exp setting rates.
+
+* Busts are influenced by the "moon" or "colo change over"
+I dont know the moon function...never figured that one out
+Colonist cycle every 30 days (30, 32, 42, 44) Busting is
+found more often the 2 days before and after colo cycle change
+days: 30 colos death cycle begins
+day : 32 Death cycle evident
+day : 42 Growth cycle starts
+day : 44 Growth cycle evident
+day : 60 Death cycle starts
+so days 38-32 and 38-44 are high busting days
+
+* Bust rate is lowest the first 3 days of the new port cycle (15-18, 29-31, etc.)
+
+* Bust rate is Higher the end of the port cycle (10-14, 24-28, etc.)
+
+* Busts are completely random! But if you study the cycles, you will function
+accordingly, therefor understanding why or why not your busting so much, or getting away with things.
+
+* SST level is found to adjust on a sliding scale (getting away with more at lower exp)
+many of us in MBBS push these levels! and different things work for different people!
+common practice is Exp/20 But many of us have improved upon this and push limits
+we use as much ase exp/12 (or less) under 1500exp
+exp/12+1 for each 500 there after
+Full hold SST in colts at 4000 exp
+
+* SDT use the same rates as SST but does not sell to port. Average SDT per port is around 3000 holds Equip
+If you SDT say 2700 holds from 2 ports to planets, then sell back *using a different ship* you can resume
+I have worked upto 7 cycles of 2600-3000holds on 2 ports before bust
+
+* Rob common settings are Exp X 7 if you very this to 6.5-7.3 you'll do ok
+Once onhand falls below your Exp X 7 (or so) then standard usage is Onhand X 1.111
+I have perfected this...WHY use 1.111 if the port reads 90% of onhand creds?
+
+Figures I Use: To be max proficient (and I find I bust less) use the figure Exp/.9
+this will clear the port within 5creds of onhand, a LARGE profit at higher experience..you do the math!
+(stay tuned for future helpers using this figure)
+
+* Robbing 75creds from a port (think its under 100) you do not lose exp., alignment, or holds if you bust.
+
+
+I hope this helps out future Evils.
+
+I also hope this will assist John in understanding the changes and comparasians
+
+
+
+
+=============================
+
+Align in MBBS mode – attacking of sector fighters
+Align * .0001 = alignment change per 1 fig in opposit direction
+
+Good align = 227991 - attack 10 personal figs for -227 align drop
+
+Evil align = 4499999 - attack 10 personal figs for 4499 align up
+
+==============================
+
+

@@ -1,0 +1,100 @@
+*********************************************************************************
+August 13, 1998 at 18:14:57:
+
+I've been talking to several "evil" players who are having a difficult
+time adjusting to v3 robbing. From what I can tell, it's quite a bit 
+different from the MBBS logic, and players are getting frustrated because
+they're finding that they're getting busted much more using the same
+robbing methods that they use for MBBS.
+
+I'm going to offer some rare insight into the method of determining bust
+probability while robbing under v3. I'd like to know if this is similar
+to what many of you expect (meaning there's probably a bug at work) or 
+if it's quite a bit different from what those fellas at HVS put into the
+MBBS version.
+
+This table indicates the factor to multiply by your experience to determine
+the maximum number of credits to steal for a 10% chance to be busted.
+
+Exp Factor 
+-------------------
+100 13
+1000 4.3
+10000 3.4
+
+So, for example, if you're robbing a port and you have 1000 experience, 
+you should stay at or under 4.3*1000 or 4300 credits per rob in order to 
+stay within a 90% chance of success.
+
+The factors are very tight, so a small change in factor can lead to a big
+change in the probability for a bust.
+
+I know I'm risking showing too much here, but from what I can tell this is
+a big change from the MBBS version and it's really causing problems for the
+evil players. I think this is less powerful than what you're used to on
+MBBS, but it's still useful.
+
+John
+
+
+*******************************************************************************
+
+From JP (sometime around late 2001)
+
+
+************************************
+Let me clarify, without giving up too much of the secret ;)
+
+There are probabilities for each planet type, and the total probability of
+all planets, obviously, equals 100%. But the planet probabilities are in a
+particular order, so that more desirable planets are low in the probability
+list and less desirable are higher. The "dice roll" to determine which
+planet you get is modified by the number of planets in the sector above the
+allowed limit. So as you go higher, you end up getting a high frequency of
+type U.
+
+You learn something new every day ;)
+
+Having refreshed my memory on this, it has brought to my attention an
+inconsistency in the generation of Gold planet types. Gold types are rare
+compared to the standard types, and you should be about as likely to get one
+of the Gold types as you are to get a class U. Of course, because of the
+above logic, that means you're most likely to get Gold types when the sector
+is pretty full. That wasn't my intention at all.
+
+John Pritchett
+Epic Interactive Strategy
+
+
+*******************************************************************************
+
+-------
+
+                                Quick-stats
+
+This new global was added to put your player stats at your fingertips,
+wherever you might need them.  Simply type </> from any prompt for a
+compact, 3 to 5 line overview of your Trader.
+
+As an alternative, you can toggle the Computer/Personal Settings/Persistent
+Info Display on.  This will display the information at the top of the
+screen.  Typing </> with this setting active will toggle the display on and
+off.
+
+
+
+The movement rate also effects the attack speed of a ship, since any attack
+is delayed by the amount of time it takes your ship to travel to an
+adjacent sector.
+
+*********************************************************************************
+
+
+I decided not to force a gameop to run "internal" aliens ONLY for non-Gold games. For a Gold game, the gameop has the choice to run either or both. For Alien Traders, this is pretty useless. But there are differences in the "internal" Ferrengi. The Gold Ferrengi don't extort from players the way the old-style ones do, for example. 
+You can tell the difference between the Gold and non-Gold aliens and Ferrengi by the way they're listed in the sector display. The old-style aliens and Ferrengi are displayed with "Aliens" or "Ferrengi" in dark yellow (brown) while the new ones say "Alien Traders" or "Ferrengi" in bright yellow.
+John Pritchett
+Epic Interactive Strategy
+
+******************************************************************************
+
+

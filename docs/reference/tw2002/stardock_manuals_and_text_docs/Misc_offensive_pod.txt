@@ -1,0 +1,45 @@
+From: John Pritchett [jpritch@eisonline.com]
+Sent: Wednesday, November 21, 2001 1:22 PM
+To: Hekate
+Subject: Re: more on offensive /pod
+
+[The sender might be a spam source. Reverse DNS entry is missing] > somehow I just dont think a ship with even 100 fighters entering an
+> offensive fig sector with 100000 offensive figs should survive the entry.
+> Just doesn't compute right with me.
+> 
+> maybe something to ask Cruncher and others about
+> 
+> guess here the MBBS mode kicks in...which is 50% of the offensive fighters
+> attack no matter what size ship
+
+>>The game doesn't attack with full offensive fighters from a sector.  It
+>>only uses an amount that's related to the strength of the incoming
+>>ship.  Here's the formula:
+
+>>YourForce := min(Sect.Fighters, trunc((Ship.Fighters+Ship.Shields) *
+1.25));
+
+>>Do you think this would account for this behavior?
+
+
+
+I see too many problems with the current system, so I've changed it to
+work like this.  Instead of limiting the attack to 125% of the attacked
+ship's figs and shields, I've limited it to 125% of the maximum capacity
+of the attacked ships figs and shields.  That makes more sense, and
+continues to provide some protection against offensive sector figs
+without making some ships immune to them.  The worst case scenario would
+be a player who has high defensive odds moving into the sector, getting
+hit but not destroyed, then moving back out, reloading figs, and moving
+back in.  This can be done multiple times to drain a sectors figs.  I
+don't know if it would be possible to avoid this without removing the
+offensive attack limitation entirely (which I might eventually do).
+
+-- 
+John Pritchett
+Epic Interactive Strategy
+http://www.eisonline.com
+
+TW Forum        - http://www.eisonline.com/TWForum
+TW Game Server  - http://www.eisonline.com/Products
+Online Gallery  - http://www.eisonline.com/PCGallery

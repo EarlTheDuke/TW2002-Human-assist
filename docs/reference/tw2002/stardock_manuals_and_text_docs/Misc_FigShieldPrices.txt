@@ -1,0 +1,30 @@
+From: Hekate [hekate@twlinks.com]
+Sent: Friday, April 13, 2001 6:01 PM
+To: Hekate
+Subject: fig/sheild prices
+
+ok - here's the deal. i looked back at 3 months worth of zoc logs and i have the fig price equation: 
+
+price=(base+amp/2) + [ sin(day/period * 2*pi) * amp/2 ]
+
+where:
+base=160 (base price - lowest price)
+amp=80 (base price + amp = 240 - max price is actually 239)
+day=[day of year starting with jan 1]
+period=87 (number of days in cycle)
+
+so for today, day=103
+price=(160+80/2) + [sin(103/87 * 2*pi) * 80/2] = 163 credits...
+
+so call me a nerd <grin>
+
+this is subject to revision... i still haven't figured it all out.
+
+regards,
+the reverend
+icq 83250263
+tw.the_reverend@excite.com
+http://the.reverend.home.att.net/tw/
+
+Edited by - the reverend on 04/13/2001 7:13:47 PM
+

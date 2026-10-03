@@ -1,0 +1,96 @@
+From: Hekate [hekate@twlinks.com]
+Sent: Wednesday, October 25, 2000 6:55 PM
+To: John Pritchett
+Subject: Evil Functions' Descriptions
+
+Descriptions below are based on proper experienced evil using full hold (250) Colonial Transports (Colts). The difference in evil ratios between MBBS mode and Standard mode are irrelevant once at full holds. Most all evil functions are done at xxB ports.
+
+
+SST: Sell, Steal, Transport - 6 turn cycle - self supportive
+Setup:  1 Colt at each port
+
+1. Port and Sell Equip
+2. Port and Steal Equip
+3. Transport to Ship 2
+4. Port and Sell Equip
+5. Port and Steal Equip
+6. Transport to Ship 1
+
+
+SSR: Sell, Steal, Retreat - 4 turn cycle - requires enemy fighters
+Setup: 1 Colt; Corp member places 1 fighter personal toll at each port.
+	Enter next sector and retreat, pay toll, then start.
+
+1. Port and Sell Equip
+2. Port and Steal Equip
+3. Quit game and reenter
+4. Retreat from toll fighter to 2nd sector
+5. Pay Toll fighter
+6. Port and Sell Equip
+7. Port and Steal Equip
+8. Quit game and reenter
+9. Retreat from toll fig to 1st sector
+10. Pay Toll fighter
+
+
+For Drop cycles, product is upgraded to needed amounts with a standard of 2000-3000 equipment onhand to steal.
+
+SDT: Steal, Drop, Transport - 4 turn cycle - self supportive
+Setup: 1 Colt & 1 planet in each sector; 
+	upgrade ports so each has 2000 - 3000 equip onhand
+
+1. Port and Steal Equip
+2. Land on planet and drop Equip
+3. Exit planet back to sector
+4. Transport to Ship 2
+5. Port and Steal Equip
+6. Land on planet and drop Equip
+7. Exit planet back to sector
+8. Transport to Ship 1
+
+9. Sell product back to port when 0 onhand
+
+SDR: Steal, Drop, Retreat - 2 turn cycle - requires enemy fighters
+Setup: 1 Colt; 1 planet in each sector; 
+  	upgrade ports so each has 2000 - 3000 equip onhand
+	Enter next sector and retreat, pay toll, then start.
+
+1. Port and Steal Equip
+2. Land on planet and drop Equip
+3. Exit planet back to sector
+4. Quit game and reenter
+5. Retreat from Toll Fighter to 2nd sector
+6. Pay Toll Fighter to enter sector
+7. Port and Steal Equip
+8. Land on planet and drop Equip
+9. Exit planet back to sector
+10. Quit game and reenter
+11. Retreat from Toll Fighter to 1st sector
+12. Pay Toll Fighter to enter sector
+
+13. Sell product back to port when 0 onhand and repeat
+
+SDF: Steal, Drop, Flee - 2 turn cycle - requires 3 online
+Setup: 1 Colt; 1 planet & 1 non-corpmate in each sector
+  	upgrade ports so each has 2000 - 3000 equip onhand
+	
+1. Port and Steal Equip
+2. Land on planet and drop Equip
+3. Exit planet back to sector
+4. Non-Corpie Attack with 1 fighter
+5. Flee to 2nd sector
+6. Port and Steal Equip
+7. Land on planet and drop Equip
+8. Exit planet back to sector
+9. Non-Corpie Attack with 1 fighter
+10. Flee to 1st sector
+
+11. Sell product back to port when 0 onhand and repeat
+
+
+
+Hekate
+http://twlinks.com
+hekate@twlinks.com
+ICQ: 10370329
+AIM/AOL/MSN: TW Hekate 

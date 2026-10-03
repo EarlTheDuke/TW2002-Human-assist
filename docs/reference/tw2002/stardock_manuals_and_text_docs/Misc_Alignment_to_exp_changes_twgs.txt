@@ -1,0 +1,76 @@
+From: Butch [istook@cs.byu.edu]
+Sent: Tuesday, May 16, 2000 7:12 AM
+To: tw2002@egroups.com
+Subject: Re: [tw2002] Alignment to exp changes - twgs
+
+Exact figures wanted?  Here ya go:
+
+the exp loss is one fourth of the least extreme alignment on the corp if
+it is a mixed corp.
+
+So, Reds w/ -10k,-9k,-5k or so and blues w/ 1k,200,2k:
+	extreme aligns: -10k, 2k
+	least extreme: 2k
+	loss:	2k/4 -> 500 exp
+
+Or, Reds w/ -1k, -4k, -500 and blues w/ 6k,7k,5k
+	extreme aligns: -1k, 7k
+	least extreme: -1k
+	loss:   1k/4 -> 250 exp
+
+I ran extern on my own TWGS quite a few times a month or so ago to figure
+these out.  Hope that it helps!
+
+Moldar
+
+On Tue, 16 May 2000, Barbara Cruz wrote:
+
+> as blues we never let our alignment go up over 1500...when it hits 2000 the
+> reds go to zero at extern..if they stay under 1500 the blues lose 250 exp
+> daily.
+> 
+> 
+> Hekate wrote:
+> 
+> > OK, here's another TWGS question:
+> >
+> > What is the loss of exp. due to goods having over 2k alignment?
+> > anyone know the ratio?
+> >
+> > IE:  Under 2k align....evils lose minimal exp..but whats it for over?  and
+> > to how high before evils drop to 0 exp?
+> >
+> > Just yet another fine difference i'm trying to learn...the easier way :)
+> >
+> > Hekate (wishing TWATS would convert to TWGS)
+> > http://www.twlinks.com/
+> > hekate@twlinks.com
+> > ICQ# 10370329
+> > AOL/AIM: twhekate
+> > eBay:  tw-hekate
+> >
+> > ------------------------------------------------------------------------
+> > Join Garden.com's affiliate program and enjoy numerous benefits.
+> > To learn more click here:
+> > http://click.egroups.com/1/2955/4/_/15274/_/958458578/
+> > ------------------------------------------------------------------------
+> 
+> 
+> ------------------------------------------------------------------------
+> Best friends, most artistic, class clown Find 'em here:
+> http://click.egroups.com/1/4054/4/_/15274/_/958458945/
+> ------------------------------------------------------------------------
+> 
+> 
+> 
+
+Butch Istook
+butch@orangatango.com
+
+
+------------------------------------------------------------------------
+Remember four years of good friends, bad clothes, explosive chemistry
+experiments.
+http://click.egroups.com/1/4051/4/_/15274/_/958486345/
+------------------------------------------------------------------------
+

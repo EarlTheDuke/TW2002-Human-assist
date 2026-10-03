@@ -1,0 +1,41 @@
+Re: Ferrengi Ship Specs
+ 
+Ferrengi Dreadnought     ----------------------------------.
+Ferrengi Battle Cruiser  --------------------.             |
+Ferrengi Assault Trader  ---.                |             |
+                            |                |             |
+
+Holds                       50              75            100
+Fighters                 3,000           8,000         15,000
+Shields                    200             800          1,000
+Turns to Warp                2               3              4
+Fighters per Attack      1,000           2,000          5,000
+Long Range Scanner          No             Yes            Yes
+Planet Scanner              No              No            Yes
+TransWarp Drive             No              No             No
+Mines                       10              25             50
+Beacons                      5              15             25
+Genesis Torpedoes            0               3              6
+Photon Missiles;Number?     No              No            Yes(1)
+Offensive Odds             1.0             1.2            1.4
+Transporter Range            0               2              5
+Density                     40             100            100
+Resale Values:
+   w/  Full Holds       52,155         111,645        214,290
+   w/  Half Holds       32,670          70,639        144,945
+
+NOTE:  The Density value mentioned here is only when piloted by
+       Ferrengi.  Otherwise the Density for all ships is 40.
+
+NOTE:  Resale values are approximate and based on ships with
+       none of the following:
+       Fighters, Shields, Density Scanner, Holo Scanner,
+       Planet Scanner, Mines, Beacons, Genesis Torpedoes,
+       Transwarp Drive, Photon Missiles, Mine Disrupters,
+       Cloaking Devices, Atomic Detonators, Ether Probes,
+       Psychic Probe, Corbomite Transducers.
+
+NOTE:  Offensive Odds are approximate.  They are based on educated
+       guesses.
+
+

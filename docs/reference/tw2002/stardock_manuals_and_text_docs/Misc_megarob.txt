@@ -1,0 +1,14 @@
+: Just how does megaRob work? Say for instance I am at a port with 
+: 11,454,678 credits, I want it, how do I get it? (9000exp, -4500000aline)
+
+(MBBS Mode -TWGS) ---
+
+The MegaRob is a bug that works by allowing you to rob many more credits than your experience would normally allow for. This is caused by a byte overrun, and robbing in the range from 3,376,800 and 6,553,500 is about 90% safe regardless of your experience. 
+
+(MBBS Native) ---
+
+The MegaRob is a bug that works by allowing you to rob many more credits than your experience would normally allow for. This is caused by a byte overrun, and robbing somewhere in the range from 3,500,000 and 6,500,000. Specific specs are not yet available.
+
+
+
+

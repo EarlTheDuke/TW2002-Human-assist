@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+  <title>Other - The Cabal's Secret Hideout</title>
+  <link rel="stylesheet"
+        href="style.css">
+</head>
+
+<body class="twcabal-body">
+
+  <header class="site-header">
+    <div class="header-container">
+      <div class="header-image">
+
+      </div>
+
+      <div class="header-content">
+        <h1 class="site-title">The Cabal's Secret Hideout</h1>
+        <p class="site-subtitle">Our TradeWars 2002 Homepage</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <h2 class="nav-title">Contents</h2>
+      <ul class="nav-menu">
+        <li><a href="index.html">HOME</a></li>
+        <li><a href="aboutus.html">ABOUT US</a></li>
+        <li><a href="members.html">MEMBERS</a></li>
+        <li><a href="strategy.html">STRATEGY</a></li>
+        <li><a href="tips.html">TIPS</a></li>
+        <li><a href="glossary.html">GLOSSARY OF TW TERMS</a></li>
+        <li><a href="formulas.html">FORMULAS</a></li>
+        <li><a href="other.html">OTHER</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      <div class="page-header">
+        <h2 class="section-title">OTHER</h2>
+      </div>
+
+      <section class="strategy-content">
+        <h3>If I were an Evil Overlord</h3>
+        <p>See it <a href="other/overlord.txt">here</a>.</p>
+      </section>
+
+      <section class="strategy-content">
+        <h3>TWGS settings to mess with Script Kiddies, or - How to help the newbies survive the first hour.</h3>
+
+        <p class="note">I have not incorporated any changes since version .46, so the new features from .47 and above
+          aren't discussed here yet. I will update this as soon as possible. -T 3/21/02</p>
+
+        <p>Below are some ideas we've been tossing around that limit the effectiveness of abusive script kiddies. These
+          are a collection of recommended settings and some tips on what to do both before the re-bang and after. Most
+          of these settings also increase the odds that newbies will survive a little better. It's up to you as a sysop
+          to figure out which settings are good for newbies, and which ones just mess with the script kiddies. If you
+          apply ALL of these changes at once tho, then you will likely piss off BOTH the newbies and the script kiddies.
+          (which may be your goal...depends on the kind of board and games you are running I guess.)</p>
+
+        <p class="note">NOTE: (Some of these settings may contribute to slowness in warp calc or increase the chances
+          for game corruption, but I've never had it happen to me. I'm just warning you that ANY time you modify the
+          game settings, you are more likely to get corruption or additional slowness. Don't blame me. If you think you
+          find a bug, let <a href="mailto:jpritch@eisonline.com">JP</a> know!)</p>
+      </section>
+
+      <section class="strategy-content">
+        <h4 class="strategy-title">General Server Settings:</h4>
+        <p>Run Extern before midnight. Personally, I like to have it run at like 9pm PST. This gives most people a
+          chance to be there for it, without being too tired to think straight. It also changes pod regeneration
+          strategies. It also cuts down on the likelihood that someone will blow the SD on the first day. Originally
+          extern ran late in the evening because it took so long for it to run. With modern processor speed, it's no
+          longer a factor, so it can be run at anytime. For a real challenge to everyone, run extern at 1:30pm PST. Most
+          people are at work or school at this time.</p>
+        <p class="note">(I recognize that a substantial percentage of players are NOT in the USA. This change is not
+          intended to make their lives particularly miserable. If they are hard core players, they will consider the
+          change in time a challenge, and adapt.)</p>
+      </section>
+
+      <section class="strategy-content">
+        <h4 class="strategy-title">Big-Bang Settings:</h4>
+        <ol>
+          <li>Option E: set this to max. This makes the planet denial option difficult.</li>
+          <li>Option F: drop this down to about 28% (this works with #3)</li>
+          <li>Option G: raise this to about 5%. This will allow you more flexibility in modifying your map. The
+            increased number of one-ways allows you the option of adding new links if needed, without subtracting warps.
+            Addition of warps is always better than subtraction of warps.</li>
+          <li>Option I: set to max. (this is no longer as necessary under versions .47+, but it's still a good idea. The
+            logistics of running a ship denial game become much harder when you more than double the total # available.
+          </li>
+          <li>Option J: enable this. becomes important when you want to modify the ships later</li>
+        </ol>
+      </section>
+
+      <section class="strategy-content">
+        <h4 class="strategy-title">Post Big-Bang Editor Settings:</h4>
+        <h5>G: General Editor One:</h5>
+        <ol>
+          <li>Option A: Keep this 1000 or less. High turn games are just invitations for the TWX WSSM script kiddies.
+            Set this to 5000+ only if you want to see SD get blown just after extern on day one. (I've done it with only
+            one corpie on day one with only 4800 turns.)</li>
+          <li>Option H: Max this one, but DON'T change the # of collies that Terra can hold. This makes it slightly
+            harder for a single corp to play the collie denial game. I wish it could regen faster, but oh well...</li>
+          <li>Option M: NEVER make this setting higher than 5. Furthermore, setting it to 1 is just plain evil. Don't do
+            it unless you like to hear players whine. 2-5 is optimal. Depends on the style of game you want to run. Low
+            numbers tend to have lots of invasions, and run fast and furious. High numbers tends to draw the game out.
+          </li>
+          <li>Option N: Most Tournaments run this setting at 6. Default is 5. Depends on the type of game you want.
+            Newbies often don't have many friends, so setting this to 3 or so helps them, but encourages multi-corps. I
+            would set it to either 3 or 5.</li>
+          <li>Option P: Set it to zero. Any higher, and it gives reds too much of an advantage early on. If you want
+            your aliens to be tougher, then change THEM so they spawn with nastier stuff earlier. It is arguable that
+            nasty aliens early on are more dangerous for the experienced players than for the newbies; while the newbies
+            have more stuff out there that can kill them, the experienced players that run the power scripts often have
+            problems when their script abends in unexpected ways when they are attacked, or their script will simply
+            stop running, which slows them down while they deal with the alien.</li>
+          <li class="note">Options R, S, &amp; T I'll deal with at another time, when I talk about tournaments.</li>
+        </ol>
+
+        <p class="note">(I personally don't recommend running aliens at all, but that's just me. Seen too many problems
+          with the Gold aliens, and the regular Ferrengi and Alien Traders are more annoying than anything.)</p>
+      </section>
+
+      <section class="strategy-content">
+        <h5>H: General Editor Two:</h5>
+        <ol>
+          <li>Option C: set this to 8000. NO FREE MONEY! With my private Tri-Con script (not the one I posted for the
+            general public... ;-) I've gone from starting money (and a few trades on the way to SD) to being in an ISS
+            while spending ZERO turns. And no, I'm not going to prove it, nor say anything more about it! You'll have to
+            take my word for it.</li>
+          <li>Option E: If you want to just move the SD next to Fed, use this option. If you want to really mess with
+            people, then see my section on moving warps around below.</li>
+          <li>Option F &amp; G: Don't move these. Moving these around can create interesting situations too. I prefer to
+            modify warp links to these tho. See below.</li>
+          <li>Option L: I would turn this one off. It's not necessary.</li>
+          <li>Option M: Leave this one ON. I got a script that finds it in a few minutes anyway, and so do many people.
+            It only hurts the newbies.</li>
+          <li>Option O: Make this one 12. Makes AMTRAK very hard. Takes 2 corps working together to dogpile someone.
+          </li>
+          <li>Option P: Set this one to 1 second or 10 seconds. We have a 1 second photon invasion script, but most
+            people don't. Keeps your newbies planets alive longer. Or make it 10 seconds, so ANY newbie has enough time
+            to invade. Depends on your players. Of course, with 10 second photons, it's possible to have someone drive
+            all the way to your back sector... I know that you DON'T want people like us to have 10 seconds.</li>
+          <li>Option U: High cloak fails are bad.</li>
+          <li>Option V: High clear helps prevent blockades of SD. I would set it to 100% clear.</li>
+          <li>Option W: YES!</li>
+          <li>Options Y, S, 1 and ";": It depends on your processer. Newbies tend to do better with zero move delay,
+            (since they have a chance to beat the photon from SD...this is a tough call tho, since the power scripters
+            benefit from it too.) However, you can balance this out by slowing down the scripters by limiting option S
+            to 5 or so, and you can save your processor some grief by setting option ";" to 1 or 2 seconds.</li>
+          <li>Option 7 and 8. Make these settings low. (4 to 6 days is optimal. Leave option 8 at 50%)</li>
+          <li>Option ":": Setting this to less than 45 will slow down the power mappers, and break alot of scripts, slow
+            down invasions, and generally be very annoying. I like 12. Speeds up processor time too :-)</li>
+          <li>Option "/": LIMIT DAILY TIME. Take 24 and divide that by the maximum # of players in a corp + 1. That
+            should be the limit in hours. Drop the remainder.</li>
+          <li>Options 3, 4, &amp; 6: Depends on if you are running MBBS or not. If you are running MBBS, then you are
+            stuck. Otherwise, limit optinon 4 to about 80%. Option 6 should be set to 2-3 days. I don't recommend
+            changing option 3. (unless you REALLY hate reds)</li>
+        </ol>
+
+        <p class="note">(ok, I did get really lucky that time too, but I always win more than I loose.)</p>
+      </section>
+
+      <section class="strategy-content">
+        <h5>I: General Editor Three:</h5>
+        <ol>
+          <li>Option O: Max it. Slows down the Red's ability to bust planets at SD. Leave option F alone, since raising
+            F and O will hurt the newbies, but raising only option O will hurt the experienced players more than the new
+            players (who will just be happy the HAVE a planet ;-)</li>
+          <li>Option P: Reduce it. No explanation should be necessary &gt;:)</li>
+          <li>Option R: Max it. Slows down the power mappers. Newbies don't use probes much anyway.</li>
+          <li>Option X: Two ways you can do this one. I prefer to leave it alone. Or you can drop it to one day. Depends
+            on your players mostly.</li>
+          <li>Options Y &amp; Z: I recommend you leave these alone. You want to have SOME reds on your board, right?
+          </li>
+          <li>Option 3: Depends on your port regen rates (you can't change this in MBBS). I would leave it at default,
+            UNLESS you don't use my recommended regen settings... You might want to tweak this then.</li>
+          <li>Option 4: Turn it on! The longer a red has to stay on-line, the more vulnerable they are. You turn this
+            setting on, then you don't need to worry about WSSM's nearly as much.</li>
+          <li>Option 8: NEVER TURN THIS ON!!!</li>
+        </ol>
+      </section>
+
+      <section class="strategy-content">
+        <h4 class="strategy-title">Sector Edits and Ship Edits:</h4>
+        <p class="note">UNDER CONSTRUCTION!!!! This section is gonna be as long as the above section, and I need to get
+          back to my life...expect an update here soon.</p>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <p>Copyright 2002 - 2005, Chris Kent aka Traitor. All rights reserved. See <a href="aboutus.html">About.html</a> for
+      more info.</p>
+  </footer>
+
+</body>
+
+</html>

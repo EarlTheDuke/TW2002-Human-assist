@@ -1,0 +1,2295 @@
+ 
+                                                  Revised - May, 1997
+
+
+
+
+
+
+
+
+Someguy Enterprises Presents:
+=====================================================================
+
+
+
+            How To Play TradeWars And Stay Alive!
+            ------------------------------------
+
+
+            Written By:  Fred Wehner
+
+
+            Email address:  someguy@rockpile.com
+
+            Web Page:  http://bbs.rockpile.com/someguy
+
+
+
+=====================================================================
+
+
+
+
+
+
+
+
+
+
+
+>>> Updated for:  MBBS game ver. 2.02,  and DOS game ver. 2 beta 8
+==================
+TABLE OF CONTENTS:
+==================
+
+PART ONE: History of The Game . . . . . . . . . . . . . . . .    4
+
+PART TWO: Beginner's Basics . . . . . . . . . . . . . . . . .    5
+
+   The First Day  . . . . . . . . . . . . . . . . . . . . . .    5
+
+   Exploration  . . . . . . . . . . . . . . . . . . . . . . .    6
+
+   Building a Home Base . . . . . . . . . . . . . . . . . . .    7
+
+PART THREE: Advanced Topics . . . . . . . . . . . . . . . . .   10
+
+   Ship Types . . . . . . . . . . . . . . . . . . . . . . . .   10
+
+      Ship Specifications . . . . . . . . . . . . . . . . . .   12
+
+      Commentary on Ship Types  . . . . . . . . . . . . . . .   14
+
+      Ship Summary  . . . . . . . . . . . . . . . . . . . . .   18
+
+   Planet Types . . . . . . . . . . . . . . . . . . . . . . .   19
+
+      Upgrading the Citadel . . . . . . . . . . . . . . . . .   20
+
+   How to Make The Big Bucks  . . . . . . . . . . . . . . . .   22
+
+   Defense Strategy . . . . . . . . . . . . . . . . . . . . .   24
+
+      Defensive Weapons . . . . . . . . . . . . . . . . . . .   24
+
+      Complete Defense Setup  . . . . . . . . . . . . . . . .   26
+
+      Planetary Defenses  . . . . . . . . . . . . . . . . . .   27
+
+   Invasion Strategy  . . . . . . . . . . . . . . . . . . . .   30
+
+   Alignment & Experience-Point Tricks  . . . . . . . . . . .   34
+
+      How to Increase Experience Points . . . . . . . . . . .   35
+
+      How to Reduce Experience Points . . . . . . . . . . . .   36
+
+      How to Move Alignment in the Positive Direction . . . .   37
+
+      How to Move Alignment in the Negative Direction . . . .   38
+
+      Alignment & Experience Points Considerations  . . . . .   39
+
+
+
+   Playing Good . . . . . . . . . . . . . . . . . . . . . . .   40
+
+   Playing Evil . . . . . . . . . . . . . . . . . . . . . . .   41
+
+PART FOUR:  Miscellaneous Topics  . . . . . . . . . . . . . .   44
+
+   Towing . . . . . . . . . . . . . . . . . . . . . . . . . .   44
+
+   Lost Commission  . . . . . . . . . . . . . . . . . . . . .   44
+
+   Colonist Life Cycle  . . . . . . . . . . . . . . . . . . .   44
+
+   Cloaks . . . . . . . . . . . . . . . . . . . . . . . . . .   45
+
+   Limpit Mines . . . . . . . . . . . . . . . . . . . . . . .   45
+
+   Capturing Ships  . . . . . . . . . . . . . . . . . . . . .   45
+
+   Evil Imperial StarShip . . . . . . . . . . . . . . . . . .   45
+
+   Helper Programs  . . . . . . . . . . . . . . . . . . . . .   45
+
+   Density Scanner  . . . . . . . . . . . . . . . . . . . . .   46
+
+   Ship Passwords . . . . . . . . . . . . . . . . . . . . . .   46
+
+   Attacking Un-Occupied Ships  . . . . . . . . . . . . . . .   47
+
+   Sysop Settings . . . . . . . . . . . . . . . . . . . . . .   47
+
+   Using Bugs . . . . . . . . . . . . . . . . . . . . . . . .   47
+
+   Revenge of The Ferrengi  . . . . . . . . . . . . . . . . .   47
+
+   Capturing The Ferrengi Scorpion  . . . . . . . . . . . . .   48
+
+   Changes in Bust Clearing . . . . . . . . . . . . . . . . .   48
+
+   Credits  . . . . . . . . . . . . . . . . . . . . . . . . .   49
+
+   Revision History . . . . . . . . . . . . . . . . . . . . .   49
+
+   Begging For Help . . . . . . . . . . . . . . . . . . . . .   50
+
+                                                        Page 4
+
+
+=============================
+PART ONE: History of The Game
+=============================
+
+
+Tradewars, it's a Life, not a Game.  At least that's how a lot of people
+see it, just ask any addict!
+
+Tradewars was invented in the early 1980's by Chris Sherrick.  Back
+then, the game was a very simple affair, one type of ship, no planets,
+etc.  Approximately 10 years ago, Chris sold his software source code to
+several individuals, one of whom was Glen Fredericks of Clifton, NJ.
+Glen developed the game for several years, and invented the random
+universe creation.  I first learned the game on Glen's BBS, having a lot
+of fun working with him (back in the mid 80's) on beta testing of early
+versions.  Various authors took the game in different directions, but
+most of them were eventually abandoned.
+
+About 1990, the dominant author became Gary Martin.  This is the version
+that has survived to this day.  Gary added most of the features that are
+present in the current game including: the Ferrengi, all the different
+ship types, planets, and the wonderful graphics that make the game so
+nice.
+
+Today, Gary's product is available in 2 forms.  There is the multi-
+player game for Major BBS (MBBS) and the DOS version used by other BBS
+types such as PCBoard that run it as a "door", generally as a single
+player game.  The DOS version can be run at home without a BBS.  Most
+features are identical in both games, though minor differences do exist.
+Most of the development work is done on the MBBS Version, the DOS
+version is lagging behind.
+
+The MBBS Version has much greater flexibility for sysop configuration
+and has all the latest tricks lacking in the DOS Version.
+
+The DOS version is available as shareware (download it from my web-page)
+and the MBBS version is obtainable only from the author at costs
+starting at $ 700.- or so.  (sigh)
+                                                        Page 5
+
+
+============================
+PART TWO - BEGINNER'S BASICS
+============================
+
+
+The following is intended to teach new players how to get started and
+survive the first few days, and to remind the more experienced players
+of the basics.
+
+In order to play competitively, you really *must* get a program called
+TWHELPER, and send in the registration for it.  It's cheap, and worth
+every cent.  This program will do many many things for you
+automatically:  locate and plot the course to the nearest trading ports;
+do the actual trading for you automatically and very profitably while
+you're off raiding the fridge;  move you from one sector to another
+scanning every sector ahead of you;  and stopping when anything nasty is
+ahead!  It will locate enemy forces for you, and will perform most every
+function, except the basic strategy. TWHelper is available from my
+webpage, or from the Author:
+
+                        Just FUN Software
+                        4790 Naniloa Drive
+                        Salt Lake City,  UT.  84117
+
+There are other "helper" programs available, also available from my
+website, but I feel TWHelper is The Best.
+
+
+
+The First Day.
+-------------
+
+When you enter the game for the first time you will find yourself in a
+ship type called the Merchant Cruiser.  It seems like a good ship, but
+take my word for it, it's NOT the ship to have.  Sell it immediately!
+
+Hit the V command to locate Stardock, go there immediately, and trade
+the Cruiser in to purchase a Merchant Freighter.
+
+The Freighter is a small ship, and cannot carry many armaments, but it
+does move from one sector to another using only 2 turns.  That's as
+efficient as it gets.  (The Cruiser you started with took 3 turns to
+move).  The Freighter is able to carry 65 holds which is pretty decent,
+and best of all, can carry a Holo Scanner.  The Holo Scanner is critical
+for efficent exploration....more on this later.
+
+As soon as you have sold the Cruiser and bought a Freighter, you will
+need to outfit it.  You *must* buy a scanner, but at the start you will
+be able to afford only a Density Scanner.  Get it!  You should split
+your remaining cash, half on fighters (don't get more than 100 now) and
+spend the rest of your cash on holds to carry cargo.
+                                                        Page 6
+
+
+When you blast off from Stardock, you'll find that other players cannot
+attack you while you are still there.  You are safe in Fedspace (sectors
+1 thru 10 and at Stardock) unless your experience points exceed 1,000 or
+you become evil.
+
+Now you need to make some money quickly.  Go off in some random
+direction and look for a trading port.  Once you find a port use the
+Density Scanner to see if any other port is next door, then go there.
+The idea is to locate a pair of ports next door to each other, where
+each one buys what the other one is selling.  That way, you can just
+move back and forth and be carrying a load of product both ways. That's
+the way to make some quick bucks.
+
+Every once in awhile, get the report from sector 1 (command C R 1) and
+see if you can get a bunch more holds yet.  Your goal is to get a total
+of 65 holds on your freighter as fast as possible.
+
+If you happen to run across another player in the game, run like hell!
+You would waste your assets trying to kill someone and you don't want to
+make an enemy on the first day.
+
+Once you have bought some more holds and have a perhaps 50,000 credits,
+go back to stardock and start thinking about some serious exploration.
+This seems to be a big waste of time and credits, but over the long run
+it's absolutely critical.
+
+
+Exploration:
+-----------
+
+Sit at Stardock in safety and get TWHELPER running.  Once it's up, you
+then issue the /k command which sends a long list of numbers into
+twhelper's database.  This list includes all the map data for the
+sectors you have explored so far.  Then issue the /r command and all the
+known ports will go into your twhelper database.
+
+Next, issue the /U command using the sector number for stardock.  For
+example, if stardock is sector 934, then the command is /934U.  This
+command can take over an hour or two to complete, but you need not be
+there watching.  Go out for a beer while it's running.  It will plot a
+course from stardock to every sector in the game, and back.  After this
+is done, issue the same command using sector 1, namely /1U.  You need
+not be in those sectors when you do it, just be sure to include the
+sector numbers.  This will give twhelper a real good idea of the
+physical map of the entire universe, though not the location of the
+ports.
+                                                        Page 7
+
+
+Once you have completed the /U commands, twhelper will know where the
+longest tunnels are, and you may use the /6E command to automatically
+shoot E-probes into the farthest sectors.  Once probed, those sectors
+will be included in twhelper's database.  I like to shoot off a minimum
+of 25-50 E-probes as soon as possible before doing anything further.
+
+When you've used your probes, go out and do some manual exploration with
+the Holo Scanner.  Again, twhelper does this automatically, using the
+/2e command.  This command causes your ship to travel around, trading as
+it goes, and it will automatically holoscan any unexplored sector it
+comes to.  Those holoscanned sectors then go right into twhelper's
+database.  By the end of your turns for the day, you will have a good
+bit of the universe explored, and have accumulated a nice chunk of cash
+by trading on the way.  Once you make it back to Stardock, spend most of
+your cash on more probes, and shoot them at that time.  It might be a
+good idea to keep a little bit, say 50,000 credits, in the Bank at
+StarDock for a rainey day.
+
+The goal is to get as large a percentage explored as quickly as
+possible.  You can probably explore at least 75% of the universe in the
+first 3 days.
+
+At the end of each day's turns, you will want to be sure your experience
+points (XP) is under 1,000 so you'll still be safe in fedspace.  See the
+section on XP and Alignment tricks to reduce your score.  Remember, the
+score is worthless to you at this point.  What good is it if you get
+killed and lose your ship and cash?
+
+
+Building a home base:
+---------------------
+
+After you have at least 75% of the universe explored, and have shot off
+at least 50 E-Probes (100 would be better), you will know the location
+of all the deepest tunnels.  A tunnel is a string of sectors in a row
+that end in a dead end.  Your base will be in the dead end, and any
+invader will have to get thru whatever defenses you can pile up in front
+of it, sector by sector.  The longer the tunnel, the more stuff you can
+pile up to hide behind, and the safer you will be.  I don't feel secure
+unless I have at least 5-6 sectors of nasty stuff protecting me.
+
+Even better than a tunnel, is a tunnel that spreads out in the back.
+That way you can have several sectors of defense protecting a larger
+number of sectors that you will then control.
+
+You will want to have several players joining you in a corporation, so
+that you will be able to raise enuff cash quickly...the way I like to do
+it requires a million or two million credits to get started building.
+                                                        Page 8
+
+
+If you start building too soon (and you haven't earned enough credits to
+buy decent defenses) another player will surely come along and raid you,
+taking all your stuff nearly for free.  He'll then enjoy the fruits of
+your labor because you didn't wait until you could defend what you
+built!
+
+Start by finding a ore selling port, at or near the dead end.  This will
+be your home sector.
+
+Build a nice navigation hazard (NavHaz) at the mouth of the tunnel.  Do
+this by building planets and detonating them.  The ideal way is to build
+as many as 30-50 (minimum 25) planets all in 1 sector in your tunnel,
+near the mouth, and blowing up 5 of them once they are all built.  This
+will give you a 50% navhaz, which will have a 50% chance of killing 500
+fighters off of any ship that tries to enter, including yours.  Then,
+each night, during the bbs cleanup process, 2 of the planets will
+collide, and add another 20% to the haz.  In a few days, it will
+approach 100%.  (There is one drawback to this, in that the sector
+number of and colliding Haz Planets will be noted in the News Log, so
+everyone will know where you're located immediately.  On the other hand,
+they'll find you quickly enough regardless.)  Use your judgement on this
+one. Leave as many defensive fighters in this sector as possible at this
+time, up to 2,000 or 3,000.  The bad guys can still get through, but
+they will certainly think twice before trying it, and it will definitely
+discourage casual raiders from browsing your tunnel.
+
+Buy all the mines you can afford, and put them in the next sector after
+the NavHaz.  Any invader could easily use mine disrupters to kill your
+mines, but if they have to go into your NavHaz each time to bring more
+disrupters, they won't enjoy getting hit each time.  It takes 4 trips
+into the haz to bring enuff disrupters to kill 250 mines.  Not fun!  The
+reason for the 2-3000 fighters(figs) in the first sector is so that the
+occasional Ferrengi doesn't blunder into your minefield and waste them.
+
+Now, it's time to build your home planets.
+
+There is more data later, but for now, it is best to build 4 mountainous
+planets and 1 oceanic type.  You cannot select which planet type to
+build, it is random.  Once there are 5 planets, and some of them are not
+the type you want, just blow them up and replace them, one by one.
+
+The best port to locate at is a SBS, but a SBB will do also.  The SBS is
+best, because you'll then have fuel ore there for twarp, and equipment
+available for upgrading your planets. Btw, the only product your planets
+will ever produce for sale, is organics.  More on this later.
+                                                        Page 9
+
+
+Bring in the minimum of 400 colonists from terra, and enough product to
+upgrade the planets, and start a citadel on the first planet.  Then move
+the colonists to the next planet, and start citadels on each.  The
+colonists do NOT need to remain on the planet while you wait for the
+upgrade to be finished.  You want your upgrades started as soon as
+possible, as each level of citadel will do more for you in the way of
+defense.
+
+Once you've gotten your citadels started, get back to making money by
+trading, and also continue your exploration.  You will need every cent
+you can scrape up, to increase your defenses.
+
+Be sure you have at least one player in a Tholian Sentinel sitting in
+the same sector as your planets, as this makes it extremely expensive
+for raiders to blow you away, and it won't cost you all that much in the
+first place.
+
+Any players on your team that have under 1,000 XP points, and are
+"goodies" can park overnite safely in fedspace.  If they have over 100
+fighters on them, they will be towed out to a random sector in space by
+the Feds during the nightly cleanup.
+                                                        Page 10
+
+
+==============================
+PART THREE  -  ADVANCED TOPICS
+==============================
+  
+
+Ship Types:
+-----------
+
+There are 19 types of ships in the TW Universe, and all are different.
+The most important concern is trading efficency, but there are various
+things to consider.
+
+There is the "gross trading capacity" which is the number of holds
+divided by the number of turns it takes to move to the next sector. This
+is a rough idea of how good a trader a particular ship type is, but it
+does not cover several questions of overhead.
+
+Some considerations:
+
+1) Turns used at the beginning of each session, traveling to the first
+trading port.
+
+2) Turns used to move to a new trading pair, when you've drained a
+particular pair of ports.  Ships with many holds, lose some of their
+efficiency because they trade out the ports in only a few round trips
+and must move on to another pair much more often, thereby wasting a
+greater percentage of their total turns, just moving from one area to
+another.
+
+3) Turns used to travel back home from the last trading pair of the day.
+T-warp ships gain a small advantage here.
+
+4)  The ISS and Corp.Flag have a possible advantage at certain stages of
+active games, when most adjacent trading port pairs are badly traded
+out, so twarp-trading can give them an advantage when other ships cannot
+find decent trading pairs.
+
+These items of overhead vary widely on various ship types, and penalize
+slower ships that take more turns to move.  Large ships suffer the other
+penalty of draining ports quickly and having to move on more often.
+
+My calculations show that while the Freighter wastes perhaps 14% of it's
+turns this way...the Colonial transport wastes a full 59% of it's turns
+like that!  That's why a Freighter will earn you 2/3rds more money per
+day than a Colonial Transport will!
+                                                        Page 11
+
+
+I spent quite a few hours constructing a spreadsheet that calculates the
+efficiency of the various ship types, taking all the overhead factors
+into consideration.  The following chart shows general data on each ship
+type, including the "T.E." factor (Trading Efficiency).
+
+Each individual game's universe varies greatly from all others, so "your
+mileage may vary".  If you find yourself earning 500,000 credits a day
+in the Cruiser that you started with and you think that's good...then
+just take a Freighter's T.E. and divide it by your Cruiser's T.E. and
+multiply by what you're earning now:  100/72*500,000 and see you could
+be earning almost 700,000 credits a day...not bad eh?
+
+Here's a chart showing all the ship types, with some handy data, and on
+the far right column is my "T.E." Trading Efficiency Factor.
+                                                        Page 12
+
+
+Ship Specifications:
+====================
+
+
+                      |       | Max  |   Max    |  Max  |Combat|      |
+ # Ship Type          | Turns |Holds | Fighters |Shields| Odds |  T.E.|
+----------------------+-------+------+----------+-------+------+------+
+ 0 Escape Pod               6      5        50       50     .7      2
+
+ 1 Merchant Cruiser         3     75     2,500      400    1.0     72
+
+ 2 Scout Marauder           2     25       150      100    2.0     41
+
+ 3 Missile Frigate          3     60     5,000      400    1.3     59
+
+ 4 BattleShip               4     80    10,000      750    1.6     55
+
+ 5 Corporate FlagShip       3     85    20,000    1,500    1.2     84
+
+ 6 Colonial Transport       6    250       200      500     .6     61
+
+ 7 CargoTran                4    125       400    1,000     .8     78
+
+ 8 Merchant Freighter       2     65       300      500     .8    100
+
+ 9 Imperial StarShip        4    150    50,000    2,000    1.5     93
+
+10 Havoc Gunstar            3     50    10,000    3,000    1.2     52
+
+11 Starmaster               3     73     5,000    2,000    1.4     71
+
+12 Constellation            3     80     5,000      750    1.4     76
+
+13 T'Kasi Orion             2     60       750      750    1.1     93
+
+14 Tholian Sentinal         4     50     2,500    4,000    1.0     36
+
+15 Taurean Mule             4    150       300      600     .5     88
+
+16 Interdictor Cruiser     15     40   100,000    4,000    1.2      5
+
+17 Ferrengi Assault Trader  2     50     3,000      200    1.0     79
+
+18 Ferrengi Battle Cruiser  3     75     8,000      800    1.2     72
+
+19 Ferrengi Dreadnought     4    100    15,000    1,000    1.4     66
+
+                                                        Page 13
+
+
+Page 2 of Ship Specs:
+=====================
+
+                      | Teleport |      | Genesis |  Safety |  Total |
+ # Ship Type          |  Range   | Mines| Torpedo |  Rating |   Cost |
+----------------------+----------+------+---------+---------+--------+
+ 0 Escape Pod               -         -       -         70      N/A
+
+ 1 Merchant Cruiser         5        50       5      2,900    131,695
+
+ 2 Scout Marauder           -         -       -        500     27,785
+
+ 3 Missile Frigate          2         5       -      7,020    146,832
+
+ 4 BattleShip               8        25       1     17,200    190,236
+
+ 5 Corporate FlagShip      10       100      10     25,800    352,285
+
+ 6 Colonial Transport       7         -       5        420    711,400
+
+ 7 CargoTran                5         1       2      1,120    226,125
+
+ 8 Merchant Freighter       5         2       2        640    100,015
+
+ 9 Imperial StarShip       10       125      10     78,000    669,290
+
+10 Havoc Gunstar            6         5       1     15,600    216,642
+
+11 Starmaster               3        50       5      9,800    364,899
+
+12 Constellation            6        25       2      8,050    171,840
+
+13 T'Kasi Orion             3         5       1      1,650     79,420
+
+14 Tholian Sentinal         3        50       1     26,000    106,060
+
+15 Taurean Mule             5         -       1        450    312,500
+
+16 Interdictor Cruiser     20       200      20    124,800    586,170
+
+17 Ferrengi Assault Trader  -        10       -      3,200      N/A
+
+18 Ferrengi Battle Cruiser  2        25       3     10,560      N/A
+
+19 Ferrengi Dreadnought     5        50       6     22,400      N/A
+
+                                                        Page 14
+
+
+The listing under "Safety Rating" is the total fighters plus shields,
+multiplied by the ship's odds.  This is the number of fighters it will
+take to kill a fully loaded ship of this type, assuming an attacking
+ship with 1:1 odds.  Please note that the Tholian Sentinel's rating
+would be only 6,500 if if it had no planet in the sector.
+
+The Cost figures shown above include full holds, and HoloScan if
+available, Density Scanner if not, and none for those ships that can't
+accept them.  T-warp (type 2) is included, where available.  Shields and
+fighters would be additional.  Cost of Ferrengi ships is not shown,
+because they can't be purchased, only captured.
+
+
+
+Commentary on Ship Types:
+=========================
+
+
+0) Escape Pod:  This is what you wind up in when your ship gets blown
+--------------  up.  It takes 6 turns per hop to move, and it's totally
+worthless.  It's only purpose is to take you to stardock and buy a real
+ship.  If you have no money, at least trade the pod for a Scout, as the
+pod has enough resale value to buy one.  Only one redeeming feature,
+this ship cannot be captured at all, only destroyed, so if it's loaded
+with corbomite, it makes a nasty surprise for someone. You get a maximum
+of 2 pods per day, after that, you are dead until tomorrow.
+
+
+1) Cruiser:  TE=72,  3 turns, 75 holds.  This is the ship all new
+-----------  players start out in.  Not the best type of ship, take it
+directly to stardock, and trade it for something else, preferably a
+freighter.
+
+
+2) Scout Marauder:  TE=41,  2 turns, 25 holds.  Not good for trading,
+------------------  but it does have 2:1 combat odds, so it can be
+useful to attack other small ships.  I like to use them in invasions
+when the "victims" are not online at the time.  If there are no Quasar
+Cannons on planets in the sector, this ship's combat odds (2:1) make it
+the cheapest way to mow down large quantities of sector fighters and
+heavily defended ships, very cheaply!  You'll need a teammate there in a
+large ship to keep feeding you more fighters though, as it can carry
+only 250 fighters. Density Scanner only.  This ship does not have an
+escape pod, so if you get killed in one of these, you're dead until
+tomorrow.
+                                                        Page 15
+
+
+3) Missile Frigate:  TE=59,  3 turns, 60 holds.  Not a good trading
+-------------------  ship, or anything else.  Useful only in that it can
+carry Photon Torpedos (max of 10).  This is the only photon-capable ship
+that is available to evil players until 3 months or so into the game
+when the Ferrengi start building Dreadnoughts.  The technique is to
+shoot the P-torp from the Missile Cruiser, then teleport to a larger
+ship, and drive into the sector, quickly.  One big drawback, this ship
+cannot carry a scanner (not even density), so you never know what's in
+the next sector, and that's really dangerous when you are carrying a
+Photon Torpedo!  Yikes!  It does come with a combat scanner which, when
+you start to attack another ship, shows you how many shields the other
+guy has, but this is not really a great feature as this is not an attack
+ship.  I see this ship only as a Photon carrier for evil players.
+
+
+4) Battleship:  TE=55,  4 turns, 80 holds.  Not the best trading ship,
+--------------  but has excellent fighting odds at 1.6 to 1.  It comes
+with a built-in Combat Scanner which shows how many shields your victim
+has when you attack.  And with it's large fighter and holds capacity,
+it's probably pretty good for players who are just learning and are not
+going to be using all their turns each day anyway.  Due to the fighting
+odds of this ship, it's hard to get killed in one!  A perfect ship for
+casual players.
+
+
+5) Corporate FlagShip:  TE=84,  3 turns, 85 holds.  A decent trading
+----------------------  ship, and it has t-warp capability, which makes
+it OK for t-warp colonizing, if you can't get an ISS.  Only the CEO of
+each corporation is permitted to use one of these though.  It comes with
+a Combat Scanner, to tell you how many shields your victim has when you
+attack.
+
+
+6) Colonial Transport:  TE=61,  6 turns, 250 holds.  In spite of it's
+----------------------  huge cargo capacity, it's high number of turns
+needed to move, makes it a poor trading ship.  It cannot take ANY type
+of scanner, so you're always flying blind, and it's too damned expensive
+to by the holds. This ship is useful only for one single purpose, planet
+trading.  More on this later.
+
+
+7) CargoTran:  TE=78,  4 turns, 125 holds.  A so-so trading ship, but
+-------------  poor fighter capacity, and lousey combat odds, and real
+expensive to buy the holds.  A poor choice, unless you just wanna play
+out your turns very quickly.
+
+
+8) Freighter:  TE=100,  2 turns, 65 holds.  Reasonable holds capacity,
+-------------  and 2 turns to move, makes it THE BEST trading ship.
+It can carry a holoscanner for exploration, and it's cheap.
+                                                        Page 16
+
+
+9) Imperial Starship (ISS):  TE=93,  4 turns, 150 holds.  A good trading
+---------------------------  ship, heavily armed, great fighting odds,
+can carry the Photon Torpedo (max of 5), and has T-warp capability. This
+is the IDEAL ship for colonizing.  A wonderful ship, but it requires an
+Imperial Commission to be able to get into one of these. They're
+expensive, and definitely worth every cent.
+
+
+10) Havoc Gunstar:  TE=52,  3 turns, 50 holds.  Not a trading ship, but
+------------------  good for evil players for use in robbing ports.
+Nicely armed.  This is the only ship with T-warp capability that is
+available to players lacking an Imperial Commission and who are not CEO
+of their corporation.
+
+
+11) Starmaster:  TE=71,  3 turns, 73 holds.  A reasonable trading ship,
+---------------  reasonably armed, etc.  No T-warp.  Get a Constellation
+instead.
+
+
+12) Constellation:  TE=76,  3 turns, 80 holds.  Reasonable trading ship,
+------------------  very much like the Starmaster, but 10% extra holds
+capacity.  No t-warp capacity, but not a bad ship.
+
+
+13) T'Kasi Orion:  TE=93,  2 turns, 60 holds.  Very simmilar to the
+-----------------  Freighter, but has density scanner only, no
+holoscanner, so is not suitable for exploration.  Slightly better
+fighter capacity than the Freighter, but slightly less efficient trader.
+Go for the Freighter instead.
+
+
+14) Tholian Sentinel:  TE=36,  4 turns, 50 holds.  Not a trading ship,
+---------------------  it's only single purpose is to sit in a sector
+and protect your corp's planets, especially when you're not online.
+While in a sector with your corp's planets, it defends at 4 to 1 odds,
+and when loaded with 4k shields, and 2,500 fighters, it will take an
+invader in an ISS about 17,333 fighters to destroy it.  Not bad when
+you're still poor.  This defense works any time the ship is occupied by
+a corp member, whether online or not.  No t-warp.
+
+
+15) Taurean Mule:  TE=88,  4 turns, 150 holds.  An OK trading ship, but
+-----------------  lousey combat odds, small fighter capacity, and no
+holoscan or t-warp.
+                                                        Page 17
+
+
+16) Interdictor Cruiser:  This thing takes 15 turns to move, enuff said!
+------------------------  Forget trading.  If the player is in the game,
+the interdictor beam will hold fast any other ship that comes into it's
+sector, and can then be captured at leisure, like a spider eating a fly.
+But, when the player is not in the game, the interdictor feature does
+NOT function.  Also, the interdictor feature does not work in FedSpace.
+One possible use, planetary defense, as it can hold up to 100,000
+fighters.  The huge fighter capacity makes it ideal for large-scale
+invasions, as it can probably withstand the brunt of shielded Q-Cannons
+and survive.
+
+
+17) Ferrengi Assault Trader:  TE=79, 2 turns, 50 holds.  Much like a
+----------------------------  Freighter or T'Kasi Orion, but not as many
+holds for trading, and no scanner at all, yikes!  Sell this thing quick!
+
+
+18) Ferrengi Battle Cruiser:  TE=72,  3 turns, 75 holds.  Sort of like a
+----------------------------  Starmaster or Constellation, but not as
+good.  They do have a nice resale value at Star Dock.  Sell em!
+
+
+19) Ferrengi Dreadnought:  TE=66,  4 turns, 100 holds.  Poor trader.
+-------------------------  No t-warp.  Sell it.  However, evil players
+may wish to consider it as an invasion ship, as it *CAN* carry a single
+Photon Torpedo!  If only it had T-Warp!
+
+
+Note on Ferrengi ships:  These cannot be bought at Stardock, they can
+only be captured from a Ferrengi.  This is easily done, but the Ferrengi
+carry Grudges!  Which means that this particular Ferrengi will come and
+find you later in the game.  Also, this alerts the Ferrengi Overlord who
+will raid the hell outta you after the game is about 2 months along.
+NEVER molest a Ferrengi ship!
+
+
+20) Ferrengi Scorpion:  ACK!  This ship is piloted by the Ferrengi
+----------------------  Overlord, a game generated character, much like
+Captain Zyrain, and you cannot harm or capture it in any way.  If you
+fire a Photon Torpedo at it, your torpedo will come right back at you,
+and YOU will get hit, and lose all your turns!  The Ferrengi Overlord
+character first appears in the game at around Day 45 or so.  It's main
+function so far appears to be raids on player's sectors, in a totally
+random fashion.  The Overlord T-Warps into any random sector, and if
+player's fighters or mines are there, they are immediately converted to
+Ferrengi fighters and mines. You receive a message from your fighters
+stating that they have been disrupted.  This ship type is a very recent
+addition to the game, and is not affected by Level 6 Planets, fighter
+attacks, mines, etc.
+                                                        Page 18
+
+                        
+21) Federation Starship:  These cannot be owned by a player, they are
+------------------------  only used by the 3 Federals.  They are
+indestructable, and trying to attack them will get you killed, no matter
+what you are driving, or what armaments you may have.
+
+
+
+
+
+SHIP SUMMARY:
+-------------
+The best trader is the Merchant FREIGHTER.  It has every capacity except
+t-warp or photon torpedos, and is the trading ship of choice,
+especially for small players.  Nothing, but nothing can out-earn this
+type of ship in trading.  It's also great for evil players doing
+sell/steal, or robbing.
+
+A great ship is the ISS, but it's expensive and requires a commission,
+and is therefore not available for evil players.  Nothing beats this
+ship for colonizing, or for invasions.
+
+The CorpFlag is available to the CEO of any corp, either good or evil,
+and makes a decent trader, and can be used for colonizing, and by evil
+players for various crimes.  Nice ship if ya cannot get an ISS.
+
+The Havoc Gunstar is good for Evil players for robbing.
+
+The Ferrengi Dreadnought is a good photon attack ship for evil players.
+
+Another choice is the Constellation, a decent trading ship, reasonably
+armed with nice cargo capacity.  It's only flaw is the lack of T-Warp.
+
+New players might consider the Battleship, a so-so trader, but has large
+cargo capacity, and heavily armed.  It is really hard to kill this
+thing.  If you're tired  of getting killed everyday, go for one of
+these, it's got 1.6 to 1 combat odds...nice.   It lacks T-warp capacity.
+
+                                                        Page 19
+
+
+Planet Types
+============
+
+
+There are several types of planets available, but some are worthless,
+and the good ones should be used for certain purposes only.  Here is
+some info on the useful types:
+
+
+Mountainous Type:  This type builds citadels and upgrades them faster
+-----------------  than any other planet type, and is useful for making
+large amounts of fighters, and fuel ore which fuels the cannons.  All
+colonists should be working on fuel ore.  Most efficent production is
+with 20,000 colonists per product.  This is the best type of planet to
+start with in the MBBS Version of Tradewars.  But, in the DOS version
+only, landing frequently on this planet type causes colonists to die,
+and landings must be kept to an absolute minimum.  In the MBBS Version
+this is not a problem, and makes a perfect home planet.
+
+
+Oceanic Type:  This type produces organics just as fast as mountainous
+-------------  types produce fuel ore, and is the only planet type
+suitable for producing product intended for sale.  All colonists should
+be working on organics, and maximum production is with 100,000 colonists
+per product.  Fighter production is nearly as good as on a mountainous
+planet.
+
+
+Volcanic Type:  This type produces basically fuel ore and nothing else.
+--------------  Not much on fighter production either.  It's main value
+is as a quasar-cannon.  Colonists on it produce twice the fuel ore that
+mountains do, and it can store up to 1 million units of fuel ore.  This
+makes it just about impossible to invade.  It does have 1 serious
+drawback, its colonists tend to die each time one lands on the planet,
+and also when one does a Corporate Planet Scan (command T L). Keep
+landing down to an absolute bare minimum, AND put 25% of the colonists
+on equipment production (where they do nearly nothing), and the other
+75% on fuel ore.  This reduces colonist deaths very nicely. Maximum
+efficiency is with 50,000 colonists on fuel ore, but don't forget an
+extra 12,500 colonists on equipment.  And don't be tempted to pick-up
+the bit of equipment they produce, as this will kill more colonists!
+They are extremely slow to upgrade, but worth it.
+                                                        Page 20
+
+
+Earth Type:  Pretty much worthless in the MBBS Version of Tradewars,
+-----------  they produce product slowly, and can produce nothing that
+cannot be produced much better on another type of planet.  It's
+capacities are rather low.  Some folks use them to produce equipment,
+but that same number of colonists could make double the money working on
+organics on an oceanic planet type.  However, in the DOS Version of
+Tradewars, you don't want to use a Mountainous Planet as a home base
+because of colonist die-off, so an Earth Type is the planet of choice
+for a home base for sleeping in the citadel and for the treasury funds.
+The fact that colonists don't die on this type makes it fine for landing
+on.  Just don't try producing equipment on this planet.  Any equipment
+needed for upgrades is best bought at a port and brought in.  The
+optimal number of colonists is 15,000 and all should be on fuel ore.
+
+
+Vaporous/Gaseous Type:  There are rumours that this type produces
+----------------------  planetary shields, or other unusual products,
+but my personal experience shows that nothing at all is produced on this
+type.  However, it will upgrade to a very small interdictor planet 3
+days sooner than the mountainous type which is a possible consideration.
+
+
+Desert Wasteland:  Same Q-Cannon capabilities, ore production and
+-----------------  colonist capacity as a Mountainous type, but upgrades
+much slower.  Worthless.
+
+
+Glacial Type:  Nothing much produced, small capacities, worthless.
+-------------
+
+
+
+Upgrading The Planet's Citadel:
+------------------------------
+
+To upgrade a planet to various levels of citadel defense requires
+colonists and products.  Please note that it is not necessary to leave
+the colonists on the planet while waiting for the construction to be
+completed.  You can trigger the construction, and immediately move the
+colonists to another planet.  One handy thing to know about the MBBS
+version of TW, is that even though it takes 1 turn to move a load of
+colonists from one planet to another, but if you are already out of
+turns you can still move them at no turns!  Neat eh?
+
+Here's a chart of the products and colonists needed for each of the
+useful planet types:
+
+                                                        Page 21
+
+                   Mountainous Type:
+
+Level   Cols    Ore     Org     Equip   Days    Total Days
+----------------------------------------------------------
+  1      400     150     100     150      2        2
+  2     1400     200      50     250      5        7
+  3     3600     600     250     700      5       12
+  4     5600    1000    1200    1000      8       20
+  5     7000     300     400    1000      5       25
+  6     5600    1000    1200    2000     12       37
+
+
+                   Oceanic Type:
+
+Level   Cols    Ore     Org     Equip   Days    Total Days
+----------------------------------------------------------
+  1     1400     500     200     400      6        6
+  2     2400     200      50     300      6       11
+  3     4400     600     400     650      8       19
+  4     7000     700     900     800      5       24
+  5     8000     300     400    1000      4       28
+  6     7000     700     900    1600      8       36
+
+
+                   Volcanic Type:
+
+Level   Cols    Ore     Org     Equip   Days    Total Days
+----------------------------------------------------------
+  1      800     500     300     600      4        4
+  2     1600     300     100     400      5        9
+  3     4400    1200     400    1500      8       17
+  4     7000    2000    2000    2500     12       29
+  5    10000    3000    1200    2000      5       34
+  6     7000    2000    2000    5000     18       52
+
+
+                   Earth Type:
+
+Level   Cols    Ore     Org     Equip   Days    Total Days
+----------------------------------------------------------
+  1     1000     300     200     250      4        4
+  2     2000     200      50     250      4        8
+  3     4000     500     250     500      5       13
+  4     6000    1000    1200    1000     10       23
+  5     6000     300     400    1000      5       28
+  6     6000    1000    1200    2000     15       43
+
+                                                        Page 22
+
+
+HOW TO MAKE THE BIG BUCKS
+=========================
+
+The usual way to make money is by trading, or if you are evil then thru
+various crimes.  But, there are better ways that require much less work.
+
+
+1)  The Veggie Business.  Have an Oceanics Planet located in a sector
+------------------------  with a port that buys organics.  When the port
+is at 100%, port and use the (N) Negotiate command, and sell all the
+organics in one shot.  You get the 100% price in the MBBS Version, and
+it takes only a single turn to sell the whole lot.  (In the DOS version,
+it's best to port and sell the organics one shipload at a time).  After
+doing this a few times, you will have enough cash to upgrade the port to
+it's full capacity, namely 32,000 organics.  Then, you can sell 32k at a
+time, which comes to over 2.5 million credits.  Not bad for 1 turn, eh?
+You will need quite a few colonists to do this.  Home-built ports offer
+better prices than natural ones.
+
+
+2)  Planet trading.  Take a planet with Twarp capability, and move it to
+-------------------  the nearest port.  Using a ship with large holds
+capacity, buy everything that port sells, regardless of price, right
+down to the last unit.  It's good to start at a port that sells both
+organics and equipment, so that you will have a nice inventory on the
+planet for sale later.  Then, move the planet to any other port, and buy
+up everything it has, and (N)egotiate everything off the planet that the
+port buys. Just keep doing this until you run out of turns.  Trading the
+ports right down to zero would normally not be profitable, but remember,
+a round trip trade this way takes only ONE turn, instead of the usual 8
+or 10 turns for normal ship trading.  It's easy to make 4-5 million a
+day like this.  Be sure to NEVER sell fuel ore, and buy more whenever
+possible, because it does take 400 units of fuel to move a planet one
+sector.  Oh, and the best ship to use for this is the Colonial Transport
+with 250 holds. Nothing else can even come close.  It takes a long time
+to use up your turns this way, but it will quickly bring in enough money
+to upgrade ports for method 3, below.
+
+
+3)  Super-Port Planet Trading.  Have a pair of ports in your tunnel,
+------------------------------  preferably home-built.  One buys
+equipment, the other sells it.  Both should buy organics if possible.
+Upgrade the equipment to the max 32,000 units.  Once the port is at
+100%, bring a twarping planet to the equipment seller, and buy half of
+it's 32k units of equipment, and (N)egotiate sell it next door.  Also
+                                                        Page 23
+
+
+dump all the organics at the same time there!  Upgrading ports this way
+is a large investment because it takes about 2.7 million to fully
+upgrade the equipment at each port, and another 1.5 million to fully
+upgrade the organics, but the payback is huge!  Buying 16k units of
+equipment costs about one million, and 64 turns in a ColTran, you will
+make about 1.2 million clean profit when you sell it.  And 128
+experience points (XP) in 64 turns, which isn't bad either.  Very little
+fuel ore is used with this technique.  The reason that home-built ports
+are best is becuse they usually have much better prices than existing
+ones.  I usually blow up the existing ports and build new ones.  And,
+the reason for buying only half the equipment available, is that the
+price is better on the first half, so take it now, and wait a few days
+for the port to regenerate, then come back again.
+
+
+4) Good & Evil Alliance:  While I always play "good", I always either
+------------------------  play a second character, or have a friend that
+is playing "evil" with me.  Actually, for best efficiency (aka: greed),
+you need two evil guys. Once my sector & tunnel defenses are very very
+secure, and I control a large number of sectors, say a dozen or more,
+and have filled the area with fully upgraded SBB and SBS pairs of ports,
+I start my co-operative robbing venture.  I do the super-port planet
+trading exactly like this: When all my ports are at 100%, I take an
+Oceanic Planet, bulging with 100k colonists, all producing organics, and
+take it to the first port-pair, and sell them both 32k of organics.
+Then, I buy 16k equipment, and sell it next door, then move on and do
+the same at all the other port-pairs.  A few days later, the equipment
+is back up to 100%, though the organics is still only up to 50%, so I
+make a second trip around, buying and selling equipment, but NOT selling
+organics.  Once this second trip is done, the evil guys do their work.
+They go to each equipment selling port, and rob it blind.  Fastest way
+is to port and rob slightly less than 90% of the total credits.  Oddly
+enough, in spite of the average 2 million credits available to rob, the
+often manage a successful steal, if it's done before they do any other
+robbing elsewhere.  XP points don't seem to matter and I have managed to
+rob 12 million credits in one shot, with only 100 xp, sitting in a pod!
+Go to each of the ports in turn, and clean them all out.  You'll get
+busted at 2/3rds of them, but make HUGE amounts of credits at the
+successful ones.  Once the evil guy has been to each of the ports, then
+it's time for the other evil guy to come in, and do the same thing at
+all the ports where the first guy got busted, thereby cleaning 1/3rd of
+them out.  I find that one cycle for each guy is all their luck will
+allow, but I do try it again one cycle per day, until it's time for the
+good guy to start planet trading again when the ports are all 100%
+again.  This procedure requires careful record keeping for each port as
+to who is busted there, etc., but the rewards are astonishing, and it
+takes only 10 minutes a day!
+                                                        Page 24
+
+
+It's important that you follow the exact order as described above for
+these reasons:  Buying the equipment increases the amount available to
+be robbed.  Selling organics to that port, greatly reduces the amount
+available for robbing.  So, build the amounts up by buying equipment,
+and get it all robbed out first, before you start dumping organics
+there.  Better yet, if your supply of organics is limited, sell it ONLY
+at the SBB ports, where the evil guys aren't gonna be robbing anyway.
+It's fine to sell organics at SBS ports, where the credits have already
+been robbed out.
+
+How do the evil guys travel around my tunnel, and not get killed by my
+cannons, mines, etc?  They live in my tunnel, and only one sector, way
+in the back is safe for them.  This sector contains only a single Level
+One planet, where they can dump the cash they made, so I can go pick it
+up later.  The planet is owned by the good guys, but being only Level
+One, the evil guys can land on it.  The evil guys have a corp-owned ship
+with good transporter range, located in each sector that has a robbing
+port, and they simply transport from ship to ship.  No ship ever
+actually moves anywhere, so the cannons never do shoot at them.  They
+can even enter a 100% Haz this way, unarmed, and never be harmed.
+
+Neat, eh?  Heh!
+
+
+
+====================================
+DEFENSE STRATEGY & DEFENSIVE WEAPONS
+====================================
+
+
+There are many ways to defend your home sectors, and the best way to do
+it is a combination of all of them.  Here are some of the available
+tools at your disposal:
+
+
+1)  Mines.  These cost 1,000 credits each, and you can leave them in
+----------  your sector, up to a maximum of 250 mines per sector.  When
+an invader enters the sector, approximately 1/2 of the mines present
+will explode, and cause about 15 damage points for each mine that
+exploded.  If an invader enters your sector wher you have placed 250
+mines, half will explode, causing the invader about 1,875 damage points.
+Please note, however, a Photon Torpedo fired by an invader will prevent
+the mines from exploding. Also, Ferrengi ships tend to stumble into the
+mines randomly, and set them off, wasting your mines, and angering the
+Ferrengi into seeking revenge!
+                                                        Page 25
+
+
+2)  Sector Fighters.  You can leave fighters in the sector in one of
+--------------------  three different modes.  Toll fighters will permit
+invaders to pay the toll, and drive right thru, not a good idea!
+Offensive fighters will automatically launch themselves at any intruder,
+after which they will be gone.  This can waste your fighters on a
+Ferrengi stumbling into the sector, which angers that Ferrengi into
+seeking revenge later.  The best way to deploy fighters in the sector is
+to make them Defensive.  This will harmlessly keep the Ferrengi out at
+no cost you to, and if another player stumbles into the sector, he will
+have the option of retreating, thereby leaving your defenses intact!
+Therefore, sector fighters should ALWAYS be deployed as DEFENSIVE!  If
+there is a planet in the sector, you are limited to 50,000 fighters,
+but if no planets are present you can leave a seemingly infinite number.
+
+
+3)  Navigational Hazard.  Also known as NavHaz, or just Haz, this is
+------------------------  asteroids and debris left over from a planet
+that exploded or a ship that was destroyed.  Haz is measured in %.  A
+50% Haz means anyone entering that sector has a 50% chance of hitting
+it, and if he does hit, he will suffer 500 damage.  A 97% Haz produces a
+97% chance of suffering 970 points of damage.  (A point of damage is 1
+shield or 1 fighter). Any ship that is destroyed by the Haz, will add an
+additional 1% to the existing Haz.  Each night, during the "BBS Cleanup"
+or "BBS Event" some of the Haz will disperse, generally it'll be reduced
+by 3%.  The best way to build a nice large Haz that will remain large
+for a few weeks, is to build 30 or 50 planets in a single sector, and
+then use atomic detonators on 3-5 of them.  This will get the Haz
+started, as each planet destroyed produces 10% Haz.  Then, each night
+during the "BBS Cleanup", 2 of the planets will collide (as long as
+there are more than 5 planets left), and add 20% to the Haz.  If there
+are only 6-12 planets in the sector, it is not definite that a collision
+will happen, but the probability goes up with the number of planets.
+Over about 12 planets, and a collision is pretty definite.  A nice large
+Haz will definitely keep nosey competitors from snooping around, as they
+will lose 970 fighters just for the privlege of entering the sector.
+And, Haz is not used up by additional ships entering.  "NavHaz, the gift
+that keeps on giving!"  I find this to be an excellent way of keeping
+the competition out.
+
+
+4)  Tunnels:  Locating your home base at the end of a string of sectors
+------------  that has only 1 entrance, forces any invader to have to
+wade thru and face several sectors of all the nasty stuff you can afford
+to put in his way.  The longer the tunnel, the better it is.  I like to
+have tunnels be at least 5-6 sectors deep.
+                                                        Page 26
+
+
+5) Corbomite Traps:  An excellent "dirty trick".  A Scout Maurader or a
+-------------------  Pod can NOT ever be captured, only destroyed.
+Naturally, if the ship is loaded with Corbomite, it will explode, and
+seriously damage or kill the attacker!  Maximum Corbomite is 1,500
+units, which costs 1.5 million credits, and will blow 30,000 fighters
+off of the attacker!  Neat, eh?  The Scout or Pod need not be occupied
+for this, an abandoned ship works as well.  You can increase the chances
+by giving the ship a nasty name, perhaps something about your expected
+invader's Mom works real well! <grin>
+
+
+6) Quasar Cannons:  These are the biggest & nastiest weapon there is.
+------------------  They use fuel ore on the planet, and shoot it at
+invading ships. See the section below on "Planetary Defenses" for some
+important considerations in setting these cannons up properly.
+
+
+7) Photon Torpedos:  These make an excellent defensive weapon, if you
+-------------------  happen to be on-line when the bad guys start
+crashing thru the walls.  If a bad guy has no turns, then he's not going
+to be doing much of anything for awhile!  So, if you see him, shoot the
+bugger, then laugh!  You'll have until the top of the hour to do nasty
+things to him, before he can do anything much about it.  His only safe
+option is if he has a planet of his own in the same sector, then he can
+land on it and the planet will take him out safely, even without turns.
+Of course, that also means the invasion is over for today.  One neat
+thing, did ya know it's possible to shoot a P-Torp from inside the
+citadel?  Yep....anyplace where you can get a "Computer" prompt, and it
+works quite nicely from total safety inside your citadel.  You can shoot
+at them, and they can't shoot at you....which is how I much prefer it!
+
+
+
+Complete Defense Setup:
+=======================
+
+
+The best defense is a combination of the above weapons.  Here is the way
+I suggest you do it:
+
+1) Location:  You really must select your home sector FAR FAR AWAY from
+either Sector 1 or Stardock.  Most beginners feel that it's good to be
+near the source of colonists, but this is an extremely heavily travelled
+area, and everyone will know you're there and whenever they get bored
+they will take a few pot shots at your defenses.  This can get to be
+pretty expensive, and it always will doom you to failure.  Best to be
+far away...out of sight, out of mind.
+                                                        Page 27
+
+
+2) The first sector the invador sees should have a 97% NavHaz, and
+nothing else.  He can see it's there, but he has no clue who it belongs
+to.
+
+3) The next sector in should again have a 97% NavHaz, plus 2,000
+defensive sector fighters.  The sector fighters will keep any stumbling
+Ferrengi from entering, and accidentally wasting any mines you have
+farther in.  No mines in this sector.
+
+4) The 3rd Sector should have 2,000 defensive sector fighters, plus 250
+mines.  And eventually you should also build a large Haz there.  If you
+can afford it, and have the room, you can duplicate this sector in the
+next few also.
+
+5) Your home sectors and citadel planets should be behind all the above
+mentioned weapons.
+
+
+
+Planetary Defenses:
+===================
+
+
+If you are sitting in the same sector as your planets, no one else can
+land on any of them, unless they destroy you first.  So, the more
+fighters and shields you have on you, the better.  Note: only occupied
+ships defend planets.  One type of ship, the Tholian Sentinel, is very
+special in this function.  It's fighters and shields will defend planets
+at 4 to 1 odds!  It can carry 4,000 shields, plus 2,500 fighters, which
+is a relatively small investment, but it will take an invader in an ISS
+about 17,333 fighters to destroy!  This is an excellent way to defend
+your planets at the beginning weeks of the game.
+
+
+
+Planets can be upgraded, and each higher level of citadel provides a new
+weapon:
+
+
+Level 1 Citadel:  Provides really no defense.  Any invader, or casual
+----------------  visitor can land on this planet at will, and simply
+take away anything you leave on the planet.  They can steal your
+fighters, products, colonists, and any money you leave in the citadel!
+Just don't do it!
+                                                        Page 28
+
+
+Level 2 Citadel:  Fighters left on this planet will try to prevent
+----------------  anyone else from landing on it.  These fighters can be
+offensive or defensive or some of each, as controlled by the "Military
+Reaction Level".  Defensive fighters resist invaders at the best odds
+and give the invader the option of retreating, thereby leaving your
+fighters intact.  ALWAYS set Military Reaction Level to ZERO!  This
+makes the fighters totally defensive and produces the best odds.
+
+
+Level 3 Citadel:  Quasar Cannon.  A neat gadget that will automatically
+----------------  shoot at invaders entering the sector, or trying to
+land.  Shots use up fuel ore from the planet, so be sure you have LOTS
+of it.  NEVER sell fuel ore for any reason!  There are 2 type of cannon
+shots.  Shots into the sector will use up 3 units of fuel ore for each
+point of damage to the invader.  Shots at ships landing on the planet
+will deal two points of damage for each unit of fuel ore expended, which
+is 6 times as efficent on fuel usage as a shot into the sector.
+
+It is best to have several cannons together in the sector, so they can
+defend each other.  I always have 5 cannons per sector, which is the
+maximum.  When an invader enters the sector, the cannon on the lowest
+numbered planet shoots first.  If the invader survives the shot, then
+the next higher numbered planet fires, and so on.  If the invader's ship
+is destroyed, then any cannon that has not yet fired, will NOT fire at
+all, thereby saving it's fuel ore.  This brings up a strategy point, of
+how large the shots should be.  I like to set the sector level for the
+first planet very low, perhaps 5% or so, which will destroy small ships,
+and conserve fuel that way.  The next planet is usually set to 15%, and
+the later ones at 30%.  This way, the first planet takes care of little
+ships, and later planets don't even fire, thereby saving fuel. When
+larger ships enter, several or all of the cannons fire, each with
+succesively larger shots.  After all, it's pointless to blow away all
+your fuel ore on a tiny little scout ship, when a fully loaded ISS will
+follow right behind it, and destroy the now unloaded cannons.
+
+Upon entering the sector, the cannons will fire, then you get a prompt
+for attacking the sector fighters.  Cannons will shoot again, every time
+you shoot at the sector fighters, so try to nail them all in one shot.
+
+Please note that for reasons unknown, an atmosphere shot will be exactly
+half the percentage you set it to.  Ask Gary why he did that!
+
+
+Level 4 Citadel:  This is a planet you can move to another sector.
+----------------  Doing this permits planet trading and many other
+useful options.  It takes 400 units of fuel ore for every sector of
+distance moved.
+                                                        Page 29
+
+
+Level 5 Citadel:  Planetary Shields.  These shields will prevent photon
+----------------  torpedos from disabling your quasar cannons. Planetary
+Shields are actually the same as ship shields, and you must buy them and
+dump them in the citadel.  An invader must destroy all the shields
+before he can even SEE how many fighters are on the planet, which he
+will have to destroy next!  Planetary shields defend at 22.5:1 odds
+divided by the attacking ship's combat odds.  For example, an ISS needs
+about 15,000 fighters to destroy 1,000 planetary shields.
+
+
+Level 6 Citadel:  Planetary Interdictor.  This prevents any invader's
+----------------  ship from ever leaving the sector!  Any attempt to
+leave sends the victim a message "You are being held fast by the
+Interdictor" and you just don't move.  No cannon shots happen, but you
+cannot leave.  Nasty, isn't it?  Think of it as a "Roach Motel, roaches
+check in, they don't check out!"
+                                                        Page 30
+
+=================
+INVASION STRATEGY
+=================
+
+No two invasions are ever the same, they vary greatly, depending on what
+your objective is, and whatever goodies the defender has left for you.
+Invading minor defenses is no problem, just load up on fighters, and
+drive in and shoot everything in sight!
+
+When invading sectors containing shielded planets and interdictor
+planets, you must plan very carefully in advance, and it's almost
+required to have confederates going in with you.
+
+Major Invasions always include the likelihood of ketting your ship blown
+up.  In fact, it's just about guaranteed!  So, plan for this to happen.
+In such cases, it is critical to properly deal with every single
+defensive weapon in turn, and remove ALL of them, sector by sector, as
+you advance.  This way, when you get blown up and your Pod bounces out,
+you won't get killed in NavHaz or mines left laying around.
+
+Here are a few things to consider when you invade someone:
+
+
+1) Enemy Players:  NEVER invade someone that is online while you're
+-----------------  doing it!  It nearly always guarantees failure.
+Always remember, "it's hard to drain the swamp while you're up to your
+butt in alligators!"
+
+
+2) Space Mines (Armid):  Mine disrupters cost 6,00 credits each, and you
+-----------------------  can carry 10 at a time.  Each disrupter will
+destroy an average of 6 or 7 enemy mines.  This means 4 loads of them
+are needed to destroy a sector with 250 mines in it.  But do it.  Never
+leave enemy mines laying around. Firing a P-Torp will disable mines for
+the duration of the Torp.
+
+
+3) Navigational Hazard:  Building new planets will suck up the navhaz
+-----------------------  nicely, at 10% for each planet built.
+
+
+4) Limpit Mines:  You can pretty much ignore these, but be sure to have
+----------------  them removed at stardock as soon as possible.
+                                                        Page 31
+
+
+5) Sector fighters:  It's best to kill these, but a P-Torp will disable
+-------------------  them.  The sector fighters do not fight well, so
+it's economical to kill them, preferably with a high-combat-odds ship.
+One consideration though, Q-Cannons will shoot at you every time you
+shoot at enemy sector fighters, so you may wish to use a Photon Torpedo
+to bypass them instead, and kill them later after the enemy planets are
+invaded.
+
+
+6) Quasar-Cannons (Level 3):  When about to enter a sector with planets
+----------------------------  in it, you should assume the presence of a
+quasar-cannon on a planet. So, it's best to fire a P-Torp first and jump
+in, and use your planet scanner to tell what's on the planets.  The
+cannon will not fire while the P-Torp field is still active, even if you
+land.  After the P-Torp field is gone, the cannon will not fire until
+you attempt to land on it. If you exit the game, and re-enter, the
+cannon will fire.
+
+
+7) Shielded Quasar-Cannons (Level 5):  P-Torps have no effect on these,
+-------------------------------------  and if you enter the sector, they
+will definitely fire, so you will need a well armed ship so as to
+survive the damage.  Having survived the cannon shots in the sector, you
+can attempt a landing.  As you land, the cannon on the particular planet
+you are landing on, will shoot instantly at you, and if you survive, you
+will see the number of shields to be destroyed.  You may take several
+shots at the shields and the cannon will not shoot while you destroying
+the shields, unless you leave the planet and re-land.  During this
+landing, you have no information at all about what's on the planet,
+except for the number of shields to be destroyed.  Once you have
+destroyed the very last shield, the cannon will fire again, and you will
+then see how many fighters you must kill to land.  And, the cannon will
+fire again, with each volley you fire at the planet's cannons, so it's
+best to fire large volleys.  If you are expecting a large number of
+fighters to be on the planet, it might be good to leave the last few
+shields intact, and leave the planet and reload your fighters, to be
+sure you survive another cannon shot.  Then land again, survive the
+q-cannon shot, kill the last few shields, and then take the next cannon
+shot, and then start mowing the planet's fighters.  It's a lengthy
+process, and takes a huge bunch of fighters to survive it!
+
+
+8) Planetary Fighters:  P-Torps do not affect these, regardless.  You
+----------------------  must kill them using your own fighters.
+Defensive planetary fighters fight at 3 to 1 odds divided by the
+attacking ship's odds, so it's an expensive prospect.  Planetary
+Offensive fighters fight less hard, at 2:1 divided by ship's odds.
+                                                        Page 32
+
+
+9) Planetary Shields:  Shields defend at 22.5:1 odds, divided by the
+---------------------  attacking ship's odds.  For example, an ISS needs
+15,000 fighters to destroy 1,000 planetary shields.
+
+
+9) Interdictor Planets (Level 6):  These are really nasty, because once
+---------------------------------  you're in the sector, your ship will
+never leave unless you manage to take over the planet.  But you still
+have options.  P-Torps have no effect here.  A major priority here is to
+clear away all sector fighters, and place one or many of your own. This
+way, your team mate can bring in your own T-Warping planet, and you can
+land, and you, him and your planet can leave inspite of the enemy
+interdictor planet.  If the quasar-cannons manage to blow up your ship,
+then your escape Pod will bounce out of the sector as long as the sector
+next door is empty of fighters.  Naturally, if your Pod hits mines or
+haz, you're dead for the day.  A third way to leave is to beam over to
+another nearby ship, and abandon your invasion ship.  Then you can bring
+in another heavily armed ship and have another crack at it.
+
+
+10) Missile Cruiser:  Perhaps you have decided not to remove all the
+--------------------  defenses sector by sector, and feel you can drive
+thru.  But, you cannot carry any P-Torps into sectors containing navhaz
+or mines, as the P-torps will explode inside your own ship!  So, you tow
+an unarmed Missile Frigate into the haz and then beam into it. Fire the
+torp, then beam back into the larger ship and move to the next sector.
+
+
+11) Imperial StarShips (ISS):  The ISS can carry up to 5 P-Torps, and
+-----------------------------  50,000 fighters and has 1.5 to 1 fighting
+odds..nice!  Also, it has T-Warp, and a 15 hop transporter beam range.
+Lastly, its capacity to carry 10 genesis torpedo is just enough to clear
+away 1 sector of it's maximum navhaz.  All this makes it the ship of
+choice for invasions.  Better yet, have a fully loaded ISS, towing a
+team-mate in a 2nd fully loaded ISS.  The one being towed never gets hit
+by cannons, NavHaz, mines or anything else, so he can carry a nice load
+of P-Torps safely!
+
+
+10) Interdictor Cruiser:  These make a nice invasion ship, as they can
+------------------------  carry up to 100,000 fighters, and so can
+withstand a lot of damage. This is the ship most likely to withstand the
+shots from Q-Cannons. However, they cannot land on any planet, so you
+can't actually invade a planet with them.  Drive the interdictor in, and
+take the cannon hit, while towing a teammate, or smaller ship,
+preferably a StarShip (ISS) or Corp Flagship, and then continue the
+                                                        Page 33
+
+
+invasion in the smaller ship.  The neat part here, is that the ship
+being towed does NOT get shot at by the Q-Cannons!  (See the section on
+towing, very important here).  Or, the Interdictor Cruiser can bring
+several loads of fighters into the sector and dump them, and leave them
+for your team mates to load up on.  If you are attacking a planet with a
+HUGE Q-Cannon, you could try to land the Interdictor Cruiser on the
+planet. It won't actually land, but it will trigger an atmospheric
+Q-Cannon blast, thereby draining the cannon so that future shots are
+that much smaller.  Expensive, but it works.
+
+
+11) Moths in Invasions:  Quasar-Cannons use a large amount of fuel ore
+-----------------------  for every shot.  They are set to a percentage,
+so the 2nd time they fire will be a smaller shot.  If the cannon was set
+to 50%, then the 2nd shot will be 50% smaller, so then it will be safer
+to bring in a ship carrying expensive armaments.  It is critical to
+remove any enemy mines and all NavHaz before entering, so as to avoid
+getting your Pod blown up and being dead for the entire day.  Driving in
+a junk ship as a sacrificial lamb is called "Mothing".
+
+
+12) Spare Ships:  It's a good idea to have a spare ship nearby, so if
+----------------  you do get blown up and lose your attack ship, you
+will be able to beam into the spare, and continue on, or escape!
+
+
+13) Bring a Twarp Planet:  Once you have removed all sector fighters and
+-------------------------  put down one of your own, you can bring in
+one of your own defended planets, which will provide an excellent base
+for the operation.  It will protect you from an enemy counter-attack,
+and you can reload on fighters from it.
+
+
+14) Cleanup Afterwards:  When you have managed to survive a landing on
+-----------------------  an enemy planet, you must Claim Ownership of it
+immediately.  Best to make it Corporate, so it won't shoot at your team-
+mates!  Any captured planets with T-Warp capability should be moved back
+to your home area, and added to your own defenses.  Strip and destroy
+any planet that cannot be moved.  The easiest way to do this is to bring
+in your own T-Warping planet and haul all product and colonists to your
+planet, and fly home. Never detonate a planet that has colonists on it,
+they will fiddle with the detonator and YOU will be destroyed along with
+the planet!  If you are low on turns, haul all the fuel ore off the
+enemy planets, as much as turns allow, then haul colonists, which can be
+done using zero turns.  This way you can steal as much fuel ore as your
+remaining turns allow, plus ALL the colonists.
+                                                        Page 34
+
+
+====================================
+ALIGNMENT & EXPERIENCE-POINTS TRICKS
+====================================
+
+Each player has 2 scores, as shown on the scoreboard.  The first number
+is your Experience Points (XP) and the 2nd number is your Alignment
+which shows how "good" or "evil" you are.  There are some reasons you
+may wish to have either of these 2 numbers high or low.  Here's a few:
+
+
+1) FedSpace T-Warp:  If you have an Imperial Commission, you can T-warp
+-------------------  your ship to any FedSpace sector, in one jump.
+This includes sector 1-10 plus Stardock.  Players that have at least
++500 alignment, may "apply" for the Commission at the stardock police
+station.
+
+
+2) Imperial Starship:  You need the Commission to purchase an ISS ship.
+---------------------  This means that Evil Players cannot purchase one.
+
+
+3) FedSpace Safety:  If you have a positive alignment AND you have LESS
+-------------------  than 1,000 xp points, then you cannot be attacked
+while you are in FedSpace, and you may safely park there at night
+without cloaking.
+
+
+4) Crime:  If you have a negative alignment greater than -100, then you
+---------  will be able to rob credits from ports and steal cargo from
+ports.  Crime pays much better than trading!
+
+
+5) Experience Points (XP) for good guys.  This is totally worthless!
+----------------------------------------  There is NO reason for a
+player with positive alignment to try to get high XP points.  These
+points do you no good at all, and serve no purpose.  The only
+consideration might be for "bragging rights", but it really means
+nothing.
+
+
+6) Experience Points (XP) for evil players:  This is critical for evil
+-------------------------------------------  players!  Your XP controls
+how much product you may safely steal or how many credits you may safely
+rob from a port.  See the section on "Playing Evil" later on.
+                                                        Page 35
+
+
+How to Increase Experience Points:
+==================================
+
+
+1) Trading:  When you get within 99% of the best price, you will get 2
+-----------  XP.  For 98% you get 1 XP point.  If you manage to get
+100.00% some ports will award you 5 XP points. This method of increase
+costs nothing, and produces a nice amount of cash in the process.
+
+
+2) Triple Trading:  Find a pair of trading ports where you can sell 2
+------------------  products and buy a 3rd, you can easily obtain 6 XP
+points each time you port.  Best port pair is BBS-SSB, but any combo is
+ok, such as SBS-BSB or even SBB-BSS.  Triple Trading generates somewhat
+less money than normal trading, but the XP points grow 50% faster.
+
+
+3) Buy & Jettison Products:  Port at a SSS port and buy a small quantity
+---------------------------  of each of the 3 products, then jettison
+them, and repeat.  You need to buy just enough of each product so that
+each "best price" is at least 500 credits.  Try for about 550 credits to
+be safe.  This generates 6 XP for each cycle, and costs about 275
+credits per XP point, but it does use a small amount of turns.
+
+
+4) Planet building:  This costs 20,000 credits each, and generates 25
+-------------------  XP points.  The cost is 800 credits per XP point.
+
+
+5) Planet Busting:  Build a planet at stardock, and detonate it.  This
+------------------  costs a total of 35,000 credits each and generates
+75 XP points.  The cost is 467 credits per XP point.
+
+
+6) Port Upgrading:  Use the "O" command to upgrade the quantity a port
+------------------  produces.  The cost is 3,000 credits per XP point if
+the upgrade is on Equipment, and costs 2,500 credits when the upgrade is
+Fuel Ore or Organics.  The cost is very high, but you do get a lovely
+boost in XP when you build a Super-Port!
+
+
+7) Killing other Players:  You receive 10% of the victim's XP points
+-------------------------  when you capture or destroy them.  You may
+also get whatever credits they are carrying, and if you capture their
+ship, you can sell it at stardock or keep it.  BUT, this will leave you
+with an enemy, and it will generally cost you more in fighters than the
+value of the ship you capture.  I don't recommend it. The victim must
+have at least 25 XP points for this to work.
+                                                        Page 36
+
+
+8) Killing Aliens:  Again, you receive the same benefits as when killing
+------------------  other players, but you don't make an enemy.
+However, the Aliens generally have very little XP points, so the benefit
+is small.
+
+                             
+9) Killing Ferrengi:  DON'T DO IT!  Yes, you can make some nice money
+--------------------  and points this way, but Ferrengi have long memory
+and they remember grudges!  Later in the game, they will raid you!
+Also, they will notify the Ferrengi Overlord, who appears after the game
+is running about 6 weeks, and he will cause massive destruction in your
+home sectors.   NEVER MOLEST FERRENGI SHIPS!
+
+
+10) Kill Ferrengi sector fighters:  This generates 15 XP points for each
+----------------------------------  fighter you shoot at them.
+
+
+
+How to Reduce Experience Points:
+================================
+
+
+This is good to maintain your safety in FedSpace sectors.  In the first
+weeks of the game, try to keep your XP points under 1,000.
+
+
+1) Get killed:  If your ship is captured or destroyed, and you eject to
+--------------  an Escape Pod ship, you lose 10% of your XP points.  If
+you have already lost 2 ships today, and get killed a 3rd time, or if
+you happen to get killed in a Scout Marauder or in a Pod, you are Dead
+for the day, and lose 50% of your XP points.
+
+
+2) Self-Destruct:   costs you 50% of your XP Points, plus your ship.
+-----------------
+
+
+3) Get Mugged at Stardock:  If your alignment is not above +100, you can
+--------------------------  try to enter The Underground at Stardock.
+First stash ALL of your money in the bank, then use the undocumented "U"
+command at stardock and guess the password WRONG on purpose.  Guess
+wrong about 5 times in a row.  The 4th time, you are mugged and all your
+money is stolen (you have none anyway), and the time after this, you
+lose 50% of your XP points.  Repeating it after that will get you
+"Murdered at Stardock" and you lose your ship!  This method is the best
+way to keep your XP Points under 1,000 to maintain FedSpace safety.
+                                                        Page 37
+
+
+How to Move Alignment in the Positive Direction:
+================================================
+
+
+1) Pay Taxes:  If you enter the game, and happen to have over 100,000
+-------------  credits on you, then you will be taxed 5% of the total.
+You will receive positive alignment in return for this, at the rate of
+one alignment point for every 1,500 credits of taxes paid.  It's
+expensive, and this is not available to evil players.  Only good guys
+pay taxes.
+
+
+2) Kill Bad Guys:  A "good" player will receive 50% of the alignment of
+-----------------  any evil alien or evil player he kills or captures.
+In order to earn alignment, the victim must have a minimum of at least
+10 (maybe more) XP Points.
+
+
+3) Post Federation Rewards at Stardock Police Station:  You must be a
+------------------------------------------------------  "good" player,
+or be evil with not more than -50 alignment in order to enter the police
+station.  Once in, you may post a federation reward on any player that
+is already listed there, and you will receive 1 positive alighnment
+point for each 1,000 credits you post.  This is the most economical way
+to do it.
+
+
+4) Apply for commission:  If you already have at least +500 alignment,
+------------------------  you may apply for the commission at the police
+station, and you will automatically be approved and your alignment will
+be instantly boosted to +1,000 points.  Each player may "apply" only ONE
+TIME, ever.
+
+
+5) Port Upgrades:  Upgrading a port moves your alignment upwards.  The
+-----------------  cost is 6,000 credits per alignment point when
+Equipment is upgraded, and 5,000 credits per point when upgrading Fuel
+Ore or Organics.  This is expensive, but it is available to evil
+players.
+
+
+6) Build Planets:  "Good" players receive 10 points of positive align
+-----------------  for each planet built.  Very high ranking goodies
+receive 10 negative alignment points for building planets, not sure yet
+what score is needed for this to happen.
+                                                        Page 38
+
+
+How to Move Alignment in the Negative Direction:
+================================================
+
+
+1) Jettison Colonists:  Fill your holds with colonists and jettison them
+----------------------  into outer space.  They scream nicely when you
+do this, and your alignment will drop 1 point for each colonist
+jettisoned.  Try to separate out the cute earth-girl colonists, don't
+waste them, heh!  If a "good" player continues to jettison colonists
+repeatedly, he will continue to lose alignment, until he turns evil, at
+which point he will no longer lose alignment.  An "evil" player will
+have his alignment reduced this way only one time per day.  It costs
+nothing.
+
+
+2) Post Underground Hit Contracts:  You may post an Underground Hit
+----------------------------------  Contract and receive 1 point of
+minus align for each 250 credits.  Very economical.  However, to enter
+the Underground, you must either be "evil", or be "good" with less than
++100 alignment.  The "Underground" is completely undocumented, so here's
+the technique to enter it.  Land on the StarDock, and type T for Tavern,
+then T for 'talk to the Grimy Trader'.  Type the word "underground" and
+he'll say "I'll tell ye something about it, will ya pay?", and you say
+"No".  Then he'll offer to sell you the password, and you buy it from
+him.  Then say "bye" and exit the tavern.  Type U for the Underground,
+and give the password, and you're in.
+
+
+3) Kill Good Guys:  When an evil player kills a good player or alien,
+------------------  then the evil player will receive minus alignment,
+50% of whatever positive alignment the victim had.  The victim needs to
+have at least 10 XP points (maybe more) for this to work.
+
+
+4) Build Planets:  When evil players build planets, their alignment
+-----------------  moves 10 points in the negative direction.
+
+
+5) Repeated Busts:  If you already have at least -100 alignment, and can
+------------------  rob & steal, go to any port, and rob or steal there.
+Then do it again at the same port, and you'll get busted for robbing the
+same place twice in a row.  Continue porting there, and each time you
+do, your alignment will go another 5 points negative.
+                                                        Page 39
+
+
+Special Alignment and Experience Points Considerations:
+=======================================================
+
+
+1) How To "Turn Evil".  If your alignment is positive or slightly evil,
+----------------------  and you need -100 to begin robbing & stealing,
+you may load your holds with colonists and jettison them.  Repeat until
+your alignment is below 0, then go to the Underground and post enough
+credits (at 250 credits per point) to bring your align down to -100 or
+below.  This is most economical way, and has NO effect on XP Points.
+
+
+2) How to Obtain the Commission:  Go to the police station and post
+federation rewards (at 1,000 credits per point) to reach +500 alignment.
+Then "apply" for the commission, also at the police station.
+
+
+3) Obtain A Commission, Method Two:  Get another player to "go evil", as
+-----------------------------------  described above.  Once -100 evil,
+he can go to any port, and rob or steal from it. Then, repeat the crime
+at the same port, and get busted. Each bust results in -5 alignment
+points for this player.  It uses 1 turn for each -5 align points, and in
+a game with 500 turns per day, this player can reach -2,500 alignment
+the first day. It's best done by running a script.  Once the desired
+minus align is reached, the evil player should raise his XP points about
+10, building/detonating a planet.  Then disarm the "very evil" player
+and kill him.  If he had -2,500 alignment, then you will get +1,250, and
+poof, you're commissioned without even applying, and no cost.
+
+
+4) How To Turn Good Again:  If you became evil accidentally, you want
+--------------------------  to become good again.  If you are massively
+evil, the best way is to play your turns each day, and then before
+midnite, you can get killed in a Scout or Pod or self-destruct. This
+cuts your evil alignment in half.  Port upgrades work too.  When you've
+reached -50 alignment or above, then you may enter the police station,
+and cheaply post enough rewards to reach a zero or positive alignment.
+
+
+5) How To Turn Good Again, Method Two:  You can turn good again by
+--------------------------------------  killing another player that is
+MUCH more evil than you are.
+                                                        Page 40
+
+
+6) Massive Positive Alignment:  This is one of my favority "dirty"
+------------------------------  tricks.  Two players, one good, one
+evil, can make a deal, and they can kill each other 2 times every day
+for a coupla weeks.  Each kill greatly boosts the alignment of the
+killer.  After some time, the good guy will have +4,500,000 align, and
+the evil guy will have -4,500,00 alignment. This benefits the evil
+player, as he will get some of the good guy's XP Points.  And it
+benefits the good player, who gets a huge positive alignment.  Once the
+good guy has a very high + alignment, he is pretty much immune from
+attack by other good players, especially the real dangerous ones in an
+ISS with 50,000 fighters.  I love to sit at stardock and goad goodie
+players in ISS's into attacking me.  Every time they shoot at me, their
+alignment drops dramatically.  As soon as their align has dropped enough
+to become evil, they will be KILLED by Captain Zyrain, and no cost to
+me!  It is amusing to see how often this works!
+
+
+7) Federation Rewards:  One neat way to get a big positive alignment
+----------------------  boost is to find an Evil player.  First, go to
+the police station at Stardock, and be sure there is already a reward
+posted for this player, and that the reward is in the top 10.  This
+makes it possible to add your own bounty to the existing one.  If the
+Evil player's reward is listed in the top 10, you can post ALL your
+money on that player, and then go and kill him!  This produces a lovely
+alignment boost, and you can claim all your money back after the kill.
+
+
+
+============
+PLAYING GOOD
+============
+
+
+1) The Benefits of Playing Good:  "Good" players have the option of
+--------------------------------  buying an ISS ship, which is the
+absolute best for colonizing and everything else.  Staying good is
+your best option for staying alive, and building a massive empire.
+
+
+2) Efficient, Profitable Trading:  For trading port-pairs, the most
+---------------------------------  profit is available on ports where
+you deal only in equipment and organics.  Some pairs are better than
+others and you should record the best ones, and return to them often as
+part of a regular trade route.  It is most profitable to trade only
+until the available product percentage is high, and trade it down until
+one of the products is down to maybe 30% and no further.
+                                                        Page 41
+
+
+3) Colonizing:  Best done in an ISS ship using it's T-Warp capability.
+--------------  Load just enough fuel ore for the round trip, and T-Warp
+directly to Terra and back.  This way, it takes only 10 turns for a
+round trip. Better yet, if you have a planet with a lot of fuel ore on
+it, you can build a planetary ship transporter.  Using this option, load
+up only enough fuel for the return trip and not the trip out, and your
+round turn will cost you only 7 turns in an ISS..not bad!
+
+
+4) T-Warp Trading:  If no trading pair of adjacent ports is available,
+------------------  then you can trade non-adjacent ports, using T-Warp,
+as long as fuel ore is available to be bought at at least one of the 2
+ports, preferably both.  Get enuff fuel ore for the trip and then fill
+your holds with product to be sold, and then T-Warp to the other port
+and repeat.  This isn't as profitable as normal adjacent pairs trading,
+but it works nicely.  Only the ISS ship is suitable for this.
+
+
+5) Invasion Options For Good Players:  "Good" players have the option of
+-------------------------------------  owning an ISS, the best invasion
+ship there is.  It has the capability of carrying Photon Torpedos
+(P-Torps), and 50,000 fighters.  No other ship is quite like this!
+
+
+============
+PLAYING EVIL
+============
+
+
+1) The Benefits of Playing Evil:  Evil players are denied the option of
+--------------------------------  owning an ISS ship, but they have the
+capability of committing crimes. And, like in real life, crime does pay
+if you do it right!  An evil player can easily rob three times the
+profits as a good player can earn through trading.
+
+
+2) Robbing Credits:  Most ports have credits in them, available to be
+-------------------  robbed.  For a player that wishes to do crimes
+pretty much continuously, you should never rob credits in an amount more
+than 6-7 times your XP Points.  For example, if you have 3,000 XP, then
+you should rob no more than 21,000 credits each time.  Never rob the
+same port twice in a row, always rob another one in between.  Best is
+when you can locate two adjacent equipment selling ports...this is a
+great robbing pair. However, it is rare to find adjacent ports that both
+have available credits in them.  Your have the option of T-Warping to a
+distant port and robbing there, instead of at an adjacent port.  Crime
+varies throughout the week, it's difficult on Mondays and Tuesdays
+because you do get busted easier on those days.  For Mondays I limit my
+robbing to 3 times my XP, and for Tuesdays I limit it to 5 times XP.
+                                                        Page 42
+
+
+3) Stealing cargo:  Another crime to make money is the sell/steal
+------------------  routine.  Find a pair of adjacent ports that both
+buy equipment.  Bring a load of equipment in, and sell it at the first
+port.  Then, port again and steal it back!  Go to the other port and
+repeat.  Twhelper will optimise this, and you will eventually get 5 XP
+Points each time you sell.  Do not attempt to steal more holds of cargo
+than 1/50th of your XP points.  If you have 3,000 XP, you may steal 60
+holds of equipment, not more.  Again, crime doesn't pay as well at the
+start of the week, you get busted more often.
+
+
+4) Transporter Crime:  Both crimes listed above use up a certain amount
+---------------------  of turns, just like trading does.  For example in
+a Freighter, doing sell/steal loops uses up 8 turns round trip.  Robbing
+uses up 6 turns. Most of this is used in moving from one sector to
+another.  Instead of moving your ship to another sector after each
+crime, you can use the ship's transporter beam and go to another ship in
+the other sector and do the crime and beam back!  This works great, and
+saves a ton of turns. Sell/steal uses 6 turns this way instead of 8, and
+robbing uses 4 turns instead of 6.  The advantage is even greater if you
+are using a larger ship that needs 3 turns to move.  Also, you won't
+need an adjacent pair of ports for this, you can be several hops apart,
+limited only by your ships' transporter ranges.
+
+
+5) Getting Busted:  If you do the crime, you'll have to do the time. You
+------------------  will definitely get busted sooner or later, and
+probably you'll get busted regularly.  When it happens, you will lose
+10% of your XP Points (which is your safety level) plus some of your
+holds.  If you rob no more than 6-7 times your XP, and steal cargo no
+more than 1/50th your XP, your XP will remain reasonably constant.
+Doing larger crimes is easy to do, but not in the long run.  I have
+personally several times robbed 10 or 12 million credits in one crime,
+while sitting in an escape pod with only about 100 XP Points!   But,
+don't plan on doing it regularly.  There is quite a difference of
+opinion on how much to rob, and how many holds of cargo to steal, but I
+have done the math and kept records, and find that the levels mentioned
+above are the best ones to use for repeated crimes.  Once a port has
+busted you, you can never go back there, even to trade, until the bust
+is cancelled.  On Game Day 14, and multiples of 14, all busts are
+cancelled for everyone.  The other way to clear a bust is if someone
+else gets busted there.  This suggests that your friend can steal there
+until he gets busted, and then you can come back immediately.  However,
+he clears the bust only if he gets busted fair and square.  If he had
+simply done a crime there twice in a row, he will still get busted, but
+not clear your bust.  Always record the sector of your last crime, so
+you don't go there next.  Nothing wipes out this record, and you'll get
+busted if you do a crime at the same place twice in a row.  
+                                                        Page 43
+
+
+6) Triple Trading & Planet Busting:  Evil players keep losing XP points
+-----------------------------------  each time they get busted, and this
+reduces their earning capacity. When you have gotten busted too much,
+it'll be time to boost your XP again.  Triple Trading and Planet Busting
+are the best ways.  Both techniques are described in the section under
+Raising Your XP.
+
+
+7) The Effect of Minus Alignment:  There's been some discussion on this,
+---------------------------------  and again, I've kept records.  My
+conclusion is that having a really large negative alignment has utterly
+no effect at all.  Once it's greater than the -100 needed to do crimes,
+it doesn't matter in the slightest, one way or the other.  Having a
+large negative alignment does allow you to kill other evil players of
+less-evil alignment, and you will stay evil.
+
+
+8) Invasion Options For Evil Players:  Evil players lack the option of
+-------------------------------------  the ISS, but there are other
+ships available.  The CorpFlagship isn't bad.  One possibility is to use
+a CorpFlag and a Missile Cruiser carrying P-Torps.  Once in position,
+fire the torp and jump into the larger ship and go in.  The Ferrengi
+Dreadnought has a medium fighter capacity and can carry a Photon
+Torpedo, though these are not available until the Ferrengi decide to
+start building them.  Lastly, the Interdictor Cruisor isn't bad here, as
+it can carry 100,000 fighters and therefore can most likely take
+whatever quasar-cannons can shoot at it and still survive.  
+                                                        Page 44
+
+
+====================
+MISCELLANEOUS TOPICS
+====================
+
+
+Here's a few things that didn't fit in elsewhere, check em out:
+
+
+1) Towing:  You can tow other player or an unoccupied ship from one
+----------  sector to another sector, and with the new "Type 2" Twarp
+available, you can even do it via Twarp!  However, there are towing
+restrictions.  You cannot tow an player if he is in FedSpace. And, you
+cannot tow a player at all, if he has fighters on his ship. But, there's
+a way around this.  Have the player put all his figs down in the sector,
+then lock your tow-beam on him.  He then picks his fighters up again,
+and then you enter the sector number you're going to, and poof!  The
+other player comes along with you, with all his fighters!
+
+Towing is handy during invasions, as the ship being towed is not damaged
+as it enters the sector.  If the tow-truck ship is destroyed entering a
+sector, then the tow does not happen, and the ship or player being towed
+remains behind.  The tow-truck must survive entering the sector.
+
+
+2) Lost Comission:  If you somehow lost your Imperial Comission, perhaps
+------------------  by attacking a player of higher alignment, then you
+have a problem.  This happens when your alignment dropped below +1,000.
+If you got your original Comission at the Police Station by (A)pplying,
+then you cannot do this again.  You will have to raise your alignment
+back up to +1,000 by yourself (see above for techniques), but, we've
+found a loophole.  If you still have over +500 alignment, just go to the
+Police Station and post a reward of 1,000 credits per point needed to
+bring you back up to +1,000 align.  But, if you now have under +500
+alignment, there's a cheaper way.  Jettison Colonists, until you drop to
+-1 (very slightly evil), then go to the Police and post 501,000 credits
+and (A)pply again, and it works!  Having your align hit evil seems to
+wipe out the fact that you were ever comissioned, so you can do it
+again.  If you are stuck under +500 alignment, this method is cheaper.
+
+
+3) Colonist Life Cycle:  Colonists die from moving them around, loading
+-----------------------  and unloading products, landing on planets,
+etc.  But there is also a Life Cycle for them.  They breed and increase
+numbers every day for about a month, then the next month they tend to
+die off every day.  It seems to be about a 2 month cycle.
+                                                        Page 45
+
+
+4) Cloaks:  You use these to be completely hidden from other players,
+----------  when you are offline, however there are several flaws.  A
+density scanner will detect them by showing a "Yes" in the "Anom" column
+at the far right.  The anomoly is either a cloaked ship, or limpet
+mines.  It's easy to tell the difference, as limpets scan a value of 2
+per mine, whereas a cloaked ship scans zero.  If you really wanna know
+who it is, shoot a Photon Torpedo into his sector, and see what pops up!
+The torpedo disrupts cloaks very nicely.
+
+
+5) Limpit Mines:  Somewhat handy little buggers, they stick to the hull
+----------------  of any passing ship, and allow you to track their
+location.  Limpets are automatically removed when one ports at stardock
+for a small fee.
+
+
+6) Capturing Ships:  When you want to capture an alien ship, or a player
+-------------------  who happens to be offline, you can simply just
+shoot them.  But, each time you do, their ship automatically flees to
+the next sector, and this can use up a lot of turns chasing them.  So,
+just put a single toll fighter in each adjacent sector, and you can wail
+away at the victim and he will never move, so you can shoot small shots
+and capture his ship instead of destroying it.  When the victim is down
+to about 5 fighters, shoot only ONE at a time at him, and be patient.
+When capturing a Ferrengi, a single toll fighter is no enough, there
+must be a larger amount, generally equal to whatever the Ferrengi is
+carrying.  Ferrengi ships tend to blow up very easily, and many carry
+corbomite, so a caution is needed here.
+
+
+7) Evil Imperial StarShip:  Evil players cannot have an ISS, and if a
+--------------------------  goodie is in one and turns evil, Captain
+Zyrain will destroy him.  BUT, Zyrain does not enter a sector where
+there is a fighter, so as long as the Evil player stays strictly in
+sectors where his fighters are, he will remain safe forever.  If the
+evil player happens to teleport to another ship, then he will not be
+able to get back into the ISS.
+
+
+8) Helper Programs:  Downloads & Links to Author's home pages are
+-------------------  included on my web page at:
+                     http://bbs.rockpile.com/someguy/download.htm
+
+                                                        Page 46
+
+
+9) Density Scanner:  All it does is give you a density number.  Exactly
+-------------------  what does that number mean?  It gives you a total
+of the density of everything in the sector being scanned.  Here's a list
+of densities:
+
+        0 = Cloaked ship ('Anom' will show 'yes')
+        1 = Beacon
+        2 = Limpit Mine ('Anom' will show 'yes')
+        5 = One fighter
+       10 = Armid Mine
+       21 = Navigational Hazard of 1%
+       38 = Un-occupied ship
+       40 = Ship - either a player, alien or Ferrengi Assault Trader
+       50 = Blown up port
+      100 = Port, or Ferrengi Battle Cruiser or Ferrengi Dreadnought
+      500 = Planet
+      489 = Captain Zyrain, Federal
+      462 = Admiral Nelson, Federal
+      512 = Admiral Clausewitz, Federal
+       ?  = Ferrengi Overlord
+
+This is one way to tell how many invisible Limpit Mines are in a sector.
+For example, if the density scanner shows "Anom" = "yes" and a total
+density of 1046, and your holo-scan shows one planet (500) and one player
+(40) and 100 fighters (500), making a total density of 1040, which
+leaves 6 points unaccounted for.  Those 6 points would be 3 Limpit
+Mines.  There is always a possibility of a cloaked ship also, but you
+cannot tell for sure.  A second example, take the same holoscan, but the
+density is 1040, as it should be, but the 'anom' is still set to 'yes'.
+That means a cloaked ship, for sure.  It's time to go get a P-Torp!
+
+A cloaked ship shows zero density, but the other players may still find
+you by noticing the 'anom', and leave you a nasty surprise.  But, what
+if you had left one Limpit Mine before cloaking?  The other player would
+notice the density of 2, indicating the Limpit, and avoid going thru the
+sector, and not realize the possibility that you might be cloaked there!
+I'm willing to bet it'll work.
+
+
+10) Ship Passwords:  These passwords protect your ship from anyone
+-------------------  transporting into them.  But, the only players that
+could do that anyway are your own Corp Members, so passwords protect you
+only from your own corp.  But, if you need to be protected from
+them...what are they doing on your corp in the first place?
+                                                        Page 47
+
+
+11) Attacking Un-Occupied Ships:  Ships seem to have very low odds
+--------------------------------  against an attacker when they're not
+occupied.  I haven't done enough testing to be sure on this, but it
+looks like even an un-occupied ISS has only 0.8 combat odds.
+
+
+12) Sysop Settings:  The default setup of the game provides a cramped
+-------------------  game where most of the resources will be completely
+used up in the first week, and many players will just drop out then.
+Here's a list of suggested settings for the Sysop to use:
+
+        Sectors = 5,000
+        Port Density = double the default
+        Port Regeneration = 4 days
+        Turns per day = 800-1,000
+        Terran Colonists = 20,000 per day
+        Initial Fighters = 101
+        Initial Credits = 30,000
+        Photon Torpedo = disabled until Day 30, then set to 20 seconds.
+        Block SELL/STEAL = NO!
+
+These settings will provide a game where the resources might last
+indefinitely, and where players that get raided can start up from
+scratch again and not have to drop out.  Such a game can last for many
+months.
+
+
+13)  Using Bugs:  Due to it's complexity, the program has a history of
+----------------  bizarre "features" that were never intended by the
+author, and there are many players who who do nothing but search for
+new bugs to use.  It is never apparent that a bug has been found until
+the lowest ranking player in the game suddenly appears with a zillion
+fighters and blows away everything you worked months to build!  This is
+just about the same thing as walking up to chess players and kicking
+their board over!  If you discover a bug, please email details to this
+address:  support@hvs.com
+
+
+14) Revenge of The Ferrengi:  Does it exist?  Will they get revenge on
+----------------------------  you, if you kill them?  Much has been said
+and thought about this, and everyone has a story to tell of how the
+Ferrengi Overlord took over 50,000 of his fighters and 250 mines, and I
+have noticed that in the DOS version, the TEDitor does allow one to see
+the listings of Ferrengi grudges.
+                                                        Page 48
+
+
+For years, I heeded the conventional wisdom, left the Ferrengi alone,
+and still got raided, even though I had not touched a single one of
+their ships.  Conversely, in a recent game, I blocked Planet Ferrengal
+off with sector fighters, and all Ferrengi ships had to go thru the one
+avenue I'd left open for them, where they were promptly trapped by my
+Interdictor Planet.  Several times a day, I would log on, and go murder
+them all.  I was killing Ferrengi ships at the rate of 50 or 60 a day.
+and I never did get raided at all, though I did manage to get huge
+points for it!
+
+After much thought, my conclusion is that Ferrengi attacks are totally
+random, and that the Ferrengi don't really do anything in revenge.
+Can't tell what the future holds, but for now, ignore it.
+
+
+15) Capturing The Ferrengi Scorpion:  Rumour has it that you *CAN*
+------------------------------------  capture the Ferrengi Overlord's
+ship, the Scorpion!  Here is the capture method as it was described to
+me:  Lay out a large field of single toll fighters, and wait until the
+Overlord disrupts one of them. Rush to the location, and bring a fully-
+loaded Interdictor Cruiser.  Use the Interdicter Cruiser to prevent the
+Overlord's escape from the sector.  While he is held there, your team-
+mate in a Ferrengi Dreadnought shoots fighters at the Overlord until the
+Scorpion is captured.  It takes a very large number of fighters to
+accomplish this.  The key is to attack in a Ferrengi Dreadnought which
+is the only ship capable of harming the Overlord.  I have never seen
+this done, so I cannot swear that this works, but I have heard it from
+several sources, so I am itching to try it!  I want a Scorpion!   Watch
+my web-page for an update on this as soon as I know for sure.
+
+
+16) Changes in Bust Clearing:  In the MBBS version of the game only, in
+-----------------------------  versions 2.02 and 2.03, busts no longer
+stay around until the next multiple of Day 14.  Now all but your very
+last bust are automatically cancelled each night at cleanup. Now you
+need only keep track of today's busts, and tomorrow morning toss your
+record, and keep track only of yesterday's "last robbed" sector, and
+"last bust" sector.
+
+
+======================================================================
+
+                                                        Page 49
+
+
+
+
+
+
+Credits:
+
+
+>>> A Big Hug to Linda, for her many suggestions and additions and
+    information she provided, and for being a great Corp-Mate!
+
+
+>>> A Big Hug to Marcy, for proof-reading, editing and additions, and
+    especially for being an excellent opponent!
+
+
+>>> A Big Hug to Karen, for the constant abuse she gave me, dragging me
+    back to my real job, so I didn't go bankrupt while writing this.
+
+
+>>> Thanks to all the players that emailed me their suggestions!
+
+
+
+
+
+
+Revision History:
+----------------
+
+January, 1996:  Original version.
+
+May, 1997:  This version.  Major rewrite, greatly expanded, numerous
+            errors corrected.
+                                                        Page 50
+
+
+
+
+
+
+=================
+Begging For Help!
+=================
+
+
+This Player's Manual has taken me about a zillion hours of work to
+research and produce, and it is provided to you free of charge.
+
+But alas, my girlfriends are very expensive to own & operate, and I
+wonder how I'll be able to afford the medical bills when they all find
+out about each other, so I am taking this opportunity to beg you for
+some help.
+
+If you enjoyed this Manual, and found it informative and useful, you
+might consider stuffing one dollar or even five dollars into an
+envelope and mailing it to me at:
+
+                     >  Fred Wehner
+                     >  P.O. Box 2275
+                     >  Clifton,  NJ.  07015
+
+Once you've done this, your conscience will no longer bother you, and
+you'll sleep easy, secure in the knowledge that you have returned the
+favor, and encouraged me to keep up work on the Manual and expand it
+further.
+
+If you enclose your email address with the donation, I'll be more than
+pleased to notify you directly of any revisions to the manual, and of
+any new up-to-the-minute information that I've posted to my web-page.
+This way, you'll be the first one on the block to get the latest word!
+
+For a 10 dollar donation, I'll even be happy to respond to your email
+requests for additional info and I'll email you detailed answers and
+explanations to whatever questions you may have.  Is that a deal or
+what?
+
+
+
+
+
+======================================================================
+Suggestions for additional topics are requested...please email me!
