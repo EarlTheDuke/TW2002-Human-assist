@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-03 07:51 PT - Fable - a leaver's planets drop the corp ticker
+- While the corp still has members, the leaver keeps the planet and loses the ticker. Mates keep their own planets and the ticker on them.
+
 ### 2026-10-03 06:51 PT - Fable - one page on what the planet work changed
 - The summary lists each planet slice in plain words. One script runs every planet lab and fails if a key line moves.
 

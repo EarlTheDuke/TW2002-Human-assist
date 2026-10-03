@@ -6,7 +6,7 @@ from tests.test_phase_abc import _make_universe
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.combat import _are_allied
 from tw2k.engine.models import Alliance, Commodity, Corporation, EventKind, Planet, PlanetClass, Universe
-from tw2k.engine.observation import event_facts
+from tw2k.engine.observation import build_observation, event_facts
 from tw2k.engine.runner import apply_action
 
 ORPHAN_KEYS = {"planet_id", "planet_name", "former_owner", "citadel_level", "fighters"}
@@ -60,7 +60,7 @@ def test_disband_keeps_live_owners_and_round_trips() -> None:
     assert mate.corp_ticker is None
     assert ceo.corp_ticker == "ZZ"
     assert mine.owner_id == ceo.id and mine.corp_ticker == "ZZ"
-    assert theirs.owner_id == mate.id and theirs.corp_ticker == "ZZ"
+    assert theirs.owner_id == mate.id and theirs.corp_ticker is None
     assert not any(ev.kind is EventKind.PLANET_ORPHANED for ev in u.events)
     second = _leave(u, ceo)
     assert second.ok, second.error
@@ -123,7 +123,7 @@ def test_leaver_cannot_manage_a_corp_mate_planet() -> None:
     left = _leave(u, leaver)
     assert left.ok, left.error
     assert planet.owner_id == mate.id and planet.corp_ticker == "ZZ"
-    assert own.owner_id == leaver.id and own.corp_ticker == "ZZ"
+    assert own.owner_id == leaver.id and own.corp_ticker is None
     assert "ZZ" in u.corporations
     tries = [
         Action(kind=ActionKind.PLANET_TRANSWARP, args={"planet_id": planet.id, "dest_sector": other}),
@@ -141,6 +141,50 @@ def test_leaver_cannot_manage_a_corp_mate_planet() -> None:
     assert planet.treasury == 900
     assert planet.owner_id == mate.id
     assert leaver.planet_landed == planet.id
+
+
+def test_partial_leave_drops_the_leavers_ticker() -> None:
+    u, (leaver, mate, *_) = _make_universe(seed=21005)
+    sid = next(sector_id for sector_id in u.sectors if sector_id > 10)
+    _corp(u, leaver, mate)
+    mine = _plant(u, sid, leaver.id, 88651)
+    mine.fighters = 40
+    mine.shields = 12
+    theirs = _plant(u, sid, mate.id, 88652)
+    fuel = mine.stockpile[Commodity.FUEL_ORE]
+    _stand(u, mate, sid, mine.id)
+    left = _leave(u, leaver)
+    assert left.ok, left.error
+    assert "ZZ" in u.corporations
+    assert leaver.corp_ticker is None
+    assert mate.corp_ticker == "ZZ"
+    assert mine.owner_id == leaver.id and mine.corp_ticker is None
+    assert mine.fighters == 40 and mine.shields == 12
+    assert mine.treasury == 900
+    assert mine.stockpile[Commodity.FUEL_ORE] == fuel
+    assert theirs.owner_id == mate.id and theirs.corp_ticker == "ZZ"
+    assert left.turns_spent == 0
+    refused = apply_action(
+        u, mate.id, Action(kind=ActionKind.DEPOSIT_TREASURY, args={"planet_id": mine.id, "amount": 100}),
+    )
+    assert refused.ok is False
+    assert refused.error == "planet not owned by you or your corp"
+    assert refused.turns_spent == 0
+    assert mine.treasury == 900
+    _stand(u, leaver, sid, theirs.id)
+    back = apply_action(
+        u, leaver.id, Action(kind=ActionKind.DEPOSIT_TREASURY, args={"planet_id": theirs.id, "amount": 100}),
+    )
+    assert back.ok is False
+    assert back.error == "planet not owned by you or your corp"
+    assert back.turns_spent == 0
+    assert theirs.owner_id == mate.id and theirs.corp_ticker == "ZZ"
+    for pid in u.players:
+        obs = build_observation(u, pid)
+        assert obs.self_id == pid
+    seen = build_observation(u, leaver.id)
+    assert any(row["id"] == mine.id for row in seen.owned_planets)
+    assert not any(row["id"] == theirs.id for row in seen.owned_planets)
 
 
 def test_allied_landing_is_still_a_siege() -> None:

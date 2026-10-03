@@ -1849,6 +1849,17 @@ def _release_dissolved_corp_planets(universe: Universe, ticker: str) -> None:
         )
 
 
+def _detach_leaver_planets(universe: Universe, pid: str, ticker: str) -> None:
+    """A partial leave drops the ticker from the leaver's own planets.
+
+    Planets owned by anyone else keep the ticker. The leaver keeps owner_id,
+    fighters, shields, treasury, and stockpile.
+    """
+    for planet in universe.planets.values():
+        if planet.owner_id == pid and planet.corp_ticker == ticker:
+            planet.corp_ticker = None
+
+
 def _handle_corp_leave(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     if player.corp_ticker is None:
@@ -1857,10 +1868,13 @@ def _handle_corp_leave(universe: Universe, pid: str, action: Action) -> ActionRe
     corp.member_ids = [m for m in corp.member_ids if m != pid]
     player.corp_ticker = None
     # There is no separate disband action. The last member leaving removes
-    # the corp. While anyone remains, planets keep the ticker.
+    # the corp. While anyone remains, only the leaver's own planets lose
+    # the ticker.
     if not corp.member_ids:
         _release_dissolved_corp_planets(universe, corp.ticker)
         universe.corporations.pop(corp.ticker, None)
+    else:
+        _detach_leaver_planets(universe, pid, corp.ticker)
     universe.emit(
         EventKind.CORP_LEAVE,
         actor_id=pid,
