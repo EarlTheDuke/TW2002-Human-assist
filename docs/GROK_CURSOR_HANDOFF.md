@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-03 14:23 PT - Fable - the trade fuzz draws random legal trades
+- The quote is checked against the written formula, not against the price function that made it.
+
 ### 2026-10-03 13:11 PT - Fable - a port quote follows its hidden personality
 - Each commodity keeps an MCIC and a productivity from the game seed. Experience up to 1000 makes buying cheaper and selling pay more. The base prices stay.
 

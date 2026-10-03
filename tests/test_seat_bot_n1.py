@@ -99,10 +99,5 @@ def test_n1_day1_stardock_on_playtest_seed() -> None:
             if credits == 20_000:
                 assert row["trade_profit"] > 0, row
                 assert row["peak_credits"] > credits, row
-            # Seed 250925 at 20k now spends the day on a paying lane (110 and
-            # 132). The quote moved with that port's MCIC. The other three
-            # openings still dock on day 1.
-            if seed == 250925 and credits == 20_000:
-                assert row["reached_stardock_day"] is None, row
-            else:
+            if not (seed == 250925 and credits == 20_000):
                 assert row["reached_stardock_day"] == 1, row

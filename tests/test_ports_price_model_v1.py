@@ -172,8 +172,14 @@ def test_port_trade_fuzz_passes() -> None:
     assert proc.stdout.count("| pass |") == 2
 
 
-def test_port_trade_fuzz_fails_when_a_side_is_zero() -> None:
-    proc = _fuzz("--seeds", "1", "--force-zero", "sell")
+def test_port_trade_fuzz_fails_when_a_kind_is_zero() -> None:
+    proc = _fuzz("--seeds", "1", "--force-zero", "haggle_accepted")
     assert proc.returncode == 1, proc.stdout + proc.stderr
-    assert "coverage: sell never succeeded" in proc.stdout
+    assert "coverage: haggle_accepted never succeeded" in proc.stdout
     assert "port_trade_fuzz: FAIL" in proc.stdout
+
+
+def test_fuzz_quotes_are_not_read_from_the_engine_price_functions() -> None:
+    text = FUZZ.read_text(encoding="utf-8")
+    assert "port_sell_price" not in text
+    assert "port_buy_price" not in text
