@@ -346,6 +346,8 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error="out of turns for this day")
 
     dest = universe.sectors[target_id]
+    if player.photon_damped_sector_id == player.sector_id and target_id != player.sector_id:
+        _clear_photon_damp(player, player.sector_id)
     deaths_before = player.deaths
     damage = _apply_sector_hazards(universe, pid, dest)
 
@@ -745,6 +747,59 @@ def _handle_wait(universe: Universe, pid: str, action: Action) -> ActionResult:
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def _photon_damps_planet(player, planet) -> bool:
+    """True when this ship's photon damp skips this planet's cannons.
+
+    A citadel of level 5 or higher with at least QUASAR_PHOTON_SHIELD_MIN
+    shields ignores the photon. Below L5 or below that shield count is damped.
+    """
+    if getattr(player, "photon_damped_sector_id", None) != planet.sector_id:
+        return False
+    level = int(planet.citadel_level or 0)
+    shields = int(planet.shields or 0)
+    if level >= 5 and shields >= K.QUASAR_PHOTON_SHIELD_MIN:
+        return False
+    return True
+
+
+def _clear_photon_damp(player, sector_id: int) -> None:
+    if getattr(player, "photon_damped_sector_id", None) == sector_id:
+        player.photon_damped_sector_id = None
+
+
+def _mark_photon_planet_damp(universe: Universe, shooter_id: str, target) -> None:
+    """Mark the hit ship when its sector has a planet the photon can damp.
+
+    The flag stays through a later warp into that sector so the sector cannon
+    can skip, then through the landing. Leaving the sector or finishing the
+    landing clears it. Planets at citadel L5 with enough shields are not marked.
+    """
+    sector = universe.sectors.get(target.sector_id)
+    if sector is None:
+        return
+    vulnerable = []
+    for planet_id in sector.planet_ids:
+        planet = universe.planets.get(int(planet_id))
+        if planet is None:
+            continue
+        level = int(planet.citadel_level or 0)
+        shields = int(planet.shields or 0)
+        if level >= 5 and shields >= K.QUASAR_PHOTON_SHIELD_MIN:
+            continue
+        vulnerable.append(planet)
+    if not vulnerable:
+        return
+    target.photon_damped_sector_id = sector.id
+    for planet in vulnerable:
+        universe.emit(
+            EventKind.QUASAR_DAMPED,
+            actor_id=shooter_id,
+            sector_id=sector.id,
+            payload={"planet_id": planet.id, "damped": True},
+            summary=f"Photon damped the cannons on {planet.name}",
+        )
+
+
 def _planet_odds_fight(player, planet, on_shields_down=None) -> tuple[int, int, int, list[dict]]:
     """One shield soak, then reaction waves, then the defensive grind.
 
@@ -780,6 +835,11 @@ def _planet_odds_fight(player, planet, on_shields_down=None) -> tuple[int, int, 
     pct = max(0, min(100, int(getattr(planet, "military_reaction_pct", 0) or 0)))
     reaction = d_fighters * pct // 100
     defenders = d_fighters - reaction
+    # A photon damp skips offensive reaction fighters. Shields already ran,
+    # and the defensive grind below still runs.
+    if _photon_damps_planet(player, planet):
+        reaction = 0
+        defenders = d_fighters
     spec = K.SHIP_SPECS.get(player.ship.ship_class.value, {}) or {}
     wave_cap = (K.PLANET_OFFENSE_WAVE_NUM * (
         int(spec.get("max_fighters", 0) or 0) + int(spec.get("max_shields", 0) or 0)
@@ -855,20 +915,25 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         fighters_before = player.ship.fighters
         _apply_sector_hazards(universe, pid, sector, entry_verb="landing")
         if player.deaths > deaths_before:
+            _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
         if fighters_before > 0 and player.ship.fighters <= 0:
             killer = sector.fighters.owner_id if sector.fighters is not None else None
             _destroy_ship(universe, pid, reason="sector_fighters", killer_id=killer)
+            _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
         if _fire_atmospheric_quasar(universe, pid, planet):
+            _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
         if int(planet.shields) <= 0 and _fire_atmospheric_quasar(universe, pid, planet):
+            _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
 
     shields_already_down = hostile and int(planet.shields) <= 0
     if hostile and planet.fighters <= 0 and planet.shields > 0 and player.ship.fighters <= 0:
         # An empty ship cannot break shields, and there are no planet fighters
         # to destroy it. Repel with the shields and the ship unchanged.
+        _clear_photon_damp(player, sector.id)
         return ActionResult(ok=False, error="planetary defenses repelled landing", turns_spent=cost)
     if hostile and (planet.fighters > 0 or planet.shields > 0):
         def _atm_after_shields() -> None:
@@ -909,8 +974,10 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         if a_fighters <= 0 or player.deaths > deaths_at_fight:
             if player.deaths == deaths_at_fight:
                 _destroy_ship(universe, pid, reason="planet_defense", killer_id=planet.owner_id)
+            _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
         if d_shields > 0 or d_fighters > 0:
+            _clear_photon_damp(player, sector.id)
             return ActionResult(ok=False, error="planetary defenses repelled landing", turns_spent=cost)
         # Planet defenders wiped — fall through and seize.
         planet.owner_id = pid
@@ -951,6 +1018,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             + (" — SEIZED!" if hostile else "")
         ),
     )
+    _clear_photon_damp(player, sector.id)
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -1888,6 +1956,7 @@ def _handle_photon_missile(universe: Universe, pid: str, action: Action) -> Acti
         payload={"target": target_id, "disabled_ticks": target.ship.photon_disabled_ticks},
         summary=f"!!! {target.name}'s fighters scrambled — offline for {target.ship.photon_disabled_ticks} ticks !!!",
     )
+    _mark_photon_planet_damp(universe, pid, target)
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -2281,6 +2350,8 @@ def _apply_sector_quasar(universe: Universe, pid: str, sector) -> None:
             return
         if planet.owner_id is None or _are_allied(universe, pid, planet.owner_id):
             continue
+        if _photon_damps_planet(player, planet):
+            continue
         if int(planet.citadel_level or 0) < K.QUASAR_MIN_LEVEL:
             continue
         pct = int(planet.quasar_sector_pct or 0)
@@ -2310,6 +2381,8 @@ def _atm_quasar_shot(fuel: int, pct: int) -> tuple[int, int]:
 def _fire_atmospheric_quasar(universe: Universe, pid: str, planet) -> bool:
     """One atmosphere shot. True when this shot destroyed the ship."""
     player = universe.players[pid]
+    if _photon_damps_planet(player, planet):
+        return False
     if int(planet.citadel_level or 0) < K.QUASAR_MIN_LEVEL:
         return False
     pct = int(planet.quasar_atm_pct or 0)

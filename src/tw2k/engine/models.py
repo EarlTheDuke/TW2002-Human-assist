@@ -190,6 +190,7 @@ class EventKind(str, Enum):
     PLANET_MILITARY_REACTION = "planet_military_reaction"
     PLANET_TREASURY = "planet_treasury"
     QUASAR_FIRE = "quasar_fire"
+    QUASAR_DAMPED = "quasar_damped"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"
@@ -400,6 +401,8 @@ class Player(BaseModel):
     ship: Ship = Field(default_factory=Ship)
     sector_id: int = K.STARDOCK_SECTOR
     planet_landed: int | None = None
+    # Sector where a photon damped planet cannons for this ship's one approach.
+    photon_damped_sector_id: int | None = None
     corp_ticker: str | None = None
     turns_today: int = 0
     turns_per_day: int = K.STARTING_TURNS_PER_DAY
