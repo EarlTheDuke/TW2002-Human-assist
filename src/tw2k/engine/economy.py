@@ -15,41 +15,69 @@ def _stock_fraction(port: Port, commodity: Commodity) -> float:
     return max(0.0, min(1.0, s.current / s.maximum))
 
 
-def port_sell_price(port: Port, commodity: Commodity) -> int:
+def _stored_mcic(port: Port, commodity: Commodity) -> int:
+    stored = port.mcic.get(commodity)
+    if stored is not None:
+        return int(stored)
+    if port.buys(commodity):
+        return K.PORT_MCIC_DEFAULT_BUY
+    return K.PORT_MCIC_DEFAULT_SELL
+
+
+def _experience_span(experience: int) -> float:
+    if experience <= 0:
+        return 0.0
+    return min(1.0, experience / K.PORT_PRICE_EXPERIENCE_CAP)
+
+
+def _unit_price(base: int, raw: float) -> int:
+    cap = base * K.PORT_UNIT_PRICE_MAX_MULT
+    price = round(raw)
+    if price < 1:
+        return 1
+    if price > cap:
+        return cap
+    return price
+
+
+def port_sell_price(port: Port, commodity: Commodity, experience: int = 0) -> int:
     """Price when the PORT sells this commodity TO the player.
 
-    Classic TW2002 swings: a full-stock port unloads cheaply (wants to
-    clear inventory), an empty one charges a premium. Range roughly
-    0.60x -> 1.25x base. Widened because the day-33 evaluation match
-    showed agents abandoning port trade for planet/orphan play after only
-    a few tiny loops; a starter 20-hold trip needs to produce visible cash.
-    """
-    base = K.COMMODITY_BASE_PRICE[commodity.value]
-    if port.class_id == PortClass.FEDERAL:
-        return base  # fixed, no discount
-    frac = _stock_fraction(port, commodity)
-    # frac=1 (full stock): mult=0.60 (fire sale to clear inventory)
-    # frac=0 (empty):      mult=1.25 (premium for scarcity)
-    mult = 1.25 - 0.65 * frac
-    return max(1, round(base * mult))
-
-
-def port_buy_price(port: Port, commodity: Commodity) -> int:
-    """Price when the PORT buys this commodity FROM the player.
-
-    A buy-port's `stock.current` counts how many units it has already
-    purchased; low stock = high demand = the port pays MORE. Range
-    roughly 0.75x (glut) -> 1.45x (starved). This keeps early routes
-    competitive with Genesis/orphan openings during evaluation matches.
+    Full stock is cheaper, empty stock is dearer (0.60x to 1.25x base).
+    A higher MCIC charges more. Experience up to the cap makes it cheaper.
+    A federal port stays at the base price.
     """
     base = K.COMMODITY_BASE_PRICE[commodity.value]
     if port.class_id == PortClass.FEDERAL:
         return base
     frac = _stock_fraction(port, commodity)
-    # frac=0 (empty, starved): mult=1.45 (pays premium)
-    # frac=1 (glutted):        mult=0.75 (pays bargain)
-    mult = 1.45 - 0.70 * frac
-    return max(1, round(base * mult))
+    stock_mult = 1.25 - 0.65 * frac
+    mcic_mult = max(
+        0.05,
+        1.0 + (_stored_mcic(port, commodity) - K.PORT_MCIC_DEFAULT_SELL) * K.PORT_MCIC_POINT,
+    )
+    exp_mult = 1.0 - K.PORT_EXPERIENCE_BUY_DISCOUNT * _experience_span(experience)
+    return _unit_price(base, base * stock_mult * mcic_mult * exp_mult)
+
+
+def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int:
+    """Price when the PORT buys this commodity FROM the player.
+
+    Low stock pays more, a full port pays less (0.75x to 1.45x base).
+    A more negative MCIC pays more. Experience up to the cap pays more.
+    A federal port stays at the base price.
+    """
+    base = K.COMMODITY_BASE_PRICE[commodity.value]
+    if port.class_id == PortClass.FEDERAL:
+        return base
+    frac = _stock_fraction(port, commodity)
+    stock_mult = 1.45 - 0.70 * frac
+    mcic_mult = max(
+        0.05,
+        1.0 + (K.PORT_MCIC_DEFAULT_BUY - _stored_mcic(port, commodity)) * K.PORT_MCIC_POINT,
+    )
+    exp_mult = 1.0 + K.PORT_EXPERIENCE_SELL_BONUS * _experience_span(experience)
+    return _unit_price(base, base * stock_mult * mcic_mult * exp_mult)
 
 
 def can_trade(port: Port, commodity: Commodity, qty: int, side: str) -> tuple[bool, str]:
@@ -101,7 +129,10 @@ def execute_trade(
     if not ok:
         return False, 0, 0, err, None
 
-    listed = port_sell_price(port, commodity) if side == "buy" else port_buy_price(port, commodity)
+    xp = int(player.experience)
+    listed = (
+        port_sell_price(port, commodity, xp) if side == "buy" else port_buy_price(port, commodity, xp)
+    )
     offered = offered_unit_price if offered_unit_price is not None else listed
 
     # Haggle success probability: closer to fair => higher chance.

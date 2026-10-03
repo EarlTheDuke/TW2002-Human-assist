@@ -43,6 +43,26 @@ FEDSPACE_SECTORS = set(range(1, 11))
 PORT_DEFAULT_MAX_STOCK = 3000
 PORT_REGEN_PER_DAY = 0.05  # 5% per game day toward max
 
+# Hidden port personality. docs/playtests/ports/PRICE_MODEL.md.
+# MCIC is max change in cost, one number per commodity, -100..100.
+# Positive sells that product. Negative buys it. 50 or -50 is called average.
+# A player-made port sells at 50 and buys at -60. A missing value uses those.
+PORT_MCIC_MIN = -100
+PORT_MCIC_MAX = 100
+PORT_MCIC_DEFAULT_SELL = 50
+PORT_MCIC_DEFAULT_BUY = -60
+# Planet-trade equipment chart: about 0.55% of the quote per MCIC point.
+PORT_MCIC_POINT = 0.0055
+# Buying gets cheaper and selling pays more until about 1000 experience.
+PORT_PRICE_EXPERIENCE_CAP = 1000
+PORT_EXPERIENCE_BUY_DISCOUNT = 0.226  # 11760 -> 9097 at a +50 sell port
+PORT_EXPERIENCE_SELL_BONUS = 0.069  # 32405 -> 34646 at a -50 buy port
+# MBBS productivity cap is 3276 (32,760 holds). Gold mode is 6553.
+# Not used for regen in this slice.
+PORT_PRODUCTIVITY_MAX = 3276
+# A unit quote stays inside 1 .. base * this.
+PORT_UNIT_PRICE_MAX_MULT = 4
+
 # --- Ships --------------------------------------------------------------------
 
 SHIP_SPECS: dict[str, dict] = {

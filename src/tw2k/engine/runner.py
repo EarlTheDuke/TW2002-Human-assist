@@ -553,8 +553,8 @@ def _handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
                         "current": s.current,
                         "max": s.maximum,
                         "price": (
-                            port_buy_price(w.port, c) if w.port.buys(c)
-                            else port_sell_price(w.port, c)
+                            port_buy_price(w.port, c, player.experience) if w.port.buys(c)
+                            else port_sell_price(w.port, c, player.experience)
                         ),
                         "side": "buys_from_player" if w.port.buys(c) else "sells_to_player",
                     }
@@ -2993,10 +2993,10 @@ def _record_port_intel(player, sector_id: int, port, *, universe=None) -> None:
             "max": s.maximum,
         }
         if port.buys(c):
-            entry["price"] = port_buy_price(port, c)
+            entry["price"] = port_buy_price(port, c, player.experience)
             entry["side"] = "buys_from_player"
         elif port.sells(c):
-            entry["price"] = port_sell_price(port, c)
+            entry["price"] = port_sell_price(port, c, player.experience)
             entry["side"] = "sells_to_player"
         stock[c.value] = entry
     # Prefer live universe.day, fall back to whatever was last recorded

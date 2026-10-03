@@ -178,7 +178,15 @@ def _all_can_reach(adj: dict[int, set[int]], target: int, n: int) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _make_port(rng: random.Random, class_id: PortClass, sector_id: int) -> Port:
+def _hidden_port_stats(seed: int, sector_id: int, commodity: Commodity, buys: bool) -> tuple[int, int]:
+    """MCIC and productivity from the game seed. Does not touch `rng`."""
+    side = random.Random(f"tw2k-port-hidden:{seed}:{sector_id}:{commodity.value}")
+    mcic = side.randint(K.PORT_MCIC_MIN, -1) if buys else side.randint(1, K.PORT_MCIC_MAX)
+    productivity = side.randint(1, K.PORT_PRODUCTIVITY_MAX)
+    return mcic, productivity
+
+
+def _make_port(rng: random.Random, class_id: PortClass, sector_id: int, seed: int) -> Port:
     stock: dict[Commodity, PortStock] = {}
     mapping = {
         0: Commodity.FUEL_ORE,
@@ -186,6 +194,8 @@ def _make_port(rng: random.Random, class_id: PortClass, sector_id: int) -> Port:
         2: Commodity.EQUIPMENT,
     }
     trades = K.PORT_CLASS_TRADES[int(class_id)]
+    mcic: dict[Commodity, int] = {}
+    productivity: dict[Commodity, int] = {}
     for idx, deal in enumerate(trades):
         if deal is None:
             continue
@@ -193,9 +203,18 @@ def _make_port(rng: random.Random, class_id: PortClass, sector_id: int) -> Port:
         maximum = K.PORT_DEFAULT_MAX_STOCK + rng.randint(-500, 1500)
         current = int(maximum * rng.uniform(0.35, 0.95))
         stock[commodity] = PortStock(current=current, maximum=maximum)
+        hidden_mcic, hidden_prod = _hidden_port_stats(seed, sector_id, commodity, deal is True)
+        mcic[commodity] = hidden_mcic
+        productivity[commodity] = hidden_prod
 
     name = _port_name(rng, sector_id)
-    return Port(class_id=class_id, stock=stock, name=name)
+    return Port(
+        class_id=class_id,
+        stock=stock,
+        name=name,
+        mcic=mcic,
+        productivity=productivity,
+    )
 
 
 def _port_name(rng: random.Random, sector_id: int) -> str:
@@ -316,9 +335,9 @@ def generate_universe(config: GameConfig) -> Universe:
         if fed_sid == K.STARDOCK_SECTOR:
             continue
         if rng.random() < 0.6:
-            port = _make_port(rng, PortClass.FEDERAL, fed_sid)
+            port = _make_port(rng, PortClass.FEDERAL, fed_sid, config.seed)
             # Federal ports actually trade all three at fixed price — we model as class 7 (BBB) equivalent
-            port = _make_port(rng, PortClass.CLASS_7_BBB, fed_sid)
+            port = _make_port(rng, PortClass.CLASS_7_BBB, fed_sid, config.seed)
             port.class_id = PortClass.FEDERAL
             sectors[fed_sid].port = port
 
@@ -326,7 +345,7 @@ def generate_universe(config: GameConfig) -> Universe:
     for sid in range(max(K.FEDSPACE_SECTORS) + 1, n + 1):
         if rng.random() < K.PORT_SPAWN_PROBABILITY:
             cls = _pick_port_class(rng)
-            sectors[sid].port = _make_port(rng, cls, sid)
+            sectors[sid].port = _make_port(rng, cls, sid, config.seed)
 
     universe = Universe(config=config, sectors=sectors)
 

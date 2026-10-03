@@ -258,6 +258,10 @@ class Port(BaseModel):
     class_id: PortClass
     stock: dict[Commodity, PortStock] = Field(default_factory=dict)
     experience: dict[str, float] = Field(default_factory=dict)  # per-player familiarity 0..1
+    # Hidden per commodity. Never copy these into a seat or spectator payload.
+    # Empty means "use the default" so an older save still loads.
+    mcic: dict[Commodity, int] = Field(default_factory=dict)
+    productivity: dict[Commodity, int] = Field(default_factory=dict)
     name: str = ""
 
     @property

@@ -195,7 +195,7 @@ def _preview_one(
         if name == "buy":
             unit = args.get("unit_price")
             est_unit = int(unit) if isinstance(unit, int) else port_sell_price(
-                port, commodity
+                port, commodity, player.experience
             )
             if not port.sells(commodity):
                 return StepPrediction(
@@ -220,7 +220,7 @@ def _preview_one(
         if name == "sell":
             unit = args.get("unit_price")
             est_unit = int(unit) if isinstance(unit, int) else port_buy_price(
-                port, commodity
+                port, commodity, player.experience
             )
             if not port.buys(commodity):
                 return StepPrediction(
