@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-03 09:12 PT - Fable - random planet actions must keep the books straight
+- Forty fixed seeds each run 600 legal planet actions. A failed action that is not a fight spends nothing. No rule broke.
+
 ### 2026-10-03 07:51 PT - Fable - a leaver's planets drop the corp ticker
 - While the corp still has members, the leaver keeps the planet and loses the ticker. Mates keep their own planets and the ticker on them.
 
