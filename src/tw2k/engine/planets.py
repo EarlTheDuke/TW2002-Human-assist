@@ -4,8 +4,8 @@ Pulled out of `engine.runner` during the Phase 6 split. Called from
 `runner.tick_day` after port regen + Ferrengi movement:
 
     * `_complete_citadels(universe)` — promote any planet whose
-      `citadel_complete_day` has arrived; grant the L2+ garrison bonus
-      and award XP to the owner.
+      `citadel_complete_day` has arrived; apply the gift constants
+      (0 adds nothing) and award XP to the owner.
     * `_advance_planets(universe)` — per-class production matrix
       converts colonist head-count into commodity stockpile, plus a
       light organics-gated growth step.
@@ -135,11 +135,14 @@ def _complete_citadels(universe: Universe) -> None:
             old = planet.citadel_level
             planet.citadel_level = planet.citadel_target
             planet.citadel_complete_day = None
-            # Garrison bonus at L2 and up. Not a named CITADEL_PERK power.
-            # Fighters floor is 1000 * level. Shields floor is 250 * level.
+            # Gift floor at L2 and up. A zero constant changes nothing.
             if planet.citadel_level >= 2:
-                planet.fighters = max(planet.fighters, 1000 * planet.citadel_level)
-                planet.shields = max(planet.shields, 250 * planet.citadel_level)
+                gift_fighters = K.CITADEL_GIFT_FIGHTERS_PER_LEVEL * planet.citadel_level
+                gift_shields = K.CITADEL_GIFT_SHIELDS_PER_LEVEL * planet.citadel_level
+                if gift_fighters > 0:
+                    planet.fighters = max(planet.fighters, gift_fighters)
+                if gift_shields > 0:
+                    planet.shields = max(planet.shields, gift_shields)
             universe.emit(
                 EventKind.CITADEL_COMPLETE,
                 sector_id=planet.sector_id,
