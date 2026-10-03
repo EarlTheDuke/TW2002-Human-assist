@@ -211,6 +211,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.PLANET_TREASURY: ("planet_id", "direction", "amount"),
     EventKind.QUASAR_FIRE: ("planet_id", "mode", "damage"),
     EventKind.QUASAR_DAMPED: ("planet_id", "damped"),
+    EventKind.INTERDICT: ("planet_id", "ship_name"),
     EventKind.BUILD_CITADEL: ("planet_id", "level_target", "completes_day", "cost_cr", "cost_col"),
     EventKind.CITADEL_COMPLETE: ("planet_id", "from", "to"),
     EventKind.PLANET_TAX_PAYOUT: ("planet_id", "planet_name", "payout"),

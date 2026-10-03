@@ -227,6 +227,9 @@ QUASAR_MIN_LEVEL = 3
 QUASAR_ATM_FACTOR = 2
 # Citadel L5 with at least this many shields ignores a photon damp.
 QUASAR_PHOTON_SHIELD_MIN = 200
+# Citadel L6 holds a hostile warp and burns this much fuel, then the sector cannon fires.
+INTERDICTOR_MIN_LEVEL = 6
+INTERDICTOR_FUEL = 500
 CITADEL_PERK: list[tuple[int, str, str]] = [
     (1, "Treasury", "Treasury: deposit and withdraw credits while landed, plus 2% daily interest"),
     (2, "Combat Control Computer",
@@ -236,7 +239,8 @@ CITADEL_PERK: list[tuple[int, str, str]] = [
     (4, "Planet TransWarp", "Planet TransWarp (not yet in this game)"),
     (5, "Planetary shields",
      "Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp."),
-    (6, "Interdictor", "Interdictor (not yet in this game)"),
+    (6, "Interdictor",
+     "Interdictor: a hostile warp out fails when fuel is at least 500, the planet burns 500 fuel, and the sector cannon fires on what remains."),
 ]
 GENESIS_DEPLOY_TURN_COST = 4
 # Fighters move 1:1 onto a planet, up to this cap. Shields move

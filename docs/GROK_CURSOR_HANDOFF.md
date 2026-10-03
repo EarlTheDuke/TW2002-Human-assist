@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 19:33 PT - Fable - a citadel can hold a hostile warp
+- Citadel level 6 burns 500 fuel, stops one hostile warp, and fires the sector cannon on the fuel that remains. A photon damp now clears when the ship dies and at each day tick.
+
 ### 2026-10-02 18:15 PT - Fable - a photon damps planet cannons for one approach
 - A photon hit in a planet sector marks that ship. Below citadel L5, or below 200 shields, the sector cannon, atmosphere cannon, and offensive fighters skip once. L5 with 200 shields ignores it.
 

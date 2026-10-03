@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.actions import Action, ActionKind
+from tw2k.engine.combat import _destroy_ship
 from tw2k.engine.models import Commodity, EventKind, Planet, PlanetClass
 from tw2k.engine.observation import event_facts
-from tw2k.engine.runner import apply_action
+from tw2k.engine.runner import apply_action, tick_day
 
 
 def _lane(u):
@@ -241,3 +242,39 @@ def test_shields_and_defensive_fighters_still_apply_while_damped() -> None:
     assert res.error == "planetary defenses repelled landing"
     assert planet.shields == 35
     assert attacker.photon_damped_sector_id is None
+
+
+def test_death_clears_the_damp_before_the_ship_returns() -> None:
+    u, (attacker, owner, *_) = _make_universe(seed=14008)
+    origin, dest = _lane(u)
+    planet = _plant(u, dest, 88057, owner.id, level=3, shields=0)
+    planet.quasar_atm_pct = 0
+    attacker.photon_damped_sector_id = dest
+    attacker.ship.fighters = 2000
+    attacker.ship.shields = 0
+    _destroy_ship(u, attacker.id, reason="quasar", killer_id=owner.id)
+    assert attacker.photon_damped_sector_id is None
+    _clear(u, dest)
+    _stand(u, attacker, origin)
+    apply_action(u, attacker.id, Action(kind=ActionKind.WARP, args={"target": dest}))
+    assert _sector_shots(u, planet.id)
+    assert planet.stockpile[Commodity.FUEL_ORE] == 9000
+
+
+def test_day_tick_clears_the_damp() -> None:
+    u, (attacker, owner, *_) = _make_universe(seed=14009)
+    origin, dest = _lane(u)
+    planet = _plant(u, dest, 88058, owner.id, level=3, shields=0)
+    planet.quasar_atm_pct = 0
+    attacker.photon_damped_sector_id = dest
+    attacker.ship.fighters = 2000
+    attacker.ship.shields = 0
+    tick_day(u)
+    assert attacker.photon_damped_sector_id is None
+    planet.stockpile[Commodity.FUEL_ORE] = 10_000
+    planet.quasar_sector_pct = 10
+    _clear(u, dest)
+    _stand(u, attacker, origin)
+    apply_action(u, attacker.id, Action(kind=ActionKind.WARP, args={"target": dest}))
+    assert _sector_shots(u, planet.id)
+    assert planet.stockpile[Commodity.FUEL_ORE] == 9000
