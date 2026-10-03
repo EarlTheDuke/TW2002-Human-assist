@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-03 01:12 PT - Fable - class citadel costs stay switched off
+- A dark switch can charge a planet's stockpile for a citadel. The live mode is still credits, and that path is unchanged.
+
 ### 2026-10-02 23:23 PT - Fable - a citadel no longer hands out a garrison
 - Completing a citadel adds no fighters and no shields. The old floor still runs if the two gift constants are raised. The level 2 perk no longer promises that gift.
 

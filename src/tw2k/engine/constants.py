@@ -221,6 +221,71 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
     (80_000,  16_000,  3),
     (160_000, 32_000,  4),
 ]
+# "credits" is the live rule. "class" charges the commodity table below.
+# Nothing reads an env var or an action to flip this.
+CITADEL_COST_MODE = "credits"
+# Original citadel days times this scale, dropped to a whole number, never below 1.
+CITADEL_BUILD_TIME_SCALE = 0.25
+# (colonists, fuel_ore, organics, equipment, raw_days) for levels 1..6.
+# Raw days are the original counts, before CITADEL_BUILD_TIME_SCALE.
+CITADEL_CLASS_COSTS: dict[str, tuple[tuple[int, int, int, int, int], ...]] = {
+    "M": (
+        (1000, 300, 200, 250, 4),
+        (2000, 200, 50, 250, 4),
+        (4000, 500, 250, 500, 5),
+        (6000, 1000, 1200, 1000, 10),
+        (6000, 300, 400, 1000, 5),
+        (6000, 1000, 1200, 2000, 15),
+    ),
+    "K": (
+        (1000, 400, 300, 600, 6),
+        (2400, 300, 80, 400, 5),
+        (4400, 600, 400, 650, 8),
+        (7000, 700, 900, 800, 5),
+        (8000, 800, 400, 1000, 4),
+        (7000, 700, 900, 1600, 8),
+    ),
+    "O": (
+        (1400, 500, 200, 400, 6),
+        (2400, 200, 50, 300, 5),
+        (4400, 600, 400, 650, 8),
+        (7000, 700, 900, 800, 5),
+        (8000, 300, 400, 1000, 4),
+        (7000, 700, 900, 1600, 8),
+    ),
+    "L": (
+        (400, 150, 100, 150, 2),
+        (1400, 200, 50, 250, 5),
+        (3600, 600, 250, 700, 5),
+        (5600, 1000, 1200, 1000, 8),
+        (7000, 300, 400, 1000, 5),
+        (5600, 1000, 1200, 2000, 12),
+    ),
+    "C": (
+        (1000, 400, 300, 600, 5),
+        (2400, 300, 80, 400, 5),
+        (4400, 600, 400, 650, 7),
+        (6600, 700, 900, 700, 5),
+        (9000, 300, 400, 1000, 4),
+        (6600, 700, 900, 1400, 8),
+    ),
+    "H": (
+        (800, 500, 300, 600, 4),
+        (1600, 300, 100, 400, 5),
+        (4400, 1200, 400, 1500, 8),
+        (7000, 2000, 2000, 2500, 12),
+        (10000, 3000, 1200, 2000, 5),
+        (7000, 2000, 2000, 5000, 18),
+    ),
+    "U": (
+        (3000, 1200, 400, 2500, 8),
+        (3000, 300, 100, 400, 4),
+        (5000, 500, 500, 2000, 5),
+        (6000, 500, 200, 600, 5),
+        (8000, 200, 200, 600, 4),
+        (6000, 500, 200, 1200, 8),
+    ),
+}
 # Free fighters and shields granted per new citadel level, at L2 and up.
 # 0 adds nothing: no gift text, no zero-count event facts, no planet change.
 # Raise both to restore the old floor (1000 fighters and 250 shields).
@@ -258,6 +323,17 @@ CITADEL_PERK: list[tuple[int, str, str]] = [
     (6, "Interdictor",
      "Interdictor: a hostile warp out fails when fuel is at least 500, the planet burns 500 fuel, and the sector cannon fires on what remains."),
 ]
+def citadel_build_days(raw_days: int) -> int:
+    """Original days times CITADEL_BUILD_TIME_SCALE, never below 1."""
+    return max(1, int(raw_days * CITADEL_BUILD_TIME_SCALE))
+
+
+def citadel_class_cost(class_id: str, level: int) -> tuple[int, int, int, int, int]:
+    """Colonists, fuel ore, organics, equipment, and scaled days for one level."""
+    colonists, fuel, organics, equipment, raw_days = CITADEL_CLASS_COSTS[class_id][level - 1]
+    return colonists, fuel, organics, equipment, citadel_build_days(raw_days)
+
+
 GENESIS_DEPLOY_TURN_COST = 4
 # Fighters move 1:1 onto a planet, up to this cap. Shields move
 # PLANET_SHIELD_SHIP_COST ship shields per 1 planet shield, both ways.
