@@ -1,0 +1,114 @@
+TW 2002 v2 FAQ
+ 
+Here are the answers to some of the most frequently asked questions
+about Trade Wars 2002 v2.
+
+Q. HOW DOES THE TURN PER WARP SYSTEM WORK?
+
+A. Take your Merchant Cruiser with a turn/warp ratio of 3.  You start
+with 200 turns in Sector 1.  To move to sector 2 takes 3 turns.  To port
+at the Class 0 in Sector 1 takes 1 turn.  Each warp takes 3 turns: 3
+turns per warp.  It's that simple.
+
+Q. HOW DO I GET MORE THAN ONE SHIP?
+
+A. Two ways.  First, you can capture a ship from an Alien, a Trader, or
+even a Ferrengi.  To capture a ship, you attack with as little fighters
+as necessary to make the owner take flight in his Escape Pod.  Second,
+you can buy extra ships at the Stardock.  When you buy a ship at the
+Shipyards, it asks you if you want to trade in your old ship.  Just
+answer no, and you can buy an extra ship.  You can also sell
+extra ships by pressing S in the Shipyards.
+
+Q. DOES CAPTURING WORK IN THE UNREGISTERED VERSION?
+
+A. Yes.
+
+Q. HOW DO I USE A CAPTURED SHIP?
+
+A. You transport to a spare ship using...<* drumroll *>...your
+transporter.  Each ship type has a different range for the transporter.
+IOW, if the range on your ship is 7, you can only transport to a ship
+that is 7 warps away or less.  You can't transport to an unmanned ship
+that isn't yours.  You also can't transport to a ship unless it has a
+blank password or you know the correct password.
+
+Q. WHAT IS THE PLANETARY TRANSPORTER?
+
+A. It allows you to transport you and your ship to a sector with two
+conditions: 1. there must be a fighter in that sector for a locating
+beam and 2. you must have upgraded the transporter to sufficient range
+to reach the sector.  It may also use up some planetary fuel ore.  I
+will have to check.
+
+Q. HOW DO LIMPET MINES WORK?
+
+A. When you deploy a Limpet Mine in a sector, it is visible only to you.
+If another Trader enters the sector, the Limpet attaches to his ship.
+You can find his location when you log on next by looking at the
+deployed mines scan (K).  Limpets have a density of 2 and they light up
+the Anomaly Scanner.  If a Limpet attaches to your ship, you can get rid
+of it by porting at a Class 0 or Class 9 port...for a price.
+
+Q. WHAT ELSE SHOWS UP IN THE ANOMALY SCANNER?
+
+A. Cloaked ships.
+
+Q. IS THERE A COMPUTER UPGRADE?  CAN I BRIBE THE INSPECTORS?  IS THERE
+AN ALIEN DERELICT?  IS THERE A SECRET IN THE CINEMA?  CAN I BUY PULSAR
+CANNONS?
+
+A. No.
+
+Q. WHAT'S THE TRADE IN VALUE OF THE FERRENGI SHIPS?
+
+A. With full holds and nothing else, I get 52,155 for an Assault Trader,
+111,645 for a Battle Cruiser, and 214,290 for a Dreadnought.
+
+Q. HOW MANY FIGHTERS DOES IT TAKE TO BLOW UP THE STARDOCK?
+
+A. It took me just under 65,000 fighters with a TEDITed IC.  I
+discovered that the cost for that is 14,779,456.  Not too bad.  The
+Stardock, once blown up, doesn't seem to reappear.  IOW, blowing up the
+Stardock is a game ender.  When I try to port at the blown up sector in
+my Beta 2, the game crashes.
+
+
+
+
+From: GARY MARTIN #0 @1:299/110 FIDOnet
+RE: TW 2.0 Features
+BY: Ed Kammerer to Leonard Adolph on Tue Jan 04 1994 09:30 pm
+
+ > I've seen two universes, glimpsed really, and haven't tactic'd or
+ > strategy'd.  The geometries threw my map compulsion for a loop, every
+ > sector warped to 6 sectors.  I can't draw that.  Three warps reaches
+ > 216 sectors (6 cubed), which is approximately what I've been fitting
+ > on one page.  In 1.03d it shows me a "region", in 2.0 it's hen scratches.
+ > 
+ > A couple of corollaries to such warp density are:  Any sector is only
+ > four or five steps from any other sector; and, while it feels exposed
+ > to have a planet in a 5- or 6-warp sector, the probability of starting
+ > at sector 1 and picking the correct sequence of 4 or 5 moves to reach
+ > the planet is about equal to picking lottery numbers that win.
+
+Exactly!  Now the really fun part is that by playing with the BigBang settings,
+you can go from an extremely dense universe, to one with TONS of 1-way warps
+providing a nightmare for navigation, to an extremely sparse setting with lots
+of long tunnels and many, many dead ends!  Its all up to the Sysop as to how
+they want to run their universe.
+
+Here's a setting for the ADVANCED players:
+                Max Course length 50
+                2-ways            20%
+                1-ways            20%
+
+Then, after the universe is Bigbanged, enter Tedit and *LOWER* the max course
+plot length to something like 25.  This will mean the players will have to
+learn how to reach some regions of this universe.  The course plotter will not
+work from one end to the other, but only within the local group thats not
+father than 25 hops away. (grin)
+
+ * Origin: Castle Ravenloft - Home of Trade Wars 2002 (1:299/110)
+
+

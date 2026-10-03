@@ -1,0 +1,528 @@
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+[ Tradewars Discussion Sub ]
+Title....... The 04/01/95 TWv2á5 FAQ
+Name........ Night Owl #235 @5423
+Date........ Sat Apr 01 15:59:28 1995
+From........ WWIVNet - Paronomasia [919-233-1035]
+Location.... Greenville/Raleigh, North Carolina
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                             THE TW2002v2 FAQ Sheet
+                                       By
+                              Night Owl #235 @5423
+
+                             STATEMENT OF OWNERSHIP
+                             ======================
+
+With the exception of the Major Space Lane diagram which was drawn by Albin
+Gersich, the ship capture text written by Mike Magero and the TWv2á5 bug list
+written by John Warfin & Mike Magero this entire text was written by Night Owl
+#235 @5423 and he retains full ownership of the text.  Readers are allowed to
+distribute this text to others as they see fit as long as they do NOT alter the
+contents in ANY way and do NOT charge money for it.  The author put quite a bit
+of work into this text and feels that it's only fair that he receive the proper
+credit and since he's not making any profit from it no one else should either.
+
+                                   DISCLAIMER
+                                   ==========
+
+This FAQ applies to the regular TWv2bx door game *only* because the MBBS
+version differs in many ways and since the author of this FAQ doesn't have
+access to a MBBS TW game he can't adequately document these differences.
+
+                               TABLE OF CONTENTS
+                               =================
+
+ 1. Beta 6 Release Date (Sometime Before 2002, We Hope...)
+ 2. The Infamous "Computer Upgrade"
+ 3. The Infamous "Secret Message In Vulcan Thunder"
+ 4. Secret Buildings On StarDock
+ 5. Underground Access Rules
+ 6. Obtaining Underground Password
+ 7. Getting Murdered On StarDock
+ 8. Players Getting Murdered On StarDock Deliberately
+ 9. T-warping Planets Into FedSpace (Not Possible...)
+10. Attacking Feds (And Dying *Real* Quick...)
+11. Evil ISS Potential (Or The Lack Of It...)
+12. Tholian Sentinel Fixed
+13. The Ship Records Bug
+14. Destroying StarDock
+15. New Player Planets
+16. Getting A Fed Commission The EZ-Way
+17. FedSpace Protection Rules
+18. Reasons For Being Towed From FedSpace
+19. Getting Busted For Trying To Rob The Same Port Twice
+20. Evil Earning Technique (SST)
+21. Explanation Of Major Space Lanes
+22. Effects Of Major Space Lanes
+23. Sector Fighter Combat Odds
+24. Explanation Of The Planetary Military Reaction Level
+25. Explanation Of The Planetary Quasar Cannon Settings
+26. The Planetary Shield System's Effect On P-torps (None Whatsoever...)
+[Hit Me When You're Ready!                          27. P-wave Effects
+28. Accidental P-torp Detonation
+29. Accidental Atomic Detonator/Corbomite Denotation (Game Docs Correction...)
+30. "How To Capture Ships" By Mike Magero
+31. TWv2á5 Bug List By Mike Magero/John Warfin
+32. Complete Ferrengi Ship Stats
+
+                                    THE FAQ!
+                                    ========
+
+ 1. Q: When will Beta 6 be released?
+    A: No one, probably not even Martin, knows the release date but rest
+       assured that once it's released you will read about it on here.
+
+ 2. Q: The Grimy Trader mentioned a "Computer Upgrade", does it really exist?
+    A: No, there is no "Upgrade" in the game.
+
+ 3. Q: What about the secret message in the Vulcan Thunder movie?
+    A: It doesn't exist either. You really should take everything ol' Grimy
+       says with a grain of salt.
+
+ 4. Q: Are there any secret buildings on StarDock?
+    A: Yes, there are 3 unlisted buildings there. Hit a plus sign to enter the
+       Library and you can look at ANSIs of *non existing* Alien Derelicts and
+       existing Ferrengi Craft. Hit <B> to find the Singles Bar but *don't* go
+       in because you'll get robbed. Finally hit <U> to access the Underground
+       where you can post bounties on other players and change your game alias.
+
+ 5. Q: Why can't I get into the Underground?
+    A: If the guard tells you to get lost because they don't won't your kind
+       around then you've got too much positive alignment. The max alignment
+       you can have and still get in is 199. If that isn't the problem then you
+       obviously don't know the password...
+
+ 6. Q: How do I get the password?
+    A: I was wondering when you were gonna ask me that! <g> Go ask Grimy about
+       MAFIA and he'll ask if you want the password so tell him yes! After you
+       slide a few creds his way he'll give it to you. (Note: The default
+       password in v1.03(d) was "BEWARE THE JAWS THAT BITE!" and in v2 it's
+       "BEWARE OF KAL DURAK".)
+
+ 7. Q: I saw on the Daily Log that some loser got murdered on StarDock. How did
+       they manage that?
+    A: They ticked off the guard at the Underground one time too many and he
+       fried 'em. Seriously, if you enter the wrong password in the Underground
+       6 times the guard really does kill ya.
+
+ 8. Q: Why would anyone do that on purpose?
+    A: Due to the way alignment changes are factored when attacking stuff it's
+       possible for a Good player to accidentally turn Evil while attacking a
+       rival Good's assets. In v2b1 - v2b4 this is easily fixed by heading over
+       to StarDock and posting a bounty on some Evil guy to raise your
+       alignment back to Good but in v2b5 Evil players can't enter the Police
+       HQ. (Yet another of Martin's oh-so-brilliant ideas...) Anyway, since
+       getting murdered on StarDock causes your experience and alignment to be
+       reset to 0 some players have no choice but to do this if they want to
+       start playing Good again...
+
+ 9. Q: Can you T-warp a planet into FedSpace?
+    A: No, planets can not be T-warped into FedSpace, not even by Fed
+       Commissioned players who can T-warp their ships there.
+
+10. Q: Can you kill the Feds?
+    A: NO! They're "hard coded" into the game and can't be damaged.
+
+11. Q: Can Evil players use the ISS in v2?
+    A: No, Martin has made the EISS a thing of the past by making the Feds
+       destroy 'em as soon as they turn Evil.
+
+12. Q: Does the Tholian Sentinel work in v2?
+    A: Yes, a Sentinel really does get 4:1 odds when a player logs off in it
+       and there doesn't even have to be a planet in the sector.
+
+13. Q: Why do I:
+                 a. keep losing ships?
+                 b. find myself in the wrong ship when I join the game?
+                 c. keep seeing "phantom" ships with -1 fighters?
+                 d. see another player in a ship *completely* identical to
+                    mine?
+                 e. experience any other odd stuff related to the ships?
+    A: There's a very nasty little critter called the ship records bug that
+       causes all this and more to happen. While no one, probably not even
+       Martin, knows exactly what causes this bug the most recent theory is
+       that it's somehow related to players capturing other ships since games
+       in which a lot of ship capturing is going on tend to be more affected by
+       this bug than other games.
+
+14. Q: Can I destroy StarDock?
+    A: In v1.03(d) the answer was yes, all you needed was a Scout with 32,767
+       fighters and 32,767 shields. (Yes, a bug was needed to put 'em on the
+       Scout.) However, in v2 the situation is a bit more complex because there
+       have been 5 different Betas and they behave differently. In v2b1 - v2b4
+       all you need is a maxxed IC to kill StarDock but according to README.WB5
+       (a text file included with the game that details the modifications made)
+       in v2b5 StarDock was made unkillable due to player whining.
+
+15. Q: I was given a planet when I joined the game. Should I try to build it
+       up?
+    A: Most of the time those new player planets are a *complete* waste of time
+       and, IMHO, should be stripped of product and destroyed for a quick 50
+       exp. However, if you were lucky enough to have your planet placed in a
+       dead-end sector then you *might* want to keep it. Frankly it just
+       depends on your personal preferences and playing style...
+
+16. Q: What's the best way to get the 500 alignment necessary for a Fed
+       Commission?
+    A: Paired port trade until you get 500,000 creds then post it on some
+       little Evil guy. (So you can kill him and get your creds back.) That
+       will raise your alignment by 500 points and you'll be in business. (In
+       case you can't figure it out each 1,000 creds posted raises your
+       alignment by 1 point.)
+
+17. Q: What are the conditions a player must meet in order to receive FedSpace
+       protection?
+    A: A player must have apositive alignment and 999 or less experience
+       points in order to receive FedSpace protection.
+
+18. Q: What causes a player to be towed from FedSpace?
+    A: If a player violates the Limited Arms Agreement by having more than 100
+       fighters onboard their ship the Feds will tow them out when Extern runs.
+       Also, each FedSpace sector only allows a certain number of players to
+       stay there so if the number of players in a given FedSpace sector
+       exceeds that number one of the players will be towed out. (Check the <V>
+       screen to see how many players can remain in each FedSpace sector in
+       your game). One last thing, the Feds *can* tow you out even if you're
+       cloaked so don't be surprised if that happens.
+
+19. Q: Why do I get busted when I try to rob from the same port twice?
+    A: Martin considered the trade/steal/loop in v1.03(d) to be a bug so in v2
+       players can't rob from the same port twice in a row without being
+       busted. However, you can go rob another port then head back to the
+       original port and rob it again.
+
+20. Q: How are Evil players suppose to make any creds then?
+    A: They use a technique called sell/steal/transport. It requires the player
+       to place 2 ships (with equipment already onboard) at equipment buying
+       ports within transporter range of each other and then they just
+       sell/steal/transportback & forth between ships.
+
+21. Q: What exactly are the Major Space Lanes?
+    A: They're the sectors in the paths between Sol/SD, SD/Rylos, SD/Alpha and
+       Rylos/Alpha. Here's a diagram from the TWAssist docs that'll make this
+       easier to visualize: (I hope Albin won't mind my using it...)
+
+       ÚÄÄÄÄÄÄÄÄÄ¿
+       ³    1    ³        ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+       ³   Sol   ÃÄÄÄÄÄÄÄÄ´ Stargate Alpha ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+       ³ Class 0 ÃÄÄÄÄÄÄÄÄ´    Stardock    ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿  ³
+       ÀÄÄÄÄÄÄÄÄÄÙ        ÀÄÄÄÄÄÄÂÄÄÂÄÄÄÄÄÄÙ                ³  ³
+                                 ³  ³                       ³  ³
+                                 ³  ³                       ³  ³
+                          ÚÄÄÄÄÄÄÁÄÄÁÄÄÄÄÄÄ¿          ÚÄÄÄÄÄÁÄÄÁÄÄÄÄÄÄÄ¿
+                          ³ Alpha Centauri ÃÄÄÄÄÄÄÄÄÄÄ´     Rylos      ³
+                          ³    Class 0     ÃÄÄÄÄÄÄÄÄÄÄ´    Class 0     ³
+                          ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ          ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+22. Q: What exactly happens to assets left in the MSLs?
+    A: Sector fighters, Armid Mines and Limpet Mines are all destroyed when
+       Extern runs. Planets with a Level 3 or greater Citadel will be busted
+       down to L2 as well.
+
+23. Q: What are the Combat Odds for sector Offensive, Defensive and Toll
+       fighters?
+    A: All sector fighters get 1:1 odds.
+
+24. Q: I just got my planet up to L2. What exactly does the Military Reaction
+       Level do and what should it be set at?
+    A: The MRL determines the percentage of planetary fighters that will be
+       launched when an invader tries to land. (Planetary Offensive fighters
+       get 2:1 odds.) The remainder of the fighters will just sit there
+       defending the planet and the invader will have to destroy *all* of them
+       before he can land. (Planetary Defensive fighters get 3:1 odds.) Once
+       you put some thought into this you will see that the most logical MRL
+       setting is 0% because the defensive fighters get better odds and the
+       offensive fighters could end up killing nothing but the invader's
+       shields...
+
+25. Q: Okay, my planet just hit L3. How are the Q-cannon percentages
+       calculated?
+    A: The Sector setting determines how much fuel ore will be used for each
+       sector blast and the sector blast works on a 3:1 ratio. IOW, for every 3
+       units of fuel ore used the invader takes 1 Battle Point of damage. (1
+       Battle Point is equal to 1 fighter or shield and the ship's Combat Odds
+       do not apply.) So if you have 100,000 units of fuel ore and the Q-cannon
+       is set to 100% Sector an intruder will take 33,333 Battle Points of
+       damage when they enter the sector and the planet will have 0 units of
+       fuel left.
+
+       The Atmospheric setting determines how much fuel ore will be used for
+       each Atmospheric blast and the Atmospheric blast works on a 1:2 ratio.
+       IOW, each unit of fuel ore used does 2 Battle Points of damage and the
+       amount of fuel actually used is only half of what you have the Q-cannon
+       set to. For example, say you have a planet with 100,000 units of fuel
+       ore and the Q-cannon is set to 100% Atmospheric. When an invader tries
+       to land they'll take 100,000 Battle Points of damage and you'll still
+       have 50,000 units of fuel ore left.
+
+26. Q: I heard that the Planetary Shield System protects a planet from P-torps,
+       is this true?
+    A: No it's not. Contrary to what the docs say the PSS does not block the
+       effects of the P-torp.
+
+27. Q: What exactly does will a P-wave do?
+    A: It will cause any uncloaked players in the sector (and on planets too
+       due to a bug) to lose their turns for the day; it disables Armid Mines
+       and sector fighters (Limpets do not appear to be affected); it resets
+       the Planetary MRL to0% and disables the Q-cannon & Interdictor
+       Generator. It does *not* affect ports in any way.
+
+28. Q: I had a P-torp accidentally go off while onboard my ship! What caused
+       this?
+    A: Any damage, no matter how insignificant will cause a P-torp to
+       accidentally go off. Also, I would be remiss if I didn't tell you that
+       you should *only* carry P-torps when you have an *immediate* use for
+       them because given their inherent instability it's just foolish to fly
+       around with 'em all the time.
+
+29. Q: Will Corbomite or Atomic Detonators accidentally go off while onboard my
+       ship too?
+    A: No, contrary to the docs they won't.
+
+30. Q: How do I capture ships?
+    A: Mike Magero (from FIDOnet) wrote a very detailed message explaining
+       this. Here's his message:
+
+===============================================================================
+Message #822 "TradeWars"
+Date: 24-Jun-94 12:49
+From: Mike Magero
+[Hit Me When You're Ready!                          To:   All New Players
+Subj: Ship Capture
+
+Attacking ships for the joy of capturing them is not profitable in
+the long run you have to consider the cost in fighters and turns wasted.
+  I doubt that you will find any "expert" players out capturing ships...
+They can be bought at Stardock alot cheaper then capturing them.
+
+Never the less it's not "All" random.  When you attack another ship you
+must first see if it's manned or unmanned.  An unmanned ships fights at
+1/2  the combat odds.  The next step after determining the other ships
+combat odds is its shields.  Since only a few ships have a combat
+computer you won't always know how many they have. That's not a real
+problem because the shields will be the first to go when you do start
+attacking.  Lets look at this little example I made up that shows you
+how to figure out the necessary fighters to capture a ship.
+
+  Your tooling along in your Constellation its maxed out and your looking
+for a fight.  Low and behold Jobo Frengit pops into view in his CT!
+  Your going to get this guy!  Ok you give chase and the battles on!
+
+  Jobo's Ct is not maxed out (most aliens aren't) so you don't really have
+any idea what his shields count is.  For this example lets say Jobo has
+100 shields and full fighters.  That's 200 fighters and 100 shields.
+CT's get .6 to 1 odds  so, Jobo really only has 120 fighters.  You can
+determine this by doing a little math  200 x .6 = 120  You still can't
+tell what effect the shields will have so don't waste time considering it
+just yet.
+
+  Your Constellation gets 1.4 to 1 odds and if you hit him with 120 fighters
+your going to really hit him with 168.  You can again calculate this by
+doing some math  120 x 1.4 = 168.  The number of shields on your ship
+don't matter and you don't know how many are on the other ship. You must
+assume that there are no shields on the other ship or you risk blowing
+it into space dust.  Your out to capture it so you need to attack with
+just enough fighters to get the other guy out of his ship and into a Pod.
+
+  So we need some more math here, we need to do 120 damage points to the
+other ship so... lets see here   120 / 1.4 = 85.7  We can't attack with
+a fraction of a fighter so I suggest rounding down to remain on the safe
+side of the battle equation that's 85 fighters  Yep.  That's the ticket.
+  You hit Jobo with 85 fighters.  He runs to the next sector and you
+chase him down.  Jobo's ship still has fighters on it... Why?  He lost
+shields..  You have to expect that.
+
+Lets look in on Jobo's ship after you attacked him.  Jobo had 100 shields
+[Hit Me When You're Ready!                          and 200 fighters at .6 oddsthat a total of 120 fighters and 60 shields
+when the odds are figured in. Jobo's ship now has no shields and should
+only have 141 or so fighters on it.  Remember you hit him with 119 points
+worth of damage ( 85 fighters and 1.4 odds = 119 ) Ok its time to try it
+again.
+
+  You see 141 fighters Jobo didn't loose as many as you thought he would.
+But he did lose some so that means he's out of shields.  You now want
+to kill off just enough fighters to put him in a pod...  More math again..
+140 x .6 = 84  This is Jobo's real fighter strength.  You need to kill
+them off so you do  84 / 1.4 = 60   The game tosses in a random factor
+in combat so 60 is what the math says you need. I would go with 58 or 59
+just to be on the safe side and hope it worked.  If the Gods of war were
+on your side (Random Combat Modifiers) you will put Jobo in a pod and the
+ship is yours.  If not, oh well, you did the best you could possible do to
+remove the randomness from the battle. Better luck next time.
+
+Three of the ships you can buy at Stardock have Combat Computers that
+will allow you to determine the number of shields your enemy has on
+his ship.  These ships are the Battleship, Missile Frigate and the
+Corp. Flag.   Lets Resurect Jobo again and have at him this time
+with a Battleship. We will see if we can get him on the first attack.
+
+Remember what Jobo's Ct looks like?  Jobo has 200 Fighters at .6 odds
+and only 100 shields at .6 odds.  Of course we don't know that yet but
+lets see what happens when you move into the sector with him and hit
+the <A>ttack key.   You get a message telling you that Jobo's ship has
+20 percent shields rating.  Yep!  That makes sense we know he only has
+100 shields in this example and a Ct can have 500 shields so that fits.
+
+  Ok we do the same math as above to find Jobo's real fighter strength
+200 x .6 = 120  Now we need to find his real shield strength we can use
+math again to get the answer.  Lets do this first  500 x .20 = 100
+What we did here was take the max number of shields his ship can have
+and multiplied it by 20 percent that told us Jobo's ship has 100 shields.
+Now we need to find his real shield strength so we do this 100 x .6 = 60
+That's his shields times his ships combat odds = real shields.  We now
+add the 120 + 60 together and get 180 real damage points. So if we hit
+Jobo with 180 points of damage we should capture his ship... Our ship
+has 1.6-1 combat odds so we need to do the same math we did before to
+find out just how many fighters we are going to need to use.  We do this
+180 / 1.6 = 112.5  Again we can't attack with a fraction of a fighter
+so we round down. I suggest 110 to allow for the random factors of the
+combat calculation the game tosses in.  With luck you will be the proud
+owner of a 1 owner Colonial Transport. If it blows up in your face....
+Oh well at least your tried your best and were just unlucky.  That's War!
+[Hit Me When You're Ready!
+So the Formulas for ship capture you need to know are as follows:
+
+   Enemy Fighters x Enemy Ships Combat Odds = Real Fighter Strength
+
+   Real Fighter Strength / Your Ships Combat Odds = # of Fighters to Use.
+
+If you have combat computers on your ship you need to know the following:
+
+   Max Shields for Enemy Ship x Percentage Reported = Shields on Enemy Ship
+
+   Enemy Shields x Enemy Ships Combat Odds = Real Shield Strength
+
+   Real Fighter Strength + Real Shield Strength = Enemy's Real Defenses
+
+   Enemy's Real Defenses / Your ships combat odds = # of Fighters to Use
+
+I know that not all of you may have learned about percentages yet so here
+is a simple way to deal with them.  If the combat computer says 45 Percent
+use .45  if it says 30 percent use .30  Note the decimal points are placed
+before the number.  It's important you do that or your math will not be
+correct.  If your already doing 2nd year Calc stop reading this and stop
+wasting your time attackingaliens.  Your smart enough to know the cost
+factors involved and can easily calculate the loss in credits your facing
+by attacking aliens.  Sure...Buying them is not as much fun but it is alot
+cheaper!
+
+===============================================================================
+
+31. Q: I've heard that there are <GASP!> bugs in v2á5, do ya have a list?
+    A: Certainly! The following list was posted by Mike Magero (John Warfin
+       originally wrote the text) on the FIDOnet TW echo a while back:
+
+===============================================================================
+Message #819 "TradeWars"
+Date: 24-Jun-94 12:42
+From: Mike Magero
+To:   All
+Subj: The "Feature" list
+
+Here is John Warfin's "feature" list  I have added numbers 31-34 on to it
+myself if you have any other bugs that are not on this list please send
+them up to the echo for inclusion on this list.   And NO I DO NOT know what #
+13 is!  So don't even ask John won't tell me.
+
+1.  The dissapearing ships bug has got to be fixed.
+2.  Shields should protect the Q-Cannon from a P-torp wave.
+3.  A player parked in the citadel should not have turns
+    deducted when the planet is P-torped.
+4.  A player parked in a citadel should not be vulnerable
+    to attack from someone in the sector.
+5.  You should not be able to attack yourself!
+6.  Ports should not "roll over" into negative quantities
+7.  The defensive rating of a port should not "roll over"
+    to a negative amount.  1 fighter should not be allowed
+    to blow up a port!
+8.  Ships should not be safe when left in Fedspace.
+9.  Planets should not be able to hold 1,000,000 fighters
+    a more reasonable amount should be determined.
+10.  A sector should not be allowed to hold 2,000,000,000
+     fighters!
+11.  The use of teleporters and planetary transporters to
+     cut turns off of trading and stealing loops should be
+     addressed.
+12.  The escape pod should be fully taken away from the scout
+     or it should be restored.  (No more 1/2 non-bug fixxes
+     are necessary.)
+14.  The ability to overload a sector with G-torps should be
+     removed.
+15.  The Ferrengi's resistance to the mine's destructive power
+     should be cured.   A ferrengi with 1 fighter and 1 shield
+     should not withstand 125 mines detonating!
+16.  The ability to tow a ship through a Planetary transporter
+     should be removed.
+17.  A single player on a corp should not be penalized for
+     "consorting with slime."
+18.  All ships in a sector should list when a trader enters.
+     if they didn't pay for a cloak why give them one for free.
+19.  The false anomolies caused by logging into the game after
+     being cloaked should be taken care of.
+20.  Ferrengi ships should be destroyable instead of only
+     capturable.
+21.  A Q-cannon set to 100% atmosphere should shoot 100% not 50%.
+22.  A density scanner should not be able to detect a player or
+     players in a citadel.
+23.  A ship should not be able to retreat back across a one-way
+     warp.   Doesn't one-way mean you can only go ONE WAY?
+24.  The death delay could stand some modifications, it only hurts
+     the twits and the scout can't moth anymore so whats the point?
+25.  Loading your holds and then using the Planetary Transporter
+     uses only 1 turn, should be two!
+26.  The Evil Iss should be returned.  Make it harder to keep, but
+     not impossible!
+27.  Planets can magically continue to upgrade after all of the
+     colonists are removed.  (colonists are only needed to chant
+     a magic rune & press the auto upgrade button)
+28.  Commodities are created at a much higher percentage at a new
+     port than are created at an old port.  (50% vs 10%)
+29.  The "you can't do that from a planet" bug needs to be found!
+     The game will think you are on a planet when you aren't.
+30.  The Doc's downright suck!  In many cases they just flat out
+     lie!
+31.  The ability to T-warp Tow ship should be removed.
+32.  The ability to create "Mega-Turn" should be removed.
+33.  The creation of ships with mega quanties of hardware (beacon bug) must be
+     fixed or there is still a "Mega-Money" bug loose.
+34   The Planet Transporter Tradeing needs to be dealt with.
+===============================================================================
+
+32. Q: Do ya have a Ferrengi Ship stat list too?
+    A: Funny you should ask me that... <g> Here's a list of stats taken
+       directly from the game:
+
+                            Ferrengi Assault Trader
+
+Basic Hold Cost:    6,000    Initial Holds:     12       Maximum Holds:    50
+Main Drive Cost:    1,500     Max Fighters:  3,000     Maximum Shields:   200
+Computer Cost  :   16,400   Turns per Warp:      2      Offensive Odds: 1.0:1
+Ship Hull Cost :    8,000         Mine Max:     10          Beacon Max:     5
+Ship Base Cost :   31,900      Genesis Max:      0     Long Range Scan?    No
+                           TransWarp Drive?     No      Planet Scanner?    No
+                   Max Fighters Per Attack:  1,000     Photon Missiles?    No
+                   Max Transporter Range  :      0
+
+                             Ferrengi BattleCruiser
+
+Basic Hold Cost:    8,000    Initial Holds:     16       Maximum Holds:    75
+Main Drive Cost:    3,000     Max Fighters:  8,000     Maximum Shields:   800
+Computer Cost  :   40,600   Turns per Warp:      3      Offensive Odds: 1.2:1
+Ship Hull Cost :   15,500         Mine Max:     25          Beacon Max:    15
+Ship Base Cost :   67,100      Genesis Max:      3     Long Range Scan?   Yes
+                           TransWarp Drive?     No      Planet Scanner?    No
+                   Max Fighters Per Attack:  2,000     Photon Missiles?    No
+                   Max Transporter Range  :      2
+
+                            Ferrengi Dreadnaught
+
+Basic Hold Cost:   10,000    Initial Holds:     20       Maximum Holds:   100
+Main Drive Cost:   10,000     Max Fighters: 15,000     Maximum Shields:  1000
+Computer Cost  :   94,000   Turns per Warp:      4      Offensive Odds: 1.4:1
+Ship Hull Cost :   25,000         Mine Max:     50          Beacon Max:    25
+Ship Base Cost :  139,000      Genesis Max:      6     Long Range Scan?   Yes
+                           TransWarp Drive?     No      Planet Scanner?   Yes
+                   Max Fighters Per Attack:  5,000     Photon Missiles?   Yes
+                   Max Transporter Range  :      5
+

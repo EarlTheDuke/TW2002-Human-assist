@@ -1,0 +1,3746 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+    <title>Formulas - The Cabal's Secret Hideout</title>
+    <link rel="stylesheet"
+          href="style.css">
+</head>
+
+<body class="twcabal-body">
+
+    <header class="site-header">
+        <div class="header-container">
+
+            <div class="header-content">
+                <h1 class="site-title">The Cabal's Secret Hideout</h1>
+                <p class="site-subtitle">Our TradeWars 2002 Homepage<br>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <nav class="sidebar">
+            <h2 class="nav-title">Contents
+                <ul class="nav-menu">
+                    <li><a href="index.html">HOME</a></li>
+                    <li><a href="aboutus.html">ABOUT US</a></li>
+                    <li><a href="members.html">MEMBERS</a></li>
+                    <li><a href="strategy.html">STRATEGY</a></li>
+                    <li><a href="tips.html">TIPS</a></li>
+                    <li><a href="glossary.html">GLOSSARY OF TW TERMS</a></li>
+                    <li><a href="formulas.html">FORMULAS</a></li>
+                    <li><a href="other.html">OTHER</a></li>
+                </ul>
+        </nav>
+
+        <main class="content">
+            <br>
+            <span class="note">Last
+                Updated 4/12/05. New items are marked with an &quot;*&quot;-Traitor</span>
+            <br>
+
+            <br>
+            <ul>
+                <li><a href="#Alignment Gains and Losses:">Alignment Gains and Losses</a>
+                    <ul>
+                        <li><a href="#Alignment Gains for killing a trader on a planet">Alignment Gains for killing a
+                                trader on a planet</a></li>
+                        <li><a href="#Alignment Gains for killing a trader on a port">Alignment Gains for killing a
+                                trader on a port</a></li>
+                    </ul>
+                </li>
+                <li><a href="#Creating &amp; Upgrading Ports:">Creating &amp; Upgrading Ports: Alignment and Experience
+                        Gains</a></li>
+                <li><a href="#Density Scan Values">Density Scan Values</a></li>
+                <li><a href="#Destroying a port, Defensive Value vs Figs Needed">Destroying a port, Defensive Rating vs
+                        Figs Needed</a></li>
+                <li><a href="#Entering A Hostile Sector: Order of Events">Entering A Hostile Sector: Order of Events</a>
+                </li>
+                <li><a href="#Evil Rob/Steal Settings">Evil Rob/Steal Settings</a></li>
+                <li><a href="#Experience Gains for killing a trader on a planet">Experience Gains for killing a trader
+                        on a planet</a>
+                    <ul>
+                        <li><a href="#Experience Gains for killing a trader on a port">Experience Gains for killing a
+                                trader on a port</a></li>
+                    </ul>
+                </li>
+                <li><a href="#Experience Loss for Mixed-Corps at Extern:">Experience Loss for Mixed-Corps at Extern</a>
+                </li>
+                <li><a href="#GOLD or Classic Player vs Figs">GOLD or Classic Player vs
+                        Figs Experience and Alignment Info</a></li>
+                <li><a href="#GOLD or Classic Q-Cannon Formulas">GOLD or Classic Q-Cannon Formulas</a></li>
+                <li><a href="#HOLD COSTS:">Hold Costs</a></li>
+                <li><a href="#Landing On A Hostile Planet:">Landing On A Hostile Planet: Order of Events</a></li>
+                <li><a href="#MBBS Fighter and Shield Odds">MBBS Fighter and Shield Odds</a></li>
+                <li><a href="#MBBS GOLD or MBBS Player vs Player Experience and Alignment info">MBBS GOLD or MBBS Player
+                        vs Player Experience and Alignment info</a></li>
+                <li><a href="#MBBS GOLD or MBBS Q-Cannon Formulas">MBBS GOLD or MBBS Q-Cannon Formulas</a></li>
+                <li><a href="#Planet Information: Optimal Population and Production">Planet Information: Optimal
+                        Population and Production</a></li>
+                <li><a href="#Planet Information: Supplies needed for construction and upgrades of Citadels.">Planet
+                        Information: Supplies needed for construction and upgrades of Citadels</a></li>
+                <li><a href="#Red Experience and Align Gains for SST and SDT">Red Experience and Align Gains for SST and
+                        SDT, per turn</a></li>
+                <li><a href="#Red Profit Breakdown">Red Profit Breakdown for SST, SDT, Team SDT, and Megga Rob.</a></li>
+                <li><a href="#Trader Flee formula">Trader Flee formula</a></li>
+            </ul>
+
+            <h3><a name="Planet Information: Optimal Population and Production">Planet
+                    Information: Optimal Population and Production</a></h3>
+            <table width="100%">
+                <col width="75">
+                <col width="52">
+                <col width="49"
+                     span="2">
+                <col width="28">
+                <col width="30"
+                     span="5">
+                <col width="64">
+                <col width="115">
+                <col width="61">
+                <tr height="17">
+                    <td height="17"
+                        width="75"></td>
+                    <td colspan="2"
+                        width="101">
+                        Optimal
+                        Pop
+                    </td>
+                    <td width="49"></td>
+                    <td colspan="4"
+                        width="118">
+                        Days
+                        to construct
+                    </td>
+                    <td width="30"></td>
+                    <td width="30"></td>
+                    <td width="64"></td>
+                    <td width="115"></td>
+                    <td width="61"></td>
+                </tr>
+                <tr height="17">
+                    <td height="17">
+                        Class
+                    </td>
+                    <td>
+                        Ore
+                    </td>
+                    <td>
+                        Org.
+                    </td>
+                    <td>
+                        Eq.
+                    </td>
+                    <td>
+                        Lv 1
+                    </td>
+                    <td>
+                        Lv 2
+                    </td>
+                    <td>
+                        Lv 3
+                    </td>
+                    <td>
+                        Lv 4
+                    </td>
+                    <td>
+                        Lv 5
+                    </td>
+                    <td>
+                        Lv 6
+                    </td>
+                    <td>
+                        total days
+                    </td>
+                    <td>
+                        Fig Factor
+                    </td>
+                    <td>
+                        Max Fuel
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17">
+                        M, Earth
+                    </td>
+                    <td x:num>
+                        15000
+                    </td>
+                    <td x:num>
+                        15000
+                    </td>
+                    <td x:num>
+                        15000
+                    </td>
+                    <td x:num>
+                        4
+                    </td>
+                    <td x:num>
+                        4
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        10
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        15
+                    </td>
+                    <td x:num
+                        x:fmla="=SUM(E3:J3)">
+                        43
+                    </td>
+                    <td>
+                        30, 70, 130
+                    </td>
+                    <td x:num>
+                        100000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17">
+                        K, Desert
+                    </td>
+                    <td x:num>
+                        20000
+                    </td>
+                    <td x:num>
+                        20000
+                    </td>
+                    <td x:num>
+                        20000
+                    </td>
+                    <td x:num>
+                        6
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        4
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num
+                        x:fmla="=SUM(E4:J4)">
+                        36
+                    </td>
+                    <td>
+                        30, 1500,&nbsp; 7500
+                    </td>
+                    <td x:num>
+                        200000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17">
+                        O, Oceanic
+                    </td>
+                    <td x:num>
+                        100000
+                    </td>
+                    <td x:num>
+                        100000
+                    </td>
+                    <td x:num>
+                        100000
+                    </td>
+                    <td x:num>
+                        6
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        4
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num
+                        x:fmla="=SUM(E5:J5)">
+                        36
+                    </td>
+                    <td>
+                        300, 30, 1500
+                    </td>
+                    <td x:num>
+                        100000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17">
+                        L, Mountain
+                    </td>
+                    <td x:num>
+                        20000
+                    </td>
+                    <td x:num>
+                        20000
+                    </td>
+                    <td x:num>
+                        20000
+                    </td>
+                    <td x:num>
+                        2
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        12
+                    </td>
+                    <td x:num
+                        x:fmla="=SUM(E6:J6)">
+                        37
+                    </td>
+                    <td>
+                        24, 60, 240
+                    </td>
+                    <td x:num>
+                        200000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17">
+                        C, Glacial
+                    </td>
+                    <td x:num>
+                        50000
+                    </td>
+                    <td x:num>
+                        50000
+                    </td>
+                    <td x:num>
+                        50000
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        7
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        4
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num
+                        x:fmla="=SUM(E7:J7)">
+                        34
+                    </td>
+                    <td>
+                        1250, 2500, 12500
+                    </td>
+                    <td x:num>
+                        20000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17">
+                        H, Volcanic
+                    </td>
+                    <td x:num>
+                        50000
+                    </td>
+                    <td>
+                        N/A
+                    </td>
+                    <td x:num>
+                        50000
+                    </td>
+                    <td x:num>
+                        4
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num>
+                        12
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        18
+                    </td>
+                    <td x:num
+                        x:fmla="=SUM(E8:J8)">
+                        52
+                    </td>
+                    <td>
+                        50, 0, 25000
+                    </td>
+                    <td x:num>
+                        1000000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17">
+                        U, Vap/Gas
+                    </td>
+                    <td x:num>
+                        1500
+                    </td>
+                    <td x:num>
+                        1500
+                    </td>
+                    <td x:num>
+                        1500
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num>
+                        4
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        5
+                    </td>
+                    <td x:num>
+                        4
+                    </td>
+                    <td x:num>
+                        8
+                    </td>
+                    <td x:num
+                        x:fmla="=SUM(E9:J9)">
+                        34
+                    </td>
+                    <td>
+                        0, 0, 0
+                    </td>
+                    <td x:num>
+                        10000
+                    </td>
+                </tr>
+            </table>
+
+            <h4>Optimal Pop</h4>
+            This represents the optimal population.&nbsp; More than optimal reduces
+            production.&nbsp; A planet can
+            hold 2* the optimal population max.
+
+            <h4>Fig Factor</h4>
+            This represents the number of
+            colonists it takes to make one fig, for each of the three types of
+            production.&nbsp; i.e. Class M planets make 1 fighter for each 30 in ore, 1 for
+            each 70 in org, and 1 fighter for each 130 in eq.
+
+            <h3><a name="Planet Information: Supplies needed for construction and upgrades of Citadels.">Planet
+                    Information: Supplies needed for construction and upgrades of Citadels.</a></h3>
+            <table height="734"
+                   width="100%">
+                <col width="85">
+                <col width="35"
+                     span="4">
+                <col width="42">
+                <col width="35">
+                <col width="16">
+                <col width="79">
+                <col width="35"
+                     span="4">
+                <col width="42">
+                <col width="35">
+                <tr height="40">
+                    <td height="36"
+                        class="xl24"
+                        width="85">
+                        M,
+                        Earth
+                    </td>
+                    <td class="xl23"
+                        width="35"
+                        height="36">
+                        Lv
+                        1
+                    </td>
+                    <td class="xl23"
+                        width="35"
+                        height="36">
+                        Lv
+                        2
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        3
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        4
+                    </td>
+                    <td class="xl22"
+                        width="42"
+                        height="36">
+                        Lv
+                        5
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        6
+                    </td>
+                    <td width="16"
+                        height="36">&nbsp;</td>
+                    <td class="xl25"
+                        width="79"
+                        height="36">
+                        K,
+                        Desert
+                    </td>
+                    <td class="xl23"
+                        width="35"
+                        height="36">
+                        Lv
+                        1
+                    </td>
+                    <td class="xl23"
+                        width="35"
+                        height="36">
+                        Lv
+                        2
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        3
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        4
+                    </td>
+                    <td class="xl22"
+                        width="42"
+                        height="36">
+                        Lv
+                        5
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        6
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Fuel Ore
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Fuel Ore
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        700
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        700
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Organics
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        50
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        250
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1200
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Organics
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        80
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        900
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        900
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Equipment
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        250
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        250
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Equipment
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        650
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        800
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1600
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Colonists
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6000
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Colonists
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        7000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        7000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Days
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        10
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        15
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Days
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                </tr>
+                <tr height="40">
+                    <td height="36"
+                        class="xl25"
+                        width="85">
+                        O,
+                        Oceanic
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        1
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        2
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        3
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        4
+                    </td>
+                    <td class="xl22"
+                        width="42"
+                        height="36">
+                        Lv
+                        5
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        6
+                    </td>
+                    <td height="36">&nbsp;</td>
+                    <td class="xl25"
+                        width="79"
+                        height="36">
+                        L,
+                        Mountain
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        1
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        2
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        3
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        4
+                    </td>
+                    <td class="xl22"
+                        width="42"
+                        height="36">
+                        Lv
+                        5
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        6
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Fuel Ore
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        700
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        700
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Fuel Ore
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        150
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Organics
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        50
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        900
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        900
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Organics
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        100
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        50
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        250
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1200
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Equipment
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        650
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        800
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1600
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Equipment
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        150
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        250
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        700
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Colonists
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        7000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        7000
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Colonists
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        3600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        7000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5600
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Days
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Days
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        12
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td class="xl23"
+                        height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                </tr>
+                <tr height="40">
+                    <td height="36"
+                        class="xl25"
+                        width="85">
+                        C,
+                        Glacial
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        1
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        2
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        3
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        4
+                    </td>
+                    <td class="xl22"
+                        width="42"
+                        height="36">
+                        Lv
+                        5
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        6
+                    </td>
+                    <td height="36">&nbsp;</td>
+                    <td class="xl25"
+                        width="79"
+                        height="36">
+                        H,
+                        Volcanic
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        1
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        2
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        3
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        4
+                    </td>
+                    <td class="xl22"
+                        width="42"
+                        height="36">
+                        Lv
+                        5
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        6
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Fuel Ore
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        700
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        700
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Fuel Ore
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        3000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Organics
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        80
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        900
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        900
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Organics
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        100
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Equipment
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        650
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        700
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1400
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Equipment
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Colonists
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        9000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6600
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Colonists
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        800
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        7000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        10000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        7000
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Days
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        7
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">
+                        Days
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        12
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        18
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="20">&nbsp;</td>
+                    <td class="xl23"
+                        height="20">&nbsp;</td>
+                    <td class="xl23"
+                        height="20">&nbsp;</td>
+                    <td class="xl23"
+                        height="20">&nbsp;</td>
+                    <td class="xl23"
+                        height="20">&nbsp;</td>
+                    <td class="xl23"
+                        height="20">&nbsp;</td>
+                    <td class="xl23"
+                        height="20">&nbsp;</td>
+                    <td height="20">&nbsp;</td>
+                    <td height="20">&nbsp;</td>
+                    <td height="20">&nbsp;</td>
+                    <td height="20">&nbsp;</td>
+                    <td height="20">&nbsp;</td>
+                    <td height="20">&nbsp;</td>
+                    <td height="20">&nbsp;</td>
+                    <td height="20">&nbsp;</td>
+                </tr>
+                <tr height="40">
+                    <td height="36"
+                        class="xl25"
+                        width="85">
+                        U,
+                        Vap/Gas
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        1
+                    </td>
+                    <td class="xl23"
+                        height="36">
+                        Lv
+                        2
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        3
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        4
+                    </td>
+                    <td class="xl22"
+                        width="42"
+                        height="36">
+                        Lv
+                        5
+                    </td>
+                    <td class="xl22"
+                        width="35"
+                        height="36">
+                        Lv
+                        6
+                    </td>
+                    <td height="36">&nbsp;</td>
+                    <td height="36">&nbsp;</td>
+                    <td height="36">&nbsp;</td>
+                    <td height="36">&nbsp;</td>
+                    <td height="36">&nbsp;</td>
+                    <td height="36">&nbsp;</td>
+                    <td height="36">&nbsp;</td>
+                    <td height="36">&nbsp;</td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Fuel Ore
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        300
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        500
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Organics
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        100
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        200
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Equipment
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2500
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        400
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        2000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        600
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        1200
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Colonists
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        3000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        3000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8000
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        6000
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                </tr>
+                <tr height="17">
+                    <td height="21">
+                        Days
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        5
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        4
+                    </td>
+                    <td class="xl23"
+                        x:num
+                        height="21">
+                        8
+                    </td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                    <td height="21">&nbsp;</td>
+                </tr>
+            </table>
+            <h3><a name="Entering A Hostile Sector: Order of Events">Entering A Hostile Sector: Order of Events</a></h3>
+
+            <p>(What happens when you go in with no Photon)</p>
+
+            <ol>
+                <li>Check for <strong>Nav Hazz</strong>. Apply damage if necessary.</li>
+
+                <li>One <strong>Limpet Mine</strong>, if any are present, will attach to your hull. Any previously
+                    attached Limpet will fall off.</li>
+
+                <li><strong>Armid Mines</strong>, if any are present, will check for detonation. If detonation occurs,
+                    then 50% of the mines will detonate, rounding down. Apply damage if necessary.</li>
+
+                <li><strong>Sector Q-Cannon</strong> will fire. If there are multiple planets in the sector, the lowest
+                    planet number will fire first, and then check to see if the ship still exists. If it does, then the
+                    next planet will fire, until all cannons fire, or the ship is destroyed.
+                    <br><em>Example:</em> If planet #2's cannon kills your ship, then planet #3 through whatever won't
+                    fire their cannons.
+                </li>
+
+                <li><strong>Fighter Encounters</strong> (one of the following):
+                    <ul>
+                        <li><strong>Sector Offensive Fighters attack:</strong> They will attack at 1:1 odds, but will
+                            send 1.25 times the number of combined shields and figs that your ship can carry.
+                            <br><em>Example:</em> If your ship has a max of 10,000 figs and 1,000 shields, then you will
+                            be attacked by 13,750 figs at 1:1 odds. Any remaining figs will stay in the sector.
+                        </li>
+                        <li><strong>Sector Defensive Fighters challenge:</strong> You will be placed at the attack
+                            prompt and be forced to either attack, retreat or surrender your ship. Sector Defensive Figs
+                            have 1:1 odds.</li>
+                        <li><strong>Tolled figs challenge:</strong> You will be placed at the tolled fighter prompt and
+                            forced to either pay (5 credits per tolled fig), attack, retreat or surrender your ship.
+                            Tolled figs have 1:1 odds.</li>
+                    </ul>
+                </li>
+
+                <li>If there were any mines in the sector, you will be asked whether you want to avoid the sector. At
+                    this point, you are returned to the command prompt. There may still be Mines and Offensive figs left
+                    in the sector.</li>
+            </ol>
+            <h3><a name="Landing On A Hostile Planet:">Landing
+                    On A Hostile Planet</a></h3>
+            <p>Order of Events (What happens when you land with no
+                Photon, or if you land on a shielded planet)</p>
+
+            <ul>
+                <li>Atmospheric Q‑Cannon will fire (assuming there is one).</li>
+                <li>Attack Planet Shields (if any).</li>
+                <li>
+                    If there were shields, and after you destroy the last one, then the Atmospheric Q‑Cannon will
+                    fire
+                    again.
+                </li>
+                <li>
+                    Planetary Offensive Figs attack. They <strong>only</strong> attack when there are no shields. As
+                    long as at least one shield remains, they will not attack. They attack at 2:1 odds, but will
+                    send
+                    1.25 × the number of combined shields and figs that your ship can carry.
+                    <br>
+                    <em>Example:</em> If your ship can carry a maximum of 10,000 figs and has 1,000 shields, you
+                    will be
+                    attacked by 13,750 figs at 2:1 odds. Any remaining figs will stay on the planet to be dealt with
+                    in
+                    step 5.
+                </li>
+                <li>
+                    Attack Planet Figs. Any remaining figs on the planet will defend at 3:1 odds (even if there was
+                    a
+                    Military Reaction set). After killing the figs, you are put at the Planet Prompt.
+                    <br>
+                    The first thing you should do is press “O” to take ownership of the planet!
+                </li>
+            </ul>
+
+            <h3><a name="MBBS GOLD or MBBS Player vs Player Experience and Alignment info">MBBS
+                    GOLD or MBBS Player vs Player Experience and Alignment Info</a></h3>
+
+            <p>If you are podded, you loose 10% of your exp.<br>
+                If you are #SD#, then you loose 50% of your exp, and 50% of your alignment.</p>
+
+            <h4>Blue vs Red or Red vs Blue</h4>
+            <div class="equation">
+                Amount of Alignment lost/gained = (# of YOUR figs lost/1000) * (Enemy Align * .2)<br>
+                Amount of Exp gained = # of YOUR figs lost/15<br>
+            </div>
+            <p><strong>If you pod them:</strong><br>
+                – Gain <strong>10%</strong> of their experience.<br>
+                – Gain <strong>50%</strong> of their alignment.</p>
+
+            <p><strong>If you #SD# them:</strong><br>
+                – Gain <strong>10%</strong> of their experience.<br>
+                – Gain <strong>50%</strong> of their alignment.</p>
+
+            <hr>
+
+            <p><em>Example:</em></p>
+
+            <p>
+                A blue attacks a red. The blue has <strong>30,000 figs</strong>, and the red has <strong>20,000
+                    figs</strong>.<br>
+                The blue has <strong>0 experience</strong> and <strong>+1,100 alignment</strong>.<br>
+                The red has <strong>12,000 experience</strong> and <strong>−100,000 alignment</strong>.
+            </p>
+
+            <p>
+                If the blue launches a wave of <strong>10,000 figs</strong> at the red, the blue will gain:
+            </p>
+            <div class="equation">666 experience, +200,000 alignment</div>
+
+            <p>
+                Assuming the red now has only <strong>8,000 figs</strong> left, and the blue launches another
+                <strong>10,000-fig wave</strong>,
+                the blue loses approximately <strong>7,000 figs</strong>, and the red is podded. The blue gains:
+            </p>
+            <div class="equation">533 experience, +160,000 alignment (for the figs)</div>
+            <div class="equation">+1,200 experience, +50,000 alignment (for the podding)</div>
+
+            <p>
+                If the blue finishes off the pod, they gain:
+            </p>
+            <div class="equation">1 experience, +600 alignment (for the remaining figs/shields)</div>
+            <div class="equation">+1,080 experience, +50,000 alignment (for destroying the pod)</div>
+
+            <p>
+                After the conflict:
+            </p>
+            <div class="equation">Red: 5,400 experience, −50,000 alignment</div>
+            <div class="equation">Blue: 3,480 experience, +460,600 alignment</div>
+
+            <br>
+            <h3>Blue vs. Blue or Red vs. Red</h3>
+
+            <p><strong>Alignment Change:</strong></p>
+            <div class="equation">(Your figures lost ÷ 1000) × (Enemy Alignment × 0.2)</div>
+
+            <p><strong>Experience Gained:</strong></p>
+            <div class="equation">Your figures lost ÷ 35</div>
+
+            <p><strong>If you pod them:</strong><br>
+                – Gain <strong>10%</strong> of their experience.<br>
+                – Gain <strong>50%</strong> of their alignment.</p>
+
+            <p><strong>If you #SD# them:</strong><br>
+                – Gain <strong>10%</strong> of their experience.<br>
+                – Gain <strong>50%</strong> of their alignment.</p>
+
+            <br>
+            <h3>Neutral vs. Any (0 Alignment)</h3>
+
+            <p><strong>Alignment Change:</strong></p>
+            <div class="equation">(Your figures lost ÷ 1000) × (Enemy Alignment × 0.2)</div>
+
+            <p><strong>Experience Gained:</strong></p>
+            <div class="equation">Your figures lost ÷ 25</div>
+
+            <p><strong>If you pod them:</strong><br>
+                – Gain <strong>10%</strong> of their experience.<br>
+                – Gain <strong>50%</strong> of their alignment.</p>
+
+            <p><strong>If you #SD# them:</strong><br>
+                – Gain <strong>10%</strong> of their experience.<br>
+                – Gain <strong>50%</strong> of their alignment.</p>
+
+
+            <br>
+            <h3><a name="GOLD or Classic Player vs Figs">GOLD or Classic Player vs. Figs</a></h3>
+            <p><em>(Corp or Personal - Experience and Alignment Information)</em></p>
+            <h4>Blue vs Red or Red vs Blue</h4>
+
+            <div class="equation">
+                Amount of Exp gained: (# of figs you LOST / 15)<br>
+                Amount of Alignment Lost/gained: (Player or Corp alignment / 5000) * number
+                of figs you LOST
+            </div>
+            <p><em>Example:</em></p>
+
+            <p>
+                Your enemy has 1,000 tolled figs, and you attack them.
+                If the enemy has a personal alignment of −10,000 and a corp alignment of −5,000,
+                and you attack with 1:1 odds, losing 1,000 figs in the process, then:
+            </p>
+
+            <ul>
+                <li>You gain 67 experience.</li>
+                <li>You gain 2,000 alignment for hitting personal figs.</li>
+                <li>You gain 1,000 alignment for hitting corp figs.</li>
+            </ul>
+
+            <p>
+                It’s the figs <em>you lose</em> that matter — not how many they have.
+            </p>
+            <br>
+            <h3>Blue vs Blue or Red vs Red</h3>
+
+            <div class="equation">
+                Amount of Exp gained: (# of figs you LOST / 35)<br>
+                Amount of Alignment Lost/gained: (Player or Corp alignment / 10000) * number of figs you LOST
+            </div>
+
+            <p><em>Note:</em> The Experience is the same as MBBS, but the alignment penalties are different.</p>
+            <h3><a name="MBBS Fighter and Shield Odds">MBBS
+                    Fighter and Shield Odds</a></h3>
+            <table width="100%">
+                <col width="167">
+                <col width="65">
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        width="167">
+                        Tolled
+                        Fig Odds
+                    </td>
+                    <td class="xl25"
+                        width="65"
+                        x:str="'1:1">
+                        1:1
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24">
+                        Defensive
+                        Fig Odds
+                    </td>
+                    <td class="xl24"
+                        x:str="'1:1">
+                        1:1
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24">
+                        Offensive
+                        Fig Odds
+                        *
+                    </td>
+                    <td class="xl24"
+                        x:str="'1:1">
+                        1:1
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24">
+                        Planet
+                        Defensive Fig Odds&nbsp;
+                        &nbsp;
+                    </td>
+                    <td class="xl24"
+                        x:str="'2:1">
+                        3:1
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24">
+                        Planet
+                        Offensive Fig Odds
+                        **
+                    </td>
+                    <td class="xl26"
+                        width="65"
+                        x:str="'3:1">
+                        2:1
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24">
+                        Planet
+                        Shield Odds
+                    </td>
+                    <td class="xl24"
+                        x:str="'20:1">
+                        20:1
+                    </td>
+                </tr>
+            </table>
+
+            <p>* NOTE: As of version .55, Offensive figs will calculate the number of figs required to destroy your
+                ship (your max total shields and figs, not your current shields and figs as
+                in previous versions) based on 1:1 odds, and then send 1.25
+                times that amount (or the remaining figs if it's less than that).&nbsp; If
+                you are in a ship with 1:1.3 odds or better, your ship will survive the
+                attack.&nbsp; Any figs that survive the attack or aren't used remain in the
+                sector.</p>
+
+            <p>** NOTE: Planet Offensive figs also send 1.25 times the number of figs required to destroy
+                your ship as above, but the odds are 2:1, so you either need more figs than
+                the planet has, use a modified ship, or come in with a photon, otherwise the
+                figs will pod your ship, even a scout!&nbsp; Any figs that survive the
+                attack or aren't used remain on the planet.</p>
+
+            <h3><a name="MBBS GOLD or MBBS Q-Cannon Formulas">MBBS
+                    GOLD or MBBS Q-Cannon Formulas</a></h3>
+
+            <h4>Sector:</h4>
+
+            <div class="equation">Damage = (Fuel * SectLvl %) / 3</div>
+
+            <h4>Atmospheric:</h4>
+
+            <div class="equation">Damage = (Fuel * AtmosLvl %) * 2</div>
+
+            <p><strong>Example:</strong></p>
+
+            <p>A typical L with 200,000 units of fuel
+                ore, and 20% AtmosLvl, and 10% SectLvl will do 6666 points of damage to your
+                ship when you enter the sector, and 72,000 damage if you immediately try to
+                land on it after the sector fire.</p>
+
+            <h3><a name="GOLD or Classic Q-Cannon Formulas">GOLD or
+                    Classic Q-Cannon Formulas</a></h3>
+
+            <h4>Sector:</h4>
+
+            <div class="equation">Damage = (Fuel * SectLvl %) / 3</div>
+
+            <h4>Atmospheric:</h4>
+
+            <div class="equation">Damage = (Fuel * AtmosLvl %) * .5</div>
+
+            <p><strong>Example:</strong></p>
+
+            <p>A typical L with 200,000 units of fuel
+                ore, and 20% AtmosLvl, and 10% SectLvl will do 6666 points of damage to your
+                ship when you enter the sector, and 18,000 damage if you immediately try to
+                land on it after the sector fire.</p>
+
+            <h3><a name="Evil Rob/Steal Settings">Evil Rob/Steal Settings</a></h3>
+
+            <h4>THE MATH:</h4>
+
+            <p>There are two settings that affect how
+                much you can rob or steal.&nbsp; The RobFactor, and the StealFactor.&nbsp;
+                These settings are determined by the Sysop. (Although in MBBS mode, they are
+                fixed.)&nbsp; They are measured as a percentage, i.e. 50%.</p>
+
+            <p>Here is the formula you need to use to figure out how much you can rob from a
+                port with minimal chance of a bust:</p>
+
+            <div class="equation">(3 / %RobFactor) * EXP</div>
+
+            <p><strong>Example:</strong><br>
+                Rob Factor is 50%.&nbsp; Your experience is 10,000.<br>
+                3 / .5 = 6,&nbsp; 6 * 10,000 = 60,000<br>
+                You can rob 60,000 credits.</p>
+
+            <p>Here is the formula for stealing holds:</p>
+
+            <div class="equation">EXP / (30 * %StealFactor)</div>
+
+            <p><strong>Example:</strong> (StealFactor is 70%.&nbsp; Your experience is 3,500.)<br>
+                30 * .7 = 21, 3500 / 21 = 166.6 holds.&nbsp; (166 holds, drop fractions!)</p>
+
+            <p>For your convenience, I have put the default values for a MBBS and a Classic game.</p>
+
+            <p><strong>MBBS:</strong><br>
+                EXP * 6 = Maximum Credits you can rob at once.<br>
+                EXP / 21 = Maximum holds you can steal at once.</p>
+
+            <p><strong>Classic:</strong><br>
+                EXP * 3 = Maximum Credits you can rob at once.<br>
+                EXP / 30 = Maximum holds you can steal at once.</p>
+
+            <p>Be sure to check the settings the
+                sysop is using in a classic game by pressing * at the Game Menu. (The first
+                menu after you choose which game you want to play.)&nbsp; And remember, even
+                if you follow these settings, your chance of busting is around 1 in
+                50.&nbsp; You WILL bust!</p>
+
+            <h3><a name="Density Scan Values">Density
+                    Scan Values</a></h3>
+            <table width="100%">
+                <col width="40">
+                <col width="351">
+                <tr height="17">
+                    <td height="17"
+                        width="40">
+                        Value
+                    </td>
+                    <td width="351">
+                        What
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        0
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Empty
+                        Sector *
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        1
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Beacon
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        2
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Limpet
+                        Mine *
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        5
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        One
+                        Fighter
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        10
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        One
+                        Armid Mine
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        21
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Nav
+                        Haz ( per 1 percent )
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        38
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Unmanned
+                        Ship
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        40
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Manned
+                        Ship - Trader or Alien
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        100
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Startport,
+                        Ferrengi Battle Cruiser or Ferrengi Dreadnaught
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        462
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Federation
+                        Starship: Admiral Nelson
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        489
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Federation
+                        Starship: Captain Zyrain
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        500
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Planet
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        x:num>
+                        512
+                    </td>
+                    <td><span>
+                            &nbsp;
+                        </span>
+                        Federation
+                        Starship: Admiral Clausewitz
+                    </td>
+                </tr>
+            </table>
+
+            <p>* If there is a 'yes' in the anomaly column, then there is likely a cloaked ship
+                there.&nbsp; Cloaked ships have a zero dens scan, but trigger the anomaly
+                flag.&nbsp; Limpets always trigger the anomaly flag.</p>
+
+            <p>These values are cumulative, so if
+                there is a planet with 2 empty ships, a limpet and 150 mines and 10,000 figs
+                over it, your density scan will report 52078.&nbsp; Anything over 100, or
+                any anomaly should be holoscanned.&nbsp; Some players will deliberately try
+                to mislead you by dropping figs/mines in combination that add up to either
+                40 or 100 or 500.&nbsp; When in doubt, Photon it! :-)</p>
+
+            <h3><a name="Alignment Gains and Losses:">Alignment Gains and
+                    Losses</a></h3>
+
+            <table width="100%">
+                <col width="209">
+                <col width="133"
+                     span="2">
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Action
+                    </td>
+                    <td width="201">
+                        Align Gain/Loss
+                    </td>
+                    <td width="129">
+                        Exp change?
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Login
+                        in first time each day
+                    </td>
+                    <td x:str="'+1"
+                        width="201">
+                        +1
+                    </td>
+                    <td x:str="'+1"
+                        width="129">
+                        +1
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Swearing
+                        at Grimy Trader in tavern
+                    </td>
+                    <td x:str="'-1"
+                        width="201">
+                        -1
+                    </td>
+                    <td x:str="'-1"
+                        width="129">
+                        -1
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Destroying
+                        a port
+                    </td>
+                    <td x:str="'-50"
+                        width="201">
+                        -50
+                    </td>
+                    <td x:str="'+50"
+                        width="129">
+                        +50
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Destroying
+                        a Planet (Any Alignment)
+                    </td>
+                    <td x:str="'-1"
+                        width="201">
+                        -1
+                    </td>
+                    <td x:str="'+50"
+                        width="129">
+                        +50
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Good
+                        Creating a Planet
+                    </td>
+                    <td x:str="'+10"
+                        width="201">
+                        +10
+                    </td>
+                    <td x:str="'+25"
+                        width="129">
+                        +25
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Neutral
+                        Creating a Planet
+                    </td>
+                    <td x:str="'0"
+                        width="201">
+                        0
+                    </td>
+                    <td x:str="'+25"
+                        width="129">
+                        +25
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Evil
+                        Creating a Planet
+                    </td>
+                    <td x:str="'-10"
+                        width="201">
+                        -10
+                    </td>
+                    <td x:str="'+25"
+                        width="129">
+                        +25
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Jettisoning
+                        collies
+                    </td>
+                    <td x:str="'-1 per collie, one time per extern, only if good"
+                        width="201">
+                        -1
+                        per collie, one time per extern, only if good
+                    </td>
+                    <td x:str="'0"
+                        width="129">
+                        0
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Breaking
+                        into another corp
+                    </td>
+                    <td x:str="'-1, one time per extern"
+                        width="201">
+                        -1,
+                        one time per extern
+                    </td>
+                    <td x:str="'0"
+                        width="129">
+                        0
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Posting
+                        a reward on an Evil
+                    </td>
+                    <td x:str="'+1 per 1000 credits"
+                        width="201">
+                        +1
+                        per 1000 credits
+                    </td>
+                    <td x:str="'0"
+                        width="129">
+                        0
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Posting
+                        a bounty on a Good
+                    </td>
+                    <td x:str="'-1 per 250 credits"
+                        width="201">
+                        -1 per
+                        250 credits
+                    </td>
+                    <td x:str="'0"
+                        width="129">
+                        0
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Attacking
+                        a Fed
+                    </td>
+                    <td width="201">
+                        -10, but you get podded
+                    </td>
+                    <td width="129">
+                        Loose 10%&nbsp;
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Attacking
+                        a player or alien
+                    </td>
+                    <td width="201">
+                        Varies, see Formulas
+                    </td>
+                    <td width="129">
+                        Varies, see Formulas
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Attacking
+                        figs
+                    </td>
+                    <td width="201">
+                        Varies, see Formulas
+                    </td>
+                    <td width="129">
+                        Varies, see Formulas
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Creating
+                        a Port
+                    </td>
+                    <td width="201">
+                        Varies, see Formulas
+                    </td>
+                    <td width="129">
+                        Varies, see Formulas
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        width="220">
+                        Upgrading
+                        a Port
+                    </td>
+                    <td width="201">
+                        Varies, see Formulas
+                    </td>
+                    <td width="129">
+                        Varies, see Formulas
+                    </td>
+                </tr>
+            </table>
+
+            <h3><a name="Experience Loss for Mixed-Corps at Extern:">Experience Loss for Mixed-Corps at Extern</a></h3>
+
+            <p>This is not a straight-forward formula, since there has to be a comparison first, then the formula is
+                applied. The process works as follows:</p>
+
+            <ol>
+                <li>Take two players in your corp: the one with the <strong>lowest (negative/red) alignment</strong> and
+                    the one with the <strong>highest (positive/blue) alignment</strong>.</li>
+                <li>Treat the negative alignment number as a positive, and compare the two numbers.</li>
+                <li>Whichever number is <strong>LOWER</strong> is the one that is kept.</li>
+                <li>Take that number and divide it by 4 — that's how much experience is lost per player.</li>
+                <li>Experience cannot go below zero.</li>
+            </ol>
+
+            <div class="equation">Experience Loss per Player = MIN(ABS(lowest_alignment), highest_alignment) / 4</div>
+
+            <p><strong>Example:</strong></p>
+
+            <table width="100%">
+                <tr>
+                    <th>Player</th>
+                    <th>Experience</th>
+                    <th>Alignment</th>
+                </tr>
+                <tr>
+                    <td>Player 1</td>
+                    <td>1,000</td>
+                    <td>+1,000</td>
+                </tr>
+                <tr>
+                    <td>Player 2</td>
+                    <td>1,000</td>
+                    <td>0</td>
+                </tr>
+                <tr>
+                    <td>Player 3</td>
+                    <td>20,000</td>
+                    <td>-50,000</td>
+                </tr>
+                <tr>
+                    <td>Player 4</td>
+                    <td>10,000</td>
+                    <td>-25,000</td>
+                </tr>
+                <tr>
+                    <td>Player 5</td>
+                    <td>0</td>
+                    <td>+800</td>
+                </tr>
+            </table>
+
+            <p>At extern, the alignments of Player 1 and Player 3 are compared (the high blue and the high red). Player
+                1's alignment (1,000) is the lower of the two values, so the total experience loss for the corp is
+                <strong>250</strong> (1000 / 4).
+            </p>
+
+            <p><em>Note:</em> Player 5's experience will stay at zero, since it can't go any lower. Player 1 and Player
+                2 are now also Fedsafe, since their experience dropped below 1000 (to 750).</p>
+
+            <h3><a name="Creating &amp; Upgrading Ports:">Creating &amp; Upgrading
+                    Ports</a></h3>
+
+            <h4>Port Creation Experience and Alignment
+                Gain (regardless of current alignment)</h4>
+
+            <table width="100%">
+                <col width="79">
+                <col width="40">
+                <col width="40">
+                <col width="51">
+                <col width="51">
+                <tr height="17">
+                    <td height="17"
+                        width="79">
+                        Port
+                        Class
+                    </td>
+                    <td width="44">
+                        Type
+                    </td>
+                    <td width="40">
+                        Exp
+                    </td>
+                    <td width="51">
+                        Align
+                    </td>
+                    <td width="69">
+                        Build Time
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        1
+                    </td>
+                    <td class="xl24"
+                        x:str="'+25"
+                        width="44">
+                        BBS
+                    </td>
+                    <td class="xl24"
+                        x:str="'+25"
+                        width="40">
+                        +25
+                    </td>
+                    <td class="xl24"
+                        x:str="'+12"
+                        width="51">
+                        +12
+                    </td>
+                    <td class="xl24"
+                        x:str="'+12"
+                        width="69">
+                        6
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        2
+                    </td>
+                    <td class="xl24"
+                        x:str="'+29"
+                        width="44">
+                        BSB
+                    </td>
+                    <td class="xl24"
+                        x:str="'+29"
+                        width="40">
+                        +29
+                    </td>
+                    <td class="xl24"
+                        x:str="'+14"
+                        width="51">
+                        +14
+                    </td>
+                    <td class="xl24"
+                        x:str="'+14"
+                        width="69">
+                        7
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        3
+                    </td>
+                    <td class="xl24"
+                        x:str="'+34"
+                        width="44">
+                        SBB
+                    </td>
+                    <td class="xl24"
+                        x:str="'+34"
+                        width="40">
+                        +34
+                    </td>
+                    <td class="xl24"
+                        x:str="'+16"
+                        width="51">
+                        +16
+                    </td>
+                    <td class="xl24"
+                        x:str="'+16"
+                        width="69">
+                        8
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        4
+                    </td>
+                    <td class="xl24"
+                        x:str="'+20"
+                        width="44">
+                        SSB
+                    </td>
+                    <td class="xl24"
+                        x:str="'+20"
+                        width="40">
+                        +20
+                    </td>
+                    <td class="xl24"
+                        x:str="'+10"
+                        width="51">
+                        +10
+                    </td>
+                    <td class="xl24"
+                        x:str="'+10"
+                        width="69">
+                        5
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        5
+                    </td>
+                    <td class="xl24"
+                        x:str="'+16"
+                        width="44">
+                        SBS
+                    </td>
+                    <td class="xl24"
+                        x:str="'+16"
+                        width="40">
+                        +16
+                    </td>
+                    <td class="xl24"
+                        x:str="'+8"
+                        width="51">
+                        +8
+                    </td>
+                    <td class="xl24"
+                        x:str="'+8"
+                        width="69">
+                        4
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        6
+                    </td>
+                    <td class="xl24"
+                        x:str="'+12"
+                        width="44">
+                        BSS
+                    </td>
+                    <td class="xl24"
+                        x:str="'+12"
+                        width="40">
+                        +12
+                    </td>
+                    <td class="xl24"
+                        x:str="'+6"
+                        width="51">
+                        +6
+                    </td>
+                    <td class="xl24"
+                        x:str="'+6"
+                        width="69">
+                        3
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        7
+                    </td>
+                    <td class="xl24"
+                        x:str="'+7"
+                        width="44">
+                        SSS
+                    </td>
+                    <td class="xl24"
+                        x:str="'+7"
+                        width="40">
+                        +7
+                    </td>
+                    <td class="xl24"
+                        x:str="'+4"
+                        width="51">
+                        +4
+                    </td>
+                    <td class="xl24"
+                        x:str="'+4"
+                        width="69">
+                        2
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        8
+                    </td>
+                    <td class="xl24"
+                        x:str="'+45"
+                        width="44">
+                        BBB
+                    </td>
+                    <td class="xl24"
+                        x:str="'+45"
+                        width="40">
+                        +45
+                    </td>
+                    <td class="xl24"
+                        x:str="'+20"
+                        width="51">
+                        +20
+                    </td>
+                    <td class="xl24"
+                        x:str="'+20"
+                        width="69">
+                        10
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        9
+                    </td>
+                    <td class="xl24"
+                        x:str="'+45"
+                        width="44">
+                        Special
+                    </td>
+                    <td class="xl24"
+                        x:str="'+45"
+                        width="40">
+                        N/A
+                    </td>
+                    <td class="xl24"
+                        x:str="'+20"
+                        width="51">
+                        N/A
+                    </td>
+                    <td class="xl24"
+                        x:str="'+20"
+                        width="69">
+                        N/A
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        x:num
+                        width="79">
+                        0
+                    </td>
+                    <td class="xl24"
+                        x:str="'+45"
+                        width="44">
+                        Special
+                    </td>
+                    <td class="xl24"
+                        x:str="'+45"
+                        width="40">
+                        N/A
+                    </td>
+                    <td class="xl24"
+                        x:str="'+20"
+                        width="51">
+                        N/A
+                    </td>
+                    <td class="xl24"
+                        x:str="'+20"
+                        width="69">
+                        N/A
+                    </td>
+                </tr>
+            </table>
+
+            <h4>Port Upgrade Experience and
+                Alignment Gain (regardless of current alignment)</h4>
+
+            <table width="100%">
+                <col width="64"
+                     span="4">
+                <tr height="34">
+                    <td height="34"
+                        class="xl24"
+                        width="72">
+                        Type:
+                    </td>
+                    <td class="xl24"
+                        width="48">
+                        Exp per unit
+                    </td>
+                    <td class="xl24"
+                        width="63">
+                        Align per unit
+                    </td>
+                    <td class="xl24"
+                        width="57">
+                        Cost per unit
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height=th7"
+                        class="xl24"
+                        width="72">
+                        Fuel
+                        Ore
+                    </td>
+                    <td class="xl25"
+                        width="48"
+                        x:num="00.1"
+                        u1:num="00.1">
+                        0.1
+                    </td>
+                    <td class="xl25"
+                        width="63"
+                        x:num="00.05"
+                        u1:num="00.05">
+                        0.05
+                    </td>
+                    <td x:num
+                        width="57">
+                        250
+                    </td>
+                </tr>
+                <tr height="17">
+                    <td height="17"
+                        class="xl24"
+                        width="72">
+                        Organics
+                    </td>
+                    <td class="xl25"
+                        width="48"
+                        x:num="00.2"
+                        u1:num="00.2">
+                        0.2
+                    </td>
+                    <td class="xl25"
+                        width="63"
+                        x:num="00.1"
+                        u1:num="00.1">
+                        0.1
+                    </td>
+                    <td x:num
+                        width="57">
+                        500
+                    </td>
+                </tr>
+                <tr height="34">
+                    <td height="34"
+                        class="xl24"
+                        width="72">
+                        Equipment
+                    </td>
+                    <td class="xl25"
+                        width="48"
+                        x:num="00.3"
+                        u1:num="00.3">
+                        0.3
+                    </td>
+                    <td class="xl25"
+                        width="63"
+                        x:num="00.15"
+                        u1:num="00.15">
+                        0.15
+                    </td>
+                    <td x:num
+                        width="57">
+                        900
+                    </td>
+                </tr>
+            </table>
+
+            <h3><a name="HOLD COSTS:">HOLD COSTS</a></h3>
+
+            <p>The cost of holds are:</p>
+
+            <div class="equation">Cost = (B*H)+((I*H)*(H-1))/2</div>
+
+            <p><strong>B</strong> is the base cost of the hold.&nbsp; <strong>B</strong> is a random number
+                generated each day by TWGS.&nbsp; I've tracked it over 30 days, and seen it
+                range between 151 and 249.&nbsp; Extern and the hour change don't seem to
+                change this number, only the day change.&nbsp; It appears to be an 18 day
+                cycle.&nbsp; It starts at 151, then over 9 days works up to 249, then back
+                down to 151 over another 9 day period.</p>
+
+            <p><strong>H</strong> is the number of holds you want to end up with.</p>
+
+            <p><strong>I</strong> is the increment number, which is always 20.&nbsp; (Each hold costs 20 more than the
+                last one.)</p>
+
+            <p><strong>Example:</strong> The cost for 100 holds (from zero holds) when B is equal to 200 is:
+                (200*100)+((20*100)*(100-1))/2 or 20000 + (2000 * 99)/2 or 20000 + 99000 =
+                119,000 credits.</p>
+
+            <p>To find out what <strong>B</strong> is, use the following formula:</p>
+
+            <div class="equation">B = C-((H)*I)</div>
+
+            <p><strong>C</strong> is the cost for the NEXT hold.&nbsp; (When
+                you look at the purchase screen, it will show the cost for the next hold to
+                be one less credit than it actually costs to install.&nbsp; If you try to
+                buy just one hold, you will see the correct price.)</p>
+
+            <p><strong>H</strong> is the number of holds you ALREADY have.</p>
+
+            <p><strong>I</strong> is the increment number, which is always 20.&nbsp; (Each hold costs 20 more than the
+                last one.)</p>
+
+            <p><strong>Example:</strong> You have 50 holds, and to get to 51 holds, it costs 1164, then B =
+                1164-(50*20) = 164.</p>
+
+            <p>To find out how much it costs to purchase large quantities
+                of holds, figure out how many holds you have and how many you want to end up with.&nbsp;
+                For example, if you have 50 holds, and you want 250, you first figure out
+                what it costs to get 250 holds from 0.&nbsp; Then you figure out what 50
+                holds cost and subtract that from the 250 hold figure.&nbsp; Using the above
+                value for <strong>B</strong> (164), the cost for 50 holds is 32,700, and for 250 holds is
+                663,500, so it costs 620,800 credits to go from 50 to 250 holds.</p>
+
+            <p>I know this is kind of trivial, since most of the
+                time you just buy what you need, but now you know how it works.&nbsp; Also,
+                take a look at my essay, <a href="strategy.html#Economy of Tradewars">The
+                    Economy of Tradewars</a>, since
+                I had to figure this out in the process of writing that guide.</p>
+
+            <h3><a name="Red Experience and Align Gains for SST and SDT">Red Experience and
+                    Align Gains for SST and SDT, per turn</a></h3>
+
+            <p>This can be useful to know, since you can tell how well your competition is doing. Keep in mind that
+                there are a lot of things a red can do to throw off your calculations, and tracking exp is folly, since
+                busts always screw up your numbers. But you can get a general idea if your enemies are SST'ing or
+                SDT'ing, besides counting planets, and you can get a rough idea at how much money they are making.</p>
+
+            <p><strong>Assuming 250 holds per rob:</strong></p>
+
+            <div class="equation">
+                <strong>SST:</strong><br>
+                Alignment shift per turn: -15<br>
+                Experience gain per turn: 7.33
+            </div>
+
+            <div class="equation">
+                <strong>SDT (assuming 2000 units between selloff):</strong><br>
+                Alignment shift per turn: -21.18<br>
+                Experience gain per turn: 10.35
+            </div>
+
+            <h3><a name="Red Profit Breakdown">Red Profit
+                    Breakdown for SST, SDT, Team SDT, and Megga Rob</a></h3>
+
+            <p><strong>NOTE:</strong> ALL calculations assume you are using -65 MCIC ports. This tries to show the MAX
+                potential profit per turn. These calculations were done using Elder Prophet's Haggle routines, and the
+                SST is an average, since the actual income from ship trades has many variables, that can't all be easily
+                factored in. The SDT math assumes that you were doing sell offs every 2000 units of EQ and the planet
+                trade is set to 100%. Busts calculated at 1 in 50. By team, I mean your reds are clearing each other's
+                busts.</p>
+
+            <table width="100%">
+                <tr>
+                    <th>Strategy</th>
+                    <th>Profit per Turn</th>
+                    <th>Blue Turns Needed per Red Turn (Using ISS)</th>
+                </tr>
+                <tr>
+                    <td><strong>SST per Turn Solo</strong> (furbed)</td>
+                    <td>14,035</td>
+                    <td>0.22</td>
+                </tr>
+                <tr>
+                    <td><strong>Team SST per Turn</strong> (furbed)</td>
+                    <td>14,139</td>
+                    <td>0.113</td>
+                </tr>
+                <tr>
+                    <td><strong>SDT per Turn Solo</strong> (furbed)</td>
+                    <td>15,921</td>
+                    <td>0.31</td>
+                </tr>
+                <tr>
+                    <td><strong>Team SDT per Turn</strong> (furbed)</td>
+                    <td>17,271</td>
+                    <td>0.16</td>
+                </tr>
+                <tr>
+                    <td><strong>Megga-Rob profit per turn</strong></td>
+                    <td>39,728</td>
+                    <td>—</td>
+                </tr>
+            </table>
+
+            <p><em>Megga-Rob assumes you totally drain the EQ on the sell port.</em></p>
+
+            <p>What may surprise some people is how much you
+                can make SST'ing.&nbsp; That's because you can make more profit from a ship
+                haggle than you can from a planet haggle.&nbsp; Now, assuming there are 1000
+                turns, and you have 2 reds, your blue will be spending 620 turns furbing 2
+                solo reds SDT'ing, or 320 turns furbing 2 reds Team SDT'ing, or 440 turns
+                furbing 2 solo reds SST'ing, or 226 turns furbing 2 reds Team SST'ing.&nbsp;
+                So, from the blue's side, SST is more turn efficient,&nbsp; saving 180 turns
+                running solos, or 94 turns running teams.&nbsp; This is because the red is
+                only running the risk of busting once every 3 turns SST'ing vs every 2 turns
+                SDT'ing, so odds are good your reds will bust less with SST.&nbsp; While I
+                always recommend that your reds SDT whenever possible, it's something to
+                keep in mind if you are pressed for blue turns.&nbsp; Certainly, you always
+                want to run with 2 reds, clearing each other's busts.</p>
+
+            <h4>THE MATH:</h4>
+
+            <p><strong>SST:</strong></p>
+            <div class="equation">
+                SST for 1000 turns<br>
+                3 turns per cycle, 333 max cycles<br>
+                179.59 ave sell price per unit at -65 port<br>
+                44,897.5 sell price for 250 holds<br>
+                14,950,867 gross profit for 333 cycles<br>
+                333 steal attempts, 6.66 expected number of busts (based on 1 bust in 50)<br>
+                83,250 total units traded, 81,585 total units traded factoring in busts<br>
+                81.67 adjusted EQ sold per turn<br>
+                14,666 adjusted profit per turn<br>
+                69,040 furb cost, 459,806 total ave furb cost<br>
+                14,666 SST profit per 1 turn<br>
+                14,206 after furb costs per turn<br>
+                <strong>Upgrading port costs:</strong><br>
+                • Solo: 7.6 ports need upgrading, 1,900 units needed, cost = 171,000<br>
+                • Team: 3 ports need upgrading, 750 units needed, cost = 67,500<br>
+                <strong>Final profit after port upgrades:</strong><br>
+                • Solo: 14,035 per turn<br>
+                • Team: 14,139 per turn
+            </div>
+
+            <p><strong>SDT, Solo and Team:</strong></p>
+            <div class="equation">
+                2,000 units of EQ sells for 320,254 on a -65 port<br>
+                So, 2 colts, 4,000 units, 640,508 creds, that's 2000/250 = 8 cycles between sell off<br>
+                2 turns per cycle = 16 turns<br>
+                1 turn for selloff = 1 turn<br>
+                Total: 17 turns, or 34 turns for the 2 colts<br>
+                34 turns, 640,508 creds, or 18,838 creds per turn<br>
+                18,838,471 credits per 1000 turns<br>
+                Bust 1 in 50, so every 106.25 turns you will bust, so 9.4 busts per 1000 turns<br>
+                117.65 units of EQ per turn<br>
+                12,470.59 units per 106 turns<br>
+                12,220.59 total units traded factoring in busts<br>
+                115.29 adjusted EQ sold per turn<br>
+                18,460.81 adjusted profit per turn<br>
+                69,040 furb cost<br>
+                649,788.24 total ave furb cost<br>
+                18,460,812.57 SDT profit per 1000 turns<br>
+                17,811,024.33 after furb costs<br>
+                <strong>Port costs:</strong><br>
+                • Solo: 10.5 ports needed, 21,000 units needed, cost = 1,890,000<br>
+                • Team: 3 ports needed, 6,000 units needed, cost = 540,000<br>
+                <strong>Final profit after port upgrades:</strong><br>
+                • Solo: 15,921 per turn<br>
+                • Team: 17,271 per turn
+            </div>
+
+            <p><strong>Megga-Rob:</strong></p>
+            <div class="equation">
+                32,750 total holds from an upped port<br>
+                131 turns to buydown<br>
+                1 turn to sell<br>
+                132 turn cycle<br>
+                5,244,159.25 creds from selloff<br>
+                39,728.48 profit per turn (132 turn cycle)<br>
+                924 turns you can spend doing buydown (if 1000 turns)<br>
+                36,709,114.75 max profit from Megga Rob
+            </div>
+
+            <h3><a name="Experience Gains for killing a trader on a planet">Experience
+                    Gains for killing a trader on a planet</a></h3>
+
+            <p>I have tested this for both Classic Gold and MBBS. The numbers are the same in both cases.</p>
+
+            <p>The amount of experience gained for killing another trader sitting on a planet, by ZDY'ing it:</p>
+
+            <div class="equation">(enemy experience × 0.1666) + 50</div>
+
+            <p><em>Note:</em> The +50 is for blowing the planet. It will be more if the planet has a citadel.</p>
+
+            <p><strong>Example:</strong> Your exp: 1,000, enemy exp: 10,000, L0 cit.</p>
+            <div class="equation">
+                (10,000 × 0.1666) = 1,666<br>
+                (1,666 + 50) = 1,716 = exp you gain<br>
+                New exp = 2,716
+            </div>
+
+            <p><em>Note:</em> The experience gain is the same for killing them at a port! These gains happen regardless
+                of whether you pod them or #SD# them. It's all the same for you! The enemies losses are the usual: -10%
+                exp and -0% align if podded, -50% exp and -50% align if #SD#.</p>
+
+            <h3><a name="Alignment Gains for killing a trader on a planet">Alignment
+                    Gains for killing a trader on a planet</a></h3>
+
+            <p>I have tested this for both Classic Gold and MBBS. The numbers are the same in both cases.</p>
+
+            <p>The amount of alignment gained for killing another trader sitting on a planet, by ZDY'ing it:</p>
+
+            <div class="equation">(enemy alignment × −0.3333) − 1</div>
+
+            <p><em>Note:</em> The −1 is for blowing the planet.</p>
+
+            <p><strong>Example 1:</strong> Your align: 1,000, enemy align: −10,000</p>
+            <div class="equation">
+                (−10,000 × −0.3333) = 3,333<br>
+                (3,333 − 1) = 3,332 = alignment you gain<br>
+                New Align = 4,332
+            </div>
+
+            <p><strong>Example 2:</strong> Your align: 1,000, enemy align: 1,000</p>
+            <div class="equation">
+                (1,000 × −0.3333) = −333<br>
+                (−333 − 1) = −334 = alignment you gain (or lose in this case)<br>
+                New Align = 666
+            </div>
+
+            <p><em>Note:</em> These gains happen regardless of whether you pod them or #SD# them. It's all the same for
+                you! The enemies losses are the usual: -10% exp and -0% align if podded, -50% exp and -50% align if
+                #SD#.</p>
+
+            <h3><a name="Experience Gains for killing a trader on a port">Experience
+                    Gains for killing a trader on a port</a></h3>
+
+            <p>I have tested this for both Classic Gold and MBBS. The numbers are the same in both cases.</p>
+
+            <p>The amount of experience gained for killing another trader sitting on a port, by blowing it:</p>
+
+            <div class="equation">(enemy experience × 0.1666) + 50</div>
+
+            <p><em>Note:</em> The +50 is for blowing the port.</p>
+
+            <p><strong>Example:</strong> Your exp: 1,000, enemy exp: 10,000</p>
+            <div class="equation">
+                (10,000 × 0.1666) = 1,666<br>
+                (1,666 + 50) = 1,716 = exp you gain<br>
+                New exp = 2,716
+            </div>
+
+            <p><em>Note:</em> The experience gain is the same for killing them at a planet! These gains happen
+                regardless of whether you pod them or #SD# them. It's all the same for you! The enemies losses are the
+                usual: -10% exp and -0% align if podded, -50% exp and -50% align if #SD#.</p>
+
+            <h3><a name="Alignment Gains for killing a trader on a port">Alignment
+                    Gains for killing a trader on a port</a></h3>
+
+            <p>I have tested this for both Classic Gold and MBBS. The numbers are the same in both cases.</p>
+
+            <p>The amount of alignment gained for killing another trader sitting on a port, by blowing it:</p>
+
+            <div class="equation">(enemy alignment × −1) − 55</div>
+
+            <p><em>Note:</em> The −55 is for blowing the port.</p>
+
+            <p><strong>Example 1:</strong> Your align: 1,000, enemy align: −10,000</p>
+            <div class="equation">
+                (−10,000 × −1) = 10,000<br>
+                (10,000 − 55) = 9,945 = alignment you gain<br>
+                New align = 10,945
+            </div>
+
+            <p><strong>Example 2:</strong> Your align: 1,000, enemy align: 1,000</p>
+            <div class="equation">
+                (1,000 × −1) = −1,000<br>
+                (−1,000 − 55) = −1,001 = alignment you gain (or lose in this case)<br>
+                New align = −55
+            </div>
+
+            <p>This means if you kill a trader at a port, you will get just about 100% of their alignment! These gains
+                happen regardless of whether you pod them or #SD# them. It's all the same for you! The enemies losses
+                are the usual: -10% exp and -0% align if podded, -50% exp and -50% align if #SD#.</p>
+
+            <h3><a name="Destroying a port, Defensive Value vs Figs Needed">Destroying
+                    a port, Defensive Rating vs Figs Needed</a></h3>
+
+            <p>I have tested this for both Classic Gold and MBBS. The numbers are the same in both cases.</p>
+
+            <div class="equation">Defensive Value of the port × (~22 / ship odds) = Safe Minimum Number of figs needed
+                to blow the port</div>
+
+            <p>A stock ISS has 1.5:1 odds, for example. The 22 is approximate, because while I've seen the number of
+                figs needed to blow a port as low as 19.5, I've never seen it go higher than 22. It's sorta random, just
+                like all combat in TW.</p>
+
+            <p><strong>Example:</strong> Def Rating = 551 (a typical MBBS SBB that's been fully upped on EQ) vs a Stock
+                ISS with 1.5 odds</p>
+            <div class="equation">
+                551 × (22 / 1.5) = 551 × 14.666 = 8,081 figs needed
+            </div>
+
+            <p><strong>NOTE:</strong> If you need more figs than you can launch in one wave, the port will shoot back!
+                How much it shoots back has so many variables, that I'm not including that here. (i.e. I haven't found a
+                consistent pattern yet.) That's a project for another time.</p>
+
+            <p><strong>NOTE 2: STARDOCK and the CLASS 0 ports work differently!</strong> Do not use this formula for
+                those port types! I have done a lot of research on blowing dock and the class 0's and combat with them
+                varies a lot. As a rule of thumb, the first time you blow up Dock or a Class 0, using a stock
+                Interdictor Cruiser, you need about 248,000 figs and 32,000 shields. If shields are cheaper than figs,
+                use them, otherwise, just use figs (280,000 figs with no shields). These are just approximations, you
+                may need 10,000 more or less, depending on luck. Oh, and you'll need a corpie feeding you figs and
+                shields too. Takes about 11 waves of 15,000 figs. After you have killed a Class 0 or Dock, all the
+                remaining special ports get their defensive ratings increased, including the port you killed after it
+                regens! (they go from 2,500 to 5,000, etc.) The figs needed goes way up too, to about 890,000.</p>
+
+            <h3><a name="Trader Flee formula">Trader Flee formula</a></h3>
+
+            <div class="equation">If attacker fighters > (defender fighters + defender shields) × 1.25, then they will
+                flee</div>
+
+            <p>Notice this is NOT greater than or equal to, so if it's close, pack a few extra fighters. There is also a
+                very small amount of wiggle room here due to the inherent randomness of TW combat. To be on the safe
+                side, have 1.3× their fighters plus shields if you want to force a flee, or 1.2× if you don't. The odds
+                of the ships and the maximum capacities of fighters or shields have no bearing on the formula; it only
+                factors in the amounts currently on hand.</p>
+
+            <p>See the following for more info:<br>
+                <a href="traderflee.html">Trader Flee</a><br>
+                Thanks to Psion for working this all out!
+            </p>
+
+        </main>
+    </div>
+
+    <footer class="site-footer">
+        <br>Copyright 2002 - 2005, Chris Kent aka Traitor. All rights reserved. See <a
+           href="aboutus.html">About.html</a>
+        for more info.<br>
+    </footer>
+
+</body>
+
+</html>

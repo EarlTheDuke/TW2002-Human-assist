@@ -1,0 +1,139 @@
+From: Hekate [hekate@twlinks.com]
+Sent: Tuesday, May 16, 2000 1:33 PM
+To: tw2002@egroups.com
+Subject: [tw2002] Alignment changes, how to lower - twgs
+
+Attila is correct.  It's the HIGHEST aligned BLUE  (just checked it with my
+figures from lastnight's loss)
+
+My example (Gravedigr quit Corp so he's not counted):
+  1    15,281   -151,106   9 Gravedigr
+  5     7,890    -80,558   1 Acid Reflux
+  6     6,085    -57,231   1 MasterBart
+ 16       261      2,056   1 Speedy
+ 18       102      2,328   1 Hekate
+ 22         1      1,064   1 Merlin
+Extern
+  1    15,281   -151,106   9 Gravedigr
+  5     7,308    -80,558   1 Acid Reflux
+  6     5,503    -57,231   1 MasterBart
+ 19         1      2,328   1 Hekate
+ 20         1      1,064   1 Merlin
+ 22         1      2,056   1 Speedy
+
+Acid Reflux lost 583
+Masterbart lost 582
+
+583+582=1165/2=582.5*4=2330
+Hekate's Fault <blush>  2328/4=582
+
+Another thing I "discovered" was that colo jettison works Extern to Extern
+not Midnight to Midnight.
+
+Ways to lower good align (gold):
+Attack figs of corpie/enemy with high enough align
+JetColos (but can only max 250 a day)
+CBY - then attack personal figs from evil corpie to get commission back
+
+
+Hekate (wishing TWATS would convert to TWGS)
+http://www.twlinks.com/
+hekate@twlinks.com
+ICQ# 10370329
+AOL/AIM: twhekate
+eBay:  tw-hekate
+
+
+> -----Original Message-----
+> From: Butch [mailto:istook@cs.byu.edu]
+> Sent: Tuesday, May 16, 2000 7:12 AM
+> To: tw2002@egroups.com
+> Subject: Re: [tw2002] Alignment to exp changes - twgs
+>
+>
+> Exact figures wanted?  Here ya go:
+>
+> the exp loss is one fourth of the least extreme alignment on the corp if
+> it is a mixed corp.
+>
+> So, Reds w/ -10k,-9k,-5k or so and blues w/ 1k,200,2k:
+> 	extreme aligns: -10k, 2k
+> 	least extreme: 2k
+> 	loss:	2k/4 -> 500 exp
+>
+> Or, Reds w/ -1k, -4k, -500 and blues w/ 6k,7k,5k
+> 	extreme aligns: -1k, 7k
+> 	least extreme: -1k
+> 	loss:   1k/4 -> 250 exp
+>
+> I ran extern on my own TWGS quite a few times a month or so ago to figure
+> these out.  Hope that it helps!
+>
+> Moldar
+>
+> On Tue, 16 May 2000, Barbara Cruz wrote:
+>
+> > as blues we never let our alignment go up over 1500...when it
+> hits 2000 the
+> > reds go to zero at extern..if they stay under 1500 the blues
+> lose 250 exp
+> > daily.
+> >
+> >
+> > Hekate wrote:
+> >
+> > > OK, here's another TWGS question:
+> > >
+> > > What is the loss of exp. due to goods having over 2k alignment?
+> > > anyone know the ratio?
+> > >
+> > > IE:  Under 2k align....evils lose minimal exp..but whats it
+> for over?  and
+> > > to how high before evils drop to 0 exp?
+> > >
+> > > Just yet another fine difference i'm trying to learn...the
+> easier way :)
+> > >
+> > > Hekate (wishing TWATS would convert to TWGS)
+> > > http://www.twlinks.com/
+> > > hekate@twlinks.com
+> > > ICQ# 10370329
+> > > AOL/AIM: twhekate
+> > > eBay:  tw-hekate
+> > >
+> > >
+> ------------------------------------------------------------------------
+> > > Join Garden.com's affiliate program and enjoy numerous benefits.
+> > > To learn more click here:
+> > > http://click.egroups.com/1/2955/4/_/15274/_/958458578/
+> > >
+> ------------------------------------------------------------------------
+> >
+> >
+> > ------------------------------------------------------------------------
+> > Best friends, most artistic, class clown Find 'em here:
+> > http://click.egroups.com/1/4054/4/_/15274/_/958458945/
+> > ------------------------------------------------------------------------
+> >
+> >
+> >
+>
+> Butch Istook
+> butch@orangatango.com
+>
+>
+> ------------------------------------------------------------------------
+> Remember four years of good friends, bad clothes, explosive chemistry
+> experiments.
+> http://click.egroups.com/1/4051/4/_/15274/_/958486345/
+> ------------------------------------------------------------------------
+>
+>
+
+
+
+------------------------------------------------------------------------
+Find long lost high school friends:
+http://click.egroups.com/1/4056/4/_/15274/_/958508935/
+------------------------------------------------------------------------
+

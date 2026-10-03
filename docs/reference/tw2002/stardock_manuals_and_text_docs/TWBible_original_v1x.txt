@@ -1,0 +1,851 @@
+  The TradeWars
+   2002 Bible!!!
+
+
+
+
+
+
+                              Quoted from Justin Curry - in the Tradewars echo on Fidonet
+                               With Excerpts from the on-line BBS game Tradewars, and
+			comments from Blackfist C.E.O of OCTOGON
+			And External Section From THE LORD at
+			THE HOUSE OF GOD BBS (702)-434-0373
+		       Captured October 21,1993 - updated (103d only!) March 1994
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+     - = Table Of Contents =-
+
+         An introduction to this whole Bible! 
+      What is TradeWars 2002?                     
+      Basic Game Play                             
+       Being Considered a 'good' player            
+       Using the Bugs in TradeWars -- A Dilemma    
+     Choosing Good or Evil                       
+     Being a Good 'N Legal Trader                
+       Being an Evil Trader                        
+        Bounties, good and evil                     
+      Keeping an Evil Imperial StarShip           
+     Trapping Federals and Freeing Federals      
+     Running A Corporation                       
+     Running A Piratical Corporation             
+      Anti-Backstabbing Yourself as a CEO         
+     Backstabbing your CEO                       
+    Secret Alliances and Treaties               
+  The Worth of Planets and Citadels           
+    The Worth of Aliens                         
+      The Worth of Ferrengi                       
+     The Worth of other Traders                  
+    Using the StarDock to it's fullest          
+  Destroying Class 0 ports                    
+
+ 
+
+
+
+       Addendum's
+       *****************
+        The Bugs in TradeWars 2002
+       External add-ons to TradeWars 2002 <not many!>
+      Registered and Non-Registered Version of TradeWars 2002
+     Port Pairs for Trading Easily
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+An Introduction To This Whole Bible!
+	The first thing that I wanted to say about this whole file was that I have worked long and hard on it, and done much research for it.  It is for the good of all the current and prospective TradeWars 2002 players out there. This is no ordinary text file on TradeWars 2002.  This is because I have tried to make it as error-free and as clear and concise as possible.  In this file I have used my opinions and experiences to try and help you become a better TradeWars 2002 player faster, and to give you ideas on what to do once you get going.  I have not told you EXACTLY how to play as some of the text-files that I have read have done.  I supply you with the ideas, and you do the rest.  I'm not holding you by the hand but helping you along the way to finding the way that you best play.  Good luck!  I guess we'll just have to find out together if it worked!  DON'T FORGET: you'll find what works best for you, not me.  Try EVERYTHING.  There's a LOT to TradeWars 2002! If you have any comments, questions, find errors, or have something to add, please feel free to contact me on the River Styx BBS, at (617) 277-5637 (@ 8N1),at up to a speed of 38,400bps.  I am also available on other boards under the handle of Psycho in 617. I can also be reached upon The BBS, USS Lightspeed ][, the Telegard Beta Sight, and ALSO the TradeWars 2002 BETA sight in 617!  The number is (617) 925-8508 (@ 8N1) at up to 38,400bps.  The TradeWars 2002 there is the next BETA version and has a rather interesting galaxy of 3000 sectors!! The USS LightSpeed ][ is also a member of FidoNet, with the TradeWars 2002 forum.  You can contact me on that as well. I would also like to thank very much the following people: Jonathan Levy, for all of his help on teaching me to play!
+Gary A. Martin, for writing TradeWars 2002!
+And all you experts out there who helped make so much of this possible. 
+And a special mention goes out to: Jac Lahav, for teaching me about colonization! <g>
+Jason Mahoney, for teaching me about the 'free' Holds Bug! ;)
+
+And a particular hello goes out to:
+Bill Wynne, for his ahem, disagreement with me.
+PRINT ME!  I'm UNDER 30 PAGES!
+
+  What is TradeWars 2002?
+	TradeWars 2002 is an interactive Online game in which you are placed in a galaxy as a 'Trader' and your objective is to become as successful as possible. In TradeWars 2002, you try to begin by trading commodities, which in this game are: Fuel Ore, Organics and Equipment.  Fuel Ore is the cheapest, and Equipment is the most expensive.  Organics is always somewhere in between. You are allocated a certain number of turns each time you play (each day hopefully) to which you can explore and trade and so forth in the currently 1000 sector galaxy.  Moving from one sector to another takes one turn, and do not expect for sector 10 to lead to sector 11 to lead to sector 12 and so forth.  The galaxy is very random.  Sector 5 may lead to many sectors including sector 730 for example.  There are some sectors that have one warp in and one warp out.  Some sectors may be warped into by one sector, and out by another, as to have a different entrance and exit sector. Example: you could warp from sector 221 to sector 73, and then find that the only way out of 73 is through sector 596, and not sector 221.  You will see when you logon for the first time what I am talking about. You should of course understand that TradeWars 2002 is a long term and time consuming endeavor if you wish to be at all a worthwhile player.  Once you get into the game, type 'V' at the main menu prompt.  Look to see how many days the Game has been in effect.  This value will affect greatly how you play the game.  Also look to see if the Version you are playing is registered.  If it isn't, then exit the program by typing 'Q' and ask your SysOp to register.  TradeWars 2002 is not worth playing if it isn't registered. 
+
+
+ Basic Game Play
+ 
+ This opening intro is by Gary and Mary Ann Martin, the creator of  TradeWars 2002.  Read it if you have not done so before.  I will break  in periodically with comments, and tell you things at the end that they do not.  When you enter the game, you will be piloting a Merchant Cruiser.  
+This is considered the most versatile ship in the Trade Wars  armada.  In it, new players have a chance to try out all aspects of  the game. 
+
+ [Periodically you will see me break in to this narrative.  I would like to say that the Merchant Cruiser is fine for a start, but if you want to be even a slightly good trader you must use the StarMaster. It has a VERY good turn rate, and it has good armament and holds capacity.  You should have about 70,000 credits in your bank account (and say 2,000 or so on you) before you buy one.  It IS worth it.]
+
+Upon entering, you will be asked what alias you would like to use in the game and what name you would like to christen your ship.  The alias you choose will display in the player and corporate  rankings and in several corporate listings.  Your ship name will be  used in the docking logs at the ports.  You can use these names to  be as conspicuous or as inconspicuous as you want.  
+{BLACKFIST'S LAW - IF YOU WANT A GAME WHICH IS EXCITING AND INTERESTING, YOU HAVE TO MAKE IT HAPPEN, SO CREATE A PERSONA FOR PLAY. MY PERSONA IS THE LORD. HE IS THE PLAYER EVERONE WANTS TO HATE! HE IS A GOOD GUY, GIVES MONEY TO NEW TRADERS, ETC....AND IS THE HEAD OF THE CORPORATION OF GUYS WHO HAVE BLOCKED OFF ACCESS TO STARDOCK AND BLOWN UP ALL THE PLANETS. THE OTHER MEMBERS OF MY CORP, KAHN FOR INSTANCE USE THE "I'M TOO IMPORTANT TO TALK TO YOU PERSONA.   I STEP UP AS A GO BETWEEN OFFERING TO GET KAHN TO LET THEM LIVE IF...  THIS GOOD GUY BAD GUY TEAM MAKES THE GAME A POLITICAL ONE AS WELL. WE SET UP SITUATIONS WHICH GIVE THOSE TRADERS WHO FOLLOW DIRECTIONS BENIFITS.    ACCESS TO STARDOCK BEING ONE OF THEM.}
+The equipment in your initial ship will include 20 holds to store  the cargo that you can trade at the ports found throughout the universe.  Trading is the basic way to advance in the game.  By  good trading, you can gain experience as well as gain credits.  The credits you earn can fund your military and can provide the capital  you will need to expand your trading expeditions. The game will differ with each different group of players.  Individual traders are ranked by their experience.  You gain experience simply by playing the game.  The more things you do, the  more experience you will get.  Good and Evil are represented by the  titles each player receives.  Your experience combined with your alignment will determine whether you are a Lieutenant or a Dread  Pirate.  When you do something that affects your alignment, you  will get a message saying your alignment went up or down and by how much.   
+There are benefits and drawbacks whether you choose to play the game as a good trader or an evil trader.  Traders who follow the FedLaws are offered protection in FedSpace until they are 
+experienced enough to protect themselves.  
+ [This is a good catch here.  When they say 'are experienced enough to protect themselves', what they mean is when your Experience Point level is at or above 1000, you can 'protect yourself'.  By that time anyway, you should still be parking in FedSpace if possible, but you should be Cloaking.  Cloaking devices can be found in the StarDock Hardware Emporium for 25,000 credits each.  An expense well worth it once you become a good trader and part of a Corporation.]
+Traders who aspire to be very good can be awarded a Federal Commission.  This allows them to purchase an Imperial Starship.  This is one of the most powerful ships in the universe.  On the other hand, the evil traders are offered some options in the Underground.  Traders who have proved that they are truly evil can steal product or money from the ports. 
+ 
+
+
+
+     THE UNIVERSE 
+  You will be traveling in a 1000 sector universe.  Sectors may have  planets, ports, other players, aliens, Ferrengi, Federation  Starships, mines, message beacons, fighters (belonging to you, other players, rogue mercenaries, or the Ferrengi) or the sectors  may contain nothing at all.  If in your travels you come across something undesirable, your initial ship comes equipped with 30 fighters with which you can defend yourself. 
+         
+
+
+[No way.  Many SysOps will raise this number to 50 fighters initially. The SysOps are god here.  Don't forget though, that even if you are safe overnight in FedSpace, if you have over 50 fighters, then you will be towed from FedSpace to a random sector in the galaxy.  This is many a time annoying, especially if you forget and then get destroyed because somebody happened to come across you out in the middle of the galaxy.  And anyway, if you're evil, don't expect to be protected in FedSpace, not for one second.]
+
+  Many players find it useful to have a home sector or group of  sectors.  Players, especially those just joining a game, need an  out-of-the-way place to stay so they can build up their assets.  
+
+[This is true, but not until you have enough resources to start a planet, and to put it in a sector with one warp in and one out (the same sector!!) and so forth.  If your alignment is positive (you are a GOOD trader so far) then if you have over 50,000 credits on you, you will be taxed, and even if your alignment goes up, you lose 10% of the money you have at the moment. If you are good, when you quit for the day, have no more than 49,999 credits on you.  Evil traders are not taxed.  You can explore the universe and look for dead end sectors to use as a hiding place.  Corporate bases built in traffic lanes don't  fare too well and those in the major thoroughfares (in the paths  between the class 0 and class 9 ports) just don't stand much of a chance.]   
+ 
+Planets play a key part in your success as a trader.  Terra, the  first planet you encounter as you enter the game, is where the  people can be found to colonize all other planets.  The other  planets in the game will, if inhabited, produce Fuel Ore, Organics,  Equipment and Fighters.  You and the other traders decide where the planets will be.  You can purchase a Genesis Torpedo and use it in  almost any sector in the galaxy.  If the planet has enough of the required commodities and enough people to supply the labor to build  it, you can begin construction of a Citadel.  The Citadel can provide you and the other members of your corporation with a secure place to dock your ships and deposit the credits you've earned.  As you progress in the game, your Citadel can be upgraded to provide additional protection to you and your corporation.  If you decide to build a planet in your home sector, be sure you can defend it.  A planets is very vulnerable until it has a Combat Control Computer (level 2 Citadel) to safeguard it. 
+
+ [This is also true.  DO NOT forget, do not leave Fighters on the planet until you have at least a Level 2 citadel, or else anybody can land and take the fighters for their own.  Not good for you.]
+ 
+There are ten different types of ports scattered about the universe.  The ports are classified by the products they buy and/or sell.  Port classes 1 through 8 trade the three basic commodities: 
+Fuel Ore, Organics and Equipment.  The universe also contains specialty ports for the other items you will need to advance in the game.  
+There are three Class 0 ports where you can purchase holds (beneficial for moving colonists to your planets as well as transporting goods for trade), fighters (to help protect your territory), or shields (to protect your ship from the traps laid by your enemies). 
+
+
+
+
+ There is one Class 9 port that contains not only a Trading Port, but also a StarDock.  The StarDock houses the Stellar Hardware Emporium, the Federation Shipyards, the Lost Trader's  Tavern, the 2nd National Galactic Bank, the Videon Cineplex and the Interstellar Space Police Headquarters.  There are other places of interest located in the StarDock.  These places you will have to discover on your own.  Some are not advertised because they are  establishments of questionable repute.  Others are Federation  buildings that house top secret government information. 
+ 
+   PEOPLE IN THE TRADE WARS UNIVERSE 
+ 
+  A large part of playing is interacting with others in the game.   You can mingle with other players in the Lost Traders Tavern,  gambling against them, conversing with them, leaving announcements  at the door or writing a message on the bathroom wall.  You can combine your assets with other players of the same alignment to form a Corporation.  Just be aware that more than one Corporation  has been brought down by a con man who wormed his way into the Corporate structure.  You can have a chance encounter with other creatures of the universe, both real (other users) and Non-Player Characters (the Federals, Alien traders and the Ferrengi).  Chance encounters offer many possibilities and can advance you in your chosen career path.  Your alignment and experience and the alignment and experience of the creature you encounter will determine just how that advancement if affected. 
+  
+ Other traders are users just like you.  They have alignment and experience points.  You can see all the others by Listing Traders from your ships computer.  By using the listing, you can see which  players are good and which are evil.  You can estimate whether the  other player would better serve your needs as an ally or adversary. 
+ 
+ The Federation is the main governing body of the cosmos.  You will  meet the Feds if you go to the Police Station.  You might run into  them as you roam around space.  The Feds don't look kindly on  players who break FedLaws, so if you're not careful, they might  visit you when you least want their company.  
+ 
+Alien traders are visitors from another universe who are looking  for better ports.  You can get a listing of the Aliens similar to the one you get for other traders.  Aliens also have experience and alignment, but you cannot form a Corporation with them.  The Ferrengi are a greedy, cowardly group.  Their primary purpose  is the speedy acquisition of money.  They will steal from anyone no matter what the person's or corporation's alignment.  They seldom engage in face-to-face combat because they prefer the advantage of  surprise when ambushing their opponent.  They often travel in groups and will spy on promising territory.  After targeting an area, they will raid the sector when it is least defended.  If they are attacked, that group will hold a grudge against the attacker and they will not rest until they feel the score has been settled. 
+ 
+ Explore the universe and take part in the adventure.  You can just look around or you can become a dominant factor.  Most of the displays are fully explained.  When you are asked to make a selection, anything displayed in brackets [], will be the default.  Most displays can be aborted by hitting the space bar. 
+ 
+ Good Trading and Good Luck.
+
+ 
+
+
+
+
+
+[Maybe one of these days I'll write a new one of those and make it MUCH better and MUCH more descriptive.  Ask and I'll get around to it.. somehow. Now that boring thing is over with, I must say, it doesn't tell you tons.  You should attempt to get those 50 fighters by trading in FedSpace if there are sufficient ports, and making money, and buying 50 fighters and maybe some shields, especially if the game is over a week or two old.  Check by pressing 'V' on the main menu to see how many planets there are, how many mines, and how many fighters there are in the Galaxy.  If there are two planets, then those are Terra, in sector 1, where you can get colonists to colonize your planets from, and the other is Ferrengal.  It's not good to run into Ferrengal if you are relatively unguarded.  If there are 50 mines, those are in the Ferrengal sector.  If you hit mines in a new game, and there were only 50 to begin with, then that's ferrengal.  WRITE THE SECTOR DOWN!! If you come across a class 0 port (Alpha Centauri or Rylos), write the sector # down where you will not lose it.  Same goes with any planets you come across.  Do not lose your notes on the game, they will become important later. Especially if you decide to become evil (the class 0 ports). You should always try to find a good pair of ports.  What I mean by that is that ports where you can buy one commodity from it, and go to an adjacent sector and sell that commodity and then buy another one that you can sell at the port in the sector that you just came from.  A good loop, and a good way to make money early in the game.  Be warned that a while into the game, someone else may have found that pair and used it.  Look at the percentages beside the amounts in the port.  This is the ideal port if it is able to be used for a port pair, because nobody has docked before. 
+
+Docking...One turn deducted, 57 turns left.
+Commerce Report for Tarsus: 07/31/05 03:08:12 PM
+
+  -=-=-        Docking Log         -=-=-
+  No current ship docking log on file.
+  For finding this unused port you receive 1 experience point(s).
+
+  Items        Status     Trading % of max OnBoard
+  -----          ------       -------     -------- -------
+  Fuel Ore     Buying    2720    100%       0
+  Organics    Buying     2020    100%       0
+  Equipment  Selling     1470    100%       0
+
+  NOW, what you don't want to see is the same port, later:
+
+ Docking... One turn deducted, 14 turns left.
+Commerce Report for Tarsus: 08/19/05 02:01:48 PM
+ -=-=-        Docking Log         -=-=-
+USS Enterprise NCC-1701-D docked 1 day(s) ago.
+
+Items     Status  Trading % of max OnBoard
+ -----     ------  ------- -------- -------
+Fuel Ore   Buying      23      4%       0
+Organics   Buying     193     17%       0
+Equipment  Selling    741     42%       0
+
+Not good.  The prices are going to be higher, and when you try to haggle the price down slightly, the Port is not going to be as flexible.  Forget it. Just write down on your notes that the pair is dead.  Maybe in a while it might be ready once again, when the ports are restocked. One more thing, keep doing this, and making money, and so forth.  Soon you might have the resources to make a planet and colonize (and make a Citadel)! 
+
+
+
+Advanced Playing Techniques
+Ok, so this section really isn't THAT advanced, but enough so that you don't want to try this stuff until you have your foot in the door and have the basics of TradeWars 2002 down VERY well.  You don't want to try this stuff until you have your own style of playing, and until you have the resources to fund major assaults and expeditions.
+
+1. Destroying the famous Shield-Bugged Planets
+	First, you need a LOT of money for this one, and a lot of time. This requires that you do
+	not mind losing a Level 4 or higher citadel (a minimum of 20 days work..)  I would 
+	suggest approaching this as an extremely violent and expensive way of eradicating the 
+	competition.  You first must have a Level 4 citadel.  Second, you must have enough
+	credits to buy a few Genesis Torpedoes. Third, you must know the location of one of 
+	your enemies shield bugged planets. (one or more.. in the same sector that is)  Fourth,
+	you must be up late.  Buy enough genesis torpedoes so that you can fill the sector of 
+	your enemy with planets to the maximum allowed by the game (the usual value for this
+	is 5 planets per sector).  Fill it up until TradeWars gives you a  message telling you no
+	more planets can be put in the sector.  Then place one fighter in your enemy's home
+ 	sector (that means you must destroy all the fighters there first). Then, go to your Level 4
+ 	or higher Citadel planet and TransWarp the planet to the sector where you just put the 
+	fighter.  The sector is now OVERLOADED with planets.  When the External
+	Maintenance is run, it will either say 'An Unstable Planetary Mass was detected in 
+	sector XXX'.  Or, if you're lucky, it will say 'DeathLand Alpha collided with planet
+	Enemy's-HomePlanet One' or something to that extent.  Sometimes the planets that are
+	bare (that you created with Genesis Torpedoes) will get destroyed or destroy another
+	planet.  Sometimes you may be lucky enough to have one of the useless, barren
+	planets you created collide with your enemy's planet, so your Level 4 or higher planet is 
+	saved. The reason I say be up late is because most of the time, the External 
+	Maintenance program is run at midnight, so you have a MUCH lower chance of your 
+	enemy assaulting your Level 4 planet or destroying one of the barren planets.
+
+ 2. Using Photon Missiles
+	To use a Photon Missile, you must have either an Imperial StarShip (the best out there), 
+	or else a Missile Frigate (probably THE WORST ship I've ever seen). Photons take care 
+	of such unruly hazards as Mines, Fighters, Quasar Cannons, and fighters on planets. 
+	 They don't destroy them, but they DO make them completely useless.  The mines will 
+	not hit you, the fighters will not attack, and the Quasar Cannons will not fire.  Beware 
+	that they do have limits.  Such as, if you decide to stay too long in the sector, they 
+	hazards will become active again (it will tell you how long you have.. up to 1 minute 
+	depending upon what the SysOp has set the 'Photon Wave Duration' to)  DO NOT carry 
+	Photon Missiles around with you.  If you do, and run into ONE fighter that is on offensive 
+	mode, or a few mines, or a quasar, or a Ferrengi, then the photon will detonate, and you 	will have no turns left.  Hope you have a cloaking device!  It is ABSOLUTELY necessary 
+	to carry a cloak around with you so if this does happen to you, you can cloak and then 
+	resume the next day. Before you buy one, make sure that the sectors to the destination 
+	sector are clear of all hazards (from the StarDock to the destination sector) before you 
+	begin.
+
+
+
+
+3. Federal Commissions
+	To get a Federal Commission, you must have an alignment of 500 or higher. You must 
+	go to the StarDock and then to the Police HQ.  Choose 'A' for Apply for a Federal 
+	Commission.  You will then be eligible, when you have enough credits, go to the
+	Shipyards and purchase an Imperial StarShip, the BEST ship in the galaxy.
+	Not only does it have 150 holds, it has the ability, to without bugs, hold 30,000 fighters 
+	and 2,000 shields, as well as a TransWarp drive system and be able to use Photon 
+	Torpedoes.  It can carry EVERYTHING. An Imperial StarShip is even more dangerous 
+	when in the hands of a trader who was Commissioned but then went evil.
+ 4. The Tholian Sentinel
+	DO NOT BUY ONE!  The tempting odds of 4 to 1 if defending a Corporate planet are all 
+	very nice, but if you decide that you want to attack, all you do is attack the ship first.
+	 Then it only has 1 to 1 fighting odds.  It's not worth it.  Only the most newbie-ish of the
+	 newbies would use one. 
+5. The CIM Mode in the Computer
+	The CIM stands for Computer Interrogation Mode.  What this mode does is access
+	 some data that most users can't get to.  To effectively use this info, you MUST have an
+	 off-line data converter and compiler such as TWVIEW.  To access the CIM, go to the 
+	computer menu, turn ON your capture function on your communications software (see
+	 the DOCS for your Comm Program for more info), and then type ******.  In other words,
+	 ALT-200, ALT-201 (etc) up to ALT-205. This is using extended ASCII characters.  You
+	 must hold down the ALT key and type the numbers (with the ALT key held down) on
+	 your numeric keypad, not the numbers above the letters on your keyboard.  An easy
+	 way to do this is to go into a DOS text edit program, such as EDIT or EDLIN, and type
+	 the characters and save.  Then when you want to enter the CIM mode, do an ASCII
+	 upload of the file you typed in EDIT or EDLIN (or any other text editor).  Make sure not to
+	 use your Word Processor for this, as ALL add their own codes at the top which could
+	 (and WILL!) mess it all up.
+
+Being Considered a 'good' player
+It is good to be considered a good player.  This is ESPECIALLY true if you want to start a good
+corporation.  Start early in a TradeWars 2002 game, and show the other players that you can be a very successful player.  This can be accomplished by raising (or lowering) your alignment quickly, and accumulating experience points, and a LOT of them.  Also making money, money, money. One good way to go evil quick that takes one turn, and only one turn, and  should be done only if you have little to no experience.  This method is easy. Go to the StarDock, and go to the Lost Trader's Tavern.  Talk to the 'Grimy Trader in back', and say an expletive to him.  The F-word suffices.  Your alignment and experience will both go down by one.  If you're a newbie in the game, and have no experience, you can't lose any.  Only your alignment will go negative. 
+Make a macro in your Comm Program (you must have ANSI off for this, as it interferes with the operation of the macro.. you'll see) to do this process over and over again.  Instant alignment lowering.  In one day you could put your alignment down all the way to -32000!!  (It DOES
+get boring though..)  Try it sometime. One good way to go good quick, is to find an evil alien with a nice LARGE negative alignment and destroy him.  The only problem is that this requires resources, while the Evil-Quick method does not.  Another one is to destroy a Ferrengi or Ferrengi Fighters (like in the Ferrengal Home Sector), but that could cause problems, as when you attack a Ferrengi that has 39 fighters, you will most likely run into a Ferrengi later that has 29822 fighters and hates you.  Too bad.
+
+
+
+Using the bugs in TradeWars -- A Dilemma
+
+To use or not to use, that IS the question.  As you may know, there are MANY bugs in TradeWars 2002.  Most of them are available only to Evil traders, but some are also available to Good traders as well. Some may find it immoral to use the bugs.  Most will hate you if you use such bugs as the FAMOUS and coveted 'Planet Cloning Bug' (see 'Addendum 1') to clone your current planets AND money AND fighters AND citadels AND so on. Some are nice for all.  Haven't we all wanted a Scout Marauder with 30000 fighters? And 10000 shields?  With it's 2 to 1 odds, good-bye enemies! The bugs can do this, but some feel that a TRUE TradeWars 2002 game can only be played if the people consent to not use the bugs in a gentle-hooman's agreement.  Some like it this way and honor that, while others do not. The choice is yours.  I personally use SOME of the bugs, but not all.  Talk with your opponents and try to decide together.  The answer is almost always yes.
+  
+P.S. Use the bugs, and then pretend you found out that someone else was using them first. ;)
+
+
+
+Choosing Between good and Evil?
+ Here is another fine dilemma.  To chose good or evil.  If you decide to be good, then you are protected in FedSpace until you have 1000 experience points, and you can own an Imperial StarShip without having to worry about it being destroyed and not being able to get another one.  If you are evil, many of the bugs are available to you, and you can attack anything and anyone without much worry.  However, if you run into a Federal in an Imperial StarShip when you are evil, good-bye.
+ Personally, I like Evil.  But I don't go evil immediately.  The reason is that I get a Federal Comission (see 'Advanced Playing Techniques'), get an Imperial StarShip, after I have Trapped both Fleet Admiral Clausewitz, and also Admiral Nelson.  Don't bother trapping Captain Zyrain.  (See 'Trapping Federals and Freeing Federals' as well as 'Keeping an Imperial StarShip'.)  Then I go evil.  I have the best of everything. 
+
+Being a Good 'N Legal Trader
+ In essence, to be the ideal trader, your alignment should be positive. You must be willing, at times (when the Ferrengi are around) to help the Federation in it's futile cause.  Someday, I hope there will be a Ferrengi in each sector of the Galaxy!!! <evil grin>  -- no, seriously though, if you wish to not have to worry about Federals and the like, and Imperial StarShips getting destroyed and non-replaceable, then stay good.  You must understand, though, that being a 'good' (positive alignment) is MUCH harder than being an Evil one.  The reason for this is that when you are evil, there are SO MANY bugs and tactics available to you. To start, find out where the StarDock is (see previous sections for info..) and go to it.  As long as you have at least 5,000 credits initially, go to the hardware emporium 'H' and buy a DENSITY scanner.  This is important if you want to find ports quickly and efficiently, without losing needless turns. Then go exploring.  Find yourself
+ 'safe routes' on which you can travel. Such examples of this are the Major Space Lanes.  They vary with each game. The Major Space Lanes are comprised of the sectors from sector 1 to the StarDock, from the StarDock to sector 1 (they can be different!), and from sector 1 and the StarDock to the two other Class 0 ports in the galaxy, which are Alpha Centauri and Rylos.  Do not expect these to be totally clean of fighters and mines and the like though.  Each night they are cleared, but somebody could have put mines or fighters there if they wanted to (that day)! Find port pairs. 
+
+
+
+
+
+ Port pairs are pairs of ports in which you can buy one commodity and sell it at a port in an adjacent sector, but THEN at that same port that you just sold that commodity at, buy a different commodity and sell it at the port that you started the loop from.  Here are the port pairs. Class Port   <*>   Class Port
+ Class 1            Class 2
+ Class 1            Class 3
+ Class 1            Class 4
+ Class 2            Class 3
+ Class 2            Class 5
+ Class 3            Class 6
+ Class 4            Class 6
+ Class 5            Class 6
+
+ What this table tells you is that if you find a sector with a Class 1 port (for example) and a Class 4 port in an adjacent sector, then  it's a port pair!  Just buy and sell and buy and sell, at each port, in a loop. Simple!  Haggle as much as you can, to make as much as you can.  SAVE ENOUGH TURNS TO GET BACK TO FEDSPACE!! -- And to the StarDock if  you have over 49,999 credits, or you'll be taxed and lose 10% of your  money!! Trade, Trade, Trade!  Money, money, money!  Once you have  100,000 credits in the Galactic Bank (see 'Using the StarDock to it's  fullest'), which is the maximum, go to the section on starting a planet  and a citadel! Easy! Maybe you'd like to start a Corporation (if so,  see 'Running a Corporation')! Good luck!  It's not much, but you get the idea, and remember those port pairs or do a PrintScreen!
+
+
+
+
+Being an Evil Trader
+ 
+Ah, yes.  Evil traders.  Very nice.  Yup.  For sure.  Hehehehe. <evil grin> I LOVE being evil, but that's just me.  So many of the bugs in TradeWars 2002  involve stealing, so that's only available to those who have an  alignment of below -100 (-101, -102, etc. is fine).  One good tactic that I have seen used by some of the best players  in 617 is that they will stay at 0 alignment (by jettisoning 1 hold of  colonists per day) but work their experience points level up to 900 or  so.  Then they go evil.  This way, while they still have no planets  with citadels, and not much money, they are protected in FedSpace every  night.  Good tactic. A good tactic is to have a partner, perfect in a Corporation, that will, if you are using the Hold Bugs (see 'Addendum 1') alternate getting caught at ports.  You should set up an explorer (maybe you) to find good Traders and their planet hideaways.  You should set up organized assaults on their HQ's. Put bounties on their heads, and lower your alignment GREATLY.  Just recently, via the underground, in one of my TradeWars games, I lowered my alignment by 20000 points by putting 5,000,000 credits on some no-name trader I found un-defended in a one-warp sector.  Nice way to lower the alignment!  Good luck, as the 'normal' trading with port pairs isn't fun anymore.  Find a port that buys Equipment and steal full holds of it.  Then sell it back to the port again and repeat.  It's the
+Steal-Sell method of making money, and the most profitable in the universe.  Use it day in and day out.  Store your money on you or in a Citadel if no-one has found the planet yet (an easy way to make sure is to put even just ONE fighter outside and in the sector, so nobody can
+get close to it without getting seen by your fighter(s) in your daily log. Put fighters everywhere (1 in a sector all over the place) and people won't think a thing of it.  Since you don't get taxed as an evil person, you can have over 49,999 credits on you at once.  If your CLOAKED (yes, you should cloak until you have a SAFE shield-bugged planet!) ship is the safest place (normally it is...) then store your money there. 
+
+
+
+
+To make sure you can steal all you want to, use these ROUGH calculations to help you make sure you don't get caught in the act. 
+  Commodity    Exp Points Per Hold
+  ---------    -------------------
+  Fuel Ore        3
+  Organics       7
+  Equipment    13
+  CREDITS      1/10th - (multiply your experience by 10)
+
+These are rough values, and can be stretched.  Sometimes it's wrong. Chance is a BIG part of being evil.  Experience is the other.  I would suggest that if you do want to become a good player, that you download a copy of TradeWars 2002 off a local BBS and play it in 'Local' mode. Test what you can do.  Remember, since the version you're gonna have isn't registered, then you can't buy a new ship, but try what you can.  It's most-of-the-time worth the effort. If you decide to use the bugs, do so.  Some are expensive, but some are cheap, and can be worth it.  Some require a LOT of experience points, while others require just as much but also take away experience or RAISE your alignment, because you're doing something you're not supposed to, and you go over the limit the game is supposed to support. Tada! 
+
+
+
+ Bounties, Good and Evil
+
+Bounties, in the Underground and the Fed Police HQ (see 'Using the StarDock to it's fullest') can raise or lower your alignment VERY quickly.  If you wish to go evil, and you find a trader in the galaxy... all alone.. <evilgrin> then all you must do is go to the StarDock, enter the Underground (you might have to find out the password by paying the Grimy Trader -- see 'Using the StarDock to it's fullest') and use all the money you can muster, including that from a citadel in your Corp (or personally owned if possible) and place it on that person's head.  Then go and destroy them.  Collect the bounty back.  When you put the bounty on that person's head via the Underground, your alignment went down, and you didn't lose a credit. The same goes for finding an Evil player ALL alone out there... <grin>. get all the money you can muster and if he's on the Fed Police's 10 most wanted list, post all the money you have on his head.  Your alignment will go up immensely.  Then go kill him/her and collect the reward.  Nice alignment increase without losing a credit. Bounties CAN be useful, but only in these two situations, never otherwise.  If it's just somebody you hate but can't find, don't place a Bounty on their head. 
+
+
+
+Keeping an Evil Imperial StarShip
+I LOVE Imperial StarShips, don't you!!???  I LOVE being Evil, don't you!?! Well, you can have the best of both worlds.  Get a Federal Commission (see 'Advanced Playing Techniques') and an Imperial StarShip, commonly known as an ISS.  You must have first TRAPPED the Federals Fleet Admiral Clausewitz and Admiral Nelson, by getting them in a one warp sector (one warp in, one out) and putting a fighter in the sector that leads in and out of the sector they're in. It's very dangerous to do this while you're in an Evil ISS, so you should do it while you're still good. Just one fighter will stop them, but I would suggest more, on DEFENSIVE (so they don't slam into somebody else's shields and get all destroyed, freeing the Fed).  It's a good idea, if not a necessity to drop fighters on OFFENSIVE wherever you go (except FedSpace of course). 
+
+
+
+This is a good tracking system to get a good glimpse of where your enemies are coming and going, and also makes TransWarping a snap.  But more importantly, it helps because Feds can't pass through a sector with a fighter in it.  Same with Aliens.  When you DO decide to go anywhere near FedSpace, you should density scan every sector that you go to.  If the number is over 400, then Holographically Scan the sector.  If it's a Fed, do as King Arthur (Monty Python of course!) and 'Run away!  Run away!'.  Deploy fighters as you go.  You're safe in a sector as long as it has a fighter in it.
+
+
+
+ Trapping Federals and Freeing Federals
+
+One good way to ensure the security of your Evil ISS is to trap Federals. Don't bother trapping Captain Zyrain, as whenever some idiot tries to deploy a fighter in FedSpace or attack a Trader or Alien with a positive alignment and Experience Point value of under 1000 in FedSpace, he is called away magically to help.  However, trapping Fleet Admiral Clausewitz and Admiral Nelson does work.  They just show up at bad times and destroy your ISS if you're evil.  Too bad.  If you are good, and don't have to worry about Federals killing you if you're in an ISS, and you find one, free it.  Make it hard for those who have Evil ISSes, because they might get destroyed by them. Not funny for your enemy! What I suggest is if you have an Evil ISS, and you have trapped a Fed with your fighters, then you should put a distinctive number of fighters in the sector, and tell your Corporate members (if you have any) what that number is and what it means, so they can try and trap the Fed again if the Fighters are destroyed by somebody.  My favorite is 333, because it spells F-E-D on a phone.  But that's just me -- Hey! The number 3 is DEF - Fed Backwards! <g>. 
+
+
+
+ Running A Corporation
+ 
+A Corporation is a POWERFUL way to do VERY well in TradeWars 2002. You can make a LOT more money with a combined effort in a Corporation then by yourself.  You also have less enemies that will attack you. To start a Corporation, I suggest that any members you want to recruit (or want to recruit themselves) you should find out EXACTLY who they are (their handle..)
+and find whether or not they have a history of being un-trustworthy. If so, say sorry, not this time.
+{ BLACKFIST'S LAW - NEVER FORM A CORPORATION WITH PEOPLE YOU DON'T KNOW....PEOPLE ARE  FLAKES, THEY BLOW WITH THE WIND. wHEN THINGS BEGIN TO LOOK GRIM FOR THE CORP. YOUR MEMBERS WILL TURN ON YOU AND HAVE THE FULL SUPPORT OF EVERYONE ELSE ON THE BOARD. I ONLY FORM CORPS WITH PEOPLE I KNOW PERSONALLY AND SEE OFTEN. THIS KEEPS ALL OF US TOGETHER, AND WORK TOWARD A COMMON GOAL. WHEN THERE ARE GRIEVANCES -WE DISCUSS THEM, AND THEY ARE WORKED OUT. THIS TYPE OF CORP IS THE STRONGEST ONE THERE IS. THE ONGOING STRATEGIC TALK IS THE MOST EFFECTIVE CORP STRATEGY. THIS IS THE TESTED OPINION OF ONE CORP.} Once you get some corporate members, say three, have one be the make-the- planet's-Citadels-Upgrade-guy.  He is the one who Colonizes planets until they have 1000 groups of colonists in each Commodity type.  He is the one who uses the money the other two make to buy goods and stock the planets.  He is the one that takes away colonists from the planets if there is over 1000 in each category (the external maintenance will do this..) or puts yet MORE colonists on the planet if need be.  He is the one that puts the shields on the planet to try and shield bug it. The other two make money, money, money.  If you get more people, have some be explorers.  The ones who re-explore the galaxy a LOT so they find the opposition's planets and hideaways. They are the ones who find good port pairs so the people making the money can do so well (if they use port pairs). Some others can be the attackers.  
+
+
+They are the ones who have the Imperial StarShips.  They are the ones who are LOADED with fighters and shields.  
+
+Here is a list of the jobs and what they should have to do that job well: 
+  	 Type       ShipType          Fighters    Shields   
+        -----------------  ----------------- --------    ------- 
+ The Planet Person  StarMaster        500         500   
+ The Money Maker  StarMaster        500         1000      
+ The Explorer	     Scout Marauder 250         5000   
+ The Attacker       Imperial StarShip 30,000     10000+    
+
+  Every person on this list should have a Holo- Scanner for their own good.  To accomplish some of these, you will need to use the Negative Corporate Transfer Bug (see 'Addendum 1'), but it's well worth it.  Remember, this is only my suggestion.  Try it and see what works well  for you.  If you can get all of your Corporate members in Imperial StarShips, great! (except for maybe the explorer because s/he needs the high turn rate and is really not going to be using the rest of the starships features) The 'Planet Person' does not need much in terms of Offensive capabilities, and this is because their routine is daily, pretty much the same thing.  The only place they should be going is Terra (for colonists) and a port that sells the commodities that they need to  stock the planets, like a close Class 7 port, which sells ALL the commodities.  They should never stray from these, 'safer' paths. The 'Money Maker' needs some protectiom because, s/he is traveling around to the places that the 'Explorer' told them to go to, and making money, methodically.  A repetitive and easy job, good for the inexperienced player, same as the 'Planet Person'. The 'Explorer' is for the intermediate player, as they don't know what they could be running into.  They go everywhere, all the time, and should find a good way to methodically go over the galaxy every few weeks.  They should also have the port pairs memorized, and write them all down, and then send it to the 'Money Maker'.  If they find an enemy's planet (or something of that importance) then they tell the 'Attacker'. The 'Attacker' is the one who assaults the planets.  And attacks the opponents and Ferrengi and so forth.  This person should have a LOT of shields, for Corbomite and Quasar Cannon protection.  This player should also have 150 (full holds for an ISS) of Fuel Ore so that they may TransWarp anywhere when need be.  They should always have at least 10,000 credits to BUY Fuel Ore with in case they need more.  This should be an experienced player and most likely the CEO of the corporation.  If you plan to use the Dual CEO bug (see 'Addendum 1'),  then you should try and make the Attacker and the Explorer the two CEO's.  So both can send Corporate memos to the other members easily and so both can supervise the more inexperienced players doing the easier roles.  Remember, the more people the better! That above outline of a Corporation is just a model, and is VERY flexible. Find what works best for you, and use that technique.  If you have improvements or more ideas, then contact me on the above BBS in section I, or on most other 617 BBSes.
+
+
+Running a Piratical Corporation
+Running a Piratical Corporation is the same as running a good corporation, except for the fact that you can use many of the bugs much better, and it also makes some available that beforehand would not have been available. The difference also is that you can Steal from ports, use the hold bugs, and then when you get caught at a port, tell your corporate members at the end of your 'playing' day in one list, and then tell them to write those ports down (the sector #'s that is..) and then get them to be busted, and do the same at the end of each 'day'.  This way you never lose experience or holds that you don't have to because you tried to rob a port you got caught at before.  Makes life easier.  Two members can do this JUST fine. 
+
+
+
+
+
+Anti-Backstabbing Yourself as a CEO
+Dual CEOship or not, you can Anti-Backstab yourself.  This is in other words, a way of making 
+sure  that if one of your Corporate Members or the other CEO (if it's dual) decides to take all your assets and planets (and so forth) and make  them his own that you're not completely helpless.  The only defense against this is really preparation, not some secret command in TradeWars.      You can start, secretly your own planet, and have it  progress by using SOME of the resources of your Corporation with the rest being your own.  You should of course, always know exactly who is in your Corporation and make sure that they are trustworthy.  It is  best if these people are your friends, personally, but since most of  the time, that is not possible, then you want to make sure that they have not backstabbed before, unless it was for a VERY good reason. There isn't much else that you can do.  All CEO's should CLOAK and not  use then Shield Bugged planets to protect themselves.  This is important for your own safety.
+
+
+ Backstabbing your CEO
+ If you so decide,  to backstab your CEO, you will lose credibility. Unless ALL of the corporate members decide it's okay, and they want to be in on it too because they think your CEO is an IDIOT, then do so.  However it may  not be good next time you want to join or start a Corp on another game, because you may be labeled as a 'backstabber'. It's up to you.  If  so, the best way to go about it is to jettison the people from the  planets (the Traders parked in the citadels!) and then claim them for yourself.  You must also quit your own corporation, and tell the people
+that you decided to backstab with what the password is.  Then, make the  planets your corporation's planets, and there you go!  If, your CEO is at all smart, he'll cloak every day so you won't be able to destroy him. If he's not, you may want to even more graphically put the point
+across by transferring everything he has on him, off him, and either destroying him or else putting him in a sector with 99 mines.  Too bad. If you're a CEO and want to backstab your Corporate members, that's  not advisable.  Possibly, if your betrayed members spread enough
+propaganda, you might have to expect never to run a Corporation with any members again, though this may not be true depending upon whether or not your CorpMembers were inept or not...  Use the same outline as  above if you decide to do it, and offer the password to any of the
+'former' members who were any good, unless you just want to make everything Personally owned. If you, by chance are a CEO who has heard that a member is going to backstab you, and you DO believe (NOT,  well, er, I THINK he's gonna...) that s/he is going to backstab your
+corporation, take all the shields and fighters off of him and move him  to a random sector and eject him from the corp. If you are a member  of a corporation, and another member approaches you in a message and  asks you if you want to backstab, say "possibly.. who's in on it?" and  wait for a reply.  When the backstabber tells you, tell your CEO, and  be rewarded with the trust of that CEO GREATLY.  Also, expect to have an enemy also.. so it's a two-sided victory.  {BLACKFIST'S LAW - THE CORPORATION NAME IS THE POWER....I USE THE SAME CORP NAME IN EVERY GAME I PLAY, AND YES THIS CAN MAKE IT HARDER FOR YOU IF YOU HAVE ALREADY BUILT A STRONG REP.....BUT THE OTHER PLAYERS HAVE LEARNED GAME AFTER GAME IN THE PAST THAT THE CORPORATION HAS GUIDLINES....IF WE AGREE TO TAKE IN OTHER PLAYERS, ONE OF THE CORP MEMBERS WILL BREAK OFF AND FORM A SISTER CORP. THEN WHEN SOMEONE BACKSTABS....THEY ARE HOUNDED FOR EVER! GAME AFTER GAME WE TRACK THEM DOWN AND DESTROY THEM. ONE WAY OF DOING THIS ON BOARD WHICH POST THE LAST FEW CALLERS NAMES, OVER THE PERIOD OF A GAME, BY CALLING AT DIFFERENT TIMES AND CHECKING THESE LISTS, ONE CAN USUALLY DISCOVER WHO IS WHO. 
+
+
+
+
+IF SOMEONE BACKSTABS MY CORP HUNTS THEM IN GAME AFTER GAME, AND EVEN FROM BOARD TO BOARD. WHEN WE GO TROLLING FOR CERTAIN FILES, OR INFORMATION, WE ALL MAKE IT A HABIT OF CHECKING THE LIST OF USERS AND TRADEWAR PALYERS.  IF WE FIND A BACKSTABBER. WE JOIN THE GAME AND DEVOTE ALL OF OUR ENERGIES TO DESTROYING THAT PLAYER....AT ALL COSTS! BACKSTAB WITH CARE.  IF YOU ARE THE C.E.O. OF A CORP AND A PLAYER BACKSTABS YOU - YOU NEED TO DO THE SAME. NEXT TIME OTHERS WILL REMEMBER - BLOOD FEUD SORT OF THING AND RECONSIDER.}
+
+Secret Alliances and Treaties
+ At some point in your TradeWarsing career, you may find that a Corporation offers to not
+ attack your possessions if you don't do the same.  These are by no means binding and are not enforced unless the corporate member wishes to follow your 'gentleman's agreement'.  These can be helpful, and will help both your and the other team's Corporation grow, especially their planets.  They could of course, always 'hire' somebody NOT on their corporation in the game to assault you and give them the resources to do it..  Trust.  It's up to you. 
+
+
+
+The Worth of Planets and Citadels
+Planets alone are useless.
+ {BLACKFIST'S LAW - PLANETS HAVE A VARIETY OF USES..THEY CAN BE USED AS CANNON FODDER - SEE DESTROYING A LEVEL FIVE PLANET LATER. THEY CAN BE USED AS BAIT (LEAVE A PLANET IN THE PROCESS OF UPGRADING SOMPLACE FAIRLY SAFE...LEAVE A LOT OF THEM THERE....THEN DON'T GO BACK FOR A WHILE. CHECK PERIODICALLY - USUALLY A NEW PLAYER WILL LOCATE THEM AND BEGIN THE UPGRADE PROCESS - ALL YOU HAVE TO DO IS KEEP TRACK OF THE DAYS, COME IN AND TAKE IT BACK AT A KEY POINT. IF IT IS NOT AS FAR ALONG AS YOU THOUGHT IT WAS....SELL OFF AS MUCH OF THE MATERIALS AS YOU HAVE TIME FOR. THEN LET THEM TAKE IT BACK! AND KEEP A MORE ACCURATE COUNT OF THE DAYS. COME BACK ON THE ASSIGNED DAY AND TAKE IT BACK....I KEEP THIS UP UNTIL THE DAY BEFORE THE PLANETARY DRIVE GOES ONLINE - THEN I CALL IN RIGHT AFTER THE MAINTENANCE THAT NIGHT, AND STEAL THE PLANET BACK....JUMP TO A LOCATION FAR AWAY. NEWBIES BUILD UP DEFENCES RATHER THAN WRITE THEM OFF - BAIT YOUR TRAPS!)} 
+Citadels are not.  Put them together (well, the only way to get a citadel is to make a planet anyway....) Here are the BASIC rules to follow when making a planet: 
+1. Pick a spot where no-one will find it.  Do NOT choose a sector that has more that ONE warp  	out of it
+ 2. Make sure the warp in is the same warp out!
+ 3. Make sure there are no one-way-warps into the sector, as that can be used as a backdoor by
+	 your enemies.  Here is a way to check for one way warps into the sector (s) you've 
+	 chosen:
+		1. Go to the computer and Avoid the sector you have chosen!
+ 		2. Try to warp to it from MORE THAN ONE SECTOR AWAY!
+ 		3. If it says *NO* warps found, then type (Y)es to clear avoids and you're all set.
+		    If not, don't use that sector!
+ 4. Pick a spot where there were no enemy fighters.  This is because if that sector you might 
+	have chosen was a tunnel, then your enemy might have had his/her eye upon it..
+ 5. Buy a Genesis Torpedo and use it! (25,000) credits
+ 6. COLONIZE! -- Bring people from Terra in sector 1 to your planet.
+ 
+
+
+
+7. Put most of them in Fuel Ore.  Every day before a Level 2 Citadel, take the fighters off the
+	 planet and use them or put them somewhere else (ie. either on your ship or in another
+	 1 warp sector / or guarding the planet)
+8. Go to ports and buy commodities.  Get enough to start a Level 1 Citadel and do so.  
+
+Stock each day.  Colonize.  Make sure to keep the MAX num. of colonists (in each category) at
+NO MORE than 1,000 holds worth. 9. Once you're on a Level 2, put your fighters on the planet.  They have 4 to 1 odds against the enemy attacking.  Put only 1 in the sector, as to get the fighter reports if a person finds your planet, you'll know. 10.If a person finds your planet and it can't yet 
+be moved, either destroy the planet (after killing off the colonists!) or if the enemy is weak, keep
+ it's development going, and MOVE IT as soon as possible! (when it reaches a Level 4 citadel to another safe sector. Once your planet reaches a Level 5 Citadel, shield bug it!  If you KNOW FOR CERTAIN that your enemies have not found your planet, you can start this process BEFORE you have a Level 5 Citadel.  You can stick shields on your planet before a Level 5, they just won't be active until the Level 5 is complete.  To shield bug, put the shielding at 1639 or higher.  I would, personally, suggest more.  This is, because if a person takes over your sector defenses, which you hopefully have (only fighters and mines... how many of each is up to you.) and you CANNOT get off your planet without being able to get back in, then you will have plenty of shields to protect yourself with or, if needs be, sell at the stardock for a nice price and get enough money to buy fighters or whatever you need to destroy their fighters... Therefore, a level of something like 2000 is suggested.. though expensive! 
+{BLACKFIST'S LAW - SCAN THE SECTOR FROM THE CITADEL BEFORE YOU LEAVE! IF YOUR LEVEL 4/5 HAS BEEN DISCOVERED MOVE IT....DON'T LEAVE IT. IF IT IS LESS THAN A LEVEL 4 AND IS FOUND BY A STRONG FORCE....SELL EVERYTHING ON IT, THEN MOVE ALL THE COLONISTS INTO ONE AREA AND LEAVE IT OR DESTROY IT. IF YOU LEAVE IT, GIVE YOUR ENEMY A RESON TO KEEP IT WELL DEFENDED (SMALL ATTACKS THAT FAIL) WHILE YOU SPEND ALL YOUR TIME MAKING MONEY.  COUNT THE DAYS AND GO BACK AFTER IT TURNS LEVEL 4 - AFTER MANTENANCE IS RUN AT NIGHT! AND JUMP IT. IF UNABLE TO JUMP IT - DESTROY IT!
+
+The Worth of Aliens
+ 
+Aliens are important for the aspiring EVIL or GOOD trader.  This is because when you destroy them <grin> you gain experience points and raise or lower your alignment.  If you come across an Alien of an opposite alignment than you, then trap him.  The way you do this is by getting that alien into a one warp sector and put a fighter in the sector that leads out of that sector.  Same as trapping a Federal, but much less dangerous, especially if you're in an Evil Imperial StarShip.  If you have a POSITIVE alignment, and you destroy an alien with a NEGATIVE alignment, your alignment will go up (depending on their alignment) and your experience will go up (depending on their experience).  If you kill an alien of an opposite alignment, you will get one half of their
+ experience added to yours.  If you kill an alien of the SAME alignment, you will receive one quarter of their experience points. Aliens are a good way to quickly get a Federal Commission (evil ones..) because they can raise your alignment and experience so quickly. 
+{BLACKFIST'S LAW - TRY TO TRAP ALL THE ALIENS AND DEFEND THE TRAPPED AREAS. THIS KEEPS THE GOODIES KILLING OFF YOUR ENEMY BAD GUYS FOR ENOUGH EXPERIENCE TO GET A ISS.
+
+
+
+
+
+
+The Worth of Ferrengi
+
+Ferrengi scum is fun for all!  The Ferrengi will attack you, board you, take your commodities onboard and some of your holds.  Sometimes they'll settle for your credits.  ALWAYS: They show up at the times when you have MANY less fighters than them.  But hey!  That's the Ferrengi's way.  Their Assault Traders don't have very good fighting odds, so they're easy to
+attack. The only problem is that once you attack one, others will have grudges against you.  
+Some will possibly go on a Blood Hunt against you.  Not good. Not only will attacking Ferrengi fighters and Ferrengi themselves give you a BIG alignment raise, you will also recieve bounty credits for killing the Ferrengi, whether you have a negative OR positive alignment, but the credits given to you by the Federation NEVER outweigh or even compensate for the cost of the
+ fighters used.  You mostly attack Ferrengi for alignment purposes. When a Ferrengi finds you and gives you it's annoying message: 
+
+ ** Ferrengi Fighter Attack! **
+Combat computer reports damages of 27 battle points!
+ 27 K3-A Fighters destroyed by the attack!
+ Received from The Ferrengi at 08:27:49 PM S.D. 07/27/05:
+ Greetings HooMan!  This is Daihmon <unpronounceable> commanding the
+ <unpronounceable>.  Lower your shields and prepare to be boarded.
+ We will exact tribute from you and then be on our way, otherwise we
+ will turn your excuse for a ship into so many pieces of space junk.
+ Your fighters: 4 vs. theirs: 259
+ Choose your action, Captain : (F)lee, (A)ttack, (S)urrender, (I)nfo
+>? 
+ 
+Usually the best way of escape is to surrender.  Hope you have something in your holds!  If not, flee might be the preferable option, but not if you have 29 fighters left and no shields.. you'll most
+ likely get destroyed. The Ferrengi are a good and annoying opponent. Use them to your advantage or steer clear of them!
+
+
+The Worth of Other Traders
+ 
+Yes!  Not only are Traders SUCH GOOD opponents, they're fun to destroy too! If you find one, use the lower or raise your alignment tactic (see 'Bounties, good and evil') To use other traders constantly, to your advantage, have them on your corporation.  Or else destroy them as much as you can.  Just recently I found a newbie that parked in FedSpace that was evil (-1 alignment..) and he had a 1,320 credits bounty on his head (in the FedSpace Police HQ), so I posted ALL the money I had on him (minus 2,000 or so, just in case I couldn't destroy him.. to trade with..) and
+ killed him.  My alignment was up and I earned a few thousand credits off the Federation bounty and the holds and credits off him. Of course those few thousand never make up for the fighters you lost.. unless of course the guy only had about 5 on him.. which doesn't happen too often...
+ Traders are fun to find, especially with NO fighters, and to tow to a sector and put 99 mines around, although it's not very constructive.  Leave a colorful marker beacon too. 
+
+One good way to get them to have no fighters is to attack until it tells you that you have lost X fighters and etc., etc and then Pauses (-Pause-) and if you press enter shows you the ANSI showing a ship getting destroyed.  Drop carrier when it is displaying the pause.  Then log back on, and the player will have no fighters on him, and is ready to tow! 
+
+
+
+ Using the StarDock to it's fullest 
+ 
+	In the stardock there are some rather useful places.  Here is a list taken from Levy's 
+
+TradMenu Program:
+                            ** Stardock **
+               *****************************************
+               *     Obvious places to go are:         *
+               *                                       *
+               * <C> The CinePlex Videon Theaters      *
+               * <G> The 2nd National Galactic Bank    *
+               * <H> The Stellar Hardware Emporium     *
+               * <P> The Federal Space Police HQ       *
+               * <S> The Federation Shipyards          *
+               * <T> The Lost Trader's Tavern          *
+               *                                       *
+               * <!> Stardock Help                     *
+               * <L> Return to your ship and leave     *
+               *****************************************
+               *          Undisplayed Options:         *
+               *                                       *
+               *  <+> The Library console              *
+               *  <U> Contact the Underground          *
+               *****************************************
+
+	The CinePlex Videon Theatres are useless to everybody.  There's no 
+	secrets here.  You, for a nominal amount of credits get to watch an ANSI.  If you want to 
+	see them, it's probably easier just to download TradeWars 2002 and install it locally!
+ 	The 2nd National Galactic Bank is useful for those good traders, who do 
+	not want to be taxed because they have over 49,999 credits at the beginning of the day. 
+	Unfortunately, you can only deposit 100,000 credits in your account, total.  The nice 
+	thing is that if you want to help someone out, you can transfer credits from your account 
+	to theirs.  It can make for good alliances.  No secrets here either.
+   	The Stellar Hardware Emporium is useful indeed!  EVERYBODY uses it! 
+	It's where you get your Genesis Torpedoes, Mines, Marker Beacons, Scanners, 
+	TransWarp Drive Systems, and so forth.  Here is a list of the products and what they do 
+	below:
+
+		Atomic Detonator:  This device is SAFE to carry, no matter what the 
+					    description says.  It destroys planets.  Remember, if 
+					    you want to destroy a planet that it takes your 
+		                                        alignment down (50 points down).  However, if you 
+					    don't attack and kill ALL the colonists before you use 
+					    this device, you WILL get destroyed.  The maximum 
+					    any ship can carry is five.
+
+		Marker Beacons:  These are cheap and useless.  They are also dangerous.
+				          They are fun to put in your Home Sector or in a sector
+				          with an enemy that you have towed and surrounded with
+				          mines, but if you blind TransWarp and even one of these 
+				          are in the sector, good-bye ship!
+
+		Corbomite Devices:  These serve practically no purpose.  The maximum 
+					    any ship can carry is 1,500.  These hurt even more 
+					    the person that destroyed you. Not useful because 
+					    they are expensive when added up (150,000 creds) 
+					    and do not do a  whole lot to your enemy.
+
+
+		Cloaking Devices:  EVERYONE should have at LEAST one at all times after
+				           the first two weeks of gameplay!  In case you run out of 
+				           turns outside of a safe area (your homesector or 
+				           FedSpace -- if you're good)  They protect you from being
+				           seen by enemies.  All competent CEO's should use 
+				           them.  The maximum any ship can carry is five.
+
+		SubSpace Ether Probes:  These are handy.  Want to know what's in sector 
+						1,000 and have no turns left?  Use one.  It's like
+						a moving Holo Scanner that goes multiple 
+						sectors and takes one turn.  The only thing is, a
+						mine, one fighter, or just about anything will 
+						destroy them, and if caught by a fighter, the 
+						owner of that fighter will be told who owns the 
+						Ether Probe. The maximum any ship can carry
+						is 25.
+
+		Planet Scanners: Planet scanners do just that, scan planets.  If the planet is
+				         NOT shielded, then you will be told who owns it, and how 
+				         many fighters are on the planet, as well as other 
+				         information.  A wise investment after you have a couple 
+				         million credits in the citadel, and have a safe ship, so you
+				         don't put 30,000 credits down the drain needlessly.
+
+		Space Mines:  Self explanatory.  When a person enters a sector half of them
+				   will blow up, causing 20 points of damage per mine.  A sector
+				   can hold up to 99.
+
+		Photon Missiles:  Not available to many.  See 'Advanced Playing 
+				        Techniques' for more info.  They simply disable ALL mines, 
+				        fighters and Quasar Cannons in the sector that you fire 
+				        them into, for a SysOp specified amount of time.  They will
+				        blow up at the slightest attack of any sort.  Even ONE 
+				        offensive fighter will do it.  If they do, you lose all your turns 
+				        for the rest of that day. Hope you have a cloak.  I always
+       	  			        get a Photon Missile ONLY when I need one, and make 
+				        sure that I have a cloak  with me, just in case.  
+				        These must be shot from an adjacent sector to the one you 
+				        want to invade, and the sector you shot it from will show up 
+				        in the daily log, by number, so people will know EXACTLY
+				        where you have been.
+
+
+
+
+
+
+	Long Range Scanners;
+
+		Density Scanner:  This scanner tells you how many warps lead out of the
+				          sectors around you, and what is in the sector, roughly. 
+				          A Density scan doesn't take a turn, as a holo scan does. 
+
+ Here is a list of densities.
+
+   500 = A planet
+   100 = A port
+   40 = A trader or a Ferrengi
+   10 = A Mine
+   5 = One fighter
+   1 = A Marker Beacon
+
+   A Sector Density Scan Ending in 2,3,4,7,8 or 9 is a Fed, ALWAYS
+
+   A Sector Density scan ending in 0,1,5 or 6 is NOT a Fed, SOMETIMES (see 'Keeping an evil
+									 Imperial StarShip')
+
+
+		Holographic Scanner: This scanner is a density scanner, but it also can be
+					     a scanner that graphically shows you exactly what's 
+					     in the adjacent sectors, but requires a turn.
+
+		Mine Disrupters:  Mine disrupters are simple.  Any ship can carry a 
+				        maximum of 10.  They can disrupt up to 12 mines (if you're 
+				        lucky) in a sector.  They MUST be fired from a sector 
+				        adjacent to the one with the mines, same as Photon
+				        Torpedoes.  A good investment of 40,000 credits when one
+				        has a SECURE ship.
+
+		Genesis Torpedoes:  Genesis Torpedoes are IMPORTANT!  You make
+					   planets with these.  It is well worth the 25,000 credits
+					   if you have found a secure sector (see 'The Worth of
+					   Planets and Citadels') to place it in (so it will not be 
+					   found and destroyed).  Then you colonize and stock 
+					   the planet, and tada! Citadel time!
+
+
+		TransWarp Drives:  These systems are available only to those with a Havoc
+					 GunStar, a Corporate FlagShip, or an Imperial 
+					 StarShip.  TransWarp drives require Fuel Ore to run, 
+					 and are worth the 50,000 credits later in the game. 
+					 Especially if you have an Evil Imperial StarShip.  They 
+					 will 'hop' you from one sector to another safely, as long 
+					 as you have a fighter in the destination sector in one 
+					 turn.  A good addition.
+
+		
+
+
+		Psychic Probes:  These are not much help.  Sometimes they are worth it.
+				        They simply tell you  AFTER you have bought or sold a
+				        product what percent of the highest that the port would 
+				        have taken you got by trading there.  You'll just have to get
+				        one some time and try it.
+
+	The Federal Space Police HQ is important for those who want to
+	get a Federal Commission (see 'Advanced Playing Techniques').  This is where you do 
+	so.  The Police HQ is also the place at which you place and collect bounties that can 
+	raise and lower your alignment (see 'Bounties, good and evil').  Not much else here.
+
+	The Federation Shipyards are VERY important to EVERYBODY. 
+	This is where you sell your old ship and buy a new one.  Here are the available 
+	shiptypes.
+
+       Ship Class                          Cost
+    <1> Merchant Cruiser    	26,300 - Starting Ship. Not-so-good
+    <2> Scout Marauder        	13,200 - Fast & Small-Not for trading
+    <3> Missile Frigate            	28,800 - AWFUL!  Photons though..
+    <4> BattleShip                  	40,500 - Not worth it
+    <5> Corporate FlagShip     	71,000 - 2nd best ship - worth it!
+    <6> Colonial Transport     	54,400 - Too Slow - for port pairs
+    <7> CargoTran                	59,400 - Not worth it - StarMaster!
+    <8> Merchant Freighter      	36,200 - Not worth it - StarMaster!
+    <9> Imperial StarShip        	128,600 - BEST Ship! - Fed. Comiss.!
+   <10> Havoc GunStar         	29,500 - Not good.  Get an ISS or CFS
+   <11> StarMaster                	48,000 - VERY worth it! GET ONE!!
+   <12> Constellation             	40,500 - Nah.
+   <13> T'Khasi Orion             	36,000 - Nah.
+   <14> Tholian Sentinel           	27,000 - See 'Advanced Playing Tech.'
+   <15> Taurean Mule              	53,600 - Faster/150 holds - Col. Tra!
+
+
+
+The only ships that I believe are TRULY worth it are the Corporate FlagShip, the Imperial StarShip (you need a Federal Commission to BUY one), and the StarMaster.
+ 
+   	The Colonial Transport lets you have 250 holds, but the expense is ENORMOUS.
+	Use a Taurean Mule, as you have a higher turn rate, but only 150 holds.  Still enough.
+  	The CargoTran is NOT a good buy.  Get a StarMaster if you want a REAL ship.
+   	The BattleShip is too constraining, and not worth the expense.  
+
+
+
+
+
+	The Scout Marauder has 2 to 1 fighting odds (that means, theoretically you should be
+		able to kill 500 fighters with it's 250 [maximum])  It's too bad the 'fighters per
+		attack' is so low, or it would be much better.  Use the Negative Transfer Bug to
+		get more fighters on the thing (see 'Addendum 1')
+
+
+	The Lost Trader's Tavern is a good place to go to get information.
+	You can Write things to people in a public conversation, or anonymously in the
+	bathroom on the walls.  You can post an announcement to all that enter the tavern for 
+	100 credits.  You can play Tri-Cron and TRY to make money.  To tell you the truth, it's 
+	not worth it.  The best combination is 2-3-1, as the Grimy Trader in back will tell you.  I
+	tell you it's not worth it. The trader in back is probably the most important feature of the 
+	tavern. He sells you information.  Here are some of the most-used commands.  You can
+	ask him just about ANYTHING.  Even about ships or things in the hardware emporium 
+	individually.
+
+		TRADER   -- Trace a person to a port (a few thousand credits)
+		MAFIA    -- Get the password to the underground
+		TRI CRON -- Get tips on Tri-Cron
+
+	The Underground is important.  Here you post bounties on ANYBODY 
+	(positive and negative alignment traders) and get your alignment lowered.  The ratio is 
+	that your alignment will go down by 4 points for every 1,000 credits of bounty that you 
+	post.  Do this to some trader you found in an Escape Pod or something. This way you 
+	get your money back!  The underground also lets you change your name, which can 
+	confuse your opponents.  Don't try to break in too much, or your credits will get taken,
+	and finally you will get killed.
+
+	The Library is not important, just interesting the first time you go. It tells you 
+	about 'Alien Derelicts' which have nothing to do with the game, and also gives you a 
+	glimpse at the shipspecs on the Ferrengi vessel(s).
+
+
+ Destroying Class 0 Ports 
+
+It just takes a little imagination!  You CAN destroy class 0 ports. Simply use the Negative Transfer Bug to get 32000 shields (see 'Addendum 1') and get 32000 fighters on an Imperial StarShip or Corporate FlagShip or any other ship that you care to try this in (with GOOD offensive odds...not something like a CargoTran..) and attack.  Attack.  Attack. 
+Try it on a local copy of TradeWars first.  Then try it on-line and freeze the game if you have
+the resources.  You can do this by shutting off the StarDock (surrounding it with fighters and mines or else Planets with a good amount of Quasar Sector level power.  The fighters and mines will get destroyed nightly, but hey! Then go and destroy the other three class 0 ports in the universe.  Fun! Maybe you could even go for the StarDock, but I haven't done it yet!  Time
+for BigBang if you do!!
+
+
+
+
+
+
+
+
+
+
+
+
+ ADDENDUM 1 
+Trade Wars 2002 v1.03+ Known Bugs
+
+
+-= Table of Contents =-                   -= Max Version Compatibility =-
+The Planetary Shield Bug                         1.03d
+The Negative Transfer Bug                       1.03d
+The Evil's Holds Bug                                 1.03d
+The Evil's MEGA MEGA Holds Bug            1.03d
+The Corporate Megaholds Bug                  1.03d
+The In-famous Dual CEO Bug                   1.03d
+The Military Reaction Level Bug                 1.03d
+The Planet Cloning Bug                           1.03
+The CRASH TradeWars Bug                     1.03d
+The Heir to the Throne Bug                       1.03d
+The (so-called) Steal-Sell Bug                   1.03d
+The Infinite Cloaking Bug                         1.03d
+The Infinite Photon Bug                           1.03d
+OTHER Bugs / Un-Tested Bugs                1.03d
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-= The Bugs! =-
+
+
+I.    The Planetary Shield Bug
+	As most of us know, once a planet reaches a planetary shielding level of 1639 or above, the shields become undestroyable.  This takes many resources (ie. $$$$) to shield bug a planet, and much time, of course, to build a level 5 citadel.  There are still ways to destroy a shield bugged planet, but it takes many days and resources (and stupidity on your part) to have this done to you (see Advanced Playing Techniques).
+
+II.   The Negative Transfer Bug
+	When you're on a Corporation, you can find another corporate member, and transfer shields, credits and fighters in between the two of you if you go into the same sector as
+your corporate member.  The bug here applies only to Fighters and shields, NOT credits.  The Martins, being the inept people that they are, have included another fun bug.  Say you have an
+Imperial StarShip (ISS) and your corporate partner has one too.  We know the maximum number of shields on an ISS is 2000.  If you wanted, say 4000 to start, then go right ahead, and do
+the following (that is, if your partner had 2000 shields and so did you).  Go to the corporate menu and do 'S' for Shields transfer.  Then, say yes to the appropriate member to transfer
+with, and choose 'T' for Transfer TO other member.  Then transfer NEGATIVE 2000 (-2000) shields and wala!  You have 4000 shields!  (You may have to do two -999 and one -2,
+because I forget if the input field is four or five digits long).  The same applies for fighters.  You could have up to 32767 fighters on any ship.  32767 is the maximum for fighters
+AND shields (ie you could get an ISS with 32767 fighters and 32767 shields...even a Scout Maurauder with 32767 fighters and shields!!!!)  Try it!  One other variation on this is that you
+can do, with the same ideas used above, do a transfer FROM and do negative shields or fighters or something.  But then again, who would want to do that when YOU can have all the shields and the fighters!!!
+ 	There is yet another twist on this bug.  If you want those shields or fighters even faster without a partner, then go to a planet with a citadel and take shields from it by using 'G' for Shield Generator Control, and then choosing 'T' for To Shield System, and use a negative #.  The same goes for 'M' for Military (fighters).  You can do Negative transfers there as
+well.
+
+III.  The Evil's Holds Bug
+	When you steal from a port, there are limits as to how much money or products you can steal.  If you get caught, you lose holds.  How about losing NEGATIVE holds, or in other words, GAINING holds?  Simple.  Steal 365 equipment from a port that has an adequate amount of equipment (ie over 365) and you will get fined -32 cargo holds, the maximum.  You will gain 32 holds!  You can get a ship, say it's an ISS again (hard to keep if you're evil..) with the maximum of 150 holds, and steal 365 equipment, and end up with an ISS with 182 holds!  You can have more than maximum holds on any ship.  To be exact, 32 over the maximum.  You can also steal 615 organics from a port and get 'fined' negative 32 cargo holds.  Find a port with adequate organics.  Remember that you can only use one port at a time, ie somebody else must be caught there before you can steal from that port again.. or it must be over 2 weeks..
+
+
+
+
+
+IV.   The Evil's MEGA MEGA Holds Bug
+	Here goes.  Get a ship with Maximum holds, plus the 32 extra (see section III).  Go to terra or some planet that you own, and take colonists (preferably from Terra..)  Then go and steal, oh say 364 that's right 364 (NOT 365) holds of Equipment and get caught.  You will lose 32 holds.  Then go and steal one hold of a commodity that you do not want to trade or use at all.  The most likely one would be Organics.  Fuel Ore is needed for a TransWarp.  Then again, if you're doing this on a StarMaster or something, you may change your mind. 
+After you have stolen one hold of Organics for example, and then go to a class 0 port and buy more holds.  Repeat.  Taxing on the experience and $$$$, but sometimes worth it.  Don't sell or buy the commodity that you steal the one holds of.  Also, do not get caught by a Ferrengi or a port, or deploy fighters in FedSpace, or you WILL lose your mega holds.
+
+V.    The Corporate Megaholds Bug
+	This bug is available to both good and evil people.  I don't find it very useful at all.  Load A Ship in a citadel, say a Havoc GunStar, with Fuel Ore (make sure it has Full Holds and a TransWarp drive).  Have it parked overnight, and have it so team-members CAN Exchange Ships with it. Then have a Ship with not much on it go into the citadel, and have the Max holds, but empty.  Then type 'E' for Exchange ships, and as soon as you type 'Y' for yes, exit the citadel and type 'T' for Take all products.  You will end up with the holds of Fuel Ore in the ship that was parked in the Citadel, in that ship, with full holds of Equipment as well.  Not very useful, but maybe i'm missing part of it...nah.
+
+VI.    The In-famous Dual CEO Bug
+	This is a unknown, but VERY nice bug.  How would you like a corporation with Two CEO's?  With two Corporate FlagShips readily available?  With both having CEO power?  Well, I discovered this bug myself.  First, logon with player JOE SHMOE to TradeWars 2002 (that's his handle).  Then, when it asks which alias would you like to use, use the same name as the other person's handle who is also going to logon, for this example say it's JACKAL.  Fine. Make a corp.  Then, logon with JACKAL (that's his handle) and tell TradeWars to use his BBS name.  THE CAPITALIZATION MUST BE THE SAME!!.  Tell him to join the corp. Ta-da!!!  You can use any handles as long as you follow the above outline, and the name you choose is one of the people's handles. Look at this small capture:
+
+      < T h e   C o r p o r a t e   R e g i s t e r >                  I'm not kidding!  This is REAL!  You both 
+ 							 will have CEO power (Corporate 	   Corp Number                 Corp Name            		Memo, Corporate Password, Corporate
+-----------------------------------------------------         		FlagShip(s), Kick a Member Off) It also	 1                                         Psycho!			confuses the heck out of your		 
+							opponents, as when they send a 
+		Creation Date: 07/12/05			message, they don't know if it's you or
+Corp C.E.O.   ->                               Psycho		your partner!!
+Corp C.E.O.   ->                               Psycho
+   -----------------------------------------------------
+       2                             Knights of Solamnia
+           
+		Creation Date: 08/02/05
+Corp C.E.O.   ->                                 Levy
+
+
+
+VII.   The Military Reaction Level Bug
+	If you have a planet.  DO NOT HAVE THE MILITARY REACTION LEVEL ABOVE 0%! This is because of the following.  If a person attacks with 26,000+ fighters, and the planet has over 13,000+ fighters on it, and the Military Reaction Level is above 0%, the fighters will ALL attack and WILL NOT kill them.  Useless fighters.  But besides, with 4 to 1 odds on the planet, it's better not to have them attack anyway!
+
+

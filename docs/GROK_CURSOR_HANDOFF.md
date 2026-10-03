@@ -42,7 +42,14 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ---
 
+## Copy the original
+
+Every new slice names the original Trade Wars rule and the file under `docs/reference/tw2002/` it came from. The lab note marks each fact CONFIRMED, SOURCE-CONFLICT, or UNVERIFIED, and lists every deliberate difference. The target is Trade Wars 2002 v3.x as TWGS 3.11 ran it. When TWGS and MBBS agree, use the MBBS number. When they do not, write the conflict down and keep a constant.
+
 ## Changelog
+
+### 2026-10-03 11:36 PT - Fable - save the Trade Wars notes we copy from
+- The folder is community text, not the manual or the source.
 
 ### 2026-10-03 09:55 PT - Fable - the planet fuzz now destroys, moves, and attacks
 - The scratch game starts where those actions are legal, and the run fails if any of them never succeeds. A thrown-away break of the destroy cleanup and of the transport fee both made it fail.

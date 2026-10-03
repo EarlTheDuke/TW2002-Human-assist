@@ -1,0 +1,98 @@
+Someguy's Tradewars Manual
+
+Additions & Corrections to the May 1997 version.
+------------------------------------------------
+
+The Authors are constantly tinkering with the game specifications, so
+it's sometimes difficult to keep up.
+
+The following information was added after the current manual was
+published:
+
+1)  The T'Kasi Orion ship now can carry a HoloScanner, which makes it a
+serious contender.  It has only 7% less Trading Efficiency as the
+Merchant Freighter, and carries much better armaments.  Having a Safety
+Rating 2.5 times the Freighter, and an attack power 3.4 times that of
+the Freighter makes it a serious consideration for starting players in
+games where there's a lot of shooting going on.  Including Holo, the
+cost is now 101,420 credits.
+
+2)  The Ferrengi Assault Trader now can carry a HoloScanner and now has
+combat odds of 1.2, which is a nice improvement, but still not a
+terrific ship.
+
+3)  The Ferrengi Battle Cruiser now has combat odds of 1.4, and they
+first appear on Day 60.
+
+4)  The Ferrengi Dreadnought now has combat odds of 1.6, and they first
+appear on Day 90.
+
+5)  The Ferrengi Scorpion has combat odds of about 3.4!  The Interdictor
+Cruiser does NOT hold the Overlord in place, but you CAN attack him
+while you are in a Ferrengi Dreadnought and it will take about 107,000
+fighters in total to destroy him.  With a total fighter capacity of
+15,000 on the Dreadnought, you will have to locate the Overlord at least
+8 times, to polish him off.  You will generally be able to get off 3
+waves of 5,000 fighters each, before the Overlord warps out of the
+sector, and you must then relocate him each time.  If you are quick, you
+can fly home and reload your fighters and you might be able to shoot a
+2nd or even 3rd load of fighters at him, but then he will vanish.  If
+you don't find him that day, he will regenerate his full 50,000 fighters
+at cleanup each night.  It is possible to destroy his ship, which leaves
+a 50% haz behind, but you get no points or credits.  It is NOT possible
+to capture the Overlord's ship in present versions of the game...maybe
+in future versions.  As it stands, the Overlord is an annoyance that you
+can really do nothing about and he is not useful for anything.
+
+
+6)  If you are towing a ship and someone else captures it as you pass
+thru their sector, this does not break the Tow.  Capture it back in the
+next sector, then run like hell.   Alternatively, if someone tows a ship
+thru your sector, shoot a single fighter at it and capture it, then jump
+to Stardock and wait for it to arrive.  If the victim does not realize
+he is towing YOUR ship, he may tow it all the way to Stardock, and you
+can sell it out from under him the moment it arrives!  Nasty!
+
+7)  How to get cheap holds:  The Colonial Transport (ColTran) is a very
+useful ship, but installing the holds is extremely expensive.  Buying
+the 51st hold costs only 1202 credits, but each succesive hold is 20
+credits more expensive and it adds up fast.  The 200th hold costs 4182
+credits and the 250th hold costs 5182 credits!  But, if you were to use
+your ColTran to destroy an unarmed freighter that has 63 or more holds
+on it, you will find that you "salvage" 22 of it's holds and they get
+added to your ship automatically.  Get an ally to buy the freighters for
+you at a cost of 70,427 credits for each one, including the total of 63
+holds needed.  For the first holds, it is cheaper to buy them at
+stardock, but the later ones are best salvaged.  Here's the math:
+
+        Purchase Method:                Salvage Method:
+
+        Basic ColTran     63,600        Basic ColTran       63,600
+        200 Addl holds   638,400        112 Addl holds     258,944
+                                        4 Freighters       281,708
+               Total---> 702,000                 Total---> 604,252
+
+Your cost savings comes to 97,748 credits, not bad eh?  There is an even
+more important implication for evil players running Sell/Steal in a
+ColTran.  When getting busted stealing 250 holds of equipment, you are
+penalized 22 holds.  You can then buy 22 new holds for 109,384 credits,
+or salvage a 63-hold freighter which costs 70,427 credits.  That saves
+you 38,957 credits plus all the turns it would take to transport the
+ColTran!  It's so much easier to have your ally stockpile a few
+freighters for you.
+
+8)  Defensive sector fighters have combat odds of about 1.15:1
+    Offensive sector fighters have combat odds of 0.8:1
+    Toll sector fighters have combat odds of _________
+
+9)  Alignment changes for attacking sector fighters:
+
+10)  System crashes:  Never play tradewars on any system that crashes
+regularly, or if there is a known way for a caller to bring it down!
+Here's why.... If you enter the game with a full load of fighters, and
+then deploy them in the sector and then you crash the system... when you
+later relog you will find those fighters are both on your ship and in
+the sector, thereby doubling your fighters.  There's no point in playing
+when other players may be doing this!
+
+

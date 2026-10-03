@@ -1,0 +1,1178 @@
+From:  klewis@mail.znet.com (Kris Lewis) 
+Date:  11/30/95 7:42PM 
+Subject:  TW2002 FAQ (up to B8) 
+Address:  To: alt.bbs.doors 
+ 
+#1 TWARP Towing
+Now you can use TWARP Towing without a bug. There is a new type of
+Twarp drive that lets you tow a ship. It is available for all ships
+capable of TWARP for 80,000 credits rather than 50,000 credits for
+the conventional drive. If you already have a conventional drive, you
+can upgrade for 40,000 credits. Twarp towing takes the same number of
+turns as towing one sector and requires twice the fuel ore of
+twarping without a ship in tow. The ship information screen now shows
+twarp power for both conventional and towing mode.
+
+#2 Planetary Collisions
+In 1.0x you have to TWARP a planet in to overload a sector and cause
+a collision. In V2 you can overload any sector (except sector one) by
+just shooting off gtorps. Unfortunately, photons disable sector
+defenses allowing players to shoot off gtorps without defeating the
+sector defenses. This is one of several reasons why photon missiles
+should *always* be disabled in V2 Beta.
+
+#3 Photons
+Aside from the consideration mentioned above, when a photon is
+launched into a sector where a player is staying in a citadel they
+lose their turns for the rest of the day. Neither ship nor planetary
+shields offer any protection against this. Sysops can deal
+effectively with this by leaving photons disabled.
+
+#4 Tholian Sentinel
+In 1.0x the Tholian sentinel got 4:1 odds when defending a planet.
+This could be circumvented, however, by attacking the ship before
+trying to land on the planet. This meant that when dealing with a
+knowlegeable player it was essentially useless. In V2, however, the
+tholian *always* gets 4:1 odds when manned by a player who is
+offline whether it is defending a planet or not! This makes it a
+great ship to spend the night in.
+
+#5 Planet Types
+
+              CITADEL SPECIFICATIONS IN TW2002 V2 BETA
+    All citadels earn 2% :( interest regardless of type.
+               Productions:
+          colonists (thousands)
+          needed to produce one           K colonists
+ planet   unit of:            planet      for maximum
+  type  F#  ORE     ORG  EQU  capacity**   production   description
+   M    10    3       7   13  100/100/100    15,000     Earth
+   K    15    2     100  500  200/50/10      20,000     Desert
+   O    15   20       2  100  100/1000/50   100,000     Oceanic
+   L    12    2       5   20  200/200/100    20,000     Mountainous
+   C    25   50     100  500  20/50/10       50,000     Glacial
+   H    50    1     na*@ 500  1000/10/100    50,000     Volcanic
+   U   na*  na*     na*  na*  10/10/10         0        Gaseous
+
+   # Units of product to produce 1 fighter
+   * production of this product not possible on this type of planet
+  ** ore/org/equ in thousands
+   @ colonists left in production of Organics on volcanic worlds will
+   die immediately!
+
+                      Citadel Construction                      total
+        Level 1   Level 2   Level 3   Level 4   Level 5 Level 6  days
+ E  DAYS    4         4         5        10         5        15   43
+ A  K COL 1000      2000      4000      6000      6000      6000
+MR  ORE    300       200       500      1000       300      1000
+ T  ORG    200        50       250      1200       400      1200
+ H  EQU    250       250       500      1000      1000      2000
+
+ D DAYS     6         5         8         5         4         8   36
+ E KCOL   1000      2400      4400      7000      8000      7000
+KS  ORE    400       300       600       700       300       700
+ E  ORG    300        80       400       900       400       900
+ R  EQU    600       400       650       800      1000      1600
+ T
+
+ O
+ C DAYS     6         5         8         5         4          8   36
+ E KCOL   1400      2400      4400      7000      8000       7000
+OA  ORE    500       200       600       700       300        700
+ N  ORG    200        50       400       900       400        900
+ I  EQU    400       300       650       800      1000       1600
+ C
+
+ M
+ O DAYS     2         5         5         8         5          12   37
+ U KCOL    400      1400      3600      5600      7000        5600
+LN  ORE    150       200       600      1000       300        1000
+ T  ORG    100        50       250      1200       400        1200
+ A  EQU    150       250       700      1000      1000        2000
+ L DAYS    5          5         7         5         4           8   34
+ A KCOL  1000       2400      4400      6600      9000        6600
+CC  ORE   400        300       600       700       300         700
+ I  ORG   300         80       400       900       400         900
+ A  EQU   600        400       650       700      1000        1400
+ L
+
+ V
+ O DAYS    4          5         8        12         5          18   52
+ L KCOL   800       1600      4400      7000     10000        7000
+HC  ORE   500        300      1200      2000      3000        2000
+ A  ORG   300        100       400      2000      1200        2000
+ N  EQU   600        400      1500      2500      2000        5000
+ I
+ C
+
+ V
+ A DAYS    8          4         5         5         4           8   34
+ P KCOL  3000       3000      8000      6000      8000        6000
+UO  ORE  1200        300       500       500       200         500
+ R  ORG   400        100       500       200       200         200
+ O  EQU  2500        400      2000       600       600        1200
+ U
+ S
+
+#6 Planetary Transporters
+You can install a Planetary transporter on any planet with a
+citadel. It costs 50,000 credits to install the transporter and
+25,000 credits per sector to upgrade the transporter. These credits
+are taken from the funds on your ship *not* from the citadel. The
+planetary transporter transports both you and your ship. The rules
+are the same as for TWARP. If you transport to a sector with 1 or
+more of your personal/corp fighters, to an empty sector, or to
+fedspace if commisioned, you'll be safe. Otherwise, you're toast!
+As with TWARP, fuel ore is used, however it uses 10 units per sector
+and takes the fuel ore from the planet. Transporting requires one
+turn and you must have a turn or you can't do it.
+There is an oddity with planetary transporters. If you are
+towing a ship when you land on a planet and then tranport, the
+other ship will go with you. This bug has been corrected in B8.
+
+#7 TWARP
+The TWARP drive is essentially the same in V2 as in 1.03(d) with a
+couple of exceptions.
+Twarping requires the same number of turns that it takes to move
+one sector. So if you're in an ISS which takes 4 turns per warp,
+and you have 3 turns left you won't be able to TWARP. Commisioned
+players can TWARP directly to fedspace, which comes in handy when
+going to stardock or colonizing. Blind jumps are much more hazardous
+in V2 because of Limpet mines which don't show up on holoscans or
+EPROBE reports. There is an option in the computer which disables
+TWARP. It is called TWARP preference. This eliminates the message
+asking if you want to engage TWARP which can be annoying if/when
+travelling to nonadjacent sectors with regular warp.
+
+#8 AUTO PILOT
+The autopilot has been improved. It now shows the number of "hops"
+and the number of "turns" to reach a nonadjacent sector. Single
+stepping is much more useful. Instead of stopping in every sector
+and making you engage warp again, it asks if you want to stop
+allowing you to excercise several options including porting and
+scanning and then asks again. You can then continue on by simply
+pressing N. This can be very useful when you are looking for
+something. Note that if you use the Port option, you no longer have
+any of the others and must either stop or go.
+
+#9 LIMPET MINES
+Limpet mines attach to the ships which enter the sector where they
+are deployed. SD and Class 0 ports will offer to remove Limpets for
+a fee of 5000 credits but can't tell who they belong to. Attached
+limpets will reduce the tradein value of a ship. If limpet mines
+you leave do not get removed then you can tell where they are, and
+thus where the ship they attached to are by doing a mine scan (K).
+Leaving Limpets in a sector where a player you're attacking is will
+*not* cause one to attach to their escape pod, too bad that would
+be a good strategy!  Mine disruptors will not get rid of deployed
+limpets. You can get rid of limpets by repeatedly entering and
+leaving a sector. If someone else's limpets are in a sector you
+will not be able to leave limpet or armid mines of your own. As
+with armid mines, limpet mines cannot be deployed in fedspace and
+will be removed from Major Space Lanes.
+
+#10 Cloaking devices
+Cloaking failure does occur in this version. It isn't supposed to
+happen until after 24 hours but it can happen the next time EXTERN
+runs, even if it has been only a few minutes. This is fixed as of
+B8 and, with B8, you have the 1st 24 hrs free. The cloaking failure
+rate is sysop configurable and can be set to 0% in which case
+cloaking failure will not happen. Unfortunately, this setting is
+not displayed on the V screen. You cannot attack or photon a player
+who is cloaked but they will show up on a density scan as an
+anomaly. Limpet mines also show up as an anomoly but if you attempt
+to put a mine in the sector and the game lets you then there are no
+limpets there, and there must be a cloaked player. Be aware,
+however, that an anomaly will show up in the last sector that *you*
+cloaked in (this is not true of B8)! You can leave fighters/mines
+in a sector where a player is cloaked. Be careful of Major Space
+Lanes!
+
+#11  Major Space Lanes
+It is wise to know where the Major space lanes are. This hasn't
+changed from 1.03(d) but many people are a little fuzzy on this
+point. The space lanes are from sol (sector one) to Stardock and
+back. From SD to RYLOS and back. From SD to Alpha Centauri and
+back. And From Rylos To AC and back. Also Rylos and Alpha Centauri
+are themselves MSLs.   The following diagram illustrates:
+                          SOL (fedspace)
+                          |
+                          |
+                       Stardock (fedspace)
+                       /    \
+                     /        \
+                 Rylos------Alpha centauri
+                 (MSL)       (MSL)
+Just remember that because of one way warps the path from one sector
+to another and the the return path are not necessarily the same.
+
+#12 Death Delay
+First of all let's clarify what we are talking about. In 1.0X if you
+lost your escape pod or got murdered in the underground you couldn't
+get back into the game until the next day. That isn't what death
+delay means. If you self destruct you can't get in that day or the
+next day either. This is not what death delay refers to either.
+Death delay is a sysop configurable parameter that changes
+what happens when your ship is destroyed and you wind up in an escape
+pod. If death delay is set to 0 you go about your business in the
+escape
+pod until you trade it in or lose it, just as in 1.0x. If the death
+delay is set to 1 and you lose your ship you will be a sitting duck
+in your escape pod until after midnight. If Death delay is set to 2
+you will be stuck in an escape pod unable to enter the game all the
+way through the next day as well. The same applies to other death
+delay settings, you'll have to wait until midnight passes the number
+of times that death delay is set.
+Anything that destroys your ship while you are online will key
+death delay this includes being blown up with the planet, hitting
+navhazzard,atomic fusion and fighters/mines in the sector when you
+enter the game!
+Obviously, death delay can be very costly. There are three things
+about death delay that make it even worse:
+     #1 It is *not* shown on the V screen! You won't know how
+is set until you lose your ship or someone tells you.
+     #2 If your escape pod is attacked while you are "knocked
+out" the number of days set in the death delay will be added to your
+"sentence"! So if it is set to two and someone blows up your escape
+pod before you can get back in (a very likely occurence) you'll have
+to wait *another* two days before you can get back in!
+     #3 If you do get back into the game before somebody blows
+up your escape pod you will have only the turns that you had before
+being destroyed even if that was two days ago!
+
+#13 Alignment change for attacking deployed fighters
+There has been a lot of speculation concerning alignment changes
+that occur when you destroy deployed fighters. A lot of it is
+utter nonsense. The following has been experimentally determined:
+First, there is a bug related to player slot #1. Fighters
+belonging to player #1 will get an alignment signature of -1000
+regardless of the alignment of player #1. (Gary forgot to change
+something! [surprise surprise!]) This applies only to personal
+fighters belonging to player #1 *not* corporate fighters even if
+player #1 is the CEO.
+With the above noted exception the fighters get an
+alignment signature equal to the player they belong to.
+
+       The forumulas:
+              +aligned fighters        - aligned fighters
+      good
+   aligned    AC=-(FL*FA)/10000         AC=+(FL*FA)/5000
+   player
+
+     bad
+   aligned    AC=-(FL*FA)/5000           AC=+(FL*FA)/10000
+   player
+
+            where:
+ AC= Alignment change either positive or negative as indicated
+ FL= Fighters *you* lost, *NOT* fighters you destroyed
+ FA= Alignment signature of the fighters (ignoring sign)
+  *= Times (multiplication)
+  This leads to an interesting strategy when you are playing with a
+    positive alignment against a player who has an ISS. Leave enough
+    fighters (estimating from the above formulas and leaving extras
+    to account for combat odds) so that if they attack them they'll
+    get a negative alignment. Some good places to leave these
+    fighters would be right outside their protected space or in a
+    sector with a dummy planet which appears to be a tempting
+    target. This strategy may lead to their ISS being destroyed by a
+    Fed.
+
+#13  Anomalies
+Two things can cause an anomaly. A cloaked ship and limpet mines.
+Limpet mines will also cause a density reading that is not
+explained by anything visible in a holoscan. If there is an
+anomaly but no unexplained density then there is probably a
+cloaked ship there. There is no way to figure out who is there but
+that might be a good place to leave a limpet mine, so it will
+attach to the player when they uncloak.
+Be aware, however, that there is a bug which gives an
+anomaly reading in the sector that you were cloaked in before
+entering the game, in B7 and earlier versions.
+
+#14 Port Radiation
+Attempts to trade at a destroyed port will be fatal. You cannot
+build a port until port radiation clears. If you blind TWARP to a
+sector with a destroyed port you will be destroyed by fusion.
+Other than this, port radiation does nothing! Despite the "safety
+officer"'s warning, there is no danger whatsoever from port
+radiation. You can build planets, scan, enter citadels, deploy
+mines and fighters, etc, without any danger of being destroyed,
+unless you hit the 25% navhazard which is also created when a
+port is destroyed.
+
+#15 EXTERN LOCKUP
+If all the exits out of sectors 1-10 are blocked by as few as one
+fighter and any of the first ten sectors are overloaded by players
+EXTERN will lockup!
+
+#16 Blowing up planets
+First of all, the basic points awarded for blowing up planets
+*without* colonists:
+   CITADEL LEVEL               EXPERIENCE POINTS
+       none                        50
+        1                         100
+        2                         150
+        3                         200
+        4                         250
+        5                         300
+        6                         350
+
+Now, additional points awarded for planets with colonists:
+  COLONISTS                    EXPERIENCE POINTS
+    100                              0
+    500                              2
+    750                              2
+   1000                              4
+   2000                             10
+   3000                             14
+   4000                             20
+   5000                             24
+   6000                             30
+   7000                             34
+   8000                             40
+   9000                             44
+  10000                             50
+  20000                            100
+     (this pattern continues)
+
+Note the consistent pattern that emerges. Basically you get 1
+experience point for every 200 colonists.
+In all cases you get an alignment change of -1 for blowing up a
+planet regardless of the citadel level or number of colonists, with
+the one exception noted below.
+If you do decide to kill off the colonists by using fighters to
+attack them your alignment will go down 1 point for each 10 groups
+of colonists killed.
+
+                  PLAYERS IN THE CITADEL
+There is one other thing you must consider about blowing up
+planets. That is what happens when there is a player or players in
+the citadel. When you blow up a planet with a player in a citadel
+the player is put in an escape pod which is tossed somewhere at
+random. You do not get their credits, their corbomite doesn't go
+off and you cannot collect a bounty. You do, however get an
+experiece boost and alignment change but not the same as what you
+would get for blowing them up in the sector. If there is more than
+one player, the experience points add together and the alignment
+change either increases or decreases depending on whether the
+players had like or contrasting alignments.
+This is what you get for the player, if you attack them
+in the sector:
+                                      (OF THEIRS)      (OF THEIRS)
+   YOUR ALIGNMENT    THEIR ALIGNMENT ALIGNMENT CHANGE   EXPERIENCE
+    positive           positive        -50%                25%
+    positive           negative        +50%                50%
+    negative           positive        -50%                55%
+    negative           negative        +50%                25%
+
+ Note that the sign inicates whether your alignment is going up or
+ down. Note also the anomaly that occurs when a negative player
+attacks
+ a positive player.
+
+If you blow up the player with the planet:
+
+  PLAYER'S ALIGNMENT      ALIGNMENT CHANGE         EXPERIENCE
+   positive                 -33.3%                   16.7%
+   negative                 +33.3%                   16.7%
+
+ It makes no difference whether your alignment is positive or
+ negative when you blow up the player with the planet.
+ Note that these points and alignment change are in addition to
+ to the -1 alignment change and the points awarded for blowing up the
+ planet itself.  This mean that if you blow up a planet with a player
+ in the citadel who has a -1000 alignment your alignment will
+ actually go up 332 points!
+
+           #17  Shipstats/ratings
+                Shipstats in TW2002 V2 (as of beta 8)
+Ship       max
+Type    TI holds fighters shields STP TPW FPA  odd bcn mine gen XR
+phton
+MERCRU 250  75     2500    400    HNY  3   750 1.0  50  50   5   5
+NO
+SCOUT  125  25      250    100    DNY  2   250 2.0  10   0   0   0
+NO
+MISFRI 200  60      400    400    NNN  3  2000 1.3   5   5   0   2
+YES
+BATTLE 200  80    10000    750    HNY  4  3000 1.6  50  25   1   8
+NO
+CORPFL 283  85    20000   1500    HYY  3  6000 1.2 100 100   1  10
+NO
+COLTRN 417 250      200    500    NNY  6   100 0.6  10   0   5   7
+NO
+CARTRN 313 125      400   1000    HNY  4   125 0.8  20   1   2   5
+NO
+MERFRT 325  65      300    500    HNY  2   100 0.8  20   2   2   5
+NO
+ISS    375 150    50000   2000    HYY  4 10000 1.5 150 125  10  15
+YES
+HAVGUN 167  50    10000   3000    HYN  3  1000 1.2   5   5   1   6
+NO
+STRMAS 243  73     5000   2000    HNY  3  1000 1.4  50  50   5   3
+NO
+CONSTL 267  80     5000    750    DNY  3  2000 1.4  50  25   2   6
+NO
+T'KASI 300  60      760    750    DNY  2   250 1.1  20   5   1   3
+NO
+THOSEN 125  50     2500   4000    HNN  4   800 1.0* 10  50   1   3
+NO
+TAMULE 375 125      300    600    HNY  4   150 0.5  20   0   1   5
+NO
+INTCRU  27  40   100000   4000    HNY 15 15000 1.2 100 200  20  20
+NO
+ASTRAD 250  50     3000    200    NNN  2  1000 1.0   5  10   0   0
+NO
+BATCRU 250  75     8000    800    HNN  3  2000 1.2  15  25   3   3
+NO
+DRNGHT 250 100    15000   1000    HNY  4  5000 1.4  25  50   6   5
+YES
+
+        *see description
+   TI= trading index (maxholds/TPW)*10 rounded to nearest integer
+    S= long range scanners available   H holo   D density  N none
+    T= Transwarp drive available Yes/No  P= planet scanner available
+Yes/No
+  TPW= turns per warp turns needed to move one sector or engage TWARP
+  FPA= Fighters per attack  odd= combat odds  bcn= beacon capacity
+ mine= mine capacity  gen= genesis torpedo capacity
+   XR= transporter range
+Phton= photons available Yes/No
+
+Now some evaluations of the ships, listing them in descending order
+by trading index.
+
+  TI=417
+Colonial Transport    price: 63,600
+While this ship has the biggest trading index and will certainly
+outshine all others when going back and forth between a pair, it has
+serious drawbacks. In applications such as Planetary trading and
+interplanet transfers where the TPW is irrelevent, this is really the
+only ship. The high TPW may hurt this ship's trading ability in games
+where there are long distances between ports. Without even a density
+scanner and such a low fighter/shield capacity, not to mention poor
+combat odds, this is a dangerous ship indeed to be wandering around
+in! The Colonial Transport is often used in SSX loops.
+
+  TI=375
+Imperial Star Ship     price: 329,000
+This is usually considered to be the the best ship in the game! With 4
+TPW it does far better than the CT in games where there are long
+distances between trading pairs. The ability to use all available
+accessories comes in handy in many situations. Of course this ship is
+available only to commisioned players and thus cannot be used by
+evils. Besides being an excellent trader, this ship is superior in
+combat situations and makes a perfect primary ship or only ship for
+commisioned players. The cost and need to have a commision are a
+drawback in the early stages of the game.
+
+Taurean Mule   price: 63,600
+For trading purposes this ship is usually considered the equal of the
+ISS. It isn't well armored and has the worst combat odds in the game,
+but with a holoscanner it can generally avoid dangerous situations.
+Just don't plan on taking it into combat! Many traders use this ship
+as a step on their way to an ISS. It is also used in SSX loops.
+
+  TI=325
+Merchant Freighter   price: 33,400
+While this ship scores slightly lower in TI than the mule and ISS,
+it's 2 TPW sometimes makes it a better trader in game with very long
+distances between trading pairs. Though lightly armored and clearly
+not a combat ship, it's holoscanner can keep it out of trouble and
+will help in finding more pairs. This is a great little ship to run
+around in during the early part of the game, especially if you single
+step and density scan and surrender to Ferrengi who hit you up. This
+ship is a great one to get into when first trading in your Merchant
+Cruiser or when you've been blown up and are getting back on your
+feet.
+
+  TI=313
+Cargo Transport    price: 51,950
+Sometimes called the poor man's ISS, this ship isn't bad but the mule
+is better in just about every way. It is hard to think of a good
+reason for buying this ship though it might be worth using if you
+should happen to capture one or trade one with a corp member. Though
+it has good shield capacity its fighter capacity and combat odds
+preclude its use for compabt purposes. You could do a lot worse but
+you could do better so why bother?
+
+  TI=300
+T'Khasi Orion     price: 42,250
+Upon reveiwing this ship the question that comes to mind is, why? This
+isn't just because of the funny name. Though this ship is better than
+most in terms of its trading index, it has the same TPW as the
+merchant freighter and 5 fewer holds. It has only slightly more
+fighters and shields than the Merchant Freigher so it really isn't a
+fighting ship despite its better combat odds. It's inability to use a
+holoscanner is a serious drawback making this ship a fool's choice.
+
+  TI=283
+Corporate Flagship   price: 163,500
+One of the legendary ships in TW, the CFS is usually *the* choice for
+CEOs who are not commisioned. Though many ships are better traders,
+this ship is a good choice for your primary craft and many solo
+traders form a corporation just so that they can get one. Its TW
+drive comes in handy and it's large capacity for fighters, combined
+with good combat odds make it an excellent fighting ship. Though the
+ISS is clearly a better choice for those who can use it, most games
+see a few of these being employed. This is one of only 3 ships that
+come with a shield scanner.
+
+  TI=267
+Constellation    price: 72,500
+This is another questionable vessel that seems to have no purpose. It
+isn't a good enough trader for day-to-day use and although it has
+reasonably good combat potential, it doesn't fare well compared to the
+Battleship, the one ship it is often compared to. The lack of a
+holoscanner makes it a poor choice for a primary ship. Experienced
+players will steer clear of this one!
+
+  TI=250
+Merchant Cruiser   price: 41,300
+This is usually thought of as the ship you start the game in, the one
+you trade in so you can get a better ship. This ship is the stardard
+against which other ships are measured and for any specific purpose
+there is a ship that does better. Many ships are better traders and
+several make a better overall choice. Does anyone actually buy this
+one?
+
+Ferengi Assault Trader   price: n/a
+Though you cannot actually buy this ship you can capture one from a
+Ferrengi captain. At first glance this ship looks like a scout with
+twice as many cargo holds and 12 times the fighter strength. Look
+again! Though it has 2 TPW, its 3000 fighters and 1.0 combat odds
+aren't enough in most battles. The lack of even a density scanner
+makes
+it a poor choice for an explorer despite its mobility. You could sell
+this ship or overload fedspace with them and piling up a bunch of them
+in your home sector may offer some photon protection. Other than that,
+I cannot think of a good use for this ship even if you ignore the
+grudges that come with it.
+
+Ferengi Battle Cruiser  price: n/a
+This ship is in many ways like a merchant cruiser with the same holds
+and similar capacity for accessories but much better fighter strength
+and combat odds. If you could only use one ship this ship might be
+worth considering but many ships are better traders and several are
+better armed. This ship is better than a merchant cruiser but who
+would buy a merchant cruiser? Not worth the trouble in my opinion.
+
+Ferengi Dreadnaught   price: n/a
+This is the one Ferrengi craft that might be worth using! It isn't a
+good trader though it fares better in that department than a
+battleship or starmaster. The main attraction of this vessel is the
+ability to use photons and carry 15,000 fighters with 1.4 combat odds.
+If it had TWARP (which it doesn't) it would almost be an Evil ISS.
+While it isn't worth bothering with for commisioned players it might
+be valuable to evil players. If you plan to capture one or more of
+these don't attack any of the lesser Ferengi and keep the Ferengi
+sector free of nonferengi fighters. The jury is still out on this one.
+
+  TI=243
+Starmaster   price: 61,500
+This was an excellent ship on v1.03 but things have changed! Though
+some traders still use it out of a twisted sense of loyalty,
+discerning traders will stay clear of it. Most ships, including the
+lowly merchant cruiser are better traders and many ships are better
+for combat purposes. It isn't good enough at anything to be an all
+purpose ship and you don't need an all purpose ship in V2 anyway.
+It was good in earlier versions but in V2 it is a real turkey, happy
+thanksgiving!
+
+  TI=200
+Battleship  price: 88,500
+The battleship has the TPW of a cargohauler without the holds. It has
+10,000 fighters and 1.6 combat odds, making it good for many battles
+but not a ship to take out a well defended planet. This ship has its
+uses but it isn't for trading or hauling and it isn't a good primary
+ship.
+
+Missile Frigate price: 100,800
+The main attraction of this ship is its ability to use photons. It is
+not good at trading but its 5000 fighters and 1.3 combat odds allow
+you to follow up on the pmissile but not enough to do much damage to a
+well defended planet. Still, the pmissile will take you past the
+sector defenses so you could use it to tow a starmaster and launch up
+to 5 gtorps. Of course, the frigate itself cannot launch any gtorps.
+This is clearly a special purpose ship which requires a little
+ingenuity to really take advantage of.
+
+  TI=167
+Havoc Gunstar  price: 79,000
+This is the only ship other than the ISS and the CFS that can use
+TWARP drive and thus the only TWARP capable ship that a noncomissioned
+non CEO can use. With only 50 cargo holds this is an exceptionally
+poor trader.  The 50 cargo holds render this ship worthless for TWARP
+colonizing and trading. There are uses for this ship but it is clearly
+a special purpose craft which requires specific strategies to utilize.
+A novice could not be expected to envision such scenarios and would be
+well advised to steer clear of this one!
+
+  TI=125
+Scout Marauder  price: 15,950
+This ship is only half as good at trading as a merchant cruiser and
+thus isn't suitable for this purpose. As of Wide Beta six this ship no
+longer has an escape pod! It's 2:1 combat odds can make it handy in
+certain specialized application despite its very poor fighter
+capacity. Because it cannot use a holoscanner, however, it isn't a
+good exploring ship.
+
+Tholian Sentinel  price: 47,500
+The main selling point of this ship is its "planetary defense system".
+This ship has 4:1 combat odds when manned by an offline player and
+will not retreat from a planet even when overpowered, thus forcing the
+would be invader to destroy it. The offline combat odds are there
+whether the ship is guarding a planet or not so it doesn't matter
+which the invader attacks first. This ship is a good ship to spend the
+night in even if you don't have a planet since the defensive odds are
+there anyway. You really should cloak if you can't get fedspace
+protection though, and using your ship to protect a planet which is
+probably not worth protecting is a questionable strategy at best! The
+tholian is as bad as a scout for trading and its unremarkable fighter
+strength and 1.0 combat odds while online make it unsuitable for any
+other purpose. It has been suggested that the huge shield capacity of
+this ship make it ideal for ferrying shields to a planet and for that
+one purpose it might be useful. Otherwise, I'd skip this one!
+
+  TI=27
+Interdictor Cruiser   price: 530,000
+You are not seeing things, the IC really does have a ridiculously low
+TI of 27! I don't think anyone ever buys this ship for trading and
+since it can't land on a planet it is literally useless for
+colonizing. This ship has something called an Interdictor Generator.
+This device doesn't work while the player is offline so it can be used
+only while you are online against aliens, Ferengi and offline players.
+It doesn't disable their defenses, it simply keeps them from escaping.
+This is of questionable value and is clearly not a good reason for
+buying this ship. This ship does, however, have the largest fighter
+capacity in the game, twice that of an ISS! It can also carry 4000
+shields, and has 1.2 combat odds. Obviously, this ship can overwhelm
+any other ship in the game and can take out a lot of sector fighters.
+It cannot finish an invasion, since it can't land on a planet, but it
+can certainly take out a large chunk of defenses so another ship can
+finish the job! In most games flying this ship is more of an ego trip
+than anything else, however, and it is truly the king of the special
+purpose vessels!
+
+  TI=8
+Escape Pod  price: n/a
+This craft comes free of charge with any ship in the game when they
+get destroyed while you are online, except for the scout marauder. It
+is included in these listings only to make them complete. Though it
+can be outfitted with as many as five cargo holds, why bother? This
+craft is something to trade *in* not something to trade with! Its
+density scanner may keep you out of trouble on your way to the
+stardock.
+
+
+Bugs/Observations concerning V2 as of WB7 part two
+
+#18  Unmmaned ships
+Starting with Wide Beta six, unmanned ships left in fedspace will be
+reposessed when EXTERN runs. This is no joke, it really does do this!
+Many of you have discovered that unmanned ship cannot be attacked in
+fedspace. When you can attack an unmanned ship it gets about half its
+normal combat odds. With this limitation unmanned ships will be
+defended by fighters and shields. It is possible to capture an
+unmanned ship and if you do any corbomite will add to its tradein
+value if you sell it to the shipyards. If you destroy an unmanned
+ship its corbomite will go off.
+
+There is an alignment "penalty" for attacking unmanned ships. You
+will lose 10% of your alignment for every 1000 fighters you lose
+attacking an unmanned ship. So if your alignment is +5000 and you
+lose 1000 fighters attacking an unmanned ship your alignment will go
+*down* 500 points, if it is -5000 it will go *up* 500 points. If you
+use 9999 fighters in one attack you will lose most of your
+alignment. If you attack using 15,000 in an IC and lose all 15,000
+in an attack on an unmanned ship you will get an alignment opposite
+of 50% of your alignment before the attack. So, if your alignment was
+-100,000 it will be +50,000 and if it was +100,000 it will be
+-50,000. This is a real good way to lose access to an ISS if you
+aren't careful!
+
+#19 Ferrengi
+If you attack a Ferrengi, you can capture his ship. In fact, while you
+can destroy a Ferrengi the way you can destroy an alien or trader,
+this is an extremely rare occurance. No matter how many fighters you
+use, you will capture the ship unless you don't use enough force to
+overpower it, in which case *you* will probably be attacked! Once you
+have captured a Ferrengi ship you have four options. You can (a)
+destroy
+it (b) abandon it (c) use it (d) sell it to the shipyards. Option (a)
+is
+kind of fun but not of much practical value. Option (b) is perhaps the
+most viable option unless you find yourself running out of time
+running
+SSX (SST) loops, in which case unnecessary extra ships add greatly to
+the time required for each loop. This leads to option (c) and (d).
+Before you consider option (c) you may want to review the shipstats/
+ratings. Once you do you will probably have second thoughts about this
+option. Option (d) may sound attractive but towing the ship to
+stardock
+may cancel out the credits gained by selling it. Commisioned players
+can
+TWARP Tow the ship to Stardock but this brings up to another point.
+When you attack a Ferrengi you get a grudge. When you run from a
+Ferrengi you get a grudge. If you always run around in an ISS you
+probably won't worry about getting  destroyed by Ferrengi, but you
+still
+lose shields/fighters. If you sometimes use a lesser ship, such as a
+CT
+or mule (for running SSX loops for example) then you can't afford to
+collect grudges. Another consideration is the cost of fighters lost
+capturing ships vs the credits gained selling it. Also, in addition to
+the regular grudges shown in TEDIT there are "phantom grudges" which
+cause Ferrengi to attack in the sector where you destroyed another
+Ferrengi even though Tedit records show no grudges among these
+Ferrengi!
+
+ As in 1.0x you can neutralize the Ferrengi by killing all the
+fighters in the Ferrengi home sector and leaving your own. As was
+also the case in 1.0x you can "inherit" grudges left by other
+players/corps which have been deleted. It is *not* necessary to
+invade or destroy the planet Ferrengal to neutralize the Ferrengi.
+
+#20 Sell Steal Transport (SSX/SST) loops
+In 1.0x the most effective money making ploy for evil players was the
+Sell/Steal cycle where you would sell equipment to a port, steal it
+back and sell it again. This was much more efective than paired port
+trading because you don't have to move between ports and you don't
+drain the ports. Also, since you simply need a port that buys
+equipment, it is easier to find a suitable port.
+   In V2 this option eliminated by having the game keep track of
+the last port you stole at and busting you if you try to do it
+at the same port two times in a row. You can get around this by
+using two ships at two different ships and using ship
+transporters to go back and forth between ships.  The loop then
+is sell-steal-xport sell-steal-xport. This requires only 3
+turns per each side of the loop, much less than paired port
+trading and the profit per loop is much higher.
+   Since the turns per loop is the same regardless of the ship
+used, it would seem that the best ship for doing this would be the
+Colonial Transport with 250 holds. However, when you take busts into
+account and the need to move the ships to replenish holds and go to
+new ports the higher TPW and the vulnerability of a ship without even
+a density scanner cast doubt on the wisdom of using Cts and make the
+mule a better choice. Setting up a bunch of ports in a cluster dead
+end might seem to make CTs more practical but again, you may find
+yourself going through these ports rather quickly due to busts.
+   A lot will depend on how the game is set up. In low (350 or
+less) turn games a CT might be worthwhile but in medium (351 to 749)
+and high (750 or more) turn games you'll have more busts per day and
+will need more ports to run loops at getting further and further from
+SD and class 0 ports. Your clustered dead end will be used up in 3 or
+4 days and you'll have to use other ports for the remaining 10 or so
+days till busts are cleared. Death delay is also a factor, if it is
+set, it is lot easier to take the loss of a ship if it doesn't mean
+being out of the game for the rest of the day while your pod and
+credits are a sitting duck just waiting for someone to blow up your
+pod and take your credits and take you out of the game for 1 or more
+additional days, or losing most of your turns the next day even if
+you do get in before someone blows you up.
+   As for the other ships, why? with fewer than 150 holds not only
+will you make fewer credits, you will get far fewer experience points
+for each loop making it more difficult to make up for experience
+points that are lost due to incidental busts that occur no matter how
+high your experience is. Use of an automation utility and psychic
+probes is reccomended to speed the loops and get maximum experience
+and profit.
+
+#21 Multinode bugs
+It is possible to set up V2 in multinode mode. This means that you
+can run it on a multinode BBS in such a way that more than one node
+can use the same game and, in fact, two users on different nodes can
+access the game at the same time. Aside from the obvious problems
+this causes with system file handles and Share handles, there are
+some major bugs associated with having two people on at the same
+time. For this reason, multinode BBSs should set up tradewars so
+that only one user can access it at a time!
+
+  1- MAJOR MONEY BUGS
+This requires a little coordination but it is every bit as bad as
+planet cloning. Two people, player #1 and Player #2 call in at the
+same time and enter a citadel of any level. These players don't have
+to be on the same corp and can even have conflicting alignments as
+long as both can get into the same citadel.
+
+   1 player #1 deposits credits in the citadel.
+   2 player #2 deposits credits in the citadel.
+   3 player #1 types command to withdraw credits but doesn't
+     press enter
+   4 player #2 likewise enters the withdraw command without
+     pressing enter
+   5 player #1 tells #2 to press enter (possibly via a second
+     phone line) and both do so at the same time. There is a
+     leeway of a few seconds on this last step.
+   6 Both players should now have all the credits in the citadel,
+     effectively doubling the amount.
+   7 repeat these steps as desired.
+
+Player #1 and #2 must be careful not to deposit their credits at the
+same time. This technique allows you to go from a few thousand
+credits to billions in just a few minutes.
+It is possible to do the same thing by using synchronized watches
+rather than a second phone line, but coordination is essential.
+   There are variations on this which involve making fighters,
+mines, shields, etc., but they all have one thing in common; two
+players access the same asset at the same time and both get it,
+effectively doubling it. Those of a technical mindset will be
+interested to know, if they haven't already figured it out, that
+this happens because a record is not read locked by one node thus
+allowing it to be read by the other node before the write is
+performed and causing the second node to read the old data rather
+than the revised data. Not being familiar with the language TW2002
+is written in I won't speculate at to what steps are necessary to
+fix this in a true multinode environment, but for now the answer to
+these and the other multinode bugs is to run the game in psuedo
+multinode mode so that only one node can be active at any one time.
+
+  2- THE ATTACK BUGS
+Player #1 enters the game and goes about their business as usual.
+Player #2 enters the game and can now see and attack player #1 in the
+sector Player #1 was in when player #2 entered the game. Player #1
+cannot see or attack player #2, and won't suspect that anything is
+amiss until suddenly he is in an escape pod with 25 credits! This can
+be especially devastating if he was in the middle of SSX loops and
+has made several million credits which have now been "confiscated" by
+player #2.
+   If player #1 exits and re-enters then some really strange things
+can happen! They may both be able to kill each other, though not in
+the sector they are really in, and it is possible that neither will
+know it until they log back in the next time and find that they are
+in an escape pod!  It is also possible that player #2 will be able to
+repeatedly capture player #1's ship after being kicked out of the
+game (more on that later) and selling it to Stardock. I once made
+over 100 million credits that way!
+
+  3- BOOT OUT BUGS
+No matter how many files or share handles you specify in your
+configuration, certain actions will usually if not always, cause a
+player to get kicked out of the game. As noted above this can
+sometimes lead to a cheap money strategy. Usually the problems with
+this one aren't quite as severe but they do have important
+consequences in the game. Certain things will usually cause a player
+to get kicked out of the game, making it impossible in most cases to
+complete the action they are attempting. These include but are not
+necessarily limited to the following:
+
+   I     Creating a planet
+   II    Destroying a planet
+   III   Landing on an enemy planet
+   IV    Capturing a ship
+   V     Making an announcement in the daily log
+   VI    Moving a planet through planetary TWARP
+   VII   Anything that causes a posting in the daily log
+   VIII  Getting killed by sector defenses
+            Etc.
+
+  Again the solution to all 3 aspects of multinode bugs (and any that
+I don't know about) is to *not* run the game in true multinode mode.
+Run it in pseudo multinode so that only one player can be on a time.
+Although I can't remember who first found these, they have been
+known since soon after the first Wide Beta was released.
+
+#22 The chat bug
+Like the EXTERN lockup bug this is a carryover bug from 1.0x.
+This bug can occur only when the sysop has entered chat mode and
+thus cannot happen if the local screen is off since chat mode cannot
+be entered in "secure" mode.  If either the sysop or a player presses
+"~" (the key to the left of "1" when it is shifted, also known as a
+tilde), the game will freak out, spewing what looks like a bunch of
+line noise but is actually parts of the executable file and may
+contain information from data files as well. If there is information
+from the data files then thoretically you might get useful
+information but you'll have to wade through a lot of garbage! Your
+capture file will get very large very quickly!
+
+#23 Instant Alignment Reversal
+In case you missed this under the heading of unmanned ships there is
+a way that you can instantly reverse your alignment getting an
+alignment that is opposite of your own but only half as high. Thus if
+your alignment is -50,000 you can instantly go to +25,000. All you
+need is two ICs. The first must have a minimum of 15,000 fighters.
+The second must have enough fighters to absorb an attack of 15,000
+fighters without being destroyed.  The 2nd IC can be yours or someone
+elses as long as it is unmanned and not in fedspace.
+Attack the 2nd IC with the 1st IC using 15,000 fighters losing
+all 15,000 and VOILA! if your alignment was +100,000 it is now
+-50,000 and if it was -250,000 it is now +125,000!
+
+#24 Affecting planet class
+The creation of planets is random in the sense that it is
+unpredictable but it isn't evenly distributed. It is like throwing a
+pair of dice, you could get a 2 or 12 but you're much more likely to
+get a 7!
+There are three factors that determine the chances of getting a
+particular type of planet:
+    #1 The game's inherent bias towards certain types
+    #2 The number of planets in the sector
+    #3 The amount of navhazzard in the sector
+There isn't much you can do about #1 and since it is hard to decide
+what comprises a "neutral" situation it is hard to determine exactly
+what these factors are. We can get a vague idea, however, by looking
+at what happens in two "scenarios". With 0 planets in the sector and
+10% navhazzard we get the following aproximate odds:
+
+        M     K      O      L     C      H     U
+       1/2   1/14   1/10   1/7   1/20   1/6    0
+
+   With 4 planets and 10% navhazzard:
+
+        M     K      O      L     C      H     U
+       1/6   1/14   1/10   1/7   1/20   1/2    0
+
+ Note that M and H are affected by the number of planets in the
+sector while the others are basically unaffected. This gives us a
+pretty good idea of the game's inherent bias.
+ For the remainder of this discussion we need to establish some
+terms.  The planets go, from top to bottom, like this:
+                   MKOLCHU
+ Thus, M is the top and U is the bottom.
+The effect of #2, the number of planets in the sector, is fairly
+simple:
+ Having more planets in the sector favors the planet at the
+bottom at the expense of the planet at the top while having
+little or no effect on the other planet types.
+ The effect of #3, the amount of navhazzard in the sector, is even
+simpler:
+ Each 10% navhazzard "chops off" a planet from the bottom.
+So, if you have 10%+ navhazzard you'll get no class U, 20%+ no U or H,
+etc.
+ In summary:
+ Each 10% navhazzard eliminates a planet class from the bottom and
+each pre-existing planet favors the bottom at the expense of the top.
+With 60%+ navhaz only class M planets are produced.
+
+                   GETTING WHAT YOU'RE AFTER
+  Now for the practical application of this information. For each
+planet type there is an ideal sceanario for creating it. Generally
+speaking, each scenario gives at least a 50% chance of creating the
+planet you're after. Since creating a planet absorbs 10% of the
+navhazzard, you will need to destroy a planet each time you create
+one,
+once you've obtained the desired scenario. If the planet created isn't
+the type you're after, destroy the planet you just made before making
+another one. If it is the type you're after then destroy one of the
+other ones before making another planet. Keep doing this until you get
+the number of planets of the type you wish to create.
+
+Class   prexisting navhaz Scenario obatined by:
+desired planets      %    creating planets then destroying planets
+  M         1*       60           7                    6
+  K         4        50           9                    5
+  O         4        40           8                    4
+  L         4        30           7                    3
+  C         4        20           6                    2
+  H         4        10           5                    1
+  U         5+       0            5                    0
+  *with at least 60% navhazzard all planets will be class M. Class M
+ planets are fairly easy to create in any scenario to get at least 4
+of
+ them create 10 planets destroy all 10 and then make 5 planets.
+
+  The problem with this approach is that you will probably have some
+navhazzard left behind after making all your planets. Since you don't
+want more than 5 planets in a sector there is no easy way to get rid
+of it. The rate at which navhazzard disperses will determine whether
+or not this approach is worthwhile. To determine the navahaz dispersal
+rate in your game make 10 planets in a nonMSL nonFedspace sector,
+destroy all 10 to create 100% navhazzard then check to see how much is
+left after EXTERN runs.
+
+#25 Rogue Mercenaries
+Rogue mercenary fighters have an alignment signature of -1000.
+Thus, for every 1000 fighters you lose attacking them your alignment
+will go up 100 points. You also get credits for destroying Rogue
+Mercenaries just as you do for destroying Ferrengi fighters. The
+amount of credits you get varies widely, depending on a random factor.
+Somtimes you can actually turn a profit but usually the credits are
+about 2/3 the cost of replacing your fighters. This will, of course,
+depend on the current cost of fighters and the combat odds of your
+ship.
+  There are several things which can lead to the formation of
+rogue mercenaries:
+   1 Personal fighters turn rogue when a player is listed as
+"ship destroyed" in the player listings. This can be caused by losing
+your escape pod or Scout (in WB6+) while online, self destructing,
+being murdered in the underground or having your escape pod or scout
+destroyed by by another player while you are offline.
+   2 Personal fighters belonging to a player who is deleted for
+inactivity also turn rogue.
+   3 Corporate fighters go rogue when the CEO quits the corp,
+thus causing it to disband. Fighters in the sector the CEO is in,
+however, turn personal. *HOWEVER* when a corporation is disbanded by
+EXTERN corp fighters don't go rogue, they simply disappear.
+
+#26 Quasar cannons
+Sector qcannons fire in the order of planet number. So if the
+planets in a sector are 2, 5, 7, and 10 then they will fire in that
+order. This is the same order in which they appear in the sector.
+Sector qcannons fire the percentage of fuel ore listed in the sector
+setting on the planet and will do 1 damage point for every 3 units of
+fuel ore used. So if the are 90,000 units of fuel ore on the planet
+and the sector cannon is set at 10% it will use 9000 units of fuel ore
+and will do 3000 damage points.
+Atmosphere qcannons will do one point of damage per unit of fuel
+ore. So if there are 100,000 units of fuel ore and the qcannon is set
+at 50% then it will do 50,000 damage points. However, it only uses
+half of the expected fuel ore so actually only 25,000 units will be
+consumed so that 75,000 units will remain on the planet. This has been
+corrected in B8.
+Sector qcannons will fire when you first enter a sector, each time
+you attack sector fighters and each time you attempt to retreat while
+being held by an interdictor. They will also fire if you wake up in a
+sector with one while coming into the game.
+Atmosphere qcannons will fire when you attempt to land on a planet
+and will fire again when the shields on a level 5+ planet are
+destroyed.
+No qcannon will fire while a photon wave is in effect. Shields
+do not block the effect of a photon.
+
+               THE INVADERS PERSPECTIVE
+   Now let's suppose that instead of preparing for an invasion,
+you're launching one. You enter the sector and get hit by one or more
+qcannon(s). You get hit again after retreating and re-entering,
+attacking sector fighters or being held by an Interdictor Generator
+You notice that the second blast(s) is (are) smaller than the first
+blast(s). But what can you tell from this? Actually, you can tell
+quite a bit!  You can determine what percentage the qcannon is set to,
+how much fuel ore is left after the second blast and even how large
+the third blast will be!
+  I'm going to try to make this as simple as possible. First of all
+if there is more than one sector qcannon active you will have to
+calculate each one seperately. When I refer to to the first and second
+blast I am referring to blasts from the same qcannon. When I refer to
+damage points I mean damage points reported by the game, this does not
+take into account the fact that there may be no damage actually done
+due to the bug mentioned earlier, this is irrelevent to these
+calculations. Also, be aware that if the IG is turned on on the planet
+with the sector qcannon then an additional 500 units of fuel ore will
+be used up each time you attempt to retreat, this will have to be
+accounted for if it is the case. You can tell if this is the case by
+taking a third blast and seeing if it closely matches your
+calculation. This will not come in to play if you are attacking
+deployed fighters, only if you are attempting to retreat and being
+held by the IG on a level 6 planet.
+
+  Let's define the variables:
+
+ AD= damage from first blast    BD= damage from second blast
+ AO= ore used in first blast    BO= ore used in second blast
+ CO= the difference between AO and BO
+ PC= percentage qcannon is set to expressed as a fraction
+        (i.e. .10 (1/10)=10%)
+ FO= Fuel ore remaining after second qcannon blast
+ CD= damage that will be done by third blast
+           The formulas:
+ AO=AD*3  BO=BD*3
+ CO=AO-BO
+ PC=(AO/CO)
+ FO=((1/PC)*BO)-BO
+ CD=FO*PC
+
+   So if the first blast is 3333 then you know that there were 10,000
+units of fuel ore used (because of rounding). If the second blast was
+3000 then it used 9000 units of fuel ore. This means that were 1000
+fewer units of fuel ore used in the second blast. Since 1000 is 10% or
+1/10 of 10,000 we know that there was 10% less fuel ore on the planet
+when the second blast was fired so the qcannon must be set to 10%.
+   If we take the reciprocol of 1/10 we get 10. If we multiply the
+amount of fuel ore used by the blast by 10 then we find that there
+was 90,000 units of fuel ore left when the second blast occured. If
+we subtract the amount of fuel ore used in the second blast then we
+find that 81,000 units of fuel ore remain on the planet. This means
+that the next blast will use 8100 units of fuel ore and do 2700 damage
+points.
+   Note that if there is only a small amount of fuel ore then the
+cannon sometimes won't fire and there may be inaccuracies because of
+the way the game handles numbers. Small amounts of fuel ore can give
+unexpected results. If there is a significant interval between blasts
+then some ore may be generated on the planet.
+
+Abreviations commonly used:
+
+AD         Atomic Detonator
+ADET       Atomic DETonator
+ATH        Keystrokes used to drop carrier, invokes numerous bugs
+           usually considered cheating even by frequent bug users
+BC         Battle Cruiser (Ferrengi)
+BS         BattleShip
+BTW        By The Way
+CART       CARgo Transport
+CEO        Chief Executive Officer (of a corp)
+CEYLAD     keystrokes used for CMH
+CFS        Corporate FlagShip
+CIM        Computer Interrogation Mode
+CLOAK      CLOAKing device
+CMH        Corporate Mega Holds (bug in versions prior to WB1)
+CON        CONstellation
+CORB       CORBomite
+CORP       CORPoration
+CNBY       keystrokes used to self destruct prior to V2
+CNYYBY     keystrokes used to self destruct in V2
+CT         Colonial Transport (often confused with cargo transport)
+DN         DreadNaught (Ferrengi ship)
+DS         Density Scanner
+EPROBE     Ether PROBE
+FAT        Ferrengi Assault Trader
+FAQ        Frequently Asked Questions or a list of such with answers
+FBC        Ferrengi Battle Cruiser
+FED        FEDerals (Zyrain,Clausewitz,Nelso and sometimes Sandoval)
+FREQ       File REQuest a way to get files through a net
+GM         Gary Martin, author of TW2002
+GTORP      Genesis TORPedo
+GUN        havoc GUNstar
+HG         Havoc Gunstar
+HOLO       HOLOgraphic scanner
+HS         Holographic Scanner
+IC         Interdictor Cruiser
+IG         Interdictor Generator (usually refers to level 6 citadel)
+IMHO       In My Humble Opinion, In My Honest Opinion
+IMNSHO     In My Not So Humble Opinion
+IMO        In My Opinion
+ISS        Imperial Star Ship
+LD         Level Diagram (method of zero turn mapping)
+LD         Long Distance (with reference to calling a BBS)
+MC         Merchant Cruiser
+MERCRU     MERchant CRUiser
+MF         Merchant Freighter
+MIF        MIssile Frigate
+MOTH       MOTHing a cheap way to soften sector/planet defenses
+PC         Planet Cloning, a bug in versions prior to 1.03d
+PM         Photon Missile
+PM         Power Macros an online player utility
+PMI        Pardon My Intrusion...
+POD        escape POD
+PS         Planet Scanner
+PSCAN      Planet SCANner
+PT         Planetary Trading
+PTSS       Planetary Transwarp Sell Steal
+QC         Quasar Cannon feature of level 3+ citadel
+ROFL       Rolling On Floor Laughing
+ROTFL      Rolling On The Floor Laughing
+SD         Star Dock
+SGA        StarGate Alpha (stardock)
+SM         StarMaster
+SPS        Scout Pod Scout a method for mothing
+SS         Steal Sell credit earning mothod prior to V2
+SSM        Steal Sell Move primitive evil credit earning method
+SSQ        Steal Sell Quit variation on SS for V2, which involves
+           quitting the game and re-entering. Considered unethical.
+SST        Sell Steal Transport credit earning method in V2
+SSX        same as SST
+TEDIT      Tradewars EDITor sysop editor for Tradewars
+THOSEN     THOlian SENtinel
+TS         Tholian Sentinel
+TW         Trans Warp
+TW         Trade Wars
+TWCHEAT    TradeWars CHEATer player utility using previously unknown
+bug
+TWH        TradeWars Helper a very popular player utility
+UG         UnderGround a hidden stardock feature
+VBG        Very Big Grin
+VR         Variable Route (method of zero-mapping)
+WB         Wide Beta usually followed by a version number
+
+

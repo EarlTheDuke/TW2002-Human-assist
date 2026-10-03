@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+  <title>Trader Fleeing - The Cabal's Secret Hideout</title>
+  <link rel="stylesheet"
+        href="style.css">
+</head>
+
+<body class="twcabal-body">
+
+  <header class="site-header">
+    <div class="header-container">
+      <div class="header-image">
+
+      </div>
+
+      <div class="header-content">
+        <h1 class="site-title">The Cabal's Secret Hideout</h1>
+        <p class="site-subtitle">Our TradeWars 2002 Homepage</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <h2 class="nav-title">Contents</h2>
+      <ul class="nav-menu">
+        <li><a href="index.html">HOME</a></li>
+        <li><a href="aboutus.html">ABOUT US</a></li>
+        <li><a href="members.html">MEMBERS</a></li>
+        <li><a href="strategy.html">STRATEGY</a></li>
+        <li><a href="tips.html">TIPS</a></li>
+        <li><a href="glossary.html">GLOSSARY OF TW TERMS</a></li>
+        <li><a href="formulas.html">FORMULAS</a></li>
+        <li><a href="other.html">OTHER</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      <div class="page-header">
+        <h2 class="section-title">Trader Fleeing - By Psion</h2>
+      </div>
+
+      <section class="strategy-content">
+        <p>Ever AMTRAK'ed a trader only to have him flee to Fed after the first plink? Or wanted to plink a trader away
+          from guarding his planets so you could invade? This article covers the conditions under which traders will and
+          will not flee, whether they are online or off. Please note that this article applies to auto-flees only, pod
+          fleeing is covered in a separate article by Dr. Bad. All of my tests were run using v3.13; this behavior may
+          very well be different in other versions.</p>
+
+        <p>For starters, I'll clear up any confusion about the Online Auto Flee (OAF) option. <span class="note">(the
+            '\' key. -T)</span> If a trader is online and has OAF turned off, they will not flee until you pod them, no
+          matter what. If they have it turned on or are offline, they will flee according to the following formula:</p>
+
+        <blockquote class="quote">
+          <p>If attacker fighters &gt; (defender fighters + defender shields) * 1.25, then they will flee.</p>
+        </blockquote>
+
+        <p>Notice this is NOT greater than or equal to, so if it's close, pack a few extra fighters. There is also a
+          very small amount of wiggle room here due to the inherent randomness of TW combat. To be on the safe side,
+          have 1.3x their fighters plus shields if you want to force a flee, or 1.2x if you don't. The odds of the ships
+          and the maximum capacities of fighters or shields have no bearing on the formula; it only factors in the
+          amounts currently on hand.</p>
+
+        <p>The exception to this rule is when you are plinking a ship that is granted a Guardian bonus, like a Tholian.
+          Guardian ships will never flee, period. Interestingly, there does not appear to be a check as to whether or
+          not there is actually a planet in the sector or whether it is corporate owned like there is for the defensive
+          bonus. Tholians show the same flee-resistance in empty sectors, sectors with enemy planets, sectors with
+          personal planets, and sectors with corporate planets. This has the effect of making ship captures easier, but
+          also means you can't chase them away from planets they are guarding.</p>
+
+        <p>Attackers who have active IGs will keep a trader from fleeing, as will an active PIG in sector. The presence
+          or status of an IG on the defending ship has no effect on whether or not they flee.</p>
+
+        <p>Lack of turns will not prevent a trader from fleeing either. Even freshly photoned, they flee normally. If
+          they do have turns left, they will be subject to the normal flee penalty implemented after v3.11.54.</p>
+
+        <p>Now what most people want to know is: WHERE will they flee to? When fleeing, the trader will move to an
+          adjacent unblocked sector, if any are available. The trader will never move more than one sector. If no
+          adjacent sectors are unblocked, then the flee attempt will fail and the trader will stay in sector. For the
+          purposes of fleeing, a sector is considered blocked if it contains any fighters except fighters belonging to
+          the defender's corp, or the defender's personal fighters. Nothing else makes a difference. So if there is one
+          specific sector you want them to flee to, put corp fighters in every other adjacent sector before you plink
+          them. They will flee to the one unblocked sector – the one you wanted them in. If there is one sector you do
+          NOT want them to flee to (like Dock), then un-fig every adjacent sector, cross your fingers and plink them.
+          Mines, planets, hazz, etc do not mark a sector as being blocked and are not activated when the trader flees
+          into the sector. Read that again. If you didn't grasp the implications, read it again until you do. That's
+          right: when you flee into a sector, Armid mines, limpet mines, hazz, and quasar cannons do NOT go off!!! They
+          are completely unaffected. Granted it's rare that you'll find a planet with no fighters in sector, but if you
+          do, you can use this trick to sneak into the sector and ruin their day. This is more of a novelty than
+          anything else and depending on your point of view could be considered a bug. However, I think the conditions
+          necessary for it to be implemented and the setup work involved will mean that this is probably never used. If
+          anyone actually uses this in a real game, drop me an ICQ and let me know.</p>
+
+        <p>I've covered every condition that might effect fleeing that I could think of, but if you come up with
+          something else, let me know and I'll be happy to test it and update this article if necessary. And before you
+          ask, no I didn't test aliens, and no I'm not going to. Aliens are lame. Play against real people.</p>
+
+        <p>Psion<br>
+          ICQ# 211279673</p>
+
+        <p class="note">ed note: comments by Traitor are in this color.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <p>Copyright 2002 - 2005, Chris Kent aka Traitor. All rights reserved. See <a href="aboutus.html">About.html</a> for
+      more info.</p>
+  </footer>
+
+</body>
+
+</html>

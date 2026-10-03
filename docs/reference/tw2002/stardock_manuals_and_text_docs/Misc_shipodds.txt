@@ -1,0 +1,70 @@
+Colonial Transport:	Offensive 1.0       Defensive 1.0
+			Shield Max: 500     Fighter Max: 200
+
+Rough Rider:		Offensive 1.7	    Defensive 1.5
+			Shiled Max: 1500    Fighter Max: 50,000
+
+Attack 1 - Destroyed Loaded ship at value 699 with 182 lost figs = 3.84 odds 
+Attack 2 - Destroyed loaded ship at value 260 with 79 lost figs = 3.29 odds
+
+Should the odds be around 1.7:1  not  avg 3.5:1
+
+
+Could having max good alignment effect this?  I have 4.3mil pos align
+
+>>CUT<<
+
+Sector  : 334 in uncharted space.
+Ports   : Cambion Annex, Class 5 (SBS)
+Planets : (H) .
+Traders : Chief Warrant Officer Fooman: It's a Way of Life [11], w/ 49,373 ftrs,
+           in The Merchant Marines (Interdictor Rough Rider)
+Ships   : The Merchant Marines [Owned by] Gotham [1], w/ 199 ftrs,
+           (Pescador Colonial Transport)
+          The Merchant Marines [Owned by] Gotham [1], w/ 200 ftrs,
+           (Martel Matra Colonial Transport)
+Fighters: 1 (belong to your Corp) [Defensive]
+Warps to Sector(s) :  224
+
+Command [TL=00:00:00]:[334] (?=Help)? : A
+<Attack>
+Attack Gotham [1]'s unmanned Colonial Transport (50,000-199) (Y/N) [N]? Yes
+Combat scanners show enemy shields at 100%
+How many fighters do you wish to use (0 to 6,000) [0]? 400
+Your fighters encounter a powerful force-shield around the enemy ship!
+
+You lost 182 fighter(s), 49,818 remain.
+The other ship was booby trapped with Corbomite devices!
+The console reports damages of 30000 battle points!
+28500 K3-A Fighters destroyed by the blast!
+Excellent, you have obliterated the target!
+...In fact, TOO excellent! You can't salvage anything from it!
+
+Command [TL=00:00:00]:[334] (?=Help)? : A
+<Attack>
+Attack Gotham [1]'s unmanned Colonial Transport (21,318-200) (Y/N) [N]? Yes
+Combat scanners show enemy shields at 12%
+How many fighters do you wish to use (0 to 6,000) [0]? 117
+Your fighters encounter a powerful force-shield around the enemy ship!
+
+You lost 79 fighter(s), 21,239 remain.
+The other ship was booby trapped with Corbomite devices!
+The console reports damages of 30000 battle points!
+Life Support knocked out!  Energy generation shut down!
+
+you LOSE 2164 experience point(s).
+You have been demoted to Ensign!
+You rush to an escape pod and abandon ship...
+Your Rough Rider has been destroyed!
+
+Your trusty Escape Pod is functioning normally.
+For getting blown up you LOSE 649 experience point(s).
+Sector 334 will now be avoided in future navigation calculations.
+Excellent, you have obliterated the target!
+...In fact, TOO excellent! You can't salvage anything from it!
+
+Command [TL=00:00:00]:[334] (?=Help)? : 
+
+
+>>END CUT<<
+

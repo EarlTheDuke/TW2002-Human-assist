@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+  <title>Advanced Haggling Lessons - The Cabal's Secret Hideout</title>
+  <link rel="stylesheet"
+        href="style.css">
+</head>
+
+<body class="twcabal-body">
+
+  <header class="site-header">
+    <div class="header-container">
+      <div class="header-image">
+
+      </div>
+
+      <div class="header-content">
+        <h1 class="site-title">The Cabal's Secret Hideout</h1>
+        <p class="site-subtitle">Our TradeWars 2002 Homepage</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <h2 class="nav-title">Contents</h2>
+      <ul class="nav-menu">
+        <li><a href="index.html">HOME</a></li>
+        <li><a href="aboutus.html">ABOUT US</a></li>
+        <li><a href="members.html">MEMBERS</a></li>
+        <li><a href="strategy.html">STRATEGY</a></li>
+        <li><a href="tips.html">TIPS</a></li>
+        <li><a href="glossary.html">GLOSSARY OF TW TERMS</a></li>
+        <li><a href="formulas.html">FORMULAS</a></li>
+        <li><a href="other.html">OTHER</a></li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      <div class="page-header">
+        <h2 class="section-title">Advanced Haggling Lessons - By Cherokee</h2>
+      </div>
+
+      <section class="strategy-content">
+        <h3 class="strategy-title">Introduction</h3>
+
+        <p>Over the past few months, I have been researching how to make the absolute MOST money possible when doing
+          planet trades. This is the primary differentiator in who can make the most cash in a game, since it affects
+          sales from Colonist production, SDT, Buydown/Megarob, and Buydown/RTR. Many thanks to Traitor from TW-Cabal
+          for some of the background information that helped me figure all of this out.</p>
+
+        <p>I started out by observing how certain helpers and scripts attempted to negotiate, and discovered that most
+          of them do a horrible job. I knew from experience that at "good" ports, I could make very high counteroffers
+          and get away with it, while at "bad" ports I had to be much more conservative. All of the helpers and scripts
+          I looked at made very conservative counteroffers all of the time, missing out on lots of additional cash
+          potential at the "good" ports.</p>
+
+        <p>For example, one of the most widely used haggle routines uses a standard counteroffer of 106% of the port's
+          first offer. As you will soon learn, even the worst equipment buying port will take 110%, and the very best
+          will take almost 135%. The best ore ports will take 149%. So there is obviously a lot of room for improvement!
+        </p>
+
+        <p>After a great deal of testing, I discovered that for each "MCIC" value, and for each type of product, there
+          was a fixed percentage over a port's initial offer that it would consider reasonable enough to continue
+          haggling. Over that percentage, the port would tell you to get lost, and you used a turn for nothing. This
+          "counteroffer percentage" is the same whether the port is trading at 100% or 1%, although the actual amount of
+          the port's offer is significantly decreased at lower trading percentages.</p>
+
+        <p>That's all great to know, but players have no way of knowing what the MCIC of a port is because that value
+          can only be seen in TEDIT. To determine how high of a counteroffer I could make, I had to find some way of
+          determining the MCIC based solely on the information a player has available, namely, the port's current
+          trading percentage, the number of units of product being sold, and the number of credits the port offers for
+          the product.</p>
+
+        <p>After much more testing, I found that MCIC (and the maximum counteroffer percentage) can in fact be derived
+          from available information. Knowing the actual MCIC is not important, aside from having a standard way to
+          describe how "good" or "bad" the port is. What is important is the maximum initial offer the port would make
+          IF IT WERE TRADING AT 100%. From there, you can look up the counteroffer percentage to use against the port's
+          actual offer. Here's what I found.</p>
+      </section>
+
+      <section class="strategy-content">
+        <h3 class="strategy-title">The Formulas</h3>
+
+        <p>For <strong>Fuel Ore</strong>: the maximum price/unit the port will initially offer is</p>
+        <p class="formula">
+        <div class="equation">port max init =
+          (($perunitinitoffer-25.60558)/($tradingpercent-11.7248))*(88.2752)+25.60558</div>
+        </p>
+
+        <p>For <strong>Organics</strong>:</p>
+        <p class="formula">
+        <div class="equation">port max init =
+          (($perunitinitoffer-50.62764)/($tradingpercent-11.28715))*(88.71285)+50.62764</div>
+        </p>
+
+        <p>For <strong>Equipment</strong>:</p>
+        <p class="formula">
+        <div class="equation">port max init =
+          (($perunitinitoffer-90.6281)/($tradingpercent-10.98921))*(89.01079)+90.6281</div>
+        </p>
+
+        <div class="note">
+          <h4>UPDATED INFO (7/11/2003):</h4>
+          <p>The formulas posted above ARE correct - but there is a slight problem. TWGS doesn't give much precision on
+            the port's current trading percentage, so if it is less than 100%, your calculation is not accurate enough.
+            For example, TWGS says the port is at 96% - you don't know if it is really 96.000% or 96.999%, and that
+            difference is enough to screw you up. Therefore, anytime you are haggling a port at less than 100%, add one
+            percentage point to what TWGS is showing before doing your calculations.</p>
+        </div>
+
+        <p>Don't ask me why each product uses a different formula, I simply don't know. Also, note that these formulas
+          tend to break down the closer the port is to its baseline percentage (approximately 11.7% fuel ore, 11.3%
+          organics, 11.0% equipment). Luckily, you don't have much interest in negotiating at such low percentages
+          because the prices you get are ridiculously low. These formulas work 100% of the time down to about 15%
+          trading percentage, and there's really very little reason to do planet trades under 15%. The only exception I
+          can think of is when you capture a recently used enemy port, and you want to know how good it is. Under 15%, I
+          simply do not know how to accurately measure a port's "quality". If you can figure it out, I'd love to hear
+          about it.</p>
+
+        <p>Now then, by applying the appropriate formula, you know what price/unit offer the port would make at 100%, so
+          you are halfway there. The next step is to look up the corresponding counteroffer percentage. These values are
+          provided in the following tables. (Note: I realize that using lookup tables is pretty clumsy - it would be far
+          better to use a formula. However, a close look at the data will show you that while the numbers are -almost-
+          linear, there are enough quirks that no simple formula can accurately model the results.)</p>
+      </section>
+
+      <section class="strategy-content">
+        <h3 class="strategy-title">Lookup Tables</h3>
+
+        <div class="table-container">
+          <h4>FUEL ORE</h4>
+          <table class="data-table">
+            <TR>
+              <TD> &nbsp; MCIC &nbsp; </TD>
+              <TD> &nbsp; Max Init Price/Unit &nbsp; </TD>
+              <TD> &nbsp; Counter Percentage &nbsp; </TD>
+            </TR>
+            <TR>
+              <TD>-90</TD>
+              <TD>43.6</TD>
+              <TD>149.4%</TD>
+            </TR>
+            <TR>
+              <TD>-89</TD>
+              <TD>43.4</TD>
+              <TD>148.8%</TD>
+            </TR>
+            <TR>
+              <TD>-88</TD>
+              <TD>43.3</TD>
+              <TD>148.2%</TD>
+            </TR>
+            <TR>
+              <TD>-87</TD>
+              <TD>43.1</TD>
+              <TD>147.6%</TD>
+            </TR>
+            <TR>
+              <TD>-86</TD>
+              <TD>42.9</TD>
+              <TD>147.0%</TD>
+            </TR>
+            <TR>
+              <TD>-85</TD>
+              <TD>42.7</TD>
+              <TD>146.4%</TD>
+            </TR>
+            <TR>
+              <TD>-84</TD>
+              <TD>42.5</TD>
+              <TD>145.8%</TD>
+            </TR>
+            <TR>
+              <TD>-83</TD>
+              <TD>42.4</TD>
+              <TD>145.2%</TD>
+            </TR>
+            <TR>
+              <TD>-82</TD>
+              <TD>42.2</TD>
+              <TD>144.6%</TD>
+            </TR>
+            <TR>
+              <TD>-81</TD>
+              <TD>42.0</TD>
+              <TD>144.0%</TD>
+            </TR>
+            <TR>
+              <TD>-80</TD>
+              <TD>41.8</TD>
+              <TD>143.4%</TD>
+            </TR>
+            <TR>
+              <TD>-79</TD>
+              <TD>41.6</TD>
+              <TD>142.9%</TD>
+            </TR>
+            <TR>
+              <TD>-78</TD>
+              <TD>41.4</TD>
+              <TD>142.3%</TD>
+            </TR>
+            <TR>
+              <TD>-77</TD>
+              <TD>41.2</TD>
+              <TD>141.7%</TD>
+            </TR>
+            <TR>
+              <TD>-76</TD>
+              <TD>41.1</TD>
+              <TD>141.1%</TD>
+            </TR>
+            <TR>
+              <TD>-75</TD>
+              <TD>40.9</TD>
+              <TD>140.5%</TD>
+            </TR>
+            <TR>
+              <TD>-74</TD>
+              <TD>40.7</TD>
+              <TD>139.9%</TD>
+            </TR>
+            <TR>
+              <TD>-73</TD>
+              <TD>40.5</TD>
+              <TD>139.3%</TD>
+            </TR>
+            <TR>
+              <TD>-72</TD>
+              <TD>40.3</TD>
+              <TD>138.7%</TD>
+            </TR>
+            <TR>
+              <TD>-71</TD>
+              <TD>40.1</TD>
+              <TD>138.1%</TD>
+            </TR>
+            <TR>
+              <TD>-70</TD>
+              <TD>39.9</TD>
+              <TD>137.5%</TD>
+            </TR>
+            <TR>
+              <TD>-69</TD>
+              <TD>39.7</TD>
+              <TD>136.9%</TD>
+            </TR>
+            <TR>
+              <TD>-68</TD>
+              <TD>39.6</TD>
+              <TD>136.3%</TD>
+            </TR>
+            <TR>
+              <TD>-67</TD>
+              <TD>39.4</TD>
+              <TD>135.7%</TD>
+            </TR>
+            <TR>
+              <TD>-66</TD>
+              <TD>39.2</TD>
+              <TD>135.1%</TD>
+            </TR>
+            <TR>
+              <TD>-65</TD>
+              <TD>39.0</TD>
+              <TD>134.5%</TD>
+            </TR>
+            <TR>
+              <TD>-64</TD>
+              <TD>38.8</TD>
+              <TD>134.2%</TD>
+            </TR>
+            <TR>
+              <TD>-63</TD>
+              <TD>38.6</TD>
+              <TD>133.6%</TD>
+            </TR>
+            <TR>
+              <TD>-62</TD>
+              <TD>38.4</TD>
+              <TD>133.0%</TD>
+            </TR>
+            <TR>
+              <TD>-61</TD>
+              <TD>38.2</TD>
+              <TD>132.4%</TD>
+            </TR>
+            <TR>
+              <TD>-60</TD>
+              <TD>38.0</TD>
+              <TD>131.8%</TD>
+            </TR>
+            <TR>
+              <TD>-59</TD>
+              <TD>37.8</TD>
+              <TD>131.2%</TD>
+            </TR>
+            <TR>
+              <TD>-58</TD>
+              <TD>37.6</TD>
+              <TD>130.6%</TD>
+            </TR>
+            <TR>
+              <TD>-57</TD>
+              <TD>37.4</TD>
+              <TD>130.0%</TD>
+            </TR>
+            <TR>
+              <TD>-56</TD>
+              <TD>37.2</TD>
+              <TD>129.4%</TD>
+            </TR>
+            <TR>
+              <TD>-55</TD>
+              <TD>37.0</TD>
+              <TD>129.1%</TD>
+            </TR>
+            <TR>
+              <TD>-54</TD>
+              <TD>36.8</TD>
+              <TD>128.5%</TD>
+            </TR>
+            <TR>
+              <TD>-53</TD>
+              <TD>36.6</TD>
+              <TD>127.9%</TD>
+            </TR>
+            <TR>
+              <TD>-52</TD>
+              <TD>36.4</TD>
+              <TD>127.3%</TD>
+            </TR>
+            <TR>
+              <TD>-51</TD>
+              <TD>36.2</TD>
+              <TD>126.7%</TD>
+            </TR>
+            <TR>
+              <TD>-50</TD>
+              <TD>36.0</TD>
+              <TD>126.1%</TD>
+            </TR>
+            <TR>
+              <TD>-49</TD>
+              <TD>35.8</TD>
+              <TD>125.5%</TD>
+            </TR>
+            <TR>
+              <TD>-48</TD>
+              <TD>35.6</TD>
+              <TD>124.9%</TD>
+            </TR>
+            <TR>
+              <TD>-46</TD>
+              <TD>35.4</TD>
+              <TD>124.6%</TD>
+            </TR>
+            <TR>
+              <TD>-46</TD>
+              <TD>35.2</TD>
+              <TD>124.0%</TD>
+            </TR>
+            <TR>
+              <TD>-45</TD>
+              <TD>35.0</TD>
+              <TD>123.4%</TD>
+            </TR>
+            <TR>
+              <TD>-44</TD>
+              <TD>34.8</TD>
+              <TD>122.8%</TD>
+            </TR>
+            <TR>
+              <TD>-43</TD>
+              <TD>34.6</TD>
+              <TD>122.2%</TD>
+            </TR>
+            <TR>
+              <TD>-42</TD>
+              <TD>34.4</TD>
+              <TD>121.9%</TD>
+            </TR>
+            <TR>
+              <TD>-41</TD>
+              <TD>34.2</TD>
+              <TD>120.9%</TD>
+            </TR>
+            <TR>
+              <TD>-40</TD>
+              <TD>34.0</TD>
+              <TD>120.8%</TD>
+            </TR>
+          </table>
+
+          <h4>ORGANICS</h4>
+          <table class="data-table">
+            <TR>
+              <TD> &nbsp; MCIC &nbsp; </TD>
+              <TD> &nbsp; Max Init Price/Unit &nbsp; </TD>
+              <TD> &nbsp; Counter Percentage &nbsp; </TD>
+            </TR>
+            <TR>
+              <TD>-75</TD>
+              <TD>81.3</TD>
+              <TD>140.5%</TD>
+            </TR>
+            <TR>
+              <TD>-74</TD>
+              <TD>81.0</TD>
+              <TD>139.9%</TD>
+            </TR>
+            <TR>
+              <TD>-73</TD>
+              <TD>80.6</TD>
+              <TD>139.3%</TD>
+            </TR>
+            <TR>
+              <TD>-72</TD>
+              <TD>80.2</TD>
+              <TD>138.7%</TD>
+            </TR>
+            <TR>
+              <TD>-71</TD>
+              <TD>79.8</TD>
+              <TD>138.1%</TD>
+            </TR>
+            <TR>
+              <TD>-70</TD>
+              <TD>79.5</TD>
+              <TD>137.5%</TD>
+            </TR>
+            <TR>
+              <TD>-69</TD>
+              <TD>79.1</TD>
+              <TD>136.9%</TD>
+            </TR>
+            <TR>
+              <TD>-68</TD>
+              <TD>78.7</TD>
+              <TD>136.3%</TD>
+            </TR>
+            <TR>
+              <TD>-67</TD>
+              <TD>78.3</TD>
+              <TD>135.7%</TD>
+            </TR>
+            <TR>
+              <TD>-66</TD>
+              <TD>77.9</TD>
+              <TD>135.1%</TD>
+            </TR>
+            <TR>
+              <TD>-65</TD>
+              <TD>77.5</TD>
+              <TD>134.5%</TD>
+            </TR>
+            <TR>
+              <TD>-64</TD>
+              <TD>77.2</TD>
+              <TD>133.9%</TD>
+            </TR>
+            <TR>
+              <TD>-63</TD>
+              <TD>76.8</TD>
+              <TD>133.6%</TD>
+            </TR>
+            <TR>
+              <TD>-62</TD>
+              <TD>76.4</TD>
+              <TD>133.0%</TD>
+            </TR>
+            <TR>
+              <TD>-61</TD>
+              <TD>76.0</TD>
+              <TD>132.4%</TD>
+            </TR>
+            <TR>
+              <TD>-60</TD>
+              <TD>75.6</TD>
+              <TD>131.8%</TD>
+            </TR>
+            <TR>
+              <TD>-59</TD>
+              <TD>75.2</TD>
+              <TD>131.2%</TD>
+            </TR>
+            <TR>
+              <TD>-58</TD>
+              <TD>74.8</TD>
+              <TD>130.6%</TD>
+            </TR>
+            <TR>
+              <TD>-57</TD>
+              <TD>74.4</TD>
+              <TD>130.0%</TD>
+            </TR>
+            <TR>
+              <TD>-56</TD>
+              <TD>74.0</TD>
+              <TD>129.4%</TD>
+            </TR>
+            <TR>
+              <TD>-55</TD>
+              <TD>73.7</TD>
+              <TD>129.1%</TD>
+            </TR>
+            <TR>
+              <TD>-54</TD>
+              <TD>73.3</TD>
+              <TD>128.5%</TD>
+            </TR>
+            <TR>
+              <TD>-53</TD>
+              <TD>72.9</TD>
+              <TD>127.9%</TD>
+            </TR>
+            <TR>
+              <TD>-52</TD>
+              <TD>72.5</TD>
+              <TD>127.3%</TD>
+            </TR>
+            <TR>
+              <TD>-51</TD>
+              <TD>72.1</TD>
+              <TD>126.7%</TD>
+            </TR>
+            <TR>
+              <TD>-50</TD>
+              <TD>71.7</TD>
+              <TD>126.1%</TD>
+            </TR>
+            <TR>
+              <TD>-49</TD>
+              <TD>71.3</TD>
+              <TD>125.5%</TD>
+            </TR>
+            <TR>
+              <TD>-48</TD>
+              <TD>70.9</TD>
+              <TD>125.2%</TD>
+            </TR>
+            <TR>
+              <TD>-47</TD>
+              <TD>70.5</TD>
+              <TD>124.6%</TD>
+            </TR>
+            <TR>
+              <TD>-46</TD>
+              <TD>70.1</TD>
+              <TD>123.6%</TD>
+            </TR>
+            <TR>
+              <TD>-45</TD>
+              <TD>69.7</TD>
+              <TD>123.3%</TD>
+            </TR>
+            <TR>
+              <TD>-44</TD>
+              <TD>69.3</TD>
+              <TD>122.7%</TD>
+            </TR>
+            <TR>
+              <TD>-43</TD>
+              <TD>68.8</TD>
+              <TD>122.4%</TD>
+            </TR>
+            <TR>
+              <TD>-42</TD>
+              <TD>68.4</TD>
+              <TD>121.4%</TD>
+            </TR>
+            <TR>
+              <TD>-41</TD>
+              <TD>68.0</TD>
+              <TD>121.3%</TD>
+            </TR>
+            <TR>
+              <TD>-40</TD>
+              <TD>67.6</TD>
+              <TD>120.3%</TD>
+            </TR>
+            <TR>
+              <TD>-39</TD>
+              <TD>67.2</TD>
+              <TD>120.0%</TD>
+            </TR>
+            <TR>
+              <TD>-38</TD>
+              <TD>66.8</TD>
+              <TD>119.4%</TD>
+            </TR>
+            <TR>
+              <TD>-37</TD>
+              <TD>66.4</TD>
+              <TD>119.1%</TD>
+            </TR>
+            <TR>
+              <TD>-36</TD>
+              <TD>66.0</TD>
+              <TD>118.1%</TD>
+            </TR>
+            <TR>
+              <TD>-35</TD>
+              <TD>65.6</TD>
+              <TD>117.8%</TD>
+            </TR>
+            <TR>
+              <TD>-34</TD>
+              <TD>65.1</TD>
+              <TD>117.2%</TD>
+            </TR>
+            <TR>
+              <TD>-33</TD>
+              <TD>64.7</TD>
+              <TD>116.6%</TD>
+            </TR>
+            <TR>
+              <TD>-32</TD>
+              <TD>64.3</TD>
+              <TD>116.0%</TD>
+            </TR>
+            <TR>
+              <TD>-31</TD>
+              <TD>63.9</TD>
+              <TD>115.7%</TD>
+            </TR>
+            <TR>
+              <TD>-30</TD>
+              <TD>63.5</TD>
+              <TD>115.4%</TD>
+            </TR>
+          </table>
+
+          <h4>EQUIPMENT</h4>
+          <table class="data-table">
+            <TR>
+              <TD> &nbsp; MCIC &nbsp; </TD>
+              <TD> &nbsp; Max Init Price/Unit &nbsp; </TD>
+              <TD> &nbsp; Counter Percentage &nbsp; </TD>
+            </TR>
+            <TR>
+              <TD>-65</TD>
+              <TD>139.3</TD>
+              <TD>134.7%</TD>
+            </TR>
+            <TR>
+              <TD>-64</TD>
+              <TD>138.6</TD>
+              <TD>134.1%</TD>
+            </TR>
+            <TR>
+              <TD>-63</TD>
+              <TD>137.9</TD>
+              <TD>133.6%</TD>
+            </TR>
+            <TR>
+              <TD>-62</TD>
+              <TD>137.2</TD>
+              <TD>133.0%</TD>
+            </TR>
+            <TR>
+              <TD>-61</TD>
+              <TD>136.5</TD>
+              <TD>132.4%</TD>
+            </TR>
+            <TR>
+              <TD>-60</TD>
+              <TD>135.8</TD>
+              <TD>131.9%</TD>
+            </TR>
+            <TR>
+              <TD>-59</TD>
+              <TD>135.1</TD>
+              <TD>131.3%</TD>
+            </TR>
+            <TR>
+              <TD>-58</TD>
+              <TD>134.4</TD>
+              <TD>130.7%</TD>
+            </TR>
+            <TR>
+              <TD>-57</TD>
+              <TD>133.7</TD>
+              <TD>130.2%</TD>
+            </TR>
+            <TR>
+              <TD>-56</TD>
+              <TD>132.9</TD>
+              <TD>129.6%</TD>
+            </TR>
+            <TR>
+              <TD>-55</TD>
+              <TD>132.3</TD>
+              <TD>129.1%</TD>
+            </TR>
+            <TR>
+              <TD>-54</TD>
+              <TD>131.5</TD>
+              <TD>128.5%</TD>
+            </TR>
+            <TR>
+              <TD>-53</TD>
+              <TD>130.8</TD>
+              <TD>127.9%</TD>
+            </TR>
+            <TR>
+              <TD>-52</TD>
+              <TD>130.1</TD>
+              <TD>127.4%</TD>
+            </TR>
+            <TR>
+              <TD>-51</TD>
+              <TD>129.4</TD>
+              <TD>126.8%</TD>
+            </TR>
+            <TR>
+              <TD>-50</TD>
+              <TD>128.7</TD>
+              <TD>126.2%</TD>
+            </TR>
+            <TR>
+              <TD>-49</TD>
+              <TD>127.9</TD>
+              <TD>125.4%</TD>
+            </TR>
+            <TR>
+              <TD>-48</TD>
+              <TD>127.2</TD>
+              <TD>124.7%</TD>
+            </TR>
+            <TR>
+              <TD>-47</TD>
+              <TD>126.5</TD>
+              <TD>124.6%</TD>
+            </TR>
+            <TR>
+              <TD>-46</TD>
+              <TD>125.8</TD>
+              <TD>124.1%</TD>
+            </TR>
+            <TR>
+              <TD>-45</TD>
+              <TD>125.1</TD>
+              <TD>123.5%</TD>
+            </TR>
+            <TR>
+              <TD>-44</TD>
+              <TD>124.3</TD>
+              <TD>122.9%</TD>
+            </TR>
+            <TR>
+              <TD>-43</TD>
+              <TD>123.6</TD>
+              <TD>122.4%</TD>
+            </TR>
+            <TR>
+              <TD>-42</TD>
+              <TD>122.9</TD>
+              <TD>121.8%</TD>
+            </TR>
+            <TR>
+              <TD>-41</TD>
+              <TD>122.1</TD>
+              <TD>121.3%</TD>
+            </TR>
+            <TR>
+              <TD>-40</TD>
+              <TD>121.4</TD>
+              <TD>120.8%</TD>
+            </TR>
+            <TR>
+              <TD>-39</TD>
+              <TD>120.6</TD>
+              <TD>120.1%</TD>
+            </TR>
+            <TR>
+              <TD>-38</TD>
+              <TD>119.9</TD>
+              <TD>119.6%</TD>
+            </TR>
+            <TR>
+              <TD>-37</TD>
+              <TD>119.2</TD>
+              <TD>119.0%</TD>
+            </TR>
+            <TR>
+              <TD>-36</TD>
+              <TD>118.4</TD>
+              <TD>118.5%</TD>
+            </TR>
+            <TR>
+              <TD>-35</TD>
+              <TD>117.7</TD>
+              <TD>118.0%</TD>
+            </TR>
+            <TR>
+              <TD>-34</TD>
+              <TD>116.9</TD>
+              <TD>117.4%</TD>
+            </TR>
+            <TR>
+              <TD>-33</TD>
+              <TD>116.2</TD>
+              <TD>116.9%</TD>
+            </TR>
+            <TR>
+              <TD>-32</TD>
+              <TD>115.4</TD>
+              <TD>116.4%</TD>
+            </TR>
+            <TR>
+              <TD>-31</TD>
+              <TD>114.7</TD>
+              <TD>115.8%</TD>
+            </TR>
+            <TR>
+              <TD>-30</TD>
+              <TD>113.9</TD>
+              <TD>115.2%</TD>
+            </TR>
+            <TR>
+              <TD>-29</TD>
+              <TD>113.2</TD>
+              <TD>114.9%</TD>
+            </TR>
+            <TR>
+              <TD>-28</TD>
+              <TD>112.4</TD>
+              <TD>114.4%</TD>
+            </TR>
+            <TR>
+              <TD>-27</TD>
+              <TD>111.6</TD>
+              <TD>113.6%</TD>
+            </TR>
+            <TR>
+              <TD>-26</TD>
+              <TD>110.9</TD>
+              <TD>113.2%</TD>
+            </TR>
+            <TR>
+              <TD>-25</TD>
+              <TD>110.1</TD>
+              <TD>112.6%</TD>
+            </TR>
+            <TR>
+              <TD>-24</TD>
+              <TD>109.3</TD>
+              <TD>112.2%</TD>
+            </TR>
+            <TR>
+              <TD>-23</TD>
+              <TD>108.6</TD>
+              <TD>111.7%</TD>
+            </TR>
+            <TR>
+              <TD>-22</TD>
+              <TD>107.8</TD>
+              <TD>111.0%</TD>
+            </TR>
+            <TR>
+              <TD>-21</TD>
+              <TD>107.1</TD>
+              <TD>110.5%</TD>
+            </TR>
+            <TR>
+              <TD>-20</TD>
+              <TD>106.3</TD>
+              <TD>110.2%</TD>
+            </TR>
+          </table>
+        </div>
+
+        <p class="note">Note: The full tables contain values for MCIC from -90 to 0 in increments of 1. The tables above
+          show representative samples. For complete accuracy, consult detailed lookup tables or use interpolation
+          between known values.</p>
+      </section>
+
+      <section class="strategy-content">
+        <h3 class="strategy-title">How to Use This Information</h3>
+
+        <ol>
+          <li>When you approach a port to trade, note the port's initial offer per unit, the quantity being sold, and
+            the trading percentage.</li>
+          <li>Apply the appropriate formula (Fuel Ore, Organics, or Equipment) to calculate the port's maximum initial
+            offer at 100%.</li>
+          <li>Look up or interpolate the counter percentage from the appropriate table based on the calculated max init
+            value.</li>
+          <li>Make your counteroffer at that percentage of the port's actual initial offer.</li>
+          <li>Continue negotiating using middle and final haggling strategies to maximize profit.</li>
+        </ol>
+
+        <p>By using these techniques, you can significantly increase your income from planet trades compared to
+          conservative haggling methods. The difference between 106% counteroffers and optimized counteroffers based on
+          port quality can mean millions of credits over the course of a game.</p>
+      </section>
+
+      <section class="strategy-content">
+        <h3 class="strategy-title">Middle and Final Haggling</h3>
+
+        <p>Once you've made your initial counteroffer successfully, the port will make a second offer. Your middle
+          haggling strategy should be based on splitting the difference between your initial counteroffer and the port's
+          second offer. Generally, you want to be aggressive but not so aggressive that you break off negotiations.</p>
+
+        <p>In the final stage of haggling, the port will make its best offer. At this point, you should accept if the
+          offer is reasonable, or make a final counteroffer that's very close to their last offer. The goal is to
+          extract maximum value while ensuring the deal closes.</p>
+
+        <p>Remember: The quality of the port (as determined by MCIC) affects not just the initial counteroffer
+          percentage, but also how aggressively you can negotiate in later stages. Better ports are more willing to pay
+          higher prices throughout the entire negotiation process.</p>
+      </section>
+
+      <p class="back-to-top"><a href="#top">Back to Top</a></p>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <p>Copyright 2002 - 2005, Cherokee. All rights reserved. See <a href="aboutus.html">About.html</a> for more info.
+    </p>
+  </footer>
+
+</body>
+
+</html>
