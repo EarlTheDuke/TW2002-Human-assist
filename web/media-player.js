@@ -27,6 +27,7 @@
     combat: "combat", ship_destroyed: "combat", player_eliminated: "combat", mine_detonated: "combat", quasar_fire: "combat", quasar_damped: "combat", interdict: "combat", photon_fired: "combat",
     photon_hit: "combat", atomic_detonation: "combat", port_destroyed: "combat", deploy_fighters: "combat", deploy_mines: "combat",
     ferrengi_attack: "combat", ferrengi_spawn: "combat", fed_response: "combat",
+    planet_colonists_killed: "combat", planet_destroyed: "combat",
     hail: "comms", broadcast: "comms", corp_memo: "comms", corp_create: "comms", corp_invite: "comms", corp_join: "comms",
     corp_leave: "comms", corp_deposit: "comms", corp_withdraw: "comms", alliance_proposed: "comms", alliance_formed: "comms", alliance_broken: "comms",
     land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", planet_transwarp: "planet", planet_transporter_bought: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet", planet_defense_transfer: "planet", planet_military_reaction: "planet", planet_treasury: "planet",

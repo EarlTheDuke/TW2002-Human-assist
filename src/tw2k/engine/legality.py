@@ -40,6 +40,7 @@ from pydantic import BaseModel, Field
 
 from . import constants as K
 from .actions import ActionKind
+from .combat import _are_allied
 from .economy import port_buy_price, port_sell_price
 from .models import Commodity, PortClass, Universe
 
@@ -107,6 +108,22 @@ def _class_citadel_legal(planet, level: int) -> tuple[str | None, dict[str, Any]
     if avail_col < colonists:
         return f"need {colonists} colonists on planet (have {avail_col})", nxt
     return None, nxt
+
+
+def planet_destroy_reason(universe: Universe, player, planet) -> str | None:
+    """None when a landed attacker may destroy this hostile, empty planet."""
+    if player.planet_landed != planet.id:
+        return "must be landed on the planet first"
+    owner = planet.owner_id
+    same_corp = bool(
+        planet.corp_ticker and player.corp_ticker and planet.corp_ticker == player.corp_ticker
+    )
+    allied = owner is not None and _are_allied(universe, player.id, owner)
+    if owner is None or owner == player.id or same_corp or allied:
+        return "planet is friendly"
+    if int(planet.fighters) > 0 or int(planet.shields) > 0:
+        return "planet still has defenders"
+    return None
 
 
 def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
@@ -705,6 +722,18 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    cost=hop_turns,
                    params={"planet_id": pid_param,
                            "dest_sector": {"type": "int", "required": True}}))
+
+    destroy_cost = int(K.TURN_COST["planet_destroy"])
+    if not landed or landed_planet is None:
+        destroy_reason = "must be landed on the planet first"
+    else:
+        destroy_reason = planet_destroy_reason(universe, player, landed_planet)
+        if destroy_reason is None:
+            destroy_reason = _need_turns(player, destroy_cost)
+    destroy_choices = [landed_planet.id] if landed_planet is not None else []
+    out.append(_la(ActionKind.PLANET_DESTROY, legal=destroy_reason is None, reason=destroy_reason,
+                   cost=destroy_cost,
+                   params={"planet_id": {"type": "int", "required": True, "choices": destroy_choices}}))
 
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}

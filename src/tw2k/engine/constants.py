@@ -184,6 +184,7 @@ TURN_COST = {
     "planet_transwarp": 1,
     "planet_buy_transporter": 0,
     "planet_transport": 1,
+    "planet_destroy": 1,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -199,6 +200,10 @@ ARMID_DAMAGE = 100
 MINE_MAX_HITS_PER_MOVE = 10
 ATOMIC_PORT_DAMAGE = 0.6      # fraction of port stock destroyed by atomic det.
 ATOMIC_PLANET_DAMAGE = 0.5    # fraction of planet citadel/treasury wiped
+# First planet_destroy zeroes colonist pools. The next one, with none left, removes the planet.
+PLANET_DESTROY_COLONISTS_TO_ZERO = True
+# Same hit as one atomic warhead, once per successful planet_destroy.
+PLANET_DESTROY_ALIGNMENT = 50
 PHOTON_DURATION_TICKS = 1     # one full tick of fighter-disable on hit
 
 # --- Long-range navigation / scan tiers ---------------------------------------

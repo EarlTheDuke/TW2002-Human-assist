@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-03 02:34 PT - Fable - a planet can be destroyed in two steps
+- The first destroy kills the colonists. The second removes the planet. Treasury, stockpile, and fighters are not refunded.
+
 ### 2026-10-03 01:12 PT - Fable - class citadel costs stay switched off
 - A dark switch can charge a planet's stockpile for a citadel. The live mode is still credits, and that path is unchanged.
 

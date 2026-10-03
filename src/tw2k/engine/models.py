@@ -195,6 +195,8 @@ class EventKind(str, Enum):
     PLANET_TRANSWARP = "planet_transwarp"
     PLANET_TRANSPORTER_BOUGHT = "planet_transporter_bought"
     PLANET_TRANSPORT = "planet_transport"
+    PLANET_COLONISTS_KILLED = "planet_colonists_killed"
+    PLANET_DESTROYED = "planet_destroyed"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"
