@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-03 13:11 PT - Fable - a port quote follows its hidden personality
+- Each commodity keeps an MCIC and a productivity from the game seed. Experience up to 1000 makes buying cheaper and selling pay more. The base prices stay.
+
 ### 2026-10-03 11:36 PT - Fable - save the Trade Wars notes we copy from
 - The folder is community text, not the manual or the source.
 

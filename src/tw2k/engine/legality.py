@@ -208,7 +208,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             if st is None:
                 continue
             if port.sells(c):
-                unit = port_sell_price(port, c)
+                unit = port_sell_price(port, c, player.experience)
                 afford = player.credits // unit if unit > 0 else 0
                 mx = max(0, min(st.current, player.ship.cargo_free, afford))
                 if mx > 0:
@@ -216,7 +216,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 qty_max.setdefault(c.value, {})["buy"] = mx
                 listed.setdefault(c.value, {})["buy"] = unit
             if port.buys(c):
-                unit = port_buy_price(port, c)
+                unit = port_buy_price(port, c, player.experience)
                 have = int(player.ship.cargo.get(c, 0))
                 mx = max(0, min(have, st.maximum - st.current))
                 if mx > 0:

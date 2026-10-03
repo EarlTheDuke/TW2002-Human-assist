@@ -919,6 +919,8 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
             "count": sector.fighters.count,
             "mode": sector.fighters.mode.value,
         }
+    viewer = universe.players.get(player_id)
+    xp = int(viewer.experience) if viewer is not None else 0
     if sector.port is not None:
         p = sector.port
         port_info: dict[str, Any] = {
@@ -936,9 +938,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
                 # (can_trade rejects both); the old fallback labelled them
                 # "sells_to_player", which lit up trades the engine refused.
                 if p.buys(commodity):
-                    side, price = "buys_from_player", port_buy_price(p, commodity)
+                    side, price = "buys_from_player", port_buy_price(p, commodity, xp)
                 elif p.sells(commodity):
-                    side, price = "sells_to_player", port_sell_price(p, commodity)
+                    side, price = "sells_to_player", port_sell_price(p, commodity, xp)
                 else:
                     side, price = "not_traded", None
                 port_info["stock"][commodity.value] = {

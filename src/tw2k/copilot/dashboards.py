@@ -89,7 +89,7 @@ def build_price_table(universe: Universe, player_id: str) -> dict[str, Any]:
                 buys.append(c.value)
                 prices[c.value] = {
                     "side": "buy",  # port buys FROM player
-                    "price": port_buy_price(port, c),
+                    "price": port_buy_price(port, c, player.experience),
                     "stock": stock_current,
                     "max": stock_max,
                     "pct": round(pct, 3),
@@ -98,7 +98,7 @@ def build_price_table(universe: Universe, player_id: str) -> dict[str, Any]:
                 sells.append(c.value)
                 prices[c.value] = {
                     "side": "sell",  # port sells TO player
-                    "price": port_sell_price(port, c),
+                    "price": port_sell_price(port, c, player.experience),
                     "stock": stock_current,
                     "max": stock_max,
                     "pct": round(pct, 3),
@@ -184,14 +184,14 @@ def build_route_table(
             s = port.stock.get(c)
             stock = s.current if s is not None else 0
             if port.sells(c):
-                sell_side[(sid, c)] = (port_sell_price(port, c), stock)
+                sell_side[(sid, c)] = (port_sell_price(port, c, player.experience), stock)
             elif port.buys(c):
                 # For BUY-side, stock is "capacity remaining" since the
                 # port's stock counter is units already bought from
                 # incoming sellers. Effective qty the port can absorb
                 # from us is ``maximum - current``.
                 capacity = (s.maximum - s.current) if s is not None else 0
-                buy_side[(sid, c)] = (port_buy_price(port, c), max(0, capacity))
+                buy_side[(sid, c)] = (port_buy_price(port, c, player.experience), max(0, capacity))
 
     candidates: list[dict[str, Any]] = []
     distance_cache: dict[tuple[int, int], int | None] = {}
