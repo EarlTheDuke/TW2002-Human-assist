@@ -1063,7 +1063,7 @@
   const VERB_GROUPS = {
     combat: ["attack", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic"],
     stardock: ["buy_ship", "buy_equip", "corp_create"],
-    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm"],
+    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp"],
     comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
   };
   const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
@@ -1136,6 +1136,7 @@
     withdraw_treasury: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "amount", l: "Credits", t: "int", max: "max" }], note: "Cannot take the treasury below 0." },
     set_quasar_sector: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "pct", l: "Sector %", t: "int", max: "max" }], note: "Citadel L3. Percent of fuel stockpile burned when a hostile ship warps in. Damage is that fuel divided by 3." },
     set_quasar_atm: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "pct", l: "Atmosphere %", t: "int", max: "max" }], note: "Citadel L3. Percent of fuel stockpile burned on a hostile landing, before the shield gate and again after shields fall. Damage is that fuel times 2." },
+    planet_transwarp: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "dest_sector", l: "Destination sector", t: "int" }], note: "Citadel L4. Once a day. 400 planet fuel per warp sector. The destination needs a fighter of the owner." },
     deploy_genesis: { fields: [] },
     hail: { fields: [{ n: "target", l: "To", t: "choice" }, { n: "message", l: "Message", t: "text" }] },
     broadcast: { fields: [{ n: "message", l: "Message to everyone", t: "text" }] },

@@ -181,6 +181,7 @@ TURN_COST = {
     "withdraw_treasury": 1,
     "set_quasar_sector": 1,
     "set_quasar_atm": 1,
+    "planet_transwarp": 1,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -230,13 +231,17 @@ QUASAR_PHOTON_SHIELD_MIN = 200
 # Citadel L6 holds a hostile warp and burns this much fuel, then the sector cannon fires.
 INTERDICTOR_MIN_LEVEL = 6
 INTERDICTOR_FUEL = 500
+# Planet TransWarp. Fuel is this much times the warp-path length.
+PLANET_TRANSWARP_MIN_LEVEL = 4
+PLANET_TRANSWARP_FUEL_PER_SECTOR = 400
 CITADEL_PERK: list[tuple[int, str, str]] = [
     (1, "Treasury", "Treasury: deposit and withdraw credits while landed, plus 2% daily interest"),
     (2, "Combat Control Computer",
      "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level"),
     (3, "Quasar cannon",
      "Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall. A photon damps these cannons for that ship's one approach unless the planet is citadel L5 with 200 shields."),
-    (4, "Planet TransWarp", "Planet TransWarp (not yet in this game)"),
+    (4, "Planet TransWarp",
+     "Planet TransWarp: once a day, move the planet along the warp lanes for 400 fuel per sector, to a sector that already has a fighter of the owner."),
     (5, "Planetary shields",
      "Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp."),
     (6, "Interdictor",

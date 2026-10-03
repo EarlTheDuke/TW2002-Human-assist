@@ -192,6 +192,7 @@ class EventKind(str, Enum):
     QUASAR_FIRE = "quasar_fire"
     QUASAR_DAMPED = "quasar_damped"
     INTERDICT = "interdict"
+    PLANET_TRANSWARP = "planet_transwarp"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"
@@ -343,6 +344,8 @@ class Planet(BaseModel):
     quasar_sector_pct: int = 0
     # 0-100. Percent of fuel stockpile an atmospheric quasar burns on a hostile landing.
     quasar_atm_pct: int = 0
+    # Day number of the last Planet TransWarp. None means it has not moved.
+    last_transwarp_day: int | None = None
     treasury: int = 0
     last_tax_value: int = 0
     # How the CURRENT owner acquired the planet: "genesis" (their own torpedo,

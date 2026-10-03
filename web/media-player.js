@@ -29,7 +29,7 @@
     ferrengi_attack: "combat", ferrengi_spawn: "combat", fed_response: "combat",
     hail: "comms", broadcast: "comms", corp_memo: "comms", corp_create: "comms", corp_invite: "comms", corp_join: "comms",
     corp_leave: "comms", corp_deposit: "comms", corp_withdraw: "comms", alliance_proposed: "comms", alliance_formed: "comms", alliance_broken: "comms",
-    land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet", planet_defense_transfer: "planet", planet_military_reaction: "planet", planet_treasury: "planet",
+    land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", planet_transwarp: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet", planet_defense_transfer: "planet", planet_military_reaction: "planet", planet_treasury: "planet",
     build_citadel: "planet", citadel_complete: "planet", planet_claimed: "planet", planet_orphaned: "planet",
   };
   const reduce = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };

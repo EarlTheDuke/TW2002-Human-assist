@@ -635,6 +635,20 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"planet_id": pid_param,
                            "pct": {"type": "int", "required": True, "min": 0, "max": 100}}))
 
+    tw_cost = int(K.TURN_COST["planet_transwarp"])
+    if owned_reason:
+        tw_reason = owned_reason
+    elif owned_landed and int(landed_planet.citadel_level or 0) < K.PLANET_TRANSWARP_MIN_LEVEL:
+        tw_reason = "transwarp requires citadel level 4"
+    elif owned_landed and landed_planet.last_transwarp_day == universe.day:
+        tw_reason = "planet already moved today"
+    else:
+        tw_reason = _need_turns(player, tw_cost)
+    out.append(_la(ActionKind.PLANET_TRANSWARP, legal=tw_reason is None, reason=tw_reason,
+                   cost=tw_cost,
+                   params={"planet_id": pid_param,
+                           "dest_sector": {"type": "int", "required": True}}))
+
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}
     out.sort(key=lambda la: order.get(la.kind, 999))

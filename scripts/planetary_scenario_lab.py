@@ -549,6 +549,58 @@ def format_interdict_table() -> str:
     return "\n".join(lines)
 
 
+def format_transwarp_table() -> str:
+    """Path length 2 costs 800 fuel. Short fuel and a missing fighter do not move."""
+    universe, attacker, planet = build_lab_universe()
+    mid = 41
+    dest = 42
+    universe.sectors[SECTOR_ID].warps = [mid]
+    universe.sectors[mid].warps = [SECTOR_ID, dest]
+    universe.sectors[dest].warps = [mid]
+    rows = (
+        ("2 hops, 1000 fuel", 4, 1000, True),
+        ("2 hops, 799 fuel", 4, 799, True),
+        ("no fighter at dest", 4, 1000, False),
+        ("level 3", 3, 1000, True),
+    )
+    lines = [
+        "Planet TransWarp. Distance is the warp path length. Fuel is 400 per sector. "
+        "The destination needs a fighter of the owner. One move per day.",
+        "",
+        "| Case | Level | Fuel before | Fighter | Moved | Sector after | Fuel after |",
+        "|---|---:|---:|---|---|---:|---:|",
+    ]
+    for label, level, fuel, fighters in rows:
+        configure_defender_planet(
+            planet, owner_id=ATTACKER_ID, fighters=0, shields=0,
+            citadel_level=level, fuel_ore=fuel,
+        )
+        planet.sector_id = SECTOR_ID
+        planet.last_transwarp_day = None
+        if planet.id not in universe.sectors[SECTOR_ID].planet_ids:
+            universe.sectors[SECTOR_ID].planet_ids.append(planet.id)
+        universe.sectors[dest].planet_ids = [
+            item for item in universe.sectors[dest].planet_ids if item != planet.id
+        ]
+        universe.sectors[dest].fighters = (
+            FighterDeployment(owner_id=ATTACKER_ID, count=5, mode=FighterMode.DEFENSIVE)
+            if fighters else None
+        )
+        place_attacker(universe, attacker, sector_id=SECTOR_ID, fighters=10, shields=0)
+        attacker.planet_landed = planet.id
+        universe.events.clear()
+        apply_action(
+            universe, attacker.id,
+            Action(kind=ActionKind.PLANET_TRANSWARP, args={"planet_id": planet.id, "dest_sector": dest}),
+        )
+        lines.append(
+            f"| {label} | {level} | {fuel} | {'yes' if fighters else 'no'} | "
+            f"{'yes' if planet.sector_id == dest else 'no'} | {planet.sector_id} | "
+            f"{int(planet.stockpile.get(Commodity.FUEL_ORE, 0))} |"
+        )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
@@ -558,6 +610,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--atmosphere", action="store_true", help="print the atmospheric quasar landing table")
     parser.add_argument("--photon", action="store_true", help="print the photon damp warp table")
     parser.add_argument("--interdict", action="store_true", help="print the interdictor warp table")
+    parser.add_argument("--transwarp", action="store_true", help="print the planet transwarp table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -582,6 +635,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.interdict:
         print(format_interdict_table())
+        return 0
+    if args.transwarp:
+        print(format_transwarp_table())
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,

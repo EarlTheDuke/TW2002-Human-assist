@@ -238,6 +238,8 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "kind": kind_, "qty": qty_for(kind_)})
     if ak is ActionKind.SET_MILITARY_REACTION:
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "pct": first("pct", 0)})
+    if ak is ActionKind.PLANET_TRANSWARP:
+        return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "dest_sector": first("dest_sector", 1)})
     if ak is ActionKind.SET_QUASAR_SECTOR or ak is ActionKind.SET_QUASAR_ATM:
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "pct": first("pct", 0)})
     if ak in (ActionKind.DEPOSIT_TREASURY, ActionKind.WITHDRAW_TREASURY):
@@ -274,6 +276,7 @@ def test_bot_has_forms_for_all_groups() -> None:
                  "land_planet", "liftoff", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel",
                  "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction",
                  "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm",
+                 "planet_transwarp",
                  "deploy_genesis", "claim_planet", "hail", "broadcast", "corp_invite", "corp_join", "corp_leave",
                  "corp_deposit", "corp_withdraw", "corp_memo", "propose_alliance", "accept_alliance", "break_alliance",
                  "query_limpets"):
