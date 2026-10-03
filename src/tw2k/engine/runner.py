@@ -1808,6 +1808,47 @@ def _handle_corp_join(universe: Universe, pid: str, action: Action) -> ActionRes
     return ActionResult(ok=True, turns_spent=0)
 
 
+def _owner_still_plays(universe: Universe, owner_id: str | None) -> bool:
+    if not owner_id:
+        return False
+    owner = universe.players.get(owner_id)
+    return owner is not None and owner.alive
+
+
+def _release_dissolved_corp_planets(universe: Universe, ticker: str) -> None:
+    """Drop a dissolved corp's ticker. Live owners keep the planet.
+
+    A planet whose owner is still a living player keeps that owner and loses
+    the ticker. A planet with no live owner is cleared and gets the existing
+    planet_orphaned event. Nothing else about the planet changes.
+    """
+    for planet in list(universe.planets.values()):
+        if planet.corp_ticker != ticker:
+            continue
+        if _owner_still_plays(universe, planet.owner_id):
+            planet.corp_ticker = None
+            continue
+        former = planet.owner_id
+        planet.owner_id = None
+        planet.corp_ticker = None
+        universe.emit(
+            EventKind.PLANET_ORPHANED,
+            actor_id=former,
+            sector_id=planet.sector_id,
+            payload={
+                "planet_id": planet.id,
+                "planet_name": planet.name,
+                "former_owner": former,
+                "citadel_level": planet.citadel_level,
+                "fighters": planet.fighters,
+            },
+            summary=(
+                f"Planet {planet.name} (L{planet.citadel_level} citadel, "
+                f"{planet.fighters} fighters) is now UNCLAIMED after [{ticker}] disbanded."
+            ),
+        )
+
+
 def _handle_corp_leave(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     if player.corp_ticker is None:
@@ -1815,7 +1856,10 @@ def _handle_corp_leave(universe: Universe, pid: str, action: Action) -> ActionRe
     corp = universe.corporations[player.corp_ticker]
     corp.member_ids = [m for m in corp.member_ids if m != pid]
     player.corp_ticker = None
+    # There is no separate disband action. The last member leaving removes
+    # the corp. While anyone remains, planets keep the ticker.
     if not corp.member_ids:
+        _release_dissolved_corp_planets(universe, corp.ticker)
         universe.corporations.pop(corp.ticker, None)
     universe.emit(
         EventKind.CORP_LEAVE,

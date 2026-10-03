@@ -20,7 +20,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.models import (
+    Alliance,
     Commodity,
+    Corporation,
     EventKind,
     FighterDeployment,
     FighterMode,
@@ -738,6 +740,97 @@ def format_destroy_table() -> str:
     return "\n".join(lines)
 
 
+def format_corp_table() -> str:
+    """Leave, disband, and an allied landing. The siege grid does not call these."""
+    rows: list[str] = []
+
+    def blank():
+        universe, attacker, planet = build_lab_universe()
+        defender = universe.players[DEFENDER_ID]
+        return universe, attacker, defender, planet
+
+    universe, attacker, defender, planet = blank()
+    universe.corporations["ZZ"] = Corporation(
+        ticker="ZZ", name="ZZ", ceo_id=ATTACKER_ID, member_ids=[ATTACKER_ID, DEFENDER_ID],
+    )
+    attacker.corp_ticker = "ZZ"
+    defender.corp_ticker = "ZZ"
+    planet.corp_ticker = "ZZ"
+    planet.owner_id = DEFENDER_ID
+    planet.has_transporter = True
+    planet.citadel_level = 4
+    planet.stockpile[Commodity.FUEL_ORE] = 8000
+    place_attacker(universe, attacker, sector_id=SECTOR_ID, fighters=0, shields=0)
+    attacker.planet_landed = planet.id
+    apply_action(universe, ATTACKER_ID, Action(kind=ActionKind.CORP_LEAVE, args={}))
+    for kind, args in (
+        (ActionKind.PLANET_TRANSWARP, {"planet_id": planet.id, "dest_sector": 41}),
+        (ActionKind.PLANET_TRANSPORT, {"planet_id": planet.id, "dest_sector": 41}),
+        (ActionKind.DEPOSIT_TREASURY, {"planet_id": planet.id, "amount": 100}),
+    ):
+        res = apply_action(universe, ATTACKER_ID, Action(kind=kind, args=args))
+        rows.append(
+            f"| leave {kind.value} | {planet.owner_id} | {planet.corp_ticker} | "
+            f"{'yes' if res.ok else 'no'} | {res.turns_spent} | 0 |"
+        )
+
+    universe, attacker, defender, planet = blank()
+    universe.corporations["ZZ"] = Corporation(
+        ticker="ZZ", name="ZZ", ceo_id=ATTACKER_ID, member_ids=[ATTACKER_ID],
+    )
+    attacker.corp_ticker = "ZZ"
+    planet.owner_id = ATTACKER_ID
+    planet.corp_ticker = "ZZ"
+    apply_action(universe, ATTACKER_ID, Action(kind=ActionKind.CORP_LEAVE, args={}))
+    orphans = sum(1 for ev in universe.events if ev.kind is EventKind.PLANET_ORPHANED)
+    ticker = planet.corp_ticker or "none"
+    rows.append(f"| disband live | {planet.owner_id} | {ticker} |  |  | {orphans} |")
+
+    universe, attacker, defender, planet = blank()
+    universe.corporations["ZZ"] = Corporation(
+        ticker="ZZ", name="ZZ", ceo_id=ATTACKER_ID, member_ids=[ATTACKER_ID],
+    )
+    attacker.corp_ticker = "ZZ"
+    defender.alive = False
+    planet.owner_id = DEFENDER_ID
+    planet.corp_ticker = "ZZ"
+    universe.events.clear()
+    apply_action(universe, ATTACKER_ID, Action(kind=ActionKind.CORP_LEAVE, args={}))
+    orphans = sum(1 for ev in universe.events if ev.kind is EventKind.PLANET_ORPHANED)
+    owner = planet.owner_id or "none"
+    ticker = planet.corp_ticker or "none"
+    rows.append(f"| disband dead | {owner} | {ticker} |  |  | {orphans} |")
+
+    universe, attacker, defender, planet = blank()
+    ally = Alliance(
+        id="A1", member_ids=[ATTACKER_ID, DEFENDER_ID], proposed_by=DEFENDER_ID,
+        formed_day=universe.day, active=True,
+    )
+    universe.alliances["A1"] = ally
+    attacker.alliances.append("A1")
+    defender.alliances.append("A1")
+    planet.owner_id = DEFENDER_ID
+    planet.shields = 8
+    planet.fighters = 0
+    planet.citadel_level = 1
+    universe.sectors[SECTOR_ID].fighters = None
+    universe.sectors[SECTOR_ID].mines.clear()
+    place_attacker(universe, attacker, sector_id=SECTOR_ID, fighters=0, shields=0)
+    res = land_on_planet(universe, ATTACKER_ID, planet.id, seed=1)
+    rows.append(
+        f"| ally land | {planet.owner_id} | none | {'yes' if res.ok else 'no'} | "
+        f"{res.turns_spent} | 0 |"
+    )
+    lines = [
+        "Corp planets. The live siege grid does not call corp_leave.",
+        "",
+        "| Case | Owner | Ticker | Ok | Turns | Orphans |",
+        "|---|---|---|---|---:|---:|",
+        *rows,
+    ]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
@@ -751,6 +844,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--transporter", action="store_true", help="print the planet transporter table")
     parser.add_argument("--gift", action="store_true", help="print the citadel completion gift table")
     parser.add_argument("--destroy", action="store_true", help="print the planet destruction table")
+    parser.add_argument("--corp", action="store_true", help="print the corp planet table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -787,6 +881,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.destroy:
         print(format_destroy_table())
+        return 0
+    if args.corp:
+        print(format_corp_table())
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,
