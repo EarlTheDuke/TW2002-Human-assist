@@ -776,6 +776,33 @@ def format_corp_table() -> str:
 
     universe, attacker, defender, planet = blank()
     universe.corporations["ZZ"] = Corporation(
+        ticker="ZZ", name="ZZ", ceo_id=DEFENDER_ID, member_ids=[ATTACKER_ID, DEFENDER_ID],
+    )
+    attacker.corp_ticker = "ZZ"
+    defender.corp_ticker = "ZZ"
+    planet.owner_id = ATTACKER_ID
+    planet.corp_ticker = "ZZ"
+    planet.fighters = 40
+    planet.shields = 12
+    planet.treasury = 900
+    apply_action(universe, ATTACKER_ID, Action(kind=ActionKind.CORP_LEAVE, args={}))
+    defender.turns_today = 0
+    defender.planet_landed = planet.id
+    defender.sector_id = SECTOR_ID
+    if DEFENDER_ID not in universe.sectors[SECTOR_ID].occupant_ids:
+        universe.sectors[SECTOR_ID].occupant_ids.append(DEFENDER_ID)
+    res = apply_action(
+        universe, DEFENDER_ID,
+        Action(kind=ActionKind.DEPOSIT_TREASURY, args={"planet_id": planet.id, "amount": 100}),
+    )
+    ticker = planet.corp_ticker or "none"
+    rows.append(
+        f"| leave own ticker | {planet.owner_id} | {ticker} | "
+        f"{'yes' if res.ok else 'no'} | {res.turns_spent} | 0 |"
+    )
+
+    universe, attacker, defender, planet = blank()
+    universe.corporations["ZZ"] = Corporation(
         ticker="ZZ", name="ZZ", ceo_id=ATTACKER_ID, member_ids=[ATTACKER_ID],
     )
     attacker.corp_ticker = "ZZ"
