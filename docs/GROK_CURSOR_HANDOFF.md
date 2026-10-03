@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-03 09:55 PT - Fable - the planet fuzz now destroys, moves, and attacks
+- The scratch game starts where those actions are legal, and the run fails if any of them never succeeds. A thrown-away break of the destroy cleanup and of the transport fee both made it fail.
+
 ### 2026-10-03 09:12 PT - Fable - random planet actions must keep the books straight
 - Forty fixed seeds each run 600 legal planet actions. A failed action that is not a fight spends nothing. No rule broke.
 
