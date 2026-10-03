@@ -72,6 +72,17 @@ def _clamp(base: int, raw: float) -> int:
     return price
 
 
+def _counter_limit(listed: int, mcic: int, side: str) -> int:
+    """Same percent line as the engine, written out here so the script does not call it."""
+    span = min(K.PORT_HAGGLE_MCIC_SPAN, max(0, abs(int(mcic))))
+    extra = K.PORT_HAGGLE_MAX_PCT - K.PORT_HAGGLE_MIN_PCT
+    pct = K.PORT_HAGGLE_MIN_PCT + extra * span / K.PORT_HAGGLE_MCIC_SPAN
+    if side == "sell":
+        return max(listed, round(listed * pct / 100.0))
+    floor = round(listed * (200.0 - pct) / 100.0)
+    return min(listed, max(1, floor))
+
+
 def _fraction(port: Port, commodity: Commodity) -> float:
     stock = port.stock.get(commodity)
     if stock is None or stock.maximum == 0:
@@ -261,25 +272,37 @@ def _one(universe, rng: random.Random, pid: str, seed: int, step: int, counts: C
     _check_lists(universe, pid, seed, step, options)
     commodity_name, side, mx, listed = rng.choice(options)
     commodity = Commodity(commodity_name)
+    player = universe.players[pid]
+    port = universe.sectors[player.sector_id].port
+    class_num = int(port.class_id)
+    mcic = _mcic(port, commodity)
+    bound = _counter_limit(listed, mcic, side)
     roll = rng.random()
     offer: int | None = None
     qty = rng.randint(1, mx)
     kind = "fair"
-    if roll < 0.18:
+    if roll < 0.16:
         kind = "oversize"
         qty = mx + rng.randint(1, 40)
-    elif roll < 0.40 and listed > 1:
-        kind = "modest"
-        offer = listed - 1 if side == "buy" else listed + 1
-    elif roll < 0.62:
-        kind = "wild"
-        offer = max(1, listed // 2) if side == "buy" else listed * 2
-        if offer == listed:
+    elif roll < 0.40:
+        kind = "over"
+        offer = bound - 1 if side == "buy" else bound + 1
+        if offer < 1:
             kind = "fair"
             offer = None
-    player = universe.players[pid]
-    port = universe.sectors[player.sector_id].port
-    class_num = int(port.class_id)
+    elif roll < 0.55 and bound != listed:
+        kind = "at"
+        offer = bound
+    elif roll < 0.72 and abs(bound - listed) > 1:
+        kind = "under"
+        offer = (
+            rng.randint(listed + 1, bound - 1)
+            if side == "sell"
+            else rng.randint(bound + 1, listed - 1)
+        )
+    elif roll < 0.72 and bound != listed:
+        kind = "at"
+        offer = bound
     before_goods = _goods(universe)
     before_credits = player.credits
     before_turns = player.turns_today
@@ -295,6 +318,18 @@ def _one(universe, rng: random.Random, pid: str, seed: int, step: int, counts: C
         counts["oversize_rejected"] += 1
         _bounds(universe, seed, step, pid)
         return
+    if kind == "over":
+        if result.ok or result.error != "the port lost patience":
+            _die(seed, step, pid, f"over-limit counter ended {result.ok} {result.error}")
+        if player.credits != before_credits or _goods(universe) != before_goods:
+            _die(seed, step, pid, "failed counter changed credits or goods")
+        if int(player.ship.cargo.get(commodity, 0)) != before_cargo:
+            _die(seed, step, pid, "failed counter changed holds")
+        if player.turns_today != before_turns + K.PORT_HAGGLE_FAIL_TURNS:
+            _die(seed, step, pid, f"failed counter spent {player.turns_today - before_turns} turns")
+        counts["haggle_rejected"] += 1
+        _bounds(universe, seed, step, pid)
+        return
     if not result.ok:
         _die(seed, step, pid, f"{side} {commodity_name} x{qty} failed: {result.error}")
     delta = before_credits - player.credits if side == "buy" else player.credits - before_credits
@@ -304,7 +339,7 @@ def _one(universe, rng: random.Random, pid: str, seed: int, step: int, counts: C
     base = K.COMMODITY_BASE_PRICE[commodity_name]
     cap = base * K.PORT_UNIT_PRICE_MAX_MULT
     # The cap binds the list quote. An accepted haggle settles at the player's
-    # offer, which may sit one credit past that cap.
+    # offer, which may sit past that cap.
     if paid < 1 or (offer is None and paid > cap):
         _die(seed, step, pid, f"paid {paid} outside 1..{cap}")
     if side == "buy" and paid > listed:
@@ -314,7 +349,7 @@ def _one(universe, rng: random.Random, pid: str, seed: int, step: int, counts: C
     if offer is None:
         if paid != listed:
             _die(seed, step, pid, f"fair trade paid {paid}, list {listed}")
-    elif paid != offer and paid != listed:
+    elif paid != offer:
         _die(seed, step, pid, f"haggle paid {paid}, offer {offer}, list {listed}")
     if _goods(universe) != before_goods:
         _die(seed, step, pid, "trade created or destroyed goods")
@@ -322,10 +357,8 @@ def _one(universe, rng: random.Random, pid: str, seed: int, step: int, counts: C
     if class_num != 8:
         counts[f"class {class_num}"] += 1
     counts[f"{commodity_name} {side}"] += 1
-    if offer is not None and paid == offer and offer != listed:
+    if kind in ("at", "under"):
         counts["haggle_accepted"] += 1
-    elif offer is not None and paid == listed:
-        counts["haggle_rejected"] += 1
     player.experience = int(player.experience) + 5
     if side == "buy" and step % 7 == 0:
         _sell_back(universe, pid, commodity, commodity_name, qty, before_credits, before_cargo, seed, step, counts)

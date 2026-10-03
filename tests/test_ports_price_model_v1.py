@@ -183,3 +183,4 @@ def test_fuzz_quotes_are_not_read_from_the_engine_price_functions() -> None:
     text = FUZZ.read_text(encoding="utf-8")
     assert "port_sell_price" not in text
     assert "port_buy_price" not in text
+    assert "haggle_bound" not in text

@@ -1113,9 +1113,9 @@ def _summarize_trade_log(trade_log: list[dict[str, Any]]) -> dict[str, Any]:
             margins.append(100.0 * profit / cost_basis)
     avg_margin = sum(margins) / len(margins) if margins else 0.0
 
-    # Haggle win rate — note is "haggle countered" when the port rejected
-    # our ask and settled at list. Any other note (or empty) means the
-    # haggle either wasn't attempted or was accepted.
+    # Haggle win rate — a lost-patience counter never lands in this log,
+    # because the trade did not happen. Older rows may still say
+    # "haggle countered" from before that change.
     haggle_losses = sum(
         1 for t in trade_log
         if "haggle countered" in str(t.get("note") or "").lower()
