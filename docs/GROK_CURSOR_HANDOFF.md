@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-03 15:57 PT - Fable - a counter past the port's limit does not trade
+- The limit is a hidden percent of the first offer. A plain trade with no counter still works.
+
 ### 2026-10-03 14:23 PT - Fable - the trade fuzz draws random legal trades
 - The quote is checked against the written formula, not against the price function that made it.
 

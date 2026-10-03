@@ -80,6 +80,26 @@ def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int
     return _unit_price(base, base * stock_mult * mcic_mult * exp_mult)
 
 
+def haggle_room_pct(mcic: int) -> float:
+    """Percent of the first offer a counter may reach. Hidden. See HAGGLE.md."""
+    span = min(K.PORT_HAGGLE_MCIC_SPAN, max(0, abs(int(mcic))))
+    extra = K.PORT_HAGGLE_MAX_PCT - K.PORT_HAGGLE_MIN_PCT
+    return K.PORT_HAGGLE_MIN_PCT + extra * span / K.PORT_HAGGLE_MCIC_SPAN
+
+
+def haggle_bound(listed: int, mcic: int, side: str) -> int:
+    """Farthest counter the port will take, in credits.
+
+    Sell side: the highest price the player may ask.
+    Buy side: the lowest price the player may bid.
+    """
+    pct = haggle_room_pct(mcic)
+    if side == "sell":
+        return max(listed, round(listed * pct / 100.0))
+    floor = round(listed * (200.0 - pct) / 100.0)
+    return min(listed, max(1, floor))
+
+
 def can_trade(port: Port, commodity: Commodity, qty: int, side: str) -> tuple[bool, str]:
     """side = 'buy' means player is buying from port; 'sell' means player is selling to port."""
     if side == "buy":
@@ -134,35 +154,23 @@ def execute_trade(
         port_sell_price(port, commodity, xp) if side == "buy" else port_buy_price(port, commodity, xp)
     )
     offered = offered_unit_price if offered_unit_price is not None else listed
+    # The roll is gone. A counter past the hidden limit does not trade.
+    # rng stays in the signature so existing callers do not change.
+    del rng
 
-    # Haggle success probability: closer to fair => higher chance.
-    # For the player: "buying" wants offered <= listed; "selling" wants offered >= listed.
-    # Classic TW2002 behaviour: a rejected haggle DOESN'T forfeit the trade — the
-    # port counter-offers at list price and the player still gets the deal. This
-    # prevents agents from learning "never haggle" and keeps the feed clean of
-    # thrashing red events while still rewarding accurate haggling with a better
-    # unit price.
-    haggled = False
-    if side == "buy":
-        diff_ratio = (listed - offered) / max(1, listed)  # positive if player bids low
-        if diff_ratio <= 0:
-            accepted = True
-            final_unit = listed
-        else:
-            success_prob = max(0.0, 1.0 - 4.0 * diff_ratio)
-            accepted = rng.random() < success_prob
-            final_unit = offered if accepted else listed
-            haggled = True
-    else:  # sell
-        diff_ratio = (offered - listed) / max(1, listed)  # positive if player asks high
-        if diff_ratio <= 0:
-            accepted = True
-            final_unit = listed
-        else:
-            success_prob = max(0.0, 1.0 - 4.0 * diff_ratio)
-            accepted = rng.random() < success_prob
-            final_unit = offered if accepted else listed
-            haggled = True
+    # No counter, or a price that is not better for the player than the
+    # first offer, trades at that offer.
+    better = (side == "buy" and offered < listed) or (side == "sell" and offered > listed)
+    if not better:
+        final_unit = listed
+        haggled = False
+    else:
+        bound = haggle_bound(listed, _stored_mcic(port, commodity), side)
+        within = offered >= bound if side == "buy" else offered <= bound
+        if not within:
+            return False, 0, 0, "the port lost patience", None
+        final_unit = offered
+        haggled = True
 
     total = final_unit * qty
     realized_profit: int | None = None
@@ -204,9 +212,10 @@ def execute_trade(
     # Build experience
     port.experience[player.id] = min(1.0, port.experience.get(player.id, 0.0) + 0.05)
 
-    if haggled and not accepted:
-        msg = f"haggle countered; settled at list {listed}cr"
-    elif haggled and accepted:
+    if haggled:
+        bargain = abs(final_unit - listed)
+        if bargain:
+            player.experience = int(player.experience) + min(K.PORT_HAGGLE_XP_CAP, bargain)
         msg = f"haggle won at {final_unit}cr (list {listed})"
     else:
         msg = "ok"

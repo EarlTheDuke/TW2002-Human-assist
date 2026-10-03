@@ -170,10 +170,7 @@ warp back to StarDock and execute `buy_ship class=cargotran`. The
 - Port codes use letters F-O-E for (fuel_ore, organics, equipment). `B`=port buys, `S`=port sells.
   Example: `SSB` sells fuel_ore+organics, buys equipment. Pair it with a `BBS` port for a zero-empty-hold loop.
 - `trade` args: `{"commodity":"fuel_ore|organics|equipment", "qty":<int>, "side":"buy|sell", "unit_price":<optional int>}`.
-- `unit_price` haggling: buyer offers below list, seller asks above list. If rejected, the port AUTO-SETTLES at list price
-  — so aggressive haggles are free to attempt. **Push hard**: 20-30% past list is the sweet spot, not 5-10%.
-  Example: list buy=19, ask for 25 (+30%). If countered, you still settle at 19 — zero downside. Settling at list
-  on every trade earns ~4cr/unit; winning 50% of haggles at +30% doubles your margin.
+- `unit_price` haggling: omit it to take the port's first offer. A counter the port accepts trades at that price. A counter past the port's hidden limit fails, the trade does not happen, and the turn is spent. You are not told the limit. A trade with no `unit_price` still works.
 - The observation's `known_ports_top` shows ports you've seen with their buy/sell lists; `sector.port` is the port you're in now.
 - Stop draining a port at ~50% stock (prices crater). Cycle to another pair, let it restock overnight.
 

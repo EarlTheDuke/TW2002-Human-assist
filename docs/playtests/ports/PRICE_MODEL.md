@@ -36,4 +36,4 @@ Productivity is stored and unused. Regen and starting stock are a later slice.
 - **Class 0 quotes the base price.** The original moves class 0 prices at midnight. Not this slice.
 - **The 0-to-1 `port.experience` familiarity counter is not the discount.** It still goes up by 0.05 after a trade and still does not change the quote. The discount reads `player.experience`, which is the score in the Cabal chart.
 - **Same-port round trip.** No port class both buys and sells one commodity, same as before. Buying and then selling the same good at that port cannot pay more than it cost.
-- **Haggling is unchanged.** A rejected haggle still settles at the list price. The next slice replaces that.
+- **Haggling.** A counter past the hidden limit does not trade. See `HAGGLE.md`.

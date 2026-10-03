@@ -148,9 +148,11 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
     # Count turns. A repelled planet landing stays ok=False so callers
     # still see that the ship did not land, but the fight spent the turn.
+    # A haggle past the hidden limit also spends its turn, and does not trade.
     charged_fail = (not result.ok) and result.error in {
         "planetary defenses repelled landing",
         "interdicted by a planet",
+        "the port lost patience",
     }
     if result.turns_spent > 0 and (result.ok or charged_fail):
         player.turns_today += result.turns_spent
@@ -428,7 +430,7 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
             payload={"commodity": commodity.value, "qty": qty, "side": side, "reason": msg},
             summary=f"{player.name} trade failed: {msg}",
         )
-        return ActionResult(ok=False, error=msg, turns_spent=cost)
+        return ActionResult(ok=False, error=msg, turns_spent=K.PORT_HAGGLE_FAIL_TURNS if msg == "the port lost patience" else cost)
 
     _record_port_intel(player, sector.id, port, universe=universe)
     # Persistent trade ledger — last 50 entries per player. The observation

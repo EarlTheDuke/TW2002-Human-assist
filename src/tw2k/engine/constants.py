@@ -63,6 +63,19 @@ PORT_PRODUCTIVITY_MAX = 3276
 # A unit quote stays inside 1 .. base * this.
 PORT_UNIT_PRICE_MAX_MULT = 4
 
+# Hidden haggle room. docs/playtests/ports/HAGGLE.md.
+# Worst port: 110% of the first offer. Best ore port: 149%.
+# The percent rises with abs(MCIC), and abs(MCIC) stops at the span.
+PORT_HAGGLE_MIN_PCT = 110
+PORT_HAGGLE_MAX_PCT = 149
+PORT_HAGGLE_MCIC_SPAN = 100
+# A counter past the limit wastes one turn (haggling.html). A successful
+# trade still costs TURN_COST["trade"].
+PORT_HAGGLE_FAIL_TURNS = 1
+# A good accepted counter earns experience. The library does not print the
+# amount. One deal stops at this cap.
+PORT_HAGGLE_XP_CAP = 10
+
 # --- Ships --------------------------------------------------------------------
 
 SHIP_SPECS: dict[str, dict] = {

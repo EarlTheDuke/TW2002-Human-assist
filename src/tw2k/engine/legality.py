@@ -28,8 +28,9 @@ Contract
 * ``params`` describes the arguments: ``{"name": {"type", "choices"?, "min"?,
   "max"?, "required"}}``. Choices are the *only* legal values (warp targets,
   commodities this port trades on that side, ...). ``max`` for trade qty is
-  the engine's own cap at the **listed** price - a rejected haggle settles at
-  list price, so the affordability check uses list.
+  the engine's own cap at the **listed** price. A counter past the hidden
+  limit does not trade. A no-haggle buy pays the list price, so the
+  affordability check uses that price.
 """
 
 from __future__ import annotations
