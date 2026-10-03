@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-03 03:54 PT - Fable - a dissolved corp drops its planet ticker
+- The last member leaving clears the corp ticker. A living owner keeps the planet. A planet with no living owner is orphaned.
+
 ### 2026-10-03 02:34 PT - Fable - a planet can be destroyed in two steps
 - The first destroy kills the colonists. The second removes the planet. Treasury, stockpile, and fighters are not refunded.
 
