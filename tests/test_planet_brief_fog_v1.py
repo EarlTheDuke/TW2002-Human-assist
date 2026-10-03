@@ -11,7 +11,7 @@ from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.observation import build_observation
 
 SECTOR = 120
-HIDDEN = ("fighters", "shields", "treasury", "stockpile", "quasar_sector_pct", "quasar_atm_pct")
+HIDDEN = ("fighters", "shields", "treasury", "stockpile", "quasar_sector_pct", "quasar_atm_pct", "has_transporter")
 KEPT = ("id", "name", "class", "owner_id", "corp_ticker", "citadel_level")
 CONTESTED_GATE = "(p.planet_id.contested || []).includes(Number(vals.planet_id))"
 WARNING = 'txt += " · WARNING: defended hostile planet - landing means citadel combat";'

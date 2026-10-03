@@ -213,6 +213,8 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.QUASAR_DAMPED: ("planet_id", "damped"),
     EventKind.INTERDICT: ("planet_id", "ship_name"),
     EventKind.PLANET_TRANSWARP: ("planet_id", "from_sector", "to_sector"),
+    EventKind.PLANET_TRANSPORTER_BOUGHT: ("planet_id",),
+    EventKind.PLANET_TRANSPORT: ("planet_id", "from_sector", "to_sector"),
     EventKind.BUILD_CITADEL: ("planet_id", "level_target", "completes_day", "cost_cr", "cost_col"),
     EventKind.CITADEL_COMPLETE: ("planet_id", "from", "to"),
     EventKind.PLANET_TAX_PAYOUT: ("planet_id", "planet_name", "payout"),
@@ -614,6 +616,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "military_reaction_pct": int(getattr(planet, "military_reaction_pct", 0) or 0),
             "quasar_sector_pct": int(getattr(planet, "quasar_sector_pct", 0) or 0),
             "quasar_atm_pct": int(getattr(planet, "quasar_atm_pct", 0) or 0),
+            "has_transporter": bool(getattr(planet, "has_transporter", False)),
             # Same shape as sector.planets[] (_planet_brief): per-pool dict + total.
             "colonists": colonists,
             "colonists_total": sum(colonists.values()),
@@ -1010,6 +1013,7 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
         brief["military_reaction_pct"] = int(getattr(planet, "military_reaction_pct", 0) or 0)
         brief["quasar_sector_pct"] = int(getattr(planet, "quasar_sector_pct", 0) or 0)
         brief["quasar_atm_pct"] = int(getattr(planet, "quasar_atm_pct", 0) or 0)
+        brief["has_transporter"] = bool(getattr(planet, "has_transporter", False))
         brief["treasury"] = planet.treasury
         brief["stockpile"] = {c.value: planet.stockpile.get(c, 0) for c in planet.stockpile}
     return brief

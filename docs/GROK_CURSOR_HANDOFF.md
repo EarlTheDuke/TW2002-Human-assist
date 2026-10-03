@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 21:52 PT - Fable - a transporter moves the player off a planet
+- A citadel can buy a transporter for 50000 credits. The player then hops the warp lanes. The first hop is 50000 credits and each extra hop is 25000. The planet pays 10 fuel per sector and stays put.
+
 ### 2026-10-02 20:53 PT - Fable - a citadel can transwarp once a day
 - Citadel level 4 can move the planet along the warp lanes for 400 fuel per sector, once a day, when the destination already has a fighter of the owner.
 

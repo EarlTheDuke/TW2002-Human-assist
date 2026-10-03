@@ -182,6 +182,8 @@ TURN_COST = {
     "set_quasar_sector": 1,
     "set_quasar_atm": 1,
     "planet_transwarp": 1,
+    "planet_buy_transporter": 0,
+    "planet_transport": 1,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -234,6 +236,10 @@ INTERDICTOR_FUEL = 500
 # Planet TransWarp. Fuel is this much times the warp-path length.
 PLANET_TRANSWARP_MIN_LEVEL = 4
 PLANET_TRANSWARP_FUEL_PER_SECTOR = 400
+# Planet Transporter. Credits are the player's. Fuel is the planet's.
+PLANET_TRANSPORTER_COST_FIRST = 50_000
+PLANET_TRANSPORTER_COST_EXTRA = 25_000
+PLANET_TRANSPORTER_FUEL_PER_SECTOR = 10
 CITADEL_PERK: list[tuple[int, str, str]] = [
     (1, "Treasury", "Treasury: deposit and withdraw credits while landed, plus 2% daily interest"),
     (2, "Combat Control Computer",
