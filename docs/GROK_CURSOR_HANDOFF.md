@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-03 05:44 PT - Fable - the seat brain no longer prices a free citadel garrison
+- A finished citadel adds no fighters and no shields. The planner scores the credit cost the engine charges, and buys fighters and shields as their own purchases.
+
 ### 2026-10-03 03:54 PT - Fable - a dissolved corp drops its planet ticker
 - The last member leaving clears the corp ticker. A living owner keeps the planet. A planet with no living owner is orphaned.
 
