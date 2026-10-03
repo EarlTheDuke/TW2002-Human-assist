@@ -2597,6 +2597,100 @@ def _handle_planet_transwarp(universe: Universe, pid: str, action: Action) -> Ac
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def _handle_planet_buy_transporter(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return error
+    if int(planet.citadel_level or 0) < 1:
+        return ActionResult(ok=False, error="transporter requires citadel level 1")
+    if planet.has_transporter:
+        return ActionResult(ok=False, error="transporter already bought")
+    price = K.PLANET_TRANSPORTER_COST_FIRST
+    if int(player.credits) < price:
+        return ActionResult(ok=False, error="not enough credits")
+    player.credits -= price
+    planet.has_transporter = True
+    universe.emit(
+        EventKind.PLANET_TRANSPORTER_BOUGHT,
+        actor_id=pid,
+        sector_id=planet.sector_id,
+        payload={"planet_id": planet.id},
+        summary=f"{player.name} bought a transporter on {planet.name}",
+    )
+    return ActionResult(ok=True, turns_spent=int(K.TURN_COST["planet_buy_transporter"]))
+
+
+def _handle_planet_transport(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Move the landed player. The planet stays. Failures spend nothing."""
+    player = universe.players[pid]
+    planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
+    if error is not None:
+        return error
+    if not planet.has_transporter:
+        return ActionResult(ok=False, error="planet has no transporter")
+    raw = action.args.get("dest_sector")
+    if raw is None:
+        return ActionResult(ok=False, error="dest_sector is required")
+    try:
+        dest_id = int(raw)
+    except (TypeError, ValueError):
+        return ActionResult(ok=False, error=f"invalid dest_sector {raw!r}")
+    if dest_id == player.sector_id:
+        return ActionResult(ok=False, error="destination is this sector")
+    dest = universe.sectors.get(dest_id)
+    if dest is None:
+        return ActionResult(ok=False, error="no such sector")
+    if dest_id == K.STARDOCK_SECTOR or dest_id in K.FEDSPACE_SECTORS:
+        return ActionResult(ok=False, error="cannot transport to FedSpace")
+    path = _bfs_path(universe, player.sector_id, dest_id)
+    if not path:
+        return ActionResult(ok=False, error="no route to destination")
+    hops = len(path)
+    credit_cost = K.PLANET_TRANSPORTER_COST_FIRST + K.PLANET_TRANSPORTER_COST_EXTRA * (hops - 1)
+    fuel_cost = hops * K.PLANET_TRANSPORTER_FUEL_PER_SECTOR
+    fuel = int(planet.stockpile.get(Commodity.FUEL_ORE, 0))
+    if int(player.credits) < credit_cost:
+        return ActionResult(ok=False, error="not enough credits")
+    if fuel < fuel_cost:
+        return ActionResult(ok=False, error="not enough planet fuel")
+    if not _dest_fighter_holds(universe, planet, dest):
+        return ActionResult(ok=False, error="destination needs a fighter of the planet owner")
+    cost = int(K.TURN_COST["planet_transport"])
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+
+    old_id = player.sector_id
+    old_sector = universe.sectors[old_id]
+    try:
+        old_sector.occupant_ids.remove(pid)
+    except ValueError:
+        pass
+    player.sector_id = dest_id
+    player.planet_landed = None
+    if pid not in dest.occupant_ids:
+        dest.occupant_ids.append(pid)
+    player.credits -= credit_cost
+    planet.stockpile[Commodity.FUEL_ORE] = fuel - fuel_cost
+    witnesses = []
+    for item in list(old_sector.occupant_ids) + list(dest.occupant_ids) + [planet.owner_id, pid]:
+        if item and item not in witnesses:
+            witnesses.append(item)
+    universe.emit(
+        EventKind.PLANET_TRANSPORT,
+        actor_id=pid,
+        sector_id=dest_id,
+        payload={
+            "planet_id": planet.id,
+            "from_sector": old_id,
+            "to_sector": dest_id,
+            "_witnesses": witnesses,
+        },
+        summary=f"{player.name} transported from {old_id} to {dest_id}",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
 def _handle_deposit_planet_defense(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
@@ -2708,6 +2802,8 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.SET_QUASAR_SECTOR: _handle_set_quasar_sector,
     ActionKind.SET_QUASAR_ATM: _handle_set_quasar_atm,
     ActionKind.PLANET_TRANSWARP: _handle_planet_transwarp,
+    ActionKind.PLANET_BUY_TRANSPORTER: _handle_planet_buy_transporter,
+    ActionKind.PLANET_TRANSPORT: _handle_planet_transport,
 }
 
 

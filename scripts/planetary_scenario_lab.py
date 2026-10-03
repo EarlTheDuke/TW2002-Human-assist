@@ -601,6 +601,62 @@ def format_transwarp_table() -> str:
     return "\n".join(lines)
 
 
+def format_transporter_table() -> str:
+    """One hop is 50000 credits and 10 fuel. Two hops add 25000 credits and 10 fuel."""
+    universe, attacker, planet = build_lab_universe()
+    mid = 41
+    dest = 42
+    universe.sectors[SECTOR_ID].warps = [mid]
+    universe.sectors[mid].warps = [SECTOR_ID, dest]
+    universe.sectors[dest].warps = [mid]
+    rows = (
+        ("buy", "buy", 0, 60_000, 0),
+        ("1 hop", "hop", mid, 80_000, 100),
+        ("2 hops", "hop", dest, 80_000, 100),
+        ("short credits", "hop", mid, 40_000, 100),
+        ("short fuel", "hop", mid, 80_000, 9),
+    )
+    lines = [
+        "Planet Transporter. The player moves. The planet stays. "
+        "The first hop is 50000 credits. Each extra hop is 25000. The planet pays 10 fuel per sector. "
+        "A failed hop spends nothing.",
+        "",
+        "| Case | Credits before | Fuel before | Ok | Credits after | Fuel after | Sector |",
+        "|---|---:|---:|---|---:|---:|---:|",
+    ]
+    for label, kind, target, credits, fuel in rows:
+        configure_defender_planet(
+            planet, owner_id=ATTACKER_ID, fighters=0, shields=0,
+            citadel_level=1, fuel_ore=fuel,
+        )
+        planet.sector_id = SECTOR_ID
+        planet.has_transporter = kind == "hop"
+        if planet.id not in universe.sectors[SECTOR_ID].planet_ids:
+            universe.sectors[SECTOR_ID].planet_ids.append(planet.id)
+        universe.sectors[mid].fighters = FighterDeployment(
+            owner_id=ATTACKER_ID, count=4, mode=FighterMode.DEFENSIVE,
+        )
+        universe.sectors[dest].fighters = FighterDeployment(
+            owner_id=ATTACKER_ID, count=4, mode=FighterMode.DEFENSIVE,
+        )
+        place_attacker(universe, attacker, sector_id=SECTOR_ID, fighters=10, shields=0)
+        attacker.planet_landed = planet.id
+        attacker.credits = credits
+        if kind == "buy":
+            action = Action(kind=ActionKind.PLANET_BUY_TRANSPORTER, args={"planet_id": planet.id})
+        else:
+            action = Action(
+                kind=ActionKind.PLANET_TRANSPORT,
+                args={"planet_id": planet.id, "dest_sector": target},
+            )
+        res = apply_action(universe, attacker.id, action)
+        lines.append(
+            f"| {label} | {credits} | {fuel} | {'yes' if res.ok else 'no'} | {attacker.credits} | "
+            f"{int(planet.stockpile.get(Commodity.FUEL_ORE, 0))} | {attacker.sector_id} |"
+        )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
@@ -611,6 +667,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--photon", action="store_true", help="print the photon damp warp table")
     parser.add_argument("--interdict", action="store_true", help="print the interdictor warp table")
     parser.add_argument("--transwarp", action="store_true", help="print the planet transwarp table")
+    parser.add_argument("--transporter", action="store_true", help="print the planet transporter table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -638,6 +695,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.transwarp:
         print(format_transwarp_table())
+        return 0
+    if args.transporter:
+        print(format_transporter_table())
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,

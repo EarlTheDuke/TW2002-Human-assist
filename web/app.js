@@ -2465,6 +2465,8 @@
     planet_tax_payout: { cat: "trade",     icon: "$",      label: "PLANET TAX", big: true },
     genesis_deployed:  { cat: "diplomacy", icon: "\ud83c\udf31", label: "GENESIS", big: true },
     planet_transwarp:  { cat: "diplomacy", icon: "\u27a4",  label: "TRANSWARP" },
+    planet_transporter_bought: { cat: "diplomacy", icon: "\u27a4", label: "TRANSPORTER" },
+    planet_transport:  { cat: "move",      icon: "\u27a4",  label: "TRANSPORT" },
     // --- System (truly admin-only now) ----------------------------
     day_tick:          { cat: "system",    icon: "\u263c",  label: "DAY", special: "day" },
     agent_error:       { cat: "system",    icon: "\u26a0",  label: "AGENT ERROR" },

@@ -76,7 +76,7 @@ def test_two_pathb_brains_plus_unattended_seat_no_stalls(tmp_path: Path) -> None
         assert stats["P2"].stale == 0 and stats["P3"].stale == 0
         assert stats["P2"].fallback_waits == 0 and stats["P3"].fallback_waits == 0
         # Same fogged observation the LLM seats get: rules fetched once, llm message present in the poll body.
-        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 42
+        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 44
         # No external timeout errors for the attended seats; idle auto-waits only for P4.
         errs = [e for e in u.events if e.kind is EventKind.AGENT_ERROR and e.actor_id in ("P2", "P3")
                 and (e.payload or {}).get("external_timeout")]

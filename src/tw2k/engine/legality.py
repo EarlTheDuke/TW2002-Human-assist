@@ -649,6 +649,32 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"planet_id": pid_param,
                            "dest_sector": {"type": "int", "required": True}}))
 
+    buy_turns = int(K.TURN_COST["planet_buy_transporter"])
+    if owned_reason:
+        buy_reason = owned_reason
+    elif owned_landed and int(landed_planet.citadel_level or 0) < 1:
+        buy_reason = "transporter requires citadel level 1"
+    elif owned_landed and landed_planet.has_transporter:
+        buy_reason = "transporter already bought"
+    elif owned_landed and int(player.credits) < K.PLANET_TRANSPORTER_COST_FIRST:
+        buy_reason = "not enough credits"
+    else:
+        buy_reason = _need_turns(player, buy_turns)
+    out.append(_la(ActionKind.PLANET_BUY_TRANSPORTER, legal=buy_reason is None, reason=buy_reason,
+                   cost=buy_turns, params={"planet_id": pid_param}))
+
+    hop_turns = int(K.TURN_COST["planet_transport"])
+    if owned_reason:
+        hop_reason = owned_reason
+    elif owned_landed and not landed_planet.has_transporter:
+        hop_reason = "planet has no transporter"
+    else:
+        hop_reason = _need_turns(player, hop_turns)
+    out.append(_la(ActionKind.PLANET_TRANSPORT, legal=hop_reason is None, reason=hop_reason,
+                   cost=hop_turns,
+                   params={"planet_id": pid_param,
+                           "dest_sector": {"type": "int", "required": True}}))
+
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}
     out.sort(key=lambda la: order.get(la.kind, 999))

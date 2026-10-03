@@ -51,6 +51,8 @@ class ActionKind(str, Enum):
     SET_QUASAR_SECTOR = "set_quasar_sector"
     SET_QUASAR_ATM = "set_quasar_atm"
     PLANET_TRANSWARP = "planet_transwarp"
+    PLANET_BUY_TRANSPORTER = "planet_buy_transporter"
+    PLANET_TRANSPORT = "planet_transport"
 
 
 class Action(BaseModel):

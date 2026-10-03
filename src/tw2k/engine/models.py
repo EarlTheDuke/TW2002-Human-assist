@@ -193,6 +193,8 @@ class EventKind(str, Enum):
     QUASAR_DAMPED = "quasar_damped"
     INTERDICT = "interdict"
     PLANET_TRANSWARP = "planet_transwarp"
+    PLANET_TRANSPORTER_BOUGHT = "planet_transporter_bought"
+    PLANET_TRANSPORT = "planet_transport"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"
@@ -346,6 +348,7 @@ class Planet(BaseModel):
     quasar_atm_pct: int = 0
     # Day number of the last Planet TransWarp. None means it has not moved.
     last_transwarp_day: int | None = None
+    has_transporter: bool = False
     treasury: int = 0
     last_tax_value: int = 0
     # How the CURRENT owner acquired the planet: "genesis" (their own torpedo,

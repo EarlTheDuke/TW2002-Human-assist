@@ -22,14 +22,14 @@
   const R = window.TW2KMediaResolver;
   const CU = new URLSearchParams(location.search).get("mode") === "cu";
   const KIND_GROUP = {
-    warp: "move", warp_blocked: "move", autopilot: "move", scan: "move", probe: "move", ferrengi_move: "move",
+    warp: "move", warp_blocked: "move", autopilot: "move", scan: "move", probe: "move", ferrengi_move: "move", planet_transport: "move",
     trade: "trade", trade_failed: "trade", buy_ship: "trade", buy_equip: "trade", planet_tax_payout: "trade",
     combat: "combat", ship_destroyed: "combat", player_eliminated: "combat", mine_detonated: "combat", quasar_fire: "combat", quasar_damped: "combat", interdict: "combat", photon_fired: "combat",
     photon_hit: "combat", atomic_detonation: "combat", port_destroyed: "combat", deploy_fighters: "combat", deploy_mines: "combat",
     ferrengi_attack: "combat", ferrengi_spawn: "combat", fed_response: "combat",
     hail: "comms", broadcast: "comms", corp_memo: "comms", corp_create: "comms", corp_invite: "comms", corp_join: "comms",
     corp_leave: "comms", corp_deposit: "comms", corp_withdraw: "comms", alliance_proposed: "comms", alliance_formed: "comms", alliance_broken: "comms",
-    land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", planet_transwarp: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet", planet_defense_transfer: "planet", planet_military_reaction: "planet", planet_treasury: "planet",
+    land_planet: "planet", liftoff: "planet", genesis_deployed: "planet", planet_transwarp: "planet", planet_transporter_bought: "planet", assign_colonists: "planet", planet_cargo_transfer: "planet", planet_defense_transfer: "planet", planet_military_reaction: "planet", planet_treasury: "planet",
     build_citadel: "planet", citadel_complete: "planet", planet_claimed: "planet", planet_orphaned: "planet",
   };
   const reduce = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
