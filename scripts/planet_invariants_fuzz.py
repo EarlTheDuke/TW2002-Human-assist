@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,6 +69,19 @@ CHARGED_FAIL = frozenset({
     "planetary defenses repelled landing",
     "interdicted by a planet",
 })
+# Kinds that must succeed at least once across the run. A zero here means
+# the scratch universe never made that action legal.
+MUST_SUCCEED = (
+    "planet_destroy",
+    "planet_transport",
+    "planet_transwarp",
+    "attack",
+    "build_citadel",
+    "corp_join",
+    "corp_leave",
+    "planet_buy_transporter",
+)
+CREDITS = 5_000_000
 
 
 def _credits(universe) -> dict[str, int]:
@@ -236,23 +250,42 @@ def _sample(rng: random.Random, universe, spec) -> dict | None:
     return args
 
 
+def _plant(universe, sector_id: int, planet_id: int, class_id, owner: str, ticker: str, level: int, *,
+           fighters: int, shields: int, transporter: bool) -> Planet:
+    planet = Planet(
+        id=planet_id, sector_id=sector_id, name=f"Fuzz{planet_id}", class_id=class_id,
+        owner_id=owner, corp_ticker=ticker, citadel_level=level, citadel_target=level,
+        fighters=fighters, shields=shields, treasury=4000 if level else 0,
+        has_transporter=transporter,
+    )
+    planet.colonists[Commodity.FUEL_ORE] = 20000
+    planet.colonists[Commodity.ORGANICS] = 4000
+    planet.colonists[Commodity.EQUIPMENT] = 4000
+    planet.stockpile[Commodity.FUEL_ORE] = 100_000
+    planet.stockpile[Commodity.ORGANICS] = 8000
+    planet.stockpile[Commodity.EQUIPMENT] = 4000
+    universe.planets[planet.id] = planet
+    universe.sectors[sector_id].planet_ids.append(planet.id)
+    return planet
+
+
 def _build(seed: int):
     universe = generate_universe(GameConfig(
         seed=seed,
         universe_size=36,
         max_days=80,
         turns_per_day=1000,
-        starting_credits=250_000,
+        starting_credits=CREDITS,
         enable_ferrengi=False,
         enable_planets=False,
         enable_corps=True,
         planet_spawn_probability=0,
     ))
     deep = [sid for sid in sorted(universe.sectors) if sid > 10]
-    homes = deep[:4]
-    for index, pid in enumerate(PLAYERS):
+    fight_sector, move_sector, quiet_sector = deep[:3]
+    for pid in PLAYERS:
         player = Player(
-            id=pid, name=pid, ship=Ship(), sector_id=homes[index], credits=250_000,
+            id=pid, name=pid, ship=Ship(), sector_id=fight_sector, credits=CREDITS,
             turns_per_day=1000,
         )
         player.ship.fighters = 80
@@ -260,7 +293,9 @@ def _build(seed: int):
         player.ship.cargo[Commodity.COLONISTS] = 400
         player.ship.cargo[Commodity.FUEL_ORE] = 20
         universe.players[pid] = player
-        universe.sectors[homes[index]].occupant_ids.append(pid)
+    universe.players["B"].sector_id = move_sector
+    universe.sectors[fight_sector].occupant_ids.extend(["A", "C"])
+    universe.sectors[move_sector].occupant_ids.append("B")
     universe.corporations["ZZ"] = Corporation(
         ticker="ZZ", name="ZZ", ceo_id="A", member_ids=["A", "B"], invited_ids=["C"],
     )
@@ -270,31 +305,35 @@ def _build(seed: int):
     universe.players["A"].corp_ticker = "ZZ"
     universe.players["B"].corp_ticker = "ZZ"
     universe.players["C"].corp_ticker = "YY"
-    classes = (PlanetClass.M, PlanetClass.K, PlanetClass.O, PlanetClass.H)
-    levels = (0, 2, 4, 6)
-    owners = ("A", "B", "C", "A")
-    tickers = ("ZZ", "ZZ", "YY", "ZZ")
-    for index, sid in enumerate(homes):
-        level = levels[index]
-        planet = Planet(
-            id=88101 + index, sector_id=sid, name=f"Fuzz{index}", class_id=classes[index],
-            owner_id=owners[index], corp_ticker=tickers[index],
-            citadel_level=level, citadel_target=level,
-            fighters=0 if level == 0 else 12, shields=0 if level < 2 else 8,
-            treasury=0 if level == 0 else 4000, has_transporter=level == 4,
-        )
-        planet.colonists[Commodity.FUEL_ORE] = 2000
-        planet.colonists[Commodity.ORGANICS] = 800
-        planet.colonists[Commodity.EQUIPMENT] = 800
-        planet.stockpile[Commodity.FUEL_ORE] = 30000
-        planet.stockpile[Commodity.ORGANICS] = 4000
-        planet.stockpile[Commodity.EQUIPMENT] = 2000
-        universe.planets[planet.id] = planet
-        universe.sectors[sid].planet_ids.append(planet.id)
-        if index < 3:
-            universe.players[PLAYERS[index]].planet_landed = planet.id
-    spare = next(sid for sid in deep if sid not in homes)
-    universe.sectors[spare].fighters = FighterDeployment(owner_id="A", count=5)
+    # A is already landed on C's empty world, so destroy is legal before a
+    # landing can capture it. C is the rival ship in that same sector.
+    weak_c = _plant(
+        universe, fight_sector, 88101, PlanetClass.M, "C", "YY", 1,
+        fighters=0, shields=0, transporter=False,
+    )
+    weak_a = _plant(
+        universe, fight_sector, 88105, PlanetClass.L, "A", "ZZ", 1,
+        fighters=0, shields=0, transporter=False,
+    )
+    _plant(
+        universe, quiet_sector, 88102, PlanetClass.K, "A", "ZZ", 2,
+        fighters=30, shields=10, transporter=False,
+    )
+    home_b = _plant(
+        universe, move_sector, 88103, PlanetClass.O, "B", "ZZ", 4,
+        fighters=12, shields=8, transporter=False,
+    )
+    _plant(
+        universe, quiet_sector, 88104, PlanetClass.H, "A", "ZZ", 6,
+        fighters=40, shields=20, transporter=False,
+    )
+    universe.players["A"].planet_landed = weak_c.id
+    universe.players["B"].planet_landed = home_b.id
+    universe.players["C"].planet_landed = weak_a.id
+    # The mover's own fighters. After they leave the corp, a mate's fighters
+    # no longer count, so every deep sector holds B's fighters.
+    for sid in deep:
+        universe.sectors[sid].fighters = FighterDeployment(owner_id="B", count=8)
     return universe
 
 
@@ -307,16 +346,31 @@ def _fail(seed: int, log: list[str], rule: str) -> int:
     return 1
 
 
-def run_seed(seed: int) -> tuple[int, str]:
+def _pick(rng: random.Random, choices: list, ok_by: Counter):
+    """Prefer a required kind until it has succeeded once in this seed.
+
+    A flat draw usually lifts off first and never comes back, so a required
+    kind that has not succeeded yet is 20 times as likely.
+    """
+    weights = [
+        20 if item.kind in MUST_SUCCEED and ok_by[item.kind] == 0 else 1
+        for item in choices
+    ]
+    return rng.choices(choices, weights=weights, k=1)[0]
+
+
+def run_seed(seed: int) -> tuple[int, str, Counter, Counter]:
     rng = random.Random(seed)
     universe = _build(seed)
     log: list[str] = []
     ok_n = 0
     fail_n = 0
     days = 0
+    ok_by: Counter = Counter()
+    fail_by: Counter = Counter()
     broken = _check(universe)
     if broken:
-        return _fail(seed, log, f"setup: {broken}"), ""
+        return _fail(seed, log, f"setup: {broken}"), "", ok_by, fail_by
     action_n = 0
     for _step in range(ACTIONS_PER_PLAYER):
         for pid in PLAYERS:
@@ -332,7 +386,7 @@ def run_seed(seed: int) -> tuple[int, str]:
                     log.append(f"{pid} skip none legal")
                     action_n += 1
                 else:
-                    spec = rng.choice(choices)
+                    spec = _pick(rng, choices, ok_by)
                     args = _sample(rng, universe, spec)
                     if args is None:
                         log.append(f"{pid} skip {spec.kind} no args")
@@ -355,32 +409,34 @@ def run_seed(seed: int) -> tuple[int, str]:
                         action_n += 1
                         if result.ok:
                             ok_n += 1
+                            ok_by[spec.kind] += 1
                         else:
                             fail_n += 1
+                            fail_by[spec.kind] += 1
                         rule = _check(universe)
                         if rule:
-                            return _fail(seed, log, rule), ""
+                            return _fail(seed, log, rule), "", ok_by, fail_by
                         spent = universe.players[pid].turns_today - before_turns
                         if result.ok:
                             if spent != result.turns_spent:
-                                return _fail(seed, log, f"ok action spent {spent} not {result.turns_spent}"), ""
+                                return _fail(seed, log, f"ok action spent {spent} not {result.turns_spent}"), "", ok_by, fail_by
                         elif result.error in CHARGED_FAIL:
                             if spent != result.turns_spent:
                                 return _fail(
                                     seed, log, f"charged fail spent {spent} not {result.turns_spent}",
-                                ), ""
+                                ), "", ok_by, fail_by
                         else:
                             if spent != 0:
-                                return _fail(seed, log, f"failed action spent {spent} turns"), ""
+                                return _fail(seed, log, f"failed action spent {spent} turns"), "", ok_by, fail_by
                             if _world(universe) != before_world:
-                                return _fail(seed, log, "failed action changed the world"), ""
+                                return _fail(seed, log, "failed action changed the world"), "", ok_by, fail_by
                         actual = sum(_credits(universe).values())
                         explained = _explained_total(before_credits, new_events, universe)
                         if actual != explained:
                             return _fail(
                                 seed, log,
                                 f"credits {sum(before_credits.values())} -> {actual}, events explain {explained}",
-                            ), ""
+                            ), "", ok_by, fail_by
             if action_n % DAY_EVERY == 0:
                 before_credits = _credits(universe)
                 before_seq = universe.seq
@@ -390,7 +446,7 @@ def run_seed(seed: int) -> tuple[int, str]:
                 log.append(f"day {universe.day}")
                 rule = _check(universe)
                 if rule:
-                    return _fail(seed, log, f"day tick: {rule}"), ""
+                    return _fail(seed, log, f"day tick: {rule}"), "", ok_by, fail_by
                 actual = sum(_credits(universe).values())
                 explained = _explained_total(before_credits, new_events, universe)
                 if actual != explained:
@@ -398,14 +454,15 @@ def run_seed(seed: int) -> tuple[int, str]:
                         seed, log,
                         f"day tick credits {sum(before_credits.values())} -> {actual}, "
                         f"events explain {explained}",
-                    ), ""
+                    ), "", ok_by, fail_by
     row = f"| {seed} | {action_n} | {ok_n} | {fail_n} | {days} | pass |"
-    return 0, row
+    return 0, row, ok_by, fail_by
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet invariant fuzz")
     parser.add_argument("--seeds", type=int, default=len(FIXED_SEEDS))
+    parser.add_argument("--force-zero", default="", help="treat this kind as zero successes")
     args = parser.parse_args(argv)
     if args.seeds < 1 or args.seeds > len(FIXED_SEEDS):
         print(f"seeds must be 1..{len(FIXED_SEEDS)}")
@@ -413,8 +470,12 @@ def main(argv: list[str] | None = None) -> int:
     print("| Seed | Actions | Ok | Fail | Days | Result |")
     print("|---|---:|---:|---:|---:|---|")
     failed = 0
+    ok_by: Counter = Counter()
+    fail_by: Counter = Counter()
     for seed in FIXED_SEEDS[: args.seeds]:
-        code, row = run_seed(seed)
+        code, row, seed_ok, seed_fail = run_seed(seed)
+        ok_by.update(seed_ok)
+        fail_by.update(seed_fail)
         if code != 0:
             if seed in XFAIL:
                 print(f"| {seed} |  |  |  |  | xfail |")
@@ -422,6 +483,18 @@ def main(argv: list[str] | None = None) -> int:
             failed += 1
             break
         print(row)
+    if args.force_zero:
+        ok_by[args.force_zero] = 0
+    print("| Kind | Ok | Fail |")
+    print("|---|---:|---:|")
+    kinds = sorted(set(ok_by) | set(fail_by) | set(MUST_SUCCEED))
+    for kind in kinds:
+        print(f"| {kind} | {ok_by[kind]} | {fail_by[kind]} |")
+    if not failed:
+        for kind in MUST_SUCCEED:
+            if ok_by[kind] == 0:
+                print(f"coverage: {kind} never succeeded")
+                failed = 1
     print(f"planet_invariants_fuzz: {'PASS' if failed == 0 else 'FAIL'}")
     return 1 if failed else 0
 
