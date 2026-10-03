@@ -195,7 +195,7 @@ Constructed in stages 1-6. Build costs are unchanged. Named powers, in the origi
 - Level 3: Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall. A photon damps these cannons for that ship's one approach unless the planet is citadel L5 with 200 shields.
 - Level 4: Planet TransWarp (not yet in this game)
 - Level 5: Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp.
-- Level 6: Interdictor (not yet in this game)
+- Level 6: Interdictor: a hostile warp out fails when fuel is at least 500, the planet burns 500 fuel, and the sector cannon fires on what remains.
 
 ### 6.4 Planet ownership
 - Owner is the player who lands first on an unowned planet.

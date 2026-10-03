@@ -507,6 +507,48 @@ def format_photon_table() -> str:
     return "\n".join(lines)
 
 
+def format_interdict_table() -> str:
+    """One attempted warp out. 500 fuel holds. The cannon uses the fuel left."""
+    universe, attacker, planet = build_lab_universe()
+    origin = 1
+    if SECTOR_ID not in universe.sectors[origin].warps:
+        universe.sectors[origin].warps.append(SECTOR_ID)
+    if origin not in universe.sectors[SECTOR_ID].warps:
+        universe.sectors[SECTOR_ID].warps.append(origin)
+    rows = (
+        ("500 fuel", 6, 500, 10),
+        ("10000 fuel", 6, 10_000, 10),
+        ("499 fuel", 6, 499, 10),
+        ("level 5", 5, 10_000, 10),
+    )
+    lines = [
+        "Interdictor on a hostile warp out. Citadel level 6 burns 500 fuel and holds the ship. "
+        "The sector cannon then uses the fuel that remains. Below 500 fuel the warp leaves.",
+        "",
+        "| Case | Level | Fuel before | Held | Sector after | Damage | Fuel after |",
+        "|---|---:|---:|---|---:|---:|---:|",
+    ]
+    for label, level, fuel, pct in rows:
+        universe.sectors[SECTOR_ID].mines.clear()
+        universe.sectors[SECTOR_ID].fighters = None
+        configure_defender_planet(
+            planet, owner_id=DEFENDER_ID, fighters=0, shields=0,
+            citadel_level=level, quasar_sector_pct=pct, fuel_ore=fuel,
+        )
+        place_attacker(universe, attacker, sector_id=SECTOR_ID, fighters=2000, shields=0)
+        attacker.deaths = 0
+        universe.events.clear()
+        apply_action(universe, attacker.id, Action(kind=ActionKind.WARP, args={"target": origin}))
+        held = any(ev.kind.value == "interdict" for ev in universe.events)
+        fired = [ev for ev in universe.events if ev.kind.value == "quasar_fire"]
+        damage = fired[-1].payload["damage"] if fired else 0
+        lines.append(
+            f"| {label} | {level} | {fuel} | {'yes' if held else 'no'} | {attacker.sector_id} | "
+            f"{damage} | {int(planet.stockpile.get(Commodity.FUEL_ORE, 0))} |"
+        )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
@@ -515,6 +557,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--quasar", action="store_true", help="print the sector quasar warp table")
     parser.add_argument("--atmosphere", action="store_true", help="print the atmospheric quasar landing table")
     parser.add_argument("--photon", action="store_true", help="print the photon damp warp table")
+    parser.add_argument("--interdict", action="store_true", help="print the interdictor warp table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -536,6 +579,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.photon:
         print(format_photon_table())
+        return 0
+    if args.interdict:
+        print(format_interdict_table())
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,

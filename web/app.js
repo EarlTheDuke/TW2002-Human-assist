@@ -2078,7 +2078,7 @@
       { cr:  20000, col:  4000, days: 2, perk: "Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall. A photon damps these cannons for that ship's one approach unless the planet is citadel L5 with 200 shields." },
       { cr:  40000, col:  8000, days: 2, perk: "Planet TransWarp (not yet in this game)" },
       { cr:  80000, col: 16000, days: 3, perk: "Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp." },
-      { cr: 160000, col: 32000, days: 4, perk: "Interdictor (not yet in this game)" },
+      { cr: 160000, col: 32000, days: 4, perk: "Interdictor: a hostile warp out fails when fuel is at least 500, the planet burns 500 fuel, and the sector cannon fires on what remains." },
     ];
 
     const rows = owned.map((pl) => {
@@ -2408,6 +2408,7 @@
     mine_detonated:    { cat: "combat",    icon: "\ud83d\udca5", label: "MINE HIT" },
     quasar_fire:       { cat: "combat",    icon: "\u26a1",  label: "QUASAR" },
     quasar_damped:     { cat: "combat",    icon: "\u26a1",  label: "DAMPED" },
+    interdict:         { cat: "combat",    icon: "\u26a1",  label: "INTERDICT" },
     atomic_detonation: { cat: "combat",    icon: "\u2622",  label: "ATOMIC", big: true },
     port_destroyed:    { cat: "combat",    icon: "\ud83d\udd25", label: "PORT DESTROYED", big: true },
     photon_fired:      { cat: "combat",    icon: "\ud83d\ude80", label: "PHOTON FIRED" },

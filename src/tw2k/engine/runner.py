@@ -147,8 +147,11 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
     # Count turns. A repelled planet landing stays ok=False so callers
     # still see that the ship did not land, but the fight spent the turn.
-    repelled = (not result.ok) and result.error == "planetary defenses repelled landing"
-    if result.turns_spent > 0 and (result.ok or repelled):
+    charged_fail = (not result.ok) and result.error in {
+        "planetary defenses repelled landing",
+        "interdicted by a planet",
+    }
+    if result.turns_spent > 0 and (result.ok or charged_fail):
         player.turns_today += result.turns_spent
 
     # Check victory after every applied action
@@ -162,6 +165,7 @@ def tick_day(universe: Universe) -> None:
     universe.day += 1
     for player in universe.players.values():
         player.turns_today = 0
+        player.photon_damped_sector_id = None
         # Photon scramble decays one tick per real game day
         if player.ship.photon_disabled_ticks > 0:
             player.ship.photon_disabled_ticks = max(0, player.ship.photon_disabled_ticks - 1)
@@ -346,6 +350,9 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error="out of turns for this day")
 
     dest = universe.sectors[target_id]
+    held = _try_interdict(universe, pid, cur)
+    if held is not None:
+        return held
     if player.photon_damped_sector_id == player.sector_id and target_id != player.sector_id:
         _clear_photon_damp(player, player.sector_id)
     deaths_before = player.deaths
@@ -1868,6 +1875,24 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
         sub = _handle_warp(universe, pid, sub_action)
         if not sub.ok:
             last_error = sub.error or last_error
+            if last_error == "interdicted by a planet":
+                universe.emit(
+                    EventKind.AUTOPILOT,
+                    actor_id=pid,
+                    sector_id=player.sector_id,
+                    payload={
+                        "target": target_id,
+                        "path": path,
+                        "executed": True,
+                        "hops_done": hops_done,
+                        "stopped": "interdict",
+                    },
+                    summary=(
+                        f"{player.name} autopilot stopped by an interdict "
+                        f"after {hops_done}/{len(path)} hops toward {target_id}"
+                    ),
+                )
+                return ActionResult(ok=False, error=last_error, turns_spent=sub.turns_spent)
             break
         turns_spent_total += sub.turns_spent
         # apply turn cost incrementally to player so subsequent _handle_warp
@@ -2338,6 +2363,50 @@ def _apply_quasar_to_ship(universe: Universe, pid: str, damage: int, planet, mod
     )
     if damage > 0 and player.ship.shields <= 0 and player.ship.fighters <= 0:
         _destroy_ship(universe, pid, reason="quasar", killer_id=planet.owner_id)
+
+
+def _try_interdict(universe: Universe, pid: str, sector) -> ActionResult | None:
+    """Hold one hostile warp. Photon damp does not affect the interdictor."""
+    player = universe.players[pid]
+    planets = [universe.planets[item] for item in sector.planet_ids if item in universe.planets]
+    for planet in sorted(planets, key=lambda item: item.id):
+        if planet.owner_id is None or _are_allied(universe, pid, planet.owner_id):
+            continue
+        if int(planet.citadel_level or 0) < K.INTERDICTOR_MIN_LEVEL:
+            continue
+        fuel = int(planet.stockpile.get(Commodity.FUEL_ORE, 0))
+        if fuel < K.INTERDICTOR_FUEL:
+            continue
+        planet.stockpile[Commodity.FUEL_ORE] = fuel - K.INTERDICTOR_FUEL
+        universe.emit(
+            EventKind.INTERDICT,
+            actor_id=planet.owner_id,
+            sector_id=sector.id,
+            payload={"planet_id": planet.id, "ship_name": player.name},
+            summary=f"{planet.name} interdicted {player.name}",
+        )
+        _fire_interdict_quasar(universe, pid, planet)
+        return ActionResult(
+            ok=False, error="interdicted by a planet", turns_spent=_warp_cost_for(player),
+        )
+    return None
+
+
+def _fire_interdict_quasar(universe: Universe, pid: str, planet) -> None:
+    """One sector shot on the fuel left after the interdictor burn."""
+    if int(planet.citadel_level or 0) < K.QUASAR_MIN_LEVEL:
+        return
+    pct = int(planet.quasar_sector_pct or 0)
+    if pct <= 0:
+        return
+    fuel = int(planet.stockpile.get(Commodity.FUEL_ORE, 0))
+    if fuel <= 0:
+        return
+    burned, damage = _quasar_shot(fuel, pct)
+    if burned <= 0:
+        return
+    planet.stockpile[Commodity.FUEL_ORE] = fuel - burned
+    _apply_quasar_to_ship(universe, pid, damage, planet, "sector")
 
 
 def _apply_sector_quasar(universe: Universe, pid: str, sector) -> None:

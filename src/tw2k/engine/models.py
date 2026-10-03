@@ -191,6 +191,7 @@ class EventKind(str, Enum):
     PLANET_TREASURY = "planet_treasury"
     QUASAR_FIRE = "quasar_fire"
     QUASAR_DAMPED = "quasar_damped"
+    INTERDICT = "interdict"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"

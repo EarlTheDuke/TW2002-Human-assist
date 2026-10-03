@@ -426,6 +426,7 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
     player.ship.mines = {MineType.ARMID: 0, MineType.LIMPET: 0, MineType.ATOMIC: 0}
     player.credits = int(player.credits * 0.75)
     player.planet_landed = None
+    player.photon_damped_sector_id = None
 
     universe.emit(
         EventKind.SHIP_DESTROYED,

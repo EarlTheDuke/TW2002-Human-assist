@@ -232,7 +232,7 @@ Next days: return with more colonists, land, call `build_citadel` again to push 
   L2→L3  20k cr +  4k col, 2 days  (Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall. A photon damps these cannons for that ship's one approach unless the planet is citadel L5 with 200 shields.)
   L3→L4  40k cr +  8k col, 2 days  (Planet TransWarp (not yet in this game))
   L4→L5  80k cr + 16k col, 3 days  (Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp.)
-  L5→L6 160k cr + 32k col, 4 days  (Interdictor (not yet in this game))
+  L5→L6 160k cr + 32k col, 4 days  (Interdictor: a hostile warp out fails when fuel is at least 500, the planet burns 500 fuel, and the sector cannon fires on what remains.)
 
 `assign_colonists` pools and what they do:
   "fuel_ore"  → planet produces FUEL ORE daily (most valuable of the three)
