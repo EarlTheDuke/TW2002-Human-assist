@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 20:53 PT - Fable - a citadel can transwarp once a day
+- Citadel level 4 can move the planet along the warp lanes for 400 fuel per sector, once a day, when the destination already has a fighter of the owner.
+
 ### 2026-10-02 19:33 PT - Fable - a citadel can hold a hostile warp
 - Citadel level 6 burns 500 fuel, stops one hostile warp, and fires the sector cannon on the fuel that remains. A photon damp now clears when the ship dies and at each day tick.
 

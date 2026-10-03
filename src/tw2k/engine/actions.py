@@ -50,6 +50,7 @@ class ActionKind(str, Enum):
     WITHDRAW_TREASURY = "withdraw_treasury"
     SET_QUASAR_SECTOR = "set_quasar_sector"
     SET_QUASAR_ATM = "set_quasar_atm"
+    PLANET_TRANSWARP = "planet_transwarp"
 
 
 class Action(BaseModel):

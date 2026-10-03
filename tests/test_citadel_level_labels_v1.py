@@ -26,7 +26,7 @@ def test_perk_list_is_the_original_order() -> None:
     assert "2% daily interest" in CITADEL_PERK[0][2]
     assert "hostile warp" in CITADEL_PERK[2][2]
     for i, (_, _, perk) in enumerate(CITADEL_PERK):
-        if i in (0, 2, 5):
+        if i in (0, 2, 3, 5):
             assert "not yet in this game" not in perk
         else:
             assert "not yet in this game" in perk
