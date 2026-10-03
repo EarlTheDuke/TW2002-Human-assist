@@ -960,6 +960,38 @@ def _planet_numbers_visible(planet, viewer) -> bool:
     return bool(theirs and mine and theirs == mine)
 
 
+def _class_citadel_next_build(planet, level: int, available_colonists: int) -> dict[str, Any]:
+    """Commodity quote. Used only when CITADEL_COST_MODE is class."""
+    from . import constants as K
+
+    colonists, fuel, organics, equipment, days = K.citadel_class_cost(planet.class_id.value, level)
+    have_fuel = int(planet.stockpile.get(Commodity.FUEL_ORE, 0))
+    have_org = int(planet.stockpile.get(Commodity.ORGANICS, 0))
+    have_eq = int(planet.stockpile.get(Commodity.EQUIPMENT, 0))
+    blocker: str | None = None
+    if have_fuel < fuel:
+        blocker = f"fuel_ore {have_fuel}/{fuel} on planet"
+    elif have_org < organics:
+        blocker = f"organics {have_org}/{organics} on planet"
+    elif have_eq < equipment:
+        blocker = f"equipment {have_eq}/{equipment} on planet"
+    elif available_colonists < colonists:
+        blocker = f"colonists {available_colonists}/{colonists} on planet"
+    return {
+        "level": level,
+        "credits": 0,
+        "colonists": colonists,
+        "fuel_ore": fuel,
+        "organics": organics,
+        "equipment": equipment,
+        "days": days,
+        "colonists_have": available_colonists,
+        "colonists_short": max(0, colonists - available_colonists),
+        "possible": blocker is None,
+        "blocker": blocker,
+    }
+
+
 def _planet_brief(planet, viewer=None) -> dict[str, Any]:
     from . import constants as K
 
@@ -992,6 +1024,8 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
             "possible": blocker is None,
             "blocker": blocker,
         }
+        if K.CITADEL_COST_MODE == "class":
+            next_build = _class_citadel_next_build(planet, nl, available_colonists)
     brief = {
         "id": planet.id,
         "name": planet.name,

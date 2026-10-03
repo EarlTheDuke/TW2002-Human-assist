@@ -1295,6 +1295,58 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def _start_class_citadel(universe: Universe, player, sector, planet, next_level: int) -> ActionResult:
+    """Charge the planet stockpile. Credits stay put. A shortage changes nothing."""
+    colonists, fuel, organics, equipment, days = K.citadel_class_cost(planet.class_id.value, next_level)
+    have_fuel = int(planet.stockpile.get(Commodity.FUEL_ORE, 0))
+    have_org = int(planet.stockpile.get(Commodity.ORGANICS, 0))
+    have_eq = int(planet.stockpile.get(Commodity.EQUIPMENT, 0))
+    avail_col = sum(planet.colonists.get(c, 0) for c in planet.colonists)
+    short = (
+        (have_fuel < fuel, f"need {fuel} fuel_ore on planet (have {have_fuel})"),
+        (have_org < organics, f"need {organics} organics on planet (have {have_org})"),
+        (have_eq < equipment, f"need {equipment} equipment on planet (have {have_eq})"),
+        (avail_col < colonists, f"need {colonists} colonists on planet (have {avail_col})"),
+    )
+    for missing, message in short:
+        if missing:
+            return ActionResult(ok=False, error=message)
+    planet.stockpile[Commodity.FUEL_ORE] = have_fuel - fuel
+    planet.stockpile[Commodity.ORGANICS] = have_org - organics
+    planet.stockpile[Commodity.EQUIPMENT] = have_eq - equipment
+    remaining = colonists
+    for pool in list(planet.colonists.keys()):
+        if remaining <= 0:
+            break
+        take = min(planet.colonists[pool], remaining)
+        planet.colonists[pool] -= take
+        remaining -= take
+    cost = K.TURN_COST.get("land_planet", 3)
+    if player.turns_today + cost > player.turns_per_day:
+        cost = 0
+    planet.citadel_target = next_level
+    planet.citadel_complete_day = universe.day + days
+    universe.emit(
+        EventKind.BUILD_CITADEL,
+        actor_id=player.id,
+        sector_id=sector.id,
+        payload={
+            "planet_id": planet.id,
+            "level_target": next_level,
+            "completes_day": planet.citadel_complete_day,
+            "cost_cr": 0,
+            "cost_col": colonists,
+            "paid_from": "stockpile",
+        },
+        summary=(
+            f"{player.name} began Citadel L{next_level} on {planet.name} "
+            f"({colonists} colonists, {fuel} fuel ore, {organics} organics, "
+            f"{equipment} equipment, ETA day {planet.citadel_complete_day})"
+        ),
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
 def _handle_build_citadel(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     sector = universe.sectors[player.sector_id]
@@ -1319,6 +1371,8 @@ def _handle_build_citadel(universe: Universe, pid: str, action: Action) -> Actio
     next_level = planet.citadel_level + 1
     if next_level > K.CITADEL_LEVELS:
         return ActionResult(ok=False, error="citadel already at max level")
+    if K.CITADEL_COST_MODE == "class":
+        return _start_class_citadel(universe, player, sector, planet, next_level)
     cred_cost, col_cost, days = K.CITADEL_TIER_COST[next_level - 1]
 
     # Pay from corp treasury first if member, otherwise personal credits
