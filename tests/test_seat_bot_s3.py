@@ -84,7 +84,13 @@ def test_offline_genesis_citadel_ferry_from_observation_only() -> None:
     home = next(p for p in gworlds if p["id"] == brain.mem.home_planet)
     assert home["citadel_level"] >= 2           # Kimi3 winners were at L2 on day 8; this is day 6
     assert brain.mem.deploy_sector in {p["sector_id"] for p in gworlds}
-    assert all(p["citadel_level"] >= 1 for p in gworlds)  # every genesis world got its citadel started
+    # Started includes a build still in progress. Without the free garrison the
+    # last world can still be on its first citadel day at day 6.
+    assert all(
+        int(p["citadel_level"] or 0) >= 1
+        or int(p.get("citadel_target") or 0) > int(p["citadel_level"] or 0)
+        for p in gworlds
+    )
 
     # Required args every time; never landed on a non-genesis world.
     for rec in log:

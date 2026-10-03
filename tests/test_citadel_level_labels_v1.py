@@ -1,4 +1,4 @@
-"""Citadel names match one list. Costs, the garrison gift, and siege math stay."""
+"""Citadel names match one list. Costs stay. The free garrison gift is off."""
 
 from __future__ import annotations
 
@@ -30,8 +30,7 @@ def test_perk_list_is_the_original_order() -> None:
             assert "not yet in this game" not in perk
         else:
             assert "not yet in this game" in perk
-    garrison = CITADEL_PERK[1][2]
-    assert "garrison of 1000 fighters and 250 shields per level" in garrison
+    assert CITADEL_PERK[1][2] == "Combat Control Computer (not yet in this game)."
     assert CITADEL_TIER_COST == [
         (5_000, 1_000, 1),
         (10_000, 2_000, 1),
@@ -65,5 +64,7 @@ def test_prompt_and_design_match_the_constants_list() -> None:
     assert "only Citadel L4 transwarp" not in _MATCH_PROMPT_FULL
     assert "L2 = Quasar" not in planets
     assert "if planet.citadel_level >= 2:" in planets
-    assert "planet.fighters = max(planet.fighters, 1000 * planet.citadel_level)" in planets
-    assert "planet.shields = max(planet.shields, 250 * planet.citadel_level)" in planets
+    assert "CITADEL_GIFT_FIGHTERS_PER_LEVEL * planet.citadel_level" in planets
+    assert "CITADEL_GIFT_SHIELDS_PER_LEVEL * planet.citadel_level" in planets
+    assert "if gift_fighters > 0:" in planets
+    assert "if gift_shields > 0:" in planets

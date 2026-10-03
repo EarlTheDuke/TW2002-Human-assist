@@ -228,7 +228,7 @@ Full sequence from StarDock, ~30-50 turns for your first planet:
      You can deposit fighters and shields on a planet you own at any citadel level.
 
 Next days: return with more colonists, land, call `build_citadel` again to push levels:
-  L1→L2  10k cr +  2k col, 1 day   (Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level)
+  L1→L2  10k cr +  2k col, 1 day   (Combat Control Computer (not yet in this game).)
   L2→L3  20k cr +  4k col, 2 days  (Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall. A photon damps these cannons for that ship's one approach unless the planet is citadel L5 with 200 shields.)
   L3→L4  40k cr +  8k col, 2 days  (Planet TransWarp: once a day, move the planet along the warp lanes for 400 fuel per sector, to a sector that already has a fighter of the owner.)
   L4→L5  80k cr + 16k col, 3 days  (Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp.)

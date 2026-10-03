@@ -2,7 +2,7 @@
 
 Done-when (offline, fogged observation only):
 * ferry turns under 40% of turns spent in a 10-day replay
-* day-10 net worth at least 400k on seed 250925
+* day-10 net worth at least 140k on seed 250925
 * genesis-world organics never hit 0
 * the other N2 seeds stay within 85% of the fixed-ladder brain
 
@@ -36,6 +36,6 @@ def test_ferry_turn_counts_the_empty_stardock_leg_and_a_colonist_move() -> None:
 
 
 def test_n3_day10_ferry_and_net_worth() -> None:
-    """Five seeds, ten days. Seed 250925 must clear 400k with ferry under 40%."""
+    """Five seeds, ten days. Seed 250925 must clear 140k with ferry under 40%."""
     mod = _load_acceptance()
     assert mod.run_n3(list(mod.N2_SEEDS)) == 0

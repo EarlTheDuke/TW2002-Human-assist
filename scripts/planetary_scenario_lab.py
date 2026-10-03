@@ -3,6 +3,7 @@
 Each cell reseeds the combat dice, plants one defended planet, and calls
 apply_action land_planet. reaction_pct is written onto the planet.
 --quasar prints a short sector-quasar warp table.
+--gift prints citadel completion with the gift constants at 0.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.models import (
     Commodity,
+    EventKind,
     FighterDeployment,
     FighterMode,
     MineDeployment,
@@ -29,6 +31,8 @@ from tw2k.engine.models import (
     Player,
     Ship,
 )
+from tw2k.engine.observation import event_facts
+from tw2k.engine.planets import _complete_citadels
 
 SECTOR_ID = 40
 PLANET_ID = 88001
@@ -657,6 +661,33 @@ def format_transporter_table() -> str:
     return "\n".join(lines)
 
 
+def format_gift_table() -> str:
+    """Completing L2-L6 with the gift constants at 0."""
+    rows = [(level, 0, 0) for level in range(2, 7)]
+    rows.append((3, 4000, 800))
+    lines = [
+        "Citadel completion. Gift constants are 0, so fighters and shields stay put.",
+        "",
+        "| Completed | Fighters before | Shields before | Fighters after | Shields after | Facts |",
+        "|---:|---:|---:|---:|---:|---|",
+    ]
+    for level, fighters, shields in rows:
+        universe, _attacker, planet = build_lab_universe()
+        planet.fighters = fighters
+        planet.shields = shields
+        planet.citadel_level = level - 1
+        planet.citadel_target = level
+        planet.citadel_complete_day = universe.day
+        universe.events.clear()
+        _complete_citadels(universe)
+        done = next(event for event in universe.events if event.kind is EventKind.CITADEL_COMPLETE)
+        facts = ",".join(event_facts(done))
+        lines.append(
+            f"| {level} | {fighters} | {shields} | {planet.fighters} | {planet.shields} | {facts} |"
+        )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
@@ -668,6 +699,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interdict", action="store_true", help="print the interdictor warp table")
     parser.add_argument("--transwarp", action="store_true", help="print the planet transwarp table")
     parser.add_argument("--transporter", action="store_true", help="print the planet transporter table")
+    parser.add_argument("--gift", action="store_true", help="print the citadel completion gift table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -698,6 +730,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.transporter:
         print(format_transporter_table())
+        return 0
+    if args.gift:
+        print(format_gift_table())
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,

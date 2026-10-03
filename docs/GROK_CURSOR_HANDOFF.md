@@ -44,6 +44,9 @@ if COMPLETE -> exit cleanly             else stay quiet
 
 ## Changelog
 
+### 2026-10-02 23:23 PT - Fable - a citadel no longer hands out a garrison
+- Completing a citadel adds no fighters and no shields. The old floor still runs if the two gift constants are raised. The level 2 perk no longer promises that gift.
+
 ### 2026-10-02 21:52 PT - Fable - a transporter moves the player off a planet
 - A citadel can buy a transporter for 50000 credits. The player then hops the warp lanes. The first hop is 50000 credits and each extra hop is 25000. The planet pays 10 fuel per sector and stays put.
 

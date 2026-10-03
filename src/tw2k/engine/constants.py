@@ -221,9 +221,11 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
     (80_000,  16_000,  3),
     (160_000, 32_000,  4),
 ]
-# (level, name, one-line perk). Original order. The perk line says
-# whether this game does that thing today. Completing level 2 or
-# higher still grants the garrison in planets._complete_citadels.
+# Free fighters and shields granted per new citadel level, at L2 and up.
+# 0 adds nothing: no gift text, no zero-count event facts, no planet change.
+# Raise both to restore the old floor (1000 fighters and 250 shields).
+CITADEL_GIFT_FIGHTERS_PER_LEVEL = 0
+CITADEL_GIFT_SHIELDS_PER_LEVEL = 0
 # Sector quasar, atmospheric quasar, and both setters require this citadel level.
 QUASAR_MIN_LEVEL = 3
 # Atmospheric damage is burned fuel times this factor. Burned fuel is fuel * pct // 100.
@@ -240,10 +242,13 @@ PLANET_TRANSWARP_FUEL_PER_SECTOR = 400
 PLANET_TRANSPORTER_COST_FIRST = 50_000
 PLANET_TRANSPORTER_COST_EXTRA = 25_000
 PLANET_TRANSPORTER_FUEL_PER_SECTOR = 10
+# (level, name, one-line perk). Original order. The perk line says
+# whether this game does that thing today. The completion gift is
+# CITADEL_GIFT_FIGHTERS_PER_LEVEL and CITADEL_GIFT_SHIELDS_PER_LEVEL.
 CITADEL_PERK: list[tuple[int, str, str]] = [
     (1, "Treasury", "Treasury: deposit and withdraw credits while landed, plus 2% daily interest"),
-    (2, "Combat Control Computer",
-     "Combat Control Computer (not yet in this game). Completing L2 or higher grants a garrison of 1000 fighters and 250 shields per level"),
+     (2, "Combat Control Computer",
+     "Combat Control Computer (not yet in this game)."),
     (3, "Quasar cannon",
      "Quasar cannon: on a hostile warp into the sector, burn the set percent of fuel stockpile and damage the ship. On a hostile landing, burn the atmosphere percent before shields and again after shields fall. A photon damps these cannons for that ship's one approach unless the planet is citadel L5 with 200 shields."),
     (4, "Planet TransWarp",
