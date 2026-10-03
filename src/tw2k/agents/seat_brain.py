@@ -22,8 +22,8 @@ Goal ladder (first rung that yields a legal action wins):
   5. After the first world (N3): value per turn, not a fixed rung order.
      Trade (profit / turns), a colonist ferry (only when it unlocks a
      planned citadel tier or refills a starving world), genesis #N
-     (25k purchase is net-worth neutral; the value is L2 fighters plus
-     expected growth), organics resupply, and a stockpile sale
+     (25k purchase is net-worth neutral; the value is colonist growth
+     after L1, not a fighter grant), organics resupply, and a stockpile sale
      (``load_planet_cargo`` to a port that pays above base price).
      ``target_planets`` rises above 2 while another torpedo is affordable.
   6. Colonists or organics already aboard are delivered before a new choice.
@@ -50,6 +50,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..engine.constants import (
+    CITADEL_GIFT_FIGHTERS_PER_LEVEL,
+    CITADEL_GIFT_SHIELDS_PER_LEVEL,
     CITADEL_TIER_COST,
     COLONIST_PRICE,
     COMMODITY_BASE_PRICE,
@@ -86,7 +88,7 @@ CITADEL_LAST_DAYS = 2
 # Genesis above the second world, only while the purchase still leaves
 # L1 cash. Four is the cap: more worlds than that starve the turn budget.
 MAX_TARGET_PLANETS = 4
-# Shields are scored at 10cr in full_net_worth. L2+ also mints fighters.
+# Shields the seat buys are scored at 10cr. A citadel does not mint them.
 SHIELD_VALUE = 10
 
 
@@ -271,15 +273,31 @@ def next_tier(planet: dict[str, Any], *, lookahead: bool = False) -> tuple[int, 
 
 
 def _defense_value(level: int) -> int:
-    """Fighters and shields full_net_worth grants once a citadel reaches ``level``."""
+    """Fighters and shields a finished citadel adds to net worth.
+
+    The engine gifts ``CITADEL_GIFT_*_PER_LEVEL`` at level 2 and up, and both
+    constants are 0. Fighters the seat buys later cost ``FIGHTER_COST``.
+    Shields the seat buys later cost ``SHIELD_VALUE``. Those purchases are
+    not part of this number.
+    """
     if level < 2:
         return 0
-    return 1000 * level * FIGHTER_COST + 250 * level * SHIELD_VALUE
+    fighters = CITADEL_GIFT_FIGHTERS_PER_LEVEL * level
+    shields = CITADEL_GIFT_SHIELDS_PER_LEVEL * level
+    return fighters * FIGHTER_COST + shields * SHIELD_VALUE
 
 
 def _tier_bonus(current_level: int) -> int:
-    """Net-worth added when the citadel steps from ``current_level`` to the next."""
-    return _defense_value(current_level + 1) - _defense_value(current_level)
+    """Credit and colonist cost of the next citadel tier, as net worth records it.
+
+    Level 1 is a build visit, not a haul. Fighters and shields are separate
+    purchases and are not included.
+    """
+    nxt = current_level + 1
+    if nxt < 2 or nxt - 1 >= len(CITADEL_TIER_COST):
+        return 0
+    cred, col, _days = CITADEL_TIER_COST[nxt - 1]
+    return int(cred) + int(col) * COLONIST_PRICE
 
 
 def _project_pop(pop: int, days: int, growing: bool) -> int:
@@ -295,11 +313,11 @@ def _project_pop(pop: int, days: int, growing: bool) -> int:
 def _planned_tier(planet: dict[str, Any]) -> tuple[int, int, int, int] | None:
     """(credits, colonists, defense bonus, level) of the tier a ferry would unlock.
 
-    L1 adds no fighters, so it is a build visit, not a ferry. While a tier is
+    L1 adds no defense, so it is a build visit, not a ferry. While a tier is
     already under construction the planned one is the tier after it, and only
     when that tier is L2. Stocking an L3+ colony during a build is a turn sink
-    (the fighters are not online yet) and, when the credit reserve leaves no
-    colonist money, a StarDock ping-pong.
+    and, when the credit reserve leaves no colonist money, a StarDock ping-pong.
+    A bonus of 0 means the citadel grants nothing, so there is no ferry.
     """
     lvl = int(planet.get("citadel_level") or 0)
     tgt = int(planet.get("citadel_target") or 0)
@@ -1124,7 +1142,8 @@ class SeatBrain:
         if have >= self.target_planets or have >= MAX_TARGET_PLANETS:
             return None
         # The second world can be in the air. A third waits until every world
-        # already bought has its L2 fighters, which is the day-10 net worth.
+        # already bought has started the L2 credit tier. That cash is what the
+        # engine charges. The citadel does not add fighters.
         if have >= 2 and any(int(p.get("citadel_level") or 0) < 2 for p in v.genesis_planets()):
             return None
         if not self._genesis_affordable_now(v):
@@ -1152,10 +1171,10 @@ class SeatBrain:
         return v.credits - price >= keep
 
     def _genesis_expected_value(self, v: View) -> int:
-        """L2 fighter grant if it can finish, plus colonist growth after L1.
+        """Colonist growth after L1, plus the next tier's credit and colonist cost.
 
         The 25k torpedo becomes 2,500 colonists at the same price, so the
-        purchase itself is not the value.
+        purchase itself is not the value. Fighters and shields are not included.
         """
         days_left = self._days_left(v)
         grow_days = max(0, days_left - 2)
@@ -1216,12 +1235,6 @@ class SeatBrain:
         round_turns = (outbound + back) * self._tpw(v) + 6
         turns = max(1, trips * max(1, round_turns))
         vpt = bonus / turns
-        # L1 already done: the fighter grant is one haul away. Prefer it to
-        # another torpedo. Still under construction (the storyboard ferry),
-        # the raw rate stands and a funded genesis #2 can win.
-        started = int(planet.get("citadel_target") or 0) > int(planet.get("citadel_level") or 0)
-        if tier_ferry and level == 2 and not started:
-            vpt *= 8
         # Keep the tier's credit cost in the bank. The cash buffer is for
         # trading, not for blocking the load that unlocks the citadel.
         afford_credits = v.credits - cred
@@ -1278,7 +1291,7 @@ class SeatBrain:
             return None
         best: tuple[float, dict[str, Any], Intent] | None = None
         for planet in v.worlds():
-            # L2's fighter grant is worth the trip even when it spends the trade float.
+            # Spend the trade float on the trip only when the tier adds defense value.
             bonus_now = _tier_bonus(int(planet.get("citadel_level") or 0))
             floor = 0 if (self.pressure is not None or bonus_now >= 100_000) else self.working_capital
             if planet.get("sector_id") == v.here or not self._citadel_ready(planet, v, credit_pad=floor):

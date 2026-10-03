@@ -19,7 +19,7 @@
   python scripts/seat_brain_acceptance.py n2
 
   # 6. N3 offline proof: value-per-turn vs the N2 ladder. Ferry turns < 40%,
-  #    day-10 net worth >= 140k on seed 250925, organics never 0.
+  #    day-10 net worth >= 145k on seed 250925, organics never 0.
   python scripts/seat_brain_acceptance.py n3
 
 Exit code 0 = every action valid and the genesis -> land -> citadel -> ferry loop completed.
@@ -360,17 +360,17 @@ def run_n2(seeds: list[int]) -> int:
     return 0 if score_ok and failures == 0 else 1
 
 
-# Seed 250925 finishes near 150k once a citadel no longer grants fighters.
-# The old bar was 400k while that gift was still in the net worth.
+# Seed 250925 finishes at 149601 once the L2 haul is the credit and colonist
+# cost, not a free garrison. The previous bar was 140k.
 N3_BENCH_SEED = 250925
-N3_MIN_NET_WORTH = 140_000
+N3_MIN_NET_WORTH = 145_000
 N3_MAX_FERRY_PCT = 40.0
 # A seed "tanks" when N3 finishes under 85% of the N2 ladder on the same map.
 N3_N2_FLOOR = 0.85
 
 
 def run_n3(seeds: list[int]) -> int:
-    """N3 done-when: ferry < 40%, seed 250925 day-10 NW >= 140k, organics never 0.
+    """N3 done-when: ferry < 40%, seed 250925 day-10 NW >= 145k, organics never 0.
 
     The N2 column is the fixed ladder (``value_allocator`` off) on the same seeds.
     """
