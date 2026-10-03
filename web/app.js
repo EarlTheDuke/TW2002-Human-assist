@@ -2467,6 +2467,8 @@
     planet_transwarp:  { cat: "diplomacy", icon: "\u27a4",  label: "TRANSWARP" },
     planet_transporter_bought: { cat: "diplomacy", icon: "\u27a4", label: "TRANSPORTER" },
     planet_transport:  { cat: "move",      icon: "\u27a4",  label: "TRANSPORT" },
+    planet_colonists_killed: { cat: "combat", icon: "\u2694", label: "COLONISTS KILLED" },
+    planet_destroyed:  { cat: "combat",   icon: "\u2694",  label: "DESTROYED" },
     // --- System (truly admin-only now) ----------------------------
     day_tick:          { cat: "system",    icon: "\u263c",  label: "DAY", special: "day" },
     agent_error:       { cat: "system",    icon: "\u26a0",  label: "AGENT ERROR" },

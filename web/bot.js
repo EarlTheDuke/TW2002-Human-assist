@@ -1063,7 +1063,7 @@
   const VERB_GROUPS = {
     combat: ["attack", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic"],
     stardock: ["buy_ship", "buy_equip", "corp_create"],
-    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport"],
+    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport", "planet_destroy"],
     comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
   };
   const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
@@ -1139,6 +1139,7 @@
     planet_transwarp: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "dest_sector", l: "Destination sector", t: "int" }], note: "Citadel L4. Once a day. 400 planet fuel per warp sector. The destination needs a fighter of the owner." },
     planet_buy_transporter: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }], note: "Citadel L1. 50000 credits once." },
     planet_transport: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "dest_sector", l: "Destination sector", t: "int" }], note: "Moves you, not the planet. 50000 credits for the first hop, 25000 for each extra hop, and 10 planet fuel per sector." },
+    planet_destroy: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }], note: "Landed on a hostile planet with no fighters and no shields. The first use kills the colonists. The second removes the planet. Treasury, stockpile, and fighters are not refunded." },
     deploy_genesis: { fields: [] },
     hail: { fields: [{ n: "target", l: "To", t: "choice" }, { n: "message", l: "Message", t: "text" }] },
     broadcast: { fields: [{ n: "message", l: "Message to everyone", t: "text" }] },

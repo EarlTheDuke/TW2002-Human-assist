@@ -24,6 +24,7 @@ from .combat import (
 )
 from .economy import execute_trade, regenerate_ports
 from .ferrengi import _ferrengi_by_name, _ferrengi_roam_and_hunt, _spawn_ferrengi
+from .legality import planet_destroy_reason
 from .models import (
     Alliance,
     Commodity,
@@ -2814,6 +2815,52 @@ def _handle_withdraw_planet_defense(universe: Universe, pid: str, action: Action
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def _handle_planet_destroy(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Zero colonists, then a second call removes the planet. Failures spend nothing."""
+    player = universe.players[pid]
+    sector = universe.sectors[player.sector_id]
+    planet_id = action.args.get("planet_id")
+    if planet_id is None or int(planet_id) not in sector.planet_ids:
+        return ActionResult(ok=False, error="no such planet in this sector")
+    planet = universe.planets[int(planet_id)]
+    blocked = planet_destroy_reason(universe, player, planet)
+    if blocked:
+        return ActionResult(ok=False, error=blocked)
+    if not K.PLANET_DESTROY_COLONISTS_TO_ZERO:
+        return ActionResult(ok=False, error="planet destruction is off")
+    cost = K.TURN_COST["planet_destroy"]
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    player.alignment -= K.PLANET_DESTROY_ALIGNMENT
+    colonists_left = sum(int(n) for n in planet.colonists.values())
+    if colonists_left > 0:
+        for pool in list(planet.colonists.keys()):
+            planet.colonists[pool] = 0
+        universe.emit(
+            EventKind.PLANET_COLONISTS_KILLED,
+            actor_id=pid,
+            sector_id=sector.id,
+            payload={"planet_id": planet.id},
+            summary=f"{player.name} killed the colonists on {planet.name}",
+        )
+        return ActionResult(ok=True, turns_spent=cost)
+    gone = planet.id
+    sector_id = planet.sector_id
+    for other in universe.players.values():
+        if other.planet_landed == gone:
+            other.planet_landed = None
+    sector.planet_ids = [sid for sid in sector.planet_ids if sid != gone]
+    del universe.planets[gone]
+    universe.emit(
+        EventKind.PLANET_DESTROYED,
+        actor_id=pid,
+        sector_id=sector_id,
+        payload={"planet_id": gone, "sector_id": sector_id},
+        summary=f"{player.name} destroyed the planet in sector {sector_id}",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
 _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.WARP: _handle_warp,
     ActionKind.TRADE: _handle_trade,
@@ -2858,6 +2905,7 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.PLANET_TRANSWARP: _handle_planet_transwarp,
     ActionKind.PLANET_BUY_TRANSPORTER: _handle_planet_buy_transporter,
     ActionKind.PLANET_TRANSPORT: _handle_planet_transport,
+    ActionKind.PLANET_DESTROY: _handle_planet_destroy,
 }
 
 

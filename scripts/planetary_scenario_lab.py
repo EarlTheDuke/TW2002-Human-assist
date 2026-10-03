@@ -688,6 +688,56 @@ def format_gift_table() -> str:
     return "\n".join(lines)
 
 
+def format_destroy_table() -> str:
+    """Two destroy steps, then a defended planet and a corp planet that stay."""
+    rows = []
+
+    def once(label: str, *, fighters: int, shields: int, friendly: bool, steps: int) -> None:
+        universe, attacker, planet = build_lab_universe()
+        planet.fighters = fighters
+        planet.shields = shields
+        planet.colonists[Commodity.COLONISTS] = 12
+        planet.treasury = 400
+        if friendly:
+            attacker.corp_ticker = "ZZ"
+            universe.players[DEFENDER_ID].corp_ticker = "ZZ"
+            planet.corp_ticker = "ZZ"
+        place_attacker(universe, attacker, sector_id=SECTOR_ID, fighters=0, shields=0)
+        attacker.planet_landed = planet.id
+        align = attacker.alignment
+        for step in range(steps):
+            before = planet.id in universe.planets
+            res = apply_action(
+                universe, ATTACKER_ID,
+                Action(kind=ActionKind.PLANET_DESTROY, args={"planet_id": planet.id}),
+            )
+            exists = planet.id in universe.planets
+            colonists = sum(planet.colonists.values()) if exists else 0
+            name = label if steps == 1 else f"{label} {step + 1}"
+            ok = "yes" if res.ok else "no"
+            had = "yes" if before else "no"
+            left = "yes" if exists else "no"
+            rows.append(
+                f"| {name} | {ok} | {had} | {left} | {colonists} | "
+                f"{attacker.alignment - align} | {attacker.sector_id} |"
+            )
+            if not res.ok:
+                break
+
+    once("kill", fighters=0, shields=0, friendly=False, steps=1)
+    once("remove", fighters=0, shields=0, friendly=False, steps=2)
+    once("defended", fighters=8, shields=0, friendly=False, steps=1)
+    once("corp", fighters=0, shields=0, friendly=True, steps=1)
+    lines = [
+        "Planet destroy. The live siege grid does not call this action.",
+        "",
+        "| Step | Ok | Planet before | Planet after | Colonists | Alignment | Sector |",
+        "|---|---|---|---|---:|---:|---:|",
+        *rows,
+    ]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet siege scenario lab")
     parser.add_argument("--csv", action="store_true", help="print CSV instead of a markdown table")
@@ -700,6 +750,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--transwarp", action="store_true", help="print the planet transwarp table")
     parser.add_argument("--transporter", action="store_true", help="print the planet transporter table")
     parser.add_argument("--gift", action="store_true", help="print the citadel completion gift table")
+    parser.add_argument("--destroy", action="store_true", help="print the planet destruction table")
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--planet-fighters", type=_ints, default=PLANET_FIGHTERS)
     parser.add_argument("--planet-shields", type=_ints, default=PLANET_SHIELDS)
@@ -733,6 +784,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.gift:
         print(format_gift_table())
+        return 0
+    if args.destroy:
+        print(format_destroy_table())
         return 0
     cells = run_grid(
         planet_fighters=args.planet_fighters,

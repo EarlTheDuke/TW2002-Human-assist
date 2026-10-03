@@ -53,6 +53,7 @@ class ActionKind(str, Enum):
     PLANET_TRANSWARP = "planet_transwarp"
     PLANET_BUY_TRANSPORTER = "planet_buy_transporter"
     PLANET_TRANSPORT = "planet_transport"
+    PLANET_DESTROY = "planet_destroy"
 
 
 class Action(BaseModel):
