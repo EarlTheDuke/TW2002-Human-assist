@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-03 20:38 PT - Fable - the money scale is measured and not changed
+- A round trip pays about 17 times more per hold in the original sample. Ship prices were left alone.
+
 ### 2026-10-03 19:19 PT - Fable - the port visit tests cover every way out of a sector
 - Transporter, transwarp, and death each end the visit. The regen amount and the universe stream are pinned.
 
