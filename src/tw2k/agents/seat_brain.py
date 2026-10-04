@@ -57,9 +57,9 @@ from ..engine.constants import (
     COMMODITY_BASE_PRICE,
     GENESIS_SEED_COLONISTS,
     GENESIS_TORPEDO_COST,
-    SHIP_SPECS,
     fighter_unit_price,
     ship_cost,
+    ship_specs,
 )
 from ..engine.planets import organics_coeff, organics_worker_target, planet_growth_status
 from .pathb_client import TurnContext, legal_heuristic_policy
@@ -970,7 +970,7 @@ class SeatBrain:
         return None
 
     def _tpw(self, v: View) -> int:
-        spec = SHIP_SPECS.get(v.ship_class or "") or {}
+        spec = ship_specs().get(v.ship_class or "") or {}
         return max(1, int(spec.get("turns_per_warp") or 3))
 
     def _holds(self, v: View) -> int:

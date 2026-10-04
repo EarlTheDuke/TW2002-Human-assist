@@ -131,6 +131,12 @@ class ShipClass(str, Enum):
     MERCHANT_FREIGHTER = "merchant_freighter"
     HAVOC_GUNSTAR = "havoc_gunstar"
     IMPERIAL_STARSHIP = "imperial_starship"
+    STAR_MASTER = "star_master"
+    CONSTELLATION = "constellation"
+    TKHASI_ORION = "tkhasi_orion"
+    THOLIAN_SENTINEL = "tholian_sentinel"
+    TAUREAN_MULE = "taurean_mule"
+    INTERDICTOR_CRUISER = "interdictor_cruiser"
 
 
 class FighterMode(str, Enum):

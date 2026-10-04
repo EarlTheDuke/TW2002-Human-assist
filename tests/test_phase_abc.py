@@ -1709,13 +1709,13 @@ class TestPhaseGObservationSurface:
 class TestPhaseHTurnsStarvation:
     """Regression tests for the D1·56..91 infinite "out of turns" loop.
 
-    Bug: CargoTran has turns_per_warp=3, so at turns_today=78 (2 remaining)
+    Bug: CargoTran has turns_per_warp=4, so at turns_today=78 (2 remaining)
     the player couldn't warp, couldn't trade (cost 3), but the server kept
     asking them to act because 78 < 80. Grok retried warp 36 times in a row.
     """
 
     def test_h1_is_day_done_catches_low_turns_for_slow_ship(self):
-        """CargoTran needs 3 turns to warp. A first dock now costs 1, so 2
+        """CargoTran needs 4 turns to warp. A first dock now costs 1, so 2
         turns left is still a trade. Zero left ends the day."""
         from tw2k.engine.models import ShipClass
         from tw2k.server.runner import _is_day_done
@@ -1735,8 +1735,8 @@ class TestPhaseHTurnsStarvation:
         u, (a, *_) = _make_universe(seed=7002)
         a.ship.ship_class = ShipClass.CARGOTRAN
         a.turns_per_day = 80
-        a.turns_today = 77  # 3 left — exactly enough to warp
-        assert not _is_day_done(a), "agent with 3 turns left in CargoTran can still warp"
+        a.turns_today = 77  # 3 left — short of a 4-turn warp, a dock still fits
+        assert not _is_day_done(a), "3 turns left still pays for a dock"
 
     def test_h3_is_day_done_respects_scout_marauder_fast_warp(self):
         """Scout Marauder has turns_per_warp=2. Should still be able to warp

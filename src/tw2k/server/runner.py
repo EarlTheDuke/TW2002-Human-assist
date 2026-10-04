@@ -94,7 +94,7 @@ def _is_day_done(player) -> bool:
     ship = getattr(player, "ship", None)
     warp_cost = K.TURN_COST["warp"]
     if ship is not None:
-        spec = K.SHIP_SPECS.get(ship.ship_class.value)
+        spec = K.ship_specs().get(ship.ship_class.value)
         if spec and "turns_per_warp" in spec:
             warp_cost = int(spec["turns_per_warp"])
     from ..engine.economy import trade_turn_cost

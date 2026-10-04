@@ -857,16 +857,18 @@ def _ship_dict(ship) -> dict[str, Any]:
     # on a cargotran whose cap was 400; 4 rejected buys in 8 days).
     # Surfacing `fighter_cap` / `fighter_headroom` as first-class fields
     # gives the agent a direct "can I buy N more?" read.
-    from .constants import SHIP_SPECS  # local import to avoid cycle
+    from .constants import ship_specs  # local import to avoid cycle
 
-    spec = SHIP_SPECS.get(ship.ship_class.value, {}) or {}
+    spec = ship_specs().get(ship.ship_class.value, {}) or {}
     fighter_cap = int(spec.get("max_fighters", 0) or 0)
     shield_cap = int(spec.get("max_shields", 0) or 0)
     cur_fighters = int(getattr(ship, "fighters", 0) or 0)
     cur_shields = int(getattr(ship, "shields", 0) or 0)
-    return {
+    hold_cap = int(spec["max_holds"]) if "max_holds" in spec else 150
+    ship_view = {
         "class": ship.ship_class.value,
         "holds": ship.holds,
+        "hold_cap": hold_cap,
         "cargo": cargo_qty,
         "cargo_cost_avg": cost_avg,
         "cargo_value_at_cost": cost_total,
@@ -883,6 +885,13 @@ def _ship_dict(ship) -> dict[str, Any]:
         "photon_disabled_ticks": getattr(ship, "photon_disabled_ticks", 0),
         "cargo_free": ship.cargo_free,
     }
+    if "max_mines" in spec:
+        ship_view["mine_cap"] = int(spec["max_mines"])
+    if "max_genesis" in spec:
+        ship_view["genesis_cap"] = int(spec["max_genesis"])
+    if "max_photons" in spec:
+        ship_view["photon_cap"] = int(spec["max_photons"])
+    return ship_view
 
 
 def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]:
@@ -1424,7 +1433,7 @@ def _action_hint(
     ship = getattr(player, "ship", None) if player is not None else None
     warp_cost = K.TURN_COST.get("warp", 2)
     if ship is not None:
-        spec = K.SHIP_SPECS.get(getattr(ship.ship_class, "value", ""))
+        spec = K.ship_specs().get(getattr(ship.ship_class, "value", ""))
         if spec and "turns_per_warp" in spec:
             warp_cost = int(spec["turns_per_warp"])
     trade_cost = K.PORT_DOCK_TURN_COST
@@ -1546,7 +1555,7 @@ def _action_hint(
                         f"Cargo free={free} — `buy_equip item=colonists qty={free}` loads Terra colonists at 10 cr each."
                     )
                 credits_now = int(getattr(player, "credits", 0) or 0)
-                spec = K.SHIP_SPECS.get(getattr(getattr(ship_sd, "ship_class", None), "value", ""), {}) or {}
+                spec = K.ship_specs().get(getattr(getattr(ship_sd, "ship_class", None), "value", ""), {}) or {}
                 fighter_cap = int(spec.get("max_fighters", 0) or 0)
                 shield_cap = int(spec.get("max_shields", 0) or 0)
                 fighter_headroom = max(0, fighter_cap - int(getattr(ship_sd, "fighters", 0) or 0))
@@ -1576,7 +1585,7 @@ def _action_hint(
             alignment = int(getattr(player, "alignment", 0) or 0)
             in_corp = bool(getattr(player, "corp_ticker", None))
             affordable: list[str] = []
-            for class_key, spec in K.SHIP_SPECS.items():
+            for class_key, spec in K.ship_specs().items():
                 if class_key == cur_class_val:
                     continue
                 cost = K.ship_cost(class_key)
@@ -1605,7 +1614,7 @@ def _action_hint(
                 next_up = min(
                     (
                         (K.ship_cost(k), k, s.get("display_name", k))
-                        for k, s in K.SHIP_SPECS.items()
+                        for k, s in K.ship_specs().items()
                         if k != cur_class_val
                         and K.ship_cost(k) > credits
                         and not s.get("corp_only", False)
@@ -1641,7 +1650,7 @@ def _action_hint(
             alignment = int(getattr(player, "alignment", 0) or 0)
             in_corp = bool(getattr(player, "corp_ticker", None))
             affordable: list[tuple[int, int, str]] = []
-            for class_key, spec in K.SHIP_SPECS.items():
+            for class_key, spec in K.ship_specs().items():
                 if class_key == cur_class_val:
                     continue
                 cost = K.ship_cost(class_key)
