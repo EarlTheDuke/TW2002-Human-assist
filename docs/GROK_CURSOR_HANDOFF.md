@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-04 14:36 PT - Fable - a hull the old table skips now has a real wave
+- The original ten keep their old fighter and shield totals. Eleven planted misses each fail a test.
+
 ### 2026-10-04 13:28 PT - Fable - the yard sells the original roster and enforces its caps
 - Sixteen player hulls, with the chart caps on holds, fighters, shields, mines, genesis, and photons. Fights still use the old wave.
 
