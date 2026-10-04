@@ -1192,10 +1192,20 @@ def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> A
         pool, error = _parse_colonist_pool(action)
         if error is not None:
             return error
+        total_col = sum(int(n) for n in planet.colonists.values())
+        room = K.planet_colonist_room(planet.class_id.value, total_col)
+        if room is not None and qty > room:
+            cap = K.PLANET_MAX_COLONISTS[planet.class_id.value]
+            return ActionResult(ok=False, error=f"planet colonist cap is {cap}")
         pool_label = pool.value
         planet.colonists[pool] = planet.colonists.get(pool, 0) + qty
     else:
-        planet.stockpile[commodity] = planet.stockpile.get(commodity, 0) + qty
+        before = int(planet.stockpile.get(commodity, 0))
+        room = K.planet_stock_room(planet.class_id.value, commodity.value, before)
+        if room is not None and qty > room:
+            cap = K.PLANET_MAX_STOCK[planet.class_id.value][commodity.value]
+            return ActionResult(ok=False, error=f"planet {commodity.value} cap is {cap}")
+        planet.stockpile[commodity] = before + qty
 
     remaining = avail - qty
     player.ship.cargo[commodity] = remaining
@@ -1262,6 +1272,12 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
     cost = K.TURN_COST.get("liftoff", 1)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
+    if src == "ship" and dst != "ship":
+        total_col = sum(int(n) for n in planet.colonists.values())
+        room = K.planet_colonist_room(planet.class_id.value, total_col)
+        if room is not None and qty > room:
+            cap = K.PLANET_MAX_COLONISTS[planet.class_id.value]
+            return ActionResult(ok=False, error=f"planet colonist cap is {cap}")
 
     # Withdraw
     if src == "ship":
@@ -1467,6 +1483,8 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
     cost = K.GENESIS_DEPLOY_TURN_COST
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
+    if not K.sector_has_planet_room(len(sector.planet_ids)):
+        return ActionResult(ok=False, error="sector already holds 5 planets")
 
     rng = _rng_for(universe)
     cls_name = _weighted_choice(rng, K.PLANET_CLASS_WEIGHTS)
@@ -2687,6 +2705,8 @@ def _handle_planet_transwarp(universe: Universe, pid: str, action: Action) -> Ac
         return ActionResult(ok=False, error="no such sector")
     if dest_id == K.STARDOCK_SECTOR or dest_id in K.FEDSPACE_SECTORS:
         return ActionResult(ok=False, error="cannot transwarp to FedSpace")
+    if not K.sector_has_planet_room(len(dest.planet_ids)):
+        return ActionResult(ok=False, error="sector already holds 5 planets")
     path = _bfs_path(universe, planet.sector_id, dest_id)
     if not path:
         return ActionResult(ok=False, error="no route to destination")

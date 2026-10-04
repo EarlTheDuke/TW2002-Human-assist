@@ -660,11 +660,14 @@ class SeatBrain:
                 candidates.append(self._act("build_citadel", {"planet_id": pid},
                                             f"build citadel L{nxt.get('level', '?')} on planet {pid}"))
             if v.colonists_aboard > 0 and v.ok("assign_colonists"):
-                qty = v.max_by("assign_colonists", "qty", "ship") or v.colonists_aboard
-                pool = self._ship_pool(planet, qty)
-                candidates.append(self._act("assign_colonists",
-                                            {"planet_id": pid, "from": "ship", "to": pool, "qty": int(qty)},
-                                            f"unload {qty} colonists to {pool} on planet {pid}"))
+                # A 0 max is a full class, not "unknown". Falling back to the
+                # whole hold retries an unload the engine will refuse.
+                qty = v.max_by("assign_colonists", "qty", "ship")
+                if qty > 0:
+                    pool = self._ship_pool(planet, qty)
+                    candidates.append(self._act("assign_colonists",
+                                                {"planet_id": pid, "from": "ship", "to": pool, "qty": int(qty)},
+                                                f"unload {qty} colonists to {pool} on planet {pid}"))
             rebalance = self._rebalance_organics(v, planet) if self.feed_organics else None
             if rebalance is not None:
                 candidates.append(rebalance)

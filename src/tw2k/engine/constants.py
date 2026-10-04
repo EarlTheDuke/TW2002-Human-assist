@@ -866,6 +866,59 @@ GENESIS_MIN_HOPS_FROM_STARDOCK = 3
 # Founding population Genesis torpedoes bring to life. Tuned so Citadel L1
 # (1,000 colonists) is immediately buildable and natural growth can start.
 GENESIS_SEED_COLONISTS = 2_500
+# "tw2002" caps colonists and stock by class and stops a sixth planet in a
+# sector. "legacy" keeps the old uncapped growth and no sector limit.
+# The stock unit price does not follow this switch. It follows
+# ECONOMY_SCALE_MODE, because that price was already the live base.
+PLANET_ECONOMY_MODE = "tw2002"
+PLANETS_PER_SECTOR_CAP = 5
+# S1_planet_handbook_v1.01.html. Maximum Colonists is the same on every
+# product row of a class, so it is the population cap. Max on Planet is the
+# stock cap for that good. Fighter rows are not applied here.
+PLANET_MAX_COLONISTS = {
+    "M": 30_000,
+    "K": 40_000,
+    "L": 40_000,
+    "O": 200_000,
+    "C": 100_000,
+    "H": 100_000,
+    "U": 3_000,
+}
+PLANET_MAX_STOCK = {
+    "M": {"fuel_ore": 100_000, "organics": 100_000, "equipment": 100_000},
+    "K": {"fuel_ore": 200_000, "organics": 50_000, "equipment": 10_000},
+    "L": {"fuel_ore": 200_000, "organics": 200_000, "equipment": 200_000},
+    "O": {"fuel_ore": 100_000, "organics": 1_000_000, "equipment": 50_000},
+    "C": {"fuel_ore": 20_000, "organics": 50_000, "equipment": 10_000},
+    "H": {"fuel_ore": 1_000_000, "organics": 10_000, "equipment": 100_000},
+    "U": {"fuel_ore": 10_000, "organics": 10_000, "equipment": 10_000},
+}
+
+
+def planet_limits_on() -> bool:
+    return PLANET_ECONOMY_MODE == "tw2002"
+
+
+def sector_has_planet_room(count: int) -> bool:
+    if not planet_limits_on():
+        return True
+    return int(count) < PLANETS_PER_SECTOR_CAP
+
+
+def planet_colonist_room(class_id: str, current: int) -> int | None:
+    """How many more colonists fit. None means the legacy path has no cap."""
+    if not planet_limits_on():
+        return None
+    return max(0, PLANET_MAX_COLONISTS[class_id] - int(current))
+
+
+def planet_stock_room(class_id: str, commodity: str, current: int) -> int | None:
+    """How many more units of one good fit. None means the legacy path has no cap."""
+    if not planet_limits_on():
+        return None
+    return max(0, PLANET_MAX_STOCK[class_id][commodity] - int(current))
+
+
 # Price per colonist when buying from Terra/StarDock (classic TW2002: ~10 cr).
 # Cheap enough that you can fully load a 20-hold merchant cruiser for 200 cr,
 # but the REAL cost is the turns spent ferrying them to a distant planet.

@@ -460,24 +460,48 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     # dump_planet_cargo: ship cargo (incl. colonists) -> planet.
     cargo_have = {c.value: int(n) for c, n in (player.ship.cargo or {}).items() if int(n) > 0}
+    dump_max = dict(cargo_have)
+    if owned_landed and K.planet_limits_on():
+        total_col = sum(int(n) for n in landed_planet.colonists.values())
+        col_room = K.planet_colonist_room(landed_planet.class_id.value, total_col)
+        for name, have in list(dump_max.items()):
+            if name == Commodity.COLONISTS.value:
+                room = col_room
+            else:
+                held = int(landed_planet.stockpile.get(Commodity(name), 0))
+                room = K.planet_stock_room(landed_planet.class_id.value, name, held)
+            if room is not None:
+                dump_max[name] = min(have, int(room))
+        dump_max = {name: qty for name, qty in dump_max.items() if qty > 0}
     if owned_reason:
         reason = owned_reason
     elif not cargo_have:
         reason = "holds are empty"
+    elif not dump_max:
+        reason = "planet is at its class cap"
     else:
         reason = _need_turns(player, xfer_cost)
     out.append(_la(ActionKind.DUMP_PLANET_CARGO, legal=reason is None, reason=reason, cost=xfer_cost,
                    params={"planet_id": pid_param,
-                           "commodity": {"type": "str", "required": True, "choices": sorted(cargo_have)},
-                           "qty": {"type": "int", "required": True, "min": 1, "max_by": cargo_have},
+                           "commodity": {"type": "str", "required": True, "choices": sorted(dump_max)},
+                           "qty": {"type": "int", "required": True, "min": 1, "max_by": dump_max},
                            "pool": {"type": "str", "required": False, "choices": pool_names}}))
 
     # assign_colonists: move colonists ship <-> pools / pool <-> pool.
     ship_cols = int((player.ship.cargo or {}).get(Commodity.COLONISTS, 0) or 0)
     pools_have = ({c.value: int(n) for c, n in landed_planet.colonists.items() if int(n) > 0} if owned_landed else {})
-    from_choices = (["ship"] if ship_cols > 0 else []) + sorted(pools_have)
+    ship_room = ship_cols
+    if owned_landed and ship_cols > 0 and K.planet_limits_on():
+        total_col = sum(int(n) for n in landed_planet.colonists.values())
+        room = K.planet_colonist_room(landed_planet.class_id.value, total_col)
+        if room is not None:
+            ship_room = min(ship_cols, int(room))
+    from_choices = (["ship"] if ship_room > 0 else []) + sorted(pools_have)
     if owned_reason:
         reason = owned_reason
+    elif not from_choices and ship_cols > 0 and ship_room <= 0:
+        cap = K.PLANET_MAX_COLONISTS[landed_planet.class_id.value]
+        reason = f"planet colonist cap is {cap}"
     elif not from_choices:
         reason = "no colonists aboard or on the planet"
     else:
@@ -487,7 +511,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                            "from": {"type": "str", "required": True, "choices": from_choices},
                            "to": {"type": "str", "required": True, "choices": pool_names + (["ship"] if free > 0 else [])},
                            "qty": {"type": "int", "required": True, "min": 1,
-                                   "max_by": {**({"ship": ship_cols} if ship_cols > 0 else {}), **pools_have},
+                                   "max_by": {**({"ship": ship_room} if ship_room > 0 else {}), **pools_have},
                                    "ship_free": free}}))
 
     # build_citadel: next tier cost in credits (personal or corp treasury) + colonists on planet.
@@ -530,6 +554,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = "must be in space to deploy genesis (liftoff first)"
     else:
         reason = _need_turns(player, gen_cost)
+        if reason is None and not K.sector_has_planet_room(len(sector.planet_ids)):
+            reason = "sector already holds 5 planets"
     out.append(_la(ActionKind.DEPLOY_GENESIS, legal=reason is None, reason=reason, cost=gen_cost,
                    params={"hops_from_stardock": hops, "min_hops": int(K.GENESIS_MIN_HOPS_FROM_STARDOCK)}))
 

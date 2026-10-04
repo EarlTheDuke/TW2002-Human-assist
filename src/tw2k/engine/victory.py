@@ -53,6 +53,18 @@ def _award_xp(universe: Universe, pid: str, key: str, multiplier: int = 1) -> No
     p.experience += amount
 
 
+def planet_stock_unit_price(commodity_value: str) -> int:
+    """Published base for one unit of planet stock.
+
+    The revision history names the original sell "100% Planetary Trading":
+    a mobile planet sells its goods to the port it sits on. That port's live
+    bid moves with hidden MCIC, so the score uses the published base. The
+    base already follows ECONOMY_SCALE_MODE. PLANET_ECONOMY_MODE does not
+    change this price.
+    """
+    return int(K.COMMODITY_BASE_PRICE.get(commodity_value, 0) or 0)
+
+
 def _planet_asset_value(planet) -> int:
     """Value of a single owned planet, used in full_net_worth.
 
@@ -90,8 +102,7 @@ def _planet_asset_value(planet) -> int:
         for commodity, qty in planet.stockpile.items():
             if qty <= 0:
                 continue
-            base = K.COMMODITY_BASE_PRICE.get(commodity.value, 0)
-            stockpile_value += qty * base
+            stockpile_value += qty * planet_stock_unit_price(commodity.value)
 
     defense_value = planet.fighters * K.FIGHTER_COST + planet.shields * 10
     return citadel_cost + colonist_value + stockpile_value + planet.treasury + defense_value
