@@ -1711,19 +1711,18 @@ class TestPhaseHTurnsStarvation:
     """
 
     def test_h1_is_day_done_catches_low_turns_for_slow_ship(self):
-        """With CargoTran (3/warp) and only 2 turns left, the server must
-        treat the day as done even though turns_today < turns_per_day."""
+        """CargoTran needs 3 turns to warp. A first dock now costs 1, so 2
+        turns left is still a trade. Zero left ends the day."""
         from tw2k.engine.models import ShipClass
         from tw2k.server.runner import _is_day_done
 
         u, (a, *_) = _make_universe(seed=7001)
         a.ship.ship_class = ShipClass.CARGOTRAN
         a.turns_per_day = 80
-        a.turns_today = 78  # 2 left — can't warp (needs 3), can't trade (needs 3)
-        assert _is_day_done(a), (
-            "agent with <3 turns in a CargoTran (warp=3, trade=3) should "
-            "be treated as day-done; otherwise the server spins forever."
-        )
+        a.turns_today = 78  # 2 left — can't warp, can still dock
+        assert not _is_day_done(a)
+        a.turns_today = 80
+        assert _is_day_done(a)
 
     def test_h2_is_day_done_false_when_agent_can_still_warp(self):
         from tw2k.engine.models import ShipClass

@@ -412,6 +412,7 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
     except ValueError:
         pass
     player.sector_id = K.STARDOCK_SECTOR
+    player.end_port_visit()
     universe.sectors[K.STARDOCK_SECTOR].occupant_ids.append(pid)
     player.ship.cargo = {c: 0 for c in player.ship.cargo}
     from .models import ShipClass as SC

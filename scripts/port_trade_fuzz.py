@@ -47,6 +47,8 @@ COVERAGE = (
     "haggle_accepted",
     "haggle_rejected",
     "oversize_rejected",
+    "first_visit",
+    "repeat_visit",
 )
 
 
@@ -165,6 +167,8 @@ def _move(universe, pid: str, sector_id: int) -> None:
     old = universe.sectors[player.sector_id]
     if pid in old.occupant_ids:
         old.occupant_ids.remove(pid)
+    if player.sector_id != sector_id:
+        player.end_port_visit()
     player.sector_id = sector_id
     if pid not in universe.sectors[sector_id].occupant_ids:
         universe.sectors[sector_id].occupant_ids.append(pid)
@@ -306,6 +310,7 @@ def _one(universe, rng: random.Random, pid: str, seed: int, step: int, counts: C
     before_goods = _goods(universe)
     before_credits = player.credits
     before_turns = player.turns_today
+    before_visit = player.port_visit_sector_id
     before_cargo = int(player.ship.cargo.get(commodity, 0))
     result = _act(universe, pid, side, commodity_name, qty, offer)
     if kind == "oversize":
@@ -359,6 +364,15 @@ def _one(universe, rng: random.Random, pid: str, seed: int, step: int, counts: C
     counts[f"{commodity_name} {side}"] += 1
     if kind in ("at", "under"):
         counts["haggle_accepted"] += 1
+    spent = player.turns_today - before_turns
+    if before_visit == player.sector_id:
+        if spent != 0:
+            _die(seed, step, pid, f"repeat visit spent {spent} turns")
+        counts["repeat_visit"] += 1
+    else:
+        if spent != K.PORT_DOCK_TURN_COST:
+            _die(seed, step, pid, f"first visit spent {spent} turns")
+        counts["first_visit"] += 1
     player.experience = int(player.experience) + 5
     if side == "buy" and step % 7 == 0:
         _sell_back(universe, pid, commodity, commodity_name, qty, before_credits, before_cargo, seed, step, counts)
@@ -383,14 +397,44 @@ def _sell_back(universe, pid, commodity, commodity_name, qty, credits_before, ca
     _bounds(universe, seed, step, pid)
 
 
+def _regen_units(universe) -> dict[Commodity, int]:
+    """Units the day tick should add. Same rounding as the engine, written here."""
+    added = {c: 0 for c in COMMODITIES}
+    for sector in universe.sectors.values():
+        port = sector.port
+        if port is None:
+            continue
+        for commodity, stock in port.stock.items():
+            if commodity not in added:
+                continue
+            prod = int(port.productivity.get(commodity, 0) or 0)
+            gain = round(prod * K.PORT_REGEN_PER_DAY)
+            room = stock.maximum - stock.current
+            added[commodity] += max(0, min(room, gain))
+    return added
+
+
 def _run_seed(seed: int, counts: Counter) -> None:
     rng = random.Random(seed)
     universe = _world(seed)
     baseline = _goods(universe)
     for step in range(ACTIONS):
         if rng.random() < 0.05:
+            added = _regen_units(universe)
+            before = _goods(universe)
             tick_day(universe)
-            baseline = _goods(universe)
+            after = _goods(universe)
+            expect = {c: before[c] + added[c] for c in COMMODITIES}
+            if after != expect:
+                _die(seed, step, "-", f"regen moved goods to {after}, expected {expect}")
+            for sector in universe.sectors.values():
+                port = sector.port
+                if port is None:
+                    continue
+                for stock in port.stock.values():
+                    if stock.current < 0 or stock.current > stock.maximum:
+                        _die(seed, step, "-", f"stock {stock.current} outside 0..{stock.maximum}")
+            baseline = after
         for pid in PLAYERS:
             _one(universe, rng, pid, seed, step, counts)
         if _goods(universe) != baseline:

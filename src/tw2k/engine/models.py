@@ -416,6 +416,13 @@ class Player(BaseModel):
     planet_landed: int | None = None
     # Sector where a photon damped planet cannons for this ship's one approach.
     photon_damped_sector_id: int | None = None
+    # Sector of the open port visit. Cleared when the player leaves.
+    # A second trade here costs no turn. Not a hidden port value.
+    port_visit_sector_id: int | None = None
+
+    def end_port_visit(self) -> None:
+        """A port visit ends when this player leaves the sector."""
+        self.port_visit_sector_id = None
     corp_ticker: str | None = None
     turns_today: int = 0
     turns_per_day: int = K.STARTING_TURNS_PER_DAY

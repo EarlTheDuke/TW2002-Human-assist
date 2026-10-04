@@ -1425,7 +1425,10 @@ def _action_hint(
         spec = K.SHIP_SPECS.get(getattr(ship.ship_class, "value", ""))
         if spec and "turns_per_warp" in spec:
             warp_cost = int(spec["turns_per_warp"])
-    trade_cost = K.TURN_COST.get("trade", 3)
+    trade_cost = K.PORT_DOCK_TURN_COST
+    if player is not None:
+        from .economy import trade_turn_cost
+        trade_cost = trade_turn_cost(player)
     if isinstance(turns_rem, int) and turns_rem >= 0:
         blocked: list[str] = []
         if turns_rem < warp_cost:

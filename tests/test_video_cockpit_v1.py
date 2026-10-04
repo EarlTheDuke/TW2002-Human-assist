@@ -58,6 +58,14 @@ def _goto(browser, host, extra: str = "", **ctx):
 def test_default_bot_shows_viewport_and_keeps_every_baseline_testid(browser, tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
     with CuHost(tmp_path, TOK, turns_per_day=500) as host:
+        me = host.runner.state.universe.players["P2"]
+        port = host.runner.state.universe.sectors[me.sector_id].port
+        if port is not None and port.code:
+            from tw2k.engine.models import Commodity
+            for i, name in enumerate(("fuel_ore", "organics", "equipment")):
+                if port.code[i] == "S":
+                    stock = port.stock[Commodity(name)]
+                    stock.current = stock.maximum
         ctx, page, errors = _goto(browser, host)
         vp = page.get_by_test_id("viewport")
         box = vp.bounding_box()

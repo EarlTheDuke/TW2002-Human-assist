@@ -100,6 +100,21 @@ def haggle_bound(listed: int, mcic: int, side: str) -> int:
     return min(listed, max(1, floor))
 
 
+def trade_turn_cost(player: Player) -> int:
+    """Turns a successful trade spends right now.
+
+    The first trade of a visit costs the dock turn. Further trades in that
+    sector cost none. The visit ends when the player leaves the sector.
+    """
+    if player.port_visit_sector_id == player.sector_id:
+        return 0
+    return K.PORT_DOCK_TURN_COST
+
+
+def begin_port_visit(player: Player) -> None:
+    player.port_visit_sector_id = player.sector_id
+
+
 def can_trade(port: Port, commodity: Commodity, qty: int, side: str) -> tuple[bool, str]:
     """side = 'buy' means player is buying from port; 'sell' means player is selling to port."""
     if side == "buy":
@@ -223,19 +238,12 @@ def execute_trade(
 
 
 def regenerate_ports(universe: Universe) -> None:
-    """Called on day tick. Move each port's stock toward its max by regen %."""
+    """Add each commodity's daily productivity, scaled by the regen setting."""
     for sector in universe.sectors.values():
         port = sector.port
         if port is None:
             continue
-        for _commodity, stock in port.stock.items():
-            if port.buys(_commodity):
-                # Buying ports "consume" their purchases (representing onward sale).
-                # They drift back toward a moderate level.
-                target = int(stock.maximum * 0.3)
-                delta = int((target - stock.current) * K.PORT_REGEN_PER_DAY * 2)
-                stock.current = max(0, min(stock.maximum, stock.current + delta))
-            else:
-                # Selling ports regenerate stock toward max.
-                delta = int((stock.maximum - stock.current) * K.PORT_REGEN_PER_DAY * 2)
-                stock.current = min(stock.maximum, stock.current + delta)
+        for commodity, stock in port.stock.items():
+            prod = int(port.productivity.get(commodity, 0) or 0)
+            gain = round(prod * K.PORT_REGEN_PER_DAY)
+            stock.current = max(0, min(stock.maximum, stock.current + gain))

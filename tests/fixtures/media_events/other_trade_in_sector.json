@@ -32,13 +32,13 @@
       "actor_id": "P2",
       "actor_kind": "external",
       "sector_id": 19,
-      "summary": "Rival buy 5 fuel_ore @ 17cr = 85cr",
+      "summary": "Rival buy 5 fuel_ore @ 13cr = 65cr",
       "facts": {
         "commodity": "fuel_ore",
         "qty": 5,
         "side": "buy",
-        "unit": 17,
-        "total": 85,
+        "unit": 13,
+        "total": 65,
         "realized_profit": null
       }
     }

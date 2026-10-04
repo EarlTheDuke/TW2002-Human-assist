@@ -89,8 +89,10 @@ The observation contains everything you need. Stop guessing from memory:
                              you need to scan them (warp in, then scan).
   trade_log (last 25)      — your own recent trades with realized_profit on sells
                              (can be negative — you dumped below cost basis!)
-                             Each entry's `note` says "haggle countered" when
-                             the port rejected your ask and auto-settled at list.
+                             Each entry's `note` is on a trade that happened. A counter
+                             the port refuses is not in this log. The port says it
+                             lost patience, the trade does not happen, and that
+                             attempt costs 1 turn.
   trade_summary            — one-line roll-up: total_profit_cr, avg_margin_pct,
                              haggle_win_rate_pct, best_pair/worst_pair. Read
                              this BEFORE starting another round-trip on the
@@ -685,8 +687,9 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
         "known_warps": obs.known_warps,
         # Last 25 trades — bumped from 5 so haggle patterns over a full
         # day are visible to the agent. Each entry includes
-        # realized_profit (sells only) + note ("haggle countered" means
-        # the port rejected our ask and auto-settled at list).
+        # realized_profit (sells only). A refused counter is not listed:
+        # the port lost patience, the trade did not happen, and the attempt
+        # costs 1 turn.
         "trade_log": obs.trade_log[-25:],
         # One-row roll-up of the trade log so the agent doesn't have to
         # re-compute "am I actually making money?" from 25 rows every

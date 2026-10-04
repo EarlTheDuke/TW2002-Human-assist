@@ -253,6 +253,14 @@ def test_browser_one_click_trades_for_every_commodity(browser, tmp_path: Path, m
     monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
     monkeypatch.delenv("TW2K_GROKBOT_WEBHOOK_URL", raising=False)
     with CuHost(tmp_path, TOK, max_days=2, turns_per_day=40) as host:
+        me = host.runner.state.universe.players["P2"]
+        port = host.runner.state.universe.sectors[me.sector_id].port
+        if port is not None and port.code:
+            from tw2k.engine.models import Commodity
+            for i, name in enumerate(("fuel_ore", "organics", "equipment")):
+                if port.code[i] == "S":
+                    stock = port.stock[Commodity(name)]
+                    stock.current = stock.maximum
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         page.goto(f"{host.base}/bot?seat=P2&mode=cu&token={TOK}")
         page.wait_for_selector("#cuTurn.turn", timeout=20_000)
