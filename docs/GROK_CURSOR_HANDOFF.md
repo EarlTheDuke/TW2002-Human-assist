@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-04 16:45 PT - Grok - planet totals stop at the handbook and a sector stops at five
+- The score stays on the published base. Four planted misses each fail a test.
+
 ### 2026-10-04 14:36 PT - Fable - a hull the old table skips now has a real wave
 - The original ten keep their old fighter and shield totals. Eleven planted misses each fail a test.
 

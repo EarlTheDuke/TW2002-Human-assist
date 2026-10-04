@@ -193,12 +193,19 @@ def _advance_planets(universe: Universe) -> None:
         coeffs = PLANET_PROD_COEFF[planet.class_id]
         for commodity, coeff in coeffs.items():
             colonists = planet.colonists.get(commodity, 0)
-            produced = int(colonists * coeff / 100)
-            planet.stockpile[commodity] = planet.stockpile.get(commodity, 0) + produced
+            raw = int(colonists * coeff / 100)
+            produced = raw if raw > 0 else 0
+            before = int(planet.stockpile.get(commodity, 0))
+            room = K.planet_stock_room(planet.class_id.value, commodity.value, before)
+            added = produced if room is None else min(produced, room)
+            planet.stockpile[commodity] = before + added
         # Growth — only if organics stockpile positive after today's output.
         if planet.stockpile.get(Commodity.ORGANICS, 0) > 0:
             total_col = sum(planet.colonists.values())
             growth = int(total_col * 0.05)
+            room = K.planet_colonist_room(planet.class_id.value, total_col)
+            if room is not None:
+                growth = min(growth, room)
             # Distribute growth proportionally
             if total_col > 0 and growth > 0:
                 for c in list(planet.colonists.keys()):
