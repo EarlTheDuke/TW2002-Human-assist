@@ -852,8 +852,10 @@ def _planet_odds_fight(player, planet, on_shields_down=None) -> tuple[int, int, 
     if _photon_damps_planet(player, planet):
         reaction = 0
         defenders = d_fighters
-    # Odds slice owns this wave. It stays on the legacy table on purpose.
-    spec = K.SHIP_SPECS.get(player.ship.ship_class.value, {}) or {}
+    # The original ten stay on the legacy table. A hull that table does not
+    # list uses the live spec, or this wave falls through to 1.
+    class_key = player.ship.ship_class.value
+    spec = K.SHIP_SPECS[class_key] if class_key in K.SHIP_SPECS else (K.ship_specs().get(class_key) or {})
     wave_cap = (K.PLANET_OFFENSE_WAVE_NUM * (
         int(spec.get("max_fighters", 0) or 0) + int(spec.get("max_shields", 0) or 0)
     )) // K.PLANET_OFFENSE_WAVE_DEN
