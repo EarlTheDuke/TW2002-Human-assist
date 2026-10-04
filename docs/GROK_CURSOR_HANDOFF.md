@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-04 12:00 PT - Fable - the missed scale bugs now fail a test
+- Eight planted mistakes, from the hold term through an empty shelf, each fail their own test. No game rule changed.
+
 ### 2026-10-04 10:41 PT - Fable - the seat brain learns empty ports and the yard prices
 - A zero shelf is not bought. The allocator buys organics at the live quote. CargoTran and fighters use the price StarDock charges.
 
