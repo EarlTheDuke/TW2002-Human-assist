@@ -30,6 +30,10 @@ New ports draw the old 35 to 95 percent figure and drop it, so the rest of the u
 - **A refused counter still costs 1 turn.** The visit rule charges the dock turn only when a trade happens. The haggle failure is the other turn.
 - **Amounts under half a unit round away, and under that they add 0.** The original's rounding is not printed.
 
+## Known effects
+
+The first day has no selling-port stock anywhere. Ports open at 0 percent and regen runs at the day tick, which is the original rule. Seed 31's day-10 seat-brain finish is 347,690, against a ladder floor of 367,890. A later slice, not this one, will retune the seat brain for empty ports.
+
 ## Seat brain, seed 250925
 
 Same command before and after: `python scripts/seat_brain_acceptance.py n1 --seeds 250925 --credits 100000,20000`.

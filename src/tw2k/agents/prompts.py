@@ -175,6 +175,7 @@ warp back to StarDock and execute `buy_ship class=cargotran`. The
 - `unit_price` haggling: omit it to take the port's first offer. A counter the port accepts trades at that price. A counter past the port's hidden limit fails, the trade does not happen, and the turn is spent. You are not told the limit. A trade with no `unit_price` still works.
 - The observation's `known_ports_top` shows ports you've seen with their buy/sell lists; `sector.port` is the port you're in now.
 - Stop draining a port at ~50% stock (prices crater). Cycle to another pair, let it restock overnight.
+- Ports open empty. A selling port refills a little when the day ticks. A buying port takes the goods you are carrying now. On the first day, sell what you carry to a buying port, or wait for the day tick, instead of hunting a selling port for stock.
 
 ================ STARDOCK (SECTOR 1) PRICE SHEET ================
 Equipment — `buy_equip {"item":"<name>","qty":<int>}`:
@@ -464,6 +465,7 @@ Deeper mechanics, price tables, worked examples, and long diplomacy copy live in
 Ports use F/O/E for commodities; class codes encode buys/sells (e.g. SSB). `trade` with commodity,
 qty, side, optional `unit_price` to haggle. Check `cargo_cost_avg` before selling — dumping below cost
 loses money.
+Ports open empty. A selling port refills a little when the day ticks. A buying port takes the goods you are carrying now. On the first day, sell what you carry to a buying port, or wait for the day tick, instead of hunting a selling port for stock.
 
 ================ COMBAT & SURVIVAL ================
 `deploy_fighters`, `deploy_mines`, `attack`, `photon_missile`, `probe`, `plot_course`, `query_limpets`.

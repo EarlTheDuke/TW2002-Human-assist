@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-03 19:19 PT - Fable - the port visit tests cover every way out of a sector
+- Transporter, transwarp, and death each end the visit. The regen amount and the universe stream are pinned.
+
 ### 2026-10-03 18:01 PT - Fable - docking costs one turn and ports refill from productivity
 - A second trade in the same visit is free. New ports open empty and gain units each day.
 
