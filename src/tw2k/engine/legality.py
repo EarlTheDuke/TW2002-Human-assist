@@ -316,13 +316,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                        params={"item": {"type": "str", "required": True, "choices": []},
                                "qty": {"type": "int", "required": True, "min": 1, "max_by": {}}}))
     else:
-        trade_in = int(my_spec.get("cost", 0) * 0.25)
+        trade_in = int(K.ship_cost(player.ship.ship_class.value) * 0.25)
         owned_classes = {p.ship.ship_class.value for p in universe.players.values()}
         ship_choices: list[str] = []
         net_cost_by: dict[str, int] = {}
         blocked_by: dict[str, str] = {}
         for key, spec in K.SHIP_SPECS.items():
-            net = int(spec["cost"]) - trade_in
+            net = K.ship_cost(key) - trade_in
             net_cost_by[key] = net
             if spec.get("corp_only") and player.corp_ticker is None:
                 blocked_by[key] = "corporation-only"
@@ -339,11 +339,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                        params={"ship_class": {"type": "str", "required": True, "choices": ship_choices,
                                               "net_cost_by": net_cost_by, "trade_in": trade_in, "blocked_by": blocked_by}}))
 
+        day = int(universe.day)
         prices = {
-            "fighters": int(K.FIGHTER_COST), "shields": 10, "armid_mines": int(K.ARMID_MINE_COST),
+            "fighters": K.fighter_unit_price(day), "shields": 10, "armid_mines": int(K.ARMID_MINE_COST),
             "limpet_mines": int(K.LIMPET_MINE_COST), "atomic_mines": int(K.ATOMIC_MINE_COST),
             "photon_missiles": int(K.PHOTON_MISSILE_COST), "ether_probes": int(K.ETHER_PROBE_COST),
-            "genesis": int(K.GENESIS_TORPEDO_COST), "holds": int(my_spec.get("base_hold_cost", 0) or 0),
+            "genesis": int(K.GENESIS_TORPEDO_COST),
+            "holds": K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day),
             "colonists": int(K.COLONIST_PRICE),
         }
         cap_by = {
@@ -357,6 +359,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             afford = player.credits // unit if unit > 0 else 0
             mx = min(afford, cap_by[item]) if item in cap_by else afford
             equip_max[item] = max(0, int(mx))
+        equip_max["holds"] = K.holds_affordable(
+            player.ship.ship_class.value,
+            player.ship.holds,
+            player.credits,
+            day,
+            cap_by["holds"],
+        )
         equip_choices = [i for i, m in equip_max.items() if m >= 1]
         out.append(_la(ActionKind.BUY_EQUIP, legal=bool(equip_choices),
                        reason=None if equip_choices else "cannot afford any equipment (or all capacities full)",

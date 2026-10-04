@@ -244,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
         for key, spec in K.SHIP_SPECS.items():
             if spec.get("corp_only") or spec.get("unique") or spec.get("min_alignment", 0) > 0:
                 continue
-            if key != "merchant_cruiser" and spec["cost"] <= 100_000:
+            if key != "merchant_cruiser" and K.ship_cost(key) <= 100_000:
                 return key
         raise AssertionError("no ship")
 

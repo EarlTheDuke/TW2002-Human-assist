@@ -570,7 +570,7 @@ class Player(BaseModel):
             # to acquire, not at zero.
             + self.ship.cargo.get(Commodity.COLONISTS, 0) * K.COLONIST_PRICE
         )
-        ship_value = int(K.SHIP_SPECS[self.ship.ship_class.value]["cost"] * 0.5)
+        ship_value = int(K.ship_cost(self.ship.ship_class.value) * 0.5)
         # Ship equipment — all valued at StarDock buy price (mirrors
         # _handle_buy_equip). Shields are 10cr/unit, mines/missiles/probes
         # at their respective constants. This means a player who just

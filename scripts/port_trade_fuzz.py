@@ -442,11 +442,55 @@ def _run_seed(seed: int, counts: Counter) -> None:
     print(f"| {seed} | pass |")
 
 
+# economy2.html 100 percent charts, 250 holds, zero experience, MCIC 50 / -50.
+# Equipment 78.88 plus organics 42.992. Fuel is not on that best pair.
+CHART_ROUND_TRIP = 121.872
+
+
+def _chart_port(class_num: int, commodity: Commodity, buying: bool) -> Port:
+    return Port(
+        class_id=PortClass(class_num),
+        stock={commodity: PortStock(current=2500, maximum=2500)},
+        mcic={commodity: -50 if buying else 50},
+    )
+
+
+def check_chart_round_trips() -> int:
+    """Best one-hold trip at the chart conditions, from the independent formula.
+
+    Profit above the published equipment-plus-organics spread would be the
+    quote printing money the chart does not. Extreme MCIC in the random
+    trades can sit higher because the curves were kept. This check does not.
+    """
+    names = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)
+    best = 0
+    for left in range(1, 8):
+        for right in range(1, 8):
+            profit = 0
+            for index, commodity in enumerate(names):
+                sell_side = K.PORT_CLASS_TRADES[left][index]
+                buy_side = K.PORT_CLASS_TRADES[right][index]
+                if sell_side is False and buy_side is True:
+                    seller = _chart_port(left, commodity, buying=False)
+                    buyer = _chart_port(right, commodity, buying=True)
+                    profit += formula_buy(buyer, commodity, 0) - formula_sell(seller, commodity, 0)
+            if profit > best:
+                best = profit
+    limit = CHART_ROUND_TRIP * 1.02
+    if best > limit:
+        print(f"chart round trip {best} per hold exceeds {limit:.3f}")
+        print("port_trade_fuzz: FAIL")
+        raise SystemExit(1)
+    print(f"chart round trip {best} per hold, bound {limit:.3f}")
+    return best
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", type=int, default=len(FIXED_SEEDS))
     parser.add_argument("--force-zero", choices=COVERAGE, default=None)
     args = parser.parse_args()
+    check_chart_round_trips()
     counts: Counter = Counter()
     print("| Seed | Result |")
     for seed in FIXED_SEEDS[: args.seeds]:

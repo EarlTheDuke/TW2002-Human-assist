@@ -1615,8 +1615,8 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
             if p.ship.ship_class.value == class_key:
                 return ActionResult(ok=False, error="this ship class is already owned elsewhere")
 
-    trade_in = int(K.SHIP_SPECS[player.ship.ship_class.value]["cost"] * 0.25)
-    net_cost = spec["cost"] - trade_in
+    trade_in = int(K.ship_cost(player.ship.ship_class.value) * 0.25)
+    net_cost = K.ship_cost(class_key) - trade_in
     if player.credits < net_cost:
         return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {net_cost})")
 
@@ -1656,8 +1656,10 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     qty = int(action.args.get("qty", 0))
     if qty <= 0:
         return ActionResult(ok=False, error="qty must be positive")
+    day = int(universe.day)
+    class_key = player.ship.ship_class.value
     prices = {
-        "fighters": K.FIGHTER_COST,
+        "fighters": K.fighter_unit_price(day),
         "shields": 10,
         "armid_mines": K.ARMID_MINE_COST,
         "limpet_mines": K.LIMPET_MINE_COST,
@@ -1665,7 +1667,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "photon_missiles": K.PHOTON_MISSILE_COST,
         "ether_probes": K.ETHER_PROBE_COST,
         "genesis": K.GENESIS_TORPEDO_COST,
-        "holds": K.SHIP_SPECS[player.ship.ship_class.value]["base_hold_cost"],
+        "holds": K.hold_next_price(class_key, player.ship.holds, day),
         # Colonists are sold by Terra (classic TW2002: ~10 cr/unit). StarDock
         # doubles as the Federation's colonist exchange here — fold them into
         # buy_equip so the ferry-to-your-planet loop actually exists in game.
@@ -1674,7 +1676,11 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     unit = prices.get(item or "")
     if unit is None:
         return ActionResult(ok=False, error=f"unknown item {item!r}")
-    total = unit * qty
+    total = (
+        K.hold_total_price(class_key, player.ship.holds, qty, day)
+        if item == "holds"
+        else unit * qty
+    )
     if player.credits < total:
         return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {total})")
     spec = K.SHIP_SPECS[player.ship.ship_class.value]

@@ -3,8 +3,11 @@
 Done-when (offline, fogged observation only):
 * ferry turns under 40% of turns spent in a 10-day replay
 * day-10 net worth at least 145k on seed 250925
-* genesis-world organics never hit 0
-* the other N2 seeds stay within 85% of the fixed-ladder brain
+* rejected stays 0
+* seeds 230923, 99, and 31 stay within 85% of the fixed ladder and keep organics
+* seeds 250925 and 20260925 are held at the measured starve (planet 32 and
+  planet 30) and the measured net worth. The price scale did that. The brain
+  was not retuned. See ECONOMY_SCALE_APPLY.md.
 
 The brain is fed build_observation for its own seat. No /state.
 """

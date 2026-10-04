@@ -32,13 +32,13 @@
       "actor_id": "P1",
       "actor_kind": "external",
       "sector_id": 19,
-      "summary": "Commander buy 5 fuel_ore @ 13cr = 65cr",
+      "summary": "Commander buy 5 fuel_ore @ 133cr = 665cr",
       "facts": {
         "commodity": "fuel_ore",
         "qty": 5,
         "side": "buy",
-        "unit": 13,
-        "total": 65,
+        "unit": 133,
+        "total": 665,
         "realized_profit": null
       }
     },
@@ -50,13 +50,13 @@
       "actor_id": "P1",
       "actor_kind": "external",
       "sector_id": 19,
-      "summary": "Commander buy 5 fuel_ore @ 13cr = 65cr",
+      "summary": "Commander buy 5 fuel_ore @ 133cr = 665cr",
       "facts": {
         "commodity": "fuel_ore",
         "qty": 5,
         "side": "buy",
-        "unit": 13,
-        "total": 65,
+        "unit": 133,
+        "total": 665,
         "realized_profit": null
       }
     },
@@ -68,13 +68,13 @@
       "actor_id": "P1",
       "actor_kind": "external",
       "sector_id": 19,
-      "summary": "Commander buy 5 fuel_ore @ 13cr = 65cr",
+      "summary": "Commander buy 5 fuel_ore @ 133cr = 665cr",
       "facts": {
         "commodity": "fuel_ore",
         "qty": 5,
         "side": "buy",
-        "unit": 13,
-        "total": 65,
+        "unit": 133,
+        "total": 665,
         "realized_profit": null
       }
     }
