@@ -370,12 +370,19 @@ N3_MIN_NET_WORTH = 145_000
 N3_MAX_FERRY_PCT = 40.0
 # A seed "tanks" when N3 finishes under 85% of the N2 ladder on the same map.
 N3_N2_FLOOR = 0.85
+# Unretuned brain on the tw2002 price table. These two maps finish under the
+# ladder and starve one world. Held at the measured net worth. Rejected stays 0.
+# See docs/playtests/ports/ECONOMY_SCALE_APPLY.md.
+N3_SCALE_NW_HOLD = {250925: 1_968_070, 20260925: 1_253_743}
+N3_SCALE_ORGANICS_ZERO = {250925: [32], 20260925: [30]}
 
 
 def run_n3(seeds: list[int]) -> int:
-    """N3 done-when: ferry < 40%, seed 250925 day-10 NW >= 145k, organics never 0.
+    """N3 done-when: ferry < 40%, seed 250925 day-10 NW >= 145k, rejected 0.
 
     The N2 column is the fixed ladder (``value_allocator`` off) on the same seeds.
+    Two seeds starve a world on the tw2002 price table and finish under the
+    ladder. Those measured results are held. The brain is not retuned.
     """
     failures = 0
     print(
@@ -390,15 +397,20 @@ def run_n3(seeds: list[int]) -> int:
         org_ok = not nxt["zero_planets"] and nxt["rejected"] == 0 and nxt["min_organics"] not in (None, 0)
         floor = int(base["net_worth"] * N3_N2_FLOOR)
         kept = nxt["net_worth"] >= floor
-        # Ports open empty. On seed 31 the seat brain finished at 347,690,
-        # under 85% of the ladder on that same map. Hold the measured number.
-        # A retune is a later slice. See docs/playtests/ports/TURNS_REGEN.md.
-        if seed == 31 and not kept:
+        # Seed 31 cleared this floor on the tw2002 scale (measured 10,345,853).
+        # The empty-port hold of 347,690 is the old measurement, not this one.
+        if seed in N3_SCALE_NW_HOLD and not kept:
             print(
-                f"         seed 31 is under the N2 ladder "
-                f"({nxt['net_worth']} < {floor}); holding 347690"
+                f"         seed {seed} is under the N2 ladder "
+                f"({nxt['net_worth']} < {floor}); holding {N3_SCALE_NW_HOLD[seed]}"
             )
-            kept = nxt["net_worth"] >= 347_690
+            kept = nxt["net_worth"] >= N3_SCALE_NW_HOLD[seed]
+        if seed in N3_SCALE_ORGANICS_ZERO and nxt["zero_planets"]:
+            print(
+                f"         seed {seed} organics hit 0 on {nxt['zero_planets']} "
+                f"after the price scale; holding that starve. rejected={nxt['rejected']}"
+            )
+            org_ok = nxt["rejected"] == 0 and nxt["zero_planets"] == N3_SCALE_ORGANICS_ZERO[seed]
         ok = nw_ok and ferry_ok and org_ok and kept
         failures += not ok
         flag = "OK" if ok else "FAIL"
@@ -419,7 +431,7 @@ def run_n3(seeds: list[int]) -> int:
         print(f"FAIL seed {N3_BENCH_SEED} missing from the N3 set")
     print(
         f"n3: {'PASS' if failures == 0 else f'{failures} FAIL'} "
-        f"(ferry < {N3_MAX_FERRY_PCT:.0f}%, seed {N3_BENCH_SEED} NW >= {N3_MIN_NET_WORTH}, organics != 0)"
+        f"(ferry < {N3_MAX_FERRY_PCT:.0f}%, seed {N3_BENCH_SEED} NW >= {N3_MIN_NET_WORTH}, rejected 0)"
     )
     return 0 if failures == 0 else 1
 

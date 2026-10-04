@@ -168,6 +168,7 @@ def test_port_trade_fuzz_passes() -> None:
     proc = _fuzz("--seeds", "2")
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "port_trade_fuzz: PASS" in proc.stdout
+    assert "chart round trip" in proc.stdout
     assert "coverage:" not in proc.stdout
     assert proc.stdout.count("| pass |") == 2
 

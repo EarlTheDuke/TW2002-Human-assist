@@ -32,11 +32,11 @@
       "actor_id": "P1",
       "actor_kind": "external",
       "sector_id": 1,
-      "summary": "Commander bought 1 fighters for 50cr",
+      "summary": "Commander bought 1 fighters for 203cr",
       "facts": {
         "item": "fighters",
         "qty": 1,
-        "total": 50
+        "total": 203
       }
     }
   ],

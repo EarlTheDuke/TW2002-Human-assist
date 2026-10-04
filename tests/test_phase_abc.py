@@ -750,9 +750,8 @@ class TestPhaseDEconomy:
 
     def test_d5_affordable_ships_hint_at_stardock(self):
         """At StarDock with 75k cash, the action_hint must enumerate at
-        least one affordable ship class (Merchant Cruiser 41k, Cargotran
-        43k, Colonial Transport 63k are all under budget) so the LLM sees
-        concrete buy_ship targets rather than trying to infer from memory."""
+        least one affordable ship class. Scout 15,950, CargoTran 51,950,
+        and Colonial Transport 63,600 are under that budget."""
         from tw2k.engine.observation import build_observation
 
         u, (a, *_) = _make_universe()
@@ -761,7 +760,7 @@ class TestPhaseDEconomy:
         obs = build_observation(u, "A")
         hint = obs.action_hint
         assert "afford" in hint.lower(), f"missing affordable-ship hint: {hint}"
-        # Cargotran is the star pick (43k, 75 holds, 3.75x starter capacity).
+        # CargoTran is still under 75k at the Bible price (51,950).
         assert "CargoTran" in hint or "cargotran" in hint.lower() or "Merchant" in hint, (
             f"expected at least one sub-75k ship in hint: {hint}"
         )
@@ -1456,10 +1455,14 @@ class TestPhaseGObservationSurface:
         total = full_net_worth(u, a)
         # Citadel L1 investment: 5000cr + 1000 colonists * 10cr = 15,000
         # Colonist pools: (500+100+100+50) * 10 = 7,500
-        # Stockpile: 20 fo @ 18 = 360, 5 eq @ 36 = 180  -> 540
+        # Stockpile follows the live commodity bases.
+        stock = (
+            20 * K.COMMODITY_BASE_PRICE["fuel_ore"]
+            + 5 * K.COMMODITY_BASE_PRICE["equipment"]
+        )
         # Treasury: 2500
-        # Defense: 50*50 + 100*10 = 2500 + 1000 = 3500
-        planet_value = 15000 + 7500 + 540 + 2500 + 3500
+        # Defense: 50 * FIGHTER_COST (50) + 100 * 10 = 3500
+        planet_value = 15000 + 7500 + stock + 2500 + 3500
         assert total == ship_side + planet_value, (
             f"total={total} ship={ship_side} planet_add={total - ship_side} "
             f"expected_planet_value={planet_value}"
@@ -1530,14 +1533,15 @@ class TestPhaseGObservationSurface:
         tick_day(u)
 
         # H-class fuel production: int(1000 * 8 / 100) = 80 fuel ore.
-        # Stockpile value delta: 80 * 18 = 1440.
-        # Fighters from the same pool: 1000 // 50 = 20, valued at 50cr = 1000.
-        # Gain 2440. 30% payout = 732cr.
-        assert a.credits == 1_732
+        # Fighters from the same pool: 1000 // 50 = 20, still valued at FIGHTER_COST.
+        # The fuel is valued at the live base. Payout is 30 percent of that gain.
+        gain = 80 * K.COMMODITY_BASE_PRICE["fuel_ore"] + 20 * K.FIGHTER_COST
+        payout = int(gain * K.PLANET_VALUE_TAX_RATE)
+        assert a.credits == 1_000 + payout
         ev = next(e for e in u.events if e.kind == EventKind.PLANET_TAX_PAYOUT)
         assert ev.payload["planet_id"] == planet.id
-        assert ev.payload["gain"] == 2_440
-        assert ev.payload["payout"] == 732
+        assert ev.payload["gain"] == gain
+        assert ev.payload["payout"] == payout
         assert planet.last_tax_value == _planet_asset_value(planet)
 
     def test_g10_planet_growth_tax_ignores_unowned_planets(self):

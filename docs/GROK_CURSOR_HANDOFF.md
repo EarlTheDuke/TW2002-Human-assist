@@ -48,6 +48,10 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-03 22:56 PT - Fable - trade profit and ship prices share one switch
+- The original spread and the Bible hull prices are on together. Legacy mode puts the old numbers back.
+
+
 ### 2026-10-03 20:38 PT - Fable - the money scale is measured and not changed
 - A round trip pays about 17 times more per hold in the original sample. Ship prices were left alone.
 

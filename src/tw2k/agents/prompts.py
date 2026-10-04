@@ -191,18 +191,17 @@ Equipment — `buy_equip {"item":"<name>","qty":<int>}`:
   colonists       10 cr each          (fill your cargo holds; ferry to your planets)
 
 Ships — `buy_ship {"ship_class":"<key>"}`. 25% trade-in on current hull:
-  merchant_cruiser   (starter)           41k, 20 holds, 2500 fighters
-  cargotran          43k,  75 holds      (max cargo — pure trader)
-  scout_marauder     75k,  25 holds      (2 turns/warp — fastest explorer)
-  missile_frigate    100k, 40 holds      (5k fighters — first combat hull)
-  colonial_transport 63k,  50 holds      (cheap high-cargo for colonist ferries)
-  battleship         880k, 80 holds      (10k fighters — proper warship)
-  havoc_gunstar      445k, 65 holds      (3k shields — best defense/cr)
-  corporate_flagship 650k, 85 holds      (20k fighters — CORP MEMBER ONLY)
-  imperial_starship  4.4M, 150 holds     (alignment >= 2000 only — endgame)
+  merchant_cruiser   (starter)           41,300, 20 holds, 2500 fighters
+  cargotran          51,950,  75 holds   (max cargo — pure trader)
+  scout_marauder     15,950,  25 holds   (2 turns/warp — fastest explorer)
+  missile_frigate    100,800, 40 holds   (5k fighters — first combat hull)
+  colonial_transport 63,600,  50 holds   (cheap high-cargo for colonist ferries)
+  battleship         88,500, 80 holds    (10k fighters — proper warship)
+  havoc_gunstar      79,000, 65 holds    (3k shields — best defense/cr)
+  corporate_flagship 163,500, 85 holds   (20k fighters — CORP MEMBER ONLY)
+  imperial_starship  339,000, 150 holds  (alignment >= 2000 only — endgame)
 
-When to upgrade: around 100k-150k cr net worth, buy missile_frigate for 2x holds.
-Around 500k-900k, jump to battleship or havoc_gunstar for combat + fighters. Earlier is waste.
+When to upgrade: the prices above are what StarDock charges. Buy the hull whose holds and fighters you need.
 
 ================ COLONIZE — THE PLANET/CITADEL LOOP ================
 This is how you compound: planets produce commodities daily, and 20% of each

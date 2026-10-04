@@ -32,10 +32,10 @@
       "actor_id": "P1",
       "actor_kind": "external",
       "sector_id": 1,
-      "summary": "Commander bought a Scout Marauder (64675 cr)",
+      "summary": "Commander bought a Scout Marauder (5625 cr)",
       "facts": {
         "ship_class": "scout_marauder",
-        "net_cost": 64675
+        "net_cost": 5625
       }
     }
   ],

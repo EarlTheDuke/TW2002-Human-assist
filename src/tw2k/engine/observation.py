@@ -1234,6 +1234,8 @@ def _action_hint(
     """
     from . import constants as K
 
+    day = int(getattr(universe, "day", 0) or 0) if universe is not None else 0
+    fighter_px = K.fighter_unit_price(day)
     hints: list[str] = []
     full_hints = not is_minimal()
 
@@ -1317,7 +1319,7 @@ def _action_hint(
                     last_fighters = int(getattr(player, "last_death_fighters", 0) or 0)
                     credits_now = int(getattr(player, "credits", 0) or 0)
                     target_fighters = 500
-                    fighter_cost_total = target_fighters * K.FIGHTER_COST
+                    fighter_cost_total = target_fighters * fighter_px
                     afford_line = (
                         f"you have {credits_now:,}cr — {target_fighters} fighters = "
                         f"{fighter_cost_total:,}cr at StarDock"
@@ -1549,7 +1551,7 @@ def _action_hint(
                 shield_cap = int(spec.get("max_shields", 0) or 0)
                 fighter_headroom = max(0, fighter_cap - int(getattr(ship_sd, "fighters", 0) or 0))
                 shield_headroom = max(0, shield_cap - int(getattr(ship_sd, "shields", 0) or 0))
-                max_fighters = min(fighter_headroom, credits_now // K.FIGHTER_COST)
+                max_fighters = min(fighter_headroom, credits_now // fighter_px)
                 max_shields = min(shield_headroom, credits_now // 10)
                 max_colonists = min(int(free or 0), credits_now // K.COLONIST_PRICE)
                 bits.append(
@@ -1577,7 +1579,7 @@ def _action_hint(
             for class_key, spec in K.SHIP_SPECS.items():
                 if class_key == cur_class_val:
                     continue
-                cost = int(spec.get("cost", 0))
+                cost = K.ship_cost(class_key)
                 if cost <= 0 or cost > credits:
                     continue
                 if spec.get("corp_only") and not in_corp:
@@ -1602,10 +1604,10 @@ def _action_hint(
                 # Give a concrete ladder target so they know what to save for.
                 next_up = min(
                     (
-                        (int(s["cost"]), k, s.get("display_name", k))
+                        (K.ship_cost(k), k, s.get("display_name", k))
                         for k, s in K.SHIP_SPECS.items()
                         if k != cur_class_val
-                        and int(s.get("cost", 0)) > credits
+                        and K.ship_cost(k) > credits
                         and not s.get("corp_only", False)
                     ),
                     default=None,
@@ -1642,7 +1644,7 @@ def _action_hint(
             for class_key, spec in K.SHIP_SPECS.items():
                 if class_key == cur_class_val:
                     continue
-                cost = int(spec.get("cost", 0))
+                cost = K.ship_cost(class_key)
                 if cost <= 0:
                     continue
                 if spec.get("corp_only") and not in_corp:
@@ -1801,7 +1803,7 @@ def _action_hint(
         cur_sid = sector_info.get("id")
         in_fedspace = cur_sid in K.FEDSPACE_SECTORS if cur_sid is not None else False
         credits_now = int(getattr(player, "credits", 0) or 0)
-        buy_500_cost = 500 * K.FIGHTER_COST
+        buy_500_cost = 500 * fighter_px
         if not in_fedspace and ship_fighters < 500:
             # Louder text for the most dangerous case.
             hints.append(
@@ -1809,7 +1811,7 @@ def _action_hint(
                 f"/ {ship_shields} shields. Ferrengi raiders spawn with "
                 f"400-3,100 fighters (aggression 1-10). Any warp from here "
                 f"could meet one. StarDock (sec {K.STARDOCK_SECTOR}) sells "
-                f"fighters at {K.FIGHTER_COST}cr ea — 500 fighters = "
+                f"fighters at {fighter_px}cr ea — 500 fighters = "
                 f"{buy_500_cost:,}cr, you have {credits_now:,}cr."
             )
         elif not in_fedspace and ship_fighters < 1000:
@@ -1817,12 +1819,12 @@ def _action_hint(
                 f"FYI: ship has {ship_fighters} fighters in deep space. "
                 f"Ferrengi raiders carry 400-3,100 fighters. You'll likely "
                 f"win vs. aggression 1-3 raiders but lose to higher. "
-                f"StarDock sells fighters at {K.FIGHTER_COST}cr ea."
+                f"StarDock sells fighters at {fighter_px}cr ea."
             )
         elif in_fedspace and ship_fighters == 0 and ship_shields == 0:
             hints.append(
                 f"FYI: ship has 0 fighters / 0 shields. StarDock sells "
-                f"fighters ({K.FIGHTER_COST}cr ea). Ferrengi raiders (400-"
+                f"fighters ({fighter_px}cr ea). Ferrengi raiders (400-"
                 f"3,100 fighters) patrol deep space and favor unarmed targets."
             )
 

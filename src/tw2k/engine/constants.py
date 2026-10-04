@@ -2,13 +2,61 @@
 
 from __future__ import annotations
 
+import math
+
 # --- Commodities --------------------------------------------------------------
 
-COMMODITY_BASE_PRICE = {
+# "tw2002" is the Bible / economy2 scale. "legacy" is the table from ae1d5c4.
+ECONOMY_SCALE_MODE = "tw2002"
+
+_COMMODITY_BASE_LEGACY = {
     "fuel_ore": 18,
     "organics": 25,
     "equipment": 36,
 }
+# One base per commodity. Solved so the 100 percent, MCIC 50 / -50, experience 0
+# spread matches economy2.html. See ECONOMY_SCALE_APPLY.md.
+_COMMODITY_BASE_TW2002 = {
+    "fuel_ore": 179,
+    "organics": 389,
+    "equipment": 719,
+}
+
+
+class _ScalePrices(dict):
+    """Reads the legacy or tw2002 base, whichever ECONOMY_SCALE_MODE names."""
+
+    def _live(self) -> dict[str, int]:
+        if ECONOMY_SCALE_MODE == "tw2002":
+            return _COMMODITY_BASE_TW2002
+        return _COMMODITY_BASE_LEGACY
+
+    def __getitem__(self, key: str) -> int:
+        return self._live()[key]
+
+    def get(self, key: str, default: int | None = None) -> int | None:
+        return self._live().get(key, default)
+
+    def items(self):
+        return self._live().items()
+
+    def values(self):
+        return self._live().values()
+
+    def keys(self):
+        return self._live().keys()
+
+    def __iter__(self):
+        return iter(self._live())
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._live()
+
+    def __len__(self) -> int:
+        return len(self._live())
+
+
+COMMODITY_BASE_PRICE = _ScalePrices(_COMMODITY_BASE_LEGACY)
 
 # --- Port class matrix --------------------------------------------------------
 # True = port BUYS from player, False = port SELLS to player, None = not traded.
@@ -226,7 +274,86 @@ TURN_COST = {
 
 # --- Combat / fighters / mines ------------------------------------------------
 
-FIGHTER_COST = 50  # cr per fighter at StarDock
+FIGHTER_COST = 50  # legacy flat price, and the no-day net-worth value
+
+# Bible_TWGS_edit_2007_Clme.htm ship-cost column. Every ship we have is on it.
+SHIP_COST_TW2002 = {
+    "merchant_cruiser": 41_300,
+    "scout_marauder": 15_950,
+    "missile_frigate": 100_800,
+    "battleship": 88_500,
+    "corporate_flagship": 163_500,
+    "colonial_transport": 63_600,
+    "cargotran": 51_950,
+    "merchant_freighter": 33_400,
+    "havoc_gunstar": 79_000,
+    "imperial_starship": 339_000,
+}
+
+
+def ship_cost(class_key: str) -> int:
+    """What StarDock charges for this hull, before trade-in."""
+    if ECONOMY_SCALE_MODE == "tw2002":
+        return int(SHIP_COST_TW2002[class_key])
+    return int(SHIP_SPECS[class_key]["cost"])
+
+
+def fighter_unit_price(day: int) -> int:
+    """Credits for one fighter on this game day.
+
+    Legacy is the flat 50. The tw2002 wave is the Hekate note:
+    (160 + 40) + sin(day / 87 * 2 * pi) * 40, clamped to 160..239.
+    """
+    if ECONOMY_SCALE_MODE != "tw2002":
+        return FIGHTER_COST
+    raw = (160 + 40) + math.sin(int(day) / 87 * 2 * math.pi) * 40
+    price = round(raw)
+    if price < 160:
+        return 160
+    if price > 239:
+        return 239
+    return price
+
+
+def hold_day_base(day: int) -> int:
+    """Daily B in the hold formula. 151, up to 249 on day 9, back over 18 days."""
+    span = 249 - 151
+    pos = int(day) % 18
+    if pos <= 9:
+        return 151 + round(span * pos / 9)
+    return 151 + round(span * (18 - pos) / 9)
+
+
+def hold_next_price(class_key: str, holds_already: int, day: int) -> int:
+    """Credits for the next single hold."""
+    if ECONOMY_SCALE_MODE != "tw2002":
+        return int(SHIP_SPECS[class_key]["base_hold_cost"])
+    return hold_day_base(day) + 20 * int(holds_already)
+
+
+def hold_total_price(class_key: str, holds_already: int, qty: int, day: int) -> int:
+    """Credits to buy `qty` holds starting from `holds_already`."""
+    if ECONOMY_SCALE_MODE != "tw2002":
+        return int(SHIP_SPECS[class_key]["base_hold_cost"]) * int(qty)
+    base = hold_day_base(day)
+    held = int(holds_already)
+    count = int(qty)
+    return count * base + 20 * (count * held + count * (count - 1) // 2)
+
+
+def holds_affordable(
+    class_key: str, holds_already: int, credits: int, day: int, cap: int
+) -> int:
+    """Largest hold qty whose formula total fits in credits, and under cap."""
+    best = 0
+    limit = max(0, int(cap))
+    for qty in range(1, limit + 1):
+        if hold_total_price(class_key, holds_already, qty, day) > int(credits):
+            break
+        best = qty
+    return best
+
+
 ARMID_MINE_COST = 100
 LIMPET_MINE_COST = 250
 ATOMIC_MINE_COST = 4_000
