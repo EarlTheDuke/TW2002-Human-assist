@@ -22,7 +22,7 @@ from .combat import (
     _resolve_fighter_sector_combat,
     _resolve_ship_combat,
 )
-from .economy import execute_trade, regenerate_ports
+from .economy import begin_port_visit, execute_trade, regenerate_ports, trade_turn_cost
 from .ferrengi import _ferrengi_by_name, _ferrengi_roam_and_hunt, _spawn_ferrengi
 from .legality import planet_destroy_reason
 from .models import (
@@ -373,6 +373,7 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
         except ValueError:
             pass
         player.sector_id = target_id
+        player.end_port_visit()
         dest.occupant_ids.append(pid)
         _learn_sector(player, universe, target_id)
         # Log port if present
@@ -413,7 +414,7 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
     if side not in ("buy", "sell"):
         return ActionResult(ok=False, error="side must be 'buy' or 'sell'")
 
-    cost = K.TURN_COST["trade"]
+    cost = trade_turn_cost(player)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns for this day")
 
@@ -433,6 +434,7 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error=msg, turns_spent=K.PORT_HAGGLE_FAIL_TURNS if msg == "the port lost patience" else cost)
 
     _record_port_intel(player, sector.id, port, universe=universe)
+    begin_port_visit(player)
     # Persistent trade ledger — last 50 entries per player. The observation
     # surfaces the last 5 so the agent can audit "what did my loop actually
     # earn me?" without re-deriving from the global rolling feed which can
@@ -2689,6 +2691,7 @@ def _handle_planet_transwarp(universe: Universe, pid: str, action: Action) -> Ac
             except ValueError:
                 pass
             other.sector_id = dest_id
+            other.end_port_visit()
             if other.id not in dest.occupant_ids:
                 dest.occupant_ids.append(other.id)
         if other.photon_damped_sector_id == old_id:
@@ -2782,6 +2785,7 @@ def _handle_planet_transport(universe: Universe, pid: str, action: Action) -> Ac
     except ValueError:
         pass
     player.sector_id = dest_id
+    player.end_port_visit()
     player.planet_landed = None
     if pid not in dest.occupant_ids:
         dest.occupant_ids.append(pid)

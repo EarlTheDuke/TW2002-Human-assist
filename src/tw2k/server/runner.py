@@ -97,7 +97,8 @@ def _is_day_done(player) -> bool:
         spec = K.SHIP_SPECS.get(ship.ship_class.value)
         if spec and "turns_per_warp" in spec:
             warp_cost = int(spec["turns_per_warp"])
-    trade_cost = K.TURN_COST["trade"]
+    from ..engine.economy import trade_turn_cost
+    trade_cost = trade_turn_cost(player)
     # If the agent can't warp AND can't trade, everything it could do is a
     # stall (wait/scan/transmit). Shut the day down so we tick forward.
     return remaining < warp_cost and remaining < trade_cost

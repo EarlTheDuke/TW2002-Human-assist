@@ -42,7 +42,7 @@ from pydantic import BaseModel, Field
 from . import constants as K
 from .actions import ActionKind
 from .combat import _are_allied
-from .economy import port_buy_price, port_sell_price
+from .economy import port_buy_price, port_sell_price, trade_turn_cost
 from .models import Commodity, PortClass, Universe
 
 TRADE_COMMODITIES = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)
@@ -194,7 +194,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"target": {"type": "int", "required": True, "min": 1, "max": len(universe.sectors)}}))
 
     # trade
-    tc = int(K.TURN_COST["trade"])
+    tc = trade_turn_cost(player)
     if not trading_port:
         out.append(_la(ActionKind.TRADE, legal=False, cost=tc,
                        reason="no trading port in this sector" if port is None else "StarDock has no commodity market"))

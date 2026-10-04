@@ -22,7 +22,7 @@ An old save that has no MCIC loads. A missing sell value is 50. A missing buy va
 
 The price functions take the player's experience. 0 experience and the default MCIC reproduce the previous stock curve, so the base prices stay 18, 25, and 36. Experience fades in on a straight line and stops at 1,000. A higher experience never raises what the player pays and never lowers what the port pays. A federal port still quotes the base price.
 
-Productivity is stored and unused. Regen and starting stock are a later slice.
+Productivity is the daily refill. See `TURNS_REGEN.md`. It does not change the quote.
 
 ## Deliberate differences
 
@@ -32,7 +32,7 @@ Productivity is stored and unused. Regen and starting stock are a later slice.
 - **Uniform MCIC roll**, not a published bang table.
 - **Missing buy MCIC is -60**, not the -50 average.
 - **Productivity cap is the MBBS 3,276.** Gold's 6,553 is not used.
-- **Productivity does not change regen.**
+- **Productivity does not change the quote.** It is the daily regen amount. See `TURNS_REGEN.md`.
 - **Class 0 quotes the base price.** The original moves class 0 prices at midnight. Not this slice.
 - **The 0-to-1 `port.experience` familiarity counter is not the discount.** It still goes up by 0.05 after a trade and still does not change the quote. The discount reads `player.experience`, which is the score in the Cabal chart.
 - **Same-port round trip.** No port class both buys and sells one commodity, same as before. Buying and then selling the same good at that port cannot pay more than it cost.

@@ -69,6 +69,12 @@ def _port_sector(u, *, sells: str | None = None, exclude: set[int] = frozenset()
     raise AssertionError("no port")
 
 
+def _fill(u, sector: int, commodity: str = "fuel_ore") -> None:
+    """New ports open empty. The clip needs stock on the shelf."""
+    stock = u.sectors[sector].port.stock[Commodity(commodity)]
+    stock.current = stock.maximum
+
+
 def _obs(u, viewer: str = VIEWER) -> dict:
     o = build_observation(u, viewer)
     port = (o.sector or {}).get("port")
@@ -126,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     u = _universe()
     port = _port_sector(u, sells="fuel_ore")
     _move(u, "P1", port)
+    _fill(u, port)
     m = len(u.events)
     for _ in range(3):
         _act(u, "P1", ActionKind.TRADE, commodity="fuel_ore", qty=5, side="buy")
@@ -216,6 +223,7 @@ def main(argv: list[str] | None = None) -> int:
     u = _universe()
     for pid in ("P1", "P2"):
         _move(u, pid, port)
+    _fill(u, port)
     m = len(u.events)
     _act(u, "P2", ActionKind.TRADE, commodity="fuel_ore", qty=5, side="buy")
     _write("other_trade_in_sector", "A rival trades at the port the viewer is at.", u, m,

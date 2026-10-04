@@ -201,7 +201,9 @@ def _make_port(rng: random.Random, class_id: PortClass, sector_id: int, seed: in
             continue
         commodity = mapping[idx]
         maximum = K.PORT_DEFAULT_MAX_STOCK + rng.randint(-500, 1500)
-        current = int(maximum * rng.uniform(0.35, 0.95))
+        # The old 35-95% draw stays in the stream so later sectors do not move.
+        rng.uniform(0.35, 0.95)
+        current = int(maximum * K.PORT_START_STOCK_PERCENT)
         stock[commodity] = PortStock(current=current, maximum=maximum)
         hidden_mcic, hidden_prod = _hidden_port_stats(seed, sector_id, commodity, deal is True)
         mcic[commodity] = hidden_mcic

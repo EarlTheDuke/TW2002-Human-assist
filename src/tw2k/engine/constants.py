@@ -41,7 +41,11 @@ STARDOCK_SECTOR = 1
 FEDSPACE_SECTORS = set(range(1, 11))
 
 PORT_DEFAULT_MAX_STOCK = 3000
-PORT_REGEN_PER_DAY = 0.05  # 5% per game day toward max
+PORT_REGEN_PER_DAY = 0.05  # standard 5% per day. A sample game used 1%. See TURNS_REGEN.md.
+# New ports open with this fraction of max stock. The changelog says 0%.
+PORT_START_STOCK_PERCENT = 0
+# First successful trade of a visit. A later trade in that sector costs 0.
+PORT_DOCK_TURN_COST = 1
 
 # Hidden port personality. docs/playtests/ports/PRICE_MODEL.md.
 # MCIC is max change in cost, one number per commodity, -100..100.
@@ -192,7 +196,7 @@ OPERATOR_DIALOGUE_MAX_MESSAGES = 8
 
 TURN_COST = {
     "warp": 2,
-    "trade": 3,
+    "trade": PORT_DOCK_TURN_COST,
     "attack": 5,
     "deploy_fighters": 1,
     "deploy_mines": 1,

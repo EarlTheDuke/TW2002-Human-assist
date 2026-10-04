@@ -36,6 +36,20 @@ TOK2 = "g6-token-p2-0000000000000000000"
 A, B = 29, 35  # seed 1 / 200 sectors: 29 sells fuel + buys equipment, 35 the reverse; adjacent both ways
 
 
+def _put_goods_on_the_shelf(u) -> None:
+    """Ports open empty. Stock the goods these two shops sell so the route can buy."""
+    from tw2k.engine.models import Commodity
+
+    for sector_id in (A, B):
+        port = u.sectors[sector_id].port
+        if port is None or not port.code:
+            continue
+        for i, name in enumerate(("fuel_ore", "organics", "equipment")):
+            if port.code[i] == "S":
+                stock = port.stock[Commodity(name)]
+                stock.current = stock.maximum
+
+
 def _node(expr: str, data: object) -> object:
     script = (f"const P = require({json.dumps(str(PARITY))});"
               "const d = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
@@ -70,6 +84,7 @@ def _run(tmp_path: Path, spec: MatchSpec, body, *, park_at: int | None = None) -
             u.sectors[park_at].occupant_ids.append("P1")
             me.known_sectors.update({A, B})
             me.ship.cargo = {c: 0 for c in me.ship.cargo}
+            _put_goods_on_the_shelf(u)
         runner.resume()
         try:
             await body(client, runner)

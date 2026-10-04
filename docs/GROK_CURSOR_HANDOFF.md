@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-03 18:01 PT - Fable - docking costs one turn and ports refill from productivity
+- A second trade in the same visit is free. New ports open empty and gain units each day.
+
 ### 2026-10-03 15:57 PT - Fable - a counter past the port's limit does not trade
 - The limit is a hidden percent of the first offer. A plain trade with no counter still works.
 
