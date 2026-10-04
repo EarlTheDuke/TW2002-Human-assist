@@ -64,7 +64,7 @@ def _turns_left(player) -> int:
 
 
 def _warp_cost(player) -> int:
-    spec = K.SHIP_SPECS.get(player.ship.ship_class.value)
+    spec = K.ship_specs().get(player.ship.ship_class.value)
     if spec and "turns_per_warp" in spec:
         return int(spec["turns_per_warp"])
     return int(K.TURN_COST["warp"])
@@ -308,7 +308,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    reason="not a dispatched verb - use deploy_mines with kind=atomic (detonates immediately)"))
 
     # ---- S4 group 2: StarDock cluster -----------------------------------------
-    my_spec = K.SHIP_SPECS.get(player.ship.ship_class.value, {}) or {}
+    my_spec = K.ship_specs().get(player.ship.ship_class.value, {}) or {}
     if not at_stardock:
         out.append(_la(ActionKind.BUY_SHIP, legal=False, reason="must be at StarDock (sector 1)",
                        params={"ship_class": {"type": "str", "required": True, "choices": []}}))
@@ -316,13 +316,14 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                        params={"item": {"type": "str", "required": True, "choices": []},
                                "qty": {"type": "int", "required": True, "min": 1, "max_by": {}}}))
     else:
-        trade_in = int(K.ship_cost(player.ship.ship_class.value) * 0.25)
+        old_key = player.ship.ship_class.value
+        trade_in = K.trade_in_credit(old_key)
         owned_classes = {p.ship.ship_class.value for p in universe.players.values()}
         ship_choices: list[str] = []
         net_cost_by: dict[str, int] = {}
         blocked_by: dict[str, str] = {}
-        for key, spec in K.SHIP_SPECS.items():
-            net = K.ship_cost(key) - trade_in
+        for key, spec in K.ship_specs().items():
+            net = K.net_hull_cost(old_key, key)
             net_cost_by[key] = net
             if spec.get("corp_only") and player.corp_ticker is None:
                 blocked_by[key] = "corporation-only"
@@ -348,12 +349,28 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "holds": K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day),
             "colonists": int(K.COLONIST_PRICE),
         }
+        mines_aboard = sum(int(v) for v in (player.ship.mines or {}).values())
+        class_key = player.ship.ship_class.value
+        have = {
+            "fighters": int(player.ship.fighters),
+            "shields": int(player.ship.shields),
+            "holds": int(player.ship.holds),
+            "genesis": int(player.ship.genesis),
+            "photon_missiles": int(player.ship.photon_missiles),
+            "armid_mines": mines_aboard,
+            "limpet_mines": mines_aboard,
+            "atomic_mines": mines_aboard,
+        }
         cap_by = {
-            "fighters": max(0, int(my_spec.get("max_fighters", 0)) - int(player.ship.fighters)),
-            "shields": max(0, int(my_spec.get("max_shields", 0)) - int(player.ship.shields)),
-            "holds": max(0, 150 - int(player.ship.holds)),
             "colonists": max(0, int(player.ship.cargo_free)),
         }
+        for capped in (
+            "fighters", "shields", "holds", "genesis", "photon_missiles",
+            "armid_mines", "limpet_mines", "atomic_mines",
+        ):
+            room = K.equip_room(class_key, capped, have[capped])
+            if room is not None:
+                cap_by[capped] = room
         equip_max: dict[str, int] = {}
         for item, unit in prices.items():
             afford = player.credits // unit if unit > 0 else 0

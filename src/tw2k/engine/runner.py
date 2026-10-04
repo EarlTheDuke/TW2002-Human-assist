@@ -249,7 +249,7 @@ def _learn_sector(player, universe: Universe, sector_id: int) -> None:
 
 def _warp_cost_for(player) -> int:
     """Per-ship turns/warp; falls back to global TURN_COST['warp']."""
-    spec = K.SHIP_SPECS.get(player.ship.ship_class.value)
+    spec = K.ship_specs().get(player.ship.ship_class.value)
     if spec and "turns_per_warp" in spec:
         return int(spec["turns_per_warp"])
     return K.TURN_COST["warp"]
@@ -852,6 +852,7 @@ def _planet_odds_fight(player, planet, on_shields_down=None) -> tuple[int, int, 
     if _photon_damps_planet(player, planet):
         reaction = 0
         defenders = d_fighters
+    # Odds slice owns this wave. It stays on the legacy table on purpose.
     spec = K.SHIP_SPECS.get(player.ship.ship_class.value, {}) or {}
     wave_cap = (K.PLANET_OFFENSE_WAVE_NUM * (
         int(spec.get("max_fighters", 0) or 0) + int(spec.get("max_shields", 0) or 0)
@@ -1602,7 +1603,7 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     if player.sector_id != K.STARDOCK_SECTOR:
         return ActionResult(ok=False, error="must be at StarDock")
     class_key = action.args.get("ship_class")
-    spec = K.SHIP_SPECS.get(class_key or "")
+    spec = K.ship_specs().get(class_key or "")
     if spec is None:
         return ActionResult(ok=False, error=f"unknown ship class {class_key!r}")
     if spec.get("corp_only") and player.corp_ticker is None:
@@ -1615,8 +1616,7 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
             if p.ship.ship_class.value == class_key:
                 return ActionResult(ok=False, error="this ship class is already owned elsewhere")
 
-    trade_in = int(K.ship_cost(player.ship.ship_class.value) * 0.25)
-    net_cost = K.ship_cost(class_key) - trade_in
+    net_cost = K.net_hull_cost(player.ship.ship_class.value, class_key)
     if player.credits < net_cost:
         return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {net_cost})")
 
@@ -1683,14 +1683,34 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     )
     if player.credits < total:
         return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {total})")
-    spec = K.SHIP_SPECS[player.ship.ship_class.value]
-    if item == "fighters":
-        if player.ship.fighters + qty > spec["max_fighters"]:
+    mines_aboard = sum(int(v) for v in player.ship.mines.values())
+    have = {
+        "fighters": int(player.ship.fighters),
+        "shields": int(player.ship.shields),
+        "holds": int(player.ship.holds),
+        "genesis": int(player.ship.genesis),
+        "photon_missiles": int(player.ship.photon_missiles),
+        "armid_mines": mines_aboard,
+        "limpet_mines": mines_aboard,
+        "atomic_mines": mines_aboard,
+    }
+    room = K.equip_room(class_key, item, have.get(item, 0))
+    if room is not None and qty > room:
+        if item == "fighters":
             return ActionResult(ok=False, error="exceeds ship fighter capacity")
+        if item == "shields":
+            return ActionResult(ok=False, error="exceeds ship shield capacity")
+        if item == "holds":
+            return ActionResult(ok=False, error="max holds reached")
+        if item in ("armid_mines", "limpet_mines", "atomic_mines"):
+            return ActionResult(ok=False, error="exceeds ship mine capacity")
+        if item == "genesis":
+            return ActionResult(ok=False, error="exceeds ship genesis capacity")
+        if item == "photon_missiles":
+            return ActionResult(ok=False, error="exceeds ship photon capacity")
+    if item == "fighters":
         player.ship.fighters += qty
     elif item == "shields":
-        if player.ship.shields + qty > spec["max_shields"]:
-            return ActionResult(ok=False, error="exceeds ship shield capacity")
         player.ship.shields += qty
     elif item == "armid_mines":
         player.ship.mines[MineType.ARMID] = player.ship.mines.get(MineType.ARMID, 0) + qty
@@ -1705,11 +1725,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     elif item == "genesis":
         player.ship.genesis += qty
     elif item == "holds":
-        # Classic TW caps at 75 or 150 based on ship; here we accept anything up to 150 total
-        new_holds = player.ship.holds + qty
-        if new_holds > 150:
-            return ActionResult(ok=False, error="max holds reached")
-        player.ship.holds = new_holds
+        player.ship.holds += qty
     elif item == "colonists":
         # Buying colonists loads them as cargo. They must fit — each colonist
         # is 1 unit of hold capacity, same as any commodity.
@@ -2350,7 +2366,7 @@ def _parse_defense_qty(action: Action) -> tuple[int | None, ActionResult | None]
 
 
 def _ship_defense_caps(player) -> tuple[int, int]:
-    spec = K.SHIP_SPECS.get(player.ship.ship_class.value, {}) or {}
+    spec = K.ship_specs().get(player.ship.ship_class.value, {}) or {}
     return int(spec.get("max_fighters", 0) or 0), int(spec.get("max_shields", 0) or 0)
 
 

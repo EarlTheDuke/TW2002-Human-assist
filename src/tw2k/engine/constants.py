@@ -288,7 +288,273 @@ SHIP_COST_TW2002 = {
     "merchant_freighter": 33_400,
     "havoc_gunstar": 79_000,
     "imperial_starship": 339_000,
+    "star_master": 61_300,
+    "constellation": 72_500,
+    "tkhasi_orion": 42_500,
+    "tholian_sentinel": 47_500,
+    "taurean_mule": 63_600,
+    "interdictor_cruiser": 539_000,
 }
+
+
+# Bible chart caps. `holds` is what buy_ship grants. `max_holds` is the yard cap.
+# Odds and fighters_per_attack are stored for the roster doc. Fights do not read them.
+# See docs/playtests/ships/SHIP_ROSTER.md.
+SHIP_SPECS_TW2002: dict[str, dict] = {
+    "merchant_cruiser": {
+        "display_name": "Merchant Cruiser",
+        "cost": 41_300,
+        "holds": 20,
+        "max_holds": 75,
+        "max_fighters": 2500,
+        "max_shields": 400,
+        "max_mines": 50,
+        "max_genesis": 5,
+        "max_photons": 0,
+        "turns_per_warp": 3,
+        "fighters_per_attack": 750,
+        "offensive_odds": 1.0,
+        "base_hold_cost": 500,
+    },
+    "scout_marauder": {
+        "display_name": "Scout Marauder",
+        "cost": 15_950,
+        "holds": 25,
+        "max_holds": 25,
+        "max_fighters": 150,
+        "max_shields": 100,
+        "max_mines": 0,
+        "max_genesis": 0,
+        "max_photons": 0,
+        "turns_per_warp": 2,
+        "fighters_per_attack": 250,
+        "offensive_odds": 2.0,
+        "base_hold_cost": 800,
+    },
+    "missile_frigate": {
+        "display_name": "Missile Frigate",
+        "cost": 100_800,
+        "holds": 40,
+        "max_holds": 60,
+        "max_fighters": 5000,
+        "max_shields": 400,
+        "max_mines": 5,
+        "max_genesis": 0,
+        "max_photons": 10,
+        "turns_per_warp": 3,
+        "fighters_per_attack": 3000,
+        "offensive_odds": 1.3,
+        "base_hold_cost": 1000,
+    },
+    "battleship": {
+        "display_name": "BattleShip",
+        "cost": 88_500,
+        "holds": 80,
+        "max_holds": 80,
+        "max_fighters": 10000,
+        "max_shields": 750,
+        "max_mines": 25,
+        "max_genesis": 1,
+        "max_photons": 0,
+        "turns_per_warp": 4,
+        "fighters_per_attack": 3000,
+        "offensive_odds": 1.6,
+        "base_hold_cost": 1500,
+    },
+    "corporate_flagship": {
+        "display_name": "Corporate Flagship",
+        "cost": 163_500,
+        "holds": 85,
+        "max_holds": 85,
+        "max_fighters": 20000,
+        "max_shields": 1500,
+        "max_mines": 100,
+        "max_genesis": 10,
+        "max_photons": 0,
+        "turns_per_warp": 3,
+        "fighters_per_attack": 6000,
+        "offensive_odds": 1.2,
+        "base_hold_cost": 1500,
+        "corp_only": True,
+    },
+    "colonial_transport": {
+        "display_name": "Colonial Transport",
+        "cost": 63_600,
+        "holds": 50,
+        "max_holds": 250,
+        "max_fighters": 200,
+        "max_shields": 500,
+        "max_mines": 0,
+        "max_genesis": 5,
+        "max_photons": 0,
+        "turns_per_warp": 6,
+        "fighters_per_attack": 100,
+        "offensive_odds": 0.6,
+        "base_hold_cost": 700,
+    },
+    "cargotran": {
+        "display_name": "CargoTran",
+        "cost": 51_950,
+        "holds": 75,
+        "max_holds": 125,
+        "max_fighters": 400,
+        "max_shields": 1000,
+        "max_mines": 1,
+        "max_genesis": 2,
+        "max_photons": 0,
+        "turns_per_warp": 4,
+        "fighters_per_attack": 125,
+        "offensive_odds": 0.8,
+        "base_hold_cost": 600,
+    },
+    "merchant_freighter": {
+        "display_name": "Merchant Freighter",
+        "cost": 33_400,
+        "holds": 65,
+        "max_holds": 65,
+        "max_fighters": 300,
+        "max_shields": 500,
+        "max_mines": 2,
+        "max_genesis": 2,
+        "max_photons": 0,
+        "turns_per_warp": 2,
+        "fighters_per_attack": 100,
+        "offensive_odds": 0.8,
+        "base_hold_cost": 1200,
+    },
+    "havoc_gunstar": {
+        "display_name": "Havoc Gunstar",
+        "cost": 79_000,
+        "holds": 50,
+        "max_holds": 50,
+        "max_fighters": 10000,
+        "max_shields": 3000,
+        "max_mines": 5,
+        "max_genesis": 1,
+        "max_photons": 0,
+        "turns_per_warp": 3,
+        "fighters_per_attack": 1000,
+        "offensive_odds": 1.2,
+        "base_hold_cost": 1300,
+    },
+    "imperial_starship": {
+        "display_name": "Imperial StarShip",
+        "cost": 339_000,
+        "holds": 150,
+        "max_holds": 150,
+        "max_fighters": 50000,
+        "max_shields": 2000,
+        "max_mines": 125,
+        "max_genesis": 10,
+        "max_photons": 5,
+        "turns_per_warp": 4,
+        "fighters_per_attack": 10000,
+        "offensive_odds": 1.5,
+        "base_hold_cost": 2000,
+        "min_alignment": 2000,
+        "unique": True,
+    },
+    "star_master": {
+        "display_name": "Star Master",
+        "cost": 61_300,
+        "holds": 30,
+        "max_holds": 73,
+        "max_fighters": 5000,
+        "max_shields": 2000,
+        "max_mines": 50,
+        "max_genesis": 5,
+        "max_photons": 0,
+        "turns_per_warp": 3,
+        "fighters_per_attack": 1000,
+        "offensive_odds": 1.4,
+        "base_hold_cost": 500,
+    },
+    "constellation": {
+        "display_name": "Constellation",
+        "cost": 72_500,
+        "holds": 20,
+        "max_holds": 80,
+        "max_fighters": 5000,
+        "max_shields": 750,
+        "max_mines": 25,
+        "max_genesis": 2,
+        "max_photons": 0,
+        "turns_per_warp": 3,
+        "fighters_per_attack": 2000,
+        "offensive_odds": 1.4,
+        "base_hold_cost": 500,
+    },
+    "tkhasi_orion": {
+        "display_name": "T'Khasi Orion",
+        "cost": 42_500,
+        "holds": 30,
+        "max_holds": 60,
+        "max_fighters": 750,
+        "max_shields": 750,
+        "max_mines": 5,
+        "max_genesis": 1,
+        "max_photons": 0,
+        "turns_per_warp": 2,
+        "fighters_per_attack": 250,
+        "offensive_odds": 1.1,
+        "base_hold_cost": 500,
+    },
+    "tholian_sentinel": {
+        "display_name": "Tholian Sentinel",
+        "cost": 47_500,
+        "holds": 10,
+        "max_holds": 50,
+        "max_fighters": 2500,
+        "max_shields": 4000,
+        "max_mines": 50,
+        "max_genesis": 1,
+        "max_photons": 0,
+        "turns_per_warp": 4,
+        "fighters_per_attack": 800,
+        "offensive_odds": 1.0,
+        "base_hold_cost": 500,
+    },
+    "taurean_mule": {
+        "display_name": "Taurean Mule",
+        "cost": 63_600,
+        "holds": 40,
+        "max_holds": 150,
+        "max_fighters": 300,
+        "max_shields": 600,
+        "max_mines": 0,
+        "max_genesis": 1,
+        "max_photons": 0,
+        "turns_per_warp": 4,
+        "fighters_per_attack": 150,
+        "offensive_odds": 0.5,
+        "base_hold_cost": 500,
+    },
+    "interdictor_cruiser": {
+        "display_name": "Interdictor Cruiser",
+        "cost": 539_000,
+        "holds": 20,
+        "max_holds": 40,
+        "max_fighters": 100000,
+        "max_shields": 4000,
+        "max_mines": 200,
+        "max_genesis": 20,
+        "max_photons": 0,
+        "turns_per_warp": 15,
+        "fighters_per_attack": 15000,
+        "offensive_odds": 1.2,
+        "base_hold_cost": 500,
+    },
+}
+
+
+def ship_specs() -> dict[str, dict]:
+    """The hull table the yard, the legal list, and warp cost read.
+
+    Legacy mode is the old ten-ship dict. Combat odds stay on that dict too.
+    """
+    if ECONOMY_SCALE_MODE == "tw2002":
+        return SHIP_SPECS_TW2002
+    return SHIP_SPECS
 
 
 def ship_cost(class_key: str) -> int:
@@ -296,6 +562,49 @@ def ship_cost(class_key: str) -> int:
     if ECONOMY_SCALE_MODE == "tw2002":
         return int(SHIP_COST_TW2002[class_key])
     return int(SHIP_SPECS[class_key]["cost"])
+
+
+def trade_in_credit(class_key: str) -> int:
+    """25 percent of the hull price. The yard applies this to the next hull."""
+    return int(ship_cost(class_key) * 0.25)
+
+
+def net_hull_cost(old_key: str, new_key: str) -> int:
+    """Credits a trade-in actually moves. A surplus is not paid out."""
+    net = ship_cost(new_key) - trade_in_credit(old_key)
+    if net < 0:
+        return 0
+    return net
+
+
+_EQUIP_CAP_FIELD = {
+    "fighters": "max_fighters",
+    "shields": "max_shields",
+    "holds": "max_holds",
+    "genesis": "max_genesis",
+    "photon_missiles": "max_photons",
+    "armid_mines": "max_mines",
+    "limpet_mines": "max_mines",
+    "atomic_mines": "max_mines",
+}
+
+
+def equip_room(class_key: str, item: str, have: int) -> int | None:
+    """How many more of `item` this hull can take.
+
+    `have` for a mine type is the total of every mine type already aboard.
+    None means this roster does not cap that item (legacy mines, genesis, photons).
+    Holds with no per-ship max still stop at 150.
+    """
+    spec = ship_specs().get(class_key) or {}
+    field = _EQUIP_CAP_FIELD.get(item)
+    if field is None:
+        return None
+    if field not in spec:
+        if item == "holds":
+            return max(0, 150 - int(have))
+        return None
+    return max(0, int(spec[field]) - int(have))
 
 
 def fighter_unit_price(day: int) -> int:

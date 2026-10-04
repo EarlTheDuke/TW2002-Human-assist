@@ -190,16 +190,23 @@ Equipment — `buy_equip {"item":"<name>","qty":<int>}`:
   genesis         25,000 cr each      (create a new planet; see COLONIZE below)
   colonists       10 cr each          (fill your cargo holds; ferry to your planets)
 
-Ships — `buy_ship {"ship_class":"<key>"}`. 25% trade-in on current hull:
-  merchant_cruiser   (starter)           41,300, 20 holds, 2500 fighters
-  cargotran          51,950,  75 holds   (max cargo — pure trader)
-  scout_marauder     15,950,  25 holds   (2 turns/warp — fastest explorer)
-  missile_frigate    100,800, 40 holds   (5k fighters — first combat hull)
-  colonial_transport 63,600,  50 holds   (cheap high-cargo for colonist ferries)
-  battleship         88,500, 80 holds    (10k fighters — proper warship)
-  havoc_gunstar      79,000, 65 holds    (3k shields — best defense/cr)
-  corporate_flagship 163,500, 85 holds   (20k fighters — CORP MEMBER ONLY)
-  imperial_starship  339,000, 150 holds  (alignment >= 2000 only — endgame)
+Ships — `buy_ship {"ship_class":"<key>"}`. 25% trade-in on the current hull. A surplus is not paid out:
+  merchant_cruiser    (starter)  41,300, 20 holds (max 75), 2500 fighters, 3 turns/warp
+  cargotran           51,950, 75 holds (max 125), 4 turns/warp
+  scout_marauder      15,950, 25 holds, 150 fighters, 2 turns/warp
+  missile_frigate     100,800, 40 holds (max 60), 10 photons
+  colonial_transport  63,600, 50 holds (max 250), 6 turns/warp
+  battleship          88,500, 80 holds, 4 turns/warp
+  merchant_freighter  33,400, 65 holds, 2 turns/warp
+  havoc_gunstar       79,000, 50 holds, 3000 shields
+  star_master         61,300, 30 holds (max 73)
+  tkhasi_orion        42,500, 30 holds (max 60), 2 turns/warp
+  tholian_sentinel    47,500, 10 holds (max 50)
+  taurean_mule        63,600, 40 holds (max 150), 4 turns/warp
+  constellation       72,500, 20 holds (max 80)
+  corporate_flagship  163,500, 85 holds (CORP MEMBER ONLY)
+  imperial_starship   339,000, 150 holds, 5 photons (alignment >= 2000, one in the game)
+  interdictor_cruiser 539,000, 20 holds (max 40), 15 turns/warp
 
 When to upgrade: the prices above are what StarDock charges. Buy the hull whose holds and fighters you need.
 
