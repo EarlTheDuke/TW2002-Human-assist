@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-04 10:41 PT - Fable - the seat brain learns empty ports and the yard prices
+- A zero shelf is not bought. The allocator buys organics at the live quote. CargoTran and fighters use the price StarDock charges.
+
 ### 2026-10-03 22:56 PT - Fable - trade profit and ship prices share one switch
 - The original spread and the Bible hull prices are on together. Legacy mode puts the old numbers back.
 

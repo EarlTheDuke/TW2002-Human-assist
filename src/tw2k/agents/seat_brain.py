@@ -55,10 +55,11 @@ from ..engine.constants import (
     CITADEL_TIER_COST,
     COLONIST_PRICE,
     COMMODITY_BASE_PRICE,
-    FIGHTER_COST,
     GENESIS_SEED_COLONISTS,
     GENESIS_TORPEDO_COST,
     SHIP_SPECS,
+    fighter_unit_price,
+    ship_cost,
 )
 from ..engine.planets import organics_coeff, organics_worker_target, planet_growth_status
 from .pathb_client import TurnContext, legal_heuristic_policy
@@ -77,10 +78,23 @@ ORPHAN_MAX_HOPS = 8
 CLAIM_WORLD_MIN_COLONISTS = 1_000
 # Buy when the owner-only runway is under this many day-boundaries.
 ORGANICS_FEED_DAYS = 2
-# 75 organics at a full port (~19 cr) is about 1.4k cr and covers a 3k-colonist
-# world's burn (30/day) for two-plus days. The load is the worked example;
-# the seat still takes the cheapest known seller when nothing is that cheap.
-ORGANICS_CHEAP_PRICE = 19
+# 75 organics at a full port used to be about 19 cr, when the organics base was 25.
+# The cheap line and the ceiling scale with the live base so a normal quote
+# still counts after the tw2002 price table. Empty shelves are a stock check,
+# not a price check.
+_ORGANICS_CHEAP_AT_BASE_25 = 19
+
+
+def _organics_cheap_price() -> int:
+    base = int(COMMODITY_BASE_PRICE["organics"])
+    return max(1, round(_ORGANICS_CHEAP_AT_BASE_25 * base / 25))
+
+
+def _organics_price_ceiling() -> int:
+    """A buy at or under the organics base. The old gate was 25, that base."""
+    return int(COMMODITY_BASE_PRICE["organics"])
+
+
 ORGANICS_LOAD = 75
 # Build the next citadel inside this many days of max_days even if it
 # spends the growth base — the match will not compound past the cap.
@@ -272,11 +286,11 @@ def next_tier(planet: dict[str, Any], *, lookahead: bool = False) -> tuple[int, 
     return cred, col
 
 
-def _defense_value(level: int) -> int:
+def _defense_value(level: int, day: int = 1) -> int:
     """Fighters and shields a finished citadel adds to net worth.
 
     The engine gifts ``CITADEL_GIFT_*_PER_LEVEL`` at level 2 and up, and both
-    constants are 0. Fighters the seat buys later cost ``FIGHTER_COST``.
+    constants are 0. Fighters the seat buys later cost the day's public wave.
     Shields the seat buys later cost ``SHIELD_VALUE``. Those purchases are
     not part of this number.
     """
@@ -284,7 +298,7 @@ def _defense_value(level: int) -> int:
         return 0
     fighters = CITADEL_GIFT_FIGHTERS_PER_LEVEL * level
     shields = CITADEL_GIFT_SHIELDS_PER_LEVEL * level
-    return fighters * FIGHTER_COST + shields * SHIELD_VALUE
+    return fighters * fighter_unit_price(day) + shields * SHIELD_VALUE
 
 
 def _tier_bonus(current_level: int) -> int:
@@ -866,7 +880,7 @@ class SeatBrain:
         ctx = TurnContext(seat="", turn_seq=0, observation=v.obs, llm_user_message=None, rules={},
                           status={}, deadline_at=None, server_skew=0.0)
         a = legal_heuristic_policy(ctx)
-        if a.get("kind") == "trade":
+        if a.get("kind") == "trade" and not self._empty_shelf_buy(v, a):
             return self._act("trade", a.get("args") or {}, f"earn: {a.get('thought', '')}"), Intent("trade")
         # Otherwise head for the best remembered route (sell what we carry, or fetch a cheap load).
         target, why = self._best_route(v)
@@ -1083,6 +1097,8 @@ class SeatBrain:
         if v.here == STARDOCK and v.ok("buy_ship") and "cargotran" in v.choices("buy_ship", "ship_class"):
             net = int((v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {}).get("cargotran")
                       or self._cargotran_net(v) or 0)
+            if v.credits < net:
+                return None
             action = self._act("buy_ship", {"ship_class": "cargotran"}, f"upgrade to CargoTran ({net} cr net)")
         else:
             action = self._plot(v, STARDOCK, "CargoTran is affordable - autopilot to StarDock (sector 1)")
@@ -1101,7 +1117,7 @@ class SeatBrain:
             ctx = TurnContext(seat="", turn_seq=0, observation=v.obs, llm_user_message=None, rules={},
                               status={}, deadline_at=None, server_skew=0.0)
             a = legal_heuristic_policy(ctx)
-            if a.get("kind") != "trade":
+            if a.get("kind") != "trade" or self._empty_shelf_buy(v, a):
                 return None
             action = self._act("trade", a.get("args") or {}, f"earn: {a.get('thought', '')} ({commodity} ~{margin})")
             return vpt, action, Intent("trade")
@@ -1454,6 +1470,36 @@ class SeatBrain:
             if any(isinstance(st, dict) and isinstance(st.get("price"), int) for st in stock.values()):
                 out[int(kp["sector_id"])] = kp
         return out
+
+    def _seen_buy_qty(self, v: View, commodity: str) -> int | None:
+        """Units for sale here, from a port this seat has already seen. None if unseen."""
+        if v.here is None or not commodity:
+            return None
+        for kp in v.obs.get("known_ports") or []:
+            if not isinstance(kp, dict) or kp.get("sector_id") is None:
+                continue
+            if int(kp["sector_id"]) != int(v.here):
+                continue
+            st = (kp.get("stock") or {}).get(str(commodity))
+            if isinstance(st, dict) and "current" in st:
+                return int(st.get("current") or 0)
+        return None
+
+    def _empty_shelf_buy(self, v: View, action: dict[str, Any]) -> bool:
+        """A buy with nothing on the shelf. A positive legal qty is stock the seat can see now.
+
+        Remembered ``known_ports`` stock can be from an earlier day. The legal
+        list is this turn. A sell of carried goods is not a buy.
+        """
+        if action.get("kind") != "trade":
+            return False
+        args = action.get("args") or {}
+        if args.get("side") != "buy":
+            return False
+        if int(args.get("qty") or 0) > 0:
+            return False
+        seen = self._seen_buy_qty(v, str(args.get("commodity") or ""))
+        return seen is None or seen <= 0
 
     def _best_buy_pair(self, v: View) -> tuple[int, int, int] | None:
         """(seller, buyer, unit margin) of the best empty-hold route over priced ports."""
@@ -1891,15 +1937,19 @@ class SeatBrain:
         # Standing at a non-premium seller: fill holds. Don't detour for a
         # cheaper port while a day of runway remains — that detour is a
         # colonist ferry we don't get back (seeds 250925 and 31).
-        if offer is not None and offer[0] <= 25 and (must or offer[0] <= ORGANICS_CHEAP_PRICE
-                                                     or seller is None or int(seller[0]) == int(v.here)):
+        # The ladder (urgent off) keeps the old 19/25 gate, so its day-10
+        # numbers stay the bar. The allocator buys at the live price scale.
+        cheap = _organics_cheap_price() if urgent else 19
+        ceiling = _organics_price_ceiling() if urgent else 25
+        if offer is not None and offer[0] <= ceiling and (must or offer[0] <= cheap
+                                                         or seller is None or int(seller[0]) == int(v.here)):
             price, cap = offer
             keep = 0 if must else self.cash_buffer
             afford = max(0, (v.credits - keep) // max(1, price))
             qty = min(want, cap, afford, v.cargo_free)
             if qty > 0:
                 self.mem.organics_drop = int(world["id"])
-                tag = "cheap" if price <= ORGANICS_CHEAP_PRICE else "cheapest known"
+                tag = "cheap" if price <= cheap else "cheapest known"
                 return (self._act("trade", {"commodity": "organics", "qty": int(qty), "side": "buy"},
                                   f"buy {qty} {tag} organics @{price} ({days}d left on planet {world['id']})"),
                         Intent("colonize", world.get("sector_id")))
@@ -1914,9 +1964,9 @@ class SeatBrain:
         """Trade-in net for CargoTran from a starter hull, or None if we already outgrew it."""
         if v.ship_class not in ("merchant_cruiser", "scout_marauder"):
             return None
-        spec = SHIP_SPECS.get(v.ship_class) or {}
-        trade_in = int(int(spec.get("cost", 0)) * 0.25)
-        return int(SHIP_SPECS["cargotran"]["cost"]) - trade_in
+        spec_key = v.ship_class
+        trade_in = int(ship_cost(spec_key) * 0.25)
+        return int(ship_cost("cargotran")) - trade_in
 
     def _cargotran_affordable(self, v: View) -> bool:
         net = self._cargotran_net(v)

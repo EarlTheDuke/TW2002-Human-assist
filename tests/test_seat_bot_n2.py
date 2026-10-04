@@ -192,9 +192,9 @@ def test_k_class_unload_goes_to_the_organics_pool() -> None:
 def test_n2_day10_beats_n1_and_keeps_organics() -> None:
     """Five seeds, ten days, fogged observation only.
 
-    On the tw2002 price table the unretuned N2 ladder still beats N1, and
-    rejected stays 0. Four maps starve one world. Those planet ids are the
-    measured result, not a strategy change.
+    On the tw2002 price table the N2 ladder still beats N1, and rejected stays 0.
+    The ladder keeps the old organics gate, so the same four worlds still starve.
+    Those planet ids are the measured result.
     """
     mod = _load_acceptance()
     held_zeros = {250925: [32], 20260925: [30], 99: [29], 31: [30]}
