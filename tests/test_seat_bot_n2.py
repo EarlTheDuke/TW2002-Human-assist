@@ -190,20 +190,18 @@ def test_k_class_unload_prefers_fuel_once_a_tiny_organics_crew_exists() -> None:
     assert a["args"]["to"] == "fuel_ore" and a["args"]["qty"] == 75
 
 
-def test_n2_day10_beats_n1_and_keeps_organics(monkeypatch) -> None:
+def test_n2_day10_beats_n1_and_keeps_organics() -> None:
     """Five seeds, ten days, fogged observation only.
 
-On the corrected tw2002 price table (ECONOMY_CALIBRATION.md) the N2 ladder
-    strictly beats N1 on all five seeds, and rejected stays 0. Coeff-1 organics
-    reshuffles and coeff-1 import targets are skipped; fuel gets the ferry instead. Held-zero
-    planet ids are the measured result after growth retunes.
+    On the corrected tw2002 price table (ECONOMY_CALIBRATION.md) the N2 ladder
+    strictly beats N1 on all five seeds under default INFO_MODE/RANK_MODE
+    tw2002 (bots-use-scanners-v1 retune; old INFO_MODE/RANK_MODE legacy pins
+    removed). Rejected stays 0. Coeff-1 organics reshuffles and coeff-1 import
+    targets are skipped; fuel gets the ferry instead. Held-zero planet ids are
+    the measured result after the scanner fog retune.
     """
-    # Measured under the legacy fog and RANK_MODE. INFO_MODE / RANK_MODE tw2002 numbers:
-    # SCANNERS_HIDDEN_INFO.md and EXPERIENCE_ALIGNMENT.md "Seat brains".
-    monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")
-    monkeypatch.setattr("tw2k.engine.constants.RANK_MODE", "legacy")
     mod = _load_acceptance()
-    held_zeros = {250925: [32], 20260925: [30, 31], 99: [29], 31: [30]}
+    held_zeros = {250925: [32], 20260925: [30], 99: [29], 31: [30]}
     # Strict N2 > N1 on every seed (restores the bar weakened by economy-calibration-v1).
     failures = []
     beats = 0

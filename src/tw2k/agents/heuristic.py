@@ -14,6 +14,15 @@ from __future__ import annotations
 
 import random
 
+from tw2k.engine.constants import (
+    DENSITY_SCANNER_COST,
+    HOLO_SCANNER_COST,
+    SCANNER_DENSITY,
+    SCANNER_HOLO,
+    info_tw2002,
+    scanner_room,
+)
+
 from ..engine import Action, ActionKind, Observation
 from ..engine.constants import STARDOCK_SECTOR, combat_hull
 from .base import BaseAgent
@@ -93,6 +102,45 @@ class HeuristicAgent(BaseAgent):
                             args={"commodity": commodity, "qty": qty, "side": "buy"},
                             thought=f"Buying {qty} {commodity} at {port['code']} for {unit}cr/u.",
                         )
+
+        # Fogged play: fit a scanner at StarDock, then scan before blind warps.
+        if info_tw2002():
+            fitted = (obs.ship or {}).get("scanner") if isinstance(obs.ship, dict) else getattr(obs.ship, "scanner", None)
+            legal = self._legal(obs)
+            buy = legal.get("buy_equip")
+            here = int(obs.sector.get("id") or 0)
+            if here == 1 and buy and buy.get("legal"):
+                items = ((buy.get("params") or {}).get("item") or {}).get("choices") or []
+                prices = ((buy.get("params") or {}).get("item") or {}).get("unit_price_by") or {}
+                room = scanner_room(str((obs.ship or {}).get("class") or getattr(obs.ship, "ship_class", "") or ""))
+                credits = int(getattr(obs, "credits", 0) or 0)
+                pick = None
+                if room == SCANNER_HOLO and "holo_scanner" in items and fitted != SCANNER_HOLO:
+                    cost = int(prices.get("holo_scanner") or HOLO_SCANNER_COST)
+                    if credits >= cost + 8_000:
+                        pick = ("holo_scanner", cost)
+                if pick is None and fitted is None and "density_scanner" in items:
+                    cost = int(prices.get("density_scanner") or DENSITY_SCANNER_COST)
+                    if credits >= cost:
+                        pick = ("density_scanner", cost)
+                if pick is not None:
+                    item, cost = pick
+                    return Action(kind=ActionKind.BUY_EQUIP, args={"item": item, "qty": 1},
+                                  thought=f"Fitting {item} ({cost} cr) to map fogged neighbors.")
+            scan_la = legal.get("scan")
+            if fitted and scan_la and scan_la.get("legal"):
+                adj = obs.adjacent or []
+                need = False
+                for a in adj:
+                    if not a.get("port") and not a.get("seen") and a.get("scan_day") != getattr(obs, "day", None):
+                        need = True
+                        break
+                if need:
+                    tiers = ((scan_la.get("params") or {}).get("tier") or {}).get("choices") or []
+                    tier = SCANNER_HOLO if SCANNER_HOLO in tiers else (SCANNER_DENSITY if SCANNER_DENSITY in tiers else (tiers[0] if tiers else None))
+                    args = {"tier": tier} if tier else {}
+                    return Action(kind=ActionKind.SCAN, args=args,
+                                  thought=f"{tier or 'basic'} scan before warping blind.")
 
         # Out of turns: wait. Warping would be rejected and waste the decision.
         turns_left = int(getattr(obs, "turns_remaining", 0) or 0)
