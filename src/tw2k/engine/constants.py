@@ -604,15 +604,19 @@ def ship_cost(class_key: str) -> int:
 def trade_in_credit(class_key: str) -> int:
     """25 percent of the hull price. The yard applies this to the next hull.
 
-    An escape pod trades for a Scout outright (DEATH_ESCAPE_PODS.md d17).
+    An escape pod is worth a Scout (DEATH_ESCAPE_PODS.md d17): it trades for a Scout outright
+    (net_hull_cost), and toward any other hull it counts as a Scout's trade-in. Worth more, a
+    lost ship would beat trading the live one in, and surrendering would mint credits.
     """
     if class_key == ESCAPE_POD:
-        return ship_cost("scout_marauder")
+        return int(ship_cost("scout_marauder") * 0.25)
     return int(ship_cost(class_key) * 0.25)
 
 
 def net_hull_cost(old_key: str, new_key: str) -> int:
     """Credits a trade-in actually moves. A surplus is not paid out."""
+    if old_key == ESCAPE_POD and new_key == "scout_marauder":
+        return 0  # d17: the pod buys a Scout outright
     net = ship_cost(new_key) - trade_in_credit(old_key)
     if net < 0:
         return 0

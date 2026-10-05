@@ -118,7 +118,7 @@ def test_switch_defaults_and_the_pod_hull() -> None:
     assert pod["max_shields"] == 50 and pod["max_holds"] == 50 and pod["holds"] == 5 and pod["max_mines"] == 0
     assert K.combat_hull("escape_pod") == (0.6, 10)
     assert K.ship_cost("escape_pod") == 0
-    assert K.trade_in_credit("escape_pod") == K.ship_cost("scout_marauder")
+    assert K.trade_in_credit("escape_pod") == int(K.ship_cost("scout_marauder") * 0.25)  # QC: a pod is worth a Scout
     assert K.net_hull_cost("escape_pod", "scout_marauder") == 0
 
 
@@ -343,11 +343,12 @@ def test_the_pod_trades_for_a_scout_at_no_cost() -> None:
     assert res.ok and a.ship.ship_class is ShipClass.SCOUT_MARAUDER and a.credits == 0
 
 
-def test_a_pod_buying_a_bigger_hull_pays_the_scout_credit_off() -> None:
+def test_a_pod_buying_a_bigger_hull_counts_as_a_scout_trade_in() -> None:
+    # QC (escape pods QC fixes): the pod is worth a Scout, so toward a bigger hull it is a Scout's trade-in.
     u, (a, b, c) = _make_universe(seed=36122)
     _pod_at(u, a, _first_non_fed_sector(u))
     _park(u, a, K.STARDOCK_SECTOR)
-    want = K.ship_cost("cargotran") - K.ship_cost("scout_marauder")
+    want = K.ship_cost("cargotran") - int(K.ship_cost("scout_marauder") * 0.25)
     a.credits = want
     assert _la(u, a.id, "buy_ship").params["ship_class"]["net_cost_by"]["cargotran"] == want
     assert _act(u, a.id, ActionKind.BUY_SHIP, ship_class="cargotran").ok and a.credits == 0

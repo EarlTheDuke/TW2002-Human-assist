@@ -3218,7 +3218,7 @@ def _handle_surrender(universe: Universe, pid: str, action: Action) -> ActionRes
         summary=f"{player.name} surrendered to the {dep.mode.value} fighters in {sector.id}",
     )
     player.fighter_challenge = None
-    # Escape pods are the next slice: surrender is the existing death for now.
+    # The death path (DEATH_ESCAPE_PODS.md d20): a pod back to the previous sector, or Ship Destroyed.
     _destroy_ship(universe, pid, reason="surrender", killer_id=dep.owner_id)
     return ActionResult(ok=True, turns_spent=cost)
 
