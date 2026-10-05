@@ -272,7 +272,10 @@ def handle_remove_limpet(universe: Universe, pid: str, action: Action) -> Action
     if not K.hardware_tw2002():
         return ActionResult(ok=False, error="limpet removal unavailable (HARDWARE_MODE legacy)")
     player = universe.players[pid]
-    if player.sector_id != K.STARDOCK_SECTOR:
+    from .class0 import class0_service_here, class0_tw2002
+    if not class0_service_here(universe, pid):
+        if class0_tw2002():
+            return ActionResult(ok=False, error="must be at StarDock or a Class 0 port")
         return ActionResult(ok=False, error="must be at StarDock")
     keys = limpets_on_target(universe, pid)
     if not keys:

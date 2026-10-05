@@ -106,6 +106,10 @@ def density_reading(universe: Universe, sector_id: int) -> dict[str, Any]:
     if s.port is not None:
         density += K.DENSITY_PER_PORT
     density += K.DENSITY_PER_PLANET * sum(1 for p in s.planet_ids if p in universe.planets)
+    # CLASS0_TERRA.md t23: Terra adds planet density to sector 1 (not a Planet row).
+    if K.class0_tw2002() and K.info_tw2002() and int(sector_id) == K.STARDOCK_SECTOR:
+        if getattr(universe, "terra_colonists", None) is not None:
+            density += K.DENSITY_PER_PLANET
     navhaz = 0
     if K.hardware_tw2002():  # SHIP_HARDWARE_V2.md v9/v24: beacon 1, NavHaz 21 per percent
         from .hardware import navhaz_pct
@@ -120,8 +124,21 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
     """s9/s13: what a holo scan or a passing probe shows of one sector (no stock, no limpets)."""
     s = universe.sectors[sector_id]
     view: dict[str, Any] = {
-        "port": ({"name": s.port.name, "code": s.port.code, "class_id": int(s.port.class_id)}
-                 if s.port is not None else None),
+        "port": (
+            (
+                lambda p: {
+                    "name": p.name,
+                    "code": ("0" if getattr(p, "special", None) in ("alpha_centauri", "rylos") else p.code),
+                    "class_id": int(p.class_id),
+                    **(
+                        {"special": p.special, "sells": ["fighters", "shields", "holds"]}
+                        if getattr(p, "special", None) in ("alpha_centauri", "rylos")
+                        else {}
+                    ),
+                }
+            )(s.port)
+            if s.port is not None else None
+        ),
         "planets": [{"name": universe.planets[p].name, "class": universe.planets[p].class_id.value}
                     for p in s.planet_ids if p in universe.planets],
         "traders": traders_in(universe, viewer_id, s),

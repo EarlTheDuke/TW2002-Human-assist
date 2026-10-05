@@ -162,7 +162,9 @@ def test_stardock_shows_the_wave_and_charges_the_hold_formula() -> None:
     prices = equip.params["item"]["unit_price_by"]
     class_key = player.ship.ship_class.value
     assert prices["fighters"] == K.fighter_unit_price(day)
-    assert prices["shields"] == 10
+    from tw2k.engine.class0 import shield_unit_price
+    assert prices["shields"] == shield_unit_price(int(universe.day))
+    # CLASS0_TERRA.md t13: mirror wave (not the old flat 10)
     assert prices["holds"] == K.hold_next_price(class_key, player.ship.holds, day)
     ships = next(row for row in rows if row.kind == "buy_ship")
     trade_in = int(K.ship_cost(class_key) * 0.25)

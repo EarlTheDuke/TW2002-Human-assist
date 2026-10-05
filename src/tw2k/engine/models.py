@@ -195,6 +195,9 @@ class EventKind(str, Enum):
     PSYCHIC_PROBE = "psychic_probe"
     ATOMIC_DETONATOR = "atomic_detonator"
     HAZARD_AVOID_PROMPT = "hazard_avoid_prompt"
+    # class0-terra-v1 (CLASS0_TERRA.md)
+    TERRA_COLONISTS = "terra_colonists"
+    EXTERN_SWEEP = "extern_sweep"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -291,6 +294,9 @@ class Port(BaseModel):
     mcic: dict[Commodity, int] = Field(default_factory=dict)
     productivity: dict[Commodity, int] = Field(default_factory=dict)
     name: str = ""
+    # Class 0 special port marker (CLASS0_TERRA.md): "alpha_centauri" / "rylos".
+    # None for ordinary ports; old saves load with None.
+    special: str | None = None
     # Credits available to rob (ROB_STEAL.md). Default 0 for old saves.
     credits: int = 0
     # Last real buster at this port; clears daily or when another red busts here.
@@ -844,6 +850,13 @@ class Universe(BaseModel):
     finished: bool = False
     winner_id: str | None = None
     win_reason: str = ""
+    # CLASS0_TERRA.md: Terra pool (None = no Terra / legacy). Not a Planet row.
+    terra_colonists: int | None = None
+    terra_max: int = 0
+    # {"alpha_centauri": sector_id, "rylos": sector_id}; empty under legacy.
+    class0_sectors: dict[str, int] = Field(default_factory=dict)
+    # Sorted MSL sector ids (sector 1 / AC / Rylos lanes); empty under legacy.
+    msl_sectors: list[int] = Field(default_factory=list)
 
     # Per-universe deterministic PRNG. PrivateAttr so it's instance-scoped
     # (not shared across Universe objects, not serialized by model_dump), and

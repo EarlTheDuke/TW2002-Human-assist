@@ -246,6 +246,8 @@ def _is_ferry_action(action: dict, colonists_aboard: int) -> bool:
         return True
     if kind == "buy_equip" and args.get("item") == "colonists":
         return True
+    if kind == "terra_colonists" and args.get("mode") == "take":
+        return True
     return colonists_aboard > 0 and kind in _FERRY_MOVE
 
 

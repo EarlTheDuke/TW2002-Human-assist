@@ -366,6 +366,12 @@ def generate_universe(config: GameConfig) -> Universe:
     if config.enable_ferrengi and K.FERRENGI_INITIAL_SPAWN > 0:
         _seed_initial_ferrengi(rng, universe)
 
+    # CLASS0_TERRA.md: Terra + Alpha Centauri / Rylos + MSL. Uses a dedicated
+    # rng keyed on the seed so generator / universe.rng draws stay identical
+    # across CLASS0_MODE (legacy placement is a no-op that clears the fields).
+    from .class0 import place_class0_ports
+    place_class0_ports(universe)
+
     return universe
 
 

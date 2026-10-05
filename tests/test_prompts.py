@@ -86,12 +86,12 @@ def test_system_prompt_contains_core_progression_steps():
 
 def test_system_prompt_teaches_terra_colonist_ferry():
     """User-critical authenticity: the prompt must explicitly teach that
-    colonists are bought at StarDock and ferried to your own planet. This
+    colonists are taken at Terra (terra_colonists) and ferried to your own planet. This
     is the missing-mechanic bug we fixed; a regression here means the LLM
     is back to not knowing how to populate its citadel."""
     assert "colonists" in SYSTEM_PROMPT.lower()
     assert "Terra" in SYSTEM_PROMPT or "ferry" in SYSTEM_PROMPT
-    assert '"item":"colonists"' in SYSTEM_PROMPT or 'item="colonists"' in SYSTEM_PROMPT
+    assert "terra_colonists" in SYSTEM_PROMPT and "terra" in SYSTEM_PROMPT.lower()
     assert 'from="ship"' in SYSTEM_PROMPT or '"from":"ship"' in SYSTEM_PROMPT
 
 

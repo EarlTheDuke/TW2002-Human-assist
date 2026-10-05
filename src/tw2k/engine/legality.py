@@ -434,11 +434,19 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = "sector fighter cap"
     else:
         reason = _need_turns(player, df_cost)
+    df_params = {"qty": {"type": "int", "required": True, "min": 1, "max": fighter_max},
+                 "mode": {"type": "str", "required": True, "choices": ["defensive", "offensive", "toll"]},
+                 "existing_here": ({"owner_id": sector.fighters.owner_id, "count": sector.fighters.count}
+                                   if sector.fighters else None)}
+    from .class0 import MSL_NOTE as _MSL_NOTE
+    from .class0 import class0_tw2002 as _c0
+    from .class0 import is_class0_sector as _is_c0
+    from .class0 import is_msl_sector as _is_msl
+    if _c0() and (_is_msl(universe, player.sector_id) or _is_c0(universe, player.sector_id)):
+        if player.sector_id not in K.FEDSPACE_SECTORS:
+            df_params["note"] = _MSL_NOTE
     out.append(_la(ActionKind.DEPLOY_FIGHTERS, legal=reason is None, reason=reason, cost=df_cost,
-                   params={"qty": {"type": "int", "required": True, "min": 1, "max": fighter_max},
-                           "mode": {"type": "str", "required": True, "choices": ["defensive", "offensive", "toll"]},
-                           "existing_here": ({"owner_id": sector.fighters.owner_id, "count": sector.fighters.count}
-                                             if sector.fighters else None)}))
+                   params=df_params))
 
     dm_cost = int(K.TURN_COST["deploy_mines"])
     mines_have = {k.value if hasattr(k, "value") else str(k): int(v) for k, v in (player.ship.mines or {}).items() if int(v) > 0}
@@ -463,9 +471,17 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = "sector mine cap"
     else:
         reason = _need_turns(player, dm_cost)
+    dm_params = {"kind": {"type": "str", "required": True, "choices": mine_choices},
+                 "qty": {"type": "int", "required": True, "min": 1, "max_by": mine_max}}
+    from .class0 import MSL_NOTE as _MSL_NOTE2
+    from .class0 import class0_tw2002 as _c0b
+    from .class0 import is_class0_sector as _is_c0b
+    from .class0 import is_msl_sector as _is_mslb
+    if _c0b() and (_is_mslb(universe, player.sector_id) or _is_c0b(universe, player.sector_id)):
+        if player.sector_id not in K.FEDSPACE_SECTORS:
+            dm_params["note"] = _MSL_NOTE2
     out.append(_la(ActionKind.DEPLOY_MINES, legal=reason is None, reason=reason, cost=dm_cost,
-                   params={"kind": {"type": "str", "required": True, "choices": mine_choices},
-                           "qty": {"type": "int", "required": True, "min": 1, "max_by": mine_max}}))
+                   params=dm_params))
     if K.hardware_tw2002():
         # v13-v18: deploy_atomic sets an atomic detonator on the planet you are landed on.
         from .hardware import colonists_on, detonator_reason
@@ -483,50 +499,75 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         out.append(_la(ActionKind.DEPLOY_ATOMIC, legal=False,
                        reason="not a dispatched verb - use deploy_mines with kind=atomic (detonates immediately)"))
 
-    # ---- S4 group 2: StarDock cluster -----------------------------------------
+    # ---- S4 group 2: StarDock / Class 0 cluster --------------------------------
+    from .class0 import (
+        CLASS0_ITEMS,
+        class0_buy_ok,
+        class0_tw2002,
+        shield_unit_price,
+        special_port_at,
+        terra_legal_params,
+    )
     my_spec = K.hull_spec(player.ship.ship_class.value) or {}
-    if not at_stardock:
+    at_special = class0_tw2002() and special_port_at(universe, player.sector_id) is not None
+    can_buy, buy_where_err = class0_buy_ok(universe, player_id)
+    if not can_buy:
+        reason = buy_where_err if class0_tw2002() else "must be at StarDock (sector 1)"
         out.append(_la(ActionKind.BUY_SHIP, legal=False, reason="must be at StarDock (sector 1)",
                        params={"ship_class": {"type": "str", "required": True, "choices": []}}))
-        out.append(_la(ActionKind.BUY_EQUIP, legal=False, reason="must be at StarDock (sector 1)",
+        out.append(_la(ActionKind.BUY_EQUIP, legal=False, reason=reason,
                        params={"item": {"type": "str", "required": True, "choices": []},
                                "qty": {"type": "int", "required": True, "min": 1, "max_by": {}}}))
     else:
-        old_key = player.ship.ship_class.value
-        trade_in = K.trade_in_credit(old_key)
-        owned_classes = {p.ship.ship_class.value for p in universe.players.values()}
-        ship_choices: list[str] = []
-        net_cost_by: dict[str, int] = {}
-        blocked_by: dict[str, str] = {}
-        for key, spec in K.ship_specs().items():
-            net = K.net_hull_cost(old_key, key)
-            net_cost_by[key] = net
-            if spec.get("corp_only") and player.corp_ticker is None:
-                blocked_by[key] = "corporation-only"
-            elif K.ship_min_alignment(spec, 0) > player.alignment:
-                need = K.ship_min_alignment(spec, 0)
-                blocked_by[key] = f"alignment too low (needs {need})"
-            elif spec.get("unique") and key in owned_classes:
-                blocked_by[key] = "already owned elsewhere"
-            elif player.credits < net:
-                blocked_by[key] = f"insufficient credits ({player.credits} < {net})"
-            else:
-                ship_choices.append(key)
-        out.append(_la(ActionKind.BUY_SHIP, legal=bool(ship_choices),
-                       reason=None if ship_choices else "no ship you can buy right now (credits / alignment / corp)",
-                       params={"ship_class": {"type": "str", "required": True, "choices": ship_choices,
-                                              "net_cost_by": net_cost_by, "trade_in": trade_in, "blocked_by": blocked_by}}))
+        # buy_ship only at StarDock
+        if not at_stardock:
+            out.append(_la(ActionKind.BUY_SHIP, legal=False, reason="must be at StarDock (sector 1)",
+                           params={"ship_class": {"type": "str", "required": True, "choices": []}}))
+        else:
+            old_key = player.ship.ship_class.value
+            trade_in = K.trade_in_credit(old_key)
+            owned_classes = {p.ship.ship_class.value for p in universe.players.values()}
+            ship_choices: list[str] = []
+            net_cost_by: dict[str, int] = {}
+            blocked_by: dict[str, str] = {}
+            for key, spec in K.ship_specs().items():
+                net = K.net_hull_cost(old_key, key)
+                net_cost_by[key] = net
+                if spec.get("corp_only") and player.corp_ticker is None:
+                    blocked_by[key] = "corporation-only"
+                elif K.ship_min_alignment(spec, 0) > player.alignment:
+                    need = K.ship_min_alignment(spec, 0)
+                    blocked_by[key] = f"alignment too low (needs {need})"
+                elif spec.get("unique") and key in owned_classes:
+                    blocked_by[key] = "already owned elsewhere"
+                elif player.credits < net:
+                    blocked_by[key] = f"insufficient credits ({player.credits} < {net})"
+                else:
+                    ship_choices.append(key)
+            out.append(_la(ActionKind.BUY_SHIP, legal=bool(ship_choices),
+                           reason=None if ship_choices else "no ship you can buy right now (credits / alignment / corp)",
+                           params={"ship_class": {"type": "str", "required": True, "choices": ship_choices,
+                                                  "net_cost_by": net_cost_by, "trade_in": trade_in, "blocked_by": blocked_by}}))
 
         day = int(universe.day)
         prices = {
-            "fighters": K.fighter_unit_price(day), "shields": 10, "armid_mines": int(K.ARMID_MINE_COST),
-            "limpet_mines": int(K.LIMPET_MINE_COST), "atomic_mines": int(K.ATOMIC_MINE_COST),
-            "photon_missiles": int(K.PHOTON_MISSILE_COST), "ether_probes": int(K.ETHER_PROBE_COST),
+            "fighters": K.fighter_unit_price(day),
+            "shields": shield_unit_price(day) if class0_tw2002() else 10,
+            "armid_mines": int(K.ARMID_MINE_COST),
+            "limpet_mines": int(K.LIMPET_MINE_COST),
+            "atomic_mines": int(K.ATOMIC_MINE_COST),
+            "photon_missiles": int(K.PHOTON_MISSILE_COST),
+            "ether_probes": int(K.ETHER_PROBE_COST),
             "genesis": int(K.GENESIS_TORPEDO_COST),
             "holds": K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day),
             "colonists": int(K.COLONIST_PRICE),
         }
-        if K.hardware_tw2002():
+        if class0_tw2002() and at_stardock:
+            prices.pop("colonists", None)
+        if at_special:
+            prices = {k: prices[k] for k in CLASS0_ITEMS}
+            prices["holds"] = K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day)
+        if K.hardware_tw2002() and at_stardock:
             prices["cloak"] = int(K.CLOAK_COST)
             prices["mine_disruptor"] = int(K.DISRUPTOR_COST)
             prices.update(K.hardware_v2_prices())
@@ -549,10 +590,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         if K.hardware_tw2002():
             from .hardware import v2_have
             have.update(v2_have(player.ship))
-        cap_by = {
-            "colonists": max(0, int(player.ship.cargo_free)),
-        }
-        if K.info_tw2002():  # SCANNERS_HIDDEN_INFO.md s1-s3: one scanner per hull
+        cap_by = {}
+        if "colonists" in prices:
+            cap_by["colonists"] = max(0, int(player.ship.cargo_free))
+        if K.info_tw2002() and at_stardock:  # SCANNERS_HIDDEN_INFO.md s1-s3
             for item, price in K.scanner_offer(class_key, getattr(player.ship, "scanner", None)).items():
                 prices[item] = int(price)
                 cap_by[item] = 1
@@ -561,34 +602,79 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "armid_mines", "limpet_mines", "atomic_mines",
             "cloak", "mine_disruptor",
         ):
-            room = K.equip_room(class_key, capped, have[capped])
+            if capped not in prices:
+                continue
+            room = K.equip_room(class_key, capped, have.get(capped, 0))
             if room is not None:
                 cap_by[capped] = room
-        if K.hardware_tw2002():
+        if K.hardware_tw2002() and at_stardock:
             for capped in K.HARDWARE_V2_ITEMS:
-                cap_by[capped] = int(K.equip_room(class_key, capped, have[capped]) or 0)
+                cap_by[capped] = int(K.equip_room(class_key, capped, have.get(capped, 0)) or 0)
         equip_max: dict[str, int] = {}
         for item, unit in prices.items():
+            if item == "holds":
+                continue
             afford = player.credits // unit if unit > 0 else 0
             mx = min(afford, cap_by[item]) if item in cap_by else afford
             equip_max[item] = max(0, int(mx))
-        equip_max["holds"] = K.holds_affordable(
-            player.ship.ship_class.value,
-            player.ship.holds,
-            player.credits,
-            day,
-            cap_by["holds"],
-        )
+        if "holds" in prices:
+            equip_max["holds"] = K.holds_affordable(
+                player.ship.ship_class.value,
+                player.ship.holds,
+                player.credits,
+                day,
+                cap_by.get("holds", 10**9),
+            )
         equip_choices = [i for i, m in equip_max.items() if m >= 1]
-        if K.hardware_tw2002():
+        if K.hardware_tw2002() and at_stardock:
             from .hardware import photon_hull_ok
             if not photon_hull_ok(player) and "photon_missiles" in equip_choices:
                 equip_choices = [i for i in equip_choices if i != "photon_missiles"]
                 equip_max["photon_missiles"] = 0
-        out.append(_la(ActionKind.BUY_EQUIP, legal=bool(equip_choices),
-                       reason=None if equip_choices else "cannot afford any equipment (or all capacities full)",
-                       params={"item": {"type": "str", "required": True, "choices": equip_choices, "unit_price_by": prices},
-                               "qty": {"type": "int", "required": True, "min": 1, "max_by": equip_max}}))
+        dock_turns = 0
+        if at_special:
+            dock_turns = trade_turn_cost(player)
+        params = {
+            "item": {"type": "str", "required": True, "choices": equip_choices, "unit_price_by": prices},
+            "qty": {"type": "int", "required": True, "min": 1, "max_by": equip_max},
+        }
+        if at_special:
+            params["dock_turns"] = dock_turns
+        buy_cost = dock_turns if at_special else 0
+        if not equip_choices:
+            buy_reason = "cannot afford any equipment (or all capacities full)"
+        elif buy_cost > 0:
+            buy_reason = _need_turns(player, buy_cost)
+        else:
+            buy_reason = None
+        out.append(_la(ActionKind.BUY_EQUIP, legal=buy_reason is None and bool(equip_choices),
+                       reason=buy_reason if equip_choices else "cannot afford any equipment (or all capacities full)",
+                       params=params, cost=buy_cost))
+
+    # CLASS0_TERRA.md: terra_colonists (sector 1 only under tw2002)
+    terra_params = terra_legal_params(universe, player) if class0_tw2002() else None
+    if class0_tw2002():
+        terra_cost = int(K.TERRA_LOAD_TURNS)
+        if terra_params is None:
+            reason = "Terra colonists unavailable here"
+            if player.sector_id != K.STARDOCK_SECTOR:
+                reason = "must be at Terra (sector 1)"
+            elif player.planet_landed is not None:
+                reason = "must liftoff before loading Terra colonists"
+            elif player.fighter_challenge is not None:
+                reason = "resolve the fighter challenge first"
+            elif universe.terra_colonists is None:
+                reason = "Terra unavailable"
+            else:
+                reason = "no room to take or leave colonists"
+            out.append(_la(ActionKind.TERRA_COLONISTS, legal=False, reason=reason,
+                           cost=terra_cost,
+                           params={"mode": {"type": "str", "required": True, "choices": []},
+                                   "qty": {"type": "int", "required": True, "min": 1, "max_by": {}}}))
+        else:
+            turn_block = _need_turns(player, terra_cost)
+            out.append(_la(ActionKind.TERRA_COLONISTS, legal=turn_block is None, reason=turn_block,
+                           cost=terra_cost, params=terra_params))
 
     in_corp = player.corp_ticker is not None and player.corp_ticker in universe.corporations
     corp = universe.corporations.get(player.corp_ticker) if in_corp else None
@@ -817,8 +903,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
         attached = sum(1 for lt in universe.limpets.values() if lt.target_id == player_id)
         fee = int(K.LIMPET_REMOVAL_COST)
-        if player.sector_id != K.STARDOCK_SECTOR:
-            reason = "must be at StarDock"
+        from .class0 import class0_service_here as _c0_svc
+        if not _c0_svc(universe, player_id):
+            reason = "must be at StarDock or a Class 0 port" if K.class0_tw2002() else "must be at StarDock"
         elif attached <= 0:
             reason = "no limpet attached"
         elif player.credits < fee:

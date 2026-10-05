@@ -133,7 +133,7 @@ class TestPhaseA:
         assert new_p.citadel_level == 1
 
     def test_a_buy_colonists_at_stardock_and_ferry_to_own_planet(self):
-        """End-to-end Terra ferry: at StarDock `buy_equip item=colonists` loads
+        """End-to-end Terra ferry: at sector 1 `terra_colonists mode=take` loads
         them into cargo, then `assign_colonists from=ship to=<pool>` deposits
         them on an owned planet. This is the authentic TW2002 loop that
         unlocks scaling Citadel construction past the Genesis seed pool."""
@@ -151,12 +151,12 @@ class TestPhaseA:
                          Commodity.EQUIPMENT: 0, Commodity.COLONISTS: 0}
         qty = 30
         res = apply_action(u, "A", Action(
-            kind=ActionKind.BUY_EQUIP,
-            args={"item": "colonists", "qty": qty},
+            kind=ActionKind.TERRA_COLONISTS,
+            args={"mode": "take", "qty": qty},
         ))
-        assert res.ok, f"buy_equip colonists failed: {res.error}"
+        assert res.ok, f"terra_colonists take failed: {res.error}"
         assert a.ship.cargo[Commodity.COLONISTS] == qty
-        assert a.credits == 10_000 - qty * K.COLONIST_PRICE
+        assert a.credits == 10_000  # Terra load is free (CLASS0_TERRA.md t5)
 
         # Fly to the owned planet and drop them into the organics pool.
         a.sector_id = new_p.sector_id
@@ -177,11 +177,11 @@ class TestPhaseA:
         a.ship.holds = 20  # starter ship
         a.ship.cargo[Commodity.FUEL_ORE] = 20  # fully loaded
         res = apply_action(u, "A", Action(
-            kind=ActionKind.BUY_EQUIP,
-            args={"item": "colonists", "qty": 1},
+            kind=ActionKind.TERRA_COLONISTS,
+            args={"mode": "take", "qty": 1},
         ))
         assert not res.ok
-        assert "cargo" in (res.error or "").lower()
+        assert "cargo" in (res.error or "").lower() or "hold" in (res.error or "").lower()
 
     def test_a_planet_load_stockpile_to_ship_cargo(self):
         from tw2k.engine.models import EventKind, Planet, PlanetClass
