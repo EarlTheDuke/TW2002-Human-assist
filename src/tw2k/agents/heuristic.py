@@ -5,8 +5,9 @@ The heuristic agent implements a competent trade-loop player:
 - Execute trades until cargo is full, then warp toward the best known buying port.
 - If a Ferrengi is in its sector with low aggression, fight; otherwise flee.
 - If at StarDock with surplus credits, upgrade ship.
+- Avoid ping-ponging the same two sectors; refuse warps when out of turns.
 
-It's not intended to beat an LLM — just to play a valid game.
+It's not intended to beat an LLM - just to play a valid game.
 """
 
 from __future__ import annotations
@@ -23,7 +24,12 @@ class HeuristicAgent(BaseAgent):
 
     def __init__(self, player_id: str, name: str, seed: int | None = None):
         super().__init__(player_id, name)
-        self.rng = random.Random(seed if seed is not None else hash(player_id) & 0xFFFF)
+        # Explicit seed keeps multi-seat matches deterministic. hash(player_id)
+        # alone still drifts under PYTHONHASHSEED randomization.
+        self.rng = random.Random(seed if seed is not None else (sum(ord(c) for c in player_id) & 0xFFFF))
+        self._visit_counts: dict[int, int] = {}
+        self._last_from: int | None = None
+        self._last_to: int | None = None
         # Sectors whose fighters this seat retreated from -> day; avoided that day (no ping-pong).
         self._held: dict[int, int] = {}
 
@@ -32,13 +38,16 @@ class HeuristicAgent(BaseAgent):
         challenge = getattr(obs, "fighter_challenge", None)
         if challenge:
             return self._answer_challenge(obs, challenge)
+        here = int(obs.sector.get("id") or 0)
+        self._visit_counts[here] = self._visit_counts.get(here, 0) + 1
+
         # Survival first: ferrengi in sector, low fighters? flee.
         ferr = obs.sector.get("ferrengi", [])
         if ferr:
             top = max(ferr, key=lambda f: f["aggression"])
             if obs.ship["fighters"] > 0 and obs.ship["fighters"] >= top["fighters"] * 1.5:
                 return self._attack(top["id"], "Ferrengi looks beatable, lets collect that bounty.")
-            return self._flee(obs, f"Ferrengi aggression {top['aggression']} — bail.")
+            return self._flee(obs, f"Ferrengi aggression {top['aggression']} - bail.")
 
         # In an escape pod: trade it in at StarDock, else fly there (DEATH_ESCAPE_PODS.md d17).
         if str(obs.ship.get("class") or "") == "escape_pod":
@@ -60,7 +69,6 @@ class HeuristicAgent(BaseAgent):
         # At a port with stock: trade
         port = obs.sector.get("port")
         if port and port["class_id"] not in (0, 8):
-            # Try selling first (if we have cargo the port buys)
             for commodity in ("equipment", "organics", "fuel_ore"):
                 held = obs.ship["cargo"].get(commodity, 0)
                 if held > 0 and commodity in port["buys"] and commodity in port["stock"]:
@@ -73,7 +81,6 @@ class HeuristicAgent(BaseAgent):
                             args={"commodity": commodity, "qty": qty, "side": "sell"},
                             thought=f"Offloading {qty} {commodity} at {port['code']} for {entry['price']}cr/u.",
                         )
-            # Otherwise buy what the port sells, as much as fits, if affordable
             for commodity in ("equipment", "organics", "fuel_ore"):
                 if commodity in port["sells"] and commodity in port["stock"]:
                     entry = port["stock"][commodity]
@@ -87,36 +94,52 @@ class HeuristicAgent(BaseAgent):
                             thought=f"Buying {qty} {commodity} at {port['code']} for {unit}cr/u.",
                         )
 
-        # Move. Prefer adjacent unknown sectors; otherwise adjacent with ports.
-        # Never WAIT if we can warp — WAIT-spam clogs the event feed.
+        # Out of turns: wait. Warping would be rejected and waste the decision.
+        turns_left = int(getattr(obs, "turns_remaining", 0) or 0)
+        if turns_left <= 0:
+            return Action(kind=ActionKind.WAIT, args={}, thought="Out of turns today; waiting for the day tick.")
+
         adj = obs.adjacent or []
-        adj = [a for a in adj if self._held.get(int(a["id"])) != obs.day] or adj
+        day = getattr(obs, "day", None)
+        adj = [a for a in adj if self._held.get(int(a["id"])) != day] or adj
         if adj and self._short_for_warp(obs):
             return Action(kind=ActionKind.WAIT, thought="Not enough turns left for a warp; waiting for tomorrow.")
         if adj:
-            unknown = [a for a in adj if not a.get("known")]
-            with_port = [a for a in adj if a.get("port") and a["port"] not in ("FED",)]
+            # Never reverse the last hop (kills the 203<->270 loop).
+            candidates = [a for a in adj if int(a["id"]) != self._last_from]
+            if not candidates:
+                candidates = list(adj)
+            unknown = [a for a in candidates if not a.get("known")]
+            with_port = [a for a in candidates if a.get("port") and a["port"] not in ("FED",)]
             if unknown:
-                choice = self.rng.choice(unknown)
+                pool = unknown
                 reason = "scouting"
             elif with_port:
-                choice = self.rng.choice(with_port)
+                pool = with_port
                 reason = "hopping to known port"
             else:
-                choice = self.rng.choice(adj)
+                pool = candidates
                 reason = "drifting"
+            # Prefer least-visited to escape two-sector orbits.
+            choice = min(pool, key=lambda a: (self._visit_counts.get(int(a["id"]), 0), int(a["id"])))
+            # Tie-break with rng among equally fresh sectors.
+            best_visits = self._visit_counts.get(int(choice["id"]), 0)
+            tied = [a for a in pool if self._visit_counts.get(int(a["id"]), 0) == best_visits]
+            if len(tied) > 1:
+                choice = self.rng.choice(tied)
+            self._last_from = here
+            self._last_to = int(choice["id"])
             return Action(
                 kind=ActionKind.WARP,
                 args={"target": choice["id"]},
                 thought=f"Warping to {choice['id']} ({reason}, port={choice.get('port')}).",
             )
 
-        # Genuinely no warps available (shouldn't happen in a connected galaxy).
         return Action(kind=ActionKind.WAIT, args={}, thought="No warps from this sector; waiting a tick.")
 
     @staticmethod
     def _legal(obs: Observation) -> dict:
-        return {la.get("kind"): la for la in (obs.legal_actions or [])}
+        return {la.get("kind"): la for la in (getattr(obs, "legal_actions", None) or [])}
 
     def _short_for_warp(self, obs: Observation) -> bool:
         """Warp refused for turns only (e.g. 2 left, 3 a warp) while WAIT is open: wait out the day."""
@@ -195,7 +218,11 @@ class HeuristicAgent(BaseAgent):
         adj = obs.adjacent or []
         if not adj:
             return Action(kind=ActionKind.WAIT, thought=thought + " (no adjacent sectors)")
-        choice = self.rng.choice(adj)
+        here = int(obs.sector.get("id") or 0)
+        candidates = [a for a in adj if int(a["id"]) != self._last_from] or list(adj)
+        choice = min(candidates, key=lambda a: (self._visit_counts.get(int(a["id"]), 0), int(a["id"])))
+        self._last_from = here
+        self._last_to = int(choice["id"])
         return Action(
             kind=ActionKind.WARP,
             args={"target": choice["id"]},

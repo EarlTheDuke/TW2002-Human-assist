@@ -62,7 +62,11 @@ from ..engine.constants import (
     ship_cost,
     ship_specs,
 )
-from ..engine.planets import organics_coeff, organics_worker_target, planet_growth_status
+from ..engine.planets import (
+    organics_coeff,
+    organics_worker_target,
+    planet_growth_status,
+)
 from .pathb_client import TurnContext, legal_heuristic_policy
 from .stall import Intent, StallDetector, known_distance
 
@@ -98,11 +102,25 @@ def _organics_price_ceiling() -> int:
 
 ORGANICS_LOAD = 75
 # Build the next citadel inside this many days of max_days even if it
-# spends the growth base — the match will not compound past the cap.
+# spends the growth base - the match will not compound past the cap.
 CITADEL_LAST_DAYS = 2
 # Genesis above the second world, only while the purchase still leaves
 # L1 cash. Four is the cap: more worlds than that starve the turn budget.
 MAX_TARGET_PLANETS = 4
+# Buy hull upgrades and defence once a seat is this rich (fogged credits).
+RICH_CREDITS = 200_000
+DEFENSE_CASH_GATE = 100_000
+DEFENSE_FIGHTERS_FLOOR = 200
+DEFENSE_SHIELDS_FLOOR = 100
+# Legal-list combat hulls, preferred when already past CargoTran.
+COMBAT_HULLS = (
+    "imperial_starship",
+    "havoc_gunstar",
+    "battleship",
+    "star_master",
+    "constellation",
+    "missile_frigate",
+)
 # Shields the seat buys are scored at 10cr. A citadel does not mint them.
 SHIELD_VALUE = 10
 
@@ -149,6 +167,8 @@ class SeatMemory:
     hull_wait: bool = False
     # Worlds whose legal list showed no room for a colonist unload.
     no_colonist_room: set[int] = field(default_factory=set)
+    # Sectors where this seat has seen Ferrengi (fogged sector / events).
+    hot_sectors: set[int] = field(default_factory=set)
 
     def dump(self) -> str:
         return MEMORY_TAG + json.dumps({
@@ -164,6 +184,7 @@ class SeatMemory:
             "stock_load": list(self.stock_load) if self.stock_load else None,
             "hull_wait": self.hull_wait,
             "no_colonist_room": sorted(self.no_colonist_room)[:20],
+            "hot_sectors": sorted(self.hot_sectors)[:40],
         }, separators=(",", ":"))
 
     @classmethod
@@ -195,6 +216,7 @@ class SeatMemory:
             mem.stock_load = (int(stock[0]), str(stock[1]))
         mem.hull_wait = bool(data.get("hull_wait"))
         mem.no_colonist_room = {int(pid) for pid in (data.get("no_colonist_room") or [])}
+        mem.hot_sectors = {int(sid) for sid in (data.get("hot_sectors") or [])}
         return mem
 
 
@@ -432,6 +454,12 @@ def _unload_pool(planet: dict[str, Any], qty: int) -> str:
     coeff = _class_coeff(planet)
     if coeff is None:
         return "organics" if workers < total // 5 else "fuel_ore"
+    # Coeff-1 cannot cover burn. Once the stockpile is empty, further organics
+    # unloads just steal fuel from citadel payments (seed 250925 planet 32).
+    # Coeff-1 cannot surplus-feed. Park only a tiny organics crew so citadel
+    # fuel keeps getting the ferry (seed 250925 class U home).
+    if coeff == 1:
+        return "organics" if workers < max(1, total // 40) else "fuel_ore"
     if coeff > 0 and workers < organics_worker_target(total, coeff):
         return "organics"
     return "fuel_ore"
@@ -512,7 +540,8 @@ class SeatBrain:
             mem.organics_drop = None
         if mem.colonist_drop is not None and v.colonists_aboard <= 0:
             mem.colonist_drop = None
-        if self.value_allocator:
+        self._note_ferrengi(v)
+        if self.feed_organics or self.value_allocator:
             self._sync_target_planets(v)
 
         report = self.detector.observe(o, self._intent)
@@ -824,10 +853,11 @@ class SeatBrain:
             self.mem.deploy_sector = int(v.here)
             return self._act("deploy_genesis", {}, f"deploy genesis in sector {v.here}"), Intent("colonize")
         reason = v.reason("deploy_genesis").lower()
-        if "fedspace" in reason or "too close" in reason:
+        if "fedspace" in reason or "too close" in reason or "5 planets" in reason or "holds 5" in reason:
             warp = self._warp_away_from_stardock(v)
             if warp is not None:
-                return self._act("warp", {"target": warp}, f"carry genesis deeper ({v.reason('deploy_genesis')})"), Intent("explore")
+                return self._act("warp", {"target": warp}, f"carry genesis elsewhere ({v.reason('deploy_genesis')})"), Intent("explore")
+            # No legal exit: drop through so the ladder can sell / wait, not spin.
         return None
 
     def _note_colonist_room(self, v: View) -> None:
@@ -898,6 +928,17 @@ class SeatBrain:
             net = int((v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {}).get("cargotran") or 10**12)
             if v.credits - net >= self.cash_buffer and v.ship_class in ("merchant_cruiser", "scout_marauder"):
                 return self._act("buy_ship", {"ship_class": "cargotran"}, f"upgrade to CargoTran ({net} cr net)"), Intent("acquire")
+        if self.feed_organics or self.value_allocator:
+            # Combat hull / defence spend trade capital. Only arm after Ferrengi
+            # are fogged (hot_sectors) — solo N2/N3 acceptance has none, and
+            # early N3 defence buys were breaking the day-10 NW band.
+            if self._fogged_hot():
+                combat = self._buy_combat_hull(v)
+                if combat is not None:
+                    return combat, Intent("acquire")
+                defense = self._buy_defense(v)
+                if defense is not None:
+                    return defense, Intent("acquire")
         # N3: the first torpedo waits until CargoTran is affordable. Buying it
         # on a 20-hold hull (seed 250925: day 1, 20cr left) pushes the upgrade
         # out to day 7 and the extra holds never pay the turns back.
@@ -934,6 +975,10 @@ class SeatBrain:
     def _travel(self, v: View):
         if v.landed is not None:
             return None
+        if self._needs_dock_defense(v):
+            plot = self._plot(v, STARDOCK, "under-armed with cash - StarDock for fighters/shields")
+            if plot is not None:
+                return plot, Intent("acquire", STARDOCK)
         if self._hauling_organics(v):
             planet = v.planet(self.mem.organics_drop)
             if planet is None:
@@ -1030,8 +1075,9 @@ class SeatBrain:
             return committed
         saved = (self.mem.colonist_drop, self.mem.stock_load, self.mem.organics_drop)
         options: list[tuple[float, dict[str, Any], Intent, dict[str, Any]]] = []
-        for opt in (self._opt_upgrade(v), self._opt_organics(v), self._opt_build(v), self._opt_genesis(v),
-                    self._opt_ferry(v), self._opt_stockpile(v), self._opt_trade(v), self._opt_survey(v)):
+        for opt in (self._opt_upgrade(v), self._opt_defense(v), self._opt_organics(v), self._opt_build(v),
+                    self._opt_genesis(v), self._opt_ferry(v), self._opt_stockpile(v), self._opt_trade(v),
+                    self._opt_survey(v)):
             if opt is None:
                 continue
             action = opt[1]
@@ -1160,14 +1206,26 @@ class SeatBrain:
         return 12
 
     def _sync_target_planets(self, v: View) -> None:
-        """Raise the genesis cap above 2 while another torpedo leaves L1 cash."""
-        if not self.value_allocator:
+        """Raise the genesis cap above 2 while another torpedo leaves L1 cash.
+
+        N1 keeps ``target_planets=2`` (``feed_organics`` off). N2/N3 raise the
+        cap from fogged credits so rich seats plant more than two worlds.
+        """
+        if not (self.feed_organics or self.value_allocator):
             return
         have = len(v.genesis_planets())
         step = GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + self.working_capital
         spare = v.credits - self._unfinished_l2_cash(v)
         more = max(0, spare // step) if step else 0
-        self.target_planets = min(MAX_TARGET_PLANETS, max(2, have + more))
+        # Raise only while every current genesis world still has organics
+        # runway (and at least two are fed, or fewer than two exist). Free
+        # raise on N3 planted starved coeff-1 maps that then hit organics 0
+        # (N3 acceptance forbids any zero). Same gate keeps N2 beating N1.
+        raised = min(MAX_TARGET_PLANETS, max(2, have + more))
+        worlds = v.genesis_planets()
+        fed = sum(1 for w in worlds if int((growth_view(w) or {}).get("organics_days_left") or 0) > 0)
+        if fed >= min(2, len(worlds)) and (not worlds or fed == len(worlds)):
+            self.target_planets = raised
 
     def _unfinished_l2_cash(self, v: View) -> int:
         """L2 credit cost still unpaid on worlds that have not started that tier."""
@@ -1215,6 +1273,9 @@ class SeatBrain:
         return found
 
     def _opt_upgrade(self, v: View):
+        combat = self._combat_hull_option(v)
+        if combat is not None:
+            return combat
         if not self._cargotran_affordable(v):
             return None
         holds = self._holds(v)
@@ -1920,11 +1981,25 @@ class SeatBrain:
             g = growth_view(planet)
             if not g:
                 continue
+            # Coeff-1 (K/U) cannot cover burn at a profit under 26/56/102
+            # (seed 250925 planet 32). N2 skips them (held zeros). N3's bar
+            # forbids any organics stock hitting 0, so value_allocator still
+            # imports a lifeline. Coeff 0 (H) always imports to keep growth.
+            coeff = _class_coeff(planet)
+            if coeff == 1 and not self.value_allocator:
+                continue
             days = int(g.get("organics_days_left") or 0)
             if days < ORGANICS_FEED_DAYS:
                 rows.append((days, -int(g.get("organics_consumption_per_day") or 0), int(planet.get("id") or 0), planet))
         rows.sort()
-        return [planet for *_rest, planet in rows]
+        fed = [planet for *_rest, planet in rows]
+        if self.value_allocator or len(fed) <= 2:
+            return fed
+        # Ladder: keep organics trips on the two earliest genesis ids so extra
+        # rich-world plants do not steal equipment trades (seed 250925 ~4k gap).
+        keep = sorted((int(p["id"]), p) for p in v.genesis_planets())[:2]
+        keep_ids = {i for i, _ in keep}
+        return [p for p in fed if int(p["id"]) in keep_ids]
 
     def _pending_colonist_cost(self, planet: dict[str, Any]) -> int:
         """Colonists the next citadel tier will drain (0 if no tier is coming)."""
@@ -1940,11 +2015,26 @@ class SeatBrain:
         return _unload_pool(planet, qty)
 
     def _rebalance_organics(self, v: View, planet: dict[str, Any]) -> dict[str, Any] | None:
-        """Pull labor onto the organics pool until class production beats the burn."""
+        """Pull labor onto the organics pool until class production beats the burn.
+
+        Coeff-1 worlds (K/U) cannot surplus-feed even with half the colony on
+        organics. Reshuffling there burns turns and still hits 0; skip them entirely.
+        """
         coeff = _class_coeff(planet)
         if coeff is None or coeff <= 0 or not v.ok("assign_colonists"):
             return None
-        target = organics_worker_target(_colonists_total(planet), coeff)
+        total = _colonists_total(planet)
+        # Coeff-1 worlds cannot surplus-feed even with half the colony on organics.
+        # The reshuffle burns turns and still hits 0 (seed 250925 class U: 2 turns
+        # and ~15k behind N1 at the old scale; worse under 26/56/102). Import is
+        # also a losing detour on those maps, so skip the labor move entirely.
+        if coeff <= 1:
+            return None
+        target = organics_worker_target(total, coeff)
+        # If covering the burn needs more than half the colony, the class cannot
+        # surplus-feed; reshuffling only burns turns (same failure mode as coeff-1).
+        if target > total // 2:
+            return None
         workers = _pool(planet, "organics")
         if workers >= target:
             return None
@@ -2069,7 +2159,7 @@ class SeatBrain:
         offer = self._organics_offer_here(v)
         seller = self._cheapest_organics_seller(v)
         # Standing at a non-premium seller: fill holds. Don't detour for a
-        # cheaper port while a day of runway remains — that detour is a
+        # cheaper port while a day of runway remains - that detour is a
         # colonist ferry we don't get back (seeds 250925 and 31).
         # Both the ladder and the allocator buy at the live price scale. The
         # ladder's old fixed 19/25 gate never matched a tw2002 quote, so a
@@ -2095,6 +2185,195 @@ class SeatBrain:
             if plot is not None and not self._banned_why(plot, v):
                 return plot, Intent("colonize", sid)
         return None
+
+
+    def _note_ferrengi(self, v: View) -> None:
+        """Remember sectors where Ferrengi are (or were) visible to this seat."""
+        if self.mem is None:
+            return
+        ferr = (v.sector or {}).get("ferrengi") or []
+        if ferr and v.here is not None:
+            self.mem.hot_sectors.add(int(v.here))
+        for e in v.events:
+            kind = e.get("kind")
+            if kind not in ("ferrengi_move", "ferrengi_attack", "ferrengi_spawn"):
+                continue
+            facts = e.get("facts") or {}
+            for key in ("to", "sector_id", "from"):
+                sid = facts.get(key)
+                if isinstance(sid, int):
+                    self.mem.hot_sectors.add(int(sid))
+            # Summaries sometimes carry the sector; parse digits only when short.
+            if e.get("sector_id") is not None:
+                try:
+                    self.mem.hot_sectors.add(int(e["sector_id"]))
+                except (TypeError, ValueError):
+                    pass
+
+    def _ship_fighters(self, v: View) -> int:
+        return int(v.ship.get("fighters") or 0)
+
+    def _ship_shields(self, v: View) -> int:
+        return int(v.ship.get("shields") or 0)
+
+    def _under_defended(self, v: View) -> bool:
+        return (self._ship_fighters(v) < DEFENSE_FIGHTERS_FLOOR
+                or self._ship_shields(v) < DEFENSE_SHIELDS_FLOOR)
+
+    def _fogged_hot(self) -> bool:
+        """True when Ferrengi have been seen this seat (mem may be unset on helper-only calls)."""
+        return bool(self.mem and self.mem.hot_sectors)
+
+    def _should_avoid_hot(self, v: View) -> bool:
+        return (self.feed_organics or self.value_allocator) and self._under_defended(v) and self._fogged_hot()
+
+    def _needs_dock_defense(self, v: View) -> bool:
+        if not (self.feed_organics or self.value_allocator):
+            return False
+        # Only divert a trade route after Ferrengi have been seen (fogged).
+        if not self._fogged_hot():
+            return False
+        if v.credits < DEFENSE_CASH_GATE or not self._under_defended(v):
+            return False
+        if v.here == STARDOCK:
+            return False
+        return True
+
+    def _buy_defense(self, v: View) -> dict[str, Any] | None:
+        """Buy shields then fighters from the fogged StarDock list when cash is high."""
+        if not (self.feed_organics or self.value_allocator):
+            return None
+        if v.here != STARDOCK or not v.ok("buy_equip"):
+            return None
+        if v.credits < DEFENSE_CASH_GATE:
+            return None
+        # N2 solo ladder (no Ferrengi) should not drain the bank on shields.
+        if not self._fogged_hot():
+            return None
+        items = set(str(x) for x in v.choices("buy_equip", "item"))
+        prices = (v.params("buy_equip").get("item") or {}).get("unit_price_by") or {}
+        # Shields first: cheap HP buffer against Ferrengi.
+        if "shields" in items and self._ship_shields(v) < DEFENSE_SHIELDS_FLOOR:
+            unit = int(prices.get("shields") or SHIELD_VALUE)
+            room = v.max_by("buy_equip", "qty", "shields")
+            need = max(0, DEFENSE_SHIELDS_FLOOR - self._ship_shields(v))
+            afford = max(0, (v.credits - self.cash_buffer) // max(1, unit))
+            qty = min(room, need if need else room, afford, 200)
+            if qty > 0:
+                return self._act("buy_equip", {"item": "shields", "qty": int(qty)},
+                                 f"buy {qty} shields before carrying cash")
+        if "fighters" in items and self._ship_fighters(v) < DEFENSE_FIGHTERS_FLOOR:
+            unit = int(prices.get("fighters") or fighter_unit_price(int(v.day) or 1))
+            room = v.max_by("buy_equip", "qty", "fighters")
+            need = max(0, DEFENSE_FIGHTERS_FLOOR - self._ship_fighters(v))
+            afford = max(0, (v.credits - self.cash_buffer) // max(1, unit))
+            qty = min(room, need if need else min(room, 300), afford, 400)
+            if qty > 0:
+                return self._act("buy_equip", {"item": "fighters", "qty": int(qty)},
+                                 f"buy {qty} fighters before carrying cash")
+        # When already at the floor but still rich, top up toward the fogged cap.
+        if v.credits >= RICH_CREDITS:
+            for item, floor in (("shields", DEFENSE_SHIELDS_FLOOR), ("fighters", DEFENSE_FIGHTERS_FLOOR)):
+                if item not in items:
+                    continue
+                have = self._ship_shields(v) if item == "shields" else self._ship_fighters(v)
+                room = v.max_by("buy_equip", "qty", item)
+                if room <= 0 or have >= floor * 2:
+                    continue
+                unit = int(prices.get(item) or (SHIELD_VALUE if item == "shields" else fighter_unit_price(int(v.day) or 1)))
+                afford = max(0, (v.credits - RICH_CREDITS // 2) // max(1, unit))
+                qty = min(room, afford, 200)
+                if qty > 0:
+                    return self._act("buy_equip", {"item": item, "qty": int(qty)},
+                                     f"top up {qty} {item} while rich")
+        return None
+
+    def _buy_combat_hull(self, v: View) -> dict[str, Any] | None:
+        if not self._fogged_hot():
+            return None
+        if v.here != STARDOCK or not v.ok("buy_ship") or v.credits < RICH_CREDITS:
+            return None
+        if v.ship_class in ("merchant_cruiser", "scout_marauder"):
+            return None  # CargoTran first
+        choice = self._best_combat_hull(v)
+        if choice is None:
+            return None
+        hull, net = choice
+        if v.credits - net < self.working_capital:
+            return None
+        return self._act("buy_ship", {"ship_class": hull}, f"upgrade to {hull} ({net} cr net) for defence")
+
+    def _best_combat_hull(self, v: View) -> tuple[str, int] | None:
+        """Pick the best affordable combat hull from the fogged buy_ship list."""
+        if not v.ok("buy_ship"):
+            return None
+        choices = set(str(c) for c in v.choices("buy_ship", "ship_class"))
+        nets = (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by") or {}
+        cur = ship_specs().get(v.ship_class or "") or {}
+        cur_f = int(cur.get("max_fighters") or 0)
+        best: tuple[int, int, int, int, str] | None = None  # fighters, holds, pref, -net, hull
+        for i, hull in enumerate(COMBAT_HULLS):
+            if hull not in choices or hull == v.ship_class:
+                continue
+            net = int(nets.get(hull) or 10**12)
+            if v.credits - net < self.working_capital:
+                continue
+            spec = ship_specs().get(hull) or {}
+            fighters = int(spec.get("max_fighters") or 0)
+            if fighters <= cur_f:
+                continue
+            # Never trade away cargo capacity: havoc (50) is worse than cargotran (75).
+            new_holds = int(spec.get("holds") or 0)
+            cur_holds = int(cur.get("holds") or 0)
+            if new_holds < cur_holds:
+                continue
+            row = (fighters, new_holds, -i, -net, hull)
+            if best is None or row[:4] > best[:4]:
+                best = row
+        if best is None:
+            return None
+        return best[4], -best[3]
+
+    def _combat_hull_option(self, v: View):
+        if not self._fogged_hot():
+            return None
+        choice = self._best_combat_hull(v)
+        if choice is None or v.credits < RICH_CREDITS:
+            return None
+        hull, net = choice
+        turns = self._hops_to_stardock(v) * self._tpw(v) + 1
+        # Defence value: surviving a Ferrengi hit saves ~25% of credits once.
+        value = min(v.credits * 0.25, 500_000)
+        if v.here == STARDOCK and v.ok("buy_ship") and hull in v.choices("buy_ship", "ship_class"):
+            action = self._act("buy_ship", {"ship_class": hull}, f"upgrade to {hull} ({net} cr net) for defence")
+        else:
+            action = self._plot(v, STARDOCK, f"{hull} affordable - StarDock for a tougher hull")
+            if action is None:
+                return None
+        return value / max(1, turns), action, Intent("acquire", STARDOCK)
+
+    def _opt_defense(self, v: View):
+        # Never divert a trade day to StarDock for fighters until cash clears the
+        # defence gate AND Ferrengi have been fogged. A RICH-only bypass was
+        # still plotting to StarDock in solo N3 (no hot_sectors), wasting turns
+        # then buying nothing (_buy_defense also requires hot_sectors).
+        if v.credits < DEFENSE_CASH_GATE:
+            return None
+        if not self._fogged_hot():
+            return None
+        if not self._under_defended(v) and v.credits < RICH_CREDITS:
+            return None
+        turns = self._hops_to_stardock(v) * self._tpw(v) + 1
+        value = min(v.credits * 0.2, 250_000) if self._under_defended(v) else 20_000
+        if v.here == STARDOCK:
+            action = self._buy_defense(v)
+            if action is None:
+                return None
+        else:
+            action = self._plot(v, STARDOCK, "buy defence before travelling with cash")
+            if action is None:
+                return None
+        return value / max(1, turns), action, Intent("acquire", STARDOCK)
 
     def _cargotran_net(self, v: View) -> int | None:
         """Trade-in net for CargoTran from a starter hull, or None if we already outgrew it."""
@@ -2166,7 +2445,13 @@ class SeatBrain:
     def _legal_warps(self, v: View) -> list[int]:
         if not v.ok("warp"):
             return []
-        return [int(c) for c in v.choices("warp", "target")]
+        choices = [int(c) for c in v.choices("warp", "target")]
+        if self._should_avoid_hot(v):
+            hot = self.mem.hot_sectors if self.mem else set()
+            safe = [c for c in choices if c not in hot]
+            if safe:
+                return safe
+        return choices
 
     def _came_from(self, v: View) -> int | None:
         last = self.mem.last_warp
