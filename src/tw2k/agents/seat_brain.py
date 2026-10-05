@@ -2357,11 +2357,15 @@ class SeatBrain:
         # defence gate AND Ferrengi have been fogged. A RICH-only bypass was
         # still plotting to StarDock in solo N3 (no hot_sectors), wasting turns
         # then buying nothing (_buy_defense also requires hot_sectors).
+        # When already at the fighter/shield floor, do not leave a trade route
+        # for a top-up: _buy_defense may no-op once have >= floor*2, and even a
+        # top-up is not worth a StarDock divert. Top-ups happen when the seat is
+        # already docked (_at_stardock).
         if v.credits < DEFENSE_CASH_GATE:
             return None
         if not self._fogged_hot():
             return None
-        if not self._under_defended(v) and v.credits < RICH_CREDITS:
+        if not self._under_defended(v):
             return None
         turns = self._hops_to_stardock(v) * self._tpw(v) + 1
         value = min(v.credits * 0.2, 250_000) if self._under_defended(v) else 20_000
