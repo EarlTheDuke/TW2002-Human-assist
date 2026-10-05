@@ -179,35 +179,30 @@ def test_underfed_world_buys_cheap_organics_and_remembers_the_drop() -> None:
     assert land["kind"] == "land_planet" and land["args"]["planet_id"] == 7
 
 
-def test_k_class_unload_goes_to_the_organics_pool() -> None:
+def test_k_class_unload_prefers_fuel_once_a_tiny_organics_crew_exists() -> None:
+    """Coeff-1 (K/U) cannot surplus-feed; after a tiny organics crew, ferry goes to fuel."""
     world = {"id": 7, "sector_id": 5, "name": "G", "class": "K", "origin": "genesis",
              "citadel_level": 1, "citadel_target": 1,
              "colonists": {"fuel_ore": 1000, "organics": 200, "equipment": 200, "colonists": 100}}
     obs = synthetic_obs(sector=5, planets=[world], landed=7, colonists=75, credits=10_000)
     a = SeatBrain().decide(obs)
     assert a["kind"] == "assign_colonists"
-    assert a["args"]["to"] == "organics" and a["args"]["qty"] == 75
+    assert a["args"]["to"] == "fuel_ore" and a["args"]["qty"] == 75
 
 
 def test_n2_day10_beats_n1_and_keeps_organics(monkeypatch) -> None:
     """Five seeds, ten days, fogged observation only.
 
-    Measured on the corrected tw2002 price table (ECONOMY_CALIBRATION.md),
-    with the ladder's organics gate on the live base. Rejected stays 0. Two
-    worlds still starve; those planet ids are the measured result.
+On the corrected tw2002 price table (ECONOMY_CALIBRATION.md) the N2 ladder
+    strictly beats N1 on all five seeds, and rejected stays 0. Coeff-1 organics
+    reshuffles and coeff-1 import targets are skipped; fuel gets the ferry instead. Held-zero
+    planet ids are the measured result after growth retunes.
     """
     # Measured under the legacy fog. INFO_MODE tw2002 numbers: SCANNERS_HIDDEN_INFO.md "Seat brains".
     monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")
     mod = _load_acceptance()
-    held_zeros = {250925: [32], 20260925: [30]}
-    # Deliberate tolerances (ECONOMY_CALIBRATION.md, "Seat bars"). At the
-    # original price scale a trade pays about 7x less, so N2's organics
-    # feeding costs more than the planet stock it saves on two maps:
-    # seed 250925 N2 611,823 vs N1 704,460 (86.8%), seed 20260925 416,937 vs
-    # 450,086 (92.6%). The old 1% note on 250925 is superseded. Tracked for
-    # the bot-growth-and-fixes slice. Every other seed must still strictly win,
-    # and a seed that falls under its floor fails.
-    within_pct = {250925: 0.85, 20260925: 0.90}
+    held_zeros = {250925: [32], 20260925: [30, 31], 99: [29], 31: [30]}
+    # Strict N2 > N1 on every seed (restores the bar weakened by economy-calibration-v1).
     failures = []
     beats = 0
     for seed in mod.N2_SEEDS:
@@ -215,13 +210,11 @@ def test_n2_day10_beats_n1_and_keeps_organics(monkeypatch) -> None:
         nxt = mod.prove_growth_replay(seed=seed, brain=mod.n2_brain())
         if nxt["net_worth"] > base["net_worth"]:
             beats += 1
-        elif seed in within_pct and nxt["net_worth"] >= within_pct[seed] * base["net_worth"]:
-            pass
         else:
             failures.append(("nw", seed, base["net_worth"], nxt["net_worth"]))
         if nxt["rejected"]:
             failures.append(("rejected", seed, nxt["rejected"]))
         if nxt["zero_planets"] != held_zeros.get(seed, []):
             failures.append(("organics", seed, nxt["zero_planets"], held_zeros.get(seed, [])))
-    assert beats >= 3, failures
+    assert beats == len(mod.N2_SEEDS), failures
     assert not failures, failures
