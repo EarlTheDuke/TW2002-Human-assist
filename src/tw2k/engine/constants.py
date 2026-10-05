@@ -1191,6 +1191,70 @@ XP_AWARDS = {
     "probe":      3,
 }
 
+# --- Experience, alignment and rank (RANK_MODE) --------------------------------
+# docs/playtests/ranks/EXPERIENCE_ALIGNMENT.md. "legacy" keeps RANK_TABLE,
+# ALIGNMENT_TIERS and XP_AWARDS above exactly as they were.
+RANK_MODE = "tw2002"
+
+
+def rank_tw2002() -> bool:
+    return RANK_MODE == "tw2002"
+
+
+# r1/r2: 22 titles per side, thresholds 2, 4, 8 ... 4,194,304. r3: below 2 is "Civilian".
+RANK_THRESHOLDS: tuple[int, ...] = (0, *tuple(2 ** n for n in range(1, 23)))
+GOOD_RANKS: tuple[str, ...] = (
+    "Civilian", "Private", "Private 1st Class", "Lance Corporal", "Corporal", "Sergeant",
+    "Staff Sergeant", "Gunnery Sergeant", "1st Sergeant", "Sergeant Major", "Warrant Officer",
+    "Chief Warrant Officer", "Ensign", "Lieutenant J.G.", "Lieutenant", "Lieutenant Commander",
+    "Commander", "Captain", "Commodore", "Rear Admiral", "Vice Admiral", "Admiral", "Fleet Admiral",
+)
+EVIL_RANKS: tuple[str, ...] = (
+    "Civilian", "Nuisance 3rd Class", "Nuisance 2nd Class", "Nuisance 1st Class", "Menace 3rd Class",
+    "Menace 2nd Class", "Menace 1st Class", "Smuggler 3rd Class", "Smuggler 2nd Class",
+    "Smuggler 1st Class", "Smuggler Savant", "Robber", "Terrorist", "Pirate", "Infamous Pirate",
+    "Notorious Pirate", "Dread Pirate", "Galactic Scourge", "Enemy of the State", "Enemy of the People",
+    "Enemy of Humankind", "Heinous Overlord", "Prime Evil",
+)
+# x1-x11: experience by event in tw2002. Keys missing here give nothing.
+XP_AWARDS_TW2002 = {
+    "trade": 1,             # x1: one point per successful trade (HAGGLE.md, gap 9.2)
+    "kill_ferr": 20,        # x15: Ferrengi reward unchanged (no alien exp to share)
+    "deploy_genesis": 25,   # x6
+    "first_dock": 1,        # x2: first trade anyone makes at a port
+    "daily": 1,             # x3: midnight login
+    "destroy_planet": 50,   # x7
+    "destroy_port": 50,     # x11
+}
+DAILY_ALIGNMENT = 1               # x3
+GENESIS_ALIGNMENT = 10            # x6: +10 good, 0 neutral, -10 evil
+PLANET_DESTROY_ALIGNMENT_TW2002 = 1  # x7 / conflict 14
+FEDSAFE_MAX_EXPERIENCE = 999      # u1
+COMMISSION_ALIGNMENT = 1000       # u2 / conflict 12
+KILL_EXP_SHARE = 0.10             # x13
+KILL_ALIGN_SHARE = 0.5            # a2
+COMBAT_EXP_DIVISOR = {"opposite": 15, "same": 35, "neutral": 25}   # x12 / x14
+COMBAT_ALIGN_DIVISOR = 5000                                         # a1: x 0.2 / 1000
+FIGHTER_ALIGN_DIVISOR = {"opposite": 5000, "same": 10000}           # a3 (Gold/Classic)
+
+
+def xp_award(key: str) -> int:
+    table = XP_AWARDS_TW2002 if rank_tw2002() else XP_AWARDS
+    return int(table.get(key, 0))
+
+
+def ship_min_alignment(spec: dict, default: int) -> int:
+    """u3: a hull that needs alignment needs a Federal Commission in tw2002.
+
+    Legacy keeps each caller's default, so an evil trader stays barred from every
+    hull there (today's build). In tw2002 a hull without the key has no floor.
+    """
+    if "min_alignment" not in spec:
+        return -10**9 if rank_tw2002() else default
+    if rank_tw2002():
+        return COMMISSION_ALIGNMENT
+    return int(spec["min_alignment"])
+
 # --- Ferrengi behaviour -------------------------------------------------------
 FERRENGI_MOVE_PROB = 0.6              # chance per day each Ferrengi moves
 FERRENGI_HUNT_AGGRESSION_THRESHOLD = 3 # below this they ignore armed players (was 4)

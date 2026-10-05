@@ -10,6 +10,7 @@ from .agency import is_minimal
 from .economy import port_buy_price, port_sell_price
 from .models import Commodity, Event, EventKind, PortClass, Universe
 from .runner import full_net_worth
+from .victory import rank_for, side
 
 # ---------------------------------------------------------------------------
 # Fog of war — per-agent event visibility rules.
@@ -511,6 +512,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
                 "alive": other.alive,
                 "alignment": other.alignment,
             })
+            if K.rank_tw2002():
+                others[-1]["rank"] = rank_for(other.experience, other.alignment)
         else:
             # Limited visibility — only what's recently visible through events or sharing same sector
             visible = (other.sector_id == player.sector_id) or (other_id in sector.occupant_ids)
@@ -526,6 +529,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
                     "sector_id": other.sector_id,
                     "ship_class": other.ship.ship_class.value,
                 })
+                if K.rank_tw2002():
+                    # r6: the sector display names a trader with the title, never the alignment.
+                    entry["rank"] = rank_for(other.experience, other.alignment)
             others.append(entry)
 
     # Recent events — filtered by per-agent fog of war. Agents only see
@@ -713,6 +719,11 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "ship_class": other.ship.ship_class.value,
             "deaths": other.deaths,
         }
+        if K.rank_tw2002():
+            # r6: List Trader Rank - title (its colour is the side) and experience, no alignment.
+            entry["rank"] = rank_for(other.experience, other.alignment)
+            entry["side"] = side(other.alignment)
+            entry["experience"] = int(other.experience)
         seen = last_seen.get(other_id)
         if seen is not None:
             entry["last_seen_day"] = seen[0]
@@ -721,7 +732,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         rivals.append(entry)
 
     from .legality import legal_actions as _legal_actions
-    from .runner import alignment_label, rank_for
+    from .runner import alignment_label
     legal = [la.model_dump() for la in _legal_actions(universe, player_id)]
     known_sectors = _known_sectors(universe, player)
     obs = Observation(
@@ -735,7 +746,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         alignment=player.alignment,
         alignment_label=alignment_label(player.alignment),
         experience=player.experience,
-        rank=rank_for(player.experience),
+        rank=rank_for(player.experience, player.alignment),
         turns_remaining=turns_remaining,
         turns_per_day=player.turns_per_day,
         ship=ship,
@@ -1730,7 +1741,7 @@ def _action_hint(
                     continue
                 if spec.get("corp_only") and not in_corp:
                     continue
-                min_align = int(spec.get("min_alignment", -10**9))
+                min_align = K.ship_min_alignment(spec, -10**9)
                 if alignment < min_align:
                     continue
                 holds = int(spec.get("holds", 0))
@@ -1795,7 +1806,7 @@ def _action_hint(
                     continue
                 if spec.get("corp_only") and not in_corp:
                     continue
-                if int(spec.get("min_alignment", -10**9)) > alignment:
+                if K.ship_min_alignment(spec, -10**9) > alignment:
                     continue
                 if credits < int(cost * 1.25):
                     continue

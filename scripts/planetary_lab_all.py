@@ -33,6 +33,8 @@ from planetary_scenario_lab import (  # noqa: E402
     run_grid,
 )
 
+import tw2k.engine.constants as K  # noqa: E402
+
 
 def _siege() -> str:
     cells = run_grid(seeds=DEFAULT_SEEDS)
@@ -61,7 +63,9 @@ SCENARIOS: tuple[tuple[str, object, str], ...] = (
     ("transwarp", format_transwarp_table, "| 2 hops, 1000 fuel | 4 | 1000 | yes | yes | 42 | 200 |"),
     ("transporter", format_transporter_table, "| buy | 60000 | 0 | yes | 10000 | 0 | 40 |"),
     ("gift", format_gift_table, "| 2 | 0 | 0 | 0 | 0 | planet_id,from,to |"),
-    ("destroy", format_destroy_table, "| kill | yes | yes | yes | 0 | -50 | 40 |"),
+    # EXPERIENCE_ALIGNMENT.md x7: tw2002 charges -1 when the planet goes, nothing for the colonists.
+    ("destroy", format_destroy_table,
+     "| kill | yes | yes | yes | 0 | " + ("0" if K.rank_tw2002() else "-50") + " | 40 |"),
     ("corp", format_corp_table, "| leave planet_transwarp | D | ZZ | no | 0 | 0 |"),
 )
 

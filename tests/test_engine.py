@@ -225,6 +225,7 @@ def test_pvp_kill_respawns_victim_without_crash(monkeypatch):
     ship downgrade to Merchant Cruiser). Regression for match 2 bug M2-1.
     """
     monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
+    monkeypatch.setattr("tw2k.engine.constants.RANK_MODE", "legacy")  # flat kill_player XP
     from tw2k.engine import constants as K
 
     u, atk, vic = _combat_arena(attacker_sector=50)

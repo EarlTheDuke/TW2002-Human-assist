@@ -43,7 +43,8 @@ def _destroy(u, player, planet_id: int):
     )
 
 
-def test_two_steps_remove_the_planet_and_round_trip() -> None:
+def test_two_steps_remove_the_planet_and_round_trip(monkeypatch) -> None:
+    monkeypatch.setattr(K, "RANK_MODE", "legacy")  # -50 alignment; tw2002 is -1 (EXPERIENCE_ALIGNMENT.md x7)
     assert K.PLANET_DESTROY_COLONISTS_TO_ZERO is True
     assert K.PLANET_DESTROY_ALIGNMENT == 50
     u, (attacker, owner, bystander, *_) = _make_universe(seed=20001)

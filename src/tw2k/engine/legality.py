@@ -295,10 +295,19 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     # ---- S4 group 1: combat / presence ---------------------------------------
     atk_cost = int(K.TURN_COST["attack"])
     hostile_players = [pid for pid in other_ids if not _are_allied(universe, player_id, pid)]
+    fed_shielded = False
+    if in_fedspace and K.rank_tw2002():
+        # u1: only a fedsafe trader is shielded in FedSpace.
+        from .victory import fedspace_protects
+        open_targets = [pid for pid in hostile_players if not fedspace_protects(universe.players[pid])]
+        fed_shielded = bool(hostile_players) and not open_targets
+        hostile_players = open_targets
     attack_targets = hostile_players + ferrengi_ids
-    if not attack_targets:
+    if fed_shielded and not attack_targets:
+        reason = "FedSpace - every trader here is fedsafe (attempting costs 200 alignment)"
+    elif not attack_targets:
         reason = "no target in this sector" if not targets_here else "everyone here is a corp mate or ally"
-    elif in_fedspace:
+    elif in_fedspace and not K.rank_tw2002():
         # The engine rejects AND docks 200 alignment - worth a loud reason.
         reason = "FedSpace - combat forbidden (attempting costs 200 alignment)"
     else:
@@ -319,9 +328,11 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     photons = int(getattr(player.ship, "photon_missiles", 0) or 0)
     if photons <= 0:
         reason = "no photon missiles loaded (buy_equip photon_missiles at StarDock)"
+    elif fed_shielded and not hostile_players:
+        reason = "FedSpace forbids weapons fire at a fedsafe trader (attempting costs 100 alignment)"
     elif not hostile_players:
         reason = "needs a rival commander in this sector (not a corp mate or ally)"
-    elif in_fedspace:
+    elif in_fedspace and not K.rank_tw2002():
         reason = "FedSpace forbids weapons fire (attempting costs 100 alignment)"
     else:
         reason = _need_turns(player, atk_cost)
@@ -397,8 +408,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             net_cost_by[key] = net
             if spec.get("corp_only") and player.corp_ticker is None:
                 blocked_by[key] = "corporation-only"
-            elif int(spec.get("min_alignment", 0)) > player.alignment:
-                blocked_by[key] = f"alignment too low (needs {spec.get('min_alignment')})"
+            elif K.ship_min_alignment(spec, 0) > player.alignment:
+                need = K.ship_min_alignment(spec, 0) if K.rank_tw2002() else spec.get("min_alignment")
+                blocked_by[key] = f"alignment too low (needs {need})"
             elif spec.get("unique") and key in owned_classes:
                 blocked_by[key] = "already owned elsewhere"
             elif player.credits < net:

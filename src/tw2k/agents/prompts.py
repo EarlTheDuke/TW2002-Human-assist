@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from ..engine import Observation
+from ..engine import constants as K
 from ..engine.agency import is_minimal
 
 _MATCH_PROMPT_FULL = """You are a commander in TRADEWARS 2002. You compete with rival commanders to trade,
@@ -512,9 +513,24 @@ ANY other `action.kind` string is an error.
 SYSTEM_PROMPT = _MATCH_PROMPT_FULL
 
 
+_RANK_NOTE_TW2002 = (
+    "\nRANKS (docs/playtests/ranks/EXPERIENCE_ALIGNMENT.md): experience comes from haggling, the first trade at "
+    "an unused port (+1), +1 experience and +1 alignment each day, planets (+25 create, +50 destroy), and combat "
+    "(your fighters lost / 15 vs the other side, / 35 same side; a pod or kill takes 10% of the victim's experience "
+    "and half their alignment, sign reversed). Hitting an evil trader raises alignment, a good one lowers it. "
+    "Alignment 0+ is good, below 0 evil. Good with 999 experience or less is fedsafe: nobody may attack you in "
+    "FedSpace. Anyone else may be attacked there. 1000+ alignment is a Federal Commission (Imperial StarShip). "
+    "`rivals` show each trader's title, side and experience; their alignment number stays hidden.\n"
+)
+
+
 def get_system_prompt() -> str:
     """System message for the current `TW2K_HINT_LEVEL` (``full`` or ``minimal``)."""
-    return _MATCH_PROMPT_MINIMAL if is_minimal() else _MATCH_PROMPT_FULL
+    text = _MATCH_PROMPT_MINIMAL if is_minimal() else _MATCH_PROMPT_FULL
+    if K.rank_tw2002():
+        text = text.replace("(alignment >= 2000, one in the game)", "(Federal Commission: alignment >= 1000, one in the game)")
+        text = text + _RANK_NOTE_TW2002
+    return text
 
 
 _FLAGSHIP_CLASSES: frozenset[str] = frozenset({"imperial_starship", "corporate_flagship"})

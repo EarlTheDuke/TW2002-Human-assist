@@ -585,7 +585,8 @@ class TestPhaseC:
         assert res.ok, res.error
         assert u.corporations["ZZZ"].treasury == 150_000
 
-    def test_c6_alignment_label_and_rank_scale(self):
+    def test_c6_alignment_label_and_rank_scale(self, monkeypatch):
+        monkeypatch.setattr("tw2k.engine.constants.RANK_MODE", "legacy")  # tw2002 labels: Good/Neutral/Evil
         # Labels must partition monotonically: worse alignment -> "lower" tier.
         labels = [alignment_label(v) for v in [-5000, -500, -100, 0, 200, 1000, 5000]]
         # All should be strings and partition (at least 4 distinct tiers across the range)
