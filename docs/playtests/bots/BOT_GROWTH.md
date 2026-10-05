@@ -66,3 +66,9 @@ Each mutation was restored before the suite.
 | coeff-1 dead-world skip removed | `seat_brain.py` | `test_coeff1_organics_rebalance_is_skipped` |
 | heuristic reverse + out-of-turns | `heuristic.py` | `test_heuristic_avoids_reverse_and_out_of_turns` |
 | `PODS_PER_DAY = 99` | `constants.py` | `test_third_loss_in_a_day_is_ship_destroyed` |
+
+## QC (bot growth QC fixes)
+
+| bug | where | test |
+| --- | --- | --- |
+| _opt_defense plotted to StarDock when already at the fighter/shield floor (rich + hot), often buying nothing | seat_brain.py _opt_defense | 	est_opt_defense_does_not_divert_when_already_at_floor |
