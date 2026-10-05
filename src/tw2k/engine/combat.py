@@ -936,6 +936,9 @@ def _place(universe: Universe, player, sector_id: int) -> None:
     player.end_port_visit()
     if player.id not in universe.sectors[sector_id].occupant_ids:
         universe.sectors[sector_id].occupant_ids.append(player.id)
+    # The pilot sees where the pod (or the free Scout) lands: it goes on the pilot's map.
+    player.known_sectors.add(sector_id)
+    player.known_warps[sector_id] = list(universe.sectors[sector_id].warps)
 
 
 def _destroy_ship_tw2002(
@@ -973,7 +976,8 @@ def _destroy_ship_tw2002(
         _strip_ship(player, K.ESCAPE_POD)
         _place(universe, player, dest)
         outcome = "escape_pod"
-        tail = f"escaped in a pod to sector {dest} [pod {player.pods_today}/{K.PODS_PER_DAY} today]"
+        # The summary reaches the killer and every witness; where the pod went does not (fog).
+        tail = f"escaped in a pod [pod {player.pods_today}/{K.PODS_PER_DAY} today]"
     else:
         dest = K.STARDOCK_SECTOR
         if exp_before > 0:

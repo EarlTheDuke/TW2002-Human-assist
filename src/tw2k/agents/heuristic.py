@@ -14,7 +14,7 @@ from __future__ import annotations
 import random
 
 from ..engine import Action, ActionKind, Observation
-from ..engine.constants import combat_hull
+from ..engine.constants import STARDOCK_SECTOR, combat_hull
 from .base import BaseAgent
 
 
@@ -40,10 +40,17 @@ class HeuristicAgent(BaseAgent):
                 return self._attack(top["id"], "Ferrengi looks beatable, lets collect that bounty.")
             return self._flee(obs, f"Ferrengi aggression {top['aggression']} — bail.")
 
+        # In an escape pod: trade it in at StarDock, else fly there (DEATH_ESCAPE_PODS.md d17).
+        if str(obs.ship.get("class") or "") == "escape_pod":
+            pod = self._leave_pod(obs)
+            if pod is not None:
+                return pod
+
         # At StarDock: consider outfitting & upgrading before heading out
         if obs.sector["id"] == 1 and obs.credits > 50_000:
-            if obs.ship["fighters"] < 500 and obs.credits > 25_000:
-                qty = min(200, obs.credits // 50)
+            room = self._legal_max(obs, "buy_equip", "fighters")
+            if obs.ship["fighters"] < 500 and obs.credits > 25_000 and room > 0:
+                qty = min(200, obs.credits // 50, room)  # never past the hull's cap (a Scout holds less)
                 return Action(
                     kind=ActionKind.BUY_EQUIP,
                     args={"item": "fighters", "qty": qty},
@@ -84,6 +91,8 @@ class HeuristicAgent(BaseAgent):
         # Never WAIT if we can warp — WAIT-spam clogs the event feed.
         adj = obs.adjacent or []
         adj = [a for a in adj if self._held.get(int(a["id"])) != obs.day] or adj
+        if adj and self._short_for_warp(obs):
+            return Action(kind=ActionKind.WAIT, thought="Not enough turns left for a warp; waiting for tomorrow.")
         if adj:
             unknown = [a for a in adj if not a.get("known")]
             with_port = [a for a in adj if a.get("port") and a["port"] not in ("FED",)]
@@ -104,6 +113,48 @@ class HeuristicAgent(BaseAgent):
 
         # Genuinely no warps available (shouldn't happen in a connected galaxy).
         return Action(kind=ActionKind.WAIT, args={}, thought="No warps from this sector; waiting a tick.")
+
+    @staticmethod
+    def _legal(obs: Observation) -> dict:
+        return {la.get("kind"): la for la in (obs.legal_actions or [])}
+
+    def _short_for_warp(self, obs: Observation) -> bool:
+        """Warp refused for turns only (e.g. 2 left, 3 a warp) while WAIT is open: wait out the day."""
+        legal = self._legal(obs)
+        warp, wait = legal.get("warp") or {}, legal.get("wait") or {}
+        return (bool(warp) and not warp.get("legal") and str(warp.get("reason") or "").startswith("out of turns")
+                and bool(wait.get("legal")))
+
+    def _legal_max(self, obs: Observation, kind: str, item: str) -> int:
+        la = self._legal(obs).get(kind) or {}
+        if not la.get("legal"):
+            return 0
+        return int((((la.get("params") or {}).get("qty") or {}).get("max_by") or {}).get(item) or 0)
+
+    def _leave_pod(self, obs: Observation) -> Action | None:
+        """Escape pod: at StarDock trade it for a Cargotran or a Scout; elsewhere autopilot to StarDock."""
+        legal = self._legal(obs)
+
+        def ok(kind: str) -> bool:
+            return bool((legal.get(kind) or {}).get("legal"))
+
+        if obs.sector.get("id") == STARDOCK_SECTOR:
+            if not ok("buy_ship"):
+                return None
+            spec = ((legal["buy_ship"].get("params") or {}).get("ship_class") or {})
+            choices, net = spec.get("choices") or [], spec.get("net_cost_by") or {}
+            for key, keep in (("cargotran", 20_000), ("scout_marauder", 0)):
+                cost = net.get(key)
+                if key in choices and cost is not None and obs.credits - int(cost) >= keep:
+                    return Action(kind=ActionKind.BUY_SHIP, args={"ship_class": key},
+                                  thought=f"Trading the escape pod for a {key} ({int(cost)} cr net).")
+            return None
+        if ok("plot_course") and ok("warp"):
+            return Action(kind=ActionKind.PLOT_COURSE, args={"target": STARDOCK_SECTOR, "execute": True},
+                          thought="Escape pod: autopilot to StarDock to trade it in.")
+        if self._short_for_warp(obs):
+            return Action(kind=ActionKind.WAIT, thought="Escape pod short of turns for a warp; waiting for tomorrow.")
+        return None
 
     def _attack(self, target: str, thought: str) -> Action:
         return Action(kind=ActionKind.ATTACK, args={"target": target}, thought=thought)
