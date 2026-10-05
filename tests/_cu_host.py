@@ -43,6 +43,7 @@ class CuHost:
         self.token = token
         self.max_days, self.turns_per_day = max_days, turns_per_day
         self.seed, self.park_at, self.fuel = seed, park_at, fuel
+        self.parked = False  # set once P2 sits on the parking port with its fuel
         self.port = free_port()
         self.app = create_app(auto_start=False)
         self.runner = self.app.state.runner
@@ -79,6 +80,7 @@ class CuHost:
         dest.occupant_ids.append("P2")
         me.known_sectors.add(dest.id)
         me.ship.cargo[Commodity.FUEL_ORE] = self.fuel
+        self.parked = True
 
     async def _main(self) -> None:
         async def start_logged() -> None:
@@ -98,7 +100,10 @@ class CuHost:
     def __enter__(self) -> CuHost:
         self.thread.start()
         deadline = time.time() + 20
-        while time.time() < deadline and not (self.server.started and self.runner.state.universe is not None):
+        # Wait for the park too: a test that reads the seat's port right after
+        # `with CuHost(...)` must see the parking port, not the start sector.
+        while time.time() < deadline and not (self.server.started and self.runner.state.universe is not None
+                                              and self.parked):
             time.sleep(0.1)
         assert self.server.started, "host did not start"
         return self

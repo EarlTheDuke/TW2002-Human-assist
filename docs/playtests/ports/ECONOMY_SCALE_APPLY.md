@@ -1,5 +1,7 @@
 # Economy scale apply
 
+> **Superseded 2026-10-05 ([ECONOMY_CALIBRATION.md](ECONOMY_CALIBRATION.md)).** The bases below were solved with the buying port full (stock fraction 1). The economy2 chart's 100 percent buying port is empty, so 179 / 389 / 719 paid about 7 times the chart per unit. The tw2002 bases are now 26 / 56 / 102. The spread rule and the rest of this page stand; the net-worth tables below are history. Seed 250925 N3 now finishes at 941,555 inside a 650,000 to 1,450,000 band.
+
 One switch, `ECONOMY_SCALE_MODE`, puts trade profit and StarDock hull, fighter, and hold prices on the original scale together. `"tw2002"` is the default. `"legacy"` restores the ae1d5c4 numbers: bases 18 / 25 / 36, the stored `SHIP_SPECS` costs, fighter price 50, and a flat `base_hold_cost`.
 
 The stock, MCIC, and experience curves are unchanged. `PORT_UNIT_PRICE_MAX_MULT` stays 4. Ship holds, fighter caps, shield caps, and turns per warp are unchanged. Port density stays 0.65. Docking still costs one turn. Haggling is unchanged. Ports still open empty.

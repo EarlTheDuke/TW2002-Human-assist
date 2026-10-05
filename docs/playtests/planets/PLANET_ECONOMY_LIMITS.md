@@ -1,5 +1,7 @@
 # Planet economy limits
 
+> **Update 2026-10-05 ([ECONOMY_CALIBRATION.md](../ports/ECONOMY_CALIBRATION.md)).** The 145k floor is now a 650,000 to 1,450,000 band on seed 250925 N3, and stock is priced at the tw2002 bases 26 / 56 / 102.
+
 Measured on the engine before this slice, then the three changes the task named. Seeds are the day-10 seat-brain path (SeatBrain, 1000 sectors, 20,000 credits, planets on, Ferrengi off).
 
 ## Before: planet stock share of day-10 net worth

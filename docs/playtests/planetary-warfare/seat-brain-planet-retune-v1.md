@@ -29,6 +29,8 @@ Old L2 garrison score: 1000 * 2 * 50 + 250 * 2 * 10 = 105000. That made an L2 fe
 | Seed 250925 day-10 net worth | bar 140000 | N3 149601, N2 ladder 134270, ferry 9.2%, citadels 1, 2, 2 |
 | Bar | 140000 | 145000 |
 
+Update 2026-10-05: 149601 was the legacy 18 / 25 / 36 table and an older brain. The same seed on the legacy table with today's brain finishes at 478,853. On the corrected tw2002 table (26 / 56 / 102) N3 finishes at 941,555, and the bar is a 650,000 to 1,450,000 band ([ECONOMY_CALIBRATION.md](../ports/ECONOMY_CALIBRATION.md)).
+
 Scoring the haul at 0 raised that seed to 243704 and cut the ferry to 0%, and the colonist haul tests failed. That score was not kept.
 
 Fighters the seat buys are 50 credits each. Shields the seat buys are 10 credits each. Neither is added when a citadel finishes.

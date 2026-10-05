@@ -246,17 +246,17 @@ def test_class_u_unload_stops_at_3000() -> None:
 
 
 def test_stock_is_priced_at_the_published_base() -> None:
-    assert planet_stock_unit_price("fuel_ore") == 179
-    assert planet_stock_unit_price("organics") == 389
-    assert planet_stock_unit_price("equipment") == 719
+    assert planet_stock_unit_price("fuel_ore") == 26
+    assert planet_stock_unit_price("organics") == 56
+    assert planet_stock_unit_price("equipment") == 102
     planet = Planet(id=3, sector_id=20, name="Vault", class_id=PlanetClass.M)
     planet.stockpile[Commodity.FUEL_ORE] = 10
     planet.stockpile[Commodity.ORGANICS] = 2
     planet.stockpile[Commodity.EQUIPMENT] = 1
-    assert _planet_asset_value(planet) == 10 * 179 + 2 * 389 + 719
+    assert _planet_asset_value(planet) == 10 * 26 + 2 * 56 + 102
     previous = K.PLANET_ECONOMY_MODE
     K.PLANET_ECONOMY_MODE = "legacy"
     try:
-        assert planet_stock_unit_price("fuel_ore") == 179
+        assert planet_stock_unit_price("fuel_ore") == 26
     finally:
         K.PLANET_ECONOMY_MODE = previous

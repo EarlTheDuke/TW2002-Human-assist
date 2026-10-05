@@ -38,6 +38,6 @@ def test_ferry_turn_counts_the_empty_stardock_leg_and_a_colonist_move() -> None:
 
 
 def test_n3_day10_ferry_and_net_worth() -> None:
-    """Five seeds, ten days. Seed 250925 must clear 145k with ferry under 40%."""
+    """Five seeds, ten days. Seed 250925 must land inside the net-worth band with ferry under 40%."""
     mod = _load_acceptance()
     assert mod.run_n3(list(mod.N2_SEEDS)) == 0

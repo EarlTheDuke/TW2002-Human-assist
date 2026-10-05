@@ -25,14 +25,25 @@ def _full(class_num: int, commodity: Commodity, mcic: int) -> Port:
     )
 
 
+def _empty(class_num: int, commodity: Commodity, mcic: int) -> Port:
+    return Port(
+        class_id=PortClass(class_num),
+        stock={commodity: PortStock(current=0, maximum=2500)},
+        mcic={commodity: mcic},
+    )
+
+
 def _spread(commodity: Commodity) -> int:
     # Class 3 sells fuel and buys the other two. Class 1 does the opposite.
+    # Both ports at the chart's 100 percent: the seller full, the buyer empty
+    # (economy2: a buying port with 0 product is at 100 percent).
+    # ECONOMY_CALIBRATION.md.
     if commodity is FUEL:
         seller_class, buyer_class = 3, 1
     else:
         seller_class, buyer_class = 1, 3
     seller = _full(seller_class, commodity, 50)
-    buyer = _full(buyer_class, commodity, -50)
+    buyer = _empty(buyer_class, commodity, -50)
     return port_buy_price(buyer, commodity) - port_sell_price(seller, commodity)
 
 
@@ -65,7 +76,8 @@ def test_chart_spreads_and_the_fuel_integer_gap() -> None:
     assert got["equipment"] == 19750
     assert abs(got["organics"] - CHART_250["organics"]) / CHART_250["organics"] < 0.02
     assert abs(got["equipment"] - CHART_250["equipment"]) / CHART_250["equipment"] < 0.02
-    # One credit of spread is 250 on the 250-hold chart. 5000 is the closest.
+    # One credit of spread is 250 on the 250-hold chart. 5000 (base 26) is
+    # closer than 5250 (base 27).
     fuel_err = abs(got["fuel_ore"] - CHART_250["fuel_ore"]) / CHART_250["fuel_ore"]
     assert got["fuel_ore"] == 5000
     assert fuel_err < 0.023
@@ -92,8 +104,8 @@ def test_mode_switch_changes_the_next_quote() -> None:
     saved = K.ECONOMY_SCALE_MODE
     try:
         K.ECONOMY_SCALE_MODE = "tw2002"
-        assert K.COMMODITY_BASE_PRICE["equipment"] == 719
-        assert dict(K.COMMODITY_BASE_PRICE.items())["fuel_ore"] == 179
+        assert K.COMMODITY_BASE_PRICE["equipment"] == 102
+        assert dict(K.COMMODITY_BASE_PRICE.items())["fuel_ore"] == 26
         K.ECONOMY_SCALE_MODE = "legacy"
         assert K.COMMODITY_BASE_PRICE["equipment"] == 36
         assert K.COMMODITY_BASE_PRICE.get("organics") == 25

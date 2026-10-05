@@ -1,5 +1,7 @@
 # Port turns and regen
 
+> **Update 2026-10-05 ([ECONOMY_CALIBRATION.md](ECONOMY_CALIBRATION.md)).** The 145,000 bar is now a 650,000 to 1,450,000 band on seed 250925 N3.
+
 Moving into a sector still costs the warp. The first trade of a visit then costs 1 turn. Later trades in that same visit cost none. The visit ends when the player leaves the sector. Each day, every commodity on a port gains units from that commodity's productivity, scaled by the 5 percent regen setting. New ports open with no product on hand.
 
 ## Original rule

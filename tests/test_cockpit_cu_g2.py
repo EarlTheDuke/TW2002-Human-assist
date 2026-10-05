@@ -181,7 +181,10 @@ def test_cu_layout_fits_1280x800_and_keys_work(browser, tmp_path: Path, monkeypa
 
         # Fog: the cockpit only ever talks to this seat's harness endpoints.
         api = [r for r in requests if not r.startswith(("/static/", "/bot"))]
-        assert api and all(r.startswith(("/harness/v1/P2/", "/harness/v1/rules", "/harness/v1/seats")) for r in api), api
+        # /harness/v1/bridge is this seat's token-scoped Grok Bot bridge (403 for another seat
+        # or a spectator). It polls every 2.5 s, so a slow run sees it and a fast run does not.
+        allowed = ("/harness/v1/P2/", "/harness/v1/rules", "/harness/v1/seats", "/harness/v1/bridge")
+        assert api and all(r.startswith(allowed) for r in api), api
 
         # Default layout: no mode-cu, CU screen hidden. The map sits under the viewport.
         page2 = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H})

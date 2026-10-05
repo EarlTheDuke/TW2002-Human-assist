@@ -15,11 +15,15 @@ _COMMODITY_BASE_LEGACY = {
     "equipment": 36,
 }
 # One base per commodity. Solved so the 100 percent, MCIC 50 / -50, experience 0
-# spread matches economy2.html. See ECONOMY_SCALE_APPLY.md.
+# spread matches economy2.html, with both ports at the chart's 100 percent:
+# the selling port full, the buying port empty (economy2: a buying port with 0
+# product is at 100 percent). The 179 / 389 / 719 table solved the same spread
+# against a full buying port and put every quote about 7x over the chart.
+# See ECONOMY_CALIBRATION.md.
 _COMMODITY_BASE_TW2002 = {
-    "fuel_ore": 179,
-    "organics": 389,
-    "equipment": 719,
+    "fuel_ore": 26,
+    "organics": 56,
+    "equipment": 102,
 }
 
 

@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+"""Scripted bot match: code-only seats in one shared universe, in-process.
+
+    python scripts/run_scripted_match.py --seats N3,N2,N1,H --seed 250925 --days 10 \
+        --json match.json --md match.md
+
+Seats are any comma-separated mix of N1, N2, N3 (SeatBrain variants from
+scripts/seat_brain_acceptance.py) and H (the rule-based HeuristicAgent).
+Seat i is player P{i+1} and spawns in FedSpace sector i+1 (wrapping). Every
+seat starts with --credits and --turns-per-day.
+
+No web server, no ports, no network, no API keys: the engine is imported and
+driven directly (build_observation -> decide -> apply_action -> tick_day).
+
+Deterministic: the universe, the engine RNG and each Heuristic seat's RNG are
+seeded from --seed, and seats act in a fixed round-robin. The script re-runs
+itself with PYTHONHASHSEED=0 when that variable is not already "0", so set
+iteration order is pinned too. The JSON holds no wall-clock values, so two
+runs with the same arguments write the same file.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import collections
+import importlib.util
+import json
+import os
+import subprocess
+import sys
+import zlib
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+SEAT_KINDS = ("N1", "N2", "N3", "H")
+# A seat that sends this many zero-turn actions in a row is done for the day.
+STUCK_ZERO_TURN_ACTIONS = 200
+
+
+def _acceptance():
+    spec = importlib.util.spec_from_file_location(
+        "seat_brain_acceptance_for_match", ROOT / "scripts" / "seat_brain_acceptance.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def parse_seats(text: str) -> list[str]:
+    seats = [s.strip().upper() for s in text.split(",") if s.strip()]
+    seats = ["H" if s in ("HEUR", "HEURISTIC") else s for s in seats]
+    bad = [s for s in seats if s not in SEAT_KINDS]
+    if bad or not seats:
+        raise ValueError(f"seats must be a comma list of {', '.join(SEAT_KINDS)}; got {text!r}")
+    return seats
+
+
+def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 1000,
+              turns_per_day: int = 1000, credits: int = 20_000, ferrengi: bool = True,
+              max_steps: int = 2_000_000) -> dict[str, Any]:
+    """Play the match and return a JSON-ready summary."""
+    from tw2k.agents import HeuristicAgent
+    from tw2k.agents.seat_acceptance import aba_bounces, validate_action
+    from tw2k.agents.seat_brain import SeatBrain
+    from tw2k.engine import (
+        Action,
+        GameConfig,
+        apply_action,
+        build_observation,
+        generate_universe,
+        is_finished,
+        tick_day,
+    )
+    from tw2k.engine import constants as K
+    from tw2k.engine.victory import full_net_worth
+
+    sba = _acceptance()
+    makers = {"N1": sba.n1_brain, "N2": sba.n2_brain, "N3": SeatBrain}
+    u = generate_universe(GameConfig(seed=seed, universe_size=universe_size, max_days=max(30, days + 2),
+                                     turns_per_day=turns_per_day, starting_credits=credits,
+                                     enable_ferrengi=ferrengi, enable_planets=True))
+    fed = sorted(K.FEDSPACE_SECTORS)
+    st: dict[str, dict[str, Any]] = {}
+    for i, kind in enumerate(seats):
+        pid = f"P{i + 1}"
+        p = sba._open_seat(u, pid, fed[i % len(fed)], credits)
+        p.name = f"{kind}-{pid}"
+        st[pid] = {
+            "kind": kind,
+            "brain": makers[kind]() if kind in makers else None,
+            "agent": HeuristicAgent(pid, p.name, seed=zlib.crc32(f"{seed}:{pid}".encode())) if kind == "H" else None,
+            "actions": 0, "kinds": collections.Counter(), "rej_validate": 0, "rej_engine": 0,
+            "rej_top": collections.Counter(), "exceptions": 0, "buys": 0, "sells": 0, "units_sold": 0,
+            "realized": 0, "idle_done": False, "zero_streak": 0, "forced_done": 0, "wasted_turns": 0,
+            "rows": [], "daily": [], "start_sector": p.sector_id,
+        }
+
+    def done(pid: str) -> bool:
+        p = u.players[pid]
+        return (not p.alive) or st[pid]["idle_done"] or p.turns_today >= p.turns_per_day
+
+    def snap() -> None:
+        for pid, s in st.items():
+            p = u.players[pid]
+            s["daily"].append({"day": u.day, "net_worth": full_net_worth(u, p), "credits": p.credits,
+                               "ship": p.ship.ship_class.value, "alive": p.alive})
+
+    order = list(st)
+    steps = 0
+
+    async def play() -> None:
+        nonlocal steps
+        idx = 0
+        while steps < max_steps:
+            if is_finished(u):
+                return
+            if all(done(pid) for pid in order):
+                for pid in order:
+                    p = u.players[pid]
+                    if p.alive:
+                        st[pid]["wasted_turns"] += max(0, p.turns_per_day - p.turns_today)
+                snap()
+                if u.day >= days:
+                    return
+                tick_day(u)
+                for s in st.values():
+                    s["idle_done"] = False
+                    s["zero_streak"] = 0
+                continue
+            pid = order[idx % len(order)]
+            idx += 1
+            if done(pid):
+                continue
+            s = st[pid]
+            p = u.players[pid]
+            steps += 1
+            obs_model = build_observation(u, pid)
+            obs = obs_model.model_dump(mode="json")
+            try:
+                if s["brain"] is not None:
+                    act = s["brain"].decide(obs)
+                else:
+                    a = await s["agent"].act(obs_model)
+                    act = {"kind": getattr(a.kind, "value", str(a.kind)), "args": dict(a.args or {}),
+                           "thought": a.thought or ""}
+            except Exception:
+                s["exceptions"] += 1
+                act = {"kind": "wait", "args": {}, "thought": "exception fallback"}
+            kind = act["kind"]
+            args = act.get("args") or {}
+            if s["brain"] is not None and validate_action(obs, act):
+                s["rej_validate"] += 1
+            turns_before = p.turns_today
+            sector_before = p.sector_id
+            day_before = u.day
+            try:
+                res = apply_action(u, pid, Action(**{k: act[k] for k in ("kind", "args", "thought") if k in act}))
+                ok, err = res.ok, str(res.error or "")
+            except Exception:
+                s["exceptions"] += 1
+                ok, err = False, "engine exception"
+            spent = max(0, p.turns_today - turns_before) if u.day == day_before else 0
+            s["actions"] += 1
+            s["kinds"][kind] += 1
+            if not ok:
+                s["rej_engine"] += 1
+                s["rej_top"][f"{kind}: {err[:80]}"] += 1
+                if "out of turns" in err:
+                    s["idle_done"] = True
+            elif kind == "trade":
+                if args.get("side") == "sell":
+                    s["sells"] += 1
+                    sold = p.trade_log[-1] if p.trade_log else {}
+                    s["realized"] += int(sold.get("realized_profit") or 0)
+                    s["units_sold"] += int(sold.get("qty") or 0)
+                else:
+                    s["buys"] += 1
+            s["rows"].append((sector_before, kind, args.get("target") or args.get("planet_id")))
+            if kind == "query_limpets":
+                s["idle_done"] = True
+            s["zero_streak"] = s["zero_streak"] + 1 if spent == 0 else 0
+            if s["zero_streak"] >= STUCK_ZERO_TURN_ACTIONS and not s["idle_done"]:
+                s["idle_done"] = True
+                s["forced_done"] += 1
+
+    asyncio.run(play())
+
+    players = {}
+    for pid, s in st.items():
+        p = u.players[pid]
+        planets = sorted(pl.id for pl in u.planets.values() if pl.owner_id == pid)
+        players[pid] = {
+            "seat": s["kind"], "name": p.name, "start_sector": s["start_sector"],
+            "net_worth": full_net_worth(u, p), "public_net_worth": p.net_worth, "credits": p.credits,
+            "ship": p.ship.ship_class.value, "holds": p.ship.holds, "fighters": p.ship.fighters,
+            "planets": planets, "alive": p.alive, "deaths": int(p.deaths),
+            "actions": s["actions"], "kinds": dict(sorted(s["kinds"].items())),
+            "buys": s["buys"], "sells": s["sells"], "units_sold": s["units_sold"],
+            "realized_profit": s["realized"],
+            "profit_per_unit": round(s["realized"] / s["units_sold"], 1) if s["units_sold"] else 0.0,
+            "rejected_validate": s["rej_validate"], "rejected_engine": s["rej_engine"],
+            "rejected_top": [[k, v] for k, v in sorted(s["rej_top"].items(), key=lambda kv: (-kv[1], kv[0]))[:5]],
+            "exceptions": s["exceptions"], "forced_done": s["forced_done"], "wasted_turns": s["wasted_turns"],
+            "aba_bounces": aba_bounces(s["rows"]), "daily": s["daily"],
+        }
+    ranking = sorted(players, key=lambda q: (-players[q]["net_worth"], q))
+    return {
+        "seed": seed, "days": days, "days_played": u.day, "seats": seats, "universe_size": universe_size,
+        "turns_per_day": turns_per_day, "start_credits": credits, "ferrengi": ferrengi,
+        "economy_mode": K.ECONOMY_SCALE_MODE, "commodity_base": dict(K.COMMODITY_BASE_PRICE.items()),
+        "steps": steps, "finished": bool(u.finished), "winner": u.winner_id, "win_reason": u.win_reason,
+        "ranking": ranking, "players": players,
+    }
+
+
+def render_markdown(result: dict[str, Any]) -> str:
+    lines = [
+        f"# Scripted match: seed {result['seed']}, {result['days_played']} of {result['days']} days",
+        "",
+        f"Seats {','.join(result['seats'])}; universe {result['universe_size']}; "
+        f"{result['turns_per_day']} turns/day; start {result['start_credits']:,} credits; "
+        f"Ferrengi {'on' if result['ferrengi'] else 'off'}; economy {result['economy_mode']} "
+        f"(bases {', '.join(f'{k} {v}' for k, v in result['commodity_base'].items())}).",
+        "",
+        "| # | Seat | Net worth | Credits | Ship | Planets | Alive | Deaths | Sells | Profit/unit | Rejected (check/engine) | Exceptions |",
+        "|---|------|-----------|---------|------|---------|-------|--------|-------|-------------|-------------------------|------------|",
+    ]
+    for rank, pid in enumerate(result["ranking"], 1):
+        r = result["players"][pid]
+        lines.append(
+            f"| {rank} | {r['name']} | {r['net_worth']:,} | {r['credits']:,} | {r['ship']} | {len(r['planets'])} | "
+            f"{'yes' if r['alive'] else 'no'} | {r['deaths']} | {r['sells']} | {r['profit_per_unit']} | "
+            f"{r['rejected_validate']}/{r['rejected_engine']} | {r['exceptions']} |"
+        )
+    lines += ["", "Net worth by day:", ""]
+    for pid in result["ranking"]:
+        r = result["players"][pid]
+        lines.append(f"- {r['name']}: " + ", ".join(f"d{d['day']} {d['net_worth']:,}" for d in r["daily"]))
+    if result["finished"]:
+        lines += ["", f"Finished early: winner {result['winner']} ({result['win_reason']})."]
+    return "\n".join(lines) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--seats", default="N3,N2,N1,H", help="comma list of N1, N2, N3, H")
+    ap.add_argument("--seed", type=int, required=True)
+    ap.add_argument("--days", type=int, default=10)
+    ap.add_argument("--size", type=int, default=1000, help="universe size (sectors)")
+    ap.add_argument("--turns-per-day", type=int, default=1000)
+    ap.add_argument("--credits", type=int, default=20_000)
+    ap.add_argument("--no-ferrengi", action="store_true")
+    ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
+    ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
+    a = ap.parse_args(argv)
+    result = run_match(parse_seats(a.seats), seed=a.seed, days=a.days, universe_size=a.size,
+                       turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi)
+    text = json.dumps(result, indent=1, sort_keys=True)
+    md = render_markdown(result)
+    if a.json_out:
+        Path(a.json_out).write_text(text + "\n", encoding="utf-8")
+    if a.md_out:
+        Path(a.md_out).write_text(md, encoding="utf-8")
+    print(md)
+    return 0
+
+
+if __name__ == "__main__":
+    if os.environ.get("PYTHONHASHSEED") != "0":
+        env = dict(os.environ, PYTHONHASHSEED="0")
+        sys.exit(subprocess.call([sys.executable, *sys.argv], env=env))
+    sys.exit(main())
