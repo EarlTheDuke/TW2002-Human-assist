@@ -192,16 +192,19 @@ def test_k_class_unload_goes_to_the_organics_pool() -> None:
 def test_n2_day10_beats_n1_and_keeps_organics() -> None:
     """Five seeds, ten days, fogged observation only.
 
-    On the tw2002 price table the N2 ladder still beats N1 on at least four
-    seeds, and rejected stays 0. Seed 250925 is the exception written in
-    PLANET_ECONOMY_LIMITS.md: its home world is class U, the handbook cap is
-    3000 colonists, and N2 no longer finishes ahead of N1. The ladder keeps
-    the old organics gate, so the same four worlds still starve.
+    On the tw2002 price table the N2 ladder beats N1 on four seeds and stays
+    within 1% on seed 250925 (see the tolerance note below), and rejected
+    stays 0. The ladder keeps the old organics gate, so the same four worlds
+    still starve. Those planet ids are the measured result.
     """
     mod = _load_acceptance()
     held_zeros = {250925: [32], 20260925: [30], 99: [29], 31: [30]}
-    # Class U population cap. Do not treat another seed the same way.
-    capped_seed = 250925
+    # Deliberate tolerance, seed 250925 only (PLANET_ECONOMY_TESTS.md). N2's
+    # organics rule spends 2 extra turns moving colonists to organics on a
+    # class U world where organics hit 0 anyway: 5,334 credits (two fewer
+    # trades) + 9,845 fuel stock value = 15,179 behind N1. Tracked for the
+    # bot-growth-and-fixes slice. Every other seed must still strictly win.
+    within_pct = {250925: 0.99}
     failures = []
     beats = 0
     for seed in mod.N2_SEEDS:
@@ -209,7 +212,9 @@ def test_n2_day10_beats_n1_and_keeps_organics() -> None:
         nxt = mod.prove_growth_replay(seed=seed, brain=mod.n2_brain())
         if nxt["net_worth"] > base["net_worth"]:
             beats += 1
-        elif seed != capped_seed:
+        elif seed in within_pct and nxt["net_worth"] >= within_pct[seed] * base["net_worth"]:
+            pass
+        else:
             failures.append(("nw", seed, base["net_worth"], nxt["net_worth"]))
         if nxt["rejected"]:
             failures.append(("rejected", seed, nxt["rejected"]))
