@@ -195,6 +195,10 @@ Equipment — `buy_equip {"item":"<name>","qty":<int>}`:
   photon_missiles 12,000 cr each      (MF/ISS only; fire into an adjacent sector)
 cloak 25,000 cr each                 (max 5; activate with `cloak`)
 mine_disruptor 40,000 cr each        (max 10; fire into adjacent sector)
+corbomite 1,000 cr each              (max 1,500; undetectable; your killer takes 20 dmg per unit)
+marker_beacon 100 cr each            (leave a 41-char message; two in one sector both explode)
+psychic_probe 2,500 cr               (one per ship; after a trade shows % of the port's best price)
+atomic_detonator 60,000 cr each      (max 5; `deploy_atomic` on a landed planet - kill the colonists FIRST or it destroys you)
   ether_probes    5,000 cr each       (remote-scan any sector; one-shot)
   genesis         25,000 cr each      (create a new planet; see COLONIZE below)
   colonists       10 cr each          (fill your cargo holds; ferry to your planets)
@@ -342,6 +346,9 @@ list every turn once it starts populating.
 - `cloak` - consume one cloak; density 0 + anomaly; unattackable until fail or photon.
 - `fire_disruptor {"target":<adjacent_sector>}` - clear up to 12 mines next door.
 - `remove_limpet` - StarDock service (1,250 cr) strips an attached limpet.
+- `launch_beacon {"message":"<=41 chars"}` - drop a marker beacon here (density 1). A second beacon makes both explode.
+- `deploy_atomic {"planet_id":<landed planet>}` - atomic detonator. Colonists alive = YOUR ship is destroyed; none left = the planet is destroyed (+10% NavHaz).
+- Hostile-sector entry order: NavHaz (each 1% = 10 dmg at %-chance), one limpet, armids, sector quasar, fighters; mines stop autopilot (avoid prompt).
 - `probe {"target":<sector_id>}` — remote-scan a distant sector. 5k cr, one-shot.
 - `plot_course {"target":<sector_id>}` — BFS autopilot up to 10 warps; each still costs its turn price.
 - `query_limpets {}` — where are your planted limpets tracking ships right now?
@@ -415,7 +422,7 @@ Combat:      deploy_fighters deploy_mines attack photon_missile cloak fire_disru
 Recon:       probe query_limpets plot_course
 Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm planet_transwarp planet_buy_transporter planet_transport planet_destroy
 StarDock:    buy_ship buy_equip
-Hardware:  cloak fire_disruptor remove_limpet query_limpets
+Hardware:  cloak fire_disruptor remove_limpet query_limpets launch_beacon deploy_atomic
 # Expert habit: carry a cloak with a photon; disrupt before walking a mined lane; photon adjacent then warp in.
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast

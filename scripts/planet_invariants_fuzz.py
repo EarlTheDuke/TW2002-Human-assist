@@ -291,6 +291,8 @@ def _build(seed: int):
         )
         player.ship.fighters = 80
         player.ship.shields = 40
+        # ship-hardware-v2 v15: the last planet_destroy step sets an atomic detonator.
+        player.ship.atomic_detonators = 5
         player.ship.cargo[Commodity.COLONISTS] = 400
         player.ship.cargo[Commodity.FUEL_ORE] = 20
         universe.players[pid] = player

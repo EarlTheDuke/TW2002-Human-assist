@@ -221,7 +221,7 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"commodity": "fuel_ore", "qty": 1, "side": "buy"})
     if ak in (ActionKind.HAIL, ActionKind.CORP_INVITE, ActionKind.PROPOSE_ALLIANCE):
         return Action(kind=ak, args={"target": first("target", "P2"), "message": "hi", "terms": "peace"})
-    if ak is ActionKind.BROADCAST or ak is ActionKind.CORP_MEMO:
+    if ak is ActionKind.BROADCAST or ak is ActionKind.CORP_MEMO or ak is ActionKind.LAUNCH_BEACON:
         return Action(kind=ak, args={"message": "hello"})
     if ak is ActionKind.ATTACK or ak is ActionKind.PHOTON_MISSILE:
         return Action(kind=ak, args={"target": first("target", "P2")})

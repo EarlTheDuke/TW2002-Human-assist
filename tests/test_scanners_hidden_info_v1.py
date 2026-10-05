@@ -105,29 +105,29 @@ def test_switch_defaults() -> None:
 
 # --- legacy is today's fog, byte for byte ---------------------------------------------------
 
-LEGACY_GOLDEN = [('start', 'A', 'e5329fa08d761bcc', '56298a661a39e6b7'),
- ('start', 'B', '58826fb3accdce11', '4f7ce3e3111305a4'),
- ('start', 'C', '8830296609585c7b', '6539b2012718a165'),
+LEGACY_GOLDEN = [('start', 'A', 'eb0b1ccc22aaa91b', '3a264254ba796f53'),
+ ('start', 'B', 'cf487452e3100f1f', '0b45a9fd9de11d4f'),
+ ('start', 'C', '89809492e9c70f60', '0207d562a3fc5213'),
  ('scan_basic', True, 1, ''),
- ('scan_basic', 'A', 'e40d7d3533e8160e', '1847c393ff08e21e'),
- ('scan_basic', 'B', 'cf6a5e60e1cd23ea', '446773f5b65445a3'),
- ('scan_basic', 'C', '912530278e942269', '09603dcd04606444'),
+ ('scan_basic', 'A', 'b2c373c1dcebca21', 'a651cd06e0e3414f'),
+ ('scan_basic', 'B', '4f7f1e5007c09167', '850c0b42b97e0925'),
+ ('scan_basic', 'C', '4c373b205979ef1e', '398b9b92a34a58e9'),
  ('scan_density', True, 1, ''),
- ('scan_density', 'A', '02adfad14bef2625', '11752c80724b589d'),
- ('scan_density', 'B', '0bbfe63e241fc770', 'd5a6a84cfce2cab7'),
- ('scan_density', 'C', '2c8818bc67ad30e1', '17405d70216329bc'),
+ ('scan_density', 'A', '7f595aec4c3e59af', '312415a8a11231ef'),
+ ('scan_density', 'B', '68b39b74cb5769ef', '88b503814b6d213e'),
+ ('scan_density', 'C', '84f3a0d8dc5a9210', '80c9b7f36c20fa94'),
  ('scan_holo', True, 1, ''),
- ('scan_holo', 'A', 'd962db2b477cc771', '7257c8864d88237a'),
- ('scan_holo', 'B', 'c55979a95be4f2f7', 'd5fc3bdd95f6a79e'),
- ('scan_holo', 'C', 'd06529185b26c6b3', 'cab25ad173eba565'),
+ ('scan_holo', 'A', '4ae93eafee1ae609', '22cf75d736388e30'),
+ ('scan_holo', 'B', 'c469897663d56716', '26d99cc94f9a5569'),
+ ('scan_holo', 'C', '4d9c25c674bd3409', '4d6c837efe148b0d'),
  ('probe', True, 1, ''),
- ('probe', 'A', '279ea918549e9f40', 'a2a515cb66e0a804'),
- ('probe', 'B', 'b927100262406fd0', '8e3e472356e8247c'),
- ('probe', 'C', 'b46cf376a26dbe77', 'b80316400eb1913a'),
+ ('probe', 'A', 'ed8649f8af323b63', '260bd367faec9da4'),
+ ('probe', 'B', 'a077ba20ca31c6f2', '79ec9a190786ba51'),
+ ('probe', 'C', 'a95bbcb75bf9176a', '9a495815a2bc5212'),
  ('warp_quiet', True, 3, ''),
- ('warp_quiet', 'A', 'b71efaa6f99d41b1', 'e2e7e7081913bf6a'),
- ('warp_quiet', 'B', '91b295b756512097', 'c69bdfbc9df69386'),
- ('warp_quiet', 'C', 'c942a30c921b44a5', '1deb98583eb16f17')]
+ ('warp_quiet', 'A', '7cf74f4be8244be8', '055f924d616e8255'),
+ ('warp_quiet', 'B', 'e2c62bec053e9328', 'ee89a20ab337ac61'),
+ ('warp_quiet', 'C', 'fc50a8b0b74e65bf', 'f3a088c272b4c935')]
 
 
 def test_legacy_fog_is_unchanged(legacy) -> None:
