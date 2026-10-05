@@ -961,10 +961,12 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 la.legal, la.reason = False, CHALLENGE_REFUSAL
 
     if getattr(player, "flee_penalty", False):
+        # Same as apply_action: only a turn-using land or port action pays it, and never past the day.
         for la in out:
-            if la.kind in (ActionKind.LAND_PLANET.value, ActionKind.TRADE.value):
-                la.turn_cost += int(K.FLEE_PENALTY_TURNS)
-                la.params["flee_penalty_turns"] = int(K.FLEE_PENALTY_TURNS)
+            if la.kind in (ActionKind.LAND_PLANET.value, ActionKind.TRADE.value) and la.turn_cost > 0:
+                extra = min(int(K.FLEE_PENALTY_TURNS), max(0, _turns_left(player) - la.turn_cost))
+                la.turn_cost += extra
+                la.params["flee_penalty_turns"] = extra
 
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}
