@@ -121,6 +121,9 @@ def _resolve_fighter_sector_combat(
                 cap = K.sector_fighter_cap(bool(sector.planet_ids))
                 if placed > cap:
                     placed = cap
+            excess = attack_pool - placed
+            if excess > 0:
+                attacker.ship.fighters += excess
             sector.fighters = FighterDeployment(
                 owner_id=attacker_id,
                 count=placed,

@@ -243,18 +243,27 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     from .runner import _bfs_path, _planet_was_orphaned
 
     if K.sector_fighter_tw2002():
+        from .runner import _toll_blocks
         toll_due: dict[str, int] = {}
+        affordable_warps: list[int] = []
         for wid in warps:
             dest = universe.sectors.get(int(wid))
             dep = dest.fighters if dest is not None else None
-            if dep is None or dep.mode != FighterMode.TOLL:
-                continue
-            if dep.owner_id == player_id or _are_allied(universe, player_id, dep.owner_id):
-                continue
-            toll_due[str(wid)] = int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+            bill = 0
+            if dep is not None and dep.mode == FighterMode.TOLL:
+                if dep.owner_id != player_id and not _are_allied(universe, player_id, dep.owner_id):
+                    bill = int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+                    if bill > 0:
+                        toll_due[str(wid)] = bill
+            if bill <= 0 or int(player.credits) >= bill:
+                affordable_warps.append(int(wid))
         for la in out:
             if la.kind == ActionKind.WARP.value:
                 la.params["toll_due_by"] = toll_due
+                la.params["target"]["choices"] = affordable_warps
+                if not affordable_warps and warps:
+                    la.legal = False
+                    la.reason = "toll fighters demand payment"
                 break
 
     # ---- comms (precise) ------------------------------------------------------
@@ -447,9 +456,25 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             pl.corp_ticker and player.corp_ticker and pl.corp_ticker == player.corp_ticker)
         if hostile and (pl.fighters > 0 or pl.shields > 0):
             contested.append(plid)
-    reason = "no planet in this sector" if not planets_here else _need_turns(player, lp_cost)
+    land_choices = list(planets_here)
+    if K.sector_fighter_tw2002():
+        from .runner import _toll_blocks
+        if _toll_blocks(universe, player_id, sector):
+            land_choices = []
+            for plid in planets_here:
+                pl = universe.planets[plid]
+                hostile = pl.owner_id is not None and pl.owner_id != player_id and not (
+                    pl.corp_ticker and player.corp_ticker and pl.corp_ticker == player.corp_ticker)
+                if not hostile:
+                    land_choices.append(plid)
+    if not planets_here:
+        reason = "no planet in this sector"
+    elif not land_choices:
+        reason = "toll fighters demand payment"
+    else:
+        reason = _need_turns(player, lp_cost)
     out.append(_la(ActionKind.LAND_PLANET, legal=reason is None, reason=reason, cost=lp_cost,
-                   params={"planet_id": {"type": "int", "required": True, "choices": planets_here,
+                   params={"planet_id": {"type": "int", "required": True, "choices": land_choices,
                                          "contested": contested}}))
 
     lo_cost = int(K.TURN_COST["liftoff"])
@@ -864,17 +889,11 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                            "qty": {"type": "int", "required": False, "min": 1, "max_by": max_by}}))
 
     surrender_cost = int(K.TURN_COST["surrender"])
-    dep = sector.fighters
     if not K.sector_fighter_tw2002():
         surrender_reason = "legacy sector fighters do not take a surrender"
-    elif dep is None or int(dep.count) <= 0:
-        surrender_reason = "no defensive or toll fighters to surrender to"
-    elif dep.owner_id == player_id or _are_allied(universe, player_id, dep.owner_id):
-        surrender_reason = "those fighters are not hostile"
-    elif dep.mode not in (FighterMode.DEFENSIVE, FighterMode.TOLL):
-        surrender_reason = "offensive fighters do not take a surrender"
     else:
-        surrender_reason = _need_turns(player, surrender_cost)
+        # Defensive fighters do not challenge yet; surrender waits for that slice.
+        surrender_reason = "surrender waits for the defensive challenge"
     out.append(_la(ActionKind.SURRENDER, legal=surrender_reason is None, reason=surrender_reason,
                    cost=surrender_cost, params={}))
 
