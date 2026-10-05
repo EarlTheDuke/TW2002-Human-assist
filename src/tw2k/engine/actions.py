@@ -29,6 +29,7 @@ class ActionKind(str, Enum):
     FIRE_DISRUPTOR = "fire_disruptor"
     REMOVE_LIMPET = "remove_limpet"
     LAUNCH_BEACON = "launch_beacon"
+    TERRA_COLONISTS = "terra_colonists"
     DEPLOY_ATOMIC = "deploy_atomic"
     QUERY_LIMPETS = "query_limpets"
     PROBE = "probe"

@@ -14,6 +14,7 @@ from collections.abc import Callable
 
 from . import constants as K
 from .actions import Action, ActionKind, ActionResult
+from .class0 import handle_terra_colonists
 from .combat import (
     _apply_volley,
     _are_allied,
@@ -235,6 +236,14 @@ def tick_day(universe: Universe) -> None:
         # Photon scramble decays one tick per real game day
         if player.ship.photon_disabled_ticks > 0:
             player.ship.photon_disabled_ticks = max(0, player.ship.photon_disabled_ticks - 1)
+
+    # CLASS0_TERRA.md t20/t3: Extern sweep (after overnight retreats so a
+    # challenge answered overnight still sees the fighters), then Terra regen.
+    # Both run before regenerate_ports.
+    from .class0 import class0_tw2002, extern_sweep, regen_terra
+    if class0_tw2002():
+        extern_sweep(universe)
+        regen_terra(universe)
 
     regenerate_ports(universe)
     if K.rob_tw2002():
@@ -1952,18 +1961,42 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
 
 
 def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """StarDock / Class 0 equipment purchase (CLASS0_TERRA.md t8/t11-t14)."""
+    from .class0 import (
+        CLASS0_ITEMS,
+        class0_buy_ok,
+        class0_tw2002,
+        shield_unit_price,
+        special_port_at,
+    )
+    from .economy import begin_port_visit, trade_turn_cost
+
     player = universe.players[pid]
-    if player.sector_id != K.STARDOCK_SECTOR:
-        return ActionResult(ok=False, error="must be at StarDock")
+    ok_here, where_err = class0_buy_ok(universe, pid)
+    if not ok_here:
+        return ActionResult(ok=False, error=where_err.replace(
+            "must be at StarDock (sector 1) or a Class 0 port", "must be at StarDock"
+        ) if not class0_tw2002() else where_err)
     item = action.args.get("item")
     qty = int(action.args.get("qty", 0))
     if qty <= 0:
         return ActionResult(ok=False, error="qty must be positive")
     day = int(universe.day)
     class_key = player.ship.ship_class.value
+    at_special = special_port_at(universe, player.sector_id) is not None
+    at_stardock = player.sector_id == K.STARDOCK_SECTOR
+
+    # Class 0 special ports: fighters / shields / holds only.
+    if at_special and class0_tw2002():
+        if item not in CLASS0_ITEMS:
+            return ActionResult(
+                ok=False,
+                error="Class 0 ports sell only fighters, shields and holds",
+            )
+
     prices = {
         "fighters": K.fighter_unit_price(day),
-        "shields": 10,
+        "shields": shield_unit_price(day) if class0_tw2002() else 10,
         "armid_mines": K.ARMID_MINE_COST,
         "limpet_mines": K.LIMPET_MINE_COST,
         "atomic_mines": K.ATOMIC_MINE_COST,
@@ -1971,19 +2004,27 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "ether_probes": K.ETHER_PROBE_COST,
         "genesis": K.GENESIS_TORPEDO_COST,
         "holds": K.hold_next_price(class_key, player.ship.holds, day),
-        # Colonists are sold by Terra (classic TW2002: ~10 cr/unit). StarDock
-        # doubles as the Federation's colonist exchange here — fold them into
-        # buy_equip so the ferry-to-your-planet loop actually exists in game.
+        # Colonists: legacy StarDock shelf only. tw2002 uses terra_colonists.
         "colonists": K.COLONIST_PRICE,
     }
-    if K.hardware_tw2002():
+    if class0_tw2002() and at_stardock:
+        prices.pop("colonists", None)
+    if at_special and class0_tw2002():
+        prices = {k: prices[k] for k in CLASS0_ITEMS}
+        prices["holds"] = K.hold_next_price(class_key, player.ship.holds, day)
+    if K.hardware_tw2002() and at_stardock:
         prices["cloak"] = K.CLOAK_COST
         prices["mine_disruptor"] = K.DISRUPTOR_COST
         prices.update(K.hardware_v2_prices())
         if not K.atomic_mines_sold():
             prices.pop("atomic_mines", None)
-    if K.info_tw2002() and item in ("density_scanner", "holo_scanner"):
+    if K.info_tw2002() and at_stardock and item in ("density_scanner", "holo_scanner"):
         return _buy_scanner(universe, pid, str(item), qty)
+    if class0_tw2002() and item == "colonists":
+        return ActionResult(
+            ok=False,
+            error="colonists come from Terra: use terra_colonists",
+        )
     unit = prices.get(item or "")
     if unit is None:
         return ActionResult(ok=False, error=f"unknown item {item!r}")
@@ -2057,8 +2098,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     elif item in K.HARDWARE_V2_ITEMS:
         v2_add(player.ship, item, qty)
     elif item == "colonists":
-        # Buying colonists loads them as cargo. They must fit — each colonist
-        # is 1 unit of hold capacity, same as any commodity.
+        # Legacy StarDock shelf only (CLASS0_MODE legacy).
         used = player.ship.cargo_used
         if used + qty > player.ship.holds:
             return ActionResult(
@@ -2070,6 +2110,12 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         )
     player.credits -= total
 
+    # t14: first buy of a visit at Alpha Centauri / Rylos costs the dock turn.
+    turns = 0
+    if at_special and class0_tw2002():
+        turns = trade_turn_cost(player)
+        begin_port_visit(player)
+
     universe.emit(
         EventKind.BUY_EQUIP,
         actor_id=pid,
@@ -2077,7 +2123,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         payload={"item": item, "qty": qty, "total": total},
         summary=f"{player.name} bought {qty} {item} for {total}cr",
     )
-    return ActionResult(ok=True, turns_spent=0)
+    return ActionResult(ok=True, turns_spent=turns)
 
 
 def _buy_scanner(universe: Universe, pid: str, item: str, qty: int) -> ActionResult:
@@ -3594,6 +3640,7 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.FIRE_DISRUPTOR: handle_fire_disruptor,
     ActionKind.REMOVE_LIMPET: handle_remove_limpet,
     ActionKind.LAUNCH_BEACON: handle_launch_beacon,
+    ActionKind.TERRA_COLONISTS: handle_terra_colonists,
     ActionKind.DEPLOY_ATOMIC: _handle_deploy_atomic,
     ActionKind.QUERY_LIMPETS: _handle_query_limpets,
     ActionKind.PROBE: _handle_probe,
@@ -3669,10 +3716,19 @@ def _record_port_intel(player, sector_id: int, port, *, universe=None) -> None:
         if universe is not None
         else (player.known_ports.get(sector_id) or {}).get("last_seen_day")
     )
+    port_class = port.class_id.code
+    snap_extra = {}
+    special = getattr(port, "special", None)
+    if special in ("alpha_centauri", "rylos"):
+        port_class = "0"
+        snap_extra["name"] = port.name
+        snap_extra["special"] = special
+        snap_extra["sells"] = ["fighters", "shields", "holds"]
     snapshot = {
-        "class": port.class_id.code,
+        "class": port_class,
         "stock": stock,
         "last_seen_day": last_day,
+        **snap_extra,
     }
     player.known_ports[sector_id] = snapshot
 

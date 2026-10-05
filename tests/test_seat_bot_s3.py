@@ -71,7 +71,9 @@ def test_offline_genesis_citadel_ferry_from_observation_only() -> None:
     i_dep = _ok(log, "deploy_genesis")
     i_land = _ok(log, "land_planet")
     i_build = _ok(log, "build_citadel")
-    i_buy_col = _ok(log, "buy_equip", item="colonists")
+    i_buy_col = _ok(log, "terra_colonists", mode="take")
+    if i_buy_col is None:
+        i_buy_col = _ok(log, "buy_equip", item="colonists")  # legacy path
     i_assign = _ok(log, "assign_colonists", **{"from": "ship"})
     order = [i_ship, i_gen, i_dep, i_land, i_build, i_buy_col, i_assign]
     assert None not in order, dict(zip(["ship", "genesis", "deploy", "land", "build", "buy_col", "assign"], order, strict=True))

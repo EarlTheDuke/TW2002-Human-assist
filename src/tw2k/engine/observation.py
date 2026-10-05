@@ -58,6 +58,9 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.BEACON_DESTROYED,
     EventKind.PSYCHIC_PROBE,
     EventKind.HAZARD_AVOID_PROMPT,
+    # class0-terra-v1: Terra load and Extern sweep notices are owner/actor only.
+    EventKind.TERRA_COLONISTS,
+    EventKind.EXTERN_SWEEP,
     EventKind.FED_RESPONSE,
     EventKind.PLANET_TAX_PAYOUT,
     # Out-of-band meta event — belongs to actor only (keeps opponents
@@ -1134,6 +1137,36 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
                     "side": side,
                 }
         info["port"] = port_info
+    from .class0 import class0_tw2002, is_msl_sector, shield_unit_price, special_port_at
+    if class0_tw2002():
+        # is_msl only on the current sector (seat learns the lane by being there).
+        if is_msl_sector(universe, sector.id):
+            info["is_msl"] = True
+        if sector.id == K.STARDOCK_SECTOR and universe.terra_colonists is not None:
+            info["terra"] = {
+                "colonists_available": int(universe.terra_colonists),
+                "max": int(universe.terra_max or K.TERRA_MAX_COLONISTS),
+                "regen_per_day": int(K.TERRA_REGEN_PER_DAY),
+                "load_turns": int(K.TERRA_LOAD_TURNS),
+                "price": int(K.TERRA_COLONIST_PRICE),
+            }
+        sp = special_port_at(universe, sector.id)
+        if sp is not None:
+            day = int(universe.day)
+            info["class0_port"] = {
+                "name": sp.name,
+                "sells": ["fighters", "shields", "holds"],
+                "prices": {
+                    "fighters": K.fighter_unit_price(day),
+                    "shields": shield_unit_price(day),
+                    "holds": None,  # per-hull; legal list has hold_next_price
+                },
+            }
+            # Class display: known as class 0
+            if info.get("port"):
+                info["port"]["class_display"] = "0"
+                info["port"]["code"] = "0"
+
     return info
 
 

@@ -61,6 +61,9 @@ from ..engine.constants import (
     HOLO_SCANNER_COST,
     SCANNER_DENSITY,
     SCANNER_HOLO,
+    TERRA_COLONIST_PRICE,
+    TERRA_LOAD_TURNS,
+    class0_tw2002,
     combat_hull,
     fighter_unit_price,
     info_tw2002,
@@ -77,6 +80,23 @@ from .pathb_client import TurnContext, legal_heuristic_policy
 from .stall import Intent, StallDetector, known_distance
 
 STARDOCK = 1
+
+
+def _colonist_acquire_unit() -> int:
+    """Credits to acquire one colonist right now (CLASS0_TERRA.md).
+
+    Under tw2002 Terra is free (0 cr) and costs TERRA_LOAD_TURNS; net-worth
+    valuation of population still uses COLONIST_PRICE.
+    """
+    if class0_tw2002():
+        return int(TERRA_COLONIST_PRICE)
+    return int(COLONIST_PRICE)
+
+
+def _colonist_ferry_turn_overhead() -> int:
+    """Extra turns per Terra load under tw2002 (0 under legacy buy_equip)."""
+    return int(TERRA_LOAD_TURNS) if class0_tw2002() else 0
+
 MEMORY_TAG = "SEATBRAIN "
 STALL_BREAK_TURNS = 3
 # S6: self-failure events a seat can see about its own actions.
@@ -974,23 +994,24 @@ class SeatBrain:
                                  f"buy genesis #{len(gplanets) + 1} ({price} cr){why}"), Intent("acquire")
         # Ferry load: only what the next citadel tier still needs, never below the reserve.
         need = self._colonists_needed(v)
-        if (v.worlds() and need > 0 and self._buildable_elsewhere(v) is None
-                and v.ok("buy_equip") and "colonists" in v.choices("buy_equip", "item")):
-            unit = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("colonists") or 10)
-            afford = max(0, (v.credits - reserve) // max(1, unit))
-            qty = min(v.max_by("buy_equip", "qty", "colonists"), afford, need)
-            if qty > 0 and v.cargo_free > 0:
-                return self._act("buy_equip", {"item": "colonists", "qty": int(qty)},
-                                 f"load {qty} colonists for the ferry ({need} still needed)"), Intent("colonize", self.mem.home_sector)
+        if v.worlds() and need > 0 and self._buildable_elsewhere(v) is None and v.cargo_free > 0:
+            loaded = self._load_colonists(v, need, reserve,
+                                         f"load colonists for the ferry ({need} still needed)")
+            if loaded is not None:
+                return loaded, Intent("colonize", self.mem.home_sector)
         return None
 
     def _travel(self, v: View):
         if v.landed is not None:
             return None
         if self._needs_dock_defense(v):
-            plot = self._plot(v, STARDOCK, "under-armed with cash - StarDock for fighters/shields")
+            dock = self._nearest_equip_port(v)
+            label = ("under-armed with cash - Class 0 for fighters/shields"
+                     if dock != STARDOCK else
+                     "under-armed with cash - StarDock for fighters/shields")
+            plot = self._plot(v, dock, label)
             if plot is not None:
-                return plot, Intent("acquire", STARDOCK)
+                return plot, Intent("acquire", dock)
         if self._hauling_organics(v):
             planet = v.planet(self.mem.organics_drop)
             if planet is None:
@@ -1445,7 +1466,10 @@ class SeatBrain:
             gap = col - have
             # One colonist must still be buyable after the tier's credit cost is
             # reserved. A plot to StarDock that cannot buy is a trade ping-pong.
-            tier_ferry = bonus > 0 and gap > 0 and v.credits - cred >= COLONIST_PRICE
+            unit_cost = _colonist_acquire_unit()
+            tier_ferry = bonus > 0 and gap > 0 and (
+                v.credits - cred >= unit_cost if unit_cost > 0 else v.credits >= cred
+            )
         if not tier_ferry and starving:
             gap = min(holds, max(holds // 5, 15))
             bonus = _refill_value(gap, self._days_left(v))
@@ -1463,22 +1487,21 @@ class SeatBrain:
             back = self._hops(v, v.here, sid)
         if back is None:
             return None
-        round_turns = (outbound + back) * self._tpw(v) + 6
+        round_turns = (outbound + back) * self._tpw(v) + 6 + _colonist_ferry_turn_overhead()
         turns = max(1, trips * max(1, round_turns))
         vpt = bonus / turns
         # Keep the tier's credit cost in the bank. The cash buffer is for
         # trading, not for blocking the load that unlocks the citadel.
         afford_credits = v.credits - cred
-        unit = COLONIST_PRICE
         if v.here == STARDOCK:
-            unit = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("colonists") or COLONIST_PRICE)
-            afford = max(0, afford_credits // max(1, unit))
-            qty = min(holds, gap, afford, v.max_by("buy_equip", "qty", "colonists") or holds)
-            if qty <= 0 or not v.ok("buy_equip") or "colonists" not in v.choices("buy_equip", "item"):
-                return None
+            unit = _colonist_acquire_unit()
+            afford = (holds if unit <= 0 else max(0, afford_credits // max(1, unit)))
+            qty = min(holds, gap, afford)
             why = (f"ferry: load {qty} colonists to unlock L{level} on planet {planet['id']}"
                    if tier_ferry else f"ferry: refill starving planet {planet['id']} with {qty} colonists")
-            action = self._act("buy_equip", {"item": "colonists", "qty": int(qty)}, why)
+            action = self._load_colonists(v, qty, cred if unit > 0 else 0, why)
+            if action is None or qty <= 0:
+                return None
             return vpt, action, Intent("colonize", sid), {"colonist_drop": int(planet["id"])}
         label = (f"ferry: StarDock for {gap} colonists to unlock L{level} on planet {planet['id']}"
                  if tier_ferry else f"ferry: StarDock to refill starving planet {planet['id']}")
@@ -2257,6 +2280,82 @@ class SeatBrain:
     def _should_avoid_hot(self, v: View) -> bool:
         return (self.feed_organics or self.value_allocator) and self._under_defended(v) and self._fogged_hot()
 
+    def _load_colonists(self, v: View, need: int, reserve: int, why: str) -> dict[str, Any] | None:
+        """Take colonists at sector 1: terra_colonists under tw2002, else buy_equip."""
+        need = int(need)
+        if need <= 0 or v.cargo_free <= 0:
+            return None
+        if class0_tw2002():
+            if not v.ok("terra_colonists"):
+                return None
+            if "take" not in {str(x) for x in v.choices("terra_colonists", "mode")}:
+                return None
+            room = v.max_by("terra_colonists", "qty", "take")
+            qty = min(need, room, v.cargo_free)
+            if qty <= 0:
+                return None
+            return self._act("terra_colonists", {"mode": "take", "qty": int(qty)}, why)
+        if not v.ok("buy_equip") or "colonists" not in v.choices("buy_equip", "item"):
+            return None
+        unit = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("colonists")
+                   or COLONIST_PRICE)
+        afford = max(0, (v.credits - int(reserve)) // max(1, unit))
+        qty = min(v.max_by("buy_equip", "qty", "colonists"), afford, need, v.cargo_free)
+        if qty <= 0:
+            return None
+        return self._act("buy_equip", {"item": "colonists", "qty": int(qty)}, why)
+
+    def _known_class0_sectors(self, v: View) -> list[int]:
+        """StarDock plus any Alpha Centauri / Rylos the seat has actually seen."""
+        found = [STARDOCK]
+        for entry in (v.obs.get("known_ports") or []):
+            if not isinstance(entry, dict):
+                continue
+            sid = entry.get("sector_id", entry.get("id"))
+            try:
+                sid_i = int(sid)
+            except (TypeError, ValueError):
+                continue
+            cls = str(entry.get("class") or "")
+            special = entry.get("special")
+            name = str(entry.get("name") or "")
+            if cls == "0" or special in ("alpha_centauri", "rylos") or name in ("Alpha Centauri", "Rylos"):
+                if sid_i not in found:
+                    found.append(sid_i)
+        # Current sector class0_port block
+        sector = v.obs.get("sector") or {}
+        if isinstance(sector, dict) and sector.get("class0_port"):
+            try:
+                sid_i = int(sector.get("id") or v.here)
+            except (TypeError, ValueError):
+                sid_i = int(v.here)
+            if sid_i not in found:
+                found.append(sid_i)
+        return found
+
+    def _nearest_equip_port(self, v: View) -> int:
+        """Nearest known Class 0 / StarDock for fighters/shields/holds (CLASS0_TERRA.md)."""
+        best = STARDOCK
+        best_hops = self._hops(v, v.here, STARDOCK)
+        if best_hops is None:
+            best_hops = 10**9
+        for sid in self._known_class0_sectors(v):
+            h = self._hops(v, v.here, sid)
+            if h is None:
+                continue
+            if h < best_hops or (h == best_hops and sid < best):
+                best_hops = h
+                best = sid
+        return best
+
+    def _at_equip_port(self, v: View) -> bool:
+        if v.here == STARDOCK:
+            return True
+        if not class0_tw2002():
+            return False
+        sector = v.obs.get("sector") or {}
+        return bool(isinstance(sector, dict) and sector.get("class0_port"))
+
     def _needs_dock_defense(self, v: View) -> bool:
         if not (self.feed_organics or self.value_allocator):
             return False
@@ -2265,15 +2364,15 @@ class SeatBrain:
             return False
         if v.credits < DEFENSE_CASH_GATE or not self._under_defended(v):
             return False
-        if v.here == STARDOCK:
+        if self._at_equip_port(v):
             return False
         return True
 
     def _buy_defense(self, v: View) -> dict[str, Any] | None:
-        """Buy shields then fighters from the fogged StarDock list when cash is high."""
+        """Buy shields then fighters at StarDock or a known Class 0 when cash is high."""
         if not (self.feed_organics or self.value_allocator):
             return None
-        if v.here != STARDOCK or not v.ok("buy_equip"):
+        if not self._at_equip_port(v) or not v.ok("buy_equip"):
             return None
         if v.credits < DEFENSE_CASH_GATE:
             return None
@@ -2397,17 +2496,19 @@ class SeatBrain:
             return None
         if not self._under_defended(v):
             return None
-        turns = self._hops_to_stardock(v) * self._tpw(v) + 1
+        dock = self._nearest_equip_port(v)
+        hops = self._hops(v, v.here, dock)
+        turns = (hops if hops is not None else self._hops_to_stardock(v)) * self._tpw(v) + 1
         value = min(v.credits * 0.2, 250_000) if self._under_defended(v) else 20_000
-        if v.here == STARDOCK:
+        if self._at_equip_port(v):
             action = self._buy_defense(v)
             if action is None:
                 return None
         else:
-            action = self._plot(v, STARDOCK, "buy defence before travelling with cash")
+            action = self._plot(v, dock, "buy defence before travelling with cash")
             if action is None:
                 return None
-        return value / max(1, turns), action, Intent("acquire", STARDOCK)
+        return value / max(1, turns), action, Intent("acquire", dock)
 
 
     def _fitted_scanner(self, v: View) -> str | None:

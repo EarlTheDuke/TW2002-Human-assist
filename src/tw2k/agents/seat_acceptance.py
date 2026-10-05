@@ -46,6 +46,7 @@ REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "fire_disruptor": ("target",),
     "remove_limpet": (),
     "launch_beacon": ("message",),
+    "terra_colonists": ("mode", "qty"),
     "deploy_atomic": ("planet_id",),
     "hail": ("target", "message"),
     "broadcast": ("message",),
@@ -178,7 +179,7 @@ class MilestoneTracker:
             self._hit("landed_genesis", i)
         elif kind == "build_citadel" and args.get("planet_id") in genesis_worlds:
             self._hit("citadel_started", i)
-        elif kind == "buy_equip" and args.get("item") == "colonists":
+        elif (kind == "buy_equip" and args.get("item") == "colonists") or (kind == "terra_colonists" and args.get("mode") == "take"):
             self._hit("colonists_bought", i)
             self._loaded = True
         elif (kind == "plot_course" and int(cargo.get("colonists") or 0) > 0
@@ -279,12 +280,21 @@ def synthetic_obs(*, sector: int, credits: int = 90_000, ship_class: str = "carg
     else:
         las.append(_la("deploy_genesis", hops_from_stardock=sector - 1, min_hops=3))
     if sector == 1:
-        prices = {"genesis": 25_000, "colonists": 10, "fighters": 50}
-        max_by = {"genesis": credits // 25_000, "colonists": min(free, credits // 10), "fighters": credits // 50}
+        # CLASS0_TERRA.md: colonists come from Terra, not buy_equip.
+        prices = {"genesis": 25_000, "fighters": 50}
+        max_by = {"genesis": credits // 25_000, "fighters": credits // 50}
         las.append(_la("buy_equip", item={"choices": [i for i, m in max_by.items() if m > 0], "unit_price_by": prices},
                        qty={"min": 1, "max_by": max_by}))
         las.append(_la("buy_ship", False, "no ship you can buy right now (credits / alignment / corp)",
                        ship_class={"choices": []}))
+        take_max = max(0, free)
+        if take_max > 0:
+            las.append(_la("terra_colonists", mode={"choices": ["take"]},
+                           qty={"min": 1, "max_by": {"take": take_max}},
+                           pool=100_000, turns=1, price=0))
+        else:
+            las.append(_la("terra_colonists", False, "no room to take or leave colonists",
+                           mode={"choices": []}, qty={"max_by": {}}))
     else:
         las.append(_la("buy_equip", False, "must be at StarDock (sector 1)", item={"choices": []}, qty={"max_by": {}}))
         las.append(_la("buy_ship", False, "must be at StarDock (sector 1)"))
@@ -349,8 +359,8 @@ def ferry_storyboard() -> list[tuple[str, dict[str, Any], str, dict[str, Any]]]:
         ("built: liftoff", synthetic_obs(sector=5, planets=[built], landed=7, credits=35_000), "liftoff", {}),
         ("need colonists: plot stardock", synthetic_obs(sector=5, planets=[built], credits=35_000),
          "plot_course", {"target": 1, "execute": True}),
-        ("stardock: load colonists", synthetic_obs(sector=1, planets=[built], credits=35_000), "buy_equip",
-         {"item": "colonists"}),
+        ("stardock: load colonists", synthetic_obs(sector=1, planets=[built], credits=35_000), "terra_colonists",
+         {"mode": "take"}),
         ("loaded: plot home", synthetic_obs(sector=1, planets=[built], credits=34_250, colonists=75),
          "plot_course", {"target": 5, "execute": True}),
         ("home with colonists: land", synthetic_obs(sector=5, planets=[built], credits=34_250, colonists=75),

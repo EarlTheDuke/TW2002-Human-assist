@@ -78,8 +78,9 @@ def test_two_pathb_brains_plus_unattended_seat_no_stalls(tmp_path: Path) -> None
         # Same fogged observation the LLM seats get: rules fetched once, llm message present in the poll body.
         # ActionKind is the verb catalog the harness sends. recall_deployed and surrender made it 47;
         # retreat and pay_toll (ship-combat-core-v1) made it 49; rob+steal (rob-steal-v1) made it 51;
-        # cloak, fire_disruptor and remove_limpet (ship-hardware-v1) make it 54; launch_beacon (v2) 55.
-        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 55
+        # cloak, fire_disruptor and remove_limpet (ship-hardware-v1) make it 54; launch_beacon (v2) 55;
+        # terra_colonists (class0-terra-v1) makes it 56.
+        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 56
         # No external timeout errors for the attended seats; idle auto-waits only for P4.
         errs = [e for e in u.events if e.kind is EventKind.AGENT_ERROR and e.actor_id in ("P2", "P3")
                 and (e.payload or {}).get("external_timeout")]

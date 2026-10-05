@@ -46,7 +46,7 @@ The winning progression, in order:
   (B) UPGRADE  — at StarDock (sector 1), buy a bigger ship as soon as you can afford one.
                  DO NOT wait until 100k — a CargoTran at 43.5k gives 75 holds (3.75x a
                  merchant_cruiser) which doubles your per-turn trade profit instantly.
-  (C) COLONIZE — at StarDock: `buy_equip item=genesis qty=1` + `buy_equip item=colonists qty=<holds>`.
+  (C) COLONIZE — at StarDock: `buy_equip item=genesis qty=1` + `terra_colonists mode=take qty=<holds>` (colonists come from Terra in sector 1, free, 1 turn; not buy_equip).
                  Warp to a quiet dead-end sector. `deploy_genesis` → your own planet appears.
                  `land_planet planet_id=<id>` → `assign_colonists planet_id=<id> from=ship to=<pool> qty=<N>` → `liftoff`.
   (D) FORTIFY  — `build_citadel planet_id=<id>` (L1=5k cr + 1k colonists, takes 1 day).
@@ -201,7 +201,7 @@ psychic_probe 2,500 cr               (one per ship; after a trade shows % of the
 atomic_detonator 60,000 cr each      (max 5; `deploy_atomic` on a landed planet - kill the colonists FIRST or it destroys you)
   ether_probes    5,000 cr each       (remote-scan any sector; one-shot)
   genesis         25,000 cr each      (create a new planet; see COLONIZE below)
-  colonists       10 cr each          (fill your cargo holds; ferry to your planets)
+  colonists       Terra (sector 1)    (use `terra_colonists`; free, 1 turn/load; pool-limited)
 
 Ships — `buy_ship {"ship_class":"<key>"}`. 25% trade-in on the current hull. A surplus is not paid out:
   merchant_cruiser    (starter)  41,300, 20 holds (max 75), 2500 fighters, 3 turns/warp
@@ -231,7 +231,7 @@ fortified citadel also creates planet defense value.
 Full sequence from StarDock, ~30-50 turns for your first planet:
 
   1. buy_equip {"item":"genesis","qty":1}            ← 25,000 cr
-  2. buy_equip {"item":"colonists","qty":<cargo free>} ← 10 cr each, fills your holds
+  2. terra_colonists {"mode":"take","qty":<cargo free>} ← free at Terra (sector 1), 1 turn, pool-limited
   3. warp to a quiet dead-end sector (1 warp-out, outside FedSpace, off StarDock lanes)
   4. deploy_genesis {}                                ← 4 turns; a new planet you own appears
      (auto-seeded with ~2,500 founding colonists across pools so L1 is immediately buildable)
@@ -260,7 +260,7 @@ Next days: return with more colonists, land, call `build_citadel` again to push 
   "colonists" → idle/construction reserve; consumed by build_citadel; also defenders
   "ship"      → your cargo holds. `from="colonists" to="ship"` picks them UP for transport.
 
-Authentic Terra-ferry loop: back at StarDock → `buy_equip item=colonists qty=<holds>` →
+Authentic Terra-ferry loop: back at sector 1 → `terra_colonists {"mode":"take","qty":<holds>}` →
 warp to your planet → land → `assign_colonists {"planet_id":<id>,"from":"ship","to":<pool>,"qty":<N>}`
 (planet_id and qty are REQUIRED) → liftoff → repeat. Size trips from
 `owned_planets[].colonists_total` vs the next citadel tier's colonist cost.
@@ -273,6 +273,16 @@ store ship cargo on the planet. For colonists, `load_planet_cargo` /
 using optional `pool:"fuel_ore|organics|equipment|colonists"`; `assign_colonists`
 is still for rearranging colonist labor pools while landed.
 While landed on your planet or your corp's, `deposit_planet_defense` / `withdraw_planet_defense` `{"planet_id":<id>,"kind":"fighters|shields","qty":N}` move fighters 1:1, or 10 ship shields per 1 planet shield. Planet fighters cap at 1,000,000. Costs 1 turn.
+
+Class 0 ports (CLASS0_MODE tw2002): Sol (sector 1 StarDock), Alpha Centauri, and Rylos
+sell fighters, shields, and holds at the same daily prices. Prefer the nearer Class 0
+when stocking defence. Shields follow the fighter price wave in opposite phase
+(cheap when fighters are dear). Do NOT buy_equip item=colonists — use terra_colonists.
+
+Major Space Lanes: sectors on the course between sector 1, Alpha Centauri, and Rylos
+are swept of fighters and mines every Extern (day tick). Deploying there stays legal
+but the legal list warns "Major Space Lane: removed at Extern" — move them before day end.
+
 
 ================ MULTI-PLANET EXPANSION ================
 One planet is the start, not the goal. Top commanders run 5-15 planets.

@@ -293,6 +293,11 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         c = first("commodity", "fuel_ore")
         mb = (p.get("qty") or {}).get("max_by") or {}
         return Action(kind=ak, args={"commodity": c, "qty": max(1, min(3, int(mb.get(c, 1))))})
+    if ak is ActionKind.TERRA_COLONISTS:
+        mode = first("mode", "take")
+        mb = ((p.get("qty") or {}).get("max_by") or {})
+        qty = int(mb.get(mode) or 1)
+        return Action(kind=ak, args={"mode": mode, "qty": max(1, qty)})
     raise AssertionError(f"no builder for {kind}")
 
 

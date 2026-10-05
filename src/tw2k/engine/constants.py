@@ -1451,3 +1451,38 @@ VICTORY_DEFAULT_MAX_DAYS = 30
 DEFAULT_UNIVERSE_SIZE = 1000
 DEFAULT_AVG_WARPS = 2.7
 DEFAULT_ONE_WAY_FRACTION = 0.15
+
+# --- Class 0 ports and Terra (CLASS0_MODE) ------------------------------------
+# CLASS0_TERRA.md. Default tw2002: Terra colonist pool, Alpha Centauri / Rylos,
+# shield price wave, MSL Extern sweep. legacy = pre-slice behaviour byte-identical.
+
+CLASS0_MODE = "tw2002"
+
+
+def class0_tw2002() -> bool:
+    return CLASS0_MODE == "tw2002"
+
+
+TERRA_MAX_COLONISTS = 100_000  # t2 SOURCE-CONFLICT: TEDIT 100k vs Iago 10k holds; TWGS taken
+TERRA_REGEN_PER_DAY = 750  # t3 CONFIRMED TEDIT / MM
+TERRA_LOAD_TURNS = 1  # t4 CONFIRMED REV
+TERRA_COLONIST_PRICE = 0  # t5 UNVERIFIED by absence; net-worth still uses COLONIST_PRICE
+
+# t13: "mirror" = fighter wave opposite phase; "flat" = 10 (also legacy).
+SHIELD_PRICE_MODE = "mirror"
+
+# t21 SOURCE-CONFLICT: TWGS keep vs Slice cap_l2 vs docs wiki remove. TWGS taken.
+CLASS0_EXTERN_PLANET_RULE = "keep"
+
+# t15 placement band (numbers UNVERIFIED; named constants).
+CLASS0_MIN_HOPS = 4
+CLASS0_MAX_HOPS = 12
+CLASS0_MIN_SEPARATION = 4
+
+CLASS0_SELL_ITEMS = ("fighters", "shields", "holds")
+
+
+def shield_unit_price(day: int) -> int:
+    """Credits for one shield today (CLASS0_TERRA.md t13)."""
+    from .class0 import shield_unit_price as _shield
+    return _shield(day)
