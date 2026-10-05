@@ -70,7 +70,7 @@ Escape pods (the surrender and death path). The offensive wave after a10.
 
 ## Seat brains
 
-`seat_brain.py` answers an open challenge before its ladder: pay if it may, else retreat, else attack the fighters if the sent fighters clear the group, else surrender. Nothing else in the brains changed; they still never start a ship attack. `heuristic.py` answers a challenge the same way and sends a legal `qty` when it attacks a Ferrengi.
+`seat_brain.py` answers an open challenge before its ladder: pay if it may, else retreat, else attack the fighters if every fighter aboard at the hull's odds clears the group (one legal wave per attack), else surrender. A seat that is only short of turns for the retreat or the winning attack waits for the next day instead of surrendering. A sector it retreated from is avoided for the rest of that day unless the seat can now beat the group; entering it again the same day it attacks if it can win. (QC fix: the first version walked straight back in after every retreat, surrendered at the end of a day for want of turns, and surrendered to a group larger than one wave.) Nothing else in the brains changed; they still never start a ship attack. `heuristic.py` answers a challenge the same way, skips a neighbour it retreated from that day when it has another exit, and sends a legal `qty` when it attacks a Ferrengi.
 
 ## Plants
 

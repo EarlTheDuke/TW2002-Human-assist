@@ -57,6 +57,7 @@ from ..engine.constants import (
     COMMODITY_BASE_PRICE,
     GENESIS_SEED_COLONISTS,
     GENESIS_TORPEDO_COST,
+    combat_hull,
     fighter_unit_price,
     ship_cost,
     ship_specs,
@@ -133,6 +134,10 @@ class SeatMemory:
     trade_anchors: tuple[int, int] | None = None
     # Previous local warp (from, to). Plotting clears it so a trade autopilot is not an ABA bounce.
     last_warp: tuple[int, int] | None = None
+    # Sector whose fighters this seat retreated from -> [day, fighter count]. Avoided for the rest of
+    # that day unless the seat can now beat the group, so it does not warp in, retreat, and warp in
+    # again all day (ship-combat-core-v1 QC).
+    held: dict[int, list[int]] = field(default_factory=dict)
     # Planet the organics currently in the hold were bought for. Trade cargo is not flagged.
     organics_drop: int | None = None
     # Planet a colonist ferry was bought for. None -> the home world (N1/N2).
@@ -532,6 +537,7 @@ class SeatBrain:
                 action, intent = None, Intent()
         if action is None:
             action, intent = self._ladder(v)
+        action, intent = self._avoid_held(v, action, intent)
         self._intent = intent
         mem.last_action_sig = _signature(action, v)
         if action.get("kind") == "warp" and v.here is not None and action.get("args", {}).get("target") is not None:
@@ -541,20 +547,69 @@ class SeatBrain:
         return self._finish(v, action)
 
     def _answer_challenge(self, v: View) -> dict[str, Any] | None:
-        """Hostile defensive or toll fighters hold the ship: pay, else retreat, else win, else surrender."""
+        """Hostile defensive or toll fighters hold the ship: pay, else retreat, else win, else surrender.
+
+        "Win" counts every fighter aboard at the hull's odds (one attack per legal wave), not one wave.
+        A seat that is only short of turns waits for the next day instead of surrendering the ship.
+        """
         ch = v.obs.get("fighter_challenge")
         if not ch:
             return None
+        count = int(ch.get("count") or 0)
+        sector = int(ch["sector_id"]) if ch.get("sector_id") is not None else None
+        can_win = self._can_beat(v, count)
+        qty = int((v.params("attack").get("qty") or {}).get("max") or 0)
         if v.ok("pay_toll"):
             return self._act("pay_toll", {}, f"pay the {ch.get('toll')} cr toll in {v.here}")
+        again = sector is not None and (self.mem.held.get(sector) or [None])[0] == v.day
+        if again and v.ok("attack") and qty > 0 and can_win:  # second time here today: clear it
+            return self._act("attack", {"target": "fighters", "qty": qty}, f"attack {ch.get('count')} fighters")
         if v.ok("retreat"):
+            if sector is not None:
+                self.mem.held[sector] = [v.day, count]
             return self._act("retreat", {}, f"retreat from {ch.get('count')} {ch.get('mode')} fighters")
-        qty = int((v.params("attack").get("qty") or {}).get("max") or 0)
-        if v.ok("attack") and qty >= int(ch.get("count") or 0):
-            return self._act("attack", {"target": "fighters", "qty": qty}, f"clear {ch.get('count')} fighters")
+        if v.ok("attack") and qty > 0 and can_win:
+            return self._act("attack", {"target": "fighters", "qty": qty}, f"attack {ch.get('count')} fighters")
+        if v.reason("retreat").startswith("out of turns") or (can_win and v.reason("attack").startswith("out of turns")):
+            if v.ok("wait"):
+                return self._act("wait", {}, "held by fighters and short of turns - wait for tomorrow")
+            return self._act("query_limpets", {}, "held by fighters and out of turns - free no-op")
         if v.ok("surrender"):
             return self._act("surrender", {}, "no way past the fighters - surrender")
         return self._act("query_limpets", {}, "challenged and out of turns - free no-op")
+
+    def _can_beat(self, v: View, count: int) -> bool:
+        """Every fighter aboard at the hull's odds clears `count` sector fighters (over legal waves)."""
+        aboard = int(v.ship.get("fighters") or 0)
+        return aboard > 0 and aboard * combat_hull(str(v.ship_class or ""))[0] >= count
+
+    def _held_today(self, v: View) -> set[int]:
+        """Sectors retreated from today whose fighters this seat still cannot beat."""
+        if self.mem is None:  # helpers called before the first decide()
+            return set()
+        return {sector for sector, (day, count) in self.mem.held.items()
+                if day == v.day and not self._can_beat(v, count)}
+
+    def _avoid_held(self, v: View, action: dict[str, Any], intent: Intent) -> tuple[dict[str, Any], Intent]:
+        """Do not walk back into fighters this seat retreated from today (no warp / retreat ping-pong)."""
+        held = self._held_today(v)
+        kind = action.get("kind")
+        if not held or kind not in ("warp", "plot_course"):
+            return action, intent
+        try:
+            target = int((action.get("args") or {}).get("target"))
+        except (TypeError, ValueError):
+            return action, intent
+        if kind == "warp" and target not in held:
+            return action, intent
+        if kind == "plot_course" and target not in held:
+            hop = self._known_hop_toward(v, target)  # the known graph skips held sectors today
+            if hop is not None and not self._banned_why({"kind": "warp", "args": {"target": hop}}, v):
+                return self._act("warp", {"target": hop}, f"hop {hop} toward {target} around held fighters"), intent
+        alt, alt_intent = self._explore(v, "around fighters held today")
+        if alt is not None:
+            return alt, alt_intent
+        return action, intent
 
     # ------------------------------------------------------------------ S6: failures / rivals
     def _ingest_failures(self, v: View) -> None:
@@ -611,6 +666,12 @@ class SeatBrain:
         kind = action.get("kind")
         if kind in ("wait", "query_limpets"):
             return None
+        if kind in ("warp", "plot_course"):
+            try:
+                if int((action.get("args") or {}).get("target")) in self._held_today(v):
+                    return "fighters held that sector today"
+            except (TypeError, ValueError):
+                pass
         if mem.banned_kinds.get(kind) == v.day:
             return f"{kind} failed repeatedly today"
         sig = _signature(action, v)
@@ -2094,6 +2155,9 @@ class SeatBrain:
         if v.here is not None and int(v.here) not in g:
             outs = v.sector.get("warps_out") or v.choices("warp", "target")
             g[int(v.here)] = tuple(int(x) for x in outs)
+        held = self._held_today(v) - ({int(v.here)} if v.here is not None else set())
+        if held:
+            g = {k: tuple(n for n in outs if n not in held) for k, outs in g.items() if k not in held}
         return g
 
     def _nearest_frontiers(self, v: View) -> list[tuple[int, tuple[int, ...]]]:

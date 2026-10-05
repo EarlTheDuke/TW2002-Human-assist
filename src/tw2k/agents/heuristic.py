@@ -14,6 +14,7 @@ from __future__ import annotations
 import random
 
 from ..engine import Action, ActionKind, Observation
+from ..engine.constants import combat_hull
 from .base import BaseAgent
 
 
@@ -23,6 +24,8 @@ class HeuristicAgent(BaseAgent):
     def __init__(self, player_id: str, name: str, seed: int | None = None):
         super().__init__(player_id, name)
         self.rng = random.Random(seed if seed is not None else hash(player_id) & 0xFFFF)
+        # Sectors whose fighters this seat retreated from -> day; avoided that day (no ping-pong).
+        self._held: dict[int, int] = {}
 
     async def act(self, obs: Observation) -> Action:
         # Fighters holding the ship must be answered first (ship-combat-core-v1).
@@ -80,6 +83,7 @@ class HeuristicAgent(BaseAgent):
         # Move. Prefer adjacent unknown sectors; otherwise adjacent with ports.
         # Never WAIT if we can warp — WAIT-spam clogs the event feed.
         adj = obs.adjacent or []
+        adj = [a for a in adj if self._held.get(int(a["id"])) != obs.day] or adj
         if adj:
             unknown = [a for a in adj if not a.get("known")]
             with_port = [a for a in adj if a.get("port") and a["port"] not in ("FED",)]
@@ -112,12 +116,26 @@ class HeuristicAgent(BaseAgent):
 
         if ok("pay_toll"):
             return Action(kind=ActionKind.PAY_TOLL, thought="Paying the toll to pass.")
-        if ok("retreat"):
-            return Action(kind=ActionKind.RETREAT, thought="Fighters block the way; retreating.")
+        def reason(kind: str) -> str:
+            return str((legal.get(kind) or {}).get("reason") or "")
+
+        count = int(challenge.get("count") or 0)
+        sector = int(challenge["sector_id"]) if challenge.get("sector_id") is not None else None
+        aboard = int(obs.ship.get("fighters") or 0)
+        can_win = aboard > 0 and aboard * combat_hull(str(obs.ship.get("class") or ""))[0] >= count
         qty = int((((legal.get("attack") or {}).get("params") or {}).get("qty") or {}).get("max") or 0)
-        if ok("attack") and qty >= int(challenge.get("count") or 0):
+        again = sector is not None and self._held.get(sector) == obs.day
+        if ok("retreat") and not (again and ok("attack") and qty > 0 and can_win):
+            if sector is not None:
+                self._held[sector] = obs.day
+            return Action(kind=ActionKind.RETREAT, thought="Fighters block the way; retreating.")
+        if ok("attack") and qty > 0 and can_win:
             return Action(kind=ActionKind.ATTACK, args={"target": "fighters", "qty": qty},
                           thought="Clearing the fighters.")
+        if reason("retreat").startswith("out of turns") or (can_win and reason("attack").startswith("out of turns")):
+            if ok("wait"):
+                return Action(kind=ActionKind.WAIT, thought="Held by fighters and short of turns; waiting for tomorrow.")
+            return Action(kind=ActionKind.QUERY_LIMPETS, thought="Held by fighters with no turns left.")
         if ok("surrender"):
             return Action(kind=ActionKind.SURRENDER, thought="No way past the fighters; surrendering.")
         return Action(kind=ActionKind.QUERY_LIMPETS, thought="Held by fighters with no turns left.")
