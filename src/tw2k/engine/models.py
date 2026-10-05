@@ -205,6 +205,8 @@ class EventKind(str, Enum):
     PLANET_DESTROYED = "planet_destroyed"
     RECALL_DEPLOYED = "recall_deployed"
     SURRENDER = "surrender"
+    FIGHTER_CHALLENGE = "fighter_challenge"
+    RETREAT = "retreat"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"
@@ -427,6 +429,11 @@ class Player(BaseModel):
     planet_landed: int | None = None
     # Sector where a photon damped planet cannons for this ship's one approach.
     photon_damped_sector_id: int | None = None
+    # Ship combat (COMBAT_MODE tw2002). An open challenge from hostile defensive or
+    # toll fighters: {sector_id, from_sector, mode}. None when not challenged.
+    fighter_challenge: dict[str, Any] | None = None
+    # Set by a flee. The next counted land or port action costs FLEE_PENALTY_TURNS more.
+    flee_penalty: bool = False
     # Sector of the open port visit. Cleared when the player leaves.
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None

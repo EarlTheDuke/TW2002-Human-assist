@@ -186,6 +186,8 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.DEPLOY_MINES: ("qty", "kind"),
     EventKind.RECALL_DEPLOYED: ("what", "qty", "kind"),
     EventKind.SURRENDER: ("mode",),
+    EventKind.FIGHTER_CHALLENGE: ("mode", "count"),
+    EventKind.RETREAT: ("from", "to"),
     EventKind.MINE_DETONATED: ("hits", "damage", "victim"),
     EventKind.PHOTON_FIRED: ("target",),
     EventKind.PHOTON_HIT: ("target", "disabled_ticks"),
@@ -194,7 +196,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.COMBAT: (
         "exchange_kind", "vs", "attacker", "defender", "attacker_f", "attacker_s",
         "defender_f", "defender_s", "attacker_losses", "defender_losses", "outcome", "sector_claimed",
-        "planet_id", "planet_name", "citadel_level",
+        "planet_id", "planet_name", "citadel_level", "sent", "defender_fled",
     ),
     EventKind.SHIP_DESTROYED: ("victim", "reason", "deaths", "death_sector", "killer_id", "kind", "bounty"),
     EventKind.PLAYER_ELIMINATED: ("killer", "deaths"),
@@ -417,6 +419,10 @@ class Observation(BaseModel):
     # as the handlers). The cockpit gates its verb pad from this and ONLY
     # this; LLM seats receive the compact form via format_observation.
     legal_actions: list[dict[str, Any]] = Field(default_factory=list)
+    # Ship combat (SHIP_COMBAT.md): the open challenge from hostile defensive or
+    # toll fighters in this sector, or None. {sector_id, mode, count, can_retreat,
+    # retreat_to, toll}. The count is the same group already in the sector brief.
+    fighter_challenge: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -765,6 +771,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         probe_log=probe_log,
         known_sectors=known_sectors,
         legal_actions=legal,
+        fighter_challenge=_challenge_brief(universe, player, legal),
         action_hint=_action_hint(
             sector_info,
             player,
@@ -780,6 +787,28 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _challenge_brief(universe: Universe, player: Any, legal: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Fog-safe view of an open fighter challenge. Nothing the sector brief does not already show."""
+    from .combat import live_challenge
+
+    ch = live_challenge(universe, player.id)
+    if ch is None:
+        return None
+    dep = universe.sectors[player.sector_id].fighters
+    by_kind = {la.get("kind"): la for la in legal}
+    retreat = by_kind.get("retreat") or {}
+    pay = by_kind.get("pay_toll") or {}
+    toll = (pay.get("params") or {}).get("amount")
+    return {
+        "sector_id": int(ch["sector_id"]),
+        "mode": dep.mode.value if dep is not None else ch.get("mode"),
+        "count": int(dep.count) if dep is not None else 0,
+        "can_retreat": bool(retreat.get("legal")),
+        "retreat_to": (retreat.get("params") or {}).get("to"),
+        "toll": toll,
+    }
 
 
 def status_fields(obs: Observation) -> dict[str, Any]:
@@ -1252,6 +1281,24 @@ def _action_hint(
     fighter_px = K.fighter_unit_price(day)
     hints: list[str] = []
     full_hints = not is_minimal()
+
+    # An open fighter challenge blocks every other verb until it is answered.
+    if player is not None and universe is not None and getattr(player, "fighter_challenge", None):
+        from .combat import live_challenge
+
+        ch = live_challenge(universe, player.id)
+        dep = universe.sectors[player.sector_id].fighters if ch is not None else None
+        if ch is not None and dep is not None:
+            answers = "attack {\"target\":\"fighters\",\"qty\":N}, retreat, or surrender"
+            if dep.mode.value == "toll":
+                answers = (f"pay_toll ({int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER} cr), "
+                           + answers)
+            hints.append(
+                f"FIGHTER CHALLENGE: {int(dep.count)} {dep.mode.value} fighters hold sector {player.sector_id}. "
+                f"Answer first: {answers}. They do not shoot first; surrender loses the ship."
+            )
+    if player is not None and getattr(player, "flee_penalty", False):
+        hints.append(f"You fled a fight: your next land or port action costs {K.FLEE_PENALTY_TURNS} extra turn.")
 
     # Operator directives outrank routine strategic drift but do not override
     # the legal action system or common-sense survival constraints.

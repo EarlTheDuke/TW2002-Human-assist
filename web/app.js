@@ -2421,6 +2421,8 @@
     deploy_mines:      { cat: "combat",    icon: "\u2699",  label: "DEPLOY MINES" },
     recall_deployed:   { cat: "combat",    icon: "\u2708",  label: "RECALL" },
     surrender:         { cat: "combat",    icon: "\u2691",  label: "SURRENDER" },
+    fighter_challenge: { cat: "combat",    icon: "\u2708",  label: "CHALLENGED" },
+    retreat:           { cat: "combat",    icon: "\u21a9",  label: "RETREAT" },
     ferrengi_spawn:    { cat: "combat",    icon: "\ud83d\udc41", label: "FERRENGI SPAWN" },
     // --- Trade ----------------------------------------------------
     trade:             { cat: "trade",     icon: "\u21c4",  label: "TRADE" },

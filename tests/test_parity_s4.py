@@ -152,7 +152,33 @@ def _fixtures() -> list[tuple[str, object]]:
 
     u = _universe(); u.players["P1"].turns_today = u.players["P1"].turns_per_day
     out.append(("out-of-turns", u))
+
+    # --- group 5: ship-combat-core-v1 fighter challenge (P2's fighters hold the deep sector)
+    for label, mode, credits, one_way in (
+        ("challenge-defensive", "defensive", 25_000, False),
+        ("challenge-toll-rich", "toll", 25_000, False),
+        ("challenge-toll-broke", "toll", 0, False),
+        ("challenge-one-way-in", "defensive", 25_000, True),
+    ):
+        u = _challenged(mode, credits, one_way)
+        out.append((label, u))
     return out
+
+
+def _challenged(mode: str, credits: int, one_way: bool):
+    from tw2k.engine.models import FighterDeployment, FighterMode
+    u = _universe(); deep = _deep_sector(u)
+    back = next(n for n in sorted(u.sectors) if n > 10 and n != deep and deep in u.sectors[n].warps
+                and n in u.sectors[deep].warps)
+    if one_way:
+        u.sectors[deep].warps = [w for w in u.sectors[deep].warps if w != back] or [1]
+    u.sectors[back].warps = sorted(set(u.sectors[back].warps) | {deep})
+    _move(u, "P1", back)
+    u.sectors[deep].fighters = FighterDeployment(owner_id="P2", count=10, mode=FighterMode(mode))
+    u.players["P1"].ship.fighters = 30; u.players["P1"].credits = credits
+    res = apply_action(u, "P1", Action(kind=ActionKind.WARP, args={"target": deep}))
+    assert res.ok and u.players["P1"].fighter_challenge, res.error
+    return u
 
 
 def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
@@ -255,7 +281,7 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         kind_ = first("kind", "armid")
         key = what if what == "fighters" else kind_
         return Action(kind=ak, args={"what": what, "qty": qty_for(key), "kind": kind_})
-    if ak is ActionKind.SURRENDER:
+    if ak in (ActionKind.SURRENDER, ActionKind.RETREAT, ActionKind.PAY_TOLL):
         return Action(kind=ak, args={})
     raise AssertionError(f"no builder for {kind}")
 

@@ -276,6 +276,7 @@ TURN_COST = {
     "planet_destroy": 1,
     "recall_deployed": 1,
     "surrender": 1,
+    "pay_toll": 0,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -304,7 +305,7 @@ SHIP_COST_TW2002 = {
 
 
 # Bible chart caps. `holds` is what buy_ship grants. `max_holds` is the yard cap.
-# Odds and fighters_per_attack are stored for the roster doc. Fights do not read them.
+# offensive_odds and fighters_per_attack drive tw2002 combat (combat_hull below).
 # See docs/playtests/ships/SHIP_ROSTER.md.
 SHIP_SPECS_TW2002: dict[str, dict] = {
     "merchant_cruiser": {
@@ -918,6 +919,38 @@ SECTOR_TOLL_CREDITS_PER_FIGHTER = 5
 
 def sector_fighter_tw2002() -> bool:
     return SECTOR_FIGHTER_MODE == "tw2002"
+
+
+# Ship combat. docs/playtests/combat/SHIP_COMBAT.md.
+# "tw2002": attack takes a fighter count capped by the hull, odds multiply,
+# shields absorb first, the defender may flee at 1.25, and hostile defensive or
+# toll fighters challenge an entering ship (attack, retreat, pay, surrender).
+# "legacy": the old three-round dice and the old entry path.
+COMBAT_MODE = "tw2002"
+COMBAT_FLEE_RATIO = 1.25  # cabal fleeing.html: attacker fighters > (F + S) * 1.25
+SECTOR_FIGHTER_ODDS = 1.0  # formulas.html odds table: tolled and defensive 1:1
+FERRENGI_COMBAT_ODDS = 1.0  # TWFAQ_FERRSPEC: 1.0 for the smallest Ferrengi hull
+FLEE_PENALTY_TURNS = 1  # classictw Glossary: one turn, next land or port only
+COMBAT_NEVER_FLEE_HULLS = ("tholian_sentinel",)  # guardian ships never flee
+COMBAT_INTERDICT_HULLS = ("interdictor_cruiser",)  # an active generator stops a flee
+
+
+def combat_tw2002() -> bool:
+    return COMBAT_MODE == "tw2002"
+
+
+def challenge_on() -> bool:
+    """Defensive and toll fighters challenge an entering ship."""
+    return COMBAT_MODE == "tw2002" and SECTOR_FIGHTER_MODE == "tw2002"
+
+
+def combat_hull(class_key: str) -> tuple[float, int]:
+    """(offensive odds, fighters per attack) from the Bible chart, any economy mode."""
+    spec = SHIP_SPECS_TW2002.get(class_key)
+    if spec is None:
+        legacy = SHIP_SPECS.get(class_key) or {}
+        return 1.0, int(legacy.get("max_fighters") or 10**9)
+    return float(spec.get("offensive_odds", 1.0)), int(spec.get("fighters_per_attack") or 10**9)
 
 
 def sector_fighter_cap(has_planet: bool) -> int:

@@ -517,6 +517,13 @@ class SeatBrain:
             mem.stall_breaks += 1
             self.detector.reset()
 
+        answer = self._answer_challenge(v)
+        if answer is not None:  # ship-combat-core-v1: fighters hold the ship; answer before the ladder
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
+
         action, intent = (None, Intent())
         if mem.break_left > 0:
             mem.break_left -= 1
@@ -532,6 +539,22 @@ class SeatBrain:
         elif action.get("kind") == "plot_course":
             mem.last_warp = None
         return self._finish(v, action)
+
+    def _answer_challenge(self, v: View) -> dict[str, Any] | None:
+        """Hostile defensive or toll fighters hold the ship: pay, else retreat, else win, else surrender."""
+        ch = v.obs.get("fighter_challenge")
+        if not ch:
+            return None
+        if v.ok("pay_toll"):
+            return self._act("pay_toll", {}, f"pay the {ch.get('toll')} cr toll in {v.here}")
+        if v.ok("retreat"):
+            return self._act("retreat", {}, f"retreat from {ch.get('count')} {ch.get('mode')} fighters")
+        qty = int((v.params("attack").get("qty") or {}).get("max") or 0)
+        if v.ok("attack") and qty >= int(ch.get("count") or 0):
+            return self._act("attack", {"target": "fighters", "qty": qty}, f"clear {ch.get('count')} fighters")
+        if v.ok("surrender"):
+            return self._act("surrender", {}, "no way past the fighters - surrender")
+        return self._act("query_limpets", {}, "challenged and out of turns - free no-op")
 
     # ------------------------------------------------------------------ S6: failures / rivals
     def _ingest_failures(self, v: View) -> None:

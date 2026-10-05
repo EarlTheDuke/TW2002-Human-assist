@@ -108,6 +108,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", default=str(OUT), help="fixture directory (default tests/fixtures/media_events)")
     OUT = Path(ap.parse_args(argv).out)
+    # The clip tables were recorded on the three-round combat. ship-combat-core-v1 keeps that path as
+    # COMBAT_MODE "legacy"; pin it so these fixtures stay a video test, not a combat-rules test.
+    K.COMBAT_MODE = "legacy"
     # 1. single warp
     u = _universe()
     start = _deep(u)[0]

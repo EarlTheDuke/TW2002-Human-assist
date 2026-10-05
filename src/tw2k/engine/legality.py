@@ -255,7 +255,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                     bill = int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
                     if bill > 0:
                         toll_due[str(wid)] = bill
-            if bill <= 0 or int(player.credits) >= bill:
+            # In tw2002 combat the toll is answered at the challenge, so every warp stays open.
+            if bill <= 0 or int(player.credits) >= bill or K.challenge_on():
                 affordable_warps.append(int(wid))
         for la in out:
             if la.kind == ActionKind.WARP.value:
@@ -286,9 +287,18 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = "FedSpace - combat forbidden (attempting costs 200 alignment)"
     else:
         reason = _need_turns(player, atk_cost)
-    out.append(_la(ActionKind.ATTACK, legal=reason is None, reason=reason, cost=atk_cost,
-                   params={"target": {"type": "str", "required": True, "choices": attack_targets,
-                                      "players": hostile_players, "ferrengi": ferrengi_ids}}))
+    atk_params: dict[str, Any] = {"target": {"type": "str", "required": True, "choices": attack_targets,
+                                             "players": hostile_players, "ferrengi": ferrengi_ids}}
+    if K.combat_tw2002():
+        from .combat import attack_cap
+        cap = attack_cap(player)
+        if reason is None and getattr(player.ship, "photon_disabled_ticks", 0) > 0:
+            reason = "your fighters are offline (photon)"
+        if reason is None and cap <= 0:
+            reason = "no fighters aboard to attack with"
+        atk_params["qty"] = {"type": "int", "required": False, "min": 1, "max": cap,
+                             "note": "fighters to send; your hull caps one attack"}
+    out.append(_la(ActionKind.ATTACK, legal=reason is None, reason=reason, cost=atk_cost, params=atk_params))
 
     photons = int(getattr(player.ship, "photon_missiles", 0) or 0)
     if photons <= 0:
@@ -894,8 +904,67 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     else:
         # Defensive fighters do not challenge yet; surrender waits for that slice.
         surrender_reason = "surrender waits for the defensive challenge"
+    challenge = None
+    if K.sector_fighter_tw2002() and K.combat_tw2002():
+        from .combat import live_challenge
+        challenge = live_challenge(universe, player_id)
+        surrender_reason = "no fighters challenge you here" if challenge is None else _need_turns(player, surrender_cost)
+    surrender_params: dict[str, Any] = {}
+    if challenge is not None and int(player.ship.fighters or 0) > 0:
+        surrender_params["warning"] = (f"you still have {int(player.ship.fighters)} fighters; "
+                                       "surrender loses the ship (the same as being destroyed)")
     out.append(_la(ActionKind.SURRENDER, legal=surrender_reason is None, reason=surrender_reason,
-                   cost=surrender_cost, params={}))
+                   cost=surrender_cost, params=surrender_params))
+
+    # retreat / pay_toll: answers to a fighter challenge (COMBAT_MODE tw2002).
+    from .combat import retreat_block
+    from .runner import CHALLENGE_REFUSAL, CHALLENGE_VERBS, _hostile_toll
+    rc = _warp_cost(player)
+    if not K.challenge_on():
+        retreat_reason = pay_reason = "needs tw2002 combat"
+    elif challenge is None:
+        retreat_reason = pay_reason = "no fighters challenge you here"
+    else:
+        retreat_reason = retreat_block(universe, player_id) or _need_turns(player, rc)
+        toll = _hostile_toll(universe, player_id, sector)
+        if toll is None:
+            pay_reason = "these fighters take no toll"
+        else:
+            bill = int(toll.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+            pay_reason = None if int(player.credits) >= bill else f"the toll is {bill} credits"
+    retreat_params: dict[str, Any] = {}
+    pay_params: dict[str, Any] = {}
+    if challenge is not None:
+        retreat_params["to"] = challenge.get("from_sector")
+        toll = _hostile_toll(universe, player_id, sector)
+        if toll is not None:
+            pay_params["amount"] = int(toll.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+    out.append(_la(ActionKind.RETREAT, legal=retreat_reason is None, reason=retreat_reason, cost=rc,
+                   params=retreat_params))
+    out.append(_la(ActionKind.PAY_TOLL, legal=pay_reason is None, reason=pay_reason,
+                   cost=int(K.TURN_COST["pay_toll"]), params=pay_params))
+
+    if challenge is not None:
+        # While fighters challenge the ship, only the answers stay open (SHIP_COMBAT.md).
+        allowed = {k.value for k in CHALLENGE_VERBS}
+        for la in out:
+            if la.kind == ActionKind.ATTACK.value:
+                la.params["target"] = {"type": "str", "required": True, "choices": ["fighters"],
+                                       "players": [], "ferrengi": []}
+                why = _need_turns(player, atk_cost)
+                if why is None and getattr(player.ship, "photon_disabled_ticks", 0) > 0:
+                    why = "your fighters are offline (photon)"
+                if why is None and int((la.params.get("qty") or {}).get("max") or 0) <= 0:
+                    why = "no fighters aboard to attack with"
+                la.legal, la.reason = why is None, why
+            elif la.kind not in allowed and la.legal:
+                la.legal, la.reason = False, CHALLENGE_REFUSAL
+
+    if getattr(player, "flee_penalty", False):
+        for la in out:
+            if la.kind in (ActionKind.LAND_PLANET.value, ActionKind.TRADE.value):
+                la.turn_cost += int(K.FLEE_PENALTY_TURNS)
+                la.params["flee_penalty_turns"] = int(K.FLEE_PENALTY_TURNS)
 
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}
