@@ -195,6 +195,7 @@ def test_webhook_retry_stops_when_the_turn_moves_on(monkeypatch) -> None:
 
 # ------------------------------------------------------------------ hold my slot
 def test_hold_slot_chains_actions_then_ends_without_spending_a_turn(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")  # chains free legacy scans
     monkeypatch.delenv("TW2K_GROKBOT_WEBHOOK_URL", raising=False)
 
     async def body(client, runner) -> None:
@@ -231,6 +232,7 @@ def test_hold_slot_chains_actions_then_ends_without_spending_a_turn(tmp_path: Pa
 
 
 def test_hold_slot_cap_and_idle_release(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")  # chains free legacy scans
     monkeypatch.delenv("TW2K_GROKBOT_WEBHOOK_URL", raising=False)
 
     async def body(client, runner) -> None:

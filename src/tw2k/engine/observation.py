@@ -431,6 +431,7 @@ class Observation(BaseModel):
 
 
 def build_observation(universe: Universe, player_id: str, event_history: int = 40) -> Observation:
+    from . import constants as K
     player = universe.players[player_id]
     sector = universe.sectors[player.sector_id]
 
@@ -454,6 +455,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     adjacent: list[dict[str, Any]] = []
     for wid in sector.warps:
         w = universe.sectors[wid]
+        if K.info_tw2002():
+            adjacent.append(_adjacent_fogged(player, int(wid)))
+            continue
         adjacent.append({
             "id": wid,
             "port": w.port.code if w.port else None,
@@ -472,6 +476,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     # to plans built on 3-day-old snapshots.
     known_ports: list[dict[str, Any]] = []
     for sid, entry in sorted(player.known_ports.items()):
+        if K.info_tw2002():  # s16/s17: the CIM port report, live unless occluded
+            from .scanners import port_report
+            entry = port_report(universe, player, sid, entry)
         e = {"sector_id": sid, **entry}
         lsd = entry.get("last_seen_day")
         if isinstance(lsd, int):
@@ -916,6 +923,10 @@ def _ship_dict(ship) -> dict[str, Any]:
         "photon_disabled_ticks": getattr(ship, "photon_disabled_ticks", 0),
         "cargo_free": ship.cargo_free,
     }
+    from . import constants as K
+    if K.info_tw2002():  # SCANNERS_HIDDEN_INFO.md s1-s3
+        ship_view["scanner"] = getattr(ship, "scanner", None)
+        ship_view["scanner_room"] = K.scanner_room(ship.ship_class.value)
     if "max_mines" in spec:
         ship_view["mine_cap"] = int(spec["max_mines"])
     if "max_genesis" in spec:
@@ -923,6 +934,48 @@ def _ship_dict(ship) -> dict[str, Any]:
     if "max_photons" in spec:
         ship_view["photon_cap"] = int(spec["max_photons"])
     return ship_view
+
+
+def _adjacent_fogged(player, wid: int) -> dict[str, Any]:
+    """INFO_MODE tw2002 adjacent entry: id, explored flag, the port you remember, your last scan.
+
+    The legacy keys (port, fighter_count, fighter_owner, mines, has_planets,
+    occupants) are only filled from this player's own holo / probe memory
+    (SCANNERS_HIDDEN_INFO.md s12). A density reading adds density / warps /
+    navhaz / anomaly. `scan_day` / `scan_tick` say how old it is.
+    """
+    remembered = (player.known_ports.get(wid) or {}).get("class")
+    entry: dict[str, Any] = {"id": wid, "port": remembered, "known": wid in player.known_sectors}
+    mem = (getattr(player, "scan_memory", None) or {}).get(wid)
+    probe = ((getattr(player, "probe_log", None) or {}).get(wid) or {})
+    seen = None
+    if mem and mem.get("tier") == "holo":
+        seen = (mem, mem.get("day"), mem.get("tick"))
+    pi = probe.get("intel") or {}
+    if pi and not pi.get("probe_destroyed") and (seen is None or (probe.get("day"), probe.get("tick")) > (seen[1], seen[2])):
+        seen = (pi, probe.get("day"), probe.get("tick"))
+    if seen is not None:
+        view = seen[0]
+        fg = view.get("fighters") or None
+        port = view.get("port") or None
+        entry.update({
+            "port": (port or {}).get("code") or entry["port"],
+            "fighter_count": int(fg["count"]) if fg else 0,
+            "fighter_owner": fg["owner_id"] if fg else None,
+            "mines": sum(int(m.get("count") or 0) for m in view.get("mines") or []),
+            "has_planets": bool(view.get("planets")),
+            "occupants": [t["id"] for t in view.get("traders") or []],
+            "seen_day": seen[1],
+            "seen_tick": seen[2],
+            # what the holo scan / probe showed: port name and class, planets, traders, Ferrengi
+            "seen": {k: view[k] for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines")
+                     if view.get(k)},
+        })
+    if mem:
+        entry.update({"density": mem.get("density"), "warps": mem.get("warps"), "navhaz": mem.get("navhaz"),
+                      "anomaly": mem.get("anomaly"), "scan_tier": mem.get("tier"),
+                      "scan_day": mem.get("day"), "scan_tick": mem.get("tick")})
+    return entry
 
 
 def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]:
@@ -953,6 +1006,11 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
             if f.sector_id == sector.id and f.alive
         ],
     }
+    from . import constants as K
+    if K.info_tw2002():  # s11/s12: traders with their fighters; other people's limpets stay hidden
+        from .scanners import traders_in, visible_mines
+        info["mines"] = visible_mines(universe, player_id, sector)
+        info["traders"] = traders_in(universe, player_id, sector)
     if sector.fighters:
         group = {
             "owner_id": sector.fighters.owner_id,

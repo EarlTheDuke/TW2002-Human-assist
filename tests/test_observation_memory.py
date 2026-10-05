@@ -60,7 +60,8 @@ class TestKnownWarps:
         assert str(target) in obs.known_warps
         assert obs.known_warps[str(target)] == list(u.sectors[target].warps)
 
-    def test_scan_records_current_sector_but_not_neighbor_topology(self):
+    def test_scan_records_current_sector_but_not_neighbor_topology(self, monkeypatch):
+        monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")  # the free legacy scan
         u, p = _make_universe()
         # Move to an arbitrary neighbor, then scan — scan should record
         # the NEW sector's warps in the graph, and should NOT learn the
