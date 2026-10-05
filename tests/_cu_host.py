@@ -1,9 +1,10 @@
 """Shared helpers for the /bot browser tests (G2 mode=cu, G3 seat claim).
 
 `CuHost` runs the real app + a match on a background thread on a free local
-port >= 8033 (never the live :8031 match): heuristic P1, external P2 parked on
-a two-way trading port with 10 fuel ore. `browser` yields a Playwright
-Chromium, or skips when Playwright / the browser binary is missing.
+port >= 8040, skipping the reserved live/QC range 8031-8036: heuristic P1,
+external P2 parked on a two-way trading port with 10 fuel ore. `browser`
+yields a Playwright Chromium, or skips when Playwright / the browser binary
+is missing.
 """
 
 from __future__ import annotations
@@ -24,15 +25,22 @@ from tw2k.server.runner import AgentSpec, MatchSpec
 VIEW_W, VIEW_H = 1280, 800
 
 
-def free_port(start: int = 8033) -> int:
-    for port in range(start, start + 60):
+# Live hosted matches and the full QC game occupy 8031-8036; browser tests
+# must never bind those (a free-port scan starting at 8033 could steal 8033/8035).
+RESERVED_TEST_PORTS = frozenset(range(8031, 8037))
+
+
+def free_port(start: int = 8040) -> int:
+    for port in range(start, start + 200):
+        if port in RESERVED_TEST_PORTS:
+            continue
         with socket.socket() as s:
             try:
                 s.bind(("127.0.0.1", port))
                 return port
             except OSError:
                 continue
-    raise RuntimeError("no free port >= 8033")
+    raise RuntimeError("no free port >= 8040 outside 8031-8036")
 
 
 class CuHost:

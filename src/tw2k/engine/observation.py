@@ -95,7 +95,8 @@ def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     was in `event.sector_id` at emit time (captured via payload._witnesses).
     """
     kind = event.kind
-    # h15: cloaked traders leave no movement/presence trail for rivals (incl. corp).
+    # h15 / v2: cloaked traders leave no movement/presence trail for rivals (incl. corp).
+    # Use emit-time `_actor_cloaked` so a later death/day-tick strip cannot un-hide the event.
     if (
         event.actor_id
         and event.actor_id != player_id
@@ -104,6 +105,8 @@ def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     ):
         from . import constants as K
         if K.hardware_tw2002():
+            if event.payload.get("_actor_cloaked"):
+                return False
             actor = universe.players.get(event.actor_id)
             if actor is not None and getattr(actor.ship, "cloaked", False):
                 return False

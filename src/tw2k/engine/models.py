@@ -919,6 +919,14 @@ class Universe(BaseModel):
                 pl["_witnesses"] = list(sector.occupant_ids)
             else:
                 pl["_witnesses"] = []
+        # Emit-time cloak stamp: fog filters must not flip when a later death/day-tick
+        # strips the cloak (ship-hardware-v2: cloaked NavHaz / detonator events).
+        if actor_id and "_actor_cloaked" not in pl:
+            from . import constants as K
+            if K.hardware_tw2002():
+                actor = self.players.get(actor_id) if isinstance(actor_id, str) else None
+                if actor is not None and getattr(actor.ship, "cloaked", False):
+                    pl["_actor_cloaked"] = True
         # C1 — stamp `is_first` on notable-kind payloads the first time
         # they are emitted. Spectators key the FIRST chip off this flag
         # (A4 previously heuristic-detected client-side; now authoritative).
