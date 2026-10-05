@@ -30,6 +30,18 @@ from .combat import (
 )
 from .economy import begin_port_visit, execute_trade, regenerate_ports, trade_turn_cost
 from .ferrengi import _ferrengi_by_name, _ferrengi_roam_and_hunt, _spawn_ferrengi
+from .hardware import (
+    apply_carried_photon_blast,
+    armid_detonation_hits,
+    carried_photon_hazard,
+    handle_cloak,
+    handle_fire_disruptor,
+    handle_photon_tw2002,
+    handle_remove_limpet,
+    sector_photon_active,
+    tick_cloak_fails,
+    tick_photon_waves,
+)
 from .legality import planet_destroy_reason
 from .models import (
     Alliance,
@@ -206,6 +218,9 @@ def tick_day(universe: Universe) -> None:
     regenerate_ports(universe)
     if K.rob_tw2002():
         clear_all_busts(universe)
+    if K.hardware_tw2002():
+        tick_photon_waves(universe)
+        tick_cloak_fails(universe, _rng_for(universe))
 
     if universe.config.enable_ferrengi:
         _spawn_ferrengi(universe)
@@ -354,8 +369,13 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
         if _are_allied(universe, pid, md.owner_id):
             continue
         if md.kind == MineType.ARMID:
-            hits = min(md.count, rng.randint(1, K.MINE_MAX_HITS_PER_MOVE))
-            damage += hits * K.ARMID_DAMAGE
+            if sector_photon_active(sector):
+                continue  # h7: photon wave neutralizes mines
+            hits, dmg_each = armid_detonation_hits(md.count, rng)
+            if hits <= 0:
+                continue
+            dmg = hits * dmg_each
+            damage += dmg
             md.count -= hits
             if md.count <= 0:
                 sector.mines.remove(md)
@@ -363,10 +383,12 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
                 EventKind.MINE_DETONATED,
                 actor_id=md.owner_id,
                 sector_id=sector.id,
-                payload={"hits": hits, "damage": hits * K.ARMID_DAMAGE, "victim": pid},
-                summary=f"{hits} armid mines hit {player.name} {entry_verb} {sector.id} ({hits * K.ARMID_DAMAGE} dmg)",
+                payload={"hits": hits, "damage": dmg, "victim": pid, "per_mine": dmg_each},
+                summary=f"{hits} armid mines hit {player.name} {entry_verb} {sector.id} ({dmg} dmg)",
             )
         elif md.kind == MineType.LIMPET:
+            if sector_photon_active(sector):
+                continue  # h7: photon wave neutralizes limpets too
             # Silently attach 1 limpet tracker; consume one mine.
             md.count -= 1
             if md.count <= 0:
@@ -389,7 +411,9 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
         owner = universe.players.get(sector.fighters.owner_id)
         allied = owner is not None and _are_allied(universe, pid, owner.id)
         if not allied:
-            if f_mode == FighterMode.OFFENSIVE:
+            if sector_photon_active(sector):
+                pass  # h7: photon wave neutralizes sector fighters
+            elif f_mode == FighterMode.OFFENSIVE:
                 # Auto-attack
                 _resolve_fighter_sector_combat(universe, pid, sector.id)
             elif f_mode == FighterMode.TOLL:
@@ -461,6 +485,8 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     # A manual warp makes the sector left the previous sector (DEATH_ESCAPE_PODS.md d6).
     # Set before the hazards: a ship that dies entering never left.
     player.prev_sector_id = cur.id
+    if K.hardware_tw2002() and carried_photon_hazard(universe, pid, dest):
+        apply_carried_photon_blast(universe, pid)
     damage = _apply_sector_hazards(universe, pid, dest)
 
     # If destroyed by fighters, handler already ejected player
@@ -863,6 +889,12 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     target = universe.players.get(target_id) or _ferrengi_by_name(universe, str(target_id))
     if target is None:
         return ActionResult(ok=False, error=f"target {target_id} not found")
+    if (
+        K.hardware_tw2002()
+        and target_id in universe.players
+        and getattr(universe.players[target_id].ship, "cloaked", False)
+    ):
+        return ActionResult(ok=False, error="target is cloaked")
     if getattr(target, "sector_id", -1) != player.sector_id:
         return ActionResult(ok=False, error="target not in this sector")
     # Block friendly fire (corp mates + active alliances)
@@ -1875,6 +1907,9 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         # buy_equip so the ferry-to-your-planet loop actually exists in game.
         "colonists": K.COLONIST_PRICE,
     }
+    if K.hardware_tw2002():
+        prices["cloak"] = K.CLOAK_COST
+        prices["mine_disruptor"] = K.DISRUPTOR_COST
     if K.info_tw2002() and item in ("density_scanner", "holo_scanner"):
         return _buy_scanner(universe, pid, str(item), qty)
     unit = prices.get(item or "")
@@ -1897,7 +1932,13 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "armid_mines": mines_aboard,
         "limpet_mines": mines_aboard,
         "atomic_mines": mines_aboard,
+        "cloak": int(getattr(player.ship, "cloaks", 0) or 0),
+        "mine_disruptor": int(getattr(player.ship, "mine_disruptors", 0) or 0),
     }
+    if item == "photon_missiles" and K.hardware_tw2002():
+        from .hardware import photon_hull_ok
+        if not photon_hull_ok(player):
+            return ActionResult(ok=False, error="only Missile Frigate or Imperial StarShip may buy photons")
     room = K.equip_room(class_key, item, have.get(item, 0))
     if room is not None and qty > room:
         if item == "fighters":
@@ -1912,6 +1953,10 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
             return ActionResult(ok=False, error="exceeds ship genesis capacity")
         if item == "photon_missiles":
             return ActionResult(ok=False, error="exceeds ship photon capacity")
+        if item == "cloak":
+            return ActionResult(ok=False, error="exceeds ship cloak capacity")
+        if item == "mine_disruptor":
+            return ActionResult(ok=False, error="exceeds ship disruptor capacity")
     if item == "fighters":
         player.ship.fighters += qty
     elif item == "shields":
@@ -1930,6 +1975,10 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         player.ship.genesis += qty
     elif item == "holds":
         player.ship.holds += qty
+    elif item == "cloak":
+        player.ship.cloaks = int(getattr(player.ship, "cloaks", 0) or 0) + qty
+    elif item == "mine_disruptor":
+        player.ship.mine_disruptors = int(getattr(player.ship, "mine_disruptors", 0) or 0) + qty
     elif item == "colonists":
         # Buying colonists loads them as cargo. They must fit — each colonist
         # is 1 unit of hold capacity, same as any commodity.
@@ -2318,6 +2367,8 @@ def _bfs_path(universe: Universe, src: int, dst: int, max_depth: int = 60) -> li
 
 
 def _handle_photon_missile(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.hardware_tw2002():
+        return handle_photon_tw2002(universe, pid, action)
     player = universe.players[pid]
     if player.ship.photon_missiles <= 0:
         return ActionResult(ok=False, error="no photon missiles loaded")
@@ -3396,6 +3447,9 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.CLAIM_PLANET: _handle_claim_planet,
     ActionKind.PLOT_COURSE: _handle_plot_course,
     ActionKind.PHOTON_MISSILE: _handle_photon_missile,
+    ActionKind.CLOAK: handle_cloak,
+    ActionKind.FIRE_DISRUPTOR: handle_fire_disruptor,
+    ActionKind.REMOVE_LIMPET: handle_remove_limpet,
     ActionKind.QUERY_LIMPETS: _handle_query_limpets,
     ActionKind.PROBE: _handle_probe,
     ActionKind.BUY_SHIP: _handle_buy_ship,

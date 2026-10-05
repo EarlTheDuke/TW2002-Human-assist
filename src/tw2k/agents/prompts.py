@@ -192,7 +192,9 @@ Equipment — `buy_equip {"item":"<name>","qty":<int>}`:
   armid_mines     100 cr each         (damage entering ships)
   limpet_mines    250 cr each         (track a ship across the galaxy)
   atomic_mines    4,000 cr each       (DESTROYS A PORT — huge aggression signal)
-  photon_missiles 12,000 cr each      (temporarily disables target's fighters)
+  photon_missiles 12,000 cr each      (MF/ISS only; fire into an adjacent sector)
+cloak 25,000 cr each                 (max 5; activate with `cloak`)
+mine_disruptor 40,000 cr each        (max 10; fire into adjacent sector)
   ether_probes    5,000 cr each       (remote-scan any sector; one-shot)
   genesis         25,000 cr each      (create a new planet; see COLONIZE below)
   colonists       10 cr each          (fill your cargo holds; ferry to your planets)
@@ -336,7 +338,10 @@ list every turn once it starts populating.
    `attack {"target":"fighters","qty":N}`, or `surrender {}` (loses the ship, the same as being destroyed).
 - `deploy_mines {"qty":N,"kind":"armid|limpet|atomic"}` — armid damages, limpet tracks, atomic destroys a PORT.
 - `attack {"target":"<player_id_or_ferrengi_id>","qty":N}` — target must be in your sector. 5 turns. qty = fighters sent, capped by your hull (legal_actions shows the max). Your hull odds multiply them; their shields absorb first. A defender outgunned 1.25 to 1 may flee.
-- `photon_missile {"target":"<player_id>"}` — disables their fighters a tick. 12k cr.
+- `photon_missile {"target":<adjacent_sector>}` - photon wave into an adjacent sector (neutralizes mines/fighters a day-tick; decloaks). MF/ISS only.
+- `cloak` - consume one cloak; density 0 + anomaly; unattackable until fail or photon.
+- `fire_disruptor {"target":<adjacent_sector>}` - clear up to 12 mines next door.
+- `remove_limpet` - StarDock service (1,250 cr) strips an attached limpet.
 - `probe {"target":<sector_id>}` — remote-scan a distant sector. 5k cr, one-shot.
 - `plot_course {"target":<sector_id>}` — BFS autopilot up to 10 warps; each still costs its turn price.
 - `query_limpets {}` — where are your planted limpets tracking ships right now?
@@ -406,10 +411,12 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
 
 ================ COMPLETE ACTION VERB LIST ================
 Core:        warp trade scan wait
-Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic recall_deployed retreat pay_toll surrender
+Combat:      deploy_fighters deploy_mines attack photon_missile cloak fire_disruptor deploy_atomic recall_deployed retreat pay_toll surrender
 Recon:       probe query_limpets plot_course
 Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm planet_transwarp planet_buy_transporter planet_transport planet_destroy
 StarDock:    buy_ship buy_equip
+Hardware:  cloak fire_disruptor remove_limpet query_limpets
+# Expert habit: carry a cloak with a photon; disrupt before walking a mined lane; photon adjacent then warp in.
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
 
@@ -494,7 +501,7 @@ reroute, scout/probe, re-arm, buy a combat-capable ship, hunt the threat, or kno
 
 ================ COMPLETE ACTION VERB LIST ================
 Core:        warp trade scan wait
-Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic recall_deployed retreat pay_toll surrender
+Combat:      deploy_fighters deploy_mines attack photon_missile cloak fire_disruptor deploy_atomic recall_deployed retreat pay_toll surrender
 Recon:       probe query_limpets plot_course
 Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm planet_transwarp planet_buy_transporter planet_transport planet_destroy
 StarDock:    buy_ship buy_equip

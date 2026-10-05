@@ -478,7 +478,8 @@ class TestPhaseB:
         assert res.ok, res.error
         assert b.sector_id != 1
 
-    def test_b2_photon_missile_disables_target_fighters(self):
+    def test_b2_photon_missile_disables_target_fighters(self, monkeypatch):
+        monkeypatch.setattr(K, "HARDWARE_MODE", "legacy")  # same-sector player photon (pre ship-hardware-v1)
         u, (a, b, c) = _make_universe()
         sid = _first_non_fed_sector(u, min_id=50)
         b.sector_id = sid

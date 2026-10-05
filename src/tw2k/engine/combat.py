@@ -362,6 +362,9 @@ def interdictor_planet(universe: Universe, pid: str, sector):
 
 def challenge_group(universe: Universe, pid: str, sector):
     """Hostile defensive or toll fighters here that challenge `pid`, or None."""
+    from .hardware import sector_photon_active
+    if sector_photon_active(sector):
+        return None
     dep = sector.fighters
     if dep is None or int(dep.count) <= 0:
         return None

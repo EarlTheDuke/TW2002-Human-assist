@@ -182,6 +182,11 @@ class EventKind(str, Enum):
     LIMPET_REPORT = "limpet_report"
     PHOTON_FIRED = "photon_fired"
     PHOTON_HIT = "photon_hit"
+    CLOAK_ON = "cloak_on"
+    CLOAK_OFF = "cloak_off"
+    DISRUPTOR_FIRED = "disruptor_fired"
+    LIMPET_REMOVED = "limpet_removed"
+    PHOTON_BLAST = "photon_blast"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -334,6 +339,8 @@ class Sector(BaseModel):
     # Players currently in this sector (bookkeeping mirror of player.sector_id)
     occupant_ids: list[str] = Field(default_factory=list)
     nav_hazard: float = 0.0
+    # HARDWARE_MODE tw2002: photon wave ticks remaining (mines/fighters inert).
+    photon_wave_remaining: int = 0
     # Display hint for the map view (computed at generation time)
     x: float = 0.0
     y: float = 0.0
@@ -408,6 +415,11 @@ class Ship(BaseModel):
     scanner: str | None = None
     # If > 0, fighters are disabled for this many remaining ticks (photon hit).
     photon_disabled_ticks: int = 0
+    # HARDWARE_MODE tw2002 (SHIP_HARDWARE.md): cloaks / disruptors aboard and cloak state.
+    cloaks: int = 0
+    mine_disruptors: int = 0
+    cloaked: bool = False
+    cloak_activated_day: int | None = None
     # Weighted-average unit cost paid for the current holdings of each
     # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
     # when planning a sell — without this they have to reconstruct cost
@@ -624,6 +636,8 @@ class Player(BaseModel):
             + self.ship.mines.get(MineType.LIMPET, 0) * K.LIMPET_MINE_COST
             + self.ship.mines.get(MineType.ATOMIC, 0) * K.ATOMIC_MINE_COST
             + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
+            + int(getattr(self.ship, "cloaks", 0) or 0) * getattr(K, "CLOAK_COST", 25_000)
+            + int(getattr(self.ship, "mine_disruptors", 0) or 0) * getattr(K, "DISRUPTOR_COST", 40_000)
             + self.ship.ether_probes * K.ETHER_PROBE_COST
             + self.ship.genesis * K.GENESIS_TORPEDO_COST
             + K.scanner_value(getattr(self.ship, "scanner", None))

@@ -33,6 +33,7 @@ DOC = ROOT / "docs" / "playtests" / "ranks" / "EXPERIENCE_ALIGNMENT.md"
 def legacy(monkeypatch):
     monkeypatch.setattr(K, "RANK_MODE", "legacy")
     monkeypatch.setattr(K, "ROB_MODE", "legacy")  # goldens predate rob/steal
+    monkeypatch.setattr(K, "HARDWARE_MODE", "legacy")  # goldens predate ship-hardware-v1
 
 
 @pytest.fixture
@@ -410,7 +411,8 @@ def _legal(u, pid, kind):
     return next(x for x in build_observation(u, pid).legal_actions if x["kind"] == kind)
 
 
-def test_fedspace_shields_only_fedsafe_traders(tw) -> None:
+def test_fedspace_shields_only_fedsafe_traders(tw, monkeypatch) -> None:
+    monkeypatch.setattr(K, "HARDWARE_MODE", "legacy")  # same-sector player photon bar
     u, *_ = rank_world()
     u.players["A"].ship.photon_missiles = 1
     la = _legal(u, "A", "attack")
