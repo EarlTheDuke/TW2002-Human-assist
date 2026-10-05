@@ -55,10 +55,16 @@ from ..engine.constants import (
     CITADEL_TIER_COST,
     COLONIST_PRICE,
     COMMODITY_BASE_PRICE,
+    DENSITY_SCANNER_COST,
     GENESIS_SEED_COLONISTS,
     GENESIS_TORPEDO_COST,
+    HOLO_SCANNER_COST,
+    SCANNER_DENSITY,
+    SCANNER_HOLO,
     combat_hull,
     fighter_unit_price,
+    info_tw2002,
+    scanner_room,
     ship_cost,
     ship_specs,
 )
@@ -237,6 +243,7 @@ class View:
         self.genesis_aboard = int(ship.get("genesis") or 0)
         self.cargo_free = int(ship.get("cargo_free") or 0)
         self.ship_class = ship.get("class")
+        self.scanner = ship.get("scanner")
         self.landed = obs.get("planet_landed")
         self.owned = [p for p in (obs.get("owned_planets") or []) if isinstance(p, dict)]
         self.known_warps = {int(k): tuple(int(x) for x in (v or ())) for k, v in (obs.get("known_warps") or {}).items()}
@@ -928,6 +935,11 @@ class SeatBrain:
             net = int((v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {}).get("cargotran") or 10**12)
             if v.credits - net >= self.cash_buffer and v.ship_class in ("merchant_cruiser", "scout_marauder"):
                 return self._act("buy_ship", {"ship_class": "cargotran"}, f"upgrade to CargoTran ({net} cr net)"), Intent("acquire")
+        # Long-range scanner: expert habit is buy at StarDock (density early, holo when the
+        # hull allows and cash is there). Fits before combat/genesis so fogged seats can map.
+        scan_buy = self._buy_scanner(v)
+        if scan_buy is not None:
+            return scan_buy, Intent("acquire")
         if self.feed_organics or self.value_allocator:
             # Combat hull / defence spend trade capital. Only arm after Ferrengi
             # are fogged (hot_sectors) — solo N2/N3 acceptance has none, and
@@ -1053,6 +1065,10 @@ class SeatBrain:
                 intent_target = survey
             if act is not None and not self._banned_why(act, v):
                 return act, Intent("trade", intent_target)
+        # Under tw2002 fog, map neighbors before committing to a blind trade/explore.
+        scanned = self._maybe_scan(v)
+        if scanned is not None:
+            return scanned, Intent("explore")
         # Trade here if the envelope-driven heuristic finds a profitable buy/sell.
         ctx = TurnContext(seat="", turn_seq=0, observation=v.obs, llm_user_message=None, rules={},
                           status={}, deadline_at=None, server_skew=0.0)
@@ -1075,7 +1091,7 @@ class SeatBrain:
             return committed
         saved = (self.mem.colonist_drop, self.mem.stock_load, self.mem.organics_drop)
         options: list[tuple[float, dict[str, Any], Intent, dict[str, Any]]] = []
-        for opt in (self._opt_upgrade(v), self._opt_defense(v), self._opt_organics(v), self._opt_build(v),
+        for opt in (self._opt_upgrade(v), self._opt_scanner(v), self._opt_scan(v), self._opt_defense(v), self._opt_organics(v), self._opt_build(v),
                     self._opt_genesis(v), self._opt_ferry(v), self._opt_stockpile(v), self._opt_trade(v),
                     self._opt_survey(v)):
             if opt is None:
@@ -1213,8 +1229,14 @@ class SeatBrain:
         """
         if not (self.feed_organics or self.value_allocator):
             return
+        # Fog + ladder: N2 needs a fatter spare-credits gate before raising past
+        # two worlds. Thin-float third-planet ferries erase scanner-unlocked trade
+        # (seed 250925 N2 behind N1). Rich N2 (bot-growth) and N3 allocator still
+        # raise; the fatter step only binds the mid-ladder fog case.
         have = len(v.genesis_planets())
         step = GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + self.working_capital
+        if info_tw2002() and not self.value_allocator:
+            step += 100_000
         spare = v.credits - self._unfinished_l2_cash(v)
         more = max(0, spare // step) if step else 0
         # Raise only while every current genesis world still has organics
@@ -1989,7 +2011,11 @@ class SeatBrain:
             if coeff == 1 and not self.value_allocator:
                 continue
             days = int(g.get("organics_days_left") or 0)
-            if days < ORGANICS_FEED_DAYS:
+            # Under tw2002 fog, preventive organics trips steal the trade float that
+            # scanners unlock (N2 ferry ~34% vs N1 ~0% on seed 250925, RANK legacy).
+            # Ladder feeds only empty stockpiles; N3 allocator keeps the 2-day runway.
+            limit = 1 if info_tw2002() and not self.value_allocator else ORGANICS_FEED_DAYS
+            if days < limit:
                 rows.append((days, -int(g.get("organics_consumption_per_day") or 0), int(planet.get("id") or 0), planet))
         rows.sort()
         fed = [planet for *_rest, planet in rows]
@@ -2150,6 +2176,10 @@ class SeatBrain:
         g = growth_view(world) or {}
         days = int(g.get("organics_days_left") or 0)
         must = days <= 0 or (urgent and days <= 1)
+        # Fog + ladder: never divert for a still-green runway. Opportunistic
+        # organics buys while days>=1 were the N2 income cliff under scanners.
+        if info_tw2002() and not self.value_allocator and not must:
+            return None
         # A one-day runway can wait for a StarDock trip that is already funded
         # (genesis or the colonist ferry). An empty stockpile cannot.
         if not must and self._needs_stardock(v):
@@ -2379,6 +2409,143 @@ class SeatBrain:
                 return None
         return value / max(1, turns), action, Intent("acquire", STARDOCK)
 
+
+    def _fitted_scanner(self, v: View) -> str | None:
+        return v.scanner or (v.ship.get("scanner") if isinstance(v.ship, dict) else None)
+
+    def _scanner_item_choice(self, v: View) -> tuple[str, int] | None:
+        """Scanner at StarDock: holo when the hull allows and cash covers it; else density."""
+        if not info_tw2002() or v.here != STARDOCK or not v.ok("buy_equip"):
+            return None
+        items = set(str(x) for x in v.choices("buy_equip", "item"))
+        prices = (v.params("buy_equip").get("item") or {}).get("unit_price_by") or {}
+        room = scanner_room(str(v.ship_class or ""))
+        fitted = self._fitted_scanner(v)
+        if room is None:
+            return None
+        # Expert habit (SCANNERS_HIDDEN_INFO): holo where the hull allows, density otherwise.
+        # Fall back to density when holo is unaffordable so day-1 never leaves blind.
+        if room == SCANNER_HOLO and "holo_scanner" in items and fitted != SCANNER_HOLO:
+            unit = int(prices.get("holo_scanner") or HOLO_SCANNER_COST)
+            keep = self.working_capital if fitted is None else self.cash_buffer
+            if v.credits >= unit + keep:
+                return "holo_scanner", unit
+        if fitted is None and "density_scanner" in items:
+            unit = int(prices.get("density_scanner") or DENSITY_SCANNER_COST)
+            return "density_scanner", unit
+        if room == SCANNER_DENSITY and fitted is None and "density_scanner" in items:
+            unit = int(prices.get("density_scanner") or DENSITY_SCANNER_COST)
+            return "density_scanner", unit
+        return None
+
+    def _buy_scanner(self, v: View) -> dict[str, Any] | None:
+        """Buy the best affordable scanner this hull can carry. Never past credits."""
+        choice = self._scanner_item_choice(v)
+        if choice is None:
+            return None
+        item, unit = choice
+        keep = self.working_capital if item == "holo_scanner" else self.cash_buffer
+        if v.credits < unit:
+            return None
+        if v.credits - unit < keep:
+            if item != "density_scanner" or v.credits < unit + self.cash_buffer:
+                return None
+        return self._act("buy_equip", {"item": item, "qty": 1},
+                         f"fit {item} ({unit} cr) so fogged neighbors can be mapped")
+
+    def _blind_neighbors(self, v: View) -> bool:
+        """True when some adjacent sector still needs a scan this visit.
+
+        Empty `seen` dicts are falsy, so key off `seen_day` / `scan_day`
+        rather than `bool(seen)`. One scan per neighbour-set per day is enough;
+        upgrading density->holo can wait for the next visit.
+        """
+        for adj in v.obs.get("adjacent") or []:
+            if not isinstance(adj, dict):
+                continue
+            if adj.get("port") or adj.get("seen_day") == v.day or adj.get("scan_day") == v.day:
+                continue
+            return True
+        return False
+
+    def _scan_tier_choice(self, v: View) -> str | None:
+        if not v.ok("scan"):
+            return None
+        tiers = [str(t) for t in v.choices("scan", "tier")]
+        if not tiers:
+            return ""
+        if SCANNER_HOLO in tiers:
+            return SCANNER_HOLO
+        if SCANNER_DENSITY in tiers:
+            return SCANNER_DENSITY
+        return tiers[0]
+
+    def _maybe_scan(self, v: View, *, force: bool = False) -> dict[str, Any] | None:
+        """Run the best legal scan when neighbors are unknown (or force for explore)."""
+        if not info_tw2002():
+            if force and v.ok("scan"):
+                return self._act("scan", {}, "scan")
+            return None
+        if not self._fitted_scanner(v):
+            return None
+        if not force and not self._blind_neighbors(v):
+            return None
+        tier = self._scan_tier_choice(v)
+        if tier is None:
+            return None
+        args: dict[str, Any] = {}
+        if tier:
+            args["tier"] = tier
+        label = tier or "basic"
+        return self._act("scan", args, f"{label} scan to map adjacent ports")
+
+    def _opt_scanner(self, v: View):
+        """Value going to StarDock (or buying here) for a scanner under the fog."""
+        if not info_tw2002():
+            return None
+        # Rival pressure + existing worlds: empire rungs (citadel) beat a scanner ferry.
+        if self.pressure is not None and v.worlds():
+            return None
+        fitted = self._fitted_scanner(v)
+        room = scanner_room(str(v.ship_class or ""))
+        if room is None:
+            return None
+        if fitted == SCANNER_HOLO or (fitted == SCANNER_DENSITY and room == SCANNER_DENSITY):
+            return None
+        turns = self._hops_to_stardock(v) * self._tpw(v) + 1
+        # Prefer an affordable density early; chase holo only once cash is comfortable.
+        if fitted is None:
+            if room == SCANNER_HOLO and v.credits >= HOLO_SCANNER_COST + self.working_capital:
+                cost, value = HOLO_SCANNER_COST, 80_000
+            else:
+                cost, value = DENSITY_SCANNER_COST, 120_000
+        else:
+            if v.credits < HOLO_SCANNER_COST + self.working_capital + 40_000:
+                return None
+            cost, value = HOLO_SCANNER_COST, 30_000
+        if v.credits < cost + self.cash_buffer:
+            return None
+        if v.here == STARDOCK:
+            action = self._buy_scanner(v)
+            if action is None:
+                return None
+        else:
+            action = self._plot(v, STARDOCK, "StarDock for a long-range scanner")
+            if action is None:
+                return None
+        return value / max(1, turns), action, Intent("acquire", STARDOCK)
+
+    def _opt_scan(self, v: View):
+        if not info_tw2002() or not self._fitted_scanner(v):
+            return None
+        if not self._blind_neighbors(v):
+            return None
+        action = self._maybe_scan(v)
+        if action is None:
+            return None
+        return 35_000.0, action, Intent("explore")
+
+
     def _cargotran_net(self, v: View) -> int | None:
         """Trade-in net for CargoTran from a starter hull, or None if we already outgrew it."""
         if v.ship_class not in ("merchant_cruiser", "scout_marauder"):
@@ -2547,8 +2714,9 @@ class SeatBrain:
         if choices:
             choices.sort(key=lambda t: (t == came, self.mem.visits.get(t, 0), t))
             return self._act("warp", {"target": choices[0]}, f"explore -> {choices[0]} ({why})"), Intent("explore")
-        if v.ok("scan") and here not in v.known_warps:
-            return self._act("scan", {}, f"scan ({why})"), Intent("explore")
+        scanned = self._maybe_scan(v, force=here not in v.known_warps)
+        if scanned is not None:
+            return scanned, Intent("explore")
         return None, Intent()
 
     def _known_hop_toward(self, v: View, target: int) -> int | None:

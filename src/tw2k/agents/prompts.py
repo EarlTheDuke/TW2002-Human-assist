@@ -140,12 +140,18 @@ GOAL RULES:
 ================ DAY-1 WORKED EXAMPLE ================
 Starting state: sector 1 (StarDock), 20,000 cr, merchant_cruiser (20 holds, 20 fighters), turns 0/N.
 
-Turn 1 — scan to learn neighbor ports AND set your three horizons:
-  {"thought":"Map ports; commit to my plan.","scratchpad_update":"at sector 1, scanning",
-   "goals":{"short":"scan; then warp to the best SELL port in warps_out",
+Turn 1 — under INFO_MODE tw2002 you need a purchased scanner before `scan` works.
+  Buy density_scanner (2,000) or holo_scanner (25,000) at StarDock first (hull limits apply:
+  Scout/Constellation/T'Khasi density only; Missile Frigate / Colonial Transport none).
+  {"thought":"Fit a density scanner so I can map neighbors.","scratchpad_update":"at sector 1, buying scanner",
+   "goals":{"short":"buy density_scanner; then holo-or-density scan; warp to best SELL port",
             "medium":"find one org pair, run 5 round-trips, reach 45k, buy CargoTran",
             "long":"CargoTran day 1, Genesis-deploy dead-end sector day 2, Citadel L2 day 3"},
-   "action":{"kind":"scan","args":{}}}
+   "action":{"kind":"buy_equip","args":{"item":"density_scanner","qty":1}}}
+
+Turn 1b — with a scanner fitted, scan (tier=holo if you have it, else density):
+  {"thought":"Map adjacent ports with the scanner.","scratchpad_update":"scanning neighbors",
+   "action":{"kind":"scan","args":{"tier":"density"}}}
 
 Turn 2 — sector.warps_out=[2,5,7], scan revealed sector 5 sells fuel_ore (SBB):
   {"thought":"Warping to the seller.","scratchpad_update":"route: 5(SBB)<->?",
