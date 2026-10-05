@@ -109,7 +109,8 @@ def test_no_haggle_trade_still_takes_the_first_offer() -> None:
     result = _trade(universe, "sell", "fuel_ore")
     assert result.ok, result.error
     assert player.credits == credits + listed
-    assert player.experience == K.XP_AWARDS["trade"]
+    # first_dock +1 under RANK_MODE tw2002 (EXPERIENCE_ALIGNMENT.md x2); 0 under legacy.
+    assert player.experience == K.xp_award("trade") + K.xp_award("first_dock")
 
 
 def test_same_seed_gives_the_same_limits() -> None:
@@ -144,7 +145,7 @@ def test_experience_from_a_good_deal_is_capped() -> None:
     assert bound - listed > K.PORT_HAGGLE_XP_CAP
     result = _trade(universe, "sell", "fuel_ore", unit_price=bound)
     assert result.ok, result.error
-    assert player.experience == K.XP_AWARDS["trade"] + K.PORT_HAGGLE_XP_CAP
+    assert player.experience == K.xp_award("trade") + K.xp_award("first_dock") + K.PORT_HAGGLE_XP_CAP
 
 
 def test_hidden_limit_stays_out_of_payloads() -> None:

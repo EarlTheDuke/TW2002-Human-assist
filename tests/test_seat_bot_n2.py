@@ -198,8 +198,10 @@ On the corrected tw2002 price table (ECONOMY_CALIBRATION.md) the N2 ladder
     reshuffles and coeff-1 import targets are skipped; fuel gets the ferry instead. Held-zero
     planet ids are the measured result after growth retunes.
     """
-    # Measured under the legacy fog. INFO_MODE tw2002 numbers: SCANNERS_HIDDEN_INFO.md "Seat brains".
+    # Measured under the legacy fog and RANK_MODE. INFO_MODE / RANK_MODE tw2002 numbers:
+    # SCANNERS_HIDDEN_INFO.md and EXPERIENCE_ALIGNMENT.md "Seat brains".
     monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")
+    monkeypatch.setattr("tw2k.engine.constants.RANK_MODE", "legacy")
     mod = _load_acceptance()
     held_zeros = {250925: [32], 20260925: [30, 31], 99: [29], 31: [30]}
     # Strict N2 > N1 on every seed (restores the bar weakened by economy-calibration-v1).

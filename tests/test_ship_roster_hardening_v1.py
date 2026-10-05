@@ -192,7 +192,8 @@ def test_runner_warp_reads_the_tw2002_table() -> None:
     assert _warp_once(universe, player) == 15
 
 
-def test_imperial_alignment_gate() -> None:
+def test_imperial_alignment_gate(monkeypatch) -> None:
+    monkeypatch.setattr(K, "RANK_MODE", "legacy")  # 2000; tw2002 is a commission at 1000 (EXPERIENCE_ALIGNMENT.md u3)
     universe = _universe()
     ship = Ship(holds=20, fighters=0)
     player = _seat(universe, credits=500_000, ship=ship, alignment=1999)

@@ -53,6 +53,7 @@ from .victory import (
     _planet_asset_value,
     alignment_label,
     check_victory,
+    fedspace_protects,
     full_net_worth,
     rank_for,
 )
@@ -192,6 +193,10 @@ def tick_day(universe: Universe) -> None:
     universe.day += 1
     for player in universe.players.values():
         player.turns_today = 0
+        if K.rank_tw2002() and player.alive:
+            # x3: the first login after midnight, +1 experience and +1 alignment.
+            player.experience = int(player.experience) + K.xp_award("daily")
+            player.alignment = int(player.alignment) + K.DAILY_ALIGNMENT
         player.photon_damped_sector_id = None
         # Photon scramble decays one tick per real game day
         if player.ship.photon_disabled_ticks > 0:
@@ -517,9 +522,12 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error="out of turns for this day")
 
     rng = _rng_for(universe)
+    unused_port = not port.experience  # x2: nobody has traded here yet
     ok, total, unit, msg, realized = execute_trade(
         universe, player, port, commodity, qty, side, offered, rng
     )
+    if ok and unused_port:
+        _award_xp(universe, pid, "first_dock")
 
     if not ok:
         universe.emit(
@@ -777,7 +785,7 @@ def _handle_atomic_detonation(
     """ATOMIC mines: destroy port stock + damage planet citadel/treasury + nuke fighters in sector."""
     player = universe.players[pid]
     player.ship.mines[MineType.ATOMIC] -= qty
-    player.alignment -= 50 * qty  # major alignment hit per warhead
+    player.alignment -= 50 * qty  # major alignment hit per warhead (a7)
 
     # Aggregate effects scaled by qty
     port_destroyed = False
@@ -812,6 +820,7 @@ def _handle_atomic_detonation(
             sector.fighters = None
 
     if port_destroyed:
+        _award_xp(universe, pid, "destroy_port")  # x11
         universe.emit(
             EventKind.PORT_DESTROYED,
             actor_id=pid,
@@ -854,7 +863,7 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     # Block friendly fire (corp mates + active alliances)
     if isinstance(target_id, str) and target_id in universe.players and _are_allied(universe, pid, target_id):
         return ActionResult(ok=False, error="cannot attack a corp mate or ally")
-    if player.sector_id in K.FEDSPACE_SECTORS:
+    if player.sector_id in K.FEDSPACE_SECTORS and fedspace_protects(target):
         universe.emit(
             EventKind.FED_RESPONSE,
             actor_id=pid,
@@ -1702,6 +1711,9 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         summary=f"{player.name} detonated a Genesis torpedo — new {cls.value}-class planet {planet_name} forms in {sector.id}",
     )
     _award_xp(universe, pid, "deploy_genesis")
+    if K.rank_tw2002() and int(player.alignment) != 0:
+        # x6: +10 good, 0 neutral, -10 evil.
+        player.alignment += K.GENESIS_ALIGNMENT if player.alignment > 0 else -K.GENESIS_ALIGNMENT
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -1791,7 +1803,7 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         return ActionResult(ok=False, error=f"unknown ship class {class_key!r}")
     if spec.get("corp_only") and player.corp_ticker is None:
         return ActionResult(ok=False, error="ship is corporation-only")
-    if spec.get("min_alignment", 0) > player.alignment:
+    if K.ship_min_alignment(spec, 0) > player.alignment:
         return ActionResult(ok=False, error=f"alignment too low for {class_key}")
     if spec.get("unique"):
         # Only one Imperial StarShip in the universe
@@ -2312,7 +2324,7 @@ def _handle_photon_missile(universe: Universe, pid: str, action: Action) -> Acti
     target = universe.players[target_id]
     if target.sector_id != player.sector_id:
         return ActionResult(ok=False, error="target not in this sector")
-    if player.sector_id in K.FEDSPACE_SECTORS:
+    if player.sector_id in K.FEDSPACE_SECTORS and fedspace_protects(target):
         player.alignment -= 100
         return ActionResult(ok=False, error="FedSpace forbids weapons fire")
     cost = K.TURN_COST["attack"]
@@ -3137,7 +3149,8 @@ def _handle_planet_destroy(universe: Universe, pid: str, action: Action) -> Acti
     cost = K.TURN_COST["planet_destroy"]
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
-    player.alignment -= K.PLANET_DESTROY_ALIGNMENT
+    if not K.rank_tw2002():
+        player.alignment -= K.PLANET_DESTROY_ALIGNMENT
     colonists_left = sum(int(n) for n in planet.colonists.values())
     if colonists_left > 0:
         for pool in list(planet.colonists.keys()):
@@ -3157,6 +3170,10 @@ def _handle_planet_destroy(universe: Universe, pid: str, action: Action) -> Acti
             other.planet_landed = None
     sector.planet_ids = [sid for sid in sector.planet_ids if sid != gone]
     del universe.planets[gone]
+    if K.rank_tw2002():
+        # x7 / conflict 14: -1 alignment and +50 experience when the planet goes.
+        player.alignment -= K.PLANET_DESTROY_ALIGNMENT_TW2002
+        _award_xp(universe, pid, "destroy_planet")
     universe.emit(
         EventKind.PLANET_DESTROYED,
         actor_id=pid,

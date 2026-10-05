@@ -32,7 +32,7 @@ from .models import (
     MineType,
     Universe,
 )
-from .victory import _award_xp
+from .victory import _award_xp, combat_rewards, kill_rewards
 
 
 def _apply_volley(
@@ -285,6 +285,9 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
     # "M2-1"). Worse, it had already mutated `target.alive = False` before
     # the raise, leaving the victim as a permanently-frozen zombie (no
     # respawn, no death count). Use isinstance() for type-safe branching.
+    if not isinstance(target, FerrengiShip):
+        lost = sum(int(r.get("attacker_fighters_lost") or 0) for r in rounds)
+        combat_rewards(universe, attacker_id, int(target.alignment), lost)
     if d_fighters <= 0:
         _defender_destroyed(universe, attacker_id, target)
     if a_fighters <= 0:
@@ -312,6 +315,8 @@ def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
         # death-count, elimination, credit penalty, ship downgrade
         # all fire correctly.
         _award_xp(universe, attacker_id, "kill_player")
+        # x13/a2: the killer's share reads the victim before the pod or Ship Destroyed loss.
+        kill_rewards(universe, attacker_id, int(target.experience), int(target.alignment))
         _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id, by_other=True)
 
 
@@ -452,6 +457,9 @@ def _resolve_fighter_attack_tw2002(universe: Universe, attacker_id: str, sector_
     attacker.ship.fighters = int(attacker.ship.fighters) - att_losses
     cleared = def_losses >= count
     owner = dep.owner_id
+    if owner in universe.players and owner != attacker_id:
+        combat_rewards(universe, attacker_id, int(universe.players[owner].alignment), att_losses,
+                       sector_fighters=True)
     if cleared:
         if K.sector_fighter_tw2002() and pot > 0:
             attacker.credits += pot
@@ -545,6 +553,8 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
         sh_lost = min(s_eff, units)
         f_lost = min(d_f, units - sh_lost)
     attacker.ship.fighters = int(attacker.ship.fighters) - att_losses
+    if not is_ferr:
+        combat_rewards(universe, attacker_id, int(target.alignment), att_losses)
     d_f -= f_lost
     d_s -= sh_lost
     if is_ferr:

@@ -22,7 +22,26 @@ from . import constants as K
 from .models import EventKind, Universe
 
 
-def rank_for(experience: int) -> str:
+def rank_level(experience: int) -> int:
+    """r1: 0 below 2 experience, then one level per doubling up to 22."""
+    level = 0
+    for i, thresh in enumerate(K.RANK_THRESHOLDS):
+        if int(experience) >= thresh:
+            level = i
+        else:
+            break
+    return level
+
+
+def side(alignment: int) -> str:
+    """r4: zero or more is blue (good), negative is red (evil)."""
+    return "good" if int(alignment) >= 0 else "evil"
+
+
+def rank_for(experience: int, alignment: int = 0) -> str:
+    if K.rank_tw2002():
+        ladder = K.GOOD_RANKS if side(alignment) == "good" else K.EVIL_RANKS
+        return ladder[rank_level(experience)]
     name = "Civilian"
     for thresh, label in K.RANK_TABLE:
         if experience >= thresh:
@@ -33,6 +52,9 @@ def rank_for(experience: int) -> str:
 
 
 def alignment_label(alignment: int) -> str:
+    if K.rank_tw2002():
+        a = int(alignment)
+        return "Good" if a > 0 else ("Evil" if a < 0 else "Neutral")
     label = "Neutral"
     for thresh, name in K.ALIGNMENT_TIERS:
         if alignment >= thresh:
@@ -44,13 +66,74 @@ def alignment_label(alignment: int) -> str:
 
 def _award_xp(universe: Universe, pid: str, key: str, multiplier: int = 1) -> None:
     """Bump experience for the named achievement; safe no-op for unknown keys."""
-    amount = K.XP_AWARDS.get(key, 0) * multiplier
+    amount = K.xp_award(key) * multiplier
     if amount <= 0:
         return
     p = universe.players.get(pid)
     if p is None or not p.alive:
         return
     p.experience += amount
+
+
+def is_fedsafe(player) -> bool:
+    """u1: blue with 999 experience or less."""
+    return int(player.alignment) >= 0 and int(player.experience) <= K.FEDSAFE_MAX_EXPERIENCE
+
+
+def fedspace_protects(target) -> bool:
+    """u1: in FedSpace, legacy shields everyone; tw2002 only a fedsafe trader."""
+    if not K.rank_tw2002():
+        return True
+    return hasattr(target, "experience") and is_fedsafe(target)
+
+
+def is_commissioned(player) -> bool:
+    """u2: 1,000 or more alignment is a Federal Commission."""
+    return int(player.alignment) >= K.COMMISSION_ALIGNMENT
+
+
+def _colours(mine: int, theirs: int) -> str:
+    if mine == 0 or theirs == 0:
+        return "neutral"
+    return "same" if (mine > 0) == (theirs > 0) else "opposite"
+
+
+def _toward_zero(num: int, den: int) -> int:
+    q = abs(num) // den
+    return q if num >= 0 else -q
+
+
+def combat_rewards(universe: Universe, pid: str, enemy_alignment: int, fighters_lost: int,
+                   *, sector_fighters: bool = False) -> tuple[int, int]:
+    """x12/a1 (ship) and x14/a3 (sector fighters): what the attacker's lost fighters earn."""
+    if not K.rank_tw2002() or fighters_lost <= 0:
+        return 0, 0
+    p = universe.players.get(pid)
+    if p is None or not p.alive:
+        return 0, 0
+    lost = int(fighters_lost)
+    theirs = int(enemy_alignment)
+    kind = _colours(int(p.alignment), theirs)
+    exp = lost // K.COMBAT_EXP_DIVISOR[kind]
+    if sector_fighters:
+        den = K.FIGHTER_ALIGN_DIVISOR["same" if kind == "same" else "opposite"]
+    else:
+        den = K.COMBAT_ALIGN_DIVISOR
+    align = -_toward_zero(lost * theirs, den)
+    p.experience = int(p.experience) + exp
+    p.alignment = int(p.alignment) + align
+    return exp, align
+
+
+def kill_rewards(universe: Universe, killer_id: str, victim_experience: int, victim_alignment: int) -> None:
+    """x13/a2: 10 percent of the victim's experience and half its alignment, sign reversed."""
+    if not K.rank_tw2002():
+        return
+    p = universe.players.get(killer_id)
+    if p is None or not p.alive:
+        return
+    p.experience = int(p.experience) + int(max(0, int(victim_experience)) * K.KILL_EXP_SHARE)
+    p.alignment = int(p.alignment) - int(int(victim_alignment) * K.KILL_ALIGN_SHARE)
 
 
 def planet_stock_unit_price(commodity_value: str) -> int:
