@@ -121,7 +121,8 @@ class HeuristicAgent(BaseAgent):
                         pick = ("holo_scanner", cost)
                 if pick is None and fitted is None and "density_scanner" in items:
                     cost = int(prices.get("density_scanner") or DENSITY_SCANNER_COST)
-                    if credits >= cost:
+                    # Keep a small cash buffer so a density buy never zeroes the seat.
+                    if credits >= cost + 2_000:
                         pick = ("density_scanner", cost)
                 if pick is not None:
                     item, cost = pick
@@ -159,20 +160,34 @@ class HeuristicAgent(BaseAgent):
                 candidates = list(adj)
             unknown = [a for a in candidates if not a.get("known")]
             with_port = [a for a in candidates if a.get("port") and a["port"] not in ("FED",)]
+            # Density chart (s7): 100 marks a port when holo has not yet named it.
+            dense_port = [a for a in candidates if int(a.get("density") or 0) >= 100]
             if unknown:
                 pool = unknown
                 reason = "scouting"
             elif with_port:
                 pool = with_port
                 reason = "hopping to known port"
+            elif dense_port:
+                pool = dense_port
+                reason = "density suggests a port"
             else:
                 pool = candidates
                 reason = "drifting"
-            # Prefer least-visited to escape two-sector orbits.
-            choice = min(pool, key=lambda a: (self._visit_counts.get(int(a["id"]), 0), int(a["id"])))
-            # Tie-break with rng among equally fresh sectors.
+            # Prefer least-visited to escape two-sector orbits; among ties, higher density.
+            choice = min(pool, key=lambda a: (
+                self._visit_counts.get(int(a["id"]), 0),
+                -int(a.get("density") or 0),
+                int(a["id"]),
+            ))
+            # Tie-break with rng among equally fresh sectors of equal density.
             best_visits = self._visit_counts.get(int(choice["id"]), 0)
-            tied = [a for a in pool if self._visit_counts.get(int(a["id"]), 0) == best_visits]
+            best_density = int(choice.get("density") or 0)
+            tied = [
+                a for a in pool
+                if self._visit_counts.get(int(a["id"]), 0) == best_visits
+                and int(a.get("density") or 0) == best_density
+            ]
             if len(tied) > 1:
                 choice = self.rng.choice(tied)
             self._last_from = here
