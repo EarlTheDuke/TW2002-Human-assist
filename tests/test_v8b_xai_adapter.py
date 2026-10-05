@@ -745,9 +745,10 @@ def _serve(handler) -> ThreadingHTTPServer:
 
 
 def _free_port() -> int:
-    port = 8033
+    # Skip reserved live/QC ports 8031-8036 (same rule as tests/_cu_host.py).
+    port = 8040
     while port < 8200:
-        if port in (8031, 8032):
+        if 8031 <= port <= 8036:
             port += 1
             continue
         sock = socket.socket()
