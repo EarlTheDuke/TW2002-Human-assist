@@ -142,6 +142,8 @@ class SeatMemory:
     # Declined the first genesis because CargoTran was not affordable yet.
     # Stops the seat from autopiloting back to StarDock on genesis money alone.
     hull_wait: bool = False
+    # Worlds whose legal list showed no room for a colonist unload.
+    no_colonist_room: set[int] = field(default_factory=set)
 
     def dump(self) -> str:
         return MEMORY_TAG + json.dumps({
@@ -156,6 +158,7 @@ class SeatMemory:
             "colonist_drop": self.colonist_drop,
             "stock_load": list(self.stock_load) if self.stock_load else None,
             "hull_wait": self.hull_wait,
+            "no_colonist_room": sorted(self.no_colonist_room)[:20],
         }, separators=(",", ":"))
 
     @classmethod
@@ -186,6 +189,7 @@ class SeatMemory:
         if isinstance(stock, (list, tuple)) and len(stock) == 2 and isinstance(stock[1], str):
             mem.stock_load = (int(stock[0]), str(stock[1]))
         mem.hull_wait = bool(data.get("hull_wait"))
+        mem.no_colonist_room = {int(pid) for pid in (data.get("no_colonist_room") or [])}
         return mem
 
 
@@ -495,6 +499,7 @@ class SeatBrain:
             mem.visits[int(v.here)] = mem.visits.get(int(v.here), 0) + 1
         mem.decisions += 1
         self._ingest_failures(v)
+        self._note_colonist_room(v)
         self.pressure = self._rival_pressure(v)
         self._remember_ports(v)
         self._refresh_home(v)
@@ -716,6 +721,17 @@ class SeatBrain:
                 return self._act("warp", {"target": warp}, f"carry genesis deeper ({v.reason('deploy_genesis')})"), Intent("explore")
         return None
 
+    def _note_colonist_room(self, v: View) -> None:
+        """Remember a world whose legal list will not take colonists from the ship."""
+        if self.mem is None or v.landed is None or v.colonists_aboard <= 0:
+            return
+        pid = int(v.landed)
+        choices = {str(item) for item in v.choices("assign_colonists", "from")}
+        if "ship" not in choices or v.max_by("assign_colonists", "qty", "ship") <= 0:
+            self.mem.no_colonist_room.add(pid)
+        else:
+            self.mem.no_colonist_room.discard(pid)
+
     def _land_home(self, v: View):
         if v.landed is not None or not v.ok("land_planet"):
             return None
@@ -728,8 +744,11 @@ class SeatBrain:
             dump = self._unsellable_goods(v)
             haul = self._hauling_organics(v) and int(planet["id"]) == int(self.mem.organics_drop)
             stock = self.mem.stock_load is not None and int(planet["id"]) == int(self.mem.stock_load[0])
-            if v.colonists_aboard > 0 or can_build or dump or haul or stock:
-                why = ("unload colonists" if v.colonists_aboard else "citadel is buildable" if can_build
+            # A full world is not an unload stop. The legal list already said
+            # the ship max is 0. Citadel, organics, and stock still land.
+            unload = v.colonists_aboard > 0 and pid not in self.mem.no_colonist_room
+            if unload or can_build or dump or haul or stock:
+                why = ("unload colonists" if unload else "citadel is buildable" if can_build
                        else "deliver organics" if haul else "load stockpile for sale" if stock
                        else f"stock unsellable {dump[0]}")
                 return self._act("land_planet", {"planet_id": pid}, f"land home planet {pid} ({why})"), Intent("colonize")
@@ -817,7 +836,8 @@ class SeatBrain:
                     if plot:
                         return plot, Intent("colonize", sid)
         home = self.mem.home_sector
-        if v.colonists_aboard > 0 and home is not None and v.here != home:
+        home_full = self.mem.home_planet in self.mem.no_colonist_room
+        if v.colonists_aboard > 0 and home is not None and v.here != home and not home_full:
             plot = self._plot(v, home, "ferry colonists home")
             if plot:
                 return plot, Intent("colonize", home)
@@ -1728,6 +1748,8 @@ class SeatBrain:
         return (tier[0] if tier else 0) + self.working_capital
 
     def _colonists_needed(self, v: View) -> int:
+        if self.mem.home_planet in self.mem.no_colonist_room:
+            return 0
         home = v.planet(self.mem.home_planet)
         tier = next_tier(home, lookahead=True) if home else None
         if tier is None:
