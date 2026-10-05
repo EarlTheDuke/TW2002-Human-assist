@@ -713,8 +713,10 @@ def _destroy_ship(
         return
     if K.death_tw2002():
         _destroy_ship_tw2002(universe, pid, reason, killer_id, by_other)
-        return
-    _destroy_ship_legacy(universe, pid, reason, killer_id)
+    else:
+        _destroy_ship_legacy(universe, pid, reason, killer_id)
+    if K.info_tw2002():
+        player.ship.scanner = None  # SCANNERS_HIDDEN_INFO.md s4: the scanner went down with the ship
 
 
 def _destroy_ship_legacy(universe: Universe, pid: str, reason: str, killer_id: str | None) -> None:

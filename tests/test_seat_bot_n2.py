@@ -189,13 +189,15 @@ def test_k_class_unload_goes_to_the_organics_pool() -> None:
     assert a["args"]["to"] == "organics" and a["args"]["qty"] == 75
 
 
-def test_n2_day10_beats_n1_and_keeps_organics() -> None:
+def test_n2_day10_beats_n1_and_keeps_organics(monkeypatch) -> None:
     """Five seeds, ten days, fogged observation only.
 
     Measured on the corrected tw2002 price table (ECONOMY_CALIBRATION.md),
     with the ladder's organics gate on the live base. Rejected stays 0. Two
     worlds still starve; those planet ids are the measured result.
     """
+    # Measured under the legacy fog. INFO_MODE tw2002 numbers: SCANNERS_HIDDEN_INFO.md "Seat brains".
+    monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")
     mod = _load_acceptance()
     held_zeros = {250925: [32], 20260925: [30]}
     # Deliberate tolerances (ECONOMY_CALIBRATION.md, "Seat bars"). At the

@@ -98,6 +98,11 @@ class CuHost:
         await self.runner.stop()
 
     def __enter__(self) -> CuHost:
+        # The cockpit tests drive the free scan and read today's adjacent view: they test the
+        # UI, not the scanner rules (SCANNERS_HIDDEN_INFO.md), so the host runs INFO_MODE legacy.
+        import tw2k.engine.constants as K
+
+        self._info_mode, K.INFO_MODE = K.INFO_MODE, "legacy"
         self.thread.start()
         deadline = time.time() + 20
         # Wait for the park too: a test that reads the seat's port right after
@@ -105,6 +110,8 @@ class CuHost:
         while time.time() < deadline and not (self.server.started and self.runner.state.universe is not None
                                               and self.parked):
             time.sleep(0.1)
+        if not self.server.started:
+            K.INFO_MODE = self._info_mode
         assert self.server.started, "host did not start"
         return self
 
@@ -116,6 +123,9 @@ class CuHost:
         running = current()
         if running is not None:
             running.stop()
+        import tw2k.engine.constants as K
+
+        K.INFO_MODE = self._info_mode
 
     @property
     def base(self) -> str:

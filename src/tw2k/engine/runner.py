@@ -589,6 +589,10 @@ def _handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
             'density' (2-hop, just sector occupant/port presence — no detailed prices),
             'holo'    (1-hop full intel including stock levels)
     """
+    if K.info_tw2002():  # SCANNERS_HIDDEN_INFO.md: bought density / holo scanners only
+        from .scanners import handle_scan
+
+        return handle_scan(universe, pid, action)
     player = universe.players[pid]
     sector = universe.sectors[player.sector_id]
     cost = K.TURN_COST["scan"]
@@ -1803,6 +1807,8 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     from .models import ShipClass as SC  # local import to avoid cycle in runtime edits
     player.ship.ship_class = SC(class_key)
     player.ship.holds = spec["holds"]
+    if K.info_tw2002():
+        player.ship.scanner = None  # s4: the scanner stays with the old ship
     # Preserve cargo sum but drop excess
     total = player.ship.cargo_used
     if total > spec["holds"]:
@@ -1852,6 +1858,8 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         # buy_equip so the ferry-to-your-planet loop actually exists in game.
         "colonists": K.COLONIST_PRICE,
     }
+    if K.info_tw2002() and item in ("density_scanner", "holo_scanner"):
+        return _buy_scanner(universe, pid, str(item), qty)
     unit = prices.get(item or "")
     if unit is None:
         return ActionResult(ok=False, error=f"unknown item {item!r}")
@@ -1925,6 +1933,31 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         sector_id=player.sector_id,
         payload={"item": item, "qty": qty, "total": total},
         summary=f"{player.name} bought {qty} {item} for {total}cr",
+    )
+    return ActionResult(ok=True, turns_spent=0)
+
+
+def _buy_scanner(universe: Universe, pid: str, item: str, qty: int) -> ActionResult:
+    """SCANNERS_HIDDEN_INFO.md s1-s3: one scanner per hull, a holo replaces a density one."""
+    player = universe.players[pid]
+    offer = K.scanner_offer(player.ship.ship_class.value, player.ship.scanner)
+    if item not in offer:
+        if K.scanner_room(player.ship.ship_class.value) is None:
+            return ActionResult(ok=False, error="this hull cannot carry a long range scanner")
+        return ActionResult(ok=False, error=f"{item} would not be an upgrade on this ship")
+    if qty != 1:
+        return ActionResult(ok=False, error="a ship carries one scanner (qty 1)")
+    total = offer[item]
+    if player.credits < total:
+        return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {total})")
+    player.credits -= total
+    player.ship.scanner = K.SCANNER_HOLO if item == "holo_scanner" else K.SCANNER_DENSITY
+    universe.emit(
+        EventKind.BUY_EQUIP,
+        actor_id=pid,
+        sector_id=player.sector_id,
+        payload={"item": item, "qty": 1, "total": total},
+        summary=f"{player.name} fitted a {item.replace('_', ' ')} for {total}cr",
     )
     return ActionResult(ok=True, turns_spent=0)
 
@@ -2333,6 +2366,10 @@ def _handle_query_limpets(universe: Universe, pid: str, action: Action) -> Actio
 
 def _handle_probe(universe: Universe, pid: str, action: Action) -> ActionResult:
     """Ether probe — remote single-sector intel. Consumes one probe, no proximity needed."""
+    if K.info_tw2002():  # SCANNERS_HIDDEN_INFO.md s13: the probe flies a route
+        from .scanners import handle_probe
+
+        return handle_probe(universe, pid, action)
     player = universe.players[pid]
     if player.ship.ether_probes <= 0:
         return ActionResult(ok=False, error="no ether probes loaded")

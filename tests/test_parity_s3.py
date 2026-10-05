@@ -179,7 +179,8 @@ def test_trade_envelope_uses_listed_price_and_engine_caps() -> None:
             assert sides["sell"] <= int(p.ship.cargo.get(Commodity(c), 0))
 
 
-def test_observation_and_llm_message_carry_legality() -> None:
+def test_observation_and_llm_message_carry_legality(monkeypatch) -> None:
+    monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")  # scan legal without a scanner
     u = _universe()
     obs = build_observation(u, "P1")
     kinds = {e["kind"] for e in obs.legal_actions}

@@ -396,6 +396,9 @@ class Ship(BaseModel):
     genesis: int = 0
     photon_missiles: int = 0
     ether_probes: int = 0
+    # Long range scanner fitted to this hull: None, "density" or "holo"
+    # (SCANNERS_HIDDEN_INFO.md s1-s4). Only INFO_MODE tw2002 sells one.
+    scanner: str | None = None
     # If > 0, fighters are disabled for this many remaining ticks (photon hit).
     photon_disabled_ticks: int = 0
     # Weighted-average unit cost paid for the current holdings of each
@@ -499,6 +502,9 @@ class Player(BaseModel):
     alliances: list[str] = Field(default_factory=list)
     # Recent ether-probe readings keyed by sector_id -> {day, payload}.
     probe_log: dict[int, dict] = Field(default_factory=dict)
+    # INFO_MODE tw2002: your own last density / holo reading of each sector,
+    # keyed by sector_id (SCANNERS_HIDDEN_INFO.md s6, s9). Shown in `adjacent`.
+    scan_memory: dict[int, dict] = Field(default_factory=dict)
     # Phase D.2 — set to True by the runner when the PREVIOUS turn's action
     # was a WAIT synthesized from an LLM timeout (i.e. the tick was lost
     # with no real decision made). The next observation surfaces this as a
@@ -611,6 +617,7 @@ class Player(BaseModel):
             + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
             + self.ship.ether_probes * K.ETHER_PROBE_COST
             + self.ship.genesis * K.GENESIS_TORPEDO_COST
+            + K.scanner_value(getattr(self.ship, "scanner", None))
         )
         return self.credits + cargo_value + ship_value + equip_value
 

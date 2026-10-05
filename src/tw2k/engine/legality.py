@@ -163,10 +163,21 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     # scan
     sc = int(K.TURN_COST["scan"])
-    reason = _need_turns(player, sc)
-    out.append(_la(ActionKind.SCAN, legal=reason is None, reason=reason, cost=sc,
-                   params={"tier": {"type": "str", "required": False,
-                                    "choices": [K.SCAN_TIER_BASIC, K.SCAN_TIER_DENSITY, K.SCAN_TIER_HOLO]}}))
+    if K.info_tw2002():  # SCANNERS_HIDDEN_INFO.md s1-s8: only the fitted scanner's modes
+        from .scanners import scan_reason, scan_turns
+        tiers = K.scan_tiers(getattr(player.ship, "scanner", None))
+        reason = scan_reason(universe, player_id, None)
+        by_tier = {t: scan_turns(t) for t in tiers}
+        legal_tiers = [t for t in tiers if scan_reason(universe, player_id, t) is None]
+        out.append(_la(ActionKind.SCAN, legal=reason is None, reason=reason,
+                       cost=by_tier.get(tiers[0], 0) if tiers else 0,
+                       params={"tier": {"type": "str", "required": False, "choices": legal_tiers,
+                                        "turn_cost_by": by_tier}}))
+    else:
+        reason = _need_turns(player, sc)
+        out.append(_la(ActionKind.SCAN, legal=reason is None, reason=reason, cost=sc,
+                       params={"tier": {"type": "str", "required": False,
+                                        "choices": [K.SCAN_TIER_BASIC, K.SCAN_TIER_DENSITY, K.SCAN_TIER_HOLO]}}))
 
     # plot_course: a plan (execute omitted/false) is free and stays legal; route
     # existence is per-target and the engine reports "no route". Execute is a
@@ -190,8 +201,11 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = "no ether probes loaded (buy_equip probe at StarDock)"
     else:
         reason = _need_turns(player, sc)
+    probe_target: dict[str, Any] = {"type": "int", "required": True, "min": 1, "max": len(universe.sectors)}
+    if K.info_tw2002():  # s13: the probe flies a route; the engine reports "no route"
+        probe_target["max_hops"] = K.PROBE_MAX_HOPS
     out.append(_la(ActionKind.PROBE, legal=reason is None, reason=reason, cost=sc,
-                   params={"target": {"type": "int", "required": True, "min": 1, "max": len(universe.sectors)}}))
+                   params={"target": probe_target}))
 
     # trade
     tc = trade_turn_cost(player)
@@ -258,6 +272,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             # In tw2002 combat the toll is answered at the challenge, so every warp stays open.
             if bill <= 0 or int(player.credits) >= bill or K.challenge_on():
                 affordable_warps.append(int(wid))
+        if K.info_tw2002() and K.challenge_on():
+            toll_due = {}  # s12: the toll is shown at the challenge, not before you warp in
         for la in out:
             if la.kind == ActionKind.WARP.value:
                 la.params["toll_due_by"] = toll_due
@@ -418,6 +434,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         cap_by = {
             "colonists": max(0, int(player.ship.cargo_free)),
         }
+        if K.info_tw2002():  # SCANNERS_HIDDEN_INFO.md s1-s3: one scanner per hull
+            for item, price in K.scanner_offer(class_key, getattr(player.ship, "scanner", None)).items():
+                prices[item] = int(price)
+                cap_by[item] = 1
         for capped in (
             "fighters", "shields", "holds", "genesis", "photon_missiles",
             "armid_mines", "limpet_mines", "atomic_mines",

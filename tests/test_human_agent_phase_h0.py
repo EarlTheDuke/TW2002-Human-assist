@@ -300,11 +300,12 @@ def test_human_actions_recorded_in_actions_log(tmp_path: Path) -> None:
     assert human_actions, "no P2 (human) actions were recorded"
 
 
-def test_replay_from_human_match_does_not_crash(tmp_path: Path) -> None:
+def test_replay_from_human_match_does_not_crash(tmp_path: Path, monkeypatch) -> None:
     """Replay re-executes actions.jsonl without needing a live HumanAgent.
     The Action is pulled from the log, the engine applies it, events
     are re-emitted. Same code path as any LLM match.
     """
+    monkeypatch.setattr("tw2k.engine.constants.INFO_MODE", "legacy")  # the script's scan needs no scanner
     run_dir = _drive_match_with_scripted_human(tmp_path)
 
     broadcaster = Broadcaster()

@@ -1053,6 +1053,93 @@ def death_tw2002() -> bool:
     return DEATH_MODE == "tw2002"
 
 
+# --- Scanners and hidden information (SCANNERS_HIDDEN_INFO.md) -----------------
+# "tw2002": bought density / holo scanners, fogged adjacent sectors, path probes,
+# live port reports. "legacy": today's free scan tiers and full adjacent view.
+INFO_MODE = "tw2002"
+DENSITY_SCANNER_COST = 2_000  # s1: Iago's StarDock list (TWGS dump says 500)
+HOLO_SCANNER_COST = 25_000  # s2: Iago (TWGS dump says 6,250)
+SCANNER_DENSITY = "density"
+SCANNER_HOLO = "holo"
+# s3: OldBBS_TW2002V8.faq.txt "S" column, MBBS manual and Gypsy for the restricted hulls.
+SCANNER_BY_HULL: dict[str, str | None] = {
+    "merchant_cruiser": SCANNER_HOLO,
+    "scout_marauder": SCANNER_DENSITY,
+    "missile_frigate": None,
+    "battleship": SCANNER_HOLO,
+    "corporate_flagship": SCANNER_HOLO,
+    "colonial_transport": None,
+    "cargotran": SCANNER_HOLO,
+    "merchant_freighter": SCANNER_HOLO,
+    "havoc_gunstar": SCANNER_HOLO,
+    "imperial_starship": SCANNER_HOLO,
+    "star_master": SCANNER_HOLO,
+    "constellation": SCANNER_DENSITY,
+    "tkhasi_orion": SCANNER_DENSITY,
+    "tholian_sentinel": SCANNER_HOLO,
+    "taurean_mule": SCANNER_HOLO,
+    "interdictor_cruiser": SCANNER_HOLO,
+    "escape_pod": None,
+}
+# s7: Bible / MBBS density chart. Only what this game has.
+DENSITY_PER_FIGHTER = 5
+DENSITY_PER_ARMID = 10
+DENSITY_PER_LIMPET = 2
+DENSITY_PER_SHIP = 40
+DENSITY_PER_PORT = 100
+DENSITY_PER_PLANET = 500
+PROBE_MAX_HOPS = 45  # s13: TWGS "Maximum Course Length"
+SCAN_TURNS_TW2002 = {SCANNER_DENSITY: 0, SCANNER_HOLO: 1}  # s5, s8
+
+
+def info_tw2002() -> bool:
+    return INFO_MODE == "tw2002"
+
+
+def scanner_room(class_key: str) -> str | None:
+    """The best scanner this hull can carry (s3)."""
+    return SCANNER_BY_HULL.get(class_key)
+
+
+def scan_tiers(scanner: str | None) -> list[str]:
+    """Scan modes a fitted scanner runs: a holo scanner also scans density (s2)."""
+    if scanner == SCANNER_HOLO:
+        return [SCANNER_DENSITY, SCANNER_HOLO]
+    if scanner == SCANNER_DENSITY:
+        return [SCANNER_DENSITY]
+    return []
+
+
+def scanner_cost(item: str) -> int:
+    return DENSITY_SCANNER_COST if item == "density_scanner" else HOLO_SCANNER_COST
+
+
+def scanner_offer(class_key: str, fitted: str | None) -> dict[str, int]:
+    """Scanner items StarDock will fit on this hull now: item -> price (s1-s3).
+
+    A hull takes one scanner; a holo replaces a density one. Nothing is offered
+    that the hull cannot carry or that would not be an upgrade.
+    """
+    room = scanner_room(class_key)
+    out: dict[str, int] = {}
+    if room is None:
+        return out
+    if fitted is None:
+        out["density_scanner"] = DENSITY_SCANNER_COST
+    if room == SCANNER_HOLO and fitted != SCANNER_HOLO:
+        out["holo_scanner"] = HOLO_SCANNER_COST
+    return out
+
+
+def scanner_value(scanner: str | None) -> int:
+    """Net-worth value of a fitted scanner (what it cost)."""
+    if scanner == SCANNER_HOLO:
+        return HOLO_SCANNER_COST
+    if scanner == SCANNER_DENSITY:
+        return DENSITY_SCANNER_COST
+    return 0
+
+
 def elimination_deaths(config=None) -> int:
     """Ship losses that remove a player for good. 0 means never (d19).
 

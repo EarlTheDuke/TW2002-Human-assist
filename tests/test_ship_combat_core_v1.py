@@ -36,6 +36,12 @@ ROOT = Path(__file__).resolve().parents[1]
 HULLS = [c for c in ShipClass if c is not ShipClass.ESCAPE_POD]  # the pod is not for sale
 
 
+@pytest.fixture(autouse=True)
+def _legacy_info(monkeypatch):
+    # These tests burn turns with a free scan; scanners are SCANNERS_HIDDEN_INFO.md's business.
+    monkeypatch.setattr(K, "INFO_MODE", "legacy")
+
+
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
