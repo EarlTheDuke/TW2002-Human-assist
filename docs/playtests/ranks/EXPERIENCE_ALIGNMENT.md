@@ -96,3 +96,10 @@ Rejected stays 0 under both modes. Day-10 net worth under RANK_MODE tw2002 (seed
 | N3 | 99 | 921,876 | 602,442 | 0 / 0 |
 | N3 | 31 | 979,102 | 722,434 | 0 / 0 |
 
+## QC (experience alignment QC fixes)
+
+| bug | where | test |
+| --- | --- | --- |
+| RANK_MODE legacy: observation ship hints listed hulls an evil trader cannot buy (ship_min_alignment(spec, -1e9) vs legality default 0); blocked_by said 
+eeds None | observation.py affordable/next-up hints; legality.py blocked_by | 	est_legacy_evil_ship_hints_match_empty_buy_ship_list |
+| LEGACY_GOLDEN digests refreshed for the hint fix (B evil seat) | 	ests/test_experience_alignment_v1.py | 	est_legacy_is_unchanged |
