@@ -97,6 +97,7 @@ def _resolve_fighter_sector_combat(
     attack_pool = incoming_fighters if incoming_fighters is not None else attacker.ship.fighters
 
     defender_count = defender_dep.count
+    pot = int(defender_dep.toll_credits or 0)
     rng = universe.rng
     # Stochastic duel — each side loses losses proportional to opposing pool
     att_losses = min(attack_pool, int(defender_count * rng.uniform(0.8, 1.1)))
@@ -109,11 +110,20 @@ def _resolve_fighter_sector_combat(
         attacker.ship.fighters = attack_pool
 
     if defender_count <= 0:
+        # Iago: destroying toll fighters pays what they have collected.
+        # The number stays off the combat facts.
+        if K.sector_fighter_tw2002() and pot > 0:
+            attacker.credits += pot
         sector.fighters = None
         if attack_pool > 0 and incoming_fighters is not None:
+            placed = attack_pool
+            if K.sector_fighter_tw2002():
+                cap = K.sector_fighter_cap(bool(sector.planet_ids))
+                if placed > cap:
+                    placed = cap
             sector.fighters = FighterDeployment(
                 owner_id=attacker_id,
-                count=attack_pool,
+                count=placed,
                 mode=incoming_mode or FighterMode.DEFENSIVE,
             )
     else:

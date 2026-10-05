@@ -250,6 +250,13 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "pct": first("pct", 0)})
     if ak in (ActionKind.DEPOSIT_TREASURY, ActionKind.WITHDRAW_TREASURY):
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "amount": qty_for("amount", "amount")})
+    if ak is ActionKind.RECALL_DEPLOYED:
+        what = first("what", "fighters")
+        kind_ = first("kind", "armid")
+        key = what if what == "fighters" else kind_
+        return Action(kind=ak, args={"what": what, "qty": qty_for(key), "kind": kind_})
+    if ak is ActionKind.SURRENDER:
+        return Action(kind=ak, args={})
     raise AssertionError(f"no builder for {kind}")
 
 

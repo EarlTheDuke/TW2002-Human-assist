@@ -54,6 +54,8 @@ class ActionKind(str, Enum):
     PLANET_BUY_TRANSPORTER = "planet_buy_transporter"
     PLANET_TRANSPORT = "planet_transport"
     PLANET_DESTROY = "planet_destroy"
+    RECALL_DEPLOYED = "recall_deployed"
+    SURRENDER = "surrender"
 
 
 class Action(BaseModel):

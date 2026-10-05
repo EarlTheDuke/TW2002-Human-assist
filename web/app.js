@@ -2419,6 +2419,8 @@
     // fundamentally combat-posture events — rebucketed to Combat (A1).
     deploy_fighters:   { cat: "combat",    icon: "\u2708",  label: "DEPLOY FIGHTERS" },
     deploy_mines:      { cat: "combat",    icon: "\u2699",  label: "DEPLOY MINES" },
+    recall_deployed:   { cat: "combat",    icon: "\u2708",  label: "RECALL" },
+    surrender:         { cat: "combat",    icon: "\u2691",  label: "SURRENDER" },
     ferrengi_spawn:    { cat: "combat",    icon: "\ud83d\udc41", label: "FERRENGI SPAWN" },
     // --- Trade ----------------------------------------------------
     trade:             { cat: "trade",     icon: "\u21c4",  label: "TRADE" },

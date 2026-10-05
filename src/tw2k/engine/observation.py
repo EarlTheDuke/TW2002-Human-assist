@@ -184,6 +184,8 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.PROBE: ("target", "port_code"),
     EventKind.DEPLOY_FIGHTERS: ("qty", "mode"),
     EventKind.DEPLOY_MINES: ("qty", "kind"),
+    EventKind.RECALL_DEPLOYED: ("what", "qty", "kind"),
+    EventKind.SURRENDER: ("mode",),
     EventKind.MINE_DETONATED: ("hits", "damage", "victim"),
     EventKind.PHOTON_FIRED: ("target",),
     EventKind.PHOTON_HIT: ("target", "disabled_ticks"),
@@ -923,11 +925,14 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         ],
     }
     if sector.fighters:
-        info["fighter_group"] = {
+        group = {
             "owner_id": sector.fighters.owner_id,
             "count": sector.fighters.count,
             "mode": sector.fighters.mode.value,
         }
+        if sector.fighters.owner_id == player_id:
+            group["toll_credits"] = int(sector.fighters.toll_credits or 0)
+        info["fighter_group"] = group
     viewer = universe.players.get(player_id)
     xp = int(viewer.experience) if viewer is not None else 0
     if sector.port is not None:

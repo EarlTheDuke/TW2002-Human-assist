@@ -1061,7 +1061,7 @@
   // ---------------------------------------------------------------- S4: context verb groups
   // Group membership is presentation (where a button lives), never legality.
   const VERB_GROUPS = {
-    combat: ["attack", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic"],
+    combat: ["attack", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic", "recall_deployed", "surrender"],
     stardock: ["buy_ship", "buy_equip", "corp_create"],
     planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport", "planet_destroy"],
     comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
@@ -1118,6 +1118,8 @@
     photon_missile: { fields: [{ n: "target", l: "Target commander", t: "choice" }], note: "Disables the target's fighters for a tick." },
     deploy_fighters: { fields: [{ n: "qty", l: "Fighters to leave here", t: "int", max: "max" }, { n: "mode", l: "Mode", t: "choice" }] },
     deploy_mines: { fields: [{ n: "kind", l: "Mine type", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "kind" }], note: "Atomic mines detonate immediately." },
+    recall_deployed: { fields: [{ n: "what", l: "Pick up", t: "choice" }, { n: "kind", l: "Mine type", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "what" }] },
+    surrender: { fields: [], note: "Give up the ship to hostile defensive or toll fighters here." },
     deploy_atomic: { fields: [] },
     buy_ship: { fields: [{ n: "ship_class", l: "Ship class (affordable & allowed)", t: "choice" }] },
     buy_equip: { fields: [{ n: "item", l: "Item", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "item" }] },
@@ -1685,6 +1687,7 @@
     trade: "trade", trade_failed: "trade", buy_ship: "trade", buy_equip: "trade", planet_tax_payout: "trade",
     combat: "combat", ship_destroyed: "combat", player_eliminated: "combat", mine_detonated: "combat", photon_fired: "combat",
     photon_hit: "combat", atomic_detonation: "combat", port_destroyed: "combat", deploy_fighters: "combat", deploy_mines: "combat",
+    recall_deployed: "combat", surrender: "combat",
     ferrengi_attack: "combat", ferrengi_spawn: "combat", fed_response: "combat",
     hail: "comms", broadcast: "comms", corp_memo: "comms", corp_create: "comms", corp_invite: "comms", corp_join: "comms",
     corp_leave: "comms", corp_deposit: "comms", corp_withdraw: "comms", alliance_proposed: "comms", alliance_formed: "comms", alliance_broken: "comms",
@@ -1880,7 +1883,7 @@
     "atomic_detonation", "port_destroyed", "photon_fired", "photon_hit",
     "ferrengi_attack", "deploy_fighters", "deploy_mines", "ferrengi_spawn",
   ]);
-  const OWN_LAY_KINDS = new Set(["deploy_fighters", "deploy_mines", "photon_fired"]);
+  const OWN_LAY_KINDS = new Set(["deploy_fighters", "deploy_mines", "photon_fired", "recall_deployed", "surrender"]);
   function sinceTurnKey() {
     const seat = state.seat || (state.obs && state.obs.self_id) || "";
     return seat ? `tw2k_since_${seat}` : "";

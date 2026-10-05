@@ -203,6 +203,8 @@ class EventKind(str, Enum):
     PLANET_TRANSPORT = "planet_transport"
     PLANET_COLONISTS_KILLED = "planet_colonists_killed"
     PLANET_DESTROYED = "planet_destroyed"
+    RECALL_DEPLOYED = "recall_deployed"
+    SURRENDER = "surrender"
     BUILD_CITADEL = "build_citadel"
     CITADEL_COMPLETE = "citadel_complete"
     PLANET_TAX_PAYOUT = "planet_tax_payout"
@@ -300,6 +302,9 @@ class FighterDeployment(BaseModel):
     owner_id: str
     count: int
     mode: FighterMode = FighterMode.DEFENSIVE
+    # Credits toll fighters have collected and not yet been picked up.
+    # Default 0 so an older snapshot still loads. Hidden from outsiders.
+    toll_credits: int = 0
 
 
 class MineDeployment(BaseModel):

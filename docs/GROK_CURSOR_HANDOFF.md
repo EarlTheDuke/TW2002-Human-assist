@@ -48,6 +48,9 @@ Every new slice names the original Trade Wars rule and the file under `docs/refe
 
 ## Changelog
 
+### 2026-10-04 22:20 PT - Grok - a sector toll sits in a pot until you pick the fighters up
+- Recall, the v1.03d caps, a five-credit toll, and surrender are on. Offensive and defensive combat were left for the next slice. Ten planted misses each fail a test.
+
 ### 2026-10-04 16:45 PT - Grok - planet totals stop at the handbook and a sector stops at five
 - The score stays on the published base. Four planted misses each fail a test.
 
