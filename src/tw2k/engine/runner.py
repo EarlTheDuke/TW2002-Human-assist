@@ -738,6 +738,11 @@ def _handle_atomic_detonation(
     if sector.fighters is not None:
         if sector.fighters.owner_id != pid:
             sector_fighters_destroyed = sector.fighters.count
+            # Destroying toll fighters pays the pot to the detonator, same as combat.
+            if K.sector_fighter_tw2002():
+                pot = int(sector.fighters.toll_credits or 0)
+                if pot > 0:
+                    player.credits += pot
             sector.fighters = None
 
     if port_destroyed:
@@ -3106,23 +3111,8 @@ def _surrender_deployment(universe: Universe, pid: str, sector):
 def _handle_surrender(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not K.sector_fighter_tw2002():
         return ActionResult(ok=False, error="legacy sector fighters do not take a surrender")
-    player = universe.players[pid]
-    sector = universe.sectors[player.sector_id]
-    dep = _surrender_deployment(universe, pid, sector)
-    if dep is None:
-        return ActionResult(ok=False, error="no defensive or toll fighters to surrender to")
-    cost = K.TURN_COST["surrender"]
-    if player.turns_today + cost > player.turns_per_day:
-        return ActionResult(ok=False, error="out of turns")
-    universe.emit(
-        EventKind.SURRENDER,
-        actor_id=pid,
-        sector_id=sector.id,
-        payload={"mode": dep.mode.value},
-        summary=f"{player.name} surrendered to {dep.mode.value} fighters in {sector.id}",
-    )
-    _destroy_ship(universe, pid, reason="surrender", killer_id=dep.owner_id)
-    return ActionResult(ok=True, turns_spent=cost)
+    # Defensive fighters do not challenge yet; refuse until ship-combat-core turns this on.
+    return ActionResult(ok=False, error="surrender waits for the defensive challenge")
 
 
 _DISPATCH: dict[ActionKind, Callable] = {
