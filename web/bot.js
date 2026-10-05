@@ -376,7 +376,7 @@
       state.computerReady = true;
       setComputer(sessionStorage.getItem("tw2k_computer_" + obs.self_id) === "1", false);
     }
-    setText("sbDeaths", obs.deaths); setText("sbMaxDeaths", obs.max_deaths);
+    setText("sbDeaths", obs.deaths); setText("sbMaxDeaths", obs.max_deaths || "\u221e");
     setText("sbAlive", obs.alive === false ? "DESTROYED" : "");
     setText("sbCorp", obs.corp_ticker || "none");
     setText("sbLanded", obs.planet_landed === null || obs.planet_landed === undefined ? "in space" : `planet ${obs.planet_landed}`);

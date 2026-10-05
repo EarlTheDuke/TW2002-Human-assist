@@ -64,7 +64,7 @@ def _turns_left(player) -> int:
 
 
 def _warp_cost(player) -> int:
-    spec = K.ship_specs().get(player.ship.ship_class.value)
+    spec = K.hull_spec(player.ship.ship_class.value)
     if spec and "turns_per_warp" in spec:
         return int(spec["turns_per_warp"])
     return int(K.TURN_COST["warp"])
@@ -362,7 +362,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    reason="not a dispatched verb - use deploy_mines with kind=atomic (detonates immediately)"))
 
     # ---- S4 group 2: StarDock cluster -----------------------------------------
-    my_spec = K.ship_specs().get(player.ship.ship_class.value, {}) or {}
+    my_spec = K.hull_spec(player.ship.ship_class.value) or {}
     if not at_stardock:
         out.append(_la(ActionKind.BUY_SHIP, legal=False, reason="must be at StarDock (sector 1)",
                        params={"ship_class": {"type": "str", "required": True, "choices": []}}))

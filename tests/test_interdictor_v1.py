@@ -168,7 +168,8 @@ def test_only_the_lowest_id_planet_holds() -> None:
     assert [ev.payload["planet_id"] for ev in _holds(u)] == [88111]
 
 
-def test_the_quasar_can_destroy_the_held_ship() -> None:
+def test_the_quasar_can_destroy_the_held_ship(monkeypatch) -> None:
+    monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
     u, (attacker, owner, *_) = _make_universe(seed=15004)
     origin, here = _lane(u)
     _clear(u, here)

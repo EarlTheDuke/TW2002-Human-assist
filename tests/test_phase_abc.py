@@ -427,7 +427,8 @@ class TestPhaseA:
         assert res.ok, f"L1 citadel must be buildable from seed population alone: {res.error}"
         assert new_p.citadel_target == 1
 
-    def test_a4_player_eliminated_after_max_deaths(self):
+    def test_a4_player_eliminated_after_max_deaths(self, monkeypatch):
+        monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
         u, (a, *_) = _make_universe()
         a.alive = True
         a.deaths = 0
@@ -2046,7 +2047,8 @@ class TestPhaseLHintsAndSafety:
         assert "reroute" in hint
         assert "hunt the threat" in hint
 
-    def test_l4a_repeat_death_intel_escalates_on_last_life(self):
+    def test_l4a_repeat_death_intel_escalates_on_last_life(self, monkeypatch):
+        monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
         from tw2k.engine.observation import build_observation
 
         u, (a, *_) = _make_universe(seed=9301)
@@ -2344,9 +2346,10 @@ class TestPhaseLHintsAndSafety:
             "(flee-check may move the Ferrengi but no attack expected)"
         )
 
-    def test_l13_planet_orphan_event_on_elimination(self):
+    def test_l13_planet_orphan_event_on_elimination(self, monkeypatch):
         """When a solo-owned planet's owner is eliminated, the engine must
         emit a discrete planet_orphaned event (UI/spectator visibility)."""
+        monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
         from tw2k.engine.models import EventKind, Planet, PlanetClass
 
         u, (a, *_) = _make_universe(seed=9310)
@@ -2370,9 +2373,10 @@ class TestPhaseLHintsAndSafety:
         assert ev.payload["citadel_level"] == 2
         assert u.planets[99].owner_id is None
 
-    def test_l14_elimination_payload_lists_orphans(self):
+    def test_l14_elimination_payload_lists_orphans(self, monkeypatch):
         """The PLAYER_ELIMINATED event should include the orphaned planet ids
         in its payload for convenient post-match analysis."""
+        monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
         from tw2k.engine.models import EventKind, Planet, PlanetClass
 
         u, (a, *_) = _make_universe(seed=9311)
@@ -3051,10 +3055,11 @@ class TestPhaseOMatch13:
         assert a.last_death_day is None
         assert "YOU JUST DIED" not in obs2.action_hint
 
-    def test_o2_claim_planet_transfers_orphan(self):
+    def test_o2_claim_planet_transfers_orphan(self, monkeypatch):
         """Core happy-path: B lands on a true orphan created by A's
         elimination, then explicitly claims it. owner_id flips to B,
         PLANET_CLAIMED event fires."""
+        monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
         from tw2k.engine.models import EventKind, Planet, PlanetClass
 
         u, (a, b, *_) = _make_universe(seed=1302, players=3)

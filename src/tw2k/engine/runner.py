@@ -168,6 +168,9 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     }
     if result.turns_spent > 0 and (result.ok or charged_fail):
         player.turns_today += result.turns_spent
+    # Ship Destroyed already spent the day (DEATH_ESCAPE_PODS.md d9); do not run past it.
+    if K.death_tw2002() and player.turns_today > player.turns_per_day:
+        player.turns_today = player.turns_per_day
 
     # Flee penalty: the first turn-using action after a flee settles it. Land or port pays extra.
     if player.flee_penalty and player.turns_today > turns_before:
@@ -278,7 +281,7 @@ def _learn_sector(player, universe: Universe, sector_id: int) -> None:
 
 def _warp_cost_for(player) -> int:
     """Per-ship turns/warp; falls back to global TURN_COST['warp']."""
-    spec = K.ship_specs().get(player.ship.ship_class.value)
+    spec = K.hull_spec(player.ship.ship_class.value)
     if spec and "turns_per_warp" in spec:
         return int(spec["turns_per_warp"])
     return K.TURN_COST["warp"]
@@ -427,6 +430,9 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     if player.photon_damped_sector_id == player.sector_id and target_id != player.sector_id:
         _clear_photon_damp(player, player.sector_id)
     deaths_before = player.deaths
+    # A manual warp makes the sector left the previous sector (DEATH_ESCAPE_PODS.md d6).
+    # Set before the hazards: a ship that dies entering never left.
+    player.prev_sector_id = cur.id
     damage = _apply_sector_hazards(universe, pid, dest)
 
     # If destroyed by fighters, handler already ejected player
@@ -434,7 +440,9 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
         # Leave as-is after destruction
         pass
 
-    if player.alive:
+    # A tw2002 loss on entry leaves the pilot where the pod went (legacy moves on, as before).
+    died_entering = K.death_tw2002() and player.deaths != deaths_before
+    if player.alive and not died_entering:
         # Leave old sector
         try:
             universe.sectors[player.sector_id].occupant_ids.remove(pid)
@@ -984,7 +992,7 @@ def _planet_odds_fight(player, planet, on_shields_down=None) -> tuple[int, int, 
     # The original ten stay on the legacy table. A hull that table does not
     # list uses the live spec, or this wave falls through to 1.
     class_key = player.ship.ship_class.value
-    spec = K.SHIP_SPECS[class_key] if class_key in K.SHIP_SPECS else (K.ship_specs().get(class_key) or {})
+    spec = K.SHIP_SPECS[class_key] if class_key in K.SHIP_SPECS else (K.hull_spec(class_key) or {})
     wave_cap = (K.PLANET_OFFENSE_WAVE_NUM * (
         int(spec.get("max_fighters", 0) or 0) + int(spec.get("max_shields", 0) or 0)
     )) // K.PLANET_OFFENSE_WAVE_DEN
@@ -2519,7 +2527,7 @@ def _parse_defense_qty(action: Action) -> tuple[int | None, ActionResult | None]
 
 
 def _ship_defense_caps(player) -> tuple[int, int]:
-    spec = K.ship_specs().get(player.ship.ship_class.value, {}) or {}
+    spec = K.hull_spec(player.ship.ship_class.value) or {}
     return int(spec.get("max_fighters", 0) or 0), int(spec.get("max_shields", 0) or 0)
 
 
@@ -3238,6 +3246,7 @@ def _handle_retreat(universe: Universe, pid: str, action: Action) -> ActionResul
     if player.photon_damped_sector_id == here:
         _clear_photon_damp(player, here)
     player.fighter_challenge = None
+    player.prev_sector_id = here  # d6: a retreat sets the previous sector too
     player.sector_id = back
     player.end_port_visit()
     universe.sectors[back].occupant_ids.append(pid)

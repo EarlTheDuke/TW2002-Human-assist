@@ -77,6 +77,13 @@ class ExternalIdleTimeoutError(TimeoutError):
     """An unattended external seat exhausted its short idle window (Phase D P0)."""
 
 
+def _max_deaths(universe) -> int:
+    """Ship losses before elimination; 0 means no elimination (DEATH_ESCAPE_PODS.md d19)."""
+    from ..engine import constants as K
+
+    return K.elimination_deaths(universe.config)
+
+
 def _is_day_done(player) -> bool:
     """Player has no meaningful actions left for the day.
 
@@ -94,7 +101,7 @@ def _is_day_done(player) -> bool:
     ship = getattr(player, "ship", None)
     warp_cost = K.TURN_COST["warp"]
     if ship is not None:
-        spec = K.ship_specs().get(ship.ship_class.value)
+        spec = K.hull_spec(ship.ship_class.value)
         if spec and "turns_per_warp" in spec:
             warp_cost = int(spec["turns_per_warp"])
     from ..engine.economy import trade_turn_cost
@@ -1412,7 +1419,7 @@ class MatchRunner:
                 "experience": p.experience,
                 "rank": rank_for(p.experience),
                 "deaths": p.deaths,
-                "max_deaths": 3,
+                "max_deaths": _max_deaths(u),
                 "ship": p.ship.ship_class.value,
                 "fighters": p.ship.fighters,
                 "shields": p.ship.shields,
@@ -1597,7 +1604,7 @@ class MatchRunner:
                     "experience": p.experience,
                     "rank": rank_for(p.experience),
                     "deaths": p.deaths,
-                    "max_deaths": 3,
+                    "max_deaths": _max_deaths(u),
                     "ship": p.ship.ship_class.value,
                     "fighters": p.ship.fighters,
                     "shields": p.ship.shields,

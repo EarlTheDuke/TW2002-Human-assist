@@ -219,11 +219,12 @@ def _combat_arena(attacker_sector: int = 50):
     return u, a, b
 
 
-def test_pvp_kill_respawns_victim_without_crash():
+def test_pvp_kill_respawns_victim_without_crash(monkeypatch):
     """An overwhelming PvP kill must NOT crash, and the victim must respawn
     via `_destroy_ship` (eject to StarDock, death count +1, credit penalty,
     ship downgrade to Merchant Cruiser). Regression for match 2 bug M2-1.
     """
+    monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
     from tw2k.engine import constants as K
 
     u, atk, vic = _combat_arena(attacker_sector=50)
@@ -256,11 +257,12 @@ def test_pvp_kill_respawns_victim_without_crash():
     assert atk.ship.fighters > 7000
 
 
-def test_pvp_kill_elimination_after_max_deaths():
+def test_pvp_kill_elimination_after_max_deaths(monkeypatch):
     """After MAX_DEATHS_BEFORE_ELIM deaths the victim should stop respawning
     and be flagged `alive = False`. Exercises the other branch of
     `_destroy_ship`.
     """
+    monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
     from tw2k.engine import constants as K
 
     u, atk, vic = _combat_arena(attacker_sector=50)

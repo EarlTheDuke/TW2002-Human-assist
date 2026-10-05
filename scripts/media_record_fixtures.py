@@ -111,6 +111,9 @@ def main(argv: list[str] | None = None) -> int:
     # The clip tables were recorded on the three-round combat. ship-combat-core-v1 keeps that path as
     # COMBAT_MODE "legacy"; pin it so these fixtures stay a video test, not a combat-rules test.
     K.COMBAT_MODE = "legacy"
+    # Same for the death path (death-escape-pods-v1): the clips show the StarDock respawn and the
+    # three-death elimination. A tw2002 pod fixture set is follow-up.
+    K.DEATH_MODE = "legacy"
     # 1. single warp
     u = _universe()
     start = _deep(u)[0]

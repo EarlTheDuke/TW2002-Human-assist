@@ -137,6 +137,8 @@ class ShipClass(str, Enum):
     THOLIAN_SENTINEL = "tholian_sentinel"
     TAUREAN_MULE = "taurean_mule"
     INTERDICTOR_CRUISER = "interdictor_cruiser"
+    # Not for sale. A destroyed ship with a pod leaves its pilot in one (DEATH_MODE tw2002).
+    ESCAPE_POD = "escape_pod"
 
 
 class FighterMode(str, Enum):
@@ -434,6 +436,11 @@ class Player(BaseModel):
     fighter_challenge: dict[str, Any] | None = None
     # Set by a flee. The next counted land or port action costs FLEE_PENALTY_TURNS more.
     flee_penalty: bool = False
+    # Death (DEATH_MODE tw2002, DEATH_ESCAPE_PODS.md). The sector a warp or retreat left; a
+    # self-inflicted loss puts the pod there. pods_today counts ship losses on game day pods_day.
+    prev_sector_id: int | None = None
+    pods_day: int = 0
+    pods_today: int = 0
     # Sector of the open port visit. Cleared when the player leaves.
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None
@@ -758,6 +765,9 @@ class GameConfig(BaseModel):
     # safety branch still fires so a fully-wiped match can't hang the
     # scheduler, and the Universe.finished flag still trips on day cap.
     play_to_day_cap: bool = False
+    # Ship losses that remove a player for good (TWGS tournament lockout, "Pods and Deaths").
+    # None is the DEATH_MODE default: 3 in legacy, never in tw2002. 0 turns it off.
+    elimination_deaths: int | None = None
 
 
 # ---------------------------------------------------------------------------

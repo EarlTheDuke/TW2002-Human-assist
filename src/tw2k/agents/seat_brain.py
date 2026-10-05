@@ -528,6 +528,12 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
+        answer = self._leave_pod(v)
+        if answer is not None:  # death-escape-pods-v1: a pod flies to StarDock and trades itself in
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
 
         action, intent = (None, Intent())
         if mem.break_left > 0:
@@ -610,6 +616,25 @@ class SeatBrain:
         if alt is not None:
             return alt, alt_intent
         return action, intent
+
+    def _leave_pod(self, v: View) -> dict[str, Any] | None:
+        """In an escape pod: trade it at StarDock (it buys a Scout outright), else fly there."""
+        if v.ship_class != "escape_pod" or v.landed is not None:
+            return None
+        if v.here == STARDOCK:
+            if not v.ok("buy_ship"):
+                return None
+            choices = v.choices("buy_ship", "ship_class")
+            net = (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {})
+            for key, keep in (("cargotran", self.cash_buffer), ("scout_marauder", 0)):
+                cost = int(net.get(key) if net.get(key) is not None else 10**12)
+                if key in choices and v.credits - cost >= keep:
+                    return self._act("buy_ship", {"ship_class": key}, f"trade the escape pod for a {key} ({cost} cr net)")
+            return None
+        plot = self._plot(v, STARDOCK, "escape pod - autopilot to StarDock to trade it in")
+        if plot is None or self._banned_why(plot, v):
+            return None
+        return self._avoid_held(v, plot, Intent())[0]  # not back through fighters it fled today
 
     # ------------------------------------------------------------------ S6: failures / rivals
     def _ingest_failures(self, v: View) -> None:
