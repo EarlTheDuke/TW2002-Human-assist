@@ -339,17 +339,20 @@ def extern_sweep(universe: Universe) -> int:
                 owners.add(owner_id)
             if not owners:
                 owners.add("")
-            for oid in owners:
+            for oid in sorted(owners):
+                # Each owner learns only what THEY lost (no rival fighter counts / hidden limpets).
+                own_f = fighters if (not oid or oid == owner_id) else 0
+                own_m = mine_owners.get(oid, 0) if oid else mines
                 universe.emit(
                     EventKind.EXTERN_SWEEP,
                     actor_id=oid or None,
                     sector_id=int(sid),
                     payload={
                         "sector_id": int(sid),
-                        "fighters": fighters if (not oid or oid == owner_id) else 0,
-                        "mines": mine_owners.get(oid, 0) if oid else mines,
+                        "fighters": own_f,
+                        "mines": own_m,
                     },
-                    summary=f"Extern swept sector {sid}: {fighters} fighters, {mines} mines cleared",
+                    summary=f"Extern swept sector {sid}: your {own_f} fighters, {own_m} mines cleared",
                 )
                 events += 1
         apply_extern_planet_rule(universe, int(sid))
@@ -372,7 +375,10 @@ def handle_terra_colonists(universe: Universe, pid: str, action: Action) -> Acti
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     mode = str(action.args.get("mode") or "").lower()
-    qty = int(action.args.get("qty") or 0)
+    try:
+        qty = int(action.args.get("qty") or 0)
+    except (TypeError, ValueError):
+        return ActionResult(ok=False, error="qty must be a whole number")
     if qty <= 0:
         return ActionResult(ok=False, error="qty must be positive")
     if mode == "take":

@@ -2048,6 +2048,11 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     unit = prices.get(item or "")
     if unit is None:
         return ActionResult(ok=False, error=f"unknown item {item!r}")
+    if at_special and class0_tw2002():
+        # t14: the dock turn must be affordable before anything is bought (legal list == handler).
+        dock_need = trade_turn_cost(player)
+        if dock_need > 0 and player.turns_today + dock_need > player.turns_per_day:
+            return ActionResult(ok=False, error="out of turns")
     total = (
         K.hold_total_price(class_key, player.ship.holds, qty, day)
         if item == "holds"
