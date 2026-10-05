@@ -255,6 +255,27 @@ def _warp_cost_for(player) -> int:
     return K.TURN_COST["warp"]
 
 
+def _hostile_toll(universe: Universe, pid: str, sector):
+    """Hostile toll deployment in this sector, or None."""
+    dep = sector.fighters
+    if dep is None or dep.mode != FighterMode.TOLL:
+        return None
+    if dep.owner_id == pid or _are_allied(universe, pid, dep.owner_id):
+        return None
+    return dep
+
+
+def _toll_blocks(universe: Universe, pid: str, sector) -> bool:
+    """True when tw2002 toll fighters are here and the ship cannot pay the whole bill."""
+    if not K.sector_fighter_tw2002():
+        return False
+    dep = _hostile_toll(universe, pid, sector)
+    if dep is None:
+        return False
+    bill = int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+    return bill > 0 and universe.players[pid].credits < bill
+
+
 def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: str = "entering") -> int:
     """Mines, then the other side's sector fighters. Same math as a warp entry.
 
@@ -312,18 +333,31 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
                 # Auto-attack
                 _resolve_fighter_sector_combat(universe, pid, sector.id)
             elif f_mode == FighterMode.TOLL:
-                toll = sector.fighters.count  # 1 cr / fighter simplified = high disincentive
-                toll = min(player.credits, max(10, min(10000, sector.fighters.count)))
-                player.credits -= toll
-                if owner is not None:
-                    owner.credits += toll
-                universe.emit(
-                    EventKind.TRADE,
-                    actor_id=pid,
-                    sector_id=sector.id,
-                    payload={"toll_to": sector.fighters.owner_id, "amount": toll},
-                    summary=f"{player.name} paid {toll} cr toll to pass through {sector.id}",
-                )
+                if K.sector_fighter_tw2002():
+                    bill = int(sector.fighters.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+                    if bill > 0 and player.credits >= bill:
+                        player.credits -= bill
+                        sector.fighters.toll_credits = int(sector.fighters.toll_credits) + bill
+                        universe.emit(
+                            EventKind.TRADE,
+                            actor_id=pid,
+                            sector_id=sector.id,
+                            payload={"toll_to": sector.fighters.owner_id, "amount": bill},
+                            summary=f"{player.name} paid {bill} cr toll to pass through {sector.id}",
+                        )
+                else:
+                    toll = sector.fighters.count  # 1 cr / fighter simplified = high disincentive
+                    toll = min(player.credits, max(10, min(10000, sector.fighters.count)))
+                    player.credits -= toll
+                    if owner is not None:
+                        owner.credits += toll
+                    universe.emit(
+                        EventKind.TRADE,
+                        actor_id=pid,
+                        sector_id=sector.id,
+                        payload={"toll_to": sector.fighters.owner_id, "amount": toll},
+                        summary=f"{player.name} paid {toll} cr toll to pass through {sector.id}",
+                    )
     return damage
 
 
@@ -356,6 +390,8 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     held = _try_interdict(universe, pid, cur)
     if held is not None:
         return held
+    if _toll_blocks(universe, pid, dest):
+        return ActionResult(ok=False, error="toll fighters demand payment")
     if player.photon_damped_sector_id == player.sector_id and target_id != player.sector_id:
         _clear_photon_damp(player, player.sector_id)
     deaths_before = player.deaths
@@ -598,6 +634,12 @@ def _handle_deploy_fighters(universe: Universe, pid: str, action: Action) -> Act
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
 
+    if K.sector_fighter_tw2002() and (sector.fighters is None or sector.fighters.owner_id == pid):
+        cap = K.SECTOR_FIGHTER_CAP_WITH_PLANET if sector.planet_ids else K.SECTOR_FIGHTER_CAP
+        have = int(sector.fighters.count) if sector.fighters is not None else 0
+        if have + qty > cap:
+            return ActionResult(ok=False, error="sector fighter cap")
+
     if sector.fighters is None:
         sector.fighters = FighterDeployment(owner_id=pid, count=qty, mode=mode)
     elif sector.fighters.owner_id == pid:
@@ -636,6 +678,11 @@ def _handle_deploy_mines(universe: Universe, pid: str, action: Action) -> Action
     cost = K.TURN_COST["deploy_mines"]
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
+
+    if kind != MineType.ATOMIC and K.sector_fighter_tw2002():
+        sitting = sum(int(m.count) for m in sector.mines)
+        if sitting + qty > K.SECTOR_MINE_CAP:
+            return ActionResult(ok=False, error="sector mine cap")
 
     # ATOMIC mines detonate immediately — they don't sit in the sector.
     if kind == MineType.ATOMIC:
@@ -925,6 +972,8 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
     # An ally is still hostile for the landing. Sector hazards skip allied
     # mines and fighters on their own.
     hostile = planet.owner_id is not None and planet.owner_id != pid and not same_corp
+    if hostile and _toll_blocks(universe, pid, sector):
+        return ActionResult(ok=False, error="toll fighters demand payment")
     if hostile:
         deaths_before = player.deaths
         fighters_before = player.ship.fighters
@@ -2969,6 +3018,113 @@ def _handle_planet_destroy(universe: Universe, pid: str, action: Action) -> Acti
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def _handle_recall_deployed(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Pick up your own fighters or mines in the sector you are standing in."""
+    if not K.sector_fighter_tw2002():
+        return ActionResult(ok=False, error="legacy sector fighters have no recall")
+    player = universe.players[pid]
+    sector = universe.sectors[player.sector_id]
+    what = action.args.get("what")
+    if what not in ("fighters", "mines"):
+        return ActionResult(ok=False, error="what must be fighters or mines")
+    cost = K.TURN_COST["recall_deployed"]
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+
+    if what == "fighters":
+        dep = sector.fighters
+        if dep is None or dep.owner_id != pid or int(dep.count) <= 0:
+            return ActionResult(ok=False, error="no fighters of yours here")
+        room = K.equip_room(player.ship.ship_class.value, "fighters", int(player.ship.fighters))
+        if room is None:
+            room = int(dep.count)
+        raw = action.args.get("qty")
+        qty = int(dep.count) if raw is None else int(raw)
+        if qty <= 0 or qty > int(dep.count) or qty > room:
+            return ActionResult(ok=False, error="invalid fighter quantity")
+        share = 0
+        pot = int(dep.toll_credits or 0)
+        if pot > 0:
+            share = pot if qty == int(dep.count) else pot * qty // int(dep.count)
+            dep.toll_credits = pot - share
+        dep.count = int(dep.count) - qty
+        if dep.count <= 0:
+            sector.fighters = None
+        player.ship.fighters = int(player.ship.fighters) + qty
+        player.credits += share
+        universe.emit(
+            EventKind.RECALL_DEPLOYED,
+            actor_id=pid,
+            sector_id=sector.id,
+            payload={"what": "fighters", "qty": qty},
+            summary=f"{player.name} recalled {qty} fighters in {sector.id}",
+        )
+        return ActionResult(ok=True, turns_spent=cost)
+
+    try:
+        kind = MineType(action.args.get("kind", "armid"))
+    except ValueError:
+        return ActionResult(ok=False, error="invalid mine type")
+    if kind == MineType.ATOMIC:
+        return ActionResult(ok=False, error="atomic mines do not sit in a sector")
+    existing = next((m for m in sector.mines if m.owner_id == pid and m.kind == kind), None)
+    if existing is None or int(existing.count) <= 0:
+        return ActionResult(ok=False, error="no mines of yours here")
+    aboard = sum(int(v) for v in (player.ship.mines or {}).values())
+    room = K.equip_room(player.ship.ship_class.value, "armid_mines", aboard)
+    if room is None:
+        room = int(existing.count)
+    raw = action.args.get("qty")
+    qty = int(existing.count) if raw is None else int(raw)
+    if qty <= 0 or qty > int(existing.count) or qty > room:
+        return ActionResult(ok=False, error="invalid mine quantity")
+    existing.count = int(existing.count) - qty
+    if existing.count <= 0:
+        sector.mines.remove(existing)
+    player.ship.mines[kind] = int(player.ship.mines.get(kind, 0)) + qty
+    universe.emit(
+        EventKind.RECALL_DEPLOYED,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={"what": "mines", "qty": qty, "kind": kind.value},
+        summary=f"{player.name} recalled {qty} {kind.value} mines in {sector.id}",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _surrender_deployment(universe: Universe, pid: str, sector):
+    dep = sector.fighters
+    if dep is None or int(dep.count) <= 0:
+        return None
+    if dep.owner_id == pid or _are_allied(universe, pid, dep.owner_id):
+        return None
+    if dep.mode not in (FighterMode.DEFENSIVE, FighterMode.TOLL):
+        return None
+    return dep
+
+
+def _handle_surrender(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if not K.sector_fighter_tw2002():
+        return ActionResult(ok=False, error="legacy sector fighters do not take a surrender")
+    player = universe.players[pid]
+    sector = universe.sectors[player.sector_id]
+    dep = _surrender_deployment(universe, pid, sector)
+    if dep is None:
+        return ActionResult(ok=False, error="no defensive or toll fighters to surrender to")
+    cost = K.TURN_COST["surrender"]
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    universe.emit(
+        EventKind.SURRENDER,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={"mode": dep.mode.value},
+        summary=f"{player.name} surrendered to {dep.mode.value} fighters in {sector.id}",
+    )
+    _destroy_ship(universe, pid, reason="surrender", killer_id=dep.owner_id)
+    return ActionResult(ok=True, turns_spent=cost)
+
+
 _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.WARP: _handle_warp,
     ActionKind.TRADE: _handle_trade,
@@ -3014,6 +3170,8 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.PLANET_BUY_TRANSPORTER: _handle_planet_buy_transporter,
     ActionKind.PLANET_TRANSPORT: _handle_planet_transport,
     ActionKind.PLANET_DESTROY: _handle_planet_destroy,
+    ActionKind.RECALL_DEPLOYED: _handle_recall_deployed,
+    ActionKind.SURRENDER: _handle_surrender,
 }
 
 

@@ -321,8 +321,10 @@ from scratch in the same wall-clock time, so scan your `orphaned_planets`
 list every turn once it starts populating.
 
 ================ COMBAT & SURVIVAL ================
-- `deploy_fighters {"qty":N,"mode":"defensive|offensive|toll"}` — claim a sector.
-   offensive attacks intruders. toll charges 100 cr per friendly warp.
+- `deploy_fighters {"qty":N,"mode":"defensive|offensive|toll"}` — leave fighters in this sector.
+   Offensive fighters attack intruders. A toll is 5 credits per fighter, paid into the sector. You collect it by recalling those fighters here.
+- `recall_deployed {"what":"fighters|mines","qty":N}` — pick up your own fighters or mines in this sector. Mines also take `kind`.
+- `surrender {}` — give up your ship to hostile defensive or toll fighters in this sector.
 - `deploy_mines {"qty":N,"kind":"armid|limpet|atomic"}` — armid damages, limpet tracks, atomic destroys a PORT.
 - `attack {"target":"<player_id_or_ferrengi_id>"}` — target must be in your sector. 5 turns.
 - `photon_missile {"target":"<player_id>"}` — disables their fighters a tick. 12k cr.
@@ -395,7 +397,7 @@ not safe. Cargo ships are efficient haulers, not reliable route-clearers.
 
 ================ COMPLETE ACTION VERB LIST ================
 Core:        warp trade scan wait
-Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
+Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic recall_deployed surrender
 Recon:       probe query_limpets plot_course
 Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm planet_transwarp planet_buy_transporter planet_transport planet_destroy
 StarDock:    buy_ship buy_equip
@@ -474,14 +476,14 @@ loses money.
 Ports open empty. A selling port refills a little when the day ticks. A buying port takes the goods you are carrying now. On the first day, sell what you carry to a buying port, or wait for the day tick, instead of hunting a selling port for stock.
 
 ================ COMBAT & SURVIVAL ================
-`deploy_fighters`, `deploy_mines`, `attack`, `photon_missile`, `probe`, `plot_course`, `query_limpets`.
+`deploy_fighters`, `recall_deployed`, `surrender`, `deploy_mines`, `attack`, `photon_missile`, `probe`, `plot_course`, `query_limpets`.
 FERRENGI are NPC pirates. Ship loss → respawn at StarDock; third death → elimination.
 Death is also route intel: if the same sector, attacker, or cargo loop kills you, reconsider whether to
 reroute, scout/probe, re-arm, buy a combat-capable ship, hunt the threat, or knowingly accept the risk.
 
 ================ COMPLETE ACTION VERB LIST ================
 Core:        warp trade scan wait
-Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic
+Combat:      deploy_fighters deploy_mines attack photon_missile deploy_atomic recall_deployed surrender
 Recon:       probe query_limpets plot_course
 Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm planet_transwarp planet_buy_transporter planet_transport planet_destroy
 StarDock:    buy_ship buy_equip

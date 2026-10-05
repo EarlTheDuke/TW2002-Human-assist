@@ -43,7 +43,7 @@ from . import constants as K
 from .actions import ActionKind
 from .combat import _are_allied
 from .economy import port_buy_price, port_sell_price, trade_turn_cost
-from .models import Commodity, PortClass, Universe
+from .models import Commodity, FighterMode, PortClass, Universe
 
 TRADE_COMMODITIES = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)
 
@@ -242,6 +242,21 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     from .ferrengi import _ferrengi_by_name  # noqa: F401  (documented target resolver)
     from .runner import _bfs_path, _planet_was_orphaned
 
+    if K.sector_fighter_tw2002():
+        toll_due: dict[str, int] = {}
+        for wid in warps:
+            dest = universe.sectors.get(int(wid))
+            dep = dest.fighters if dest is not None else None
+            if dep is None or dep.mode != FighterMode.TOLL:
+                continue
+            if dep.owner_id == player_id or _are_allied(universe, player_id, dep.owner_id):
+                continue
+            toll_due[str(wid)] = int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+        for la in out:
+            if la.kind == ActionKind.WARP.value:
+                la.params["toll_due_by"] = toll_due
+                break
+
     # ---- comms (precise) ------------------------------------------------------
     # hail: engine only requires a known player id (alive or not); we list alive first.
     others_all = [pid for pid in universe.players if pid != player_id]
@@ -280,29 +295,49 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     df_cost = int(K.TURN_COST["deploy_fighters"])
     fighters = int(player.ship.fighters or 0)
+    fighter_max = fighters
+    if K.sector_fighter_tw2002() and (sector.fighters is None or sector.fighters.owner_id == player_id):
+        cap = K.SECTOR_FIGHTER_CAP_WITH_PLANET if sector.planet_ids else K.SECTOR_FIGHTER_CAP
+        have = int(sector.fighters.count) if sector.fighters is not None else 0
+        fighter_max = min(fighters, max(0, cap - have))
     if fighters <= 0:
         reason = "no fighters aboard"
     elif in_fedspace:
         reason = "cannot deploy fighters in FedSpace"
+    elif fighter_max <= 0:
+        reason = "sector fighter cap"
     else:
         reason = _need_turns(player, df_cost)
     out.append(_la(ActionKind.DEPLOY_FIGHTERS, legal=reason is None, reason=reason, cost=df_cost,
-                   params={"qty": {"type": "int", "required": True, "min": 1, "max": fighters},
+                   params={"qty": {"type": "int", "required": True, "min": 1, "max": fighter_max},
                            "mode": {"type": "str", "required": True, "choices": ["defensive", "offensive", "toll"]},
                            "existing_here": ({"owner_id": sector.fighters.owner_id, "count": sector.fighters.count}
                                              if sector.fighters else None)}))
 
     dm_cost = int(K.TURN_COST["deploy_mines"])
     mines_have = {k.value if hasattr(k, "value") else str(k): int(v) for k, v in (player.ship.mines or {}).items() if int(v) > 0}
+    mine_room = None
+    if K.sector_fighter_tw2002():
+        sitting = sum(int(m.count) for m in sector.mines)
+        mine_room = max(0, K.SECTOR_MINE_CAP - sitting)
+    mine_max = {}
+    for kind_name, have in mines_have.items():
+        if kind_name == "atomic" or mine_room is None:
+            mine_max[kind_name] = have
+        else:
+            mine_max[kind_name] = min(have, mine_room)
+    mine_choices = sorted(k for k, n in mine_max.items() if n > 0)
     if not mines_have:
         reason = "no mines aboard (buy_equip armid_mines / limpet_mines / atomic_mines)"
     elif in_fedspace:
         reason = "cannot deploy mines in FedSpace"
+    elif not mine_choices:
+        reason = "sector mine cap"
     else:
         reason = _need_turns(player, dm_cost)
     out.append(_la(ActionKind.DEPLOY_MINES, legal=reason is None, reason=reason, cost=dm_cost,
-                   params={"kind": {"type": "str", "required": True, "choices": sorted(mines_have)},
-                           "qty": {"type": "int", "required": True, "min": 1, "max_by": mines_have}}))
+                   params={"kind": {"type": "str", "required": True, "choices": mine_choices},
+                           "qty": {"type": "int", "required": True, "min": 1, "max_by": mine_max}}))
     # deploy_atomic has no handler in the engine dispatch table; atomics detonate via deploy_mines kind=atomic.
     out.append(_la(ActionKind.DEPLOY_ATOMIC, legal=False,
                    reason="not a dispatched verb - use deploy_mines with kind=atomic (detonates immediately)"))
@@ -787,6 +822,61 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     out.append(_la(ActionKind.PLANET_DESTROY, legal=destroy_reason is None, reason=destroy_reason,
                    cost=destroy_cost,
                    params={"planet_id": {"type": "int", "required": True, "choices": destroy_choices}}))
+
+    recall_cost = int(K.TURN_COST["recall_deployed"])
+    what_choices: list[str] = []
+    max_by: dict[str, int] = {}
+    mine_kinds: list[str] = []
+    if not K.sector_fighter_tw2002():
+        recall_reason = "legacy sector fighters have no recall"
+    else:
+        dep = sector.fighters
+        if dep is not None and dep.owner_id == player_id and int(dep.count) > 0:
+            room = K.equip_room(player.ship.ship_class.value, "fighters", int(player.ship.fighters or 0))
+            if room is None:
+                room = int(dep.count)
+            if room > 0:
+                what_choices.append("fighters")
+                max_by["fighters"] = min(int(dep.count), room)
+        aboard = sum(int(v) for v in (player.ship.mines or {}).values())
+        mine_room = K.equip_room(player.ship.ship_class.value, "armid_mines", aboard)
+        for mine in sector.mines:
+            if mine.owner_id != player_id or int(mine.count) <= 0:
+                continue
+            if mine.kind.value == "atomic":
+                continue
+            room = int(mine.count) if mine_room is None else min(int(mine.count), mine_room)
+            if room <= 0:
+                continue
+            mine_kinds.append(mine.kind.value)
+            max_by[mine.kind.value] = room
+        if mine_kinds:
+            what_choices.append("mines")
+            max_by["mines"] = max(max_by[k] for k in mine_kinds)
+        if not what_choices:
+            recall_reason = "nothing of yours to pick up here"
+        else:
+            recall_reason = _need_turns(player, recall_cost)
+    out.append(_la(ActionKind.RECALL_DEPLOYED, legal=recall_reason is None, reason=recall_reason,
+                   cost=recall_cost,
+                   params={"what": {"type": "str", "required": True, "choices": what_choices},
+                           "kind": {"type": "str", "required": False, "choices": sorted(mine_kinds)},
+                           "qty": {"type": "int", "required": False, "min": 1, "max_by": max_by}}))
+
+    surrender_cost = int(K.TURN_COST["surrender"])
+    dep = sector.fighters
+    if not K.sector_fighter_tw2002():
+        surrender_reason = "legacy sector fighters do not take a surrender"
+    elif dep is None or int(dep.count) <= 0:
+        surrender_reason = "no defensive or toll fighters to surrender to"
+    elif dep.owner_id == player_id or _are_allied(universe, player_id, dep.owner_id):
+        surrender_reason = "those fighters are not hostile"
+    elif dep.mode not in (FighterMode.DEFENSIVE, FighterMode.TOLL):
+        surrender_reason = "offensive fighters do not take a surrender"
+    else:
+        surrender_reason = _need_turns(player, surrender_cost)
+    out.append(_la(ActionKind.SURRENDER, legal=surrender_reason is None, reason=surrender_reason,
+                   cost=surrender_cost, params={}))
 
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}

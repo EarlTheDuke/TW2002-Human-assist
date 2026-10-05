@@ -270,6 +270,8 @@ TURN_COST = {
     "planet_buy_transporter": 0,
     "planet_transport": 1,
     "planet_destroy": 1,
+    "recall_deployed": 1,
+    "surrender": 1,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -897,6 +899,27 @@ PLANET_MAX_STOCK = {
 
 def planet_limits_on() -> bool:
     return PLANET_ECONOMY_MODE == "tw2002"
+
+
+# "tw2002" is the sector-fighter slice: recall, the v1.03d caps, a 5-credit
+# toll that sits on the fighters, and surrender. "legacy" is the old path.
+# Iago_War_Manual.txt for the v1.03d caps. v3 numbers were not found.
+# formulas.html and Iago for the 5-credit toll.
+SECTOR_FIGHTER_MODE = "tw2002"
+SECTOR_FIGHTER_CAP = 5000
+SECTOR_FIGHTER_CAP_WITH_PLANET = 30000
+SECTOR_MINE_CAP = 99
+SECTOR_TOLL_CREDITS_PER_FIGHTER = 5
+
+
+def sector_fighter_tw2002() -> bool:
+    return SECTOR_FIGHTER_MODE == "tw2002"
+
+
+def sector_fighter_cap(has_planet: bool) -> int:
+    if has_planet:
+        return SECTOR_FIGHTER_CAP_WITH_PLANET
+    return SECTOR_FIGHTER_CAP
 
 
 def sector_has_planet_room(count: int) -> bool:
