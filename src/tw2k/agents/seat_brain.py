@@ -2427,7 +2427,9 @@ class SeatBrain:
         # Fall back to density when holo is unaffordable so day-1 never leaves blind.
         if room == SCANNER_HOLO and "holo_scanner" in items and fitted != SCANNER_HOLO:
             unit = int(prices.get("holo_scanner") or HOLO_SCANNER_COST)
-            keep = self.working_capital if fitted is None else self.cash_buffer
+            # Holo (first or density->holo) always keeps working_capital — a 25k buy
+            # on a thin buffer starves the CargoTran/genesis ladder (N2 day-10 bar).
+            keep = self.working_capital
             if v.credits >= unit + keep:
                 return "holo_scanner", unit
         if fitted is None and "density_scanner" in items:
@@ -2444,12 +2446,10 @@ class SeatBrain:
         if choice is None:
             return None
         item, unit = choice
+        # Match _scanner_item_choice: holo keeps working_capital; density keeps cash_buffer.
         keep = self.working_capital if item == "holo_scanner" else self.cash_buffer
-        if v.credits < unit:
+        if v.credits < unit + keep:
             return None
-        if v.credits - unit < keep:
-            if item != "density_scanner" or v.credits < unit + self.cash_buffer:
-                return None
         return self._act("buy_equip", {"item": item, "qty": 1},
                          f"fit {item} ({unit} cr) so fogged neighbors can be mapped")
 
