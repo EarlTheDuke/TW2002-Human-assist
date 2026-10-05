@@ -949,6 +949,9 @@ class SeatBrain:
     def _at_stardock(self, v: View):
         if v.here != STARDOCK or self._hauling_organics(v):
             return None
+        back = self._return_colonists_to_terra(v)
+        if back is not None:
+            return back, Intent("acquire")
         reserve = self._citadel_reserve(v)
         l1_credits = CITADEL_TIER_COST[0][0]
         genesis_price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
@@ -1010,8 +1013,14 @@ class SeatBrain:
     def _travel(self, v: View):
         if v.landed is not None:
             return None
+        # QC class0-terra-v1: the defence trip may end at Alpha Centauri / Rylos, where
+        # _at_stardock never runs - buy here or the seat ping-pongs back to the port forever.
+        if v.here != STARDOCK and self._at_equip_port(v):
+            defense = self._buy_defense(v)
+            if defense is not None:
+                return defense, Intent("acquire")
         if self._needs_dock_defense(v):
-            dock = self._nearest_equip_port(v)
+            dock = self._defence_dock(v)
             label = ("under-armed with cash - Class 0 for fighters/shields"
                      if dock != STARDOCK else
                      "under-armed with cash - StarDock for fighters/shields")
@@ -1034,6 +1043,11 @@ class SeatBrain:
             plot = self._plot(v, home, "ferry colonists home")
             if plot:
                 return plot, Intent("colonize", home)
+        if (self._stuck_colonists(v) and v.here != STARDOCK
+                and getattr(self, "_terra_full_day", None) != v.day):
+            plot = self._plot(v, STARDOCK, "home world is full - return colonists to Terra")
+            if plot:
+                return plot, Intent("acquire", STARDOCK)
         # Another genesis world can start its next citadel right now: go build it.
         other = self._buildable_elsewhere(v)
         if other is not None and v.colonists_aboard == 0:
@@ -2353,6 +2367,41 @@ class SeatBrain:
                 best_hops = h
                 best = sid
         return best
+
+    def _stuck_colonists(self, v: View) -> bool:
+        """tw2002: colonists aboard that the full home world refused (holds otherwise stay full forever)."""
+        return (class0_tw2002() and v.colonists_aboard > 0 and self.mem is not None
+                and self.mem.home_planet in self.mem.no_colonist_room)
+
+    def _return_colonists_to_terra(self, v: View) -> dict[str, Any] | None:
+        """QC class0-terra-v1: hand refused colonists back with terra_colonists mode=leave.
+
+        Seed 250925 solo N2: the last 75-colonist load hit the 3000 cap at home and
+        the CargoTran traded with full holds for two days (NW 350k -> 174k).
+        """
+        if not self._stuck_colonists(v):
+            return None
+        modes = {str(x) for x in v.choices("terra_colonists", "mode")} if v.ok("terra_colonists") else set()
+        qty = min(v.colonists_aboard, v.max_by("terra_colonists", "qty", "leave")) if "leave" in modes else 0
+        if qty <= 0:
+            self._terra_full_day = v.day  # Terra refilled: do not fly back again today (no ping-pong)
+            return None
+        return self._act("terra_colonists", {"mode": "leave", "qty": int(qty)},
+                         f"home world is full - leave {qty} colonists at Terra")
+
+    def _defence_dock(self, v: View) -> int:
+        """Where the N2 defence trip goes: StarDock while the seat has business there.
+
+        QC class0-terra-v1: the old StarDock trip was also where a 20-hold N2 seat
+        bought its CargoTran and loaded colonists (the ferry gate needs 25 free
+        holds). Sending it to Alpha Centauri / Rylos instead silently ended
+        colonisation (seed 250925 P3: 1745 -> 20 colonists by day 10).
+        """
+        if self._cargotran_affordable(v) or self._needs_stardock(v):
+            return STARDOCK
+        if v.worlds() and v.colonists_aboard == 0 and self._colonists_needed(v) > 0:
+            return STARDOCK
+        return self._nearest_equip_port(v)
 
     def _at_equip_port(self, v: View) -> bool:
         if v.here == STARDOCK:

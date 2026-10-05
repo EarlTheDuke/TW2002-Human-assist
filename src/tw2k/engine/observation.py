@@ -1832,14 +1832,27 @@ def _action_hint(
             "At StarDock: buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/"
             "genesis/photon_missiles/ether_probes/colonists), corp_create legal here."
         ]
+        if K.class0_tw2002() and universe is not None and getattr(universe, "terra_colonists", None) is not None:
+            bits[0] = (
+                "At StarDock (Terra): buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/"
+                "genesis/photon_missiles/ether_probes), terra_colonists (take/leave), corp_create legal here."
+            )
         if full_hints:
             ship_sd = getattr(player, "ship", None) if player is not None else None
             if ship_sd is not None:
                 free = getattr(ship_sd, "cargo_free", None)
+                terra_hint = K.class0_tw2002() and getattr(universe, "terra_colonists", None) is not None
                 if isinstance(free, int) and free > 0:
-                    bits.append(
-                        f"Cargo free={free} — `buy_equip item=colonists qty={free}` loads Terra colonists at 10 cr each."
-                    )
+                    if terra_hint:  # CLASS0_TERRA.md: colonists come from Terra, not buy_equip
+                        take = min(free, int(universe.terra_colonists))
+                        bits.append(
+                            f"Cargo free={free} — `terra_colonists mode=take qty={take}` loads Terra colonists "
+                            f"(free, {int(K.TERRA_LOAD_TURNS)} turn, pool {int(universe.terra_colonists)})."
+                        )
+                    else:
+                        bits.append(
+                            f"Cargo free={free} — `buy_equip item=colonists qty={free}` loads Terra colonists at 10 cr each."
+                        )
                 credits_now = int(getattr(player, "credits", 0) or 0)
                 spec = K.hull_spec(getattr(getattr(ship_sd, "ship_class", None), "value", "")) or {}
                 fighter_cap = int(spec.get("max_fighters", 0) or 0)
@@ -1847,14 +1860,24 @@ def _action_hint(
                 fighter_headroom = max(0, fighter_cap - int(getattr(ship_sd, "fighters", 0) or 0))
                 shield_headroom = max(0, shield_cap - int(getattr(ship_sd, "shields", 0) or 0))
                 max_fighters = min(fighter_headroom, credits_now // fighter_px)
-                max_shields = min(shield_headroom, credits_now // 10)
-                max_colonists = min(int(free or 0), credits_now // K.COLONIST_PRICE)
-                bits.append(
-                    "StarDock max buy_equip now: "
-                    f"fighters {max_fighters}, shields {max_shields}, colonists {max_colonists}; "
-                    "valid items are fighters, shields, holds, armid_mines, limpet_mines, "
-                    "atomic_mines, genesis, photon_missiles, ether_probes, colonists."
-                )
+                if terra_hint:
+                    from .class0 import shield_unit_price
+                    max_shields = min(shield_headroom, credits_now // max(1, shield_unit_price(int(universe.day))))
+                    bits.append(
+                        "StarDock max buy_equip now: "
+                        f"fighters {max_fighters}, shields {max_shields}; "
+                        "valid items are fighters, shields, holds, armid_mines, limpet_mines, "
+                        "atomic_mines, genesis, photon_missiles, ether_probes (colonists: terra_colonists)."
+                    )
+                else:
+                    max_shields = min(shield_headroom, credits_now // 10)
+                    max_colonists = min(int(free or 0), credits_now // K.COLONIST_PRICE)
+                    bits.append(
+                        "StarDock max buy_equip now: "
+                        f"fighters {max_fighters}, shields {max_shields}, colonists {max_colonists}; "
+                        "valid items are fighters, shields, holds, armid_mines, limpet_mines, "
+                        "atomic_mines, genesis, photon_missiles, ether_probes, colonists."
+                    )
         hints.append(" ".join(bits))
 
         # Affordable-ship menu: list the ship classes the player can ACTUALLY

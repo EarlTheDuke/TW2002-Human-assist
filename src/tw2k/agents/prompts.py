@@ -567,9 +567,39 @@ _RANK_NOTE_TW2002 = (
 )
 
 
+# CLASS0_TERRA.md: the prompt text above describes CLASS0_MODE tw2002 (Terra).
+# Under CLASS0_MODE legacy `terra_colonists` is unsupported and colonists are
+# bought with buy_equip, so the pre-slice wording is restored byte for byte.
+_CLASS0_LEGACY_SWAPS: tuple[tuple[str, str], ...] = (
+    ("`buy_equip item=genesis qty=1` + `terra_colonists mode=take qty=<holds>` (colonists come from Terra in "
+     "sector 1, free, 1 turn; not buy_equip).",
+     "`buy_equip item=genesis qty=1` + `buy_equip item=colonists qty=<holds>`."),
+    ("  colonists       Terra (sector 1)    (use `terra_colonists`; free, 1 turn/load; pool-limited)",
+     "  colonists       10 cr each          (fill your cargo holds; ferry to your planets)"),
+    ('  2. terra_colonists {"mode":"take","qty":<cargo free>} ← free at Terra (sector 1), 1 turn, pool-limited',
+     '  2. buy_equip {"item":"colonists","qty":<cargo free>} ← 10 cr each, fills your holds'),
+    ('Authentic Terra-ferry loop: back at sector 1 → `terra_colonists {"mode":"take","qty":<holds>}` →',
+     "Authentic Terra-ferry loop: back at StarDock → `buy_equip item=colonists qty=<holds>` →"),
+)
+_CLASS0_TW2002_BLOCK_START = "Class 0 ports (CLASS0_MODE tw2002):"
+_CLASS0_TW2002_BLOCK_END = "================ MULTI-PLANET EXPANSION ================"
+
+
+def _class0_legacy_text(text: str) -> str:
+    for new, old in _CLASS0_LEGACY_SWAPS:
+        text = text.replace(new, old)
+    start = text.find(_CLASS0_TW2002_BLOCK_START)
+    end = text.find(_CLASS0_TW2002_BLOCK_END, start) if start >= 0 else -1
+    if start >= 0 and end > start:
+        text = text[:start] + text[end:]
+    return text
+
+
 def get_system_prompt() -> str:
     """System message for the current `TW2K_HINT_LEVEL` (``full`` or ``minimal``)."""
     text = _MATCH_PROMPT_MINIMAL if is_minimal() else _MATCH_PROMPT_FULL
+    if not K.class0_tw2002():
+        text = _class0_legacy_text(text)
     if K.rank_tw2002():
         text = text.replace("(alignment >= 2000, one in the game)", "(Federal Commission: alignment >= 1000, one in the game)")
         text = text + _RANK_NOTE_TW2002

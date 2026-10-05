@@ -626,6 +626,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         equip_max: dict[str, int] = {}
         for item, unit in prices.items():
             if item == "holds":
+                equip_max["holds"] = 0  # placeholder keeps legacy key order; filled below
                 continue
             afford = player.credits // unit if unit > 0 else 0
             mx = min(afford, cap_by[item]) if item in cap_by else afford
