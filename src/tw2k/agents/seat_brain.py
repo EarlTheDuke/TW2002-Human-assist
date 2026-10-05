@@ -937,7 +937,7 @@ class SeatBrain:
                 return self._act("buy_ship", {"ship_class": "cargotran"}, f"upgrade to CargoTran ({net} cr net)"), Intent("acquire")
         # Long-range scanner: expert habit is buy at StarDock (density early, holo when the
         # hull allows and cash is there). Fits before combat/genesis so fogged seats can map.
-        scan_buy = self._buy_scanner(v)
+        scan_buy = self._maybe_buy_hardware(v) or self._buy_scanner(v)
         if scan_buy is not None:
             return scan_buy, Intent("acquire")
         if self.feed_organics or self.value_allocator:
@@ -2438,6 +2438,34 @@ class SeatBrain:
         if room == SCANNER_DENSITY and fitted is None and "density_scanner" in items:
             unit = int(prices.get("density_scanner") or DENSITY_SCANNER_COST)
             return "density_scanner", unit
+        return None
+
+
+    def _maybe_buy_hardware(self, v):
+        """HARDWARE_MODE: carry a cloak with photons (no auto-buy of disruptors)."""
+        import tw2k.engine.constants as _HK
+        # Use sector id directly — never call _at_stardock here (it buys scanners/hardware).
+        if not _HK.hardware_tw2002() or int(getattr(v, "here", 0) or 0) != 1 or not v.ok("buy_equip"):
+            return None
+        items = set(str(x) for x in v.choices("buy_equip", "item"))
+        prices = (v.params("buy_equip").get("item") or {}).get("unit_price_by") or {}
+        ship = {}
+        try:
+            raw = getattr(v, "raw", None)
+            if isinstance(raw, dict):
+                ship = ((raw.get("self") or {}).get("ship")) or {}
+            elif hasattr(v, "ship") and isinstance(v.ship, dict):
+                ship = v.ship
+        except Exception:
+            ship = {}
+        cloaks = int(ship.get("cloaks") or 0)
+        photons = int(ship.get("photon_missiles") or 0)
+        if photons > 0 and cloaks <= 0 and "cloak" in items:
+            price = int(prices.get("cloak") or _HK.CLOAK_COST)
+            if int(v.credits) >= price + 5000:
+                return self._act("buy_equip", {"item": "cloak", "qty": 1},
+                                 "hardware: carry a cloak with the photon")
+        # Do not auto-buy disruptors here — expensive and steals ferry capital on bars.
         return None
 
     def _buy_scanner(self, v: View) -> dict[str, Any] | None:

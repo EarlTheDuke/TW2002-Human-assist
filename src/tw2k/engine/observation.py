@@ -501,22 +501,30 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         if other_id == player_id:
             continue
         if other_id in corp_mate_ids:
-            others.append({
+            entry_c = {
                 "id": other_id,
                 "name": other.name,
                 "is_corpmate": True,
                 "credits": other.credits,
-                "sector_id": other.sector_id,
                 "ship_class": other.ship.ship_class.value,
                 "fighters": other.ship.fighters,
                 "alive": other.alive,
                 "alignment": other.alignment,
-            })
+            }
+            # h15: cloaked ships are hidden even from corp Member Location
+            if not (K.hardware_tw2002() and getattr(other.ship, "cloaked", False)):
+                entry_c["sector_id"] = other.sector_id
+            else:
+                entry_c["cloaked"] = True
+            others.append(entry_c)
             if K.rank_tw2002():
                 others[-1]["rank"] = rank_for(other.experience, other.alignment)
         else:
             # Limited visibility — only what's recently visible through events or sharing same sector
-            visible = (other.sector_id == player.sector_id) or (other_id in sector.occupant_ids)
+            cloaked = K.hardware_tw2002() and getattr(other.ship, "cloaked", False)
+            visible = (not cloaked) and (
+                (other.sector_id == player.sector_id) or (other_id in sector.occupant_ids)
+            )
             entry: dict[str, Any] = {
                 "id": other_id,
                 "name": other.name,
@@ -932,9 +940,15 @@ def _ship_dict(ship) -> dict[str, Any]:
         "photon_missiles": getattr(ship, "photon_missiles", 0),
         "ether_probes": getattr(ship, "ether_probes", 0),
         "photon_disabled_ticks": getattr(ship, "photon_disabled_ticks", 0),
+        "cloaks": int(getattr(ship, "cloaks", 0) or 0),
+        "mine_disruptors": int(getattr(ship, "mine_disruptors", 0) or 0),
+        "cloaked": bool(getattr(ship, "cloaked", False)),
         "cargo_free": ship.cargo_free,
     }
     from . import constants as K
+    if not K.hardware_tw2002():  # HARDWARE_MODE legacy keeps the pre-ship-hardware ship view
+        for key in ("cloaks", "mine_disruptors", "cloaked"):
+            ship_view.pop(key, None)
     if K.info_tw2002():  # SCANNERS_HIDDEN_INFO.md s1-s3
         ship_view["scanner"] = getattr(ship, "scanner", None)
         ship_view["scanner_room"] = K.scanner_room(ship.ship_class.value)

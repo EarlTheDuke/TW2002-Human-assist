@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+import tw2k.engine.constants as _HWK
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.combat import _destroy_ship
@@ -9,6 +12,11 @@ from tw2k.engine.models import Commodity, EventKind, Planet, PlanetClass
 from tw2k.engine.observation import event_facts
 from tw2k.engine.runner import apply_action, tick_day
 
+
+@pytest.fixture(autouse=True)
+def _pin_hardware_legacy(monkeypatch):
+    """Pin HARDWARE_MODE legacy so old photon/armid bars do not drift."""
+    monkeypatch.setattr(_HWK, "HARDWARE_MODE", "legacy")
 
 def _lane(u):
     for sid, sector in u.sectors.items():

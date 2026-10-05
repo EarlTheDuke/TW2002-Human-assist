@@ -62,6 +62,8 @@ def traders_in(universe: Universe, viewer_id: str, sector) -> list[dict[str, Any
         o = universe.players[oid]
         if not o.alive:
             continue
+        if K.hardware_tw2002() and getattr(o.ship, "cloaked", False):
+            continue  # h15: cloaked ships hidden even from corp location / scans
         out.append({"id": oid, "name": o.name, "ship_name": o.ship.name, "ship_class": o.ship.ship_class.value,
                     "fighters": int(o.ship.fighters)})
     return out
@@ -85,9 +87,22 @@ def density_reading(universe: Universe, sector_id: int) -> dict[str, Any]:
                 anomaly = True
         elif m.kind == MineType.ARMID:
             density += K.DENSITY_PER_ARMID * int(m.count)
-    ships = sum(1 for oid in s.occupant_ids if oid in universe.players and universe.players[oid].alive)
+    cloaked_here = False
+    ships = 0
+    for oid in s.occupant_ids:
+        if oid not in universe.players:
+            continue
+        pl = universe.players[oid]
+        if not pl.alive:
+            continue
+        if K.hardware_tw2002() and getattr(pl.ship, "cloaked", False):
+            cloaked_here = True
+            continue  # h15: cloaked ship density 0
+        ships += 1
     ships += len(_ferrengi_in(universe, sector_id))
     density += K.DENSITY_PER_SHIP * ships
+    if cloaked_here:
+        anomaly = True
     if s.port is not None:
         density += K.DENSITY_PER_PORT
     density += K.DENSITY_PER_PLANET * sum(1 for p in s.planet_ids if p in universe.planets)

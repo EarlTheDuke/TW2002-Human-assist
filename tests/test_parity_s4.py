@@ -203,8 +203,11 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
     if ak is ActionKind.WARP:
         return Action(kind=ak, args={"target": first("target", (list(sector.warps) or [2])[0])})
     if ak in (ActionKind.SCAN, ActionKind.WAIT, ActionKind.LIFTOFF, ActionKind.QUERY_LIMPETS, ActionKind.DEPLOY_GENESIS,
-             ActionKind.CLAIM_PLANET, ActionKind.CORP_LEAVE, ActionKind.DEPLOY_ATOMIC):
+             ActionKind.CLAIM_PLANET, ActionKind.CORP_LEAVE, ActionKind.DEPLOY_ATOMIC,
+             ActionKind.CLOAK, ActionKind.REMOVE_LIMPET):
         return Action(kind=ak, args={})
+    if ak is ActionKind.FIRE_DISRUPTOR:
+        return Action(kind=ak, args={"target": first("target", (list(sector.warps) or [2])[0])})
     if ak is ActionKind.PROBE:
         return Action(kind=ak, args={"target": 2})
     if ak is ActionKind.PLOT_COURSE:

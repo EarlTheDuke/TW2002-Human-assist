@@ -643,7 +643,16 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
     `have` for a mine type is the total of every mine type already aboard.
     None means this roster does not cap that item (legacy mines, genesis, photons).
     Holds with no per-ship max still stop at 150.
+    Cloaks / disruptors use HARDWARE_MODE global caps when tw2002.
     """
+    if item == "cloak":
+        if not hardware_tw2002():
+            return 0
+        return max(0, int(CLOAK_MAX) - int(have))
+    if item == "mine_disruptor":
+        if not hardware_tw2002():
+            return 0
+        return max(0, int(DISRUPTOR_MAX) - int(have))
     spec = hull_spec(class_key) or {}
     field = _EQUIP_CAP_FIELD.get(item)
     if field is None:
@@ -1276,6 +1285,31 @@ ROB_SUCCESS_ALIGN_DIVISOR = 10_000
 ROB_SUCCESS_EXP_DIVISOR = 10_000
 STEAL_SUCCESS_ALIGN_DIVISOR = 6
 STEAL_SUCCESS_EXP_DIVISOR = 15
+
+# --- Ship hardware (HARDWARE_MODE) --------------------------------------------
+# docs/playtests/ships/SHIP_HARDWARE.md. "legacy" = today's bars (armid random/100,
+# same-sector player photon scramble, no cloak / disruptor / limpet removal).
+HARDWARE_MODE = "tw2002"
+
+
+def hardware_tw2002() -> bool:
+    return HARDWARE_MODE == "tw2002"
+
+
+# Armid (h1/h2). Legacy keeps ARMID_DAMAGE=100 and MINE_MAX_HITS_PER_MOVE random.
+ARMID_DAMAGE_TW2002 = 20
+# Photon wave duration in day-ticks (h7). TEDIT sample "1 seconds" -> 1 tick.
+PHOTON_WAVE_DURATION = 1
+# Cloak (h12-h16)
+CLOAK_COST = 25_000
+CLOAK_MAX = 5
+CLOAK_FAIL_RATE = 0.03  # TEDIT FailRate 3%; checked on tick_day while cloaked
+# Mine disruptor (h18-h20)
+DISRUPTOR_COST = 40_000
+DISRUPTOR_MAX = 10
+DISRUPTOR_CLEAR_MAX = 12  # Bible ceiling
+# Limpet removal (h22)
+LIMPET_REMOVAL_COST = 1_250
 
 # --- Ferrengi behaviour -------------------------------------------------------
 FERRENGI_MOVE_PROB = 0.6              # chance per day each Ferrengi moves

@@ -104,6 +104,8 @@ def clip(key: str, priority: int) -> dict:
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
+    K.HARDWARE_MODE = "legacy"  # fixture photon is same-sector player scramble
+
     global OUT
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", default=str(OUT), help="fixture directory (default tests/fixtures/media_events)")

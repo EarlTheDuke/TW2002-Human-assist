@@ -352,6 +352,11 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         open_targets = [pid for pid in hostile_players if not fedspace_protects(universe.players[pid])]
         fed_shielded = bool(hostile_players) and not open_targets
         hostile_players = open_targets
+    if K.hardware_tw2002():
+        hostile_players = [
+            pid for pid in hostile_players
+            if not getattr(universe.players[pid].ship, "cloaked", False)
+        ]
     attack_targets = hostile_players + ferrengi_ids
     if fed_shielded and not attack_targets:
         reason = "FedSpace - every trader here is fedsafe (attempting costs 200 alignment)"
@@ -376,18 +381,35 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     out.append(_la(ActionKind.ATTACK, legal=reason is None, reason=reason, cost=atk_cost, params=atk_params))
 
     photons = int(getattr(player.ship, "photon_missiles", 0) or 0)
-    if photons <= 0:
-        reason = "no photon missiles loaded (buy_equip photon_missiles at StarDock)"
-    elif fed_shielded and not hostile_players:
-        reason = "FedSpace forbids weapons fire at a fedsafe trader (attempting costs 100 alignment)"
-    elif not hostile_players:
-        reason = "needs a rival commander in this sector (not a corp mate or ally)"
-    elif in_fedspace and not K.rank_tw2002():
-        reason = "FedSpace forbids weapons fire (attempting costs 100 alignment)"
+    if K.hardware_tw2002():
+        from .hardware import photon_hull_ok
+        adj = [int(w) for w in (sector.warps or [])]
+        if photons <= 0:
+            reason = "no photon missiles loaded (buy_equip photon_missiles at StarDock)"
+        elif not photon_hull_ok(player):
+            reason = "only Missile Frigate or Imperial StarShip may fire photons"
+        elif in_fedspace and not K.rank_tw2002():
+            reason = "FedSpace forbids weapons fire (attempting costs 100 alignment)"
+        elif not adj:
+            reason = "no adjacent sector to photon"
+        else:
+            reason = _need_turns(player, atk_cost)
+        out.append(_la(ActionKind.PHOTON_MISSILE, legal=reason is None, reason=reason, cost=atk_cost,
+                       params={"target": {"type": "int", "required": True, "choices": adj,
+                                          "note": "adjacent sector id (photon wave)"}}))
     else:
-        reason = _need_turns(player, atk_cost)
-    out.append(_la(ActionKind.PHOTON_MISSILE, legal=reason is None, reason=reason, cost=atk_cost,
-                   params={"target": {"type": "str", "required": True, "choices": hostile_players}}))
+        if photons <= 0:
+            reason = "no photon missiles loaded (buy_equip photon_missiles at StarDock)"
+        elif fed_shielded and not hostile_players:
+            reason = "FedSpace forbids weapons fire at a fedsafe trader (attempting costs 100 alignment)"
+        elif not hostile_players:
+            reason = "needs a rival commander in this sector (not a corp mate or ally)"
+        elif in_fedspace and not K.rank_tw2002():
+            reason = "FedSpace forbids weapons fire (attempting costs 100 alignment)"
+        else:
+            reason = _need_turns(player, atk_cost)
+        out.append(_la(ActionKind.PHOTON_MISSILE, legal=reason is None, reason=reason, cost=atk_cost,
+                       params={"target": {"type": "str", "required": True, "choices": hostile_players}}))
 
     df_cost = int(K.TURN_COST["deploy_fighters"])
     fighters = int(player.ship.fighters or 0)
@@ -481,6 +503,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "holds": K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day),
             "colonists": int(K.COLONIST_PRICE),
         }
+        if K.hardware_tw2002():
+            prices["cloak"] = int(K.CLOAK_COST)
+            prices["mine_disruptor"] = int(K.DISRUPTOR_COST)
         mines_aboard = sum(int(v) for v in (player.ship.mines or {}).values())
         class_key = player.ship.ship_class.value
         have = {
@@ -492,6 +517,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "armid_mines": mines_aboard,
             "limpet_mines": mines_aboard,
             "atomic_mines": mines_aboard,
+            "cloak": int(getattr(player.ship, "cloaks", 0) or 0),
+            "mine_disruptor": int(getattr(player.ship, "mine_disruptors", 0) or 0),
         }
         cap_by = {
             "colonists": max(0, int(player.ship.cargo_free)),
@@ -503,6 +530,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         for capped in (
             "fighters", "shields", "holds", "genesis", "photon_missiles",
             "armid_mines", "limpet_mines", "atomic_mines",
+            "cloak", "mine_disruptor",
         ):
             room = K.equip_room(class_key, capped, have[capped])
             if room is not None:
@@ -520,6 +548,11 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             cap_by["holds"],
         )
         equip_choices = [i for i, m in equip_max.items() if m >= 1]
+        if K.hardware_tw2002():
+            from .hardware import photon_hull_ok
+            if not photon_hull_ok(player) and "photon_missiles" in equip_choices:
+                equip_choices = [i for i in equip_choices if i != "photon_missiles"]
+                equip_max["photon_missiles"] = 0
         out.append(_la(ActionKind.BUY_EQUIP, legal=bool(equip_choices),
                        reason=None if equip_choices else "cannot afford any equipment (or all capacities full)",
                        params={"item": {"type": "str", "required": True, "choices": equip_choices, "unit_price_by": prices},
@@ -726,6 +759,43 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     out.append(_la(ActionKind.CLAIM_PLANET, legal=reason is None, reason=reason, cost=cp_cost,
                    params={"planet_id": {"type": "int", "required": False,
                                          "choices": [landed_planet.id] if landed_planet is not None else []}}))
+
+    # ---- HARDWARE_MODE tw2002: cloak / disruptor / limpet removal ----------------
+    if K.hardware_tw2002():
+        cloaks = int(getattr(player.ship, "cloaks", 0) or 0)
+        if cloaks <= 0:
+            reason = "no cloaking device aboard (buy_equip cloak at StarDock)"
+        elif getattr(player.ship, "cloaked", False):
+            reason = "already cloaked"
+        else:
+            reason = None
+        out.append(_la(ActionKind.CLOAK, legal=reason is None, reason=reason, cost=0,
+                       params={"cloaks_aboard": cloaks}))
+
+        dis = int(getattr(player.ship, "mine_disruptors", 0) or 0)
+        adj = [int(w) for w in (sector.warps or [])]
+        if dis <= 0:
+            reason = "no mine disruptors aboard"
+        elif not adj:
+            reason = "no adjacent sector"
+        else:
+            reason = _need_turns(player, atk_cost)
+        out.append(_la(ActionKind.FIRE_DISRUPTOR, legal=reason is None, reason=reason, cost=atk_cost,
+                       params={"target": {"type": "int", "required": True, "choices": adj}}))
+
+        attached = sum(1 for lt in universe.limpets.values() if lt.target_id == player_id)
+        fee = int(K.LIMPET_REMOVAL_COST)
+        if player.sector_id != K.STARDOCK_SECTOR:
+            reason = "must be at StarDock"
+        elif attached <= 0:
+            reason = "no limpet attached"
+        elif player.credits < fee:
+            reason = "insufficient credits for limpet removal"
+        else:
+            reason = None
+        out.append(_la(ActionKind.REMOVE_LIMPET, legal=reason is None, reason=reason, cost=0,
+                       params={"fee": fee, "attached": attached}))
+    # legacy: cloak / fire_disruptor / remove_limpet are not offered at all (like rob/steal under ROB_MODE legacy)
 
     # ---- S4 group 4: corp / alliance / intel -----------------------------------
     out.append(_la(ActionKind.QUERY_LIMPETS, legal=True, cost=0,

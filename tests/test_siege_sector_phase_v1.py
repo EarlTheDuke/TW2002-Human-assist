@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+import tw2k.engine.constants as _HWK
 from tests.test_phase_abc import _make_universe
 from tests.test_siege_path_v1 import SECTOR, _place, _planet
 from tw2k.engine.actions import Action, ActionKind
@@ -19,6 +22,12 @@ from tw2k.engine.runner import apply_action
 
 COST = TURN_COST["land_planet"]
 
+
+
+@pytest.fixture(autouse=True)
+def _pin_hardware_legacy(monkeypatch):
+    """Pin HARDWARE_MODE legacy so old photon/armid bars do not drift."""
+    monkeypatch.setattr(_HWK, "HARDWARE_MODE", "legacy")
 
 def _armids(u, owner_id: str, count: int) -> None:
     u.sectors[SECTOR].mines.append(MineDeployment(owner_id=owner_id, kind=MineType.ARMID, count=count))
