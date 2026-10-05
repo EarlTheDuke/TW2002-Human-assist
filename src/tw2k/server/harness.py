@@ -46,6 +46,7 @@ from ..agents.external import (
 )
 from ..agents.prompts import format_observation, get_system_prompt
 from ..engine import build_observation
+from ..engine import constants as K
 from ..engine.actions import Action, ActionKind
 from ..engine.observation import _event_visible_to, event_view, status_fields
 from ..engine.runner import full_net_worth
@@ -324,9 +325,12 @@ def build_harness_router(runner) -> APIRouter:
     @router.get("/rules")
     async def rules(request: Request) -> dict[str, Any]:
         _authenticate_any(request)
+        verbs = [k.value for k in ActionKind]
+        if not K.rob_tw2002():
+            verbs = [v for v in verbs if v not in ("rob", "steal")]
         return {
             "system_prompt": get_system_prompt(),
-            "verbs": [k.value for k in ActionKind],
+            "verbs": verbs,
             "action_schema": Action.model_json_schema(),
             "notes": [
                 "Echo `turn_seq` from status/observation in your POST so stale replies are rejected.",

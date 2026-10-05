@@ -167,8 +167,7 @@ def handle_rob(universe: Universe, pid: str, action: Action) -> ActionResult:
         )
         return ActionResult(ok=True, turns_spent=cost)
 
-    take = min(amount, vault, cap if not over_cap else amount)
-    # success path never over_cap (over_cap always busts), but keep min safe
+    # success path never over_cap (over_cap always busts)
     take = min(amount, vault)
     if take <= 0:
         return ActionResult(ok=False, error="port has no credits to rob", turns_spent=cost)
@@ -259,10 +258,12 @@ def handle_steal(universe: Universe, pid: str, action: Action) -> ActionResult:
 
     st.current = int(st.current) - take
     old_qty = int(player.ship.cargo.get(commodity, 0))
-    player.ship.cargo[commodity] = old_qty + take
-    # Stolen goods: zero cost basis (free loot).
-    if old_qty <= 0:
-        player.ship.cargo_cost[commodity] = 0.0
+    new_qty = old_qty + take
+    player.ship.cargo[commodity] = new_qty
+    # Stolen goods are free loot: dilute any existing cost basis (do not keep
+    # the paid average across the stolen units — that understates sale profit).
+    old_basis = float(player.ship.cargo_cost.get(commodity, 0.0) or 0.0)
+    player.ship.cargo_cost[commodity] = (old_basis * old_qty) / new_qty if new_qty else 0.0
     player.last_crime_sector_id = sector.id
     align_hit = max(1, take // int(K.STEAL_SUCCESS_ALIGN_DIVISOR))
     exp_gain = max(1, take // int(K.STEAL_SUCCESS_EXP_DIVISOR))
