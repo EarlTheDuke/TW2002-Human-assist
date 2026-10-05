@@ -1962,10 +1962,12 @@ class SeatBrain:
         # Standing at a non-premium seller: fill holds. Don't detour for a
         # cheaper port while a day of runway remains — that detour is a
         # colonist ferry we don't get back (seeds 250925 and 31).
-        # The ladder (urgent off) keeps the old 19/25 gate, so its day-10
-        # numbers stay the bar. The allocator buys at the live price scale.
-        cheap = _organics_cheap_price() if urgent else 19
-        ceiling = _organics_price_ceiling() if urgent else 25
+        # Both the ladder and the allocator buy at the live price scale. The
+        # ladder's old fixed 19/25 gate never matched a tw2002 quote, so a
+        # hungry world sent it to a seller it then refused to buy from
+        # (ECONOMY_CALIBRATION.md).
+        cheap = _organics_cheap_price()
+        ceiling = _organics_price_ceiling()
         if offer is not None and offer[0] <= ceiling and (must or offer[0] <= cheap
                                                          or seller is None or int(seller[0]) == int(v.here)):
             price, cap = offer

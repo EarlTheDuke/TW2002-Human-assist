@@ -33,4 +33,4 @@ def test_economy_scale_report_prints_and_changes_nothing() -> None:
     assert "spawn probability left at 0.65" in out
     assert K.PORT_SPAWN_PROBABILITY == before == 0.65
     assert K.FIGHTER_COST == 50
-    assert K.COMMODITY_BASE_PRICE["equipment"] == 719
+    assert K.COMMODITY_BASE_PRICE["equipment"] == 102

@@ -19,7 +19,7 @@
   python scripts/seat_brain_acceptance.py n2
 
   # 6. N3 offline proof: value-per-turn vs the N2 ladder. Ferry turns < 40%,
-  #    day-10 net worth >= 145k on seed 250925, organics never 0.
+  #    day-10 net worth inside the 650k..1.45M band on seed 250925, organics never 0.
   python scripts/seat_brain_acceptance.py n3
 
 Exit code 0 = every action valid and the genesis -> land -> citadel -> ferry loop completed.
@@ -276,6 +276,8 @@ def prove_growth_replay(*, seed: int, brain: SeatBrain | None = None, days: int 
     samples = 0
     ferry_turns = 0
     total_turns = 0
+    realized_profit = 0
+    units_sold = 0
 
     def sample() -> None:
         nonlocal min_organics, samples
@@ -308,6 +310,10 @@ def prove_growth_replay(*, seed: int, brain: SeatBrain | None = None, days: int 
         res = apply_action(u, "P1", Action(**action))
         if not res.ok:
             rejected += 1
+        elif action["kind"] == "trade" and (action.get("args") or {}).get("side") == "sell" and p.trade_log:
+            sold = p.trade_log[-1]
+            realized_profit += int(sold.get("realized_profit") or 0)
+            units_sold += int(sold.get("qty") or 0)
         if u.day == day_before:
             spent = max(0, p.turns_today - turns_before)
             total_turns += spent
@@ -325,6 +331,8 @@ def prove_growth_replay(*, seed: int, brain: SeatBrain | None = None, days: int 
         "seed": seed,
         "day": u.day,
         "net_worth": full_net_worth(u, p),
+        "realized_profit": realized_profit,
+        "units_sold": units_sold,
         "credits": p.credits,
         "min_organics": min_organics,
         "zero_planets": sorted(zero_planets),
@@ -363,17 +371,23 @@ def run_n2(seeds: list[int]) -> int:
     return 0 if score_ok and failures == 0 else 1
 
 
-# Seed 250925 finishes at 149601 once the L2 haul is the credit and colonist
-# cost, not a free garrison. The previous bar was 140k.
+# Seed 250925, solo N3, 10 days, 1000 turns a day, 20k start. On the
+# corrected tw2002 price table it finishes at 956,428 net worth and realizes
+# about 54 credits per unit sold (ECONOMY_CALIBRATION.md). The old
+# ">= 145k" bar dated from the legacy 18 / 25 / 36 table (149,601) and let
+# a 7.26M overshoot through. The band fails a drift either way.
 N3_BENCH_SEED = 250925
-N3_MIN_NET_WORTH = 145_000
+N3_NET_WORTH_FLOOR = 650_000
+N3_NET_WORTH_CEILING = 1_450_000
+N3_PROFIT_PER_UNIT_FLOOR = 35
+N3_PROFIT_PER_UNIT_CEILING = 90
 N3_MAX_FERRY_PCT = 40.0
 # A seed "tanks" when N3 finishes under 85% of the N2 ladder on the same map.
 N3_N2_FLOOR = 0.85
 
 
 def run_n3(seeds: list[int]) -> int:
-    """N3 done-when: ferry < 40%, seed 250925 day-10 NW >= 145k, rejected 0.
+    """N3 done-when: ferry < 40%, seed 250925 day-10 NW inside the band, rejected 0.
 
     The N2 column is the ladder (``value_allocator`` off) on the same seeds.
     Every seed has to clear 85 percent of that ladder and keep organics.
@@ -387,7 +401,8 @@ def run_n3(seeds: list[int]) -> int:
     for seed in seeds:
         base = prove_growth_replay(seed=seed, brain=n2_brain())
         nxt = prove_growth_replay(seed=seed, brain=SeatBrain())
-        nw_ok = nxt["net_worth"] >= N3_MIN_NET_WORTH if seed == N3_BENCH_SEED else True
+        nw_ok = (N3_NET_WORTH_FLOOR <= nxt["net_worth"] <= N3_NET_WORTH_CEILING
+                 if seed == N3_BENCH_SEED else True)
         ferry_ok = nxt["ferry_pct"] < N3_MAX_FERRY_PCT
         org_ok = not nxt["zero_planets"] and nxt["rejected"] == 0 and nxt["min_organics"] not in (None, 0)
         floor = int(base["net_worth"] * N3_N2_FLOOR)
@@ -412,7 +427,8 @@ def run_n3(seeds: list[int]) -> int:
         print(f"FAIL seed {N3_BENCH_SEED} missing from the N3 set")
     print(
         f"n3: {'PASS' if failures == 0 else f'{failures} FAIL'} "
-        f"(ferry < {N3_MAX_FERRY_PCT:.0f}%, seed {N3_BENCH_SEED} NW >= {N3_MIN_NET_WORTH}, rejected 0)"
+        f"(ferry < {N3_MAX_FERRY_PCT:.0f}%, seed {N3_BENCH_SEED} NW in "
+        f"{N3_NET_WORTH_FLOOR}..{N3_NET_WORTH_CEILING}, rejected 0)"
     )
     return 0 if failures == 0 else 1
 

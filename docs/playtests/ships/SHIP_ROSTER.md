@@ -1,5 +1,7 @@
 # Ship roster and caps
 
+> **Update 2026-10-05 ([ECONOMY_CALIBRATION.md](../ports/ECONOMY_CALIBRATION.md)).** The 145k day-10 bar is now a 650,000 to 1,450,000 band on seed 250925 N3.
+
 task_id: ship-roster-caps-v1
 
 Purchase prices and caps are the Bible chart in `Bible_TWGS_edit_2007_Clme.htm` ("Ship Charts for DefaultGame Setup"). The first number in each cost cell is the hull price. The second number is that chart's "cost to max holds". This slice does not replace the hold-price formula with that second number.

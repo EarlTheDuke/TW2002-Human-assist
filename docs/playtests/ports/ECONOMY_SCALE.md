@@ -1,5 +1,7 @@
 # Economy scale
 
+> **Update 2026-10-05 ([ECONOMY_CALIBRATION.md](ECONOMY_CALIBRATION.md)).** The tw2002 bases that ECONOMY_SCALE_APPLY.md solved from this page (179 / 389 / 719) put the chart's buying port at full stock. economy2 says a buying port at 100 percent is empty ("that number is at 0, it means that the port is at 100%"). Re-solved there, the bases are 26 / 56 / 102.
+
 Do not change a number from this note. The original trade pays much more per hold than our 18 / 25 / 36 bases, and several of our ships cost several times the 2007 Bible chart. Moving only one of those would change how many round trips a starter needs to buy a ship. The measured tables are from `scripts/economy_scale_report.py`.
 
 ## Lab table

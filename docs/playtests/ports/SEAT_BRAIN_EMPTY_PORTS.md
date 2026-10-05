@@ -1,5 +1,7 @@
 # Seat brain on empty ports
 
+> **Update 2026-10-05 ([ECONOMY_CALIBRATION.md](ECONOMY_CALIBRATION.md)).** The 145000 bar is gone. Seed 250925 N3 must now finish between 650,000 and 1,450,000 and realize 35 to 90 a unit. The multi-million numbers below were on the 179 / 389 / 719 table.
+
 task_id: seat-brain-empty-ports-v1
 
 Ports open at 0 stock and refill only at the day tick. CONFIRMED. Source: `docs/playtests/ports/TURNS_REGEN.md` (ports-turns-regen-v1). A selling port adds `round(productivity * 0.05)` of each commodity, held inside 0 to max. A buying port can take goods on day 1. No game rule, price, haggle, or port number changed in this slice.

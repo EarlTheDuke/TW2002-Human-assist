@@ -24,7 +24,7 @@ No rule changed in this slice. The caps stay the handbook numbers (`PLANET_MAX_C
 | `test_the_ladder_does_not_ferry_colonists_to_a_full_home` | One hop away with colonists aboard, the ladder plots no "ferry colonists home" to a full home, and does plot it when there is room. | M16 the ferry plot left in. |
 | `test_a_world_that_gets_room_again_is_forgotten_as_full` | When the legal list shows room again, the world leaves the full list. | M15 the brain never forgetting a full world. |
 | `test_the_full_world_note_survives_a_memory_round_trip` | The full-world note is kept in the seat memory dump. | M17 the note dropped from the dump. |
-| `test_stock_is_priced_at_the_published_base` (limits file) | Stock uses the published base: fuel 179, organics 389, equipment 719. | M8 the stock price flattened to 179 for every good. |
+| `test_stock_is_priced_at_the_published_base` (limits file) | Stock uses the tw2002 base: fuel 26, organics 56, equipment 102 (179 / 389 / 719 before ECONOMY_CALIBRATION.md; they were solved, not published). | M8 the stock price flattened to 179 for every good. |
 | `test_handbook_numbers_are_the_caps`, `test_sixth_planet_is_refused_and_pays_nothing`, `test_transwarp_into_a_full_sector_stays_put` (limits file) | The cap table is the handbook; a sixth planet in a sector is refused by genesis and by transwarp. | M9 `PLANETS_PER_SECTOR_CAP = 6` (all three fail); M14 class U cap 3000 edited to 3500. |
 
 ## The brain fix
@@ -56,6 +56,8 @@ The second and third points go a little past "do not queue the land step". With 
 ## Deliberate tolerance (seed 250925)
 
 N2 is still 15,179 behind N1 on seed 250925 after the fix (3,976,330 against 3,991,509, 0.38 percent). Commander's decision: `test_n2_day10_beats_n1_and_keeps_organics` keeps the strict "N2 beats N1" rule on seeds 20260925, 230923, 99 and 31, and on seed 250925 only it requires N2 >= 0.99 x N1. The organics check (held zero planets) and rejected 0 are unchanged.
+
+Update 2026-10-05 ([ECONOMY_CALIBRATION.md](../ports/ECONOMY_CALIBRATION.md)): the numbers in this section were on the 179 / 389 / 719 table. On the corrected 26 / 56 / 102 table a trade pays about 7 times less and N2 trails N1 on two seeds (250925 611,823 against 704,460; 20260925 416,937 against 450,086). The test now requires at least 3 strict wins, seed 250925 at 0.85 x N1 or better, seed 20260925 at 0.90 x N1 or better, rejected 0, and held starves planet 32 and planet 30. The N2 organics rule is still the bot-growth-and-fixes slice.
 
 The cause, measured from the action logs and end state of the two replays: the fix takes the full-world loss away from both brains equally, so what is left is the N2 organics rule. N2 spends 2 extra turns moving idle colonists to the organics pool ("class U needs 750", then "needs 49") and splits its ship unloads between organics and fuel ore. At day 10 planet 32 has 2,264 fuel workers and 633 organics workers under N1, 1,405 and 1,544 under N2. On this class U world organics hit 0 under both brains anyway (zero planet 32 for both), so the organics workers add nothing. Credits are 3,643,691 (N1) against 3,638,357 (N2), a 5,334 gap from two fewer trades (460 against 458), and fuel stock on planet 32 is 147 against 92 units, 55 x 179 = 9,845 of planet value. 5,334 + 9,845 = 15,179. Planet 33 is identical under both brains.
 
