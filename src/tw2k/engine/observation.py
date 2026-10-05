@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 
 from .agency import is_minimal
 from .economy import port_buy_price, port_sell_price
@@ -62,6 +62,12 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.TERRA_COLONISTS,
     EventKind.EXTERN_SWEEP,
     EventKind.FED_RESPONSE,
+    EventKind.FED_TOW,
+    EventKind.FED_REPOSSESS,
+    EventKind.FED_HAIL,
+    EventKind.REWARD_POSTED,
+    EventKind.REWARD_CLAIMED,
+    EventKind.COMMISSION_GRANTED,
     EventKind.PLANET_TAX_PAYOUT,
     # Out-of-band meta event — belongs to actor only (keeps opponents
     # from reading each other's token spend, which would be a weird
@@ -274,6 +280,13 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.AGENT_THOUGHT: ("thought", "auto_wait", "external_idle", "turns_skipped"),
     EventKind.AGENT_ERROR: ("error", "external_timeout"),
     EventKind.FED_RESPONSE: ("reason",),
+    EventKind.FED_TOW: ("from", "to", "reason"),
+    EventKind.FED_ZYRAIN: ("fed", "sector"),
+    EventKind.FED_REPOSSESS: ("reason", "victim"),
+    EventKind.FED_HAIL: ("message",),
+    EventKind.REWARD_POSTED: ("target_id", "amount", "align_gain"),
+    EventKind.REWARD_CLAIMED: ("amount",),
+    EventKind.COMMISSION_GRANTED: ("alignment",),
     EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
 }
 
@@ -456,6 +469,20 @@ class Observation(BaseModel):
     # toll fighters in this sector, or None. {sector_id, mode, count, can_retreat,
     # retreat_to, toll}. The count is the same group already in the sector brief.
     fighter_challenge: dict[str, Any] | None = None
+    # fedspace-police-v1: Police HQ block (sector 1 only) and FedSpace overnight hint
+    police: dict[str, Any] | None = None
+    fedspace: dict[str, Any] | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_null_fed_blocks(self, handler):
+        """FED_MODE legacy: omit null police/fedspace so observation digests stay byte-identical."""
+        data = handler(self)
+        if isinstance(data, dict):
+            if data.get("police") is None:
+                data.pop("police", None)
+            if data.get("fedspace") is None:
+                data.pop("fedspace", None)
+        return data
 
 
 # ---------------------------------------------------------------------------
@@ -829,6 +856,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         known_sectors=known_sectors,
         legal_actions=legal,
         fighter_challenge=_challenge_brief(universe, player, legal),
+        police=None,
+        fedspace=None,
         action_hint=_action_hint(
             sector_info,
             player,
@@ -838,6 +867,10 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             rivals=rivals,
         ),
     )
+    if K.fed_tw2002():
+        from .fed import fedspace_hint, police_observation
+        obs.police = police_observation(universe, player)
+        obs.fedspace = fedspace_hint(universe, player)
     return obs
 
 

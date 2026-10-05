@@ -372,6 +372,10 @@ def generate_universe(config: GameConfig) -> Universe:
     from .class0 import place_class0_ports
     place_class0_ports(universe)
 
+    # fedspace-police-v1: Federals (isolated rng; no-op under FED_MODE legacy)
+    from .fed import place_federals
+    place_federals(universe)
+
     return universe
 
 

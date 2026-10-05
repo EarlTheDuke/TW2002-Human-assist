@@ -35,11 +35,14 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "ROB_MODE", "legacy")  # goldens predate rob/steal
     monkeypatch.setattr(K, "HARDWARE_MODE", "legacy")  # goldens predate ship-hardware-v1
     monkeypatch.setattr(K, "CLASS0_MODE", "legacy")  # goldens predate Terra / Class 0
+    monkeypatch.setattr(K, "FED_MODE", "legacy")  # goldens predate FedSpace police
 
 
 @pytest.fixture
 def tw(monkeypatch):
     monkeypatch.setattr(K, "RANK_MODE", "tw2002")
+    # RANK goldens measure refuse+-200; pod punish is covered in test_fedspace_police_v1.
+    monkeypatch.setattr(K, "FED_PROTECT_PUNISH", "refuse")
 
 
 # --- doc first -----------------------------------------------------------------------------
@@ -540,6 +543,7 @@ def test_system_prompt_names_the_commission(monkeypatch) -> None:
     text = get_system_prompt()
     assert "alignment >= 1000" in text and "fedsafe" in text
     monkeypatch.setattr(K, "RANK_MODE", "legacy")
+    monkeypatch.setattr(K, "FED_MODE", "legacy")
     text = get_system_prompt()
     assert "alignment >= 2000" in text and "fedsafe" not in text
 

@@ -366,6 +366,15 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             if not getattr(universe.players[pid].ship, "cloaked", False)
         ]
     attack_targets = hostile_players + ferrengi_ids
+    # fedspace-police-v1 f7: Federals are legal suicide targets
+    if K.fed_tw2002():
+        from .fed import federals_in_sector
+        fed_ids = [f"fed:{f.name}" for f in federals_in_sector(universe, player.sector_id)]
+        attack_targets = attack_targets + fed_ids
+        atk_note_fed = "Federal: indestructible - you will be podded" if fed_ids else None
+    else:
+        fed_ids = []
+        atk_note_fed = None
     if fed_shielded and not attack_targets:
         reason = "FedSpace - every trader here is fedsafe (attempting costs 200 alignment)"
     elif not attack_targets:
@@ -377,6 +386,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = _need_turns(player, atk_cost)
     atk_params: dict[str, Any] = {"target": {"type": "str", "required": True, "choices": attack_targets,
                                              "players": hostile_players, "ferrengi": ferrengi_ids}}
+    if K.fed_tw2002():
+        atk_params["target"]["federals"] = fed_ids
+        if atk_note_fed:
+            atk_params["target"]["note"] = atk_note_fed
     if K.combat_tw2002():
         from .combat import attack_cap
         cap = attack_cap(player)
@@ -1251,6 +1264,18 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     # Keep engine order stable: follow ActionKind declaration order.
     order = {k.value: i for i, k in enumerate(ActionKind)}
     out.sort(key=lambda la: order.get(la.kind, 999))
+    # ---- fedspace-police-v1: Police HQ (sector 1) ----
+    if K.fed_tw2002():
+        from .fed import police_legal_specs
+        kind_map = {
+            "apply_commission": ActionKind.APPLY_COMMISSION,
+            "post_reward": ActionKind.POST_REWARD,
+            "claim_reward": ActionKind.CLAIM_REWARD,
+        }
+        for kind_val, legal, reason, params in police_legal_specs(universe, player_id):
+            out.append(_la(kind_map[kind_val], legal=legal, reason=reason, cost=0, params=params))
+
+
     return out
 
 
