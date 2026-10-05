@@ -245,6 +245,12 @@ def tick_day(universe: Universe) -> None:
         extern_sweep(universe)
         regen_terra(universe)
 
+    # fedspace-police-v1: tows after MSL sweep, then Fed wander (f5/f11-f14)
+    from .fed import fed_tw2002, run_tows, tick_federals
+    if fed_tw2002():
+        run_tows(universe)
+        tick_federals(universe)
+
     regenerate_ports(universe)
     if K.rob_tw2002():
         clear_all_busts(universe)
@@ -589,6 +595,11 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
                 payload={"sector": target_id, "reason": "mines"},
                 summary=f"Mines in sector {target_id}: avoid this sector? (autopilot stops here)",
             )
+
+    # fedspace-police-v1 f6/f22: evil ISS after move
+    if player.alive:
+        from .fed import check_iss_repo_on_move
+        check_iss_repo_on_move(universe, pid)
 
     return ActionResult(ok=True, turns_spent=cost)
 
@@ -964,6 +975,11 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
         if target_id != "fighters":
             return _reject_free(CHALLENGE_REFUSAL)
         return _attack_sector_fighters(universe, pid, action)
+    # fedspace-police-v1 f7: Federal targets use fed:<name>
+    from .fed import fed_tw2002 as _fed_tw
+    if _fed_tw() and str(target_id).startswith("fed:"):
+        from .fed import attack_federal
+        return attack_federal(universe, pid, str(target_id).split(":", 1)[1])
     target = universe.players.get(target_id) or _ferrengi_by_name(universe, str(target_id))
     if target is None:
         return ActionResult(ok=False, error=f"target {target_id} not found")
@@ -978,7 +994,11 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     # Block friendly fire (corp mates + active alliances)
     if isinstance(target_id, str) and target_id in universe.players and _are_allied(universe, pid, target_id):
         return ActionResult(ok=False, error="cannot attack a corp mate or ally")
+            # fedspace-police-v1 f8: FedSpace protect (Zyrain under tw2002; legacy path unchanged)
     if player.sector_id in K.FEDSPACE_SECTORS and fedspace_protects(target):
+        from .fed import fed_tw2002, protect_fedspace_attack
+        if fed_tw2002():
+            return protect_fedspace_attack(universe, pid, target)
         universe.emit(
             EventKind.FED_RESPONSE,
             actor_id=pid,
@@ -3675,6 +3695,17 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.RETREAT: _handle_retreat,
     ActionKind.PAY_TOLL: _handle_pay_toll,
 }
+
+
+def _bind_fed_handlers() -> None:
+    from .fed import handle_apply_commission, handle_claim_reward, handle_post_reward
+    _DISPATCH[ActionKind.APPLY_COMMISSION] = handle_apply_commission
+    _DISPATCH[ActionKind.POST_REWARD] = handle_post_reward
+    _DISPATCH[ActionKind.CLAIM_REWARD] = handle_claim_reward
+
+
+_bind_fed_handlers()
+
 
 
 # ---------------------------------------------------------------------------

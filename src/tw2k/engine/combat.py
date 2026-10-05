@@ -718,7 +718,8 @@ def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) 
 
 
 def _destroy_ship(
-    universe: Universe, pid: str, reason: str, killer_id: str | None = None, by_other: bool = False
+    universe: Universe, pid: str, reason: str, killer_id: str | None = None, by_other: bool = False,
+    *, always_escape: bool = False,
 ) -> None:
     """A ship is lost. `by_other` marks a kill someone else pressed the keys for (pods.html)."""
     player = universe.players[pid]
@@ -727,7 +728,7 @@ def _destroy_ship(
     from .hardware import apply_corbomite, corbomite_armed, strip_v2
     corbomite = corbomite_armed(player, reason, killer_id)  # read before the hull is stripped
     if K.death_tw2002():
-        _destroy_ship_tw2002(universe, pid, reason, killer_id, by_other)
+        _destroy_ship_tw2002(universe, pid, reason, killer_id, by_other, always_escape=always_escape)
     else:
         _destroy_ship_legacy(universe, pid, reason, killer_id)
     if K.info_tw2002():
@@ -963,7 +964,8 @@ def _place(universe: Universe, player, sector_id: int) -> None:
 
 
 def _destroy_ship_tw2002(
-    universe: Universe, pid: str, reason: str, killer_id: str | None, by_other: bool
+    universe: Universe, pid: str, reason: str, killer_id: str | None, by_other: bool,
+    *, always_escape: bool = False,
 ) -> None:
     """d1-d11: the pod, or Ship Destroyed. Credits stay (d14). Elimination only by setting (d19)."""
     player = universe.players[pid]
@@ -982,7 +984,7 @@ def _destroy_ship_tw2002(
         player.pods_day = universe.day
         player.pods_today = 0
     hull = player.ship.ship_class.value
-    podded = hull not in K.PODLESS_HULLS and player.pods_today < K.PODS_PER_DAY
+    podded = always_escape or (hull not in K.PODLESS_HULLS and player.pods_today < K.PODS_PER_DAY)
     player.planet_landed = None
     player.photon_damped_sector_id = None
     player.fighter_challenge = None
@@ -1030,6 +1032,9 @@ def _destroy_ship_tw2002(
         },
         summary=f"*** {player.name}'s ship destroyed ({reason}); {tail} ***",
     )
+    # fedspace-police-v1 f19: bounty only on real death (not pod)
+    from .fed import record_bounty_on_death
+    record_bounty_on_death(universe, pid, killer_id, outcome)
     threshold = K.elimination_deaths(universe.config)
     if threshold and player.deaths >= threshold:
         _eliminate(universe, player, killer_id)

@@ -543,6 +543,19 @@ ANY other `action.kind` string is an error.
 SYSTEM_PROMPT = _MATCH_PROMPT_FULL
 
 
+
+_FED_NOTE_TW2002 = (
+    "\nFEDSPACE POLICE (docs/playtests/fedspace/FEDSPACE_POLICE.md): three indestructible Federals "
+    "(Captain Zyrain, Admiral Nelson, Fleet Admiral Clausewitz) wander the map; attacking one pods you. "
+    "Attacking a fedsafe trader in FedSpace summons Zyrain. At Extern the Feds tow anyone in sectors 1..10 "
+    "carrying 99+ fighters, and tow overflow when a FedSpace sector has more than 5 ships (latest arrivals first; "
+    "cloak does not help). Before day end: shed below 99 fighters or leave FedSpace. In sector 1, good traders "
+    "may `apply_commission` at 500+ alignment (boost to 1000, once), `post_reward` on evil players "
+    "(+1 align per 1000 cr), and `claim_reward` after a real kill. An Imperial StarShip whose pilot goes evil "
+    "is destroyed on the next move unless cloaked.\n"
+)
+
+
 _RANK_NOTE_TW2002 = (
     "\nRANKS (docs/playtests/ranks/EXPERIENCE_ALIGNMENT.md): experience comes from haggling, the first trade at "
     "an unused port (+1), +1 experience and +1 alignment each day, planets (+25 create, +50 destroy), and combat "
@@ -560,6 +573,8 @@ def get_system_prompt() -> str:
     if K.rank_tw2002():
         text = text.replace("(alignment >= 2000, one in the game)", "(Federal Commission: alignment >= 1000, one in the game)")
         text = text + _RANK_NOTE_TW2002
+    if K.fed_tw2002():
+        text = text + _FED_NOTE_TW2002
     return text
 
 

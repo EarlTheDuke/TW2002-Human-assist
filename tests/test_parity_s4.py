@@ -298,6 +298,13 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         mb = ((p.get("qty") or {}).get("max_by") or {})
         qty = int(mb.get(mode) or 1)
         return Action(kind=ak, args={"mode": mode, "qty": max(1, qty)})
+    if ak is ActionKind.APPLY_COMMISSION or ak is ActionKind.CLAIM_REWARD:
+        return Action(kind=ak, args={})
+    if ak is ActionKind.POST_REWARD:
+        tid = first("target_id", "P2")
+        mx = int((p.get("amount") or {}).get("max") or 1000)
+        mn = int((p.get("amount") or {}).get("min") or 1000)
+        return Action(kind=ak, args={"target_id": tid, "amount": max(mn, min(mn, mx))})
     raise AssertionError(f"no builder for {kind}")
 
 

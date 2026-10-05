@@ -198,6 +198,14 @@ class EventKind(str, Enum):
     # class0-terra-v1 (CLASS0_TERRA.md)
     TERRA_COLONISTS = "terra_colonists"
     EXTERN_SWEEP = "extern_sweep"
+    # fedspace-police-v1 (FEDSPACE_POLICE.md)
+    FED_TOW = "fed_tow"
+    FED_ZYRAIN = "fed_zyrain"
+    FED_REPOSSESS = "fed_repossess"
+    FED_HAIL = "fed_hail"
+    REWARD_POSTED = "reward_posted"
+    REWARD_CLAIMED = "reward_claimed"
+    COMMISSION_GRANTED = "commission_granted"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -490,6 +498,9 @@ class Player(BaseModel):
     port_visit_sector_id: int | None = None
     # Last sector of a successful rob/steal (fake bust if repeated). ROB_STEAL.md r13.
     last_crime_sector_id: int | None = None
+    # fedspace-police-v1
+    commission_used: bool = False
+    fed_hail_sent: bool = False
 
     def end_port_visit(self) -> None:
         """A port visit ends when this player leaves the sector."""
@@ -857,6 +868,10 @@ class Universe(BaseModel):
     class0_sectors: dict[str, int] = Field(default_factory=dict)
     # Sorted MSL sector ids (sector 1 / AC / Rylos lanes); empty under legacy.
     msl_sectors: list[int] = Field(default_factory=list)
+    # fedspace-police-v1 (FEDSPACE_POLICE.md)
+    federals: list = Field(default_factory=list)  # list[Federal]
+    posted_rewards: dict[str, list] = Field(default_factory=dict)  # target_id -> [{poster_id,amount,day}]
+    pending_rewards: dict[str, int] = Field(default_factory=dict)  # killer_id -> claimable credits
 
     # Per-universe deterministic PRNG. PrivateAttr so it's instance-scoped
     # (not shared across Universe objects, not serialized by model_dump), and

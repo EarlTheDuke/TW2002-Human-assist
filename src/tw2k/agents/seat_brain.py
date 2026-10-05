@@ -590,6 +590,12 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
+        answer = self._avoid_fed_tow(v)
+        if answer is not None:  # fedspace-police-v1: do not overnight armed in FedSpace
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
 
         action, intent = (None, Intent())
         if mem.break_left > 0:
@@ -2368,6 +2374,47 @@ class SeatBrain:
             return False
         return True
 
+
+    def _avoid_fed_tow(self, v: View) -> dict[str, Any] | None:
+        """fedspace-police-v1: do not overnight in FedSpace with 99+ fighters or as the 6th ship.
+
+        Deploying fighters in FedSpace is refused, so the only safe moves are leave FedSpace
+        or (when buying) stay under the arms limit. Prefer a warp out when turns remain.
+        """
+        try:
+            from tw2k.engine import constants as K
+            if not K.fed_tw2002():
+                return None
+        except Exception:
+            return None
+        hint = v.obs.get("fedspace") if isinstance(v.obs, dict) else None
+        sector = v.obs.get("sector") if isinstance(v.obs, dict) else None
+        in_fed = bool((hint is not None) or (isinstance(sector, dict) and sector.get("is_fedspace")))
+        if not in_fed:
+            return None
+        fighters = int(self._ship_fighters(v))
+        limit = int((hint or {}).get("tow_fighter_limit") or 98)
+        will = bool((hint or {}).get("will_be_towed")) or fighters > limit
+        ships_here = int((hint or {}).get("ships_here") or 0)
+        ship_limit = int((hint or {}).get("limit") or 5)
+        crowded = ships_here > ship_limit
+        if not will and not crowded:
+            # Still cap a fighter buy that would cross the arms limit while parked here.
+            return None
+        # Leave FedSpace if we can.
+        if v.ok("warp"):
+            choices = list(v.choices("warp", "target") or [])
+            # Prefer a non-FedSpace neighbor (ids > 10)
+            outside = [int(c) for c in choices if int(c) not in range(1, 11)]
+            if outside:
+                dest = outside[0]
+                return self._act("warp", {"target": dest}, f"leave FedSpace before Extern tow (figs={fighters})")
+            if choices:
+                dest = int(choices[0])
+                return self._act("warp", {"target": dest}, "move within FedSpace away from parking crush")
+        return None
+
+
     def _buy_defense(self, v: View) -> dict[str, Any] | None:
         """Buy shields then fighters at StarDock or a known Class 0 when cash is high."""
         if not (self.feed_organics or self.value_allocator):
@@ -2397,6 +2444,14 @@ class SeatBrain:
             need = max(0, DEFENSE_FIGHTERS_FLOOR - self._ship_fighters(v))
             afford = max(0, (v.credits - self.cash_buffer) // max(1, unit))
             qty = min(room, need if need else min(room, 300), afford, 400)
+            # fedspace-police-v1: never buy past the Extern arms limit while in FedSpace
+            try:
+                from tw2k.engine import constants as _FK
+                if _FK.fed_tw2002() and int(v.here or 0) in range(1, 11):
+                    room_under = max(0, int(_FK.FED_TOW_FIGHTER_LIMIT) - int(self._ship_fighters(v)))
+                    qty = min(qty, room_under)
+            except Exception:
+                pass
             if qty > 0:
                 return self._act("buy_equip", {"item": "fighters", "qty": int(qty)},
                                  f"buy {qty} fighters before carrying cash")

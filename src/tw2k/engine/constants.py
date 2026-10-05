@@ -1486,3 +1486,51 @@ def shield_unit_price(day: int) -> int:
     """Credits for one shield today (CLASS0_TERRA.md t13)."""
     from .class0 import shield_unit_price as _shield
     return _shield(day)
+
+
+# --- FedSpace police (FED_MODE) ----------------------------------------------
+# docs/playtests/fedspace/FEDSPACE_POLICE.md. "legacy" = pre-slice byte-identical.
+
+FED_MODE = "tw2002"
+
+
+def fed_tw2002() -> bool:
+    return FED_MODE == "tw2002"
+
+
+# Sub-switches
+FED_PROTECT_PUNISH = "pod"       # "pod" | "refuse" (f8)
+ISS_REPO_MODE = "twgs"           # "twgs" | "mbbs" (f22)
+FED_TOW_DEST = "random"          # "random" | "msl" (f14)
+REWARD_TARGET_RULE = "any_red"   # "any_red" | "listed" (f18)
+FED_BLOCKED_BY_MINES = False     # f4 SOURCE-CONFLICT; off by default
+COMMISSION_ONCE = True           # f17 MBBS tie-break
+
+# Federals (f2/f3/f5)
+FED_DENSITY_NELSON = 462
+FED_DENSITY_ZYRAIN = 489
+FED_DENSITY_CLAUSEWITZ = 512
+FED_ZYRAIN_START = 7
+FED_START_MIN_HOPS = 6           # UNVERIFIED stand-in for deep starts
+FED_HOPS_PER_DAY = 3             # UNVERIFIED
+
+# Attack penalties (f7)
+FED_ATTACK_ALIGN_PENALTY = 10
+FED_ATTACK_EXP_KEEP = 0.9        # lose 10%; UNVERIFIED rounding = int trunc
+
+# Tows (f11/f12)
+FED_TOW_FIGHTER_LIMIT = 98       # tow when fighters > this (Gypsy: 99+)
+FED_SHIPS_PER_SECTOR = 5
+
+# Police HQ (f16-f18)
+POLICE_MIN_ALIGNMENT = 0
+COMMISSION_APPLY_MIN = 500       # apply when 500 <= align < COMMISSION_ALIGNMENT
+REWARD_MIN = 1000                # UNVERIFIED minimum
+REWARD_ALIGN_PER = 1000          # +1 alignment per this many credits
+
+# f9 optional floors (defaults keep today's is_fedsafe)
+FEDSAFE_MIN_ALIGNMENT = 0
+FEDSAFE_MAX_FIGHTERS = None      # None = no fighter floor
+
+# f23
+FED_HAIL_MESSAGE = "return your commission or lose the ship"

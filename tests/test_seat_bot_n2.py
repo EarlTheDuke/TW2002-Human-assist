@@ -193,6 +193,8 @@ def test_k_class_unload_prefers_fuel_once_a_tiny_organics_crew_exists() -> None:
 def test_n2_day10_beats_n1_and_keeps_organics(monkeypatch) -> None:
     # CLASS0_TERRA.md: colonist scarcity changes day-10 NW bars; pin legacy for this bar only.
     monkeypatch.setattr("tw2k.engine.constants.CLASS0_MODE", "legacy")
+    # FEDSPACE_POLICE.md: Extern tows change overnight parking; pin FED_MODE legacy for this bar only.
+    monkeypatch.setattr("tw2k.engine.constants.FED_MODE", "legacy")
     """Five seeds, ten days, fogged observation only.
 
     On the corrected tw2002 price table (ECONOMY_CALIBRATION.md) the N2 ladder

@@ -76,6 +76,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "RANK_MODE", "legacy")  # the goldens predate rank titles (experience-alignment-v1)
     monkeypatch.setattr(K, "ROB_MODE", "legacy")  # goldens predate rob/steal
     monkeypatch.setattr(K, "CLASS0_MODE", "legacy")  # goldens predate Terra / Class 0 observation keys
+    monkeypatch.setattr(K, "FED_MODE", "legacy")  # goldens predate FedSpace police observation keys
 
 
 @pytest.fixture

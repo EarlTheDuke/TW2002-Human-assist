@@ -65,6 +65,9 @@ class ActionKind(str, Enum):
     PAY_TOLL = "pay_toll"
     ROB = "rob"
     STEAL = "steal"
+    APPLY_COMMISSION = "apply_commission"
+    POST_REWARD = "post_reward"
+    CLAIM_REWARD = "claim_reward"
 
 
 class Action(BaseModel):

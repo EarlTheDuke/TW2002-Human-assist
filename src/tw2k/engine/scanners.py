@@ -110,6 +110,10 @@ def density_reading(universe: Universe, sector_id: int) -> dict[str, Any]:
     if K.class0_tw2002() and K.info_tw2002() and int(sector_id) == K.STARDOCK_SECTOR:
         if getattr(universe, "terra_colonists", None) is not None:
             density += K.DENSITY_PER_PLANET
+    # fedspace-police-v1 f2: Federal starship densities
+    if K.fed_tw2002() and K.info_tw2002():
+        from .fed import fed_density_bonus
+        density += fed_density_bonus(universe, sector_id)
     navhaz = 0
     if K.hardware_tw2002():  # SHIP_HARDWARE_V2.md v9/v24: beacon 1, NavHaz 21 per percent
         from .hardware import navhaz_pct
@@ -143,6 +147,7 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
                     for p in s.planet_ids if p in universe.planets],
         "traders": traders_in(universe, viewer_id, s),
         "ferrengi": [{"name": f.name, "fighters": int(f.fighters)} for f in _ferrengi_in(universe, sector_id)],
+        "federals": [],
         "fighters": ({"owner_id": s.fighters.owner_id, "count": int(s.fighters.count), "mode": s.fighters.mode.value}
                      if s.fighters is not None and int(s.fighters.count) > 0 else None),
         # Limpets never show on a holo or a probe (SCANNERS_HIDDEN_INFO.md s9/s13), even your own.
@@ -150,6 +155,9 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
     }
     if K.hardware_tw2002() and getattr(s, "beacon", None):
         view["beacon"] = s.beacon  # the text only; who launched it is never shown
+    if K.fed_tw2002():
+        from .fed import federals_in_sector
+        view["federals"] = [{"name": f.name, "title": f.title} for f in federals_in_sector(universe, sector_id)]
     return view
 
 
