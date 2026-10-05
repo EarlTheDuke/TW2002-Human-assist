@@ -188,6 +188,7 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
 def tick_day(universe: Universe) -> None:
     """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets."""
+    _overnight_retreats(universe)
     universe.day += 1
     for player in universe.players.values():
         player.turns_today = 0
@@ -213,6 +214,25 @@ def tick_day(universe: Universe) -> None:
         summary=f"-- Day {universe.day} dawns --",
     )
     _check_victory(universe)
+
+
+def _overnight_retreats(universe: Universe) -> None:
+    """Fighters stop a ship "entering or remaining in" their sector (SHIP_COMBAT.md).
+
+    A challenge still open when the day ends (the seat only waited) ends in a free retreat to
+    the sector the ship came from, so waiting never keeps a ship in a held sector past the day.
+    A ship that may not retreat (one-way lane, interdictor) stays held and must still answer.
+    """
+    if not K.challenge_on():
+        return
+    for pid in sorted(universe.players):
+        player = universe.players[pid]
+        if not player.fighter_challenge:
+            continue
+        ch = live_challenge(universe, pid, settle=True)
+        if ch is None or retreat_block(universe, pid) is not None:
+            continue
+        _retreat_move(universe, player, int(ch["from_sector"]), overnight=True)
 
 
 def is_finished(universe: Universe) -> bool:
@@ -3237,8 +3257,14 @@ def _handle_retreat(universe: Universe, pid: str, action: Action) -> ActionResul
     cost = _warp_cost_for(player)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns for this day")
+    _retreat_move(universe, player, int(ch["from_sector"]))
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _retreat_move(universe: Universe, player, back: int, *, overnight: bool = False) -> None:
+    """Move a challenged ship back to the sector it came from. No hazards fire there."""
+    pid = player.id
     here = player.sector_id
-    back = int(ch["from_sector"])
     try:
         universe.sectors[here].occupant_ids.remove(pid)
     except ValueError:
@@ -3251,14 +3277,17 @@ def _handle_retreat(universe: Universe, pid: str, action: Action) -> ActionResul
     player.end_port_visit()
     universe.sectors[back].occupant_ids.append(pid)
     _learn_sector(player, universe, back)
+    payload: dict = {"from": here, "to": back}
+    if overnight:
+        payload["overnight"] = True
     universe.emit(
         EventKind.RETREAT,
         actor_id=pid,
         sector_id=back,
-        payload={"from": here, "to": back},
-        summary=f"{player.name} retreated {here} → {back}",
+        payload=payload,
+        summary=(f"{player.name} fell back {here} → {back} at the end of the day (the fighters hold {here})"
+                 if overnight else f"{player.name} retreated {here} → {back}"),
     )
-    return ActionResult(ok=True, turns_spent=cost)
 
 
 def _handle_pay_toll(universe: Universe, pid: str, action: Action) -> ActionResult:
