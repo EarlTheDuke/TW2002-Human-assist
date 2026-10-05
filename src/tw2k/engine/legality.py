@@ -214,6 +214,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                        reason="no trading port in this sector" if port is None else "StarDock has no commodity market"))
     else:
         reason = _need_turns(player, tc)
+        if reason is None and K.rob_tw2002() and getattr(port, "bust_player_id", None) == player_id:
+            reason = "you are busted at this port until it clears"
         buy_choices: list[str] = []
         sell_choices: list[str] = []
         qty_max: dict[str, dict[str, int]] = {}
@@ -249,6 +251,54 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "unit_price": {"type": "int", "required": False, "listed_by": listed},
         }))
 
+
+    # rob / steal (ROB_MODE tw2002) — docs/playtests/ports/ROB_STEAL.md
+    if K.rob_tw2002():
+        from .rob_steal import (
+            alignment_allows_crime,
+            bust_blocks_player,
+            port_allows_crime,
+        )
+        rc = trade_turn_cost(player)
+        ok_port, port_why = port_allows_crime(port)
+        rob_reason = None
+        steal_reason = None
+        if not ok_port:
+            rob_reason = steal_reason = port_why
+        elif not alignment_allows_crime(player):
+            rob_reason = steal_reason = f"alignment must be {K.ROB_MIN_ALIGNMENT} or lower"
+        elif port is not None and bust_blocks_player(port, player_id):
+            rob_reason = steal_reason = "you are busted at this port until it clears"
+        else:
+            rob_reason = _need_turns(player, rc)
+            steal_reason = rob_reason
+        rob_max = 0
+        steal_choices: list[str] = []
+        steal_qty_max: dict[str, int] = {}
+        if ok_port and port is not None and alignment_allows_crime(player) and not bust_blocks_player(port, player_id):
+            vault = max(0, int(getattr(port, "credits", 0) or 0))
+            if vault <= 0 and rob_reason is None:
+                rob_reason = "port has no credits to rob"
+            # Legal max is the vault; over-exp-cap requests still go through the handler and bust.
+            rob_max = vault
+            free = int(player.ship.cargo_free)
+            for c in TRADE_COMMODITIES:
+                st = port.stock.get(c)
+                if st is None or int(st.current) <= 0:
+                    continue
+                mx = max(0, min(int(st.current), free))
+                if mx > 0:
+                    steal_choices.append(c.value)
+                    steal_qty_max[c.value] = mx
+            if not steal_choices and steal_reason is None:
+                steal_reason = "nothing to steal here (stock or holds)"
+        out.append(_la(ActionKind.ROB, legal=rob_reason is None, reason=rob_reason, cost=rc, params={
+            "amount": {"type": "int", "required": True, "min": 1, "max": max(1, rob_max) if rob_reason is None else 1},
+        }))
+        out.append(_la(ActionKind.STEAL, legal=steal_reason is None, reason=steal_reason, cost=rc, params={
+            "commodity": {"type": "str", "required": True, "choices": steal_choices},
+            "qty": {"type": "int", "required": True, "min": 1, "max_by": steal_qty_max},
+        }))
     # Lazy imports: these helpers live in runner/combat/ferrengi which import
     # observation, which imports this module lazily. Keep the cycle out of
     # module import time.

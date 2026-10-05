@@ -21,6 +21,7 @@ from .models import (
     Sector,
     Universe,
 )
+from .rob_steal import seed_port_credits
 
 # ---------------------------------------------------------------------------
 # Graph construction
@@ -210,13 +211,16 @@ def _make_port(rng: random.Random, class_id: PortClass, sector_id: int, seed: in
         productivity[commodity] = hidden_prod
 
     name = _port_name(rng, sector_id)
-    return Port(
+    port = Port(
         class_id=class_id,
         stock=stock,
         name=name,
         mcic=mcic,
         productivity=productivity,
     )
+    if K.rob_tw2002() and class_id not in (PortClass.STARDOCK, PortClass.FEDERAL):
+        port.credits = seed_port_credits(port)
+    return port
 
 
 def _port_name(rng: random.Random, sector_id: int) -> str:

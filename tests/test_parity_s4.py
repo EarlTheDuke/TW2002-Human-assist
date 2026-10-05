@@ -283,6 +283,13 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"what": what, "qty": qty_for(key), "kind": kind_})
     if ak in (ActionKind.SURRENDER, ActionKind.RETREAT, ActionKind.PAY_TOLL):
         return Action(kind=ak, args={})
+    if ak is ActionKind.ROB:  # rob-steal-v1
+        mx = int((p.get("amount") or {}).get("max") or 1)
+        return Action(kind=ak, args={"amount": max(1, min(100, mx))})
+    if ak is ActionKind.STEAL:  # rob-steal-v1
+        c = first("commodity", "fuel_ore")
+        mb = (p.get("qty") or {}).get("max_by") or {}
+        return Action(kind=ak, args={"commodity": c, "qty": max(1, min(3, int(mb.get(c, 1))))})
     raise AssertionError(f"no builder for {kind}")
 
 

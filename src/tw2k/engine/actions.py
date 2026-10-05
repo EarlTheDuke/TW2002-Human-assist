@@ -58,6 +58,8 @@ class ActionKind(str, Enum):
     SURRENDER = "surrender"
     RETREAT = "retreat"
     PAY_TOLL = "pay_toll"
+    ROB = "rob"
+    STEAL = "steal"
 
 
 class Action(BaseModel):

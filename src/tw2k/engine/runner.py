@@ -46,6 +46,7 @@ from .models import (
     Universe,
 )
 from .planets import _accrue_planet_treasury, _advance_planets, _complete_citadels, _pay_planet_value_tax
+from .rob_steal import clear_all_busts, handle_rob, handle_steal
 from .victory import (
     _award_xp,
     _check_victory,
@@ -203,6 +204,8 @@ def tick_day(universe: Universe) -> None:
             player.ship.photon_disabled_ticks = max(0, player.ship.photon_disabled_ticks - 1)
 
     regenerate_ports(universe)
+    if K.rob_tw2002():
+        clear_all_busts(universe)
 
     if universe.config.enable_ferrengi:
         _spawn_ferrengi(universe)
@@ -503,6 +506,8 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
     if sector.port is None or sector.port.class_id == PortClass.STARDOCK:
         return ActionResult(ok=False, error="no trading port in this sector")
     port = sector.port
+    if K.rob_tw2002() and getattr(port, "bust_player_id", None) == pid:
+        return ActionResult(ok=False, error="you are busted at this port until it clears")
 
     try:
         commodity = Commodity(action.args.get("commodity"))
@@ -3375,6 +3380,8 @@ def _handle_pay_toll(universe: Universe, pid: str, action: Action) -> ActionResu
 _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.WARP: _handle_warp,
     ActionKind.TRADE: _handle_trade,
+    ActionKind.ROB: handle_rob,
+    ActionKind.STEAL: handle_steal,
     ActionKind.SCAN: _handle_scan,
     ActionKind.DEPLOY_FIGHTERS: _handle_deploy_fighters,
     ActionKind.DEPLOY_MINES: _handle_deploy_mines,
