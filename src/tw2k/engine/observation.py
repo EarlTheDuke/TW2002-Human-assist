@@ -198,7 +198,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
         "defender_f", "defender_s", "attacker_losses", "defender_losses", "outcome", "sector_claimed",
         "planet_id", "planet_name", "citadel_level", "sent", "defender_fled",
     ),
-    EventKind.SHIP_DESTROYED: ("victim", "reason", "deaths", "death_sector", "killer_id", "kind", "bounty"),
+    EventKind.SHIP_DESTROYED: ("victim", "reason", "deaths", "death_sector", "killer_id", "kind", "bounty", "outcome"),
     EventKind.PLAYER_ELIMINATED: ("killer", "deaths"),
     EventKind.PLANET_ORPHANED: ("planet_id", "planet_name", "former_owner"),
     EventKind.PLANET_CLAIMED: ("planet_id", "planet_name", "citadel_level", "fighters"),
@@ -766,7 +766,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         alliances=alliances,
         corp=corp_summary,
         deaths=player.deaths,
-        max_deaths=K.MAX_DEATHS_BEFORE_ELIM,
+        max_deaths=K.elimination_deaths(universe.config),
         limpets_owned=limpets_owned,
         probe_log=probe_log,
         known_sectors=known_sectors,
@@ -888,9 +888,9 @@ def _ship_dict(ship) -> dict[str, Any]:
     # on a cargotran whose cap was 400; 4 rejected buys in 8 days).
     # Surfacing `fighter_cap` / `fighter_headroom` as first-class fields
     # gives the agent a direct "can I buy N more?" read.
-    from .constants import ship_specs  # local import to avoid cycle
+    from .constants import hull_spec  # local import to avoid cycle
 
-    spec = ship_specs().get(ship.ship_class.value, {}) or {}
+    spec = hull_spec(ship.ship_class.value) or {}
     fighter_cap = int(spec.get("max_fighters", 0) or 0)
     shield_cap = int(spec.get("max_shields", 0) or 0)
     cur_fighters = int(getattr(ship, "fighters", 0) or 0)
@@ -1354,7 +1354,13 @@ def _action_hint(
                 1 for ev in death_events
                 if last_killer and ev.payload.get("killer_id") == last_killer
             )
-            deaths_remaining = max(0, int(K.MAX_DEATHS_BEFORE_ELIM) - int(getattr(player, "deaths", 0) or 0))
+            elim_at = (
+                K.elimination_deaths(getattr(universe, "config", None))
+                if universe is not None else K.MAX_DEATHS_BEFORE_ELIM
+            )
+            deaths_remaining = (
+                max(0, int(elim_at) - int(getattr(player, "deaths", 0) or 0)) if elim_at else 10**6
+            )
             if full_hints and last_sector is not None:
                 severity = "REPEATED ROUTE DEATH" if same_sector >= 2 or same_killer >= 2 else "ROUTE RISK"
                 if deaths_remaining <= 1:
@@ -1406,6 +1412,27 @@ def _action_hint(
                     player.last_death_reason = ""
                 except Exception:
                     pass
+
+    # Escape pod (DEATH_MODE tw2002, DEATH_ESCAPE_PODS.md). The pod is slow and holds little;
+    # the yard takes it in at a Scout's price.
+    if full_hints and player is not None and K.death_tw2002():
+        pod_ship = getattr(player, "ship", None)
+        pod_class = getattr(getattr(pod_ship, "ship_class", None), "value", None)
+        pods_today = int(getattr(player, "pods_today", 0) or 0)
+        if universe is not None and int(getattr(player, "pods_day", 0) or 0) != int(universe.day):
+            pods_today = 0
+        if pod_class == K.ESCAPE_POD:
+            hints.append(
+                f"YOU ARE IN AN ESCAPE POD ({K.POD_SPEC['turns_per_warp']} turns per warp, "
+                f"{K.POD_SPEC['max_fighters']} fighters max). Reach StarDock (sector "
+                f"{K.STARDOCK_SECTOR}) and buy_ship: the pod trades in at a Scout's price, "
+                f"so a scout_marauder costs 0 cr. A pod that is destroyed is SHIP DESTROYED."
+            )
+        if pods_today >= K.PODS_PER_DAY:
+            hints.append(
+                f"{pods_today} ship losses today: one more today is SHIP DESTROYED "
+                f"(out until tomorrow, -50% experience and alignment) even with a pod."
+            )
 
     # Prior-turn goals FIRST — this is the commitment mechanism. If the agent
     # said last turn "save 45k for cargotran", we want that to be the very
@@ -1485,7 +1512,7 @@ def _action_hint(
     ship = getattr(player, "ship", None) if player is not None else None
     warp_cost = K.TURN_COST.get("warp", 2)
     if ship is not None:
-        spec = K.ship_specs().get(getattr(ship.ship_class, "value", ""))
+        spec = K.hull_spec(getattr(ship.ship_class, "value", ""))
         if spec and "turns_per_warp" in spec:
             warp_cost = int(spec["turns_per_warp"])
     trade_cost = K.PORT_DOCK_TURN_COST
@@ -1607,7 +1634,7 @@ def _action_hint(
                         f"Cargo free={free} — `buy_equip item=colonists qty={free}` loads Terra colonists at 10 cr each."
                     )
                 credits_now = int(getattr(player, "credits", 0) or 0)
-                spec = K.ship_specs().get(getattr(getattr(ship_sd, "ship_class", None), "value", ""), {}) or {}
+                spec = K.hull_spec(getattr(getattr(ship_sd, "ship_class", None), "value", "")) or {}
                 fighter_cap = int(spec.get("max_fighters", 0) or 0)
                 shield_cap = int(spec.get("max_shields", 0) or 0)
                 fighter_headroom = max(0, fighter_cap - int(getattr(ship_sd, "fighters", 0) or 0))

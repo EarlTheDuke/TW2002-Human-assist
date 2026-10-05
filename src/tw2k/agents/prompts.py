@@ -346,7 +346,7 @@ If you are running repeated cargo or colonist ferry loops, ask:
   * Has the same Ferrengi or rival been seen near this route?
   * Am I in a cargo ship with low fighters/shields?
   * Am I carrying cargo, colonists, or Genesis that makes the trip worth risking?
-  * How many deaths remain before elimination?
+  * How many ship losses today (the 3rd is SHIP DESTROYED), and does `max_deaths` eliminate me?
 
 Possible responses include rerouting, pausing to trade somewhere safer,
 returning to StarDock for fighters/shields or a combat ship, probing/scanning
@@ -479,7 +479,9 @@ Ports open empty. A selling port refills a little when the day ticks. A buying p
 
 ================ COMBAT & SURVIVAL ================
 `deploy_fighters`, `recall_deployed`, `retreat`, `pay_toll`, `surrender`, `deploy_mines`, `attack`, `photon_missile`, `probe`, `plot_course`, `query_limpets`.
-FERRENGI are NPC pirates. Ship loss → respawn at StarDock; third death → elimination.
+FERRENGI are NPC pirates. Ship loss → an escape pod (6 turns/warp, -10% experience); trade it at StarDock
+for a Scout at no cost. A loss in a pod or Scout, or a 3rd loss in one day, is SHIP DESTROYED: out until
+tomorrow, -50% experience and alignment. `max_deaths` > 0 means elimination after that many losses.
 Death is also route intel: if the same sector, attacker, or cargo loop kills you, reconsider whether to
 reroute, scout/probe, re-arm, buy a combat-capable ship, hunt the threat, or knowingly accept the risk.
 

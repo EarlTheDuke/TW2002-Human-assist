@@ -304,6 +304,27 @@ SHIP_COST_TW2002 = {
 }
 
 
+# The escape pod (death-escape-pods-v1, docs/playtests/combat/DEATH_ESCAPE_PODS.md d2).
+# Bible chart caps and odds. `holds` is what a fresh pod carries (MBBS figure). Not in any
+# roster dict, so the yard never sells it; hull_spec() finds it.
+ESCAPE_POD = "escape_pod"
+POD_SPEC: dict = {
+    "display_name": "Escape Pod",
+    "cost": 0,
+    "holds": 5,
+    "max_holds": 50,
+    "max_fighters": 50,
+    "max_shields": 50,
+    "max_mines": 0,
+    "max_genesis": 0,
+    "max_photons": 0,
+    "turns_per_warp": 6,
+    "fighters_per_attack": 10,
+    "offensive_odds": 0.6,
+    "base_hold_cost": 500,
+}
+
+
 # Bible chart caps. `holds` is what buy_ship grants. `max_holds` is the yard cap.
 # offensive_odds and fighters_per_attack drive tw2002 combat (combat_hull below).
 # See docs/playtests/ships/SHIP_ROSTER.md.
@@ -564,15 +585,29 @@ def ship_specs() -> dict[str, dict]:
     return SHIP_SPECS
 
 
+def hull_spec(class_key: str) -> dict | None:
+    """The spec of a hull a ship can be flying: the roster, or the escape pod (never for sale)."""
+    if class_key == ESCAPE_POD:
+        return POD_SPEC
+    return ship_specs().get(class_key)
+
+
 def ship_cost(class_key: str) -> int:
     """What StarDock charges for this hull, before trade-in."""
+    if class_key == ESCAPE_POD:
+        return 0
     if ECONOMY_SCALE_MODE == "tw2002":
         return int(SHIP_COST_TW2002[class_key])
     return int(SHIP_SPECS[class_key]["cost"])
 
 
 def trade_in_credit(class_key: str) -> int:
-    """25 percent of the hull price. The yard applies this to the next hull."""
+    """25 percent of the hull price. The yard applies this to the next hull.
+
+    An escape pod trades for a Scout outright (DEATH_ESCAPE_PODS.md d17).
+    """
+    if class_key == ESCAPE_POD:
+        return ship_cost("scout_marauder")
     return int(ship_cost(class_key) * 0.25)
 
 
@@ -603,7 +638,7 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
     None means this roster does not cap that item (legacy mines, genesis, photons).
     Holds with no per-ship max still stop at 150.
     """
-    spec = ship_specs().get(class_key) or {}
+    spec = hull_spec(class_key) or {}
     field = _EQUIP_CAP_FIELD.get(item)
     if field is None:
         return None
@@ -643,14 +678,14 @@ def hold_day_base(day: int) -> int:
 def hold_next_price(class_key: str, holds_already: int, day: int) -> int:
     """Credits for the next single hold."""
     if ECONOMY_SCALE_MODE != "tw2002":
-        return int(SHIP_SPECS[class_key]["base_hold_cost"])
+        return int((SHIP_SPECS.get(class_key) or POD_SPEC)["base_hold_cost"])
     return hold_day_base(day) + 20 * int(holds_already)
 
 
 def hold_total_price(class_key: str, holds_already: int, qty: int, day: int) -> int:
     """Credits to buy `qty` holds starting from `holds_already`."""
     if ECONOMY_SCALE_MODE != "tw2002":
-        return int(SHIP_SPECS[class_key]["base_hold_cost"]) * int(qty)
+        return int((SHIP_SPECS.get(class_key) or POD_SPEC)["base_hold_cost"]) * int(qty)
     base = hold_day_base(day)
     held = int(holds_already)
     count = int(qty)
@@ -947,6 +982,8 @@ def challenge_on() -> bool:
 def combat_hull(class_key: str) -> tuple[float, int]:
     """(offensive odds, fighters per attack) from the Bible chart, any economy mode."""
     spec = SHIP_SPECS_TW2002.get(class_key)
+    if class_key == ESCAPE_POD:
+        spec = POD_SPEC
     if spec is None:
         legacy = SHIP_SPECS.get(class_key) or {}
         return 1.0, int(legacy.get("max_fighters") or 10**9)
@@ -992,6 +1029,38 @@ PLANET_CLASS_WEIGHTS = {
 
 # --- Player elimination -------------------------------------------------------
 MAX_DEATHS_BEFORE_ELIM = 3
+
+# --- Death and escape pods (death-escape-pods-v1) ---------------------------------
+# docs/playtests/combat/DEATH_ESCAPE_PODS.md. "legacy" is the old death: StarDock, a fresh
+# Merchant Cruiser, credits x0.75, elimination at MAX_DEATHS_BEFORE_ELIM.
+DEATH_MODE = "tw2002"
+PODLESS_HULLS = ("scout_marauder", "escape_pod")  # d3: these go straight to Ship Destroyed
+PODS_PER_DAY = 2  # d10: the third loss in one day is Ship Destroyed
+POD_EXP_LOSS = 0.10  # d8: podded
+SD_EXP_LOSS = 0.50  # d9: Ship Destroyed
+SD_ALIGN_LOSS = 0.50  # d9
+SD_RESTART_HULL = "scout_marauder"  # d11: the free ship after Ship Destroyed
+POD_PATH_MIN_HOPS = 3  # d4: safe-path targets, pods.html "3-20"
+POD_PATH_MAX_HOPS = 20
+POD_PATH_TRIES = 5  # d4: "a bunch" of random targets. UNVERIFIED count.
+
+
+def death_tw2002() -> bool:
+    return DEATH_MODE == "tw2002"
+
+
+def elimination_deaths(config=None) -> int:
+    """Ship losses that remove a player for good. 0 means never (d19).
+
+    GameConfig.elimination_deaths wins when set. Unset is the mode default:
+    MAX_DEATHS_BEFORE_ELIM in legacy, off in tw2002.
+    """
+    value = getattr(config, "elimination_deaths", None)
+    if value is not None:
+        return max(0, int(value))
+    if death_tw2002():
+        return 0
+    return MAX_DEATHS_BEFORE_ELIM
 
 # --- Experience / alignment ranks --------------------------------------------
 # Tuple of (threshold_xp, rank_name) inclusive; choose highest matching.

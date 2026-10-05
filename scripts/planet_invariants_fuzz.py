@@ -115,7 +115,8 @@ def _explained_total(before: dict[str, int], events, universe) -> int:
             victim = payload.get("victim")
             if payload.get("kind") == "ferrengi" and actor in credits:
                 credits[actor] += int(payload.get("bounty") or 0)
-            elif victim in credits:
+            elif victim in credits and not payload.get("outcome"):
+                # Legacy death keeps 75 percent. A tw2002 pod or Ship Destroyed (payload "outcome") keeps all.
                 credits[victim] = int(credits[victim] * 0.75)
     return sum(credits.values())
 

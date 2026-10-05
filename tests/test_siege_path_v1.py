@@ -61,7 +61,8 @@ def test_attacker_captures_a_defended_planet() -> None:
     assert attacker.ship.fighters == 970
 
 
-def test_attacker_loses_and_the_ship_is_destroyed() -> None:
+def test_attacker_loses_and_the_ship_is_destroyed(monkeypatch) -> None:
+    monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
     u, (attacker, *_) = _make_universe(seed=8802)
     attacker.ship.fighters = 300
     attacker.ship.shields = 0

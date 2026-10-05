@@ -33,7 +33,7 @@ from tw2k.engine.observation import _event_visible_to, build_observation, event_
 from tw2k.engine.runner import apply_action
 
 ROOT = Path(__file__).resolve().parents[1]
-HULLS = [c for c in ShipClass]
+HULLS = [c for c in ShipClass if c is not ShipClass.ESCAPE_POD]  # the pod is not for sale
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +158,7 @@ def test_beating_the_defense_destroys_the_ship_and_costs_what_it_took() -> None:
     # Real defense 400 at 1.0; ceil(400 / 1.6) = 250 fighters lost.
     assert a.ship.fighters == 750
     assert d.deaths == deaths + 1
-    assert d.sector_id == K.STARDOCK_SECTOR
+    assert d.ship.ship_class is ShipClass.ESCAPE_POD  # DEATH_MODE tw2002: DEATH_ESCAPE_PODS.md
     assert event_facts(_last(u, EventKind.COMBAT))["outcome"] == "destroyed"
 
 
@@ -449,8 +449,9 @@ def test_surrender_takes_the_existing_death_with_a_warning() -> None:
     res = _act(u, ship.id, ActionKind.SURRENDER)
     assert res.ok, res.error
     assert ship.deaths == deaths + 1
-    assert ship.sector_id == K.STARDOCK_SECTOR
-    assert ship.credits == 750
+    # DEATH_MODE tw2002 (DEATH_ESCAPE_PODS.md d20): the pod goes back where the ship came from; credits stay.
+    assert ship.sector_id == home and ship.ship.ship_class is ShipClass.ESCAPE_POD
+    assert ship.credits == 1000
     assert ship.fighter_challenge is None
     assert event_facts(_last(u, EventKind.SURRENDER)) == {"mode": "defensive"}
     assert _last(u, EventKind.SHIP_DESTROYED).payload["reason"] == "surrender"
@@ -502,6 +503,7 @@ def test_a_stale_challenge_clears_when_the_fighters_go() -> None:
 def test_legacy_switch_keeps_the_old_dice_and_entry_path(monkeypatch: pytest.MonkeyPatch) -> None:
     """Golden numbers recorded on the unmodified engine (21a9783) with the same script."""
     monkeypatch.setattr(K, "COMBAT_MODE", "legacy")
+    monkeypatch.setattr(K, "DEATH_MODE", "legacy")  # recorded with the old death (fighters back to 20)
     golden = {35001: (177, 0, 20, 0, 1, 1), 35002: (127, 0, 20, 0, 1, 2), 35003: (114, 0, 20, 0, 1, 2)}
     for seed, want in golden.items():
         u, (a, b, _c) = _make_universe(seed=seed)

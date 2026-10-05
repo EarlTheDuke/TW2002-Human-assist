@@ -8,7 +8,7 @@ Pulled out of `engine.runner` during the Phase 6 split. Contains:
       deployment (warp-in offensive mode, or explicit attack-sector).
     * `_resolve_ship_combat(...)` — player-vs-target 3-exchange duel.
     * `_resolve_ship_combat_attacker_npc(...)` — same math, Ferrengi on offense.
-    * `_destroy_ship(...)` — eject, respawn at StarDock, decrement lives,
+    * `_destroy_ship(...)` — DEATH_MODE tw2002 escape pod / Ship Destroyed, or legacy StarDock respawn,
       orphan unowned planets, mark player eliminated past the death cap.
 
 Depends on `victory` for the `_award_xp` / `_destroy_ship`-adjacent XP
@@ -19,6 +19,7 @@ a DAG.
 from __future__ import annotations
 
 import math
+import random
 from fractions import Fraction
 
 from . import constants as K
@@ -311,7 +312,7 @@ def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
         # death-count, elimination, credit penalty, ship downgrade
         # all fire correctly.
         _award_xp(universe, attacker_id, "kill_player")
-        _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id)
+        _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id, by_other=True)
 
 
 # ---------------------------------------------------------------------------
@@ -698,15 +699,27 @@ def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) 
     )
 
     if d_fighters <= 0:
-        _destroy_ship(universe, victim.id, reason="ferrengi", killer_id=attacker_npc.id)
+        _destroy_ship(universe, victim.id, reason="ferrengi", killer_id=attacker_npc.id, by_other=True)
     if a_fighters <= 0:
         attacker_npc.alive = False
 
 
-def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | None = None) -> None:
+def _destroy_ship(
+    universe: Universe, pid: str, reason: str, killer_id: str | None = None, by_other: bool = False
+) -> None:
+    """A ship is lost. `by_other` marks a kill someone else pressed the keys for (pods.html)."""
     player = universe.players[pid]
     if not player.alive:
         return
+    if K.death_tw2002():
+        _destroy_ship_tw2002(universe, pid, reason, killer_id, by_other)
+        return
+    _destroy_ship_legacy(universe, pid, reason, killer_id)
+
+
+def _destroy_ship_legacy(universe: Universe, pid: str, reason: str, killer_id: str | None) -> None:
+    """DEATH_MODE legacy: StarDock, a fresh Merchant Cruiser, credits x0.75."""
+    player = universe.players[pid]
 
     death_sector = player.sector_id
     # Snapshot witnesses BEFORE the eject. Emit reads occupants at emit time;
@@ -769,47 +782,229 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
         ),
     )
 
-    if player.deaths >= K.MAX_DEATHS_BEFORE_ELIM:
-        player.alive = False
-        # Drop them off the StarDock occupant list — they're out of the game.
-        try:
-            universe.sectors[K.STARDOCK_SECTOR].occupant_ids.remove(pid)
-        except ValueError:
-            pass
-        # Release any planets they owned solo, and emit a discrete
-        # planet_orphaned event for each — spectators and the UI need to
-        # see which specific planets are now unclaimed (the previous
-        # behavior silently cleared owner_id, leaving orphan citadels
-        # invisible on commander cards and in the event feed).
-        orphaned_ids: list[int] = []
-        for planet in universe.planets.values():
-            if planet.owner_id == pid and planet.corp_ticker is None:
-                planet.owner_id = None
-                orphaned_ids.append(planet.id)
-                universe.emit(
-                    EventKind.PLANET_ORPHANED,
-                    actor_id=pid,
-                    sector_id=planet.sector_id,
-                    payload={
-                        "planet_id": planet.id,
-                        "planet_name": planet.name,
-                        "former_owner": pid,
-                        "citadel_level": planet.citadel_level,
-                        "fighters": planet.fighters,
-                    },
-                    summary=(
-                        f"Planet {planet.name} (L{planet.citadel_level} citadel, "
-                        f"{planet.fighters} fighters) is now UNCLAIMED after "
-                        f"{player.name}'s elimination."
-                    ),
-                )
-        universe.emit(
-            EventKind.PLAYER_ELIMINATED,
-            actor_id=pid,
-            payload={
-                "killer": killer_id,
-                "deaths": player.deaths,
-                "orphaned_planets": orphaned_ids,
-            },
-            summary=f"!!! {player.name} ELIMINATED — {player.deaths} ship losses, removed from match !!!",
-        )
+    threshold = K.elimination_deaths(universe.config)
+    if threshold and player.deaths >= threshold:
+        _eliminate(universe, player, killer_id)
+
+
+def _eliminate(universe: Universe, player, killer_id: str | None) -> None:
+    """Remove a player for good (the elimination threshold was reached)."""
+    pid = player.id
+    player.alive = False
+    # Drop them off the occupant list (StarDock in legacy, the pod's sector in tw2002).
+    try:
+        universe.sectors[player.sector_id].occupant_ids.remove(pid)
+    except ValueError:
+        pass
+    # Release any planets they owned solo, and emit a discrete
+    # planet_orphaned event for each — spectators and the UI need to
+    # see which specific planets are now unclaimed (the previous
+    # behavior silently cleared owner_id, leaving orphan citadels
+    # invisible on commander cards and in the event feed).
+    orphaned_ids: list[int] = []
+    for planet in universe.planets.values():
+        if planet.owner_id == pid and planet.corp_ticker is None:
+            planet.owner_id = None
+            orphaned_ids.append(planet.id)
+            universe.emit(
+                EventKind.PLANET_ORPHANED,
+                actor_id=pid,
+                sector_id=planet.sector_id,
+                payload={
+                    "planet_id": planet.id,
+                    "planet_name": planet.name,
+                    "former_owner": pid,
+                    "citadel_level": planet.citadel_level,
+                    "fighters": planet.fighters,
+                },
+                summary=(
+                    f"Planet {planet.name} (L{planet.citadel_level} citadel, "
+                    f"{planet.fighters} fighters) is now UNCLAIMED after "
+                    f"{player.name}'s elimination."
+                ),
+            )
+    universe.emit(
+        EventKind.PLAYER_ELIMINATED,
+        actor_id=pid,
+        payload={
+            "killer": killer_id,
+            "deaths": player.deaths,
+            "orphaned_planets": orphaned_ids,
+        },
+        summary=f"!!! {player.name} ELIMINATED — {player.deaths} ship losses, removed from match !!!",
+    )
+
+
+# ---------------------------------------------------------------------------
+# DEATH_MODE tw2002: escape pods. docs/playtests/combat/DEATH_ESCAPE_PODS.md.
+# ---------------------------------------------------------------------------
+
+
+def _pod_safe(universe: Universe, pid: str, sector_id: int) -> bool:
+    """d4: a sector with no deployed fighters but your own or a friendly player's."""
+    sector = universe.sectors.get(sector_id)
+    if sector is None:
+        return False
+    dep = sector.fighters
+    if dep is None or int(dep.count) <= 0:
+        return True
+    return dep.owner_id == pid or _are_allied(universe, pid, dep.owner_id)
+
+
+def _pod_rng(universe: Universe, pid: str) -> random.Random:
+    """Seeded per loss, apart from the universe stream so other dice do not shift."""
+    return random.Random(f"pod:{universe.config.seed}:{universe.day}:{universe.tick}:{universe.seq}:{pid}")
+
+
+def _pod_safe_path(universe: Universe, pid: str, start: int) -> int:
+    """d4: random targets 3..20 hops out; walk each shortest path while it stays safe.
+
+    The pod takes the path that gets farthest. No safe first hop: it stays put.
+    """
+    parent: dict[int, int | None] = {start: None}
+    depth = {start: 0}
+    order = [start]
+    i = 0
+    while i < len(order):
+        cur = order[i]
+        i += 1
+        if depth[cur] >= K.POD_PATH_MAX_HOPS:
+            continue
+        for nxt in sorted(universe.sectors[cur].warps):
+            nxt = int(nxt)
+            if nxt in parent or nxt not in universe.sectors:
+                continue
+            parent[nxt] = cur
+            depth[nxt] = depth[cur] + 1
+            order.append(nxt)
+    targets = [s for s in order if K.POD_PATH_MIN_HOPS <= depth[s] <= K.POD_PATH_MAX_HOPS]
+    if not targets:
+        return start
+    picks = _pod_rng(universe, pid).sample(sorted(targets), min(K.POD_PATH_TRIES, len(targets)))
+    best, best_hops = start, 0
+    for target in picks:
+        path: list[int] = []
+        node: int | None = target
+        while node is not None and node != start:
+            path.append(node)
+            node = parent[node]
+        path.reverse()
+        hops = 0
+        reach = start
+        for sid in path:
+            if not _pod_safe(universe, pid, sid):
+                break
+            hops += 1
+            reach = sid
+        if hops > best_hops:
+            best, best_hops = reach, hops
+    return best
+
+
+def _pod_destination(universe: Universe, player, death_sector: int, by_other: bool) -> int:
+    """d4/d5: killed by someone else, the safe path; self-inflicted, the previous sector."""
+    if by_other:
+        return _pod_safe_path(universe, player.id, death_sector)
+    prev = player.prev_sector_id
+    if prev is not None and prev in universe.sectors:
+        return int(prev)
+    return death_sector
+
+
+def _strip_ship(player, class_key: str) -> None:
+    """d15: the new hull carries nothing over."""
+    from .models import ShipClass as SC
+    player.ship.ship_class = SC(class_key)
+    player.ship.holds = int((K.hull_spec(class_key) or {}).get("holds", 0))
+    player.ship.cargo = {c: 0 for c in player.ship.cargo}
+    player.ship.cargo_cost = {c: 0.0 for c in player.ship.cargo_cost}
+    player.ship.fighters = 0
+    player.ship.shields = 0
+    player.ship.photon_disabled_ticks = 0
+    player.ship.genesis = 0
+    player.ship.photon_missiles = 0
+    player.ship.ether_probes = 0
+    player.ship.mines = {MineType.ARMID: 0, MineType.LIMPET: 0, MineType.ATOMIC: 0}
+
+
+def _place(universe: Universe, player, sector_id: int) -> None:
+    try:
+        universe.sectors[player.sector_id].occupant_ids.remove(player.id)
+    except ValueError:
+        pass
+    player.sector_id = sector_id
+    player.end_port_visit()
+    if player.id not in universe.sectors[sector_id].occupant_ids:
+        universe.sectors[sector_id].occupant_ids.append(player.id)
+
+
+def _destroy_ship_tw2002(
+    universe: Universe, pid: str, reason: str, killer_id: str | None, by_other: bool
+) -> None:
+    """d1-d11: the pod, or Ship Destroyed. Credits stay (d14). Elimination only by setting (d19)."""
+    player = universe.players[pid]
+    death_sector = player.sector_id
+    sector = universe.sectors.get(death_sector)
+    witnesses = list(sector.occupant_ids) if sector is not None else []
+    if pid not in witnesses:
+        witnesses.append(pid)
+    player.deaths += 1
+    player.last_death_day = universe.day
+    player.last_death_sector = death_sector
+    player.last_death_killer_id = str(killer_id or "")
+    player.last_death_fighters = int(player.ship.fighters)
+    player.last_death_reason = str(reason)
+    if player.pods_day != universe.day:
+        player.pods_day = universe.day
+        player.pods_today = 0
+    hull = player.ship.ship_class.value
+    podded = hull not in K.PODLESS_HULLS and player.pods_today < K.PODS_PER_DAY
+    player.planet_landed = None
+    player.photon_damped_sector_id = None
+    player.fighter_challenge = None
+    player.flee_penalty = False
+    exp_before = int(player.experience)
+    align_before = int(player.alignment)
+    if podded:
+        player.pods_today += 1
+        dest = _pod_destination(universe, player, death_sector, by_other)
+        if exp_before > 0:
+            player.experience = exp_before - int(exp_before * K.POD_EXP_LOSS)
+        _strip_ship(player, K.ESCAPE_POD)
+        _place(universe, player, dest)
+        outcome = "escape_pod"
+        tail = f"escaped in a pod to sector {dest} [pod {player.pods_today}/{K.PODS_PER_DAY} today]"
+    else:
+        dest = K.STARDOCK_SECTOR
+        if exp_before > 0:
+            player.experience = exp_before - int(exp_before * K.SD_EXP_LOSS)
+        player.alignment = align_before - int(align_before * K.SD_ALIGN_LOSS)
+        _strip_ship(player, K.SD_RESTART_HULL)
+        _place(universe, player, dest)
+        # d9/d11: out until midnight; the free scout waits at StarDock.
+        player.turns_today = max(int(player.turns_today), int(player.turns_per_day))
+        outcome = "ship_destroyed"
+        tail = "SHIP DESTROYED - out until tomorrow, a free Scout waits at StarDock"
+
+    universe.emit(
+        EventKind.SHIP_DESTROYED,
+        actor_id=killer_id,
+        sector_id=death_sector,
+        payload={
+            "victim": pid,
+            "reason": reason,
+            "deaths": player.deaths,
+            "death_sector": death_sector,
+            "killer_id": killer_id,
+            "outcome": outcome,
+            "pod_sector": dest,
+            "pods_today": player.pods_today,
+            "exp_lost": exp_before - int(player.experience),
+            "align_lost": align_before - int(player.alignment),
+            "_witnesses": witnesses,
+        },
+        summary=f"*** {player.name}'s ship destroyed ({reason}); {tail} ***",
+    )
+    threshold = K.elimination_deaths(universe.config)
+    if threshold and player.deaths >= threshold:
+        _eliminate(universe, player, killer_id)

@@ -135,7 +135,8 @@ def test_transwarp_ends_the_visit_for_the_mover_and_the_ship_it_carries() -> Non
         assert player.turns_today == turns + 1
 
 
-def test_death_ends_the_visit_and_the_next_trade_at_that_port_costs_one() -> None:
+def test_death_ends_the_visit_and_the_next_trade_at_that_port_costs_one(monkeypatch) -> None:
+    monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
     u, (owner, *_) = _make_universe(seed=17113)
     a, _b, _c = _chain(u)
     _seller(u, a)

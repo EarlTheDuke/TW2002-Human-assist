@@ -1590,7 +1590,7 @@
       if (mines) extraEquip.push(`<span class="equip-chip danger">☢ ${mines} atomic</span>`);
       if (p.photon_disabled_ticks > 0) extraEquip.push(`<span class="equip-chip danger">DISABLED ${p.photon_disabled_ticks}t</span>`);
       const deaths = p.deaths || 0;
-      const maxDeaths = p.max_deaths || 3;
+      const maxDeaths = p.max_deaths ?? 3;  // 0: no elimination (tw2002 death)
       const corpInfo = p.corp_ticker
         ? `<span class="player-tag corp-tag" style="color:${p.color}">${esc(p.corp_ticker)}</span>`
         : "";
@@ -1661,7 +1661,7 @@
             <div class="stat"><span class="k">Align</span><span class="v">${alignValue}</span></div>
             <div class="stat"><span class="k">XP</span><span class="v">${fmt(p.experience || 0)}</span></div>
             <div class="stat"><span class="k">Turns</span><span class="v">${turnsLabel}</span></div>
-            <div class="stat"><span class="k">Lives</span><span class="v">${Math.max(0, maxDeaths - deaths)}/${maxDeaths}</span></div>
+            <div class="stat"><span class="k">Lives</span><span class="v">${maxDeaths ? `${Math.max(0, maxDeaths - deaths)}/${maxDeaths}` : "no limit"}</span></div>
             <div class="stat" title="Ports this commander has visited and has intel on"><span class="k">Ports Seen</span><span class="v">${fmt(p.known_ports_count || 0)}</span></div>
             <div class="stat" title="Sectors this commander has personally scouted"><span class="k">Sectors Seen</span><span class="v">${fmt(p.known_sectors_count || 0)}</span></div>
             <div class="stat" title="Genesis torpedoes loaded (spawns new planets)"><span class="k">Genesis</span><span class="v">${fmt(p.genesis || 0)}</span></div>
