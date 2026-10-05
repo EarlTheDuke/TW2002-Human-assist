@@ -41,7 +41,6 @@ def test_n3_day10_ferry_and_net_worth(monkeypatch) -> None:
     """Five seeds, ten days. Seed 250925 must land inside the net-worth band with ferry under 40%."""
     # Measured under RANK_MODE legacy. RANK_MODE tw2002 numbers: EXPERIENCE_ALIGNMENT.md "Seat brains".
     monkeypatch.setattr("tw2k.engine.constants.RANK_MODE", "legacy")
-    # FEDSPACE_POLICE.md: Extern tows change overnight parking; pin FED_MODE legacy for this bar only.
-    monkeypatch.setattr("tw2k.engine.constants.FED_MODE", "legacy")
+    # FEDSPACE_POLICE.md: no FED_MODE pin - the bar passes under tw2002 tows (QC re-measured, same numbers).
     mod = _load_acceptance()
     assert mod.run_n3(list(mod.N2_SEEDS)) == 0

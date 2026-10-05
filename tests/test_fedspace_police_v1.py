@@ -599,3 +599,312 @@ def test_fed_legacy_is_unchanged(legacy):
         tick_day(u2)
     assert digests == digests2
     assert u.federals == [] and u2.federals == []
+
+
+# ---- independent QC (fedspace-police-v1 QC fixes) ----
+# Each test below failed on 58acec8 (or pins a fix that did): see FEDSPACE_POLICE.md "QC fixes".
+
+
+def _fed(u, name: str):
+    return next(f for f in u.federals if f.name == name)
+
+
+def test_qc_attack_fed_legal_equals_handler(tw):
+    """f7 + legal == handler: no fighters aboard / bad qty is refused exactly like the legal list says."""
+    u = _world(players={"A": dict(alignment=100, fighters=0, sector_id=1, experience=500)})
+    _fed(u, "Nelson").sector_id = 1
+    la = _las(u, "A")["attack"]
+    assert "fed:Nelson" in la.params["target"]["choices"] and not la.legal
+    r = _act(u, "A", ActionKind.ATTACK, target="fed:Nelson")
+    assert not r.ok and "no fighters" in (r.error or "")
+    a = u.players["A"]
+    assert a.ship.ship_class != ShipClass.ESCAPE_POD and a.alignment == 100 and a.experience == 500
+    a.ship.fighters = 40
+    r = _act(u, "A", ActionKind.ATTACK, target="fed:Nelson", qty=9999)
+    assert not r.ok and a.ship.ship_class != ShipClass.ESCAPE_POD and a.alignment == 100
+    assert _las(u, "A")["attack"].legal
+    r = _act(u, "A", ActionKind.ATTACK, target="fed:Nelson", qty=10)
+    assert r.ok and a.ship.ship_class == ShipClass.ESCAPE_POD and a.alignment == 90 and a.experience == 450
+
+
+def test_qc_hail_precedes_repossession(tw, monkeypatch):
+    """f23: the warning comes with the action that turns the ISS pilot evil, before the warp that costs the ship."""
+    monkeypatch.setattr(K, "FED_PROTECT_PUNISH", "refuse")
+    u = _world(players={
+        "A": dict(alignment=100, experience=2000, fighters=100, sector_id=2, ship_class="imperial_starship"),
+        "C": dict(alignment=0, experience=100, fighters=10, sector_id=2),
+    })
+    r = _act(u, "A", ActionKind.ATTACK, target="C")
+    assert not r.ok and u.players["A"].alignment < 0
+    kinds = [e.kind for e in u.events]
+    assert EventKind.FED_HAIL in kinds and EventKind.FED_REPOSSESS not in kinds
+    assert u.players["A"].ship.ship_class == ShipClass.IMPERIAL_STARSHIP
+    obs = _obs(u, "A")
+    assert any(e.get("kind") == "fed_hail" for e in obs["recent_events"])
+    assert not any(e.get("kind") == "fed_hail" for e in _obs(u, "C")["recent_events"])  # owner-only
+    dest = int(u.sectors[2].warps[0])
+    _act(u, "A", ActionKind.WARP, target=dest)
+    assert u.players["A"].ship.ship_class != ShipClass.IMPERIAL_STARSHIP
+    assert sum(1 for e in u.events if e.kind == EventKind.FED_HAIL) == 1
+
+
+def test_qc_iss_repo_on_retreat(tw):
+    """f22: a retreat is a move - an evil uncloaked ISS is repossessed on it (twgs)."""
+    u = _world(players={
+        "A": dict(alignment=50, fighters=100, sector_id=20, ship_class="imperial_starship"),
+        "B": dict(alignment=0, fighters=10, sector_id=30),
+    })
+    there = int(u.sectors[20].warps[0])
+    u.sectors[there].fighters = FighterDeployment(owner_id="B", count=500, mode=FighterMode.DEFENSIVE)
+    r = _act(u, "A", ActionKind.WARP, target=there)
+    assert r.ok and u.players["A"].fighter_challenge is not None
+    u.players["A"].alignment = -5  # turned evil while held
+    assert _las(u, "A")["retreat"].legal
+    r = _act(u, "A", ActionKind.RETREAT)
+    assert r.ok
+    assert u.players["A"].ship.ship_class != ShipClass.IMPERIAL_STARSHIP
+    assert any(e.kind == EventKind.FED_REPOSSESS for e in u.events)
+
+
+def test_qc_sector_lists_federals_and_prompt_carries_police(tw):
+    """f1/f2 obs: a Fed in your sector is in the sector block (not only in the attack list); police/fedspace in prompt."""
+    u = _world(players={"A": dict(alignment=600, fighters=150, sector_id=1)})
+    _fed(u, "Nelson").sector_id = 1
+    obs = build_observation(u, "A")
+    d = obs.model_dump(mode="json")
+    assert {"name": "Nelson", "title": "Admiral", "kind": "federal"} in d["sector"]["federals"]
+    assert "Captain" not in json.dumps(d["sector"]["federals"])  # Zyrain is in 7, not here
+    text = format_observation(obs)
+    payload = json.loads(text)
+    assert payload["police"]["commission"]["eligible"] is True
+    assert payload["fedspace"]["will_be_towed"] is True
+    assert "Nelson" in json.dumps(payload["sector"])
+
+
+def test_qc_sector_federals_absent_under_legacy(legacy):
+    from tw2k.engine.scanners import sector_view
+
+    u = _world(players={"A": dict(alignment=600, fighters=150, sector_id=7)})
+    d = _obs(u, "A")
+    assert "federals" not in d["sector"]
+    assert "police" not in d and "fedspace" not in d
+    payload = json.loads(format_observation(build_observation(u, "A")))
+    assert "police" not in payload and "fedspace" not in payload
+    assert "federals" not in sector_view(u, "A", 7)  # holo/probe memory stays byte-identical in legacy
+
+
+def test_qc_fedspace_hint_does_not_count_cloaked_rivals(tw):
+    """Fog h15: the parking hint counts only ships the seat can see; the Extern tow still counts cloaked ships."""
+    players = {"A": dict(alignment=0, fighters=10, sector_id=3)}
+    players.update({f"C{i}": dict(alignment=0, fighters=10, sector_id=3, cloaked=True) for i in range(5)})
+    u = _world(players=players)
+    u.sectors[3].occupant_ids = ["C0", "C1", "C2", "C3", "C4", "A"]
+    hint = _obs(u, "A")["fedspace"]
+    assert hint["ships_here"] == 1 and hint["will_be_towed"] is False
+    run_tows(u)  # f12/f13: six ships, A arrived last - the Feds still tow it
+    assert u.players["A"].sector_id not in K.FEDSPACE_SECTORS
+
+
+def test_qc_fedspace_hint_parking_names_latest_arrivals_only(tw):
+    players = {f"P{i}": dict(alignment=0, fighters=10, sector_id=3) for i in range(6)}
+    u = _world(players=players)
+    u.sectors[3].occupant_ids = [f"P{i}" for i in range(6)]
+    assert _obs(u, "P0")["fedspace"]["will_be_towed"] is False
+    assert _obs(u, "P5")["fedspace"]["will_be_towed"] is True
+    assert _obs(u, "P5")["fedspace"]["ships_here"] == 6
+
+
+def test_qc_repossess_seen_by_sector_occupants(tw):
+    """f22 / spec events: FED_REPOSSESS goes to the owner plus the sector occupants."""
+    u = _world(players={
+        "A": dict(alignment=-5, fighters=100, sector_id=20, ship_class="imperial_starship"),
+        "W": dict(alignment=0, fighters=10, sector_id=20),
+        "F": dict(alignment=0, fighters=10, sector_id=40),
+    })
+    from tw2k.engine.fed import check_evil_iss_in_sector
+
+    _fed(u, "Nelson").sector_id = 20
+    check_evil_iss_in_sector(u, 20)
+    assert u.players["A"].ship.ship_class != ShipClass.IMPERIAL_STARSHIP
+    assert any(e.get("kind") == "fed_repossess" for e in _obs(u, "W")["recent_events"])
+    assert not any(e.get("kind") == "fed_repossess" for e in _obs(u, "F")["recent_events"])
+
+
+def test_qc_f9_fedsafe_switches_work(tw, monkeypatch):
+    """f9 SOURCE-CONFLICT switches are live under tw2002 and ignored under legacy."""
+    from tw2k.engine.victory import is_fedsafe
+
+    u = _world(players={"A": dict(alignment=0, experience=100, fighters=51)})
+    a = u.players["A"]
+    assert is_fedsafe(a)
+    monkeypatch.setattr(K, "FEDSAFE_MIN_ALIGNMENT", 1)
+    assert not is_fedsafe(a)
+    monkeypatch.setattr(K, "FEDSAFE_MIN_ALIGNMENT", 0)
+    monkeypatch.setattr(K, "FEDSAFE_MAX_FIGHTERS", 50)
+    assert not is_fedsafe(a)
+    a.ship.fighters = 50
+    assert is_fedsafe(a)
+    a.ship.fighters = 51
+    monkeypatch.setattr(K, "FED_MODE", "legacy")
+    assert is_fedsafe(a)
+
+
+def test_qc_federals_survive_a_save_load_round_trip(tw):
+    from tw2k.engine.fed import Federal
+    from tw2k.engine.models import Universe
+
+    u = _world()
+    u2 = Universe.model_validate(u.model_dump())
+    assert all(isinstance(f, Federal) for f in u2.federals) and len(u2.federals) == 3
+    u2.day = 3
+    tick_federals(u2)  # used to raise AttributeError on plain dicts
+    assert _digest([f.model_dump() for f in u2.federals]) == _digest(
+        [f.model_dump() for f in (lambda x: (setattr(x, "day", 3), tick_federals(x), x)[2])(u).federals]
+    )
+
+
+def test_qc_no_bounty_for_killing_yourself(tw):
+    from tw2k.engine.fed import record_bounty_on_death
+
+    u = _world(players={"A": dict(alignment=-50), "B": dict(alignment=10)})
+    u.posted_rewards = {"A": [{"poster_id": "B", "amount": 5000, "day": 1}]}
+    record_bounty_on_death(u, "A", "A", "ship_destroyed")
+    assert not u.pending_rewards.get("A") and u.posted_rewards["A"]
+
+
+def test_qc_bot_finishes_stardock_business_then_leaves_before_extern(tw):
+    """Seat brain: armed in sector 1 with turns to spare it does NOT bolt (used to ping-pong); late in the day it leaves."""
+    from tw2k.agents.seat_brain import SeatBrain
+
+    u = _world(players={"A": dict(alignment=0, fighters=150, sector_id=1, credits=50_000)})
+    brain = SeatBrain()
+    act = brain.decide(_obs(u, "A"))
+    assert "Extern tow" not in (act.get("thought") or "")
+    p = u.players["A"]
+    p.turns_today = p.turns_per_day - 3
+    act = brain.decide(_obs(u, "A"))
+    assert act["kind"] == "warp" and "Extern tow" in act["thought"]
+    assert int(act["args"]["target"]) in [int(w) for w in u.sectors[1].warps]
+
+
+def test_qc_bot_takes_free_commission_and_claims_bounty(tw):
+    from tw2k.agents.seat_brain import SeatBrain
+
+    u = _world(players={"A": dict(alignment=600, fighters=10, sector_id=1)})
+    u.pending_rewards = {"A": 4000}
+    brain = SeatBrain()
+    act = brain.decide(_obs(u, "A"))
+    assert act["kind"] == "claim_reward"
+    assert apply_action(u, "A", Action(kind=act["kind"], args=act.get("args") or {})).ok
+    act = brain.decide(_obs(u, "A"))
+    assert act["kind"] == "apply_commission"
+    assert apply_action(u, "A", Action(kind=act["kind"], args={})).ok
+    assert u.players["A"].alignment == 1000 and u.players["A"].credits == 504_000
+
+
+def test_qc_attack_fed_costs_ten_percent_once_under_legacy_death(tw, monkeypatch):
+    """f7: DEATH_MODE legacy has no pod experience loss, so the Fed attack takes the 10% itself."""
+    monkeypatch.setattr(K, "DEATH_MODE", "legacy")
+    u = _world(players={"A": dict(alignment=100, fighters=40, sector_id=1, experience=500)})
+    _fed(u, "Nelson").sector_id = 1
+    assert _act(u, "A", ActionKind.ATTACK, target="fed:Nelson", qty=10).ok
+    assert u.players["A"].alignment == 90 and u.players["A"].experience == 450 and u.players["A"].deaths == 1
+
+
+# Recorded with tests/fed_legacy_digest.py on the engine WITHOUT this slice: 4a2200a + bc868c6 (class0 terra QC
+# fixes) cherry-picked, i.e. origin minus fedspace-police-v1. Scripted match seats N2,H, seed 250925, 2 days, every
+# *_MODE switch legacy: every observation JSON, prompt text, action + result, event and end-of-day universe state
+# (minus the five new default fields; floats rounded to 6 places for Linux/Windows libm). The FED_MODE-only
+# legacy digest matched too (QC note).
+LEGACY_RUN_GOLDEN_PRE_SLICE = "377d39dbcae3e84da90e035f"
+
+
+def test_qc_fed_legacy_matches_pre_slice_golden(legacy, monkeypatch):
+    """FED_MODE legacy is byte-identical to the pre-slice engine (spec: LEGACY_GOLDEN pattern)."""
+    import os
+    import subprocess
+    import sys
+
+    code = (
+        "import sys; from pathlib import Path; sys.path.insert(0, 'src'); sys.path.insert(0, 'tests');"
+        "from fed_legacy_digest import legacy_run_digest; print(legacy_run_digest(Path('.'), 'N2,H', 2))"
+    )
+    env = dict(os.environ, PYTHONHASHSEED="0")
+    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
+                         timeout=600, check=True)
+    assert out.stdout.strip().splitlines()[-1] == LEGACY_RUN_GOLDEN_PRE_SLICE
+
+
+# ---- rows the rules table names but 58acec8 never defined (QC) ----
+
+
+def test_f6_presence(tw, monkeypatch):
+    """f6: a Fed sharing the sector kills an evil uncloaked ISS even where mbbs move rules keep it safe."""
+    monkeypatch.setattr(K, "ISS_REPO_MODE", "mbbs")
+    for cloaked, survives in ((False, False), (True, True)):
+        u = _world(players={"A": dict(alignment=-5, fighters=100, sector_id=20, ship_class="imperial_starship",
+                                      cloaked=cloaked)})
+        there = int(u.sectors[20].warps[0])
+        u.sectors[there].fighters = FighterDeployment(owner_id="A", count=5, mode=FighterMode.DEFENSIVE)
+        _fed(u, "Nelson").sector_id = there  # was there before the fighters went down
+        assert _act(u, "A", ActionKind.WARP, target=there).ok
+        alive_iss = u.players["A"].ship.ship_class == ShipClass.IMPERIAL_STARSHIP
+        assert alive_iss is survives
+        assert any(e.kind == EventKind.FED_REPOSSESS for e in u.events) is (not survives)
+
+
+def test_f24_no_ferrengi_fight(tw):
+    """f24: Feds and Ferrengi share sectors without a fight; neither is harmed by the other."""
+    u = generate_universe(GameConfig(seed=4601, universe_size=80, enable_ferrengi=True, enable_planets=False))
+    ferr = next(iter(u.ferrengi.values()), None)
+    if ferr is None:
+        pytest.skip("no Ferrengi spawned")
+    nelson = _fed(u, "Nelson")
+    nelson.sector_id = ferr.sector_id
+    fighters_before = int(ferr.fighters)
+    from tw2k.engine.fed import check_evil_iss_presence_all
+
+    check_evil_iss_presence_all(u)
+    assert ferr.alive and int(ferr.fighters) == fighters_before
+    tick_day(u)
+    assert len(u.federals) == 3 and {f.density for f in u.federals} == {462, 489, 512}
+
+
+def test_f25_not_targets(tw):
+    """f25: a Fed never steps into a sector where a fighter challenge is open; Feds are not rob/attack ship ids."""
+    u = _world(size=60, players={"A": dict(alignment=0, sector_id=30), "B": dict(alignment=0, sector_id=31)})
+    nelson = _fed(u, "Nelson")
+    warps = [int(w) for w in u.sectors[nelson.sector_id].warps]
+    target, others = warps[0], warps[1:]
+    for wid in others:
+        u.sectors[wid].fighters = FighterDeployment(owner_id="B", count=3, mode=FighterMode.DEFENSIVE)
+    u.players["A"].fighter_challenge = {"sector_id": target, "from_sector": 30, "mode": "defensive"}
+    start = nelson.sector_id
+    u.day = 2
+    tick_federals(u)
+    assert nelson.sector_id == start  # trapped: fighters everywhere else, a challenge in the last exit
+    assert all(not str(t).startswith("fed:") or t.split(":", 1)[1] in {"Zyrain", "Nelson", "Clausewitz"}
+               for t in _las(u, "A")["attack"].params["target"]["choices"])
+    assert not any(str(pid).startswith("fed") for pid in u.players)
+
+
+def test_f26_no_toll_mine(tw, monkeypatch):
+    """f26/f4: mines do not stop a Fed by default and are untouched; FED_BLOCKED_BY_MINES makes them a wall."""
+    from tw2k.engine.fed import _legal_fed_hops
+    from tw2k.engine.models import MineDeployment, MineType
+
+    u = _world(size=60, players={"A": dict(alignment=0, sector_id=30), "B": dict(alignment=0, sector_id=31)})
+    nelson = _fed(u, "Nelson")
+    warps = [int(w) for w in u.sectors[nelson.sector_id].warps]
+    mined, others = warps[0], warps[1:]
+    for wid in others:
+        u.sectors[wid].fighters = FighterDeployment(owner_id="B", count=3, mode=FighterMode.TOLL)
+    u.sectors[mined].mines = [MineDeployment(owner_id="B", kind=MineType.ARMID, count=7)]
+    assert _legal_fed_hops(u, nelson) == [mined]
+    u.day = 2
+    tick_federals(u)
+    assert u.sectors[mined].mines[0].count == 7  # never hit
+    assert nelson.sector_id not in others  # never entered a toll sector
+    monkeypatch.setattr(K, "FED_BLOCKED_BY_MINES", True)
+    nelson.sector_id = int(next(s for s in u.sectors if mined in u.sectors[s].warps and s != mined))
+    assert mined not in _legal_fed_hops(u, nelson)

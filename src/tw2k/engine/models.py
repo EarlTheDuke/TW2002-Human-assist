@@ -842,6 +842,18 @@ class GameConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class Federal(BaseModel):
+    """One Federal starship (FEDSPACE_POLICE.md f1). Lives here so Universe.federals is typed."""
+
+    name: str
+    title: str
+    sector_id: int
+    density: int
+    home_sector: int = 0
+    # Zyrain only: set when teleported to an incident; cleared on return at tick.
+    on_incident: bool = False
+
+
 class Universe(BaseModel):
     config: GameConfig
     sectors: dict[int, Sector]
@@ -869,7 +881,7 @@ class Universe(BaseModel):
     # Sorted MSL sector ids (sector 1 / AC / Rylos lanes); empty under legacy.
     msl_sectors: list[int] = Field(default_factory=list)
     # fedspace-police-v1 (FEDSPACE_POLICE.md)
-    federals: list = Field(default_factory=list)  # list[Federal]
+    federals: list[Federal] = Field(default_factory=list)
     posted_rewards: dict[str, list] = Field(default_factory=dict)  # target_id -> [{poster_id,amount,day}]
     pending_rewards: dict[str, int] = Field(default_factory=dict)  # killer_id -> claimable credits
 

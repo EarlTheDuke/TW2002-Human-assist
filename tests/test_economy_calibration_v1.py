@@ -181,8 +181,7 @@ def test_n3_ten_day_growth_sits_inside_the_band(monkeypatch) -> None:
     """Seed 250925, solo N3, 1000 turns a day, 20k start: the measured day-10 band."""
     # Measured under RANK_MODE legacy. RANK_MODE tw2002 numbers: EXPERIENCE_ALIGNMENT.md "Seat brains".
     monkeypatch.setattr("tw2k.engine.constants.RANK_MODE", "legacy")
-    # FEDSPACE_POLICE.md: Extern tows change overnight parking; pin FED_MODE legacy for this bar only.
-    monkeypatch.setattr("tw2k.engine.constants.FED_MODE", "legacy")
+    # FEDSPACE_POLICE.md: no FED_MODE pin - the bar passes under tw2002 tows (QC re-measured, same numbers).
     from tw2k.agents.seat_brain import SeatBrain
 
     mod = _acceptance()

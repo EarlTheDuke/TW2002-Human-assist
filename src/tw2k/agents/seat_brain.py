@@ -99,6 +99,10 @@ def _colonist_ferry_turn_overhead() -> int:
 
 MEMORY_TAG = "SEATBRAIN "
 STALL_BREAK_TURNS = 3
+# fedspace-police-v1: FedSpace sectors; leave this many spare warps when heading out before Extern.
+FEDSPACE_IDS = frozenset(range(1, 11))
+FED_TOW_EXIT_MARGIN_WARPS = 3
+FED_TOW_UNKNOWN_EXIT_HOPS = 3
 # S6: self-failure events a seat can see about its own actions.
 FAIL_KINDS = ("agent_error", "trade_failed", "warp_blocked")
 BAN_DECISIONS = 12          # a failed exact action is not retried for this many decisions
@@ -590,8 +594,8 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        answer = self._avoid_fed_tow(v)
-        if answer is not None:  # fedspace-police-v1: do not overnight armed in FedSpace
+        answer = self._avoid_fed_tow(v) or self._police_hq(v)
+        if answer is not None:  # fedspace-police-v1: leave FedSpace before Extern; free Police HQ verbs
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
@@ -2424,43 +2428,57 @@ class SeatBrain:
         return True
 
 
-    def _avoid_fed_tow(self, v: View) -> dict[str, Any] | None:
-        """fedspace-police-v1: do not overnight in FedSpace with 99+ fighters or as the 6th ship.
-
-        Deploying fighters in FedSpace is refused, so the only safe moves are leave FedSpace
-        or (when buying) stay under the arms limit. Prefer a warp out when turns remain.
-        """
-        try:
-            from tw2k.engine import constants as K
-            if not K.fed_tw2002():
-                return None
-        except Exception:
-            return None
+    def _fed_tow_risk(self, v: View) -> bool:
+        """fedspace-police-v1: parked in FedSpace with 99+ fighters, or beyond the visible parking limit."""
         hint = v.obs.get("fedspace") if isinstance(v.obs, dict) else None
-        sector = v.obs.get("sector") if isinstance(v.obs, dict) else None
-        in_fed = bool((hint is not None) or (isinstance(sector, dict) and sector.get("is_fedspace")))
-        if not in_fed:
-            return None
+        if not isinstance(hint, dict):
+            return False  # no hint outside FedSpace or under FED_MODE legacy
         fighters = int(self._ship_fighters(v))
-        limit = int((hint or {}).get("tow_fighter_limit") or 98)
-        will = bool((hint or {}).get("will_be_towed")) or fighters > limit
-        ships_here = int((hint or {}).get("ships_here") or 0)
-        ship_limit = int((hint or {}).get("limit") or 5)
-        crowded = ships_here > ship_limit
-        if not will and not crowded:
-            # Still cap a fighter buy that would cross the arms limit while parked here.
+        limit = int(hint.get("tow_fighter_limit") or 98)
+        return bool(hint.get("will_be_towed")) or fighters > limit
+
+    def _fed_exit_plan(self, v: View) -> tuple[int | None, int]:
+        """(first warp toward the nearest known sector outside FedSpace, hops to get there)."""
+        if v.here is None or not v.ok("warp"):
+            return None, 0
+        legal = [int(c) for c in (v.choices("warp", "target") or [])]
+        outside = [c for c in legal if c not in FEDSPACE_IDS]
+        if outside:
+            return min(outside), 1
+        dist = self._distances_from(v, int(v.here))
+        exits = sorted((d, sid) for sid, d in dist.items() if sid not in FEDSPACE_IDS and d > 0)
+        for d, sid in exits:
+            hop = self._known_hop_toward(v, sid)
+            if hop is not None:
+                return hop, d
+        return (min(legal), FED_TOW_UNKNOWN_EXIT_HOPS) if legal else (None, 0)
+
+    def _fed_turns_short(self, v: View, hops: int) -> bool:
+        """True once the turns left today only just cover the trip out of FedSpace (tows run at Extern)."""
+        left = int(v.obs.get("turns_remaining") or 0) if isinstance(v.obs, dict) else 0
+        cost = int((v.legal.get("warp") or {}).get("turn_cost") or 1)
+        return left <= (max(1, hops) + FED_TOW_EXIT_MARGIN_WARPS) * max(1, cost)
+
+    def _avoid_fed_tow(self, v: View) -> dict[str, Any] | None:
+        """fedspace-police-v1: do not overnight in FedSpace with 99+ fighters or as an extra parked ship.
+
+        Tows run only at Extern (day end), so a seat may do its StarDock business armed and leave
+        when the day's turns run short. Leaving at once on every visit ping-ponged sector 1 (QC).
+        """
+        if not self._fed_tow_risk(v):
             return None
-        # Leave FedSpace if we can.
-        if v.ok("warp"):
-            choices = list(v.choices("warp", "target") or [])
-            # Prefer a non-FedSpace neighbor (ids > 10)
-            outside = [int(c) for c in choices if int(c) not in range(1, 11)]
-            if outside:
-                dest = outside[0]
-                return self._act("warp", {"target": dest}, f"leave FedSpace before Extern tow (figs={fighters})")
-            if choices:
-                dest = int(choices[0])
-                return self._act("warp", {"target": dest}, "move within FedSpace away from parking crush")
+        hop, hops = self._fed_exit_plan(v)
+        if hop is None or not self._fed_turns_short(v, hops):
+            return None
+        return self._act("warp", {"target": hop},
+                         f"leave FedSpace before the Extern tow (figs={self._ship_fighters(v)}, {hops} hops out)")
+
+    def _police_hq(self, v: View) -> dict[str, Any] | None:
+        """fedspace-police-v1: free Police HQ wins in sector 1 - claim a bounty, take the commission."""
+        if v.ok("claim_reward"):
+            return self._act("claim_reward", {}, "claim the Federation bounty for a kill")
+        if v.ok("apply_commission"):
+            return self._act("apply_commission", {}, "apply for the Federal Commission (alignment to 1000)")
         return None
 
 
@@ -2493,14 +2511,11 @@ class SeatBrain:
             need = max(0, DEFENSE_FIGHTERS_FLOOR - self._ship_fighters(v))
             afford = max(0, (v.credits - self.cash_buffer) // max(1, unit))
             qty = min(room, need if need else min(room, 300), afford, 400)
-            # fedspace-police-v1: never buy past the Extern arms limit while in FedSpace
-            try:
-                from tw2k.engine import constants as _FK
-                if _FK.fed_tw2002() and int(v.here or 0) in range(1, 11):
-                    room_under = max(0, int(_FK.FED_TOW_FIGHTER_LIMIT) - int(self._ship_fighters(v)))
-                    qty = min(qty, room_under)
-            except Exception:
-                pass
+            # fedspace-police-v1: late in the day, do not buy past the Extern arms limit in FedSpace
+            hint = v.obs.get("fedspace") if isinstance(v.obs, dict) else None
+            if isinstance(hint, dict) and self._fed_turns_short(v, self._fed_exit_plan(v)[1]):
+                room_under = max(0, int(hint.get("tow_fighter_limit") or 98) - int(self._ship_fighters(v)))
+                qty = min(qty, room_under)
             if qty > 0:
                 return self._act("buy_equip", {"item": "fighters", "qty": int(qty)},
                                  f"buy {qty} fighters before carrying cash")

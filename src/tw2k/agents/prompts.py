@@ -818,6 +818,12 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
         "legal_actions": _compact_legal(obs.legal_actions),
         "action_hint": obs.action_hint,
     }
+    # FEDSPACE_POLICE.md: the Police HQ block (sector 1) and the FedSpace tow hint reach LLM seats too.
+    # Both are None under FED_MODE legacy, so the legacy prompt stays byte-identical.
+    if getattr(obs, "police", None) is not None:
+        payload["police"] = obs.police
+    if getattr(obs, "fedspace", None) is not None:
+        payload["fedspace"] = obs.fedspace
     return json.dumps(payload, separators=(",", ":") if compact else (", ", ": "))
 
 

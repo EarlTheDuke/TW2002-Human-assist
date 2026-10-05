@@ -63,7 +63,6 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.EXTERN_SWEEP,
     EventKind.FED_RESPONSE,
     EventKind.FED_TOW,
-    EventKind.FED_REPOSSESS,
     EventKind.FED_HAIL,
     EventKind.REWARD_POSTED,
     EventKind.REWARD_CLAIMED,
@@ -1063,7 +1062,8 @@ def _adjacent_fogged(player, wid: int) -> dict[str, Any]:
             "seen_day": seen[1],
             "seen_tick": seen[2],
             # what the holo scan / probe showed: port name and class, planets, traders, Ferrengi
-            "seen": {k: view[k] for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines", "beacon")
+            "seen": {k: view[k] for k in ("port", "planets", "traders", "ferrengi", "federals", "fighters", "mines",
+                                          "beacon")
                      if view.get(k)},
         })
     if mem:
@@ -1120,6 +1120,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         ],
     }
     from . import constants as K
+    if K.fed_tw2002():  # FEDSPACE_POLICE.md f1/f2: Federal starships show in the sector like ships
+        from .fed import federal_briefs
+        info["federals"] = federal_briefs(universe, sector.id)
     if K.hardware_tw2002():  # SHIP_HARDWARE_V2.md: the sector display shows a beacon and NavHaz
         if getattr(sector, "beacon", None):
             info["beacon"] = sector.beacon
