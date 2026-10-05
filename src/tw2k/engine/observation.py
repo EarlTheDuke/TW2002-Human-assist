@@ -1741,7 +1741,7 @@ def _action_hint(
                     continue
                 if spec.get("corp_only") and not in_corp:
                     continue
-                min_align = K.ship_min_alignment(spec, -10**9)
+                min_align = K.ship_min_alignment(spec, 0)
                 if alignment < min_align:
                     continue
                 holds = int(spec.get("holds", 0))
@@ -1766,6 +1766,7 @@ def _action_hint(
                         if k != cur_class_val
                         and K.ship_cost(k) > credits
                         and not s.get("corp_only", False)
+                        and K.ship_min_alignment(s, 0) <= alignment
                     ),
                     default=None,
                 )
@@ -1806,7 +1807,7 @@ def _action_hint(
                     continue
                 if spec.get("corp_only") and not in_corp:
                     continue
-                if K.ship_min_alignment(spec, -10**9) > alignment:
+                if K.ship_min_alignment(spec, 0) > alignment:
                     continue
                 if credits < int(cost * 1.25):
                     continue

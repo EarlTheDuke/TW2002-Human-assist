@@ -409,7 +409,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             if spec.get("corp_only") and player.corp_ticker is None:
                 blocked_by[key] = "corporation-only"
             elif K.ship_min_alignment(spec, 0) > player.alignment:
-                need = K.ship_min_alignment(spec, 0) if K.rank_tw2002() else spec.get("min_alignment")
+                need = K.ship_min_alignment(spec, 0)
                 blocked_by[key] = f"alignment too low (needs {need})"
             elif spec.get("unique") and key in owned_classes:
                 blocked_by[key] = "already owned elsewhere"
