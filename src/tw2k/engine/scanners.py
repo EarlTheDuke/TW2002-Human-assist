@@ -147,7 +147,6 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
                     for p in s.planet_ids if p in universe.planets],
         "traders": traders_in(universe, viewer_id, s),
         "ferrengi": [{"name": f.name, "fighters": int(f.fighters)} for f in _ferrengi_in(universe, sector_id)],
-        "federals": [],
         "fighters": ({"owner_id": s.fighters.owner_id, "count": int(s.fighters.count), "mode": s.fighters.mode.value}
                      if s.fighters is not None and int(s.fighters.count) > 0 else None),
         # Limpets never show on a holo or a probe (SCANNERS_HIDDEN_INFO.md s9/s13), even your own.

@@ -20,9 +20,9 @@ Sources under `C:\Users\sugar\tw2002_reference\` (GAP_MAP shorthand): Bible, Bib
 | f5 | Movement | Nelson/Clausewitz wander; Zyrain stays / teleports to rescue. | CONFIRMED shape; hops/day UNVERIFIED. | `FED_HOPS_PER_DAY=3` on tick_day; Zyrain returns home next tick after f8. | `test_f5_wander_and_trap` |
 | f6 | Evil ISS presence | Fed sharing sector destroys evil ISS unless cloaked. | CONFIRMED: Bible; Iago. | After each Fed hop and player move. | `test_f6_presence` |
 | **Attacks / FedSpace protect** | | | | | |
-| f7 | Attack Fed | Legal try; podded; -10 align; -10% exp. | CONFIRMED: cabal formulas; docs wiki. | `fed:<name>` target; `_destroy_ship(..., reason="federal", always_escape=True)`; killer_id None. | `test_f7_attack_fed` / `test_plant_2` |
+| f7 | Attack Fed | Legal try; podded; -10 align; -10% exp. | CONFIRMED: cabal formulas; docs wiki. | `fed:<name>` target; `_destroy_ship(..., reason="federal", always_escape=True)`; killer_id None. Same gate as any attack (fighters aboard, photon, qty 1..cap). The 10% is the pod's own loss (cabal formulas, same page: "If you are podded, you loose 10% of your exp"), taken once; DEATH_MODE legacy (no pod loss) takes it in the handler. | `test_f7_attack_fed` / `test_plant_2` / `test_qc_attack_fed_legal_equals_handler` / `test_qc_attack_fed_costs_ten_percent_once_under_legacy_death` |
 | f8 | Protect trader | Zyrain summoned on attack vs fedsafe in FedSpace. Outcome UNVERIFIED. | CONFIRMED summon; UNVERIFIED punish. | `FED_PROTECT_PUNISH=pod` (default): refuse damage, FED_ZYRAIN, pod attacker, keep -200. `refuse`: today + Zyrain shown. | `test_f8_protect` / `test_plant_1` |
-| f9 | fedsafe def | Keep `is_fedsafe` (align>=0, exp<=999). | SOURCE-CONFLICT fighter/align floors. | `FEDSAFE_MIN_ALIGNMENT=0`, `FEDSAFE_MAX_FIGHTERS=None`. | `test_f9_fedsafe` |
+| f9 | fedsafe def | Keep `is_fedsafe` (align>=0, exp<=999). | SOURCE-CONFLICT fighter/align floors. | `FEDSAFE_MIN_ALIGNMENT=0`, `FEDSAFE_MAX_FIGHTERS=None` (live switches under FED_MODE tw2002, read by `victory.is_fedsafe`). | `test_f9_fedsafe` / `test_qc_f9_fedsafe_switches_work` |
 | f10 | Deploy in FedSpace | Stays refused (no invented Zyrain summon). | Outcome UNVERIFIED. | No change. | `test_f10_deploy_refused` |
 | **Extern tows** | | | | | |
 | f11 | Arms limit | 99+ fighters towed (Gypsy TWGS). | SOURCE-CONFLICT 50/99/100+. | `FED_TOW_FIGHTER_LIMIT=98` (tow when `fighters > 98`). | `test_f11_arms_tow` / `test_plant_4` |
@@ -38,8 +38,8 @@ Sources under `C:\Users\sugar\tw2002_reference\` (GAP_MAP shorthand): Bible, Bib
 | f20 | Ten Most Wanted | Up to 10 evil; titles not numbers. | CONFIRMED columns; order UNVERIFIED. | Align asc, reward desc, id; corp None. | `test_f20_most_wanted` / `test_plant_12` |
 | f21 | Underground | Out of scope. | — | Documented. | n/a |
 | **ISS repo** | | | | | |
-| f22 | Evil ISS | Destroyed on move (TWGS) / own-fighter safe (MBBS). | CONFIRMED both readings. | `ISS_REPO_MODE=twgs`; cloaked safe; align 0 ok. | `test_f22_iss_repo` / `test_plant_11` |
-| f23 | Hail | Warning when align first < 0 in ISS. | UNVERIFIED wording. | Owner-only `FED_HAIL`. | `test_f23_hail` |
+| f22 | Evil ISS | Destroyed on move (TWGS) / own-fighter safe (MBBS). | CONFIRMED both readings. | `ISS_REPO_MODE=twgs`; cloaked safe; align 0 ok. A move is a warp (also each plot_course hop), a retreat, or a planet transporter beam. | `test_f22_iss_repo` / `test_plant_11` / `test_qc_iss_repo_on_retreat` |
+| f23 | Hail | Warning when align first < 0 in ISS. | UNVERIFIED wording. | Owner-only `FED_HAIL` at the end of the action that turned the pilot evil (so it lands before the next warp). | `test_f23_hail` / `test_qc_hail_precedes_repossession` |
 | **Extra** | | | | | |
 | f24 | vs Ferrengi | Do not fight. | UNVERIFIED. | No interaction. | `test_f24_no_ferrengi_fight` |
 | f25 | Challenges / rob | Never enter challenge sectors; not rob/toll/mine/quasar targets. | — | Enforced. | `test_f25_not_targets` |
@@ -53,6 +53,26 @@ Sources under `C:\Users\sugar\tw2002_reference\` (GAP_MAP shorthand): Bible, Bib
 - Everyone counts as off-line at Extern for tows.
 - No Galactic Bank tax, Underground bounties, Fed hold confiscation, empty-ship repo, ship TransWarp.
 - Corp column in Ten Most Wanted empty until corporations slice.
+
+## QC fixes (independent review of 58acec8)
+
+Found by the reviewer, each pinned by a `test_qc_*` test that failed on 58acec8 (mutation run: 17/17 caught).
+
+- f7 legal != handler: the legal list blocked `attack fed:<name>` with no fighters aboard (or photon-offline), but the handler podded the ship anyway and ignored `qty`. Now the same gate as a player attack.
+- f7 experience: -10% was taken twice (handler x0.9, then the forced pod's 10%). The cabal row "Attacking a Fed: -10, but you get podded / Loose 10%" sits on the page that says "If you are podded, you loose 10% of your exp" - one loss. (Judgment call: reading the 10% as the pod's.)
+- f23: `FED_HAIL` fired only inside the warp that repossessed the ship (twgs), so the warning arrived with the kill. It now fires when the action that made the pilot evil ends.
+- f22: retreat and planet transporter moves skipped the evil-ISS check.
+- Observation: Federals in your own sector were only visible as `fed:<name>` attack targets; the sector block now lists them (`sector.federals`, title + name), holo/probe memory keeps them, and the LLM prompt now carries the `police` and `fedspace` blocks (absent under legacy).
+- Fog: the `fedspace` hint counted cloaked rivals in `ships_here` (revealing hidden ships) and said `will_be_towed` for every ship once a sector was crowded. It now counts only ships the seat can see and flags parking only for the seat's own late-arrival position. The Extern tow itself still counts cloaked ships (f13).
+- `FED_REPOSSESS` reaches the sector occupants as the spec says (was owner-only).
+- f9 switches `FEDSAFE_MIN_ALIGNMENT` / `FEDSAFE_MAX_FIGHTERS` were defined but never read.
+- Legacy: `scanners.sector_view` added `"federals": []` under legacy, which landed in holo memory (state drift over a 3-day 6-seat run). Now tw2002 only. `test_qc_fed_legacy_matches_pre_slice_golden` pins a digest recorded on the engine without this slice (4a2200a + the class0 terra QC fixes cherry-picked); the rebased QC commit matches it byte for byte.
+- `Universe.federals` was an untyped list (a model_dump / model_validate round trip turned Feds into dicts and `tick_federals` crashed). `Federal` now lives in `models.py`.
+- No bounty if killer == victim.
+- Seat brain: `_avoid_fed_tow` warped out of FedSpace on every visit while armed (N3 solo seed 250925: 9-24 times a day, ping-pong with its StarDock errands, day-10 NW 459,040 vs 539,364 legacy). Tows run only at Extern, so the brain now leaves when the turns left only just cover the trip out (`FED_TOW_EXIT_MARGIN_WARPS`), and the 98-fighter buy cap applies only late in the day. Fixed NW 539,364. The brain also claims bounties and takes the free commission (`_police_hq`).
+- Known gap (not fixed): a multi-hop `plot_course` that runs out of turns inside FedSpace leaves an armed seat with fewer turns than one warp costs, so it cannot leave and takes the Extern arms tow (6-seat seed 250925, P4 day 8, sector 10, 3 turns left vs warp 4). The tow is the designed outcome; route planning does not yet avoid ending the day in FedSpace.
+
+Score bars under FED_MODE tw2002: all three bars pass on 58acec8 and on the fix, so the FED_MODE pins are removed (see "Seat brain acceptance bars" below).
 
 ## Planted bugs
 
@@ -78,9 +98,18 @@ Sources under `C:\Users\sugar\tw2002_reference\` (GAP_MAP shorthand): Bible, Bib
 
 ## Seat brain acceptance bars
 
-Score-threshold tests that measure day-10 net worth under overnight parking
-pin FED_MODE = "legacy" inside the bar test only (never soften tw2002 rules):
+58acec8 pinned FED_MODE = "legacy" inside three score bars. QC re-ran them with the pin removed under
+FED_MODE tw2002, on 58acec8 and on the QC fix: all three pass. On the QC fix rebased on bc868c6 the unpinned
+(tw2002) run prints the same day-10 table as the pinned (legacy) run on bc868c6 (N3 seed 250925: N2 NW 565,421,
+N3 NW 931,084; the scripted bar seats do not overnight in FedSpace armed). The spec pins only when a bar drops, so
+the pins are removed and the bars now guard the default rules:
 
-- 	ests/test_seat_bot_n2.py::test_n2_day10_beats_n1_and_keeps_organics
-- 	ests/test_seat_bot_n3.py::test_n3_day10_ferry_and_net_worth
-- 	ests/test_economy_calibration_v1.py::test_n3_ten_day_growth_sits_inside_the_band
+- `tests/test_seat_bot_n2.py::test_n2_day10_beats_n1_and_keeps_organics`
+- `tests/test_seat_bot_n3.py::test_n3_day10_ferry_and_net_worth`
+- `tests/test_economy_calibration_v1.py::test_n3_ten_day_growth_sits_inside_the_band`
+
+Still pinned (by design, they compare pre-slice goldens or need the refuse path): the `legacy` fixtures in
+`tests/test_experience_alignment_v1.py` / `tests/test_scanners_hidden_info_v1.py` (new observation keys),
+`FED_PROTECT_PUNISH = "refuse"` in the experience-alignment `tw` fixture (the rank scenario keeps flying after the
+fedsafe attack; under `pod` the attacker is podded and the scenario cannot continue), and the prompt-equality
+pins in `tests/test_agency.py` / `test_system_prompt_names_the_commission`.

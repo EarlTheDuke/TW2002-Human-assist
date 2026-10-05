@@ -192,6 +192,11 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     before_seq = universe.seq
     turns_before = player.turns_today
     result = handler(universe, player_id, action)
+    if K.fed_tw2002():
+        # FEDSPACE_POLICE.md f23: warn the ISS pilot when the action that made him evil ends,
+        # not on the warp that already costs the ship (twgs repossesses on that same move).
+        from .fed import maybe_fed_hail
+        maybe_fed_hail(universe, player_id)
     result.event_seqs = [e.seq for e in universe.events if e.seq > before_seq]
 
     # Count turns. A repelled planet landing stays ok=False so callers
@@ -979,7 +984,7 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     from .fed import fed_tw2002 as _fed_tw
     if _fed_tw() and str(target_id).startswith("fed:"):
         from .fed import attack_federal
-        return attack_federal(universe, pid, str(target_id).split(":", 1)[1])
+        return attack_federal(universe, pid, str(target_id).split(":", 1)[1], action.args)
     target = universe.players.get(target_id) or _ferrengi_by_name(universe, str(target_id))
     if target is None:
         return ActionResult(ok=False, error=f"target {target_id} not found")
@@ -3271,6 +3276,9 @@ def _handle_planet_transport(universe: Universe, pid: str, action: Action) -> Ac
         },
         summary=f"{player.name} transported from {old_id} to {dest_id}",
     )
+    # FEDSPACE_POLICE.md f6/f22: the transporter moves the pilot's own ship.
+    from .fed import check_iss_repo_on_move
+    check_iss_repo_on_move(universe, pid)
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -3582,6 +3590,9 @@ def _handle_retreat(universe: Universe, pid: str, action: Action) -> ActionResul
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns for this day")
     _retreat_move(universe, player, int(ch["from_sector"]))
+    # FEDSPACE_POLICE.md f6/f22: a retreat is a move of the pilot's own ship.
+    from .fed import check_iss_repo_on_move
+    check_iss_repo_on_move(universe, pid)
     return ActionResult(ok=True, turns_spent=cost)
 
 

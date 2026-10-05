@@ -5,11 +5,9 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from pydantic import BaseModel
-
 from . import constants as K
 from .actions import Action, ActionResult
-from .models import EventKind, ShipClass, Universe
+from .models import EventKind, Federal, ShipClass, Universe
 from .victory import rank_for
 
 
@@ -17,16 +15,7 @@ def fed_tw2002() -> bool:
     return K.FED_MODE == "tw2002"
 
 
-class Federal(BaseModel):
-    """One Federal starship (f1)."""
-
-    name: str
-    title: str
-    sector_id: int
-    density: int
-    home_sector: int = 0
-    # Zyrain only: set when teleported to an incident; cleared on return at tick.
-    on_incident: bool = False
+__all__ = ["Federal"]  # re-exported: the model lives in models.py (typed Universe.federals)
 
 
 FED_SPECS: tuple[tuple[str, str, int], ...] = (
@@ -325,7 +314,9 @@ def _always_escape_destroy(universe: Universe, pid: str, reason: str) -> None:
     )
 
 
-def attack_federal(universe: Universe, pid: str, fed_name: str) -> ActionResult:
+def attack_federal(
+    universe: Universe, pid: str, fed_name: str, action_args: dict | None = None
+) -> ActionResult:
     """f7: attack a Federal — suicide pod, -10 align, -10% exp."""
     player = universe.players[pid]
     feds = [f for f in getattr(universe, "federals", []) or [] if f.name == fed_name]
@@ -334,10 +325,20 @@ def attack_federal(universe: Universe, pid: str, fed_name: str) -> ActionResult:
     cost = int(K.TURN_COST["attack"])
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
-    # Penalties before destroy (destroy may also trim exp via pod rules).
+    if K.combat_tw2002() and action_args is not None:
+        # Same gate as the legal list and a player attack: fighters aboard, not photon-offline, qty 1..cap.
+        from .actions import Action as _Action
+        from .runner import _attack_qty
+        _qty, bad = _attack_qty(player, _Action(kind="attack", args=dict(action_args)))
+        if bad is not None:
+            return bad
     player.alignment = int(player.alignment) - int(K.FED_ATTACK_ALIGN_PENALTY)
-    exp = int(player.experience)
-    player.experience = int(exp * K.FED_ATTACK_EXP_KEEP)  # floor toward zero for non-neg
+    if not K.death_tw2002():
+        # cabal formulas.html: "Attacking a Fed: -10, but you get podded | Loose 10%" and, same page,
+        # "If you are podded, you loose 10% of your exp" - the 10% IS the pod. DEATH_MODE tw2002
+        # already takes it in the forced pod (POD_EXP_LOSS); only legacy death (no pod loss) needs it here.
+        exp = int(player.experience)
+        player.experience = int(exp * K.FED_ATTACK_EXP_KEEP)  # floor toward zero for non-neg
     _always_escape_destroy(universe, pid, reason="federal")
     return ActionResult(ok=True, turns_spent=cost)
 
@@ -587,7 +588,7 @@ def record_bounty_on_death(universe: Universe, victim_id: str, killer_id: str | 
         return
     if outcome != "ship_destroyed":
         return
-    if not killer_id or killer_id not in universe.players:
+    if not killer_id or killer_id not in universe.players or killer_id == victim_id:
         return
     rewards = (getattr(universe, "posted_rewards", None) or {}).get(victim_id) or []
     if not rewards:
@@ -629,18 +630,25 @@ def fedspace_hint(universe: Universe, player) -> dict[str, Any] | None:
     if not fed_tw2002() or int(player.sector_id) not in K.FEDSPACE_SECTORS:
         return None
     sector = universe.sectors[player.sector_id]
-    ships_here = sum(
-        1 for oid in sector.occupant_ids
+    # Fog (h15): count only the ships this seat can see - itself plus uncloaked live ships.
+    # Cloaked ships still count toward the real parking limit at Extern (f13); the seat cannot know.
+    visible = [
+        oid for oid in sector.occupant_ids
         if oid in universe.players and universe.players[oid].alive
-    )
+        and (oid == player.id or not _ship_cloaked(universe.players[oid]))
+    ]
+    ships_here = len(visible)
+    limit = int(K.FED_SHIPS_PER_SECTOR)
     my_f = int(player.ship.fighters)
-    will = my_f > int(K.FED_TOW_FIGHTER_LIMIT) or ships_here > int(K.FED_SHIPS_PER_SECTOR)
+    arms = my_f > int(K.FED_TOW_FIGHTER_LIMIT)
+    # f12: the latest arrivals beyond the limit go (as far as this seat can see).
+    parking = player.id in visible and visible.index(player.id) >= limit
     return {
         "ships_here": ships_here,
-        "limit": int(K.FED_SHIPS_PER_SECTOR),
+        "limit": limit,
         "my_fighters": my_f,
         "tow_fighter_limit": int(K.FED_TOW_FIGHTER_LIMIT),
-        "will_be_towed": bool(will or my_f > int(K.FED_TOW_FIGHTER_LIMIT)),
+        "will_be_towed": bool(arms or parking),
     }
 
 

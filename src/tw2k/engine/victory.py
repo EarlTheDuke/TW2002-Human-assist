@@ -76,8 +76,24 @@ def _award_xp(universe: Universe, pid: str, key: str, multiplier: int = 1) -> No
 
 
 def is_fedsafe(player) -> bool:
-    """u1: blue with 999 experience or less."""
-    return int(player.alignment) >= 0 and int(player.experience) <= K.FEDSAFE_MAX_EXPERIENCE
+    """u1: blue with 999 experience or less.
+
+    FED_MODE tw2002 (FEDSPACE_POLICE.md f9): the SOURCE-CONFLICT floors are switches -
+    K.FEDSAFE_MIN_ALIGNMENT (0; Iago/Bible "positive" reading = 1) and K.FEDSAFE_MAX_FIGHTERS
+    (None; Iago "ftrs on your ship is 50 or less" = 50). Defaults keep the u1 rule.
+    """
+    min_align = 0
+    max_figs = None
+    if K.FED_MODE == "tw2002":
+        min_align = int(K.FEDSAFE_MIN_ALIGNMENT)
+        max_figs = K.FEDSAFE_MAX_FIGHTERS
+    if int(player.alignment) < min_align or int(player.experience) > K.FEDSAFE_MAX_EXPERIENCE:
+        return False
+    if max_figs is not None:
+        ship = getattr(player, "ship", None)
+        if ship is None or int(ship.fighters) > int(max_figs):
+            return False
+    return True
 
 
 def fedspace_protects(target) -> bool:
