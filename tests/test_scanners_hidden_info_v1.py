@@ -74,6 +74,7 @@ def legal(u, pid, kind):
 def legacy(monkeypatch):
     monkeypatch.setattr(K, "INFO_MODE", "legacy")
     monkeypatch.setattr(K, "RANK_MODE", "legacy")  # the goldens predate rank titles (experience-alignment-v1)
+    monkeypatch.setattr(K, "ROB_MODE", "legacy")  # goldens predate rob/steal
 
 
 @pytest.fixture

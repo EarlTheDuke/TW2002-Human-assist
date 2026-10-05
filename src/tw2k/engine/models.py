@@ -171,6 +171,9 @@ class EventKind(str, Enum):
     AUTOPILOT = "autopilot"
     TRADE = "trade"
     TRADE_FAILED = "trade_failed"
+    ROB = "rob"
+    STEAL = "steal"
+    BUST = "bust"
     SCAN = "scan"
     PROBE = "probe"
     DEPLOY_FIGHTERS = "deploy_fighters"
@@ -275,6 +278,10 @@ class Port(BaseModel):
     mcic: dict[Commodity, int] = Field(default_factory=dict)
     productivity: dict[Commodity, int] = Field(default_factory=dict)
     name: str = ""
+    # Credits available to rob (ROB_STEAL.md). Default 0 for old saves.
+    credits: int = 0
+    # Last real buster at this port; clears daily or when another red busts here.
+    bust_player_id: str | None = None
 
     @property
     def code(self) -> str:
@@ -447,6 +454,8 @@ class Player(BaseModel):
     # Sector of the open port visit. Cleared when the player leaves.
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None
+    # Last sector of a successful rob/steal (fake bust if repeated). ROB_STEAL.md r13.
+    last_crime_sector_id: int | None = None
 
     def end_port_visit(self) -> None:
         """A port visit ends when this player leaves the sector."""

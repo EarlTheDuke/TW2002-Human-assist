@@ -32,6 +32,7 @@ DOC = ROOT / "docs" / "playtests" / "ranks" / "EXPERIENCE_ALIGNMENT.md"
 @pytest.fixture
 def legacy(monkeypatch):
     monkeypatch.setattr(K, "RANK_MODE", "legacy")
+    monkeypatch.setattr(K, "ROB_MODE", "legacy")  # goldens predate rob/steal
 
 
 @pytest.fixture

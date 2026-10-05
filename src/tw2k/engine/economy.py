@@ -197,6 +197,7 @@ def execute_trade(
         if player.ship.cargo_free < qty:
             return False, 0, 0, f"Not enough free holds ({player.ship.cargo_free} < {qty})", None
         player.credits -= total
+        port.credits = int(getattr(port, "credits", 0) or 0) + total
         # Weighted-average cost basis update: (old_qty*old_avg + buy_qty*unit) / new_qty.
         # This is the standard inventory-accounting approach — it means buying
         # the same commodity at two different ports blends the basis so the
@@ -216,6 +217,7 @@ def execute_trade(
         basis_avg = player.ship.cargo_cost.get(commodity, 0.0)
         realized_profit = round((final_unit - basis_avg) * qty)
         player.credits += total
+        port.credits = max(0, int(getattr(port, "credits", 0) or 0) - total)
         remaining = have - qty
         player.ship.cargo[commodity] = remaining
         # If the last holds of this commodity are sold out, clear the basis so

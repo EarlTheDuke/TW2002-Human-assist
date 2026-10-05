@@ -277,6 +277,8 @@ TURN_COST = {
     "recall_deployed": 1,
     "surrender": 1,
     "pay_toll": 0,
+    "rob": PORT_DOCK_TURN_COST,
+    "steal": PORT_DOCK_TURN_COST,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -1254,6 +1256,26 @@ def ship_min_alignment(spec: dict, default: int) -> int:
     if rank_tw2002():
         return COMMISSION_ALIGNMENT
     return int(spec["min_alignment"])
+
+
+# --- Rob / steal at ports (ROB_MODE) ------------------------------------------
+# docs/playtests/ports/ROB_STEAL.md. "legacy" = today's behaviour (not available).
+ROB_MODE = "tw2002"
+
+
+def rob_tw2002() -> bool:
+    return ROB_MODE == "tw2002"
+
+
+ROB_MIN_ALIGNMENT = -100          # r1: alignment <= this
+ROB_CREDIT_FACTOR = 6             # r5: MBBS EXP * 6 (classic was 3)
+STEAL_HOLD_DIVISOR = 21           # r8: MBBS EXP / 21 (classic was 30)
+ROB_BUST_DENOMINATOR = 50         # r11: ~1 in 50
+# r22 UNVERIFIED success awards (easy to retune)
+ROB_SUCCESS_ALIGN_DIVISOR = 10_000
+ROB_SUCCESS_EXP_DIVISOR = 10_000
+STEAL_SUCCESS_ALIGN_DIVISOR = 6
+STEAL_SUCCESS_EXP_DIVISOR = 15
 
 # --- Ferrengi behaviour -------------------------------------------------------
 FERRENGI_MOVE_PROB = 0.6              # chance per day each Ferrengi moves
