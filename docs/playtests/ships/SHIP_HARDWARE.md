@@ -43,8 +43,7 @@ Today kept as `HARDWARE_MODE = "legacy"`: armid hits = min(count, rand 1..10) x 
 
 ### Deliberate differences
 
-- No NavHaz and no full entry-order reorder (NavHaz then limpet then armid then quasar then fighters then avoid). That is **ship-hardware-v2**.
-- No corbomite, marker beacons, psychic probe, or atomic-detonator redesign (v2).
+- NavHaz, the full entry order (NavHaz then limpet then armid then quasar then fighters then avoid), corbomite, marker beacons, psychic probe and the atomic-detonator redesign are built in **ship-hardware-v2**: see `SHIP_HARDWARE_V2.md` (same `HARDWARE_MODE` switch).
 - Genesis empty-start seed 2500 stays as already documented in PLANET_ECONOMY_LIMITS.md.
 - Cloak "24 hours" maps to one day-tick fail check while still cloaked (turn-based), not a real-time clock.
 - Photon wave "1 second" maps to one day-tick of `photon_wave_remaining` (named constant).
@@ -61,7 +60,7 @@ Today kept as `HARDWARE_MODE = "legacy"`: armid hits = min(count, rand 1..10) x 
 
 ## Out of scope (ship-hardware-v2)
 
-Corbomite, marker beacons, psychic probe, atomic-detonator redesign, NavHaz + full hazard entry order, genesis empty-start changes.
+Corbomite, marker beacons, psychic probe, atomic-detonator redesign, NavHaz + full hazard entry order: delivered in ship-hardware-v2 (`SHIP_HARDWARE_V2.md`). Genesis empty-start changes stay out of scope.
 
 ## Planted bugs (caught)
 

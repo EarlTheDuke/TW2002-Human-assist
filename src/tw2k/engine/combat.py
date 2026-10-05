@@ -724,12 +724,18 @@ def _destroy_ship(
     player = universe.players[pid]
     if not player.alive:
         return
+    from .hardware import apply_corbomite, corbomite_armed, strip_v2
+    corbomite = corbomite_armed(player, reason, killer_id)  # read before the hull is stripped
     if K.death_tw2002():
         _destroy_ship_tw2002(universe, pid, reason, killer_id, by_other)
     else:
         _destroy_ship_legacy(universe, pid, reason, killer_id)
     if K.info_tw2002():
         player.ship.scanner = None  # SCANNERS_HIDDEN_INFO.md s4: the scanner went down with the ship
+    if K.hardware_tw2002():
+        strip_v2(player.ship)  # d15: corbomite, beacons, probe, detonators, cloaks go with the hull
+    if corbomite > 0 and killer_id:
+        apply_corbomite(universe, pid, killer_id, corbomite)  # v3: the killer takes the blast
 
 
 def _destroy_ship_legacy(universe: Universe, pid: str, reason: str, killer_id: str | None) -> None:

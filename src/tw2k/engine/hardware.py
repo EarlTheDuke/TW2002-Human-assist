@@ -341,3 +341,293 @@ def handle_photon_tw2002(universe: Universe, pid: str, action: Action) -> Action
         ),
     )
     return ActionResult(ok=True, turns_spent=cost)
+
+
+# ---------------------------------------------------------------------------
+# ship-hardware-v2: corbomite, marker beacons, psychic probe, atomic detonator,
+# NavHaz and the hostile-entry order. docs/playtests/ships/SHIP_HARDWARE_V2.md.
+# Same HARDWARE_MODE switch: under "legacy" none of this is sold, offered or read.
+# ---------------------------------------------------------------------------
+
+V2_SHIP_FIELD = {
+    "corbomite": "corbomite",
+    "marker_beacon": "marker_beacons",
+    "psychic_probe": "psychic_probe",
+    "atomic_detonator": "atomic_detonators",
+}
+
+
+def v2_have(ship) -> dict[str, int]:
+    """Units of each v2 item aboard, keyed by the buy_equip item name."""
+    return {item: int(getattr(ship, field, 0) or 0) for item, field in V2_SHIP_FIELD.items()}
+
+
+def v2_add(ship, item: str, qty: int) -> None:
+    field = V2_SHIP_FIELD[item]
+    setattr(ship, field, int(getattr(ship, field, 0) or 0) + int(qty))
+
+
+def strip_v2(ship) -> None:
+    """A lost ship carries nothing over (DEATH_ESCAPE_PODS.md d15), cloak state included."""
+    for field in V2_SHIP_FIELD.values():
+        setattr(ship, field, 0)
+    ship.cloaks = 0
+    ship.mine_disruptors = 0
+    ship.cloaked = False
+    ship.cloak_activated_day = None
+
+
+def _soak(ship_or_npc, damage: int) -> None:
+    """Shields first, then fighters (quasar / corbomite / NavHaz damage)."""
+    shields = int(ship_or_npc.shields or 0)
+    soaked = min(shields, int(damage))
+    ship_or_npc.shields = shields - soaked
+    rest = int(damage) - soaked
+    if rest > 0:
+        ship_or_npc.fighters = max(0, int(ship_or_npc.fighters or 0) - rest)
+
+
+# --- NavHaz (v20-v25) ---------------------------------------------------------
+
+def navhaz_pct(sector) -> int:
+    raw = float(getattr(sector, "nav_hazard", 0.0) or 0.0)
+    return max(0, min(int(K.NAVHAZ_MAX_PCT), round(raw)))
+
+
+def add_navhaz(sector, pct: int) -> int:
+    """Raise a sector's NavHaz (capped). StarDock never takes any (v25, revision history)."""
+    if sector.id == K.STARDOCK_SECTOR or int(pct) <= 0:
+        return navhaz_pct(sector)
+    sector.nav_hazard = float(min(int(K.NAVHAZ_MAX_PCT), navhaz_pct(sector) + int(pct)))
+    return navhaz_pct(sector)
+
+
+def tick_navhaz(universe: Universe) -> None:
+    """Extern: FedSpace is cleared of NavHaz; elsewhere it disperses a little each night."""
+    if not K.hardware_tw2002():
+        return
+    for sector in universe.sectors.values():
+        pct = navhaz_pct(sector)
+        if pct <= 0:
+            continue
+        if sector.id in K.FEDSPACE_SECTORS:
+            sector.nav_hazard = 0.0
+        else:
+            sector.nav_hazard = float(max(0, pct - int(K.NAVHAZ_DISPERSION_PER_DAY)))
+
+
+def apply_navhaz(universe: Universe, pid: str, sector, rng) -> int:
+    """v21: chance equal to the %, damage = % x 10. No dice are rolled in a clean sector."""
+    pct = navhaz_pct(sector)
+    if pct <= 0:
+        return 0
+    if rng.random() * 100.0 >= pct:
+        return 0
+    player = universe.players[pid]
+    damage = pct * int(K.NAVHAZ_DAMAGE_PER_PCT)
+    _soak(player.ship, damage)
+    universe.emit(
+        EventKind.NAVHAZ_HIT,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={"pct": pct, "damage": damage, "victim": pid},
+        summary=f"{player.name} hit {pct}% navigational hazard entering {sector.id} ({damage} dmg)",
+    )
+    if int(player.ship.shields) <= 0 and int(player.ship.fighters) <= 0:
+        from .combat import _destroy_ship
+        _destroy_ship(universe, pid, reason="navhaz")
+    return damage
+
+
+def hostile_mines_present(universe: Universe, pid: str, sector) -> bool:
+    """Mines that would treat this ship as hostile (for the avoid prompt, v28)."""
+    for md in sector.mines:
+        if int(md.count) <= 0 or md.kind not in (MineType.ARMID, MineType.LIMPET):
+            continue
+        if md.owner_id == pid or _allied(universe, pid, md.owner_id):
+            continue
+        return True
+    return False
+
+
+def drop_other_limpets(universe: Universe, target_id: str) -> int:
+    """v27: a new limpet makes any previously attached limpet fall off (cabal formulas.html)."""
+    keys = limpets_on_target(universe, target_id)
+    for k in keys:
+        universe.limpets.pop(k, None)
+    return len(keys)
+
+
+# --- Corbomite (v1-v4) ----------------------------------------------------------
+
+CORBOMITE_TRIGGERS = frozenset({"combat", "ferrengi"})
+
+
+def corbomite_armed(player, reason: str, killer_id: str | None) -> int:
+    """Units that go off when this ship is destroyed by another ship (0 if none)."""
+    if not K.hardware_tw2002() or reason not in CORBOMITE_TRIGGERS or not killer_id:
+        return 0
+    return int(getattr(player.ship, "corbomite", 0) or 0)
+
+
+def apply_corbomite(universe: Universe, victim_id: str, killer_id: str, units: int) -> None:
+    """v3: the ship that destroyed you takes units x 20 damage, shields first."""
+    if units <= 0:
+        return
+    damage = int(units) * int(K.CORBOMITE_DAMAGE_PER_UNIT)
+    victim = universe.players.get(victim_id)
+    victim_name = victim.name if victim is not None else victim_id
+    killer = universe.players.get(killer_id)
+    sector_id = None
+    if killer is not None:
+        if not killer.alive:
+            return
+        _soak(killer.ship, damage)
+        sector_id = killer.sector_id
+        dead = int(killer.ship.shields) <= 0 and int(killer.ship.fighters) <= 0
+        name = killer.name
+    else:
+        npc = universe.ferrengi.get(killer_id)
+        if npc is None or not npc.alive:
+            return
+        _soak(npc, damage)
+        sector_id = npc.sector_id
+        dead = int(npc.shields) <= 0 and int(npc.fighters) <= 0
+        name = npc.name
+    universe.emit(
+        EventKind.CORBOMITE_BLAST,
+        actor_id=victim_id,
+        sector_id=sector_id,
+        payload={"victim": killer_id, "damage": damage, "destroyed": dead},
+        summary=f"{victim_name}'s ship was booby-trapped with Corbomite: {name} took {damage} damage",
+    )
+    if not dead:
+        return
+    if killer is not None:
+        from .combat import _destroy_ship
+        _destroy_ship(universe, killer_id, reason="corbomite", killer_id=victim_id, by_other=True)
+    else:
+        npc.alive = False
+        universe.emit(
+            EventKind.SHIP_DESTROYED,
+            actor_id=victim_id,
+            sector_id=sector_id,
+            payload={"victim": killer_id, "kind": "ferrengi", "reason": "corbomite"},
+            summary=f"{name} was destroyed by the Corbomite blast",
+        )
+
+
+# --- Marker beacons (v5-v9) ------------------------------------------------------
+
+def beacon_message_error(message: Any) -> str | None:
+    if not isinstance(message, str):
+        return "launch_beacon needs a text message"
+    text = message.strip()
+    if not text:
+        return "beacon message is empty"
+    if len(text) > int(K.BEACON_MESSAGE_MAX):
+        return f"beacon message is longer than {K.BEACON_MESSAGE_MAX} characters"
+    if any(ord(ch) < 32 for ch in text):
+        return "beacon message has control characters"
+    return None
+
+
+def launch_beacon_reason(universe: Universe, pid: str) -> str | None:
+    player = universe.players[pid]
+    if int(getattr(player.ship, "marker_beacons", 0) or 0) <= 0:
+        return "no marker beacons aboard (buy_equip marker_beacon at StarDock)"
+    if player.turns_today + int(K.BEACON_TURNS) > player.turns_per_day:
+        return "out of turns"
+    return None
+
+
+def handle_launch_beacon(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if not K.hardware_tw2002():
+        return ActionResult(ok=False, error="marker beacons unavailable (HARDWARE_MODE legacy)")
+    why = launch_beacon_reason(universe, pid)
+    if why is not None:
+        return ActionResult(ok=False, error=why)
+    message = action.args.get("message")
+    bad = beacon_message_error(message)
+    if bad is not None:
+        return ActionResult(ok=False, error=bad)
+    player = universe.players[pid]
+    sector = universe.sectors[player.sector_id]
+    player.ship.marker_beacons = int(player.ship.marker_beacons) - 1
+    if sector.beacon is not None:
+        # v8: two beacons in one sector both explode.
+        sector.beacon = None
+        universe.emit(
+            EventKind.BEACON_DESTROYED,
+            actor_id=pid,
+            sector_id=sector.id,
+            payload={"sector": sector.id},
+            summary=f"A beacon was already in {sector.id}: both beacons exploded",
+        )
+        return ActionResult(ok=True, turns_spent=int(K.BEACON_TURNS))
+    sector.beacon = str(message).strip()
+    universe.emit(
+        EventKind.BEACON_LAUNCHED,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={"sector": sector.id, "message": sector.beacon},
+        summary=f"{player.name} launched a marker beacon in {sector.id}",
+    )
+    return ActionResult(ok=True, turns_spent=int(K.BEACON_TURNS))
+
+
+# --- Psychic probe (v10-v12) ----------------------------------------------------
+
+def psychic_reading(listed: int, final_unit: int, mcic: int, side: str) -> float:
+    """Percent of the best price the port would have taken (Bible: shown after the trade).
+
+    Sell: your price over the highest bid it would pay. Buy: the lowest ask it would take
+    over what you paid. 100.0 means you hit the port's limit.
+    """
+    from .economy import haggle_bound
+
+    bound = int(haggle_bound(int(listed), int(mcic), side))
+    if side == "sell":
+        pct = 100.0 * int(final_unit) / bound if bound > 0 else 100.0
+    else:
+        pct = 100.0 * bound / int(final_unit) if int(final_unit) > 0 else 100.0
+    return round(min(100.0, pct), 2)
+
+
+def emit_psychic_probe(universe: Universe, pid: str, commodity: str, side: str,
+                       listed: int, final_unit: int, mcic: int) -> None:
+    player = universe.players[pid]
+    if not K.hardware_tw2002() or int(getattr(player.ship, "psychic_probe", 0) or 0) <= 0:
+        return
+    pct = psychic_reading(listed, final_unit, mcic, side)
+    universe.emit(
+        EventKind.PSYCHIC_PROBE,
+        actor_id=pid,
+        sector_id=player.sector_id,
+        payload={"commodity": commodity, "side": side, "unit": int(final_unit), "pct": pct},
+        summary=f"Psychic probe: your {side} of {commodity} at {final_unit}cr was {pct}% of the best price",
+    )
+
+
+# --- Atomic detonator (v13-v19) -------------------------------------------------
+
+def detonator_reason(universe: Universe, player, planet) -> str | None:
+    """Why deploy_atomic is illegal on `planet` now (the legal list and the handler share this)."""
+    if int(getattr(player.ship, "atomic_detonators", 0) or 0) <= 0:
+        return "no atomic detonator aboard (buy_equip atomic_detonator at StarDock)"
+    if planet is None or player.planet_landed != planet.id:
+        return "must be landed on the planet first"
+    owner = planet.owner_id
+    if owner is not None and owner != player.id:
+        same_corp = bool(planet.corp_ticker and player.corp_ticker and planet.corp_ticker == player.corp_ticker)
+        if same_corp or _allied(universe, player.id, owner):
+            return "planet belongs to a corp mate or ally"
+        if int(planet.fighters) > 0 or int(planet.shields) > 0:
+            return "planet still has defenders"
+    if player.turns_today + int(K.TURN_COST["planet_destroy"]) > player.turns_per_day:
+        return "out of turns"
+    return None
+
+
+def colonists_on(planet) -> int:
+    return sum(int(n) for n in planet.colonists.values())

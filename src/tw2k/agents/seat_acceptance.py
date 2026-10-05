@@ -45,6 +45,8 @@ REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "cloak": (),
     "fire_disruptor": ("target",),
     "remove_limpet": (),
+    "launch_beacon": ("message",),
+    "deploy_atomic": ("planet_id",),
     "hail": ("target", "message"),
     "broadcast": ("message",),
     "corp_create": ("ticker",),

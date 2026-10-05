@@ -106,7 +106,14 @@ def density_reading(universe: Universe, sector_id: int) -> dict[str, Any]:
     if s.port is not None:
         density += K.DENSITY_PER_PORT
     density += K.DENSITY_PER_PLANET * sum(1 for p in s.planet_ids if p in universe.planets)
-    return {"density": density, "warps": len(s.warps), "navhaz": 0, "anomaly": anomaly}
+    navhaz = 0
+    if K.hardware_tw2002():  # SHIP_HARDWARE_V2.md v9/v24: beacon 1, NavHaz 21 per percent
+        from .hardware import navhaz_pct
+        navhaz = navhaz_pct(s)
+        density += K.DENSITY_PER_NAVHAZ_PCT * navhaz
+        if getattr(s, "beacon", None):
+            density += K.DENSITY_PER_BEACON
+    return {"density": density, "warps": len(s.warps), "navhaz": navhaz, "anomaly": anomaly}
 
 
 def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str, Any]:
@@ -124,6 +131,8 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
         # Limpets never show on a holo or a probe (SCANNERS_HIDDEN_INFO.md s9/s13), even your own.
         "mines": [m for m in visible_mines(universe, viewer_id, s) if m["kind"] != MineType.LIMPET.value],
     }
+    if K.hardware_tw2002() and getattr(s, "beacon", None):
+        view["beacon"] = s.beacon  # the text only; who launched it is never shown
     return view
 
 
@@ -176,7 +185,7 @@ def handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
             entry["holo_tick"] = stamp["tick"]
         elif prev.get("has_holo"):
             # A free density refresh must not erase a prior holo reading (QC).
-            for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines"):
+            for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines", "beacon"):
                 if k in prev:
                     entry[k] = prev[k]
             entry["has_holo"] = True

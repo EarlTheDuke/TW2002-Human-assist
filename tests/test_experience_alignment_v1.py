@@ -144,6 +144,8 @@ def run_rank_scenario(u, port_sid, deep, held):
     pl.owner_id = "D"
     pl.fighters, pl.shields = 0, 0
     a.planet_landed = pl.id
+    if K.hardware_tw2002():
+        a.ship.atomic_detonators = 1  # ship-hardware-v2 v15: the last step sets a detonator
     do("destroy_1", "A", ActionKind.PLANET_DESTROY, planet_id=pl.id)
     do("destroy_2", "A", ActionKind.PLANET_DESTROY, planet_id=pl.id)
     a.planet_landed = None

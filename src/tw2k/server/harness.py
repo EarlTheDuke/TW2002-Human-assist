@@ -329,7 +329,7 @@ def build_harness_router(runner) -> APIRouter:
         if not K.rob_tw2002():
             verbs = [v for v in verbs if v not in ("rob", "steal")]
         if not K.hardware_tw2002():
-            verbs = [v for v in verbs if v not in ("cloak", "fire_disruptor", "remove_limpet")]
+            verbs = [v for v in verbs if v not in ("cloak", "fire_disruptor", "remove_limpet", "launch_beacon")]
         return {
             "system_prompt": get_system_prompt(),
             "verbs": verbs,

@@ -67,10 +67,12 @@ def test_two_steps_remove_the_planet_and_round_trip(monkeypatch) -> None:
     killed = next(ev for ev in u.events if ev.kind is EventKind.PLANET_COLONISTS_KILLED)
     assert set(event_facts(killed)) == {"planet_id"}
     assert "900" not in killed.summary
+    attacker.ship.atomic_detonators = 1  # ship-hardware-v2 v15: the last step sets a detonator
     second = _destroy(u, attacker, planet.id)
     assert second.ok, second.error
     assert second.turns_spent == 1
     assert attacker.alignment == -100
+    assert attacker.ship.atomic_detonators == 0
     assert attacker.planet_landed is None
     assert attacker.sector_id == sid
     assert bystander.planet_landed is None

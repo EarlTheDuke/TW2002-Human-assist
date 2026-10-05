@@ -53,6 +53,11 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.PHOTON_FIRED,
     EventKind.CLOAK_ON,
     EventKind.CLOAK_OFF,
+    # ship-hardware-v2: your beacon, your psychic reading and your avoid prompt are yours alone.
+    EventKind.BEACON_LAUNCHED,
+    EventKind.BEACON_DESTROYED,
+    EventKind.PSYCHIC_PROBE,
+    EventKind.HAZARD_AVOID_PROMPT,
     EventKind.FED_RESPONSE,
     EventKind.PLANET_TAX_PAYOUT,
     # Out-of-band meta event — belongs to actor only (keeps opponents
@@ -94,7 +99,8 @@ def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     if (
         event.actor_id
         and event.actor_id != player_id
-        and kind in (EventKind.WARP, EventKind.RETREAT, EventKind.AUTOPILOT, EventKind.CLOAK_ON, EventKind.CLOAK_OFF)
+        and kind in (EventKind.WARP, EventKind.RETREAT, EventKind.AUTOPILOT, EventKind.CLOAK_ON, EventKind.CLOAK_OFF,
+                     EventKind.NAVHAZ_HIT, EventKind.ATOMIC_DETONATOR)
     ):
         from . import constants as K
         if K.hardware_tw2002():
@@ -206,6 +212,13 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.PHOTON_FIRED: ("target",),
     EventKind.PHOTON_HIT: ("target", "disabled_ticks"),
     EventKind.ATOMIC_DETONATION: ("qty", "port_destroyed"),
+    EventKind.NAVHAZ_HIT: ("pct", "damage", "victim"),
+    EventKind.CORBOMITE_BLAST: ("victim", "damage", "destroyed"),
+    EventKind.BEACON_LAUNCHED: ("sector", "message"),
+    EventKind.BEACON_DESTROYED: ("sector",),
+    EventKind.PSYCHIC_PROBE: ("commodity", "side", "unit", "pct"),
+    EventKind.ATOMIC_DETONATOR: ("planet_id", "outcome"),
+    EventKind.HAZARD_AVOID_PROMPT: ("sector", "reason"),
     EventKind.PORT_DESTROYED: ("qty",),
     EventKind.COMBAT: (
         "exchange_kind", "vs", "attacker", "defender", "attacker_f", "attacker_s",
@@ -955,11 +968,17 @@ def _ship_dict(ship) -> dict[str, Any]:
         "cloaks": int(getattr(ship, "cloaks", 0) or 0),
         "mine_disruptors": int(getattr(ship, "mine_disruptors", 0) or 0),
         "cloaked": bool(getattr(ship, "cloaked", False)),
+        # ship-hardware-v2: only ever in YOUR ship view (corbomite is undetectable to others).
+        "corbomite": int(getattr(ship, "corbomite", 0) or 0),
+        "marker_beacons": int(getattr(ship, "marker_beacons", 0) or 0),
+        "psychic_probe": int(getattr(ship, "psychic_probe", 0) or 0),
+        "atomic_detonators": int(getattr(ship, "atomic_detonators", 0) or 0),
         "cargo_free": ship.cargo_free,
     }
     from . import constants as K
     if not K.hardware_tw2002():  # HARDWARE_MODE legacy keeps the pre-ship-hardware ship view
-        for key in ("cloaks", "mine_disruptors", "cloaked"):
+        for key in ("cloaks", "mine_disruptors", "cloaked",
+                    "corbomite", "marker_beacons", "psychic_probe", "atomic_detonators"):
             ship_view.pop(key, None)
     if K.info_tw2002():  # SCANNERS_HIDDEN_INFO.md s1-s3
         ship_view["scanner"] = getattr(ship, "scanner", None)
@@ -1005,7 +1024,7 @@ def _adjacent_fogged(player, wid: int) -> dict[str, Any]:
             "seen_day": seen[1],
             "seen_tick": seen[2],
             # what the holo scan / probe showed: port name and class, planets, traders, Ferrengi
-            "seen": {k: view[k] for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines")
+            "seen": {k: view[k] for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines", "beacon")
                      if view.get(k)},
         })
     if mem:
@@ -1062,6 +1081,12 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         ],
     }
     from . import constants as K
+    if K.hardware_tw2002():  # SHIP_HARDWARE_V2.md: the sector display shows a beacon and NavHaz
+        if getattr(sector, "beacon", None):
+            info["beacon"] = sector.beacon
+        from .hardware import navhaz_pct
+        if navhaz_pct(sector) > 0:
+            info["nav_hazard_pct"] = navhaz_pct(sector)
     if K.info_tw2002():  # s11/s12: traders with their fighters; other people's limpets stay hidden
         from .scanners import traders_in, visible_mines
         info["mines"] = visible_mines(universe, player_id, sector)

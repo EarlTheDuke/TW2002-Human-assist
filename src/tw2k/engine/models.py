@@ -187,6 +187,14 @@ class EventKind(str, Enum):
     DISRUPTOR_FIRED = "disruptor_fired"
     LIMPET_REMOVED = "limpet_removed"
     PHOTON_BLAST = "photon_blast"
+    # ship-hardware-v2 (SHIP_HARDWARE_V2.md)
+    NAVHAZ_HIT = "navhaz_hit"
+    CORBOMITE_BLAST = "corbomite_blast"
+    BEACON_LAUNCHED = "beacon_launched"
+    BEACON_DESTROYED = "beacon_destroyed"
+    PSYCHIC_PROBE = "psychic_probe"
+    ATOMIC_DETONATOR = "atomic_detonator"
+    HAZARD_AVOID_PROMPT = "hazard_avoid_prompt"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -341,6 +349,9 @@ class Sector(BaseModel):
     nav_hazard: float = 0.0
     # HARDWARE_MODE tw2002: photon wave ticks remaining (mines/fighters inert).
     photon_wave_remaining: int = 0
+    # HARDWARE_MODE tw2002 (SHIP_HARDWARE_V2.md v5-v9): marker beacon message, or None.
+    # Who launched it is never stored or shown (the original shows only the text).
+    beacon: str | None = None
     # Display hint for the map view (computed at generation time)
     x: float = 0.0
     y: float = 0.0
@@ -420,6 +431,11 @@ class Ship(BaseModel):
     mine_disruptors: int = 0
     cloaked: bool = False
     cloak_activated_day: int | None = None
+    # ship-hardware-v2 (SHIP_HARDWARE_V2.md). Corbomite stays off every rival view.
+    corbomite: int = 0
+    marker_beacons: int = 0
+    psychic_probe: int = 0
+    atomic_detonators: int = 0
     # Weighted-average unit cost paid for the current holdings of each
     # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
     # when planning a sell — without this they have to reconstruct cost
@@ -638,6 +654,10 @@ class Player(BaseModel):
             + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
             + int(getattr(self.ship, "cloaks", 0) or 0) * getattr(K, "CLOAK_COST", 25_000)
             + int(getattr(self.ship, "mine_disruptors", 0) or 0) * getattr(K, "DISRUPTOR_COST", 40_000)
+            + int(getattr(self.ship, "corbomite", 0) or 0) * getattr(K, "CORBOMITE_COST", 1_000)
+            + int(getattr(self.ship, "marker_beacons", 0) or 0) * getattr(K, "BEACON_COST", 100)
+            + int(getattr(self.ship, "psychic_probe", 0) or 0) * getattr(K, "PSYCHIC_PROBE_COST", 2_500)
+            + int(getattr(self.ship, "atomic_detonators", 0) or 0) * getattr(K, "ATOMIC_DETONATOR_COST", 60_000)
             + self.ship.ether_probes * K.ETHER_PROBE_COST
             + self.ship.genesis * K.GENESIS_TORPEDO_COST
             + K.scanner_value(getattr(self.ship, "scanner", None))

@@ -653,6 +653,10 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
         if not hardware_tw2002():
             return 0
         return max(0, int(DISRUPTOR_MAX) - int(have))
+    if item in HARDWARE_V2_ITEMS:
+        if not hardware_tw2002():
+            return 0
+        return max(0, hardware_v2_cap(class_key, item) - int(have))
     spec = hull_spec(class_key) or {}
     field = _EQUIP_CAP_FIELD.get(item)
     if field is None:
@@ -662,6 +666,39 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
             return max(0, 150 - int(have))
         return None
     return max(0, int(spec[field]) - int(have))
+
+
+HARDWARE_V2_ITEMS = ("corbomite", "marker_beacon", "psychic_probe", "atomic_detonator")
+
+
+def hardware_v2_cap(class_key: str, item: str) -> int:
+    """Per-ship cap of a ship-hardware-v2 item (SHIP_HARDWARE_V2.md)."""
+    if item == "corbomite":
+        return 0 if class_key == ESCAPE_POD else int(CORBOMITE_MAX)
+    if item == "marker_beacon":
+        return int(BEACON_MAX_BY_HULL.get(class_key, 0))
+    if item == "psychic_probe":
+        return 0 if class_key == ESCAPE_POD else int(PSYCHIC_PROBE_MAX)
+    if item == "atomic_detonator":
+        return 0 if class_key == ESCAPE_POD else int(ATOMIC_DETONATOR_MAX)
+    return 0
+
+
+def hardware_v2_prices() -> dict[str, int]:
+    """Hardware Emporium prices for the v2 items; empty under HARDWARE_MODE legacy."""
+    if not hardware_tw2002():
+        return {}
+    return {
+        "corbomite": int(CORBOMITE_COST),
+        "marker_beacon": int(BEACON_COST),
+        "psychic_probe": int(PSYCHIC_PROBE_COST),
+        "atomic_detonator": int(ATOMIC_DETONATOR_COST),
+    }
+
+
+def atomic_mines_sold() -> bool:
+    """v19: legacy always sells atomic_mines; tw2002 only while ATOMIC_MINES_PORT_NUKE is kept."""
+    return (not hardware_tw2002()) or bool(ATOMIC_MINES_PORT_NUKE)
 
 
 def fighter_unit_price(day: int) -> int:
@@ -1310,6 +1347,57 @@ DISRUPTOR_MAX = 10
 DISRUPTOR_CLEAR_MAX = 12  # Bible ceiling
 # Limpet removal (h22)
 LIMPET_REMOVAL_COST = 1_250
+
+# --- Ship hardware v2 (same HARDWARE_MODE switch) -----------------------------
+# docs/playtests/ships/SHIP_HARDWARE_V2.md. Everything below is off under
+# HARDWARE_MODE "legacy" (not sold, not offered, handlers refuse, no NavHaz read).
+# Corbomite (v1-v4). TWGS 3.11 editor default price; Bible / HardwareMenu cap 1,500.
+CORBOMITE_COST = 1_000
+CORBOMITE_MAX = 1_500
+# MBBS manual: 1,500 units "will blow 30,000 fighters off of the attacker";
+# Misc_shipodds log: "damages of 30000 battle points". 30,000 / 1,500 = 20 per unit.
+CORBOMITE_DAMAGE_PER_UNIT = 20
+# Marker beacons (v5-v9). TWGS price 100; 41-character message (Gypsy "Release Beacon").
+BEACON_COST = 100
+BEACON_MESSAGE_MAX = 41
+BEACON_TURNS = 0  # UNVERIFIED: releasing a beacon is not listed as a turn-using command
+# "Beacon Max" from the ship data in Gypsy / Iago (TEDIT ship screens). Pod carries none.
+BEACON_MAX_BY_HULL: dict[str, int] = {
+    "merchant_cruiser": 50,
+    "scout_marauder": 10,
+    "missile_frigate": 5,
+    "battleship": 50,
+    "corporate_flagship": 100,
+    "colonial_transport": 10,
+    "cargotran": 20,
+    "merchant_freighter": 20,
+    "imperial_starship": 150,
+    "havoc_gunstar": 5,
+    "star_master": 50,
+    "constellation": 50,
+    "tkhasi_orion": 20,
+    "tholian_sentinel": 10,
+    "taurean_mule": 20,
+    "interdictor_cruiser": 100,
+}
+# Psychic probe (v10-v12). TWGS price 2,500; one per ship (Slice-10 record: PsyProbe * 1).
+PSYCHIC_PROBE_COST = 2_500
+PSYCHIC_PROBE_MAX = 1
+# Atomic detonator (v13-v19). TWGS price 60,000; Bible cap 5.
+ATOMIC_DETONATOR_COST = 60_000
+ATOMIC_DETONATOR_MAX = 5
+# v19: the old `atomic_mines` port nuke is kept on purpose (only port-kill path in this
+# game). False retires it under HARDWARE_MODE tw2002 (not sold, deploy refused).
+ATOMIC_MINES_PORT_NUKE = True
+# NavHaz (v20-v25). cabal glossary: each 1% does 10 damage, odds equal to the %.
+NAVHAZ_DAMAGE_PER_PCT = 10
+NAVHAZ_MAX_PCT = 100
+# MBBS manual: "each planet destroyed produces 10% Haz"; density table 210 = destroyed planet.
+NAVHAZ_PER_PLANET_DESTROYED = 10
+# MBBS manual: "generally it'll be reduced by 3%" each night. FedSpace clears at Extern.
+NAVHAZ_DISPERSION_PER_DAY = 3
+DENSITY_PER_NAVHAZ_PCT = 21
+DENSITY_PER_BEACON = 1
 
 # --- Ferrengi behaviour -------------------------------------------------------
 FERRENGI_MOVE_PROB = 0.6              # chance per day each Ferrengi moves

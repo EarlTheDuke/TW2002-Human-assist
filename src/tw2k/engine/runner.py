@@ -28,19 +28,38 @@ from .combat import (
     open_challenge,
     retreat_block,
 )
-from .economy import begin_port_visit, execute_trade, regenerate_ports, trade_turn_cost
+from .economy import (
+    _stored_mcic,
+    begin_port_visit,
+    execute_trade,
+    port_buy_price,
+    port_sell_price,
+    regenerate_ports,
+    trade_turn_cost,
+)
 from .ferrengi import _ferrengi_by_name, _ferrengi_roam_and_hunt, _spawn_ferrengi
 from .hardware import (
+    add_navhaz,
     apply_carried_photon_blast,
+    apply_navhaz,
     armid_detonation_hits,
     carried_photon_hazard,
+    colonists_on,
+    detonator_reason,
+    drop_other_limpets,
+    emit_psychic_probe,
     handle_cloak,
     handle_fire_disruptor,
+    handle_launch_beacon,
     handle_photon_tw2002,
     handle_remove_limpet,
+    hostile_mines_present,
     sector_photon_active,
     tick_cloak_fails,
+    tick_navhaz,
     tick_photon_waves,
+    v2_add,
+    v2_have,
 )
 from .legality import planet_destroy_reason
 from .models import (
@@ -159,6 +178,8 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
     # Dispatch
     handler = _DISPATCH.get(action.kind)
+    if action.kind == ActionKind.DEPLOY_ATOMIC and not K.hardware_tw2002():
+        handler = None  # HARDWARE_MODE legacy: deploy_atomic was never a dispatched verb
     if handler is None:
         return ActionResult(ok=False, error=f"unsupported action {action.kind}")
 
@@ -221,6 +242,7 @@ def tick_day(universe: Universe) -> None:
     if K.hardware_tw2002():
         tick_photon_waves(universe)
         tick_cloak_fails(universe, _rng_for(universe))
+        tick_navhaz(universe)
 
     if universe.config.enable_ferrengi:
         _spawn_ferrengi(universe)
@@ -362,7 +384,20 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
     player = universe.players[pid]
     rng = _rng_for(universe)
     damage = 0
-    for md in list(sector.mines):
+    # HARDWARE_MODE tw2002 entry order (SHIP_HARDWARE_V2.md v26): NavHaz, one limpet,
+    # armids, sector quasar, fighters. Legacy keeps list-order mines then fighters.
+    entry_order = K.hardware_tw2002()
+    entering = entry_verb == "entering"
+    deaths_before = player.deaths
+    if entry_order and entering:
+        apply_navhaz(universe, pid, sector, rng)
+        if player.deaths != deaths_before or not player.alive:
+            return 0
+    mines = list(sector.mines)
+    if entry_order:
+        mines.sort(key=lambda m: 0 if m.kind == MineType.LIMPET else 1)
+    limpet_taken = False
+    for md in mines:
         if md.owner_id == pid:
             continue
         # Corp mate / ally mines don't trigger
@@ -389,6 +424,11 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
         elif md.kind == MineType.LIMPET:
             if sector_photon_active(sector):
                 continue  # h7: photon wave neutralizes limpets too
+            if entry_order:
+                if limpet_taken:
+                    continue  # v27: one limpet per entry
+                limpet_taken = True
+                drop_other_limpets(universe, pid)  # any earlier limpet falls off
             # Silently attach 1 limpet tracker; consume one mine.
             md.count -= 1
             if md.count <= 0:
@@ -404,6 +444,14 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
     if player.ship.fighters == 0 and damage > 0:
         # Ship destroyed on entry; player ejected and respawns at StarDock
         _destroy_ship(universe, pid, reason="mines")
+
+    if entry_order:
+        if player.deaths != deaths_before or not player.alive:
+            return damage
+        if entering:
+            _apply_sector_quasar(universe, pid, sector)  # v26: quasar before the fighters
+            if player.deaths != deaths_before or not player.alive:
+                return damage
 
     # Hostile sector fighter check
     if sector.fighters and sector.fighters.owner_id != pid:
@@ -487,6 +535,7 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     player.prev_sector_id = cur.id
     if K.hardware_tw2002() and carried_photon_hazard(universe, pid, dest):
         apply_carried_photon_blast(universe, pid)
+    mined = K.hardware_tw2002() and not sector_photon_active(dest) and hostile_mines_present(universe, pid, dest)
     damage = _apply_sector_hazards(universe, pid, dest)
 
     # If destroyed by fighters, handler already ejected player
@@ -518,10 +567,19 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
             summary=f"{player.name} warped {cur.id} → {target_id}",
         )
         _award_xp(universe, pid, "warp")
-        if player.deaths == deaths_before and player.sector_id == target_id:
+        if not K.hardware_tw2002() and player.deaths == deaths_before and player.sector_id == target_id:
             _apply_sector_quasar(universe, pid, dest)
         if player.alive and player.deaths == deaths_before and player.sector_id == target_id:
             open_challenge(universe, pid, dest, cur.id)
+        if mined and player.alive and player.deaths == deaths_before and player.sector_id == target_id:
+            # v28: "you will be asked whether you want to avoid the sector" - back at the prompt.
+            universe.emit(
+                EventKind.HAZARD_AVOID_PROMPT,
+                actor_id=pid,
+                sector_id=target_id,
+                payload={"sector": target_id, "reason": "mines"},
+                summary=f"Mines in sector {target_id}: avoid this sector? (autopilot stops here)",
+            )
 
     return ActionResult(ok=True, turns_spent=cost)
 
@@ -554,6 +612,12 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
 
     rng = _rng_for(universe)
     unused_port = not port.experience  # x2: nobody has traded here yet
+    psychic = K.hardware_tw2002() and int(getattr(player.ship, "psychic_probe", 0) or 0) > 0
+    if psychic:
+        xp_now = int(player.experience)
+        listed_now = (port_sell_price(port, commodity, xp_now) if side == "buy"
+                      else port_buy_price(port, commodity, xp_now))
+        mcic_now = _stored_mcic(port, commodity)
     ok, total, unit, msg, realized = execute_trade(
         universe, player, port, commodity, qty, side, offered, rng
     )
@@ -616,6 +680,9 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
         },
         summary=f"{player.name} {side} {qty} {commodity.value} @ {unit}cr = {total}cr{note}{pnl_tag}",
     )
+    if psychic:
+        # v11: after the trade, the probe tells you how close you came (actor-only event).
+        emit_psychic_probe(universe, pid, commodity.value, side, listed_now, unit, mcic_now)
     _award_xp(universe, pid, "trade")
     return ActionResult(ok=True, turns_spent=cost)
 
@@ -775,6 +842,8 @@ def _handle_deploy_mines(universe: Universe, pid: str, action: Action) -> Action
         kind = MineType(action.args.get("kind", "armid"))
     except ValueError:
         return ActionResult(ok=False, error="invalid mine type")
+    if kind == MineType.ATOMIC and not K.atomic_mines_sold():
+        return ActionResult(ok=False, error="atomic mines are retired (ATOMIC_MINES_PORT_NUKE off)")
     if qty <= 0 or qty > player.ship.mines.get(kind, 0):
         return ActionResult(ok=False, error="insufficient mines")
     if sector.id in K.FEDSPACE_SECTORS:
@@ -1910,6 +1979,9 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     if K.hardware_tw2002():
         prices["cloak"] = K.CLOAK_COST
         prices["mine_disruptor"] = K.DISRUPTOR_COST
+        prices.update(K.hardware_v2_prices())
+        if not K.atomic_mines_sold():
+            prices.pop("atomic_mines", None)
     if K.info_tw2002() and item in ("density_scanner", "holo_scanner"):
         return _buy_scanner(universe, pid, str(item), qty)
     unit = prices.get(item or "")
@@ -1934,6 +2006,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "atomic_mines": mines_aboard,
         "cloak": int(getattr(player.ship, "cloaks", 0) or 0),
         "mine_disruptor": int(getattr(player.ship, "mine_disruptors", 0) or 0),
+        **v2_have(player.ship),
     }
     if item == "photon_missiles" and K.hardware_tw2002():
         from .hardware import photon_hull_ok
@@ -1957,6 +2030,8 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
             return ActionResult(ok=False, error="exceeds ship cloak capacity")
         if item == "mine_disruptor":
             return ActionResult(ok=False, error="exceeds ship disruptor capacity")
+        if item in K.HARDWARE_V2_ITEMS:
+            return ActionResult(ok=False, error=f"exceeds ship {item} capacity")
     if item == "fighters":
         player.ship.fighters += qty
     elif item == "shields":
@@ -1979,6 +2054,8 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         player.ship.cloaks = int(getattr(player.ship, "cloaks", 0) or 0) + qty
     elif item == "mine_disruptor":
         player.ship.mine_disruptors = int(getattr(player.ship, "mine_disruptors", 0) or 0) + qty
+    elif item in K.HARDWARE_V2_ITEMS:
+        v2_add(player.ship, item, qty)
     elif item == "colonists":
         # Buying colonists loads them as cargo. They must fit — each colonist
         # is 1 unit of hold capacity, same as any commodity.
@@ -2289,6 +2366,7 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     last_error = "plot_course execute made no hops"
     for nxt in path:
         sub_action = Action(kind=ActionKind.WARP, args={"target": nxt})
+        seq_before_hop = universe.seq
         sub = _handle_warp(universe, pid, sub_action)
         if not sub.ok:
             last_error = sub.error or last_error
@@ -2321,6 +2399,11 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
             break
         if player.fighter_challenge:
             break
+        if K.hardware_tw2002() and any(
+            e.seq > seq_before_hop and e.kind == EventKind.HAZARD_AVOID_PROMPT and e.actor_id == pid
+            for e in universe.events[-8:]
+        ):
+            break  # v28: the avoid prompt returns the pilot to the command prompt
 
     if hops_done == 0:
         return ActionResult(ok=False, error=last_error)
@@ -3219,6 +3302,17 @@ def _handle_planet_destroy(universe: Universe, pid: str, action: Action) -> Acti
             summary=f"{player.name} killed the colonists on {planet.name}",
         )
         return ActionResult(ok=True, turns_spent=cost)
+    if K.hardware_tw2002():
+        # v15: the last step sets an atomic detonator (planet_destroy_reason checked one is aboard).
+        player.ship.atomic_detonators = int(player.ship.atomic_detonators) - 1
+    _remove_planet(universe, pid, planet)
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _remove_planet(universe: Universe, pid: str, planet, *, via: str = "planet_destroy") -> None:
+    """The planet goes: landers lift off, x7 rank award, NavHaz (tw2002), PLANET_DESTROYED."""
+    player = universe.players[pid]
+    sector = universe.sectors[planet.sector_id]
     gone = planet.id
     sector_id = planet.sector_id
     for other in universe.players.values():
@@ -3230,13 +3324,62 @@ def _handle_planet_destroy(universe: Universe, pid: str, action: Action) -> Acti
         # x7 / conflict 14: -1 alignment and +50 experience when the planet goes.
         player.alignment -= K.PLANET_DESTROY_ALIGNMENT_TW2002
         _award_xp(universe, pid, "destroy_planet")
+    if K.hardware_tw2002():
+        add_navhaz(sector, int(K.NAVHAZ_PER_PLANET_DESTROYED))  # v22: the debris is NavHaz
+    payload: dict = {"planet_id": gone, "sector_id": sector_id}
+    if via != "planet_destroy":
+        payload["via"] = via
     universe.emit(
         EventKind.PLANET_DESTROYED,
         actor_id=pid,
         sector_id=sector_id,
-        payload={"planet_id": gone, "sector_id": sector_id},
+        payload=payload,
         summary=f"{player.name} destroyed the planet in sector {sector_id}",
     )
+
+
+def _handle_deploy_atomic(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """v13-v18: set an atomic detonator on the planet you are landed on.
+
+    Colonists still alive disarm it and the blast takes your ship (Bible). With none left the
+    planet is destroyed. Failures spend nothing. Never dispatched under HARDWARE_MODE legacy.
+    """
+    player = universe.players[pid]
+    sector = universe.sectors[player.sector_id]
+    raw = action.args.get("planet_id", player.planet_landed)
+    try:
+        planet_id = int(raw)
+    except (TypeError, ValueError):
+        return ActionResult(ok=False, error="deploy_atomic needs the planet_id you are landed on")
+    planet = universe.planets.get(planet_id) if planet_id in sector.planet_ids else None
+    if planet is None:
+        return ActionResult(ok=False, error="no such planet in this sector")
+    blocked = detonator_reason(universe, player, planet)
+    if blocked:
+        return ActionResult(ok=False, error=blocked)
+    cost = int(K.TURN_COST["planet_destroy"])
+    player.ship.atomic_detonators = int(player.ship.atomic_detonators) - 1
+    if colonists_on(planet) > 0:
+        universe.emit(
+            EventKind.ATOMIC_DETONATOR,
+            actor_id=pid,
+            sector_id=sector.id,
+            payload={"planet_id": planet.id, "outcome": "backfire"},
+            summary=f"Colonists on {planet.name} tried to disarm {player.name}'s atomic detonator - it went off",
+        )
+        player.planet_landed = None
+        _destroy_ship(universe, pid, reason="atomic_detonator")
+        return ActionResult(ok=True, turns_spent=cost)
+    if not K.rank_tw2002():
+        player.alignment -= K.PLANET_DESTROY_ALIGNMENT  # Bible: -50 for destroying a planet
+    universe.emit(
+        EventKind.ATOMIC_DETONATOR,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={"planet_id": planet.id, "outcome": "planet_destroyed"},
+        summary=f"{player.name}'s atomic detonator destroyed {planet.name}",
+    )
+    _remove_planet(universe, pid, planet, via="atomic_detonator")
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -3450,6 +3593,8 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.CLOAK: handle_cloak,
     ActionKind.FIRE_DISRUPTOR: handle_fire_disruptor,
     ActionKind.REMOVE_LIMPET: handle_remove_limpet,
+    ActionKind.LAUNCH_BEACON: handle_launch_beacon,
+    ActionKind.DEPLOY_ATOMIC: _handle_deploy_atomic,
     ActionKind.QUERY_LIMPETS: _handle_query_limpets,
     ActionKind.PROBE: _handle_probe,
     ActionKind.BUY_SHIP: _handle_buy_ship,

@@ -124,6 +124,13 @@ def planet_destroy_reason(universe: Universe, player, planet) -> str | None:
         return "planet is friendly"
     if int(planet.fighters) > 0 or int(planet.shields) > 0:
         return "planet still has defenders"
+    if (
+        K.hardware_tw2002()
+        and sum(int(n) for n in planet.colonists.values()) <= 0
+        and int(getattr(player.ship, "atomic_detonators", 0) or 0) <= 0
+    ):
+        # v15 (Gypsy "Try to Destroy Planet: first you purchase Atomic Detonators").
+        return "the colonists are gone - destroying the planet needs an atomic detonator (buy_equip atomic_detonator)"
     return None
 
 
@@ -133,7 +140,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     out: list[LegalAction] = []
 
     if not player.alive:
-        return [_la(k, legal=False, reason="player is destroyed", detail="precise") for k in ActionKind]
+        return [_la(k, legal=False, reason="player is destroyed", detail="precise") for k in ActionKind
+                if K.hardware_tw2002() or k != ActionKind.LAUNCH_BEACON]
 
     landed = player.planet_landed is not None
     at_stardock = player.sector_id == K.STARDOCK_SECTOR
@@ -444,6 +452,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             mine_max[kind_name] = have
         else:
             mine_max[kind_name] = min(have, mine_room)
+    if not K.atomic_mines_sold():
+        mine_max.pop("atomic", None)  # v19 switch: atomic mines retired
     mine_choices = sorted(k for k, n in mine_max.items() if n > 0)
     if not mines_have:
         reason = "no mines aboard (buy_equip armid_mines / limpet_mines / atomic_mines)"
@@ -456,9 +466,22 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     out.append(_la(ActionKind.DEPLOY_MINES, legal=reason is None, reason=reason, cost=dm_cost,
                    params={"kind": {"type": "str", "required": True, "choices": mine_choices},
                            "qty": {"type": "int", "required": True, "min": 1, "max_by": mine_max}}))
-    # deploy_atomic has no handler in the engine dispatch table; atomics detonate via deploy_mines kind=atomic.
-    out.append(_la(ActionKind.DEPLOY_ATOMIC, legal=False,
-                   reason="not a dispatched verb - use deploy_mines with kind=atomic (detonates immediately)"))
+    if K.hardware_tw2002():
+        # v13-v18: deploy_atomic sets an atomic detonator on the planet you are landed on.
+        from .hardware import colonists_on, detonator_reason
+        lp = universe.planets.get(player.planet_landed) if player.planet_landed is not None else None
+        da_reason = detonator_reason(universe, player, lp)
+        out.append(_la(ActionKind.DEPLOY_ATOMIC, legal=da_reason is None, reason=da_reason,
+                       cost=int(K.TURN_COST["planet_destroy"]),
+                       params={"planet_id": {"type": "int", "required": True,
+                                             "choices": [lp.id] if lp is not None else []},
+                               "detonators_aboard": int(getattr(player.ship, "atomic_detonators", 0) or 0),
+                               "colonists_alive": bool(lp is not None and colonists_on(lp) > 0),
+                               "note": "colonists still alive disarm it and the blast destroys YOUR ship"}))
+    else:
+        # deploy_atomic has no handler in the engine dispatch table; atomics detonate via deploy_mines kind=atomic.
+        out.append(_la(ActionKind.DEPLOY_ATOMIC, legal=False,
+                       reason="not a dispatched verb - use deploy_mines with kind=atomic (detonates immediately)"))
 
     # ---- S4 group 2: StarDock cluster -----------------------------------------
     my_spec = K.hull_spec(player.ship.ship_class.value) or {}
@@ -506,6 +529,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         if K.hardware_tw2002():
             prices["cloak"] = int(K.CLOAK_COST)
             prices["mine_disruptor"] = int(K.DISRUPTOR_COST)
+            prices.update(K.hardware_v2_prices())
+            if not K.atomic_mines_sold():
+                prices.pop("atomic_mines", None)
         mines_aboard = sum(int(v) for v in (player.ship.mines or {}).values())
         class_key = player.ship.ship_class.value
         have = {
@@ -520,6 +546,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "cloak": int(getattr(player.ship, "cloaks", 0) or 0),
             "mine_disruptor": int(getattr(player.ship, "mine_disruptors", 0) or 0),
         }
+        if K.hardware_tw2002():
+            from .hardware import v2_have
+            have.update(v2_have(player.ship))
         cap_by = {
             "colonists": max(0, int(player.ship.cargo_free)),
         }
@@ -535,6 +564,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             room = K.equip_room(class_key, capped, have[capped])
             if room is not None:
                 cap_by[capped] = room
+        if K.hardware_tw2002():
+            for capped in K.HARDWARE_V2_ITEMS:
+                cap_by[capped] = int(K.equip_room(class_key, capped, have[capped]) or 0)
         equip_max: dict[str, int] = {}
         for item, unit in prices.items():
             afford = player.credits // unit if unit > 0 else 0
@@ -795,6 +827,15 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             reason = None
         out.append(_la(ActionKind.REMOVE_LIMPET, legal=reason is None, reason=reason, cost=0,
                        params={"fee": fee, "attached": attached}))
+
+        # v5-v9: marker beacons
+        from .hardware import launch_beacon_reason
+        reason = launch_beacon_reason(universe, player_id)
+        out.append(_la(ActionKind.LAUNCH_BEACON, legal=reason is None, reason=reason, cost=int(K.BEACON_TURNS),
+                       params={"message": {"type": "str", "required": True, "max_len": int(K.BEACON_MESSAGE_MAX)},
+                               "beacons_aboard": int(getattr(player.ship, "marker_beacons", 0) or 0),
+                               "beacon_here": sector.beacon is not None,
+                               "note": "a second beacon in a sector makes both explode"}))
     # legacy: cloak / fire_disruptor / remove_limpet are not offered at all (like rob/steal under ROB_MODE legacy)
 
     # ---- S4 group 4: corp / alliance / intel -----------------------------------
