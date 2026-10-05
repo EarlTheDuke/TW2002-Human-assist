@@ -19,8 +19,14 @@ from .combat import (
     _are_allied,
     _attach_limpet,
     _destroy_ship,
+    _resolve_fighter_attack_tw2002,
     _resolve_fighter_sector_combat,
+    _resolve_ship_attack_tw2002,
     _resolve_ship_combat,
+    attack_cap,
+    live_challenge,
+    open_challenge,
+    retreat_block,
 )
 from .economy import begin_port_visit, execute_trade, regenerate_ports, trade_turn_cost
 from .ferrengi import _ferrengi_by_name, _ferrengi_roam_and_hunt, _spawn_ferrengi
@@ -142,7 +148,13 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     if handler is None:
         return ActionResult(ok=False, error=f"unsupported action {action.kind}")
 
+    # An open fighter challenge takes an answer before anything else (SHIP_COMBAT.md).
+    if K.challenge_on() and live_challenge(universe, player_id, settle=True) is not None:
+        if action.kind not in CHALLENGE_VERBS:
+            return _reject_free(CHALLENGE_REFUSAL)
+
     before_seq = universe.seq
+    turns_before = player.turns_today
     result = handler(universe, player_id, action)
     result.event_seqs = [e.seq for e in universe.events if e.seq > before_seq]
 
@@ -156,6 +168,14 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     }
     if result.turns_spent > 0 and (result.ok or charged_fail):
         player.turns_today += result.turns_spent
+
+    # Flee penalty: the first turn-using action after a flee settles it. Land or port pays extra.
+    if player.flee_penalty and player.turns_today > turns_before:
+        if action.kind in (ActionKind.LAND_PLANET, ActionKind.TRADE):
+            extra = min(K.FLEE_PENALTY_TURNS, max(0, player.turns_per_day - player.turns_today))
+            player.turns_today += extra
+            result.turns_spent += extra
+        player.flee_penalty = False
 
     # Check victory after every applied action
     _check_victory(universe)
@@ -206,6 +226,15 @@ def _truncate_for_feed(s: str, limit: int = 140) -> str:
     if len(s) <= limit:
         return s
     return s[: limit - 1] + "…"
+
+
+CHALLENGE_VERBS = frozenset({
+    ActionKind.ATTACK, ActionKind.RETREAT, ActionKind.SURRENDER, ActionKind.PAY_TOLL,
+    ActionKind.HAIL, ActionKind.BROADCAST, ActionKind.QUERY_LIMPETS,
+    # WAIT passes a turn and answers nothing; it keeps auto-WAIT seats (idle, timeout) from stalling a day.
+    ActionKind.WAIT,
+})
+CHALLENGE_REFUSAL = "answer the fighters first: attack, retreat, pay the toll or surrender"
 
 
 def _reject_free(error: str) -> ActionResult:
@@ -267,7 +296,7 @@ def _hostile_toll(universe: Universe, pid: str, sector):
 
 def _toll_blocks(universe: Universe, pid: str, sector) -> bool:
     """True when tw2002 toll fighters are here and the ship cannot pay the whole bill."""
-    if not K.sector_fighter_tw2002():
+    if not K.sector_fighter_tw2002() or K.challenge_on():
         return False
     dep = _hostile_toll(universe, pid, sector)
     if dep is None:
@@ -333,7 +362,10 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
                 # Auto-attack
                 _resolve_fighter_sector_combat(universe, pid, sector.id)
             elif f_mode == FighterMode.TOLL:
-                if K.sector_fighter_tw2002():
+                if K.challenge_on():
+                    # The toll is answered at the challenge (pay_toll), not billed on entry.
+                    pass
+                elif K.sector_fighter_tw2002():
                     bill = int(sector.fighters.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
                     if bill > 0 and player.credits >= bill:
                         player.credits -= bill
@@ -426,6 +458,8 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
         _award_xp(universe, pid, "warp")
         if player.deaths == deaths_before and player.sector_id == target_id:
             _apply_sector_quasar(universe, pid, dest)
+        if player.alive and player.deaths == deaths_before and player.sector_id == target_id:
+            open_challenge(universe, pid, dest, cur.id)
 
     return ActionResult(ok=True, turns_spent=cost)
 
@@ -776,6 +810,10 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     target_id = action.args.get("target")
     if target_id is None:
         return ActionResult(ok=False, error="attack requires target player id")
+    if K.challenge_on() and live_challenge(universe, pid) is not None:
+        if target_id != "fighters":
+            return _reject_free(CHALLENGE_REFUSAL)
+        return _attack_sector_fighters(universe, pid, action)
     target = universe.players.get(target_id) or _ferrengi_by_name(universe, str(target_id))
     if target is None:
         return ActionResult(ok=False, error=f"target {target_id} not found")
@@ -799,7 +837,46 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
 
+    if K.combat_tw2002():
+        qty, bad = _attack_qty(player, action)
+        if bad is not None:
+            return bad
+        _resolve_ship_attack_tw2002(universe, pid, target, qty)
+        return ActionResult(ok=True, turns_spent=cost)
     _resolve_ship_combat(universe, pid, target)
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _attack_qty(player, action: Action) -> tuple[int, ActionResult | None]:
+    """Fighters sent by one tw2002 attack: 1..attack_cap. Missing qty sends the cap."""
+    if getattr(player.ship, "photon_disabled_ticks", 0) > 0:
+        return 0, _reject_free("your fighters are offline (photon)")
+    cap = attack_cap(player)
+    if cap <= 0:
+        return 0, _reject_free("no fighters aboard to attack with")
+    raw = action.args.get("qty")
+    try:
+        qty = cap if raw is None else int(raw)
+    except (TypeError, ValueError):
+        return 0, _reject_free("invalid fighter quantity")
+    if qty <= 0 or qty > cap:
+        return 0, _reject_free(f"fighters per attack must be 1..{cap}")
+    return qty, None
+
+
+def _attack_sector_fighters(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Answer a challenge by attacking the group. Defensive and toll fighters do not shoot first."""
+    player = universe.players[pid]
+    if live_challenge(universe, pid) is None:
+        return _reject_free("no fighters challenge you here")
+    cost = K.TURN_COST["attack"]
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    qty, bad = _attack_qty(player, action)
+    if bad is not None:
+        return bad
+    if _resolve_fighter_attack_tw2002(universe, pid, player.sector_id, qty):
+        player.fighter_challenge = None
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -2115,6 +2192,8 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
         hops_done += 1
         if not player.alive or universe.players[pid].sector_id != nxt:
             break
+        if player.fighter_challenge:
+            break
 
     if hops_done == 0:
         return ActionResult(ok=False, error=last_error)
@@ -3111,8 +3190,94 @@ def _surrender_deployment(universe: Universe, pid: str, sector):
 def _handle_surrender(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not K.sector_fighter_tw2002():
         return ActionResult(ok=False, error="legacy sector fighters do not take a surrender")
-    # Defensive fighters do not challenge yet; refuse until ship-combat-core turns this on.
-    return ActionResult(ok=False, error="surrender waits for the defensive challenge")
+    if not K.combat_tw2002():
+        return ActionResult(ok=False, error="surrender waits for the defensive challenge")
+    player = universe.players[pid]
+    if live_challenge(universe, pid) is None:
+        return _reject_free("no fighters challenge you here")
+    sector = universe.sectors[player.sector_id]
+    dep = _surrender_deployment(universe, pid, sector)
+    if dep is None:
+        return _reject_free("no fighters challenge you here")
+    cost = K.TURN_COST["surrender"]
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    universe.emit(
+        EventKind.SURRENDER,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={"mode": dep.mode.value, "victim": pid},
+        summary=f"{player.name} surrendered to the {dep.mode.value} fighters in {sector.id}",
+    )
+    player.fighter_challenge = None
+    # Escape pods are the next slice: surrender is the existing death for now.
+    _destroy_ship(universe, pid, reason="surrender", killer_id=dep.owner_id)
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _handle_retreat(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Back to the sector the ship came from. No hazards fire there. Fighters unchanged."""
+    if not K.challenge_on():
+        return _reject_free("retreat needs tw2002 combat")
+    player = universe.players[pid]
+    ch = live_challenge(universe, pid)
+    if ch is None:
+        return _reject_free("no fighters challenge you here")
+    why = retreat_block(universe, pid)
+    if why is not None:
+        return _reject_free(why)
+    cost = _warp_cost_for(player)
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns for this day")
+    here = player.sector_id
+    back = int(ch["from_sector"])
+    try:
+        universe.sectors[here].occupant_ids.remove(pid)
+    except ValueError:
+        pass
+    if player.photon_damped_sector_id == here:
+        _clear_photon_damp(player, here)
+    player.fighter_challenge = None
+    player.sector_id = back
+    player.end_port_visit()
+    universe.sectors[back].occupant_ids.append(pid)
+    _learn_sector(player, universe, back)
+    universe.emit(
+        EventKind.RETREAT,
+        actor_id=pid,
+        sector_id=back,
+        payload={"from": here, "to": back},
+        summary=f"{player.name} retreated {here} → {back}",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _handle_pay_toll(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Pay 5 credits per toll fighter into the pot on the group. Ends the challenge."""
+    if not K.challenge_on():
+        return _reject_free("pay_toll needs tw2002 combat")
+    player = universe.players[pid]
+    ch = live_challenge(universe, pid)
+    if ch is None:
+        return _reject_free("no fighters challenge you here")
+    sector = universe.sectors[player.sector_id]
+    dep = _hostile_toll(universe, pid, sector)
+    if dep is None:
+        return _reject_free("these fighters take no toll")
+    bill = int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+    if player.credits < bill:
+        return _reject_free(f"the toll is {bill} credits")
+    player.credits -= bill
+    dep.toll_credits = int(dep.toll_credits or 0) + bill
+    player.fighter_challenge = None
+    universe.emit(
+        EventKind.TRADE,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={"toll_to": dep.owner_id, "amount": bill},
+        summary=f"{player.name} paid {bill} cr toll to pass through {sector.id}",
+    )
+    return ActionResult(ok=True, turns_spent=K.TURN_COST["pay_toll"])
 
 
 _DISPATCH: dict[ActionKind, Callable] = {
@@ -3162,6 +3327,8 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.PLANET_DESTROY: _handle_planet_destroy,
     ActionKind.RECALL_DEPLOYED: _handle_recall_deployed,
     ActionKind.SURRENDER: _handle_surrender,
+    ActionKind.RETREAT: _handle_retreat,
+    ActionKind.PAY_TOLL: _handle_pay_toll,
 }
 
 

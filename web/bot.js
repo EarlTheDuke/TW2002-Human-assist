@@ -26,6 +26,7 @@
     last: $("lastResult"),
     lastJson: $("lastResultJson"),
     hint: $("hint"),
+    challenge: $("fighterChallenge"),
     failures: $("failures"),
     goals: $("goals"),
     scratchpad: $("scratchpad"),
@@ -847,6 +848,11 @@
 
   function renderAdvisor(obs) {
     els.hint.textContent = obs.action_hint || "(no hint)";
+    const ch = obs.fighter_challenge;
+    if (els.challenge) {
+      els.challenge.hidden = !ch;
+      els.challenge.textContent = ch ? `${ch.count} ${ch.mode} fighters hold sector ${ch.sector_id}. Answer with ATTACK (target: fighters), ${ch.toll != null ? `PAY TOLL (${ch.toll} cr), ` : ""}${ch.can_retreat ? `RETREAT (to ${ch.retreat_to}), ` : ""}or SURRENDER.` : "";
+    }
     rows(els.failures, obs.recent_failures || [], (f) => row(`${f.target_label}`, [`${f.count}× failed`, `last day ${f.last_day}.${f.last_tick}`, f.last_summary], "bad"), "no repeated failures");
     const g = obs.goals || {};
     kv(els.goals, [["Short", g.short], ["Medium", g.medium], ["Long", g.long]]);
@@ -1061,7 +1067,7 @@
   // ---------------------------------------------------------------- S4: context verb groups
   // Group membership is presentation (where a button lives), never legality.
   const VERB_GROUPS = {
-    combat: ["attack", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic", "recall_deployed", "surrender"],
+    combat: ["attack", "retreat", "pay_toll", "surrender", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic", "recall_deployed"],
     stardock: ["buy_ship", "buy_equip", "corp_create"],
     planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport", "planet_destroy"],
     comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
@@ -1114,12 +1120,14 @@
   //   text    -> <input type=text> (max_len from params)
   // Nothing here knows a rule; every bound comes from the engine's envelope.
   const FORM_SPECS = {
-    attack: { fields: [{ n: "target", l: "Target (commander or Ferrengi)", t: "choice" }], note: "Ship-to-ship combat resolves immediately; losses depend on fighters and shields." },
+    attack: { fields: [{ n: "target", l: "Target (commander, Ferrengi, or the fighters holding you)", t: "choice" }, { n: "qty", l: "Fighters to send", t: "int", max: "max" }], note: "Your hull caps one attack. Odds multiply what you send; shields absorb first. An outgunned ship may flee." },
     photon_missile: { fields: [{ n: "target", l: "Target commander", t: "choice" }], note: "Disables the target's fighters for a tick." },
     deploy_fighters: { fields: [{ n: "qty", l: "Fighters to leave here", t: "int", max: "max" }, { n: "mode", l: "Mode", t: "choice" }] },
     deploy_mines: { fields: [{ n: "kind", l: "Mine type", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "kind" }], note: "Atomic mines detonate immediately." },
     recall_deployed: { fields: [{ n: "what", l: "Pick up", t: "choice" }, { n: "kind", l: "Mine type", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "what" }] },
-    surrender: { fields: [], note: "Give up the ship to hostile defensive or toll fighters here." },
+    surrender: { fields: [], note: "Only while fighters challenge you. Loses the ship, the same as being destroyed." },
+    retreat: { fields: [], note: "Back to the sector you came from, for one warp of turns. The engine says when you cannot." },
+    pay_toll: { fields: [], note: "Pay what the toll fighters ask (shown in the challenge) and stay." },
     deploy_atomic: { fields: [] },
     buy_ship: { fields: [{ n: "ship_class", l: "Ship class (affordable & allowed)", t: "choice" }] },
     buy_equip: { fields: [{ n: "item", l: "Item", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "item" }] },
@@ -1687,7 +1695,7 @@
     trade: "trade", trade_failed: "trade", buy_ship: "trade", buy_equip: "trade", planet_tax_payout: "trade",
     combat: "combat", ship_destroyed: "combat", player_eliminated: "combat", mine_detonated: "combat", photon_fired: "combat",
     photon_hit: "combat", atomic_detonation: "combat", port_destroyed: "combat", deploy_fighters: "combat", deploy_mines: "combat",
-    recall_deployed: "combat", surrender: "combat",
+    recall_deployed: "combat", surrender: "combat", fighter_challenge: "combat", retreat: "move",
     ferrengi_attack: "combat", ferrengi_spawn: "combat", fed_response: "combat",
     hail: "comms", broadcast: "comms", corp_memo: "comms", corp_create: "comms", corp_invite: "comms", corp_join: "comms",
     corp_leave: "comms", corp_deposit: "comms", corp_withdraw: "comms", alliance_proposed: "comms", alliance_formed: "comms", alliance_broken: "comms",
@@ -1883,7 +1891,7 @@
     "atomic_detonation", "port_destroyed", "photon_fired", "photon_hit",
     "ferrengi_attack", "deploy_fighters", "deploy_mines", "ferrengi_spawn",
   ]);
-  const OWN_LAY_KINDS = new Set(["deploy_fighters", "deploy_mines", "photon_fired", "recall_deployed", "surrender"]);
+  const OWN_LAY_KINDS = new Set(["deploy_fighters", "deploy_mines", "photon_fired", "recall_deployed", "surrender", "retreat"]);
   function sinceTurnKey() {
     const seat = state.seat || (state.obs && state.obs.self_id) || "";
     return seat ? `tw2k_since_${seat}` : "";

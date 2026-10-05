@@ -25,11 +25,15 @@ class HeuristicAgent(BaseAgent):
         self.rng = random.Random(seed if seed is not None else hash(player_id) & 0xFFFF)
 
     async def act(self, obs: Observation) -> Action:
+        # Fighters holding the ship must be answered first (ship-combat-core-v1).
+        challenge = getattr(obs, "fighter_challenge", None)
+        if challenge:
+            return self._answer_challenge(obs, challenge)
         # Survival first: ferrengi in sector, low fighters? flee.
         ferr = obs.sector.get("ferrengi", [])
         if ferr:
             top = max(ferr, key=lambda f: f["aggression"])
-            if obs.ship["fighters"] >= top["fighters"] * 1.5:
+            if obs.ship["fighters"] > 0 and obs.ship["fighters"] >= top["fighters"] * 1.5:
                 return self._attack(top["id"], "Ferrengi looks beatable, lets collect that bounty.")
             return self._flee(obs, f"Ferrengi aggression {top['aggression']} — bail.")
 
@@ -99,6 +103,24 @@ class HeuristicAgent(BaseAgent):
 
     def _attack(self, target: str, thought: str) -> Action:
         return Action(kind=ActionKind.ATTACK, args={"target": target}, thought=thought)
+
+    def _answer_challenge(self, obs: Observation, challenge: dict) -> Action:
+        legal = {la.get("kind"): la for la in (obs.legal_actions or [])}
+
+        def ok(kind: str) -> bool:
+            return bool((legal.get(kind) or {}).get("legal"))
+
+        if ok("pay_toll"):
+            return Action(kind=ActionKind.PAY_TOLL, thought="Paying the toll to pass.")
+        if ok("retreat"):
+            return Action(kind=ActionKind.RETREAT, thought="Fighters block the way; retreating.")
+        qty = int((((legal.get("attack") or {}).get("params") or {}).get("qty") or {}).get("max") or 0)
+        if ok("attack") and qty >= int(challenge.get("count") or 0):
+            return Action(kind=ActionKind.ATTACK, args={"target": "fighters", "qty": qty},
+                          thought="Clearing the fighters.")
+        if ok("surrender"):
+            return Action(kind=ActionKind.SURRENDER, thought="No way past the fighters; surrendering.")
+        return Action(kind=ActionKind.QUERY_LIMPETS, thought="Held by fighters with no turns left.")
 
     def _flee(self, obs: Observation, thought: str) -> Action:
         adj = obs.adjacent or []

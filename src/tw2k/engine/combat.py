@@ -18,6 +18,9 @@ a DAG.
 
 from __future__ import annotations
 
+import math
+from fractions import Fraction
+
 from . import constants as K
 from .models import (
     EventKind,
@@ -282,27 +285,331 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
     # the raise, leaving the victim as a permanently-frozen zombie (no
     # respawn, no death count). Use isinstance() for type-safe branching.
     if d_fighters <= 0:
-        if isinstance(target, FerrengiShip):
-            target.alive = False
-            bounty = K.FERRENGI_BOUNTY_PER_AGG * target.aggression
-            attacker.credits += bounty
-            attacker.alignment += 10
-            _award_xp(universe, attacker_id, "kill_ferr", multiplier=target.aggression)
-            universe.emit(
-                EventKind.SHIP_DESTROYED,
-                actor_id=attacker_id,
-                sector_id=attacker.sector_id,
-                payload={"victim": target.id, "kind": "ferrengi", "bounty": bounty},
-                summary=f"{attacker.name} destroyed {target.name} (+{bounty}cr bounty)",
-            )
-        else:
-            # Player target: route through _destroy_ship so respawn,
-            # death-count, elimination, credit penalty, ship downgrade
-            # all fire correctly.
-            _award_xp(universe, attacker_id, "kill_player")
-            _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id)
+        _defender_destroyed(universe, attacker_id, target)
     if a_fighters <= 0:
         _destroy_ship(universe, attacker_id, reason="combat", killer_id=getattr(target, "id", None))
+
+
+def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
+    """Bounty path for a Ferrengi, the existing death path for a player."""
+    attacker = universe.players[attacker_id]
+    if isinstance(target, FerrengiShip):
+        target.alive = False
+        bounty = K.FERRENGI_BOUNTY_PER_AGG * target.aggression
+        attacker.credits += bounty
+        attacker.alignment += 10
+        _award_xp(universe, attacker_id, "kill_ferr", multiplier=target.aggression)
+        universe.emit(
+            EventKind.SHIP_DESTROYED,
+            actor_id=attacker_id,
+            sector_id=attacker.sector_id,
+            payload={"victim": target.id, "kind": "ferrengi", "bounty": bounty},
+            summary=f"{attacker.name} destroyed {target.name} (+{bounty}cr bounty)",
+        )
+    else:
+        # Player target: route through _destroy_ship so respawn,
+        # death-count, elimination, credit penalty, ship downgrade
+        # all fire correctly.
+        _award_xp(universe, attacker_id, "kill_player")
+        _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id)
+
+
+# ---------------------------------------------------------------------------
+# tw2002 ship combat (COMBAT_MODE). docs/playtests/combat/SHIP_COMBAT.md.
+# ---------------------------------------------------------------------------
+
+
+def _odds(value: float) -> Fraction:
+    return Fraction(str(value))
+
+
+def combat_odds_of(target) -> Fraction:
+    """Offensive odds of a player's hull, or the Ferrengi figure."""
+    if isinstance(target, FerrengiShip):
+        return _odds(K.FERRENGI_COMBAT_ODDS)
+    return _odds(K.combat_hull(target.ship.ship_class.value)[0])
+
+
+def attack_cap(player) -> int:
+    """Most fighters one attack may send: aboard, capped by the hull's fighters per attack."""
+    per_attack = K.combat_hull(player.ship.ship_class.value)[1]
+    return max(0, min(int(player.ship.fighters), int(per_attack)))
+
+
+def interdictor_planet(universe: Universe, pid: str, sector):
+    """A planet hostile to `pid` in `sector` that can interdict now. Read only (no fuel burn)."""
+    from .models import Commodity
+
+    for item in sorted(sector.planet_ids):
+        planet = universe.planets.get(item)
+        if planet is None:
+            continue
+        if planet.owner_id is None or _are_allied(universe, pid, planet.owner_id):
+            continue
+        if int(planet.citadel_level or 0) < K.INTERDICTOR_MIN_LEVEL:
+            continue
+        if int(planet.stockpile.get(Commodity.FUEL_ORE, 0)) < K.INTERDICTOR_FUEL:
+            continue
+        return planet
+    return None
+
+
+def challenge_group(universe: Universe, pid: str, sector):
+    """Hostile defensive or toll fighters here that challenge `pid`, or None."""
+    dep = sector.fighters
+    if dep is None or int(dep.count) <= 0:
+        return None
+    if dep.owner_id == pid or _are_allied(universe, pid, dep.owner_id):
+        return None
+    if dep.mode not in (FighterMode.DEFENSIVE, FighterMode.TOLL):
+        return None
+    return dep
+
+
+def live_challenge(universe: Universe, pid: str, *, settle: bool = False) -> dict | None:
+    """The player's open challenge if it still stands, else None.
+
+    Read only unless ``settle`` is set: then a stale challenge (the group is gone,
+    turned friendly or offensive, or the ship left) is cleared on the player.
+    """
+    player = universe.players.get(pid)
+    if player is None:
+        return None
+    ch = player.fighter_challenge
+    if not ch:
+        return None
+    sector = universe.sectors.get(player.sector_id)
+    stale = (
+        not K.challenge_on()
+        or not player.alive
+        or sector is None
+        or int(ch.get("sector_id", -1)) != player.sector_id
+        or player.planet_landed is not None
+        or challenge_group(universe, pid, sector) is None
+    )
+    if stale:
+        if settle:
+            player.fighter_challenge = None
+        return None
+    return ch
+
+
+def retreat_block(universe: Universe, pid: str) -> str | None:
+    """Why the challenged player may not retreat now, or None."""
+    player = universe.players[pid]
+    ch = player.fighter_challenge or {}
+    sector = universe.sectors[player.sector_id]
+    back = ch.get("from_sector")
+    if back is None or int(back) not in sector.warps:
+        return "no warp back to the sector you came from"
+    if interdictor_planet(universe, pid, sector) is not None:
+        return "a planetary interdictor holds this sector"
+    return None
+
+
+def open_challenge(universe: Universe, pid: str, sector, from_sector: int) -> bool:
+    """Start a challenge if hostile defensive or toll fighters are here."""
+    if not K.challenge_on():
+        return False
+    dep = challenge_group(universe, pid, sector)
+    if dep is None:
+        return False
+    player = universe.players[pid]
+    player.fighter_challenge = {"sector_id": sector.id, "from_sector": int(from_sector), "mode": dep.mode.value}
+    universe.emit(
+        EventKind.FIGHTER_CHALLENGE,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={"mode": dep.mode.value, "count": int(dep.count), "victim": pid},
+        summary=(
+            f"{int(dep.count)} {dep.mode.value} fighters challenge {player.name} in {sector.id}: "
+            + ("pay, attack, retreat or surrender" if dep.mode == FighterMode.TOLL else "attack, retreat or surrender")
+        ),
+    )
+    return True
+
+
+def _resolve_fighter_attack_tw2002(universe: Universe, attacker_id: str, sector_id: int, qty: int) -> bool:
+    """Send `qty` fighters at the sector group at the hull's odds. True when the group is gone."""
+    sector = universe.sectors[sector_id]
+    dep = sector.fighters
+    attacker = universe.players[attacker_id]
+    if dep is None:
+        return True
+    count = int(dep.count)
+    a_odds = combat_odds_of(attacker)
+    d_odds = _odds(K.SECTOR_FIGHTER_ODDS)
+    power = qty * a_odds
+    defense = count * d_odds
+    pot = int(dep.toll_credits or 0)
+    if power >= defense:
+        att_losses = min(qty, math.ceil(defense / a_odds))
+        def_losses = count
+    else:
+        att_losses = qty
+        def_losses = min(count, math.floor(power / d_odds))
+    attacker.ship.fighters = int(attacker.ship.fighters) - att_losses
+    cleared = def_losses >= count
+    owner = dep.owner_id
+    if cleared:
+        if K.sector_fighter_tw2002() and pot > 0:
+            attacker.credits += pot
+        sector.fighters = None
+    else:
+        dep.count = count - def_losses
+    universe.emit(
+        EventKind.COMBAT,
+        actor_id=attacker_id,
+        sector_id=sector_id,
+        payload={
+            "vs": "fighter_sector",
+            "defender_owner": owner,
+            "sent": qty,
+            "attacker_losses": att_losses,
+            "defender_losses": def_losses,
+            "sector_claimed": cleared,
+        },
+        summary=(
+            f"{attacker.name} sent {qty} fighters at the fighters in {sector_id}: lost {att_losses}, "
+            f"destroyed {def_losses}" + (" - SECTOR CLEARED" if cleared else "")
+        ),
+    )
+    return cleared
+
+
+def _flee_destination(universe: Universe, defender, sector) -> int | None:
+    """One hop to a neighbor with no fighters but the defender's own or friendly ones."""
+    picks: list[int] = []
+    for wid in sorted(sector.warps):
+        dest = universe.sectors.get(int(wid))
+        if dest is None:
+            continue
+        dep = dest.fighters
+        if dep is not None and int(dep.count) > 0 and not _are_allied(universe, defender.id, dep.owner_id):
+            continue
+        picks.append(int(wid))
+    if not picks:
+        return None
+    return universe.rng.choice(picks)
+
+
+def _flee_blocked(universe: Universe, attacker, defender, sector) -> bool:
+    if defender.ship.ship_class.value in K.COMBAT_NEVER_FLEE_HULLS:
+        return True
+    if attacker.ship.ship_class.value in K.COMBAT_INTERDICT_HULLS:
+        return True
+    if defender.planet_landed is not None:
+        return True
+    return interdictor_planet(universe, defender.id, sector) is not None
+
+
+def _flee(universe: Universe, defender, dest_id: int) -> None:
+    sector = universe.sectors[defender.sector_id]
+    try:
+        sector.occupant_ids.remove(defender.id)
+    except ValueError:
+        pass
+    dest = universe.sectors[dest_id]
+    defender.sector_id = dest_id
+    defender.end_port_visit()
+    defender.photon_damped_sector_id = None
+    defender.fighter_challenge = None
+    dest.occupant_ids.append(defender.id)
+    defender.known_sectors.add(dest_id)
+    defender.known_warps[dest_id] = list(dest.warps)
+    defender.flee_penalty = True
+
+
+def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qty: int) -> None:
+    """One attack: the attacker sends `qty` fighters. Exact odds, shields first, then the flee check."""
+    attacker = universe.players[attacker_id]
+    if hasattr(target, "alive") and not target.alive:
+        return
+    is_ferr = isinstance(target, FerrengiShip)
+    d_f = int(target.fighters if is_ferr else target.ship.fighters)
+    d_s = int(target.shields if is_ferr else target.ship.shields)
+    d_disabled = (not is_ferr) and getattr(target.ship, "photon_disabled_ticks", 0) > 0
+    a_odds = combat_odds_of(attacker)
+    d_odds = combat_odds_of(target)
+    s_eff = 0 if d_disabled else d_s
+    power = qty * a_odds
+    defense = (s_eff + d_f) * d_odds
+    beaten = power >= defense
+    if beaten:
+        att_losses = min(qty, math.ceil(defense / a_odds))
+        sh_lost, f_lost = s_eff, d_f
+    else:
+        att_losses = qty
+        units = math.floor(power / d_odds)
+        sh_lost = min(s_eff, units)
+        f_lost = min(d_f, units - sh_lost)
+    attacker.ship.fighters = int(attacker.ship.fighters) - att_losses
+    d_f -= f_lost
+    d_s -= sh_lost
+    if is_ferr:
+        target.fighters, target.shields = d_f, d_s
+    else:
+        target.ship.fighters, target.ship.shields = d_f, d_s
+
+    sector = universe.sectors[attacker.sector_id]
+    flee_to = None
+    if not beaten and not is_ferr and not _flee_blocked(universe, attacker, target, sector):
+        if Fraction(int(attacker.ship.fighters)) > (d_f + d_s) * _odds(K.COMBAT_FLEE_RATIO):
+            flee_to = _flee_destination(universe, target, sector)
+
+    a_f, a_s = int(attacker.ship.fighters), int(attacker.ship.shields)
+    outcome = "destroyed" if beaten else ("hit" if (f_lost + sh_lost) > 0 else "miss")
+    rounds = [{
+        "round": 1,
+        "attacker_damage_mult": float(a_odds),
+        "defender_damage_mult": float(d_odds),
+        "attacker_offense": qty,
+        "defender_offense": 0,
+        "attacker_volley": math.floor(power),
+        "defender_volley": 0,
+        "defender_shield_absorbed": sh_lost,
+        "defender_fighters_lost": f_lost,
+        "attacker_shield_absorbed": 0,
+        "attacker_fighters_lost": att_losses,
+        "defender_f_after": d_f,
+        "defender_s_after": d_s,
+        "attacker_f_after": a_f,
+        "attacker_s_after": a_s,
+        "attacker_photon_disabled": False,
+        "defender_photon_disabled": d_disabled,
+        "ended_here": True,
+    }]
+    universe.emit(
+        EventKind.COMBAT,
+        actor_id=attacker_id,
+        sector_id=attacker.sector_id,
+        payload={
+            "exchange_kind": "ferrengi_vs_ship" if is_ferr else "ship_vs_ship",
+            "exchange_max_rounds": 1,
+            "attacker": attacker_id,
+            "defender": getattr(target, "id", None),
+            "attacker_f": a_f,
+            "attacker_s": a_s,
+            "defender_f": d_f,
+            "defender_s": d_s,
+            "sent": qty,
+            "defender_fled": flee_to is not None,
+            "rounds": rounds,
+            "attacker_losses": att_losses,
+            "defender_losses": f_lost,
+            "outcome": outcome,
+        },
+        summary=(
+            f"Combat in {attacker.sector_id}: {attacker.name} sent {qty} fighters, lost {att_losses}; "
+            f"{getattr(target, 'name', 'target')} lost {sh_lost} shields and {f_lost} fighters"
+            + (" - DESTROYED" if beaten else "")
+            + (" - the target fled" if flee_to is not None else "")
+        ),
+    )
+    if beaten:
+        _defender_destroyed(universe, attacker_id, target)
+    elif flee_to is not None:
+        _flee(universe, target, flee_to)
 
 
 def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) -> None:
@@ -441,6 +748,8 @@ def _destroy_ship(universe: Universe, pid: str, reason: str, killer_id: str | No
     player.credits = int(player.credits * 0.75)
     player.planet_landed = None
     player.photon_damped_sector_id = None
+    player.fighter_challenge = None
+    player.flee_penalty = False
 
     universe.emit(
         EventKind.SHIP_DESTROYED,

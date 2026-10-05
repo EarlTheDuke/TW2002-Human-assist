@@ -112,7 +112,10 @@ def test_mine_cap_is_in_the_list_and_the_handler() -> None:
     assert sum(m.count for m in u.sectors[sid].mines) == 99
 
 
-def test_toll_price_is_in_the_list_and_the_handler() -> None:
+def test_toll_price_is_in_the_list_and_the_handler(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The toll billed on the warp is the COMBAT_MODE legacy entry path now. In tw2002 combat the
+    # same 5-per-fighter bill is paid at the challenge (tests/test_ship_combat_core_v1.py).
+    monkeypatch.setattr(K, "COMBAT_MODE", "legacy")
     u, (owner, payer, outsider) = _make_universe(seed=34003)
     home = _first_non_fed_sector(u, 40)
     there = _first_non_fed_sector(u, home + 1)
@@ -166,6 +169,8 @@ def test_owner_collects_the_pot_by_recalling() -> None:
     _park(u, payer, home)
     payer.credits = 500
     assert apply_action(u, payer.id, Action(kind=ActionKind.WARP, args={"target": there})).ok
+    # tw2002 combat: the warp opens a challenge and the toll is paid as its own action.
+    assert apply_action(u, payer.id, Action(kind=ActionKind.PAY_TOLL, args={})).ok
     assert u.sectors[there].fighters.toll_credits == 50
     _park(u, owner, there)
     owner.turns_today = 0
@@ -310,8 +315,12 @@ def test_legacy_switch_keeps_the_old_toll_and_no_cap(monkeypatch: pytest.MonkeyP
 
 
 
-def test_unpaid_toll_makes_warp_and_hostile_land_illegal() -> None:
-    """0.1 legal list and handler agree when credits < toll due."""
+def test_unpaid_toll_makes_warp_and_hostile_land_illegal(monkeypatch: pytest.MonkeyPatch) -> None:
+    """0.1 legal list and handler agree when credits < toll due (COMBAT_MODE legacy entry path).
+
+    In tw2002 combat a ship that cannot pay enters and is challenged instead.
+    """
+    monkeypatch.setattr(K, "COMBAT_MODE", "legacy")
     u, (owner, payer, *_) = _make_universe(seed=34201)
     home = _first_non_fed_sector(u, 80)
     there = _first_non_fed_sector(u, home + 1)
@@ -399,7 +408,7 @@ def test_deploy_clash_returns_fighters_over_cap_to_ship() -> None:
 
 
 def test_surrender_refused_until_defensive_challenge() -> None:
-    """0.4 surrender stays illegal until defensive fighters can challenge."""
+    """0.4 surrender stays illegal without a live challenge (a ship parked here was never challenged)."""
     u, (owner, victim, *_) = _make_universe(seed=34204)
     sid = _first_non_fed_sector(u)
     _park(u, owner, sid)
