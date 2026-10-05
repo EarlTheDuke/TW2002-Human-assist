@@ -106,8 +106,8 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
         "ferrengi": [{"name": f.name, "fighters": int(f.fighters)} for f in _ferrengi_in(universe, sector_id)],
         "fighters": ({"owner_id": s.fighters.owner_id, "count": int(s.fighters.count), "mode": s.fighters.mode.value}
                      if s.fighters is not None and int(s.fighters.count) > 0 else None),
-        "mines": [m for m in visible_mines(universe, viewer_id, s) if m["kind"] != MineType.LIMPET.value
-                  or m["owner"] == viewer_id],
+        # Limpets never show on a holo or a probe (SCANNERS_HIDDEN_INFO.md s9/s13), even your own.
+        "mines": [m for m in visible_mines(universe, viewer_id, s) if m["kind"] != MineType.LIMPET.value],
     }
     return view
 
@@ -152,9 +152,21 @@ def handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
     readings: list[dict[str, Any]] = []
     for wid in sector.warps:
         wid = int(wid)
+        prev = player.scan_memory.get(wid) or {}
         entry: dict[str, Any] = {**stamp, **density_reading(universe, wid)}
         if tier == K.SCANNER_HOLO:
             entry.update(sector_view(universe, pid, wid))
+            entry["has_holo"] = True
+            entry["holo_day"] = stamp["day"]
+            entry["holo_tick"] = stamp["tick"]
+        elif prev.get("has_holo"):
+            # A free density refresh must not erase a prior holo reading (QC).
+            for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines"):
+                if k in prev:
+                    entry[k] = prev[k]
+            entry["has_holo"] = True
+            entry["holo_day"] = prev.get("holo_day", prev.get("day"))
+            entry["holo_tick"] = prev.get("holo_tick", prev.get("tick"))
         player.scan_memory[wid] = entry
         readings.append({"id": wid, **entry})
     universe.emit(

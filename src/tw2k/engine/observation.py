@@ -949,8 +949,8 @@ def _adjacent_fogged(player, wid: int) -> dict[str, Any]:
     mem = (getattr(player, "scan_memory", None) or {}).get(wid)
     probe = ((getattr(player, "probe_log", None) or {}).get(wid) or {})
     seen = None
-    if mem and mem.get("tier") == "holo":
-        seen = (mem, mem.get("day"), mem.get("tick"))
+    if mem and mem.get("has_holo"):
+        seen = (mem, mem.get("holo_day", mem.get("day")), mem.get("holo_tick", mem.get("tick")))
     pi = probe.get("intel") or {}
     if pi and not pi.get("probe_destroyed") and (seen is None or (probe.get("day"), probe.get("tick")) > (seen[1], seen[2])):
         seen = (pi, probe.get("day"), probe.get("tick"))
