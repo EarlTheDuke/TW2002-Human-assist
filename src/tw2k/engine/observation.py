@@ -51,6 +51,8 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.AUTOPILOT,
     EventKind.LIMPET_REPORT,
     EventKind.PHOTON_FIRED,
+    EventKind.CLOAK_ON,
+    EventKind.CLOAK_OFF,
     EventKind.FED_RESPONSE,
     EventKind.PLANET_TAX_PAYOUT,
     # Out-of-band meta event — belongs to actor only (keeps opponents
@@ -88,6 +90,17 @@ def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     was in `event.sector_id` at emit time (captured via payload._witnesses).
     """
     kind = event.kind
+    # h15: cloaked traders leave no movement/presence trail for rivals (incl. corp).
+    if (
+        event.actor_id
+        and event.actor_id != player_id
+        and kind in (EventKind.WARP, EventKind.RETREAT, EventKind.AUTOPILOT, EventKind.CLOAK_ON, EventKind.CLOAK_OFF)
+    ):
+        from . import constants as K
+        if K.hardware_tw2002():
+            actor = universe.players.get(event.actor_id)
+            if actor is not None and getattr(actor.ship, "cloaked", False):
+                return False
     if kind in _PUBLIC_EVENTS:
         return True
     if kind in _ACTOR_ONLY_EVENTS:
@@ -466,7 +479,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "fighter_owner": w.fighters.owner_id if w.fighters else None,
             "mines": sum(m.count for m in w.mines),
             "has_planets": bool(w.planet_ids),
-            "occupants": list(w.occupant_ids),
+            "occupants": _visible_occupants(universe, w, player_id),
             "known": wid in player.known_sectors,
         })
 
@@ -512,10 +525,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
                 "alignment": other.alignment,
             }
             # h15: cloaked ships are hidden even from corp Member Location
+            # (no sector_id, and do not tip corp mates with a cloaked=True flag).
             if not (K.hardware_tw2002() and getattr(other.ship, "cloaked", False)):
                 entry_c["sector_id"] = other.sector_id
-            else:
-                entry_c["cloaked"] = True
             others.append(entry_c)
             if K.rank_tw2002():
                 others[-1]["rank"] = rank_for(other.experience, other.alignment)
@@ -1003,6 +1015,24 @@ def _adjacent_fogged(player, wid: int) -> dict[str, Any]:
     return entry
 
 
+def _visible_occupants(universe: Universe, sector, viewer_id: str) -> list[str]:
+    """Sector occupant ids visible to viewer (h15: cloaked ships are omitted)."""
+    from . import constants as K
+    out: list[str] = []
+    for oid in sector.occupant_ids:
+        if oid == viewer_id:
+            out.append(oid)
+            continue
+        other = universe.players.get(oid)
+        if other is None:
+            out.append(oid)
+            continue
+        if K.hardware_tw2002() and getattr(other.ship, "cloaked", False):
+            continue
+        out.append(oid)
+    return out
+
+
 def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]:
     info: dict[str, Any] = {
         "id": sector.id,
@@ -1016,7 +1046,7 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         # also claimed a 999k bounty that confused rivals into wasting turns.
         "warps_count": len(sector.warps),
         "is_fedspace": sector.id in _fedspace_set(universe),
-        "occupants": list(sector.occupant_ids),
+        "occupants": _visible_occupants(universe, sector, player_id),
         "fighter_group": None,
         "mines": [{"owner": m.owner_id, "kind": m.kind.value, "count": m.count} for m in sector.mines],
         "planets": [
