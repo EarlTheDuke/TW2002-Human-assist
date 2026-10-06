@@ -16,7 +16,7 @@ Ferrengi capture, furbing / salvage, corporate ships + passwords, and change of 
 | cp8 | Pilot pods; hull parks with the attacker; rewards match a kill | CONFIRMED shape | `test_cp8_manned_capture` |
 | cp9 | Third loss: pilot is Ship Destroyed and the hull is still captured (`CAPTURE_WHEN_SD`) | UNVERIFIED | `test_cp9_third_loss` |
 | cp10 | Bounty only if the pilot is Ship Destroyed | CONFIRMED | `test_cp10_bounty` |
-| cp11 | Credits stay with the pilot | SOURCE-CONFLICT, d14 kept | `test_cp8_manned_capture` |
+| cp11 | Credits stay with the pilot | SOURCE-CONFLICT, d14 kept in `BANK_MODE` legacy. In tw2002 the pilot loses them as a destroy (gb13, `GALACTIC_BANK_TAX.md`) | `test_cp8_manned_capture` |
 | cp12 | Unmanned capture changes owner, keeps `fleet_id`, corbomite stays, half odds | CONFIRMED | `test_cp12_unmanned` |
 | cp13 | Former owner gets `SHIP_CAPTURED`, no pod | CONFIRMED shape | `test_cp12_unmanned` |
 | cp14 | Hull-bound cargo, hardware, drive, limpet stay. Fighters and shields are 0 | CONFIRMED shape | `test_cp14_keeps_contents` |
