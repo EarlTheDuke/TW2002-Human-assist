@@ -234,7 +234,27 @@ def _replace_dead(universe: Universe) -> None:
         _spawn(universe, K.STARDOCK_SECTOR, rng)
 
 
-def on_alien_killed(universe: Universe, attacker_id: str, alien: AlienTrader) -> None:
+def apply_alien_capture(universe: Universe, attacker_id: str, alien: AlienTrader) -> None:
+    """Park the beaten hull. Rewards are paid. Corbomite does not fire."""
+    from .fleet import _ensure_fleet_id
+    from .models import ParkedShip
+
+    attacker = universe.players[attacker_id]
+    hull = alien.ship
+    fid = _ensure_fleet_id(universe, hull)
+    universe.parked_ships[fid] = ParkedShip(
+        id=fid,
+        owner_id=attacker_id,
+        sector_id=int(attacker.sector_id),
+        ship=hull,
+        parked_day=int(universe.day),
+        captured_from=alien.name,
+        captured_day=int(universe.day),
+    )
+    on_alien_killed(universe, attacker_id, alien, captured=True)
+
+
+def on_alien_killed(universe: Universe, attacker_id: str, alien: AlienTrader, *, captured: bool = False) -> None:
     """Bible kill: half experience if opposite, a quarter if the same, alignment against the alien, its credits."""
     from .victory import side
 
@@ -250,6 +270,15 @@ def on_alien_killed(universe: Universe, attacker_id: str, alien: AlienTrader) ->
     units = int(alien.ship.corbomite)
     alien.alive = False
     alien.credits = 0
+    if captured:
+        universe.emit(
+            EventKind.ALIEN_CAPTURED,
+            actor_id=attacker_id,
+            sector_id=attacker.sector_id,
+            payload={"id": alien.id, "hull": alien.ship.ship_class.value, "credits": looted},
+            summary=f"{attacker.name} captured {alien.name}",
+        )
+        return
     universe.emit(
         EventKind.SHIP_DESTROYED,
         actor_id=attacker_id,
