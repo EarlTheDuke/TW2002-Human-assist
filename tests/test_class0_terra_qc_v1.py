@@ -66,6 +66,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "PORT_UPGRADE_MODE", "legacy")  # pins predate port-upgrade-build-v1
     monkeypatch.setattr(K, "BANK_MODE", "legacy")  # pins predate galactic-bank-tax-v1
     monkeypatch.setattr(K, "CORP_MODE", "legacy")  # pins predate corp-rules-v1
+    monkeypatch.setattr(K, "ALIEN_MODE", "legacy")  # pins predate alien-traders-v1
 
 
 @pytest.fixture

@@ -326,6 +326,9 @@ def tick_day(universe: Universe) -> None:
         _ferrengi_regen(universe)
         _spawn_ferrengi(universe)
         _ferrengi_roam_and_hunt(universe)
+    if K.alien_on():  # ALIEN_TRADERS.md al4/al7: replace the dead, then hop
+        from .alien import alien_day_step
+        alien_day_step(universe)
     if universe.config.enable_planets:
         _advance_planets(universe)
         _complete_citadels(universe)
@@ -1154,9 +1157,16 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     if K.fleet_on() and str(target_id).startswith("ship:"):  # SHIP_FLEET.md fl24: unmanned ships
         from .fleet import attack_unmanned
         return attack_unmanned(universe, pid, str(target_id), action)
-    target = universe.players.get(target_id) or _ferrengi_by_name(universe, str(target_id))
-    if target is None:
-        return ActionResult(ok=False, error=f"target {target_id} not found")
+    if K.alien_on() and str(target_id).startswith("alien:"):  # ALIEN_TRADERS.md al10
+        target = universe.aliens.get(str(target_id))
+        if target is None or not target.alive:
+            return ActionResult(ok=False, error=f"target {target_id} not found")
+        if player.planet_landed is not None:
+            return ActionResult(ok=False, error="must be in space to attack")
+    else:
+        target = universe.players.get(target_id) or _ferrengi_by_name(universe, str(target_id))
+        if target is None:
+            return ActionResult(ok=False, error=f"target {target_id} not found")
     if (
         K.hardware_tw2002()
         and target_id in universe.players

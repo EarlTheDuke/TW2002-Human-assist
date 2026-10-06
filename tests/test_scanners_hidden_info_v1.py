@@ -88,6 +88,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "FED_OUTPOST_MODE", "legacy")  # goldens predate class0-outpost-label (QC 55)
     monkeypatch.setattr(K, "BANK_MODE", "legacy")  # goldens predate galactic-bank-tax-v1
     monkeypatch.setattr(K, "CORP_MODE", "legacy")  # goldens predate corp-rules-v1
+    monkeypatch.setattr(K, "ALIEN_MODE", "legacy")  # goldens predate alien-traders-v1
 
 
 @pytest.fixture

@@ -306,6 +306,7 @@ _CORP_PIN_FLIPS = (
     "PORT_UPGRADE_MODE",
     "BANK_MODE",
     "CORP_MODE",
+    "ALIEN_MODE",
 )
 
 

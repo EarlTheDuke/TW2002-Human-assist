@@ -18,6 +18,7 @@ from tests._pin_env import pin_env
 ROOT = Path(__file__).resolve().parents[1]
 CORP_RULES_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
 PIN_FLIPS = (
+    "ALIEN_MODE",
     "CORP_MODE",
     "BANK_MODE",
     "PORT_UPGRADE_MODE",
