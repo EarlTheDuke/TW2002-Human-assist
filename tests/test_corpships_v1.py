@@ -292,8 +292,8 @@ def test_legacy_hides_the_new_verbs(monkeypatch):
     assert not _act(u, "A", ActionKind.SHIP_SET_CORPORATE).ok
 
 
-# Recorded on 3b8f8e5 before this slice (CORPSHIP_MODE absent): N3,N3,N2,N2,N1,H, seed 250925, 10 days.
-CORPSHIP_LEGACY_GOLDEN = "85622347d694ff6224ec89bc"
+# Re-pinned on f10b080 (slice 54). With CORPSHIP_MODE legacy the 10-day digest matches that parent.
+CORPSHIP_LEGACY_GOLDEN = "e11cd2ec746b097c12490a8e"
 
 
 def test_corpships_legacy_is_unchanged():
