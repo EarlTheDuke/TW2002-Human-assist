@@ -439,8 +439,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     else:
         reason = _need_turns(player, atk_cost)
     atk_params: dict[str, Any] = {"target": {"type": "str", "required": True, "choices": attack_targets,
-                                             "players": hostile_players, "ferrengi": ferrengi_ids,
-                                             "aliens": alien_ids}}
+                                             "players": hostile_players, "ferrengi": ferrengi_ids}}
+    if K.alien_on():  # ALIEN_TRADERS.md al31: omitted under legacy so the digest stays put
+        atk_params["target"]["aliens"] = alien_ids
     if K.fleet_on():
         # SHIP_FLEET.md fl24: unmanned ships go in their own list; `choices` stays exactly as before.
         from .fleet import unmanned_attack_choices
