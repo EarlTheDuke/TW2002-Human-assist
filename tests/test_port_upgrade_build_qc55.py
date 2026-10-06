@@ -356,3 +356,14 @@ def test_bot_starter_upgrade_needs_the_credits_a_stocked_planet_and_the_mode(mon
     monkeypatch.setattr(K, "BOT_PORT_UPGRADE_STARTER_UNITS", 5)
     monkeypatch.setattr(K, "PORT_UPGRADE_MODE", "legacy")
     assert SeatBrain().decide(_starter_obs(u, 10**7))["kind"] != "port_upgrade"
+
+
+def test_a_broke_trader_is_told_it_is_the_credits():
+    u, player = _world()
+    port = _port(u)
+    player.credits = 100
+    assert _kinds(u)["port_upgrade"].reason == "not enough credits for one upgrade unit"
+    player.credits = 10**7
+    for row in port.stock.values():
+        row.maximum = K.PORT_UPGRADE_MAX_HOLDS
+    assert _kinds(u)["port_upgrade"].reason == "this port cannot take another upgrade unit"
