@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tw2k.engine.constants as K
+from tests._pin_env import pin_env
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.corpships import FAILSAFE, furb_gain
@@ -307,7 +308,6 @@ _CORP_PIN_FLIPS = (
 
 
 def test_corpships_legacy_is_unchanged():
-    import os
     import subprocess
     import sys
     from pathlib import Path
@@ -317,6 +317,6 @@ def test_corpships_legacy_is_unchanged():
         f"print(legacy_run_digest(Path('.'), 'N3,N3,N2,N2,N1,H', 10, 250925, flip={_CORP_PIN_FLIPS!r}))"
     )
     root = Path(__file__).resolve().parents[1]
-    out = subprocess.run([sys.executable, "-c", code], cwd=root, env=dict(os.environ, PYTHONHASHSEED="0"),
+    out = subprocess.run([sys.executable, "-c", code], cwd=root, env=pin_env(),
                          capture_output=True, text=True, timeout=1800, check=True)
     assert out.stdout.strip().splitlines()[-1] == CORPSHIP_LEGACY_GOLDEN

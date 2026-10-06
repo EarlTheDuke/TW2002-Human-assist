@@ -7,7 +7,6 @@ rules doc; qc_bridge/transwarp_artifacts records which test caught each plant.
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +14,7 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tests._pin_env import pin_env
 from tw2k.agents.heuristic import HeuristicAgent
 from tw2k.agents.prompts import format_observation, get_system_prompt
 from tw2k.agents.seat_brain import SeatBrain
@@ -700,7 +700,7 @@ def test_ship_tw_legacy_is_unchanged():
         "import sys; from pathlib import Path; sys.path.insert(0, 'src'); sys.path.insert(0, 'tests');"
         "from fed_legacy_digest import legacy_run_digest; print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3))"
     )
-    env = dict(os.environ, PYTHONHASHSEED="0")
+    env = pin_env()
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
                          timeout=900, check=True)
     assert out.stdout.strip().splitlines()[-1] == SHIP_TW_LEGACY_GOLDEN

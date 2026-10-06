@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tests._pin_env import pin_env
 from tw2k.agents.prompts import format_observation
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.fed import (
@@ -822,7 +823,6 @@ LEGACY_RUN_GOLDEN_PRE_SLICE = "377d39dbcae3e84da90e035f"
 
 def test_qc_fed_legacy_matches_pre_slice_golden(legacy, monkeypatch):
     """FED_MODE legacy is byte-identical to the pre-slice engine (spec: LEGACY_GOLDEN pattern)."""
-    import os
     import subprocess
     import sys
 
@@ -830,7 +830,7 @@ def test_qc_fed_legacy_matches_pre_slice_golden(legacy, monkeypatch):
         "import sys; from pathlib import Path; sys.path.insert(0, 'src'); sys.path.insert(0, 'tests');"
         "from fed_legacy_digest import legacy_run_digest; print(legacy_run_digest(Path('.'), 'N2,H', 2))"
     )
-    env = dict(os.environ, PYTHONHASHSEED="0")
+    env = pin_env()
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
                          timeout=600, check=True)
     assert out.stdout.strip().splitlines()[-1] == LEGACY_RUN_GOLDEN_PRE_SLICE

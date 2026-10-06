@@ -7,10 +7,11 @@ is flipped too: it landed on origin after that recording and must not move the d
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
+
+from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
 PORT_UPGRADE_LEGACY_GOLDEN = "9be955176171eb289630b373"
@@ -23,7 +24,7 @@ def test_port_upgrade_legacy_is_unchanged():
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
         f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={PIN_FLIPS!r}))"
     )
-    env = dict(os.environ, PYTHONHASHSEED="0")
+    env = pin_env()
     out = subprocess.run(
         [sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True, timeout=900, check=True,
     )
