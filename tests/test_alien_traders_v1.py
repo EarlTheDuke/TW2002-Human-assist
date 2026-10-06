@@ -170,10 +170,39 @@ def test_al15_opposite_kill_pays_half_experience_and_the_credits():
     )
     u.players["A"] = player
     u.sectors[alien.sector_id].occupant_ids.append("A")
-    _resolve_ship_attack_tw2002(u, "A", alien, 1)
+    _resolve_ship_attack_tw2002(u, "A", alien, 2)
     assert not alien.alive
     assert player.experience == 50
     assert player.alignment == 200
     assert player.credits == 6_000
     killed = next(ev for ev in u.events if ev.kind.value == "ship_destroyed" and ev.payload.get("victim") == alien.id)
     assert killed.payload["kind"] == "alien" and killed.payload["credits"] == 5_000
+
+
+def test_al19_exact_minimum_captures_and_does_not_blast():
+    u = generate_universe(GameConfig(seed=9, universe_size=200, max_days=3))
+    alien = next(iter(u.aliens.values()))
+    alien.experience = 80
+    alien.alignment = -100
+    alien.credits = 2_000
+    alien.ship.fighters = 0
+    alien.ship.shields = 0
+    alien.ship.corbomite = 3
+    player = Player(
+        id="A", name="Ann",
+        ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER, fighters=400, shields=50),
+        sector_id=alien.sector_id, credits=1_000, alignment=100, experience=0,
+    )
+    u.players["A"] = player
+    u.sectors[alien.sector_id].occupant_ids.append("A")
+    before = int(player.ship.fighters)
+    _resolve_ship_attack_tw2002(u, "A", alien, 1)
+    assert not alien.alive
+    assert player.experience == 40
+    assert player.credits == 3_000
+    assert int(player.ship.fighters) == before
+    parked = next(iter(u.parked_ships.values()))
+    assert parked.owner_id == "A"
+    assert parked.ship.ship_class == alien.ship.ship_class
+    assert any(ev.kind.value == "alien_captured" for ev in u.events)
+    assert not any(ev.kind.value == "corbomite_blast" for ev in u.events)

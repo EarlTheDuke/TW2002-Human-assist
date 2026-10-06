@@ -614,7 +614,10 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
 
     a_f, a_s = int(attacker.ship.fighters), int(attacker.ship.shields)
     will_capture = False
-    if beaten and not is_ferr and not is_alien:
+    if beaten and is_alien:
+        from .capture import alien_would_capture
+        will_capture = alien_would_capture(universe, attacker, target, qty, defense, a_odds)
+    elif beaten and not is_ferr:
         from .capture import manned_would_capture
         will_capture = manned_would_capture(universe, attacker, target, qty, defense, a_odds)
     outcome = (
@@ -670,7 +673,10 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
             + (" - the target fled" if flee_to is not None else "")
         ),
     )
-    if will_capture:
+    if will_capture and is_alien:
+        from .alien import apply_alien_capture
+        apply_alien_capture(universe, attacker_id, target)
+    elif will_capture:
         from .capture import apply_manned_capture
         apply_manned_capture(universe, attacker_id, target)
     elif beaten:

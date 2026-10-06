@@ -111,6 +111,16 @@ def manned_would_capture(universe, attacker, target, qty: int, defense: Fraction
     )
 
 
+def alien_would_capture(universe, attacker, alien, qty: int, defense: Fraction, a_odds: Fraction) -> bool:
+    """al19: one entry point. Same minimum, slack, hull, and fleet cap as any ship."""
+    if not getattr(K, "ALIEN_CAPTURE", False):
+        return False
+    return capture_decision(
+        universe, attacker, qty=qty, defense=defense, a_odds=a_odds, beaten=True,
+        ship=alien.ship, manned=False, target_key=alien.id, npc_target=False,
+    )
+
+
 def unmanned_would_capture(universe, attacker, rec, qty: int, defense: Fraction, a_odds: Fraction) -> bool:
     return capture_decision(
         universe, attacker, qty=qty, defense=defense, a_odds=a_odds, beaten=True,
