@@ -861,3 +861,16 @@ def test_qc_leaver_cannot_recall_the_corporate_group_he_deployed():
     assert _act(u, "P2", "corp_leave").ok
     assert not _act(u, "P2", "recall_deployed", what="fighters", qty=5).ok
     assert u.sectors[sid].fighters.count == 10 and u.sectors[sid].fighters.corp_ticker == "XYZ"
+
+
+def test_qc_scenario_lab_e_passes():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "corp_rules_scenario_lab.py"
+    spec = importlib.util.spec_from_file_location("corp_rules_scenario_lab", path)
+    lab = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lab)
+    out = lab.main()
+    assert out["extern_loss"] == {"A": 300, "B": 300, "C": 300}
+    assert out["breakin"][1] != out["breakin"][0]
