@@ -2066,6 +2066,13 @@ def port_upgrade_on() -> bool:
 # (LLMAgent); observations, format_observation and the system prompt are unchanged, so no digest moves.
 LLM_NEW_DAY_GOAL_NOTICE = True
 
+# llm-route-autopilot (fullgame3 P7): the LLM prompt lists `plot_course` but never its `execute` arg, and
+# _compact_legal drops params, so an LLM seat 10 hops from StarDock hand-picked ~40 single warps over
+# 2+ days. With this on, an LLM seat in the starter hull that can afford an upgrade away from StarDock,
+# or one ping-ponging on single warps, sees an AUTOPILOT line naming plot_course execute=true.
+# Agent-side only (LLMAgent): observations, format_observation and the system prompt are unchanged.
+LLM_ROUTE_NOTICE = True
+
 # --- Galactic Bank and the good-trader tax (BANK_MODE) ------------------------
 # docs/playtests/fedspace/GALACTIC_BANK_TAX.md (galactic-bank-tax-v1).
 # "legacy" = the engine at 6b13b55: no account, no tax, credits stay on a lost ship.

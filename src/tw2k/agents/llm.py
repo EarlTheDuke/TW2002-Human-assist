@@ -470,6 +470,8 @@ class LLMAgent(BaseAgent):
         # Game day on which this seat last wrote its short/medium goals (None until the first act()).
         # A later day with those goals still shown gets the new_day_goal_notice line.
         self.goals_day: int | None = None
+        # (day, sector_id, action kind) per act() for route_notice's single-warp loop check.
+        self.route_trail: list[tuple[int, int, str]] = []
 
     def _effective_custom_base(self) -> str:
         return (self._custom_base_url or os.environ.get("TW2K_CUSTOM_BASE_URL") or "").strip()
@@ -643,6 +645,9 @@ class LLMAgent(BaseAgent):
         if self.goals_day is None:
             self.goals_day = int(obs.day)
         notice = new_day_goal_notice(obs, self.goals_day)
+        route = route_notice(obs, self.route_trail)
+        if route:
+            notice = (notice + "\n" + route) if notice else route
         prompt = format_observation(
             obs.model_copy(update={"action_hint": notice + "\n" + obs.action_hint}) if notice else obs
         )
@@ -701,6 +706,12 @@ class LLMAgent(BaseAgent):
 
         if parsed.goal_short is not None or parsed.goal_medium is not None:
             self.goals_day = int(obs.day)
+        here = (obs.sector or {}).get("id")
+        if here is not None:
+            kind = parsed.kind.value
+            if kind == "plot_course" and bool((parsed.args or {}).get("execute")):
+                kind = "autopilot"
+            self.route_trail = [*self.route_trail[-(ROUTE_LOOP_WINDOW - 1):], (int(obs.day), int(here), kind)]
         return apply_buy_reserve_cap(obs, parsed)
 
     # ---------- provider-specific calls ---------- #
@@ -1024,6 +1035,88 @@ def new_day_goal_notice(obs: Observation, goals_day: int | None) -> str:
         "is due now. Re-plan from the current state, write fresh goals.short and goals.medium this turn, "
         "and do not wait while you can still move or trade (4 waits in a row end your day)."
     )
+
+
+ROUTE_LOOP_WINDOW = 6
+
+
+def _legal_entry(obs: Observation, kind: str) -> dict:
+    for e in obs.legal_actions or []:
+        if e.get("kind") == kind:
+            return e
+    return {}
+
+
+def _starter_hull_upgrade_affordable(obs: Observation) -> bool:
+    """Mirror of the engine's STILL IN STARTER HULL hint test (1.25x a non-corp ship you may fly)."""
+    from ..engine import constants as K
+
+    cur = (obs.ship or {}).get("class")
+    if cur != K.STARTING_SHIP:
+        return False
+    for class_key, spec in K.ship_specs().items():
+        cost = K.ship_cost(class_key)
+        if class_key == cur or cost <= 0:
+            continue
+        if spec.get("corp_only") and not obs.corp_ticker:
+            continue
+        if K.ship_min_alignment(spec, 0) > int(obs.alignment):
+            continue
+        if int(obs.credits) >= int(cost * 1.25):
+            return True
+    return False
+
+
+def route_notice(obs: Observation, trail: list[tuple[int, int, str]]) -> str:
+    """AUTOPILOT line for an LLM seat that should fly a plotted route instead of hand-picking warps.
+
+    fullgame3 P7 started 10 hops from StarDock with 250k cr in the starter hull and spent days 1-2
+    on ~32 single warps (94 <-> 160 <-> 280 ...) "mapping toward sector 1": the prompt never names
+    plot_course's `execute` arg. Two cases, both needing an affordable first autopilot hop:
+    the starter-hull StarDock errand (upgrade affordable, not at StarDock), or a single-warp loop
+    (the last ROUTE_LOOP_WINDOW turns today were all warps/plans and revisited a sector).
+    Empty when K.LLM_ROUTE_NOTICE is off, the match is over, or no turns are left.
+    """
+    from ..engine import constants as K
+
+    if not K.LLM_ROUTE_NOTICE or obs.finished or int(obs.turns_remaining) <= 0:
+        return ""
+    if obs.planet_landed is not None:
+        return ""
+    here = (obs.sector or {}).get("id")
+    if here is None:
+        return ""
+    plot = _legal_entry(obs, "plot_course")
+    execute = (plot.get("params") or {}).get("execute") or {}
+    if not plot.get("legal") or not execute.get("legal"):
+        return ""
+    hop = int(execute.get("first_hop_turns") or _legal_entry(obs, "warp").get("turn_cost") or 0)
+    hop_txt = f" ({hop} turns per hop)" if hop else ""
+    how = (
+        "The autopilot routes on the full galaxy map, so you do NOT need to explore or know the warps first. "
+        f"Each hop still costs its warp turns{hop_txt}; it stops when turns run out and the same call "
+        "resumes tomorrow. Without execute it only previews the route."
+    )
+    sd = K.STARDOCK_SECTOR
+    if int(here) != sd and _starter_hull_upgrade_affordable(obs):
+        return (
+            f"AUTOPILOT TO STARDOCK: you can afford a ship upgrade at StarDock (sector {sd}). Get there with "
+            f'plot_course {{"target":{sd},"execute":true}} - ONE action flies the whole shortest route. {how} '
+            "Do not hand-pick warps toward it; a quick profitable trade at a port you are already in is fine."
+        )
+    day = int(obs.day)
+    today = [(s, k) for d, s, k in trail if d == day]
+    if len(today) >= ROUTE_LOOP_WINDOW and all(k in ("warp", "plot_course") for _s, k in today[-ROUTE_LOOP_WINDOW:]):
+        sectors = [s for s, _k in today[-ROUTE_LOOP_WINDOW:]] + [int(here)]
+        again = sorted({s for s in sectors if sectors.count(s) > 1})
+        if again:
+            seen = ", ".join(str(s) for s in again[:4])
+            return (
+                f"LOOP CHECK: your last {ROUTE_LOOP_WINDOW} turns were single warps and revisited sector(s) {seen}. "
+                f'To reach a far sector use plot_course {{"target":<sector_id>,"execute":true}}. {how} '
+                "Otherwise trade, scan or buy here instead of warping back and forth."
+            )
+    return ""
 
 
 def apply_buy_reserve_cap(obs: Observation, action: Action) -> Action:
