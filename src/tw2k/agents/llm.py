@@ -691,7 +691,7 @@ class LLMAgent(BaseAgent):
                 thought=f"[parse error] couldn't parse: {raw[:200]}",
             )
 
-        return parsed
+        return apply_buy_reserve_cap(obs, parsed)
 
     # ---------- provider-specific calls ---------- #
 
@@ -987,6 +987,46 @@ _JSON_BLOCK_RE = re.compile(r"\{[\s\S]*\}\s*$")
 # and the agent fell back to WAIT (Match 3 / M3-1).
 _THINK_BLOCK_RE = re.compile(r"<think>[\s\S]*?</think>", re.IGNORECASE)
 _LEFTOVER_THINK_RE = re.compile(r"</?think>", re.IGNORECASE)
+
+
+def apply_buy_reserve_cap(obs: Observation, action: Action) -> Action:
+    """K.LLM_BUY_RESERVE_SOFT_CAP (default off; FULLGAME_FIXES_V1.md).
+
+    A fighter / shield buy that would leave less than the working-capital reserve is cut to the
+    largest qty that keeps it. With nothing left to buy, the seat waits instead.
+    """
+    from ..engine import constants as K
+
+    if not (K.LLM_BUY_RESERVE_SOFT_CAP and K.buy_reserve_on()):
+        return action
+    if action.kind != ActionKind.BUY_EQUIP:
+        return action
+    item = str((action.args or {}).get("item") or "")
+    if item not in K.BUY_RESERVE_ITEMS:
+        return action
+    try:
+        qty = int((action.args or {}).get("qty") or 0)
+    except (TypeError, ValueError):
+        return action
+    legal = next((la for la in (obs.legal_actions or []) if la.get("kind") == ActionKind.BUY_EQUIP.value), None)
+    params = (legal or {}).get("params") or {}
+    unit = int(((params.get("item") or {}).get("unit_price_by") or {}).get(item) or 0)
+    if unit <= 0 or qty <= 0:
+        return action
+    holds = int((obs.ship or {}).get("holds") or 0)
+    reserve = K.working_capital_reserve(holds)
+    credits = int(obs.credits or 0)
+    allowed = K.reserve_max_qty(credits, unit, None, reserve)
+    if qty <= allowed:
+        return action
+    note = (f" [reserve cap: {qty} {item} at {unit} cr would leave under {reserve:,} cr working capital; "
+            f"{'cut to ' + str(allowed) if allowed > 0 else 'skipped'}]")
+    if allowed <= 0:
+        return Action(kind=ActionKind.WAIT, thought=(action.thought or "") + note,
+                      scratchpad_update=action.scratchpad_update, goal_short=action.goal_short,
+                      goal_medium=action.goal_medium, goal_long=action.goal_long)
+    return action.model_copy(update={"args": {**(action.args or {}), "qty": allowed},
+                                     "thought": (action.thought or "") + note})
 
 
 def _extract_last_json_object(text: str) -> str | None:

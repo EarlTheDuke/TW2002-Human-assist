@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from . import constants as K
 from .models import Commodity, EventKind, PlanetClass, Universe
-from .victory import _award_xp, _planet_asset_value
+from .victory import _award_xp, planet_tax_value
 
 # Units produced per 100 colonists assigned to that pool. Shared with the
 # owner-only growth observation so the seat sees the same arithmetic the
@@ -226,7 +226,7 @@ def _advance_planets(universe: Universe) -> None:
 def _pay_planet_value_tax(universe: Universe) -> None:
     """Pay owners a small credit dividend on new planet value only."""
     for planet in universe.planets.values():
-        current_value = _planet_asset_value(planet)
+        current_value = planet_tax_value(planet)
         previous_value = max(0, int(getattr(planet, "last_tax_value", 0) or 0))
         owner_id = planet.owner_id
         owner = universe.players.get(owner_id) if owner_id is not None else None

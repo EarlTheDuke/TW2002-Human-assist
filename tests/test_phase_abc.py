@@ -1417,13 +1417,13 @@ class TestPhaseGObservationSurface:
         a.ship.cargo[Commodity.COLONISTS] = 50
 
         after = a.net_worth
-        # +100 shields * 10 = 1000
+        # +100 shields * K.nw_shield_value() (legacy 10; NET_WORTH_MODE tw2002 100)
         # +2 atomic mines * 4000 = 8000
         # +1 photon * 12000 = 12000
         # +3 probes * 5000 = 15000
         # +1 genesis * 25000 = 25000
         # +50 colonists cargo * 10 = 500
-        expected_delta = 1000 + 8000 + 12000 + 15000 + 25000 + 500
+        expected_delta = 100 * K.nw_shield_value() + 8000 + 12000 + 15000 + 25000 + 500
         assert after - baseline == expected_delta, (
             f"net_worth delta {after - baseline} != expected {expected_delta}"
         )
@@ -1470,8 +1470,10 @@ class TestPhaseGObservationSurface:
             + 5 * K.COMMODITY_BASE_PRICE["equipment"]
         )
         # Treasury: 2500
-        # Defense: 50 * FIGHTER_COST (50) + 100 * 10 = 3500
-        planet_value = 15000 + 7500 + stock + 2500 + 3500
+        # Defense: 50 fighters + 100 planet shields at the NET_WORTH_MODE values
+        # (legacy 50 / 10 = 3,500; tw2002 100 / 1,000 = 105,000).
+        defense = 50 * K.nw_fighter_value() + 100 * K.nw_planet_shield_value()
+        planet_value = 15000 + 7500 + stock + 2500 + defense
         assert total == ship_side + planet_value, (
             f"total={total} ship={ship_side} planet_add={total - ship_side} "
             f"expected_planet_value={planet_value}"
@@ -1524,7 +1526,7 @@ class TestPhaseGObservationSurface:
     def test_g9_planet_growth_tax_pays_owner_on_new_value(self):
         """Daily planet value gains should produce liquid credits for the owner."""
         from tw2k.engine.models import EventKind, Planet, PlanetClass
-        from tw2k.engine.runner import _planet_asset_value
+        from tw2k.engine.runner import planet_tax_value
 
         u, (a, *_) = _make_universe(seed=5105)
         a.credits = 1_000
@@ -1536,7 +1538,7 @@ class TestPhaseGObservationSurface:
             owner_id=a.id,
         )
         planet.colonists[Commodity.FUEL_ORE] = 1_000
-        planet.last_tax_value = _planet_asset_value(planet)
+        planet.last_tax_value = planet_tax_value(planet)
         u.planets[planet.id] = planet
 
         tick_day(u)
@@ -1551,12 +1553,12 @@ class TestPhaseGObservationSurface:
         assert ev.payload["planet_id"] == planet.id
         assert ev.payload["gain"] == gain
         assert ev.payload["payout"] == payout
-        assert planet.last_tax_value == _planet_asset_value(planet)
+        assert planet.last_tax_value == planet_tax_value(planet)
 
     def test_g10_planet_growth_tax_ignores_unowned_planets(self):
         """Neutral/orphaned planets can grow, but no player should receive credits."""
         from tw2k.engine.models import EventKind, Planet, PlanetClass
-        from tw2k.engine.runner import _planet_asset_value
+        from tw2k.engine.runner import planet_tax_value
 
         u, (a, *_) = _make_universe(seed=5106)
         a.credits = 1_000
@@ -1568,20 +1570,20 @@ class TestPhaseGObservationSurface:
             owner_id=None,
         )
         planet.colonists[Commodity.FUEL_ORE] = 1_000
-        planet.last_tax_value = _planet_asset_value(planet)
+        planet.last_tax_value = planet_tax_value(planet)
         u.planets[planet.id] = planet
 
         tick_day(u)
 
         assert a.credits == 1_000
         assert not any(e.kind == EventKind.PLANET_TAX_PAYOUT for e in u.events)
-        assert planet.last_tax_value == _planet_asset_value(planet)
+        assert planet.last_tax_value == planet_tax_value(planet)
 
     def test_g11_genesis_seed_value_does_not_pay_immediately(self):
         """Genesis baseline is initialized after seed colonists/stockpile."""
         from tw2k.engine.models import EventKind
         from tw2k.engine.planets import _pay_planet_value_tax
-        from tw2k.engine.runner import _planet_asset_value
+        from tw2k.engine.runner import planet_tax_value
 
         u, (a, *_) = _make_universe(seed=5107)
         a.credits = 100_000
@@ -1590,7 +1592,7 @@ class TestPhaseGObservationSurface:
         res = apply_action(u, a.id, Action(kind=ActionKind.DEPLOY_GENESIS))
         assert res.ok, res.error
         planet = max(u.planets.values(), key=lambda p: p.id)
-        assert planet.last_tax_value == _planet_asset_value(planet)
+        assert planet.last_tax_value == planet_tax_value(planet)
 
         before = a.credits
         _pay_planet_value_tax(u)
@@ -1601,7 +1603,7 @@ class TestPhaseGObservationSurface:
     def test_g12_citadel_completion_tax_pays_once(self):
         """Citadel completion value can pay once, but old value must not repeat."""
         from tw2k.engine.models import EventKind, Planet, PlanetClass
-        from tw2k.engine.runner import _planet_asset_value
+        from tw2k.engine.runner import planet_tax_value
 
         u, (a, *_) = _make_universe(seed=5108)
         a.credits = 10_000
@@ -1615,7 +1617,7 @@ class TestPhaseGObservationSurface:
             citadel_target=2,
             citadel_complete_day=u.day + 1,
         )
-        planet.last_tax_value = _planet_asset_value(planet)
+        planet.last_tax_value = planet_tax_value(planet)
         u.planets[planet.id] = planet
 
         tick_day(u)
@@ -1633,7 +1635,7 @@ class TestPhaseGObservationSurface:
         """A claimant should not receive a windfall for inherited old value."""
         from tw2k.engine.models import EventKind, Planet, PlanetClass
         from tw2k.engine.planets import _pay_planet_value_tax
-        from tw2k.engine.runner import _planet_asset_value
+        from tw2k.engine.runner import planet_tax_value
 
         u, (a, _b, *_rest) = _make_universe(seed=5109)
         a.credits = 1_000
@@ -1661,7 +1663,7 @@ class TestPhaseGObservationSurface:
 
         res = apply_action(u, a.id, Action(kind=ActionKind.CLAIM_PLANET))
         assert res.ok, res.error
-        assert planet.last_tax_value == _planet_asset_value(planet)
+        assert planet.last_tax_value == planet_tax_value(planet)
 
         _pay_planet_value_tax(u)
 
@@ -1672,7 +1674,7 @@ class TestPhaseGObservationSurface:
         """Damage/loss should not pay credits, but future growth can recover."""
         from tw2k.engine.models import EventKind, Planet, PlanetClass
         from tw2k.engine.planets import _pay_planet_value_tax
-        from tw2k.engine.runner import _planet_asset_value
+        from tw2k.engine.runner import planet_tax_value
 
         u, (a, *_) = _make_universe(seed=5110)
         a.credits = 1_000
@@ -1684,7 +1686,7 @@ class TestPhaseGObservationSurface:
             owner_id=a.id,
             fighters=100,
         )
-        current = _planet_asset_value(planet)
+        current = planet_tax_value(planet)
         planet.last_tax_value = current + 10_000
         u.planets[planet.id] = planet
 

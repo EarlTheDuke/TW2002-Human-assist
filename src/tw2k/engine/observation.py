@@ -1536,6 +1536,41 @@ def _aggregate_recent_failures(
     return out
 
 
+def _buy_reserve_note(player: Any, prices: dict[str, int], rooms: dict[str, int | None]) -> str | None:
+    """BUY_RESERVE_MODE line under a fighter / shield max (FULLGAME_FIXES_V1.md).
+
+    Shown only when buying the max of an item would eat into the working-capital reserve.
+    """
+    from . import constants as K
+
+    if not K.buy_reserve_on() or player is None:
+        return None
+    ship = getattr(player, "ship", None)
+    credits = int(getattr(player, "credits", 0) or 0)
+    holds = int(getattr(ship, "holds", 0) or 0) if ship is not None else 0
+    reserve = K.working_capital_reserve(holds)
+    keeps: list[str] = []
+    costs: list[str] = []
+    breach = False
+    values = {"fighters": K.nw_fighter_value(), "shields": K.nw_shield_value()}
+    for item in K.BUY_RESERVE_ITEMS:
+        unit = int(prices.get(item) or 0)
+        if unit <= 0:
+            continue
+        room = rooms.get(item)
+        if K.reserve_max_qty(credits, unit, room, 0) > K.reserve_max_qty(credits, unit, room, reserve):
+            breach = True
+        keeps.append(f"{item} {K.reserve_max_qty(credits, unit, room, reserve)}")
+        costs.append(f"{item} cost {unit} cr, count {values.get(item, unit)} toward net worth")
+    if not keeps or not breach:
+        return None
+    return (
+        f"Working capital: keep >= {reserve:,} cr after fighter/shield buys (trade stake for {holds} holds); "
+        f"max that keeps it: {', '.join(keeps)}. Today {'; '.join(costs)}. "
+        "Buy defence for a planned need, not to spend the bank."
+    )
+
+
 def _action_hint(
     sector_info: dict[str, Any],
     player: Any = None,
@@ -1939,6 +1974,13 @@ def _action_hint(
                         "valid items are fighters, shields, holds, armid_mines, limpet_mines, "
                         "atomic_mines, genesis, photon_missiles, ether_probes (colonists: terra_colonists)."
                     )
+                    note = _buy_reserve_note(
+                        player,
+                        {"fighters": fighter_px, "shields": shield_unit_price(int(universe.day))},
+                        {"fighters": fighter_headroom, "shields": shield_headroom},
+                    )
+                    if note:
+                        bits.append(note)
                 else:
                     max_shields = min(shield_headroom, credits_now // 10)
                     max_colonists = min(int(free or 0), credits_now // K.COLONIST_PRICE)
@@ -1948,6 +1990,13 @@ def _action_hint(
                         "valid items are fighters, shields, holds, armid_mines, limpet_mines, "
                         "atomic_mines, genesis, photon_missiles, ether_probes, colonists."
                     )
+                    note = _buy_reserve_note(
+                        player,
+                        {"fighters": fighter_px, "shields": 10},
+                        {"fighters": fighter_headroom, "shields": shield_headroom},
+                    )
+                    if note:
+                        bits.append(note)
         hints.append(" ".join(bits))
 
         # Affordable-ship menu: list the ship classes the player can ACTUALLY
@@ -2207,6 +2256,23 @@ def _action_hint(
                 "No obligation to reply; respond only if it serves your goals."
             )
 
+    # BUY_RESERVE_MODE: Alpha Centauri / Rylos sell fighters and shields too.
+    c0 = sector_info.get("class0_port") if isinstance(sector_info, dict) else None
+    if full_hints and player is not None and isinstance(c0, dict) and K.buy_reserve_on():
+        c0_ship = getattr(player, "ship", None)
+        c0_spec = K.hull_spec(getattr(getattr(c0_ship, "ship_class", None), "value", "")) or {}
+        c0_prices = c0.get("prices") or {}
+        note = _buy_reserve_note(
+            player,
+            {"fighters": int(c0_prices.get("fighters") or 0), "shields": int(c0_prices.get("shields") or 0)},
+            {
+                "fighters": max(0, int(c0_spec.get("max_fighters", 0) or 0) - int(getattr(c0_ship, "fighters", 0) or 0)),
+                "shields": max(0, int(c0_spec.get("max_shields", 0) or 0) - int(getattr(c0_ship, "shields", 0) or 0)),
+            },
+        )
+        if note:
+            hints.append(note)
+
     # Soft situational awareness — these are FYI nudges, not mandates. The
     # philosophy: surface state the agent might have missed; let it decide
     # whether to act. A smarter LLM should route around these correctly.
@@ -2235,6 +2301,11 @@ def _action_hint(
                 f"could meet one. StarDock (sec {K.STARDOCK_SECTOR}) sells "
                 f"fighters at {fighter_px}cr ea — 500 fighters = "
                 f"{buy_500_cost:,}cr, you have {credits_now:,}cr."
+                + (
+                    f" Each counts {K.nw_fighter_value()} cr toward net worth; keep "
+                    f"{K.working_capital_reserve(int(getattr(ship, 'holds', 0) or 0)):,} cr working capital."
+                    if K.buy_reserve_on() else ""
+                )
             )
         elif not in_fedspace and ship_fighters < 1000:
             hints.append(

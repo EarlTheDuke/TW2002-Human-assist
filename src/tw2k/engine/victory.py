@@ -164,7 +164,7 @@ def planet_stock_unit_price(commodity_value: str) -> int:
     return int(K.COMMODITY_BASE_PRICE.get(commodity_value, 0) or 0)
 
 
-def _planet_asset_value(planet) -> int:
+def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
     """Value of a single owned planet, used in full_net_worth.
 
     Breakdown:
@@ -181,7 +181,8 @@ def _planet_asset_value(planet) -> int:
         this pile are also the growth gate (`planets.planet_growth_status`);
         the score still prices them as inventory only, with no forecast.
       * Treasury: raw credits sitting on-planet.
-      * Planet defense: fighters/shields at StarDock equivalent prices.
+      * Planet defense: fighters at K.nw_fighter_value(), planet shields at
+        K.nw_planet_shield_value() (NET_WORTH_MODE; legacy 50 / 10).
     """
     citadel_cost = 0
     for tier_idx in range(planet.citadel_level):
@@ -203,8 +204,18 @@ def _planet_asset_value(planet) -> int:
                 continue
             stockpile_value += qty * planet_stock_unit_price(commodity.value)
 
-    defense_value = planet.fighters * K.FIGHTER_COST + planet.shields * 10
+    if tax_basis:
+        # The growth dividend keeps its pre-NET_WORTH_MODE basis, so the valuation change moves the
+        # score only, not credits (FULLGAME_FIXES_V1.md).
+        defense_value = planet.fighters * K.FIGHTER_COST + planet.shields * 10
+    else:
+        defense_value = planet.fighters * K.nw_fighter_value() + planet.shields * K.nw_planet_shield_value()
     return citadel_cost + colonist_value + stockpile_value + planet.treasury + defense_value
+
+
+def planet_tax_value(planet) -> int:
+    """Planet value the growth dividend is measured on (fighters 50, shields 10 in every mode)."""
+    return _planet_asset_value(planet, tax_basis=True)
 
 
 def _corp_treasury_share(universe: Universe, player) -> int:

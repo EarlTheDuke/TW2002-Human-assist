@@ -123,7 +123,8 @@ def test_fresh_ship_net_worth_uses_ship_cost() -> None:
     ship = Ship(ship_class=ShipClass.SCOUT_MARAUDER, holds=25, fighters=20, shields=0)
     player = _seat(universe, "P9", sector_id=1, credits=10_000, ship=ship)
     hull = int(K.ship_cost("scout_marauder") * 0.5)
-    fighters = 20 * K.FIGHTER_COST
+    fighters = 20 * K.nw_fighter_value()  # NET_WORTH_MODE tw2002: half the wave midpoint
+    assert K.nw_fighter_value() == 100
     shields = 0
     assert player.net_worth == player.credits + hull + fighters + shields
 
