@@ -546,6 +546,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     can_buy, buy_where_err = class0_buy_ok(universe, player_id)
     if not can_buy:
         reason = buy_where_err if class0_tw2002() else "must be at StarDock (sector 1)"
+        if not class0_tw2002() and K.FED_OUTPOST_BUY_REASON in buy_where_err:  # t25: name the outpost
+            reason = f"{reason}; {K.FED_OUTPOST_BUY_REASON}"
         out.append(_la(ActionKind.BUY_SHIP, legal=False, reason="must be at StarDock (sector 1)",
                        params={"ship_class": {"type": "str", "required": True, "choices": []}}))
         out.append(_la(ActionKind.BUY_EQUIP, legal=False, reason=reason,

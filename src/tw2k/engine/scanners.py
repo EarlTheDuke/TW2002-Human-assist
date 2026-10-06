@@ -174,6 +174,10 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
         # Limpets never show on a holo or a probe (SCANNERS_HIDDEN_INFO.md s9/s13), even your own.
         "mines": [m for m in visible_mines(universe, viewer_id, s) if m["kind"] != MineType.LIMPET.value],
     }
+    if K.fed_outpost_tw2002() and view["port"] is not None:  # CLASS0_TERRA.md t25: same label as the sector view
+        from .class0 import fed_outpost_label, is_fed_outpost
+        if is_fed_outpost(s.port, sector_id):
+            fed_outpost_label(view["port"])
     if K.hardware_tw2002() and getattr(s, "beacon", None):
         view["beacon"] = s.beacon  # the text only; who launched it is never shown
     if K.fed_tw2002():

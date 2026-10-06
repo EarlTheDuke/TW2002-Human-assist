@@ -1281,6 +1281,10 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         if K.planet_trade_on() and viewer is not None:  # PLANETARY_TRADING.md: same answer as the legal list
             from .planet_trade import available as _planet_trade_available
             port_info["planet_trade_available"] = bool(_planet_trade_available(universe, player_id))
+        if K.fed_outpost_tw2002():  # CLASS0_TERRA.md t25: a FedSpace outpost is not a Class 0 port
+            from .class0 import fed_outpost_label, is_fed_outpost
+            if is_fed_outpost(p, sector.id):
+                fed_outpost_label(port_info)
         info["port"] = port_info
     from .class0 import class0_tw2002, is_msl_sector, shield_unit_price, special_port_at
     if class0_tw2002():

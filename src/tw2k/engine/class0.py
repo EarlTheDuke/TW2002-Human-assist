@@ -89,6 +89,32 @@ def special_port_at(universe: Universe, sector_id: int) -> Port | None:
     return None
 
 
+def is_fed_outpost(port: Port | None, sector_id: int) -> bool:
+    """t25: a FedSpace "Federal" port (stored class 0, no special) that trades and sells nothing."""
+    return (
+        port is not None
+        and port.class_id == PortClass.FEDERAL
+        and getattr(port, "special", None) is None
+        and int(sector_id) != K.STARDOCK_SECTOR
+    )
+
+
+def fed_outpost_label(port_info: dict[str, Any]) -> dict[str, Any]:
+    """t25 (FED_OUTPOST_MODE tw2002): relabel a Federal outpost view so it is not read as Class 0."""
+    port_info["class_id"] = None
+    port_info["class_display"] = K.FED_OUTPOST_CLASS_DISPLAY
+    port_info["note"] = K.FED_OUTPOST_NOTE if class0_tw2002() else K.FED_OUTPOST_NOTE_NO_CLASS0
+    return port_info
+
+
+def fed_outpost_here(universe: Universe, sector_id: int) -> bool:
+    """t25: the sector holds a Federal outpost and FED_OUTPOST_MODE is tw2002."""
+    if not K.fed_outpost_tw2002():
+        return False
+    sector = universe.sectors.get(int(sector_id))
+    return sector is not None and is_fed_outpost(sector.port, sector_id)
+
+
 def class0_buy_ok(universe: Universe, pid: str) -> tuple[bool, str]:
     """Whether buy_equip is allowed here (StarDock or Class 0 special)."""
     player = universe.players.get(pid)
@@ -99,6 +125,8 @@ def class0_buy_ok(universe: Universe, pid: str) -> tuple[bool, str]:
         return True, ""
     if class0_tw2002() and special_port_at(universe, sid) is not None:
         return True, ""
+    if fed_outpost_here(universe, sid):
+        return False, f"must be at StarDock (sector 1) or a Class 0 port; {K.FED_OUTPOST_BUY_REASON}"
     return False, "must be at StarDock (sector 1) or a Class 0 port"
 
 

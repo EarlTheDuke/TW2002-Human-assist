@@ -1558,6 +1558,27 @@ CLASS0_MIN_SEPARATION = 4
 
 CLASS0_SELL_ITEMS = ("fighters", "shields", "holds")
 
+# t25 FedSpace Federal outposts (FED_OUTPOST_MODE). Original TW2002 has exactly three Class 0 ports
+# (Sol, Alpha Centauri, Rylos) and every one sells fighters, shields and holds (cabal glossary
+# "Class 0 Ports", EIS TradeWars.html, Iago). Our FedSpace sectors 2-10 also hold ours-only "Federal"
+# ports (GAP 1.18, UNVERIFIED in the original) stored as class 0 that trade and sell nothing, so a seat
+# starting there read "class_id 0" as a Class 0 port and buy_equip was refused.
+# "tw2002": seats see them as Federal outposts (class_id null + class_display + note) and the buy_equip
+# refusal names them. "legacy": shown as class 0 with the old reason (byte-identical).
+# Generation is unchanged in both modes (no extra rng draws; same ports in the same sectors).
+FED_OUTPOST_MODE = "tw2002"  # "tw2002" | "legacy"
+FED_OUTPOST_CLASS_DISPLAY = "Federal outpost (not Class 0)"
+FED_OUTPOST_NOTE = ("Federal outpost: not a Class 0 port. No commodity trading and no buy_equip here. "
+                    "Fighters, shields and holds: StarDock (sector 1, Sol) or the Class 0 ports Alpha Centauri "
+                    "and Rylos.")
+FED_OUTPOST_NOTE_NO_CLASS0 = ("Federal outpost: not a Class 0 port. No commodity trading and no buy_equip here. "
+                              "Equipment: StarDock (sector 1).")
+FED_OUTPOST_BUY_REASON = "this FedSpace port is a Federal outpost, not a Class 0 port; it sells nothing"
+
+
+def fed_outpost_tw2002() -> bool:
+    return FED_OUTPOST_MODE == "tw2002"
+
 
 def shield_unit_price(day: int) -> int:
     """Credits for one shield today (CLASS0_TERRA.md t13)."""
