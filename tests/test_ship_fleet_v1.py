@@ -908,8 +908,22 @@ def _ore_seat(drive):
     return u, p
 
 
-def test_tw_ore_reserve_only_for_drive_owners():
-    """A drive owner's trade ladder never sells the return-jump ore; a seat without a drive sells it all."""
+def _planned(u, p, monkeypatch):
+    """Commissioned ISS on the ore port: plan a jump to the farthest listed FedSpace lock; returns (target, hops)."""
+    import tw2k.agents.seat_brain as sb
+    p.alignment, p.commission_used = 1000, True
+    spec = _la(u, "A", "ship_transwarp").params["sector_id"]
+    target = max((int(t) for t in spec["choices"] if int(t) in K.FEDSPACE_SECTORS),
+                 key=lambda t: (spec["hops_by"][str(t)], t))
+    hops = spec["hops_by"][str(target)]
+    monkeypatch.setattr(sb, "SHIP_TW_MIN_TURNS_SAVED", sb.tw_turns_saved(4, hops))
+    return target, hops
+
+
+def test_tw_ore_reserve_only_for_drive_owners(monkeypatch):
+    """Follow-up to slice 50: a drive owner holds back just the ore of its PLANNED jump; no plan, no reserve.
+    A seat without a drive gets the observation back untouched and sells it all."""
+    from tw2k.agents.stall import Intent
     u, p = _ore_seat(None)
     o = _seat_obs(u, "A")
     assert tw_reserve_view(o) is o  # no drive: the observation is untouched (non-owner play identical)
@@ -917,24 +931,33 @@ def test_tw_ore_reserve_only_for_drive_owners():
     assert act == {**act, "kind": "trade", "args": {"commodity": "fuel_ore", "qty": 60, "side": "sell"}}
     u, p = _ore_seat("type1")
     o = _seat_obs(u, "A")
-    v = tw_reserve_view(o)
-    keep = min(2 * K.SHIP_TW_ORE_PER_HOP * 6, p.ship.holds // 2)
-    assert v["_tw_ore_reserve"] == keep == 36 and v["_tw_ore_aboard"] == 60
-    assert v["ship"]["cargo"]["fuel_ore"] == 60 - keep and o["ship"]["cargo"]["fuel_ore"] == 60
+    v = tw_reserve_view(o)  # drive, no planned jump: nothing held back
+    assert v["_tw_ore_reserve"] == 0 and v["ship"]["cargo"]["fuel_ore"] == 60
     act = SeatBrain().decide(o)
+    assert act["kind"] == "trade" and act["args"] == {"commodity": "fuel_ore", "qty": 60, "side": "sell"}
+
+    u, p = _ore_seat("type1")
+    target, hops = _planned(u, p, monkeypatch)
+    keep = K.SHIP_TW_ORE_PER_HOP * hops
+    brain = SeatBrain()
+    brain._intent = Intent("travel", target)
+    o = _seat_obs(u, "A")
+    assert brain._planned_tw_hops(o) == hops
+    v = tw_reserve_view(o, hops)
+    assert v["_tw_ore_reserve"] == keep and v["_tw_ore_aboard"] == 60
+    assert v["ship"]["cargo"]["fuel_ore"] == 60 - keep and o["ship"]["cargo"]["fuel_ore"] == 60
+    act = brain.decide(o)
     assert act["kind"] == "trade" and act["args"] == {"commodity": "fuel_ore", "qty": 60 - keep, "side": "sell"}
     assert apply_action(u, "A", Action(kind=ActionKind.TRADE, args=act["args"])).ok
-    brain = SeatBrain()
-    for _ in range(6):
-        act = brain.decide(_seat_obs(u, "A"))
-        assert not (act["kind"] == "trade" and act["args"].get("commodity") == "fuel_ore"
-                    and act["args"].get("side") == "sell")
-        if not apply_action(u, "A", Action(kind=ActionKind(act["kind"]), args=act.get("args") or {})).ok:
-            break
-    assert int(p.ship.cargo[Commodity.FUEL_ORE]) >= keep
+    assert int(p.ship.cargo[Commodity.FUEL_ORE]) == keep
+    import tw2k.agents.seat_brain as sb
+    monkeypatch.setattr(sb, "SHIP_TW_MIN_TURNS_SAVED", sb.tw_turns_saved(4, hops) + 1)  # not worth a jump
+    brain._intent = Intent("travel", target)
+    assert brain._planned_tw_hops(_seat_obs(u, "A")) is None
 
 
-def test_tw_ore_reserve_tops_up_at_an_ore_port():
+def test_tw_ore_reserve_tops_up_for_the_planned_jump_only(monkeypatch):
+    from tw2k.agents.stall import Intent
     u = _world()
     p = None
     for port in sorted(u.sectors):
@@ -947,8 +970,18 @@ def test_tw_ore_reserve_tops_up_at_an_ore_port():
         if trade.legal and "fuel_ore" in trade.params["commodity"]["buy_choices"]:
             break
     p.ship.transwarp_drive = "type1"
-    act = SeatBrain().decide(_seat_obs(u, "A"))
+    act = SeatBrain().decide(_seat_obs(u, "A"))  # no planned jump: no ore bought for the drive
+    assert not (act["kind"] == "trade" and "TransWarp" in str(act.get("thought", "")))
+    p.ship.cargo[Commodity.FUEL_ORE] = 60
+    target, hops = _planned(u, p, monkeypatch)
+    p.ship.cargo[Commodity.FUEL_ORE] = 0
+    p.known_sectors.update(u.sectors)  # unlisted (no ore): the seat's own known-warp map gives the hops
+    p.known_warps = {sid: list(u.sectors[sid].warps) for sid in u.sectors}
+    brain = SeatBrain()
+    brain._intent = Intent("travel", target)  # FedSpace under the commission lock: planned even when unlisted
+    act = brain.decide(_seat_obs(u, "A"))
     assert act["kind"] == "trade" and act["args"]["commodity"] == "fuel_ore" and act["args"]["side"] == "buy"
+    assert act["args"]["qty"] <= K.SHIP_TW_ORE_PER_HOP * hops
     assert apply_action(u, "A", Action(kind=ActionKind.TRADE, args=act["args"])).ok
 
 
@@ -964,3 +997,55 @@ def test_fed_lock_hulls_switch(monkeypatch):
     assert not fed_lock_on(p)
     p.ship.ship_class = ShipClass.IMPERIAL_STARSHIP
     assert fed_lock_on(p)
+
+
+# ---- follow-up: fleet + TransWarp resume fields survive save / restore ---------------------------------
+
+def test_fleet_and_transwarp_fields_survive_save_restore():
+    """Universe dump -> validate keeps parked hulls, ship ids, fleet ids, the drive, the arrival flags and a
+    parked-hull limpet; while they are empty they stay out of the dump (legacy dumps byte-identical)."""
+    from tw2k.engine.models import Universe
+    u = _world()
+    fresh = u.model_dump_json()
+    for key in ("parked_ships", "next_ship_id", "fleet_id", "transwarp_drive", "arrived_by_transwarp",
+                "arrived_by_transport", "target_ship_id"):
+        assert f'"{key}"' not in fresh
+    assert Universe.model_validate_json(fresh).model_dump_json() == fresh
+    a = _sit(u, "A", 30, ShipClass.IMPERIAL_STARSHIP)
+    b = _sit(u, "B", 31)
+    a.ship.transwarp_drive = "type1"
+    a.ship.fleet_id = _new_ship_id(u)
+    a.arrived_by_transwarp = True
+    b.arrived_by_transport = True
+    sid = _park(u, "B", 31, ShipClass.MERCHANT_FREIGHTER, fighters=40)
+    u.limpets["A:B"] = LimpetTrack(owner_id="A", target_id="B", placed_sector=31, placed_day=1, target_ship_id=sid)
+    for restored in (Universe.model_validate(u.model_dump()), Universe.model_validate_json(u.model_dump_json())):
+        assert restored.parked_ships.keys() == {sid} and restored.next_ship_id == u.next_ship_id == sid + 1
+        rec = restored.parked_ships[sid]
+        assert (rec.owner_id, rec.sector_id, rec.ship.fighters, rec.ship.fleet_id) == ("B", 31, 40, sid)
+        assert rec.ship.ship_class == ShipClass.MERCHANT_FREIGHTER
+        ra, rb = restored.players["A"], restored.players["B"]
+        assert ra.ship.transwarp_drive == "type1" and ra.ship.fleet_id == a.ship.fleet_id
+        assert ra.arrived_by_transwarp and rb.arrived_by_transport and not rb.arrived_by_transwarp
+        assert restored.limpets["A:B"].target_ship_id == sid
+        assert restored.model_dump_json() == u.model_dump_json()
+    # the restored game keeps playing the fleet: B can still see and value its parked hull
+    restored = Universe.model_validate_json(u.model_dump_json())
+    assert parked_value(restored.parked_ships[sid].ship) == parked_value(u.parked_ships[sid].ship) > 0
+    assert full_net_worth(restored, restored.players["B"]) == full_net_worth(u, u.players["B"])
+
+
+def test_fleet_snapshot_parked_ships():
+    """fl32: the spectator snapshot carries parked hulls for the hollow map ring, and no key while none exist."""
+    from tw2k.server.broadcaster import Broadcaster
+    from tw2k.server.runner import MatchRunner
+    u = _world()
+    _sit(u, "A", 30)
+    r = MatchRunner(Broadcaster())
+    r.state.universe = u
+    assert "parked_ships" not in r.snapshot()
+    sid = _park(u, "A", 31, ShipClass.MERCHANT_FREIGHTER)
+    assert r.snapshot()["parked_ships"] == [
+        {"id": sid, "owner_id": "A", "sector_id": 31, "hull": "merchant_freighter"}]
+    app_js = (Path(__file__).resolve().parents[1] / "web" / "app.js").read_text(encoding="utf-8")
+    assert "unmanned-marker" in app_js and "snap.parked_ships" in app_js

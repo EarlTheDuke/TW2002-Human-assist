@@ -679,8 +679,9 @@ def test_legacy_has_no_drive_verb_keys_or_events(monkeypatch):
     assert u.players["A"].sector_id == here and _ore(u) == 40
     assert "transwarp" not in build_observation(u, "A").ship
     assert not any(e.kind in (EventKind.SHIP_TRANSWARP, EventKind.SHIP_TRANSWARP_FUSE) for e in u.events)
-    assert "transwarp_drive" not in u.model_dump_json() and "arrived_by_transwarp" not in u.model_dump_json()
     del p
+    fresh = _world().model_dump_json()  # resume fields are saved once set, omitted while empty (legacy dumps)
+    assert "transwarp_drive" not in fresh and "arrived_by_transwarp" not in fresh
 
 
 # Recorded with tests/fed_legacy_digest.py (flip=None: every tw2002 *_MODE to legacy) on 9dbe56b, the commit
@@ -711,7 +712,7 @@ def _seat_obs(u, pid):
 
 
 def test_bots_swap_a_long_walk_for_a_listed_lock_only():
-    """seat_brain: a 3+ hop plot to a listed lock becomes a jump when 2x ore is aboard; else it walks."""
+    """seat_brain: a plot to a listed lock becomes a jump when it saves SHIP_TW_MIN_TURNS_SAVED+ turns; else it walks."""
     from tw2k.agents.stall import Intent
     u = _world()
     here, dest = _away(u, 4)
@@ -728,10 +729,19 @@ def test_bots_swap_a_long_walk_for_a_listed_lock_only():
 
     u = _world()
     here, dest = _away(u, 4)
-    _fitted(u, here, dest, ore=23)  # 12 for the jump, not 12 more for the way back
+    _fitted(u, here, dest, ore=12)  # just the jump's ore: no return reserve needed (follow-up to slice 50)
     _lock(u, dest)
     v = View(_seat_obs(u, "A"))
-    assert brain._transwarp_instead(v, dict(plot, args={"target": dest}), Intent("travel", dest))["kind"] == "plot_course"
+    assert brain._transwarp_instead(v, dict(plot, args={"target": dest}), Intent("travel", dest))["kind"] == "ship_transwarp"
+    import tw2k.agents.seat_brain as sb
+    saved = sb.tw_turns_saved(4, 4)  # ISS: 4 warps of 4 turns walked vs one 4-turn jump
+    assert saved == 12
+    old_min = sb.SHIP_TW_MIN_TURNS_SAVED
+    try:
+        sb.SHIP_TW_MIN_TURNS_SAVED = saved + 1  # not worth it: walk
+        assert brain._transwarp_instead(v, dict(plot, args={"target": dest}), Intent("travel", dest))["kind"] == "plot_course"
+    finally:
+        sb.SHIP_TW_MIN_TURNS_SAVED = old_min
 
     u = _world()
     here, dest = _away(u, 4)

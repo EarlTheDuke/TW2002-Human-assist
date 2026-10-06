@@ -21,7 +21,7 @@ Sources under `C:\Users\sugar\tw2002_reference\`. Target TWGS 3.11; MBBS breaks 
 
 ## Legacy
 
-`SHIP_TW_MODE = "legacy"`: `Ship.transwarp_drive` is never set (and is excluded from dumps, as is `Player.arrived_by_transwarp`), `buy_equip item=transwarp_drive` is absent and refused, `ship_transwarp` is absent from the legal list and the handler answers `unsupported action`, no `ship.transwarp` observation block, no new events, no prompt paragraph, no rng draws.
+`SHIP_TW_MODE = "legacy"`: `Ship.transwarp_drive` is never set (it and `Player.arrived_by_transwarp` are left out of dumps while unset, saved once set; SHIP_FLEET.md Saves), `buy_equip item=transwarp_drive` is absent and refused, `ship_transwarp` is absent from the legal list and the handler answers `unsupported action`, no `ship.transwarp` observation block, no new events, no prompt paragraph, no rng draws.
 
 Pins (`tests/test_ship_transwarp_v1.py::test_ship_tw_legacy_is_unchanged`, recorded on 9dbe56b, the commit before this slice, with `tests/fed_legacy_digest.py`; scripted match N3,N2,N1,H, seed 250925, 3 days, every observation JSON + prompt text + action/result + event + 3 end-of-day universe states):
 
@@ -57,7 +57,7 @@ Pins (`tests/test_ship_transwarp_v1.py::test_ship_tw_legacy_is_unchanged`, recor
 
 ## Bots
 
-- `seat_brain`: `_transwarp_instead` swaps a ladder `plot_course`/`warp` whose target is on the `ship_transwarp` legal list when the walk is `SHIP_TW_MIN_HOPS` (3)+ hops and the hold has twice the jump ore (the same again for the way back). Never a blind target (not listed). `_buy_transwarp_drive` buys at StarDock only when the engine lists the drive (TW hull, no drive) and `SHIP_TW_SPARE_CASH` (150,000) / working capital stays in the bank. Under legacy both no-op (no legal entry, no shelf item).
+- `seat_brain`: `_transwarp_instead` swaps a ladder `plot_course`/`warp` whose target is on the `ship_transwarp` legal list when the jump saves `SHIP_TW_MIN_TURNS_SAVED` (8)+ turns over walking and the jump ore is aboard; drive owners hold back only the ore of their planned jump (SHIP_FLEET.md Bots). Never a blind target (not listed). `_buy_transwarp_drive` buys at StarDock only when the engine lists the drive (TW hull, no drive) and `SHIP_TW_SPARE_CASH` (150,000) / working capital stays in the bank. Under legacy both no-op (no legal entry, no shelf item).
 - `heuristic` (H): only a listed StarDock lock (commissioned FedSpace or own fighter), 3+ hops, 2x ore, credits > 50k.
 - Tests: `test_bots_swap_a_long_walk_for_a_listed_lock_only`, `test_bots_buy_the_drive_only_on_a_tw_hull_with_spare_cash`, `test_heuristic_jumps_only_to_a_stardock_lock`.
 
@@ -74,5 +74,7 @@ Pins (`tests/test_ship_transwarp_v1.py::test_ship_tw_legacy_is_unchanged`, recor
 - No XP is awarded for a TransWarp (a normal warp awards `warp` XP here; the original has no XP for moves).
 - Toll fighters cannot block a locked arrival: one fighter deployment per sector, and a lock means it is friendly.
 - StarDock stays sector 1, so the commission jump to StarDock is a jump to sector 1.
-- `Ship.transwarp_drive` and `Player.arrived_by_transwarp` are excluded from model dumps so legacy dumps stay byte-identical (the engine has no save/load).
+- `Ship.transwarp_drive` and `Player.arrived_by_transwarp` are left out of model dumps while unset so legacy dumps stay byte-identical; once set they are saved and restored (SHIP_FLEET.md Saves).
 - Day-10 trade bots rarely own an ISS / FlagShip / Havoc, so a scripted match may show zero buys and jumps. That is reported, not forced.
+
+- Follow-up after d632aae: `K.SHIP_TW_FED_LOCK_HULLS = "all_tw"` (default, the commission FedSpace lock on all three TW hulls) | `"iss_only"`; see SHIP_FLEET.md add-ons. Test: test_fed_lock_hulls_switch.

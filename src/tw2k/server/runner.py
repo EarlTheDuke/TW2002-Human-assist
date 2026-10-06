@@ -1709,4 +1709,9 @@ class MatchRunner:
                 if f.alive
             ],
             "last_error": self.state.last_error,
+            # SHIP_FLEET.md fl21: unmanned (parked) hulls for the spectator map's hollow icon. Only when any exist.
+            **({"parked_ships": [
+                {"id": r.id, "owner_id": r.owner_id, "sector_id": r.sector_id, "hull": r.ship.ship_class.value}
+                for r in sorted(u.parked_ships.values(), key=lambda r: r.id)
+            ]} if u.parked_ships else {}),
         }
