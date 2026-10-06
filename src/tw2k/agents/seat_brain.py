@@ -220,6 +220,8 @@ class SeatMemory:
     psychic_unit: int | None = None
     # bots-use-planet-trade-v1: actions spent steering the genesis torpedo under a buying port.
     pt_detour: int = 0
+    # port-upgrade-build-v1 QC: "sector:commodity" buy ports this seat gave its one starter upgrade.
+    port_starters: set[str] = field(default_factory=set)
 
     def dump(self) -> str:
         payload = {
@@ -254,6 +256,8 @@ class SeatMemory:
             payload["psychic_unit"] = self.psychic_unit
         if self.pt_detour:
             payload["pt_detour"] = self.pt_detour
+        if self.port_starters:
+            payload["port_starters"] = sorted(self.port_starters)[:20]
         return MEMORY_TAG + json.dumps(payload, separators=(",", ":"))
 
     @classmethod
@@ -297,6 +301,7 @@ class SeatMemory:
         unit = data.get("psychic_unit")
         mem.psychic_unit = int(unit) if isinstance(unit, int) else None
         mem.pt_detour = int(data.get("pt_detour") or 0)
+        mem.port_starters = {str(k) for k in (data.get("port_starters") or []) if isinstance(k, str)}
         return mem
 
 
@@ -2726,9 +2731,34 @@ class SeatBrain:
             if best is None or gain - cost > best[0]:
                 best = (gain - cost, commodity, units)
         if best is None:
-            return None
+            return self._port_upgrade_starter(v, commodities)
         return self._act("port_upgrade", {"commodity": best[1], "units": int(best[2])},
                          f"upgrade {best[1]} so the planet's lot fits this port")
+
+    def _port_upgrade_starter(self, v: View, commodities: dict[str, Any]) -> dict[str, Any] | None:
+        """QC slice 55: the planet_room payback never fires at this scale (planet lots stay far below port room),
+        so a rich seat gives the buy port over its own stocked planet one small upgrade, once per port and commodity.
+        Bounded: BOT_PORT_UPGRADE_STARTER_UNITS units only while credits >= BOT_PORT_UPGRADE_STARTER_CREDITS."""
+        from ..engine import constants as engine_k
+        units_cap = int(engine_k.BOT_PORT_UPGRADE_STARTER_UNITS)
+        if units_cap <= 0 or int(v.credits) < int(engine_k.BOT_PORT_UPGRADE_STARTER_CREDITS):
+            return None
+        here = int(v.here or -1)
+        planets = [p for p in v.owned if int(p.get("sector_id") or -1) == here]
+        for commodity in ("equipment", "organics"):
+            row = commodities.get(commodity)
+            key = f"{here}:{commodity}"
+            if not isinstance(row, dict) or row.get("side") != "buys_from_player" or key in self.mem.port_starters:
+                continue
+            if not any(int((p.get("stockpile") or {}).get(commodity) or 0) > 0 for p in planets):
+                continue
+            units = min(units_cap, int(row.get("max_units") or 0), int(engine_k.BOT_PORT_UPGRADE_MAX_UNITS))
+            if units < 1:
+                continue
+            self.mem.port_starters.add(key)
+            return self._act("port_upgrade", {"commodity": commodity, "units": units},
+                             f"starter upgrade: widen this {commodity} buy port over my planet")
+        return None
 
     def _port_build(self, v: View) -> dict[str, Any] | None:
         """pu29: off unless BOT_PORT_BUILD_POLICY is near_planet."""

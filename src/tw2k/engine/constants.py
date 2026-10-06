@@ -2049,6 +2049,11 @@ BOT_PORT_UPGRADE_POLICY = "planet_room"  # pu28 DERIVED: "planet_room" | "off"
 BOT_PORT_UPGRADE_MAX_UNITS = 50
 BOT_PORT_UPGRADE_RESERVE = 50_000
 BOT_PORT_UPGRADE_PAYBACK_DAYS = 5
+# QC slice 55 DERIVED: the planet_room test above never fired in 10-day matches (planet lots <= ~100 vs port
+# room >= ~1,750), so a seat holding this many credits gives the buy port over its stocked planet one starter
+# upgrade of this many units, once per port and commodity (seed 250925: one seat, 2,500cr). 0 = off.
+BOT_PORT_UPGRADE_STARTER_UNITS = 5
+BOT_PORT_UPGRADE_STARTER_CREDITS = 300_000
 BOT_PORT_BUILD_POLICY = "off"           # pu29 DERIVED: "off" | "near_planet"
 
 
