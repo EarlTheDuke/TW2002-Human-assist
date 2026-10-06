@@ -2103,3 +2103,42 @@ BOT_BANK_TRANSFER = False               # gb31 DERIVED
 
 def bank_on() -> bool:
     return BANK_MODE == "tw2002"
+
+
+# --- Corporations (CORP_MODE) -------------------------------------------------
+# docs/playtests/corps/CORP_RULES.md. "legacy" is the engine at 57dec11.
+CORP_MODE = "tw2002"                      # "tw2002" | "legacy"
+CORP_CREATE_COST = 0                      # cr2 UNVERIFIED (alt 500_000 = CORP_FORMATION_COST)
+CORP_TURN_COST = 0                        # cr2 UNVERIFIED
+CORP_NEW_PASSWORD = ""                    # cr3 UNVERIFIED: blank means closed
+CORP_APPROVER = "member"                  # cr4 SOURCE-CONFLICT: "member" | "ceo"
+CORP_BREAKIN_PER_DAY = 1                  # cr6
+CORP_BREAKIN_ALIGN_LOSS = 0               # cr6 UNVERIFIED
+CORP_BREAKIN_TELL_CEO = False             # cr6 UNVERIFIED
+CORP_MAX_MEMBERS = 5                      # cr7 CONFIRMED
+CORP_ALIGNMENT_RULE = "mixed"             # cr8 SOURCE-CONFLICT: "mixed" | "same_side"
+CORP_SIDE_OF_ZERO = "good"                # cr8 UNVERIFIED
+MIXED_CORP_EXP_RULE = "highest_good"      # cr9 SOURCE-CONFLICT: "highest_good" | "least_extreme"
+MIXED_CORP_EXP_DIVISOR = 4                # cr9
+MIXED_CORP_EXP_FLOOR = 1                  # cr9 UNVERIFIED
+CORP_LEAVER_PLANETS = "corp_keeps"        # cr10: "corp_keeps" | "leaver_keeps"
+CORP_DISBAND_MINES = "rogue"              # cr12 UNVERIFIED: "rogue" | "removed"
+CORP_DISBAND_PLANETS = "owner_keeps"      # cr12: "owner_keeps" | "v306"
+ROGUE_OWNER_ID = "rogue"                  # cr13
+ROGUE_KEEP_MODE = True                    # cr13 UNVERIFIED
+CORP_TRANSFER_LANDED = "refuse"           # cr16 UNVERIFIED
+CORP_TRANSFER_TAKE = True                 # cr16 CONFIRMED
+CORP_TRANSFER_MINE_KINDS = ("armid", "limpet")  # cr16 UNVERIFIED
+CORP_DEPLOY_DEFAULT = "corporate"         # cr17 UNVERIFIED
+ALLIANCE_DEPLOY_FRIENDLY = "all"          # cr18: "all" | "corporate" | "none"
+CORP_RECLAIM_BY = "member"                # cr19 UNVERIFIED
+CORP_TOLL_TO = "collector"                # cr20 UNVERIFIED
+CORP_RANK_EXP = "sum"                     # cr24 UNVERIFIED
+CORP_RANK_ALIGN = "sum"                   # cr24 UNVERIFIED
+CORP_MEMO_SENDERS = "member"              # cr25 SOURCE-CONFLICT: "member" | "ceo"
+CORP_TREASURY = "off"                     # cr26: "off" | "ours"
+BOT_CORP_POLICY = "off"                   # cr29: "off" | "pair"
+
+
+def corp_rules_on() -> bool:
+    return CORP_MODE == "tw2002"

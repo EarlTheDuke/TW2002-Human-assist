@@ -305,6 +305,7 @@ _CORP_PIN_FLIPS = (
     "FED_OUTPOST_MODE",  # class0-outpost-label (single-mode pins flip all newer modes)
     "PORT_UPGRADE_MODE",
     "BANK_MODE",
+    "CORP_MODE",
 )
 
 

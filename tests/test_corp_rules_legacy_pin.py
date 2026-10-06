@@ -4,6 +4,7 @@ Recorded with tests/fed_legacy_digest.py on 57dec11 (no CORP_MODE): scripted
 N3,N2,N1,H, seed 250925, 3 days. CORP_MODE is named so the pin still matches
 after the mode exists. The other names are the tw2002 modes on that commit.
 The digest equals the bank pin because those flips already describe this tree.
+The 10-day N3,N3,N2,N2,N1,H seed 250925 digest on this same base, outside the suite, is 221826d9bd9a6a6c85668224.
 """
 
 from __future__ import annotations

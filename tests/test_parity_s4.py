@@ -136,13 +136,14 @@ def _fixtures() -> list[tuple[str, object]]:
     # --- group 4: corp / alliance
     u = _universe(); u.players["P1"].credits = 1_000_000
     assert apply_action(u, "P1", Action(kind=ActionKind.CORP_CREATE, args={"ticker": "ZZZ", "name": "Zed"})).ok
+    assert apply_action(u, "P1", Action(kind=ActionKind.CORP_SET_PASSWORD, args={"password": "Zx9"})).ok
     assert apply_action(u, "P1", Action(kind=ActionKind.CORP_INVITE, args={"target": "P2"})).ok
     u.corporations["ZZZ"].treasury = 1000
     out.append(("corp-ceo-invited-p2", u))
     out.append(("corp-invited-p2-view", ("P2", copy.deepcopy(u))))  # corp_join legal here
 
     u2 = copy.deepcopy(u)
-    assert apply_action(u2, "P2", Action(kind=ActionKind.CORP_JOIN, args={"ticker": "ZZZ"})).ok
+    assert apply_action(u2, "P2", Action(kind=ActionKind.CORP_JOIN, args={"ticker": "ZZZ", "password": "Zx9"})).ok
     # Now evaluate from P2's seat (member, not CEO) by swapping ids: simplest is a second fixture set for P2.
     out.append(("corp-member-p2-view", ("P2", u2)))
 
@@ -238,7 +239,7 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
     if ak is ActionKind.CORP_CREATE:
         return Action(kind=ak, args={"ticker": "QQQ", "name": "Q Corp"})
     if ak is ActionKind.CORP_JOIN:
-        return Action(kind=ak, args={"ticker": first("ticker", "ZZZ")})
+        return Action(kind=ak, args={"ticker": first("ticker", "ZZZ"), "password": "Zx9"})
     if ak in (ActionKind.CORP_DEPOSIT, ActionKind.CORP_WITHDRAW):
         mx = int((p.get("amount") or {}).get("max") or 0)
         return Action(kind=ak, args={"amount": min(100, mx) if mx > 0 else 1})
@@ -328,6 +329,12 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"commodity": commodity, "units": 1})
     if ak in (ActionKind.BANK_DEPOSIT, ActionKind.BANK_WITHDRAW):
         return Action(kind=ak, args={"amount": 1})
+    if ak is ActionKind.CORP_SET_PASSWORD:
+        return Action(kind=ak, args={"password": "Zx9"})
+    if ak is ActionKind.CORP_DROP:
+        return Action(kind=ak, args={"target": first("target", "P2")})
+    if ak is ActionKind.CORP_TRANSFER:
+        return Action(kind=ak, args={"target": first("target", "P2"), "item": "credits", "qty": 1, "direction": "give"})
     if ak is ActionKind.BANK_TRANSFER:
         recipients = p.get("recipients") or []
         target = recipients[0]["player_id"] if recipients else "P2"

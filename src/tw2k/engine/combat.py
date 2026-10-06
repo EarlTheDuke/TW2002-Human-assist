@@ -390,7 +390,8 @@ def challenge_group(universe: Universe, pid: str, sector):
     dep = sector.fighters
     if dep is None or int(dep.count) <= 0:
         return None
-    if dep.owner_id == pid or _are_allied(universe, pid, dep.owner_id):
+    from .corp import deploy_friend
+    if deploy_friend(universe, pid, dep):
         return None
     if dep.mode not in (FighterMode.DEFENSIVE, FighterMode.TOLL):
         return None
@@ -523,7 +524,8 @@ def _flee_destination(universe: Universe, defender, sector) -> int | None:
         if dest is None:
             continue
         dep = dest.fighters
-        if dep is not None and int(dep.count) > 0 and not _are_allied(universe, defender.id, dep.owner_id):
+        from .corp import deploy_friend
+        if dep is not None and int(dep.count) > 0 and not deploy_friend(universe, defender.id, dep):
             continue
         picks.append(int(wid))
     if not picks:
@@ -912,7 +914,8 @@ def _pod_safe(universe: Universe, pid: str, sector_id: int) -> bool:
     dep = sector.fighters
     if dep is None or int(dep.count) <= 0:
         return True
-    return dep.owner_id == pid or _are_allied(universe, pid, dep.owner_id)
+    from .corp import deploy_friend
+    return deploy_friend(universe, pid, dep)
 
 
 def _pod_rng(universe: Universe, pid: str) -> random.Random:

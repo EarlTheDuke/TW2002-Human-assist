@@ -70,6 +70,8 @@ def legacy_capture_digest() -> str:
         K.PORT_UPGRADE_MODE = "legacy"
     if hasattr(K, "BANK_MODE"):  # galactic-bank-tax-v1
         K.BANK_MODE = "legacy"
+    if hasattr(K, "CORP_MODE"):  # corp-rules-v1
+        K.CORP_MODE = "legacy"
     for name in ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
                  "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE",  # fullgame-fixes-v2
                  "FED_OUTPOST_MODE"):  # class0-outpost-label: FedSpace outposts no longer shown as class 0
