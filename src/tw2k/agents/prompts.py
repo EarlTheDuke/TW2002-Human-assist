@@ -577,6 +577,18 @@ _FLEET_NOTE = (
 )
 
 
+_TOW_NOTE = (
+    "\nTOWING (docs/playtests/ships/SHIP_TOW.md): tow_engage {target} locks your tractor beam on one of your own "
+    "unmanned ships in your sector (ship:<id>) or on a fighter-less trader outside FedSpace (player:<id>); 0 turns. "
+    "Each sector you warp then costs your turns per warp + 2 x the towed ship's (ISS towing a Colonial Transport = "
+    "16); the towed ship arrives only if you survive the entry and takes no mines, fighters, quasar or NavHaz. "
+    "Landing, docking, trading, robbing, stealing or attacking drops the tow (tow_release ends it any time, 0 turns). "
+    "A Type 1 TransWarp drops it; a Type 2 drive (buy_equip transwarp_type2 20,000 or transwarp_upgrade 9,000 at "
+    "StarDock) jumps WITH the towed ship for 6 ore per hop. To keep an unmanned ship in FedSpace overnight, sit "
+    "beside it (few enough ship fighters that the Feds will not tow you) with it locked in tow when the day ends, and release it next morning.\n"
+)
+
+
 _FED_NOTE_TW2002 = (
     "\nFEDSPACE POLICE (docs/playtests/fedspace/FEDSPACE_POLICE.md): three indestructible Federals "
     "(Captain Zyrain, Admiral Nelson, Fleet Admiral Clausewitz) wander the map; attacking one pods you. "
@@ -665,6 +677,8 @@ def get_system_prompt() -> str:
         text = text + _SHIP_TW_NOTE
     if K.fleet_on():
         text = text + _FLEET_NOTE
+    if K.tow_on():
+        text = text + _TOW_NOTE
     if K.buy_reserve_on():
         text = _buy_reserve_prompt_text(text)
     return text

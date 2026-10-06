@@ -71,6 +71,8 @@ class ActionKind(str, Enum):
     SHIP_TRANSWARP = "ship_transwarp"
     SELL_SHIP = "sell_ship"  # ship-fleet-transporter-v1
     SHIP_TRANSPORT = "ship_transport"
+    TOW_ENGAGE = "tow_engage"  # ship-tow-transwarp2-v1
+    TOW_RELEASE = "tow_release"
 
 
 class Action(BaseModel):

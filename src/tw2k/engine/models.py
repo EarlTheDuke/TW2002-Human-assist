@@ -226,6 +226,11 @@ class EventKind(str, Enum):
     SHIP_SOLD = "ship_sold"
     FLEET_REPOSSESSED = "fleet_repossessed"
     UNMANNED_SHIP_DESTROYED = "unmanned_ship_destroyed"
+    # ship-tow-transwarp2-v1 (SHIP_TOW.md tt29); never emitted under TOW_MODE legacy
+    TOW_ENGAGED = "tow_engaged"
+    TOW_RELEASED = "tow_released"
+    TOWED = "towed"
+    EXTERN_TOW_HOLD = "extern_tow_hold"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -446,10 +451,19 @@ class Planet(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class TowLock(BaseModel):
+    """SHIP_TOW.md tt1: one tractor lock on a tower hull. kind "ship" = an own ParkedShip by fleet id;
+    kind "player" = a manned trader by player id."""
+    kind: str
+    ship_id: int | None = None
+    player_id: str | None = None
+    engaged_day: int = 1
+
+
 class Ship(BaseModel):
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"transwarp_drive": None, "fleet_id": None})
+        return _omit_defaults(handler(self), {"transwarp_drive": None, "fleet_id": None, "tow_lock": None})
 
     ship_class: ShipClass = ShipClass.MERCHANT_CRUISER
     name: str = "Unnamed"
@@ -482,6 +496,8 @@ class Ship(BaseModel):
     transwarp_drive: str | None = None
     # SHIP_FLEET.md fl1: stable fleet id, set the first time the hull is parked or bought as a spare.
     fleet_id: int | None = None
+    # SHIP_TOW.md tt1: the tractor lock lives on the TOWER hull (kept across ship_transport, tt12). Saved once set.
+    tow_lock: TowLock | None = None
     # Weighted-average unit cost paid for the current holdings of each
     # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
     # when planning a sell — without this they have to reconstruct cost

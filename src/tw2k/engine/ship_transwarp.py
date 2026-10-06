@@ -24,7 +24,33 @@ def hull_can_fit(class_key: str | None) -> bool:
 
 
 def drive_fitted(ship) -> bool:
-    return str(getattr(ship, "transwarp_drive", None) or "") == "type1"
+    """Type 1, or Type 2 (SHIP_TOW.md tt18: a Type 2 without a tow is a Type 1; only TOW_MODE sets it)."""
+    return str(getattr(ship, "transwarp_drive", None) or "") in ("type1", "type2")
+
+
+def _tow_towee(universe: Universe, pid: str):
+    """SHIP_TOW.md tt19: the towee ship a jump would carry (Type 2 + an engaged lock), else None."""
+    if not K.tow_on():
+        return None
+    player = universe.players[pid]
+    if str(getattr(player.ship, "transwarp_drive", None) or "") != "type2":
+        return None
+    from .tow import moving_towee
+    got = moving_towee(universe, pid)
+    return got[1].ship if got is not None else None
+
+
+def tow_turn_cost(player, towee_ship, hops: int) -> int:
+    """tt19: the tt6 tow cost once ("tpw"), or per hop ("hops")."""
+    from .tow import tow_warp_cost
+    base = tow_warp_cost(player.ship, towee_ship)
+    if K.SHIP_TW_TURN_COST == "hops":
+        return base * max(1, int(hops))
+    return base
+
+
+def tow_ore_cost(hops: int) -> int:
+    return int(K.SHIP_TW_TOW_ORE_PER_HOP) * int(hops)
 
 
 def fuel_ore(ship) -> int:
@@ -169,6 +195,7 @@ def locked_choices(universe: Universe, pid: str) -> list[dict[str, int]]:
         return []
     here = int(player.sector_id)
     ore = fuel_ore(player.ship)
+    towee = _tow_towee(universe, pid)
     names: set[int] = set()
     for sid in list(getattr(player, "known_sectors", None) or []):
         names.add(int(sid))
@@ -184,10 +211,11 @@ def locked_choices(universe: Universe, pid: str) -> list[dict[str, int]]:
         hops = hop_count(universe, here, sid)
         if hops is None or hops <= 0:
             continue
-        need = ore_cost(hops)
+        need = ore_cost(hops) if towee is None else tow_ore_cost(hops)
         if ore < need:
             continue
-        if player.turns_today + turn_cost(player, hops) > player.turns_per_day:
+        turns = turn_cost(player, hops) if towee is None else tow_turn_cost(player, towee, hops)
+        if player.turns_today + turns > player.turns_per_day:
             continue
         rows.append((sid, hops, need))
     rows.sort(key=lambda r: (r[1], r[0]))
@@ -221,6 +249,14 @@ def legal_spec(universe: Universe, pid: str) -> tuple[bool, str | None, dict[str
             "ore_by": {str(row["sector_id"]): row["ore"] for row in choices},
         }
     }
+    towee = _tow_towee(universe, pid)
+    if towee is not None:  # SHIP_TOW.md tt19: a Type 2 tow jump
+        params["sector_id"]["tow_ore_by"] = dict(params["sector_id"]["ore_by"])
+        params["sector_id"]["tow_turns_by"] = {str(row["sector_id"]): tow_turn_cost(player, towee, row["hops"])
+                                               for row in choices}
+        return True, None, params, min(tow_turn_cost(player, towee, row["hops"]) for row in choices)
+    if K.tow_on() and getattr(player.ship, "tow_lock", None) is not None and player.ship.transwarp_drive == "type1":
+        params["sector_id"]["drops_tow"] = True  # tt17
     cheapest = min(turn_cost(player, row["hops"]) for row in choices)
     return True, None, params, cheapest
 
@@ -314,16 +350,24 @@ def handle_ship_transwarp(universe: Universe, pid: str, action: Action) -> Actio
     hops = hop_count(universe, here, dest_id)
     if hops is None or hops <= 0:
         return ActionResult(ok=False, error="no warp path to that sector")
-    need = ore_cost(hops)
+    towee = _tow_towee(universe, pid)
+    need = ore_cost(hops) if towee is None else tow_ore_cost(hops)
     if fuel_ore(player.ship) < need:
         return ActionResult(ok=False, error=f"not enough fuel ore (need {need})")
-    cost = turn_cost(player, hops)
+    cost = turn_cost(player, hops) if towee is None else tow_turn_cost(player, towee, hops)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns for this day")
     locked = has_lock(universe, pid, dest_id)
     blind = not locked
     if blind and K.SHIP_TW_BLIND == "refuse":
         return ActionResult(ok=False, error="blind TransWarp is refused")
+    tow_ctx = None
+    if K.tow_on() and getattr(player.ship, "tow_lock", None) is not None:
+        from . import tow
+        if towee is None and player.ship.transwarp_drive == "type1":
+            tow.release(universe, player.ship, pid, "type1_transwarp")  # tt17: Type 1 shuts the beam
+        elif towee is not None:
+            tow_ctx = tow.begin_move(universe, pid)
     # tw12b: a planetary Interdictor holds a TransWarp out like a warp (cabal planets.html).
     from .runner import _clear_photon_damp, _try_interdict
     held = _try_interdict(universe, pid, universe.sectors[here])
@@ -342,18 +386,27 @@ def handle_ship_transwarp(universe: Universe, pid: str, action: Action) -> Actio
             summary=f"{player.name}'s TransWarp into {dest_id} fused (density)",
         )
         _destroy_ship(universe, pid, reason="transwarp_fuse", killer_id=None)
+        if tow_ctx is not None:  # tt20: the towee stays at the origin ("stays")
+            from .tow import fuse_towee
+            fuse_towee(universe, pid, tow_ctx)
         return ActionResult(ok=True, turns_spent=0 if K.SHIP_TW_FUSE_REFUNDS else cost)
     landed = _land(universe, pid, dest_id, here)
+    payload = {
+        "from": here, "to": dest_id, "hops": hops, "ore": need,
+        "locked": bool(locked), "blind": bool(blind), "landed": bool(landed),
+    }
+    if tow_ctx is not None:  # tt29: only on a Type 2 tow jump
+        payload["tow"] = {"hull": tow_ctx[2].ship.ship_class.value, "ore": need}
     universe.emit(
         EventKind.SHIP_TRANSWARP,
         actor_id=pid,
         sector_id=player.sector_id,
-        payload={
-            "from": here, "to": dest_id, "hops": hops, "ore": need,
-            "locked": bool(locked), "blind": bool(blind), "landed": bool(landed),
-        },
+        payload=payload,
         summary=f"{player.name} TransWarped {here} → {dest_id} ({hops} hops, {need} ore)",
     )
+    if tow_ctx is not None:  # tt19: the towee follows only if the tower landed alive
+        from .tow import finish_move
+        finish_move(universe, pid, tow_ctx, here, dest_id, "transwarp")
     if player.alive:
         from .fed import check_iss_repo_on_move  # fedspace-police-v1 f6/f22, as after a warp
         check_iss_repo_on_move(universe, pid)

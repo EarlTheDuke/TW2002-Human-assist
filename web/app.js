@@ -321,7 +321,7 @@
 
     // Track warps for animation and for the discovered-sector filter.
     noteSeen(eventSector(ev));
-    if ((ev.kind === "warp" || ev.kind === "ship_transwarp" || ev.kind === "ship_transport") && ev.payload && ev.payload.from && ev.payload.to) {
+    if ((ev.kind === "warp" || ev.kind === "ship_transwarp" || ev.kind === "ship_transport" || ev.kind === "towed") && ev.payload && ev.payload.from && ev.payload.to) {
       noteSeen(ev.payload.from);
       noteSeen(ev.payload.to);
       const hop = { from: ev.payload.from, to: ev.payload.to, t: Date.now(), actor: ev.actor_id };
@@ -2502,6 +2502,10 @@
     ship_sold:         { cat: "trade",     icon: "$",      label: "SHIP SOLD" },
     fleet_repossessed: { cat: "combat",    icon: "\u26a0",  label: "EXTERN REPO", big: true },
     unmanned_ship_destroyed: { cat: "combat", icon: "\u2620", label: "UNMANNED SHIP DESTROYED", big: true },
+    tow_engaged:       { cat: "move",      icon: "\u26d3",  label: "TOW ENGAGED" },
+    tow_released:      { cat: "move",      icon: "\u26d3",  label: "TOW RELEASED" },
+    towed:             { cat: "move",      icon: "\u26d3",  label: "TOWED" },
+    extern_tow_hold:   { cat: "move",      icon: "\u2693",  label: "EXTERN TOW HOLD", big: true },
     planet_transporter_bought: { cat: "diplomacy", icon: "\u27a4", label: "TRANSPORTER" },
     planet_transport:  { cat: "move",      icon: "\u27a4",  label: "TRANSPORT" },
     planet_colonists_killed: { cat: "combat", icon: "\u2694", label: "COLONISTS KILLED" },
