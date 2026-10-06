@@ -129,6 +129,8 @@ def test_surrendering_a_cruiser_does_not_buy_a_cheaper_cargotran() -> None:
     ship.credits = 100_000
     assert _act(u, ship.id, ActionKind.SURRENDER).ok
     assert ship.ship.ship_class is ShipClass.ESCAPE_POD
+    assert ship.credits == 0  # gb13: surrender sinks the cash; put it back so the hull trade-in is the comparison
+    ship.credits = 100_000
     _park(u, ship, K.STARDOCK_SECTOR)
     net = _la(u, ship.id, "buy_ship").params["ship_class"]["net_cost_by"]["cargotran"]
     assert net == 51_950 - 3_987

@@ -375,7 +375,8 @@ def test_f19_claim(tw):
     _move(u, "C", 1)
     u.players["C"].alignment = 10
     r = _act(u, "C", ActionKind.CLAIM_REWARD)
-    assert r.ok and u.players["C"].credits == 4000
+    # 1,000 still aboard + 1,000 recovered from the real hull (gb14) + the 3,000 reward.
+    assert r.ok and u.players["C"].credits == 5000
     r2 = _act(u, "C", ActionKind.CLAIM_REWARD)
     assert not r2.ok
 

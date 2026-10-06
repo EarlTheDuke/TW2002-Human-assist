@@ -126,6 +126,7 @@ def test_cp2_window():
     b.ship.cargo[Commodity.EQUIPMENT] = 4
     b.ship.corbomite = 2
     credits = b.credits
+    before_a = a.credits
     assert _need_player(a, b) == 1
     assert _attack(u, "A", "B", 1).ok
     assert _captured(u) and u.parked_ships
@@ -133,7 +134,7 @@ def test_cp2_window():
     assert hull.owner_id == "A" and hull.sector_id == sec
     assert hull.ship.fighters == 0 and hull.ship.shields == 0
     assert hull.ship.cargo[Commodity.EQUIPMENT] == 4 and hull.ship.corbomite == 2
-    assert b.credits == credits
+    assert b.credits == 0 and a.credits == before_a + credits  # gb15: the capturer gets the cash
     assert b.ship.ship_class == ShipClass.ESCAPE_POD
     assert b.pods_today == 1 and b.experience < 1000
     assert not any(e.kind == EventKind.CORBOMITE_BLAST for e in u.events)

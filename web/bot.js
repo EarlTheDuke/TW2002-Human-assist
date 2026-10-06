@@ -406,6 +406,19 @@
       if (!CU && Number.isFinite(next) && next < 1000) el.setAttribute("data-level", "low");
       else el.removeAttribute("data-level");
     }
+    const bankCell = $("sbBankCell");
+    if (bankCell) {
+      const hasBank = obs && obs.bank_balance != null;
+      bankCell.hidden = !hasBank;
+      const bank = $("sbBank");
+      const room = $("sbBankRoom");
+      const tax = $("sbTax");
+      if (hasBank) {
+        if (bank) bank.textContent = fmt(Number(obs.bank_balance));
+        if (room) room.textContent = fmt(Number(obs.bank_room));
+        if (tax) tax.textContent = fmt(Number(obs.tax_due_tomorrow));
+      }
+    }
     const delta = $("creditsDelta");
     if (!delta || CU || !Number.isFinite(next)) return;
     if (!state.creditsReady) {

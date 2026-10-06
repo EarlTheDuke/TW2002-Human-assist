@@ -455,9 +455,10 @@ def test_surrender_takes_the_existing_death_with_a_warning() -> None:
     res = _act(u, ship.id, ActionKind.SURRENDER)
     assert res.ok, res.error
     assert ship.deaths == deaths + 1
-    # DEATH_MODE tw2002 (DEATH_ESCAPE_PODS.md d20): the pod goes back where the ship came from; credits stay.
+    # DEATH_MODE tw2002 (DEATH_ESCAPE_PODS.md d20): the pod goes back where the ship came from.
+    # gb14: surrender is not a player ship-kill, so the cash sinks.
     assert ship.sector_id == home and ship.ship.ship_class is ShipClass.ESCAPE_POD
-    assert ship.credits == 1000
+    assert ship.credits == 0
     assert ship.fighter_challenge is None
     assert event_facts(_last(u, EventKind.SURRENDER)) == {"mode": "defensive"}
     assert _last(u, EventKind.SHIP_DESTROYED).payload["reason"] == "surrender"

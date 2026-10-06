@@ -62,6 +62,7 @@ def test_legacy_still_pays_the_pump(monkeypatch):
     """Legacy keeps the old (byte-identical) behaviour: 5000 fighters x 50 x 30% = 75,000 per deposit."""
     monkeypatch.setattr(K, "PLANET_DIVIDEND_MODE", "legacy")
     u, pl = _world()
+    u.players["A"].alignment = -5  # the good-trader tax is not what this pump measures
     assert _pump(u, cycles=2) == 2 * int(5_000 * K.FIGHTER_COST * K.PLANET_VALUE_TAX_RATE)
 
 
@@ -86,6 +87,7 @@ def test_production_still_pays_after_a_withdrawal(tw):
     pl.last_tax_value = planet_tax_value(pl)
     _act(u, ActionKind.WITHDRAW_PLANET_DEFENSE, kind="fighters", qty=1_000)
     p = u.players["A"]
+    p.alignment = -5  # the payout, not the good-trader tax
     before, v0 = p.credits, planet_tax_value(pl)
     tick_day(u)
     assert pl.fighters > 0  # production happened
