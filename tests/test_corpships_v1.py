@@ -293,7 +293,12 @@ def test_legacy_hides_the_new_verbs(monkeypatch):
 
 
 # Re-pinned on f10b080 (slice 54). With CORPSHIP_MODE legacy the 10-day digest matches that parent.
+# fullgame-fixes-v2 landed after that pin; its seven switches are flipped so they do not move the hash.
 CORPSHIP_LEGACY_GOLDEN = "e11cd2ec746b097c12490a8e"
+_CORP_PIN_FLIPS = (
+    "CORPSHIP_MODE", "PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
+    "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE",
+)
 
 
 def test_corpships_legacy_is_unchanged():
@@ -304,7 +309,7 @@ def test_corpships_legacy_is_unchanged():
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
-        "print(legacy_run_digest(Path('.'), 'N3,N3,N2,N2,N1,H', 10, 250925, flip=('CORPSHIP_MODE',)))"
+        f"print(legacy_run_digest(Path('.'), 'N3,N3,N2,N2,N1,H', 10, 250925, flip={_CORP_PIN_FLIPS!r}))"
     )
     root = Path(__file__).resolve().parents[1]
     out = subprocess.run([sys.executable, "-c", code], cwd=root, env=dict(os.environ, PYTHONHASHSEED="0"),
