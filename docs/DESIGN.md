@@ -240,7 +240,7 @@ A match ends when **any** of the following triggers:
 3. **Elimination** — only one non-bankrupt player remains active.
 4. **Turn limit** — after N game days (default 30), highest net worth wins.
 
-Net worth = liquid cr + ship value + cargo value + deployed fighters (50 cr each) + planet valuations.
+Net worth = liquid cr + ship value + cargo value + fighters / shields (`NET_WORTH_MODE` tw2002: 100 each, half the 160..239 wave midpoint; legacy 50 / 10; see playtests/fullgame/FULLGAME_FIXES_V1.md) + planet valuations.
 
 ---
 

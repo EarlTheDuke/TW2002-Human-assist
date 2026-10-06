@@ -1563,6 +1563,82 @@ def shield_unit_price(day: int) -> int:
     return _shield(day)
 
 
+# --- Net-worth valuation (NET_WORTH_MODE) -------------------------------------
+# docs/playtests/fullgame/FULLGAME_FIXES_V1.md. TW2002 keeps no net-worth score: players rank by
+# experience and alignment (GAP_MAP 12.5), so this metric is ours. "legacy" = fighters at 50 and
+# shields at 10 each, the pre-wave flat prices (byte-identical). "tw2002" = while StarDock charges the
+# 160..239 wave (Hekate, Misc_FigShieldPrices.txt), a fighter or shield counts NW_HARDWARE_FRACTION
+# of the wave midpoint - the same share of its price the hull gets. Other gear stays at cost.
+NET_WORTH_MODE = "tw2002"        # "tw2002" | "legacy"
+NW_HULL_FRACTION = 0.5           # hull counts half its StarDock price
+NW_HARDWARE_FRACTION = 0.5       # wave-priced fighters / shields: the hull's share
+NW_WAVE_MID_PRICE = 200          # wave midpoint: base 160 + amp 80 / 2
+
+
+def net_worth_tw2002() -> bool:
+    return NET_WORTH_MODE == "tw2002"
+
+
+def _nw_wave_share() -> int:
+    return round(NW_WAVE_MID_PRICE * NW_HARDWARE_FRACTION)
+
+
+def nw_fighter_value() -> int:
+    """Net-worth credit for one fighter (ship or planet).
+
+    legacy, or a flat 50 cr fighter price: FIGHTER_COST. tw2002 with the fighter wave live: 100.
+    """
+    if not net_worth_tw2002() or ECONOMY_SCALE_MODE != "tw2002":
+        return int(FIGHTER_COST)
+    return _nw_wave_share()
+
+
+def nw_shield_value() -> int:
+    """Net-worth credit for one ship shield. legacy, or flat 10 cr shields: 10. Mirror wave live: 100."""
+    if not net_worth_tw2002() or SHIELD_PRICE_MODE != "mirror" or not class0_tw2002():
+        return 10
+    return _nw_wave_share()
+
+
+def nw_planet_shield_value() -> int:
+    """One planet shield. legacy: 10. tw2002: PLANET_SHIELD_SHIP_COST ship shields, the deposit rate."""
+    if not net_worth_tw2002():
+        return 10
+    return nw_shield_value() * int(PLANET_SHIELD_SHIP_COST)
+
+
+# --- Buy reserve (BUY_RESERVE_MODE) --------------------------------------------
+# Not a TW2002 rule: a planning aid for LLM seats (FULLGAME_FIXES_V1.md). Seed 250925 full game:
+# the Grok seat bought 815 fighters (171,965 cr) off the "max buy" hint and kept 151 cr.
+# "tw2002" = the action hint names a working-capital reserve and the largest fighter / shield buy
+# that keeps it. "legacy" = no hint (byte-identical).
+BUY_RESERVE_MODE = "tw2002"      # "tw2002" | "legacy"
+BUY_RESERVE_FLOOR_CREDITS = 20_000  # trade stake kept after a hardware buy
+BUY_RESERVE_CR_PER_HOLD = 200    # or a full load at about twice the equipment base (102)
+BUY_RESERVE_ITEMS = ("fighters", "shields")
+# True: an LLM seat's fighter / shield buy is cut to the reserve-keeping qty (none left: it waits).
+LLM_BUY_RESERVE_SOFT_CAP = False
+
+
+def buy_reserve_on() -> bool:
+    return BUY_RESERVE_MODE == "tw2002"
+
+
+def working_capital_reserve(holds: int) -> int:
+    """Credits to keep after a fighter / shield buy: the floor, or a full trade load."""
+    return max(int(BUY_RESERVE_FLOOR_CREDITS), max(0, int(holds or 0)) * int(BUY_RESERVE_CR_PER_HOLD))
+
+
+def reserve_max_qty(credits: int, unit: int, room: int | None, reserve: int) -> int:
+    """Largest qty at `unit` cr that leaves at least `reserve` credits, capped by `room`."""
+    if int(unit) <= 0:
+        return 0
+    qty = max(0, int(credits) - int(reserve)) // int(unit)
+    if room is not None:
+        qty = min(qty, max(0, int(room)))
+    return int(qty)
+
+
 # --- FedSpace police (FED_MODE) ----------------------------------------------
 # docs/playtests/fedspace/FEDSPACE_POLICE.md. "legacy" = pre-slice byte-identical.
 

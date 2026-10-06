@@ -665,6 +665,40 @@ def get_system_prompt() -> str:
         text = text + _SHIP_TW_NOTE
     if K.fleet_on():
         text = text + _FLEET_NOTE
+    if K.buy_reserve_on():
+        text = _buy_reserve_prompt_text(text)
+    return text
+
+
+_PRICE_LINE_FIGHTERS = "  fighters        50 cr each          (defense; max per hull class)\n"
+_PRICE_LINE_SHIELDS = "  shields         10 cr per point     (max per hull class)\n"
+_PRICE_SHEET_SHIPS = "\nShips — `buy_ship"
+
+
+def _buy_reserve_prompt_text(text: str) -> str:
+    """BUY_RESERVE_MODE (FULLGAME_FIXES_V1.md): live fighter / shield prices and the working-capital rule.
+
+    The sheet said 50 / 10 cr while StarDock charged the 160..239 wave, so seats sized buys at a
+    quarter of the real bill.
+    """
+    if K.ECONOMY_SCALE_MODE == "tw2002":
+        text = text.replace(
+            _PRICE_LINE_FIGHTERS,
+            "  fighters        160-239 cr each     (daily wave; today's price is buy_equip unit_price_by; "
+            f"each counts {K.nw_fighter_value()} toward net worth)\n",
+        )
+    if K.class0_tw2002() and K.SHIELD_PRICE_MODE == "mirror":
+        text = text.replace(
+            _PRICE_LINE_SHIELDS,
+            "  shields         160-239 cr per point (wave opposite to fighters; "
+            f"each counts {K.nw_shield_value()} toward net worth)\n",
+        )
+    rule = (
+        f"  Working capital: after fighter/shield buys keep >= {K.BUY_RESERVE_FLOOR_CREDITS:,} cr or "
+        f"{K.BUY_RESERVE_CR_PER_HOLD} cr per hold, whichever is more; the action_hint names the max that keeps it.\n"
+    )
+    if _PRICE_SHEET_SHIPS in text:
+        text = text.replace(_PRICE_SHEET_SHIPS, rule + _PRICE_SHEET_SHIPS, 1)
     return text
 
 

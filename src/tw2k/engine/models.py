@@ -664,9 +664,11 @@ class Player(BaseModel):
         Composition:
           credits
           + tradable cargo at base prices (FO/Org/Eq/Colonists)
-          + ship hull resale (50% of buy price)
-          + fighters, shields, mines, photon missiles, ether probes,
-            genesis torpedoes at their StarDock prices
+          + ship hull at K.NW_HULL_FRACTION (50%) of its buy price
+          + fighters / shields at K.nw_fighter_value() / K.nw_shield_value()
+            (legacy 50 / 10; tw2002 half the 160..239 wave midpoint = 100)
+          + mines, photon missiles, ether probes, genesis torpedoes and the
+            other gear at their StarDock prices
         """
         cargo_value = (
             self.ship.cargo.get(Commodity.FUEL_ORE, 0) * K.COMMODITY_BASE_PRICE["fuel_ore"]
@@ -677,16 +679,17 @@ class Player(BaseModel):
             # to acquire, not at zero.
             + self.ship.cargo.get(Commodity.COLONISTS, 0) * K.COLONIST_PRICE
         )
-        ship_value = int(K.ship_cost(self.ship.ship_class.value) * 0.5)
-        # Ship equipment — all valued at StarDock buy price (mirrors
-        # _handle_buy_equip). Shields are 10cr/unit, mines/missiles/probes
-        # at their respective constants. This means a player who just
+        ship_value = int(K.ship_cost(self.ship.ship_class.value) * K.NW_HULL_FRACTION)
+        # Ship equipment — valued at StarDock buy price (mirrors
+        # _handle_buy_equip), except fighters / shields: NET_WORTH_MODE
+        # (FULLGAME_FIXES_V1.md) counts those at nw_fighter_value() /
+        # nw_shield_value(). Mines/missiles/probes at their constants. This means a player who just
         # bought a Genesis torpedo (25,000cr) shows up 25,000cr richer in
         # net worth UNTIL they deploy it, at which point the value flips
         # to a (potentially much larger) planet asset.
         equip_value = (
-            self.ship.fighters * K.FIGHTER_COST
-            + self.ship.shields * 10
+            self.ship.fighters * K.nw_fighter_value()
+            + self.ship.shields * K.nw_shield_value()
             + self.ship.mines.get(MineType.ARMID, 0) * K.ARMID_MINE_COST
             + self.ship.mines.get(MineType.LIMPET, 0) * K.LIMPET_MINE_COST
             + self.ship.mines.get(MineType.ATOMIC, 0) * K.ATOMIC_MINE_COST

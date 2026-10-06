@@ -96,6 +96,7 @@ from .victory import (
     check_victory,
     fedspace_protects,
     full_net_worth,
+    planet_tax_value,
     rank_for,
 )
 
@@ -129,6 +130,7 @@ __all__ = [  # noqa: RUF022 — grouped by origin module, not alphabetized
     "alignment_label",
     "check_victory",
     "full_net_worth",
+    "planet_tax_value",
     "rank_for",
     # Local utilities kept in runner (still used by tests/callers)
     "_bfs_path",
@@ -1379,13 +1381,13 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         planet.citadel_target = planet.citadel_level
         planet.citadel_complete_day = None
         planet.treasury = int(planet.treasury * 0.5)
-        planet.last_tax_value = _planet_asset_value(planet)
+        planet.last_tax_value = planet_tax_value(planet)
     elif hostile:
         # Hostile but no defenders — block per legacy behavior (was outright refusal).
         planet.owner_id = pid
         planet.corp_ticker = player.corp_ticker
         planet.origin = "other"
-        planet.last_tax_value = _planet_asset_value(planet)
+        planet.last_tax_value = planet_tax_value(planet)
     elif planet.owner_id is None:
         # Empty neutral map-start planets are claimed by landing. True
         # orphans from an eliminated player keep owner_id=None until the
@@ -1397,7 +1399,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             planet.owner_id = pid
             planet.corp_ticker = player.corp_ticker
             planet.origin = "claim"
-            planet.last_tax_value = _planet_asset_value(planet)
+            planet.last_tax_value = planet_tax_value(planet)
 
     player.planet_landed = planet.id
     universe.emit(
@@ -1905,7 +1907,7 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
     planet.stockpile[Commodity.ORGANICS] = max(
         planet.stockpile.get(Commodity.ORGANICS, 0), 25
     )
-    planet.last_tax_value = _planet_asset_value(planet)
+    planet.last_tax_value = planet_tax_value(planet)
     universe.planets[pid_planet] = planet
     sector.planet_ids.append(pid_planet)
     player.ship.genesis -= 1
@@ -1969,7 +1971,7 @@ def _handle_claim_planet(universe: Universe, pid: str, action: Action) -> Action
     planet.owner_id = pid
     planet.corp_ticker = player.corp_ticker
     planet.origin = "claim"
-    planet.last_tax_value = _planet_asset_value(planet)
+    planet.last_tax_value = planet_tax_value(planet)
     universe.emit(
         EventKind.PLANET_CLAIMED,
         actor_id=pid,
