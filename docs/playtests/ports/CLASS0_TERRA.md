@@ -39,6 +39,8 @@ Sources under `C:\Users\sugar\tw2002_reference\` (same shorthand as GAP_MAP.md):
 | t22 | MSL advice | Feds remove anything in the MSLs. | CONFIRMED in shape: Gypsy; GAP 13.6. | Legal list note "Major Space Lane: removed at Extern"; handler unchanged. Test: `test_t22_msl_note`. |
 | t23 | Density / scans | Port 100; Planet 500 (Terra). | CONFIRMED: cabal density; S3 bible tip. | AC/Rylos +100; Terra +500 to sector 1 under INFO tw2002. Holo/report name + class 0 + prices. Test: `test_t23_density_and_report`. |
 | t24 | Interdictor | Don't function at StarDock and Terra. | CONFIRMED: REV. | Already true (no planets in FedSpace); regression only. Test: `test_t24_interdictor_regression`. |
+| **FedSpace outposts** | | | | |
+| t25 | FedSpace "Federal" ports are not Class 0 | Exactly three Class 0 ports (Sol, Alpha Centauri, Rylos) and every one sells fighters, shields and holds; StarDock (Class 9) also sells them ("Buy Class 0 Items", premium). No non-trading Class 0 port exists. Whether sectors 2-10 hold ports at all is UNVERIFIED (GAP 1.18). | CONFIRMED three / what they sell: cabal glossary "Class 0 Ports"; EIS TradeWars.html + ShipyardMenu.html; Iago_War_Manual.txt ("five sources: SD, the three class 0 ports"). | Our ours-only FedSpace ports (universe.py, 60% of sectors 2-10, stored `PortClass.FEDERAL`, trade nothing) are labelled for seats: `K.FED_OUTPOST_MODE` `tw2002` → sector port view and holo/probe view get `class_id: null`, `class_display` "Federal outpost (not Class 0)", `note` naming where fighters/shields/holds are sold; `buy_equip` refusal (legal list = handler) appends `K.FED_OUTPOST_BUY_REASON`. Generation, engine class and trading unchanged. `legacy` = class 0 / old reason byte-identical. Tests: `tests/test_fed_outpost_label.py`. |
 
 ### Deliberate differences
 
@@ -50,6 +52,7 @@ Sources under `C:\Users\sugar\tw2002_reference\` (same shorthand as GAP_MAP.md):
 - Day tick = Extern; prices change per game day, not calendar day.
 - Toll credits on swept fighters are lost; beacons are not swept (both UNVERIFIED).
 - Jettison colonists, port attack on Class 0, random StarDock location: out of scope (next).
+- t25: the FedSpace outposts (sectors 2-10) stay in the universe (removing them or making them normal ports would reshuffle every seed and the original is UNVERIFIED); they are only relabelled. Seats that start in sectors 2-10 (server/runner.py `_build_agents`) used to read them as Class 0.
 
 ## What the engine does (CLASS0_MODE tw2002)
 
@@ -83,6 +86,18 @@ Each plant was a real code mutation applied to the engine, run against `tests/te
 | p16b | terra_colonists offered in legal list under legacy | legality.py | caught | test_plant_16_legacy_no_tw_features |
 
 11 plants: 11/11 caught on the first strengthened run.
+
+t25 (class0-outpost-label) plants, run against `tests/test_fed_outpost_label.py`, then reverted:
+
+| # | planted bug (real mutation) | file | result | caught by |
+| --- | --- | --- | --- | --- |
+| o1 | sector view keeps class 0 on the outpost | observation.py | caught | test_observation_labels_outpost_not_class0, test_llm_prompt_has_no_class0_for_outpost |
+| o2 | buy_equip refusal does not name the outpost | class0.py | caught | test_buy_equip_reason_names_outpost_legal_equals_handler |
+| o3 | outpost reason applied under FED_OUTPOST_MODE legacy | class0.py | caught | test_legacy_shows_class0_and_old_reason |
+| o4 | Alpha Centauri / Rylos treated as outposts | class0.py | caught | test_alpha_rylos_still_class0, test_holo_probe_view_labels_outpost |
+| o5 | holo / probe view still shows class 0 | scanners.py | caught | test_holo_probe_view_labels_outpost |
+
+5 plants: 5/5 caught.
 
 ## Delivered
 
