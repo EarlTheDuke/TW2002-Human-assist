@@ -248,6 +248,29 @@ def test_al14_fedsafe_alien_in_fedspace_is_protected():
     assert good.alive and player.alignment == -100
 
 
+def test_al18_destroying_an_alien_blasts_its_corbomite():
+    u = generate_universe(GameConfig(seed=13, universe_size=200, max_days=3))
+    alien = next(iter(u.aliens.values()))
+    alien.experience = 40
+    alien.alignment = -80
+    alien.credits = 0
+    alien.ship.fighters = 0
+    alien.ship.shields = 0
+    alien.ship.corbomite = 3
+    player = Player(
+        id="A", name="Ann",
+        ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER, fighters=400, shields=100),
+        sector_id=alien.sector_id, credits=1_000, alignment=100, experience=0,
+    )
+    u.players["A"] = player
+    u.sectors[alien.sector_id].occupant_ids.append("A")
+    _resolve_ship_attack_tw2002(u, "A", alien, 2)
+    assert not alien.alive
+    assert int(player.ship.shields) == 40
+    assert int(player.ship.fighters) == 400
+    assert any(ev.kind.value == "corbomite_blast" for ev in u.events)
+
+
 def test_al19_exact_minimum_captures_and_does_not_blast():
     u = generate_universe(GameConfig(seed=9, universe_size=200, max_days=3))
     alien = next(iter(u.aliens.values()))
