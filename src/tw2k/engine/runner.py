@@ -38,7 +38,15 @@ from .economy import (
     regenerate_ports,
     trade_turn_cost,
 )
-from .ferrengi import _ferrengi_by_name, _ferrengi_roam_and_hunt, _spawn_ferrengi
+from .ferrengi import (
+    _ferrengi_by_name,
+    _ferrengi_regen,
+    _ferrengi_roam_and_hunt,
+    _spawn_ferrengi,
+    apply_ferrengi_tribute,
+    clear_ferrengi_encounter,
+    live_ferrengi_encounter,
+)
 from .hardware import (
     add_navhaz,
     apply_carried_photon_blast,
@@ -189,6 +197,12 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
         if action.kind not in CHALLENGE_VERBS:
             return _reject_free(CHALLENGE_REFUSAL)
 
+    # ferrengi-aliens-v1: open tribute encounter (Flee / Attack / Surrender).
+    # Any other action ignores the hail: the Ferrengi take tribute first, then it runs.
+    ferr_enc = live_ferrengi_encounter(universe, player_id, settle=True)
+    if ferr_enc is not None and not _answers_ferrengi(action, ferr_enc):
+        apply_ferrengi_tribute(universe, player_id, ignored=True)
+
     before_seq = universe.seq
     turns_before = player.turns_today
     result = handler(universe, player_id, action)
@@ -230,6 +244,7 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 def tick_day(universe: Universe) -> None:
     """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets."""
     _overnight_retreats(universe)
+    _overnight_ferrengi_encounters(universe)
     universe.day += 1
     for player in universe.players.values():
         player.turns_today = 0
@@ -265,6 +280,7 @@ def tick_day(universe: Universe) -> None:
         tick_navhaz(universe)
 
     if universe.config.enable_ferrengi:
+        _ferrengi_regen(universe)
         _spawn_ferrengi(universe)
         _ferrengi_roam_and_hunt(universe)
     if universe.config.enable_planets:
@@ -300,6 +316,30 @@ def _overnight_retreats(universe: Universe) -> None:
         _retreat_move(universe, player, int(ch["from_sector"]), overnight=True)
 
 
+def _overnight_ferrengi_encounters(universe: Universe) -> None:
+    """Clear open Ferrengi boarding at day end so idle seats cannot stall forever.
+
+    Prefer flee to any neighbour; if none, auto-tribute (ship lives).
+    """
+    if not K.ferrengi_tw2002() or K.FERRENGI_ENCOUNTER != "tribute":
+        return
+    for pid in sorted(universe.players):
+        enc = live_ferrengi_encounter(universe, pid, settle=True)
+        if enc is None:
+            continue
+        player = universe.players[pid]
+        sector = universe.sectors.get(player.sector_id)
+        choices: list[int] = []
+        if sector is not None:
+            choices = [w for w in sector.warps if w not in K.FEDSPACE_SECTORS] or list(sector.warps)
+        if choices:
+            clear_ferrengi_encounter(universe, pid)
+            _retreat_move(universe, player, int(choices[0]), overnight=True)
+            player.flee_penalty = True
+        else:
+            apply_ferrengi_tribute(universe, pid)
+
+
 def is_finished(universe: Universe) -> bool:
     return universe.finished
 
@@ -323,6 +363,19 @@ CHALLENGE_VERBS = frozenset({
     ActionKind.WAIT,
 })
 CHALLENGE_REFUSAL = "answer the fighters first: attack, retreat, pay the toll or surrender"
+
+FERRENGI_ENCOUNTER_VERBS = frozenset({
+    ActionKind.ATTACK, ActionKind.RETREAT, ActionKind.SURRENDER,
+    ActionKind.HAIL, ActionKind.BROADCAST,
+})
+FERRENGI_ENCOUNTER_NOTE = "ignoring the Ferrengi pays tribute first (all cargo and some holds, or credits)"
+
+
+def _answers_ferrengi(action: Action, enc: dict) -> bool:
+    """Attack on the boarding Ferrengi, retreat, surrender, or free comms."""
+    if action.kind == ActionKind.ATTACK:
+        return str((action.args or {}).get("target")) == str(enc.get("ferr_id"))
+    return action.kind in FERRENGI_ENCOUNTER_VERBS
 
 
 def _reject_free(error: str) -> ActionResult:
@@ -1023,8 +1076,10 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
         if bad is not None:
             return bad
         _resolve_ship_attack_tw2002(universe, pid, target, qty)
+        clear_ferrengi_encounter(universe, pid)
         return ActionResult(ok=True, turns_spent=cost)
     _resolve_ship_combat(universe, pid, target)
+    clear_ferrengi_encounter(universe, pid)
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -3548,6 +3603,16 @@ def _surrender_deployment(universe: Universe, pid: str, sector):
 
 
 def _handle_surrender(universe: Universe, pid: str, action: Action) -> ActionResult:
+    # ferrengi-aliens-v1 n15: tribute to Ferrengi
+    if live_ferrengi_encounter(universe, pid) is not None:
+        cost = K.TURN_COST["surrender"]
+        player = universe.players[pid]
+        if player.turns_today + cost > player.turns_per_day:
+            return ActionResult(ok=False, error="out of turns")
+        result = apply_ferrengi_tribute(universe, pid)
+        if not result.get("ok"):
+            return _reject_free(result.get("error") or "tribute failed")
+        return ActionResult(ok=True, turns_spent=cost)
     if not K.sector_fighter_tw2002():
         return ActionResult(ok=False, error="legacy sector fighters do not take a surrender")
     if not K.combat_tw2002():
@@ -3577,9 +3642,24 @@ def _handle_surrender(universe: Universe, pid: str, action: Action) -> ActionRes
 
 def _handle_retreat(universe: Universe, pid: str, action: Action) -> ActionResult:
     """Back to the sector the ship came from. No hazards fire there. Fighters unchanged."""
+    player = universe.players[pid]
+    ferr_enc = live_ferrengi_encounter(universe, pid)
+    if ferr_enc is not None:
+        # n17: flee any neighbour (Ferrengi boarded in-sector; no from_sector).
+        sector = universe.sectors[player.sector_id]
+        choices = [w for w in sector.warps if w not in K.FEDSPACE_SECTORS] or list(sector.warps)
+        if not choices:
+            return _reject_free("no warp out to flee the Ferrengi")
+        dest = int(choices[0])
+        cost = _warp_cost_for(player)
+        if player.turns_today + cost > player.turns_per_day:
+            return ActionResult(ok=False, error="out of turns for this day")
+        clear_ferrengi_encounter(universe, pid)
+        _retreat_move(universe, player, dest)
+        player.flee_penalty = True
+        return ActionResult(ok=True, turns_spent=cost)
     if not K.challenge_on():
         return _reject_free("retreat needs tw2002 combat")
-    player = universe.players[pid]
     ch = live_challenge(universe, pid)
     if ch is None:
         return _reject_free("no fighters challenge you here")

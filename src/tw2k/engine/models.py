@@ -216,6 +216,10 @@ class EventKind(str, Enum):
     FERRENGI_SPAWN = "ferrengi_spawn"
     FERRENGI_MOVE = "ferrengi_move"
     FERRENGI_ATTACK = "ferrengi_attack"
+    FERRENGI_ENCOUNTER = "ferrengi_encounter"
+    FERRENGI_TRIBUTE = "ferrengi_tribute"
+    FERRENGI_REGEN = "ferrengi_regen"
+    FERRENGAL_PLACE = "ferrengal_place"
     LAND_PLANET = "land_planet"
     LIFTOFF = "liftoff"
     GENESIS_DEPLOYED = "genesis_deployed"
@@ -486,6 +490,8 @@ class Player(BaseModel):
     # Ship combat (COMBAT_MODE tw2002). An open challenge from hostile defensive or
     # toll fighters: {sector_id, from_sector, mode}. None when not challenged.
     fighter_challenge: dict[str, Any] | None = None
+    # ferrengi-aliens-v1: open tribute encounter {ferr_id, sector_id, from_sector?}
+    ferrengi_encounter: dict[str, Any] | None = None
     # Set by a flee. The next counted land or port action costs FLEE_PENALTY_TURNS more.
     flee_penalty: bool = False
     # Death (DEATH_MODE tw2002, DEATH_ESCAPE_PODS.md). The sector a warp or retreat left; a
@@ -753,6 +759,10 @@ class FerrengiShip(BaseModel):
     shields: int
     ship_class: ShipClass = ShipClass.MERCHANT_CRUISER
     alive: bool = True
+    # ferrengi-aliens-v1: hull key (assault_trader / battle_cruiser / dreadnought) or "" legacy
+    hull: str = ""
+    credits: int = 0
+    cargo: dict[str, int] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -884,6 +894,9 @@ class Universe(BaseModel):
     federals: list[Federal] = Field(default_factory=list)
     posted_rewards: dict[str, list] = Field(default_factory=dict)  # target_id -> [{poster_id,amount,day}]
     pending_rewards: dict[str, int] = Field(default_factory=dict)  # killer_id -> claimable credits
+    # ferrengi-aliens-v1 (FERRENGI.md)
+    ferrengal_sector: int | None = None
+    ferrengi_grudges: set[str] = Field(default_factory=set)
 
     # Per-universe deterministic PRNG. PrivateAttr so it's instance-scoped
     # (not shared across Universe objects, not serialized by model_dump), and

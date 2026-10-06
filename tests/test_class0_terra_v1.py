@@ -46,6 +46,7 @@ DOC = ROOT / "docs" / "playtests" / "ports" / "CLASS0_TERRA.md"
 @pytest.fixture
 def legacy(monkeypatch):
     monkeypatch.setattr(K, "CLASS0_MODE", "legacy")
+    monkeypatch.setattr(K, "FERRENGI_MODE", "legacy")
     monkeypatch.setattr(K, "SHIELD_PRICE_MODE", "flat")
 
 

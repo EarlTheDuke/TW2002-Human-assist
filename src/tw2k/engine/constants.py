@@ -1435,6 +1435,76 @@ FERRENGI_MIN_STRENGTH_SCALE = 0.25
 # of a 30-365 day match for genuine ferrengi pressure.
 FERRENGI_STARTUP_GRACE_DAYS = 5
 
+# --- Ferrengi aliens (FERRENGI_MODE) ------------------------------------------
+# ferrengi-aliens-v1 / docs/playtests/npc/FERRENGI.md
+# "tw2002": three hulls, Ferrengal, tribute encounter, grudges, regen, mine hits.
+# "legacy": pre-slice simplified raiders (byte-identical spawn/roam/combat).
+FERRENGI_MODE = "tw2002"
+
+def ferrengi_tw2002() -> bool:
+    return FERRENGI_MODE == "tw2002"
+
+# Hull specs: FERRSPEC + docs wiki + MBBS. Odds from FERRSPEC (SOURCE-CONFLICT vs Bible).
+FERRENGI_HULL_ASSAULT = "assault_trader"
+FERRENGI_HULL_CRUISER = "battle_cruiser"
+FERRENGI_HULL_DREAD = "dreadnought"
+FERRENGI_HULL_SPECS = {
+    "assault_trader": {
+        "label": "Ferrengi Assault Trader",
+        "max_fighters": 3000,
+        "max_shields": 200,
+        "holds": 50,
+        "tpw": 2,
+        "odds": 1.0,
+        "density": 40,
+        "max_mines": 10,
+        "photons": 0,
+    },
+    "battle_cruiser": {
+        "label": "Ferrengi Battle Cruiser",
+        "max_fighters": 8000,
+        "max_shields": 800,
+        "holds": 75,
+        "tpw": 3,
+        "odds": 1.2,
+        "density": 100,
+        "max_mines": 25,
+        "photons": 0,
+    },
+    "dreadnought": {
+        "label": "Ferrengi Dreadnought",
+        "max_fighters": 15000,
+        "max_shields": 1000,
+        "holds": 100,
+        "tpw": 4,
+        "odds": 1.4,
+        "density": 100,
+        "max_mines": 50,
+        "photons": 1,
+    },
+}
+FERRENGI_ODDS_BY_HULL = {
+    "assault_trader": 1.0,
+    "battle_cruiser": 1.2,
+    "dreadnought": 1.4,
+}
+# Encounter: "tribute" opens Flee/Attack/Surrender; "auto_combat" = legacy immediate fight.
+FERRENGI_ENCOUNTER = "tribute"
+FERRENGI_FIGHTER_BLOCK = False  # Iago: Ferrengi ignore deployed fighters
+FERRENGI_HIT_MINES = True
+FERRENGI_ALIGN_ON_KILL = 10
+FERRENGI_REGEN_PCT = 0.20  # TEDIT 20% of hull max
+FERRENGAL_MINES = 50  # Bible
+FERRENGAL_FIGHTERS = 1000  # UNVERIFIED stand-in for "cloud of Ferrengi ftrs"
+FERRENGAL_MIN_HOPS = 8
+FERRENGAL_SPAWN_RADIUS = 3
+FERRENGI_TRIBUTE_HOLDS = 5  # UNVERIFIED
+FERRENGI_TRIBUTE_CREDIT_PCT = 0.10  # UNVERIFIED
+FERRENGI_SPAWN_CREDITS_PER_AGG = 500  # UNVERIFIED
+FERRENGI_SEES_CLOAK = False  # UNVERIFIED; consistent with HARDWARE cloak
+FERRENGI_OWNER_ID = "ferrengi"  # mine / fighter owner marker
+
+
 # --- Corp ---------------------------------------------------------------------
 
 CORP_FORMATION_COST = 500_000

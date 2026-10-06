@@ -99,8 +99,11 @@ def density_reading(universe: Universe, sector_id: int) -> dict[str, Any]:
             cloaked_here = True
             continue  # h15: cloaked ship density 0
         ships += 1
-    ships += len(_ferrengi_in(universe, sector_id))
+    # Players already counted in ships; Ferrengi use hull density under tw2002.
     density += K.DENSITY_PER_SHIP * ships
+    from .ferrengi import ferrengi_density
+    for f in _ferrengi_in(universe, sector_id):
+        density += int(ferrengi_density(f))
     if cloaked_here:
         anomaly = True
     if s.port is not None:
@@ -146,7 +149,13 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
         "planets": [{"name": universe.planets[p].name, "class": universe.planets[p].class_id.value}
                     for p in s.planet_ids if p in universe.planets],
         "traders": traders_in(universe, viewer_id, s),
-        "ferrengi": [{"name": f.name, "fighters": int(f.fighters)} for f in _ferrengi_in(universe, sector_id)],
+        "ferrengi": (
+            [{"name": f.name, "fighters": int(f.fighters),
+              "hull": getattr(f, "hull", "") or None,
+              "shields": int(f.shields)} for f in _ferrengi_in(universe, sector_id)]
+            if K.ferrengi_tw2002()
+            else [{"name": f.name, "fighters": int(f.fighters)} for f in _ferrengi_in(universe, sector_id)]
+        ),
         "fighters": ({"owner_id": s.fighters.owner_id, "count": int(s.fighters.count), "mode": s.fighters.mode.value}
                      if s.fighters is not None and int(s.fighters.count) > 0 else None),
         # Limpets never show on a holo or a probe (SCANNERS_HIDDEN_INFO.md s9/s13), even your own.
