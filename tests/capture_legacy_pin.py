@@ -64,6 +64,8 @@ def legacy_capture_digest() -> str:
         K.CAPTURE_MODE = "legacy"
     if hasattr(K, "PLANET_TRADE_MODE"):  # planetary-trading-v1: later tw2002 modes are flipped too
         K.PLANET_TRADE_MODE = "legacy"
+    if hasattr(K, "CORPSHIP_MODE"):  # corp-ships-furb-v1
+        K.CORPSHIP_MODE = "legacy"
     for name in ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
                  "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE"):  # fullgame-fixes-v2
         if hasattr(K, name):
