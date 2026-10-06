@@ -1641,6 +1641,117 @@ def reserve_max_qty(credits: int, unit: int, room: int | None, reserve: int) -> 
     return int(qty)
 
 
+# --- Planet growth dividend (PLANET_DIVIDEND_MODE) ------------------------------
+# docs/playtests/fullgame/FULLGAME_FIXES_V2.md. The dividend is ours (GAP_MAP 6.13): TW2002 planets
+# grow only by daily production from colonists, and the citadel treasury earns interest
+# (TWFAQ_20PLANET.txt; Iago_War_Manual.txt); a stored fighter, credit or colonist earns nothing.
+# "legacy" = the baseline moves only at the daily tick, so a ship-to-planet deposit counts as growth
+# (deposit 5000 fighters = 75,000 cr; withdraw and redeposit pays it again). "tw2002" = every
+# ship<->planet transfer (DIVIDEND_TRANSFER_VERBS in runner.py) moves the baseline by the value moved,
+# so only production, colonist growth, treasury interest and citadel completion pay.
+PLANET_DIVIDEND_MODE = "tw2002"  # "tw2002" | "legacy"
+
+
+def dividend_transfers_neutral() -> bool:
+    return PLANET_DIVIDEND_MODE == "tw2002"
+
+
+# --- Combat that happens (HUNT_MODE, COMBAT_FRAMING_MODE, SLOW_HULL_HINT_MODE) ----
+# docs/playtests/fullgame/FULLGAME_FIXES_V2.md. In TW2002 traders hunt each other and the Ferrengi for
+# experience, bounties and salvage (TWFAQ_FERRSPEC; GAP_MAP 9.x/11.x). The seed 250925 full game had no
+# ship fight at all: N2/N3 never attacked a ship and the LLM prompt framed combat as optional.
+# HUNT_MODE "tw2002" = an N3 seat (value_allocator) attacks a ship or Ferrengi in its own sector, outside
+# FedSpace, when its one-attack power is >= HUNT_STRENGTH_MARGIN x the target's defence read from what it can
+# see (Ferrengi fighters/shields/hull; a trader's fighters and hull with the hull's MAX shields assumed),
+# and the estimated alignment cost keeps it >= HUNT_ALIGN_FLOOR. N1/N2 never hunt. "legacy" = no hunting.
+HUNT_MODE = "tw2002"             # "tw2002" | "legacy"
+HUNT_STRENGTH_MARGIN = 2.0       # power >= 2x visible worst-case defence
+HUNT_ALIGN_FLOOR = 0             # never hunt yourself evil (side() flips below 0)
+HUNT_ALIGN_UNCERTAINTY = 50      # a good target's alignment is hidden: assume yours + this
+HUNT_MAX_ATTACKS_PER_TARGET_DAY = 2  # a target that survives (flees) is not chased all day
+# Arming (seat_brain._hunt_arm): an N3 seat that never carries more than the 200-fighter defence floor
+# can never clearly beat anyone (seed 250925 after1: 0 of 166 sightings winnable). On a hunting hull
+# (odds >= HUNT_ARM_MIN_ODDS, one attack can send HUNT_ARM_FIGHTERS) with credits >= HUNT_ARM_CASH_GATE,
+# it buys toward HUNT_ARM_FIGHTERS at an equipment port: one buy a game day, at most HUNT_ARM_SPEND_SHARE of
+# spare cash, never leaving less than HUNT_ARM_CASH_GATE.
+HUNT_ARM_FIGHTERS = 1500         # BattleShip 1500 x 1.6 = 2400 power: 2x a 761-ftr Ferrengi assault trader
+HUNT_ARM_CASH_GATE = 150_000
+HUNT_ARM_SPEND_SHARE = 0.25
+HUNT_ARM_MIN_ODDS = 1.3          # BattleShip 1.6, Missile Frigate 1.3, Imperial 1.5, Constellation 1.4
+HUNT_ARM_MIN_BUY = 50
+HUNT_ARM_OPTION_VALUE = 40_000.0  # N3 options path, cr/turn: above a holo scan (35k), one turn, docked only
+# COMBAT_FRAMING_MODE "tw2002" = the LLM prompt and hints present attack neutrally with the real rewards
+# (XP, bounty, salvage, the victim's ship) and costs (fighters, alignment), and show the win check.
+# "legacy" = the old text ("High-aggression will wreck you", "Surrender often safer").
+COMBAT_FRAMING_MODE = "tw2002"   # "tw2002" | "legacy"
+# SLOW_HULL_HINT_MODE "tw2002" = the price sheet and StarDock hint say a 4-turn hull makes ~turns/4 warps a day,
+# and the N3 heuristic never picks a defence hull with more turns per warp than its current one.
+SLOW_HULL_HINT_MODE = "tw2002"   # "tw2002" | "legacy"
+SLOW_HULL_TURNS_PER_WARP = 4     # hint only for hulls this slow or slower
+SLOW_HULL_HINT_MAX_TURNS_PER_DAY = 100  # ... and only when the day is this short
+
+
+# COMBAT_SCANNER_MODE "tw2002" = the Battleship and the Missile Frigate carry the built-in Combat Scanner, which
+# shows how many shields the other trader in your sector has (Someguy_MBBS_manual.txt: Battleship "built-in
+# Combat Scanner which shows how many shields your victim has when you attack"; Missile Cruiser "comes with a
+# combat scanner"). sector.traders then carries `shields`. "legacy" = shields hidden from every hull.
+COMBAT_SCANNER_MODE = "tw2002"   # "tw2002" | "legacy"
+COMBAT_SCANNER_HULLS = ("battleship", "missile_frigate")
+
+
+# --- Hull recovery after a loss (GENESIS_HULL_MODE) ------------------------------------------
+# docs/playtests/fullgame/FULLGAME_FIXES_V2.md. A seat whose ship dies flies on in the free Scout Marauder,
+# and the Scout carries no Genesis Torpedo (max_genesis 0 in SHIP_SPECS_TW2002; TW2002 ship chart). QC seed
+# 20260925: N2-P3 and N1-P5 lost their Merchant Cruisers to the Ferrengal armids on day 1, then spent days 2-10
+# flying StarDock <-> a port because "genesis is affordable" while StarDock could never sell them one (net worth
+# frozen at ~40k). "tw2002" = the N1/N2/N3 brains count genesis as reachable only when ship.genesis_cap > 0; in
+# a 0-cap hull they trade toward the CargoTran trade-in instead. "legacy" = the old check (credits only).
+GENESIS_HULL_MODE = "tw2002"     # "tw2002" | "legacy"
+# MINE_OVERFLOW_MODE "tw2002" = armid damage past the shields comes off the fighters as (damage - shields
+# the ship had). "legacy" = the overflow was computed after the shields were already zeroed, so a ship with
+# some shields lost fighters for the full damage (shields counted twice against it).
+MINE_OVERFLOW_MODE = "tw2002"    # "tw2002" | "legacy"
+
+
+def genesis_hull_on() -> bool:
+    return GENESIS_HULL_MODE == "tw2002"
+
+
+def mine_overflow_fixed() -> bool:
+    return MINE_OVERFLOW_MODE == "tw2002"
+
+
+def hunt_on() -> bool:
+    return HUNT_MODE == "tw2002"
+
+
+def combat_scanner_on() -> bool:
+    return COMBAT_SCANNER_MODE == "tw2002"
+
+
+def combat_framing_on() -> bool:
+    return COMBAT_FRAMING_MODE == "tw2002"
+
+
+def slow_hull_hint_on() -> bool:
+    return SLOW_HULL_HINT_MODE == "tw2002"
+
+
+def ferrengi_odds_for_hull(hull: str | None) -> float:
+    """Public odds of a Ferrengi hull (what sector.ferrengi shows), same table the engine uses."""
+    if hull and ferrengi_tw2002():
+        return float(FERRENGI_ODDS_BY_HULL.get(hull, FERRENGI_COMBAT_ODDS))
+    return float(FERRENGI_COMBAT_ODDS)
+
+
+def hunt_alignment_cost(my_alignment: int, losses: int, target_side: str | None) -> int:
+    """Estimated alignment a kill costs (x12/a1 + x13/a2); an evil target costs nothing."""
+    if target_side == "evil":
+        return 0
+    est = max(0, int(my_alignment)) + HUNT_ALIGN_UNCERTAINTY
+    return int(est * KILL_ALIGN_SHARE) + (int(losses) * est) // COMBAT_ALIGN_DIVISOR
+
+
 # --- FedSpace police (FED_MODE) ----------------------------------------------
 # docs/playtests/fedspace/FEDSPACE_POLICE.md. "legacy" = pre-slice byte-identical.
 

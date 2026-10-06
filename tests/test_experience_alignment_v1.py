@@ -43,6 +43,11 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "PLANET_TRADE_MODE", "legacy")  # pins predate planetary-trading-v1
     monkeypatch.setattr(K, "NET_WORTH_MODE", "legacy")  # goldens predate fullgame-fixes-v1
     monkeypatch.setattr(K, "BUY_RESERVE_MODE", "legacy")  # goldens predate fullgame-fixes-v1
+    monkeypatch.setattr(K, "PLANET_DIVIDEND_MODE", "legacy")  # predate fullgame-fixes-v2
+    monkeypatch.setattr(K, "HUNT_MODE", "legacy")  # predate fullgame-fixes-v2
+    monkeypatch.setattr(K, "COMBAT_FRAMING_MODE", "legacy")  # predate fullgame-fixes-v2
+    monkeypatch.setattr(K, "SLOW_HULL_HINT_MODE", "legacy")  # predate fullgame-fixes-v2
+    monkeypatch.setattr(K, "COMBAT_SCANNER_MODE", "legacy")  # predate fullgame-fixes-v2
 
 
 @pytest.fixture

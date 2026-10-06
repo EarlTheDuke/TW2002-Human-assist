@@ -227,7 +227,9 @@ def _pay_planet_value_tax(universe: Universe) -> None:
     """Pay owners a small credit dividend on new planet value only."""
     for planet in universe.planets.values():
         current_value = planet_tax_value(planet)
-        previous_value = max(0, int(getattr(planet, "last_tax_value", 0) or 0))
+        previous_value = int(getattr(planet, "last_tax_value", 0) or 0)
+        if not K.dividend_transfers_neutral():
+            previous_value = max(0, previous_value)  # tw2002: a withdrawal may push it below 0
         owner_id = planet.owner_id
         owner = universe.players.get(owner_id) if owner_id is not None else None
 

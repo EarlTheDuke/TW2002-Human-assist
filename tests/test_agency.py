@@ -43,6 +43,8 @@ def test_get_system_prompt_respects_env(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr("tw2k.engine.constants.TOW_MODE", "legacy")  # tw2002 appends the towing note
     monkeypatch.setattr("tw2k.engine.constants.PLANET_TRADE_MODE", "legacy")  # pins predate planetary-trading-v1
     monkeypatch.setattr("tw2k.engine.constants.BUY_RESERVE_MODE", "legacy")  # tw2002 rewrites the price sheet
+    monkeypatch.setattr("tw2k.engine.constants.COMBAT_FRAMING_MODE", "legacy")  # tw2002 rewrites the Ferrengi line
+    monkeypatch.setattr("tw2k.engine.constants.SLOW_HULL_HINT_MODE", "legacy")  # tw2002 notes the BattleShip
     monkeypatch.setenv("TW2K_HINT_LEVEL", "minimal")
     s = get_system_prompt()
     assert s == _MATCH_PROMPT_MINIMAL

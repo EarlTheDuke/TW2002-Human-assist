@@ -213,7 +213,12 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     if K.tow_on():  # SHIP_TOW.md tt11 / tt12: locks before the action, break rules after it
         from .tow import snapshot as tow_snapshot
         tow_snap = tow_snapshot(universe)
+    dividend_before = None
+    if action.kind in DIVIDEND_TRANSFER_VERBS and K.dividend_transfers_neutral():
+        dividend_before = _dividend_snapshot(universe, player)
     result = handler(universe, player_id, action)
+    if dividend_before:
+        _shift_dividend_baseline(universe, dividend_before)
     if tow_snap:
         from .tow import after_action as tow_after_action
         tow_after_action(universe, player_id, action, result, tow_snap)
@@ -385,6 +390,37 @@ CHALLENGE_VERBS = frozenset({
 })
 CHALLENGE_REFUSAL = "answer the fighters first: attack, retreat, pay the toll or surrender"
 
+# PLANET_DIVIDEND_MODE tw2002: ship<->planet transfers move the dividend baseline (FULLGAME_FIXES_V2.md).
+DIVIDEND_TRANSFER_VERBS = frozenset({
+    ActionKind.LOAD_PLANET_CARGO, ActionKind.DUMP_PLANET_CARGO, ActionKind.ASSIGN_COLONISTS,
+    ActionKind.DEPOSIT_TREASURY, ActionKind.WITHDRAW_TREASURY,
+    ActionKind.DEPOSIT_PLANET_DEFENSE, ActionKind.WITHDRAW_PLANET_DEFENSE,
+})
+
+
+def _dividend_snapshot(universe: Universe, player) -> dict[int, int]:
+    """Dividend value of every planet in the player's sector, before a transfer verb runs."""
+    sector = universe.sectors.get(player.sector_id)
+    if sector is None:
+        return {}
+    return {
+        pid_: planet_tax_value(universe.planets[pid_])
+        for pid_ in sector.planet_ids
+        if pid_ in universe.planets
+    }
+
+
+def _shift_dividend_baseline(universe: Universe, before: dict[int, int]) -> None:
+    """Move each planet's baseline by what the transfer moved, so it never counts as growth."""
+    for pid_, value in before.items():
+        planet = universe.planets.get(pid_)
+        if planet is None:
+            continue
+        delta = planet_tax_value(planet) - value
+        if delta:
+            planet.last_tax_value = int(planet.last_tax_value or 0) + delta
+
+
 FERRENGI_ENCOUNTER_VERBS = frozenset({
     ActionKind.ATTACK, ActionKind.RETREAT, ActionKind.SURRENDER,
     ActionKind.HAIL, ActionKind.BROADCAST,
@@ -530,8 +566,10 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
             _attach_limpet(universe, md.owner_id, pid)
 
     if damage > 0:
+        shields_before = player.ship.shields
         player.ship.shields = max(0, player.ship.shields - damage)
-        overflow = damage - player.ship.shields
+        # MINE_OVERFLOW_MODE (FULLGAME_FIXES_V2.md): only the damage the shields did not absorb.
+        overflow = damage - (shields_before if K.mine_overflow_fixed() else player.ship.shields)
         if player.ship.shields == 0 and overflow > 0:
             player.ship.fighters = max(0, player.ship.fighters - overflow)
 
