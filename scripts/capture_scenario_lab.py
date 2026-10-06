@@ -3,7 +3,9 @@
     python scripts/capture_scenario_lab.py
 
 (i) Boundary table: five hull pairs, qty = min-1 / min / min+1.
-(ii)(iii) Cabal tow and MBBS addendum #6 need slice 51. This tree prints that they are skipped.
+(ii) Cabal blockade: a Scout captures an arriving Merchant Cruiser at min qty, tows it to sector 1, sells it.
+(iii) MBBS addendum #6: A tows its unmanned Merchant Freighter through B's sector, B captures it with one
+fighter and goes to sector 1, A keeps towing into sector 1, B sells it out from under him.
 A 30-day invariant pass is scripts/run_match_headless.py (this file only prints the table).
 """
 
@@ -109,8 +111,104 @@ def main() -> None:
     print("Boundary table (corbomite should fire only on a destroy)")
     for row in pairs:
         _row(*row)
-    print("\nCabal blockade (scout captures, tows to sector 1, sell): SKIPPED. Slice 51 tow is not on origin.")
-    print("MBBS addendum #6 (capture a towed ship, tow continues, sell at StarDock): SKIPPED. Same reason.")
+    if not K.tow_on():
+        print("\nCabal blockade / MBBS addendum #6: SKIPPED (TOW_MODE legacy).")
+        return
+    _cabal_blockade()
+    _mbbs_addendum_6()
+
+
+def _path(u, start, goal):
+    """Shortest warp path start -> goal (BFS, sorted, no rng)."""
+    prev = {int(start): None}
+    todo = [int(start)]
+    while todo:
+        cur = todo.pop(0)
+        if cur == int(goal):
+            break
+        for w in sorted(u.sectors[cur].warps):
+            if int(w) not in prev:
+                prev[int(w)] = cur
+                todo.append(int(w))
+    out, cur = [], int(goal)
+    while cur is not None and cur != int(start):
+        out.append(cur)
+        cur = prev.get(cur)
+    return list(reversed(out))
+
+
+def _do(u, pid, kind, **args):
+    return apply_action(u, pid, Action(kind=kind, args=args))
+
+
+def _far_sector(u, hops_min=2):
+    for s in sorted(u.sectors):
+        if int(s) not in K.FEDSPACE_SECTORS and len(_path(u, s, 1)) >= hops_min:
+            return int(s)
+    raise SystemExit("no sector far enough from StarDock")
+
+
+def _cabal_blockade():
+    print("\n(ii) Cabal blockade: Scout captures an arriving Merchant Cruiser, tows it to sector 1, sells it")
+    u = _world()
+    sec = _far_sector(u)
+    a = _sit(u, "A", sec, ShipClass.SCOUT_MARAUDER, 25)
+    b = _sit(u, "B", sec, ShipClass.MERCHANT_CRUISER, 30, 10)
+    need = min_capture_qty((30 + 10) * combat_odds_of(b), combat_odds_of(a))
+    turns0, credits0 = a.turns_today, a.credits
+    res = _do(u, "A", ActionKind.ATTACK, target="B", qty=need)
+    rec = next((r for r in u.parked_ships.values() if r.owner_id == "A"), None)
+    print(f"  attack qty {need}: ok {res.ok}, captured {rec is not None}, B now in {b.ship.ship_class.value}")
+    if rec is None:
+        return
+    print(f"  tow_engage: ok {_do(u, 'A', ActionKind.TOW_ENGAGE, target=f'ship:{rec.id}').ok}")
+    route = _path(u, a.sector_id, 1)
+    for hop in route:
+        r = _do(u, "A", ActionKind.WARP, target=hop)
+        if not r.ok:
+            print(f"  warp {hop} refused: {r.error}")
+            return
+    print(f"  towed {len(route)} hops to sector {a.sector_id}; hull now in {rec.sector_id}")
+    sold = _do(u, "A", ActionKind.SELL_SHIP, ship_id=rec.id)
+    print(f"  sell_ship: ok {sold.ok}, +{a.credits - credits0} credits, {a.turns_today - turns0} turns in all"
+          f" (trade_in_credit {K.trade_in_credit('merchant_cruiser')})")
+
+
+def _mbbs_addendum_6():
+    print("\n(iii) MBBS addendum #6: B captures A's towed Merchant Freighter with 1 fighter, A tows it to sector 1, B sells")
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    y = _far_sector(u, 3)
+    x = next(int(w) for w in sorted(u.sectors[y].warps) if int(w) not in K.FEDSPACE_SECTORS)
+    a = _sit(u, "A", x, ShipClass.MERCHANT_CRUISER, 10)
+    b = _sit(u, "B", y, ShipClass.MERCHANT_CRUISER, 20)
+    ship = Ship(ship_class=ShipClass.MERCHANT_FREIGHTER, name="A-freighter", fighters=0,
+                holds=int((K.hull_spec("merchant_freighter") or {}).get("holds", 20)))
+    sid = _new_ship_id(u)
+    ship.fleet_id = sid
+    u.parked_ships[sid] = ParkedShip(id=sid, owner_id="A", sector_id=x, ship=ship, parked_day=u.day)
+    print(f"  A tow_engage: ok {_do(u, 'A', ActionKind.TOW_ENGAGE, target=f'ship:{sid}').ok}")
+    print(f"  A warps {x} -> {y} (B's sector): ok {_do(u, 'A', ActionKind.WARP, target=y).ok}")
+    res = _do(u, "B", ActionKind.ATTACK, target=f"ship:{sid}", qty=1)
+    told = any(e.kind == EventKind.TOW_TARGET_CAPTURED for e in u.events)
+    print(f"  B attacks with 1 fighter: ok {res.ok}, owner now {u.parked_ships[sid].owner_id}, "
+          f"A still locked {lock_of(a.ship) is not None}, A told {told}")
+    for hop in _path(u, y, 1):
+        _do(u, "B", ActionKind.WARP, target=hop)
+    hops = _path(u, y, 1)
+    for hop in hops:
+        r = _do(u, "A", ActionKind.WARP, target=hop)
+        if not r.ok:
+            print(f"  A warp {hop} refused: {r.error}")
+            return
+    engaged = lock_of(a.ship) is not None
+    print(f"  A towed {len(hops)} hops: A in {a.sector_id}, hull in {u.parked_ships[sid].sector_id}, "
+          f"tow engaged {engaged}, owner {u.parked_ships[sid].owner_id}; B in {b.sector_id}")
+    c0 = b.credits
+    sold = _do(u, "B", ActionKind.SELL_SHIP, ship_id=sid)
+    reasons = [e.payload.get("reason") for e in u.events if e.kind == EventKind.TOW_RELEASED]
+    print(f"  B sell_ship: ok {sold.ok}, +{b.credits - c0} credits; A locked {lock_of(a.ship) is not None}; "
+          f"tow released reasons {reasons}")
 
 
 if __name__ == "__main__":
