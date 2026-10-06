@@ -135,6 +135,11 @@ def density_reading(universe: Universe, sector_id: int) -> dict[str, Any]:
     from .ferrengi import ferrengi_density
     for f in _ferrengi_in(universe, sector_id):
         density += int(ferrengi_density(f))
+    if K.alien_on():  # ALIEN_TRADERS.md al23: an alien counts as a manned ship
+        density += K.DENSITY_PER_SHIP * sum(
+            1 for alien in universe.aliens.values()
+            if alien.alive and alien.sector_id == sector_id
+        )
     if K.fleet_on():  # SHIP_FLEET.md fl22: 38 per uncloaked unmanned ship (manned stays 40)
         from .fleet import density_unmanned
         um_density, um_anomaly = density_unmanned(universe, sector_id)
@@ -196,6 +201,18 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
         # Limpets never show on a holo or a probe (SCANNERS_HIDDEN_INFO.md s9/s13), even your own.
         "mines": [m for m in visible_mines(universe, viewer_id, s) if m["kind"] != MineType.LIMPET.value],
     }
+    if K.alien_on():  # ALIEN_TRADERS.md al24: holo and probe show the real hull
+        view["aliens"] = [
+            {
+                "id": alien.id,
+                "name": alien.name,
+                "hull": alien.ship.ship_class.value,
+                "fighters": int(alien.ship.fighters),
+                "shields": int(alien.ship.shields),
+            }
+            for alien in sorted(universe.aliens.values(), key=lambda row: row.id)
+            if alien.alive and alien.sector_id == sector_id
+        ]
     if K.fed_outpost_tw2002() and view["port"] is not None:  # CLASS0_TERRA.md t25: same label as the sector view
         from .class0 import fed_outpost_label, is_fed_outpost
         if is_fed_outpost(s.port, sector_id):
@@ -260,7 +277,7 @@ def handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
             entry["holo_tick"] = stamp["tick"]
         elif prev.get("has_holo"):
             # A free density refresh must not erase a prior holo reading (QC).
-            for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines", "beacon"):
+            for k in ("port", "planets", "traders", "ferrengi", "fighters", "mines", "beacon", "aliens"):
                 if k in prev:
                     entry[k] = prev[k]
             entry["has_holo"] = True

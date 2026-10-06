@@ -181,7 +181,17 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     trading_port = port is not None and port.class_id != PortClass.STARDOCK and not docks_closed(port)
     other_ids = [pid for pid in sector.occupant_ids if pid != player_id and pid in universe.players]
     ferrengi_ids = [f.id for f in universe.ferrengi.values() if f.sector_id == sector.id and f.alive]
-    targets_here = other_ids + ferrengi_ids
+    alien_ids: list[str] = []
+    if K.alien_on() and not landed:  # ALIEN_TRADERS.md al10: from the ship
+        from .victory import fedspace_protects
+        for alien in universe.aliens.values():
+            if not alien.alive or alien.sector_id != sector.id:
+                continue
+            if in_fedspace and K.rank_tw2002() and fedspace_protects(alien):
+                continue  # al14
+            alien_ids.append(alien.id)
+        alien_ids.sort()
+    targets_here = other_ids + ferrengi_ids + alien_ids
     planets_here = [pl for pl in sector.planet_ids if pl in universe.planets]
 
     # ---- precise (S3) -------------------------------------------------------
@@ -409,7 +419,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             pid for pid in hostile_players
             if not getattr(universe.players[pid].ship, "cloaked", False)
         ]
-    attack_targets = hostile_players + ferrengi_ids
+    attack_targets = hostile_players + ferrengi_ids + alien_ids
     # fedspace-police-v1 f7: Federals are legal suicide targets
     if K.fed_tw2002():
         from .fed import federals_in_sector
@@ -429,7 +439,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     else:
         reason = _need_turns(player, atk_cost)
     atk_params: dict[str, Any] = {"target": {"type": "str", "required": True, "choices": attack_targets,
-                                             "players": hostile_players, "ferrengi": ferrengi_ids}}
+                                             "players": hostile_players, "ferrengi": ferrengi_ids,
+                                             "aliens": alien_ids}}
     if K.fleet_on():
         # SHIP_FLEET.md fl24: unmanned ships go in their own list; `choices` stays exactly as before.
         from .fleet import unmanned_attack_choices

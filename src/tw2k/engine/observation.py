@@ -1396,7 +1396,7 @@ def _adjacent_fogged(player, wid: int) -> dict[str, Any]:
             "seen_tick": seen[2],
             # what the holo scan / probe showed: port name and class, planets, traders, Ferrengi
             "seen": {k: view[k] for k in ("port", "planets", "traders", "ferrengi", "federals", "fighters", "mines",
-                                          "beacon", "unmanned_ships")
+                                          "beacon", "unmanned_ships", "aliens")
                      if view.get(k)},
         })
     if mem:
@@ -1473,6 +1473,18 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         for f in universe.ferrengi.values()
         if f.sector_id == sector.id and f.alive
     ]
+    if K.alien_on():  # ALIEN_TRADERS.md al24: aliens on their own key, real hull
+        info["aliens"] = [
+            {
+                "id": alien.id,
+                "name": alien.name,
+                "hull": alien.ship.ship_class.value,
+                "fighters": int(alien.ship.fighters),
+                "shields": int(alien.ship.shields),
+            }
+            for alien in sorted(universe.aliens.values(), key=lambda row: row.id)
+            if alien.alive and alien.sector_id == sector.id
+        ]
     if K.hardware_tw2002():  # SHIP_HARDWARE_V2.md: the sector display shows a beacon and NavHaz
         if getattr(sector, "beacon", None):
             info["beacon"] = sector.beacon
