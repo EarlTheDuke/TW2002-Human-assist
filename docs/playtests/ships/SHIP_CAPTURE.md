@@ -49,4 +49,4 @@ Ferrengi capture, furbing / salvage, corporate ships + passwords, and change of 
 
 ## Legacy
 
-`CAPTURE_MODE` `legacy` is the pre-slice engine: beaten ships are destroyed, combat outcomes stay `destroyed` / `hit` / `miss`, no `SHIP_CAPTURED`, no `captured_from` keys, no new rng. Pin: `test_capture_legacy_is_unchanged` (`622c3af79167631e894d61b1` on d632aae).
+`CAPTURE_MODE` `legacy` is the pre-slice engine: beaten ships are destroyed, combat outcomes stay `destroyed` / `hit` / `miss`, no `SHIP_CAPTURED`, no `captured_from` keys, no new rng. Pin: `test_capture_legacy_is_unchanged` (`ac36e4d1c5ee8ed9d8881733` on 5968646, identical to that parent).

@@ -1,7 +1,7 @@
 """Hash of a short run that destroys at the exact-minimum fighter count.
 
-Recorded on d632aae (the commit before ship-capture-v1; slice 51 was not on origin).
-With CAPTURE_MODE legacy the same attacks must still destroy, and this digest must match.
+Re-pinned on 5968646 (slice 50 follow-up). The digest matches that parent with
+CAPTURE_MODE legacy: the same attacks still destroy, and capture adds no bytes.
 """
 
 from __future__ import annotations
