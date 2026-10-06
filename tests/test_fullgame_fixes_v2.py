@@ -428,10 +428,11 @@ def test_fullgame_fixes_v2_switches_off_equal_the_base():
     import sys
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
+    flips = V2_SWITCHES + ("CORPSHIP_MODE",)  # corp-ships-furb-v1: that mode did not exist on f10b080
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
-        f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={V2_SWITCHES!r}))"
+        f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={flips!r}))"
     )
     env = dict(os.environ, PYTHONHASHSEED="0")
     out = subprocess.run([sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True,
