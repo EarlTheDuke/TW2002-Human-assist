@@ -167,7 +167,8 @@ def upgrade_legal_spec(universe: Universe, pid: str) -> tuple[bool, str | None, 
             if _trades(port, commodity):
                 commodities[commodity.value] = _commodity_row(port, commodity, player.credits)
         if not any(int(row["max_units"]) >= 1 for row in commodities.values()):
-            why = "this port cannot take another upgrade unit"
+            roomy = any(_max_units(port, Commodity(c), 10**12) >= 1 for c in commodities)
+            why = "not enough credits for one upgrade unit" if roomy else "this port cannot take another upgrade unit"
     if why is None:
         why = _out_of_turns(player, cost)
     params = {"commodities": commodities, "turn_cost": cost}
