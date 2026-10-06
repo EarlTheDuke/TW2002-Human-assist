@@ -594,3 +594,270 @@ def test_qc_holo_view_labels_fighter_ownership(monkeypatch):
     assert sector_view(u, "P3", sid)["fighters"]["ownership"] == "personal"
     monkeypatch.setattr(K, "CORP_MODE", "legacy")
     assert "ownership" not in sector_view(u, "P3", sid)["fighters"]
+
+
+# ---- plant follow-ups (QC 57 mutation run) ----------------------------------------------------
+
+def test_qc_pb6_changed_password_invalidates_old_pass():
+    u = _u()
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    assert _act(u, "P1", "corp_set_password", password="aa").ok
+    assert _act(u, "P1", "corp_invite", target="P2").ok
+    assert _act(u, "P1", "corp_set_password", password="bb").ok
+    old = [m for m in u.players["P2"].inbox if m.get("kind") == "corp_invite"][-1]["password"]
+    assert old == "aa"
+    res = _act(u, "P2", "corp_join", ticker="XYZ", password=old)
+    assert not res.ok and res.error == "wrong password"
+    assert u.players["P2"].corp_ticker is None
+
+
+def test_qc_pb8_alignment_rule_mixed_never_ousts_and_same_side_does(monkeypatch):
+    from tw2k.engine.corp import extern_corp_step
+    u = _u()
+    _corp(u, members=("P2",))
+    u.players["P1"].alignment, u.players["P2"].alignment = 500, -500
+    extern_corp_step(u)
+    assert "P2" in u.corporations["XYZ"].member_ids  # mixed (default): stays, pays the penalty
+    monkeypatch.setattr(K, "CORP_ALIGNMENT_RULE", "same_side")
+    extern_corp_step(u)
+    assert "P2" not in u.corporations["XYZ"].member_ids and u.players["P2"].corp_ticker is None
+
+
+def test_qc_pb9_penalty_formula_and_straight_corp(monkeypatch):
+    from tw2k.engine.corp import extern_corp_step
+    u = _u()
+    _corp(u, members=("P2", "P3"))
+    u.players["P1"].alignment, u.players["P2"].alignment, u.players["P3"].alignment = 2_000, 300, -400
+    for pid in ("P1", "P2", "P3"):
+        u.players[pid].experience = 10_000
+    extern_corp_step(u)  # highest_good: 2000 // 4 = 500
+    assert [u.players[p].experience for p in ("P1", "P2", "P3")] == [9_500] * 3
+    monkeypatch.setattr(K, "MIXED_CORP_EXP_RULE", "least_extreme")
+    extern_corp_step(u)  # min(2000, |-400|) // 4 = 100
+    assert [u.players[p].experience for p in ("P1", "P2", "P3")] == [9_400] * 3
+    u.players["P3"].alignment = 50  # straight corp: no loss
+    extern_corp_step(u)
+    assert [u.players[p].experience for p in ("P1", "P2", "P3")] == [9_400] * 3
+
+
+def test_qc_pb13_rogue_group_forgets_its_corp_and_cannot_be_recalled():
+    from tw2k.engine.corp import deploy_friend, disband
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    u.sectors[sid].fighters = FighterDeployment(owner_id="P2", count=30, mode=FighterMode.DEFENSIVE,
+                                                corp_ticker="XYZ")
+    u.sectors[sid].mines = [MineDeployment(owner_id="P2", kind=MineType.ARMID, count=4, corp_ticker="XYZ")]
+    disband(u, u.corporations["XYZ"])  # P1 (C.E.O.) is in sector 1, so the groups in sid go rogue
+    dep, md = u.sectors[sid].fighters, u.sectors[sid].mines[0]
+    assert dep.owner_id == K.ROGUE_OWNER_ID and dep.corp_ticker is None
+    assert md.owner_id == K.ROGUE_OWNER_ID and md.corp_ticker is None
+    for pid in ("P1", "P2"):
+        assert not deploy_friend(u, pid, dep) and not deploy_friend(u, pid, md)
+    _move(u, "P2", sid)
+    u.players["P2"].ship.fighters = 0
+    rec = _legal(u, "P2", "recall_deployed")
+    assert not rec.legal or not (rec.params.get("fighters") or rec.params.get("mines"))
+    assert not _act(u, "P2", "recall_deployed", what="fighters", qty=5).ok
+    assert not apply_action(u, "P2", Action(kind=ActionKind.RECALL_DEPLOYED,
+                                            args={"what": "mines", "kind": "armid", "qty": 1})).ok
+    assert u.sectors[sid].fighters.count == 30
+
+
+def test_qc_pb16_transfer_refuses_landed_and_cloaked_partners(monkeypatch):
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    _move(u, "P1", sid)
+    _move(u, "P2", sid)
+    u.players["P1"].ship.fighters = 50
+    assert _act(u, "P1", "corp_transfer", target="P2", item="credits", qty=10, direction="give").ok
+    u.players["P2"].planet_landed = 999
+    res = _act(u, "P1", "corp_transfer", target="P2", item="credits", qty=10, direction="give")
+    assert not res.ok and "ships" in res.error
+    assert "P2" not in _legal(u, "P1", "corp_transfer").params["target"]["choices"]
+    u.players["P2"].planet_landed = None
+    if K.hardware_tw2002():
+        u.players["P2"].ship.cloaked = True
+        res = _act(u, "P1", "corp_transfer", target="P2", item="credits", qty=10, direction="give")
+        assert not res.ok and "cloaked" in res.error
+        assert "P2" not in _legal(u, "P1", "corp_transfer").params["target"]["choices"]
+
+
+def test_qc_pb18_transfer_with_a_non_member_is_refused():
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    for pid in ("P1", "P3"):
+        _move(u, pid, sid)
+    for direction in ("give", "take"):
+        res = _act(u, "P1", "corp_transfer", target="P3", item="credits", qty=10, direction=direction)
+        assert not res.ok and res.error == "no such member"
+    assert u.players["P1"].credits == 25_000 and u.players["P3"].credits == 25_000
+
+
+def test_qc_pb20_corporate_limpet_never_attaches_to_a_member():
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    u.sectors[sid].mines = [MineDeployment(owner_id="P1", kind=MineType.LIMPET, count=3, corp_ticker="XYZ")]
+    _move(u, "P2", sid)
+    _apply_sector_hazards(u, "P2", u.sectors[sid], entry_verb="warp")
+    assert u.sectors[sid].mines and u.sectors[sid].mines[0].count == 3
+    _move(u, "P4", sid)
+    _apply_sector_hazards(u, "P4", u.sectors[sid], entry_verb="warp")
+    assert not u.sectors[sid].mines or u.sectors[sid].mines[0].count == 2
+
+
+def test_qc_pb21_toll_bill_and_surrender_follow_deploy_friend(monkeypatch):
+    from tw2k.engine.runner import _surrender_deployment
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    nb = next(w for w in sorted(u.sectors[sid].warps) if w not in K.FEDSPACE_SECTORS)
+    _move(u, "P2", nb)
+    monkeypatch.setattr(K, "COMBAT_MODE", "legacy")  # the toll is billed before the warp (no challenge)
+    monkeypatch.setattr(K, "INFO_MODE", "legacy")
+    sec = u.sectors[sid]
+    sec.fighters = FighterDeployment(owner_id="P1", count=10, mode=FighterMode.TOLL, corp_ticker="XYZ")
+    warp = _legal(u, "P2", "warp")
+    assert str(sid) not in warp.params["toll_due_by"]
+    assert _surrender_deployment(u, "P2", sec) is None
+    sec.fighters = FighterDeployment(owner_id="P1", count=10, mode=FighterMode.TOLL)  # a mate's personal group
+    warp = _legal(u, "P2", "warp")
+    assert warp.params["toll_due_by"].get(str(sid), 0) > 0
+    assert _surrender_deployment(u, "P2", sec) is sec.fighters
+
+
+def test_qc_pb22_member_adds_to_the_corp_group_without_combat():
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    for pid in ("P1", "P2"):
+        _move(u, pid, sid)
+        u.players[pid].ship.fighters = 50
+    assert _act(u, "P1", "deploy_fighters", qty=10, mode="defensive", ownership="corporate").ok
+    assert _act(u, "P2", "deploy_fighters", qty=5, mode="defensive", ownership="corporate").ok
+    dep = u.sectors[sid].fighters
+    assert dep.count == 15 and dep.corp_ticker == "XYZ"
+    assert u.players["P1"].ship.fighters == 40 and u.players["P2"].ship.fighters == 45
+    assert not any(e.kind.value == "combat" for e in u.events if e.sector_id == sid)
+
+
+def test_qc_pb24_rivals_see_no_corp_traffic():
+    u = _u()
+    _corp(u, members=("P2",))
+    assert _act(u, "P1", "corp_invite", target="P3").ok
+    assert _act(u, "P1", "corp_memo", message="meet at 77").ok
+    assert _act(u, "P2", "corp_leave").ok
+    kinds = [k for k in _seen_kinds(u, "P4") if str(k).startswith("corp_")]
+    assert kinds == []
+    assert "meet at 77" not in build_observation(u, "P4").model_dump_json()
+
+
+def test_qc_pb25_ranking_orders_by_experience_not_ticker():
+    from tw2k.engine.corp import public_corporations
+    u = _u(5)
+    _corp(u, members=("P2",))
+    assert _act(u, "P3", "corp_create", ticker="ABC", name="Ab").ok
+    for pid, exp in (("P1", 100), ("P2", 60), ("P3", 150)):
+        u.players[pid].experience = exp
+    rows = public_corporations(u)
+    assert [(r["ticker"], r["exp"]) for r in rows] == [("XYZ", 160), ("ABC", 150)]
+
+
+def test_qc_password_length_invite_targets_and_ceo_approver(monkeypatch):
+    u = _u(5)
+    _corp(u, members=("P2",))
+    too_long = "x" * (int(K.CORPSHIP_PASSWORD_MAX_LEN) + 1)
+    assert not _act(u, "P1", "corp_set_password", password=too_long).ok
+    assert _act(u, "P3", "corp_create", ticker="ABC", name="Ab").ok
+    assert not _act(u, "P1", "corp_invite", target="P3").ok  # already in a corp
+    assert "P3" not in _legal(u, "P1", "corp_invite").params["target"]["choices"]
+    assert _act(u, "P2", "corp_invite", target="P4").ok  # any member hands out a pass (default)
+    monkeypatch.setattr(K, "CORP_APPROVER", "ceo")
+    assert not _act(u, "P2", "corp_invite", target="P5").ok
+    assert not _legal(u, "P2", "corp_invite").legal
+    assert _act(u, "P1", "corp_invite", target="P5").ok
+
+
+def test_qc_mixed_penalty_ignores_eliminated_and_extern_dissolves_dead_ceo_corp():
+    from tw2k.engine.corp import extern_corp_step
+    u = _u()
+    _corp(u, members=("P2", "P3"))
+    u.players["P1"].alignment, u.players["P2"].alignment, u.players["P3"].alignment = 2_000, 100, -400
+    for pid in ("P1", "P2", "P3"):
+        u.players[pid].experience = 5_000
+    u.players["P3"].alive = False  # the only evil member is eliminated: straight corp
+    extern_corp_step(u)
+    assert u.players["P1"].experience == 5_000 and u.players["P2"].experience == 5_000
+    assert "P3" not in u.corporations["XYZ"].member_ids
+    u.players["P1"].alive = False  # eliminated C.E.O. -> the corp dissolves at Extern
+    extern_corp_step(u)
+    assert "XYZ" not in u.corporations and u.players["P2"].corp_ticker is None
+
+
+def test_qc_credit_transfer_cannot_exceed_the_givers_cash():
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    for pid in ("P1", "P2"):
+        _move(u, pid, sid)
+    assert not _act(u, "P1", "corp_transfer", target="P2", item="credits", qty=25_001, direction="give").ok
+    assert not _act(u, "P1", "corp_transfer", target="P2", item="credits", qty=25_001, direction="take").ok
+    assert _act(u, "P1", "corp_transfer", target="P2", item="credits", qty=25_000, direction="take").ok
+    assert u.players["P1"].credits == 50_000 and u.players["P2"].credits == 0
+
+
+def test_qc_transfer_have_check_turns_and_fog():
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    for pid in ("P1", "P2", "P4"):
+        _move(u, pid, sid)
+    u.players["P1"].ship.fighters = 50
+    assert not _act(u, "P1", "corp_transfer", target="P2", item="fighters", qty=51, direction="give").ok
+    t0 = u.players["P1"].turns_today
+    res = _act(u, "P1", "corp_transfer", target="P2", item="fighters", qty=5, direction="give")
+    assert res.ok and res.turns_spent == 0 and u.players["P1"].turns_today == t0
+    assert "corp_transfer" in _seen_kinds(u, "P2")
+    assert "corp_transfer" not in _seen_kinds(u, "P4")
+
+
+def test_qc_ownership_guards_on_deploy():
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    for pid in ("P1", "P3", "P4"):
+        _move(u, pid, sid)
+        u.players[pid].ship.fighters = 50
+        u.players[pid].ship.mines[MineType.ARMID] = 10
+    # no corp, no corporate deployment
+    assert _legal(u, "P3", "deploy_fighters").params["ownership"]["choices"] == ["personal"]
+    assert not _act(u, "P3", "deploy_fighters", qty=5, mode="defensive", ownership="corporate").ok
+    # corporate into your own personal group (or the reverse) is refused, nothing moves
+    assert _act(u, "P1", "deploy_fighters", qty=10, mode="defensive", ownership="corporate").ok
+    res = _act(u, "P1", "deploy_fighters", qty=5, mode="defensive", ownership="personal")
+    assert not res.ok and u.sectors[sid].fighters.count == 10 and u.players["P1"].ship.fighters == 40
+    # a qty-0 change by someone who does not control the group is refused
+    assert not _act(u, "P4", "deploy_fighters", qty=0, mode="offensive", ownership="personal").ok
+    assert u.sectors[sid].fighters.mode == FighterMode.DEFENSIVE and u.sectors[sid].fighters.corp_ticker == "XYZ"
+    # personal and corporate armids stay two groups
+    assert apply_action(u, "P1", Action(kind=ActionKind.DEPLOY_MINES,
+                                        args={"kind": "armid", "qty": 3, "ownership": "personal"})).ok
+    assert apply_action(u, "P1", Action(kind=ActionKind.DEPLOY_MINES,
+                                        args={"kind": "armid", "qty": 2, "ownership": "corporate"})).ok
+    groups = sorted((m.corp_ticker or "", int(m.count)) for m in u.sectors[sid].mines if m.kind == MineType.ARMID)
+    assert groups == [("", 3), ("XYZ", 2)]
+
+
+def test_qc_leaver_cannot_recall_the_corporate_group_he_deployed():
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    _move(u, "P2", sid)
+    u.players["P2"].ship.fighters = 50
+    assert _act(u, "P2", "deploy_fighters", qty=10, mode="defensive", ownership="corporate").ok
+    assert _act(u, "P2", "corp_leave").ok
+    assert not _act(u, "P2", "recall_deployed", what="fighters", qty=5).ok
+    assert u.sectors[sid].fighters.count == 10 and u.sectors[sid].fighters.corp_ticker == "XYZ"
