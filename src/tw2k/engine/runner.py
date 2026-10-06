@@ -608,7 +608,7 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
                 return damage
 
     # Hostile sector fighter check
-    if sector.fighters and sector.fighters.owner_id != pid:
+    if sector.fighters and (K.corp_rules_on() or sector.fighters.owner_id != pid):
         f_mode = sector.fighters.mode
         from .corp import deploy_friend
         allied = deploy_friend(universe, pid, sector.fighters)
@@ -3740,10 +3740,8 @@ def _handle_recall_deployed(universe: Universe, pid: str, action: Action) -> Act
         return ActionResult(ok=False, error="invalid mine type")
     if kind == MineType.ATOMIC:
         return ActionResult(ok=False, error="atomic mines do not sit in a sector")
-    existing = next((m for m in sector.mines if m.kind == kind and (
-        (K.corp_rules_on() and getattr(m, "corp_ticker", None) and player.corp_ticker == m.corp_ticker
-         and m.owner_id != K.ROGUE_OWNER_ID)
-        or m.owner_id == pid)), None)
+    from .legality import _recall_owns  # QC 57: a leaver no longer recalls his old corp's corporate mines
+    existing = next((m for m in sector.mines if m.kind == kind and _recall_owns(universe, player, m)), None)
     if existing is None or int(existing.count) <= 0:
         return ActionResult(ok=False, error="no mines of yours here")
     aboard = sum(int(v) for v in (player.ship.mines or {}).values())

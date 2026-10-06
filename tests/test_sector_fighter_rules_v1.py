@@ -81,7 +81,9 @@ def test_a_planet_raises_the_fighter_cap() -> None:
     owner.ship.fighters = 20
     u.sectors[sid].fighters = FighterDeployment(owner_id=owner.id, count=5000, mode=FighterMode.DEFENSIVE)
     blocked = _la(u, owner.id, "deploy_fighters")
-    assert not blocked.legal
+    # CORP_MODE tw2002 (REV 543): the controller may still change mode/ownership with qty 0, so the
+    # entry can stay legal - but it must not offer a single fighter over the cap.
+    assert not blocked.legal or blocked.params["qty"]["max"] == 0
     planet = Planet(id=91001, sector_id=sid, name="Cap", class_id=PlanetClass.M)
     u.planets[planet.id] = planet
     u.sectors[sid].planet_ids.append(planet.id)
@@ -489,7 +491,7 @@ def test_existing_over_cap_group_not_shrunk_on_deploy() -> None:
     owner.ship.fighters = 20
     u.sectors[sid].fighters = FighterDeployment(owner_id=owner.id, count=6000, mode=FighterMode.DEFENSIVE)
     listed = _la(u, owner.id, "deploy_fighters")
-    assert not listed.legal
+    assert not listed.legal or listed.params["qty"]["max"] == 0  # qty-0 change only (CORP_MODE, REV 543)
     res = apply_action(u, owner.id, Action(kind=ActionKind.DEPLOY_FIGHTERS, args={"qty": 1, "mode": "defensive"}))
     assert not res.ok
     assert u.sectors[sid].fighters.count == 6000

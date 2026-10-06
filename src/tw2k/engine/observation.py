@@ -1494,6 +1494,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         }
         if sector.fighters.owner_id == player_id:
             group["toll_credits"] = int(sector.fighters.toll_credits or 0)
+        if _K.corp_rules_on():  # CORP_RULES.md cr13/cr17 (QC 57): personal | corporate | rogue
+            from .legality import _ownership_label
+            group["ownership"] = _ownership_label(sector.fighters)
         info["fighter_group"] = group
     viewer = universe.players.get(player_id)
     xp = int(viewer.experience) if viewer is not None else 0
