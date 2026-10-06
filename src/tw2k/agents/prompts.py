@@ -606,7 +606,9 @@ _PLANET_TRADE_NOTE = (
     "if it is your first trade here, else 0). Max = min(what the port is buying, the planet's stock); "
     "legal_actions planet_trade.params.planets[] lists sellable / quote / unit_bid. The whole lot is quoted a bit "
     "under ship price because the port's bid falls as it fills; one counter on the total is allowed, a greedy one "
-    "is refused and still costs the visit turn. Credits go to you. Keep fuel ore for citadels and planet TransWarp.\n"
+    "is refused and still costs the visit turn. Credits go to you. Keep fuel ore for citadels and planet TransWarp. "
+    "Strategy note: a planet in the same sector as a port that buys its goods can sell its stock in one quick "
+    "action instead of hauling it by ship, at a slightly lower price per unit.\n"
 )
 
 

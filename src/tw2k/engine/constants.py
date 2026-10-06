@@ -1965,7 +1965,14 @@ PLANET_TRADE_EXP = "as_trade"           # pt15 UNVERIFIED: "as_trade" (one ship 
 PLANET_TRADE_TWARP_COOLDOWN = 0         # pt20 UNVERIFIED: days after a planet TransWarp before it may trade
 PLANET_TRADE_FEED = "public_summary"    # pt24 UNVERIFIED: "public_summary" (witnesses, like a trade) | "actor_only"
 BOT_PLANET_TRADE_POLICY = "sell_surplus"  # "sell_surplus" | "off"
-BOT_PLANET_TRADE_MIN_LOT = 500          # bots sell organics / equipment lots of at least this many units
+BOT_PLANET_TRADE_MIN_LOT = 25           # lot floor when the agreement costs the dock turn (was 500; 10-day sweep)
+# bots-use-planet-trade-v1 (PLANETARY_TRADING.md "Bots"): a world under a port that buys its organics / equipment
+# keeps that stock for planet_trade instead of the ship stockpile haul, and a genesis torpedo may detour up to
+# BOT_PLANET_TRADE_GENESIS_HOPS known hops to land the new world under such a port (0 = deploy where it stands).
+BOT_PLANET_TRADE_FREE_LOT = 10          # lot floor when the agreement costs 0 turns (visit already paid)
+BOT_PLANET_TRADE_HOLD = True
+BOT_PLANET_TRADE_GENESIS_HOPS = 0       # measured: a 2-hop detour cost N2 17-23% net worth on 2 of 5 seeds
+BOT_PLANET_TRADE_QUOTE_PCT = 90         # bot estimate of the lot quote as % of the unit bid x qty (curve)
 BOT_PLANET_TRADE_KEEP_ORE = True        # PTW "Don't sell fuel ore"
 
 

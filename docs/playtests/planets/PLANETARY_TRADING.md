@@ -82,12 +82,29 @@ pins (3 days in-suite); the spec's 10-day 6-seat digests were also compared outs
 ## Bots
 
 `K.BOT_PLANET_TRADE_POLICY = "sell_surplus"`: the seat brain (N1-N3) checks `planet_trade` right before its
-ladder. Docked with a legal agreement, it sells the biggest organics or equipment lot of at least
-`BOT_PLANET_TRADE_MIN_LOT = 500` units at the quote (no `offer`, so no wasted haggle turn); never fuel ore
-(`BOT_PLANET_TRADE_KEEP_ORE = True`); organics keep the colony's feed reserve (`max(75, 4 days of burn)`, the
-stockpile-haul reserve). `"off"` never uses it. The H heuristic is not planet-aware (unchanged). LLM seats see the
-verb in the legal list, the port block flag and the `_PLANET_TRADE_NOTE` prompt paragraph (same exposure as the
-fleet / tow verbs).
+ladder. Docked with a legal agreement, it sells the biggest organics or equipment lot at the quote (no `offer`, so no
+wasted haggle turn); never fuel ore (`BOT_PLANET_TRADE_KEEP_ORE = True`); organics keep the colony's feed reserve
+(`max(75, 4 days of burn)`, the stockpile-haul reserve). Lot floors (bots-use-planet-trade-v1, picked from the 10-day
+sweep below): `BOT_PLANET_TRADE_MIN_LOT = 25` (was 500) when the agreement costs the dock turn, and
+`BOT_PLANET_TRADE_FREE_LOT = 10` when the visit is already paid (`turn_cost` 0 after a ship trade in the same visit,
+pt9). `"off"` never uses it. The H heuristic is not planet-aware (unchanged). LLM seats see the verb in the legal
+list, the port block flag and the `_PLANET_TRADE_NOTE` prompt paragraph (same exposure as the fleet / tow verbs).
+
+bots-use-planet-trade-v1 added, all behind `BOT_PLANET_TRADE_POLICY` and `PLANET_TRADE_MODE` (legacy never reaches it):
+- Keep the stock: `BOT_PLANET_TRADE_HOLD = True`. A world whose own sector has a port that buys its organics or
+  equipment keeps that stock for the agreement; the ship stockpile haul skips it (fuel ore is still hauled).
+- Fly there and sell: `_opt_planet_sell` puts the trip in the N3 value-per-turn allocator. Kept lot capped by the
+  known port room, at least `MIN_LOT`, valued at `BOT_PLANET_TRADE_QUOTE_PCT = 90`% of the known unit bid minus the
+  base price, divided by (hops x turns per warp + 1). The world in the current sector is left to the pre-ladder sale.
+- Genesis detour: `BOT_PLANET_TRADE_GENESIS_HOPS` (default 0 = deploy where it stands). With N > 0, a seat about to
+  deploy in a sector whose port buys neither good carries the torpedo up to N known hops to the nearest known
+  non-FedSpace port that buys organics or equipment (bounded by `pt_detour` in seat memory, which stays off the
+  scratchpad while it is 0). It cost N2 17-23% of its day-10 net worth on two of five seeds (Checks below), so it
+  is off by default and kept as a switch for longer games.
+- Prompt (tw2002 only): `_PLANET_TRADE_NOTE` gains one neutral sentence: "Strategy note: a planet in the same sector
+  as a port that buys its goods can sell its stock in one quick action instead of hauling it by ship, at a slightly
+  lower price per unit."
+- Tests: `tests/test_bots_planet_trade_v1.py` (16).
 
 ## Deliberate differences
 
@@ -171,3 +188,89 @@ pb20 (rival stock in the refusal) by `test_fog_rival_planet_never_shown_or_infer
   with the lab's 20-hold hull (land, load, lift off, sell): 4,000 units sold in 1,000 turns for 417,040 (104.3 a
   unit, 417 a turn). The curve pays slightly less a unit than single shiploads and is ~1,450x faster a turn, which is
   TWGS's "isn't the best price but it is quick".
+
+## Checks (bots-use-planet-trade-v1)
+
+Base = origin 84b7039 (slice 53 corp ships + fullgame-fixes-v2; slice 54 bots: MIN_LOT 500); after = this commit
+rebased on it. (The same four runs on b7e1f86 before the slice-53 rebase gave identical numbers.) Scripted
+`--seats N3,N3,N2,N2,N1,H --days 10` (`qc_bridge\ptrade2_artifacts\pmatch2.py`, invariants on), every mode at its default.
+
+Seed 250925:
+
+| Seat | NW before | NW after | change | ship trades before / after | planet trades | credits from them | units |
+|---|---|---|---|---|---|---|---|
+| P1 N3 | 747,201 | 745,255 | -0.3% | 504 / 502 | 5 | 8,982 | 66 |
+| P2 N3 | 240,690 | 246,986 | +2.6% | 439 / 438 | 0 | 0 | 0 |
+| P3 N2 | 294,636 | 337,339 | +14.5% | 327 / 348 | 1 | 990 | 10 |
+| P4 N2 | 523,082 | 547,351 | +4.6% | 435 / 431 | 1 | 1,630 | 10 |
+| P5 N1 | 445,423 | 425,700 | -4.4% | 674 / 668 | 2 | 7,227 | 73 |
+| P6 H | 552,814 | 619,312 | +12.0% | 2,413 / 2,474 | 0 | 0 | 0 |
+| total | 2,803,846 | 2,921,943 | +4.2% | | 9 | 18,829 | |
+
+Seed 20260925:
+
+| Seat | NW before | NW after | change | ship trades before / after | planet trades | credits from them | units |
+|---|---|---|---|---|---|---|---|
+| P1 N3 | 763,303 | 763,303 | +0.0% | 496 / 496 | 0 | 0 | 0 |
+| P2 N3 | 764,176 | 764,176 | +0.0% | 525 / 525 | 0 | 0 | 0 |
+| P3 N2 | 673,633 | 673,633 | +0.0% | 442 / 442 | 0 | 0 | 0 |
+| P4 N2 | 552,131 | 552,131 | +0.0% | 521 / 521 | 0 | 0 | 0 |
+| P5 N1 | 398,333 | 398,333 | +0.0% | 270 / 270 | 0 | 0 | 0 |
+| P6 H | 491,199 | 491,199 | +0.0% | 2,076 / 2,076 | 0 | 0 | 0 |
+| total | 3,642,775 | 3,642,775 | +0.0% | | 0 | 0 | |
+
+Rejected 0 (engine and validator), seat exceptions 0, forced stops 0, invariant violations 0 in all four runs.
+Planet trading stays small in a 10-day game: bot worlds only hold about 20-90 organics / equipment at a time
+(production is colonists x class coefficient / 100 a day, and most early colonists work fuel ore), so seed
+250925 sees 9 sales of 159 units in total for 18,829 credits. On seed 20260925 no sale ever qualified, and the game
+is identical to the base.
+
+How the values were picked (same runs, same seeds):
+- Lot floor, pre-rebase (f10b080 code, no free lot): MIN_LOT 100 / 200 / 300 / 500 all gave 0 planet trades and
+  identical results. A day-10 probe (genesis detour on) found 12 bot worlds, all under a port that buys organics or
+  equipment, holding at most 87 organics / 34 equipment, so a lot of 100+ never forms.
+- Lot floor, post-rebase, with the free lot: seed 250925 MIN_LOT 25 gave 9 trades / 17,776 credits, MIN_LOT 50 and
+  100 gave 7 / 13,699 (identical games). Seed 20260925 MIN_LOT 25 and 50: 1 trade / 1,140. Picked 25.
+- Genesis detour (2 hops) vs none, MIN_LOT 25: seed 20260925 bots P1-P5 3,151,576 -> 2,904,413 (-7.8%) with the
+  detour, unchanged without. Solo N2 (`seat_brain_acceptance.py`, 10 days): seed 20260925 607,747 -> 505,204, seed 31
+  593,304 -> 454,809 with the detour, unchanged without. Picked 0 (off).
+- Hold on vs off: identical results in every run measured (the hold only changes which haul is chosen when a kept
+  world's stock is tiny anyway); kept on.
+- Free lot vs none: the free lot is what made N1 sell at all; solo N1 seed 250925 171,399 -> 338,403.
+
+Solo 5-seed `seat_brain_acceptance` (N1 / N2, 10 days, CLASS0_MODE legacy as in the N2 bar test; measured on b7e1f86):
+
+| seed | N1 before | N1 after | N2 before | N2 after |
+|---|---|---|---|---|
+| 250925 | 171,399 | 338,403 | 316,376 | 323,479 |
+| 20260925 | 325,650 | 325,650 | 607,747 | 607,747 |
+| 230923 | 320,670 | 316,053 | 572,704 | 571,553 |
+| 99 | 241,405 | 225,922 | 588,590 | 576,110 |
+| 31 | 332,830 | 332,830 | 593,304 | 593,304 |
+
+Rejected 0 on every run. N2 still beats N1 on four seeds; on 250925 N1 gains far more from the small sales than N2,
+so `test_n2_day10_beats_n1_and_keeps_organics` keeps the slice-54 lot floors (MIN_LOT / FREE_LOT 500) for its
+ladder bar only (same treatment as its CLASS0_MODE pin). Held-zero planet ids are unchanged.
+
+Legacy: unchanged. Everything new is behind `BOT_PLANET_TRADE_POLICY` / `planet_trade_on()`, and the new seat-memory
+field is left out of the scratchpad at its default.
+- `PLANET_TRADE_LEGACY_GOLDEN = 77c7d444a0965a2c40cffcca` still matches (PLANET_TRADE_MODE flipped).
+- `test_tow_legacy_is_unchanged` (flips TOW + CAPTURE + PLANET_TRADE + CORPSHIP + the fullgame-v2 switches) and
+  `tests/capture_legacy_pin.py` (PLANET_TRADE_MODE legacy) are unchanged.
+- `test_corpships_legacy_is_unchanged` (slice 53, 6 seats, 10 days) flipped CORPSHIP + the seven fullgame-v2 switches
+  but not PLANET_TRADE_MODE, so it ran the tw2002 bots and moved. It now also flips PLANET_TRADE_MODE (single-mode pins
+  flip all newer modes). Re-recorded golden `85622347d694ff6224ec89bc` (was `e11cd2ec746b097c12490a8e`, f10b080 at
+  defaults): f10b080 with PLANET_TRADE_MODE flipped, 84b7039 with all nine flipped and this commit with all nine
+  flipped all give `85622347d694ff6224ec89bc` (`ptrade2_artifacts\dig10.py`).
+- `test_fullgame_fixes_v2_switches_off_equal_the_base` flipped only the seven fullgame-v2 switches, so it ran the
+  tw2002 bots, and their planet-trade play changed: the digest moved from `5e29f9528d7e5000218b575a` to
+  `8d7655a7dda68d7e18b22c13`. Following the single-mode pin rule, it now also flips PLANET_TRADE_MODE (and, since slice 53, CORPSHIP_MODE). Re-recorded
+  golden `77c7d444a0965a2c40cffcca`. Equivalence was checked three ways (`ptrade2_artifacts\dig3.py`, seats N3,N2,N1,H,
+  seed 250925, 3 days): f10b080 with PLANET_TRADE_MODE flipped, b7e1f86 with all eight flipped, and this commit with
+  all eight flipped all give `77c7d444a0965a2c40cffcca`. Without any flip, f10b080 gives `5e29f952...` (the old golden).
+
+30-day runs (slice 54 code before this follow-up, `ptrade_artifacts`):
+- Scripted `--seats N3,N3,N2,N2,N1,H --seed 250925 --days 30`: net worth P1 2,658,541 / P2 2,100,479 / P3 2,414,825 /
+  P4 1,956,128 / P5 1,145,801 / P6 880,462. Planet trades 0, rejected 0, violations 0, exceptions 0 (7,620 s).
+- Headless 2 heuristic seats, seed 42, 30 days: no crash, 75,988 events, 0 planet trades. P2 won on time / net worth
+  with 1,085,694; P1 853,240 (`ptrade_artifacts\headless30_summary.json`).

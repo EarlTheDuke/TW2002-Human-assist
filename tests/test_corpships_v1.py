@@ -294,10 +294,13 @@ def test_legacy_hides_the_new_verbs(monkeypatch):
 
 # Re-pinned on f10b080 (slice 54). With CORPSHIP_MODE legacy the 10-day digest matches that parent.
 # fullgame-fixes-v2 landed after that pin; its seven switches are flipped so they do not move the hash.
-CORPSHIP_LEGACY_GOLDEN = "e11cd2ec746b097c12490a8e"
+# bots-use-planet-trade-v1 changed tw2002 bot play under PLANET_TRADE_MODE, so the pin flips that mode too (single-mode
+# pins flip all newer modes). f10b080 with PLANET_TRADE_MODE flipped, 84b7039 and bots-use-planet-trade-v1 with the
+# nine flips below all digest to 85622347d694ff6224ec89bc (was e11cd2ec746b097c12490a8e = f10b080 at defaults).
+CORPSHIP_LEGACY_GOLDEN = "85622347d694ff6224ec89bc"
 _CORP_PIN_FLIPS = (
     "CORPSHIP_MODE", "PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
-    "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE",
+    "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE", "PLANET_TRADE_MODE",
 )
 
 

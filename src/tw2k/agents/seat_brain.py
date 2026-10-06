@@ -218,6 +218,8 @@ class SeatMemory:
     psychic_pct: float | None = None
     psychic_commodity: str | None = None
     psychic_unit: int | None = None
+    # bots-use-planet-trade-v1: actions spent steering the genesis torpedo under a buying port.
+    pt_detour: int = 0
 
     def dump(self) -> str:
         payload = {
@@ -250,6 +252,8 @@ class SeatMemory:
             payload["psychic_commodity"] = self.psychic_commodity
         if self.psychic_unit is not None:
             payload["psychic_unit"] = self.psychic_unit
+        if self.pt_detour:
+            payload["pt_detour"] = self.pt_detour
         return MEMORY_TAG + json.dumps(payload, separators=(",", ":"))
 
     @classmethod
@@ -292,6 +296,7 @@ class SeatMemory:
         mem.psychic_commodity = data.get("psychic_commodity") if isinstance(data.get("psychic_commodity"), str) else None
         unit = data.get("psychic_unit")
         mem.psychic_unit = int(unit) if isinstance(unit, int) else None
+        mem.pt_detour = int(data.get("pt_detour") or 0)
         return mem
 
 
@@ -953,6 +958,10 @@ class SeatBrain:
         if v.genesis_aboard <= 0 or v.landed is not None:
             return None
         if v.ok("deploy_genesis"):
+            detour = self._pt_genesis_detour(v)
+            if detour is not None:
+                return detour, Intent("colonize")
+            self.mem.pt_detour = 0
             self.mem.deploy_sector = int(v.here)
             return self._act("deploy_genesis", {}, f"deploy genesis in sector {v.here}"), Intent("colonize")
         reason = v.reason("deploy_genesis").lower()
@@ -1235,7 +1244,8 @@ class SeatBrain:
         options: list[tuple[float, dict[str, Any], Intent, dict[str, Any]]] = []
         for opt in (self._opt_upgrade(v), self._opt_scanner(v), self._opt_scan(v), self._opt_defense(v), self._opt_hunt_arm(v),
                     self._opt_organics(v), self._opt_build(v),
-                    self._opt_genesis(v), self._opt_ferry(v), self._opt_stockpile(v), self._opt_trade(v),
+                    self._opt_genesis(v), self._opt_ferry(v), self._opt_stockpile(v), self._opt_planet_sell(v),
+                    self._opt_trade(v),
                     self._opt_survey(v)):
             if opt is None:
                 continue
@@ -1709,6 +1719,8 @@ class SeatBrain:
                     qty = max(0, qty - max(ORGANICS_LOAD, burn * 4))
                 if qty <= 0:
                     continue
+                if self._pt_held(v, planet, commodity):
+                    continue  # bots-use-planet-trade-v1: sold by planet_trade at the port above it
                 buyer = self._best_buyer(v, commodity)
                 if buyer is None or buyer[1] <= base:
                     continue
@@ -2675,9 +2687,13 @@ class SeatBrain:
             return None
         if not v.ok("planet_trade"):
             return None
+        params = v.params("planet_trade")
         min_lot = max(1, int(engine_k.BOT_PLANET_TRADE_MIN_LOT))
+        if int(params.get("turn_cost", 1) or 0) == 0:
+            # bots-use-planet-trade-v1: the port visit is already paid (pt9), so a small lot costs no turn.
+            min_lot = min(min_lot, max(1, int(engine_k.BOT_PLANET_TRADE_FREE_LOT)))
         best: tuple[int, int, str, int] | None = None
-        for row in (v.params("planet_trade").get("planets") or []):
+        for row in (params.get("planets") or []):
             if not isinstance(row, dict) or row.get("planet_id") is None:
                 continue
             pid = int(row["planet_id"])
@@ -2702,6 +2718,130 @@ class SeatBrain:
         _value, pid, commodity, qty = best
         return self._act("planet_trade", {"planet_id": pid, "commodity": commodity, "qty": int(qty)},
                          f"Planetary Trade Agreement: sell {qty} {commodity} from planet {pid} to this port at its quote")
+
+    # ---- bots-use-planet-trade-v1 -------------------------------------------------------------------------------
+    @staticmethod
+    def _pt_bot_on() -> bool:
+        from ..engine import constants as engine_k
+        return engine_k.BOT_PLANET_TRADE_POLICY == "sell_surplus" and engine_k.planet_trade_on()
+
+    def _port_info(self, v: View, sid: int) -> dict[str, Any] | None:
+        """The port this seat knows at `sid` (the live sector block here, else known_ports). StarDock never."""
+        if sid == STARDOCK:
+            return None
+        if v.here is not None and int(v.here) == int(sid):
+            port = v.sector.get("port")
+            return port if isinstance(port, dict) else None
+        for kp in v.obs.get("known_ports") or []:
+            if isinstance(kp, dict) and kp.get("sector_id") is not None and int(kp["sector_id"]) == int(sid):
+                return kp
+        return None
+
+    def _port_buys(self, v: View, sid: int, commodity: str) -> bool:
+        port = self._port_info(v, sid)
+        if not port:
+            return False
+        cls = port.get("class_id", port.get("class"))
+        if cls in (0, 8, "0", "8"):
+            return False
+        st = (port.get("stock") or {}).get(commodity)
+        if isinstance(st, dict) and st.get("side"):
+            return st.get("side") == "buys_from_player"
+        return commodity in (port.get("buys") or [])
+
+    def _pt_held(self, v: View, planet: dict[str, Any], commodity: str) -> bool:
+        """A world under a port that buys `commodity`: keep that stock for planet_trade (no ship haul)."""
+        from ..engine import constants as engine_k
+        if not (self._pt_bot_on() and engine_k.BOT_PLANET_TRADE_HOLD):
+            return False
+        if commodity == "fuel_ore" and engine_k.BOT_PLANET_TRADE_KEEP_ORE:
+            return False
+        if commodity not in ("organics", "equipment", "fuel_ore"):
+            return False
+        return self._port_buys(v, int(planet["sector_id"]), commodity)
+
+    def _pt_sellable(self, planet: dict[str, Any], commodity: str) -> int:
+        stock = planet.get("stockpile") or {}
+        qty = int(stock.get(commodity) or 0) if isinstance(stock, dict) else 0
+        if commodity == "organics":
+            g = growth_view(planet) or {}
+            burn = max(1, int(g.get("organics_consumption_per_day") or 1))
+            qty = max(0, qty - max(ORGANICS_LOAD, burn * 4))
+        return qty
+
+    def _opt_planet_sell(self, v: View):
+        """Value per turn of flying to a world under a buying port to sell its kept lot with planet_trade."""
+        from ..engine import constants as engine_k
+        if not self._pt_bot_on() or not engine_k.BOT_PLANET_TRADE_HOLD:
+            return None
+        if v.landed is not None or v.colonists_aboard or self._hauling_organics(v) or v.genesis_aboard:
+            return None
+        min_lot = max(1, int(engine_k.BOT_PLANET_TRADE_MIN_LOT))
+        best: tuple[float, dict[str, Any], Intent] | None = None
+        for planet in v.worlds():
+            sid = int(planet["sector_id"])
+            if v.here is not None and sid == int(v.here):
+                continue  # here: the pre-ladder planet_trade sells it (or the port has no room today)
+            port = self._port_info(v, sid) or {}
+            gain = 0
+            for commodity in ("organics", "equipment"):
+                if not self._pt_held(v, planet, commodity):
+                    continue
+                qty = self._pt_sellable(planet, commodity)
+                st = (port.get("stock") or {}).get(commodity) or {}
+                if isinstance(st, dict) and st.get("max") is not None:
+                    qty = min(qty, max(0, int(st["max"]) - int(st.get("current") or 0)))
+                if qty < min_lot:
+                    continue
+                base = COMMODITY_BASE_PRICE.get(commodity, 0)
+                price = st.get("price") if isinstance(st, dict) and isinstance(st.get("price"), int) else base
+                gain += int(price * qty * engine_k.BOT_PLANET_TRADE_QUOTE_PCT / 100) - base * qty
+            if gain <= 0:
+                continue
+            hops = self._hops(v, v.here, sid)
+            if hops is None:
+                continue
+            vpt = gain / max(1, hops * self._tpw(v) + 1)
+            if best is not None and vpt <= best[0]:
+                continue
+            plot = self._plot(v, sid, f"planet trade: sell planet {planet['id']}'s kept stock to the port there")
+            if plot is not None:
+                best = (vpt, plot, Intent("trade", sid))
+        return best
+
+    def _pt_genesis_detour(self, v: View) -> dict[str, Any] | None:
+        """Steer a genesis torpedo a few known hops so the new world sits under a port that buys organics or
+        equipment (a TW2002 "blue" sells its planet's goods there with the Planetary Trade Agreement)."""
+        from ..engine import constants as engine_k
+        hops_cap = int(engine_k.BOT_PLANET_TRADE_GENESIS_HOPS)
+        if not self._pt_bot_on() or hops_cap <= 0 or v.here is None:
+            return None
+        here = int(v.here)
+        if self._port_buys(v, here, "equipment") or self._port_buys(v, here, "organics"):
+            return None
+        if self.mem.pt_detour > hops_cap:
+            return None
+        best: tuple[int, int] | None = None
+        for kp in v.obs.get("known_ports") or []:
+            if not isinstance(kp, dict) or kp.get("sector_id") is None:
+                continue
+            sid = int(kp["sector_id"])
+            if sid == here or sid in engine_k.FEDSPACE_SECTORS:
+                continue
+            if not (self._port_buys(v, sid, "equipment") or self._port_buys(v, sid, "organics")):
+                continue
+            hops = self._hops(v, here, sid)
+            if hops is None or hops > hops_cap:
+                continue
+            if best is None or (hops, sid) < best:
+                best = (hops, sid)
+        if best is None:
+            return None
+        plot = self._plot(v, best[1], f"carry genesis to {best[1]}: its port buys planet goods (planet trade)")
+        if plot is None:
+            return None
+        self.mem.pt_detour += 1
+        return plot
 
     def _board_spare(self, v: View) -> dict[str, Any] | None:
         """ship-fleet-transporter-v1 (BOT_FLEET_POLICY spare_only): after a pod / Ship Destroyed, beam into an
