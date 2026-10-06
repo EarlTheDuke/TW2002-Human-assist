@@ -1474,14 +1474,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         if f.sector_id == sector.id and f.alive
     ]
     if K.alien_on():  # ALIEN_TRADERS.md al24: aliens on their own key, real hull
+        from .alien import alien_brief
         info["aliens"] = [
-            {
-                "id": alien.id,
-                "name": alien.name,
-                "hull": alien.ship.ship_class.value,
-                "fighters": int(alien.ship.fighters),
-                "shields": int(alien.ship.shields),
-            }
+            alien_brief(alien)
             for alien in sorted(universe.aliens.values(), key=lambda row: row.id)
             if alien.alive and alien.sector_id == sector.id
         ]
@@ -2535,9 +2530,18 @@ def _action_hint(
     aliens_here = sector_info.get("aliens") or []
     if aliens_here and K.alien_on():  # ALIEN_TRADERS.md al30: one line, only with an alien here
         shown = aliens_here[0]
+        if K.ALIEN_KILL_EXP_RULE == "bible":
+            pay = (
+                "Destroying one gives half its experience if it is on the other side, "
+                "a quarter if on yours, moves your alignment against its alignment, "
+                "pays its credits, no bounty."
+            )
+        else:
+            pay = "Destroying one pays the same as killing a trader, and no bounty."
         hints.append(
-            f"Alien trader {shown.get('name')} ({shown.get('hull')}) is in this sector. "
-            f"`attack target={shown.get('id')}` from your ship. They do not attack you."
+            f"Alien trader {shown.get('name')} ({shown.get('rank')}, {shown.get('side')}, "
+            f"{shown.get('hull')}) is here. Aliens never attack and cannot enter sectors "
+            f"holding fighters. {pay}"
         )
 
     if framing and full_hints and not sector_info.get("is_fedspace"):

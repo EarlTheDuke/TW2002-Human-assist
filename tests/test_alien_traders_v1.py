@@ -106,9 +106,11 @@ def test_al24_sector_view_lists_the_alien_hull():
     row = next(item for item in sector["aliens"] if item["id"] == alien.id)
     assert row["hull"] == alien.ship.ship_class.value
     assert row["name"] == alien.name
+    assert row["rank"] and row["side"] in ("good", "evil")
     hint = build_observation(u, "A").action_hint
-    assert f"attack target={alien.id}" in hint
-    assert "They do not attack you." in hint
+    assert f"Alien trader {alien.name} ({row['rank']}, {row['side']}, {row['hull']}) is here." in hint
+    assert "Aliens never attack" in hint
+    assert "half its experience" in hint
 
 
 def test_al23_alien_adds_ship_density_and_shows_on_a_scan():

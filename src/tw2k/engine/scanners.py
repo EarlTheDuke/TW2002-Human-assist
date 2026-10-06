@@ -202,14 +202,9 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
         "mines": [m for m in visible_mines(universe, viewer_id, s) if m["kind"] != MineType.LIMPET.value],
     }
     if K.alien_on():  # ALIEN_TRADERS.md al24: holo and probe show the real hull
+        from .alien import alien_brief
         view["aliens"] = [
-            {
-                "id": alien.id,
-                "name": alien.name,
-                "hull": alien.ship.ship_class.value,
-                "fighters": int(alien.ship.fighters),
-                "shields": int(alien.ship.shields),
-            }
+            alien_brief(alien)
             for alien in sorted(universe.aliens.values(), key=lambda row: row.id)
             if alien.alive and alien.sector_id == sector_id
         ]
