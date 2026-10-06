@@ -2010,8 +2010,32 @@ def _action_hint(
                     f"`assign_colonists from=ship to=<fuel_ore|organics|equipment|colonists> qty=<n>` to deposit."
                 )
             photon = getattr(ship, "photon_missiles", 0) or 0
-            if photon > 0:
+            if photon > 0 and K.hardware_tw2002():
+                hints.append(
+                    f"{photon} photon missile(s) loaded — `photon_missile target=<adjacent sector>` "
+                    f"from a Missile Frigate or Imperial StarShip, then warp in."
+                )
+            elif photon > 0:
                 hints.append(f"{photon} photon missile(s) loaded — `photon_missile target=<player_id>`.")
+            if K.hardware_tw2002():
+                if int(getattr(ship, "psychic_probe", 0) or 0) > 0:
+                    hints.append(
+                        "Psychic probe aboard — after a trade the event is the percent of the port's best price. "
+                        "Use it on the next haggle."
+                    )
+                if int(getattr(ship, "cloaks", 0) or 0) > 0 and not getattr(ship, "cloaked", False):
+                    hints.append("Cloak aboard — `cloak` before a NavHaz exit when no clear warp is left.")
+                if sector_info.get("nav_hazard_pct"):
+                    hints.append(
+                        f"NavHaz {sector_info.get('nav_hazard_pct')}% here — pick another warp, or cloak if every exit is hazardous."
+                    )
+                if sector_info.get("is_fedspace") or sector_info.get("is_msl"):
+                    hints.append(
+                        "FedSpace / Major Space Lane — do not park 99 or more fighters (nightly tow) and do not lay mines "
+                        "(Extern sweep). Never attack Federal starships Zyrain, Nelson, or Clausewitz."
+                    )
+            if sector_id == K.STARDOCK_SECTOR and K.class0_tw2002():
+                hints.append("Terra — `terra_colonists mode=take qty=<cargo free>`. Do not buy_equip colonists.")
             probes = getattr(ship, "ether_probes", 0) or 0
             if probes > 0:
                 hints.append(f"{probes} probe(s) loaded — `probe target=<sector_id>` to remote-scan.")
