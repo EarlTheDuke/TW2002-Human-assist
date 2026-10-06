@@ -2532,6 +2532,14 @@ def _action_hint(
         else:
             hints.append("Ferrengi present — attack for XP or warp out.")
 
+    aliens_here = sector_info.get("aliens") or []
+    if aliens_here and K.alien_on():  # ALIEN_TRADERS.md al30: one line, only with an alien here
+        shown = aliens_here[0]
+        hints.append(
+            f"Alien trader {shown.get('name')} ({shown.get('hull')}) is in this sector. "
+            f"`attack target={shown.get('id')}` from your ship. They do not attack you."
+        )
+
     if framing and full_hints and not sector_info.get("is_fedspace"):
         trader_line = _trader_check(player, sector_info)
         if trader_line:
