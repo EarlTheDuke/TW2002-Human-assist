@@ -483,7 +483,9 @@ def test_corp_mate_is_not_challenged_and_a_course_stops_at_a_challenge() -> None
     home = _first_non_fed_sector(u, 40)
     there = _first_non_fed_sector(u, home + 1)
     _link(u, home, there)
-    u.sectors[there].fighters = FighterDeployment(owner_id=owner.id, count=5, mode=FighterMode.DEFENSIVE)
+    u.sectors[there].fighters = FighterDeployment(
+        owner_id=owner.id, count=5, mode=FighterMode.DEFENSIVE, corp_ticker="ZZ",
+    )
     _park(u, mate, home)
     assert _act(u, mate.id, ActionKind.WARP, target=there).ok
     assert mate.fighter_challenge is None

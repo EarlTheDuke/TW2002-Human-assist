@@ -572,7 +572,8 @@ class TestPhaseC:
         res = apply_action(u, "B", Action(kind=ActionKind.ATTACK, args={"target": "C"}))
         assert not res.ok
 
-    def test_c3_corp_deposit_withdraw_treasury(self):
+    def test_c3_corp_deposit_withdraw_treasury(self, monkeypatch):
+        monkeypatch.setattr(K, "CORP_MODE", "legacy")  # tw2002 has no corporate bank
         u, (a, *_) = _make_universe()
         a.sector_id = K.STARDOCK_SECTOR
         a.credits = 1_000_000
@@ -2852,10 +2853,10 @@ class TestPhaseNCorp:
         assert _corp_treasury_share(u, b) == 3333
         assert _corp_treasury_share(u, c) == 3333
 
-    def test_n5_observation_surfaces_treasury_share(self):
-        """The corp summary in the Observation must expose the member's
-        slice, not just the raw treasury, so the LLM can reason about
-        deposits as value-preserving."""
+    def test_n5_observation_surfaces_treasury_share(self, monkeypatch):
+        """Legacy corp summary exposes the member's treasury slice.
+        Tw2002 has no corporate bank; that block is test_corp_rules_v1."""
+        monkeypatch.setattr(K, "CORP_MODE", "legacy")
         from tw2k.engine.observation import build_observation
 
         u, (a, b, _c) = _make_universe(seed=604)

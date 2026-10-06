@@ -741,7 +741,20 @@ def format_destroy_table() -> str:
 
 
 def format_corp_table() -> str:
-    """Leave, disband, and an allied landing. The siege grid does not call these."""
+    """Leave, disband, and an allied landing. The siege grid does not call these.
+
+    The rows are the pre-corp-rules leave path. Tw2002 dissolve is covered by test_corp_rules_v1.
+    """
+    from tw2k.engine import constants as K
+    previous = K.CORP_MODE
+    K.CORP_MODE = "legacy"
+    try:
+        return _format_corp_table()
+    finally:
+        K.CORP_MODE = previous
+
+
+def _format_corp_table() -> str:
     rows: list[str] = []
 
     def blank():

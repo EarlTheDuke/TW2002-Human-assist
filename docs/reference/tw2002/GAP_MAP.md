@@ -293,23 +293,23 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 | 9.6 Rank titles | 22 good and 22 evil titles with doubling exp thresholds (2 up to 4,194,304). [Gypsy_Big_Dummies_Guide.html] CONFIRMED | K.RANK_TABLE 9 ranks from 0 to 250,000 and K.ALIGNMENT_TIERS (victory.py labels). | Different | S / Low |
 | 9.7 Good vs evil perks | Good: ISS, FedSpace protection under 1000 exp, TransWarp into FedSpace; evil: rob/steal, underground, no Fed safety. [cabal corps.html, Gypsy_Big_Dummies_Guide.html] CONFIRMED | Missing as systems (alignment is mostly cosmetic except ISS). | Missing | L / Med |
 | 9.8 Experience-based pricing/rob limits | Your exp sets how well you haggle (to 1000) and how much you can rob/steal. [cabal formulas.html, haggling.html] CONFIRMED | port.experience is tracked (economy.py) but unused; Player.experience only drives ranks and victory. | Missing | S / Med |
-| 9.9 Mixed-alignment corp exp loss | Mixed corps lose exp at Extern (1/4 of the least extreme alignment). [Misc_Alignment_to_exp_changes_twgs.txt] UNVERIFIED | `docs/playtests/corps/CORP_RULES.md` cr9. TWGS reading is the highest good alignment / 4. | Specified | S / Low |
+| 9.9 Mixed-alignment corp exp loss | Mixed corps lose exp at Extern (1/4 of the least extreme alignment). [Misc_Alignment_to_exp_changes_twgs.txt] UNVERIFIED | `docs/playtests/corps/CORP_RULES.md` cr9. TWGS reading is the highest good alignment / 4. | Built | S / Low |
 
 ## 10. Corporations
 
 | # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
 |---|---|---|---|---|
-| 10.1 Create a corporation | Any trader can file a charter and becomes CEO (cost not found). [EIS CorporateMenu.html] UNVERIFIED (cost) | `CORP_RULES.md` cr1-cr2. Anywhere, cost 0. Legacy stays StarDock and 500,000. | Specified | S / Low |
-| 10.2 Joining | Needs CEO approval and a corporate security pass (password). [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr3-cr6. Password, one wrong guess a day. | Specified | S / Low |
-| 10.3 Same-alignment rule | Joiners must match the CEO's side; if your side flips you are ousted. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr8. TWGS mixed is the default; same_side ousts. | Specified | S / Low |
-| 10.4 Members limit | Sample TEDIT: 5 traders per corp (setting). [Gypsy_Big_Dummies_Guide.html] CONFIRMED (a setting) | `CORP_RULES.md` cr7. `CORP_MAX_MEMBERS` 5. | Specified | S / Low |
-| 10.5 Drop (kick) a member | CEO may drop a member, who keeps assets on their ship. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr14. | Specified | S / Low |
-| 10.6 Transfers between members | Credits, fighters, mines and shields can be transferred between members in the same sector. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr16. The treasury is off (cr26). | Specified | M / Med |
-| 10.7 Corp assets and member locations | Corp menu lists planets (pop, production, stock, fighters, citadel, shields, credits) and members' sector, fighters, shields, mines, credits. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr22-cr24. | Specified | S / Low |
+| 10.1 Create a corporation | Any trader can file a charter and becomes CEO (cost not found). [EIS CorporateMenu.html] UNVERIFIED (cost) | `CORP_RULES.md` cr1-cr2. Anywhere, cost 0. Legacy stays StarDock and 500,000. | Built | S / Low |
+| 10.2 Joining | Needs CEO approval and a corporate security pass (password). [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr3-cr6. Password, one wrong guess a day. | Built | S / Low |
+| 10.3 Same-alignment rule | Joiners must match the CEO's side; if your side flips you are ousted. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr8. TWGS mixed is the default; same_side ousts. | Built | S / Low |
+| 10.4 Members limit | Sample TEDIT: 5 traders per corp (setting). [Gypsy_Big_Dummies_Guide.html] CONFIRMED (a setting) | `CORP_RULES.md` cr7. `CORP_MAX_MEMBERS` 5. | Built | S / Low |
+| 10.5 Drop (kick) a member | CEO may drop a member, who keeps assets on their ship. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr14. | Built | S / Low |
+| 10.6 Transfers between members | Credits, fighters, mines and shields can be transferred between members in the same sector. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr16. The treasury is off (cr26). | Built | M / Med |
+| 10.7 Corp assets and member locations | Corp menu lists planets (pop, production, stock, fighters, citadel, shields, credits) and members' sector, fighters, shields, mines, credits. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr22-cr24. | Built | S / Low |
 | 10.8 Corp memo | CEO or members send a memo to all members. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr25. Any member. | Match | S / Low |
-| 10.9 Corporate vs personal fighters, mines, ships | Fighters and mines may be personal or corporate; corporate ships are password protected; corp members cross-use. [Bible, EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr17-cr21. Ships stay in `CORP_SHIPS_FURB.md`. | Specified | M / Med |
-| 10.10 CEO leaves or corp ends | If the CEO leaves the corp dissolves and corporate fighters go rogue; v3.06 rules for planets/ships. [EIS CorporateMenu.html, REV v3.06] CONFIRMED | `CORP_RULES.md` cr11-cr13. Planets stay owner_keeps (conflict 18). | Specified | S / Low |
-| 10.11 Corporation rankings | Corps ranked by exp with a combined alignment. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr24. | Specified | S / Low |
+| 10.9 Corporate vs personal fighters, mines, ships | Fighters and mines may be personal or corporate; corporate ships are password protected; corp members cross-use. [Bible, EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr17-cr21. Ships stay in `CORP_SHIPS_FURB.md`. | Built | M / Med |
+| 10.10 CEO leaves or corp ends | If the CEO leaves the corp dissolves and corporate fighters go rogue; v3.06 rules for planets/ships. [EIS CorporateMenu.html, REV v3.06] CONFIRMED | `CORP_RULES.md` cr11-cr13. Planets stay owner_keeps (conflict 18). | Built | S / Low |
+| 10.11 Corporation rankings | Corps ranked by exp with a combined alignment. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr24. | Built | S / Low |
 | 10.12 Alliances | Not in the original (only corps). | propose/accept/break alliance actions, 25 xp. | Different | S / Low (ours-only; keep or remove) |
 
 ## 11. Special locations and events

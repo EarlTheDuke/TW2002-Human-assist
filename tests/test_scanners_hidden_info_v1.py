@@ -235,7 +235,7 @@ def test_holo_scan_costs_a_turn_and_shows_who_is_there(tw) -> None:
     assert mem["fighters"] == {"owner_id": "B", "count": 4321, "mode": "defensive"}
     assert [t["id"] for t in mem["traders"]] == ["B"]
     assert all(m["kind"] != "limpet" for m in mem["mines"])  # Bob's limpets stay invisible
-    assert {"kind": "armid", "owner": "B", "count": 7} in mem["mines"]
+    assert {"kind": "armid", "owner": "personal", "count": 7} in mem["mines"]
     assert "stock" not in json.dumps(mem)
     adj = {a["id"]: a for a in build_observation(u, "A").adjacent}
     assert adj[busy]["fighter_count"] == 4321 and adj[busy]["occupants"] == ["B"]
@@ -327,9 +327,12 @@ def test_hostile_fighters_destroy_a_probe_friendly_ones_do_not(tw) -> None:
     ev = [e for e in u.events if e.kind.value == "probe"][-1]
     assert ev.payload["destroyed_at"] == busy and "destroyed" in ev.summary
     assert all(e.get("kind") != "probe" for e in build_observation(u, "B").recent_events)
-    # Bob's corp-mate's probe passes
+    # Corporate fighters and mines let a corp mate's probe through. Personal ones do not.
     u.players["A"].corp_ticker = "XYZ"
     u.players["B"].corp_ticker = "XYZ"
+    u.sectors[busy].fighters.corp_ticker = "XYZ"
+    for md in u.sectors[busy].mines:
+        md.corp_ticker = "XYZ"
     r = act(u, "A", ActionKind.PROBE, target=busy)
     assert r.ok and busy in a.known_warps and "warps_out" in a.probe_log[busy]["intel"]
     assert not act(u, "A", ActionKind.PROBE, target=busy).ok  # out of probes
@@ -478,9 +481,9 @@ def test_entering_a_sector_shows_traders_and_hides_foreign_limpets(tw) -> None:
     sec = build_observation(u, "A").sector
     assert [t["id"] for t in sec["traders"]] == ["C"]
     assert sec["mines"] == []  # Carol's limpets are not visible to Alice
-    assert build_observation(u, "C").sector["mines"] == [{"owner": "C", "kind": "limpet", "count": 5}]
+    assert build_observation(u, "C").sector["mines"] == [{"owner": "personal", "kind": "limpet", "count": 5}]
     u.players["A"].corp_ticker = u.players["C"].corp_ticker = "QQQ"
-    assert build_observation(u, "A").sector["mines"] == [{"owner": "C", "kind": "limpet", "count": 5}]
+    assert build_observation(u, "A").sector["mines"] == [{"owner": "personal", "kind": "limpet", "count": 5}]
 
 
 def test_unscanned_adjacent_carries_no_live_contents(tw) -> None:

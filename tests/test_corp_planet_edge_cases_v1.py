@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+import tw2k.engine.constants as K
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.combat import _are_allied
@@ -46,6 +49,12 @@ def _stand(u, player, sid: int, planet_id: int | None) -> None:
 
 def _leave(u, player):
     return apply_action(u, player.id, Action(kind=ActionKind.CORP_LEAVE, args={}))
+
+
+@pytest.fixture(autouse=True)
+def _legacy_corp_menu(monkeypatch):
+    """Lock the planet leave path from before corp-rules-v1. The tw2002 menu is test_corp_rules_v1."""
+    monkeypatch.setattr(K, "CORP_MODE", "legacy")
 
 
 def test_disband_keeps_live_owners_and_round_trips() -> None:

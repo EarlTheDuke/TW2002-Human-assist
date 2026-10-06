@@ -184,7 +184,9 @@ def test_safe_path_counts_your_own_and_corp_fighters_as_safe() -> None:
     a.corp_ticker = c.corp_ticker = "ZZZ"
     from tw2k.engine.models import Corporation
     u.corporations["ZZZ"] = Corporation(ticker="ZZZ", name="Z", ceo_id=a.id, member_ids=[a.id, c.id])
-    u.sectors[chain[2]].fighters = FighterDeployment(owner_id=c.id, count=5, mode=FighterMode.DEFENSIVE)
+    u.sectors[chain[2]].fighters = FighterDeployment(
+        owner_id=c.id, count=5, mode=FighterMode.DEFENSIVE, corp_ticker="ZZZ",
+    )
     _destroy_ship(u, a.id, reason="combat", killer_id=b.id, by_other=True)
     assert a.sector_id == chain[6]
 
