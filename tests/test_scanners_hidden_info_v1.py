@@ -77,6 +77,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "ROB_MODE", "legacy")  # goldens predate rob/steal
     monkeypatch.setattr(K, "CLASS0_MODE", "legacy")  # goldens predate Terra / Class 0 observation keys
     monkeypatch.setattr(K, "FED_MODE", "legacy")  # goldens predate FedSpace police observation keys
+    monkeypatch.setattr(K, "FERRENGI_MODE", "legacy")  # goldens predate ferrengi-aliens-v1 (Ferrengal, hulls)
 
 
 @pytest.fixture

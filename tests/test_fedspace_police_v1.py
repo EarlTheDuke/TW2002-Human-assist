@@ -40,6 +40,7 @@ DOC = ROOT / "docs" / "playtests" / "fedspace" / "FEDSPACE_POLICE.md"
 @pytest.fixture
 def legacy(monkeypatch):
     monkeypatch.setattr(K, "FED_MODE", "legacy")
+    monkeypatch.setattr(K, "FERRENGI_MODE", "legacy")
 
 
 @pytest.fixture

@@ -1192,32 +1192,56 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                            "kind": {"type": "str", "required": False, "choices": sorted(mine_kinds)},
                            "qty": {"type": "int", "required": False, "min": 1, "max_by": max_by}}))
 
+    from .ferrengi import live_ferrengi_encounter
+    ferr_enc = live_ferrengi_encounter(universe, player_id)
+
     surrender_cost = int(K.TURN_COST["surrender"])
-    if not K.sector_fighter_tw2002():
+    if ferr_enc is not None:
+        surrender_reason = _need_turns(player, surrender_cost)
+        surrender_params = {"note": "surrender cargo/holds/credits as tribute; ship lives"}
+    elif not K.sector_fighter_tw2002():
         surrender_reason = "legacy sector fighters do not take a surrender"
+        surrender_params = {}
     else:
-        # Defensive fighters do not challenge yet; surrender waits for that slice.
         surrender_reason = "surrender waits for the defensive challenge"
+        surrender_params = {}
     challenge = None
-    if K.sector_fighter_tw2002() and K.combat_tw2002():
+    if ferr_enc is None and K.sector_fighter_tw2002() and K.combat_tw2002():
         from .combat import live_challenge
         challenge = live_challenge(universe, player_id)
         surrender_reason = "no fighters challenge you here" if challenge is None else _need_turns(player, surrender_cost)
-    surrender_params: dict[str, Any] = {}
-    if challenge is not None and int(player.ship.fighters or 0) > 0:
-        surrender_params["warning"] = (f"you still have {int(player.ship.fighters)} fighters; "
-                                       "surrender loses the ship (the same as being destroyed)")
+        if challenge is not None and int(player.ship.fighters or 0) > 0:
+            surrender_params["warning"] = (f"you still have {int(player.ship.fighters)} fighters; "
+                                           "surrender loses the ship (the same as being destroyed)")
     out.append(_la(ActionKind.SURRENDER, legal=surrender_reason is None, reason=surrender_reason,
                    cost=surrender_cost, params=surrender_params))
 
-    # retreat / pay_toll: answers to a fighter challenge (COMBAT_MODE tw2002).
+    # retreat / pay_toll: answers to a fighter challenge (COMBAT_MODE tw2002)
+    # or Ferrengi tribute encounter (ferrengi-aliens-v1).
     from .combat import retreat_block
-    from .runner import CHALLENGE_REFUSAL, CHALLENGE_VERBS, _hostile_toll
+    from .runner import (
+        CHALLENGE_REFUSAL,
+        CHALLENGE_VERBS,
+        FERRENGI_ENCOUNTER_NOTE,
+        FERRENGI_ENCOUNTER_VERBS,
+        _hostile_toll,
+    )
     rc = _warp_cost(player)
-    if not K.challenge_on():
+    if ferr_enc is not None:
+        retreat_reason = _need_turns(player, rc)
+        if retreat_reason is None and not sector.warps:
+            retreat_reason = "no warp out to flee the Ferrengi"
+        pay_reason = "Ferrengi take tribute, not a toll"
+        retreat_params = {"note": "flee any neighbour"}
+        pay_params = {}
+    elif not K.challenge_on():
         retreat_reason = pay_reason = "needs tw2002 combat"
+        retreat_params = {}
+        pay_params = {}
     elif challenge is None:
         retreat_reason = pay_reason = "no fighters challenge you here"
+        retreat_params = {}
+        pay_params = {}
     else:
         retreat_reason = retreat_block(universe, player_id) or _need_turns(player, rc)
         toll = _hostile_toll(universe, player_id, sector)
@@ -1226,10 +1250,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         else:
             bill = int(toll.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
             pay_reason = None if int(player.credits) >= bill else f"the toll is {bill} credits"
-    retreat_params: dict[str, Any] = {}
-    pay_params: dict[str, Any] = {}
-    if challenge is not None:
-        retreat_params["to"] = challenge.get("from_sector")
+        retreat_params = {"to": challenge.get("from_sector")}
+        pay_params = {}
         toll = _hostile_toll(universe, player_id, sector)
         if toll is not None:
             pay_params["amount"] = int(toll.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
@@ -1253,6 +1275,17 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 la.legal, la.reason = why is None, why
             elif la.kind not in allowed and la.legal:
                 la.legal, la.reason = False, CHALLENGE_REFUSAL
+
+    if ferr_enc is not None:
+        # Same as apply_action: every other legal verb stays legal but pays tribute first.
+        allowed_f = {k.value for k in FERRENGI_ENCOUNTER_VERBS}
+        fid = str(ferr_enc.get("ferr_id"))
+        for la in out:
+            if la.kind == ActionKind.ATTACK.value:
+                la.params["ferrengi_answer"] = fid
+                la.params["ferrengi_note"] = f"attacking {fid} answers; another target pays tribute first"
+            elif la.kind not in allowed_f and la.legal:
+                la.params["ferrengi_note"] = FERRENGI_ENCOUNTER_NOTE
 
     if getattr(player, "flee_penalty", False):
         # Same as apply_action: only a turn-using land or port action pays it, and never past the day.

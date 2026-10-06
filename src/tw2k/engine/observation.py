@@ -240,9 +240,13 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.PLAYER_ELIMINATED: ("killer", "deaths"),
     EventKind.PLANET_ORPHANED: ("planet_id", "planet_name", "former_owner"),
     EventKind.PLANET_CLAIMED: ("planet_id", "planet_name", "citadel_level", "fighters"),
-    EventKind.FERRENGI_SPAWN: ("id", "aggression", "fighters"),
+    EventKind.FERRENGI_SPAWN: ("id", "aggression", "fighters", "hull"),
     EventKind.FERRENGI_MOVE: ("id", "from", "to", "reason"),
     EventKind.FERRENGI_ATTACK: ("victim",),
+    EventKind.FERRENGI_ENCOUNTER: ("victim", "ferr_id", "ferr_fighters", "ferr_hull", "your_fighters"),
+    EventKind.FERRENGI_TRIBUTE: ("ferr_id", "cargo", "holds_stolen", "credits"),
+    EventKind.FERRENGI_REGEN: ("id", "fighters", "shields"),
+    EventKind.FERRENGAL_PLACE: ("sector_id", "mines", "fighters"),
     EventKind.LAND_PLANET: ("planet_id", "class", "seized"),
     EventKind.LIFTOFF: ("planet_id",),
     EventKind.GENESIS_DEPLOYED: ("planet_id", "class", "name"),
@@ -468,6 +472,7 @@ class Observation(BaseModel):
     # toll fighters in this sector, or None. {sector_id, mode, count, can_retreat,
     # retreat_to, toll}. The count is the same group already in the sector brief.
     fighter_challenge: dict[str, Any] | None = None
+    ferrengi_encounter: dict[str, Any] | None = None
     # fedspace-police-v1: Police HQ block (sector 1 only) and FedSpace overnight hint
     police: dict[str, Any] | None = None
     fedspace: dict[str, Any] | None = None
@@ -481,6 +486,8 @@ class Observation(BaseModel):
                 data.pop("police", None)
             if data.get("fedspace") is None:
                 data.pop("fedspace", None)
+            if data.get("ferrengi_encounter") is None:  # ferrengi-aliens-v1: same rule
+                data.pop("ferrengi_encounter", None)
         return data
 
 
@@ -855,6 +862,11 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         known_sectors=known_sectors,
         legal_actions=legal,
         fighter_challenge=_challenge_brief(universe, player, legal),
+        ferrengi_encounter=(
+            dict(player.ferrengi_encounter)
+            if getattr(player, "ferrengi_encounter", None)
+            else None
+        ),
         police=None,
         fedspace=None,
         action_hint=_action_hint(
@@ -1113,16 +1125,33 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
             if pid in universe.planets
         ],
         "port": None,
-        "ferrengi": [
-            {"id": f.id, "name": f.name, "aggression": f.aggression, "fighters": f.fighters}
-            for f in universe.ferrengi.values()
-            if f.sector_id == sector.id and f.alive
-        ],
+        "ferrengi": [],
     }
     from . import constants as K
     if K.fed_tw2002():  # FEDSPACE_POLICE.md f1/f2: Federal starships show in the sector like ships
         from .fed import federal_briefs
         info["federals"] = federal_briefs(universe, sector.id)
+    info["ferrengi"] = [
+        (
+            {
+                "id": f.id,
+                "name": f.name,
+                "aggression": f.aggression,
+                "fighters": f.fighters,
+                "shields": int(f.shields),
+                "hull": getattr(f, "hull", "") or None,
+            }
+            if K.ferrengi_tw2002()
+            else {
+                "id": f.id,
+                "name": f.name,
+                "aggression": f.aggression,
+                "fighters": f.fighters,
+            }
+        )
+        for f in universe.ferrengi.values()
+        if f.sector_id == sector.id and f.alive
+    ]
     if K.hardware_tw2002():  # SHIP_HARDWARE_V2.md: the sector display shows a beacon and NavHaz
         if getattr(sector, "beacon", None):
             info["beacon"] = sector.beacon
@@ -2092,8 +2121,17 @@ def _action_hint(
         )
 
     # Ferrengi presence
-    if sector_info.get("ferrengi"):
-        hints.append("Ferrengi present — attack for XP or warp out.")
+    if getattr(player, "ferrengi_encounter", None):
+        hints.append(
+            "Ferrengi boarding you: surrender (tribute), flee, or attack. "
+            "Surrender often safer than fighting."
+        )
+    elif sector_info.get("ferrengi"):
+        from . import constants as _K
+        if _K.ferrengi_tw2002():
+            hints.append("Ferrengi present — attack for XP or warp out. Watch for boarding.")
+        else:
+            hints.append("Ferrengi present — attack for XP or warp out.")
 
     # Inbox backlog — FYI only. Distinguishing direct hails from broadcasts
     # and corp memos matters because each channel has different relevance:

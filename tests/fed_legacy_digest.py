@@ -9,8 +9,10 @@ import importlib.util
 import json
 from pathlib import Path
 
-NEW_UNIVERSE_KEYS = ("federals", "posted_rewards", "pending_rewards")
-NEW_PLAYER_KEYS = ("commission_used", "fed_hail_sent")
+NEW_UNIVERSE_KEYS = ("federals", "posted_rewards", "pending_rewards",
+                     "ferrengal_sector", "ferrengi_grudges")  # + ferrengi-aliens-v1
+NEW_PLAYER_KEYS = ("commission_used", "fed_hail_sent", "ferrengi_encounter")
+NEW_FERRENGI_KEYS = ("hull", "credits", "cargo")  # ferrengi-aliens-v1 FerrengiShip fields
 
 
 def legacy_run_digest(root: Path, seats: str = "N3,H", days: int = 2, seed: int = 250925) -> str:
@@ -69,6 +71,9 @@ def _state(u) -> str:
     for p in dump.get("players", {}).values():
         for k in NEW_PLAYER_KEYS:
             p.pop(k, None)
+    for f in (dump.get("ferrengi") or {}).values():
+        for k in NEW_FERRENGI_KEYS:
+            f.pop(k, None)
     return json.dumps(_round_floats(dump), sort_keys=True)
 
 

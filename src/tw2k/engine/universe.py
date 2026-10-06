@@ -363,6 +363,10 @@ def generate_universe(config: GameConfig) -> Universe:
     # this the first Ferrengi don't appear until the end of day 1 (tick_day),
     # which historically gave agents a full safe day of grinding. Distributed
     # across deep space so they don't all cluster on one trade lane.
+    # ferrengi-aliens-v1: Ferrengal home (isolated rng; no-op under legacy)
+    from .ferrengi import place_ferrengal
+    place_ferrengal(universe)
+
     if config.enable_ferrengi and K.FERRENGI_INITIAL_SPAWN > 0:
         _seed_initial_ferrengi(rng, universe)
 
@@ -380,29 +384,19 @@ def generate_universe(config: GameConfig) -> Universe:
 
 
 def _seed_initial_ferrengi(rng: random.Random, universe: Universe) -> None:
-    from .ferrengi import _scaled_ferrengi_stats
-    from .models import FerrengiShip, ShipClass
+    from .ferrengi import _make_ferrengi, _pick_spawn_sector
 
-    deep_start = max(K.FEDSPACE_SECTORS) + 1
-    max_sid = universe.config.universe_size
     initial = K.FERRENGI_INITIAL_SPAWN
     max_alive = getattr(universe.config, "ferrengi_max_alive", None)
     if max_alive is not None:
         initial = min(initial, max(0, int(max_alive)))
     for i in range(initial):
-        sid = rng.randint(deep_start, max_sid)
+        # Legacy: deep-random via universe.rng (same draw order as before when
+        # ferrengi_tw2002 is off — _pick_spawn_sector falls through to randint).
+        sid = _pick_spawn_sector(universe, rng)
         aggr = rng.randint(2, K.FERRENGI_MAX_AGGRESSION)
         fid = f"ferr_d0_{i}_{sid}"
-        fighters, shields = _scaled_ferrengi_stats(universe, aggr)
-        ship = FerrengiShip(
-            id=fid,
-            name=f"Ferrengi Raider {fid[-4:].upper()}",
-            sector_id=sid,
-            aggression=aggr,
-            fighters=fighters,
-            shields=shields,
-            ship_class=ShipClass.BATTLESHIP if aggr >= 8 else ShipClass.MISSILE_FRIGATE,
-        )
+        ship = _make_ferrengi(universe, fid=fid, sid=sid, aggression=aggr)
         universe.ferrengi[fid] = ship
 
 

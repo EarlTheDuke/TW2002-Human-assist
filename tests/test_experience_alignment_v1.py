@@ -36,6 +36,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "HARDWARE_MODE", "legacy")  # goldens predate ship-hardware-v1
     monkeypatch.setattr(K, "CLASS0_MODE", "legacy")  # goldens predate Terra / Class 0
     monkeypatch.setattr(K, "FED_MODE", "legacy")  # goldens predate FedSpace police
+    monkeypatch.setattr(K, "FERRENGI_MODE", "legacy")  # goldens predate ferrengi-aliens-v1
 
 
 @pytest.fixture

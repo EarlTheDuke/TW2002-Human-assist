@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+import pytest
+
+import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.ferrengi import _spawn_ferrengi
 from tw2k.server.app import _build_default_spec
+
+
+@pytest.fixture(autouse=True)
+def _legacy_ferrengi_formula(monkeypatch):
+    """Ramp tests pin the pre-hull fighter/shield formula (FERRENGI_MODE legacy)."""
+    monkeypatch.setattr(K, "FERRENGI_MODE", "legacy")
 
 
 def _base_fighters(aggression: int) -> int:
@@ -89,3 +98,13 @@ def test_default_spec_accepts_ferrengi_ramp_overrides() -> None:
 
     assert spec.config.ferrengi_strength_ramp_days == 75
     assert spec.config.ferrengi_min_strength_scale == 0.1
+
+
+def test_tw2002_hull_ramp_caps_at_hull_max(monkeypatch) -> None:
+    monkeypatch.setattr(K, "FERRENGI_MODE", "tw2002")
+    ferr = _spawn_one_at_day(100)
+    assert ferr.hull in K.FERRENGI_HULL_SPECS
+    spec = K.FERRENGI_HULL_SPECS[ferr.hull]
+    assert ferr.fighters == int(spec["max_fighters"])
+    assert ferr.shields == int(spec["max_shields"])
+

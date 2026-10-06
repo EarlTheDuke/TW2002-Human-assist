@@ -116,6 +116,8 @@ def main(argv: list[str] | None = None) -> int:
     # Same for the death path (death-escape-pods-v1): the clips show the StarDock respawn and the
     # three-death elimination. A tw2002 pod fixture set is follow-up.
     K.DEATH_MODE = "legacy"
+    # And the Ferrengi hunt (ferrengi-aliens-v1): clip 7 is the legacy auto-attack, not the tribute encounter.
+    K.FERRENGI_MODE = "legacy"
     # 1. single warp
     u = _universe()
     start = _deep(u)[0]

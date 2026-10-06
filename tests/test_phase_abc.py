@@ -437,8 +437,13 @@ class TestPhaseA:
         assert not a.alive
         assert a.deaths >= K.MAX_DEATHS_BEFORE_ELIM
 
-    def test_a6_ferrengi_roam_and_hunt(self):
+    def test_a6_ferrengi_roam_and_hunt(self, monkeypatch):
+        # auto_combat: this Phase A test predates the tribute encounter (ferrengi-aliens-v1).
+        monkeypatch.setattr(K, "FERRENGI_ENCOUNTER", "auto_combat")
+        monkeypatch.setattr(K, "FERRENGI_STARTUP_GRACE_DAYS", 0)
         u, (a, b, c) = _make_universe()
+        u.config.ferrengi_grace_days = 0
+        u.config.all_start_stardock = False
         far_sid = _first_non_fed_sector(u, min_id=50)
         b.sector_id = far_sid
         u.sectors[1].occupant_ids = [x for x in u.sectors[1].occupant_ids if x != "B"]
@@ -449,8 +454,9 @@ class TestPhaseA:
             u.ferrengi.clear()
             u.ferrengi["ferr_test"] = FerrengiShip(
                 id="ferr_test", name="Test Raider", sector_id=b.sector_id,
-                aggression=9, fighters=400, shields=200,
+                aggression=9, fighters=400, shields=200, hull="battle_cruiser",
             )
+            b.ferrengi_encounter = None
             tick_day(u)
             if b.ship.fighters < pre_fighters or not b.alive:
                 hit = True

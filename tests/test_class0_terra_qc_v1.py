@@ -51,6 +51,7 @@ LEGACY_STARDOCK_CHOICES = [
 @pytest.fixture
 def legacy(monkeypatch):
     monkeypatch.setattr(K, "CLASS0_MODE", "legacy")
+    monkeypatch.setattr(K, "FERRENGI_MODE", "legacy")
     monkeypatch.setattr(K, "FED_MODE", "legacy")  # pins predate fedspace-police-v1
 
 

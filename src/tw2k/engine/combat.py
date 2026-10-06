@@ -298,16 +298,28 @@ def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
     """Bounty path for a Ferrengi, the existing death path for a player."""
     attacker = universe.players[attacker_id]
     if isinstance(target, FerrengiShip):
+        from .ferrengi import clear_ferrengi_encounter, record_ferrengi_grudge
         target.alive = False
         bounty = K.FERRENGI_BOUNTY_PER_AGG * target.aggression
-        attacker.credits += bounty
-        attacker.alignment += 10
+        salvage = int(getattr(target, "credits", 0) or 0)
+        attacker.credits += bounty + salvage
+        attacker.alignment += int(K.FERRENGI_ALIGN_ON_KILL)
         _award_xp(universe, attacker_id, "kill_ferr", multiplier=target.aggression)
+        record_ferrengi_grudge(universe, attacker_id)
+        clear_ferrengi_encounter(universe, attacker_id)
+        for good, qty in list((getattr(target, "cargo", None) or {}).items()):
+            qty = int(qty or 0)
+            if qty <= 0:
+                continue
+            free = int(attacker.ship.cargo_free)
+            take = min(qty, free)
+            if take > 0:
+                attacker.ship.cargo[good] = int(attacker.ship.cargo.get(good, 0) or 0) + take
         universe.emit(
             EventKind.SHIP_DESTROYED,
             actor_id=attacker_id,
             sector_id=attacker.sector_id,
-            payload={"victim": target.id, "kind": "ferrengi", "bounty": bounty},
+            payload={"victim": target.id, "kind": "ferrengi", "bounty": bounty, "salvage": salvage},
             summary=f"{attacker.name} destroyed {target.name} (+{bounty}cr bounty)",
         )
     else:
@@ -332,7 +344,8 @@ def _odds(value: float) -> Fraction:
 def combat_odds_of(target) -> Fraction:
     """Offensive odds of a player's hull, or the Ferrengi figure."""
     if isinstance(target, FerrengiShip):
-        return _odds(K.FERRENGI_COMBAT_ODDS)
+        from .ferrengi import ferrengi_odds
+        return _odds(ferrengi_odds(target))
     return _odds(K.combat_hull(target.ship.ship_class.value)[0])
 
 
@@ -538,6 +551,9 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
     if hasattr(target, "alive") and not target.alive:
         return
     is_ferr = isinstance(target, FerrengiShip)
+    if is_ferr:
+        from .ferrengi import record_ferrengi_grudge
+        record_ferrengi_grudge(universe, attacker_id)
     d_f = int(target.fighters if is_ferr else target.ship.fighters)
     d_s = int(target.shields if is_ferr else target.ship.shields)
     d_disabled = (not is_ferr) and getattr(target.ship, "photon_disabled_ticks", 0) > 0
