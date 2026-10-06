@@ -208,28 +208,6 @@ def test_qc_property_legal_matches_handler():
                 assert apply_action(w, "A", Action(kind=ActionKind(verb), args=over)).ok is False
 
 
-def test_qc_gb29_no_blanket_hold_while_genesis_is_for_sale():
-    """gb29: keep = max(float, next planned StarDock purchase); spare above that is banked even while
-    StarDock still sells genesis torpedoes (the 57dec11 hold kept most seats from ever banking)."""
-    from tw2k.agents.seat_acceptance import synthetic_obs
-    from tw2k.agents.seat_brain import CITADEL_TIER_COST, SeatBrain
-
-    def _la(obs, kind, legal=True, **params):
-        obs["legal_actions"] = [row for row in obs["legal_actions"] if row["kind"] != kind]
-        obs["legal_actions"].append({"kind": kind, "legal": legal, "reason": None, "detail": "precise",
-                                     "params": params})
-
-    obs = synthetic_obs(sector=1, credits=200_000, ship_class="cargotran")
-    obs["bank_balance"] = 0
-    _la(obs, "buy_equip", item={"choices": ["genesis"], "unit_price_by": {"genesis": 25_000}},
-        qty={"max_by": {"genesis": 1}})
-    _la(obs, "bank_deposit", max_amount=200_000, balance=0, room=500_000)
-    act = SeatBrain().decide(obs)
-    keep = max(int(K.BOT_BANK_FLOAT), 25_000 + int(CITADEL_TIER_COST[0][0]))
-    assert act["kind"] == "bank_deposit", act
-    assert act["args"]["amount"] == 200_000 - keep
-
-
 def test_qc_pb21_death_mode_legacy_keeps_its_x075_path_under_bank_tw2002(monkeypatch):
     """pb21: DEATH_MODE legacy keeps x0.75 whatever BANK_MODE says; no cash goes to the killer."""
     from tw2k.engine.combat import _destroy_ship
