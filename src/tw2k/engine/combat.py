@@ -1012,7 +1012,10 @@ def _destroy_ship_tw2002(
     universe: Universe, pid: str, reason: str, killer_id: str | None, by_other: bool,
     *, always_escape: bool = False,
 ) -> None:
-    """d1-d11: the pod, or Ship Destroyed. Credits stay (d14). Elimination only by setting (d19)."""
+    """d1-d11: the pod, or Ship Destroyed. Elimination only by setting (d19).
+
+    Credits stay under BANK_MODE legacy (d14). tw2002 hands them to bank.on_ship_lost first (gb13).
+    """
     player = universe.players[pid]
     death_sector = player.sector_id
     sector = universe.sectors.get(death_sector)
@@ -1030,6 +1033,8 @@ def _destroy_ship_tw2002(
         player.pods_today = 0
     hull = player.ship.ship_class.value
     podded = always_escape or (hull not in K.PODLESS_HULLS and player.pods_today < K.PODS_PER_DAY)
+    from .bank import on_ship_lost
+    credits_lost = on_ship_lost(universe, player, killer_id, by_other, hull)
     if K.tow_on() and getattr(player.ship, "tow_lock", None) is not None:
         from .tow import release  # SHIP_TOW.md tt9: the beam dies with the hull; the towee stays put
         release(universe, player.ship, pid, "tower_destroyed")
@@ -1080,6 +1085,8 @@ def _destroy_ship_tw2002(
         },
         summary=f"*** {player.name}'s ship destroyed ({reason}); {tail} ***",
     )
+    if K.bank_on():
+        universe.events[-1].payload["credits_lost"] = credits_lost
     # fedspace-police-v1 f19: bounty only on real death (not pod)
     from .fed import record_bounty_on_death
     record_bounty_on_death(universe, pid, killer_id, outcome)

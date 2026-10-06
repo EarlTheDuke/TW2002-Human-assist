@@ -79,6 +79,9 @@ class ActionKind(str, Enum):
     SHIP_SET_PASSWORD = "ship_set_password"
     PORT_UPGRADE = "port_upgrade"  # port-upgrade-build-v1
     PORT_BUILD = "port_build"
+    BANK_DEPOSIT = "bank_deposit"  # galactic-bank-tax-v1
+    BANK_WITHDRAW = "bank_withdraw"
+    BANK_TRANSFER = "bank_transfer"
 
 
 class Action(BaseModel):

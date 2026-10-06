@@ -86,6 +86,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "BUY_RESERVE_MODE", "legacy")  # goldens predate fullgame-fixes-v1 (hints)
     monkeypatch.setattr(K, "PORT_UPGRADE_MODE", "legacy")  # goldens predate port-upgrade-build-v1
     monkeypatch.setattr(K, "FED_OUTPOST_MODE", "legacy")  # goldens predate class0-outpost-label (QC 55)
+    monkeypatch.setattr(K, "BANK_MODE", "legacy")  # goldens predate galactic-bank-tax-v1
 
 
 @pytest.fixture

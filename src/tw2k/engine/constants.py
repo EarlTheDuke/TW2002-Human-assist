@@ -1891,7 +1891,7 @@ CAPTURE_KEEPS_TOW = True         # cp18; dormant until TOW_MODE (slice 51)
 CAPTURE_CORBOMITE = "kept"       # cp15
 CAPTURE_UNMANNED_EXP = 0         # cp12 UNVERIFIED
 CAPTURE_NPC = False              # cp22: Ferrengi and Feds never capture
-CAPTURE_CREDITS = "as_destroy"   # cp11: credits stay with the pilot (d14)
+CAPTURE_CREDITS = "as_destroy"   # cp11: BANK_MODE legacy keeps d14; tw2002 loses cash as a destroy (gb15)
 CAPTURE_TELL_TOWER = True        # cp18; dormant until TOW_MODE
 BOT_CAPTURE_POLICY = "incidental"  # "incidental" | "off"
 
@@ -2065,3 +2065,40 @@ def port_upgrade_on() -> bool:
 # NEW DAY line at the top of its action_hint until it writes fresh short/medium goals. Agent-side only
 # (LLMAgent); observations, format_observation and the system prompt are unchanged, so no digest moves.
 LLM_NEW_DAY_GOAL_NOTICE = True
+
+# --- Galactic Bank and the good-trader tax (BANK_MODE) ------------------------
+# docs/playtests/fedspace/GALACTIC_BANK_TAX.md (galactic-bank-tax-v1).
+# "legacy" = the engine at 6b13b55: no account, no tax, credits stay on a lost ship.
+BANK_MODE = "tw2002"                    # "tw2002" | "legacy"
+BANK_MAX_BALANCE = 500_000              # gb4 SOURCE-CONFLICT: TWGS 500000 (alt Bible 100000)
+BANK_OVERCAP = "refuse"                 # gb5 UNVERIFIED: "refuse" | "clip"
+BANK_WITHDRAW_FEE = 0                   # gb7 UNVERIFIED
+BANK_TRANSFER_SOURCE = "cash"           # gb8 SOURCE-CONFLICT: "cash" (EIS) | "account" (Bible)
+BANK_TRANSFER_CORPMATES = True          # gb9 UNVERIFIED
+BANK_TRANSFER_RESPECTS_CAP = True       # gb9 UNVERIFIED
+BANK_INTEREST_PCT = 0                   # gb10 CONFIRMED
+BANK_TURN_COST = 0                      # gb11 UNVERIFIED
+BANK_IN_NET_WORTH = True                # gb26 DERIVED
+BANK_BALANCE_VIEW = "always"            # gb27 DERIVED: "always" | "stardock"
+DEATH_CREDITS_ON_HAND = "lost"          # gb13 UNVERIFIED: "lost" | "kept"
+DEATH_CREDITS_TO_KILLER = "player_ship_kill"  # gb14
+DEATH_CREDITS_RECOVER_PCT = 100         # gb14 UNVERIFIED
+DEATH_CREDITS_FERRENGI = "to_ferrengi"  # gb14 UNVERIFIED: "to_ferrengi" | "sink"
+TAX_MIN_ALIGNMENT = 0                   # gb17 SOURCE-CONFLICT: TWGS 0 (alt positive-only 1)
+TAX_THRESHOLD = 100_000                 # gb18 SOURCE-CONFLICT: TWGS 100000 (alt Bible 50000)
+TAX_RATE_PCT = 5                        # gb19 SOURCE-CONFLICT: TWGS 5 (alt Bible 10)
+TAX_ROUNDING = "floor"                  # gb19 UNVERIFIED
+TAX_CREDITS_PER_ALIGN = 1500            # gb21 CONFIRMED
+TAX_EXP = 0                             # gb21 UNVERIFIED
+TAX_ALIGN_AWARD_MAX = 31_999            # gb22 SOURCE-CONFLICT
+TAX_ALIGN_OVERFLOW = "none"             # gb22: "none" | "clamp"
+TAX_WHEN = "day_tick"                   # gb23 DERIVED
+TAX_TO = "sink"                         # gb24 CONFIRMED
+BOT_BANK_POLICY = "tax_and_death"       # gb29 DERIVED: "tax_and_death" | "off"
+BOT_BANK_FLOAT = 30_000
+BOT_BANK_DETOUR_HOPS = 0
+BOT_BANK_TRANSFER = False               # gb31 DERIVED
+
+
+def bank_on() -> bool:
+    return BANK_MODE == "tw2002"

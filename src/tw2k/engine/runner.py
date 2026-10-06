@@ -337,6 +337,9 @@ def tick_day(universe: Universe) -> None:
         payload={"day": universe.day},
         summary=f"-- Day {universe.day} dawns --",
     )
+    if K.bank_on():  # GALACTIC_BANK_TAX.md gb23: tax is the last step, after overnight cash
+        from .bank import collect_daily_tax
+        collect_daily_tax(universe)
     _check_victory(universe)
 
 
@@ -3957,6 +3960,13 @@ def _bind_planet_trade() -> None:
     _DISPATCH[ActionKind.PLANET_TRADE] = handle_planet_trade  # legacy: the handler answers "unsupported action"
 
 
+def _bind_bank() -> None:
+    from .bank import handle_bank_deposit, handle_bank_transfer, handle_bank_withdraw
+    _DISPATCH[ActionKind.BANK_DEPOSIT] = handle_bank_deposit
+    _DISPATCH[ActionKind.BANK_WITHDRAW] = handle_bank_withdraw
+    _DISPATCH[ActionKind.BANK_TRANSFER] = handle_bank_transfer
+
+
 def _bind_port_build() -> None:
     from .port_build import handle_port_build, handle_port_upgrade
     _DISPATCH[ActionKind.PORT_UPGRADE] = handle_port_upgrade  # legacy: "unsupported action"
@@ -3982,6 +3992,7 @@ _bind_fleet()
 _bind_tow()
 _bind_planet_trade()
 _bind_port_build()
+_bind_bank()
 _bind_corpships()
 _bind_fed_handlers()
 

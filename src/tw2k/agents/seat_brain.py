@@ -669,7 +669,7 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        answer = self._port_upgrade(v) or self._port_build(v)
+        answer = self._bank(v) or self._port_upgrade(v) or self._port_build(v)
         if answer is not None:  # port-upgrade-build-v1: widen a buying port, or (policy on) order one
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
@@ -2686,6 +2686,25 @@ class SeatBrain:
             if t in choices and s.get("repo_at_extern") and int(s.get("sector_id") or -1) == int(v.here):
                 return self._act("tow_engage", {"target": t},
                                  f"lock my unmanned {s.get('hull')} in tow so Extern does not repossess it")
+        return None
+
+    def _bank(self, v: View) -> dict[str, Any] | None:
+        """gb29-gb31: at StarDock, withdraw up to the float, else deposit the spare cash. Never a transfer."""
+        from ..engine import constants as engine_k
+        if engine_k.BOT_BANK_POLICY == "off" or not engine_k.bank_on() or int(v.here or 0) != int(engine_k.STARDOCK_SECTOR):
+            return None
+        keep = int(engine_k.BOT_BANK_FLOAT)
+        if v.ok("bank_withdraw") and int(v.credits) < keep:
+            maximum = int(v.params("bank_withdraw").get("max_amount") or 0)
+            amount = min(maximum, keep - int(v.credits))
+            if amount >= 1:
+                return {"kind": "bank_withdraw", "args": {"amount": amount}, "thought": "bank for the float"}
+        if v.ok("bank_deposit"):
+            maximum = int(v.params("bank_deposit").get("max_amount") or 0)
+            spare = int(v.credits) - keep
+            amount = min(maximum, spare)
+            if amount >= 1:
+                return {"kind": "bank_deposit", "args": {"amount": amount}, "thought": "bank the spare cash"}
         return None
 
     def _port_upgrade(self, v: View) -> dict[str, Any] | None:

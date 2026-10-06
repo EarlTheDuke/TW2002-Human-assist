@@ -328,6 +328,13 @@ class EventKind(str, Enum):
     PORT_BUILD_PROGRESS = "port_build_progress"
     PORT_BUILD_STALLED = "port_build_stalled"
     PORT_BUILT = "port_built"
+    # galactic-bank-tax-v1
+    BANK_DEPOSIT = "bank_deposit"
+    BANK_WITHDRAW = "bank_withdraw"
+    BANK_TRANSFER = "bank_transfer"
+    BANK_TRANSFER_RECEIVED = "bank_transfer_received"
+    TAX_COLLECTED = "tax_collected"
+    CREDITS_RECOVERED = "credits_recovered"
 
 
 # ---------------------------------------------------------------------------
@@ -562,11 +569,13 @@ class Player(BaseModel):
         return _omit_defaults(handler(self), {
             "arrived_by_transwarp": False, "arrived_by_transport": False,
             "port_upgrade_carry": {},
+            "bank_balance": 0,
         })
 
     id: str
     name: str
     credits: int = K.STARTING_CREDITS
+    bank_balance: int = 0  # galactic-bank-tax-v1; omitted from dumps while 0
     alignment: int = 0
     experience: int = 0
     ship: Ship = Field(default_factory=Ship)
@@ -781,7 +790,10 @@ class Player(BaseModel):
             + self.ship.genesis * K.GENESIS_TORPEDO_COST
             + K.scanner_value(getattr(self.ship, "scanner", None))
         )
-        return self.credits + cargo_value + ship_value + equip_value
+        total = self.credits + cargo_value + ship_value + equip_value
+        if K.bank_on() and K.BANK_IN_NET_WORTH:
+            total += int(self.bank_balance)
+        return total
 
 
 def _cap_text(text: str | None, limit: int) -> str:

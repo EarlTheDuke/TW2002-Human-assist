@@ -304,6 +304,7 @@ _CORP_PIN_FLIPS = (
     "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE", "PLANET_TRADE_MODE",
     "FED_OUTPOST_MODE",  # class0-outpost-label (single-mode pins flip all newer modes)
     "PORT_UPGRADE_MODE",
+    "BANK_MODE",
 )
 
 
