@@ -519,11 +519,6 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.SHIP_PASSWORD_FAIL: (),
     EventKind.SHIP_DEFUNCT: ("ship_id", "ticker"),
     EventKind.SHIP_FURBED: ("attacker", "victim_class", "holds_gained", "capped"),
-    EventKind.PORT_UPGRADED: ("commodity", "units", "new_capacity"),
-    EventKind.PORT_BUILD_ORDERED: ("letter", "days"),
-    EventKind.PORT_BUILD_PROGRESS: ("letter", "days_left"),
-    EventKind.PORT_BUILD_STALLED: ("letter", "days_left"),
-    EventKind.PORT_BUILT: ("sector", "class", "name"),
     EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
 }
 
