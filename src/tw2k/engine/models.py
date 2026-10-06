@@ -343,6 +343,12 @@ class EventKind(str, Enum):
     BANK_TRANSFER_RECEIVED = "bank_transfer_received"
     TAX_COLLECTED = "tax_collected"
     CREDITS_RECOVERED = "credits_recovered"
+    # alien-traders-v1. Never emitted under ALIEN_MODE legacy.
+    ALIEN_SPAWN = "alien_spawn"
+    ALIEN_SIGHTED = "alien_sighted"
+    ALIEN_FLED = "alien_fled"
+    ALIEN_MINED = "alien_mined"
+    ALIEN_CAPTURED = "alien_captured"
 
 
 # ---------------------------------------------------------------------------
