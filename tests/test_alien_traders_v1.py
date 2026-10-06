@@ -7,6 +7,7 @@ from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.alien import alien_day_step, place_aliens, population
 from tw2k.engine.combat import _resolve_ship_attack_tw2002
 from tw2k.engine.legality import legal_actions
+from tw2k.agents.seat_brain import SeatBrain
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
 from tw2k.engine.scanners import density_reading, sector_view
@@ -177,6 +178,36 @@ def test_al15_opposite_kill_pays_half_experience_and_the_credits():
     assert player.credits == 6_000
     killed = next(ev for ev in u.events if ev.kind.value == "ship_destroyed" and ev.payload.get("victim") == alien.id)
     assert killed.payload["kind"] == "alien" and killed.payload["credits"] == 5_000
+
+
+def test_al29_ignore_leaves_aliens_and_align_hunt_attacks_once(monkeypatch):
+    u = generate_universe(GameConfig(seed=12, universe_size=200, max_days=3, enable_ferrengi=False))
+    u.ferrengi.clear()
+    alien = next(iter(u.aliens.values()))
+    alien.alignment = -200
+    alien.sector_id = 80
+    alien.ship.fighters = 0
+    alien.ship.shields = 0
+    alien.ship.corbomite = 0
+    for other in u.aliens.values():
+        if other.id != alien.id and other.sector_id == 80:
+            other.sector_id = 90
+    player = Player(
+        id="A", name="Ann",
+        ship=Ship(ship_class=ShipClass.BATTLESHIP, fighters=2_000, shields=0),
+        sector_id=80, credits=50_000, alignment=100, experience=500,
+    )
+    u.players["A"] = player
+    u.sectors[80].occupant_ids.append("A")
+    obs = build_observation(u, "A").model_dump(mode="json")
+    ignored = SeatBrain().decide(obs)
+    assert (ignored.get("args") or {}).get("target") != alien.id
+    monkeypatch.setattr(K, "BOT_ALIEN_POLICY", "align_hunt")
+    brain = SeatBrain()
+    hunted = brain.decide(obs)
+    assert hunted["kind"] == "attack" and hunted["args"]["target"] == alien.id
+    again = brain.decide(obs)
+    assert (again.get("args") or {}).get("target") != alien.id
 
 
 def test_al22_corp_invite_refuses_an_alien():
