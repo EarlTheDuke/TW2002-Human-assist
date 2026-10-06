@@ -675,7 +675,12 @@ def legal_specs(universe: Universe, pid: str) -> list[tuple[str, bool, str | Non
     params: dict[str, Any] = {"target": {"type": "str", "required": True, "choices": choices, "cost_by": cost_by,
                                          "kind_by": kind_by}}
     if K.corpship_on():
+        from .corpships import detail_for
         params["password"] = {"type": "str", "required": False}
+        params["target"]["detail_by"] = {  # QC: same {owner, class, password_required} as the X-port list
+            t: detail_for(universe, pid, universe.parked_ships[int(t.split(":", 1)[1])], None)
+            for t in choices if kind_by.get(t) == "ship"
+        }
     out.append(("tow_engage", why is None, why, int(K.TURN_COST["tow_engage"]), params))
     has = lock_of(universe.players[pid].ship) is not None
     out.append(("tow_release", has, None if has else "your tractor beam is not locked",
