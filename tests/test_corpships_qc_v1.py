@@ -8,13 +8,13 @@ from __future__ import annotations
 import pytest
 
 import tw2k.engine.constants as K
+from tests.test_corpships_v1 import _act, _corp, _park, _sector, _sit, _world
 from tw2k.engine import ActionKind
 from tw2k.engine.corpships import FAILSAFE, apply_furb, furb_gain
 from tw2k.engine.fleet import fleet_net_worth
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Alliance, EventKind, Ship, ShipClass
 from tw2k.engine.observation import build_observation
-from tests.test_corpships_v1 import _act, _corp, _park, _sector, _sit, _world
 
 
 def _la(u, pid, kind):
