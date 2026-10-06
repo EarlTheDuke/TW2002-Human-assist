@@ -563,6 +563,10 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
     rec.ship.fighters, rec.ship.shields = d_f - f_lost, d_s - sh_lost
     if K.FLEET_UNMANNED_ALIGN == "v2_penalty" and f_lost > 0:
         player.alignment = int(player.alignment) - int(int(player.alignment) * 0.10 * f_lost / 1000)
+    will_capture = False
+    if beaten:
+        from .capture import unmanned_would_capture
+        will_capture = unmanned_would_capture(universe, player, rec, qty, defense, a_odds)
     owner = universe.players.get(rec.owner_id)
     universe.emit(
         EventKind.COMBAT,
@@ -580,13 +584,17 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
             "defender_fled": False,
             "attacker_losses": att_losses,
             "defender_losses": f_lost,
-            "outcome": "destroyed" if beaten else ("hit" if (f_lost + sh_lost) > 0 else "miss"),
+            "outcome": ("captured" if will_capture else
+                        ("destroyed" if beaten else ("hit" if (f_lost + sh_lost) > 0 else "miss"))),
         },
         summary=(f"Combat in {player.sector_id}: {player.name} sent {qty} fighters at an unmanned {hull}, "
                  f"lost {att_losses}; it lost {sh_lost} shields and {f_lost} fighters"
-                 + (" - DESTROYED" if beaten else "")),
+                 + (" - CAPTURED" if will_capture else (" - DESTROYED" if beaten else ""))),
     )
-    if beaten:
+    if will_capture:
+        from .capture import apply_unmanned_capture
+        apply_unmanned_capture(universe, pid, rec)
+    elif beaten:
         _remove(universe, int(rec.id))
         if K.FLEET_UNMANNED_KILL_EXP:
             player.experience = int(player.experience) + int(K.FLEET_UNMANNED_KILL_EXP)
@@ -648,6 +656,9 @@ def fleet_block(universe: Universe, pid: str) -> dict[str, Any]:
             ships[-1].update(extra)
             if extra["extern_hold"]:
                 ships[-1]["repo_at_extern"] = False
+        if K.capture_on():
+            ships[-1]["captured_from"] = rec.captured_from
+            ships[-1]["captured_day"] = rec.captured_day
     return {"max_ships": int(K.FLEET_MAX_SHIPS), "transport_range": rng,
             "manned_ship_id": player.ship.fleet_id, "ships": ships}
 

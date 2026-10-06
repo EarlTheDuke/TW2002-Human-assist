@@ -286,6 +286,7 @@ class HeuristicAgent(BaseAgent):
         return None
 
     def _attack(self, target: str, thought: str) -> Action:
+        """Omit qty so the engine sends the hull cap. That is not the capture minimum."""
         return Action(kind=ActionKind.ATTACK, args={"target": target}, thought=thought)
 
     def _answer_challenge(self, obs: Observation, challenge: dict) -> Action:

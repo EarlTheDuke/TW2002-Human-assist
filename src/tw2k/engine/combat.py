@@ -592,7 +592,14 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
             flee_to = _flee_destination(universe, target, sector)
 
     a_f, a_s = int(attacker.ship.fighters), int(attacker.ship.shields)
-    outcome = "destroyed" if beaten else ("hit" if (f_lost + sh_lost) > 0 else "miss")
+    will_capture = False
+    if beaten and not is_ferr:
+        from .capture import manned_would_capture
+        will_capture = manned_would_capture(universe, attacker, target, qty, defense, a_odds)
+    outcome = (
+        "captured" if will_capture
+        else ("destroyed" if beaten else ("hit" if (f_lost + sh_lost) > 0 else "miss"))
+    )
     rounds = [{
         "round": 1,
         "attacker_damage_mult": float(a_odds),
@@ -636,11 +643,14 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
         summary=(
             f"Combat in {attacker.sector_id}: {attacker.name} sent {qty} fighters, lost {att_losses}; "
             f"{getattr(target, 'name', 'target')} lost {sh_lost} shields and {f_lost} fighters"
-            + (" - DESTROYED" if beaten else "")
+            + (" - CAPTURED" if will_capture else (" - DESTROYED" if beaten else ""))
             + (" - the target fled" if flee_to is not None else "")
         ),
     )
-    if beaten:
+    if will_capture:
+        from .capture import apply_manned_capture
+        apply_manned_capture(universe, attacker_id, target)
+    elif beaten:
         _defender_destroyed(universe, attacker_id, target)
     elif flee_to is not None:
         _flee(universe, target, flee_to)

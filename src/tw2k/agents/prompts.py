@@ -589,6 +589,16 @@ _TOW_NOTE = (
 )
 
 
+_CAPTURE_NOTE = (
+    "\nSHIP CAPTURE (docs/playtests/ships/SHIP_CAPTURE.md): beat a ship with exactly the minimum fighters "
+    "(its real defense, shields plus fighters times its odds, divided by your odds, rounded up; 1 if it has none) "
+    "to capture it. One fighter too many destroys it. Escape pods and Scout Marauders are never captured. "
+    "A captured hull is your unmanned ship in that sector: ship_transport, tow, or sell_ship at StarDock. "
+    "Extern takes it if it sits in FedSpace. Corbomite on a captured hull does not go off. "
+    "Capturing a ship someone is towing does not break that tow.\n"
+)
+
+
 _FED_NOTE_TW2002 = (
     "\nFEDSPACE POLICE (docs/playtests/fedspace/FEDSPACE_POLICE.md): three indestructible Federals "
     "(Captain Zyrain, Admiral Nelson, Fleet Admiral Clausewitz) wander the map; attacking one pods you. "
@@ -679,6 +689,8 @@ def get_system_prompt() -> str:
         text = text + _FLEET_NOTE
     if K.tow_on():
         text = text + _TOW_NOTE
+    if K.capture_on():
+        text = text + _CAPTURE_NOTE
     if K.buy_reserve_on():
         text = _buy_reserve_prompt_text(text)
     return text
