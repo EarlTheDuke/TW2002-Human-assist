@@ -94,7 +94,8 @@ def tick_cloak_fails(universe: Universe, rng) -> None:
 
 
 def limpets_on_target(universe: Universe, target_id: str) -> list[str]:
-    return [k for k, lt in universe.limpets.items() if lt.target_id == target_id]
+    # SHIP_FLEET.md fl19: a track on a parked hull is not on the pilot's current ship.
+    return [k for k, lt in universe.limpets.items() if lt.target_id == target_id and lt.target_ship_id is None]
 
 
 def clear_mines_up_to(sector: Sector, clear_n: int) -> int:

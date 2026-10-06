@@ -65,10 +65,17 @@ def hop_count(universe: Universe, start: int, dest: int) -> int | None:
     return None
 
 
-def _fed_lock(player, sector_id: int) -> bool:
-    if K.SHIP_TW_FED_LOCK != "commissioned":
+def fed_lock_on(player) -> bool:
+    """tw10: the commissioned FedSpace lock. K.SHIP_TW_FED_LOCK_HULLS narrows it to the ISS (Ben's switch)."""
+    if K.SHIP_TW_FED_LOCK != "commissioned" or not is_commissioned(player):
         return False
-    if not is_commissioned(player):
+    if K.SHIP_TW_FED_LOCK_HULLS == "iss_only":
+        return player.ship.ship_class.value == "imperial_starship"
+    return True
+
+
+def _fed_lock(player, sector_id: int) -> bool:
+    if not fed_lock_on(player):
         return False
     return int(sector_id) in K.FEDSPACE_SECTORS
 
@@ -168,7 +175,7 @@ def locked_choices(universe: Universe, pid: str) -> list[dict[str, int]]:
     if _fed_lock(player, K.STARDOCK_SECTOR):
         names.update(int(s) for s in K.FEDSPACE_SECTORS if int(s) in universe.sectors)
     names.add(here)
-    if is_commissioned(player) and K.SHIP_TW_FED_LOCK == "commissioned":
+    if fed_lock_on(player):
         names.update(int(s) for s in K.FEDSPACE_SECTORS)
     rows: list[tuple[int, int, int]] = []
     for sid in names:
@@ -262,6 +269,7 @@ def _land(universe: Universe, pid: str, dest_id: int, from_id: int) -> bool:
     if pid not in dest.occupant_ids:
         dest.occupant_ids.append(pid)
     player.arrived_by_transwarp = True
+    player.arrived_by_transport = False
     _learn_sector(player, universe, dest_id)
     if dest.port is not None:
         _record_port_intel(player, dest.id, dest.port, universe=universe)

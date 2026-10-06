@@ -69,6 +69,8 @@ class ActionKind(str, Enum):
     POST_REWARD = "post_reward"
     CLAIM_REWARD = "claim_reward"
     SHIP_TRANSWARP = "ship_transwarp"
+    SELL_SHIP = "sell_ship"  # ship-fleet-transporter-v1
+    SHIP_TRANSPORT = "ship_transport"
 
 
 class Action(BaseModel):

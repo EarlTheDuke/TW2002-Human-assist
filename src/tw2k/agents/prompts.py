@@ -565,6 +565,18 @@ _SHIP_TW_NOTE = (
 )
 
 
+_FLEET_NOTE = (
+    "\nSHIP FLEET (docs/playtests/ships/SHIP_FLEET.md): at StarDock, buy_ship with trade_in=false pays the full "
+    "price, keeps you in your ship and parks the new hull unmanned in orbit at StarDock. sell_ship {ship_id} sells "
+    "an own ship in orbit at StarDock (sector 1) for the 25% trade-in credit; nothing aboard is refunded. "
+    "ship_transport {ship_id} beams you into an own parked ship within your CURRENT ship's transporter range "
+    "(the legal list shows range and hops): 1 turn, no fuel, no sector hazards; the ship you leave stays parked "
+    "with everything aboard. Own ships only, at most 5 ships. Extern repossesses unmanned ships left in FedSpace "
+    "(sectors 1-10) at day end, and rivals can attack your unmanned ships outside FedSpace (attack target "
+    "ship:<id> from unmanned_choices).\n"
+)
+
+
 _FED_NOTE_TW2002 = (
     "\nFEDSPACE POLICE (docs/playtests/fedspace/FEDSPACE_POLICE.md): three indestructible Federals "
     "(Captain Zyrain, Admiral Nelson, Fleet Admiral Clausewitz) wander the map; attacking one pods you. "
@@ -651,6 +663,8 @@ def get_system_prompt() -> str:
         text = text + _FED_NOTE_TW2002
     if K.ship_tw_on():
         text = text + _SHIP_TW_NOTE
+    if K.fleet_on():
+        text = text + _FLEET_NOTE
     return text
 
 

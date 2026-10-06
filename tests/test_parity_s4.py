@@ -275,6 +275,8 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1)})
     if ak is ActionKind.SHIP_TRANSWARP:  # ship-transwarp-v1
         return Action(kind=ak, args={"sector_id": first("sector_id", (list(sector.warps) or [2])[0])})
+    if ak in (ActionKind.SELL_SHIP, ActionKind.SHIP_TRANSPORT):  # ship-fleet-transporter-v1
+        return Action(kind=ak, args={"ship_id": first("ship_id", 1)})
     if ak is ActionKind.PLANET_TRANSWARP:
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "dest_sector": first("dest_sector", 1)})
     if ak is ActionKind.SET_QUASAR_SECTOR or ak is ActionKind.SET_QUASAR_ATM:

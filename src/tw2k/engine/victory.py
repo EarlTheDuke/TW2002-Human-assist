@@ -256,6 +256,9 @@ def full_net_worth(universe: Universe, player) -> int:
         if planet.owner_id == player.id:
             total += _planet_asset_value(planet)
     total += _corp_treasury_share(universe, player)
+    if universe.parked_ships:  # SHIP_FLEET.md fl27: own parked hulls, valued like the manned ship
+        from .fleet import fleet_net_worth
+        total += fleet_net_worth(universe, player.id)
     return total
 
 

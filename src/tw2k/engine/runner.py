@@ -200,6 +200,8 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     # ferrengi-aliens-v1: open tribute encounter (Flee / Attack / Surrender).
     # Any other action ignores the hail: the Ferrengi take tribute first, then it runs.
     ferr_enc = live_ferrengi_encounter(universe, player_id, settle=True)
+    if ferr_enc is not None and action.kind == ActionKind.SHIP_TRANSPORT and K.fleet_on():
+        return _reject_free("answer the Ferrengi first")  # SHIP_FLEET.md fl16
     if ferr_enc is not None and not _answers_ferrengi(action, ferr_enc):
         apply_ferrengi_tribute(universe, player_id, ignored=True)
 
@@ -267,6 +269,9 @@ def tick_day(universe: Universe) -> None:
 
     # fedspace-police-v1: tows after MSL sweep, then Fed wander (f5/f11-f14)
     from .fed import fed_tw2002, run_tows, tick_federals
+    if K.fleet_on():  # SHIP_FLEET.md fl23: Extern repossesses unmanned ships in FedSpace (before tows)
+        from .fleet import extern_repossess
+        extern_repossess(universe)
     if fed_tw2002():
         run_tows(universe)
         tick_federals(universe)
@@ -620,6 +625,7 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     died_entering = K.death_tw2002() and player.deaths != deaths_before
     if player.alive and not died_entering:
         player.arrived_by_transwarp = False
+        player.arrived_by_transport = False
         # Leave old sector
         try:
             universe.sectors[player.sector_id].occupant_ids.remove(pid)
@@ -1039,6 +1045,9 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     if _fed_tw() and str(target_id).startswith("fed:"):
         from .fed import attack_federal
         return attack_federal(universe, pid, str(target_id).split(":", 1)[1], action.args)
+    if K.fleet_on() and str(target_id).startswith("ship:"):  # SHIP_FLEET.md fl24: unmanned ships
+        from .fleet import attack_unmanned
+        return attack_unmanned(universe, pid, str(target_id), action)
     target = universe.players.get(target_id) or _ferrengi_by_name(universe, str(target_id))
     if target is None:
         return ActionResult(ok=False, error=f"target {target_id} not found")
@@ -1423,6 +1432,7 @@ def _handle_liftoff(universe: Universe, pid: str, action: Action) -> ActionResul
     planet_id = player.planet_landed
     player.planet_landed = None
     player.arrived_by_transwarp = False
+    player.arrived_by_transport = False
     universe.emit(
         EventKind.LIFTOFF,
         actor_id=pid,
@@ -1992,6 +2002,10 @@ def _weighted_choice(rng: random.Random, weights: dict[str, float]) -> str:
 
 def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
+    if K.fleet_on():
+        from .fleet import buy_spare, wants_spare
+        if wants_spare(action):  # SHIP_FLEET.md fl4: buy without trade-in (legacy ignores the arg)
+            return buy_spare(universe, pid, str(action.args.get("ship_class") or ""))
     if player.sector_id != K.STARDOCK_SECTOR:
         return ActionResult(ok=False, error="must be at StarDock")
     class_key = action.args.get("ship_class")
@@ -2006,6 +2020,9 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         # Only one Imperial StarShip in the universe
         for p in universe.players.values():
             if p.ship.ship_class.value == class_key:
+                return ActionResult(ok=False, error="this ship class is already owned elsewhere")
+        for parked in universe.parked_ships.values():  # fl6: parked ships count (empty under legacy)
+            if parked.ship.ship_class.value == class_key:
                 return ActionResult(ok=False, error="this ship class is already owned elsewhere")
 
     net_cost = K.net_hull_cost(player.ship.ship_class.value, class_key)
@@ -2636,11 +2653,17 @@ def _handle_query_limpets(universe: Universe, pid: str, action: Action) -> Actio
         target = universe.players.get(lt.target_id)
         if target is None:
             continue
+        current, hull = target.sector_id, target.ship.ship_class.value
+        if lt.target_ship_id is not None:  # SHIP_FLEET.md fl19: the limpet stayed on a parked hull
+            from .fleet import limpet_location
+            current, hull = limpet_location(universe, lt)
+            if current is None:
+                continue
         reports.append({
             "target_id": lt.target_id,
             "target_name": target.name,
-            "current_sector": target.sector_id,
-            "ship_class": target.ship.ship_class.value,
+            "current_sector": current,
+            "ship_class": hull,
             "placed_sector": lt.placed_sector,
             "placed_day": lt.placed_day,
         })
@@ -3806,6 +3829,12 @@ def _bind_ship_tw() -> None:
     _DISPATCH[ActionKind.SHIP_TRANSWARP] = handle_ship_transwarp
 
 
+def _bind_fleet() -> None:
+    from .fleet import handle_sell_ship, handle_ship_transport
+    _DISPATCH[ActionKind.SELL_SHIP] = handle_sell_ship  # legacy: the handlers answer "unsupported action"
+    _DISPATCH[ActionKind.SHIP_TRANSPORT] = handle_ship_transport
+
+
 def _bind_fed_handlers() -> None:
     from .fed import handle_apply_commission, handle_claim_reward, handle_post_reward
     _DISPATCH[ActionKind.APPLY_COMMISSION] = handle_apply_commission
@@ -3814,6 +3843,7 @@ def _bind_fed_handlers() -> None:
 
 
 _bind_ship_tw()
+_bind_fleet()
 _bind_fed_handlers()
 
 

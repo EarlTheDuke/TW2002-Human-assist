@@ -386,6 +386,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = _need_turns(player, atk_cost)
     atk_params: dict[str, Any] = {"target": {"type": "str", "required": True, "choices": attack_targets,
                                              "players": hostile_players, "ferrengi": ferrengi_ids}}
+    if K.fleet_on():
+        # SHIP_FLEET.md fl24: unmanned ships go in their own list; `choices` stays exactly as before.
+        from .fleet import unmanned_attack_choices
+        unmanned = unmanned_attack_choices(universe, player_id)
+        atk_params["target"]["unmanned_choices"] = unmanned
+        if unmanned and not attack_targets:
+            reason = _need_turns(player, atk_cost)
     if K.fed_tw2002():
         atk_params["target"]["federals"] = fed_ids
         if atk_note_fed:
@@ -540,6 +547,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             old_key = player.ship.ship_class.value
             trade_in = K.trade_in_credit(old_key)
             owned_classes = {p.ship.ship_class.value for p in universe.players.values()}
+            owned_classes.update(p.ship.ship_class.value for p in universe.parked_ships.values())  # fl6
             ship_choices: list[str] = []
             net_cost_by: dict[str, int] = {}
             blocked_by: dict[str, str] = {}
@@ -561,6 +569,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                            reason=None if ship_choices else "no ship you can buy right now (credits / alignment / corp)",
                            params={"ship_class": {"type": "str", "required": True, "choices": ship_choices,
                                                   "net_cost_by": net_cost_by, "trade_in": trade_in, "blocked_by": blocked_by}}))
+            if K.fleet_on():  # SHIP_FLEET.md fl4: optional trade_in=false buys a spare (legacy: no param)
+                from .fleet import spare_params
+                out[-1].params["trade_in"] = spare_params(universe, player_id)
 
         day = int(universe.day)
         prices = {
@@ -926,7 +937,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         out.append(_la(ActionKind.FIRE_DISRUPTOR, legal=reason is None, reason=reason, cost=atk_cost,
                        params={"target": {"type": "int", "required": True, "choices": adj}}))
 
-        attached = sum(1 for lt in universe.limpets.values() if lt.target_id == player_id)
+        attached = sum(1 for lt in universe.limpets.values()
+                       if lt.target_id == player_id and lt.target_ship_id is None)
         fee = int(K.LIMPET_REMOVAL_COST)
         from .class0 import class0_service_here as _c0_svc
         if not _c0_svc(universe, player_id):
@@ -1324,6 +1336,14 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         from .ship_transwarp import legal_spec
         ok, why, params, cost = legal_spec(universe, player_id)
         out.append(_la(ActionKind.SHIP_TRANSWARP, legal=ok, reason=why, cost=cost, params=params))
+
+    if K.fleet_on():  # SHIP_FLEET.md fl7 / fl8 (legacy: absent)
+        from .fleet import legal_specs as fleet_legal_specs
+        kinds = {"sell_ship": ActionKind.SELL_SHIP, "ship_transport": ActionKind.SHIP_TRANSPORT}
+        for kind_val, ok, why, cost, params in fleet_legal_specs(universe, player_id):
+            if ok and challenge is not None:
+                ok, why = False, CHALLENGE_REFUSAL
+            out.append(_la(kinds[kind_val], legal=ok, reason=why, cost=cost, params=params))
 
     return out
 

@@ -208,6 +208,12 @@ class EventKind(str, Enum):
     COMMISSION_GRANTED = "commission_granted"
     SHIP_TRANSWARP = "ship_transwarp"
     SHIP_TRANSWARP_FUSE = "ship_transwarp_fuse"
+    # ship-fleet-transporter-v1 (SHIP_FLEET.md fl30); never emitted under FLEET_MODE legacy
+    SHIP_TRANSPORT = "ship_transport"
+    FLEET_SPARE_BOUGHT = "fleet_spare_bought"
+    SHIP_SOLD = "ship_sold"
+    FLEET_REPOSSESSED = "fleet_repossessed"
+    UNMANNED_SHIP_DESTROYED = "unmanned_ship_destroyed"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -458,6 +464,8 @@ class Ship(BaseModel):
     atomic_detonators: int = 0
     # SHIP_TRANSWARP.md tw4. Excluded from dumps so a legacy universe stays byte-identical.
     transwarp_drive: str | None = Field(default=None, exclude=True)
+    # SHIP_FLEET.md fl1: stable fleet id, set the first time the hull is parked or bought as a spare.
+    fleet_id: int | None = Field(default=None, exclude=True)
     # Weighted-average unit cost paid for the current holdings of each
     # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
     # when planning a sell — without this they have to reconstruct cost
@@ -508,6 +516,8 @@ class Player(BaseModel):
     port_visit_sector_id: int | None = None
     # SHIP_TRANSWARP.md tw12. Set on a ship TransWarp landing; cleared by warp or liftoff.
     arrived_by_transwarp: bool = Field(default=False, exclude=True)
+    # SHIP_FLEET.md fl17c. Set by ship_transport; cleared by a warp, a TransWarp jump or liftoff.
+    arrived_by_transport: bool = Field(default=False, exclude=True)
     # Last sector of a successful rob/steal (fake bust if repeated). ROB_STEAL.md r13.
     last_crime_sector_id: int | None = None
     # fedspace-police-v1
@@ -749,6 +759,17 @@ class LimpetTrack(BaseModel):
     target_id: str      # which player is being tracked
     placed_sector: int
     placed_day: int
+    # SHIP_FLEET.md fl19: set while the tracked hull sits parked (unmanned); None = on target_id's ship.
+    target_ship_id: int | None = Field(default=None, exclude=True)
+
+
+class ParkedShip(BaseModel):
+    """SHIP_FLEET.md fl1: an owned, unmanned ship. The Ship object is never shared with player.ship."""
+    id: int
+    owner_id: str
+    sector_id: int
+    ship: Ship
+    parked_day: int
 
 
 # ---------------------------------------------------------------------------
@@ -882,6 +903,9 @@ class Universe(BaseModel):
     limpets: dict[str, LimpetTrack] = Field(default_factory=dict)
     next_planet_id: int = 1
     next_alliance_id: int = 1
+    # SHIP_FLEET.md fl1. Excluded from dumps so a legacy universe stays byte-identical (empty there anyway).
+    parked_ships: dict[int, ParkedShip] = Field(default_factory=dict, exclude=True)
+    next_ship_id: int = Field(default=1, exclude=True)
     events: list[Event] = Field(default_factory=list)
     day: int = 1
     tick: int = 0

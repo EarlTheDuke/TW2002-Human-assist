@@ -104,6 +104,11 @@ def density_reading(universe: Universe, sector_id: int) -> dict[str, Any]:
     from .ferrengi import ferrengi_density
     for f in _ferrengi_in(universe, sector_id):
         density += int(ferrengi_density(f))
+    if K.fleet_on():  # SHIP_FLEET.md fl22: 38 per uncloaked unmanned ship (manned stays 40)
+        from .fleet import density_unmanned
+        um_density, um_anomaly = density_unmanned(universe, sector_id)
+        density += um_density
+        cloaked_here = cloaked_here or um_anomaly
     if cloaked_here:
         anomaly = True
     if s.port is not None:
@@ -166,6 +171,9 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
     if K.fed_tw2002():
         from .fed import federals_in_sector
         view["federals"] = [{"name": f.name, "title": f.title} for f in federals_in_sector(universe, sector_id)]
+    if K.fleet_on():  # SHIP_FLEET.md fl22: never inside "traders"
+        from .fleet import sector_unmanned_view
+        view["unmanned_ships"] = sector_unmanned_view(universe, viewer_id, sector_id)
     return view
 
 

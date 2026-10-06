@@ -54,6 +54,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "FERRENGI_MODE", "legacy")
     monkeypatch.setattr(K, "FED_MODE", "legacy")  # pins predate fedspace-police-v1
     monkeypatch.setattr(K, "SHIP_TW_MODE", "legacy")  # pins predate ship TransWarp
+    monkeypatch.setattr(K, "FLEET_MODE", "legacy")  # pins predate the ship fleet
 
 
 @pytest.fixture
