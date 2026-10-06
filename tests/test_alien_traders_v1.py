@@ -5,7 +5,16 @@ from __future__ import annotations
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.alien import alien_day_step, place_aliens, population
-from tw2k.engine.models import FighterDeployment, FighterMode, MineDeployment, MineType
+from tw2k.engine.combat import _resolve_ship_attack_tw2002
+from tw2k.engine.models import (
+    FighterDeployment,
+    FighterMode,
+    MineDeployment,
+    MineType,
+    Player,
+    Ship,
+    ShipClass,
+)
 
 
 def test_al1_population_and_legacy_places_nobody(monkeypatch):
@@ -56,3 +65,29 @@ def test_al8_armids_can_destroy_and_pay_nothing():
     assert not alien.alive
     assert all(u.players[pid].credits == credits[pid] for pid in credits)
     assert any(ev.kind.value == "ship_destroyed" and ev.payload.get("kind") == "alien" for ev in u.events)
+
+
+def test_al15_opposite_kill_pays_half_experience_and_the_credits():
+    u = generate_universe(GameConfig(seed=4, universe_size=200, max_days=3))
+    place_aliens(u)
+    alien = next(iter(u.aliens.values()))
+    alien.experience = 100
+    alien.alignment = -200
+    alien.credits = 5_000
+    alien.ship.fighters = 0
+    alien.ship.shields = 0
+    alien.ship.corbomite = 0
+    player = Player(
+        id="A", name="Ann",
+        ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER, fighters=400, shields=50),
+        sector_id=alien.sector_id, credits=1_000, alignment=100, experience=0,
+    )
+    u.players["A"] = player
+    u.sectors[alien.sector_id].occupant_ids.append("A")
+    _resolve_ship_attack_tw2002(u, "A", alien, 1)
+    assert not alien.alive
+    assert player.experience == 50
+    assert player.alignment == 200
+    assert player.credits == 6_000
+    killed = next(ev for ev in u.events if ev.kind.value == "ship_destroyed" and ev.payload.get("victim") == alien.id)
+    assert killed.payload["kind"] == "alien" and killed.payload["credits"] == 5_000
