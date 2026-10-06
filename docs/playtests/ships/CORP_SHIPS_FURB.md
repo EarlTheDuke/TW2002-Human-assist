@@ -1,6 +1,6 @@
 # Corporate ships and furbing
 
-`CORPSHIP_MODE` `tw2002` | `legacy`. Legacy is owner-only transport and tow, no furb, no defunct conversion, no new verbs, no new observation keys. Pin: `test_corpships_legacy_is_unchanged` (`e11cd2ec746b097c12490a8e`, 10-day N3,N3,N2,N2,N1,H seed 250925, recorded on f10b080; CORPSHIP_MODE and the seven fullgame-fixes-v2 switches flipped). QC tests: `tests/test_corpships_qc_v1.py`.
+`CORPSHIP_MODE` `tw2002` | `legacy`. Legacy is owner-only transport and tow, no furb, no defunct conversion, no new verbs, no new observation keys. Pin: `test_corpships_legacy_is_unchanged` (`85622347d694ff6224ec89bc`, 10-day N3,N3,N2,N2,N1,H seed 250925; CORPSHIP_MODE, PLANET_TRADE_MODE and the seven fullgame-fixes-v2 switches flipped; equals f10b080 with PLANET_TRADE_MODE flipped, per 4b85e21). QC tests: `tests/test_corpships_qc_v1.py`.
 
 | Row | Rule | Status | Constant | Test |
 | --- | --- | --- | --- | --- |
