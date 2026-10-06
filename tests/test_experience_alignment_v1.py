@@ -270,7 +270,7 @@ TW2002_A = [
     ("destroy_2", 998, 1241),        # x7: +50 experience, -1 alignment
     ("warp_held", 998, 1241),        # x4: no experience for a warp
     ("hit_figs", 1001, 1261),        # x14/a3: 50 lost / 15 and 50 x 2000 / 5000 against red-owned fighters
-    ("day", 1002, 1262),             # x3
+    ("day", 1002, 1275),             # x3 daily +1, then tax alignment on the cash still aboard
 ]
 
 
@@ -334,7 +334,8 @@ def test_daily_point_skips_the_dead(tw) -> None:
     u, *_ = rank_world()
     u.players["D"].alive = False
     tick_day(u)
-    assert (u.players["A"].experience, u.players["A"].alignment) == (601, 301)  # daily +1
+    # Daily +1, then the bank tax on 200,000: floor(10,000 / 1500) = 6 alignment. The dead seat is skipped.
+    assert (u.players["A"].experience, u.players["A"].alignment) == (601, 307)
     assert (u.players["D"].experience, u.players["D"].alignment) == (1500, 50)
 
 

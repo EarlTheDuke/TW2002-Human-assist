@@ -115,9 +115,21 @@ def _explained_total(before: dict[str, int], events, universe) -> int:
             victim = payload.get("victim")
             if payload.get("kind") == "ferrengi" and actor in credits:
                 credits[actor] += int(payload.get("bounty") or 0)
+            elif victim in credits and "credits_lost" in payload:
+                credits[victim] = int(credits[victim]) - int(payload.get("credits_lost") or 0)
             elif victim in credits and not payload.get("outcome"):
-                # Legacy death keeps 75 percent. A tw2002 pod or Ship Destroyed (payload "outcome") keeps all.
+                # Legacy death keeps 75 percent. A tw2002 pod keeps all only while BANK_MODE is legacy.
                 credits[victim] = int(credits[victim] * 0.75)
+        elif ev.kind is EventKind.CREDITS_RECOVERED and actor in credits:
+            credits[actor] += int(payload.get("credits_recovered") or 0)
+        elif ev.kind is EventKind.TAX_COLLECTED and actor in credits:
+            credits[actor] -= int(payload.get("tax") or 0)
+        elif ev.kind is EventKind.BANK_DEPOSIT and actor in credits:
+            credits[actor] -= int(payload.get("amount") or 0)
+        elif ev.kind is EventKind.BANK_WITHDRAW and actor in credits:
+            credits[actor] += int(payload.get("amount") or 0)
+        elif ev.kind is EventKind.BANK_TRANSFER and actor in credits:
+            credits[actor] -= int(payload.get("amount") or 0)
     return sum(credits.values())
 
 
@@ -397,6 +409,7 @@ def run_seed(seed: int) -> tuple[int, str, Counter, Counter]:
                     else:
                         before_credits = _credits(universe)
                         before_turns = universe.players[pid].turns_today
+                        before_deaths = universe.players[pid].deaths
                         before_world = _world(universe)
                         before_seq = universe.seq
                         result = apply_action(
@@ -420,7 +433,10 @@ def run_seed(seed: int) -> tuple[int, str, Counter, Counter]:
                         if rule:
                             return _fail(seed, log, rule), "", ok_by, fail_by
                         spent = universe.players[pid].turns_today - before_turns
-                        if result.ok:
+                        died = universe.players[pid].deaths > before_deaths
+                        if died:
+                            pass  # Ship Destroyed locks the day; that jump is not the action's turn cost
+                        elif result.ok:
                             if spent != result.turns_spent:
                                 return _fail(seed, log, f"ok action spent {spent} not {result.turns_spent}"), "", ok_by, fail_by
                         elif result.error in CHARGED_FAIL:

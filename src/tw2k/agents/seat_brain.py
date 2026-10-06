@@ -2725,6 +2725,11 @@ class SeatBrain:
             price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
                         or GENESIS_TORPEDO_COST)
             keep = max(keep, price + int(CITADEL_TIER_COST[0][0]))
+        # A torpedo or a world still needs its citadel cash. That is the next purchase, not spare.
+        if v.genesis_aboard and not v.worlds():
+            keep = max(keep, int(CITADEL_TIER_COST[0][0]) + self.working_capital)
+        if v.worlds():
+            keep = max(keep, self._citadel_reserve(v))
         return keep
 
     def _bank(self, v: View) -> dict[str, Any] | None:
@@ -2747,6 +2752,10 @@ class SeatBrain:
                         "thought": "withdraw the shortfall for the StarDock buy"}
         if need > 0 and int(v.credits) >= need:
             return None  # the ladder buys the hull before any deposit
+        # Spare cash waits while StarDock will still sell the next torpedo.
+        if (len(v.genesis_planets()) < self.target_planets and v.ok("buy_equip")
+                and "genesis" in set(str(c) for c in v.choices("buy_equip", "item"))):
+            return None
         if mem is not None and mem.bank_deposited:
             return None
         keep = self._bank_keep(v, need)

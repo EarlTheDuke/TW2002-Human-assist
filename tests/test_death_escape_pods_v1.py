@@ -143,7 +143,7 @@ def test_self_inflicted_loss_puts_the_pod_in_the_previous_sector() -> None:
     # Mines are self-inflicted: the pod goes to the sector the warp left, not into the minefield.
     assert a.sector_id == home and a.id in u.sectors[home].occupant_ids and a.id not in u.sectors[dest].occupant_ids
     assert a.ship.ship_class is ShipClass.ESCAPE_POD
-    assert a.credits == 4000  # credits stay
+    assert a.credits == 0  # gb13: a mine sinks the cash; the balance would have survived
     assert a.experience == 1234 - 123 and a.alignment == -77  # 10 percent, rounded down; no alignment
     assert a.ship.holds == 5 and sum(a.ship.cargo.values()) == 0
     assert (a.ship.fighters, a.ship.shields, a.ship.genesis, a.ship.ether_probes) == (0, 0, 0, 0)
@@ -251,12 +251,14 @@ def test_a_podless_hull_is_ship_destroyed(hull: ShipClass) -> None:
     a.ship.ship_class = hull
     a.credits, a.experience, a.alignment = 777, 1001, -501
     a.turns_today = 10
+    killer_credits = b.credits
     _destroy_ship(u, a.id, reason="combat", killer_id=b.id, by_other=True)
     assert a.alive and a.deaths == 1
     assert a.ship.ship_class is ShipClass.SCOUT_MARAUDER and a.sector_id == K.STARDOCK_SECTOR
     assert a.id in u.sectors[K.STARDOCK_SECTOR].occupant_ids and a.id not in u.sectors[sid].occupant_ids
     assert a.experience == 1001 - 500 and a.alignment == -501 + 250  # halfway to zero
-    assert a.credits == 777
+    assert a.credits == 0  # gb14: a pod or a Scout pays the killer nothing
+    assert b.credits == killer_credits
     assert a.turns_today == a.turns_per_day  # out until midnight
     assert a.pods_today == 0
     assert _last(u, EventKind.SHIP_DESTROYED).payload["outcome"] == "ship_destroyed"
@@ -597,10 +599,17 @@ def test_fuzz_random_deaths_all_sixteen_hulls() -> None:
             u.sectors[s].fighters = FighterDeployment(
                 owner_id=rng.choice(players).id, count=rng.randrange(1, 50), mode=FighterMode.DEFENSIVE)
         before = (p.credits, p.experience, abs(p.alignment), p.deaths)
+        hull_name = p.ship.ship_class.value
         reason, by_other = REASONS[rng.randrange(len(REASONS))]
         _destroy_ship(u, p.id, reason=reason, killer_id=players[0].id, by_other=by_other)
         assert p.alive
-        assert p.credits == before[0] >= 0
+        # gb13-gb14: cash is lost. A real hull killed by another pilot pays that pilot, including
+        # the odd case where the fuzz picks the killer as the victim and the credits come back.
+        real_hull = hull_name not in ("escape_pod", "scout_marauder")
+        if by_other and real_hull and p.id == players[0].id:
+            assert p.credits == before[0] >= 0
+        else:
+            assert p.credits == 0
         assert 0 <= p.experience <= before[1]
         assert abs(p.alignment) <= before[2]
         assert p.deaths == before[3] + 1
