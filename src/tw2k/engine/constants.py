@@ -2149,3 +2149,63 @@ BOT_CORP_POLICY = "off"                   # cr29: "off" | "pair"
 
 def corp_rules_on() -> bool:
     return CORP_MODE == "tw2002"
+
+
+# --- Alien traders (ALIEN_MODE) ----------------------------------------------
+# docs/playtests/npc/ALIEN_TRADERS.md. "legacy" is the engine at 5695588.
+ALIEN_MODE = "tw2002"                     # "tw2002" | "legacy"
+ALIEN_SOURCE = "classic"                  # al1 SOURCE-CONFLICT: "classic" | "off"
+ALIEN_POPULATION_PER_1000 = 40            # al1 UNVERIFIED
+ALIEN_NAMES = (
+    "Vorn", "Kess", "Jax", "Ryn", "Sola", "Pek", "Nim", "Quill",
+    "Tarn", "Bex", "Loro", "Hess", "Mira", "Cade", "Yew", "Orl",
+)                                         # al2 UNVERIFIED flavour
+ALIEN_START = "scatter"                   # al3 UNVERIFIED
+ALIEN_RESPAWN_DELAY_DAYS = 1              # al4 UNVERIFIED
+ALIEN_GOOD_PCT = 50                       # al5 UNVERIFIED
+ALIEN_ALIGN_MIN = 50
+ALIEN_ALIGN_MAX = 500
+ALIEN_HULLS_BY_DAY = (
+    (0, ("merchant_cruiser", "scout_marauder", "cargotran")),
+    (30, ("merchant_cruiser", "scout_marauder", "cargotran",
+          "missile_frigate", "merchant_freighter", "colonial_transport")),
+    (90, ("merchant_cruiser", "scout_marauder", "cargotran",
+          "missile_frigate", "merchant_freighter", "colonial_transport",
+          "battleship", "havoc_gunstar", "constellation")),
+)                                         # al6 UNVERIFIED
+ALIEN_FIGHTERS_BASE = 300
+ALIEN_FIGHTERS_PER_DAY = 20
+ALIEN_SHIELDS_BASE = 50
+ALIEN_SHIELDS_PER_DAY = 5
+ALIEN_EXP_START = 100
+ALIEN_EXP_PER_DAY = 10
+ALIEN_EXP_CAP = 5000
+ALIEN_CREDITS_MIN = 1000
+ALIEN_CREDITS_START = 10_000
+ALIEN_CREDITS_PER_DAY = 250
+ALIEN_CREDITS_CAP = 100_000
+ALIEN_CORBOMITE_MAX = 5
+ALIEN_HOPS_PER_DAY = 3                    # al7 UNVERIFIED
+ALIEN_MINE_KILL_REWARD = False            # al8 UNVERIFIED
+ALIEN_LIMPETS = False
+ALIEN_AGGRESSION = "never"                # al9 UNVERIFIED; any other value is refused below
+ALIEN_FLEE_RULE = "player"                # al13 SOURCE-CONFLICT: "player" | "always"
+ALIEN_INTERDICTED = True                  # al13 UNVERIFIED
+ALIEN_KILL_EXP_RULE = "bible"             # al15 SOURCE-CONFLICT: "bible" | "player"
+ALIEN_KILL_ALIGN_SHARE = 0.5              # al16 UNVERIFIED
+ALIEN_LOOT_CREDITS = True                 # al17 UNVERIFIED
+ALIEN_BOUNTY = 0
+ALIEN_CAPTURE = True                      # al19
+ALIEN_PORT_TRADE = False                  # al20 UNVERIFIED
+ALIEN_NPC_FIGHT = False                   # al22 UNVERIFIED
+ALIEN_REGEN = False                       # al12
+BOT_ALIEN_POLICY = "ignore"               # al29: "ignore" | "align_hunt"
+BOT_ALIEN_MARGIN = 1.5
+
+if ALIEN_AGGRESSION != "never":
+    raise RuntimeError("ALIEN_AGGRESSION only supports 'never'")
+
+
+def alien_on() -> bool:
+    return ALIEN_MODE == "tw2002" and ALIEN_SOURCE == "classic" and combat_tw2002() and rank_tw2002()
+
