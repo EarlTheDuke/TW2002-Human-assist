@@ -75,6 +75,7 @@ PORT_CLASS_TRADES: dict[int, tuple[bool | None, bool | None, bool | None]] = {
     6: (True, True, False),  # BBS
     7: (True, True, True),   # BBB
     8: (None, None, None),   # StarDock — services only
+    9: (False, False, False),  # SSS — built ports only (port-upgrade-build-v1)
 }
 
 # Weights for random port class placement (class 0 and 8 placed explicitly)
@@ -1999,3 +2000,57 @@ BOT_PLANET_TRADE_KEEP_ORE = True        # PTW "Don't sell fuel ore"
 
 def planet_trade_on() -> bool:
     return PLANET_TRADE_MODE == "tw2002"
+
+
+# --- Starport upgrade and construction (PORT_UPGRADE_MODE) -------------------
+# docs/playtests/ports/PORT_UPGRADE_BUILD.md (port-upgrade-build-v1, slice 55).
+# "legacy" = the engine at 4b85e21: no verbs, no construction tick, no new dump fields.
+PORT_UPGRADE_MODE = "tw2002"            # "tw2002" | "legacy"
+PORT_UPGRADE_SPECIAL = False            # pu2 UNVERIFIED: StarDock and class 0 are not upgradable
+PORT_UPGRADE_UNIT_COST = {"fuel_ore": 250, "organics": 500, "equipment": 900}  # pu4 CONFIRMED
+PORT_UPGRADE_HOLDS_PER_UNIT = 10        # pu5 CONFIRMED
+PORT_UPGRADE_MAX_HOLDS = 32760          # pu6 SOURCE-CONFLICT: TWGS 32760 (alt Gold 65530)
+PORT_UPGRADE_CREDITS_TO_PORT = False    # pu8 UNVERIFIED: upgrade money is a sink
+PORT_UPGRADE_EXP_PER_UNIT = {"fuel_ore": 0.1, "organics": 0.2, "equipment": 0.3}  # pu9 CONFIRMED
+PORT_UPGRADE_ALIGN_PER_UNIT = {"fuel_ore": 0.05, "organics": 0.1, "equipment": 0.15}
+PORT_UPGRADE_FRACTION = "carry"         # pu10 UNVERIFIED: "carry" | "floor"
+PORT_UPGRADE_NEEDS_PLANET = False       # pu12 SOURCE-CONFLICT: TWGS does not require a planet
+PORT_UPGRADE_TURN_COST = "visit"        # pu14 UNVERIFIED: "visit" | 1
+PORT_UPGRADE_BUST_BLOCKS = True         # pu15 UNVERIFIED
+PORT_BUILD_NEEDS_PLANET = True          # pu17 SOURCE-CONFLICT: EIS requires a planet
+PORT_BUILD_PLANET_WHO = "owner_or_corp"  # pu17 UNVERIFIED: "owner_or_corp" | "owner"
+PORT_BUILD_ALLOW_SSS = True             # pu18 DERIVED: SSS exists only for built ports
+PORT_BUILD_COST = {                     # pu19 UNVERIFIED (Iago)
+    "BBS": 39250, "BSB": 41500, "SBB": 48000, "SSB": 37500,
+    "SBS": 34000, "BSS": 32500, "SSS": 30000, "BBB": 50000,
+}
+PORT_BUILD_DAYS = {                     # pu20 CONFIRMED
+    "BBS": 6, "BSB": 7, "SBB": 8, "SSB": 5, "SBS": 4, "BSS": 3, "SSS": 2, "BBB": 10,
+}
+PORT_BUILD_DAILY_MATERIALS = {          # pu21 UNVERIFIED (Iago): fuel_ore, organics, equipment
+    "BBS": (120, 120, 60), "BSB": (140, 70, 140), "SBB": (80, 160, 160), "SSB": (50, 50, 100),
+    "SBS": (40, 80, 40), "BSS": (60, 30, 30), "SSS": (20, 20, 20), "BBB": (200, 200, 200),
+}
+PORT_BUILD_STALL = "pause"              # pu22 UNVERIFIED
+PORT_BUILD_DOCKS_OPEN = False           # pu23 UNVERIFIED
+PORT_BUILD_START_PRODUCTIVITY = 10      # pu24 IAGO: 100 units/day
+PORT_BUILD_START_STOCK_PCT = 0          # pu24 UNVERIFIED
+PORT_BUILD_MCIC = "home"                # pu24 UNVERIFIED: sell 50 / buy -60
+PORT_BUILD_REWARD = {                   # pu25 CONFIRMED values (exp, align)
+    "BBS": (25, 12), "BSB": (29, 14), "SBB": (34, 16), "SSB": (20, 10),
+    "SBS": (16, 8), "BSS": (12, 6), "SSS": (7, 4), "BBB": (45, 20),
+}
+PORT_BUILD_REWARD_WHEN = "complete"     # pu25 UNVERIFIED: "complete" | "order"
+PORT_BUILD_INITIAL_BUILT_PCT = 95       # pu26 DERIVED
+PORT_BUILD_RADIATION_DAYS = 1           # pu27 SOURCE-CONFLICT: TWGS 1 (alt IAGO 14)
+PORT_BUILD_FEDSPACE = False             # pu27 UNVERIFIED
+PORT_BUILD_NAME_MAX = 30
+BOT_PORT_UPGRADE_POLICY = "planet_room"  # pu28 DERIVED: "planet_room" | "off"
+BOT_PORT_UPGRADE_MAX_UNITS = 50
+BOT_PORT_UPGRADE_RESERVE = 50_000
+BOT_PORT_UPGRADE_PAYBACK_DAYS = 5
+BOT_PORT_BUILD_POLICY = "off"           # pu29 DERIVED: "off" | "near_planet"
+
+
+def port_upgrade_on() -> bool:
+    return PORT_UPGRADE_MODE == "tw2002"

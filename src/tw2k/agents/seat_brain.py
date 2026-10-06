@@ -664,6 +664,12 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
+        answer = self._port_upgrade(v) or self._port_build(v)
+        if answer is not None:  # port-upgrade-build-v1: widen a buying port, or (policy on) order one
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
         answer = self._planet_trade(v)
         if answer is not None:  # planetary-trading-v1: sell a planet's surplus straight to this port
             self._intent = Intent()
@@ -2676,6 +2682,84 @@ class SeatBrain:
                 return self._act("tow_engage", {"target": t},
                                  f"lock my unmanned {s.get('hull')} in tow so Extern does not repossess it")
         return None
+
+    def _port_upgrade(self, v: View) -> dict[str, Any] | None:
+        """pu28: widen a buying port when a held planet's organics or equipment will not fit."""
+        from ..engine import constants as engine_k
+        if engine_k.BOT_PORT_UPGRADE_POLICY != "planet_room" or not engine_k.port_upgrade_on():
+            return None
+        if int(engine_k.BOT_PORT_UPGRADE_PAYBACK_DAYS) <= 0 or not v.ok("port_upgrade"):
+            return None
+        commodities = v.params("port_upgrade").get("commodities") or {}
+        seen = ((v.sector.get("port") or {}).get("stock") or {})
+        best: tuple[int, str, int] | None = None
+        for commodity, row in commodities.items():
+            if commodity == "fuel_ore" or not isinstance(row, dict) or row.get("side") != "buys_from_player":
+                continue
+            slot = seen.get(commodity) or {}
+            room = int(slot.get("max") or 0) - int(slot.get("current") or 0)
+            bid = int(slot.get("price") or 0)
+            holds = max(1, int(row.get("holds_per_unit") or 10))
+            unit_cost = int(row.get("unit_cost") or 0)
+            legal_max = int(row.get("max_units") or 0)
+            if unit_cost <= 0 or legal_max < 1 or bid <= 0:
+                continue
+            lot = 0
+            for planet in v.owned:
+                if int(planet.get("sector_id") or -1) != int(v.here or -1):
+                    continue
+                lot = max(lot, int((planet.get("stockpile") or {}).get(commodity) or 0))
+            short = lot - room
+            if short <= 0:
+                continue
+            afford = max(0, (int(v.credits) - int(engine_k.BOT_PORT_UPGRADE_RESERVE)) // unit_cost)
+            units = min((short + holds - 1) // holds, legal_max, int(engine_k.BOT_PORT_UPGRADE_MAX_UNITS), afford)
+            if units < 1:
+                continue
+            sold = min(short, units * holds)
+            base = int(engine_k.COMMODITY_BASE_PRICE[commodity])
+            # pu28: lot * bid * quote% - base. Multiplication binds first, so base comes off once.
+            gain = int(bid * sold * int(engine_k.BOT_PLANET_TRADE_QUOTE_PCT) / 100) - base
+            cost = units * unit_cost
+            if gain <= cost:
+                continue
+            if best is None or gain - cost > best[0]:
+                best = (gain - cost, commodity, units)
+        if best is None:
+            return None
+        return self._act("port_upgrade", {"commodity": best[1], "units": int(best[2])},
+                         f"upgrade {best[1]} so the planet's lot fits this port")
+
+    def _port_build(self, v: View) -> dict[str, Any] | None:
+        """pu29: off unless BOT_PORT_BUILD_POLICY is near_planet."""
+        from ..engine import constants as engine_k
+        from ..engine.port_build import class_buys
+        if engine_k.BOT_PORT_BUILD_POLICY != "near_planet" or not engine_k.port_upgrade_on():
+            return None
+        if not v.ok("port_build"):
+            return None
+        params = v.params("port_build")
+        classes = params.get("classes") or {}
+        best: tuple[int, str, int] | None = None
+        for planet in v.owned:
+            if int(planet.get("sector_id") or -1) != int(v.here or -1):
+                continue
+            pile = planet.get("stockpile") or {}
+            product = max(("organics", "equipment", "fuel_ore"), key=lambda c: int(pile.get(c) or 0))
+            if int(pile.get(product) or 0) <= 0:
+                continue
+            for code, row in classes.items():
+                if not isinstance(row, dict) or product not in class_buys(code):
+                    continue
+                price = int(row.get("cost") or 0)
+                if price <= 0 or int(v.credits) <= price * 4 or not row.get("affordable"):
+                    continue
+                if best is None or price < best[0]:
+                    best = (price, code, int(planet["id"]))
+        if best is None:
+            return None
+        return self._act("port_build", {"port_class": best[1], "planet_id": best[2]},
+                         f"order a class {best[1]} port under this planet")
 
     def _planet_trade(self, v: View) -> dict[str, Any] | None:
         """planetary-trading-v1 (BOT_PLANET_TRADE_POLICY sell_surplus): docked at a port with an own / corp planet in

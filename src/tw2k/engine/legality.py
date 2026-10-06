@@ -142,13 +142,15 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     if not player.alive:
         return [_la(k, legal=False, reason="player is destroyed", detail="precise") for k in ActionKind
                 if (K.hardware_tw2002() or k != ActionKind.LAUNCH_BEACON)
-                and (K.planet_trade_on() or k != ActionKind.PLANET_TRADE)]
+                and (K.planet_trade_on() or k != ActionKind.PLANET_TRADE)
+                and (K.port_upgrade_on() or k not in (ActionKind.PORT_UPGRADE, ActionKind.PORT_BUILD))]
 
     landed = player.planet_landed is not None
     at_stardock = player.sector_id == K.STARDOCK_SECTOR
     in_fedspace = player.sector_id in K.FEDSPACE_SECTORS
     port = sector.port
-    trading_port = port is not None and port.class_id != PortClass.STARDOCK
+    from .port_build import docks_closed
+    trading_port = port is not None and port.class_id != PortClass.STARDOCK and not docks_closed(port)
     other_ids = [pid for pid in sector.occupant_ids if pid != player_id and pid in universe.players]
     ferrengi_ids = [f.id for f in universe.ferrengi.values() if f.sector_id == sector.id and f.alive]
     targets_here = other_ids + ferrengi_ids
@@ -1393,6 +1395,17 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             if ok and challenge is not None:
                 ok, why = False, CHALLENGE_REFUSAL
             out.append(_la(ckinds[kind_val], legal=ok, reason=why, cost=cost, params=params))
+
+    if K.port_upgrade_on():  # PORT_UPGRADE_BUILD.md (legacy: both verbs absent)
+        from .port_build import build_legal_spec, upgrade_legal_spec
+        ok, why, cost, params = upgrade_legal_spec(universe, player_id)
+        if ok and challenge is not None:
+            ok, why = False, CHALLENGE_REFUSAL
+        out.append(_la(ActionKind.PORT_UPGRADE, legal=ok, reason=why, cost=cost, params=params))
+        ok, why, cost, params = build_legal_spec(universe, player_id)
+        if ok and challenge is not None:
+            ok, why = False, CHALLENGE_REFUSAL
+        out.append(_la(ActionKind.PORT_BUILD, legal=ok, reason=why, cost=cost, params=params))
 
     return out
 

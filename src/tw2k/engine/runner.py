@@ -246,7 +246,8 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
     # Flee penalty: the first turn-using action after a flee settles it. Land or port pays extra.
     if player.flee_penalty and player.turns_today > turns_before:
-        if action.kind in (ActionKind.LAND_PLANET, ActionKind.TRADE, ActionKind.PLANET_TRADE):
+        if action.kind in (ActionKind.LAND_PLANET, ActionKind.TRADE, ActionKind.PLANET_TRADE,
+                           ActionKind.PORT_UPGRADE, ActionKind.PORT_BUILD):
             extra = min(K.FLEE_PENALTY_TURNS, max(0, player.turns_per_day - player.turns_today))
             player.turns_today += extra
             result.turns_spent += extra
@@ -327,6 +328,9 @@ def tick_day(universe: Universe) -> None:
         _complete_citadels(universe)
         _pay_planet_value_tax(universe)
         _accrue_planet_treasury(universe)
+    if K.port_upgrade_on():
+        from .port_build import advance_construction
+        advance_construction(universe)
 
     universe.emit(
         EventKind.DAY_TICK,
@@ -757,8 +761,14 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
     if sector.port is None or sector.port.class_id == PortClass.STARDOCK:
         return ActionResult(ok=False, error="no trading port in this sector")
     port = sector.port
+    if getattr(port, "construction", None):
+        return ActionResult(ok=False, error="that port is under construction")
     if K.rob_tw2002() and getattr(port, "bust_player_id", None) == pid:
         return ActionResult(ok=False, error="you are busted at this port until it clears")
+    if K.port_upgrade_on():  # pu23
+        from .port_build import docks_closed
+        if docks_closed(port):
+            return ActionResult(ok=False, error="this port is under construction")
 
     try:
         commodity = Commodity(action.args.get("commodity"))
@@ -1065,6 +1075,8 @@ def _handle_atomic_detonation(
         if all(s.current == 0 for s in sector.port.stock.values()) and qty >= 3:
             sector.port = None
             port_destroyed = True
+            if K.port_upgrade_on():  # pu27: radiation starts the day the port is destroyed
+                sector.port_destroyed_day = universe.day
 
     for plid in list(sector.planet_ids):
         planet = universe.planets[plid]
@@ -3945,6 +3957,12 @@ def _bind_planet_trade() -> None:
     _DISPATCH[ActionKind.PLANET_TRADE] = handle_planet_trade  # legacy: the handler answers "unsupported action"
 
 
+def _bind_port_build() -> None:
+    from .port_build import handle_port_build, handle_port_upgrade
+    _DISPATCH[ActionKind.PORT_UPGRADE] = handle_port_upgrade  # legacy: "unsupported action"
+    _DISPATCH[ActionKind.PORT_BUILD] = handle_port_build
+
+
 def _bind_corpships() -> None:
     from .corpships import handle_set_corporate, handle_set_password, handle_set_personal
     _DISPATCH[ActionKind.SHIP_SET_CORPORATE] = handle_set_corporate
@@ -3963,6 +3981,7 @@ _bind_ship_tw()
 _bind_fleet()
 _bind_tow()
 _bind_planet_trade()
+_bind_port_build()
 _bind_corpships()
 _bind_fed_handlers()
 

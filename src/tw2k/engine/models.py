@@ -124,11 +124,12 @@ class PortClass(int, Enum):
     CLASS_6_BBS = 6
     CLASS_7_BBB = 7
     STARDOCK = 8
+    CLASS_9_SSS = 9  # port-upgrade-build-v1: built ports only
 
     @property
     def code(self) -> str:
         codes = {0: "FED", 1: "BSS", 2: "BSB", 3: "SBB", 4: "SSB",
-                 5: "SBS", 6: "BBS", 7: "BBB", 8: "STARDOCK"}
+                 5: "SBS", 6: "BBS", 7: "BBB", 8: "STARDOCK", 9: "SSS"}
         return codes[self.value]
 
 
@@ -321,6 +322,12 @@ class EventKind(str, Enum):
     OPERATOR_DIRECTIVE_SET = "operator_directive_set"
     OPERATOR_DIRECTIVE_CLEARED = "operator_directive_cleared"
     OPERATOR_MESSAGE = "operator_message"
+    # port-upgrade-build-v1
+    PORT_UPGRADED = "port_upgraded"
+    PORT_BUILD_ORDERED = "port_build_ordered"
+    PORT_BUILD_PROGRESS = "port_build_progress"
+    PORT_BUILD_STALLED = "port_build_stalled"
+    PORT_BUILT = "port_built"
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +356,12 @@ class Port(BaseModel):
     credits: int = 0
     # Last real buster at this port; clears daily or when another red busts here.
     bust_player_id: str | None = None
+    # port-upgrade-build-v1. None once the port is open. Omitted while None.
+    construction: dict | None = None
+
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"construction": None})
 
     @property
     def code(self) -> str:
@@ -392,6 +405,10 @@ class MineDeployment(BaseModel):
 
 
 class Sector(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"port_destroyed_day": None})
+
     id: int
     warps: list[int] = Field(default_factory=list)
     port: Port | None = None
@@ -406,6 +423,8 @@ class Sector(BaseModel):
     # HARDWARE_MODE tw2002 (SHIP_HARDWARE_V2.md v5-v9): marker beacon message, or None.
     # Who launched it is never stored or shown (the original shows only the text).
     beacon: str | None = None
+    # port-upgrade-build-v1. Day a port here was destroyed. Omitted while None.
+    port_destroyed_day: int | None = None
     # Display hint for the map view (computed at generation time)
     x: float = 0.0
     y: float = 0.0
@@ -540,7 +559,10 @@ class Ship(BaseModel):
 class Player(BaseModel):
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"arrived_by_transwarp": False, "arrived_by_transport": False})
+        return _omit_defaults(handler(self), {
+            "arrived_by_transwarp": False, "arrived_by_transport": False,
+            "port_upgrade_carry": {},
+        })
 
     id: str
     name: str
@@ -569,6 +591,8 @@ class Player(BaseModel):
     port_visit_sector_id: int | None = None
     # SHIP_TRANSWARP.md tw12. Set on a ship TransWarp landing; cleared by warp or liftoff.
     arrived_by_transwarp: bool = False
+    # port-upgrade-build-v1. Fractional exp/align left over, per commodity. Omitted while empty.
+    port_upgrade_carry: dict[str, dict[str, float]] = Field(default_factory=dict)
     # SHIP_FLEET.md fl17c. Set by ship_transport; cleared by a warp, a TransWarp jump or liftoff.
     arrived_by_transport: bool = False
     # Last sector of a successful rob/steal (fake bust if repeated). ROB_STEAL.md r13.
@@ -961,7 +985,9 @@ class Federal(BaseModel):
 class Universe(BaseModel):
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"parked_ships": {}, "next_ship_id": 1})
+        return _omit_defaults(handler(self), {
+            "parked_ships": {}, "next_ship_id": 1, "port_cap": None,
+        })
 
     config: GameConfig
     sectors: dict[int, Sector]
@@ -977,6 +1003,8 @@ class Universe(BaseModel):
     # SHIP_FLEET.md fl1. Saved when non-empty; omitted while empty/1 so a legacy universe stays byte-identical.
     parked_ships: dict[int, ParkedShip] = Field(default_factory=dict)
     next_ship_id: int = 1
+    # port-upgrade-build-v1. Omitted while None so a legacy dump stays identical.
+    port_cap: int | None = None
     events: list[Event] = Field(default_factory=list)
     day: int = 1
     tick: int = 0

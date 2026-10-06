@@ -380,6 +380,10 @@ def generate_universe(config: GameConfig) -> Universe:
     from .fed import place_federals
     place_federals(universe)
 
+    if K.port_upgrade_on():  # pu26: cap from the bang's finished port count
+        from .port_build import stamp_port_cap
+        stamp_port_cap(universe)
+
     return universe
 
 

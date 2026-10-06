@@ -82,8 +82,9 @@ def test_two_pathb_brains_plus_unattended_seat_no_stalls(tmp_path: Path) -> None
         # terra_colonists (class0-terra-v1) makes it 56; ship_transwarp (ship-transwarp-v1) makes it 60;
         # sell_ship + ship_transport (ship-fleet-transporter-v1) make it 62; tow_engage + tow_release
         # (ship-tow-transwarp2-v1) make it 64; planet_trade (planetary-trading-v1) makes it 65;
-        # ship_set_corporate, ship_set_personal, ship_set_password (corp-ships-furb-v1) make it 68.
-        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 68
+        # ship_set_corporate, ship_set_personal, ship_set_password (corp-ships-furb-v1) make it 68;
+        # port_upgrade and port_build (port-upgrade-build-v1) make it 70.
+        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 70
         # No external timeout errors for the attended seats; idle auto-waits only for P4.
         errs = [e for e in u.events if e.kind is EventKind.AGENT_ERROR and e.actor_id in ("P2", "P3")
                 and (e.payload or {}).get("external_timeout")]
