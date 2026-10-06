@@ -227,7 +227,7 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
         # not on the warp that already costs the ship (twgs repossesses on that same move).
         from .fed import maybe_fed_hail
         maybe_fed_hail(universe, player_id)
-    result.event_seqs = [e.seq for e in universe.events if e.seq > before_seq]
+    result.event_seqs = _seqs_after(universe.events, before_seq)
 
     # Count turns. A repelled planet landing stays ok=False so callers
     # still see that the ship did not land, but the fight spent the turn.
@@ -256,6 +256,19 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     _check_victory(universe)
 
     return result
+
+
+def _seqs_after(events: list, before_seq: int) -> list[int]:
+    """Seqs of the events emitted after `before_seq`, oldest first.
+
+    Universe.emit is the only writer of the feed and numbers events in append
+    order, so they are the tail: walk back from the end instead of scanning a
+    whole match's history on every action (SOAK_30DAY_V1.md).
+    """
+    i = len(events)
+    while i and events[i - 1].seq > before_seq:
+        i -= 1
+    return [e.seq for e in events[i:]]
 
 
 def tick_day(universe: Universe) -> None:
