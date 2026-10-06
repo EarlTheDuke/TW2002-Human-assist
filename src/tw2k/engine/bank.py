@@ -103,13 +103,15 @@ def _recipients(universe: Universe, player: Player) -> list[dict[str, Any]]:
         if not K.BANK_TRANSFER_CORPMATES and player.corp_ticker and other.corp_ticker == player.corp_ticker:
             continue
         their_room = room(other)
-        rows.append({
+        row = {
             "player_id": other_id,
             "name": other.name,
-            "room": their_room,
             "max_amount": min(int(player.credits), their_room) if K.BANK_TRANSFER_SOURCE == "cash"
             else min(int(player.bank_balance), their_room),
-        })
+        }
+        if K.BANK_SHOW_RECIPIENT_ROOM:
+            row["room"] = their_room
+        rows.append(row)
     return rows
 
 

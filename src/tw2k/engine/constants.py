@@ -2076,6 +2076,7 @@ BANK_WITHDRAW_FEE = 0                   # gb7 UNVERIFIED
 BANK_TRANSFER_SOURCE = "cash"           # gb8 SOURCE-CONFLICT: "cash" (EIS) | "account" (Bible)
 BANK_TRANSFER_CORPMATES = True          # gb9 UNVERIFIED
 BANK_TRANSFER_RESPECTS_CAP = True       # gb9 UNVERIFIED
+BANK_SHOW_RECIPIENT_ROOM = True         # UNVERIFIED: transfer list shows room (alt False hides it)
 BANK_INTEREST_PCT = 0                   # gb10 CONFIRMED
 BANK_TURN_COST = 0                      # gb11 UNVERIFIED
 BANK_IN_NET_WORTH = True                # gb26 DERIVED

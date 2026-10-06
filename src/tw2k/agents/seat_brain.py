@@ -222,6 +222,8 @@ class SeatMemory:
     pt_detour: int = 0
     # port-upgrade-build-v1 QC: "sector:commodity" buy ports this seat gave its one starter upgrade.
     port_starters: set[str] = field(default_factory=set)
+    # galactic-bank-tax-v1: one deposit per StarDock visit. Stays off the scratchpad while false.
+    bank_deposited: bool = False
 
     def dump(self) -> str:
         payload = {
@@ -258,6 +260,8 @@ class SeatMemory:
             payload["pt_detour"] = self.pt_detour
         if self.port_starters:
             payload["port_starters"] = sorted(self.port_starters)[:20]
+        if self.bank_deposited:
+            payload["bank_deposited"] = True
         return MEMORY_TAG + json.dumps(payload, separators=(",", ":"))
 
     @classmethod
@@ -302,6 +306,7 @@ class SeatMemory:
         mem.psychic_unit = int(unit) if isinstance(unit, int) else None
         mem.pt_detour = int(data.get("pt_detour") or 0)
         mem.port_starters = {str(k) for k in (data.get("port_starters") or []) if isinstance(k, str)}
+        mem.bank_deposited = bool(data.get("bank_deposited"))
         return mem
 
 
@@ -2688,22 +2693,70 @@ class SeatBrain:
                                  f"lock my unmanned {s.get('hull')} in tow so Extern does not repossess it")
         return None
 
-    def _bank(self, v: View) -> dict[str, Any] | None:
-        """gb29-gb31: at StarDock, withdraw up to the float, else deposit the spare cash. Never a transfer."""
+    def _stardock_hull_need(self, v: View, balance: int) -> int:
+        """Cash that must be on hand for the next hull the ladder would buy, counting the bank."""
+        if not v.ok("buy_ship"):
+            return 0
+        choices = set(str(c) for c in v.choices("buy_ship", "ship_class"))
+        nets = (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by") or {}
+        purse = int(v.credits) + int(balance)
+        if v.ship_class == "escape_pod":
+            picks = (("cargotran", self.cash_buffer), ("scout_marauder", 0))
+        elif v.ship_class in ("merchant_cruiser", "scout_marauder") and "cargotran" in choices:
+            picks = (("cargotran", self.cash_buffer),)
+        else:
+            return 0
+        for key, reserve in picks:
+            if key not in choices:
+                continue
+            cost = int(nets.get(key) or 0)
+            if cost > 0 and purse - cost >= reserve:
+                return cost + reserve
+        return 0
+
+    def _bank_keep(self, v: View, hull_need: int) -> int:
+        """Spare above this stays on the ship: the float, the pending hull, or the first genesis plus L1."""
         from ..engine import constants as engine_k
-        if engine_k.BOT_BANK_POLICY == "off" or not engine_k.bank_on() or int(v.here or 0) != int(engine_k.STARDOCK_SECTOR):
+        keep = max(int(engine_k.BOT_BANK_FLOAT), int(hull_need))
+        if hull_need > 0:
+            return keep
+        if (v.genesis_aboard == 0 and not v.genesis_planets() and v.ok("buy_equip")
+                and "genesis" in set(str(c) for c in v.choices("buy_equip", "item"))):
+            price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
+                        or GENESIS_TORPEDO_COST)
+            keep = max(keep, price + int(CITADEL_TIER_COST[0][0]))
+        return keep
+
+    def _bank(self, v: View) -> dict[str, Any] | None:
+        """gb29-gb31: withdraw the exact hull shortfall, else deposit spare once per StarDock visit."""
+        from ..engine import constants as engine_k
+        mem = self.mem
+        at_dock = int(v.here or 0) == int(engine_k.STARDOCK_SECTOR)
+        if mem is not None and not at_dock:
+            mem.bank_deposited = False
+        if engine_k.BOT_BANK_POLICY == "off" or not engine_k.bank_on() or not at_dock:
             return None
-        keep = int(engine_k.BOT_BANK_FLOAT)
-        if v.ok("bank_withdraw") and int(v.credits) < keep:
+        balance = int(v.obs.get("bank_balance") or 0)
+        need = self._stardock_hull_need(v, balance)
+        if need > int(v.credits) and v.ok("bank_withdraw"):
+            shortfall = need - int(v.credits)
             maximum = int(v.params("bank_withdraw").get("max_amount") or 0)
-            amount = min(maximum, keep - int(v.credits))
+            amount = min(maximum, shortfall)
             if amount >= 1:
-                return {"kind": "bank_withdraw", "args": {"amount": amount}, "thought": "bank for the float"}
+                return {"kind": "bank_withdraw", "args": {"amount": amount},
+                        "thought": "withdraw the shortfall for the StarDock buy"}
+        if need > 0 and int(v.credits) >= need:
+            return None  # the ladder buys the hull before any deposit
+        if mem is not None and mem.bank_deposited:
+            return None
+        keep = self._bank_keep(v, need)
         if v.ok("bank_deposit"):
-            maximum = int(v.params("bank_deposit").get("max_amount") or 0)
             spare = int(v.credits) - keep
+            maximum = int(v.params("bank_deposit").get("max_amount") or 0)
             amount = min(maximum, spare)
             if amount >= 1:
+                if mem is not None:
+                    mem.bank_deposited = True
                 return {"kind": "bank_deposit", "args": {"amount": amount}, "thought": "bank the spare cash"}
         return None
 

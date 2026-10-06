@@ -60,7 +60,8 @@ def parse_seats(text: str) -> list[str]:
 
 def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 1000,
               turns_per_day: int = 1000, credits: int = 20_000, ferrengi: bool = True,
-              max_steps: int = 2_000_000, port_report: bool = False) -> dict[str, Any]:
+              max_steps: int = 2_000_000, port_report: bool = False,
+              bank_report: bool = False) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents import HeuristicAgent
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
@@ -261,6 +262,35 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             row["planet_trade"] = planet_trades[pid]
     else:
         violations = None
+    bank_rows = None
+    if bank_report:
+        bank_rows = {
+            pid: {"deposits": 0, "deposited": 0, "withdrawals": 0, "withdrawn": 0,
+                  "tax": 0, "tax_align": 0, "credits_lost": 0, "credits_recovered": 0}
+            for pid in players
+        }
+        for ev in u.events:
+            kind = getattr(ev.kind, "value", str(ev.kind))
+            pid = str(ev.actor_id or "")
+            payload = ev.payload or {}
+            if kind == "bank_deposit" and pid in bank_rows:
+                bank_rows[pid]["deposits"] += 1
+                bank_rows[pid]["deposited"] += int(payload.get("amount") or 0)
+            elif kind == "bank_withdraw" and pid in bank_rows:
+                bank_rows[pid]["withdrawals"] += 1
+                bank_rows[pid]["withdrawn"] += int(payload.get("amount") or 0)
+            elif kind == "tax_collected" and pid in bank_rows:
+                bank_rows[pid]["tax"] += int(payload.get("tax") or 0)
+                bank_rows[pid]["tax_align"] += int(payload.get("align_gain") or 0)
+            elif kind == "ship_destroyed":
+                victim = str(payload.get("victim") or "")
+                if victim in bank_rows:
+                    bank_rows[victim]["credits_lost"] += int(payload.get("credits_lost") or 0)
+            elif kind == "credits_recovered" and pid in bank_rows:
+                bank_rows[pid]["credits_recovered"] += int(payload.get("credits_recovered") or 0)
+        for pid, row in players.items():
+            row["bank_balance"] = int(u.players[pid].bank_balance)
+            row["bank"] = bank_rows[pid]
     ranking = sorted(players, key=lambda q: (-players[q]["net_worth"], q))
     result = {
         "seed": seed, "days": days, "days_played": u.day, "seats": seats, "universe_size": universe_size,
@@ -271,6 +301,10 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
     }
     if violations is not None:
         result["invariant_violations"] = violations
+    if bank_rows is not None:
+        result["bank_rejected"] = sum(int(row["rejected_engine"]) for row in players.values())
+        result["bank_exceptions"] = sum(int(row["exceptions"]) for row in players.values())
+        result["ferrengi_credits"] = sum(int(ship.credits) for ship in (getattr(u, "ferrengi", None) or {}).values())
     return result
 
 
@@ -313,12 +347,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-ferrengi", action="store_true")
     ap.add_argument("--port-report", action="store_true",
                     help="add port-upgrade and planet-trade totals (not part of the legacy digest)")
+    ap.add_argument("--bank-report", action="store_true",
+                    help="add bank, tax, and death-credit totals (not part of the legacy digest)")
+    ap.add_argument("--bank-legacy", action="store_true",
+                    help="run with BANK_MODE legacy (the before column)")
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
+    if a.bank_legacy:
+        from tw2k.engine import constants as K
+        K.BANK_MODE = "legacy"
     result = run_match(parse_seats(a.seats), seed=a.seed, days=a.days, universe_size=a.size,
                        turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi,
-                       port_report=a.port_report)
+                       port_report=a.port_report, bank_report=a.bank_report)
     text = json.dumps(result, indent=1, sort_keys=True)
     md = render_markdown(result)
     if a.json_out:
@@ -326,6 +367,16 @@ def main(argv: list[str] | None = None) -> int:
     if a.md_out:
         Path(a.md_out).write_text(md, encoding="utf-8")
     print(md)
+    if a.bank_report:
+        print(f"BANK rejected {result['bank_rejected']} exceptions {result['bank_exceptions']} "
+              f"ferrengi_credits {result['ferrengi_credits']}")
+        for pid in result["ranking"]:
+            row = result["players"][pid]
+            b = row.get("bank") or {}
+            print(f"BANK {pid} {row['seat']} nw {row['net_worth']} cash {row['credits']} "
+                  f"balance {row.get('bank_balance')} dep {b.get('deposited')} wd {b.get('withdrawn')} "
+                  f"tax {b.get('tax')} align {b.get('tax_align')} lost {b.get('credits_lost')} "
+                  f"recovered {b.get('credits_recovered')} rej {row['rejected_engine']}")
     return 0
 
 
