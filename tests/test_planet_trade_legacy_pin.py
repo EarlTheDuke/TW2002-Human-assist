@@ -16,9 +16,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PLANET_TRADE_LEGACY_GOLDEN = "77c7d444a0965a2c40cffcca"  # recorded on 3b8f8e5 (origin; PLANET_TRADE_MODE absent)
 # fullgame-fixes-v2 switches and CORPSHIP_MODE are flipped too: their tw2002 defaults change the N3 game.
-PIN_FLIPS = ("PLANET_TRADE_MODE", "CORPSHIP_MODE", "PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE",
-             "SLOW_HULL_HINT_MODE", "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE",
-             "FED_OUTPOST_MODE")  # class0-outpost-label
+PIN_FLIPS = ("PLANET_TRADE_MODE", "CORPSHIP_MODE", "PORT_UPGRADE_MODE", "PLANET_DIVIDEND_MODE", "HUNT_MODE",
+             "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE", "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE",
+             "MINE_OVERFLOW_MODE", "FED_OUTPOST_MODE")
 
 
 def test_planet_trade_legacy_is_unchanged():

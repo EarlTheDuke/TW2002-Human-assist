@@ -24,6 +24,10 @@ def port_allows_crime(port: Port | None) -> tuple[bool, str]:
         return False, "StarDock cannot be robbed or stolen from"
     if port.class_id == PortClass.FEDERAL:
         return False, "Class 0 / Federal ports cannot be robbed or stolen from"
+    if K.port_upgrade_on():  # pu23
+        from .port_build import docks_closed
+        if docks_closed(port):
+            return False, "this port is under construction"
     return True, ""
 
 
@@ -126,6 +130,8 @@ def handle_rob(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error=why)
     port = sector.port
     assert port is not None
+    if getattr(port, "construction", None):
+        return ActionResult(ok=False, error="that port is under construction")
     if not alignment_allows_crime(player):
         return ActionResult(ok=False, error=f"alignment must be {K.ROB_MIN_ALIGNMENT} or lower to rob")
     if bust_blocks_player(port, pid):
@@ -200,6 +206,8 @@ def handle_steal(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error=why)
     port = sector.port
     assert port is not None
+    if getattr(port, "construction", None):
+        return ActionResult(ok=False, error="that port is under construction")
     if not alignment_allows_crime(player):
         return ActionResult(ok=False, error=f"alignment must be {K.ROB_MIN_ALIGNMENT} or lower to steal")
     if bust_blocks_player(port, pid):

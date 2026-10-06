@@ -432,8 +432,7 @@ def test_fullgame_fixes_v2_switches_off_equal_the_base():
     import sys
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
-    flips = V2_PIN_FLIP + ("CORPSHIP_MODE",)  # corp-ships-furb-v1: that mode did not exist on f10b080
-    flips += ("FED_OUTPOST_MODE",)  # class0-outpost-label: newer mode, flipped too
+    flips = V2_PIN_FLIP + ("CORPSHIP_MODE", "FED_OUTPOST_MODE", "PORT_UPGRADE_MODE")
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"

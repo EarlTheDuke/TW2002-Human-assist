@@ -77,6 +77,8 @@ class ActionKind(str, Enum):
     SHIP_SET_CORPORATE = "ship_set_corporate"  # corp-ships-furb-v1
     SHIP_SET_PERSONAL = "ship_set_personal"
     SHIP_SET_PASSWORD = "ship_set_password"
+    PORT_UPGRADE = "port_upgrade"  # port-upgrade-build-v1
+    PORT_BUILD = "port_build"
 
 
 class Action(BaseModel):

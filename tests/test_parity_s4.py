@@ -322,6 +322,16 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={})
     if ak is ActionKind.SHIP_SET_PASSWORD:
         return Action(kind=ak, args={"password": first("password", "")})
+    if ak is ActionKind.PORT_UPGRADE:
+        commodities = p.get("commodities") or {}
+        commodity = next((c for c, row in commodities.items() if int((row or {}).get("max_units") or 0) >= 1), "equipment")
+        return Action(kind=ak, args={"commodity": commodity, "units": 1})
+    if ak is ActionKind.PORT_BUILD:
+        classes = p.get("classes") or {}
+        code = next((c for c, row in classes.items() if (row or {}).get("affordable")), "SSS")
+        planets = p.get("planets") or []
+        planet_id = int(planets[0]["planet_id"]) if planets else 1
+        return Action(kind=ak, args={"port_class": code, "planet_id": planet_id})
     raise AssertionError(f"no builder for {kind}")
 
 

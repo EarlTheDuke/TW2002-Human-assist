@@ -47,6 +47,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "HUNT_MODE", "legacy")  # predate fullgame-fixes-v2
     monkeypatch.setattr(K, "COMBAT_FRAMING_MODE", "legacy")  # predate fullgame-fixes-v2
     monkeypatch.setattr(K, "SLOW_HULL_HINT_MODE", "legacy")  # predate fullgame-fixes-v2
+    monkeypatch.setattr(K, "PORT_UPGRADE_MODE", "legacy")  # goldens predate port-upgrade-build-v1
     monkeypatch.setattr(K, "COMBAT_SCANNER_MODE", "legacy")  # predate fullgame-fixes-v2
 
 

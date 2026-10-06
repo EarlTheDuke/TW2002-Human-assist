@@ -49,12 +49,18 @@ def port_reason(universe: Universe, player: Player) -> str | None:
     port = universe.sectors[player.sector_id].port
     if port is None:
         return "no trading port in this sector"
+    if getattr(port, "construction", None):
+        return "that port is under construction"
     if port.class_id in (PortClass.FEDERAL, PortClass.STARDOCK):  # pt2: no agreement at Class 0 / StarDock
         return NO_AGREEMENT_PORT
     if player.planet_landed is not None:  # pt3
         return LANDED
     if K.rob_tw2002() and getattr(port, "bust_player_id", None) == player.id:  # pt17 (same guard as trade)
         return BUSTED
+    if K.port_upgrade_on():  # pu23: docks stay shut while the port is being built
+        from .port_build import docks_closed
+        if docks_closed(port):
+            return "this port is under construction"
     return None
 
 

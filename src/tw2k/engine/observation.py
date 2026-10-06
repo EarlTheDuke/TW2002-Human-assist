@@ -35,6 +35,7 @@ _PUBLIC_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.PLANET_CLAIMED,
     EventKind.BROADCAST,
     EventKind.PORT_DESTROYED,
+    EventKind.PORT_BUILT,
     EventKind.ATOMIC_DETONATION,
     EventKind.FERRENGI_SPAWN,
 })
@@ -81,6 +82,11 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.OPERATOR_DIRECTIVE_SET,
     EventKind.OPERATOR_DIRECTIVE_CLEARED,
     EventKind.OPERATOR_MESSAGE,
+    # port-upgrade-build-v1: the order and the daily progress are the builder's.
+    EventKind.PORT_UPGRADED,
+    EventKind.PORT_BUILD_ORDERED,
+    EventKind.PORT_BUILD_PROGRESS,
+    EventKind.PORT_BUILD_STALLED,
 })
 
 # Party-restricted events — visibility derived from payload.
@@ -435,6 +441,11 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.ATOMIC_DETONATOR: ("planet_id", "outcome"),
     EventKind.HAZARD_AVOID_PROMPT: ("sector", "reason"),
     EventKind.PORT_DESTROYED: ("qty",),
+    EventKind.PORT_UPGRADED: ("commodity", "units", "cost", "capacity", "exp", "align"),
+    EventKind.PORT_BUILD_ORDERED: ("port_class", "planet_id", "days", "cost", "name"),
+    EventKind.PORT_BUILD_PROGRESS: ("days_left", "days_total"),
+    EventKind.PORT_BUILD_STALLED: ("days_left",),
+    EventKind.PORT_BUILT: ("port_class", "name"),
     EventKind.COMBAT: (
         "exchange_kind", "vs", "attacker", "defender", "attacker_f", "attacker_s",
         "defender_f", "defender_s", "attacker_losses", "defender_losses", "outcome", "sector_claimed",
@@ -508,6 +519,11 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.SHIP_PASSWORD_FAIL: (),
     EventKind.SHIP_DEFUNCT: ("ship_id", "ticker"),
     EventKind.SHIP_FURBED: ("attacker", "victim_class", "holds_gained", "capped"),
+    EventKind.PORT_UPGRADED: ("commodity", "units", "new_capacity"),
+    EventKind.PORT_BUILD_ORDERED: ("letter", "days"),
+    EventKind.PORT_BUILD_PROGRESS: ("letter", "days_left"),
+    EventKind.PORT_BUILD_STALLED: ("letter", "days_left"),
+    EventKind.PORT_BUILT: ("sector", "class", "name"),
     EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
 }
 
@@ -1462,6 +1478,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
             from .class0 import fed_outpost_label, is_fed_outpost
             if is_fed_outpost(p, sector.id):
                 fed_outpost_label(port_info)
+        if K.port_upgrade_on():
+            from .port_build import observation_extra
+            port_info.update(observation_extra(p))
         info["port"] = port_info
     from .class0 import class0_tw2002, is_msl_sector, shield_unit_price, special_port_at
     if class0_tw2002():

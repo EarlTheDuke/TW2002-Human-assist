@@ -45,6 +45,7 @@ def test_get_system_prompt_respects_env(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr("tw2k.engine.constants.BUY_RESERVE_MODE", "legacy")  # tw2002 rewrites the price sheet
     monkeypatch.setattr("tw2k.engine.constants.COMBAT_FRAMING_MODE", "legacy")  # tw2002 rewrites the Ferrengi line
     monkeypatch.setattr("tw2k.engine.constants.SLOW_HULL_HINT_MODE", "legacy")  # tw2002 notes the BattleShip
+    monkeypatch.setattr("tw2k.engine.constants.PORT_UPGRADE_MODE", "legacy")  # tw2002 adds the upgrade line
     monkeypatch.setenv("TW2K_HINT_LEVEL", "minimal")
     s = get_system_prompt()
     assert s == _MATCH_PROMPT_MINIMAL

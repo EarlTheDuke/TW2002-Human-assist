@@ -243,7 +243,7 @@ def regenerate_ports(universe: Universe) -> None:
     """Add each commodity's daily productivity, scaled by the regen setting."""
     for sector in universe.sectors.values():
         port = sector.port
-        if port is None:
+        if port is None or getattr(port, "construction", None):
             continue
         for commodity, stock in port.stock.items():
             prod = int(port.productivity.get(commodity, 0) or 0)
