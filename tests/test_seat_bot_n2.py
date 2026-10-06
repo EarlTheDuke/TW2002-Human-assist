@@ -193,6 +193,10 @@ def test_k_class_unload_prefers_fuel_once_a_tiny_organics_crew_exists() -> None:
 def test_n2_day10_beats_n1_and_keeps_organics(monkeypatch) -> None:
     # CLASS0_TERRA.md: colonist scarcity changes day-10 NW bars; pin legacy for this bar only.
     monkeypatch.setattr("tw2k.engine.constants.CLASS0_MODE", "legacy")
+    # PLANETARY_TRADING.md "Bots" (bots-use-planet-trade-v1): small planet-trade lots lift N1 on seed 250925 far more
+    # than N2 (N1 171,399 -> 338,403, N2 316,376 -> 323,479), so this ladder bar keeps the slice-54 lot floors.
+    monkeypatch.setattr("tw2k.engine.constants.BOT_PLANET_TRADE_MIN_LOT", 500)
+    monkeypatch.setattr("tw2k.engine.constants.BOT_PLANET_TRADE_FREE_LOT", 500)
     # FEDSPACE_POLICE.md: no FED_MODE pin - the bar passes under tw2002 tows (QC re-measured, same numbers).
     """Five seeds, ten days, fogged observation only.
 

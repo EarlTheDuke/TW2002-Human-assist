@@ -419,7 +419,11 @@ def test_docked_n3_options_path_offers_the_arming_buy(hunt, monkeypatch):
 # f10b080 (the base) digests to this, and so does this slice with only its seven switches flipped to legacy.
 V2_SWITCHES = ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
                "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE")
-V2_LEGACY_GOLDEN = "5e29f9528d7e5000218b575a"  # recorded on f10b080 (flip=())
+# bots-use-planet-trade-v1 changed the tw2002 bots' planet-trade play, so this pin also flips PLANET_TRADE_MODE (the
+# single-mode pin convention): f10b080 with PLANET_TRADE_MODE flipped digests to 77c7d444a0965a2c40cffcca (the
+# PLANET_TRADE golden), and so do b7e1f86 and bots-use-planet-trade-v1 with these eight switches flipped.
+V2_PIN_FLIP = V2_SWITCHES + ("PLANET_TRADE_MODE",)
+V2_LEGACY_GOLDEN = "77c7d444a0965a2c40cffcca"  # was 5e29f9528d7e5000218b575a (f10b080, flip=())
 
 
 def test_fullgame_fixes_v2_switches_off_equal_the_base():
@@ -428,7 +432,7 @@ def test_fullgame_fixes_v2_switches_off_equal_the_base():
     import sys
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
-    flips = V2_SWITCHES + ("CORPSHIP_MODE",)  # corp-ships-furb-v1: that mode did not exist on f10b080
+    flips = V2_PIN_FLIP + ("CORPSHIP_MODE",)  # corp-ships-furb-v1: that mode did not exist on f10b080
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
