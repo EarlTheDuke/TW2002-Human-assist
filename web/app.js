@@ -2462,6 +2462,7 @@
     // --- Trade ----------------------------------------------------
     trade:             { cat: "trade",     icon: "\u21c4",  label: "TRADE" },
     trade_failed:      { cat: "trade",     icon: "\u2716",  label: "TRADE FAIL" },
+    planet_trade:      { cat: "trade",     icon: "\u21c4",  label: "PLANET TRADE" },
     buy_ship:          { cat: "trade",     icon: "\ud83d\udef8", label: "BUY SHIP" },
     buy_equip:         { cat: "trade",     icon: "\u2699",  label: "BUY EQUIP" },
     corp_deposit:      { cat: "trade",     icon: "\u2193",  label: "CORP DEPOSIT" },

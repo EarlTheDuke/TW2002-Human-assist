@@ -141,7 +141,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     if not player.alive:
         return [_la(k, legal=False, reason="player is destroyed", detail="precise") for k in ActionKind
-                if K.hardware_tw2002() or k != ActionKind.LAUNCH_BEACON]
+                if (K.hardware_tw2002() or k != ActionKind.LAUNCH_BEACON)
+                and (K.planet_trade_on() or k != ActionKind.PLANET_TRADE)]
 
     landed = player.planet_landed is not None
     at_stardock = player.sector_id == K.STARDOCK_SECTOR
@@ -1371,6 +1372,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             if ok and challenge is not None:
                 ok, why = False, CHALLENGE_REFUSAL
             out.append(_la(tkinds[kind_val], legal=ok, reason=why, cost=cost, params=params))
+
+    if K.planet_trade_on():  # PLANETARY_TRADING.md pt1 / step 4 (legacy: absent); after the tow verbs
+        from .planet_trade import legal_spec as planet_trade_legal_spec
+        ok, why, cost, params = planet_trade_legal_spec(universe, player_id)
+        if ok and challenge is not None:
+            ok, why = False, CHALLENGE_REFUSAL
+        out.append(_la(ActionKind.PLANET_TRADE, legal=ok, reason=why, cost=cost, params=params))
 
     return out
 

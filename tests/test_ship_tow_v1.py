@@ -895,11 +895,12 @@ def test_bot_tow_policy_off_and_legacy_no_op(monkeypatch):
 TOW_LEGACY_GOLDEN = "5032bedfb3722133d47b18eb"  # recorded on 5968646 + slice-47 QC brain fixes (79acd71; TOW_MODE absent)
 
 
+# Later slices that add a tw2002 mode flip it here too (planetary-trading-v1: PLANET_TRADE_MODE).
 def test_tow_legacy_is_unchanged():
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
-        "print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip=('TOW_MODE', 'CAPTURE_MODE')))"
+        "print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip=('TOW_MODE', 'CAPTURE_MODE', 'PLANET_TRADE_MODE')))"
     )
     env = dict(os.environ, PYTHONHASHSEED="0")
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,

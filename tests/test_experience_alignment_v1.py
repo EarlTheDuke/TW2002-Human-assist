@@ -40,6 +40,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "SHIP_TW_MODE", "legacy")  # goldens predate ship TransWarp
     monkeypatch.setattr(K, "FLEET_MODE", "legacy")  # goldens predate ship-fleet-transporter-v1
     monkeypatch.setattr(K, "TOW_MODE", "legacy")  # goldens predate ship-tow-transwarp2-v1
+    monkeypatch.setattr(K, "PLANET_TRADE_MODE", "legacy")  # pins predate planetary-trading-v1
     monkeypatch.setattr(K, "NET_WORTH_MODE", "legacy")  # goldens predate fullgame-fixes-v1
     monkeypatch.setattr(K, "BUY_RESERVE_MODE", "legacy")  # goldens predate fullgame-fixes-v1
 

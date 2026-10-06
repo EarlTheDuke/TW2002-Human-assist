@@ -36,6 +36,7 @@ REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "assign_colonists": ("planet_id", "from", "to", "qty"),
     "load_planet_cargo": ("planet_id", "commodity", "qty"),
     "dump_planet_cargo": ("planet_id", "commodity", "qty"),
+    "planet_trade": ("planet_id", "commodity", "qty"),  # planetary-trading-v1
     "buy_equip": ("item", "qty"),
     "buy_ship": ("ship_class",),
     "deploy_fighters": ("qty", "mode"),
@@ -110,6 +111,8 @@ def validate_action(obs: dict[str, Any], action: dict[str, Any]) -> list[str]:
             cap = None
             if kind == "trade":
                 cap = ((env.get("max_by") or {}).get(args.get("commodity")) or {}).get(args.get("side"))
+            elif kind == "planet_trade":  # max_by is keyed planet_id -> commodity
+                cap = ((env.get("max_by") or {}).get(str(args.get("planet_id"))) or {}).get(args.get("commodity"))
             elif kind in _QTY_KEY and env.get("max_by") is not None:
                 cap = (env.get("max_by") or {}).get(_QTY_KEY[kind](args))
             elif env.get("max") is not None:

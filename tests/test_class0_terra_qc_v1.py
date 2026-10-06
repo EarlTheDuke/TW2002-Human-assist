@@ -56,6 +56,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "SHIP_TW_MODE", "legacy")  # pins predate ship TransWarp
     monkeypatch.setattr(K, "FLEET_MODE", "legacy")  # pins predate the ship fleet
     monkeypatch.setattr(K, "TOW_MODE", "legacy")  # pins predate ship towing
+    monkeypatch.setattr(K, "PLANET_TRADE_MODE", "legacy")  # pins predate planetary-trading-v1
     monkeypatch.setattr(K, "BUY_RESERVE_MODE", "legacy")  # pins predate fullgame-fixes-v1 price sheet
 
 

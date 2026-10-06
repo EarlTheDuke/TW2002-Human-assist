@@ -599,6 +599,17 @@ _CAPTURE_NOTE = (
 )
 
 
+_PLANET_TRADE_NOTE = (
+    "\nPLANETARY TRADE (docs/playtests/planets/PLANETARY_TRADING.md): docked at a commodity port (not StarDock or "
+    "Class 0) with your own or your corporation's planet in the same sector, planet_trade {planet_id, commodity, "
+    "qty, offer?} sells that planet's stock straight to the port in one action for only the port-visit turn (1 "
+    "if it is your first trade here, else 0). Max = min(what the port is buying, the planet's stock); "
+    "legal_actions planet_trade.params.planets[] lists sellable / quote / unit_bid. The whole lot is quoted a bit "
+    "under ship price because the port's bid falls as it fills; one counter on the total is allowed, a greedy one "
+    "is refused and still costs the visit turn. Credits go to you. Keep fuel ore for citadels and planet TransWarp.\n"
+)
+
+
 _FED_NOTE_TW2002 = (
     "\nFEDSPACE POLICE (docs/playtests/fedspace/FEDSPACE_POLICE.md): three indestructible Federals "
     "(Captain Zyrain, Admiral Nelson, Fleet Admiral Clausewitz) wander the map; attacking one pods you. "
@@ -691,6 +702,8 @@ def get_system_prompt() -> str:
         text = text + _TOW_NOTE
     if K.capture_on():
         text = text + _CAPTURE_NOTE
+    if K.planet_trade_on():
+        text = text + _PLANET_TRADE_NOTE
     if K.buy_reserve_on():
         text = _buy_reserve_prompt_text(text)
     return text
