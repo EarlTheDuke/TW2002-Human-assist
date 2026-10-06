@@ -24,6 +24,7 @@ from fractions import Fraction
 
 from . import constants as K
 from .models import (
+    AlienTrader,
     EventKind,
     FerrengiShip,
     FighterDeployment,
@@ -297,6 +298,10 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
 def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
     """Bounty path for a Ferrengi, the existing death path for a player."""
     attacker = universe.players[attacker_id]
+    if isinstance(target, AlienTrader):
+        from .alien import on_alien_killed
+        on_alien_killed(universe, attacker_id, target)
+        return
     if isinstance(target, FerrengiShip):
         from .ferrengi import clear_ferrengi_encounter, record_ferrengi_grudge
         target.alive = False
@@ -566,6 +571,7 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
     if hasattr(target, "alive") and not target.alive:
         return
     is_ferr = isinstance(target, FerrengiShip)
+    is_alien = isinstance(target, AlienTrader)
     if is_ferr:
         from .ferrengi import record_ferrengi_grudge
         record_ferrengi_grudge(universe, attacker_id)
@@ -598,13 +604,17 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
 
     sector = universe.sectors[attacker.sector_id]
     flee_to = None
-    if not beaten and not is_ferr and not _flee_blocked(universe, attacker, target, sector):
+    if not beaten and is_alien and K.ALIEN_FLEE_RULE == "player":
+        if Fraction(int(attacker.ship.fighters)) > (d_f + d_s) * _odds(K.COMBAT_FLEE_RATIO):
+            from .alien import alien_flee_destination
+            flee_to = alien_flee_destination(universe, target)
+    elif not beaten and not is_ferr and not _flee_blocked(universe, attacker, target, sector):
         if Fraction(int(attacker.ship.fighters)) > (d_f + d_s) * _odds(K.COMBAT_FLEE_RATIO):
             flee_to = _flee_destination(universe, target, sector)
 
     a_f, a_s = int(attacker.ship.fighters), int(attacker.ship.shields)
     will_capture = False
-    if beaten and not is_ferr:
+    if beaten and not is_ferr and not is_alien:
         from .capture import manned_would_capture
         will_capture = manned_would_capture(universe, attacker, target, qty, defense, a_odds)
     outcome = (
@@ -636,7 +646,9 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
         actor_id=attacker_id,
         sector_id=attacker.sector_id,
         payload={
-            "exchange_kind": "ferrengi_vs_ship" if is_ferr else "ship_vs_ship",
+            "exchange_kind": (
+                "ferrengi_vs_ship" if is_ferr else ("alien_vs_ship" if is_alien else "ship_vs_ship")
+            ),
             "exchange_max_rounds": 1,
             "attacker": attacker_id,
             "defender": getattr(target, "id", None),
@@ -663,6 +675,15 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
         apply_manned_capture(universe, attacker_id, target)
     elif beaten:
         _defender_destroyed(universe, attacker_id, target)
+    elif flee_to is not None and is_alien:
+        target.sector_id = int(flee_to)
+        universe.emit(
+            EventKind.ALIEN_FLED,
+            actor_id=attacker_id,
+            sector_id=attacker.sector_id,
+            payload={"id": target.id, "to": int(flee_to)},
+            summary=f"{target.name} fled to sector {flee_to}",
+        )
     elif flee_to is not None:
         _flee(universe, target, flee_to)
 

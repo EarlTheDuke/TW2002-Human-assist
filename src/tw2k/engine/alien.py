@@ -191,6 +191,52 @@ def _replace_dead(universe: Universe) -> None:
         _spawn(universe, K.STARDOCK_SECTOR, rng)
 
 
+def on_alien_killed(universe: Universe, attacker_id: str, alien: AlienTrader) -> None:
+    """Bible kill: half experience if opposite, a quarter if the same, alignment against the alien, its credits."""
+    from .victory import side
+
+    attacker = universe.players[attacker_id]
+    exp = int(alien.experience)
+    if K.ALIEN_KILL_EXP_RULE == "bible":
+        same = side(attacker.alignment) == side(alien.alignment)
+        attacker.experience = int(attacker.experience) + (exp // 4 if same else exp // 2)
+    alien.alignment = int(alien.alignment)
+    attacker.alignment = int(attacker.alignment) - int(alien.alignment * float(K.ALIEN_KILL_ALIGN_SHARE))
+    looted = int(alien.credits) if K.ALIEN_LOOT_CREDITS else 0
+    attacker.credits = int(attacker.credits) + looted
+    units = int(alien.ship.corbomite)
+    alien.alive = False
+    alien.credits = 0
+    universe.emit(
+        EventKind.SHIP_DESTROYED,
+        actor_id=attacker_id,
+        sector_id=attacker.sector_id,
+        payload={
+            "victim": alien.id, "kind": "alien", "hull": alien.ship.ship_class.value,
+            "credits": looted,
+        },
+        summary=f"{attacker.name} destroyed {alien.name}",
+    )
+    if units > 0:
+        from .hardware import apply_corbomite
+        apply_corbomite(universe, alien.id, attacker_id, units)
+
+
+def alien_flee_destination(universe: Universe, alien: AlienTrader) -> int | None:
+    sector = universe.sectors.get(alien.sector_id)
+    if sector is None:
+        return None
+    if K.ALIEN_INTERDICTED:
+        from .combat import interdictor_planet
+        if interdictor_planet(universe, alien.id, sector) is not None:
+            return None
+    legal = [w for w in sorted(sector.warps) if not _fighter_blocked(universe, w)]
+    if not legal:
+        return None
+    rng = alien_rng(universe.config.seed, universe.day, _SALT_HOP + 50)
+    return int(rng.choice(legal))
+
+
 def alien_day_step(universe: Universe) -> None:
     """Replace the dead, then hop. No-op unless the mode is on."""
     if not K.alien_on():
