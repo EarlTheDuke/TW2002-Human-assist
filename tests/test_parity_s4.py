@@ -318,6 +318,10 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         mx = int((p.get("amount") or {}).get("max") or 1000)
         mn = int((p.get("amount") or {}).get("min") or 1000)
         return Action(kind=ak, args={"target_id": tid, "amount": max(mn, min(mn, mx))})
+    if ak in (ActionKind.SHIP_SET_CORPORATE, ActionKind.SHIP_SET_PERSONAL):
+        return Action(kind=ak, args={})
+    if ak is ActionKind.SHIP_SET_PASSWORD:
+        return Action(kind=ak, args={"password": first("password", "")})
     raise AssertionError(f"no builder for {kind}")
 
 

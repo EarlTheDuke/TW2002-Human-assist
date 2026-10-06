@@ -118,6 +118,8 @@ def main(argv: list[str] | None = None) -> int:
     K.DEATH_MODE = "legacy"
     # And the Ferrengi hunt (ferrengi-aliens-v1): clip 7 is the legacy auto-attack, not the tribute encounter.
     K.FERRENGI_MODE = "legacy"
+    # corp-ships-furb-v1: a destroy would add hold salvage and a SHIP_FURBED event. These clips are not that test.
+    K.CORPSHIP_MODE = "legacy"
     # 1. single warp
     u = _universe()
     start = _deep(u)[0]
