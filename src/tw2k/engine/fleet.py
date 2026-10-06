@@ -639,7 +639,7 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
             from .corpships import apply_furb
             apply_furb(universe, pid, rec.ship, rec.owner_id)
         _remove(universe, int(rec.id))
-        if K.FLEET_UNMANNED_KILL_EXP:
+        if K.FLEET_UNMANNED_KILL_EXP and not (K.corpship_on() and rec.owner_id == pid):  # cs16: no reward
             player.experience = int(player.experience) + int(K.FLEET_UNMANNED_KILL_EXP)
         universe.emit(
             EventKind.UNMANNED_SHIP_DESTROYED,
