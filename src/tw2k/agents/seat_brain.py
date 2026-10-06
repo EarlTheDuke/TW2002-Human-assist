@@ -100,6 +100,13 @@ def _colonist_ferry_turn_overhead() -> int:
     return int(TERRA_LOAD_TURNS) if class0_tw2002() else 0
 
 MEMORY_TAG = "SEATBRAIN "
+# CORP_RULES.md cr29 "pair" policy (match check only)
+PAIR_CEO_ID = "P1"
+PAIR_MATE_ID = "P2"
+PAIR_TICKER = "PAR"
+PAIR_CORP_NAME = "Pair Traders"
+PAIR_PASSWORD = "pair1"
+
 STALL_BREAK_TURNS = 3
 # fedspace-police-v1: FedSpace sectors; leave this many spare warps when heading out before Extern.
 FEDSPACE_IDS = frozenset(range(1, 11))
@@ -674,7 +681,7 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        answer = self._bank(v) or self._port_upgrade(v) or self._port_build(v)
+        answer = self._corp_pair(v) or self._bank(v) or self._port_upgrade(v) or self._port_build(v)
         if answer is not None:  # port-upgrade-build-v1: widen a buying port, or (policy on) order one
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
@@ -2732,6 +2739,42 @@ class SeatBrain:
             keep = max(keep, self._citadel_reserve(v))
         return keep
 
+    def _corp_pair(self, v: View) -> dict[str, Any] | None:
+        """CORP_RULES.md cr29 BOT_CORP_POLICY "pair" (match check only): seat 1 makes the corp, sets the
+        password and hands seat 2 a pass; seat 2 joins with the password from that pass. Deployments then
+        take K.CORP_DEPLOY_DEFAULT (corporate). Never transfers, takes, leaves or drops. All verbs 0 turns."""
+        from ..engine import constants as engine_k
+        if engine_k.BOT_CORP_POLICY != "pair" or not engine_k.corp_rules_on():
+            return None
+        me = str(v.self_id or "")
+        mine = v.obs.get("corp_ticker")
+        if me == PAIR_CEO_ID:
+            if not mine:
+                taken = set((v.params("corp_create").get("ticker") or {}).get("taken") or ())
+                if v.ok("corp_create") and PAIR_TICKER not in taken:
+                    return {"kind": "corp_create", "args": {"ticker": PAIR_TICKER, "name": PAIR_CORP_NAME},
+                            "thought": "pair policy: make the corp"}
+                return None
+            corp = v.obs.get("corp") or {}
+            if not corp.get("password") and v.ok("corp_set_password"):
+                return {"kind": "corp_set_password", "args": {"password": PAIR_PASSWORD},
+                        "thought": "pair policy: set the corporate password"}
+            member_ids = {str(m.get("id")) for m in (corp.get("members") or []) if isinstance(m, dict)}
+            if (not getattr(self, "_pair_invited", False) and PAIR_MATE_ID not in member_ids
+                    and v.ok("corp_invite") and PAIR_MATE_ID in v.choices("corp_invite", "target")):
+                self._pair_invited = True
+                return {"kind": "corp_invite", "args": {"target": PAIR_MATE_ID},
+                        "thought": "pair policy: hand my partner a pass"}
+            return None
+        if me == PAIR_MATE_ID and not mine and v.ok("corp_join"):
+            passes = [m for m in (v.obs.get("inbox") or []) if isinstance(m, dict)
+                      and m.get("kind") == "corp_invite" and m.get("from") == PAIR_CEO_ID and m.get("password")]
+            if passes and str(passes[-1].get("ticker")) in v.choices("corp_join", "ticker"):
+                return {"kind": "corp_join", "args": {"ticker": str(passes[-1]["ticker"]),
+                                                       "password": str(passes[-1]["password"])},
+                        "thought": "pair policy: join with the pass"}
+        return None
+
     def _bank(self, v: View) -> dict[str, Any] | None:
         """gb29-gb31: withdraw the exact hull shortfall, else deposit spare once per StarDock visit."""
         from ..engine import constants as engine_k
@@ -3711,7 +3754,7 @@ class SeatBrain:
         send = min(int(qty), room)
         if send <= 0:
             return None
-        return self._act("deploy_fighters", {"qty": int(send), "mode": "defensive"},
+        return self._act("deploy_fighters", {"qty": int(send), "mode": "defensive", **self._pair_ownership(v, "deploy_fighters")},
                          f"deploy {send} fighters outside FedSpace")
 
     def _maybe_lay_armids(self, v: View) -> dict[str, Any] | None:
@@ -3729,8 +3772,16 @@ class SeatBrain:
             return None
         if self.mem is not None:
             self.mem.armids_stocked = True
-        return self._act("deploy_mines", {"kind": "armid", "qty": int(qty)},
+        return self._act("deploy_mines", {"kind": "armid", "qty": int(qty), **self._pair_ownership(v, "deploy_mines")},
                          "lay armids on the home sector, not a swept lane")
+
+    @staticmethod
+    def _pair_ownership(v: View, kind: str) -> dict[str, str]:
+        """cr29 "pair": corp members deploy corporate explicitly; otherwise the engine default applies."""
+        from ..engine import constants as engine_k
+        if engine_k.BOT_CORP_POLICY == "pair" and "corporate" in v.choices(kind, "ownership"):
+            return {"ownership": "corporate"}
+        return {}
 
     def _home_is_corridor(self, v: View) -> bool:
         """Armids hit every ship but the owner's. Keep them out of a sector other seats use.

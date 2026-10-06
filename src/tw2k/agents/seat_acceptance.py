@@ -57,6 +57,9 @@ REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "corp_deposit": ("amount",),
     "corp_withdraw": ("amount",),
     "corp_memo": ("message",),
+    "corp_set_password": ("password",),  # CORP_MODE tw2002 verbs (QC 57)
+    "corp_drop": ("target",),
+    "corp_transfer": ("target", "item", "qty", "direction"),
     "propose_alliance": ("target",),
     "accept_alliance": ("alliance_id",),
     "break_alliance": ("alliance_id",),

@@ -519,3 +519,50 @@ def test_qc_corp_verbs_legal_matches_handler_property():
                 if kind == "corp_transfer" and u.players[pid].credits < 1:
                     continue
                 assert res.ok == la.legal, (trial, pid, kind, args, la.reason, res.error)
+
+
+# ---- seat bots (cr29) -----------------------------------------------------------------------
+
+def _pair_steps(u, monkeypatch, policy, rounds=4):
+    from tw2k.agents.seat_acceptance import validate_action
+    from tw2k.agents.seat_brain import SeatBrain, View
+    monkeypatch.setattr(K, "BOT_CORP_POLICY", policy)
+    brains = {pid: SeatBrain() for pid in u.players}
+    used = []
+    for _ in range(rounds):
+        for pid in sorted(u.players):
+            obs = build_observation(u, pid).model_dump(mode="json")
+            act = brains[pid]._corp_pair(View(obs))
+            if act is None:
+                continue
+            assert validate_action(obs, act) == []
+            res = _act(u, pid, act["kind"], **act["args"])
+            assert res.ok, (pid, act, res.error)
+            used.append((pid, act["kind"]))
+    return used
+
+
+def test_qc_policy_off_never_uses_corp_verbs(monkeypatch):
+    u = _u()
+    assert _pair_steps(u, monkeypatch, "off") == []
+    assert not u.corporations
+
+
+def test_qc_pair_policy_forms_one_corp_and_deploys_corporate(monkeypatch):
+    from tw2k.agents.seat_brain import PAIR_PASSWORD, PAIR_TICKER, SeatBrain, View
+    u = _u()
+    used = _pair_steps(u, monkeypatch, "pair")
+    assert [k for _, k in used] == ["corp_create", "corp_set_password", "corp_invite", "corp_join"]
+    assert sorted(u.corporations[PAIR_TICKER].member_ids) == ["P1", "P2"]
+    assert u.players["P3"].corp_ticker is None and u.players["P4"].corp_ticker is None
+    for pid in ("P3", "P4"):  # the password never reaches a non-member's observation
+        assert PAIR_PASSWORD not in build_observation(u, pid).model_dump_json()
+    sid = _far_sector(u)
+    _move(u, "P2", sid)
+    u.players["P2"].ship.fighters = 50
+    obs = build_observation(u, "P2").model_dump(mode="json")
+    assert SeatBrain._pair_ownership(View(obs), "deploy_fighters") == {"ownership": "corporate"}
+    assert _act(u, "P2", "deploy_fighters", qty=10, mode="defensive", ownership="corporate").ok
+    assert u.sectors[sid].fighters.corp_ticker == PAIR_TICKER
+    obs3 = build_observation(u, "P3").model_dump(mode="json")
+    assert SeatBrain._pair_ownership(View(obs3), "deploy_fighters") == {}
