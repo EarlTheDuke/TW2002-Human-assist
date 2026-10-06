@@ -1011,6 +1011,9 @@ def _destroy_ship_tw2002(
         player.pods_today = 0
     hull = player.ship.ship_class.value
     podded = always_escape or (hull not in K.PODLESS_HULLS and player.pods_today < K.PODS_PER_DAY)
+    if K.tow_on() and getattr(player.ship, "tow_lock", None) is not None:
+        from .tow import release  # SHIP_TOW.md tt9: the beam dies with the hull; the towee stays put
+        release(universe, player.ship, pid, "tower_destroyed")
     player.planet_landed = None
     player.photon_damped_sector_id = None
     player.fighter_challenge = None

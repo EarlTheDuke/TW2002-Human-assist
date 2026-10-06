@@ -634,7 +634,7 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        answer = self._board_spare(v) or self._top_up_tw_ore(v)
+        answer = self._extern_tow(v) or self._board_spare(v) or self._top_up_tw_ore(v)
         if answer is not None:  # ship-fleet-transporter-v1 / TransWarp ore reserve: own-ship only branches
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
@@ -2630,6 +2630,31 @@ class SeatBrain:
             return None
         return self._act("trade", {"commodity": "fuel_ore", "qty": int(qty), "side": "buy"},
                          f"top up the TransWarp ore reserve ({have}+{qty} of {keep})")
+
+    def _extern_tow(self, v: View) -> dict[str, Any] | None:
+        """ship-tow-transwarp2-v1 (BOT_TOW_POLICY extern_hold_only): at day end (no turns left for a warp) in
+        FedSpace beside an own unmanned ship Extern would repossess, lock it in tow (0 turns); with turns again
+        (next morning), release the lock before anything else. Never tows traders, never buys Type 2."""
+        from ..engine import constants as engine_k
+        if engine_k.BOT_TOW_POLICY != "extern_hold_only" or not engine_k.tow_on():
+            return None
+        tow = (v.obs.get("ship") or {}).get("tow") or {}
+        left = int(v.obs.get("turns_remaining") or 0)
+        if tow.get("target") is not None or tow.get("engaged"):
+            if left >= self._tpw(v) and v.ok("tow_release"):
+                return self._act("tow_release", {}, "morning: release the overnight tow lock")
+            if left < self._tpw(v):  # day over: sit still with the lock (a free no-op, nothing that docks)
+                return self._act("query_limpets", {}, "holding my unmanned ship in tow over Extern")
+            return None
+        if left >= self._tpw(v) or not v.ok("tow_engage") or v.here not in engine_k.FEDSPACE_SECTORS:
+            return None
+        choices = {str(c) for c in v.choices("tow_engage", "target")}
+        for s in ((v.obs.get("fleet") or {}).get("ships") or []):
+            t = f"ship:{int(s.get('ship_id') or 0)}"
+            if t in choices and s.get("repo_at_extern") and int(s.get("sector_id") or -1) == int(v.here):
+                return self._act("tow_engage", {"target": t},
+                                 f"lock my unmanned {s.get('hull')} in tow so Extern does not repossess it")
+        return None
 
     def _board_spare(self, v: View) -> dict[str, Any] | None:
         """ship-fleet-transporter-v1 (BOT_FLEET_POLICY spare_only): after a pod / Ship Destroyed, beam into an

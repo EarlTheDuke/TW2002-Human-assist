@@ -209,7 +209,14 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
     before_seq = universe.seq
     turns_before = player.turns_today
+    tow_snap = None
+    if K.tow_on():  # SHIP_TOW.md tt11 / tt12: locks before the action, break rules after it
+        from .tow import snapshot as tow_snapshot
+        tow_snap = tow_snapshot(universe)
     result = handler(universe, player_id, action)
+    if tow_snap:
+        from .tow import after_action as tow_after_action
+        tow_after_action(universe, player_id, action, result, tow_snap)
     if K.fed_tw2002():
         # FEDSPACE_POLICE.md f23: warn the ISS pilot when the action that made him evil ends,
         # not on the warp that already costs the ship (twgs repossesses on that same move).
@@ -249,6 +256,9 @@ def tick_day(universe: Universe) -> None:
     """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets."""
     _overnight_retreats(universe)
     _overnight_ferrengi_encounters(universe)
+    if K.tow_on():  # SHIP_TOW.md tt11j: an overnight retreat / flee drops the tow
+        from .tow import sweep as tow_sweep
+        tow_sweep(universe, "retreat")
     universe.day += 1
     for player in universe.players.values():
         player.turns_today = 0
@@ -276,6 +286,9 @@ def tick_day(universe: Universe) -> None:
         extern_repossess(universe)
     if fed_tw2002():
         run_tows(universe)
+        if K.tow_on():  # tt23: a Fed tow of the tower releases its lock; the held ship stays
+            from .tow import sweep as tow_sweep
+            tow_sweep(universe, "fed_tow")
         tick_federals(universe)
 
     regenerate_ports(universe)
@@ -598,6 +611,9 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error=f"no warp from {player.sector_id} to {target_id}")
 
     cost = _warp_cost_for(player)
+    if K.tow_on():  # SHIP_TOW.md tt6: tower TPW + 2 x towed TPW while a tow is engaged
+        from .tow import move_cost as tow_move_cost
+        cost = tow_move_cost(universe, player)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns for this day")
 
@@ -607,6 +623,10 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
         return held
     if _toll_blocks(universe, pid, dest):
         return ActionResult(ok=False, error="toll fighters demand payment")
+    tow_ctx = None
+    if K.tow_on():  # tt7 / tt11h: a manned towee in FedSpace is released before the tower moves
+        from .tow import begin_move as tow_begin_move
+        tow_ctx = tow_begin_move(universe, pid)
     if player.photon_damped_sector_id == player.sector_id and target_id != player.sector_id:
         _clear_photon_damp(player, player.sector_id)
     deaths_before = player.deaths
@@ -649,6 +669,10 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
             summary=f"{player.name} warped {cur.id} → {target_id}",
         )
         _award_xp(universe, pid, "warp")
+        if tow_ctx is not None:  # tt7: the towee arrives only after the tower is safely in
+            from .tow import finish_move as tow_finish_move
+            tow_finish_move(universe, pid, tow_ctx, cur.id, target_id, "warp")
+            tow_ctx = None
         if not K.hardware_tw2002() and player.deaths == deaths_before and player.sector_id == target_id:
             _apply_sector_quasar(universe, pid, dest)
         if player.alive and player.deaths == deaths_before and player.sector_id == target_id:
@@ -662,6 +686,10 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
                 payload={"sector": target_id, "reason": "mines"},
                 summary=f"Mines in sector {target_id}: avoid this sector? (autopilot stops here)",
             )
+
+    if tow_ctx is not None:  # tt9: the tower died entering; the towee stays behind
+        from .tow import finish_move as tow_finish_move
+        tow_finish_move(universe, pid, tow_ctx, cur.id, target_id, "warp")
 
     # fedspace-police-v1 f6/f22: evil ISS after move
     if player.alive:
@@ -2085,6 +2113,9 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     if item == "transwarp_drive":
         from .ship_transwarp import buy_drive
         return buy_drive(universe, pid, qty)
+    if item in ("transwarp_type2", "transwarp_upgrade") and K.tow_on() and K.ship_tw_on():
+        from .tow import buy_type2  # SHIP_TOW.md tt16
+        return buy_type2(universe, pid, item, qty)
     if qty <= 0:
         return ActionResult(ok=False, error="qty must be positive")
     day = int(universe.day)
@@ -2510,6 +2541,9 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     # up front: otherwise the loop used to stop immediately and return ok with
     # 0 hops and 0 turns — a free action other seats could repeat forever.
     hop_cost = _warp_cost_for(player)
+    if K.tow_on():
+        from .tow import move_cost as tow_move_cost
+        hop_cost = tow_move_cost(universe, player)
     turns_left = int(player.turns_per_day - player.turns_today)
     if turns_left < hop_cost:
         return ActionResult(
@@ -3057,9 +3091,11 @@ def _try_interdict(universe: Universe, pid: str, sector) -> ActionResult | None:
             summary=f"{planet.name} interdicted {player.name}",
         )
         _fire_interdict_quasar(universe, pid, planet)
-        return ActionResult(
-            ok=False, error="interdicted by a planet", turns_spent=_warp_cost_for(player),
-        )
+        held_cost = _warp_cost_for(player)
+        if K.tow_on():  # SHIP_TOW.md tt10: the interdictor holds the whole tow at the tow cost
+            from .tow import move_cost as tow_move_cost
+            held_cost = tow_move_cost(universe, player)
+        return ActionResult(ok=False, error="interdicted by a planet", turns_spent=held_cost)
     return None
 
 
@@ -3837,6 +3873,12 @@ def _bind_fleet() -> None:
     _DISPATCH[ActionKind.SHIP_TRANSPORT] = handle_ship_transport
 
 
+def _bind_tow() -> None:
+    from .tow import handle_tow_engage, handle_tow_release
+    _DISPATCH[ActionKind.TOW_ENGAGE] = handle_tow_engage  # legacy: the handlers answer "unsupported action"
+    _DISPATCH[ActionKind.TOW_RELEASE] = handle_tow_release
+
+
 def _bind_fed_handlers() -> None:
     from .fed import handle_apply_commission, handle_claim_reward, handle_post_reward
     _DISPATCH[ActionKind.APPLY_COMMISSION] = handle_apply_commission
@@ -3846,6 +3888,7 @@ def _bind_fed_handlers() -> None:
 
 _bind_ship_tw()
 _bind_fleet()
+_bind_tow()
 _bind_fed_handlers()
 
 

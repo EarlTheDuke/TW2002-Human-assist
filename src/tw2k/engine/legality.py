@@ -162,12 +162,22 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     # warp
     wc = _warp_cost(player)
+    tow_cost = None
+    if K.tow_on():  # SHIP_TOW.md tt6: the tow cost per sector while a tow is engaged
+        from .tow import move_cost as tow_move_cost
+        from .tow import moving_towee
+        if moving_towee(universe, player_id) is not None:
+            tow_cost = wc = tow_move_cost(universe, player)
     warps = list(sector.warps)
     # NB: the engine does not gate warp on `planet_landed` (observed in
     # _handle_warp); we mirror the engine, not the rulebook.
     reason = "no warps out of this sector" if not warps else _need_turns(player, wc)
-    out.append(_la(ActionKind.WARP, legal=reason is None, reason=reason, cost=wc,
-                   params={"target": {"type": "int", "required": True, "choices": warps}}))
+    warp_params: dict[str, Any] = {"target": {"type": "int", "required": True, "choices": warps}}
+    if tow_cost is not None:
+        warp_params["tow_cost"] = tow_cost
+        if reason is not None:
+            warp_params["target"]["choices"] = []
+    out.append(_la(ActionKind.WARP, legal=reason is None, reason=reason, cost=wc, params=warp_params))
 
     # scan
     sc = int(K.TURN_COST["scan"])
@@ -339,6 +349,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 if not affordable_warps and warps:
                     la.legal = False
                     la.reason = "toll fighters demand payment"
+                if not la.legal and "tow_cost" in la.params:  # SHIP_TOW.md tt6: no turns for the tow
+                    la.params["target"]["choices"] = []
                 break
 
     # ---- comms (precise) ------------------------------------------------------
@@ -606,6 +618,11 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 cap_by_tw = 0
         else:
             cap_by_tw = None
+        tow_offer: dict[str, int] = {}
+        if K.tow_on() and K.ship_tw_on() and at_stardock:  # SHIP_TOW.md tt16
+            from .tow import type2_offer
+            tow_offer = type2_offer(player)
+            prices.update(tow_offer)
         mines_aboard = sum(int(v) for v in (player.ship.mines or {}).values())
         class_key = player.ship.ship_class.value
         have = {
@@ -645,6 +662,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 cap_by[capped] = int(K.equip_room(class_key, capped, have.get(capped, 0)) or 0)
         if cap_by_tw is not None and "transwarp_drive" in prices:
             cap_by["transwarp_drive"] = cap_by_tw
+        for item in tow_offer:
+            cap_by[item] = 1
         equip_max: dict[str, int] = {}
         for item, unit in prices.items():
             if item == "holds":
@@ -1344,6 +1363,14 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             if ok and challenge is not None:
                 ok, why = False, CHALLENGE_REFUSAL
             out.append(_la(kinds[kind_val], legal=ok, reason=why, cost=cost, params=params))
+
+    if K.tow_on():  # SHIP_TOW.md tt5 (legacy: absent); after the fleet verbs = ActionKind order
+        from .tow import legal_specs as tow_legal_specs
+        tkinds = {"tow_engage": ActionKind.TOW_ENGAGE, "tow_release": ActionKind.TOW_RELEASE}
+        for kind_val, ok, why, cost, params in tow_legal_specs(universe, player_id):
+            if ok and challenge is not None:
+                ok, why = False, CHALLENGE_REFUSAL
+            out.append(_la(tkinds[kind_val], legal=ok, reason=why, cost=cost, params=params))
 
     return out
 

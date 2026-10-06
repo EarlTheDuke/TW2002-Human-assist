@@ -490,6 +490,8 @@ class Observation(BaseModel):
     fedspace: dict[str, Any] | None = None
     # ship-fleet-transporter-v1 (SHIP_FLEET.md fl30): own fleet only; omitted under FLEET_MODE legacy
     fleet: dict[str, Any] | None = None
+    # ship-tow-transwarp2-v1 (SHIP_TOW.md tt29): who holds YOU in tow; omitted while nobody does
+    in_tow_by: dict[str, Any] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -504,6 +506,8 @@ class Observation(BaseModel):
                 data.pop("ferrengi_encounter", None)
             if data.get("fleet") is None:  # ship-fleet-transporter-v1: same rule
                 data.pop("fleet", None)
+            if data.get("in_tow_by") is None:  # ship-tow-transwarp2-v1: same rule
+                data.pop("in_tow_by", None)
         return data
 
 
@@ -532,6 +536,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     if K.ship_tw_on() and isinstance(ship.get("transwarp"), dict):
         from .ship_transwarp import fed_lock_on
         ship["transwarp"]["fed_lock"] = bool(fed_lock_on(player))
+    if K.tow_on():  # SHIP_TOW.md tt29: own tow block only
+        from .tow import ship_tow_view
+        ship["tow"] = ship_tow_view(universe, player_id)
 
     # Current sector detail
     sector_info = _sector_detail(universe, sector, player_id)
@@ -908,6 +915,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     if K.fleet_on():  # SHIP_FLEET.md fl30: own fleet only
         from .fleet import fleet_block
         obs.fleet = fleet_block(universe, player_id)
+    if K.tow_on():  # SHIP_TOW.md tt29
+        from .tow import in_tow_view
+        obs.in_tow_by = in_tow_view(universe, player_id)
     return obs
 
 
@@ -1056,11 +1066,15 @@ def _ship_dict(ship) -> dict[str, Any]:
         from .ship_transwarp import drive_fitted, fuel_ore
         ore = fuel_ore(ship)
         ship_view["transwarp"] = {
-            "fitted": "type1" if drive_fitted(ship) else None,
+            "fitted": (ship.transwarp_drive if K.tow_on() else "type1") if drive_fitted(ship) else None,
             "ore_per_hop": int(K.SHIP_TW_ORE_PER_HOP),
             "max_hops_now": ore // max(1, int(K.SHIP_TW_ORE_PER_HOP)),
             "fed_lock": False,
         }
+        if K.tow_on() and getattr(ship, "transwarp_drive", None) == "type2":  # SHIP_TOW.md tt21
+            per = max(1, int(K.SHIP_TW_TOW_ORE_PER_HOP))
+            ship_view["transwarp"].update({"tow_capable": True, "tow_ore_per_hop": per,
+                                           "max_tow_hops_now": ore // per})
     if not K.hardware_tw2002():  # HARDWARE_MODE legacy keeps the pre-ship-hardware ship view
         for key in ("cloaks", "mine_disruptors", "cloaked",
                     "corbomite", "marker_beacons", "psychic_probe", "atomic_detonators"):

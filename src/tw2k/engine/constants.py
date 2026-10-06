@@ -280,6 +280,8 @@ TURN_COST = {
     "rob": PORT_DOCK_TURN_COST,
     "steal": PORT_DOCK_TURN_COST,
     "ship_transport": 1,  # fl14: flat, whatever the hops or the hull's turns per warp
+    "tow_engage": 0,  # SHIP_TOW.md tt5 UNVERIFIED: no source charges for <W>
+    "tow_release": 0,
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -1744,3 +1746,33 @@ def fleet_on() -> bool:
 def transport_range(class_key: str) -> int:
     """fl9: hops the ship you are IN can beam you. Hulls not on the chart get 0."""
     return int(SHIP_TRANSPORT_RANGE.get(str(class_key), 0))
+
+
+# --- Ship towing + Type 2 TransWarp (TOW_MODE) --------------------------------
+# docs/playtests/ships/SHIP_TOW.md. "legacy" = exactly the post-slice-50 engine (no tow verbs, no Type 2 items,
+# Extern repossesses every unmanned FedSpace ship). Unmanned tows / the Extern hold also need FLEET_MODE tw2002;
+# Type 2 items and tow jumps also need SHIP_TW_MODE tw2002.
+TOW_MODE = "tw2002"                 # "tw2002" | "legacy"
+TOW_MANNED = "any"                  # tt4: "any" (original) | "corp_ally" | "off"
+TOW_MANNED_MAX_FIGHTERS = 0         # tt4 MBBS / Iago: no tow of a trader with ship fighters
+TOW_UNMANNED_FIGHTERS = "allow"     # tt3 SOURCE-CONFLICT Gypsy (TWGS) allow vs Slice (v2) refuse
+TOW_TOWEE_TPW_MULT = 2              # tt6 Slice / docs wiki: tower TPW + 2 x towed TPW
+TOW_EXCLUDED_HULLS = frozenset({"escape_pod"})  # tt2 UNVERIFIED
+TOW_CHAIN = False                   # tt4 UNVERIFIED: a towee that is itself towing cannot be locked
+TOW_ON_ATTACK = "release"           # tt11d REV 02/28/97 | "keep" (cabal Pre-Lock)
+TOW_ON_RETREAT = "drop"             # tt11j UNVERIFIED | "drag"
+TOW_ON_FED_TOW = "release"          # tt11i UNVERIFIED
+TOW_LOCK_ON_XPORT = "keep_hull"     # tt12 Slice v2 trick, UNVERIFIED for v3 | "release"
+TOW_FUSE_TOWEE = "stays"            # tt20 UNVERIFIED | "destroyed"
+TOW_EXTERN_LOCK = "hold"            # tt22 cabal tips #4 | "off"
+TOW_EXTERN_REQUIRE_GOOD = False     # tt22 UNVERIFIED: fedsafe = fighters <= FED_TOW_FIGHTER_LIMIT only
+TOW_DOCK_VERBS = frozenset({"buy_ship", "buy_equip", "sell_ship", "remove_limpet", "apply_commission",
+                            "post_reward", "claim_reward"})  # tt11c (Police HQ verbs as dock: UNVERIFIED)
+SHIP_TW_TYPE2_COST = 20_000         # tt16 cabal twgs.html TEDIT sample (OldFAQ v2 80,000: SOURCE-CONFLICT, unused)
+SHIP_TW_UPGRADE_COST = 9_000        # tt16 TEDIT (OldFAQ v2 40,000: unused)
+SHIP_TW_TOW_ORE_PER_HOP = 6         # tt19 docs wiki / OldFAQ #1
+BOT_TOW_POLICY = "extern_hold_only"  # "extern_hold_only" | "off"
+
+
+def tow_on() -> bool:
+    return TOW_MODE == "tw2002"

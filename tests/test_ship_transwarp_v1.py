@@ -196,7 +196,8 @@ def test_tw3_type1_price_is_12500():
     assert u.players["A"].credits == 50_000 - 12_500
 
 
-def test_tw4_one_drive_per_ship_and_no_type2():
+def test_tw4_one_drive_per_ship_and_no_type2(monkeypatch):
+    monkeypatch.setattr(K, "TOW_MODE", "legacy")  # Type 2 / upgrade arrive with slice 51 (SHIP_TOW.md tt16)
     u = _world()
     _sit(u, "A", 1)
     assert _buy(u).ok

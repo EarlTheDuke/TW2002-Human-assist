@@ -437,6 +437,11 @@ def extern_repossess(universe: Universe) -> int:
         rec = universe.parked_ships[sid]
         if int(rec.sector_id) not in K.FEDSPACE_SECTORS:
             continue
+        if K.tow_on():  # SHIP_TOW.md tt22: an own fedsafe tower beside it with the ship locked in tow
+            from .tow import emit_hold, extern_hold_why
+            if extern_hold_why(universe, rec) is None:
+                emit_hold(universe, rec)
+                continue
         _remove(universe, sid)
         n += 1
         owner = universe.players.get(rec.owner_id)
@@ -637,6 +642,12 @@ def fleet_block(universe: Universe, pid: str) -> dict[str, Any]:
             "transwarp": (tw or {}).get("fitted"),
             "repo_at_extern": K.FLEET_FED_REPO == "fedspace" and int(rec.sector_id) in K.FEDSPACE_SECTORS,
         })
+        if K.tow_on():  # SHIP_TOW.md tt23 / tt29
+            from .tow import fleet_entry_extra
+            extra = fleet_entry_extra(universe, rec)
+            ships[-1].update(extra)
+            if extra["extern_hold"]:
+                ships[-1]["repo_at_extern"] = False
     return {"max_ships": int(K.FLEET_MAX_SHIPS), "transport_range": rng,
             "manned_ship_id": player.ship.fleet_id, "ships": ships}
 
