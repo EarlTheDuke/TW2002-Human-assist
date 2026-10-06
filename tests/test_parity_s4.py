@@ -326,6 +326,12 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         commodities = p.get("commodities") or {}
         commodity = next((c for c, row in commodities.items() if int((row or {}).get("max_units") or 0) >= 1), "equipment")
         return Action(kind=ak, args={"commodity": commodity, "units": 1})
+    if ak in (ActionKind.BANK_DEPOSIT, ActionKind.BANK_WITHDRAW):
+        return Action(kind=ak, args={"amount": 1})
+    if ak is ActionKind.BANK_TRANSFER:
+        recipients = p.get("recipients") or []
+        target = recipients[0]["player_id"] if recipients else "P2"
+        return Action(kind=ak, args={"to_player": target, "amount": 1})
     if ak is ActionKind.PORT_BUILD:
         classes = p.get("classes") or {}
         code = next((c for c, row in classes.items() if (row or {}).get("affordable")), "SSS")

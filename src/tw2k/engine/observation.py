@@ -84,6 +84,12 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.OPERATOR_MESSAGE,
     # port-upgrade-build-v1: the order and the daily progress are the builder's.
     EventKind.PORT_UPGRADED,
+    EventKind.BANK_DEPOSIT,
+    EventKind.BANK_WITHDRAW,
+    EventKind.BANK_TRANSFER,
+    EventKind.BANK_TRANSFER_RECEIVED,
+    EventKind.TAX_COLLECTED,
+    EventKind.CREDITS_RECOVERED,
     EventKind.PORT_BUILD_ORDERED,
     EventKind.PORT_BUILD_PROGRESS,
     EventKind.PORT_BUILD_STALLED,
@@ -519,6 +525,12 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.SHIP_PASSWORD_FAIL: (),
     EventKind.SHIP_DEFUNCT: ("ship_id", "ticker"),
     EventKind.SHIP_FURBED: ("attacker", "victim_class", "holds_gained", "capped"),
+    EventKind.BANK_DEPOSIT: ("amount", "balance"),
+    EventKind.BANK_WITHDRAW: ("amount", "balance"),
+    EventKind.BANK_TRANSFER: ("to_player", "amount"),
+    EventKind.BANK_TRANSFER_RECEIVED: ("from_player", "from_name", "amount", "balance"),
+    EventKind.TAX_COLLECTED: ("credits_before", "tax", "align_gain", "new_alignment"),
+    EventKind.CREDITS_RECOVERED: ("from_player", "credits_recovered"),
     EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
 }
 
@@ -555,14 +567,20 @@ def event_view(event: Event) -> dict[str, Any]:
     }
 
 
-def _event_to_dict(event: Event) -> dict[str, Any]:
+def _event_to_dict(event: Event, viewer_id: str | None = None) -> dict[str, Any]:
     """Event shape inside `Observation.recent_events`.
 
     Same as `event_view` minus `actor_kind` (LLM seats never needed it) and
     with `facts` omitted when empty to keep the LLM payload tight.
+    credits_lost is added only for the pilot who lost the ship (gb16).
     """
     view = event_view(event)
     view.pop("actor_kind", None)
+    if (viewer_id and event.kind is EventKind.SHIP_DESTROYED
+            and event.payload.get("victim") == viewer_id
+            and "credits_lost" in (event.payload or {})):
+        view.setdefault("facts", {})
+        view["facts"]["credits_lost"] = int(event.payload["credits_lost"])
     if not view["facts"]:
         view.pop("facts")
     return view
@@ -711,6 +729,10 @@ class Observation(BaseModel):
     in_tow_by: dict[str, Any] | None = None
     # corp-ships-furb-v1: this corp's unmanned corporate ships. Omitted for a trader with no corp.
     corp_ships: list[dict[str, Any]] | None = None
+    # galactic-bank-tax-v1: own account only. Omitted under BANK_MODE legacy.
+    bank_balance: int | None = None
+    bank_room: int | None = None
+    tax_due_tomorrow: int | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -729,6 +751,9 @@ class Observation(BaseModel):
                 data.pop("in_tow_by", None)
             if data.get("corp_ships") is None:  # corp-ships-furb-v1: same rule
                 data.pop("corp_ships", None)
+            for key in ("bank_balance", "bank_room", "tax_due_tomorrow"):  # galactic-bank-tax-v1
+                if data.get(key) is None:
+                    data.pop(key, None)
         return data
 
 
@@ -859,7 +884,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     # warps, planet deploys, and citadel builds are NOT leaked here — that
     # forces the classic TW2002 intel loop (scouting, probes, limpets).
     recent = _filter_visible_events(universe.events, player_id, universe, event_history)
-    recent_events = [_event_to_dict(e) for e in recent]
+    recent_events = [_event_to_dict(e, player_id) for e in recent]
 
     turns_remaining = player.turns_per_day - player.turns_today
 
@@ -1042,6 +1067,10 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     from .runner import alignment_label
     legal = [la.model_dump() for la in _legal_actions(universe, player_id)]
     known_sectors = _known_sectors(universe, player)
+    bank_view = None
+    if K.bank_on() and K.BANK_BALANCE_VIEW == "always":
+        from .bank import self_view
+        bank_view = self_view(player)
     obs = Observation(
         day=universe.day,
         tick=universe.tick,
@@ -1050,6 +1079,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         self_id=player.id,
         self_name=player.name,
         credits=player.credits,
+        bank_balance=None if bank_view is None else bank_view["bank_balance"],
+        bank_room=None if bank_view is None else bank_view["bank_room"],
+        tax_due_tomorrow=None if bank_view is None else bank_view["tax_due_tomorrow"],
         alignment=player.alignment,
         alignment_label=alignment_label(player.alignment),
         experience=player.experience,

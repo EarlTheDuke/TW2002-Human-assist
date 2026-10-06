@@ -617,6 +617,15 @@ _PORT_UPGRADE_NOTE = (
     "which lets a planet in that sector sell bigger lots.\n"
 )
 
+def _bank_note() -> str:
+    return (
+        f"\nStarDock's Galactic Bank holds up to {int(K.BANK_MAX_BALANCE):,} credits per trader; "
+        "banked credits are not lost when your ship is destroyed and are not taxed. Credits carried "
+        "on your ship are lost if your ship is destroyed, and a trader with "
+        f"{int(K.TAX_MIN_ALIGNMENT)} or more alignment carrying over {int(K.TAX_THRESHOLD):,} credits "
+        f"pays {int(K.TAX_RATE_PCT)}% at the start of each day.\n"
+    )
+
 _CORPSHIP_NOTE = (
     "\nCORPORATE SHIPS (docs/playtests/ships/CORP_SHIPS_FURB.md): ship_set_corporate flags the ship you are "
     "flying for your corp. Corp mates can ship_transport into it and tow it. A password keeps them out until "
@@ -724,6 +733,8 @@ def get_system_prompt() -> str:
         text = text + _CORPSHIP_NOTE
     if K.port_upgrade_on():
         text = text + _PORT_UPGRADE_NOTE
+    if K.bank_on():
+        text = text + _bank_note()
     if K.buy_reserve_on():
         text = _buy_reserve_prompt_text(text)
     if K.combat_framing_on():

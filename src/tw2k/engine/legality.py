@@ -143,7 +143,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         return [_la(k, legal=False, reason="player is destroyed", detail="precise") for k in ActionKind
                 if (K.hardware_tw2002() or k != ActionKind.LAUNCH_BEACON)
                 and (K.planet_trade_on() or k != ActionKind.PLANET_TRADE)
-                and (K.port_upgrade_on() or k not in (ActionKind.PORT_UPGRADE, ActionKind.PORT_BUILD))]
+                and (K.port_upgrade_on() or k not in (ActionKind.PORT_UPGRADE, ActionKind.PORT_BUILD))
+                and (K.bank_on() or k not in (ActionKind.BANK_DEPOSIT, ActionKind.BANK_WITHDRAW, ActionKind.BANK_TRANSFER))]
 
     landed = player.planet_landed is not None
     at_stardock = player.sector_id == K.STARDOCK_SECTOR
@@ -1406,6 +1407,18 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         if ok and challenge is not None:
             ok, why = False, CHALLENGE_REFUSAL
         out.append(_la(ActionKind.PORT_BUILD, legal=ok, reason=why, cost=cost, params=params))
+
+    if K.bank_on():  # GALACTIC_BANK_TAX.md (legacy: the three verbs are absent)
+        from .bank import deposit_legal_spec, transfer_legal_spec, withdraw_legal_spec
+        for kind, spec in (
+            (ActionKind.BANK_DEPOSIT, deposit_legal_spec),
+            (ActionKind.BANK_WITHDRAW, withdraw_legal_spec),
+            (ActionKind.BANK_TRANSFER, transfer_legal_spec),
+        ):
+            ok, why, cost, params = spec(universe, player_id)
+            if ok and challenge is not None:
+                ok, why = False, CHALLENGE_REFUSAL
+            out.append(_la(kind, legal=ok, reason=why, cost=cost, params=params))
 
     return out
 
