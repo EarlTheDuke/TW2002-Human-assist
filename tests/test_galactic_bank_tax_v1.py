@@ -420,3 +420,14 @@ def test_gb29_gb31_bot(monkeypatch):
 
     monkeypatch.setattr(engine_k, "BOT_BANK_POLICY", "off")
     assert SeatBrain().decide(obs)["kind"] != "bank_deposit"
+
+
+def test_bank_balance_survives_save_and_load():
+    from tw2k.engine.models import Universe
+    u, player = _world(credits=200_000, alignment=0)
+    assert _do(u, ActionKind.BANK_DEPOSIT, amount=40_000).ok
+    tick_day(u)
+    back = Universe.model_validate_json(u.model_dump_json())
+    assert back.players["A"].bank_balance == 40_000
+    assert back.players["A"].credits == player.credits
+    assert back.model_dump_json() == u.model_dump_json()

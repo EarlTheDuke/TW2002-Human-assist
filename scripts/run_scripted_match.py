@@ -305,6 +305,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         result["bank_rejected"] = sum(int(row["rejected_engine"]) for row in players.values())
         result["bank_exceptions"] = sum(int(row["exceptions"]) for row in players.values())
         result["ferrengi_credits"] = sum(int(ship.credits) for ship in (getattr(u, "ferrengi", None) or {}).values())
+        from tw2k.engine.models import Universe
+        again = Universe.model_validate_json(u.model_dump_json())
+        result["bank_save_load"] = "identical" if again.model_dump_json() == u.model_dump_json() else "diff"
     return result
 
 
@@ -369,7 +372,7 @@ def main(argv: list[str] | None = None) -> int:
     print(md)
     if a.bank_report:
         print(f"BANK rejected {result['bank_rejected']} exceptions {result['bank_exceptions']} "
-              f"ferrengi_credits {result['ferrengi_credits']}")
+              f"ferrengi_credits {result['ferrengi_credits']} save {result['bank_save_load']}")
         for pid in result["ranking"]:
             row = result["players"][pid]
             b = row.get("bank") or {}
