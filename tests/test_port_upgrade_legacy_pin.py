@@ -1,8 +1,8 @@
 """PORT_UPGRADE_MODE legacy matches the engine before this slice.
 
-Recorded with tests/fed_legacy_digest.py on e6c7e60 (rules doc on origin 086972d, no engine
-change): scripted N3,N2,N1,H, seed 250925, 3 days. flip is only PORT_UPGRADE_MODE.
-The same digest on this tree with that flip is 9be955176171eb289630b373.
+Recorded on the rules-doc commit before the engine change, then rebased onto the
+class0-outpost-label tip. Scripted N3,N2,N1,H, seed 250925, 3 days. FED_OUTPOST_MODE
+is flipped too: it landed on origin after that recording and must not move the digest.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PORT_UPGRADE_LEGACY_GOLDEN = "9be955176171eb289630b373"
-PIN_FLIPS = ("PORT_UPGRADE_MODE",)
+PIN_FLIPS = ("PORT_UPGRADE_MODE", "FED_OUTPOST_MODE")
 
 
 def test_port_upgrade_legacy_is_unchanged():
