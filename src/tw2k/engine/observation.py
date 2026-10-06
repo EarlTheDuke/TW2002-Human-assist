@@ -227,7 +227,7 @@ class _SeenIndex:
 
 
 class _FeedIndex:
-    __slots__ = ("events", "last", "located", "n", "orphaned", "seen")
+    __slots__ = ("destroyed", "events", "last", "located", "n", "orphaned", "seen")
 
     def __init__(self, events: list[Event]) -> None:
         self.events = events
@@ -235,6 +235,7 @@ class _FeedIndex:
         self.last: Event | None = None
         self.located: list[int] = []   # positions of events with an actor and a sector
         self.orphaned: list[int] = []  # positions of PLANET_ORPHANED events
+        self.destroyed: list[int] = []  # positions of SHIP_DESTROYED events
         self.seen: dict[str, _SeenIndex] = {}
 
 
@@ -261,13 +262,16 @@ def _feed_index(events: list[Event]) -> _FeedIndex:
         _FEED_INDEX[id(events)] = idx
     n = len(events)
     if idx.n < n:
-        located, orphaned = idx.located, idx.orphaned
+        located, orphaned, destroyed = idx.located, idx.orphaned, idx.destroyed
         for i in range(idx.n, n):
             ev = events[i]
             if ev.actor_id is not None and ev.sector_id is not None:
                 located.append(i)
-            if ev.kind is EventKind.PLANET_ORPHANED:
+            kind = ev.kind
+            if kind is EventKind.PLANET_ORPHANED:
                 orphaned.append(i)
+            elif kind is EventKind.SHIP_DESTROYED:
+                destroyed.append(i)
         idx.n = n
         idx.last = events[n - 1]
     return idx
@@ -353,6 +357,16 @@ def _orphan_former_owners(universe: Universe) -> dict[int, str]:
         if isinstance(plid, int) and isinstance(former, str):
             orphan_former[plid] = former
     return orphan_former
+
+
+def _deaths_of(universe: Any, player_id: Any) -> list[Event]:
+    """SHIP_DESTROYED events whose victim is `player_id`, oldest first."""
+    events = getattr(universe, "events", None)
+    if not events:
+        return []
+    if not isinstance(events, list):
+        return [ev for ev in events if ev.kind is EventKind.SHIP_DESTROYED and ev.payload.get("victim") == player_id]
+    return [ev for i in _feed_index(events).destroyed if (ev := events[i]).payload.get("victim") == player_id]
 
 
 def _filter_visible_events(
@@ -1862,11 +1876,7 @@ def _action_hint(
             last_reason = str(getattr(player, "last_death_reason", "") or "attack")
             death_events: list[Any] = []
             if universe is not None:
-                death_events = [
-                    ev for ev in (getattr(universe, "events", []) or [])
-                    if ev.kind is EventKind.SHIP_DESTROYED
-                    and ev.payload.get("victim") == getattr(player, "id", None)
-                ]
+                death_events = _deaths_of(universe, getattr(player, "id", None))
             same_sector = sum(
                 1 for ev in death_events
                 if last_sector is not None and ev.payload.get("death_sector") == last_sector
