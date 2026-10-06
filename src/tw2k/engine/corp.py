@@ -110,6 +110,9 @@ def event_visible(event, player_id: str, universe: Universe) -> bool:
     target = event.payload.get("target")
     if kind in (EventKind.CORP_DROP, EventKind.CORP_OUSTED, EventKind.CORP_DISSOLVED):
         return player_id == event.actor_id or player_id in members or player_id == target
+    if kind == EventKind.CORP_INVITE:
+        invited = set(corp.invited_ids) if corp is not None else set()
+        return player_id == event.actor_id or player_id in members or player_id == target or player_id in invited
     if player_id == event.actor_id or player_id in members:
         return True
     return False

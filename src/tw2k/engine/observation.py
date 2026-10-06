@@ -952,6 +952,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         if K.corp_rules_on():
             from .corp import member_block
             corp_summary = member_block(universe, player)
+            if corp_summary is not None:
+                corp_summary["recent_memos"] = recent_memos
         else:
             corp_summary = {
                 "ticker": c.ticker,

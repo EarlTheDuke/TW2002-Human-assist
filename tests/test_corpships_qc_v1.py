@@ -291,7 +291,8 @@ def test_qc_defunct_ship_cannot_be_boarded_or_towed_by_anyone():
     assert not _act(u, "A", ActionKind.TOW_ENGAGE, target=f"ship:{sid}").ok
 
 
-def test_qc_ceo_leaving_hands_his_parked_corp_ships_to_the_first_remaining_member():
+def test_qc_ceo_leaving_hands_his_parked_corp_ships_to_the_first_remaining_member(monkeypatch):
+    monkeypatch.setattr(K, "CORP_MODE", "legacy")  # tw2002 dissolves on C.E.O. leave
     u = _world()
     sec = _sector(u)
     for pid in ("A", "B", "C"):
@@ -302,7 +303,8 @@ def test_qc_ceo_leaving_hands_his_parked_corp_ships_to_the_first_remaining_membe
     assert u.parked_ships[sid].owner_id == "B"
 
 
-def test_qc_leaver_cannot_unflag_the_corp_ship_he_is_still_flying():
+def test_qc_leaver_cannot_unflag_the_corp_ship_he_is_still_flying(monkeypatch):
+    monkeypatch.setattr(K, "CORP_MODE", "legacy")  # tw2002 dissolves on C.E.O. leave
     u = _world()
     sec = _sector(u)
     a = _sit(u, "A", sec)

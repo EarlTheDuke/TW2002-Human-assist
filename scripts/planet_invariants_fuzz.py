@@ -242,6 +242,10 @@ def _sample(rng: random.Random, universe, spec) -> dict | None:
                 args[name] = rng.choice(choices)
         elif name == "dest_sector":
             args[name] = rng.choice(list(universe.sectors))
+        elif name == "password":
+            ticker = args.get("ticker")
+            corp = universe.corporations.get(ticker) if ticker else None
+            args[name] = (corp.password if corp is not None and corp.password else "") or "Zx9"
         elif "min" in spec_item and "max" in spec_item and "max_by" not in spec_item:
             lo = int(spec_item["min"])
             hi = int(spec_item["max"])
@@ -313,9 +317,11 @@ def _build(seed: int):
     universe.sectors[move_sector].occupant_ids.append("B")
     universe.corporations["ZZ"] = Corporation(
         ticker="ZZ", name="ZZ", ceo_id="A", member_ids=["A", "B"], invited_ids=["C"],
+        password="Zx9",
     )
     universe.corporations["YY"] = Corporation(
         ticker="YY", name="YY", ceo_id="C", member_ids=["C"], invited_ids=["A"],
+        password="Zx9",
     )
     universe.players["A"].corp_ticker = "ZZ"
     universe.players["B"].corp_ticker = "ZZ"

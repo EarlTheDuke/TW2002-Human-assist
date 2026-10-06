@@ -140,6 +140,10 @@ def test_own_and_corp_hazards_do_not_fire() -> None:
     _armids(u, attacker.id, 5)
     _armids(u, mate.id, 5)
     _sector_fighters(u, mate.id, 100, FighterMode.OFFENSIVE)
+    for md in u.sectors[SECTOR].mines:
+        if md.owner_id == mate.id:
+            md.corp_ticker = "ACE"
+    u.sectors[SECTOR].fighters.corp_ticker = "ACE"
 
     res = _land(u, attacker.id, planet.id)
 
