@@ -58,6 +58,10 @@ class HeuristicAgent(BaseAgent):
                 return self._attack(top["id"], "Ferrengi looks beatable, lets collect that bounty.")
             return self._flee(obs, f"Ferrengi aggression {top['aggression']} - bail.")
 
+        jump = self._ship_transwarp(obs)
+        if jump is not None:
+            return jump
+
         # In an escape pod: trade it in at StarDock, else fly there (DEATH_ESCAPE_PODS.md d17).
         if str(obs.ship.get("class") or "") == "escape_pod":
             pod = self._leave_pod(obs)
@@ -276,6 +280,29 @@ class HeuristicAgent(BaseAgent):
         if ok("surrender"):
             return Action(kind=ActionKind.SURRENDER, thought="No way past the fighters; surrendering.")
         return Action(kind=ActionKind.QUERY_LIMPETS, thought="Held by fighters with no turns left.")
+
+    def _ship_transwarp(self, obs: Observation) -> Action | None:
+        """ship-transwarp-v1: rich and far from StarDock, take a listed lock onto it. Never blind.
+
+        Only sector 1 (a commissioned FedSpace lock or an own/corp/ally fighter there), only
+        when the walk is 3+ hops, and only when the hold keeps the same ore again for a return.
+        """
+        tw = obs.ship.get("transwarp") if isinstance(obs.ship, dict) else None
+        if not isinstance(tw, dict) or not tw.get("fitted") or obs.credits <= 50_000:
+            return None
+        spec = next((la for la in (obs.legal_actions or []) if la.get("kind") == "ship_transwarp"), None)
+        if not isinstance(spec, dict) or not spec.get("legal"):
+            return None
+        params = (spec.get("params") or {}).get("sector_id") or {}
+        if STARDOCK_SECTOR not in [int(c) for c in (params.get("choices") or [])]:
+            return None
+        hops = int((params.get("hops_by") or {}).get(str(STARDOCK_SECTOR)) or 0)
+        need = int((params.get("ore_by") or {}).get(str(STARDOCK_SECTOR)) or 0)
+        ore = int((obs.ship.get("cargo") or {}).get("fuel_ore") or 0)
+        if hops < 3 or need <= 0 or ore < 2 * need:
+            return None
+        return Action(kind=ActionKind.SHIP_TRANSWARP, args={"sector_id": STARDOCK_SECTOR},
+                      thought=f"TransWarp to StarDock ({hops} hops, {need} ore), ore kept for the return.")
 
     def _flee(self, obs: Observation, thought: str) -> Action:
         adj = obs.adjacent or []

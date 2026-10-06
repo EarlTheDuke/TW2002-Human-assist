@@ -555,6 +555,16 @@ SYSTEM_PROMPT = _MATCH_PROMPT_FULL
 
 
 
+_SHIP_TW_NOTE = (
+    "\nSHIP TRANSWARP (docs/playtests/ships/SHIP_TRANSWARP.md): only an Imperial StarShip, Corporate FlagShip, "
+    "or Havoc Gunstar can buy_equip item=transwarp_drive at StarDock (12,500). "
+    "ship_transwarp {sector_id} burns 3 fuel ore per hop along the shortest warp path and one ship-TPW of turns. "
+    "The legal list is locked targets only: your fighter, a corp or ally fighter, or FedSpace sectors 1-10 if you "
+    "are commissioned (alignment >= 1000). A blind jump with no lock fuses the ship when density is above 0. "
+    "Never blind-jump. This is not planet_transwarp.\n"
+)
+
+
 _FED_NOTE_TW2002 = (
     "\nFEDSPACE POLICE (docs/playtests/fedspace/FEDSPACE_POLICE.md): three indestructible Federals "
     "(Captain Zyrain, Admiral Nelson, Fleet Admiral Clausewitz) wander the map; attacking one pods you. "
@@ -639,6 +649,8 @@ def get_system_prompt() -> str:
         text = text + _RANK_NOTE_TW2002
     if K.fed_tw2002():
         text = text + _FED_NOTE_TW2002
+    if K.ship_tw_on():
+        text = text + _SHIP_TW_NOTE
     return text
 
 

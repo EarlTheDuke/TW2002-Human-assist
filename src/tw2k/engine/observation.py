@@ -68,6 +68,8 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.REWARD_CLAIMED,
     EventKind.COMMISSION_GRANTED,
     EventKind.PLANET_TAX_PAYOUT,
+    # ship-transwarp-v1 tw20: a blind-jump fuse is owner + spectator only.
+    EventKind.SHIP_TRANSWARP_FUSE,
     # Out-of-band meta event — belongs to actor only (keeps opponents
     # from reading each other's token spend, which would be a weird
     # side-channel and also clutter their observation feed).
@@ -290,6 +292,8 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.REWARD_POSTED: ("target_id", "amount", "align_gain"),
     EventKind.REWARD_CLAIMED: ("amount",),
     EventKind.COMMISSION_GRANTED: ("alignment",),
+    EventKind.SHIP_TRANSWARP: ("from", "to", "hops", "ore", "locked", "blind"),
+    EventKind.SHIP_TRANSWARP_FUSE: ("from", "to", "hops", "ore", "locked"),
     EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
 }
 
@@ -513,6 +517,11 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         event_history = min(event_history, 20)
 
     ship = _ship_dict(player.ship)
+    if K.ship_tw_on() and isinstance(ship.get("transwarp"), dict):
+        from .victory import is_commissioned
+        ship["transwarp"]["fed_lock"] = bool(
+            is_commissioned(player) and K.SHIP_TW_FED_LOCK == "commissioned"
+        )
 
     # Current sector detail
     sector_info = _sector_detail(universe, sector, player_id)
@@ -1026,6 +1035,15 @@ def _ship_dict(ship) -> dict[str, Any]:
         "cargo_free": ship.cargo_free,
     }
     from . import constants as K
+    if K.ship_tw_on():
+        from .ship_transwarp import drive_fitted, fuel_ore
+        ore = fuel_ore(ship)
+        ship_view["transwarp"] = {
+            "fitted": "type1" if drive_fitted(ship) else None,
+            "ore_per_hop": int(K.SHIP_TW_ORE_PER_HOP),
+            "max_hops_now": ore // max(1, int(K.SHIP_TW_ORE_PER_HOP)),
+            "fed_lock": False,
+        }
     if not K.hardware_tw2002():  # HARDWARE_MODE legacy keeps the pre-ship-hardware ship view
         for key in ("cloaks", "mine_disruptors", "cloaked",
                     "corbomite", "marker_beacons", "psychic_probe", "atomic_detonators"):

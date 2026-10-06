@@ -38,6 +38,7 @@ def test_hint_level_invalid_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_get_system_prompt_respects_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("tw2k.engine.constants.RANK_MODE", "legacy")  # tw2002 appends the rank note
     monkeypatch.setattr("tw2k.engine.constants.FED_MODE", "legacy")  # tw2002 appends the fed note
+    monkeypatch.setattr("tw2k.engine.constants.SHIP_TW_MODE", "legacy")  # tw2002 appends the ship TransWarp note
     monkeypatch.setenv("TW2K_HINT_LEVEL", "minimal")
     s = get_system_prompt()
     assert s == _MATCH_PROMPT_MINIMAL
