@@ -3643,8 +3643,28 @@ class SeatBrain:
                        f"{defense:.0f}, alignment cost ~{cost}")
                 if best is None or key < best[0]:
                     best = (key, tid, why)
+        if best is None and str(getattr(_HK, "BOT_ALIEN_POLICY", "ignore")) == "align_hunt":
+            if int(tally.get("__alien__", 0)) < 1 and not sector.get("is_fedspace"):
+                my_side = "good" if int(v.obs.get("alignment") or 0) >= 0 else "evil"
+                alien_margin = float(_HK.BOT_ALIEN_MARGIN)
+                for row in sector.get("aliens") or []:
+                    if not isinstance(row, dict):
+                        continue
+                    aid = str(row.get("id") or "")
+                    if aid not in choices or str(row.get("side") or "") == my_side:
+                        continue
+                    hull = str(row.get("hull") or "")
+                    defense = (int(row.get("fighters") or 0) + int(row.get("shields") or 0)) * combat_hull(hull)[0]
+                    if power < alien_margin * defense:
+                        continue
+                    key = (2, 0, -int(defense), aid)
+                    why = f"hunt alien {row.get('name') or aid}: power {power:.0f} vs defence {defense:.0f}"
+                    if best is None or key < best[0]:
+                        best = (key, aid, why)
         if best is None:
             return None
+        if str(best[1]).startswith("alien:"):
+            tally["__alien__"] = 1
         tally[best[1]] = int(tally.get(best[1], 0)) + 1
         return self._act("attack", {"target": best[1], "qty": cap}, best[2])
 
