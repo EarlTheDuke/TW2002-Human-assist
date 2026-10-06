@@ -329,10 +329,16 @@ def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
         _award_xp(universe, attacker_id, "kill_player")
         # x13/a2: the killer's share reads the victim before the pod or Ship Destroyed loss.
         kill_rewards(universe, attacker_id, int(target.experience), int(target.alignment))
+        # Furb reads the hull that is about to die, but the event must not bump universe.seq
+        # before the pod picks a sector (that seed includes seq). Capture does not furb, so a
+        # furb emit here would land the pod somewhere a plain destroy does not.
+        furb_ship = None
         if K.corpship_on() and K.FURB_FERRENGI is False:
-            from .corpships import apply_furb
-            apply_furb(universe, attacker_id, target.ship, target.id)
+            furb_ship = target.ship.model_copy(deep=True)
         _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id, by_other=True)
+        if furb_ship is not None:
+            from .corpships import apply_furb
+            apply_furb(universe, attacker_id, furb_ship, target.id)
 
 
 # ---------------------------------------------------------------------------
