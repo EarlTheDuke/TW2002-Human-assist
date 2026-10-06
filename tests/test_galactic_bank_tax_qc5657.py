@@ -77,6 +77,8 @@ def test_qc_sd_trader_is_a_recipient_and_eliminated_reads_like_unknown():
     gone = _do(u, "bank_transfer", to_player="O1", amount=100)
     unknown = _do(u, "bank_transfer", to_player="ZZ", amount=100)
     assert gone.error == unknown.error and gone.ok is False
+    # plant q19 (QC 56): the eliminated trader is not offered as a recipient either
+    assert all(r["player_id"] != "O1" for r in _la(u, "A", "bank_transfer").params["recipients"])
 
 
 def test_qc_transfer_events_fog():
@@ -226,3 +228,29 @@ def test_qc_gb29_no_blanket_hold_while_genesis_is_for_sale():
     keep = max(int(K.BOT_BANK_FLOAT), 25_000 + int(CITADEL_TIER_COST[0][0]))
     assert act["kind"] == "bank_deposit", act
     assert act["args"]["amount"] == 200_000 - keep
+
+
+def test_qc_pb21_death_mode_legacy_keeps_its_x075_path_under_bank_tw2002(monkeypatch):
+    """pb21: DEATH_MODE legacy keeps x0.75 whatever BANK_MODE says; no cash goes to the killer."""
+    from tw2k.engine.combat import _destroy_ship
+    u, who = _world(credits=80_000)
+    killer = u.players["O0"]
+    killer.sector_id = who.sector_id
+    k0 = int(killer.credits)
+    assert K.bank_on() and K.DEATH_CREDITS_ON_HAND == "lost"
+    monkeypatch.setattr(K, "DEATH_MODE", "legacy")
+    _destroy_ship(u, "A", "attack", killer_id="O0", by_other=True)
+    assert who.credits == int(80_000 * 0.75)
+    assert killer.credits == k0
+
+
+def test_qc_eliminated_trader_cannot_bank():
+    """Plant q4 (QC 56): the alive guard; an eliminated trader at StarDock is refused by list and handler."""
+    u, who = _world(credits=100_000)
+    who.bank_balance = 10_000
+    who.alive = False
+    for kind, args in (("bank_deposit", {"amount": 1}), ("bank_withdraw", {"amount": 1}),
+                       ("bank_transfer", {"to_player": "O0", "amount": 1})):
+        assert not _la(u, "A", kind).legal
+        assert _do(u, kind, **args).ok is False
+    assert who.credits == 100_000 and who.bank_balance == 10_000

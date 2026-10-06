@@ -43,6 +43,17 @@ def limpet_visible(universe: Universe, viewer_id: str, owner_id: str) -> bool:
     return bool(viewer and owner and viewer.corp_ticker and viewer.corp_ticker == owner.corp_ticker)
 
 
+def _fighter_view(s) -> dict[str, Any] | None:
+    if s.fighters is None or int(s.fighters.count) <= 0:
+        return None
+    row: dict[str, Any] = {"owner_id": s.fighters.owner_id, "count": int(s.fighters.count),
+                           "mode": s.fighters.mode.value}
+    if K.corp_rules_on():  # CORP_RULES.md cr17 / TWI 433-436 (QC 57): the display says Personal or Corporate
+        row["ownership"] = ("rogue" if s.fighters.owner_id == K.ROGUE_OWNER_ID
+                            else "corporate" if getattr(s.fighters, "corp_ticker", None) else "personal")
+    return row
+
+
 def visible_mines(universe: Universe, viewer_id: str, sector) -> list[dict[str, Any]]:
     out = []
     for m in sector.mines:
@@ -181,8 +192,7 @@ def sector_view(universe: Universe, viewer_id: str, sector_id: int) -> dict[str,
             if K.ferrengi_tw2002()
             else [{"name": f.name, "fighters": int(f.fighters)} for f in _ferrengi_in(universe, sector_id)]
         ),
-        "fighters": ({"owner_id": s.fighters.owner_id, "count": int(s.fighters.count), "mode": s.fighters.mode.value}
-                     if s.fighters is not None and int(s.fighters.count) > 0 else None),
+        "fighters": _fighter_view(s),
         # Limpets never show on a holo or a probe (SCANNERS_HIDDEN_INFO.md s9/s13), even your own.
         "mines": [m for m in visible_mines(universe, viewer_id, s) if m["kind"] != MineType.LIMPET.value],
     }

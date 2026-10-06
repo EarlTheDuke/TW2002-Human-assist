@@ -618,8 +618,11 @@ _PORT_UPGRADE_NOTE = (
 )
 
 def _corp_note() -> str:
+    cost, turns = int(K.CORP_CREATE_COST), int(K.CORP_TURN_COST)  # cr30 (QC 57): numbers follow the constants
+    price = "are free" if cost <= 0 else f"cost {cost:,} credits"
+    price += "" if turns <= 0 else f" and {turns} turn{'s' if turns != 1 else ''}"
     return (
-        "\nCorporations are free and work in any sector. The C.E.O. sets a password; any member may hand it out. "
+        f"\nCorporations {price} and work in any sector. The C.E.O. sets a password; any member may hand it out. "
         f"A corp holds {int(K.CORP_MAX_MEMBERS)} traders. Deployments are Personal (only you) or Corporate (every member). "
         "In the same sector, members may give or take credits, fighters, shields and mines, up to the receiving ship's room. "
         "The C.E.O. leaving dissolves the corp. A corp with both good and evil traders loses experience at the day tick.\n"
