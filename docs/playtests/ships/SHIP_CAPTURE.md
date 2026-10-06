@@ -22,16 +22,16 @@ Ferrengi capture, furbing / salvage, corporate ships + passwords, and change of 
 | cp14 | Hull-bound cargo, hardware, drive, limpet stay. Fighters and shields are 0 | CONFIRMED shape | `test_cp14_keeps_contents` |
 | cp15 | Corbomite does not fire on capture. It fires on a fallback destroy | CONFIRMED | `test_cp2_window`, `test_cp6_fleet_cap_destroys` |
 | cp16 | Sell price ignores extras (slice 50) | SOURCE-CONFLICT, kept | `test_cp14_transport_and_sell` |
-| cp17 | Capturing the tower releases the tow (`tower_captured`) | CONFIRMED shape | `test_cp17_tower_capture_releases_and_towed_ship_stays` |
-| cp18 | Capturing a towed unmanned ship keeps the tow and tells the tower | MBBS addendum #6 | `test_cp18_capturing_a_towed_ship_keeps_the_tow` |
+| cp17 | Capturing the tower releases the tow (`tower_captured`). A parked tower hull's dormant tt12 lock is released the same way on an unmanned capture | UNVERIFIED (spec cp17) | `test_cp17_tower_capture_releases_and_towed_ship_stays`, `test_qc_captured_parked_tower_drops_its_dormant_lock` |
+| cp18 | Capturing a towed unmanned ship keeps the tow and tells the tower. The tower keeps dragging it; the captor's sale or boarding releases it (`towee_gone`; slice 51 has no separate `towee_boarded` reason) | MBBS addendum #6 | `test_cp18_capturing_a_towed_ship_keeps_the_tow`, `test_qc_towed_capture_tower_is_told_and_keeps_dragging`, `test_qc_captor_sells_the_towed_ship_at_stardock`, `test_qc_captor_boards_the_towed_ship_and_the_tow_breaks` |
 | cp19 | A captured towee in FedSpace is repossessed unless the new owner holds it | Consistent with fl23 | `test_cp19_extern`, `test_cp19_old_tower_does_not_hold_a_captured_ship_at_extern` |
 | cp20 | A captured manned towee releases the tow (`towee_gone`) | CONFIRMED shape | `test_cp20_capturing_a_manned_towee_releases` |
-| cp21 | Re-capture releases the tow on attack (REV wins) | SOURCE-CONFLICT; `TOW_ON_ATTACK` release | slice 51 `after_action` |
+| cp21 | Re-capture releases the tow on attack (REV wins); the tower is not sent `TOW_TARGET_CAPTURED` for his own capture | SOURCE-CONFLICT; `TOW_ON_ATTACK` release | `test_qc_tower_recaptures_its_towee_and_re_engages` |
 | cp22 | Ferrengi are not captured. NPCs never capture | SOURCE-CONFLICT, deferred | `test_cp22_no_npc` |
 | cp23 | Feds never capture. FedSpace protection unchanged | CONFIRMED | `test_cp22_no_npc` |
 | cp24 | No `universe.rng` draw. Fail percent uses `capture_rng` only | CONFIRMED | `test_cp24_rng_and_fail_pct` |
 | cp25 | Captured hull and the victim's ship are different objects | CONFIRMED | `test_cp25_no_aliasing` |
-| cp26 | `captured_from` / `captured_day` on the owner's fleet. Contents stay private. Outcome `captured` | CONFIRMED | `test_cp26_fog` |
+| cp26 | `captured_from` / `captured_day` on the owner's fleet (saved once set, omitted while unset). Contents stay private. Outcome `captured` | CONFIRMED | `test_cp26_fog`, `test_qc_captured_from_survives_save_and_resume`, `test_qc_former_owner_elsewhere_sees_ship_captured_without_contents` |
 | cp27 | Prompt states the minimum, the pod/Scout ban, and the parked hull | — | `test_cp27_prompt_and_bots` |
 | cp28 | Spectator shows `ship_captured` and does not play the destroy burst for reason `captured` | — | web `app.js` feed |
 
