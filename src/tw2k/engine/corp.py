@@ -290,8 +290,8 @@ def disband(universe: Universe, corp: Corporation) -> None:
             else:
                 count = int(dep.count)
                 _rogue(dep)
-                universe.emit(
-                    EventKind.CORP_ROGUE, actor_id=corp.ceo_id, sector_id=sector.id,
+                universe.emit(  # cr28: public, no owner (QC 57: no actor either, or rivals log a C.E.O. sighting)
+                    EventKind.CORP_ROGUE, actor_id=None, sector_id=sector.id,
                     payload={"sector_id": sector.id, "count": count, "kind": "fighters"},
                     summary=f"{count} corporate fighters in {sector.id} went rogue",
                 )
@@ -895,7 +895,8 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
                            "direction": {"type": "str", "required": True, "choices": ["give", "take"]},
                            "partners": partners}))
     memo_ok = in_corp and (K.CORP_MEMO_SENDERS == "member" or (corp and corp.ceo_id == player_id))
-    out.append(_la(ActionKind.CORP_MEMO, legal=memo_ok, reason=None if memo_ok else "not in a corporation",
+    memo_reason = None if memo_ok else ("not in a corporation" if not in_corp else "only the C.E.O. may send a memo")
+    out.append(_la(ActionKind.CORP_MEMO, legal=memo_ok, reason=memo_reason,
                    params={"message": {"type": "str", "required": True, "max_len": 1000}}))
     out.append(_la(ActionKind.CORP_DEPOSIT, legal=False, reason="unsupported action",
                    params={"amount": {"type": "int", "required": True, "min": 1, "max": 0}}))

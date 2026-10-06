@@ -2907,6 +2907,8 @@ def _handle_corp_memo(universe: Universe, pid: str, action: Action) -> ActionRes
     if player.corp_ticker is None or player.corp_ticker not in universe.corporations:
         return ActionResult(ok=False, error="not in a corporation")
     corp = universe.corporations[player.corp_ticker]
+    if K.corp_rules_on() and K.CORP_MEMO_SENDERS == "ceo" and corp.ceo_id != pid:
+        return ActionResult(ok=False, error="only the C.E.O. may send a memo")  # cr25 alt (QC 57)
     msg = (action.args.get("message") or "")[:1000]
     for mid in corp.member_ids:
         if mid == pid:
