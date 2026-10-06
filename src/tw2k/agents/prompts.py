@@ -1055,6 +1055,8 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
         payload["police"] = obs.police
     if getattr(obs, "fedspace", None) is not None:
         payload["fedspace"] = obs.fedspace
+    if getattr(obs, "alien_ranks", None) is not None:  # ALIEN_TRADERS.md al25
+        payload["alien_ranks"] = obs.alien_ranks
     return json.dumps(payload, separators=(",", ":") if compact else (", ", ": "))
 
 

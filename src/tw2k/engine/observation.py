@@ -132,6 +132,13 @@ def _public_corporations(universe: Universe):
     return public_corporations(universe)
 
 
+def _alien_ranks(universe: Universe):
+    if not _K.alien_on():
+        return None
+    from .alien import alien_ranks_block
+    return alien_ranks_block(universe)
+
+
 def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     """Return True if `event` is visible to `player_id` under fog of war.
 
@@ -751,6 +758,8 @@ class Observation(BaseModel):
     tax_due_tomorrow: int | None = None
     # corp-rules-v1. Public corporation list. Omitted under CORP_MODE legacy.
     corporations: list[dict[str, Any]] | None = None
+    # alien-traders-v1 al25. Name, rank, side, experience. Omitted under ALIEN_MODE legacy.
+    alien_ranks: dict[str, Any] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -774,6 +783,8 @@ class Observation(BaseModel):
                     data.pop(key, None)
             if data.get("corporations") is None:  # corp-rules-v1
                 data.pop("corporations", None)
+            if data.get("alien_ranks") is None:  # alien-traders-v1
+                data.pop("alien_ranks", None)
         return data
 
 
@@ -1149,6 +1160,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         alliances=alliances,
         corp=corp_summary,
         corporations=_public_corporations(universe),
+        alien_ranks=_alien_ranks(universe),
         deaths=player.deaths,
         max_deaths=K.elimination_deaths(universe.config),
         limpets_owned=limpets_owned,

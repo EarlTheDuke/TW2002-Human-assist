@@ -37,6 +37,32 @@ def alien_brief(alien: AlienTrader) -> dict:
     }
 
 
+def alien_ranks_block(universe: Universe) -> dict | None:
+    """Computer listing: name, rank, side, experience. No location or hull."""
+    if not K.alien_on():
+        return None
+    from .victory import rank_for, side
+
+    rows = []
+    for alien in universe.aliens.values():
+        if not alien.alive:
+            continue
+        rows.append({
+            "name": alien.name,
+            "rank": rank_for(int(alien.experience), int(alien.alignment)),
+            "side": side(int(alien.alignment)),
+            "experience": int(alien.experience),
+        })
+    rows.sort(key=lambda row: (-int(row["experience"]), str(row["name"])))
+    active = len(rows)
+    good = sum(1 for row in rows if row["side"] == "good")
+    return {
+        "active": active,
+        "good_pct": 0 if active == 0 else round(100 * good / active),
+        "ranks": rows,
+    }
+
+
 def population(universe: Universe) -> int:
     if not K.alien_on() or K.ALIEN_SOURCE == "off":
         return 0
