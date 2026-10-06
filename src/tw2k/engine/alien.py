@@ -21,6 +21,22 @@ def alien_rng(seed: int, day: int, salt: int) -> random.Random:
     return random.Random(int(seed) * 7349 + int(day) * 101 + int(salt))
 
 
+def alien_brief(alien: AlienTrader) -> dict:
+    """What a sector view and a scan show. Rank and side, never credits."""
+    from .victory import rank_for, side
+
+    return {
+        "id": alien.id,
+        "name": alien.name,
+        "ship_name": alien.ship_name,
+        "hull": alien.ship.ship_class.value,
+        "rank": rank_for(int(alien.experience), int(alien.alignment)),
+        "side": side(int(alien.alignment)),
+        "fighters": int(alien.ship.fighters),
+        "shields": int(alien.ship.shields),
+    }
+
+
 def population(universe: Universe) -> int:
     if not K.alien_on() or K.ALIEN_SOURCE == "off":
         return 0
@@ -129,8 +145,9 @@ def place_aliens(universe: Universe) -> None:
     ]
     if not open_sectors:
         return
+    live = sum(1 for alien in universe.aliens.values() if alien.alive)
     rng = alien_rng(universe.config.seed, universe.day, _SALT_PLACE)
-    for _ in range(want):
+    for _ in range(max(0, want - live)):
         _spawn(universe, rng.choice(open_sectors), rng)
 
 
