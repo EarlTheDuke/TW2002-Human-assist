@@ -179,6 +179,27 @@ def test_al15_opposite_kill_pays_half_experience_and_the_credits():
     assert killed.payload["kind"] == "alien" and killed.payload["credits"] == 5_000
 
 
+def test_al14_fedsafe_alien_in_fedspace_is_protected():
+    u = generate_universe(GameConfig(seed=10, universe_size=200, max_days=3))
+    good, evil = list(u.aliens.values())[:2]
+    good.alignment, good.experience, good.sector_id = 250, 100, 3
+    evil.alignment, evil.experience, evil.sector_id = -250, 400, 3
+    player = Player(
+        id="A", name="Ann",
+        ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER, fighters=400, shields=50),
+        sector_id=3, credits=1_000, alignment=100, experience=0,
+    )
+    u.players["A"] = player
+    u.sectors[3].occupant_ids.append("A")
+    attack = next(row for row in legal_actions(u, "A") if row.kind == ActionKind.ATTACK)
+    choices = attack.params["target"]["choices"]
+    assert good.id not in choices
+    assert evil.id in choices
+    result = apply_action(u, "A", Action(kind=ActionKind.ATTACK, args={"target": good.id, "qty": 1}))
+    assert not result.ok and "Zyrain" in (result.error or "")
+    assert good.alive and player.alignment == -100
+
+
 def test_al19_exact_minimum_captures_and_does_not_blast():
     u = generate_universe(GameConfig(seed=9, universe_size=200, max_days=3))
     alien = next(iter(u.aliens.values()))
