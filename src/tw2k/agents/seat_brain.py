@@ -2795,10 +2795,9 @@ class SeatBrain:
                         "thought": "withdraw the shortfall for the StarDock buy"}
         if need > 0 and int(v.credits) >= need:
             return None  # the ladder buys the hull before any deposit
-        # Spare cash waits while StarDock will still sell the next torpedo.
-        if (len(v.genesis_planets()) < self.target_planets and v.ok("buy_equip")
-                and "genesis" in set(str(c) for c in v.choices("buy_equip", "item"))):
-            return None
+        # gb29 (QC 56): no blanket hold while genesis torpedoes are still for sale. The keep below
+        # already covers the next planned purchase (hull, genesis + L1, citadel reserve); the hold kept
+        # most seats from ever banking (10-day N3,N3,N2,N2,N1,H seed 250925: 1.87M -> 2.92M total).
         if mem is not None and mem.bank_deposited:
             return None
         keep = self._bank_keep(v, need)
