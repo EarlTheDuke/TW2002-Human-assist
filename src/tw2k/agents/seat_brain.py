@@ -199,9 +199,20 @@ class SeatMemory:
     no_colonist_room: set[int] = field(default_factory=set)
     # Sectors where this seat has seen Ferrengi (fogged sector / events).
     hot_sectors: set[int] = field(default_factory=set)
+    # Last sector this seat robbed or stole in. A second try there is a fake bust.
+    last_crime_sector: int | None = None
+    # Sectors where this seat already launched a beacon (a second one explodes both).
+    beacons_laid: set[int] = field(default_factory=set)
+    # Armids and the home beacon are bought once. Laying them must not start a rebuy loop.
+    armids_stocked: bool = False
+    beacon_stocked: bool = False
+    # Last psychic-probe reading this seat saw (percent of the port's best price).
+    psychic_pct: float | None = None
+    psychic_commodity: str | None = None
+    psychic_unit: int | None = None
 
     def dump(self) -> str:
-        return MEMORY_TAG + json.dumps({
+        payload = {
             "home_planet": self.home_planet, "home_sector": self.home_sector,
             "deploy_sector": self.deploy_sector, "stall_breaks": self.stall_breaks,
             "last_event_seq": self.last_event_seq, "last_action_sig": self.last_action_sig,
@@ -215,7 +226,23 @@ class SeatMemory:
             "hull_wait": self.hull_wait,
             "no_colonist_room": sorted(self.no_colonist_room)[:20],
             "hot_sectors": sorted(self.hot_sectors)[:40],
-        }, separators=(",", ":"))
+        }
+        # Defaults stay off the scratchpad so an all-legacy run matches the previous digest.
+        if self.last_crime_sector is not None:
+            payload["last_crime_sector"] = self.last_crime_sector
+        if self.beacons_laid:
+            payload["beacons_laid"] = sorted(self.beacons_laid)[:40]
+        if self.armids_stocked:
+            payload["armids_stocked"] = True
+        if self.beacon_stocked:
+            payload["beacon_stocked"] = True
+        if self.psychic_pct is not None:
+            payload["psychic_pct"] = self.psychic_pct
+        if self.psychic_commodity is not None:
+            payload["psychic_commodity"] = self.psychic_commodity
+        if self.psychic_unit is not None:
+            payload["psychic_unit"] = self.psychic_unit
+        return MEMORY_TAG + json.dumps(payload, separators=(",", ":"))
 
     @classmethod
     def load(cls, scratchpad: str | None) -> SeatMemory:
@@ -247,6 +274,16 @@ class SeatMemory:
         mem.hull_wait = bool(data.get("hull_wait"))
         mem.no_colonist_room = {int(pid) for pid in (data.get("no_colonist_room") or [])}
         mem.hot_sectors = {int(sid) for sid in (data.get("hot_sectors") or [])}
+        crime = data.get("last_crime_sector")
+        mem.last_crime_sector = int(crime) if isinstance(crime, int) else None
+        mem.beacons_laid = {int(sid) for sid in (data.get("beacons_laid") or [])}
+        pct = data.get("psychic_pct")
+        mem.armids_stocked = bool(data.get("armids_stocked"))
+        mem.beacon_stocked = bool(data.get("beacon_stocked"))
+        mem.psychic_pct = float(pct) if isinstance(pct, (int, float)) else None
+        mem.psychic_commodity = data.get("psychic_commodity") if isinstance(data.get("psychic_commodity"), str) else None
+        unit = data.get("psychic_unit")
+        mem.psychic_unit = int(unit) if isinstance(unit, int) else None
         return mem
 
 
@@ -572,6 +609,7 @@ class SeatBrain:
         if mem.colonist_drop is not None and v.colonists_aboard <= 0:
             mem.colonist_drop = None
         self._note_ferrengi(v)
+        self._note_psychic(v)
         if self.feed_organics or self.value_allocator:
             self._sync_target_planets(v)
 
@@ -596,6 +634,12 @@ class SeatBrain:
             return self._finish(v, answer)
         answer = self._avoid_fed_tow(v) or self._police_hq(v)
         if answer is not None:  # fedspace-police-v1: leave FedSpace before Extern; free Police HQ verbs
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
+        answer = self._cloak_for_navhaz(v)
+        if answer is not None:
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
@@ -1005,6 +1049,10 @@ class SeatBrain:
                 why = f" - trailing {self.pressure.get('leader')}" if self.pressure and self.pressure.get("leader") else ""
                 return self._act("buy_equip", {"item": "genesis", "qty": 1},
                                  f"buy genesis #{len(gplanets) + 1} ({price} cr){why}"), Intent("acquire")
+        if v.worlds() and self._fogged_hot():
+            hw = self._maybe_buy_rich_hardware(v)
+            if hw is not None:
+                return hw, Intent("acquire")
         # Ferry load: only what the next citadel tier still needs, never below the reserve.
         need = self._colonists_needed(v)
         if v.worlds() and need > 0 and self._buildable_elsewhere(v) is None and v.cargo_free > 0:
@@ -1012,6 +1060,12 @@ class SeatBrain:
                                          f"load colonists for the ferry ({need} still needed)")
             if loaded is not None:
                 return loaded, Intent("colonize", self.mem.home_sector)
+        hw = self._maybe_buy_rich_hardware(v)
+        if hw is not None and v.worlds() and self._colonists_needed(v) <= 0:
+            return hw, Intent("acquire")
+        limp = self._maybe_remove_limpet(v)
+        if limp is not None:
+            return limp, Intent("acquire")
         return None
 
     def _travel(self, v: View):
@@ -1031,6 +1085,13 @@ class SeatBrain:
             plot = self._plot(v, dock, label)
             if plot is not None:
                 return plot, Intent("acquire", dock)
+        laid = self._maybe_lay_armids(v)
+        if laid is not None:
+            return laid, Intent("acquire")
+        if self.mem is not None and self.mem.home_sector is not None and v.here == self.mem.home_sector:
+            beacon = self._beacon_action(v)
+            if beacon is not None:
+                return beacon, Intent("acquire")
         if self._hauling_organics(v):
             planet = v.planet(self.mem.organics_drop)
             if planet is None:
@@ -1094,6 +1155,9 @@ class SeatBrain:
         return plot, Intent(kind, STARDOCK)
 
     def _earn(self, v: View):
+        crime = self._crime_action(v)
+        if crime is not None:
+            return crime, Intent("trade")
         self._note_refused_sells(v)
         # Price the one-hop port neighbours of the first route before milking a thin pair.
         # Empty holds only - cargo already aboard goes to a buyer first.
@@ -1134,6 +1198,13 @@ class SeatBrain:
         committed = self._commit_haul(v)
         if committed is not None:
             return committed
+        if v.here == STARDOCK and v.worlds() and self._fogged_hot():
+            hw = self._maybe_buy_rich_hardware(v)
+            if hw is not None:
+                return hw, Intent("acquire")
+            limp = self._maybe_remove_limpet(v)
+            if limp is not None:
+                return limp, Intent("acquire")
         saved = (self.mem.colonist_drop, self.mem.stock_load, self.mem.organics_drop)
         options: list[tuple[float, dict[str, Any], Intent, dict[str, Any]]] = []
         for opt in (self._opt_upgrade(v), self._opt_scanner(v), self._opt_scan(v), self._opt_defense(v), self._opt_organics(v), self._opt_build(v),
@@ -2661,6 +2732,368 @@ class SeatBrain:
         return None
 
 
+    def _hardware_on(self) -> bool:
+        import tw2k.engine.constants as _HK
+        return bool(_HK.hardware_tw2002())
+
+    def _in_swept_lane(self, v: View) -> bool:
+        """FedSpace or a Major Space Lane. Mines and parked fighters are swept or towed."""
+        sector = v.sector or {}
+        if sector.get("is_fedspace") or sector.get("is_msl"):
+            return True
+        return int(v.here or 0) == STARDOCK
+
+    def _navhaz_pct(self, v: View, sector_id: int) -> int:
+        for adj in v.obs.get("adjacent") or []:
+            if not isinstance(adj, dict):
+                continue
+            try:
+                if int(adj.get("id")) != int(sector_id):
+                    continue
+            except (TypeError, ValueError):
+                continue
+            raw = adj.get("navhaz", adj.get("nav_hazard_pct"))
+            try:
+                return int(raw or 0)
+            except (TypeError, ValueError):
+                return 0
+        here = (v.sector or {}).get("nav_hazard_pct")
+        if v.here is not None and int(sector_id) == int(v.here) and here is not None:
+            try:
+                return int(here)
+            except (TypeError, ValueError):
+                return 0
+        return 0
+
+    def _note_psychic(self, v: View) -> None:
+        if self.mem is None:
+            return
+        self._psychic_aboard = int(v.ship.get("psychic_probe") or 0)
+        for e in v.events:
+            if e.get("kind") != "psychic_probe":
+                continue
+            facts = e.get("facts") or {}
+            if facts.get("pct") is None:
+                continue
+            try:
+                self.mem.psychic_pct = float(facts["pct"])
+            except (TypeError, ValueError):
+                continue
+            if isinstance(facts.get("commodity"), str):
+                self.mem.psychic_commodity = facts["commodity"]
+            if isinstance(facts.get("unit"), int):
+                self.mem.psychic_unit = int(facts["unit"])
+
+    def _haggle_from_memory(self, args: dict[str, Any]) -> dict[str, Any]:
+        """One small step toward the price the psychic probe said was better.
+
+        No probe, no reading, or a reading already near the best: the trade
+        args are unchanged, so a seat that never bought the probe haggles
+        exactly as before.
+        """
+        mem = self.mem
+        if mem is None or mem.psychic_pct is None:
+            return args
+        if int(getattr(self, "_psychic_aboard", 0) or 0) <= 0:
+            return args
+        if args.get("unit_price") is not None:
+            return args
+        if str(args.get("side") or "") != "sell":
+            return args
+        if str(args.get("commodity") or "") != str(mem.psychic_commodity or ""):
+            return args
+        try:
+            pct = float(mem.psychic_pct)
+            unit = int(mem.psychic_unit or 0)
+        except (TypeError, ValueError):
+            return args
+        if unit <= 0 or pct >= 95 or pct <= 0:
+            return args
+        step = max(1, unit // 50)
+        offer = min(int(unit * 100 / pct), unit + step)
+        if offer <= unit:
+            return args
+        out = dict(args)
+        out["unit_price"] = int(offer)
+        return out
+
+    def _haggle_unit(self, args: dict[str, Any], listed: int) -> dict[str, Any]:
+        """Test seam: remember `listed` as the last psychic unit, then haggle."""
+        if self.mem is not None and self.mem.psychic_unit is None:
+            self.mem.psychic_unit = int(listed)
+        return self._haggle_from_memory(args)
+
+    def _crime_action(self, v: View) -> dict[str, Any] | None:
+        """Rob or steal only when the original gates are already true.
+
+        Alignment must be at or under ROB_MIN_ALIGNMENT. StarDock, Class 0,
+        a bust, and a second try in the same sector are refused. The amount
+        is the safe experience cap, never the whole vault.
+        """
+        import tw2k.engine.constants as _K
+        from tw2k.engine.rob_steal import max_rob_credits, max_steal_holds
+        if not _K.rob_tw2002():
+            return None
+        try:
+            align = int(v.obs.get("alignment") or 0)
+        except (TypeError, ValueError):
+            align = 0
+        if align > int(_K.ROB_MIN_ALIGNMENT):
+            return None
+        sector = v.sector or {}
+        port = sector.get("port") or {}
+        if not isinstance(port, dict):
+            port = {}
+        cls = str(port.get("class") or "")
+        if int(v.here or 0) == STARDOCK or sector.get("class0_port") or cls in ("0", "stardock"):
+            return None
+        if self.mem is not None and self.mem.last_crime_sector is not None and v.here is not None:
+            if int(self.mem.last_crime_sector) == int(v.here):
+                return None
+        if "busted" in v.reason("rob").lower() or "busted" in v.reason("steal").lower():
+            return None
+        try:
+            exp = int(v.obs.get("experience") or 0)
+        except (TypeError, ValueError):
+            exp = 0
+        holds_full = v.cargo_free <= 0
+        knows_buyer = bool(self.mem and self.mem.ports_seen)
+        if (not holds_full) and knows_buyer and v.ok("steal"):
+            choices = [str(c) for c in v.choices("steal", "commodity")]
+            if not choices:
+                return None
+            commodity = choices[0]
+            room = v.max_by("steal", "qty", commodity)
+            qty = min(room, max_steal_holds(exp), v.cargo_free)
+            if qty <= 0:
+                return None
+            if self.mem is not None and v.here is not None:
+                self.mem.last_crime_sector = int(v.here)
+            return self._act("steal", {"commodity": commodity, "qty": int(qty)},
+                             f"steal {qty} {commodity} inside the experience cap")
+        if holds_full and v.ok("rob"):
+            legal_max = int((v.params("rob").get("amount") or {}).get("max") or 0)
+            amount = min(legal_max, max_rob_credits(exp))
+            if amount <= 0:
+                return None
+            if self.mem is not None and v.here is not None:
+                self.mem.last_crime_sector = int(v.here)
+            return self._act("rob", {"amount": int(amount)},
+                             f"rob {amount} cr inside the experience cap")
+        return None
+
+    def _is_fed_target(self, v: View, target: str) -> bool:
+        name = str(target or "").lower()
+        if any(tok in name for tok in ("zyrain", "nelson", "clausewitz", "federal")):
+            return True
+        for occ in (v.sector or {}).get("occupants") or []:
+            if not isinstance(occ, dict):
+                continue
+            label = str(occ.get("name") or occ.get("id") or "")
+            if label != str(target) and str(occ.get("id") or "") != str(target):
+                continue
+            if occ.get("federal") or occ.get("is_fed") or "federal" in str(occ.get("ship") or "").lower():
+                return True
+        return False
+
+    def _ship_attack(self, v: View, target: str) -> dict[str, Any] | None:
+        """Never fire on a Federal starship. Other ships are not hunted this slice."""
+        if self._is_fed_target(v, target):
+            return None
+        if not v.ok("attack"):
+            return None
+        return self._act("attack", {"target": target}, "attack a hostile ship")
+
+    def _photon_action(self, v: View, target: int) -> dict[str, Any] | None:
+        if not self._hardware_on():
+            return None
+        spec = ship_specs().get(str(v.ship_class or "")) or {}
+        if int(spec.get("max_photons") or 0) <= 0:
+            return None
+        if int(v.ship.get("photon_missiles") or 0) <= 0:
+            return None
+        if not v.ok("photon_missile"):
+            return None
+        choices = {int(c) for c in v.choices("photon_missile", "target")}
+        if int(target) not in choices:
+            return None
+        return self._act("photon_missile", {"target": int(target)},
+                         f"photon the adjacent sector {target}, then warp in")
+
+    def _disruptor_action(self, v: View, target: int) -> dict[str, Any] | None:
+        if not self._hardware_on():
+            return None
+        if int(v.ship.get("mine_disruptors") or v.ship.get("disruptors") or 0) <= 0:
+            return None
+        if not v.ok("fire_disruptor"):
+            return None
+        choices = {int(c) for c in v.choices("fire_disruptor", "target")}
+        if int(target) not in choices:
+            return None
+        return self._act("fire_disruptor", {"target": int(target)},
+                         f"disrupt mines in adjacent sector {target}")
+
+    def _cloak_action(self, v: View) -> dict[str, Any] | None:
+        if not self._hardware_on():
+            return None
+        if int(v.ship.get("cloaks") or 0) <= 0:
+            return None
+        if v.ship.get("cloaked"):
+            return None
+        if not v.ok("cloak"):
+            return None
+        return self._act("cloak", {}, "cloak before the hazard")
+
+    def _cloak_for_navhaz(self, v: View) -> dict[str, Any] | None:
+        """Cloak only when every legal exit is a known NavHaz and a device is aboard."""
+        if not self._hardware_on() or v.landed is not None:
+            return None
+        warps = [int(c) for c in v.choices("warp", "target")] if v.ok("warp") else []
+        if len(warps) < 1:
+            return None
+        if any(self._navhaz_pct(v, w) < 10 for w in warps):
+            return None
+        return self._cloak_action(v)
+
+    def _beacon_action(self, v: View) -> dict[str, Any] | None:
+        if not self._hardware_on():
+            return None
+        if int(v.ship.get("marker_beacons") or 0) <= 0:
+            return None
+        if not v.ok("launch_beacon"):
+            return None
+        if v.params("launch_beacon").get("beacon_here"):
+            return None
+        if self.mem is not None and v.here is not None and int(v.here) in self.mem.beacons_laid:
+            return None
+        if self.mem is not None and v.here is not None:
+            self.mem.beacons_laid.add(int(v.here))
+            self.mem.beacon_stocked = True
+        return self._act("launch_beacon", {"message": "marked"}, "one beacon; a second in this sector explodes")
+
+    def _atomic_action(self, v: View) -> dict[str, Any] | None:
+        """Detonate only with the colonists already gone. Otherwise the blast is ours."""
+        if not self._hardware_on():
+            return None
+        if v.colonists_aboard > 0:
+            return None
+        if not v.ok("deploy_atomic"):
+            return None
+        if v.params("deploy_atomic").get("colonists_alive"):
+            return None
+        choices = [int(c) for c in v.choices("deploy_atomic", "planet_id")]
+        if not choices:
+            return None
+        return self._act("deploy_atomic", {"planet_id": choices[0]},
+                         "detonate only after the colonists are gone")
+
+    def _lay_fighters(self, v: View, qty: int) -> dict[str, Any] | None:
+        """Do not park fighters where FedSpace will tow them or an MSL sweep clears them."""
+        if self._in_swept_lane(v):
+            return None
+        if not v.ok("deploy_fighters"):
+            return None
+        room = int((v.params("deploy_fighters").get("qty") or {}).get("max") or 0)
+        send = min(int(qty), room)
+        if send <= 0:
+            return None
+        return self._act("deploy_fighters", {"qty": int(send), "mode": "defensive"},
+                         f"deploy {send} fighters outside FedSpace")
+
+    def _maybe_lay_armids(self, v: View) -> dict[str, Any] | None:
+        if not self._hardware_on() or self._in_swept_lane(v):
+            return None
+        if self.mem is None or self.mem.home_sector is None or v.here != self.mem.home_sector:
+            return None
+        if not v.ok("deploy_mines") or "armid" not in {str(c) for c in v.choices("deploy_mines", "kind")}:
+            return None
+        room = v.max_by("deploy_mines", "qty", "armid")
+        qty = min(room, 5)
+        if qty <= 0:
+            return None
+        if self.mem is not None:
+            self.mem.armids_stocked = True
+        return self._act("deploy_mines", {"kind": "armid", "qty": int(qty)},
+                         "lay armids on the home sector, not a swept lane")
+
+    def _maybe_remove_limpet(self, v: View) -> dict[str, Any] | None:
+        if not self._hardware_on() or not v.ok("remove_limpet"):
+            return None
+        fee = int(v.params("remove_limpet").get("fee") or 0)
+        if v.credits < fee + self.cash_buffer:
+            return None
+        return self._act("remove_limpet", {}, "pay StarDock to cut the limpet")
+
+    def _afford_hardware(self, v: View, price: int, qty: int = 1) -> bool:
+        keep = self.working_capital + int(CITADEL_TIER_COST[0][0])
+        if self._fogged_hot():
+            return v.credits >= int(price) * int(qty) + keep
+        return v.credits >= RICH_CREDITS and v.credits >= int(price) * int(qty) + keep
+
+    def _maybe_buy_rich_hardware(self, v: View) -> dict[str, Any] | None:
+        """One gadget per visit, only once cash clears the citadel reserve.
+
+        Disruptors stay off this path: 40k early steals the ferry. A disruptor
+        is bought only when a neighbor already shows mines.
+        """
+        import tw2k.engine.constants as _HK
+        if not _HK.hardware_tw2002() or int(v.here or 0) != STARDOCK or not v.ok("buy_equip"):
+            return None
+        if v.credits < RICH_CREDITS and not self._fogged_hot():
+            return None
+        items = {str(x) for x in v.choices("buy_equip", "item")}
+        prices = (v.params("buy_equip").get("item") or {}).get("unit_price_by") or {}
+        ship = v.ship
+
+        def price_of(item: str, default: int) -> int:
+            return int(prices.get(item) or default)
+
+        if "psychic_probe" in items and int(ship.get("psychic_probe") or 0) <= 0:
+            price = price_of("psychic_probe", _HK.PSYCHIC_PROBE_COST)
+            if self._afford_hardware(v, price):
+                return self._act("buy_equip", {"item": "psychic_probe", "qty": 1},
+                                 "one psychic probe, then haggle from its reading")
+        have_corb = int(ship.get("corbomite") or 0)
+        if "corbomite" in items and have_corb < 10:
+            price = price_of("corbomite", _HK.CORBOMITE_COST)
+            qty = min(10 - have_corb, v.max_by("buy_equip", "qty", "corbomite") or (10 - have_corb))
+            if qty > 0 and self._afford_hardware(v, price, qty):
+                return self._act("buy_equip", {"item": "corbomite", "qty": int(qty)},
+                                 f"buy {qty} corbomite before carrying cash")
+        mines = ship.get("mines") or {}
+        have_armid = int(mines.get("armid") or ship.get("armid_mines") or 0)
+        if "armid_mines" in items and have_armid < 5 and not (self.mem and self.mem.armids_stocked):
+            price = price_of("armid_mines", 100)
+            qty = min(5 - have_armid, v.max_by("buy_equip", "qty", "armid_mines") or (5 - have_armid))
+            if qty > 0 and self._afford_hardware(v, price, qty):
+                if self.mem is not None:
+                    self.mem.armids_stocked = True
+                return self._act("buy_equip", {"item": "armid_mines", "qty": int(qty)},
+                                 f"buy {qty} armids for the home sector")
+        if "marker_beacon" in items and int(ship.get("marker_beacons") or 0) <= 0 and not (self.mem and self.mem.beacon_stocked):
+            price = price_of("marker_beacon", _HK.BEACON_COST)
+            if self._afford_hardware(v, price):
+                if self.mem is not None:
+                    self.mem.beacon_stocked = True
+                return self._act("buy_equip", {"item": "marker_beacon", "qty": 1},
+                                 "one marker beacon")
+        if self._fogged_hot() and "cloak" in items and int(ship.get("cloaks") or 0) <= 0:
+            price = price_of("cloak", _HK.CLOAK_COST)
+            if self._afford_hardware(v, price):
+                return self._act("buy_equip", {"item": "cloak", "qty": 1},
+                                 "cloak while Ferrengi are on the map")
+        mined = False
+        for adj in v.obs.get("adjacent") or []:
+            if isinstance(adj, dict) and (adj.get("mines") or adj.get("mine_count")):
+                mined = True
+        dis_have = int(ship.get("mine_disruptors") or ship.get("disruptors") or 0)
+        if mined and "mine_disruptor" in items and dis_have <= 0:
+            price = price_of("mine_disruptor", _HK.DISRUPTOR_COST)
+            if self._afford_hardware(v, price):
+                return self._act("buy_equip", {"item": "mine_disruptor", "qty": 1},
+                                 "disruptor for a mined lane")
+        return None
+
     def _maybe_buy_hardware(self, v):
         """HARDWARE_MODE: carry a cloak with photons (no auto-buy of disruptors)."""
         import tw2k.engine.constants as _HK
@@ -2870,6 +3303,10 @@ class SeatBrain:
             safe = [c for c in choices if c not in hot]
             if safe:
                 return safe
+        if self._hardware_on():
+            calm = [c for c in choices if self._navhaz_pct(v, c) < 10]
+            if calm and len(calm) < len(choices):
+                return calm
         return choices
 
     def _came_from(self, v: View) -> int | None:
@@ -3000,6 +3437,8 @@ class SeatBrain:
         return hop
 
     def _act(self, kind: str, args: dict[str, Any], thought: str) -> dict[str, Any]:
+        # The psychic helper can raise a sell by one step. The live ladder does not
+        # attach that price: a counter the port refuses spends the turn.
         return {"kind": kind, "args": args, "thought": f"SeatBrain: {thought}"}
 
     def _finish(self, v: View, action: dict[str, Any]) -> dict[str, Any]:

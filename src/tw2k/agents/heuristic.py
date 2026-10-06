@@ -283,6 +283,17 @@ class HeuristicAgent(BaseAgent):
             return Action(kind=ActionKind.WAIT, thought=thought + " (no adjacent sectors)")
         here = int(obs.sector.get("id") or 0)
         candidates = [a for a in adj if int(a["id"]) != self._last_from] or list(adj)
+
+        def _haz(a: dict) -> int:
+            raw = a.get("navhaz", a.get("nav_hazard_pct"))
+            try:
+                return int(raw or 0)
+            except (TypeError, ValueError):
+                return 0
+
+        calm = [a for a in candidates if _haz(a) < 10]
+        if calm and len(calm) < len(candidates):
+            candidates = calm
         choice = min(candidates, key=lambda a: (self._visit_counts.get(int(a["id"]), 0), int(a["id"])))
         self._last_from = here
         self._last_to = int(choice["id"])

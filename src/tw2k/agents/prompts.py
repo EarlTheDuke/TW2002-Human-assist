@@ -431,9 +431,14 @@ Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile cloak fire_disruptor deploy_atomic recall_deployed retreat pay_toll surrender
 Recon:       probe query_limpets plot_course
 Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm planet_transwarp planet_buy_transporter planet_transport planet_destroy
-StarDock:    buy_ship buy_equip
-Hardware:  cloak fire_disruptor remove_limpet query_limpets launch_beacon deploy_atomic
-# Expert habit: carry a cloak with a photon; disrupt before walking a mined lane; photon adjacent then warp in.
+StarDock:    buy_ship buy_equip terra_colonists
+Ports:       rob steal
+Hardware:    cloak fire_disruptor remove_limpet query_limpets launch_beacon deploy_atomic photon_missile
+# Expert habit: rob or steal only at alignment -100 or lower, never at StarDock or Class 0, never over the experience cap, never twice in the same sector.
+# Carry a cloak with a photon. Disrupt a mined lane before you enter it. Photon an adjacent sector, then warp in.
+# NavHaz: if one adjacent sector is hazardous and another warp is clear, take the clear one. Cloak only when every exit is hazardous.
+# FedSpace: do not park 99 or more fighters there (nightly tow). Never attack Federal starships Zyrain, Nelson, or Clausewitz. Do not lay mines on a Major Space Lane.
+# terra_colonists {"mode":"take","qty":N} at Terra. Do not buy_equip item=colonists. A psychic probe reading is a percent of the port's best price; use it on the next haggle.
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
 
@@ -509,7 +514,11 @@ loses money.
 Ports open empty. A selling port refills a little when the day ticks. A buying port takes the goods you are carrying now. On the first day, sell what you carry to a buying port, or wait for the day tick, instead of hunting a selling port for stock.
 
 ================ COMBAT & SURVIVAL ================
-`deploy_fighters`, `recall_deployed`, `retreat`, `pay_toll`, `surrender`, `deploy_mines`, `attack`, `photon_missile`, `probe`, `plot_course`, `query_limpets`.
+`deploy_fighters`, `recall_deployed`, `retreat`, `pay_toll`, `surrender`, `deploy_mines`, `attack`, `photon_missile`, `cloak`, `fire_disruptor`, `remove_limpet`, `launch_beacon`, `deploy_atomic`, `rob`, `steal`, `terra_colonists`, `probe`, `plot_course`, `query_limpets`.
+Rob and steal only at alignment -100 or lower, never at StarDock or Class 0, never over the experience cap, and never twice in the same sector.
+NavHaz: take a clear warp when one adjacent sector is hazardous. Cloak only when every exit is hazardous.
+FedSpace: do not park 99 or more fighters there (nightly tow). Never attack Federal starships Zyrain, Nelson, or Clausewitz. Do not lay mines on a Major Space Lane.
+Colonists come from `terra_colonists`, not `buy_equip`. A psychic probe shows the percent of the port's best price; use it on the next haggle.
 FERRENGI are NPC pirates. Ship loss → an escape pod (6 turns/warp, -10% experience); trade it at StarDock
 for a Scout at no cost. A loss in a pod or Scout, or a 3rd loss in one day, is SHIP DESTROYED: out until
 tomorrow, -50% experience and alignment. `max_deaths` > 0 means elimination after that many losses.
@@ -521,7 +530,9 @@ Core:        warp trade scan wait
 Combat:      deploy_fighters deploy_mines attack photon_missile cloak fire_disruptor deploy_atomic recall_deployed retreat pay_toll surrender
 Recon:       probe query_limpets plot_course
 Planets:     land_planet liftoff deploy_genesis build_citadel assign_colonists load_planet_cargo dump_planet_cargo claim_planet deposit_planet_defense withdraw_planet_defense set_military_reaction deposit_treasury withdraw_treasury set_quasar_sector set_quasar_atm planet_transwarp planet_buy_transporter planet_transport planet_destroy
-StarDock:    buy_ship buy_equip
+StarDock:    buy_ship buy_equip terra_colonists
+Ports:       rob steal
+Hardware:    cloak fire_disruptor remove_limpet launch_beacon deploy_atomic photon_missile
 Corp:        corp_create corp_invite corp_join corp_leave corp_deposit corp_withdraw corp_memo
 Diplomacy:   propose_alliance accept_alliance break_alliance hail broadcast
 
@@ -580,6 +591,29 @@ _CLASS0_LEGACY_SWAPS: tuple[tuple[str, str], ...] = (
      '  2. buy_equip {"item":"colonists","qty":<cargo free>} ← 10 cr each, fills your holds'),
     ('Authentic Terra-ferry loop: back at sector 1 → `terra_colonists {"mode":"take","qty":<holds>}` →',
      "Authentic Terra-ferry loop: back at StarDock → `buy_equip item=colonists qty=<holds>` →"),
+    # bots-use-rob-steal-hardware-v1: these lines are tw2002-only. CLASS0_MODE legacy
+    # (and the fedspace all-legacy digest) must get the previous verb list back.
+    ("StarDock:    buy_ship buy_equip terra_colonists\n"
+     "Ports:       rob steal\n"
+     "Hardware:    cloak fire_disruptor remove_limpet query_limpets launch_beacon deploy_atomic photon_missile\n"
+     "# Expert habit: rob or steal only at alignment -100 or lower, never at StarDock or Class 0, never over the experience cap, never twice in the same sector.\n"
+     "# Carry a cloak with a photon. Disrupt a mined lane before you enter it. Photon an adjacent sector, then warp in.\n"
+     "# NavHaz: if one adjacent sector is hazardous and another warp is clear, take the clear one. Cloak only when every exit is hazardous.\n"
+     "# FedSpace: do not park 99 or more fighters there (nightly tow). Never attack Federal starships Zyrain, Nelson, or Clausewitz. Do not lay mines on a Major Space Lane.\n"
+     "# terra_colonists {\"mode\":\"take\",\"qty\":N} at Terra. Do not buy_equip item=colonists. A psychic probe reading is a percent of the port's best price; use it on the next haggle.\n",
+     "StarDock:    buy_ship buy_equip\n"
+     "Hardware:  cloak fire_disruptor remove_limpet query_limpets launch_beacon deploy_atomic\n"
+     "# Expert habit: carry a cloak with a photon; disrupt before walking a mined lane; photon adjacent then warp in.\n"),
+    ("`deploy_fighters`, `recall_deployed`, `retreat`, `pay_toll`, `surrender`, `deploy_mines`, `attack`, `photon_missile`, `cloak`, `fire_disruptor`, `remove_limpet`, `launch_beacon`, `deploy_atomic`, `rob`, `steal`, `terra_colonists`, `probe`, `plot_course`, `query_limpets`.\n"
+     "Rob and steal only at alignment -100 or lower, never at StarDock or Class 0, never over the experience cap, and never twice in the same sector.\n"
+     "NavHaz: take a clear warp when one adjacent sector is hazardous. Cloak only when every exit is hazardous.\n"
+     "FedSpace: do not park 99 or more fighters there (nightly tow). Never attack Federal starships Zyrain, Nelson, or Clausewitz. Do not lay mines on a Major Space Lane.\n"
+     "Colonists come from `terra_colonists`, not `buy_equip`. A psychic probe shows the percent of the port's best price; use it on the next haggle.\n",
+     "`deploy_fighters`, `recall_deployed`, `retreat`, `pay_toll`, `surrender`, `deploy_mines`, `attack`, `photon_missile`, `probe`, `plot_course`, `query_limpets`.\n"),
+    ("StarDock:    buy_ship buy_equip terra_colonists\n"
+     "Ports:       rob steal\n"
+     "Hardware:    cloak fire_disruptor remove_limpet launch_beacon deploy_atomic photon_missile\n",
+     "StarDock:    buy_ship buy_equip\n"),
 )
 _CLASS0_TW2002_BLOCK_START = "Class 0 ports (CLASS0_MODE tw2002):"
 _CLASS0_TW2002_BLOCK_END = "================ MULTI-PLANET EXPANSION ================"

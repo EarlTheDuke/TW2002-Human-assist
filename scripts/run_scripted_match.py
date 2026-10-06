@@ -92,7 +92,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "kind": kind,
             "brain": makers[kind]() if kind in makers else None,
             "agent": HeuristicAgent(pid, p.name, seed=zlib.crc32(f"{seed}:{pid}".encode())) if kind == "H" else None,
-            "actions": 0, "kinds": collections.Counter(), "rej_validate": 0, "rej_engine": 0,
+            "actions": 0, "kinds": collections.Counter(), "features": collections.Counter(),
+            "rej_validate": 0, "rej_engine": 0,
             "rej_top": collections.Counter(), "exceptions": 0, "buys": 0, "sells": 0, "units_sold": 0,
             "realized": 0, "idle_done": False, "zero_streak": 0, "forced_done": 0, "wasted_turns": 0,
             "rows": [], "daily": [], "start_sector": p.sector_id,
@@ -165,6 +166,12 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             spent = max(0, p.turns_today - turns_before) if u.day == day_before else 0
             s["actions"] += 1
             s["kinds"][kind] += 1
+            if kind == "buy_equip" and args.get("item"):
+                s["features"][f"buy_equip:{args.get('item')}"] += 1
+            elif kind in ("rob", "steal", "terra_colonists", "cloak", "photon_missile",
+                          "fire_disruptor", "launch_beacon", "deploy_atomic", "remove_limpet",
+                          "deploy_mines"):
+                s["features"][kind] += 1
             if not ok:
                 s["rej_engine"] += 1
                 s["rej_top"][f"{kind}: {err[:80]}"] += 1
@@ -206,6 +213,10 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "exceptions": s["exceptions"], "forced_done": s["forced_done"], "wasted_turns": s["wasted_turns"],
             "aba_bounces": aba_bounces(s["rows"]), "daily": s["daily"],
         }
+        # An all-legacy digest hashes this dict. The key appears only while a tw2002
+        # switch that this slice teaches is on, so the legacy golden stays put.
+        if K.rob_tw2002() or K.hardware_tw2002() or K.class0_tw2002():
+            players[pid]["features"] = dict(sorted(s["features"].items()))
     ranking = sorted(players, key=lambda q: (-players[q]["net_worth"], q))
     return {
         "seed": seed, "days": days, "days_played": u.day, "seats": seats, "universe_size": universe_size,
