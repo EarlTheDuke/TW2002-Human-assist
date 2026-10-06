@@ -221,8 +221,8 @@ def handle_port_upgrade(universe: Universe, pid: str, action: Action) -> ActionR
     if commodity not in TRADE_COMMODITIES or not _trades(port, commodity):
         return ActionResult(ok=False, error=f"this port does not trade {raw or 'that commodity'}")
     units = (action.args or {}).get("units")
-    if isinstance(units, bool):
-        return ActionResult(ok=False, error="units must be a whole number")
+    if isinstance(units, bool) or (isinstance(units, float) and not units.is_integer()):
+        return ActionResult(ok=False, error="units must be a whole number")  # pu7: never silently clipped
     try:
         units = int(units)
     except (TypeError, ValueError):
@@ -276,7 +276,11 @@ def _build_codes() -> tuple[str, ...]:
 
 
 def port_count(universe: Universe) -> int:
-    return sum(1 for sector in universe.sectors.values() if sector.port is not None)
+    """Ports toward the cap. pu26: a destroyed port frees its slot once cleared (radiation over)."""
+    return sum(
+        1 for sector in universe.sectors.values()
+        if sector.port is not None or (on() and radiating(universe, int(sector.id)))
+    )
 
 
 def stamp_port_cap(universe: Universe) -> int | None:
@@ -506,9 +510,8 @@ def _open_port(universe: Universe, sector_id: int, port: Port, cons: dict) -> No
             exp, align = (0, 0)
     else:
         exp, align = (0, 0)
-    universe.emit(
+    universe.emit(  # public and anonymous: no actor, so rivals learn neither the builder nor where he is (QC 55)
         EventKind.PORT_BUILT,
-        actor_id=str(cons.get("owner_id") or ""),
         sector_id=sector_id,
         payload={"port_class": code, "name": port.name, "exp": exp, "align": align},
         summary=f"A class {code} port opened in sector {sector_id}",
