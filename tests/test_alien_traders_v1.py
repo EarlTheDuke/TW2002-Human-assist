@@ -130,6 +130,29 @@ def test_al23_alien_adds_ship_density_and_shows_on_a_scan():
     assert view["aliens"][0]["hull"] == alien.ship.ship_class.value
 
 
+def test_al25_ranks_list_live_aliens_without_a_location(monkeypatch):
+    u = generate_universe(GameConfig(seed=8, universe_size=200, max_days=3))
+    player = Player(
+        id="A", name="Ann",
+        ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER, fighters=10),
+        sector_id=1, credits=1_000, alignment=100,
+    )
+    u.players["A"] = player
+    u.sectors[1].occupant_ids.append("A")
+    block = build_observation(u, "A").alien_ranks
+    live = [alien for alien in u.aliens.values() if alien.alive]
+    assert block["active"] == len(live)
+    experiences = [row["experience"] for row in block["ranks"]]
+    assert experiences == sorted(experiences, reverse=True)
+    for row in block["ranks"]:
+        assert set(row) == {"name", "rank", "side", "experience"}
+    monkeypatch.setattr(K, "ALIEN_MODE", "legacy")
+    bare = generate_universe(GameConfig(seed=8, universe_size=200, max_days=3))
+    bare.players["A"] = player
+    bare.sectors[1].occupant_ids.append("A")
+    assert build_observation(bare, "A").alien_ranks is None
+
+
 def test_al15_opposite_kill_pays_half_experience_and_the_credits():
     u = generate_universe(GameConfig(seed=4, universe_size=200, max_days=3))
     place_aliens(u)
