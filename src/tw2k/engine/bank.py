@@ -76,9 +76,11 @@ def deposit_legal_spec(universe: Universe, pid: str) -> tuple[bool, str | None, 
     player = universe.players[pid]
     why = guard(universe, player)
     maximum = min(int(player.credits), room(player))
-    params = {"max_amount": maximum, "balance": int(player.bank_balance), "room": room(player)}
+    params = {"max_amount": maximum, "balance": int(player.bank_balance), "room": room(player),
+              "capacity": int(K.BANK_MAX_BALANCE)}
     if why is None and maximum < 1:
-        why = f"the bank can accept {maximum:,} more"
+        # VERBS section (QC 56): say which side is empty
+        why = "no credits on hand" if int(player.credits) < 1 else "account full"
     return why is None, why, 0, params
 
 
@@ -90,7 +92,7 @@ def withdraw_legal_spec(universe: Universe, pid: str) -> tuple[bool, str | None,
     maximum = int(player.bank_balance)
     params = {"max_amount": maximum, "balance": maximum}
     if why is None and maximum < 1:
-        why = "at most 0 credits"
+        why = "nothing in the account"
     return why is None, why, 0, params
 
 
@@ -122,11 +124,16 @@ def transfer_legal_spec(universe: Universe, pid: str) -> tuple[bool, str | None,
     why = guard(universe, player)
     recipients = _recipients(universe, player)
     spendable = int(player.credits) if K.BANK_TRANSFER_SOURCE == "cash" else int(player.bank_balance)
-    params = {"recipients": recipients, "max_amount": spendable}
+    best = max((int(r["max_amount"]) for r in recipients), default=0)
+    if not K.BANK_TRANSFER_RESPECTS_CAP:
+        best = spendable if recipients else 0
+    params = {"recipients": recipients, "max_amount": best}
     if why is None and not recipients:
         why = _NO_TRADER
     elif why is None and spendable < 1:
-        why = f"the bank can accept {spendable:,} more"
+        why = "no credits on hand" if K.BANK_TRANSFER_SOURCE == "cash" else "nothing in the account"
+    elif why is None and best < 1:
+        why = "every account is full"  # QC 56: the handler refuses every recipient at room 0
     return why is None, why, 0, params
 
 
