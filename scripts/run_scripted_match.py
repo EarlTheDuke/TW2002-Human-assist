@@ -60,7 +60,7 @@ def parse_seats(text: str) -> list[str]:
 
 def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 1000,
               turns_per_day: int = 1000, credits: int = 20_000, ferrengi: bool = True,
-              max_steps: int = 2_000_000) -> dict[str, Any]:
+              max_steps: int = 2_000_000, port_report: bool = False) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents import HeuristicAgent
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
@@ -97,6 +97,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "rej_top": collections.Counter(), "exceptions": 0, "buys": 0, "sells": 0, "units_sold": 0,
             "realized": 0, "idle_done": False, "zero_streak": 0, "forced_done": 0, "wasted_turns": 0,
             "rows": [], "daily": [], "start_sector": p.sector_id,
+            "exp0": int(p.experience), "align0": int(p.alignment),
         }
 
     def done(pid: str) -> bool:
@@ -217,14 +218,60 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         # switch that this slice teaches is on, so the legacy golden stays put.
         if K.rob_tw2002() or K.hardware_tw2002() or K.class0_tw2002():
             players[pid]["features"] = dict(sorted(s["features"].items()))
+    # Slice 55 match table only. Absent unless asked, so the legacy digest JSON stays put.
+    if port_report:
+        upgrades: dict[str, dict[str, int]] = {
+            pid: {"count": 0, "units": 0, "credits": 0, "exp": 0, "align": 0} for pid in players
+        }
+        planet_trades: dict[str, dict[str, int]] = {
+            pid: {"count": 0, "credits": 0, "qty": 0} for pid in players
+        }
+        for ev in u.events:
+            kind = getattr(ev.kind, "value", str(ev.kind))
+            pid = str(ev.actor_id or "")
+            payload = ev.payload or {}
+            if kind == "port_upgraded" and pid in upgrades:
+                upgrades[pid]["count"] += 1
+                upgrades[pid]["units"] += int(payload.get("units") or 0)
+                upgrades[pid]["credits"] += int(payload.get("cost") or 0)
+                upgrades[pid]["exp"] += int(payload.get("exp") or 0)
+                upgrades[pid]["align"] += int(payload.get("align") or 0)
+            elif kind == "planet_trade" and pid in planet_trades:
+                planet_trades[pid]["count"] += 1
+                planet_trades[pid]["credits"] += int(payload.get("price") or 0)
+                planet_trades[pid]["qty"] += int(payload.get("qty") or 0)
+        violations = 0
+        for sector in u.sectors.values():
+            port = sector.port
+            if port is None:
+                continue
+            for row in getattr(port, "stock", {}).values():
+                if hasattr(K, "PORT_UPGRADE_MAX_HOLDS") and int(row.maximum) > int(K.PORT_UPGRADE_MAX_HOLDS):
+                    violations += 1
+            cons = getattr(port, "construction", None)
+            if cons and int(cons.get("days_left") or 0) < 0:
+                violations += 1
+        for pid, row in players.items():
+            p = u.players[pid]
+            row["experience"] = int(p.experience)
+            row["alignment"] = int(p.alignment)
+            row["exp_delta"] = int(p.experience) - int(st[pid]["exp0"])
+            row["align_delta"] = int(p.alignment) - int(st[pid]["align0"])
+            row["port_upgraded"] = upgrades[pid]
+            row["planet_trade"] = planet_trades[pid]
+    else:
+        violations = None
     ranking = sorted(players, key=lambda q: (-players[q]["net_worth"], q))
-    return {
+    result = {
         "seed": seed, "days": days, "days_played": u.day, "seats": seats, "universe_size": universe_size,
         "turns_per_day": turns_per_day, "start_credits": credits, "ferrengi": ferrengi,
         "economy_mode": K.ECONOMY_SCALE_MODE, "commodity_base": dict(K.COMMODITY_BASE_PRICE.items()),
         "steps": steps, "finished": bool(u.finished), "winner": u.winner_id, "win_reason": u.win_reason,
         "ranking": ranking, "players": players,
     }
+    if violations is not None:
+        result["invariant_violations"] = violations
+    return result
 
 
 def render_markdown(result: dict[str, Any]) -> str:
@@ -264,11 +311,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--turns-per-day", type=int, default=1000)
     ap.add_argument("--credits", type=int, default=20_000)
     ap.add_argument("--no-ferrengi", action="store_true")
+    ap.add_argument("--port-report", action="store_true",
+                    help="add port-upgrade and planet-trade totals (not part of the legacy digest)")
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
     result = run_match(parse_seats(a.seats), seed=a.seed, days=a.days, universe_size=a.size,
-                       turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi)
+                       turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi,
+                       port_report=a.port_report)
     text = json.dumps(result, indent=1, sort_keys=True)
     md = render_markdown(result)
     if a.json_out:
