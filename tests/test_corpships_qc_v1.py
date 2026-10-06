@@ -438,3 +438,66 @@ def test_qc_password_case_alt_is_case_blind(monkeypatch):
     sid = _corp_ship(u, "A", sec, pw="Secret")
     assert not _act(u, "B", ActionKind.SHIP_TRANSPORT, ship_id=sid, password="wrong").ok
     assert _act(u, "B", ActionKind.SHIP_TRANSPORT, ship_id=sid, password="SECRET").ok
+
+
+def test_qc_owner_tows_his_own_locked_corp_ship_without_the_password():
+    u = _world()
+    sec = _sector(u)
+    a = _sit(u, "A", sec)
+    _corp(u, "A")
+    sid = _corp_ship(u, "A", sec, pw="Secret")
+    assert _act(u, "A", ActionKind.TOW_ENGAGE, target=f"ship:{sid}").ok and a.ship.tow_lock is not None
+
+
+def test_qc_parked_corp_ship_password_never_reaches_a_corp_mate():
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec)
+    _sit(u, "B", sec)
+    _corp(u, "A", "B")
+    _corp_ship(u, "A", sec, pw="Zq9x")
+    for pid in ("A", "B"):
+        obs = build_observation(u, pid).model_dump(mode="json")
+        assert "Zq9x" not in str(obs)
+        assert obs["corp_ships"][0]["password_required"] is True
+        assert "Zq9x" not in str([la.model_dump() for la in legal_actions(u, pid)])
+
+
+def test_qc_a_bought_hull_is_personal_with_no_password():
+    u = _world()
+    a = _sit(u, "A", K.STARDOCK_SECTOR)
+    a.credits = 10_000_000
+    _corp(u, "A")
+    a.ship.corp_ticker, a.ship.ship_password = "XX", "pw"
+    res = _act(u, "A", ActionKind.BUY_SHIP, ship_class="cargotran")
+    assert res.ok, res.error
+    assert a.ship.ship_class == ShipClass.CARGOTRAN
+    assert a.ship.corp_ticker is None and a.ship.ship_password == ""
+
+
+def test_qc_other_corps_members_never_see_our_corp_ships():
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec)
+    _sit(u, "R", sec)
+    _corp(u, "A", ticker="XX")
+    _corp(u, "R", ticker="YY")
+    _corp_ship(u, "A", sec, ticker="XX")
+    assert build_observation(u, "R").model_dump(mode="json").get("corp_ships") == []
+
+
+@pytest.mark.parametrize("flag,expect", [(None, "personal"), ("RR", "corp RR"), ("defunct", "defunct Corp")])
+def test_qc_destroy_event_reports_the_real_label(flag, expect):
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec, ShipClass.BATTLESHIP, fighters=900)
+    _sit(u, "R", 40)
+    _corp(u, "R", ticker="RR")
+    sid = _park(u, "R", sec, fighters=5)
+    if flag == "defunct":
+        u.parked_ships[sid].owner_id = K.DEFUNCT_OWNER
+    else:
+        u.parked_ships[sid].ship.corp_ticker = flag
+    assert _act(u, "A", ActionKind.ATTACK, target=f"ship:{sid}", qty=200).ok
+    ev = next(e for e in u.events if e.kind == EventKind.UNMANNED_SHIP_DESTROYED)
+    assert ev.payload["ownership"] == expect
