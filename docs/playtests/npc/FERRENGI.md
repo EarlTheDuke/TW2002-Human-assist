@@ -41,14 +41,14 @@ Sources under `C:\Users\sugar\tw2002_reference\` (GAP_MAP shorthand): Bible / Bi
 | n22 | vs Feds | No fight. | UNVERIFIED f24. | Kept. | `test_n22_no_fed_fight` |
 | n23 | Cloak | Skip cloaked. | UNVERIFIED extend from Iago Fed. | `FERRENGI_SEES_CLOAK=False`. | `test_n23_cloak` / `test_plant_13` |
 | **Deferred** | | | | | |
-| n24 | Alien traders | Exp/align; SD entry; fighter block. | CONFIRMED GAP 8.6. | OUT OF SCOPE. | n/a |
+| n24 | Alien traders | Exp/align; SD entry; fighter block. | CONFIRMED GAP 8.6. | `ALIEN_TRADERS.md` al1-al32. | `test_al7_hops` |
 | n25-n28 | Obs / verbs / fog / legal==handler | - | - | Encounter block; hull in lists; `_actor_cloaked` unchanged. | `test_n26_legal_handler` / `test_plant_12` |
 
 ### Deliberate differences
 
 - Day-tick movement/spawn instead of real-time 1-in-20 per ~30s; move prob kept 0.6.
 - Ferrengal Quasar planet / invincible flag / Overlord / Scorpion / capturable ships: deferred.
-- Alien traders (8.6) deferred entirely.
+- Alien traders are specified in `ALIEN_TRADERS.md` (slice 58).
 - Blood Hunt pack AI deferred; grudges are a preference set only.
 - Tribute hold-steal (5), credit pct (10%), spawn credits (500*agg), Ferrengal fighters (1000): named UNVERIFIED constants.
 - Odds from FERRSPEC not Bible chart (SOURCE-CONFLICT).
