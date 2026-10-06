@@ -1094,7 +1094,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     legal = [la.model_dump() for la in _legal_actions(universe, player_id)]
     known_sectors = _known_sectors(universe, player)
     bank_view = None
-    if K.bank_on() and K.BANK_BALANCE_VIEW == "always":
+    if K.bank_on() and (K.BANK_BALANCE_VIEW == "always" or player.sector_id == K.STARDOCK_SECTOR):
         from .bank import self_view
         bank_view = self_view(player)
     obs = Observation(
