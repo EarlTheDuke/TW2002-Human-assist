@@ -6,6 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_serializer
 
+from . import constants as _K
 from .agency import is_minimal
 from .economy import port_buy_price, port_sell_price
 from .models import Commodity, Event, EventKind, PortClass, Universe
@@ -100,6 +101,18 @@ _ALLIANCE_EVENTS: frozenset[EventKind] = frozenset({
 })
 
 
+# h15 / v2 movement/presence kinds a cloaked rival leaves no trail with (HARDWARE_MODE tw2002).
+_CLOAK_TRAIL_KINDS: frozenset[EventKind] = frozenset({
+    EventKind.WARP,
+    EventKind.RETREAT,
+    EventKind.AUTOPILOT,
+    EventKind.CLOAK_ON,
+    EventKind.CLOAK_OFF,
+    EventKind.NAVHAZ_HIT,
+    EventKind.ATOMIC_DETONATOR,
+})
+
+
 def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     """Return True if `event` is visible to `player_id` under fog of war.
 
@@ -107,25 +120,28 @@ def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     "witnessed" — the actor always sees their own events, plus anyone who
     was in `event.sector_id` at emit time (captured via payload._witnesses).
     """
-    kind = event.kind
     # h15 / v2: cloaked traders leave no movement/presence trail for rivals (incl. corp).
     # Use emit-time `_actor_cloaked` so a later death/day-tick strip cannot un-hide the event.
-    if (
-        event.actor_id
-        and event.actor_id != player_id
-        and kind in (EventKind.WARP, EventKind.RETREAT, EventKind.AUTOPILOT, EventKind.CLOAK_ON, EventKind.CLOAK_OFF,
-                     EventKind.NAVHAZ_HIT, EventKind.ATOMIC_DETONATOR)
-    ):
-        from . import constants as K
-        if K.hardware_tw2002():
-            if event.payload.get("_actor_cloaked"):
-                return False
-            actor = universe.players.get(event.actor_id)
-            if actor is not None and getattr(actor.ship, "cloaked", False):
-                return False
+    if event.actor_id and event.actor_id != player_id and event.kind in _CLOAK_TRAIL_KINDS and _K.hardware_tw2002():
+        if event.payload.get("_actor_cloaked"):
+            return False
+        actor = universe.players.get(event.actor_id)
+        if actor is not None and getattr(actor.ship, "cloaked", False):
+            return False
+    return _event_visible_base(event, player_id, universe)
+
+
+def _event_visible_base(event: Event, player_id: str, universe: Universe) -> bool:
+    """`_event_visible_to` minus the h15 cloak-trail gate.
+
+    Reads only the event, `player_id`, K.PLANET_TRADE_FEED and, for corp and
+    alliance kinds (_FEED_LIVE_KINDS), the current corporations/alliances.
+    The feed index below relies on that split: everything else here is fixed
+    once the event is emitted.
+    """
+    kind = event.kind
     if kind == EventKind.PLANET_TRADE:  # PLANETARY_TRADING.md pt24 (PLANET_TRADE_FEED)
-        from . import constants as K
-        if K.PLANET_TRADE_FEED == "actor_only":
+        if _K.PLANET_TRADE_FEED == "actor_only":
             return event.actor_id == player_id
     if kind in _PUBLIC_EVENTS:
         return True
@@ -174,6 +190,169 @@ def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     # If we have no witness list (very old events, or emitted without
     # sector_id), fall back to "actor only" — safest default, prevents leaks.
     return False
+
+
+# ---------------------------------------------------------------------------
+# Feed index (docs/playtests/fullgame/SOAK_30DAY_V1.md)
+#
+# build_observation used to walk the whole universe.events feed twice per
+# call (rival last-seen, orphaned planets), so each observation cost grew
+# with match length: a 30-day 6-seat game went from ~25 s to ~460 s per day.
+# The feed is append-only (Universe.emit is its only writer), so an index is
+# extended with the new tail on each call instead. Pure speed-up: every
+# answer is the one the full scans gave (tests/test_feed_index_v1.py and the
+# same-seed digests in the soak report).
+# ---------------------------------------------------------------------------
+
+# Base visibility of these kinds follows current corp / alliance membership.
+_FEED_LIVE_KINDS: frozenset[EventKind] = _CORP_EVENTS | _ALLIANCE_EVENTS
+_FEED_INDEX_MAX = 8  # feeds (universes) kept; a resumed or copied universe gets its own entry
+
+
+class _SeenIndex:
+    """Visible-event positions of one viewer, per actor, for `_rival_last_seen`.
+
+    For each actor: `fixed` = events the viewer sees whatever happens later;
+    `trail` = h15 cloak-trail events the viewer sees while the actor is not
+    cloaked right now; `live` = corp/alliance events, checked at query time.
+    Events the viewer can never see are left out.
+    """
+
+    __slots__ = ("by_actor", "mode", "n")
+
+    def __init__(self, mode: tuple[bool, str]) -> None:
+        self.mode = mode
+        self.n = 0
+        self.by_actor: dict[str, tuple[list[int], list[int], list[int]]] = {}
+
+
+class _FeedIndex:
+    __slots__ = ("events", "last", "located", "n", "orphaned", "seen")
+
+    def __init__(self, events: list[Event]) -> None:
+        self.events = events
+        self.n = 0
+        self.last: Event | None = None
+        self.located: list[int] = []   # positions of events with an actor and a sector
+        self.orphaned: list[int] = []  # positions of PLANET_ORPHANED events
+        self.seen: dict[str, _SeenIndex] = {}
+
+
+_FEED_INDEX: dict[int, _FeedIndex] = {}
+
+
+def _feed_index(events: list[Event]) -> _FeedIndex:
+    """The index of `events`, extended to its current end.
+
+    Rebuilt from scratch when the list is not the one indexed or does not
+    start with what was indexed (anything but appends since the last call).
+    """
+    idx = _FEED_INDEX.get(id(events))
+    if (
+        idx is None
+        or idx.events is not events
+        or idx.n > len(events)
+        or (idx.n and events[idx.n - 1] is not idx.last)
+    ):
+        idx = _FeedIndex(events)
+        _FEED_INDEX.pop(id(events), None)
+        while len(_FEED_INDEX) >= _FEED_INDEX_MAX:
+            del _FEED_INDEX[next(iter(_FEED_INDEX))]
+        _FEED_INDEX[id(events)] = idx
+    n = len(events)
+    if idx.n < n:
+        located, orphaned = idx.located, idx.orphaned
+        for i in range(idx.n, n):
+            ev = events[i]
+            if ev.actor_id is not None and ev.sector_id is not None:
+                located.append(i)
+            if ev.kind is EventKind.PLANET_ORPHANED:
+                orphaned.append(i)
+        idx.n = n
+        idx.last = events[n - 1]
+    return idx
+
+
+def _seen_index(idx: _FeedIndex, player_id: str, universe: Universe) -> _SeenIndex:
+    mode = (bool(_K.hardware_tw2002()), str(_K.PLANET_TRADE_FEED))
+    si = idx.seen.get(player_id)
+    if si is None or si.mode != mode:
+        si = idx.seen[player_id] = _SeenIndex(mode)
+    located = idx.located
+    if si.n < len(located):
+        events = idx.events
+        hardware = mode[0]
+        by_actor = si.by_actor
+        for j in range(si.n, len(located)):
+            i = located[j]
+            ev = events[i]
+            aid = ev.actor_id
+            if aid == player_id:
+                continue
+            kind = ev.kind
+            if kind in _FEED_LIVE_KINDS:
+                bucket = 2
+            elif not _event_visible_base(ev, player_id, universe):
+                continue
+            elif hardware and aid and kind in _CLOAK_TRAIL_KINDS:
+                if ev.payload.get("_actor_cloaked"):
+                    continue
+                bucket = 1
+            else:
+                bucket = 0
+            lists = by_actor.get(aid)
+            if lists is None:
+                lists = by_actor[aid] = ([], [], [])
+            lists[bucket].append(i)
+        si.n = len(located)
+    return si
+
+
+def _rival_last_seen(universe: Universe, player_id: str) -> dict[str, tuple[int, int, int]]:
+    """pid -> (day, tick, sector) of the newest event by that rival with a
+    concrete sector_id that `player_id` can see (`_event_visible_to`).
+
+    Same answer as the old oldest-first scan of the whole feed, which kept
+    overwriting the entry so the newest visible event won.
+    """
+    events = universe.events
+    si = _seen_index(_feed_index(events), player_id, universe)
+    last_seen: dict[str, tuple[int, int, int]] = {}
+    for pid in universe.players:
+        if pid == player_id:
+            continue
+        lists = si.by_actor.get(pid)
+        if lists is None:
+            continue
+        fixed, trail, live = lists
+        best = fixed[-1] if fixed else -1
+        if trail and trail[-1] > best:
+            actor = universe.players.get(pid)
+            if not (actor is not None and getattr(actor.ship, "cloaked", False)):
+                best = trail[-1]
+        for i in reversed(live):
+            if i <= best:
+                break
+            if _event_visible_to(events[i], player_id, universe):
+                best = i
+                break
+        if best >= 0:
+            ev = events[best]
+            last_seen[pid] = (ev.day, ev.tick, ev.sector_id)
+    return last_seen
+
+
+def _orphan_former_owners(universe: Universe) -> dict[int, str]:
+    """planet_id -> former_owner from the PLANET_ORPHANED events (the latest wins)."""
+    events = universe.events
+    orphan_former: dict[int, str] = {}
+    for i in _feed_index(events).orphaned:
+        ev = events[i]
+        plid = ev.payload.get("planet_id")
+        former = ev.payload.get("former_owner")
+        if isinstance(plid, int) and isinstance(former, str):
+            orphan_former[plid] = former
+    return orphan_former
 
 
 def _filter_visible_events(
@@ -774,13 +953,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     # player's holding. Startup neutral planets also have owner_id=None,
     # but they are empty and auto-claimed by landing; keep them out of the
     # orphan list so agents don't chase them as free citadel prizes.
-    orphan_former: dict[int, str] = {}
-    for ev in universe.events:
-        if ev.kind is EventKind.PLANET_ORPHANED:
-            plid = ev.payload.get("planet_id")
-            former = ev.payload.get("former_owner")
-            if isinstance(plid, int) and isinstance(former, str):
-                orphan_former[plid] = former
+    orphan_former = _orphan_former_owners(universe)
     orphaned_planets: list[dict[str, Any]] = []
     for planet in universe.planets.values():
         if planet.owner_id is not None or planet.corp_ticker is not None:
@@ -814,18 +987,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     # preserving the TW2002 scouting loop while still giving them a
     # leaderboard-level awareness of who they're competing against.
     rivals: list[dict[str, Any]] = []
-    last_seen: dict[str, tuple[int, int, int]] = {}  # pid -> (day, tick, sector)
-    for ev in universe.events:
-        if ev.actor_id is None or ev.actor_id == player_id:
-            continue
-        if ev.actor_id not in universe.players:
-            continue
-        # Require a concrete sector_id AND fog-of-war visibility for US
-        if ev.sector_id is None:
-            continue
-        if not _event_visible_to(ev, player_id, universe):
-            continue
-        last_seen[ev.actor_id] = (ev.day, ev.tick, ev.sector_id)
+    # Requires a concrete sector_id AND fog-of-war visibility for US.
+    last_seen = _rival_last_seen(universe, player_id)  # pid -> (day, tick, sector)
     for other_id, other in universe.players.items():
         if other_id == player_id:
             continue
