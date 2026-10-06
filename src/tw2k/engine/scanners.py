@@ -30,7 +30,8 @@ def hostile_fighters(universe: Universe, pid: str, sector_id: int) -> bool:
     dep = sector.fighters if sector is not None else None
     if dep is None or int(dep.count) <= 0:
         return False
-    return not friendly(universe, pid, dep.owner_id)
+    from .corp import deploy_friend
+    return not deploy_friend(universe, pid, dep)
 
 
 def limpet_visible(universe: Universe, viewer_id: str, owner_id: str) -> bool:
@@ -48,8 +49,19 @@ def visible_mines(universe: Universe, viewer_id: str, sector) -> list[dict[str, 
         if int(m.count) <= 0:
             continue
         if m.kind == MineType.LIMPET and not limpet_visible(universe, viewer_id, m.owner_id):
-            continue
-        out.append({"owner": m.owner_id, "kind": m.kind.value, "count": int(m.count)})
+            if not (K.corp_rules_on() and getattr(m, "corp_ticker", None) and
+                    universe.players.get(viewer_id) and
+                    universe.players[viewer_id].corp_ticker == m.corp_ticker):
+                continue
+        label = m.owner_id
+        if K.corp_rules_on():
+            if m.owner_id == K.ROGUE_OWNER_ID:
+                label = "rogue"
+            elif getattr(m, "corp_ticker", None):
+                label = "corporate"
+            else:
+                label = "personal"
+        out.append({"owner": label if K.corp_rules_on() else m.owner_id, "kind": m.kind.value, "count": int(m.count)})
     return out
 
 

@@ -184,13 +184,15 @@ def carried_photon_hazard(universe: Universe, pid: str, sector) -> bool:
     for md in sector.mines:
         if md.kind != MineType.ARMID or int(md.count) <= 0:
             continue
-        if md.owner_id == pid or _allied(universe, pid, md.owner_id):
+        from .corp import deploy_friend
+        if deploy_friend(universe, pid, md):
             continue
         return True
     dep = sector.fighters
     if dep is None or int(dep.count) <= 0:
         return False
-    if dep.owner_id == pid or _allied(universe, pid, dep.owner_id):
+    from .corp import deploy_friend
+    if deploy_friend(universe, pid, dep):
         return False
     from .models import FighterMode
 
@@ -448,7 +450,8 @@ def hostile_mines_present(universe: Universe, pid: str, sector) -> bool:
     for md in sector.mines:
         if int(md.count) <= 0 or md.kind not in (MineType.ARMID, MineType.LIMPET):
             continue
-        if md.owner_id == pid or _allied(universe, pid, md.owner_id):
+        from .corp import deploy_friend
+        if deploy_friend(universe, pid, md):
             continue
         return True
     return False

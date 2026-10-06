@@ -289,6 +289,14 @@ class EventKind(str, Enum):
     CORP_DEPOSIT = "corp_deposit"
     CORP_WITHDRAW = "corp_withdraw"
     CORP_MEMO = "corp_memo"
+    CORP_PASSWORD_SET = "corp_password_set"
+    CORP_DROP = "corp_drop"
+    CORP_DISSOLVED = "corp_dissolved"
+    CORP_OUSTED = "corp_ousted"
+    CORP_TRANSFER = "corp_transfer"
+    CORP_EXP_PENALTY = "corp_exp_penalty"
+    CORP_BREAKIN_FAILED = "corp_breakin_failed"
+    CORP_ROGUE = "corp_rogue"
     ALLIANCE_PROPOSED = "alliance_proposed"
     ALLIANCE_FORMED = "alliance_formed"
     ALLIANCE_BROKEN = "alliance_broken"
@@ -397,18 +405,30 @@ class Port(BaseModel):
 
 
 class FighterDeployment(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"corp_ticker": None})
+
     owner_id: str
     count: int
     mode: FighterMode = FighterMode.DEFENSIVE
+    # CORP_RULES.md cr17. Set on a corporate group. Omitted while None.
+    corp_ticker: str | None = None
     # Credits toll fighters have collected and not yet been picked up.
     # Default 0 so an older snapshot still loads. Hidden from outsiders.
     toll_credits: int = 0
 
 
 class MineDeployment(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"corp_ticker": None})
+
     owner_id: str
     kind: MineType
     count: int
+    # CORP_RULES.md cr17. Omitted while None.
+    corp_ticker: str | None = None
 
 
 class Sector(BaseModel):
@@ -570,6 +590,7 @@ class Player(BaseModel):
             "arrived_by_transwarp": False, "arrived_by_transport": False,
             "port_upgrade_carry": {},
             "bank_balance": 0,
+            "corp_breakins_today": 0,
         })
 
     id: str
@@ -614,6 +635,8 @@ class Player(BaseModel):
         """A port visit ends when this player leaves the sector."""
         self.port_visit_sector_id = None
     corp_ticker: str | None = None
+    # CORP_RULES.md cr6. Wrong join attempts today. Omitted while 0.
+    corp_breakins_today: int = 0
     turns_today: int = 0
     turns_per_day: int = K.STARTING_TURNS_PER_DAY
     alive: bool = True
@@ -822,10 +845,16 @@ def _cap_operator_dialogue_entry(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 class Corporation(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"password": ""})
+
     ticker: str
     name: str
     ceo_id: str
     member_ids: list[str] = Field(default_factory=list)
+    # CORP_RULES.md cr3. Blank means closed. Omitted while blank so legacy dumps stay identical.
+    password: str = ""
     treasury: int = 0
     planet_ids: list[int] = Field(default_factory=list)
     invited_ids: list[str] = Field(default_factory=list)

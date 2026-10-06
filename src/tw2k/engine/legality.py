@@ -337,7 +337,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             dep = dest.fighters if dest is not None else None
             bill = 0
             if dep is not None and dep.mode == FighterMode.TOLL:
-                if dep.owner_id != player_id and not _are_allied(universe, player_id, dep.owner_id):
+                from .corp import deploy_friend
+                if not deploy_friend(universe, player_id, dep):
                     bill = int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
                     if bill > 0:
                         toll_due[str(wid)] = bill
@@ -739,7 +740,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     in_corp = player.corp_ticker is not None and player.corp_ticker in universe.corporations
     corp = universe.corporations.get(player.corp_ticker) if in_corp else None
-    if player.corp_ticker is not None:
+    if K.corp_rules_on():
+        from .corp import append_legal
+        append_legal(out, universe, player, player_id, _la)
+    elif player.corp_ticker is not None:
         reason = "already in a corporation"
     elif not at_stardock:
         reason = "must be at StarDock (sector 1)"
@@ -747,9 +751,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = f"need {K.CORP_FORMATION_COST} cr to incorporate (have {player.credits})"
     else:
         reason = None
-    out.append(_la(ActionKind.CORP_CREATE, legal=reason is None, reason=reason,
-                   params={"ticker": {"type": "str", "required": True, "max_len": 3, "taken": sorted(universe.corporations)},
-                           "name": {"type": "str", "required": False}}))
+    if not K.corp_rules_on():
+        out.append(_la(ActionKind.CORP_CREATE, legal=reason is None, reason=reason,
+                       params={"ticker": {"type": "str", "required": True, "max_len": 3, "taken": sorted(universe.corporations)},
+                               "name": {"type": "str", "required": False}}))
 
     # ---- S4 group 3: planets ---------------------------------------------------
     lp_cost = int(K.TURN_COST["land_planet"])
@@ -992,48 +997,51 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"active": sum(1 for lt in universe.limpets.values() if lt.owner_id == player_id)}))
 
     is_ceo = corp is not None and corp.ceo_id == player_id
-    invite_targets = ([pid for pid in others_all if pid not in corp.invited_ids and pid not in corp.member_ids]
-                      if corp is not None else [])
-    if not in_corp:
-        reason = "not in a corporation"
-    elif not is_ceo:
-        reason = "only the CEO may invite"
-    elif not invite_targets:
-        reason = "everyone is already invited or a member"
-    else:
-        reason = None
-    out.append(_la(ActionKind.CORP_INVITE, legal=reason is None, reason=reason,
-                   params={"target": {"type": "str", "required": True, "choices": invite_targets}}))
+    if K.corp_rules_on():
+        is_ceo = False  # tw2002 verbs were added with corp_create; skip the legacy block below
+    if not K.corp_rules_on():
+        invite_targets = ([pid for pid in others_all if pid not in corp.invited_ids and pid not in corp.member_ids]
+                          if corp is not None else [])
+        if not in_corp:
+            reason = "not in a corporation"
+        elif not is_ceo:
+            reason = "only the CEO may invite"
+        elif not invite_targets:
+            reason = "everyone is already invited or a member"
+        else:
+            reason = None
+        out.append(_la(ActionKind.CORP_INVITE, legal=reason is None, reason=reason,
+                       params={"target": {"type": "str", "required": True, "choices": invite_targets}}))
 
-    joinable = [t for t, c in universe.corporations.items()
-                if player_id in c.invited_ids and len(c.member_ids) < universe.config.corp_max_members]
-    full_invites = [t for t, c in universe.corporations.items()
-                    if player_id in c.invited_ids and len(c.member_ids) >= universe.config.corp_max_members]
-    reason = None if joinable else ("that corp is full" if full_invites else "no pending corp invite")
-    out.append(_la(ActionKind.CORP_JOIN, legal=reason is None, reason=reason,
-                   params={"ticker": {"type": "str", "required": True, "choices": joinable}}))
+        joinable = [t for t, c in universe.corporations.items()
+                    if player_id in c.invited_ids and len(c.member_ids) < universe.config.corp_max_members]
+        full_invites = [t for t, c in universe.corporations.items()
+                        if player_id in c.invited_ids and len(c.member_ids) >= universe.config.corp_max_members]
+        reason = None if joinable else ("that corp is full" if full_invites else "no pending corp invite")
+        out.append(_la(ActionKind.CORP_JOIN, legal=reason is None, reason=reason,
+                       params={"ticker": {"type": "str", "required": True, "choices": joinable}}))
 
-    out.append(_la(ActionKind.CORP_LEAVE, legal=player.corp_ticker is not None,
-                   reason="not in a corp", params={"ticker": player.corp_ticker}))
+        out.append(_la(ActionKind.CORP_LEAVE, legal=player.corp_ticker is not None,
+                       reason="not in a corp", params={"ticker": player.corp_ticker}))
 
-    reason = "not in a corporation" if not in_corp else ("no credits to deposit" if player.credits <= 0 else None)
-    out.append(_la(ActionKind.CORP_DEPOSIT, legal=reason is None, reason=reason,
-                   params={"amount": {"type": "int", "required": True, "min": 1, "max": int(player.credits)}}))
+        reason = "not in a corporation" if not in_corp else ("no credits to deposit" if player.credits <= 0 else None)
+        out.append(_la(ActionKind.CORP_DEPOSIT, legal=reason is None, reason=reason,
+                       params={"amount": {"type": "int", "required": True, "min": 1, "max": int(player.credits)}}))
 
-    treasury = int(corp.treasury) if corp is not None else 0
-    if not in_corp:
-        reason = "not in a corporation"
-    elif not is_ceo:
-        reason = "only the CEO may withdraw"
-    elif treasury <= 0:
-        reason = "corp treasury is empty"
-    else:
-        reason = None
-    out.append(_la(ActionKind.CORP_WITHDRAW, legal=reason is None, reason=reason,
-                   params={"amount": {"type": "int", "required": True, "min": 1, "max": treasury}}))
+        treasury = int(corp.treasury) if corp is not None else 0
+        if not in_corp:
+            reason = "not in a corporation"
+        elif not is_ceo:
+            reason = "only the CEO may withdraw"
+        elif treasury <= 0:
+            reason = "corp treasury is empty"
+        else:
+            reason = None
+        out.append(_la(ActionKind.CORP_WITHDRAW, legal=reason is None, reason=reason,
+                       params={"amount": {"type": "int", "required": True, "min": 1, "max": treasury}}))
 
-    out.append(_la(ActionKind.CORP_MEMO, legal=in_corp, reason="not in a corporation",
-                   params={"message": {"type": "str", "required": True, "max_len": 1000}}))
+        out.append(_la(ActionKind.CORP_MEMO, legal=in_corp, reason="not in a corporation",
+                       params={"message": {"type": "str", "required": True, "max_len": 1000}}))
 
     allied_active = {m for a in universe.alliances.values() if a.active and player_id in a.member_ids for m in a.member_ids}
     propose_targets = [pid for pid in others_all if pid not in allied_active]

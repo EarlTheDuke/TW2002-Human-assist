@@ -126,7 +126,8 @@ def test_fedspace_disallows_attack():
     assert result.ok is False
 
 
-def test_corp_create_requires_funds_and_stardock():
+def test_corp_create_requires_funds_and_stardock(monkeypatch):
+    monkeypatch.setattr("tw2k.engine.constants.CORP_MODE", "legacy")
     u, p = _build_universe_with_agent()
     p.credits = 499_000
     result = apply_action(u, "P1", Action(kind=ActionKind.CORP_CREATE, args={"ticker": "ABC"}))

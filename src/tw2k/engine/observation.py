@@ -125,6 +125,13 @@ _CLOAK_TRAIL_KINDS: frozenset[EventKind] = frozenset({
 })
 
 
+def _public_corporations(universe: Universe):
+    if not _K.corp_rules_on():
+        return None
+    from .corp import public_corporations
+    return public_corporations(universe)
+
+
 def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
     """Return True if `event` is visible to `player_id` under fog of war.
 
@@ -162,7 +169,16 @@ def _event_visible_base(event: Event, player_id: str, universe: Universe) -> boo
     if kind in _HAIL_EVENTS:
         target = event.payload.get("target")
         return event.actor_id == player_id or target == player_id
-    if kind in _CORP_EVENTS:
+    if kind in _CORP_EVENTS or kind in (
+            EventKind.CORP_PASSWORD_SET, EventKind.CORP_DROP, EventKind.CORP_DISSOLVED,
+            EventKind.CORP_OUSTED, EventKind.CORP_TRANSFER, EventKind.CORP_EXP_PENALTY,
+            EventKind.CORP_BREAKIN_FAILED, EventKind.CORP_ROGUE,
+    ):
+        if _K.corp_rules_on():
+            from .corp import event_visible
+            return event_visible(event, player_id, universe)
+        if kind not in _CORP_EVENTS:
+            return event.actor_id == player_id
         if event.actor_id == player_id:
             return True
         ticker = event.payload.get("ticker")
@@ -733,6 +749,8 @@ class Observation(BaseModel):
     bank_balance: int | None = None
     bank_room: int | None = None
     tax_due_tomorrow: int | None = None
+    # corp-rules-v1. Public corporation list. Omitted under CORP_MODE legacy.
+    corporations: list[dict[str, Any]] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -754,6 +772,8 @@ class Observation(BaseModel):
             for key in ("bank_balance", "bank_room", "tax_due_tomorrow"):  # galactic-bank-tax-v1
                 if data.get(key) is None:
                     data.pop(key, None)
+            if data.get("corporations") is None:  # corp-rules-v1
+                data.pop("corporations", None)
         return data
 
 
@@ -929,16 +949,20 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             for m in (player.inbox or [])
             if m.get("kind") == "corp_memo" and m.get("ticker") == c.ticker
         ][-5:]
-        corp_summary = {
-            "ticker": c.ticker,
-            "name": c.name,
-            "ceo_id": c.ceo_id,
-            "members": list(c.member_ids),
-            "treasury": c.treasury,
-            "treasury_share": treasury_share,
-            "planet_ids": list(c.planet_ids),
-            "recent_memos": recent_memos,
-        }
+        if K.corp_rules_on():
+            from .corp import member_block
+            corp_summary = member_block(universe, player)
+        else:
+            corp_summary = {
+                "ticker": c.ticker,
+                "name": c.name,
+                "ceo_id": c.ceo_id,
+                "members": list(c.member_ids),
+                "treasury": c.treasury,
+                "treasury_share": treasury_share,
+                "planet_ids": list(c.planet_ids),
+                "recent_memos": recent_memos,
+            }
 
     limpets_owned: list[dict[str, Any]] = []
     for lt in universe.limpets.values():
@@ -1122,6 +1146,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         recent_events=recent_events,
         alliances=alliances,
         corp=corp_summary,
+        corporations=_public_corporations(universe),
         deaths=player.deaths,
         max_deaths=K.elimination_deaths(universe.config),
         limpets_owned=limpets_owned,

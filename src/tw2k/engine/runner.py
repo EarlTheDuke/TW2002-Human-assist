@@ -291,6 +291,9 @@ def tick_day(universe: Universe) -> None:
         if player.ship.photon_disabled_ticks > 0:
             player.ship.photon_disabled_ticks = max(0, player.ship.photon_disabled_ticks - 1)
 
+    if K.corp_rules_on():  # CORP_RULES.md cr9/cr15: mixed-corp penalty, then eliminated members
+        from .corp import extern_corp_step
+        extern_corp_step(universe)
     # CLASS0_TERRA.md t20/t3: Extern sweep (after overnight retreats so a
     # challenge answered overnight still sees the fighters), then Terra regen.
     # Both run before regenerate_ports.
@@ -507,7 +510,8 @@ def _hostile_toll(universe: Universe, pid: str, sector):
     dep = sector.fighters
     if dep is None or dep.mode != FighterMode.TOLL:
         return None
-    if dep.owner_id == pid or _are_allied(universe, pid, dep.owner_id):
+    from .corp import deploy_friend
+    if deploy_friend(universe, pid, dep):
         return None
     return dep
 
@@ -548,10 +552,8 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
         mines.sort(key=lambda m: 0 if m.kind == MineType.LIMPET else 1)
     limpet_taken = False
     for md in mines:
-        if md.owner_id == pid:
-            continue
-        # Corp mate / ally mines don't trigger
-        if _are_allied(universe, pid, md.owner_id):
+        from .corp import deploy_friend
+        if deploy_friend(universe, pid, md):
             continue
         if md.kind == MineType.ARMID:
             if sector_photon_active(sector):
@@ -608,8 +610,8 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
     # Hostile sector fighter check
     if sector.fighters and sector.fighters.owner_id != pid:
         f_mode = sector.fighters.mode
-        owner = universe.players.get(sector.fighters.owner_id)
-        allied = owner is not None and _are_allied(universe, pid, owner.id)
+        from .corp import deploy_friend
+        allied = deploy_friend(universe, pid, sector.fighters)
         if not allied:
             if sector_photon_active(sector):
                 pass  # h7: photon wave neutralizes sector fighters
@@ -633,6 +635,7 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
                             summary=f"{player.name} paid {bill} cr toll to pass through {sector.id}",
                         )
                 else:
+                    owner = universe.players.get(sector.fighters.owner_id)
                     toll = sector.fighters.count  # 1 cr / fighter simplified = high disincentive
                     toll = min(player.credits, max(10, min(10000, sector.fighters.count)))
                     player.credits -= toll
@@ -969,6 +972,9 @@ def _handle_scan(universe: Universe, pid: str, action: Action) -> ActionResult:
 
 
 def _handle_deploy_fighters(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.corp_rules_on():
+        from .corp import handle_deploy_fighters
+        return handle_deploy_fighters(universe, pid, action)
     player = universe.players[pid]
     sector = universe.sectors[player.sector_id]
     qty = int(action.args.get("qty", 0))
@@ -1015,6 +1021,9 @@ def _handle_deploy_fighters(universe: Universe, pid: str, action: Action) -> Act
 
 
 def _handle_deploy_mines(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.corp_rules_on():
+        from .corp import handle_deploy_mines
+        return handle_deploy_mines(universe, pid, action)
     player = universe.players[pid]
     sector = universe.sectors[player.sector_id]
     qty = int(action.args.get("qty", 0))
@@ -1878,7 +1887,7 @@ def _handle_build_citadel(universe: Universe, pid: str, action: Action) -> Actio
     # Pay from corp treasury first if member, otherwise personal credits
     using_corp = False
     paid_from = "personal"
-    if player.corp_ticker:
+    if player.corp_ticker and not (K.corp_rules_on() and K.CORP_TREASURY == "off"):
         corp = universe.corporations.get(player.corp_ticker)
         if corp is not None and corp.treasury >= cred_cost:
             using_corp = True
@@ -2364,6 +2373,9 @@ def _buy_scanner(universe: Universe, pid: str, item: str, qty: int) -> ActionRes
 
 
 def _handle_corp_create(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.corp_rules_on():
+        from .corp import handle_corp_create
+        return handle_corp_create(universe, pid, action)
     player = universe.players[pid]
     if player.corp_ticker is not None:
         return ActionResult(ok=False, error="already in a corporation")
@@ -2396,6 +2408,9 @@ def _handle_corp_create(universe: Universe, pid: str, action: Action) -> ActionR
 
 
 def _handle_corp_invite(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.corp_rules_on():
+        from .corp import handle_corp_invite
+        return handle_corp_invite(universe, pid, action)
     player = universe.players[pid]
     if player.corp_ticker is None:
         return ActionResult(ok=False, error="not in a corporation")
@@ -2426,6 +2441,9 @@ def _handle_corp_invite(universe: Universe, pid: str, action: Action) -> ActionR
 
 
 def _handle_corp_join(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.corp_rules_on():
+        from .corp import handle_corp_join
+        return handle_corp_join(universe, pid, action)
     player = universe.players[pid]
     ticker = (action.args.get("ticker") or "").upper()
     corp = universe.corporations.get(ticker)
@@ -2500,6 +2518,9 @@ def _detach_leaver_planets(universe: Universe, pid: str, ticker: str) -> None:
 
 
 def _handle_corp_leave(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.corp_rules_on():
+        from .corp import handle_corp_leave
+        return handle_corp_leave(universe, pid, action)
     player = universe.players[pid]
     if player.corp_ticker is None:
         return ActionResult(ok=False, error="not in a corp")
@@ -2838,6 +2859,8 @@ def _handle_probe(universe: Universe, pid: str, action: Action) -> ActionResult:
 
 
 def _handle_corp_deposit(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.corp_rules_on() and K.CORP_TREASURY == "off":
+        return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
     if player.corp_ticker is None or player.corp_ticker not in universe.corporations:
         return ActionResult(ok=False, error="not in a corporation")
@@ -2857,6 +2880,8 @@ def _handle_corp_deposit(universe: Universe, pid: str, action: Action) -> Action
 
 
 def _handle_corp_withdraw(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.corp_rules_on() and K.CORP_TREASURY == "off":
+        return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
     if player.corp_ticker is None or player.corp_ticker not in universe.corporations:
         return ActionResult(ok=False, error="not in a corporation")
@@ -3676,7 +3701,12 @@ def _handle_recall_deployed(universe: Universe, pid: str, action: Action) -> Act
 
     if what == "fighters":
         dep = sector.fighters
-        if dep is None or dep.owner_id != pid or int(dep.count) <= 0:
+        owns = dep is not None and dep.owner_id == pid
+        if K.corp_rules_on() and dep is not None:
+            owns = dep.owner_id != K.ROGUE_OWNER_ID and (
+                (getattr(dep, "corp_ticker", None) and player.corp_ticker == dep.corp_ticker)
+                or (not getattr(dep, "corp_ticker", None) and dep.owner_id == pid))
+        if dep is None or not owns or int(dep.count) <= 0:
             return ActionResult(ok=False, error="no fighters of yours here")
         room = K.equip_room(player.ship.ship_class.value, "fighters", int(player.ship.fighters))
         if room is None:
@@ -3710,7 +3740,10 @@ def _handle_recall_deployed(universe: Universe, pid: str, action: Action) -> Act
         return ActionResult(ok=False, error="invalid mine type")
     if kind == MineType.ATOMIC:
         return ActionResult(ok=False, error="atomic mines do not sit in a sector")
-    existing = next((m for m in sector.mines if m.owner_id == pid and m.kind == kind), None)
+    existing = next((m for m in sector.mines if m.kind == kind and (
+        (K.corp_rules_on() and getattr(m, "corp_ticker", None) and player.corp_ticker == m.corp_ticker
+         and m.owner_id != K.ROGUE_OWNER_ID)
+        or m.owner_id == pid)), None)
     if existing is None or int(existing.count) <= 0:
         return ActionResult(ok=False, error="no mines of yours here")
     aboard = sum(int(v) for v in (player.ship.mines or {}).values())
@@ -3739,7 +3772,8 @@ def _surrender_deployment(universe: Universe, pid: str, sector):
     dep = sector.fighters
     if dep is None or int(dep.count) <= 0:
         return None
-    if dep.owner_id == pid or _are_allied(universe, pid, dep.owner_id):
+    from .corp import deploy_friend
+    if deploy_friend(universe, pid, dep):
         return None
     if dep.mode not in (FighterMode.DEFENSIVE, FighterMode.TOLL):
         return None
@@ -3910,6 +3944,9 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.CORP_INVITE: _handle_corp_invite,
     ActionKind.CORP_JOIN: _handle_corp_join,
     ActionKind.CORP_LEAVE: _handle_corp_leave,
+    ActionKind.CORP_SET_PASSWORD: None,
+    ActionKind.CORP_DROP: None,
+    ActionKind.CORP_TRANSFER: None,
     ActionKind.CORP_DEPOSIT: _handle_corp_deposit,
     ActionKind.CORP_WITHDRAW: _handle_corp_withdraw,
     ActionKind.CORP_MEMO: _handle_corp_memo,
@@ -3936,6 +3973,13 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.PAY_TOLL: _handle_pay_toll,
     ActionKind.SHIP_TRANSWARP: None,  # bound below; legacy handler refuses
 }
+
+
+def _bind_corp_rules() -> None:
+    from .corp import handle_corp_drop, handle_corp_set_password, handle_corp_transfer
+    _DISPATCH[ActionKind.CORP_SET_PASSWORD] = handle_corp_set_password
+    _DISPATCH[ActionKind.CORP_DROP] = handle_corp_drop
+    _DISPATCH[ActionKind.CORP_TRANSFER] = handle_corp_transfer
 
 
 def _bind_ship_tw() -> None:
@@ -3993,6 +4037,7 @@ _bind_tow()
 _bind_planet_trade()
 _bind_port_build()
 _bind_bank()
+_bind_corp_rules()
 _bind_corpships()
 _bind_fed_handlers()
 

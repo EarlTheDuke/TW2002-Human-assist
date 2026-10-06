@@ -617,6 +617,15 @@ _PORT_UPGRADE_NOTE = (
     "which lets a planet in that sector sell bigger lots.\n"
 )
 
+def _corp_note() -> str:
+    return (
+        "\nCorporations are free and work in any sector. The C.E.O. sets a password; any member may hand it out. "
+        f"A corp holds {int(K.CORP_MAX_MEMBERS)} traders. Deployments are Personal (only you) or Corporate (every member). "
+        "In the same sector, members may give or take credits, fighters, shields and mines, up to the receiving ship's room. "
+        "The C.E.O. leaving dissolves the corp. A corp with both good and evil traders loses experience at the day tick.\n"
+    )
+
+
 def _bank_note() -> str:
     return (
         f"\nStarDock's Galactic Bank holds up to {int(K.BANK_MAX_BALANCE):,} credits per trader; "
@@ -735,6 +744,8 @@ def get_system_prompt() -> str:
         text = text + _PORT_UPGRADE_NOTE
     if K.bank_on():
         text = text + _bank_note()
+    if K.corp_rules_on():
+        text = text + _corp_note()
     if K.buy_reserve_on():
         text = _buy_reserve_prompt_text(text)
     if K.combat_framing_on():
