@@ -635,7 +635,10 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
         from .capture import apply_unmanned_capture
         apply_unmanned_capture(universe, pid, rec)
     elif beaten:
+        label_before = None
         if K.corpship_on():
+            from .corpships import sector_label
+            label_before = sector_label(universe, rec)  # cs31 / REV 516: report the hull's real label
             from .corpships import apply_furb
             apply_furb(universe, pid, rec.ship, rec.owner_id)
         _remove(universe, int(rec.id))
@@ -645,7 +648,8 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
             EventKind.UNMANNED_SHIP_DESTROYED,
             actor_id=pid,
             sector_id=player.sector_id,
-            payload={"ship_id": int(rec.id), "hull": hull, "owner_id": rec.owner_id, "victim": rec.owner_id},
+            payload={"ship_id": int(rec.id), "hull": hull, "owner_id": rec.owner_id, "victim": rec.owner_id,
+                     **({"ownership": label_before} if label_before is not None else {})},
             summary=(f"{player.name} destroyed {owner.name if owner else rec.owner_id}'s unmanned "
                      f"{rec.ship.name} in sector {player.sector_id}"),
         )
