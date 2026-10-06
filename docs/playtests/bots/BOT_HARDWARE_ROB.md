@@ -82,3 +82,37 @@ After:
 | H-P6 | 141,220 | 117,570 | merchant_cruiser | 0 | 0 | 0/0 | none (heuristic does not buy these) |
 
 N2 and N3 each used hardware and Terra. No seat robbed: alignment stayed above -100. N1 died three times in the shared Ferrengi match and finished in a scout. That match is not the N1 acceptance bar. The day path changed because hardware is bought before the ferry once Ferrengi are seen, so day-10 net worth is not comparable seat-for-seat. Rejected stayed 0/0.
+
+## QC (bots rob-steal-hardware QC fixes, on 9dbe56b)
+
+Independent QC of 7288c8e, rebased onto ferrengi-aliens-v1 (9dbe56b).
+
+Fixes:
+
+- **Armids on a shared lane.** Seed 250925: N1-P5 laid armids on its home, sector 14. Sector 14 is the only way into N2-P3's dead-end home, 428. The mines destroyed P3's colonist ferry three times (days 4, 4 and 5). Now `_home_is_corridor` blocks armids when any of these is true:
+  - a rival planet is in the sector
+  - a rival ship is there
+  - a neighbour is a known dead end leading back (`known_warps == [home]` or density `warps == 1`)
+  - a rival planet has been seen next door
+- **Psychic probe never used (spec plant p10).** Seats bought the probe, but no live sell used the reading. `_haggle_live` now asks `min(listed*100/pct, listed*109//100)` on sells, starting from this port's listed bid. Every port's counter room is at least 110% (`PORT_HAGGLE_MIN_PCT`), so the ask can never make a port lose patience. It runs only when a probe is aboard and the last reading is under 95%.
+- **Heuristic (H) seat dead ends** (fogged INFO only; the all-legacy digest is unchanged):
+  - When holding cargo, H only hops to ports that buy that cargo (seed 250925 P6 had orbited 674/261/708 with 20 organics since day 2).
+  - A port where it just failed to trade is skipped for that day and the next (it had also orbited the drained 572/687/744).
+  - When drifting, a ruled-out port loses ties to a plain sector, but visit counts still decide first. A hard skip trapped it in the dead-end pockets 985/434/986.
+  - `_flee` waits instead of warping when out of turns (seed 99: 3 "warp: out of turns" refusals).
+- **FedSpace tow (the >=99-fighter stranding the fedspace ACK asked for).** Seed 20260925 on 9dbe56b: N3-P1 (200 fighters, 14 turns left) plotted from 525 to 447. The autopilot's own shortest path ran 525-323-269-1 and the turns ran out in sector 1, so the Feds towed it at Extern. Now, when a seat carries more fighters than the tow limit, its turns cannot finish the route today, and FedSpace is within reach, `_plot` takes one known warp at a time and re-checks every hop. It does not move at all if the only hops it can still afford end in FedSpace.
+
+Tests: `tests/test_bots_use_rob_steal_hardware_qc_v1.py` (23). Plants: 29 of 29 caught. Cur's tests alone missed the StarDock crime gate and Terra take past free holds.
+
+10-day `N3,N3,N2,N2,N1,H` net worth (9dbe56b vs 9dbe56b + QC). Deaths in brackets. Rejected 0/0.
+
+| Seed | N3-P1 | N3-P2 | N2-P3 | N2-P4 | N1-P5 | H-P6 | Tows |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 250925 before | 616,659 | 320,464 | 122,573 (3) | 263,308 | 338,175 | 64,211 | 0 |
+| 250925 after | 800,260 | 308,741 | 352,445 | 449,489 | 417,141 | 605,891 (2) | 0 |
+| 99 before | 342,724 | 342,273 | 188,741 (2) | 378,208 | 151,082 (1) | 93,859 | 0 |
+| 99 after | 534,019 | 593,014 | 305,813 | 465,731 | 318,302 | 331,085 (2) | 0 |
+| 20260925 before | 694,004 (1) | 595,661 (1) | 40,392 (1) | 345,972 | 40,344 (1) | 21,674 | 0 |
+| 20260925 after | 900,763 (1) | 851,849 (1) | 35,842 (2) | 558,098 | 40,344 (1) | 118,460 (2) | 0 |
+
+Seed 20260925: N2-P3 and N1-P5 get stuck in Scouts by Ferrengi mines on 9dbe56b both before and after QC; QC did not cause it. No seat robbed or stole: none of the acceptance seats ever reaches -100 alignment.

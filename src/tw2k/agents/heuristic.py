@@ -27,6 +27,15 @@ from ..engine import Action, ActionKind, Observation
 from ..engine.constants import STARDOCK_SECTOR, combat_hull
 from .base import BaseAgent
 
+_PORT_CODE_ORDER = ("fuel_ore", "organics", "equipment")
+
+
+def _port_buys_any(code: str, held: set[str]) -> bool:
+    """Port code letters are fuel_ore, organics, equipment; B = the port buys it. No cargo: any port."""
+    if not held or len(code) != 3:
+        return True
+    return any(code[i] == "B" and _PORT_CODE_ORDER[i] in held for i in range(3))
+
 
 class HeuristicAgent(BaseAgent):
     kind = "heuristic"
@@ -41,6 +50,14 @@ class HeuristicAgent(BaseAgent):
         self._last_to: int | None = None
         # Sectors whose fighters this seat retreated from -> day; avoided that day (no ping-pong).
         self._held: dict[int, int] = {}
+        # Fogged play: port sector -> day we stood there and could not trade (QC).
+        self._dry_port: dict[int, int] = {}
+        self._traded_at: int | None = None  # sector of a trade this visit
+
+    def _port_dry(self, a: dict, day: int | None) -> bool:
+        """A port we could not trade at today or yesterday (it restocks slowly)."""
+        seen = self._dry_port.get(int(a["id"]))
+        return seen is not None and day is not None and int(day) - seen <= 1
 
     async def act(self, obs: Observation) -> Action:
         # Fighters holding the ship must be answered first (ship-combat-core-v1).
@@ -89,6 +106,7 @@ class HeuristicAgent(BaseAgent):
                     capacity = entry["max"] - entry["current"]
                     qty = min(held, capacity)
                     if qty > 0:
+                        self._traded_at = here
                         return Action(
                             kind=ActionKind.TRADE,
                             args={"commodity": commodity, "qty": qty, "side": "sell"},
@@ -101,11 +119,16 @@ class HeuristicAgent(BaseAgent):
                     holds_free = obs.ship["cargo_free"]
                     qty = min(holds_free, entry["current"], obs.credits // max(1, unit))
                     if qty > 0:
+                        self._traded_at = here
                         return Action(
                             kind=ActionKind.TRADE,
                             args={"commodity": commodity, "qty": qty, "side": "buy"},
                             thought=f"Buying {qty} {commodity} at {port['code']} for {unit}cr/u.",
                         )
+            if info_tw2002() and self._traded_at != here:
+                # QC: nothing to sell or buy here. Remember it so the walk stops hopping
+                # back to a drained pair of ports (seed 250925 P6 orbited 572/687/744 days 5-10).
+                self._dry_port[here] = int(getattr(obs, "day", 0) or 0)
 
         # Fogged play: fit a scanner at StarDock, then scan before blind warps.
         if info_tw2002():
@@ -163,9 +186,16 @@ class HeuristicAgent(BaseAgent):
             if not candidates:
                 candidates = list(adj)
             unknown = [a for a in candidates if not a.get("known")]
-            with_port = [a for a in candidates if a.get("port") and a["port"] not in ("FED",)]
+            # Fogged play only (INFO_MODE tw2002): the all-legacy golden digest keeps the old walk.
+            held = {str(c) for c, n in ((obs.ship or {}).get("cargo") or {}).items()
+                    if n and str(c) in _PORT_CODE_ORDER} if info_tw2002() else set()
+            # QC: holding cargo, only a port that BUYS it is worth a hop. Hopping among
+            # ports that cannot buy it is a dead-end orbit (seed 250925 P6: 674/261/708 from day 2).
+            with_port = [a for a in candidates if a.get("port") and a["port"] not in ("FED",)
+                         and _port_buys_any(str(a["port"]), held) and not self._port_dry(a, day)]
             # Density chart (s7): 100 marks a port when holo has not yet named it.
-            dense_port = [a for a in candidates if int(a.get("density") or 0) >= 100]
+            dense_port = [a for a in candidates if int(a.get("density") or 0) >= 100
+                          and not self._port_dry(a, day)]
             if unknown:
                 pool = unknown
                 reason = "scouting"
@@ -178,9 +208,16 @@ class HeuristicAgent(BaseAgent):
             else:
                 pool = candidates
                 reason = "drifting"
+            # Fogged play: while drifting, a port just ruled out (cannot buy the cargo, or
+            # drained) loses ties to a plain sector, but visit counts still come first, so a
+            # dead-end pocket cannot trap the seat (seed 250925 P6: 985 <-> 434/986).
+            def ruled_out(a: dict) -> int:
+                return int(reason == "drifting" and info_tw2002() and bool(a.get("port"))
+                           and a["port"] not in ("FED",))
             # Prefer least-visited to escape two-sector orbits; among ties, higher density.
             choice = min(pool, key=lambda a: (
                 self._visit_counts.get(int(a["id"]), 0),
+                ruled_out(a),
                 -int(a.get("density") or 0),
                 int(a["id"]),
             ))
@@ -190,12 +227,14 @@ class HeuristicAgent(BaseAgent):
             tied = [
                 a for a in pool
                 if self._visit_counts.get(int(a["id"]), 0) == best_visits
+                and ruled_out(a) == ruled_out(choice)
                 and int(a.get("density") or 0) == best_density
             ]
             if len(tied) > 1:
                 choice = self.rng.choice(tied)
             self._last_from = here
             self._last_to = int(choice["id"])
+            self._traded_at = None
             return Action(
                 kind=ActionKind.WARP,
                 args={"target": choice["id"]},
@@ -308,6 +347,10 @@ class HeuristicAgent(BaseAgent):
         adj = obs.adjacent or []
         if not adj:
             return Action(kind=ActionKind.WAIT, thought=thought + " (no adjacent sectors)")
+        # QC (seed 99 P6): a flee warp with no turns left is refused ("out of turns") and
+        # wastes the decision. Wait for the day tick instead, as the normal walk does.
+        if int(getattr(obs, "turns_remaining", 1) or 0) <= 0 or self._short_for_warp(obs):
+            return Action(kind=ActionKind.WAIT, thought=thought + " (no turns left to warp; waiting)")
         here = int(obs.sector.get("id") or 0)
         candidates = [a for a in adj if int(a["id"]) != self._last_from] or list(adj)
 
