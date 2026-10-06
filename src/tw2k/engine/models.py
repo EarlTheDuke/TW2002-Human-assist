@@ -236,6 +236,12 @@ class EventKind(str, Enum):
     TOW_TARGET_CAPTURED = "tow_target_captured"
     # planetary-trading-v1 (PLANETARY_TRADING.md pt24); never emitted under PLANET_TRADE_MODE legacy
     PLANET_TRADE = "planet_trade"
+    # corp-ships-furb-v1. Never emitted under CORPSHIP_MODE legacy. Payloads never carry a password.
+    SHIP_FLAG_CHANGED = "ship_flag_changed"
+    SHIP_PASSWORD_SET = "ship_password_set"
+    SHIP_PASSWORD_FAIL = "ship_password_fail"
+    SHIP_DEFUNCT = "ship_defunct"
+    SHIP_FURBED = "ship_furbed"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -468,7 +474,10 @@ class TowLock(BaseModel):
 class Ship(BaseModel):
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"transwarp_drive": None, "fleet_id": None, "tow_lock": None})
+        return _omit_defaults(handler(self), {
+            "transwarp_drive": None, "fleet_id": None, "tow_lock": None,
+            "corp_ticker": None, "ship_password": "",
+        })
 
     ship_class: ShipClass = ShipClass.MERCHANT_CRUISER
     name: str = "Unnamed"
@@ -503,6 +512,9 @@ class Ship(BaseModel):
     fleet_id: int | None = None
     # SHIP_TOW.md tt1: the tractor lock lives on the TOWER hull (kept across ship_transport, tt12). Saved once set.
     tow_lock: TowLock | None = None
+    # CORP_SHIPS_FURB.md cs1. None is personal. Omitted from dumps while unset.
+    corp_ticker: str | None = None
+    ship_password: str = ""
     # Weighted-average unit cost paid for the current holdings of each
     # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
     # when planning a sell — without this they have to reconstruct cost

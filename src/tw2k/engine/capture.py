@@ -157,6 +157,9 @@ def apply_manned_capture(universe, attacker_id: str, target) -> None:
 
     hull.fighters = 0
     hull.shields = 0
+    if K.corpship_on():
+        from .corpships import on_captured
+        on_captured(hull, attacker)
     former = target.name
     universe.parked_ships[fid] = ParkedShip(
         id=fid, owner_id=attacker_id, sector_id=int(attacker.sector_id), ship=hull,
@@ -201,6 +204,9 @@ def apply_unmanned_capture(universe, attacker_id: str, rec) -> None:
     rec.parked_day = int(universe.day)
     rec.ship.fighters = 0
     rec.ship.shields = 0
+    if K.corpship_on():
+        from .corpships import on_captured
+        on_captured(rec.ship, attacker)
     rec.captured_from = former_name
     rec.captured_day = int(universe.day)
     sector = universe.sectors.get(int(attacker.sector_id))

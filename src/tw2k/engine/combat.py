@@ -329,6 +329,9 @@ def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
         _award_xp(universe, attacker_id, "kill_player")
         # x13/a2: the killer's share reads the victim before the pod or Ship Destroyed loss.
         kill_rewards(universe, attacker_id, int(target.experience), int(target.alignment))
+        if K.corpship_on() and K.FURB_FERRENGI is False:
+            from .corpships import apply_furb
+            apply_furb(universe, attacker_id, target.ship, target.id)
         _destroy_ship(universe, target.id, reason="combat", killer_id=attacker_id, by_other=True)
 
 

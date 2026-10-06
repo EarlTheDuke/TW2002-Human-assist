@@ -891,15 +891,15 @@ def test_bot_tow_policy_off_and_legacy_no_op(monkeypatch):
 
 # Recorded with tests/fed_legacy_digest.py on the commit before this slice (slice 50 + its follow-up): scripted
 # match N3,N2,N1,H, seed 250925, 3 days, every switch at its default (= this slice with only TOW_MODE flipped).
-# CAPTURE_MODE is also flipped: it did not exist on that parent, and leaving it tw2002 changes the match.
-# fullgame-fixes-v2: its seven switches are flipped too (their tw2002 defaults change the N3 game).
+# CAPTURE_MODE, CORPSHIP_MODE and the fullgame-fixes-v2 switches are also flipped: they did not exist
+# on that parent, and leaving them tw2002 changes the match.
 TOW_LEGACY_GOLDEN = "5032bedfb3722133d47b18eb"  # recorded on 5968646 + slice-47 QC brain fixes (79acd71; TOW_MODE absent)
 
 
 # Later slices that add a tw2002 mode flip it here too (planetary-trading-v1: PLANET_TRADE_MODE).
 FULLGAME_V2_SWITCHES = ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
                         "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE")
-TOW_PIN_FLIPS = ("TOW_MODE", "CAPTURE_MODE", "PLANET_TRADE_MODE") + FULLGAME_V2_SWITCHES
+TOW_PIN_FLIPS = ("TOW_MODE", "CAPTURE_MODE", "PLANET_TRADE_MODE", "CORPSHIP_MODE") + FULLGAME_V2_SWITCHES
 
 
 def test_tow_legacy_is_unchanged():

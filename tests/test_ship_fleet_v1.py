@@ -589,7 +589,7 @@ def test_fl22_density_38_and_never_an_occupant():
     assert all(t.get("id") != sid for t in o.sector.get("traders") or [])
     (um,) = o.sector["unmanned_ships"]
     assert um["ship_id"] == sid and um["own"] is False and um["owner_name"] == "A"
-    assert set(um) <= {"ship_id", "hull", "owner_name", "own", "fighters"}
+    assert set(um) <= {"ship_id", "hull", "owner_name", "own", "fighters", "ownership"}
     assert o.fleet["ships"] == []
     text = format_observation(o)
     assert "type1" not in str(o.sector) and text
@@ -640,7 +640,10 @@ def test_fl24_refusals_fedspace_own_corp_ally():
     assert "FedSpace" in _do(u, "A", ActionKind.ATTACK, target=f"ship:{fed}").error
     own = _park(u, "A", 30)
     _sit(u, "A", 30, ShipClass.BATTLESHIP, fighters=500)
-    assert "own ship" in _do(u, "A", ActionKind.ATTACK, target=f"ship:{own}").error
+    u.corporations["XX"] = Corporation(ticker="XX", name="X", ceo_id="A", member_ids=["A"])
+    u.players["A"].corp_ticker = "XX"
+    u.parked_ships[own].ship.corp_ticker = "XX"
+    assert "corporate ship" in _do(u, "A", ActionKind.ATTACK, target=f"ship:{own}").error
     u.alliances["a1"] = Alliance(id="a1", member_ids=["A", "B"], proposed_by="A", formed_day=1, active=True)
     u.players["A"].alliances.append("a1")
     ally = _park(u, "B", 30)

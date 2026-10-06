@@ -610,6 +610,15 @@ _PLANET_TRADE_NOTE = (
 )
 
 
+_CORPSHIP_NOTE = (
+    "\nCORPORATE SHIPS (docs/playtests/ships/CORP_SHIPS_FURB.md): ship_set_corporate flags the ship you are "
+    "flying for your corp. Corp mates can ship_transport into it and tow it. A password keeps them out until "
+    "they pass it. Your own personal unmanned ship can be destroyed for cargo holds: "
+    "(its holds + 3) / 3, added to the ship you are flying, never past that hull's maximum. "
+    "A corporate ship of your own corp cannot be attacked.\n"
+)
+
+
 _FED_NOTE_TW2002 = (
     "\nFEDSPACE POLICE (docs/playtests/fedspace/FEDSPACE_POLICE.md): three indestructible Federals "
     "(Captain Zyrain, Admiral Nelson, Fleet Admiral Clausewitz) wander the map; attacking one pods you. "
@@ -704,6 +713,8 @@ def get_system_prompt() -> str:
         text = text + _CAPTURE_NOTE
     if K.planet_trade_on():
         text = text + _PLANET_TRADE_NOTE
+    if K.corpship_on():
+        text = text + _CORPSHIP_NOTE
     if K.buy_reserve_on():
         text = _buy_reserve_prompt_text(text)
     if K.combat_framing_on():

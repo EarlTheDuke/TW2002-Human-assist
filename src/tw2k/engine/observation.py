@@ -310,6 +310,11 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.UNMANNED_SHIP_DESTROYED: ("ship_id", "hull", "victim"),
     EventKind.SHIP_CAPTURED: ("ship_id", "hull", "manned", "captor", "former_owner"),
     EventKind.TOW_TARGET_CAPTURED: ("ship_id", "hull", "captor"),
+    EventKind.SHIP_FLAG_CHANGED: ("flag", "ticker"),
+    EventKind.SHIP_PASSWORD_SET: ("set",),
+    EventKind.SHIP_PASSWORD_FAIL: (),
+    EventKind.SHIP_DEFUNCT: ("ship_id", "ticker"),
+    EventKind.SHIP_FURBED: ("attacker", "victim_class", "holds_gained", "capped"),
     EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
 }
 
@@ -500,6 +505,8 @@ class Observation(BaseModel):
     fleet: dict[str, Any] | None = None
     # ship-tow-transwarp2-v1 (SHIP_TOW.md tt29): who holds YOU in tow; omitted while nobody does
     in_tow_by: dict[str, Any] | None = None
+    # corp-ships-furb-v1: this corp's unmanned corporate ships. Omitted for a trader with no corp.
+    corp_ships: list[dict[str, Any]] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -516,6 +523,8 @@ class Observation(BaseModel):
                 data.pop("fleet", None)
             if data.get("in_tow_by") is None:  # ship-tow-transwarp2-v1: same rule
                 data.pop("in_tow_by", None)
+            if data.get("corp_ships") is None:  # corp-ships-furb-v1: same rule
+                data.pop("corp_ships", None)
         return data
 
 
@@ -926,6 +935,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     if K.tow_on():  # SHIP_TOW.md tt29
         from .tow import in_tow_view
         obs.in_tow_by = in_tow_view(universe, player_id)
+    if K.corpship_on():
+        from .corpships import corp_ships_block
+        obs.corp_ships = corp_ships_block(universe, player_id)
     return obs
 
 
@@ -1096,6 +1108,11 @@ def _ship_dict(ship) -> dict[str, Any]:
         ship_view["genesis_cap"] = int(spec["max_genesis"])
     if "max_photons" in spec:
         ship_view["photon_cap"] = int(spec["max_photons"])
+    if K.corpship_on():
+        from .corpships import label
+        ship_view["ownership"] = label(ship)
+        ship_view["password_set"] = bool(getattr(ship, "ship_password", ""))
+        ship_view["password"] = str(getattr(ship, "ship_password", "") or "")
     return ship_view
 
 

@@ -183,7 +183,12 @@ def _ship_target_block(universe: Universe, pid: str, rec: ParkedShip | None) -> 
     if rec is None:
         return "no such ship"
     if rec.owner_id != pid:
-        return "not your ship (own ships only)"
+        if not K.corpship_on():
+            return "not your ship (own ships only)"
+        from .corpships import tow_block
+        why = tow_block(universe, pid, rec)
+        if why is not None:
+            return why
     if (K.hull_spec(rec.ship.ship_class.value) or {}).get("corp_only") and player.corp_ticker is None:
         return "corporation hull: you are no longer in a corporation"
     if int(rec.sector_id) != int(player.sector_id):
@@ -272,6 +277,12 @@ def handle_tow_engage(universe: Universe, pid: str, action: Action) -> ActionRes
         if why is not None:
             return ActionResult(ok=False, error=why)
         assert rec is not None
+        if K.corpship_on():
+            from .corpships import note_password_fail, password_block
+            pw_why = password_block(pid, rec, (action.args or {}).get("password"))
+            if pw_why is not None:
+                note_password_fail(universe, pid)
+                return ActionResult(ok=False, error=pw_why)
         lock = TowLock(kind="ship", ship_id=sid, engaged_day=int(universe.day))
         towee_ship, name, manned = rec.ship, f"{rec.ship.name} (ship {sid})", None
     elif kind == "player":
@@ -661,9 +672,11 @@ def legal_specs(universe: Universe, pid: str) -> list[tuple[str, bool, str | Non
     choices, cost_by, kind_by = engage_choices(universe, pid)
     if why is None and not choices:
         why = "no ship you can lock in this sector"
-    out.append(("tow_engage", why is None, why, int(K.TURN_COST["tow_engage"]),
-                {"target": {"type": "str", "required": True, "choices": choices, "cost_by": cost_by,
-                            "kind_by": kind_by}}))
+    params: dict[str, Any] = {"target": {"type": "str", "required": True, "choices": choices, "cost_by": cost_by,
+                                         "kind_by": kind_by}}
+    if K.corpship_on():
+        params["password"] = {"type": "str", "required": False}
+    out.append(("tow_engage", why is None, why, int(K.TURN_COST["tow_engage"]), params))
     has = lock_of(universe.players[pid].ship) is not None
     out.append(("tow_release", has, None if has else "your tractor beam is not locked",
                 int(K.TURN_COST["tow_release"]), {}))
