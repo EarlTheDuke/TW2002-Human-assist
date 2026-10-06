@@ -1801,3 +1801,25 @@ BOT_TOW_POLICY = "extern_hold_only"  # "extern_hold_only" | "off"
 
 def tow_on() -> bool:
     return TOW_MODE == "tw2002"
+
+
+# --- Planetary Trade Agreement (PLANET_TRADE_MODE) ----------------------------
+# docs/playtests/planets/PLANETARY_TRADING.md (planetary-trading-v1, slice 54). Port menu <N>: sell a same-sector
+# own / own-corp planet's stock straight to a commodity port. "legacy" = the post-slice-51 engine (no verb, no
+# observation key, no event, no rng draws).
+PLANET_TRADE_MODE = "tw2002"            # "tw2002" | "legacy"
+PLANET_TRADE_PRICING = "curve"          # pt10 SOURCE-CONFLICT: "curve" (TWGS model) | "end" | "mbbs100" (MBBS/REV 100%)
+PLANET_TRADE_CURVE_STEP = 100           # pt10 UNVERIFIED: units per curve step (the TWGS percentage is unknown)
+PLANET_TRADE_WHO = "owner_or_corp"      # pt4 UNVERIFIED for listing: "owner_or_corp" | "owner"
+PLANET_TRADE_HAGGLE = "as_ship_sell"    # pt12 UNVERIFIED: "as_ship_sell" (HAGGLE.md sell bound on the lot) | "no_counter"
+PLANET_TRADE_PAYEE = "trader"           # pt13 UNVERIFIED destination: "trader" | "planet" (treasury)
+PLANET_TRADE_EXP = "as_trade"           # pt15 UNVERIFIED: "as_trade" (one ship sale of qty) | "none"
+PLANET_TRADE_TWARP_COOLDOWN = 0         # pt20 UNVERIFIED: days after a planet TransWarp before it may trade
+PLANET_TRADE_FEED = "public_summary"    # pt24 UNVERIFIED: "public_summary" (witnesses, like a trade) | "actor_only"
+BOT_PLANET_TRADE_POLICY = "sell_surplus"  # "sell_surplus" | "off"
+BOT_PLANET_TRADE_MIN_LOT = 500          # bots sell organics / equipment lots of at least this many units
+BOT_PLANET_TRADE_KEEP_ORE = True        # PTW "Don't sell fuel ore"
+
+
+def planet_trade_on() -> bool:
+    return PLANET_TRADE_MODE == "tw2002"

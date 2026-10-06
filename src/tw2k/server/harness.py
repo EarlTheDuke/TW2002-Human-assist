@@ -332,6 +332,8 @@ def build_harness_router(runner) -> APIRouter:
             verbs = [v for v in verbs if v not in ("cloak", "fire_disruptor", "remove_limpet", "launch_beacon", "deploy_atomic")]
         if not K.class0_tw2002():
             verbs = [v for v in verbs if v != "terra_colonists"]
+        if not K.planet_trade_on():  # planetary-trading-v1: legacy has no <N> verb
+            verbs = [v for v in verbs if v != "planet_trade"]
         return {
             "system_prompt": get_system_prompt(),
             "verbs": verbs,

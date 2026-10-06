@@ -1069,7 +1069,7 @@
   const VERB_GROUPS = {
     combat: ["attack", "retreat", "pay_toll", "surrender", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic", "recall_deployed", "ship_transwarp", "ship_transport", "tow_engage", "tow_release"],
     stardock: ["buy_ship", "buy_equip", "corp_create", "sell_ship"],
-    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport", "planet_destroy"],
+    planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport", "planet_destroy", "planet_trade"],
     comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
   };
   const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
@@ -1149,6 +1149,7 @@
     planet_transwarp: { fields: [{ n: "planet_id", l: "Planet", t: "choice", auto: true }, { n: "dest_sector", l: "Destination sector", t: "int" }], note: "Citadel L4. Once a day. 400 planet fuel per warp sector. The destination needs a fighter of the owner." },
     ship_transwarp: { fields: [{ n: "sector_id", l: "Locked sector", t: "choice", auto: true }], note: "Type 1 drive. 3 fuel ore per hop. Legal list is locks only — never a blind jump." },
     ship_transport: { fields: [{ n: "ship_id", l: "Own ship in range", t: "choice", auto: true }], note: "Transporter pad. 1 turn, no hazards. Range is the ship you are in; own ships only." },
+    planet_trade: { fields: [{ n: "planet_id", l: "Own / corp planet here", t: "choice", auto: true }, { n: "commodity", l: "Sell from the planet", t: "choice" }, { n: "qty", l: "Units (blank = all the port buys)", t: "int", optional: true }, { n: "offer", l: "Counter (total credits, blank = accept the quote)", t: "int", optional: true }], note: "Planetary Trade Agreement: the planet's stock goes straight to this port for the visit turn only. The quote is a little under ship price; one counter, a greedy one is refused and still costs the turn." },
     sell_ship: { fields: [{ n: "ship_id", l: "Own ship in orbit", t: "choice", auto: true }], note: "StarDock only. Pays the 25% trade-in credit; nothing aboard is refunded." },
     tow_engage: { fields: [{ n: "target", l: "Ship to tow", t: "choice", auto: true }], note: "Tractor beam, 0 turns. Own unmanned ship here, or a trader with no fighters outside FedSpace. Each sector costs your TPW + 2 x the towed TPW." },
     tow_release: { fields: [], note: "Drop the tractor beam, 0 turns." },

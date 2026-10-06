@@ -231,6 +231,7 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
         "planetary defenses repelled landing",
         "interdicted by a planet",
         "the port lost patience",
+        "We're not interested.",  # PLANETARY_TRADING.md pt12: a refused counter still spends the visit turn
     }
     if result.turns_spent > 0 and (result.ok or charged_fail):
         player.turns_today += result.turns_spent
@@ -240,7 +241,7 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
     # Flee penalty: the first turn-using action after a flee settles it. Land or port pays extra.
     if player.flee_penalty and player.turns_today > turns_before:
-        if action.kind in (ActionKind.LAND_PLANET, ActionKind.TRADE):
+        if action.kind in (ActionKind.LAND_PLANET, ActionKind.TRADE, ActionKind.PLANET_TRADE):
             extra = min(K.FLEE_PENALTY_TURNS, max(0, player.turns_per_day - player.turns_today))
             player.turns_today += extra
             result.turns_spent += extra
@@ -3879,6 +3880,11 @@ def _bind_tow() -> None:
     _DISPATCH[ActionKind.TOW_RELEASE] = handle_tow_release
 
 
+def _bind_planet_trade() -> None:
+    from .planet_trade import handle_planet_trade
+    _DISPATCH[ActionKind.PLANET_TRADE] = handle_planet_trade  # legacy: the handler answers "unsupported action"
+
+
 def _bind_fed_handlers() -> None:
     from .fed import handle_apply_commission, handle_claim_reward, handle_post_reward
     _DISPATCH[ActionKind.APPLY_COMMISSION] = handle_apply_commission
@@ -3889,6 +3895,7 @@ def _bind_fed_handlers() -> None:
 _bind_ship_tw()
 _bind_fleet()
 _bind_tow()
+_bind_planet_trade()
 _bind_fed_handlers()
 
 

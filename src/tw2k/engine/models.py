@@ -234,6 +234,8 @@ class EventKind(str, Enum):
     # ship-capture-v1 (SHIP_CAPTURE.md). Never emitted under CAPTURE_MODE legacy.
     SHIP_CAPTURED = "ship_captured"
     TOW_TARGET_CAPTURED = "tow_target_captured"
+    # planetary-trading-v1 (PLANETARY_TRADING.md pt24); never emitted under PLANET_TRADE_MODE legacy
+    PLANET_TRADE = "planet_trade"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"

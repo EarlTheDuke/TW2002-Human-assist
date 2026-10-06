@@ -281,6 +281,11 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"target": first("target", "ship:1")})
     if ak is ActionKind.TOW_RELEASE:
         return Action(kind=ak, args={})
+    if ak is ActionKind.PLANET_TRADE:  # planetary-trading-v1
+        pl_id = first("planet_id", 1)
+        mb = ((p.get("qty") or {}).get("max_by") or {}).get(str(pl_id)) or {}
+        c = next(iter(mb), first("commodity", "organics"))
+        return Action(kind=ak, args={"planet_id": pl_id, "commodity": c, "qty": max(1, min(3, int(mb.get(c, 1))))})
     if ak is ActionKind.PLANET_TRANSWARP:
         return Action(kind=ak, args={"planet_id": first("planet_id", player.planet_landed or 1), "dest_sector": first("dest_sector", 1)})
     if ak is ActionKind.SET_QUASAR_SECTOR or ak is ActionKind.SET_QUASAR_ATM:

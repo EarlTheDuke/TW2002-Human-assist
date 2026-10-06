@@ -123,6 +123,10 @@ def _event_visible_to(event: Event, player_id: str, universe: Universe) -> bool:
             actor = universe.players.get(event.actor_id)
             if actor is not None and getattr(actor.ship, "cloaked", False):
                 return False
+    if kind == EventKind.PLANET_TRADE:  # PLANETARY_TRADING.md pt24 (PLANET_TRADE_FEED)
+        from . import constants as K
+        if K.PLANET_TRADE_FEED == "actor_only":
+            return event.actor_id == player_id
     if kind in _PUBLIC_EVENTS:
         return True
     if kind in _ACTOR_ONLY_EVENTS:
@@ -216,6 +220,8 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.AUTOPILOT: ("target", "executed", "hops_done"),
     EventKind.TRADE: ("commodity", "qty", "side", "unit", "total", "realized_profit", "toll_to", "amount"),
     EventKind.TRADE_FAILED: ("commodity", "qty", "side", "reason"),
+    # planetary-trading-v1 pt24: who sold what here; never the planet's remaining stock
+    EventKind.PLANET_TRADE: ("trader", "planet_id", "port_sector", "commodity", "qty", "price", "countered"),
     EventKind.SCAN: ("tier",),
     EventKind.PROBE: ("target", "port_code"),
     EventKind.DEPLOY_FIGHTERS: ("qty", "mode"),
@@ -1256,6 +1262,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
                     "price": price,
                     "side": side,
                 }
+        if K.planet_trade_on() and viewer is not None:  # PLANETARY_TRADING.md: same answer as the legal list
+            from .planet_trade import available as _planet_trade_available
+            port_info["planet_trade_available"] = bool(_planet_trade_available(universe, player_id))
         info["port"] = port_info
     from .class0 import class0_tw2002, is_msl_sector, shield_unit_price, special_port_at
     if class0_tw2002():

@@ -658,6 +658,12 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
+        answer = self._planet_trade(v)
+        if answer is not None:  # planetary-trading-v1: sell a planet's surplus straight to this port
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
 
         action, intent = (None, Intent())
         if mem.break_left > 0:
@@ -2656,6 +2662,44 @@ class SeatBrain:
                 return self._act("tow_engage", {"target": t},
                                  f"lock my unmanned {s.get('hull')} in tow so Extern does not repossess it")
         return None
+
+    def _planet_trade(self, v: View) -> dict[str, Any] | None:
+        """planetary-trading-v1 (BOT_PLANET_TRADE_POLICY sell_surplus): docked at a port with an own / corp planet in
+        the sector, sell an organics or equipment lot of BOT_PLANET_TRADE_MIN_LOT+ units at the port's quote. Never
+        a counter (no wasted-haggle turn), never fuel ore (PTW "Don't sell fuel ore"); organics keep the colony's
+        feed reserve (the same reserve as the stockpile haul)."""
+        from ..engine import constants as engine_k
+        if engine_k.BOT_PLANET_TRADE_POLICY != "sell_surplus" or not engine_k.planet_trade_on():
+            return None
+        if not v.ok("planet_trade"):
+            return None
+        min_lot = max(1, int(engine_k.BOT_PLANET_TRADE_MIN_LOT))
+        best: tuple[int, int, str, int] | None = None
+        for row in (v.params("planet_trade").get("planets") or []):
+            if not isinstance(row, dict) or row.get("planet_id") is None:
+                continue
+            pid = int(row["planet_id"])
+            planet = v.planet(pid)
+            for commodity, mx in sorted((row.get("sellable") or {}).items()):
+                if commodity == "fuel_ore" and engine_k.BOT_PLANET_TRADE_KEEP_ORE:
+                    continue
+                qty = int(mx or 0)
+                if commodity == "organics":
+                    g = (growth_view(planet) or {}) if planet else {}
+                    burn = max(1, int(g.get("organics_consumption_per_day") or 1))
+                    keep = max(ORGANICS_LOAD, burn * 4)
+                    stock = int(((planet or {}).get("stockpile") or {}).get("organics") or 0) if planet else qty + keep
+                    qty = min(qty, max(0, stock - keep))
+                if qty < min_lot:
+                    continue
+                unit = int((row.get("unit_bid") or {}).get(commodity) or 0)
+                if best is None or unit * qty > best[0]:
+                    best = (unit * qty, pid, commodity, qty)
+        if best is None:
+            return None
+        _value, pid, commodity, qty = best
+        return self._act("planet_trade", {"planet_id": pid, "commodity": commodity, "qty": int(qty)},
+                         f"Planetary Trade Agreement: sell {qty} {commodity} from planet {pid} to this port at its quote")
 
     def _board_spare(self, v: View) -> dict[str, Any] | None:
         """ship-fleet-transporter-v1 (BOT_FLEET_POLICY spare_only): after a pod / Ship Destroyed, beam into an

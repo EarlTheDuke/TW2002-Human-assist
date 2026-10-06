@@ -40,6 +40,8 @@ def legacy_capture_digest() -> str:
     """Exact-minimum attacks on a manned ship and an unmanned ship, then 3 day ticks."""
     if hasattr(K, "CAPTURE_MODE"):
         K.CAPTURE_MODE = "legacy"
+    if hasattr(K, "PLANET_TRADE_MODE"):  # planetary-trading-v1: later tw2002 modes are flipped too
+        K.PLANET_TRADE_MODE = "legacy"
     h = hashlib.sha256()
     h.update(get_system_prompt().encode())
     u = generate_universe(GameConfig(seed=11, universe_size=60, enable_ferrengi=False, enable_planets=False))
