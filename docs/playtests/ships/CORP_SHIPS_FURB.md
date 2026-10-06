@@ -49,3 +49,18 @@
 - No overkill limit. Player cargo is not salvaged.
 - A leaver's parked corporate ships pass to the CEO.
 - Defunct ships count for nobody.
+
+## Playtest (e1faeeb)
+
+Scripted seed 250925, 10 days, Ferrengi on, seats N3,N3,N2,N2,N1,H. `CORPSHIP_MODE` legacy and tw2002 were the same match: rejected 0/0, no exceptions. Bots do not flag, password, or furb, so furbed, defunct, flag, and password-fail events were 0. Ship destroyed 2 (H-P6).
+
+| Seat | Net worth | Ship | Planets | Deaths |
+| --- | --- | --- | --- | --- |
+| N3-P1 | 747,201 | battleship | 3 | 0 |
+| H-P6 | 552,814 | scout_marauder | 0 | 2 |
+| N2-P4 | 523,082 | cargotran | 4 | 0 |
+| N1-P5 | 445,423 | merchant_cruiser | 2 | 0 |
+| N2-P3 | 294,636 | cargotran | 2 | 0 |
+| N3-P2 | 240,690 | cargotran | 2 | 0 |
+
+30-day headless, 2 heuristic agents, seed 42, no gate: finished, winner P2 on time net worth (1,085,694 vs P1 853,240). Both alive. Events: 25 ship_destroyed, 0 furb, 0 defunct, 0 flag, 0 capture. A furb emit no longer moves the pod: the hull is snapshotted, the pod is placed, then the furb event fires (`e1faeeb`).
