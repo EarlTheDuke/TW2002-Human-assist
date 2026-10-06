@@ -61,7 +61,7 @@ def parse_seats(text: str) -> list[str]:
 def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 1000,
               turns_per_day: int = 1000, credits: int = 20_000, ferrengi: bool = True,
               max_steps: int = 2_000_000, port_report: bool = False,
-              bank_report: bool = False) -> dict[str, Any]:
+              bank_report: bool = False, corp_report: bool = False) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents import HeuristicAgent
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
@@ -291,6 +291,43 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         for pid, row in players.items():
             row["bank_balance"] = int(u.players[pid].bank_balance)
             row["bank"] = bank_rows[pid]
+    corp_summary = None
+    if corp_report:  # CORP_RULES.md match check (c)/(d)/(f) counters (QC 57); not part of any digest
+        counts: dict[str, int] = {}
+        corporate_deploys = {pid: 0 for pid in players}
+        hostile_between_members = 0
+        hostile = {"combat", "fighter_challenge", "ship_destroyed", "mine_detonated", "toll", "photon_hit"}
+        for ev in u.events:
+            kind = getattr(ev.kind, "value", str(ev.kind))
+            payload = ev.payload or {}
+            if kind.startswith("corp_"):
+                counts[kind] = counts.get(kind, 0) + 1
+            pid = str(ev.actor_id or "")
+            if kind in ("deploy_fighters", "deploy_mines") and payload.get("ownership") == "corporate" and pid in players:
+                corporate_deploys[pid] += 1
+            if kind in hostile and pid in u.players and u.players[pid].corp_ticker:
+                blob = json.dumps(payload, sort_keys=True, default=str)
+                mates = set(u.corporations.get(u.players[pid].corp_ticker).member_ids
+                            if u.players[pid].corp_ticker in u.corporations else ()) - {pid}
+                if any(f'"{m}"' in blob for m in mates):
+                    hostile_between_members += 1
+        rogue_groups = 0
+        corporate_groups = 0
+        for sec in u.sectors.values():
+            groups = ([sec.fighters] if sec.fighters is not None else []) + list(sec.mines or [])
+            for g in groups:
+                if g.owner_id == K.ROGUE_OWNER_ID:
+                    rogue_groups += 1
+                elif getattr(g, "corp_ticker", None):
+                    corporate_groups += 1
+        corp_summary = {
+            "corps": {t: sorted(c.member_ids) for t, c in sorted(u.corporations.items())},
+            "events": dict(sorted(counts.items())), "corporate_deploys": corporate_deploys,
+            "hostile_between_members": hostile_between_members, "rogue_groups": rogue_groups,
+            "corporate_groups": corporate_groups, "policy": K.BOT_CORP_POLICY, "mode": K.CORP_MODE,
+        }
+        for pid, row in players.items():
+            row["corp_ticker"] = u.players[pid].corp_ticker
     ranking = sorted(players, key=lambda q: (-players[q]["net_worth"], q))
     result = {
         "seed": seed, "days": days, "days_played": u.day, "seats": seats, "universe_size": universe_size,
@@ -301,6 +338,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
     }
     if violations is not None:
         result["invariant_violations"] = violations
+    if corp_summary is not None:
+        result["corp"] = corp_summary
     if bank_rows is not None:
         result["bank_rejected"] = sum(int(row["rejected_engine"]) for row in players.values())
         result["bank_exceptions"] = sum(int(row["exceptions"]) for row in players.values())
@@ -354,15 +393,23 @@ def main(argv: list[str] | None = None) -> int:
                     help="add bank, tax, and death-credit totals (not part of the legacy digest)")
     ap.add_argument("--bank-legacy", action="store_true",
                     help="run with BANK_MODE legacy (the before column)")
+    ap.add_argument("--corp-policy", choices=("off", "pair"),
+                    help="override K.BOT_CORP_POLICY (CORP_RULES.md cr29 match check)")
+    ap.add_argument("--corp-report", action="store_true",
+                    help="add corp counters (corps, members, corp events, rogue groups; not part of the legacy digest)")
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
     if a.bank_legacy:
         from tw2k.engine import constants as K
         K.BANK_MODE = "legacy"
+    if a.corp_policy:
+        from tw2k.engine import constants as K
+        K.BOT_CORP_POLICY = a.corp_policy
     result = run_match(parse_seats(a.seats), seed=a.seed, days=a.days, universe_size=a.size,
                        turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi,
-                       port_report=a.port_report, bank_report=a.bank_report)
+                       port_report=a.port_report, bank_report=a.bank_report,
+                       corp_report=a.corp_report)
     text = json.dumps(result, indent=1, sort_keys=True)
     md = render_markdown(result)
     if a.json_out:
@@ -380,6 +427,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"balance {row.get('bank_balance')} dep {b.get('deposited')} wd {b.get('withdrawn')} "
                   f"tax {b.get('tax')} align {b.get('tax_align')} lost {b.get('credits_lost')} "
                   f"recovered {b.get('credits_recovered')} rej {row['rejected_engine']}")
+    if a.corp_report:
+        print("CORP " + json.dumps(result["corp"], sort_keys=True))
     return 0
 
 
