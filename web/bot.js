@@ -842,6 +842,10 @@
     rows($("alliances"), obs.alliances || [], (a) => row(`Alliance ${a.id}`, [
       a.active ? "active" : "proposed", `members ${(a.members || []).join(", ")}`, `by ${a.proposed_by}`, a.formed_day !== undefined && a.formed_day !== null ? `day ${a.formed_day}` : null,
     ]), "no alliances");
+    const ranks = obs.alien_ranks;
+    rows($("alienRanks"), (ranks && ranks.ranks) || [], (a) => row(a.name || "alien", [
+      a.rank, a.side, a.experience !== undefined ? `${fmt(a.experience)} xp` : null,
+    ]), ranks ? `${ranks.active} active, ${ranks.good_pct}% good` : "no aliens");
     const c = obs.corp;
     kv($("corp"), c ? [
       ["Corp", `${c.name} [${c.ticker}]`], ["CEO", c.ceo_id], ["Members", (c.members || []).join(", ")],
