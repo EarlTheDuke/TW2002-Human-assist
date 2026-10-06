@@ -232,7 +232,7 @@ def test_holo_scan_costs_a_turn_and_shows_who_is_there(tw) -> None:
     assert r.ok and r.turns_spent == 1
     assert u.players["A"].turns_today == before + 1
     mem = u.players["A"].scan_memory[busy]
-    assert mem["fighters"] == {"owner_id": "B", "count": 4321, "mode": "defensive"}
+    assert mem["fighters"] == {"owner_id": "B", "count": 4321, "mode": "defensive", "ownership": "personal"}  # QC 57 cr17
     assert [t["id"] for t in mem["traders"]] == ["B"]
     assert all(m["kind"] != "limpet" for m in mem["mines"])  # Bob's limpets stay invisible
     assert {"kind": "armid", "owner": "personal", "count": 7} in mem["mines"]

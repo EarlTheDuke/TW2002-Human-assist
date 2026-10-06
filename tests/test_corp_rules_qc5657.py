@@ -566,3 +566,31 @@ def test_qc_pair_policy_forms_one_corp_and_deploys_corporate(monkeypatch):
     assert u.sectors[sid].fighters.corp_ticker == PAIR_TICKER
     obs3 = build_observation(u, "P3").model_dump(mode="json")
     assert SeatBrain._pair_ownership(View(obs3), "deploy_fighters") == {}
+
+
+def test_qc_cr30_prompt_numbers_follow_the_constants(monkeypatch):
+    from tw2k.agents.prompts import get_system_prompt
+    assert "Corporations are free and work in any sector" in get_system_prompt()
+    monkeypatch.setattr(K, "CORP_CREATE_COST", 500_000)
+    monkeypatch.setattr(K, "CORP_TURN_COST", 2)
+    text = get_system_prompt()
+    assert "Corporations cost 500,000 credits and 2 turns and work in any sector" in text
+    assert "Corporations are free" not in text
+    monkeypatch.setattr(K, "CORP_MODE", "legacy")
+    assert "Corporations cost" not in get_system_prompt()
+
+
+def test_qc_holo_view_labels_fighter_ownership(monkeypatch):
+    from tw2k.engine.scanners import sector_view
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    sec = u.sectors[sid]
+    sec.fighters = FighterDeployment(owner_id="P1", count=7, mode=FighterMode.DEFENSIVE, corp_ticker="XYZ")
+    assert sector_view(u, "P3", sid)["fighters"]["ownership"] == "corporate"
+    sec.fighters = FighterDeployment(owner_id=K.ROGUE_OWNER_ID, count=7, mode=FighterMode.DEFENSIVE)
+    assert sector_view(u, "P3", sid)["fighters"]["ownership"] == "rogue"
+    sec.fighters = FighterDeployment(owner_id="P2", count=7, mode=FighterMode.DEFENSIVE)
+    assert sector_view(u, "P3", sid)["fighters"]["ownership"] == "personal"
+    monkeypatch.setattr(K, "CORP_MODE", "legacy")
+    assert "ownership" not in sector_view(u, "P3", sid)["fighters"]
