@@ -127,6 +127,12 @@ def apply_manned_capture(universe, attacker_id: str, target) -> None:
     kill_rewards(universe, attacker_id, int(target.experience), int(target.alignment))
 
     hull = target.ship
+    own_tow = None
+    hauler = None
+    if tow_hooks_active():
+        from .tow import release, towed_by, towing
+        own_tow = towing(universe, target.id)
+        hauler = towed_by(universe, "player", target.id)
     copy = hull.model_copy(deep=True)
     copy.corbomite = 0
     copy.fleet_id = None  # the pod must not keep the captured hull's id
@@ -135,6 +141,10 @@ def apply_manned_capture(universe, attacker_id: str, target) -> None:
     target.ship = copy
     fid = _ensure_fleet_id(universe, hull)
     _limpets_leave_hull(universe, target.id, fid)
+    if own_tow is not None:
+        release(universe, hull, target.id, "tower_captured")
+    if hauler and towing(universe, hauler) is not None:
+        release(universe, universe.players[hauler].ship, hauler, "towee_gone")
     sector = universe.sectors.get(int(attacker.sector_id))
     witnesses = list(sector.occupant_ids) if sector is not None else []
     if target.id not in witnesses:
@@ -146,15 +156,6 @@ def apply_manned_capture(universe, attacker_id: str, target) -> None:
 
     hull.fighters = 0
     hull.shields = 0
-    if tow_hooks_active() and getattr(hull, "tow_lock", None):
-        hull.tow_lock = None
-        universe.emit(
-            EventKind.TOW_RELEASED,
-            actor_id=attacker_id,
-            sector_id=attacker.sector_id,
-            payload={"reason": "tower_captured", "victim": target.id},
-            summary=f"{target.name}'s tow released (tower captured)",
-        )
     former = target.name
     universe.parked_ships[fid] = ParkedShip(
         id=fid, owner_id=attacker_id, sector_id=int(attacker.sector_id), ship=hull,
@@ -183,6 +184,13 @@ def apply_unmanned_capture(universe, attacker_id: str, rec) -> None:
     former_id = rec.owner_id
     former = universe.players.get(former_id)
     former_name = former.name if former is not None else former_id
+    hauler = None
+    if tow_hooks_active():
+        from .tow import release, towed_by, towing
+        hauler = towed_by(universe, "ship", rec.id)
+        if hauler and not K.CAPTURE_KEEPS_TOW and towing(universe, hauler) is not None:
+            release(universe, universe.players[hauler].ship, hauler, "towee_gone")
+            hauler = None
     rec.owner_id = attacker_id
     rec.parked_day = int(universe.day)
     rec.ship.fighters = 0
@@ -208,3 +216,12 @@ def apply_unmanned_capture(universe, attacker_id: str, rec) -> None:
         },
         summary=f"{attacker.name} captured {former_name}'s unmanned {rec.ship.name} in sector {attacker.sector_id}",
     )
+    if hauler and K.CAPTURE_TELL_TOWER:
+        universe.emit(
+            EventKind.TOW_TARGET_CAPTURED,
+            actor_id=hauler,
+            sector_id=int(attacker.sector_id),
+            payload={"ship_id": int(rec.id), "captor": attacker.name, "victim": hauler,
+                     "_witnesses": [hauler]},
+            summary=f"{attacker.name} captured the ship {hauler} is towing",
+        )

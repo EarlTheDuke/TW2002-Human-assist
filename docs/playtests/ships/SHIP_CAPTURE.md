@@ -2,7 +2,7 @@
 
 `CAPTURE_MODE` `tw2002` | `legacy`. Capture runs only when `CAPTURE_MODE`, `COMBAT_MODE` and `FLEET_MODE` are all `tw2002`. Otherwise every beaten ship is destroyed as before this slice.
 
-Ferrengi capture, furbing / salvage, corporate ships + passwords, and change of registration are not this slice. Tow rules cp17–cp21 are guarded until `TOW_MODE` `tw2002` (slice 51) is on origin. `tow_hooks_active()` is false on this tree.
+Ferrengi capture, furbing / salvage, corporate ships + passwords, and change of registration are not this slice. Tow rules cp17–cp21 call slice 51's `tow.release` / `towed_by`. `tow_hooks_active()` is true when `TOW_MODE` is `tw2002`.
 
 | Row | Rule | Status | Test |
 | --- | --- | --- | --- |
@@ -22,11 +22,11 @@ Ferrengi capture, furbing / salvage, corporate ships + passwords, and change of 
 | cp14 | Hull-bound cargo, hardware, drive, limpet stay. Fighters and shields are 0 | CONFIRMED shape | `test_cp14_keeps_contents` |
 | cp15 | Corbomite does not fire on capture. It fires on a fallback destroy | CONFIRMED | `test_cp2_window`, `test_cp6_fleet_cap_destroys` |
 | cp16 | Sell price ignores extras (slice 50) | SOURCE-CONFLICT, kept | `test_cp14_transport_and_sell` |
-| cp17 | Capturing the tower releases the tow | UNVERIFIED; dormant until slice 51 | `test_tow_hooks_dormant` |
-| cp18 | Capturing a towed unmanned ship keeps the tow | MBBS addendum #6; dormant until slice 51 | `test_tow_hooks_dormant` |
-| cp19 | A captured towee in FedSpace is repossessed unless the new owner holds it | Consistent with fl23 | `test_cp19_extern` |
-| cp20 | A captured manned towee releases the tow | UNVERIFIED; dormant until slice 51 | `test_tow_hooks_dormant` |
-| cp21 | Re-capture releases the tow on attack (REV wins) | SOURCE-CONFLICT; dormant until slice 51 | `test_tow_hooks_dormant` |
+| cp17 | Capturing the tower releases the tow (`tower_captured`) | CONFIRMED shape | `test_cp17_tower_capture_releases_and_towed_ship_stays` |
+| cp18 | Capturing a towed unmanned ship keeps the tow and tells the tower | MBBS addendum #6 | `test_cp18_capturing_a_towed_ship_keeps_the_tow` |
+| cp19 | A captured towee in FedSpace is repossessed unless the new owner holds it | Consistent with fl23 | `test_cp19_extern`, `test_cp19_old_tower_does_not_hold_a_captured_ship_at_extern` |
+| cp20 | A captured manned towee releases the tow (`towee_gone`) | CONFIRMED shape | `test_cp20_capturing_a_manned_towee_releases` |
+| cp21 | Re-capture releases the tow on attack (REV wins) | SOURCE-CONFLICT; `TOW_ON_ATTACK` release | slice 51 `after_action` |
 | cp22 | Ferrengi are not captured. NPCs never capture | SOURCE-CONFLICT, deferred | `test_cp22_no_npc` |
 | cp23 | Feds never capture. FedSpace protection unchanged | CONFIRMED | `test_cp22_no_npc` |
 | cp24 | No `universe.rng` draw. Fail percent uses `capture_rng` only | CONFIRMED | `test_cp24_rng_and_fail_pct` |
@@ -43,10 +43,10 @@ Ferrengi capture, furbing / salvage, corporate ships + passwords, and change of 
 - A third loss of the day still hands the hull over (`CAPTURE_WHEN_SD` `capture`).
 - Captured corbomite does not raise the sell price.
 - Credits stay with the podded victim.
-- Tow rules cp17, cp18, cp20, cp21 wait for slice 51.
+- Capturing the tower releases with reason `tower_captured`. Capturing the towed unmanned ship keeps the lock and emits `TOW_TARGET_CAPTURED`. Capturing a manned towee releases with reason `towee_gone`. The old tower does not hold that hull at Extern.
 - Ferrengi capture is deferred. Bots do not aim at the capture number (`BOT_CAPTURE_POLICY` `incidental`).
 - StarDock is sector 1, so a captured hull left in FedSpace is repossessed at Extern.
 
 ## Legacy
 
-`CAPTURE_MODE` `legacy` is the pre-slice engine: beaten ships are destroyed, combat outcomes stay `destroyed` / `hit` / `miss`, no `SHIP_CAPTURED`, no `captured_from` keys, no new rng. Pin: `test_capture_legacy_is_unchanged` (`ac36e4d1c5ee8ed9d8881733` on 5968646, identical to that parent).
+`CAPTURE_MODE` `legacy` is the pre-slice engine: beaten ships are destroyed, combat outcomes stay `destroyed` / `hit` / `miss`, no `SHIP_CAPTURED`, no `captured_from` keys, no new rng. Pin: `test_capture_legacy_is_unchanged` (`76d447b221cd26ce16dcd3fd` on the slice-51 parent, identical to that parent with capture off).

@@ -36,7 +36,7 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import tick_day
 
 ROOT = Path(__file__).resolve().parents[1]
-CAPTURE_LEGACY_GOLDEN = "ac36e4d1c5ee8ed9d8881733"
+CAPTURE_LEGACY_GOLDEN = "76d447b221cd26ce16dcd3fd"
 
 
 def _world():
@@ -562,8 +562,67 @@ def test_cp27_prompt_and_bots():
     assert K.BOT_CAPTURE_POLICY == "incidental"
 
 
-def test_tow_hooks_dormant():
-    assert not tow_hooks_active()
+def test_cp17_tower_capture_releases_and_towed_ship_stays():
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    sec = _sector(u)
+    a = _sit(u, "A", sec, fighters=0)
+    _sit(u, "B", sec, fighters=30)
+    sid = _park(u, "A", sec, fighters=0)
+    assert apply_action(u, "A", Action(kind=ActionKind.TOW_ENGAGE, args={"target": f"ship:{sid}"})).ok
+    assert lock_of(a.ship) is not None
+    assert _attack(u, "B", "A", 1).ok
+    rec = next(r for r in u.parked_ships.values() if r.ship.ship_class != ShipClass.MERCHANT_FREIGHTER or r.id != sid)
+    captured = next(r for r in u.parked_ships.values() if r.owner_id == "B")
+    assert lock_of(captured.ship) is None
+    assert sid in u.parked_ships and u.parked_ships[sid].owner_id == "A"
+    assert any(e.kind == EventKind.TOW_RELEASED and e.payload.get("reason") == "tower_captured" for e in u.events)
+    del rec
+
+
+def test_cp18_capturing_a_towed_ship_keeps_the_tow():
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    sec = _sector(u)
+    a = _sit(u, "A", sec, fighters=10)
+    _sit(u, "B", sec, fighters=20)
+    sid = _park(u, "A", sec, fighters=0)
+    assert apply_action(u, "A", Action(kind=ActionKind.TOW_ENGAGE, args={"target": f"ship:{sid}"})).ok
+    assert _attack(u, "B", f"ship:{sid}", 1).ok
+    assert u.parked_ships[sid].owner_id == "B"
+    assert lock_of(a.ship) is not None and int(lock_of(a.ship).ship_id) == sid
+    assert any(e.kind == EventKind.TOW_TARGET_CAPTURED for e in u.events)
+
+
+def test_cp19_old_tower_does_not_hold_a_captured_ship_at_extern():
+    u = _world()
+    sec = _sector(u)
+    a = _sit(u, "A", sec, fighters=0)
+    _sit(u, "B", sec, fighters=20)
+    sid = _park(u, "A", sec, fighters=0)
+    assert apply_action(u, "A", Action(kind=ActionKind.TOW_ENGAGE, args={"target": f"ship:{sid}"})).ok
+    assert _attack(u, "B", f"ship:{sid}", 1).ok
+    u.parked_ships[sid].sector_id = 3
+    _sit(u, "A", 3, fighters=0)
+    tick_day(u)
+    assert sid not in u.parked_ships
+
+
+def test_cp20_capturing_a_manned_towee_releases():
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    sec = _sector(u)
+    a = _sit(u, "A", sec, fighters=10)
+    _sit(u, "B", sec, fighters=0)
+    _sit(u, "C", sec, fighters=20)
+    assert apply_action(u, "A", Action(kind=ActionKind.TOW_ENGAGE, args={"target": "player:B"})).ok
+    assert _attack(u, "C", "B", 1).ok
+    assert lock_of(a.ship) is None
+    assert any(e.kind == EventKind.TOW_RELEASED and e.payload.get("reason") == "towee_gone" for e in u.events)
+
+
+def test_tow_hooks_follow_slice_51():
+    assert tow_hooks_active()
 
 
 def test_capture_legacy_is_unchanged():
