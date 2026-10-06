@@ -318,7 +318,7 @@
 
     // Track warps for animation and for the discovered-sector filter.
     noteSeen(eventSector(ev));
-    if ((ev.kind === "warp" || ev.kind === "ship_transwarp") && ev.payload && ev.payload.from && ev.payload.to) {
+    if ((ev.kind === "warp" || ev.kind === "ship_transwarp" || ev.kind === "ship_transport") && ev.payload && ev.payload.from && ev.payload.to) {
       noteSeen(ev.payload.from);
       noteSeen(ev.payload.to);
       const hop = { from: ev.payload.from, to: ev.payload.to, t: Date.now(), actor: ev.actor_id };
@@ -2471,6 +2471,11 @@
     planet_transwarp:  { cat: "diplomacy", icon: "\u27a4",  label: "TRANSWARP" },
     ship_transwarp:    { cat: "move",      icon: "\u27a4",  label: "SHIP TRANSWARP" },
     ship_transwarp_fuse: { cat: "combat",  icon: "\u26a0",  label: "TRANSWARP FUSE", big: true },
+    ship_transport:    { cat: "move",      icon: "\u2735",  label: "SHIP TRANSPORT" },
+    fleet_spare_bought: { cat: "trade",    icon: "\u2693",  label: "SPARE SHIP" },
+    ship_sold:         { cat: "trade",     icon: "$",      label: "SHIP SOLD" },
+    fleet_repossessed: { cat: "combat",    icon: "\u26a0",  label: "EXTERN REPO", big: true },
+    unmanned_ship_destroyed: { cat: "combat", icon: "\u2620", label: "UNMANNED SHIP DESTROYED", big: true },
     planet_transporter_bought: { cat: "diplomacy", icon: "\u27a4", label: "TRANSPORTER" },
     planet_transport:  { cat: "move",      icon: "\u27a4",  label: "TRANSPORT" },
     planet_colonists_killed: { cat: "combat", icon: "\u2694", label: "COLONISTS KILLED" },

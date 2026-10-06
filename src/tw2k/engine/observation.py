@@ -70,6 +70,9 @@ _ACTOR_ONLY_EVENTS: frozenset[EventKind] = frozenset({
     EventKind.PLANET_TAX_PAYOUT,
     # ship-transwarp-v1 tw20: a blind-jump fuse is owner + spectator only.
     EventKind.SHIP_TRANSWARP_FUSE,
+    # ship-fleet-transporter-v1 fl30: owner (+ spectator) only.
+    EventKind.SHIP_SOLD,
+    EventKind.FLEET_REPOSSESSED,
     # Out-of-band meta event — belongs to actor only (keeps opponents
     # from reading each other's token spend, which would be a weird
     # side-channel and also clutter their observation feed).
@@ -294,6 +297,11 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.COMMISSION_GRANTED: ("alignment",),
     EventKind.SHIP_TRANSWARP: ("from", "to", "hops", "ore", "locked", "blind"),
     EventKind.SHIP_TRANSWARP_FUSE: ("from", "to", "hops", "ore", "locked"),
+    EventKind.SHIP_TRANSPORT: ("from", "to", "ship_id", "hull", "hops"),
+    EventKind.FLEET_SPARE_BOUGHT: ("ship_class", "ship_id", "cost"),
+    EventKind.SHIP_SOLD: ("ship_id", "ship_class", "credit"),
+    EventKind.FLEET_REPOSSESSED: ("ship_id", "ship_class", "sector"),
+    EventKind.UNMANNED_SHIP_DESTROYED: ("ship_id", "hull", "victim"),
     EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
 }
 
@@ -480,6 +488,8 @@ class Observation(BaseModel):
     # fedspace-police-v1: Police HQ block (sector 1 only) and FedSpace overnight hint
     police: dict[str, Any] | None = None
     fedspace: dict[str, Any] | None = None
+    # ship-fleet-transporter-v1 (SHIP_FLEET.md fl30): own fleet only; omitted under FLEET_MODE legacy
+    fleet: dict[str, Any] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -492,6 +502,8 @@ class Observation(BaseModel):
                 data.pop("fedspace", None)
             if data.get("ferrengi_encounter") is None:  # ferrengi-aliens-v1: same rule
                 data.pop("ferrengi_encounter", None)
+            if data.get("fleet") is None:  # ship-fleet-transporter-v1: same rule
+                data.pop("fleet", None)
         return data
 
 
@@ -518,10 +530,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
 
     ship = _ship_dict(player.ship)
     if K.ship_tw_on() and isinstance(ship.get("transwarp"), dict):
-        from .victory import is_commissioned
-        ship["transwarp"]["fed_lock"] = bool(
-            is_commissioned(player) and K.SHIP_TW_FED_LOCK == "commissioned"
-        )
+        from .ship_transwarp import fed_lock_on
+        ship["transwarp"]["fed_lock"] = bool(fed_lock_on(player))
 
     # Current sector detail
     sector_info = _sector_detail(universe, sector, player_id)
@@ -682,10 +692,14 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         if lt.owner_id != player.id:
             continue
         target = universe.players.get(lt.target_id)
+        current = target.sector_id if target else None
+        if lt.target_ship_id is not None:  # SHIP_FLEET.md fl19: the hull sits parked
+            from .fleet import limpet_location
+            current = limpet_location(universe, lt)[0]
         limpets_owned.append({
             "target_id": lt.target_id,
             "target_name": target.name if target else None,
-            "current_sector": target.sector_id if target else None,
+            "current_sector": current,
             "placed_day": lt.placed_day,
         })
 
@@ -891,6 +905,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         from .fed import fedspace_hint, police_observation
         obs.police = police_observation(universe, player)
         obs.fedspace = fedspace_hint(universe, player)
+    if K.fleet_on():  # SHIP_FLEET.md fl30: own fleet only
+        from .fleet import fleet_block
+        obs.fleet = fleet_block(universe, player_id)
     return obs
 
 
@@ -1093,7 +1110,7 @@ def _adjacent_fogged(player, wid: int) -> dict[str, Any]:
             "seen_tick": seen[2],
             # what the holo scan / probe showed: port name and class, planets, traders, Ferrengi
             "seen": {k: view[k] for k in ("port", "planets", "traders", "ferrengi", "federals", "fighters", "mines",
-                                          "beacon")
+                                          "beacon", "unmanned_ships")
                      if view.get(k)},
         })
     if mem:
@@ -1180,6 +1197,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         from .scanners import traders_in, visible_mines
         info["mines"] = visible_mines(universe, player_id, sector)
         info["traders"] = traders_in(universe, player_id, sector)
+    if K.fleet_on():  # SHIP_FLEET.md fl22: a NEW key, never mixed into occupants / traders
+        from .fleet import sector_unmanned_view
+        info["unmanned_ships"] = sector_unmanned_view(universe, player_id, sector.id)
     if sector.fighters:
         group = {
             "owner_id": sector.fighters.owner_id,

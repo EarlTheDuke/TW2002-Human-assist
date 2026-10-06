@@ -45,6 +45,7 @@ prompt also states; everything situational comes from the observation.
 
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass, field
 from typing import Any
@@ -142,6 +143,9 @@ RICH_CREDITS = 200_000
 # ship-transwarp-v1: jump only when the walk is this long; buy a drive only with this much left over.
 SHIP_TW_MIN_HOPS = 3
 SHIP_TW_SPARE_CASH = 150_000
+# Drive owners keep fuel ore aboard for a jump out AND back of this many hops (never sold, topped up at an
+# ore port), capped at half the holds. Seats without a drive are untouched (Ben 2026-10-05).
+SHIP_TW_RESERVE_HOPS = 6
 DEFENSE_CASH_GATE = 100_000
 DEFENSE_FIGHTERS_FLOOR = 200
 DEFENSE_SHIELDS_FLOOR = 100
@@ -595,6 +599,7 @@ class SeatBrain:
     # ------------------------------------------------------------------ entry
     def decide(self, obs: Any) -> dict[str, Any]:
         o = obs if isinstance(obs, dict) else obs.model_dump(mode="json")
+        o = tw_reserve_view(o)
         v = View(o)
         if self.mem is None:
             self.mem = SeatMemory.load(o.get("scratchpad"))
@@ -625,6 +630,12 @@ class SeatBrain:
 
         answer = self._answer_challenge(v)
         if answer is not None:  # ship-combat-core-v1: fighters hold the ship; answer before the ladder
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
+        answer = self._board_spare(v) or self._top_up_tw_ore(v)
+        if answer is not None:  # ship-fleet-transporter-v1 / TransWarp ore reserve: own-ship only branches
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
@@ -2572,11 +2583,53 @@ class SeatBrain:
             return action
         hops = int((spec.get("hops_by") or {}).get(str(target)) or 0)
         ore_need = int((spec.get("ore_by") or {}).get(str(target)) or 0)
-        ore = int(v.cargo.get("fuel_ore") or 0)
+        ore = int(v.obs.get("_tw_ore_aboard", v.cargo.get("fuel_ore")) or 0)  # the real hold, reserve included
         if hops < SHIP_TW_MIN_HOPS or ore_need <= 0 or ore < 2 * ore_need:
             return action
         return self._act("ship_transwarp", {"sector_id": target},
                          f"TransWarp to {target} ({hops} hops, {ore_need} ore; same again kept for the return)")
+
+    def _top_up_tw_ore(self, v: View) -> dict[str, Any] | None:
+        """Drive owners only: at a port that sells fuel ore, fill the hold up to the TransWarp reserve."""
+        keep = int(v.obs.get("_tw_ore_reserve") or 0)
+        have = int(v.obs.get("_tw_ore_aboard") or 0)
+        if keep <= 0 or have >= keep or v.landed is not None or not v.ok("trade"):
+            return None
+        params = v.params("trade")
+        if "fuel_ore" not in ((params.get("commodity") or {}).get("buy_choices") or []):
+            return None
+        room = int((((params.get("qty") or {}).get("max_by") or {}).get("fuel_ore") or {}).get("buy", 0) or 0)
+        qty = min(keep - have, room, max(0, v.cargo_free))
+        if qty <= 0:
+            return None
+        return self._act("trade", {"commodity": "fuel_ore", "qty": int(qty), "side": "buy"},
+                         f"top up the TransWarp ore reserve ({have}+{qty} of {keep})")
+
+    def _board_spare(self, v: View) -> dict[str, Any] | None:
+        """ship-fleet-transporter-v1 (BOT_FLEET_POLICY spare_only): after a pod / Ship Destroyed, beam into an
+        own parked hull in transporter range that beats the hull we are in. Never buys, sells or attacks."""
+        from ..engine import constants as engine_k
+        if engine_k.BOT_FLEET_POLICY != "spare_only" or not v.ok("ship_transport"):
+            return None
+        if v.ship_class not in ("escape_pod", "scout_marauder"):
+            return None
+        if v.ship_class == "scout_marauder" and int(v.obs.get("deaths") or 0) <= 0:
+            return None
+        here_value = ship_cost(v.ship_class) if v.ship_class != "escape_pod" else 0
+        choices = {int(c) for c in v.choices("ship_transport", "ship_id")}
+        best = None
+        for s in ((v.obs.get("fleet") or {}).get("ships") or []):
+            sid = int(s.get("ship_id") or 0)
+            hull = str(s.get("hull") or "")
+            if sid not in choices or hull == "escape_pod" or hull not in ship_specs():
+                continue
+            value = ship_cost(hull)
+            if value > here_value and (best is None or (value, -sid) > (best[0], -best[1])):
+                best = (value, sid, hull)
+        if best is None:
+            return None
+        return self._act("ship_transport", {"ship_id": best[1]},
+                         f"beam into my parked {best[2]} (ship {best[1]}) instead of flying a {v.ship_class}")
 
     def _buy_transwarp_drive(self, v: View) -> dict[str, Any] | None:
         """Type 1 drive at StarDock on an ISS / FlagShip / Havoc only, and only out of spare cash."""
@@ -3514,3 +3567,39 @@ class SeatBrain:
 
 
 __all__ = ["SeatBrain", "SeatMemory", "View", "next_tier"]
+
+
+def tw_reserve_view(o: dict[str, Any]) -> dict[str, Any]:
+    """TransWarp ore reserve (Ben 2026-10-05): a seat that OWNS a Type 1 drive sees its fuel-ore reserve as
+    not for sale, so the trade ladder never sells it. Any other seat gets the observation back untouched,
+    so non-owner play stays byte-identical. The real hold stays readable as `_tw_ore_aboard`."""
+    ship = o.get("ship") or {}
+    tw = ship.get("transwarp")
+    if not isinstance(tw, dict) or tw.get("fitted") != "type1":
+        return o
+    per_hop = max(1, int(tw.get("ore_per_hop") or 3))
+    keep = min(2 * per_hop * SHIP_TW_RESERVE_HOPS, int(ship.get("holds") or 0) // 2)
+    have = int((ship.get("cargo") or {}).get("fuel_ore") or 0)
+    out = dict(o)
+    out["_tw_ore_aboard"] = have
+    out["_tw_ore_reserve"] = keep
+    hidden = min(have, keep)
+    if hidden <= 0:
+        return out
+    out["ship"] = dict(ship)
+    out["ship"]["cargo"] = dict(ship.get("cargo") or {})
+    out["ship"]["cargo"]["fuel_ore"] = have - hidden
+    legal = []
+    for la in o.get("legal_actions") or []:
+        if isinstance(la, dict) and la.get("kind") == "trade" and la.get("params"):
+            la = copy.deepcopy(la)
+            params = la["params"]
+            row = ((params.get("qty") or {}).get("max_by") or {}).get("fuel_ore")
+            if isinstance(row, dict) and "sell" in row:
+                row["sell"] = max(0, min(int(row.get("sell") or 0), have - hidden))
+                comm = params.get("commodity") or {}
+                if row["sell"] <= 0 and "fuel_ore" in (comm.get("sell_choices") or []):
+                    comm["sell_choices"] = [c for c in comm["sell_choices"] if c != "fuel_ore"]
+        legal.append(la)
+    out["legal_actions"] = legal
+    return out

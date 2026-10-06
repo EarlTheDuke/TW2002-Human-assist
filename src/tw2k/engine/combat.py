@@ -424,6 +424,8 @@ def retreat_block(universe: Universe, pid: str) -> str | None:
     back = ch.get("from_sector")
     if getattr(player, "arrived_by_transwarp", False):
         return "cannot retreat after a TransWarp arrival"
+    if getattr(player, "arrived_by_transport", False):
+        return "cannot retreat after a transporter arrival"  # SHIP_FLEET.md fl17c (inferred)
     if back is None or int(back) not in sector.warps:
         return "no warp back to the sector you came from"
     if interdictor_planet(universe, pid, sector) is not None:
@@ -831,6 +833,9 @@ def _eliminate(universe: Universe, player, killer_id: str | None) -> None:
     """Remove a player for good (the elimination threshold was reached)."""
     pid = player.id
     player.alive = False
+    if K.fleet_on():  # SHIP_FLEET.md fl26: elimination removes the owner's parked ships (deliberate)
+        from .fleet import drop_owner_fleet
+        drop_owner_fleet(universe, pid)
     # Drop them off the occupant list (StarDock in legacy, the pod's sector in tw2002).
     try:
         universe.sectors[player.sector_id].occupant_ids.remove(pid)
@@ -967,6 +972,7 @@ def _strip_ship(player, class_key: str) -> None:
     player.ship.mines = {MineType.ARMID: 0, MineType.LIMPET: 0, MineType.ATOMIC: 0}
     player.ship.transwarp_drive = None
     player.arrived_by_transwarp = False
+    player.arrived_by_transport = False
 
 
 def _place(universe: Universe, player, sector_id: int) -> None:

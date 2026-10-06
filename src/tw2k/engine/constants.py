@@ -279,6 +279,7 @@ TURN_COST = {
     "pay_toll": 0,
     "rob": PORT_DOCK_TURN_COST,
     "steal": PORT_DOCK_TURN_COST,
+    "ship_transport": 1,  # fl14: flat, whatever the hops or the hull's turns per warp
 }
 
 # --- Combat / fighters / mines ------------------------------------------------
@@ -1624,7 +1625,46 @@ SHIP_TW_TYPE1_COST = 12_500
 SHIP_TW_ORE_PER_HOP = 3
 SHIP_TW_LIST_CAP = 40
 SHIP_TW_HULLS = frozenset({"imperial_starship", "corporate_flagship", "havoc_gunstar"})
+# Which TransWarp hulls get the commissioned FedSpace lock (tw10). "all_tw" = ISS, CFS and Havoc (as shipped
+# in slice 48); "iss_only" = only the Imperial StarShip (the commission perk read narrowly). Ben 2026-10-05.
+SHIP_TW_FED_LOCK_HULLS = "all_tw"  # "all_tw" | "iss_only"
 
 
 def ship_tw_on() -> bool:
     return SHIP_TW_MODE == "tw2002"
+
+
+# --- Ship fleet + transporter (FLEET_MODE) ------------------------------------
+# docs/playtests/ships/SHIP_FLEET.md. "legacy" = one ship per player, no new verbs, keys, events or rng draws.
+
+FLEET_MODE = "tw2002"              # "tw2002" | "legacy"
+FLEET_MAX_SHIPS = 5                # fl2 UNVERIFIED / ours: per player, the manned ship included
+FLEET_XPORT_METRIC = "directed"    # fl10 UNVERIFIED: "directed" | "undirected"
+FLEET_XPORT_SAME_SECTOR = True     # fl11 UNVERIFIED: distance 0 is in range for every hull (pod, Scout)
+FLEET_XPORT_INTERDICT = "ignore"   # fl16 UNVERIFIED: "ignore" | "block"
+FLEET_POD_ON_LEAVE = "discard"     # fl17a UNVERIFIED: "discard" | "park"
+FLEET_CLOAK_ON_LEAVE = "decloak"   # fl20 UNVERIFIED: "decloak" | "keep"
+FLEET_LIMPET_POLICY = "hull"       # fl19: "hull" | "pilot"
+FLEET_FED_REPO = "fedspace"        # fl23: "fedspace" | "off"
+FLEET_UNMANNED_ODDS_FACTOR = 0.5   # fl24 OldFAQ #18 (v2) - UNVERIFIED for v3
+FLEET_UNMANNED_ALIGN = "v2_penalty"  # fl24 UNVERIFIED: "v2_penalty" | "none"
+FLEET_UNMANNED_KILL_EXP = 0        # fl24 UNVERIFIED
+FLEET_SELL_WHERE = "stardock_orbit"  # fl7: only an own ship in orbit at StarDock (sector 1)
+BOT_FLEET_POLICY = "spare_only"    # "spare_only" | "off"
+DENSITY_PER_UNMANNED = 38          # fl22 cabal formulas.html / REV v3.0x
+# fl9 Bible ship chart "Transporter Range" = MBBS "Teleport Range" (MBBS prose ISS 15 = SOURCE-CONFLICT, not used).
+SHIP_TRANSPORT_RANGE = {
+    "escape_pod": 0, "merchant_cruiser": 5, "scout_marauder": 0, "missile_frigate": 2, "battleship": 8,
+    "corporate_flagship": 10, "colonial_transport": 7, "cargotran": 5, "merchant_freighter": 5,
+    "imperial_starship": 10, "havoc_gunstar": 6, "star_master": 3, "constellation": 6, "tkhasi_orion": 3,
+    "tholian_sentinel": 3, "taurean_mule": 5, "interdictor_cruiser": 20,
+}
+
+
+def fleet_on() -> bool:
+    return FLEET_MODE == "tw2002"
+
+
+def transport_range(class_key: str) -> int:
+    """fl9: hops the ship you are IN can beam you. Hulls not on the chart get 0."""
+    return int(SHIP_TRANSPORT_RANGE.get(str(class_key), 0))
