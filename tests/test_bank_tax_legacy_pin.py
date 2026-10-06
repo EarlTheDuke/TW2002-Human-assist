@@ -7,10 +7,11 @@ after the mode exists. The other names are the tw2002 modes on that commit.
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
+
+from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
 BANK_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
@@ -37,8 +38,7 @@ def test_bank_legacy_is_unchanged():
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
         f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={PIN_FLIPS!r}))"
     )
-    env = dict(os.environ, PYTHONHASHSEED="0")
-    env.pop("TW2K_PORT_MATCH", None)
+    env = pin_env()
     out = subprocess.run(
         [sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True, timeout=900, check=True,
     )
