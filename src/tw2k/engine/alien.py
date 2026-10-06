@@ -192,6 +192,9 @@ def apply_mines_to_alien(universe: Universe, alien: AlienTrader, rng: random.Ran
         hits, each = armid_detonation_hits(md.count, rng)
         if hits <= 0:
             continue
+        md.count = int(md.count) - hits
+        if md.count <= 0:
+            sector.mines.remove(md)
         damage += hits * each
         if md.owner_id and md.owner_id not in owners:
             owners.append(md.owner_id)
