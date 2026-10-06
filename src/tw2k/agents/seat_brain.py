@@ -139,6 +139,9 @@ CITADEL_LAST_DAYS = 2
 MAX_TARGET_PLANETS = 4
 # Buy hull upgrades and defence once a seat is this rich (fogged credits).
 RICH_CREDITS = 200_000
+# ship-transwarp-v1: jump only when the walk is this long; buy a drive only with this much left over.
+SHIP_TW_MIN_HOPS = 3
+SHIP_TW_SPARE_CASH = 150_000
 DEFENSE_CASH_GATE = 100_000
 DEFENSE_FIGHTERS_FLOOR = 200
 DEFENSE_SHIELDS_FLOOR = 100
@@ -654,11 +657,12 @@ class SeatBrain:
         if action is None:
             action, intent = self._ladder(v)
         action, intent = self._avoid_held(v, action, intent)
+        action = self._transwarp_instead(v, action, intent)
         self._intent = intent
         mem.last_action_sig = _signature(action, v)
         if action.get("kind") == "warp" and v.here is not None and action.get("args", {}).get("target") is not None:
             mem.last_warp = (int(v.here), int(action["args"]["target"]))
-        elif action.get("kind") == "plot_course":
+        elif action.get("kind") in ("plot_course", "ship_transwarp"):
             mem.last_warp = None
         return self._finish(v, action)
 
@@ -1028,6 +1032,9 @@ class SeatBrain:
                 defense = self._buy_defense(v)
                 if defense is not None:
                     return defense, Intent("acquire")
+        drive = self._buy_transwarp_drive(v)
+        if drive is not None:
+            return drive, Intent("acquire")
         # N3: the first torpedo waits until CargoTran is affordable. Buying it
         # on a 20-hold hull (seed 250925: day 1, 20cr left) pushes the upgrade
         # out to day 7 and the extra holds never pay the turns back.
@@ -2543,6 +2550,45 @@ class SeatBrain:
             return None
         return self._act("warp", {"target": hop},
                          f"leave FedSpace before the Extern tow (figs={self._ship_fighters(v)}, {hops} hops out)")
+
+    def _transwarp_instead(self, v: View, action: dict[str, Any], intent: Intent) -> dict[str, Any]:
+        """ship-transwarp-v1: swap a long walk for a locked jump to the same sector.
+
+        Only a sector on the legal list (own / corp / ally fighter, or FedSpace when commissioned) -
+        never blind. Only when the walk is SHIP_TW_MIN_HOPS+ hops and the hold keeps the same ore
+        again for the way back. Under SHIP_TW_MODE legacy there is no ship_transwarp entry, so this no-ops.
+        """
+        if action.get("kind") not in ("warp", "plot_course") or not v.ok("ship_transwarp"):
+            return action
+        target = (action.get("args") or {}).get("target") if action.get("kind") == "plot_course" else None
+        if target is None:
+            target = intent.target
+        try:
+            target = int(target)
+        except (TypeError, ValueError):
+            return action
+        spec = v.params("ship_transwarp").get("sector_id") or {}
+        if target not in {int(c) for c in (spec.get("choices") or [])}:
+            return action
+        hops = int((spec.get("hops_by") or {}).get(str(target)) or 0)
+        ore_need = int((spec.get("ore_by") or {}).get(str(target)) or 0)
+        ore = int(v.cargo.get("fuel_ore") or 0)
+        if hops < SHIP_TW_MIN_HOPS or ore_need <= 0 or ore < 2 * ore_need:
+            return action
+        return self._act("ship_transwarp", {"sector_id": target},
+                         f"TransWarp to {target} ({hops} hops, {ore_need} ore; same again kept for the return)")
+
+    def _buy_transwarp_drive(self, v: View) -> dict[str, Any] | None:
+        """Type 1 drive at StarDock on an ISS / FlagShip / Havoc only, and only out of spare cash."""
+        if v.here != STARDOCK or not v.ok("buy_equip"):
+            return None
+        if "transwarp_drive" not in {str(x) for x in v.choices("buy_equip", "item")}:
+            return None  # the engine lists it only for a TW hull without a drive (legacy: never)
+        price = int(((v.params("buy_equip").get("item") or {}).get("unit_price_by") or {}).get("transwarp_drive") or 0)
+        if price <= 0 or v.credits - price < max(self.working_capital, SHIP_TW_SPARE_CASH):
+            return None
+        return self._act("buy_equip", {"item": "transwarp_drive", "qty": 1},
+                         f"fit a Type 1 TransWarp drive ({price} cr) from spare cash")
 
     def _police_hq(self, v: View) -> dict[str, Any] | None:
         """fedspace-police-v1: free Police HQ wins in sector 1 - claim a bounty, take the commission."""

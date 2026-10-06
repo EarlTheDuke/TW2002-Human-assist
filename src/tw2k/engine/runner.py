@@ -619,6 +619,7 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     # A tw2002 loss on entry leaves the pilot where the pod went (legacy moves on, as before).
     died_entering = K.death_tw2002() and player.deaths != deaths_before
     if player.alive and not died_entering:
+        player.arrived_by_transwarp = False
         # Leave old sector
         try:
             universe.sectors[player.sector_id].occupant_ids.remove(pid)
@@ -1421,6 +1422,7 @@ def _handle_liftoff(universe: Universe, pid: str, action: Action) -> ActionResul
         return ActionResult(ok=False, error="out of turns")
     planet_id = player.planet_landed
     player.planet_landed = None
+    player.arrived_by_transwarp = False
     universe.emit(
         EventKind.LIFTOFF,
         actor_id=pid,
@@ -2016,6 +2018,8 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     player.ship.holds = spec["holds"]
     if K.info_tw2002():
         player.ship.scanner = None  # s4: the scanner stays with the old ship
+    from .ship_transwarp import clear_drive
+    clear_drive(player.ship)  # tw5: the drive stays with the old hull
     # Preserve cargo sum but drop excess
     total = player.ship.cargo_used
     if total > spec["holds"]:
@@ -2059,6 +2063,9 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         ) if not class0_tw2002() else where_err)
     item = action.args.get("item")
     qty = int(action.args.get("qty", 0))
+    if item == "transwarp_drive":
+        from .ship_transwarp import buy_drive
+        return buy_drive(universe, pid, qty)
     if qty <= 0:
         return ActionResult(ok=False, error="qty must be positive")
     day = int(universe.day)
@@ -3790,7 +3797,13 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.SURRENDER: _handle_surrender,
     ActionKind.RETREAT: _handle_retreat,
     ActionKind.PAY_TOLL: _handle_pay_toll,
+    ActionKind.SHIP_TRANSWARP: None,  # bound below; legacy handler refuses
 }
+
+
+def _bind_ship_tw() -> None:
+    from .ship_transwarp import handle_ship_transwarp
+    _DISPATCH[ActionKind.SHIP_TRANSWARP] = handle_ship_transwarp
 
 
 def _bind_fed_handlers() -> None:
@@ -3800,6 +3813,7 @@ def _bind_fed_handlers() -> None:
     _DISPATCH[ActionKind.CLAIM_REWARD] = handle_claim_reward
 
 
+_bind_ship_tw()
 _bind_fed_handlers()
 
 

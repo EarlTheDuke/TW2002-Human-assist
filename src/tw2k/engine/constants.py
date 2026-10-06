@@ -653,6 +653,10 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
         if not hardware_tw2002():
             return 0
         return max(0, int(DISRUPTOR_MAX) - int(have))
+    if item == "transwarp_drive":
+        if not ship_tw_on():
+            return 0
+        return 0 if int(have) else 1
     if item in HARDWARE_V2_ITEMS:
         if not hardware_tw2002():
             return 0
@@ -1604,3 +1608,23 @@ FEDSAFE_MAX_FIGHTERS = None      # None = no fighter floor
 
 # f23
 FED_HAIL_MESSAGE = "return your commission or lose the ship"
+
+
+# --- Ship TransWarp Type 1 (SHIP_TW_MODE) ------------------------------------
+# docs/playtests/ships/SHIP_TRANSWARP.md. "legacy" = no drive, no verb, no new keys.
+
+SHIP_TW_MODE = "tw2002"          # "tw2002" | "legacy"
+SHIP_TW_BLIND = "density0"       # "density0" | "refuse"
+SHIP_TW_FED_LOCK = "commissioned"  # "commissioned" | "fighter_only"
+SHIP_TW_TURN_COST = "tpw"        # "tpw" | "hops"
+SHIP_TW_FRIENDLY = "own_corp_ally"  # "own_corp_ally" | "own_only"
+SHIP_TW_CLOAK_POLICY = "allow_decloak"  # UNVERIFIED
+SHIP_TW_FUSE_REFUNDS = False
+SHIP_TW_TYPE1_COST = 12_500
+SHIP_TW_ORE_PER_HOP = 3
+SHIP_TW_LIST_CAP = 40
+SHIP_TW_HULLS = frozenset({"imperial_starship", "corporate_flagship", "havoc_gunstar"})
+
+
+def ship_tw_on() -> bool:
+    return SHIP_TW_MODE == "tw2002"

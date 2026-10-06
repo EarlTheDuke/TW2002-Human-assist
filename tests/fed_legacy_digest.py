@@ -15,15 +15,17 @@ NEW_PLAYER_KEYS = ("commission_used", "fed_hail_sent", "ferrengi_encounter")
 NEW_FERRENGI_KEYS = ("hull", "credits", "cargo")  # ferrengi-aliens-v1 FerrengiShip fields
 
 
-def legacy_run_digest(root: Path, seats: str = "N3,H", days: int = 2, seed: int = 250925) -> str:
+def legacy_run_digest(root: Path, seats: str = "N3,H", days: int = 2, seed: int = 250925,
+                      flip: tuple[str, ...] | None = None) -> str:
+    """flip=None: every tw2002 *_MODE to legacy. flip=(names,): only those (ship-transwarp-v1 pin)."""
     import tw2k.engine as E
     import tw2k.engine.constants as K
     from tw2k.agents import prompts as P
 
     # Every tw2002 switch to legacy (FED_MODE included when present): later slices may retune tw2002
     # play, but an all-legacy run must stay what it was before this slice.
-    for name in dir(K):
-        if name.endswith("_MODE") and getattr(K, name) == "tw2002":
+    for name in (dir(K) if flip is None else flip):
+        if name.endswith("_MODE") and getattr(K, name, None) == "tw2002":
             setattr(K, name, "legacy")
     spec = importlib.util.spec_from_file_location("rsm_qc", root / "scripts" / "run_scripted_match.py")
     rsm = importlib.util.module_from_spec(spec)

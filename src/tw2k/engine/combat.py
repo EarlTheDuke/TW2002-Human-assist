@@ -422,6 +422,8 @@ def retreat_block(universe: Universe, pid: str) -> str | None:
     ch = player.fighter_challenge or {}
     sector = universe.sectors[player.sector_id]
     back = ch.get("from_sector")
+    if getattr(player, "arrived_by_transwarp", False):
+        return "cannot retreat after a TransWarp arrival"
     if back is None or int(back) not in sector.warps:
         return "no warp back to the sector you came from"
     if interdictor_planet(universe, pid, sector) is not None:
@@ -963,6 +965,8 @@ def _strip_ship(player, class_key: str) -> None:
     player.ship.photon_missiles = 0
     player.ship.ether_probes = 0
     player.ship.mines = {MineType.ARMID: 0, MineType.LIMPET: 0, MineType.ATOMIC: 0}
+    player.ship.transwarp_drive = None
+    player.arrived_by_transwarp = False
 
 
 def _place(universe: Universe, player, sector_id: int) -> None:

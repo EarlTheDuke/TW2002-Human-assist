@@ -318,7 +318,7 @@
 
     // Track warps for animation and for the discovered-sector filter.
     noteSeen(eventSector(ev));
-    if (ev.kind === "warp" && ev.payload && ev.payload.from && ev.payload.to) {
+    if ((ev.kind === "warp" || ev.kind === "ship_transwarp") && ev.payload && ev.payload.from && ev.payload.to) {
       noteSeen(ev.payload.from);
       noteSeen(ev.payload.to);
       const hop = { from: ev.payload.from, to: ev.payload.to, t: Date.now(), actor: ev.actor_id };
@@ -338,8 +338,8 @@
     // Combat flash triggers
     if (ev.kind === "combat" || ev.kind === "ship_destroyed" || ev.kind === "mine_detonated"
         || ev.kind === "atomic_detonation" || ev.kind === "photon_hit" || ev.kind === "photon_fired"
-        || ev.kind === "fed_response" || ev.kind === "port_destroyed") {
-      const sec = (ev.payload && (ev.payload.sector || ev.payload.sector_id)) || sectorFromActor(ev.actor_id);
+        || ev.kind === "fed_response" || ev.kind === "port_destroyed" || ev.kind === "ship_transwarp_fuse") {
+      const sec = (ev.payload && (ev.payload.sector || ev.payload.sector_id)) || (ev.kind === "ship_transwarp_fuse" && ev.sector_id) || sectorFromActor(ev.actor_id);
       if (sec) {
         state.combatFlashes.push({ sector_id: sec, t: Date.now(), kind: ev.kind });
         if (state.combatFlashes.length > 40) state.combatFlashes.shift();
@@ -2469,6 +2469,8 @@
     planet_tax_payout: { cat: "trade",     icon: "$",      label: "PLANET TAX", big: true },
     genesis_deployed:  { cat: "diplomacy", icon: "\ud83c\udf31", label: "GENESIS", big: true },
     planet_transwarp:  { cat: "diplomacy", icon: "\u27a4",  label: "TRANSWARP" },
+    ship_transwarp:    { cat: "move",      icon: "\u27a4",  label: "SHIP TRANSWARP" },
+    ship_transwarp_fuse: { cat: "combat",  icon: "\u26a0",  label: "TRANSWARP FUSE", big: true },
     planet_transporter_bought: { cat: "diplomacy", icon: "\u27a4", label: "TRANSPORTER" },
     planet_transport:  { cat: "move",      icon: "\u27a4",  label: "TRANSPORT" },
     planet_colonists_killed: { cat: "combat", icon: "\u2694", label: "COLONISTS KILLED" },

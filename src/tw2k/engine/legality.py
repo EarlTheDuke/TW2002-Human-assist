@@ -586,6 +586,15 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             prices.update(K.hardware_v2_prices())
             if not K.atomic_mines_sold():
                 prices.pop("atomic_mines", None)
+        if K.ship_tw_on() and at_stardock:
+            from .ship_transwarp import drive_buyable
+            if drive_buyable(player):
+                prices["transwarp_drive"] = int(K.SHIP_TW_TYPE1_COST)
+                cap_by_tw = 1
+            else:
+                cap_by_tw = 0
+        else:
+            cap_by_tw = None
         mines_aboard = sum(int(v) for v in (player.ship.mines or {}).values())
         class_key = player.ship.ship_class.value
         have = {
@@ -623,6 +632,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         if K.hardware_tw2002() and at_stardock:
             for capped in K.HARDWARE_V2_ITEMS:
                 cap_by[capped] = int(K.equip_room(class_key, capped, have.get(capped, 0)) or 0)
+        if cap_by_tw is not None and "transwarp_drive" in prices:
+            cap_by["transwarp_drive"] = cap_by_tw
         equip_max: dict[str, int] = {}
         for item, unit in prices.items():
             if item == "holds":
@@ -1309,6 +1320,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         for kind_val, legal, reason, params in police_legal_specs(universe, player_id):
             out.append(_la(kind_map[kind_val], legal=legal, reason=reason, cost=0, params=params))
 
+    if K.ship_tw_on():
+        from .ship_transwarp import legal_spec
+        ok, why, params, cost = legal_spec(universe, player_id)
+        out.append(_la(ActionKind.SHIP_TRANSWARP, legal=ok, reason=why, cost=cost, params=params))
 
     return out
 

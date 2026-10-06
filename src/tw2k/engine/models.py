@@ -206,6 +206,8 @@ class EventKind(str, Enum):
     REWARD_POSTED = "reward_posted"
     REWARD_CLAIMED = "reward_claimed"
     COMMISSION_GRANTED = "commission_granted"
+    SHIP_TRANSWARP = "ship_transwarp"
+    SHIP_TRANSWARP_FUSE = "ship_transwarp_fuse"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -454,6 +456,8 @@ class Ship(BaseModel):
     marker_beacons: int = 0
     psychic_probe: int = 0
     atomic_detonators: int = 0
+    # SHIP_TRANSWARP.md tw4. Excluded from dumps so a legacy universe stays byte-identical.
+    transwarp_drive: str | None = Field(default=None, exclude=True)
     # Weighted-average unit cost paid for the current holdings of each
     # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
     # when planning a sell — without this they have to reconstruct cost
@@ -502,6 +506,8 @@ class Player(BaseModel):
     # Sector of the open port visit. Cleared when the player leaves.
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None
+    # SHIP_TRANSWARP.md tw12. Set on a ship TransWarp landing; cleared by warp or liftoff.
+    arrived_by_transwarp: bool = Field(default=False, exclude=True)
     # Last sector of a successful rob/steal (fake bust if repeated). ROB_STEAL.md r13.
     last_crime_sector_id: int | None = None
     # fedspace-police-v1
