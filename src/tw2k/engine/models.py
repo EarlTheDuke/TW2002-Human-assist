@@ -813,14 +813,18 @@ class LimpetTrack(BaseModel):
 
 class ParkedShip(BaseModel):
     """SHIP_FLEET.md fl1: an owned, unmanned ship. The Ship object is never shared with player.ship."""
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"captured_from": None, "captured_day": None})
+
     id: int
     owner_id: str
     sector_id: int
     ship: Ship
     parked_day: int
-    # SHIP_CAPTURE.md cp26. Excluded so a legacy universe dump stays byte-identical.
-    captured_from: str | None = Field(default=None, exclude=True)
-    captured_day: int | None = Field(default=None, exclude=True)
+    # SHIP_CAPTURE.md cp26. Saved once set (resume keeps them); omitted while None so legacy dumps stay byte-identical.
+    captured_from: str | None = None
+    captured_day: int | None = None
 
 
 # ---------------------------------------------------------------------------

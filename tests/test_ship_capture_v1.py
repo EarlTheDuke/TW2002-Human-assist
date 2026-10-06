@@ -634,3 +634,241 @@ def test_capture_legacy_is_unchanged():
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
                          timeout=180, check=True)
     assert out.stdout.strip().splitlines()[-1] == CAPTURE_LEGACY_GOLDEN
+
+
+# ---- QC (slice 52 review): extra rows the first pass did not pin --------------------------------------
+
+
+def _space(u):
+    """A non-FedSpace sector with a non-FedSpace neighbour."""
+    for s in sorted(u.sectors):
+        if int(s) in K.FEDSPACE_SECTORS:
+            continue
+        nxt = [int(w) for w in sorted(u.sectors[s].warps) if int(w) not in K.FEDSPACE_SECTORS]
+        if nxt:
+            return int(s), nxt[0]
+    raise AssertionError("no space pair")
+
+
+def _towed_and_captured(u):
+    """A tows its own unmanned freighter; B captures it with one fighter (MBBSadd #6)."""
+    here, nxt = _space(u)
+    a = _sit(u, "A", here, fighters=10)
+    _sit(u, "B", here, fighters=20)
+    sid = _park(u, "A", here, fighters=0)
+    assert apply_action(u, "A", Action(kind=ActionKind.TOW_ENGAGE, args={"target": f"ship:{sid}"})).ok
+    assert _attack(u, "B", f"ship:{sid}", 1).ok
+    assert u.parked_ships[sid].owner_id == "B"
+    return a, sid, here, nxt
+
+
+def test_qc_exact_minimum_with_real_defense_captures_manned():
+    """cp2: shields + fighters, exact minimum (not just the 0-defense case) captures; losses = minimum."""
+    u = _world()
+    sec = _sector(u)
+    a = _sit(u, "A", sec, fighters=80)
+    b = _sit(u, "B", sec, fighters=4, shields=2)
+    need = _need_player(a, b)
+    assert need >= 2
+    assert _attack(u, "A", "B", need).ok
+    assert _captured(u) and b.ship.ship_class == ShipClass.ESCAPE_POD
+    assert a.ship.fighters == 80 - need
+
+
+def test_qc_capture_pod_path_matches_a_destroy(monkeypatch):
+    """cp8c: the victim's pod (destination by_other, pods, exp) is exactly the destroy path's."""
+    def _run():
+        u = _world()
+        sec = _sector(u)
+        _sit(u, "A", sec, fighters=40)
+        b = _sit(u, "B", sec, fighters=0, exp=1000, align=300)
+        assert _attack(u, "A", "B", 1).ok
+        return b.sector_id, b.pods_today, b.experience, b.alignment, b.deaths, b.ship.ship_class
+
+    monkeypatch.setattr(K, "CAPTURE_MODE", "legacy")
+    destroyed = _run()
+    monkeypatch.setattr(K, "CAPTURE_MODE", "tw2002")
+    assert _run() == destroyed
+
+
+def test_qc_victim_pod_does_not_carry_the_captured_fleet_id():
+    """cp25: the victim's new ship is not the captured hull, not even by fleet id."""
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec, fighters=40)
+    b = _sit(u, "B", sec, fighters=0)
+    b.ship.fleet_id = _new_ship_id(u)
+    assert _attack(u, "A", "B", 1).ok
+    rec = next(iter(u.parked_ships.values()))
+    assert b.ship.fleet_id != rec.id
+    assert build_observation(u, "B").fleet.get("manned_ship_id") != rec.id
+
+
+def test_qc_unoccupied_never_takes_a_manned_scout(monkeypatch):
+    monkeypatch.setattr(K, "CAPTURE_PODLESS", "unoccupied")
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec, fighters=40)
+    _sit(u, "B", sec, ShipClass.SCOUT_MARAUDER, fighters=0)
+    assert _attack(u, "A", "B", 1).ok
+    assert not u.parked_ships and not _captured(u)
+
+
+def test_qc_unmanned_capture_respects_the_fleet_cap():
+    """cp6 on the unmanned path: a sixth ship is destroyed (corbomite fires), not captured."""
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec, fighters=40)
+    for _ in range(4):
+        _park(u, "A", sec)
+    _sit(u, "B", 40)
+    sid = _park(u, "B", sec, fighters=0)
+    u.parked_ships[sid].ship.corbomite = 1
+    assert _attack(u, "A", f"ship:{sid}", 1).ok
+    assert sid not in u.parked_ships and not _captured(u)
+    assert any(e.kind == EventKind.CORBOMITE_BLAST for e in u.events)
+
+
+def test_qc_capture_needs_fleet_and_combat_tw2002(monkeypatch):
+    """Gate: FLEET_MODE legacy (no registry) destroys every beaten ship, no capture events."""
+    monkeypatch.setattr(K, "FLEET_MODE", "legacy")
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec, fighters=40)
+    b = _sit(u, "B", sec, fighters=0)
+    assert _attack(u, "A", "B", 1).ok
+    assert not u.parked_ships and not _captured(u) and b.ship.ship_class == ShipClass.ESCAPE_POD
+    assert next(e for e in u.events if e.kind == EventKind.COMBAT).payload["outcome"] == "destroyed"
+
+
+def test_qc_fail_pct_zero_builds_no_capture_rng(monkeypatch):
+    """cp3 / cp24: at CAPTURE_FAIL_PCT 0 no capture generator is even constructed."""
+    calls = []
+    real = random.Random
+
+    class _Wrap(real):
+        def __init__(self, seed=None):
+            calls.append(seed)
+            super().__init__(seed)
+
+    monkeypatch.setattr("tw2k.engine.capture.random.Random", _Wrap)
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec, fighters=40)
+    _sit(u, "B", sec, fighters=0)
+    assert _attack(u, "A", "B", 1).ok and _captured(u)
+    assert not any(isinstance(c, str) and c.startswith("tw2k-capture:") for c in calls)
+
+
+def test_qc_former_owner_elsewhere_sees_ship_captured_without_contents():
+    """cp13 / cp26: the former owner of an unmanned hull is told even when he is not in the sector."""
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec, fighters=40)
+    _sit(u, "B", 40)
+    _sit(u, "C", sec, fighters=0)
+    sid = _park(u, "B", sec, fighters=0)
+    u.parked_ships[sid].ship.cargo[Commodity.EQUIPMENT] = 5
+    assert _attack(u, "A", f"ship:{sid}", 1).ok
+    facts = [e for e in build_observation(u, "B").recent_events if e.get("kind") == "ship_captured"]
+    assert facts and "equipment" not in str(facts) and "cargo" not in str(facts)
+    assert not any(s.get("id") == sid for s in (build_observation(u, "B").fleet or {}).get("ships", []))
+    assert not any(s.get("id") == sid for s in (build_observation(u, "C").fleet or {}).get("ships", []))
+
+
+def test_qc_towed_capture_tower_is_told_and_keeps_dragging():
+    """cp18: the tower sees TOW_TARGET_CAPTURED and his next warp drags the captor's ship (lock kept)."""
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    a, sid, here, nxt = _towed_and_captured(u)
+    told = [e for e in build_observation(u, "A").recent_events if e.get("kind") == "tow_target_captured"]
+    assert told
+    assert apply_action(u, "A", Action(kind=ActionKind.WARP, args={"target": nxt})).ok
+    rec = u.parked_ships[sid]
+    assert a.sector_id == nxt and rec.sector_id == nxt and rec.owner_id == "B"
+    assert lock_of(a.ship) is not None and int(lock_of(a.ship).ship_id) == sid
+    assert not any(e.kind == EventKind.TOW_RELEASED for e in u.events)
+    tick_day(u)  # overnight sweep: tower and towee share a sector, the owner change does not break it
+    assert lock_of(a.ship) is not None
+
+
+def test_qc_captor_sells_the_towed_ship_at_stardock():
+    """cp18: the tower drags it into sector 1; the captor sells it out from under him -> towee_gone."""
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    a, sid, here, nxt = _towed_and_captured(u)
+    gate = next(int(s) for s in sorted(u.sectors) if int(s) != 1 and 1 in u.sectors[s].warps)
+    _sit(u, "A", gate, fighters=10)
+    u.parked_ships[sid].sector_id = gate
+    assert lock_of(a.ship) is not None
+    assert apply_action(u, "A", Action(kind=ActionKind.WARP, args={"target": 1})).ok
+    assert u.parked_ships[sid].sector_id == 1 and lock_of(a.ship) is not None
+    b = _sit(u, "B", 1, fighters=0)
+    before = b.credits
+    sold = apply_action(u, "B", Action(kind=ActionKind.SELL_SHIP, args={"ship_id": sid}))
+    assert sold.ok and sid not in u.parked_ships
+    assert b.credits == before + int(K.trade_in_credit("merchant_freighter"))
+    assert lock_of(a.ship) is None
+    assert any(e.kind == EventKind.TOW_RELEASED and e.payload.get("reason") == "towee_gone" for e in u.events)
+
+
+def test_qc_captor_boards_the_towed_ship_and_the_tow_breaks():
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    a, sid, here, nxt = _towed_and_captured(u)
+    assert apply_action(u, "B", Action(kind=ActionKind.SHIP_TRANSPORT, args={"ship_id": sid})).ok
+    assert u.players["B"].ship.fleet_id == sid
+    assert lock_of(a.ship) is None
+    assert any(e.kind == EventKind.TOW_RELEASED for e in u.events)
+
+
+def test_qc_tower_recaptures_its_towee_and_re_engages():
+    """cp21: the attack releases the tow (TOW_ON_ATTACK release), the hull comes back, tow_engage works again.
+    The tower is not told that he captured the ship he was towing."""
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    a, sid, here, nxt = _towed_and_captured(u)
+    n_told = sum(1 for e in u.events if e.kind == EventKind.TOW_TARGET_CAPTURED)
+    assert _attack(u, "A", f"ship:{sid}", 1).ok
+    assert u.parked_ships[sid].owner_id == "A"
+    assert lock_of(a.ship) is None
+    assert any(e.kind == EventKind.TOW_RELEASED and e.payload.get("reason") == "attack" for e in u.events)
+    assert sum(1 for e in u.events if e.kind == EventKind.TOW_TARGET_CAPTURED) == n_told
+    assert apply_action(u, "A", Action(kind=ActionKind.TOW_ENGAGE, args={"target": f"ship:{sid}"})).ok
+
+
+def test_qc_captured_parked_tower_drops_its_dormant_lock():
+    """cp17 / plant 14 on the unmanned path: a parked tower hull holding a dormant tt12 lock is captured.
+    The captor's new hull must not keep towing the former owner's ship (not even after boarding it)."""
+    from tw2k.engine.tow import lock_of
+    u = _world()
+    here, nxt = _space(u)
+    a = _sit(u, "A", here, fighters=0)
+    sid = _park(u, "A", here, fighters=0)
+    spare = _park(u, "A", here, ShipClass.SCOUT_MARAUDER, fighters=0)
+    assert apply_action(u, "A", Action(kind=ActionKind.TOW_ENGAGE, args={"target": f"ship:{sid}"})).ok
+    tower_ship = a.ship
+    assert apply_action(u, "A", Action(kind=ActionKind.SHIP_TRANSPORT, args={"ship_id": spare})).ok
+    assert lock_of(tower_ship) is not None  # TOW_LOCK_ON_XPORT keep_hull: dormant
+    tower_id = next(r.id for r in u.parked_ships.values() if r.ship is tower_ship)
+    _sit(u, "B", here, fighters=40)
+    assert _attack(u, "B", f"ship:{tower_id}", 1).ok
+    assert u.parked_ships[tower_id].owner_id == "B"
+    assert lock_of(tower_ship) is None
+    assert apply_action(u, "B", Action(kind=ActionKind.SHIP_TRANSPORT, args={"ship_id": tower_id})).ok
+    assert lock_of(u.players["B"].ship) is None
+
+
+def test_qc_captured_from_survives_save_and_resume():
+    """cp26: captured_from / captured_day are kept until sold or lost, so a save/resume keeps them."""
+    from tw2k.engine.models import Universe
+    u = _world()
+    sec = _sector(u)
+    _sit(u, "A", sec, fighters=40)
+    _sit(u, "B", sec, fighters=0)
+    assert _attack(u, "A", "B", 1).ok
+    rec = next(iter(u.parked_ships.values()))
+    back = Universe.model_validate_json(u.model_dump_json())
+    again = back.parked_ships[rec.id]
+    assert (again.captured_from, again.captured_day) == ("B", u.day)
+    assert '"captured_from"' not in ParkedShip(id=1, owner_id="A", sector_id=2, ship=Ship(), parked_day=1).model_dump_json()
