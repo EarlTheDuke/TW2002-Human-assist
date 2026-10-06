@@ -1201,7 +1201,8 @@ class SeatBrain:
                           status={}, deadline_at=None, server_skew=0.0)
         a = legal_heuristic_policy(ctx)
         if a.get("kind") == "trade" and not self._empty_shelf_buy(v, a):
-            return self._act("trade", a.get("args") or {}, f"earn: {a.get('thought', '')}"), Intent("trade")
+            return self._act("trade", self._haggle_live(v, a.get("args") or {}),
+                             f"earn: {a.get('thought', '')}"), Intent("trade")
         # Otherwise head for the best remembered route (sell what we carry, or fetch a cheap load).
         target, why = self._best_route(v)
         if target is not None:
@@ -1294,7 +1295,7 @@ class SeatBrain:
         a = legal_heuristic_policy(ctx)
         args = a.get("args") or {}
         if a.get("kind") == "trade" and args.get("side") == "sell":
-            return self._act("trade", args, f"earn: {a.get('thought', '')}"), Intent("trade")
+            return self._act("trade", self._haggle_live(v, args), f"earn: {a.get('thought', '')}"), Intent("trade")
         return None
 
     def _tpw(self, v: View) -> int:
@@ -2967,6 +2968,37 @@ class SeatBrain:
         out["unit_price"] = int(offer)
         return out
 
+    def _haggle_live(self, v: View, args: dict[str, Any]) -> dict[str, Any]:
+        """QC: the probe reading now steers real sells (spec p10; it was bought, never used).
+
+        Base is this port's listed bid, not the last port's price. The ask is
+        capped at 109% of it: every port's hidden counter room is at least 110%
+        of the listed bid (PORT_HAGGLE_MIN_PCT), so this haggle never makes a
+        port lose patience. A reading near the best (>= 95%) asks nothing extra.
+        """
+        if not self._hardware_on() or str(args.get("side") or "") != "sell" or args.get("unit_price") is not None:
+            return args
+        mem = self.mem
+        if mem is None or mem.psychic_pct is None or int(getattr(self, "_psychic_aboard", 0) or 0) <= 0:
+            return args
+        port = (v.sector or {}).get("port") or {}
+        st = ((port.get("stock") or {}) if isinstance(port, dict) else {}).get(str(args.get("commodity") or "")) or {}
+        if st.get("side") != "buys_from_player":
+            return args
+        try:
+            listed = int(st.get("price") or 0)
+            pct = float(mem.psychic_pct)
+        except (TypeError, ValueError):
+            return args
+        if listed < 50 or pct >= 95 or pct <= 0:
+            return args
+        offer = min(int(listed * 100 / pct), listed * 109 // 100)
+        if offer <= listed:
+            return args
+        out = dict(args)
+        out["unit_price"] = int(offer)
+        return out
+
     def _haggle_unit(self, args: dict[str, Any], listed: int) -> dict[str, Any]:
         """Test seam: remember `listed` as the last psychic unit, then haggle."""
         if self.mem is not None and self.mem.psychic_unit is None:
@@ -3157,6 +3189,8 @@ class SeatBrain:
             return None
         if not v.ok("deploy_mines") or "armid" not in {str(c) for c in v.choices("deploy_mines", "kind")}:
             return None
+        if self._home_is_corridor(v):
+            return None
         room = v.max_by("deploy_mines", "qty", "armid")
         qty = min(room, 5)
         if qty <= 0:
@@ -3165,6 +3199,36 @@ class SeatBrain:
             self.mem.armids_stocked = True
         return self._act("deploy_mines", {"kind": "armid", "qty": int(qty)},
                          "lay armids on the home sector, not a swept lane")
+
+    def _home_is_corridor(self, v: View) -> bool:
+        """Armids hit every ship but the owner's. Keep them out of a sector other seats use.
+
+        QC (seed 250925): N1-P5 mined its home 14, the only gate to N2-P3's dead-end
+        home 428, and the armids killed P3's colonist ferry three times.
+        """
+        me = v.self_id
+        here = int(v.here or 0)
+        sector = v.sector or {}
+        for pl in sector.get("planets") or []:
+            owner = pl.get("owner_id") if isinstance(pl, dict) else None
+            if owner is not None and owner != me:
+                return True  # a rival's planet: its owner ferries through here
+        if any(o != me for o in sector.get("occupants") or []):
+            return True  # rival traffic in the sector right now
+        for adj in v.obs.get("adjacent") or []:
+            if not isinstance(adj, dict):
+                continue
+            try:
+                aid = int(adj.get("id"))
+            except (TypeError, ValueError):
+                continue
+            # A dead end behind this sector: whoever lives there must pass through.
+            if tuple(v.known_warps.get(aid) or ()) == (here,) or adj.get("warps") == 1:
+                return True
+            seen = (adj.get("seen") or {}).get("planets") or []
+            if any(isinstance(pl, dict) and pl.get("owner_id") not in (None, me) for pl in seen):
+                return True
+        return False
 
     def _maybe_remove_limpet(self, v: View) -> dict[str, Any] | None:
         if not self._hardware_on() or not v.ok("remove_limpet"):
@@ -3430,7 +3494,71 @@ class SeatBrain:
         # send the action unless a single warp is legal.
         if target is None or target == v.here or not v.ok("plot_course") or not v.ok("warp"):
             return None
+        step = self._fed_overnight_stop(v, int(target))
+        if step is not None:
+            if step == v.here:
+                return None
+            # One warp at a time along the known route: the autopilot takes its own shortest
+            # path, which may cut through sector 1 even when the known route does not.
+            return self._act("warp", {"target": int(step)},
+                             f"{why} (warp {step} toward {target}, not autopilot: today's turns end near "
+                             f"FedSpace with {self._ship_fighters(v)} fighters)")
         return self._act("plot_course", {"target": int(target), "execute": True}, f"{why} (plot {target})")
+
+    def _fed_overnight_stop(self, v: View, target: int) -> int | None:
+        """QC (seed 20260925 N3-P1 day 6): a plot through StarDock ran out of turns in sector 1
+        with 200 fighters and the Feds towed it at Extern.
+
+        Armed past the tow limit, with a route today's turns cannot finish and FedSpace within
+        reach: step one known warp at a time (re-checked every hop) instead of the autopilot.
+        Returns the next warp, `v.here` for "do not move toward it", or None for "plot as asked".
+        """
+        import tw2k.engine.constants as _K
+        if not _K.fed_tw2002() or v.here is None:
+            return None
+        if int(self._ship_fighters(v)) <= int(_K.FED_TOW_FIGHTER_LIMIT):
+            return None
+        path = self._known_path(v, int(v.here), int(target))
+        if not path:
+            return None
+        left = int(v.obs.get("turns_remaining") or 0) if isinstance(v.obs, dict) else 0
+        cost = max(1, int((v.legal.get("warp") or {}).get("turn_cost") or 1))
+        hops = left // cost
+        if hops >= len(path) or hops <= 0:
+            return None  # reaches the target today, or cannot move at all
+        near_fed = path[hops - 1] in FEDSPACE_IDS or any(
+            (d := known_distance(v.known_warps, int(v.here), fid, cap=hops)) is not None and d <= hops
+            for fid in FEDSPACE_IDS)
+        if not near_fed:
+            return None
+        if path[0] in FEDSPACE_IDS and hops <= 1:
+            return int(v.here)  # the only warp today would end in FedSpace: no plot
+        legal = {int(c) for c in v.choices("warp", "target")} if v.ok("warp") else set()
+        if path[0] not in legal:
+            return None
+        if path[0] in FEDSPACE_IDS and all(sid in FEDSPACE_IDS for sid in path[:hops]):
+            return int(v.here)
+        return int(path[0])
+
+    @staticmethod
+    def _known_path(v: View, src: int, dst: int) -> list[int]:
+        """Shortest known route src->dst (excluding src) over the seat's warp memory."""
+        prev: dict[int, int] = {src: src}
+        frontier = [src]
+        while frontier and dst not in prev:
+            nxt: list[int] = []
+            for s in frontier:
+                for n in v.known_warps.get(s, ()):
+                    if n not in prev:
+                        prev[n] = s
+                        nxt.append(n)
+            frontier = nxt
+        if dst not in prev:
+            return []
+        out = [dst]
+        while out[-1] != src:
+            out.append(prev[out[-1]])
+        return list(reversed(out[:-1]))
 
     def _warp_away_from_stardock(self, v: View) -> int | None:
         choices = [int(c) for c in v.choices("warp", "target")] if v.ok("warp") else []
