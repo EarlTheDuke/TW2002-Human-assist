@@ -874,3 +874,73 @@ def test_qc_scenario_lab_e_passes():
     out = lab.main()
     assert out["extern_loss"] == {"A": 300, "B": 300, "C": 300}
     assert out["breakin"][1] != out["breakin"][0]
+
+
+# ---- rows the doc named tests for that did not exist (cr1, cr22, cr25, cr28, cr31) ------------
+
+def test_qc_cr1_corp_verbs_work_landed():
+    u = _u()
+    planet = next(pl for pl in u.planets.values() if pl.sector_id not in K.FEDSPACE_SECTORS)
+    _move(u, "P1", planet.sector_id)
+    u.players["P1"].planet_landed = planet.id
+    assert _legal(u, "P1", "corp_create").legal
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    assert _act(u, "P1", "corp_set_password", password="Zx9").ok
+    assert _act(u, "P1", "corp_memo", message="landed").ok
+
+
+def test_qc_cr22_members_see_member_assets_and_a_cloak_hides_the_sector():
+    u = _u()
+    _corp(u, members=("P2",))
+    p2 = u.players["P2"]
+    p2.ship.fighters, p2.ship.shields, p2.credits = 33, 44, 5_555
+    p2.ship.mines[MineType.ARMID] = 2
+    block = build_observation(u, "P1").model_dump(mode="json")["corp"]
+    row = next(r for r in block["members"] if r["id"] == "P2")
+    assert (row["fighters"], row["shields"], row["credits"], row["armid_mines"]) == (33, 44, 5_555, 2)
+    assert row["sector_id"] == p2.sector_id and row["on_planet"] is False
+    if K.hardware_tw2002():
+        p2.ship.cloaked = True
+        block = build_observation(u, "P1").model_dump(mode="json")["corp"]
+        assert "sector_id" not in next(r for r in block["members"] if r["id"] == "P2")
+
+
+def test_qc_cr25_member_memo_and_ceo_alt(monkeypatch):
+    u = _u()
+    _corp(u, members=("P2",))
+    assert _legal(u, "P2", "corp_memo").legal
+    assert _act(u, "P2", "corp_memo", message="hi").ok
+    monkeypatch.setattr(K, "CORP_MEMO_SENDERS", "ceo")
+    assert not _legal(u, "P2", "corp_memo").legal
+    assert not _act(u, "P2", "corp_memo", message="hi").ok
+    assert _act(u, "P1", "corp_memo", message="hi").ok
+
+
+def test_qc_cr28_rogue_event_is_public_without_owner_and_dissolve_reaches_members():
+    u = _u()
+    _corp(u, members=("P2",))
+    sid = _far_sector(u)
+    u.sectors[sid].fighters = FighterDeployment(owner_id="P2", count=30, mode=FighterMode.DEFENSIVE,
+                                                corp_ticker="XYZ")
+    assert _act(u, "P1", "corp_leave").ok
+    rogue = [e for e in u.events if e.kind.value == "corp_rogue"]
+    assert rogue and {k for k in rogue[-1].payload if not k.startswith("_")} == {"sector_id", "count", "kind"}
+    assert rogue[-1].actor_id is None  # a public row with the C.E.O. as actor reads as a sighting of him there
+    assert not any(u.players[pid].name in rogue[-1].summary for pid in u.players)
+    assert "corp_rogue" in _seen_kinds(u, "P4")
+    assert "corp_dissolved" in _seen_kinds(u, "P2")
+    assert "corp_dissolved" not in _seen_kinds(u, "P4")
+
+
+def test_qc_cr31_net_worth_ignores_corporate_and_rogue_groups():
+    from tw2k.engine.victory import full_net_worth
+    u = _u()
+    _corp(u, members=("P2",))
+    before = {pid: full_net_worth(u, p) for pid, p in u.players.items()}
+    _move(u, "P1", _far_sector(u))
+    u.players["P1"].ship.fighters = 20
+    assert _act(u, "P1", "deploy_fighters", qty=20, mode="defensive", ownership="corporate").ok
+    u.players["P1"].ship.fighters = 20  # the hull price is the same either way; compare the groups alone
+    assert {pid: full_net_worth(u, p) for pid, p in u.players.items()} == before
+    assert _act(u, "P1", "corp_leave").ok
+    assert {pid: full_net_worth(u, p) for pid, p in u.players.items()} == before
