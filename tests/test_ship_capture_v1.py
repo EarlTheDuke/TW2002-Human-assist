@@ -7,7 +7,6 @@ Tow rows cp17, cp18, cp20, cp21 stay dormant until slice 51 (test_tow_hooks_dorm
 from __future__ import annotations
 
 import math
-import os
 import random
 import subprocess
 import sys
@@ -15,6 +14,7 @@ from fractions import Fraction
 from pathlib import Path
 
 import tw2k.engine.constants as K
+from tests._pin_env import pin_env
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.agents.seat_brain import SeatBrain
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
@@ -630,7 +630,7 @@ def test_capture_legacy_is_unchanged():
         "import sys; sys.path[:0] = ['src', 'tests'];"
         "from capture_legacy_pin import legacy_capture_digest; print(legacy_capture_digest())"
     )
-    env = dict(os.environ, PYTHONHASHSEED="0", PYTHONPATH=str(ROOT / "src"))
+    env = pin_env(PYTHONPATH=str(ROOT / "src"))
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
                          timeout=180, check=True)
     assert out.stdout.strip().splitlines()[-1] == CAPTURE_LEGACY_GOLDEN

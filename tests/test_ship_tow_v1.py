@@ -6,7 +6,6 @@ docs/playtests/ships/SHIP_TOW.md rows tt1..tt32. Every rule runs through the rea
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +13,7 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tests._pin_env import pin_env
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.fleet import _new_ship_id
@@ -909,7 +909,7 @@ def test_tow_legacy_is_unchanged():
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
         f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={TOW_PIN_FLIPS!r}))"
     )
-    env = dict(os.environ, PYTHONHASHSEED="0")
+    env = pin_env()
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
                          timeout=900, check=True)
     assert out.stdout.strip().splitlines()[-1] == TOW_LEGACY_GOLDEN

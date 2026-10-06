@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 
 import tw2k.engine.constants as K
+from tests._pin_env import pin_env
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.models import Commodity, Planet, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.runner import apply_action, planet_tax_value, tick_day
@@ -427,7 +428,6 @@ V2_LEGACY_GOLDEN = "77c7d444a0965a2c40cffcca"  # was 5e29f9528d7e5000218b575a (f
 
 
 def test_fullgame_fixes_v2_switches_off_equal_the_base():
-    import os
     import subprocess
     import sys
     from pathlib import Path
@@ -438,7 +438,7 @@ def test_fullgame_fixes_v2_switches_off_equal_the_base():
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
         f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={flips!r}))"
     )
-    env = dict(os.environ, PYTHONHASHSEED="0")
+    env = pin_env()
     out = subprocess.run([sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True,
                          timeout=900, check=True)
     assert out.stdout.strip().splitlines()[-1] == V2_LEGACY_GOLDEN

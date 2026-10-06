@@ -7,6 +7,7 @@ Runs on the pre-slice commit (no FED_MODE) and on later commits (FED_MODE forced
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 NEW_UNIVERSE_KEYS = ("federals", "posted_rewards", "pending_rewards",
@@ -17,7 +18,24 @@ NEW_FERRENGI_KEYS = ("hull", "credits", "cargo")  # ferrengi-aliens-v1 FerrengiS
 
 def legacy_run_digest(root: Path, seats: str = "N3,H", days: int = 2, seed: int = 250925,
                       flip: tuple[str, ...] | None = None) -> str:
-    """flip=None: every tw2002 *_MODE to legacy. flip=(names,): only those (ship-transwarp-v1 pin)."""
+    """flip=None: every tw2002 *_MODE to legacy. flip=(names,): only those (ship-transwarp-v1 pin).
+
+    Hermetic (QC slice 55): TW2K_* variables are hidden for the run and the *_MODE switches are put
+    back afterwards, so neither the caller's shell nor an earlier in-process call can move a digest.
+    """
+    import tw2k.engine.constants as K
+
+    saved_env = {k: os.environ.pop(k) for k in list(os.environ) if k.upper().startswith("TW2K_")}
+    saved_modes = {name: getattr(K, name) for name in dir(K) if name.endswith("_MODE")}
+    try:
+        return _legacy_run_digest(root, seats, days, seed, flip)
+    finally:
+        for name, value in saved_modes.items():
+            setattr(K, name, value)
+        os.environ.update(saved_env)
+
+
+def _legacy_run_digest(root: Path, seats: str, days: int, seed: int, flip: tuple[str, ...] | None) -> str:
     import tw2k.engine as E
     import tw2k.engine.constants as K
     from tw2k.agents import prompts as P
