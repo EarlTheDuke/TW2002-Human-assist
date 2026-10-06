@@ -1,6 +1,6 @@
-"""Feed index (docs/playtests/fullgame/SOAK_30DAY_V1.md): the observation's rival last-seen and
-orphaned-planet lookups, and apply_action's new-event seqs, no longer rescan the whole event feed,
-and give the same answers as the full scans they replace."""
+"""Feed index (docs/playtests/fullgame/SOAK_30DAY_V1.md): the observation's rival last-seen,
+orphaned-planet and death-history lookups, and apply_action's new-event seqs, no longer rescan the
+whole event feed, and give the same answers as the full scans they replace."""
 
 from __future__ import annotations
 
@@ -15,7 +15,8 @@ PIDS = ["P1", "P2", "P3", "P4"]
 KINDS = [EventKind.WARP, EventKind.TRADE, EventKind.HAIL, EventKind.AUTOPILOT, EventKind.CLOAK_ON,
          EventKind.RETREAT, EventKind.NAVHAZ_HIT, EventKind.CORP_CREATE, EventKind.CORP_DEPOSIT,
          EventKind.ALLIANCE_PROPOSED, EventKind.ALLIANCE_FORMED, EventKind.LAND_PLANET,
-         EventKind.PLANET_TRADE, EventKind.PLANET_ORPHANED, EventKind.LLM_USAGE, EventKind.BROADCAST]
+         EventKind.PLANET_TRADE, EventKind.PLANET_ORPHANED, EventKind.LLM_USAGE, EventKind.BROADCAST,
+         EventKind.SHIP_DESTROYED]
 
 
 def _world(seed: int):
@@ -82,6 +83,14 @@ def _old_orphans(u):
     return out
 
 
+def _old_deaths(u, pid):
+    return [ev for ev in u.events if ev.kind is EventKind.SHIP_DESTROYED and ev.payload.get("victim") == pid]
+
+
+def _all_deaths_match(u):
+    return all(obs._deaths_of(u, pid) == _old_deaths(u, pid) for pid in [*PIDS, None, "ghost"])
+
+
 def test_index_matches_the_full_scans_while_the_feed_and_the_state_change(monkeypatch):
     for seed in (1, 2, 3, 4, 5, 6):
         rng = random.Random(seed)
@@ -94,6 +103,7 @@ def test_index_matches_the_full_scans_while_the_feed_and_the_state_change(monkey
             for pid in PIDS:
                 assert obs._rival_last_seen(u, pid) == _old_last_seen(u, pid)
             assert obs._orphan_former_owners(u) == _old_orphans(u)
+            assert _all_deaths_match(u)
 
 
 def test_a_replaced_or_truncated_feed_is_reindexed():
@@ -101,12 +111,15 @@ def test_a_replaced_or_truncated_feed_is_reindexed():
     u = _world(9)
     _emit_random(u, rng, 200)
     assert obs._rival_last_seen(u, "P1") == _old_last_seen(u, "P1")
+    assert _all_deaths_match(u)
     del u.events[150:]  # not an append: the index must notice
     assert obs._rival_last_seen(u, "P1") == _old_last_seen(u, "P1")
     assert obs._orphan_former_owners(u) == _old_orphans(u)
+    assert _all_deaths_match(u)
     u.events = list(u.events[:40])  # a new list object (resume / copy)
     assert obs._rival_last_seen(u, "P2") == _old_last_seen(u, "P2")
     assert obs._orphan_former_owners(u) == _old_orphans(u)
+    assert _all_deaths_match(u)
 
 
 def test_visibility_is_checked_once_per_new_event_not_per_observation(monkeypatch):
