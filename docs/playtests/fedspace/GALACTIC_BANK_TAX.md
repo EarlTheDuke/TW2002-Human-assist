@@ -69,3 +69,33 @@ Seed 424242 legacy: N3-P2 616,259, N3-P1 600,421, H-P6 504,625, N2-P3 469,904, N
 30-day seed 250925, same six seats, tw2002: day 30, rejected 0, exceptions 0, save/load identical. N3-P1 1,970,163 (bank 500,000, tax 618,246, recovered 965,210, 0 deaths, battleship). N2-P4 1,358,382 (bank 500,000, 8 deaths). N2-P3 1,271,641 (bank 500,000, 5 deaths). N1-P5 1,206,575 (bank 500,000, tax 21,999, 0 deaths). N3-P2 745,224 (bank 500,000, tax 60,467, 6 deaths). H-P6 7,975 (bank 0, tax 199,507, 6 deaths, scout). SeatBrain fills the account and still pays tax on whatever cash is left on the ship at midnight. The heuristic never deposits, so the tax and the lost cash took it back to a scout.
 
 The shipped bot does not deposit while StarDock still sells the next genesis torpedo, so a 10-day seat that is still building keeps its cash and the older net-worth bars stay put. The figures above were measured before that hold.
+
+## QC (slice 56, Grok Bot, 2026-10-06)
+
+Reviewed 57dec11 rule by rule (legal list against handler, hidden information). Fixes:
+
+- A refused bank verb now says which side is empty: "no credits on hand", "account full", "nothing in the account", "every account is full".
+- Deposit capacity is a parameter. The transfer max is the best recipient's room, so the legal max is never one the handler refuses.
+- StarDock balance-view alt in the observation.
+- Eliminated traders cannot bank and are not offered as transfer recipients.
+- pb21: DEATH_MODE legacy under BANK_MODE tw2002 keeps the x0.75 path and pays the killer nothing. No test caught this plant before QC, because the slice's legacy-death test inherited DEATH_CREDITS_ON_HAND "kept".
+- Bot policy: the genesis hold stays. QC first removed it, because the keep already covers the next planned purchase and the 10-day totals rose (seed 250925: 1.87M to 2.92M). Without the hold, though, an N2 seat banks its colonist money, and three tests fail: `test_seat_bot_s4::test_record_then_replay_with_fresh_brain`, `test_class0_terra_qc_v1::test_n2_solo_tw2002_keeps_colonising` and `test_seat_bot_n2::test_n2_day10_beats_n1_and_keeps_organics`. The hold is restored, and this is an open call for Ben.
+
+Planted bugs: spec variants 30/30 caught. Without the QC tests, the slice's tests missed pb4, pb20, pb21, pb23b and pb24. Of 23 QC plants, 19 are caught; the other 4 are equivalent mutants. Tests: `tests/test_galactic_bank_tax_qc5657.py`.
+
+Legacy: the pin 9b607d3dae940c0b1a69f6d7 is the same on Linux (box) and Windows (Ven suite). The 10-day 6-seat digest outside the suite is 221826d9bd9a6a6c85668224, unchanged.
+
+Scenario lab: PASS on the QC tree.
+
+10-day scripted N3,N3,N2,N2,N1,H, QC tree, BOT_CORP_POLICY off, rejected 0, exceptions 0:
+
+| Seed | Legacy total (f1496a3) | QC tree total | Seats |
+| --- | --- | --- | --- |
+| 250925 | 2,919,443 | 1,871,215 | N3-P1 783,190, N2-P4 555,175, N3-P2 196,480, N1-P5 168,592 (1 death), N2-P3 159,803 (1 death), H-P6 7,975 (3 deaths) |
+| 424242 | 2,899,689 | 1,626,702 | N3-P1 645,037 (bank 164,005), N2-P4 462,512 (bank 196,107), N2-P3 323,415 (bank 106,053), N3-P2 179,788, N1-P5 7,975 (2 deaths), H-P6 7,975 (3 deaths) |
+
+These equal the slice's own bank runs. The drop against legacy comes from cash lost at a tw2002 death, the tax on cash carried, and the hold, which keeps building seats from banking.
+
+30-day headless (seed 250925, six seats, engine at QC 23cccd9). With stress injections (p 0.02: random legal deposit, withdraw and transfer, plus a max+1 retry that must be refused): day 30, 0 invariant problems, 0 exceptions. 32 taxes took 766,208 in total. Credits and balances stayed at or above 0, and every balance stayed under the cap. Balances moved only on bank verbs, never at the tick. Each tax was greater than 0 and no more than the cash on hand. Save/load was identical 27 times; the other 2 differed only in the set order of `known_sectors`, which is pre-existing. The 5 bot rejects are a stress artefact: an injected deposit filled the room just before the bot's stale deposit.
+
+Open calls for Ben: the genesis hold; seats broke from day 1 (a 20,000 start is below the 30,000 float, and the cash goes at the first death); H never banks; a corbomite kill pays the corbomite owner, while an attacker killed by return fire pays nobody.
