@@ -924,6 +924,21 @@ class FerrengiShip(BaseModel):
     cargo: dict[str, int] = Field(default_factory=dict)
 
 
+class AlienTrader(BaseModel):
+    """A classic alien trader. Not a player (ALIEN_TRADERS.md al2)."""
+
+    id: str
+    name: str
+    ship_name: str
+    sector_id: int
+    ship: Ship
+    experience: int = 0
+    alignment: int = 0
+    credits: int = 0
+    alive: bool = True
+    born_day: int = 1
+
+
 # ---------------------------------------------------------------------------
 # Events
 # ---------------------------------------------------------------------------
@@ -1028,6 +1043,7 @@ class Universe(BaseModel):
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
         return _omit_defaults(handler(self), {
             "parked_ships": {}, "next_ship_id": 1, "port_cap": None,
+            "aliens": {}, "next_alien_id": 1,
         })
 
     config: GameConfig
@@ -1036,6 +1052,9 @@ class Universe(BaseModel):
     corporations: dict[str, Corporation] = Field(default_factory=dict)
     planets: dict[int, Planet] = Field(default_factory=dict)
     ferrengi: dict[str, FerrengiShip] = Field(default_factory=dict)
+    # alien-traders-v1. Omitted while empty/1 so a legacy universe stays byte-identical.
+    aliens: dict[str, AlienTrader] = Field(default_factory=dict)
+    next_alien_id: int = 1
     alliances: dict[str, Alliance] = Field(default_factory=dict)
     # Active limpet tracks; keyed by f"{owner}:{target}"
     limpets: dict[str, LimpetTrack] = Field(default_factory=dict)
