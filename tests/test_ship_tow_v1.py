@@ -891,7 +891,7 @@ def test_bot_tow_policy_off_and_legacy_no_op(monkeypatch):
 
 # Recorded with tests/fed_legacy_digest.py on the commit before this slice (slice 50 + its follow-up): scripted
 # match N3,N2,N1,H, seed 250925, 3 days, every switch at its default (= this slice with only TOW_MODE flipped).
-TOW_LEGACY_GOLDEN = "cd31a464aee62f982a038546"  # recorded on 5968646 (slice-50 follow-up on origin; TOW_MODE absent)
+TOW_LEGACY_GOLDEN = "5032bedfb3722133d47b18eb"  # recorded on 5968646 + slice-47 QC brain fixes (79acd71; TOW_MODE absent)
 
 
 def test_tow_legacy_is_unchanged():
