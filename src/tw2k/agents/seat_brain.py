@@ -2795,9 +2795,12 @@ class SeatBrain:
                         "thought": "withdraw the shortfall for the StarDock buy"}
         if need > 0 and int(v.credits) >= need:
             return None  # the ladder buys the hull before any deposit
-        # gb29 (QC 56): no blanket hold while genesis torpedoes are still for sale. The keep below
-        # already covers the next planned purchase (hull, genesis + L1, citadel reserve); the hold kept
-        # most seats from ever banking (10-day N3,N3,N2,N2,N1,H seed 250925: 1.87M -> 2.92M total).
+        # Spare cash waits while StarDock will still sell the next torpedo. QC 56 kept this hold: without it
+        # an N2 seat banks its colonist money and the empire loop never buys colonists (test_seat_bot_s4,
+        # test_class0_terra_qc_v1, test_seat_bot_n2). Ben's call in GALACTIC_BANK_TAX.md QC.
+        if (len(v.genesis_planets()) < self.target_planets and v.ok("buy_equip")
+                and "genesis" in set(str(c) for c in v.choices("buy_equip", "item"))):
+            return None
         if mem is not None and mem.bank_deposited:
             return None
         keep = self._bank_keep(v, need)
