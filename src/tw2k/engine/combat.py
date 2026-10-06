@@ -766,6 +766,8 @@ def _destroy_ship(
     player = universe.players[pid]
     if not player.alive:
         return
+    if killer_id == K.ROGUE_OWNER_ID:  # CORP_RULES.md cr13: a ship rogue fighters destroy has no killer
+        killer_id, by_other = None, False
     from .hardware import apply_corbomite, corbomite_armed, strip_v2
     corbomite = corbomite_armed(player, reason, killer_id)  # read before the hull is stripped
     if K.death_tw2002():

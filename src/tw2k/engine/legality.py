@@ -134,6 +134,31 @@ def planet_destroy_reason(universe: Universe, player, planet) -> str | None:
     return None
 
 
+def _ownership_param(player) -> dict:
+    """CORP_RULES.md cr17: Personal or Corporate, with the default the handler applies when omitted."""
+    choices = ["personal", "corporate"] if player.corp_ticker else ["personal"]
+    default = "corporate" if player.corp_ticker and K.CORP_DEPLOY_DEFAULT == "corporate" else "personal"
+    return {"type": "str", "required": False, "choices": choices, "default": default}
+
+
+def _ownership_label(dep) -> str:
+    if dep.owner_id == K.ROGUE_OWNER_ID:
+        return "rogue"
+    return "corporate" if getattr(dep, "corp_ticker", None) else "personal"
+
+
+def _recall_owns(universe: Universe, player, dep) -> bool:
+    """The runner's recall test: yours, or (CORP_MODE tw2002) your corp's corporate group; never rogue."""
+    if not K.corp_rules_on():
+        return dep.owner_id == player.id
+    if dep.owner_id == K.ROGUE_OWNER_ID:
+        return False
+    ticker = getattr(dep, "corp_ticker", None)
+    if ticker:
+        return player.corp_ticker == ticker
+    return dep.owner_id == player.id
+
+
 def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     player = universe.players[player_id]
     sector = universe.sectors[player.sector_id]
@@ -144,7 +169,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 if (K.hardware_tw2002() or k != ActionKind.LAUNCH_BEACON)
                 and (K.planet_trade_on() or k != ActionKind.PLANET_TRADE)
                 and (K.port_upgrade_on() or k not in (ActionKind.PORT_UPGRADE, ActionKind.PORT_BUILD))
-                and (K.bank_on() or k not in (ActionKind.BANK_DEPOSIT, ActionKind.BANK_WITHDRAW, ActionKind.BANK_TRANSFER))]
+                and (K.bank_on() or k not in (ActionKind.BANK_DEPOSIT, ActionKind.BANK_WITHDRAW, ActionKind.BANK_TRANSFER))
+                and (K.corp_rules_on() or k not in (ActionKind.CORP_SET_PASSWORD, ActionKind.CORP_DROP,
+                                                    ActionKind.CORP_TRANSFER))]
 
     landed = player.planet_landed is not None
     at_stardock = player.sector_id == K.STARDOCK_SECTOR
@@ -459,11 +486,19 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     df_cost = int(K.TURN_COST["deploy_fighters"])
     fighters = int(player.ship.fighters or 0)
     fighter_max = fighters
-    if K.sector_fighter_tw2002() and (sector.fighters is None or sector.fighters.owner_id == player_id):
+    corp_rules = K.corp_rules_on()
+    if corp_rules:  # CORP_RULES.md cr17/cr19 (QC 57): the handler's controller test, not owner_id
+        from .corp import _controls
+        controls_here = sector.fighters is not None and _controls(universe, player_id, sector.fighters)
+    else:
+        controls_here = sector.fighters is not None and sector.fighters.owner_id == player_id
+    if K.sector_fighter_tw2002() and (sector.fighters is None or controls_here):
         cap = K.SECTOR_FIGHTER_CAP_WITH_PLANET if sector.planet_ids else K.SECTOR_FIGHTER_CAP
         have = int(sector.fighters.count) if sector.fighters is not None else 0
         fighter_max = min(fighters, max(0, cap - have))
-    if fighters <= 0:
+    if corp_rules and controls_here and not in_fedspace:
+        reason = _need_turns(player, df_cost)  # cr19: qty 0 changes mode / ownership without adding
+    elif fighters <= 0:
         reason = "no fighters aboard"
     elif in_fedspace:
         reason = "cannot deploy fighters in FedSpace"
@@ -475,6 +510,12 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                  "mode": {"type": "str", "required": True, "choices": ["defensive", "offensive", "toll"]},
                  "existing_here": ({"owner_id": sector.fighters.owner_id, "count": sector.fighters.count}
                                    if sector.fighters else None)}
+    if corp_rules:
+        df_params["ownership"] = _ownership_param(player)
+        if controls_here:
+            df_params["qty"]["min"] = 0
+        if sector.fighters is not None:
+            df_params["existing_here"]["ownership"] = _ownership_label(sector.fighters)
     from .class0 import MSL_NOTE as _MSL_NOTE
     from .class0 import class0_tw2002 as _c0
     from .class0 import is_class0_sector as _is_c0
@@ -510,6 +551,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = _need_turns(player, dm_cost)
     dm_params = {"kind": {"type": "str", "required": True, "choices": mine_choices},
                  "qty": {"type": "int", "required": True, "min": 1, "max_by": mine_max}}
+    if K.corp_rules_on():
+        dm_params["ownership"] = _ownership_param(player)  # cr17 (QC 57)
     from .class0 import MSL_NOTE as _MSL_NOTE2
     from .class0 import class0_tw2002 as _c0b
     from .class0 import is_class0_sector as _is_c0b
@@ -1216,7 +1259,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         recall_reason = "legacy sector fighters have no recall"
     else:
         dep = sector.fighters
-        if dep is not None and dep.owner_id == player_id and int(dep.count) > 0:
+        if dep is not None and _recall_owns(universe, player, dep) and int(dep.count) > 0:
             room = K.equip_room(player.ship.ship_class.value, "fighters", int(player.ship.fighters or 0))
             if room is None:
                 room = int(dep.count)
@@ -1226,7 +1269,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         aboard = sum(int(v) for v in (player.ship.mines or {}).values())
         mine_room = K.equip_room(player.ship.ship_class.value, "armid_mines", aboard)
         for mine in sector.mines:
-            if mine.owner_id != player_id or int(mine.count) <= 0:
+            if not _recall_owns(universe, player, mine) or int(mine.count) <= 0:
+                continue
+            if mine.kind.value in mine_kinds:
                 continue
             if mine.kind.value == "atomic":
                 continue

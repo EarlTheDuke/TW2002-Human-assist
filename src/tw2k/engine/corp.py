@@ -10,6 +10,7 @@ from typing import Any
 from . import constants as K
 from .actions import Action, ActionKind, ActionResult
 from .models import (
+    Commodity,
     Corporation,
     EventKind,
     FighterDeployment,
@@ -99,8 +100,8 @@ def event_visible(event, player_id: str, universe: Universe) -> bool:
     kind = event.kind
     if kind == EventKind.CORP_ROGUE:
         return True
-    if kind in (EventKind.CORP_PASSWORD_SET, EventKind.CORP_BREAKIN_FAILED):
-        return event.actor_id == player_id
+    if kind in (EventKind.CORP_PASSWORD_SET, EventKind.CORP_BREAKIN_FAILED, EventKind.CORP_EXP_PENALTY):
+        return event.actor_id == player_id  # QC 57: the penalty row is the member's own (cr9 "private")
     if kind == EventKind.CORP_TRANSFER:
         target = event.payload.get("target")
         return event.actor_id == player_id or target == player_id
@@ -111,8 +112,8 @@ def event_visible(event, player_id: str, universe: Universe) -> bool:
     if kind in (EventKind.CORP_DROP, EventKind.CORP_OUSTED, EventKind.CORP_DISSOLVED):
         return player_id == event.actor_id or player_id in members or player_id == target
     if kind == EventKind.CORP_INVITE:
-        invited = set(corp.invited_ids) if corp is not None else set()
-        return player_id == event.actor_id or player_id in members or player_id == target or player_id in invited
+        # cr27: the named target only; holding a pass does not show the other passes (QC 57)
+        return player_id == event.actor_id or player_id in members or player_id == target
     if player_id == event.actor_id or player_id in members:
         return True
     return False
@@ -146,6 +147,8 @@ def handle_corp_create(universe: Universe, pid: str, action: Action) -> ActionRe
 
 
 def handle_corp_set_password(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if not K.corp_rules_on():
+        return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
     corp = _corp_of(universe, pid)
     if corp is None or corp.ceo_id != pid:
@@ -275,6 +278,8 @@ def _rogue(dep) -> None:
 
 def disband(universe: Universe, corp: Corporation) -> None:
     ceo = universe.players.get(corp.ceo_id)
+    if ceo is not None and not ceo.alive:
+        ceo = None  # QC 57: an eliminated C.E.O. (cr15) takes nothing; his sector goes rogue too
     ceo_sector = ceo.sector_id if ceo is not None else None
     for sector in universe.sectors.values():
         dep = sector.fighters
@@ -307,22 +312,25 @@ def disband(universe: Universe, corp: Corporation) -> None:
                 kept.append(md)
         sector.mines = kept
     if K.CORP_DISBAND_PLANETS == "v306":
+        # REV 372-374: planets in the C.E.O.'s sector become his, the rest are orphaned (QC 57: the
+        # orphan event names the real former owner instead of None).
         for planet in list(universe.planets.values()):
             if planet.corp_ticker != corp.ticker:
                 continue
             if ceo is not None and planet.sector_id == ceo.sector_id:
                 planet.owner_id = corp.ceo_id
                 planet.corp_ticker = None
-            else:
-                from .runner import _release_dissolved_corp_planets
-                # one planet: fall through the existing orphan path by clearing the rest together
-                pass
-        from .runner import _release_dissolved_corp_planets
-        # v306 already assigned CEO-sector planets. Release the rest as unclaimed.
-        for planet in list(universe.planets.values()):
-            if planet.corp_ticker == corp.ticker:
-                planet.owner_id = None
-        _release_dissolved_corp_planets(universe, corp.ticker)
+                continue
+            former = planet.owner_id
+            planet.owner_id = None
+            planet.corp_ticker = None
+            universe.emit(
+                EventKind.PLANET_ORPHANED, actor_id=former, sector_id=planet.sector_id,
+                payload={"planet_id": planet.id, "planet_name": planet.name, "former_owner": former,
+                         "citadel_level": planet.citadel_level, "fighters": planet.fighters},
+                summary=(f"Planet {planet.name} (L{planet.citadel_level} citadel, {planet.fighters} fighters) "
+                         f"is now UNCLAIMED after [{corp.ticker}] disbanded."),
+            )
     else:
         from .runner import _release_dissolved_corp_planets
         _release_dissolved_corp_planets(universe, corp.ticker)
@@ -354,6 +362,8 @@ def handle_corp_leave(universe: Universe, pid: str, action: Action) -> ActionRes
 
 
 def handle_corp_drop(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if not K.corp_rules_on():
+        return ActionResult(ok=False, error="unsupported action")
     corp = _corp_of(universe, pid)
     if corp is None or corp.ceo_id != pid:
         return ActionResult(ok=False, error="only the C.E.O. may drop a member")
@@ -400,6 +410,18 @@ def _ship_have(ship, item: str) -> int:
     return 0
 
 
+def _whole(raw: Any) -> int:
+    """A whole quantity, else 0 (QC 57: 2.5 and True are not quantities)."""
+    if isinstance(raw, bool):
+        return 0
+    if isinstance(raw, float):
+        return int(raw) if raw.is_integer() else 0
+    try:
+        return int(raw or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _move_cargo(giver, receiver, item: str, qty: int) -> None:
     if item == "credits":
         giver.credits -= qty
@@ -419,6 +441,8 @@ def _move_cargo(giver, receiver, item: str, qty: int) -> None:
 
 
 def handle_corp_transfer(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if not K.corp_rules_on():
+        return ActionResult(ok=False, error="unsupported action")
     if not K.CORP_TRANSFER_TAKE and action.args.get("direction") == "take":
         return ActionResult(ok=False, error="take is not allowed")
     player = universe.players[pid]
@@ -429,17 +453,14 @@ def handle_corp_transfer(universe: Universe, pid: str, action: Action) -> Action
     target = universe.players.get(target_id) if isinstance(target_id, str) else None
     item = str(action.args.get("item") or "")
     direction = str(action.args.get("direction") or "give")
-    try:
-        qty = int(action.args.get("qty") or 0)
-    except (TypeError, ValueError):
-        qty = 0
+    qty = _whole(action.args.get("qty"))
     allowed = tuple(x for x in ("credits", "fighters", "shields", "armid_mines", "limpet_mines")
                     if x in ("credits", "fighters", "shields")
                     or (x == "armid_mines" and "armid" in K.CORP_TRANSFER_MINE_KINDS)
                     or (x == "limpet_mines" and "limpet" in K.CORP_TRANSFER_MINE_KINDS))
     if item not in allowed or direction not in ("give", "take") or qty < 1:
         return ActionResult(ok=False, error="invalid transfer")
-    if target is None or target.corp_ticker != corp.ticker or target_id == pid:
+    if target is None or target.corp_ticker != corp.ticker or target_id == pid or not target.alive:
         return ActionResult(ok=False, error="no such member")
     if target.sector_id != player.sector_id:
         return ActionResult(ok=False, error="not in the same sector")
@@ -494,21 +515,32 @@ def extern_corp_step(universe: Universe) -> None:
                 remove_member(universe, mid, corp)
 
 
+def mixed_loss(universe: Universe, corp: Corporation) -> int:
+    """cr9: experience each alive member loses at the next Extern (0 for a straight corp or same_side)."""
+    if K.CORP_ALIGNMENT_RULE != "mixed":
+        return 0
+    alive = [universe.players[m] for m in corp.member_ids
+             if m in universe.players and universe.players[m].alive]
+    goods = [p for p in alive if int(p.alignment) > 0]
+    evils = [p for p in alive if int(p.alignment) < 0]
+    if not goods or not evils:
+        return 0
+    if K.MIXED_CORP_EXP_RULE == "least_extreme":
+        most_good = max(int(p.alignment) for p in goods)
+        most_evil = min(int(p.alignment) for p in evils)
+        base = min(most_good, abs(most_evil))
+    else:
+        base = max(int(p.alignment) for p in goods)
+    return int(base) // int(K.MIXED_CORP_EXP_DIVISOR)
+
+
 def _mixed_penalty(universe: Universe) -> None:
     for corp in list(universe.corporations.values()):
         alive = [universe.players[m] for m in corp.member_ids
                  if m in universe.players and universe.players[m].alive]
-        goods = [p for p in alive if int(p.alignment) > 0]
-        evils = [p for p in alive if int(p.alignment) < 0]
-        if not goods or not evils:
+        loss = mixed_loss(universe, corp)
+        if loss <= 0:
             continue
-        if K.MIXED_CORP_EXP_RULE == "least_extreme":
-            most_good = max(int(p.alignment) for p in goods)
-            most_evil = min(int(p.alignment) for p in evils)
-            base = min(most_good, abs(most_evil))
-        else:
-            base = max(int(p.alignment) for p in goods)
-        loss = int(base) // int(K.MIXED_CORP_EXP_DIVISOR)
         for player in alive:
             if int(player.experience) <= int(K.MIXED_CORP_EXP_FLOOR):
                 continue
@@ -578,6 +610,9 @@ def handle_deploy_fighters(universe: Universe, pid: str, action: Action) -> Acti
     if qty == 0:
         if not _controls(universe, pid, dep):
             return ActionResult(ok=False, error="you do not control those fighters")
+        if action.args.get("ownership") not in ("personal", "corporate"):
+            ownership = "corporate" if getattr(dep, "corp_ticker", None) else "personal"  # QC 57: keep the kind
+            ticker = player.corp_ticker if ownership == "corporate" else None
         dep.mode = mode
         if ownership == "personal":
             dep.owner_id = pid
@@ -678,35 +713,6 @@ def handle_deploy_mines(universe: Universe, pid: str, action: Action) -> ActionR
     return ActionResult(ok=True, turns_spent=cost)
 
 
-def handle_recall(universe: Universe, pid: str, action: Action) -> ActionResult:
-    """Corporate groups may be recalled by any member. Toll credits go to the collector."""
-    from .runner import _handle_recall_deployed as legacy_recall
-
-    player = universe.players[pid]
-    sector = universe.sectors[player.sector_id]
-    what = action.args.get("what", "fighters")
-    if what == "fighters" and sector.fighters is not None:
-        dep = sector.fighters
-        if getattr(dep, "corp_ticker", None) and player.corp_ticker == dep.corp_ticker:
-            if dep.owner_id != pid:
-                dep.owner_id = pid
-        elif dep.owner_id == K.ROGUE_OWNER_ID:
-            return ActionResult(ok=False, error="rogue fighters cannot be recalled")
-    if what == "mines":
-        try:
-            kind = MineType(action.args.get("kind", "armid"))
-        except ValueError:
-            kind = None
-        if kind is not None:
-            for md in sector.mines:
-                if md.kind == kind and getattr(md, "corp_ticker", None) == player.corp_ticker and player.corp_ticker:
-                    md.owner_id = pid
-                elif md.owner_id == K.ROGUE_OWNER_ID and md.kind == kind:
-                    return ActionResult(ok=False, error="rogue mines cannot be recalled")
-    result = legacy_recall(universe, pid, action)
-    return result
-
-
 def public_corporations(universe: Universe) -> list[dict[str, Any]]:
     rows = []
     for corp in universe.corporations.values():
@@ -755,9 +761,14 @@ def member_block(universe: Universe, player) -> dict[str, Any] | None:
     for planet in universe.planets.values():
         if planet.corp_ticker != corp.ticker:
             continue
+        from .planets import planet_growth_status  # cr23: production and stock per commodity (QC 57)
+        growth = planet_growth_status(planet.class_id, planet.colonists,
+                                      int(planet.stockpile.get(Commodity.ORGANICS, 0)))
         planets.append({
             "sector_id": planet.sector_id, "name": planet.name,
             "population": sum(int(n) for n in planet.colonists.values()),
+            "production": growth["production"],
+            "stock": {c.value: int(n) for c, n in planet.stockpile.items()},
             "fighters": int(planet.fighters), "citadel_level": int(planet.citadel_level),
             "shields": int(planet.shields), "credits": int(planet.treasury),
         })
@@ -766,9 +777,7 @@ def member_block(universe: Universe, player) -> dict[str, Any] | None:
     evils = [universe.players[m] for m in corp.member_ids
              if m in universe.players and universe.players[m].alive and int(universe.players[m].alignment) < 0]
     mixed = bool(goods and evils)
-    penalty = 0
-    if mixed and goods:
-        penalty = max(int(p.alignment) for p in goods) // int(K.MIXED_CORP_EXP_DIVISOR)
+    penalty = mixed_loss(universe, corp)  # QC 57: follows the rule, the formula and same_side
     return {
         "ticker": corp.ticker, "name": corp.name, "ceo_id": corp.ceo_id,
         "members": members, "planets": planets, "password": corp.password,
@@ -781,6 +790,8 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
     in_corp = player.corp_ticker is not None and player.corp_ticker in universe.corporations
     corp = universe.corporations.get(player.corp_ticker) if in_corp else None
     reason = "already in a corporation" if player.corp_ticker is not None else None
+    if reason is None and int(player.credits) < int(K.CORP_CREATE_COST):  # QC 57: the handler's cost check
+        reason = f"need {int(K.CORP_CREATE_COST)} cr to incorporate"
     out.append(_la(ActionKind.CORP_CREATE, legal=reason is None, reason=reason,
                    params={"ticker": {"type": "str", "required": True, "max_len": 3,
                                       "taken": sorted(universe.corporations)},
@@ -809,13 +820,26 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
                    params={"target": {"type": "str", "required": True, "choices": [t["player_id"] for t in targets]},
                            "targets": targets}))
     corps = []
+    joinable = []
+    breakins_left = max(0, int(K.CORP_BREAKIN_PER_DAY) - int(getattr(player, "corp_breakins_today", 0) or 0))
     for c in universe.corporations.values():
         room = int(K.CORP_MAX_MEMBERS) - len(c.member_ids)
-        corps.append({"ticker": c.ticker, "name": c.name, "members": len(c.member_ids),
-                      "cap": int(K.CORP_MAX_MEMBERS), "room": room})
-    joinable = [c["ticker"] for c in corps if c["room"] > 0]
+        row = {"ticker": c.ticker, "name": c.name, "members": len(c.member_ids),
+               "cap": int(K.CORP_MAX_MEMBERS), "room": room}
+        # QC 57: the same checks the handler makes, minus the password itself (cr5, cr7, cr8)
+        why = _join_block(universe, player_id, c, c.password) if c.password else "closed: no password set"
+        if why:
+            row["reason"] = why
+        else:
+            joinable.append(c.ticker)
+        corps.append(row)
     if player.corp_ticker:
         join_reason = "already in a corporation"
+    elif not player.alive:
+        join_reason = "not alive"
+    elif breakins_left <= 0 and any(c.password for c in universe.corporations.values()):
+        join_reason = "one break-in attempt per day"
+        joinable = []
     elif not joinable:
         join_reason = "no corporation with room"
     else:
@@ -824,7 +848,7 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
                    params={"ticker": {"type": "str", "required": True, "choices": joinable},
                            "password": {"type": "str", "required": True},
                            "corps": corps,
-                           "breakin_attempts_left": max(0, int(K.CORP_BREAKIN_PER_DAY) - int(getattr(player, "corp_breakins_today", 0) or 0))}))
+                           "breakin_attempts_left": breakins_left}))
     out.append(_la(ActionKind.CORP_LEAVE, legal=in_corp, reason=None if in_corp else "not in a corp",
                    params={"dissolves": bool(corp and corp.ceo_id == player_id)}))
     members = [{"player_id": m, "name": universe.players[m].name}
@@ -844,7 +868,7 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
             if mid == player_id:
                 continue
             other = universe.players.get(mid)
-            if other is None or other.sector_id != player.sector_id:
+            if other is None or not other.alive or other.sector_id != player.sector_id:
                 continue
             if other.planet_landed is not None or player.planet_landed is not None:
                 continue
