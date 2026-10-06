@@ -69,7 +69,7 @@ Scripted seed 250925, 10 days, Ferrengi on, seats N3,N3,N2,N2,N1,H. `CORPSHIP_MO
 
 Fixed in QC:
 
-- The SHIP_FURBED event was emitted before the manned victim's loss, which moved `universe.seq` and so the pod's seeded escape path; `test_qc_capture_pod_path_matches_a_destroy` failed on 84b7039 (Windows and Linux). The furb now reads a copy of the victim hull before the loss and emits after it.
+- The SHIP_FURBED event was emitted before the manned victim's loss, which moved `universe.seq` and so the pod's seeded escape path; `test_qc_capture_pod_path_matches_a_destroy` failed on 84b7039 (Windows and Linux). Cur fixed it in e1faeeb while QC had the identical change (furb reads a copy of the victim hull before the loss and emits after it); the QC copy was dropped on rebase.
 - A leaver still flying his old corp's hull (cs25) could `ship_set_personal` it (or re-flag it to a new corp) and keep it for good. Both verbs now refuse "this is another corporation's ship", from one block function shared with the legal list.
 - Attacking your own personal unmanned hull with the exact minimum "captured" it (no-op owner change, SHIP_CAPTURED, no furb). Your own hull now always destroys and furbs (cs16).
 - A leaver towing a corporate hull of the corp he left kept the beam on a ship he no longer has access to (EIS <X>); the beam drops with reason `left_corp`.
