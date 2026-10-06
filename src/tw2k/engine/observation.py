@@ -302,6 +302,8 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.SHIP_SOLD: ("ship_id", "ship_class", "credit"),
     EventKind.FLEET_REPOSSESSED: ("ship_id", "ship_class", "sector"),
     EventKind.UNMANNED_SHIP_DESTROYED: ("ship_id", "hull", "victim"),
+    EventKind.SHIP_CAPTURED: ("ship_id", "hull", "manned", "captor", "former_owner"),
+    EventKind.TOW_TARGET_CAPTURED: ("ship_id", "hull", "captor"),
     EventKind.HUMAN_TURN_START: ("turns_remaining", "deadline_s"),
 }
 

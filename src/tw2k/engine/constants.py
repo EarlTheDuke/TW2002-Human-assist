@@ -1743,6 +1743,31 @@ def fleet_on() -> bool:
     return FLEET_MODE == "tw2002"
 
 
+# --- Ship capture (CAPTURE_MODE) ------------------------------------------------
+# docs/playtests/ships/SHIP_CAPTURE.md. "legacy" = every beaten ship is destroyed, no new events or keys.
+
+CAPTURE_MODE = "tw2002"            # "tw2002" | "legacy"
+CAPTURE_RULE = "min_qty"          # cp2: "min_qty" | "never"
+CAPTURE_SLACK = 0                 # extra fighters above the minimum that still capture
+CAPTURE_PODLESS = "never"        # cp4: "never" | "unoccupied" | "always" (TWGS = never)
+CAPTURE_FAIL_PCT = 0             # cp3 Gold-only; 0 draws no rng
+CAPTURE_OVER_CAP = "destroy"     # cp6 UNVERIFIED
+CAPTURE_CFS_NEEDS_CORP = True     # cp5 UNVERIFIED
+CAPTURE_WHEN_SD = "capture"      # cp9: "capture" | "destroy"
+CAPTURE_KEEPS_TOW = True         # cp18; dormant until TOW_MODE (slice 51)
+CAPTURE_CORBOMITE = "kept"       # cp15
+CAPTURE_UNMANNED_EXP = 0         # cp12 UNVERIFIED
+CAPTURE_NPC = False              # cp22: Ferrengi and Feds never capture
+CAPTURE_CREDITS = "as_destroy"   # cp11: credits stay with the pilot (d14)
+CAPTURE_TELL_TOWER = True        # cp18; dormant until TOW_MODE
+BOT_CAPTURE_POLICY = "incidental"  # "incidental" | "off"
+
+
+def capture_on() -> bool:
+    """Capture needs the fleet registry. Legacy combat or a legacy fleet destroys every beaten ship."""
+    return CAPTURE_MODE == "tw2002" and combat_tw2002() and fleet_on()
+
+
 def transport_range(class_key: str) -> int:
     """fl9: hops the ship you are IN can beam you. Hulls not on the chart get 0."""
     return int(SHIP_TRANSPORT_RANGE.get(str(class_key), 0))

@@ -231,6 +231,9 @@ class EventKind(str, Enum):
     TOW_RELEASED = "tow_released"
     TOWED = "towed"
     EXTERN_TOW_HOLD = "extern_tow_hold"
+    # ship-capture-v1 (SHIP_CAPTURE.md). Never emitted under CAPTURE_MODE legacy.
+    SHIP_CAPTURED = "ship_captured"
+    TOW_TARGET_CAPTURED = "tow_target_captured"
     ATOMIC_DETONATION = "atomic_detonation"
     PORT_DESTROYED = "port_destroyed"
     COMBAT = "combat"
@@ -813,6 +816,9 @@ class ParkedShip(BaseModel):
     sector_id: int
     ship: Ship
     parked_day: int
+    # SHIP_CAPTURE.md cp26. Excluded so a legacy universe dump stays byte-identical.
+    captured_from: str | None = Field(default=None, exclude=True)
+    captured_day: int | None = Field(default=None, exclude=True)
 
 
 # ---------------------------------------------------------------------------

@@ -339,12 +339,18 @@
       if (sec != null) state.iconGlow.push({ sector_id: sec, t: Date.now(), kind: ev.kind });
     }
     // Combat flash triggers
-    if (ev.kind === "combat" || ev.kind === "ship_destroyed" || ev.kind === "mine_detonated"
+    if (ev.kind === "combat" || ev.kind === "mine_detonated"
         || ev.kind === "atomic_detonation" || ev.kind === "photon_hit" || ev.kind === "photon_fired"
-        || ev.kind === "fed_response" || ev.kind === "port_destroyed" || ev.kind === "ship_transwarp_fuse") {
+        || ev.kind === "fed_response" || ev.kind === "port_destroyed" || ev.kind === "ship_transwarp_fuse"
+        || ev.kind === "ship_captured"
+        || (ev.kind === "ship_destroyed" && !(ev.payload && ev.payload.reason === "captured"))) {
       const sec = (ev.payload && (ev.payload.sector || ev.payload.sector_id)) || (ev.kind === "ship_transwarp_fuse" && ev.sector_id) || sectorFromActor(ev.actor_id);
       if (sec) {
-        state.combatFlashes.push({ sector_id: sec, t: Date.now(), kind: ev.kind });
+        const actor = state.players.get(ev.actor_id);
+        state.combatFlashes.push({
+          sector_id: sec, t: Date.now(), kind: ev.kind,
+          color: ev.kind === "ship_captured" && actor ? actor.color : null,
+        });
         if (state.combatFlashes.length > 40) state.combatFlashes.shift();
       }
     }
@@ -1349,10 +1355,13 @@
         ring.setAttribute("cy", sec.y);
         ring.setAttribute("r", radius.toFixed(1));
         ring.setAttribute("fill", "none");
-        const color = f.kind === "atomic_detonation" || f.kind === "port_destroyed"
-          ? "#ff5c7a"
-          : (f.kind === "photon_fired" || f.kind === "photon_hit" ? "#f0c04a" : "#ff7a8c");
+        const color = f.kind === "ship_captured"
+          ? (f.color || "#7ec8ff")
+          : (f.kind === "atomic_detonation" || f.kind === "port_destroyed"
+            ? "#ff5c7a"
+            : (f.kind === "photon_fired" || f.kind === "photon_hit" ? "#f0c04a" : "#ff7a8c"));
         ring.setAttribute("stroke", color);
+        if (f.kind === "ship_captured") ring.setAttribute("stroke-dasharray", "3 2");
         ring.setAttribute("stroke-width", "1.3");
         ring.setAttribute("opacity", opacity.toFixed(2));
         ring.setAttribute("class", "combat-flash");
@@ -2506,6 +2515,8 @@
     tow_released:      { cat: "move",      icon: "\u26d3",  label: "TOW RELEASED" },
     towed:             { cat: "move",      icon: "\u26d3",  label: "TOWED" },
     extern_tow_hold:   { cat: "move",      icon: "\u2693",  label: "EXTERN TOW HOLD", big: true },
+    ship_captured: { cat: "combat", icon: "\u2693", label: "SHIP CAPTURED", big: true },
+    tow_target_captured: { cat: "combat", icon: "\u2693", label: "TOW TARGET CAPTURED", big: true },
     planet_transporter_bought: { cat: "diplomacy", icon: "\u27a4", label: "TRANSPORTER" },
     planet_transport:  { cat: "move",      icon: "\u27a4",  label: "TRANSPORT" },
     planet_colonists_killed: { cat: "combat", icon: "\u2694", label: "COLONISTS KILLED" },

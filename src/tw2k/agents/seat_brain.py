@@ -2659,7 +2659,8 @@ class SeatBrain:
 
     def _board_spare(self, v: View) -> dict[str, Any] | None:
         """ship-fleet-transporter-v1 (BOT_FLEET_POLICY spare_only): after a pod / Ship Destroyed, beam into an
-        own parked hull in transporter range that beats the hull we are in. Never buys, sells or attacks."""
+        own parked hull in transporter range that beats the hull we are in. A captured hull is just another
+        parked ship. Never buys, sells or attacks."""
         from ..engine import constants as engine_k
         if engine_k.BOT_FLEET_POLICY != "spare_only" or not v.ok("ship_transport"):
             return None
@@ -3079,7 +3080,14 @@ class SeatBrain:
         return False
 
     def _ship_attack(self, v: View, target: str) -> dict[str, Any] | None:
-        """Never fire on a Federal starship. Other ships are not hunted this slice."""
+        """Never fire on a Federal starship. Other ships are not hunted this slice.
+
+        BOT_CAPTURE_POLICY incidental and off both omit qty, so the engine sends the hull
+        cap. That is not the capture minimum. A captured hull is just a parked ship.
+        """
+        import tw2k.engine.constants as _C
+        if _C.BOT_CAPTURE_POLICY not in ("incidental", "off"):
+            return None
         if self._is_fed_target(v, target):
             return None
         if not v.ok("attack"):
