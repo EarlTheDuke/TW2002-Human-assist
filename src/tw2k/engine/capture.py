@@ -2,7 +2,8 @@
 
 An ordinary attack that beats a ship with exactly the minimum fighters takes the hull instead of
 destroying it. Pods and Scout Marauders are never captured. One fighter too many destroys as today.
-Tow interplay (cp17-cp21) stays dormant until TOW_MODE tw2002 exists (slice 51). Nothing here draws
+When TOW_MODE is tw2002, capturing the tower releases its tow, a towed unmanned hull stays
+locked and the tower is told, and capturing a manned towee drops the tow. Nothing here draws
 from universe.rng; CAPTURE_FAIL_PCT 0 draws nothing at all.
 """
 
@@ -18,7 +19,7 @@ from .models import EventKind, FerrengiShip, ParkedShip, Player
 
 
 def tow_hooks_active() -> bool:
-    """Slice 51 is not on this tree. Capture does not invent a tow."""
+    """True once slice 51's tow lock is on this tree. Legacy tow never grows a capture hook."""
     return getattr(K, "TOW_MODE", "legacy") == "tw2002" and hasattr(EventKind, "TOW_RELEASED")
 
 
