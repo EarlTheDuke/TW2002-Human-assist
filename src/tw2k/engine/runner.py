@@ -2418,6 +2418,9 @@ def _handle_corp_create(universe: Universe, pid: str, action: Action) -> ActionR
 
 
 def _handle_corp_invite(universe: Universe, pid: str, action: Action) -> ActionResult:
+    target = str(action.args.get("target") or "")
+    if K.alien_on() and target.startswith("alien:"):  # ALIEN_TRADERS.md al22
+        return ActionResult(ok=False, error="aliens cannot join corporations")
     if K.corp_rules_on():
         from .corp import handle_corp_invite
         return handle_corp_invite(universe, pid, action)

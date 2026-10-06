@@ -179,6 +179,23 @@ def test_al15_opposite_kill_pays_half_experience_and_the_credits():
     assert killed.payload["kind"] == "alien" and killed.payload["credits"] == 5_000
 
 
+def test_al22_corp_invite_refuses_an_alien():
+    u = generate_universe(GameConfig(seed=11, universe_size=200, max_days=3))
+    alien = next(iter(u.aliens.values()))
+    player = Player(
+        id="A", name="Ann",
+        ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER, fighters=10),
+        sector_id=1, credits=1_000, alignment=100,
+    )
+    u.players["A"] = player
+    u.sectors[1].occupant_ids.append("A")
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_CREATE, args={"ticker": "ZZ", "name": "Zed"})).ok
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_SET_PASSWORD, args={"password": "secret"})).ok
+    result = apply_action(u, "A", Action(kind=ActionKind.CORP_INVITE, args={"target": alien.id}))
+    assert not result.ok and result.error == "aliens cannot join corporations"
+    assert alien.alive
+
+
 def test_al14_fedsafe_alien_in_fedspace_is_protected():
     u = generate_universe(GameConfig(seed=10, universe_size=200, max_days=3))
     good, evil = list(u.aliens.values())[:2]
