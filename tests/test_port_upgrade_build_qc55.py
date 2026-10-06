@@ -316,3 +316,43 @@ def test_legacy_dump_has_none_of_the_new_fields(monkeypatch):
     assert all("port_destroyed_day" not in s for s in dump["sectors"].values())
     assert all("port_upgrade_carry" not in p for p in dump["players"].values())
     assert all("construction" not in (s.get("port") or {}) for s in dump["sectors"].values())
+
+
+# ---- bot starter upgrade (QC slice 55 tuning) ----------------------------------------------------------
+
+
+def _starter_obs(u, credits):
+    u.players["A"].credits = credits
+    return build_observation(u, "A").model_dump(mode="json")
+
+
+def test_bot_starter_upgrade_fires_once_per_port_when_rich(monkeypatch):
+    from tw2k.agents.seat_brain import SeatBrain
+    u, _ = _world()
+    _port(u, current=1000, maximum=3000)  # BBS buys organics; room 2,000 dwarfs the 40-unit lot
+    _planet(u, org=40)
+    brain = SeatBrain()
+    act = brain.decide(_starter_obs(u, K.BOT_PORT_UPGRADE_STARTER_CREDITS))
+    assert act["kind"] == "port_upgrade"
+    assert act["args"] == {"commodity": "organics", "units": K.BOT_PORT_UPGRADE_STARTER_UNITS}
+    assert apply_action(u, "A", Action(kind=ActionKind.PORT_UPGRADE, args=act["args"])).ok
+    again = brain.decide(_starter_obs(u, K.BOT_PORT_UPGRADE_STARTER_CREDITS * 2))
+    assert again["kind"] != "port_upgrade"
+
+
+def test_bot_starter_upgrade_needs_the_credits_a_stocked_planet_and_the_mode(monkeypatch):
+    from tw2k.agents.seat_brain import SeatBrain
+    from tw2k.engine.models import Commodity
+    u, _ = _world()
+    _port(u, current=1000, maximum=3000)
+    pl = _planet(u, org=40)
+    assert SeatBrain().decide(_starter_obs(u, K.BOT_PORT_UPGRADE_STARTER_CREDITS - 1))["kind"] != "port_upgrade"
+    pl.stockpile[Commodity.ORGANICS] = 0
+    assert SeatBrain().decide(_starter_obs(u, 10**7))["kind"] != "port_upgrade"
+    pl.stockpile[Commodity.ORGANICS] = 40
+    assert SeatBrain().decide(_starter_obs(u, 10**7))["kind"] == "port_upgrade"
+    monkeypatch.setattr(K, "BOT_PORT_UPGRADE_STARTER_UNITS", 0)
+    assert SeatBrain().decide(_starter_obs(u, 10**7))["kind"] != "port_upgrade"
+    monkeypatch.setattr(K, "BOT_PORT_UPGRADE_STARTER_UNITS", 5)
+    monkeypatch.setattr(K, "PORT_UPGRADE_MODE", "legacy")
+    assert SeatBrain().decide(_starter_obs(u, 10**7))["kind"] != "port_upgrade"
