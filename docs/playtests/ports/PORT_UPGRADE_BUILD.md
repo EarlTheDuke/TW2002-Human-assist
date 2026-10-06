@@ -35,7 +35,7 @@ Letter codes, not repo class numbers. The repo's class 1 is BSS; TW's class 1 is
 | pu25 | Creation exp and align on completion, whatever the alignment | CONFIRMED CF values | `PORT_BUILD_REWARD`, `PORT_BUILD_REWARD_WHEN` complete | `test_pu21_pu22_pu24_pu25_construction_day_tick` |
 | pu26 | Cap is the bang count times 100/95. A cleared destruction frees a slot | DERIVED mapping | `PORT_BUILD_INITIAL_BUILT_PCT` 95 | `test_pu26_cap_frees_when_a_port_is_cleared` |
 | pu27 | Radiation lasts 1 day. FedSpace and StarDock never take a build | SOURCE-CONFLICT | `PORT_BUILD_RADIATION_DAYS` 1, `PORT_BUILD_FEDSPACE` False | `test_pu27_radiation_and_fedspace` |
-| pu28 | Bots upgrade a buying port when a held planet's lot does not fit | DERIVED | `BOT_PORT_UPGRADE_POLICY` planet_room | `test_pu28_bot_upgrades_a_buying_port_only` |
+| pu28 | Bots upgrade a buying port when a held planet's lot does not fit. QC: plus one starter upgrade per port and commodity for a rich seat | DERIVED | `BOT_PORT_UPGRADE_POLICY` planet_room, `BOT_PORT_UPGRADE_STARTER_UNITS` 5, `BOT_PORT_UPGRADE_STARTER_CREDITS` 300,000 | `test_pu28_bot_upgrades_a_buying_port_only`, `test_bot_never_upgrades_a_selling_commodity_or_fuel_ore`, `test_bot_starter_upgrade_fires_once_per_port_when_rich` |
 | pu29 | Bots do not order new ports | DERIVED | `BOT_PORT_BUILD_POLICY` off | `test_pu29_bot_does_not_build` |
 | pu30 | One prompt line, only when the mode is on | DERIVED | — | `test_pu30_prompt_line_only_when_on` |
 
@@ -72,3 +72,34 @@ Seed 424242: N3-P2 616,259 (1 trade, 1,512cr), N3-P1 600,421 (2 trades, 2,911cr)
 `scripts/port_upgrade_scenario_lab.py` (the focused case the 10-day matches did not hit): 300 equipment units cost 270,000, granted +90 exp and +45 align, and raised capacity by 3,000. The same visit then sold 6,000 equipment off the planet and spent no second turn. SSS ordered on day 1, progressed on day 2, stalled on day 3 with the planet short, and opened on day 4 at productivity 10. The completion event paid +7 exp and +4 align (midnight also adds +1/+1). An order at the port cap was refused. A build on the day a port was destroyed was refused, and the same sector accepted an order the next day.
 
 30-day headless, seed 42, 2 heuristics: finished with no crash, day 31, 72,589 events, 0 engine failures.
+
+## QC (slice 55 review)
+
+Fixes:
+
+- Pins: each pin subprocess copied the whole environment. With `TW2K_HINT_LEVEL=minimal` in the shell, the port-upgrade pin moved from 9be95517 to 924564e9. `TW2K_PORT_MATCH` is not read anywhere, so it could not have caused the earlier pin failures. `tests/_pin_env.pin_env()` drops every `TW2K_*` variable. `legacy_run_digest` hides them too and puts the `*_MODE` switches back afterwards (`tests/test_pin_hermetic_qc55.py`). 9be95517 is the same on Linux and Windows.
+- `EVENT_FACTS` listed the five port kinds twice. The second block won and named keys the payloads do not have, so seats saw an upgrade without its cost, capacity, exp or align.
+- `PORT_BUILT` is public, but it named the builder as its actor. Every rival learned who built the port, and the builder's rival `last_seen_sector` jumped to the build sector at the day tick. It now has no actor.
+- pu7: `units` 2.5 was floored to 2. Fractional units are now refused.
+- pu26: a port destroyed by atomics frees its cap slot only when the radiation clears.
+- A trader without the credits for one unit was told "this port cannot take another upgrade unit". The message now says the credits are short.
+- The experience-alignment and scanner golden fixtures now flip `FED_OUTPOST_MODE` too.
+
+Bots: the pu28 test never fired. On seed 250925, the biggest lot on a held planet was 95 units, and the smallest room at a port buying that commodity was 1,752 units. The daily regen also adds productivity to a buying port's stock, so an upgrade fills that port faster. Within 10 days an upgrade only costs credits. The starter rule spends at most 5 units once per port and commodity, and only when the seat has 300,000+ credits (0 turns it off). Net worth per seat on 10-day `N3,N3,N2,N2,N1,H` runs:
+
+| Seed 250925 | P1 | P2 | P3 | P4 | P5 | P6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| before | 745,255 | 246,986 | 337,339 | 547,351 | 425,700 | 619,312 |
+| after | 742,755 (1 upgrade, 2,500cr) | 246,986 | 337,339 | 547,351 | 425,700 | 619,312 |
+
+| Seed 424242 | P1 | P2 | P3 | P4 | P5 | P6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| before | 600,421 | 616,259 | 469,904 | 397,182 | 342,336 | 504,625 |
+| after | 592,377 (2 upgrades, 7,000cr; planet trades 2 -> 4) | 629,415 | 484,631 | 378,735 | 309,906 | 504,625 |
+
+The other seats on 424242 changed only because P1's extra actions shifted the seeded paths. Rejected 0, exceptions 0 and invariant violations 0 in all runs.
+
+Planted bugs: the 24 spec plants make 28 variants. The slice tests caught 25 of them and missed pb14, pb23a and pb23b. QC added 31 more plants, of which the slice tests caught 10. After the new QC tests, all 28 + 31 are caught. Two further plants (dropping the build-dock guard in `docks_closed` or in rob) cannot change behaviour, because a port under construction has no credits and no stock.
+
+30-day runs, seed 42, `N3,N2`, checked after every action: the plain run had 0 problems, and save and load were identical at every tick. The stress run injected 251 random legal upgrades and had 0 problems. One reload listed `known_sectors` in a different order (the field is a set). The base commit does the same, so it predates this slice.
+
