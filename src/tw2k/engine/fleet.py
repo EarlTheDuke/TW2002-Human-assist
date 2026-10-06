@@ -232,6 +232,9 @@ def buy_spare(universe: Universe, pid: str, class_key: str) -> ActionResult:
     cost = int(K.ship_cost(class_key))
     player.credits -= cost
     ship = new_spare_ship(class_key)
+    if K.corpship_on():
+        from .corpships import on_new_spare
+        on_new_spare(player, ship)
     sid = _ensure_fleet_id(universe, ship)
     universe.parked_ships[sid] = ParkedShip(id=sid, owner_id=pid, sector_id=K.STARDOCK_SECTOR, ship=ship,
                                             parked_day=int(universe.day))
@@ -324,7 +327,12 @@ def target_block(universe: Universe, pid: str, rec: ParkedShip | None) -> tuple[
     if rec is None:
         return "no such ship", None
     if rec.owner_id != pid:
-        return "not your ship (own ships only)", None
+        if not K.corpship_on():
+            return "not your ship (own ships only)", None
+        from .corpships import board_block
+        why = board_block(universe, pid, rec)
+        if why is not None:
+            return why, None
     if (K.hull_spec(rec.ship.ship_class.value) or {}).get("corp_only") and player.corp_ticker is None:
         return "corporation hull: you are no longer in a corporation", None
     hops = hops_between(universe, player.sector_id, rec.sector_id)
@@ -339,9 +347,11 @@ def target_block(universe: Universe, pid: str, rec: ParkedShip | None) -> tuple[
 
 
 def transport_choices(universe: Universe, pid: str) -> tuple[list[int], dict[str, int]]:
+    from .corpships import transport_records
     choices: list[int] = []
     hops_by: dict[str, int] = {}
-    for rec in owned_parked(universe, pid):
+    records = transport_records(universe, pid) if K.corpship_on() else owned_parked(universe, pid)
+    for rec in records:
         why, hops = target_block(universe, pid, rec)
         if why is None and hops is not None:
             choices.append(int(rec.id))
@@ -362,8 +372,18 @@ def _park_manned(universe: Universe, pid: str) -> int | None:
     sid = _ensure_fleet_id(universe, old)
     if K.FLEET_LIMPET_POLICY == "hull":
         _limpets_leave_hull(universe, pid, sid)
-    universe.parked_ships[sid] = ParkedShip(id=sid, owner_id=pid, sector_id=int(player.sector_id), ship=old,
+    owner = pid
+    if K.corpship_on():
+        from .corpships import park_owner
+        owner = park_owner(universe, pid, old)
+    universe.parked_ships[sid] = ParkedShip(id=sid, owner_id=owner, sector_id=int(player.sector_id), ship=old,
                                             parked_day=int(universe.day))
+    if owner == K.DEFUNCT_OWNER:
+        universe.emit(
+            EventKind.SHIP_DEFUNCT, actor_id=pid, sector_id=int(player.sector_id),
+            payload={"ship_id": int(sid), "_witnesses": [pid]},
+            summary=f"ship {sid} is now a defunct Corp ship",
+        )
     return sid
 
 
@@ -384,6 +404,12 @@ def handle_ship_transport(universe: Universe, pid: str, action: Action) -> Actio
     if bad is not None:
         return ActionResult(ok=False, error=bad)
     assert rec is not None and hops is not None
+    if K.corpship_on() and rec.owner_id != pid:
+        from .corpships import note_password_fail, password_block
+        pw_why = password_block(pid, rec, (action.args or {}).get("password"))
+        if pw_why is not None:
+            note_password_fail(universe, pid)
+            return ActionResult(ok=False, error=pw_why)
     from .runner import _learn_sector, _record_port_intel
 
     from_sid = int(player.sector_id)
@@ -490,6 +516,9 @@ def sector_unmanned_view(universe: Universe, viewer_id: str, sector_id: int) -> 
         own = rec.owner_id == viewer_id
         entry: dict[str, Any] = {"ship_id": int(rec.id), "hull": rec.ship.ship_class.value,
                                  "owner_name": owner.name if owner else rec.owner_id, "own": own}
+        if K.corpship_on():
+            from .corpships import sector_label
+            entry["ownership"] = sector_label(universe, rec)
         if own:
             entry["fighters"] = int(rec.ship.fighters)
             entry["shields"] = int(rec.ship.shields)
@@ -507,13 +536,18 @@ def unmanned_attack_block(universe: Universe, pid: str, rec: ParkedShip | None) 
         return "target not in this sector"
     if _hidden(rec):
         return "target is cloaked"
-    if rec.owner_id == pid:
-        return "cannot attack your own ship"
-    if _are_allied(universe, pid, rec.owner_id):
-        return "cannot attack a corp mate or ally"
+    if not K.corpship_on():
+        if rec.owner_id == pid:
+            return "cannot attack your own ship"
+        if _are_allied(universe, pid, rec.owner_id):
+            return "cannot attack a corp mate or ally"
+        if int(player.sector_id) in K.FEDSPACE_SECTORS:
+            return "FedSpace - unmanned ships cannot be attacked here"
+        return None
     if int(player.sector_id) in K.FEDSPACE_SECTORS:
         return "FedSpace - unmanned ships cannot be attacked here"
-    return None
+    from .corpships import attack_block
+    return attack_block(universe, pid, rec)
 
 
 def unmanned_attack_choices(universe: Universe, pid: str) -> list[str]:
@@ -562,11 +596,17 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
     player.ship.fighters = int(player.ship.fighters) - att_losses
     rec.ship.fighters, rec.ship.shields = d_f - f_lost, d_s - sh_lost
     if K.FLEET_UNMANNED_ALIGN == "v2_penalty" and f_lost > 0:
-        player.alignment = int(player.alignment) - int(int(player.alignment) * 0.10 * f_lost / 1000)
+        own_kill = K.corpship_on() and rec.owner_id == pid and int(K.CORPSHIP_OWN_KILL_ALIGN) == 0
+        if not own_kill:
+            player.alignment = int(player.alignment) - int(int(player.alignment) * 0.10 * f_lost / 1000)
     will_capture = False
     if beaten:
         from .capture import unmanned_would_capture
         will_capture = unmanned_would_capture(universe, player, rec, qty, defense, a_odds)
+        if K.corpship_on():
+            from .corpships import capture_allowed
+            if not capture_allowed(player, rec):
+                will_capture = False
     owner = universe.players.get(rec.owner_id)
     universe.emit(
         EventKind.COMBAT,
@@ -595,6 +635,9 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
         from .capture import apply_unmanned_capture
         apply_unmanned_capture(universe, pid, rec)
     elif beaten:
+        if K.corpship_on():
+            from .corpships import apply_furb
+            apply_furb(universe, pid, rec.ship, rec.owner_id)
         _remove(universe, int(rec.id))
         if K.FLEET_UNMANNED_KILL_EXP:
             player.experience = int(player.experience) + int(K.FLEET_UNMANNED_KILL_EXP)
@@ -650,6 +693,9 @@ def fleet_block(universe: Universe, pid: str) -> dict[str, Any]:
             "transwarp": (tw or {}).get("fitted"),
             "repo_at_extern": K.FLEET_FED_REPO == "fedspace" and int(rec.sector_id) in K.FEDSPACE_SECTORS,
         })
+        if K.corpship_on():
+            from .corpships import sector_label
+            ships[-1]["ownership"] = sector_label(universe, rec)
         if K.tow_on():  # SHIP_TOW.md tt23 / tt29
             from .tow import fleet_entry_extra
             extra = fleet_entry_extra(universe, rec)
@@ -683,12 +729,23 @@ def legal_specs(universe: Universe, pid: str) -> list[tuple[str, bool, str | Non
     cost = int(K.TURN_COST["ship_transport"])
     choices, hops_by = transport_choices(universe, pid)
     why = transport_block(universe, pid)
-    if why is None and not owned_parked(universe, pid):
+    pool = owned_parked(universe, pid)
+    if K.corpship_on():
+        from .corpships import transport_records
+        pool = transport_records(universe, pid)
+    if why is None and not pool:
         why = "you own no other ship"
     elif why is None and not choices:
         why = "none of your ships is within transporter range"
-    out.append(("ship_transport", why is None, why, cost,
-                {"ship_id": {"type": "int", "required": True, "choices": choices if why is None else [],
-                             "hops_by": hops_by if why is None else {},
-                             "range": K.transport_range(player.ship.ship_class.value)}}))
+    params: dict[str, Any] = {"ship_id": {"type": "int", "required": True, "choices": choices if why is None else [],
+                                          "hops_by": hops_by if why is None else {},
+                                          "range": K.transport_range(player.ship.ship_class.value)}}
+    if K.corpship_on() and why is None:
+        from .corpships import detail_for
+        params["ship_id"]["detail_by"] = {
+            str(sid): detail_for(universe, pid, universe.parked_ships[sid], hops_by.get(str(sid)))
+            for sid in choices if sid in universe.parked_ships
+        }
+        params["password"] = {"type": "str", "required": False}
+    out.append(("ship_transport", why is None, why, cost, params))
     return out

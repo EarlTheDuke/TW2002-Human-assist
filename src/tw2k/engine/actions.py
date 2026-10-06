@@ -74,6 +74,9 @@ class ActionKind(str, Enum):
     TOW_ENGAGE = "tow_engage"  # ship-tow-transwarp2-v1
     TOW_RELEASE = "tow_release"
     PLANET_TRADE = "planet_trade"  # planetary-trading-v1 (port menu <N>)
+    SHIP_SET_CORPORATE = "ship_set_corporate"  # corp-ships-furb-v1
+    SHIP_SET_PERSONAL = "ship_set_personal"
+    SHIP_SET_PASSWORD = "ship_set_password"
 
 
 class Action(BaseModel):

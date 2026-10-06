@@ -1873,6 +1873,43 @@ CAPTURE_CREDITS = "as_destroy"   # cp11: credits stay with the pilot (d14)
 CAPTURE_TELL_TOWER = True        # cp18; dormant until TOW_MODE
 BOT_CAPTURE_POLICY = "incidental"  # "incidental" | "off"
 
+# --- Corporate ships, passwords, furbing (CORPSHIP_MODE) ----------------------
+# docs/playtests/ships/CORP_SHIPS_FURB.md. "legacy" is the pre-slice engine.
+CORPSHIP_MODE = "tw2002"             # "tw2002" | "legacy"
+CORPSHIP_SET_SCOPE = "manned"       # cs2 UNVERIFIED
+CORPSHIP_SET_TURNS = 0               # cs2 UNVERIFIED
+CORPSHIP_NEW_DEFAULT = "personal"    # cs3 UNVERIFIED
+CORPSHIP_PERSONAL_ACCESS = "owner"   # cs5 UNVERIFIED
+CORPSHIP_PASSWORD_MAX_LEN = 8        # cs6 UNVERIFIED
+CORPSHIP_PASSWORD_CASE = "exact"     # cs6 UNVERIFIED
+CORPSHIP_BAD_PASSWORD = "refuse_free"  # cs8 UNVERIFIED
+CORPSHIP_TELL_OWNER = False          # cs8 UNVERIFIED
+CORPSHIP_OWNER_ON_BOARD = "pilot"    # cs9 UNVERIFIED
+CORPSHIP_BOARD_CAP = True            # cs10 UNVERIFIED
+CORPSHIP_PW_ON_BOARD = "keep"        # cs11 UNVERIFIED
+CORPSHIP_TOW = "corp_with_password"  # cs13 SOURCE-CONFLICT (alt "owner_only")
+CORPSHIP_OWN_KILL_ALIGN = 0          # cs16 UNVERIFIED
+FURB_BONUS = 3                       # cs17
+FURB_DIVISOR = 3
+FURB_EXCLUDED_HULLS = frozenset({"escape_pod"})  # cs20 UNVERIFIED
+FURB_FERRENGI = False                # cs20 deliberate
+SALVAGE_OVERKILL = "none"           # cs22 SOURCE-CONFLICT (alt "ratio")
+SALVAGE_OVERKILL_RATIO = 2
+SALVAGE_CARGO = "none"               # cs23 UNVERIFIED
+DEFUNCT_OWNER = "defunct"            # cs24
+DEFUNCT_NONCORP_CAPTURE = "destroy"  # cs26 UNVERIFIED (alt "refuse")
+DEFUNCT_NET_WORTH = 0                # cs27 UNVERIFIED
+CORPSHIP_ON_LEAVE = "to_ceo"         # cs28 UNVERIFIED
+CORPSHIP_CAPTURE_FLAG = "captor_default"  # cs29 UNVERIFIED
+CORPSHIP_NW = "owner"                # cs32 UNVERIFIED
+BOT_CORPSHIP_POLICY = "off"          # "off" | "furb"
+BOT_FURB_POLICY = "off"
+
+
+def corpship_on() -> bool:
+    """Corporate ships, passwords and furbing. Legacy keeps owner-only transport and tow."""
+    return CORPSHIP_MODE == "tw2002" and fleet_on()
+
 
 def capture_on() -> bool:
     """Capture needs the fleet registry. Legacy combat or a legacy fleet destroys every beaten ship."""

@@ -2106,6 +2106,9 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         player.ship.scanner = None  # s4: the scanner stays with the old ship
     from .ship_transwarp import clear_drive
     clear_drive(player.ship)  # tw5: the drive stays with the old hull
+    if K.corpship_on():
+        from .corpships import on_new_hull
+        on_new_hull(player)
     # Preserve cargo sum but drop excess
     total = player.ship.cargo_used
     if total > spec["holds"]:
@@ -2479,9 +2482,15 @@ def _handle_corp_leave(universe: Universe, pid: str, action: Action) -> ActionRe
     # the corp. While anyone remains, only the leaver's own planets lose
     # the ticker.
     if not corp.member_ids:
+        if K.corpship_on():
+            from .corpships import on_corp_extinct
+            on_corp_extinct(universe, corp.ticker)
         _release_dissolved_corp_planets(universe, corp.ticker)
         universe.corporations.pop(corp.ticker, None)
     else:
+        if K.corpship_on():
+            from .corpships import on_member_leave
+            on_member_leave(universe, pid, corp.ticker)
         _detach_leaver_planets(universe, pid, corp.ticker)
     universe.emit(
         EventKind.CORP_LEAVE,
@@ -3923,6 +3932,13 @@ def _bind_planet_trade() -> None:
     _DISPATCH[ActionKind.PLANET_TRADE] = handle_planet_trade  # legacy: the handler answers "unsupported action"
 
 
+def _bind_corpships() -> None:
+    from .corpships import handle_set_corporate, handle_set_password, handle_set_personal
+    _DISPATCH[ActionKind.SHIP_SET_CORPORATE] = handle_set_corporate
+    _DISPATCH[ActionKind.SHIP_SET_PERSONAL] = handle_set_personal
+    _DISPATCH[ActionKind.SHIP_SET_PASSWORD] = handle_set_password
+
+
 def _bind_fed_handlers() -> None:
     from .fed import handle_apply_commission, handle_claim_reward, handle_post_reward
     _DISPATCH[ActionKind.APPLY_COMMISSION] = handle_apply_commission
@@ -3934,6 +3950,7 @@ _bind_ship_tw()
 _bind_fleet()
 _bind_tow()
 _bind_planet_trade()
+_bind_corpships()
 _bind_fed_handlers()
 
 

@@ -1380,6 +1380,18 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             ok, why = False, CHALLENGE_REFUSAL
         out.append(_la(ActionKind.PLANET_TRADE, legal=ok, reason=why, cost=cost, params=params))
 
+    if K.corpship_on():
+        from .corpships import legal_specs as corp_legal_specs
+        ckinds = {
+            "ship_set_corporate": ActionKind.SHIP_SET_CORPORATE,
+            "ship_set_personal": ActionKind.SHIP_SET_PERSONAL,
+            "ship_set_password": ActionKind.SHIP_SET_PASSWORD,
+        }
+        for kind_val, ok, why, cost, params in corp_legal_specs(universe, player_id):
+            if ok and challenge is not None:
+                ok, why = False, CHALLENGE_REFUSAL
+            out.append(_la(ckinds[kind_val], legal=ok, reason=why, cost=cost, params=params))
+
     return out
 
 
