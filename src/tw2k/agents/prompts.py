@@ -706,6 +706,59 @@ def get_system_prompt() -> str:
         text = text + _PLANET_TRADE_NOTE
     if K.buy_reserve_on():
         text = _buy_reserve_prompt_text(text)
+    if K.combat_framing_on():
+        text = _combat_framing_prompt_text(text)
+    if K.slow_hull_hint_on():
+        text = text.replace(_PRICE_LINE_BATTLESHIP, _PRICE_LINE_BATTLESHIP.rstrip("\n") + _SLOW_HULL_NOTE, 1)
+    return text
+
+
+_PRICE_LINE_BATTLESHIP = "  battleship          88,500, 80 holds, 4 turns/warp\n"
+_SLOW_HULL_NOTE = " (at 50 turns/day ~12 warps: a combat hull, slow for trading)\n"
+_FERRENGI_LINE_FULL = "- FERRENGI are NPC pirates. Low-aggression ones are easy XP. High-aggression will wreck you.\n"
+_FERRENGI_LINE_MINIMAL = "FERRENGI are NPC pirates. Ship loss"
+_SITUATIONAL_TEXT = (
+    "  These tools are SITUATIONAL — a solo trader who never allies or\n"
+    "  attacks can still win an economic victory. But if you fall behind by\n"
+)
+
+
+def _combat_framing_prompt_text(text: str) -> str:
+    """COMBAT_FRAMING_MODE (FULLGAME_FIXES_V2.md): attack shown with its real rewards and costs.
+
+    The old text sold Ferrengi as a threat only and combat as optional, and the seed 250925 full game
+    had no ship fight. TW2002 traders hunt each other and the Ferrengi for experience and bounties.
+    """
+    odds = ", ".join(f"{h} {o:g}" for h, o in K.FERRENGI_ODDS_BY_HULL.items())
+    bounty = K.FERRENGI_BOUNTY_PER_AGG
+    ferr = (
+        f"- FERRENGI are NPC pirates and a fair target outside FedSpace. A kill pays {bounty:,} cr x aggression "
+        f"bounty, the credits and cargo it carried (salvage, into free holds), {K.xp_award('kill_ferr')} experience x "
+        f"aggression and +{K.FERRENGI_ALIGN_ON_KILL} alignment. sector.ferrengi shows its fighters, shields and hull "
+        f"(odds: {odds}). One attack destroys it when qty x your hull odds >= (shields + fighters) x its odds; "
+        "otherwise you only trade fighters. Attack when you clearly outgun it; ignoring a hail pays tribute.\n"
+        f"- Attacking a trader (outside FedSpace): a kill earns {K.xp_award('kill_player')} experience + "
+        f"{int(K.KILL_EXP_SHARE * 100)}% of the victim's, and the victim loses its ship and cargo. It costs the fighters you "
+        f"lose ({K.nw_fighter_value()} net worth each) and alignment: half the victim's alignment with the sign reversed, "
+        "plus fighters lost x their alignment / 5000 (a good victim moves you toward evil, an evil one toward good). "
+        "sector.traders shows their fighters and hull, not shields: assume the hull's max shields.\n"
+    )
+    text = text.replace(_FERRENGI_LINE_FULL, ferr, 1)
+    text = text.replace(
+        _FERRENGI_LINE_MINIMAL,
+        f"FERRENGI are NPC pirates and a fair target: a kill pays {bounty:,} cr x aggression bounty + salvage and "
+        f"{K.xp_award('kill_ferr')} experience x aggression; one attack wins when qty x your odds >= (their shields + "
+        f"fighters) x their odds. A trader kill earns {K.xp_award('kill_player')} experience + "
+        f"{int(K.KILL_EXP_SHARE * 100)}% of theirs and costs alignment (half theirs if they are good). Ship loss",
+        1,
+    )
+    text = text.replace(
+        _SITUATIONAL_TEXT,
+        "  Trade, alliances and combat are all legitimate paths: a solo trader\n"
+        "  can win on economics, and an armed one on kills, bounties and salvage.\n"
+        "  Weigh the reward against the risk. If you fall behind by\n",
+        1,
+    )
     return text
 
 

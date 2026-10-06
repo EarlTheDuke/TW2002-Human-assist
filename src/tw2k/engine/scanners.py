@@ -53,8 +53,14 @@ def visible_mines(universe: Universe, viewer_id: str, sector) -> list[dict[str, 
     return out
 
 
-def traders_in(universe: Universe, viewer_id: str, sector) -> list[dict[str, Any]]:
-    """s11: other traders in a sector, 'w/ N ftrs, in <ship>'."""
+def traders_in(universe: Universe, viewer_id: str, sector, *, combat_scan: bool = False) -> list[dict[str, Any]]:
+    """s11: other traders in a sector, 'w/ N ftrs, in <ship>'.
+
+    combat_scan (your own sector only): a Combat Scanner hull also reads their shields (COMBAT_SCANNER_MODE).
+    """
+    viewer = universe.players.get(viewer_id)
+    scanner = (combat_scan and K.combat_scanner_on() and viewer is not None
+               and viewer.ship.ship_class.value in K.COMBAT_SCANNER_HULLS)
     out = []
     for oid in sector.occupant_ids:
         if oid == viewer_id or oid not in universe.players:
@@ -66,6 +72,8 @@ def traders_in(universe: Universe, viewer_id: str, sector) -> list[dict[str, Any
             continue  # h15: cloaked ships hidden even from corp location / scans
         out.append({"id": oid, "name": o.name, "ship_name": o.ship.name, "ship_class": o.ship.ship_class.value,
                     "fighters": int(o.ship.fighters)})
+        if scanner:
+            out[-1]["shields"] = int(o.ship.shields)
     return out
 
 

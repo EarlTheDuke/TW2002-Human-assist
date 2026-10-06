@@ -71,6 +71,7 @@ from ..engine.constants import (
     scanner_room,
     ship_cost,
     ship_specs,
+    slow_hull_hint_on,
 )
 from ..engine.planets import (
     organics_coeff,
@@ -652,8 +653,8 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        answer = self._cloak_for_navhaz(v)
-        if answer is not None:
+        answer = self._cloak_for_navhaz(v) or self._hunt(v)
+        if answer is not None:  # fullgame-fixes-v2: N3 attacks a ship it clearly beats (HUNT_MODE)
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
@@ -1232,7 +1233,8 @@ class SeatBrain:
                 return limp, Intent("acquire")
         saved = (self.mem.colonist_drop, self.mem.stock_load, self.mem.organics_drop)
         options: list[tuple[float, dict[str, Any], Intent, dict[str, Any]]] = []
-        for opt in (self._opt_upgrade(v), self._opt_scanner(v), self._opt_scan(v), self._opt_defense(v), self._opt_organics(v), self._opt_build(v),
+        for opt in (self._opt_upgrade(v), self._opt_scanner(v), self._opt_scan(v), self._opt_defense(v), self._opt_hunt_arm(v),
+                    self._opt_organics(v), self._opt_build(v),
                     self._opt_genesis(v), self._opt_ferry(v), self._opt_stockpile(v), self._opt_trade(v),
                     self._opt_survey(v)):
             if opt is None:
@@ -1518,7 +1520,7 @@ class SeatBrain:
         # engine charges. The citadel does not add fighters.
         if have >= 2 and any(int(p.get("citadel_level") or 0) < 2 for p in v.genesis_planets()):
             return None
-        if not self._genesis_affordable_now(v):
+        if not self._genesis_affordable_now(v) or self._no_genesis_hull(v):
             return None
         if v.here == STARDOCK:
             if not (v.ok("buy_equip") and "genesis" in v.choices("buy_equip", "item")):
@@ -2801,7 +2803,43 @@ class SeatBrain:
                 if qty > 0:
                     return self._act("buy_equip", {"item": item, "qty": int(qty)},
                                      f"top up {qty} {item} while rich")
-        return None
+        return self._hunt_arm(v, items, prices)
+
+    def _hunt_arm(self, v: View, items: set[str], prices: dict[str, Any], *, mark: bool = True) -> dict[str, Any] | None:
+        """HUNT_MODE tw2002, N3 only: arm a hunting hull so _hunt has something it clearly beats.
+
+        Runs only where _buy_defense would buy nothing (so legacy is untouched): on a hull with
+        offensive odds >= HUNT_ARM_MIN_ODDS that can send HUNT_ARM_FIGHTERS in one attack, with
+        credits >= HUNT_ARM_CASH_GATE, buy toward HUNT_ARM_FIGHTERS: one buy a game day, at most
+        HUNT_ARM_SPEND_SHARE of the cash above working capital and never below the gate, so the
+        seat keeps trading.
+        """
+        import tw2k.engine.constants as _HK
+        if not self.value_allocator or not _HK.hunt_on() or "fighters" not in items:
+            return None
+        odds, per_attack = combat_hull(str(v.ship_class or ""))
+        target = int(_HK.HUNT_ARM_FIGHTERS)
+        if odds < float(_HK.HUNT_ARM_MIN_ODDS) or per_attack < target:
+            return None
+        have = self._ship_fighters(v)
+        if have >= target or v.credits < int(_HK.HUNT_ARM_CASH_GATE):
+            return None
+        if getattr(self, "_hunt_arm_day", None) == v.day:
+            return None  # one arming buy a day: the rest of the cash keeps trading
+        unit = int(prices.get("fighters") or fighter_unit_price(int(v.day) or 1))
+        spare = v.credits - max(int(self.working_capital), int(self.cash_buffer))
+        budget = int(max(0, spare) * float(_HK.HUNT_ARM_SPEND_SHARE))
+        budget = min(budget, v.credits - int(_HK.HUNT_ARM_CASH_GATE))  # never below the gate
+        qty = min(v.max_by("buy_equip", "qty", "fighters"), target - have, budget // max(1, unit))
+        hint = v.obs.get("fedspace") if isinstance(v.obs, dict) else None
+        if isinstance(hint, dict) and self._fed_turns_short(v, self._fed_exit_plan(v)[1]):
+            qty = min(qty, max(0, int(hint.get("tow_fighter_limit") or 98) - int(have)))
+        if qty < int(_HK.HUNT_ARM_MIN_BUY):
+            return None
+        if mark:
+            self._hunt_arm_day = v.day
+        return self._act("buy_equip", {"item": "fighters", "qty": int(qty)},
+                         f"arm for hunting: {qty} fighters toward {target} ({unit} cr each)")
 
     def _buy_combat_hull(self, v: View) -> dict[str, Any] | None:
         if not self._fogged_hot():
@@ -2841,6 +2879,10 @@ class SeatBrain:
             new_holds = int(spec.get("holds") or 0)
             cur_holds = int(cur.get("holds") or 0)
             if new_holds < cur_holds:
+                continue
+            # SLOW_HULL_HINT_MODE: a hull with more turns per warp than the current one costs trade
+            # warps every day (BattleShip 4/warp); a defence upgrade must not slow the route.
+            if slow_hull_hint_on() and int(spec.get("turns_per_warp") or 0) > int(cur.get("turns_per_warp") or 99):
                 continue
             row = (fighters, new_holds, -i, -net, hull)
             if best is None or row[:4] > best[:4]:
@@ -2896,6 +2938,24 @@ class SeatBrain:
                 return None
         return value / max(1, turns), action, Intent("acquire", dock)
 
+
+    def _opt_hunt_arm(self, v: View):
+        """HUNT_MODE tw2002, N3 options path: the arming buy when already docked (never a divert).
+
+        _opt_defense stays silent once the 200-fighter floor is met, so a docked BattleShip never
+        armed (seed 20260925: P1/P2 flew BattleShips with 200 fighters from day 7-8).
+        """
+        import tw2k.engine.constants as _HK
+        if not _HK.hunt_on() or not self.value_allocator or not self._at_equip_port(v) or not v.ok("buy_equip"):
+            return None
+        if not self._fogged_hot():
+            return None
+        items = {str(x) for x in v.choices("buy_equip", "item")}
+        prices = (v.params("buy_equip").get("item") or {}).get("unit_price_by") or {}
+        action = self._hunt_arm(v, items, prices, mark=False)
+        if action is None:
+            return None
+        return float(_HK.HUNT_ARM_OPTION_VALUE), action, Intent("acquire", v.here)
 
     def _fitted_scanner(self, v: View) -> str | None:
         return v.scanner or (v.ship.get("scanner") if isinstance(v.ship, dict) else None)
@@ -3122,6 +3182,91 @@ class SeatBrain:
             if occ.get("federal") or occ.get("is_fed") or "federal" in str(occ.get("ship") or "").lower():
                 return True
         return False
+
+    def _hunt(self, v: View) -> dict[str, Any] | None:
+        """HUNT_MODE tw2002, N3 only: attack a Ferrengi or trader in this sector that it clearly beats.
+
+        One attack is deterministic (power = qty x hull odds; the target dies when power >= (shields +
+        fighters) x its odds), so "clearly" is HUNT_STRENGTH_MARGIN over the worst case the seat can see:
+        a Ferrengi shows fighters, shields and hull; a trader shows fighters and hull, so its hull's
+        max shields are assumed. A kill must not take the seat below HUNT_ALIGN_FLOOR alignment.
+        Ferrengi first (the one hailing us, then the biggest bounty), then traders. FULLGAME_FIXES_V2.md.
+        """
+        import math
+
+        import tw2k.engine.constants as _HK
+        if not self.value_allocator or not _HK.hunt_on():
+            return None
+        sector = v.sector or {}
+        if sector.get("is_fedspace") or v.landed is not None or v.ship_class == "escape_pod":
+            return None
+        if not v.ok("attack"):
+            return None
+        tparams = v.params("attack").get("target") or {}
+        choices = {str(c) for c in tparams.get("choices") or []}
+        players = {str(c) for c in tparams.get("players") or []}
+        cap = int((v.params("attack").get("qty") or {}).get("max") or 0)
+        if cap <= 0 or not choices:
+            return None
+        my_odds = combat_hull(str(v.ship_class or ""))[0]
+        power = cap * my_odds
+        margin = float(_HK.HUNT_STRENGTH_MARGIN)
+        tally = getattr(self, "_hunt_tally", None)
+        if tally is None or tally.get("day") != v.day:
+            tally = self._hunt_tally = {"day": v.day}
+
+        def fresh(tid: str) -> bool:
+            return int(tally.get(tid, 0)) < int(_HK.HUNT_MAX_ATTACKS_PER_TARGET_DAY)
+
+        enc = v.obs.get("ferrengi_encounter") or {}
+        best: tuple[tuple, str, str] | None = None
+        for f in sector.get("ferrengi") or []:
+            if not isinstance(f, dict):
+                continue
+            fid = str(f.get("id") or "")
+            if fid not in choices or not fresh(fid):
+                continue
+            defense = (int(f.get("fighters") or 0) + int(f.get("shields") or 0)) * _HK.ferrengi_odds_for_hull(f.get("hull"))
+            if power < margin * defense:
+                continue
+            agg = int(f.get("aggression") or 0)
+            key = (0, 0 if str(enc.get("ferr_id") or "") == fid else 1, -agg, fid)
+            why = (f"hunt Ferrengi {f.get('name') or fid} (aggression {agg}): power {power:.0f} vs defence "
+                   f"{defense:.0f} - bounty {agg * _HK.FERRENGI_BOUNTY_PER_AGG} cr")
+            if best is None or key < best[0]:
+                best = (key, fid, why)
+        if best is None:
+            sides = {str(r.get("id")): r.get("side") for r in v.rivals}
+            my_align = int(v.obs.get("alignment") or 0)
+            specs = ship_specs()
+            for t in sector.get("traders") or []:
+                if not isinstance(t, dict):
+                    continue
+                tid = str(t.get("id") or "")
+                hull = str(t.get("ship_class") or "")
+                if tid not in players or not fresh(tid) or hull == "escape_pod" or self._is_fed_target(v, tid):
+                    continue
+                scanned = t.get("shields") is not None
+                if scanned:  # Combat Scanner hull (COMBAT_SCANNER_MODE)
+                    worst_shields = int(t.get("shields") or 0)
+                else:
+                    worst_shields = int((specs.get(hull) or {}).get("max_shields") or 0)
+                defense = (int(t.get("fighters") or 0) + worst_shields) * combat_hull(hull)[0]
+                if power < margin * defense:
+                    continue
+                losses = math.ceil(defense / my_odds) if my_odds > 0 else cap
+                cost = _HK.hunt_alignment_cost(my_align, losses, sides.get(tid))
+                if my_align - cost < int(_HK.HUNT_ALIGN_FLOOR):
+                    continue
+                key = (1, 0, -int(defense), tid)
+                why = (f"hunt {t.get('name') or tid} in a {hull}: power {power:.0f} vs {'scanned' if scanned else 'worst-case'} defence "
+                       f"{defense:.0f}, alignment cost ~{cost}")
+                if best is None or key < best[0]:
+                    best = (key, tid, why)
+        if best is None:
+            return None
+        tally[best[1]] = int(tally.get(best[1], 0)) + 1
+        return self._act("attack", {"target": best[1], "qty": cap}, best[2])
 
     def _ship_attack(self, v: View, target: str) -> dict[str, Any] | None:
         """Never fire on a Federal starship. Other ships are not hunted this slice.
@@ -3505,6 +3650,18 @@ class SeatBrain:
         net = self._cargotran_net(v)
         return net is not None and v.credits - net >= self.cash_buffer
 
+    def _no_genesis_hull(self, v: View) -> bool:
+        """GENESIS_HULL_MODE tw2002: this hull carries no Genesis Torpedo (the free Scout after a loss).
+
+        The trip to StarDock for one is wasted (QC seed 20260925: N2-P3 / N1-P5 ping-ponged
+        StarDock <-> a port for nine days). Legacy observations carry no genesis_cap.
+        """
+        import tw2k.engine.constants as _GK
+        if not _GK.genesis_hull_on():
+            return False
+        cap = v.ship.get("genesis_cap")
+        return cap is not None and int(cap) <= 0
+
     def _genesis_trip_cost(self, v: View) -> int:
         """What 'genesis is affordable' means for the flight to StarDock.
 
@@ -3524,9 +3681,11 @@ class SeatBrain:
             if (self.value_allocator and self.mem.hull_wait and self.pressure is None
                     and self._cargotran_net(v) is not None and not self._cargotran_affordable(v)):
                 return False
-            return self._cargotran_affordable(v) or v.credits >= self._genesis_trip_cost(v)
+            return self._cargotran_affordable(v) or (v.credits >= self._genesis_trip_cost(v)
+                                                     and not self._no_genesis_hull(v))
         reserve = self._citadel_reserve(v)
-        if len(gplanets) < self.target_planets and v.credits >= GENESIS_TORPEDO_COST + reserve:
+        if (len(gplanets) < self.target_planets and v.credits >= GENESIS_TORPEDO_COST + reserve
+                and not self._no_genesis_hull(v)):
             return True
         # Ferry trip: colonists still needed, holds mostly free (sell/stock goods first),
         # and at least a small load affordable above the reserve.
@@ -3773,6 +3932,8 @@ class SeatBrain:
 
     def _finish(self, v: View, action: dict[str, Any]) -> dict[str, Any]:
         mem = self.mem
+        if str(action.get("thought") or "").startswith("SeatBrain: arm for hunting"):
+            self._hunt_arm_day = v.day  # _opt_hunt_arm: one arming buy a game day
         gplanets = v.genesis_planets()
         home = v.planet(mem.home_planet)
         if not v.worlds() and v.genesis_aboard == 0 and not self._needs_stardock(v) and v.here != STARDOCK:

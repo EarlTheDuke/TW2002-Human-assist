@@ -1219,7 +1219,7 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
     if K.info_tw2002():  # s11/s12: traders with their fighters; other people's limpets stay hidden
         from .scanners import traders_in, visible_mines
         info["mines"] = visible_mines(universe, player_id, sector)
-        info["traders"] = traders_in(universe, player_id, sector)
+        info["traders"] = traders_in(universe, player_id, sector, combat_scan=True)
     if K.fleet_on():  # SHIP_FLEET.md fl22: a NEW key, never mixed into occupants / traders
         from .fleet import sector_unmanned_view
         info["unmanned_ships"] = sector_unmanned_view(universe, player_id, sector.id)
@@ -2234,17 +2234,32 @@ def _action_hint(
         )
 
     # Ferrengi presence
-    if getattr(player, "ferrengi_encounter", None):
+    framing = K.combat_framing_on() and player is not None
+    if getattr(player, "ferrengi_encounter", None) and framing:
+        hints.append("Ferrengi boarding you: surrender (tribute), retreat, or attack. " + _ferrengi_check(player, sector_info))
+    elif getattr(player, "ferrengi_encounter", None):
         hints.append(
             "Ferrengi boarding you: surrender (tribute), flee, or attack. "
             "Surrender often safer than fighting."
         )
+    elif sector_info.get("ferrengi") and framing:
+        hints.append("Ferrengi present - a legal target outside FedSpace. " + _ferrengi_check(player, sector_info))
     elif sector_info.get("ferrengi"):
         from . import constants as _K
         if _K.ferrengi_tw2002():
             hints.append("Ferrengi present — attack for XP or warp out. Watch for boarding.")
         else:
             hints.append("Ferrengi present — attack for XP or warp out.")
+
+    if framing and full_hints and not sector_info.get("is_fedspace"):
+        trader_line = _trader_check(player, sector_info)
+        if trader_line:
+            hints.append(trader_line)
+    if (K.slow_hull_hint_on() and player is not None and sector_info.get("id") == K.STARDOCK_SECTOR
+            and int(getattr(player, "turns_per_day", 0) or 0) <= K.SLOW_HULL_HINT_MAX_TURNS_PER_DAY):
+        slow_line = _slow_hull_line(player)
+        if slow_line:
+            hints.append(slow_line)
 
     # Inbox backlog — FYI only. Distinguishing direct hails from broadcasts
     # and corp memos matters because each channel has different relevance:
@@ -2599,6 +2614,74 @@ def _action_hint(
                     )
 
     return " | ".join(hints)
+
+
+def _attack_power(player) -> tuple[int, float]:
+    """(fighters one attack may send, that attack's power) for the hint's win check."""
+    from . import constants as K
+    from .combat import attack_cap
+    cap = attack_cap(player)
+    return cap, cap * K.combat_hull(player.ship.ship_class.value)[0]
+
+
+def _ferrengi_check(player, sector_info: dict[str, Any]) -> str:
+    """COMBAT_FRAMING_MODE: reward and the one-attack win check for each visible Ferrengi."""
+    from . import constants as K
+    cap, power = _attack_power(player)
+    parts = []
+    for f in sector_info.get("ferrengi") or []:
+        agg = int(f.get("aggression") or 0)
+        f_f, f_s = int(f.get("fighters") or 0), int(f.get("shields") or 0)
+        odds = K.ferrengi_odds_for_hull(f.get("hull"))
+        defense = (f_f + f_s) * odds
+        verdict = "you destroy it in one attack" if power >= defense else "one attack will NOT destroy it"
+        parts.append(
+            f"{f.get('id')} (aggression {agg}, {f_f} ftrs / {f_s} shields x{odds:g}): kill = "
+            f"{agg * K.FERRENGI_BOUNTY_PER_AGG:,} cr bounty + salvage, {agg * K.xp_award('kill_ferr')} exp, "
+            f"+{K.FERRENGI_ALIGN_ON_KILL} alignment; your {cap} ftrs = power {power:.0f} vs defence {defense:.0f} -> {verdict}"
+        )
+    return "; ".join(parts) + "."
+
+
+def _trader_check(player, sector_info: dict[str, Any]) -> str:
+    """COMBAT_FRAMING_MODE: a trader in your sector, with the reward, the cost and the worst-case check."""
+    from . import constants as K
+    traders = [t for t in sector_info.get("traders") or [] if isinstance(t, dict)
+               and str(t.get("ship_class") or "") != "escape_pod"]
+    if not traders:
+        return ""
+    cap, power = _attack_power(player)
+    if cap <= 0:
+        return ""
+    specs = K.ship_specs()
+    parts = []
+    for t in traders[:3]:
+        hull = str(t.get("ship_class") or "")
+        seen = t.get("shields") is not None  # Combat Scanner hull
+        worst = int(t.get("shields") or 0) if seen else int((specs.get(hull) or {}).get("max_shields") or 0)
+        defense = (int(t.get("fighters") or 0) + worst) * K.combat_hull(hull)[0]
+        if seen:
+            verdict = "you destroy it in one attack" if power >= defense else "one attack will NOT destroy it"
+            label = f"{worst} shields (combat scanner)"
+        else:
+            verdict = "beatable even at max shields" if power >= defense else "not a sure kill"
+            label = f"max {worst} shields"
+        parts.append(f"{t.get('name')} ({hull}, {int(t.get('fighters') or 0)} ftrs, {label}): "
+                     f"power {power:.0f} vs {'defence' if seen else 'worst case'} {defense:.0f} -> {verdict}")
+    return ("Traders here: " + "; ".join(parts) + ". A kill = "
+            f"{K.xp_award('kill_player')} exp + {int(K.KILL_EXP_SHARE * 100)}% of theirs and they lose the ship; "
+            "it costs the fighters you lose and alignment (half a good victim's, sign reversed).")
+
+
+def _slow_hull_line(player) -> str:
+    """SLOW_HULL_HINT_MODE: at StarDock, a 4-turn hull makes few warps in a short day."""
+    from . import constants as K
+    tpd = int(getattr(player, "turns_per_day", 0) or 0)
+    tpw = int((K.ship_specs().get("battleship") or {}).get("turns_per_warp") or 0)
+    if tpw < K.SLOW_HULL_TURNS_PER_WARP or player.ship.ship_class.value == "battleship" or tpd <= 0:
+        return ""
+    return (f"BattleShip: {tpw} turns per warp = about {tpd // tpw} warps in your {tpd}-turn day; it is a combat "
+            "hull and hurts trading. Compare turns_per_warp before buy_ship.")
 
 
 def _recent_self_error(universe: Any, player_id: str) -> str:

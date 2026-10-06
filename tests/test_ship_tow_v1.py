@@ -892,15 +892,21 @@ def test_bot_tow_policy_off_and_legacy_no_op(monkeypatch):
 # Recorded with tests/fed_legacy_digest.py on the commit before this slice (slice 50 + its follow-up): scripted
 # match N3,N2,N1,H, seed 250925, 3 days, every switch at its default (= this slice with only TOW_MODE flipped).
 # CAPTURE_MODE is also flipped: it did not exist on that parent, and leaving it tw2002 changes the match.
+# fullgame-fixes-v2: its seven switches are flipped too (their tw2002 defaults change the N3 game).
 TOW_LEGACY_GOLDEN = "5032bedfb3722133d47b18eb"  # recorded on 5968646 + slice-47 QC brain fixes (79acd71; TOW_MODE absent)
 
 
 # Later slices that add a tw2002 mode flip it here too (planetary-trading-v1: PLANET_TRADE_MODE).
+FULLGAME_V2_SWITCHES = ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
+                        "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE")
+TOW_PIN_FLIPS = ("TOW_MODE", "CAPTURE_MODE", "PLANET_TRADE_MODE") + FULLGAME_V2_SWITCHES
+
+
 def test_tow_legacy_is_unchanged():
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
-        "print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip=('TOW_MODE', 'CAPTURE_MODE', 'PLANET_TRADE_MODE')))"
+        f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={TOW_PIN_FLIPS!r}))"
     )
     env = dict(os.environ, PYTHONHASHSEED="0")
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
