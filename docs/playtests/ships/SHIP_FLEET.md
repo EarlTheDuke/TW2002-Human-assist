@@ -30,7 +30,7 @@ Sources under `C:\Users\sugar\tw2002_reference\` (short names as in GAP_MAP.md).
 
 ## Legacy
 
-`FLEET_MODE = "legacy"` is today exactly: `Universe.parked_ships` stays empty, `Ship.fleet_id` is never set (these, `Universe.next_ship_id`, `Player.arrived_by_transport` and `LimpetTrack.target_ship_id` are excluded from dumps), `buy_ship` ignores `trade_in` like any unknown arg and lists no `trade_in` param, `sell_ship` / `ship_transport` are absent from the legal list and their handlers answer `unsupported action`, `attack ship:<id>` answers today's `target ship:<id> not found`, density unchanged, no `unmanned_ships` / `fleet` observation keys, no new events, no Extern repo step, no rng draws, prompt unchanged.
+`FLEET_MODE = "legacy"` is today exactly: `Universe.parked_ships` stays empty, `Ship.fleet_id` is never set (these, `Universe.next_ship_id`, `Player.arrived_by_transport` and `LimpetTrack.target_ship_id` are left out of dumps while empty / default, so legacy dumps are byte-identical; see Saves), `buy_ship` ignores `trade_in` like any unknown arg and lists no `trade_in` param, `sell_ship` / `ship_transport` are absent from the legal list and their handlers answer `unsupported action`, `attack ship:<id>` answers today's `target ship:<id> not found`, density unchanged, no `unmanned_ships` / `fleet` observation keys, no new events, no Extern repo step, no rng draws, prompt unchanged.
 
 Pins (`tests/fed_legacy_digest.py`, seed 250925, 3 days, every observation JSON + prompt text + action/result + event + 3 end-of-day universe states), recorded on **da25c47**, the commit before this slice:
 
@@ -72,7 +72,7 @@ Pins (`tests/fed_legacy_digest.py`, seed 250925, 3 days, every observation JSON 
 | fl29 | No universe.rng draws (BFS, ids, repo order, unmanned combat). | engine | - | test_fl29_no_rng_draws |
 | fl30 | Own-seat observation `fleet: {max_ships, transport_range, manned_ship_id, ships: [{ship_id, hull, name, sector_id, hops, in_range, fighters, shields, holds, cargo, transwarp, repo_at_extern}]}`. Events SHIP_TRANSPORT (pilot + both sectors), FLEET_SPARE_BOUGHT (owner + StarDock), SHIP_SOLD (owner), FLEET_REPOSSESSED (owner), UNMANNED_SHIP_DESTROYED (attacker + owner + sector). | engine | - | test_fl22_..., test_fl23_... |
 | fl31 | Prompt paragraph (`_FLEET_NOTE`). | engine | - | test_prompt_explains_the_fleet_under_tw2002 |
-| fl32 | Spectator: SHIP_TRANSPORT beam line, fleet events in the feed (web/app.js); cockpit forms for sell_ship / ship_transport (web/bot.js). Per-sector hollow unmanned icon not drawn yet (open). | partial | - | - |
+| fl32 | Spectator: SHIP_TRANSPORT beam line, fleet events in the feed (web/app.js); cockpit forms for sell_ship / ship_transport (web/bot.js). Spectator map draws a hollow ring in the owner's colour per unmanned hull (snapshot `parked_ships`, present only when any exist). | done | - | test_fleet_snapshot_parked_ships |
 | fl33 | Out of scope: see top. | - | cabal twgs.html Type II 20,000 / upgrade 9,000 vs OldFAQ v2 80,000 / 40,000 (SOURCE-CONFLICT recorded for slice 51) | - |
 
 ## Bots
@@ -82,7 +82,7 @@ Pins (`tests/fed_legacy_digest.py`, seed 250925, 3 days, every observation JSON 
 ## TransWarp add-ons (Ben, 2026-10-05)
 
 - `SHIP_TW_FED_LOCK_HULLS = "all_tw"` (default: the commissioned FedSpace lock on ISS, CFS and Havoc, as shipped in slice 48) | `"iss_only"`. Test: test_fed_lock_hulls_switch.
-- Drive owners keep an ore reserve: a seat whose ship has a Type 1 drive sees `min(2 x SHIP_TW_ORE_PER_HOP x SHIP_TW_RESERVE_HOPS (6), holds // 2)` fuel ore as not for sale (seat_brain `tw_reserve_view`), and tops the hold up to it at an ore port (`_top_up_tw_ore`). `_transwarp_instead` reads the real hold. Seats without a drive get the observation back untouched, so their play is byte-identical. Tests: test_tw_ore_reserve_only_for_drive_owners, test_tw_ore_reserve_tops_up_at_an_ore_port.
+- Drive owners keep only the ore of their PLANNED jump (follow-up after d632aae): `SeatBrain._planned_tw_hops` takes last turn's travel target; when it is a lock (listed on `ship_transwarp`, or FedSpace under the commission lock, hops from the seat's own known-warp map) and the jump saves `SHIP_TW_MIN_TURNS_SAVED` (8) or more turns over walking, `SHIP_TW_ORE_PER_HOP x hops` fuel ore is shown as not for sale (`tw_reserve_view`) and topped up at an ore port (`_top_up_tw_ore`). No planned jump, no reserve. `_transwarp_instead` jumps when the jump saves `SHIP_TW_MIN_TURNS_SAVED`+ turns and the jump ore is aboard (no return reserve). Seats without a drive get the observation back untouched, so their play is byte-identical. Tests: test_tw_ore_reserve_only_for_drive_owners, test_tw_ore_reserve_tops_up_for_the_planned_jump_only, test_bots_swap_a_long_walk_for_a_listed_lock_only.
 
 ## Deliberate differences
 
@@ -96,6 +96,9 @@ Pins (`tests/fed_legacy_digest.py`, seed 250925, 3 days, every observation JSON 
 - Ferrengi and Feds ignore unmanned ships (only Extern FedSpace repossession applies).
 - Elimination removes the owner's parked ships (original: assets go rogue at timeout).
 - No Extern tow-lock exception yet (needs tractor tow, part 2b): every unmanned ship in FedSpace at Extern is lost. The repo runs whenever FLEET_MODE is tw2002 (not gated on FED_MODE).
-- Fleet registry fields are excluded from universe dumps (like slice 48's drive fields), so a save / replay dump does not carry parked ships.
 - Bots default to `spare_only`: no spares, sells, RTR / SST loops or unmanned attacks in this slice.
 - StarDock stays sector 1 (existing deliberate), so "in orbit at StarDock" is FedSpace and Extern repossession applies there, as in the original.
+
+## Saves (follow-up after d632aae)
+
+`Universe.parked_ships`, `Universe.next_ship_id`, `Ship.fleet_id`, `Player.arrived_by_transport`, `LimpetTrack.target_ship_id` and slice 48's `Ship.transwarp_drive` / `Player.arrived_by_transwarp` are saved in a `Universe` dump once they hold a value and restored by `Universe.model_validate`; while empty / default they are left out (wrap serializer `_omit_defaults` in models.py), so every legacy dump and digest is byte-identical (all three pins re-checked). Test: test_fleet_and_transwarp_fields_survive_save_restore.

@@ -140,12 +140,12 @@ CITADEL_LAST_DAYS = 2
 MAX_TARGET_PLANETS = 4
 # Buy hull upgrades and defence once a seat is this rich (fogged credits).
 RICH_CREDITS = 200_000
-# ship-transwarp-v1: jump only when the walk is this long; buy a drive only with this much left over.
-SHIP_TW_MIN_HOPS = 3
+# ship-transwarp-v1: buy a drive only with this much left over.
 SHIP_TW_SPARE_CASH = 150_000
-# Drive owners keep fuel ore aboard for a jump out AND back of this many hops (never sold, topped up at an
-# ore port), capped at half the holds. Seats without a drive are untouched (Ben 2026-10-05).
-SHIP_TW_RESERVE_HOPS = 6
+# Drive owners jump only when walking would cost at least this many MORE turns than the jump, and keep just
+# the ore for the planned jump (never sold, topped up at an ore port). No plan, no reserve. Seats without a
+# drive are untouched (Ben 2026-10-05).
+SHIP_TW_MIN_TURNS_SAVED = 8
 DEFENSE_CASH_GATE = 100_000
 DEFENSE_FIGHTERS_FLOOR = 200
 DEFENSE_SHIELDS_FLOOR = 100
@@ -599,7 +599,7 @@ class SeatBrain:
     # ------------------------------------------------------------------ entry
     def decide(self, obs: Any) -> dict[str, Any]:
         o = obs if isinstance(obs, dict) else obs.model_dump(mode="json")
-        o = tw_reserve_view(o)
+        o = tw_reserve_view(o, self._planned_tw_hops(o))
         v = View(o)
         if self.mem is None:
             self.mem = SeatMemory.load(o.get("scratchpad"))
@@ -2584,10 +2584,36 @@ class SeatBrain:
         hops = int((spec.get("hops_by") or {}).get(str(target)) or 0)
         ore_need = int((spec.get("ore_by") or {}).get(str(target)) or 0)
         ore = int(v.obs.get("_tw_ore_aboard", v.cargo.get("fuel_ore")) or 0)  # the real hold, reserve included
-        if hops < SHIP_TW_MIN_HOPS or ore_need <= 0 or ore < 2 * ore_need:
+        saved = tw_turns_saved(self._tpw(v), hops)
+        if saved < SHIP_TW_MIN_TURNS_SAVED or ore_need <= 0 or ore < ore_need:
             return action
         return self._act("ship_transwarp", {"sector_id": target},
-                         f"TransWarp to {target} ({hops} hops, {ore_need} ore; same again kept for the return)")
+                         f"TransWarp to {target} ({hops} hops, {ore_need} ore, saves {saved} turns)")
+
+    def _planned_tw_hops(self, o: dict[str, Any]) -> int | None:
+        """Drive owners: hops of the jump the seat is heading for (last turn's travel target), when that target
+        is a lock (listed now, or FedSpace under the commission lock) and the jump saves
+        SHIP_TW_MIN_TURNS_SAVED+ turns. That jump's ore is the whole reserve; None = keep nothing."""
+        tw = (o.get("ship") or {}).get("transwarp")
+        target = self._intent.target if self._intent is not None else None
+        if not isinstance(tw, dict) or tw.get("fitted") != "type1" or target is None:
+            return None
+        v = View(o)
+        if v.here is None or int(target) == int(v.here):
+            return None
+        spec = v.params("ship_transwarp").get("sector_id") or {}
+        hops = (spec.get("hops_by") or {}).get(str(int(target)))
+        if hops is None:
+            from ..engine import constants as engine_k
+            if not (tw.get("fed_lock") and int(target) in engine_k.FEDSPACE_SECTORS):
+                return None
+            hops = self._hops(v, v.here, int(target))
+            if hops is None:
+                return None
+        hops = int(hops)
+        if tw_turns_saved(self._tpw(v), hops) < SHIP_TW_MIN_TURNS_SAVED:
+            return None
+        return hops
 
     def _top_up_tw_ore(self, v: View) -> dict[str, Any] | None:
         """Drive owners only: at a port that sells fuel ore, fill the hold up to the TransWarp reserve."""
@@ -3569,16 +3595,25 @@ class SeatBrain:
 __all__ = ["SeatBrain", "SeatMemory", "View", "next_tier"]
 
 
-def tw_reserve_view(o: dict[str, Any]) -> dict[str, Any]:
-    """TransWarp ore reserve (Ben 2026-10-05): a seat that OWNS a Type 1 drive sees its fuel-ore reserve as
-    not for sale, so the trade ladder never sells it. Any other seat gets the observation back untouched,
+def tw_turns_saved(tpw: int, hops: int) -> int:
+    """Turns a TransWarp jump saves over walking `hops` warps (SHIP_TW_TURN_COST "tpw": one TPW per jump)."""
+    from ..engine import constants as engine_k
+    tpw, hops = max(1, int(tpw)), max(0, int(hops))
+    jump = tpw * max(1, hops) if engine_k.SHIP_TW_TURN_COST == "hops" else tpw
+    return tpw * hops - jump
+
+
+def tw_reserve_view(o: dict[str, Any], plan_hops: int | None = None) -> dict[str, Any]:
+    """TransWarp ore reserve (Ben 2026-10-05): a seat that OWNS a Type 1 drive sees the ore for its planned
+    jump (`plan_hops` hops, from SeatBrain._planned_tw_hops) as not for sale, so the trade ladder never sells
+    it; with no planned jump nothing is held back. Any other seat gets the observation back untouched,
     so non-owner play stays byte-identical. The real hold stays readable as `_tw_ore_aboard`."""
     ship = o.get("ship") or {}
     tw = ship.get("transwarp")
     if not isinstance(tw, dict) or tw.get("fitted") != "type1":
         return o
     per_hop = max(1, int(tw.get("ore_per_hop") or 3))
-    keep = min(2 * per_hop * SHIP_TW_RESERVE_HOPS, int(ship.get("holds") or 0) // 2)
+    keep = min(per_hop * max(0, int(plan_hops or 0)), int(ship.get("holds") or 0))
     have = int((ship.get("cargo") or {}).get("fuel_ore") or 0)
     out = dict(o)
     out["_tw_ore_aboard"] = have

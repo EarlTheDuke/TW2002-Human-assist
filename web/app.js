@@ -85,6 +85,7 @@
     // /state snapshot. Previously dropped on the floor in onSnapshot.
     corporations: new Map(),  // ticker -> Corporation dict
     ferrengi: new Map(),      // id -> FerrengiShip dict
+    parkedShips: [],          // SHIP_FLEET fl21: unmanned hulls {id, owner_id, sector_id, hull}
     directiveDrafts: new Map(), // pid -> textarea content while editing
     directiveChatDrafts: new Map(), // pid -> pending operator chat text
   };
@@ -264,6 +265,8 @@
         if (c && c.ticker) state.corporations.set(c.ticker, c);
       }
     }
+    // Absent key = no parked hulls (the snapshot omits it while the fleet registry is empty).
+    state.parkedShips = Array.isArray(snap.parked_ships) ? snap.parked_ships : [];
     if (Array.isArray(snap.ferrengi)) {
       state.ferrengi.clear();
       for (const f of snap.ferrengi) {
@@ -1433,6 +1436,29 @@
         followRing.setAttribute("data-player", p.id);
         shipsLayer.appendChild(followRing);
       }
+    }
+
+    // SHIP_FLEET fl21 — unmanned (parked) ships: a hollow ring in the owner's colour, so they never read
+    // as a crewed ship dot.
+    for (const r of state.parkedShips) {
+      const s = state.sectors.get(r.sector_id);
+      if (!s) continue;
+      const vis = visibleIds();
+      if (vis && !vis.has(r.sector_id)) continue;
+      const owner = state.players.get(r.owner_id);
+      const ring = document.createElementNS(svgNS, "circle");
+      ring.setAttribute("cx", s.x);
+      ring.setAttribute("cy", s.y);
+      ring.setAttribute("r", 3);
+      ring.setAttribute("class", "unmanned-marker");
+      ring.setAttribute("data-testid", "unmanned-marker");
+      ring.setAttribute("fill", "none");
+      ring.setAttribute("stroke", (owner && owner.color) || "#9aa7bd");
+      ring.setAttribute("stroke-width", "0.6");
+      const title = document.createElementNS(svgNS, "title");
+      title.textContent = `Unmanned ${r.hull} (ship ${r.id}) of ${owner ? owner.name : r.owner_id} @ sector ${r.sector_id}`;
+      ring.appendChild(title);
+      shipsLayer.appendChild(ring);
     }
 
     // Phase B.3 — Ferrengi raider markers. Distinct red triangle so

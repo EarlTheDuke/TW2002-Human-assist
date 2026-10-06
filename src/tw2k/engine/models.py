@@ -11,9 +11,21 @@ import random
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, SerializerFunctionWrapHandler, model_serializer
 
 from . import constants as K
+
+
+def _omit_defaults(data: Any, defaults: dict[str, Any]) -> Any:
+    """Drop slice-48/50 resume fields while they hold their default (SHIP_FLEET.md "Saves").
+
+    They are saved once set (drive fitted, hull parked, ...) so a Universe dump/validate round trip
+    resumes the game; while empty they are left out, so legacy dumps and digests stay byte-identical."""
+    if isinstance(data, dict):
+        for key, default in defaults.items():
+            if key in data and data[key] == default and type(data[key]) is type(default):
+                del data[key]
+    return data
 
 # ---------------------------------------------------------------------------
 # actor_kind override (H2 copilot path)
@@ -435,6 +447,10 @@ class Planet(BaseModel):
 
 
 class Ship(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"transwarp_drive": None, "fleet_id": None})
+
     ship_class: ShipClass = ShipClass.MERCHANT_CRUISER
     name: str = "Unnamed"
     holds: int = K.STARTING_HOLDS
@@ -462,10 +478,10 @@ class Ship(BaseModel):
     marker_beacons: int = 0
     psychic_probe: int = 0
     atomic_detonators: int = 0
-    # SHIP_TRANSWARP.md tw4. Excluded from dumps so a legacy universe stays byte-identical.
-    transwarp_drive: str | None = Field(default=None, exclude=True)
+    # SHIP_TRANSWARP.md tw4. Saved once fitted; omitted from dumps while None (legacy byte-identical).
+    transwarp_drive: str | None = None
     # SHIP_FLEET.md fl1: stable fleet id, set the first time the hull is parked or bought as a spare.
-    fleet_id: int | None = Field(default=None, exclude=True)
+    fleet_id: int | None = None
     # Weighted-average unit cost paid for the current holdings of each
     # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
     # when planning a sell — without this they have to reconstruct cost
@@ -489,6 +505,10 @@ class Ship(BaseModel):
 
 
 class Player(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"arrived_by_transwarp": False, "arrived_by_transport": False})
+
     id: str
     name: str
     credits: int = K.STARTING_CREDITS
@@ -515,9 +535,9 @@ class Player(BaseModel):
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None
     # SHIP_TRANSWARP.md tw12. Set on a ship TransWarp landing; cleared by warp or liftoff.
-    arrived_by_transwarp: bool = Field(default=False, exclude=True)
+    arrived_by_transwarp: bool = False
     # SHIP_FLEET.md fl17c. Set by ship_transport; cleared by a warp, a TransWarp jump or liftoff.
-    arrived_by_transport: bool = Field(default=False, exclude=True)
+    arrived_by_transport: bool = False
     # Last sector of a successful rob/steal (fake bust if repeated). ROB_STEAL.md r13.
     last_crime_sector_id: int | None = None
     # fedspace-police-v1
@@ -758,12 +778,16 @@ class Alliance(BaseModel):
 
 class LimpetTrack(BaseModel):
     """A limpet stuck to a player's hull — owner can query its location."""
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"target_ship_id": None})
+
     owner_id: str       # the deployer (intel consumer)
     target_id: str      # which player is being tracked
     placed_sector: int
     placed_day: int
     # SHIP_FLEET.md fl19: set while the tracked hull sits parked (unmanned); None = on target_id's ship.
-    target_ship_id: int | None = Field(default=None, exclude=True)
+    target_ship_id: int | None = None
 
 
 class ParkedShip(BaseModel):
@@ -895,6 +919,10 @@ class Federal(BaseModel):
 
 
 class Universe(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"parked_ships": {}, "next_ship_id": 1})
+
     config: GameConfig
     sectors: dict[int, Sector]
     players: dict[str, Player] = Field(default_factory=dict)
@@ -906,9 +934,9 @@ class Universe(BaseModel):
     limpets: dict[str, LimpetTrack] = Field(default_factory=dict)
     next_planet_id: int = 1
     next_alliance_id: int = 1
-    # SHIP_FLEET.md fl1. Excluded from dumps so a legacy universe stays byte-identical (empty there anyway).
-    parked_ships: dict[int, ParkedShip] = Field(default_factory=dict, exclude=True)
-    next_ship_id: int = Field(default=1, exclude=True)
+    # SHIP_FLEET.md fl1. Saved when non-empty; omitted while empty/1 so a legacy universe stays byte-identical.
+    parked_ships: dict[int, ParkedShip] = Field(default_factory=dict)
+    next_ship_id: int = 1
     events: list[Event] = Field(default_factory=list)
     day: int = 1
     tick: int = 0
