@@ -467,6 +467,9 @@ class LLMAgent(BaseAgent):
         # and parsed in `_call_cursor` so we can pull the outer envelope's
         # `usage` block without re-running the CLI.
         self._last_cursor_raw_stdout: str = ""
+        # Game day on which this seat last wrote its short/medium goals (None until the first act()).
+        # A later day with those goals still shown gets the new_day_goal_notice line.
+        self.goals_day: int | None = None
 
     def _effective_custom_base(self) -> str:
         return (self._custom_base_url or os.environ.get("TW2K_CUSTOM_BASE_URL") or "").strip()
@@ -637,7 +640,12 @@ class LLMAgent(BaseAgent):
         # If the call errors out / times out, _last_usage stays None
         # and the runner skips the llm_usage event for this turn.
         self._last_usage = None
-        prompt = format_observation(obs)
+        if self.goals_day is None:
+            self.goals_day = int(obs.day)
+        notice = new_day_goal_notice(obs, self.goals_day)
+        prompt = format_observation(
+            obs.model_copy(update={"action_hint": notice + "\n" + obs.action_hint}) if notice else obs
+        )
         # First call on a cold model gets extra grace so we don't punish warmup.
         timeout = self.warmup_timeout_s if not self._warmed else self.think_cap_s
         try:
@@ -691,6 +699,8 @@ class LLMAgent(BaseAgent):
                 thought=f"[parse error] couldn't parse: {raw[:200]}",
             )
 
+        if parsed.goal_short is not None or parsed.goal_medium is not None:
+            self.goals_day = int(obs.day)
         return apply_buy_reserve_cap(obs, parsed)
 
     # ---------- provider-specific calls ---------- #
@@ -987,6 +997,33 @@ _JSON_BLOCK_RE = re.compile(r"\{[\s\S]*\}\s*$")
 # and the agent fell back to WAIT (Match 3 / M3-1).
 _THINK_BLOCK_RE = re.compile(r"<think>[\s\S]*?</think>", re.IGNORECASE)
 _LEFTOVER_THINK_RE = re.compile(r"</?think>", re.IGNORECASE)
+
+
+def new_day_goal_notice(obs: Observation, goals_day: int | None) -> str:
+    """NEW DAY line for an LLM seat still showing goals written on an earlier day.
+
+    fullgame2 P7: a day-1 goal "wait until the day ends" stayed at the top of the action_hint
+    ("YOUR GOALS - NOW: ...") and the seat waited out days 2-4 with 47-50 turns left. Empty when
+    K.LLM_NEW_DAY_GOAL_NOTICE is off, when there is no short/medium goal, when the goals were written
+    today, or when no turns are left.
+    """
+    from ..engine import constants as K
+
+    if not K.LLM_NEW_DAY_GOAL_NOTICE or obs.finished or goals_day is None:
+        return ""
+    goals = obs.goals or {}
+    if not ((goals.get("short") or "").strip() or (goals.get("medium") or "").strip()):
+        return ""
+    day = int(obs.day)
+    left = int(obs.turns_remaining)
+    if day <= int(goals_day) or left <= 0:
+        return ""
+    return (
+        f"NEW DAY {day}: your turns refilled - {left} turns left today. YOUR GOALS below were written on "
+        f"day {goals_day}: a goal to wait for the day to end is DONE and anything you planned for tomorrow "
+        "is due now. Re-plan from the current state, write fresh goals.short and goals.medium this turn, "
+        "and do not wait while you can still move or trade (4 waits in a row end your day)."
+    )
 
 
 def apply_buy_reserve_cap(obs: Observation, action: Action) -> Action:

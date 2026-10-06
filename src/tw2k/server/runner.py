@@ -111,6 +111,25 @@ def _is_day_done(player) -> bool:
     return remaining < warp_cost and remaining < trade_cost
 
 
+def note_wait_streak(
+    waits: dict[str, int], streak_day: dict[str, int], player_id: str, day: int, ok_wait: bool
+) -> int:
+    """Count consecutive successful WAITs for one seat within one game day.
+
+    A WAIT on a later day than the streak's day starts a new streak at 1; any other action resets
+    it to 0. The scheduler stands a seat down for the rest of the day at 4.
+    """
+    if not ok_wait:
+        waits[player_id] = 0
+        streak_day[player_id] = day
+        return 0
+    if streak_day.get(player_id) != day:
+        waits[player_id] = 0
+    streak_day[player_id] = day
+    waits[player_id] = waits.get(player_id, 0) + 1
+    return waits[player_id]
+
+
 @dataclass
 class AgentSpec:
     player_id: str
@@ -938,11 +957,13 @@ class MatchRunner:
                 # WAIT-loop guard: if an agent WAITs several times in a row while it
                 # still has turns, skip the rest of its day so we don't flood the feed.
                 waits = getattr(self, "_wait_streak", {})
-                if action.kind == ActionKind.WAIT and result.ok:
-                    waits[agent.player_id] = waits.get(agent.player_id, 0) + 1
-                else:
-                    waits[agent.player_id] = 0
+                # The streak belongs to one day: yesterday's end-of-day waits must not count
+                # toward today's stand-down (fullgame2 P7 stood down after 2 waits on day 2).
+                streak_day = getattr(self, "_wait_streak_day", {})
+                note_wait_streak(waits, streak_day, agent.player_id, int(universe.day),
+                                 action.kind == ActionKind.WAIT and bool(result.ok))
                 self._wait_streak = waits
+                self._wait_streak_day = streak_day
                 if waits.get(agent.player_id, 0) >= 4:
                     remaining = player.turns_per_day - player.turns_today
                     if remaining > 0:

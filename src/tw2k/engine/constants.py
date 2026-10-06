@@ -2054,3 +2054,9 @@ BOT_PORT_BUILD_POLICY = "off"           # pu29 DERIVED: "off" | "near_planet"
 
 def port_upgrade_on() -> bool:
     return PORT_UPGRADE_MODE == "tw2002"
+
+
+# llm-new-day-goals (fullgame2 P7): an LLM seat whose own goals were written on an earlier day sees a
+# NEW DAY line at the top of its action_hint until it writes fresh short/medium goals. Agent-side only
+# (LLMAgent); observations, format_observation and the system prompt are unchanged, so no digest moves.
+LLM_NEW_DAY_GOAL_NOTICE = True
