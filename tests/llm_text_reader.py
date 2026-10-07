@@ -41,6 +41,14 @@ def _credits(user: dict[str, Any]) -> int:
     return int((user.get("self") or {}).get("credits") or 0)
 
 
+def _turns(user: dict[str, Any]) -> int:
+    return int((user.get("self") or {}).get("turns_remaining") or 0)
+
+
+def _plot_already_failed(user: dict[str, Any]) -> bool:
+    return "plot_course" in json.dumps(user.get("recent_failures") or [])
+
+
 def _execute_named(system: str) -> bool:
     return '"execute":true' in system
 
@@ -80,12 +88,16 @@ def choose(system: str, user_turn: str) -> dict[str, Any]:
     credits = _credits(user)
     at_dock = here == dock
 
+    hint = str(user.get("action_hint") or "")
+    told_to_plot = '"execute":true' in hint
     if (
         _execute_named(system)
         and "plot_course" in legal
         and here is not None
         and not at_dock
-        and credits >= 20_000
+        and not _plot_already_failed(user)
+        and _turns(user) >= 3
+        and (told_to_plot or credits >= 60_000)
     ):
         return _action("plot_course", {"target": dock, "execute": True})
 
