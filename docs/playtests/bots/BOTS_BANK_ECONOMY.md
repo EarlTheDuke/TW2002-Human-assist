@@ -76,7 +76,7 @@ Kept. None of these is an engine change.
 
 ## Legacy pin
 
-Not recorded yet. It is the next commit, on this tip, before any bot change. 3-day N3,N2,N1,H seed 250925. The flip list starts with `BOTS_BANK_MODE` and includes `LLM_PLANET_NUDGE_MODE` and `LLM_PARITY_MODE` plus the older modes. `LLM_ROUTE_NOTICE`, `LLM_NEW_DAY_GOAL_NOTICE`, and `LLM_SELL_FIRST` are set false. The 10-day six-seat digest is measured outside the suite.
+Recorded before any bot reads `BOTS_BANK_MODE`. 3-day N3,N2,N1,H seed 250925. Golden `9b607d3dae940c0b1a69f6d7`. The flip list starts with `BOTS_BANK_MODE` and includes `LLM_PLANET_NUDGE_MODE` and `LLM_PARITY_MODE` plus the older modes. `LLM_ROUTE_NOTICE`, `LLM_NEW_DAY_GOAL_NOTICE`, and `LLM_SELL_FIRST` are set false. The parity pin kept the same golden after `BOTS_BANK_MODE` was added to its flip list. The 10-day six-seat digest is measured outside the suite.
 
 ## Before
 

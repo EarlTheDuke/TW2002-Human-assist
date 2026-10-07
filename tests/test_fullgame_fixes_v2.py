@@ -434,7 +434,7 @@ def test_fullgame_fixes_v2_switches_off_equal_the_base():
     import sys
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
-    flips = V2_PIN_FLIP + ("LLM_PLANET_NUDGE_MODE", "LLM_PARITY_MODE", "CORPSHIP_MODE", "FED_OUTPOST_MODE", "PORT_UPGRADE_MODE", "BANK_MODE", "CORP_MODE", "ALIEN_MODE", "CORP_BOTS_MODE")
+    flips = V2_PIN_FLIP + ("BOTS_BANK_MODE", "LLM_PLANET_NUDGE_MODE", "LLM_PARITY_MODE", "CORPSHIP_MODE", "FED_OUTPOST_MODE", "PORT_UPGRADE_MODE", "BANK_MODE", "CORP_MODE", "ALIEN_MODE", "CORP_BOTS_MODE")
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
