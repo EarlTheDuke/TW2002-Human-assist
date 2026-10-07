@@ -248,6 +248,88 @@ def test_pb20_a_transfer_without_direction_is_rejected():
     assert any("direction" in error for error in errors)
 
 
+def _seat(**kwargs):
+    from types import SimpleNamespace
+    base = dict(
+        finished=False, turns_remaining=40, credits=207_000, day=3, max_days=8,
+        owned_planets=[], goals={"short": "go reload at A", "medium": "", "long": "Reach ~500k then a home"},
+        ship={"cargo": {}, "cargo_cost_avg": {}, "genesis": 0, "class": "merchant_cruiser"},
+        sector={"id": 1, "port": {"stock": {}}},
+        alive=True, deaths=0, max_deaths=3, alignment=0, corp_ticker=None, net_worth=207_000,
+    )
+    base.update(kwargs)
+    return SimpleNamespace(**base)
+
+
+def test_sell_first_notice_when_the_bid_covers_the_cost():
+    from tw2k.agents.llm import sell_first_notice
+    obs = _seat(ship={
+        "cargo": {"fuel_ore": 40}, "cargo_cost_avg": {"fuel_ore": 34}, "genesis": 0,
+    }, sector={"id": 301, "port": {"stock": {"fuel_ore": {"side": "buys_from_player", "price": 36}}}})
+    text = sell_first_notice(obs)
+    assert text.startswith("SELL HERE:")
+    assert "overrides your short goal" in text
+
+
+def test_sell_first_stays_quiet_below_cost_or_without_cargo():
+    from tw2k.agents.llm import sell_first_notice
+    cheap = _seat(ship={
+        "cargo": {"fuel_ore": 40}, "cargo_cost_avg": {"fuel_ore": 40}, "genesis": 0,
+    }, sector={"id": 301, "port": {"stock": {"fuel_ore": {"side": "buys_from_player", "price": 36}}}})
+    empty = _seat()
+    assert sell_first_notice(cheap) == ""
+    assert sell_first_notice(empty) == ""
+
+
+def test_cargo_loop_notice_after_two_round_trips():
+    from tw2k.agents.llm import cargo_loop_notice
+    obs = _seat(ship={"cargo": {"fuel_ore": 40}, "cargo_cost_avg": {"fuel_ore": 34}, "genesis": 0},
+                sector={"id": 408})
+    trail = [(3, 408, "warp"), (3, 301, "warp"), (3, 408, "warp"), (3, 301, "warp")]
+    assert cargo_loop_notice(obs, trail) == "you are looping: sell here or plot_course to a buyer"
+    assert cargo_loop_notice(obs, trail[:2]) == ""
+    traded = [(3, 408, "warp"), (3, 301, "trade"), (3, 408, "warp"), (3, 301, "warp")]
+    assert cargo_loop_notice(obs, traded) == ""
+    assert cargo_loop_notice(_seat(sector={"id": 408}), trail) == ""
+
+
+def test_planet_nudge_on_a_rich_seat_with_no_planet():
+    from tw2k.agents.llm import planet_notice
+    from tw2k.agents.prompts import get_system_prompt, stage_hint
+    obs = _seat()
+    text = planet_notice(obs)
+    assert "genesis" in text
+    assert "terra_colonists" in text
+    assert "Do not wait for a credit target" in text
+    hint = stage_hint(obs)
+    assert hint["stage"] == "S2"
+    assert "genesis" in hint["next_milestone"]
+    assert "Do not wait for a credit target" in hint["next_milestone"]
+    owner = _seat(owned_planets=[{"id": 1, "citadel_level": 0}])
+    assert planet_notice(owner) == ""
+    assert "update only on real strategy shifts" not in get_system_prompt()
+
+
+def test_planet_nudge_legacy_keeps_the_old_prompt_and_stays_quiet(monkeypatch):
+    from tw2k.agents.llm import planet_notice
+    from tw2k.agents.prompts import get_system_prompt, stage_hint
+    monkeypatch.setattr(K, "LLM_PLANET_NUDGE_MODE", "legacy")
+    assert "update only on real strategy shifts" in get_system_prompt()
+    obs = _seat()
+    assert planet_notice(obs) == ""
+    assert "500k" in stage_hint(obs)["next_milestone"]
+
+
+def test_buy_equip_lists_every_affordable_item_when_the_nudge_is_on():
+    from tw2k.agents.prompts import _compact_legal
+    choices = [f"item{n}" for n in range(8)]
+    out = _compact_legal([{
+        "kind": "buy_equip", "legal": True,
+        "params": {"item": {"choices": choices}},
+    }])
+    assert out["args"]["buy_equip"] == "item=" + ",".join(choices)
+
+
 def test_pb21_the_brain_transfer_shape_passes_acceptance():
     from tw2k.agents.seat_acceptance import validate_action
     obs = {"legal_actions": [{"kind": "corp_transfer", "legal": True, "params": {

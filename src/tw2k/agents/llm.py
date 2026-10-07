@@ -472,6 +472,8 @@ class LLMAgent(BaseAgent):
         self.goals_day: int | None = None
         # (day, sector_id, action kind) per act() for route_notice's single-warp loop check.
         self.route_trail: list[tuple[int, int, str]] = []
+        # Longer than the route loop: two cargo round-trips need four past sectors.
+        self.sector_trail: list[tuple[int, int, str]] = []
 
     def _effective_custom_base(self) -> str:
         return (self._custom_base_url or os.environ.get("TW2K_CUSTOM_BASE_URL") or "").strip()
@@ -644,12 +646,20 @@ class LLMAgent(BaseAgent):
         self._last_usage = None
         if self.goals_day is None:
             self.goals_day = int(obs.day)
+        sell = sell_first_notice(obs)
+        loop = cargo_loop_notice(obs, self.sector_trail)
+        planet = planet_notice(obs)
         notice = new_day_goal_notice(obs, self.goals_day)
         route = route_notice(obs, self.route_trail)
-        if route:
-            notice = (notice + "\n" + route) if notice else route
+        parts = [part for part in (sell, loop, planet, notice, route) if part]
+        notice = "\n".join(parts)
+        shown = obs
+        if sell or loop:
+            goals = dict(obs.goals or {})
+            goals["short"] = ""
+            shown = obs.model_copy(update={"goals": goals})
         prompt = format_observation(
-            obs.model_copy(update={"action_hint": notice + "\n" + obs.action_hint}) if notice else obs
+            shown.model_copy(update={"action_hint": notice + "\n" + shown.action_hint}) if notice else shown
         )
         # First call on a cold model gets extra grace so we don't punish warmup.
         timeout = self.warmup_timeout_s if not self._warmed else self.think_cap_s
@@ -712,6 +722,7 @@ class LLMAgent(BaseAgent):
             if kind == "plot_course" and bool((parsed.args or {}).get("execute")):
                 kind = "autopilot"
             self.route_trail = [*self.route_trail[-(ROUTE_LOOP_WINDOW - 1):], (int(obs.day), int(here), kind)]
+            self.sector_trail = [*self.sector_trail[-7:], (int(obs.day), int(here), parsed.kind.value)]
         return apply_buy_reserve_cap(obs, parsed)
 
     # ---------- provider-specific calls ---------- #
@@ -1065,6 +1076,114 @@ def _starter_hull_upgrade_affordable(obs: Observation) -> bool:
         if int(obs.credits) >= int(cost * 1.25):
             return True
     return False
+
+
+def sell_first_notice(obs: Observation) -> str:
+    """Top-of-turn line when this port pays at least what the cargo cost.
+
+    Empty when LLM_SELL_FIRST is off. The caller drops goals.short so a saved
+    'go reload' goal does not outrank the sale.
+    """
+    from ..engine import constants as K
+
+    if not K.LLM_SELL_FIRST or obs.finished or int(obs.turns_remaining) <= 0:
+        return ""
+    ship = obs.ship or {}
+    cargo = ship.get("cargo") or {}
+    paid = ship.get("cargo_cost_avg") or {}
+    stock = ((obs.sector or {}).get("port") or {}).get("stock") or {}
+    hits: list[str] = []
+    for name, qty in cargo.items():
+        if not isinstance(qty, int) or qty <= 0:
+            continue
+        entry = stock.get(name) or {}
+        if entry.get("side") != "buys_from_player":
+            continue
+        bid = entry.get("price")
+        cost = paid.get(name)
+        if not isinstance(bid, int) or cost is None or bid < int(cost):
+            continue
+        hits.append(f"{qty} {name} (paid {int(cost)}, bid {bid})")
+    if not hits:
+        return ""
+    return (
+        "SELL HERE: this port buys cargo you hold at or above what you paid: "
+        + "; ".join(hits)
+        + ". Sell now. This overrides your short goal."
+    )
+
+
+def cargo_loop_notice(obs: Observation, trail: list[tuple[int, int, str]]) -> str:
+    """Two round trips on one pair, still holding cargo, with no trade in between."""
+    from ..engine import constants as K
+
+    if not K.LLM_SELL_FIRST or obs.finished or int(obs.turns_remaining) <= 0:
+        return ""
+    cargo = (obs.ship or {}).get("cargo") or {}
+    if not any(isinstance(qty, int) and qty > 0 for qty in cargo.values()):
+        return ""
+    here = (obs.sector or {}).get("id")
+    if here is None or len(trail) < 4:
+        return ""
+    recent = trail[-4:]
+    if any(kind == "trade" for _day, _sector, kind in recent):
+        return ""
+    sectors = [sector for _day, sector, _kind in recent] + [int(here)]
+    first, second = sectors[0], sectors[1]
+    if first == second or sectors != [first, second, first, second, first]:
+        return ""
+    return "you are looping: sell here or plot_course to a buyer"
+
+
+def planet_notice(obs: Observation) -> str:
+    """First-planet line beside the route notice. Empty for a planet owner."""
+    from ..engine import constants as K
+
+    if not K.planet_nudge_on() or obs.finished or int(obs.turns_remaining) <= 0:
+        return ""
+    if obs.owned_planets:
+        return ""
+    ship = obs.ship or {}
+    if int(ship.get("genesis") or 0) > 0:
+        return ""
+    if int(obs.credits) < int(K.LLM_PLANET_NUDGE_CREDITS):
+        return ""
+    here = (obs.sector or {}).get("id")
+    if here is None:
+        return ""
+    from .rules_text import plot_course_call
+
+    if int(here) == int(K.STARDOCK_SECTOR):
+        line = (
+            "FIRST PLANET: you have no planet and no genesis torpedo. "
+            "buy_equip {\"item\":\"genesis\",\"qty\":1} and terra_colonists, then deploy 3 or more warps out. "
+            "Do not wait for a credit target."
+        )
+    else:
+        line = (
+            "FIRST PLANET: you have no planet and no genesis torpedo. "
+            f"{plot_course_call(K.STARDOCK_SECTOR)} then buy genesis and terra_colonists. "
+            "Do not wait for a credit target."
+        )
+    target = _goal_credit_target(obs)
+    left = max(0, int(getattr(obs, "max_days", 0) or 0) - int(obs.day))
+    if target and target > int(obs.credits) * (left + 1):
+        line += " That credit target is unreachable before the match ends. Drop it."
+    elif target:
+        line += " A credit target in your goals is not a gate before the first planet."
+    return line
+
+
+def _goal_credit_target(obs: Observation) -> int:
+    import re
+
+    text = " ".join(str((obs.goals or {}).get(key) or "") for key in ("short", "medium", "long"))
+    best = 0
+    for match in re.finditer(r"(\d[\d,]*)\s*k\b", text, re.IGNORECASE):
+        best = max(best, int(match.group(1).replace(",", "")) * 1000)
+    for match in re.finditer(r"(\d{5,})", text):
+        best = max(best, int(match.group(1).replace(",", "")))
+    return best
 
 
 def route_notice(obs: Observation, trail: list[tuple[int, int, str]]) -> str:

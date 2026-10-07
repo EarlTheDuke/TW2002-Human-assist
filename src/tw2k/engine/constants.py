@@ -2264,3 +2264,13 @@ LLM_UNDOCUMENTED_VERBS: tuple[str, ...] = ()  # lp13
 def llm_parity_on() -> bool:
     return LLM_PARITY_MODE == "tw2002"
 
+
+# Agent-side only. Legacy leaves the prompt, the stage hint, and the turn notices unchanged.
+LLM_SELL_FIRST = True                     # sell-at-a-profit notice and the cargo loop line
+LLM_PLANET_NUDGE_MODE = "tw2002"          # "tw2002" | "legacy"
+LLM_PLANET_NUDGE_CREDITS = 50_000
+
+
+def planet_nudge_on() -> bool:
+    return LLM_PLANET_NUDGE_MODE == "tw2002"
+
