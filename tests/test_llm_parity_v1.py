@@ -107,7 +107,7 @@ def test_lp7_route_notice_shares_the_plot_syntax():
 def _reader_turn(*, here: int, credits: int, legal: list[str], inbox: list | None = None) -> str:
     return json.dumps({
         "sector": {"id": here, "is_stardock": here == 1},
-        "self": {"credits": credits, "ship": {"ship_class": "merchant_cruiser"}},
+        "self": {"credits": credits, "turns_remaining": 100, "ship": {"ship_class": "merchant_cruiser"}},
         "legal_actions": {"legal": legal, "blocked": {}},
         "adjacent": [{"id": 2}],
         "inbox": inbox or [],
