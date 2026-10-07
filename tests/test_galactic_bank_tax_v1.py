@@ -385,6 +385,7 @@ def test_gb29_gb31_bot(monkeypatch):
         obs["legal_actions"].append({"kind": kind, "legal": legal, "reason": None, "detail": "precise", "params": params})
         return obs
 
+    monkeypatch.setattr(engine_k, "BOT_BANK_POLICY", "tax_and_death")
     brain = SeatBrain()
     obs = synthetic_obs(sector=1, credits=80_000, ship_class="cargotran")
     obs["bank_balance"] = 0

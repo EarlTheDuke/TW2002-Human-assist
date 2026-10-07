@@ -1,6 +1,6 @@
 """Purse math for the bank bots. Pure functions. No universe, no random draw.
 
-Every number is read from K at call time. SeatBrain does not call this yet.
+Every number is read from K at call time.
 """
 
 from __future__ import annotations
