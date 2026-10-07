@@ -193,3 +193,16 @@ Seed 4242 parity off, digest `63d9dd5c`, rejected 0/0. Reader kinds: trade 20, w
 | N2-P4 | 123,653 | merchant_cruiser | 0 |
 
 The earlier FedSpace start (20,000 credits) did not buy a hull. Parity on digest `6df92949` ended at 22,650 still in a merchant cruiser. Parity off digest `5a2cc40a` ended at 42,650.
+
+## Text reader, 30-day, seed 250925, f1 start, parity on
+
+Digest `9d04c4a1`. Rejected 0/0. Exceptions 0. Invariant violations 0. Day-15 save/load identical. No crash. The reader was a cargotran from day 1 (net worth 28,035) and stayed there until day 24, then died once and finished in an escape pod at 0. Corps N3P is P1+P2 and N2P is P3+P4, 17 transfers, hostile 0. Reader kinds: buy_ship 6, plot_course 465, port_upgrade 55, trade 168, warp 2913, wait 35.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | ---: | --- | ---: |
+| N3-P1 | 2,294,843 | battleship | 0 |
+| N3-P2 | 772,496 | cargotran | 0 |
+| N2-P3 | 734,232 | scout_marauder | 10 |
+| N2-P4 | 482,360 | cargotran | 0 |
+| N1-P5 | 259,938 | scout_marauder | 12 |
+| R-P6 | 0 | escape_pod | 1 |
