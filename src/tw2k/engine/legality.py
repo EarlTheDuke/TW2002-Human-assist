@@ -625,11 +625,14 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             ship_choices: list[str] = []
             net_cost_by: dict[str, int] = {}
             blocked_by: dict[str, str] = {}
+            from .corp import flagship_buy_block
             for key, spec in K.ship_specs().items():
                 net = K.net_hull_cost(old_key, key)
                 net_cost_by[key] = net
                 if spec.get("corp_only") and player.corp_ticker is None:
                     blocked_by[key] = "corporation-only"
+                elif (why := flagship_buy_block(universe, player_id, key)):
+                    blocked_by[key] = why
                 elif K.ship_min_alignment(spec, 0) > player.alignment:
                     need = K.ship_min_alignment(spec, 0)
                     blocked_by[key] = f"alignment too low (needs {need})"

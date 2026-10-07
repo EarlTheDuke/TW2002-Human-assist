@@ -61,7 +61,9 @@ def parse_seats(text: str) -> list[str]:
 def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 1000,
               turns_per_day: int = 1000, credits: int = 20_000, ferrengi: bool = True,
               max_steps: int = 2_000_000, port_report: bool = False,
-              bank_report: bool = False, corp_report: bool = False) -> dict[str, Any]:
+              bank_report: bool = False, corp_report: bool = False,
+              corp_policy: str | None = None,
+              corp_pairs: list[tuple[str, str]] | None = None) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents import HeuristicAgent
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
@@ -100,6 +102,15 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "rows": [], "daily": [], "start_sector": p.sector_id,
             "exp0": int(p.experience), "align0": int(p.alignment),
         }
+    from tw2k.agents import corp_brain
+    saved_policy = K.BOT_CORP_POLICY
+    if corp_policy:
+        K.BOT_CORP_POLICY = corp_policy
+    elif K.corp_bots_on() and K.BOT_CORP_POLICY == "off":
+        K.BOT_CORP_POLICY = "pair"
+    if K.bot_corp_policy() == "pair":
+        code_ids = [f"P{i + 1}" for i, kind in enumerate(seats) if kind != "H"]
+        corp_brain.configure(code_ids, seed, explicit=corp_pairs)
 
     def done(pid: str) -> bool:
         p = u.players[pid]
@@ -347,6 +358,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         from tw2k.engine.models import Universe
         again = Universe.model_validate_json(u.model_dump_json())
         result["bank_save_load"] = "identical" if again.model_dump_json() == u.model_dump_json() else "diff"
+    K.BOT_CORP_POLICY = saved_policy
+    corp_brain.clear()
     return result
 
 
@@ -394,7 +407,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--bank-legacy", action="store_true",
                     help="run with BANK_MODE legacy (the before column)")
     ap.add_argument("--corp-policy", choices=("off", "pair"),
-                    help="override K.BOT_CORP_POLICY (CORP_RULES.md cr29 match check)")
+                    help="override K.BOT_CORP_POLICY (default pair while CORP_BOTS_MODE is tw2002)")
+    ap.add_argument("--bot-corp-pairs", default="",
+                    help="explicit pairs, P1:P3,P2:P4. Empty uses consecutive code seats")
     ap.add_argument("--corp-report", action="store_true",
                     help="add corp counters (corps, members, corp events, rogue groups; not part of the legacy digest)")
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
@@ -403,13 +418,16 @@ def main(argv: list[str] | None = None) -> int:
     if a.bank_legacy:
         from tw2k.engine import constants as K
         K.BANK_MODE = "legacy"
-    if a.corp_policy:
-        from tw2k.engine import constants as K
-        K.BOT_CORP_POLICY = a.corp_policy
+    pairs = None
+    if a.bot_corp_pairs.strip():
+        pairs = []
+        for item in a.bot_corp_pairs.split(","):
+            left, right = item.split(":")
+            pairs.append((left.strip(), right.strip()))
     result = run_match(parse_seats(a.seats), seed=a.seed, days=a.days, universe_size=a.size,
                        turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi,
                        port_report=a.port_report, bank_report=a.bank_report,
-                       corp_report=a.corp_report)
+                       corp_report=a.corp_report, corp_policy=a.corp_policy, corp_pairs=pairs)
     text = json.dumps(result, indent=1, sort_keys=True)
     md = render_markdown(result)
     if a.json_out:

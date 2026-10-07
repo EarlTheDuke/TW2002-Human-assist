@@ -231,6 +231,15 @@ class SeatMemory:
     port_starters: set[str] = field(default_factory=set)
     # galactic-bank-tax-v1: one deposit per StarDock visit. Stays off the scratchpad while false.
     bank_deposited: bool = False
+    # bots-use-corps-v1. The password itself is never stored.
+    corp_partner: str | None = None
+    corp_role: str | None = None
+    corp_free_day: int = -1
+    corp_free_actions: int = 0
+    corp_invites: int = 0
+    corp_invite_day: int = -1
+    corp_transfer_day: int = -1
+    corp_fighter_day: int = -1
 
     def dump(self) -> str:
         payload = {
@@ -269,6 +278,21 @@ class SeatMemory:
             payload["port_starters"] = sorted(self.port_starters)[:20]
         if self.bank_deposited:
             payload["bank_deposited"] = True
+        if self.corp_partner:
+            payload["corp_partner"] = self.corp_partner
+        if self.corp_role:
+            payload["corp_role"] = self.corp_role
+        if self.corp_invites:
+            payload["corp_invites"] = int(self.corp_invites)
+        if self.corp_free_actions:
+            payload["corp_free_actions"] = int(self.corp_free_actions)
+            payload["corp_free_day"] = int(self.corp_free_day)
+        if self.corp_invite_day >= 0:
+            payload["corp_invite_day"] = int(self.corp_invite_day)
+        if self.corp_transfer_day >= 0:
+            payload["corp_transfer_day"] = int(self.corp_transfer_day)
+        if self.corp_fighter_day >= 0:
+            payload["corp_fighter_day"] = int(self.corp_fighter_day)
         return MEMORY_TAG + json.dumps(payload, separators=(",", ":"))
 
     @classmethod
@@ -314,6 +338,16 @@ class SeatMemory:
         mem.pt_detour = int(data.get("pt_detour") or 0)
         mem.port_starters = {str(k) for k in (data.get("port_starters") or []) if isinstance(k, str)}
         mem.bank_deposited = bool(data.get("bank_deposited"))
+        partner = data.get("corp_partner")
+        mem.corp_partner = str(partner) if isinstance(partner, str) else None
+        role = data.get("corp_role")
+        mem.corp_role = str(role) if isinstance(role, str) else None
+        mem.corp_invites = int(data.get("corp_invites") or 0)
+        mem.corp_free_actions = int(data.get("corp_free_actions") or 0)
+        mem.corp_free_day = int(data.get("corp_free_day") if data.get("corp_free_day") is not None else -1)
+        mem.corp_invite_day = int(data.get("corp_invite_day") if data.get("corp_invite_day") is not None else -1)
+        mem.corp_transfer_day = int(data.get("corp_transfer_day") if data.get("corp_transfer_day") is not None else -1)
+        mem.corp_fighter_day = int(data.get("corp_fighter_day") if data.get("corp_fighter_day") is not None else -1)
         return mem
 
 
@@ -1518,7 +1552,7 @@ class SeatBrain:
         return vpt, plot, Intent("trade", seller)
 
     def _opt_survey(self, v: View):
-        if self._held_goods(v):
+        if self._mate_skips_survey(v) or self._held_goods(v):
             return None
         quote = self._trade_quote(v)
         # A fat route does not pause for another port. A thin or missing one does.
@@ -2739,13 +2773,108 @@ class SeatBrain:
             keep = max(keep, self._citadel_reserve(v))
         return keep
 
+    def _mate_skips_survey(self, v: View) -> bool:
+        """bc16: the partner trades. The C.E.O. is the one who spends turns surveying."""
+        from ..engine import constants as engine_k
+        from . import corp_brain
+        if engine_k.BOT_CORP_EXPLORER != "ceo" or engine_k.bot_corp_policy() != "pair":
+            return False
+        if not corp_brain.active() or not v.stardock_known:
+            return False
+        if corp_brain.role_of(str(v.self_id or "")) != "mate":
+            return False
+        corp = v.obs.get("corp") or {}
+        ceo = str(corp.get("ceo_id") or "")
+        for member in corp.get("members") or []:
+            if isinstance(member, dict) and str(member.get("id") or "") == ceo:
+                return bool(member.get("alive", True))
+        return False
+
+    def _hull_upgrade_cost(self, hull: str | None) -> int:
+        from ..engine import constants as engine_k
+        from . import corp_brain
+        nxt = corp_brain.next_hull(str(hull or ""))
+        if nxt is None:
+            return 0
+        return int(engine_k.SHIP_COST_TW2002[nxt])
+
+    def _corp_top_up(self, v: View, state: Any, partner: str, row: dict[str, Any]) -> dict[str, Any] | None:
+        """bc14: once a day, take spare fighters or shields before a fight, a FedSpace exit, or a home drop."""
+        from ..engine import constants as engine_k
+        from . import corp_brain
+        if int(getattr(state, "corp_fighter_day", -1)) == int(v.day):
+            return None
+        hostiles = bool(v.sector.get("ferrengi")) or any(
+            isinstance(t, dict) and str(t.get("id") or "") not in {partner, str(v.self_id or "")}
+            for t in (v.sector.get("traders") or [])
+        )
+        leaving_fed = bool(v.sector.get("is_fedspace")) and int(v.here or 0) != int(engine_k.STARDOCK_SECTOR)
+        home_drop = self.mem is not None and self.mem.home_sector is not None and v.here == self.mem.home_sector and v.ok("deploy_fighters")
+        if not ((v.ok("attack") and hostiles) or leaving_fed or home_drop):
+            return None
+        have = row.get("take_max") or {}
+        keep = int(engine_k.BOT_CORP_KEEP_FIGHTERS_PCT)
+        for item, room_key in (("fighters", "fighter_headroom"), ("shields", "shield_headroom")):
+            qty = corp_brain.gear_take(int(have.get(item) or 0), int(v.ship.get(room_key) or 0), keep)
+            if qty is None:
+                continue
+            state.corp_fighter_day = int(v.day)
+            return self._act("corp_transfer",
+                             {"target": partner, "item": item, "qty": int(qty), "direction": "take"},
+                             "pair: top up from my partner")
+        return None
+
+    def _corp_support(self, v: View) -> dict[str, Any] | None:
+        """bc12 and bc13: one credit handoff per pair per day, and only to the configured partner."""
+        from ..engine import constants as engine_k
+        from . import corp_brain
+        if not v.ok("corp_transfer") or v.landed is not None:
+            return None
+        me = str(v.self_id or "")
+        partner = corp_brain.partner_of(me)
+        state = self.mem
+        if not partner or state is None:
+            return None
+        row = next((p for p in (v.params("corp_transfer").get("partners") or [])
+                    if isinstance(p, dict) and str(p.get("player_id") or "") == partner), None)
+        if row is None:
+            return None
+        topped = self._corp_top_up(v, state, partner, row)
+        if topped is not None:
+            return topped
+        if int(state.corp_transfer_day) == int(v.day):
+            return None
+        mate_credits = int((row.get("take_max") or {}).get("credits") or 0)
+        traders = {str(t.get("id")): t for t in (v.sector.get("traders") or []) if isinstance(t, dict)}
+        mate_hull = str((traders.get(partner) or {}).get("ship_class") or "")
+        reserve = int(engine_k.working_capital_reserve(int(v.ship.get("holds") or 0))) if engine_k.buy_reserve_on() else 0
+        qty = corp_brain.credit_give(
+            int(v.credits), self._hull_upgrade_cost(v.ship_class), mate_credits, self._hull_upgrade_cost(mate_hull),
+            reserve=reserve, pad=int(engine_k.BOT_CORP_TRANSFER_PAD), minimum=int(engine_k.BOT_CORP_MIN_TRANSFER),
+        )
+        if qty is None and engine_k.BOT_CORP_TAX_SHIELD and engine_k.bank_on():
+            sides = {str(r.get("id")): str(r.get("side") or "") for r in v.rivals}
+            if sides.get(partner) == "evil" and int(v.obs.get("alignment") or 0) >= int(engine_k.TAX_MIN_ALIGNMENT):
+                qty = corp_brain.tax_give(int(v.credits), int(engine_k.TAX_THRESHOLD),
+                                          minimum=int(engine_k.BOT_CORP_MIN_TRANSFER))
+        if qty is None:
+            return None
+        state.corp_transfer_day = int(v.day)
+        return self._act("corp_transfer",
+                         {"target": partner, "item": "credits", "qty": int(qty), "direction": "give"},
+                         "pair: hand my partner the shortfall")
+
     def _corp_pair(self, v: View) -> dict[str, Any] | None:
         """CORP_RULES.md cr29 BOT_CORP_POLICY "pair" (match check only): seat 1 makes the corp, sets the
         password and hands seat 2 a pass; seat 2 joins with the password from that pass. Deployments then
         take K.CORP_DEPLOY_DEFAULT (corporate). Never transfers, takes, leaves or drops. All verbs 0 turns."""
         from ..engine import constants as engine_k
-        if engine_k.BOT_CORP_POLICY != "pair" or not engine_k.corp_rules_on():
+        from . import corp_brain
+        if engine_k.bot_corp_policy() != "pair":
             return None
+        if corp_brain.active():
+            opening = corp_brain.next_action(self, v)
+            return opening if opening is not None else self._corp_support(v)
         me = str(v.self_id or "")
         mine = v.obs.get("corp_ticker")
         if me == PAIR_CEO_ID:
@@ -3616,6 +3745,8 @@ class SeatBrain:
             if best is None or key < best[0]:
                 best = (key, fid, why)
         if best is None:
+            from . import corp_brain
+            mates = corp_brain.friends(v)
             sides = {str(r.get("id")): r.get("side") for r in v.rivals}
             my_align = int(v.obs.get("alignment") or 0)
             specs = ship_specs()
@@ -3624,7 +3755,7 @@ class SeatBrain:
                     continue
                 tid = str(t.get("id") or "")
                 hull = str(t.get("ship_class") or "")
-                if tid not in players or not fresh(tid) or hull == "escape_pod" or self._is_fed_target(v, tid):
+                if tid in mates or tid not in players or not fresh(tid) or hull == "escape_pod" or self._is_fed_target(v, tid):
                     continue
                 scanned = t.get("shields") is not None
                 if scanned:  # Combat Scanner hull (COMBAT_SCANNER_MODE)
@@ -3801,7 +3932,7 @@ class SeatBrain:
     def _pair_ownership(v: View, kind: str) -> dict[str, str]:
         """cr29 "pair": corp members deploy corporate explicitly; otherwise the engine default applies."""
         from ..engine import constants as engine_k
-        if engine_k.BOT_CORP_POLICY == "pair" and "corporate" in v.choices(kind, "ownership"):
+        if engine_k.bot_corp_policy() == "pair" and "corporate" in v.choices(kind, "ownership"):
             return {"ownership": "corporate"}
         return {}
 

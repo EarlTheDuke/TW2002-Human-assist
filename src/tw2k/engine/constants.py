@@ -2144,11 +2144,46 @@ CORP_RANK_EXP = "sum"                     # cr24 UNVERIFIED
 CORP_RANK_ALIGN = "sum"                   # cr24 UNVERIFIED
 CORP_MEMO_SENDERS = "member"              # cr25 SOURCE-CONFLICT: "member" | "ceo"
 CORP_TREASURY = "off"                     # cr26: "off" | "ours"
-BOT_CORP_POLICY = "off"                   # cr29: "off" | "pair"
+BOT_CORP_POLICY = "off"                   # bc1: "off" | "pair" | "team". The pair brain turns the default to pair.
+CORP_BOTS_MODE = "tw2002"                 # bc1: "tw2002" | "legacy"
+BOT_CORP_TEAM_SIZE = 3                    # bc1
+BOT_CORP_PARTNERS = "consecutive"         # bc2
+BOT_CORP_PASSWORD_LEN = 6                 # bc4
+BOT_CORP_INVITE_RETRIES = 3               # bc5
+BOT_CORP_ACCEPT_INVITES = "partner_only"  # bc6: "partner_only" | "any_bot" | "anyone"
+BOT_CORP_MIXED_POLICY = "allow"           # bc7: "allow" | "same_side"
+BOT_CORP_MIXED_MAX_PENALTY = 400          # bc7
+BOT_CORP_SHARED_HOME = True               # bc10
+BOT_CORP_SINGLE_BUILDER = True            # bc11
+BOT_CORP_TRANSFER_PAD = 1_000             # bc12
+BOT_CORP_MIN_TRANSFER = 5_000             # bc12
+BOT_CORP_TAX_SHIELD = True                # bc13
+BOT_CORP_KEEP_FIGHTERS_PCT = 30           # bc14
+BOT_CORP_MEET_MAX_HOPS = 3                # bc15
+BOT_CORP_MEET_MAX_TURNS = 30              # bc15
+BOT_CORP_EXPLORER = "ceo"                 # bc16
+BOT_CORP_FLAGSHIP = "ceo"                 # bc20
+BOT_CORP_REFOUND = False                  # bc19
+BOT_CORP_MAX_FREE_ACTIONS_PER_DAY = 6     # bc22
+CFS_CEO_RULE = "purchase"                 # bc24 SOURCE-CONFLICT: "purchase" | "use"
+CFS_HOLDER_MAY_JOIN = False               # bc25
+CFS_HOLDER_MAY_CREATE = True              # bc25 UNVERIFIED
+CFS_JOIN_CHECK = "flown"                  # bc25 UNVERIFIED: "flown" | "owned"
 
 
 def corp_rules_on() -> bool:
     return CORP_MODE == "tw2002"
+
+
+def corp_bots_on() -> bool:
+    return CORP_BOTS_MODE == "tw2002" and corp_rules_on()
+
+
+def bot_corp_policy() -> str:
+    """bc1: CORP_MODE legacy and CORP_BOTS_MODE legacy both read the policy as off."""
+    if not corp_bots_on():
+        return "off"
+    return BOT_CORP_POLICY
 
 
 # --- Alien traders (ALIEN_MODE) ----------------------------------------------
