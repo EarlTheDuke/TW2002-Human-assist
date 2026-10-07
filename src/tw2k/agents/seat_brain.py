@@ -3024,12 +3024,35 @@ class SeatBrain:
             planned.append(max(self._citadel_reserve(v), self._unfinished_l2_cash(v)))
         return planned
 
+    def _threat_hops(self, v: View) -> int | None:
+        """0 if a Ferrengi is in this sector, 1 if one is next door. Own sight only."""
+        if (v.sector or {}).get("ferrengi"):
+            return 0
+        for row in v.obs.get("adjacent") or []:
+            if isinstance(row, dict) and row.get("ferrengi"):
+                return 1
+        return None
+
+    def _risk_count(self, v: View) -> int:
+        from .bank_brain import risk_flags
+        last = v.obs.get("last_death_day")
+        days = None if last is None else max(0, int(v.day) - int(last))
+        fighters = int(v.ship.get("fighters") or v.ship.get("fighter_count") or 0)
+        return risk_flags(
+            days_since_loss=days,
+            ship_class=str(v.ship_class or ""),
+            alignment=int(v.obs.get("alignment") or 0),
+            fedsafe=v.obs.get("fedsafe", True) is not False,
+            threat_hops=self._threat_hops(v),
+            fighters=fighters,
+        )
+
     def _away_cash(self, v: View) -> int:
         from .bank_brain import away_reserve
         planned = self._off_dock_planned(v)
         holds = int(v.ship.get("holds") or 0)
         fighters = int(v.ship.get("fighters") or v.ship.get("fighter_count") or 0)
-        return away_reserve(holds, planned, 0, fighters > 0)
+        return away_reserve(holds, planned, self._risk_count(v), fighters > 0)
 
     def _reserve_hull_need(self, v: View, spendable_balance: int) -> int:
         """Hull cash, including a CargoTran the legal list hides until the bank is withdrawn."""
