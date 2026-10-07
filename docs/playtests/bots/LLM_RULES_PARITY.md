@@ -41,30 +41,136 @@ Sources: the EIS menus, the MBBS FlagShip line, Iago on who buys a FlagShip, and
 
 ## Constants
 
-`LLM_HINT_CORP_MIN_CREDITS` 50000. `LLM_LEGAL_HINTS` args. `LLM_LEGAL_HINT_MAX_CHOICES` 6. `LLM_PROMPT_GROWTH_MAX_PCT` 8. `LLM_OBS_GROWTH_MAX_PCT` 10. `LLM_UNDOCUMENTED_VERBS` empty.
+`LLM_PARITY_MODE` tw2002. `LLM_HINT_CORP_MIN_CREDITS` 50000. `LLM_LEGAL_HINTS` args. `LLM_LEGAL_HINT_MAX_CHOICES` 6. `LLM_PROMPT_GROWTH_MAX_PCT` 8. `LLM_OBS_GROWTH_MAX_PCT` 10. `LLM_UNDOCUMENTED_VERBS` empty. `LLM_SELL_FIRST` on. `LLM_PLANET_NUDGE_MODE` tw2002. `LLM_PLANET_NUDGE_CREDITS` 50000.
+
+`LLM_LEGAL_HINT_KEYS`: `target`, `ship_class`, `item`, `commodity`, `direction`, `ticker`, `corps`, `partners`, `planet_id`, `qty`, `units`, `amount`, `mode`, `kind`, `port_class`, `to_player`, `side`, `ownership`, `execute`. `password` is not in that list.
 
 ## Legacy pin
 
-Recorded on c35b9b3 before `LLM_PARITY_MODE` exists. 3-day N3,N2,N1,H seed 250925. Golden `9b607d3dae940c0b1a69f6d7`. The flip list starts with `LLM_PARITY_MODE` and includes the newer modes. Both notice flags are False.
+Recorded on c35b9b3 before `LLM_PARITY_MODE` exists. 3-day N3,N2,N1,H seed 250925. Golden `9b607d3dae940c0b1a69f6d7`. The flip list starts with `LLM_PLANET_NUDGE_MODE` and `LLM_PARITY_MODE` and includes the newer modes. Both notice flags are False. No paid API call.
 
-Verb inventory and line inventory are filled as the prompt text lands. No paid API call.
+## Verb inventory
+
+Handler args are the keys the handler reads. `REQUIRED_ARGS` is what `seat_acceptance` demands before the engine sees the action. A base verb is in the legal list with no newer mode switch.
+
+| Verb | Mode | Handler args | REQUIRED_ARGS | Named in the parity prompt |
+| --- | --- | --- | --- | --- |
+| `warp` | base | target | target | yes |
+| `trade` | base | commodity, qty, side, unit_price | commodity, qty, side | yes |
+| `scan` | base | tier | - | yes |
+| `deploy_fighters` | base | qty, mode | qty, mode | yes |
+| `deploy_mines` | base | qty, kind | kind, qty | yes |
+| `attack` | base | target | target | yes |
+| `land_planet` | base | planet_id | planet_id | yes |
+| `liftoff` | base | - | - | yes |
+| `assign_colonists` | base | planet_id, qty, from, to | planet_id, from, to, qty | yes |
+| `load_planet_cargo` | base | planet_id, commodity, qty | planet_id, commodity, qty | yes |
+| `dump_planet_cargo` | base | planet_id, commodity, qty | planet_id, commodity, qty | yes |
+| `build_citadel` | base | planet_id | planet_id | yes |
+| `deploy_genesis` | base | - | - | yes |
+| `claim_planet` | base | - | - | yes |
+| `plot_course` | base | target, execute | target, execute | yes |
+| `photon_missile` | HARDWARE_MODE | target | target | yes |
+| `cloak` | HARDWARE_MODE | - | - | yes |
+| `fire_disruptor` | HARDWARE_MODE | target | target | yes |
+| `remove_limpet` | HARDWARE_MODE | - | - | yes |
+| `launch_beacon` | HARDWARE_MODE | message | message | yes |
+| `terra_colonists` | HARDWARE_MODE | mode, qty | mode, qty | yes |
+| `deploy_atomic` | HARDWARE_MODE | planet_id | planet_id | yes |
+| `query_limpets` | HARDWARE_MODE | - | - | yes |
+| `probe` | HARDWARE_MODE | target | target | yes |
+| `corp_deposit` | CORP_TREASURY (line hidden while off) | amount | amount | no |
+| `corp_withdraw` | CORP_TREASURY (line hidden while off) | amount | amount | no |
+| `corp_memo` | base | message | message | yes |
+| `propose_alliance` | base | target, terms | target | yes |
+| `accept_alliance` | base | alliance_id | alliance_id | yes |
+| `break_alliance` | base | alliance_id | alliance_id | yes |
+| `buy_ship` | base | ship_class | ship_class | yes |
+| `buy_equip` | base | item, qty | item, qty | yes |
+| `corp_create` | base | ticker, name | ticker | yes |
+| `corp_invite` | base | target | target | yes |
+| `corp_join` | base | ticker | ticker | yes |
+| `corp_leave` | base | - | - | yes |
+| `corp_set_password` | CORP_MODE | password | password | yes |
+| `corp_drop` | CORP_MODE | target | target | yes |
+| `corp_transfer` | CORP_MODE | direction, target, item, qty | target, item, qty, direction | yes |
+| `hail` | base | target, message | target, message | yes |
+| `broadcast` | base | message | message | yes |
+| `wait` | base | - | - | yes |
+| `deposit_planet_defense` | base | planet_id | - | yes |
+| `withdraw_planet_defense` | base | planet_id | - | yes |
+| `set_military_reaction` | base | planet_id, pct | - | yes |
+| `deposit_treasury` | base | - | - | yes |
+| `withdraw_treasury` | base | - | - | yes |
+| `set_quasar_sector` | base | planet_id, pct | - | yes |
+| `set_quasar_atm` | base | planet_id, pct | - | yes |
+| `planet_transwarp` | base | planet_id, dest_sector | - | yes |
+| `planet_buy_transporter` | base | planet_id | - | yes |
+| `planet_transport` | base | planet_id, dest_sector | - | yes |
+| `planet_destroy` | base | planet_id | - | yes |
+| `recall_deployed` | base | what, qty, kind | - | yes |
+| `surrender` | base | - | - | yes |
+| `retreat` | base | - | - | yes |
+| `pay_toll` | base | - | - | yes |
+| `rob` | ROB_MODE | amount | - | yes |
+| `steal` | ROB_MODE | commodity, qty | - | yes |
+| `apply_commission` | FED_MODE | - | - | yes |
+| `post_reward` | FED_MODE | target_id, target, amount | - | yes |
+| `claim_reward` | FED_MODE | - | - | yes |
+| `ship_transwarp` | SHIP_TW_MODE | sector_id, target | - | yes |
+| `sell_ship` | FLEET_MODE | ship_id | - | yes |
+| `ship_transport` | FLEET_MODE | ship_id | - | yes |
+| `tow_engage` | TOW_MODE | target, password | - | yes |
+| `tow_release` | TOW_MODE | - | - | yes |
+| `planet_trade` | PLANET_TRADE_MODE | planet_id, commodity, qty, offer | planet_id, commodity, qty | yes |
+| `ship_set_corporate` | CORPSHIP_MODE | - | - | yes |
+| `ship_set_personal` | CORPSHIP_MODE | - | - | yes |
+| `ship_set_password` | CORPSHIP_MODE | password | password | yes |
+| `port_upgrade` | PORT_UPGRADE_MODE | commodity, units | commodity, units | yes |
+| `port_build` | PORT_UPGRADE_MODE | port_class, planet_id, name | planet_id, port_class | yes |
+| `bank_deposit` | BANK_MODE | amount | amount | yes |
+| `bank_withdraw` | BANK_MODE | amount | amount | yes |
+| `bank_transfer` | BANK_MODE | to_player, amount | to_player, amount | yes |
+
+74 of 76 verbs are named in the parity prompt. `corp_deposit` and `corp_withdraw` stay out while `CORP_TREASURY` is off. They remain in `REQUIRED_ARGS` for a treasury-on game. `LLM_UNDOCUMENTED_VERBS` is empty.
+
+## Line inventory
+
+Each row is a base-prompt line the parity text rewrites. The number comes from the constant, not a literal.
+
+| Old line | Parity line | Constant |
+| --- | --- | --- |
+| StarDock is where `buy_ship`, `buy_equip`, and `corp_create` work | StarDock is where `buy_ship` and `buy_equip` work. `corp_create` is free in any sector | `CORP_CREATE_COST` 0 |
+| corporate_flagship (CORP MEMBER ONLY) | corporate_flagship (C.E.O. ONLY) | `CFS_CEO_RULE` purchase, and only while corp bots are on |
+| shared treasury makes ferrying trivial | a mate in the same sector can hand you credits | `CORP_TREASURY` off |
+| `plot_course {"target":<sector_id>}` up to 10 warps | `plot_course {"target":<sector_id>,"execute":true}`. `execute` false only previews | `PLOT_COURSE_MAX_DEPTH` |
+| `corp_create` 500k cr at StarDock | free in any sector, then `corp_set_password` | `CORP_CREATE_COST`, `CORPSHIP_PASSWORD_MAX_LEN` |
+| `corp_join {"ticker":"XYZ"}` | `corp_join` with ticker and password. One wrong password a day | `CORP_BREAKIN_PER_DAY` |
+| `corp_deposit` / `corp_withdraw` and the equal treasury share | those lines are gone | `CORP_TREASURY` off |
+| Corp benefits: shared treasury, FlagShip for members | mates do not shoot each other; the member pays for a citadel; only the C.E.O. buys the FlagShip | `CORP_TREASURY` off, `CFS_CEO_RULE` |
+| Corp list includes deposit and withdraw | list is create, set_password, invite, join, leave, drop, transfer, memo | `CORP_TREASURY` off |
+| CORPORATE SHIPS note with no call shape | `ship_set_corporate {}`, `ship_set_personal {}`, `ship_set_password` length 1 to 8 | `CORPSHIP_PASSWORD_MAX_LEN` |
+| Port note with no call shape | `port_upgrade` commodity and units, prices 250 / 500 / 900, 10 holds | `PORT_UPGRADE_UNIT_COST`, `PORT_UPGRADE_HOLDS_PER_UNIT` |
+| Bank note with no call shape | `bank_deposit`, `bank_withdraw`, `bank_transfer` at StarDock, cap 500,000 | `BANK_MAX_BALANCE` |
+| Corporations cost line from the old note | free in any sector, cap 5, ownership personal or corporate, C.E.O. leaving dissolves it | `CORP_CREATE_COST` 0, `CORP_TURN_COST` 0, `CORP_MAX_MEMBERS` 5 |
+| no alien attack line | `attack {"target":"alien:<n>","qty":N}`, alignment share 0.5 | `ALIEN_KILL_ALIGN_SHARE` |
 
 ## Fixture lab (seed 60, 500 sectors)
 
-`scripts/llm_prompt_fixture_lab.py`. Full prompt 41488 chars legacy, 41679 parity (0.46%, under 8%). Minimal prompt 15663 legacy, 16076 parity, and shorter than full. Observation median growth 3.8% (under 10%).
+`scripts/llm_prompt_fixture_lab.py`. Checklist PASS on this tip. Full prompt 41450 chars legacy, 41783 parity (0.80%, under 8%). Chars/4 is about 10,363 tokens legacy and 10,446 parity. Minimal prompt 15663 legacy, 16218 parity, and shorter than full. Observation median growth 3.8% (under 10%).
 
 | Fixture | Legacy obs | Parity obs | Growth |
 | --- | ---: | ---: | ---: |
-| f1 ten hops from StarDock, 250,000 credits | 7900 | 8203 | 3.8% |
-| f2 at StarDock, 300,000 credits | 9190 | 9678 | 5.3% |
-| f3 at StarDock, over the tax threshold | 9139 | 9627 | 5.3% |
+| f1 ten hops from StarDock, 250,000 credits | 7917 | 8220 | 3.8% |
+| f2 at StarDock, 300,000 credits | 9207 | 9805 | 6.5% |
+| f3 at StarDock, over the tax threshold | 9156 | 9754 | 6.5% |
 | f4 invite in the inbox | 9717 | 9777 | 0.6% |
 | f5 C.E.O. with a mate in the sector | 10286 | 10580 | 2.9% |
 | f6 port, owned planet, upgrade affordable | 9812 | 10256 | 4.5% |
 | f7 alien in the sector | 8327 | 8467 | 1.7% |
 | f8 the f1 seat with the minimal prompt | 7122 | 7231 | 1.5% |
 
-Parity checklist: no `500k cr at StarDock`, no `corp_deposit`, no `corp_withdraw`, no `shared treasury`. f1 parity hint names `plot_course` execute and does not say warp back. f4 hint does not copy the password. Legacy keeps the 500k line, the warp-back hint, and a compact legal list with no `args` key. Token estimate is chars/4: full parity prompt about 10,420 tokens.
+Parity checklist: no `500k cr at StarDock`, no `corp_deposit`, no `corp_withdraw`, no `shared treasury`. f1 parity hint names `plot_course` execute and does not say warp back. f4 hint does not copy the password. Legacy keeps the 500k line, the warp-back hint, and a compact legal list with no `args` key.
 
 ## 10-day scripted, seed 250925
 
