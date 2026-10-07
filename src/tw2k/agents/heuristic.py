@@ -273,8 +273,8 @@ class HeuristicAgent(BaseAgent):
 
     def _h_banks(self) -> bool:
         """bb14: H banks only while the bot bank mode is on."""
-        from ..engine.constants import BOT_BANK_H, bots_bank_on
-        return bool(BOT_BANK_H) and bots_bank_on()
+        from ..engine.constants import BOT_BANK_H, BOT_BANK_POLICY, bots_bank_on
+        return bool(BOT_BANK_H) and bots_bank_on() and BOT_BANK_POLICY == "reserve"
 
     def _h_keep(self, obs: Observation) -> int:
         from ..engine.constants import BOT_BANK_CAPITAL_PER_HOLD, BOT_BANK_H_KEEP

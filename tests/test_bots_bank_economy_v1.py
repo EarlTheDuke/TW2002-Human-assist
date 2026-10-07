@@ -426,3 +426,56 @@ def test_bb27_nest_egg_is_deposited_before_the_away_reserve():
     full = SeatBrain()
     full._away_cash = lambda v: 150_000  # noqa: SLF001
     assert full.decide(obs_for(10_000))["kind"] != "bank_deposit"
+
+
+def test_bb23_tax_and_death_keeps_the_old_float(monkeypatch):
+    import tw2k.engine.constants as K
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    monkeypatch.setattr(K, "BOT_BANK_POLICY", "tax_and_death")
+    obs = synthetic_obs(sector=1, credits=80_000, ship_class="cargotran", day=3)
+    obs["bank_balance"] = 0
+    obs["net_worth"] = 80_000
+    _la(obs, "buy_equip", item={"choices": [], "unit_price_by": {}})
+    _la(obs, "bank_deposit", max_amount=80_000, balance=0, room=500_000)
+    action = SeatBrain().decide(obs)
+    assert action["kind"] == "bank_deposit"
+    assert action["args"]["amount"] == 80_000 - int(K.BOT_BANK_FLOAT)
+
+
+def test_bb23_h_does_not_bank_under_tax_and_death(monkeypatch):
+    import tw2k.engine.constants as K
+    monkeypatch.setattr(K, "BOT_BANK_POLICY", "tax_and_death")
+    asyncio, Observation = _h_obs()
+    from tw2k.agents.heuristic import HeuristicAgent
+    obs = Observation
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": True, "params": {"ship_class": {
+            "choices": ["cargotran", "scout_marauder"],
+            "net_cost_by": {"cargotran": 40_000, "scout_marauder": 0},
+        }}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 80_000}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "buy_ship"
+    assert act.args["ship_class"] == "scout_marauder"
+
+
+def test_bb12_spare_deposits_before_the_bank_is_full(monkeypatch):
+    import tw2k.engine.constants as K
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    monkeypatch.setattr(K, "BOT_TREASURY_POLICY", "spare")
+    planet = {"id": 7, "sector_id": 5, "citadel_level": 1, "citadel_target": 1,
+              "shields": 10, "origin": "genesis", "colonists": {}}
+    obs = synthetic_obs(sector=5, credits=300_000, ship_class="cargotran", day=4, landed=7, planets=[planet])
+    obs["bank_balance"] = 0
+    obs["bank_room"] = 500_000
+    obs["alignment"] = 100
+    _la(obs, "deposit_treasury", planet_id={"type": "int", "choices": [7]},
+        amount={"type": "int", "min": 1, "max": 300_000})
+    action = SeatBrain().decide(obs)
+    assert action["kind"] == "deposit_treasury"
+    assert 200_000 < action["args"]["amount"] < 300_000
