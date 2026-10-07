@@ -382,6 +382,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             row["planet_trade"] = planet_trades[pid]
     else:
         violations = None
+    bank_rows = None
     if bank_report:
         from tw2k.agents.bank_brain import nest_egg
         bank_rows = fold_bank_events(u.events, list(players))
