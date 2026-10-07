@@ -112,7 +112,7 @@ The three bars that broke when the hold was removed now pass: `test_record_then_
 
 ## Planted bugs
 
-Each row is the bug, and the test that already locks the fixed behaviour. Not re-broken yet. That happens on the final commit.
+Each row is the bug, and the test that already locks the fixed behaviour. Re-broken on this commit. Each named test failed, and the source was restored.
 
 | Bug | Test |
 | --- | --- |
