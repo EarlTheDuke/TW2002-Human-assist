@@ -233,6 +233,8 @@ class SeatMemory:
     bank_deposited: bool = False
     # bb12: the planet id already used for this landing. Omitted until a deposit happens.
     treasury_planet: int | None = None
+    # bb11: the day this seat already detoured to the bank. Omitted until one happens.
+    bank_detour_day: int = -1
     # bots-use-corps-v1. The password itself is never stored.
     corp_partner: str | None = None
     corp_role: str | None = None
@@ -284,6 +286,8 @@ class SeatMemory:
             payload["bank_deposited"] = True
         if self.treasury_planet is not None:
             payload["treasury_planet"] = int(self.treasury_planet)
+        if self.bank_detour_day >= 0:
+            payload["bank_detour_day"] = int(self.bank_detour_day)
         if self.corp_partner:
             payload["corp_partner"] = self.corp_partner
         if self.corp_role:
@@ -350,6 +354,8 @@ class SeatMemory:
         mem.bank_deposited = bool(data.get("bank_deposited"))
         landed_id = data.get("treasury_planet")
         mem.treasury_planet = int(landed_id) if isinstance(landed_id, int) else None
+        detour_day = data.get("bank_detour_day")
+        mem.bank_detour_day = int(detour_day) if isinstance(detour_day, int) else -1
         partner = data.get("corp_partner")
         mem.corp_partner = str(partner) if isinstance(partner, str) else None
         role = data.get("corp_role")
@@ -758,6 +764,7 @@ class SeatBrain:
                 action, intent = None, Intent()
         if action is None:
             action, intent = self._ladder(v)
+        action, intent = self._bank_detour(v, action, intent)
         action, intent = self._avoid_held(v, action, intent)
         action = self._transwarp_instead(v, action, intent)
         self._intent = intent
@@ -4535,6 +4542,41 @@ class SeatBrain:
                 return "CargoTran is affordable - autopilot to StarDock (sector 1)"
             return "genesis is affordable - autopilot to StarDock (sector 1)"
         return "go to StarDock for colonists"
+
+    def _bank_detour(self, v: View, action: dict[str, Any], intent: Intent) -> tuple[dict[str, Any], Intent]:
+        """bb11: one StarDock stop when spare cash is large and the dock is only a few hops off the plan."""
+        from ..engine import constants as engine_k
+        if not self._reserve_on() or v.landed is not None or v.here in (None, STARDOCK):
+            return action, intent
+        kind = action.get("kind")
+        target = (action.get("args") or {}).get("target")
+        if kind not in ("warp", "plot_course") or target is None or int(target) == int(STARDOCK):
+            return action, intent
+        mem = self.mem
+        if mem is not None and mem.bank_detour_day == int(v.day):
+            return action, intent
+        cargo = v.cargo or {}
+        if any(int(cargo.get(name) or 0) > 0 for name in ("fuel_ore", "organics", "equipment")):
+            return action, intent
+        if int(v.credits) - self._away_cash(v) < int(engine_k.BOT_BANK_DETOUR_CASH):
+            return action, intent
+        limit = int(engine_k.BOT_BANK_DETOUR_HOPS_ON if engine_k.bots_bank_on() else engine_k.BOT_BANK_DETOUR_HOPS)
+        direct = self._hops(v, v.here, int(target))
+        via_dock = self._hops(v, v.here, STARDOCK)
+        after = self._hops(v, STARDOCK, int(target))
+        if direct is None or via_dock is None or after is None:
+            return action, intent
+        if via_dock + after - direct > limit:
+            return action, intent
+        path = self._known_path(v, int(v.here), int(STARDOCK))
+        if not path or any(sid in self._held_today(v) for sid in path):
+            return action, intent
+        plotted = self._plot(v, int(STARDOCK), "bank the spare cash on the way")
+        if plotted is None:
+            return action, intent
+        if mem is not None:
+            mem.bank_detour_day = int(v.day)
+        return plotted, intent
 
     def _plot(self, v: View, target: int, why: str) -> dict[str, Any] | None:
         # The engine rejects plot_course execute when the first hop's turn cost
