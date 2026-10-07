@@ -104,6 +104,12 @@ H never deposited. One N2 deposited once and never withdrew. Seed 4242, same sea
 
 H again never banked, lost the cash at the third death, and finished in a Scout at 7,975. The earlier bank-slice totals that motivated the slice stay in the galactic bank note: seed 250925 fell from 2,919,443 with no bank to 1,871,215, and seed 424242 from 2,899,689 to 1,626,702.
 
+## Seat brain
+
+`BOT_BANK_POLICY` default is now `reserve`. Legacy mode, and policy `tax_and_death`, keep the old float and the genesis hold. Under reserve, a StarDock visit withdraws the CargoTran or genesis shortfall from the bank without spending the nest egg, then deposits cash above the away reserve. A pod withdraws for the replacement hull before it buys a Scout. The planet target counts cash plus the bank minus the nest egg.
+
+The three bars that broke when the hold was removed now pass: `test_record_then_replay_with_fresh_brain`, `test_n2_solo_tw2002_keeps_colonising`, `test_n2_day10_beats_n1_and_keeps_organics`. Seed 250925 N2 in the growth replay: 2 genesis worlds, net worth 441,475, planet 32 still the held zero. H does not bank yet.
+
 ## Planted bugs
 
 Each row is the bug that will be planted, and the test that must fail. Not re-broken yet. That happens on the final commit.

@@ -706,6 +706,13 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
+        if self._reserve_on():
+            answer = self._bank_recovery(v)
+            if answer is not None:  # a pod withdraws for the replacement hull before it buys a Scout
+                self._intent = Intent()
+                mem.last_action_sig = _signature(answer, v)
+                mem.last_warp = None
+                return self._finish(v, answer)
         answer = self._leave_pod(v)
         if answer is not None:  # death-escape-pods-v1: a pod flies to StarDock and trades itself in
             self._intent = Intent()
@@ -1457,7 +1464,7 @@ class SeatBrain:
         step = GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + self.working_capital
         if info_tw2002() and not self.value_allocator:
             step += 100_000
-        spare = v.credits - self._unfinished_l2_cash(v)
+        spare = self._plan_budget(v) - self._unfinished_l2_cash(v)
         more = max(0, spare // step) if step else 0
         # Raise only while every current genesis world still has organics
         # runway (and at least two are fed, or fewer than two exist). Free
@@ -2949,6 +2956,129 @@ class SeatBrain:
                         "thought": "pair policy: join with the pass"}
         return None
 
+    def _reserve_on(self) -> bool:
+        from ..engine import constants as engine_k
+        return engine_k.bots_bank_on() and engine_k.BOT_BANK_POLICY == "reserve"
+
+    def _plan_budget(self, v: View) -> int:
+        """Credits the planet target may count. Banking must not shrink it."""
+        if not self._reserve_on():
+            return int(v.credits)
+        from .bank_brain import nest_egg
+        balance = int(v.obs.get("bank_balance") or 0)
+        return int(v.credits) + balance - nest_egg(v.net_worth)
+
+    def _bank_recovery(self, v: View) -> dict[str, Any] | None:
+        """At StarDock in a pod, withdraw the replacement hull before the Scout buy."""
+        from ..engine import constants as engine_k
+        if v.ship_class != "escape_pod" or v.landed is not None:
+            return None
+        if int(v.here or 0) != int(engine_k.STARDOCK_SECTOR) or not v.ok("bank_withdraw"):
+            return None
+        balance = int(v.obs.get("bank_balance") or 0)
+        need = self._stardock_hull_need(v, balance)
+        from .bank_brain import nest_egg, withdraw_amount
+        amount = withdraw_amount(
+            need, 0, int(v.credits), balance, nest_egg(v.net_worth),
+            int(v.params("bank_withdraw").get("max_amount") or 0), recovery=True,
+        )
+        if amount < 1:
+            return None
+        return {"kind": "bank_withdraw", "args": {"amount": amount},
+                "thought": "withdraw the replacement hull from the nest egg"}
+
+    def _genesis_shortfall(self, v: View) -> tuple[int, bool]:
+        """(withdraw amount, buy is already on hand). Zero means genesis is not this visit's buy."""
+        if v.here != STARDOCK or v.genesis_aboard > 0 or v.colonists_aboard > 0 or self._hauling_organics(v):
+            return 0, False
+        if self._cargotran_net(v) is not None and not self._cargotran_affordable(v):
+            return 0, False
+        have = len(v.genesis_planets())
+        if have >= self.target_planets or have >= MAX_TARGET_PLANETS:
+            return 0, False
+        if have >= 2 and any(int(p.get("citadel_level") or 0) < 2 for p in v.genesis_planets()):
+            return 0, False
+        if self._no_genesis_hull(v):
+            return 0, False
+        if not (v.ok("buy_equip") and "genesis" in set(str(c) for c in v.choices("buy_equip", "item"))):
+            return 0, False
+        price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
+                    or GENESIS_TORPEDO_COST)
+        keep = CITADEL_TIER_COST[0][0] + self.working_capital + self._unfinished_l2_cash(v)
+        from .bank_brain import nest_egg, purse, withdraw_amount
+        balance = int(v.obs.get("bank_balance") or 0)
+        egg = nest_egg(v.net_worth)
+        legal = int(v.params("bank_withdraw").get("max_amount") or 0)
+        if purse(int(v.credits), balance, egg, legal) - price < keep:
+            return 0, False
+        if int(v.credits) - price >= keep:
+            return 0, True
+        amount = withdraw_amount(price, keep, int(v.credits), balance, egg, legal, recovery=False)
+        return amount, False
+
+    def _away_cash(self, v: View) -> int:
+        from .bank_brain import away_reserve
+        planned: list[int] = []
+        if v.genesis_aboard and not v.worlds():
+            planned.append(CITADEL_TIER_COST[0][0] + self.working_capital)
+        elif v.worlds():
+            planned.append(max(self._citadel_reserve(v), self._unfinished_l2_cash(v)))
+        holds = int(v.ship.get("holds") or 0)
+        fighters = int(v.ship.get("fighters") or v.ship.get("fighter_count") or 0)
+        return away_reserve(holds, planned, 0, fighters > 0)
+
+    def _reserve_hull_need(self, v: View, spendable_balance: int) -> int:
+        """Hull cash, including a CargoTran the legal list hides until the bank is withdrawn."""
+        need = self._stardock_hull_need(v, spendable_balance)
+        if need > 0:
+            return need
+        if v.ship_class not in ("merchant_cruiser", "scout_marauder", "escape_pod"):
+            return 0
+        nets = (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by") or {}
+        cost = int(nets.get("cargotran") or 0)
+        purse = int(v.credits) + int(spendable_balance)
+        if cost > 0 and purse - cost >= self.cash_buffer:
+            return cost + self.cash_buffer
+        return 0
+
+    def _bank_reserve(self, v: View) -> dict[str, Any] | None:
+        """Withdraw the StarDock shortfall, else deposit cash above the away reserve. No genesis hold."""
+        from .bank_brain import deposit_amount, nest_egg, withdraw_amount
+        mem = self.mem
+        balance = int(v.obs.get("bank_balance") or 0)
+        egg = nest_egg(v.net_worth)
+        need = self._reserve_hull_need(v, max(0, balance - egg))
+        if need > int(v.credits) and v.ok("bank_withdraw"):
+            amount = withdraw_amount(
+                need, 0, int(v.credits), balance, egg,
+                int(v.params("bank_withdraw").get("max_amount") or 0), recovery=False,
+            )
+            if amount >= 1:
+                return {"kind": "bank_withdraw", "args": {"amount": amount},
+                        "thought": "withdraw the shortfall for the StarDock buy"}
+        if need > 0 and int(v.credits) >= need:
+            return None
+        short, ready = self._genesis_shortfall(v)
+        if short >= 1:
+            return {"kind": "bank_withdraw", "args": {"amount": short},
+                    "thought": "withdraw the genesis shortfall"}
+        if ready:
+            return None
+        if mem is not None and mem.bank_deposited:
+            return None
+        if not v.ok("bank_deposit"):
+            return None
+        amount = deposit_amount(
+            int(v.credits), self._away_cash(v),
+            int(v.params("bank_deposit").get("max_amount") or 0),
+            day1=int(v.day) <= 1,
+        )
+        if amount < 1:
+            return None
+        if mem is not None:
+            mem.bank_deposited = True
+        return {"kind": "bank_deposit", "args": {"amount": amount}, "thought": "bank the spare cash"}
+
     def _bank(self, v: View) -> dict[str, Any] | None:
         """gb29-gb31: withdraw the exact hull shortfall, else deposit spare once per StarDock visit."""
         from ..engine import constants as engine_k
@@ -2958,6 +3088,8 @@ class SeatBrain:
             mem.bank_deposited = False
         if engine_k.BOT_BANK_POLICY == "off" or not engine_k.bank_on() or not at_dock:
             return None
+        if self._reserve_on():
+            return self._bank_reserve(v)
         balance = int(v.obs.get("bank_balance") or 0)
         need = self._stardock_hull_need(v, balance)
         if need > int(v.credits) and v.ok("bank_withdraw"):
