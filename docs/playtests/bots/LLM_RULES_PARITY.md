@@ -91,3 +91,31 @@ Parity on and parity off wrote the same file. Action digest `7ad15bc9`. Rejected
 | N3-P2 | 216,931 | cargotran | 0 |
 | N2-P4 | 154,737 | merchant_cruiser | 0 |
 | H-P6 | 7,975 | scout_marauder | 3 |
+
+## Planted-bug tests
+
+These names are the ones a re-break has to fail. The re-break itself is still to do on the final commit.
+
+| Bug | Test |
+| --- | --- |
+| pb1 minimal prompt still says 500k at StarDock | `test_pb1_minimal_prompt_drops_the_500k_line` |
+| pb2 deposit and withdraw stay in the corp list | `test_pb2_treasury_off_drops_deposit_and_withdraw` |
+| pb3 join hint omits the password key | `test_pb3_and_pb4_invite_hint_names_the_password_key_and_not_the_secret` |
+| pb4 join hint copies the real password | `test_pb3_and_pb4_invite_hint_names_the_password_key_and_not_the_secret` |
+| pb5 hint A fires at 0 credits | `test_pb5_hint_a_stays_quiet_below_the_credit_threshold` |
+| pb6 plot_course omits execute | `test_pb6_plot_course_line_includes_execute` |
+| pb7 StarDock hint says warp back | fixture lab f1 |
+| pb8 route notice and the prompt disagree | `test_lp7_route_notice_shares_the_plot_syntax` |
+| pb9 bank_transfer uses target | `test_pb9_pb10_pb11_examples_use_the_handler_names` |
+| pb10 port_upgrade uses qty | `test_pb9_pb10_pb11_examples_use_the_handler_names` |
+| pb11 direction is send/receive | `test_pb9_pb10_pb11_examples_use_the_handler_names` |
+| pb12 text snapshots a constant at import | `test_pb12_and_pb13_numbers_follow_the_constants` |
+| pb13 a literal 25000 instead of the constant | `test_pb12_and_pb13_numbers_follow_the_constants` |
+| pb14 bank block while the bank is legacy | `test_lp14_bank_block_hides_when_the_bank_is_legacy` |
+| pb15 FlagShip says C.E.O. only while bots are legacy | `test_lp15_flagship_row_stays_member_only_when_bots_are_legacy` |
+| pb16 compact hints include a blocked verb | `test_lp14_compact_hints_cap_choices_and_skip_secrets` |
+| pb17 compact hints leak the password | `test_lp14_compact_hints_cap_choices_and_skip_secrets` |
+| pb18 compact hints list 40 choices | `test_lp14_compact_hints_cap_choices_and_skip_secrets` |
+| pb19 legacy compact legal gains args | `test_lp14_compact_hints_cap_choices_and_skip_secrets` |
+| pb20 transfer without direction passes | `test_pb20_a_transfer_without_direction_is_rejected` |
+| pb21 required args reject the brain's transfer | `test_pb21_the_brain_transfer_shape_passes_acceptance` |
