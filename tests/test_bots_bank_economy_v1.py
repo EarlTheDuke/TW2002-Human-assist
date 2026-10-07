@@ -314,6 +314,26 @@ def test_pb20_targets_use_the_purse():
     assert target(0) == 2
 
 
+def test_pb21_no_rival_balance():
+    """The purse math reads its arguments only. It has no universe and no other seat's balance."""
+    import ast
+    import tw2k.agents.bank_brain as bank_brain
+
+    tree = ast.parse(open(bank_brain.__file__, encoding="utf-8").read())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            assert "universe" not in (node.module or "")
+            assert all(alias.name != "universe" for alias in node.names)
+        if isinstance(node, ast.Import):
+            assert all("universe" not in alias.name for alias in node.names)
+        if isinstance(node, ast.Name):
+            assert node.id != "universe"
+        if isinstance(node, ast.Attribute):
+            assert node.attr not in {"players", "bank_balance"}
+        if isinstance(node, ast.arg):
+            assert node.arg not in {"universe", "player", "rival"}
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
