@@ -40,3 +40,71 @@ def test_lp5_a_rich_solo_hint_does_not_say_500k_at_stardock():
     assert "500k" not in hint
     assert "free in any sector" in hint
     assert "<from the invite>" not in hint or "password" in hint
+
+
+def test_lp8_bank_and_port_verbs_use_the_handler_keys():
+    from tw2k.agents.prompts import get_system_prompt
+    text = get_system_prompt()
+    assert 'bank_transfer {"to_player":"P3","amount":N}' in text
+    assert 'port_upgrade {"commodity":"fuel_ore|organics|equipment","units":N}' in text
+    assert 'corp_transfer {"target":"P3","item":"credits","qty":N,"direction":"give"}' in text
+    assert "Direction is give or take." in text
+    assert 'ship_set_password {"password":"..."}' in text
+    assert 'alien:<n>' in text
+    monkey_off = text  # names stay when the modes are on
+    assert "bank_deposit" in monkey_off
+
+
+def test_lp14_bank_block_hides_when_the_bank_is_legacy(monkeypatch):
+    from tw2k.agents.prompts import get_system_prompt
+    monkeypatch.setattr(K, "BANK_MODE", "legacy")
+    text = get_system_prompt()
+    assert "bank_deposit" not in text
+    assert "bank_transfer" not in text
+
+
+def test_lp14_compact_hints_cap_choices_and_skip_secrets(monkeypatch):
+    from tw2k.agents.prompts import _compact_legal
+    entries = [
+        {"kind": "warp", "legal": True, "params": {"target": {"choices": list(range(40))}}},
+        {"kind": "corp_join", "legal": True, "params": {
+            "ticker": {"choices": ["ABC"]},
+            "password": {"type": "str", "choices": ["secret"]},
+        }},
+        {"kind": "attack", "legal": False, "reason": "no target", "params": {"target": {"choices": ["P9"]}}},
+    ]
+    out = _compact_legal(entries)
+    assert "args" in out
+    assert "attack" not in out["args"]
+    assert "password" not in out["args"]["corp_join"]
+    assert "secret" not in out["args"]["corp_join"]
+    assert "+34 more" in out["args"]["warp"]
+    monkeypatch.setattr(K, "LLM_PARITY_MODE", "legacy")
+    legacy = _compact_legal(entries)
+    assert set(legacy) == {"legal", "blocked"}
+
+
+def test_lp16_required_args_match_the_handlers():
+    from tw2k.agents.seat_acceptance import REQUIRED_ARGS
+    assert REQUIRED_ARGS["bank_transfer"] == ("to_player", "amount")
+    assert REQUIRED_ARGS["port_upgrade"] == ("commodity", "units")
+    assert REQUIRED_ARGS["port_build"] == ("planet_id", "port_class")
+    assert "direction" in REQUIRED_ARGS["corp_transfer"]
+    assert REQUIRED_ARGS["ship_set_password"] == ("password",)
+
+
+def test_lp7_route_notice_shares_the_plot_syntax():
+    import inspect
+
+    from tw2k.agents import llm
+    from tw2k.agents.rules_text import plot_course_call, plot_course_line
+    assert plot_course_call() in plot_course_line()
+    assert "plot_course_call" in inspect.getsource(llm.route_notice)
+
+
+def test_lp15_flagship_row_stays_member_only_when_bots_are_legacy(monkeypatch):
+    from tw2k.agents.prompts import get_system_prompt
+    monkeypatch.setattr(K, "CORP_BOTS_MODE", "legacy")
+    text = get_system_prompt()
+    assert "C.E.O. ONLY" not in text
+    assert "CORP MEMBER ONLY" in text

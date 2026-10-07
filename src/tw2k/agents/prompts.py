@@ -741,13 +741,14 @@ def get_system_prompt() -> str:
         text = text + _CAPTURE_NOTE
     if K.planet_trade_on():
         text = text + _PLANET_TRADE_NOTE
-    if K.corpship_on():
+    parity = K.llm_parity_on()
+    if K.corpship_on() and not parity:
         text = text + _CORPSHIP_NOTE
-    if K.port_upgrade_on():
+    if K.port_upgrade_on() and not parity:
         text = text + _PORT_UPGRADE_NOTE
-    if K.bank_on():
+    if K.bank_on() and not parity:
         text = text + _bank_note()
-    if K.corp_rules_on():
+    if K.corp_rules_on() and not parity:
         text = text + _corp_note()
     if K.buy_reserve_on():
         text = _buy_reserve_prompt_text(text)
@@ -1063,11 +1064,52 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
     return json.dumps(payload, separators=(",", ":") if compact else (", ", ": "))
 
 
+def _hint_value(value: Any) -> str | None:
+    cap = int(K.LLM_LEGAL_HINT_MAX_CHOICES)
+    if isinstance(value, dict):
+        choices = value.get("choices")
+        if choices is None:
+            choices = value.get("suggested")
+        if isinstance(choices, (list, tuple)) and choices:
+            shown = list(choices)[:cap]
+            extra = len(choices) - len(shown)
+            body = ",".join(str(item) for item in shown)
+            if extra:
+                body += f",+{extra} more"
+            return body
+        if "max" in value:
+            return f"max {value['max']}"
+        return None
+    return None
+
+
+def _arg_hint(params: dict[str, Any]) -> str:
+    bits: list[str] = []
+    for key in K.LLM_LEGAL_HINT_KEYS:
+        if key == "password" or key not in params:
+            continue
+        rendered = _hint_value(params[key])
+        if rendered:
+            bits.append(f"{key}={rendered}")
+    return " ".join(bits)
+
+
 def _compact_legal(entries: list[dict[str, Any]]) -> dict[str, Any]:
-    return {
+    out: dict[str, Any] = {
         "legal": [e.get("kind") for e in entries if e.get("legal")],
         "blocked": {e.get("kind"): e.get("reason") for e in entries if not e.get("legal") and e.get("reason")},
     }
+    if K.llm_parity_on() and K.LLM_LEGAL_HINTS == "args":
+        args: dict[str, str] = {}
+        for entry in entries:
+            if not entry.get("legal"):
+                continue
+            hint = _arg_hint(entry.get("params") or {})
+            kind = entry.get("kind")
+            if hint and kind:
+                args[str(kind)] = hint
+        out["args"] = args
+    return out
 
 
 def _top_known_ports(obs: Observation, limit: int = 15) -> list[dict[str, Any]]:

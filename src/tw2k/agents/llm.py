@@ -1097,11 +1097,13 @@ def route_notice(obs: Observation, trail: list[tuple[int, int, str]]) -> str:
         f"Each hop still costs its warp turns{hop_txt}; it stops when turns run out and the same call "
         "resumes tomorrow. Without execute it only previews the route."
     )
+    from .rules_text import plot_course_call
+
     sd = K.STARDOCK_SECTOR
     if int(here) != sd and _starter_hull_upgrade_affordable(obs):
         return (
             f"AUTOPILOT TO STARDOCK: you can afford a ship upgrade at StarDock (sector {sd}). Get there with "
-            f'plot_course {{"target":{sd},"execute":true}} - ONE action flies the whole shortest route. {how} '
+            f"{plot_course_call(sd)} - ONE action flies the whole shortest route. {how} "
             "Do not hand-pick warps toward it; a quick profitable trade at a port you are already in is fine."
         )
     day = int(obs.day)
@@ -1113,7 +1115,7 @@ def route_notice(obs: Observation, trail: list[tuple[int, int, str]]) -> str:
             seen = ", ".join(str(s) for s in again[:4])
             return (
                 f"LOOP CHECK: your last {ROUTE_LOOP_WINDOW} turns were single warps and revisited sector(s) {seen}. "
-                f'To reach a far sector use plot_course {{"target":<sector_id>,"execute":true}}. {how} '
+                f"To reach a far sector use {plot_course_call()}. {how} "
                 "Otherwise trade, scan or buy here instead of warping back and forth."
             )
     return ""
