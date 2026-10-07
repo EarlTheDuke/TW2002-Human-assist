@@ -53,6 +53,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "CORP_MODE", "legacy")  # goldens predate corp-rules-v1
     monkeypatch.setattr(K, "ALIEN_MODE", "legacy")  # goldens predate alien-traders-v1
     monkeypatch.setattr(K, "LLM_PARITY_MODE", "legacy")  # goldens predate llm-rules-parity-v1
+    monkeypatch.setattr(K, "LLM_PLANET_NUDGE_MODE", "legacy")
     monkeypatch.setattr(K, "COMBAT_SCANNER_MODE", "legacy")  # predate fullgame-fixes-v2
 
 

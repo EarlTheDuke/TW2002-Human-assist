@@ -92,6 +92,12 @@ Parity on and parity off wrote the same file. Action digest `7ad15bc9`. Rejected
 | N2-P4 | 154,737 | merchant_cruiser | 0 |
 | H-P6 | 7,975 | scout_marauder | 3 |
 
+## Sell-first and the first planet
+
+`LLM_SELL_FIRST` (default on) puts a SELL HERE line at the top of the turn notices when this port's bid covers the cargo's cost, and clears the short goal. Two round trips on the same pair while still holding cargo and with no trade in between show `you are looping: sell here or plot_course to a buyer`. A bid under cost, an empty hold, one trip, or a trade in the window stays quiet.
+
+`LLM_PLANET_NUDGE_MODE` default tw2002. Legacy keeps `update only on real strategy shifts` and the old S2 line. On, the long-goal clause is dropped, S2 tells a seat with no planet to buy genesis and terra_colonists and not to wait for a credit target, and a seat with no planet, no torpedo, and at least 50,000 credits gets a FIRST PLANET notice (buy at StarDock, otherwise plot_course to sector 1). A planet owner gets neither. When buy_equip is legal the compact args list every affordable item. Code bots are unchanged.
+
 ## Planted-bug tests
 
 These names are the ones a re-break has to fail. The re-break itself is still to do on the final commit.

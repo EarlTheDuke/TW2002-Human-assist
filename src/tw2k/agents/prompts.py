@@ -759,6 +759,11 @@ def get_system_prompt() -> str:
     if K.llm_parity_on():
         from . import rules_text
         text = rules_text.apply(text)
+    if K.planet_nudge_on():
+        text = text.replace(
+            "long   = your plan to win this match (update only on real strategy shifts).",
+            "long   = your plan to win this match.",
+        )
     return text
 
 
@@ -904,7 +909,11 @@ def stage_hint(obs: Observation) -> dict[str, Any]:
             "stage": "S2",
             "label": "Capital Build",
             "reason": f"Day {obs.day}, net worth ${net_worth:,} — scaling trade circuit",
-            "next_milestone": "Reach ~500k, buy density scanner / ship upgrade, then pick a home sector",
+            "next_milestone": (
+                "Buy genesis and terra_colonists. Do not wait for a credit target. Then pick a home sector"
+                if K.planet_nudge_on() and not has_own_planet
+                else "Reach ~500k, buy density scanner / ship upgrade, then pick a home sector"
+            ),
         })
     return _finalize_stage_hint({
         "stage": "S1",
@@ -1064,8 +1073,8 @@ def format_observation(obs: Observation, compact: bool = True) -> str:
     return json.dumps(payload, separators=(",", ":") if compact else (", ", ": "))
 
 
-def _hint_value(value: Any) -> str | None:
-    cap = int(K.LLM_LEGAL_HINT_MAX_CHOICES)
+def _hint_value(value: Any, *, uncap: bool = False) -> str | None:
+    cap = 10**6 if uncap else int(K.LLM_LEGAL_HINT_MAX_CHOICES)
     if isinstance(value, dict):
         choices = value.get("choices")
         if choices is None:
@@ -1083,12 +1092,12 @@ def _hint_value(value: Any) -> str | None:
     return None
 
 
-def _arg_hint(params: dict[str, Any]) -> str:
+def _arg_hint(params: dict[str, Any], *, uncap_item: bool = False) -> str:
     bits: list[str] = []
     for key in K.LLM_LEGAL_HINT_KEYS:
         if key == "password" or key not in params:
             continue
-        rendered = _hint_value(params[key])
+        rendered = _hint_value(params[key], uncap=uncap_item and key == "item")
         if rendered:
             bits.append(f"{key}={rendered}")
     return " ".join(bits)
@@ -1104,7 +1113,10 @@ def _compact_legal(entries: list[dict[str, Any]]) -> dict[str, Any]:
         for entry in entries:
             if not entry.get("legal"):
                 continue
-            hint = _arg_hint(entry.get("params") or {})
+            hint = _arg_hint(
+                entry.get("params") or {},
+                uncap_item=K.planet_nudge_on() and str(entry.get("kind")) == "buy_equip",
+            )
             kind = entry.get("kind")
             if hint and kind:
                 args[str(kind)] = hint
