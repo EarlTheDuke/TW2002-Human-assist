@@ -363,3 +363,9 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 | 14.4 Unmanned-ship fighters | Fighters on unmanned ships are excluded from universe totals. [docs wiki Interdictor_Cruiser] CONFIRMED | n/a (single ship). | Missing | S / Low |
 | 14.5 Evil trading loops (SDF, SDT, D/RTR) | Steal-Dump-Flee and related tactics need rob/steal, towing, multiple ships. [cabal glossary.html] CONFIRMED | Missing, depends on 2.12, 3.18, 14.2. | Missing | L / Low |
 | 14.6 Ours-only systems | Not in the original. | Alliances, planet value dividend, 100M-credit victory, play_to_day_cap, observation helper blocks for bots. | Different | S / Low |
+
+## 15. LLM rules text
+
+| # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
+|---|---|---|---|---|
+| 15.1 LLM rules text parity | The original shows the command list of every menu, and what each command takes, when the player asks for help. [EIS MainMenu.html Help] CONFIRMED | `LLM_PARITY_MODE` tw2002 names the engine's verbs and arguments in the system prompt and in compact legal hints. Legacy text stays the old prompt. | Building | M / High |
