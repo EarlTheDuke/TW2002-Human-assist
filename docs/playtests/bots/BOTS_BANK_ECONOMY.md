@@ -80,7 +80,29 @@ Recorded before any bot reads `BOTS_BANK_MODE`. 3-day N3,N2,N1,H seed 250925. Go
 
 ## Before
 
-Measured next, on 4627c0b, with this mode absent. The earlier bank-slice totals that motivated the slice stay in the galactic bank note: seed 250925 fell from 2,919,443 with no bank to 1,871,215, and seed 424242 from 2,899,689 to 1,626,702.
+Measured on e511652. `BOTS_BANK_MODE` exists and nothing reads it, so this is the slice 60 bot. Seed 250925, 10 days, seats N3,N3,N2,N2,N1,H. Rejected 0/0. Exceptions 0. The net-worth table matches the parity match digest `cd91bf36`.
+
+| Seat | Net worth | Ship | Deaths | Bank balance | Deposited | Withdrew | Tax | Credits lost at death |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| N3-P1 | 648,074 | cargotran | 0 | 0 | 0 | 0 | 34,403 | 0 |
+| N2-P3 | 314,875 | cargotran | 0 | 46,227 | 46,227 | 0 | 0 | 0 |
+| N1-P5 | 217,288 | cargotran | 0 | 0 | 0 | 0 | 0 | 0 |
+| N3-P2 | 188,773 | merchant_cruiser | 0 | 0 | 0 | 0 | 0 | 0 |
+| N2-P4 | 138,940 | merchant_cruiser | 0 | 0 | 0 | 0 | 0 | 0 |
+| H-P6 | 7,975 | scout_marauder | 3 | 0 | 0 | 0 | 41,121 | 238,988 |
+
+H never deposited. One N2 deposited once and never withdrew. Seed 4242, same seats, rejected 0/0, exceptions 0. The net-worth table matches the parity match digest `7ad15bc9`.
+
+| Seat | Net worth | Ship | Deaths | Bank balance | Deposited | Withdrew | Tax | Credits lost at death |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| N1-P5 | 476,782 | merchant_cruiser | 0 | 0 | 0 | 0 | 39,198 | 0 |
+| N2-P3 | 461,882 | cargotran | 0 | 144,872 | 144,872 | 0 | 0 | 0 |
+| N3-P1 | 460,723 | cargotran | 0 | 0 | 0 | 0 | 7,591 | 0 |
+| N3-P2 | 216,931 | cargotran | 0 | 0 | 0 | 0 | 0 | 0 |
+| N2-P4 | 154,737 | merchant_cruiser | 0 | 0 | 0 | 0 | 0 | 0 |
+| H-P6 | 7,975 | scout_marauder | 3 | 0 | 0 | 0 | 13,145 | 205,410 |
+
+H again never banked, lost the cash at the third death, and finished in a Scout at 7,975. The earlier bank-slice totals that motivated the slice stay in the galactic bank note: seed 250925 fell from 2,919,443 with no bank to 1,871,215, and seed 424242 from 2,899,689 to 1,626,702.
 
 ## Planted bugs
 
