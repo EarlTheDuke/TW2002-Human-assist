@@ -112,7 +112,7 @@ The three bars that broke when the hold was removed now pass: `test_record_then_
 
 ## Planted bugs
 
-Each row is the bug, and the test that already locks the fixed behaviour. Not re-broken yet. That happens on the final commit. These rows do not have their own test yet: pb21, pb22, pb24.
+Each row is the bug, and the test that already locks the fixed behaviour. Not re-broken yet. That happens on the final commit. These rows do not have their own test yet: pb22, pb24.
 
 | Bug | Test |
 | --- | --- |
@@ -123,6 +123,7 @@ Each row is the bug, and the test that already locks the fixed behaviour. Not re
 | pb6 a buy withdraws the nest egg | `test_pb6_nest_egg_stays` |
 | pb19 the bank step runs before the corp tax shield | `test_pb19_corp_shield_runs_first` |
 | pb20 planet targets read cash on hand only | `test_pb20_targets_use_the_purse` |
+| pb21 the planner reads another seat's balance | `test_pb21_no_rival_balance` |
 | pb4 the genesis hold still blocks deposits | `test_bb4_reserve_deposits_above_the_away_reserve_not_the_old_float` |
 | pb7 a pod buys a Scout before the bank step | `test_bb13_a_pod_withdraws_before_it_buys_the_scout` |
 | pb8 recovery withdraws the whole balance | `test_bb13_a_pod_withdraws_before_it_buys_the_scout` |
