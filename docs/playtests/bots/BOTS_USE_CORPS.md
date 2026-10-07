@@ -133,4 +133,34 @@ Rejected: one engine reject on N2-P4, the same trade-holds miss as the 10-day ru
 
 ## Plant re-break
 
-On 462790d, three gates were removed one at a time and restored after the named test failed. pb21 the spare-buy gate, caught by `test_bc24_only_the_ceo_buys_a_flagship`. pb22 the invite gate, caught by `test_bc25_a_flagship_pilot_cannot_join_and_may_create`. pb27 legacy still pairing, caught by `test_bc1_legacy_reads_the_policy_as_off`. pb14 a transfer of the whole balance, caught by `test_bc12_credit_hand_off_is_the_shortfall_plus_pad` (it returned 200,000 instead of 41,000). The other planted bugs do not each have a named test yet.
+Each planted bug was put back on its own, the named test failed, and the source was restored.
+
+| Bug | Caught by |
+| --- | --- |
+| pb1 no password | `test_pb1_the_founder_sets_a_password_before_the_invite` |
+| pb2 empty password | `test_pb2_the_partner_joins_with_the_invite_password` |
+| pb3 ticker collision | `test_pb3_a_taken_ticker_falls_back` |
+| pb4 password in the thought | `test_pb4_the_password_stays_out_of_the_thought` |
+| pb5 password in seat memory | `test_pb5_the_password_stays_out_of_seat_memory` |
+| pb6 non-partner invite | `test_pb6_a_non_partner_invite_is_ignored` |
+| pb7 same-day join | `test_pb7_a_join_is_not_retried_the_same_day` |
+| pb8 deploy without corporate | `test_pb8_a_corp_bot_deploys_as_corporate` |
+| pb9 solo ownership argument | `test_pb9_a_solo_bot_sends_no_ownership_argument` |
+| pb10 friends from alliances | `test_pb10_friends_come_from_the_corp_block` |
+| pb11 hunt keeps a mate | `test_pb11_hunt_skips_a_corp_mate` |
+| pb12 rogue counted friendly | `test_pb12_a_rogue_group_is_not_friendly_after_the_ceo_is_gone` |
+| pb13 both pay the citadel | `test_pb13_the_mate_does_not_pay_the_same_citadel_step` |
+| pb14 whole balance | `test_bc12_credit_hand_off_is_the_shortfall_plus_pad` |
+| pb15 transfer every decision | `test_pb15_credits_move_once_per_day` |
+| pb16 tax shield to a good mate | `test_pb16_the_tax_shield_pays_an_evil_mate_only` |
+| pb17 top-up over room | `test_pb17_a_top_up_stays_inside_the_room_and_the_keep` |
+| pb18 negative quantity | `test_pb18_a_negative_transfer_is_refused` |
+| pb19 fifteen-hop meetup | `test_pb19_a_fifteen_hop_meetup_is_refused` |
+| pb20 waits when affordable | `test_pb20_an_affordable_purchase_does_not_wait_for_a_transfer` |
+| pb21 spare FlagShip | `test_bc24_only_the_ceo_buys_a_flagship` |
+| pb22 FlagShip joins | `test_pb22_a_flagship_pilot_cannot_join_with_the_password` |
+| pb23 production shown to a rival | `test_pb23_rivals_do_not_see_planet_production` |
+| pb24 universe rng | `test_pb24_corp_brain_does_not_draw_the_universe_rng` |
+| pb25 cap not reset | `test_pb25_the_free_action_cap_resets_on_the_next_day` |
+| pb26 survey after the C.E.O. is gone | `test_pb26_survey_returns_when_the_ceo_is_gone` |
+| pb27 legacy still pairs | `test_bc1_legacy_reads_the_policy_as_off` |

@@ -240,6 +240,8 @@ class SeatMemory:
     corp_invite_day: int = -1
     corp_transfer_day: int = -1
     corp_fighter_day: int = -1
+    corp_join_day: int = -1
+    corp_last_invite: str | None = None
 
     def dump(self) -> str:
         payload = {
@@ -293,6 +295,10 @@ class SeatMemory:
             payload["corp_transfer_day"] = int(self.corp_transfer_day)
         if self.corp_fighter_day >= 0:
             payload["corp_fighter_day"] = int(self.corp_fighter_day)
+        if self.corp_join_day >= 0:
+            payload["corp_join_day"] = int(self.corp_join_day)
+        if self.corp_last_invite:
+            payload["corp_last_invite"] = self.corp_last_invite
         return MEMORY_TAG + json.dumps(payload, separators=(",", ":"))
 
     @classmethod
@@ -348,6 +354,9 @@ class SeatMemory:
         mem.corp_invite_day = int(data.get("corp_invite_day") if data.get("corp_invite_day") is not None else -1)
         mem.corp_transfer_day = int(data.get("corp_transfer_day") if data.get("corp_transfer_day") is not None else -1)
         mem.corp_fighter_day = int(data.get("corp_fighter_day") if data.get("corp_fighter_day") is not None else -1)
+        mem.corp_join_day = int(data.get("corp_join_day") if data.get("corp_join_day") is not None else -1)
+        last = data.get("corp_last_invite")
+        mem.corp_last_invite = str(last) if isinstance(last, str) else None
         return mem
 
 
@@ -963,7 +972,8 @@ class SeatBrain:
                         f"stock {qty} organics on planet {pid} ({g.get('organics_days_left', '?')}d left)"))
             # Build before reshuffling. The seed fuel pool is exactly an L1
             # payment; moving it onto organics first blocks the citadel forever.
-            if v.ok("build_citadel") and pid in v.choices("build_citadel", "planet_id") and self._citadel_ready(planet, v):
+            if (v.ok("build_citadel") and pid in v.choices("build_citadel", "planet_id")
+                    and self._citadel_ready(planet, v) and not self._mate_waits_on_citadel(v)):
                 nxt = v.params("build_citadel").get("next") or {}
                 candidates.append(self._act("build_citadel", {"planet_id": pid},
                                             f"build citadel L{nxt.get('level', '?')} on planet {pid}"))
@@ -2136,7 +2146,7 @@ class SeatBrain:
         """bc10: the partner works the corp planet instead of founding a second home."""
         from ..engine import constants as engine_k
         from . import corp_brain
-        if not engine_k.BOT_CORP_SHARED_HOME or engine_k.bot_corp_policy() != "pair":
+        if not engine_k.BOT_CORP_SHARED_HOME or engine_k.bot_corp_policy() not in ("pair", "team"):
             return None
         if not corp_brain.active() or corp_brain.role_of(str(v.self_id or "")) != "mate":
             return None
@@ -2797,11 +2807,26 @@ class SeatBrain:
         """bc16: the partner trades. The C.E.O. is the one who spends turns surveying."""
         from ..engine import constants as engine_k
         from . import corp_brain
-        if engine_k.BOT_CORP_EXPLORER != "ceo" or engine_k.bot_corp_policy() != "pair":
+        if engine_k.BOT_CORP_EXPLORER != "ceo" or engine_k.bot_corp_policy() not in ("pair", "team"):
             return False
         if not corp_brain.active() or not v.stardock_known:
             return False
         if corp_brain.role_of(str(v.self_id or "")) != "mate":
+            return False
+        corp = v.obs.get("corp") or {}
+        ceo = str(corp.get("ceo_id") or "")
+        for member in corp.get("members") or []:
+            if isinstance(member, dict) and str(member.get("id") or "") == ceo:
+                return bool(member.get("alive", True))
+        return False
+
+    def _mate_waits_on_citadel(self, v: View) -> bool:
+        """bc11: the partner does not pay the same citadel step while the C.E.O. is alive."""
+        from ..engine import constants as engine_k
+        from . import corp_brain
+        if not engine_k.BOT_CORP_SINGLE_BUILDER or engine_k.bot_corp_policy() not in ("pair", "team"):
+            return False
+        if not corp_brain.active() or corp_brain.role_of(str(v.self_id or "")) != "mate":
             return False
         corp = v.obs.get("corp") or {}
         ceo = str(corp.get("ceo_id") or "")
@@ -2890,7 +2915,7 @@ class SeatBrain:
         take K.CORP_DEPLOY_DEFAULT (corporate). Never transfers, takes, leaves or drops. All verbs 0 turns."""
         from ..engine import constants as engine_k
         from . import corp_brain
-        if engine_k.bot_corp_policy() != "pair":
+        if engine_k.bot_corp_policy() not in ("pair", "team"):
             return None
         if corp_brain.active():
             opening = corp_brain.next_action(self, v)
@@ -3952,7 +3977,7 @@ class SeatBrain:
     def _pair_ownership(v: View, kind: str) -> dict[str, str]:
         """cr29 "pair": corp members deploy corporate explicitly; otherwise the engine default applies."""
         from ..engine import constants as engine_k
-        if engine_k.bot_corp_policy() == "pair" and "corporate" in v.choices(kind, "ownership"):
+        if engine_k.bot_corp_policy() in ("pair", "team") and "corporate" in v.choices(kind, "ownership"):
             return {"ownership": "corporate"}
         return {}
 

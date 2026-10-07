@@ -147,6 +147,357 @@ def test_bc26_members_see_the_planet_id():
     assert public and "planets" not in public[0]
 
 
+def _pair(monkeypatch, *seats: str):
+    from tw2k.agents.corp_brain import configure
+    monkeypatch.setattr(K, "BOT_CORP_POLICY", "pair")
+    configure(list(seats), seed=31)
+
+
+def _brain_view(obs: dict):
+    from tw2k.agents.seat_brain import SeatBrain, SeatMemory, View
+    brain = SeatBrain()
+    brain.mem = SeatMemory()
+    return brain, View(obs)
+
+
+def _legal(kind: str, **params) -> dict:
+    return {"kind": kind, "legal": True, "params": params}
+
+
+def test_pb1_the_founder_sets_a_password_before_the_invite(monkeypatch):
+    from tw2k.agents.corp_brain import clear, next_action
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, view = _brain_view({
+            "self_id": "P1", "self_name": "Ada", "day": 1,
+            "corp_ticker": "ADA", "corp": {"password": "", "members": [{"id": "P1"}]},
+            "legal_actions": [_legal("corp_set_password"), _legal("corp_invite", target={"choices": ["P2"]})],
+        })
+        action = next_action(brain, view)
+        assert action is not None and action["kind"] == "corp_set_password"
+        assert action["args"]["password"]
+    finally:
+        clear()
+
+
+def test_pb2_the_partner_joins_with_the_invite_password(monkeypatch):
+    from tw2k.agents.corp_brain import clear, next_action
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, view = _brain_view({
+            "self_id": "P2", "day": 1,
+            "inbox": [{"kind": "corp_invite", "from": "P1", "ticker": "ADA", "password": "abc123"}],
+            "legal_actions": [_legal("corp_join", ticker={"choices": ["ADA"]})],
+        })
+        action = next_action(brain, view)
+        assert action is not None and action["args"]["password"] == "abc123"
+    finally:
+        clear()
+
+
+def test_pb3_a_taken_ticker_falls_back(monkeypatch):
+    from tw2k.agents.corp_brain import ticker_for
+    assert ticker_for("Ada", "P1", {"ADA"}) == "P01"
+
+
+def test_pb4_the_password_stays_out_of_the_thought(monkeypatch):
+    from tw2k.agents.corp_brain import clear, next_action, password_for
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, view = _brain_view({
+            "self_id": "P1", "day": 1, "corp_ticker": "ADA",
+            "corp": {"members": [{"id": "P1"}]},
+            "legal_actions": [_legal("corp_set_password")],
+        })
+        action = next_action(brain, view)
+        secret = password_for("ADA")
+        assert secret not in action["thought"]
+    finally:
+        clear()
+
+
+def test_pb5_the_password_stays_out_of_seat_memory(monkeypatch):
+    from tw2k.agents.corp_brain import clear, next_action, password_for
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, view = _brain_view({
+            "self_id": "P1", "day": 1, "corp_ticker": "ADA",
+            "corp": {"members": [{"id": "P1"}]},
+            "legal_actions": [_legal("corp_set_password")],
+        })
+        next_action(brain, view)
+        assert password_for("ADA") not in brain.mem.dump()
+    finally:
+        clear()
+
+
+def test_pb6_a_non_partner_invite_is_ignored(monkeypatch):
+    from tw2k.agents.corp_brain import clear, next_action
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, view = _brain_view({
+            "self_id": "P2", "day": 1,
+            "inbox": [{"kind": "corp_invite", "from": "P9", "ticker": "RIV", "password": "abc123"}],
+            "legal_actions": [_legal("corp_join", ticker={"choices": ["RIV"]})],
+        })
+        assert next_action(brain, view) is None
+    finally:
+        clear()
+
+
+def test_pb7_a_join_is_not_retried_the_same_day(monkeypatch):
+    from tw2k.agents.corp_brain import clear, next_action
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, view = _brain_view({
+            "self_id": "P2", "day": 1,
+            "inbox": [{"kind": "corp_invite", "from": "P1", "ticker": "ADA", "password": "abc123"}],
+            "legal_actions": [_legal("corp_join", ticker={"choices": ["ADA"]})],
+        })
+        assert next_action(brain, view)["kind"] == "corp_join"
+        assert next_action(brain, view) is None
+    finally:
+        clear()
+    u = _u()
+    _seat(u, "A")
+    _seat(u, "B")
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_CREATE, args={"ticker": "ZZ", "name": "Zed"})).ok
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_SET_PASSWORD, args={"password": "secret"})).ok
+    first = apply_action(u, "B", Action(kind=ActionKind.CORP_JOIN, args={"ticker": "ZZ", "password": "nope"}))
+    second = apply_action(u, "B", Action(kind=ActionKind.CORP_JOIN, args={"ticker": "ZZ", "password": "nope"}))
+    assert first.error == "wrong password"
+    assert second.error == "one break-in attempt per day"
+
+
+def test_pb8_a_corp_bot_deploys_as_corporate(monkeypatch):
+    from tw2k.agents.seat_brain import SeatBrain, View
+    monkeypatch.setattr(K, "BOT_CORP_POLICY", "pair")
+    view = View({"legal_actions": [_legal("deploy_fighters", ownership={"choices": ["personal", "corporate"]})]})
+    assert SeatBrain._pair_ownership(view, "deploy_fighters") == {"ownership": "corporate"}
+
+
+def test_pb9_a_solo_bot_sends_no_ownership_argument():
+    from tw2k.agents.seat_brain import SeatBrain, View
+    view = View({"legal_actions": [_legal("deploy_fighters", ownership={"choices": ["personal", "corporate"]})]})
+    assert SeatBrain._pair_ownership(view, "deploy_fighters") == {}
+
+
+def test_pb10_friends_come_from_the_corp_block():
+    from tw2k.agents.corp_brain import friends
+    from tw2k.agents.seat_brain import View
+    view = View({
+        "self_id": "P1", "alliances": [],
+        "corp": {"members": [{"id": "P1"}, {"id": "P2"}]},
+    })
+    assert friends(view) == {"P2"}
+
+
+def test_pb11_hunt_skips_a_corp_mate(monkeypatch):
+    from tw2k.agents.corp_brain import clear
+    from tw2k.agents.seat_brain import SeatBrain, View
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain = SeatBrain()
+
+        def hunt(tid: str) -> dict | None:
+            obs = {
+                "self_id": "P1", "day": 1, "alignment": 500, "credits": 1000,
+                "sector": {"id": 20, "traders": [{"id": tid, "ship_class": "scout", "fighters": 0, "shields": 0}]},
+                "ship": {"class": "battleship"},
+                "corp": {"members": [{"id": "P1"}, {"id": "P2"}]},
+                "legal_actions": [_legal("attack", target={"choices": [tid], "players": [tid]}, qty={"max": 40})],
+            }
+            return brain._hunt(View(obs))
+
+        assert hunt("P2") is None
+        stranger = hunt("P9")
+        assert stranger is not None and stranger["args"]["target"] == "P9"
+    finally:
+        clear()
+
+
+def test_pb12_a_rogue_group_is_not_friendly_after_the_ceo_is_gone():
+    from types import SimpleNamespace
+
+    from tw2k.engine.corp import deploy_friend
+    u = _u()
+    _seat(u, "A")
+    rogue = SimpleNamespace(owner_id=K.ROGUE_OWNER_ID, corp_ticker="ZZ")
+    assert deploy_friend(u, "A", rogue) is False
+
+
+def test_pb13_the_mate_does_not_pay_the_same_citadel_step(monkeypatch):
+    from tw2k.agents.corp_brain import clear
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, alive = _brain_view({
+            "self_id": "P2",
+            "corp": {"ceo_id": "P1", "members": [{"id": "P1", "alive": True}, {"id": "P2", "alive": True}]},
+        })
+        _, gone = _brain_view({
+            "self_id": "P2",
+            "corp": {"ceo_id": "P1", "members": [{"id": "P1", "alive": False}, {"id": "P2", "alive": True}]},
+        })
+        assert brain._mate_waits_on_citadel(alive) is True
+        assert brain._mate_waits_on_citadel(gone) is False
+    finally:
+        clear()
+
+
+def test_pb15_credits_move_once_per_day(monkeypatch):
+    from tw2k.agents.corp_brain import clear
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, view = _brain_view({
+            "self_id": "P1", "day": 2, "credits": 200_000, "alignment": 100,
+            "sector": {"id": 20, "traders": [{"id": "P2", "ship_class": "cargotran"}]},
+            "ship": {"class": "battleship", "holds": 20},
+            "rivals": [{"id": "P2", "side": "evil"}],
+            "legal_actions": [_legal("corp_transfer", partners=[{"player_id": "P2", "take_max": {"credits": 21_300}}])],
+        })
+        first = brain._corp_support(view)
+        second = brain._corp_support(view)
+        assert first is not None and first["args"]["qty"] == 41_000
+        assert second is None
+    finally:
+        clear()
+
+
+def test_pb16_the_tax_shield_pays_an_evil_mate_only(monkeypatch):
+    from tw2k.agents.corp_brain import clear
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        def handoff(side: str):
+            brain, view = _brain_view({
+                "self_id": "P1", "day": 2, "credits": 150_000, "alignment": 100,
+                "sector": {"id": 20, "traders": [{"id": "P2", "ship_class": "battleship"}]},
+                "ship": {"class": "battleship", "holds": 20},
+                "rivals": [{"id": "P2", "side": side}],
+                "legal_actions": [_legal("corp_transfer", partners=[{"player_id": "P2", "take_max": {"credits": 900_000}}])],
+            })
+            return brain._corp_support(view)
+
+        assert handoff("good") is None
+        paid = handoff("evil")
+        assert paid is not None and paid["args"]["qty"] == 50_000
+    finally:
+        clear()
+
+
+def test_pb17_a_top_up_stays_inside_the_room_and_the_keep():
+    from tw2k.agents.corp_brain import gear_take
+    assert gear_take(100, 50, 30) == 50
+    assert gear_take(10, 50, 30) == 7
+    assert gear_take(-5, 50, 30) is None
+
+
+def test_pb18_a_negative_transfer_is_refused():
+    u = _u()
+    _seat(u, "A", sector=4, credits=80_000)
+    _seat(u, "B", sector=4, credits=10_000)
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_CREATE, args={"ticker": "ZZ", "name": "Zed"})).ok
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_SET_PASSWORD, args={"password": "secret"})).ok
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_INVITE, args={"target": "B"})).ok
+    assert apply_action(u, "B", Action(kind=ActionKind.CORP_JOIN, args={"ticker": "ZZ", "password": "secret"})).ok
+    refused = apply_action(u, "A", Action(
+        kind=ActionKind.CORP_TRANSFER, args={"target": "B", "item": "credits", "qty": -5, "direction": "give"}))
+    assert not refused.ok and refused.error == "invalid transfer"
+
+
+def test_pb19_a_fifteen_hop_meetup_is_refused():
+    from tw2k.agents.corp_brain import within_meetup
+    assert within_meetup(3, 30) is True
+    assert within_meetup(15, 10) is False
+
+
+def test_pb20_an_affordable_purchase_does_not_wait_for_a_transfer():
+    from tw2k.agents.corp_brain import credit_give
+    assert credit_give(80_000, 0, 70_000, 61_300, reserve=20_000, pad=1_000, minimum=5_000) is None
+
+
+def test_pb22_a_flagship_pilot_cannot_join_with_the_password():
+    u = _u()
+    _seat(u, "A")
+    _seat(u, "B", hull=ShipClass.CORPORATE_FLAGSHIP)
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_CREATE, args={"ticker": "ZZ", "name": "Zed"})).ok
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_SET_PASSWORD, args={"password": "secret"})).ok
+    joined = apply_action(u, "B", Action(kind=ActionKind.CORP_JOIN, args={"ticker": "ZZ", "password": "secret"}))
+    assert not joined.ok and joined.error == "a FlagShip pilot cannot join a corporation"
+
+
+def test_pb23_rivals_do_not_see_planet_production():
+    u = _u()
+    _seat(u, "A")
+    _seat(u, "B")
+    assert apply_action(u, "A", Action(kind=ActionKind.CORP_CREATE, args={"ticker": "ZZ", "name": "Zed"})).ok
+    planet = next(pl for pl in u.planets.values() if pl.sector_id not in K.FEDSPACE_SECTORS)
+    planet.corp_ticker = "ZZ"
+    public = build_observation(u, "B").model_dump().get("corporations") or []
+    assert public and "planets" not in public[0]
+    assert "production" not in public[0] and "stock" not in public[0]
+
+
+def test_pb24_corp_brain_does_not_draw_the_universe_rng():
+    from pathlib import Path
+
+    import tw2k.agents.corp_brain as corp_brain
+    body = Path(corp_brain.__file__).read_text(encoding="utf-8").split('"""', 2)[-1]
+    assert "universe.rng" not in body
+
+
+def test_pb25_the_free_action_cap_resets_on_the_next_day(monkeypatch):
+    from tw2k.agents.corp_brain import clear, next_action
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        mate, day1 = _brain_view({
+            "self_id": "P2", "day": 1,
+            "inbox": [{"kind": "corp_invite", "from": "P1", "ticker": "ADA", "password": "abc123"}],
+            "legal_actions": [_legal("corp_join", ticker={"choices": ["ADA"]})],
+        })
+        mate.mem.corp_free_actions = 6
+        mate.mem.corp_free_day = 1
+        assert next_action(mate, day1) is None
+        _, day2 = _brain_view({
+            "self_id": "P2", "day": 2,
+            "inbox": [{"kind": "corp_invite", "from": "P1", "ticker": "ADA", "password": "abc123"}],
+            "legal_actions": [_legal("corp_join", ticker={"choices": ["ADA"]})],
+        })
+        joined = next_action(mate, day2)
+        assert joined is not None and joined["kind"] == "corp_join"
+    finally:
+        clear()
+
+
+def test_pb26_survey_returns_when_the_ceo_is_gone(monkeypatch):
+    from tw2k.agents.corp_brain import clear
+    _pair(monkeypatch, "P1", "P2")
+    try:
+        brain, alive = _brain_view({
+            "self_id": "P2", "sector": {"id": 1},
+            "corp": {"ceo_id": "P1", "members": [{"id": "P1", "alive": True}]},
+        })
+        assert brain._mate_skips_survey(alive) is True
+        _, gone = _brain_view({
+            "self_id": "P2", "sector": {"id": 1},
+            "corp": {"ceo_id": "P1", "members": [{"id": "P1", "alive": False}]},
+        })
+        assert brain._mate_skips_survey(gone) is False
+    finally:
+        clear()
+
+
+def test_team_groups_are_three_consecutive_seats(monkeypatch):
+    from tw2k.agents.corp_brain import clear, configure, partner_of, role_of, team_of
+    monkeypatch.setattr(K, "BOT_CORP_POLICY", "team")
+    configure(["P1", "P2", "P3", "P4", "P5"], seed=31)
+    try:
+        assert role_of("P1") == "ceo" and team_of("P1") == ["P2", "P3"]
+        assert partner_of("P2") == "P1" and partner_of("P3") == "P1"
+        assert role_of("P4") == "ceo" and partner_of("P5") == "P4"
+    finally:
+        clear()
+
+
 def test_scenario_lab_passes():
     import importlib.util
     from pathlib import Path
