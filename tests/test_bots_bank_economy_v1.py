@@ -367,6 +367,25 @@ def test_pb22_no_rng():
     assert first == second
 
 
+def test_pb24_no_spare_torpedo_overnight():
+    """A CargoTran needs 3 hops at 4 turns, plus the deploy. Five turns does not buy one."""
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    def kind(turns: int) -> str:
+        brain = SeatBrain(value_allocator=False)
+        obs = synthetic_obs(sector=1, credits=90_000, ship_class="cargotran", day=3, turns=turns)
+        obs["bank_balance"] = 0
+        obs["net_worth"] = 90_000
+        obs["alignment"] = 50
+        _la(obs, "buy_equip", item={"choices": ["genesis"], "unit_price_by": {"genesis": 25_000}})
+        _la(obs, "buy_ship", ship_class={"choices": [], "net_cost_by": {}})
+        return brain.decide(obs)["kind"]
+
+    assert kind(5) != "buy_equip"
+    assert kind(200) == "buy_equip"
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain

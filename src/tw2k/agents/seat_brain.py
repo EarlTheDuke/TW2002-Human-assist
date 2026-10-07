@@ -1189,7 +1189,7 @@ class SeatBrain:
             # A 2nd world keeps the full reserve even when trailing: funding it from working
             # capital starved the first citadel (seed 99: -110k NW by day 6).
             more = bool(gplanets) and len(gplanets) < self.target_planets and v.credits - price >= reserve
-            if first or more:
+            if (first or more) and self._genesis_flight_today(v):
                 why = f" - trailing {self.pressure.get('leader')}" if self.pressure and self.pressure.get("leader") else ""
                 return self._act("buy_equip", {"item": "genesis", "qty": 1},
                                  f"buy genesis #{len(gplanets) + 1} ({price} cr){why}"), Intent("acquire")
@@ -1645,6 +1645,8 @@ class SeatBrain:
         if v.here == STARDOCK:
             if not (v.ok("buy_equip") and "genesis" in v.choices("buy_equip", "item")):
                 return None
+            if not self._genesis_flight_today(v):
+                return None
             price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
                         or GENESIS_TORPEDO_COST)
             action = self._act("buy_equip", {"item": "genesis", "qty": 1},
@@ -1655,6 +1657,18 @@ class SeatBrain:
                 return None
         turns = self._hops_to_stardock(v) * self._tpw(v) + 6 * self._tpw(v) + 8
         return self._genesis_expected_value(v) / max(1, turns), action, Intent("acquire", STARDOCK)
+
+    def _genesis_flight_today(self, v: View) -> bool:
+        """A torpedo bought now can still fly the minimum deploy distance before the day ends.
+
+        Callers that omit turns_remaining keep the old buy. A known short day does not.
+        """
+        raw = v.obs.get("turns_remaining") if isinstance(v.obs, dict) else None
+        if raw is None:
+            return True
+        from ..engine.constants import GENESIS_MIN_HOPS_FROM_STARDOCK
+        flight = int(GENESIS_MIN_HOPS_FROM_STARDOCK) * self._tpw(v) + 1
+        return int(raw) >= flight
 
     def _genesis_affordable_now(self, v: View) -> bool:
         price = GENESIS_TORPEDO_COST
