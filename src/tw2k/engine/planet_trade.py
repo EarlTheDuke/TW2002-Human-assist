@@ -309,6 +309,8 @@ def handle_planet_trade(universe: Universe, pid: str, action: Action) -> ActionR
         from .victory import _award_xp
         _award_xp(universe, pid, "trade")
     _drop_tow(universe, player)
+    from .tavern import note_dock
+    note_dock(player, sector.id)
     return ActionResult(ok=True, turns_spent=cost)
 
 

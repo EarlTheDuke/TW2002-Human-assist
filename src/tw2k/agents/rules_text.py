@@ -89,6 +89,26 @@ def corp_extra() -> str:
     )
 
 
+def tavern_block() -> str:
+    return (
+        "StarDock has the Lost Trader's Tavern. "
+        f"Post an announcement on the board ({int(K.TAVERN_ANNOUNCE_COST)} cr; "
+        "it stays until someone posts the next one), talk at the conversation table or write "
+        f"anonymous graffiti (free), or order a drink or food (flavour only). "
+        "The Grimy Trader in back sells information: a trace on a trader names one port that "
+        f"trader's current ship has docked at ({int(K.GRIMY_TRACE_COST):,} cr, nothing to pay if he "
+        f"knows nothing), and the Underground password ({int(K.GRIMY_PASSWORD_COST):,} cr). "
+        "Cursing him costs 1 alignment and 1 experience, once a day. "
+        f"With the password and alignment {int(K.UG_MAX_ALIGNMENT)} or lower you can enter the Underground: "
+        "post a hit contract on any trader (you lose 1 alignment per "
+        f"{int(K.UG_CREDITS_PER_ALIGN)} cr posted; whoever destroys that trader's ship - not just his "
+        "escape pod - collects it in the Underground) and collect contracts you earned. "
+        f"Wrong passwords in one day: the {int(K.UG_MUG_AT)}th gets you mugged for all cash on hand "
+        "(banked credits are safe), the "
+        f"{int(K.UG_EXP_HALVE_AT)}th halves your experience, the {int(K.UG_MURDER_AT)}th gets you murdered.\n"
+    )
+
+
 def alien_line() -> str:
     share = K.ALIEN_KILL_ALIGN_SHARE
     return (
@@ -140,6 +160,8 @@ def apply(text: str) -> str:
         extra.append(corp_extra())
     if K.alien_on():
         extra.append(alien_line())
+    if K.tavern_on():
+        extra.append(tavern_block())
     if extra:
         text = text.rstrip() + "\n" + "".join(extra)
     return text

@@ -259,6 +259,8 @@ def handle_port_upgrade(universe: Universe, pid: str, action: Action) -> ActionR
         summary=(f"{player.name} upgraded {commodity.value} by {units} "
                  f"({row.maximum} holds) for {paid}cr"),
     )
+    from .tavern import note_dock
+    note_dock(player, player.sector_id)
     return ActionResult(ok=True, turns_spent=cost)
 
 

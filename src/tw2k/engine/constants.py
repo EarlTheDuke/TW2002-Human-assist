@@ -2136,6 +2136,58 @@ def bots_bank_on() -> bool:
     return BOTS_BANK_MODE == "tw2002" and bank_on()
 
 
+# --- Lost Trader's Tavern and the Underground (TAVERN_MODE) ------------------
+# docs/playtests/fedspace/STARDOCK_TAVERN.md. Unread until the handlers land.
+TAVERN_MODE = "tw2002"                  # tv1: "tw2002" | "legacy"
+TAVERN_TURN_COST = 0                    # tv2 UNVERIFIED
+TAVERN_ANNOUNCE_COST = 100              # tv3 CONFIRMED
+TAVERN_TEXT_MAX = 160                   # tv3 UNVERIFIED
+TAVERN_ANNOUNCE_SIGNED = True           # tv3 UNVERIFIED
+TAVERN_TALK_COST = 0                    # tv4 UNVERIFIED
+TAVERN_CONVERSATION_KEEP = 20           # tv4 OURS
+TAVERN_CONVERSATION_SHOW = 10           # tv22 OURS
+TAVERN_GRAFFITI_COST = 0                # tv5 UNVERIFIED
+TAVERN_WALL_KEEP = 10                   # tv5 OURS
+TAVERN_WALL_SHOW = 5                    # tv22 OURS
+TAVERN_DRINK_COST = 20                  # tv6 UNVERIFIED
+TAVERN_FOOD_COST = 20                   # tv6 UNVERIFIED
+TAVERN_PRICE_SCALING = "flat"           # tv6 UNVERIFIED
+GRIMY_TOPICS = ("trader", "underground", "mafia", "tricron")  # tv7
+GRIMY_TRACE_COST = 3_000                # tv8 UNVERIFIED
+GRIMY_TRACE_PORTS = 1                   # tv8 SOURCE-CONFLICT
+GRIMY_TRACE_PICK = "hashed"             # tv8 OURS
+GRIMY_CHARGE_ON_MISS = False            # tv8 UNVERIFIED
+GRIMY_TRACE_LIES = False                # tv8 UNVERIFIED
+GRIMY_DOCK_LOG_MAX = 10                 # tv9 UNVERIFIED
+GRIMY_DOCK_ACTIONS = ("trade", "rob", "steal", "planet_trade", "port_upgrade")  # tv9
+GRIMY_PASSWORD_COST = 2_000             # tv10 UNVERIFIED
+GRIMY_CURSES_PER_DAY = 1                # tv13 SOURCE-CONFLICT
+GRIMY_CURSE_TURNS = 1                   # tv13 UNVERIFIED
+GRIMY_RUDE_MARKUP_PCT = 0               # tv13 UNVERIFIED
+UG_PASSWORD_SOURCE = "seeded"           # tv10 OURS
+UG_MAX_ALIGNMENT = 199                  # tv14 SOURCE-CONFLICT
+UG_PASSWORD_MATCH = "loose"             # tv14 UNVERIFIED
+UG_VERB_VISIBILITY = "known"            # tv14 OURS
+UG_MUG_AT = 4                           # tv15 SOURCE-CONFLICT
+UG_EXP_HALVE_AT = 5                     # tv15 SOURCE-CONFLICT
+UG_MURDER_AT = 6                        # tv15 SOURCE-CONFLICT
+UG_MURDER_POD = False                   # tv15 UNVERIFIED
+UG_MURDER_COUNTS_DEATH = True           # tv15 UNVERIFIED
+UG_CONTRACT_MIN = 1_000                 # tv16 UNVERIFIED
+UG_CREDITS_PER_ALIGN = 250              # tv16 CONFIRMED
+UG_CONTRACT_SELF = True                 # tv16 CONFIRMED
+UG_CONTRACT_PAYOUT_ON = "ship_destroyed"  # tv17 UNVERIFIED
+UG_CONTRACT_ON_ELIMINATION = "sink"     # tv17 UNVERIFIED
+UG_SHOW_CONTRACTS = "totals"            # tv18 UNVERIFIED
+UG_NAME_CHANGE = False                  # tv19
+TAVERN_TRICRON = "off"                  # tv20
+BOT_TAVERN_POLICY = "off"               # tv26
+
+
+def tavern_on() -> bool:
+    return TAVERN_MODE == "tw2002"
+
+
 # --- Corporations (CORP_MODE) -------------------------------------------------
 # docs/playtests/corps/CORP_RULES.md. "legacy" is the engine at 57dec11.
 CORP_MODE = "tw2002"                      # "tw2002" | "legacy"

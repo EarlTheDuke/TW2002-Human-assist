@@ -883,6 +883,8 @@ def _eliminate(universe: Universe, player, killer_id: str | None) -> None:
     """Remove a player for good (the elimination threshold was reached)."""
     pid = player.id
     player.alive = False
+    from .tavern import on_eliminated
+    on_eliminated(universe, pid)
     if K.fleet_on():  # SHIP_FLEET.md fl26: elimination removes the owner's parked ships (deliberate)
         from .fleet import drop_owner_fleet
         drop_owner_fleet(universe, pid)
@@ -1022,6 +1024,7 @@ def _strip_ship(player, class_key: str) -> None:
     player.ship.ether_probes = 0
     player.ship.mines = {MineType.ARMID: 0, MineType.LIMPET: 0, MineType.ATOMIC: 0}
     player.ship.transwarp_drive = None
+    player.ship.dock_log.clear()
     player.arrived_by_transwarp = False
     player.arrived_by_transport = False
 
@@ -1042,7 +1045,7 @@ def _place(universe: Universe, player, sector_id: int) -> None:
 
 def _destroy_ship_tw2002(
     universe: Universe, pid: str, reason: str, killer_id: str | None, by_other: bool,
-    *, always_escape: bool = False,
+    *, always_escape: bool = False, force_destroyed: bool = False,
 ) -> None:
     """d1-d11: the pod, or Ship Destroyed. Elimination only by setting (d19).
 
@@ -1064,7 +1067,9 @@ def _destroy_ship_tw2002(
         player.pods_day = universe.day
         player.pods_today = 0
     hull = player.ship.ship_class.value
-    podded = always_escape or (hull not in K.PODLESS_HULLS and player.pods_today < K.PODS_PER_DAY)
+    podded = (not force_destroyed) and (
+        always_escape or (hull not in K.PODLESS_HULLS and player.pods_today < K.PODS_PER_DAY)
+    )
     from .bank import on_ship_lost
     credits_lost = on_ship_lost(universe, player, killer_id, by_other, hull)
     if K.tow_on() and getattr(player.ship, "tow_lock", None) is not None:
@@ -1122,6 +1127,8 @@ def _destroy_ship_tw2002(
     # fedspace-police-v1 f19: bounty only on real death (not pod)
     from .fed import record_bounty_on_death
     record_bounty_on_death(universe, pid, killer_id, outcome)
+    from .tavern import record_contract_on_death
+    record_contract_on_death(universe, pid, killer_id, outcome)
     threshold = K.elimination_deaths(universe.config)
     if threshold and player.deaths >= threshold:
         _eliminate(universe, player, killer_id)

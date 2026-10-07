@@ -870,6 +870,8 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
         # v11: after the trade, the probe tells you how close you came (actor-only event).
         emit_psychic_probe(universe, pid, commodity.value, side, listed_now, unit, mcic_now)
     _award_xp(universe, pid, "trade")
+    from .tavern import note_dock
+    note_dock(player, sector.id)
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -2153,6 +2155,7 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     from .models import ShipClass as SC  # local import to avoid cycle in runtime edits
     player.ship.ship_class = SC(class_key)
     player.ship.holds = spec["holds"]
+    player.ship.dock_log.clear()
     if K.info_tw2002():
         player.ship.scanner = None  # s4: the scanner stays with the old ship
     from .ship_transwarp import clear_drive
@@ -4041,6 +4044,29 @@ def _bind_corpships() -> None:
     _DISPATCH[ActionKind.SHIP_SET_PASSWORD] = handle_set_password
 
 
+def _bind_tavern() -> None:
+    from .tavern import (
+        handle_announce,
+        handle_claim,
+        handle_contract,
+        handle_curse,
+        handle_enter,
+        handle_graffiti,
+        handle_grimy_ask,
+        handle_order,
+        handle_talk,
+    )
+    _DISPATCH[ActionKind.TAVERN_ANNOUNCE] = handle_announce
+    _DISPATCH[ActionKind.TAVERN_TALK] = handle_talk
+    _DISPATCH[ActionKind.TAVERN_GRAFFITI] = handle_graffiti
+    _DISPATCH[ActionKind.TAVERN_ORDER] = handle_order
+    _DISPATCH[ActionKind.GRIMY_ASK] = handle_grimy_ask
+    _DISPATCH[ActionKind.GRIMY_CURSE] = handle_curse
+    _DISPATCH[ActionKind.UNDERGROUND_ENTER] = handle_enter
+    _DISPATCH[ActionKind.UNDERGROUND_CONTRACT] = handle_contract
+    _DISPATCH[ActionKind.UNDERGROUND_CLAIM] = handle_claim
+
+
 def _bind_fed_handlers() -> None:
     from .fed import handle_apply_commission, handle_claim_reward, handle_post_reward
     _DISPATCH[ActionKind.APPLY_COMMISSION] = handle_apply_commission
@@ -4057,6 +4083,7 @@ _bind_bank()
 _bind_corp_rules()
 _bind_corpships()
 _bind_fed_handlers()
+_bind_tavern()
 
 
 
