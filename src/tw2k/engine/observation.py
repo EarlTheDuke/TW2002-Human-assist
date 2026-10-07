@@ -2411,12 +2411,21 @@ def _action_hint(
             if affordable:
                 affordable.sort(key=lambda t: (-t[0], t[1]))
                 picks = ", ".join(tag for _h, _c, tag in affordable[:2])
-                hints.append(
-                    f"STILL IN STARTER HULL with {credits:,}cr — you can "
-                    f"afford {picks}. `buy_ship` is a 0-turn action at "
-                    f"StarDock (sector {K.STARDOCK_SECTOR}); warp back to "
-                    f"upgrade before burning more days trading in 20 holds."
-                )
+                if K.llm_parity_on():
+                    hints.append(
+                        f"STILL IN STARTER HULL with {credits:,}cr — you can "
+                        f"afford {picks}. `buy_ship` is a 0-turn action at "
+                        f"StarDock (sector {K.STARDOCK_SECTOR}). "
+                        f'`plot_course {{"target":{K.STARDOCK_SECTOR},"execute":true}}` '
+                        "to get there."
+                    )
+                else:
+                    hints.append(
+                        f"STILL IN STARTER HULL with {credits:,}cr — you can "
+                        f"afford {picks}. `buy_ship` is a 0-turn action at "
+                        f"StarDock (sector {K.STARDOCK_SECTOR}); warp back to "
+                        f"upgrade before burning more days trading in 20 holds."
+                    )
 
     # Ship inventory → actionable verbs
     if player is not None:
@@ -2738,7 +2747,10 @@ def _action_hint(
         # These fire only when the agent is NOT already in a corp, except
         # the invite-pending hint which fires from the inbox signal.
         in_corp = bool(getattr(player, "corp_ticker", None))
-        corp_create_cost = getattr(K, "CORP_FORMATION_COST", 500_000)
+        if K.llm_parity_on() and K.corp_rules_on():
+            corp_create_cost = max(int(K.CORP_CREATE_COST), int(K.LLM_HINT_CORP_MIN_CREDITS))
+        else:
+            corp_create_cost = getattr(K, "CORP_FORMATION_COST", 500_000)
 
         # Hint A — you have enough cash to form a corp and don't have one.
         # The purpose is to ensure the agent knows this branch exists at
@@ -2746,13 +2758,20 @@ def _action_hint(
         # already explains corps; this just activates the verb at the
         # right cash threshold.
         if not in_corp and credits_now >= corp_create_cost:
-            hints.append(
-                f"FYI: you have {credits_now}cr (>= {corp_create_cost} cr for "
-                "`corp_create` at StarDock). A corp unlocks corporate_flagship "
-                "(20k fighters, 650k cr), pools treasury across members (your "
-                "share counts toward net worth), grants mates friendly-fire "
-                "immunity + shared planet access. Not required — solo is fine."
-            )
+            if K.llm_parity_on() and K.corp_rules_on():
+                hints.append(
+                    f"FYI: you have {credits_now}cr. `corp_create` is free in any sector "
+                    f"(the hint waits until {corp_create_cost}cr). The C.E.O. sets a password. "
+                    "Only the C.E.O. buys the Corporate FlagShip. Not required — solo is fine."
+                )
+            else:
+                hints.append(
+                    f"FYI: you have {credits_now}cr (>= {corp_create_cost} cr for "
+                    "`corp_create` at StarDock). A corp unlocks corporate_flagship "
+                    "(20k fighters, 650k cr), pools treasury across members (your "
+                    "share counts toward net worth), grants mates friendly-fire "
+                    "immunity + shared planet access. Not required — solo is fine."
+                )
 
         # Hint B — a corp invite is sitting unread in the inbox. The
         # invitee needs concrete mechanics to decide, not just "you have
@@ -2766,28 +2785,40 @@ def _action_hint(
         if pending_invites and not in_corp:
             inv = pending_invites[-1]  # most recent
             ticker = inv.get("ticker") or "?"
-            hints.append(
-                f"FYI: corp invite to [{ticker}] in inbox. Joining is free. "
-                "Benefits: treasury share counts toward your net worth, "
-                "friendly-fire immunity with mates, shared planet access, "
-                "corporate_flagship unlock. Costs: deposits are one-way for "
-                "non-CEO members (only CEO may withdraw). `corp_join "
-                f'{{"ticker":"{ticker}"}}\' to accept.'
-            )
+            if K.llm_parity_on() and K.corp_rules_on():
+                hints.append(
+                    f"FYI: corp invite to [{ticker}] in inbox. The invite carries the password. "
+                    f'`corp_join {{"ticker":"{ticker}","password":"<from the invite>"}}` to accept.'
+                )
+            else:
+                hints.append(
+                    f"FYI: corp invite to [{ticker}] in inbox. Joining is free. "
+                    "Benefits: treasury share counts toward your net worth, "
+                    "friendly-fire immunity with mates, shared planet access, "
+                    "corporate_flagship unlock. Costs: deposits are one-way for "
+                    "non-CEO members (only CEO may withdraw). `corp_join "
+                    f'{{"ticker":"{ticker}"}}\' to accept.'
+                )
 
         # Hint C — 2+ planets still solo. At this scale the coordination
         # costs of running an empire alone (colonist ferries, citadel
         # upgrade funding, defense coverage) start to bite. A corp partner
         # is one strategic answer; not the only one, so soft-frame it.
         if not in_corp and n_planets >= 2:
-            hints.append(
-                f"FYI: you run {n_planets} planets solo. A corp partner would "
-                "pool treasury for faster citadel upgrades (your share of "
-                "treasury counts), cover your planets with friendly fighters, "
-                "and share colonist-ferry routes. `corp_create` (500k at "
-                "StarDock) then `corp_invite` — or wait for someone to "
-                "approach you."
-            )
+            if K.llm_parity_on() and K.corp_rules_on():
+                hints.append(
+                    f"FYI: you run {n_planets} planets solo. A corp partner can hand you credits "
+                    "in the same sector. `corp_create` is free in any sector, then `corp_invite`."
+                )
+            else:
+                hints.append(
+                    f"FYI: you run {n_planets} planets solo. A corp partner would "
+                    "pool treasury for faster citadel upgrades (your share of "
+                    "treasury counts), cover your planets with friendly fighters, "
+                    "and share colonist-ferry routes. `corp_create` (500k at "
+                    "StarDock) then `corp_invite` — or wait for someone to "
+                    "approach you."
+                )
 
     # End-of-day safety: if the agent has fewer turns left than the cheapest
     # useful action (warp=2), just tell them to wait. Without this nudge, LLM
