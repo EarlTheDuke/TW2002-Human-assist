@@ -53,6 +53,8 @@ class HeuristicAgent(BaseAgent):
         # Fogged play: port sector -> day we stood there and could not trade (QC).
         self._dry_port: dict[int, int] = {}
         self._traded_at: int | None = None  # sector of a trade this visit
+        self._h_deposited = False
+        self._h_withdrew = False
 
     def _port_dry(self, a: dict, day: int | None) -> bool:
         """A port we could not trade at today or yesterday (it restocks slowly)."""
@@ -79,8 +81,11 @@ class HeuristicAgent(BaseAgent):
         if jump is not None:
             return jump
 
-        # In an escape pod: trade it in at StarDock, else fly there (DEATH_ESCAPE_PODS.md d17).
+        # In an escape pod: bank the replacement hull first, then trade it in (bb14).
         if str(obs.ship.get("class") or "") == "escape_pod":
+            banked = self._h_bank(obs, recovery=True)
+            if banked is not None:
+                return banked
             pod = self._leave_pod(obs)
             if pod is not None:
                 return pod
@@ -173,6 +178,9 @@ class HeuristicAgent(BaseAgent):
         # Out of turns: wait. Warping would be rejected and waste the decision.
         turns_left = int(getattr(obs, "turns_remaining", 0) or 0)
         if turns_left <= 0:
+            banked = self._h_bank(obs, recovery=False)
+            if banked is not None:
+                return banked
             return Action(kind=ActionKind.WAIT, args={}, thought="Out of turns today; waiting for the day tick.")
 
         adj = obs.adjacent or []
@@ -232,6 +240,9 @@ class HeuristicAgent(BaseAgent):
             ]
             if len(tied) > 1:
                 choice = self.rng.choice(tied)
+            banked = self._h_bank(obs, recovery=False)
+            if banked is not None:
+                return banked
             self._last_from = here
             self._last_to = int(choice["id"])
             self._traded_at = None
@@ -259,6 +270,73 @@ class HeuristicAgent(BaseAgent):
         if not la.get("legal"):
             return 0
         return int((((la.get("params") or {}).get("qty") or {}).get("max_by") or {}).get(item) or 0)
+
+    def _h_banks(self) -> bool:
+        """bb14: H banks only while the bot bank mode is on."""
+        from ..engine.constants import BOT_BANK_H, bots_bank_on
+        return bool(BOT_BANK_H) and bots_bank_on()
+
+    def _h_keep(self, obs: Observation) -> int:
+        from ..engine.constants import BOT_BANK_CAPITAL_PER_HOLD, BOT_BANK_H_KEEP
+        holds = int((obs.ship or {}).get("holds") or 0)
+        return max(int(BOT_BANK_H_KEEP), holds * int(BOT_BANK_CAPITAL_PER_HOLD))
+
+    def _h_bank(self, obs: Observation, *, recovery: bool) -> Action | None:
+        """One StarDock bank step. A pod withdraws for its hull first. Otherwise
+        spare cash above the keep is deposited once per visit. Legacy H skips this."""
+        if int(obs.sector.get("id") or 0) != STARDOCK_SECTOR:
+            self._h_deposited = False
+            self._h_withdrew = False
+            return None
+        if not self._h_banks():
+            return None
+        from .bank_brain import deposit_amount, nest_egg, withdraw_amount
+        legal = self._legal(obs)
+        balance = int(obs.bank_balance or 0)
+        egg = nest_egg(int(getattr(obs, "net_worth", 0) or 0))
+        credits = int(obs.credits)
+        if recovery:
+            if self._h_withdrew:
+                return None
+            buy = legal.get("buy_ship") or {}
+            withdraw = legal.get("bank_withdraw") or {}
+            if not buy.get("legal") or not withdraw.get("legal"):
+                return None
+            spec = (buy.get("params") or {}).get("ship_class") or {}
+            choices = spec.get("choices") or []
+            net = spec.get("net_cost_by") or {}
+            maximum = int((withdraw.get("params") or {}).get("max_amount") or 0)
+            amount = 0
+            if "cargotran" in choices and net.get("cargotran") is not None:
+                amount = withdraw_amount(
+                    int(net["cargotran"]), 20_000, credits, balance, egg, maximum, recovery=True,
+                )
+            if amount < 1:
+                amount = withdraw_amount(
+                    self._h_keep(obs), 0, credits, balance, egg, maximum, recovery=False,
+                )
+            if amount < 1:
+                return None
+            self._h_withdrew = True
+            return Action(
+                kind=ActionKind.BANK_WITHDRAW, args={"amount": amount},
+                thought="Withdrawing for the replacement hull.",
+            )
+        if self._h_deposited:
+            return None
+        deposit = legal.get("bank_deposit") or {}
+        if not deposit.get("legal"):
+            return None
+        maximum = int((deposit.get("params") or {}).get("max_amount") or 0)
+        day = int(getattr(obs, "day", 1) or 1)
+        amount = deposit_amount(credits, self._h_keep(obs), maximum, day1=day <= 1)
+        if amount < 1:
+            return None
+        self._h_deposited = True
+        return Action(
+            kind=ActionKind.BANK_DEPOSIT, args={"amount": amount},
+            thought="Banking the spare cash before leaving StarDock.",
+        )
 
     def _leave_pod(self, obs: Observation) -> Action | None:
         """Escape pod: at StarDock trade it for a Cargotran or a Scout; elsewhere autopilot to StarDock."""
