@@ -241,6 +241,41 @@ def test_pb6_nest_egg_stays():
     assert bought["kind"] != "bank_withdraw" or hull["bank_balance"] - bought["args"]["amount"] >= egg
 
 
+def test_pb19_corp_shield_runs_first(monkeypatch):
+    """A good seat hands the cash above the tax line to its evil mate before it banks."""
+    from tw2k.agents import corp_brain
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+    from tw2k.engine import constants as engine_k
+
+    monkeypatch.setattr(engine_k, "BOT_CORP_POLICY", "pair")
+    corp_brain.clear()
+    corp_brain.configure(["P1", "P2"], seed=1)
+    try:
+        brain = SeatBrain()
+        obs = synthetic_obs(sector=1, credits=150_000, ship_class="cargotran", day=3)
+        obs["self_id"] = "P1"
+        obs["alignment"] = 50
+        obs["bank_balance"] = 0
+        obs["net_worth"] = 150_000
+        obs["corp_ticker"] = "N3P"
+        obs["corp"] = {"password": "secret", "members": [{"id": "P1"}, {"id": "P2"}]}
+        obs["rivals"] = [{"id": "P2", "side": "evil"}]
+        obs["sector"]["traders"] = [{"id": "P2", "ship_class": "interdictor_cruiser"}]
+        _la(obs, "buy_equip", item={"choices": [], "unit_price_by": {}})
+        _la(obs, "bank_deposit", max_amount=150_000, balance=0, room=500_000)
+        _la(obs, "corp_transfer", partners=[{
+            "player_id": "P2", "take_max": {"credits": 0, "fighters": 0, "shields": 0},
+        }])
+        action = brain.decide(obs)
+        assert action["kind"] == "corp_transfer"
+        assert action["args"]["direction"] == "give"
+        assert action["args"]["item"] == "credits"
+        assert action["args"]["qty"] == 150_000 - int(engine_k.TAX_THRESHOLD)
+    finally:
+        corp_brain.clear()
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
