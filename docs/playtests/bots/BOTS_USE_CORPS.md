@@ -157,6 +157,19 @@ Rejected: one engine reject on N2-P4, the same trade-holds miss as the 10-day ru
 | N1-P5 | 127,966 | merchant cruiser | 0 |
 | H-P6 | 7,975 | scout | 2 |
 
+## 30-day pair, seed 4242, after the citadel gate
+
+Same seats. 30 of 30 days. Wall 967s. Rejected 0, exceptions 0. Corps still N3P (P1, P2) and N2P (P3, P4). 4 transfers. Mate attacks 0. Mate tolls 0. Corporate deployments 0. Save/load at day 15 was identical.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | --- | --- | --- |
+| N3-P1 | 2,481,919 | battleship | 0 |
+| N2-P3 | 837,081 | cargotran | 6 |
+| N1-P5 | 764,272 | merchant cruiser | 0 |
+| N3-P2 | 631,028 | cargotran | 0 |
+| N2-P4 | 540,767 | scout | 4 |
+| H-P6 | 7,975 | scout | 6 |
+
 ## Suite
 
 Full suite on 5000070: 2204 passed, 1 skipped, 2 failed, 2941s. The Firefox caption test timed out in the suite and passed alone. The other failure is the known port bind, WinError 10048, on `test_free_port_skips_reserved_live_range`.
