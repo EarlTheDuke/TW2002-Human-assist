@@ -231,6 +231,8 @@ class SeatMemory:
     port_starters: set[str] = field(default_factory=set)
     # galactic-bank-tax-v1: one deposit per StarDock visit. Stays off the scratchpad while false.
     bank_deposited: bool = False
+    # bb18: this visit deposited, and no buy has happened since. A withdraw of those credits waits.
+    bank_unspent: bool = False
     # bb12: the planet id already used for this landing. Omitted until a deposit happens.
     treasury_planet: int | None = None
     # bb11: the day this seat already detoured to the bank. Omitted until one happens.
@@ -290,6 +292,8 @@ class SeatMemory:
             payload["port_starters"] = sorted(self.port_starters)[:20]
         if self.bank_deposited:
             payload["bank_deposited"] = True
+        if self.bank_unspent:
+            payload["bank_unspent"] = True
         if self.treasury_planet is not None:
             payload["treasury_planet"] = int(self.treasury_planet)
         if self.bank_detour_day >= 0:
@@ -364,6 +368,7 @@ class SeatMemory:
         mem.pt_detour = int(data.get("pt_detour") or 0)
         mem.port_starters = {str(k) for k in (data.get("port_starters") or []) if isinstance(k, str)}
         mem.bank_deposited = bool(data.get("bank_deposited"))
+        mem.bank_unspent = bool(data.get("bank_unspent"))
         landed_id = data.get("treasury_planet")
         mem.treasury_planet = int(landed_id) if isinstance(landed_id, int) else None
         detour_day = data.get("bank_detour_day")
@@ -3030,6 +3035,8 @@ class SeatBrain:
             return None
         if int(v.here or 0) != int(engine_k.STARDOCK_SECTOR) or not v.ok("bank_withdraw"):
             return None
+        if self.mem is not None and self.mem.bank_unspent:
+            return None
         balance = int(v.obs.get("bank_balance") or 0)
         need = self._stardock_hull_need(v, balance)
         from .bank_brain import nest_egg, withdraw_amount
@@ -3134,7 +3141,7 @@ class SeatBrain:
         balance = int(v.obs.get("bank_balance") or 0)
         egg = nest_egg(v.net_worth)
         need = self._reserve_hull_need(v, max(0, balance - egg))
-        if need > int(v.credits) and v.ok("bank_withdraw"):
+        if need > int(v.credits) and v.ok("bank_withdraw") and not (mem is not None and mem.bank_unspent):
             amount = withdraw_amount(
                 need, 0, int(v.credits), balance, egg,
                 int(v.params("bank_withdraw").get("max_amount") or 0), recovery=False,
@@ -3151,7 +3158,7 @@ class SeatBrain:
             return None
         short, ready = self._genesis_shortfall(v)
         if short >= 1 and self._bank_verb_open(v, "bank_withdraw") and not (
-                mem is not None and mem.pending_buy == "genesis"):
+                mem is not None and (mem.pending_buy == "genesis" or mem.bank_unspent)):
             if mem is not None:
                 mem.pending_buy = "genesis"
             return self._take_bank_verb(v, {
@@ -3181,6 +3188,7 @@ class SeatBrain:
             return None
         if mem is not None:
             mem.bank_deposited = True
+            mem.bank_unspent = True
         return self._take_bank_verb(
             v, {"kind": "bank_deposit", "args": {"amount": amount}, "thought": "bank the spare cash"},
         )
@@ -3280,6 +3288,7 @@ class SeatBrain:
         at_dock = int(v.here or 0) == int(engine_k.STARDOCK_SECTOR)
         if mem is not None and not at_dock:
             mem.bank_deposited = False
+            mem.bank_unspent = False
             mem.bank_withdraws = 0
             mem.pending_buy = None
         if engine_k.BOT_BANK_POLICY == "off" or not engine_k.bank_on() or not at_dock:
@@ -4879,6 +4888,8 @@ class SeatBrain:
 
     def _finish(self, v: View, action: dict[str, Any]) -> dict[str, Any]:
         mem = self.mem
+        if mem is not None and str(action.get("kind") or "").startswith("buy_"):
+            mem.bank_unspent = False
         if str(action.get("thought") or "").startswith("SeatBrain: arm for hunting"):
             self._hunt_arm_day = v.day  # _opt_hunt_arm: one arming buy a game day
         gplanets = v.genesis_planets()
