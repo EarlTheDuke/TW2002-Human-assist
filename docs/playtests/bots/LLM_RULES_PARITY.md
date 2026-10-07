@@ -119,3 +119,16 @@ These names are the ones a re-break has to fail. The re-break itself is still to
 | pb19 legacy compact legal gains args | `test_lp14_compact_hints_cap_choices_and_skip_secrets` |
 | pb20 transfer without direction passes | `test_pb20_a_transfer_without_direction_is_rejected` |
 | pb21 required args reject the brain's transfer | `test_pb21_the_brain_transfer_shape_passes_acceptance` |
+
+## 30-day scripted, seed 250925
+
+Parity on and parity off wrote the same file. Action digest `87b76392`. Rejected 0/0. Exceptions 0. Day-15 save/load identical. Corps N3P is P1+P2 and N2P is P3+P4, 12 transfers, hostile 0, corporate deployments 0. Wall 1188s on and 1225s off.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | ---: | --- | ---: |
+| N3-P1 | 2,059,640 | battleship | 0 |
+| N2-P3 | 875,547 | scout_marauder | 15 |
+| N3-P2 | 650,104 | cargotran | 0 |
+| N1-P5 | 550,249 | scout_marauder | 13 |
+| N2-P4 | 436,720 | scout_marauder | 1 |
+| H-P6 | 7,975 | scout_marauder | 6 |
