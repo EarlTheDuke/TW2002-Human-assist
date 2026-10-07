@@ -154,7 +154,7 @@ Policy `reserve`. Rejected 0/0 and the save matched on every run. Citadel deposi
 
 30-day seed 424242, digest `0bc512d4`, total 4,605,090. N3-P1 2,458,682 (bank full, treasury 336,390, tax 428,874, 17 detours). N2-P3 1,276,834 (10 deaths, lost 524,200, treasury 78,907). N2-P4 611,932. N3-P2 231,692. N1-P5 stayed 17,975. H-P6 stayed 7,975 with broke 29 days and no deposit.
 
-S7 is not met. H at day 10 is 50,003 on seed 250925 and 7,975 on seed 424242. The 10,000 nest egg on N1-P5 cannot buy a CargoTran.
+Open item S7, not a delivery block. H day-10 net worth stays under 100,000: 50,003 on seed 250925 and 7,975 on seed 424242. The 10,000 nest egg on N1-P5 cannot buy a CargoTran. Left open.
 
 ## Spare citadel and no detour, 10 days
 
