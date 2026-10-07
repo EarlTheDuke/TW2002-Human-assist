@@ -133,4 +133,4 @@ Rejected: one engine reject on N2-P4, the same trade-holds miss as the 10-day ru
 
 ## Plant re-break
 
-On 462790d, three gates were removed one at a time and restored after the named test failed. pb21 the spare-buy gate, caught by `test_bc24_only_the_ceo_buys_a_flagship`. pb22 the invite gate, caught by `test_bc25_a_flagship_pilot_cannot_join_and_may_create`. pb27 legacy still pairing, caught by `test_bc1_legacy_reads_the_policy_as_off`. The other planted bugs do not each have a named test yet.
+On 462790d, three gates were removed one at a time and restored after the named test failed. pb21 the spare-buy gate, caught by `test_bc24_only_the_ceo_buys_a_flagship`. pb22 the invite gate, caught by `test_bc25_a_flagship_pilot_cannot_join_and_may_create`. pb27 legacy still pairing, caught by `test_bc1_legacy_reads_the_policy_as_off`. pb14 a transfer of the whole balance, caught by `test_bc12_credit_hand_off_is_the_shortfall_plus_pad` (it returned 200,000 instead of 41,000). The other planted bugs do not each have a named test yet.
