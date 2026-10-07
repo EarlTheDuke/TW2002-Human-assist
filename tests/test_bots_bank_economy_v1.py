@@ -334,6 +334,39 @@ def test_pb21_no_rival_balance():
             assert node.arg not in {"universe", "player", "rival"}
 
 
+def test_pb22_no_rng():
+    """The purse math draws no random number. Same inputs, same answer, and no rng import."""
+    import ast
+    import tw2k.agents.bank_brain as bank_brain
+    from tw2k.agents.bank_brain import away_reserve, nest_egg, purse, withdraw_amount
+
+    tree = ast.parse(open(bank_brain.__file__, encoding="utf-8").read())
+    banned = {"random", "rng", "randint", "choice", "uniform"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            assert (node.module or "") not in banned
+            assert all(alias.name not in banned for alias in node.names)
+        if isinstance(node, ast.Import):
+            assert all(alias.name not in banned for alias in node.names)
+        if isinstance(node, ast.Name):
+            assert node.id not in banned
+        if isinstance(node, ast.Attribute):
+            assert node.attr not in banned
+    first = (
+        nest_egg(200_000),
+        purse(20_000, 80_000, 50_000, 80_000),
+        away_reserve(20, [40_000], 1, True),
+        withdraw_amount(25_000, 2_000, 5_000, 80_000, 50_000, 80_000, recovery=False),
+    )
+    second = (
+        nest_egg(200_000),
+        purse(20_000, 80_000, 50_000, 80_000),
+        away_reserve(20, [40_000], 1, True),
+        withdraw_amount(25_000, 2_000, 5_000, 80_000, 50_000, 80_000, recovery=False),
+    )
+    assert first == second
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
