@@ -2130,6 +2130,10 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         return ActionResult(ok=False, error=f"unknown ship class {class_key!r}")
     if spec.get("corp_only") and player.corp_ticker is None:
         return ActionResult(ok=False, error="ship is corporation-only")
+    from .corp import flagship_buy_block
+    blocked = flagship_buy_block(universe, pid, str(class_key or ""))
+    if blocked:
+        return ActionResult(ok=False, error=blocked)
     if K.ship_min_alignment(spec, 0) > player.alignment:
         return ActionResult(ok=False, error=f"alignment too low for {class_key}")
     if spec.get("unique"):

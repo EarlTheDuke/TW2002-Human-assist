@@ -178,6 +178,9 @@ def handle_corp_invite(universe: Universe, pid: str, action: Action) -> ActionRe
         return ActionResult(ok=False, error="no such trader")
     if target == pid or universe.players[target].corp_ticker:
         return ActionResult(ok=False, error="no such trader")
+    held = flagship_join_block(universe.players[target])
+    if held:
+        return ActionResult(ok=False, error=held)
     universe.players[target].inbox.append({
         "from": pid, "kind": "corp_invite", "ticker": corp.ticker,
         "password": corp.password,
@@ -190,6 +193,28 @@ def handle_corp_invite(universe: Universe, pid: str, action: Action) -> ActionRe
           f"{player.name} invited {universe.players[target].name} to {corp.ticker}",
           {"ticker": corp.ticker, "target": target})
     return ActionResult(ok=True, turns_spent=int(K.CORP_TURN_COST))
+
+
+def flagship_buy_block(universe: Universe, pid: str, class_key: str) -> str | None:
+    """bc24: only the C.E.O. buys a Corporate FlagShip. Purchase, not use."""
+    if class_key != "corporate_flagship" or not K.corp_bots_on() or K.CFS_CEO_RULE != "purchase":
+        return None
+    player = universe.players[pid]
+    corp = universe.corporations.get(player.corp_ticker or "")
+    if corp is None or corp.ceo_id != pid:
+        return "only a C.E.O. may buy a Corporate FlagShip"
+    return None
+
+
+def flagship_join_block(player) -> str | None:
+    """bc25: a pilot flying a FlagShip cannot join. A parked one does not count."""
+    if not K.corp_bots_on() or K.CFS_HOLDER_MAY_JOIN or K.CFS_JOIN_CHECK != "flown":
+        return None
+    if getattr(getattr(player, "ship", None), "ship_class", None) is None:
+        return None
+    if player.ship.ship_class.value == "corporate_flagship":
+        return "a FlagShip pilot cannot join a corporation"
+    return None
 
 
 def _join_block(universe: Universe, pid: str, corp: Corporation | None, password: str) -> str | None:
@@ -212,6 +237,9 @@ def _join_block(universe: Universe, pid: str, corp: Corporation | None, password
         ceo = universe.players.get(corp.ceo_id)
         if ceo is not None and _side(player.alignment) != _side(ceo.alignment):
             return "alignment does not match the C.E.O."
+    held = flagship_join_block(player)
+    if held:
+        return held
     return None
 
 
@@ -764,14 +792,20 @@ def member_block(universe: Universe, player) -> dict[str, Any] | None:
         from .planets import planet_growth_status  # cr23: production and stock per commodity (QC 57)
         growth = planet_growth_status(planet.class_id, planet.colonists,
                                       int(planet.stockpile.get(Commodity.ORGANICS, 0)))
-        planets.append({
+        row = {
             "sector_id": planet.sector_id, "name": planet.name,
             "population": sum(int(n) for n in planet.colonists.values()),
             "production": growth["production"],
             "stock": {c.value: int(n) for c, n in planet.stockpile.items()},
             "fighters": int(planet.fighters), "citadel_level": int(planet.citadel_level),
             "shields": int(planet.shields), "credits": int(planet.treasury),
-        })
+        }
+        if K.corp_bots_on():  # bc26: members can name the planet and its fighter output
+            from .planets import fighters_from_colonists
+            row["planet_id"] = planet.id
+            row["production"] = dict(growth["production"])
+            row["production"]["fighters"] = int(fighters_from_colonists(planet.class_id, planet.colonists))
+        planets.append(row)
     goods = [universe.players[m] for m in corp.member_ids
              if m in universe.players and universe.players[m].alive and int(universe.players[m].alignment) > 0]
     evils = [universe.players[m] for m in corp.member_ids
@@ -806,6 +840,8 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
     if corp is not None and corp.password and (K.CORP_APPROVER == "member" or corp.ceo_id == player_id):
         for other_id, other in universe.players.items():
             if other_id == player_id or not other.alive or other.corp_ticker:
+                continue
+            if flagship_join_block(other):
                 continue
             targets.append({"player_id": other_id, "name": other.name})
     if not in_corp:

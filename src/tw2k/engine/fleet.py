@@ -179,6 +179,10 @@ def spare_blocked(universe: Universe, pid: str, class_key: str) -> str | None:
         return f"unknown ship class {class_key!r}"
     if spec.get("corp_only") and player.corp_ticker is None:
         return "corporation-only"
+    from .corp import flagship_buy_block
+    blocked = flagship_buy_block(universe, pid, class_key)
+    if blocked:
+        return blocked
     if K.ship_min_alignment(spec, 0) > player.alignment:
         return f"alignment too low (needs {K.ship_min_alignment(spec, 0)})"
     if spec.get("unique") and class_key in classes_owned_anywhere(universe):

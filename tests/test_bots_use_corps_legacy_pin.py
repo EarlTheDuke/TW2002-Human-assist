@@ -4,6 +4,8 @@ Recorded with tests/fed_legacy_digest.py on 423d502 (no CORP_BOTS_MODE): scripte
 N3,N2,N1,H, seed 250925, 3 days. CORP_BOTS_MODE is named so the pin still matches
 after the mode exists. LLM_ROUTE_NOTICE and LLM_NEW_DAY_GOAL_NOTICE are bools,
 not modes, so this pin sets both False before the digest.
+The 10-day N3,N3,N2,N2,N1,H seed 250925 digest with the same flips, outside the
+suite, is 221826d9bd9a6a6c85668224.
 """
 
 from __future__ import annotations
