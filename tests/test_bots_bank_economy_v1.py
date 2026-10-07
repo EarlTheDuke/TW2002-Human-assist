@@ -113,3 +113,78 @@ def test_bb8_day1_cap():
     assert deposit_amount(20_000, 8_000, 500_000, day1=True) == 10_000
     assert deposit_amount(15_000, 8_000, 500_000, day1=True) == 0
     assert deposit_amount(40_000, 10_000, 5_000, day1=False) == 5_000
+
+
+def _h_obs(**overrides):
+    import asyncio
+    from tw2k.engine.observation import Observation
+    base = dict(
+        day=2, tick=1, max_days=10, finished=False,
+        self_id="P6", self_name="H", credits=0, alignment=100,
+        turns_remaining=40, turns_per_day=40,
+        ship={"class": "escape_pod", "fighters": 0, "cargo": {}, "cargo_free": 0, "holds": 5},
+        corp_ticker=None, planet_landed=None, scratchpad="",
+        sector={"id": 1, "ferrengi": []},
+        adjacent=[{"id": 2, "known": True, "port": None, "density": 0}],
+        known_ports=[], other_players=[], inbox=[], recent_events=[],
+        net_worth=80_000, bank_balance=80_000, legal_actions=[],
+    )
+    base.update(overrides)
+    return asyncio, Observation(**base)
+
+
+def test_bb14_h_pod_withdraws_before_it_buys():
+    asyncio, Observation = _h_obs()
+    from tw2k.agents.heuristic import HeuristicAgent
+    obs = Observation
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": True, "params": {"ship_class": {
+            "choices": ["cargotran", "scout_marauder"],
+            "net_cost_by": {"cargotran": 40_000, "scout_marauder": 0},
+        }}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 80_000}},
+    ]
+    agent = HeuristicAgent("P6", "H", seed=1)
+    act = asyncio.run(agent.act(obs))
+    assert act.kind.value == "bank_withdraw"
+    assert act.args["amount"] == 60_000
+
+
+def test_bb14_legacy_h_does_not_bank(monkeypatch):
+    import tw2k.engine.constants as K
+    monkeypatch.setattr(K, "BOTS_BANK_MODE", "legacy")
+    asyncio, Observation = _h_obs()
+    from tw2k.agents.heuristic import HeuristicAgent
+    obs = Observation
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": True, "params": {"ship_class": {
+            "choices": ["cargotran", "scout_marauder"],
+            "net_cost_by": {"cargotran": 40_000, "scout_marauder": 0},
+        }}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 80_000}},
+    ]
+    agent = HeuristicAgent("P6", "H", seed=1)
+    act = asyncio.run(agent.act(obs))
+    assert act.kind.value == "buy_ship"
+    assert act.args["ship_class"] == "scout_marauder"
+
+
+def test_bb14_h_deposits_spare_once_per_visit():
+    asyncio, Observation = _h_obs(
+        day=2, credits=40_000, net_worth=40_000, bank_balance=0,
+        ship={"class": "scout_marauder", "fighters": 500, "cargo": {}, "cargo_free": 10, "holds": 20,
+              "scanner": "density_scanner"},
+    )
+    from tw2k.agents.heuristic import HeuristicAgent
+    obs = Observation
+    obs.legal_actions = [
+        {"kind": "bank_deposit", "legal": True, "params": {"max_amount": 500_000}},
+        {"kind": "warp", "legal": True, "params": {}},
+        {"kind": "wait", "legal": True, "params": {}},
+    ]
+    agent = HeuristicAgent("P6", "H", seed=1)
+    first = asyncio.run(agent.act(obs))
+    assert first.kind.value == "bank_deposit"
+    assert first.args["amount"] == 30_000
+    second = asyncio.run(agent.act(obs))
+    assert second.kind.value == "warp"

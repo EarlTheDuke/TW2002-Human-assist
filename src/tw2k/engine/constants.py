@@ -2124,6 +2124,8 @@ BOT_BANK_RISK_FIGHTERS = 50             # bb9
 BOT_BANK_MAX_VERBS_PER_DAY = 8          # bb18
 BOT_BANK_BROKE_LINE = 10_000            # bb22
 BOT_TREASURY_POLICY = "overflow"        # bb12: "overflow" | "spare" | "off"
+BOT_BANK_H = True                       # bb14: H banks under tw2002. Legacy H never reads this.
+BOT_BANK_H_KEEP = 10_000                # bb14 floor. Holds raise it by BOT_BANK_CAPITAL_PER_HOLD.
 
 
 def bank_on() -> bool:
