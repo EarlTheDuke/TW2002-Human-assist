@@ -507,6 +507,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="add bank, tax, and death-credit totals (not part of the legacy digest)")
     ap.add_argument("--bank-legacy", action="store_true",
                     help="run with BANK_MODE legacy (the before column)")
+    ap.add_argument("--treasury-policy", choices=("overflow", "spare", "off"),
+                    help="set BOT_TREASURY_POLICY for this run")
+    ap.add_argument("--detour-hops", type=int,
+                    help="set BOT_BANK_DETOUR_HOPS_ON for this run (0 turns the detour off)")
     ap.add_argument("--corp-policy", choices=("off", "pair", "team"),
                     help="override K.BOT_CORP_POLICY (default pair while CORP_BOTS_MODE is tw2002)")
     ap.add_argument("--bot-corp-pairs", default="",
@@ -522,12 +526,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
-    if a.bank_legacy or a.llm_parity:
+    if a.bank_legacy or a.llm_parity or a.treasury_policy or a.detour_hops is not None:
         from tw2k.engine import constants as K
         if a.bank_legacy:
             K.BANK_MODE = "legacy"
         if a.llm_parity:
             K.LLM_PARITY_MODE = a.llm_parity
+        if a.treasury_policy:
+            K.BOT_TREASURY_POLICY = a.treasury_policy
+        if a.detour_hops is not None:
+            K.BOT_BANK_DETOUR_HOPS_ON = int(a.detour_hops)
     pairs = None
     if a.bot_corp_pairs.strip():
         pairs = []
