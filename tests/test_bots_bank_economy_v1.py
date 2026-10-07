@@ -194,7 +194,7 @@ def test_pb5_citadel_cash_is_in_the_reserve():
 
 def test_pb6_nest_egg_stays():
     """A genesis withdraw stops at the nest egg, and a hull the egg would have to pay for waits."""
-    from tw2k.agents.bank_brain import nest_egg
+    from tw2k.agents.bank_brain import nest_egg, withdraw_amount
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
     from tw2k.engine.constants import CITADEL_TIER_COST
@@ -239,6 +239,7 @@ def test_pb6_nest_egg_stays():
     _la(hull, "bank_withdraw", max_amount=hull["bank_balance"], balance=hull["bank_balance"])
     bought = scout.decide(hull)
     assert bought["kind"] != "bank_withdraw" or hull["bank_balance"] - bought["args"]["amount"] >= egg
+    assert withdraw_amount(25_000, 2_000, 5_000, 10_000, 10_000, 70_000, recovery=False) == 0
 
 
 def test_pb19_corp_shield_runs_first(monkeypatch):
@@ -404,7 +405,7 @@ def test_bb13_a_pod_withdraws_before_it_buys_the_scout():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
 
-    pod = synthetic_obs(sector=1, credits=0, ship_class="escape_pod", holds=5)
+    pod = synthetic_obs(sector=1, credits=5_000, ship_class="escape_pod", holds=5)
     pod["bank_balance"] = 80_000
     pod["net_worth"] = 80_000
     _la(pod, "buy_ship", ship_class={
@@ -414,7 +415,7 @@ def test_bb13_a_pod_withdraws_before_it_buys_the_scout():
     _la(pod, "bank_withdraw", max_amount=80_000, balance=80_000)
     withdrawn = SeatBrain().decide(pod)
     assert withdrawn["kind"] == "bank_withdraw"
-    assert withdrawn["args"]["amount"] == 40_000 + 2_000
+    assert withdrawn["args"]["amount"] == 40_000 + 2_000 - 5_000
 
 
 def test_bb21_pending_buy_survives_save_load():
