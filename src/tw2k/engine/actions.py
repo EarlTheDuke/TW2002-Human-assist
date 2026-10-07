@@ -85,6 +85,15 @@ class ActionKind(str, Enum):
     BANK_DEPOSIT = "bank_deposit"  # galactic-bank-tax-v1
     BANK_WITHDRAW = "bank_withdraw"
     BANK_TRANSFER = "bank_transfer"
+    TAVERN_ANNOUNCE = "tavern_announce"  # stardock-tavern-underground-v1
+    TAVERN_TALK = "tavern_talk"
+    TAVERN_GRAFFITI = "tavern_graffiti"
+    TAVERN_ORDER = "tavern_order"
+    GRIMY_ASK = "grimy_ask"
+    GRIMY_CURSE = "grimy_curse"
+    UNDERGROUND_ENTER = "underground_enter"
+    UNDERGROUND_CONTRACT = "underground_contract"
+    UNDERGROUND_CLAIM = "underground_claim"
 
 
 class Action(BaseModel):

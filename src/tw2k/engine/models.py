@@ -219,6 +219,20 @@ class EventKind(str, Enum):
     REWARD_POSTED = "reward_posted"
     REWARD_CLAIMED = "reward_claimed"
     COMMISSION_GRANTED = "commission_granted"
+    # stardock-tavern-underground-v1. Never emitted under TAVERN_MODE legacy.
+    TAVERN_ANNOUNCE = "tavern_announce"
+    TAVERN_TALK = "tavern_talk"
+    TAVERN_GRAFFITI = "tavern_graffiti"
+    TAVERN_ORDER = "tavern_order"
+    GRIMY_ASK = "grimy_ask"
+    GRIMY_TRACE = "grimy_trace"
+    GRIMY_PASSWORD = "grimy_password"
+    GRIMY_CURSE = "grimy_curse"
+    UG_ENTER = "ug_enter"
+    UG_PUNISH = "ug_punish"
+    UG_MURDER = "ug_murder"
+    UG_CONTRACT = "ug_contract"
+    UG_CLAIM = "ug_claim"
     SHIP_TRANSWARP = "ship_transwarp"
     SHIP_TRANSWARP_FUSE = "ship_transwarp_fuse"
     # ship-fleet-transporter-v1 (SHIP_FLEET.md fl30); never emitted under FLEET_MODE legacy
@@ -529,6 +543,7 @@ class Ship(BaseModel):
         return _omit_defaults(handler(self), {
             "transwarp_drive": None, "fleet_id": None, "tow_lock": None,
             "corp_ticker": None, "ship_password": "",
+            "dock_log": [],
         })
 
     ship_class: ShipClass = ShipClass.MERCHANT_CRUISER
@@ -567,6 +582,8 @@ class Ship(BaseModel):
     # CORP_SHIPS_FURB.md cs1. None is personal. Omitted from dumps while unset.
     corp_ticker: str | None = None
     ship_password: str = ""
+    # STARDOCK_TAVERN.md tv9. Port sectors this hull has docked at. Omitted while empty.
+    dock_log: list[int] = Field(default_factory=list)
     # Weighted-average unit cost paid for the current holdings of each
     # commodity. Lets the agent see "I have 75 organics bought @ avg 19cr"
     # when planning a sell — without this they have to reconstruct cost
@@ -597,6 +614,12 @@ class Player(BaseModel):
             "port_upgrade_carry": {},
             "bank_balance": 0,
             "corp_breakins_today": 0,
+            "ug_password_known": False,
+            "ug_entered_day": 0,
+            "ug_attempts_day": 0,
+            "ug_attempts": 0,
+            "grimy_curse_day": 0,
+            "tavern_last_trace": None,
         })
 
     id: str
@@ -636,6 +659,13 @@ class Player(BaseModel):
     # fedspace-police-v1
     commission_used: bool = False
     fed_hail_sent: bool = False
+    # STARDOCK_TAVERN.md tv28. Omitted while at the defaults.
+    ug_password_known: bool = False
+    ug_entered_day: int = 0
+    ug_attempts_day: int = 0
+    ug_attempts: int = 0
+    grimy_curse_day: int = 0
+    tavern_last_trace: dict[str, Any] | None = None
 
     def end_port_visit(self) -> None:
         """A port visit ends when this player leaves the sector."""
@@ -1050,6 +1080,7 @@ class Universe(BaseModel):
         return _omit_defaults(handler(self), {
             "parked_ships": {}, "next_ship_id": 1, "port_cap": None,
             "aliens": {}, "next_alien_id": 1,
+            "tavern": None,
         })
 
     config: GameConfig
@@ -1092,6 +1123,8 @@ class Universe(BaseModel):
     # ferrengi-aliens-v1 (FERRENGI.md)
     ferrengal_sector: int | None = None
     ferrengi_grudges: set[str] = Field(default_factory=set)
+    # STARDOCK_TAVERN.md tv28. Omitted while None so a legacy dump stays byte-identical.
+    tavern: dict[str, Any] | None = None
 
     # Per-universe deterministic PRNG. PrivateAttr so it's instance-scoped
     # (not shared across Universe objects, not serialized by model_dump), and

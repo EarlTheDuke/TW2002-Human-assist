@@ -1425,6 +1425,22 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         for kind_val, legal, reason, params in police_legal_specs(universe, player_id):
             out.append(_la(kind_map[kind_val], legal=legal, reason=reason, cost=0, params=params))
 
+    if K.tavern_on():
+        from .tavern import legal_specs as tavern_legal_specs
+        tavern_kinds = {
+            "tavern_announce": ActionKind.TAVERN_ANNOUNCE,
+            "tavern_talk": ActionKind.TAVERN_TALK,
+            "tavern_graffiti": ActionKind.TAVERN_GRAFFITI,
+            "tavern_order": ActionKind.TAVERN_ORDER,
+            "grimy_ask": ActionKind.GRIMY_ASK,
+            "grimy_curse": ActionKind.GRIMY_CURSE,
+            "underground_enter": ActionKind.UNDERGROUND_ENTER,
+            "underground_contract": ActionKind.UNDERGROUND_CONTRACT,
+            "underground_claim": ActionKind.UNDERGROUND_CLAIM,
+        }
+        for kind_val, legal, reason, params, cost in tavern_legal_specs(universe, player_id):
+            out.append(_la(tavern_kinds[kind_val], legal=legal, reason=reason or None, cost=cost, params=params))
+
     if K.ship_tw_on():
         from .ship_transwarp import legal_spec
         ok, why, params, cost = legal_spec(universe, player_id)

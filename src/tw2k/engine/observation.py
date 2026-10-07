@@ -760,6 +760,8 @@ class Observation(BaseModel):
     corporations: list[dict[str, Any]] | None = None
     # alien-traders-v1 al25. Name, rank, side, experience. Omitted under ALIEN_MODE legacy.
     alien_ranks: dict[str, Any] | None = None
+    # stardock-tavern-underground-v1. Omitted under TAVERN_MODE legacy and away from StarDock.
+    tavern: dict[str, Any] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -785,6 +787,8 @@ class Observation(BaseModel):
                 data.pop("corporations", None)
             if data.get("alien_ranks") is None:  # alien-traders-v1
                 data.pop("alien_ranks", None)
+            if data.get("tavern") is None:  # stardock-tavern-underground-v1
+                data.pop("tavern", None)
         return data
 
 
@@ -1175,6 +1179,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         ),
         police=None,
         fedspace=None,
+        tavern=None,
         action_hint=_action_hint(
             sector_info,
             player,
@@ -1188,6 +1193,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         from .fed import fedspace_hint, police_observation
         obs.police = police_observation(universe, player)
         obs.fedspace = fedspace_hint(universe, player)
+    if K.tavern_on():
+        from .tavern import observation as tavern_observation
+        obs.tavern = tavern_observation(universe, player)
     if K.fleet_on():  # SHIP_FLEET.md fl30: own fleet only
         from .fleet import fleet_block
         obs.fleet = fleet_block(universe, player_id)

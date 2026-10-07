@@ -72,7 +72,36 @@ D1 seeded password. D2 alignment ceiling 199. D3 ladder 4/5/6. D4 Tri-Cron unbui
 
 ## Planted bugs
 
-Named when the tests exist. The map is filled on the commit that adds each test. Re-break is still ahead.
+Re-break is still ahead. Each named test failed when the bug is planted.
+
+| Bug | Test |
+| --- | --- |
+| pb1 a verb is legal away from StarDock | `test_tv2_guard` |
+| pb2 a free announcement, or two notices stay up | `test_tv3_announce` |
+| pb3 announcement text is not capped | `test_pb3_announcement_capped` |
+| pb4 a graffiti event names the author | `test_tv5_graffiti_has_no_author` |
+| pb5 the conversation grows past 20 | `test_tv4_talk_and_pb5_conversation_capped` |
+| pb6 a trace returns the current sector | `test_tv8_trace_and_tv9_dock_log` |
+| pb7 a trace returns every port | `test_tv8_trace_and_tv9_dock_log` |
+| pb8 a trace charges on a miss | `test_tv8_trace_and_tv9_dock_log` |
+| pb9 the trace uses universe.rng | `test_tv27_deterministic` |
+| pb10 the dock log is written under legacy, or kept on a new hull | `test_tv8_trace_and_tv9_dock_log`, `test_tv9_new_hull_starts_empty` |
+| pb11 the password leaks | `test_tv10_password_and_tv24_fog` |
+| pb12 the password match is case-sensitive | `test_tv14_enter_and_tv22` |
+| pb13 a second curse, or experience below 0 | `test_tv13_curse` |
+| pb14 entry at alignment 200 | `test_tv14_enter_and_tv22` |
+| pb15 the attempt counter does not reset | `test_tv15_ladder_and_tv29` |
+| pb16 a mugging takes the bank | `test_tv15_ladder_and_tv29` |
+| pb17 murder on the 5th try, or through a pod, or experience left on | `test_tv15_ladder_and_tv29` |
+| pb18 alignment drops 1 per 1,000 | `test_tv16_tv17_tv18_and_pb26` |
+| pb19 a pod kill pays the contract | `test_tv16_tv17_tv18_and_pb26` |
+| pb20 a claim without entering | `test_tv16_tv17_tv18_and_pb26` |
+| pb21 posters are shown | `test_tv16_tv17_tv18_and_pb26` |
+| pb22 underground_enter is listed before the seat knows | `test_tv14_enter_and_tv22` |
+| pb23 legacy shows the block or the verbs | `test_tv1_mode` |
+| pb24 a code bot emits a Tavern verb | `test_tv26_bots_off` |
+| pb25 the paragraph is hard-coded or present in legacy | `test_tv25_prompt` |
+| pb26 claim_reward pays an Underground contract | `test_tv16_tv17_tv18_and_pb26` |
 
 ## Match check
 

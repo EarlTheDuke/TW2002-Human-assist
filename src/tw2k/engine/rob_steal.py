@@ -193,6 +193,8 @@ def handle_rob(universe: Universe, pid: str, action: Action) -> ActionResult:
         payload={"amount": take, "align": -align_hit, "exp": exp_gain},
         summary=f"{player.name} robbed {take} cr from the port in sector {sector.id}",
     )
+    from .tavern import note_dock
+    note_dock(player, sector.id)
     return ActionResult(ok=True, turns_spent=cost)
 
 
@@ -289,4 +291,6 @@ def handle_steal(universe: Universe, pid: str, action: Action) -> ActionResult:
         },
         summary=f"{player.name} stole {take} {commodity.value} from the port in sector {sector.id}",
     )
+    from .tavern import note_dock
+    note_dock(player, sector.id)
     return ActionResult(ok=True, turns_spent=cost)
