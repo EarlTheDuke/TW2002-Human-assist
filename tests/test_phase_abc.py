@@ -2949,13 +2949,9 @@ class TestPhaseNCorp:
         sec_info = {"id": a.sector_id, "warps_out": [2]}
         hint = _action_hint(sec_info, player=a, universe=u)
         assert "corp_create" in hint
-        assert "500000" in hint or "500,000" in hint or "500_000" in hint \
-            or "500k" in hint.lower()
-        assert "corporate_flagship" in hint
-        assert "share counts" in hint, (
-            "hint must emphasize the new treasury-share scoring so the agent "
-            "knows deposits aren't a score sink any more"
-        )
+        assert "free in any sector" in hint
+        assert "500k" not in hint.lower()
+        assert "share counts" not in hint
 
     def test_n10_hint_a_suppressed_once_in_corp(self):
         """Hint A fires only for SOLO commanders. Once in a corp, the

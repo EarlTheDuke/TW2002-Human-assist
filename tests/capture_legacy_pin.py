@@ -76,6 +76,8 @@ def legacy_capture_digest() -> str:
         K.ALIEN_MODE = "legacy"
     if hasattr(K, "CORP_BOTS_MODE"):  # bots-use-corps-v1
         K.CORP_BOTS_MODE = "legacy"
+    if hasattr(K, "LLM_PARITY_MODE"):  # llm-rules-parity-v1
+        K.LLM_PARITY_MODE = "legacy"
     for name in ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
                  "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE",  # fullgame-fixes-v2
                  "FED_OUTPOST_MODE"):  # class0-outpost-label: FedSpace outposts no longer shown as class 0
