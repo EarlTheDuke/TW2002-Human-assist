@@ -14,6 +14,28 @@ from tw2k.agents.bank_brain import (
 )
 
 
+def test_bb22_bank_report_counts_treasury_and_losses():
+    from types import SimpleNamespace
+    from scripts.run_scripted_match import fold_bank_events
+
+    def ev(kind, actor, **payload):
+        return SimpleNamespace(kind=kind, actor_id=actor, payload=payload)
+
+    rows = fold_bank_events([
+        ev("bank_deposit", "P1", amount=10_000),
+        ev("planet_treasury", "P1", direction="deposit", amount=4_000),
+        ev("planet_treasury", "P1", direction="withdraw", amount=1_500),
+        ev("ship_destroyed", "P2", victim="P1", credits_lost=80_000),
+        ev("ship_destroyed", "P2", victim="P1", credits_lost=20_000),
+    ], ["P1"])
+    assert rows["P1"]["deposited"] == 10_000
+    assert rows["P1"]["treasury_deposited"] == 4_000
+    assert rows["P1"]["treasury_withdrawn"] == 1_500
+    assert rows["P1"]["credits_lost"] == 100_000
+    assert rows["P1"]["credits_lost_count"] == 2
+    assert rows["P1"]["credits_lost_largest"] == 80_000
+
+
 def test_bb24_scenario_lab():
     from scripts.bots_bank_scenario_lab import main
     assert main() == 0
