@@ -276,6 +276,44 @@ def test_pb19_corp_shield_runs_first(monkeypatch):
         corp_brain.clear()
 
 
+def _fed_worlds() -> list[dict]:
+    rows = []
+    for pid in (7, 8):
+        rows.append({
+            "id": pid, "sector_id": 5, "origin": "genesis", "citadel_level": 2, "citadel_target": 2,
+            "production": 1, "organics_days_left": 5, "organics_consumption_per_day": 1,
+            "growth_active": True, "colonists": {},
+        })
+    return rows
+
+
+def test_pb20_targets_use_the_purse():
+    """N2 counts the bank, minus the nest egg, so a deposit does not shrink the planet target."""
+    from tw2k.agents.bank_brain import nest_egg
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+    from tw2k.engine.constants import CITADEL_TIER_COST, GENESIS_TORPEDO_COST
+
+    n2 = SeatBrain(value_allocator=False)
+    step = GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + n2.working_capital + 100_000
+    credits = 10_000
+    egg = 50_000
+    balance = step - credits + egg
+    assert nest_egg(credits + balance) == egg
+
+    def target(bank: int) -> int:
+        brain = SeatBrain(value_allocator=False)
+        obs = synthetic_obs(sector=5, credits=credits, ship_class="cargotran", day=3, planets=_fed_worlds())
+        obs["bank_balance"] = bank
+        obs["net_worth"] = credits + bank
+        obs["alignment"] = 50
+        brain.decide(obs)
+        return brain.target_planets
+
+    assert target(balance) == 3
+    assert target(0) == 2
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
