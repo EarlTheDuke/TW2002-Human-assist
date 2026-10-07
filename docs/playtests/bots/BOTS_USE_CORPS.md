@@ -117,3 +117,16 @@ Rejected 0, exceptions 0. Both corps still together. 22 transfers. The mate-host
 | N2-P4 | 418,042 | scout | 7 |
 | N1-P5 | 378,171 | scout | 12 |
 | H-P6 | 7,975 | scout | 11 |
+
+## 30-day pair, seed 4242
+
+Rejected: one engine reject on N2-P4, the same trade-holds miss as the 10-day run. Exceptions 0. Both corps still together. 26 transfers. Mate-hostility counter 4, same caveat as seed 250925.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | --- | --- | --- |
+| N3-P1 | 2,300,719 | battleship | 0 |
+| N3-P2 | 1,749,560 | battleship | 0 |
+| N2-P4 | 1,368,349 | scout | 7 |
+| N1-P5 | 557,607 | merchant cruiser | 0 |
+| N2-P3 | 548,193 | scout | 14 |
+| H-P6 | 119,579 | merchant cruiser | 0 |
