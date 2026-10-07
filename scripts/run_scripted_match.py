@@ -37,6 +37,49 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 SEAT_KINDS = ("N1", "N2", "N3", "H", "R")
+
+
+def fold_bank_events(events, pids: list[str]) -> dict[str, dict[str, int]]:
+    """Count bank, tax, death, and citadel-treasury events for --bank-report."""
+    rows = {
+        pid: {"deposits": 0, "deposited": 0, "withdrawals": 0, "withdrawn": 0,
+              "tax": 0, "tax_align": 0, "credits_lost": 0, "credits_lost_count": 0,
+              "credits_lost_largest": 0, "credits_recovered": 0,
+              "treasury_deposits": 0, "treasury_deposited": 0,
+              "treasury_withdrawals": 0, "treasury_withdrawn": 0}
+        for pid in pids
+    }
+    for ev in events:
+        kind = getattr(ev.kind, "value", str(ev.kind))
+        pid = str(ev.actor_id or "")
+        payload = ev.payload or {}
+        if kind == "bank_deposit" and pid in rows:
+            rows[pid]["deposits"] += 1
+            rows[pid]["deposited"] += int(payload.get("amount") or 0)
+        elif kind == "bank_withdraw" and pid in rows:
+            rows[pid]["withdrawals"] += 1
+            rows[pid]["withdrawn"] += int(payload.get("amount") or 0)
+        elif kind == "tax_collected" and pid in rows:
+            rows[pid]["tax"] += int(payload.get("tax") or 0)
+            rows[pid]["tax_align"] += int(payload.get("align_gain") or 0)
+        elif kind == "ship_destroyed":
+            victim = str(payload.get("victim") or "")
+            lost = int(payload.get("credits_lost") or 0)
+            if victim in rows:
+                rows[victim]["credits_lost"] += lost
+                rows[victim]["credits_lost_count"] += 1
+                rows[victim]["credits_lost_largest"] = max(rows[victim]["credits_lost_largest"], lost)
+        elif kind == "credits_recovered" and pid in rows:
+            rows[pid]["credits_recovered"] += int(payload.get("credits_recovered") or 0)
+        elif kind == "planet_treasury" and pid in rows:
+            amount = int(payload.get("amount") or 0)
+            if payload.get("direction") == "deposit":
+                rows[pid]["treasury_deposits"] += 1
+                rows[pid]["treasury_deposited"] += amount
+            elif payload.get("direction") == "withdraw":
+                rows[pid]["treasury_withdrawals"] += 1
+                rows[pid]["treasury_withdrawn"] += amount
+    return rows
 # A seat that sends this many zero-turn actions in a row is done for the day.
 STUCK_ZERO_TURN_ACTIONS = 200
 
@@ -143,6 +186,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "realized": 0, "idle_done": False, "zero_streak": 0, "forced_done": 0, "wasted_turns": 0,
             "rows": [], "daily": [], "start_sector": p.sector_id,
             "exp0": int(p.experience), "align0": int(p.alignment),
+            "bank_carry": 0, "bank_detours": 0, "broke_days": 0,
         }
     if reader_start == "f1":
         for pid, row in st.items():
@@ -166,8 +210,12 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
     def snap() -> None:
         for pid, s in st.items():
             p = u.players[pid]
+            ship = p.ship.ship_class.value
             s["daily"].append({"day": u.day, "net_worth": full_net_worth(u, p), "credits": p.credits,
-                               "ship": p.ship.ship_class.value, "alive": p.alive})
+                               "ship": ship, "alive": p.alive})
+            if bank_report and ship in ("escape_pod", "scout_marauder"):
+                if int(p.credits) + int(p.bank_balance) < int(K.BOT_BANK_BROKE_LINE):
+                    s["broke_days"] += 1
 
     order = list(st)
     steps = 0
@@ -218,6 +266,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
                 act = {"kind": "wait", "args": {}, "thought": "exception fallback"}
             kind = act["kind"]
             args = act.get("args") or {}
+            thought = str(act.get("thought") or "")
             if s["brain"] is not None and validate_action(obs, act):
                 s["rej_validate"] += 1
             turns_before = p.turns_today
@@ -251,6 +300,13 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
                     s["units_sold"] += int(sold.get("qty") or 0)
                 else:
                     s["buys"] += 1
+            if ok and bank_report:
+                if (int(sector_before) == int(K.STARDOCK_SECTOR)
+                        and int(p.sector_id) != int(K.STARDOCK_SECTOR)
+                        and kind in ("warp", "plot_course", "ship_transwarp")):
+                    s["bank_carry"] = max(int(s["bank_carry"]), int(p.credits))
+                if "bank the spare cash on the way" in thought:
+                    s["bank_detours"] += 1
             s["rows"].append((sector_before, kind, args.get("target") or args.get("planet_id")))
             if kind == "query_limpets":
                 s["idle_done"] = True
@@ -326,34 +382,17 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             row["planet_trade"] = planet_trades[pid]
     else:
         violations = None
-    bank_rows = None
     if bank_report:
-        bank_rows = {
-            pid: {"deposits": 0, "deposited": 0, "withdrawals": 0, "withdrawn": 0,
-                  "tax": 0, "tax_align": 0, "credits_lost": 0, "credits_recovered": 0}
-            for pid in players
-        }
-        for ev in u.events:
-            kind = getattr(ev.kind, "value", str(ev.kind))
-            pid = str(ev.actor_id or "")
-            payload = ev.payload or {}
-            if kind == "bank_deposit" and pid in bank_rows:
-                bank_rows[pid]["deposits"] += 1
-                bank_rows[pid]["deposited"] += int(payload.get("amount") or 0)
-            elif kind == "bank_withdraw" and pid in bank_rows:
-                bank_rows[pid]["withdrawals"] += 1
-                bank_rows[pid]["withdrawn"] += int(payload.get("amount") or 0)
-            elif kind == "tax_collected" and pid in bank_rows:
-                bank_rows[pid]["tax"] += int(payload.get("tax") or 0)
-                bank_rows[pid]["tax_align"] += int(payload.get("align_gain") or 0)
-            elif kind == "ship_destroyed":
-                victim = str(payload.get("victim") or "")
-                if victim in bank_rows:
-                    bank_rows[victim]["credits_lost"] += int(payload.get("credits_lost") or 0)
-            elif kind == "credits_recovered" and pid in bank_rows:
-                bank_rows[pid]["credits_recovered"] += int(payload.get("credits_recovered") or 0)
+        from tw2k.agents.bank_brain import nest_egg
+        bank_rows = fold_bank_events(u.events, list(players))
         for pid, row in players.items():
-            row["bank_balance"] = int(u.players[pid].bank_balance)
+            balance = int(u.players[pid].bank_balance)
+            egg = nest_egg(int(row.get("net_worth") or 0))
+            bank_rows[pid]["nest_egg"] = egg
+            bank_rows[pid]["max_carry"] = int(st[pid]["bank_carry"])
+            bank_rows[pid]["detours"] = int(st[pid]["bank_detours"])
+            bank_rows[pid]["broke_days"] = int(st[pid]["broke_days"])
+            row["bank_balance"] = balance
             row["bank"] = bank_rows[pid]
     corp_summary = None
     if corp_report:  # CORP_RULES.md match check (c)/(d)/(f) counters (QC 57); not part of any digest
@@ -518,7 +557,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"BANK {pid} {row['seat']} nw {row['net_worth']} cash {row['credits']} "
                   f"balance {row.get('bank_balance')} dep {b.get('deposited')} wd {b.get('withdrawn')} "
                   f"tax {b.get('tax')} align {b.get('tax_align')} lost {b.get('credits_lost')} "
-                  f"recovered {b.get('credits_recovered')} rej {row['rejected_engine']}")
+                  f"lost_n {b.get('credits_lost_count')} lost_max {b.get('credits_lost_largest')} "
+                  f"recovered {b.get('credits_recovered')} treas {b.get('treasury_deposited')} "
+                  f"treas_wd {b.get('treasury_withdrawn')} egg {b.get('nest_egg')} "
+                  f"carry {b.get('max_carry')} detour {b.get('detours')} broke {b.get('broke_days')} "
+                  f"rej {row['rejected_engine']}")
     if a.corp_report:
         print("CORP " + json.dumps(result["corp"], sort_keys=True))
     return 0
