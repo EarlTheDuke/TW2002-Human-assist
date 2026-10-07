@@ -5,7 +5,7 @@ from __future__ import annotations
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.legality import legal_actions
-from tw2k.engine.models import Player, Ship, ShipClass
+from tw2k.engine.models import Corporation, Player, Ship, ShipClass
 from tw2k.engine.observation import build_observation
 
 _NEW_SHIPS = (
@@ -112,6 +112,8 @@ def test_every_ship_pair_charges_the_trade_in_and_stays_solvent() -> None:
     universe = _universe()
     ship = Ship(holds=20, fighters=0)
     player = _seat(universe, credits=3_000_000, ship=ship, alignment=5000, corp="ABC")
+    universe.corporations["ABC"] = Corporation(
+        ticker="ABC", name="Abc", ceo_id="P9", member_ids=["P9"], password="x")
     for old in keys:
         for new in keys:
             if old == new:
