@@ -23,6 +23,15 @@ def _seat(u, pid, sector=1, hull=ShipClass.MERCHANT_CRUISER, credits=50_000):
     return player
 
 
+def test_bc1_legacy_reads_the_policy_as_off(monkeypatch):
+    assert K.corp_bots_on()
+    assert K.bot_corp_policy() == "off"
+    monkeypatch.setattr(K, "BOT_CORP_POLICY", "pair")
+    assert K.bot_corp_policy() == "pair"
+    monkeypatch.setattr(K, "CORP_BOTS_MODE", "legacy")
+    assert K.bot_corp_policy() == "off"
+
+
 def test_bc24_only_the_ceo_buys_a_flagship():
     u = _u()
     _seat(u, "A")
@@ -35,6 +44,9 @@ def test_bc24_only_the_ceo_buys_a_flagship():
     assert not refused.ok and refused.error == "only a C.E.O. may buy a Corporate FlagShip"
     ceo = apply_action(u, "A", Action(kind=ActionKind.BUY_SHIP, args={"ship_class": "corporate_flagship"}))
     assert ceo.error != "only a C.E.O. may buy a Corporate FlagShip"
+    spare = apply_action(u, "B", Action(
+        kind=ActionKind.BUY_SHIP, args={"ship_class": "corporate_flagship", "trade_in": False}))
+    assert not spare.ok and spare.error == "only a C.E.O. may buy a Corporate FlagShip"
 
 
 def test_bc25_a_flagship_pilot_cannot_join_and_may_create(monkeypatch):
@@ -84,6 +96,28 @@ def test_bc12_credit_give_covers_a_real_shortfall_only():
     assert gear_take(10, 50, 30) == 7
     assert gear_take(2, 50, 30) == 1
     assert gear_take(1, 50, 30) is None
+
+
+def test_bc10_the_partner_adopts_the_corp_planet(monkeypatch):
+    from tw2k.agents.corp_brain import clear, configure
+    from tw2k.agents.seat_brain import SeatBrain, SeatMemory, View
+    monkeypatch.setattr(K, "BOT_CORP_POLICY", "pair")
+    configure(["P1", "P2"], seed=1)
+    try:
+        brain = SeatBrain()
+        brain.mem = SeatMemory()
+        obs = {
+            "self_id": "P2", "day": 1, "credits": 0,
+            "sector": {"id": 1}, "ship": {}, "legal_actions": [],
+            "owned_planets": [{"id": 3, "sector_id": 12, "citadel_level": 2, "origin": "genesis", "colonists": {}}],
+            "corp": {"ceo_id": "P1", "members": [{"id": "P1", "alive": True}],
+                     "planets": [{"planet_id": 9, "sector_id": 40, "citadel_level": 1, "population": 10}]},
+        }
+        brain._refresh_home(View(obs))
+        assert brain.mem.home_planet == 9
+        assert brain.mem.home_sector == 40
+    finally:
+        clear()
 
 
 def test_bc12_credit_hand_off_is_the_shortfall_plus_pad():
