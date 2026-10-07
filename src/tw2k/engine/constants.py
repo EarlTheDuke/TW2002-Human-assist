@@ -2244,3 +2244,18 @@ if ALIEN_AGGRESSION != "never":
 def alien_on() -> bool:
     return ALIEN_MODE == "tw2002" and ALIEN_SOURCE == "classic" and combat_tw2002() and rank_tw2002()
 
+
+# --- LLM rules text (LLM_PARITY_MODE) ----------------------------------------
+# docs/playtests/bots/LLM_RULES_PARITY.md. "legacy" is the prompt at c35b9b3.
+LLM_PARITY_MODE = "tw2002"                # lp1: "tw2002" | "legacy"
+LLM_HINT_CORP_MIN_CREDITS = 50_000        # lp5 OURS
+LLM_LEGAL_HINTS = "args"                  # lp14: "args" | "off"
+LLM_LEGAL_HINT_MAX_CHOICES = 6            # lp14
+LLM_PROMPT_GROWTH_MAX_PCT = 8             # lp18
+LLM_OBS_GROWTH_MAX_PCT = 10               # lp18
+LLM_UNDOCUMENTED_VERBS: tuple[str, ...] = ()  # lp13
+
+
+def llm_parity_on() -> bool:
+    return LLM_PARITY_MODE == "tw2002"
+
