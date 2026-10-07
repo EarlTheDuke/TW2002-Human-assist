@@ -162,6 +162,36 @@ def test_pb3_no_deposit_then_withdraw_without_a_buy():
     assert bought["kind"] == "buy_equip"
 
 
+def _dock_deposit(planets: list | None = None) -> int:
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    brain = SeatBrain()
+    obs = synthetic_obs(sector=1, credits=80_000, ship_class="cargotran", day=3, planets=planets or [])
+    obs["bank_balance"] = 0
+    obs["net_worth"] = 80_000
+    obs["alignment"] = 50
+    _la(obs, "buy_equip", item={"choices": [], "unit_price_by": {}})
+    _la(obs, "bank_deposit", max_amount=80_000, balance=0, room=500_000)
+    _la(obs, "bank_withdraw", max_amount=0, balance=0)
+    action = brain.decide(obs)
+    assert action["kind"] == "bank_deposit"
+    return int(action["args"]["amount"])
+
+
+def test_pb5_citadel_cash_is_in_the_reserve():
+    """A world that still needs its first citadel keeps that cash out of the bank."""
+    from tw2k.agents.seat_brain import SeatBrain
+    from tw2k.engine.constants import CITADEL_TIER_COST
+
+    bare = _dock_deposit()
+    planet = {"id": 7, "sector_id": 5, "citadel_level": 0, "citadel_target": 0,
+              "shields": 0, "origin": "genesis", "colonists": {}}
+    with_world = _dock_deposit([planet])
+    step = CITADEL_TIER_COST[0][0] + SeatBrain().working_capital
+    assert bare - with_world == step
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain

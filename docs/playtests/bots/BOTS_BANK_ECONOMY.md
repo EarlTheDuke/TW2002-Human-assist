@@ -112,13 +112,14 @@ The three bars that broke when the hold was removed now pass: `test_record_then_
 
 ## Planted bugs
 
-Each row is the bug, and the test that already locks the fixed behaviour. Not re-broken yet. That happens on the final commit. These rows do not have their own test yet: pb5, pb6, pb19, pb20, pb21, pb22, pb24.
+Each row is the bug, and the test that already locks the fixed behaviour. Not re-broken yet. That happens on the final commit. These rows do not have their own test yet: pb6, pb19, pb20, pb21, pb22, pb24.
 
 | Bug | Test |
 | --- | --- |
 | pb1 withdraw sends the whole balance | `test_bb3_withdraw_the_shortfall` |
 | pb2 a bank verb away from StarDock | `test_pb2_no_bank_verb_off_the_dock` |
 | pb3 deposit, then withdraw the same credits for a buy | `test_pb3_no_deposit_then_withdraw_without_a_buy` |
+| pb5 the away reserve omits the citadel step | `test_pb5_citadel_cash_is_in_the_reserve` |
 | pb4 the genesis hold still blocks deposits | `test_bb4_reserve_deposits_above_the_away_reserve_not_the_old_float` |
 | pb7 a pod buys a Scout before the bank step | `test_bb13_a_pod_withdraws_before_it_buys_the_scout` |
 | pb8 recovery withdraws the whole balance | `test_bb13_a_pod_withdraws_before_it_buys_the_scout` |
