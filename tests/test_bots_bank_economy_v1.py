@@ -192,6 +192,55 @@ def test_pb5_citadel_cash_is_in_the_reserve():
     assert bare - with_world == step
 
 
+def test_pb6_nest_egg_stays():
+    """A genesis withdraw stops at the nest egg, and a hull the egg would have to pay for waits."""
+    from tw2k.agents.bank_brain import nest_egg
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+    from tw2k.engine.constants import CITADEL_TIER_COST
+
+    egg = nest_egg(200_000)
+    price = 25_000
+    credits = 20_000
+    keep = CITADEL_TIER_COST[0][0] + SeatBrain().working_capital
+    shortfall = price + keep - credits
+
+    covered = SeatBrain()
+    obs = synthetic_obs(sector=1, credits=credits, ship_class="cargotran", day=3)
+    obs["bank_balance"] = egg + shortfall
+    obs["net_worth"] = 200_000
+    obs["alignment"] = 50
+    _la(obs, "buy_equip", item={"choices": ["genesis"], "unit_price_by": {"genesis": price}})
+    _la(obs, "bank_deposit", max_amount=credits, balance=obs["bank_balance"], room=500_000)
+    _la(obs, "bank_withdraw", max_amount=obs["bank_balance"], balance=obs["bank_balance"])
+    withdrawn = covered.decide(obs)
+    assert withdrawn["kind"] == "bank_withdraw"
+    assert withdrawn["args"]["amount"] == shortfall
+    assert obs["bank_balance"] - withdrawn["args"]["amount"] == egg
+
+    held = SeatBrain()
+    tight = synthetic_obs(sector=1, credits=credits, ship_class="cargotran", day=3)
+    tight["bank_balance"] = egg
+    tight["net_worth"] = 200_000
+    tight["alignment"] = 50
+    _la(tight, "buy_equip", item={"choices": ["genesis"], "unit_price_by": {"genesis": price}})
+    _la(tight, "bank_deposit", max_amount=credits, balance=egg, room=500_000)
+    _la(tight, "bank_withdraw", max_amount=egg, balance=egg)
+    assert held.decide(tight)["kind"] != "bank_withdraw"
+
+    scout = SeatBrain()
+    hull = synthetic_obs(sector=1, credits=0, ship_class="scout_marauder", holds=20, day=3)
+    hull["bank_balance"] = egg + 10_000
+    hull["net_worth"] = 200_000
+    hull["alignment"] = 50
+    _la(hull, "buy_equip", item={"choices": [], "unit_price_by": {}})
+    _la(hull, "buy_ship", ship_class={"choices": ["cargotran"], "net_cost_by": {"cargotran": 40_000}})
+    _la(hull, "bank_deposit", max_amount=0, balance=hull["bank_balance"], room=500_000)
+    _la(hull, "bank_withdraw", max_amount=hull["bank_balance"], balance=hull["bank_balance"])
+    bought = scout.decide(hull)
+    assert bought["kind"] != "bank_withdraw" or hull["bank_balance"] - bought["args"]["amount"] >= egg
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
