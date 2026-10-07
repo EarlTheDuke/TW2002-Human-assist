@@ -16,7 +16,6 @@ import pytest
 
 from tw2k.agents import llm as llm_mod
 from tw2k.agents.llm import ROUTE_LOOP_WINDOW, LLMAgent, route_notice
-from tw2k.agents.prompts import format_observation
 from tw2k.engine import GameConfig, build_observation, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.models import Player
@@ -119,6 +118,7 @@ def test_llm_agent_prompt_and_trail(monkeypatch):
 
     dock = _obs(sector=K.STARDOCK_SECTOR)
     asyncio.run(agent.act(dock))
-    assert prompts[1] == format_observation(dock)   # nothing to add: prompt unchanged
+    assert "AUTOPILOT TO STARDOCK" not in prompts[1]
+    assert "FIRST PLANET" in prompts[1]
     assert agent.route_trail[-1] == (dock.day, K.STARDOCK_SECTOR, "wait")
     assert llm_mod.ROUTE_LOOP_WINDOW == ROUTE_LOOP_WINDOW
