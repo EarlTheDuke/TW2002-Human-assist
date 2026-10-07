@@ -36,7 +36,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-SEAT_KINDS = ("N1", "N2", "N3", "H")
+SEAT_KINDS = ("N1", "N2", "N3", "H", "R")
 # A seat that sends this many zero-turn actions in a row is done for the day.
 STUCK_ZERO_TURN_ACTIONS = 200
 
@@ -47,6 +47,19 @@ def _acceptance():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _seat_agent(kind: str, pid: str, name: str, seed: int):
+    """H is the heuristic. R is the offline text reader. Code seats have no agent."""
+    if kind == "H":
+        from tw2k.agents import HeuristicAgent
+        return HeuristicAgent(pid, name, seed=zlib.crc32(f"{seed}:{pid}".encode()))
+    if kind == "R":
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from tests.llm_text_reader import TextReaderAgent
+        return TextReaderAgent(pid, name)
+    return None
 
 
 def parse_seats(text: str) -> list[str]:
@@ -66,7 +79,6 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
               corp_pairs: list[tuple[str, str]] | None = None,
               action_digest: bool = False) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
-    from tw2k.agents import HeuristicAgent
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
     from tw2k.agents.seat_brain import SeatBrain
     from tw2k.engine import (
@@ -95,7 +107,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         st[pid] = {
             "kind": kind,
             "brain": makers[kind]() if kind in makers else None,
-            "agent": HeuristicAgent(pid, p.name, seed=zlib.crc32(f"{seed}:{pid}".encode())) if kind == "H" else None,
+            "agent": _seat_agent(kind, pid, p.name, seed),
             "actions": 0, "kinds": collections.Counter(), "features": collections.Counter(),
             "rej_validate": 0, "rej_engine": 0,
             "rej_top": collections.Counter(), "exceptions": 0, "buys": 0, "sells": 0, "units_sold": 0,
@@ -110,7 +122,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
     elif K.corp_bots_on() and K.BOT_CORP_POLICY == "off":
         K.BOT_CORP_POLICY = "pair"
     if K.bot_corp_policy() in ("pair", "team"):
-        code_ids = [f"P{i + 1}" for i, kind in enumerate(seats) if kind != "H"]
+        code_ids = [f"P{i + 1}" for i, kind in enumerate(seats) if kind not in ("H", "R")]
         corp_brain.configure(code_ids, seed, explicit=corp_pairs)
 
     def done(pid: str) -> bool:
