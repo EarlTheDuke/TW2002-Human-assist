@@ -144,6 +144,10 @@ Rejected: one engine reject on N2-P4, the same trade-holds miss as the 10-day ru
 | N1-P5 | 127,966 | merchant cruiser | 0 |
 | H-P6 | 7,975 | scout | 2 |
 
+## Suite
+
+Full suite on 5000070: 2204 passed, 1 skipped, 2 failed, 2941s. The Firefox caption test timed out in the suite and passed alone. The other failure is the known port bind, WinError 10048, on `test_free_port_skips_reserved_live_range`.
+
 ## Plant re-break
 
 Each planted bug was put back on its own, the named test failed, and the source was restored.
