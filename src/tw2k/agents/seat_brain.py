@@ -3116,8 +3116,53 @@ class SeatBrain:
             mem.bank_deposited = True
         return {"kind": "bank_deposit", "args": {"amount": amount}, "thought": "bank the spare cash"}
 
+    def _citadel_cash_short(self, v: View, planet: dict[str, Any]) -> int:
+        """Credits still needed for the next citadel step. Zero when cash is not what blocks it."""
+        tier = next_tier(planet)
+        if tier is None:
+            return 0
+        cred, col = tier
+        total = _colonists_total(planet)
+        if total < col:
+            return 0
+        if not self._last_days(v):
+            if self.citadel_floor_ratio is not None and total - col < int(col * self.citadel_floor_ratio):
+                return 0
+            if self.citadel_fuel_shield and _pool(planet, "fuel_ore") < col:
+                return 0
+            if self.citadel_multiday_floor and next_tier_days(planet) > 1 and total - col < col:
+                return 0
+        return max(0, int(cred) - int(v.credits))
+
+    def _hull_treasury_short(self, v: View) -> int:
+        """Hull cash the bank cannot cover. A pod may spend the nest egg; a live hull may not."""
+        if v.ship_class not in ("merchant_cruiser", "scout_marauder", "escape_pod"):
+            return 0
+        from ..engine.constants import net_hull_cost
+        from .bank_brain import nest_egg
+        need = net_hull_cost(str(v.ship_class), "cargotran") + self.cash_buffer
+        balance = int(v.obs.get("bank_balance") or 0)
+        spendable = balance if v.ship_class == "escape_pod" else max(0, balance - nest_egg(v.net_worth))
+        return max(0, need - int(v.credits) - int(spendable))
+
+    def _treasury_withdraw(self, v: View, planet: dict[str, Any]) -> dict[str, Any] | None:
+        citadel = self._citadel_cash_short(v, planet)
+        short = citadel or self._hull_treasury_short(v)
+        if short < 1 or not v.ok("withdraw_treasury"):
+            return None
+        choices = v.choices("withdraw_treasury", "planet_id")
+        maximum = int((v.params("withdraw_treasury").get("amount") or {}).get("max") or 0)
+        amount = min(maximum, short)
+        if amount < 1 or not choices:
+            return None
+        if self.mem is not None:
+            self.mem.treasury_planet = int(v.landed)
+        why = "the citadel step" if citadel >= 1 else "the hull the bank cannot cover"
+        return {"kind": "withdraw_treasury", "args": {"planet_id": int(choices[0]), "amount": amount},
+                "thought": f"withdraw the shortfall for {why}"}
+
     def _treasury(self, v: View) -> dict[str, Any] | None:
-        """bb12: park spare cash in an owned citadel. Overflow waits until the bank is full."""
+        """bb12: park spare cash in an owned citadel, or withdraw a citadel or hull shortfall."""
         from ..engine import constants as engine_k
         mem = self.mem
         if v.landed is None:
@@ -3137,6 +3182,9 @@ class SeatBrain:
             return None
         if mem is not None and mem.treasury_planet == int(v.landed):
             return None
+        withdrawn = self._treasury_withdraw(v, planet)
+        if withdrawn is not None:
+            return withdrawn
         if engine_k.BOT_TREASURY_POLICY == "overflow" and int(v.obs.get("bank_room") or 0) > 0:
             return None
         if not v.ok("deposit_treasury"):

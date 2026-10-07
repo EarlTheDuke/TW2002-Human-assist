@@ -153,6 +153,57 @@ def test_bb12_overflow_deposits_once_when_the_bank_is_full():
     assert SeatBrain().decide(blocked)["kind"] != "deposit_treasury"
 
 
+def test_bb12_withdraws_the_citadel_shortfall_once():
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    planet = {"id": 7, "sector_id": 5, "citadel_level": 1, "citadel_target": 1,
+              "shields": 10, "origin": "genesis", "colonists": {"fuel_ore": 2_000}}
+    obs = synthetic_obs(sector=5, credits=0, ship_class="cargotran", day=4, landed=7, planets=[planet])
+    obs["bank_balance"] = 0
+    obs["alignment"] = 100
+    _la(obs, "withdraw_treasury", planet_id={"type": "int", "choices": [7]},
+        amount={"type": "int", "min": 1, "max": 25_000})
+    brain = SeatBrain()
+    first = brain.decide(obs)
+    assert first["kind"] == "withdraw_treasury"
+    assert first["args"] == {"planet_id": 7, "amount": 10_000}
+    assert brain.decide(obs)["kind"] != "withdraw_treasury"
+
+    short_people = dict(planet)
+    short_people["colonists"] = {}
+    blocked = synthetic_obs(sector=5, credits=0, ship_class="cargotran", day=4, landed=7, planets=[short_people])
+    _la(blocked, "withdraw_treasury", planet_id={"type": "int", "choices": [7]},
+        amount={"type": "int", "min": 1, "max": 25_000})
+    assert SeatBrain().decide(blocked)["kind"] != "withdraw_treasury"
+
+
+def test_bb12_withdraws_a_hull_the_bank_cannot_cover():
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+    from tw2k.engine.constants import net_hull_cost
+
+    planet = {"id": 7, "sector_id": 5, "citadel_level": 1, "citadel_target": 1,
+              "shields": 10, "origin": "genesis", "colonists": {}}
+    need = net_hull_cost("escape_pod", "cargotran") + 2_000
+    obs = synthetic_obs(sector=5, credits=0, ship_class="escape_pod", holds=5, day=4, landed=7, planets=[planet])
+    obs["bank_balance"] = 0
+    obs["net_worth"] = 0
+    obs["alignment"] = 100
+    _la(obs, "withdraw_treasury", planet_id={"type": "int", "choices": [7]},
+        amount={"type": "int", "min": 1, "max": 80_000})
+    action = SeatBrain().decide(obs)
+    assert action["kind"] == "withdraw_treasury"
+    assert action["args"]["amount"] == need
+
+    covered = synthetic_obs(sector=5, credits=0, ship_class="escape_pod", holds=5, day=4, landed=7, planets=[planet])
+    covered["bank_balance"] = need
+    covered["net_worth"] = need
+    _la(covered, "withdraw_treasury", planet_id={"type": "int", "choices": [7]},
+        amount={"type": "int", "min": 1, "max": 80_000})
+    assert SeatBrain().decide(covered)["kind"] != "withdraw_treasury"
+
+
 def test_bb9_each_risk_flag_counts_once():
     quiet = dict(days_since_loss=None, ship_class="cargotran", alignment=100,
                  fedsafe=True, threat_hops=None, fighters=100)
