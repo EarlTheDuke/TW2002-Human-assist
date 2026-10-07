@@ -235,6 +235,8 @@ class SeatMemory:
     treasury_planet: int | None = None
     # bb11: the day this seat already detoured to the bank. Omitted until one happens.
     bank_detour_day: int = -1
+    # bb21: the StarDock buy a withdraw already funded. Omitted until one is pending.
+    pending_buy: str | None = None
     # bb18: bank verbs used on bank_verbs_day, and StarDock withdraws this visit.
     bank_verbs_day: int = -1
     bank_verbs: int = 0
@@ -292,6 +294,8 @@ class SeatMemory:
             payload["treasury_planet"] = int(self.treasury_planet)
         if self.bank_detour_day >= 0:
             payload["bank_detour_day"] = int(self.bank_detour_day)
+        if self.pending_buy:
+            payload["pending_buy"] = self.pending_buy
         if self.bank_verbs_day >= 0:
             payload["bank_verbs_day"] = int(self.bank_verbs_day)
             payload["bank_verbs"] = int(self.bank_verbs)
@@ -364,6 +368,8 @@ class SeatMemory:
         mem.treasury_planet = int(landed_id) if isinstance(landed_id, int) else None
         detour_day = data.get("bank_detour_day")
         mem.bank_detour_day = int(detour_day) if isinstance(detour_day, int) else -1
+        pending = data.get("pending_buy")
+        mem.pending_buy = str(pending) if isinstance(pending, str) else None
         verbs_day = data.get("bank_verbs_day")
         mem.bank_verbs_day = int(verbs_day) if isinstance(verbs_day, int) else -1
         mem.bank_verbs = int(data.get("bank_verbs") or 0)
@@ -3033,6 +3039,10 @@ class SeatBrain:
         )
         if amount < 1 or not self._bank_verb_open(v, "bank_withdraw"):
             return None
+        if self.mem is not None and self.mem.pending_buy == "hull":
+            return None
+        if self.mem is not None:
+            self.mem.pending_buy = "hull"
         return self._take_bank_verb(v, {"kind": "bank_withdraw", "args": {"amount": amount},
                                         "thought": "withdraw the replacement hull from the nest egg"})
 
@@ -3129,7 +3139,10 @@ class SeatBrain:
                 need, 0, int(v.credits), balance, egg,
                 int(v.params("bank_withdraw").get("max_amount") or 0), recovery=False,
             )
-            if amount >= 1 and self._bank_verb_open(v, "bank_withdraw"):
+            if amount >= 1 and self._bank_verb_open(v, "bank_withdraw") and not (
+                    mem is not None and mem.pending_buy == "hull"):
+                if mem is not None:
+                    mem.pending_buy = "hull"
                 return self._take_bank_verb(v, {
                     "kind": "bank_withdraw", "args": {"amount": amount},
                     "thought": "withdraw the shortfall for the StarDock buy",
@@ -3137,7 +3150,10 @@ class SeatBrain:
         if need > 0 and int(v.credits) >= need:
             return None
         short, ready = self._genesis_shortfall(v)
-        if short >= 1 and self._bank_verb_open(v, "bank_withdraw"):
+        if short >= 1 and self._bank_verb_open(v, "bank_withdraw") and not (
+                mem is not None and mem.pending_buy == "genesis"):
+            if mem is not None:
+                mem.pending_buy = "genesis"
             return self._take_bank_verb(v, {
                 "kind": "bank_withdraw", "args": {"amount": short},
                 "thought": "withdraw the genesis shortfall",
@@ -3265,6 +3281,7 @@ class SeatBrain:
         if mem is not None and not at_dock:
             mem.bank_deposited = False
             mem.bank_withdraws = 0
+            mem.pending_buy = None
         if engine_k.BOT_BANK_POLICY == "off" or not engine_k.bank_on() or not at_dock:
             return None
         if self._reserve_on():

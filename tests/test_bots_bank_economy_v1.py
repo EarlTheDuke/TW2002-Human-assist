@@ -137,6 +137,26 @@ def test_bb13_a_pod_withdraws_before_it_buys_the_scout():
     assert withdrawn["args"]["amount"] == 40_000 + 2_000
 
 
+def test_bb21_pending_buy_survives_save_load():
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain, SeatMemory
+
+    pod = synthetic_obs(sector=1, credits=0, ship_class="escape_pod", holds=5, day=3)
+    pod["bank_balance"] = 80_000
+    pod["net_worth"] = 80_000
+    _la(pod, "buy_ship", ship_class={
+        "choices": ["cargotran", "scout_marauder"],
+        "net_cost_by": {"cargotran": 40_000, "scout_marauder": 5_000},
+    })
+    _la(pod, "bank_withdraw", max_amount=80_000, balance=80_000)
+    brain = SeatBrain()
+    assert brain.decide(pod)["kind"] == "bank_withdraw"
+    restored = SeatBrain()
+    restored.mem = SeatMemory.load(brain.mem.dump())
+    assert restored.mem.pending_buy == "hull"
+    assert restored.decide(pod)["kind"] != "bank_withdraw"
+
+
 def test_bb12_overflow_deposits_once_when_the_bank_is_full():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
