@@ -14,6 +14,11 @@ from tw2k.agents.bank_brain import (
 )
 
 
+def test_bb24_scenario_lab():
+    from scripts.bots_bank_scenario_lab import main
+    assert main() == 0
+
+
 def test_bb6_nest_egg():
     assert nest_egg(0) == 10_000
     assert nest_egg(149_999) == 10_000
