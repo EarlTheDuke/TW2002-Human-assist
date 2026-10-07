@@ -105,9 +105,9 @@ Policy off on the same seed also had that one trade reject, on N2-P4, and no cor
 | N3-P2 | 374,326 | battleship | 0 |
 | H-P6 | 7,975 | scout | 2 |
 
-## 30-day pair, seed 250925
+## 30-day pair, seed 250925, before the citadel gate
 
-Rejected 0, exceptions 0. Both corps still together. 22 transfers. The mate-hostility counter is 4. That counter also counts a toll or a mine event that names a mate, so it is not 4 confirmed attacks. Corporate deployments stayed 0.
+This run is the earlier tree, before the partner waited on the C.E.O.'s citadel. Rejected 0, exceptions 0. Both corps still together. 22 transfers. The mate-hostility counter is 4. That counter also counted a toll or a mine event that names a mate. Corporate deployments stayed 0.
 
 | Seat | Net worth | Ship | Deaths |
 | --- | --- | --- | --- |
@@ -118,7 +118,20 @@ Rejected 0, exceptions 0. Both corps still together. 22 transfers. The mate-host
 | N1-P5 | 378,171 | scout | 12 |
 | H-P6 | 7,975 | scout | 11 |
 
-## 30-day pair, seed 4242
+## 30-day pair, seed 250925, after the citadel gate
+
+Same seats, the tree that shipped the single-builder gate. 30 of 30 days. Wall 978s. Rejected 0, exceptions 0. Corps still N3P (P1, P2) and N2P (P3, P4). 12 transfers. Mate attacks 0. Mate tolls 0. Corporate deployments 0. Save/load at day 15 was identical. The report's `corp_password_set` count is the event name. The password itself is not in the JSON.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | --- | --- | --- |
+| N3-P1 | 2,059,640 | battleship | 0 |
+| N2-P3 | 875,547 | scout | 15 |
+| N3-P2 | 650,104 | cargotran | 0 |
+| N1-P5 | 550,249 | scout | 13 |
+| N2-P4 | 436,720 | scout | 1 |
+| H-P6 | 7,975 | scout | 6 |
+
+## 30-day pair, seed 4242, before the citadel gate
 
 Rejected: one engine reject on N2-P4, the same trade-holds miss as the 10-day run. Exceptions 0. Both corps still together. 26 transfers. Mate-hostility counter 4, same caveat as seed 250925.
 
