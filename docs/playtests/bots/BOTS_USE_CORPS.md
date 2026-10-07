@@ -131,6 +131,19 @@ Rejected: one engine reject on N2-P4, the same trade-holds miss as the 10-day ru
 | N2-P3 | 548,193 | scout | 14 |
 | H-P6 | 119,579 | merchant cruiser | 0 |
 
+## Team, seed 250925, 10 days
+
+`--corp-policy team`. Rejected 0, exceptions 0. Groups of three: N3P is P1, P2, and P3. The leftover pair is N2P, P4 and P5. Events: 2 creates, 2 passwords, 3 invites, 3 joins, 7 transfers. Mate attacks 0. Mate tolls 0. Corporate deployments 0. The five code seats together finished under the pair run. N1 sat in N2's corp instead of trading alone, and the three-seat N3 corp split one trade lane. That is the team size, not a rejected action.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | --- | --- | --- |
+| N2-P4 | 545,730 | cargotran | 0 |
+| N3-P1 | 487,544 | battleship | 0 |
+| N3-P2 | 181,042 | merchant cruiser | 0 |
+| N2-P3 | 155,727 | merchant cruiser | 0 |
+| N1-P5 | 127,966 | merchant cruiser | 0 |
+| H-P6 | 7,975 | scout | 2 |
+
 ## Plant re-break
 
 Each planted bug was put back on its own, the named test failed, and the source was restored.
