@@ -39,7 +39,8 @@ def plot_course_line() -> str:
 
 def bank_block() -> str:
     return (
-        f'`bank_deposit {{"amount":N}}`, `bank_withdraw {{"amount":N}}` and '
+        "StarDock's Galactic Bank: "
+        '`bank_deposit {"amount":N}`, `bank_withdraw {"amount":N}` and '
         f'`bank_transfer {{"to_player":"P3","amount":N}}` work at StarDock only and cost '
         f"{int(K.BANK_TURN_COST)} turns. The account holds up to {int(K.BANK_MAX_BALANCE):,} credits. "
         "Banked credits are not lost when your ship is destroyed and are not taxed. Credits on the ship "
@@ -52,6 +53,7 @@ def port_block() -> str:
     costs = K.PORT_UPGRADE_UNIT_COST
     prices = ", ".join(f"{name} {int(costs[name])}" for name in ("fuel_ore", "organics", "equipment"))
     return (
+        "Upgrading a port raises how much it can buy or sell. "
         f'`port_upgrade {{"commodity":"fuel_ore|organics|equipment","units":N}}` costs {prices} credits per unit '
         f"and adds {int(K.PORT_UPGRADE_HOLDS_PER_UNIT)} holds. StarDock and class 0 are not upgraded. "
         '`port_build {"planet_id":N,"port_class":"BBS","name":"..."}` needs your planet, or your corporation\'s, '
@@ -62,6 +64,7 @@ def port_block() -> str:
 def corpship_block() -> str:
     n = int(K.CORPSHIP_PASSWORD_MAX_LEN)
     return (
+        "CORPORATE SHIPS. "
         f'`ship_set_corporate {{}}` flags the ship you are flying for your corporation. '
         f'`ship_set_personal {{}}` flags it personal. '
         f'`ship_set_password {{"password":"..."}}` is 1 to {n} characters. '
@@ -73,7 +76,12 @@ def corpship_block() -> str:
 
 
 def corp_extra() -> str:
+    cost, turns = int(K.CORP_CREATE_COST), int(K.CORP_TURN_COST)
+    price = "are free" if cost <= 0 else f"cost {cost:,} credits"
+    if turns > 0:
+        price += f" and {turns} turn" + ("s" if turns != 1 else "")
     return (
+        f"Corporations {price} and work in any sector. "
         f"A corporation holds {int(K.CORP_MAX_MEMBERS)} traders. "
         "`deploy_fighters` and `deploy_mines` take ownership personal or corporate. "
         "The C.E.O. leaving dissolves the corporation. "
