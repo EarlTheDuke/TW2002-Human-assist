@@ -63,7 +63,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
               max_steps: int = 2_000_000, port_report: bool = False,
               bank_report: bool = False, corp_report: bool = False,
               corp_policy: str | None = None,
-              corp_pairs: list[tuple[str, str]] | None = None) -> dict[str, Any]:
+              corp_pairs: list[tuple[str, str]] | None = None,
+              action_digest: bool = False) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents import HeuristicAgent
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
@@ -361,6 +362,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
     }
     if violations is not None:
         result["invariant_violations"] = violations
+    if action_digest:
+        blob = [[pid, st[pid]["rows"]] for pid in sorted(st)]
+        result["action_digest"] = format(zlib.crc32(json.dumps(blob).encode()), "08x")
     if corp_summary is not None:
         result["corp"] = corp_summary
     if bank_rows is not None:
@@ -424,12 +428,19 @@ def main(argv: list[str] | None = None) -> int:
                     help="explicit pairs, P1:P3,P2:P4. Empty uses consecutive code seats")
     ap.add_argument("--corp-report", action="store_true",
                     help="add corp counters (corps, members, corp events, rogue groups; not part of the legacy digest)")
+    ap.add_argument("--llm-parity", choices=("tw2002", "legacy"),
+                    help="set LLM_PARITY_MODE for this run (bots ignore the prompt; the action digest must match)")
+    ap.add_argument("--action-digest", action="store_true",
+                    help="add a checksum of each seat's action rows (not part of the legacy digest)")
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
-    if a.bank_legacy:
+    if a.bank_legacy or a.llm_parity:
         from tw2k.engine import constants as K
-        K.BANK_MODE = "legacy"
+        if a.bank_legacy:
+            K.BANK_MODE = "legacy"
+        if a.llm_parity:
+            K.LLM_PARITY_MODE = a.llm_parity
     pairs = None
     if a.bot_corp_pairs.strip():
         pairs = []
@@ -439,7 +450,8 @@ def main(argv: list[str] | None = None) -> int:
     result = run_match(parse_seats(a.seats), seed=a.seed, days=a.days, universe_size=a.size,
                        turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi,
                        port_report=a.port_report, bank_report=a.bank_report,
-                       corp_report=a.corp_report, corp_policy=a.corp_policy, corp_pairs=pairs)
+                       corp_report=a.corp_report, corp_policy=a.corp_policy, corp_pairs=pairs,
+                       action_digest=a.action_digest)
     text = json.dumps(result, indent=1, sort_keys=True)
     md = render_markdown(result)
     if a.json_out:
@@ -447,6 +459,8 @@ def main(argv: list[str] | None = None) -> int:
     if a.md_out:
         Path(a.md_out).write_text(md, encoding="utf-8")
     print(md)
+    if a.action_digest:
+        print(f"ACTION_DIGEST {result['action_digest']}")
     if a.bank_report:
         print(f"BANK rejected {result['bank_rejected']} exceptions {result['bank_exceptions']} "
               f"ferrengi_credits {result['ferrengi_credits']} save {result['bank_save_load']}")
