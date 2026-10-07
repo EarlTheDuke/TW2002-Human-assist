@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import tw2k.engine.constants as K
 
 
@@ -100,6 +102,47 @@ def test_lp7_route_notice_shares_the_plot_syntax():
     from tw2k.agents.rules_text import plot_course_call, plot_course_line
     assert plot_course_call() in plot_course_line()
     assert "plot_course_call" in inspect.getsource(llm.route_notice)
+
+
+def _reader_turn(*, here: int, credits: int, legal: list[str], inbox: list | None = None) -> str:
+    return json.dumps({
+        "sector": {"id": here, "is_stardock": here == 1},
+        "self": {"credits": credits, "ship": {"ship_class": "merchant_cruiser"}},
+        "legal_actions": {"legal": legal, "blocked": {}},
+        "adjacent": [{"id": 2}],
+        "inbox": inbox or [],
+    })
+
+
+def test_lp26_legacy_reader_misses_plot_execute_and_the_new_verbs(monkeypatch):
+    from tests.llm_text_reader import choose
+    from tw2k.agents.prompts import get_system_prompt
+    monkeypatch.setattr(K, "LLM_PARITY_MODE", "legacy")
+    system = get_system_prompt()
+    far = choose(system, _reader_turn(here=40, credits=250_000, legal=["plot_course", "warp"]))
+    assert far["action"]["kind"] != "plot_course"
+    bank = choose(system, _reader_turn(here=1, credits=300_000, legal=["bank_deposit", "buy_ship"]))
+    assert bank["action"]["kind"] != "bank_deposit"
+    invited = choose(system, _reader_turn(
+        here=5, credits=1000, legal=["corp_join", "warp"],
+        inbox=[{"ticker": "ABC", "password": "secret"}],
+    ))
+    assert invited["action"]["kind"] != "corp_join"
+
+
+def test_lp26_parity_reader_plots_banks_and_joins():
+    from tests.llm_text_reader import choose
+    from tw2k.agents.prompts import get_system_prompt
+    system = get_system_prompt()
+    far = choose(system, _reader_turn(here=40, credits=250_000, legal=["plot_course", "warp"]))
+    assert far["action"] == {"kind": "plot_course", "args": {"target": 1, "execute": True}}
+    bank = choose(system, _reader_turn(here=1, credits=300_000, legal=["bank_deposit", "trade"]))
+    assert bank["action"]["kind"] == "bank_deposit"
+    invited = choose(system, _reader_turn(
+        here=5, credits=1000, legal=["corp_join", "warp"],
+        inbox=[{"ticker": "ABC", "password": "secret"}],
+    ))
+    assert invited["action"]["args"]["password"] == "secret"
 
 
 def test_lp15_flagship_row_stays_member_only_when_bots_are_legacy(monkeypatch):
