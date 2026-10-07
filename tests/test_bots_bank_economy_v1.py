@@ -106,6 +106,21 @@ def test_bb4_reserve_deposits_above_the_away_reserve_not_the_old_float(monkeypat
     assert legacy["args"]["amount"] == 80_000 - int(engine_k.BOT_BANK_FLOAT)
 
 
+def test_pb2_no_bank_verb_off_the_dock():
+    """The same spare cash that deposits at StarDock must not deposit or withdraw in sector 5."""
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    brain = SeatBrain()
+    obs = synthetic_obs(sector=5, credits=80_000, ship_class="cargotran", day=3)
+    obs["bank_balance"] = 0
+    obs["net_worth"] = 80_000
+    _la(obs, "bank_deposit", max_amount=80_000, balance=0, room=500_000)
+    _la(obs, "bank_withdraw", max_amount=80_000, balance=0)
+    action = brain.decide(obs)
+    assert action["kind"] not in ("bank_deposit", "bank_withdraw")
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
