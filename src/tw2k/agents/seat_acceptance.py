@@ -60,6 +60,12 @@ REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "corp_set_password": ("password",),  # CORP_MODE tw2002 verbs (QC 57)
     "corp_drop": ("target",),
     "corp_transfer": ("target", "item", "qty", "direction"),
+    "bank_deposit": ("amount",),
+    "bank_withdraw": ("amount",),
+    "bank_transfer": ("to_player", "amount"),
+    "port_upgrade": ("commodity", "units"),
+    "port_build": ("planet_id", "port_class"),
+    "ship_set_password": ("password",),
     "propose_alliance": ("target",),
     "accept_alliance": ("alliance_id",),
     "break_alliance": ("alliance_id",),

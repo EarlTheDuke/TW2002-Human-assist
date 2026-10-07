@@ -2251,6 +2251,11 @@ LLM_PARITY_MODE = "tw2002"                # lp1: "tw2002" | "legacy"
 LLM_HINT_CORP_MIN_CREDITS = 50_000        # lp5 OURS
 LLM_LEGAL_HINTS = "args"                  # lp14: "args" | "off"
 LLM_LEGAL_HINT_MAX_CHOICES = 6            # lp14
+LLM_LEGAL_HINT_KEYS: tuple[str, ...] = (
+    "target", "ship_class", "item", "commodity", "direction", "ticker",
+    "corps", "partners", "planet_id", "qty", "units", "amount", "mode",
+    "kind", "port_class", "to_player", "side", "ownership", "execute",
+)                                         # lp14: never password
 LLM_PROMPT_GROWTH_MAX_PCT = 8             # lp18
 LLM_OBS_GROWTH_MAX_PCT = 10               # lp18
 LLM_UNDOCUMENTED_VERBS: tuple[str, ...] = ()  # lp13
