@@ -2104,9 +2104,26 @@ TAX_WHEN = "day_tick"                   # gb23 DERIVED
 TAX_TO = "sink"                         # gb24 CONFIRMED
 BOTS_BANK_MODE = "tw2002"              # bb1: "tw2002" | "legacy". Unread until the bot hooks land.
 BOT_BANK_POLICY = "tax_and_death"       # gb29 DERIVED: "tax_and_death" | "off". "reserve" arrives with the bot.
-BOT_BANK_FLOAT = 30_000
-BOT_BANK_DETOUR_HOPS = 0
+BOT_BANK_FLOAT = 30_000                 # legacy keep. The new away reserve does not read this.
+BOT_BANK_DETOUR_HOPS = 0                # legacy. Tw2002 detours use BOT_BANK_DETOUR_HOPS_ON.
+BOT_BANK_DETOUR_HOPS_ON = 3             # bb11
+BOT_BANK_DETOUR_CASH = 150_000          # bb11
+BOT_BANK_DETOURS_PER_DAY = 1            # bb11
 BOT_BANK_TRANSFER = False               # gb31 DERIVED
+BOT_BANK_MAX_WITHDRAWS_PER_VISIT = 3    # bb3
+BOT_BANK_MIN_FLOAT = 5_000              # bb5
+BOT_BANK_CAPITAL_PER_HOLD = 250         # bb5
+BOT_BANK_TOLL_BUDGET = 2_000            # bb5
+BOT_BANK_AWAY_CAP = 150_000             # bb5
+BOT_BANK_NEST_EGG_STAGES = ((0, 10_000), (150_000, 50_000), (500_000, 100_000))  # bb6
+BOT_BANK_EOD_TURNS = 5                  # bb7
+BOT_BANK_DAY1_DEPOSIT = 10_000          # bb8
+BOT_BANK_RISK_DAYS = 3                  # bb9
+BOT_BANK_RISK_HOPS = 3                  # bb9
+BOT_BANK_RISK_FIGHTERS = 50             # bb9
+BOT_BANK_MAX_VERBS_PER_DAY = 8          # bb18
+BOT_BANK_BROKE_LINE = 10_000            # bb22
+BOT_TREASURY_POLICY = "overflow"        # bb12: "overflow" | "spare" | "off"
 
 
 def bank_on() -> bool:
