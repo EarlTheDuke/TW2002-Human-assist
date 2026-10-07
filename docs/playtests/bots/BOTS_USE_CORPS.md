@@ -104,3 +104,16 @@ Policy off on the same seed also had that one trade reject, on N2-P4, and no cor
 | N1-P5 | 375,435 | merchant cruiser | 0 |
 | N3-P2 | 374,326 | battleship | 0 |
 | H-P6 | 7,975 | scout | 2 |
+
+## 30-day pair, seed 250925
+
+Rejected 0, exceptions 0. Both corps still together. 22 transfers. The mate-hostility counter is 4. That counter also counts a toll or a mine event that names a mate, so it is not 4 confirmed attacks. Corporate deployments stayed 0.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | --- | --- | --- |
+| N3-P2 | 1,917,322 | battleship | 0 |
+| N3-P1 | 1,883,744 | battleship | 0 |
+| N2-P3 | 937,112 | cargotran | 6 |
+| N2-P4 | 418,042 | scout | 7 |
+| N1-P5 | 378,171 | scout | 12 |
+| H-P6 | 7,975 | scout | 11 |
