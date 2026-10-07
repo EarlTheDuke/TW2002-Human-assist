@@ -100,7 +100,7 @@ Parity on and parity off wrote the same file. Action digest `7ad15bc9`. Rejected
 
 ## Planted-bug tests
 
-These names are the ones a re-break has to fail. The re-break itself is still to do on the final commit.
+Re-broke pb1 through pb26 on this tree. Each named test failed, and the source was restored.
 
 | Bug | Test |
 | --- | --- |
