@@ -155,3 +155,13 @@ Policy `reserve`. Rejected 0/0 and the save matched on every run. Citadel deposi
 30-day seed 424242, digest `0bc512d4`, total 4,605,090. N3-P1 2,458,682 (bank full, treasury 336,390, tax 428,874, 17 detours). N2-P3 1,276,834 (10 deaths, lost 524,200, treasury 78,907). N2-P4 611,932. N3-P2 231,692. N1-P5 stayed 17,975. H-P6 stayed 7,975 with broke 29 days and no deposit.
 
 S7 is not met. H at day 10 is 50,003 on seed 250925 and 7,975 on seed 424242. The 10,000 nest egg on N1-P5 cannot buy a CargoTran.
+
+## Spare citadel and no detour, 10 days
+
+Same seats, policy reserve. Spare sets `BOT_TREASURY_POLICY` to `spare`. No-detour sets `BOT_BANK_DETOUR_HOPS_ON` to 0.
+
+Seed 250925 spare, digest `e64c952b`, total 1,787,645. N3-P1 733,903. N2-P3 389,968 and a 3-credit citadel deposit. N1-P5 278,818. N3-P2 173,596. N2-P4 161,357. H-P6 50,003. Overflow on this seed was 1,809,848 with no citadel deposit.
+
+Seed 250925 with the detour off matches overflow exactly: digest `16ad8833`, total 1,809,848. The overflow 10-day took 0 detours.
+
+Seed 424242 spare matches overflow exactly: digest `6ca2c5b9`, total 1,725,233, treasury 0. That overflow 10-day also took 0 detours, so turning the detour off does not change it either. The detours in the 30-day overflow runs were 9 on seed 250925 and 17 on seed 424242.
