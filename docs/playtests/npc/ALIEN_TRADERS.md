@@ -54,3 +54,35 @@ al1 count (`ALIEN_POPULATION_PER_1000` 40). al2 names (`ALIEN_NAMES`). al3 start
 ## Deliberate differences
 
 Day-tick hops instead of a real-time one-in-twenty. Aliens are not players, so they are absent from victory, net worth, and the seat list. They do not trade, and they do not attack. Gold races, homespace, grudges, and regeneration stay out. Photons, quasar cannons, and atomics ignore aliens in this slice.
+
+## Match check
+
+Measured on `fa9ca9f`. Seats N3,N3,N2,N2,N1,H. Universe 1000. 1000 turns/day. Start 20,000. Ferrengi on. Rejected 0/0 and exceptions 0 on every run.
+
+### 10-day, bots ignore aliens
+
+Seed 250925, aliens on: N3-P1 828,617, N2-P4 580,670, N2-P3 335,428, N3-P2 214,188, N1-P5 169,056 (1 death), H-P6 7,975 (4 deaths).
+
+Seed 250925, aliens off: N3-P1 783,190, N2-P4 555,175, N3-P2 196,480, N1-P5 168,592 (1 death), N2-P3 159,803 (1 death), H-P6 7,975 (3 deaths).
+
+Seed 424242, aliens on: N3-P1 653,006, N3-P2 591,609, N2-P4 387,235 (1 death), N2-P3 301,783 (1 death), N1-P5 7,975 (1 death), H-P6 7,975 (4 deaths).
+
+Seed 424242, aliens off: N3-P1 645,037, N2-P4 462,512, N2-P3 323,415, N3-P2 179,788, N1-P5 7,975 (2 deaths), H-P6 7,975 (3 deaths).
+
+Bots do not attack aliens on this policy, so the swings are from density, scans, prompts, and mines.
+
+### 10-day, align-hunt
+
+Seed 250925: N3-P1 722,241, N2-P4 608,989, N2-P3 222,429 (1 death), N1-P5 121,031 (3 deaths), N3-P2 100,732 (1 death), H-P6 7,975 (3 deaths). Shots 2, kills 2 (both P1), captures 0, corbomite blasts 4 (P2, P3, alien:18, alien:37).
+
+Seed 424242: N3-P2 587,033, N3-P1 522,131, N2-P3 498,170, N2-P4 387,235 (1 death), N1-P5 7,975 (1 death), H-P6 7,975 (4 deaths). Shots 2, kills 2 (both P1), captures 0, corbomite blasts 3 (P4, alien:34, alien:6).
+
+### Scenario lab
+
+`scripts/alien_traders_scenario_lab.py` printed PASS. A weak shot left the alien at 200 fighters and 10 shields, still in sector 600. The kill paid bible +200 experience and +125 alignment, plus the fighter-loss award of +14 experience and +10 alignment, and looted 5,000. Corbomite blasted. No bounty. The replacement lost 20 fighters to a mine and never sat in a fighter sector after its hops. A fedsafe alien in sector 3 podded the attacker with the Zyrain message and -200 alignment. A minimum-quantity attack captured, with no extra blast. `corp_invite` returned "aliens cannot join corporations".
+
+### 30-day, seed 250925
+
+Ignore, 1388s. Soak problems 0. Save/load identical. N3-P1 2,242,864, N2-P3 1,056,477 (10 deaths), N2-P4 785,922 (8), N1-P5 699,949 (5), N3-P2 323,566 (10), H-P6 7,975 (9). Spawns 40, kills 0, captures 0, flees 0, mines 0, trapped 0. Day-tick events ran 11 to 85 over 29 ticks.
+
+Align-hunt, 1299s, about 6% faster than ignore. Soak problems 0. Save/load identical. N3-P1 2,490,685, N3-P2 1,346,836 (1 death), N2-P3 986,477 (9), N2-P4 714,764 (13), N1-P5 328,076 (12), H-P6 7,975 (11). Shots 21, kills 21 (P1 14, P2 7), captures 0, spawns 60, trapped 0. Day-tick events ran 11 to 84. Day 10 of each 30-day run matches that seed's 10-day table.
