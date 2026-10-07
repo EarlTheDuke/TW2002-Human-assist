@@ -7,6 +7,7 @@ from tw2k.agents.bank_brain import (
     deposit_amount,
     nest_egg,
     purse,
+    risk_flags,
     tax_keep,
     trade_capital,
     withdraw_amount,
@@ -107,6 +108,25 @@ def test_bb13_a_pod_withdraws_before_it_buys_the_scout():
     withdrawn = SeatBrain().decide(pod)
     assert withdrawn["kind"] == "bank_withdraw"
     assert withdrawn["args"]["amount"] == 40_000 + 2_000
+
+
+def test_bb9_each_risk_flag_counts_once():
+    quiet = dict(days_since_loss=None, ship_class="cargotran", alignment=100,
+                 fedsafe=True, threat_hops=None, fighters=100)
+    assert risk_flags(**quiet) == 0
+    assert risk_flags(**{**quiet, "days_since_loss": 2}) == 1
+    assert risk_flags(**{**quiet, "days_since_loss": 9}) == 0
+    assert risk_flags(**{**quiet, "ship_class": "scout_marauder"}) == 1
+    assert risk_flags(**{**quiet, "ship_class": "escape_pod"}) == 1
+    assert risk_flags(**{**quiet, "alignment": -10}) == 1
+    assert risk_flags(**{**quiet, "fedsafe": False}) == 1
+    assert risk_flags(**{**quiet, "threat_hops": 2}) == 1
+    assert risk_flags(**{**quiet, "threat_hops": 4}) == 0
+    assert risk_flags(**{**quiet, "fighters": 10}) == 1
+    calm = away_reserve(20, [40_000, 40_000, 40_000], 0, owns_fighters=True)
+    halved = away_reserve(20, [40_000, 40_000, 40_000], 1, owns_fighters=True)
+    assert calm == 125_000
+    assert halved == 75_000
 
 
 def test_bb10_tax_line_keeps_a_good_seat_under_the_line():

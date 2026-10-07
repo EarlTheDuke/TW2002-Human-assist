@@ -70,6 +70,29 @@ def withdraw_amount(
     return max(0, min(shortfall, room, legal))
 
 
+def risk_flags(
+    *, days_since_loss: int | None, ship_class: str, alignment: int, fedsafe: bool,
+    threat_hops: int | None, fighters: int,
+) -> int:
+    """How many death-risk flags are on. Each one halves the away cap.
+
+    A recent loss, a podless hull, not being FedSafe, a threat within a few hops,
+    and a thin fighter load each count once. The inputs are the seat's own.
+    """
+    count = 0
+    if days_since_loss is not None and 0 <= int(days_since_loss) <= int(K.BOT_BANK_RISK_DAYS):
+        count += 1
+    if str(ship_class or "") in set(K.PODLESS_HULLS):
+        count += 1
+    if (not fedsafe) or int(alignment) < int(K.FEDSAFE_MIN_ALIGNMENT):
+        count += 1
+    if threat_hops is not None and int(threat_hops) <= int(K.BOT_BANK_RISK_HOPS):
+        count += 1
+    if int(fighters) < int(K.BOT_BANK_RISK_FIGHTERS):
+        count += 1
+    return count
+
+
 def tax_keep(reserve: int, planned_max: int, alignment: int) -> int:
     """Good seats leave at most the tax line, unless one planned buy needs more.
 
