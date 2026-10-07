@@ -48,3 +48,20 @@ Sources: the EIS menus, the MBBS FlagShip line, Iago on who buys a FlagShip, and
 Recorded on c35b9b3 before `LLM_PARITY_MODE` exists. 3-day N3,N2,N1,H seed 250925. Golden `9b607d3dae940c0b1a69f6d7`. The flip list starts with `LLM_PARITY_MODE` and includes the newer modes. Both notice flags are False.
 
 Verb inventory and line inventory are filled as the prompt text lands. No paid API call.
+
+## Fixture lab (seed 60, 500 sectors)
+
+`scripts/llm_prompt_fixture_lab.py`. Full prompt 41488 chars legacy, 41679 parity (0.46%, under 8%). Minimal prompt 15663 legacy, 16076 parity, and shorter than full. Observation median growth 3.8% (under 10%).
+
+| Fixture | Legacy obs | Parity obs | Growth |
+| --- | ---: | ---: | ---: |
+| f1 ten hops from StarDock, 250,000 credits | 7900 | 8203 | 3.8% |
+| f2 at StarDock, 300,000 credits | 9190 | 9678 | 5.3% |
+| f3 at StarDock, over the tax threshold | 9139 | 9627 | 5.3% |
+| f4 invite in the inbox | 9717 | 9777 | 0.6% |
+| f5 C.E.O. with a mate in the sector | 10286 | 10580 | 2.9% |
+| f6 port, owned planet, upgrade affordable | 9812 | 10256 | 4.5% |
+| f7 alien in the sector | 8327 | 8467 | 1.7% |
+| f8 the f1 seat with the minimal prompt | 7122 | 7231 | 1.5% |
+
+Parity checklist: no `500k cr at StarDock`, no `corp_deposit`, no `corp_withdraw`, no `shared treasury`. f1 parity hint names `plot_course` execute and does not say warp back. f4 hint does not copy the password. Legacy keeps the 500k line, the warp-back hint, and a compact legal list with no `args` key. Token estimate is chars/4: full parity prompt about 10,420 tokens.

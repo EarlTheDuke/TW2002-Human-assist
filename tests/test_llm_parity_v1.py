@@ -145,6 +145,24 @@ def test_lp26_parity_reader_plots_banks_and_joins():
     assert invited["action"]["args"]["password"] == "secret"
 
 
+def test_lp27_fixture_lab_checklist():
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    from tests._pin_env import pin_env
+
+    root = Path(__file__).resolve().parents[1]
+    env = pin_env()
+    env["PYTHONPATH"] = str(root / "src")
+    done = subprocess.run(
+        [sys.executable, str(root / "scripts" / "llm_prompt_fixture_lab.py")],
+        cwd=root, env=env, capture_output=True, text=True, check=False,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "checklist: PASS" in done.stdout
+
+
 def test_lp15_flagship_row_stays_member_only_when_bots_are_legacy(monkeypatch):
     from tw2k.agents.prompts import get_system_prompt
     monkeypatch.setattr(K, "CORP_BOTS_MODE", "legacy")
