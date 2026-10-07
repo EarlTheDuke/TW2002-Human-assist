@@ -105,4 +105,4 @@ Re-break is still ahead. Each named test failed when the bug is planted.
 
 ## Match check
 
-Not run. This commit is the rules doc only.
+Scenario lab `scripts/stardock_tavern_scenario_lab.py` PASS on this tree: one announcement, anonymous graffiti, an empty new hull traces for free, a docked port costs 3,000, password 2,000, alignment 250 turned away, the 4/5/6 ladder, a pod pays nothing, a real kill pays 10,000, one curse a day. The 10-day and 30-day matches are not in this note yet.

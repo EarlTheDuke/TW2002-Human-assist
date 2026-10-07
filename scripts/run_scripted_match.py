@@ -520,6 +520,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="add corp counters (corps, members, corp events, rogue groups; not part of the legacy digest)")
     ap.add_argument("--llm-parity", choices=("tw2002", "legacy"),
                     help="set LLM_PARITY_MODE for this run (bots ignore the prompt; the action digest must match)")
+    ap.add_argument("--tavern", choices=("tw2002", "legacy"),
+                    help="set TAVERN_MODE for this run (code bots do not use the Tavern)")
     ap.add_argument("--reader-start", choices=("f1",),
                     help="move an R seat 10 hops from StarDock with 250000 credits")
     ap.add_argument("--action-digest", action="store_true",
@@ -527,12 +529,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
-    if a.bank_legacy or a.llm_parity or a.treasury_policy or a.detour_hops is not None:
+    if a.bank_legacy or a.llm_parity or a.treasury_policy or a.detour_hops is not None or a.tavern:
         from tw2k.engine import constants as K
         if a.bank_legacy:
             K.BANK_MODE = "legacy"
         if a.llm_parity:
             K.LLM_PARITY_MODE = a.llm_parity
+        if a.tavern:
+            K.TAVERN_MODE = a.tavern
         if a.treasury_policy:
             K.BOT_TREASURY_POLICY = a.treasury_policy
         if a.detour_hops is not None:
