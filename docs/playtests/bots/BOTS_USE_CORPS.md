@@ -91,3 +91,16 @@ Policy off on the same seed also had that one trade reject, on N2-P4, and no cor
 | N2-P4 | 335,134 | 508,720 | scout | cargotran | 2 | 1 |
 | N1-P5 | 432,305 | 415,256 | merchant cruiser | merchant cruiser | 0 | 0 |
 | H-P6 | 7,975 | 359,143 | scout | merchant cruiser | 3 | 0 |
+
+## Explicit pairs, seed 250925, 10 days
+
+`--bot-corp-pairs P1:P3,P2:P4`. Rejected 0, exceptions 0. Corps N3P (P1, P3) and P02 (P2, P4). P2's ticker collided with N3P and fell back to P02. 15 transfers, 0 mate attacks.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | --- | --- | --- |
+| N3-P1 | 648,742 | battleship | 0 |
+| N2-P3 | 506,638 | cargotran | 0 |
+| N2-P4 | 447,542 | scout | 1 |
+| N1-P5 | 375,435 | merchant cruiser | 0 |
+| N3-P2 | 374,326 | battleship | 0 |
+| H-P6 | 7,975 | scout | 2 |
