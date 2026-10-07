@@ -108,7 +108,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         K.BOT_CORP_POLICY = corp_policy
     elif K.corp_bots_on() and K.BOT_CORP_POLICY == "off":
         K.BOT_CORP_POLICY = "pair"
-    if K.bot_corp_policy() == "pair":
+    if K.bot_corp_policy() in ("pair", "team"):
         code_ids = [f"P{i + 1}" for i, kind in enumerate(seats) if kind != "H"]
         corp_brain.configure(code_ids, seed, explicit=corp_pairs)
 
@@ -124,9 +124,10 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
 
     order = list(st)
     steps = 0
+    save_load_day15 = None
 
     async def play() -> None:
-        nonlocal steps
+        nonlocal steps, save_load_day15
         idx = 0
         while steps < max_steps:
             if is_finished(u):
@@ -137,6 +138,11 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
                     if p.alive:
                         st[pid]["wasted_turns"] += max(0, p.turns_per_day - p.turns_today)
                 snap()
+                if corp_report and u.day == 15 and save_load_day15 is None:
+                    from tw2k.engine.models import Universe
+                    blob = u.model_dump_json()
+                    again = Universe.model_validate_json(blob)
+                    save_load_day15 = "identical" if again.model_dump_json() == blob else "diff"
                 if u.day >= days:
                     return
                 tick_day(u)
@@ -307,7 +313,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         counts: dict[str, int] = {}
         corporate_deploys = {pid: 0 for pid in players}
         hostile_between_members = 0
-        hostile = {"combat", "fighter_challenge", "ship_destroyed", "mine_detonated", "toll", "photon_hit"}
+        mate_tolls = 0
+        attacks = {"combat", "fighter_challenge", "ship_destroyed", "mine_detonated", "photon_hit"}
         for ev in u.events:
             kind = getattr(ev.kind, "value", str(ev.kind))
             payload = ev.payload or {}
@@ -316,12 +323,16 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             pid = str(ev.actor_id or "")
             if kind in ("deploy_fighters", "deploy_mines") and payload.get("ownership") == "corporate" and pid in players:
                 corporate_deploys[pid] += 1
-            if kind in hostile and pid in u.players and u.players[pid].corp_ticker:
-                blob = json.dumps(payload, sort_keys=True, default=str)
-                mates = set(u.corporations.get(u.players[pid].corp_ticker).member_ids
-                            if u.players[pid].corp_ticker in u.corporations else ()) - {pid}
-                if any(f'"{m}"' in blob for m in mates):
-                    hostile_between_members += 1
+            if kind in attacks or kind == "toll":
+                if pid in u.players and u.players[pid].corp_ticker:
+                    blob = json.dumps(payload, sort_keys=True, default=str)
+                    mates = set(u.corporations.get(u.players[pid].corp_ticker).member_ids
+                                if u.players[pid].corp_ticker in u.corporations else ()) - {pid}
+                    if any(f'"{m}"' in blob for m in mates):
+                        if kind == "toll":
+                            mate_tolls += 1
+                        else:
+                            hostile_between_members += 1
         rogue_groups = 0
         corporate_groups = 0
         for sec in u.sectors.values():
@@ -334,7 +345,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         corp_summary = {
             "corps": {t: sorted(c.member_ids) for t, c in sorted(u.corporations.items())},
             "events": dict(sorted(counts.items())), "corporate_deploys": corporate_deploys,
-            "hostile_between_members": hostile_between_members, "rogue_groups": rogue_groups,
+            "hostile_between_members": hostile_between_members, "mate_tolls": mate_tolls,
+            "save_load_day15": save_load_day15, "rogue_groups": rogue_groups,
             "corporate_groups": corporate_groups, "policy": K.BOT_CORP_POLICY, "mode": K.CORP_MODE,
         }
         for pid, row in players.items():
@@ -406,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="add bank, tax, and death-credit totals (not part of the legacy digest)")
     ap.add_argument("--bank-legacy", action="store_true",
                     help="run with BANK_MODE legacy (the before column)")
-    ap.add_argument("--corp-policy", choices=("off", "pair"),
+    ap.add_argument("--corp-policy", choices=("off", "pair", "team"),
                     help="override K.BOT_CORP_POLICY (default pair while CORP_BOTS_MODE is tw2002)")
     ap.add_argument("--bot-corp-pairs", default="",
                     help="explicit pairs, P1:P3,P2:P4. Empty uses consecutive code seats")

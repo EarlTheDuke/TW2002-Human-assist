@@ -14,6 +14,7 @@ from ..engine import constants as K
 _SEED = 0
 _PARTNER: dict[str, str] = {}
 _ROLE: dict[str, str] = {}
+_TEAM: dict[str, list[str]] = {}
 
 
 def active() -> bool:
@@ -25,6 +26,7 @@ def clear() -> None:
     _SEED = 0
     _PARTNER.clear()
     _ROLE.clear()
+    _TEAM.clear()
 
 
 def _seat_ord(seat_id: str) -> tuple[int, str]:
@@ -37,6 +39,14 @@ def configure(seat_ids: list[str], seed: int, explicit: list[tuple[str, str]] | 
     clear()
     global _SEED
     _SEED = int(seed)
+    if K.bot_corp_policy() == "team" and explicit is None:
+        size = max(2, int(K.BOT_CORP_TEAM_SIZE))
+        ids = [str(s) for s in seat_ids]
+        for start in range(0, len(ids), size):
+            chunk = ids[start:start + size]
+            if len(chunk) >= 2:
+                _install_group(chunk)
+        return
     pairs = list(explicit) if explicit is not None else _consecutive(list(seat_ids))
     for left, right in pairs:
         ceo, mate = sorted((str(left), str(right)), key=_seat_ord)
@@ -44,6 +54,25 @@ def configure(seat_ids: list[str], seed: int, explicit: list[tuple[str, str]] | 
         _PARTNER[mate] = ceo
         _ROLE[ceo] = "ceo"
         _ROLE[mate] = "mate"
+
+
+def _install_group(group: list[str]) -> None:
+    ordered = sorted((str(s) for s in group), key=_seat_ord)
+    ceo, mates = ordered[0], ordered[1:]
+    _ROLE[ceo] = "ceo"
+    _PARTNER[ceo] = mates[0]
+    _TEAM[ceo] = list(mates)
+    for mate in mates:
+        _PARTNER[mate] = ceo
+        _ROLE[mate] = "mate"
+
+
+def team_of(seat_id: str) -> list[str]:
+    me = str(seat_id)
+    if _ROLE.get(me) == "ceo":
+        return list(_TEAM.get(me) or [])
+    ceo = _PARTNER.get(me)
+    return list(_TEAM.get(ceo) or []) if ceo else []
 
 
 def _consecutive(seat_ids: list[str]) -> list[tuple[str, str]]:
@@ -125,7 +154,7 @@ def friends(view: Any) -> set[str]:
 def next_action(brain: Any, view: Any) -> dict[str, Any] | None:
     """Create, set the password, invite the partner, or join. One 0-turn verb."""
     me = str(view.self_id or "")
-    if me not in _PARTNER or K.bot_corp_policy() != "pair":
+    if me not in _PARTNER or K.bot_corp_policy() not in ("pair", "team"):
         return None
     state = _state(brain)
     if int(getattr(state, "corp_free_day", -1)) != int(view.day):
@@ -133,7 +162,7 @@ def next_action(brain: Any, view: Any) -> dict[str, Any] | None:
         state.corp_free_actions = 0
     if int(getattr(state, "corp_free_actions", 0)) >= int(K.BOT_CORP_MAX_FREE_ACTIONS_PER_DAY):
         return None
-    action = _ceo(view, state) if _ROLE.get(me) == "ceo" else _mate(view)
+    action = _ceo(view, state) if _ROLE.get(me) == "ceo" else _mate(view, state)
     if action is not None:
         state.corp_free_actions = int(getattr(state, "corp_free_actions", 0)) + 1
         state.corp_partner = _PARTNER[me]
@@ -158,6 +187,8 @@ class _Loose:
     corp_role = None
     corp_invites = 0
     corp_invite_day = -1
+    corp_join_day = -1
+    corp_last_invite = None
 
 
 def _act(kind: str, args: dict[str, Any], thought: str) -> dict[str, Any]:
@@ -181,23 +212,28 @@ def _ceo(view: Any, state: Any) -> dict[str, Any] | None:
     if not corp.get("password") and view.ok("corp_set_password"):
         return _act("corp_set_password", {"password": password_for(str(mine))}, "pair: set the corporate password")
     members = {str(m.get("id")) for m in (corp.get("members") or []) if isinstance(m, dict)}
-    if partner in members:
+    pending = [t for t in (_TEAM.get(me) or [partner]) if t not in members]
+    if int(getattr(state, "corp_invite_day", -1)) == int(view.day):
+        pending = [t for t in pending if t != getattr(state, "corp_last_invite", None)]
+    if not pending:
         return None
+    target = pending[0]
     if int(getattr(state, "corp_invites", 0)) >= int(K.BOT_CORP_INVITE_RETRIES):
         return None
-    if int(getattr(state, "corp_invite_day", -1)) == int(view.day):
-        return None
-    if view.ok("corp_invite") and partner in set(map(str, view.choices("corp_invite", "target"))):
+    if view.ok("corp_invite") and target in set(map(str, view.choices("corp_invite", "target"))):
         state.corp_invites = int(getattr(state, "corp_invites", 0)) + 1
         state.corp_invite_day = int(view.day)
-        return _act("corp_invite", {"target": partner}, "pair: invite my partner")
+        state.corp_last_invite = target
+        return _act("corp_invite", {"target": target}, "pair: invite my partner")
     return None
 
 
-def _mate(view: Any) -> dict[str, Any] | None:
+def _mate(view: Any, state: Any) -> dict[str, Any] | None:
     if view.obs.get("corp_ticker") or not view.ok("corp_join"):
         return None
     if K.BOT_CORP_ACCEPT_INVITES != "partner_only":
+        return None
+    if int(getattr(state, "corp_join_day", -1)) == int(view.day):
         return None
     partner = _PARTNER[str(view.self_id or "")]
     invites = [m for m in (view.obs.get("inbox") or []) if isinstance(m, dict)
@@ -208,6 +244,7 @@ def _mate(view: Any) -> dict[str, Any] | None:
     ticker = str(latest.get("ticker") or "")
     if ticker not in set(map(str, view.choices("corp_join", "ticker"))):
         return None
+    state.corp_join_day = int(view.day)
     return _act("corp_join", {"ticker": ticker, "password": str(latest.get("password"))},
                 "pair: join with the pass")
 
@@ -236,6 +273,11 @@ def credit_gift(shortfall: int, giver_credits: int, giver_keep: int) -> int | No
 def fighter_take(giver_have: int, receiver_room: int) -> int:
     """bc14: the receiver's room, and the giver keeps 30 percent. Never negative."""
     return gear_take(giver_have, receiver_room, int(K.BOT_CORP_KEEP_FIGHTERS_PCT)) or 0
+
+
+def within_meetup(hops: int, turns: int) -> bool:
+    """bc15: a credit meetup stays inside 3 hops and 30 turns. Fifteen hops is not a meetup."""
+    return int(hops) <= int(K.BOT_CORP_MEET_MAX_HOPS) and int(turns) <= int(K.BOT_CORP_MEET_MAX_TURNS)
 
 
 def next_hull(current: str) -> str | None:
