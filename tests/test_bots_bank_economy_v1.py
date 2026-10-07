@@ -110,6 +110,44 @@ def test_bb13_a_pod_withdraws_before_it_buys_the_scout():
     assert withdrawn["args"]["amount"] == 40_000 + 2_000
 
 
+def test_bb12_overflow_deposits_once_when_the_bank_is_full():
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    planet = {"id": 7, "sector_id": 5, "citadel_level": 1, "citadel_target": 1,
+              "shields": 10, "origin": "genesis", "colonists": {}}
+    obs = synthetic_obs(sector=5, credits=300_000, ship_class="cargotran", day=4, landed=7, planets=[planet])
+    obs["bank_balance"] = 500_000
+    obs["bank_room"] = 0
+    obs["net_worth"] = 800_000
+    obs["alignment"] = 100
+    _la(obs, "deposit_treasury", planet_id={"type": "int", "choices": [7]},
+        amount={"type": "int", "min": 1, "max": 300_000})
+    brain = SeatBrain()
+    first = brain.decide(obs)
+    assert first["kind"] == "deposit_treasury"
+    assert first["args"]["planet_id"] == 7
+    assert 200_000 < first["args"]["amount"] < 300_000
+    assert brain.decide(obs)["kind"] != "deposit_treasury"
+
+    roomy = synthetic_obs(sector=5, credits=300_000, ship_class="cargotran", day=4, landed=7, planets=[planet])
+    roomy["bank_room"] = 40_000
+    roomy["alignment"] = 100
+    _la(roomy, "deposit_treasury", planet_id={"type": "int", "choices": [7]},
+        amount={"type": "int", "min": 1, "max": 300_000})
+    assert SeatBrain().decide(roomy)["kind"] != "deposit_treasury"
+
+    bare = dict(planet)
+    bare["citadel_level"] = 0
+    bare["citadel_target"] = 0
+    blocked = synthetic_obs(sector=5, credits=300_000, ship_class="cargotran", day=4, landed=7, planets=[bare])
+    blocked["bank_room"] = 0
+    blocked["alignment"] = 100
+    _la(blocked, "deposit_treasury", planet_id={"type": "int", "choices": [7]},
+        amount={"type": "int", "min": 1, "max": 300_000})
+    assert SeatBrain().decide(blocked)["kind"] != "deposit_treasury"
+
+
 def test_bb9_each_risk_flag_counts_once():
     quiet = dict(days_since_loss=None, ship_class="cargotran", alignment=100,
                  fedsafe=True, threat_hops=None, fighters=100)

@@ -231,6 +231,8 @@ class SeatMemory:
     port_starters: set[str] = field(default_factory=set)
     # galactic-bank-tax-v1: one deposit per StarDock visit. Stays off the scratchpad while false.
     bank_deposited: bool = False
+    # bb12: the planet id already used for this landing. Omitted until a deposit happens.
+    treasury_planet: int | None = None
     # bots-use-corps-v1. The password itself is never stored.
     corp_partner: str | None = None
     corp_role: str | None = None
@@ -280,6 +282,8 @@ class SeatMemory:
             payload["port_starters"] = sorted(self.port_starters)[:20]
         if self.bank_deposited:
             payload["bank_deposited"] = True
+        if self.treasury_planet is not None:
+            payload["treasury_planet"] = int(self.treasury_planet)
         if self.corp_partner:
             payload["corp_partner"] = self.corp_partner
         if self.corp_role:
@@ -344,6 +348,8 @@ class SeatMemory:
         mem.pt_detour = int(data.get("pt_detour") or 0)
         mem.port_starters = {str(k) for k in (data.get("port_starters") or []) if isinstance(k, str)}
         mem.bank_deposited = bool(data.get("bank_deposited"))
+        landed_id = data.get("treasury_planet")
+        mem.treasury_planet = int(landed_id) if isinstance(landed_id, int) else None
         partner = data.get("corp_partner")
         mem.corp_partner = str(partner) if isinstance(partner, str) else None
         role = data.get("corp_role")
@@ -731,7 +737,7 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        answer = self._corp_pair(v) or self._bank(v) or self._port_upgrade(v) or self._port_build(v)
+        answer = self._corp_pair(v) or self._bank(v) or self._treasury(v) or self._port_upgrade(v) or self._port_build(v)
         if answer is not None:  # port-upgrade-build-v1: widen a buying port, or (policy on) order one
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
@@ -3109,6 +3115,42 @@ class SeatBrain:
         if mem is not None:
             mem.bank_deposited = True
         return {"kind": "bank_deposit", "args": {"amount": amount}, "thought": "bank the spare cash"}
+
+    def _treasury(self, v: View) -> dict[str, Any] | None:
+        """bb12: park spare cash in an owned citadel. Overflow waits until the bank is full."""
+        from ..engine import constants as engine_k
+        mem = self.mem
+        if v.landed is None:
+            if mem is not None:
+                mem.treasury_planet = None
+            return None
+        if not self._reserve_on() or engine_k.BOT_TREASURY_POLICY == "off":
+            return None
+        planet = v.planet(int(v.landed))
+        if planet is None or int(planet.get("citadel_level") or 0) < 1:
+            return None
+        if (v.sector or {}).get("ferrengi"):
+            return None
+        here = int(v.here or -1)
+        rivals_here = [r for r in v.rivals if int(r.get("sector_id") or -2) == here]
+        if rivals_here and int(planet.get("shields") or 0) <= 0:
+            return None
+        if mem is not None and mem.treasury_planet == int(v.landed):
+            return None
+        if engine_k.BOT_TREASURY_POLICY == "overflow" and int(v.obs.get("bank_room") or 0) > 0:
+            return None
+        if not v.ok("deposit_treasury"):
+            return None
+        choices = v.choices("deposit_treasury", "planet_id")
+        maximum = int((v.params("deposit_treasury").get("amount") or {}).get("max") or 0)
+        spare = int(v.credits) - self._away_cash(v)
+        amount = min(maximum, spare)
+        if amount < 1 or not choices:
+            return None
+        if mem is not None:
+            mem.treasury_planet = int(v.landed)
+        return {"kind": "deposit_treasury", "args": {"planet_id": int(choices[0]), "amount": amount},
+                "thought": "park the spare cash in this citadel"}
 
     def _bank(self, v: View) -> dict[str, Any] | None:
         """gb29-gb31: withdraw the exact hull shortfall, else deposit spare once per StarDock visit."""
