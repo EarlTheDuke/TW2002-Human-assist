@@ -3152,6 +3152,10 @@ class SeatBrain:
         reserve = tax_keep(
             self._away_cash(v), max(planned) if planned else 0, int(v.obs.get("alignment") or 0),
         )
+        gap = max(0, egg - balance)
+        if gap:
+            from ..engine import constants as engine_k
+            reserve = min(reserve, max(int(engine_k.BOT_BANK_MIN_FLOAT), int(v.credits) - gap))
         amount = deposit_amount(
             int(v.credits), reserve,
             int(v.params("bank_deposit").get("max_amount") or 0),
