@@ -165,3 +165,7 @@ Seed 250925 spare, digest `e64c952b`, total 1,787,645. N3-P1 733,903. N2-P3 389,
 Seed 250925 with the detour off matches overflow exactly: digest `16ad8833`, total 1,809,848. The overflow 10-day took 0 detours.
 
 Seed 424242 spare matches overflow exactly: digest `6ca2c5b9`, total 1,725,233, treasury 0. That overflow 10-day also took 0 detours, so turning the detour off does not change it either. The detours in the 30-day overflow runs were 9 on seed 250925 and 17 on seed 424242.
+
+## Colonising, on 323f288
+
+The torpedo gate did not change the three colony bars. They passed in 182.56s: `test_record_then_replay_with_fresh_brain`, `test_n2_solo_tw2002_keeps_colonising`, and `test_n2_day10_beats_n1_and_keeps_organics`.
