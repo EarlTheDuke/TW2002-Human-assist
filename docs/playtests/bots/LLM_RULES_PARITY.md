@@ -132,3 +132,11 @@ Parity on and parity off wrote the same file. Action digest `87b76392`. Rejected
 | N1-P5 | 550,249 | scout_marauder | 13 |
 | N2-P4 | 436,720 | scout_marauder | 1 |
 | H-P6 | 7,975 | scout_marauder | 6 |
+
+## Text reader, 10-day, seed 250925
+
+Seats N3,N3,N2,N2,N1,R. R is the offline reader. Both runs rejected 0/0 with no exceptions. The reader did not start from the rich far-from-StarDock fixture, so it did not buy a hull.
+
+Parity on, reader kinds: plot_course 235, port_upgrade 80, warp 1257, wait 9. Final net worth 22,650, still a merchant cruiser, 0 credits.
+
+Parity off, reader kinds: warp 3330, wait 10. No plot_course and no port_upgrade. Final net worth stayed 42,650. That is the gap the legacy prompt leaves.
