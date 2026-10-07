@@ -52,3 +52,18 @@ bc25 a FlagShip pilot may found a corp (`CFS_HOLDER_MAY_CREATE` True). A parked 
 ## Deliberate differences
 
 Pairs are assigned before day 1. The password is derived from the seed and handed over only on the invite. Credit pooling uses a corp transfer, not the bank. Bots never send a negative transfer. The heuristic seat stays solo. Prompt text is unchanged.
+
+## Match, seed 250925, 10 days
+
+`scripts/run_scripted_match.py --seats N3,N3,N2,N2,N1,H --days 10 --seed 250925 --corp-report`. Rejected 0, exceptions 0, both runs. Policy off formed no corp. Policy pair formed N3P (P1, P2) and N2P (P3, P4) on day 1: 2 creates, 2 passwords, 2 invites, 2 joins, 12 transfers, 0 mate-on-mate attacks. Corporate deployments were 0 in both runs. The seats bought mines and did not lay them.
+
+Policy off is the same net worth as the alien-traders ignore run. The paired seats together finished a little under their solo total. The N3 pair gained (1,144,181 vs 1,042,805). The N2 pair lost (748,900 vs 916,098) because the solo N2-P4 bought a battleship and the paired seats stayed in CargoTrans.
+
+| Seat | Off net worth | Pair net worth | Off ship | Pair ship | Off deaths | Pair deaths |
+| --- | --- | --- | --- | --- | --- | --- |
+| N3-P1 | 828,617 | 619,960 | battleship | cargotran | 0 | 0 |
+| N3-P2 | 214,188 | 524,221 | cargotran | cargotran | 0 | 0 |
+| N2-P3 | 335,428 | 386,390 | cargotran | cargotran | 0 | 0 |
+| N2-P4 | 580,670 | 362,510 | cargotran | cargotran | 0 | 0 |
+| N1-P5 | 169,056 | 296,257 | scout | cargotran | 1 | 0 |
+| H-P6 | 7,975 | 7,975 | scout | scout | 4 | 2 |
