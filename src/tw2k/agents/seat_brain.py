@@ -2132,11 +2132,31 @@ class SeatBrain:
             return None
         return goods[0]
 
+    def _shared_corp_home(self, v: View) -> dict[str, Any] | None:
+        """bc10: the partner works the corp planet instead of founding a second home."""
+        from ..engine import constants as engine_k
+        from . import corp_brain
+        if not engine_k.BOT_CORP_SHARED_HOME or engine_k.bot_corp_policy() != "pair":
+            return None
+        if not corp_brain.active() or corp_brain.role_of(str(v.self_id or "")) != "mate":
+            return None
+        planets = [p for p in ((v.obs.get("corp") or {}).get("planets") or [])
+                   if isinstance(p, dict) and p.get("planet_id") is not None and p.get("sector_id") is not None]
+        if not planets:
+            return None
+        return max(planets, key=lambda p: (int(p.get("citadel_level") or 0), int(p.get("population") or 0)))
+
     def _refresh_home(self, v: View) -> None:
         mem = self.mem
-        candidates = v.genesis_planets() or v.worlds()
+        shared = self._shared_corp_home(v)
         if mem.home_planet is not None and v.planet(mem.home_planet) is None:
-            mem.home_planet = mem.home_sector = None
+            if shared is None or int(shared.get("planet_id") or -1) != int(mem.home_planet):
+                mem.home_planet = mem.home_sector = None
+        if shared is not None:
+            mem.home_planet = int(shared["planet_id"])
+            mem.home_sector = int(shared["sector_id"])
+            return
+        candidates = v.genesis_planets() or v.worlds()
         if candidates and mem.home_planet is None:
             best = max(candidates, key=lambda p: (int(p.get("citadel_level") or 0), _colonists_total(p)))
             mem.home_planet = int(best["id"])
