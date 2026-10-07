@@ -3016,13 +3016,17 @@ class SeatBrain:
         amount = withdraw_amount(price, keep, int(v.credits), balance, egg, legal, recovery=False)
         return amount, False
 
-    def _away_cash(self, v: View) -> int:
-        from .bank_brain import away_reserve
+    def _off_dock_planned(self, v: View) -> list[int]:
         planned: list[int] = []
         if v.genesis_aboard and not v.worlds():
             planned.append(CITADEL_TIER_COST[0][0] + self.working_capital)
         elif v.worlds():
             planned.append(max(self._citadel_reserve(v), self._unfinished_l2_cash(v)))
+        return planned
+
+    def _away_cash(self, v: View) -> int:
+        from .bank_brain import away_reserve
+        planned = self._off_dock_planned(v)
         holds = int(v.ship.get("holds") or 0)
         fighters = int(v.ship.get("fighters") or v.ship.get("fighter_count") or 0)
         return away_reserve(holds, planned, 0, fighters > 0)
@@ -3043,7 +3047,7 @@ class SeatBrain:
 
     def _bank_reserve(self, v: View) -> dict[str, Any] | None:
         """Withdraw the StarDock shortfall, else deposit cash above the away reserve. No genesis hold."""
-        from .bank_brain import deposit_amount, nest_egg, withdraw_amount
+        from .bank_brain import deposit_amount, nest_egg, tax_keep, withdraw_amount
         mem = self.mem
         balance = int(v.obs.get("bank_balance") or 0)
         egg = nest_egg(v.net_worth)
@@ -3068,8 +3072,12 @@ class SeatBrain:
             return None
         if not v.ok("bank_deposit"):
             return None
+        planned = self._off_dock_planned(v)
+        reserve = tax_keep(
+            self._away_cash(v), max(planned) if planned else 0, int(v.obs.get("alignment") or 0),
+        )
         amount = deposit_amount(
-            int(v.credits), self._away_cash(v),
+            int(v.credits), reserve,
             int(v.params("bank_deposit").get("max_amount") or 0),
             day1=int(v.day) <= 1,
         )

@@ -7,6 +7,7 @@ from tw2k.agents.bank_brain import (
     deposit_amount,
     nest_egg,
     purse,
+    tax_keep,
     trade_capital,
     withdraw_amount,
 )
@@ -106,6 +107,37 @@ def test_bb13_a_pod_withdraws_before_it_buys_the_scout():
     withdrawn = SeatBrain().decide(pod)
     assert withdrawn["kind"] == "bank_withdraw"
     assert withdrawn["args"]["amount"] == 40_000 + 2_000
+
+
+def test_bb10_tax_line_keeps_a_good_seat_under_the_line():
+    assert tax_keep(150_000, 0, 50) == 100_000
+    assert tax_keep(20_750, 0, 50) == 20_750
+    assert tax_keep(150_000, 120_000, 50) == 150_000
+    assert tax_keep(150_000, 0, -100) == 150_000
+
+
+def test_bb10_good_seat_deposits_down_to_the_tax_line(monkeypatch):
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    brain = SeatBrain()
+    obs = synthetic_obs(sector=1, credits=400_000, ship_class="cargotran", day=3)
+    obs["alignment"] = 50
+    obs["bank_balance"] = 0
+    obs["net_worth"] = 400_000
+    _la(obs, "buy_equip", item={"choices": [], "unit_price_by": {}})
+    _la(obs, "bank_deposit", max_amount=400_000, balance=0, room=500_000)
+    monkeypatch.setattr(SeatBrain, "_away_cash", lambda self, v: 150_000)
+    first = brain.decide(obs)
+    assert first["kind"] == "bank_deposit"
+    assert first["args"]["amount"] == 300_000
+
+    evil = SeatBrain()
+    obs["alignment"] = -100
+    monkeypatch.setattr(SeatBrain, "_away_cash", lambda self, v: 150_000)
+    deposited = evil.decide(obs)
+    assert deposited["kind"] == "bank_deposit"
+    assert deposited["args"]["amount"] == 250_000
 
 
 def test_bb8_day1_cap():

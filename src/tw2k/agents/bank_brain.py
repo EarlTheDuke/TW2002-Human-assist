@@ -70,6 +70,19 @@ def withdraw_amount(
     return max(0, min(shortfall, room, legal))
 
 
+def tax_keep(reserve: int, planned_max: int, alignment: int) -> int:
+    """Good seats leave at most the tax line, unless one planned buy needs more.
+
+    Evil seats are never taxed, so they keep the whole reserve.
+    """
+    if int(alignment) < int(K.TAX_MIN_ALIGNMENT):
+        return int(reserve)
+    line = int(K.TAX_THRESHOLD)
+    if int(planned_max) > line:
+        return int(reserve)
+    return min(int(reserve), line)
+
+
 def deposit_amount(credits: int, reserve: int, deposit_max: int, *, day1: bool) -> int:
     """Spare above the away reserve. Day 1 deposits at most the first nest stage,
     and only when that still leaves the reserve on the ship."""

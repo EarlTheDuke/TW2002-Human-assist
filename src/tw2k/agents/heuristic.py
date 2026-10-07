@@ -290,7 +290,7 @@ class HeuristicAgent(BaseAgent):
             return None
         if not self._h_banks():
             return None
-        from .bank_brain import deposit_amount, nest_egg, withdraw_amount
+        from .bank_brain import deposit_amount, nest_egg, tax_keep, withdraw_amount
         legal = self._legal(obs)
         balance = int(obs.bank_balance or 0)
         egg = nest_egg(int(getattr(obs, "net_worth", 0) or 0))
@@ -329,7 +329,8 @@ class HeuristicAgent(BaseAgent):
             return None
         maximum = int((deposit.get("params") or {}).get("max_amount") or 0)
         day = int(getattr(obs, "day", 1) or 1)
-        amount = deposit_amount(credits, self._h_keep(obs), maximum, day1=day <= 1)
+        keep = tax_keep(self._h_keep(obs), 0, int(getattr(obs, "alignment", 0) or 0))
+        amount = deposit_amount(credits, keep, maximum, day1=day <= 1)
         if amount < 1:
             return None
         self._h_deposited = True
