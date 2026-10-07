@@ -71,13 +71,42 @@ def parse_seats(text: str) -> list[str]:
     return seats
 
 
+def _place_reader_f1(universe, pid: str) -> None:
+    """The fixture-lab f1 start: 10 hops from StarDock, outside FedSpace, 250000 credits."""
+    from tw2k.engine import constants as K
+
+    start = int(K.STARDOCK_SECTOR)
+    seen = {start}
+    layer = [start]
+    for _ in range(10):
+        nxt: list[int] = []
+        for sid in layer:
+            for dest in universe.sectors[sid].warps:
+                if dest not in seen:
+                    seen.add(dest)
+                    nxt.append(dest)
+        if not nxt:
+            raise RuntimeError("galaxy has no sector 10 hops from StarDock")
+        layer = nxt
+    dest = next((int(sid) for sid in layer if sid not in K.FEDSPACE_SECTORS), int(layer[0]))
+    player = universe.players[pid]
+    old = universe.sectors[player.sector_id].occupant_ids
+    if pid in old:
+        old.remove(pid)
+    player.sector_id = dest
+    player.credits = 250_000
+    occupants = universe.sectors[dest].occupant_ids
+    if pid not in occupants:
+        occupants.append(pid)
+
+
 def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 1000,
               turns_per_day: int = 1000, credits: int = 20_000, ferrengi: bool = True,
               max_steps: int = 2_000_000, port_report: bool = False,
               bank_report: bool = False, corp_report: bool = False,
               corp_policy: str | None = None,
               corp_pairs: list[tuple[str, str]] | None = None,
-              action_digest: bool = False) -> dict[str, Any]:
+              action_digest: bool = False, reader_start: str | None = None) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
     from tw2k.agents.seat_brain import SeatBrain
@@ -115,6 +144,11 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "rows": [], "daily": [], "start_sector": p.sector_id,
             "exp0": int(p.experience), "align0": int(p.alignment),
         }
+    if reader_start == "f1":
+        for pid, row in st.items():
+            if row["kind"] == "R":
+                _place_reader_f1(u, pid)
+                row["start_sector"] = u.players[pid].sector_id
     from tw2k.agents import corp_brain
     saved_policy = K.BOT_CORP_POLICY
     if corp_policy:
@@ -442,6 +476,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="add corp counters (corps, members, corp events, rogue groups; not part of the legacy digest)")
     ap.add_argument("--llm-parity", choices=("tw2002", "legacy"),
                     help="set LLM_PARITY_MODE for this run (bots ignore the prompt; the action digest must match)")
+    ap.add_argument("--reader-start", choices=("f1",),
+                    help="move an R seat 10 hops from StarDock with 250000 credits")
     ap.add_argument("--action-digest", action="store_true",
                     help="add a checksum of each seat's action rows (not part of the legacy digest)")
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
@@ -463,7 +499,7 @@ def main(argv: list[str] | None = None) -> int:
                        turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi,
                        port_report=a.port_report, bank_report=a.bank_report,
                        corp_report=a.corp_report, corp_policy=a.corp_policy, corp_pairs=pairs,
-                       action_digest=a.action_digest)
+                       action_digest=a.action_digest, reader_start=a.reader_start)
     text = json.dumps(result, indent=1, sort_keys=True)
     md = render_markdown(result)
     if a.json_out:
