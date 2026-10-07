@@ -376,3 +376,29 @@ def test_bb11_detour_is_once_a_day_and_within_three_hops():
     held.mem.held[1] = [3, 50]
     blocked, _ = held._bank_detour(held_view, held_plan, held_intent)
     assert blocked["args"]["target"] == 4
+
+
+def test_bb18_daily_bank_cap_resets_on_the_next_day():
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain, SeatMemory
+
+    def obs_for(day: int):
+        obs = synthetic_obs(sector=1, credits=80_000, ship_class="cargotran", day=day)
+        obs["bank_balance"] = 0
+        obs["net_worth"] = 80_000
+        obs["alignment"] = 100
+        _la(obs, "buy_equip", item={"choices": [], "unit_price_by": {}})
+        _la(obs, "bank_deposit", max_amount=80_000, balance=0, room=500_000)
+        return obs
+
+    brain = SeatBrain()
+    brain.mem = SeatMemory()
+    brain.mem.bank_verbs_day = 3
+    brain.mem.bank_verbs = 8
+    assert brain.decide(obs_for(3))["kind"] != "bank_deposit"
+    nxt = brain.decide(obs_for(4))
+    assert nxt["kind"] == "bank_deposit"
+    assert brain.mem.bank_verbs == 1
+    restored = SeatMemory.load(brain.mem.dump())
+    assert restored.bank_verbs_day == 4
+    assert restored.bank_verbs == 1
