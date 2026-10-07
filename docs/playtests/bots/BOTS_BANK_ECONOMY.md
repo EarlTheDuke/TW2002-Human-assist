@@ -141,3 +141,17 @@ Each row is the bug that will be planted, and the test that must fail. Not re-br
 | pb23 legacy uses the new reserve | `test_pb23_legacy_keeps_the_float` |
 | pb24 a torpedo is carried overnight with no deploy planned | `test_pb24_no_spare_torpedo_overnight` |
 | pb25 the report files a recovery withdraw as a hull buy and drops credits lost | `test_pb25_report_names_recovery_and_losses` |
+
+## After, on b4ae22e
+
+Policy `reserve`. Rejected 0/0 and the save matched on every run. Citadel deposits and detours showed up only on the 30-day runs, after a bank account filled.
+
+10-day seed 250925, digest `16ad8833`, total 1,809,848. N3-P1 766,412 (bank 397,499, tax 15,708). N2-P3 387,649 (bank 50,000). N1-P5 281,031 (bank 50,000). N3-P2 163,396 (bank 15,865). N2-P4 161,357 (bank 15,435). H-P6 50,003, 2 deaths, lost 33,576, bank 42,028, Scout from day 5.
+
+10-day seed 424242, digest `6ca2c5b9`, total 1,725,233. N3-P1 782,515 (bank 452,997). N2-P3 613,939 (bank 267,794). N2-P4 174,906 (bank 38,131). N3-P2 127,923 (bank 15,387). N1-P5 17,975, 2 deaths, bank 10,000, Scout from day 1. H-P6 7,975, 4 deaths, bank 0, broke 9 days. The before column for this slice used seed 4242, not 424242.
+
+30-day seed 250925, digest `b15d65a0`, total 6,280,129. N3-P1 2,823,128 (bank full at 500,000, treasury 797,982, tax 301,070, 9 detours). N2-P3 1,520,218 (treasury 317,135, 4 deaths, 1 detour). N1-P5 892,662 (5 deaths). N3-P2 523,588. N2-P4 470,530, ended in a Scout. H-P6 still 50,003.
+
+30-day seed 424242, digest `0bc512d4`, total 4,605,090. N3-P1 2,458,682 (bank full, treasury 336,390, tax 428,874, 17 detours). N2-P3 1,276,834 (10 deaths, lost 524,200, treasury 78,907). N2-P4 611,932. N3-P2 231,692. N1-P5 stayed 17,975. H-P6 stayed 7,975 with broke 29 days and no deposit.
+
+S7 is not met. H at day 10 is 50,003 on seed 250925 and 7,975 on seed 424242. The 10,000 nest egg on N1-P5 cannot buy a CargoTran.
