@@ -755,6 +755,9 @@ def get_system_prompt() -> str:
         text = _combat_framing_prompt_text(text)
     if K.slow_hull_hint_on():
         text = text.replace(_PRICE_LINE_BATTLESHIP, _PRICE_LINE_BATTLESHIP.rstrip("\n") + _SLOW_HULL_NOTE, 1)
+    if K.llm_parity_on():
+        from . import rules_text
+        text = rules_text.apply(text)
     return text
 
 
