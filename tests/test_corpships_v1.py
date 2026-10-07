@@ -307,6 +307,7 @@ _CORP_PIN_FLIPS = (
     "BANK_MODE",
     "CORP_MODE",
     "ALIEN_MODE",
+    "CORP_BOTS_MODE",
 )
 
 

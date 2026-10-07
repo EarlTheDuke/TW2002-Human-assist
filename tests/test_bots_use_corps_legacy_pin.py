@@ -1,8 +1,9 @@
-"""BANK_MODE legacy matches the engine before this slice.
+"""CORP_BOTS_MODE legacy matches the engine before this slice.
 
-Recorded with tests/fed_legacy_digest.py on 6b13b55 (no bank code): scripted
-N3,N2,N1,H, seed 250925, 3 days. BANK_MODE is named so the pin still matches
-after the mode exists. The other names are the tw2002 modes on that commit.
+Recorded with tests/fed_legacy_digest.py on 423d502 (no CORP_BOTS_MODE): scripted
+N3,N2,N1,H, seed 250925, 3 days. CORP_BOTS_MODE is named so the pin still matches
+after the mode exists. LLM_ROUTE_NOTICE and LLM_NEW_DAY_GOAL_NOTICE are bools,
+not modes, so this pin sets both False before the digest.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from pathlib import Path
 from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
-BANK_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
+BOTS_USE_CORPS_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
 PIN_FLIPS = (
     "CORP_BOTS_MODE",
     "ALIEN_MODE",
@@ -35,14 +36,16 @@ PIN_FLIPS = (
 )
 
 
-def test_bank_legacy_is_unchanged():
+def test_bots_use_corps_legacy_is_unchanged():
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
+        "import tw2k.engine.constants as K;"
+        "K.LLM_ROUTE_NOTICE = False; K.LLM_NEW_DAY_GOAL_NOTICE = False;"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
         f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={PIN_FLIPS!r}))"
     )
-    env = pin_env()
     out = subprocess.run(
-        [sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True, timeout=900, check=True,
+        [sys.executable, "-c", code], cwd=ROOT, env=pin_env(),
+        capture_output=True, text=True, timeout=900, check=True,
     )
-    assert out.stdout.strip().splitlines()[-1] == BANK_LEGACY_GOLDEN
+    assert out.stdout.strip().splitlines()[-1] == BOTS_USE_CORPS_LEGACY_GOLDEN
