@@ -34,9 +34,9 @@ Sources under `C:\Users\sugar\tw2002_reference\` (GAP_MAP shorthand): Bible, Bib
 | f16 | Entry | Align >= 0 (wiki) vs -50 MBBS. | SOURCE-CONFLICT. | `POLICE_MIN_ALIGNMENT=0`; sector 1; 0 turns. | `test_f16_entry` |
 | f17 | Commission | 500..999 -> 1000 once. | CONFIRMED boost; once = MBBS. | `COMMISSION_ONCE=True`. | `test_f17_commission` / `test_plant_8` |
 | f18 | post_reward | +1 align / 1000 cr on red target. | CONFIRMED rate. | `REWARD_MIN=1000`; `any_red` default. | `test_f18_post_reward` / `test_plant_9` |
-| f19 | claim_reward | Kill (no escape), not pod. | CONFIRMED: REV. | `pending_rewards[killer]` on death only. | `test_f19_claim` / `test_plant_10` |
+| f19 | claim_reward | Kill (no escape), not pod. | CONFIRMED: REV. | `pending_rewards[killer]` on death only. Underground contracts are a separate list (`STARDOCK_TAVERN.md` tv17) and are not paid here. | `test_f19_claim` / `test_plant_10` |
 | f20 | Ten Most Wanted | Up to 10 evil; titles not numbers. | CONFIRMED columns; order UNVERIFIED. | Align asc, reward desc, id; corp None. | `test_f20_most_wanted` / `test_plant_12` |
-| f21 | Underground | Out of scope. | — | Documented. | n/a |
+| f21 | Underground | Built in `STARDOCK_TAVERN.md`, not in this file. | — | Hit contracts stay off `posted_rewards`. | `test_pb26_contracts_are_not_police_rewards` |
 | **ISS repo** | | | | | |
 | f22 | Evil ISS | Destroyed on move (TWGS) / own-fighter safe (MBBS). | CONFIRMED both readings. | `ISS_REPO_MODE=twgs`; cloaked safe; align 0 ok. A move is a warp (also each plot_course hop), a retreat, or a planet transporter beam. | `test_f22_iss_repo` / `test_plant_11` / `test_qc_iss_repo_on_retreat` |
 | f23 | Hail | Warning when align first < 0 in ISS. | UNVERIFIED wording. | Owner-only `FED_HAIL` at the end of the action that turned the pilot evil (so it lands before the next warp). | `test_f23_hail` / `test_qc_hail_precedes_repossession` |
