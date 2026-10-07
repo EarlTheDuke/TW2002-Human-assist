@@ -402,3 +402,27 @@ def test_bb18_daily_bank_cap_resets_on_the_next_day():
     restored = SeatMemory.load(brain.mem.dump())
     assert restored.bank_verbs_day == 4
     assert restored.bank_verbs == 1
+
+
+def test_bb27_nest_egg_is_deposited_before_the_away_reserve():
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    def obs_for(balance: int):
+        obs = synthetic_obs(sector=1, credits=80_000, ship_class="cargotran", day=3)
+        obs["bank_balance"] = balance
+        obs["net_worth"] = 80_000 + balance
+        obs["alignment"] = 100
+        _la(obs, "buy_equip", item={"choices": [], "unit_price_by": {}})
+        _la(obs, "bank_deposit", max_amount=80_000, balance=balance, room=500_000 - balance)
+        return obs
+
+    brain = SeatBrain()
+    brain._away_cash = lambda v: 150_000  # noqa: SLF001
+    empty = brain.decide(obs_for(0))
+    assert empty["kind"] == "bank_deposit"
+    assert empty["args"]["amount"] == 10_000
+
+    full = SeatBrain()
+    full._away_cash = lambda v: 150_000  # noqa: SLF001
+    assert full.decide(obs_for(10_000))["kind"] != "bank_deposit"
