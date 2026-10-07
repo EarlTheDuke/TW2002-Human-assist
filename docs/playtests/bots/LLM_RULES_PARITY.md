@@ -65,3 +65,16 @@ Verb inventory and line inventory are filled as the prompt text lands. No paid A
 | f8 the f1 seat with the minimal prompt | 7122 | 7231 | 1.5% |
 
 Parity checklist: no `500k cr at StarDock`, no `corp_deposit`, no `corp_withdraw`, no `shared treasury`. f1 parity hint names `plot_course` execute and does not say warp back. f4 hint does not copy the password. Legacy keeps the 500k line, the warp-back hint, and a compact legal list with no `args` key. Token estimate is chars/4: full parity prompt about 10,420 tokens.
+
+## 10-day scripted, seed 250925
+
+Seats N3,N3,N2,N2,N1,H. Parity on and parity off wrote the same table and the same action digest `cd91bf36`. Rejected 0/0. Exceptions 0. Wall about 327s on and 372s off.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | ---: | --- | ---: |
+| N3-P1 | 648,074 | cargotran | 0 |
+| N2-P3 | 314,875 | cargotran | 0 |
+| N1-P5 | 217,288 | cargotran | 0 |
+| N3-P2 | 188,773 | merchant_cruiser | 0 |
+| N2-P4 | 138,940 | merchant_cruiser | 0 |
+| H-P6 | 7,975 | scout_marauder | 3 |
