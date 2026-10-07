@@ -130,6 +130,18 @@ def test_lp26_legacy_reader_misses_plot_execute_and_the_new_verbs(monkeypatch):
     assert invited["action"]["kind"] != "corp_join"
 
 
+def test_reader_skips_a_fuel_buy_the_port_does_not_sell():
+    from tests.llm_text_reader import choose
+    user = json.dumps({
+        "sector": {"id": 40, "port": {"sells": ["organics"], "buys": []}},
+        "self": {"credits": 1000, "turns_remaining": 10, "ship": {"cargo": {}}},
+        "legal_actions": {"legal": ["trade", "warp"], "blocked": {}},
+        "adjacent": [{"id": 2}],
+        "action_hint": "",
+    })
+    assert choose("trade only", user)["action"]["kind"] == "warp"
+
+
 def test_lp26_parity_reader_plots_banks_and_joins():
     from tests.llm_text_reader import choose
     from tw2k.agents.prompts import get_system_prompt

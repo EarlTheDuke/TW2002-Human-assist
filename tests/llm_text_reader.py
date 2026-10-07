@@ -127,8 +127,12 @@ def choose(system: str, user_turn: str) -> dict[str, Any]:
     if _verb_named(system, "port_upgrade") and "port_upgrade" in legal and credits >= 250:
         return _action("port_upgrade", {"commodity": "fuel_ore", "units": 1})
 
-    if "trade" in legal:
+    port = (user.get("sector") or {}).get("port") or {}
+    cargo = ((user.get("self") or {}).get("ship") or {}).get("cargo") or {}
+    if "trade" in legal and "fuel_ore" in (port.get("sells") or []):
         return _action("trade", {"commodity": "fuel_ore", "qty": 1, "side": "buy"})
+    if "trade" in legal and "fuel_ore" in (port.get("buys") or []) and int(cargo.get("fuel_ore") or 0) > 0:
+        return _action("trade", {"commodity": "fuel_ore", "qty": 1, "side": "sell"})
     if "warp" in legal:
         adjacent = user.get("adjacent") or []
         target = adjacent[0]["id"] if adjacent and isinstance(adjacent[0], dict) else 1
