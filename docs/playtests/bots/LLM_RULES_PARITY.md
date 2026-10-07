@@ -144,10 +144,52 @@ Parity on and parity off wrote the same file. Action digest `87b76392`. Rejected
 | N2-P4 | 436,720 | scout_marauder | 1 |
 | H-P6 | 7,975 | scout_marauder | 6 |
 
-## Text reader, 10-day, seed 250925
+## Text reader from the f1 start, 10-day
 
-Seats N3,N3,N2,N2,N1,R. R is the offline reader. Both runs rejected 0/0 with no exceptions. The reader did not start from the rich far-from-StarDock fixture, so it did not buy a hull.
+Seats N3,N3,N2,N2,N1,R. R starts 10 hops from StarDock with 250,000 credits, outside FedSpace. Parity reaches StarDock and is in a cargotran on day 1. Legacy is still in the merchant cruiser on day 1 and never plots.
 
-Parity on, reader kinds: plot_course 235, port_upgrade 80, warp 1257, wait 9. Final net worth 22,650, still a merchant cruiser, 0 credits.
+Seed 250925 parity on, digest `2dd804fa`, rejected 0/0. Reader kinds: buy_ship 6, plot_course 167, port_upgrade 55, trade 92, warp 1032, wait 3. Day 1 ship cargotran, net worth 28,035.
 
-Parity off, reader kinds: warp 3330, wait 10. No plot_course and no port_upgrade. Final net worth stayed 42,650. That is the gap the legacy prompt leaves.
+| Seat | Net worth | Ship | Deaths |
+| --- | ---: | --- | ---: |
+| N3-P1 | 809,208 | battleship | 0 |
+| N3-P2 | 187,958 | merchant_cruiser | 0 |
+| N1-P5 | 180,000 | scout_marauder | 1 |
+| N2-P3 | 175,543 | scout_marauder | 1 |
+| N2-P4 | 137,651 | merchant_cruiser | 0 |
+| R-P6 | 28,003 | cargotran | 0 |
+
+Seed 250925 parity off, digest `36ce6f78`. Reader kinds: trade 203, warp 2997, wait 9. No plot_course and no buy_ship. Day 1 still merchant_cruiser. The reader was rejected 183 times, all "Port does not have enough stock".
+
+| Seat | Net worth | Ship | Deaths |
+| --- | ---: | --- | ---: |
+| N3-P1 | 546,178 | battleship | 0 |
+| N2-P3 | 387,243 | cargotran | 0 |
+| N3-P2 | 212,842 | merchant_cruiser | 0 |
+| N1-P5 | 180,697 | scout_marauder | 1 |
+| R-P6 | 180,257 | merchant_cruiser | 0 |
+| N2-P4 | 123,183 | merchant_cruiser | 0 |
+
+Seed 4242 parity on, digest `784380cf`, rejected 0/0. Reader kinds: buy_ship 6, plot_course 310, warp 2186, wait 2. Day 1 ship cargotran, net worth 41,535.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | ---: | --- | ---: |
+| N3-P1 | 518,830 | cargotran | 0 |
+| N1-P5 | 439,773 | cargotran | 0 |
+| N2-P3 | 287,890 | cargotran | 1 |
+| N2-P4 | 197,475 | merchant_cruiser | 0 |
+| N3-P2 | 132,105 | cargotran | 0 |
+| R-P6 | 41,535 | cargotran | 0 |
+
+Seed 4242 parity off, digest `63d9dd5c`, rejected 0/0. Reader kinds: trade 20, warp 3330, wait 9. Day 1 still merchant_cruiser, net worth 272,650.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | ---: | --- | ---: |
+| N3-P1 | 468,195 | battleship | 0 |
+| N1-P5 | 464,312 | merchant_cruiser | 0 |
+| N2-P3 | 421,439 | cargotran | 0 |
+| R-P6 | 180,311 | merchant_cruiser | 0 |
+| N3-P2 | 178,565 | merchant_cruiser | 0 |
+| N2-P4 | 123,653 | merchant_cruiser | 0 |
+
+The earlier FedSpace start (20,000 credits) did not buy a hull. Parity on digest `6df92949` ended at 22,650 still in a merchant cruiser. Parity off digest `5a2cc40a` ended at 42,650.
