@@ -2102,7 +2102,8 @@ TAX_ALIGN_AWARD_MAX = 31_999            # gb22 SOURCE-CONFLICT
 TAX_ALIGN_OVERFLOW = "none"             # gb22: "none" | "clamp"
 TAX_WHEN = "day_tick"                   # gb23 DERIVED
 TAX_TO = "sink"                         # gb24 CONFIRMED
-BOT_BANK_POLICY = "tax_and_death"       # gb29 DERIVED: "tax_and_death" | "off"
+BOTS_BANK_MODE = "tw2002"              # bb1: "tw2002" | "legacy". Unread until the bot hooks land.
+BOT_BANK_POLICY = "tax_and_death"       # gb29 DERIVED: "tax_and_death" | "off". "reserve" arrives with the bot.
 BOT_BANK_FLOAT = 30_000
 BOT_BANK_DETOUR_HOPS = 0
 BOT_BANK_TRANSFER = False               # gb31 DERIVED
@@ -2110,6 +2111,10 @@ BOT_BANK_TRANSFER = False               # gb31 DERIVED
 
 def bank_on() -> bool:
     return BANK_MODE == "tw2002"
+
+
+def bots_bank_on() -> bool:
+    return BOTS_BANK_MODE == "tw2002" and bank_on()
 
 
 # --- Corporations (CORP_MODE) -------------------------------------------------

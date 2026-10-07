@@ -1,11 +1,8 @@
-"""CORP_BOTS_MODE legacy matches the engine before this slice.
+"""BOTS_BANK_MODE legacy matches the bots before this slice.
 
-Recorded with tests/fed_legacy_digest.py on 423d502 (no CORP_BOTS_MODE): scripted
-N3,N2,N1,H, seed 250925, 3 days. CORP_BOTS_MODE is named so the pin still matches
-after the mode exists. LLM_ROUTE_NOTICE and LLM_NEW_DAY_GOAL_NOTICE are bools,
-not modes, so this pin sets both False before the digest.
-The 10-day N3,N3,N2,N2,N1,H seed 250925 digest with the same flips, outside the
-suite, is 221826d9bd9a6a6c85668224.
+Recorded on dda012c, before any bot reads BOTS_BANK_MODE. Scripted N3,N2,N1,H,
+seed 250925, 3 days. The bool notices are not modes, so this pin sets them
+false. LLM_SELL_FIRST is a bool too.
 """
 
 from __future__ import annotations
@@ -17,9 +14,10 @@ from pathlib import Path
 from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
-BOTS_USE_CORPS_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
+BOTS_BANK_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
 PIN_FLIPS = (
-    "BOTS_BANK_MODE", "LLM_PLANET_NUDGE_MODE",
+    "BOTS_BANK_MODE",
+    "LLM_PLANET_NUDGE_MODE",
     "LLM_PARITY_MODE",
     "CORP_BOTS_MODE",
     "ALIEN_MODE",
@@ -40,11 +38,12 @@ PIN_FLIPS = (
 )
 
 
-def test_bots_use_corps_legacy_is_unchanged():
+def test_bots_bank_legacy_is_unchanged():
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "import tw2k.engine.constants as K;"
         "K.LLM_ROUTE_NOTICE = False; K.LLM_NEW_DAY_GOAL_NOTICE = False;"
+        "K.LLM_SELL_FIRST = False;"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
         f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={PIN_FLIPS!r}))"
     )
@@ -52,4 +51,4 @@ def test_bots_use_corps_legacy_is_unchanged():
         [sys.executable, "-c", code], cwd=ROOT, env=pin_env(),
         capture_output=True, text=True, timeout=900, check=True,
     )
-    assert out.stdout.strip().splitlines()[-1] == BOTS_USE_CORPS_LEGACY_GOLDEN
+    assert out.stdout.strip().splitlines()[-1] == BOTS_BANK_LEGACY_GOLDEN
