@@ -334,3 +334,45 @@ def test_bb14_h_deposits_spare_once_per_visit():
     assert first.args["amount"] == 30_000
     second = asyncio.run(agent.act(obs))
     assert second.kind.value == "warp"
+
+
+def _detour_brain(sector: int, credits: int = 200_000, *, cargo: dict | None = None, day: int = 3):
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import Intent, SeatBrain, SeatMemory, View
+
+    obs = synthetic_obs(sector=sector, credits=credits, ship_class="cargotran", day=day)
+    obs["alignment"] = 100
+    obs["bank_balance"] = 0
+    obs["net_worth"] = credits
+    if cargo:
+        obs["ship"]["cargo"].update(cargo)
+    brain = SeatBrain()
+    brain.mem = SeatMemory()
+    plan = {"kind": "plot_course", "args": {"target": 4, "execute": True}, "thought": "trade"}
+    return brain, View(obs), plan, Intent()
+
+
+def test_bb11_detour_is_once_a_day_and_within_three_hops():
+    brain, view, plan, intent = _detour_brain(2)
+    first, _ = brain._bank_detour(view, plan, intent)
+    assert first["kind"] == "plot_course"
+    assert first["args"]["target"] == 1
+    second, _ = brain._bank_detour(view, plan, intent)
+    assert second["args"]["target"] == 4
+
+    far, far_view, far_plan, far_intent = _detour_brain(5)
+    stayed, _ = far._bank_detour(far_view, far_plan, far_intent)
+    assert stayed["args"]["target"] == 4
+
+    loaded, loaded_view, loaded_plan, loaded_intent = _detour_brain(2, cargo={"fuel_ore": 10})
+    kept, _ = loaded._bank_detour(loaded_view, loaded_plan, loaded_intent)
+    assert kept["args"]["target"] == 4
+
+    poor, poor_view, poor_plan, poor_intent = _detour_brain(2, credits=20_000)
+    broke, _ = poor._bank_detour(poor_view, poor_plan, poor_intent)
+    assert broke["args"]["target"] == 4
+
+    held, held_view, held_plan, held_intent = _detour_brain(2)
+    held.mem.held[1] = [3, 50]
+    blocked, _ = held._bank_detour(held_view, held_plan, held_intent)
+    assert blocked["args"]["target"] == 4
