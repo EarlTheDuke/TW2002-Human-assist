@@ -15,7 +15,7 @@ from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
 PORT_UPGRADE_LEGACY_GOLDEN = "9be955176171eb289630b373"
-PIN_FLIPS = ("PORT_UPGRADE_MODE", "FED_OUTPOST_MODE", "BANK_MODE", "CORP_MODE", "ALIEN_MODE")
+PIN_FLIPS = ("PORT_UPGRADE_MODE", "FED_OUTPOST_MODE", "BANK_MODE", "CORP_MODE", "ALIEN_MODE", "CORP_BOTS_MODE")
 
 
 def test_port_upgrade_legacy_is_unchanged():
