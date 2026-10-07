@@ -330,6 +330,65 @@ def test_buy_equip_lists_every_affordable_item_when_the_nudge_is_on():
     assert out["args"]["buy_equip"] == "item=" + ",".join(choices)
 
 
+def test_pb22_alien_attack_format_matches_the_engine():
+    from pathlib import Path
+
+    from tw2k.agents.prompts import get_system_prompt
+    engine = Path("src/tw2k/engine/alien.py").read_text(encoding="utf-8")
+    assert 'f"alien:{n}"' in engine
+    assert "alien:<n>" in get_system_prompt()
+
+
+def test_pb23_parity_prompt_does_not_repeat_a_long_sentence():
+    from tw2k.agents.prompts import get_system_prompt
+    text = get_system_prompt().replace("\n", " ")
+    sentences = [part.strip() for part in text.split(".") if len(part.strip()) > 60]
+    assert len(sentences) == len(set(sentences))
+
+
+def test_pb24_a_rival_planet_stock_stays_out_of_the_hint():
+    from tw2k.agents.prompts import format_observation, get_system_prompt
+    from tw2k.engine import GameConfig, generate_universe
+    from tw2k.engine.models import Commodity, Player, Ship, ShipClass
+    from tw2k.engine.observation import build_observation
+    universe = generate_universe(GameConfig(seed=60, universe_size=40, enable_ferrengi=False, enable_planets=True))
+    planet = next(iter(universe.planets.values()))
+    planet.owner_id = "B"
+    planet.stockpile[Commodity.EQUIPMENT] = 424242
+    sector = universe.sectors[planet.sector_id]
+    universe.players["A"] = Player(
+        id="A", name="A", sector_id=planet.sector_id, credits=20_000,
+        ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER),
+    )
+    universe.players["B"] = Player(
+        id="B", name="B", sector_id=planet.sector_id, credits=20_000,
+        ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER),
+    )
+    sector.occupant_ids.extend(["A", "B"])
+    rendered = format_observation(build_observation(universe, "A"))
+    assert "424242" not in rendered
+    assert "424242" not in get_system_prompt()
+
+
+def test_pb25_the_legacy_pin_turns_the_route_notice_off():
+    from pathlib import Path
+    text = Path("tests/test_llm_parity_legacy_pin.py").read_text(encoding="utf-8")
+    assert "K.LLM_ROUTE_NOTICE = False" in text
+    assert "K.LLM_NEW_DAY_GOAL_NOTICE = False" in text
+
+
+def test_pb26_prompt_growth_stays_inside_the_budget(monkeypatch):
+    from tw2k.agents.prompts import get_system_prompt
+    monkeypatch.setattr(K, "LLM_PARITY_MODE", "legacy")
+    monkeypatch.setattr(K, "LLM_PLANET_NUDGE_MODE", "legacy")
+    legacy = len(get_system_prompt())
+    monkeypatch.setattr(K, "LLM_PARITY_MODE", "tw2002")
+    monkeypatch.setattr(K, "LLM_PLANET_NUDGE_MODE", "tw2002")
+    parity = len(get_system_prompt())
+    growth = 100.0 * (parity - legacy) / legacy
+    assert growth <= float(K.LLM_PROMPT_GROWTH_MAX_PCT), growth
+
+
 def test_pb21_the_brain_transfer_shape_passes_acceptance():
     from tw2k.agents.seat_acceptance import validate_action
     obs = {"legal_actions": [{"kind": "corp_transfer", "legal": True, "params": {

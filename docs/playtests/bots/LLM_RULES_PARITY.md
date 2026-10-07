@@ -125,6 +125,11 @@ These names are the ones a re-break has to fail. The re-break itself is still to
 | pb19 legacy compact legal gains args | `test_lp14_compact_hints_cap_choices_and_skip_secrets` |
 | pb20 transfer without direction passes | `test_pb20_a_transfer_without_direction_is_rejected` |
 | pb21 required args reject the brain's transfer | `test_pb21_the_brain_transfer_shape_passes_acceptance` |
+| pb22 alien attack format guessed | `test_pb22_alien_attack_format_matches_the_engine` |
+| pb23 a duplicated long sentence | `test_pb23_parity_prompt_does_not_repeat_a_long_sentence` |
+| pb24 a rival planet stock in the hint | `test_pb24_a_rival_planet_stock_stays_out_of_the_hint` |
+| pb25 the legacy pin leaves the route notice on | `test_pb25_the_legacy_pin_turns_the_route_notice_off` |
+| pb26 prompt growth over the budget | `test_pb26_prompt_growth_stays_inside_the_budget` |
 
 ## 30-day scripted, seed 250925
 
