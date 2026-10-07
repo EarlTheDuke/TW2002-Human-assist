@@ -67,3 +67,27 @@ Policy off is the same net worth as the alien-traders ignore run. The paired sea
 | N2-P4 | 580,670 | 362,510 | cargotran | cargotran | 0 | 0 |
 | N1-P5 | 169,056 | 296,257 | scout | cargotran | 1 | 0 |
 | H-P6 | 7,975 | 7,975 | scout | scout | 4 | 2 |
+
+## Match, seed 4242, 10 days, pair
+
+Same seats. Exceptions 0. Corps N3P and N2P, 10 transfers, 0 mate attacks, 0 corporate deployments. N2-P4 had one engine reject: a trade that wanted 25 holds with 20 free. That is a trade, not a corp verb.
+
+| Seat | Pair net worth | Ship | Deaths |
+| --- | --- | --- | --- |
+| N3-P2 | 623,798 | battleship | 0 |
+| N2-P4 | 508,720 | cargotran | 1 |
+| N3-P1 | 487,562 | battleship | 0 |
+| N1-P5 | 415,256 | merchant cruiser | 0 |
+| H-P6 | 359,143 | merchant cruiser | 0 |
+| N2-P3 | 347,544 | cargotran | 1 |
+
+Policy off on the same seed also had that one trade reject, on N2-P4, and no corp events. The reject is not a corp verb.
+
+| Seat | Off net worth | Pair net worth | Off ship | Pair ship | Off deaths | Pair deaths |
+| --- | --- | --- | --- | --- | --- | --- |
+| N3-P1 | 154,345 | 487,562 | scout | battleship | 1 | 0 |
+| N3-P2 | 824,873 | 623,798 | battleship | battleship | 0 | 0 |
+| N2-P3 | 529,402 | 347,544 | cargotran | cargotran | 0 | 1 |
+| N2-P4 | 335,134 | 508,720 | scout | cargotran | 2 | 1 |
+| N1-P5 | 432,305 | 415,256 | merchant cruiser | merchant cruiser | 0 | 0 |
+| H-P6 | 7,975 | 359,143 | scout | merchant cruiser | 3 | 0 |
