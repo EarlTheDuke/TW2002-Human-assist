@@ -112,35 +112,26 @@ The three bars that broke when the hold was removed now pass: `test_record_then_
 
 ## Planted bugs
 
-Each row is the bug that will be planted, and the test that must fail. Not re-broken yet. That happens on the final commit.
+Each row is the bug, and the test that already locks the fixed behaviour. Not re-broken yet. That happens on the final commit. These rows do not have their own test yet: pb2, pb3, pb5, pb6, pb19, pb20, pb21, pb22, pb24.
 
 | Bug | Test |
 | --- | --- |
-| pb1 withdraw sends the whole balance | `test_pb1_withdraw_is_the_shortfall` |
-| pb2 a bank verb away from StarDock | `test_pb2_no_bank_verb_off_the_dock` |
-| pb3 deposit, then withdraw the same credits for a buy | `test_pb3_no_ping_pong_around_a_buy` |
-| pb4 the genesis hold still blocks deposits | `test_pb4_genesis_hold_is_off` |
-| pb5 the away reserve omits the citadel step | `test_pb5_citadel_cash_is_in_the_reserve` |
-| pb6 a buy withdraws the nest egg | `test_pb6_nest_egg_stays` |
-| pb7 a pod buys a Scout before the bank step | `test_pb7_pod_withdraws_before_the_scout` |
-| pb8 recovery withdraws the whole balance | `test_pb8_recovery_is_the_hull_cost` |
-| pb9 day-1 deposit over 10,000 | `test_pb9_day1_deposit_cap` |
-| pb10 risk flags raise the cap | `test_pb10_risk_halves_the_cap` |
-| pb11 tax line on an evil seat, or a good seat ends at StarDock over the line | `test_pb11_tax_line` |
-| pb12 a second detour, or six hops off the plan | `test_pb12_one_short_detour` |
-| pb13 treasury deposit on a bare planet or a rival planet | `test_pb13_treasury_needs_an_owned_citadel` |
-| pb14 treasury deposit while the bank has room | `test_pb14_overflow_waits_for_a_full_bank` |
-| pb15 H banks while the mode is legacy | `test_pb15_legacy_h_does_not_bank` |
-| pb16 H never withdraws for the pod hull | `test_pb16_h_withdraws_for_the_pod` |
-| pb17 the daily verb cap does not reset | `test_pb17_verb_cap_resets` |
-| pb18 a pending buy is lost on save and load | `test_pb18_pending_buy_survives_save` |
-| pb19 the bank step runs before the corp tax shield | `test_pb19_corp_shield_runs_first` |
-| pb20 planet targets read cash on hand only | `test_pb20_targets_use_the_purse` |
-| pb21 the planner reads another seat's balance | `test_pb21_no_rival_balance` |
-| pb22 the planner draws a random number | `test_pb22_no_rng` |
-| pb23 legacy uses the new reserve | `test_pb23_legacy_keeps_the_float` |
-| pb24 a torpedo is carried overnight with no deploy planned | `test_pb24_no_spare_torpedo_overnight` |
-| pb25 the report files a recovery withdraw as a hull buy and drops credits lost | `test_pb25_report_names_recovery_and_losses` |
+| pb1 withdraw sends the whole balance | `test_bb3_withdraw_the_shortfall` |
+| pb4 the genesis hold still blocks deposits | `test_bb4_reserve_deposits_above_the_away_reserve_not_the_old_float` |
+| pb7 a pod buys a Scout before the bank step | `test_bb13_a_pod_withdraws_before_it_buys_the_scout` |
+| pb8 recovery withdraws the whole balance | `test_bb13_a_pod_withdraws_before_it_buys_the_scout` |
+| pb9 day-1 deposit over 10,000 | `test_bb8_day1_seat_deposits_the_cap` |
+| pb10 risk flags raise the cap | `test_bb9_each_risk_flag_counts_once` |
+| pb11 tax line on an evil seat, or a good seat ends over the line | `test_bb10_good_seat_deposits_down_to_the_tax_line` |
+| pb12 a second detour, or six hops off the plan | `test_bb11_detour_is_once_a_day_and_within_three_hops` |
+| pb13 treasury deposit on a bare planet | `test_bb12_overflow_deposits_once_when_the_bank_is_full` |
+| pb14 treasury deposit while the bank has room | `test_bb12_overflow_deposits_once_when_the_bank_is_full` |
+| pb15 H banks while the mode is legacy | `test_bb14_legacy_h_does_not_bank` |
+| pb16 H never withdraws for the pod hull | `test_bb14_h_pod_withdraws_before_it_buys` |
+| pb17 the daily verb cap does not reset | `test_bb18_daily_bank_cap_resets_on_the_next_day` |
+| pb18 a pending buy is lost on save and load | `test_bb21_pending_buy_survives_save_load` |
+| pb23 legacy uses the new reserve | `test_bb23_tax_and_death_keeps_the_old_float` |
+| pb25 credits lost dropped from the report | `test_bb22_bank_report_counts_treasury_and_losses` |
 
 ## After, on b4ae22e
 
