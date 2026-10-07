@@ -78,3 +78,16 @@ Seats N3,N3,N2,N2,N1,H. Parity on and parity off wrote the same table and the sa
 | N3-P2 | 188,773 | merchant_cruiser | 0 |
 | N2-P4 | 138,940 | merchant_cruiser | 0 |
 | H-P6 | 7,975 | scout_marauder | 3 |
+
+## 10-day scripted, seed 4242
+
+Parity on and parity off wrote the same file. Action digest `7ad15bc9`. Rejected 0/0. Exceptions 0. Wall about 259s on and 270s off.
+
+| Seat | Net worth | Ship | Deaths |
+| --- | ---: | --- | ---: |
+| N1-P5 | 476,782 | merchant_cruiser | 0 |
+| N2-P3 | 461,882 | cargotran | 0 |
+| N3-P1 | 460,723 | cargotran | 0 |
+| N3-P2 | 216,931 | cargotran | 0 |
+| N2-P4 | 154,737 | merchant_cruiser | 0 |
+| H-P6 | 7,975 | scout_marauder | 3 |
