@@ -121,6 +121,47 @@ def test_pb2_no_bank_verb_off_the_dock():
     assert action["kind"] not in ("bank_deposit", "bank_withdraw")
 
 
+def test_pb3_no_deposit_then_withdraw_without_a_buy():
+    """Spare cash deposited this visit is not withdrawn for a buy that shows up later."""
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    brain = SeatBrain()
+    obs = synthetic_obs(sector=1, credits=80_000, ship_class="cargotran", day=3)
+    obs["bank_balance"] = 0
+    obs["net_worth"] = 80_000
+    _la(obs, "buy_equip", item={"choices": [], "unit_price_by": {}})
+    _la(obs, "bank_deposit", max_amount=80_000, balance=0, room=500_000)
+    _la(obs, "bank_withdraw", max_amount=0, balance=0)
+    first = brain.decide(obs)
+    assert first["kind"] == "bank_deposit"
+    deposited = int(first["args"]["amount"])
+    obs["credits"] = 80_000 - deposited
+    obs["bank_balance"] = deposited
+    _la(obs, "buy_equip", item={"choices": ["genesis"], "unit_price_by": {"genesis": 25_000}})
+    _la(obs, "bank_withdraw", max_amount=deposited, balance=deposited)
+    second = brain.decide(obs)
+    assert second["kind"] != "bank_withdraw"
+    assert brain.mem.bank_unspent
+
+    affordable = SeatBrain()
+    short = synthetic_obs(sector=1, credits=20_000, ship_class="cargotran", day=3)
+    short["bank_balance"] = 80_000
+    short["net_worth"] = 100_000
+    _la(short, "buy_equip", item={"choices": ["genesis"], "unit_price_by": {"genesis": 25_000}})
+    _la(short, "bank_deposit", max_amount=20_000, balance=80_000, room=420_000)
+    _la(short, "bank_withdraw", max_amount=80_000, balance=80_000)
+    withdrawn = affordable.decide(short)
+    assert withdrawn["kind"] == "bank_withdraw"
+    got = int(withdrawn["args"]["amount"])
+    short["credits"] = 20_000 + got
+    short["bank_balance"] = 80_000 - got
+    _la(short, "bank_withdraw", max_amount=short["bank_balance"], balance=short["bank_balance"])
+    _la(short, "bank_deposit", max_amount=short["credits"], balance=short["bank_balance"], room=500_000)
+    bought = affordable.decide(short)
+    assert bought["kind"] == "buy_equip"
+
+
 def test_bb8_day1_seat_deposits_the_cap():
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
