@@ -72,3 +72,7 @@ Each mutation was restored before the suite.
 | bug | where | test |
 | --- | --- | --- |
 | _opt_defense plotted to StarDock when already at the fighter/shield floor (rich + hot), often buying nothing | seat_brain.py _opt_defense | 	est_opt_defense_does_not_divert_when_already_at_floor |
+
+## Planetary warfare
+
+Code bots lay armids, park pickets, and stock citadels under `docs/playtests/bots/BOTS_USE_PLANET_WARFARE.md`. That note is the war rules. This growth note stays the trade and hull rules.
