@@ -124,6 +124,19 @@ Corps N3P = P1+P2 and N2P = P3+P4. Corporate deploys: P3 laid 105. Transfers 14.
 
 `CORP_FIX_MODE` legacy on this seed matches the table seat for seat, including each day's net worth, the bank lines, and the corp counters. That run took 827s. Rejected 0/0, exceptions 0, both saves identical, credits recovered 326,429. The two wall clocks differ by under 1s.
 
+Seed 4242, `CORP_FIX_MODE` tw2002, 783s (782811 ms). Total net worth 6,158,205. Rejected 0/0, exceptions 0. Bank save/load identical. Day-15 save/load identical. Rogue groups 0. Hostile mate actions 3. Mate tolls 0. Credits recovered 0. Credits lost: N3-P1 171,857, N3-P2 181,882, H 94,140. Day 10 matches the 10-day table on this seed.
+
+| Seat | Net worth | Credits | Deaths | Credits lost | Recovered |
+| --- | --- | --- | --- | --- | --- |
+| N2-P3 | 2,601,794 | 89,780 | 0 | 0 | 0 |
+| N1-P5 | 1,286,413 | 171,113 | 0 | 0 | 0 |
+| N3-P1 | 1,027,193 | 155,385 | 8 | 171,857 | 0 |
+| N2-P4 | 840,926 | 62,136 | 0 | 0 | 0 |
+| N3-P2 | 385,873 | 0 | 20 | 181,882 | 0 |
+| H-P6 | 16,006 | 0 | 21 | 94,140 | 0 |
+
+Corps N3P = P1+P2 and N2P = P3+P4. Corporate deploys: P3 laid 122, P4 laid 1. Transfers 6. Ferrengi credits 252,012. H broke on 27 days.
+
 ## Not built
 
 No bot strategy change. No prompt change. No combat-odds change. No alliance, corp treasury, tavern, or port-upgrade work. `prompts.py` still says `query_limpets` shows your planted limpets. That line is left for a later parity slice. `rules_text.py` says one wrong password a day, which still matches cl7.
