@@ -947,8 +947,13 @@ class SeatBrain:
         """Ship Destroyed leaves a free Scout. N1 buys a cargo hull before trading."""
         if not self._n1_recovery() or v.ship_class != "scout_marauder":
             return None
-        if int(v.obs.get("deaths") or 0) <= 0 or v.landed is not None or v.here != STARDOCK:
+        if int(v.obs.get("deaths") or 0) <= 0 or v.landed is not None:
             return None
+        if v.here != STARDOCK:
+            plot = self._plot(v, STARDOCK, "free scout - autopilot to StarDock to rebuy")
+            if plot is None or self._banned_why(plot, v):
+                return None
+            return self._avoid_held(v, plot, Intent())[0]
         if not v.ok("buy_ship"):
             return None
         from .bank_brain import recovery_hull_step
@@ -3175,6 +3180,15 @@ class SeatBrain:
                                                 "thought": "withdraw the replacement hull from the nest egg"})
             if step is not None:
                 return None
+            if post_death_scout and int(v.credits) < int(engine_k.BOT_BANK_H_KEEP):
+                from .bank_brain import withdraw_amount
+                amount = withdraw_amount(
+                    int(engine_k.BOT_BANK_H_KEEP), 0, int(v.credits), balance, 0,
+                    int(v.params("bank_withdraw").get("max_amount") or 0), recovery=True,
+                )
+                if amount >= 1 and self._bank_verb_open(v, "bank_withdraw"):
+                    return self._take_bank_verb(v, {"kind": "bank_withdraw", "args": {"amount": amount},
+                                                    "thought": "withdraw a trading float; no cargo hull fits yet"})
         need = self._stardock_hull_need(v, balance)
         from .bank_brain import nest_egg, withdraw_amount
         amount = withdraw_amount(

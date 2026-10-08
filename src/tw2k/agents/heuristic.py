@@ -103,6 +103,11 @@ class HeuristicAgent(BaseAgent):
             if bought is not None:
                 return bought
 
+        # An empty bank leaves the starting purse on the ship. One death then sticks H at 7,975.
+        opened = self._open_the_bank(obs)
+        if opened is not None:
+            return opened
+
         # At StarDock: consider outfitting & upgrading before heading out
         if obs.sector["id"] == 1 and obs.credits > 50_000:
             room = self._legal_max(obs, "buy_equip", "fighters")
@@ -339,6 +344,11 @@ class HeuristicAgent(BaseAgent):
                 amount = withdraw_amount(
                     int(net["cargotran"]), 20_000, credits, balance, egg, maximum, recovery=True,
                 )
+            if amount < 1 and h_recovery_on() and int(getattr(obs, "deaths", 0) or 0) > 0 and credits < self._h_keep(obs):
+                # No cargo hull fits in this bank. Put the keep on the ship so trading can resume.
+                amount = withdraw_amount(
+                    self._h_keep(obs), 0, credits, balance, 0, maximum, recovery=True,
+                )
             if amount < 1:
                 amount = withdraw_amount(
                     self._h_keep(obs), 0, credits, balance, egg, maximum, recovery=False,
@@ -365,6 +375,35 @@ class HeuristicAgent(BaseAgent):
         return Action(
             kind=ActionKind.BANK_DEPOSIT, args={"amount": amount},
             thought="Banking the spare cash before leaving StarDock.",
+        )
+
+    def _open_the_bank(self, obs: Observation) -> Action | None:
+        """Plot to StarDock before the first purse is lost, and after a free Scout.
+
+        Seed 424242 left H at 7,975 from day 2: the bank stayed 0, so the rebuy
+        had nothing to withdraw. A post-death Scout comes home even with no credits.
+        """
+        from ..engine.constants import h_recovery_on
+        if not h_recovery_on() or not self._h_banks():
+            return None
+        if int(obs.sector.get("id") or 0) == STARDOCK_SECTOR:
+            return None
+        credits = int(obs.credits)
+        balance = int(getattr(obs, "bank_balance", 0) or 0)
+        keep = self._h_keep(obs)
+        cargo = obs.ship.get("cargo") or {}
+        holding = sum(int(n or 0) for n in cargo.values()) if isinstance(cargo, dict) else 0
+        scout = str(obs.ship.get("class") or "") == "scout_marauder"
+        broke_scout = scout and int(getattr(obs, "deaths", 0) or 0) > 0
+        thin_bank = balance < keep and credits > keep and holding == 0
+        if not broke_scout and not thin_bank:
+            return None
+        legal = self._legal(obs)
+        if not (legal.get("plot_course") or {}).get("legal") or not (legal.get("warp") or {}).get("legal"):
+            return None
+        return Action(
+            kind=ActionKind.PLOT_COURSE, args={"target": STARDOCK_SECTOR, "execute": True},
+            thought="Opening the bank before one loss can zero the seat.",
         )
 
     def _bank_the_purse(self, obs: Observation) -> Action | None:
