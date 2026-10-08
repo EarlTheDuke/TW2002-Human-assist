@@ -93,6 +93,43 @@ def test_cl2_the_mate_must_be_fedsafe(monkeypatch):
     assert extern_hold_why(u2, u2.parked_ships[sid2]) == "not_same_sector"
 
 
+def test_cl3_an_ex_member_cannot_trade_in_a_borrowed_hull():
+    from tw2k.engine.legality import legal_actions
+    u = _u()
+    pilot = u.players["P2"]
+    pilot.credits = 2_000_000
+    pilot.ship.corp_ticker = "XYZ"
+    refused = _act(u, "P2", "buy_ship", ship_class="scout_marauder")
+    assert refused.error == "this is another corporation's ship - you cannot trade it in"
+    assert pilot.ship.ship_class.value == "merchant_cruiser"
+    offer = next(row for row in legal_actions(u, "P2") if row.kind == "buy_ship")
+    assert offer.legal is False and offer.params["ship_class"]["trade_in"] == 0
+
+
+def test_cl3_a_current_member_still_trades_the_hull_in():
+    u = _u()
+    pilot = u.players["P2"]
+    pilot.credits = 2_000_000
+    pilot.corp_ticker = "XYZ"
+    pilot.ship.corp_ticker = "XYZ"
+    assert _act(u, "P2", "buy_ship", ship_class="scout_marauder").ok
+    assert pilot.ship.ship_class.value == "scout_marauder"
+
+
+def test_cl3_allow_and_legacy_keep_today(monkeypatch):
+    u = _u()
+    pilot = u.players["P2"]
+    pilot.credits = 2_000_000
+    pilot.ship.corp_ticker = "XYZ"
+    monkeypatch.setattr(K, "CORPSHIP_EXMEMBER_TRADEIN", "allow")
+    assert _act(u, "P2", "buy_ship", ship_class="scout_marauder").ok
+    monkeypatch.setattr(K, "CORPSHIP_EXMEMBER_TRADEIN", "refuse")
+    monkeypatch.setattr(K, "CORP_FIX_MODE", "legacy")
+    pilot.ship.ship_class = type(pilot.ship.ship_class)("merchant_cruiser")
+    pilot.ship.corp_ticker = "XYZ"
+    assert _act(u, "P2", "buy_ship", ship_class="scout_marauder").ok
+
+
 def test_today_a_corp_mate_sees_a_personal_limpet():
     u = _u()
     u.players["P1"].corp_ticker = "XYZ"

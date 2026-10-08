@@ -623,37 +623,44 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             out.append(_la(ActionKind.BUY_SHIP, legal=False, reason="must be at StarDock (sector 1)",
                            params={"ship_class": {"type": "str", "required": True, "choices": []}}))
         else:
-            old_key = player.ship.ship_class.value
-            trade_in = K.trade_in_credit(old_key)
-            owned_classes = {p.ship.ship_class.value for p in universe.players.values()}
-            owned_classes.update(p.ship.ship_class.value for p in universe.parked_ships.values())  # fl6
-            ship_choices: list[str] = []
-            net_cost_by: dict[str, int] = {}
-            blocked_by: dict[str, str] = {}
-            from .corp import flagship_buy_block
-            for key, spec in K.ship_specs().items():
-                net = K.net_hull_cost(old_key, key)
-                net_cost_by[key] = net
-                if spec.get("corp_only") and player.corp_ticker is None:
-                    blocked_by[key] = "corporation-only"
-                elif (why := flagship_buy_block(universe, player_id, key)):
-                    blocked_by[key] = why
-                elif K.ship_min_alignment(spec, 0) > player.alignment:
-                    need = K.ship_min_alignment(spec, 0)
-                    blocked_by[key] = f"alignment too low (needs {need})"
-                elif spec.get("unique") and key in owned_classes:
-                    blocked_by[key] = "already owned elsewhere"
-                elif player.credits < net:
-                    blocked_by[key] = f"insufficient credits ({player.credits} < {net})"
-                else:
-                    ship_choices.append(key)
-            out.append(_la(ActionKind.BUY_SHIP, legal=bool(ship_choices),
-                           reason=None if ship_choices else "no ship you can buy right now (credits / alignment / corp)",
-                           params={"ship_class": {"type": "str", "required": True, "choices": ship_choices,
-                                                  "net_cost_by": net_cost_by, "trade_in": trade_in, "blocked_by": blocked_by}}))
-            if K.fleet_on():  # SHIP_FLEET.md fl4: optional trade_in=false buys a spare (legacy: no param)
-                from .fleet import spare_params
-                out[-1].params["trade_in"] = spare_params(universe, player_id)
+            from .corpships import exmember_tradein_block
+            traded = exmember_tradein_block(player)
+            if traded:
+                out.append(_la(ActionKind.BUY_SHIP, legal=False, reason=traded,
+                               params={"ship_class": {"type": "str", "required": True, "choices": [],
+                                                      "net_cost_by": {}, "trade_in": 0, "blocked_by": {}}}))
+            else:
+                old_key = player.ship.ship_class.value
+                trade_in = K.trade_in_credit(old_key)
+                owned_classes = {p.ship.ship_class.value for p in universe.players.values()}
+                owned_classes.update(p.ship.ship_class.value for p in universe.parked_ships.values())  # fl6
+                ship_choices: list[str] = []
+                net_cost_by: dict[str, int] = {}
+                blocked_by: dict[str, str] = {}
+                from .corp import flagship_buy_block
+                for key, spec in K.ship_specs().items():
+                    net = K.net_hull_cost(old_key, key)
+                    net_cost_by[key] = net
+                    if spec.get("corp_only") and player.corp_ticker is None:
+                        blocked_by[key] = "corporation-only"
+                    elif (why := flagship_buy_block(universe, player_id, key)):
+                        blocked_by[key] = why
+                    elif K.ship_min_alignment(spec, 0) > player.alignment:
+                        need = K.ship_min_alignment(spec, 0)
+                        blocked_by[key] = f"alignment too low (needs {need})"
+                    elif spec.get("unique") and key in owned_classes:
+                        blocked_by[key] = "already owned elsewhere"
+                    elif player.credits < net:
+                        blocked_by[key] = f"insufficient credits ({player.credits} < {net})"
+                    else:
+                        ship_choices.append(key)
+                out.append(_la(ActionKind.BUY_SHIP, legal=bool(ship_choices),
+                               reason=None if ship_choices else "no ship you can buy right now (credits / alignment / corp)",
+                               params={"ship_class": {"type": "str", "required": True, "choices": ship_choices,
+                                                      "net_cost_by": net_cost_by, "trade_in": trade_in, "blocked_by": blocked_by}}))
+                if K.fleet_on():  # SHIP_FLEET.md fl4: optional trade_in=false buys a spare (legacy: no param)
+                    from .fleet import spare_params
+                    out[-1].params["trade_in"] = spare_params(universe, player_id)
 
         day = int(universe.day)
         prices = {

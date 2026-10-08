@@ -1898,6 +1898,7 @@ BOT_CAPTURE_POLICY = "incidental"  # "incidental" | "off"
 # --- Corporate ships, passwords, furbing (CORPSHIP_MODE) ----------------------
 # docs/playtests/ships/CORP_SHIPS_FURB.md. "legacy" is the pre-slice engine.
 CORPSHIP_MODE = "tw2002"             # "tw2002" | "legacy"
+CORPSHIP_EXMEMBER_TRADEIN = "refuse"  # cl3 | "allow"
 CORPSHIP_SET_SCOPE = "manned"       # cs2 UNVERIFIED
 CORPSHIP_SET_TURNS = 0               # cs2 UNVERIFIED
 CORPSHIP_NEW_DEFAULT = "personal"    # cs3 UNVERIFIED
