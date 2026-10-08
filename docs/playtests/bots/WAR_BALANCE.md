@@ -12,6 +12,17 @@ The warfare note already required an attack to leave 25% of the fighters aboard 
 4. A siege that does not leave this seat landed on that planet, or owning it, records `war_fail_day`. The existing 2-day cooldown then applies.
 5. Engine rules stay as they are. The legacy pin stays `9b607d3dae940c0b1a69f6d7`.
 
+Seed 4242 30-day on dac501d, both columns rejected 0/0. War full 719s. War off 729s, save identical.
+
+| Seat | War full | War off | Share |
+| --- | --- | --- | --- |
+| N3-P1 | 2,599,336 battleship, 0 deaths | 3,382,543 battleship, 0 deaths | 77% |
+| N2-P3 | 1,331,157 cargotran, 2 deaths | 1,846,217 cargotran, 1 death | 72% |
+| N2-P4 | 651,391 cargotran, 0 deaths | 625,055 cargotran, 0 deaths | 104% |
+| N3-P2 | 518,712 scout, 13 deaths | 629,982 cargotran, 0 deaths | 82% |
+
+N2-P3 is the miss. It made no ship attacks. It laid 57 armids, deployed fighters 4 times, and warped 1,353 times against 474 with war off, with 1,125 trades against 1,459. The gap is turns spent on the way home, not a siege.
+
 ## Bars
 
 Every N2 and N3 seat stays at or above 75% of its war-off day-30 net worth on seeds 250925 and 4242. Each 30-day war-on match still has at least one planet attack. Rejected 0/0. Save identical.
