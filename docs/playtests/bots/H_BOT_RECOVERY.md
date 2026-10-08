@@ -33,6 +33,10 @@ Seeds 250925 and 424242, the same six-seat scripted match the later slices use (
 - Rejected 0/0. Save/load identical.
 - With the flag off, the other seats' digests stay on the legacy pin.
 
+## Pin
+
+`H_RECOVERY_MODE` is in the explicit legacy flips. Nothing reads it yet. The corp-fix golden `9b607d3dae940c0b1a69f6d7` still matches: 1 passed in 42s.
+
 ## Not built yet
 
-The flag, the withdraw, and the buy are not in the code. Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
+The withdraw and the buy are not in the code. Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.

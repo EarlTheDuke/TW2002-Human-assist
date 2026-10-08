@@ -2133,6 +2133,7 @@ BOT_BANK_BROKE_LINE = 10_000            # bb22
 BOT_TREASURY_POLICY = "overflow"        # bb12: "overflow" | "spare" | "off"
 BOT_BANK_H = True                       # bb14: H banks under tw2002. Legacy H never reads this.
 BOT_BANK_H_KEEP = 10_000                # bb14 floor. Holds raise it by BOT_BANK_CAPITAL_PER_HOLD.
+H_RECOVERY_MODE = "tw2002"             # H_BOT_RECOVERY.md | "legacy". Unread until the bot hooks land.
 
 
 def bank_on() -> bool:
@@ -2141,6 +2142,11 @@ def bank_on() -> bool:
 
 def bots_bank_on() -> bool:
     return BOTS_BANK_MODE == "tw2002" and bank_on()
+
+
+def h_recovery_on() -> bool:
+    """H and N1 rebuy a cargo hull after a death. Legacy keeps the Scout buy."""
+    return H_RECOVERY_MODE == "tw2002"
 
 
 # --- Lost Trader's Tavern and the Underground (TAVERN_MODE) ------------------
