@@ -13,6 +13,7 @@ def test_war_counters_roundtrip_and_a_quiet_pad_omits_them() -> None:
     assert "war_siege_day" not in quiet.dump()
     assert "war_spend_day" not in quiet.dump()
     assert "war_fail_day" not in quiet.dump()
+    assert "war_home_seq" not in quiet.dump()
 
     mem = SeatMemory()
     mem.war_spend_day = 6

@@ -232,6 +232,7 @@ class SeatMemory:
     war_nw_peak_day: int = -1
     war_drop_day: int = -1
     war_fail_day: int = -1
+    war_home_seq: int = -1
     # Last psychic-probe reading this seat saw (percent of the port's best price).
     psychic_pct: float | None = None
     psychic_commodity: str | None = None
@@ -305,6 +306,8 @@ class SeatMemory:
             payload["war_drop_day"] = int(self.war_drop_day)
         if self.war_fail_day >= 0:
             payload["war_fail_day"] = int(self.war_fail_day)
+        if self.war_home_seq >= 0:
+            payload["war_home_seq"] = int(self.war_home_seq)
         if self.beacon_stocked:
             payload["beacon_stocked"] = True
         if self.psychic_pct is not None:
@@ -403,6 +406,8 @@ class SeatMemory:
         mem.war_drop_day = int(drop_day) if isinstance(drop_day, int) else -1
         fail_day = data.get("war_fail_day")
         mem.war_fail_day = int(fail_day) if isinstance(fail_day, int) else -1
+        home_seq = data.get("war_home_seq")
+        mem.war_home_seq = int(home_seq) if isinstance(home_seq, int) else -1
         mem.beacon_stocked = bool(data.get("beacon_stocked"))
         mem.psychic_pct = float(pct) if isinstance(pct, (int, float)) else None
         mem.psychic_commodity = data.get("psychic_commodity") if isinstance(data.get("psychic_commodity"), str) else None
@@ -4477,13 +4482,15 @@ class SeatBrain:
             return str(rival.get("side") or "") == "evil"
         return False
 
-    def _home_was_hit(self, v: View) -> bool:
-        """A rival acted in the home sector or against one of our planets."""
+    def _home_hit_seq(self, v: View) -> int | None:
+        """The newest rival event at home that this seat has not already answered."""
         if self.mem is None or self.mem.home_sector is None:
-            return False
+            return None
         home = int(self.mem.home_sector)
         owned = {int(p["id"]) for p in v.owned if p.get("id") is not None}
         me = str(v.self_id or "")
+        acked = int(self.mem.war_home_seq)
+        best: int | None = None
         for ev in v.events:
             if not isinstance(ev, dict):
                 continue
@@ -4491,28 +4498,46 @@ class SeatBrain:
             if not actor or actor == me:
                 continue
             sector = ev.get("sector_id")
+            on_home = False
             try:
-                if sector is not None and int(sector) == home:
-                    return True
+                on_home = sector is not None and int(sector) == home
             except (TypeError, ValueError):
-                pass
+                on_home = False
             payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
+            on_planet = False
             try:
                 pid = payload.get("planet_id")
-                if pid is not None and int(pid) in owned:
-                    return True
+                on_planet = pid is not None and int(pid) in owned
             except (TypeError, ValueError):
+                on_planet = False
+            if not on_home and not on_planet:
                 continue
-        return False
+            seq = int(ev.get("seq") or 0)
+            if seq <= acked:
+                continue
+            best = seq if best is None else max(best, seq)
+        return best
+
+    def _home_was_hit(self, v: View) -> bool:
+        """A rival acted in the home sector or against one of our planets."""
+        return self._home_hit_seq(v) is not None
 
     def _defend_home(self, v: View) -> dict[str, Any] | None:
-        """Head home when it was hit and the route is inside the hop cap."""
+        """Head home when it was hit and the route is inside the hop cap.
+
+        Arriving acks the events, so the same notice does not turn the route around again.
+        """
         if not self._war_lays() or v.landed is not None or v.ship_class == "escape_pod":
             return None
         if self.mem is None or self.mem.home_sector is None or v.here is None:
             return None
         home = int(self.mem.home_sector)
-        if int(v.here) == home or not self._home_was_hit(v):
+        hit = self._home_hit_seq(v)
+        if int(v.here) == home:
+            if hit is not None:
+                self.mem.war_home_seq = int(hit)
+            return None
+        if hit is None:
             return None
         from .war_brain import defend_reachable
         if not defend_reachable(known_distance(v.known_warps, int(v.here), home)):
