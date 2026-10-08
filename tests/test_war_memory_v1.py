@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import random
+
 from tw2k.agents.seat_brain import SeatMemory
+from tw2k.agents.war_brain import picket_qty, planet_fight, siege_refusal, threat_map
 
 
 def test_war_counters_roundtrip_and_a_quiet_pad_omits_them() -> None:
@@ -24,3 +27,14 @@ def test_war_counters_roundtrip_and_a_quiet_pad_omits_them() -> None:
     assert loaded.war_sieges == 1
     assert loaded.war_land_tries == 2
     assert loaded.war_siege_planet == 9
+
+
+def test_bw26_save(monkeypatch) -> None:
+    def boom() -> float:
+        raise AssertionError("rng")
+
+    monkeypatch.setattr(random, "random", boom)
+    threat_map([{"sector": 1}], limit=64)
+    picket_qty(1000, floor=0)
+    planet_fight(100, 10, 0, 0, "merchant_cruiser")
+    assert siege_refusal(skill="N3", policy="full", day=6, owner_evil=True) is None
