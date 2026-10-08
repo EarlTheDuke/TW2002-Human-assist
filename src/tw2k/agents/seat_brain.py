@@ -1232,6 +1232,9 @@ class SeatBrain:
         laid = self._maybe_lay_armids(v)
         if laid is not None:
             return laid, Intent("acquire")
+        picket = self._maybe_lay_pickets(v)
+        if picket is not None:
+            return picket, Intent("acquire")
         if self.mem is not None and self.mem.home_sector is not None and v.here == self.mem.home_sector:
             beacon = self._beacon_action(v)
             if beacon is not None:
@@ -4293,7 +4296,7 @@ class SeatBrain:
         return self._act("deploy_atomic", {"planet_id": choices[0]},
                          "detonate only after the colonists are gone")
 
-    def _lay_fighters(self, v: View, qty: int) -> dict[str, Any] | None:
+    def _lay_fighters(self, v: View, qty: int, *, mode: str = "defensive") -> dict[str, Any] | None:
         """Do not park fighters where FedSpace will tow them or an MSL sweep clears them."""
         if self._in_swept_lane(v):
             return None
@@ -4303,12 +4306,126 @@ class SeatBrain:
         send = min(int(qty), room)
         if send <= 0:
             return None
-        return self._act("deploy_fighters", {"qty": int(send), "mode": "defensive", **self._pair_ownership(v, "deploy_fighters")},
+        return self._act("deploy_fighters", {"qty": int(send), "mode": mode, **self._pair_ownership(v, "deploy_fighters")},
                          f"deploy {send} fighters outside FedSpace")
+
+    def _war_lays(self) -> bool:
+        from ..engine import constants as K
+        return bool(K.bots_war_on()) and K.BOT_WAR_POLICY != "off"
+
+    def _own_planet_sectors(self, v: View) -> set[int]:
+        out: set[int] = set()
+        for planet in v.owned:
+            sid = planet.get("sector_id")
+            if sid is None:
+                continue
+            try:
+                out.add(int(sid))
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    def _war_home_is_corridor(self, v: View, own_sectors: set[int]) -> bool:
+        """A rival must pass through here. Our own dead-end planet does not count."""
+        me = v.self_id
+        here = int(v.here or 0)
+        sector = v.sector or {}
+        for pl in sector.get("planets") or []:
+            owner = pl.get("owner_id") if isinstance(pl, dict) else None
+            if owner is not None and owner != me:
+                return True
+        if any(o != me for o in sector.get("occupants") or []):
+            return True
+        for adj in v.obs.get("adjacent") or []:
+            if not isinstance(adj, dict):
+                continue
+            try:
+                aid = int(adj.get("id"))
+            except (TypeError, ValueError):
+                continue
+            dead_end = tuple(v.known_warps.get(aid) or ()) == (here,) or adj.get("warps") == 1
+            if dead_end and aid not in own_sectors:
+                return True
+            seen = (adj.get("seen") or {}).get("planets") or []
+            if any(isinstance(pl, dict) and pl.get("owner_id") not in (None, me) for pl in seen):
+                return True
+        return False
+
+    def _lay_armids_war(self, v: View) -> dict[str, Any] | None:
+        from ..engine import constants as K
+        mines = (v.ship.get("mines") or {})
+        have = int(mines.get("armid") or v.ship.get("armid_mines") or 0)
+        if have <= 0 or not v.ok("deploy_mines"):
+            return None
+        if "armid" not in {str(c) for c in v.choices("deploy_mines", "kind")}:
+            return None
+        here = int(v.here or 0)
+        own = self._own_planet_sectors(v)
+        home = None if self.mem is None else self.mem.home_sector
+        at_home = home is not None and here == int(home) and not self._war_home_is_corridor(v, own)
+        if here not in own and not at_home:
+            return None
+        room = v.max_by("deploy_mines", "qty", "armid")
+        qty = min(room, have, int(K.BOT_WAR_HOME_MINES))
+        if qty <= 0:
+            return None
+        return self._act("deploy_mines", {"kind": "armid", "qty": int(qty), **self._pair_ownership(v, "deploy_mines")},
+                         "lay armids on our planet or its quiet gate")
+
+    def _own_dead_end_entrance(self, v: View, own_sectors: set[int]) -> bool:
+        here = int(v.here or 0)
+        for adj in v.obs.get("adjacent") or []:
+            if not isinstance(adj, dict):
+                continue
+            try:
+                aid = int(adj.get("id"))
+            except (TypeError, ValueError):
+                continue
+            if aid not in own_sectors:
+                continue
+            if tuple(v.known_warps.get(aid) or ()) == (here,) or adj.get("warps") == 1:
+                return True
+        return False
+
+    def _our_sector_fighters(self, v: View) -> int:
+        group = (v.sector or {}).get("fighter_group") or {}
+        if not isinstance(group, dict):
+            return 0
+        if str(group.get("owner_id") or "") != str(v.self_id or ""):
+            return 0
+        try:
+            return int(group.get("count") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _maybe_lay_pickets(self, v: View) -> dict[str, Any] | None:
+        if not self._war_lays() or self._in_swept_lane(v):
+            return None
+        from .war_brain import picket_qty
+        here = int(v.here or 0)
+        own = self._own_planet_sectors(v)
+        home = None if self.mem is None else self.mem.home_sector
+        at_home = home is not None and here == int(home) and not self._war_home_is_corridor(v, own)
+        entrance = self._own_dead_end_entrance(v, own)
+        if here not in own and not at_home and not entrance:
+            return None
+        room = int((v.params("deploy_fighters").get("qty") or {}).get("max") or 0)
+        plan = picket_qty(
+            int(v.ship.get("fighters") or 0),
+            floor=0,
+            already=self._our_sector_fighters(v),
+            room=room,
+            dead_end_entrance=entrance,
+        )
+        if plan is None:
+            return None
+        return self._lay_fighters(v, int(plan["qty"]), mode=str(plan["mode"]))
 
     def _maybe_lay_armids(self, v: View) -> dict[str, Any] | None:
         if not self._hardware_on() or self._in_swept_lane(v):
             return None
+        if self._war_lays():
+            return self._lay_armids_war(v)
         if self.mem is None or self.mem.home_sector is None or v.here != self.mem.home_sector:
             return None
         if not v.ok("deploy_mines") or "armid" not in {str(c) for c in v.choices("deploy_mines", "kind")}:
@@ -4408,11 +4525,17 @@ class SeatBrain:
                                  f"buy {qty} corbomite before carrying cash")
         mines = ship.get("mines") or {}
         have_armid = int(mines.get("armid") or ship.get("armid_mines") or 0)
-        if "armid_mines" in items and have_armid < 5 and not (self.mem and self.mem.armids_stocked):
+        if self._war_lays():
+            cap = int(_HK.BOT_WAR_HOME_MINES)
+            stocked = False
+        else:
+            cap = 5
+            stocked = bool(self.mem and self.mem.armids_stocked)
+        if "armid_mines" in items and have_armid < cap and not stocked:
             price = price_of("armid_mines", 100)
-            qty = min(5 - have_armid, v.max_by("buy_equip", "qty", "armid_mines") or (5 - have_armid))
+            qty = min(cap - have_armid, v.max_by("buy_equip", "qty", "armid_mines") or (cap - have_armid))
             if qty > 0 and self._afford_hardware(v, price, qty):
-                if self.mem is not None:
+                if self.mem is not None and not self._war_lays():
                     self.mem.armids_stocked = True
                 return self._act("buy_equip", {"item": "armid_mines", "qty": int(qty)},
                                  f"buy {qty} armids for the home sector")
