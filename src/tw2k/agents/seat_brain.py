@@ -3806,10 +3806,6 @@ class SeatBrain:
         return None
 
 
-    def _stocked_fighters_today(self, v: View) -> bool:
-        """Fighters already moved onto a planet today. Do not buy that stack back."""
-        return getattr(self, "_war_stocked_day", -1) == int(v.day)
-
     def _buy_defense(self, v: View) -> dict[str, Any] | None:
         """Buy shields then fighters at StarDock or a known Class 0 when cash is high."""
         if not (self.feed_organics or self.value_allocator):
@@ -3833,7 +3829,7 @@ class SeatBrain:
             if qty > 0:
                 return self._act("buy_equip", {"item": "shields", "qty": int(qty)},
                                  f"buy {qty} shields before carrying cash")
-        if "fighters" in items and self._ship_fighters(v) < DEFENSE_FIGHTERS_FLOOR and not self._stocked_fighters_today(v):
+        if "fighters" in items and self._ship_fighters(v) < DEFENSE_FIGHTERS_FLOOR:
             unit = int(prices.get("fighters") or fighter_unit_price(int(v.day) or 1))
             room = v.max_by("buy_equip", "qty", "fighters")
             need = max(0, DEFENSE_FIGHTERS_FLOOR - self._ship_fighters(v))
@@ -3850,7 +3846,7 @@ class SeatBrain:
         # When already at the floor but still rich, top up toward the fogged cap.
         if v.credits >= RICH_CREDITS:
             for item, floor in (("shields", DEFENSE_SHIELDS_FLOOR), ("fighters", DEFENSE_FIGHTERS_FLOOR)):
-                if item not in items or (item == "fighters" and self._stocked_fighters_today(v)):
+                if item not in items:
                     continue
                 have = self._ship_shields(v) if item == "shields" else self._ship_fighters(v)
                 room = v.max_by("buy_equip", "qty", item)
@@ -3875,8 +3871,6 @@ class SeatBrain:
         """
         import tw2k.engine.constants as _HK
         if not self.value_allocator or not _HK.hunt_on() or "fighters" not in items:
-            return None
-        if self._stocked_fighters_today(v):
             return None
         odds, per_attack = combat_hull(str(v.ship_class or ""))
         target = int(_HK.HUNT_ARM_FIGHTERS)
@@ -4863,7 +4857,6 @@ class SeatBrain:
             room = v.max_by("deposit_planet_defense", "qty", "fighters") or gap["fighters"]
             qty = min(int(gap["fighters"]), int(room))
             if qty > 0:
-                self._war_stocked_day = int(v.day)
                 return self._act("deposit_planet_defense", {"planet_id": pid, "kind": "fighters", "qty": int(qty)},
                                  f"stock {qty} fighters on planet {pid}")
         if gap["shields"] > 0 and v.ok("deposit_planet_defense") and "shields" in {str(c) for c in v.choices("deposit_planet_defense", "kind")}:
