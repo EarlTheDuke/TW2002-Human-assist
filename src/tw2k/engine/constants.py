@@ -2193,6 +2193,23 @@ def tavern_on() -> bool:
 BOTS_WAR_MODE = "tw2002"                 # bw1: "tw2002" | "legacy"
 BOT_WAR_POLICY = "full"                  # D1: full | defend | off
 BOT_WAR_MAP_MAX = 64                     # bw2
+BOT_WAR_INTEL_STALE_DAYS = 3             # bw3
+BOT_WAR_INTEL_STALE_PAD_PCT = 50         # bw3
+BOT_WAR_HOME_MINES = 10                  # bw4
+BOT_WAR_PICKET_MIN = 10                  # bw5
+BOT_WAR_WALL_PCT = 20                    # bw5
+BOT_WAR_KEEP_ABOARD_PCT = 40             # bw5
+BOT_WAR_OFFENSIVE_AT_ENTRANCE = True     # bw5
+BOT_WAR_TRAVEL_PICKETS = False           # D2
+BOT_WAR_PLANET_FIGHTERS_BY_LEVEL = {1: 500, 2: 2_000, 3: 5_000, 4: 10_000, 5: 20_000, 6: 30_000}
+BOT_WAR_PLANET_SHIELDS_BY_LEVEL = {1: 0, 2: 0, 3: 50, 4: 200, 5: 500, 6: 1_000}
+BOT_WAR_DEFENCE_BUDGET_PCT = 25          # bw7
+BOT_WAR_REACTION_PCT = 20                # bw8
+BOT_WAR_QUASAR_SECTOR_PCT = 30           # bw9
+BOT_WAR_QUASAR_ATM_PCT = 60              # bw9
+BOT_WAR_QUASAR_ORE_FLOOR = 2_000         # bw9
+BOT_WAR_SIEGE_MARGIN_PCT = 25            # bw17
+BOT_WAR_RESERVE_TURNS = 20               # bw17
 
 
 def bots_war_on() -> bool:

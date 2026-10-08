@@ -137,3 +137,113 @@ def siege_estimate(planet_seen: dict[str, Any], my_ship: dict[str, Any], sector_
         "turns": int(turns),
         "sector_seen": bool(sector_seen),
     }
+
+
+def pad_stale(value: int, *, day: int, seen_day: int) -> int:
+    """A sighting older than the stale window is padded. A fresh one is kept."""
+    if int(day) - int(seen_day) > int(K.BOT_WAR_INTEL_STALE_DAYS):
+        return int(value) * (100 + int(K.BOT_WAR_INTEL_STALE_PAD_PCT)) // 100
+    return int(value)
+
+
+def picket_qty(
+    fighters_aboard: int,
+    *,
+    floor: int,
+    already: int = 0,
+    room: int | None = None,
+    dead_end_entrance: bool = False,
+    travel: bool = False,
+) -> dict[str, Any] | None:
+    """Defensive picket. Offensive only at a dead-end entrance. Travel pickets stay off."""
+    if travel and not K.BOT_WAR_TRAVEL_PICKETS:
+        return None
+    aboard = int(fighters_aboard)
+    keep = aboard * int(K.BOT_WAR_KEEP_ABOARD_PCT) // 100
+    spare = max(0, aboard - max(int(floor), keep))
+    target = max(int(K.BOT_WAR_PICKET_MIN), spare * int(K.BOT_WAR_WALL_PCT) // 100)
+    send = min(target - int(already), spare)
+    if room is not None:
+        send = min(send, int(room))
+    if send <= 0:
+        return None
+    offensive = bool(dead_end_entrance) and bool(K.BOT_WAR_OFFENSIVE_AT_ENTRANCE) and not travel
+    return {"qty": int(send), "mode": "offensive" if offensive else "defensive"}
+
+
+def defence_budget(liquid_net_worth: int) -> int:
+    """The day's citadel budget: a percent of liquid net worth."""
+    return max(0, int(liquid_net_worth)) * int(K.BOT_WAR_DEFENCE_BUDGET_PCT) // 100
+
+
+def stock_deposit(
+    citadel_level: int,
+    *,
+    planet_fighters: int,
+    planet_shields: int,
+    aboard_fighters: int,
+    aboard_shields: int,
+    credit_budget: int,
+    fighter_price: int,
+    shield_price: int,
+) -> dict[str, int]:
+    """Gap to the level ladder, capped by what is aboard and by the credit budget."""
+    level = int(citadel_level)
+    if level not in K.BOT_WAR_PLANET_FIGHTERS_BY_LEVEL:
+        return {"fighters": 0, "shields": 0}
+    want_f = min(
+        max(0, int(K.BOT_WAR_PLANET_FIGHTERS_BY_LEVEL[level]) - int(planet_fighters)),
+        int(aboard_fighters),
+    )
+    want_s = min(
+        max(0, int(K.BOT_WAR_PLANET_SHIELDS_BY_LEVEL[level]) - int(planet_shields)),
+        int(aboard_shields),
+    )
+    budget = max(0, int(credit_budget))
+    fighter_cost = max(0, int(fighter_price))
+    shield_cost = max(0, int(shield_price))
+    if fighter_cost > 0:
+        want_f = min(want_f, budget // fighter_cost)
+    left = budget - want_f * fighter_cost
+    if shield_cost > 0:
+        want_s = min(want_s, left // shield_cost)
+    return {"fighters": int(want_f), "shields": int(want_s)}
+
+
+def reaction_setting(citadel_level: int, *, already: bool) -> int | None:
+    """Set military reaction once, at citadel 2 or higher."""
+    if already or int(citadel_level) < 2:
+        return None
+    return int(K.BOT_WAR_REACTION_PCT)
+
+
+def quasar_settings(citadel_level: int, *, already: bool, planet_ore: int) -> dict[str, int] | None:
+    """Set both cannons once, at citadel 3 or higher, while ore stays at the floor."""
+    if already or int(citadel_level) < 3 or int(planet_ore) < int(K.BOT_WAR_QUASAR_ORE_FLOOR):
+        return None
+    return {
+        "sector_pct": int(K.BOT_WAR_QUASAR_SECTOR_PCT),
+        "atm_pct": int(K.BOT_WAR_QUASAR_ATM_PCT),
+    }
+
+
+def retreat_reason(
+    *,
+    fighters: int,
+    fighters_needed_remaining: int,
+    shields: int,
+    atmospheric_quasar: bool,
+    rival_stronger: bool,
+    turns_left: int,
+) -> str | None:
+    """Why a siege stops. None means the landing can continue."""
+    needed = int(fighters_needed_remaining) * (100 + int(K.BOT_WAR_SIEGE_MARGIN_PCT)) // 100
+    if int(fighters) < needed:
+        return "margin"
+    if int(shields) <= 0 and atmospheric_quasar:
+        return "quasar"
+    if rival_stronger:
+        return "rival"
+    if int(turns_left) < int(K.BOT_WAR_RESERVE_TURNS):
+        return "turns"
+    return None
