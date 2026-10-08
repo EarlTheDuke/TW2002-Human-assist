@@ -151,7 +151,7 @@ def test_hr9_a_fat_purse_plots_back_to_stardock():
     from tests.test_bots_bank_economy_v1 import _h_obs
     from tw2k.agents.heuristic import HeuristicAgent
 
-    asyncio, Observation = _h_obs(credits=80_000, bank_balance=10_000, net_worth=90_000)
+    asyncio, Observation = _h_obs(credits=80_000, bank_balance=80_000, net_worth=160_000)
     obs = Observation
     obs.sector = {"id": 40, "ferrengi": []}
     obs.ship = {"class": "merchant_freighter", "fighters": 50, "cargo": {}, "cargo_free": 65, "holds": 65}
