@@ -4526,7 +4526,6 @@ class SeatBrain:
         """Head home when it was hit and the route is inside the hop cap.
 
         Arriving acks the events, so the same notice does not turn the route around again.
-        A loaded hold finishes the sale first. The notice stays open until the ship is empty.
         """
         if not self._war_lays() or v.landed is not None or v.ship_class == "escape_pod":
             return None
@@ -4539,8 +4538,6 @@ class SeatBrain:
                 self.mem.war_home_seq = int(hit)
             return None
         if hit is None:
-            return None
-        if any(int(qty or 0) > 0 for qty in (v.cargo or {}).values()):
             return None
         from .war_brain import defend_reachable
         if not defend_reachable(known_distance(v.known_warps, int(v.here), home)):

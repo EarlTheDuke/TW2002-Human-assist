@@ -33,6 +33,8 @@ Seed 4242 30-day on `1790d97`, war full, 1567s, rejected 0/0, save identical. Th
 | N2-P4 | 626,310 cargotran, 0 deaths | 100% |
 | N3-P2 | 483,682 scout, 10 deaths | 77% |
 
+Holding the cargo and delaying the home trip, on `f50a304`, 2000s, rejected 0/0, save identical: N3-P1 1,847,229 with 2 deaths (55% of war off) and N3-P2 462,647 (73%). N2-P3 rose to 2,038,097. That delay is out. The home ack on `1790d97` remains the closer column.
+
 ## Bars
 
 Every N2 and N3 seat stays at or above 75% of its war-off day-30 net worth on seeds 250925 and 4242. Each 30-day war-on match still has at least one planet attack. Rejected 0/0. Save identical.
