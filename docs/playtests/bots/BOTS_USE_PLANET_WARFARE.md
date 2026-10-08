@@ -30,7 +30,9 @@ War report, policy full: P3 laid 55 corporate armids and 10 corporate defensive 
 | N3-P2 | 147,899 | cargotran | 0 | 78,613 | scout | 3 |
 | H-P6 | 16,006 | scout | 5 | 16,006 | scout | 8 |
 
-P3 laid 57 corporate armids and 10 corporate fighters. P5 deposited 20 fighters and set reaction, and laid no mines. The defend policy, the pair policy, and both 30-day runs are still ahead.
+P3 laid 57 corporate armids and 10 corporate fighters. P5 deposited 20 fighters and set reaction, and laid no mines.
+
+10-day seed 250925, `--war-policy defend`, rejected 0/0, exceptions 0, digest `41a49cf7`, total 1,734,907. N3-P1 733,020 cargotran 0 deaths. N2-P3 437,944 cargotran 0. N1-P5 268,211 cargotran 0. N2-P4 150,861 cargotran 0. N3-P2 94,683 scout 5 deaths. H-P6 50,188 scout 5 deaths. P3 laid 57 corporate armids. P5 laid 66 personal armids. P1 deposited 200 fighters. N3-P2 still lost the CargoTran with no mines of its own. The pair policy and both 30-day runs are still ahead.
 
 ## Rules
 
