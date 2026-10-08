@@ -791,6 +791,12 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
+        answer = self._defend_home(v)
+        if answer is not None:  # bots-use-planet-warfare-v1: a hit at home beats a new siege
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
         answer = self._siege_here(v)
         if answer is not None:  # bots-use-planet-warfare-v1: land a siege only when the gates clear
             self._intent = Intent()
@@ -4356,6 +4362,51 @@ class SeatBrain:
         if self.feed_organics:
             return "N2"
         return "N1"
+
+    def _home_was_hit(self, v: View) -> bool:
+        """A rival acted in the home sector or against one of our planets."""
+        if self.mem is None or self.mem.home_sector is None:
+            return False
+        home = int(self.mem.home_sector)
+        owned = {int(p["id"]) for p in v.owned if p.get("id") is not None}
+        me = str(v.self_id or "")
+        for ev in v.events:
+            if not isinstance(ev, dict):
+                continue
+            actor = str(ev.get("actor_id") or ev.get("actor") or "")
+            if not actor or actor == me:
+                continue
+            sector = ev.get("sector_id")
+            try:
+                if sector is not None and int(sector) == home:
+                    return True
+            except (TypeError, ValueError):
+                pass
+            payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
+            try:
+                pid = payload.get("planet_id")
+                if pid is not None and int(pid) in owned:
+                    return True
+            except (TypeError, ValueError):
+                continue
+        return False
+
+    def _defend_home(self, v: View) -> dict[str, Any] | None:
+        """Head home when it was hit and the route is inside the hop cap."""
+        if not self._war_lays() or v.landed is not None or v.ship_class == "escape_pod":
+            return None
+        if self.mem is None or self.mem.home_sector is None or v.here is None:
+            return None
+        home = int(self.mem.home_sector)
+        if int(v.here) == home or not self._home_was_hit(v):
+            return None
+        from .war_brain import defend_reachable
+        if not defend_reachable(known_distance(v.known_warps, int(v.here), home)):
+            return None
+        hop = self._known_hop_toward(v, home)
+        if hop is not None:
+            return self._act("warp", {"target": int(hop)}, "home was hit - go back")
+        return self._plot(v, home, "home was hit - go back")
 
     def _siege_here(self, v: View) -> dict[str, Any] | None:
         """Land on one rival planet in this sector when the siege gates all clear."""
