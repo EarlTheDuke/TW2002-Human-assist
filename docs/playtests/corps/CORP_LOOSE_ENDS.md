@@ -137,6 +137,8 @@ Seed 4242, `CORP_FIX_MODE` tw2002, 783s (782811 ms). Total net worth 6,158,205. 
 
 Corps N3P = P1+P2 and N2P = P3+P4. Corporate deploys: P3 laid 122, P4 laid 1. Transfers 6. Ferrengi credits 252,012. H broke on 27 days.
 
+`CORP_FIX_MODE` legacy on seed 4242 matches this table seat for seat, including each day's net worth, the bank lines, and the corp counters. That run took 770s (770485 ms). Rejected 0/0, exceptions 0, both saves identical, credits recovered 0. The two wall clocks differ by about 12s.
+
 ## Not built
 
 No bot strategy change. No prompt change. No combat-odds change. No alliance, corp treasury, tavern, or port-upgrade work. `prompts.py` still says `query_limpets` shows your planted limpets. That line is left for a later parity slice. `rules_text.py` says one wrong password a day, which still matches cl7.
