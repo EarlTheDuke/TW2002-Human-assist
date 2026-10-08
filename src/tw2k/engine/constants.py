@@ -2214,6 +2214,12 @@ BOT_WAR_START_DAY = 5                    # bw13, bw22
 BOT_WAR_SIEGES_PER_DAY = 1               # bw14
 BOT_WAR_SIEGE_COOLDOWN_DAYS = 2          # bw14
 BOT_WAR_GOOD_ATTACKS_ANY = False         # D6, bw23
+BOT_WAR_SCOUT_MIN_FIGHTERS = 2_000        # bw13
+BOT_WAR_SCOUT_TURNS_PER_DAY = 10          # bw13
+BOT_WAR_PROBES_PER_DAY = 1                # bw13
+BOT_WAR_LAND_TRIES = 3                    # bw16
+BOT_WAR_DEFEND_MAX_HOPS = 8               # bw19
+BOT_WAR_MAX_TURNS_PCT = {"N3": 40, "N2": 30}  # bw25
 
 
 def bots_war_on() -> bool:

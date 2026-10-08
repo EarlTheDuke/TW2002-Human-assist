@@ -286,3 +286,48 @@ def siege_refusal(
     if attacker_good and not owner_evil and not attacked_us and not K.BOT_WAR_GOOD_ATTACKS_ANY:
         return "alignment"
     return None
+
+
+def interdictor_blocks(citadel_level: int, *, fuel_left: int, hold_priced: bool) -> bool:
+    """A level-6 planet holds the ship until its fuel drops under the floor."""
+    if int(citadel_level) < int(K.INTERDICTOR_MIN_LEVEL):
+        return False
+    if int(fuel_left) < int(K.INTERDICTOR_FUEL):
+        return False
+    return not hold_priced
+
+
+def scout_turns_left(skill: str, *, day: int, fighters: int, has_scanner: bool, spent: int) -> int:
+    """Holo-scan turns still allowed today. N1 and H never scout."""
+    if skill not in ("N2", "N3") or not has_scanner:
+        return 0
+    if int(day) < int(K.BOT_WAR_START_DAY) or int(fighters) < int(K.BOT_WAR_SCOUT_MIN_FIGHTERS):
+        return 0
+    return max(0, int(K.BOT_WAR_SCOUT_TURNS_PER_DAY) - int(spent))
+
+
+def probes_left(skill: str, *, day: int, fighters: int, used: int) -> int:
+    """Ether probes still allowed today."""
+    if skill not in ("N2", "N3"):
+        return 0
+    if int(day) < int(K.BOT_WAR_START_DAY) or int(fighters) < int(K.BOT_WAR_SCOUT_MIN_FIGHTERS):
+        return 0
+    return max(0, int(K.BOT_WAR_PROBES_PER_DAY) - int(used))
+
+
+def land_tries_left(used: int) -> int:
+    """Landings still allowed in this siege."""
+    return max(0, int(K.BOT_WAR_LAND_TRIES) - int(used))
+
+
+def defend_reachable(hops: int | None) -> bool:
+    """Home defence stays inside the hop cap. An unknown route is not reachable."""
+    if hops is None:
+        return False
+    return int(hops) <= int(K.BOT_WAR_DEFEND_MAX_HOPS)
+
+
+def war_turn_cap(skill: str, turns_per_day: int) -> int:
+    """Turns this skill may spend on war today. Other skills get none."""
+    pct = int(K.BOT_WAR_MAX_TURNS_PCT.get(skill, 0))
+    return int(turns_per_day) * pct // 100
