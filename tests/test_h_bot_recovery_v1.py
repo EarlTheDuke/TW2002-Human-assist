@@ -164,6 +164,66 @@ def test_hr9_a_fat_purse_plots_back_to_stardock():
     assert act.args["target"] == 1
 
 
+def test_hr10_an_empty_bank_plots_home_before_the_purse_is_spent():
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    asyncio, Observation = _h_obs(credits=20_000, bank_balance=0, net_worth=36_000)
+    obs = Observation
+    obs.sector = {"id": 40, "ferrengi": []}
+    obs.ship = {"class": "scout_marauder", "fighters": 0, "cargo": {}, "cargo_free": 25, "holds": 25}
+    obs.legal_actions = [
+        {"kind": "plot_course", "legal": True, "params": {}},
+        {"kind": "warp", "legal": True, "params": {}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "plot_course"
+    assert act.args["target"] == 1
+
+
+def test_hr11_a_small_bank_withdraws_the_keep_when_no_hull_fits():
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    asyncio, Observation = _h_obs(credits=0, bank_balance=10_000, net_worth=18_000, deaths=1)
+    obs = Observation
+    obs.ship = dict(obs.ship)
+    obs.ship["class"] = "scout_marauder"
+    obs.ship["holds"] = 25
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": False, "params": {"ship_class": {
+            "choices": [],
+            "net_cost_by": {
+                "cargotran": 47_963, "merchant_freighter": 29_413, "merchant_cruiser": 37_313,
+            },
+            "blocked_by": {
+                "cargotran": "insufficient credits (0 < 47963)",
+                "merchant_freighter": "insufficient credits (0 < 29413)",
+                "merchant_cruiser": "insufficient credits (0 < 37313)",
+            },
+        }}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 10_000}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "bank_withdraw"
+    assert act.args["amount"] == 10_000
+
+
+def test_hr12_n1_plots_the_free_scout_home():
+    from tests.test_bots_bank_economy_v1 import _la
+    from tw2k.agents.seat_acceptance import synthetic_obs
+
+    scout = synthetic_obs(sector=5, credits=0, ship_class="scout_marauder", holds=25)
+    scout["deaths"] = 1
+    scout["bank_balance"] = 10_000
+    scout["adjacent"] = [{"id": 1, "known": True}]
+    _la(scout, "plot_course")
+    _la(scout, "warp")
+    act = _n1().decide(scout)
+    assert act["kind"] == "plot_course"
+    assert act["args"]["target"] == 1
+
+
 def test_hr5_legacy_h_still_buys_the_scout(monkeypatch):
     import tw2k.engine.constants as K
     from tests.test_bots_bank_economy_v1 import _h_obs
