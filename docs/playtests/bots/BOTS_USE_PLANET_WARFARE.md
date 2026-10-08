@@ -112,7 +112,7 @@ No new verb. No observation change. No prompt change. Ferrengi and alien war log
 
 ## Planted bugs
 
-Re-break is still ahead. Each named test fails when the bug is planted.
+Re-break on `91a183a`, one plant at a time, source restored after each. The tree was clean again after the run.
 
 | Bug | Test |
 | --- | --- |
@@ -142,3 +142,9 @@ Re-break is still ahead. Each named test fails when the bug is planted.
 | pb24 a random tie-break | `test_bw26_save` |
 | pb25 a net-worth drop stays in defend forever | `test_bw22_budget` |
 | pb26 legacy mode still lays the new pickets | `test_bw1_mode` |
+
+These plants failed the test named here. pb2 `test_bw4_armids`. pb4 and pb5 `test_bw5_pickets`. pb6 and pb7 `test_bw6_ownership`. pb10 `test_bw8_reaction`. pb13 `test_bw2_threat_map`. pb16 the margin invert and pb21 the quasar retreat both failed `test_bw17_retreat`. pb18 `test_bw14_targets`. pb23 `test_bw23_alignment`. pb26 `test_bw1_mode`.
+
+These plants failed a different test than the table names. pb3 still passed `test_bw4_armids` and failed `test_armids_avoid_a_corridor_and_fedspace`. pb9 still passed `test_bw7_stock` and failed `test_stock_fills_the_level_ladder_inside_the_budget`. pb11 and pb12 still passed `test_bw9_quasar` and failed `test_reaction_and_quasar_are_set_once_at_the_level_gate`. pb14 failed `test_planet_fight_matches_the_engine_on_fifty_cases`. pb19 the land-try cap failed `test_land_tries_defend_hops_and_turn_cap`. pb22 a 10-hop chase failed `test_a_far_home_a_quiet_day_and_legacy_stay_put`.
+
+Still open. pb1 has no second-buy test, so `test_bw4_armids` cannot see a forever stock flag. pb8 is not what `test_bw6_ownership` checks. pb15 swapping the reaction odds to the defensive odds still passed the fifty engine cases, because those cases return during the shield soak. pb17 and pb25 are not in the code. pb20 and pb24 have no test that fails. `test_bw15_estimate`, `test_bw16_execute`, `test_bw19_defend`, `test_bw22_budget`, and `test_bw26_save` are not defined.
