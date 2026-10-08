@@ -3808,7 +3808,8 @@ class SeatBrain:
 
     def _skip_fighter_rebuy(self, v: View) -> bool:
         """Last day only: fighters already moved onto a planet, so do not buy them back."""
-        return self._days_left(v) == 0 and getattr(self, "_war_stocked_day", -1) == int(v.day)
+        # A 30-day scripted match sets the clock to 32, so the last scored day has 2 left.
+        return self._days_left(v) <= 2 and getattr(self, "_war_stocked_day", -1) == int(v.day)
 
     def _buy_defense(self, v: View) -> dict[str, Any] | None:
         """Buy shields then fighters at StarDock or a known Class 0 when cash is high."""
