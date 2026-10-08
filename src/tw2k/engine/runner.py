@@ -588,7 +588,7 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
             md.count -= 1
             if md.count <= 0:
                 sector.mines.remove(md)
-            _attach_limpet(universe, md.owner_id, pid)
+            _attach_limpet(universe, md.owner_id, pid, getattr(md, "corp_ticker", None))
 
     if damage > 0:
         shields_before = player.ship.shields
@@ -2804,8 +2804,16 @@ def _handle_photon_missile(universe: Universe, pid: str, action: Action) -> Acti
 def _handle_query_limpets(universe: Universe, pid: str, action: Action) -> ActionResult:
     """Read-out of where every limpet you've placed currently is."""
     reports: list[dict] = []
+    viewer = universe.players[pid]
     for _key, lt in universe.limpets.items():
-        if lt.owner_id != pid:
+        own = lt.owner_id == pid
+        corporate = (
+            K.corp_fix_on(corp=True)
+            and K.LIMPET_CORP_VIEW == "corporate_only"
+            and lt.corp_ticker
+            and viewer.corp_ticker == lt.corp_ticker
+        )
+        if not own and not corporate:
             continue
         target = universe.players.get(lt.target_id)
         if target is None:

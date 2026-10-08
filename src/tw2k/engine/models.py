@@ -914,7 +914,7 @@ class LimpetTrack(BaseModel):
     """A limpet stuck to a player's hull — owner can query its location."""
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"target_ship_id": None})
+        return _omit_defaults(handler(self), {"target_ship_id": None, "corp_ticker": None})
 
     owner_id: str       # the deployer (intel consumer)
     target_id: str      # which player is being tracked
@@ -922,6 +922,8 @@ class LimpetTrack(BaseModel):
     placed_day: int
     # SHIP_FLEET.md fl19: set while the tracked hull sits parked (unmanned); None = on target_id's ship.
     target_ship_id: int | None = None
+    # cl6. None is a personal limpet, including an older save that has no field.
+    corp_ticker: str | None = None
 
 
 class ParkedShip(BaseModel):

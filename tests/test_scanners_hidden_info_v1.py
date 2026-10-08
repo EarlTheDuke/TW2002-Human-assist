@@ -482,7 +482,8 @@ def test_a_pod_landing_reaches_only_the_pilot(tw) -> None:
     assert after[busy]["seen_tick"] == before[busy]["seen_tick"]
 
 
-def test_entering_a_sector_shows_traders_and_hides_foreign_limpets(tw) -> None:
+def test_entering_a_sector_shows_traders_and_hides_foreign_limpets(tw, monkeypatch) -> None:
+    monkeypatch.setattr(K, "LIMPET_CORP_VIEW", "all_corp")  # s12, before cl6
     u, home, busy, quiet = build_world()
     sec = build_observation(u, "A").sector
     assert [t["id"] for t in sec["traders"]] == ["C"]

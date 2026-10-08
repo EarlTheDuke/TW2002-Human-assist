@@ -2237,6 +2237,7 @@ def bots_war_on() -> bool:
 # docs/playtests/corps/CORP_RULES.md. "legacy" is the engine at 57dec11.
 CORP_MODE = "tw2002"                      # "tw2002" | "legacy"
 CORP_FIX_MODE = "tw2002"                  # CORP_LOOSE_ENDS.md cl1 | "legacy"
+LIMPET_CORP_VIEW = "corporate_only"       # cl6 | "all_corp"
 CORP_CREATE_COST = 0                      # cr2 UNVERIFIED (alt 500_000 = CORP_FORMATION_COST)
 CORP_TURN_COST = 0                        # cr2 UNVERIFIED
 CORP_NEW_PASSWORD = ""                    # cr3 UNVERIFIED: blank means closed
