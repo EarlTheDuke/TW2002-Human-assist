@@ -288,6 +288,33 @@ def siege_refusal(
     return None
 
 
+def attack_gate(
+    *,
+    fighters: int,
+    fighters_left: int,
+    treasury: int,
+    fighter_price: int,
+) -> str | None:
+    """None means the surviving estimate is still worth taking.
+
+    Fighters left must be at least the floor and at least the margin percent
+    of the fighters brought. The seen treasury must cover the prize ratio
+    times the credits those spent fighters cost. A missing treasury is 0.
+    """
+    have = max(0, int(fighters))
+    left = max(0, int(fighters_left))
+    if left < int(K.BOT_WAR_SIEGE_MIN_LEFT):
+        return "left"
+    if left * 100 < have * int(K.BOT_WAR_SIEGE_MARGIN_PCT):
+        return "left"
+    spent = max(0, have - left)
+    cost = spent * max(0, int(fighter_price))
+    ratio_tenths = int(round(float(K.BOT_WAR_PRIZE_MIN_RATIO) * 10))
+    if int(treasury) * 10 < cost * ratio_tenths:
+        return "prize"
+    return None
+
+
 def risk_within_cap(
     *,
     net_worth: int,
