@@ -4,7 +4,20 @@
 
 Sources: Iago's war manual, the MBBS manual, the Cabal base and blockade notes, the original Bible, S3, and the engine docs under `docs/playtests/planetary-warfare/`. TWGS 3.11 is the default. MBBS breaks a tie. Strategy rows say how a bot chooses. They do not change the engine.
 
-Root-cause trace on `885bdb0`, seed 250925, 10 days, seats N3,N3,N2,N2,N1,H, before any war code. `_maybe_lay_armids` was called 4,575 times and laid 0 mines. 4,034 calls were not at the home sector, 379 were in a swept lane, 158 were at home and then refused because `_home_is_corridor` was true, and 4 were not a legal mine deploy. `_lay_fighters` exists and is never called. The 10-day and 30-day war tables are still ahead.
+Root-cause trace on `885bdb0`, seed 250925, 10 days, seats N3,N3,N2,N2,N1,H, before any war code. `_maybe_lay_armids` was called 4,575 times and laid 0 mines. 4,034 calls were not at the home sector, 379 were in a swept lane, 158 were at home and then refused because `_home_is_corridor` was true, and 4 were not a legal mine deploy. `_lay_fighters` exists and is never called.
+
+10-day seed 250925 on `67c050a`, seats N3,N3,N2,N2,N1,H, rejected 0/0, exceptions 0. Legacy (`--bots-war legacy`) digest `16ad8833`, total 1,809,848. War on (`--war-policy full`) digest `6441dbe7`, total 1,738,810. `land_planet` in the report includes ordinary landings; the legacy run has them too and has no mines, pickets, deposits, or reaction.
+
+| Seat | Legacy net worth | Legacy ship | Legacy deaths | War net worth | War ship | War deaths |
+| --- | --- | --- | --- | --- | --- | --- |
+| N3-P1 | 766,412 | cargotran | 0 | 706,053 | cargotran | 0 |
+| N2-P3 | 387,649 | cargotran | 0 | 470,469 | cargotran | 0 |
+| N1-P5 | 281,031 | cargotran | 0 | 266,872 | cargotran | 0 |
+| N3-P2 | 163,396 | cargotran | 0 | 94,772 | scout | 5 |
+| N2-P4 | 161,357 | cargotran | 0 | 150,336 | cargotran | 0 |
+| H-P6 | 50,003 | scout | 2 | 50,308 | scout | 6 |
+
+War report, policy full: P3 laid 55 corporate armids and 10 corporate defensive fighters and set reaction once. P5 laid 64 personal armids and 10 personal defensive fighters, deposited 10 fighters, and set reaction once. P1 deposited 412 fighters. P2, P4, and H laid no mines. Seed 4242, the defend policy, the pair policy, and both 30-day runs are still ahead.
 
 ## Rules
 
