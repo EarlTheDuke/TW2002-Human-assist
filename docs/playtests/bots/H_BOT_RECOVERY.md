@@ -63,6 +63,23 @@ The trade-again column, 439s, clears this seed. H day-10 net worth 662,652, Carg
 
 Seed 250925 on this same tip, 240s, also clears. H day-10 net worth 399,921, Merchant Cruiser, 0 deaths, broke 0, rejected 0/0, save identical. Day path 42,650, 60,134, 83,712, 93,640, 125,828, 169,492, 229,850, 271,303, 351,515, 399,921. Bank 272,987, deposits 272,987, withdraws 0.
 
-Flag off, seed 250925, 205s. Every seat's net worth, daily path, bank line, and sell count matches the column from before the buy change. H is 50,188 in a Scout. Ferrengi credits 112,550. Rejected 0/0, save identical. Seed 424242 flag-off is next.
+Flag off, seed 250925, 205s. Every seat's net worth, daily path, bank line, and sell count matches the column from before the buy change. H is 50,188 in a Scout. Ferrengi credits 112,550. Rejected 0/0, save identical.
 
-Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
+Flag off, seed 424242, 491s. The same match against the column from before the buy change: every seat's net worth, daily path, bank line, and sell count matches. H is 7,975 in a Scout, broke 9. N1 is 17,975, 0 sells. Ferrengi credits 73,500. Rejected 0/0, save identical.
+
+## Planted bugs
+
+Each row fails when that one bug is put back.
+
+| Bug | What goes wrong | Test |
+|-----|-----------------|------|
+| pb1 | A hull blocked only by credits is ignored. | test_hr6_a_hidden_freighter_is_still_worth_a_withdraw |
+| pb2 | A free Scout after Ship Destroyed does not upgrade. | test_hr7_a_free_scout_after_ship_destroyed_withdraws_for_the_freighter |
+| pb3 | The freighter is skipped. | test_hr8_a_short_bank_does_not_drain_the_reserve |
+| pb4 | A fat purse does not return to StarDock. | test_hr9_a_fat_purse_plots_back_to_stardock |
+| pb5 | An empty bank does not plot home before the first trade. | test_hr10_an_empty_bank_plots_home_before_the_purse_is_spent |
+| pb6 | A small bank does not withdraw the keep. | test_hr11_a_small_bank_withdraws_the_keep_when_no_hull_fits |
+| pb7 | N1 does not bring the free Scout home. | test_hr12_n1_plots_the_free_scout_home |
+| pb8 | A trading float plots home forever. | test_hr13_a_trading_float_does_not_plot_home_forever |
+| pb9 | The whole purse will not buy the freighter. | test_hr14_the_whole_purse_buys_the_freighter |
+| pb10 | Legacy H uses the new withdraw. | test_hr5_legacy_h_still_buys_the_scout |
