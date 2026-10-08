@@ -105,4 +105,12 @@ Re-break is still ahead. Each named test failed when the bug is planted.
 
 ## Match check
 
-Scenario lab `scripts/stardock_tavern_scenario_lab.py` PASS on this tree: one announcement, anonymous graffiti, an empty new hull traces for free, a docked port costs 3,000, password 2,000, alignment 250 turned away, the 4/5/6 ladder, a pod pays nothing, a real kill pays 10,000, one curse a day. The 10-day and 30-day matches are not in this note yet.
+Scenario lab `scripts/stardock_tavern_scenario_lab.py` PASS: one announcement, anonymous graffiti, an empty new hull traces for free, a docked port costs 3,000, password 2,000, alignment 250 turned away, the 4/5/6 ladder, a pod pays nothing, a real kill pays 10,000, one curse a day.
+
+10-day scripted seats N3,N3,N2,N2,N1,H. Tavern on and legacy are the same action stream. Rejected 0/0, exceptions 0.
+
+Seed 250925, digest `16ad8833`. N3-P1 766,412 cargotran 0 deaths. N2-P3 387,649 cargotran 0. N1-P5 281,031 cargotran 0. N3-P2 163,396 cargotran 0. N2-P4 161,357 cargotran 0. H-P6 50,003 scout 2 deaths.
+
+Seed 424242, digest `4b8d71e0`. N3-P1 753,296 cargotran 0. N2-P3 661,758 cargotran 0. N2-P4 176,554 cargotran 0. N3-P2 134,373 cargotran 0. N1-P5 17,975 scout 2 deaths. H-P6 7,975 scout 4 deaths.
+
+An empty StarDock observation is 29,277 bytes with the tavern on and 27,308 with it off, 1,969 bytes more. The 30-day stress run and the planted-bug re-break are still ahead.
