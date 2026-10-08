@@ -72,7 +72,7 @@ D1 seeded password. D2 alignment ceiling 199. D3 ladder 4/5/6. D4 Tri-Cron unbui
 
 ## Planted bugs
 
-Re-break is still ahead. Each named test failed when the bug is planted.
+Re-broke on 3a165ee. Each named test failed when the bug was planted, and the source was restored.
 
 | Bug | Test |
 | --- | --- |
