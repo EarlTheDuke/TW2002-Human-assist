@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import random
 import sys
 import time
 import traceback
@@ -61,7 +62,43 @@ from tw2k.engine import (  # noqa: E402
     is_finished,
     tick_day,
 )
+from tw2k.engine import constants as K  # noqa: E402
 from tw2k.engine.models import Player, Ship  # noqa: E402
+
+_TAVERN_KINDS = {
+    "tavern_announce", "tavern_talk", "tavern_graffiti", "tavern_order",
+    "grimy_ask", "grimy_curse", "underground_enter", "underground_contract",
+    "underground_claim",
+}
+
+
+def _stress_action(universe, pid: str, rng: random.Random) -> Action | None:
+    """One legal Tavern verb. The harness random is not universe.rng."""
+    from tw2k.engine.legality import legal_actions
+
+    rows = [row for row in legal_actions(universe, pid) if row.legal and row.kind in _TAVERN_KINDS]
+    if not rows:
+        return None
+    row = rows[rng.randrange(len(rows))]
+    params = row.params or {}
+    args: dict = {}
+    if "text" in params:
+        args["text"] = "stress note"
+    if "item" in params:
+        choices = list((params["item"] or {}).get("choices") or ["drink"])
+        args["item"] = choices[rng.randrange(len(choices))]
+    if "topic" in params:
+        choices = list((params["topic"] or {}).get("choices") or ["lore"])
+        args["topic"] = choices[rng.randrange(len(choices))]
+    if "target" in params:
+        choices = list((params["target"] or {}).get("choices") or [])
+        if choices:
+            args["target"] = choices[rng.randrange(len(choices))]
+    if "amount" in params:
+        args["amount"] = int((params["amount"] or {}).get("min") or 1000)
+    if "password" in params:
+        args["password"] = "wrong password"
+    return Action(kind=ActionKind(row.kind), args=args)
 
 # ---------------------------------------------------------------------------
 # Event → dict helper
@@ -136,8 +173,12 @@ class HeadlessRunner:
         verbose: bool = True,
         turns_per_day: int | None = None,
         starting_credits: int | None = None,
+        tavern_stress: float = 0.0,
     ):
         self.turns_per_day_override = turns_per_day
+        self.tavern_stress = float(tavern_stress)
+        self._stress_rng = random.Random(seed)
+        self.save_load_day15 = None
         self.starting_credits_override = starting_credits
         cfg_kwargs = {"seed": seed, "universe_size": universe_size, "max_days": max_days}
         if turns_per_day is not None:
@@ -304,6 +345,10 @@ class HeadlessRunner:
 
         def roll_day() -> None:
             nonlocal last_day, day_iters, stuck_counter, last_total_turns
+            if int(self.universe.day) == 15 and self.save_load_day15 is None:
+                raw = self.universe.model_dump()
+                loaded = type(self.universe).model_validate(raw)
+                self.save_load_day15 = loaded.model_dump() == raw
             self.handle_events(self.drain_events())
             self.close_day(self.universe.day)
             tick_day(self.universe)
@@ -338,6 +383,14 @@ class HeadlessRunner:
                 action = await agent.act(obs)
             except Exception as e:
                 action = Action(kind=ActionKind.END_TURN, thought=f"agent error: {e}")
+            if (
+                self.tavern_stress > 0
+                and int(player.sector_id) == int(K.STARDOCK_SECTOR)
+                and self._stress_rng.random() < self.tavern_stress
+            ):
+                forced = _stress_action(self.universe, agent.player_id, self._stress_rng)
+                if forced is not None:
+                    action = forced
             act_dt = time.time() - t_act
             result = apply_action(self.universe, agent.player_id, action)
             self.handle_events(self.drain_events())
@@ -457,6 +510,7 @@ class HeadlessRunner:
             "winner_id": self.universe.winner_id,
             "win_reason": self.universe.win_reason,
             "num_events": self.universe.seq,
+            "save_load_day15": self.save_load_day15,
             "players": players,
             "generated_at": datetime.now(UTC).isoformat(),
         }
@@ -544,6 +598,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-artifacts", action="store_true", help="Skip writing artifacts.")
     ap.add_argument("--no-gate", action="store_true", help="Don't exit 1 on rubric miss.")
     ap.add_argument("--quiet", action="store_true", help="Suppress live stdout.")
+    ap.add_argument("--tavern", choices=("tw2002", "legacy"), help="set TAVERN_MODE for this run")
+    ap.add_argument(
+        "--tavern-stress", type=float, default=0.0,
+        help="at StarDock, this chance replaces the bot action with a legal Tavern verb",
+    )
     ap.add_argument(
         "--turns-per-day",
         type=int,
@@ -565,6 +624,8 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     args = ap.parse_args(argv)
+    if args.tavern:
+        K.TAVERN_MODE = args.tavern
 
     try:
         out_dir = None if args.no_artifacts else _make_out_dir(args.suffix or args.kind)
@@ -579,6 +640,7 @@ def main(argv: list[str] | None = None) -> int:
             verbose=not args.quiet,
             turns_per_day=args.turns_per_day,
             starting_credits=args.starting_credits,
+            tavern_stress=args.tavern_stress,
         )
         t0 = time.time()
         summary = asyncio.run(runner.run())
