@@ -72,17 +72,19 @@ def _are_allied(universe: Universe, a_id: str, b_id: str) -> bool:
     return False
 
 
-def _attach_limpet(universe: Universe, owner_id: str, target_id: str) -> None:
+def _attach_limpet(universe: Universe, owner_id: str, target_id: str, corp_ticker: str | None = None) -> None:
     """Place a limpet so `owner_id` can later query `target_id`'s sector."""
     key = f"{owner_id}:{target_id}"
     target = universe.players.get(target_id)
     if target is None:
         return
+    ticker = corp_ticker if K.corp_fix_on(corp=True) else None
     universe.limpets[key] = LimpetTrack(
         owner_id=owner_id,
         target_id=target_id,
         placed_sector=target.sector_id,
         placed_day=universe.day,
+        corp_ticker=ticker,
     )
 
 

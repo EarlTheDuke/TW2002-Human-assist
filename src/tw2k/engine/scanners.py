@@ -34,13 +34,19 @@ def hostile_fighters(universe: Universe, pid: str, sector_id: int) -> bool:
     return not deploy_friend(universe, pid, dep)
 
 
-def limpet_visible(universe: Universe, viewer_id: str, owner_id: str) -> bool:
-    """s12: limpets sit 'almost invisible'. You see your own and your corp's."""
+def limpet_visible(universe: Universe, viewer_id: str, owner_id: str, mine=None) -> bool:
+    """s12: limpets sit almost invisible. A mate sees a personal one only under all_corp."""
     if owner_id == viewer_id:
         return True
     viewer = universe.players.get(viewer_id)
     owner = universe.players.get(owner_id)
-    return bool(viewer and owner and viewer.corp_ticker and viewer.corp_ticker == owner.corp_ticker)
+    same = bool(viewer and owner and viewer.corp_ticker and viewer.corp_ticker == owner.corp_ticker)
+    if not same:
+        return False
+    if not (K.corp_fix_on(corp=True) and K.LIMPET_CORP_VIEW == "corporate_only"):
+        return True
+    ticker = getattr(mine, "corp_ticker", None)
+    return bool(ticker) and ticker == viewer.corp_ticker
 
 
 def _fighter_view(s) -> dict[str, Any] | None:
@@ -59,7 +65,7 @@ def visible_mines(universe: Universe, viewer_id: str, sector) -> list[dict[str, 
     for m in sector.mines:
         if int(m.count) <= 0:
             continue
-        if m.kind == MineType.LIMPET and not limpet_visible(universe, viewer_id, m.owner_id):
+        if m.kind == MineType.LIMPET and not limpet_visible(universe, viewer_id, m.owner_id, m):
             if not (K.corp_rules_on() and getattr(m, "corp_ticker", None) and
                     universe.players.get(viewer_id) and
                     universe.players[viewer_id].corp_ticker == m.corp_ticker):

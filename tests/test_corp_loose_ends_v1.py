@@ -133,13 +133,36 @@ def test_cl3_allow_and_legacy_keep_today(monkeypatch):
     assert _act(u, "P2", "buy_ship", ship_class="scout_marauder").ok
 
 
-def test_today_a_corp_mate_sees_a_personal_limpet():
+def test_today_a_corp_mate_sees_a_personal_limpet(monkeypatch):
+    monkeypatch.setattr(K, "LIMPET_CORP_VIEW", "all_corp")
     u = _u()
     u.players["P1"].corp_ticker = "XYZ"
     u.players["P2"].corp_ticker = "XYZ"
     assert limpet_visible(u, "P2", "P1") is True
     u.players["P2"].corp_ticker = None
     assert limpet_visible(u, "P2", "P1") is False
+
+
+def test_cl6_a_mate_sees_only_a_corporate_limpet():
+    from tw2k.engine.models import LimpetTrack, MineDeployment, MineType
+    u = _u()
+    u.players["P1"].corp_ticker = "XYZ"
+    u.players["P2"].corp_ticker = "XYZ"
+    u.players["P3"].corp_ticker = "XYZ"
+    personal = MineDeployment(owner_id="P1", kind=MineType.LIMPET, count=1)
+    corporate = MineDeployment(owner_id="P1", kind=MineType.LIMPET, count=1, corp_ticker="XYZ")
+    assert limpet_visible(u, "P2", "P1", personal) is False
+    assert limpet_visible(u, "P2", "P1", corporate) is True
+    assert limpet_visible(u, "P1", "P1", personal) is True
+    u.limpets["old"] = LimpetTrack(owner_id="P1", target_id="P3", placed_sector=1, placed_day=1)
+    u.limpets["corp"] = LimpetTrack(
+        owner_id="P1", target_id="P3", placed_sector=9, placed_day=1, corp_ticker="XYZ",
+    )
+    _act(u, "P2", "query_limpets")
+    reports = u.events[-1].payload["reports"]
+    assert [row["placed_sector"] for row in reports] == [9]
+    _act(u, "P1", "query_limpets")
+    assert len(u.events[-1].payload["reports"]) == 2
 
 
 def test_today_disband_zeros_the_toll_pot():
