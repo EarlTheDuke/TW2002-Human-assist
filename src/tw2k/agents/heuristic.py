@@ -300,7 +300,7 @@ class HeuristicAgent(BaseAgent):
                 return None
             buy = legal.get("buy_ship") or {}
             withdraw = legal.get("bank_withdraw") or {}
-            if not buy.get("legal") or not withdraw.get("legal"):
+            if not withdraw.get("legal"):
                 return None
             spec = (buy.get("params") or {}).get("ship_class") or {}
             choices = spec.get("choices") or []
@@ -310,11 +310,15 @@ class HeuristicAgent(BaseAgent):
             from ..engine.constants import h_recovery_on
             if h_recovery_on():
                 from .bank_brain import recovery_hull_step
-                step = recovery_hull_step(choices, net, credits, balance, maximum)
+                step = recovery_hull_step(
+                    choices, net, credits, balance, maximum, spec.get("blocked_by") or {},
+                )
                 if step is not None and step[0] == "bank_withdraw":
                     amount = int(step[1])
                 elif step is not None and step[0] == "buy_ship":
                     return None
+            elif not buy.get("legal"):
+                return None
             elif "cargotran" in choices and net.get("cargotran") is not None:
                 amount = withdraw_amount(
                     int(net["cargotran"]), 20_000, credits, balance, egg, maximum, recovery=True,
@@ -362,7 +366,9 @@ class HeuristicAgent(BaseAgent):
             from ..engine.constants import h_recovery_on
             if h_recovery_on():
                 from .bank_brain import recovery_hull_step
-                step = recovery_hull_step(choices, net, int(obs.credits), 0, 0)
+                step = recovery_hull_step(
+                    choices, net, int(obs.credits), 0, 0, spec.get("blocked_by") or {},
+                )
                 if step is not None and step[0] == "buy_ship":
                     hull = str(step[1])
                     cost = int((net or {}).get(hull) or 0)

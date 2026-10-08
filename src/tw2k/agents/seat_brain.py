@@ -924,7 +924,10 @@ class SeatBrain:
             net = (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {})
             if self._n1_recovery():
                 from .bank_brain import recovery_hull_step
-                step = recovery_hull_step(choices, net, int(v.credits), 0, 0)
+                step = recovery_hull_step(
+                    choices, net, int(v.credits), 0, 0,
+                    (v.params("buy_ship").get("ship_class") or {}).get("blocked_by") or {},
+                )
                 if step is not None and step[0] == "buy_ship":
                     hull = str(step[1])
                     cost = int((net or {}).get(hull) or 0)
@@ -3123,24 +3126,27 @@ class SeatBrain:
         if self.mem is not None and self.mem.bank_unspent:
             return None
         balance = int(v.obs.get("bank_balance") or 0)
-        if self._n1_recovery() and v.ok("buy_ship"):
+        if self._n1_recovery():
             from .bank_brain import recovery_hull_step
+            ship_params = v.params("buy_ship").get("ship_class") or {}
             step = recovery_hull_step(
                 v.choices("buy_ship", "ship_class"),
-                (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by") or {},
+                ship_params.get("net_cost_by") or {},
                 int(v.credits), balance, int(v.params("bank_withdraw").get("max_amount") or 0),
+                ship_params.get("blocked_by") or {},
             )
-            if step is None or step[0] != "bank_withdraw":
+            if step is not None and step[0] == "bank_withdraw":
+                amount = int(step[1])
+                if amount < 1 or not self._bank_verb_open(v, "bank_withdraw"):
+                    return None
+                if self.mem is not None and self.mem.pending_buy == "hull":
+                    return None
+                if self.mem is not None:
+                    self.mem.pending_buy = "hull"
+                return self._take_bank_verb(v, {"kind": "bank_withdraw", "args": {"amount": amount},
+                                                "thought": "withdraw the replacement hull from the nest egg"})
+            if step is not None:
                 return None
-            amount = int(step[1])
-            if amount < 1 or not self._bank_verb_open(v, "bank_withdraw"):
-                return None
-            if self.mem is not None and self.mem.pending_buy == "hull":
-                return None
-            if self.mem is not None:
-                self.mem.pending_buy = "hull"
-            return self._take_bank_verb(v, {"kind": "bank_withdraw", "args": {"amount": amount},
-                                            "thought": "withdraw the replacement hull from the nest egg"})
         need = self._stardock_hull_need(v, balance)
         from .bank_brain import nest_egg, withdraw_amount
         amount = withdraw_amount(
