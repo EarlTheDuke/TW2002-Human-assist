@@ -147,6 +147,23 @@ def test_hr8_a_short_bank_does_not_drain_the_reserve():
     assert step == ("bank_withdraw", 29_413)
 
 
+def test_hr9_a_fat_purse_plots_back_to_stardock():
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    asyncio, Observation = _h_obs(credits=80_000, bank_balance=10_000, net_worth=90_000)
+    obs = Observation
+    obs.sector = {"id": 40, "ferrengi": []}
+    obs.ship = {"class": "merchant_freighter", "fighters": 50, "cargo": {}, "cargo_free": 65, "holds": 65}
+    obs.legal_actions = [
+        {"kind": "plot_course", "legal": True, "params": {}},
+        {"kind": "warp", "legal": True, "params": {}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "plot_course"
+    assert act.args["target"] == 1
+
+
 def test_hr5_legacy_h_still_buys_the_scout(monkeypatch):
     import tw2k.engine.constants as K
     from tests.test_bots_bank_economy_v1 import _h_obs

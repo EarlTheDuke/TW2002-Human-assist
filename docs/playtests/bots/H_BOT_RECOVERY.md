@@ -23,6 +23,7 @@ After a death, at StarDock, withdraw first, then buy, then trade.
 2. The purse is credits plus what the bank can withdraw. The death reserve starts as one Merchant Cruiser, 41,300, and it stays in the bank. If that blocks every cargo hull, drop the reserve to one Scout, 15,950. If that still blocks, drop it to the H keep, 10,000. If the hull still does not fit, do not withdraw. A drain that leaves 1 credit emptied the bank and the next death took the cash.
 3. The withdraw happens before the buy. The buy does not spend the reserve that step 2 kept.
 4. Once the new hull is aboard, the seat goes back to its normal trade route. No new verb. No prompt change. No combat-odds change.
+5. Away from StarDock, a purse over 50,000 plots back and the spare cash is deposited before the next route. Ship credits die with the hull. The bank does not.
 
 ## Bars
 
@@ -47,6 +48,8 @@ Seed 250925, `H_RECOVERY_MODE` tw2002, 206s, before the hidden-hull fix. H day-1
 
 The same column after that fix, 213s, is identical: H 50,188, Scout, withdraws 0. Ship Destroyed hands back a free Scout, and the withdraw only ran while the ship was an escape pod.
 
-The free-Scout column, 219s, is worse. H day-10 net worth 9,523, still a Scout, broke 1 day, withdraws 41,379. The last-resort step drained the bank and the next death took the cash. The third floor is now the 10,000 H keep, and a hull that still does not fit causes no withdraw. This column is being run again.
+The free-Scout column, 219s, is worse. H day-10 net worth 9,523, still a Scout, broke 1 day, withdraws 41,379. The last-resort step drained the bank and the next death took the cash. The third floor is now the 10,000 H keep, and a hull that still does not fit causes no withdraw.
+
+The cash-floor column, 248s, bought the freighter. H climbed to 694,845 on day 9, then one death took 610,309 off the ship and day 10 finished at 73,503, still a freighter, broke 0, rejected 0/0. A purse over 50,000 now plots back to StarDock. This column is being run again.
 
 Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
