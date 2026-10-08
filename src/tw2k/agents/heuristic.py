@@ -90,6 +90,19 @@ class HeuristicAgent(BaseAgent):
             if pod is not None:
                 return pod
 
+        # Ship Destroyed hands back a free Scout. Upgrade it before trading.
+        from ..engine.constants import h_recovery_on
+        if (h_recovery_on()
+                and str(obs.ship.get("class") or "") == "scout_marauder"
+                and int(getattr(obs, "deaths", 0) or 0) > 0
+                and int(obs.sector.get("id") or 0) == STARDOCK_SECTOR):
+            banked = self._h_bank(obs, recovery=True)
+            if banked is not None:
+                return banked
+            bought = self._recovery_buy(obs)
+            if bought is not None:
+                return bought
+
         # At StarDock: consider outfitting & upgrading before heading out
         if obs.sector["id"] == 1 and obs.credits > 50_000:
             room = self._legal_max(obs, "buy_equip", "fighters")
@@ -350,6 +363,27 @@ class HeuristicAgent(BaseAgent):
             kind=ActionKind.BANK_DEPOSIT, args={"amount": amount},
             thought="Banking the spare cash before leaving StarDock.",
         )
+
+    def _recovery_buy(self, obs: Observation) -> Action | None:
+        """Buy the cargo hull the recovery withdraw just paid for. Credits only."""
+        legal = self._legal(obs)
+        buy = legal.get("buy_ship") or {}
+        if not buy.get("legal"):
+            return None
+        spec = (buy.get("params") or {}).get("ship_class") or {}
+        from .bank_brain import recovery_hull_step
+        step = recovery_hull_step(
+            spec.get("choices") or [], spec.get("net_cost_by") or {},
+            int(obs.credits), 0, 0, spec.get("blocked_by") or {},
+        )
+        if step is None or step[0] != "buy_ship":
+            return None
+        hull = str(step[1])
+        if hull == "scout_marauder":
+            return None
+        cost = int((spec.get("net_cost_by") or {}).get(hull) or 0)
+        return Action(kind=ActionKind.BUY_SHIP, args={"ship_class": hull},
+                      thought=f"Trading up to a {hull} after the loss ({cost} cr net).")
 
     def _leave_pod(self, obs: Observation) -> Action | None:
         """Escape pod: at StarDock trade it for a Cargotran or a Scout; elsewhere autopilot to StarDock."""

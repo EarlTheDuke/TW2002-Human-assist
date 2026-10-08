@@ -43,6 +43,8 @@ H and N1 withdraw first, then buy the best cargo hull that leaves the reserve. A
 
 ## 10-day, first column
 
-Seed 250925, `H_RECOVERY_MODE` tw2002, 206s, before the hidden-hull fix. H day-10 net worth 50,188, still a Scout, bank withdraws 0, broke 0, rejected 0/0. The other seats matched the earlier column. The legal list had hidden the cargo hulls, so this column did not exercise the new buy. It is being run again.
+Seed 250925, `H_RECOVERY_MODE` tw2002, 206s, before the hidden-hull fix. H day-10 net worth 50,188, still a Scout, bank withdraws 0, broke 0, rejected 0/0. The other seats matched the earlier column. The legal list had hidden the cargo hulls.
+
+The same column after that fix, 213s, is identical: H 50,188, Scout, withdraws 0. Ship Destroyed hands back a free Scout, and the withdraw only ran while the ship was an escape pod. A post-death Scout now withdraws for a cargo hull before it trades. This column is being run again.
 
 Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
