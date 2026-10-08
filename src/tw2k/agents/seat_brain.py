@@ -950,6 +950,9 @@ class SeatBrain:
         if int(v.obs.get("deaths") or 0) <= 0 or v.landed is not None:
             return None
         if v.here != STARDOCK:
+            balance = int(v.obs.get("bank_balance") or 0)
+            if int(v.credits) >= 2_000 or balance < 1:
+                return None
             plot = self._plot(v, STARDOCK, "free scout - autopilot to StarDock to rebuy")
             if plot is None or self._banned_why(plot, v):
                 return None

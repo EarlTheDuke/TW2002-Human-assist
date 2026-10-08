@@ -394,7 +394,9 @@ class HeuristicAgent(BaseAgent):
         cargo = obs.ship.get("cargo") or {}
         holding = sum(int(n or 0) for n in cargo.values()) if isinstance(cargo, dict) else 0
         scout = str(obs.ship.get("class") or "") == "scout_marauder"
-        broke_scout = scout and int(getattr(obs, "deaths", 0) or 0) > 0
+        # A Scout with a trading float that plots home every turn never sells again.
+        # Seed 424242 froze at 40,159 from day 5 that way.
+        broke_scout = scout and int(getattr(obs, "deaths", 0) or 0) > 0 and credits < 2_000 and balance > 0
         thin_bank = balance < keep and credits > keep and holding == 0
         if not broke_scout and not thin_bank:
             return None
