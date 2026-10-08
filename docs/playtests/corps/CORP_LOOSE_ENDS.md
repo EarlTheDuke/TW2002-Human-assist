@@ -79,7 +79,7 @@ corp_loose_ends_lab: PASS
 
 Seats N3,N3,N2,N2,N1,H. Pair policy, war full. Rejected 0/0 and exceptions 0 on the legacy column. Bank save/load identical. Credits recovered by killers: 0. Rogue groups 0. Hostile mate actions 0.
 
-Seed 250925, `CORP_FIX_MODE` legacy, 239s. Total net worth 1,734,907.
+Seed 250925, `CORP_FIX_MODE` legacy, 239s. The tw2002 column on the same seed matches this table seat for seat, including each day's net worth, the bank lines, and the corp counters. That run took 207s. Total net worth 1,734,907. Rejected 0/0 and exceptions 0 on both. Credits recovered 0 on both.
 
 | Seat | Net worth | Credits | Deaths | Credits lost |
 | --- | --- | --- | --- | --- |
