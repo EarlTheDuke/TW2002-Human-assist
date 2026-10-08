@@ -6,6 +6,9 @@ These are the legacy-side facts. The gated tw2002 path is added later.
 from __future__ import annotations
 
 from tw2k.engine import constants as K
+from tw2k.engine.actions import Action, ActionKind
+from tw2k.engine.combat import _destroy_ship
+from tw2k.engine.fleet import attack_unmanned
 from tw2k.engine.bank import on_ship_lost
 from tw2k.engine.corp import disband
 from tw2k.engine.models import EventKind, FighterDeployment, FighterMode, TowLock
@@ -157,6 +160,48 @@ def test_today_a_self_death_pays_the_other_player_nothing():
     killer.credits = 100
     lost = on_ship_lost(u, victim, killer.id, False, "merchant_cruiser")
     assert lost == 800 and victim.credits == 0 and killer.credits == 100
+
+
+def test_cl4_your_own_unmanned_corbomite_fires_on_you():
+    u = _world()
+    pilot = _sit(u, "A", 40, fighters=100)
+    pilot.ship.shields = 0
+    sid = _park(u, "A", 40)
+    u.parked_ships[sid].ship.corbomite = 1
+    u.parked_ships[sid].ship.fighters = 0
+    u.parked_ships[sid].ship.shields = 0
+    assert attack_unmanned(u, "A", f"ship:{sid}", Action(kind=ActionKind.ATTACK, args={"qty": 5})).ok
+    assert pilot.ship.fighters == 80
+    assert any(e.kind == EventKind.CORBOMITE_BLAST for e in u.events)
+
+
+def test_cl4_inert_does_not_fire_on_your_own_hull(monkeypatch):
+    monkeypatch.setattr(K, "CORBOMITE_OWN_SHIP", "inert")
+    u = _world()
+    pilot = _sit(u, "A", 40, fighters=100)
+    sid = _park(u, "A", 40)
+    u.parked_ships[sid].ship.corbomite = 1
+    u.parked_ships[sid].ship.fighters = 0
+    u.parked_ships[sid].ship.shields = 0
+    assert attack_unmanned(u, "A", f"ship:{sid}", Action(kind=ActionKind.ATTACK, args={"qty": 5})).ok
+    assert pilot.ship.fighters == 100
+    assert not any(e.kind == EventKind.CORBOMITE_BLAST for e in u.events)
+
+
+def test_cl4_a_flown_ship_does_not_detonate_on_itself():
+    u = _world()
+    pilot = _sit(u, "A", 40, fighters=100)
+    other = _sit(u, "B", 40, fighters=100)
+    pilot.ship.corbomite = 1
+    _destroy_ship(u, "A", "combat", killer_id="A")
+    assert not any(e.kind == EventKind.CORBOMITE_BLAST for e in u.events)
+    assert other.ship.fighters == 100
+    u2 = _world()
+    victim = _sit(u2, "A", 40, fighters=100)
+    killer = _sit(u2, "B", 40, fighters=100)
+    victim.ship.corbomite = 1
+    _destroy_ship(u2, "A", "combat", killer_id="B")
+    assert killer.ship.fighters == 80
 
 
 def test_today_salvage_overkill_stays_none():

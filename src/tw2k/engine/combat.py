@@ -805,8 +805,8 @@ def _destroy_ship(
         player.ship.scanner = None  # SCANNERS_HIDDEN_INFO.md s4: the scanner went down with the ship
     if K.hardware_tw2002():
         strip_v2(player.ship)  # d15: corbomite, beacons, probe, detonators, cloaks go with the hull
-    if corbomite > 0 and killer_id:
-        apply_corbomite(universe, pid, killer_id, corbomite)  # v3: the killer takes the blast
+    if corbomite > 0 and killer_id and killer_id != pid:
+        apply_corbomite(universe, pid, killer_id, corbomite)  # v3: the killer takes the blast; a flown ship never hits itself
 
 
 def _destroy_ship_legacy(universe: Universe, pid: str, reason: str, killer_id: str | None) -> None:
