@@ -1,8 +1,7 @@
-"""BOTS_BANK_MODE legacy matches the bots before this slice.
+"""BOTS_WAR_MODE legacy matches the scripted game before the war brain is read.
 
-Recorded on dda012c, before any bot reads BOTS_BANK_MODE. Scripted N3,N2,N1,H,
-seed 250925, 3 days. The bool notices are not modes, so this pin sets them
-false. LLM_SELL_FIRST is a bool too.
+Same 3-day N3,N2,N1,H seed 250925 digest as the tavern pin. The bool notices
+are not modes, so this pin sets them false.
 """
 
 from __future__ import annotations
@@ -14,9 +13,11 @@ from pathlib import Path
 from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
-BOTS_BANK_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
+WAR_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
 PIN_FLIPS = (
-    "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE",
+    "BOTS_WAR_MODE",
+    "TAVERN_MODE",
+    "BOTS_BANK_MODE",
     "LLM_PLANET_NUDGE_MODE",
     "LLM_PARITY_MODE",
     "CORP_BOTS_MODE",
@@ -38,7 +39,7 @@ PIN_FLIPS = (
 )
 
 
-def test_bots_bank_legacy_is_unchanged():
+def test_war_legacy_is_unchanged():
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
         "import tw2k.engine.constants as K;"
@@ -51,4 +52,4 @@ def test_bots_bank_legacy_is_unchanged():
         [sys.executable, "-c", code], cwd=ROOT, env=pin_env(),
         capture_output=True, text=True, timeout=900, check=True,
     )
-    assert out.stdout.strip().splitlines()[-1] == BOTS_BANK_LEGACY_GOLDEN
+    assert out.stdout.strip().splitlines()[-1] == WAR_LEGACY_GOLDEN
