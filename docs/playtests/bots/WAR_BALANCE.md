@@ -48,7 +48,16 @@ Seed 4242 30-day on `4997a47`, war full, 1629s, rejected 0/0, save identical. Da
 | N2-P4 | 626,310 cargotran, 0 deaths | 100% |
 | N3-P2 | 483,682 scout, 10 deaths | 77% |
 
-P1 still destroyed one ship and deposited 2,365 fighters. N2-P3, N2-P4, and N3-P2 match the home-ack ends. Seed 250925 is still open.
+P1 still destroyed one ship and deposited 2,365 fighters. N2-P3, N2-P4, and N3-P2 match the home-ack ends.
+
+Seed 250925 30-day war off, 991s, rejected 0/0, save identical. The 75% line is rounded.
+
+| Seat | War off | 75% |
+| --- | --- | --- |
+| N3-P1 | 3,154,290 battleship, 0 deaths | 2,365,718 |
+| N2-P3 | 1,953,715 cargotran, 1 death | 1,465,286 |
+| N2-P4 | 360,021 scout, 3 deaths | 270,016 |
+| N3-P2 | 481,629 cargotran, 0 deaths | 361,222 |
 
 ## Bars
 
