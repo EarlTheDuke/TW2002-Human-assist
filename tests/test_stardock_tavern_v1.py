@@ -109,8 +109,9 @@ def test_tv5_graffiti_has_no_author():
     assert wall[-1]["text"] == "no name here"
     assert "name" not in wall[-1] and "author" not in wall[-1]
     event = next(ev for ev in universe.events if ev.kind.value == "tavern_graffiti")
-    assert "Ada" not in event.payload
-    assert "A" not in event.payload
+    shown = {key: value for key, value in event.payload.items() if key != "_witnesses"}
+    assert "Ada" not in str(shown)
+    assert "author" not in shown
     assert event.summary == "you wrote on the wall"
 
 
@@ -259,6 +260,7 @@ def test_tv16_tv17_tv18_and_pb26():
     assert _do(universe, "A", ActionKind.UNDERGROUND_ENTER, password=word).ok
     assert _do(universe, "A", ActionKind.UNDERGROUND_CONTRACT, target="B", amount=10_000).ok
     assert poster.alignment == 100 - 40
+    assert list((universe.posted_rewards or {}).get("B") or []) == []
     assert poster.credits == 80_000 - 2_000 - 10_000
     shown = build_observation(universe, "A").tavern["underground"]["contracts"]
     assert shown[0]["amount"] == 10_000
