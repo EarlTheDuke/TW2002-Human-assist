@@ -31,6 +31,35 @@ D1 `TOW_EXTERN_HOLDER` owner_or_corp. D2 `CORPSHIP_EXMEMBER_TRADEIN` refuse. D3 
 
 Recorded before any rule code. In-suite 3-day N3,N2,N1,H seed 250925 digest `9b607d3dae940c0b1a69f6d7`. Outside the suite, the 10-day N3,N3,N2,N2,N1,H seed 250925 digest is `221826d9bd9a6a6c85668224` (332s). `CORP_FIX_MODE` is named on the older single-mode flip lists. The constant does not exist yet, so those flips do not change the digest. There is no separate fed-outpost pin file.
 
+## Planted bugs
+
+Re-broken on `8cd3f01`, one at a time. Each named test failed, then the source was restored.
+
+| Bug | Test |
+| --- | --- |
+| pb1 a stranger with a lock holds | `test_cl2_a_stranger_in_the_sector_does_not_hold` |
+| pb2 an ally holds | `test_cl2_an_ally_does_not_hold` |
+| pb3 the fighter limit is checked on the owner | `test_cl2_the_mate_must_be_fedsafe` |
+| pb4 a current member is refused the trade-in | `test_cl3_a_current_member_still_trades_the_hull_in` |
+| pb5 the trade-in block is only in the legal list | `test_cl3_an_ex_member_cannot_trade_in_a_borrowed_hull` |
+| pb6 corbomite fires on the pilot who is flying | `test_cl4_a_flown_ship_does_not_detonate_on_itself` |
+| pb7 the ratio compares fighters lost | `test_cl5_ratio_keeps_a_measured_attack_and_drops_an_overkill` |
+| pb8 the none path uses the ratio | `test_cl5_no_limit_still_salvages_an_overkill` |
+| pb9 a mate's query lists personal limpets | `test_cl6_a_mate_sees_only_a_corporate_limpet` |
+| pb10 an old save limpet defaults to corporate | `test_cl6_a_mate_sees_only_a_corporate_limpet` |
+| pb11 a correct password is refused after a wrong guess | `test_cl7_a_correct_password_joins_after_a_wrong_guess` |
+| pb12 wrong guesses are not capped | `test_cl7_a_correct_password_joins_after_a_wrong_guess` |
+| pb13 dissolve zeros the toll pot | `test_cl8_disband_and_a_dead_ceo_keep_the_toll_pot` |
+| pb14 the pot is paid to the dead owner's pod | `test_cl8_disband_and_a_dead_ceo_keep_the_toll_pot` |
+| pb15 an ex-member collects the corporate pot | `test_cl9_a_member_collects_the_toll_pot_and_an_ex_member_does_not` |
+| pb16 return fire pays the defender twice | `test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner` |
+| pb17 return fire also pays a Ferrengi | `test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner` |
+| pb18 a planet-defence death pays nobody | `test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner` |
+| pb19 corbomite pays an eliminated owner | `test_cl12_corbomite_pays_a_living_owner_once` |
+| pb20 a double death pays both ways | `test_cl12_corbomite_pays_a_living_owner_once` |
+| pb21 legacy still applies the mate hold | `test_today_a_mate_lock_does_not_hold_a_ship_over_extern` |
+| pb22 a legacy save writes the limpet corp field | `test_cl6_a_mate_sees_only_a_corporate_limpet` |
+
 ## Not built
 
 No bot strategy change. No prompt change. No combat-odds change. No alliance, corp treasury, tavern, or port-upgrade work. `prompts.py` still says `query_limpets` shows your planted limpets. That line is left for a later parity slice. `rules_text.py` says one wrong password a day, which still matches cl7.
