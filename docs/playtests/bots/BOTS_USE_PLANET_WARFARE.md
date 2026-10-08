@@ -32,7 +32,9 @@ War report, policy full: P3 laid 55 corporate armids and 10 corporate defensive 
 
 P3 laid 57 corporate armids and 10 corporate fighters. P5 deposited 20 fighters and set reaction, and laid no mines.
 
-10-day seed 250925, `--war-policy defend`, rejected 0/0, exceptions 0, digest `41a49cf7`, total 1,734,907. N3-P1 733,020 cargotran 0 deaths. N2-P3 437,944 cargotran 0. N1-P5 268,211 cargotran 0. N2-P4 150,861 cargotran 0. N3-P2 94,683 scout 5 deaths. H-P6 50,188 scout 5 deaths. P3 laid 57 corporate armids. P5 laid 66 personal armids. P1 deposited 200 fighters. N3-P2 still lost the CargoTran with no mines of its own. The pair policy and both 30-day runs are still ahead.
+10-day seed 250925, `--war-policy defend`, rejected 0/0, exceptions 0, digest `41a49cf7`, total 1,734,907. N3-P1 733,020 cargotran 0 deaths. N2-P3 437,944 cargotran 0. N1-P5 268,211 cargotran 0. N2-P4 150,861 cargotran 0. N3-P2 94,683 scout 5 deaths. H-P6 50,188 scout 5 deaths. P3 laid 57 corporate armids. P5 laid 66 personal armids. P1 deposited 200 fighters. N3-P2 still lost the CargoTran with no mines of its own.
+
+30-day seed 250925, war full, on this tree, rejected 0/0, exceptions 0, digest `132ac666`, total 6,444,225, elapsed 901s. Day 10 matches the defend 10-day above. N3-P1 2,265,237 battleship 0 deaths (the report's 5 `ship_destroyed` rows are kills by P1). N2-P3 1,760,848 cargotran 4 deaths. N1-P5 1,468,811 cargotran 0. N2-P4 495,760 cargotran 0. N3-P2 403,381 scout 12 deaths. H-P6 50,188 scout 19 deaths. P3 laid 103 corporate armids, 10 corporate fighters, 472 fighter deposits, 10 shield deposits, reaction once. P5 laid 345 personal armids and 10 fighters. P1 deposited 1,150 fighters. The legacy 30-day and seed 4242's 30-day are still ahead.
 
 ## Rules
 
