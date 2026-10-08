@@ -83,3 +83,5 @@ Each row fails when that one bug is put back.
 | pb8 | A trading float plots home forever. | test_hr13_a_trading_float_does_not_plot_home_forever |
 | pb9 | The whole purse will not buy the freighter. | test_hr14_the_whole_purse_buys_the_freighter |
 | pb10 | Legacy H uses the new withdraw. | test_hr5_legacy_h_still_buys_the_scout |
+
+The bank scenario lab's H pod and the density-port walk stay on `H_RECOVERY_MODE` legacy. Recovery mode withdraws a different hull and plots an empty bank home before that warp.

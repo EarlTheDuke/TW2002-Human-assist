@@ -36,8 +36,11 @@ def test_bb22_bank_report_counts_treasury_and_losses():
     assert rows["P1"]["credits_lost_largest"] == 80_000
 
 
-def test_bb24_scenario_lab():
+def test_bb24_scenario_lab(monkeypatch):
+    import tw2k.engine.constants as K
     from scripts.bots_bank_scenario_lab import main
+    # The lab's H pod still withdraws 60,000. Recovery mode buys a different hull.
+    monkeypatch.setattr(K, "H_RECOVERY_MODE", "legacy")
     assert main() == 0
 
 

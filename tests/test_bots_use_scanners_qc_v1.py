@@ -47,7 +47,8 @@ def test_holo_upgrade_keep_matches_choice() -> None:
     assert buy is not None and buy["args"]["item"] == "holo_scanner", buy
 
 
-def test_heuristic_prefers_density_port_over_empty() -> None:
+def test_heuristic_prefers_density_port_over_empty(monkeypatch) -> None:
+    monkeypatch.setattr(K, "H_RECOVERY_MODE", "legacy")
     u = generate_universe(GameConfig(seed=44, universe_size=40, enable_ferrengi=False, enable_planets=False))
     p = _open(u, "H1", sector=2, credits=20_000)
     p.ship.scanner = K.SCANNER_DENSITY
