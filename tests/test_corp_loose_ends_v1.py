@@ -296,7 +296,6 @@ def test_cl2_a_stranger_in_the_sector_does_not_hold(monkeypatch):
     monkeypatch.setattr(K, "TOW_EXTERN_HOLDER", "owner_or_corp")
     u, sid, mate = _mate_hold()
     mate.corp_ticker = None
-    mate.ship.tow_lock = None
     assert extern_hold_why(u, u.parked_ships[sid]) == "no_lock"
 
 
