@@ -90,6 +90,26 @@ def fighters_needed(
     return lo
 
 
+def armid_sector(
+    *,
+    home: int | None,
+    home_is_corridor: bool,
+    dead_end_entrance: int | None,
+    own_planet_sector: int | None,
+    here_is_fedspace: bool,
+) -> int | None:
+    """Where bought armids go. A shared corridor is not mined. FedSpace is never mined."""
+    if here_is_fedspace:
+        return None
+    if home is not None and not home_is_corridor:
+        return int(home)
+    if dead_end_entrance is not None:
+        return int(dead_end_entrance)
+    if own_planet_sector is not None:
+        return int(own_planet_sector)
+    return None
+
+
 def threat_map(entries: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:
     """Keep the newest sightings. The cap drops the oldest. Nothing here reads a universe."""
     cap = int(K.BOT_WAR_MAP_MAX if limit is None else limit)

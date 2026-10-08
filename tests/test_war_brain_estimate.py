@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from tw2k.agents.war_brain import planet_fight, threat_map
+from tw2k.agents.war_brain import armid_sector, planet_fight, threat_map
 from tw2k.engine.runner import _planet_odds_fight
 
 
@@ -35,6 +35,13 @@ def test_planet_fight_matches_the_engine_on_fifty_cases() -> None:
             attackers, defenders, shields, pct, hull, photon_damped=photon,
         )
         assert (got_a, got_d, got_s) == (eng_a, eng_d, eng_s), seed
+
+
+def test_armids_avoid_a_corridor_and_fedspace() -> None:
+    assert armid_sector(home=14, home_is_corridor=False, dead_end_entrance=8, own_planet_sector=14, here_is_fedspace=False) == 14
+    assert armid_sector(home=14, home_is_corridor=True, dead_end_entrance=8, own_planet_sector=20, here_is_fedspace=False) == 8
+    assert armid_sector(home=14, home_is_corridor=True, dead_end_entrance=None, own_planet_sector=20, here_is_fedspace=False) == 20
+    assert armid_sector(home=1, home_is_corridor=False, dead_end_entrance=None, own_planet_sector=1, here_is_fedspace=True) is None
 
 
 def test_threat_map_drops_the_oldest_past_the_cap() -> None:
