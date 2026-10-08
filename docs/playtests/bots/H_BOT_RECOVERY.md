@@ -39,4 +39,10 @@ Seeds 250925 and 424242, the same six-seat scripted match the later slices use (
 
 ## In the code
 
-H and N1 withdraw first, then buy the best cargo hull that leaves the reserve. N2 and N3 still use today's CargoTran-or-Scout buy. Tests: `test_hr1` through `test_hr5`, 5 passed, plus the older pod tests still pass. The 10-day bars are not run yet. Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
+H and N1 withdraw first, then buy the best cargo hull that leaves the reserve. A hull the wallet cannot afford is still a withdraw target when the only block is insufficient credits. N2 and N3 still use today's CargoTran-or-Scout buy. Tests `test_hr1` through `test_hr6` passed.
+
+## 10-day, first column
+
+Seed 250925, `H_RECOVERY_MODE` tw2002, 206s, before the hidden-hull fix. H day-10 net worth 50,188, still a Scout, bank withdraws 0, broke 0, rejected 0/0. The other seats matched the earlier column. The legal list had hidden the cargo hulls, so this column did not exercise the new buy. It is being run again.
+
+Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.

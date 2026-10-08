@@ -58,24 +58,32 @@ def away_reserve(holds: int, planned: list[int], flags: int, owns_fighters: bool
 
 
 def recovery_hull_step(
-    choices, nets, credits: int, balance: int, withdraw_max: int,
+    choices, nets, credits: int, balance: int, withdraw_max: int, blocked=None,
 ) -> tuple[str, object] | None:
     """After a death: withdraw for the best cargo hull, else buy it.
 
-    The Merchant Cruiser price stays in the bank. If that blocks every cargo
-    hull, the Scout price is the floor. The last resort leaves 1 credit on the
-    ship and 1 in the bank, and only then may buy a Scout. Returns
+    The legal list hides a hull the wallet cannot afford yet. A credit block
+    is still a withdraw target. Any other block is skipped. The Merchant
+    Cruiser price stays in the bank. If that blocks every cargo hull, the
+    Scout price is the floor. The last resort leaves 1 credit on the ship and
+    1 in the bank, and only then may buy a Scout. Returns
     ("bank_withdraw", amount) or ("buy_ship", hull). None means use today's buy.
     """
     from ..engine.constants import ship_cost
 
     offered = {str(c) for c in choices}
+    denied = {str(k): str(v) for k, v in (blocked or {}).items()}
     prices = {str(k): int(v) for k, v in (nets or {}).items() if v is not None}
     credits = int(credits)
     balance = int(balance)
     cap = max(0, int(withdraw_max))
     cargo = ("cargotran", "merchant_freighter", "merchant_cruiser")
     floors = (int(ship_cost("merchant_cruiser")), int(ship_cost("scout_marauder")))
+
+    def candidate(hull: str) -> bool:
+        if hull in offered:
+            return True
+        return denied.get(hull, "").startswith("insufficient credits")
 
     def room(floor: int) -> int:
         return max(0, min(cap, int(balance) - int(floor)))
@@ -84,23 +92,25 @@ def recovery_hull_step(
         spend = room(floor)
         for hull in cargo:
             cost = prices.get(hull)
-            if hull not in offered or cost is None or credits + spend < cost:
+            if not candidate(hull) or cost is None or credits + spend < cost:
                 continue
             need = max(0, cost - credits)
             if need > 0:
                 return ("bank_withdraw", need)
-            return ("buy_ship", hull)
+            if hull in offered:
+                return ("buy_ship", hull)
     spend = max(0, min(cap, balance - 1))
     for hull in cargo + ("scout_marauder",):
         cost = prices.get(hull)
-        if hull not in offered or cost is None or credits + spend < cost + 1:
+        if not candidate(hull) or cost is None or credits + spend < cost + 1:
             continue
         need = max(0, cost + 1 - credits)
         if need > spend:
             continue
         if need > 0:
             return ("bank_withdraw", need)
-        return ("buy_ship", hull)
+        if hull in offered:
+            return ("buy_ship", hull)
     return None
 
 
