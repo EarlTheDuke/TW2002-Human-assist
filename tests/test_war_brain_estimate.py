@@ -44,6 +44,22 @@ def test_armids_avoid_a_corridor_and_fedspace() -> None:
     assert armid_sector(home=1, home_is_corridor=False, dead_end_entrance=None, own_planet_sector=1, here_is_fedspace=True) is None
 
 
+def test_bw15_estimate() -> None:
+    attackers, defenders, shields, pct, hull = 400, 80, 0, 50, "merchant_cruiser"
+    player = SimpleNamespace(
+        ship=SimpleNamespace(fighters=attackers, ship_class=SimpleNamespace(value=hull)),
+        deaths=0,
+        photon_damped_sector_id=None,
+    )
+    planet = SimpleNamespace(
+        fighters=defenders, shields=shields, military_reaction_pct=pct,
+        citadel_level=6, sector_id=1,
+    )
+    eng_a, eng_d, eng_s, _rounds = _planet_odds_fight(player, planet)
+    got_a, got_d, got_s = planet_fight(attackers, defenders, shields, pct, hull)
+    assert (got_a, got_d, got_s) == (eng_a, eng_d, eng_s)
+
+
 def test_bw2_threat_map() -> None:
     test_threat_map_drops_the_oldest_past_the_cap()
 

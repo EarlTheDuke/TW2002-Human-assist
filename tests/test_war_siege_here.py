@@ -60,6 +60,16 @@ def test_n3_reads_evil_from_the_rival_side(monkeypatch) -> None:
     assert action is not None and action["args"]["planet_id"] == 9
 
 
+def test_bw16_execute(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
+    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
+    brain = _brain()
+    assert brain._siege_here(View(_obs())) is not None
+    repelled = _obs()
+    repelled["sector"]["planets"][0]["fighters"] = 50_000
+    assert brain._siege_here(View(repelled)) is None
+
+
 def test_one_siege_target_a_day(monkeypatch) -> None:
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
     monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")

@@ -4586,6 +4586,11 @@ class SeatBrain:
     def _maybe_lay_pickets(self, v: View) -> dict[str, Any] | None:
         if not self._war_lays() or self._in_swept_lane(v):
             return None
+        group = (v.sector or {}).get("fighter_group") or {}
+        if isinstance(group, dict):
+            owner = str(group.get("owner_id") or "")
+            if owner and owner != str(v.self_id or ""):
+                return None
         from .war_brain import picket_qty
         here = int(v.here or 0)
         own = self._own_planet_sectors(v)

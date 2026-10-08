@@ -42,6 +42,25 @@ def test_bw4_armids(monkeypatch) -> None:
     action = _brain()._maybe_lay_armids(View(obs))
     assert action is not None and action["kind"] == "deploy_mines"
     assert action["args"]["kind"] == "armid" and action["args"]["qty"] == 5
+    brain = _brain()
+    brain.mem.armids_stocked = True
+    dock = {
+        "self_id": "P1",
+        "credits": 250_000,
+        "day": 6,
+        "sector": {"id": 1, "planets": [], "occupants": ["P1"]},
+        "ship": {"psychic_probe": 1, "corbomite": 10, "mines": {"armid": 0}, "class": "merchant_cruiser"},
+        "legal_actions": [{
+            "kind": "buy_equip",
+            "legal": True,
+            "params": {
+                "item": {"choices": ["armid_mines"], "unit_price_by": {"armid_mines": 100}},
+                "qty": {"max_by": {"armid_mines": 10}},
+            },
+        }],
+    }
+    bought = brain._maybe_buy_rich_hardware(View(dock))
+    assert bought is not None and bought["args"]["item"] == "armid_mines"
 
 
 def test_bw6_ownership(monkeypatch) -> None:
@@ -54,6 +73,9 @@ def test_bw6_ownership(monkeypatch) -> None:
     obs["legal_actions"][0]["params"]["ownership"] = {"choices": ["personal", "corporate"]}
     corp = _brain()._maybe_lay_armids(View(obs))
     assert corp is not None and corp["args"]["ownership"] == "corporate"
+    mate = _fighter_obs(here=14, adjacent=[{"id": 40, "warps": 1}])
+    mate["sector"]["fighter_group"] = {"owner_id": "P2", "count": 50, "mode": "defensive"}
+    assert _brain()._maybe_lay_pickets(View(mate)) is None
 
 
 def test_bw4_legacy_still_refuses_a_dead_end_gate(monkeypatch) -> None:
