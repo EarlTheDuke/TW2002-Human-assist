@@ -12,6 +12,7 @@ The warfare note already required an attack to leave 25% of the fighters aboard 
 4. A siege that does not leave this seat landed on that planet, or owning it, records `war_fail_day`. The existing 2-day cooldown then applies.
 5. Engine rules stay as they are. The legacy pin stays `9b607d3dae940c0b1a69f6d7`.
 6. A home hit is answered once. Arriving acks that event, so the same notice does not turn the trade route around again.
+7. A home hit is a hostile action: combat, a landing, a mine, a robbery. A trade, a warp, or the corp mate does not turn the route around.
 
 Seed 4242 30-day on dac501d, both columns rejected 0/0. War full 719s. War off 729s, save identical.
 
