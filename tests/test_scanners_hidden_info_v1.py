@@ -93,6 +93,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "LLM_PLANET_NUDGE_MODE", "legacy")
     monkeypatch.setattr(K, "TAVERN_MODE", "legacy")  # goldens predate the tavern
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "legacy")
+    monkeypatch.setattr(K, "CORP_FIX_MODE", "legacy")
 
 
 @pytest.fixture

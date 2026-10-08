@@ -534,6 +534,35 @@ def sweep(universe: Universe, reason: str) -> None:
 # ---- Extern tow-lock hold (tt22, tt23) --------------------------------------------------------
 
 
+def _lock_holds_ship(lock: TowLock | None, rec: ParkedShip) -> bool:
+    return lock is not None and lock.kind == "ship" and int(lock.ship_id or -1) == int(rec.id)
+
+
+def _same_corp(owner: Player, other: Player) -> bool:
+    ticker = getattr(owner, "corp_ticker", None)
+    return bool(ticker) and ticker == getattr(other, "corp_ticker", None)
+
+
+def holding_tower(universe: Universe, rec: ParkedShip) -> Player | None:
+    """The pilot whose lock keeps this hull, or None. A corp mate counts only when the fix is on."""
+    owner = universe.players.get(rec.owner_id)
+    if owner is None:
+        return None
+    if _lock_holds_ship(lock_of(owner.ship), rec):
+        return owner
+    if not (K.corp_fix_on(corp=True) and K.TOW_EXTERN_HOLDER == "owner_or_corp"):
+        return None
+    for pid in sorted(universe.players):
+        tower = universe.players[pid]
+        if not tower.alive or tower.id == owner.id:
+            continue
+        if not _lock_holds_ship(lock_of(tower.ship), rec):
+            continue
+        if _same_corp(owner, tower):
+            return tower
+    return None
+
+
 def extern_hold_why(universe: Universe, rec: ParkedShip) -> str | None:
     """None = this unmanned FedSpace ship survives Extern right now (cabal tips #4)."""
     if not tow_on() or K.TOW_EXTERN_LOCK != "hold":
@@ -541,30 +570,34 @@ def extern_hold_why(universe: Universe, rec: ParkedShip) -> str | None:
     owner = universe.players.get(rec.owner_id)
     if owner is None or not owner.alive:
         return "no_owner"
-    lock = lock_of(owner.ship)
-    if lock is None or lock.kind != "ship" or int(lock.ship_id or -1) != int(rec.id):
+    tower = holding_tower(universe, rec)
+    if tower is None:
         for _p, _ship, other in _hull_locks(universe):
             if _p is None and other.kind == "ship" and int(other.ship_id or -1) == int(rec.id):
                 return "dormant"
         return "no_lock"
-    if int(owner.sector_id) != int(rec.sector_id):
+    if int(tower.sector_id) != int(rec.sector_id):
         return "not_same_sector"
-    if owner.planet_landed is not None:
+    if tower.planet_landed is not None:
         return "landed"
-    if int(owner.ship.fighters) > int(K.FED_TOW_FIGHTER_LIMIT):
+    if int(tower.ship.fighters) > int(K.FED_TOW_FIGHTER_LIMIT):
         return "tower_has_too_many_fighters"
-    if K.TOW_EXTERN_REQUIRE_GOOD and int(owner.alignment) < 0:
+    if K.TOW_EXTERN_REQUIRE_GOOD and int(tower.alignment) < 0:
         return "tower_not_good"
     return None
 
 
 def emit_hold(universe: Universe, rec: ParkedShip) -> None:
+    tower = holding_tower(universe, rec)
+    witnesses = [rec.owner_id]
+    if tower is not None and tower.id not in witnesses:
+        witnesses.append(tower.id)
     universe.emit(
         EventKind.EXTERN_TOW_HOLD,
         actor_id=rec.owner_id,
         sector_id=int(rec.sector_id),
         payload={"ship_id": int(rec.id), "hull": rec.ship.ship_class.value, "sector": int(rec.sector_id),
-                 "_witnesses": [rec.owner_id]},
+                 "_witnesses": witnesses},
         summary=f"Extern: the {rec.ship.name} (ship {rec.id}) stayed in sector {rec.sector_id} - held in tow",
     )
 
