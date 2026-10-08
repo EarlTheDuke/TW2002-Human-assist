@@ -210,7 +210,7 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 
 ## 5. Combat (not planets)
 
-> Planet landing combat (quasar, 20:1 shields, 2:1 reaction fighters, 3:1 defenders) is already built and compared in docs\plans\planetary-warfare-comparison.md, so it is not repeated. Odds table: sector fighters 1:1 (all modes), planet shields 20:1, planet offensive 2:1, planet defensive 3:1.
+> Planet landing combat (quasar, 20:1 shields, 2:1 reaction fighters, 3:1 defenders) is already built and compared in docs\plans\planetary-warfare-comparison.md, so it is not repeated. Odds table: sector fighters 1:1 (all modes), planet shields 20:1, planet offensive 2:1, planet defensive 3:1. How the code bots use those verbs is `docs/playtests/bots/BOTS_USE_PLANET_WARFARE.md`.
 
 | # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
 |---|---|---|---|---|
