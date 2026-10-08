@@ -228,6 +228,9 @@ class SeatMemory:
     war_sieges: int = 0
     war_land_tries: int = 0
     war_siege_planet: int | None = None
+    war_nw_peak: int = 0
+    war_nw_peak_day: int = -1
+    war_drop_day: int = -1
     # Last psychic-probe reading this seat saw (percent of the port's best price).
     psychic_pct: float | None = None
     psychic_commodity: str | None = None
@@ -294,6 +297,11 @@ class SeatMemory:
             payload["war_land_tries"] = int(self.war_land_tries)
             if self.war_siege_planet is not None:
                 payload["war_siege_planet"] = int(self.war_siege_planet)
+        if self.war_nw_peak_day >= 0:
+            payload["war_nw_peak"] = int(self.war_nw_peak)
+            payload["war_nw_peak_day"] = int(self.war_nw_peak_day)
+        if self.war_drop_day >= 0:
+            payload["war_drop_day"] = int(self.war_drop_day)
         if self.beacon_stocked:
             payload["beacon_stocked"] = True
         if self.psychic_pct is not None:
@@ -385,6 +393,11 @@ class SeatMemory:
         mem.war_land_tries = int(data.get("war_land_tries") or 0)
         siege_planet = data.get("war_siege_planet")
         mem.war_siege_planet = int(siege_planet) if isinstance(siege_planet, int) else None
+        peak_day = data.get("war_nw_peak_day")
+        mem.war_nw_peak_day = int(peak_day) if isinstance(peak_day, int) else -1
+        mem.war_nw_peak = int(data.get("war_nw_peak") or 0)
+        drop_day = data.get("war_drop_day")
+        mem.war_drop_day = int(drop_day) if isinstance(drop_day, int) else -1
         mem.beacon_stocked = bool(data.get("beacon_stocked"))
         mem.psychic_pct = float(pct) if isinstance(pct, (int, float)) else None
         mem.psychic_commodity = data.get("psychic_commodity") if isinstance(data.get("psychic_commodity"), str) else None
@@ -4422,12 +4435,33 @@ class SeatBrain:
             return self._act("warp", {"target": int(hop)}, "home was hit - go back")
         return self._plot(v, home, "home was hit - go back")
 
+    def _siege_blocked_by_drop(self, v: View) -> bool:
+        """A sharp drop from the recent peak turns sieges off for the cooldown."""
+        if self.mem is None:
+            return False
+        from .war_brain import nw_drop_day
+        day = int(v.day)
+        current = int(v.net_worth)
+        mem = self.mem
+        if mem.war_nw_peak_day < 0 or day - int(mem.war_nw_peak_day) > 3:
+            mem.war_nw_peak = current
+            mem.war_nw_peak_day = day
+        elif current >= int(mem.war_nw_peak):
+            mem.war_nw_peak = current
+            mem.war_nw_peak_day = day
+        switched = None if mem.war_drop_day < 0 else int(mem.war_drop_day)
+        nxt = nw_drop_day(day=day, peak=int(mem.war_nw_peak), current=current, switched_day=switched)
+        mem.war_drop_day = -1 if nxt is None else int(nxt)
+        return nxt is not None
+
     def _siege_here(self, v: View) -> dict[str, Any] | None:
         """Land on one rival planet in this sector when the siege gates all clear."""
         if v.landed is not None or not v.ok("land_planet"):
             return None
+        if self._war_lays() and self._siege_blocked_by_drop(v):
+            return None
         from ..engine import constants as K
-        from .war_brain import interdictor_blocks, land_tries_left, siege_estimate, siege_refusal
+        from .war_brain import interdictor_blocks, land_tries_left, risk_within_cap, siege_estimate, siege_refusal
         choices = [int(c) for c in v.choices("land_planet", "planet_id")]
         if not choices:
             return None
@@ -4486,6 +4520,13 @@ class SeatBrain:
                 },
             )
             if not estimate["survive"]:
+                continue
+            if not risk_within_cap(
+                net_worth=int(v.net_worth),
+                ship_value=int(v.ship.get("worth") or 0),
+                fighters_at_risk=int(v.ship.get("fighters") or 0),
+                fighter_price=fighter_unit_price(int(v.day) or 1),
+            ):
                 continue
             fuel = int((pl.get("stockpile") or {}).get("fuel_ore") or 0)
             if interdictor_blocks(int(pl.get("citadel_level") or 0), fuel_left=fuel, hold_priced=False):

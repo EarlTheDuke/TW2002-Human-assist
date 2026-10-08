@@ -18,6 +18,7 @@ def _obs(*, owner_alignment: int = -100, day: int = 6, fedspace: bool = False,
         "self_id": "P1",
         "alignment": 100,
         "credits": 100_000,
+        "net_worth": 1_000_000,
         "day": day,
         "turns_left": turns_left,
         "corp_ticker": ticker,
@@ -58,6 +59,21 @@ def test_n3_reads_evil_from_the_rival_side(monkeypatch) -> None:
     obs["rivals"] = [{"id": "P2", "side": "evil"}]
     action = _brain()._siege_here(View(obs))
     assert action is not None and action["args"]["planet_id"] == 9
+
+
+def test_a_poor_net_worth_or_a_drop_does_not_siege(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
+    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
+    poor = _obs()
+    poor["net_worth"] = 1_000
+    assert _brain()._siege_here(View(poor)) is None
+    brain = _brain()
+    brain.mem.war_nw_peak = 1_000_000
+    brain.mem.war_nw_peak_day = 6
+    dropped = _obs()
+    dropped["net_worth"] = 100_000
+    assert brain._siege_here(View(dropped)) is None
+    assert brain.mem.war_drop_day == 6
 
 
 def test_bw16_execute(monkeypatch) -> None:
