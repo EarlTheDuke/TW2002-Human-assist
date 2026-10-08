@@ -123,6 +123,31 @@ def test_cl9_a_member_collects_the_toll_pot_and_an_ex_member_does_not():
     assert mate.credits == before + 200
 
 
+def test_cl10_a_corp_mate_pays_no_toll_to_his_own_group(monkeypatch):
+    from tw2k.engine.runner import _apply_sector_hazards
+    monkeypatch.setattr(K, "COMBAT_MODE", "legacy")
+    u = _u()
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    assert _act(u, "P1", "corp_set_password", password="Zx9").ok
+    assert _act(u, "P2", "corp_join", ticker="XYZ", password="Zx9").ok
+    u.sectors[2].fighters = FighterDeployment(
+        owner_id="P1", count=4, mode=FighterMode.TOLL, corp_ticker="XYZ", toll_credits=0,
+    )
+    mate = u.players["P2"]
+    mate.sector_id = 2
+    mate_credits = mate.credits
+    _apply_sector_hazards(u, "P2", u.sectors[2])
+    assert mate.credits == mate_credits
+    assert u.sectors[2].fighters.toll_credits == 0
+    stranger = u.players["P3"]
+    stranger.sector_id = 2
+    before = stranger.credits
+    bill = 4 * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
+    _apply_sector_hazards(u, "P3", u.sectors[2])
+    assert stranger.credits == before - bill
+    assert u.sectors[2].fighters.toll_credits == bill
+
+
 def test_cl7_a_correct_password_joins_after_a_wrong_guess():
     from tw2k.engine.legality import legal_actions
     u = _u()
