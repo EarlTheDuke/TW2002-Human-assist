@@ -4363,6 +4363,20 @@ class SeatBrain:
             return "N2"
         return "N1"
 
+    def _owner_is_evil(self, v: View, owner: Any, planet: dict[str, Any]) -> bool:
+        """Evil from the planet row, or from the public side on the rival list."""
+        if "owner_alignment" in planet:
+            return int(planet.get("owner_alignment") or 0) < 0
+        if str(planet.get("side") or "") == "evil":
+            return True
+        for rival in v.rivals:
+            if str(rival.get("id")) != str(owner):
+                continue
+            if "alignment" in rival:
+                return int(rival.get("alignment") or 0) < 0
+            return str(rival.get("side") or "") == "evil"
+        return False
+
     def _home_was_hit(self, v: View) -> bool:
         """A rival acted in the home sector or against one of our planets."""
         if self.mem is None or self.mem.home_sector is None:
@@ -4453,7 +4467,7 @@ class SeatBrain:
                 day=day,
                 sieges_today=0 if same else (int(mem.war_sieges) if mem is not None and mem.war_siege_day == day else 0),
                 attacker_good=good,
-                owner_evil=int(pl.get("owner_alignment") or 0) < 0,
+                owner_evil=self._owner_is_evil(v, owner, pl),
                 mate=bool(mine and theirs and mine == theirs),
                 fedspace=fedspace,
                 orphan=pid in v.orphans,
