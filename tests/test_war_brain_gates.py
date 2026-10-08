@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from tw2k.agents.war_brain import (
     defend_reachable,
+    fighters_needed,
     interdictor_blocks,
     land_tries_left,
+    planet_fight,
     probes_left,
     scout_turns_left,
     war_turn_cap,
@@ -37,3 +39,10 @@ def test_land_tries_defend_hops_and_turn_cap() -> None:
     assert war_turn_cap("N3", 1000) == 400
     assert war_turn_cap("N2", 1000) == 300
     assert war_turn_cap("H", 1000) == 0
+
+
+def test_bw12_an_l5_planet_with_1700_shields_can_be_taken() -> None:
+    need = fighters_needed(0, 1700, 0, "imperial_starship")
+    left_a, left_d, left_s = planet_fight(need, 0, 1700, 0, "imperial_starship")
+    assert need < 50_000_000
+    assert left_s == 0 and left_d == 0 and left_a > 0
