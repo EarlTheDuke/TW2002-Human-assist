@@ -2098,6 +2098,7 @@ DEATH_CREDITS_RECOVER_PCT = 100         # gb14 UNVERIFIED
 DEATH_CREDITS_FERRENGI = "to_ferrengi"  # gb14 UNVERIFIED: "to_ferrengi" | "sink"
 DEATH_CREDITS_RETURN_FIRE = "defender"  # CORP_LOOSE_ENDS.md cl11
 DEATH_CREDITS_PLANET_DEFENCE = "owner"   # CORP_LOOSE_ENDS.md cl11
+DEATH_CREDITS_CORBOMITE = "owner"        # CORP_LOOSE_ENDS.md cl12: a living owner, including a pod
 TAX_MIN_ALIGNMENT = 0                   # gb17 SOURCE-CONFLICT: TWGS 0 (alt positive-only 1)
 TAX_THRESHOLD = 100_000                 # gb18 SOURCE-CONFLICT: TWGS 100000 (alt Bible 50000)
 TAX_RATE_PCT = 5                        # gb19 SOURCE-CONFLICT: TWGS 5 (alt Bible 10)

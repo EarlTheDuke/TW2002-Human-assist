@@ -192,6 +192,37 @@ def test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner(monkeypa
     assert owner.credits == 87
 
 
+def test_cl12_corbomite_pays_a_living_owner_once():
+    from tw2k.engine.combat import _destroy_ship
+    from tw2k.engine.hardware import apply_corbomite
+    u = _u()
+    owner = u.players["P1"]
+    killer = u.players["P2"]
+    owner.credits = 100
+    killer.credits = 40
+    owner.ship.shields = 0
+    owner.ship.fighters = 20
+    owner.ship.corbomite = 1
+    killer.ship.shields = 0
+    killer.ship.fighters = 10
+    _destroy_ship(u, "P1", reason="combat", killer_id="P2", by_other=True)
+    assert owner.alive and killer.credits == 0
+    assert owner.credits == 140
+    apply_corbomite(u, "P1", "P2", 1)
+    assert owner.credits == 140
+    u2 = _u()
+    gone = u2.players["P1"]
+    killer2 = u2.players["P2"]
+    gone.alive = False
+    gone.credits = 5
+    killer2.credits = 40
+    killer2.ship.shields = 0
+    killer2.ship.fighters = 10
+    apply_corbomite(u2, "P1", "P2", 1)
+    assert gone.credits == 5
+    assert killer2.credits == 0
+
+
 def test_cl7_a_correct_password_joins_after_a_wrong_guess():
     from tw2k.engine.legality import legal_actions
     u = _u()

@@ -512,7 +512,17 @@ def apply_corbomite(universe: Universe, victim_id: str, killer_id: str, units: i
         return
     if killer is not None:
         from .combat import _destroy_ship
-        _destroy_ship(universe, killer_id, reason="corbomite", killer_id=victim_id, by_other=True)
+        # cl12: the living owner, pod included, is paid once. An eliminated player is not.
+        owner = universe.players.get(victim_id)
+        if K.corp_fix_on():
+            by_other = (
+                K.DEATH_CREDITS_CORBOMITE == "owner"
+                and owner is not None
+                and owner.alive
+            )
+        else:
+            by_other = True
+        _destroy_ship(universe, killer_id, reason="corbomite", killer_id=victim_id, by_other=by_other)
     else:
         npc.alive = False
         universe.emit(
