@@ -221,6 +221,9 @@ class SeatMemory:
     # Armids and the home beacon are bought once. Laying them must not start a rebuy loop.
     armids_stocked: bool = False
     beacon_stocked: bool = False
+    # Credits of ship fighters and shields moved onto a citadel today.
+    war_spend_day: int = -1
+    war_spent: int = 0
     # Last psychic-probe reading this seat saw (percent of the port's best price).
     psychic_pct: float | None = None
     psychic_commodity: str | None = None
@@ -278,6 +281,9 @@ class SeatMemory:
             payload["beacons_laid"] = sorted(self.beacons_laid)[:40]
         if self.armids_stocked:
             payload["armids_stocked"] = True
+        if self.war_spend_day >= 0:
+            payload["war_spend_day"] = int(self.war_spend_day)
+            payload["war_spent"] = int(self.war_spent)
         if self.beacon_stocked:
             payload["beacon_stocked"] = True
         if self.psychic_pct is not None:
@@ -360,6 +366,9 @@ class SeatMemory:
         mem.beacons_laid = {int(sid) for sid in (data.get("beacons_laid") or [])}
         pct = data.get("psychic_pct")
         mem.armids_stocked = bool(data.get("armids_stocked"))
+        spend_day = data.get("war_spend_day")
+        mem.war_spend_day = int(spend_day) if isinstance(spend_day, int) else -1
+        mem.war_spent = int(data.get("war_spent") or 0)
         mem.beacon_stocked = bool(data.get("beacon_stocked"))
         mem.psychic_pct = float(pct) if isinstance(pct, (int, float)) else None
         mem.psychic_commodity = data.get("psychic_commodity") if isinstance(data.get("psychic_commodity"), str) else None
@@ -1044,6 +1053,9 @@ class SeatBrain:
                 qty = min(qty, v.max_by("dump_planet_cargo", "qty", c) or qty)
                 candidates.append(self._act("dump_planet_cargo", {"planet_id": pid, "commodity": c, "qty": int(qty)},
                                             f"stock {qty} unsellable {c} on planet {pid} to free holds"))
+            stocked = self._war_while_landed(v, planet)
+            if stocked is not None:
+                candidates.append(stocked)
         if v.ok("liftoff"):
             why = "nothing more to do here" if work_site else "not a world worth investing in"
             candidates.append(self._act("liftoff", {}, f"liftoff ({why})"))
@@ -1059,6 +1071,8 @@ class SeatBrain:
                 self.mem.stock_load = None
             if action["kind"] == "assign_colonists" and (action.get("args") or {}).get("from") == "ship":
                 self.mem.colonist_drop = None
+            if action["kind"] == "deposit_planet_defense":
+                self._note_war_spend(v, action)
             if skipped:
                 action["thought"] += f" [replanned: {'; '.join(skipped)}]"
             return action, Intent("colonize")
@@ -4420,6 +4434,77 @@ class SeatBrain:
         if plan is None:
             return None
         return self._lay_fighters(v, int(plan["qty"]), mode=str(plan["mode"]))
+
+    def _war_budget_left(self, v: View) -> int:
+        from .war_brain import defence_budget
+        if self.mem is None:
+            return defence_budget(v.net_worth)
+        if self.mem.war_spend_day != int(v.day):
+            return defence_budget(v.net_worth)
+        return max(0, defence_budget(v.net_worth) - int(self.mem.war_spent))
+
+    def _note_war_spend(self, v: View, action: dict[str, Any]) -> None:
+        if self.mem is None:
+            return
+        args = action.get("args") or {}
+        qty = int(args.get("qty") or 0)
+        if str(args.get("kind") or "") == "shields":
+            from ..engine import constants as K
+            cost = qty * SHIELD_VALUE * int(K.PLANET_SHIELD_SHIP_COST)
+        else:
+            cost = qty * fighter_unit_price(int(v.day) or 1)
+        if self.mem.war_spend_day != int(v.day):
+            self.mem.war_spend_day = int(v.day)
+            self.mem.war_spent = 0
+        self.mem.war_spent += int(cost)
+
+    def _war_while_landed(self, v: View, planet: dict[str, Any]) -> dict[str, Any] | None:
+        if not self._war_lays():
+            return None
+        from ..engine import constants as K
+        from .war_brain import quasar_settings, reaction_setting, stock_deposit
+        pid = int(planet["id"])
+        level = int(planet.get("citadel_level") or 0)
+        already_reaction = int(planet.get("military_reaction_pct") or 0) >= int(K.BOT_WAR_REACTION_PCT)
+        pct = reaction_setting(level, already=already_reaction)
+        reaction_ids = [int(c) for c in v.choices("set_military_reaction", "planet_id")]
+        if pct is not None and v.ok("set_military_reaction") and (not reaction_ids or pid in reaction_ids):
+            return self._act("set_military_reaction", {"planet_id": pid, "pct": int(pct)},
+                             f"set military reaction to {pct} on planet {pid}")
+        ore = int((planet.get("stockpile") or {}).get("fuel_ore") or 0)
+        sector_set = int(planet.get("quasar_sector_pct") or 0) >= int(K.BOT_WAR_QUASAR_SECTOR_PCT)
+        atm_set = int(planet.get("quasar_atm_pct") or 0) >= int(K.BOT_WAR_QUASAR_ATM_PCT)
+        cannons = quasar_settings(level, already=sector_set and atm_set, planet_ore=ore)
+        if cannons is not None and not sector_set and v.ok("set_quasar_sector"):
+            return self._act("set_quasar_sector", {"planet_id": pid, "pct": int(cannons["sector_pct"])},
+                             f"set the sector quasar to {cannons['sector_pct']} on planet {pid}")
+        if cannons is not None and not atm_set and v.ok("set_quasar_atm"):
+            return self._act("set_quasar_atm", {"planet_id": pid, "pct": int(cannons["atm_pct"])},
+                             f"set the atmosphere quasar to {cannons['atm_pct']} on planet {pid}")
+        ratio = int(K.PLANET_SHIELD_SHIP_COST)
+        gap = stock_deposit(
+            level,
+            planet_fighters=int(planet.get("fighters") or 0),
+            planet_shields=int(planet.get("shields") or 0),
+            aboard_fighters=int(v.ship.get("fighters") or 0),
+            aboard_shields=int(v.ship.get("shields") or 0) // ratio,
+            credit_budget=min(int(v.credits), self._war_budget_left(v)),
+            fighter_price=fighter_unit_price(int(v.day) or 1),
+            shield_price=SHIELD_VALUE * ratio,
+        )
+        if gap["fighters"] > 0 and v.ok("deposit_planet_defense") and "fighters" in {str(c) for c in v.choices("deposit_planet_defense", "kind")}:
+            room = v.max_by("deposit_planet_defense", "qty", "fighters") or gap["fighters"]
+            qty = min(int(gap["fighters"]), int(room))
+            if qty > 0:
+                return self._act("deposit_planet_defense", {"planet_id": pid, "kind": "fighters", "qty": int(qty)},
+                                 f"stock {qty} fighters on planet {pid}")
+        if gap["shields"] > 0 and v.ok("deposit_planet_defense") and "shields" in {str(c) for c in v.choices("deposit_planet_defense", "kind")}:
+            room = v.max_by("deposit_planet_defense", "qty", "shields") or gap["shields"]
+            qty = min(int(gap["shields"]), int(room))
+            if qty > 0:
+                return self._act("deposit_planet_defense", {"planet_id": pid, "kind": "shields", "qty": int(qty)},
+                                 f"stock {qty} shields on planet {pid}")
+        return None
 
     def _maybe_lay_armids(self, v: View) -> dict[str, Any] | None:
         if not self._hardware_on() or self._in_swept_lane(v):
