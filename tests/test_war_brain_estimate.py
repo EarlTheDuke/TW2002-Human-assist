@@ -61,6 +61,10 @@ def test_bw15_estimate() -> None:
     from tw2k.agents.war_brain import risk_within_cap
     assert risk_within_cap(net_worth=100_000, ship_value=1_000, fighters_at_risk=50, fighter_price=100)
     assert risk_within_cap(net_worth=1_000, ship_value=100_000, fighters_at_risk=50, fighter_price=100) is False
+    from tw2k.agents.war_brain import attack_gate
+    assert attack_gate(fighters=400, fighters_left=100, treasury=200_000, fighter_price=200) is None
+    assert attack_gate(fighters=120, fighters_left=90, treasury=200_000, fighter_price=200) == "left"
+    assert attack_gate(fighters=400, fighters_left=100, treasury=1, fighter_price=200) == "prize"
 
 
 def test_bw2_threat_map() -> None:

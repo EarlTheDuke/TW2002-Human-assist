@@ -86,6 +86,40 @@ def test_bw16_execute(monkeypatch) -> None:
     assert brain._siege_here(View(repelled)) is None
 
 
+def test_a_thin_left_or_a_small_prize_or_a_recent_failure_does_not_siege(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
+    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
+    thin = _obs()
+    thin["ship"]["fighters"] = 120
+    thin["sector"]["planets"][0]["fighters"] = 10
+    thin["sector"]["planets"][0]["treasury"] = 500_000
+    assert _brain()._siege_here(View(thin)) is None
+    poor = _obs()
+    poor["ship"]["fighters"] = 400
+    poor["sector"]["planets"][0]["fighters"] = 100
+    poor["sector"]["planets"][0]["treasury"] = 1
+    assert _brain()._siege_here(View(poor)) is None
+    worth = _obs()
+    worth["ship"]["fighters"] = 400
+    worth["sector"]["planets"][0]["fighters"] = 100
+    worth["sector"]["planets"][0]["treasury"] = 500_000
+    assert _brain()._siege_here(View(worth)) is not None
+    cooling = _brain()
+    cooling.mem.war_fail_day = 5
+    assert cooling._siege_here(View(_obs())) is None
+
+
+def test_a_repelled_landing_starts_the_cooldown(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
+    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
+    brain = _brain()
+    assert brain._siege_here(View(_obs())) is not None
+    brain._siege_here(View(_obs()))
+    assert brain.mem is not None and brain.mem.war_fail_day == 6
+    assert brain._siege_here(View(_obs(day=7))) is None
+    assert brain._siege_here(View(_obs(day=9))) is not None
+
+
 def test_one_siege_target_a_day(monkeypatch) -> None:
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
     monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
