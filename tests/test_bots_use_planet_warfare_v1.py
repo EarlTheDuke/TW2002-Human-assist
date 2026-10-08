@@ -42,6 +42,18 @@ def test_bw4_armids(monkeypatch) -> None:
     assert action["args"]["kind"] == "armid" and action["args"]["qty"] == 5
 
 
+def test_bw6_ownership(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
+    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
+    solo = _brain()._maybe_lay_armids(View(_obs(here=14, adjacent=[{"id": 40, "warps": 1}])))
+    assert solo is not None and "ownership" not in solo["args"]
+    monkeypatch.setattr(K, "bot_corp_policy", lambda: "pair")
+    obs = _obs(here=14, adjacent=[{"id": 40, "warps": 1}])
+    obs["legal_actions"][0]["params"]["ownership"] = {"choices": ["personal", "corporate"]}
+    corp = _brain()._maybe_lay_armids(View(obs))
+    assert corp is not None and corp["args"]["ownership"] == "corporate"
+
+
 def test_bw4_legacy_still_refuses_a_dead_end_gate(monkeypatch) -> None:
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "legacy")
     obs = _obs(here=14, adjacent=[{"id": 40, "warps": 1}])
