@@ -484,6 +484,28 @@ class HeadlessRunner:
 
     # -------- summary / artifacts --------
 
+    def _tavern_soak(self) -> dict:
+        state = getattr(self.universe, "tavern", None) or {}
+        contracts = state.get("ug_contracts") or {}
+        open_amt = sum(int(row.get("amount", 0)) for rows in contracts.values() for row in rows)
+        pending = sum(int(value) for value in (state.get("ug_pending") or {}).values())
+        posted = int(state.get("ug_posted_total") or 0)
+        claimed = int(state.get("ug_claimed_total") or 0)
+        forfeited = int(state.get("ug_forfeited_total") or 0)
+        negative = [
+            player.id for player in self.universe.players.values()
+            if int(player.credits) < 0 or int(getattr(player, "bank_balance", 0)) < 0
+        ]
+        return {
+            "conservation": posted == open_amt + pending + claimed + forfeited,
+            "negative_credits": negative,
+            "posted": posted,
+            "open": open_amt,
+            "pending": pending,
+            "claimed": claimed,
+            "forfeited": forfeited,
+        }
+
     def _build_summary(self, agents: list[BaseAgent]) -> dict:
         players = []
         for agent in agents:
@@ -511,6 +533,7 @@ class HeadlessRunner:
             "win_reason": self.universe.win_reason,
             "num_events": self.universe.seq,
             "save_load_day15": self.save_load_day15,
+            "tavern_soak": self._tavern_soak(),
             "players": players,
             "generated_at": datetime.now(UTC).isoformat(),
         }
@@ -645,6 +668,11 @@ def main(argv: list[str] | None = None) -> int:
         t0 = time.time()
         summary = asyncio.run(runner.run())
         elapsed = time.time() - t0
+        print(
+            f"TAVERN_SUMMARY elapsed={elapsed:.1f} save_load_day15={summary.get('save_load_day15')} "
+            f"events={summary['num_events']} day={summary['final_day']} soak={summary.get('tavern_soak')}",
+            flush=True,
+        )
         runner.log(f"=== match done in {elapsed:.1f}s · "
                    f"day={summary['final_day']} · events={summary['num_events']} ===")
         if out_dir is not None:
