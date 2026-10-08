@@ -92,6 +92,19 @@ Seed 250925, `CORP_FIX_MODE` legacy, 239s. The tw2002 column on the same seed ma
 
 Corps N3P = P1+P2 and N2P = P3+P4. Corporate deploys: P3 laid 59. Transfers 9.
 
+Seed 4242, `CORP_FIX_MODE` legacy, 192s. Total net worth 1,649,064. Rejected 0/0, exceptions 0, bank save/load identical, credits recovered 0. Rogue groups 0. Hostile mate actions 0.
+
+| Seat | Net worth | Credits | Deaths | Credits lost |
+| --- | --- | --- | --- | --- |
+| N2-P3 | 503,948 | 57,964 | 0 | 0 |
+| N3-P1 | 490,207 | 74,325 | 0 | 0 |
+| N1-P5 | 390,740 | 68,750 | 0 | 0 |
+| N2-P4 | 169,550 | 13,913 | 0 | 0 |
+| N3-P2 | 78,613 | 0 | 3 | 39,899 |
+| H-P6 | 16,006 | 0 | 8 | 94,140 |
+
+Corps N3P = P1+P2 and N2P = P3+P4. Corporate deploys: P3 laid 58. Transfers 2. H broke on 7 days.
+
 ## Not built
 
 No bot strategy change. No prompt change. No combat-odds change. No alliance, corp treasury, tavern, or port-upgrade work. `prompts.py` still says `query_limpets` shows your planted limpets. That line is left for a later parity slice. `rules_text.py` says one wrong password a day, which still matches cl7.
