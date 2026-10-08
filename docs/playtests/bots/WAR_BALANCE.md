@@ -22,7 +22,16 @@ Seed 4242 30-day on dac501d, both columns rejected 0/0. War full 719s. War off 7
 | N2-P4 | 651,391 cargotran, 0 deaths | 625,055 cargotran, 0 deaths | 104% |
 | N3-P2 | 518,712 scout, 13 deaths | 629,982 cargotran, 0 deaths | 82% |
 
-N2-P3 is the miss. It made no ship attacks. It laid 57 armids, deployed fighters 4 times, and warped 1,353 times against 474 with war off, with 1,125 trades against 1,459. The gap is turns spent on the way home, not a siege.
+N2-P3 is the miss on `dac501d`. It made no ship attacks. It laid 57 armids, deployed fighters 4 times, and warped 1,353 times against 474 with war off, with 1,125 trades against 1,459.
+
+Seed 4242 30-day on `1790d97`, war full, 1567s, rejected 0/0, save identical. The home ack is what changed. Shares are against the war-off column above.
+
+| Seat | War full | Share of war off |
+| --- | --- | --- |
+| N3-P1 | 2,528,732 battleship, 0 deaths | 75% is 2,536,907, so this is 8,175 short |
+| N2-P3 | 1,696,805 cargotran, 1 death | 92% |
+| N2-P4 | 626,310 cargotran, 0 deaths | 100% |
+| N3-P2 | 483,682 scout, 10 deaths | 77% |
 
 ## Bars
 
