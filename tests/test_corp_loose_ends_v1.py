@@ -474,3 +474,22 @@ def test_cl5_ratio_keeps_a_measured_attack_and_drops_an_overkill(monkeypatch):
     assert holds == 31 and "salvage" in summary
     holds, summary = _furb(5, 2)
     assert holds == 20 and summary == "overkill - the hull is destroyed with its holds"
+
+
+def test_cl14_older_docs_point_at_this_slice():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1] / "docs"
+    marks = (
+        ("playtests/ships/SHIP_TOW.md", "decided in slice 64 (cl2)"),
+        ("playtests/ships/CORP_SHIPS_FURB.md", "decided in slice 64 (cl5)"),
+        ("playtests/ships/CORP_SHIPS_FURB.md", "decided in slice 64 (cl3)"),
+        ("playtests/corps/CORP_RULES.md", "decided in slice 64 (cl7)"),
+        ("playtests/corps/CORP_RULES.md", "decided in slice 64 (cl6)"),
+        ("playtests/corps/CORP_RULES.md", "decided in slice 64 (cl8)"),
+        ("playtests/scanners/SCANNERS_HIDDEN_INFO.md", "decided in slice 64 (cl6)"),
+        ("playtests/fedspace/GALACTIC_BANK_TAX.md", "decided in slice 64 (cl11, cl12)"),
+        ("reference/tw2002/GAP_MAP.md", "decided in slice 64 (cl7)"),
+        ("reference/tw2002/GAP_MAP.md", "decided in slice 64 (cl8)"),
+    )
+    for rel, phrase in marks:
+        assert phrase in (root / rel).read_text(encoding="utf-8").lower()

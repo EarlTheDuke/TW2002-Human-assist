@@ -300,7 +300,7 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 | # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
 |---|---|---|---|---|
 | 10.1 Create a corporation | Any trader can file a charter and becomes CEO (cost not found). [EIS CorporateMenu.html] UNVERIFIED (cost) | `CORP_RULES.md` cr1-cr2. Anywhere, cost 0. Legacy stays StarDock and 500,000. | Built | S / Low |
-| 10.2 Joining | Needs CEO approval and a corporate security pass (password). [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr3-cr6. Password, one wrong guess a day. | Built | S / Low |
+| 10.2 Joining | Needs CEO approval and a corporate security pass (password). [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr3-cr6. Password, one wrong guess a day. Decided in slice 64 (cl7). | Built | S / Low |
 | 10.3 Same-alignment rule | Joiners must match the CEO's side; if your side flips you are ousted. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr8. TWGS mixed is the default; same_side ousts. | Built | S / Low |
 | 10.4 Members limit | Sample TEDIT: 5 traders per corp (setting). [Gypsy_Big_Dummies_Guide.html] CONFIRMED (a setting) | `CORP_RULES.md` cr7. `CORP_MAX_MEMBERS` 5. | Built | S / Low |
 | 10.5 Drop (kick) a member | CEO may drop a member, who keeps assets on their ship. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr14. | Built | S / Low |
@@ -308,7 +308,7 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 | 10.7 Corp assets and member locations | Corp menu lists planets (pop, production, stock, fighters, citadel, shields, credits) and members' sector, fighters, shields, mines, credits. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr22-cr24. | Built | S / Low |
 | 10.8 Corp memo | CEO or members send a memo to all members. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr25. Any member. | Match | S / Low |
 | 10.9 Corporate vs personal fighters, mines, ships | Fighters and mines may be personal or corporate; corporate ships are password protected; corp members cross-use. [Bible, EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr17-cr21. Ships stay in `CORP_SHIPS_FURB.md`. | Built | M / Med |
-| 10.10 CEO leaves or corp ends | If the CEO leaves the corp dissolves and corporate fighters go rogue; v3.06 rules for planets/ships. [EIS CorporateMenu.html, REV v3.06] CONFIRMED | `CORP_RULES.md` cr11-cr13. Planets stay owner_keeps (conflict 18). | Built | S / Low |
+| 10.10 CEO leaves or corp ends | If the CEO leaves the corp dissolves and corporate fighters go rogue; v3.06 rules for planets/ships. [EIS CorporateMenu.html, REV v3.06] CONFIRMED | `CORP_RULES.md` cr11-cr13. Planets stay owner_keeps (conflict 18). Decided in slice 64 (cl8): the rogue group keeps the toll pot. | Built | S / Low |
 | 10.11 Corporation rankings | Corps ranked by exp with a combined alignment. [EIS CorporateMenu.html] CONFIRMED | `CORP_RULES.md` cr24. | Built | S / Low |
 | 10.12 Alliances | Not in the original (only corps). | propose/accept/break alliance actions, 25 xp. | Different | S / Low (ours-only; keep or remove) |
 

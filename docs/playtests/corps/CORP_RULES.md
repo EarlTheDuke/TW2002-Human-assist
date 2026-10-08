@@ -12,8 +12,8 @@ Sources: EIS Corporate Menu, Someguy Twinstr, the v3.11 revision notes, the docs
 | cr2 | Make a corp anywhere. Cost 0. 0 turns. Maker is C.E.O. | UNVERIFIED cost and turns | `CORP_CREATE_COST` 0, `CORP_TURN_COST` 0 | `test_cr1_cr2_create_is_free_anywhere`, `test_qc_create_cost_alt_legal_matches_handler` |
 | cr3 | C.E.O. sets a password. A new corp is closed until one is set. A change invalidates old passes. The password is never in a rival view | CONFIRMED that the password exists; UNVERIFIED blank start | `CORP_NEW_PASSWORD` "", reuses `CORPSHIP_PASSWORD_MAX_LEN` and `CORPSHIP_PASSWORD_CASE` | `test_cr3_cr4_cr5_cr6_password_and_one_breakin`, `test_qc_join_legal_hides_closed_corps_and_spent_breakins`, `test_qc_password_length_invite_targets_and_ceo_approver` |
 | cr4 | Any member hands out the current password. C.E.O.-only is the alt | SOURCE-CONFLICT | `CORP_APPROVER` member | `test_cr3_cr4_cr5_cr6_password_and_one_breakin`, `test_qc_password_length_invite_targets_and_ceo_approver`, `test_qc_invite_is_hidden_from_other_pass_holders` |
-| cr5 | Join needs the current password, not a stored invite | CONFIRMED | — | `test_cr3_cr4_cr5_cr6_password_and_one_breakin`, `test_qc_pb6_changed_password_invalidates_old_pass` |
-| cr6 | One wrong password a day. Further tries are refused before compare. No alignment loss. The corp is not told | UNVERIFIED loss and notice | `CORP_BREAKIN_PER_DAY` 1, `CORP_BREAKIN_ALIGN_LOSS` 0, `CORP_BREAKIN_TELL_CEO` False | `test_cr3_cr4_cr5_cr6_password_and_one_breakin`, `test_qc_join_legal_hides_closed_corps_and_spent_breakins` |
+| cr5 | Join needs the current password, not a stored invite | CONFIRMED | — | `test_cr3_cr4_cr5_cr6_password_and_one_breakin`, `test_qc_pb6_changed_password_invalidates_old_pass`. Decided in slice 64 (cl7): a correct password still joins after a wrong guess |
+| cr6 | One wrong password a day. Further tries are refused before compare. No alignment loss. The corp is not told | UNVERIFIED loss and notice | `CORP_BREAKIN_PER_DAY` 1, `CORP_BREAKIN_ALIGN_LOSS` 0, `CORP_BREAKIN_TELL_CEO` False | `test_cr3_cr4_cr5_cr6_password_and_one_breakin`, `test_qc_join_legal_hides_closed_corps_and_spent_breakins`. Decided in slice 64 (cl7): the cap counts wrong guesses, so a correct password still joins |
 | cr7 | At most 5 members, including the C.E.O. The server cap is ignored | CONFIRMED | `CORP_MAX_MEMBERS` 5 | `test_cr7_sixth_member_is_refused` |
 | cr8 | Good and evil may share a corp. Same-side, with an oust at the tick, is the alt. Alignment 0 counts as good | SOURCE-CONFLICT; side UNVERIFIED | `CORP_ALIGNMENT_RULE` mixed, `CORP_SIDE_OF_ZERO` good | `test_qc_same_side_join_and_oust`, `test_qc_pb8_alignment_rule_mixed_never_ousts_and_same_side_does` |
 | cr9 | A mixed corp loses floor(highest good alignment / 4) experience at Extern. Floor 1. Least-extreme is the alt | SOURCE-CONFLICT; floor UNVERIFIED | `MIXED_CORP_EXP_RULE` highest_good, `MIXED_CORP_EXP_DIVISOR` 4, `MIXED_CORP_EXP_FLOOR` 1 | `test_cr9_hek_penalty`, `test_qc_pb9_penalty_formula_and_straight_corp`, `test_qc_mixed_rule_never_applies_same_side`, `test_qc_mixed_penalty_ignores_eliminated_and_extern_dissolves_dead_ceo_corp`, `test_qc_exp_penalty_is_private` |
@@ -136,9 +136,9 @@ Live smoke: server on box :8047, 4 heuristic seats, 3 days. It finished, `/state
 
 Open calls for Ben:
 
-- A corp mate sees personal limpets (s12 is kept).
-- A correct password after a failed guess the same day is refused (cr6 against cr5).
-- The rogue toll pot keeps growing.
+- A corp mate sees personal limpets (s12 is kept). Decided in slice 64 (cl6): a mate sees corporate limpets only.
+- A correct password after a failed guess the same day is refused (cr6 against cr5). Decided in slice 64 (cl7): a correct password still joins.
+- The rogue toll pot keeps growing. Decided in slice 64 (cl8): dissolve keeps the pot, and the destroyer takes it.
 - The planetary lab's corp table is pinned to legacy.
 - The combat.py rogue-killer fix is outside the spec's listed combat sites.
 - Bots never deploy fighters, so pair shows no corporate deployments.
