@@ -44,6 +44,10 @@ def test_armids_avoid_a_corridor_and_fedspace() -> None:
     assert armid_sector(home=1, home_is_corridor=False, dead_end_entrance=None, own_planet_sector=1, here_is_fedspace=True) is None
 
 
+def test_bw2_threat_map() -> None:
+    test_threat_map_drops_the_oldest_past_the_cap()
+
+
 def test_threat_map_drops_the_oldest_past_the_cap() -> None:
     rows = [{"sector": n} for n in range(70)]
     kept = threat_map(rows, limit=64)

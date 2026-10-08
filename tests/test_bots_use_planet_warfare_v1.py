@@ -195,6 +195,19 @@ def test_bw4_does_not_mine_a_rival_dead_end_gate(monkeypatch) -> None:
     assert _brain()._maybe_lay_armids(View(obs)) is None
 
 
+def test_bw1_mode(monkeypatch) -> None:
+    obs = _obs(here=14, adjacent=[{"id": 40, "warps": 1}])
+    fight = _fighter_obs(here=14, adjacent=[{"id": 40, "warps": 1}])
+    planet = _planet(citadel_level=2)
+    legal = [{"kind": "set_military_reaction", "legal": True, "params": {"planet_id": {"choices": [1]}}}]
+    for mode, policy in (("legacy", "full"), ("tw2002", "off")):
+        monkeypatch.setattr(K, "BOTS_WAR_MODE", mode)
+        monkeypatch.setattr(K, "BOT_WAR_POLICY", policy)
+        assert _brain()._maybe_lay_armids(View(obs)) is None
+        assert _brain()._maybe_lay_pickets(View(fight)) is None
+        assert _brain()._war_while_landed(View(_landed_obs(planet, legal)), planet) is None
+
+
 def test_bw30_docs() -> None:
     root = Path(__file__).resolve().parents[1]
     needle = "docs/playtests/bots/BOTS_USE_PLANET_WARFARE.md"
