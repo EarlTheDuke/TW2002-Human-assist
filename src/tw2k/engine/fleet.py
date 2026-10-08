@@ -658,7 +658,7 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
                      f"{rec.ship.name} in sector {player.sector_id}"),
         )
         units = int(getattr(rec.ship, "corbomite", 0) or 0) if K.hardware_tw2002() else 0
-        if units > 0:
+        if units > 0 and not (pid == rec.owner_id and K.CORBOMITE_OWN_SHIP == "inert"):
             from .hardware import apply_corbomite
             apply_corbomite(universe, rec.owner_id, pid, units)
     return ActionResult(ok=True, turns_spent=cost)

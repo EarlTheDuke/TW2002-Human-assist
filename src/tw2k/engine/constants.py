@@ -1365,6 +1365,7 @@ CORBOMITE_MAX = 1_500
 # MBBS manual: 1,500 units "will blow 30,000 fighters off of the attacker";
 # Misc_shipodds log: "damages of 30000 battle points". 30,000 / 1,500 = 20 per unit.
 CORBOMITE_DAMAGE_PER_UNIT = 20
+CORBOMITE_OWN_SHIP = "fires"        # cl4 UNVERIFIED for the owner | "inert"
 # Marker beacons (v5-v9). TWGS price 100; 41-character message (Gypsy "Release Beacon").
 BEACON_COST = 100
 BEACON_MESSAGE_MAX = 41
