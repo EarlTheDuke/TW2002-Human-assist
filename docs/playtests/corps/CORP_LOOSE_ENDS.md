@@ -29,7 +29,7 @@ D1 `TOW_EXTERN_HOLDER` owner_or_corp. D2 `CORPSHIP_EXMEMBER_TRADEIN` refuse. D3 
 
 ## Legacy pin
 
-Recorded before any rule code. In-suite 3-day N3,N2,N1,H seed 250925 digest `9b607d3dae940c0b1a69f6d7`. `CORP_FIX_MODE` is named on the older single-mode flip lists. The constant does not exist yet, so those flips do not change the digest. There is no separate fed-outpost pin file.
+Recorded before any rule code. In-suite 3-day N3,N2,N1,H seed 250925 digest `9b607d3dae940c0b1a69f6d7`. Outside the suite, the 10-day N3,N3,N2,N2,N1,H seed 250925 digest is `221826d9bd9a6a6c85668224` (332s). `CORP_FIX_MODE` is named on the older single-mode flip lists. The constant does not exist yet, so those flips do not change the digest. There is no separate fed-outpost pin file.
 
 ## Not built
 
