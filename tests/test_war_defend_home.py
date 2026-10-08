@@ -59,21 +59,6 @@ def test_a_far_home_a_quiet_day_and_legacy_stay_put(monkeypatch) -> None:
     assert _brain(4)._defend_home(View(_obs(hops=3, hit=True))) is None
 
 
-def test_a_trade_or_a_corp_mate_does_not_turn_the_route(monkeypatch) -> None:
-    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
-    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
-    trade = _obs(hops=3, hit=True)
-    trade["recent_events"][0]["kind"] = "trade"
-    trade["recent_events"][0]["seq"] = 4
-    assert _brain(4)._defend_home(View(trade)) is None
-    brain = _brain(4)
-    assert brain.mem is not None
-    brain.mem.corp_partner = "P2"
-    mate = _obs(hops=3, hit=True)
-    mate["recent_events"][0]["seq"] = 4
-    assert brain._defend_home(View(mate)) is None
-
-
 def test_arriving_home_acks_the_hit(monkeypatch) -> None:
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
     monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")

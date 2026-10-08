@@ -12,7 +12,6 @@ The warfare note already required an attack to leave 25% of the fighters aboard 
 4. A siege that does not leave this seat landed on that planet, or owning it, records `war_fail_day`. The existing 2-day cooldown then applies.
 5. Engine rules stay as they are. The legacy pin stays `9b607d3dae940c0b1a69f6d7`.
 6. A home hit is answered once. Arriving acks that event, so the same notice does not turn the trade route around again.
-7. A home hit is a hostile action: combat, a landing, a mine, a robbery. A trade, a warp, or the corp mate does not turn the route around.
 
 Seed 4242 30-day on dac501d, both columns rejected 0/0. War full 719s. War off 729s, save identical.
 
@@ -35,6 +34,8 @@ Seed 4242 30-day on `1790d97`, war full, 1567s, rejected 0/0, save identical. Th
 | N3-P2 | 483,682 scout, 10 deaths | 77% |
 
 Holding the cargo and delaying the home trip, on `f50a304`, 2000s, rejected 0/0, save identical: N3-P1 1,847,229 with 2 deaths (55% of war off) and N3-P2 462,647 (73%). N2-P3 rose to 2,038,097. That delay is out. The home ack on `1790d97` remains the closer column.
+
+Ignoring a trade or the corp mate, on `98241d8`, 911s, rejected 0/0, save identical: N3-P1 1,550,165 in a cargotran with 4 deaths (46% of war off). N2-P3 2,014,648 battleship, 0 deaths (109%). N2-P4 668,130 (107%). N3-P2 508,854 scout, 6 deaths (81%). That filter is out.
 
 ## Bars
 
