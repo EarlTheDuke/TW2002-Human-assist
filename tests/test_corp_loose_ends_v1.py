@@ -190,6 +190,18 @@ def test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner(monkeypa
     assert _act(u, "P1", "land_planet", planet_id=planet.id).ok
     assert raider.credits == 0
     assert owner.credits == 87
+    from tw2k.engine.combat import _resolve_ship_combat
+    from tw2k.engine.models import FerrengiShip
+    u3 = _u()
+    raider = u3.players["P1"]
+    raider.credits = 500
+    raider.ship.fighters = 1
+    raider.ship.shields = 0
+    npc = FerrengiShip(id="F9", name="Zog", sector_id=raider.sector_id, aggression=5, fighters=800, shields=0, credits=3)
+    u3.ferrengi[npc.id] = npc
+    _resolve_ship_combat(u3, "P1", npc)
+    assert raider.credits == 0
+    assert npc.credits == 3
 
 
 def test_cl12_corbomite_pays_a_living_owner_once():
@@ -278,6 +290,14 @@ def test_cl2_a_corp_mate_holds_the_ship_over_extern(monkeypatch):
     emit_hold(u, u.parked_ships[sid])
     event = next(e for e in u.events if e.kind == EventKind.EXTERN_TOW_HOLD)
     assert event.payload["_witnesses"] == ["A", "B"]
+
+
+def test_cl2_a_stranger_in_the_sector_does_not_hold(monkeypatch):
+    monkeypatch.setattr(K, "TOW_EXTERN_HOLDER", "owner_or_corp")
+    u, sid, mate = _mate_hold()
+    mate.corp_ticker = None
+    mate.ship.tow_lock = None
+    assert extern_hold_why(u, u.parked_ships[sid]) == "no_lock"
 
 
 def test_cl2_an_ally_does_not_hold(monkeypatch):
@@ -382,6 +402,13 @@ def test_cl6_a_mate_sees_only_a_corporate_limpet():
     assert [row["placed_sector"] for row in reports] == [9]
     _act(u, "P1", "query_limpets")
     assert len(u.events[-1].payload["reports"]) == 2
+    from tw2k.engine.models import LimpetTrack
+    old = LimpetTrack.model_validate(
+        {"owner_id": "P1", "target_id": "P3", "placed_sector": 4, "placed_day": 1},
+    )
+    assert old.corp_ticker is None
+    assert "corp_ticker" not in old.model_dump()
+    assert limpet_visible(u, "P2", "P1", old) is False
 
 
 def test_today_disband_zeros_the_toll_pot(monkeypatch):
