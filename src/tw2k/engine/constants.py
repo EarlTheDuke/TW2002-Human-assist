@@ -2188,6 +2188,16 @@ def tavern_on() -> bool:
     return TAVERN_MODE == "tw2002"
 
 
+# --- Bots use planetary warfare (BOTS_WAR_MODE) ------------------------------
+# docs/playtests/bots/BOTS_USE_PLANET_WARFARE.md. Unread until the war brain is wired.
+BOTS_WAR_MODE = "tw2002"                 # bw1: "tw2002" | "legacy"
+BOT_WAR_POLICY = "full"                  # D1: full | defend | off
+
+
+def bots_war_on() -> bool:
+    return BOTS_WAR_MODE == "tw2002"
+
+
 # --- Corporations (CORP_MODE) -------------------------------------------------
 # docs/playtests/corps/CORP_RULES.md. "legacy" is the engine at 57dec11.
 CORP_MODE = "tw2002"                      # "tw2002" | "legacy"
