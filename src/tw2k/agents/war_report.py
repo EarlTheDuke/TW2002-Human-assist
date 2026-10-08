@@ -46,9 +46,11 @@ def counts_from_events(events: list[Any]) -> dict[str, dict[str, int]]:
             mode = str(payload.get("mode") or "defensive")
             who = "corporate" if payload.get("ownership") == "corporate" else "personal"
             bump(actor, f"fighters_{mode}_{who}", qty)
-        elif kind == "deposit_planet_defense":
+        elif kind in ("deposit_planet_defense", "planet_defense_transfer"):
+            if payload.get("direction") not in (None, "deposit"):
+                continue
             bump(actor, f"deposit_{payload.get('kind') or 'fighters'}", qty)
-        elif kind == "set_military_reaction":
+        elif kind in ("set_military_reaction", "planet_military_reaction"):
             bump(actor, "reaction")
         elif kind == "set_quasar_sector":
             bump(actor, "quasar_sector")
