@@ -57,3 +57,21 @@ def test_a_far_home_a_quiet_day_and_legacy_stay_put(monkeypatch) -> None:
     assert _brain(4)._defend_home(View(_obs(hops=3, hit=False))) is None
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "legacy")
     assert _brain(4)._defend_home(View(_obs(hops=3, hit=True))) is None
+
+
+def test_arriving_home_acks_the_hit(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
+    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
+    brain = _brain(4)
+    away = _obs(hops=3, hit=True)
+    away["recent_events"][0]["seq"] = 4
+    assert brain._defend_home(View(away)) is not None
+    home = _obs(hops=3, hit=True)
+    home["recent_events"][0]["seq"] = 4
+    home["sector"]["id"] = 4
+    assert brain._defend_home(View(home)) is None
+    assert brain.mem is not None and brain.mem.war_home_seq == 4
+    assert brain._defend_home(View(away)) is None
+    again = _obs(hops=3, hit=True)
+    again["recent_events"][0]["seq"] = 9
+    assert brain._defend_home(View(again)) is not None

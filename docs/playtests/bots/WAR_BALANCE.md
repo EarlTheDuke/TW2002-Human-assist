@@ -11,6 +11,7 @@ The warfare note already required an attack to leave 25% of the fighters aboard 
 3. Refuse unless the seen treasury is at least 1.5 times the credits of the fighters the estimate spends. A missing treasury counts as 0. A fight that spends nothing still passes.
 4. A siege that does not leave this seat landed on that planet, or owning it, records `war_fail_day`. The existing 2-day cooldown then applies.
 5. Engine rules stay as they are. The legacy pin stays `9b607d3dae940c0b1a69f6d7`.
+6. A home hit is answered once. Arriving acks that event, so the same notice does not turn the trade route around again.
 
 Seed 4242 30-day on dac501d, both columns rejected 0/0. War full 719s. War off 729s, save identical.
 
