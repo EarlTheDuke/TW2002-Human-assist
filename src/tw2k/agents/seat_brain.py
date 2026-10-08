@@ -3879,6 +3879,10 @@ class SeatBrain:
             return None
         if self._skip_fighter_rebuy(v):
             return None
+        # A buy toward 1500 this late only converts cash into book value at 100.
+        # Seed 250925 day 28 bought 691 at 236; the attack after it paid 10,497.
+        if self._days_left(v) <= 4:
+            return None
         odds, per_attack = combat_hull(str(v.ship_class or ""))
         target = int(_HK.HUNT_ARM_FIGHTERS)
         if odds < float(_HK.HUNT_ARM_MIN_ODDS) or per_attack < target:
