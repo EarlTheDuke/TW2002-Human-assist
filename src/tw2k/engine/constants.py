@@ -2243,6 +2243,7 @@ CORP_TURN_COST = 0                        # cr2 UNVERIFIED
 CORP_NEW_PASSWORD = ""                    # cr3 UNVERIFIED: blank means closed
 CORP_APPROVER = "member"                  # cr4 SOURCE-CONFLICT: "member" | "ceo"
 CORP_BREAKIN_PER_DAY = 1                  # cr6
+CORP_BREAKIN_RULE = "wrong_guesses"       # cl7 | "attempts"
 CORP_BREAKIN_ALIGN_LOSS = 0               # cr6 UNVERIFIED
 CORP_BREAKIN_TELL_CEO = False             # cr6 UNVERIFIED
 CORP_MAX_MEMBERS = 5                      # cr7 CONFIRMED

@@ -227,9 +227,12 @@ def _join_block(universe: Universe, pid: str, corp: Corporation | None, password
         return "no such corporation"
     if not corp.password:
         return "set a password first"
-    if int(getattr(player, "corp_breakins_today", 0) or 0) >= int(K.CORP_BREAKIN_PER_DAY):
+    capped = int(getattr(player, "corp_breakins_today", 0) or 0) >= int(K.CORP_BREAKIN_PER_DAY)
+    if K.CORP_BREAKIN_RULE != "wrong_guesses" and capped:
         return "one break-in attempt per day"
     if not _password_eq(corp.password, password):
+        if capped:
+            return "one break-in attempt per day"
         return "wrong password"
     if len(corp.member_ids) >= int(K.CORP_MAX_MEMBERS):
         return "corp is full"
@@ -248,7 +251,8 @@ def handle_corp_join(universe: Universe, pid: str, action: Action) -> ActionResu
     ticker = (action.args.get("ticker") or "").upper()
     corp = universe.corporations.get(ticker)
     password = str(action.args.get("password") or "")
-    if corp is not None and corp.password and int(getattr(player, "corp_breakins_today", 0) or 0) >= int(K.CORP_BREAKIN_PER_DAY):
+    capped = int(getattr(player, "corp_breakins_today", 0) or 0) >= int(K.CORP_BREAKIN_PER_DAY)
+    if corp is not None and corp.password and capped and K.CORP_BREAKIN_RULE != "wrong_guesses":
         return ActionResult(ok=False, error="one break-in attempt per day")
     reason = _join_block(universe, pid, corp, password)
     if reason == "wrong password" and corp is not None:
@@ -873,7 +877,11 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
         join_reason = "already in a corporation"
     elif not player.alive:
         join_reason = "not alive"
-    elif breakins_left <= 0 and any(c.password for c in universe.corporations.values()):
+    elif (
+        K.CORP_BREAKIN_RULE != "wrong_guesses"
+        and breakins_left <= 0
+        and any(c.password for c in universe.corporations.values())
+    ):
         join_reason = "one break-in attempt per day"
         joinable = []
     elif not joinable:

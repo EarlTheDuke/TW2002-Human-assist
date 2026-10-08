@@ -19,7 +19,8 @@ from tests.test_corp_rules_v1 import _act, _u
 from tests.test_ship_tow_v1 import _park, _sit, _world
 
 
-def test_today_a_correct_password_is_refused_after_a_wrong_guess():
+def test_today_a_correct_password_is_refused_after_a_wrong_guess(monkeypatch):
+    monkeypatch.setattr(K, "CORP_BREAKIN_RULE", "attempts")
     u = _u()
     assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
     assert _act(u, "P1", "corp_set_password", password="Zx9").ok
@@ -50,6 +51,25 @@ def _mate_hold(align=100, fighters=0, ticker="XYZ", holder="owner_or_corp"):
     sid = _park(u, "A", 1)
     mate.ship.tow_lock = TowLock(kind="ship", ship_id=sid, engaged_day=u.day)
     return u, sid, mate
+
+
+def test_cl7_a_correct_password_joins_after_a_wrong_guess():
+    from tw2k.engine.legality import legal_actions
+    u = _u()
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    assert _act(u, "P1", "corp_set_password", password="Zx9").ok
+    assert _act(u, "P2", "corp_join", ticker="XYZ", password="nope").error == "wrong password"
+    again = _act(u, "P2", "corp_join", ticker="XYZ", password="ZZZZ")
+    assert again.error == "one break-in attempt per day"
+    assert u.players["P2"].corp_breakins_today == 1
+    assert _act(u, "P2", "corp_join", ticker="XYZ", password="Zx9").ok
+    assert u.players["P2"].corp_ticker == "XYZ"
+    u2 = _u()
+    assert _act(u2, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    assert _act(u2, "P1", "corp_set_password", password="Zx9").ok
+    assert _act(u2, "P2", "corp_join", ticker="XYZ", password="nope").error == "wrong password"
+    offer = next(row for row in legal_actions(u2, "P2") if row.kind == "corp_join")
+    assert offer.legal is True and offer.params["breakin_attempts_left"] == 0
 
 
 def test_cl2_a_corp_mate_holds_the_ship_over_extern(monkeypatch):
