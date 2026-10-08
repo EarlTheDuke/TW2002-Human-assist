@@ -2210,6 +2210,10 @@ BOT_WAR_QUASAR_ATM_PCT = 60              # bw9
 BOT_WAR_QUASAR_ORE_FLOOR = 2_000         # bw9
 BOT_WAR_SIEGE_MARGIN_PCT = 25            # bw17
 BOT_WAR_RESERVE_TURNS = 20               # bw17
+BOT_WAR_START_DAY = 5                    # bw13, bw22
+BOT_WAR_SIEGES_PER_DAY = 1               # bw14
+BOT_WAR_SIEGE_COOLDOWN_DAYS = 2          # bw14
+BOT_WAR_GOOD_ATTACKS_ANY = False         # D6, bw23
 
 
 def bots_war_on() -> bool:

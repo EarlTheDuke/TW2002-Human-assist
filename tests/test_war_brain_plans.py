@@ -9,6 +9,7 @@ from tw2k.agents.war_brain import (
     quasar_settings,
     reaction_setting,
     retreat_reason,
+    siege_refusal,
     stock_deposit,
 )
 
@@ -94,3 +95,28 @@ def test_retreat_stops_on_margin_quasar_rival_or_turns() -> None:
         fighters=200, fighters_needed_remaining=100, shields=10,
         atmospheric_quasar=False, rival_stronger=False, turns_left=20,
     ) is None
+
+
+def test_bw14_targets() -> None:
+    ok = dict(skill="N3", policy="full", day=6, owner_evil=True)
+    assert siege_refusal(**ok) is None
+    assert siege_refusal(**{**ok, "skill": "N1"}) == "defend"
+    assert siege_refusal(**{**ok, "skill": "H"}) == "defend"
+    assert siege_refusal(**{**ok, "policy": "off"}) == "off"
+    assert siege_refusal(**{**ok, "day": 4}) == "early"
+    assert siege_refusal(**{**ok, "sieges_today": 1}) == "already"
+    assert siege_refusal(**{**ok, "failed_day": 5}) == "cooldown"
+    assert siege_refusal(**{**ok, "day": 8, "failed_day": 6}) == "cooldown"
+    assert siege_refusal(**{**ok, "day": 9, "failed_day": 6}) is None
+    assert siege_refusal(**{**ok, "mate": True}) == "mate"
+    assert siege_refusal(**{**ok, "ally": True}) == "ally"
+    assert siege_refusal(**{**ok, "fedspace": True}) == "fedspace"
+    assert siege_refusal(**{**ok, "orphan": True}) == "orphan"
+
+
+def test_bw23_alignment() -> None:
+    base = dict(skill="N2", policy="full", day=6)
+    assert siege_refusal(**base, attacker_good=True, owner_evil=False) == "alignment"
+    assert siege_refusal(**base, attacker_good=True, owner_evil=True) is None
+    assert siege_refusal(**base, attacker_good=True, owner_evil=False, attacked_us=True) is None
+    assert siege_refusal(**base, attacker_good=False, owner_evil=False) is None
