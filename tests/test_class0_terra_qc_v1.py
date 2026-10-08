@@ -69,6 +69,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "ALIEN_MODE", "legacy")  # pins predate alien-traders-v1
     monkeypatch.setattr(K, "LLM_PARITY_MODE", "legacy")  # pins predate llm-rules-parity-v1
     monkeypatch.setattr(K, "LLM_PLANET_NUDGE_MODE", "legacy")
+    monkeypatch.setattr(K, "TAVERN_MODE", "legacy")  # pins predate the tavern paragraph
 
 
 @pytest.fixture

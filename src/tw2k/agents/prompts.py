@@ -748,9 +748,6 @@ def get_system_prompt() -> str:
         text = text + _PORT_UPGRADE_NOTE
     if K.bank_on() and not parity:
         text = text + _bank_note()
-    if K.tavern_on() and not parity:
-        from .rules_text import tavern_block
-        text = text + tavern_block()
     if K.corp_rules_on() and not parity:
         text = text + _corp_note()
     if K.buy_reserve_on():

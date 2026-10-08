@@ -204,7 +204,7 @@ def test_tv13_curse():
 def test_tv14_enter_and_tv22():
     universe = _world()
     player = _seat(universe, "A", "Ada", alignment=150)
-    assert "underground_enter" not in _kinds(universe, "A")
+    assert _kinds(universe, "A")["underground_enter"].legal is False
     word = password_for(universe.config.seed)
     assert _do(universe, "A", ActionKind.GRIMY_ASK, topic="underground").ok
     assert "underground_enter" in _kinds(universe, "A")
