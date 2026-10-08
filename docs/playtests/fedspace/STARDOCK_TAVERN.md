@@ -113,4 +113,6 @@ Seed 250925, digest `16ad8833`. N3-P1 766,412 cargotran 0 deaths. N2-P3 387,649 
 
 Seed 424242, digest `4b8d71e0`. N3-P1 753,296 cargotran 0. N2-P3 661,758 cargotran 0. N2-P4 176,554 cargotran 0. N3-P2 134,373 cargotran 0. N1-P5 17,975 scout 2 deaths. H-P6 7,975 scout 4 deaths.
 
-An empty StarDock observation is 29,277 bytes with the tavern on and 27,308 with it off, 1,969 bytes more. The 30-day stress run and the planted-bug re-break are still ahead.
+An empty StarDock observation is 29,277 bytes with the tavern on and 27,308 with it off, 1,969 bytes more.
+
+30-day headless, 6 heuristic seats, seed 250925, on `344cb5e` plus the soak print. Stress (2% of StarDock decisions replaced by a legal Tavern verb) elapsed 2633.8s, day-15 save/load identical, events 203291, contract books balanced at 0 posted, no negative credits, exit 0. Legacy elapsed 2717.5s, day-15 save/load identical, events 203184, books balanced, no negative credits, exit 0. Stress was 3% faster than legacy. The planted-bug re-break is still ahead.
