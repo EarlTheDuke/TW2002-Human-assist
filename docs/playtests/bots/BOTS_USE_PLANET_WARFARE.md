@@ -17,7 +17,9 @@ Root-cause trace on `885bdb0`, seed 250925, 10 days, seats N3,N3,N2,N2,N1,H, bef
 | N2-P4 | 161,357 | cargotran | 0 | 150,336 | cargotran | 0 |
 | H-P6 | 50,003 | scout | 2 | 50,308 | scout | 6 |
 
-War report, policy full: P3 laid 55 corporate armids and 10 corporate defensive fighters and set reaction once. P5 laid 64 personal armids and 10 personal defensive fighters, deposited 10 fighters, and set reaction once. P1 deposited 412 fighters. P2, P4, and H laid no mines. Seed 4242, the defend policy, the pair policy, and both 30-day runs are still ahead.
+War report, policy full: P3 laid 55 corporate armids and 10 corporate defensive fighters and set reaction once. P5 laid 64 personal armids and 10 personal defensive fighters, deposited 10 fighters, and set reaction once. P1 deposited 412 fighters. P2, P4, and H laid no mines.
+
+10-day seed 4242 on the same tree, war full, rejected 0/0, exceptions 0, digest `827389f1`, total 1,649,064. N2-P3 503,948 cargotran 0 deaths. N3-P1 490,207 cargotran 0. N1-P5 390,740 cargotran 0. N2-P4 169,550 cargotran 0. N3-P2 78,613 scout 3 deaths. H-P6 16,006 scout 8 deaths. P3 laid 57 corporate armids and 10 corporate fighters. P5 deposited 20 fighters and set reaction, and laid no mines. The legacy column for this seed, the defend policy, the pair policy, and both 30-day runs are still ahead.
 
 ## Rules
 
