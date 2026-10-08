@@ -224,6 +224,10 @@ class SeatMemory:
     # Credits of ship fighters and shields moved onto a citadel today.
     war_spend_day: int = -1
     war_spent: int = 0
+    war_siege_day: int = -1
+    war_sieges: int = 0
+    war_land_tries: int = 0
+    war_siege_planet: int | None = None
     # Last psychic-probe reading this seat saw (percent of the port's best price).
     psychic_pct: float | None = None
     psychic_commodity: str | None = None
@@ -284,6 +288,12 @@ class SeatMemory:
         if self.war_spend_day >= 0:
             payload["war_spend_day"] = int(self.war_spend_day)
             payload["war_spent"] = int(self.war_spent)
+        if self.war_siege_day >= 0:
+            payload["war_siege_day"] = int(self.war_siege_day)
+            payload["war_sieges"] = int(self.war_sieges)
+            payload["war_land_tries"] = int(self.war_land_tries)
+            if self.war_siege_planet is not None:
+                payload["war_siege_planet"] = int(self.war_siege_planet)
         if self.beacon_stocked:
             payload["beacon_stocked"] = True
         if self.psychic_pct is not None:
@@ -369,6 +379,12 @@ class SeatMemory:
         spend_day = data.get("war_spend_day")
         mem.war_spend_day = int(spend_day) if isinstance(spend_day, int) else -1
         mem.war_spent = int(data.get("war_spent") or 0)
+        siege_day = data.get("war_siege_day")
+        mem.war_siege_day = int(siege_day) if isinstance(siege_day, int) else -1
+        mem.war_sieges = int(data.get("war_sieges") or 0)
+        mem.war_land_tries = int(data.get("war_land_tries") or 0)
+        siege_planet = data.get("war_siege_planet")
+        mem.war_siege_planet = int(siege_planet) if isinstance(siege_planet, int) else None
         mem.beacon_stocked = bool(data.get("beacon_stocked"))
         mem.psychic_pct = float(pct) if isinstance(pct, (int, float)) else None
         mem.psychic_commodity = data.get("psychic_commodity") if isinstance(data.get("psychic_commodity"), str) else None
@@ -771,6 +787,12 @@ class SeatBrain:
             return self._finish(v, answer)
         answer = self._cloak_for_navhaz(v) or self._hunt(v)
         if answer is not None:  # fullgame-fixes-v2: N3 attacks a ship it clearly beats (HUNT_MODE)
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
+        answer = self._siege_here(v)
+        if answer is not None:  # bots-use-planet-warfare-v1: land a siege only when the gates clear
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
@@ -4326,6 +4348,90 @@ class SeatBrain:
     def _war_lays(self) -> bool:
         from ..engine import constants as K
         return bool(K.bots_war_on()) and K.BOT_WAR_POLICY != "off"
+
+    def _war_skill(self) -> str:
+        """N3 prices options. N2 still feeds worlds. Anything else only defends."""
+        if self.value_allocator:
+            return "N3"
+        if self.feed_organics:
+            return "N2"
+        return "N1"
+
+    def _siege_here(self, v: View) -> dict[str, Any] | None:
+        """Land on one rival planet in this sector when the siege gates all clear."""
+        if v.landed is not None or not v.ok("land_planet"):
+            return None
+        from ..engine import constants as K
+        from .war_brain import interdictor_blocks, land_tries_left, siege_estimate, siege_refusal
+        choices = [int(c) for c in v.choices("land_planet", "planet_id")]
+        if not choices:
+            return None
+        mem = self.mem
+        day = int(v.day)
+        turns_left = v.obs.get("turns_left")
+        if turns_left is not None and int(turns_left) < int(K.BOT_WAR_RESERVE_TURNS):
+            return None
+        me = v.self_id
+        mine = str(v.obs.get("corp_ticker") or "")
+        good = int(v.obs.get("alignment") or 0) >= 0
+        sector = v.sector or {}
+        fedspace = bool(sector.get("is_fedspace"))
+        for pl in sector.get("planets") or []:
+            if not isinstance(pl, dict) or pl.get("id") is None:
+                continue
+            pid = int(pl["id"])
+            if pid not in choices:
+                continue
+            owner = pl.get("owner_id")
+            if owner is None or owner == me:
+                continue
+            same = (
+                mem is not None
+                and mem.war_siege_day == day
+                and mem.war_siege_planet == pid
+            )
+            if mem is not None and mem.war_siege_day == day and mem.war_sieges >= 1 and not same:
+                continue
+            tries = int(mem.war_land_tries) if same and mem is not None else 0
+            if land_tries_left(tries) <= 0:
+                continue
+            theirs = str(pl.get("corp_ticker") or "")
+            reason = siege_refusal(
+                skill=self._war_skill(),
+                policy=str(K.BOT_WAR_POLICY),
+                day=day,
+                sieges_today=0 if same else (int(mem.war_sieges) if mem is not None and mem.war_siege_day == day else 0),
+                attacker_good=good,
+                owner_evil=int(pl.get("owner_alignment") or 0) < 0,
+                mate=bool(mine and theirs and mine == theirs),
+                fedspace=fedspace,
+                orphan=pid in v.orphans,
+            )
+            if reason is not None:
+                continue
+            estimate = siege_estimate(
+                {
+                    "fighters": pl.get("fighters") or 0,
+                    "shields": pl.get("shields") or 0,
+                    "military_reaction_pct": pl.get("military_reaction_pct") or 0,
+                },
+                {
+                    "fighters": v.ship.get("fighters") or 0,
+                    "ship_class": v.ship_class or "merchant_cruiser",
+                },
+            )
+            if not estimate["survive"]:
+                continue
+            fuel = int((pl.get("stockpile") or {}).get("fuel_ore") or 0)
+            if interdictor_blocks(int(pl.get("citadel_level") or 0), fuel_left=fuel, hold_priced=False):
+                continue
+            if mem is not None:
+                mem.war_siege_day = day
+                mem.war_sieges = 1
+                mem.war_siege_planet = pid
+                mem.war_land_tries = tries + 1
+            return self._act("land_planet", {"planet_id": pid}, f"siege planet {pid}")
+        return None
 
     def _own_planet_sectors(self, v: View) -> set[int]:
         out: set[int] = set()
