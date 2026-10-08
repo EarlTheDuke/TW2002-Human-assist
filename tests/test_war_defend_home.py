@@ -59,6 +59,17 @@ def test_a_far_home_a_quiet_day_and_legacy_stay_put(monkeypatch) -> None:
     assert _brain(4)._defend_home(View(_obs(hops=3, hit=True))) is None
 
 
+def test_a_loaded_hold_finishes_the_sale_before_going_home(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
+    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
+    brain = _brain(4)
+    loaded = _obs(hops=3, hit=True)
+    loaded["ship"]["cargo"] = {"equipment": 20}
+    assert brain._defend_home(View(loaded)) is None
+    assert brain.mem is not None and brain.mem.war_home_seq < 0
+    assert brain._defend_home(View(_obs(hops=3, hit=True))) is not None
+
+
 def test_arriving_home_acks_the_hit(monkeypatch) -> None:
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
     monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
