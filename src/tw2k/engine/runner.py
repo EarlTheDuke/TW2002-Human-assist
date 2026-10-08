@@ -1484,7 +1484,16 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         )
         if a_fighters <= 0 or player.deaths > deaths_at_fight:
             if player.deaths == deaths_at_fight:
-                _destroy_ship(universe, pid, reason="planet_defense", killer_id=planet.owner_id)
+                owner = universe.players.get(planet.owner_id)
+                by_other = (
+                    K.corp_fix_on()
+                    and K.DEATH_CREDITS_PLANET_DEFENCE == "owner"
+                    and owner is not None
+                    and owner.alive
+                )
+                _destroy_ship(
+                    universe, pid, reason="planet_defense", killer_id=planet.owner_id, by_other=by_other,
+                )
             _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
         if d_shields > 0 or d_fighters > 0:

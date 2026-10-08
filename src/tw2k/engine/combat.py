@@ -31,6 +31,7 @@ from .models import (
     FighterMode,
     LimpetTrack,
     MineType,
+    Player,
     Universe,
 )
 from .victory import _award_xp, combat_rewards, kill_rewards
@@ -294,7 +295,14 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
     if d_fighters <= 0:
         _defender_destroyed(universe, attacker_id, target)
     if a_fighters <= 0:
-        _destroy_ship(universe, attacker_id, reason="combat", killer_id=getattr(target, "id", None))
+        killer_id = getattr(target, "id", None)
+        # cl11: a player who kills the attacker with return fire is paid. Ferrengi and alien stay as they were.
+        by_other = (
+            K.corp_fix_on()
+            and K.DEATH_CREDITS_RETURN_FIRE == "defender"
+            and isinstance(target, Player)
+        )
+        _destroy_ship(universe, attacker_id, reason="combat", killer_id=killer_id, by_other=by_other)
 
 
 def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
