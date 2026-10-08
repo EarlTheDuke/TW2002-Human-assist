@@ -627,7 +627,8 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
                     pass
                 elif K.sector_fighter_tw2002():
                     bill = int(sector.fighters.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
-                    if bill > 0 and player.credits >= bill:
+                    from .corp import rogue_toll_open
+                    if bill > 0 and player.credits >= bill and rogue_toll_open(sector.fighters):
                         player.credits -= bill
                         sector.fighters.toll_credits = int(sector.fighters.toll_credits) + bill
                         universe.emit(
@@ -3930,6 +3931,9 @@ def _handle_pay_toll(universe: Universe, pid: str, action: Action) -> ActionResu
     bill = int(dep.count) * K.SECTOR_TOLL_CREDITS_PER_FIGHTER
     if player.credits < bill:
         return _reject_free(f"the toll is {bill} credits")
+    from .corp import rogue_toll_open
+    if not rogue_toll_open(dep):
+        return _reject_free("these fighters take no toll")
     player.credits -= bill
     dep.toll_credits = int(dep.toll_credits or 0) + bill
     player.fighter_challenge = None

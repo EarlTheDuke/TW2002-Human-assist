@@ -302,10 +302,24 @@ def remove_member(universe: Universe, pid: str, corp: Corporation, *, dissolve: 
         _call_corpship("on_member_leave", universe, pid, corp.ticker)
 
 
+def rogue_toll_open(dep) -> bool:
+    """A rogue group collects only while ROGUE_TOLL_CHARGES is on. Every other group always does."""
+    if getattr(dep, "owner_id", None) != K.ROGUE_OWNER_ID:
+        return True
+    return bool(K.ROGUE_TOLL_CHARGES)
+
+
 def _rogue(dep) -> None:
     dep.owner_id = K.ROGUE_OWNER_ID
     dep.corp_ticker = None
-    dep.toll_credits = 0 if hasattr(dep, "toll_credits") else getattr(dep, "toll_credits", 0)
+    if not hasattr(dep, "toll_credits"):
+        return
+    if not K.corp_fix_on():
+        dep.toll_credits = 0
+        return
+    pot = int(dep.toll_credits or 0)
+    cap = K.ROGUE_TOLL_POT_CAP
+    dep.toll_credits = pot if cap is None else min(pot, int(cap))
 
 
 def disband(universe: Universe, corp: Corporation) -> None:
