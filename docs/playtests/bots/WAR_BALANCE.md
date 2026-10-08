@@ -37,7 +37,7 @@ Holding the cargo and delaying the home trip, on `f50a304`, 2000s, rejected 0/0,
 
 Ignoring a trade or the corp mate, on `98241d8`, 911s, rejected 0/0, save identical: N3-P1 1,550,165 in a cargotran with 4 deaths (46% of war off). N2-P3 2,014,648 battleship, 0 deaths (109%). N2-P4 668,130 (107%). N3-P2 508,854 scout, 6 deaths (81%). That filter is out.
 
-The home-ack column reproduced on the replay, 1587s, rejected 0/0, save identical, N3-P1 still 2,528,732. On day 30 that seat deposited 98 fighters onto planet 30, then bought 200 fighters at 233. Book value is 100, so the rebuy is a 26,600 haircut and the day ends 9,080 lower. Stopping that rebuy, on `8c27dee`, 2084s, rejected 0/0, save identical: N3-P1 1,217,927 in a scout with 13 deaths (36% of war off) and N3-P2 454,286 (72%). N2-P3 2,094,089 (113%). N2-P4 687,608 (110%). That stop is out. The home ack remains the closer column.
+The home-ack column reproduced on the replay, 1587s, rejected 0/0, save identical, N3-P1 still 2,528,732. On day 30 that seat deposited 98 fighters onto planet 30, then bought 200 fighters at 233. Book value is 100, so the rebuy is a 26,600 haircut and the day ends 9,080 lower. Stopping that rebuy on every day, on `8c27dee`, 2084s, rejected 0/0, save identical: N3-P1 1,217,927 in a scout with 13 deaths (36% of war off) and N3-P2 454,286 (72%). N2-P3 2,094,089 (113%). N2-P4 687,608 (110%). That stop is out. The same skip now applies only when no days remain, so earlier days still rebuy.
 
 ## Bars
 
