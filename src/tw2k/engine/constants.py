@@ -2192,6 +2192,7 @@ def tavern_on() -> bool:
 # docs/playtests/bots/BOTS_USE_PLANET_WARFARE.md. Unread until the war brain is wired.
 BOTS_WAR_MODE = "tw2002"                 # bw1: "tw2002" | "legacy"
 BOT_WAR_POLICY = "full"                  # D1: full | defend | off
+BOT_WAR_MAP_MAX = 64                     # bw2
 
 
 def bots_war_on() -> bool:

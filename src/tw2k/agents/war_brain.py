@@ -90,6 +90,15 @@ def fighters_needed(
     return lo
 
 
+def threat_map(entries: list[dict[str, Any]], *, limit: int | None = None) -> list[dict[str, Any]]:
+    """Keep the newest sightings. The cap drops the oldest. Nothing here reads a universe."""
+    cap = int(K.BOT_WAR_MAP_MAX if limit is None else limit)
+    kept = [dict(row) for row in entries if isinstance(row, dict)]
+    if len(kept) > cap:
+        kept = kept[-cap:]
+    return kept
+
+
 def siege_estimate(planet_seen: dict[str, Any], my_ship: dict[str, Any], sector_seen: dict[str, Any] | None = None, turns: int = 0) -> dict[str, Any]:
     """Price one landing. Hazards and quasar are added by the caller once they are seen."""
     ship_class = str(my_ship.get("ship_class") or "merchant_cruiser")
