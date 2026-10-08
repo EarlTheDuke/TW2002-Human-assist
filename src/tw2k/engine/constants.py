@@ -1961,6 +1961,8 @@ TOW_LOCK_ON_XPORT = "keep_hull"     # tt12 Slice v2 trick, UNVERIFIED for v3 | "
 TOW_FUSE_TOWEE = "stays"            # tt20 UNVERIFIED | "destroyed"
 TOW_EXTERN_LOCK = "hold"            # tt22 cabal tips #4 | "off"
 TOW_EXTERN_REQUIRE_GOOD = False     # tt22 UNVERIFIED: fedsafe = fighters <= FED_TOW_FIGHTER_LIMIT only
+TOW_EXTERN_HOLDER = "owner_or_corp"  # cl2 CABT #4 | "owner"
+TOW_EXTERN_ALLY_HOLDS = False        # cl2 UNVERIFIED: an ally who is not a corp mate does not hold
 TOW_DOCK_VERBS = frozenset({"buy_ship", "buy_equip", "sell_ship", "remove_limpet", "apply_commission",
                             "post_reward", "claim_reward"})  # tt11c (Police HQ verbs as dock: UNVERIFIED)
 SHIP_TW_TYPE2_COST = 20_000         # tt16 cabal twgs.html TEDIT sample (OldFAQ v2 80,000: SOURCE-CONFLICT, unused)
@@ -2232,6 +2234,7 @@ def bots_war_on() -> bool:
 # --- Corporations (CORP_MODE) -------------------------------------------------
 # docs/playtests/corps/CORP_RULES.md. "legacy" is the engine at 57dec11.
 CORP_MODE = "tw2002"                      # "tw2002" | "legacy"
+CORP_FIX_MODE = "tw2002"                  # CORP_LOOSE_ENDS.md cl1 | "legacy"
 CORP_CREATE_COST = 0                      # cr2 UNVERIFIED (alt 500_000 = CORP_FORMATION_COST)
 CORP_TURN_COST = 0                        # cr2 UNVERIFIED
 CORP_NEW_PASSWORD = ""                    # cr3 UNVERIFIED: blank means closed
@@ -2290,6 +2293,15 @@ CFS_JOIN_CHECK = "flown"                  # bc25 UNVERIFIED: "flown" | "owned"
 
 def corp_rules_on() -> bool:
     return CORP_MODE == "tw2002"
+
+
+def corp_fix_on(*, corp: bool = False) -> bool:
+    """Kill rows read the mode alone. Corp rows also stay off when CORP_MODE is legacy."""
+    if CORP_FIX_MODE != "tw2002":
+        return False
+    if corp and CORP_MODE != "tw2002":
+        return False
+    return True
 
 
 def corp_bots_on() -> bool:
