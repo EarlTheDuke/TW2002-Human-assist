@@ -104,6 +104,33 @@ def test_hr6_a_hidden_freighter_is_still_worth_a_withdraw():
     assert act.args["amount"] == 30_000
 
 
+def test_hr7_a_free_scout_after_ship_destroyed_withdraws_for_the_freighter():
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    asyncio, Observation = _h_obs(deaths=1)
+    obs = Observation
+    obs.ship = dict(obs.ship)
+    obs.ship["class"] = "scout_marauder"
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": False, "reason": "no ship you can buy right now",
+         "params": {"ship_class": {
+             "choices": [],
+             "net_cost_by": HULLS["net_cost_by"],
+             "blocked_by": {
+                 "cargotran": "insufficient credits (0 < 50000)",
+                 "merchant_freighter": "insufficient credits (0 < 30000)",
+                 "merchant_cruiser": "insufficient credits (0 < 40000)",
+                 "scout_marauder": "insufficient credits (0 < 10000)",
+             },
+         }}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 80_000}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "bank_withdraw"
+    assert act.args["amount"] == 30_000
+
+
 def test_hr5_legacy_h_still_buys_the_scout(monkeypatch):
     import tw2k.engine.constants as K
     from tests.test_bots_bank_economy_v1 import _h_obs

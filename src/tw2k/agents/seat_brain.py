@@ -786,7 +786,7 @@ class SeatBrain:
                 mem.last_action_sig = _signature(answer, v)
                 mem.last_warp = None
                 return self._finish(v, answer)
-        answer = self._leave_pod(v)
+        answer = self._leave_pod(v) or self._rebuy_after_scout(v)
         if answer is not None:  # death-escape-pods-v1: a pod flies to StarDock and trades itself in
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
@@ -942,6 +942,27 @@ class SeatBrain:
         if plot is None or self._banned_why(plot, v):
             return None
         return self._avoid_held(v, plot, Intent())[0]  # not back through fighters it fled today
+
+    def _rebuy_after_scout(self, v: View) -> dict[str, Any] | None:
+        """Ship Destroyed leaves a free Scout. N1 buys a cargo hull before trading."""
+        if not self._n1_recovery() or v.ship_class != "scout_marauder":
+            return None
+        if int(v.obs.get("deaths") or 0) <= 0 or v.landed is not None or v.here != STARDOCK:
+            return None
+        if not v.ok("buy_ship"):
+            return None
+        from .bank_brain import recovery_hull_step
+        ship_params = v.params("buy_ship").get("ship_class") or {}
+        step = recovery_hull_step(
+            v.choices("buy_ship", "ship_class"), ship_params.get("net_cost_by") or {},
+            int(v.credits), 0, 0, ship_params.get("blocked_by") or {},
+        )
+        if step is None or step[0] != "buy_ship" or str(step[1]) == "scout_marauder":
+            return None
+        hull = str(step[1])
+        cost = int((ship_params.get("net_cost_by") or {}).get(hull) or 0)
+        return self._act("buy_ship", {"ship_class": hull},
+                         f"trade the scout for a {hull} after the loss ({cost} cr net)")
 
     # ------------------------------------------------------------------ S6: failures / rivals
     def _ingest_failures(self, v: View) -> None:
@@ -3119,7 +3140,14 @@ class SeatBrain:
     def _bank_recovery(self, v: View) -> dict[str, Any] | None:
         """At StarDock in a pod, withdraw the replacement hull before the Scout buy."""
         from ..engine import constants as engine_k
-        if v.ship_class != "escape_pod" or v.landed is not None:
+        post_death_scout = (
+            self._n1_recovery()
+            and v.ship_class == "scout_marauder"
+            and int(v.obs.get("deaths") or 0) > 0
+        )
+        if v.ship_class != "escape_pod" and not post_death_scout:
+            return None
+        if v.landed is not None:
             return None
         if int(v.here or 0) != int(engine_k.STARDOCK_SECTOR) or not v.ok("bank_withdraw"):
             return None
