@@ -622,6 +622,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-gate", action="store_true", help="Don't exit 1 on rubric miss.")
     ap.add_argument("--quiet", action="store_true", help="Suppress live stdout.")
     ap.add_argument("--tavern", choices=("tw2002", "legacy"), help="set TAVERN_MODE for this run")
+    ap.add_argument("--war-report", action="store_true",
+                    help="print war verb counts from the match events")
     ap.add_argument(
         "--tavern-stress", type=float, default=0.0,
         help="at StarDock, this chance replaces the bot action with a legal Tavern verb",
@@ -673,6 +675,10 @@ def main(argv: list[str] | None = None) -> int:
             f"events={summary['num_events']} day={summary['final_day']} soak={summary.get('tavern_soak')}",
             flush=True,
         )
+        if args.war_report:
+            from tw2k.agents.war_report import counts_from_events
+            print("WAR_REPORT " + json.dumps(counts_from_events(list(runner.universe.events)), sort_keys=True),
+                  flush=True)
         runner.log(f"=== match done in {elapsed:.1f}s · "
                    f"day={summary['final_day']} · events={summary['num_events']} ===")
         if out_dir is not None:
