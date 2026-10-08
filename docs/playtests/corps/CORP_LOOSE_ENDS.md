@@ -75,6 +75,23 @@ corbomite paid the podded owner once
 corp_loose_ends_lab: PASS
 ```
 
+## 10-day scripted
+
+Seats N3,N3,N2,N2,N1,H. Pair policy, war full. Rejected 0/0 and exceptions 0 on the legacy column. Bank save/load identical. Credits recovered by killers: 0. Rogue groups 0. Hostile mate actions 0.
+
+Seed 250925, `CORP_FIX_MODE` legacy, 239s. Total net worth 1,734,907.
+
+| Seat | Net worth | Credits | Deaths | Credits lost |
+| --- | --- | --- | --- | --- |
+| N3-P1 | 733,020 | 141,890 | 0 | 0 |
+| N2-P3 | 437,944 | 81,571 | 0 | 0 |
+| N1-P5 | 268,211 | 50,422 | 0 | 0 |
+| N2-P4 | 150,861 | 14,095 | 0 | 0 |
+| N3-P2 | 94,683 | 0 | 5 | 52,906 |
+| H-P6 | 50,188 | 0 | 5 | 33,176 |
+
+Corps N3P = P1+P2 and N2P = P3+P4. Corporate deploys: P3 laid 59. Transfers 9.
+
 ## Not built
 
 No bot strategy change. No prompt change. No combat-odds change. No alliance, corp treasury, tavern, or port-upgrade work. `prompts.py` still says `query_limpets` shows your planted limpets. That line is left for a later parity slice. `rules_text.py` says one wrong password a day, which still matches cl7.
