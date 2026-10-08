@@ -70,7 +70,7 @@ Seed 250925 30-day on `4997a47`, war full, 1131s, rejected 0/0, save identical. 
 
 N3-P1 kept the battleship and all 4 planets. Day 30 rose from 2,269,953 to 2,334,312. The ratio was 75% on day 29 and 74% on day 30 because war off gained 137,004 that day and war on gained 64,359. Kill loot was 278,925 against 895,286 with war off. Trading profit was higher with war on (2,738,585 against 2,684,638). This miss is not the day-30 fighter rebuy.
 
-The buy log of that column shows day 28 bought 691 fighters at 236 toward 1,500, and the attack after it paid 10,497. Hunt arming now stops when 4 days are left. The 200-fighter floor still buys.
+The buy log of that column shows day 28 bought 691 fighters at 236 toward 1,500, and the attack after it paid 10,497. Stopping hunt arming when 4 days are left, on `95855f4`, 1080s, rejected 0/0, save identical: N3-P1 2,450,419 (clears 2,365,718 by 84,701) and N2-P3 1,446,087 with 4 deaths, short of 1,465,286 by 19,199. That stop is out.
 
 ## Bars
 
