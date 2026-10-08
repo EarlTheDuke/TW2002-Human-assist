@@ -36,7 +36,9 @@ P3 laid 57 corporate armids and 10 corporate fighters. P5 deposited 20 fighters 
 
 30-day seed 250925, war full, on this tree, rejected 0/0, exceptions 0, digest `132ac666`, total 6,444,225, elapsed 901s. Day 10 matches the defend 10-day above. N3-P1 2,265,237 battleship 0 deaths (the report's 5 `ship_destroyed` rows are kills by P1). N2-P3 1,760,848 cargotran 4 deaths. N1-P5 1,468,811 cargotran 0. N2-P4 495,760 cargotran 0. N3-P2 403,381 scout 12 deaths. H-P6 50,188 scout 19 deaths. P3 laid 103 corporate armids, 10 corporate fighters, 472 fighter deposits, 10 shield deposits, reaction once. P5 laid 345 personal armids and 10 fighters. P1 deposited 1,150 fighters.
 
-30-day seed 250925, war off, rejected 0/0, exceptions 0, digest `b15d65a0`, total 6,280,129, elapsed 1188s. That digest matches the bank-slice 30-day. The report has no mines, pickets, deposits, or reaction. N3-P1 2,823,128 battleship 0 deaths. N2-P3 1,520,218 cargotran 4 deaths. N1-P5 892,662 cargotran 5 deaths. N3-P2 523,588 cargotran 0 deaths. N2-P4 470,530 scout 1 death. H-P6 50,003 scout 7 deaths. Seed 4242's 30-day is still ahead.
+30-day seed 250925, war off, rejected 0/0, exceptions 0, digest `b15d65a0`, total 6,280,129, elapsed 1188s. That digest matches the bank-slice 30-day. The report has no mines, pickets, deposits, or reaction. N3-P1 2,823,128 battleship 0 deaths. N2-P3 1,520,218 cargotran 4 deaths. N1-P5 892,662 cargotran 5 deaths. N3-P2 523,588 cargotran 0 deaths. N2-P4 470,530 scout 1 death. H-P6 50,003 scout 7 deaths.
+
+30-day seed 4242, war full, rejected 0/0, exceptions 0, digest `59264641`, total 4,399,285, elapsed 1086s. Day 10 matches the war-full 10-day for this seed. N2-P3 2,046,508 battleship 2 deaths. N1-P5 885,641 scout 6 deaths. N2-P4 873,242 cargotran 0. N3-P2 314,781 scout 20 deaths. N3-P1 263,107 scout 17 deaths. H-P6 16,006 scout 15 deaths. P3 laid 161 corporate armids and 58 corporate fighters. P5 laid 1 personal armid. The war-off 30-day for this seed is still ahead.
 
 ## Rules
 
