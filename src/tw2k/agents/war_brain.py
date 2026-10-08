@@ -288,6 +288,30 @@ def siege_refusal(
     return None
 
 
+def risk_within_cap(
+    *,
+    net_worth: int,
+    ship_value: int,
+    fighters_at_risk: int,
+    fighter_price: int,
+) -> bool:
+    """The fighters at stake must fit inside a percent of net worth. Ship value is not the cap."""
+    del ship_value
+    stake = max(0, int(fighters_at_risk)) * max(0, int(fighter_price))
+    cap = max(0, int(net_worth)) * int(K.BOT_WAR_RISK_NW_PCT) // 100
+    return stake <= cap
+
+
+def nw_drop_day(*, day: int, peak: int, current: int, switched_day: int | None) -> int | None:
+    """The day a net-worth drop turned siege off, or None once that cooldown has passed."""
+    if switched_day is not None and int(day) - int(switched_day) < int(K.BOT_WAR_COOLDOWN_DAYS):
+        return int(switched_day)
+    floor = max(0, int(peak)) * (100 - int(K.BOT_WAR_NW_DROP_STOP_PCT)) // 100
+    if int(peak) > 0 and int(current) < floor:
+        return int(day)
+    return None
+
+
 def interdictor_blocks(citadel_level: int, *, fuel_left: int, hold_priced: bool) -> bool:
     """A level-6 planet holds the ship until its fuel drops under the floor."""
     if int(citadel_level) < int(K.INTERDICTOR_MIN_LEVEL):

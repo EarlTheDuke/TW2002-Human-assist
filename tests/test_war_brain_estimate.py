@@ -58,6 +58,9 @@ def test_bw15_estimate() -> None:
     eng_a, eng_d, eng_s, _rounds = _planet_odds_fight(player, planet)
     got_a, got_d, got_s = planet_fight(attackers, defenders, shields, pct, hull)
     assert (got_a, got_d, got_s) == (eng_a, eng_d, eng_s)
+    from tw2k.agents.war_brain import risk_within_cap
+    assert risk_within_cap(net_worth=100_000, ship_value=1_000, fighters_at_risk=50, fighter_price=100)
+    assert risk_within_cap(net_worth=1_000, ship_value=100_000, fighters_at_risk=50, fighter_price=100) is False
 
 
 def test_bw2_threat_map() -> None:

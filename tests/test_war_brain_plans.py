@@ -122,6 +122,13 @@ def test_bw14_targets() -> None:
     assert siege_refusal(**{**ok, "orphan": True}) == "orphan"
 
 
+def test_bw22_budget() -> None:
+    from tw2k.agents.war_brain import nw_drop_day
+    assert nw_drop_day(day=10, peak=1_000, current=600, switched_day=None) == 10
+    assert nw_drop_day(day=12, peak=1_000, current=900, switched_day=10) == 10
+    assert nw_drop_day(day=13, peak=1_000, current=900, switched_day=10) is None
+
+
 def test_bw23_alignment() -> None:
     base = dict(skill="N2", policy="full", day=6)
     assert siege_refusal(**base, attacker_good=True, owner_evil=False) == "alignment"
