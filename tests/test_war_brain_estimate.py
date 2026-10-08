@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from tw2k.agents.war_brain import planet_fight
+from tw2k.agents.war_brain import planet_fight, threat_map
 from tw2k.engine.runner import _planet_odds_fight
 
 
@@ -35,3 +35,9 @@ def test_planet_fight_matches_the_engine_on_fifty_cases() -> None:
             attackers, defenders, shields, pct, hull, photon_damped=photon,
         )
         assert (got_a, got_d, got_s) == (eng_a, eng_d, eng_s), seed
+
+
+def test_threat_map_drops_the_oldest_past_the_cap() -> None:
+    rows = [{"sector": n} for n in range(70)]
+    kept = threat_map(rows, limit=64)
+    assert len(kept) == 64 and kept[0]["sector"] == 6 and kept[-1]["sector"] == 69
