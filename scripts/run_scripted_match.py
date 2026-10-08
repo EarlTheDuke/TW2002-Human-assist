@@ -534,6 +534,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="set BOTS_WAR_MODE for this run")
     ap.add_argument("--corp-fix", choices=("tw2002", "legacy"),
                     help="set CORP_FIX_MODE for this run")
+    ap.add_argument("--h-recovery", choices=("tw2002", "legacy"),
+                    help="set H_RECOVERY_MODE for this run")
     ap.add_argument("--war-policy", choices=("full", "defend", "off"),
                     help="set BOT_WAR_POLICY for this run")
     ap.add_argument("--war-report", action="store_true",
@@ -541,7 +543,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
-    if a.bank_legacy or a.llm_parity or a.treasury_policy or a.detour_hops is not None or a.tavern or a.bots_war or a.war_policy or a.corp_fix:
+    if a.bank_legacy or a.llm_parity or a.treasury_policy or a.detour_hops is not None or a.tavern or a.bots_war or a.war_policy or a.corp_fix or a.h_recovery:
         from tw2k.engine import constants as K
         if a.bank_legacy:
             K.BANK_MODE = "legacy"
@@ -555,6 +557,8 @@ def main(argv: list[str] | None = None) -> int:
             K.BOT_WAR_POLICY = a.war_policy
         if a.corp_fix:
             K.CORP_FIX_MODE = a.corp_fix
+        if a.h_recovery:
+            K.H_RECOVERY_MODE = a.h_recovery
         if a.treasury_policy:
             K.BOT_TREASURY_POLICY = a.treasury_policy
         if a.detour_hops is not None:
