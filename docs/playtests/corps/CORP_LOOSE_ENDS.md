@@ -107,6 +107,21 @@ Corps N3P = P1+P2 and N2P = P3+P4. Corporate deploys: P3 laid 58. Transfers 2. H
 
 `CORP_FIX_MODE` tw2002 on seed 4242 matches this table seat for seat, including each day's net worth, the bank lines, and the corp counters. That run took 187s. Rejected 0/0, exceptions 0, credits recovered 0.
 
+## 30-day scripted
+
+Seats N3,N3,N2,N2,N1,H. Pair policy, war full. Seed 250925, `CORP_FIX_MODE` tw2002, 828s. Total net worth 6,444,225. Rejected 0/0, exceptions 0. Bank save/load identical. Day-15 save/load identical. Rogue groups 0. Hostile mate actions 0. Mate tolls 0. Credits recovered 326,429, all by N3-P1, and that equals N2-P3's credits lost. N3-P2 lost 167,287 and H lost 33,176, with no recovery. Day 10 matches the 10-day table on this seed.
+
+| Seat | Net worth | Credits | Deaths | Credits lost | Recovered |
+| --- | --- | --- | --- | --- | --- |
+| N3-P1 | 2,265,237 | 809,272 | 0 | 0 | 326,429 |
+| N2-P3 | 1,760,848 | 89,840 | 4 | 326,429 | 0 |
+| N1-P5 | 1,468,811 | 185,050 | 0 | 0 | 0 |
+| N2-P4 | 495,760 | 63,586 | 0 | 0 | 0 |
+| N3-P2 | 403,381 | 34,400 | 12 | 167,287 | 0 |
+| H-P6 | 50,188 | 0 | 19 | 33,176 | 0 |
+
+Corps N3P = P1+P2 and N2P = P3+P4. Corporate deploys: P3 laid 105. Transfers 14.
+
 ## Not built
 
 No bot strategy change. No prompt change. No combat-odds change. No alliance, corp treasury, tavern, or port-upgrade work. `prompts.py` still says `query_limpets` shows your planted limpets. That line is left for a later parity slice. `rules_text.py` says one wrong password a day, which still matches cl7.
