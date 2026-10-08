@@ -177,16 +177,29 @@ def furb_gain(victim_holds: int, victim_class: str, attacker_ship) -> int:
     return min(raw, room)
 
 
-def apply_furb(universe: Universe, attacker_id: str, victim_ship, victim_id: str) -> None:
+def overkill_blocks(sent: int | None, needed: int | None) -> bool:
+    """True when the ratio setting refuses the holds. "none" never refuses."""
+    if K.SALVAGE_OVERKILL != "ratio" or sent is None or needed is None:
+        return False
+    return int(sent) > int(K.SALVAGE_OVERKILL_RATIO) * max(0, int(needed))
+
+
+def apply_furb(
+    universe: Universe, attacker_id: str, victim_ship, victim_id: str,
+    *, sent: int | None = None, needed: int | None = None,
+) -> None:
     if not K.corpship_on():
         return
     attacker = universe.players.get(attacker_id)
     if attacker is None:
         return
-    gained = furb_gain(int(victim_ship.holds), victim_ship.ship_class.value, attacker.ship)
-    raw = furb_raw(int(victim_ship.holds), victim_ship.ship_class.value)
+    blocked = overkill_blocks(sent, needed)
+    gained = 0 if blocked else furb_gain(int(victim_ship.holds), victim_ship.ship_class.value, attacker.ship)
+    raw = 0 if blocked else furb_raw(int(victim_ship.holds), victim_ship.ship_class.value)
     attacker.ship.holds = int(attacker.ship.holds) + gained
-    if gained <= 0:
+    if blocked:
+        line = "overkill - the hull is destroyed with its holds"
+    elif gained <= 0:
         line = ("Excellent, you have obliterated the target! "
                 "...In fact, TOO excellent! You can't salvage anything from it!")
     else:
