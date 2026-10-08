@@ -2147,6 +2147,10 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
             if parked.ship.ship_class.value == class_key:
                 return ActionResult(ok=False, error="this ship class is already owned elsewhere")
 
+    from .corpships import exmember_tradein_block
+    traded = exmember_tradein_block(player)
+    if traded:
+        return ActionResult(ok=False, error=traded)
     net_cost = K.net_hull_cost(player.ship.ship_class.value, class_key)
     if player.credits < net_cost:
         return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {net_cost})")

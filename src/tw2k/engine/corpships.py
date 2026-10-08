@@ -303,6 +303,17 @@ def corporate_block(player: Player) -> str | None:
     return None
 
 
+def exmember_tradein_block(player: Player) -> str | None:
+    """A borrowed corporate hull is not his to sell. None keeps today's trade-in."""
+    if not K.corp_fix_on(corp=True) or not K.corpship_on():
+        return None
+    if K.CORPSHIP_EXMEMBER_TRADEIN != "refuse":
+        return None
+    if personal_block(player) == _OTHER_CORP:
+        return _OTHER_CORP + " - you cannot trade it in"
+    return None
+
+
 def personal_block(player: Player) -> str | None:
     spec = K.hull_spec(player.ship.ship_class.value) or {}
     if spec.get("corp_only"):
