@@ -25,10 +25,10 @@
 | cs19 | A capture does not furb. A destroy does | CONFIRMED | — | same |
 | cs20 | Pods and Ferrengi do not furb | UNVERIFIED | `FURB_EXCLUDED_HULLS`, `FURB_FERRENGI` False | `test_cs17_formula_table`, `test_qc_manned_kill_furbs_and_a_pod_kill_is_too_excellent` |
 | cs21 | TOO excellent when the gain is 0 | text CONFIRMED; trigger UNVERIFIED | — | `test_cs21_too_excellent_when_already_full`, `test_qc_furb_cap_is_the_attacker_hull_max_not_its_base` |
-| cs22 | No overkill limit | SOURCE-CONFLICT | `SALVAGE_OVERKILL` none (alt `ratio` not built) | `test_qc_furb_uses_current_holds_not_the_hull_base` (10 fighters on a 0-fighter hull still furb) |
+| cs22 | No overkill limit | SOURCE-CONFLICT | `SALVAGE_OVERKILL` none (alt `ratio` not built) | `test_qc_furb_uses_current_holds_not_the_hull_base` (10 fighters on a 0-fighter hull still furb). Decided in slice 64 (cl5): the ratio is built and the default stays none |
 | cs23 | Cargo, fighters, shields and credits are not salvaged | UNVERIFIED | `SALVAGE_CARGO` none | — |
 | cs24 | Extinct corp: parked corporate ships become defunct and drop a tow | CONFIRMED | `DEFUNCT_OWNER` defunct | `test_cs24_last_member_leaves_parked_ship_defunct_and_tow_drops` |
-| cs25 | The ship he is flying stays until he leaves it | CONFIRMED | — | `test_cs25_manned_corp_ship_turns_defunct_only_when_he_leaves_it` |
+| cs25 | The ship he is flying stays until he leaves it | CONFIRMED | — | `test_cs25_manned_corp_ship_turns_defunct_only_when_he_leaves_it`. Decided in slice 64 (cl3): an ex-member cannot trade in a borrowed hull |
 | cs26 | Defunct capture needs a corp. Otherwise the minimum attack destroys | UNVERIFIED outcome | `DEFUNCT_NONCORP_CAPTURE` destroy | `test_cs24_last_member_leaves_parked_ship_defunct_and_tow_drops`, `test_cs26_corp_member_captures_defunct` |
 | cs27 | Defunct ships are nobody's net worth | UNVERIFIED | `DEFUNCT_NET_WORTH` 0 | `test_qc_extinction_touches_only_that_corps_ships_and_keeps_the_password` |
 | cs28 | A leaver's parked corporate ships pass to the CEO | UNVERIFIED | `CORPSHIP_ON_LEAVE` to_ceo | `test_cs28_leaver_parked_corp_ship_goes_to_the_ceo`, `test_qc_ceo_leaving_hands_his_parked_corp_ships_to_the_first_remaining_member`, `test_qc_leaver_cannot_unflag_the_corp_ship_he_is_still_flying`, `test_qc_leaver_towing_a_corp_ship_drops_the_beam` |
@@ -80,4 +80,4 @@ Fixed in QC:
 
 Planted bugs: the 25 spec plants re-created (pb10 is structural: manned ships are not ParkedShip records) plus 33 QC plants. With the QC tests 57/58 are caught; the one miss (X-port pool includes defunct) is an equivalent mutant because board_block still refuses it. Cur's tests alone caught 17 of the 25 spec plants (missed pb2, pb3, pb7, pb12, pb17, pb19, pb23, pb25).
 
-Not changed (judgment calls): a corp mate towing a corp hull owned by someone else does not get the Extern hold (tt22 checks the owner's beam); trading in a borrowed corp hull at StarDock (cs25 leaver) is allowed; corbomite on your own hull fires on you.
+Not changed (judgment calls): a corp mate towing a corp hull owned by someone else does not get the Extern hold (tt22 checks the owner's beam); trading in a borrowed corp hull at StarDock (cs25 leaver) is allowed; corbomite on your own hull fires on you. Decided in slice 64 (cl2, cl3, cl4): the mate does hold, the trade-in is refused, and own-hull corbomite still fires only when the hull is unmanned.
