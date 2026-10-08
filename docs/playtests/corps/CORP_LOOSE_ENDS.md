@@ -27,6 +27,10 @@ Sources: Cabal tips (CABT), Iago, MBBS, V8, the FAQ, and the playtest docs `SHIP
 
 D1 `TOW_EXTERN_HOLDER` owner_or_corp. D2 `CORPSHIP_EXMEMBER_TRADEIN` refuse. D3 `LIMPET_CORP_VIEW` corporate_only. D4 `CORP_BREAKIN_RULE` wrong_guesses. D5 return fire pays the defender and planet defence pays the owner. D6 corbomite payout stays with the owner. D7 `SALVAGE_OVERKILL` stays none. D8 the rogue toll pot stays uncapped.
 
+## Legacy pin
+
+Recorded before any rule code. In-suite 3-day N3,N2,N1,H seed 250925 digest `9b607d3dae940c0b1a69f6d7`. `CORP_FIX_MODE` is named on the older single-mode flip lists. The constant does not exist yet, so those flips do not change the digest. There is no separate fed-outpost pin file.
+
 ## Not built
 
 No bot strategy change. No prompt change. No combat-odds change. No alliance, corp treasury, tavern, or port-upgrade work.
