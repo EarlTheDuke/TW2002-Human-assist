@@ -131,6 +131,22 @@ def test_hr7_a_free_scout_after_ship_destroyed_withdraws_for_the_freighter():
     assert act.args["amount"] == 30_000
 
 
+def test_hr8_a_short_bank_does_not_drain_the_reserve():
+    """42213 in the bank cannot buy a freighter and still leave a cruiser or a scout."""
+    from tw2k.agents.bank_brain import recovery_hull_step
+
+    step = recovery_hull_step(
+        [],
+        {"cargotran": 47_963, "merchant_freighter": 29_413, "merchant_cruiser": 37_313,
+         "scout_marauder": 11_963},
+        0, 42_213, 42_213,
+        {"cargotran": "insufficient credits (0 < 47963)",
+         "merchant_freighter": "insufficient credits (0 < 29413)",
+         "merchant_cruiser": "insufficient credits (0 < 37313)"},
+    )
+    assert step == ("bank_withdraw", 29_413)
+
+
 def test_hr5_legacy_h_still_buys_the_scout(monkeypatch):
     import tw2k.engine.constants as K
     from tests.test_bots_bank_economy_v1 import _h_obs

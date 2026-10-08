@@ -78,7 +78,13 @@ def recovery_hull_step(
     balance = int(balance)
     cap = max(0, int(withdraw_max))
     cargo = ("cargotran", "merchant_freighter", "merchant_cruiser")
-    floors = (int(ship_cost("merchant_cruiser")), int(ship_cost("scout_marauder")))
+    # A last-resort drain of the whole bank left H at 9,523 after one more death.
+    # The third floor is the H keep, not "leave 1".
+    floors = (
+        int(ship_cost("merchant_cruiser")),
+        int(ship_cost("scout_marauder")),
+        int(K.BOT_BANK_H_KEEP),
+    )
 
     def candidate(hull: str) -> bool:
         if hull in offered:
@@ -99,18 +105,6 @@ def recovery_hull_step(
                 return ("bank_withdraw", need)
             if hull in offered:
                 return ("buy_ship", hull)
-    spend = max(0, min(cap, balance - 1))
-    for hull in cargo + ("scout_marauder",):
-        cost = prices.get(hull)
-        if not candidate(hull) or cost is None or credits + spend < cost + 1:
-            continue
-        need = max(0, cost + 1 - credits)
-        if need > spend:
-            continue
-        if need > 0:
-            return ("bank_withdraw", need)
-        if hull in offered:
-            return ("buy_ship", hull)
     return None
 
 

@@ -20,7 +20,7 @@ When the flag is on, only H and N1 change. N2 and N3 keep today's buy.
 After a death, at StarDock, withdraw first, then buy, then trade.
 
 1. Pick the cargo hull with the most holds that the purse can buy while leaving the death reserve in the bank. Order: CargoTran (75 holds), Merchant Freighter (65), Merchant Cruiser (20). A Scout is only the last resort.
-2. The purse is credits plus what the bank can withdraw. The death reserve is one Merchant Cruiser, 41,300, and it stays in the bank. If that reserve blocks every cargo hull, drop the reserve to one Scout, 15,950, and pick again. If that still blocks every cargo hull, buy the best hull that leaves at least 1 credit on the ship and does not empty the bank.
+2. The purse is credits plus what the bank can withdraw. The death reserve starts as one Merchant Cruiser, 41,300, and it stays in the bank. If that blocks every cargo hull, drop the reserve to one Scout, 15,950. If that still blocks, drop it to the H keep, 10,000. If the hull still does not fit, do not withdraw. A drain that leaves 1 credit emptied the bank and the next death took the cash.
 3. The withdraw happens before the buy. The buy does not spend the reserve that step 2 kept.
 4. Once the new hull is aboard, the seat goes back to its normal trade route. No new verb. No prompt change. No combat-odds change.
 
@@ -45,6 +45,8 @@ H and N1 withdraw first, then buy the best cargo hull that leaves the reserve. A
 
 Seed 250925, `H_RECOVERY_MODE` tw2002, 206s, before the hidden-hull fix. H day-10 net worth 50,188, still a Scout, bank withdraws 0, broke 0, rejected 0/0. The other seats matched the earlier column. The legal list had hidden the cargo hulls.
 
-The same column after that fix, 213s, is identical: H 50,188, Scout, withdraws 0. Ship Destroyed hands back a free Scout, and the withdraw only ran while the ship was an escape pod. A post-death Scout now withdraws for a cargo hull before it trades. This column is being run again.
+The same column after that fix, 213s, is identical: H 50,188, Scout, withdraws 0. Ship Destroyed hands back a free Scout, and the withdraw only ran while the ship was an escape pod.
+
+The free-Scout column, 219s, is worse. H day-10 net worth 9,523, still a Scout, broke 1 day, withdraws 41,379. The last-resort step drained the bank and the next death took the cash. The third floor is now the 10,000 H keep, and a hull that still does not fit causes no withdraw. This column is being run again.
 
 Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
