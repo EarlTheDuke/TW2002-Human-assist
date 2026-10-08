@@ -60,6 +60,21 @@ Re-broken on `8cd3f01`, one at a time. Each named test failed, then the source w
 | pb21 legacy still applies the mate hold | `test_today_a_mate_lock_does_not_hold_a_ship_over_extern` |
 | pb22 a legacy save writes the limpet corp field | `test_cl6_a_mate_sees_only_a_corporate_limpet` |
 
+## Scenario lab
+
+`python scripts/corp_loose_ends_lab.py`:
+
+```
+extern_hold survived ship 1
+limpet_view mate sees corporate only
+password wrong then right joins
+ex_member trade-in refused
+rogue_pot kept 140 and paid to the destroyer
+return_fire paid the defender 500
+corbomite paid the podded owner once
+corp_loose_ends_lab: PASS
+```
+
 ## Not built
 
 No bot strategy change. No prompt change. No combat-odds change. No alliance, corp treasury, tavern, or port-upgrade work. `prompts.py` still says `query_limpets` shows your planted limpets. That line is left for a later parity slice. `rules_text.py` says one wrong password a day, which still matches cl7.
