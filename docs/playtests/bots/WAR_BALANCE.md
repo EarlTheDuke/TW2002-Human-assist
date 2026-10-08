@@ -59,6 +59,17 @@ Seed 250925 30-day war off, 991s, rejected 0/0, save identical. The 75% line is 
 | N2-P4 | 360,021 scout, 3 deaths | 270,016 |
 | N3-P2 | 481,629 cargotran, 0 deaths | 361,222 |
 
+Seed 250925 30-day on `4997a47`, war full, 1131s, rejected 0/0, save identical. P3 laid offensive fighters, so the match still attacked.
+
+| Seat | War full | Share of war off |
+| --- | --- | --- |
+| N3-P1 | 2,334,312 battleship, 0 deaths | 74%, short of 2,365,718 by 31,406 |
+| N2-P3 | 1,619,531 cargotran, 3 deaths | 83% |
+| N2-P4 | 310,902 scout, 3 deaths | 86% |
+| N3-P2 | 634,508 cargotran, 0 deaths | 132% |
+
+N3-P1 kept the battleship and all 4 planets. Day 30 rose from 2,269,953 to 2,334,312. The ratio was 75% on day 29 and 74% on day 30 because war off gained 137,004 that day and war on gained 64,359. Kill loot was 278,925 against 895,286 with war off. Trading profit was higher with war on (2,738,585 against 2,684,638). This miss is not the day-30 fighter rebuy.
+
 ## Bars
 
 Every N2 and N3 seat stays at or above 75% of its war-off day-30 net worth on seeds 250925 and 4242. Each 30-day war-on match still has at least one planet attack. Rejected 0/0. Save identical.
