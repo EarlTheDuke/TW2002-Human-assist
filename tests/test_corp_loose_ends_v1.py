@@ -148,6 +148,50 @@ def test_cl10_a_corp_mate_pays_no_toll_to_his_own_group(monkeypatch):
     assert u.sectors[2].fighters.toll_credits == bill
 
 
+def _return_fire(u):
+    from tw2k.engine.combat import _resolve_ship_combat
+    attacker = u.players["P1"]
+    defender = u.players["P2"]
+    attacker.credits = 500
+    defender.credits = 10
+    attacker.ship.fighters = 1
+    attacker.ship.shields = 0
+    defender.ship.fighters = 800
+    defender.ship.shields = 0
+    defender.sector_id = attacker.sector_id
+    _resolve_ship_combat(u, "P1", defender)
+    return attacker, defender
+
+
+def test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner(monkeypatch):
+    from tw2k.engine.models import Planet, PlanetClass
+    attacker, defender = _return_fire(_u())
+    assert attacker.credits == 0
+    assert defender.credits == 510
+    monkeypatch.setattr(K, "CORP_FIX_MODE", "legacy")
+    attacker, defender = _return_fire(_u())
+    assert attacker.credits == 0
+    assert defender.credits == 10
+    u = _u()
+    monkeypatch.setattr(K, "CORP_FIX_MODE", "tw2002")
+    raider = u.players["P1"]
+    owner = u.players["P2"]
+    raider.credits = 80
+    owner.credits = 7
+    raider.ship.fighters = 300
+    raider.ship.shields = 0
+    planet = Planet(
+        id=9001, sector_id=40, name="Hold", class_id=PlanetClass.M, owner_id="P2",
+        fighters=5000, shields=0, citadel_level=2, citadel_target=2,
+    )
+    u.planets[planet.id] = planet
+    u.sectors[40].planet_ids.append(planet.id)
+    raider.sector_id = 40
+    assert _act(u, "P1", "land_planet", planet_id=planet.id).ok
+    assert raider.credits == 0
+    assert owner.credits == 87
+
+
 def test_cl7_a_correct_password_joins_after_a_wrong_guess():
     from tw2k.engine.legality import legal_actions
     u = _u()
