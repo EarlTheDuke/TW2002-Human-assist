@@ -59,6 +59,8 @@ Seed 424242 on that same tip, 501s, misses. H day-10 net worth 7,975 from day 2 
 
 The thin-bank column, 232s, is higher and still short. H reached 105,751 on day 4, then sat at 40,159 from day 5 through day 10, Scout, broke 0, 2 deaths, 344 sells, bank 22,184, withdraws 10,000, credits lost 34,917. The save round-trip differed. After the death the Scout plotted home every turn and never sold again. A ship that can already buy a load stays out and trades. A purse that can cover a freighter withdraws that net even when the keep floor would have blocked it.
 
-The trade-again column, 439s, clears this seed. H day-10 net worth 662,652, CargoTran, broke 0, rejected 0/0, save identical. Day path 42,650, 18,195, 60,757, 80,410, 191,989, 306,310, 399,779, 544,844, 662,052, 662,652. Bank 500,000, deposits 510,000, withdraws 10,000, credits lost 22,692 across 2 deaths, 631 sells. N1 finished at 389,707 in a CargoTran, 163 sells, broke 1. Seed 250925 is being confirmed on this same tip.
+The trade-again column, 439s, clears this seed. H day-10 net worth 662,652, CargoTran, broke 0, rejected 0/0, save identical. Day path 42,650, 18,195, 60,757, 80,410, 191,989, 306,310, 399,779, 544,844, 662,052, 662,652. Bank 500,000, deposits 510,000, withdraws 10,000, credits lost 22,692 across 2 deaths, 631 sells. N1 finished at 389,707 in a CargoTran, 163 sells, broke 1.
+
+Seed 250925 on this same tip, 240s, also clears. H day-10 net worth 399,921, Merchant Cruiser, 0 deaths, broke 0, rejected 0/0, save identical. Day path 42,650, 60,134, 83,712, 93,640, 125,828, 169,492, 229,850, 271,303, 351,515, 399,921. Bank 272,987, deposits 272,987, withdraws 0. The flag-off column is next.
 
 Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
