@@ -97,6 +97,14 @@ def test_retreat_stops_on_margin_quasar_rival_or_turns() -> None:
     ) is None
 
 
+def test_bw3_fog() -> None:
+    test_stale_sighting_is_padded_and_a_fresh_one_is_not()
+
+
+def test_bw17_retreat() -> None:
+    test_retreat_stops_on_margin_quasar_rival_or_turns()
+
+
 def test_bw14_targets() -> None:
     ok = dict(skill="N3", policy="full", day=6, owner_evil=True)
     assert siege_refusal(**ok) is None
