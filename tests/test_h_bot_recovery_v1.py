@@ -224,6 +224,51 @@ def test_hr12_n1_plots_the_free_scout_home():
     assert act["args"]["target"] == 1
 
 
+def test_hr13_a_trading_float_does_not_plot_home_forever():
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    asyncio, Observation = _h_obs(credits=8_000, bank_balance=22_000, net_worth=40_000, deaths=1)
+    obs = Observation
+    obs.sector = {"id": 40, "ferrengi": []}
+    obs.ship = {"class": "scout_marauder", "fighters": 0, "cargo": {}, "cargo_free": 25, "holds": 25}
+    obs.adjacent = [{"id": 41, "known": True, "port": None, "density": 0}]
+    obs.legal_actions = [
+        {"kind": "plot_course", "legal": True, "params": {}},
+        {"kind": "warp", "legal": True, "params": {}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "warp"
+
+
+def test_hr14_the_whole_purse_buys_the_freighter():
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    asyncio, Observation = _h_obs(credits=8_000, bank_balance=22_184, net_worth=40_000, deaths=1)
+    obs = Observation
+    obs.ship = dict(obs.ship)
+    obs.ship["class"] = "scout_marauder"
+    obs.ship["holds"] = 25
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": False, "params": {"ship_class": {
+            "choices": [],
+            "net_cost_by": {
+                "cargotran": 47_963, "merchant_freighter": 29_413, "merchant_cruiser": 37_313,
+            },
+            "blocked_by": {
+                "cargotran": "insufficient credits (8000 < 47963)",
+                "merchant_freighter": "insufficient credits (8000 < 29413)",
+                "merchant_cruiser": "insufficient credits (8000 < 37313)",
+            },
+        }}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 22_184}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "bank_withdraw"
+    assert act.args["amount"] == 29_413 - 8_000
+
+
 def test_hr5_legacy_h_still_buys_the_scout(monkeypatch):
     import tw2k.engine.constants as K
     from tests.test_bots_bank_economy_v1 import _h_obs

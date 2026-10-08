@@ -24,7 +24,7 @@ After a death, at StarDock, withdraw first, then buy, then trade.
 3. The withdraw happens before the buy. The buy does not spend the reserve that step 2 kept.
 4. Once the new hull is aboard, the seat goes back to its normal trade route. No new verb. No prompt change. No combat-odds change.
 5. Away from StarDock, a purse over 50,000 plots back and the spare cash is deposited before the next route. Ship credits die with the hull. The bank does not.
-6. An empty bank, with more than the keep aboard and no cargo, plots to StarDock before the first trade. A free Scout after a death plots home even with no credits. If no cargo hull fits in that bank, the keep is withdrawn so trading can resume.
+6. An empty bank, with more than the keep aboard and no cargo, plots to StarDock before the first trade. A free Scout with no trading float and cash in the bank plots home. A ship that can already buy a load stays out and trades. If the whole purse covers a cargo hull, that net is withdrawn even when the keep floor would have blocked it.
 
 ## Bars
 
@@ -55,6 +55,8 @@ The cash-floor column, 248s, bought the freighter. H climbed to 694,845 on day 9
 
 The purse column, 191s, clears this seed. H day-10 net worth 316,222, broke 0, rejected 0/0, save identical. Bank balance 308,247, deposits 308,247, withdraws 0, credits lost 14,276 across 2 deaths. Day path 42,650, 57,103, 66,317, 109,963, 160,563, 218,871, 266,135, 341,326, 411,147, 316,222. Day 10 ends in the free Scout because those deaths came after the purse was already banked.
 
-Seed 424242 on that same tip, 501s, misses. H day-10 net worth 7,975 from day 2 on, broke 9, Scout, 7 deaths, 8 sells, bank 0, withdraws 0, credits lost 17,570. N1 stays at 17,975 from day 1, Scout, 0 sells, bank 10,000, withdraws 0. The first death took the purse before any deposit, and 10,000 in the bank cannot buy a cargo hull so it stayed locked. An empty bank now plots home before the first trade, and a keep is withdrawn when no hull fits. This seed is being run again.
+Seed 424242 on that same tip, 501s, misses. H day-10 net worth 7,975 from day 2 on, broke 9, Scout, 7 deaths, 8 sells, bank 0, withdraws 0, credits lost 17,570. N1 stays at 17,975 from day 1, Scout, 0 sells, bank 10,000, withdraws 0. The first death took the purse before any deposit, and 10,000 in the bank cannot buy a cargo hull so it stayed locked. An empty bank now plots home before the first trade, and a keep is withdrawn when no hull fits.
+
+The thin-bank column, 232s, is higher and still short. H reached 105,751 on day 4, then sat at 40,159 from day 5 through day 10, Scout, broke 0, 2 deaths, 344 sells, bank 22,184, withdraws 10,000, credits lost 34,917. The save round-trip differed. After the death the Scout plotted home every turn and never sold again. A ship that can already buy a load stays out and trades. A purse that can cover a freighter withdraws that net even when the keep floor would have blocked it. This seed is being run again.
 
 Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.

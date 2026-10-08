@@ -84,6 +84,7 @@ def recovery_hull_step(
         int(ship_cost("merchant_cruiser")),
         int(ship_cost("scout_marauder")),
         int(K.BOT_BANK_H_KEEP),
+        0,
     )
 
     def candidate(hull: str) -> bool:
