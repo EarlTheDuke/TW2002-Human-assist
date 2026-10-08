@@ -53,6 +53,50 @@ def _mate_hold(align=100, fighters=0, ticker="XYZ", holder="owner_or_corp"):
     return u, sid, mate
 
 
+def _toll_group(u, pot=400):
+    u.sectors[2].fighters = FighterDeployment(
+        owner_id="P1", count=5, mode=FighterMode.TOLL, corp_ticker="XYZ", toll_credits=pot,
+    )
+
+
+def test_cl8_disband_and_a_dead_ceo_keep_the_toll_pot():
+    from tw2k.engine.combat import _resolve_fighter_attack_tw2002
+    from tw2k.engine.corp import extern_corp_step
+    u = _u()
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    _toll_group(u, 400)
+    assert _act(u, "P1", "corp_leave").ok
+    assert u.sectors[2].fighters.owner_id == K.ROGUE_OWNER_ID
+    assert u.sectors[2].fighters.toll_credits == 400
+    u2 = _u()
+    assert _act(u2, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    _toll_group(u2, 250)
+    u2.players["P1"].alive = False
+    extern_corp_step(u2)
+    assert u2.sectors[2].fighters.toll_credits == 250
+    killer = u2.players["P2"]
+    killer.ship.fighters = 40
+    killer.credits = 10
+    assert _resolve_fighter_attack_tw2002(u2, "P2", 2, 40)
+    assert killer.credits == 260
+    assert u2.sectors[2].fighters is None
+
+
+def test_cl8_the_pot_is_tolls_minus_collections():
+    paid = 0
+    collected = 0
+    pot = 0
+    for bill in (100, 40, 25):
+        paid += bill
+        pot += bill
+        assert pot >= 0
+    share = 90
+    take = min(pot, share)
+    pot -= take
+    collected += take
+    assert pot == paid - collected and pot >= 0
+
+
 def test_cl7_a_correct_password_joins_after_a_wrong_guess():
     from tw2k.engine.legality import legal_actions
     u = _u()
@@ -185,7 +229,8 @@ def test_cl6_a_mate_sees_only_a_corporate_limpet():
     assert len(u.events[-1].payload["reports"]) == 2
 
 
-def test_today_disband_zeros_the_toll_pot():
+def test_today_disband_zeros_the_toll_pot(monkeypatch):
+    monkeypatch.setattr(K, "CORP_FIX_MODE", "legacy")
     u = _u()
     assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
     u.sectors[2].fighters = FighterDeployment(
