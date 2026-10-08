@@ -345,6 +345,24 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         planets = p.get("planets") or []
         planet_id = int(planets[0]["planet_id"]) if planets else 1
         return Action(kind=ak, args={"port_class": code, "planet_id": planet_id})
+    if ak in (ActionKind.TAVERN_ANNOUNCE, ActionKind.TAVERN_TALK, ActionKind.TAVERN_GRAFFITI):
+        return Action(kind=ak, args={"text": "hello"})
+    if ak is ActionKind.TAVERN_ORDER:
+        return Action(kind=ak, args={"item": "drink"})
+    if ak is ActionKind.GRIMY_ASK:
+        return Action(kind=ak, args={"topic": "tricron"})
+    if ak is ActionKind.GRIMY_CURSE:
+        return Action(kind=ak, args={})
+    if ak is ActionKind.UNDERGROUND_ENTER:
+        from tw2k.engine.tavern import password_for
+        word = password_for(int(u.config.seed)) if la.legal else "wrong"
+        return Action(kind=ak, args={"password": word})
+    if ak is ActionKind.UNDERGROUND_CONTRACT:
+        targets = (p.get("target") or {}).get("choices") or ["P2"]
+        least = int((p.get("amount") or {}).get("min") or 1000)
+        return Action(kind=ak, args={"target": targets[0], "amount": least})
+    if ak is ActionKind.UNDERGROUND_CLAIM:
+        return Action(kind=ak, args={})
     raise AssertionError(f"no builder for {kind}")
 
 

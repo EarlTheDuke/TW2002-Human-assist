@@ -500,8 +500,11 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
     )
     add("tavern_talk", True, "", text_params)
     add("tavern_graffiti", True, "", text_params)
+    order_cost = max(int(K.TAVERN_DRINK_COST), int(K.TAVERN_FOOD_COST))
     add(
-        "tavern_order", True, "",
+        "tavern_order",
+        int(player.credits) >= order_cost,
+        "" if int(player.credits) >= order_cost else "not enough credits",
         {"item": {"type": "str", "required": True, "choices": ["drink", "food"]},
          "cost_by": {"drink": int(K.TAVERN_DRINK_COST), "food": int(K.TAVERN_FOOD_COST)}},
     )
@@ -515,9 +518,21 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
         },
     )
     cursed = int(player.grimy_curse_day) == day
-    add("grimy_curse", not cursed, "you already cursed him today" if cursed else "", {"used_today": cursed}, int(K.GRIMY_CURSE_TURNS))
-    if K.UG_VERB_VISIBILITY != "known" or _knows_underground(player):
-        add("underground_enter", True, "", {"password": {"type": "str", "required": True}})
+    curse_turns = _turns(player, int(K.GRIMY_CURSE_TURNS))
+    curse_reason = "you already cursed him today" if cursed else (curse_turns or "")
+    add("grimy_curse", not cursed and curse_turns is None, curse_reason, {"used_today": cursed}, int(K.GRIMY_CURSE_TURNS))
+    known = _knows_underground(player)
+    too_high = int(player.alignment) > int(K.UG_MAX_ALIGNMENT)
+    if not known:
+        enter_reason = "you have not heard of the Underground"
+    elif too_high:
+        enter_reason = "alignment too high for the Underground"
+    else:
+        enter_reason = ""
+    add(
+        "underground_enter", known and not too_high, enter_reason,
+        {"password": {"type": "str", "required": True}},
+    )
     entered = _entered(player, day)
     targets = _traders(universe, player_id, allow_self=bool(K.UG_CONTRACT_SELF))
     add(

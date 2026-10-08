@@ -171,7 +171,12 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 and (K.port_upgrade_on() or k not in (ActionKind.PORT_UPGRADE, ActionKind.PORT_BUILD))
                 and (K.bank_on() or k not in (ActionKind.BANK_DEPOSIT, ActionKind.BANK_WITHDRAW, ActionKind.BANK_TRANSFER))
                 and (K.corp_rules_on() or k not in (ActionKind.CORP_SET_PASSWORD, ActionKind.CORP_DROP,
-                                                    ActionKind.CORP_TRANSFER))]
+                                                    ActionKind.CORP_TRANSFER))
+                and (K.tavern_on() or k not in (
+                    ActionKind.TAVERN_ANNOUNCE, ActionKind.TAVERN_TALK, ActionKind.TAVERN_GRAFFITI,
+                    ActionKind.TAVERN_ORDER, ActionKind.GRIMY_ASK, ActionKind.GRIMY_CURSE,
+                    ActionKind.UNDERGROUND_ENTER, ActionKind.UNDERGROUND_CONTRACT, ActionKind.UNDERGROUND_CLAIM,
+                ))]
 
     landed = player.planet_landed is not None
     at_stardock = player.sector_id == K.STARDOCK_SECTOR
@@ -1425,22 +1430,6 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         for kind_val, legal, reason, params in police_legal_specs(universe, player_id):
             out.append(_la(kind_map[kind_val], legal=legal, reason=reason, cost=0, params=params))
 
-    if K.tavern_on():
-        from .tavern import legal_specs as tavern_legal_specs
-        tavern_kinds = {
-            "tavern_announce": ActionKind.TAVERN_ANNOUNCE,
-            "tavern_talk": ActionKind.TAVERN_TALK,
-            "tavern_graffiti": ActionKind.TAVERN_GRAFFITI,
-            "tavern_order": ActionKind.TAVERN_ORDER,
-            "grimy_ask": ActionKind.GRIMY_ASK,
-            "grimy_curse": ActionKind.GRIMY_CURSE,
-            "underground_enter": ActionKind.UNDERGROUND_ENTER,
-            "underground_contract": ActionKind.UNDERGROUND_CONTRACT,
-            "underground_claim": ActionKind.UNDERGROUND_CLAIM,
-        }
-        for kind_val, legal, reason, params, cost in tavern_legal_specs(universe, player_id):
-            out.append(_la(tavern_kinds[kind_val], legal=legal, reason=reason or None, cost=cost, params=params))
-
     if K.ship_tw_on():
         from .ship_transwarp import legal_spec
         ok, why, params, cost = legal_spec(universe, player_id)
@@ -1503,6 +1492,22 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             if ok and challenge is not None:
                 ok, why = False, CHALLENGE_REFUSAL
             out.append(_la(kind, legal=ok, reason=why, cost=cost, params=params))
+
+    if K.tavern_on():  # STARDOCK_TAVERN.md: after the bank verbs, which is ActionKind order
+        from .tavern import legal_specs as tavern_legal_specs
+        tavern_kinds = {
+            "tavern_announce": ActionKind.TAVERN_ANNOUNCE,
+            "tavern_talk": ActionKind.TAVERN_TALK,
+            "tavern_graffiti": ActionKind.TAVERN_GRAFFITI,
+            "tavern_order": ActionKind.TAVERN_ORDER,
+            "grimy_ask": ActionKind.GRIMY_ASK,
+            "grimy_curse": ActionKind.GRIMY_CURSE,
+            "underground_enter": ActionKind.UNDERGROUND_ENTER,
+            "underground_contract": ActionKind.UNDERGROUND_CONTRACT,
+            "underground_claim": ActionKind.UNDERGROUND_CLAIM,
+        }
+        for kind_val, legal, reason, params, cost in tavern_legal_specs(universe, player_id):
+            out.append(_la(tavern_kinds[kind_val], legal=legal, reason=reason or None, cost=cost, params=params))
 
     return out
 
