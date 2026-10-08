@@ -97,6 +97,32 @@ def test_cl8_the_pot_is_tolls_minus_collections():
     assert pot == paid - collected and pot >= 0
 
 
+def test_cl9_a_member_collects_the_toll_pot_and_an_ex_member_does_not():
+    u = _u()
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    assert _act(u, "P1", "corp_set_password", password="Zx9").ok
+    assert _act(u, "P2", "corp_join", ticker="XYZ", password="Zx9").ok
+    u.sectors[2].fighters = FighterDeployment(
+        owner_id="P2", count=10, mode=FighterMode.TOLL, corp_ticker="XYZ", toll_credits=200,
+    )
+    mate = u.players["P2"]
+    mate.sector_id = 2
+    mate.ship.fighters = 0
+    before = mate.credits
+    assert _act(u, "P2", "recall_deployed", what="fighters", qty=10).ok
+    assert mate.credits == before + 200
+    assert u.sectors[2].fighters is None
+    u.sectors[2].fighters = FighterDeployment(
+        owner_id="P2", count=10, mode=FighterMode.TOLL, corp_ticker="XYZ", toll_credits=200,
+    )
+    assert _act(u, "P2", "corp_leave").ok
+    assert mate.corp_ticker is None
+    refused = _act(u, "P2", "recall_deployed", what="fighters", qty=10)
+    assert refused.ok is False
+    assert u.sectors[2].fighters.toll_credits == 200
+    assert mate.credits == before + 200
+
+
 def test_cl7_a_correct_password_joins_after_a_wrong_guess():
     from tw2k.engine.legality import legal_actions
     u = _u()
