@@ -223,6 +223,35 @@ def test_cl12_corbomite_pays_a_living_owner_once():
     assert killer2.credits == 0
 
 
+def test_cl13_dissolve_draws_no_rng_and_events_name_only_known_ids():
+    u = _u()
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    _toll_group(u, 50)
+    state = u.rng.getstate()
+    assert _act(u, "P1", "corp_leave").ok
+    assert u.rng.getstate() == state
+    for ev in u.events:
+        if ev.kind is not EventKind.CORP_DISSOLVED:
+            continue
+        assert set(ev.payload) <= {"ticker", "target"}
+        assert ev.payload["target"] in u.players
+    from tw2k.engine.hardware import apply_corbomite
+    blast = _u()
+    owner = blast.players["P1"]
+    killer = blast.players["P2"]
+    owner.ship.corbomite = 1
+    killer.ship.shields = 0
+    killer.ship.fighters = 10
+    state = blast.rng.getstate()
+    apply_corbomite(blast, "P1", "P2", 1)
+    assert blast.rng.getstate() == state
+    boom = next(ev for ev in blast.events if ev.kind is EventKind.CORBOMITE_BLAST)
+    assert set(boom.payload) <= {"victim", "damage", "destroyed", "_witnesses"}
+    assert boom.payload["victim"] == "P2"
+    for wid in boom.payload.get("_witnesses") or []:
+        assert wid in blast.players
+
+
 def test_cl7_a_correct_password_joins_after_a_wrong_guess():
     from tw2k.engine.legality import legal_actions
     u = _u()
