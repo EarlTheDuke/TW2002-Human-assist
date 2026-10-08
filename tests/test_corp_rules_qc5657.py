@@ -150,7 +150,9 @@ def test_qc_password_never_reaches_a_non_member():
 
 # ---- join: legal list == handler -----------------------------------------------------------
 
-def test_qc_join_legal_hides_closed_corps_and_spent_breakins():
+def test_qc_join_legal_hides_closed_corps_and_spent_breakins(monkeypatch):
+    # Slice 64 cl7 defaults to wrong_guesses. This QC scene is the older attempts cap.
+    monkeypatch.setattr(K, "CORP_BREAKIN_RULE", "attempts")
     u = _u()
     assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
     la = _legal(u, "P2", "corp_join")
@@ -272,9 +274,10 @@ def test_qc_deploy_legal_offers_ownership_and_recall_lists_corporate_groups():
     assert "ownership" in dm.params
 
 
-def test_qc_limpet_view_follows_s12_for_corp_mates():
+def test_qc_limpet_view_follows_s12_for_corp_mates(monkeypatch):
     # s12 (scanners-hidden-info-v1): you see your own and your corp's limpets. QC 57 keeps that for a
-    # corp mate's personal limpet (open call for Ben) and labels the group by ownership.
+    # corp mate's personal limpet. Slice 64 cl6 defaults to corporate_only; this scene stays on all_corp.
+    monkeypatch.setattr(K, "LIMPET_CORP_VIEW", "all_corp")
     from tw2k.engine.scanners import visible_mines
     u = _u()
     _corp(u, members=("P2",))
@@ -863,10 +866,12 @@ def test_qc_leaver_cannot_recall_the_corporate_group_he_deployed():
     assert u.sectors[sid].fighters.count == 10 and u.sectors[sid].fighters.corp_ticker == "XYZ"
 
 
-def test_qc_scenario_lab_e_passes():
+def test_qc_scenario_lab_e_passes(monkeypatch):
     import importlib.util
     from pathlib import Path
 
+    # The lab's break-in scene is the older one-attempt cap. Slice 64 cl7 is wrong_guesses.
+    monkeypatch.setattr(K, "CORP_BREAKIN_RULE", "attempts")
     path = Path(__file__).resolve().parents[1] / "scripts" / "corp_rules_scenario_lab.py"
     spec = importlib.util.spec_from_file_location("corp_rules_scenario_lab", path)
     lab = importlib.util.module_from_spec(spec)
