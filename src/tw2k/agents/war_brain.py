@@ -247,3 +247,42 @@ def retreat_reason(
     if int(turns_left) < int(K.BOT_WAR_RESERVE_TURNS):
         return "turns"
     return None
+
+
+def siege_refusal(
+    *,
+    skill: str,
+    policy: str,
+    day: int,
+    sieges_today: int = 0,
+    failed_day: int | None = None,
+    attacker_good: bool = True,
+    owner_evil: bool = False,
+    attacked_us: bool = False,
+    mate: bool = False,
+    ally: bool = False,
+    fedspace: bool = False,
+    orphan: bool = False,
+) -> str | None:
+    """None means this planet may be sieged. Otherwise a short reason."""
+    if not K.bots_war_on() or policy == "off":
+        return "off"
+    if policy == "defend" or skill in ("N1", "H"):
+        return "defend"
+    if int(day) < int(K.BOT_WAR_START_DAY):
+        return "early"
+    if int(sieges_today) >= int(K.BOT_WAR_SIEGES_PER_DAY):
+        return "already"
+    if failed_day is not None and 0 < int(day) - int(failed_day) <= int(K.BOT_WAR_SIEGE_COOLDOWN_DAYS):
+        return "cooldown"
+    if mate:
+        return "mate"
+    if ally:
+        return "ally"
+    if fedspace:
+        return "fedspace"
+    if orphan:
+        return "orphan"
+    if attacker_good and not owner_evil and not attacked_us and not K.BOT_WAR_GOOD_ATTACKS_ANY:
+        return "alignment"
+    return None
