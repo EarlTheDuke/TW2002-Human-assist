@@ -37,6 +37,6 @@ Seeds 250925 and 424242, the same six-seat scripted match the later slices use (
 
 `H_RECOVERY_MODE` is in the explicit legacy flips. Nothing reads it yet. The corp-fix golden `9b607d3dae940c0b1a69f6d7` still matches: 1 passed in 42s.
 
-## Not built yet
+## In the code
 
-The withdraw and the buy are not in the code. Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
+H and N1 withdraw first, then buy the best cargo hull that leaves the reserve. N2 and N3 still use today's CargoTran-or-Scout buy. Tests: `test_hr1` through `test_hr5`, 5 passed, plus the older pod tests still pass. The 10-day bars are not run yet. Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.

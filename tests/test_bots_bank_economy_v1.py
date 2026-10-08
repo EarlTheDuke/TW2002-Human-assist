@@ -602,7 +602,9 @@ def _h_obs(**overrides):
     return asyncio, Observation(**base)
 
 
-def test_bb14_h_pod_withdraws_before_it_buys():
+def test_bb14_h_pod_withdraws_before_it_buys(monkeypatch):
+    import tw2k.engine.constants as K
+    monkeypatch.setattr(K, "H_RECOVERY_MODE", "legacy")
     asyncio, Observation = _h_obs()
     from tw2k.agents.heuristic import HeuristicAgent
     obs = Observation
