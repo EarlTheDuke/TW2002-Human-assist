@@ -256,6 +256,9 @@ class HeuristicAgent(BaseAgent):
             banked = self._h_bank(obs, recovery=False)
             if banked is not None:
                 return banked
+            home = self._bank_the_purse(obs)
+            if home is not None:
+                return home
             self._last_from = here
             self._last_to = int(choice["id"])
             self._traded_at = None
@@ -362,6 +365,23 @@ class HeuristicAgent(BaseAgent):
         return Action(
             kind=ActionKind.BANK_DEPOSIT, args={"amount": amount},
             thought="Banking the spare cash before leaving StarDock.",
+        )
+
+    def _bank_the_purse(self, obs: Observation) -> Action | None:
+        """A fat purse dies with the ship. Plot back to StarDock and deposit it."""
+        from ..engine.constants import h_recovery_on
+        if not h_recovery_on() or not self._h_banks():
+            return None
+        if int(obs.sector.get("id") or 0) == STARDOCK_SECTOR:
+            return None
+        if int(obs.credits) <= max(self._h_keep(obs), 50_000):
+            return None
+        legal = self._legal(obs)
+        if not (legal.get("plot_course") or {}).get("legal") or not (legal.get("warp") or {}).get("legal"):
+            return None
+        return Action(
+            kind=ActionKind.PLOT_COURSE, args={"target": STARDOCK_SECTOR, "execute": True},
+            thought="Banking the purse before one loss can take it.",
         )
 
     def _recovery_buy(self, obs: Observation) -> Action | None:
