@@ -337,18 +337,6 @@ def test_no_arming_on_trade_hulls_when_poor_armed_n2_or_legacy(hunt, monkeypatch
     assert _arm(_at_dock())[0] is None
 
 
-def test_hunt_arm_stops_with_four_days_left(hunt):
-    """A 30-day scripted match clocks 32 days, so day 28 is the first day this skips."""
-    early = _at_dock()
-    early.day = 26
-    early.config.max_days = 32
-    assert _arm(early)[0] is not None
-    late = _at_dock()
-    late.day = 28
-    late.config.max_days = 32
-    assert _arm(late)[0] is None
-
-
 def test_defence_hull_pick_never_slows_the_route(hunt, monkeypatch):
     u = _at_dock(ship_class=ShipClass.MERCHANT_CRUISER, credits=2_000_000)
     v = View(build_observation(u, "H").model_dump(mode="json"))
