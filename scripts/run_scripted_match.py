@@ -149,7 +149,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
               bank_report: bool = False, corp_report: bool = False,
               corp_policy: str | None = None,
               corp_pairs: list[tuple[str, str]] | None = None,
-              action_digest: bool = False, reader_start: str | None = None) -> dict[str, Any]:
+              action_digest: bool = False, reader_start: str | None = None,
+              war_report: bool = False) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
     from tw2k.agents.seat_brain import SeatBrain
@@ -453,6 +454,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         result["action_digest"] = format(zlib.crc32(json.dumps(blob).encode()), "08x")
     if corp_summary is not None:
         result["corp"] = corp_summary
+    if war_report:
+        from tw2k.agents.war_report import counts_from_events
+        result["war"] = counts_from_events(list(u.events))
     if bank_rows is not None:
         result["bank_rejected"] = sum(int(row["rejected_engine"]) for row in players.values())
         result["bank_exceptions"] = sum(int(row["exceptions"]) for row in players.values())
@@ -526,10 +530,16 @@ def main(argv: list[str] | None = None) -> int:
                     help="move an R seat 10 hops from StarDock with 250000 credits")
     ap.add_argument("--action-digest", action="store_true",
                     help="add a checksum of each seat's action rows (not part of the legacy digest)")
+    ap.add_argument("--bots-war", choices=("tw2002", "legacy"),
+                    help="set BOTS_WAR_MODE for this run")
+    ap.add_argument("--war-policy", choices=("full", "defend", "off"),
+                    help="set BOT_WAR_POLICY for this run")
+    ap.add_argument("--war-report", action="store_true",
+                    help="print war verb counts (not part of the legacy digest)")
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
-    if a.bank_legacy or a.llm_parity or a.treasury_policy or a.detour_hops is not None or a.tavern:
+    if a.bank_legacy or a.llm_parity or a.treasury_policy or a.detour_hops is not None or a.tavern or a.bots_war or a.war_policy:
         from tw2k.engine import constants as K
         if a.bank_legacy:
             K.BANK_MODE = "legacy"
@@ -537,6 +547,10 @@ def main(argv: list[str] | None = None) -> int:
             K.LLM_PARITY_MODE = a.llm_parity
         if a.tavern:
             K.TAVERN_MODE = a.tavern
+        if a.bots_war:
+            K.BOTS_WAR_MODE = a.bots_war
+        if a.war_policy:
+            K.BOT_WAR_POLICY = a.war_policy
         if a.treasury_policy:
             K.BOT_TREASURY_POLICY = a.treasury_policy
         if a.detour_hops is not None:
@@ -551,7 +565,8 @@ def main(argv: list[str] | None = None) -> int:
                        turns_per_day=a.turns_per_day, credits=a.credits, ferrengi=not a.no_ferrengi,
                        port_report=a.port_report, bank_report=a.bank_report,
                        corp_report=a.corp_report, corp_policy=a.corp_policy, corp_pairs=pairs,
-                       action_digest=a.action_digest, reader_start=a.reader_start)
+                       action_digest=a.action_digest, reader_start=a.reader_start,
+                       war_report=a.war_report)
     text = json.dumps(result, indent=1, sort_keys=True)
     md = render_markdown(result)
     if a.json_out:
@@ -577,6 +592,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"rej {row['rejected_engine']}")
     if a.corp_report:
         print("CORP " + json.dumps(result["corp"], sort_keys=True))
+    if a.war_report:
+        print("WAR_REPORT " + json.dumps(result.get("war") or {}, sort_keys=True))
     return 0
 
 
