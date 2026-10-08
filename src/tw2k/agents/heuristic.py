@@ -307,7 +307,15 @@ class HeuristicAgent(BaseAgent):
             net = spec.get("net_cost_by") or {}
             maximum = int((withdraw.get("params") or {}).get("max_amount") or 0)
             amount = 0
-            if "cargotran" in choices and net.get("cargotran") is not None:
+            from ..engine.constants import h_recovery_on
+            if h_recovery_on():
+                from .bank_brain import recovery_hull_step
+                step = recovery_hull_step(choices, net, credits, balance, maximum)
+                if step is not None and step[0] == "bank_withdraw":
+                    amount = int(step[1])
+                elif step is not None and step[0] == "buy_ship":
+                    return None
+            elif "cargotran" in choices and net.get("cargotran") is not None:
                 amount = withdraw_amount(
                     int(net["cargotran"]), 20_000, credits, balance, egg, maximum, recovery=True,
                 )
@@ -351,6 +359,15 @@ class HeuristicAgent(BaseAgent):
                 return None
             spec = ((legal["buy_ship"].get("params") or {}).get("ship_class") or {})
             choices, net = spec.get("choices") or [], spec.get("net_cost_by") or {}
+            from ..engine.constants import h_recovery_on
+            if h_recovery_on():
+                from .bank_brain import recovery_hull_step
+                step = recovery_hull_step(choices, net, int(obs.credits), 0, 0)
+                if step is not None and step[0] == "buy_ship":
+                    hull = str(step[1])
+                    cost = int((net or {}).get(hull) or 0)
+                    return Action(kind=ActionKind.BUY_SHIP, args={"ship_class": hull},
+                                  thought=f"Trading the escape pod for a {hull} ({cost} cr net).")
             for key, keep in (("cargotran", 20_000), ("scout_marauder", 0)):
                 cost = net.get(key)
                 if key in choices and cost is not None and obs.credits - int(cost) >= keep:

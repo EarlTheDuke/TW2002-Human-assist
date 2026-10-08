@@ -1,0 +1,101 @@
+"""H and N1 rebuy a cargo hull after a death. N2 and N3 keep today's Scout buy."""
+
+from __future__ import annotations
+
+HULLS = {
+    "choices": ["cargotran", "merchant_freighter", "merchant_cruiser", "scout_marauder"],
+    "net_cost_by": {
+        "cargotran": 50_000,
+        "merchant_freighter": 30_000,
+        "merchant_cruiser": 40_000,
+        "scout_marauder": 10_000,
+    },
+}
+
+
+def test_hr1_h_withdraws_for_the_freighter_and_leaves_the_cruiser_reserve():
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    asyncio, Observation = _h_obs()
+    obs = Observation
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": True, "params": {"ship_class": HULLS}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 80_000}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "bank_withdraw"
+    assert act.args["amount"] == 30_000
+
+
+def test_hr2_h_buys_the_freighter_once_the_cash_is_aboard():
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    asyncio, Observation = _h_obs(credits=30_000, bank_balance=50_000, net_worth=80_000)
+    obs = Observation
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": True, "params": {"ship_class": HULLS}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 50_000}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "buy_ship"
+    assert act.args["ship_class"] == "merchant_freighter"
+
+
+def _n1():
+    from tw2k.agents.seat_brain import SeatBrain
+    return SeatBrain(feed_organics=False, citadel_floor_ratio=None, citadel_fuel_shield=False,
+                     citadel_multiday_floor=False, value_allocator=False)
+
+
+def test_hr3_n1_withdraws_for_the_freighter():
+    from tests.test_bots_bank_economy_v1 import _la
+    from tw2k.agents.seat_acceptance import synthetic_obs
+
+    pod = synthetic_obs(sector=1, credits=0, ship_class="escape_pod", holds=5)
+    pod["bank_balance"] = 80_000
+    pod["net_worth"] = 80_000
+    _la(pod, "buy_ship", ship_class=HULLS)
+    _la(pod, "bank_withdraw", max_amount=80_000, balance=80_000)
+    withdrawn = _n1().decide(pod)
+    assert withdrawn["kind"] == "bank_withdraw"
+    assert withdrawn["args"]["amount"] == 30_000
+
+
+def test_hr4_n2_still_asks_for_the_cargotran():
+    from tests.test_bots_bank_economy_v1 import _la
+    from tw2k.agents.seat_acceptance import synthetic_obs
+    from tw2k.agents.seat_brain import SeatBrain
+
+    pod = synthetic_obs(sector=1, credits=5_000, ship_class="escape_pod", holds=5)
+    pod["bank_balance"] = 80_000
+    pod["net_worth"] = 80_000
+    _la(pod, "buy_ship", ship_class={
+        "choices": ["cargotran", "scout_marauder"],
+        "net_cost_by": {"cargotran": 40_000, "scout_marauder": 5_000},
+    })
+    _la(pod, "bank_withdraw", max_amount=80_000, balance=80_000)
+    withdrawn = SeatBrain(value_allocator=False).decide(pod)
+    assert withdrawn["kind"] == "bank_withdraw"
+    assert withdrawn["args"]["amount"] == 40_000 + 2_000 - 5_000
+
+
+def test_hr5_legacy_h_still_buys_the_scout(monkeypatch):
+    import tw2k.engine.constants as K
+    from tests.test_bots_bank_economy_v1 import _h_obs
+    from tw2k.agents.heuristic import HeuristicAgent
+
+    monkeypatch.setattr(K, "H_RECOVERY_MODE", "legacy")
+    asyncio, Observation = _h_obs()
+    obs = Observation
+    obs.legal_actions = [
+        {"kind": "buy_ship", "legal": True, "params": {"ship_class": {
+            "choices": ["cargotran", "scout_marauder"],
+            "net_cost_by": {"cargotran": 40_000, "scout_marauder": 0},
+        }}},
+        {"kind": "bank_withdraw", "legal": True, "params": {"max_amount": 80_000}},
+    ]
+    act = asyncio.run(HeuristicAgent("P6", "H", seed=1).act(obs))
+    assert act.kind.value == "bank_withdraw"
+    assert act.args["amount"] == 60_000

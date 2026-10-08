@@ -922,6 +922,14 @@ class SeatBrain:
                 return None
             choices = v.choices("buy_ship", "ship_class")
             net = (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {})
+            if self._n1_recovery():
+                from .bank_brain import recovery_hull_step
+                step = recovery_hull_step(choices, net, int(v.credits), 0, 0)
+                if step is not None and step[0] == "buy_ship":
+                    hull = str(step[1])
+                    cost = int((net or {}).get(hull) or 0)
+                    return self._act("buy_ship", {"ship_class": hull},
+                                     f"trade the escape pod for a {hull} ({cost} cr net)")
             for key, keep in (("cargotran", self.cash_buffer), ("scout_marauder", 0)):
                 cost = int(net.get(key) if net.get(key) is not None else 10**12)
                 if key in choices and v.credits - cost >= keep:
@@ -3064,6 +3072,11 @@ class SeatBrain:
                         "thought": "pair policy: join with the pass"}
         return None
 
+    def _n1_recovery(self) -> bool:
+        """H_RECOVERY_MODE changes N1 only. N2 keeps feed_organics. N3 allocates."""
+        from ..engine import constants as engine_k
+        return engine_k.h_recovery_on() and not self.value_allocator and not self.feed_organics
+
     def _reserve_on(self) -> bool:
         from ..engine import constants as engine_k
         return engine_k.bots_bank_on() and engine_k.BOT_BANK_POLICY == "reserve"
@@ -3110,6 +3123,24 @@ class SeatBrain:
         if self.mem is not None and self.mem.bank_unspent:
             return None
         balance = int(v.obs.get("bank_balance") or 0)
+        if self._n1_recovery() and v.ok("buy_ship"):
+            from .bank_brain import recovery_hull_step
+            step = recovery_hull_step(
+                v.choices("buy_ship", "ship_class"),
+                (v.params("buy_ship").get("ship_class") or {}).get("net_cost_by") or {},
+                int(v.credits), balance, int(v.params("bank_withdraw").get("max_amount") or 0),
+            )
+            if step is None or step[0] != "bank_withdraw":
+                return None
+            amount = int(step[1])
+            if amount < 1 or not self._bank_verb_open(v, "bank_withdraw"):
+                return None
+            if self.mem is not None and self.mem.pending_buy == "hull":
+                return None
+            if self.mem is not None:
+                self.mem.pending_buy = "hull"
+            return self._take_bank_verb(v, {"kind": "bank_withdraw", "args": {"amount": amount},
+                                            "thought": "withdraw the replacement hull from the nest egg"})
         need = self._stardock_hull_need(v, balance)
         from .bank_brain import nest_egg, withdraw_amount
         amount = withdraw_amount(
