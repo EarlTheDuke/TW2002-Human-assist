@@ -50,6 +50,8 @@ The same column after that fix, 213s, is identical: H 50,188, Scout, withdraws 0
 
 The free-Scout column, 219s, is worse. H day-10 net worth 9,523, still a Scout, broke 1 day, withdraws 41,379. The last-resort step drained the bank and the next death took the cash. The third floor is now the 10,000 H keep, and a hull that still does not fit causes no withdraw.
 
-The cash-floor column, 248s, bought the freighter. H climbed to 694,845 on day 9, then one death took 610,309 off the ship and day 10 finished at 73,503, still a freighter, broke 0, rejected 0/0. A purse over 50,000 now plots back to StarDock. This column is being run again.
+The cash-floor column, 248s, bought the freighter. H climbed to 694,845 on day 9, then one death took 610,309 off the ship and day 10 finished at 73,503, still a freighter, broke 0, rejected 0/0. A purse over 50,000 now plots back to StarDock.
+
+The purse column, 191s, clears this seed. H day-10 net worth 316,222, broke 0, rejected 0/0, save identical. Bank balance 308,247, deposits 308,247, withdraws 0, credits lost 14,276 across 2 deaths. Day path 42,650, 57,103, 66,317, 109,963, 160,563, 218,871, 266,135, 341,326, 411,147, 316,222. Day 10 ends in the free Scout because those deaths came after the purse was already banked. Seed 424242 is next.
 
 Plant at least 10 bugs and re-break each one on the final commit before this slice is marked Delivered.
