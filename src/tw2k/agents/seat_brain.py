@@ -4483,19 +4483,23 @@ class SeatBrain:
         return False
 
     def _home_hit_seq(self, v: View) -> int | None:
-        """The newest rival event at home that this seat has not already answered."""
+        """The newest unanswered rival hit at home. A trade or the corp mate does not count."""
         if self.mem is None or self.mem.home_sector is None:
             return None
+        from .war_brain import home_hit_kind
         home = int(self.mem.home_sector)
         owned = {int(p["id"]) for p in v.owned if p.get("id") is not None}
         me = str(v.self_id or "")
+        partner = str(self.mem.corp_partner or "")
         acked = int(self.mem.war_home_seq)
         best: int | None = None
         for ev in v.events:
             if not isinstance(ev, dict):
                 continue
             actor = str(ev.get("actor_id") or ev.get("actor") or "")
-            if not actor or actor == me:
+            if not actor or actor == me or (partner and actor == partner):
+                continue
+            if not home_hit_kind(str(ev.get("kind") or "")):
                 continue
             sector = ev.get("sector_id")
             on_home = False

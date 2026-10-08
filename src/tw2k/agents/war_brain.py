@@ -378,6 +378,33 @@ def defend_reachable(hops: int | None) -> bool:
     return int(hops) <= int(K.BOT_WAR_DEFEND_MAX_HOPS)
 
 
+_HOME_HIT_KINDS = frozenset({
+    "combat",
+    "land_planet",
+    "rob",
+    "steal",
+    "bust",
+    "deploy_fighters",
+    "deploy_mines",
+    "mine_detonated",
+    "photon_fired",
+    "photon_hit",
+    "photon_blast",
+    "ship_destroyed",
+    "unmanned_ship_destroyed",
+    "planet_destroyed",
+    "planet_colonists_killed",
+    "fighter_challenge",
+    "ferrengi_attack",
+    "ship_captured",
+})
+
+
+def home_hit_kind(kind: str) -> bool:
+    """True when a rival action at home is a hit. A trade or a warp is not."""
+    return str(kind or "") in _HOME_HIT_KINDS
+
+
 def war_turn_cap(skill: str, turns_per_day: int) -> int:
     """Turns this skill may spend on war today. Other skills get none."""
     pct = int(K.BOT_WAR_MAX_TURNS_PCT.get(skill, 0))
