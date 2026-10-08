@@ -16,7 +16,7 @@ from tests._pin_env import pin_env
 ROOT = Path(__file__).resolve().parents[1]
 BOTS_BANK_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
 PIN_FLIPS = (
-    "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE",
+    "CORP_FIX_MODE", "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE",
     "LLM_PLANET_NUDGE_MODE",
     "LLM_PARITY_MODE",
     "CORP_BOTS_MODE",

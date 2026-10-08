@@ -86,6 +86,8 @@ def legacy_capture_digest() -> str:
         K.TAVERN_MODE = "legacy"
     if hasattr(K, "BOTS_WAR_MODE"):
         K.BOTS_WAR_MODE = "legacy"
+    if hasattr(K, "CORP_FIX_MODE"):
+        K.CORP_FIX_MODE = "legacy"
     for name in ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
                  "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE",  # fullgame-fixes-v2
                  "FED_OUTPOST_MODE"):  # class0-outpost-label: FedSpace outposts no longer shown as class 0

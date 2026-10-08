@@ -1,10 +1,7 @@
-"""CORP_MODE legacy matches the engine before this slice.
+"""CORP_FIX_MODE legacy matches the scripted game before the loose-end fixes.
 
-Recorded with tests/fed_legacy_digest.py on 57dec11 (no CORP_MODE): scripted
-N3,N2,N1,H, seed 250925, 3 days. CORP_MODE is named so the pin still matches
-after the mode exists. The other names are the tw2002 modes on that commit.
-The digest equals the bank pin because those flips already describe this tree.
-The 10-day N3,N3,N2,N2,N1,H seed 250925 digest on this same base, outside the suite, is 221826d9bd9a6a6c85668224.
+Same 3-day N3,N2,N1,H seed 250925 digest as the war pin. The bool notices
+are not modes, so this pin sets them false.
 """
 
 from __future__ import annotations
@@ -16,9 +13,13 @@ from pathlib import Path
 from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
-CORP_RULES_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
+CORP_FIX_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
 PIN_FLIPS = (
-    "CORP_FIX_MODE", "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE", "LLM_PLANET_NUDGE_MODE",
+    "CORP_FIX_MODE",
+    "BOTS_WAR_MODE",
+    "TAVERN_MODE",
+    "BOTS_BANK_MODE",
+    "LLM_PLANET_NUDGE_MODE",
     "LLM_PARITY_MODE",
     "CORP_BOTS_MODE",
     "ALIEN_MODE",
@@ -39,9 +40,12 @@ PIN_FLIPS = (
 )
 
 
-def test_corp_rules_legacy_is_unchanged():
+def test_corp_fix_legacy_is_unchanged():
     code = (
         "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
+        "import tw2k.engine.constants as K;"
+        "K.LLM_ROUTE_NOTICE = False; K.LLM_NEW_DAY_GOAL_NOTICE = False;"
+        "K.LLM_SELL_FIRST = False;"
         "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
         f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={PIN_FLIPS!r}))"
     )
@@ -49,4 +53,4 @@ def test_corp_rules_legacy_is_unchanged():
         [sys.executable, "-c", code], cwd=ROOT, env=pin_env(),
         capture_output=True, text=True, timeout=900, check=True,
     )
-    assert out.stdout.strip().splitlines()[-1] == CORP_RULES_LEGACY_GOLDEN
+    assert out.stdout.strip().splitlines()[-1] == CORP_FIX_LEGACY_GOLDEN
