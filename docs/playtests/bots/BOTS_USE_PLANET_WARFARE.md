@@ -4,7 +4,7 @@
 
 Sources: Iago's war manual, the MBBS manual, the Cabal base and blockade notes, the original Bible, S3, and the engine docs under `docs/playtests/planetary-warfare/`. TWGS 3.11 is the default. MBBS breaks a tie. Strategy rows say how a bot chooses. They do not change the engine.
 
-The root-cause trace (why bought armids are never laid) is still ahead. The 10-day and 30-day tables are still ahead.
+Root-cause trace on `885bdb0`, seed 250925, 10 days, seats N3,N3,N2,N2,N1,H, before any war code. `_maybe_lay_armids` was called 4,575 times and laid 0 mines. 4,034 calls were not at the home sector, 379 were in a swept lane, 158 were at home and then refused because `_home_is_corridor` was true, and 4 were not a legal mine deploy. `_lay_fighters` exists and is never called. The 10-day and 30-day war tables are still ahead.
 
 ## Rules
 
