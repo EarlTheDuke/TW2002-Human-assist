@@ -39,6 +39,17 @@ Ignoring a trade or the corp mate, on `98241d8`, 911s, rejected 0/0, save identi
 
 The home-ack column reproduced on the replay, 1587s, rejected 0/0, save identical, N3-P1 still 2,528,732. On day 30 that seat deposited 98 fighters onto planet 30, then bought 200 fighters at 233. Book value is 100, so the rebuy is a 26,600 haircut and the day ends 9,080 lower. Stopping that rebuy on every day, on `8c27dee`, 2084s, rejected 0/0, save identical: N3-P1 1,217,927 in a scout with 13 deaths (36% of war off) and N3-P2 454,286 (72%). N2-P3 2,094,089 (113%). N2-P4 687,608 (110%). That stop is out. The same skip on `78ccc36` did not fire: a 30-day match sets the clock to 32, so day 30 still had 2 days left and the column stayed 2,528,732. The skip now treats 2 days left as the last scored day.
 
+Seed 4242 30-day on `4997a47`, war full, 1629s, rejected 0/0, save identical. Days 1–29 match the home-ack column. Day 30 ends at 2,548,932 instead of 2,528,732. Shares are against the war-off column above.
+
+| Seat | War full | Share of war off |
+| --- | --- | --- |
+| N3-P1 | 2,548,932 battleship, 0 deaths | clears 2,536,907 by 12,025 |
+| N2-P3 | 1,696,805 cargotran, 1 death | 92% |
+| N2-P4 | 626,310 cargotran, 0 deaths | 100% |
+| N3-P2 | 483,682 scout, 10 deaths | 77% |
+
+P1 still destroyed one ship and deposited 2,365 fighters. N2-P3, N2-P4, and N3-P2 match the home-ack ends. Seed 250925 is still open.
+
 ## Bars
 
 Every N2 and N3 seat stays at or above 75% of its war-off day-30 net worth on seeds 250925 and 4242. Each 30-day war-on match still has at least one planet attack. Rejected 0/0. Save identical.
