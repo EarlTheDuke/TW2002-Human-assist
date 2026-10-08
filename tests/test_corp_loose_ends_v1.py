@@ -206,3 +206,28 @@ def test_cl4_a_flown_ship_does_not_detonate_on_itself():
 
 def test_today_salvage_overkill_stays_none():
     assert K.SALVAGE_OVERKILL == "none"
+
+
+def _furb(sent, needed):
+    from tw2k.engine.corpships import apply_furb
+    from tw2k.engine.models import Ship, ShipClass
+    u = _u()
+    attacker = u.players["P1"]
+    attacker.ship.holds = 20
+    victim = Ship(ship_class=ShipClass.MERCHANT_CRUISER, holds=30)
+    apply_furb(u, "P1", victim, "P2", sent=sent, needed=needed)
+    return attacker.ship.holds, u.events[-1].summary
+
+
+def test_cl5_no_limit_still_salvages_an_overkill():
+    holds, summary = _furb(10, 0)
+    assert holds == 31
+    assert "salvage" in summary
+
+
+def test_cl5_ratio_keeps_a_measured_attack_and_drops_an_overkill(monkeypatch):
+    monkeypatch.setattr(K, "SALVAGE_OVERKILL", "ratio")
+    holds, summary = _furb(4, 2)
+    assert holds == 31 and "salvage" in summary
+    holds, summary = _furb(5, 2)
+    assert holds == 20 and summary == "overkill - the hull is destroyed with its holds"

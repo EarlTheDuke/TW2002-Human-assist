@@ -644,7 +644,7 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
             from .corpships import sector_label
             label_before = sector_label(universe, rec)  # cs31 / REV 516: report the hull's real label
             from .corpships import apply_furb
-            apply_furb(universe, pid, rec.ship, rec.owner_id)
+            apply_furb(universe, pid, rec.ship, rec.owner_id, sent=qty, needed=att_losses)
         _remove(universe, int(rec.id))
         if K.FLEET_UNMANNED_KILL_EXP and not (K.corpship_on() and rec.owner_id == pid):  # cs16: no reward
             player.experience = int(player.experience) + int(K.FLEET_UNMANNED_KILL_EXP)
