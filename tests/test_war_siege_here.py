@@ -50,6 +50,16 @@ def test_n3_lands_on_an_evil_planet_in_this_sector(monkeypatch) -> None:
     assert brain.mem is not None and brain.mem.war_land_tries == 1
 
 
+def test_n3_reads_evil_from_the_rival_side(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
+    monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
+    obs = _obs()
+    del obs["sector"]["planets"][0]["owner_alignment"]
+    obs["rivals"] = [{"id": "P2", "side": "evil"}]
+    action = _brain()._siege_here(View(obs))
+    assert action is not None and action["args"]["planet_id"] == 9
+
+
 def test_one_siege_target_a_day(monkeypatch) -> None:
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "tw2002")
     monkeypatch.setattr(K, "BOT_WAR_POLICY", "full")
