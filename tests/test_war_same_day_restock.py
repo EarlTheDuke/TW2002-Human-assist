@@ -39,14 +39,21 @@ def _brain() -> SeatBrain:
 def test_the_last_day_does_not_rebuy_fighters_after_a_stock() -> None:
     brain = _brain()
     brain._war_stocked_day = 30
-    action = brain._buy_defense(View(_obs(day=30, max_days=30)))
+    action = brain._buy_defense(View(_obs(day=30, max_days=32)))
     assert action is None or action["args"].get("item") != "fighters"
+
+
+def test_the_day_before_the_pad_still_rebuys() -> None:
+    brain = _brain()
+    brain._war_stocked_day = 29
+    action = brain._buy_defense(View(_obs(day=29, max_days=32)))
+    assert action is not None and action["args"]["item"] == "fighters"
 
 
 def test_an_earlier_day_still_rebuys_the_floor_after_a_stock() -> None:
     brain = _brain()
     brain._war_stocked_day = 19
-    action = brain._buy_defense(View(_obs(day=19, max_days=30)))
+    action = brain._buy_defense(View(_obs(day=19, max_days=32)))
     assert action is not None and action["args"]["item"] == "fighters"
     assert action["args"]["qty"] == 200
 
