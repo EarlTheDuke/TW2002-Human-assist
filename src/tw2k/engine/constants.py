@@ -2193,7 +2193,7 @@ UG_CONTRACT_PAYOUT_ON = "ship_destroyed"  # tv17 UNVERIFIED
 UG_CONTRACT_ON_ELIMINATION = "sink"     # tv17 UNVERIFIED
 UG_SHOW_CONTRACTS = "totals"            # tv18 UNVERIFIED
 UG_NAME_CHANGE = False                  # tv19
-TAVERN_TRICRON = "off"                  # tv20
+TAVERN_TRICRON = "on"                   # tv20 built in stardock-leftovers-v1; gated by STARDOCK_EXTRA_MODE
 BOT_TAVERN_POLICY = "off"               # tv26
 
 
@@ -2266,6 +2266,21 @@ BOT_DEPLOY_FIGHTER_FLOOR = 10            # keep this many fighters aboard
 
 def bots_deploy_on() -> bool:
     return BOTS_DEPLOY_MODE == "tw2002"
+
+
+# --- StarDock leftovers (STARDOCK_EXTRA_MODE) --------------------------------
+# Tri-Cron is the tavern game on the live TWGS screen (ante 100, 10 rounds,
+# 2:1, jackpot 5000). The slice blurb called it a news board; the screen does not.
+STARDOCK_EXTRA_MODE = "tw2002"           # sd1: "tw2002" | "legacy"
+TRICRON_ANTE = 100
+TRICRON_ROUNDS = 10
+TRICRON_OPENING_JACKPOT = 5_000
+TRICRON_OPENING_CHAMPION = 5_000
+CINEPLEX_COST = 0                        # UNVERIFIED: live player did not enter; Bible says a nominal sum and an ANSI, no number
+
+
+def stardock_extra_on() -> bool:
+    return STARDOCK_EXTRA_MODE == "tw2002"
 
 
 # --- Corporations (CORP_MODE) -------------------------------------------------
@@ -2439,8 +2454,14 @@ def llm_parity_on() -> bool:
 LLM_SELL_FIRST = True                     # sell-at-a-profit notice and the cargo loop line
 LLM_PLANET_NUDGE_MODE = "tw2002"          # "tw2002" | "legacy"
 LLM_PLANET_NUDGE_CREDITS = 50_000
+LLM_QUASAR_NUDGE_MODE = "on"              # "on" | "off" (off = no brief line)
+LLM_QUASAR_NUDGE_ORE_FLOOR = 500          # fuel ore on the planet; not BOT_WAR_QUASAR_ORE_FLOOR
 
 
 def planet_nudge_on() -> bool:
     return LLM_PLANET_NUDGE_MODE == "tw2002"
+
+
+def quasar_nudge_on() -> bool:
+    return LLM_QUASAR_NUDGE_MODE == "on"
 

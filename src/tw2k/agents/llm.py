@@ -649,9 +649,10 @@ class LLMAgent(BaseAgent):
         sell = sell_first_notice(obs)
         loop = cargo_loop_notice(obs, self.sector_trail)
         planet = planet_notice(obs)
+        quasar = quasar_notice(obs)
         notice = new_day_goal_notice(obs, self.goals_day)
         route = route_notice(obs, self.route_trail)
-        parts = [part for part in (sell, loop, planet, notice, route) if part]
+        parts = [part for part in (sell, loop, planet, quasar, notice, route) if part]
         notice = "\n".join(parts)
         shown = obs
         if sell or loop:
@@ -1172,6 +1173,51 @@ def planet_notice(obs: Observation) -> str:
     elif target:
         line += " A credit target in your goals is not a gate before the first planet."
     return line
+
+
+_QUASAR_LINE = "Your quasar cannon is unarmed here: set_quasar_sector / set_quasar_atm"
+
+
+def quasar_notice(obs: Observation) -> str:
+    """One reminder when an LLM seat is landed on its own or corp planet and a cannon is unset.
+
+    Empty unless LLM_QUASAR_NUDGE_MODE is on. Never forces the action.
+    """
+    from ..engine import constants as K
+
+    if not K.quasar_nudge_on() or obs.finished or int(obs.turns_remaining or 0) <= 0:
+        return ""
+    landed = obs.planet_landed
+    if landed is None:
+        return ""
+    plan = _quasar_planet(obs, int(landed))
+    if plan is None:
+        return ""
+    if int(plan.get("citadel_level") or 0) < int(K.QUASAR_MIN_LEVEL):
+        return ""
+    ore = int((plan.get("stockpile") or {}).get("fuel_ore") or 0)
+    if ore < int(K.LLM_QUASAR_NUDGE_ORE_FLOOR):
+        return ""
+    sector_pct = int(plan.get("quasar_sector_pct") or 0)
+    atm_pct = int(plan.get("quasar_atm_pct") or 0)
+    if sector_pct != 0 and atm_pct != 0:
+        return ""
+    return _QUASAR_LINE
+
+
+def _quasar_planet(obs: Observation, landed: int) -> dict | None:
+    for plan in obs.owned_planets or []:
+        if int(plan.get("id") or -1) == landed:
+            return plan
+    ticker = obs.corp_ticker
+    if not ticker:
+        return None
+    for plan in (obs.sector or {}).get("planets") or []:
+        if int(plan.get("id") or -1) != landed:
+            continue
+        if plan.get("corp_ticker") == ticker:
+            return plan
+    return None
 
 
 def _goal_credit_target(obs: Observation) -> int:

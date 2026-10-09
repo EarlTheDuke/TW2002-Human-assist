@@ -94,6 +94,8 @@ class ActionKind(str, Enum):
     UNDERGROUND_ENTER = "underground_enter"
     UNDERGROUND_CONTRACT = "underground_contract"
     UNDERGROUND_CLAIM = "underground_claim"
+    TRICRON = "tricron"  # stardock-leftovers-v1
+    CINEPLEX = "cineplex"  # stardock-leftovers-v1
 
 
 class Action(BaseModel):

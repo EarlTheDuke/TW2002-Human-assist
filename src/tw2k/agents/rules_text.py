@@ -90,7 +90,7 @@ def corp_extra() -> str:
 
 
 def tavern_block() -> str:
-    return (
+    text = (
         "StarDock has the Lost Trader's Tavern. "
         f"Post an announcement on the board ({int(K.TAVERN_ANNOUNCE_COST)} cr; "
         "it stays until someone posts the next one), talk at the conversation table or write "
@@ -107,6 +107,13 @@ def tavern_block() -> str:
         "(banked credits are safe), the "
         f"{int(K.UG_EXP_HALVE_AT)}th halves your experience, the {int(K.UG_MURDER_AT)}th gets you murdered.\n"
     )
+    if K.stardock_extra_on():
+        text += (
+            f"Tri-Cron is {int(K.TRICRON_ROUNDS)} rounds of three crons placed 2-3-1. "
+            f"The ante is {int(K.TRICRON_ANTE)} credits, the house pays 2 to 1, "
+            "and a new high score takes the jackpot.\n"
+        )
+    return text
 
 
 def alien_line() -> str:
@@ -162,6 +169,10 @@ def apply(text: str) -> str:
         extra.append(alien_line())
     if K.tavern_on():
         extra.append(tavern_block())
+    if K.stardock_extra_on():
+        extra.append(
+            "The Cineplex at StarDock plays a short picture. It has no secrets and no posted price.\n"
+        )
     if extra:
         text = text.rstrip() + "\n" + "".join(extra)
     return text

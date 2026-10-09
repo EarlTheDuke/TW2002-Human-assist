@@ -176,7 +176,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                     ActionKind.TAVERN_ANNOUNCE, ActionKind.TAVERN_TALK, ActionKind.TAVERN_GRAFFITI,
                     ActionKind.TAVERN_ORDER, ActionKind.GRIMY_ASK, ActionKind.GRIMY_CURSE,
                     ActionKind.UNDERGROUND_ENTER, ActionKind.UNDERGROUND_CONTRACT, ActionKind.UNDERGROUND_CLAIM,
-                ))]
+                ))
+                and ((K.tavern_on() and K.stardock_extra_on()) or k != ActionKind.TRICRON)
+                and (K.stardock_extra_on() or k != ActionKind.CINEPLEX)]
 
     landed = player.planet_landed is not None
     at_stardock = player.sector_id == K.STARDOCK_SECTOR
@@ -1512,9 +1514,17 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "underground_enter": ActionKind.UNDERGROUND_ENTER,
             "underground_contract": ActionKind.UNDERGROUND_CONTRACT,
             "underground_claim": ActionKind.UNDERGROUND_CLAIM,
+            "tricron": ActionKind.TRICRON,
         }
         for kind_val, legal, reason, params, cost in tavern_legal_specs(universe, player_id):
             out.append(_la(tavern_kinds[kind_val], legal=legal, reason=reason or None, cost=cost, params=params))
+
+    if K.stardock_extra_on():
+        from .cineplex import legal_spec as cineplex_legal_spec
+        ok, why, cost, params = cineplex_legal_spec(universe, player_id)
+        if ok and challenge is not None:
+            ok, why = False, CHALLENGE_REFUSAL
+        out.append(_la(ActionKind.CINEPLEX, legal=ok, reason=why, cost=cost, params=params))
 
     return out
 

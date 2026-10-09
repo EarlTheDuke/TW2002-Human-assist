@@ -80,6 +80,8 @@ def legacy_capture_digest() -> str:
         K.LLM_PARITY_MODE = "legacy"
     if hasattr(K, "LLM_PLANET_NUDGE_MODE"):
         K.LLM_PLANET_NUDGE_MODE = "legacy"
+    if hasattr(K, "LLM_QUASAR_NUDGE_MODE"):
+        K.LLM_QUASAR_NUDGE_MODE = "off"
     if hasattr(K, "BOTS_BANK_MODE"):
         K.BOTS_BANK_MODE = "legacy"
     if hasattr(K, "TAVERN_MODE"):
@@ -92,6 +94,8 @@ def legacy_capture_digest() -> str:
         K.BOTS_TAVERN_MODE = "legacy"
     if hasattr(K, "BOTS_DEPLOY_MODE"):
         K.BOTS_DEPLOY_MODE = "legacy"
+    if hasattr(K, "STARDOCK_EXTRA_MODE"):
+        K.STARDOCK_EXTRA_MODE = "legacy"
     if hasattr(K, "H_RECOVERY_MODE"):
         K.H_RECOVERY_MODE = "legacy"
     for name in ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
