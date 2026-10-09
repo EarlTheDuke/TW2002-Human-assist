@@ -234,6 +234,9 @@ class SeatMemory:
     war_fail_day: int = -1
     war_home_seq: int = -1
     tavern_day: int = -1
+    tavern_word_day: int = -1
+    tavern_income: int = 0
+    tavern_trade_seq: int = -1
     # Last psychic-probe reading this seat saw (percent of the port's best price).
     psychic_pct: float | None = None
     psychic_commodity: str | None = None
@@ -311,6 +314,12 @@ class SeatMemory:
             payload["war_home_seq"] = int(self.war_home_seq)
         if self.tavern_day >= 0:
             payload["tavern_day"] = int(self.tavern_day)
+        if self.tavern_word_day >= 0:
+            payload["tavern_word_day"] = int(self.tavern_word_day)
+        if self.tavern_income:
+            payload["tavern_income"] = int(self.tavern_income)
+        if self.tavern_trade_seq >= 0:
+            payload["tavern_trade_seq"] = int(self.tavern_trade_seq)
         if self.beacon_stocked:
             payload["beacon_stocked"] = True
         if self.psychic_pct is not None:
@@ -395,6 +404,11 @@ class SeatMemory:
         mem.armids_stocked = bool(data.get("armids_stocked"))
         tavern_day = data.get("tavern_day")
         mem.tavern_day = int(tavern_day) if isinstance(tavern_day, int) else -1
+        word_day = data.get("tavern_word_day")
+        mem.tavern_word_day = int(word_day) if isinstance(word_day, int) else -1
+        mem.tavern_income = int(data.get("tavern_income") or 0)
+        trade_seq = data.get("tavern_trade_seq")
+        mem.tavern_trade_seq = int(trade_seq) if isinstance(trade_seq, int) else -1
         spend_day = data.get("war_spend_day")
         mem.war_spend_day = int(spend_day) if isinstance(spend_day, int) else -1
         mem.war_spent = int(data.get("war_spent") or 0)
@@ -831,6 +845,7 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
+        self._note_tavern_income(v)
         answer = self._maybe_tavern(v)
         if answer is not None:  # bots-use-tavern-v1: one trace, or the Underground when evil
             self._intent = Intent()
@@ -4486,6 +4501,39 @@ class SeatBrain:
             return "N2"
         return "N1"
 
+    def _note_tavern_income(self, v: View) -> None:
+        """Sum sell profits from recent events. trade_summary only covers the last 50 trades."""
+        from ..engine import constants as K
+        if not K.bots_tavern_on() or self.mem is None:
+            return
+        me = str(v.self_id or "")
+        best = int(self.mem.tavern_trade_seq)
+        for ev in v.events:
+            if not isinstance(ev, dict):
+                continue
+            kind = str(ev.get("kind") or "")
+            if kind != "trade":
+                continue
+            if str(ev.get("actor_id") or ev.get("actor") or "") != me:
+                continue
+            seq = int(ev.get("seq") or 0)
+            if seq <= int(self.mem.tavern_trade_seq):
+                continue
+            payload = ev.get("facts") if isinstance(ev.get("facts"), dict) else {}
+            if not payload:
+                payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
+            if str(payload.get("side") or "") != "sell":
+                best = max(best, seq)
+                continue
+            self.mem.tavern_income += int(payload.get("realized_profit") or 0)
+            best = max(best, seq)
+        if best > int(self.mem.tavern_trade_seq):
+            self.mem.tavern_trade_seq = best
+        summary = v.obs.get("trade_summary") if isinstance(v.obs.get("trade_summary"), dict) else {}
+        window = int(summary.get("total_profit_cr") or 0)
+        if window > int(self.mem.tavern_income):
+            self.mem.tavern_income = window
+
     def _maybe_tavern(self, v: View) -> dict[str, Any] | None:
         """One Grimy trace while hunting or choosing a lane. Underground only when evil and rich."""
         from ..engine import constants as K
@@ -4494,6 +4542,7 @@ class SeatBrain:
             return None
         if v.here != STARDOCK or v.landed is not None or self.mem is None:
             return None
+        self._note_tavern_income(v)
         tavern = v.obs.get("tavern") if isinstance(v.obs.get("tavern"), dict) else {}
         alignment = int(v.obs.get("alignment") or 0)
         if join_underground(
@@ -4511,29 +4560,44 @@ class SeatBrain:
         rivals = [str(r.get("id")) for r in v.rivals if r.get("id")]
         hunting = bool(rivals) and self.value_allocator
         picking = self._trade_quote(v) is not None
-        if not visit_due(
-            hunting=hunting, picking_lane=picking, last_day=int(self.mem.tavern_day),
-            day=int(v.day), gap_days=int(K.BOT_TAVERN_TRACE_GAP_DAYS),
-        ):
-            return None
-        summary = v.obs.get("trade_summary") if isinstance(v.obs.get("trade_summary"), dict) else {}
-        profit = int(summary.get("total_profit_cr") or 0)
+        profit = int(self.mem.tavern_income)
         spent = int(getattr(self, "_tavern_spent", 0))
         cost = int(K.GRIMY_TRACE_COST)
-        if rivals and trace_due(
-            hunting=hunting, picking_lane=picking, credits=int(v.credits),
-            cost=cost, reserve=int(K.BOT_TAVERN_RESERVE),
-            last_day=int(self.mem.tavern_day), day=int(v.day),
-            gap_days=int(K.BOT_TAVERN_TRACE_GAP_DAYS),
-        ) and trace_fits_income(cost=cost, spent=spent, profit=profit):
-            topics = {str(c) for c in v.choices("grimy_ask", "topic")}
-            if v.ok("grimy_ask") and "trader" in topics:
-                self.mem.tavern_day = int(v.day)
-                self._tavern_spent = spent + cost
-                return self._act("grimy_ask", {"topic": "trader", "target": rivals[0]},
-                                 f"ask Grimy where {rivals[0]} last docked")
-        if v.ok("tavern_talk"):
-            self.mem.tavern_day = int(v.day)
+        reserve = int(K.BOT_TAVERN_RESERVE)
+        gap = int(K.BOT_TAVERN_TRACE_GAP_DAYS)
+        income_ok = bool(rivals) and trace_fits_income(cost=cost, spent=spent, profit=profit)
+        if income_ok and visit_due(
+            hunting=hunting, picking_lane=picking, last_day=int(self.mem.tavern_day),
+            day=int(v.day), gap_days=gap,
+        ):
+            if trace_due(
+                hunting=hunting, picking_lane=picking, credits=int(v.credits),
+                cost=cost, reserve=reserve,
+                last_day=int(self.mem.tavern_day), day=int(v.day), gap_days=gap,
+            ):
+                topics = {str(c) for c in v.choices("grimy_ask", "topic")}
+                if v.ok("grimy_ask") and "trader" in topics:
+                    self.mem.tavern_day = int(v.day)
+                    self._tavern_spent = spent + cost
+                    return self._act("grimy_ask", {"topic": "trader", "target": rivals[0]},
+                                     f"ask Grimy where {rivals[0]} last docked")
+            short = cost + reserve - int(v.credits)
+            if short > 0 and v.ok("bank_withdraw") and self._bank_verb_open(v, "bank_withdraw"):
+                balance = int(v.obs.get("bank_balance") or 0)
+                maximum = int(v.params("bank_withdraw").get("max_amount") or 0)
+                amount = min(int(short), balance, maximum)
+                if amount > 0:
+                    return self._take_bank_verb(v, {
+                        "kind": "bank_withdraw", "args": {"amount": int(amount)},
+                        "thought": "cash for a Grimy trace",
+                    })
+            return None
+        # A free word does not burn the paid-trace gap, so a later rich visit can still ask.
+        if (not income_ok) and visit_due(
+            hunting=hunting, picking_lane=picking, last_day=int(self.mem.tavern_word_day),
+            day=int(v.day), gap_days=gap,
+        ) and v.ok("tavern_talk"):
+            self.mem.tavern_word_day = int(v.day)
             return self._act("tavern_talk", {"text": "quiet in here"}, "a word in the tavern")
         return None
 

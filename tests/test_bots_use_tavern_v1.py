@@ -152,3 +152,44 @@ def test_bt15_docs() -> None:
     from pathlib import Path
     text = Path("docs/playtests/bots/BOTS_USE_TAVERN.md").read_text(encoding="utf-8")
     assert "BOTS_TAVERN_MODE" in text and "2%" in text
+
+
+def test_bt18_withdraws_for_a_trace(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "tw2002")
+    brain = SeatBrain()
+    brain.mem = SeatMemory()
+    obs = _obs(credits=10_000)
+    obs["bank_balance"] = 100_000
+    obs["legal_actions"].append({
+        "kind": "bank_withdraw", "legal": True,
+        "params": {"max_amount": 100_000},
+    })
+    action = brain._maybe_tavern(View(obs))
+    assert action is not None and action["kind"] == "bank_withdraw"
+    assert int(action["args"]["amount"]) == 13_000
+    assert brain.mem.tavern_day < 0
+
+
+def test_bt19_waits_when_the_bank_is_empty(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "tw2002")
+    brain = SeatBrain()
+    brain.mem = SeatMemory()
+    obs = _obs(credits=10_000)
+    obs["bank_balance"] = 0
+    obs["legal_actions"].append({"kind": "tavern_talk", "legal": True, "params": {}})
+    assert brain._maybe_tavern(View(obs)) is None
+
+
+def test_bt20_free_word_does_not_block_a_trace(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "tw2002")
+    brain = SeatBrain()
+    brain.mem = SeatMemory()
+    poor = _obs(day=2, credits=40_000)
+    poor["trade_summary"] = {"total_profit_cr": 1_000}
+    poor["legal_actions"].append({"kind": "tavern_talk", "legal": True, "params": {}})
+    word = brain._maybe_tavern(View(poor))
+    assert word is not None and word["kind"] == "tavern_talk"
+    rich = _obs(day=3, credits=80_000)
+    rich["trade_summary"] = {"total_profit_cr": 500_000}
+    paid = brain._maybe_tavern(View(rich))
+    assert paid is not None and paid["args"]["topic"] == "trader"
