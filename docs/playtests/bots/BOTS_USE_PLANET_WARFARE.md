@@ -126,26 +126,26 @@ Re-break on `91a183a`, one plant at a time, source restored after each. The tree
 | --- | --- |
 | pb1 mines are bought once and never again | `test_bw4_armids` |
 | pb2 a dead-end entrance is still treated as a corridor | `test_bw4_armids` |
-| pb3 mines in FedSpace or a swept lane | `test_bw4_armids` |
+| pb3 mines in FedSpace or a swept lane | `test_armids_avoid_a_corridor_and_fedspace` |
 | pb4 fighters deployed in toll mode | `test_bw5_pickets` |
 | pb5 the picket leaves under 40% aboard | `test_bw5_pickets` |
 | pb6 a solo bot sends an ownership arg | `test_bw6_ownership` |
 | pb7 a corp bot deploys personal | `test_bw6_ownership` |
 | pb8 fighters stacked onto a mate's group | `test_bw6_ownership` |
-| pb9 stocking spends the bank purse | `test_bw7_stock` |
+| pb9 stocking spends the bank purse | `test_stock_fills_the_level_ladder_inside_the_budget` |
 | pb10 reaction set again every visit | `test_bw8_reaction` |
-| pb11 quasar set below the minimum level | `test_bw9_quasar` |
-| pb12 planet ore sold below the quasar floor | `test_bw9_quasar` |
+| pb11 quasar set below the minimum level | `test_reaction_and_quasar_are_set_once_at_the_level_gate` |
+| pb12 planet ore sold below the quasar floor | `test_reaction_and_quasar_are_set_once_at_the_level_gate` |
 | pb13 the threat map reads the universe | `test_bw2_threat_map` |
-| pb14 the estimate skips the shield soak | `test_bw15_estimate` |
+| pb14 the estimate skips the shield soak | `test_planet_fight_matches_the_engine_on_fifty_cases` |
 | pb15 reaction waves use the defensive odds | `test_bw15_estimate` |
 | pb16 the margin gate is inverted | `test_bw15_estimate` |
 | pb17 the risk cap uses ship value | `test_bw15_estimate` |
 | pb18 a mate or ally is sieged | `test_bw14_targets` |
-| pb19 more than 3 land tries, or no cooldown | `test_bw16_execute` |
+| pb19 more than 3 land tries, or no cooldown | `test_land_tries_defend_hops_and_turn_cap` |
 | pb20 no new estimate after a repel | `test_bw16_execute` |
 | pb21 no retreat when shields are gone under a quasar | `test_bw17_retreat` |
-| pb22 the defence chase exceeds 8 hops | `test_bw19_defend` |
+| pb22 the defence chase exceeds 8 hops | `test_a_far_home_a_quiet_day_and_legacy_stay_put` |
 | pb23 a good bot sieges a good owner | `test_bw23_alignment` |
 | pb24 a random tie-break | `test_bw26_save` |
 | pb25 a net-worth drop stays in defend forever | `test_bw22_budget` |
@@ -153,7 +153,7 @@ Re-break on `91a183a`, one plant at a time, source restored after each. The tree
 
 These plants failed the test named here. pb2 `test_bw4_armids`. pb4 and pb5 `test_bw5_pickets`. pb6 and pb7 `test_bw6_ownership`. pb10 `test_bw8_reaction`. pb13 `test_bw2_threat_map`. pb16 the margin invert and pb21 the quasar retreat both failed `test_bw17_retreat`. pb18 `test_bw14_targets`. pb23 `test_bw23_alignment`. pb26 `test_bw1_mode`.
 
-These plants failed a different test than the table names. pb3 still passed `test_bw4_armids` and failed `test_armids_avoid_a_corridor_and_fedspace`. pb9 still passed `test_bw7_stock` and failed `test_stock_fills_the_level_ladder_inside_the_budget`. pb11 and pb12 still passed `test_bw9_quasar` and failed `test_reaction_and_quasar_are_set_once_at_the_level_gate`. pb14 failed `test_planet_fight_matches_the_engine_on_fifty_cases`. pb19 the land-try cap failed `test_land_tries_defend_hops_and_turn_cap`. pb22 a 10-hop chase failed `test_a_far_home_a_quiet_day_and_legacy_stay_put`.
+The table now names the test that failed for pb3, pb9, pb11, pb12, pb14, pb19, and pb22. Those seven still pass the older alias and fail the test in the table.
 
 A second pass added the missing checks and re-broke them. pb1 now fails `test_bw4_armids` when the forever stock flag stays set. pb8 fails `test_bw6_ownership` when a picket is laid on another owner's fighter group. pb15 fails `test_bw15_estimate` when the reaction waves use the defensive odds. The fifty-case fight still returns during the shield soak, so that older test does not see pb15. pb20 fails `test_bw16_execute` when a repel skips the new estimate. pb24 fails `test_bw26_save` when the threat map draws a random number.
 

@@ -3893,6 +3893,11 @@ class SeatBrain:
         budget = int(max(0, spare) * float(_HK.HUNT_ARM_SPEND_SHARE))
         budget = min(budget, v.credits - int(_HK.HUNT_ARM_CASH_GATE))  # never below the gate
         qty = min(v.max_by("buy_equip", "qty", "fighters"), target - have, budget // max(1, unit))
+        book = int(_HK.nw_fighter_value())
+        # Late and above book value, a full arming buy turns cash into a smaller number.
+        # Seed 250925 day 28 bought 691 at 236. Cap the overpay; do not skip the buy.
+        if unit > book and self._days_left(v) <= 4:
+            qty = min(qty, 40_000 // (unit - book))
         hint = v.obs.get("fedspace") if isinstance(v.obs, dict) else None
         if isinstance(hint, dict) and self._fed_turns_short(v, self._fed_exit_plan(v)[1]):
             qty = min(qty, max(0, int(hint.get("tow_fighter_limit") or 98) - int(have)))

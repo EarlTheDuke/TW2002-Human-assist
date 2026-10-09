@@ -72,6 +72,26 @@ N3-P1 kept the battleship and all 4 planets. Day 30 rose from 2,269,953 to 2,334
 
 The buy log of that column shows day 28 bought 691 fighters at 236 toward 1,500, and the attack after it paid 10,497. Stopping hunt arming when 4 days are left, on `95855f4`, 1080s, rejected 0/0, save identical: N3-P1 2,450,419 (clears 2,365,718 by 84,701) and N2-P3 1,446,087 with 4 deaths, short of 1,465,286 by 19,199. That stop is out.
 
+Capping the late overpay instead, with the stop still out. When four days or fewer remain and the fighter price is above book value, the buy stays but the cash-to-book haircut is capped at 40,000. Seed 250925 30-day war full, 1284s, rejected 0/0. P3 laid 24 offensive corporate fighters, so the match still attacked.
+
+| Seat | War full | Share of war off |
+| --- | --- | --- |
+| N3-P1 | 2,379,168 battleship, 0 deaths | clears 2,365,718 by 13,450 |
+| N2-P3 | 1,619,531 cargotran, 3 deaths | 83% |
+| N2-P4 | 310,902 scout, 3 deaths | 86% |
+| N3-P2 | 634,508 cargotran, 0 deaths | 132% |
+
+N2-P3, N2-P4, and N3-P2 match the `4997a47` ends. Digest `86cda592`. A second run with the bank report matched that digest, rejected 0/0, save identical, 1510s.
+
+Seed 4242 30-day on this cap, war full, 1982s, rejected 0/0, save identical. Digest `910091c5`. P1 destroyed 3 ships. Shares are against the war-off column above.
+
+| Seat | War full | Share of war off |
+| --- | --- | --- |
+| N3-P1 | 2,568,874 battleship, 0 deaths | clears 2,536,907 by 31,967 |
+| N2-P3 | 1,680,176 cargotran, 1 death | 91% |
+| N2-P4 | 563,727 scout, 2 deaths | 90% |
+| N3-P2 | 485,266 scout, 10 deaths | 77% |
+
 ## Bars
 
-Every N2 and N3 seat stays at or above 75% of its war-off day-30 net worth on seeds 250925 and 4242. Each 30-day war-on match still has at least one planet attack. Rejected 0/0. Save identical.
+Every N2 and N3 seat stays at or above 75% of its war-off day-30 net worth on seeds 250925 and 4242. Both seeds clear on the late overpay cap. Each 30-day war-on match still attacks: seed 250925 laid 24 offensive fighters, and seed 4242 destroyed 3 ships. Rejected 0/0. Save identical.
