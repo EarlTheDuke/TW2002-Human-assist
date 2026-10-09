@@ -66,3 +66,5 @@ Fourteen plants (sd1, sd3, sd4, sd5, sd7, sd8, cx1, cx2, cx3, qn1, qn3, qn4, qn5
 | N1-P5 | 136,776 | 0 | 2 | 19 |
 
 The day-15 save check on seed 250925 is identical. Digest `61bcb8cc`, the same digest as the deploy slice. Rejected 0/0. Corporate deploys P1 13, P2 3, P3 66, P4 1. Day 15 net worth matches the 30-day run: P1 962,682, P3 768,621, P2 187,508, P4 124,503, P5 53,149, H 45,042.
+
+Suite on 547da63: 2450 passed, 2 failed, 1 skipped, 22 warnings, 3078s. Both failures are the known flakes: WinError 10048 on the reserved live port, and the spectator-feed timeout.
