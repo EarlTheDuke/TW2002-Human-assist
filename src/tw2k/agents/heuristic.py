@@ -127,6 +127,9 @@ class HeuristicAgent(BaseAgent):
             return Action(kind=ActionKind.UNDERGROUND_ENTER, args={"password": word},
                           thought="enter the Underground")
         rivals = [str(r.get("id")) for r in (getattr(obs, "rivals", None) or []) if isinstance(r, dict) and r.get("id")]
+        # H tracks rivals the way N3 hunts; it does not fake a lane pick.
+        hunting = bool(rivals)
+        picking = False
         self._note_tavern_income(obs)
         profit = int(self._tavern_income)
         spent = int(getattr(self, "_tavern_spent", 0))
@@ -135,10 +138,10 @@ class HeuristicAgent(BaseAgent):
         gap = int(BOT_TAVERN_TRACE_GAP_DAYS)
         income_ok = bool(rivals) and trace_fits_income(cost=cost, spent=spent, profit=profit)
         if income_ok and visit_due(
-            hunting=False, picking_lane=True, last_day=int(self._tavern_day), day=day, gap_days=gap,
+            hunting=hunting, picking_lane=picking, last_day=int(self._tavern_day), day=day, gap_days=gap,
         ):
             if trace_due(
-                hunting=False, picking_lane=True, credits=int(obs.credits),
+                hunting=hunting, picking_lane=picking, credits=int(obs.credits),
                 cost=cost, reserve=reserve,
                 last_day=int(self._tavern_day), day=day, gap_days=gap,
             ) and "grimy_ask" in legal:
@@ -156,8 +159,9 @@ class HeuristicAgent(BaseAgent):
                     return Action(kind=ActionKind.BANK_WITHDRAW, args={"amount": int(amount)},
                                   thought="cash for a Grimy trace")
             return None
-        if (not income_ok) and visit_due(
-            hunting=False, picking_lane=True, last_day=int(self._tavern_word_day),
+        # A free word only after some trading so day-1 StarDock setup (bank, leave) still runs.
+        if (not income_ok) and profit > 0 and visit_due(
+            hunting=hunting, picking_lane=picking, last_day=int(self._tavern_word_day),
             day=day, gap_days=gap,
         ) and "tavern_talk" in legal:
             self._tavern_word_day = day
@@ -216,10 +220,6 @@ class HeuristicAgent(BaseAgent):
         opened = self._open_the_bank(obs)
         if opened is not None:
             return opened
-
-        asked = self._maybe_tavern(obs)
-        if asked is not None:
-            return asked
 
         # At StarDock: consider outfitting & upgrading before heading out
         if obs.sector["id"] == 1 and obs.credits > 50_000:
@@ -305,6 +305,15 @@ class HeuristicAgent(BaseAgent):
                     args = {"tier": tier} if tier else {}
                     return Action(kind=ActionKind.SCAN, args=args,
                                   thought=f"{tier or 'basic'} scan before warping blind.")
+
+        # Park spare cash before a tavern word so StarDock setup matches the pre-tavern walk.
+        if int(obs.sector.get("id") or 0) == STARDOCK_SECTOR:
+            banked = self._h_bank(obs, recovery=False)
+            if banked is not None:
+                return banked
+        asked = self._maybe_tavern(obs)
+        if asked is not None:
+            return asked
 
         # Out of turns: wait. Warping would be rejected and waste the decision.
         turns_left = int(getattr(obs, "turns_remaining", 0) or 0)
