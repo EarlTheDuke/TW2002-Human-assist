@@ -165,6 +165,8 @@ def test_stocked_fighters_are_what_the_siege_fights() -> None:
     u, owner, _, outsider, planet = _world()
     owner.ship.fighters = 2000
     assert _move(u, owner.id, "fighters", 2000).ok
+    planet.citadel_level = 2
+    planet.citadel_target = 2
     owner.planet_landed = None
     outsider.ship.fighters = 21
     outsider.ship.shields = 0

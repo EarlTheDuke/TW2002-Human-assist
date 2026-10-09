@@ -97,6 +97,8 @@ def _offense_wave(ship_class: ShipClass, planet_fighters: int) -> int:
         class_id=PlanetClass.M,
         fighters=planet_fighters,
         shields=0,
+        citadel_level=2,
+        citadel_target=2,
         military_reaction_pct=100,
     )
     _a, _d, _s, rounds = _planet_odds_fight(player, planet)

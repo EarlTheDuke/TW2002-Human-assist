@@ -183,8 +183,9 @@ def _dock_deposit(planets: list | None = None) -> int:
     return int(action["args"]["amount"])
 
 
-def test_pb5_citadel_cash_is_in_the_reserve():
+def test_pb5_citadel_cash_is_in_the_reserve(monkeypatch):
     """A world that still needs its first citadel keeps that cash out of the bank."""
+    monkeypatch.setattr("tw2k.engine.constants.CITADEL_FIDELITY_MODE", "legacy")
     from tw2k.agents.seat_brain import SeatBrain
     from tw2k.engine.constants import CITADEL_TIER_COST
 
@@ -480,7 +481,8 @@ def test_bb12_overflow_deposits_once_when_the_bank_is_full():
     assert SeatBrain().decide(blocked)["kind"] != "deposit_treasury"
 
 
-def test_bb12_withdraws_the_citadel_shortfall_once():
+def test_bb12_withdraws_the_citadel_shortfall_once(monkeypatch):
+    monkeypatch.setattr("tw2k.engine.constants.CITADEL_FIDELITY_MODE", "legacy")
     from tw2k.agents.seat_acceptance import synthetic_obs
     from tw2k.agents.seat_brain import SeatBrain
 

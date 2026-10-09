@@ -77,6 +77,9 @@ def _legacy_run_digest(root: Path, seats: str, days: int, seed: int, flip: tuple
         res = rsm.run_match(rsm.parse_seats(seats), seed=seed, days=days)
     finally:
         E.generate_universe, E.build_observation, E.apply_action, E.tick_day = gen0, bo0, aa0, td0
+    # The citadel report is new. Observations, actions, and state already cover the play.
+    res.pop("citadel_mode", None)
+    res.pop("citadels", None)
     h.update(json.dumps(res, sort_keys=True).encode())
     for ev in holder["u"].events:
         h.update(ev.model_dump_json().encode())

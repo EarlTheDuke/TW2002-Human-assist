@@ -111,8 +111,9 @@ def _l2_world(pools: dict[str, int]) -> dict:
             "organics_days_left": ORGANICS_DAYS_SUSTAINABLE}
 
 
-def test_one_day_l2_still_builds() -> None:
+def test_one_day_l2_still_builds(monkeypatch) -> None:
     """A/B: holding L2 for a full growth floor missed the fighter bonus on day 10."""
+    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
     pools = {"fuel_ore": 575, "organics": 625, "equipment": 375, "colonists": 500}
     obs = synthetic_obs(sector=5, planets=[_l2_world(pools)], landed=7, credits=40_000)
     a = SeatBrain().decide(obs)
@@ -138,7 +139,8 @@ def test_multiday_citadel_keeps_a_growth_base() -> None:
     assert a["kind"] == "liftoff"
 
 
-def test_multiday_citadel_builds_in_the_last_two_days_anyway() -> None:
+def test_multiday_citadel_builds_in_the_last_two_days_anyway(monkeypatch) -> None:
+    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
     obs = synthetic_obs(sector=5, planets=[_l3_world()], landed=7, credits=40_000, day=28)
     obs["max_days"] = 30
     a = SeatBrain().decide(obs)
