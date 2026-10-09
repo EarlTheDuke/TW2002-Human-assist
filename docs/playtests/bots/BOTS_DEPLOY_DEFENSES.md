@@ -77,4 +77,4 @@ Mine spend on the same two digests (`f1b4188d`, `764b3596`), credits versus real
 | 250925 | 700 / 464,811 (0.15%) | 200 / 99,596 (0.20%) | 5,600 / 240,917 (2.32%) | 100 / 125,322 (0.08%) |
 | 4242 | 1,700 / 627,199 (0.27%) | 0 / 106,851 (0.00%) | 3,100 / 173,699 (1.78%) | 0 / 121,295 (0.00%) |
 
-Seed 250925, 15 days, digest `61bcb8cc`. Day-15 save/load was identical. Rejected 0/0. Corporate deploys P1 13, P2 3, P3 66, P4 1. Deploy legacy pin `9b607d3dae940c0b1a69f6d7` passed.
+Seed 250925, 15 days, digest `61bcb8cc`. Day-15 save/load was identical. Rejected 0/0. Corporate deploys P1 13, P2 3, P3 66, P4 1. Deploy legacy pin `9b607d3dae940c0b1a69f6d7` passed. Plants bd1-bd13 were re-broken on this tree and restored. Suite on `49a0c63`: 2430 passed, 2 failed, 1 skipped, 22 warnings, 3062s. Both failures are the known flakes: WinError 10048 on the reserved-port test, and the spectator-feed Playwright timeout.
