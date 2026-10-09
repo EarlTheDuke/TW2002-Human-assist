@@ -120,7 +120,7 @@ No new verb. No observation change. No prompt change. Ferrengi and alien war log
 
 ## Planted bugs
 
-Re-break on `91a183a`, one plant at a time, source restored after each. The tree was clean again after the run.
+Re-break on `92befdf`, one plant at a time, source restored after each. pb1 through pb26 each failed the test named in the table. The tree was clean again after the run.
 
 | Bug | Test |
 | --- | --- |
@@ -139,7 +139,7 @@ Re-break on `91a183a`, one plant at a time, source restored after each. The tree
 | pb13 the threat map reads the universe | `test_bw2_threat_map` |
 | pb14 the estimate skips the shield soak | `test_planet_fight_matches_the_engine_on_fifty_cases` |
 | pb15 reaction waves use the defensive odds | `test_bw15_estimate` |
-| pb16 the margin gate is inverted | `test_bw15_estimate` |
+| pb16 the margin gate is inverted | `test_bw17_retreat` |
 | pb17 the risk cap uses ship value | `test_bw15_estimate` |
 | pb18 a mate or ally is sieged | `test_bw14_targets` |
 | pb19 more than 3 land tries, or no cooldown | `test_land_tries_defend_hops_and_turn_cap` |
