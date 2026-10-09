@@ -295,6 +295,7 @@ def test_tv20_tricron_follows_the_extra_mode(monkeypatch):
     _seat(universe, "A", "Ada")
     assert "tricron" in _kinds(universe, "A")
     monkeypatch.setattr(K, "STARDOCK_EXTRA_MODE", "legacy")
+    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
     assert "tricron" not in _kinds(universe, "A")
 
 

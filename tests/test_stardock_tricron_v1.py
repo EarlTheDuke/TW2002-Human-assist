@@ -62,6 +62,7 @@ def _kinds(universe, pid):
 
 def test_sd5_legacy_hides_tricron(monkeypatch) -> None:
     monkeypatch.setattr(K, "STARDOCK_EXTRA_MODE", "legacy")
+    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
     universe = _world()
     player = _seat(universe, credits=1_000)
     assert "tricron" not in _kinds(universe, player.id)

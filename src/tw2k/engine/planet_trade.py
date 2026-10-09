@@ -95,11 +95,30 @@ def port_room(port: Port, commodity: Commodity) -> int:
     return max(0, int(s.maximum) - int(s.current))
 
 
+def citadel_trade_reserve(planet: Planet, commodity: Commodity) -> int:
+    """Goods the next citadel level still needs. A planetary trade may sell only the surplus."""
+    if not K.citadel_fidelity_rules():
+        return 0
+    lvl = int(planet.citadel_level or 0)
+    tgt = int(getattr(planet, "citadel_target", 0) or 0)
+    if tgt > lvl or lvl >= 6:
+        return 0
+    try:
+        col, fuel, org, eq, _days = K.citadel_class_cost(planet.class_id.value, lvl + 1)
+    except (KeyError, IndexError, ValueError):
+        return 0
+    if sum(int(v or 0) for v in planet.colonists.values()) < int(col):
+        return 0
+    need = {Commodity.FUEL_ORE: fuel, Commodity.ORGANICS: org, Commodity.EQUIPMENT: eq}.get(commodity)
+    return int(need or 0)
+
+
 def max_qty(port: Port, planet: Planet, commodity: Commodity) -> int:
     """pt6: offered max = min(port buying room, planet stockpile). Colonists are never offered (pt19)."""
     if commodity not in TRADE_COMMODITIES:
         return 0
-    return max(0, min(port_room(port, commodity), int(planet.stockpile.get(commodity, 0) or 0)))
+    have = int(planet.stockpile.get(commodity, 0) or 0) - citadel_trade_reserve(planet, commodity)
+    return max(0, min(port_room(port, commodity), have))
 
 
 def _price_at(port: Port, commodity: Commodity, current: int, xp: int) -> int:
@@ -236,6 +255,8 @@ def handle_planet_trade(universe: Universe, pid: str, action: Action) -> ActionR
     if not port.buys(commodity):  # pt5
         return ActionResult(ok=False, error=f"this port is not buying {commodity.value}")
     have = int(planet.stockpile.get(commodity, 0) or 0)
+    reserved = citadel_trade_reserve(planet, commodity)
+    sellable = max(0, have - reserved)
     mx = max_qty(port, planet, commodity)
     qty = _int(args.get("qty")) if args.get("qty") is not None else mx  # PTW "How many units ... [3000]?"
     if qty is None:
@@ -244,7 +265,9 @@ def handle_planet_trade(universe: Universe, pid: str, action: Action) -> ActionR
         return ActionResult(ok=False, error="quantity must be at least 1")
     if qty > room:
         return ActionResult(ok=False, error=f"We are buying up to {room} {commodity.value}.")
-    if qty > have:
+    if qty > sellable:
+        if reserved and qty <= have:
+            return ActionResult(ok=False, error=f"citadel needs {reserved} {commodity.value} on planet {planet.name}")
         return ActionResult(ok=False, error=f"You have {have} {commodity.value} on planet {planet.name}.")
     offer = _int(args.get("offer")) if args.get("offer") is not None else None
     if args.get("offer") is not None and (offer is None or offer < 1):

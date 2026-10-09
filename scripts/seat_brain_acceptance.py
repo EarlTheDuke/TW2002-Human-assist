@@ -83,6 +83,7 @@ def record_offline(out: Path, *, seed: int = 230923, credits: int = 120_000, day
     tracker = MilestoneTracker()
     out.parent.mkdir(parents=True, exist_ok=True)
     rejected = 0
+    decision = 0
     with out.open("w", encoding="utf-8") as f:
         for seq in range(max_actions):
             p = u.players[seat]
@@ -94,7 +95,8 @@ def record_offline(out: Path, *, seed: int = 230923, credits: int = 120_000, day
             obs = build_observation(u, seat).model_dump(mode="json")
             f.write(json.dumps({"seat": seat, "turn_seq": seq, "observation": obs}) + "\n")
             action = brain.decide(obs)
-            tracker.observe(seq, obs, action)
+            tracker.observe(decision, obs, action)
+            decision += 1
             rejected += not apply_action(u, seat, Action(**action)).ok
             if action["kind"] == "query_limpets":
                 tick_day(u)

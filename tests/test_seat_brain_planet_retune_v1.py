@@ -25,17 +25,17 @@ def test_citadel_value_is_the_credit_cost_not_a_garrison() -> None:
     assert _defense_value(1) == 0
     assert _defense_value(2) == 0
     assert _defense_value(6) == 0
-    planet = {"citadel_level": 1, "citadel_target": 1, "id": 1, "sector_id": 40}
-    assert next_tier(planet) == (CITADEL_TIER_COST[1][0], CITADEL_TIER_COST[1][1])
-    assert next_tier(planet) == (10_000, 2_000)
+    planet = {"citadel_level": 1, "citadel_target": 1, "id": 1, "sector_id": 40, "class": "M"}
+    assert next_tier(planet) == (0, 2_000)
     fresh = {"citadel_level": 0, "citadel_target": 0, "id": 2, "sector_id": 40}
     assert _planned_tier(fresh) is None
     planned = _planned_tier(planet)
     assert planned is not None
     cred, col, bonus, level = planned
-    assert (cred, col, level) == (10_000, 2_000, 2)
+    assert (cred, col, level) == (0, 2_000, 2)
     assert bonus == 10_000 + 2_000 * 10
     assert bonus != 105_000
+    assert CITADEL_TIER_COST[1][0] == 10_000
 
 
 def test_planner_picks_only_legal_actions() -> None:

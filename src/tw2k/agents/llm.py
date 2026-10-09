@@ -650,9 +650,10 @@ class LLMAgent(BaseAgent):
         loop = cargo_loop_notice(obs, self.sector_trail)
         planet = planet_notice(obs)
         quasar = quasar_notice(obs)
+        citadel = citadel_goods_notice(obs)
         notice = new_day_goal_notice(obs, self.goals_day)
         route = route_notice(obs, self.route_trail)
-        parts = [part for part in (sell, loop, planet, quasar, notice, route) if part]
+        parts = [part for part in (sell, loop, planet, quasar, citadel, notice, route) if part]
         notice = "\n".join(parts)
         shown = obs
         if sell or loop:
@@ -1176,6 +1177,44 @@ def planet_notice(obs: Observation) -> str:
 
 
 _QUASAR_LINE = "Your quasar cannon is unarmed here: set_quasar_sector / set_quasar_atm"
+
+
+def citadel_goods_notice(obs: Observation) -> str:
+    """One line naming the goods still short for the next citadel level.
+
+    Empty unless citadel fidelity is on and the seat is landed on its own or corp planet.
+    """
+    from ..engine import constants as K
+
+    if not K.citadel_fidelity_rules() or obs.finished or int(obs.turns_remaining or 0) <= 0:
+        return ""
+    landed = obs.planet_landed
+    if landed is None:
+        return ""
+    plan = _quasar_planet(obs, int(landed))
+    if plan is None:
+        return ""
+    level = int(plan.get("citadel_level") or 0)
+    target = int(plan.get("citadel_target") or 0)
+    class_id = plan.get("class")
+    if target > level or not class_id or level >= int(K.CITADEL_LEVELS):
+        return ""
+    try:
+        _colonists, fuel, organics, equipment, _days = K.citadel_class_cost(str(class_id), level + 1)
+    except (KeyError, IndexError, ValueError):
+        return ""
+    stock = plan.get("stockpile") or {}
+    short = []
+    for name, need in (("fuel_ore", fuel), ("organics", organics), ("equipment", equipment)):
+        have = int(stock.get(name) or 0)
+        if have < int(need):
+            short.append(f"{int(need) - have} {name}")
+    if not short:
+        return ""
+    return (
+        f"Citadel L{level + 1} still needs " + ", ".join(short)
+        + ". dump_planet_cargo, then build_citadel."
+    )
 
 
 def quasar_notice(obs: Observation) -> str:

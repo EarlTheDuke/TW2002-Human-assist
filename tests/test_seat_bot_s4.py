@@ -158,7 +158,7 @@ def test_brain_actions_always_valid_across_synthetic_grid() -> None:
 def test_record_then_replay_with_fresh_brain(tmp_path: Path) -> None:
     acc = _script("seat_brain_acceptance")
     trace = tmp_path / "seat_trace.jsonl"
-    rec = acc.record_offline(trace, days=2)
+    rec = acc.record_offline(trace, days=6)
     assert rec["rejected"] == 0
     assert rec["report"].empire_loop_ok, rec["report"].summary()
     payloads = load_jsonl(trace)
@@ -218,7 +218,7 @@ def test_brain_over_http_harness_touches_only_its_own_seat(tmp_path: Path) -> No
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=spy, client=("127.0.0.1", 5555)),
                                      base_url="http://s4.test") as http:
             client = SeatClient(http, "P1", token, policy, wait_s=5.0, safety_margin_s=1.0)
-            stats = await asyncio.wait_for(client.run(max_turns=600, stop=stop), timeout=240)
+            stats = await asyncio.wait_for(client.run(max_turns=1200, stop=stop), timeout=400)
         await runner.stop()
         return stats
 

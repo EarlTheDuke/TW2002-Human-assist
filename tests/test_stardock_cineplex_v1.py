@@ -27,6 +27,7 @@ def _kinds(universe):
 
 def test_cx1_legacy_hides_the_theatre(monkeypatch) -> None:
     monkeypatch.setattr(K, "STARDOCK_EXTRA_MODE", "legacy")
+    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
     universe = _world()
     player = _seat(universe, sector=int(K.STARDOCK_SECTOR))
     assert "cineplex" not in _kinds(universe)

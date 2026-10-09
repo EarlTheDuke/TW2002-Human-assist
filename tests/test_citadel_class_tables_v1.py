@@ -66,7 +66,8 @@ def test_default_mode_is_credits_and_unmentioned() -> None:
     assert "environ" not in runner
 
 
-def test_credits_build_does_not_touch_the_stockpile() -> None:
+def test_credits_build_does_not_touch_the_stockpile(monkeypatch) -> None:
+    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
     u, (owner, *_) = _make_universe(seed=19001)
     planet = _plant(u, owner.id, class_id=PlanetClass.M, level=0)
     _fill(planet, 1000, 500, 500, 500)

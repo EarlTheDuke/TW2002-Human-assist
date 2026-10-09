@@ -202,6 +202,7 @@ def test_n2_day10_beats_n1_and_keeps_organics(monkeypatch) -> None:
     monkeypatch.setattr("tw2k.engine.constants.BOTS_WAR_MODE", "legacy")
     monkeypatch.setattr("tw2k.engine.constants.BOTS_DEPLOY_MODE", "legacy")
     monkeypatch.setattr("tw2k.engine.constants.STARDOCK_EXTRA_MODE", "legacy")
+    monkeypatch.setattr("tw2k.engine.constants.CITADEL_FIDELITY_MODE", "legacy")
     # FEDSPACE_POLICE.md: no FED_MODE pin - the bar passes under tw2002 tows (QC re-measured, same numbers).
     """Five seeds, ten days, fogged observation only.
 

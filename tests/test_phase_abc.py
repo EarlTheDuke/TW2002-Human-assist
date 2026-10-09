@@ -124,6 +124,9 @@ class TestPhaseA:
             args={"planet_id": new_p.id, "from": "ship", "to": "colonists", "qty": 3000},
         ))
         a.credits = 200_000
+        new_p.stockpile[Commodity.FUEL_ORE] = 5_000
+        new_p.stockpile[Commodity.ORGANICS] = 5_000
+        new_p.stockpile[Commodity.EQUIPMENT] = 5_000
         res = apply_action(u, "A", Action(kind=ActionKind.BUILD_CITADEL, args={"planet_id": new_p.id}))
         assert res.ok, res.error
         assert new_p.citadel_target == 1
@@ -415,17 +418,21 @@ class TestPhaseA:
         apply_action(u, "A", Action(kind=ActionKind.DEPLOY_GENESIS))
         new_p = max(u.planets.values(), key=lambda p: p.id)
         total = sum(new_p.colonists.values())
-        l1_cost_col = K.CITADEL_TIER_COST[0][1]
-        assert total >= l1_cost_col, (
-            f"Genesis seed ({total}) < Citadel L1 colonist cost ({l1_cost_col})"
+        need_col, _fuel, _org, _eq, _days = K.citadel_class_cost(new_p.class_id.value, 1)
+        assert total >= need_col, (
+            f"Genesis seed ({total}) < Citadel L1 colonist requirement ({need_col})"
         )
         assert new_p.stockpile.get(Commodity.ORGANICS, 0) > 0, "need organics to start population growth"
 
         a.credits = 50_000
+        before_col = sum(new_p.colonists.values())
+        before_cr = a.credits
         apply_action(u, "A", Action(kind=ActionKind.LAND_PLANET, args={"planet_id": new_p.id}))
         res = apply_action(u, "A", Action(kind=ActionKind.BUILD_CITADEL, args={"planet_id": new_p.id}))
-        assert res.ok, f"L1 citadel must be buildable from seed population alone: {res.error}"
+        assert res.ok, res.error
         assert new_p.citadel_target == 1
+        assert sum(new_p.colonists.values()) == before_col
+        assert a.credits == before_cr
 
     def test_a4_player_eliminated_after_max_deaths(self, monkeypatch):
         monkeypatch.setattr("tw2k.engine.constants.DEATH_MODE", "legacy")  # the old death: StarDock, x0.75, 3 lives
@@ -1463,18 +1470,28 @@ class TestPhaseGObservationSurface:
         )
 
         total = full_net_worth(u, a)
-        # Citadel L1 investment: 5000cr + 1000 colonists * 10cr = 15,000
+        # Fidelity prices the finished L1 at the class-M goods it required.
+        # Legacy prices the credit table: 5000cr + 1000 colonists * 10cr = 15,000.
+        from tw2k.engine.victory import planet_stock_unit_price
+        if K.citadel_fidelity_on():
+            citadel_value = (
+                300 * planet_stock_unit_price("fuel_ore")
+                + 200 * planet_stock_unit_price("organics")
+                + 250 * planet_stock_unit_price("equipment")
+            )
+        else:
+            citadel_value = 15_000
         # Colonist pools: (500+100+100+50) * 10 = 7,500
         # Stockpile follows the live commodity bases.
         stock = (
-            20 * K.COMMODITY_BASE_PRICE["fuel_ore"]
-            + 5 * K.COMMODITY_BASE_PRICE["equipment"]
+            20 * planet_stock_unit_price("fuel_ore")
+            + 5 * planet_stock_unit_price("equipment")
         )
         # Treasury: 2500
         # Defense: 50 fighters + 100 planet shields at the NET_WORTH_MODE values
         # (legacy 50 / 10 = 3,500; tw2002 100 / 1,000 = 105,000).
         defense = 50 * K.nw_fighter_value() + 100 * K.nw_planet_shield_value()
-        planet_value = 15000 + 7500 + stock + 2500 + defense
+        planet_value = citadel_value + 7500 + stock + 2500 + defense
         assert total == ship_side + planet_value, (
             f"total={total} ship={ship_side} planet_add={total - ship_side} "
             f"expected_planet_value={planet_value}"

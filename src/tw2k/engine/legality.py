@@ -111,6 +111,36 @@ def _class_citadel_legal(planet, level: int) -> tuple[str | None, dict[str, Any]
     return None, nxt
 
 
+def _fidelity_citadel_legal(planet, level: int) -> tuple[str | None, dict[str, Any]]:
+    """Goods are spent. Colonists are a population requirement and stay put."""
+    colonists, fuel, organics, equipment, days = K.citadel_class_cost(planet.class_id.value, level)
+    have_fuel = int(planet.stockpile.get(Commodity.FUEL_ORE, 0))
+    have_org = int(planet.stockpile.get(Commodity.ORGANICS, 0))
+    have_eq = int(planet.stockpile.get(Commodity.EQUIPMENT, 0))
+    avail_col = sum(int(n) for n in planet.colonists.values())
+    nxt = {
+        "level": level,
+        "credits": 0,
+        "colonists": colonists,
+        "colonists_consumed": False,
+        "fuel_ore": fuel,
+        "organics": organics,
+        "equipment": equipment,
+        "days": days,
+        "colonists_have": avail_col,
+        "pay_from": "stockpile",
+    }
+    if have_fuel < fuel:
+        return f"need {fuel} fuel_ore on planet (have {have_fuel})", nxt
+    if have_org < organics:
+        return f"need {organics} organics on planet (have {have_org})", nxt
+    if have_eq < equipment:
+        return f"need {equipment} equipment on planet (have {have_eq})", nxt
+    if avail_col < colonists:
+        return f"need {colonists} colonists on planet (have {avail_col})", nxt
+    return None, nxt
+
+
 def planet_destroy_reason(universe: Universe, player, planet) -> str | None:
     """None when a landed attacker may destroy this hostile, empty planet."""
     if player.planet_landed != planet.id:
@@ -976,7 +1006,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             reason = f"need {col_cost} colonists on planet (have {avail_col})"
         else:
             reason = None  # turn cost is waived by the engine when short
-        if K.CITADEL_COST_MODE == "class":
+        if K.citadel_fidelity_rules():
+            reason, citadel_params["next"] = _fidelity_citadel_legal(landed_planet, nl)
+        elif K.CITADEL_COST_MODE == "class":
             reason, citadel_params["next"] = _class_citadel_legal(landed_planet, nl)
     out.append(_la(ActionKind.BUILD_CITADEL, legal=reason is None, reason=reason,
                    cost=int(K.TURN_COST.get("land_planet", 3)), params=citadel_params))
