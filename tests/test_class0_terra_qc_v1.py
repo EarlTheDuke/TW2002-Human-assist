@@ -72,6 +72,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "TAVERN_MODE", "legacy")  # pins predate the tavern paragraph
     monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "legacy")
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "legacy")
+    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
 
 
 @pytest.fixture

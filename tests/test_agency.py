@@ -53,6 +53,7 @@ def test_get_system_prompt_respects_env(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr("tw2k.engine.constants.BOTS_TAVERN_MODE", "legacy")
     monkeypatch.setattr("tw2k.engine.constants.BOTS_WAR_MODE", "legacy")
     monkeypatch.setattr("tw2k.engine.constants.LLM_PLANET_NUDGE_MODE", "legacy")
+    monkeypatch.setattr("tw2k.engine.constants.CITADEL_FIDELITY_MODE", "legacy")
     monkeypatch.setenv("TW2K_HINT_LEVEL", "minimal")
     s = get_system_prompt()
     assert s == _MATCH_PROMPT_MINIMAL
