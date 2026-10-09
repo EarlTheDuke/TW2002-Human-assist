@@ -36,7 +36,7 @@ Event and planet counts matched day-for-day on both windows. Ranking on the
 60-day pair was identical (`P1,P3,P2,P4,P5,P6`). Day-19 spike fell from 151 s
 to 81 s.
 
-Seed 4242, 10 days, action digest `84d21648` before and after. Net worth by seat matched. The instrumented 60-day seed 250925 pair also kept digest `ea2733f5` (wall 3163 s → 2253 s; day 60 about 38 s, 1.00× its day 5).
+Seed 4242, 10 days, action digest `84d21648` before and after. Net worth by seat matched. Seed 4242, 30 days, action digest `9ac79bc9` before and after. Ranking `P5, P3, P1, P4, P6, P2` both. The instrumented 60-day seed 250925 pair also kept digest `ea2733f5` (wall 3163 s → 2253 s; day 60 about 38 s, 1.00× its day 5).
 
 ## How to measure
 
