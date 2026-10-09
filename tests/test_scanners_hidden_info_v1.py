@@ -95,6 +95,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "legacy")
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "legacy")
     monkeypatch.setattr(K, "CORP_FIX_MODE", "legacy")
+    monkeypatch.setattr(K, "STARDOCK_EXTRA_MODE", "legacy")  # goldens predate Tri-Cron and the Cineplex
 
 
 @pytest.fixture
