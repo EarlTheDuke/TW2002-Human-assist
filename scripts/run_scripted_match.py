@@ -340,6 +340,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         # switch that this slice teaches is on, so the legacy golden stays put.
         if K.rob_tw2002() or K.hardware_tw2002() or K.class0_tw2002():
             players[pid]["features"] = dict(sorted(s["features"].items()))
+        if K.bots_deploy_on():
+            mem = getattr(s.get("brain"), "mem", None)
+            players[pid]["deploy_mine_spent"] = int(getattr(mem, "deploy_mine_spent", 0) or 0)
     # Slice 55 match table only. Absent unless asked, so the legacy digest JSON stays put.
     if port_report:
         upgrades: dict[str, dict[str, int]] = {

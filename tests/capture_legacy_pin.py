@@ -90,6 +90,8 @@ def legacy_capture_digest() -> str:
         K.CORP_FIX_MODE = "legacy"
     if hasattr(K, "BOTS_TAVERN_MODE"):
         K.BOTS_TAVERN_MODE = "legacy"
+    if hasattr(K, "BOTS_DEPLOY_MODE"):
+        K.BOTS_DEPLOY_MODE = "legacy"
     if hasattr(K, "H_RECOVERY_MODE"):
         K.H_RECOVERY_MODE = "legacy"
     for name in ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",

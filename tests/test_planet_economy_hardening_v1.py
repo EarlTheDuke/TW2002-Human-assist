@@ -314,7 +314,9 @@ def test_full_world_is_not_an_unload_landing() -> None:
         assert action["kind"] != "land_planet", class_id
 
 
-def test_a_world_with_room_is_still_an_unload_landing() -> None:
+def test_a_world_with_room_is_still_an_unload_landing(monkeypatch) -> None:
+    # Deploy lays before landing. This bar is the colonist unload, so the new mode stays off.
+    monkeypatch.setattr(K, "BOTS_DEPLOY_MODE", "legacy")
     for class_id in CLASSES:
         brain, action = _brain_at_home(class_id, K.PLANET_MAX_COLONISTS[class_id.value] - 500)
         assert 32 not in brain.mem.no_colonist_room, class_id

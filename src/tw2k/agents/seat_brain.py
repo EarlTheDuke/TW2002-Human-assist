@@ -237,6 +237,9 @@ class SeatMemory:
     tavern_word_day: int = -1
     tavern_income: int = 0
     tavern_trade_seq: int = -1
+    # bots-deploy-defenses-v1: last lay day and mine-buy spend toward the 5% bar.
+    deploy_day: int = -1
+    deploy_mine_spent: int = 0
     # Last psychic-probe reading this seat saw (percent of the port's best price).
     psychic_pct: float | None = None
     psychic_commodity: str | None = None
@@ -320,6 +323,10 @@ class SeatMemory:
             payload["tavern_income"] = int(self.tavern_income)
         if self.tavern_trade_seq >= 0:
             payload["tavern_trade_seq"] = int(self.tavern_trade_seq)
+        if self.deploy_day >= 0:
+            payload["deploy_day"] = int(self.deploy_day)
+        if self.deploy_mine_spent:
+            payload["deploy_mine_spent"] = int(self.deploy_mine_spent)
         if self.beacon_stocked:
             payload["beacon_stocked"] = True
         if self.psychic_pct is not None:
@@ -409,6 +416,9 @@ class SeatMemory:
         mem.tavern_income = int(data.get("tavern_income") or 0)
         trade_seq = data.get("tavern_trade_seq")
         mem.tavern_trade_seq = int(trade_seq) if isinstance(trade_seq, int) else -1
+        deploy_day = data.get("deploy_day")
+        mem.deploy_day = int(deploy_day) if isinstance(deploy_day, int) else -1
+        mem.deploy_mine_spent = int(data.get("deploy_mine_spent") or 0)
         spend_day = data.get("war_spend_day")
         mem.war_spend_day = int(spend_day) if isinstance(spend_day, int) else -1
         mem.war_spent = int(data.get("war_spent") or 0)
@@ -1101,7 +1111,11 @@ class SeatBrain:
             tail = (self._allocate,)
         else:
             tail = (self._at_stardock, self._travel, self._feed_organics, self._go_stardock, self._earn)
-        for rung in (self._landed, self._genesis_aboard, self._land_home, self._land_orphan, *tail):
+        # N3 with worlds only runs _allocate (never _travel). Deploy must sit on the
+        # shared prefix so every N2/N3 seat can plot home and lay. It also has to
+        # beat _land_home: arriving seats were landing before they could drop mines.
+        for rung in (self._landed, self._genesis_aboard, self._deploy_rung,
+                     self._land_home, self._land_orphan, *tail):
             out = rung(v)
             if out is None or out[0] is None:
                 continue
@@ -1113,6 +1127,14 @@ class SeatBrain:
                 out[0]["thought"] += f" [replanned: {'; '.join(skipped)}]"
             return out
         return self._idle(v, skipped)
+
+    def _deploy_rung(self, v: View) -> tuple[dict[str, Any], Intent] | None:
+        if v.landed is not None:
+            return None
+        laid = self._maybe_bots_deploy(v)
+        if laid is None:
+            return None
+        return laid, Intent("acquire")
 
     def _landed(self, v: View):
         if v.landed is None:
@@ -1290,6 +1312,16 @@ class SeatBrain:
         scan_buy = self._maybe_buy_hardware(v) or self._buy_scanner(v)
         if scan_buy is not None:
             return scan_buy, Intent("acquire")
+        # One small mine restock for N2/N3 before the ferry eats the visit.
+        # A bare claim is not a "world" yet, but it is still an owned-planet sector to defend.
+        if v.owned or (self.mem is not None and self.mem.home_sector is not None):
+            prices = (v.params("buy_equip").get("item") or {}).get("unit_price_by") or {}
+            items = {str(x) for x in v.choices("buy_equip", "item")}
+            deploy_buy = self._maybe_buy_deploy_mines(
+                v, items, lambda item, default: int(prices.get(item) or default),
+            )
+            if deploy_buy is not None:
+                return deploy_buy, Intent("acquire")
         if self.feed_organics or self.value_allocator:
             # Combat hull / defence spend trade capital. Only arm after Ferrengi
             # are fogged (hot_sectors) — solo N2/N3 acceptance has none, and
@@ -1361,7 +1393,7 @@ class SeatBrain:
             plot = self._plot(v, dock, label)
             if plot is not None:
                 return plot, Intent("acquire", dock)
-        laid = self._maybe_lay_armids(v)
+        laid = self._maybe_bots_deploy(v) or self._maybe_lay_armids(v)
         if laid is not None:
             return laid, Intent("acquire")
         picket = self._maybe_lay_pickets(v)
@@ -5019,6 +5051,182 @@ class SeatBrain:
                                  f"stock {qty} shields on planet {pid}")
         return None
 
+    def _deploy_skill(self) -> str:
+        if self.value_allocator:
+            return "N3"
+        if self.feed_organics:
+            return "N2"
+        return "N1"
+
+    def _armids_aboard(self, v: View) -> int:
+        mines = (v.ship.get("mines") or {})
+        return int(mines.get("armid") or v.ship.get("armid_mines") or 0)
+
+    def _limpets_aboard(self, v: View) -> int:
+        mines = (v.ship.get("mines") or {})
+        return int(mines.get("limpet") or v.ship.get("limpet_mines") or 0)
+
+    def _deploy_profit(self, v: View | None = None) -> int:
+        if self.mem is not None and int(self.mem.tavern_income) > 0:
+            return int(self.mem.tavern_income)
+        if v is None:
+            return 0
+        ts = v.obs.get("trade_summary") or {}
+        try:
+            return int(ts.get("total_profit_cr") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _mine_spend_allows(self, cost: int, v: View | None = None) -> bool:
+        from ..engine import constants as K
+        from .deploy_brain import mine_spend_ok
+        if not K.bots_deploy_on() or self.mem is None:
+            return True
+        profit = self._deploy_profit(v)
+        spent = int(self.mem.deploy_mine_spent)
+        if profit <= 0 and spent <= 0:
+            # First stack before trade profit is booked: still under a tiny cash cap.
+            return int(cost) <= int(K.BOT_DEPLOY_MINE_QTY) * 200
+        return mine_spend_ok(spent=spent, cost=int(cost), profit=profit, pct=int(K.BOT_DEPLOY_MINE_SPEND_PCT))
+
+    def _note_mine_spend(self, cost: int) -> None:
+        from ..engine import constants as K
+        if not K.bots_deploy_on() or self.mem is None:
+            return
+        self.mem.deploy_mine_spent = int(self.mem.deploy_mine_spent) + int(cost)
+
+    def _maybe_buy_deploy_mines(self, v: View, items: set[str], price_of) -> dict[str, Any] | None:
+        """N2/N3 restock a small mine stack for owned-planet lays under the 5% spend bar."""
+        from ..engine import constants as K
+        from .deploy_brain import seat_may_deploy
+        if not K.bots_deploy_on() or not seat_may_deploy(self._deploy_skill()) or self.mem is None:
+            return None
+        if int(v.here or 0) != STARDOCK or not v.ok("buy_equip"):
+            return None
+        if not self._own_planet_sectors(v) and self.mem.home_sector is None:
+            return None
+        armids = self._armids_aboard(v)
+        limpets = self._limpets_aboard(v)
+        need = int(K.BOT_DEPLOY_MINE_QTY)
+        # Restock when the hold is empty (death wipe or after a lay). Spend bar stops a loop.
+        if armids <= 0 and "armid_mines" in items:
+            price = int(price_of("armid_mines", 100))
+            qty = min(need, v.max_by("buy_equip", "qty", "armid_mines") or need)
+            cost = price * qty
+            if qty > 0 and v.credits >= cost + self.cash_buffer and self._mine_spend_allows(cost, v):
+                self.mem.armids_stocked = True
+                self._note_mine_spend(cost)
+                return self._act("buy_equip", {"item": "armid_mines", "qty": int(qty)},
+                                 f"buy {qty} armids to lay on our planet sector")
+        if limpets <= 0 and "limpet_mines" in items:
+            price = int(price_of("limpet_mines", 100))
+            qty = min(need, v.max_by("buy_equip", "qty", "limpet_mines") or need)
+            cost = price * qty
+            if qty > 0 and v.credits >= cost + self.cash_buffer and self._mine_spend_allows(cost, v):
+                self._note_mine_spend(cost)
+                return self._act("buy_equip", {"item": "limpet_mines", "qty": int(qty)},
+                                 f"buy {qty} limpets to lay on our planet sector")
+        return None
+
+    def _maybe_bots_deploy(self, v: View) -> dict[str, Any] | None:
+        """N2/N3 lay armids (and limpets) on owned-planet sectors; plot there when packed."""
+        from ..engine import constants as K
+        from .deploy_brain import lay_due, seat_may_deploy
+        if not K.bots_deploy_on() or not self._hardware_on() or self.mem is None:
+            return None
+        if not seat_may_deploy(self._deploy_skill()):
+            return None
+        personal = self._own_planet_sectors(v)
+        own = set(personal)
+        shared = self._shared_corp_home(v)
+        if shared is not None:
+            try:
+                own.add(int(shared["sector_id"]))
+            except (TypeError, ValueError):
+                pass
+        here = int(v.here or 0)
+        # FedSpace stays refused. An owned-planet sector on an MSL still gets one
+        # fortify try (the sweep may clear it; the bar needs the deploy action).
+        sec = v.sector or {}
+        if sec.get("is_fedspace") or here == STARDOCK:
+            return None
+        if sec.get("is_msl") and here not in own:
+            return None
+        armids = self._armids_aboard(v)
+        limpets = self._limpets_aboard(v)
+        quiet_home = (
+            self.mem.home_sector is not None and here == int(self.mem.home_sector)
+            and not self._home_is_corridor(v)
+        )
+        # Mines stay off a corridor. A corp mate may still drop fighters on the shared planet.
+        if here in own or quiet_home:
+            if (here in personal or quiet_home) and armids > 0 and v.ok("deploy_mines") and "armid" in {str(c) for c in v.choices("deploy_mines", "kind")}:
+                room = v.max_by("deploy_mines", "qty", "armid")
+                qty = min(room, armids, int(K.BOT_DEPLOY_MINE_QTY))
+                if qty > 0:
+                    self.mem.deploy_day = int(v.day)
+                    self.mem.armids_stocked = True
+                    return self._act(
+                        "deploy_mines",
+                        {"kind": "armid", "qty": int(qty), **self._pair_ownership(v, "deploy_mines")},
+                        "lay armids on our planet sector",
+                    )
+            if (here in personal or quiet_home) and limpets > 0 and v.ok("deploy_mines") and "limpet" in {str(c) for c in v.choices("deploy_mines", "kind")}:
+                room = v.max_by("deploy_mines", "qty", "limpet")
+                qty = min(room, limpets, int(K.BOT_DEPLOY_MINE_QTY))
+                if qty > 0:
+                    self.mem.deploy_day = int(v.day)
+                    return self._act(
+                        "deploy_mines",
+                        {"kind": "limpet", "qty": int(qty), **self._pair_ownership(v, "deploy_mines")},
+                        "lay limpets on our planet sector",
+                    )
+            fighters = int(v.ship.get("fighters") or 0)
+            spare = fighters - int(K.BOT_DEPLOY_FIGHTER_FLOOR)
+            if spare > 0 and self._our_sector_fighters(v) < int(K.BOT_DEPLOY_FIGHTER_FLOOR):
+                laid = self._lay_fighters(v, min(spare, int(K.BOT_DEPLOY_FIGHTER_FLOOR)), mode="defensive")
+                if laid is not None:
+                    self.mem.deploy_day = int(v.day)
+                    return laid
+            return None
+        fighters = int(v.ship.get("fighters") or 0)
+        # Fighter-only trips need an owned-planet sector. Plotting at a bare home
+        # with no world burned P2/P4's turns (200+ plots, deploy_day stuck at -1).
+        can_drop_fighters = (
+            bool(own)
+            and fighters > int(K.BOT_DEPLOY_FIGHTER_FLOOR)
+            and int(self.mem.deploy_day) < 0
+        )
+        if armids <= 0 and limpets <= 0 and not can_drop_fighters:
+            return None
+        if not lay_due(last_day=int(self.mem.deploy_day), day=int(v.day), gap_days=int(K.BOT_DEPLOY_MINE_GAP_DAYS)):
+            return None
+        targets = sorted(own)
+        if armids > 0 or limpets > 0:
+            if self.mem.home_sector is not None and int(self.mem.home_sector) not in targets:
+                targets.append(int(self.mem.home_sector))
+        if not targets:
+            return None
+        best = None
+        best_hops = None
+        for sid in targets:
+            hops = self._hops(v, v.here, sid)
+            if hops is None:
+                continue
+            if best_hops is None or hops < best_hops:
+                best_hops = hops
+                best = sid
+        # Known-warp graph can miss a home sector the engine can still route to.
+        if best is None:
+            best = int(targets[0])
+        if int(best) == here:
+            return None
+        why = ("carry mines to our planet sector to lay them"
+               if armids > 0 or limpets > 0 else
+               "drop defensive fighters on our planet sector")
+        plot = self._plot(v, int(best), why)
+        return plot
+
     def _maybe_lay_armids(self, v: View) -> dict[str, Any] | None:
         if not self._hardware_on() or self._in_swept_lane(v):
             return None
@@ -5123,7 +5331,10 @@ class SeatBrain:
                                  f"buy {qty} corbomite before carrying cash")
         mines = ship.get("mines") or {}
         have_armid = int(mines.get("armid") or ship.get("armid_mines") or 0)
-        if self._war_lays():
+        # Unlimited war restock is for N2/N3. N1 stays on the one-stack flag so it
+        # does not mine a lane the way the day-10 seed 250925 run did.
+        from .deploy_brain import seat_may_deploy
+        if self._war_lays() and seat_may_deploy(self._deploy_skill()):
             cap = int(_HK.BOT_WAR_HOME_MINES)
             stocked = False
         else:
@@ -5132,9 +5343,11 @@ class SeatBrain:
         if "armid_mines" in items and have_armid < cap and not stocked:
             price = price_of("armid_mines", 100)
             qty = min(cap - have_armid, v.max_by("buy_equip", "qty", "armid_mines") or (cap - have_armid))
-            if qty > 0 and self._afford_hardware(v, price, qty):
-                if self.mem is not None and not self._war_lays():
+            cost = int(price) * int(qty)
+            if qty > 0 and self._afford_hardware(v, price, qty) and self._mine_spend_allows(cost, v):
+                if self.mem is not None and not (self._war_lays() and seat_may_deploy(self._deploy_skill())):
                     self.mem.armids_stocked = True
+                self._note_mine_spend(cost)
                 return self._act("buy_equip", {"item": "armid_mines", "qty": int(qty)},
                                  f"buy {qty} armids for the home sector")
         if "marker_beacon" in items and int(ship.get("marker_beacons") or 0) <= 0 and not (self.mem and self.mem.beacon_stocked):
