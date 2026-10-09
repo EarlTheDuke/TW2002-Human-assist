@@ -92,6 +92,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "LLM_PARITY_MODE", "legacy")  # goldens predate llm-rules-parity-v1
     monkeypatch.setattr(K, "LLM_PLANET_NUDGE_MODE", "legacy")
     monkeypatch.setattr(K, "TAVERN_MODE", "legacy")  # goldens predate the tavern
+    monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "legacy")
     monkeypatch.setattr(K, "BOTS_WAR_MODE", "legacy")
     monkeypatch.setattr(K, "CORP_FIX_MODE", "legacy")
 

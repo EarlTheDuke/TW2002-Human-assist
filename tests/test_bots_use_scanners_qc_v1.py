@@ -48,6 +48,7 @@ def test_holo_upgrade_keep_matches_choice() -> None:
 
 
 def test_heuristic_prefers_density_port_over_empty(monkeypatch) -> None:
+    monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "legacy")
     monkeypatch.setattr(K, "H_RECOVERY_MODE", "legacy")
     u = generate_universe(GameConfig(seed=44, universe_size=40, enable_ferrengi=False, enable_planets=False))
     p = _open(u, "H1", sector=2, credits=20_000)

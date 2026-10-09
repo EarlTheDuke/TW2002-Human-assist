@@ -40,6 +40,7 @@ def test_bb24_scenario_lab(monkeypatch):
     import tw2k.engine.constants as K
     from scripts.bots_bank_scenario_lab import main
     # The lab's H pod still withdraws 60,000. Recovery mode buys a different hull.
+    monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "legacy")
     monkeypatch.setattr(K, "H_RECOVERY_MODE", "legacy")
     assert main() == 0
 
@@ -607,6 +608,7 @@ def _h_obs(**overrides):
 
 def test_bb14_h_pod_withdraws_before_it_buys(monkeypatch):
     import tw2k.engine.constants as K
+    monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "legacy")
     monkeypatch.setattr(K, "H_RECOVERY_MODE", "legacy")
     asyncio, Observation = _h_obs()
     from tw2k.agents.heuristic import HeuristicAgent
