@@ -788,6 +788,7 @@ class SeatBrain:
         self._note_psychic(v)
         if self.feed_organics or self.value_allocator:
             self._sync_target_planets(v)
+        self._note_tavern_income(v)
 
         report = self.detector.observe(o, self._intent)
         self.last_report = report
@@ -845,15 +846,15 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        self._note_tavern_income(v)
-        answer = self._maybe_tavern(v)
-        if answer is not None:  # bots-use-tavern-v1: one trace, or the Underground when evil
+        answer = self._corp_pair(v) or self._bank(v) or self._treasury(v) or self._port_upgrade(v) or self._port_build(v)
+        if answer is not None:  # port-upgrade-build-v1: widen a buying port, or (policy on) order one
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        answer = self._corp_pair(v) or self._bank(v) or self._treasury(v) or self._port_upgrade(v) or self._port_build(v)
-        if answer is not None:  # port-upgrade-build-v1: widen a buying port, or (policy on) order one
+        self._note_tavern_income(v)
+        answer = self._maybe_tavern(v)
+        if answer is not None:  # bots-use-tavern-v1: one trace, or the Underground when evil
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
@@ -4593,7 +4594,8 @@ class SeatBrain:
                     })
             return None
         # A free word does not burn the paid-trace gap, so a later rich visit can still ask.
-        if (not income_ok) and visit_due(
+        # Need some trading profit first so day-1 StarDock setup (corp, bank) still runs.
+        if (not income_ok) and profit > 0 and visit_due(
             hunting=hunting, picking_lane=picking, last_day=int(self.mem.tavern_word_day),
             day=int(v.day), gap_days=gap,
         ) and v.ok("tavern_talk"):

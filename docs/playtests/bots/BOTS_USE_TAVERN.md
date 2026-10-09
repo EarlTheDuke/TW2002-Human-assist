@@ -52,4 +52,4 @@ Seed 4242, 30 days, digest 87410f69, rejected 0/0, save identical. N3-P1 spend 6
 | pb19 a thin purse with an empty bank still talks | `test_bt19_waits_when_the_bank_is_empty` |
 | pb20 a free word blocks a later paid trace | `test_bt20_free_word_does_not_block_a_trace` |
 
-Re-break on >ab786\ caught pb1 through pb20. Each named test failed, and the source was restored.
+Re-break on 76ab786 caught pb1 through pb20. Each named test failed, and the source was restored.
