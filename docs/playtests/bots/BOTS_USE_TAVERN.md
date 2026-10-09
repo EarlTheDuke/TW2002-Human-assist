@@ -44,3 +44,5 @@ Seed 250925, 30 days, digest `f7598cee`, 1085s, rejected 0/0, save identical, fe
 | pb15 the note omits the mode or the spend bar | `test_bt15_docs` |
 | pb16 a trace at exactly 2% of profit still goes through | `test_bt16_trace_fits_income` |
 | pb17 a free word is held until day 8 | `test_bt17_early_day_still_says_a_word` |
+
+Re-break on `2d40199` caught pb1 through pb17. Each named test failed, and the source was restored.
