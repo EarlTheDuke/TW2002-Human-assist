@@ -337,6 +337,24 @@ def test_no_arming_on_trade_hulls_when_poor_armed_n2_or_legacy(hunt, monkeypatch
     assert _arm(_at_dock())[0] is None
 
 
+def test_late_hunt_arm_caps_the_overpay(hunt):
+    """Day 28 of a 32-day clock is four days left. A price above book value shrinks the buy."""
+    early = _at_dock()
+    early.day = 10
+    early.config.max_days = 32
+    early_act, early_prices = _arm(early)
+    late = _at_dock()
+    late.day = 28
+    late.config.max_days = 32
+    late_act, late_prices = _arm(late)
+    assert early_act is not None and late_act is not None
+    assert int(late_prices["fighters"]) > int(early_prices["fighters"])
+    assert late_act["args"]["qty"] < early_act["args"]["qty"]
+    book = K.nw_fighter_value()
+    unit = int(late_prices["fighters"])
+    assert late_act["args"]["qty"] * (unit - book) <= 40_000
+
+
 def test_defence_hull_pick_never_slows_the_route(hunt, monkeypatch):
     u = _at_dock(ship_class=ShipClass.MERCHANT_CRUISER, credits=2_000_000)
     v = View(build_observation(u, "H").model_dump(mode="json"))
