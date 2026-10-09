@@ -233,6 +233,8 @@ class EventKind(str, Enum):
     UG_MURDER = "ug_murder"
     UG_CONTRACT = "ug_contract"
     UG_CLAIM = "ug_claim"
+    TRICRON = "tricron"  # stardock-leftovers-v1. Never emitted under STARDOCK_EXTRA_MODE legacy.
+    CINEPLEX = "cineplex"  # flavor only. Never emitted under STARDOCK_EXTRA_MODE legacy.
     SHIP_TRANSWARP = "ship_transwarp"
     SHIP_TRANSWARP_FUSE = "ship_transwarp_fuse"
     # ship-fleet-transporter-v1 (SHIP_FLEET.md fl30); never emitted under FLEET_MODE legacy

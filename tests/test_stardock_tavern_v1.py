@@ -282,14 +282,20 @@ def test_tv16_tv17_tv18_and_pb26():
     assert police == []
 
 
-def test_tv19_tv20_tv21_unbuilt():
+def test_tv19_tv21_name_change_still_unbuilt():
     assert K.UG_NAME_CHANGE is False
-    assert K.TAVERN_TRICRON == "off"
     universe = _world()
     _seat(universe, "A", "Ada")
-    kinds = _kinds(universe, "A")
-    assert "name_change" not in kinds
-    assert "tricron" not in kinds
+    assert "name_change" not in _kinds(universe, "A")
+
+
+def test_tv20_tricron_follows_the_extra_mode(monkeypatch):
+    assert K.TAVERN_TRICRON == "on"
+    universe = _world()
+    _seat(universe, "A", "Ada")
+    assert "tricron" in _kinds(universe, "A")
+    monkeypatch.setattr(K, "STARDOCK_EXTRA_MODE", "legacy")
+    assert "tricron" not in _kinds(universe, "A")
 
 
 def test_tv23_and_tv32_legal_equals_handler():

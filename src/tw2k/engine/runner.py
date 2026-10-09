@@ -4080,11 +4080,15 @@ def _bind_tavern() -> None:
         handle_grimy_ask,
         handle_order,
         handle_talk,
+        handle_tricron,
     )
+    from .cineplex import handle_cineplex
+    _DISPATCH[ActionKind.CINEPLEX] = handle_cineplex
     _DISPATCH[ActionKind.TAVERN_ANNOUNCE] = handle_announce
     _DISPATCH[ActionKind.TAVERN_TALK] = handle_talk
     _DISPATCH[ActionKind.TAVERN_GRAFFITI] = handle_graffiti
     _DISPATCH[ActionKind.TAVERN_ORDER] = handle_order
+    _DISPATCH[ActionKind.TRICRON] = handle_tricron
     _DISPATCH[ActionKind.GRIMY_ASK] = handle_grimy_ask
     _DISPATCH[ActionKind.GRIMY_CURSE] = handle_curse
     _DISPATCH[ActionKind.UNDERGROUND_ENTER] = handle_enter

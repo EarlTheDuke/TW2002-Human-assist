@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import random
 from typing import Any
 
 from . import constants as K
@@ -147,6 +148,46 @@ def handle_announce(universe: Universe, pid: str, action: Action) -> ActionResul
     state = _state(universe)
     state["announcement"] = {"text": text, "by": player.name, "day": int(universe.day)}
     _actor(universe, player, EventKind.TAVERN_ANNOUNCE, f"{player.name} posted an announcement", {"text": text})
+    return ActionResult(ok=True, turns_spent=int(K.TAVERN_TURN_COST))
+
+
+def handle_tricron(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """One Tri-Cron match. Crons are placed 2-3-1. The ante joins the jackpot first."""
+    if not on() or not K.stardock_extra_on():
+        return ActionResult(ok=False, error="unsupported action")
+    player = universe.players[pid]
+    why = guard(player)
+    if why:
+        return ActionResult(ok=False, error=why)
+    ante = int(K.TRICRON_ANTE)
+    short = _pay(player, ante)
+    if short:
+        return ActionResult(ok=False, error=short)
+    from .tricron import play_match
+    state = _state(universe)
+    played = int(state.get("tricron_played") or 0)
+    rng = random.Random(f"tricron:{int(universe.config.seed)}:{int(universe.day)}:{pid}:{played}")
+    result = play_match(
+        rng,
+        ante=ante,
+        rounds=int(K.TRICRON_ROUNDS),
+        champion=int(state.get("tricron_champion", K.TRICRON_OPENING_CHAMPION)),
+        jackpot=int(state.get("tricron_jackpot", K.TRICRON_OPENING_JACKPOT)),
+    )
+    player.credits += int(result["payback"]) + int(result["jackpot_prize"])
+    state["tricron_jackpot"] = int(result["jackpot"])
+    state["tricron_champion"] = int(result["champion"])
+    state["tricron_played"] = played + 1
+    _actor(
+        universe, player, EventKind.TRICRON,
+        f"{player.name} played Tri-Cron",
+        {
+            "player_total": int(result["player_total"]),
+            "house_total": int(result["house_total"]),
+            "payback": int(result["payback"]),
+            "jackpot_prize": int(result["jackpot_prize"]),
+        },
+    )
     return ActionResult(ok=True, turns_spent=int(K.TAVERN_TURN_COST))
 
 
@@ -479,6 +520,14 @@ def observation(universe: Universe, player: Player) -> dict[str, Any] | None:
             "contracts": totals,
             "pending_claim": int((state.get("ug_pending") or {}).get(player.id, 0) or 0),
         }
+    if K.stardock_extra_on():
+        block["tricron"] = {
+            "ante": int(K.TRICRON_ANTE),
+            "rounds": int(K.TRICRON_ROUNDS),
+            "jackpot": int(state.get("tricron_jackpot", K.TRICRON_OPENING_JACKPOT)),
+            "champion": int(state.get("tricron_champion", K.TRICRON_OPENING_CHAMPION)),
+            "place": "2-3-1",
+        }
     return block
 
 
@@ -555,6 +604,14 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
         "enter the Underground first" if not entered else "nothing to claim",
         {"pending": pending},
     )
+    if K.stardock_extra_on():
+        ante = int(K.TRICRON_ANTE)
+        add(
+            "tricron",
+            int(player.credits) >= ante,
+            "not enough credits" if int(player.credits) < ante else "",
+            {"ante": ante, "rounds": int(K.TRICRON_ROUNDS)},
+        )
     if why and not any(row[0] == "underground_enter" for row in specs):
         pass
     return specs
