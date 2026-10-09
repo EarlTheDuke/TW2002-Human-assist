@@ -1572,13 +1572,17 @@ class SeatBrain:
         used = sum(int(q or 0) for q in v.cargo.values())
         return max(1, v.cargo_free + used)
 
+    def _path_cache(self, v: View) -> dict[str, Any]:
+        """Per-decision nav + BFS cache. A new View each decide() starts a fresh bag."""
+        cache = getattr(self, "_bfs_cache", None)
+        if cache is None or cache.get("v") is not v:
+            cache = {"v": v, "bfs": {}, "nav": None}
+            self._bfs_cache = cache
+        return cache
+
     def _distances_from(self, v: View, src: int) -> dict[int, int]:
         """One BFS per source per decision. Pairwise ``known_distance`` was the day-10 hotspot."""
-        cache = getattr(self, "_bfs_cache", None)
-        if cache is None or cache[0] is not v:
-            cache = (v, {})
-            self._bfs_cache = cache
-        bucket: dict[int, dict[int, int]] = cache[1]
+        bucket: dict[int, dict[int, int]] = self._path_cache(v)["bfs"]
         src = int(src)
         hit = bucket.get(src)
         if hit is not None:
@@ -5492,7 +5496,15 @@ class SeatBrain:
         return None
 
     def _nav_graph(self, v: View) -> dict[int, tuple[int, ...]]:
-        """Known-warp graph, plus the live exits of the sector we are standing in."""
+        """Known-warp graph, plus the live exits of the sector we are standing in.
+
+        Cached on the per-decision path bag: pair search used to rebuild this
+        hundreds of times per decide() (slice 68 long-game-pace).
+        """
+        cache = self._path_cache(v)
+        hit = cache.get("nav")
+        if hit is not None:
+            return hit
         g = {int(k): tuple(int(x) for x in (n or ())) for k, n in v.known_warps.items()}
         if v.here is not None and int(v.here) not in g:
             outs = v.sector.get("warps_out") or v.choices("warp", "target")
@@ -5500,6 +5512,7 @@ class SeatBrain:
         held = self._held_today(v) - ({int(v.here)} if v.here is not None else set())
         if held:
             g = {k: tuple(n for n in outs if n not in held) for k, outs in g.items() if k not in held}
+        cache["nav"] = g
         return g
 
     def _nearest_frontiers(self, v: View) -> list[tuple[int, tuple[int, ...]]]:
