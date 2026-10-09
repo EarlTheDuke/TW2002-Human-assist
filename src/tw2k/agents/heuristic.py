@@ -56,6 +56,38 @@ class HeuristicAgent(BaseAgent):
         self._h_deposited = False
         self._h_withdrew = False
         self._tavern_day = -1
+        self._tavern_word_day = -1
+        self._tavern_income = 0
+        self._tavern_trade_seq = -1
+
+    def _note_tavern_income(self, obs: Observation) -> None:
+        from ..engine.constants import bots_tavern_on
+        if not bots_tavern_on():
+            return
+        me = str(getattr(obs, "self_id", "") or "")
+        best = int(self._tavern_trade_seq)
+        for ev in (getattr(obs, "recent_events", None) or []):
+            if not isinstance(ev, dict):
+                continue
+            if str(ev.get("kind") or "") != "trade":
+                continue
+            if str(ev.get("actor_id") or ev.get("actor") or "") != me:
+                continue
+            seq = int(ev.get("seq") or 0)
+            if seq <= int(self._tavern_trade_seq):
+                continue
+            payload = ev.get("facts") if isinstance(ev.get("facts"), dict) else {}
+            if not payload:
+                payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
+            if str(payload.get("side") or "") == "sell":
+                self._tavern_income += int(payload.get("realized_profit") or 0)
+            best = max(best, seq)
+        if best > int(self._tavern_trade_seq):
+            self._tavern_trade_seq = best
+        summary = getattr(obs, "trade_summary", None)
+        window = int(summary.get("total_profit_cr") or 0) if isinstance(summary, dict) else 0
+        if window > int(self._tavern_income):
+            self._tavern_income = window
 
     def _maybe_tavern(self, obs: Observation) -> Action | None:
         """H asks Grimy on the same gates as the code seats. Legacy does not."""
@@ -95,24 +127,40 @@ class HeuristicAgent(BaseAgent):
             return Action(kind=ActionKind.UNDERGROUND_ENTER, args={"password": word},
                           thought="enter the Underground")
         rivals = [str(r.get("id")) for r in (getattr(obs, "rivals", None) or []) if isinstance(r, dict) and r.get("id")]
-        if not visit_due(hunting=False, picking_lane=True, last_day=int(self._tavern_day),
-                         day=day, gap_days=int(BOT_TAVERN_TRACE_GAP_DAYS)):
-            return None
-        summary = getattr(obs, "trade_summary", None)
-        profit = int(summary.get("total_profit_cr") or 0) if isinstance(summary, dict) else 0
+        self._note_tavern_income(obs)
+        profit = int(self._tavern_income)
         spent = int(getattr(self, "_tavern_spent", 0))
         cost = int(GRIMY_TRACE_COST)
-        if rivals and trace_due(
-            hunting=False, picking_lane=True, credits=int(obs.credits),
-            cost=cost, reserve=int(BOT_TAVERN_RESERVE),
-            last_day=int(self._tavern_day), day=day, gap_days=int(BOT_TAVERN_TRACE_GAP_DAYS),
-        ) and trace_fits_income(cost=cost, spent=spent, profit=profit) and "grimy_ask" in legal:
-            self._tavern_day = day
-            self._tavern_spent = spent + cost
-            return Action(kind=ActionKind.GRIMY_ASK, args={"topic": "trader", "target": rivals[0]},
-                          thought=f"ask Grimy where {rivals[0]} last docked")
-        if "tavern_talk" in legal:
-            self._tavern_day = day
+        reserve = int(BOT_TAVERN_RESERVE)
+        gap = int(BOT_TAVERN_TRACE_GAP_DAYS)
+        income_ok = bool(rivals) and trace_fits_income(cost=cost, spent=spent, profit=profit)
+        if income_ok and visit_due(
+            hunting=False, picking_lane=True, last_day=int(self._tavern_day), day=day, gap_days=gap,
+        ):
+            if trace_due(
+                hunting=False, picking_lane=True, credits=int(obs.credits),
+                cost=cost, reserve=reserve,
+                last_day=int(self._tavern_day), day=day, gap_days=gap,
+            ) and "grimy_ask" in legal:
+                self._tavern_day = day
+                self._tavern_spent = spent + cost
+                return Action(kind=ActionKind.GRIMY_ASK, args={"topic": "trader", "target": rivals[0]},
+                              thought=f"ask Grimy where {rivals[0]} last docked")
+            short = cost + reserve - int(obs.credits)
+            withdraw = legal.get("bank_withdraw") or {}
+            if short > 0 and withdraw.get("legal"):
+                balance = int(getattr(obs, "bank_balance", 0) or 0)
+                maximum = int((withdraw.get("params") or {}).get("max_amount") or 0)
+                amount = min(int(short), balance, maximum)
+                if amount > 0:
+                    return Action(kind=ActionKind.BANK_WITHDRAW, args={"amount": int(amount)},
+                                  thought="cash for a Grimy trace")
+            return None
+        if (not income_ok) and visit_due(
+            hunting=False, picking_lane=True, last_day=int(self._tavern_word_day),
+            day=day, gap_days=gap,
+        ) and "tavern_talk" in legal:
+            self._tavern_word_day = day
             return Action(kind=ActionKind.TAVERN_TALK, args={"text": "quiet in here"},
                           thought="a word in the tavern")
         return None
