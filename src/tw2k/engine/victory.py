@@ -185,14 +185,29 @@ def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
         K.nw_planet_shield_value() (NET_WORTH_MODE; legacy 50 / 10).
     """
     citadel_cost = 0
-    for tier_idx in range(planet.citadel_level):
-        if tier_idx < len(K.CITADEL_TIER_COST):
-            credit_cost, colonist_cost, _days = K.CITADEL_TIER_COST[tier_idx]
-            citadel_cost += credit_cost
-            # Colonists consumed by the citadel build are baked in at
-            # COLONIST_PRICE — same valuation as colonists in cargo or
-            # in the idle pool, keeps the math consistent.
-            citadel_cost += colonist_cost * K.COLONIST_PRICE
+    if K.citadel_fidelity_on():
+        class_id = planet.class_id.value
+        table = K.CITADEL_CLASS_COSTS.get(class_id) or ()
+        fuel = organics = equipment = 0
+        for tier_idx in range(planet.citadel_level):
+            if tier_idx >= len(table):
+                break
+            _colonists, tier_fuel, tier_org, tier_eq, _raw_days = table[tier_idx]
+            fuel += tier_fuel
+            organics += tier_org
+            equipment += tier_eq
+        citadel_cost += fuel * planet_stock_unit_price("fuel_ore")
+        citadel_cost += organics * planet_stock_unit_price("organics")
+        citadel_cost += equipment * planet_stock_unit_price("equipment")
+    else:
+        for tier_idx in range(planet.citadel_level):
+            if tier_idx < len(K.CITADEL_TIER_COST):
+                credit_cost, colonist_cost, _days = K.CITADEL_TIER_COST[tier_idx]
+                citadel_cost += credit_cost
+                # Colonists consumed by the citadel build are baked in at
+                # COLONIST_PRICE — same valuation as colonists in cargo or
+                # in the idle pool, keeps the math consistent.
+                citadel_cost += colonist_cost * K.COLONIST_PRICE
 
     colonist_total = sum(planet.colonists.values()) if planet.colonists else 0
     colonist_value = colonist_total * K.COLONIST_PRICE

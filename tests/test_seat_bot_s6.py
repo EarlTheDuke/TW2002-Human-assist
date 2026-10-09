@@ -66,6 +66,9 @@ def test_trailing_rival_pulls_citadel_build_forward() -> None:
     assert not (calm["kind"] == "plot_course" and calm["args"].get("target") == 4), calm  # calm: keep working capital
 
     obs = _away_from_buildable_world(9_000)
+    for planet in obs.get("owned_planets") or []:
+        if planet.get("id") == 7:
+            planet["stockpile"] = {"fuel_ore": 300, "organics": 200, "equipment": 250}
     obs["rivals"] = [_rival(300_000)]
     brain = SeatBrain()
     a = brain.decide(obs)
@@ -147,7 +150,8 @@ def test_genesis_money_while_unmapped_autopilots_to_stardock() -> None:
 
 def _landed_buildable():
     world = {"id": 7, "sector_id": 5, "name": "G", "class": "M", "origin": "genesis", "citadel_level": 0,
-             "citadel_target": 0, "colonists": {"fuel_ore": 1000, "organics": 625, "equipment": 375, "colonists": 500}}
+             "citadel_target": 0, "colonists": {"fuel_ore": 1000, "organics": 625, "equipment": 375, "colonists": 500},
+             "stockpile": {"fuel_ore": 300, "organics": 200, "equipment": 250}}
     obs = synthetic_obs(sector=5, planets=[world], landed=7)
     obs["self_id"] = "P1"
     return obs

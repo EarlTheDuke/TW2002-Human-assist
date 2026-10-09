@@ -759,6 +759,13 @@ def get_system_prompt() -> str:
     if K.llm_parity_on():
         from . import rules_text
         text = rules_text.apply(text)
+    if K.citadel_fidelity_on():
+        text = text + (
+            "\nCitadel fidelity: build_citadel spends the class-table fuel ore, organics, and equipment "
+            "from the planet stockpile. Colonists are a population requirement and are not consumed. "
+            "There is no credit cost. Fighters on the planet do not defend it until citadel level 2. "
+            "Colonists you land go to the fuel_ore production pool.\n"
+        )
     if K.planet_nudge_on():
         text = text.replace(
             "long   = your plan to win this match (update only on real strategy shifts).",

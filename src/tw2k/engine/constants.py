@@ -801,9 +801,14 @@ CITADEL_TIER_COST: list[tuple[int, int, int]] = [
     (80_000,  16_000,  3),
     (160_000, 32_000,  4),
 ]
-# "credits" is the live rule. "class" charges the commodity table below.
-# Nothing reads an env var or an action to flip this.
+# "credits" is the legacy credit table. "class" charges the commodity table
+# below and consumes colonists. Nothing reads an env var or an action to flip this.
 CITADEL_COST_MODE = "credits"
+# "tw2002": class-table ore, organics, and equipment are spent. Colonists are a
+# population requirement and are not consumed. There is no credit cost.
+# "legacy": the credits table (or CITADEL_COST_MODE "class") stays as it was.
+# "class" still wins when it is set, so that hidden path keeps consuming colonists.
+CITADEL_FIDELITY_MODE = "tw2002"
 # Original citadel days times this scale, dropped to a whole number, never below 1.
 CITADEL_BUILD_TIME_SCALE = 0.25
 # (colonists, fuel_ore, organics, equipment, raw_days) for levels 1..6.
@@ -912,6 +917,16 @@ def citadel_class_cost(class_id: str, level: int) -> tuple[int, int, int, int, i
     """Colonists, fuel ore, organics, equipment, and scaled days for one level."""
     colonists, fuel, organics, equipment, raw_days = CITADEL_CLASS_COSTS[class_id][level - 1]
     return colonists, fuel, organics, equipment, citadel_build_days(raw_days)
+
+
+def citadel_fidelity_on() -> bool:
+    """True when the live citadel rule is the class-table goods requirement."""
+    return CITADEL_FIDELITY_MODE == "tw2002"
+
+
+def citadel_fidelity_rules() -> bool:
+    """Goods requirement. An explicit class-mode charge keeps its own path."""
+    return citadel_fidelity_on() and CITADEL_COST_MODE != "class"
 
 
 GENESIS_DEPLOY_TURN_COST = 4

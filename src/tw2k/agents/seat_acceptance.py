@@ -372,6 +372,8 @@ STORYBOARD: list[tuple[str, dict[str, Any], str, dict[str, Any]]] = [
 def ferry_storyboard() -> list[tuple[str, dict[str, Any], str, dict[str, Any]]]:
     """The citadel + ferry half, around a genesis world (planet 7) in sector 5."""
     seed = _genesis_world()
+    # Class M level 1 spends these goods. The population is already enough.
+    seed["stockpile"] = {"fuel_ore": 300, "organics": 200, "equipment": 250}
     built = _genesis_world(0, 1, {"fuel_ore": 700, "organics": 400, "equipment": 200, "colonists": 200})
     after = _genesis_world(0, 1, {"fuel_ore": 775, "organics": 400, "equipment": 200, "colonists": 200})
     return [

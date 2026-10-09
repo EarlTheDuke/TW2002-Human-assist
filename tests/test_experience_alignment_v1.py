@@ -60,6 +60,7 @@ def legacy(monkeypatch):
     monkeypatch.setattr(K, "CORP_FIX_MODE", "legacy")
     monkeypatch.setattr(K, "COMBAT_SCANNER_MODE", "legacy")  # predate fullgame-fixes-v2
     monkeypatch.setattr(K, "STARDOCK_EXTRA_MODE", "legacy")  # goldens predate Tri-Cron and the Cineplex
+    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
 
 
 @pytest.fixture

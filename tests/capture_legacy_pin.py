@@ -96,6 +96,8 @@ def legacy_capture_digest() -> str:
         K.BOTS_DEPLOY_MODE = "legacy"
     if hasattr(K, "STARDOCK_EXTRA_MODE"):
         K.STARDOCK_EXTRA_MODE = "legacy"
+    if hasattr(K, "CITADEL_FIDELITY_MODE"):
+        K.CITADEL_FIDELITY_MODE = "legacy"
     if hasattr(K, "H_RECOVERY_MODE"):
         K.H_RECOVERY_MODE = "legacy"
     for name in ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",

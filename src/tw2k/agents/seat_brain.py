@@ -64,6 +64,8 @@ from ..engine.constants import (
     SCANNER_HOLO,
     TERRA_COLONIST_PRICE,
     TERRA_LOAD_TURNS,
+    citadel_class_cost,
+    citadel_fidelity_on,
     class0_tw2002,
     combat_hull,
     fighter_unit_price,
@@ -564,6 +566,15 @@ def next_tier(planet: dict[str, Any], *, lookahead: bool = False) -> tuple[int, 
     if tgt > lvl and not lookahead:
         return None
     base = max(lvl, tgt)
+    if citadel_fidelity_on():
+        class_id = planet.get("class")
+        if not class_id or base >= 6:
+            return None
+        try:
+            col, _fuel, _org, _eq, _days = citadel_class_cost(str(class_id), base + 1)
+        except (KeyError, IndexError, ValueError):
+            return None
+        return 0, int(col)
     if base >= len(CITADEL_TIER_COST):
         return None
     cred, col, _days = CITADEL_TIER_COST[base]
@@ -659,6 +670,56 @@ def next_tier_days(planet: dict[str, Any]) -> int:
     if base >= len(CITADEL_TIER_COST):
         return 0
     return int(CITADEL_TIER_COST[base][2])
+
+
+def _fidelity_goods_short(planet: dict[str, Any]) -> list[tuple[str, int]]:
+    """(commodity, still needed) for the next citadel level. Empty unless fidelity is on."""
+    if not citadel_fidelity_on():
+        return []
+    class_id = planet.get("class")
+    lvl = int(planet.get("citadel_level") or 0)
+    tgt = int(planet.get("citadel_target") or 0)
+    if tgt > lvl or not class_id or lvl >= 6:
+        return []
+    try:
+        _col, fuel, org, eq, _days = citadel_class_cost(str(class_id), lvl + 1)
+    except (KeyError, IndexError, ValueError):
+        return []
+    stock = planet.get("stockpile") or {}
+    short: list[tuple[str, int]] = []
+    for name, need in (("fuel_ore", fuel), ("organics", org), ("equipment", eq)):
+        gap = int(need) - int(stock.get(name) or 0)
+        if gap > 0:
+            short.append((name, gap))
+    return short
+
+
+def _citadel_need_qty(planet: dict[str, Any], commodity: str) -> int:
+    """Goods the next citadel level still requires. 0 when fidelity is off or a build is already running."""
+    if not citadel_fidelity_on():
+        return 0
+    class_id = planet.get("class")
+    lvl = int(planet.get("citadel_level") or 0)
+    tgt = int(planet.get("citadel_target") or 0)
+    if not class_id or tgt > lvl or lvl >= 6:
+        return 0
+    try:
+        col, fuel, org, eq, _days = citadel_class_cost(str(class_id), lvl + 1)
+    except (KeyError, IndexError, ValueError):
+        return 0
+    if _colonists_total(planet) < int(col):
+        return 0
+    need = {"fuel_ore": fuel, "organics": org, "equipment": eq}.get(commodity)
+    return int(need or 0)
+
+
+def _citadel_keeps_stock(planet: dict[str, Any], commodity: str) -> bool:
+    """Leave stockpile goods the next citadel level still needs."""
+    need = _citadel_need_qty(planet, commodity)
+    if need <= 0:
+        return False
+    have = int((planet.get("stockpile") or {}).get(commodity) or 0)
+    return have <= need
 
 
 def _pool(planet: dict[str, Any], name: str) -> int:
@@ -1115,7 +1176,7 @@ class SeatBrain:
         # shared prefix so every N2/N3 seat can plot home and lay. It also has to
         # beat _land_home: arriving seats were landing before they could drop mines.
         for rung in (self._landed, self._genesis_aboard, self._deploy_rung,
-                     self._land_home, self._land_orphan, *tail):
+                     self._land_home, self._land_orphan, self._citadel_goods, *tail):
             out = rung(v)
             if out is None or out[0] is None:
                 continue
@@ -1153,6 +1214,21 @@ class SeatBrain:
         work_site = planet is not None and planet in v.worlds()
         if work_site:
             pid = int(planet["id"])
+            if citadel_fidelity_on():
+                for commodity, need in _fidelity_goods_short(planet):
+                    held = int(v.cargo.get(commodity) or 0)
+                    if held <= 0 or not v.ok("dump_planet_cargo"):
+                        continue
+                    if commodity not in v.choices("dump_planet_cargo", "commodity"):
+                        continue
+                    qty = min(held, need, v.max_by("dump_planet_cargo", "qty", commodity) or held)
+                    if qty > 0:
+                        candidates.append(self._act(
+                            "dump_planet_cargo",
+                            {"planet_id": pid, "commodity": commodity, "qty": int(qty)},
+                            f"stock {qty} {commodity} for citadel L{int(planet.get('citadel_level') or 0) + 1} on planet {pid}",
+                        ))
+                        break
             if (self._hauling_organics(v) and int(self.mem.organics_drop) == pid and v.ok("dump_planet_cargo")
                     and "organics" in v.choices("dump_planet_cargo", "commodity")):
                 qty = int(v.cargo.get("organics") or 0)
@@ -1255,15 +1331,20 @@ class SeatBrain:
             pid = int(planet["id"])
             if pid not in choices:
                 continue
-            can_build = self._citadel_ready(planet, v)
+            can_build = self._citadel_ready(planet, v) and not self._mate_waits_on_citadel(v)
             dump = self._unsellable_goods(v)
             haul = self._hauling_organics(v) and int(planet["id"]) == int(self.mem.organics_drop)
             stock = self.mem.stock_load is not None and int(planet["id"]) == int(self.mem.stock_load[0])
+            citadel_haul = any(
+                int(v.cargo.get(commodity) or 0) > 0
+                for commodity, _need in _fidelity_goods_short(planet)
+            )
             # A full world is not an unload stop. The legal list already said
             # the ship max is 0. Citadel, organics, and stock still land.
             unload = v.colonists_aboard > 0 and pid not in self.mem.no_colonist_room
-            if unload or can_build or dump or haul or stock:
+            if unload or can_build or dump or haul or stock or citadel_haul:
                 why = ("unload colonists" if unload else "citadel is buildable" if can_build
+                       else "deliver citadel goods" if citadel_haul
                        else "deliver organics" if haul else "load stockpile for sale" if stock
                        else f"stock unsellable {dump[0]}")
                 return self._act("land_planet", {"planet_id": pid}, f"land home planet {pid} ({why})"), Intent("colonize")
@@ -2010,6 +2091,9 @@ class SeatBrain:
             burn = max(1, int(g.get("organics_consumption_per_day") or 1))
             for commodity, base in COMMODITY_BASE_PRICE.items():
                 qty = int(stock.get(commodity) or 0)
+                need = _citadel_need_qty(planet, commodity)
+                if need > 0:
+                    qty = max(0, qty - need)
                 if commodity == "organics":
                     qty = max(0, qty - max(ORGANICS_LOAD, burn * 4))
                 if qty <= 0:
@@ -2064,6 +2148,12 @@ class SeatBrain:
             return None
         stock = planet.get("stockpile") or {}
         qty = int(stock.get(commodity) or 0) if isinstance(stock, dict) else 0
+        if _citadel_keeps_stock(planet, commodity):
+            self.mem.stock_load = None
+            return None
+        citadel_need = _citadel_need_qty(planet, commodity)
+        if citadel_need > 0:
+            qty = max(0, qty - citadel_need)
         if commodity == "organics":
             g = growth_view(planet) or {}
             burn = max(1, int(g.get("organics_consumption_per_day") or 1))
@@ -2448,6 +2538,8 @@ class SeatBrain:
             return False
         cred, col = tier
         total = _colonists_total(planet)
+        if citadel_fidelity_on():
+            return total >= col and not _fidelity_goods_short(planet)
         if total < col or v.credits < cred + credit_pad:
             return False
         if self._last_days(v):
@@ -2627,6 +2719,82 @@ class SeatBrain:
             if not isinstance(price, int):
                 continue
             if best is None or price < best[1] or (price == best[1] and v.here is not None and sid == int(v.here)):
+                best = (int(sid), price)
+        return best
+
+    def _citadel_offer_here(self, v: View, commodity: str) -> tuple[int, int] | None:
+        if not v.ok("trade"):
+            return None
+        params = v.params("trade")
+        comm = params.get("commodity") or {}
+        if commodity not in (comm.get("buy_choices") or []):
+            return None
+        listed = ((params.get("unit_price") or {}).get("listed_by") or {}).get(commodity) or {}
+        cap = ((params.get("qty") or {}).get("max_by") or {}).get(commodity) or {}
+        price, buy_cap = listed.get("buy"), cap.get("buy") if isinstance(cap, dict) else None
+        if not isinstance(price, int) or not isinstance(buy_cap, int) or buy_cap <= 0:
+            return None
+        return price, buy_cap
+
+    def _citadel_goods(self, v: View):
+        """Haul the next citadel's missing ore, organics, or equipment. Legacy returns nothing."""
+        if not citadel_fidelity_on() or v.landed is not None:
+            return None
+        if v.colonists_aboard > 0 or v.genesis_aboard > 0:
+            return None
+        world = None
+        short: list[tuple[str, int]] = []
+        for planet in v.worlds():
+            tier = next_tier(planet)
+            if tier is None or _colonists_total(planet) < tier[1]:
+                continue
+            gap = _fidelity_goods_short(planet)
+            if gap:
+                world = planet
+                short = gap
+                break
+        if world is None:
+            return None
+        commodity, need = short[0]
+        held = int(v.cargo.get(commodity) or 0)
+        sid = int(world["sector_id"])
+        level = int(world.get("citadel_level") or 0) + 1
+        if held > 0:
+            if v.here == sid:
+                return None
+            plot = self._plot(v, sid, f"haul {held} {commodity} for citadel L{level} on planet {world['id']}")
+            if plot is None:
+                return None
+            return plot, Intent("colonize", sid)
+        if v.cargo_free <= 0:
+            return None
+        offer = self._citadel_offer_here(v, commodity)
+        if offer is not None:
+            price, cap = offer
+            afford = max(0, (v.credits - self.cash_buffer) // max(1, price))
+            qty = min(need, cap, afford, v.cargo_free)
+            if qty > 0 and (qty >= need or qty >= 25):
+                return (self._act(
+                    "trade", {"commodity": commodity, "qty": int(qty), "side": "buy"},
+                    f"buy {qty} {commodity} @{price} for citadel L{level} on planet {world['id']}",
+                ), Intent("colonize", sid))
+        # Do not cross the map hunting a seller. The trade ladder already docks;
+        # the next port that sells this good fills the hold, then the haul home above runs.
+        return None
+
+    def _citadel_seller(self, v: View, commodity: str) -> tuple[int, int] | None:
+        best: tuple[int, int] | None = None
+        here = self._citadel_offer_here(v, commodity)
+        if here is not None and v.here is not None:
+            best = (int(v.here), here[0])
+        for sid, kp in self._priced_ports(v).items():
+            st = (kp.get("stock") or {}).get(commodity) or {}
+            if st.get("side") != "sells_to_player" or int(st.get("current") or 0) <= 0:
+                continue
+            price = st.get("price")
+            if not isinstance(price, int):
+                continue
+            if best is None or price < best[1]:
                 best = (int(sid), price)
         return best
 
@@ -3680,6 +3848,11 @@ class SeatBrain:
                 if commodity == "fuel_ore" and engine_k.BOT_PLANET_TRADE_KEEP_ORE:
                     continue
                 qty = int(mx or 0)
+                if planet is not None:
+                    need = _citadel_need_qty(planet, str(commodity))
+                    if need > 0:
+                        stock = int(((planet.get("stockpile") or {}).get(commodity) or 0))
+                        qty = min(qty, max(0, stock - need))
                 if commodity == "organics":
                     g = (growth_view(planet) or {}) if planet else {}
                     burn = max(1, int(g.get("organics_consumption_per_day") or 1))

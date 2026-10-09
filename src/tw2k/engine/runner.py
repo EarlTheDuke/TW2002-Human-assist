@@ -1312,7 +1312,7 @@ def _planet_odds_fight(player, planet, on_shields_down=None) -> tuple[int, int, 
     The survivor rule is the comment on PLANET_OFFENSE_ODDS.
     """
     a_fighters = int(player.ship.fighters)
-    d_fighters = int(planet.fighters)
+    d_fighters = int(planet.fighters) if _planet_fighters_defend(planet) else 0
     d_shields = int(planet.shields)
     rounds: list[dict] = []
     n = 1
@@ -1441,12 +1441,13 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             return ActionResult(ok=True, turns_spent=cost)
 
     shields_already_down = hostile and int(planet.shields) <= 0
-    if hostile and planet.fighters <= 0 and planet.shields > 0 and player.ship.fighters <= 0:
+    defending_fighters = int(planet.fighters) if _planet_fighters_defend(planet) else 0
+    if hostile and defending_fighters <= 0 and planet.shields > 0 and player.ship.fighters <= 0:
         # An empty ship cannot break shields, and there are no planet fighters
         # to destroy it. Repel with the shields and the ship unchanged.
         _clear_photon_damp(player, sector.id)
         return ActionResult(ok=False, error="planetary defenses repelled landing", turns_spent=cost)
-    if hostile and (planet.fighters > 0 or planet.shields > 0):
+    if hostile and (defending_fighters > 0 or planet.shields > 0):
         def _atm_after_shields() -> None:
             _fire_atmospheric_quasar(universe, pid, planet)
 
@@ -1456,6 +1457,8 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         )
         if player.deaths == deaths_at_fight:
             player.ship.fighters = a_fighters
+        if not _planet_fighters_defend(planet):
+            d_fighters = int(planet.fighters)
         planet.fighters = d_fighters
         planet.shields = d_shields
         universe.emit(
@@ -1699,6 +1702,7 @@ def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> A
         pool, error = _parse_colonist_pool(action)
         if error is not None:
             return error
+        pool = _production_pool(pool)
         total_col = sum(int(n) for n in planet.colonists.values())
         room = K.planet_colonist_room(planet.class_id.value, total_col)
         if room is not None and qty > room:
@@ -1775,6 +1779,8 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
         return ActionResult(ok=False, error=f"invalid 'to' pool {dst!r}")
     if src not in pool_keys and src != "ship":
         return ActionResult(ok=False, error=f"invalid 'from' pool {src!r}")
+    if K.citadel_fidelity_on() and dst == "colonists":
+        dst = "fuel_ore"
 
     cost = K.TURN_COST.get("liftoff", 1)
     if player.turns_today + cost > player.turns_per_day:
@@ -1822,6 +1828,65 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
         sector_id=sector.id,
         payload={"planet_id": planet.id, "from": src, "to": dst, "qty": qty},
         summary=f"{player.name} moved {qty} colonists {src} → {dst} on {planet.name}",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _production_pool(pool: Commodity) -> Commodity:
+    """Landed colonists join fuel production when fidelity is on. Idle stays legacy."""
+    if K.citadel_fidelity_on() and pool is Commodity.COLONISTS:
+        return Commodity.FUEL_ORE
+    return pool
+
+
+def _planet_fighters_defend(planet) -> bool:
+    """Fighters on a planet do not shoot until citadel L2 when fidelity is on."""
+    if K.citadel_fidelity_on() and int(planet.citadel_level or 0) < 2:
+        return False
+    return True
+
+
+def _start_fidelity_citadel(universe: Universe, player, sector, planet, next_level: int) -> ActionResult:
+    """Spend class-table goods. Colonists are required and are not consumed."""
+    colonists, fuel, organics, equipment, days = K.citadel_class_cost(planet.class_id.value, next_level)
+    have_fuel = int(planet.stockpile.get(Commodity.FUEL_ORE, 0))
+    have_org = int(planet.stockpile.get(Commodity.ORGANICS, 0))
+    have_eq = int(planet.stockpile.get(Commodity.EQUIPMENT, 0))
+    avail_col = sum(planet.colonists.get(c, 0) for c in planet.colonists)
+    short = (
+        (have_fuel < fuel, f"need {fuel} fuel_ore on planet (have {have_fuel})"),
+        (have_org < organics, f"need {organics} organics on planet (have {have_org})"),
+        (have_eq < equipment, f"need {equipment} equipment on planet (have {have_eq})"),
+        (avail_col < colonists, f"need {colonists} colonists on planet (have {avail_col})"),
+    )
+    for missing, message in short:
+        if missing:
+            return ActionResult(ok=False, error=message)
+    planet.stockpile[Commodity.FUEL_ORE] = have_fuel - fuel
+    planet.stockpile[Commodity.ORGANICS] = have_org - organics
+    planet.stockpile[Commodity.EQUIPMENT] = have_eq - equipment
+    cost = K.TURN_COST.get("land_planet", 3)
+    if player.turns_today + cost > player.turns_per_day:
+        cost = 0
+    planet.citadel_target = next_level
+    planet.citadel_complete_day = universe.day + days
+    universe.emit(
+        EventKind.BUILD_CITADEL,
+        actor_id=player.id,
+        sector_id=sector.id,
+        payload={
+            "planet_id": planet.id,
+            "level_target": next_level,
+            "completes_day": planet.citadel_complete_day,
+            "cost_cr": 0,
+            "cost_col": 0,
+            "paid_from": "stockpile",
+        },
+        summary=(
+            f"{player.name} began Citadel L{next_level} on {planet.name} "
+            f"({fuel} fuel ore, {organics} organics, {equipment} equipment, "
+            f"{colonists} colonists required and kept, ETA day {planet.citadel_complete_day})"
+        ),
     )
     return ActionResult(ok=True, turns_spent=cost)
 
@@ -1902,6 +1967,8 @@ def _handle_build_citadel(universe: Universe, pid: str, action: Action) -> Actio
     next_level = planet.citadel_level + 1
     if next_level > K.CITADEL_LEVELS:
         return ActionResult(ok=False, error="citadel already at max level")
+    if K.citadel_fidelity_rules():
+        return _start_fidelity_citadel(universe, player, sector, planet, next_level)
     if K.CITADEL_COST_MODE == "class":
         return _start_class_citadel(universe, player, sector, planet, next_level)
     cred_cost, col_cost, days = K.CITADEL_TIER_COST[next_level - 1]
@@ -2022,17 +2089,27 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
     planet.colonists[Commodity.FUEL_ORE] = int(seed_total * 0.40)
     planet.colonists[Commodity.ORGANICS] = int(seed_total * 0.25)
     planet.colonists[Commodity.EQUIPMENT] = int(seed_total * 0.15)
-    planet.colonists[Commodity.COLONISTS] = (
+    remainder = (
         seed_total
         - planet.colonists[Commodity.FUEL_ORE]
         - planet.colonists[Commodity.ORGANICS]
         - planet.colonists[Commodity.EQUIPMENT]
     )
+    if K.citadel_fidelity_on():
+        planet.colonists[Commodity.FUEL_ORE] += remainder
+        planet.colonists[Commodity.COLONISTS] = 0
+    else:
+        planet.colonists[Commodity.COLONISTS] = remainder
     # Small organics stockpile so colonist growth can start immediately —
     # growth is gated on `stockpile[ORGANICS] > 0`.
     planet.stockpile[Commodity.ORGANICS] = max(
         planet.stockpile.get(Commodity.ORGANICS, 0), 25
     )
+    if K.citadel_fidelity_on():
+        _need, fuel, organics, equipment, _days = K.citadel_class_cost(cls.value, 1)
+        planet.stockpile[Commodity.FUEL_ORE] = max(int(planet.stockpile.get(Commodity.FUEL_ORE, 0)), fuel)
+        planet.stockpile[Commodity.ORGANICS] = max(int(planet.stockpile.get(Commodity.ORGANICS, 0)), organics)
+        planet.stockpile[Commodity.EQUIPMENT] = max(int(planet.stockpile.get(Commodity.EQUIPMENT, 0)), equipment)
     planet.last_tax_value = planet_tax_value(planet)
     universe.planets[pid_planet] = planet
     sector.planet_ids.append(pid_planet)

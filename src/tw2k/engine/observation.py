@@ -1674,7 +1674,10 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
             "possible": blocker is None,
             "blocker": blocker,
         }
-        if K.CITADEL_COST_MODE == "class":
+        if K.citadel_fidelity_rules():
+            next_build = _class_citadel_next_build(planet, nl, available_colonists)
+            next_build["colonists_consumed"] = False
+        elif K.CITADEL_COST_MODE == "class":
             next_build = _class_citadel_next_build(planet, nl, available_colonists)
     brief = {
         "id": planet.id,

@@ -100,7 +100,7 @@ def test_neutral_landing_claim_is_distinguishable_from_genesis() -> None:
     assert owned[gen_id]["origin"] == "genesis"
     # The engine agrees the claim world cannot build yet, and says why.
     la = {x.kind: x for x in legal_actions(u, "P1")}["build_citadel"]
-    assert la.legal is False and "colonists" in (la.reason or "")
+    assert la.legal is False and "fuel_ore" in (la.reason or "")
 
 
 def test_orphan_claim_planet_is_claim_origin() -> None:
@@ -161,6 +161,7 @@ def test_legal_reasons_for_empire_verbs() -> None:
     las = {x.kind: x for x in legal_actions(u, "P1")}
     assert las["assign_colonists"].legal is True
     assert las["build_citadel"].legal is True
+    assert las["build_citadel"].params["next"]["credits"] == 0
     assert las["build_citadel"].params["next"]["colonists_have"] == _owned(u)[plid]["colonists_total"]
 
 
