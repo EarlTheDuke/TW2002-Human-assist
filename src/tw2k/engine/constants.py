@@ -2255,6 +2255,19 @@ def bots_tavern_on() -> bool:
     return BOTS_TAVERN_MODE == "tw2002"
 
 
+# --- Bots deploy defenses (BOTS_DEPLOY_MODE) ---------------------------------
+# docs/playtests/bots/BOTS_DEPLOY_DEFENSES.md. Engine deploy verbs stay on HARDWARE_MODE.
+BOTS_DEPLOY_MODE = "tw2002"              # bd1: "tw2002" | "legacy"
+BOT_DEPLOY_MINE_GAP_DAYS = 1             # at most one lay trip per day
+BOT_DEPLOY_MINE_QTY = 5                  # armids/limpets laid per visit
+BOT_DEPLOY_MINE_SPEND_PCT = 5            # mine buys under this % of trading profit
+BOT_DEPLOY_FIGHTER_FLOOR = 10            # keep this many fighters aboard
+
+
+def bots_deploy_on() -> bool:
+    return BOTS_DEPLOY_MODE == "tw2002"
+
+
 # --- Corporations (CORP_MODE) -------------------------------------------------
 # docs/playtests/corps/CORP_RULES.md. "legacy" is the engine at 57dec11.
 CORP_MODE = "tw2002"                      # "tw2002" | "legacy"
