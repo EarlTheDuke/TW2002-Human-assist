@@ -363,6 +363,10 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"target": targets[0], "amount": least})
     if ak is ActionKind.UNDERGROUND_CLAIM:
         return Action(kind=ak, args={})
+    if ak is ActionKind.TRICRON:
+        return Action(kind=ak, args={})
+    if ak is ActionKind.CINEPLEX:
+        return Action(kind=ak, args={})
     raise AssertionError(f"no builder for {kind}")
 
 
