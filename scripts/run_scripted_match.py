@@ -457,6 +457,28 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
     if war_report:
         from tw2k.agents.war_report import counts_from_events
         result["war"] = counts_from_events(list(u.events))
+    tavern_spend: dict[str, int] = {}
+    tavern_uses: dict[str, int] = {}
+    for ev in u.events:
+        kind = getattr(ev, "kind", None)
+        name = str(getattr(kind, "value", kind) or "")
+        actor = str(getattr(ev, "actor_id", "") or "")
+        if not actor or name not in ("grimy_trace", "grimy_password", "grimy_ask", "ug_enter", "tavern_order", "tavern_talk"):
+            continue
+        tavern_uses[actor] = tavern_uses.get(actor, 0) + 1
+        payload = getattr(ev, "payload", None) or {}
+        if name == "grimy_trace" and payload.get("port_sector") is not None:
+            tavern_spend[actor] = tavern_spend.get(actor, 0) + int(K.GRIMY_TRACE_COST)
+        elif name == "grimy_password":
+            tavern_spend[actor] = tavern_spend.get(actor, 0) + int(K.GRIMY_PASSWORD_COST)
+        elif name == "tavern_order":
+            item = str(payload.get("item") or "drink")
+            tavern_spend[actor] = tavern_spend.get(actor, 0) + int(
+                K.TAVERN_DRINK_COST if item == "drink" else K.TAVERN_FOOD_COST
+            )
+    if tavern_uses:
+        result["tavern_uses"] = tavern_uses
+        result["tavern_spend"] = tavern_spend
     if bank_rows is not None:
         result["bank_rejected"] = sum(int(row["rejected_engine"]) for row in players.values())
         result["bank_exceptions"] = sum(int(row["exceptions"]) for row in players.values())

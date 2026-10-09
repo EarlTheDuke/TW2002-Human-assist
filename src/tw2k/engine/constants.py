@@ -2244,6 +2244,17 @@ def bots_war_on() -> bool:
     return BOTS_WAR_MODE == "tw2002"
 
 
+# --- Bots use the tavern (BOTS_TAVERN_MODE) ----------------------------------
+# docs/playtests/bots/BOTS_USE_TAVERN.md. The engine tavern stays on TAVERN_MODE.
+BOTS_TAVERN_MODE = "tw2002"              # bt1: "tw2002" | "legacy"
+BOT_TAVERN_TRACE_GAP_DAYS = 10           # one paid ask in each 10-day stretch
+BOT_TAVERN_RESERVE = 20_000              # cash left after a tavern buy
+
+
+def bots_tavern_on() -> bool:
+    return BOTS_TAVERN_MODE == "tw2002"
+
+
 # --- Corporations (CORP_MODE) -------------------------------------------------
 # docs/playtests/corps/CORP_RULES.md. "legacy" is the engine at 57dec11.
 CORP_MODE = "tw2002"                      # "tw2002" | "legacy"

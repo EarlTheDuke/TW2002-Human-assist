@@ -233,6 +233,7 @@ class SeatMemory:
     war_drop_day: int = -1
     war_fail_day: int = -1
     war_home_seq: int = -1
+    tavern_day: int = -1
     # Last psychic-probe reading this seat saw (percent of the port's best price).
     psychic_pct: float | None = None
     psychic_commodity: str | None = None
@@ -308,6 +309,8 @@ class SeatMemory:
             payload["war_fail_day"] = int(self.war_fail_day)
         if self.war_home_seq >= 0:
             payload["war_home_seq"] = int(self.war_home_seq)
+        if self.tavern_day >= 0:
+            payload["tavern_day"] = int(self.tavern_day)
         if self.beacon_stocked:
             payload["beacon_stocked"] = True
         if self.psychic_pct is not None:
@@ -390,6 +393,8 @@ class SeatMemory:
         mem.beacons_laid = {int(sid) for sid in (data.get("beacons_laid") or [])}
         pct = data.get("psychic_pct")
         mem.armids_stocked = bool(data.get("armids_stocked"))
+        tavern_day = data.get("tavern_day")
+        mem.tavern_day = int(tavern_day) if isinstance(tavern_day, int) else -1
         spend_day = data.get("war_spend_day")
         mem.war_spend_day = int(spend_day) if isinstance(spend_day, int) else -1
         mem.war_spent = int(data.get("war_spent") or 0)
@@ -822,6 +827,12 @@ class SeatBrain:
             return self._finish(v, answer)
         answer = self._siege_here(v)
         if answer is not None:  # bots-use-planet-warfare-v1: land a siege only when the gates clear
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
+        answer = self._maybe_tavern(v)
+        if answer is not None:  # bots-use-tavern-v1: one trace, or the Underground when evil
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
@@ -4467,6 +4478,64 @@ class SeatBrain:
             return None
         return self._act("deploy_fighters", {"qty": int(send), "mode": mode, **self._pair_ownership(v, "deploy_fighters")},
                          f"deploy {send} fighters outside FedSpace")
+
+    def _tavern_skill(self) -> str:
+        if self.value_allocator:
+            return "N3"
+        if self.feed_organics:
+            return "N2"
+        return "N1"
+
+    def _maybe_tavern(self, v: View) -> dict[str, Any] | None:
+        """One Grimy trace while hunting or choosing a lane. Underground only when evil and rich."""
+        from ..engine import constants as K
+        from .tavern_brain import join_underground, seat_may_use, trace_due, trace_fits_income, visit_due
+        if not K.bots_tavern_on() or not K.tavern_on() or not seat_may_use(self._tavern_skill()):
+            return None
+        if v.here != STARDOCK or v.landed is not None or self.mem is None:
+            return None
+        tavern = v.obs.get("tavern") if isinstance(v.obs.get("tavern"), dict) else {}
+        alignment = int(v.obs.get("alignment") or 0)
+        if join_underground(
+            alignment=alignment,
+            credits=int(v.credits),
+            password_price=int(K.GRIMY_PASSWORD_COST),
+            already=bool(tavern.get("password_known")),
+        ) and v.ok("grimy_ask") and "underground" in {str(c) for c in v.choices("grimy_ask", "topic")}:
+            self.mem.tavern_day = int(v.day)
+            return self._act("grimy_ask", {"topic": "underground"}, "ask Grimy about the Underground")
+        word = str(tavern.get("ug_password") or "")
+        if word and alignment < 0 and v.ok("underground_enter"):
+            self.mem.tavern_day = int(v.day)
+            return self._act("underground_enter", {"password": word}, "enter the Underground")
+        rivals = [str(r.get("id")) for r in v.rivals if r.get("id")]
+        hunting = bool(rivals) and self.value_allocator
+        picking = self._trade_quote(v) is not None
+        if not visit_due(
+            hunting=hunting, picking_lane=picking, last_day=int(self.mem.tavern_day),
+            day=int(v.day), gap_days=int(K.BOT_TAVERN_TRACE_GAP_DAYS),
+        ):
+            return None
+        summary = v.obs.get("trade_summary") if isinstance(v.obs.get("trade_summary"), dict) else {}
+        profit = int(summary.get("total_profit_cr") or 0)
+        spent = int(getattr(self, "_tavern_spent", 0))
+        cost = int(K.GRIMY_TRACE_COST)
+        if rivals and trace_due(
+            hunting=hunting, picking_lane=picking, credits=int(v.credits),
+            cost=cost, reserve=int(K.BOT_TAVERN_RESERVE),
+            last_day=int(self.mem.tavern_day), day=int(v.day),
+            gap_days=int(K.BOT_TAVERN_TRACE_GAP_DAYS),
+        ) and trace_fits_income(cost=cost, spent=spent, profit=profit):
+            topics = {str(c) for c in v.choices("grimy_ask", "topic")}
+            if v.ok("grimy_ask") and "trader" in topics:
+                self.mem.tavern_day = int(v.day)
+                self._tavern_spent = spent + cost
+                return self._act("grimy_ask", {"topic": "trader", "target": rivals[0]},
+                                 f"ask Grimy where {rivals[0]} last docked")
+        if v.ok("tavern_talk"):
+            self.mem.tavern_day = int(v.day)
+            return self._act("tavern_talk", {"text": "quiet in here"}, "a word in the tavern")
+        return None
 
     def _war_lays(self) -> bool:
         from ..engine import constants as K

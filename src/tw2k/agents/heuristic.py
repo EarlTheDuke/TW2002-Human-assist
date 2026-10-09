@@ -55,6 +55,67 @@ class HeuristicAgent(BaseAgent):
         self._traded_at: int | None = None  # sector of a trade this visit
         self._h_deposited = False
         self._h_withdrew = False
+        self._tavern_day = -1
+
+    def _maybe_tavern(self, obs: Observation) -> Action | None:
+        """H asks Grimy on the same gates as the code seats. Legacy does not."""
+        from ..engine.constants import (
+            BOT_TAVERN_RESERVE,
+            BOT_TAVERN_TRACE_GAP_DAYS,
+            GRIMY_PASSWORD_COST,
+            GRIMY_TRACE_COST,
+            STARDOCK_SECTOR,
+            bots_tavern_on,
+            tavern_on,
+        )
+        from .tavern_brain import join_underground, trace_due, trace_fits_income, visit_due
+
+        if not bots_tavern_on() or not tavern_on():
+            return None
+        if int(obs.sector.get("id") or 0) != int(STARDOCK_SECTOR):
+            return None
+        if str(obs.ship.get("class") or "") == "escape_pod":
+            return None
+        legal = HeuristicAgent._legal(obs)
+        tavern = obs.tavern if isinstance(getattr(obs, "tavern", None), dict) else {}
+        alignment = int(getattr(obs, "alignment", 0) or 0)
+        day = int(getattr(obs, "day", 0) or 0)
+        if join_underground(
+            alignment=alignment,
+            credits=int(obs.credits),
+            password_price=int(GRIMY_PASSWORD_COST),
+            already=bool(tavern.get("password_known")),
+        ) and "grimy_ask" in legal:
+            self._tavern_day = day
+            return Action(kind=ActionKind.GRIMY_ASK, args={"topic": "underground"},
+                          thought="ask Grimy about the Underground")
+        word = str(tavern.get("ug_password") or "")
+        if word and alignment < 0 and "underground_enter" in legal:
+            self._tavern_day = day
+            return Action(kind=ActionKind.UNDERGROUND_ENTER, args={"password": word},
+                          thought="enter the Underground")
+        rivals = [str(r.get("id")) for r in (getattr(obs, "rivals", None) or []) if isinstance(r, dict) and r.get("id")]
+        if not visit_due(hunting=False, picking_lane=True, last_day=int(self._tavern_day),
+                         day=day, gap_days=int(BOT_TAVERN_TRACE_GAP_DAYS)):
+            return None
+        summary = getattr(obs, "trade_summary", None)
+        profit = int(summary.get("total_profit_cr") or 0) if isinstance(summary, dict) else 0
+        spent = int(getattr(self, "_tavern_spent", 0))
+        cost = int(GRIMY_TRACE_COST)
+        if rivals and trace_due(
+            hunting=False, picking_lane=True, credits=int(obs.credits),
+            cost=cost, reserve=int(BOT_TAVERN_RESERVE),
+            last_day=int(self._tavern_day), day=day, gap_days=int(BOT_TAVERN_TRACE_GAP_DAYS),
+        ) and trace_fits_income(cost=cost, spent=spent, profit=profit) and "grimy_ask" in legal:
+            self._tavern_day = day
+            self._tavern_spent = spent + cost
+            return Action(kind=ActionKind.GRIMY_ASK, args={"topic": "trader", "target": rivals[0]},
+                          thought=f"ask Grimy where {rivals[0]} last docked")
+        if "tavern_talk" in legal:
+            self._tavern_day = day
+            return Action(kind=ActionKind.TAVERN_TALK, args={"text": "quiet in here"},
+                          thought="a word in the tavern")
+        return None
 
     def _port_dry(self, a: dict, day: int | None) -> bool:
         """A port we could not trade at today or yesterday (it restocks slowly)."""
@@ -107,6 +168,10 @@ class HeuristicAgent(BaseAgent):
         opened = self._open_the_bank(obs)
         if opened is not None:
             return opened
+
+        asked = self._maybe_tavern(obs)
+        if asked is not None:
+            return asked
 
         # At StarDock: consider outfitting & upgrading before heading out
         if obs.sector["id"] == 1 and obs.credits > 50_000:

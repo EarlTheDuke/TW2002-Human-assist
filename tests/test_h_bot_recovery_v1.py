@@ -274,6 +274,7 @@ def test_hr5_legacy_h_still_buys_the_scout(monkeypatch):
     from tests.test_bots_bank_economy_v1 import _h_obs
     from tw2k.agents.heuristic import HeuristicAgent
 
+    monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "legacy")
     monkeypatch.setattr(K, "H_RECOVERY_MODE", "legacy")
     asyncio, Observation = _h_obs()
     obs = Observation
