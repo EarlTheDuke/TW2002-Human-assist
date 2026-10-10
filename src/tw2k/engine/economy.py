@@ -247,5 +247,8 @@ def regenerate_ports(universe: Universe) -> None:
             continue
         for commodity, stock in port.stock.items():
             prod = int(port.productivity.get(commodity, 0) or 0)
-            gain = round(prod * K.PORT_REGEN_PER_DAY)
+            if K.port_open_full():
+                gain = round(int(stock.maximum) * K.PORT_REGEN_PER_DAY)
+            else:
+                gain = round(prod * K.PORT_REGEN_PER_DAY)
             stock.current = max(0, min(stock.maximum, stock.current + gain))
