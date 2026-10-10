@@ -219,6 +219,21 @@ def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
                 continue
             stockpile_value += qty * planet_stock_unit_price(commodity.value)
 
+    if (
+        K.genesis_score_fair()
+        and getattr(planet, "origin", "") == "genesis"
+        and int(planet.citadel_level or 0) == 0
+        and planet.stockpile
+    ):
+        _colonists, fuel, organics, equipment, _days = K.citadel_class_cost(planet.class_id.value, 1)
+        seeded = {"fuel_ore": fuel, "organics": organics, "equipment": equipment}
+        for commodity, qty in planet.stockpile.items():
+            excluded = min(int(qty), int(seeded.get(commodity.value, 0)))
+            if excluded > 0:
+                stockpile_value -= excluded * planet_stock_unit_price(commodity.value)
+        if stockpile_value < 0:
+            stockpile_value = 0
+
     if tax_basis:
         # The growth dividend keeps its pre-NET_WORTH_MODE basis, so the valuation change moves the
         # score only, not credits (FULLGAME_FIXES_V1.md).
