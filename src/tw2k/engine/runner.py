@@ -2759,6 +2759,19 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
             error=f"first hop unaffordable (need {hop_cost} turns, have {turns_left})",
         )
 
+    def _report_plot(ok: bool, error: str | None, on_clock: int, extra: int) -> ActionResult:
+        """Legacy leaves the hops on the clock and reports 0 turns.
+
+        Report mode takes those hops back off the clock and returns the sum.
+        apply_action adds that sum once, so the ship spends the same turns
+        and the caller can see them.
+        """
+        if K.action_result_report():
+            if on_clock:
+                player.turns_today -= on_clock
+            return ActionResult(ok=ok, error=error, turns_spent=on_clock + extra)
+        return ActionResult(ok=ok, error=error, turns_spent=extra)
+
     # Execute: walk path, consuming turns; stop at obstacle/out-of-turns
     turns_spent_total = 0
     hops_done = 0
@@ -2770,23 +2783,27 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
         if not sub.ok:
             last_error = sub.error or last_error
             if last_error == "interdicted by a planet":
+                stopped = {
+                    "target": target_id,
+                    "path": path,
+                    "executed": True,
+                    "hops_done": hops_done,
+                    "stopped": "interdict",
+                }
+                charged = turns_spent_total + int(sub.turns_spent or 0)
+                if K.action_result_report():
+                    stopped["turns_spent"] = charged
                 universe.emit(
                     EventKind.AUTOPILOT,
                     actor_id=pid,
                     sector_id=player.sector_id,
-                    payload={
-                        "target": target_id,
-                        "path": path,
-                        "executed": True,
-                        "hops_done": hops_done,
-                        "stopped": "interdict",
-                    },
+                    payload=stopped,
                     summary=(
                         f"{player.name} autopilot stopped by an interdict "
                         f"after {hops_done}/{len(path)} hops toward {target_id}"
                     ),
                 )
-                return ActionResult(ok=False, error=last_error, turns_spent=sub.turns_spent)
+                return _report_plot(False, last_error, turns_spent_total, int(sub.turns_spent or 0))
             break
         turns_spent_total += sub.turns_spent
         # apply turn cost incrementally to player so subsequent _handle_warp
@@ -2807,16 +2824,19 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     if hops_done == 0:
         return ActionResult(ok=False, error=last_error)
 
+    done = {"target": target_id, "path": path, "executed": True, "hops_done": hops_done}
+    if K.action_result_report():
+        done["turns_spent"] = turns_spent_total
     universe.emit(
         EventKind.AUTOPILOT,
         actor_id=pid,
         sector_id=player.sector_id,
-        payload={"target": target_id, "path": path, "executed": True, "hops_done": hops_done},
+        payload=done,
         summary=f"{player.name} autopilot — completed {hops_done}/{len(path)} hops toward {target_id}",
     )
-    # Roll back the manual increments so the outer apply_action accounting stays sane;
-    # we tell apply_action turns_spent=0 and we already updated turns_today directly.
-    return ActionResult(ok=True, turns_spent=0)
+    # Legacy: the hops are already on the clock, so the outer add must stay 0.
+    # Report mode hands the sum back and apply_action adds it once.
+    return _report_plot(True, None, turns_spent_total, 0)
 
 
 def _bfs_path(universe: Universe, src: int, dst: int, max_depth: int = 60) -> list[int]:

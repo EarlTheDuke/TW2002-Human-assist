@@ -36,6 +36,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from ..engine import Action, Observation
+from ..engine import constants as K
 from ..engine.observation import status_fields
 from .base import BaseAgent
 
@@ -86,6 +87,8 @@ class ExternalAgent(BaseAgent):
         self.turn_due: asyncio.Event = asyncio.Event()
         self.current_observation: Observation | None = None
         self.last_result: dict[str, Any] | None = None
+        # Set when record_result writes the engine verdict for the queued action.
+        self._result_ready: asyncio.Event = asyncio.Event()
         self.closed: bool = False
         # Wall-clock of the last authenticated harness request for this seat.
         # The runner uses it to tell an *attended* seat (a bot / the /bot
@@ -155,6 +158,7 @@ class ExternalAgent(BaseAgent):
             raise QueueFullError(f"seat {self.player_id} already has an action for turn {self.turn_seq}")        # Bots may never impersonate the copilot path.
         action.actor_kind = None
         self.note_post(200, getattr(action.kind, "value", str(action.kind)))
+        self._result_ready.clear()
         await self._queue.put(action)
         return self.turn_seq
 
@@ -184,12 +188,33 @@ class ExternalAgent(BaseAgent):
             "event_seqs": list(event_seqs),
             "recorded_at": time.time(),
         }
+        if K.action_result_report():
+            self.last_result["rejected"] = not bool(ok)
+            self.last_result["turns_spent"] = int(turns_used or 0)
+        self._result_ready.set()
         started = self.turn_started_at
         submitted = self._submitted_at
         self.log_action("result", ok=bool(ok), error=error or None, kind=action_kind, auto=auto,
                         think_s=round(submitted - started, 3) if (submitted and started and not auto) else None,
                         posts=self._posts, held=self.in_held_continuation, turns_used=turns_used,
                         macro=self._submitted_at is None and not auto)
+
+    async def wait_result(self, bound: int) -> dict[str, Any]:
+        """Engine verdict for the action just queued, or a pending marker."""
+        try:
+            await asyncio.wait_for(self._result_ready.wait(), timeout=K.ACTION_RESULT_WAIT_S)
+        except TimeoutError:
+            return {"ok": None, "rejected": None, "error": "result pending", "turns_spent": None}
+        last = self.last_result or {}
+        if int(last.get("turn_seq") or -1) != int(bound):
+            return {"ok": None, "rejected": None, "error": "result pending", "turns_spent": None}
+        ok = bool(last.get("ok"))
+        return {
+            "ok": ok,
+            "rejected": not ok,
+            "error": last.get("error"),
+            "turns_spent": int(last.get("turns_spent") or 0),
+        }
 
     # ---- run_route macro + slot digest (G6) ----------------------------------
 

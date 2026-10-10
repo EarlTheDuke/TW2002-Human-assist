@@ -1638,6 +1638,21 @@ def genesis_score_fair() -> bool:
     return GENESIS_SCORE_MODE == "fair"
 
 
+# action-result-v1. "legacy" answers POST /action as soon as the move is queued,
+# and a plotted route reports 0 turns after spending them. "report" waits for
+# the engine and adds result {ok, rejected, error, turns_spent}. The route
+# result names the turns the hops spent. Default stays legacy so the pin and
+# the digests do not move. POST /hold is unchanged. A failed haggle still costs
+# its turn.
+ACTION_RESULT_MODE = "legacy"   # "legacy" | "report"
+ACTION_RESULT_WAIT_S = 5.0
+
+
+def action_result_report() -> bool:
+    """True when the action POST includes the engine's ok or reject."""
+    return ACTION_RESULT_MODE == "report"
+
+
 def _nw_wave_share() -> int:
     return round(NW_WAVE_MID_PRICE * NW_HARDWARE_FRACTION)
 

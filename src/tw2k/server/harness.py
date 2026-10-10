@@ -485,7 +485,11 @@ def build_harness_router(runner) -> APIRouter:
             raise HTTPException(status_code=429, detail=str(exc)) from exc
         # Yield once so the scheduler can pick the action up before we answer.
         await asyncio.sleep(0)
-        return {"accepted": True, "player_id": player_id, "turn_seq": bound}
+        body: dict[str, Any] = {"accepted": True, "player_id": player_id, "turn_seq": bound}
+        if K.action_result_report():
+            # accepted stays "queued". result is what the engine then did.
+            body["result"] = await agent.wait_result(bound)
+        return body
 
     @router.post("/{player_id}/hold")
     async def hold(player_id: str, request: Request, body: HoldRequest) -> dict[str, Any]:
