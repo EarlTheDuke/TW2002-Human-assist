@@ -10,3 +10,5 @@ Live TWGS Big Bang opens ports at 100% of max and puts about 5% of that max back
 The old 35-95% random draw is still taken and thrown away, so the rest of the map does not shift.
 
 Deliberate: the flag is off. Turning it on is a Ben choice, because it changes every trade on day 1. Nothing else about prices moved in this slice.
+
+Suite on this commit's parent: 2470 passed, 2 failed, 1 skipped, 3241s. The two failures are the known flakes, WinError 10048 and the spectator-feed timeout. The six new tests passed. pb1 (full mode still opens empty) and pb2 (full regen follows productivity) were re-broken and restored.
