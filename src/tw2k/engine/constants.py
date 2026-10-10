@@ -1619,6 +1619,11 @@ def shield_unit_price(day: int) -> int:
 # 160..239 wave (Hekate, Misc_FigShieldPrices.txt), a fighter or shield counts NW_HARDWARE_FRACTION
 # of the wave midpoint - the same share of its price the hull gets. Other gear stays at cost.
 NET_WORTH_MODE = "tw2002"        # "tw2002" | "legacy"
+# "legacy": a genesis planet's opening citadel goods count in net worth.
+# "fair": those goods do not count until the citadel is at least level 1.
+# Default stays legacy so digests do not move. Game 5 scored a fresh class U
+# planet at about 308,600 from these goods alone.
+GENESIS_SCORE_MODE = "legacy"   # "legacy" | "fair"
 NW_HULL_FRACTION = 0.5           # hull counts half its StarDock price
 NW_HARDWARE_FRACTION = 0.5       # wave-priced fighters / shields: the hull's share
 NW_WAVE_MID_PRICE = 200          # wave midpoint: base 160 + amp 80 / 2
@@ -1626,6 +1631,11 @@ NW_WAVE_MID_PRICE = 200          # wave midpoint: base 160 + amp 80 / 2
 
 def net_worth_tw2002() -> bool:
     return NET_WORTH_MODE == "tw2002"
+
+
+def genesis_score_fair() -> bool:
+    """True when a fresh genesis planet does not score its seeded citadel goods."""
+    return GENESIS_SCORE_MODE == "fair"
 
 
 def _nw_wave_share() -> int:
