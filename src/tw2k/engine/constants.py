@@ -97,6 +97,15 @@ PORT_DEFAULT_MAX_STOCK = 3000
 PORT_REGEN_PER_DAY = 0.05  # standard 5% per day. A sample game used 1%. See TURNS_REGEN.md.
 # New ports open with this fraction of max stock. The changelog says 0%.
 PORT_START_STOCK_PERCENT = 0
+# "legacy": open at PORT_START_STOCK_PERCENT and regen productivity * PORT_REGEN_PER_DAY.
+# "full": open at 100% of max and regen that same 5% of max per day (live TWGS Big Bang).
+# Default stays legacy so existing digests and the pin do not move. Flip this on purpose.
+PORT_OPEN_STOCK_MODE = "legacy"  # "legacy" | "full"
+
+
+def port_open_full() -> bool:
+    """True when ports open full and each day puts back 5% of max stock."""
+    return PORT_OPEN_STOCK_MODE == "full"
 # First successful trade of a visit. A later trade in that sector costs 0.
 PORT_DOCK_TURN_COST = 1
 
