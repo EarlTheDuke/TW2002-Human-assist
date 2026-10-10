@@ -7,3 +7,5 @@ Game 5 scored a brand-new genesis planet at about 308,000 credits. A class U pla
 fair: while the planet came from genesis and the citadel is still level 0, the seeded level-1 goods do not add to net worth. Colonists still count. Goods produced above the seed still count. Once the citadel is level 1, the goods count again (the citadel spent them, or what remains is new stock).
 
 Deliberate: the flag is off. Turning it on changes who wins a day-cap game, so Ben chooses that.
+
+Suite on 381dbd4: 2474 passed, 3 failed, 1 skipped, 2920s. Two failures are the known flakes (WinError 10048 and the spectator-feed timeout). The third was the cockpit turn-timer test, a browser timeout, and it passed alone in 8s. The five new tests passed. The fair-mode hide was re-broken and restored.
