@@ -42,3 +42,5 @@ Same seats and settings. Rejected 0/0, exceptions 0, and save_load_day15 identic
 |---|---|---|
 | tw2002 | 8b76bd0f | P1 class O level 5, class L level 3, class H level 2, class O level 2. P3 class M level 5 and class L level 2. P5 class M level 2 and class U level 0. P2 class K level 0. P4 no planet. |
 | legacy | c7b08a7c | P1 four citadels at level 2 (O, H, M, M). P3 class M level 3, class M level 2, class K level 1. P5 class K level 1. P2 class U level 0. P4 class H level 0. |
+
+Suite on 44a0b7f: 2464 passed, 2 failed, 1 skipped, 22 warnings, 3960s. Both failures are the known flakes: WinError 10048 on the reserved live port, and the spectator-feed timeout. Plants cf1 and cf3 through cf13 were re-broken on 38b799b.
