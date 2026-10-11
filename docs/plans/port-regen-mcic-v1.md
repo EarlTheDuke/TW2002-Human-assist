@@ -7,3 +7,5 @@ Each port already stores its own MCIC and productivity (`universe.py`). A day st
 Live adds 5% of the max stock per day, and one visit cannot move more than that max. The ports still open empty. Opening them full stays on `PORT_OPEN_STOCK_MODE`, which is a different switch.
 
 MCIC stays the number already on the port. This slice does not change prices.
+
+Tier S on 5d85a01: four tests pass, planted bugs failed the live regen and the visit cap and were restored, the bank pin stayed 9b607d3dae940c0b1a69f6d7, and the 10-day games stayed 24863a3d and 98a47c8a with rejected 0/0.
