@@ -58,7 +58,7 @@ from ..engine.constants import (
     COMMODITY_BASE_PRICE,
     DENSITY_SCANNER_COST,
     GENESIS_SEED_COLONISTS,
-    GENESIS_TORPEDO_COST,
+    genesis_torpedo_cost,
     HOLO_SCANNER_COST,
     SCANNER_DENSITY,
     SCANNER_HOLO,
@@ -1367,7 +1367,7 @@ class SeatBrain:
             return True  # an inherited citadel is worth more than a fresh genesis seed
         if v.worlds():
             return False
-        genesis_slow = v.credits < GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0]
+        genesis_slow = v.credits < genesis_torpedo_cost() + CITADEL_TIER_COST[0][0]
         return genesis_slow or self.pressure is not None
 
     def _at_stardock(self, v: View):
@@ -1379,7 +1379,7 @@ class SeatBrain:
         reserve = self._citadel_reserve(v)
         l1_credits = CITADEL_TIER_COST[0][0]
         genesis_price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
-                            or GENESIS_TORPEDO_COST)
+                            or genesis_torpedo_cost())
         gplanets = v.genesis_planets()
         # Upgrade hull first: 75 holds make every later ferry trip ~4x cheaper in turns.
         # Deliberately NOT deferred under rival pressure: offline sweeps showed
@@ -1749,7 +1749,7 @@ class SeatBrain:
         # (seed 250925 N2 behind N1). Rich N2 (bot-growth) and N3 allocator still
         # raise; the fatter step only binds the mid-ladder fog case.
         have = len(v.genesis_planets())
-        step = GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0] + self.working_capital
+        step = genesis_torpedo_cost() + CITADEL_TIER_COST[0][0] + self.working_capital
         if info_tw2002() and not self.value_allocator:
             step += 100_000
         spare = self._plan_budget(v) - self._unfinished_l2_cash(v)
@@ -1900,7 +1900,7 @@ class SeatBrain:
             if not self._genesis_flight_today(v):
                 return None
             price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
-                        or GENESIS_TORPEDO_COST)
+                        or genesis_torpedo_cost())
             action = self._act("buy_equip", {"item": "genesis", "qty": 1},
                                f"buy genesis #{have + 1} ({price} cr, NW-neutral plus growth)")
         else:
@@ -1923,10 +1923,10 @@ class SeatBrain:
         return int(raw) >= flight
 
     def _genesis_affordable_now(self, v: View) -> bool:
-        price = GENESIS_TORPEDO_COST
+        price = genesis_torpedo_cost()
         if v.here == STARDOCK:
             price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
-                        or GENESIS_TORPEDO_COST)
+                        or genesis_torpedo_cost())
         keep = CITADEL_TIER_COST[0][0] + self.working_capital + self._unfinished_l2_cash(v)
         return v.credits - price >= keep
 
@@ -3190,7 +3190,7 @@ class SeatBrain:
         if (v.genesis_aboard == 0 and not v.genesis_planets() and v.ok("buy_equip")
                 and "genesis" in set(str(c) for c in v.choices("buy_equip", "item"))):
             price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
-                        or GENESIS_TORPEDO_COST)
+                        or genesis_torpedo_cost())
             keep = max(keep, price + int(CITADEL_TIER_COST[0][0]))
         # A torpedo or a world still needs its citadel cash. That is the next purchase, not spare.
         if v.genesis_aboard and not v.worlds():
@@ -3464,7 +3464,7 @@ class SeatBrain:
         if not (v.ok("buy_equip") and "genesis" in set(str(c) for c in v.choices("buy_equip", "item"))):
             return 0, False
         price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
-                    or GENESIS_TORPEDO_COST)
+                    or genesis_torpedo_cost())
         keep = CITADEL_TIER_COST[0][0] + self.working_capital + self._unfinished_l2_cash(v)
         from .bank_brain import nest_egg, purse, withdraw_amount
         balance = int(v.obs.get("bank_balance") or 0)
@@ -5718,8 +5718,8 @@ class SeatBrain:
         cash buffer never arrives). Pressure drops to the torpedo price itself.
         """
         if self.pressure is not None:
-            return GENESIS_TORPEDO_COST
-        return GENESIS_TORPEDO_COST + CITADEL_TIER_COST[0][0]
+            return genesis_torpedo_cost()
+        return genesis_torpedo_cost() + CITADEL_TIER_COST[0][0]
 
     def _needs_stardock(self, v: View) -> bool:
         gplanets = v.genesis_planets()
@@ -5732,7 +5732,7 @@ class SeatBrain:
             return self._cargotran_affordable(v) or (v.credits >= self._genesis_trip_cost(v)
                                                      and not self._no_genesis_hull(v))
         reserve = self._citadel_reserve(v)
-        if (len(gplanets) < self.target_planets and v.credits >= GENESIS_TORPEDO_COST + reserve
+        if (len(gplanets) < self.target_planets and v.credits >= genesis_torpedo_cost() + reserve
                 and not self._no_genesis_hull(v)):
             return True
         # Ferry trip: colonists still needed, holds mostly free (sell/stock goods first),

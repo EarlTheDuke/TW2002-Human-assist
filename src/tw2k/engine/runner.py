@@ -2373,12 +2373,12 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     prices = {
         "fighters": K.fighter_unit_price(day),
         "shields": shield_unit_price(day) if class0_tw2002() else 10,
-        "armid_mines": K.ARMID_MINE_COST,
-        "limpet_mines": K.LIMPET_MINE_COST,
+        "armid_mines": K.armid_mine_cost(),
+        "limpet_mines": K.limpet_mine_cost(),
         "atomic_mines": K.ATOMIC_MINE_COST,
         "photon_missiles": K.PHOTON_MISSILE_COST,
-        "ether_probes": K.ETHER_PROBE_COST,
-        "genesis": K.GENESIS_TORPEDO_COST,
+        "ether_probes": K.ether_probe_cost(),
+        "genesis": K.genesis_torpedo_cost(),
         "holds": K.hold_next_price(class_key, player.ship.holds, day),
         # Colonists: legacy StarDock shelf only. tw2002 uses terra_colonists.
         "colonists": K.COLONIST_PRICE,
