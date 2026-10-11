@@ -3035,3 +3035,17 @@ def rank_titles_live() -> bool:
     """True when the slice names the title ladders that are already on."""
     return RANK_TITLES_MODE == "live"
 
+
+# death-pod-v1. Appended so later slices can rebase cleanly.
+# "legacy": a pod keeps the Bible chart start (5 holds, nothing else) and loses
+# 10 percent of experience. Two pods a day, then Ship Destroyed.
+# "live": the fresh pod is the one seen in the clean game: 1 hold, 1 fighter,
+# 30 shields, a density scanner. Experience stays a 10 percent loss. The clean
+# game also showed a flat -25, which is not used.
+DEATH_POD_MODE = "legacy"  # "legacy" | "live"
+
+
+def death_pod_live() -> bool:
+    """True when a fresh pod uses the clean-game loadout."""
+    return DEATH_POD_MODE == "live"
+
