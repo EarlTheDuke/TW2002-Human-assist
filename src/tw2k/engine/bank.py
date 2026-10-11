@@ -35,6 +35,8 @@ def guard(universe: Universe, player: Player) -> str | None:
 
 
 def room(player: Player) -> int:
+    if K.bank_live():
+        return 1_000_000_000_000
     return max(0, int(K.BANK_MAX_BALANCE) - int(player.bank_balance))
 
 

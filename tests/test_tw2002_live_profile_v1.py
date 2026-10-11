@@ -3,6 +3,7 @@ import tw2k.engine.constants as K
 
 HELPERS = (
     "avoid_live",
+    "bank_live",
     "alignment_live",
     "assign_pool_fix_live",
     "citadel_days_live",
@@ -46,7 +47,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 37
+    assert len(names) == 38
     for name in names:
         assert getattr(K, name)() is False, name
 
