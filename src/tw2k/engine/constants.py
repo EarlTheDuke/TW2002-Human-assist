@@ -3123,3 +3123,14 @@ HAGGLE_LIVE_MODE = "legacy"  # "legacy" | "live"
 
 def haggle_live() -> bool:
     return HAGGLE_LIVE_MODE == "live" or tw2002_live_profile()
+
+
+# discovery-exp-daily-bonus-v1. Off, the first trader at a port still gets the
+# one point, and the midnight bonus still follows the rank switch.
+# On, each player gets one point the first time they trade at a port, and the
+# midnight point of experience and alignment is only for someone who spent a turn.
+DISCOVERY_EXP_MODE = "legacy"  # "legacy" | "live"
+
+
+def discovery_exp_live() -> bool:
+    return DISCOVERY_EXP_MODE == "live" or tw2002_live_profile()

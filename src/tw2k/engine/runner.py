@@ -330,9 +330,14 @@ def tick_day(universe: Universe) -> None:
     universe.day += 1
     for player in universe.players.values():
         # Live turns come back by the hour. A new day does not refill the day.
+        played = int(player.turns_today) > 0
         if not K.starting_package_live():
             player.turns_today = 0
-        if K.rank_tw2002() and player.alive:
+        if K.discovery_exp_live():
+            if player.alive and played:
+                player.experience = int(player.experience) + 1
+                player.alignment = int(player.alignment) + 1
+        elif K.rank_tw2002() and player.alive:
             # x3: the first login after midnight, +1 experience and +1 alignment.
             player.experience = int(player.experience) + K.xp_award("daily")
             player.alignment = int(player.alignment) + K.DAILY_ALIGNMENT
@@ -848,6 +853,7 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
 
     rng = _rng_for(universe)
     unused_port = not port.experience  # x2: nobody has traded here yet
+    first_for_me = pid not in port.experience
     psychic = K.hardware_tw2002() and int(getattr(player.ship, "psychic_probe", 0) or 0) > 0
     if psychic:
         xp_now = int(player.experience)
@@ -857,7 +863,7 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
     ok, total, unit, msg, realized = execute_trade(
         universe, player, port, commodity, qty, side, offered, rng
     )
-    if ok and unused_port:
+    if ok and (first_for_me if K.discovery_exp_live() else unused_port):
         _award_xp(universe, pid, "first_dock")
 
     if not ok:
