@@ -983,6 +983,11 @@ CITADEL_COST_MODE = "credits"
 CITADEL_FIDELITY_MODE = "tw2002"
 # Original citadel days times this scale, dropped to a whole number, never below 1.
 CITADEL_BUILD_TIME_SCALE = 0.25
+# "legacy": that scale stays, so a class M level 1 still takes 1 day.
+# "live": the v3.34b screen's raw count is used, so that level takes 4 days.
+# The S1 colonist count stays 1,000. The live screen said 1,000,000.
+# That conflict is not settled here.
+CITADEL_DAYS_MODE = "legacy"  # "legacy" | "live"
 # (colonists, fuel_ore, organics, equipment, raw_days) for levels 1..6.
 # Raw days are the original counts, before CITADEL_BUILD_TIME_SCALE.
 CITADEL_CLASS_COSTS: dict[str, tuple[tuple[int, int, int, int, int], ...]] = {
@@ -1080,9 +1085,17 @@ CITADEL_PERK: list[tuple[int, str, str]] = [
     (6, "Interdictor",
      "Interdictor: a hostile warp out fails when fuel is at least 500, the planet burns 500 fuel, and the sector cannon fires on what remains."),
 ]
+def citadel_days_live() -> bool:
+    """True when a citadel uses the screen's raw day count."""
+    return CITADEL_DAYS_MODE == "live"
+
+
 def citadel_build_days(raw_days: int) -> int:
-    """Original days times CITADEL_BUILD_TIME_SCALE, never below 1."""
-    return max(1, int(raw_days * CITADEL_BUILD_TIME_SCALE))
+    """Build days for one citadel level. Legacy scales them. Live keeps the raw count."""
+    days = int(raw_days)
+    if citadel_days_live():
+        return max(1, days)
+    return max(1, int(days * CITADEL_BUILD_TIME_SCALE))
 
 
 def citadel_class_cost(class_id: str, level: int) -> tuple[int, int, int, int, int]:
