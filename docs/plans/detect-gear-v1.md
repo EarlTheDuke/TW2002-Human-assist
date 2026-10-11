@@ -7,3 +7,5 @@ Density is already 2,000, the holographic scanner 25,000, the cloak 25,000, the 
 On, the disruptor costs 6,000, the psychic probe costs 10,000, and the ether probe costs 3,000.
 
 A planet scanner was listed at 30,000 and no effect was measured, so it is not sold. The 15,000 atomic item is a planet killer. This copy's detonator is a different weapon and stays 60,000.
+
+Tier S: three tests. The disruptor price plant and the ether price plant both failed, then both were restored. Bank pin 9b607d3dae940c0b1a69f6d7. 10-day digests 24863a3d and 98a47c8a, rejected 0/0.
