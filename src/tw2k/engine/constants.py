@@ -106,6 +106,40 @@ PORT_OPEN_STOCK_MODE = "legacy"  # "legacy" | "full"
 def port_open_full() -> bool:
     """True when ports open full and each day puts back 5% of max stock."""
     return PORT_OPEN_STOCK_MODE == "full"
+
+
+# "legacy": class 1 is BSS, class 6 is BBS, and StarDock (class 8) trades nothing.
+# "live": v3.34b letters for those two, and the sector-1 StarDock buys all three.
+# Class 7 stays BBB. Live class 7 is SSS and live class 8 is a normal BBB port,
+# but class 8 is the StarDock id until Ben moves StarDock off sector 1.
+# Class 0 still trades no commodities. Sol does not either. Class 9 stays the
+# built SSS port. Default stays legacy so the pin and the digests do not move.
+PORT_CLASS_MAP_MODE = "legacy"  # "legacy" | "live"
+
+_PORT_CLASS_TRADES_LIVE: dict[int, tuple[bool | None, bool | None, bool | None]] = {
+    0: (None, None, None),
+    1: (True, True, False),   # BBS
+    2: (True, False, True),   # BSB
+    3: (False, True, True),   # SBB
+    4: (False, False, True),  # SSB
+    5: (False, True, False),  # SBS, not seen live
+    6: (True, False, False),  # BSS
+    7: (True, True, True),    # BBB kept; see the plan
+    8: (True, True, True),    # StarDock buys fuel, organics, and equipment
+    9: (False, False, False),  # built SSS
+}
+
+
+def port_class_live() -> bool:
+    """True when class 1/6 letters match v3.34b and StarDock buys goods."""
+    return PORT_CLASS_MAP_MODE == "live"
+
+
+def port_class_trades(class_id: int) -> tuple[bool | None, bool | None, bool | None]:
+    """Buy/sell book for a class number. True means the port buys from the player."""
+    cid = int(class_id)
+    table = _PORT_CLASS_TRADES_LIVE if port_class_live() else PORT_CLASS_TRADES
+    return table.get(cid, (None, None, None))
 # First successful trade of a visit. A later trade in that sector costs 0.
 PORT_DOCK_TURN_COST = 1
 

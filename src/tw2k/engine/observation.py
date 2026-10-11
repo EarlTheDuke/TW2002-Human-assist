@@ -1537,7 +1537,7 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
             "sells": [c.value for c in Commodity if c != Commodity.COLONISTS and p.sells(c)],
             "stock": {},
         }
-        if p.class_id != PortClass.STARDOCK:
+        if p.class_id != PortClass.STARDOCK or _K.port_class_live():
             for commodity, s in p.stock.items():
                 # Parity S3: report the side the engine will actually accept.
                 # Federal (class 0) ports hold stock but neither buy nor sell

@@ -215,7 +215,16 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     in_fedspace = player.sector_id in K.FEDSPACE_SECTORS
     port = sector.port
     from .port_build import docks_closed
-    trading_port = port is not None and port.class_id != PortClass.STARDOCK and not docks_closed(port)
+    stardock_market = (
+        K.port_class_live()
+        and port is not None
+        and port.class_id == PortClass.STARDOCK
+    )
+    trading_port = (
+        port is not None
+        and (port.class_id != PortClass.STARDOCK or stardock_market)
+        and not docks_closed(port)
+    )
     other_ids = [pid for pid in sector.occupant_ids if pid != player_id and pid in universe.players]
     ferrengi_ids = [f.id for f in universe.ferrengi.values() if f.sector_id == sector.id and f.alive]
     alien_ids: list[str] = []

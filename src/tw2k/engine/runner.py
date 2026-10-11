@@ -818,7 +818,9 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
 def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     sector = universe.sectors[player.sector_id]
-    if sector.port is None or sector.port.class_id == PortClass.STARDOCK:
+    if sector.port is None or (
+        sector.port.class_id == PortClass.STARDOCK and not K.port_class_live()
+    ):
         return ActionResult(ok=False, error="no trading port in this sector")
     port = sector.port
     if getattr(port, "construction", None):
