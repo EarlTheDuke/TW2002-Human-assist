@@ -1332,9 +1332,9 @@ def sector_fighter_cap(has_planet: bool) -> int:
 
 
 def sector_has_planet_room(count: int) -> bool:
-    if not planet_limits_on():
-        return True
-    return int(count) < PLANETS_PER_SECTOR_CAP
+    if genesis_start_live() or planet_limits_on():
+        return int(count) < PLANETS_PER_SECTOR_CAP
+    return True
 
 
 def planet_colonist_room(class_id: str, current: int) -> int | None:
@@ -2897,6 +2897,18 @@ SHIP_ROSTER_SCOUT_FIGHTERS = 250
 def ship_roster_live() -> bool:
     """True when the yard uses the live ISS price and Scout fighter cap."""
     return SHIP_ROSTER_MODE == "live"
+
+
+# genesis-start-and-cap-v1. Appended so later slices can rebase cleanly.
+# "legacy": a new planet keeps the 2,500 colonist seed and the citadel goods.
+# "live": a new planet starts empty. A sector still holds at most 5 planets.
+# The torpedo price stays on the hardware-price switch.
+GENESIS_START_MODE = "legacy"  # "legacy" | "live"
+
+
+def genesis_start_live() -> bool:
+    """True when a genesis planet starts with no colonists and no goods."""
+    return GENESIS_START_MODE == "live"
 
 
 # terra-colonists-v1. Appended so later slices can rebase cleanly.
