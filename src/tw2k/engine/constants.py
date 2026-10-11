@@ -715,8 +715,23 @@ def ship_specs() -> dict[str, dict]:
     Legacy mode is the old ten-ship dict. Combat odds stay on that dict too.
     """
     if ECONOMY_SCALE_MODE == "tw2002":
-        return SHIP_SPECS_TW2002
-    return SHIP_SPECS
+        table = SHIP_SPECS_TW2002
+    else:
+        table = SHIP_SPECS
+    if not ship_roster_live():
+        return table
+    out = dict(table)
+    iss = out.get("imperial_starship")
+    if iss is not None:
+        iss = dict(iss)
+        iss["cost"] = SHIP_ROSTER_ISS_COST
+        out["imperial_starship"] = iss
+    scout = out.get("scout_marauder")
+    if scout is not None:
+        scout = dict(scout)
+        scout["max_fighters"] = SHIP_ROSTER_SCOUT_FIGHTERS
+        out["scout_marauder"] = scout
+    return out
 
 
 def hull_spec(class_key: str) -> dict | None:
@@ -730,6 +745,8 @@ def ship_cost(class_key: str) -> int:
     """What StarDock charges for this hull, before trade-in."""
     if class_key == ESCAPE_POD:
         return 0
+    if ship_roster_live() and class_key == "imperial_starship":
+        return SHIP_ROSTER_ISS_COST
     if ECONOMY_SCALE_MODE == "tw2002":
         return int(SHIP_COST_TW2002[class_key])
     return int(SHIP_SPECS[class_key]["cost"])
@@ -2866,4 +2883,18 @@ SHOP_PRICE_MODE = "legacy"  # "legacy" | "live"
 def shop_price_live() -> bool:
     """True when the next hold uses the flat 550 screen formula."""
     return SHOP_PRICE_MODE == "live"
+
+
+# ship-roster-stats-v1. Appended so later slices can rebase cleanly.
+# "legacy": the Bible chart, ISS at 339,000 and a Scout with 150 fighters.
+# "live": the screen, ISS at 329,000 and a Scout with 250 fighters.
+# The other named hulls already match that screen.
+SHIP_ROSTER_MODE = "legacy"  # "legacy" | "live"
+SHIP_ROSTER_ISS_COST = 329_000
+SHIP_ROSTER_SCOUT_FIGHTERS = 250
+
+
+def ship_roster_live() -> bool:
+    """True when the yard uses the live ISS price and Scout fighter cap."""
+    return SHIP_ROSTER_MODE == "live"
 
