@@ -3023,3 +3023,15 @@ def alignment_live() -> bool:
     """True when the slice names the alignment rules that are already on."""
     return ALIGNMENT_MODE == "live"
 
+
+# rank-titles-v1. Appended so later slices can rebase cleanly.
+# "legacy" and "live" use the same 22 good titles and 22 evil titles.
+# Thresholds double from 2 up to 4,194,304. Below 2 is Civilian.
+# The switch stays off.
+RANK_TITLES_MODE = "legacy"  # "legacy" | "live"
+
+
+def rank_titles_live() -> bool:
+    """True when the slice names the title ladders that are already on."""
+    return RANK_TITLES_MODE == "live"
+
