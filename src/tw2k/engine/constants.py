@@ -2938,3 +2938,26 @@ def colonists_per_hold() -> int:
         return TERRA_LIVE_PER_HOLD
     return 1
 
+
+# planet-production-ratios-v1. Appended so later slices can rebase cleanly.
+# "legacy": units per 100 colonists, and a flat 5 percent growth.
+# "live": colonists per unit from the S1 table. Below half the class cap
+# the same 5 percent is growth. Above half it is a die-off. The 1,500 fuel
+# example makes 500, so the ratio is not scaled by a second curve.
+PLANET_PROD_MODE = "legacy"  # "legacy" | "live"
+# Fuel, organics, equipment. 0 means that class does not make that good.
+PLANET_PROD_PER_UNIT = {
+    "M": (3, 7, 13),
+    "K": (2, 100, 500),
+    "L": (2, 5, 20),
+    "O": (20, 2, 100),
+    "C": (50, 100, 500),
+    "H": (1, 0, 500),
+    "U": (0, 0, 0),
+}
+
+
+def planet_prod_live() -> bool:
+    """True when a day uses the S1 colonists-per-unit table."""
+    return PLANET_PROD_MODE == "live"
+
