@@ -3095,3 +3095,18 @@ TW2002_LIVE_PROFILE = "legacy"  # "legacy" | "live"
 def tw2002_live_profile() -> bool:
     """True when a test game wants every live helper on at once."""
     return TW2002_LIVE_PROFILE == "live"
+
+
+# port-attack-defense-v1. Off, an attack aimed at "port" is still "target not found".
+# On, the attack asks first. Yes costs 5 alignment and the fighters you send.
+# Class 6 is the one measured port: rating 98, barrage 598 (REPORT2 section 8).
+# Other classes have no measured barrage, so the ship is not destroyed for them.
+PORT_ATTACK_MODE = "legacy"  # "legacy" | "live"
+PORT_ATTACK_ALIGNMENT = -5
+PORT_DEFENSE_RATING = {6: 98}
+PORT_LASER_BARRAGE = {6: 598}
+PORT_ATTACK_CONFIRM = "Attacks on Federation ports are prohibited! Are you sure?"
+
+
+def port_attack_live() -> bool:
+    return PORT_ATTACK_MODE == "live" or tw2002_live_profile()

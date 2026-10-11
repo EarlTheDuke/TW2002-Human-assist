@@ -1198,6 +1198,8 @@ def _handle_atomic_detonation(
 def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     target_id = action.args.get("target")
+    if K.port_attack_live() and str(target_id) == "port":
+        return _handle_port_attack(universe, pid, action)
     if target_id is None:
         return ActionResult(ok=False, error="attack requires target player id")
     if K.challenge_on() and live_challenge(universe, pid) is not None:
@@ -1261,6 +1263,61 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
         return ActionResult(ok=True, turns_spent=cost)
     _resolve_ship_combat(universe, pid, target)
     clear_ferrengi_encounter(universe, pid)
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _handle_port_attack(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Live only. One measured case: class 6 rating 98, barrage 598, alignment -5."""
+    player = universe.players[pid]
+    if player.planet_landed is not None:
+        return ActionResult(ok=False, error="must be in space to attack")
+    port = getattr(universe.sectors[player.sector_id], "port", None)
+    if port is None:
+        return ActionResult(ok=False, error="no port here")
+    if not action.args.get("confirm"):
+        return ActionResult(ok=False, error=K.PORT_ATTACK_CONFIRM)
+    qty, bad = _attack_qty(player, action)
+    if bad is not None:
+        return bad
+    cost = K.TURN_COST["attack"]
+    if player.turns_today + cost > player.turns_per_day:
+        return ActionResult(ok=False, error="out of turns")
+    player.alignment += K.PORT_ATTACK_ALIGNMENT
+    player.ship.fighters -= qty
+    cls = int(port.class_id)
+    barrage = K.PORT_LASER_BARRAGE.get(cls)
+    destroyed = False
+    if barrage is not None and barrage > int(player.ship.shields):
+        _destroy_ship(universe, pid, "port laser barrage")
+        destroyed = True
+    universe.emit(
+        EventKind.COMBAT,
+        actor_id=pid,
+        sector_id=player.sector_id,
+        payload={
+            "exchange_kind": "port",
+            "vs": "port",
+            "attacker": player.name,
+            "defender": "port",
+            "attacker_f": qty,
+            "attacker_s": int(player.ship.shields),
+            "defender_f": 0,
+            "defender_s": 0,
+            "attacker_losses": qty,
+            "defender_losses": 0,
+            "outcome": "destroyed" if destroyed else "survived",
+            "sector_claimed": False,
+            "planet_id": None,
+            "planet_name": "",
+            "citadel_level": 0,
+            "sent": qty,
+            "defender_fled": False,
+            "port_class": cls,
+            "defensive_rating": K.PORT_DEFENSE_RATING.get(cls),
+            "barrage": barrage,
+        },
+        summary=f"{player.name} attacked the port",
+    )
     return ActionResult(ok=True, turns_spent=cost)
 
 
