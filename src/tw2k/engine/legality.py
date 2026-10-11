@@ -722,7 +722,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             prices["holds"] = K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day)
         if K.hardware_tw2002() and at_stardock:
             prices["cloak"] = int(K.CLOAK_COST)
-            prices["mine_disruptor"] = int(K.DISRUPTOR_COST)
+            prices["mine_disruptor"] = int(K.disruptor_cost())
             prices.update(K.hardware_v2_prices())
             if not K.atomic_mines_sold():
                 prices.pop("atomic_mines", None)

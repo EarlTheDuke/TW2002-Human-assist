@@ -864,10 +864,10 @@ class Player(BaseModel):
             + self.ship.mines.get(MineType.ATOMIC, 0) * K.ATOMIC_MINE_COST
             + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
             + int(getattr(self.ship, "cloaks", 0) or 0) * getattr(K, "CLOAK_COST", 25_000)
-            + int(getattr(self.ship, "mine_disruptors", 0) or 0) * getattr(K, "DISRUPTOR_COST", 40_000)
+            + int(getattr(self.ship, "mine_disruptors", 0) or 0) * K.disruptor_cost()
             + int(getattr(self.ship, "corbomite", 0) or 0) * getattr(K, "CORBOMITE_COST", 1_000)
             + int(getattr(self.ship, "marker_beacons", 0) or 0) * getattr(K, "BEACON_COST", 100)
-            + int(getattr(self.ship, "psychic_probe", 0) or 0) * getattr(K, "PSYCHIC_PROBE_COST", 2_500)
+            + int(getattr(self.ship, "psychic_probe", 0) or 0) * K.psychic_probe_cost()
             + int(getattr(self.ship, "atomic_detonators", 0) or 0) * getattr(K, "ATOMIC_DETONATOR_COST", 60_000)
             + self.ship.ether_probes * K.ether_probe_cost()
             + self.ship.genesis * K.genesis_torpedo_cost()
