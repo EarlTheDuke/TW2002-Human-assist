@@ -1238,12 +1238,18 @@ def _challenge_brief(universe: Universe, player: Any, legal: list[dict[str, Any]
 def status_fields(obs: Observation) -> dict[str, Any]:
     """One unambiguous status line for a seat (grokbot-player G6).
 
-    Built from the seat's own Observation only: rank is by net worth against
-    `rivals`, whose net worth is already public to every seat.
+    Built from the seat's own Observation only. Legacy ranks by net worth.
+    Live ranks by experience. Net worth stays on the observation either way.
     """
+    from . import constants as K
+
     rivals = obs.rivals or []
-    own = obs.net_worth or 0
-    rank = 1 + sum(1 for r in rivals if (r.get("net_worth") or 0) > own)
+    if K.exp_score_live():
+        own = int(obs.experience or 0)
+        rank = 1 + sum(1 for r in rivals if int(r.get("experience") or 0) > own)
+    else:
+        own = obs.net_worth or 0
+        rank = 1 + sum(1 for r in rivals if (r.get("net_worth") or 0) > own)
     seats = len(rivals) + 1
     # The day counter ticks past the last day when the match ends ("Day 3 of 2").
     day = min(int(obs.day), int(obs.max_days)) if obs.max_days else int(obs.day)

@@ -111,10 +111,22 @@ def _credential(request: Request, player_id: str | None = None) -> str:
 
 
 def final_standings(universe, seat: str | None = None) -> dict[str, Any]:
-    """Public end-of-match table (G6). Net worth is already public via `rivals`."""
-    rows = [{"seat": p.id, "name": p.name, "net_worth": full_net_worth(universe, p) if p.alive else 0,
-             "alive": p.alive} for p in universe.players.values()]
-    rows.sort(key=lambda r: r["net_worth"], reverse=True)
+    """Public end-of-match table (G6). Net worth stays on every row."""
+    rows = []
+    for p in universe.players.values():
+        row = {
+            "seat": p.id,
+            "name": p.name,
+            "net_worth": full_net_worth(universe, p) if p.alive else 0,
+            "alive": p.alive,
+        }
+        if K.exp_score_live():
+            row["experience"] = int(p.experience)
+        rows.append(row)
+    if K.exp_score_live():
+        rows.sort(key=lambda r: (r["experience"], r["net_worth"]), reverse=True)
+    else:
+        rows.sort(key=lambda r: r["net_worth"], reverse=True)
     for i, r in enumerate(rows, start=1):
         r["rank"] = i
     win = next((r for r in rows if r["seat"] == universe.winner_id), None)

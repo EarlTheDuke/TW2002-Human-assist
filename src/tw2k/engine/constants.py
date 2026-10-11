@@ -1570,6 +1570,8 @@ FIGHTER_ALIGN_DIVISOR = {"opposite": 5000, "same": 10000}           # a3 (Gold/C
 
 
 def xp_award(key: str) -> int:
+    if key == "warp" and exp_score_live():
+        return 0
     table = XP_AWARDS_TW2002 if rank_tw2002() else XP_AWARDS
     return int(table.get(key, 0))
 
@@ -2994,4 +2996,17 @@ def citadel_perks() -> list[tuple[int, str, str]]:
             )
         out.append((level, name, text))
     return out
+
+
+# exp-score-v1. Appended so later slices can rebase cleanly.
+# "legacy": the rank line and the end table follow net worth. A warp still
+# uses the rank table (0 on the tw2002 table, 1 on the old table).
+# "live": the rank line and the end table follow experience. Net worth stays
+# on the row as the second column. A warp gives 0 experience either way.
+EXP_SCORE_MODE = "legacy"  # "legacy" | "live"
+
+
+def exp_score_live() -> bool:
+    """True when the public rank follows experience, not net worth."""
+    return EXP_SCORE_MODE == "live"
 
