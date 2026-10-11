@@ -102,7 +102,7 @@ FEDSPACE_DEPLOY_MODE = "legacy"  # "legacy" | "live"
 
 def fedspace_deploy_live() -> bool:
     """True when a FedSpace fighter drop is annihilated instead of refused."""
-    return FEDSPACE_DEPLOY_MODE == "live"
+    return FEDSPACE_DEPLOY_MODE == "live" or tw2002_live_profile()
 
 
 def fedspace_tenth_loss(count: int) -> int:
@@ -149,7 +149,7 @@ _PORT_CLASS_TRADES_LIVE: dict[int, tuple[bool | None, bool | None, bool | None]]
 
 def port_class_live() -> bool:
     """True when class 1/6 letters match v3.34b and StarDock buys goods."""
-    return PORT_CLASS_MAP_MODE == "live"
+    return PORT_CLASS_MAP_MODE == "live" or tw2002_live_profile()
 
 
 def port_class_trades(class_id: int) -> tuple[bool | None, bool | None, bool | None]:
@@ -209,7 +209,7 @@ PORT_HAGGLE_LIVE_END_PCT = 130
 
 def haggle_window_live() -> bool:
     """True when a counter has to sit inside the live +8% / -8% band."""
-    return HAGGLE_WINDOW_MODE == "live"
+    return HAGGLE_WINDOW_MODE == "live" or tw2002_live_profile()
 
 
 # --- Ships --------------------------------------------------------------------
@@ -333,7 +333,7 @@ LIVE_TURN_RECOVERY_DEN = 24 * 3600
 
 def starting_package_live() -> bool:
     """True when a new game uses the TWGS opening pocket."""
-    return STARTING_PACKAGE_MODE == "live"
+    return STARTING_PACKAGE_MODE == "live" or tw2002_live_profile()
 
 
 def opening_loadout(spec_credits: int, spec_turns: int, slot: int) -> tuple[int, int, int]:
@@ -403,7 +403,7 @@ OWN_PLANET_TURN_MODE = "legacy"  # "legacy" | "live"
 
 def own_planet_turn_live() -> bool:
     """True when an owned-planet landing is free and the turn is taken on liftoff."""
-    return OWN_PLANET_TURN_MODE == "live"
+    return OWN_PLANET_TURN_MODE == "live" or tw2002_live_profile()
 
 
 def land_turn_cost(owned_by_you: bool) -> int:
@@ -765,7 +765,7 @@ TRADE_IN_FRACTION_LIVE = 0.90
 
 def trade_in_live() -> bool:
     """True when the yard pays 90% of the hull and hands back a surplus."""
-    return TRADE_IN_MODE == "live"
+    return TRADE_IN_MODE == "live" or tw2002_live_profile()
 
 
 def trade_in_fraction() -> float:
@@ -965,7 +965,7 @@ ARMID_DAMAGE_LIVE = 30
 
 def hardware_price_live() -> bool:
     """True when the shop uses the live armid, limpet, genesis, and ether prices."""
-    return HARDWARE_PRICE_MODE == "live"
+    return HARDWARE_PRICE_MODE == "live" or tw2002_live_profile()
 
 
 def armid_mine_cost() -> int:
@@ -1143,7 +1143,7 @@ CITADEL_PERK: list[tuple[int, str, str]] = [
 ]
 def citadel_days_live() -> bool:
     """True when a citadel uses the screen's raw day count."""
-    return CITADEL_DAYS_MODE == "live"
+    return CITADEL_DAYS_MODE == "live" or tw2002_live_profile()
 
 
 def citadel_build_days(raw_days: int) -> int:
@@ -1208,7 +1208,7 @@ PLANET_SHIELD_ODDS = 20
 
 def planet_shields_active() -> bool:
     """True when stocked shields fight only at citadel level 5 and up."""
-    return PLANET_SHIELD_ACTIVE_MODE == "live"
+    return PLANET_SHIELD_ACTIVE_MODE == "live" or tw2002_live_profile()
 
 
 def fighting_planet_shields(planet) -> int:
@@ -2776,7 +2776,7 @@ ASSIGN_POOL_FIX_MODE = "legacy"  # "legacy" | "live"
 
 def assign_pool_fix_live() -> bool:
     """True when assign_colonists to=colonists stays in the colonists pool."""
-    return ASSIGN_POOL_FIX_MODE == "live"
+    return ASSIGN_POOL_FIX_MODE == "live" or tw2002_live_profile()
 
 
 # hold-endpoint-rules-v1. Appended so later slices can rebase cleanly.
@@ -2794,7 +2794,7 @@ HOLD_RULES_NOTE = (
 
 def hold_rules_live() -> bool:
     """True when the rules text names POST /hold and ok versus rejected."""
-    return HOLD_RULES_MODE == "live"
+    return HOLD_RULES_MODE == "live" or tw2002_live_profile()
 
 
 # planet-nw-construction-v1. Appended so later slices can rebase cleanly.
@@ -2805,7 +2805,7 @@ PLANET_NW_MODE = "legacy"  # "legacy" | "live"
 
 def planet_nw_live() -> bool:
     """True when a citadel under construction keeps the goods it already spent."""
-    return PLANET_NW_MODE == "live"
+    return PLANET_NW_MODE == "live" or tw2002_live_profile()
 
 
 # trade-dock-turn-v1. Appended so later slices can rebase cleanly.
@@ -2816,7 +2816,7 @@ TRADE_TURN_MODE = "legacy"  # "legacy" | "live"
 
 def trade_turn_live() -> bool:
     """True when the dock rule is selected by name. The numbers match legacy."""
-    return TRADE_TURN_MODE == "live"
+    return TRADE_TURN_MODE == "live" or tw2002_live_profile()
 
 
 def trade_visit_free() -> bool:
@@ -2832,7 +2832,7 @@ WARP_COST_MODE = "legacy"  # "legacy" | "live"
 
 def warp_cost_live() -> bool:
     """True when the per-ship warp cost is selected by name. The numbers match legacy."""
-    return WARP_COST_MODE == "live"
+    return WARP_COST_MODE == "live" or tw2002_live_profile()
 
 
 def warp_turns(class_key: str) -> int:
@@ -2859,7 +2859,7 @@ PORT_PRICE_BUY_FULL_MULT = 0.75   # 1.45 - 0.70 at a full port
 
 def port_price_live() -> bool:
     """True when quotes use the live full-port anchors."""
-    return PORT_PRICE_MODE == "live"
+    return PORT_PRICE_MODE == "live" or tw2002_live_profile()
 
 
 # port-regen-mcic-v1. Appended so later slices can rebase cleanly.
@@ -2871,7 +2871,7 @@ PORT_REGEN_MODE = "legacy"  # "legacy" | "live"
 
 def port_regen_live() -> bool:
     """True when a day puts back 5 percent of max stock."""
-    return PORT_REGEN_MODE == "live"
+    return PORT_REGEN_MODE == "live" or tw2002_live_profile()
 
 
 # hold-fighter-shield-price-v1. Appended so later slices can rebase cleanly.
@@ -2884,7 +2884,7 @@ SHOP_PRICE_MODE = "legacy"  # "legacy" | "live"
 
 def shop_price_live() -> bool:
     """True when the next hold uses the flat 550 screen formula."""
-    return SHOP_PRICE_MODE == "live"
+    return SHOP_PRICE_MODE == "live" or tw2002_live_profile()
 
 
 # ship-roster-stats-v1. Appended so later slices can rebase cleanly.
@@ -2898,7 +2898,7 @@ SHIP_ROSTER_SCOUT_FIGHTERS = 250
 
 def ship_roster_live() -> bool:
     """True when the yard uses the live ISS price and Scout fighter cap."""
-    return SHIP_ROSTER_MODE == "live"
+    return SHIP_ROSTER_MODE == "live" or tw2002_live_profile()
 
 
 # genesis-start-and-cap-v1. Appended so later slices can rebase cleanly.
@@ -2910,7 +2910,7 @@ GENESIS_START_MODE = "legacy"  # "legacy" | "live"
 
 def genesis_start_live() -> bool:
     """True when a genesis planet starts with no colonists and no goods."""
-    return GENESIS_START_MODE == "live"
+    return GENESIS_START_MODE == "live" or tw2002_live_profile()
 
 
 # terra-colonists-v1. Appended so later slices can rebase cleanly.
@@ -2924,7 +2924,7 @@ TERRA_LIVE_PER_HOLD = 1_000
 
 def terra_colonist_live() -> bool:
     """True when Terra opens at 30,000 and a hold carries 1,000 colonists."""
-    return TERRA_COLONIST_MODE == "live"
+    return TERRA_COLONIST_MODE == "live" or tw2002_live_profile()
 
 
 def terra_start_pool() -> int:
@@ -2961,7 +2961,7 @@ PLANET_PROD_PER_UNIT = {
 
 def planet_prod_live() -> bool:
     """True when a day uses the S1 colonists-per-unit table."""
-    return PLANET_PROD_MODE == "live"
+    return PLANET_PROD_MODE == "live" or tw2002_live_profile()
 
 
 # citadel-perks-live-v1. Appended so later slices can rebase cleanly.
@@ -2975,7 +2975,7 @@ CITADEL_PERK_MODE = "legacy"  # "legacy" | "live"
 
 def citadel_perk_live() -> bool:
     """True when citadel perks use the level gates from the handbook."""
-    return CITADEL_PERK_MODE == "live"
+    return CITADEL_PERK_MODE == "live" or tw2002_live_profile()
 
 
 def citadel_perks() -> list[tuple[int, str, str]]:
@@ -3008,7 +3008,7 @@ EXP_SCORE_MODE = "legacy"  # "legacy" | "live"
 
 def exp_score_live() -> bool:
     """True when the public rank follows experience, not net worth."""
-    return EXP_SCORE_MODE == "live"
+    return EXP_SCORE_MODE == "live" or tw2002_live_profile()
 
 
 # alignment-v1. Appended so later slices can rebase cleanly.
@@ -3021,7 +3021,7 @@ ALIGNMENT_MODE = "legacy"  # "legacy" | "live"
 
 def alignment_live() -> bool:
     """True when the slice names the alignment rules that are already on."""
-    return ALIGNMENT_MODE == "live"
+    return ALIGNMENT_MODE == "live" or tw2002_live_profile()
 
 
 # rank-titles-v1. Appended so later slices can rebase cleanly.
@@ -3033,7 +3033,7 @@ RANK_TITLES_MODE = "legacy"  # "legacy" | "live"
 
 def rank_titles_live() -> bool:
     """True when the slice names the title ladders that are already on."""
-    return RANK_TITLES_MODE == "live"
+    return RANK_TITLES_MODE == "live" or tw2002_live_profile()
 
 
 # death-pod-v1. Appended so later slices can rebase cleanly.
@@ -3047,7 +3047,7 @@ DEATH_POD_MODE = "legacy"  # "legacy" | "live"
 
 def death_pod_live() -> bool:
     """True when a fresh pod uses the clean-game loadout."""
-    return DEATH_POD_MODE == "live"
+    return DEATH_POD_MODE == "live" or tw2002_live_profile()
 
 
 # ship-combat-odds-v1. Appended so later slices can rebase cleanly.
@@ -3059,7 +3059,7 @@ COMBAT_ODDS_MODE = "legacy"  # "legacy" | "live"
 
 def combat_odds_live() -> bool:
     """True when the slice names the per-ship odds that are already on."""
-    return COMBAT_ODDS_MODE == "live"
+    return COMBAT_ODDS_MODE == "live" or tw2002_live_profile()
 
 
 # corp-rules-v2. Appended so later slices can rebase cleanly.
@@ -3071,7 +3071,7 @@ CORP_RULES_V2_MODE = "legacy"  # "legacy" | "live"
 
 def corp_rules_v2_live() -> bool:
     """True when the slice names the corporation rules that are already on."""
-    return CORP_RULES_V2_MODE == "live"
+    return CORP_RULES_V2_MODE == "live" or tw2002_live_profile()
 
 
 # cockpit-api-parity-v1. Appended so later slices can rebase cleanly.
@@ -3082,5 +3082,16 @@ COCKPIT_PARITY_MODE = "legacy"  # "legacy" | "live"
 
 def cockpit_parity_live() -> bool:
     """True when a later slice wants the parity screen called out as live."""
-    return COCKPIT_PARITY_MODE == "live"
+    return COCKPIT_PARITY_MODE == "live" or tw2002_live_profile()
 
+
+# tw2002-live-profile-v1. Appended so later slices can rebase cleanly.
+# One switch for a test game. Off, every flag above stays as written.
+# On, each live helper above is true together. The stored values stay
+# legacy, so the pin does not move.
+TW2002_LIVE_PROFILE = "legacy"  # "legacy" | "live"
+
+
+def tw2002_live_profile() -> bool:
+    """True when a test game wants every live helper on at once."""
+    return TW2002_LIVE_PROFILE == "live"
