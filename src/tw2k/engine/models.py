@@ -130,6 +130,9 @@ class PortClass(int, Enum):
     def code(self) -> str:
         codes = {0: "FED", 1: "BSS", 2: "BSB", 3: "SBB", 4: "SSB",
                  5: "SBS", 6: "BBS", 7: "BBB", 8: "STARDOCK", 9: "SSS"}
+        if K.port_class_live():
+            codes[1] = "BBS"
+            codes[6] = "BSS"
         return codes[self.value]
 
 
@@ -405,7 +408,7 @@ class Port(BaseModel):
         return self.class_id.code
 
     def buys(self, commodity: Commodity) -> bool:
-        trades = K.PORT_CLASS_TRADES.get(int(self.class_id), (None, None, None))
+        trades = K.port_class_trades(int(self.class_id))
         idx = {Commodity.FUEL_ORE: 0, Commodity.ORGANICS: 1, Commodity.EQUIPMENT: 2}
         if commodity not in idx:
             return False
@@ -413,7 +416,7 @@ class Port(BaseModel):
         return entry is True
 
     def sells(self, commodity: Commodity) -> bool:
-        trades = K.PORT_CLASS_TRADES.get(int(self.class_id), (None, None, None))
+        trades = K.port_class_trades(int(self.class_id))
         idx = {Commodity.FUEL_ORE: 0, Commodity.ORGANICS: 1, Commodity.EQUIPMENT: 2}
         if commodity not in idx:
             return False

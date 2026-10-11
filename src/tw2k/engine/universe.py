@@ -194,7 +194,7 @@ def _make_port(rng: random.Random, class_id: PortClass, sector_id: int, seed: in
         1: Commodity.ORGANICS,
         2: Commodity.EQUIPMENT,
     }
-    trades = K.PORT_CLASS_TRADES[int(class_id)]
+    trades = K.port_class_trades(int(class_id))
     mcic: dict[Commodity, int] = {}
     productivity: dict[Commodity, int] = {}
     for idx, deal in enumerate(trades):
@@ -333,11 +333,18 @@ def generate_universe(config: GameConfig) -> Universe:
         x, y = layout[i]
         sectors[i] = Sector(id=i, warps=warps_list, x=x, y=y)
 
-    # Place StarDock
+    # Place StarDock. Sector 1 stays the StarDock until Ben says otherwise.
+    # Live mode gives that port a buy-all book from a side rng, so the main
+    # stream (and every later port) stays on the same draws.
     sectors[K.STARDOCK_SECTOR].port = Port(
         class_id=PortClass.STARDOCK,
         name="Sol-1 StarDock",
     )
+    if K.port_class_live():
+        side = random.Random(f"tw2k-stardock-book:{config.seed}")
+        booked = _make_port(side, PortClass.STARDOCK, K.STARDOCK_SECTOR, config.seed)
+        booked.name = "Sol-1 StarDock"
+        sectors[K.STARDOCK_SECTOR].port = booked
 
     # Place Federal ports in FedSpace (excluding sector 1)
     for fed_sid in K.FEDSPACE_SECTORS:

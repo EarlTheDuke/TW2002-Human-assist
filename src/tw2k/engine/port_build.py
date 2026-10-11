@@ -89,7 +89,7 @@ def _special(port: Port) -> bool:
 
 
 def _trades(port: Port, commodity: Commodity) -> bool:
-    trades = K.PORT_CLASS_TRADES.get(int(port.class_id))
+    trades = K.port_class_trades(int(port.class_id))
     if not trades:
         return False
     idx = {Commodity.FUEL_ORE: 0, Commodity.ORGANICS: 1, Commodity.EQUIPMENT: 2}[commodity]
@@ -264,11 +264,21 @@ def handle_port_upgrade(universe: Universe, pid: str, action: Action) -> ActionR
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def build_class(code: str) -> PortClass:
+    """Letter book to class id. Live mode swaps BBS and BSS so the number matches v3.34b."""
+    if K.port_class_live() and code == "BBS":
+        return PortClass.CLASS_1_BSS
+    if K.port_class_live() and code == "BSS":
+        return PortClass.CLASS_6_BBS
+    return CODE_TO_CLASS[code]
+
+
 def class_buys(code: str) -> set[str]:
-    pc = CODE_TO_CLASS.get(code)
-    if pc is None:
+    try:
+        pc = build_class(code)
+    except KeyError:
         return set()
-    trades = K.PORT_CLASS_TRADES.get(int(pc), (None, None, None))
+    trades = K.port_class_trades(int(pc))
     return {c.value for c, deal in zip(_COMMODITY_ORDER, trades, strict=True) if deal is True}
 
 
@@ -447,7 +457,7 @@ def handle_port_build(universe: Universe, pid: str, action: Action) -> ActionRes
     player.credits -= price
     days = int(K.PORT_BUILD_DAYS[code])
     port = Port(
-        class_id=CODE_TO_CLASS[code],
+        class_id=build_class(code),
         name=name,
         construction={
             "code": code,
@@ -488,14 +498,14 @@ def _open_port(universe: Universe, sector_id: int, port: Port, cons: dict) -> No
     prod = int(K.PORT_BUILD_START_PRODUCTIVITY)
     holds = prod * int(K.PORT_UPGRADE_HOLDS_PER_UNIT)
     pct = int(K.PORT_BUILD_START_STOCK_PCT)
-    pc = CODE_TO_CLASS[code]
+    pc = build_class(code)
     port.class_id = pc
     port.construction = None
     port.credits = 0
     port.stock = {}
     port.productivity = {}
     port.mcic = {}
-    trades = K.PORT_CLASS_TRADES[int(pc)]
+    trades = K.port_class_trades(int(pc))
     for commodity, deal in zip(_COMMODITY_ORDER, trades, strict=True):
         if deal is None:
             continue
