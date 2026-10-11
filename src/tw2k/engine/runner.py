@@ -272,6 +272,54 @@ def _seqs_after(events: list, before_seq: int) -> list[int]:
     return [e.seq for e in events[i:]]
 
 
+def grant_starting_planet(universe: Universe, player) -> None:
+    """A free class M world for this seat. Stock is empty.
+
+    The live screen showed 191,000 colonists and did not say which pool, so
+    they sit unassigned and do not produce. The live planet was 10 hops away
+    (sector 557 in that session). Where a new game places it was not published,
+    so this one is in the seat's start sector. UNVERIFIED placement.
+    """
+    from .models import Commodity, Planet, PlanetClass
+
+    pid = int(getattr(universe, "next_planet_id", 0) or 0)
+    if pid <= 0:
+        pid = max(universe.planets, default=0) + 1
+    planet = Planet(
+        id=pid,
+        sector_id=player.sector_id,
+        name=f"{player.name} Home",
+        class_id=PlanetClass.M,
+        owner_id=player.id,
+        origin="other",
+        colonists={
+            Commodity.FUEL_ORE: 0,
+            Commodity.ORGANICS: 0,
+            Commodity.EQUIPMENT: 0,
+            Commodity.COLONISTS: K.LIVE_STARTING_COLONISTS,
+        },
+    )
+    universe.planets[pid] = planet
+    universe.sectors[player.sector_id].planet_ids.append(pid)
+    universe.next_planet_id = pid + 1
+
+
+def recover_turns(player, elapsed_s: float) -> int:
+    """Give back turns for wall-clock time, capped at a full day.
+
+    Legacy does nothing: the day tick still refills. Live adds the pro-rata
+    of 250 turns per day and never goes past a full allowance.
+    """
+    if not K.starting_package_live():
+        return 0
+    if elapsed_s <= 0:
+        return 0
+    gain = int(elapsed_s) * K.LIVE_TURN_RECOVERY_NUM // K.LIVE_TURN_RECOVERY_DEN
+    applied = min(gain, max(0, int(player.turns_today)))
+    player.turns_today -= applied
+    return applied
+
+
 def tick_day(universe: Universe) -> None:
     """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets."""
     _overnight_retreats(universe)
@@ -281,7 +329,9 @@ def tick_day(universe: Universe) -> None:
         tow_sweep(universe, "retreat")
     universe.day += 1
     for player in universe.players.values():
-        player.turns_today = 0
+        # Live turns come back by the hour. A new day does not refill the day.
+        if not K.starting_package_live():
+            player.turns_today = 0
         if K.rank_tw2002() and player.alive:
             # x3: the first login after midnight, +1 experience and +1 alignment.
             player.experience = int(player.experience) + K.xp_award("daily")

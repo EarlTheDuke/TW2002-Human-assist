@@ -691,6 +691,17 @@ class MatchRunner:
                     continue
 
                 try:
+                    if K.starting_package_live():
+                        from ..engine.runner import recover_turns
+                        clock = getattr(self, "_turn_clock", None)
+                        if clock is None:
+                            clock = {}
+                            self._turn_clock = clock
+                        now = time.time()
+                        prev = clock.get(player.id)
+                        if prev is not None:
+                            recover_turns(player, now - prev)
+                        clock[player.id] = now
                     obs = build_observation(universe, agent.player_id)
                     # Human slots: emit HUMAN_TURN_START so the /play UI
                     # knows "it's your move" before the scheduler blocks
@@ -1188,7 +1199,7 @@ class MatchRunner:
                 start_sid = start_order[i % len(start_order)]
             # Tiny deterministic loadout variance per player slot so two
             # otherwise-identical LLMs don't produce bit-for-bit identical plays.
-            credit_skew = (i * 317) % 2001 - 1000  # ±1000 cr
+            # The ±1000 skew lives in opening_loadout and is skipped on the live pocket.
             ship = Ship()
             # Respect the per-match starting_credits override from GameConfig
             # so `tw2k serve --starting-credits 75000` actually changes the
@@ -1199,11 +1210,13 @@ class MatchRunner:
             # back to K.STARTING_TURNS_PER_DAY = 1000, which meant day 1 never
             # actually ended in watchable sanity runs.
             base_tpd = getattr(spec.config, "turns_per_day", K.STARTING_TURNS_PER_DAY)
+            credits, turns_per_day, fighters = K.opening_loadout(base_credits, base_tpd, i)
+            ship.fighters = fighters
             player = Player(
                 id=ag.player_id,
                 name=ag.name,
-                credits=base_credits + credit_skew,
-                turns_per_day=base_tpd,
+                credits=credits,
+                turns_per_day=turns_per_day,
                 ship=ship,
                 sector_id=start_sid,
                 agent_kind=ag.kind,
@@ -1211,6 +1224,9 @@ class MatchRunner:
             )
             universe.players[ag.player_id] = player
             universe.sectors[start_sid].occupant_ids.append(ag.player_id)
+            if K.starting_package_live():
+                from ..engine.runner import grant_starting_planet
+                grant_starting_planet(universe, player)
             # Agents start knowing their immediate neighborhood (current sector
             # + adjacent warps and any ports there), not just "sector 1". This
             # removes the awkward "scan FedSpace first" opening move.
