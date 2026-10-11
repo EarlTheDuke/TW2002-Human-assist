@@ -36,3 +36,5 @@ P2. Flavor the screen does not offer: tavern_announce, tavern_talk, tavern_graff
 ## Next
 
 cockpit-fixes-v1 should put a button on every P0 and P1 verb. P2 can wait. The switch for any behavior change is COCKPIT_FIX_MODE, and it stays off until that slice.
+
+The engine did not change. Bank pin 9b607d3dae940c0b1a69f6d7. 10-day seed 250925 digest 24863a3d and seed 4242 digest 98a47c8a, rejected 0/0. No plant.
