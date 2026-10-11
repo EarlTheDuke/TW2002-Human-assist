@@ -2876,7 +2876,13 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     if target_id == player.sector_id:
         return ActionResult(ok=True, turns_spent=0)
 
-    path = _bfs_path(universe, player.sector_id, target_id, max_depth=K.PLOT_COURSE_MAX_DEPTH * 6)
+    blocked = None
+    if K.avoid_live():
+        blocked = {int(s) for s in player.avoided_sectors if int(s) != target_id}
+    path = _bfs_path(
+        universe, player.sector_id, target_id,
+        max_depth=K.PLOT_COURSE_MAX_DEPTH * 6, blocked=blocked,
+    )
     if not path:
         universe.emit(
             EventKind.WARP_BLOCKED,
@@ -2992,7 +2998,10 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     return _report_plot(True, None, turns_spent_total, 0)
 
 
-def _bfs_path(universe: Universe, src: int, dst: int, max_depth: int = 60) -> list[int]:
+def _bfs_path(
+    universe: Universe, src: int, dst: int, max_depth: int = 60,
+    blocked: set[int] | None = None,
+) -> list[int]:
     """Shortest path (excluding src) from src→dst over directed warps. Empty if no path."""
     if src == dst:
         return []
@@ -3005,6 +3014,8 @@ def _bfs_path(universe: Universe, src: int, dst: int, max_depth: int = 60) -> li
             continue
         for nxt in universe.sectors[cur].warps:
             if nxt in visited:
+                continue
+            if blocked and int(nxt) in blocked:
                 continue
             visited[nxt] = cur
             depth[nxt] = depth[cur] + 1
@@ -4208,6 +4219,26 @@ def _handle_pay_toll(universe: Universe, pid: str, action: Action) -> ActionResu
     return ActionResult(ok=True, turns_spent=K.TURN_COST["pay_toll"])
 
 
+def _handle_avoid(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Add a sector the computer will not plot through, or clear the list with 0."""
+    if not K.avoid_live():
+        return ActionResult(ok=False, error="unsupported action")
+    player = universe.players[pid]
+    raw = action.args.get("sector", action.args.get("target"))
+    if raw in (0, "0"):
+        player.avoided_sectors = []
+        return ActionResult(ok=True, turns_spent=0)
+    try:
+        sid = int(raw)
+    except (TypeError, ValueError):
+        return ActionResult(ok=False, error="avoid needs a sector, or 0 to clear")
+    if sid not in universe.sectors:
+        return ActionResult(ok=False, error="invalid sector")
+    if sid not in player.avoided_sectors:
+        player.avoided_sectors.append(sid)
+    return ActionResult(ok=True, turns_spent=0)
+
+
 _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.WARP: _handle_warp,
     ActionKind.TRADE: _handle_trade,
@@ -4226,6 +4257,7 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.DEPLOY_GENESIS: _handle_deploy_genesis,
     ActionKind.CLAIM_PLANET: _handle_claim_planet,
     ActionKind.PLOT_COURSE: _handle_plot_course,
+    ActionKind.AVOID: _handle_avoid,
     ActionKind.PHOTON_MISSILE: _handle_photon_missile,
     ActionKind.CLOAK: handle_cloak,
     ActionKind.FIRE_DISRUPTOR: handle_fire_disruptor,

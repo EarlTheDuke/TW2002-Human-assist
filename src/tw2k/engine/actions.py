@@ -96,6 +96,7 @@ class ActionKind(str, Enum):
     UNDERGROUND_CLAIM = "underground_claim"
     TRICRON = "tricron"  # stardock-leftovers-v1
     CINEPLEX = "cineplex"  # stardock-leftovers-v1
+    AVOID = "avoid"  # avoid-list-v1
 
 
 class Action(BaseModel):

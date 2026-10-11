@@ -3199,3 +3199,14 @@ DETECT_GEAR_MODE = "legacy"  # "legacy" | "live"
 
 def detect_gear_live() -> bool:
     return DETECT_GEAR_MODE == "live" or tw2002_live_profile()
+
+
+# avoid-list-v1. Off, the computer has no avoid list. A death does not
+# record the sector, and a plotted course may pass through it.
+# On, a sector can be added, 0 clears the list, a death adds that sector,
+# and a plotted course goes around the list.
+AVOID_MODE = "legacy"  # "legacy" | "live"
+
+
+def avoid_live() -> bool:
+    return AVOID_MODE == "live" or tw2002_live_profile()

@@ -762,6 +762,8 @@ class Observation(BaseModel):
     alien_ranks: dict[str, Any] | None = None
     # stardock-tavern-underground-v1. Omitted under TAVERN_MODE legacy and away from StarDock.
     tavern: dict[str, Any] | None = None
+    # avoid-list-v1. Shown when the computer is holding sectors. Omitted while empty.
+    avoid_prompt: str | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -789,6 +791,8 @@ class Observation(BaseModel):
                 data.pop("alien_ranks", None)
             if data.get("tavern") is None:  # stardock-tavern-underground-v1
                 data.pop("tavern", None)
+            if data.get("avoid_prompt") is None:  # avoid-list-v1
+                data.pop("avoid_prompt", None)
         return data
 
 
@@ -1205,6 +1209,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     if K.corpship_on():
         from .corpships import corp_ships_block
         obs.corp_ships = corp_ships_block(universe, player_id)
+    if K.avoid_live() and player.avoided_sectors:
+        shown = ", ".join(str(s) for s in player.avoided_sectors)
+        obs.avoid_prompt = f"Avoided sectors: {shown}. 0 clears the list."
     return obs
 
 

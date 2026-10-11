@@ -1065,6 +1065,10 @@ def _destroy_ship_tw2002(
     """
     player = universe.players[pid]
     death_sector = player.sector_id
+    if K.avoid_live():
+        sid = int(death_sector)
+        if sid not in player.avoided_sectors:
+            player.avoided_sectors.append(sid)
     sector = universe.sectors.get(death_sector)
     witnesses = list(sector.occupant_ids) if sector is not None else []
     if pid not in witnesses:

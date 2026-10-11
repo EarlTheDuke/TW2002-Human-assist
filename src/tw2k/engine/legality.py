@@ -1113,6 +1113,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     # ---- S4 group 4: corp / alliance / intel -----------------------------------
     out.append(_la(ActionKind.QUERY_LIMPETS, legal=True, cost=0,
                    params={"active": sum(1 for lt in universe.limpets.values() if lt.owner_id == player_id)}))
+    if K.avoid_live():
+        out.append(_la(ActionKind.AVOID, legal=True, cost=0,
+                       params={"sector": "a sector id, or 0 to clear the list"}))
 
     is_ceo = corp is not None and corp.ceo_id == player_id
     if K.corp_rules_on():
