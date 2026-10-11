@@ -771,6 +771,8 @@ def get_system_prompt() -> str:
             "long   = your plan to win this match (update only on real strategy shifts).",
             "long   = your plan to win this match.",
         )
+    if K.hold_rules_live():
+        text = text + "\n" + K.HOLD_RULES_NOTE + "\n"
     return text
 
 

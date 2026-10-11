@@ -2755,3 +2755,21 @@ def assign_pool_fix_live() -> bool:
     """True when assign_colonists to=colonists stays in the colonists pool."""
     return ASSIGN_POOL_FIX_MODE == "live"
 
+
+# hold-endpoint-rules-v1. Appended so later slices can rebase cleanly.
+# "legacy": rules text and the action hint stay as they are. POST /hold is unchanged.
+# "live": the prompt, the action hint, and the action answer name the end-slot rule.
+HOLD_RULES_MODE = "legacy"  # "legacy" | "live"
+HOLD_RULES_NOTE = (
+    "POST /hold {hold:true} keeps your slot for the next action. "
+    "POST /hold {hold:false} ends the slot and spends no turn. "
+    "A normal action ends the slot even when it spends 0 turns, unless hold is on. "
+    "accepted true means queued. ok means the engine applied it. rejected means the engine refused it. "
+    "A 0-turn ok still ends the slot."
+)
+
+
+def hold_rules_live() -> bool:
+    """True when the rules text names POST /hold and ok versus rejected."""
+    return HOLD_RULES_MODE == "live"
+
