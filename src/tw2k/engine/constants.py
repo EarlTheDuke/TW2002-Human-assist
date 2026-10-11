@@ -2838,3 +2838,15 @@ def port_price_live() -> bool:
     """True when quotes use the live full-port anchors."""
     return PORT_PRICE_MODE == "live"
 
+
+# port-regen-mcic-v1. Appended so later slices can rebase cleanly.
+# "legacy": a day adds 5% of that commodity's productivity.
+# "live": a day adds 5% of the max stock. One visit cannot move more than
+# that max. Per-port MCIC and productivity are already on the port.
+PORT_REGEN_MODE = "legacy"  # "legacy" | "live"
+
+
+def port_regen_live() -> bool:
+    """True when a day puts back 5 percent of max stock."""
+    return PORT_REGEN_MODE == "live"
+
