@@ -82,6 +82,8 @@ def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int
 
 def haggle_room_pct(mcic: int) -> float:
     """Percent of the first offer a counter may reach. Hidden. See HAGGLE.md."""
+    if K.haggle_window_live():
+        return float(K.PORT_HAGGLE_LIVE_ROOM_PCT)
     span = min(K.PORT_HAGGLE_MCIC_SPAN, max(0, abs(int(mcic))))
     extra = K.PORT_HAGGLE_MAX_PCT - K.PORT_HAGGLE_MIN_PCT
     return K.PORT_HAGGLE_MIN_PCT + extra * span / K.PORT_HAGGLE_MCIC_SPAN
@@ -182,7 +184,16 @@ def execute_trade(
     else:
         bound = haggle_bound(listed, _stored_mcic(port, commodity), side)
         within = offered >= bound if side == "buy" else offered <= bound
-        if not within:
+        # A sell past the live wild-bid line ends the trade even if a later
+        # edit widens the accept band. Buy-side instant-end percent was not
+        # measured, so a low buy fails only by missing the band above.
+        wild = (
+            K.haggle_window_live()
+            and side == "sell"
+            and listed > 0
+            and offered * 100 > listed * K.PORT_HAGGLE_LIVE_END_PCT
+        )
+        if not within or wild:
             return False, 0, 0, "the port lost patience", None
         final_unit = offered
         haggled = True
