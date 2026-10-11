@@ -39,6 +39,7 @@ from ..engine import (
     is_finished,
     tick_day,
 )
+from ..engine import constants as K
 from ..engine.llm_pricing import MatchCostTracker
 from ..engine.match_metrics import build_match_metrics_payload
 from ..engine.models import Player, Ship
