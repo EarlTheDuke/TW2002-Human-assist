@@ -387,8 +387,9 @@ def generate_universe(config: GameConfig) -> Universe:
     place_class0_ports(universe)
 
     # fedspace-police-v1: Federals (isolated rng; no-op under FED_MODE legacy)
-    from .fed import place_federals
+    from .fed import place_federals, place_fed_starships
     place_federals(universe)
+    place_fed_starships(universe)
 
     # alien-traders-v1: scatter classic aliens (isolated rng; no-op under legacy)
     from .alien import place_aliens

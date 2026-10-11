@@ -12,6 +12,7 @@ HELPERS = (
     "death_pod_live",
     "discovery_exp_live",
     "exp_score_live",
+    "fed_ships_live",
     "fedspace_deploy_live",
     "genesis_start_live",
     "haggle_live",
@@ -41,7 +42,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 32
+    assert len(names) == 33
     for name in names:
         assert getattr(K, name)() is False, name
 

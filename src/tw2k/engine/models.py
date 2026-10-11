@@ -1100,6 +1100,7 @@ class Universe(BaseModel):
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
         return _omit_defaults(handler(self), {
             "parked_ships": {}, "next_ship_id": 1, "port_cap": None,
+            "fed_starships": [],
             "aliens": {}, "next_alien_id": 1,
             "tavern": None,
         })
@@ -1139,6 +1140,8 @@ class Universe(BaseModel):
     msl_sectors: list[int] = Field(default_factory=list)
     # fedspace-police-v1 (FEDSPACE_POLICE.md)
     federals: list[Federal] = Field(default_factory=list)
+    # fed-ships-ferrengi-v1. Omitted while empty so a legacy dump stays identical.
+    fed_starships: list[Federal] = Field(default_factory=list)
     posted_rewards: dict[str, list] = Field(default_factory=dict)  # target_id -> [{poster_id,amount,day}]
     pending_rewards: dict[str, int] = Field(default_factory=dict)  # killer_id -> claimable credits
     # ferrengi-aliens-v1 (FERRENGI.md)

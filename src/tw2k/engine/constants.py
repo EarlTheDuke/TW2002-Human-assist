@@ -3134,3 +3134,14 @@ DISCOVERY_EXP_MODE = "legacy"  # "legacy" | "live"
 
 def discovery_exp_live() -> bool:
     return DISCOVERY_EXP_MODE == "live" or tw2002_live_profile()
+
+
+# fed-ships-ferrengi-v1. Off, the three police captains stay as they are.
+# Ferrengi already regain 20% of hull max. This switch does not change that.
+# On, Intrepid sits at StarDock. Valiant and Lexington sit at the next two
+# sector ids. The live map's 289 and 379 were that game's placement.
+FED_SHIPS_MODE = "legacy"  # "legacy" | "live"
+
+
+def fed_ships_live() -> bool:
+    return FED_SHIPS_MODE == "live" or tw2002_live_profile()
