@@ -1365,7 +1365,7 @@ def _planet_odds_fight(player, planet, on_shields_down=None) -> tuple[int, int, 
     """
     a_fighters = int(player.ship.fighters)
     d_fighters = int(planet.fighters) if _planet_fighters_defend(planet) else 0
-    d_shields = int(planet.shields)
+    d_shields = K.fighting_planet_shields(planet)
     rounds: list[dict] = []
     n = 1
     if d_shields > 0:
@@ -1488,18 +1488,19 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         if _fire_atmospheric_quasar(universe, pid, planet):
             _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
-        if int(planet.shields) <= 0 and _fire_atmospheric_quasar(universe, pid, planet):
+        if K.fighting_planet_shields(planet) <= 0 and _fire_atmospheric_quasar(universe, pid, planet):
             _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
 
-    shields_already_down = hostile and int(planet.shields) <= 0
+    fighting_shields = K.fighting_planet_shields(planet)
+    shields_already_down = hostile and fighting_shields <= 0
     defending_fighters = int(planet.fighters) if _planet_fighters_defend(planet) else 0
-    if hostile and defending_fighters <= 0 and planet.shields > 0 and player.ship.fighters <= 0:
+    if hostile and defending_fighters <= 0 and fighting_shields > 0 and player.ship.fighters <= 0:
         # An empty ship cannot break shields, and there are no planet fighters
         # to destroy it. Repel with the shields and the ship unchanged.
         _clear_photon_damp(player, sector.id)
         return ActionResult(ok=False, error="planetary defenses repelled landing", turns_spent=cost)
-    if hostile and (defending_fighters > 0 or planet.shields > 0):
+    if hostile and (defending_fighters > 0 or fighting_shields > 0):
         def _atm_after_shields() -> None:
             _fire_atmospheric_quasar(universe, pid, planet)
 
@@ -1512,7 +1513,8 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         if not _planet_fighters_defend(planet):
             d_fighters = int(planet.fighters)
         planet.fighters = d_fighters
-        planet.shields = d_shields
+        if fighting_shields > 0:
+            planet.shields = d_shields
         universe.emit(
             EventKind.COMBAT,
             actor_id=pid,
