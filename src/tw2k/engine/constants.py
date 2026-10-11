@@ -3010,3 +3010,16 @@ def exp_score_live() -> bool:
     """True when the public rank follows experience, not net worth."""
     return EXP_SCORE_MODE == "live"
 
+
+# alignment-v1. Appended so later slices can rebase cleanly.
+# "legacy" and "live" use the same rules. A kill already moves alignment by
+# the fighters you lost times the enemy's alignment, divided by 5000.
+# A trader with 0 or more alignment and 999 experience or less is already
+# protected in FedSpace. The switch stays off.
+ALIGNMENT_MODE = "legacy"  # "legacy" | "live"
+
+
+def alignment_live() -> bool:
+    """True when the slice names the alignment rules that are already on."""
+    return ALIGNMENT_MODE == "live"
+
