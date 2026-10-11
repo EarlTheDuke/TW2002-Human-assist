@@ -604,7 +604,17 @@ class Ship(BaseModel):
 
     @property
     def cargo_used(self) -> int:
-        return sum(self.cargo.values())
+        if not K.terra_colonist_live():
+            return sum(self.cargo.values())
+        per = int(K.colonists_per_hold())
+        used = 0
+        for commodity, qty in self.cargo.items():
+            amount = int(qty)
+            if commodity == Commodity.COLONISTS:
+                used += (amount + per - 1) // per if amount else 0
+            else:
+                used += amount
+        return used
 
     @property
     def cargo_free(self) -> int:
