@@ -726,6 +726,15 @@ def get_system_prompt() -> str:
     text = _MATCH_PROMPT_MINIMAL if is_minimal() else _MATCH_PROMPT_FULL
     if not K.class0_tw2002():
         text = _class0_legacy_text(text)
+    if K.citadel_perk_live():
+        text = text.replace(
+            "Combat Control Computer (not yet in this game).",
+            K.citadel_perks()[1][2],
+        )
+        text = text.replace(
+            "Planetary shields (not yet in this game). A citadel L5 with 200 shields ignores a photon damp.",
+            K.citadel_perks()[4][2],
+        )
     if K.rank_tw2002():
         text = text.replace("(alignment >= 2000, one in the game)", "(Federal Commission: alignment >= 1000, one in the game)")
         text = text + _RANK_NOTE_TW2002

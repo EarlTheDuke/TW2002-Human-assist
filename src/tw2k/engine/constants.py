@@ -1214,7 +1214,7 @@ def planet_shields_active() -> bool:
 def fighting_planet_shields(planet) -> int:
     """Shields that stop a landing. Legacy uses the stock. Live waits for level 5."""
     stocked = int(getattr(planet, "shields", 0) or 0)
-    if planet_shields_active() and int(getattr(planet, "citadel_level", 0) or 0) < 5:
+    if (planet_shields_active() or citadel_perk_live()) and int(getattr(planet, "citadel_level", 0) or 0) < 5:
         return 0
     return stocked
 
@@ -2960,4 +2960,38 @@ PLANET_PROD_PER_UNIT = {
 def planet_prod_live() -> bool:
     """True when a day uses the S1 colonists-per-unit table."""
     return PLANET_PROD_MODE == "live"
+
+
+# citadel-perks-live-v1. Appended so later slices can rebase cleanly.
+# "legacy": the perk lines still say level 2 and level 5 are missing, and the
+# 2-to-1 and 3-to-1 odds run at every citadel level.
+# "live": those lines name the computer and the shields. Setting the reaction
+# percent waits for level 2. Stocked shields fight only at level 5. Quasar
+# stays at level 3, and fighters already stay quiet below level 2.
+CITADEL_PERK_MODE = "legacy"  # "legacy" | "live"
+
+
+def citadel_perk_live() -> bool:
+    """True when citadel perks use the level gates from the handbook."""
+    return CITADEL_PERK_MODE == "live"
+
+
+def citadel_perks() -> list[tuple[int, str, str]]:
+    """Perk lines. The stored list stays the old wording."""
+    if not citadel_perk_live():
+        return CITADEL_PERK
+    out: list[tuple[int, str, str]] = []
+    for level, name, text in CITADEL_PERK:
+        if level == 2:
+            text = (
+                "Combat Control Computer: planet fighters attack at 2 to 1 "
+                "and defend at 3 to 1. The military reaction percent sets how many attack."
+            )
+        elif level == 5:
+            text = (
+                "Planetary shields: stocked shields fight at citadel level 5. "
+                "A citadel L5 with 200 shields ignores a photon damp."
+            )
+        out.append((level, name, text))
+    return out
 
