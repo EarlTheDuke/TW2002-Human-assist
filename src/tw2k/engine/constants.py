@@ -2744,3 +2744,14 @@ def planet_nudge_on() -> bool:
 def quasar_nudge_on() -> bool:
     return LLM_QUASAR_NUDGE_MODE == "on"
 
+
+# assign-colonists-pool-fix-v1. Appended so later slices can rebase cleanly.
+# "legacy": with citadel fidelity on, assign_colonists to=colonists lands in fuel_ore.
+# "live": to=colonists stays in the colonists pool. The named goods pools stay named.
+ASSIGN_POOL_FIX_MODE = "legacy"  # "legacy" | "live"
+
+
+def assign_pool_fix_live() -> bool:
+    """True when assign_colonists to=colonists stays in the colonists pool."""
+    return ASSIGN_POOL_FIX_MODE == "live"
+
