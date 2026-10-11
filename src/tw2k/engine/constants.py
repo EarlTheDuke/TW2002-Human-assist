@@ -2784,3 +2784,19 @@ def planet_nw_live() -> bool:
     """True when a citadel under construction keeps the goods it already spent."""
     return PLANET_NW_MODE == "live"
 
+
+# trade-dock-turn-v1. Appended so later slices can rebase cleanly.
+# The visit rule is already the engine: the first deal costs 1 turn, later
+# deals in that sector cost 0. "legacy" keeps that. "live" names the same rule.
+TRADE_TURN_MODE = "legacy"  # "legacy" | "live"
+
+
+def trade_turn_live() -> bool:
+    """True when the dock rule is selected by name. The numbers match legacy."""
+    return TRADE_TURN_MODE == "live"
+
+
+def trade_visit_free() -> bool:
+    """True when a later deal in the same sector costs no turn."""
+    return TRADE_TURN_MODE in ("legacy", "live")
+
