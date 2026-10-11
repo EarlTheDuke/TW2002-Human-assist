@@ -110,6 +110,65 @@ def haggle_bound(listed: int, mcic: int, side: str) -> int:
     return min(listed, max(1, floor))
 
 
+def _live_haggle(player: Player, commodity: Commodity, side: str, listed: int, offered: int) -> tuple[str, int | str]:
+    """Measured bands from REPORT2. Returns accept+price, or counter/end+message."""
+    pending = player.haggle_counter if isinstance(player.haggle_counter, dict) else None
+    base = listed
+    if (
+        pending is not None
+        and pending.get("sector_id") == player.sector_id
+        and pending.get("commodity") == commodity.value
+        and pending.get("side") == side
+    ):
+        counter = int(pending["counter"])
+        base = int(pending["listed"])
+        if side == "sell" and offered <= counter:
+            player.haggle_counter = None
+            return "accept", offered
+        if side == "sell" and offered * 100 <= base * 112:
+            player.haggle_counter = None
+            return "accept", offered
+        if side == "buy" and offered >= counter:
+            player.haggle_counter = None
+            return "accept", offered
+        listed = base
+    if side == "sell":
+        if offered * 100 <= listed * 103:
+            player.haggle_counter = None
+            return "accept", offered
+        if offered * 100 <= listed * 112:
+            counter = (listed * 101 + 50) // 100
+            if counter <= listed:
+                counter = listed + 1
+            player.haggle_counter = {
+                "sector_id": player.sector_id,
+                "commodity": commodity.value,
+                "side": side,
+                "listed": listed,
+                "counter": counter,
+            }
+            return "counter", f"counter {counter}"
+        player.haggle_counter = None
+        if offered * 100 >= listed * 137:
+            return "end", "Get lost creep"
+        return "end", "Swine, go peddle your wares"
+    if offered * 100 >= listed * 88:
+        player.haggle_counter = None
+        return "accept", offered
+    if offered * 100 >= listed * 77:
+        counter = min(listed, (listed * 96 + 50) // 100)
+        player.haggle_counter = {
+            "sector_id": player.sector_id,
+            "commodity": commodity.value,
+            "side": side,
+            "listed": listed,
+            "counter": counter,
+        }
+        return "counter", f"counter {counter}"
+    player.haggle_counter = None
+    return "end", "the port lost patience"
+
+
 def trade_turn_cost(player: Player) -> int:
     """Turns a successful trade spends right now.
 
@@ -188,28 +247,35 @@ def execute_trade(
     # rng stays in the signature so existing callers do not change.
     del rng
 
-    # No counter, or a price that is not better for the player than the
-    # first offer, trades at that offer.
-    better = (side == "buy" and offered < listed) or (side == "sell" and offered > listed)
-    if not better:
-        final_unit = listed
-        haggled = False
+    if K.haggle_live():
+        kind, value = _live_haggle(player, commodity, side, listed, offered)
+        if kind != "accept":
+            return False, 0, 0, str(value), None
+        final_unit = int(value)
+        haggled = final_unit != listed
     else:
-        bound = haggle_bound(listed, _stored_mcic(port, commodity), side)
-        within = offered >= bound if side == "buy" else offered <= bound
-        # A sell past the live wild-bid line ends the trade even if a later
-        # edit widens the accept band. Buy-side instant-end percent was not
-        # measured, so a low buy fails only by missing the band above.
-        wild = (
-            K.haggle_window_live()
-            and side == "sell"
-            and listed > 0
-            and offered * 100 > listed * K.PORT_HAGGLE_LIVE_END_PCT
-        )
-        if not within or wild:
-            return False, 0, 0, "the port lost patience", None
-        final_unit = offered
-        haggled = True
+        # No counter, or a price that is not better for the player than the
+        # first offer, trades at that offer.
+        better = (side == "buy" and offered < listed) or (side == "sell" and offered > listed)
+        if not better:
+            final_unit = listed
+            haggled = False
+        else:
+            bound = haggle_bound(listed, _stored_mcic(port, commodity), side)
+            within = offered >= bound if side == "buy" else offered <= bound
+            # A sell past the live wild-bid line ends the trade even if a later
+            # edit widens the accept band. Buy-side instant-end percent was not
+            # measured, so a low buy fails only by missing the band above.
+            wild = (
+                K.haggle_window_live()
+                and side == "sell"
+                and listed > 0
+                and offered * 100 > listed * K.PORT_HAGGLE_LIVE_END_PCT
+            )
+            if not within or wild:
+                return False, 0, 0, "the port lost patience", None
+            final_unit = offered
+            haggled = True
 
     total = final_unit * qty
     realized_profit: int | None = None
