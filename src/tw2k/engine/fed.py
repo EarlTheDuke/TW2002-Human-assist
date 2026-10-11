@@ -163,6 +163,22 @@ def place_federals(universe: Universe) -> None:
     universe.federals = federals
 
 
+def place_fed_starships(universe: Universe) -> None:
+    """Intrepid, Valiant, Lexington. Off, the list stays empty."""
+    if not K.fed_ships_live():
+        universe.fed_starships = []
+        return
+    ids = sorted(universe.sectors)
+    dock = K.STARDOCK_SECTOR if K.STARDOCK_SECTOR in universe.sectors else ids[0]
+    rest = [sid for sid in ids if sid != dock]
+    second = rest[0] if rest else dock
+    third = rest[1] if len(rest) > 1 else second
+    universe.fed_starships = [
+        Federal(name=name, title="StarShip", sector_id=sector, density=0, home_sector=sector)
+        for name, sector in zip(("Intrepid", "Valiant", "Lexington"), (dock, second, third))
+    ]
+
+
 def federals_in_sector(universe: Universe, sector_id: int) -> list[Federal]:
     return [f for f in getattr(universe, "federals", []) or [] if int(f.sector_id) == int(sector_id)]
 
