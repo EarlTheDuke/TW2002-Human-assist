@@ -872,7 +872,7 @@ def hardware_v2_prices() -> dict[str, int]:
     return {
         "corbomite": int(CORBOMITE_COST),
         "marker_beacon": int(BEACON_COST),
-        "psychic_probe": int(PSYCHIC_PROBE_COST),
+        "psychic_probe": int(psychic_probe_cost()),
         "atomic_detonator": int(ATOMIC_DETONATOR_COST),
     }
 
@@ -983,7 +983,7 @@ def limpet_mine_cost() -> int:
 
 
 def ether_probe_cost() -> int:
-    if hardware_price_live():
+    if hardware_price_live() or detect_gear_live():
         return ETHER_PROBE_COST_LIVE
     return ETHER_PROBE_COST
 
@@ -1630,6 +1630,13 @@ CLOAK_MAX = 5
 CLOAK_FAIL_RATE = 0.03  # TEDIT FailRate 3%; checked on tick_day while cloaked
 # Mine disruptor (h18-h20)
 DISRUPTOR_COST = 40_000
+
+
+def disruptor_cost() -> int:
+    """Shop price. Live play paid 6,000. The clear-up-to-12 effect stays."""
+    if detect_gear_live():
+        return 6_000
+    return DISRUPTOR_COST
 DISRUPTOR_MAX = 10
 DISRUPTOR_CLEAR_MAX = 12  # Bible ceiling
 # Limpet removal (h22)
@@ -1670,6 +1677,13 @@ BEACON_MAX_BY_HULL: dict[str, int] = {
 }
 # Psychic probe (v10-v12). TWGS price 2,500; one per ship (Slice-10 record: PsyProbe * 1).
 PSYCHIC_PROBE_COST = 2_500
+
+
+def psychic_probe_cost() -> int:
+    """Shop price. Live play paid 10,000. One per ship stays."""
+    if detect_gear_live():
+        return 10_000
+    return PSYCHIC_PROBE_COST
 PSYCHIC_PROBE_MAX = 1
 # Atomic detonator (v13-v19). TWGS price 60,000; Bible cap 5.
 ATOMIC_DETONATOR_COST = 60_000
@@ -3172,3 +3186,16 @@ TURN_REGEN_DAY_SECONDS = 24 * 3600
 
 def turn_regen_live() -> bool:
     return TURN_REGEN_MODE == "live" or tw2002_live_profile()
+
+
+# detect-gear-v1. Off, the shop prices stay as written above.
+# On, a disruptor is 6,000, a psychic probe is 10,000, and an ether probe
+# is 3,000. Density, holo, cloak, beacon, and corbomite already match.
+# A planet scanner's effect was not measured, so it is not sold.
+# The 15,000 atomic is a planet killer. This copy's detonator is not that
+# weapon, so its price stays 60,000.
+DETECT_GEAR_MODE = "legacy"  # "legacy" | "live"
+
+
+def detect_gear_live() -> bool:
+    return DETECT_GEAR_MODE == "live" or tw2002_live_profile()
