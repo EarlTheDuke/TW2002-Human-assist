@@ -9,3 +9,7 @@ A live TWGS Big Bang game opened with 300 credits, 30 fighters, 250 turns, a Mer
 Turn recovery on `live` adds `elapsed seconds * 250 / 86400`, and it never gives more than a full day. One hour is 10 turns. A day tick does not zero the counter. The login line that showed 26 turns and then a separate recovery is not reproduced. That split was not explained by the transcripts.
 
 Do not turn the switch on until Ben says so.
+
+Suite on bd77254: 2484 passed, 3 failed, 1 skipped, 2929s. Two failures are the known flakes (WinError 10048 and the spectator-feed timeout). The Firefox caption timeout passed alone in 14s. Five new tests passed. pb1 and pb2 were re-broken and restored.
+
+10-day seed 250925 digest 24863a3d and seed 4242 digest 98a47c8a, both rejected 0/0, both the same as the runs on 79100a5. 30-day seed 250925 digest 86a15277. N3, N2, and H rejected 0/0. N1 had one engine reject (0/1). Exceptions 0. 30-day seed 4242 digest b274e3d1, rejected 0/0, exceptions 0. Those scripted runs were on aaa8cad, before the turn-loop import fix. That fix does not run in scripted matches, and the flag stayed legacy.
