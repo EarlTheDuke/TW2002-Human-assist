@@ -190,30 +190,10 @@ def _advance_planets(universe: Universe) -> None:
             name: _pool_count(planet.colonists, name)
             for name in ("fuel_ore", "organics", "equipment")
         }
-        coeffs = PLANET_PROD_COEFF[planet.class_id]
-        for commodity, coeff in coeffs.items():
-            colonists = planet.colonists.get(commodity, 0)
-            raw = int(colonists * coeff / 100)
-            produced = raw if raw > 0 else 0
-            before = int(planet.stockpile.get(commodity, 0))
-            room = K.planet_stock_room(planet.class_id.value, commodity.value, before)
-            added = produced if room is None else min(produced, room)
-            planet.stockpile[commodity] = before + added
-        # Growth — only if organics stockpile positive after today's output.
-        if planet.stockpile.get(Commodity.ORGANICS, 0) > 0:
-            total_col = sum(planet.colonists.values())
-            growth = int(total_col * 0.05)
-            room = K.planet_colonist_room(planet.class_id.value, total_col)
-            if room is not None:
-                growth = min(growth, room)
-            # Distribute growth proportionally
-            if total_col > 0 and growth > 0:
-                for c in list(planet.colonists.keys()):
-                    share = int(growth * planet.colonists[c] / total_col)
-                    planet.colonists[c] += share
-            planet.stockpile[Commodity.ORGANICS] = max(
-                0, planet.stockpile[Commodity.ORGANICS] - organics_consumption(total_col)
-            )
+        if K.planet_prod_live():
+            _produce_and_grow_live(planet)
+        else:
+            _produce_and_grow_legacy(planet)
         if planet.owner_id is None:
             continue
         gain = fighters_from_colonists(planet.class_id, worked)
@@ -221,6 +201,65 @@ def _advance_planets(universe: Universe) -> None:
             continue
         room = max(0, K.PLANET_FIGHTER_CAP - int(planet.fighters))
         planet.fighters = int(planet.fighters) + min(room, gain)
+
+
+def _stock_product(planet, commodity: Commodity, produced: int) -> None:
+    before = int(planet.stockpile.get(commodity, 0))
+    room = K.planet_stock_room(planet.class_id.value, commodity.value, before)
+    added = produced if room is None else min(produced, room)
+    planet.stockpile[commodity] = before + added
+
+
+def _produce_and_grow_legacy(planet) -> None:
+    coeffs = PLANET_PROD_COEFF[planet.class_id]
+    for commodity, coeff in coeffs.items():
+        colonists = planet.colonists.get(commodity, 0)
+        raw = int(colonists * coeff / 100)
+        produced = raw if raw > 0 else 0
+        _stock_product(planet, commodity, produced)
+    if planet.stockpile.get(Commodity.ORGANICS, 0) > 0:
+        total_col = sum(planet.colonists.values())
+        growth = int(total_col * 0.05)
+        room = K.planet_colonist_room(planet.class_id.value, total_col)
+        if room is not None:
+            growth = min(growth, room)
+        if total_col > 0 and growth > 0:
+            for c in list(planet.colonists.keys()):
+                share = int(growth * planet.colonists[c] / total_col)
+                planet.colonists[c] += share
+        planet.stockpile[Commodity.ORGANICS] = max(
+            0, planet.stockpile[Commodity.ORGANICS] - organics_consumption(total_col)
+        )
+
+
+def _produce_and_grow_live(planet) -> None:
+    ratios = K.PLANET_PROD_PER_UNIT[planet.class_id.value]
+    goods = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)
+    for commodity, ratio in zip(goods, ratios):
+        colonists = int(planet.colonists.get(commodity, 0))
+        produced = 0 if int(ratio) <= 0 else colonists // int(ratio)
+        _stock_product(planet, commodity, produced)
+    total_col = sum(int(v) for v in planet.colonists.values())
+    cap = int(K.PLANET_MAX_COLONISTS[planet.class_id.value])
+    half = cap // 2
+    if total_col < half and planet.stockpile.get(Commodity.ORGANICS, 0) > 0:
+        growth = int(total_col * 0.05)
+        room = K.planet_colonist_room(planet.class_id.value, total_col)
+        if room is not None:
+            growth = min(growth, room)
+        if total_col > 0 and growth > 0:
+            for c in list(planet.colonists.keys()):
+                share = int(growth * planet.colonists[c] / total_col)
+                planet.colonists[c] += share
+        planet.stockpile[Commodity.ORGANICS] = max(
+            0, planet.stockpile[Commodity.ORGANICS] - organics_consumption(total_col)
+        )
+    elif total_col > half and total_col > 0:
+        die = int(total_col * 0.05)
+        if die > 0:
+            for c in list(planet.colonists.keys()):
+                share = int(die * planet.colonists[c] / total_col)
+                planet.colonists[c] = max(0, int(planet.colonists[c]) - share)
 
 
 def _pay_planet_value_tax(universe: Universe) -> None:
