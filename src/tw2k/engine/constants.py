@@ -1136,6 +1136,10 @@ PLANET_FIGHTER_COLONISTS_PER: dict[str, dict[str, int]] = {
 # 100 keeps the original daily count. Lower it to slow fighter growth in a short match.
 PLANET_FIGHTER_RATE_PCT = 100
 PLANET_SHIELD_SHIP_COST = 10
+# "legacy": stocked shields fight at any citadel level.
+# "live": shields can still be loaded earlier, and they fight only at level 5 and up.
+# The free shield gift stays 0. No new shield count is invented.
+PLANET_SHIELD_ACTIVE_MODE = "legacy"  # "legacy" | "live"
 PLANET_DEFENSE_MIN_LEVEL = 0
 # Daily interest is this percent of planet.treasury, integer division, at citadel level >= 1.
 PLANET_TREASURY_INTEREST_PCT = 2
@@ -1144,6 +1148,21 @@ PLANET_TREASURY_INTEREST_PCT = 2
 PLANET_TREASURY_CAP = 10_000_000
 # One planet shield absorbs 20 points of attacker damage, so the attacker needs 20 fighters per planet shield.
 PLANET_SHIELD_ODDS = 20
+
+
+def planet_shields_active() -> bool:
+    """True when stocked shields fight only at citadel level 5 and up."""
+    return PLANET_SHIELD_ACTIVE_MODE == "live"
+
+
+def fighting_planet_shields(planet) -> int:
+    """Shields that stop a landing. Legacy uses the stock. Live waits for level 5."""
+    stocked = int(getattr(planet, "shields", 0) or 0)
+    if planet_shields_active() and int(getattr(planet, "citadel_level", 0) or 0) < 5:
+        return 0
+    return stocked
+
+
 # Planet fighter odds. The 3-round dice path is retired. Ship-vs-ship dice stay.
 # Offense: each reaction fighter destroys this many attacker fighters.
 # Defense: this many attacker fighters destroy one planet fighter.
