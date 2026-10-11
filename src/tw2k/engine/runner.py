@@ -1836,7 +1836,7 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
         return ActionResult(ok=False, error=f"invalid 'to' pool {dst!r}")
     if src not in pool_keys and src != "ship":
         return ActionResult(ok=False, error=f"invalid 'from' pool {src!r}")
-    if K.citadel_fidelity_on() and dst == "colonists":
+    if K.citadel_fidelity_on() and dst == "colonists" and not K.assign_pool_fix_live():
         dst = "fuel_ore"
 
     cost = K.TURN_COST.get("liftoff", 1)
