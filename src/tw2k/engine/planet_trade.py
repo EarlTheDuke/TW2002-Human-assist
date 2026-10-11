@@ -299,6 +299,7 @@ def handle_planet_trade(universe: Universe, pid: str, action: Action) -> ActionR
         countered = True
 
     unused_port = not port.experience
+    first_for_me = pid not in port.experience
     # pt14: one stock update each side; pt13: credits to the payee
     planet.stockpile[commodity] = have - qty
     port.stock[commodity].current += qty
@@ -314,7 +315,7 @@ def handle_planet_trade(universe: Universe, pid: str, action: Action) -> ActionR
             bargain = (paid - quote + qty // 2) // qty  # per-unit bargain, as a ship counter is judged
             if bargain > 0:
                 player.experience = int(player.experience) + min(K.PORT_HAGGLE_XP_CAP, bargain)
-        if unused_port:
+        if first_for_me if K.discovery_exp_live() else unused_port:
             _award_xp(universe, pid, "first_dock")
     from .runner import _record_port_intel
     _record_port_intel(player, sector.id, port, universe=universe)
