@@ -681,24 +681,50 @@ def ship_cost(class_key: str) -> int:
     return int(SHIP_SPECS[class_key]["cost"])
 
 
-def trade_in_credit(class_key: str) -> int:
-    """25 percent of the hull price. The yard applies this to the next hull.
+# "legacy": the yard pays 25% of the hull sticker and keeps any surplus.
+# "live": the yard pays 90% of the hull sticker and pays the surplus as cash.
+# Live receipts also itemize holds, drive, computer, fighters, shields, and a
+# scanner at about 90% each. Those part prices were not published as a formula
+# (two receipts only), so they are not invented here. A pod still counts as a
+# Scout's hull. Default stays legacy so the pin and the digests do not move.
+TRADE_IN_MODE = "legacy"  # "legacy" | "live"
+TRADE_IN_FRACTION_LEGACY = 0.25
+TRADE_IN_FRACTION_LIVE = 0.90
 
-    An escape pod is worth a Scout (DEATH_ESCAPE_PODS.md d17): it trades for a Scout outright
-    (net_hull_cost), and toward any other hull it counts as a Scout's trade-in. Worth more, a
-    lost ship would beat trading the live one in, and surrendering would mint credits.
+
+def trade_in_live() -> bool:
+    """True when the yard pays 90% of the hull and hands back a surplus."""
+    return TRADE_IN_MODE == "live"
+
+
+def trade_in_fraction() -> float:
+    if trade_in_live():
+        return TRADE_IN_FRACTION_LIVE
+    return TRADE_IN_FRACTION_LEGACY
+
+
+def trade_in_credit(class_key: str) -> int:
+    """The yard's credit for this hull. An escape pod counts as a Scout.
+
+    DEATH_ESCAPE_PODS.md d17: under legacy the pod trades for a Scout outright
+    (net_hull_cost), and toward any other hull it counts as a Scout's trade-in.
     """
+    fraction = trade_in_fraction()
     if class_key == ESCAPE_POD:
-        return int(ship_cost("scout_marauder") * 0.25)
-    return int(ship_cost(class_key) * 0.25)
+        return int(ship_cost("scout_marauder") * fraction)
+    return int(ship_cost(class_key) * fraction)
 
 
 def net_hull_cost(old_key: str, new_key: str) -> int:
-    """Credits a trade-in actually moves. A surplus is not paid out."""
-    if old_key == ESCAPE_POD and new_key == "scout_marauder":
+    """Credits a trade-in moves. Negative means the yard pays the player.
+
+    Legacy never pays a surplus, and a pod buys a Scout for nothing. Live pays
+    the difference when the credit is larger than the new hull.
+    """
+    if not trade_in_live() and old_key == ESCAPE_POD and new_key == "scout_marauder":
         return 0  # d17: the pod buys a Scout outright
     net = ship_cost(new_key) - trade_in_credit(old_key)
-    if net < 0:
+    if net < 0 and not trade_in_live():
         return 0
     return net
 
