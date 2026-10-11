@@ -2179,14 +2179,17 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         )
     if player.planet_landed is not None:
         return ActionResult(ok=False, error="must be in space to deploy genesis")
-    cost = K.GENESIS_DEPLOY_TURN_COST
+    cost = 0 if K.planet_class_live() else K.GENESIS_DEPLOY_TURN_COST
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     if not K.sector_has_planet_room(len(sector.planet_ids)):
         return ActionResult(ok=False, error="sector already holds 5 planets")
 
     rng = _rng_for(universe)
-    cls_name = _weighted_choice(rng, K.PLANET_CLASS_WEIGHTS)
+    weights = K.PLANET_CLASS_WEIGHTS
+    if K.planet_class_live():
+        weights = {key: K.PLANET_CLASS_WEIGHTS[key] for key in ("M", "U")}
+    cls_name = _weighted_choice(rng, weights)
     cls = PlanetClass(cls_name)
     pid_planet = universe.next_planet_id
     universe.next_planet_id += 1
@@ -2249,7 +2252,9 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         summary=f"{player.name} detonated a Genesis torpedo — new {cls.value}-class planet {planet_name} forms in {sector.id}",
     )
     _award_xp(universe, pid, "deploy_genesis")
-    if K.rank_tw2002() and int(player.alignment) != 0:
+    if K.planet_class_live():
+        player.alignment = int(player.alignment) - 10
+    elif K.rank_tw2002() and int(player.alignment) != 0:
         # x6: +10 good, 0 neutral, -10 evil.
         player.alignment += K.GENESIS_ALIGNMENT if player.alignment > 0 else -K.GENESIS_ALIGNMENT
     return ActionResult(ok=True, turns_spent=cost)

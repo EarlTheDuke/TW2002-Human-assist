@@ -1378,7 +1378,10 @@ def _ship_dict(ship) -> dict[str, Any]:
     if "max_mines" in spec:
         ship_view["mine_cap"] = int(spec["max_mines"])
     if "max_genesis" in spec:
-        ship_view["genesis_cap"] = int(spec["max_genesis"])
+        cap = int(spec["max_genesis"])
+        if K.planet_class_live() and ship.ship_class.value == "merchant_freighter":
+            cap = 1
+        ship_view["genesis_cap"] = cap
     if "max_photons" in spec:
         ship_view["photon_cap"] = int(spec["max_photons"])
     if K.corpship_on():

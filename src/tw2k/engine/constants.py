@@ -836,6 +836,8 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
         if not hardware_tw2002():
             return 0
         return max(0, hardware_v2_cap(class_key, item) - int(have))
+    if item == "genesis" and planet_class_live() and class_key == "merchant_freighter":
+        return max(0, 1 - int(have))
     spec = hull_spec(class_key) or {}
     field = _EQUIP_CAP_FIELD.get(item)
     if field is None:
@@ -987,7 +989,7 @@ def ether_probe_cost() -> int:
 
 
 def genesis_torpedo_cost() -> int:
-    if hardware_price_live():
+    if hardware_price_live() or planet_class_live():
         return GENESIS_TORPEDO_COST_LIVE
     return GENESIS_TORPEDO_COST
 
@@ -3145,3 +3147,15 @@ FED_SHIPS_MODE = "legacy"  # "legacy" | "live"
 
 def fed_ships_live() -> bool:
     return FED_SHIPS_MODE == "live" or tw2002_live_profile()
+
+
+# planet-class-types-v1. Off, genesis still rolls every class, costs 4 turns,
+# and a good trader gains 10 alignment. The class M colonist count stays 1,000.
+# On, a new planet is M or U, the launch costs no turn and 10 alignment,
+# a freighter holds one torpedo, and the torpedo costs 20,000.
+# Class U level 1 and the M and U product caps were already in the tables.
+PLANET_CLASS_MODE = "legacy"  # "legacy" | "live"
+
+
+def planet_class_live() -> bool:
+    return PLANET_CLASS_MODE == "live" or tw2002_live_profile()

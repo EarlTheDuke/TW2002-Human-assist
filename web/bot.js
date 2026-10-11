@@ -1274,7 +1274,12 @@
       let txt = `${LABEL(kind)} ${Object.entries(vals).filter(([, v]) => v !== "" && v !== undefined).map(([k, v]) => `${k}=${v}`).join("  ")} · ${la.turn_cost || 0} turn(s)`;
       if (kind === "buy_ship" && p.ship_class) { const n = (p.ship_class.net_cost_by || {})[vals.ship_class]; if (n !== undefined) txt += ` · net cost ${fmt(n)} cr (trade-in ${fmt(p.ship_class.trade_in)})`; }
       if (kind === "buy_equip" && p.item) { const u = (p.item.unit_price_by || {})[vals.item]; if (u !== undefined) txt += ` · ${fmt(u)} cr each = ${fmt(u * (vals.qty || 0))} cr`; }
-      if (kind === "build_citadel" && p.next) txt += ` · L${p.next.level}: ${fmt(p.next.credits)} cr + ${fmt(p.next.colonists)} colonists (have ${fmt(p.next.colonists_have)}), ${p.next.days} day(s), paid from ${p.next.pay_from}`;
+      if (kind === "build_citadel" && p.next) {
+        const n = p.next;
+        txt += n.fuel_ore != null
+          ? ` · L${n.level}: ${fmt(n.colonists)} colonists, ${fmt(n.fuel_ore)} fuel, ${fmt(n.organics)} organics, ${fmt(n.equipment)} equipment, ${n.days} day(s)`
+          : ` · L${n.level}: ${fmt(n.credits)} cr + ${fmt(n.colonists)} colonists (have ${fmt(n.colonists_have)}), ${n.days} day(s), paid from ${n.pay_from}`;
+      }
       if (kind === "deploy_genesis") txt += ` · ${p.hops_from_stardock ?? "?"} hops from StarDock (min ${p.min_hops ?? "?"})`;
       if (kind === "land_planet" && p.planet_id && (p.planet_id.contested || []).includes(Number(vals.planet_id))) {
         const ship = (state.obs && state.obs.ship) || {};
