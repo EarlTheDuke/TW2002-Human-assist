@@ -216,7 +216,7 @@ def place_class0_ports(universe: Universe) -> dict[str, Any]:
         return summary
 
     universe.terra_max = int(K.TERRA_MAX_COLONISTS)
-    universe.terra_colonists = int(K.TERRA_MAX_COLONISTS)
+    universe.terra_colonists = int(K.terra_start_pool())
 
     rng = class0_rng(int(universe.config.seed))
     hops = bfs_hops(universe, K.STARDOCK_SECTOR)
@@ -412,28 +412,32 @@ def handle_terra_colonists(universe: Universe, pid: str, action: Action) -> Acti
     if mode == "take":
         free = int(player.ship.cargo_free)
         pool = int(universe.terra_colonists)
-        if qty > pool:
+        per = int(K.colonists_per_hold())
+        people = qty * per
+        if people > pool:
             return ActionResult(ok=False, error=f"Terra only has {pool} colonists")
         if qty > free:
             return ActionResult(ok=False, error=f"not enough cargo holds (need {qty}, free {free})")
         from .models import Commodity
         player.ship.cargo[Commodity.COLONISTS] = (
-            player.ship.cargo.get(Commodity.COLONISTS, 0) + qty
+            player.ship.cargo.get(Commodity.COLONISTS, 0) + people
         )
-        universe.terra_colonists = pool - qty
+        universe.terra_colonists = pool - people
     elif mode == "leave":
         from .models import Commodity
         have = int(player.ship.cargo.get(Commodity.COLONISTS, 0))
-        if qty > have:
+        per = int(K.colonists_per_hold())
+        people = qty * per
+        if people > have:
             return ActionResult(ok=False, error=f"only {have} colonists in cargo")
         mx = int(universe.terra_max or K.TERRA_MAX_COLONISTS)
         room = mx - int(universe.terra_colonists)
-        if qty > room:
+        if people > room:
             return ActionResult(ok=False, error=f"Terra only has room for {room}")
-        player.ship.cargo[Commodity.COLONISTS] = have - qty
+        player.ship.cargo[Commodity.COLONISTS] = have - people
         if player.ship.cargo[Commodity.COLONISTS] <= 0:
             player.ship.cargo.pop(Commodity.COLONISTS, None)
-        universe.terra_colonists = int(universe.terra_colonists) + qty
+        universe.terra_colonists = int(universe.terra_colonists) + people
     else:
         return ActionResult(ok=False, error="mode must be take or leave")
     # Free (price 0); 1 turn.
@@ -464,8 +468,9 @@ def terra_legal_params(universe: Universe, player) -> dict[str, Any] | None:
     mx = int(universe.terra_max or K.TERRA_MAX_COLONISTS)
     free = int(player.ship.cargo_free)
     cargo_col = int(player.ship.cargo.get(Commodity.COLONISTS, 0))
-    take_max = min(pool, free)
-    leave_max = min(cargo_col, mx - pool)
+    per = int(K.colonists_per_hold())
+    take_max = min(pool // per, free)
+    leave_max = min(cargo_col // per, (mx - pool) // per)
     modes = []
     max_by = {}
     if take_max >= 1:

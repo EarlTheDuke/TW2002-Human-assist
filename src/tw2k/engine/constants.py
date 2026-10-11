@@ -2898,3 +2898,31 @@ def ship_roster_live() -> bool:
     """True when the yard uses the live ISS price and Scout fighter cap."""
     return SHIP_ROSTER_MODE == "live"
 
+
+# terra-colonists-v1. Appended so later slices can rebase cleanly.
+# "legacy": the pool opens full at 100,000 and one colonist fills one hold.
+# "live": the pool opens at 30,000 and one hold carries 1,000 colonists.
+# The price stays 0, the turn stays 1, and a day still adds 750.
+TERRA_COLONIST_MODE = "legacy"  # "legacy" | "live"
+TERRA_LIVE_START = 30_000
+TERRA_LIVE_PER_HOLD = 1_000
+
+
+def terra_colonist_live() -> bool:
+    """True when Terra opens at 30,000 and a hold carries 1,000 colonists."""
+    return TERRA_COLONIST_MODE == "live"
+
+
+def terra_start_pool() -> int:
+    """Colonists in the Terra pool when the universe is created."""
+    if terra_colonist_live():
+        return TERRA_LIVE_START
+    return TERRA_MAX_COLONISTS
+
+
+def colonists_per_hold() -> int:
+    """Colonists that fill one cargo hold."""
+    if terra_colonist_live():
+        return TERRA_LIVE_PER_HOLD
+    return 1
+
