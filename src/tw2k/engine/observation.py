@@ -2960,6 +2960,8 @@ def _action_hint(
                         f"immunity with any partner."
                     )
 
+    if K.hold_rules_live():
+        hints.append(K.HOLD_RULES_NOTE)
     return " | ".join(hints)
 
 

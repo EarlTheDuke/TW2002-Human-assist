@@ -489,6 +489,8 @@ def build_harness_router(runner) -> APIRouter:
         if K.action_result_report():
             # accepted stays "queued". result is what the engine then did.
             body["result"] = await agent.wait_result(bound)
+        if K.hold_rules_live():
+            body["wording"] = K.HOLD_RULES_NOTE
         return body
 
     @router.post("/{player_id}/hold")
@@ -500,8 +502,11 @@ def build_harness_router(runner) -> APIRouter:
         if body.hold and agent.hold_max <= 0:
             raise HTTPException(status_code=409, detail="hold_disabled")
         released = agent.set_hold(body.hold)
-        return {"player_id": player_id, "hold": agent.hold_slot, "released": released,
-                "used": agent.hold_count, "max": agent.hold_max}
+        answer = {"player_id": player_id, "hold": agent.hold_slot, "released": released,
+                  "used": agent.hold_count, "max": agent.hold_max}
+        if K.hold_rules_live():
+            answer["wording"] = K.HOLD_RULES_NOTE
+        return answer
 
     @router.post("/{player_id}/macro")
     async def macro(player_id: str, request: Request, body: MacroRequest) -> dict[str, Any]:
