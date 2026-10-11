@@ -1089,6 +1089,7 @@
     planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport", "planet_destroy", "planet_trade"],
     port: ["rob", "steal", "port_upgrade", "port_build"],
     comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_set_password", "corp_drop", "corp_transfer", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets", "ship_set_corporate", "ship_set_personal", "ship_set_password"],
+    tavern: ["tavern_announce", "tavern_talk", "tavern_graffiti", "tavern_order", "grimy_ask", "grimy_curse", "underground_enter", "underground_contract", "underground_claim", "tricron", "cineplex"],
   };
   const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
   function renderVerbGroups() {
@@ -1208,6 +1209,17 @@
     ship_set_corporate: { fields: [] },
     ship_set_personal: { fields: [] },
     ship_set_password: { fields: [{ n: "password", l: "Ship password (blank clears it)", t: "text", optional: true }] },
+    tavern_announce: { fields: [{ n: "text", l: "Announcement", t: "text" }] },
+    tavern_talk: { fields: [{ n: "text", l: "Say", t: "text" }] },
+    tavern_graffiti: { fields: [{ n: "text", l: "Write on the wall", t: "text" }] },
+    tavern_order: { fields: [{ n: "item", l: "Order", t: "choice" }] },
+    grimy_ask: { fields: [{ n: "topic", l: "Topic", t: "choice" }, { n: "target", l: "Trader (a trace)", t: "choice", optional: true }] },
+    grimy_curse: { fields: [] },
+    underground_enter: { fields: [{ n: "password", l: "Password", t: "text" }] },
+    underground_contract: { fields: [{ n: "target", l: "Target", t: "choice" }, { n: "amount", l: "Credits", t: "int" }] },
+    underground_claim: { fields: [] },
+    tricron: { fields: [], note: "Pays the ante the engine sent." },
+    cineplex: { fields: [] },
   };
 
   function renderGenericForm(kind, la, f, preview, buttons, go) {
@@ -1230,7 +1242,7 @@
       } else if (fd.t === "int") {
         el = numberEl(fd.n, { min: env.min ?? 1 });
       } else {
-        el = document.createElement("input"); el.type = "text"; el.name = fd.n; if (fd.maxLen || env.max_len) el.maxLength = fd.maxLen || env.max_len;
+        el = document.createElement("input"); el.type = "text"; el.name = fd.n; if (fd.maxLen || env.max_len || env.max) el.maxLength = fd.maxLen || env.max_len || env.max;
       }
       inputs[fd.n] = el;
       f.appendChild(field(fd.l + (fd.optional ? "" : ""), el, `${kind}-${fd.n}`));
