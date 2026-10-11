@@ -2130,40 +2130,41 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         corp_ticker=player.corp_ticker,
         origin="genesis",
     )
-    # Seed a founding population so the citadel/production path is actually
-    # reachable. Without this, new planets had 0 colonists and growth = 0 * 5%
-    # forever — locking out the entire S3/S4/S5 progression arc.
-    #
-    # Distribution favors fuel-ore workers (most broadly useful commodity) but
-    # leaves a healthy construction reserve in the "colonists" pool so the
-    # first Citadel L1 (which costs 1,000 colonists) can be built immediately
-    # after the player ferries the standard tier if they choose, or from the
-    # seed alone in a pinch.
-    seed_total = K.GENESIS_SEED_COLONISTS
-    planet.colonists[Commodity.FUEL_ORE] = int(seed_total * 0.40)
-    planet.colonists[Commodity.ORGANICS] = int(seed_total * 0.25)
-    planet.colonists[Commodity.EQUIPMENT] = int(seed_total * 0.15)
-    remainder = (
-        seed_total
-        - planet.colonists[Commodity.FUEL_ORE]
-        - planet.colonists[Commodity.ORGANICS]
-        - planet.colonists[Commodity.EQUIPMENT]
-    )
-    if K.citadel_fidelity_on():
-        planet.colonists[Commodity.FUEL_ORE] += remainder
-        planet.colonists[Commodity.COLONISTS] = 0
-    else:
-        planet.colonists[Commodity.COLONISTS] = remainder
-    # Small organics stockpile so colonist growth can start immediately —
-    # growth is gated on `stockpile[ORGANICS] > 0`.
-    planet.stockpile[Commodity.ORGANICS] = max(
-        planet.stockpile.get(Commodity.ORGANICS, 0), 25
-    )
-    if K.citadel_fidelity_on():
-        _need, fuel, organics, equipment, _days = K.citadel_class_cost(cls.value, 1)
-        planet.stockpile[Commodity.FUEL_ORE] = max(int(planet.stockpile.get(Commodity.FUEL_ORE, 0)), fuel)
-        planet.stockpile[Commodity.ORGANICS] = max(int(planet.stockpile.get(Commodity.ORGANICS, 0)), organics)
-        planet.stockpile[Commodity.EQUIPMENT] = max(int(planet.stockpile.get(Commodity.EQUIPMENT, 0)), equipment)
+    if not K.genesis_start_live():
+        # Seed a founding population so the citadel/production path is actually
+        # reachable. Without this, new planets had 0 colonists and growth = 0 * 5%
+        # forever — locking out the entire S3/S4/S5 progression arc.
+        #
+        # Distribution favors fuel-ore workers (most broadly useful commodity) but
+        # leaves a healthy construction reserve in the "colonists" pool so the
+        # first Citadel L1 (which costs 1,000 colonists) can be built immediately
+        # after the player ferries the standard tier if they choose, or from the
+        # seed alone in a pinch.
+        seed_total = K.GENESIS_SEED_COLONISTS
+        planet.colonists[Commodity.FUEL_ORE] = int(seed_total * 0.40)
+        planet.colonists[Commodity.ORGANICS] = int(seed_total * 0.25)
+        planet.colonists[Commodity.EQUIPMENT] = int(seed_total * 0.15)
+        remainder = (
+            seed_total
+            - planet.colonists[Commodity.FUEL_ORE]
+            - planet.colonists[Commodity.ORGANICS]
+            - planet.colonists[Commodity.EQUIPMENT]
+        )
+        if K.citadel_fidelity_on():
+            planet.colonists[Commodity.FUEL_ORE] += remainder
+            planet.colonists[Commodity.COLONISTS] = 0
+        else:
+            planet.colonists[Commodity.COLONISTS] = remainder
+        # Small organics stockpile so colonist growth can start immediately —
+        # growth is gated on `stockpile[ORGANICS] > 0`.
+        planet.stockpile[Commodity.ORGANICS] = max(
+            planet.stockpile.get(Commodity.ORGANICS, 0), 25
+        )
+        if K.citadel_fidelity_on():
+            _need, fuel, organics, equipment, _days = K.citadel_class_cost(cls.value, 1)
+            planet.stockpile[Commodity.FUEL_ORE] = max(int(planet.stockpile.get(Commodity.FUEL_ORE, 0)), fuel)
+            planet.stockpile[Commodity.ORGANICS] = max(int(planet.stockpile.get(Commodity.ORGANICS, 0)), organics)
+            planet.stockpile[Commodity.EQUIPMENT] = max(int(planet.stockpile.get(Commodity.EQUIPMENT, 0)), equipment)
     planet.last_tax_value = planet_tax_value(planet)
     universe.planets[pid_planet] = planet
     sector.planet_ids.append(pid_planet)
