@@ -3210,3 +3210,16 @@ AVOID_MODE = "legacy"  # "legacy" | "live"
 
 def avoid_live() -> bool:
     return AVOID_MODE == "live" or tw2002_live_profile()
+
+
+# bank-live-v1. Off, the account still stops at 500,000.
+# On, there is no cap. The live game never showed a ceiling.
+# There is still no fee and no interest. The bank is still only at StarDock.
+# A typed amount can be larger than five digits. The five-digit cut was the
+# live input box, and a second deposit already moves the rest.
+# The daily tax stays the one cash-tax-v1 measured. This switch does not change it.
+BANK_LIVE_MODE = "legacy"  # "legacy" | "live"
+
+
+def bank_live() -> bool:
+    return BANK_LIVE_MODE == "live" or tw2002_live_profile()
