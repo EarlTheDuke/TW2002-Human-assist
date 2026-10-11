@@ -154,6 +154,27 @@ def _rng_for(universe: Universe) -> random.Random:
 # ---------------------------------------------------------------------------
 
 
+def refresh_offline_turns(player, now: float | None = None) -> None:
+    """Give back spent turns for time away. No-op while the switch is off."""
+    if not K.turn_regen_live():
+        return
+    import time
+
+    if now is None:
+        now = time.time()
+    last = player.turn_regen_at
+    player.turn_regen_at = float(now)
+    if last is None:
+        return
+    elapsed = max(0.0, float(now) - float(last))
+    cap = max(0, int(player.turns_per_day))
+    frac = float(player.turn_regen_frac) + elapsed * cap / float(K.TURN_REGEN_DAY_SECONDS)
+    whole = int(frac)
+    player.turn_regen_frac = frac - whole
+    if whole:
+        player.turns_today = max(0, int(player.turns_today) - whole)
+
+
 def apply_action(universe: Universe, player_id: str, action: Action) -> ActionResult:
     player = universe.players.get(player_id)
     if player is None:
@@ -161,6 +182,7 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     if not player.alive:
         return ActionResult(ok=False, error="player is destroyed")
 
+    refresh_offline_turns(player)
     universe.tick += 1
 
     # Always log the thought; never validate.
@@ -331,7 +353,7 @@ def tick_day(universe: Universe) -> None:
     for player in universe.players.values():
         # Live turns come back by the hour. A new day does not refill the day.
         played = int(player.turns_today) > 0
-        if not K.starting_package_live():
+        if not K.starting_package_live() and not K.turn_regen_live():
             player.turns_today = 0
         if K.discovery_exp_live():
             if player.alive and played:
