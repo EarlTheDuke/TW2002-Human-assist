@@ -7,3 +7,5 @@
 Fuel 16 and equipment 36 are the full-port sell readings. Organics 35 is the queue's full-port figure. The screen also showed organics at 18.6, so 35 is the high end of that band, not one port. The buy numbers are the middle of the ranges that were seen. Those screens did not say the stock, so calling them a full port is UNVERIFIED.
 
 Do not turn the switch on until Ben says so.
+
+Tier S on 9bbb14d: two tests pass, planted bugs failed the sell and buy anchor tests and were restored, the bank pin stayed 9b607d3dae940c0b1a69f6d7, and the 10-day games stayed 24863a3d and 98a47c8a with rejected 0/0.
