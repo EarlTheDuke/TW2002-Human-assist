@@ -893,6 +893,8 @@ def hold_next_price(class_key: str, holds_already: int, day: int) -> int:
     """Credits for the next single hold."""
     if ECONOMY_SCALE_MODE != "tw2002":
         return int((SHIP_SPECS.get(class_key) or POD_SPEC)["base_hold_cost"])
+    if shop_price_live():
+        return 550 + 20 * (int(holds_already) - 20)
     return hold_day_base(day) + 20 * int(holds_already)
 
 
@@ -900,9 +902,11 @@ def hold_total_price(class_key: str, holds_already: int, qty: int, day: int) -> 
     """Credits to buy `qty` holds starting from `holds_already`."""
     if ECONOMY_SCALE_MODE != "tw2002":
         return int((SHIP_SPECS.get(class_key) or POD_SPEC)["base_hold_cost"]) * int(qty)
-    base = hold_day_base(day)
     held = int(holds_already)
     count = int(qty)
+    if shop_price_live():
+        return count * 150 + 20 * (count * held + count * (count - 1) // 2)
+    base = hold_day_base(day)
     return count * base + 20 * (count * held + count * (count - 1) // 2)
 
 
@@ -2849,4 +2853,17 @@ PORT_REGEN_MODE = "legacy"  # "legacy" | "live"
 def port_regen_live() -> bool:
     """True when a day puts back 5 percent of max stock."""
     return PORT_REGEN_MODE == "live"
+
+
+# hold-fighter-shield-price-v1. Appended so later slices can rebase cleanly.
+# "legacy": the next hold is the daily base plus 20 per hold already owned.
+# "live": 550 + 20 per hold past 20, including below 20. The same slope.
+# Fighters and shields stay on the 160-239 wave. Day 1 was 188 and 161,
+# day 2 was 190 and 159. Two days are not a new curve.
+SHOP_PRICE_MODE = "legacy"  # "legacy" | "live"
+
+
+def shop_price_live() -> bool:
+    """True when the next hold uses the flat 550 screen formula."""
+    return SHOP_PRICE_MODE == "live"
 
