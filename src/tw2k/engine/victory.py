@@ -240,7 +240,39 @@ def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
         defense_value = planet.fighters * K.FIGHTER_COST + planet.shields * 10
     else:
         defense_value = planet.fighters * K.nw_fighter_value() + planet.shields * K.nw_planet_shield_value()
-    return citadel_cost + colonist_value + stockpile_value + planet.treasury + defense_value
+    held = 0
+    if K.planet_nw_live() and not tax_basis:
+        held = _construction_contents(planet)
+    return citadel_cost + colonist_value + stockpile_value + planet.treasury + defense_value + held
+
+
+def _construction_contents(planet) -> int:
+    """Goods already spent on the level that is still building.
+
+    The stockpile no longer holds them, and citadel_level does not count them
+    until the day the level finishes. Scoring them here keeps the planet's
+    value flat across that wait. A finished level is already in citadel_cost.
+    """
+    target = int(getattr(planet, "citadel_target", 0) or 0)
+    level = int(planet.citadel_level or 0)
+    if target <= level:
+        return 0
+    next_level = level + 1
+    if K.citadel_fidelity_on() or K.CITADEL_COST_MODE == "class":
+        colonists, fuel, organics, equipment, _days = K.citadel_class_cost(planet.class_id.value, next_level)
+        value = (
+            fuel * planet_stock_unit_price("fuel_ore")
+            + organics * planet_stock_unit_price("organics")
+            + equipment * planet_stock_unit_price("equipment")
+        )
+        if K.CITADEL_COST_MODE == "class" and not K.citadel_fidelity_on():
+            value += colonists * K.COLONIST_PRICE
+        return value
+    tier_idx = next_level - 1
+    if tier_idx < len(K.CITADEL_TIER_COST):
+        credit_cost, colonist_cost, _days = K.CITADEL_TIER_COST[tier_idx]
+        return credit_cost + colonist_cost * K.COLONIST_PRICE
+    return 0
 
 
 def planet_tax_value(planet) -> int:
