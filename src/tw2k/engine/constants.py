@@ -395,6 +395,24 @@ TURN_COST = {
     "tow_release": 0,
 }
 
+# "legacy": landing costs 3 turns and lifting off costs 1, on every planet.
+# "live": landing on a planet you already own costs 0. Lifting off still costs 1.
+# The pair is 1 turn, taken when you lift off. A planet you do not own stays at 3 plus 1.
+OWN_PLANET_TURN_MODE = "legacy"  # "legacy" | "live"
+
+
+def own_planet_turn_live() -> bool:
+    """True when an owned-planet landing is free and the turn is taken on liftoff."""
+    return OWN_PLANET_TURN_MODE == "live"
+
+
+def land_turn_cost(owned_by_you: bool) -> int:
+    """Turns a landing spends. Your own planet is free only in live mode."""
+    if owned_by_you and own_planet_turn_live():
+        return 0
+    return int(TURN_COST["land_planet"])
+
+
 # --- Combat / fighters / mines ------------------------------------------------
 
 FIGHTER_COST = 50  # legacy flat price, and the no-day net-worth value

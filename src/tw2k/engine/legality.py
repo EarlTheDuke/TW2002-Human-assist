@@ -889,6 +889,12 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                     pl.corp_ticker and player.corp_ticker and pl.corp_ticker == player.corp_ticker)
                 if not hostile:
                     land_choices.append(plid)
+    if (
+        land_choices
+        and K.own_planet_turn_live()
+        and all(universe.planets[plid].owner_id == player_id for plid in land_choices)
+    ):
+        lp_cost = 0
     if not planets_here:
         reason = "no planet in this sector"
     elif not land_choices:

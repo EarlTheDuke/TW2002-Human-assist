@@ -1462,7 +1462,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
     if planet_id is None or int(planet_id) not in sector.planet_ids:
         return ActionResult(ok=False, error="no such planet in this sector")
     planet = universe.planets[int(planet_id)]
-    cost = K.TURN_COST["land_planet"]
+    cost = K.land_turn_cost(planet.owner_id == pid)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
 
