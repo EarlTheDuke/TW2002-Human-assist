@@ -1084,10 +1084,11 @@
   // ---------------------------------------------------------------- S4: context verb groups
   // Group membership is presentation (where a button lives), never legality.
   const VERB_GROUPS = {
-    combat: ["attack", "retreat", "pay_toll", "surrender", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic", "recall_deployed", "ship_transwarp", "ship_transport", "tow_engage", "tow_release"],
-    stardock: ["buy_ship", "buy_equip", "corp_create", "sell_ship"],
+    combat: ["attack", "retreat", "pay_toll", "surrender", "photon_missile", "deploy_fighters", "deploy_mines", "deploy_atomic", "recall_deployed", "ship_transwarp", "ship_transport", "tow_engage", "tow_release", "cloak", "fire_disruptor", "remove_limpet", "launch_beacon"],
+    stardock: ["buy_ship", "buy_equip", "corp_create", "sell_ship", "terra_colonists", "bank_deposit", "bank_withdraw", "bank_transfer", "apply_commission", "post_reward", "claim_reward"],
     planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport", "planet_destroy", "planet_trade"],
-    comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets"],
+    port: ["rob", "steal", "port_upgrade", "port_build"],
+    comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_set_password", "corp_drop", "corp_transfer", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets", "ship_set_corporate", "ship_set_personal", "ship_set_password"],
   };
   const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
   function renderVerbGroups() {
@@ -1180,12 +1181,33 @@
     accept_alliance: { fields: [{ n: "alliance_id", l: "Proposal", t: "choice" }] },
     break_alliance: { fields: [{ n: "alliance_id", l: "Alliance", t: "choice" }] },
     corp_invite: { fields: [{ n: "target", l: "Invite", t: "choice" }] },
-    corp_join: { fields: [{ n: "ticker", l: "Corporation", t: "choice" }] },
+    corp_join: { fields: [{ n: "ticker", l: "Corporation", t: "choice" }, { n: "password", l: "Password", t: "text" }] },
     corp_leave: { fields: [] },
     corp_deposit: { fields: [{ n: "amount", l: "Credits to deposit", t: "int", max: "max" }] },
     corp_withdraw: { fields: [{ n: "amount", l: "Credits to withdraw", t: "int", max: "max" }] },
     corp_memo: { fields: [{ n: "message", l: "Memo to corp", t: "text" }] },
     query_limpets: { fields: [] },
+    terra_colonists: { fields: [{ n: "mode", l: "Take or leave", t: "choice" }, { n: "qty", l: "Holds", t: "int", maxBy: "mode" }], note: "Terra. One hold is one load. The engine says how many holds fit." },
+    bank_deposit: { fields: [{ n: "amount", l: "Credits to deposit", t: "int", cap: "max_amount" }] },
+    bank_withdraw: { fields: [{ n: "amount", l: "Credits to withdraw", t: "int", cap: "max_amount" }] },
+    bank_transfer: { fields: [{ n: "to_player", l: "To", t: "choice", list: "recipients", id: "player_id" }, { n: "amount", l: "Credits", t: "int", maxList: "recipients", maxBy: "to_player", id: "player_id", maxKey: "max_amount" }] },
+    apply_commission: { fields: [] },
+    post_reward: { fields: [{ n: "target_id", l: "Target", t: "choice" }, { n: "amount", l: "Credits", t: "int" }] },
+    claim_reward: { fields: [] },
+    cloak: { fields: [], note: "Uses one cloaking device aboard." },
+    fire_disruptor: { fields: [{ n: "target", l: "Adjacent sector", t: "choice" }] },
+    remove_limpet: { fields: [], note: "Pays the removal fee the engine sent." },
+    launch_beacon: { fields: [{ n: "message", l: "Beacon text", t: "text" }] },
+    rob: { fields: [{ n: "amount", l: "Credits", t: "int" }] },
+    steal: { fields: [{ n: "commodity", l: "Commodity", t: "choice" }, { n: "qty", l: "Quantity", t: "int", maxBy: "commodity" }] },
+    port_upgrade: { fields: [{ n: "commodity", l: "Commodity", t: "choice", bag: "commodities" }, { n: "units", l: "Units", t: "int", maxBag: "commodities", maxBy: "commodity", maxKey: "max_units" }] },
+    port_build: { fields: [{ n: "port_class", l: "Class", t: "choice", bag: "classes" }, { n: "planet_id", l: "Planet", t: "choice", list: "planets", id: "planet_id" }, { n: "name", l: "Port name", t: "text" }] },
+    corp_set_password: { fields: [{ n: "password", l: "Password", t: "text" }] },
+    corp_drop: { fields: [{ n: "target", l: "Member", t: "choice" }] },
+    corp_transfer: { fields: [{ n: "target", l: "Corp mate here", t: "choice" }, { n: "item", l: "Item", t: "choice" }, { n: "qty", l: "Quantity", t: "int" }, { n: "direction", l: "Direction", t: "choice" }] },
+    ship_set_corporate: { fields: [] },
+    ship_set_personal: { fields: [] },
+    ship_set_password: { fields: [{ n: "password", l: "Ship password (blank clears it)", t: "text", optional: true }] },
   };
 
   function renderGenericForm(kind, la, f, preview, buttons, go) {
@@ -1196,7 +1218,12 @@
       const env = p[fd.n] || {};
       let el;
       if (fd.t === "choice") {
-        const choices = env.choices || [];
+        const env = p[fd.n] || {};
+        let choices = env.choices || [];
+        if (!choices.length && fd.bag && p[fd.bag] && typeof p[fd.bag] === "object") choices = Object.keys(p[fd.bag]);
+        if (!choices.length && fd.list && Array.isArray(p[fd.list])) {
+          choices = p[fd.list].map((row) => row[fd.id]).filter((v) => v !== undefined && v !== null);
+        }
         el = selectEl(fd.n, choices);
         if (!choices.length) { el.disabled = true; const o = document.createElement("option"); o.textContent = "(nothing available)"; el.appendChild(o); }
         if (fd.auto && choices.length === 1) { inputs[fd.n] = el; continue; }  // implied single choice - not shown
@@ -1215,7 +1242,18 @@
         if (fd.t === "int") {
           const env = p[fd.n] || {};
           let mx = env.max;
+          if ((mx === undefined || mx === null) && fd.cap && p[fd.cap] != null) mx = p[fd.cap];
           if (fd.maxBy && env.max_by) { const key = inputs[fd.maxBy] ? inputs[fd.maxBy].value : null; mx = env.max_by[key]; }
+          if (fd.maxBag && fd.maxKey) {
+            const key = inputs[fd.maxBy] ? inputs[fd.maxBy].value : null;
+            const row = (p[fd.maxBag] || {})[key];
+            if (row && row[fd.maxKey] != null) mx = row[fd.maxKey];
+          }
+          if (fd.maxList && fd.maxKey) {
+            const key = inputs[fd.maxBy] ? inputs[fd.maxBy].value : null;
+            const row = (p[fd.maxList] || []).find((r) => String(r[fd.id]) === String(key));
+            if (row && row[fd.maxKey] != null) mx = row[fd.maxKey];
+          }
           if (mx !== undefined && mx !== null) { el.max = String(mx); if (!el.value || Number(el.value) > mx) el.value = String(mx); }
           vals[fd.n] = Number(el.value) || 0;
         } else vals[fd.n] = el.value;
