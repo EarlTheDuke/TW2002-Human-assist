@@ -813,6 +813,8 @@ def _destroy_ship(
         _destroy_ship_legacy(universe, pid, reason, killer_id)
     if K.info_tw2002():
         player.ship.scanner = None  # SCANNERS_HIDDEN_INFO.md s4: the scanner went down with the ship
+    if K.death_pod_live() and player.ship.ship_class.value == K.ESCAPE_POD:
+        player.ship.scanner = "density"
     if K.hardware_tw2002():
         strip_v2(player.ship)  # d15: corbomite, beacons, probe, detonators, cloaks go with the hull
     if corbomite > 0 and killer_id and killer_id != pid:
@@ -1097,6 +1099,10 @@ def _destroy_ship_tw2002(
         if exp_before > 0:
             player.experience = exp_before - int(exp_before * K.POD_EXP_LOSS)
         _strip_ship(player, K.ESCAPE_POD)
+        if K.death_pod_live():
+            player.ship.holds = 1
+            player.ship.fighters = 1
+            player.ship.shields = 30
         _place(universe, player, dest)
         outcome = "escape_pod"
         # The summary reaches the killer and every witness; where the pod went does not (fog).
