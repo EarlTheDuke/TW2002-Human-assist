@@ -1043,12 +1043,15 @@ def _handle_deploy_fighters(universe: Universe, pid: str, action: Action) -> Act
         return ActionResult(ok=False, error=f"invalid fighter mode {mode_raw!r}")
     if qty <= 0 or qty > player.ship.fighters:
         return ActionResult(ok=False, error="invalid fighter quantity")
-    if sector.id in K.FEDSPACE_SECTORS:
+    if sector.id in K.FEDSPACE_SECTORS and not K.fedspace_deploy_live():
         return ActionResult(ok=False, error="cannot deploy fighters in FedSpace")
 
     cost = K.TURN_COST["deploy_fighters"]
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
+    if sector.id in K.FEDSPACE_SECTORS:
+        from .fed import punish_fighter_drop
+        return punish_fighter_drop(universe, player, cost)
 
     if K.sector_fighter_tw2002() and (sector.fighters is None or sector.fighters.owner_id == pid):
         cap = K.SECTOR_FIGHTER_CAP_WITH_PLANET if sector.planet_ids else K.SECTOR_FIGHTER_CAP

@@ -554,11 +554,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         cap = K.SECTOR_FIGHTER_CAP_WITH_PLANET if sector.planet_ids else K.SECTOR_FIGHTER_CAP
         have = int(sector.fighters.count) if sector.fighters is not None else 0
         fighter_max = min(fighters, max(0, cap - have))
+    if in_fedspace and K.fedspace_deploy_live():
+        fighter_max = fighters
     if corp_rules and controls_here and not in_fedspace:
         reason = _need_turns(player, df_cost)  # cr19: qty 0 changes mode / ownership without adding
     elif fighters <= 0:
         reason = "no fighters aboard"
-    elif in_fedspace:
+    elif in_fedspace and not K.fedspace_deploy_live():
         reason = "cannot deploy fighters in FedSpace"
     elif fighter_max <= 0:
         reason = "sector fighter cap"
