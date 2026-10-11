@@ -707,12 +707,12 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         prices = {
             "fighters": K.fighter_unit_price(day),
             "shields": shield_unit_price(day) if class0_tw2002() else 10,
-            "armid_mines": int(K.ARMID_MINE_COST),
-            "limpet_mines": int(K.LIMPET_MINE_COST),
+            "armid_mines": int(K.armid_mine_cost()),
+            "limpet_mines": int(K.limpet_mine_cost()),
             "atomic_mines": int(K.ATOMIC_MINE_COST),
             "photon_missiles": int(K.PHOTON_MISSILE_COST),
-            "ether_probes": int(K.ETHER_PROBE_COST),
-            "genesis": int(K.GENESIS_TORPEDO_COST),
+            "ether_probes": int(K.ether_probe_cost()),
+            "genesis": int(K.genesis_torpedo_cost()),
             "holds": K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day),
             "colonists": int(K.COLONIST_PRICE),
         }

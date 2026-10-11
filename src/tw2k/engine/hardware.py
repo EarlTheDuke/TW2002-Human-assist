@@ -33,8 +33,9 @@ def sector_photon_active(sector: Sector) -> bool:
 def armid_detonation_hits(count: int, rng) -> tuple[int, int]:
     """Return (hits, damage_per_hit) for hostile armids.
 
-    tw2002: floor(count/2) hits at ARMID_DAMAGE_TW2002.
-    legacy: min(count, rand 1..MINE_MAX_HITS) at ARMID_DAMAGE.
+    tw2002: floor(count/2) hits at the hardware-mode damage.
+    legacy: min(count, rand 1..MINE_MAX_HITS) at the legacy damage.
+    Live shop prices replace that per-hit number with 30.
     """
     count = int(count)
     if count <= 0:
@@ -43,10 +44,10 @@ def armid_detonation_hits(count: int, rng) -> tuple[int, int]:
         hits = count // 2
         if hits <= 0:
             # Bible/cabal: 50% rounding down — a lone mine does not detonate.
-            return 0, int(K.ARMID_DAMAGE_TW2002)
-        return hits, int(K.ARMID_DAMAGE_TW2002)
+            return 0, K.armid_hit_damage()
+        return hits, K.armid_hit_damage()
     hits = min(count, rng.randint(1, K.MINE_MAX_HITS_PER_MOVE))
-    return hits, int(K.ARMID_DAMAGE)
+    return hits, K.armid_hit_damage()
 
 
 def decloak_ship(universe: Universe, player: Player, *, reason: str) -> None:

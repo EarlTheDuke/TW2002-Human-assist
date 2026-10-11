@@ -840,8 +840,8 @@ class Player(BaseModel):
         equip_value = (
             self.ship.fighters * K.nw_fighter_value()
             + self.ship.shields * K.nw_shield_value()
-            + self.ship.mines.get(MineType.ARMID, 0) * K.ARMID_MINE_COST
-            + self.ship.mines.get(MineType.LIMPET, 0) * K.LIMPET_MINE_COST
+            + self.ship.mines.get(MineType.ARMID, 0) * K.armid_mine_cost()
+            + self.ship.mines.get(MineType.LIMPET, 0) * K.limpet_mine_cost()
             + self.ship.mines.get(MineType.ATOMIC, 0) * K.ATOMIC_MINE_COST
             + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
             + int(getattr(self.ship, "cloaks", 0) or 0) * getattr(K, "CLOAK_COST", 25_000)
@@ -850,8 +850,8 @@ class Player(BaseModel):
             + int(getattr(self.ship, "marker_beacons", 0) or 0) * getattr(K, "BEACON_COST", 100)
             + int(getattr(self.ship, "psychic_probe", 0) or 0) * getattr(K, "PSYCHIC_PROBE_COST", 2_500)
             + int(getattr(self.ship, "atomic_detonators", 0) or 0) * getattr(K, "ATOMIC_DETONATOR_COST", 60_000)
-            + self.ship.ether_probes * K.ETHER_PROBE_COST
-            + self.ship.genesis * K.GENESIS_TORPEDO_COST
+            + self.ship.ether_probes * K.ether_probe_cost()
+            + self.ship.genesis * K.genesis_torpedo_cost()
             + K.scanner_value(getattr(self.ship, "scanner", None))
         )
         total = self.credits + cargo_value + ship_value + equip_value

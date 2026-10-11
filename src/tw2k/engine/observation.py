@@ -2701,7 +2701,7 @@ def _action_hint(
         if (
             n_planets >= 1
             and genesis_loaded == 0
-            and credits_now >= K.GENESIS_TORPEDO_COST
+            and credits_now >= K.genesis_torpedo_cost()
         ):
             sector_list = ", ".join(
                 f"s{p.get('sector_id')}" for p in owned_planets[:3] if p.get("sector_id") is not None
@@ -2709,20 +2709,20 @@ def _action_hint(
             if n_planets == 1:
                 hints.append(
                     f"FYI: you own 1 planet ({sector_list}) and could afford "
-                    f"another Genesis ({K.GENESIS_TORPEDO_COST}cr at StarDock). "
+                    f"another Genesis ({K.genesis_torpedo_cost()}cr at StarDock). "
                     f"Cluster near {sector_list} = cheap colonist ferry; "
                     f"build far away = risk spread if one planet falls."
                 )
             elif n_planets == 2:
                 hints.append(
                     f"FYI: you own 2 planets ({sector_list}) and could afford "
-                    f"a 3rd Genesis ({K.GENESIS_TORPEDO_COST}cr). Empire forming — "
+                    f"a 3rd Genesis ({K.genesis_torpedo_cost()}cr). Empire forming — "
                     "a 3rd planet roughly doubles daily production capacity."
                 )
             else:
                 hints.append(
                     f"FYI: you own {n_planets} planets and could afford another "
-                    f"Genesis ({K.GENESIS_TORPEDO_COST}cr). Top-tier commanders "
+                    f"Genesis ({K.genesis_torpedo_cost()}cr). Top-tier commanders "
                     "run 5-15 planets; each new one compounds your income."
                 )
 

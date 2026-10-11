@@ -891,6 +891,59 @@ PHOTON_MISSILE_COST = 12_000
 ETHER_PROBE_COST = 5_000
 GENESIS_TORPEDO_COST = 25000
 ARMID_DAMAGE = 100
+
+# "legacy": the four shop prices and the armid hit stay as written above
+# (and the hardware-mode hit of 20). "live": the v3.34b shop card.
+# Armid 1,000 and "up to 30" points. Limpet 10,000. Genesis 20,000.
+# Ether probe 3,000. Combat was not played, so 30 is the shop's ceiling,
+# not a measured hit. Atomic detonators stay out of this switch: the live
+# item is a planet killer, and this copy's atomic mine is a different thing.
+# Default stays legacy so the pin and the digests do not move.
+HARDWARE_PRICE_MODE = "legacy"  # "legacy" | "live"
+ARMID_MINE_COST_LIVE = 1_000
+LIMPET_MINE_COST_LIVE = 10_000
+ETHER_PROBE_COST_LIVE = 3_000
+GENESIS_TORPEDO_COST_LIVE = 20_000
+ARMID_DAMAGE_LIVE = 30
+
+
+def hardware_price_live() -> bool:
+    """True when the shop uses the live armid, limpet, genesis, and ether prices."""
+    return HARDWARE_PRICE_MODE == "live"
+
+
+def armid_mine_cost() -> int:
+    if hardware_price_live():
+        return ARMID_MINE_COST_LIVE
+    return ARMID_MINE_COST
+
+
+def limpet_mine_cost() -> int:
+    if hardware_price_live():
+        return LIMPET_MINE_COST_LIVE
+    return LIMPET_MINE_COST
+
+
+def ether_probe_cost() -> int:
+    if hardware_price_live():
+        return ETHER_PROBE_COST_LIVE
+    return ETHER_PROBE_COST
+
+
+def genesis_torpedo_cost() -> int:
+    if hardware_price_live():
+        return GENESIS_TORPEDO_COST_LIVE
+    return GENESIS_TORPEDO_COST
+
+
+def armid_hit_damage() -> int:
+    """Points one armid hit deals. Live uses the shop ceiling of 30."""
+    if hardware_price_live():
+        return ARMID_DAMAGE_LIVE
+    if hardware_tw2002():
+        return ARMID_DAMAGE_TW2002
+    return ARMID_DAMAGE
+
 MINE_MAX_HITS_PER_MOVE = 10
 ATOMIC_PORT_DAMAGE = 0.6      # fraction of port stock destroyed by atomic det.
 ATOMIC_PLANET_DAMAGE = 0.5    # fraction of planet citadel/treasury wiped
