@@ -15,6 +15,36 @@ def fed_tw2002() -> bool:
     return K.FED_MODE == "tw2002"
 
 
+def punish_fighter_drop(universe: Universe, player, cost: int) -> ActionResult:
+    """Annihilate a fighter drop in FedSpace and take 10 percent of the ship."""
+    ship = player.ship
+    lost_fighters = K.fedspace_tenth_loss(ship.fighters)
+    lost_holds = K.fedspace_tenth_loss(ship.holds)
+    ship.fighters = max(0, int(ship.fighters) - lost_fighters)
+    ship.holds = max(0, int(ship.holds) - lost_holds)
+    extra = int(ship.cargo_used) - int(ship.holds)
+    if extra > 0:
+        for kind in list(ship.cargo):
+            have = int(ship.cargo.get(kind, 0) or 0)
+            take = min(have, extra)
+            if take:
+                ship.cargo[kind] = have - take
+                extra -= take
+            if extra <= 0:
+                break
+    universe.emit(
+        EventKind.DEPLOY_FIGHTERS,
+        actor_id=player.id,
+        sector_id=int(player.sector_id),
+        payload={"annihilated": True, "fighters_lost": lost_fighters, "holds_lost": lost_holds},
+        summary=(
+            f"{player.name}'s fighters are annihilated in FedSpace. "
+            f"Lost {lost_fighters} fighters and {lost_holds} holds."
+        ),
+    )
+    return ActionResult(ok=True, turns_spent=int(cost))
+
+
 __all__ = ["Federal"]  # re-exported: the model lives in models.py (typed Universe.federals)
 
 

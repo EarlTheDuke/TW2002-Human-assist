@@ -92,6 +92,23 @@ PORT_CLASS_WEIGHTS = {
 PORT_SPAWN_PROBABILITY = 0.65
 STARDOCK_SECTOR = 1
 FEDSPACE_SECTORS = set(range(1, 11))
+# "legacy": a fighter drop in FedSpace is refused and the ship is unchanged.
+# "live": the drop is annihilated. The ship loses 10 percent of its fighters
+# and 10 percent of its holds. A half rounds up, so 35 holds lose 4.
+# The fighters you tried to drop do not stay in the sector and are not taken
+# off on top of that 10 percent. 30 fighters became 27. 20 fighters became 18.
+FEDSPACE_DEPLOY_MODE = "legacy"  # "legacy" | "live"
+
+
+def fedspace_deploy_live() -> bool:
+    """True when a FedSpace fighter drop is annihilated instead of refused."""
+    return FEDSPACE_DEPLOY_MODE == "live"
+
+
+def fedspace_tenth_loss(count: int) -> int:
+    """Ten percent of a count, with a half rounded up."""
+    number = max(0, int(count))
+    return (number * 10 + 50) // 100
 
 PORT_DEFAULT_MAX_STOCK = 3000
 PORT_REGEN_PER_DAY = 0.05  # standard 5% per day. A sample game used 1%. See TURNS_REGEN.md.
