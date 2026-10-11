@@ -2819,3 +2819,22 @@ def warp_turns(class_key: str) -> int:
         return int(spec["turns_per_warp"])
     return int(TURN_COST["warp"])
 
+
+# port-price-curve-v1. Appended so later slices can rebase cleanly.
+# "legacy": the current stock curve. "live": full-port anchors from the live
+# screen, then the same slope, MCIC, and experience cap (1000).
+PORT_PRICE_MODE = "legacy"  # "legacy" | "live"
+# Full-port sell anchors. Fuel 16 and equipment 36 are the screen. Organics 35
+# is the queue's full-port figure; the screen also showed 18.6.
+PORT_PRICE_LIVE_SELL_FULL = {"fuel_ore": 16, "organics": 35, "equipment": 36}
+# Full-port buy anchors, midpoints of the seen ranges. The stock on those
+# screens was not written down, so treating them as full is UNVERIFIED.
+PORT_PRICE_LIVE_BUY_FULL = {"fuel_ore": 38, "organics": 73, "equipment": 102}
+PORT_PRICE_SELL_FULL_MULT = 0.60  # 1.25 - 0.65 at a full port
+PORT_PRICE_BUY_FULL_MULT = 0.75   # 1.45 - 0.70 at a full port
+
+
+def port_price_live() -> bool:
+    """True when quotes use the live full-port anchors."""
+    return PORT_PRICE_MODE == "live"
+

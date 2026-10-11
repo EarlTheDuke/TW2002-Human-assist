@@ -57,6 +57,10 @@ def port_sell_price(port: Port, commodity: Commodity, experience: int = 0) -> in
         1.0 + (_stored_mcic(port, commodity) - K.PORT_MCIC_DEFAULT_SELL) * K.PORT_MCIC_POINT,
     )
     exp_mult = 1.0 - K.PORT_EXPERIENCE_BUY_DISCOUNT * _experience_span(experience)
+    if K.port_price_live():
+        anchor = K.PORT_PRICE_LIVE_SELL_FULL[commodity.value]
+        raw = anchor * (stock_mult / K.PORT_PRICE_SELL_FULL_MULT) * mcic_mult * exp_mult
+        return _unit_price(anchor, raw)
     return _unit_price(base, base * stock_mult * mcic_mult * exp_mult)
 
 
@@ -77,6 +81,10 @@ def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int
         1.0 + (K.PORT_MCIC_DEFAULT_BUY - _stored_mcic(port, commodity)) * K.PORT_MCIC_POINT,
     )
     exp_mult = 1.0 + K.PORT_EXPERIENCE_SELL_BONUS * _experience_span(experience)
+    if K.port_price_live():
+        anchor = K.PORT_PRICE_LIVE_BUY_FULL[commodity.value]
+        raw = anchor * (stock_mult / K.PORT_PRICE_BUY_FULL_MULT) * mcic_mult * exp_mult
+        return _unit_price(anchor, raw)
     return _unit_price(base, base * stock_mult * mcic_mult * exp_mult)
 
 
