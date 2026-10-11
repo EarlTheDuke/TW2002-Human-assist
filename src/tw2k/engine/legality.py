@@ -64,10 +64,7 @@ def _turns_left(player) -> int:
 
 
 def _warp_cost(player) -> int:
-    spec = K.hull_spec(player.ship.ship_class.value)
-    if spec and "turns_per_warp" in spec:
-        return int(spec["turns_per_warp"])
-    return int(K.TURN_COST["warp"])
+    return K.warp_turns(player.ship.ship_class.value)
 
 
 def _need_turns(player, cost: int) -> str | None:

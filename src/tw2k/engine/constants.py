@@ -2800,3 +2800,22 @@ def trade_visit_free() -> bool:
     """True when a later deal in the same sector costs no turn."""
     return TRADE_TURN_MODE in ("legacy", "live")
 
+
+# warp-turn-cost-v1. Appended so later slices can rebase cleanly.
+# A warp already costs that hull's turns_per_warp (3, freighter 2 on the
+# tw2002 table). "legacy" keeps that. "live" names the same number.
+WARP_COST_MODE = "legacy"  # "legacy" | "live"
+
+
+def warp_cost_live() -> bool:
+    """True when the per-ship warp cost is selected by name. The numbers match legacy."""
+    return WARP_COST_MODE == "live"
+
+
+def warp_turns(class_key: str) -> int:
+    """Turns one warp spends for this hull. Both switch positions use the table."""
+    spec = hull_spec(class_key) or {}
+    if WARP_COST_MODE in ("legacy", "live") and "turns_per_warp" in spec:
+        return int(spec["turns_per_warp"])
+    return int(TURN_COST["warp"])
+

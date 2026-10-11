@@ -2149,9 +2149,7 @@ def _action_hint(
     ship = getattr(player, "ship", None) if player is not None else None
     warp_cost = K.TURN_COST.get("warp", 2)
     if ship is not None:
-        spec = K.hull_spec(getattr(ship.ship_class, "value", ""))
-        if spec and "turns_per_warp" in spec:
-            warp_cost = int(spec["turns_per_warp"])
+        warp_cost = K.warp_turns(getattr(ship.ship_class, "value", ""))
     trade_cost = K.PORT_DOCK_TURN_COST
     if player is not None:
         from .economy import trade_turn_cost

@@ -552,10 +552,7 @@ def _learn_sector(player, universe: Universe, sector_id: int) -> None:
 
 def _warp_cost_for(player) -> int:
     """Per-ship turns/warp; falls back to global TURN_COST['warp']."""
-    spec = K.hull_spec(player.ship.ship_class.value)
-    if spec and "turns_per_warp" in spec:
-        return int(spec["turns_per_warp"])
-    return K.TURN_COST["warp"]
+    return K.warp_turns(player.ship.ship_class.value)
 
 
 def _hostile_toll(universe: Universe, pid: str, sector):
