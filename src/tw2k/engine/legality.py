@@ -1223,7 +1223,16 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 "nothing on the planet to withdraw, or the ship cap is full")
 
     react_cost = int(K.TURN_COST["set_military_reaction"])
-    react_reason = owned_reason or _need_turns(player, react_cost)
+    if owned_reason:
+        react_reason = owned_reason
+    elif (
+        K.citadel_perk_live()
+        and owned_landed
+        and int(landed_planet.citadel_level or 0) < 2
+    ):
+        react_reason = "combat control requires citadel level 2"
+    else:
+        react_reason = _need_turns(player, react_cost)
     out.append(_la(ActionKind.SET_MILITARY_REACTION, legal=react_reason is None, reason=react_reason,
                    cost=react_cost,
                    params={"planet_id": pid_param,

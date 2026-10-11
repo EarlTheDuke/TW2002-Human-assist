@@ -3319,6 +3319,8 @@ def _handle_set_military_reaction(universe: Universe, pid: str, action: Action) 
         return ActionResult(ok=False, error="pct must be from 0 to 100")
     if pct < 0 or pct > 100:
         return ActionResult(ok=False, error="pct must be from 0 to 100")
+    if K.citadel_perk_live() and int(planet.citadel_level or 0) < 2:
+        return ActionResult(ok=False, error="combat control requires citadel level 2")
     cost = int(K.TURN_COST["set_military_reaction"])
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
