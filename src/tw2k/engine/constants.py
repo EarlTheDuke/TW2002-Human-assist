@@ -246,6 +246,37 @@ STARTING_FIGHTERS = 20
 STARTING_HOLDS = 20
 STARTING_TURNS_PER_DAY = 1000
 
+# starting-package-v1. "legacy" is today's opening: 20,000 credits, 20 fighters,
+# 1,000 turns, no home planet, and a full turn refill at each new day.
+# "live" is the TWGS Big Bang opening that was played: 300 credits, 30 fighters,
+# 250 turns, a free class M planet, and turns coming back by the hour instead
+# of a midnight refill to full. Default stays legacy so digests do not move.
+STARTING_PACKAGE_MODE = "legacy"  # "legacy" | "live"
+LIVE_STARTING_CREDITS = 300
+LIVE_STARTING_FIGHTERS = 30
+LIVE_STARTING_TURNS = 250
+LIVE_STARTING_COLONISTS = 191_000
+# 250 turns spread over a day. Live play measured about 10 to 11 an hour.
+LIVE_TURN_RECOVERY_NUM = 250
+LIVE_TURN_RECOVERY_DEN = 24 * 3600
+
+
+def starting_package_live() -> bool:
+    """True when a new game uses the TWGS opening pocket."""
+    return STARTING_PACKAGE_MODE == "live"
+
+
+def opening_loadout(spec_credits: int, spec_turns: int, slot: int) -> tuple[int, int, int]:
+    """Credits, turns per day, and fighters for seat `slot`.
+
+    Legacy keeps the ±1000 credit skew. Live uses the measured pocket and
+    skips the skew, which is larger than the whole 300-credit stake.
+    """
+    if starting_package_live():
+        return LIVE_STARTING_CREDITS, LIVE_STARTING_TURNS, LIVE_STARTING_FIGHTERS
+    skew = (slot * 317) % 2001 - 1000
+    return int(spec_credits) + skew, int(spec_turns), STARTING_FIGHTERS
+
 # --- Operator directives ------------------------------------------------------
 
 # Human steering text is injected into LLM observations, so cap it at the model
