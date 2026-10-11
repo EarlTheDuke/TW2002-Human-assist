@@ -3049,3 +3049,15 @@ def death_pod_live() -> bool:
     """True when a fresh pod uses the clean-game loadout."""
     return DEATH_POD_MODE == "live"
 
+
+# ship-combat-odds-v1. Appended so later slices can rebase cleanly.
+# "legacy" and "live" use the same Bible chart. A merchant cruiser attacks
+# at 1 to 1 and may send 750 fighters. A scout attacks at 2 to 1 and may
+# send 250. The switch stays off.
+COMBAT_ODDS_MODE = "legacy"  # "legacy" | "live"
+
+
+def combat_odds_live() -> bool:
+    """True when the slice names the per-ship odds that are already on."""
+    return COMBAT_ODDS_MODE == "live"
+
