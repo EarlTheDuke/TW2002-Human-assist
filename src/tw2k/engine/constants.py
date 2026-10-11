@@ -3073,3 +3073,14 @@ def corp_rules_v2_live() -> bool:
     """True when the slice names the corporation rules that are already on."""
     return CORP_RULES_V2_MODE == "live"
 
+
+# cockpit-api-parity-v1. Appended so later slices can rebase cleanly.
+# The bot screen lists every verb. This switch stays off and does not hide
+# those buttons. A default game would be short a control if it did.
+COCKPIT_PARITY_MODE = "legacy"  # "legacy" | "live"
+
+
+def cockpit_parity_live() -> bool:
+    """True when a later slice wants the parity screen called out as live."""
+    return COCKPIT_PARITY_MODE == "live"
+
