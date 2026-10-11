@@ -635,6 +635,7 @@ class Player(BaseModel):
             "ug_attempts": 0,
             "grimy_curse_day": 0,
             "tavern_last_trace": None,
+            "haggle_counter": None,
         })
 
     id: str
@@ -663,6 +664,8 @@ class Player(BaseModel):
     # Sector of the open port visit. Cleared when the player leaves.
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None
+    # haggle-detail-v1. The port's open counter, or None. Omitted while None.
+    haggle_counter: dict | None = None
     # SHIP_TRANSWARP.md tw12. Set on a ship TransWarp landing; cleared by warp or liftoff.
     arrived_by_transwarp: bool = False
     # port-upgrade-build-v1. Fractional exp/align left over, per commodity. Omitted while empty.
@@ -685,6 +688,7 @@ class Player(BaseModel):
     def end_port_visit(self) -> None:
         """A port visit ends when this player leaves the sector."""
         self.port_visit_sector_id = None
+        self.haggle_counter = None
     corp_ticker: str | None = None
     # CORP_RULES.md cr6. Wrong join attempts today. Omitted while 0.
     corp_breakins_today: int = 0

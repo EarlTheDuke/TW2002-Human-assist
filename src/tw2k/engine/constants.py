@@ -3110,3 +3110,16 @@ PORT_ATTACK_CONFIRM = "Attacks on Federation ports are prohibited! Are you sure?
 
 def port_attack_live() -> bool:
     return PORT_ATTACK_MODE == "live" or tw2002_live_profile()
+
+
+# haggle-detail-v1. Off, the older haggle window is unchanged.
+# On, a sale takes up to +3% of the opening quote. +4% to +12% gets a counter
+# at +1%. Above that the trade ends: "Swine" until +37%, then "Get lost creep".
+# A buy takes down to -12%. -13% to -23% gets a counter at -4%. Worse ends it.
+# The gaps +13%..+16% and -13%..-15% were not measured. They follow the next
+# measured outcome: an ended sale, and a buy counter.
+HAGGLE_LIVE_MODE = "legacy"  # "legacy" | "live"
+
+
+def haggle_live() -> bool:
+    return HAGGLE_LIVE_MODE == "live" or tw2002_live_profile()

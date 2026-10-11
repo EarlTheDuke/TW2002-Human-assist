@@ -868,6 +868,14 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
             payload={"commodity": commodity.value, "qty": qty, "side": side, "reason": msg},
             summary=f"{player.name} trade failed: {msg}",
         )
+        if K.haggle_live() and str(msg).startswith("counter "):
+            return ActionResult(ok=False, error=msg, turns_spent=0)
+        refused = msg == "the port lost patience" or (
+            K.haggle_live() and msg in ("Swine, go peddle your wares", "Get lost creep")
+        )
+        if refused and K.haggle_live():
+            player.end_port_visit()
+            return ActionResult(ok=False, error=msg, turns_spent=1)
         return ActionResult(ok=False, error=msg, turns_spent=K.PORT_HAGGLE_FAIL_TURNS if msg == "the port lost patience" else cost)
 
     _record_port_intel(player, sector.id, port, universe=universe)
