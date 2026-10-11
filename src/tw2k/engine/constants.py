@@ -3159,3 +3159,16 @@ PLANET_CLASS_MODE = "legacy"  # "legacy" | "live"
 
 def planet_class_live() -> bool:
     return PLANET_CLASS_MODE == "live" or tw2002_live_profile()
+
+
+# offline-turn-regen-v1. Off, a new day still refills every turn.
+# On, spent turns come back across the day, about 10 an hour when the
+# cap is 250, and never past the cap. A new day does not refill them.
+# 194 turns in half an hour at a 50,000 cap does not match this rate
+# (that rate would return about 1,042). No second rate was measured.
+TURN_REGEN_MODE = "legacy"  # "legacy" | "live"
+TURN_REGEN_DAY_SECONDS = 24 * 3600
+
+
+def turn_regen_live() -> bool:
+    return TURN_REGEN_MODE == "live" or tw2002_live_profile()

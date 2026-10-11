@@ -636,6 +636,8 @@ class Player(BaseModel):
             "grimy_curse_day": 0,
             "tavern_last_trace": None,
             "haggle_counter": None,
+            "turn_regen_at": None,
+            "turn_regen_frac": 0.0,
         })
 
     id: str
@@ -666,6 +668,9 @@ class Player(BaseModel):
     port_visit_sector_id: int | None = None
     # haggle-detail-v1. The port's open counter, or None. Omitted while None.
     haggle_counter: dict | None = None
+    # offline-turn-regen-v1. Omitted at the defaults so a legacy dump stays identical.
+    turn_regen_at: float | None = None
+    turn_regen_frac: float = 0.0
     # SHIP_TRANSWARP.md tw12. Set on a ship TransWarp landing; cleared by warp or liftoff.
     arrived_by_transwarp: bool = False
     # port-upgrade-build-v1. Fractional exp/align left over, per commodity. Omitted while empty.
