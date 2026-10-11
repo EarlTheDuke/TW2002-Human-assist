@@ -2773,3 +2773,14 @@ def hold_rules_live() -> bool:
     """True when the rules text names POST /hold and ok versus rejected."""
     return HOLD_RULES_MODE == "live"
 
+
+# planet-nw-construction-v1. Appended so later slices can rebase cleanly.
+# "legacy": goods spent on a citadel leave net worth until that level finishes.
+# "live": those goods stay in the score while the level is still building.
+PLANET_NW_MODE = "legacy"  # "legacy" | "live"
+
+
+def planet_nw_live() -> bool:
+    """True when a citadel under construction keeps the goods it already spent."""
+    return PLANET_NW_MODE == "live"
+
