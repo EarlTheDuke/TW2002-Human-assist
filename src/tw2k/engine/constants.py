@@ -3061,3 +3061,15 @@ def combat_odds_live() -> bool:
     """True when the slice names the per-ship odds that are already on."""
     return COMBAT_ODDS_MODE == "live"
 
+
+# corp-rules-v2. Appended so later slices can rebase cleanly.
+# The rules below are already on through CORP_MODE tw2002. This switch stays
+# off and does not turn them off. A joiner must match the C.E.O.'s alignment.
+# The C.E.O. can drop a member. Members can transfer. The cap is 5.
+CORP_RULES_V2_MODE = "legacy"  # "legacy" | "live"
+
+
+def corp_rules_v2_live() -> bool:
+    """True when the slice names the corporation rules that are already on."""
+    return CORP_RULES_V2_MODE == "live"
+
