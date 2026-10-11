@@ -4382,7 +4382,8 @@ class SeatBrain:
         Base is this port's listed bid, not the last port's price. The ask is
         capped at 109% of it: every port's hidden counter room is at least 110%
         of the listed bid (PORT_HAGGLE_MIN_PCT), so this haggle never makes a
-        port lose patience. A reading near the best (>= 95%) asks nothing extra.
+        port lose patience. When HAGGLE_WINDOW_MODE is live the cap is the
+        +8% band instead. A reading near the best (>= 95%) asks nothing extra.
         """
         if not self._hardware_on() or str(args.get("side") or "") != "sell" or args.get("unit_price") is not None:
             return args
@@ -4400,7 +4401,12 @@ class SeatBrain:
             return args
         if listed < 50 or pct >= 95 or pct <= 0:
             return args
-        offer = min(int(listed * 100 / pct), listed * 109 // 100)
+        from ..engine import constants as K
+
+        cap = listed * 109 // 100
+        if K.haggle_window_live():
+            cap = round(listed * K.PORT_HAGGLE_LIVE_ROOM_PCT / 100.0)
+        offer = min(int(listed * 100 / pct), cap)
         if offer <= listed:
             return args
         out = dict(args)

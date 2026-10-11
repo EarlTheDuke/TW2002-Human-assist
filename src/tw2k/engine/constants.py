@@ -176,6 +176,25 @@ PORT_HAGGLE_FAIL_TURNS = 1
 # amount. One deal stops at this cap.
 PORT_HAGGLE_XP_CAP = 10
 
+# "legacy": the hidden room is 110% to 149% of the first offer, by MCIC.
+# "live": a one-shot counter is taken only inside the band seen on TWGS
+# v3.34b. A sell may ask up to +8%. A buy may bid down to -8% (the same
+# 108 figure, folded: 200 - 108 = 92). A sell past about 130% is the wild
+# bid that ended a trade. Counter rounds between the band and that wild
+# bid were not built. The exact edge was not probed, so this is that
+# written band, not a fitted formula. A failed haggle still costs
+# PORT_HAGGLE_FAIL_TURNS. Default stays legacy so the pin and the digests
+# do not move.
+HAGGLE_WINDOW_MODE = "legacy"  # "legacy" | "live"
+PORT_HAGGLE_LIVE_ROOM_PCT = 108
+PORT_HAGGLE_LIVE_END_PCT = 130
+
+
+def haggle_window_live() -> bool:
+    """True when a counter has to sit inside the live +8% / -8% band."""
+    return HAGGLE_WINDOW_MODE == "live"
+
+
 # --- Ships --------------------------------------------------------------------
 
 SHIP_SPECS: dict[str, dict] = {
