@@ -9,3 +9,5 @@ This copy keeps `STARDOCK_SECTOR = 1`. That is on purpose. The bots and the scri
 Sector 1 stays the StarDock until Ben says otherwise. There is no new switch, because there is nothing to turn on. Whether the dock buys goods is the older `PORT_CLASS_MAP_MODE` switch, and that one stays `legacy`.
 
 The engine did not change, so the four scripted games stay the ones from 19ba88e.
+
+Suite on 271f3c2: 2506 passed, 2 failed, 1 skipped, 2945s. Both failures are the known flakes. No new tests and no plants, because the engine did not change.
