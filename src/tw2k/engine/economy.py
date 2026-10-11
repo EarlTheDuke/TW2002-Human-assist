@@ -107,8 +107,9 @@ def trade_turn_cost(player: Player) -> int:
 
     The first trade of a visit costs the dock turn. Further trades in that
     sector cost none. The visit ends when the player leaves the sector.
+    legacy and live both use that rule, so the pin stays put.
     """
-    if player.port_visit_sector_id == player.sector_id:
+    if player.port_visit_sector_id == player.sector_id and K.trade_visit_free():
         return 0
     return K.PORT_DOCK_TURN_COST
 
