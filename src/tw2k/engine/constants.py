@@ -343,7 +343,13 @@ def opening_loadout(spec_credits: int, spec_turns: int, slot: int) -> tuple[int,
     skips the skew, which is larger than the whole 300-credit stake.
     """
     if starting_package_live():
-        return LIVE_STARTING_CREDITS, LIVE_STARTING_TURNS, LIVE_STARTING_FIGHTERS
+        # The engine default of 1,000 means the caller did not ask. A live
+        # game then keeps the measured 250. Any other number, including a
+        # CLI --turns-per-day, is the number the seat actually gets.
+        turns = int(spec_turns)
+        if not live_pace() or turns == STARTING_TURNS_PER_DAY:
+            turns = LIVE_STARTING_TURNS
+        return LIVE_STARTING_CREDITS, turns, LIVE_STARTING_FIGHTERS
     skew = (slot * 317) % 2001 - 1000
     return int(spec_credits) + skew, int(spec_turns), STARTING_FIGHTERS
 
@@ -3234,7 +3240,10 @@ SEAT_DEADLINE_STREAK = 3
 
 
 def seat_deadline_live() -> bool:
-    return SEAT_DEADLINE_MODE == "live" or tw2002_live_profile()
+    mode = _forced_mode("TW2K_SEAT_DEADLINE_MODE", SEAT_DEADLINE_MODE)
+    if mode == "off":
+        return False
+    return mode == "live" or tw2002_live_profile()
 
 
 # async-days-v1. Off, seats still move one at a time and a day ends only
@@ -3246,7 +3255,10 @@ ASYNC_DAY_CAP_S = 20 * 60
 
 
 def async_day_live() -> bool:
-    return ASYNC_DAY_MODE == "live" or tw2002_live_profile()
+    mode = _forced_mode("TW2K_ASYNC_DAY_MODE", ASYNC_DAY_MODE)
+    if mode == "off":
+        return False
+    return mode == "live" or tw2002_live_profile()
 
 
 # own-planet-landing-fighters-v1. Off, a fighter challenge still blocks
@@ -3352,3 +3364,25 @@ PLANET_DIVIDEND_PAY_MODE = "legacy"  # "legacy" | "off"
 def planet_dividend_off() -> bool:
     """True when a planet's new value does not pay credits."""
     return PLANET_DIVIDEND_PAY_MODE == "off" or tw2002_live_profile()
+
+
+def _forced_mode(env_name: str, current: str) -> str:
+    """A process env of legacy, live, or off beats the stored switch."""
+    import os
+    raw = (os.environ.get(env_name) or "").strip().lower()
+    if raw in ("legacy", "live", "off"):
+        return raw
+    return current
+
+
+# live-profile-pace-fix-v1. Appended so later slices can rebase cleanly.
+# Off, a live opening still forces 250 turns and a spent day can roll
+# again immediately. On, a requested turn count is kept, spent seats get
+# their hourly turns back before the day is allowed to roll, and a day
+# that just rolled waits out that hour instead of racing.
+LIVE_PACE_MODE = "legacy"  # "legacy" | "live"
+
+
+def live_pace() -> bool:
+    """True when a live game waits on the clock instead of racing the day."""
+    return LIVE_PACE_MODE == "live" or tw2002_live_profile()
