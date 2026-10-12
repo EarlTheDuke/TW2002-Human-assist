@@ -731,6 +731,9 @@ class MatchRunner:
                     self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
                     continue
 
+                if K.live_pace() and K.starting_package_live():
+                    self._credit_live_turns(agents, universe)
+
                 if _is_day_done(player):
                     # This player is done for the day. Advance to next; if all are done, tick day.
                     all_done = all(
@@ -739,6 +742,15 @@ class MatchRunner:
                         for a in agents
                     )
                     if all_done:
+                        if K.live_pace() and K.starting_package_live():
+                            now = time.time()
+                            last = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
+                            gap = K.LIVE_TURN_RECOVERY_DEN / K.LIVE_TURN_RECOVERY_NUM
+                            if last and now - last < gap:
+                                await self._sleep_scaled(0.05)
+                                self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
+                                continue
+                            self._live_day_mark = now
                         tick_day(universe)
                         self._record_day_tick()
                         await self._flush_events()
@@ -750,7 +762,7 @@ class MatchRunner:
                 passed_for_day = False
                 missed = False
                 try:
-                    if K.starting_package_live():
+                    if K.starting_package_live() and not K.live_pace():
                         from ..engine.runner import recover_turns
                         clock = getattr(self, "_turn_clock", None)
                         if clock is None:
@@ -1203,6 +1215,28 @@ class MatchRunner:
         if pings:
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(asyncio.gather(*pings, return_exceptions=True), timeout=20)
+
+    def _credit_live_turns(self, agents, universe) -> None:
+        """Give every seat the turns the clock has earned, including a spent one.
+
+        A spent seat used to be skipped before this ran, so the day saw
+        everyone finished and rolled again on the next pass.
+        """
+        from ..engine.runner import recover_turns
+
+        clock = getattr(self, "_turn_clock", None)
+        if clock is None:
+            clock = {}
+            self._turn_clock = clock
+        now = time.time()
+        for agent in agents:
+            player = universe.players[agent.player_id]
+            if not player.alive:
+                continue
+            prev = clock.get(player.id)
+            if prev is not None:
+                recover_turns(player, now - prev)
+            clock[player.id] = now
 
     @staticmethod
     def _end_external_slot(agent, player, universe, reason: str) -> None:
