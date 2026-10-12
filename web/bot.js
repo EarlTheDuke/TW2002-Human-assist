@@ -237,7 +237,8 @@
       if (!ev || !ev.kind || groupOf(ev.kind) === "system") continue;
       counts.set(ev.kind, (counts.get(ev.kind) || 0) + 1);
     }
-    if (!counts.size) return "";
+    const missed = P.missedTurnCount(events);
+    if (!counts.size && !missed) return "";
     const rank = (k) => (k === "warp" ? 0 : k === "trade" ? 1 : 2);
     const parts = [...counts.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     const bits = parts.map(([k, n]) => {
@@ -245,7 +246,8 @@
       const plural = n === 1 || /s$/.test(word) ? word : `${word}s`;
       return `${n} ${plural}`;
     });
-    return `While you were away: ${bits.join(", ")}`;
+    const head = bits.length ? `While you were away: ${bits.join(", ")}` : "While you were away:";
+    return missed ? `${head} · missed turns ${missed}` : head;
   }
   function paintAway() {
     const banner = els.banner;

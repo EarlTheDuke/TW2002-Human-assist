@@ -154,6 +154,14 @@
     { key: "Esc", label: "close form / panel" },
   ];
 
+  function missedTurnCount(events) {
+    let n = 0;
+    for (const ev of events || []) {
+      const p = (ev && ev.payload) || {};
+      if (p.external_timeout || p.auto_wait || p.seat_deadline || p.passed_for_day) n += 1;
+    }
+    return n;
+  }
   function cargoText(ship) {
     const c = Object.entries((ship && ship.cargo) || {}).filter(([, n]) => n);
     return c.length ? c.map(([k, n]) => `${SHORT[k] || k} ${fmt(n)}`).join(", ") : "empty";
@@ -280,6 +288,6 @@
     directiveMeta, dialogueLines, DIALOGUE_TAIL,
     parseTwin, stageText, stageDetail,
     eventShown, HIDDEN_BY_DEFAULT,
-    CU_KEYS, turnCard, cargoText, portText,
+    CU_KEYS, turnCard, cargoText, portText, missedTurnCount,
   };
 });
