@@ -3259,6 +3259,16 @@ def own_planet_fighter_live() -> bool:
     return OWN_PLANET_FIGHTER_MODE == "live" or tw2002_live_profile()
 
 
+# alliance-flow-v1. Off, a hail is only a message and an ally still
+# fights the planet. On, an ally lands in peace, a declined proposal
+# says so, and a proposal left overnight expires.
+ALLIANCE_MODE = "legacy"  # "legacy" | "live"
+
+
+def alliance_live() -> bool:
+    return ALLIANCE_MODE == "live" or tw2002_live_profile()
+
+
 def async_day_should_roll(all_done: bool, elapsed_s: float) -> bool:
     if not async_day_live():
         return False

@@ -5,6 +5,7 @@ HELPERS = (
     "avoid_live",
     "bank_live",
     "alignment_live",
+    "alliance_live",
     "assign_pool_fix_live",
     "async_day_live",
     "citadel_days_live",
@@ -50,7 +51,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 41
+    assert len(names) == 42
     for name in names:
         assert getattr(K, name)() is False, name
 
