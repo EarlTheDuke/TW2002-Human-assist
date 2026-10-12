@@ -54,7 +54,7 @@ def test_s2_panels_and_cu_hooks_exist() -> None:
     assert 'id="lastResult"' in HTML and 'aria-live="polite"' in HTML
     assert "<details" in HTML and 'id="lastResultJson"' in HTML
     # Port tape shows side + price + stock per commodity (done-when #2).
-    assert "<th>Price</th>" in HTML and "<th>Stock</th>" in HTML
+    assert "<th>Price</th>" in HTML and "<th>Stock / room</th>" in HTML
     # Known ports table has per-commodity price columns (which known port buys it).
     assert "<th>Fuel</th>" in HTML and "<th>Org</th>" in HTML and "<th>Equip</th>" in HTML
 

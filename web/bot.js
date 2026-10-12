@@ -836,8 +836,8 @@
       if (pts.length > 1) {
         let onewayHops = 0;
         for (let i = 1; i < state.routePath.length; i += 1) {
-          const back = kw[String(state.routePath[i])] || [];
-          if (!back.map(Number).includes(Number(state.routePath[i - 1]))) onewayHops += 1;
+          const back = kw[String(state.routePath[i])];
+          if (back && !back.map(Number).includes(Number(state.routePath[i - 1]))) onewayHops += 1;
         }
         const line = svgEl("polyline", { points: pts.join(" "), class: "edge route", "data-testid": "route-line" });
         line.setAttribute("data-oneway-hops", String(onewayHops));
@@ -946,7 +946,7 @@
     const free = Number(sh.cargo_free);
     const holds = Number(sh.holds);
     const tail = Number.isFinite(free) && Number.isFinite(holds) ? `, empty ${fmt(free)} of ${fmt(holds)}` : "";
-    const body = parts.filter((p) => p.n).map((p) => `${p.name} ${fmt(p.n)}`);
+    const body = parts.map((p) => `${p.name} ${fmt(p.n)}`);
     if (colonists) body.push(`Colonists ${fmt(colonists)}`);
     tip.textContent = body.join(", ") + tail;
   }
@@ -1233,6 +1233,12 @@
     appendCode(el, code, false);
   }
   function canUse(kind) { return state.awaiting && !state.busy && !!legalOf(kind).legal; }
+  function learnedOneWay(obs, dest) {
+    const hereId = Number((obs.sector || {}).id) || 0;
+    const list = (obs.known_warps || {})[String(dest)];
+    if (!Array.isArray(list)) return false;
+    return !list.map(Number).includes(hereId);
+  }
   function renderWarpRing(obs, warps, warp) {
     const ring = $("warpRing");
     if (!ring) return;
@@ -1300,9 +1306,7 @@
     const warpLabel = (w) => {
       const code = rememberedPortCode(obs, w);
       const head = `WARP(${warpCost}t) ${w}`;
-      const hereId = Number((obs.sector || {}).id) || 0;
-      const returns = ((obs.known_warps || {})[String(w)] || []).map(Number).includes(hereId);
-      const mark = returns ? "" : " →";
+      const mark = learnedOneWay(obs, w) ? " →" : "";
       return (code ? `${head} ${code}` : head) + mark;
     };
     const warpKey = warps.map(warpLabel).join("|");
@@ -1312,10 +1316,8 @@
         const b = document.createElement("button");
         b.type = "button";
         const code = rememberedPortCode(obs, w);
-        const hereId = Number((obs.sector || {}).id) || 0;
-        const returns = ((obs.known_warps || {})[String(w)] || []).map(Number).includes(hereId);
         fillLabeled(b, `WARP(${warpCost}t) ${w}`, code);
-        if (!returns) {
+        if (learnedOneWay(obs, w)) {
           b.setAttribute("data-oneway", "1");
           b.appendChild(document.createTextNode(" →"));
         }
@@ -1773,7 +1775,10 @@
         if (state.obs) renderKnownMap(state.obs);
         if (!path) { preview.textContent = "route shown after plotting"; return; }
         const fly = exec.checked ? " · executes" : " · plan only (0 turns)";
-        const oneway = path.path.slice(1).filter((id, i) => !((state.obs.known_warps || {})[String(id)] || []).map(Number).includes(Number(path.path[i]))).length;
+        const oneway = path.path.slice(1).filter((id, i) => {
+          const back = (state.obs.known_warps || {})[String(id)];
+          return Array.isArray(back) && !back.map(Number).includes(Number(path.path[i]));
+        }).length;
         const mark = oneway ? ` · ${oneway} one-way` : "";
         preview.textContent = `${path.hops} hop(s), first sector ${path.first}${fly}${mark}`;
       };
