@@ -3519,3 +3519,15 @@ FEDCOMM_MSL_LINE = "Don't deploy fighters in the MSL's."
 def fedcomm_live() -> bool:
     """True when a lane sweep also sends the Federation note."""
     return FEDCOMM_MODE == "live" or tw2002_live_profile()
+
+
+# corp-rankings-v1. Appended so later slices can rebase cleanly.
+# "legacy": the seat does not get a corporation ranking.
+# "live": corporations are listed by combined member experience,
+# with the members' alignment added together.
+CORP_RANK_MODE = "legacy"  # "legacy" | "live"
+
+
+def corp_rank_live() -> bool:
+    """True when the corporation ranking is on the observation."""
+    return CORP_RANK_MODE == "live" or tw2002_live_profile()
