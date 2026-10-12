@@ -182,6 +182,8 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     if not player.alive:
         return ActionResult(ok=False, error="player is destroyed")
 
+    from .legality import release_stale_landing
+    release_stale_landing(universe, player)
     refresh_offline_turns(player)
     universe.tick += 1
 
@@ -789,6 +791,11 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     except (ValueError, TypeError):
         return ActionResult(ok=False, error=f"invalid target {target!r}")
 
+    if K.landed_state_live() and player.planet_landed is not None:
+        here = universe.planets.get(player.planet_landed)
+        if here is not None and here.sector_id == player.sector_id:
+            return ActionResult(ok=False, error="lift off first")
+
     cur = universe.sectors.get(player.sector_id)
     if cur is None or target_id not in cur.warps:
         universe.emit(
@@ -891,6 +898,10 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
 
 def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
+    if K.landed_state_live() and player.planet_landed is not None:
+        here = universe.planets.get(player.planet_landed)
+        if here is not None and here.sector_id == player.sector_id:
+            return ActionResult(ok=False, error="lift off first")
     sector = universe.sectors[player.sector_id]
     if sector.port is None or (
         sector.port.class_id == PortClass.STARDOCK and not K.port_class_live()
@@ -2949,6 +2960,10 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
         return ActionResult(ok=False, error="no route to target")
 
     execute = bool(action.args.get("execute", False))
+    if execute and K.landed_state_live() and player.planet_landed is not None:
+        here = universe.planets.get(player.planet_landed)
+        if here is not None and here.sector_id == player.sector_id:
+            return ActionResult(ok=False, error="lift off first")
     if not execute:
         universe.emit(
             EventKind.AUTOPILOT,
