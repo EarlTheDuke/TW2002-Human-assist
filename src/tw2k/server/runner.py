@@ -1786,6 +1786,7 @@ class MatchRunner:
                 for p in u.players.values()
             ],
             "corporations": [c.model_dump() for c in u.corporations.values()],
+            **({"rank_display": K.rank_display()} if K.rank_display() != "legacy" else {}),
             "alliances": [a.model_dump() for a in u.alliances.values()],
             "planets": [
                 {

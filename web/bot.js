@@ -930,6 +930,16 @@
     if (Number(obs.credits) === 0) bits.push("no credits");
     return bits.length ? `nothing to trade: ${bits.join("; ")}` : reason;
   }
+  function rankLine(obs) {
+    const place = obs && obs.rank_place;
+    if (!place) return `Rank ${obs.rank ?? "-"} by experience · ${fmt(obs.experience)} xp · net worth ${fmt(obs.net_worth)}`;
+    const exp = `experience rank ${place.experience}`;
+    const nw = `net worth rank ${place.net_worth}`;
+    const planets = `planet value ${fmt(place.planet_value)}`;
+    if (place.mode === "networth") return `${nw} · net worth ${fmt(obs.net_worth)} · ${planets}`;
+    if (place.mode === "both") return `${exp} · ${nw} · ${fmt(obs.experience)} xp · net worth ${fmt(obs.net_worth)} · ${planets}`;
+    return `${exp} · ${fmt(obs.experience)} xp · net worth ${fmt(obs.net_worth)} · ${planets}`;
+  }
   function paintCompare(obs) {
     const el = $("comparePanel");
     if (!el || !obs) return;
@@ -940,7 +950,7 @@
     const lines = [];
     lines.push(`You  ${ship.class || "?"} · ${fmt(ship.holds)} holds · ${fmt(ship.fighters)} fighters · ${fmt(ship.shields)} shields · ${fmt(obs.credits)} credits`);
     if (card) lines.push(`List card  ${card[1]} holds · ${fmt(card[2])} fighters · ${fmt(card[3])} shields · ${fmt(card[4])} credits`);
-    lines.push(`Rank ${obs.rank ?? "-"} by experience · ${fmt(obs.experience)} xp · net worth ${fmt(obs.net_worth)}`);
+    lines.push(rankLine(obs));
     lines.push(`Day ${obs.day ?? "-"} of ${obs.max_days ?? "-"} · ${fmt(obs.turns_remaining)} turns left`);
     if (!port) lines.push("No port in this sector");
     else {
@@ -2723,7 +2733,10 @@
       tr.setAttribute("data-testid", `final-${r.seat}`);
       if (r.seat === state.seat) tr.className = "me";
       td(tr, P.ordinal(r.rank)); td(tr, `${r.name} (${r.seat})${r.seat === state.seat ? " - you" : ""}`);
-      td(tr, fmt(r.net_worth), "num"); td(tr, r.seat === win.seat ? "WINNER" : r.alive ? "" : "destroyed");
+      td(tr, fmt(r.net_worth), "num");
+      if (r.planet_value !== undefined && r.planet_value !== null) td(tr, `planets ${fmt(r.planet_value)}`, "num");
+      if (r.experience_rank) td(tr, `xp rank ${r.experience_rank}`, "num");
+      td(tr, r.seat === win.seat ? "WINNER" : r.alive ? "" : "destroyed");
       b.appendChild(tr);
     }
     document.body.classList.add("is-game-over");

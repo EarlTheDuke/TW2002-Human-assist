@@ -127,8 +127,27 @@ def final_standings(universe, seat: str | None = None) -> dict[str, Any]:
         rows.sort(key=lambda r: (r["experience"], r["net_worth"]), reverse=True)
     else:
         rows.sort(key=lambda r: r["net_worth"], reverse=True)
+    mode = K.rank_display()
+    if mode != "legacy":
+        for row in rows:
+            person = universe.players[row["seat"]]
+            worth = full_net_worth(universe, person) if person.alive else 0
+            row["experience"] = int(person.experience)
+            row["planet_value"] = int(worth) - int(person.net_worth)
+        if mode == "exp":
+            rows.sort(key=lambda r: (r["experience"], r["net_worth"]), reverse=True)
+        elif mode == "networth":
+            rows.sort(key=lambda r: r["net_worth"], reverse=True)
     for i, r in enumerate(rows, start=1):
         r["rank"] = i
+    if mode != "legacy":
+        by_exp = sorted(rows, key=lambda r: (r["experience"], r["net_worth"]), reverse=True)
+        by_worth = sorted(rows, key=lambda r: r["net_worth"], reverse=True)
+        exp_place = {r["seat"]: i for i, r in enumerate(by_exp, start=1)}
+        worth_place = {r["seat"]: i for i, r in enumerate(by_worth, start=1)}
+        for row in rows:
+            row["experience_rank"] = exp_place[row["seat"]]
+            row["net_worth_rank"] = worth_place[row["seat"]]
     win = next((r for r in rows if r["seat"] == universe.winner_id), None)
     out: dict[str, Any] = {
         "winner": {"seat": win["seat"], "name": win["name"]} if win else None,
