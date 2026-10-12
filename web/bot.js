@@ -828,7 +828,17 @@
         if (!p) continue;
         pts.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
       }
-      if (pts.length > 1) svg.appendChild(svgEl("polyline", { points: pts.join(" "), class: "edge route", "data-testid": "route-line" }));
+      if (pts.length > 1) {
+        let onewayHops = 0;
+        for (let i = 1; i < state.routePath.length; i += 1) {
+          const back = kw[String(state.routePath[i])] || [];
+          if (!back.map(Number).includes(Number(state.routePath[i - 1]))) onewayHops += 1;
+        }
+        const line = svgEl("polyline", { points: pts.join(" "), class: "edge route", "data-testid": "route-line" });
+        line.setAttribute("data-oneway-hops", String(onewayHops));
+        if (onewayHops) line.appendChild(svgEl("title")).textContent = `${onewayHops} one-way`;
+        svg.appendChild(line);
+      }
     }
     // Nodes.
     const canPlot = canUse("plot_course");
@@ -1280,7 +1290,10 @@
     const warpLabel = (w) => {
       const code = rememberedPortCode(obs, w);
       const head = `WARP(${warpCost}t) ${w}`;
-      return code ? `${head} ${code}` : head;
+      const hereId = Number((obs.sector || {}).id) || 0;
+      const returns = ((obs.known_warps || {})[String(w)] || []).map(Number).includes(hereId);
+      const mark = returns ? "" : " →";
+      return (code ? `${head} ${code}` : head) + mark;
     };
     const warpKey = warps.map(warpLabel).join("|");
     if (els.warps.getAttribute("data-warp-key") !== warpKey) {
@@ -1289,7 +1302,13 @@
         const b = document.createElement("button");
         b.type = "button";
         const code = rememberedPortCode(obs, w);
+        const hereId = Number((obs.sector || {}).id) || 0;
+        const returns = ((obs.known_warps || {})[String(w)] || []).map(Number).includes(hereId);
         fillLabeled(b, `WARP(${warpCost}t) ${w}`, code);
+        if (!returns) {
+          b.setAttribute("data-oneway", "1");
+          b.appendChild(document.createTextNode(" →"));
+        }
         const tint = portTint(code);
         if (tint) b.classList.add(tint);
         b.setAttribute("data-testid", `warp-${w}`);
@@ -1726,7 +1745,9 @@
         if (state.obs) renderKnownMap(state.obs);
         if (!path) { preview.textContent = "route shown after plotting"; return; }
         const fly = exec.checked ? " · executes" : " · plan only (0 turns)";
-        preview.textContent = `${path.hops} hop(s), first sector ${path.first}${fly}`;
+        const oneway = path.path.slice(1).filter((id, i) => !((state.obs.known_warps || {})[String(id)] || []).map(Number).includes(Number(path.path[i]))).length;
+        const mark = oneway ? ` · ${oneway} one-way` : "";
+        preview.textContent = `${path.hops} hop(s), first sector ${path.first}${fly}${mark}`;
       };
       target.addEventListener("input", sync); exec.addEventListener("change", sync); sync();
       build = () => { const t = Number(target.value) || 0; return t > 0 ? { kind: "plot_course", args: { target: t, execute: exec.checked }, thought: `Grok Bot: plot to ${t}` } : null; };
