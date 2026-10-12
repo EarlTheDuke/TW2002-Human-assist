@@ -3386,3 +3386,26 @@ LIVE_PACE_MODE = "legacy"  # "legacy" | "live"
 def live_pace() -> bool:
     """True when a live game waits on the clock instead of racing the day."""
     return LIVE_PACE_MODE == "live" or tw2002_live_profile()
+
+
+# planet-value-cap-v1. Appended so later slices can rebase cleanly.
+# "legacy" is the score the recorded games already use. The other names
+# are options for a game where a planet's stock and fighters dwarf the
+# ship. The original ranks by experience, so the live profile uses that
+# one. The growth dividend still uses the old planet value.
+PLANET_VALUE_SCORE_MODE = "legacy"  # "legacy" | "stock_cap" | "no_fighters" | "colonists" | "experience"
+
+
+def planet_value_score_mode() -> str:
+    """Which number ranks a seat when the day cap hits."""
+    mode = PLANET_VALUE_SCORE_MODE
+    if mode != "legacy":
+        return mode
+    if tw2002_live_profile():
+        return "experience"
+    return "legacy"
+
+
+def planet_value_scored() -> bool:
+    """True when rank is not the recorded credit score."""
+    return planet_value_score_mode() != "legacy"
