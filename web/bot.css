@@ -462,18 +462,18 @@ body.mode-cu .since-turn { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .banner.turn, .banner.turn.flash { animation: none; }
 }
-/* ---- V1 video cockpit: viewport (default /bot only; #main is hidden in mode=cu). No CSS animation:
-   motion comes only from the canvas loop, which viewport.js never runs under reduced motion. ---- */
-.viewport { padding: 10px; }
-.vp-screen { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #02040a; cursor: pointer; }
-.vp-screen[hidden] { display: none !important; }
-.vp-stars { display: block; width: 100%; height: 100%; }
 #sceneStill {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;
   opacity: 1; transition: opacity 180ms linear;
 }
 #sceneStill.is-swap { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { #sceneStill { transition: none; } }
+/* ---- V1 video cockpit: viewport (default /bot only; #main is hidden in mode=cu). No CSS animation:
+   motion comes only from the canvas loop, which viewport.js never runs under reduced motion. ---- */
+.viewport { padding: 10px; }
+.vp-screen { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #02040a; cursor: pointer; }
+.vp-screen[hidden] { display: none !important; }
+.vp-stars { display: block; width: 100%; height: 100%; }
 .vp-frame { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 /* A take that already has a cockpit window in the picture hides this overlay. */
 .viewport.is-baked-frame .vp-frame { visibility: hidden; }
