@@ -425,3 +425,7 @@ Do these behind a new flag. Leave the default on today's behavior until Ben says
 14. `stardock-sector-v1` (M, Low). Random StarDock. Decision only.
 
 No slice for: failed-haggle turn cost, the hold endpoint, alliances, or the day-cap win. `3d-map-research-v1` is a plan after the first of these, not before.
+
+## 19. Status at afdf796 (2026-10-12)
+
+Read `docs/plans/gap-map-refresh-v2.md`. Section 18's fourteen slices now exist as flags. Their defaults are still the old behavior. The class M colonist figures (1,000 vs 1,000,000 on the citadel, and whether 191,000 people should shrink) are still Ben's choice. The next build is planet goods accruing during the day, not only at midnight. The 3D map stays out.
