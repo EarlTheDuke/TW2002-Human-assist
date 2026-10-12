@@ -1786,6 +1786,10 @@ svg.spark { display: block; }
   font-size: 12px;
   line-height: 1.5;
 }
+.message-empty {
+  color: var(--text-dim);
+  padding: 8px 4px;
+}
 .message {
   margin-bottom: 8px;
   padding: 6px 10px;

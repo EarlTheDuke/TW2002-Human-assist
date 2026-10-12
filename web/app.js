@@ -237,6 +237,7 @@
     renderMessages();
     buildMap();
     fetchHighlights();
+    fetchTransmissions();
   }
 
   function onSnapshot(snap) {
@@ -382,27 +383,7 @@
       }
     }
     // Messages + hail bubbles
-    if (ev.kind === "hail" || ev.kind === "broadcast") {
-      state.messages.push({
-        from: ev.actor_id,
-        target: ev.payload && ev.payload.target,
-        kind: ev.kind,
-        message: ev.payload && ev.payload.message,
-        day: ev.day,
-        tick: ev.tick,
-      });
-      if (state.messages.length > MAX_MESSAGES) state.messages.shift();
-      const sec = sectorFromActor(ev.actor_id);
-      if (sec) {
-        state.hailBubbles.push({
-          actor: ev.actor_id,
-          sector_id: sec,
-          text: (ev.payload && ev.payload.message) || "",
-          t: Date.now(),
-        });
-        if (state.hailBubbles.length > 12) state.hailBubbles.shift();
-      }
-    }
+    if (ev.kind === "hail" || ev.kind === "broadcast") rememberMessage(ev);
 
     // Phase A.4 / C.1 — tag first-of-match milestones BEFORE pushing
     // so render sees the stamp on the very first paint. We prefer the
@@ -2945,9 +2926,57 @@
 
   // ----------------- Messaging ---------------------
 
+  function rememberMessage(ev) {
+    if (!ev || (ev.kind !== "hail" && ev.kind !== "broadcast")) return;
+    if (ev.seq != null && state.messages.some((row) => row.seq === ev.seq)) return;
+    state.messages.push({
+      seq: ev.seq,
+      from: ev.actor_id,
+      target: ev.payload && ev.payload.target,
+      kind: ev.kind,
+      message: ev.payload && ev.payload.message,
+      day: ev.day,
+      tick: ev.tick,
+    });
+    if (state.messages.length > MAX_MESSAGES) state.messages.shift();
+    const sec = sectorFromActor(ev.actor_id);
+    if (sec) {
+      state.hailBubbles.push({
+        actor: ev.actor_id,
+        sector_id: sec,
+        text: (ev.payload && ev.payload.message) || "",
+        t: Date.now(),
+      });
+      if (state.hailBubbles.length > 12) state.hailBubbles.shift();
+    }
+  }
+
+  function fetchTransmissions() {
+    fetch("/events?since=0&limit=1000")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        for (const ev of data.events || []) rememberMessage(ev);
+        renderMessages();
+      })
+      .catch(() => {});
+  }
+
   function renderMessages() {
+    const panel = document.getElementById("panelMessages");
+    const rows = state.messages.slice(-100);
     messageFeed.innerHTML = "";
-    for (const m of state.messages.slice(-100)) {
+    if (!rows.length) {
+      const empty = document.createElement("div");
+      empty.className = "message-empty";
+      empty.dataset.testid = "transmissions-empty";
+      empty.textContent = "No hails or broadcasts yet.";
+      messageFeed.appendChild(empty);
+      if (panel && panel.dataset.pinnedOpen !== "1") panel.classList.add("collapsed");
+      return;
+    }
+    if (panel && panel.dataset.pinnedClosed !== "1") panel.classList.remove("collapsed");
+    for (const m of rows) {
       const from = state.players.get(m.from);
       const to = m.target ? state.players.get(m.target) : null;
       const d = document.createElement("div");
@@ -3376,6 +3405,15 @@
     const panel = document.querySelector(`.panel[data-panel="${key}"]`);
     if (!panel) return;
     panel.classList.toggle("collapsed");
+    if (key === "messages") {
+      if (panel.classList.contains("collapsed")) {
+        panel.dataset.pinnedClosed = "1";
+        delete panel.dataset.pinnedOpen;
+      } else {
+        panel.dataset.pinnedOpen = "1";
+        delete panel.dataset.pinnedClosed;
+      }
+    }
     const cfg = loadLayout();
     const collapsed = Object.assign({}, cfg.collapsed || {});
     collapsed[key] = panel.classList.contains("collapsed");
