@@ -1757,6 +1757,26 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
         and "fighters" not in brief
     ):
         brief["fighters"] = int(planet.fighters)
+    if K.scanner_fog_live():
+        landed = viewer is not None and getattr(viewer, "planet_landed", None) == planet.id
+        scanned = (
+            not landed
+            and K.planet_scanner_live()
+            and viewer is not None
+            and getattr(getattr(viewer, "ship", None), "planet_scanner", False)
+            and int(getattr(planet, "shields", 0) or 0) == 0
+        )
+        if not landed:
+            brief.pop("owner_id", None)
+            brief.pop("fighters", None)
+            brief.pop("shields", None)
+            if scanned:
+                brief["owner_id"] = planet.owner_id
+                brief["fighters"] = int(planet.fighters)
+        else:
+            brief["owner_id"] = planet.owner_id
+            brief["fighters"] = int(planet.fighters)
+            brief["shields"] = int(planet.shields)
     return brief
 
 
