@@ -229,6 +229,7 @@ def validate(data: dict[str, Any], media_root: Path = MEDIA, *, probe: bool = Fa
             if role == "clip" and ms is not None and ms > EVENT_CLIP_MAX_MS:
                 errors.append(f"{where}: {ms} ms is over the {EVENT_CLIP_MAX_MS} ms event clip cap")
     errors.extend(_review_errors(data))
+    errors.extend(_scene_errors(data, media_root))
     one, all_formats, stills = _selected_budgets(data, media_root)
     if one > ONE_BROWSER_MAX_BYTES:
         errors.append(f"selected set is {one} bytes over the {ONE_BROWSER_MAX_BYTES} one-browser budget")
@@ -238,6 +239,54 @@ def validate(data: dict[str, Any], media_root: Path = MEDIA, *, probe: bool = Fa
         "present": sorted(set(present)), "missing": sorted(set(missing)),
         "one": one, "stills": stills,
     }
+
+
+SCENE_KEYS = (
+    "sector_deep", "sector_stardock", "sector_terra", "sector_fedspace",
+    "planet_own", "planet_foreign", "docked_port", "in_pod",
+    "warp", "dock", "combat_hit", "combat_incoming", "combat_miss",
+    "planet_land", "planet_liftoff", "citadel_built", "death_pod", "genesis",
+    "trade_ok", "trade_failed", "new_day",
+)
+
+
+def resolve_scene(data: dict[str, Any], key: str, media_root: Path) -> str:
+    """A scene file, or 'canvas' when every file in the chain is missing."""
+    table = data.get("keys") or {}
+    seen: set[str] = set()
+    current: str | None = key
+    while current and current != "canvas" and current not in seen:
+        seen.add(current)
+        entry = table.get(current)
+        if entry is None:
+            if current.startswith("sector_port_"):
+                current = "docked_port"
+                continue
+            if current.startswith("ship_"):
+                current = "sector_deep"
+                continue
+            return "canvas"
+        rel = entry.get("file")
+        if rel and (media_root / rel).is_file():
+            return str(rel)
+        current = entry.get("fallback") or "canvas"
+    return "canvas"
+
+
+def _scene_errors(data: dict[str, Any], media_root: Path) -> list[str]:
+    if "keys" not in data:
+        return []
+    table = data.get("keys") or {}
+    errors: list[str] = []
+    for key in SCENE_KEYS:
+        if key not in table:
+            errors.append(f"keys.{key}: missing")
+    for n in range(10):
+        if f"sector_port_{n}" not in table:
+            errors.append(f"keys.sector_port_{n}: missing")
+    if "ship_merchant_cruiser" not in table:
+        errors.append("keys.ship_merchant_cruiser: missing")
+    return errors
 
 
 def main(argv: list[str] | None = None) -> int:

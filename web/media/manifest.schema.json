@@ -44,6 +44,19 @@
     "triggers": {
       "type": "array",
       "items": { "$ref": "#/$defs/trigger" }
+    },
+    "keys": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9_]+$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["fallback"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "anyOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }] },
+          "fallback": { "type": "string", "minLength": 1 }
+        }
+      }
     }
   },
   "allOf": [
