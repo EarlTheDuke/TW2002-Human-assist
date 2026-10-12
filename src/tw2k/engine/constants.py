@@ -3284,6 +3284,19 @@ def rank_display_live() -> bool:
     return rank_display() != "legacy"
 
 
+# api-arg-hardening-v1. Off, a queued action still answers accepted.
+# On, a reject names the argument, a tight retry is refused, and 20
+# identical rejects in a row are flagged.
+API_ARGS_MODE = "legacy"  # "legacy" | "live"
+API_RETRY_LIMIT = 30
+API_RETRY_WINDOW_S = 10
+API_REJECT_STREAK = 20
+
+
+def api_args_live() -> bool:
+    return API_ARGS_MODE == "live" or tw2002_live_profile()
+
+
 def async_day_should_roll(all_done: bool, elapsed_s: float) -> bool:
     if not async_day_live():
         return False

@@ -110,6 +110,48 @@ def _credential(request: Request, player_id: str | None = None) -> str:
     return token
 
 
+_BANK_KINDS = {ActionKind.BANK_DEPOSIT, ActionKind.BANK_WITHDRAW, ActionKind.BANK_TRANSFER}
+
+
+def rewrite_api_args(action: Action) -> None:
+    """Bank clients may send credits or qty. The engine reads amount."""
+    if action.kind not in _BANK_KINDS:
+        return
+    args = dict(action.args or {})
+    if "amount" not in args:
+        for alias in ("credits", "qty"):
+            if alias in args:
+                args["amount"] = args.pop(alias)
+                break
+    action.args = args
+
+
+def arg_error(action: Action, error: str | None) -> str | None:
+    if action.kind in _BANK_KINDS and error == "amount must be a whole number":
+        return "amount is required. Valid names: amount. Aliases: credits, qty."
+    return None
+
+
+def retry_blocked(agent) -> bool:
+    now = time.time()
+    stamps = getattr(agent, "_retry_stamps", None)
+    if stamps is None:
+        stamps = []
+        agent._retry_stamps = stamps
+    window = float(K.API_RETRY_WINDOW_S)
+    stamps[:] = [t for t in stamps if now - t < window]
+    if len(stamps) >= int(K.API_RETRY_LIMIT):
+        return True
+    stamps.append(now)
+    return False
+
+
+def legal_verb_hint(universe, pid: str) -> list[str]:
+    from ..engine.legality import legal_actions
+
+    return [la.kind for la in legal_actions(universe, pid) if la.legal][:8]
+
+
 def final_standings(universe, seat: str | None = None) -> dict[str, Any]:
     """Public end-of-match table (G6). Net worth stays on every row."""
     rows = []
@@ -496,6 +538,10 @@ def build_harness_router(runner) -> APIRouter:
             action = Action.model_validate(raw)
         except Exception as exc:
             raise HTTPException(status_code=422, detail=f"invalid action: {exc}") from exc
+        if K.api_args_live():
+            rewrite_api_args(action)
+            if retry_blocked(agent):
+                raise HTTPException(status_code=429, detail="too many retries")
         if body.hold is not None:
             if body.hold and agent.hold_max <= 0:
                 raise HTTPException(status_code=409, detail="hold_disabled")
@@ -520,6 +566,13 @@ def build_harness_router(runner) -> APIRouter:
         if K.action_result_report():
             # accepted stays "queued". result is what the engine then did.
             body["result"] = await agent.wait_result(bound)
+        elif K.api_args_live():
+            body["result"] = await agent.wait_result(bound)
+        if K.api_args_live() and (body.get("result") or {}).get("rejected"):
+            body["accepted"] = False
+            named = arg_error(action, body["result"].get("error"))
+            body["reason"] = named or body["result"].get("error")
+            body["legal_verbs"] = legal_verb_hint(runner.state.universe, player_id)
         if K.hold_rules_live():
             body["wording"] = K.HOLD_RULES_NOTE
         return body
