@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 
 import pytest
@@ -50,7 +51,7 @@ def _assert_ring(page, width: int) -> None:
         assert chip.startswith(f"{i} ")
         target = chips[i - 1]
         assert target in chip
-        code = button.replace(f"WARP {target}", "").strip()
+        code = re.sub(rf"^WARP\(\d+t\) {re.escape(str(target))}", "", button).strip()
         if code:
             assert code in chip
         else:

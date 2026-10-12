@@ -7,6 +7,7 @@ and the port buys it. Both layouts stay inside 1280x800.
 
 from __future__ import annotations
 
+import re
 import time
 
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
@@ -14,6 +15,11 @@ from tw2k.engine.models import Commodity
 from tw2k.engine.observation import build_observation
 
 TOK = "amz6-codes-token-p2-000000000000"
+
+
+def warp_label(sector, code=""):
+    tail = f" {code}" if code else ""
+    return rf"WARP\(\d+t\) {sector}{tail}"
 
 
 def _wait_parked(host: CuHost):
@@ -62,20 +68,20 @@ def test_warp_code_comes_from_memory_and_fuel_row_can_sell(browser, tmp_path, mo
             assert row.get_attribute("data-can-sell") is None
 
         label = page.evaluate(f"() => document.querySelector('[data-testid=warp-{unknown}]').textContent")
-        assert label == f"WARP {unknown}"
+        assert re.fullmatch(warp_label(unknown), label)
         assert live_code not in label
 
         me.known_ports[unknown] = {"class": "ZZZ", "stock": {}, "last_seen_day": universe.day}
         _replace_snapshot(host, universe)
         page.get_by_test_id("refresh").click()
         page.wait_for_function(
-            f"() => document.querySelector('[data-testid=warp-{unknown}]').textContent === 'WARP {unknown} ZZZ'",
+            f"() => /^WARP\\(\\d+t\\) {unknown} ZZZ$/.test(document.querySelector('[data-testid=warp-{unknown}]').textContent)",
             timeout=10_000,
         )
         bare = next((sid for sid in here.warps if sid != unknown and sid not in me.known_ports), None)
         if bare is not None:
             bare_label = page.evaluate(f"() => document.querySelector('[data-testid=warp-{bare}]').textContent")
-            assert bare_label == f"WARP {bare}"
+            assert re.fullmatch(warp_label(bare), bare_label)
 
         hints = page.evaluate("""() => ({
             scan: getComputedStyle(document.querySelector('[data-testid=action-scan]'), '::after').content,
@@ -185,7 +191,7 @@ def test_stardock_codes_on_every_neighbour_do_not_overflow(browser, tmp_path, mo
             assert "S" in fit["scan"] and "counter(warpkey)" in fit["warp"]
         if bare is not None:
             bare_label = page.evaluate(f"() => document.querySelector('[data-testid=warp-{bare}]').textContent")
-            assert bare_label == f"WARP {bare}"
+            assert re.fullmatch(warp_label(bare), bare_label)
         page.close()
 
         cu = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H})
