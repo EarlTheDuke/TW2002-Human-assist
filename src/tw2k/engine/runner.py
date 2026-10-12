@@ -2570,6 +2570,8 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
             prices.pop("atomic_mines", None)
     if K.info_tw2002() and at_stardock and item in ("density_scanner", "holo_scanner"):
         return _buy_scanner(universe, pid, str(item), qty)
+    if item == "planet_scanner":
+        return _buy_planet_scanner(universe, pid, qty)
     if class0_tw2002() and item == "colonists":
         return ActionResult(
             ok=False,
@@ -2679,6 +2681,32 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         summary=f"{player.name} bought {qty} {item} for {total}cr",
     )
     return ActionResult(ok=True, turns_spent=turns)
+
+
+def _buy_planet_scanner(universe: Universe, pid: str, qty: int) -> ActionResult:
+    """A planet scanner costs 30,000 and a hull carries one. StarDock only."""
+    if not K.planet_scanner_live():
+        return ActionResult(ok=False, error="unknown item 'planet_scanner'")
+    player = universe.players[pid]
+    if player.sector_id != K.STARDOCK_SECTOR:
+        return ActionResult(ok=False, error="must be at StarDock")
+    if qty != 1:
+        return ActionResult(ok=False, error="a ship carries one planet scanner (qty 1)")
+    if getattr(player.ship, "planet_scanner", False):
+        return ActionResult(ok=False, error="planet scanner already fitted")
+    total = int(K.PLANET_SCANNER_COST)
+    if player.credits < total:
+        return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {total})")
+    player.credits -= total
+    player.ship.planet_scanner = True
+    universe.emit(
+        EventKind.BUY_EQUIP,
+        actor_id=pid,
+        sector_id=player.sector_id,
+        payload={"item": "planet_scanner", "qty": 1, "total": total},
+        summary=f"{player.name} bought a planet scanner for {total}cr",
+    )
+    return ActionResult(ok=True, turns_spent=0)
 
 
 def _buy_scanner(universe: Universe, pid: str, item: str, qty: int) -> ActionResult:
