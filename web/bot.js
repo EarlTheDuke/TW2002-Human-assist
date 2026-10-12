@@ -431,14 +431,25 @@
   function paintTurnsLeft(obs) {
     setText("sbTurns", obs.turns_remaining);
     setText("sbTpd", obs.turns_per_day);
-    const el = $("sbTurns");
-    if (!el) return;
-    el.removeAttribute("data-level");
+    const note = P.turnRegenNote(state.turnsSeen, obs);
+    state.turnsSeen = {
+      day: obs.day,
+      left: obs.turns_remaining,
+    };
+    state.turnRegenText = note || state.turnRegenText || "";
+    const el = $("turnsRegen");
+    if (el && note) {
+      el.hidden = false;
+      el.textContent = note;
+    }
+    const turns = $("sbTurns");
+    if (!turns) return;
+    turns.removeAttribute("data-level");
     if (CU) return;
     const n = Number(obs.turns_remaining);
     if (!Number.isFinite(n)) return;
-    if (n <= 3) el.setAttribute("data-level", "red");
-    else if (n <= 10) el.setAttribute("data-level", "amber");
+    if (n <= 3) turns.setAttribute("data-level", "red");
+    else if (n <= 10) turns.setAttribute("data-level", "amber");
   }
 
   function paintCredits(obs) {
@@ -2473,7 +2484,7 @@
     const sh = obs.ship || {};
     setText("cuCredits", fmt(obs.credits));
     setText("cuNetWorth", fmt(obs.net_worth));
-    setText("cuStatusLine", state.statusLine);
+    setText("cuStatusLine", [state.statusLine, state.turnRegenText].filter(Boolean).join(" · "));
     setText("cuSeat", `${obs.self_id} ${obs.self_name || ""}`);
     setText("cuSectorId", s.id);
     $("cuFed").hidden = !s.is_fedspace;
