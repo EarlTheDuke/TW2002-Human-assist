@@ -85,7 +85,13 @@ from .models import (
     PortClass,
     Universe,
 )
-from .planets import _accrue_planet_treasury, _advance_planets, _complete_citadels, _pay_planet_value_tax
+from .planets import (
+    _accrue_planet_treasury,
+    _advance_planets,
+    _complete_citadels,
+    _pay_planet_value_tax,
+    refresh_planet_production,
+)
 from .rob_steal import clear_all_busts, handle_rob, handle_steal
 from .victory import (
     _award_xp,
@@ -185,6 +191,7 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     from .legality import release_stale_landing
     release_stale_landing(universe, player)
     refresh_offline_turns(player)
+    refresh_planet_production(universe)
     universe.tick += 1
 
     # Always log the thought; never validate.

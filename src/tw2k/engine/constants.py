@@ -3409,3 +3409,16 @@ def planet_value_score_mode() -> str:
 def planet_value_scored() -> bool:
     """True when rank is not the recorded credit score."""
     return planet_value_score_mode() != "legacy"
+
+
+# planet-realtime-prod-v1. Appended so later slices can rebase cleanly.
+# "legacy": a planet's goods and colonists change when the day ticks.
+# "live": that same daily amount also accrues as time passes, spread across
+# 24 hours. The day tick pays only the seconds the clock has not paid.
+# A long pause pays at most one day, then waits for the day to tick.
+PLANET_REALTIME_PROD_MODE = "legacy"  # "legacy" | "live"
+
+
+def planet_realtime_prod() -> bool:
+    """True when planet goods accrue during the day, not only at midnight."""
+    return PLANET_REALTIME_PROD_MODE == "live" or tw2002_live_profile()

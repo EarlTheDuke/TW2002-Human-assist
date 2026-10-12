@@ -196,25 +196,112 @@ def fighters_from_colonists(class_id: PlanetClass | str, colonists: dict) -> int
     return made * int(K.PLANET_FIGHTER_RATE_PCT) // 100
 
 
-def _advance_planets(universe: Universe) -> None:
+def _apply_one_day(planet) -> None:
+    # Snapshot before growth. Newborns from today's 5% do not make fighters
+    # until the next day, so 1500 fuel colonists on class M stay 50 fighters.
+    worked = {
+        name: _pool_count(planet.colonists, name)
+        for name in ("fuel_ore", "organics", "equipment")
+    }
+    if K.planet_prod_live():
+        _produce_and_grow_live(planet)
+    else:
+        _produce_and_grow_legacy(planet)
+    if planet.owner_id is None:
+        return
+    gain = fighters_from_colonists(planet.class_id, worked)
+    if gain <= 0:
+        return
+    room = max(0, K.PLANET_FIGHTER_CAP - int(planet.fighters))
+    planet.fighters = int(planet.fighters) + min(room, gain)
+
+
+def _split_units(daily: int, seconds: int, remain: int) -> tuple[int, int]:
+    """Whole units for this slice, and the leftover numerator.
+
+    The leftover stays inside one day. Slices that add up to a day pay
+    ``daily`` once.
+    """
+    day = int(K.TURN_REGEN_DAY_SECONDS)
+    total = int(daily) * int(seconds) + int(remain)
+    if total >= 0:
+        whole = total // day
+    else:
+        whole = -((-total) // day)
+    return whole, total - whole * day
+
+
+def _accrue_planet(planet, seconds: float) -> None:
+    take = int(seconds)
+    if take <= 0:
+        return
+    shadow = planet.model_copy(deep=True)
+    _apply_one_day(shadow)
+    remain = dict(planet.prod_remain or {})
+    for commodity in (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT):
+        delta = int(shadow.stockpile.get(commodity, 0)) - int(planet.stockpile.get(commodity, 0))
+        key = f"s:{commodity.value}"
+        whole, remain[key] = _split_units(delta, take, int(remain.get(key, 0)))
+        if whole > 0:
+            _stock_product(planet, commodity, whole)
+        elif whole < 0:
+            planet.stockpile[commodity] = max(0, int(planet.stockpile.get(commodity, 0)) + whole)
+    for commodity in list(planet.colonists.keys()):
+        delta = int(shadow.colonists.get(commodity, 0)) - int(planet.colonists.get(commodity, 0))
+        key = f"c:{commodity.value}"
+        whole, remain[key] = _split_units(delta, take, int(remain.get(key, 0)))
+        if whole:
+            planet.colonists[commodity] = max(0, int(planet.colonists.get(commodity, 0)) + whole)
+    whole, remain["fighters"] = _split_units(
+        int(shadow.fighters) - int(planet.fighters), take, int(remain.get("fighters", 0))
+    )
+    if whole:
+        planet.fighters = max(0, int(planet.fighters) + whole)
+    planet.prod_remain = {k: v for k, v in remain.items() if v}
+
+
+def refresh_planet_production(universe, now: float | None = None) -> None:
+    """Accrue planet goods for time just passed. No-op while the switch is off."""
+    if not K.planet_realtime_prod():
+        return
+    import time
+
+    if now is None:
+        now = time.time()
+    day = float(K.TURN_REGEN_DAY_SECONDS)
     for planet in universe.planets.values():
-        # Snapshot before growth. Newborns from today's 5% do not make fighters
-        # until the next day, so 1500 fuel colonists on class M stay 50 fighters.
-        worked = {
-            name: _pool_count(planet.colonists, name)
-            for name in ("fuel_ore", "organics", "equipment")
-        }
-        if K.planet_prod_live():
-            _produce_and_grow_live(planet)
-        else:
-            _produce_and_grow_legacy(planet)
-        if planet.owner_id is None:
+        last = planet.prod_clock_at
+        planet.prod_clock_at = float(now)
+        if last is None:
             continue
-        gain = fighters_from_colonists(planet.class_id, worked)
-        if gain <= 0:
+        elapsed = max(0.0, float(now) - float(last))
+        room = day - float(planet.prod_paid_s or 0)
+        take = min(elapsed, max(0.0, room))
+        if take <= 0:
             continue
-        room = max(0, K.PLANET_FIGHTER_CAP - int(planet.fighters))
-        planet.fighters = int(planet.fighters) + min(room, gain)
+        _accrue_planet(planet, take)
+        planet.prod_paid_s = int(planet.prod_paid_s or 0) + int(take)
+
+
+def _close_realtime_production(universe, now: float | None = None) -> None:
+    """Pay the rest of one day, then start the clock over."""
+    refresh_planet_production(universe, now=now)
+    day = int(K.TURN_REGEN_DAY_SECONDS)
+    for planet in universe.planets.values():
+        remain_s = day - int(planet.prod_paid_s or 0)
+        if remain_s > 0:
+            _accrue_planet(planet, remain_s)
+        planet.prod_paid_s = 0
+        planet.prod_remain = {}
+        planet.prod_clock_at = None
+
+
+def _advance_planets(universe: Universe) -> None:
+    if K.planet_realtime_prod():
+        _close_realtime_production(universe)
+        return
+    for planet in universe.planets.values():
+        _apply_one_day(planet)
 
 
 def _stock_product(planet, commodity: Commodity, produced: int) -> None:
