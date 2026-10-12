@@ -355,6 +355,9 @@ def tick_day(universe: Universe) -> None:
         played = int(player.turns_today) > 0
         if not K.starting_package_live() and not K.turn_regen_live():
             player.turns_today = 0
+        if K.seat_deadline_live():
+            player.seat_timeout_streak = 0
+            player.seat_timeouts_today = 0
         if K.discovery_exp_live():
             if player.alive and played:
                 player.experience = int(player.experience) + 1

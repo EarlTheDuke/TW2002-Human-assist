@@ -3223,3 +3223,15 @@ BANK_LIVE_MODE = "legacy"  # "legacy" | "live"
 
 def bank_live() -> bool:
     return BANK_LIVE_MODE == "live" or tw2002_live_profile()
+
+
+# seat-deadline-autopass-v1. Off, a human or a bot still uses the deadline
+# the match already set. On, that wait is 75 seconds. Three misses in a row
+# and the seat is passed for the rest of the day. A new day clears the count.
+SEAT_DEADLINE_MODE = "legacy"  # "legacy" | "live"
+SEAT_DEADLINE_S = 75
+SEAT_DEADLINE_STREAK = 3
+
+
+def seat_deadline_live() -> bool:
+    return SEAT_DEADLINE_MODE == "live" or tw2002_live_profile()
