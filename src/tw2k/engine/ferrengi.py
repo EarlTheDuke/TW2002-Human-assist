@@ -154,15 +154,24 @@ def place_ferrengal(universe: Universe) -> None:
     seed = int(universe.config.seed)
     rng = _ferrengal_rng(seed)
     hops = _bfs_hops(universe, K.STARDOCK_SECTOR)
-    # Prefer dead-ends (out-degree 1) far from StarDock.
-    dead = sorted(
-        sid
-        for sid, h in hops.items()
-        if sid >= 11
-        and h >= K.FERRENGAL_MIN_HOPS
-        and len(universe.sectors[sid].warps) == 1
-    )
-    pool = dead
+    pool: list[int] = []
+    if K.universe_topology_live():
+        pool = sorted(
+            sid
+            for sid, h in hops.items()
+            if sid >= 11
+            and h >= K.FERRENGAL_MIN_HOPS
+            and len(universe.sectors[sid].warps) == 0
+        )
+    if not pool:
+        # Prefer dead-ends (out-degree 1) far from StarDock.
+        pool = sorted(
+            sid
+            for sid, h in hops.items()
+            if sid >= 11
+            and h >= K.FERRENGAL_MIN_HOPS
+            and len(universe.sectors[sid].warps) == 1
+        )
     if not pool:
         # Near-dead-end: minimum out-degree among far sectors
         far = [

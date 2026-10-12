@@ -68,7 +68,10 @@ def _build_connected_graph(rng: random.Random, n: int, avg_warps: float) -> dict
 
 
 def _one_way_some_edges(
-    rng: random.Random, adj: dict[int, set[int]], fraction: float
+    rng: random.Random,
+    adj: dict[int, set[int]],
+    fraction: float,
+    allow_traps: bool = False,
 ) -> dict[int, set[int]]:
     """Convert a fraction of undirected edges to one-way, preserving STRONG connectivity to sector 1.
 
@@ -129,14 +132,19 @@ def _one_way_some_edges(
         adj[keep_to].discard(keep_from)
 
         # Rule 3: never leave ANY sector with zero outbound warps.
-        if len(adj[keep_to]) == 0:
+        # Live topology allows a dead end (in, no out). The revert stays on
+        # the legacy path so the recorded graph does not move.
+        if not allow_traps and len(adj[keep_to]) == 0:
             adj[keep_to].add(keep_from)  # revert
             continue
 
-        # Rule 4: keep the graph strongly connected w.r.t. sector 1 — i.e.
-        # sector 1 must still reach everyone, AND everyone must still reach
-        # sector 1. If either invariant breaks, revert this conversion.
-        if not _all_reachable_from(adj, 1, n) or not _all_can_reach(adj, 1, n):
+        # Rule 4: sector 1 must still reach everyone. Legacy also requires
+        # every sector can reach sector 1. Live topology drops that second
+        # check, so a one-way can be a trap.
+        trapped = not _all_reachable_from(adj, 1, n)
+        if not allow_traps:
+            trapped = trapped or not _all_can_reach(adj, 1, n)
+        if trapped:
             adj[keep_to].add(keep_from)  # revert
         else:
             converted += 1
@@ -314,6 +322,68 @@ def _compute_layout(adj: dict[int, set[int]], n: int, rng: random.Random) -> dic
     return {i: (positions[i][0], positions[i][1]) for i in range(1, n + 1)}
 
 
+def _add_tunnels(rng: random.Random, adj: dict[int, set[int]]) -> None:
+    """Add a few one-way jumps between distant sectors.
+
+    The handbook says Big Bang can build tunnels. It does not say how many.
+    One per 250 sectors, and at least one on a map of 80 or more, is this
+    game's count until a source names another.
+    """
+    n = len(adj)
+    want = n // 250
+    if n >= 80 and want < 1:
+        want = 1
+    added = 0
+    tries = 0
+    span = max(20, n // 10)
+    while added < want and tries < want * 40:
+        tries += 1
+        a = rng.randint(11, n)
+        b = rng.randint(11, n)
+        if a == b or abs(a - b) < span:
+            continue
+        if b in adj[a] or a in adj[b]:
+            continue
+        adj[a].add(b)
+        added += 1
+
+
+def _cut_one_bubble(rng: random.Random, adj: dict[int, set[int]]) -> None:
+    """Close one pair so ships can enter and cannot leave.
+
+    A bubble is a cluster with a way in and no way out. FedSpace is left
+    alone. If cutting the pair would hide a sector from sector 1, the cut
+    is put back.
+    """
+    n = len(adj)
+    pairs: list[tuple[int, int]] = []
+    for a in range(11, n + 1):
+        for b in adj[a]:
+            if b >= 11 and a in adj.get(b, ()) and a < b:
+                pairs.append((a, b))
+    if not pairs:
+        return
+    rng.shuffle(pairs)
+    for a, b in pairs[:40]:
+        saved_a = set(adj[a])
+        saved_b = set(adj[b])
+        outside_in = False
+        for sid, neigh in adj.items():
+            if sid in (a, b):
+                continue
+            if a in neigh or b in neigh:
+                outside_in = True
+                break
+        if not outside_in:
+            continue
+        adj[a].clear()
+        adj[b].clear()
+        if _all_reachable_from(adj, 1, n):
+            return
+        adj[a] = saved_a
+        adj[b] = saved_b
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -324,7 +394,12 @@ def generate_universe(config: GameConfig) -> Universe:
     n = config.universe_size
 
     adj = _build_connected_graph(rng, n, config.avg_warps)
-    adj = _one_way_some_edges(rng, adj, config.one_way_fraction)
+    if K.universe_topology_live():
+        adj = _one_way_some_edges(rng, adj, config.one_way_fraction, allow_traps=True)
+        _add_tunnels(rng, adj)
+        _cut_one_bubble(rng, adj)
+    else:
+        adj = _one_way_some_edges(rng, adj, config.one_way_fraction)
     layout = _compute_layout(adj, n, rng)
 
     sectors: dict[int, Sector] = {}

@@ -2151,15 +2151,24 @@ def _action_hint(
             known_n = 0
             total_n = 0
         if total_n > 0 and known_n > 0 and known_n < max(8, total_n // 50):
+            if K.universe_topology_live():
+                shape = "Some lanes are one-way and some sectors have no way out. "
+            else:
+                shape = "The universe is fully connected; "
             hints.append(
                 f"MAP COVERAGE — you have `known_warps` for {known_n} of ~"
-                f"{total_n} sectors. The universe is fully connected; "
+                f"{total_n} sectors. {shape}"
                 f"SCAN from new sectors or spend 5k on a PROBE to grow your "
                 f"map before assuming you're trapped."
             )
         # Dead-end pocket detection: current sector has 1 warp AND that
         # destination also has 1 warp back here -> genuine 2-sector pocket.
         warps_out = sector_info.get("warps_out") or []
+        if K.universe_topology_live() and len(warps_out) == 0:
+            hints.append(
+                f"DEAD END — sector {sector_info.get('id')} has no warp out. "
+                "A plotted course from here finds no route."
+            )
         if len(warps_out) == 1:
             dest_id = int(warps_out[0])
             try:
