@@ -15,6 +15,7 @@ import pytest
 
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.actions import Action, ActionKind
+from tw2k.engine import constants as K
 from tw2k.engine.legality import LegalAction, legal_actions
 from tw2k.engine.models import Commodity, EventKind, MineType, Player, PortClass
 from tw2k.engine.runner import apply_action
@@ -376,9 +377,10 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
 def test_every_verb_matches_engine(label: str, fx) -> None:
     pid, u = fx if isinstance(fx, tuple) else ("P1", fx)
     las = {la.kind: la for la in legal_actions(u, pid)}
-    assert set(las) == set(ALL)
+    offered = [k for k in ALL if k != "avoid" or K.avoid_live()]
+    assert set(las) == set(offered)
     assert all(la.detail == "precise" for la in las.values()), [k for k, la in las.items() if la.detail != "precise"]
-    for kind in ALL:
+    for kind in offered:
         la = las[kind]
         action = _build(kind, la, u, pid)
         u2 = copy.deepcopy(u)
