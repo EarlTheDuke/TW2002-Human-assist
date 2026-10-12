@@ -24,6 +24,7 @@
     status: "connecting",
     speed: 1,
     llmPhase: null,             // transient {player_id, player_name, provider, model, started_at}
+    turnWait: null,             // {name, done, seats, started_at} while a seat holds the tick
     finished: false,
     winner_id: null,
     win_reason: "",
@@ -172,6 +173,9 @@
       case "llm_phase":
         onLlmPhase(msg);
         break;
+      case "turn_wait":
+        onTurnWait(msg);
+        break;
       case "error":
         pushEvent({
           kind: "system_error",
@@ -238,6 +242,7 @@
     if (snap.status) state.status = snap.status;
     if (snap.speed) state.speed = snap.speed;
     if ("llm_phase" in snap) state.llmPhase = snap.llm_phase || null;
+    if ("turn_wait" in snap) state.turnWait = snap.turn_wait || null;
     if (snap.finished) state.finished = true;
     if (snap.winner_id) state.winner_id = snap.winner_id;
     if (snap.win_reason) state.win_reason = snap.win_reason;
@@ -293,6 +298,22 @@
       day: msg.day,
       tick: msg.tick,
     };
+  }
+
+  function onTurnWait(msg) {
+    if (!msg || msg.phase === "end") state.turnWait = null;
+    else state.turnWait = msg;
+    renderHeader();
+  }
+
+  function waitLine() {
+    const w = state.turnWait;
+    if (!w || state.status !== "running" || state.finished) return "";
+    const age = Date.now() / 1000 - Number(w.started_at || 0);
+    if (!(age >= 15)) return "";
+    const done = Number(w.done) || 0;
+    const seats = Number(w.seats) || 0;
+    return `Waiting for ${w.name} (day-done ${done}/${seats})`;
   }
 
   function onEvent(msg) {
@@ -2860,7 +2881,8 @@
       document.title = BASE_TITLE;
       return;
     }
-    const word = state.status === "paused" ? "paused" : "live";
+    const waiting = waitLine();
+    const word = state.status === "paused" ? "paused" : waiting ? "waiting" : "live";
     document.title = `TW2K - Day ${state.day}/${state.maxDays} - ${word}`;
   }
 
@@ -2880,6 +2902,7 @@
       const model = state.llmPhase.model ? ` · ${state.llmPhase.model}` : "";
       setStatus("running", `thinking ${elapsed}s · ${state.llmPhase.player_name}${model}`);
     }
+    else if (waitLine()) setStatus("paused", waitLine());
     else if (state.status === "running") setStatus("running", "live");
     else if (state.status === "paused") setStatus("paused", "paused");
     else if (state.status === "error") setStatus("error", "error");
@@ -3007,7 +3030,7 @@
   // Keep the "thinking Ns" heartbeat fresh during long qwen/custom calls even
   // when no engine events arrive while the scheduler awaits agent.act().
   setInterval(() => {
-    if (state.llmPhase && state.status === "running" && !state.finished) renderHeader();
+    if ((state.llmPhase || state.turnWait) && state.status === "running" && !state.finished) renderHeader();
   }, 1000);
   // The opening snapshot and the pause button already carry match status. A pause
   // from another client (or a dropped seat) only shows up on the next /state read.
@@ -3016,8 +3039,12 @@
       const r = await fetch("/state");
       if (!r.ok) return;
       const snap = await r.json();
+      if (snap && "turn_wait" in snap) state.turnWait = snap.turn_wait || null;
       const next = snap && snap.status;
-      if (!next || next === state.status) return;
+      if (!next || next === state.status) {
+        renderHeader();
+        return;
+      }
       state.status = next;
       render();
     } catch (e) { /* the strip just waits for the next read */ }
