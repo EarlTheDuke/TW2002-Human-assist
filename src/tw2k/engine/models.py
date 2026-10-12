@@ -488,6 +488,14 @@ class Sector(BaseModel):
 
 
 class Planet(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_prod_clock(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {
+            "prod_clock_at": None,
+            "prod_paid_s": 0,
+            "prod_remain": {},
+        })
+
     id: int
     sector_id: int
     name: str
@@ -526,6 +534,12 @@ class Planet(BaseModel):
     # seeded with founding colonists), "claim" (landed on an empty neutral, or
     # claim_planet on an orphan), "other" (map start, siege seizure, legacy saves).
     origin: str = "other"
+    # planet-realtime-prod-v1. Omitted while unset, so a legacy save matches.
+    # The clock is seconds since the epoch. Paid seconds and the leftover
+    # numerators finish one day and then clear.
+    prod_clock_at: float | None = None
+    prod_paid_s: int = 0
+    prod_remain: dict[str, int] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
