@@ -55,6 +55,7 @@
     recentWarp: [],            // [{from,to,t}]
     filters: {
       combat: true, trade: true, move: true, thought: true, system: true, diplomacy: true,
+      model: false,
       // actor: "all" (default) | "players" (any actor that's a player) | "<pid>" (specific)
       actor: "all",
     },
@@ -2092,7 +2093,7 @@
     if (!text) return "";
     const short = text.length > 170 ? text.slice(0, 168) + "…" : text;
     return `<div class="operator-directive-card" title="${esc(text)}">
-      <span class="operator-label">Operator Directive</span>
+      <span class="operator-label">Orders</span>
       <span class="operator-text">${esc(short)}</span>
     </div>`;
   }
@@ -2433,7 +2434,7 @@
       && ev.payload && ev.payload.thought
       && ev.payload.thought.length > (ev.summary || "").length;
     const expanded = isExpandable && seq && state.expandedThoughts.has(seq);
-    const body = expanded ? ev.payload.thought : (ev.summary || "");
+    const body = expanded ? ev.payload.thought : plainFeedBody(ev.kind, ev.summary || "");
     const expanderHtml = isExpandable
       ? `<button class="thought-expander" data-thought-toggle title="${expanded ? "Collapse" : "Show full thought"}">${expanded ? "−" : "+"}</button>`
       : "";
@@ -2529,7 +2530,7 @@
     planet_treasury: { cat: "diplomacy", icon: "\u2696", label: "TREASURY" },
     build_citadel:     { cat: "diplomacy", icon: "\ud83c\udfd7", label: "CITADEL BUILD" },
     citadel_complete:  { cat: "diplomacy", icon: "\ud83c\udff0", label: "CITADEL BUILT", big: true },
-    planet_tax_payout: { cat: "trade",     icon: "$",      label: "PLANET TAX", big: true },
+    planet_tax_payout: { cat: "trade",     icon: "$",      label: "DIVIDEND", big: true },
     genesis_deployed:  { cat: "diplomacy", icon: "\ud83c\udf31", label: "GENESIS", big: true },
     planet_transwarp:  { cat: "diplomacy", icon: "\u27a4",  label: "TRANSWARP" },
     ship_transwarp:    { cat: "move",      icon: "\u27a4",  label: "SHIP TRANSWARP" },
@@ -2558,9 +2559,9 @@
     game_over:         { cat: "game_over",  icon: "\u25c8", label: "MATCH END", big: true },
     match_metrics:     { cat: "system",     icon: "\u25a4", label: "MATCH METRICS" },
     llm_usage:         { cat: "system",     icon: "\u00a4",  label: "LLM USAGE" },
-    operator_directive_set:     { cat: "system", icon: "\u2691", label: "DIRECTIVE SET", big: true },
-    operator_directive_cleared: { cat: "system", icon: "\u2691", label: "DIRECTIVE CLEAR" },
-    operator_message:           { cat: "system", icon: "\u2709", label: "OPERATOR MSG" },
+    operator_directive_set:     { cat: "system", icon: "\u2691", label: "ORDERS SET", big: true },
+    operator_directive_cleared: { cat: "system", icon: "\u2691", label: "ORDERS CLEARED" },
+    operator_message:           { cat: "system", icon: "\u2709", label: "MESSAGE" },
   };
 
   function kindMeta(kind) {
@@ -2612,6 +2613,7 @@
     if (cat === "thought" && !f.thought) return false;
     if (cat === "system" && !f.system) return false;
     if (cat === "diplomacy" && !f.diplomacy) return false;
+    if (ev.kind === "llm_usage" && !f.model) return false;
     // Actor filter — applied LAST so it can cut across every category.
     //   "all"     → pass (no actor restriction)
     //   "players" → only events whose actor_id is a known player (hides
@@ -2897,11 +2899,6 @@
       mapHeader.innerHTML = `Galaxy <span class="muted" id="mapSectorCount">${label}</span>`;
     }
     if (state.finished) setStatus("finished", "match complete");
-    else if (state.llmPhase && state.status === "running") {
-      const elapsed = Math.max(0, Math.floor(Date.now() / 1000 - (state.llmPhase.started_at || 0)));
-      const model = state.llmPhase.model ? ` · ${state.llmPhase.model}` : "";
-      setStatus("running", `thinking ${elapsed}s · ${state.llmPhase.player_name}${model}`);
-    }
     else if (waitLine()) setStatus("paused", waitLine());
     else if (state.status === "running") setStatus("running", "live");
     else if (state.status === "paused") setStatus("paused", "paused");
@@ -3027,8 +3024,7 @@
 
   // Animate the warp trail fade even without events
   setInterval(renderDynamicMap, 400);
-  // Keep the "thinking Ns" heartbeat fresh during long qwen/custom calls even
-  // when no engine events arrive while the scheduler awaits agent.act().
+  // Refresh the header while a seat is holding the tick, even if no event arrives.
   setInterval(() => {
     if ((state.llmPhase || state.turnWait) && state.status === "running" && !state.finished) renderHeader();
   }, 1000);
@@ -3106,6 +3102,15 @@
   }
   document.querySelectorAll(".filter-group input[data-filter]").forEach((el) => {
     const key = el.dataset.filter;
+    if (key === "model") {
+      el.checked = false;
+      state.filters.model = false;
+      el.addEventListener("change", () => {
+        state.filters.model = el.checked;
+        render();
+      });
+      return;
+    }
     if (!FEED_FILTERS.includes(key)) return;
     if (unchecked.has(key)) {
       el.checked = false;
@@ -3695,17 +3700,17 @@
     const isLlm = String(p.kind || p.agent_kind || "").toLowerCase() === "llm";
     const disabled = isLlm ? "" : " disabled";
     const help = isLlm
-      ? "Directive is injected into this AI player's next normal LLM observation."
-      : "Only autonomous LLM slots can receive operator directives.";
+      ? "These orders go to this commander on the next turn."
+      : "Only a computer commander can take orders.";
     return `
       <details class="drawer-section drawer-operator" data-section="operator"${openAttr}>
-        <summary><h3>Operator Directive <span class="drawer-hint">(${esc(updated)})</span></h3></summary>
+        <summary><h3>Orders <span class="drawer-hint">(${esc(updated)})</span></h3></summary>
         <div class="operator-help">${esc(help)}</div>
         <form class="operator-form" data-operator-form="${esc(p.id)}">
           <textarea data-operator-directive="${esc(p.id)}" maxlength="1200" rows="4"${disabled}
             placeholder="High-level instruction for this AI commander...">${esc(draft || "")}</textarea>
           <div class="operator-actions">
-            <button type="submit"${disabled}>Set Directive</button>
+            <button type="submit"${disabled}>Save orders</button>
             <button type="button" data-operator-clear="${esc(p.id)}"${disabled}>Clear</button>
           </div>
         </form>
@@ -4111,6 +4116,38 @@
     });
   }
 
+  function plainFeedBody(kind, summary) {
+    const text = String(summary || "");
+    const hit = text.match(/([a-z][a-z0-9_]*)\s*(\{[\s\S]*\})\s*$/);
+    if (!hit) return text;
+    let args = null;
+    try { args = JSON.parse(hit[2]); } catch (_e) { args = null; }
+    if (!args || typeof args !== "object") {
+      return text.replace(hit[2], "").replace(/\s+/g, " ").trim();
+    }
+    const who = text.slice(0, hit.index).replace(/:\s*$/, "").trim();
+    const verb = hit[1];
+    const goods = String(args.pool || args.commodity || args.resource || "cargo").replaceAll("_", " ");
+    const known = {
+      land_planet: `lands on planet ${args.planet_id ?? args.id ?? ""}`.trim(),
+      liftoff: "lifts off",
+      load_planet_cargo: `loads ${args.amount != null ? args.amount + " " : ""}${goods} from the planet`.replace(/\s+/g, " ").trim(),
+      unload_planet_cargo: `unloads ${args.amount != null ? args.amount + " " : ""}${goods} on the planet`.replace(/\s+/g, " ").trim(),
+      warp: `warps to sector ${args.target ?? args.sector_id ?? ""}`.trim(),
+      trade: "trades at the port",
+    };
+    let line = known[verb];
+    if (!line) {
+      const name = verb.replaceAll("_", " ");
+      const bits = Object.entries(args)
+        .filter(([, v]) => v !== null && v !== "" && typeof v !== "object")
+        .slice(0, 3)
+        .map(([k, v]) => `${k.replaceAll("_", " ")} ${v}`);
+      line = bits.length ? `${name}: ${bits.join(", ")}` : name;
+    }
+    return who ? `${who} ${line}` : line;
+  }
+
   // Kick off
   initLayout();
   setupScrubber();
@@ -4119,4 +4156,5 @@
   // Phase 4: prime the history buffer + poll for updates.
   historyTimer = setInterval(fetchHistory, 4000);
   fetchHistory();
+  window.tw2kFeedPlain = plainFeedBody;
 })();
