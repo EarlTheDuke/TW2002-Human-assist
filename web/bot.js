@@ -364,10 +364,7 @@
     return null;
   }
   function stageDetailFor(obs, sh) {
-    let detail = P.stageDetail(sh);
-    const building = ((obs && obs.owned_planets) || []).some((p) => Number(p.citadel_target) > Number(p.citadel_level));
-    if (!building) detail = detail.replace("citadel L0 in progress", "no citadel started");
-    return detail;
+    return P.stageBuildDetail(P.stageDetail(sh), (obs && obs.owned_planets) || []);
   }
   function kv(el, pairs) {
     el.innerHTML = "";
@@ -501,7 +498,7 @@
     if (!def.length) def.push(["Defenses", "none seen"]);
     kv($("hereDefenses"), def);
     rows($("herePlanets"), s.planets || [], (p) => row(`${p.name} [${p.class}]`, [
-      `id ${p.id}`, p.owner_id ? `owner ${p.owner_id}` : "unowned", `citadel L${p.citadel_level}`,
+      `id ${p.id}`, p.owner_id ? `owner ${p.owner_id}` : "unowned", P.citadelStatus(p),
       p.fighters ? `${fmt(p.fighters)} fighters` : null, p.colonists_total ? `${fmt(p.colonists_total)} colonists` : null,
     ]), "no planets here");
     rows($("hereFerrengi"), s.ferrengi || [], (f) => row(f.name || f.id, [`aggression ${f.aggression}`, `${fmt(f.fighters)} fighters`], "bad"), "none");
@@ -1116,7 +1113,7 @@
       lines.push(`Port ${port.code || ""}  ${bits.join(" · ") || "no commodity tape"}`);
     }
     if (!planets.length) lines.push("No planet in this sector");
-    for (const p of planets) lines.push(`Planet ${p.name || p.id}  citadel L${p.citadel_level ?? 0} · ${fmt(p.colonists_total)} colonists`);
+    for (const p of planets) lines.push(`Planet ${p.name || p.id}  ${P.citadelStatus(p)} · ${fmt(p.colonists_total)} colonists`);
     el.textContent = lines.join("\n");
   }
   function paintPending(r) {
