@@ -223,6 +223,8 @@ class RunnerState:
     # not an engine event because no game state changed yet; it just tells the
     # browser the scheduler is waiting on a provider response.
     llm_phase: dict | None = None
+    # Who the scheduler is blocked on, and how many seats have finished the day.
+    turn_wait: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -352,6 +354,25 @@ class MatchRunner:
             }
             self.state.llm_phase = None
         await self.broadcaster.publish(payload)
+
+    async def _begin_turn_wait(self, player: Player, universe: Universe) -> None:
+        """Tell the dashboard this seat is holding the tick."""
+        alive = [p for p in universe.players.values() if p.alive]
+        done = sum(1 for p in alive if _is_day_done(p))
+        payload = {
+            "type": "turn_wait",
+            "name": player.name,
+            "player_id": player.id,
+            "done": done,
+            "seats": len(alive),
+            "started_at": time.time(),
+        }
+        self.state.turn_wait = payload
+        await self.broadcaster.publish(payload)
+
+    async def _end_turn_wait(self) -> None:
+        self.state.turn_wait = None
+        await self.broadcaster.publish({"type": "turn_wait", "phase": "end"})
 
     # ---------------- save sink (Phase 6) ---------------- #
 
@@ -838,9 +859,13 @@ class MatchRunner:
                                     agent, obs, float(deadline)
                                 )
                             else:
-                                action = await asyncio.wait_for(
-                                    agent.act(obs), timeout=deadline
-                                )
+                                await self._begin_turn_wait(player, universe)
+                                try:
+                                    action = await asyncio.wait_for(
+                                        agent.act(obs), timeout=deadline
+                                    )
+                                finally:
+                                    await self._end_turn_wait()
                         except TimeoutError as _texc:
                             if is_external and getattr(agent, "in_held_continuation", False):
                                 # Held slot left idle: end the slot, spend nothing.
@@ -935,7 +960,11 @@ class MatchRunner:
                             finally:
                                 await self._publish_llm_phase(agent, player, "end", started_at)
                         else:
-                            action = await agent.act(obs)
+                            await self._begin_turn_wait(player, universe)
+                            try:
+                                action = await agent.act(obs)
+                            finally:
+                                await self._end_turn_wait()
                 except asyncio.CancelledError:
                     # Clean shutdown (runner.stop). Don't emit an error —
                     # just exit the loop.
@@ -1249,6 +1278,18 @@ class MatchRunner:
                 pass
 
     async def _await_external(self, agent: BaseAgent, obs, full_s: float) -> tuple[Action, bool]:
+        """Name the seat on the dashboard for as long as this wait lasts."""
+        universe = self.state.universe
+        player = universe.players[agent.player_id] if universe is not None else None
+        if player is not None and universe is not None:
+            await self._begin_turn_wait(player, universe)
+        try:
+            return await self._await_external_inner(agent, obs, full_s)
+        finally:
+            if player is not None:
+                await self._end_turn_wait()
+
+    async def _await_external_inner(self, agent: BaseAgent, obs, full_s: float) -> tuple[Action, bool]:
         """Wait for an external seat's action with the Phase D idle rule.
 
         Returns ``(action, idle_flag)``. Raises ``TimeoutError`` when no action
@@ -1746,6 +1787,7 @@ class MatchRunner:
             "winner_id": u.winner_id,
             "win_reason": u.win_reason,
             "llm_phase": self.state.llm_phase,
+            "turn_wait": self.state.turn_wait,
             "players": [
                 {
                     "id": p.id,
