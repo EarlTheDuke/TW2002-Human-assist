@@ -214,18 +214,18 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     if action.kind == ActionKind.DEPLOY_ATOMIC and not K.hardware_tw2002():
         handler = None  # HARDWARE_MODE legacy: deploy_atomic was never a dispatched verb
     if handler is None:
-        return ActionResult(ok=False, error=f"unsupported action {action.kind}")
+        return _note_reject(universe, player, action, ActionResult(ok=False, error=f"unsupported action {action.kind}"))
 
     # An open fighter challenge takes an answer before anything else (SHIP_COMBAT.md).
     if K.challenge_on() and live_challenge(universe, player_id, settle=True) is not None:
         if action.kind not in CHALLENGE_VERBS and not _owner_may_land(universe, player_id, action):
-            return _reject_free(CHALLENGE_REFUSAL)
+            return _note_reject(universe, player, action, _reject_free(CHALLENGE_REFUSAL))
 
     # ferrengi-aliens-v1: open tribute encounter (Flee / Attack / Surrender).
     # Any other action ignores the hail: the Ferrengi take tribute first, then it runs.
     ferr_enc = live_ferrengi_encounter(universe, player_id, settle=True)
     if ferr_enc is not None and action.kind == ActionKind.SHIP_TRANSPORT and K.fleet_on():
-        return _reject_free("answer the Ferrengi first")  # SHIP_FLEET.md fl16
+        return _note_reject(universe, player, action, _reject_free("answer the Ferrengi first"))  # SHIP_FLEET.md fl16
     if ferr_enc is not None and not _answers_ferrengi(action, ferr_enc):
         apply_ferrengi_tribute(universe, player_id, ignored=True)
 
@@ -278,6 +278,31 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     # Check victory after every applied action
     _check_victory(universe)
 
+    return _note_reject(universe, player, action, result)
+
+
+def _note_reject(universe: Universe, player, action: Action, result: ActionResult) -> ActionResult:
+    """Count identical rejects. Off, this returns the result untouched."""
+    if not K.api_args_live():
+        return result
+    if result.ok:
+        player.reject_loop_key = ""
+        player.reject_loop_count = 0
+        return result
+    key = f"{action.kind.value}:{result.error}"
+    if player.reject_loop_key == key:
+        player.reject_loop_count += 1
+    else:
+        player.reject_loop_key = key
+        player.reject_loop_count = 1
+    if player.reject_loop_count == int(K.API_REJECT_STREAK):
+        universe.emit(
+            EventKind.AGENT_THOUGHT,
+            actor_id=player.id,
+            sector_id=player.sector_id,
+            payload={"reason": "reject_loop", "count": int(player.reject_loop_count), "action": action.kind.value},
+            summary=f"{int(player.reject_loop_count)} identical rejected actions in a row: {action.kind.value}",
+        )
     return result
 
 

@@ -641,6 +641,8 @@ class Player(BaseModel):
             "avoided_sectors": [],
             "seat_timeout_streak": 0,
             "seat_timeouts_today": 0,
+            "reject_loop_key": "",
+            "reject_loop_count": 0,
         })
 
     id: str
@@ -679,6 +681,9 @@ class Player(BaseModel):
     # seat-deadline-autopass-v1. Omitted while 0 so a legacy dump stays identical.
     seat_timeout_streak: int = 0
     seat_timeouts_today: int = 0
+    # api-arg-hardening-v1. Omitted at the defaults so a legacy dump stays identical.
+    reject_loop_key: str = ""
+    reject_loop_count: int = 0
     # SHIP_TRANSWARP.md tw12. Set on a ship TransWarp landing; cleared by warp or liftoff.
     arrived_by_transwarp: bool = False
     # port-upgrade-build-v1. Fractional exp/align left over, per commodity. Omitted while empty.
