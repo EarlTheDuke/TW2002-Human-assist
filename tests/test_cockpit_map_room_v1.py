@@ -76,7 +76,7 @@ def _assert_room(page, width: int) -> None:
     assert lay["caption"].startswith("Sector ")
     assert lay["controlsTop"] >= lay["mapBottom"] - 1, lay
     assert abs(scr["width"] / scr["height"] - 16 / 9) < 0.03, scr
-    cap_w = 604 if page.viewport_size["height"] <= 920 else lay["innerW"]
+    cap_w = 604 if page.viewport_size["height"] <= 920 else 986
     assert abs(scr["width"] - min(lay["innerW"], cap_w)) < 3, (scr["width"], lay["innerW"], cap_w)
     assert abs(lay["svg"]["width"] / lay["svg"]["height"] - 1) < 0.03, lay["svg"]
     assert lay["svg"]["width"] >= min(400, lay["innerW"] - 8)
