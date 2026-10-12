@@ -218,7 +218,7 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
 
     # An open fighter challenge takes an answer before anything else (SHIP_COMBAT.md).
     if K.challenge_on() and live_challenge(universe, player_id, settle=True) is not None:
-        if action.kind not in CHALLENGE_VERBS:
+        if action.kind not in CHALLENGE_VERBS and not _owner_may_land(universe, player_id, action):
             return _reject_free(CHALLENGE_REFUSAL)
 
     # ferrengi-aliens-v1: open tribute encounter (Flee / Attack / Surrender).
@@ -495,6 +495,26 @@ CHALLENGE_VERBS = frozenset({
     ActionKind.WAIT,
 })
 CHALLENGE_REFUSAL = "answer the fighters first: attack, retreat, pay the toll or surrender"
+
+
+def _owner_may_land(universe: Universe, pid: str, action: Action) -> bool:
+    """True when the new switch lets this owner land through a fighter challenge."""
+    if not K.own_planet_fighter_live() or action.kind != ActionKind.LAND_PLANET:
+        return False
+    player = universe.players.get(pid)
+    if player is None:
+        return False
+    sector = universe.sectors.get(player.sector_id)
+    try:
+        planet_id = int(action.args.get("planet_id"))
+    except (TypeError, ValueError):
+        return False
+    planet = universe.planets.get(planet_id)
+    if planet is None or sector is None or planet_id not in sector.planet_ids:
+        return False
+    if planet.owner_id == pid:
+        return True
+    return bool(planet.corp_ticker and player.corp_ticker and planet.corp_ticker == player.corp_ticker)
 
 # PLANET_DIVIDEND_MODE tw2002: ship<->planet transfers move the dividend baseline (FULLGAME_FIXES_V2.md).
 DIVIDEND_TRANSFER_VERBS = frozenset({
