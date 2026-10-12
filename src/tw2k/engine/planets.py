@@ -124,6 +124,20 @@ def planet_growth_status(class_id: PlanetClass | str, colonists: dict, organics_
     }
 
 
+def colonist_trend(class_id: PlanetClass | str, total: int) -> str:
+    """One line for the planet panel. Live die-off, otherwise the 5% growth."""
+    count = int(total)
+    if not K.planet_prod_live():
+        return "about 5% more each day while organics last"
+    cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
+    half = cap // 2
+    if count > half:
+        return f"above half the class cap ({cap}), about 5% die off each day"
+    if count < half:
+        return f"below half the class cap ({cap}), about 5% more each day while organics last"
+    return f"at half the class cap ({cap})"
+
+
 def _complete_citadels(universe: Universe) -> None:
     """Promote planets whose citadel build window has elapsed."""
     for planet in universe.planets.values():
@@ -272,6 +286,9 @@ def _pay_planet_value_tax(universe: Universe) -> None:
         owner_id = planet.owner_id
         owner = universe.players.get(owner_id) if owner_id is not None else None
 
+        if K.planet_dividend_off():
+            planet.last_tax_value = current_value
+            continue
         if owner is not None and owner.alive:
             gain = max(0, current_value - previous_value)
             payout = int(gain * K.PLANET_VALUE_TAX_RATE)

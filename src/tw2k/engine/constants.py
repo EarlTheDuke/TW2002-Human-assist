@@ -3340,3 +3340,15 @@ LANDED_STATE_MODE = "legacy"  # "legacy" | "live"
 def landed_state_live() -> bool:
     """True when a landing has to match the sector the ship is in."""
     return LANDED_STATE_MODE == "live" or tw2002_live_profile()
+
+
+# planet-dividend-fidelity-v1. Appended so later slices can rebase cleanly.
+# The credit dividend is not in the original. It stays on, because the
+# recorded games already include it. "off" pays nothing. The baseline still
+# moves, so turning it back on does not pay the missed days in one lump.
+PLANET_DIVIDEND_PAY_MODE = "legacy"  # "legacy" | "off"
+
+
+def planet_dividend_off() -> bool:
+    """True when a planet's new value does not pay credits."""
+    return PLANET_DIVIDEND_PAY_MODE == "off" or tw2002_live_profile()
