@@ -551,6 +551,13 @@
         mark.setAttribute("class", "poi poi-planet");
         g.appendChild(mark);
       }
+      const label = document.createElementNS(svgNS, "text");
+      label.setAttribute("class", "sector-label");
+      label.setAttribute("x", s.x);
+      label.setAttribute("y", s.y + 8);
+      label.setAttribute("text-anchor", "middle");
+      label.textContent = String(s.id);
+      g.appendChild(label);
 
       g.addEventListener("mouseenter", (e) => {
         showSectorTip(s, e);
@@ -738,13 +745,22 @@
       n += 1;
     });
     if (!n) return;
-    const pad = 36;
-    viewBoxState = {
-      x: minX - pad,
-      y: minY - pad,
-      w: Math.max(80, maxX - minX + 2 * pad),
-      h: Math.max(80, maxY - minY + 2 * pad),
-    };
+    const pad = 80;
+    let w = Math.max(80, maxX - minX + 2 * pad);
+    let h = Math.max(80, maxY - minY + 2 * pad);
+    let x = minX - pad;
+    let y = minY - pad;
+    const minW = galaxyExtent.w / 1.8;
+    const minH = galaxyExtent.h / 1.8;
+    if (w < minW) {
+      x -= (minW - w) / 2;
+      w = minW;
+    }
+    if (h < minH) {
+      y -= (minH - h) / 2;
+      h = minH;
+    }
+    viewBoxState = { x, y, w, h };
     updateViewBox();
   }
 
@@ -1440,6 +1456,16 @@
       title.textContent = `${p.name}${rk} (${p.ship}) @ sector ${p.sector_id}`;
       dot.appendChild(title);
       shipsLayer.appendChild(dot);
+      const name = document.createElementNS(svgNS, "text");
+      name.setAttribute("class", "ship-name");
+      name.setAttribute("data-testid", "ship-name");
+      name.setAttribute("x", s.x + 6);
+      name.setAttribute("y", s.y - 5);
+      name.setAttribute("fill", p.color || "#e6d39a");
+      name.setAttribute("font-size", "8");
+      name.setAttribute("font-family", "Inter, system-ui, sans-serif");
+      name.textContent = p.name || p.id;
+      shipsLayer.appendChild(name);
 
       if (isFeatured) {
         const followRing = document.createElementNS(svgNS, "circle");
@@ -1927,7 +1953,7 @@
       const agg = Math.max(1, Math.min(5, f.aggression || 1));
       return `<button class="ferr-chip agg-${agg}" data-ferr-sector="${f.sector_id}" `
         + `title="${esc(f.name)} · aggression ${f.aggression} · ${fmt(f.fighters || 0)} fighters — click to locate on map">`
-        + `s${f.sector_id} · ✈${fmt(f.fighters || 0)}</button>`;
+        + `sector ${f.sector_id} · ${fmt(f.fighters || 0)} fighters</button>`;
     }).join("");
     const more = ferr.length > 8 ? ` <span class="muted">+${ferr.length - 8} more</span>` : "";
     root.innerHTML = `<span class="ferr-label">⚠ Ferrengi active</span>`
