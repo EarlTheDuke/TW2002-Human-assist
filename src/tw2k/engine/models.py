@@ -639,6 +639,8 @@ class Player(BaseModel):
             "turn_regen_at": None,
             "turn_regen_frac": 0.0,
             "avoided_sectors": [],
+            "seat_timeout_streak": 0,
+            "seat_timeouts_today": 0,
         })
 
     id: str
@@ -674,6 +676,9 @@ class Player(BaseModel):
     turn_regen_frac: float = 0.0
     # avoid-list-v1. Sectors the computer will not plot through. Omitted while empty.
     avoided_sectors: list[int] = Field(default_factory=list)
+    # seat-deadline-autopass-v1. Omitted while 0 so a legacy dump stays identical.
+    seat_timeout_streak: int = 0
+    seat_timeouts_today: int = 0
     # SHIP_TRANSWARP.md tw12. Set on a ship TransWarp landing; cleared by warp or liftoff.
     arrived_by_transwarp: bool = False
     # port-upgrade-build-v1. Fractional exp/align left over, per commodity. Omitted while empty.

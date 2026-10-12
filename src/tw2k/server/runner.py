@@ -691,6 +691,8 @@ class MatchRunner:
                     self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
                     continue
 
+                passed_for_day = False
+                missed = False
                 try:
                     if K.starting_package_live():
                         from ..engine.runner import recover_turns
@@ -743,7 +745,25 @@ class MatchRunner:
                         deadline = getattr(agent, "timeout_s", None) or self._spec.external_timeout_s
                     else:
                         deadline = None
-                    if deadline is not None and deadline > 0:
+                    passed_for_day = (
+                        K.seat_deadline_live()
+                        and int(getattr(player, "seat_timeout_streak", 0) or 0) >= int(K.SEAT_DEADLINE_STREAK)
+                    )
+                    if passed_for_day:
+                        action = Action(
+                            kind=ActionKind.WAIT,
+                            thought="[seat deadline] passed for the rest of the day",
+                        )
+                        universe.emit(
+                            EventKind.AGENT_THOUGHT,
+                            actor_id=agent.player_id,
+                            sector_id=player.sector_id,
+                            payload={"auto_wait": True, "seat_deadline": True, "passed_for_day": True},
+                            summary=f"[{player.name}] passed for the rest of the day.",
+                        )
+                    elif deadline is not None and deadline > 0:
+                        if K.seat_deadline_live():
+                            deadline = float(K.SEAT_DEADLINE_S)
                         try:
                             if is_external:
                                 action, external_idle = await self._await_external(
@@ -758,6 +778,10 @@ class MatchRunner:
                                 # Held slot left idle: end the slot, spend nothing.
                                 agent.hold_slot = False  # type: ignore[attr-defined]
                                 raise SlotReleased(agent.player_id) from None
+                            if K.seat_deadline_live():
+                                missed = True
+                                player.seat_timeout_streak = int(getattr(player, "seat_timeout_streak", 0) or 0) + 1
+                                player.seat_timeouts_today = int(getattr(player, "seat_timeouts_today", 0) or 0) + 1
                             external_idle = isinstance(_texc, ExternalIdleTimeoutError)
                             if is_external and external_idle:
                                 # Unattended seat: not an error, just nobody
@@ -867,6 +891,9 @@ class MatchRunner:
                     self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)
                     await self._sleep_scaled(self._spec.action_delay_s)
                     continue
+
+                if K.seat_deadline_live() and not missed and not passed_for_day:
+                    player.seat_timeout_streak = 0
 
                 # Capture per-call LLM usage + cost if the agent exposes
                 # it. LLMAgent populates ``_last_usage`` in each _call_*
