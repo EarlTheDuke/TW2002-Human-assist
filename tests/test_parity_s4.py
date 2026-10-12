@@ -367,6 +367,8 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={})
     if ak is ActionKind.CINEPLEX:
         return Action(kind=ak, args={})
+    if ak is ActionKind.AVOID:
+        return Action(kind=ak, args={"sector": 0})
     raise AssertionError(f"no builder for {kind}")
 
 
