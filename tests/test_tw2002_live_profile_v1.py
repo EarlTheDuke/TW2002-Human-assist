@@ -50,6 +50,7 @@ HELPERS = (
     "landed_state_live",
     "planet_dividend_off",
     "live_pace",
+    "planet_value_scored",
 )
 
 
@@ -57,7 +58,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 48
+    assert len(names) == 49
     for name in names:
         assert getattr(K, name)() is False, name
 

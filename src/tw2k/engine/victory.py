@@ -213,11 +213,16 @@ def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
     colonist_value = colonist_total * K.COLONIST_PRICE
 
     stockpile_value = 0
+    cap_stock = (not tax_basis) and K.planet_value_score_mode() == "stock_cap"
+    limits = K.PLANET_MAX_STOCK.get(planet.class_id.value, {}) if cap_stock else {}
     if planet.stockpile:
         for commodity, qty in planet.stockpile.items():
             if qty <= 0:
                 continue
-            stockpile_value += qty * planet_stock_unit_price(commodity.value)
+            counted = int(qty)
+            if cap_stock:
+                counted = min(counted, int(limits.get(commodity.value, counted)))
+            stockpile_value += counted * planet_stock_unit_price(commodity.value)
 
     if (
         K.genesis_score_fair()
@@ -239,10 +244,13 @@ def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
         # score only, not credits (FULLGAME_FIXES_V1.md).
         defense_value = planet.fighters * K.FIGHTER_COST + planet.shields * 10
     else:
-        defense_value = planet.fighters * K.nw_fighter_value() + planet.shields * K.nw_planet_shield_value()
+        fighter_each = 0 if K.planet_value_score_mode() == "no_fighters" else K.nw_fighter_value()
+        defense_value = planet.fighters * fighter_each + planet.shields * K.nw_planet_shield_value()
     held = 0
     if K.planet_nw_live() and not tax_basis:
         held = _construction_contents(planet)
+    if (not tax_basis) and K.planet_value_score_mode() == "colonists":
+        return colonist_value
     return citadel_cost + colonist_value + stockpile_value + planet.treasury + defense_value + held
 
 
@@ -410,7 +418,10 @@ def check_victory(universe: Universe) -> None:
     if universe.day > universe.config.max_days:
         universe.finished = True
         if alive:
-            worths = {p.id: full_net_worth(universe, p) for p in alive}
+            if K.planet_value_score_mode() == "experience":
+                worths = {p.id: int(p.experience) for p in alive}
+            else:
+                worths = {p.id: full_net_worth(universe, p) for p in alive}
             winner = max(alive, key=lambda p: worths[p.id])
             winner_worth = worths[winner.id]
             # Show the breakdown in the summary so spectators can see
@@ -420,10 +431,13 @@ def check_victory(universe: Universe) -> None:
             planet_side = winner_worth - ship_side
             universe.winner_id = winner.id
             universe.win_reason = "time_net_worth"
-            summary = (
-                f"GAME OVER — time expired; {winner.name} wins on net worth "
-                f"({winner_worth}cr = {ship_side}cr ship + {planet_side}cr planets)"
-            )
+            if K.planet_value_score_mode() == "experience":
+                summary = f"GAME OVER — time expired; {winner.name} wins on experience ({winner_worth})"
+            else:
+                summary = (
+                    f"GAME OVER — time expired; {winner.name} wins on net worth "
+                    f"({winner_worth}cr = {ship_side}cr ship + {planet_side}cr planets)"
+                )
             universe.emit(
                 EventKind.GAME_OVER,
                 actor_id=winner.id,
