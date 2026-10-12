@@ -1568,14 +1568,17 @@
           }
           if (mx !== undefined && mx !== null) {
             el.max = String(mx);
+            const cut = kind === "terra_colonists" ? "" : P.clampNote(el.value, mx);
             if (kind === "terra_colonists") { if (el.value && Number(el.value) > mx) el.value = ""; }
             else if (!el.value || Number(el.value) > mx) el.value = String(mx);
+            if (cut) vals._cut = cut;
           }
           vals[fd.n] = Number(el.value) || 0;
         } else vals[fd.n] = el.value;
       }
       // Per-verb preview lines: only echo envelope numbers the engine sent.
-      let txt = `${LABEL(kind)} ${Object.entries(vals).filter(([, v]) => v !== "" && v !== undefined).map(([k, v]) => `${k}=${v}`).join("  ")} · ${la.turn_cost || 0} turn(s)`;
+      let txt = `${LABEL(kind)} ${Object.entries(vals).filter(([k, v]) => k !== "_cut" && v !== "" && v !== undefined).map(([k, v]) => `${k}=${v}`).join("  ")} · ${la.turn_cost || 0} turn(s)`;
+      if (vals._cut) txt += ` · ${vals._cut}`;
       if (kind === "buy_ship" && p.ship_class) { const n = (p.ship_class.net_cost_by || {})[vals.ship_class]; if (n !== undefined) txt += ` · net cost ${fmt(n)} cr (trade-in ${fmt(p.ship_class.trade_in)})`; }
       if (kind === "buy_equip" && p.item) {
         const u = (p.item.unit_price_by || {})[vals.item];
@@ -1668,6 +1671,19 @@
       const netBit = net !== undefined ? ` · net ${fmt(net)}` : "";
       o.textContent = `${card[0]} · ${card[1]} holds · ${fmt(card[2])} fighters · ${fmt(card[3])} shields · genesis ${card[5]} · list ${fmt(card[4])}${netBit}`;
     }
+    const blocked = (env && env.blocked_by) || {};
+    for (const [key, why] of Object.entries(blocked)) {
+      if ([...el.options].some((o) => o.value === key)) continue;
+      const o = document.createElement("option");
+      o.value = key;
+      o.disabled = true;
+      const card = SHIP_CARDS[key];
+      const name = card ? card[0] : String(key).replace(/_/g, " ");
+      const net = nets[key];
+      const netBit = net !== undefined ? ` · net ${fmt(net)}` : "";
+      o.textContent = `${name}${netBit} · ${why}`;
+      el.appendChild(o);
+    }
   }
   function labelEquipOptions(el, params) {
     const prices = (params.item && params.item.unit_price_by) || {};
@@ -1679,9 +1695,13 @@
       const o = document.createElement("option");
       o.value = item;
       const cap = caps[item];
-      const limit = cap === undefined ? "" : Number(cap) > 0 ? ` · up to ${cap}` : " · cannot buy (credits or no room)";
+      const price = Number(prices[item]) || 0;
+      const credits = Number((state.obs || {}).credits) || 0;
+      const afford = price > 0 ? Math.floor(credits / price) : 0;
+      const why = P.affordReason(cap, afford);
+      const limit = cap === undefined ? "" : why ? ` · ${why}` : ` · up to ${cap}`;
       o.textContent = `${String(item).replace(/_/g, " ")} · ${fmt(prices[item])} cr${limit}`;
-      if (Number(cap) === 0) o.disabled = true;
+      if (why) o.disabled = true;
       el.appendChild(o);
     }
     const first = [...el.options].find((o) => !o.disabled);
@@ -1735,11 +1755,13 @@
       const maxBtn = document.createElement("button"); maxBtn.type = "button"; maxBtn.textContent = "MAX"; maxBtn.setAttribute("data-testid", "trade-max");
       const sync = () => {
         const c = commSel.value; const mx = ((maxBy[c] || {})[side]) ?? 0; const listed = ((listedBy[c] || {})[side]);
+        const cut = P.clampNote(qty.value, mx);
         qty.max = String(mx); if (!qty.value || Number(qty.value) > mx) qty.value = String(mx);
         price.placeholder = listed !== undefined ? `list ${listed}` : "";
         const q = Number(qty.value) || 0; const unit = Number(price.value) || listed || 0;
         const basis = ((state.obs && state.obs.ship && state.obs.ship.cargo_cost_avg) || {})[c];
         let txt = `${side.toUpperCase()} ${q} ${c} @ ${unit} = ${fmt(q * unit)} cr (engine cap ${mx}; list ${listed ?? "?"})`;
+        if (cut) txt += ` · ${cut}`;
         if (side === "sell" && basis !== undefined) txt += ` · cost basis ${basis} → est. ${fmt((unit - basis) * q)} cr`;
         if (price.value && listed) {
           const ask = Number(price.value);
