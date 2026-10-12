@@ -3507,3 +3507,15 @@ DAILY_STATS_MODE = "legacy"  # "legacy" | "live"
 def daily_stats_live() -> bool:
     """True when the V-screen counts are on the observation."""
     return DAILY_STATS_MODE == "live" or tw2002_live_profile()
+
+
+# fedcomm-v1. Appended so later slices can rebase cleanly.
+# "legacy": Extern still clears the lanes and keeps the old sweep note.
+# "live": the owner also gets the Federation line about the lane.
+FEDCOMM_MODE = "legacy"  # "legacy" | "live"
+FEDCOMM_MSL_LINE = "Don't deploy fighters in the MSL's."
+
+
+def fedcomm_live() -> bool:
+    """True when a lane sweep also sends the Federation note."""
+    return FEDCOMM_MODE == "live" or tw2002_live_profile()

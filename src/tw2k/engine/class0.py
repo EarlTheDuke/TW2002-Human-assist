@@ -382,6 +382,17 @@ def extern_sweep(universe: Universe) -> int:
                     },
                     summary=f"Extern swept sector {sid}: your {own_f} fighters, {own_m} mines cleared",
                 )
+                if K.fedcomm_live() and oid and own_f > 0:
+                    owner = universe.players.get(oid)
+                    if owner is not None:
+                        owner.inbox.append({
+                            "from": "FedComm",
+                            "kind": "fedcomm",
+                            "message": K.FEDCOMM_MSL_LINE,
+                            "sector_id": int(sid),
+                            "day": universe.day,
+                            "tick": universe.tick,
+                        })
                 events += 1
         apply_extern_planet_rule(universe, int(sid))
     return events
