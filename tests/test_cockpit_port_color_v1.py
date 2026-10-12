@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
-from tests.test_amz6_warp_codes import _replace_snapshot, _wait_parked
+from tests.test_amz6_warp_codes import _replace_snapshot, _wait_parked, warp_label
 
 TOK = "port-color-v1-token-p2-0000000000000"
 MAP_TOP = {1440: 714, 1920: 927}
@@ -103,7 +104,7 @@ def test_remembered_bss_letters_are_tinted(browser, tmp_path, monkeypatch) -> No
         page.wait_for_selector("#turnBanner.turn", timeout=20_000)
         page.wait_for_selector(f"[data-testid=warp-{unknown}]", timeout=20_000)
         bare = page.locator(f"[data-testid=warp-{unknown}]")
-        assert bare.inner_text().strip() == f"WARP {unknown}"
+        assert re.fullmatch(warp_label(unknown), bare.inner_text().strip())
         assert bare.locator("span").count() == 0
         _assert_layout(page, 1440)
         assert posts == []
@@ -115,7 +116,7 @@ def test_remembered_bss_letters_are_tinted(browser, tmp_path, monkeypatch) -> No
             timeout=10_000,
         )
         button = _letters(page, f"[data-testid=warp-{unknown}]")
-        assert button["text"] == f"WARP {unknown} BSS"
+        assert re.fullmatch(warp_label(unknown, "BSS"), button["text"])
         _assert_bss(button)
         chip = _letters(page, f"[data-testid=exit-ring-{unknown}]")
         assert chip["text"].endswith("BSS")
@@ -126,7 +127,7 @@ def test_remembered_bss_letters_are_tinted(browser, tmp_path, monkeypatch) -> No
         bare_id = next((sid for sid in here.warps if sid != unknown and sid not in me.known_ports), None)
         if bare_id is not None:
             other_btn = page.locator(f"[data-testid=warp-{bare_id}]")
-            assert other_btn.inner_text().strip() == f"WARP {bare_id}"
+            assert re.fullmatch(warp_label(bare_id), other_btn.inner_text().strip())
             assert other_btn.locator(".pc-b, .pc-s").count() == 0
         _assert_layout(page, 1440)
         page.screenshot(path=str(SHOTS / "after-1440x900-portcolor.png"))
@@ -137,7 +138,7 @@ def test_remembered_bss_letters_are_tinted(browser, tmp_path, monkeypatch) -> No
         wide.wait_for_selector("#turnBanner.turn", timeout=20_000)
         wide.wait_for_selector(f"[data-testid=warp-{unknown}] .pc-b", timeout=15_000)
         wide_btn = _letters(wide, f"[data-testid=warp-{unknown}]")
-        assert wide_btn["text"] == f"WARP {unknown} BSS"
+        assert re.fullmatch(warp_label(unknown, "BSS"), wide_btn["text"])
         _assert_bss(wide_btn)
         _assert_layout(wide, 1920)
         wide.screenshot(path=str(SHOTS / "after-1920x1080-portcolor.png"))
@@ -185,7 +186,7 @@ def test_port_code_letters_hold_in_firefox(tmp_path, monkeypatch) -> None:
             page.goto(f"{host.base}/bot?seat=P2&token={TOK}")
             page.wait_for_selector("#turnBanner.turn", timeout=20_000)
             page.wait_for_selector(f"[data-testid=warp-{unknown}]", timeout=20_000)
-            assert page.locator(f"[data-testid=warp-{unknown}]").inner_text().strip() == f"WARP {unknown}"
+            assert re.fullmatch(warp_label(unknown), page.locator(f"[data-testid=warp-{unknown}]").inner_text().strip())
             assert page.locator(f"[data-testid=warp-{unknown}] span").count() == 0
             _remember(host, universe, me, unknown)
             page.get_by_test_id("refresh").click()
@@ -194,7 +195,7 @@ def test_port_code_letters_hold_in_firefox(tmp_path, monkeypatch) -> None:
                 timeout=10_000,
             )
             info = _letters(page, f"[data-testid=warp-{unknown}]")
-            assert info["text"] == f"WARP {unknown} BSS"
+            assert re.fullmatch(warp_label(unknown, "BSS"), info["text"])
             _assert_bss(info)
             _assert_layout(page, width)
             page.close()
