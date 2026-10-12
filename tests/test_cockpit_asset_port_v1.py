@@ -30,10 +30,10 @@ def test_validator_accepts_the_scene_keys() -> None:
     assert errors == []
     for key in validate_mod.SCENE_KEYS:
         assert key in data["keys"]
-    assert validate_mod.resolve_scene(data, "sector_deep", MEDIA) == "stills/system_scan.webp"
-    assert validate_mod.resolve_scene(data, "death_pod", MEDIA) == "canvas"
-    assert validate_mod.resolve_scene(data, "sector_port_4", MEDIA) == "stills/trade_port.webp"
-    assert validate_mod.resolve_scene(data, "ship_unknown_hull", MEDIA) == "stills/system_scan.webp"
+    assert validate_mod.resolve_scene(data, "sector_deep", MEDIA) == "stills/sector_deep.webp"
+    assert validate_mod.resolve_scene(data, "death_pod", MEDIA) == "stills/death_pod.webp"
+    assert validate_mod.resolve_scene(data, "sector_port_4", MEDIA) == "stills/sector_port_4.webp"
+    assert validate_mod.resolve_scene(data, "ship_unknown_hull", MEDIA) == "stills/sector_deep.webp"
 
 
 def test_a_missing_file_falls_through_to_a_drawn_scene() -> None:
@@ -69,6 +69,28 @@ def test_import_copies_a_dropped_still(tmp_path: Path) -> None:
     assert (media / "stills" / "extra.png").is_file()
     saved = json.loads(manifest.read_text(encoding="utf-8"))
     assert saved["keys"]["sector_deep"]["file"] == "stills/extra.png"
+
+
+def test_import_turns_a_dropped_scene_into_webp(tmp_path: Path) -> None:
+    from PIL import Image
+
+    stills = tmp_path / "stills"
+    stills.mkdir()
+    Image.new("RGB", (32, 18), (10, 20, 30)).save(stills / "sector_deep.jpg", "JPEG")
+    media = tmp_path / "media"
+    media.mkdir()
+    manifest = media / "manifest.json"
+    manifest.write_text(json.dumps({"keys": {"sector_deep": {"fallback": "canvas"}}}), encoding="utf-8")
+    (tmp_path / "manifest_additions.json").write_text(
+        json.dumps({"contexts": {"sector_deep": {"still": "stills/sector_deep.jpg"}}}),
+        encoding="utf-8",
+    )
+    copied = import_mod.import_assets(tmp_path, media, manifest)
+    assert copied == ["stills/sector_deep.webp"]
+    assert (media / "stills" / "sector_deep.webp").stat().st_size <= 300_000
+    saved = json.loads(manifest.read_text(encoding="utf-8"))
+    assert saved["keys"]["sector_deep"]["file"] == "stills/sector_deep.webp"
+    assert saved["keys"]["sector_deep"]["fallback"] == "canvas"
 
 
 def test_import_ignores_a_missing_folder() -> None:
