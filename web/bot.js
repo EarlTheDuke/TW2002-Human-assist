@@ -80,6 +80,25 @@
   const fmt = (n) => (n === null || n === undefined || n === "" ? "-" : Number(n).toLocaleString());
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const COMMODITIES = ["fuel_ore", "organics", "equipment"];
+  // Sticker numbers for the yard list. The net price still comes from the server.
+  const SHIP_CARDS = {
+    merchant_cruiser: ["Merchant Cruiser", 20, 2500, 400, 41300],
+    scout_marauder: ["Scout Marauder", 25, 150, 100, 15950],
+    missile_frigate: ["Missile Frigate", 40, 5000, 400, 100800],
+    battleship: ["BattleShip", 80, 10000, 750, 88500],
+    corporate_flagship: ["Corporate Flagship", 85, 20000, 1500, 163500],
+    colonial_transport: ["Colonial Transport", 50, 200, 500, 63600],
+    cargotran: ["CargoTran", 75, 400, 1000, 51950],
+    merchant_freighter: ["Merchant Freighter", 65, 300, 500, 33400],
+    havoc_gunstar: ["Havoc Gunstar", 50, 10000, 3000, 79000],
+    imperial_starship: ["Imperial StarShip", 150, 50000, 2000, 339000],
+    star_master: ["Star Master", 30, 5000, 2000, 61300],
+    constellation: ["Constellation", 20, 5000, 750, 72500],
+    tkhasi_orion: ["T'Khasi Orion", 30, 750, 750, 42500],
+    tholian_sentinel: ["Tholian Sentinel", 10, 2500, 4000, 47500],
+    taurean_mule: ["Taurean Mule", 40, 300, 600, 63600],
+    interdictor_cruiser: ["Interdictor Cruiser", 20, 100000, 4000, 539000],
+  };
   const SHORT = { fuel_ore: "Fuel", organics: "Org", equipment: "Equip", colonists: "Colonists" };
 
   // ---------------------------------------------------------------- seat
@@ -223,7 +242,8 @@
     const parts = [...counts.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     const bits = parts.map(([k, n]) => {
       const word = k.replace(/_/g, " ");
-      return `${n} ${word}${n === 1 ? "" : "s"}`;
+      const plural = n === 1 || /s$/.test(word) ? word : `${word}s`;
+      return `${n} ${plural}`;
     });
     return `While you were away: ${bits.join(", ")}`;
   }
@@ -301,8 +321,8 @@
     const kind = ct.kind || "?";
     const who = `${ct.player_id} ${ct.name || ""}`.trim();
     if (ct.player_id === state.seat) return `${who} (you)`;
-    let s = `${who} (${kind})`;
-    if (kind === "external") s += ct.attended === false ? " - no bot attached" : " - bot attached";
+    let s = who;
+    if (kind === "external" && ct.attended === false) s += " - no bot attached";
     return s;
   }
   function countdownText(ct) {
@@ -315,7 +335,7 @@
     const ct = state.current;
     const cd = countdownText(ct);
     setBanner("idle", `WAITING  day=${state.day ?? "-"} tick=${state.tick ?? "-"}`, `${describeCurrent(ct)}${cd ? "  ·  " + cd : ""}`);
-    if (els.whose) els.whose.textContent = `${describeCurrent(ct)}${cd ? "\ndeadline in " + cd : ""}${state.obsIsPeek ? "\n(panels show a live peek of your seat)" : ""}`;
+    if (els.whose) els.whose.textContent = `${describeCurrent(ct)}${cd ? "\ndeadline in " + cd : ""}${state.obsIsPeek ? "\nyour panels stay on your own ship" : ""}`;
   }
   function startTicker() {
     if (state.tickTimer) clearInterval(state.tickTimer);
@@ -324,6 +344,26 @@
 
   // ---------------------------------------------------------------- helpers
   function setText(id, v) { const el = $(id); if (el) el.textContent = v === null || v === undefined || v === "" ? "-" : String(v); }
+  function stockPhrase(st) {
+    const onHand = Number(st && st.current) || 0;
+    return onHand === 0 ? `empty, 0 of ${fmt(st.max)}` : `${fmt(onHand)} of ${fmt(st.max)}`;
+  }
+  function shownLanding(obs) {
+    const id = obs && obs.planet_landed;
+    if (id === null || id === undefined) return null;
+    const here = Number((obs.sector || {}).id);
+    const inSector = ((obs.sector || {}).planets || []).some((p) => Number(p.id) === Number(id));
+    if (inSector) return id;
+    const owned = (obs.owned_planets || []).find((p) => Number(p.id) === Number(id));
+    if (owned && Number(owned.sector_id) === here) return id;
+    return null;
+  }
+  function stageDetailFor(obs, sh) {
+    let detail = P.stageDetail(sh);
+    const building = ((obs && obs.owned_planets) || []).some((p) => Number(p.citadel_target) > Number(p.citadel_level));
+    if (!building) detail = detail.replace("citadel L0 in progress", "no citadel started");
+    return detail;
+  }
   function kv(el, pairs) {
     el.innerHTML = "";
     for (const [k, v] of pairs) {
@@ -379,11 +419,12 @@
     setText("sbDeaths", obs.deaths); setText("sbMaxDeaths", obs.max_deaths || "\u221e");
     setText("sbAlive", obs.alive === false ? "DESTROYED" : "");
     setText("sbCorp", obs.corp_ticker || "none");
-    setText("sbLanded", obs.planet_landed === null || obs.planet_landed === undefined ? "in space" : `planet ${obs.planet_landed}`);
+    const landed = shownLanding(obs);
+    setText("sbLanded", landed === null ? "in space" : `planet ${landed}`);
     setText("sbFinished", obs.finished ? "finished" : "");
     const sh = state.twin && state.twin.stage_hint;
     setText("sbStage", P.stageText(sh));
-    $("sbStageDetail").textContent = P.stageDetail(sh);
+    $("sbStageDetail").textContent = stageDetailFor(obs, sh);
   }
   function paintTurnsLeft(obs) {
     setText("sbTurns", obs.turns_remaining);
@@ -517,7 +558,7 @@
       }
       td(tr, sideWord(st.side));
       td(tr, st.price === null || st.price === undefined ? "-" : `${fmt(st.price)} cr`, "num");
-      td(tr, `${fmt(st.current)} / ${fmt(st.max)}`, "num");
+      td(tr, stockPhrase(st), "num");
       td(tr, fmt(cargo[c] || 0), "num");
       b.appendChild(tr);
     }
@@ -863,8 +904,34 @@
     ]), "no probes launched");
   }
 
+  function plainHint(text) {
+    let hint = text || "(no hint)";
+    hint = hint.replace(/GOALS EMPTY set goal_short in your JSON output/g, "No short goal yet.");
+    hint = hint.replace(/POST \/hold \{hold:true\}/g, "Hold keeps your turn");
+    hint = hint.replace(/POST \/hold \{hold:false\} ends the slot and spends no turn\./g, "Ending the hold spends no turn.");
+    hint = hint.replace(/buy_equip /g, "Buy ");
+    return hint;
+  }
+  function tradeWhy(obs, la) {
+    const reason = (la && la.reason) || "not legal now";
+    if (!reason.includes("nothing you can buy or sell")) return reason;
+    const port = (obs.sector || {}).port;
+    const stock = (port && port.stock) || {};
+    const cargo = (obs.ship && obs.ship.cargo) || {};
+    const bits = [];
+    for (const c of COMMODITIES) {
+      const st = stock[c];
+      if (!st) continue;
+      if (st.side === "sells_to_player" && Number(st.current) === 0) bits.push(`${c.replace(/_/g, " ")} stock is 0`);
+      if (st.side === "buys_from_player" && !(Number(cargo[c]) > 0)) bits.push(`no ${c.replace(/_/g, " ")} in the holds`);
+    }
+    const free = Number((obs.ship || {}).cargo_free);
+    if (free === 0) bits.push("no empty holds");
+    if (Number(obs.credits) === 0) bits.push("no credits");
+    return bits.length ? `nothing to trade: ${bits.join("; ")}` : reason;
+  }
   function renderAdvisor(obs) {
-    els.hint.textContent = obs.action_hint || "(no hint)";
+    els.hint.textContent = plainHint(obs.action_hint);
     const ch = obs.fighter_challenge;
     if (els.challenge) {
       els.challenge.hidden = !ch;
@@ -1015,8 +1082,13 @@
       const la = legalOf(kind);
       btn.setAttribute("data-legal", la.legal ? "true" : "false");
       btn.setAttribute("data-detail", la.detail || "");
-      if (la.legal) { btn.removeAttribute("data-reason"); btn.title = `${kind} · ${la.turn_cost || 0} turn(s)`; }
-      else { btn.setAttribute("data-reason", la.reason || "not legal now"); btn.title = la.reason || "not legal now"; reasons.push(`${kind.toUpperCase()}: ${la.reason || "not legal now"}`); }
+      if (la.legal) { btn.removeAttribute("data-reason"); btn.title = `${LABEL(kind)} · ${la.turn_cost || 0} turn(s)`; }
+      else {
+        const why = kind === "trade" ? tradeWhy(obs, la) : (la.reason || "not legal now");
+        btn.setAttribute("data-reason", la.reason || "not legal now");
+        btn.title = why;
+        reasons.push(`${LABEL(kind)}: ${why}`);
+      }
       btn.disabled = !canUse(kind);
       btn.classList.toggle("selected", state.openVerb === kind);
     });
@@ -1024,9 +1096,11 @@
     // A port code is shown only when this seat remembers that sector.
     const warp = legalOf("warp");
     const warps = (warp.params && warp.params.target && warp.params.target.choices) || [];
+    const warpCost = Number(warp.turn_cost) || 0;
     const warpLabel = (w) => {
       const code = rememberedPortCode(obs, w);
-      return code ? `WARP ${w} ${code}` : `WARP ${w}`;
+      const head = `WARP(${warpCost}t) ${w}`;
+      return code ? `${head} ${code}` : head;
     };
     const warpKey = warps.map(warpLabel).join("|");
     if (els.warps.getAttribute("data-warp-key") !== warpKey) {
@@ -1035,7 +1109,7 @@
         const b = document.createElement("button");
         b.type = "button";
         const code = rememberedPortCode(obs, w);
-        fillLabeled(b, `WARP ${w}`, code);
+        fillLabeled(b, `WARP(${warpCost}t) ${w}`, code);
         const tint = portTint(code);
         if (tint) b.classList.add(tint);
         b.setAttribute("data-testid", `warp-${w}`);
@@ -1238,7 +1312,9 @@
           choices = p[fd.list].map((row) => row[fd.id]).filter((v) => v !== undefined && v !== null);
         }
         el = selectEl(fd.n, choices);
-        if (!choices.length) { el.disabled = true; const o = document.createElement("option"); o.textContent = "(nothing available)"; el.appendChild(o); }
+        if (kind === "buy_ship" && fd.n === "ship_class") labelShipOptions(el, env);
+        if (kind === "buy_equip" && fd.n === "item") labelEquipOptions(el, p);
+        if (!el.options.length) { el.disabled = true; const o = document.createElement("option"); o.textContent = "(nothing available)"; el.appendChild(o); }
         if (fd.auto && choices.length === 1) { inputs[fd.n] = el; continue; }  // implied single choice - not shown
       } else if (fd.t === "int") {
         el = numberEl(fd.n, { min: env.min ?? 1 });
@@ -1274,7 +1350,17 @@
       // Per-verb preview lines: only echo envelope numbers the engine sent.
       let txt = `${LABEL(kind)} ${Object.entries(vals).filter(([, v]) => v !== "" && v !== undefined).map(([k, v]) => `${k}=${v}`).join("  ")} · ${la.turn_cost || 0} turn(s)`;
       if (kind === "buy_ship" && p.ship_class) { const n = (p.ship_class.net_cost_by || {})[vals.ship_class]; if (n !== undefined) txt += ` · net cost ${fmt(n)} cr (trade-in ${fmt(p.ship_class.trade_in)})`; }
-      if (kind === "buy_equip" && p.item) { const u = (p.item.unit_price_by || {})[vals.item]; if (u !== undefined) txt += ` · ${fmt(u)} cr each = ${fmt(u * (vals.qty || 0))} cr`; }
+      if (kind === "buy_equip" && p.item) {
+        const u = (p.item.unit_price_by || {})[vals.item];
+        const cap = (p.qty && p.qty.max_by || {})[vals.item];
+        if (u !== undefined) txt += ` · ${fmt(u)} cr each = ${fmt(u * (vals.qty || 0))} cr`;
+        if (cap !== undefined) {
+          const credits = Number((state.obs || {}).credits) || 0;
+          const afford = u > 0 ? Math.floor(credits / u) : 0;
+          const why = Number(cap) === 0 ? "none fit your credits or your ship" : Number(cap) === afford ? "that is all your credits buy" : "the ship cannot carry more";
+          txt += ` · you can buy ${cap} (${why})`;
+        }
+      }
       if (kind === "build_citadel" && p.next) {
         const n = p.next;
         txt += n.fuel_ore != null
@@ -1339,6 +1425,34 @@
     inputEl.setAttribute("data-testid", testid);
     l.appendChild(inputEl);
     return l;
+  }
+  function labelShipOptions(el, env) {
+    const nets = (env && env.net_cost_by) || {};
+    for (const o of [...el.options]) {
+      const card = SHIP_CARDS[o.value];
+      if (!card) continue;
+      const net = nets[o.value];
+      const netBit = net !== undefined ? ` · net ${fmt(net)}` : "";
+      o.textContent = `${card[0]} · ${card[1]} holds · ${fmt(card[2])} fighters · ${fmt(card[3])} shields · list ${fmt(card[4])}${netBit}`;
+    }
+  }
+  function labelEquipOptions(el, params) {
+    const prices = (params.item && params.item.unit_price_by) || {};
+    const caps = (params.qty && params.qty.max_by) || {};
+    const keys = Object.keys(prices);
+    if (!keys.length) return;
+    el.replaceChildren();
+    for (const item of keys) {
+      const o = document.createElement("option");
+      o.value = item;
+      const cap = caps[item];
+      const limit = cap === undefined ? "" : Number(cap) > 0 ? ` · up to ${cap}` : " · cannot buy (credits or no room)";
+      o.textContent = `${String(item).replace(/_/g, " ")} · ${fmt(prices[item])} cr${limit}`;
+      if (Number(cap) === 0) o.disabled = true;
+      el.appendChild(o);
+    }
+    const first = [...el.options].find((o) => !o.disabled);
+    if (first) first.selected = true;
   }
   function selectEl(name, choices, value) {
     const s = document.createElement("select"); s.name = name;
@@ -1411,10 +1525,13 @@
       sync();
     } else if (kind === "plot_course") {
       const suggested = (p.target && p.target.suggested) || [];
+      const hereId = Number((state.obs && state.obs.sector || {}).id) || 0;
+      const knownIds = ((state.obs && state.obs.known_sectors) || []).map((s) => Number(s.id)).filter((id) => id && id !== hereId);
+      const pick = [...new Set([...suggested.map(Number), ...knownIds])].filter((id) => id > 0).sort((a, b) => a - b);
       const target = numberEl("target", { min: 1, value: prefill.target }); f.appendChild(field("Target sector", target, "plot-target"));
-      const known = selectEl("known", ["(known sectors)", ...suggested]); f.appendChild(field("Pick from known space", known, "plot-known"));
+      const known = selectEl("known", ["(known sectors)", ...pick]); f.appendChild(field("Pick from known space", known, "plot-known"));
       known.addEventListener("change", () => { if (known.selectedIndex > 0) { target.value = known.value; sync(); } });
-      const exec = document.createElement("input"); exec.type = "checkbox"; exec.checked = true; exec.setAttribute("data-testid", "plot-execute");
+      const exec = document.createElement("input"); exec.type = "checkbox"; exec.checked = false; exec.setAttribute("data-testid", "plot-execute");
       const execWrap = document.createElement("label"); execWrap.className = "radios"; const el2 = document.createElement("label"); el2.appendChild(exec); el2.appendChild(document.createTextNode("Execute (fly the route now, one warp cost per hop)")); execWrap.appendChild(el2); f.appendChild(execWrap);
       const sync = () => {
         const raw = target.value;
@@ -1639,7 +1756,7 @@
         if (!row) continue;
         const side = row.side === "buys_from_player" ? "BUYS" : row.side === "sells_to_player" ? "SELLS" : row.side === "not_traded" ? "no trade" : "-";
         const price = row.price === null || row.price === undefined ? "-" : `${fmt(row.price)} cr`;
-        lines.push(`  ${name}  ${side}  ${price}  ${fmt(row.current)} / ${fmt(row.max)}`);
+        lines.push(`  ${name}  ${side}  ${price}  ${stockPhrase(row)}`);
       }
     }
     const warps = sector.warps_out || [];
@@ -1715,6 +1832,8 @@
     const g = a.args || {};
     switch (a.kind) {
       case "warp": return `WARP to ${g.target}`;
+      case "liftoff": return "Lifted off";
+      case "land_planet": return `Landed on planet ${g.planet_id}`;
       case "trade": return `${String(g.side || "").toUpperCase()} ${g.qty} ${g.commodity}${g.unit_price ? ` @ ${g.unit_price}` : ""}`;
       case "scan": return "SCAN";
       case "wait": return "WAIT";
@@ -2135,7 +2254,7 @@
     setText("cuPortCode", s.port ? `${s.port.code} ${s.port.name || ""}`.trim() : "none");
     setText("cuShipClass", sh.class);
     $("cuShip").textContent = `Holds ${fmt(sh.holds)} (${fmt(sh.cargo_free)} free) · Cargo ${P.cargoText(sh)} · Fighters ${fmt(sh.fighters)} · Shields ${fmt(sh.shields)}`
-      + `${sh.genesis ? ` · Genesis ${sh.genesis}` : ""}${obs.planet_landed !== null && obs.planet_landed !== undefined ? ` · LANDED on planet ${obs.planet_landed}` : ""}`;
+      + `${sh.genesis ? ` · Genesis ${sh.genesis}` : ""}${shownLanding(obs) !== null ? ` · LANDED on planet ${shownLanding(obs)}` : ""}`;
     const stg = state.twin && state.twin.stage_hint;
     setText("cuStage", P.stageText(stg));
     const g = obs.goals || {};

@@ -1,7 +1,7 @@
 """Shared helpers for the /bot browser tests (G2 mode=cu, G3 seat claim).
 
 `CuHost` runs the real app + a match on a background thread on a free local
-port >= 8040, skipping the reserved live/QC range 8031-8036: heuristic P1,
+port >= 8050, skipping the reserved live/QC range 8031-8036: heuristic P1,
 external P2 parked on a two-way trading port with 10 fuel ore. `browser`
 yields a Playwright Chromium, or skips when Playwright / the browser binary
 is missing.
@@ -30,7 +30,7 @@ VIEW_W, VIEW_H = 1280, 800
 RESERVED_TEST_PORTS = frozenset(range(8031, 8037))
 
 
-def free_port(start: int = 8040) -> int:
+def free_port(start: int = 8050) -> int:
     for port in range(start, start + 200):
         if port in RESERVED_TEST_PORTS:
             continue

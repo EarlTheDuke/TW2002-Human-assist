@@ -70,8 +70,8 @@ def test_plotted_route_shows_hops_and_turns(browser, tmp_path, monkeypatch) -> N
         page.locator(f"[data-testid=map-sector-{target}]").click()
         page.wait_for_selector("[data-testid=route-cost]:not([hidden])", timeout=10_000)
         assert cost.get_attribute("data-hops") == "1"
-        assert cost.get_attribute("data-turns") == "3"
-        assert cost.inner_text() == "1 hop · 3 turns"
+        assert cost.get_attribute("data-turns") == "0"
+        assert cost.inner_text() == "1 hop · 0 turns"
         assert page.locator("[data-testid=route-line]").count() == 1
         assert [p["kind"] for p in posts] == ["warp"]
 
