@@ -3422,3 +3422,16 @@ PLANET_REALTIME_PROD_MODE = "legacy"  # "legacy" | "live"
 def planet_realtime_prod() -> bool:
     """True when planet goods accrue during the day, not only at midnight."""
     return PLANET_REALTIME_PROD_MODE == "live" or tw2002_live_profile()
+
+
+# universe-topology-v1. Appended so later slices can rebase cleanly.
+# "legacy": every sector has a way out, and a way back to sector 1.
+# "live": a sector may have no way out, a one-way may trap a ship, and a
+# few tunnels join distant sectors. One pair is closed into a bubble.
+# FedSpace stays two-way. Sector 1 can still reach every sector.
+UNIVERSE_TOPOLOGY_MODE = "legacy"  # "legacy" | "live"
+
+
+def universe_topology_live() -> bool:
+    """True when the map may contain dead ends, traps, tunnels, and a bubble."""
+    return UNIVERSE_TOPOLOGY_MODE == "live" or tw2002_live_profile()
