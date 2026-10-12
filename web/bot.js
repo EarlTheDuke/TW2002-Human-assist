@@ -322,7 +322,7 @@
     const who = `${ct.player_id} ${ct.name || ""}`.trim();
     if (ct.player_id === state.seat) return `${who} (you)`;
     let s = who;
-    if (kind === "external" && ct.attended === false) s += " - no bot attached";
+    if (kind === "external" && ct.attended === false) s += " - away";
     return s;
   }
   function countdownText(ct) {
@@ -929,6 +929,41 @@
     if (free === 0) bits.push("no empty holds");
     if (Number(obs.credits) === 0) bits.push("no credits");
     return bits.length ? `nothing to trade: ${bits.join("; ")}` : reason;
+  }
+  function paintCompare(obs) {
+    const el = $("comparePanel");
+    if (!el || !obs) return;
+    const ship = obs.ship || {};
+    const card = SHIP_CARDS[ship.class];
+    const port = (obs.sector || {}).port;
+    const planets = (obs.sector || {}).planets || [];
+    const lines = [];
+    lines.push(`You  ${ship.class || "?"} · ${fmt(ship.holds)} holds · ${fmt(ship.fighters)} fighters · ${fmt(ship.shields)} shields · ${fmt(obs.credits)} credits`);
+    if (card) lines.push(`List card  ${card[1]} holds · ${fmt(card[2])} fighters · ${fmt(card[3])} shields · ${fmt(card[4])} credits`);
+    lines.push(`Rank ${obs.rank ?? "-"} by experience · ${fmt(obs.experience)} xp · net worth ${fmt(obs.net_worth)}`);
+    lines.push(`Day ${obs.day ?? "-"} of ${obs.max_days ?? "-"} · ${fmt(obs.turns_remaining)} turns left`);
+    if (!port) lines.push("No port in this sector");
+    else {
+      const bits = COMMODITIES.map((c) => {
+        const st = (port.stock || {})[c];
+        return st ? `${c.replace(/_/g, " ")} ${stockPhrase(st)}` : null;
+      }).filter(Boolean);
+      lines.push(`Port ${port.code || ""}  ${bits.join(" · ") || "no commodity tape"}`);
+    }
+    if (!planets.length) lines.push("No planet in this sector");
+    for (const p of planets) lines.push(`Planet ${p.name || p.id}  citadel L${p.citadel_level ?? 0} · ${fmt(p.colonists_total)} colonists`);
+    el.textContent = lines.join("\n");
+  }
+  function paintPending(r) {
+    const el = $("pendingSeats");
+    if (!el) return;
+    const seats = (r && r.seats) || [];
+    if (!seats.length) { el.textContent = "No other chair is listed on this screen."; return; }
+    const ct = (r && r.current_turn) || {};
+    el.textContent = seats.map((s) => {
+      const moving = !s.alive ? "out" : s.awaiting_input ? "to move" : ct.player_id === s.player_id ? "acting" : "waiting";
+      return `${s.player_id} ${s.name || ""} · ${moving}`;
+    }).join("\n");
   }
   function renderAdvisor(obs) {
     els.hint.textContent = plainHint(obs.action_hint);
@@ -1816,6 +1851,7 @@
     renderComms(obs);
     renderIntel(obs);
     renderAdvisor(obs);
+    paintCompare(obs);
     renderControls(obs);
     paintComputer(obs);
     renderCu();
@@ -2535,6 +2571,7 @@
     const seats = (r && r.seats) || [];
     const ct = (r && r.current_turn) || {};
     const key = JSON.stringify(seats.map((s) => [s.player_id, s.awaiting_input, s.attended, s.alive, s.turn_seq]).concat([ct.player_id, state.seat]));
+    paintPending(r);
     if (el.getAttribute("data-lobby-key") === key) return;
     el.setAttribute("data-lobby-key", key);
     el.innerHTML = "";
@@ -2547,8 +2584,8 @@
       b.setAttribute("data-attended", s.attended ? "true" : "false");
       b.setAttribute("data-awaiting", s.awaiting_input ? "true" : "false");
       const stateTxt = !s.alive ? "destroyed" : s.awaiting_input ? (s.player_id === state.seat ? "YOUR TURN" : "their turn") : ct.player_id === s.player_id ? "acting" : "waiting";
-      const brain = s.attended ? "bot attached" : "no bot";
-      b.textContent = `${s.player_id} ${s.name || ""} · ${stateTxt} · ${brain} · t${s.turn_seq}`;
+      const here = s.attended ? "here" : "away";
+      b.textContent = `${s.player_id} ${s.name || ""} · ${stateTxt} · ${here}`;
       const hasTok = !!localStorage.getItem(tokenKey(s.player_id));
       b.title = s.player_id === state.seat ? "this seat" : hasTok ? `switch to ${s.player_id} (token stored here)` : `switch to ${s.player_id} (uses its seat link cookie, or paste its token)`;
       b.addEventListener("click", () => {
