@@ -438,4 +438,9 @@ Read `docs/plans/gap-map-refresh-v3.md`. The October grid is still 9 Match, 34 P
 
 Read `docs/plans/gap-map-refresh-v4.md`. The October counts stay the historical grid. Note 17's play-feel holes are already in the engine: NavHaz and the entry order are on, beacons and the other hardware items are on, retreat is a verb, and the Interdictor and the mid-ships sit in the roster table behind a switch that stays off. Dead ends are the Batch M switch, which stays off. No new slice. The 3D map stays out.
 
+## 22. Full grade at f969cee (2026-10-12)
+
+Read `docs/plans/gap-map-refresh-v5.md`. All 171 October rows are graded: 50 Match, 17 Match-behind-flag, 53 Partial, 38 Different, 11 Missing, 2 Ben-decision. The eight holes with no switch at all, play feel first, are the planet scanner, planet-fighter fog, good and evil perks, citadel parking, the good-trader tax, radio, the daily stats screen, and FedComm. The 3D map stays out.
+
+
 
