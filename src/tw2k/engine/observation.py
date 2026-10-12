@@ -766,6 +766,8 @@ class Observation(BaseModel):
     avoid_prompt: str | None = None
     # rank-display-options-v1. Omitted while the screen switch is legacy.
     rank_place: dict[str, Any] | None = None
+    # daily-stats-v1. Omitted while the V-screen switch is legacy.
+    daily_stats: dict[str, Any] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -797,12 +799,45 @@ class Observation(BaseModel):
                 data.pop("avoid_prompt", None)
             if data.get("rank_place") is None:  # rank-display-options-v1
                 data.pop("rank_place", None)
+            if data.get("daily_stats") is None:  # daily-stats-v1
+                data.pop("daily_stats", None)
         return data
 
 
 # ---------------------------------------------------------------------------
 # Public builder
 # ---------------------------------------------------------------------------
+
+
+def game_status(universe: Universe) -> dict[str, int]:
+    """V-screen counts: ports, planets, traders, aliens, fighters and mines."""
+    fighters = 0
+    mines = 0
+    ports = 0
+    for sector in universe.sectors.values():
+        if sector.port is not None:
+            ports += 1
+        group = sector.fighters
+        if group is not None:
+            fighters += int(group.count)
+        mines += sum(int(row.count) for row in (sector.mines or []))
+    for planet in universe.planets.values():
+        fighters += int(planet.fighters or 0)
+    for player in universe.players.values():
+        fighters += int(player.ship.fighters or 0)
+        mines += sum(int(n) for n in (player.ship.mines or {}).values())
+    for rec in getattr(universe, "parked_ships", {}).values():
+        fighters += int(rec.ship.fighters or 0)
+        mines += sum(int(n) for n in (rec.ship.mines or {}).values())
+    aliens = sum(1 for row in getattr(universe, "aliens", {}).values() if getattr(row, "alive", True))
+    return {
+        "ports": ports,
+        "planets": len(universe.planets),
+        "traders": sum(1 for row in universe.players.values() if row.alive),
+        "aliens": aliens,
+        "fighters_in_use": fighters,
+        "mines_in_use": mines,
+    }
 
 
 def build_observation(universe: Universe, player_id: str, event_history: int = 40) -> Observation:
@@ -1204,6 +1239,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             rivals=rivals,
         ),
     )
+    if K.daily_stats_live():
+        obs.daily_stats = game_status(universe)
     if K.fed_tw2002():
         from .fed import fedspace_hint, police_observation
         obs.police = police_observation(universe, player)
