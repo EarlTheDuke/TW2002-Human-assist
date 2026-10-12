@@ -659,6 +659,7 @@ class Player(BaseModel):
             "seat_timeouts_today": 0,
             "reject_loop_key": "",
             "reject_loop_count": 0,
+            "radio_channel": None,
         })
 
     id: str
@@ -724,6 +725,8 @@ class Player(BaseModel):
         self.port_visit_sector_id = None
         self.haggle_counter = None
     corp_ticker: str | None = None
+    # radio-channels-v1. Subspace channel. Omitted while unset.
+    radio_channel: int | None = None
     # CORP_RULES.md cr6. Wrong join attempts today. Omitted while 0.
     corp_breakins_today: int = 0
     turns_today: int = 0
