@@ -85,6 +85,12 @@ def _max_deaths(universe) -> int:
     return K.elimination_deaths(universe.config)
 
 
+async def collect_in_seat_order(coros):
+    """Start every seat, then take the answers in the match's seat order."""
+    tasks = [asyncio.create_task(c) for c in coros]
+    return [await t for t in tasks]
+
+
 def _is_day_done(player) -> bool:
     """Player has no meaningful actions left for the day.
 
@@ -627,6 +633,52 @@ class MatchRunner:
     def set_speed(self, multiplier: float) -> None:
         self.state.speed_multiplier = max(0.1, min(10.0, multiplier))
 
+    async def _async_day_round(self, agents, universe) -> None:
+        """One pass where every seat that can still move answers together.
+
+        The day ends when nobody can move, or when the clock hits the cap.
+        Answers are applied in seat order so two code-only runs match.
+        """
+        now = time.time()
+        started = getattr(self, "_async_day_mark", None)
+        if started is None:
+            self._async_day_mark = now
+            started = now
+        ready = []
+        for agent in agents:
+            player = universe.players[agent.player_id]
+            if player.alive and not _is_day_done(player):
+                ready.append(agent)
+        if K.async_day_should_roll(not ready, now - started):
+            tick_day(universe)
+            self._record_day_tick()
+            await self._flush_events()
+            self._async_day_mark = time.time()
+            self.state.current_player_idx = 0
+            return
+        obs = {agent.player_id: build_observation(universe, agent.player_id) for agent in ready}
+        if K.seat_deadline_live():
+            deadline = float(K.SEAT_DEADLINE_S)
+        else:
+            deadline = float(self._spec.external_timeout_s)
+
+        async def _ask(agent):
+            try:
+                action = await asyncio.wait_for(agent.act(obs[agent.player_id]), timeout=deadline)
+            except (asyncio.TimeoutError, TimeoutError):
+                action = None
+            if action is None:
+                action = Action(kind=ActionKind.WAIT, thought="[async day] no answer — wait")
+            return action
+
+        actions = await collect_in_seat_order(_ask(agent) for agent in ready)
+        for agent, action in zip(ready, actions):
+            apply_action(universe, agent.player_id, action)
+        await self._flush_events()
+        self.state.current_player_idx = 0
+        self._record_history_sample()
+        await self._sleep_scaled(self._spec.action_delay_s)
+
     # ---------------- main loop ---------------- #
 
     async def _run(self) -> None:
@@ -667,6 +719,10 @@ class MatchRunner:
                 await self._pause.wait()
                 if self._stop.is_set():
                     break
+
+                if K.async_day_live():
+                    await self._async_day_round(agents, universe)
+                    continue
 
                 agent = agents[self.state.current_player_idx]
                 player = universe.players[agent.player_id]
