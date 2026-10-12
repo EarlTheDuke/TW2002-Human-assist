@@ -739,6 +739,11 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             prices.update(K.hardware_v2_prices())
             if not K.atomic_mines_sold():
                 prices.pop("atomic_mines", None)
+        if K.planet_scanner_live() and at_stardock:
+            prices["planet_scanner"] = int(K.PLANET_SCANNER_COST)
+            cap_by_scanner = 0 if getattr(player.ship, "planet_scanner", False) else 1
+        else:
+            cap_by_scanner = None
         if K.ship_tw_on() and at_stardock:
             from .ship_transwarp import drive_buyable
             if drive_buyable(player):
@@ -792,6 +797,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 cap_by[capped] = int(K.equip_room(class_key, capped, have.get(capped, 0)) or 0)
         if cap_by_tw is not None and "transwarp_drive" in prices:
             cap_by["transwarp_drive"] = cap_by_tw
+        if cap_by_scanner is not None:
+            cap_by["planet_scanner"] = cap_by_scanner
         for item in tow_offer:
             cap_by[item] = 1
         equip_max: dict[str, int] = {}

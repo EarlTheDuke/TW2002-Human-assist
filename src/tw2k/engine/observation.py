@@ -1747,6 +1747,16 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
         brief["has_transporter"] = bool(getattr(planet, "has_transporter", False))
         brief["treasury"] = planet.treasury
         brief["stockpile"] = {c.value: planet.stockpile.get(c, 0) for c in planet.stockpile}
+    # A planet scanner reads fighters on a planet with no shields. A shielded
+    # planet stays dark. Off, this block does not run, so the brief is unchanged.
+    if (
+        K.planet_scanner_live()
+        and viewer is not None
+        and getattr(getattr(viewer, "ship", None), "planet_scanner", False)
+        and int(getattr(planet, "shields", 0) or 0) == 0
+        and "fighters" not in brief
+    ):
+        brief["fighters"] = int(planet.fighters)
     return brief
 
 

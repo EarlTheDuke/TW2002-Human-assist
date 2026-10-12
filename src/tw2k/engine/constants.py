@@ -838,6 +838,10 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
         if not ship_tw_on():
             return 0
         return 0 if int(have) else 1
+    if item == "planet_scanner":
+        if not planet_scanner_live():
+            return 0
+        return 0 if int(have) else 1
     if item in HARDWARE_V2_ITEMS:
         if not hardware_tw2002():
             return 0
@@ -3435,3 +3439,17 @@ UNIVERSE_TOPOLOGY_MODE = "legacy"  # "legacy" | "live"
 def universe_topology_live() -> bool:
     """True when the map may contain dead ends, traps, tunnels, and a bubble."""
     return UNIVERSE_TOPOLOGY_MODE == "live" or tw2002_live_profile()
+
+
+# planet-scanner-v1. Appended so later slices can rebase cleanly.
+# "legacy": StarDock does not sell a planet scanner, and a stranger still
+# cannot read a planet's fighters. "live": the scanner costs 30,000.
+# It shows the fighters of a planet that has no shields. A shielded
+# planet stays dark. Live TWGS sold it at 30,000 (REPORT.md).
+PLANET_SCANNER_MODE = "legacy"  # "legacy" | "live"
+PLANET_SCANNER_COST = 30_000
+
+
+def planet_scanner_live() -> bool:
+    """True when StarDock sells a planet scanner."""
+    return PLANET_SCANNER_MODE == "live" or tw2002_live_profile()

@@ -562,7 +562,7 @@ class Ship(BaseModel):
         return _omit_defaults(handler(self), {
             "transwarp_drive": None, "fleet_id": None, "tow_lock": None,
             "corp_ticker": None, "ship_password": "",
-            "dock_log": [],
+            "dock_log": [], "planet_scanner": False,
         })
 
     ship_class: ShipClass = ShipClass.MERCHANT_CRUISER
@@ -592,6 +592,8 @@ class Ship(BaseModel):
     marker_beacons: int = 0
     psychic_probe: int = 0
     atomic_detonators: int = 0
+    # planet-scanner-v1. Saved once fitted; omitted from dumps while False.
+    planet_scanner: bool = False
     # SHIP_TRANSWARP.md tw4. Saved once fitted; omitted from dumps while None (legacy byte-identical).
     transwarp_drive: str | None = None
     # SHIP_FLEET.md fl1: stable fleet id, set the first time the hull is parked or bought as a spare.
@@ -891,6 +893,7 @@ class Player(BaseModel):
             + self.ship.mines.get(MineType.ATOMIC, 0) * K.ATOMIC_MINE_COST
             + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
             + int(getattr(self.ship, "cloaks", 0) or 0) * getattr(K, "CLOAK_COST", 25_000)
+            + (int(K.PLANET_SCANNER_COST) if getattr(self.ship, "planet_scanner", False) else 0)
             + int(getattr(self.ship, "mine_disruptors", 0) or 0) * K.disruptor_cost()
             + int(getattr(self.ship, "corbomite", 0) or 0) * getattr(K, "CORBOMITE_COST", 1_000)
             + int(getattr(self.ship, "marker_beacons", 0) or 0) * getattr(K, "BEACON_COST", 100)
