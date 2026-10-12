@@ -3453,3 +3453,17 @@ PLANET_SCANNER_COST = 30_000
 def planet_scanner_live() -> bool:
     """True when StarDock sells a planet scanner."""
     return PLANET_SCANNER_MODE == "live" or tw2002_live_profile()
+
+
+# scanner-fog-v1. Appended so later slices can rebase cleanly.
+# "legacy": a sector list still names a planet's owner, and the owner
+# still sees fighters without landing. "live": owner, fighters, and
+# shields stay hidden unless you have landed, or a planet scanner is
+# reading a planet that has no shields. The scanner shows owner and
+# fighters, not shields.
+SCANNER_FOG_MODE = "legacy"  # "legacy" | "live"
+
+
+def scanner_fog_live() -> bool:
+    """True when a planet's owner and fighters are hidden until a scan or a landing."""
+    return SCANNER_FOG_MODE == "live" or tw2002_live_profile()
