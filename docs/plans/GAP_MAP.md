@@ -429,3 +429,8 @@ No slice for: failed-haggle turn cost, the hold endpoint, alliances, or the day-
 ## 19. Status at afdf796 (2026-10-12)
 
 Read `docs/plans/gap-map-refresh-v2.md`. Section 18's fourteen slices now exist as flags. Their defaults are still the old behavior. The class M colonist figures (1,000 vs 1,000,000 on the citadel, and whether 191,000 people should shrink) are still Ben's choice. The next build is planet goods accruing during the day, not only at midnight. The 3D map stays out.
+
+## 20. Status at 7ed755f (2026-10-12)
+
+Read `docs/plans/gap-map-refresh-v3.md`. The October grid is still 9 Match, 34 Partial, 59 Different, 69 Missing, 171 rows. Those Missing cells were not all re-counted. Of the five rows Note 16 named, only the map shape is still missing: generation forbids a dead end and forbids a one-way with no way back to sector 1. Course length, sector fighter and mine caps, the Extern sweep, and the Ferrengal home sector are already in the engine. The next build is that map shape, behind a flag that stays off. The 3D map stays out.
+
