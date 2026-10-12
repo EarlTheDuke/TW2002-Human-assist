@@ -233,6 +233,7 @@
   function onSnapshot(snap) {
     if (!snap) return;
     if (snap.day) state.day = snap.day;
+    state.rankDisplay = snap.rank_display || "legacy";
     if (snap.tick) state.tick = snap.tick;
     if (snap.status) state.status = snap.status;
     if (snap.speed) state.speed = snap.speed;
@@ -1819,10 +1820,14 @@
       owned.set(pl.owner_id, (owned.get(pl.owner_id) || 0) + 1);
       citLevels.set(pl.owner_id, (citLevels.get(pl.owner_id) || 0) + (pl.citadel_level || 0));
     }
+    const mode = state.rankDisplay || "legacy";
     const ranked = players.slice().sort((a, b) => {
       if (a.alive !== b.alive) return a.alive ? -1 : 1;
+      if (mode === "exp") return (b.experience || 0) - (a.experience || 0);
       return (b.net_worth || 0) - (a.net_worth || 0);
     });
+    const byExp = mode === "legacy" ? null : players.slice().sort((a, b) => (b.experience || 0) - (a.experience || 0));
+    const expPlace = byExp ? new Map(byExp.map((p, i) => [p.id, i + 1])) : null;
     const top = ranked[0] ? (ranked[0].net_worth || 0) : 0;
     root.innerHTML = `<div class="lb-title">Leaderboard <span class="lb-hint">click row to follow</span></div>`
       + `<div class="lb-rows">${ranked.map((p, i) => {
@@ -1838,6 +1843,7 @@
             <span class="lb-dot" style="background:${p.color || "#6ee7ff"}"></span>
             <span class="lb-name">${esc(p.name)}${p.alive ? "" : " †"}</span>
             <span class="lb-nw" title="net worth">${fmt(nw)}${arrow}</span>
+            ${mode === "legacy" ? "" : `<span class="lb-stat" title="experience rank">xp ${expPlace.get(p.id)}</span><span class="lb-stat" title="planet value">planets ${fmt((p.net_worth || 0) - (p.net_worth_ship || 0))}</span>`}
             <span class="lb-bar"><span class="lb-bar-fill" style="width:${pct}%; background:${p.color || "#6ee7ff"}"></span></span>
             <span class="lb-stat" title="planets owned">🪐 ${owned.get(p.id) || 0}</span>
             <span class="lb-stat" title="sum of all citadel levels">🏰 ${citLevels.get(p.id) || 0}</span>

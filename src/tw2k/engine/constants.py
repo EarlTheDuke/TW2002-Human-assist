@@ -3269,6 +3269,21 @@ def alliance_live() -> bool:
     return ALLIANCE_MODE == "live" or tw2002_live_profile()
 
 
+# rank-display-options-v1. Off, the screens stay as they are.
+# exp, networth, or both choose which place the screens show.
+RANK_DISPLAY_MODE = "legacy"  # "legacy" | "exp" | "networth" | "both"
+
+
+def rank_display() -> str:
+    if RANK_DISPLAY_MODE == "legacy" and tw2002_live_profile():
+        return "exp"
+    return RANK_DISPLAY_MODE
+
+
+def rank_display_live() -> bool:
+    return rank_display() != "legacy"
+
+
 def async_day_should_roll(all_done: bool, elapsed_s: float) -> bool:
     if not async_day_live():
         return False

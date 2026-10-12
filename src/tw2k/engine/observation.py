@@ -764,6 +764,8 @@ class Observation(BaseModel):
     tavern: dict[str, Any] | None = None
     # avoid-list-v1. Shown when the computer is holding sectors. Omitted while empty.
     avoid_prompt: str | None = None
+    # rank-display-options-v1. Omitted while the screen switch is legacy.
+    rank_place: dict[str, Any] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -793,6 +795,8 @@ class Observation(BaseModel):
                 data.pop("tavern", None)
             if data.get("avoid_prompt") is None:  # avoid-list-v1
                 data.pop("avoid_prompt", None)
+            if data.get("rank_place") is None:  # rank-display-options-v1
+                data.pop("rank_place", None)
         return data
 
 
@@ -1174,6 +1178,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         limpets_owned=limpets_owned,
         probe_log=probe_log,
         known_sectors=known_sectors,
+        rank_place=_rank_place(universe, player, rivals),
         legal_actions=legal,
         fighter_challenge=_challenge_brief(universe, player, legal),
         ferrengi_encounter=(
@@ -1239,6 +1244,23 @@ def _challenge_brief(universe: Universe, player: Any, legal: list[dict[str, Any]
         "can_retreat": bool(retreat.get("legal")),
         "retreat_to": (retreat.get("params") or {}).get("to"),
         "toll": toll,
+    }
+
+
+def _rank_place(universe: Universe, player, rivals: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Experience place, net-worth place, and planet value. None while legacy."""
+    from . import constants as K
+
+    mode = K.rank_display()
+    if mode == "legacy":
+        return None
+    exp = int(player.experience)
+    worth = int(full_net_worth(universe, player))
+    return {
+        "mode": mode,
+        "experience": 1 + sum(1 for r in rivals if int(r.get("experience") or 0) > exp),
+        "net_worth": 1 + sum(1 for r in rivals if int(r.get("net_worth") or 0) > worth),
+        "planet_value": worth - int(player.net_worth),
     }
 
 
