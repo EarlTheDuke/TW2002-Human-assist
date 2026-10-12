@@ -3327,3 +3327,16 @@ def planet_colonist_cap(class_id: str) -> int:
     levels = CITADEL_CLASS_COSTS.get(class_id) or ()
     needed = max((int(row[0]) for row in levels), default=0)
     return max(handbook, needed)
+
+
+# landed-state-v1. Appended so later slices can rebase cleanly.
+# Legacy keeps a landing after the ship has warped away, and a warp from the
+# surface is allowed. Live drops a landing whose planet is not in this sector,
+# and a ship still on that planet must lift off before warp, trade, or an
+# executing plot.
+LANDED_STATE_MODE = "legacy"  # "legacy" | "live"
+
+
+def landed_state_live() -> bool:
+    """True when a landing has to match the sector the ship is in."""
+    return LANDED_STATE_MODE == "live" or tw2002_live_profile()

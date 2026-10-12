@@ -186,6 +186,15 @@ def _recall_owns(universe: Universe, player, dep) -> bool:
     return dep.owner_id == player.id
 
 
+def release_stale_landing(universe: Universe, player) -> None:
+    """Drop a landing whose planet is not in this sector. Legacy leaves it."""
+    if not K.landed_state_live() or player.planet_landed is None:
+        return
+    planet = universe.planets.get(player.planet_landed)
+    if planet is None or planet.sector_id != player.sector_id:
+        player.planet_landed = None
+
+
 def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     player = universe.players[player_id]
     sector = universe.sectors[player.sector_id]
@@ -207,6 +216,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 and ((K.tavern_on() and K.stardock_extra_on()) or k != ActionKind.TRICRON)
                 and (K.stardock_extra_on() or k != ActionKind.CINEPLEX)]
 
+    release_stale_landing(universe, player)
     landed = player.planet_landed is not None
     at_stardock = player.sector_id == K.STARDOCK_SECTOR
     in_fedspace = player.sector_id in K.FEDSPACE_SECTORS
@@ -253,9 +263,12 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         if moving_towee(universe, player_id) is not None:
             tow_cost = wc = tow_move_cost(universe, player)
     warps = list(sector.warps)
-    # NB: the engine does not gate warp on `planet_landed` (observed in
-    # _handle_warp); we mirror the engine, not the rulebook.
-    reason = "no warps out of this sector" if not warps else _need_turns(player, wc)
+    # Legacy still allows a warp from the surface. Live asks for a liftoff.
+    if K.landed_state_live() and landed:
+        reason = "lift off first"
+        warps = []
+    else:
+        reason = "no warps out of this sector" if not warps else _need_turns(player, wc)
     warp_params: dict[str, Any] = {"target": {"type": "int", "required": True, "choices": warps}}
     if tow_cost is not None:
         warp_params["tow_cost"] = tow_cost
@@ -288,7 +301,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     # (a free loop). `params.execute.legal` mirrors the handler: false unless
     # turns left cover one warp. Preview legality is unchanged.
     known = sorted(int(s) for s in (player.known_warps or {}) if int(s) != player.sector_id)
-    hop_block = _need_turns(player, wc)
+    hop_block = "lift off first" if (K.landed_state_live() and landed) else _need_turns(player, wc)
     execute_ok = hop_block is None
     out.append(_la(ActionKind.PLOT_COURSE, legal=True, reason=None, cost=0,
                    params={"target": {"type": "int", "required": True, "suggested": known},
@@ -315,7 +328,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         out.append(_la(ActionKind.TRADE, legal=False, cost=tc,
                        reason="no trading port in this sector" if port is None else "StarDock has no commodity market"))
     else:
-        reason = _need_turns(player, tc)
+        reason = "lift off first" if (K.landed_state_live() and landed) else _need_turns(player, tc)
         if reason is None and K.rob_tw2002() and getattr(port, "bust_player_id", None) == player_id:
             reason = "you are busted at this port until it clears"
         buy_choices: list[str] = []

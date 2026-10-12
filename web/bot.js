@@ -1376,7 +1376,11 @@
         for (const kind of kinds) {
           const b = document.createElement("button");
           b.type = "button"; b.setAttribute("data-verb", kind); b.setAttribute("data-testid", `action-${kind}`);
-          b.addEventListener("click", () => { if (!canUse(kind)) return; openVerb(kind, {}); });
+          b.addEventListener("click", () => {
+            if (!canUse(kind)) return;
+            if (kind === "liftoff") return submit({ kind: "liftoff", args: {}, thought: "Grok Bot: liftoff" });
+            openVerb(kind, {});
+          });
           pad.appendChild(b);
         }
       }
