@@ -138,7 +138,7 @@
     <div class="score"><span class="k">Alignment</span><span class="v"><span id="sbAlignLabel" data-obs="alignment_label">-</span> <small>(<span id="sbAlign" data-obs="alignment">-</span>)</small></span></div>
     <div class="score" data-testid="alert-lamp"><span class="k">Alert</span><span class="v" id="alertLamp" data-level="quiet">quiet</span></div>
     <div class="score" data-obs="self_name"><span class="k">Commander</span><span class="v" id="sbName" data-obs="self_id">-</span></div>
-    <div class="score" data-llm="stage_hint" data-testid="stage-hint"><span class="k">Stage (LLM hint)</span><span class="v stage" id="sbStage">-</span><small id="sbStageDetail" class="hint small" data-testid="stage-hint-detail"></small></div>
+    <div class="score" data-llm="stage_hint" data-testid="stage-hint"><span class="k">Stage</span><span class="v stage" id="sbStage">-</span><small id="sbStageDetail" class="hint small" data-testid="stage-hint-detail"></small></div>
     <div class="score"><span class="k">Net worth</span><span class="v" id="sbNetWorth" data-obs="net_worth" data-testid="net-worth">-</span></div>
     <div class="score"><span class="k">Rank</span><span class="v"><span id="sbRank" data-obs="rank">-</span> <small><span id="sbXp" data-obs="experience">-</span> xp</small></span></div>
     <div class="spool" id="turnSpool" data-testid="turn-spool" aria-hidden="true"><span id="turnSpoolBar"></span></div>
@@ -279,13 +279,13 @@
         <h2 style="margin-top:16px">Last result</h2>
         <div id="lastResult" class="result" data-testid="last-result" aria-live="polite">-</div>
         <details class="drawer" data-testid="last-result-json">
-          <summary>Raw result JSON</summary>
+          <summary>Result details</summary>
           <pre id="lastResultJson" class="json"></pre>
         </details>
         <h2 style="margin-top:16px">Advisor</h2>
         <div id="failures" class="list" data-testid="recent-failures" data-obs="recent_failures"></div>
         <details class="drawer" open data-testid="action-hint-drawer">
-          <summary>Action hint (server)</summary>
+          <summary>Suggested move</summary>
           <div id="hint" class="hint" data-testid="action-hint" data-obs="action_hint">-</div>
         </details>
         <details class="drawer" id="notesDrawer" data-testid="notes-drawer">
@@ -298,11 +298,11 @@
           <div id="operatorDialogue" class="dialogue" data-obs="operator_dialogue" data-testid="operator-dialogue"></div>
         </details>
         <details class="drawer" data-testid="llm-twin-drawer">
-          <summary>API twin: what an LLM seat is sent this turn</summary>
+          <summary>Copy of the note sent to an automated seat</summary>
           <pre id="llmTwin" class="json" data-testid="llm-twin">-</pre>
         </details>
         <details class="drawer" data-testid="rules-drawer">
-          <summary>Rules the LLM seats see (system prompt)</summary>
+          <summary>Rules text</summary>
           <div class="hint small" id="rulesVerbs" data-testid="rules-verbs"></div>
           <pre id="rulesPrompt" class="json" data-testid="rules-prompt">-</pre>
         </details>
