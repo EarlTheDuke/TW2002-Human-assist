@@ -440,7 +440,8 @@ html, body {
 .sector-node.stardock { fill: var(--stardock); stroke: var(--stardock); }
 .sector-node.occupied { stroke-width: 1.2; }
 .ship-marker { pointer-events: none; }
-.sector-label { fill: var(--text-dim); font-size: 3px; pointer-events: none; }
+.ship-name { pointer-events: none; font-weight: 600; }
+.sector-label { fill: #e6d39a; font-size: 8px; pointer-events: none; }
 
 /* ---------- LOD (level-of-detail) for the galaxy SVG ----------
    The map toggles these classes on #galaxy based on current zoom level,
@@ -468,7 +469,7 @@ html, body {
   opacity: 0.1;
 }
 #galaxy.zoom-mid .warp { stroke: #1a2440; stroke-width: 0.55; opacity: 0.55; }
-#galaxy.zoom-mid .sector-label { opacity: 0.5; }
+#galaxy.zoom-mid .sector-label { opacity: 0.9; }
 #galaxy.zoom-near .warp { stroke: #22305a; stroke-width: 0.75; opacity: 0.9; }
 #galaxy.zoom-near .sector-node { stroke-width: 0.7; }
 
