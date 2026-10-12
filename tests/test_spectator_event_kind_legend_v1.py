@@ -11,8 +11,9 @@ TITLES = {
     "trade": "Trade: buys and sells at ports",
     "move": "Movement: warps, scans, and landings",
     "thought": "Thoughts: what a commander is thinking",
-    "system": "System: day changes, errors, and operator notes",
+    "system": "System: day changes, errors, and notes",
     "diplomacy": "Diplomacy: hails, corporations, alliances, and planets",
+    "model": "Model usage rows. Off until you ask for them.",
 }
 
 
