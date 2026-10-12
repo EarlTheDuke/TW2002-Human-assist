@@ -1,7 +1,7 @@
 """CONFIRM with Execute unchecked plots the route and does not fly it.
 
-The shortest known path was already the one drawn. A hop with no remembered
-return is marked on the warp button and on the route.
+An exit this seat has not learned is not marked one-way. A learned exit
+is marked only when its warp list does not come back.
 """
 
 from __future__ import annotations
@@ -34,19 +34,15 @@ def test_unchecked_confirm_plots_and_stays(browser, tmp_path, monkeypatch) -> No
             page.keyboard.press("1")
         assert _action(warp.value)["kind"] == "warp"
         page.wait_for_selector("#turnBanner.turn", timeout=20_000)
-        page.wait_for_selector("#warpBtns button[data-oneway='1']", timeout=10_000)
+        assert page.locator("#warpBtns button[data-oneway='1']").count() == 0
         target = page.locator("#warpBtns button").first.get_attribute("data-target")
         before = page.locator("#sbSector").inner_text()
         page.locator(f"[data-testid=map-sector-{target}]").click()
         page.wait_for_selector("[data-testid=verb-preview]", timeout=10_000)
         preview = page.locator("[data-testid=verb-preview]").inner_text()
         assert "plan only" in preview
-        assert "one-way" in preview
+        assert "one-way" not in preview
         assert page.locator("[data-testid=plot-execute]").is_checked() is False
-        page.wait_for_function(
-            "() => Number(document.querySelector('[data-testid=route-line]')?.getAttribute('data-oneway-hops') || 0) > 0",
-            timeout=5_000,
-        )
         SHOT.parent.mkdir(parents=True, exist_ok=True)
         page.locator("[data-testid=verb-form], #verbForm").scroll_into_view_if_needed()
         page.screenshot(path=str(SHOT))
