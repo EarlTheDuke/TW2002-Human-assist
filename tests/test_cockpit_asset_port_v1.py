@@ -30,10 +30,10 @@ def test_validator_accepts_the_scene_keys() -> None:
     assert errors == []
     for key in validate_mod.SCENE_KEYS:
         assert key in data["keys"]
-    assert validate_mod.resolve_scene(data, "sector_deep", MEDIA) == "stills/system_scan.png"
+    assert validate_mod.resolve_scene(data, "sector_deep", MEDIA) == "stills/system_scan.webp"
     assert validate_mod.resolve_scene(data, "death_pod", MEDIA) == "canvas"
-    assert validate_mod.resolve_scene(data, "sector_port_4", MEDIA) == "stills/trade_port.png"
-    assert validate_mod.resolve_scene(data, "ship_unknown_hull", MEDIA) == "stills/system_scan.png"
+    assert validate_mod.resolve_scene(data, "sector_port_4", MEDIA) == "stills/trade_port.webp"
+    assert validate_mod.resolve_scene(data, "ship_unknown_hull", MEDIA) == "stills/system_scan.webp"
 
 
 def test_a_missing_file_falls_through_to_a_drawn_scene() -> None:

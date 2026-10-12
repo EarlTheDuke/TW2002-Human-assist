@@ -676,7 +676,96 @@
     placeMapView(cx - w / 2, cy - h / 2, w, h);
   }
   function resetMapView() { placeMapView(0, 0, 100, 100); }
+  const SCENE_ALT = {
+    sector_deep: "Deep space", sector_stardock: "StarDock", sector_terra: "Terra",
+    sector_fedspace: "FedSpace", planet_own: "Your planet", planet_foreign: "A planet",
+    docked_port: "Docked at a port", in_pod: "Escape pod",
+  };
+  let sceneTable = null;
+  let sceneShown = "";
+  let sceneToken = 0;
+  function sceneKey(obs) {
+    if (!obs) return "sector_deep";
+    const ship = obs.ship || {};
+    if (ship.class === "escape_pod") return "in_pod";
+    const landed = shownLanding(obs);
+    if (landed !== null) {
+      const owned = (obs.owned_planets || []).some((p) => Number(p.id) === Number(landed));
+      return owned ? "planet_own" : "planet_foreign";
+    }
+    const sector = obs.sector || {};
+    const port = sector.port;
+    if (port && /stardock/i.test(String(port.name || ""))) return "sector_stardock";
+    if (sector.terra) return "sector_terra";
+    if (port && port.class_id !== undefined && port.class_id !== null) return `sector_port_${port.class_id}`;
+    if (sector.is_fedspace) return "sector_fedspace";
+    if (Number(sector.id) === 1) return "sector_stardock";
+    return "sector_deep";
+  }
+  function sceneFile(table, key) {
+    const seen = new Set();
+    let current = key;
+    while (current && current !== "canvas" && !seen.has(current)) {
+      seen.add(current);
+      const entry = table[current];
+      if (!entry) {
+        if (String(current).startsWith("sector_port_")) { current = "docked_port"; continue; }
+        if (String(current).startsWith("ship_")) { current = "sector_deep"; continue; }
+        return "";
+      }
+      if (entry.file) return entry.file;
+      current = entry.fallback || "canvas";
+    }
+    return "";
+  }
+  function paintScene(obs) {
+    const img = $("sceneStill");
+    if (!img) return;
+    if (new URLSearchParams(location.search).get("visuals") === "0") {
+      img.hidden = true;
+      img.removeAttribute("src");
+      return;
+    }
+    const key = sceneKey(obs);
+    const label = key.startsWith("sector_port_") ? "At a port" : (SCENE_ALT[key] || "Scene");
+    const draw = (table) => {
+      const file = sceneFile(table, key);
+      img.alt = label;
+      if (!file) {
+        img.hidden = true;
+        img.removeAttribute("src");
+        sceneShown = key;
+        return;
+      }
+      const next = `/static/media/${file}`;
+      if (sceneShown === key && img.getAttribute("src") === next && !img.hidden) return;
+      const token = ++sceneToken;
+      const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduce && img.getAttribute("src")) img.classList.add("is-swap");
+      img.hidden = false;
+      img.onload = () => {
+        if (token !== sceneToken) return;
+        img.classList.remove("is-swap");
+        sceneShown = key;
+      };
+      img.onerror = () => {
+        if (token !== sceneToken) return;
+        img.hidden = true;
+        img.removeAttribute("src");
+        sceneShown = key;
+      };
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.src = next;
+    };
+    if (sceneTable) { draw(sceneTable); return; }
+    fetch("/static/media/manifest.json").then((r) => r.json()).then((data) => {
+      sceneTable = data.keys || {};
+      draw(sceneTable);
+    }).catch(() => { img.hidden = true; });
+  }
   function renderKnownMap(obs) {
+    paintScene(obs);
     const svg = $("knownMap");
     const nodes = obs.known_sectors || [];
     const kw = obs.known_warps || {};
