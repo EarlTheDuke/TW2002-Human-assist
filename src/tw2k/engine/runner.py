@@ -350,6 +350,8 @@ def tick_day(universe: Universe) -> None:
         from .tow import sweep as tow_sweep
         tow_sweep(universe, "retreat")
     universe.day += 1
+    if K.alliance_live():
+        _expire_alliance_proposals(universe)
     for player in universe.players.values():
         # Live turns come back by the hour. A new day does not refill the day.
         played = int(player.turns_today) > 0
@@ -1584,9 +1586,14 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         and player.corp_ticker
         and planet.corp_ticker == player.corp_ticker
     )
-    # An ally is still hostile for the landing. Sector hazards skip allied
-    # mines and fighters on their own.
-    hostile = planet.owner_id is not None and planet.owner_id != pid and not same_corp
+    # An ally is still hostile for the landing unless the alliance switch is on.
+    # Sector hazards skip allied mines and fighters on their own.
+    allied = (
+        K.alliance_live()
+        and planet.owner_id is not None
+        and _are_allied(universe, pid, planet.owner_id)
+    )
+    hostile = planet.owner_id is not None and planet.owner_id != pid and not same_corp and not allied
     if hostile and _toll_blocks(universe, pid, sector):
         return ActionResult(ok=False, error="toll fighters demand payment")
     if hostile:
@@ -3328,19 +3335,42 @@ def _handle_break_alliance(universe: Universe, pid: str, action: Action) -> Acti
     ally = universe.alliances.get(aid) if aid else None
     if ally is None or pid not in ally.member_ids:
         return ActionResult(ok=False, error="not in that alliance")
+    was_active = bool(ally.active)
     ally.active = False
     for mid in ally.member_ids:
         p = universe.players.get(mid)
         if p is not None and ally.id in p.alliances:
             p.alliances.remove(ally.id)
     breaker = universe.players[pid].name
+    if K.alliance_live() and not was_active:
+        if pid == ally.proposed_by:
+            summary = f"{breaker} withdrew the alliance proposal [{ally.id}]"
+        else:
+            summary = f"{breaker} declined the alliance proposal [{ally.id}]"
+        universe.alliances.pop(ally.id, None)
+    else:
+        summary = f"!!! ALLIANCE [{ally.id}] BROKEN by {breaker} — {ally.member_ids} now hostile !!!"
     universe.emit(
         EventKind.ALLIANCE_BROKEN,
         actor_id=pid,
         payload={"alliance_id": ally.id, "breaker": pid},
-        summary=f"!!! ALLIANCE [{ally.id}] BROKEN by {breaker} — {ally.member_ids} now hostile !!!",
+        summary=summary,
     )
     return ActionResult(ok=True, turns_spent=0)
+
+
+def _expire_alliance_proposals(universe: Universe) -> None:
+    """A proposal left from an earlier day is over. The length is not measured."""
+    for aid, ally in list(universe.alliances.items()):
+        if ally.active or int(ally.formed_day) >= int(universe.day):
+            continue
+        universe.alliances.pop(aid, None)
+        universe.emit(
+            EventKind.ALLIANCE_BROKEN,
+            actor_id=ally.proposed_by,
+            payload={"alliance_id": aid, "reason": "expired"},
+            summary=f"The alliance proposal [{aid}] expired.",
+        )
 
 
 def _parse_defense_kind(action: Action) -> tuple[str | None, ActionResult | None]:
