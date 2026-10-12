@@ -991,37 +991,201 @@
     }
   ],
   "keys": {
-    "sector_deep": {"file": "stills/system_scan.webp", "fallback": "canvas"},
-    "sector_stardock": {"file": "stills/stardock_bay.webp", "fallback": "sector_deep"},
-    "sector_terra": {"file": "stills/planet_surface.webp", "fallback": "sector_deep"},
-    "sector_fedspace": {"file": "stills/system_scan.webp", "fallback": "sector_deep"},
-    "sector_port_0": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_1": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_2": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_3": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_4": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_5": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_6": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_7": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_8": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "sector_port_9": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "planet_own": {"file": "stills/planet_surface.webp", "fallback": "sector_deep"},
-    "planet_foreign": {"file": "stills/planet_claim.webp", "fallback": "planet_own"},
-    "docked_port": {"file": "stills/trade_port.webp", "fallback": "sector_deep"},
-    "in_pod": {"file": null, "fallback": "canvas"},
-    "ship_merchant_cruiser": {"file": "stills/stardock_bay.webp", "fallback": "sector_deep"},
-    "warp": {"file": "stills/move_warp.webp", "fallback": "sector_deep"},
-    "dock": {"file": "stills/trade_port.webp", "fallback": "docked_port"},
-    "combat_hit": {"file": "stills/combat_alert.webp", "fallback": "sector_deep"},
-    "combat_incoming": {"file": "stills/combat_photon.webp", "fallback": "combat_hit"},
-    "combat_miss": {"file": "stills/combat_alert.webp", "fallback": "combat_hit"},
-    "planet_land": {"file": "stills/planet_surface.webp", "fallback": "planet_own"},
-    "planet_liftoff": {"file": "stills/planet_liftoff.webp", "fallback": "planet_own"},
-    "citadel_built": {"file": "stills/planet_citadel.webp", "fallback": "planet_own"},
-    "death_pod": {"file": null, "fallback": "in_pod"},
-    "genesis": {"file": "stills/planet_genesis.webp", "fallback": "planet_own"},
-    "trade_ok": {"file": "stills/trade_port.webp", "fallback": "dock"},
-    "trade_failed": {"file": "stills/trade_failed.webp", "fallback": "trade_ok"},
-    "new_day": {"file": "stills/system_scan.webp", "fallback": "sector_deep"}
+    "sector_deep": {
+      "file": "stills/sector_deep.webp",
+      "fallback": "canvas"
+    },
+    "sector_stardock": {
+      "file": "stills/sector_stardock.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_terra": {
+      "file": "stills/sector_terra.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_fedspace": {
+      "file": "stills/sector_fedspace.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_0": {
+      "file": "stills/trade_port.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_1": {
+      "file": "stills/sector_port_1.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_2": {
+      "file": "stills/sector_port_2.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_3": {
+      "file": "stills/sector_port_3.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_4": {
+      "file": "stills/sector_port_4.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_5": {
+      "file": "stills/sector_port_5.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_6": {
+      "file": "stills/sector_port_6.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_7": {
+      "file": "stills/sector_port_7.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_8": {
+      "file": "stills/sector_port_8.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_port_9": {
+      "file": "stills/trade_port.webp",
+      "fallback": "sector_deep"
+    },
+    "planet_own": {
+      "file": "stills/planet_own.webp",
+      "fallback": "sector_deep"
+    },
+    "planet_foreign": {
+      "file": "stills/planet_foreign.webp",
+      "fallback": "planet_own"
+    },
+    "docked_port": {
+      "file": "stills/docked_port.webp",
+      "fallback": "sector_deep"
+    },
+    "in_pod": {
+      "file": "stills/in_pod.webp",
+      "fallback": "canvas"
+    },
+    "ship_merchant_cruiser": {
+      "file": "stills/stardock_bay.webp",
+      "fallback": "sector_deep"
+    },
+    "warp": {
+      "file": "stills/move_warp.webp",
+      "fallback": "sector_deep"
+    },
+    "dock": {
+      "file": "stills/trade_port.webp",
+      "fallback": "docked_port"
+    },
+    "combat_hit": {
+      "file": "stills/combat_alert.webp",
+      "fallback": "sector_deep"
+    },
+    "combat_incoming": {
+      "file": "stills/combat_photon.webp",
+      "fallback": "combat_hit"
+    },
+    "combat_miss": {
+      "file": "stills/combat_alert.webp",
+      "fallback": "combat_hit"
+    },
+    "planet_land": {
+      "file": "stills/planet_land.webp",
+      "fallback": "planet_own"
+    },
+    "planet_liftoff": {
+      "file": "stills/planet_liftoff.webp",
+      "fallback": "planet_own"
+    },
+    "citadel_built": {
+      "file": "stills/planet_citadel_built.webp",
+      "fallback": "planet_own"
+    },
+    "death_pod": {
+      "file": "stills/death_pod.webp",
+      "fallback": "in_pod"
+    },
+    "genesis": {
+      "file": "stills/genesis_launch.webp",
+      "fallback": "planet_own"
+    },
+    "trade_ok": {
+      "file": "stills/trade_port.webp",
+      "fallback": "dock"
+    },
+    "trade_failed": {
+      "file": "stills/trade_failed.webp",
+      "fallback": "trade_ok"
+    },
+    "new_day": {
+      "file": "stills/new_day.webp",
+      "fallback": "sector_deep"
+    },
+    "sector_nebula": {
+      "file": "stills/sector_nebula.webp",
+      "fallback": "canvas"
+    },
+    "sector_hazard": {
+      "file": "stills/sector_hazard.webp",
+      "fallback": "canvas"
+    },
+    "sector_ferrengi": {
+      "file": "stills/sector_ferrengi.webp",
+      "fallback": "canvas"
+    },
+    "sector_combat_aftermath": {
+      "file": "stills/sector_combat_aftermath.webp",
+      "fallback": "canvas"
+    },
+    "planet_citadel_built": {
+      "file": "stills/planet_citadel_built.webp",
+      "fallback": "canvas"
+    },
+    "citadel_l1": {
+      "file": "stills/citadel_l1.webp",
+      "fallback": "canvas"
+    },
+    "citadel_l3": {
+      "file": "stills/citadel_l3.webp",
+      "fallback": "canvas"
+    },
+    "genesis_launch": {
+      "file": "stills/genesis_launch.webp",
+      "fallback": "canvas"
+    },
+    "ship_freighter": {
+      "file": "stills/ship_freighter.webp",
+      "fallback": "canvas"
+    },
+    "ship_cruiser": {
+      "file": "stills/ship_cruiser.webp",
+      "fallback": "canvas"
+    },
+    "ship_scout": {
+      "file": "stills/ship_scout.webp",
+      "fallback": "canvas"
+    },
+    "ship_pod": {
+      "file": "stills/ship_pod.webp",
+      "fallback": "canvas"
+    },
+    "planet_class_m": {
+      "file": "stills/planet_class_m.webp",
+      "fallback": "canvas"
+    },
+    "planet_class_k": {
+      "file": "stills/planet_class_k.webp",
+      "fallback": "canvas"
+    },
+    "planet_class_l": {
+      "file": "stills/planet_class_l.webp",
+      "fallback": "canvas"
+    },
+    "planet_class_o": {
+      "file": "stills/planet_class_o.webp",
+      "fallback": "canvas"
+    },
+    "planet_class_u": {
+      "file": "stills/planet_class_u.webp",
+      "fallback": "canvas"
+    }
   }
 }
