@@ -434,3 +434,8 @@ Read `docs/plans/gap-map-refresh-v2.md`. Section 18's fourteen slices now exist 
 
 Read `docs/plans/gap-map-refresh-v3.md`. The October grid is still 9 Match, 34 Partial, 59 Different, 69 Missing, 171 rows. Those Missing cells were not all re-counted. Of the five rows Note 16 named, only the map shape is still missing: generation forbids a dead end and forbids a one-way with no way back to sector 1. Course length, sector fighter and mine caps, the Extern sweep, and the Ferrengal home sector are already in the engine. The next build is that map shape, behind a flag that stays off. The 3D map stays out.
 
+## 21. Status at 39344c1 (2026-10-12)
+
+Read `docs/plans/gap-map-refresh-v4.md`. The October counts stay the historical grid. Note 17's play-feel holes are already in the engine: NavHaz and the entry order are on, beacons and the other hardware items are on, retreat is a verb, and the Interdictor and the mid-ships sit in the roster table behind a switch that stays off. Dead ends are the Batch M switch, which stays off. No new slice. The 3D map stays out.
+
+
