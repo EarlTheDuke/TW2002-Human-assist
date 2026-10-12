@@ -768,6 +768,8 @@ class Observation(BaseModel):
     rank_place: dict[str, Any] | None = None
     # daily-stats-v1. Omitted while the V-screen switch is legacy.
     daily_stats: dict[str, Any] | None = None
+    # corp-rankings-v1. Omitted while the ranking switch is legacy.
+    corp_rankings: list[dict[str, Any]] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -801,12 +803,29 @@ class Observation(BaseModel):
                 data.pop("rank_place", None)
             if data.get("daily_stats") is None:  # daily-stats-v1
                 data.pop("daily_stats", None)
+            if data.get("corp_rankings") is None:  # corp-rankings-v1
+                data.pop("corp_rankings", None)
         return data
 
 
 # ---------------------------------------------------------------------------
 # Public builder
 # ---------------------------------------------------------------------------
+
+
+def corporation_rankings(universe: Universe) -> list[dict[str, Any]]:
+    """Corps ordered by combined member experience, with combined alignment."""
+    rows: list[dict[str, Any]] = []
+    for corp in universe.corporations.values():
+        members = [universe.players[pid] for pid in corp.member_ids if pid in universe.players]
+        rows.append({
+            "ticker": corp.ticker,
+            "name": corp.name,
+            "experience": sum(int(member.experience) for member in members),
+            "alignment": sum(int(member.alignment) for member in members),
+        })
+    rows.sort(key=lambda row: (-int(row["experience"]), str(row["ticker"])))
+    return rows
 
 
 def game_status(universe: Universe) -> dict[str, int]:
@@ -1241,6 +1260,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     )
     if K.daily_stats_live():
         obs.daily_stats = game_status(universe)
+    if K.corp_rank_live():
+        obs.corp_rankings = corporation_rankings(universe)
     if K.fed_tw2002():
         from .fed import fedspace_hint, police_observation
         obs.police = police_observation(universe, player)
