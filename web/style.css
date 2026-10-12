@@ -2502,3 +2502,41 @@ svg.spark { display: block; }
   40%  { box-shadow: 0 0 0 3px rgba(110, 231, 255, 0.45); }
   100% { box-shadow: 0 0 0 0 rgba(110, 231, 255, 0.0); }
 }
+
+/* Phone: stack the map, the feed, and the seats, and let the page scroll.
+   Inline widths from the desktop resize handles lose to these rules. */
+@media (max-width: 720px) {
+  html, body {
+    height: auto !important;
+    min-height: 100%;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .brand { flex: 1 1 100%; min-width: 0; }
+  .brand h1 { white-space: nowrap; }
+  .match-status, .controls { flex: 1 1 auto; min-width: 0; flex-wrap: wrap; }
+  .layout {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .col-left, .col-right {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .map-panel, .events-panel, .players-panel, .messaging-panel {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    min-height: 220px !important;
+  }
+  .map-panel { height: 42vh !important; }
+  .events-panel { height: 36vh !important; }
+  .resize-handle { display: none !important; }
+}
