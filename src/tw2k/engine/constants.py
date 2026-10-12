@@ -1343,7 +1343,7 @@ def planet_colonist_room(class_id: str, current: int) -> int | None:
     """How many more colonists fit. None means the legacy path has no cap."""
     if not planet_limits_on():
         return None
-    return max(0, PLANET_MAX_COLONISTS[class_id] - int(current))
+    return max(0, planet_colonist_cap(class_id) - int(current))
 
 
 def planet_stock_room(class_id: str, commodity: str, current: int) -> int | None:
@@ -3301,3 +3301,29 @@ def async_day_should_roll(all_done: bool, elapsed_s: float) -> bool:
     if not async_day_live():
         return False
     return bool(all_done) or float(elapsed_s) >= float(ASYNC_DAY_CAP_S)
+
+
+# planet-colonist-cap-fidelity-v1. Appended so later slices can rebase cleanly.
+# The handbook, the Gypsy guide, and the modern manual agree: a class U planet
+# holds 3,000 colonists. A class U citadel level 3 asks for 5,000, so that
+# level cannot be started. Legacy keeps the handbook number. Live raises a
+# class only when its handbook cap is below the most colonists any citadel
+# level on that class asks for. Class U becomes 8,000 (level 5). Class M
+# stays 30,000. Four sources say 30,000. The million figure is the unsettled
+# citadel level-1 screen, not this cap.
+PLANET_COLONIST_CAP_MODE = "legacy"  # "legacy" | "live"
+
+
+def planet_colonist_cap_live() -> bool:
+    """True when a class can hold every citadel level it is asked to build."""
+    return PLANET_COLONIST_CAP_MODE == "live" or tw2002_live_profile()
+
+
+def planet_colonist_cap(class_id: str) -> int:
+    """Colonists this class may hold. Legacy is the handbook. Live can go higher."""
+    handbook = PLANET_MAX_COLONISTS[class_id]
+    if not planet_colonist_cap_live():
+        return handbook
+    levels = CITADEL_CLASS_COSTS.get(class_id) or ()
+    needed = max((int(row[0]) for row in levels), default=0)
+    return max(handbook, needed)

@@ -1908,7 +1908,7 @@ def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> A
         total_col = sum(int(n) for n in planet.colonists.values())
         room = K.planet_colonist_room(planet.class_id.value, total_col)
         if room is not None and qty > room:
-            cap = K.PLANET_MAX_COLONISTS[planet.class_id.value]
+            cap = K.planet_colonist_cap(planet.class_id.value)
             return ActionResult(ok=False, error=f"planet colonist cap is {cap}")
         pool_label = pool.value
         planet.colonists[pool] = planet.colonists.get(pool, 0) + qty
@@ -1991,7 +1991,7 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
         total_col = sum(int(n) for n in planet.colonists.values())
         room = K.planet_colonist_room(planet.class_id.value, total_col)
         if room is not None and qty > room:
-            cap = K.PLANET_MAX_COLONISTS[planet.class_id.value]
+            cap = K.planet_colonist_cap(planet.class_id.value)
             return ActionResult(ok=False, error=f"planet colonist cap is {cap}")
 
     # Withdraw

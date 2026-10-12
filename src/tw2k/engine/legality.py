@@ -985,7 +985,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     if owned_reason:
         reason = owned_reason
     elif not from_choices and ship_cols > 0 and ship_room <= 0:
-        cap = K.PLANET_MAX_COLONISTS[landed_planet.class_id.value]
+        cap = K.planet_colonist_cap(landed_planet.class_id.value)
         reason = f"planet colonist cap is {cap}"
     elif not from_choices:
         reason = "no colonists aboard or on the planet"
