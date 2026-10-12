@@ -72,6 +72,7 @@
     // Highlight reel — chronological list of BIG_MOMENT_KINDS (server
     // seq included so reel -> scrubber jump works deterministically).
     highlights: [],
+    feedWindow: 180,
     // Agent-thought events the user has clicked to expand. Keyed by
     // event seq so the "show full" state survives re-renders.
     expandedThoughts: new Set(),
@@ -217,6 +218,8 @@
       state.players.set(p.id, Object.assign({}, cur, p));
     }
     state.events = [];
+    state.highlights = [];
+    state.feedWindow = 180;
     state.messages = [];
     state.recentWarp = [];
     state.seenSectors = new Set();
@@ -233,6 +236,7 @@
     renderEvents();
     renderMessages();
     buildMap();
+    fetchHighlights();
   }
 
   function onSnapshot(snap) {
@@ -417,10 +421,7 @@
     }
     // Phase A.8 — big-moment events feed the Highlights reel so they
     // survive category-filter toggles and scrubber jumps.
-    if (BIG_MOMENT_KINDS.has(ev.kind)) {
-      state.highlights.push(ev);
-      if (state.highlights.length > 80) state.highlights.shift();
-    }
+    if (REEL_KINDS.has(ev.kind)) rememberHighlight(ev);
 
     pushEvent(ev);
     if (ev.kind === "game_over") {
@@ -436,7 +437,8 @@
 
   function pushEvent(ev) {
     state.events.push(ev);
-    if (state.events.length > MAX_EVENTS) state.events.shift();
+    const cap = Math.max(MAX_EVENTS, state.feedWindow + 200);
+    if (state.events.length > cap) state.events.splice(0, state.events.length - cap);
   }
 
   // ----------------- Galaxy map --------------------
@@ -2359,7 +2361,7 @@
     if (state.replay.mode === "scrub" && state.replay.cursorIndex >= 0) {
       source = state.events.slice(0, state.replay.cursorIndex + 1);
     }
-    const ordered = source.slice(-180);
+    const ordered = source.slice(-state.feedWindow);
     let shown = 0;
     for (const ev of ordered) {
       if (!eventPassesFilter(ev)) continue;
@@ -2370,6 +2372,7 @@
     if (pinned) eventFeed.scrollTop = eventFeed.scrollHeight;
     else eventFeed.scrollTop = saved;
     paintFeedJump();
+    paintLoadOlder();
     renderScrubber();
     renderHighlightsReel();
   }
@@ -2584,6 +2587,94 @@
     "planet_tax_payout", "genesis_deployed", "game_over", "game_start",
     "operator_directive_set", "operator_directive_cleared", "operator_message",
   ]);
+  // The reel keeps match-shaping moments from the whole log. Planet payouts
+  // stay in the feed so they do not crowd the citadels, genesis, corporations, and kills.
+  const REEL_KINDS = new Set([
+    "player_eliminated", "ship_destroyed", "port_destroyed",
+    "atomic_detonation", "citadel_complete", "alliance_formed",
+    "genesis_deployed", "corp_create", "game_over", "game_start",
+  ]);
+
+  function rememberHighlight(ev) {
+    if (!ev || !REEL_KINDS.has(ev.kind)) return;
+    if (ev.seq != null && state.highlights.some((row) => row.seq === ev.seq)) return;
+    state.highlights.push(ev);
+  }
+
+  let highlightGen = 0;
+  function fetchHighlights() {
+    const gen = ++highlightGen;
+    fetch("/highlights?limit=1000")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || gen !== highlightGen) return;
+        for (const ev of data.highlights || []) rememberHighlight(ev);
+        state.highlights.sort((a, b) => (a.seq || 0) - (b.seq || 0));
+        const reel = document.getElementById("highlightsReel");
+        if (reel) reel.dataset.source = "history";
+        renderHighlightsReel();
+      })
+      .catch(() => {});
+  }
+
+  function oldestLoadedSeq() {
+    for (const ev of state.events) {
+      if (ev && ev.seq != null) return ev.seq;
+    }
+    return null;
+  }
+
+  function paintLoadOlder() {
+    const btn = document.querySelector("[data-testid=feed-load-older]");
+    if (!btn) return;
+    const oldest = oldestLoadedSeq();
+    const buffered = state.events.length > state.feedWindow;
+    btn.hidden = !(buffered || (oldest != null && oldest > 1));
+  }
+
+  async function loadOlder() {
+    const oldest = oldestLoadedSeq();
+    if (oldest != null && oldest > 1) {
+      const res = await fetch(`/events?before=${oldest}&limit=180`);
+      if (res.ok) {
+        const data = await res.json();
+        const have = new Set(state.events.map((ev) => ev.seq));
+        const older = (data.events || []).filter((ev) => ev.seq != null && !have.has(ev.seq));
+        if (older.length) {
+          state.events = older.concat(state.events);
+          state.feedWindow += older.length;
+          render();
+          return;
+        }
+      }
+    }
+    if (state.events.length > state.feedWindow) {
+      state.feedWindow += 180;
+      render();
+    }
+  }
+
+  async function ensureEventLoaded(seq) {
+    const want = String(seq);
+    if (state.events.some((ev) => String(ev.seq) === want)) return;
+    const res = await fetch(`/events?before=${Number(seq) + 1}&limit=40`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const have = new Set(state.events.map((ev) => ev.seq));
+    const extra = (data.events || []).filter((ev) => ev.seq != null && !have.has(ev.seq));
+    if (!extra.length) return;
+    state.events = extra.concat(state.events).sort((a, b) => (a.seq || 0) - (b.seq || 0));
+    state.feedWindow = Math.max(state.feedWindow, 180);
+  }
+
+  async function jumpReel(seq) {
+    await ensureEventLoaded(seq);
+    const idx = state.events.findIndex((ev) => String(ev.seq) === String(seq));
+    if (idx < 0) return;
+    state.replay.mode = "scrub";
+    state.replay.cursorIndex = idx;
+    render();
+  }
 
   // Kinds eligible for a FIRST-of-match chip (A4). `citadel_complete`
   // is tracked per LEVEL so L1/L2/L3/L4 each get their own stamp —
@@ -2721,6 +2812,8 @@
         paintFeedJump();
       });
     }
+    const feedOlder = document.querySelector("[data-testid=feed-load-older]");
+    if (feedOlder) feedOlder.addEventListener("click", () => { void loadOlder(); });
     const reelList = document.getElementById("highlightsList");
     if (reelList) reelList.addEventListener("click", handleEventRowClick);
     // Phase B click delegation — leaderboard rows + Ferrengi chips.
@@ -2817,11 +2910,7 @@
     if (reelRow) {
       const seq = reelRow.dataset.seq;
       if (!seq) return;
-      const idx = state.events.findIndex((x) => String(x.seq) === seq);
-      if (idx < 0) return;
-      state.replay.mode = "scrub";
-      state.replay.cursorIndex = idx;
-      render();
+      void jumpReel(seq);
       return;
     }
   }
@@ -2837,10 +2926,10 @@
     const list = document.getElementById("highlightsList");
     const count = document.getElementById("highlightsCount");
     if (!reel || !list) return;
-    const moments = state.highlights.slice(-24).reverse();
+    const moments = state.highlights.slice().reverse();
     if (count) count.textContent = String(state.highlights.length);
     if (!moments.length) {
-      list.innerHTML = `<li class="reel-empty">No big moments yet — spawns, first corp, alliance, atomic strike, elimination will appear here.</li>`;
+      list.innerHTML = `<li class="reel-empty">No citadels, genesis, corporations, or kills yet.</li>`;
       return;
     }
     list.innerHTML = "";
@@ -4157,4 +4246,10 @@
   historyTimer = setInterval(fetchHistory, 4000);
   fetchHistory();
   window.tw2kFeedPlain = plainFeedBody;
+  window.tw2kDropEarlyEvents = function () {
+    const kept = state.events.slice(Math.ceil(state.events.length / 2));
+    state.events = kept;
+    state.feedWindow = Math.max(kept.length, 1);
+    render();
+  };
 })();

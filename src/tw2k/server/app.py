@@ -336,8 +336,8 @@ def create_app(
         return runner.snapshot()
 
     @app.get("/events")
-    async def events(since: int = 0, limit: int = 200) -> dict[str, Any]:
-        return {"events": runner.recent_events(since=since, limit=limit)}
+    async def events(since: int = 0, limit: int = 200, before: int | None = None) -> dict[str, Any]:
+        return {"events": runner.recent_events(since=since, limit=limit, before=before)}
 
     @app.get("/api/cost")
     async def cost() -> dict[str, Any]:
@@ -1339,8 +1339,8 @@ def create_replay_app(replay_dir: Path, *, speed: float = 1.0) -> FastAPI:
         return snap
 
     @app.get("/events")
-    async def events(since: int = 0, limit: int = 200) -> dict[str, Any]:
-        return {"events": runner.recent_events(since=since, limit=limit)}
+    async def events(since: int = 0, limit: int = 200, before: int | None = None) -> dict[str, Any]:
+        return {"events": runner.recent_events(since=since, limit=limit, before=before)}
 
     @app.get("/api/cost")
     async def cost() -> dict[str, Any]:

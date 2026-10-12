@@ -1755,12 +1755,18 @@ class MatchRunner:
             out[pid] = samples
         return {"samples": out, "max_samples": self.HISTORY_MAX_SAMPLES}
 
-    def recent_events(self, since: int = 0, limit: int = 200) -> list[dict]:
-        """Return event-log entries with seq > since, newest last."""
+    def recent_events(self, since: int = 0, limit: int = 200, before: int | None = None) -> list[dict]:
+        """Return event-log entries with seq > since, newest last.
+
+        ``before`` keeps only events older than that sequence, so the feed can
+        ask for the page just above the oldest row it already has.
+        """
         u = self.state.universe
         if u is None:
             return []
         events = [e for e in u.events if e.seq > since]
+        if before is not None:
+            events = [e for e in events if e.seq < before]
         if len(events) > limit:
             events = events[-limit:]
         return [e.model_dump() for e in events]
