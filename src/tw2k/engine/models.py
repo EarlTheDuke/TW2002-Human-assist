@@ -1026,6 +1026,10 @@ class FerrengiShip(BaseModel):
 class AlienTrader(BaseModel):
     """A classic alien trader. Not a player (ALIEN_TRADERS.md al2)."""
 
+    @model_serializer(mode="wrap")
+    def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
+        return _omit_defaults(handler(self), {"race": "", "protective": False})
+
     id: str
     name: str
     ship_name: str
@@ -1036,6 +1040,9 @@ class AlienTrader(BaseModel):
     credits: int = 0
     alive: bool = True
     born_day: int = 1
+    # gold-aliens-v1. Omitted while blank/false so a legacy alien stays byte-identical.
+    race: str = ""
+    protective: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -1140,12 +1147,17 @@ class Federal(BaseModel):
 class Universe(BaseModel):
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {
+        data = _omit_defaults(handler(self), {
             "parked_ships": {}, "next_ship_id": 1, "port_cap": None,
             "fed_starships": [],
             "aliens": {}, "next_alien_id": 1,
             "tavern": None,
+            "gold_grudges": {},
         })
+        # A server restart clears Gold grudges. Never write the list out.
+        if isinstance(data, dict):
+            data.pop("gold_grudges", None)
+        return data
 
     config: GameConfig
     sectors: dict[int, Sector]
@@ -1156,6 +1168,8 @@ class Universe(BaseModel):
     # alien-traders-v1. Omitted while empty/1 so a legacy universe stays byte-identical.
     aliens: dict[str, AlienTrader] = Field(default_factory=dict)
     next_alien_id: int = 1
+    # gold-aliens-v1. Race -> newest killer first, ten names. Never saved.
+    gold_grudges: dict[str, list[str]] = Field(default_factory=dict)
     alliances: dict[str, Alliance] = Field(default_factory=dict)
     # Active limpet tracks; keyed by f"{owner}:{target}"
     limpets: dict[str, LimpetTrack] = Field(default_factory=dict)

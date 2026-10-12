@@ -3531,3 +3531,19 @@ CORP_RANK_MODE = "legacy"  # "legacy" | "live"
 def corp_rank_live() -> bool:
     """True when the corporation ranking is on the observation."""
     return CORP_RANK_MODE == "live" or tw2002_live_profile()
+
+
+# gold-aliens-v1. Appended so later slices can rebase cleanly.
+# "legacy": a kill does not start a race grudge.
+# "live": destroying an alien while another of that race is in the
+# sector puts the killer at the top of that race's list of ten.
+# The list is not saved. How much harder they hit is not published,
+# so the fight itself does not change. Banding has no published
+# group size, so clusters are not invented.
+GOLD_ALIEN_MODE = "legacy"  # "legacy" | "live"
+GOLD_GRUDGE_LIMIT = 10
+
+
+def gold_alien_live() -> bool:
+    """True when a witnessed alien kill starts a race grudge."""
+    return GOLD_ALIEN_MODE == "live" or tw2002_live_profile()

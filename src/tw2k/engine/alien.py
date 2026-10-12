@@ -295,6 +295,30 @@ def on_alien_killed(universe: Universe, attacker_id: str, alien: AlienTrader, *,
     if units > 0:
         from .hardware import apply_corbomite
         apply_corbomite(universe, alien.id, attacker_id, units)
+    note_gold_grudge(universe, attacker_id, alien)
+
+
+def note_gold_grudge(universe: Universe, killer_id: str, alien: AlienTrader) -> None:
+    """A witnessed kill puts the killer at the top of that race's list of ten."""
+    if not K.gold_alien_live():
+        return
+    race = str(getattr(alien, "race", "") or "")
+    if not race:
+        return
+    seen = any(
+        other.id != alien.id
+        and other.alive
+        and other.sector_id == alien.sector_id
+        and str(getattr(other, "race", "") or "") == race
+        for other in universe.aliens.values()
+    )
+    if not seen:
+        return
+    book = universe.gold_grudges.setdefault(race, [])
+    if killer_id in book:
+        book.remove(killer_id)
+    book.insert(0, killer_id)
+    del book[K.GOLD_GRUDGE_LIMIT:]
 
 
 def alien_flee_destination(universe: Universe, alien: AlienTrader) -> int | None:
