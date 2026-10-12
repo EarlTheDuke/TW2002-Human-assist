@@ -1458,6 +1458,20 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 if why is None and int((la.params.get("qty") or {}).get("max") or 0) <= 0:
                     why = "no fighters aboard to attack with"
                 la.legal, la.reason = why is None, why
+            elif la.kind == ActionKind.LAND_PLANET.value and K.own_planet_fighter_live() and la.legal:
+                box = la.params.get("planet_id") or {}
+                owned = []
+                for plid in box.get("choices") or []:
+                    pl = universe.planets.get(int(plid))
+                    if pl is None:
+                        continue
+                    same = bool(pl.corp_ticker and player.corp_ticker and pl.corp_ticker == player.corp_ticker)
+                    if pl.owner_id == player_id or same:
+                        owned.append(plid)
+                if owned:
+                    box["choices"] = owned
+                else:
+                    la.legal, la.reason = False, CHALLENGE_REFUSAL
             elif la.kind not in allowed and la.legal:
                 la.legal, la.reason = False, CHALLENGE_REFUSAL
 

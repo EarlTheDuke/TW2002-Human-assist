@@ -467,15 +467,18 @@ def open_challenge(universe: Universe, pid: str, sector, from_sector: int) -> bo
         return False
     player = universe.players[pid]
     player.fighter_challenge = {"sector_id": sector.id, "from_sector": int(from_sector), "mode": dep.mode.value}
+    payload = {"mode": dep.mode.value, "count": int(dep.count), "victim": pid}
+    words = "pay, attack, retreat or surrender" if dep.mode == FighterMode.TOLL else "attack, retreat or surrender"
+    if K.own_planet_fighter_live() and dep.mode == FighterMode.TOLL:
+        amount = int(dep.count) * int(K.SECTOR_TOLL_CREDITS_PER_FIGHTER)
+        payload["toll_credits"] = amount
+        words = f"pay {amount} credits, attack, retreat or surrender"
     universe.emit(
         EventKind.FIGHTER_CHALLENGE,
         actor_id=pid,
         sector_id=sector.id,
-        payload={"mode": dep.mode.value, "count": int(dep.count), "victim": pid},
-        summary=(
-            f"{int(dep.count)} {dep.mode.value} fighters challenge {player.name} in {sector.id}: "
-            + ("pay, attack, retreat or surrender" if dep.mode == FighterMode.TOLL else "attack, retreat or surrender")
-        ),
+        payload=payload,
+        summary=f"{int(dep.count)} {dep.mode.value} fighters challenge {player.name} in {sector.id}: {words}",
     )
     return True
 

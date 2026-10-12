@@ -3249,6 +3249,16 @@ def async_day_live() -> bool:
     return ASYNC_DAY_MODE == "live" or tw2002_live_profile()
 
 
+# own-planet-landing-fighters-v1. Off, a fighter challenge still blocks
+# every verb but the answer. On, the owner can land on their own planet
+# anyway, and a toll challenge names the credit amount.
+OWN_PLANET_FIGHTER_MODE = "legacy"  # "legacy" | "live"
+
+
+def own_planet_fighter_live() -> bool:
+    return OWN_PLANET_FIGHTER_MODE == "live" or tw2002_live_profile()
+
+
 def async_day_should_roll(all_done: bool, elapsed_s: float) -> bool:
     if not async_day_live():
         return False
