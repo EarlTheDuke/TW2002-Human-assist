@@ -35,6 +35,8 @@
       p.production ? `makes/day ${pools(p.production) || "nothing"}` : null,
       has(p.organics_consumption_per_day) ? `eats ${fmt(p.organics_consumption_per_day)} Org/day` : null,
       has(p.growth_active) ? (p.growth_active ? "growing" : "NOT growing (no organics)") : null,
+      has(p.colonist_trend) ? p.colonist_trend : "about 5% more each day while organics last",
+      `growth dividend ${has(p.dividend) ? p.dividend : "30% of new value"}`,
       organicsRunway(p.organics_days_left),
       `${fmt(p.fighters)} fighters`,
       `${fmt(p.shields)} shields`,

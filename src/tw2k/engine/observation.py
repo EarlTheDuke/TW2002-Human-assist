@@ -1013,7 +1013,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     # Empire play (ferry sizing, citadel tiers) is impossible without them.
     # Growth fields stay on this list only — sector briefs must not publish
     # another owner's runway just because we warped into their sector.
-    from .planets import planet_growth_status
+    from .planets import colonist_trend, planet_growth_status
     owned_planets: list[dict[str, Any]] = []
     for planet in universe.planets.values():
         if planet.owner_id != player.id:
@@ -1046,6 +1046,12 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "growth_active": growth["growth_active"],
             "organics_days_left": growth["organics_days_left"],
         })
+        if K.planet_dividend_off():
+            owned_planets[-1]["dividend"] = "none"
+        if K.planet_prod_live():
+            owned_planets[-1]["colonist_trend"] = colonist_trend(
+                planet.class_id, sum(colonists.values()),
+            )
 
     # Match 13 — true orphaned planets. owner_id is None AND corp_ticker is
     # None AND we have a PLANET_ORPHANED event proving this was a former
