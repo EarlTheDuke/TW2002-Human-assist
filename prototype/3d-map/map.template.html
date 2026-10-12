@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Throwaway galaxy</title>
+<style>
+  html, body { margin: 0; background: #070b16; color: #d5def2; font: 14px/1.4 system-ui, sans-serif; }
+  header { display: flex; gap: 16px; align-items: center; padding: 8px 12px; background: #10182c; }
+  label { display: flex; gap: 6px; align-items: center; }
+  #stats { margin-left: auto; font-variant-numeric: tabular-nums; }
+  canvas { display: block; width: 100vw; height: calc(100vh - 42px); cursor: grab; }
+  canvas:active { cursor: grabbing; }
+</style>
+</head>
+<body>
+<header>
+  <label>Set
+    <select id="set">
+      <option value="40">40 sectors</option>
+      <option value="1000">1000 sectors</option>
+    </select>
+  </label>
+  <label><input id="fog" type="checkbox"> Cockpit fog (known sectors only)</label>
+  <span id="picked">click a sector</span>
+  <span id="stats"></span>
+</header>
+<canvas id="view"></canvas>
+<script>
+const DATA = { "40": /*__SMALL__*/null, "1000": /*__LARGE__*/null };
+function cockpitView(full) {
+  const start = 1;
+  const limit = full.nodes.length > 100 ? 25 : 12;
+  const byId = new Map(full.nodes.map((n) => [n.id, n]));
+  const out = new Map();
+  for (const e of full.edges) {
+    if (!out.has(e.a)) out.set(e.a, []);
+    out.get(e.a).push(e.b);
+    if (!e.oneway) {
+      if (!out.has(e.b)) out.set(e.b, []);
+      out.get(e.b).push(e.a);
+    }
+  }
+  const known = [];
+  const seen = new Set([start]);
+  const q = [start];
+  while (q.length && known.length < limit) {
+    const id = q.shift();
+    if (!byId.has(id)) continue;
+    known.push(id);
+    for (const nxt of out.get(id) || []) {
+      if (!seen.has(nxt)) { seen.add(nxt); q.push(nxt); }
+    }
+  }
+  const keep = new Set(known);
+  const nodes = full.nodes.filter((n) => keep.has(n.id)).map((n) => ({ id: n.id, x: n.x, y: n.y, z: n.z, port: n.port }));
+  const edges = [];
+  const stubs = [];
+  for (const e of full.edges) {
+    const a = keep.has(e.a);
+    const b = keep.has(e.b);
+    if (a && b) edges.push({ a: e.a, b: e.b, oneway: e.oneway });
+    else if (a || b) {
+      const srcId = a ? e.a : e.b;
+      const missing = a ? e.b : e.a;
+      const src = nodes.find((n) => n.id === srcId);
+      const angle = ((missing * 47) % 360) * Math.PI / 180;
+      stubs.push({ x: src.x, y: src.y, z: src.z, angle });
+    }
+  }
+  const markers = full.markers.filter((m) => keep.has(m.sector));
+  return { nodes, edges, stubs, markers };
+}
+
+const canvas = document.getElementById("view");
+const ctx = canvas.getContext("2d");
+const state = { yaw: 0.4, pitch: 0.5, dist: 900, zoom: 1, pick: null, nodes: [] };
+let view = DATA["40"];
+
+function resize() {
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+}
+function project(x, y, z) {
+  const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw);
+  const cp = Math.cos(state.pitch), sp = Math.sin(state.pitch);
+  const x1 = x * cy - z * sy;
+  const z1 = x * sy + z * cy;
+  const y1 = y * cp - z1 * sp;
+  const z2 = y * sp + z1 * cp;
+  const f = state.dist / (state.dist + z2);
+  const scale = state.zoom * (canvas.height / 900);
+  return [canvas.width / 2 + x1 * f * scale, canvas.height / 2 - y1 * f * scale, f];
+}
+function draw() {
+  const t0 = performance.now();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const at = new Map(view.nodes.map((n) => [n.id, project(n.x, n.y, n.z)]));
+  ctx.lineWidth = 1;
+  for (const e of view.edges) {
+    const p = at.get(e.a), q = at.get(e.b);
+    if (!p || !q) continue;
+    ctx.strokeStyle = "rgba(150,170,210,0.45)";
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    ctx.lineTo(q[0], q[1]);
+    ctx.stroke();
+    if (e.oneway) {
+      const x = p[0] + (q[0] - p[0]) * 0.72;
+      const y = p[1] + (q[1] - p[1]) * 0.72;
+      const ang = Math.atan2(q[1] - p[1], q[0] - p[0]);
+      ctx.fillStyle = "#9eb4e8";
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - 8 * Math.cos(ang - 0.4), y - 8 * Math.sin(ang - 0.4));
+      ctx.lineTo(x - 8 * Math.cos(ang + 0.4), y - 8 * Math.sin(ang + 0.4));
+      ctx.fill();
+    }
+  }
+  for (const s of view.stubs || []) {
+    const p = project(s.x, s.y, s.z);
+    const len = 18 * state.zoom;
+    ctx.strokeStyle = "rgba(200,210,230,0.7)";
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    ctx.lineTo(p[0] + Math.cos(s.angle) * len, p[1] + Math.sin(s.angle) * len);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  state.nodes = [];
+  let labels = 0;
+  const labelZoom = view.nodes.length > 100 ? 2.2 : 0.6;
+  for (const n of view.nodes) {
+    const p = at.get(n.id);
+    state.nodes.push({ id: n.id, x: p[0], y: p[1], port: n.port });
+    ctx.fillStyle = n.id === state.pick ? "#ffe14a" : "#d5def2";
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], n.id === 1 ? 5 : 3, 0, Math.PI * 2);
+    ctx.fill();
+    if (state.zoom >= labelZoom || n.id === state.pick) {
+      ctx.fillStyle = "#9eb4e8";
+      ctx.font = `${12 * devicePixelRatio}px system-ui`;
+      const text = n.port ? `${n.id} ${n.port}` : String(n.id);
+      ctx.fillText(text, p[0] + 6, p[1] - 6);
+      labels += 1;
+    }
+  }
+  for (const m of view.markers || []) {
+    const n = view.nodes.find((node) => node.id === m.sector);
+    if (!n) continue;
+    const p = at.get(n.id);
+    ctx.fillStyle = m.color;
+    ctx.beginPath();
+    ctx.arc(p[0] + 7, p[1] + 7, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const ms = performance.now() - t0;
+  document.getElementById("stats").textContent =
+    `${view.nodes.length} sectors · ${view.edges.length} links · ${labels} labels · ${ms.toFixed(2)} ms`;
+  return ms;
+}
+function show(which, fog) {
+  const full = DATA[which];
+  view = fog ? cockpitView(full) : { nodes: full.nodes, edges: full.edges, stubs: [], markers: full.markers };
+  draw();
+}
+document.getElementById("set").onchange = () => show(document.getElementById("set").value, document.getElementById("fog").checked);
+document.getElementById("fog").onchange = () => show(document.getElementById("set").value, document.getElementById("fog").checked);
+canvas.addEventListener("wheel", (ev) => {
+  ev.preventDefault();
+  state.zoom *= ev.deltaY > 0 ? 0.9 : 1.1;
+  state.zoom = Math.max(0.3, Math.min(8, state.zoom));
+  draw();
+}, { passive: false });
+let drag = null;
+canvas.addEventListener("pointerdown", (ev) => { drag = { x: ev.clientX, y: ev.clientY, yaw: state.yaw, pitch: state.pitch }; });
+canvas.addEventListener("pointermove", (ev) => {
+  if (!drag) return;
+  state.yaw = drag.yaw + (ev.clientX - drag.x) * 0.008;
+  state.pitch = Math.max(-1.2, Math.min(1.2, drag.pitch + (ev.clientY - drag.y) * 0.008));
+  draw();
+});
+canvas.addEventListener("pointerup", (ev) => {
+  if (drag && Math.abs(ev.clientX - drag.x) < 4 && Math.abs(ev.clientY - drag.y) < 4) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (ev.clientX - rect.left) * devicePixelRatio;
+    const y = (ev.clientY - rect.top) * devicePixelRatio;
+    let best = null, bestD = 14 * devicePixelRatio;
+    for (const n of state.nodes) {
+      const d = Math.hypot(n.x - x, n.y - y);
+      if (d < bestD) { bestD = d; best = n; }
+    }
+    state.pick = best ? best.id : null;
+    document.getElementById("picked").textContent = best ? `sector ${best.id}${best.port ? " · port " + best.port : ""}` : "click a sector";
+    draw();
+  }
+  drag = null;
+});
+window.addEventListener("resize", () => { resize(); draw(); });
+resize();
+show("40", false);
+</script>
+</body>
+</html>
