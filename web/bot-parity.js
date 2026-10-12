@@ -22,8 +22,29 @@
 
   // CP1 - empire planet tape (G6-G9): id, origin, colonists per pool + total,
   // stockpile, growth runway. Enough to size a ferry without Raw obs.
+  // A build keeps the finished level at L0 until the completion day. Name the
+  // level that is actually going up, and the day it finishes.
+  function citadelStatus(p) {
+    const level = Number(p && p.citadel_level) || 0;
+    const target = Number(p && p.citadel_target) || 0;
+    if (target > level) {
+      const day = p.citadel_complete_day;
+      const when = day === null || day === undefined || day === "" ? "" : `, done day ${day}`;
+      return `citadel L${target} building${when}`;
+    }
+    return `citadel L${level}`;
+  }
+  function stageBuildDetail(detail, planets) {
+    let text = detail || "";
+    const builds = (planets || []).filter((p) => Number(p.citadel_target) > Number(p.citadel_level));
+    if (!builds.length) return text.replace("citadel L0 in progress", "no citadel started");
+    const line = builds.map(citadelStatus).join("; ");
+    if (/citadel L\d+ in progress/.test(text)) return text.replace(/citadel L\d+ in progress/, line);
+    return text ? `${line} · ${text}` : line;
+  }
+
   function planetRow(p) {
-    const cit = `citadel L${p.citadel_level}${p.citadel_target > p.citadel_level ? ` → L${p.citadel_target} day ${p.citadel_complete_day}` : ""}`;
+    const cit = citadelStatus(p);
     const col = pools(p.colonists);
     const metas = [
       `id ${p.id}`,
@@ -284,7 +305,7 @@
 
   return {
     ordinal, gameOverTitle, cuBanner, digestText, routeFromTradeLog,
-    planetRow, orphanRow, otherPlayerRow, occupantLabel, organicsRunway, bankRoomText,
+    planetRow, citadelStatus, stageBuildDetail, orphanRow, otherPlayerRow, occupantLabel, organicsRunway, bankRoomText,
     directiveMeta, dialogueLines, DIALOGUE_TAIL,
     parseTwin, stageText, stageDetail,
     eventShown, HIDDEN_BY_DEFAULT,
