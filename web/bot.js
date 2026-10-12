@@ -82,22 +82,22 @@
   const COMMODITIES = ["fuel_ore", "organics", "equipment"];
   // Sticker numbers for the yard list. The net price still comes from the server.
   const SHIP_CARDS = {
-    merchant_cruiser: ["Merchant Cruiser", 20, 2500, 400, 41300],
-    scout_marauder: ["Scout Marauder", 25, 150, 100, 15950],
-    missile_frigate: ["Missile Frigate", 40, 5000, 400, 100800],
-    battleship: ["BattleShip", 80, 10000, 750, 88500],
-    corporate_flagship: ["Corporate Flagship", 85, 20000, 1500, 163500],
-    colonial_transport: ["Colonial Transport", 50, 200, 500, 63600],
-    cargotran: ["CargoTran", 75, 400, 1000, 51950],
-    merchant_freighter: ["Merchant Freighter", 65, 300, 500, 33400],
-    havoc_gunstar: ["Havoc Gunstar", 50, 10000, 3000, 79000],
-    imperial_starship: ["Imperial StarShip", 150, 50000, 2000, 339000],
-    star_master: ["Star Master", 30, 5000, 2000, 61300],
-    constellation: ["Constellation", 20, 5000, 750, 72500],
-    tkhasi_orion: ["T'Khasi Orion", 30, 750, 750, 42500],
-    tholian_sentinel: ["Tholian Sentinel", 10, 2500, 4000, 47500],
-    taurean_mule: ["Taurean Mule", 40, 300, 600, 63600],
-    interdictor_cruiser: ["Interdictor Cruiser", 20, 100000, 4000, 539000],
+    merchant_cruiser: ["Merchant Cruiser", 20, 2500, 400, 41300, 5],
+    scout_marauder: ["Scout Marauder", 25, 150, 100, 15950, 0],
+    missile_frigate: ["Missile Frigate", 40, 5000, 400, 100800, 0],
+    battleship: ["BattleShip", 80, 10000, 750, 88500, 1],
+    corporate_flagship: ["Corporate Flagship", 85, 20000, 1500, 163500, 10],
+    colonial_transport: ["Colonial Transport", 50, 200, 500, 63600, 5],
+    cargotran: ["CargoTran", 75, 400, 1000, 51950, 2],
+    merchant_freighter: ["Merchant Freighter", 65, 300, 500, 33400, 2],
+    havoc_gunstar: ["Havoc Gunstar", 50, 10000, 3000, 79000, 1],
+    imperial_starship: ["Imperial StarShip", 150, 50000, 2000, 339000, 10],
+    star_master: ["Star Master", 30, 5000, 2000, 61300, 5],
+    constellation: ["Constellation", 20, 5000, 750, 72500, 2],
+    tkhasi_orion: ["T'Khasi Orion", 30, 750, 750, 42500, 1],
+    tholian_sentinel: ["Tholian Sentinel", 10, 2500, 4000, 47500, 1],
+    taurean_mule: ["Taurean Mule", 40, 300, 600, 63600, 1],
+    interdictor_cruiser: ["Interdictor Cruiser", 20, 100000, 4000, 539000, 20],
   };
   const SHORT = { fuel_ore: "Fuel", organics: "Org", equipment: "Equip", colonists: "Colonists" };
 
@@ -346,7 +346,10 @@
   function setText(id, v) { const el = $(id); if (el) el.textContent = v === null || v === undefined || v === "" ? "-" : String(v); }
   function stockPhrase(st) {
     const onHand = Number(st && st.current) || 0;
-    return onHand === 0 ? `empty, 0 of ${fmt(st.max)}` : `${fmt(onHand)} of ${fmt(st.max)}`;
+    const max = Number(st && st.max) || 0;
+    // A port that buys from you has room left, not goods for sale.
+    if (st && st.side === "buys_from_player") return `${fmt(Math.max(0, max - onHand))} / ${fmt(max)} room`;
+    return `${fmt(onHand)} / ${fmt(max)}`;
   }
   function shownLanding(obs) {
     const id = obs && obs.planet_landed;
@@ -1055,6 +1058,8 @@
   function plainHint(text) {
     let hint = text || "(no hint)";
     hint = hint.replace(/GOALS EMPTY set goal_short in your JSON output/g, "No short goal yet.");
+    hint = hint.replace(/goal_short/g, "short goal");
+    hint = hint.replace(/Action hint \(server\)/g, "Suggested move");
     hint = hint.replace(/POST \/hold \{hold:true\}/g, "Hold keeps your turn");
     hint = hint.replace(/POST \/hold \{hold:false\} ends the slot and spends no turn\./g, "Ending the hold spends no turn.");
     hint = hint.replace(/buy_equip /g, "Buy ");
@@ -1097,7 +1102,7 @@
     const planets = (obs.sector || {}).planets || [];
     const lines = [];
     lines.push(`You  ${ship.class || "?"} · ${fmt(ship.holds)} holds · ${fmt(ship.fighters)} fighters · ${fmt(ship.shields)} shields · ${fmt(obs.credits)} credits`);
-    if (card) lines.push(`List card  ${card[1]} holds · ${fmt(card[2])} fighters · ${fmt(card[3])} shields · ${fmt(card[4])} credits`);
+    if (card) lines.push(`List card  ${card[1]} holds · ${fmt(card[2])} fighters · ${fmt(card[3])} shields · genesis ${card[5]} · ${fmt(card[4])} credits`);
     lines.push(rankLine(obs));
     lines.push(`Day ${obs.day ?? "-"} of ${obs.max_days ?? "-"} · ${fmt(obs.turns_remaining)} turns left`);
     if (!port) lines.push("No port in this sector");
@@ -1649,7 +1654,7 @@
       if (!card) continue;
       const net = nets[o.value];
       const netBit = net !== undefined ? ` · net ${fmt(net)}` : "";
-      o.textContent = `${card[0]} · ${card[1]} holds · ${fmt(card[2])} fighters · ${fmt(card[3])} shields · list ${fmt(card[4])}${netBit}`;
+      o.textContent = `${card[0]} · ${card[1]} holds · ${fmt(card[2])} fighters · ${fmt(card[3])} shields · genesis ${card[5]} · list ${fmt(card[4])}${netBit}`;
     }
   }
   function labelEquipOptions(el, params) {
@@ -1724,7 +1729,11 @@
         const basis = ((state.obs && state.obs.ship && state.obs.ship.cargo_cost_avg) || {})[c];
         let txt = `${side.toUpperCase()} ${q} ${c} @ ${unit} = ${fmt(q * unit)} cr (engine cap ${mx}; list ${listed ?? "?"})`;
         if (side === "sell" && basis !== undefined) txt += ` · cost basis ${basis} → est. ${fmt((unit - basis) * q)} cr`;
-        if (price.value && listed !== undefined) { const off = side === "buy" ? (listed - unit) / listed : (unit - listed) / listed; if (off > 0) txt += ` · haggle ${Math.round(off * 100)}% off list - rejected asks settle at list price`; }
+        if (price.value && listed) {
+          const ask = Number(price.value);
+          if (side === "buy" && ask < listed) txt += ` · ${Math.round((listed - ask) / listed * 100)}% under the port price. The port may counter, and a refused offer still costs the turn.`;
+          else if (side === "sell" && ask > listed) txt += ` · ${Math.round((ask - listed) / listed * 100)}% over the port price. The port may counter, and a refused offer still costs the turn.`;
+        }
         preview.textContent = txt; preview.classList.toggle("warn", q <= 0 || q > mx);
       };
       radios.addEventListener("change", (e) => { side = e.target.value; const opts = side === "buy" ? buyC : sellC; commSel.innerHTML = ""; for (const c of opts) { const o = document.createElement("option"); o.value = c; o.textContent = c; commSel.appendChild(o); } qty.value = ""; sync(); });
@@ -2485,7 +2494,26 @@
   }
   // G4 hold-my-slot: while holding, the scheduler hands this seat its next
   // action right after the last one (host cap `max`); ending it frees the slot.
+  function holdStoreKey() {
+    return state.seat ? `tw2k_hold_${state.seat}` : "";
+  }
+  function rememberHold(h) {
+    const key = holdStoreKey();
+    if (!key || !h) return;
+    try { sessionStorage.setItem(key, JSON.stringify({ on: !!h.on, used: Number(h.used) || 0, max: Number(h.max) || 0 })); }
+    catch (e) { /* private mode: the server copy still arrives on the next poll */ }
+  }
+  function paintStoredHold() {
+    if (state.hold) return;
+    const key = holdStoreKey();
+    if (!key) return;
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (raw) state.hold = JSON.parse(raw);
+    } catch (e) { /* wait for the server */ }
+  }
   function renderCuHold() {
+    paintStoredHold();
     const h = state.hold || { on: false, used: 0, max: 0 };
     const label = !h.max ? "HOLD OFF (host)" : h.on ? `HOLDING ${h.used}/${h.max} · END SLOT (H)` : "HOLD SLOT (H)";
     for (const id of ["cuHoldBtn", "holdBtn"]) {
@@ -2493,6 +2521,7 @@
       if (!b) continue;
       b.disabled = !h.max;
       b.setAttribute("aria-pressed", h.on ? "true" : "false");
+      b.title = h.on ? "Slot is on. Reloading this page does not end it or spend a turn." : "Chain the next actions. Turning it off spends no turn.";
       b.textContent = label;
     }
   }
@@ -2502,6 +2531,7 @@
     try {
       const r = await api(`/${state.seat}/hold`, { method: "POST", body: JSON.stringify({ hold: !h.on }) });
       state.hold = { on: r.hold, used: r.used, max: r.max };
+      rememberHold(state.hold);
       renderCuHold();
       setToast(r.hold ? `HOLDING SLOT: your next ${r.max} action(s) follow immediately. H ends the slot.`
         : r.released ? "SLOT ENDED: the scheduler moved on (no turn spent)." : "Hold off: the slot ends after your next action.", "busy");
@@ -2796,7 +2826,7 @@
     state.day = st.day; state.tick = st.tick;
     state.current = st.current_turn || null;
     if (st.last_result) state.lastResult = st.last_result;
-    if (st.hold) { state.hold = st.hold; renderCuHold(); }
+    if (st.hold) { state.hold = st.hold; rememberHold(st.hold); renderCuHold(); }
     if (st.status_line) state.statusLine = st.status_line;
     if (st.digest) state.digest = st.digest;
     const wasAwaiting = state.awaiting;
@@ -3243,6 +3273,7 @@
   if (keysBtn && !CU) keysBtn.addEventListener("click", () => setKeys(!keysOpen()));
   if (CU) setupCu();
   else if ($("holdBtn")) {
+    renderCuHold();
     $("holdBtn").addEventListener("click", () => toggleHold());
     document.addEventListener("keydown", (ev) => {
       if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
