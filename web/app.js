@@ -1557,7 +1557,12 @@
     }
     const countLabel = container.querySelector("#playerCountLabel");
     const alive = Array.from(state.players.values()).filter((p) => p.alive);
-    if (countLabel) countLabel.textContent = `${alive.length}/${state.players.size}`;
+    if (countLabel) {
+      const seated = state.players.size;
+      countLabel.textContent = seated
+        ? `${alive.length} of ${seated} still flying`
+        : "";
+    }
 
     let body = container.querySelector(".panel-body");
     if (!body) {
@@ -1635,9 +1640,7 @@
       const netWorth = `<span title="${netWorthTitle}">${fmt(totalNet)}</span>${netWorthSuffix}`;
       const cargoSegs = cargoBar(p);
       const cargoLabel = cargoBreakdown(p);
-      const turnsLabel = (p.turns_today != null && p.turns_per_day)
-        ? `${p.turns_today}/${p.turns_per_day}`
-        : "—";
+      const turnsLabel = turnsLine(p);
       const alignLabel = p.alignment_label || "neutral";
       const rankLabel = p.rank || "Civilian";
       const alignValue = (p.alignment != null) ? `${p.alignment} <span class="muted">(${alignLabel})</span>` : alignLabel;
@@ -1690,20 +1693,20 @@
             <span class="pc-sum-chip" title="${esc(p.ship || "—")}">🛸 ${esc(shipShortLabel)}</span>
             <span class="pc-sum-chip" title="current sector">📍 s${sectorLabel}</span>
             ${planetChip}
-            <button type="button"
-                    class="pc-details-btn"
-                    data-pc-details="${esc(p.id)}"
-                    title="Open detail drawer (VITALS, ship loadout, diplomacy, plans, memory)">⛶ Details</button>
           </span>
           ${renderVictoryProgress(p)}
         </summary>
+        <button type="button"
+                class="pc-details-btn"
+                data-pc-details="${esc(p.id)}"
+                data-testid="player-details"
+                title="Open this commander's details">Details</button>
       `;
 
       card.innerHTML = `
         ${summaryHtml}
         <div class="player-card-body">
           <div class="player-header">
-            <div class="player-name">${esc(p.name)}<span class="rank-chip">${esc(rankLabel)}</span></div>
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
               <span class="player-tag">${p.kind || "?"}</span>
               ${renderModelBadge(p)}
@@ -1715,7 +1718,7 @@
             <div class="stat"><span class="k">Credits</span><span class="v">${fmt(p.credits || 0)}</span></div>
             <div class="stat"><span class="k">Net Worth</span><span class="v">${netWorth}</span></div>
             <div class="stat"><span class="k">Ship</span><span class="v">${shipShort(p.ship)}</span></div>
-            <div class="stat"><span class="k">Sector</span><span class="v">${p.sector_id || "—"}</span></div>
+            <div class="stat"><span class="k">Sector</span><span class="v">${sectorContext(p)}</span></div>
             <div class="stat"><span class="k">Fighters</span><span class="v">${fmt(p.fighters || 0)}</span></div>
             <div class="stat"><span class="k">Shields</span><span class="v">${fmt(p.shields || 0)}</span></div>
             <div class="stat"><span class="k">Align</span><span class="v">${alignValue}</span></div>
@@ -1853,7 +1856,8 @@
     const byExp = mode === "legacy" ? null : players.slice().sort((a, b) => (b.experience || 0) - (a.experience || 0));
     const expPlace = byExp ? new Map(byExp.map((p, i) => [p.id, i + 1])) : null;
     const top = ranked[0] ? (ranked[0].net_worth || 0) : 0;
-    root.innerHTML = `<div class="lb-title">Leaderboard <span class="lb-hint">click row to follow</span></div>`
+    root.innerHTML = `<div class="lb-title">Leaderboard <span class="lb-hint">click a row to follow that ship</span></div>`
+      + `<div class="lb-legend">Bar is net worth. 🪐 planets · 🏰 citadel levels · ⚔ kills · ☠ deaths</div>`
       + `<div class="lb-rows">${ranked.map((p, i) => {
           const nw = p.net_worth || p.credits || 0;
           const dir = netTrendDir(p.id, nw);
@@ -1862,7 +1866,7 @@
             : "";
           const pct = top > 0 ? Math.max(2, Math.round((nw / top) * 100)) : 0;
           const dead = !p.alive ? " dead" : "";
-          return `<button class="lb-row${dead}" data-lb-player="${esc(p.id)}" title="${esc(p.name)} — click to open details and follow">
+          return `<button class="lb-row${dead}" data-lb-player="${esc(p.id)}" aria-label="${esc(p.name)}, follow this ship">
             <span class="lb-rank">${i + 1}</span>
             <span class="lb-dot" style="background:${p.color || "#6ee7ff"}"></span>
             <span class="lb-name">${esc(p.name)}${p.alive ? "" : " †"}</span>
@@ -2829,7 +2833,7 @@
       const pid = lbRow.getAttribute("data-lb-player");
       if (!pid) return;
       openDrawer("player", pid);
-      setFollow(pid);
+      followSeat(pid);
       const card = document.querySelector(`.player-card[data-pid="${pid}"]`);
       if (card) {
         card.classList.add("flash");
@@ -3577,7 +3581,7 @@
     const parts = SPARK_METRICS.map((m) => {
       const series = samples.map((s) => Number(s[m.key] || 0));
       return `<span class="spark-cell" title="${m.label}: ${fmt(series[0])} → ${fmt(series[series.length - 1])}">
-        <span class="spark-label" style="color:${m.color}">${m.label}</span>
+        <span class="spark-label" style="color:${m.color}">${m.label} ${fmt(series[series.length - 1])}</span>
         ${sparklineSvg(series, m.color)}
       </span>`;
     }).join("");
@@ -3622,6 +3626,35 @@
     state.selectedSectorId = null;
     if (detailDrawer) detailDrawer.hidden = true;
     applyFocusHighlight();
+  }
+
+  function turnsLine(p) {
+    if (p && p.turns_today != null && p.turns_per_day) return `${p.turns_today}/${p.turns_per_day}`;
+    return "—";
+  }
+
+  function sectorContext(p) {
+    if (!p || p.sector_id == null) return "—";
+    const bits = [String(p.sector_id)];
+    const sec = state.sectors.get(p.sector_id);
+    if (p.sector_id === 1) bits.push("StarDock");
+    else if (sec && sec.port && sec.port !== "STARDOCK") bits.push(`port ${sec.port}`);
+    const here = Array.from(state.planets.values()).filter((pl) => pl.sector_id === p.sector_id);
+    if (here.length) {
+      bits.push(here.slice(0, 2).map((pl) => pl.name || `planet ${pl.id}`).join(", "));
+    }
+    return bits.join(" · ");
+  }
+
+  function followSeat(playerId) {
+    if (!playerId) return;
+    state.mapClean.mode = "follow";
+    state.mapClean.who = playerId;
+    state.mapClean.galaxy = false;
+    refreshFollowWho();
+    const sel = document.getElementById("mapFollowWho");
+    if (sel && Array.from(sel.options).some((opt) => opt.value === playerId)) sel.value = playerId;
+    setFollow(playerId);
   }
 
   function setFollow(playerId) {
@@ -3731,12 +3764,12 @@
           <span class="k">Kind</span><span class="v">${esc(p.kind || "?")}</span>
           <span class="k">Ship</span><span class="v">${esc(p.ship || "?")}</span>
           <span class="k">Alive</span><span class="v">${p.alive ? "yes" : "KIA"}</span>
-          <span class="k">Sector</span><span class="v">${p.sector_id || "—"}${secPort !== "—" ? ` (Port ${esc(secPort)})` : ""}</span>
+          <span class="k">Sector</span><span class="v">${sectorContext(p)}</span>
           <span class="k">Credits</span><span class="v">${fmt(p.credits || 0)}</span>
           <span class="k">Net Worth</span><span class="v">${fmt(p.net_worth || p.credits || 0)}</span>
           <span class="k">Experience</span><span class="v">${fmt(p.experience || 0)}</span>
           <span class="k">Alignment</span><span class="v">${p.alignment != null ? p.alignment : "—"}</span>
-          <span class="k">Turns</span><span class="v">${fmt(p.turns || 0)}/${fmt(p.turns_max || p.turns || 0)}</span>
+          <span class="k">Turns</span><span class="v">${turnsLine(p)}</span>
           <span class="k">Deaths</span><span class="v">${deaths}</span>
         </div>
         ${renderSparklineRow(p.id)}
@@ -4063,7 +4096,7 @@
           const pid = detailsBtn.getAttribute("data-pc-details");
           if (pid) {
             openDrawer("player", pid);
-            setFollow(pid);
+            followSeat(pid);
           }
           return;
         }
@@ -4072,7 +4105,7 @@
         if (!card) return;
         const pid = card.dataset.pid;
         if (!pid) return;
-        setFollow(pid);
+        followSeat(pid);
       });
     }
   }
