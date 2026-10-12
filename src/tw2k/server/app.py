@@ -29,6 +29,27 @@ from .media_cache import MediaStaticFiles
 from .replay import ReplayRunner
 from .runner import AgentSpec, MatchRunner, MatchSpec
 
+
+def _hide_spectator_controls(html: str) -> str:
+    """Mark the page so pause, speed, and New Match stay off a spectator link."""
+    from .spectator_gate import spectator_token
+
+    if not spectator_token():
+        return html
+    return html.replace(
+        '<div class="controls">',
+        '<div class="controls" data-spectator="1">',
+        1,
+    )
+
+
+def _forbid_spectator_control() -> None:
+    """A spectator token may watch. It may not pause, change speed, or restart."""
+    from .spectator_gate import spectator_token
+
+    if spectator_token():
+        raise HTTPException(status_code=403, detail="spectator tokens cannot control the match")
+
 # Phase C.2 — kinds that end up in the /highlights feed. Mirrors
 # web/app.js BIG_MOMENT_KINDS so the two stay in lockstep. These are
 # the match-shaping events the UI highlight reel surfaces above the
@@ -300,6 +321,7 @@ def create_app(
             js_v = css_v = 0
         html = html.replace("/static/app.js", f"/static/app.js?v={js_v}")
         html = html.replace("/static/style.css", f"/static/style.css?v={css_v}")
+        html = _hide_spectator_controls(html)
         return HTMLResponse(
             html,
             headers={
@@ -472,16 +494,19 @@ def create_app(
 
     @app.post("/control/pause")
     async def pause() -> dict[str, Any]:
+        _forbid_spectator_control()
         runner.pause()
         return {"status": runner.state.status}
 
     @app.post("/control/resume")
     async def resume() -> dict[str, Any]:
+        _forbid_spectator_control()
         runner.resume()
         return {"status": runner.state.status}
 
     @app.post("/control/speed")
     async def speed(body: dict[str, Any]) -> dict[str, Any]:
+        _forbid_spectator_control()
         runner.set_speed(float(body.get("multiplier", 1.0)))
         return {"speed": runner.state.speed_multiplier}
 
@@ -981,6 +1006,7 @@ def create_app(
 
     @app.post("/control/restart")
     async def restart(body: dict[str, Any] | None = None) -> dict[str, Any]:
+        _forbid_spectator_control()
         body = body or {}
         spec = _build_default_spec(
             seed=int(body.get("seed", seed)),
@@ -1295,6 +1321,7 @@ def create_replay_app(replay_dir: Path, *, speed: float = 1.0) -> FastAPI:
             js_v = css_v = 0
         html = html.replace("/static/app.js", f"/static/app.js?v={js_v}")
         html = html.replace("/static/style.css", f"/static/style.css?v={css_v}")
+        html = _hide_spectator_controls(html)
         return HTMLResponse(
             html,
             headers={
@@ -1333,21 +1360,25 @@ def create_replay_app(replay_dir: Path, *, speed: float = 1.0) -> FastAPI:
 
     @app.post("/control/pause")
     async def pause() -> dict[str, Any]:
+        _forbid_spectator_control()
         runner.pause()
         return {"status": runner.state.status}
 
     @app.post("/control/resume")
     async def resume() -> dict[str, Any]:
+        _forbid_spectator_control()
         runner.resume()
         return {"status": runner.state.status}
 
     @app.post("/control/speed")
     async def speed_route(body: dict[str, Any]) -> dict[str, Any]:
+        _forbid_spectator_control()
         runner.set_speed(float(body.get("multiplier", 1.0)))
         return {"speed": runner.state.speed_multiplier}
 
     @app.post("/control/restart")
     async def restart_disabled() -> dict[str, Any]:
+        _forbid_spectator_control()
         # Replay mode: restart would need a fresh match spec. Surface
         # a clear error instead of silently re-running the same log.
         return {

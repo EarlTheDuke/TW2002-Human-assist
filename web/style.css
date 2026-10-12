@@ -84,6 +84,9 @@ html, body {
 }
 
 .controls { display: flex; gap: 10px; align-items: center; }
+.controls[data-spectator="1"] #pauseBtn,
+.controls[data-spectator="1"] .speed-group,
+.controls[data-spectator="1"] #restartBtn { display: none; }
 .controls button,
 .speed-group button {
   background: var(--bg-2);
