@@ -526,7 +526,7 @@ def _truncate_for_feed(s: str, limit: int = 140) -> str:
 
 CHALLENGE_VERBS = frozenset({
     ActionKind.ATTACK, ActionKind.RETREAT, ActionKind.SURRENDER, ActionKind.PAY_TOLL,
-    ActionKind.HAIL, ActionKind.BROADCAST, ActionKind.QUERY_LIMPETS,
+    ActionKind.HAIL, ActionKind.BROADCAST, ActionKind.RADIO, ActionKind.QUERY_LIMPETS,
     # WAIT passes a turn and answers nothing; it keeps auto-WAIT seats (idle, timeout) from stalling a day.
     ActionKind.WAIT,
 })
@@ -585,7 +585,7 @@ def _shift_dividend_baseline(universe: Universe, before: dict[int, int]) -> None
 
 FERRENGI_ENCOUNTER_VERBS = frozenset({
     ActionKind.ATTACK, ActionKind.RETREAT, ActionKind.SURRENDER,
-    ActionKind.HAIL, ActionKind.BROADCAST,
+    ActionKind.HAIL, ActionKind.BROADCAST, ActionKind.RADIO,
 })
 FERRENGI_ENCOUNTER_NOTE = "ignoring the Ferrengi pays tribute first (all cargo and some holds, or credits)"
 
@@ -2941,6 +2941,44 @@ def _handle_hail(universe: Universe, pid: str, action: Action) -> ActionResult:
     return ActionResult(ok=True, turns_spent=0)
 
 
+def _handle_radio(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Corp subspace. Channel 0 to 60000. Only mates on that channel hear it."""
+    if not K.radio_channel_live():
+        return ActionResult(ok=False, error="unsupported action")
+    player = universe.players[pid]
+    if not player.corp_ticker:
+        return ActionResult(ok=False, error="radio is corp chat")
+    if "channel" in (action.args or {}):
+        channel = int(action.args.get("channel"))
+        if channel < 0 or channel > int(K.RADIO_CHANNEL_MAX):
+            return ActionResult(ok=False, error="radio channel must be 0 to 60000")
+        player.radio_channel = channel
+    message = str((action.args or {}).get("message") or "")[:1000]
+    if not message:
+        return ActionResult(ok=True, turns_spent=0)
+    if player.radio_channel is None:
+        return ActionResult(ok=False, error="tune a radio channel first")
+    heard: list[str] = []
+    for other in universe.players.values():
+        if other.id == pid or other.corp_ticker != player.corp_ticker:
+            continue
+        if other.radio_channel != player.radio_channel:
+            continue
+        other.inbox.append({
+            "from": pid, "kind": "radio", "channel": int(player.radio_channel),
+            "message": message, "day": universe.day, "tick": universe.tick,
+        })
+        heard.append(other.id)
+    universe.emit(
+        EventKind.BROADCAST,
+        actor_id=pid,
+        sector_id=player.sector_id,
+        payload={"channel": int(player.radio_channel), "message": message, "_witnesses": [pid, *heard]},
+        summary=f"{player.name} (ch {player.radio_channel}): {_truncate_for_feed(message, 100)}",
+    )
+    return ActionResult(ok=True, turns_spent=0)
+
+
 def _handle_broadcast(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     message = action.args.get("message", "")[:1000]
@@ -4416,6 +4454,7 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.BREAK_ALLIANCE: _handle_break_alliance,
     ActionKind.HAIL: _handle_hail,
     ActionKind.BROADCAST: _handle_broadcast,
+    ActionKind.RADIO: _handle_radio,
     ActionKind.WAIT: _handle_wait,
     ActionKind.SET_MILITARY_REACTION: _handle_set_military_reaction,
     ActionKind.DEPOSIT_TREASURY: _handle_deposit_treasury,

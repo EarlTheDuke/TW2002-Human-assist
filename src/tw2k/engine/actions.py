@@ -50,6 +50,7 @@ class ActionKind(str, Enum):
     CORP_TRANSFER = "corp_transfer"
     HAIL = "hail"
     BROADCAST = "broadcast"
+    RADIO = "radio"
     WAIT = "wait"
     DEPOSIT_PLANET_DEFENSE = "deposit_planet_defense"
     WITHDRAW_PLANET_DEFENSE = "withdraw_planet_defense"

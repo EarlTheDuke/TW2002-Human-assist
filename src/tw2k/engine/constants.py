@@ -3480,3 +3480,16 @@ CITADEL_PARK_MODE = "legacy"  # "legacy" | "live"
 def citadel_park_live() -> bool:
     """True when a ship on your citadel is parked inside it."""
     return CITADEL_PARK_MODE == "live" or tw2002_live_profile()
+
+
+# radio-channels-v1. Appended so later slices can rebase cleanly.
+# "legacy": corp chat is the one memo. "live": a corp shares a subspace
+# channel from 0 to 60000. Only corp mates tuned to that channel hear it.
+# The Bible names that range. CONFIRMED as corp chat.
+RADIO_CHANNEL_MODE = "legacy"  # "legacy" | "live"
+RADIO_CHANNEL_MAX = 60_000
+
+
+def radio_channel_live() -> bool:
+    """True when corp mates can share a subspace radio channel."""
+    return RADIO_CHANNEL_MODE == "live" or tw2002_live_profile()

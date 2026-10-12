@@ -459,6 +459,15 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"target": {"type": "str", "required": True, "choices": hail_targets},
                            "message": {"type": "str", "required": True}}))
     out.append(_la(ActionKind.BROADCAST, legal=True, cost=0, params={"message": {"type": "str", "required": True}}))
+    if K.radio_channel_live():
+        out.append(_la(
+            ActionKind.RADIO, legal=bool(player.corp_ticker), cost=0,
+            reason="radio is corp chat",
+            params={
+                "channel": {"type": "int", "required": False, "min": 0, "max": int(K.RADIO_CHANNEL_MAX)},
+                "message": {"type": "str", "required": False},
+            },
+        ))
 
     # ---- S4 group 1: combat / presence ---------------------------------------
     atk_cost = int(K.TURN_COST["attack"])
