@@ -446,7 +446,7 @@ def handle_terra_colonists(universe: Universe, pid: str, action: Action) -> Acti
         actor_id=pid,
         sector_id=player.sector_id,
         payload={"mode": mode, "qty": qty, "pool_after": int(universe.terra_colonists)},
-        summary=f"{player.name} {mode} {qty} colonists at Terra (pool {universe.terra_colonists})",
+        summary=f"{player.name} {mode} {people} colonists at Terra (pool {universe.terra_colonists})",
     )
     return ActionResult(ok=True, turns_spent=int(K.TERRA_LOAD_TURNS))
 

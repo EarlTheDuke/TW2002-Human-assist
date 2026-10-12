@@ -933,14 +933,17 @@
     const names = { fuel_ore: "Fuel ore", organics: "Organics", equipment: "Equipment" };
     const parts = COMMODITIES.map((c) => ({ name: names[c], n: Number(cargo[c]) || 0 }));
     const held = parts.reduce((sum, p) => sum + p.n, 0);
-    if (!held) {
+    const colonists = Number(cargo.colonists) || 0;
+    if (!held && !colonists) {
       tip.textContent = "empty";
       return;
     }
     const free = Number(sh.cargo_free);
     const holds = Number(sh.holds);
     const tail = Number.isFinite(free) && Number.isFinite(holds) ? `, empty ${fmt(free)} of ${fmt(holds)}` : "";
-    tip.textContent = parts.map((p) => `${p.name} ${fmt(p.n)}`).join(", ") + tail;
+    const body = parts.filter((p) => p.n).map((p) => `${p.name} ${fmt(p.n)}`);
+    if (colonists) body.push(`Colonists ${fmt(colonists)}`);
+    tip.textContent = body.join(", ") + tail;
   }
 
   function renderKnownPorts(obs) {
@@ -1466,7 +1469,7 @@
     corp_memo: { fields: [{ n: "message", l: "Memo to corp", t: "text" }] },
     query_limpets: { fields: [] },
     avoid: { fields: [{ name: "sector", type: "int" }] },
-    terra_colonists: { fields: [{ n: "mode", l: "Take or leave", t: "choice" }, { n: "qty", l: "Holds", t: "int", maxBy: "mode" }], note: "Terra. One hold is one load. The engine says how many holds fit." },
+    terra_colonists: { fields: [{ n: "mode", l: "Take or leave", t: "choice" }, { n: "qty", l: "Holds", t: "int", maxBy: "mode" }], note: "Type the holds yourself. The result names the colonists, not the holds." },
     bank_deposit: { fields: [{ n: "amount", l: "Credits to deposit", t: "int", cap: "max_amount" }] },
     bank_withdraw: { fields: [{ n: "amount", l: "Credits to withdraw", t: "int", cap: "max_amount" }] },
     bank_transfer: { fields: [{ n: "to_player", l: "To", t: "choice", list: "recipients", id: "player_id" }, { n: "amount", l: "Credits", t: "int", maxList: "recipients", maxBy: "to_player", id: "player_id", maxKey: "max_amount" }] },
@@ -1546,7 +1549,11 @@
             const row = (p[fd.maxList] || []).find((r) => String(r[fd.id]) === String(key));
             if (row && row[fd.maxKey] != null) mx = row[fd.maxKey];
           }
-          if (mx !== undefined && mx !== null) { el.max = String(mx); if (!el.value || Number(el.value) > mx) el.value = String(mx); }
+          if (mx !== undefined && mx !== null) {
+            el.max = String(mx);
+            if (kind === "terra_colonists") { if (el.value && Number(el.value) > mx) el.value = ""; }
+            else if (!el.value || Number(el.value) > mx) el.value = String(mx);
+          }
           vals[fd.n] = Number(el.value) || 0;
         } else vals[fd.n] = el.value;
       }
@@ -1579,6 +1586,12 @@
         txt += " · WARNING: defended hostile planet - landing means citadel combat";
       }
       if (kind === "assign_colonists" && p.qty) txt += ` · ship free holds ${fmt(p.qty.ship_free)}`;
+      if (kind === "terra_colonists") {
+        const holds = Number(vals.qty) || 0;
+        const room = p.max != null && p.pool != null ? Math.max(0, Number(p.max) - Number(p.pool)) : null;
+        const left = p.pool != null ? `Terra has ${fmt(p.pool)} colonists` + (room != null ? `, ${fmt(room)} room` : "") : "Terra";
+        txt = holds ? `${vals.mode || "take"} ${fmt(holds)} hold(s). ${left}.` : `${left}. Type how many holds. Blank is not sent.`;
+      }
       if (kind === "query_limpets") txt = `Read your ${fmt((p.active ?? 0))} limpet beacon(s) · 0 turns`;
       if (!la.legal) txt = `${LABEL(kind)} - ${la.reason || "not legal now"}`;
       preview.textContent = txt;
