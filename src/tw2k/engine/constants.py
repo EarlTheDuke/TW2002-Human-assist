@@ -3493,3 +3493,17 @@ RADIO_CHANNEL_MAX = 60_000
 def radio_channel_live() -> bool:
     """True when corp mates can share a subspace radio channel."""
     return RADIO_CHANNEL_MODE == "live" or tw2002_live_profile()
+
+
+# daily-stats-v1. Appended so later slices can rebase cleanly.
+# "legacy": the seat does not get the V-screen counts.
+# "live": the observation carries ports, planets, traders, aliens,
+# and fighters and mines in use. A live game showed the port count
+# and a fighters-and-mines line. Whether cargo fighters count the
+# same way as deployed ones is UNVERIFIED; this count includes both.
+DAILY_STATS_MODE = "legacy"  # "legacy" | "live"
+
+
+def daily_stats_live() -> bool:
+    """True when the V-screen counts are on the observation."""
+    return DAILY_STATS_MODE == "live" or tw2002_live_profile()
