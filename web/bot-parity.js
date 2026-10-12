@@ -72,6 +72,16 @@
     if (n >= 9999) return "organics are holding";
     return `organics last ${fmt(n)} day(s)`;
   }
+  // Same day, more turns left: time gave them back. A new day refills on its own.
+  function turnRegenNote(prev, obs) {
+    if (!prev || !obs) return "";
+    if (Number(prev.day) !== Number(obs.day)) return "";
+    const gain = Number(obs.turns_remaining) - Number(prev.left);
+    if (!Number.isFinite(gain) || gain <= 0) return "";
+    const cap = Number(obs.turns_per_day);
+    const stop = Number.isFinite(cap) ? fmt(cap) : "the daily cap";
+    return `+${fmt(gain)} while you waited. Spent turns come back as time passes, spread across 24 hours, and stop at ${stop}.`;
+  }
   function bankRoomText(room) {
     const n = Number(room);
     if (!Number.isFinite(n)) return "-";
@@ -309,6 +319,6 @@
     directiveMeta, dialogueLines, DIALOGUE_TAIL,
     parseTwin, stageText, stageDetail,
     eventShown, HIDDEN_BY_DEFAULT,
-    CU_KEYS, turnCard, cargoText, portText, missedTurnCount,
+    CU_KEYS, turnCard, cargoText, portText, missedTurnCount, turnRegenNote,
   };
 });
