@@ -343,8 +343,13 @@ def target_block(universe: Universe, pid: str, rec: ParkedShip | None) -> tuple[
     rng = K.transport_range(player.ship.ship_class.value)
     if hops is None:
         return "no warp path to that ship", None
+    if getattr(rec, "planet_id", None) is not None and K.citadel_park_live():
+        if getattr(player, "planet_landed", None) != rec.planet_id:
+            return "that ship is inside a citadel", None
     if hops == 0 and not K.FLEET_XPORT_SAME_SECTOR:
-        return "same-sector boarding is off", hops
+        if not (K.citadel_park_live() and getattr(rec, "planet_id", None) is not None
+                and getattr(player, "planet_landed", None) == rec.planet_id):
+            return "same-sector boarding is off", hops
     if hops > rng:
         return f"out of transporter range ({hops} hops > {rng})", hops
     return None, hops
@@ -361,6 +366,21 @@ def transport_choices(universe: Universe, pid: str) -> tuple[list[int], dict[str
             choices.append(int(rec.id))
             hops_by[str(rec.id)] = int(hops)
     return choices, hops_by
+
+
+def citadel_home(universe: Universe, player) -> object | None:
+    """Your own level-1 citadel, when you are landed on it and parking is on."""
+    if not K.citadel_park_live():
+        return None
+    landed = getattr(player, "planet_landed", None)
+    if landed is None:
+        return None
+    planet = universe.planets.get(int(landed))
+    if planet is None or planet.owner_id != player.id:
+        return None
+    if int(planet.citadel_level or 0) < 1:
+        return None
+    return planet
 
 
 def _park_manned(universe: Universe, pid: str) -> int | None:
@@ -380,8 +400,12 @@ def _park_manned(universe: Universe, pid: str) -> int | None:
     if K.corpship_on():
         from .corpships import park_owner
         owner = park_owner(universe, pid, old)
-    universe.parked_ships[sid] = ParkedShip(id=sid, owner_id=owner, sector_id=int(player.sector_id), ship=old,
-                                            parked_day=int(universe.day))
+    home = citadel_home(universe, player)
+    universe.parked_ships[sid] = ParkedShip(
+        id=sid, owner_id=owner, sector_id=int(player.sector_id), ship=old,
+        parked_day=int(universe.day),
+        planet_id=(int(home.id) if home is not None else None),
+    )
     if owner == K.DEFUNCT_OWNER:
         universe.emit(
             EventKind.SHIP_DEFUNCT, actor_id=pid, sector_id=int(player.sector_id),

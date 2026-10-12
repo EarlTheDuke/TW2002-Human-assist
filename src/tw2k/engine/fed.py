@@ -459,10 +459,13 @@ def run_tows(universe: Universe) -> int:
     if not fed_tw2002():
         return 0
     towed = 0
+    from .fleet import citadel_home
     # f11: arms limit — anyone in FedSpace with fighters > limit
     for pid in sorted(universe.players):
         p = universe.players[pid]
         if not p.alive:
+            continue
+        if citadel_home(universe, p) is not None:
             continue
         if int(p.sector_id) not in K.FEDSPACE_SECTORS:
             continue
@@ -489,6 +492,8 @@ def run_tows(universe: Universe) -> int:
         for oid in excess:
             # Re-check still here (a prior tow in this loop may have moved them — shouldn't)
             if int(universe.players[oid].sector_id) != int(sid):
+                continue
+            if citadel_home(universe, universe.players[oid]) is not None:
                 continue
             if _tow_player(universe, oid, reason="parking") is not None:
                 towed += 1

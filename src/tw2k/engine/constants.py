@@ -3467,3 +3467,16 @@ SCANNER_FOG_MODE = "legacy"  # "legacy" | "live"
 def scanner_fog_live() -> bool:
     """True when a planet's owner and fighters are hidden until a scan or a landing."""
     return SCANNER_FOG_MODE == "live" or tw2002_live_profile()
+
+
+# citadel-parking-v1. Appended so later slices can rebase cleanly.
+# "legacy": landing on a citadel leaves the ship in the sector.
+# "live": a ship on your own level-1 citadel is inside it. A Fed tow
+# skips it, and another trader cannot attack it there. A hull you
+# leave on that citadel can be boarded again only from that citadel.
+CITADEL_PARK_MODE = "legacy"  # "legacy" | "live"
+
+
+def citadel_park_live() -> bool:
+    """True when a ship on your citadel is parked inside it."""
+    return CITADEL_PARK_MODE == "live" or tw2002_live_profile()

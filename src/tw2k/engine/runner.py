@@ -1336,6 +1336,10 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
         return ActionResult(ok=False, error="target is cloaked")
     if getattr(target, "sector_id", -1) != player.sector_id:
         return ActionResult(ok=False, error="target not in this sector")
+    if target_id in universe.players:
+        from .fleet import citadel_home
+        if citadel_home(universe, universe.players[target_id]) is not None:
+            return ActionResult(ok=False, error="that ship is inside the citadel")
     # Block friendly fire (corp mates + active alliances)
     if isinstance(target_id, str) and target_id in universe.players and _are_allied(universe, pid, target_id):
         return ActionResult(ok=False, error="cannot attack a corp mate or ally")

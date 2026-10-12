@@ -984,7 +984,9 @@ class ParkedShip(BaseModel):
     """SHIP_FLEET.md fl1: an owned, unmanned ship. The Ship object is never shared with player.ship."""
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"captured_from": None, "captured_day": None})
+        return _omit_defaults(handler(self), {
+            "captured_from": None, "captured_day": None, "planet_id": None,
+        })
 
     id: int
     owner_id: str
@@ -994,6 +996,8 @@ class ParkedShip(BaseModel):
     # SHIP_CAPTURE.md cp26. Saved once set (resume keeps them); omitted while None so legacy dumps stay byte-identical.
     captured_from: str | None = None
     captured_day: int | None = None
+    # citadel-parking-v1. Set when the hull was left on your citadel. Omitted while None.
+    planet_id: int | None = None
 
 
 # ---------------------------------------------------------------------------
