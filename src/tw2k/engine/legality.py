@@ -1581,12 +1581,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             ok, why = False, CHALLENGE_REFUSAL
         out.append(_la(ActionKind.CINEPLEX, legal=ok, reason=why, cost=cost, params=params))
 
-    # Last in ActionKind. Off, it is listed and refused. On, a sector can be stored.
+    # Last in ActionKind, and only while the switch is on. Off, it is absent
+    # so the legacy pin stays the old catalog.
     if K.avoid_live():
         out.append(_la(ActionKind.AVOID, legal=True, cost=0,
-                       params={"sector": "a sector id, or 0 to clear the list"}))
-    else:
-        out.append(_la(ActionKind.AVOID, legal=False, reason="unsupported action", cost=0,
                        params={"sector": "a sector id, or 0 to clear the list"}))
 
     return out

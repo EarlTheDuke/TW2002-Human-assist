@@ -17,6 +17,7 @@ import pytest
 from tw2k.agents.prompts import format_observation
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.actions import Action, ActionKind
+from tw2k.engine import constants as K
 from tw2k.engine.legality import LegalAction, legal_actions
 from tw2k.engine.models import Commodity, Player, PortClass
 from tw2k.engine.observation import build_observation
@@ -136,7 +137,13 @@ def _build_action(kind: str, la: LegalAction, u) -> Action | None:
 @pytest.mark.parametrize("label,u", _fixtures(), ids=lambda x: x if isinstance(x, str) else "")
 def test_matrix_legal_matches_apply_action(label: str, u) -> None:
     las = {la.kind: la for la in legal_actions(u, "P1")}
-    assert len(las) == len(ActionKind), "one entry per ActionKind"
+    # A living seat omits avoid until the switch is on. A destroyed seat lists
+    # every kind the other switches still allow, including avoid.
+    if not u.players["P1"].alive:
+        offered = [k.value for k in ActionKind]
+    else:
+        offered = [k.value for k in ActionKind if k is not ActionKind.AVOID or K.avoid_live()]
+    assert len(las) == len(offered), "one entry per offered ActionKind"
     for kind in PRECISE:
         la = las[kind]
         assert la.detail == "precise", kind
@@ -158,7 +165,8 @@ def test_query_is_pure_and_deterministic() -> None:
     b = [la.model_dump() for la in legal_actions(u, "P1")]
     after = json.dumps(u.model_dump(mode="json"), sort_keys=True, default=str)
     assert a == b and before == after
-    assert [x["kind"] for x in a] == [k.value for k in ActionKind]  # engine order
+    offered = [k.value for k in ActionKind if k is not ActionKind.AVOID or K.avoid_live()]
+    assert [x["kind"] for x in a] == offered  # engine order; avoid is absent while its switch is off
 
 
 def test_trade_envelope_uses_listed_price_and_engine_caps() -> None:
@@ -184,7 +192,8 @@ def test_observation_and_llm_message_carry_legality(monkeypatch) -> None:
     u = _universe()
     obs = build_observation(u, "P1")
     kinds = {e["kind"] for e in obs.legal_actions}
-    assert kinds == {k.value for k in ActionKind}
+    expected = {k.value for k in ActionKind if k is not ActionKind.AVOID or K.avoid_live()}
+    assert kinds == expected
     warp = next(e for e in obs.legal_actions if e["kind"] == "warp")
     assert warp["legal"] is True and warp["params"]["target"]["choices"] == list(u.sectors[1].warps)
     msg = json.loads(format_observation(obs))
