@@ -242,6 +242,12 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
                 if u.day >= days:
                     return
                 tick_day(u)
+                # Live turns refill by the hour on the server. A scripted day
+                # is that hour: without this, the profile spends day 1 and
+                # every later day is already out of turns.
+                if K.starting_package_live() or K.turn_regen_live():
+                    for pid in order:
+                        u.players[pid].turns_today = 0
                 for s in st.values():
                     s["idle_done"] = False
                     s["zero_streak"] = 0
