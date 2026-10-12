@@ -82,6 +82,17 @@
     const stop = Number.isFinite(cap) ? fmt(cap) : "the daily cap";
     return `+${fmt(gain)} while you waited. Spent turns come back as time passes, spread across 24 hours, and stop at ${stop}.`;
   }
+  function clampNote(typed, max) {
+    const n = Number(typed);
+    const m = Number(max);
+    if (typed === "" || typed === null || typed === undefined) return "";
+    if (!Number.isFinite(n) || !Number.isFinite(m) || n <= m) return "";
+    return `cut from ${fmt(n)} to ${fmt(m)}`;
+  }
+  function affordReason(cap, afford) {
+    if (Number(cap) > 0) return "";
+    return Number(afford) <= 0 ? "not enough credits" : "no room on the ship";
+  }
   function bankRoomText(room) {
     const n = Number(room);
     if (!Number.isFinite(n)) return "-";
@@ -319,6 +330,6 @@
     directiveMeta, dialogueLines, DIALOGUE_TAIL,
     parseTwin, stageText, stageDetail,
     eventShown, HIDDEN_BY_DEFAULT,
-    CU_KEYS, turnCard, cargoText, portText, missedTurnCount, turnRegenNote,
+    CU_KEYS, turnCard, cargoText, portText, missedTurnCount, turnRegenNote, clampNote, affordReason,
   };
 });
