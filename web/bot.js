@@ -456,7 +456,7 @@
       const tax = $("sbTax");
       if (hasBank) {
         if (bank) bank.textContent = fmt(Number(obs.bank_balance));
-        if (room) room.textContent = fmt(Number(obs.bank_room));
+        if (room) room.textContent = P.bankRoomText(obs.bank_room);
         if (tax) tax.textContent = fmt(Number(obs.tax_due_tomorrow));
       }
     }

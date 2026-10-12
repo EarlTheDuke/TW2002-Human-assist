@@ -126,7 +126,18 @@ def test_cp1_planet_row_carries_id_origin_colonists_stockpile_growth() -> None:
     assert f"Org {p['stockpile']['organics']:,}" in text
     assert f"eats {p['organics_consumption_per_day']:,} Org/day" in text
     assert ("growing" in text) if p["growth_active"] else ("NOT growing" in text)
-    assert f"organics last {p['organics_days_left']:,} day(s)" in text
+    days = int(p["organics_days_left"])
+    if days >= 9999:
+        assert "organics are holding" in text
+    else:
+        assert f"organics last {days:,} day(s)" in text
+
+
+def test_a_sustainable_stock_and_an_open_bank_are_not_sentinels() -> None:
+    assert _node("P.organicsRunway(9999)", {}) == "organics are holding"
+    assert _node("P.organicsRunway(12)", {}) == "organics last 12 day(s)"
+    assert _node("P.bankRoomText(1000000000000)", {}) == "no ceiling"
+    assert _node("P.bankRoomText(500000)", {}) == "500,000"
 
 
 # ------------------------------------------------------------------ CP2 other players

@@ -35,7 +35,7 @@
       p.production ? `makes/day ${pools(p.production) || "nothing"}` : null,
       has(p.organics_consumption_per_day) ? `eats ${fmt(p.organics_consumption_per_day)} Org/day` : null,
       has(p.growth_active) ? (p.growth_active ? "growing" : "NOT growing (no organics)") : null,
-      has(p.organics_days_left) ? `organics last ${fmt(p.organics_days_left)} day(s)` : null,
+      organicsRunway(p.organics_days_left),
       `${fmt(p.fighters)} fighters`,
       `${fmt(p.shields)} shields`,
       has(p.treasury) ? `${fmt(p.treasury)} treasury` : null,
@@ -43,6 +43,18 @@
     return { title: `${p.name} [${p.class}]`, metas: metas.filter(has), cls: p.growth_active === false ? "warn" : "" };
   }
 
+  function organicsRunway(days) {
+    if (!has(days)) return null;
+    const n = Number(days);
+    if (n >= 9999) return "organics are holding";
+    return `organics last ${fmt(n)} day(s)`;
+  }
+  function bankRoomText(room) {
+    const n = Number(room);
+    if (!Number.isFinite(n)) return "-";
+    if (n >= 1000000000000) return "no ceiling";
+    return fmt(n);
+  }
   function orphanRow(p) {
     return {
       title: `${p.name} [${p.class}]`,
@@ -262,7 +274,7 @@
 
   return {
     ordinal, gameOverTitle, cuBanner, digestText, routeFromTradeLog,
-    planetRow, orphanRow, otherPlayerRow, occupantLabel,
+    planetRow, orphanRow, otherPlayerRow, occupantLabel, organicsRunway, bankRoomText,
     directiveMeta, dialogueLines, DIALOGUE_TAIL,
     parseTwin, stageText, stageDetail,
     eventShown, HIDDEN_BY_DEFAULT,
