@@ -20,7 +20,12 @@
   "use strict";
   const BASE = "/static/media/";
   const R = window.TW2KMediaResolver;
-  const CU = new URLSearchParams(location.search).get("mode") === "cu";
+  const query = new URLSearchParams(location.search);
+  const CU = query.get("mode") === "cu";
+  if (query.get("visuals") === "0") {
+    window.TW2KMedia = { off: true, onEvents() {}, onEvent() {}, hide() {}, playEntry() {} };
+    return;
+  }
   const KIND_GROUP = {
     warp: "move", warp_blocked: "move", autopilot: "move", scan: "move", probe: "move", ferrengi_move: "move", planet_transport: "move",
     trade: "trade", trade_failed: "trade", buy_ship: "trade", buy_equip: "trade", planet_tax_payout: "trade",
