@@ -3235,3 +3235,21 @@ SEAT_DEADLINE_STREAK = 3
 
 def seat_deadline_live() -> bool:
     return SEAT_DEADLINE_MODE == "live" or tw2002_live_profile()
+
+
+# async-days-v1. Off, seats still move one at a time and a day ends only
+# when every seat is out of turns. On, the seats answer together and the
+# day also ends when the clock hits the cap. Answers are applied in seat
+# order, so a code-only game stays repeatable.
+ASYNC_DAY_MODE = "legacy"  # "legacy" | "live"
+ASYNC_DAY_CAP_S = 20 * 60
+
+
+def async_day_live() -> bool:
+    return ASYNC_DAY_MODE == "live" or tw2002_live_profile()
+
+
+def async_day_should_roll(all_done: bool, elapsed_s: float) -> bool:
+    if not async_day_live():
+        return False
+    return bool(all_done) or float(elapsed_s) >= float(ASYNC_DAY_CAP_S)
