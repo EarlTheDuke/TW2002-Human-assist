@@ -632,6 +632,50 @@
     return ids;
   }
 
+  const mapView = { x: 0, y: 0, w: 100, h: 100 };
+  function applyMapView() {
+    const svg = $("knownMap");
+    if (!svg) return;
+    svg.setAttribute("viewBox", `${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`);
+  }
+  function cullMap() {
+    const svg = $("knownMap");
+    if (!svg) return;
+    const margin = 6;
+    const x0 = mapView.x - margin, y0 = mapView.y - margin;
+    const x1 = mapView.x + mapView.w + margin, y1 = mapView.y + mapView.h + margin;
+    const nodes = [...svg.querySelectorAll(".node")];
+    let shown = 0;
+    for (const g of nodes) {
+      const m = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(g.getAttribute("transform") || "");
+      if (!m) continue;
+      const x = Number(m[1]), y = Number(m[2]);
+      const inside = x >= x0 && x <= x1 && y >= y0 && y <= y1;
+      g.style.display = inside ? "" : "none";
+      if (inside && !g.classList.contains("stub")) shown += 1;
+    }
+    const cap = shown > 36;
+    for (const g of nodes) {
+      const label = g.querySelector("text:not(.code)");
+      if (!label) continue;
+      const keep = !cap || g.classList.contains("here") || g.classList.contains("port") || g.classList.contains("selected");
+      label.style.display = keep ? "" : "none";
+    }
+  }
+  function placeMapView(x, y, w, h) {
+    mapView.w = Math.min(100, Math.max(12, w));
+    mapView.h = Math.min(100, Math.max(12, h));
+    mapView.x = Math.min(100 - mapView.w, Math.max(0, x));
+    mapView.y = Math.min(100 - mapView.h, Math.max(0, y));
+    applyMapView();
+    cullMap();
+  }
+  function zoomMap(factor) {
+    const w = mapView.w * factor, h = mapView.h * factor;
+    const cx = mapView.x + mapView.w / 2, cy = mapView.y + mapView.h / 2;
+    placeMapView(cx - w / 2, cy - h / 2, w, h);
+  }
+  function resetMapView() { placeMapView(0, 0, 100, 100); }
   function renderKnownMap(obs) {
     const svg = $("knownMap");
     const nodes = obs.known_sectors || [];
@@ -728,6 +772,8 @@
     };
     for (const [id, p] of Object.entries(stubs)) addNode(Number(id), p, null);
     for (const n of nodes) addNode(n.id, pos[n.id], n);
+    applyMapView();
+    cullMap();
   }
 
   function paintHull(id, value, max) {
@@ -2499,7 +2545,7 @@
     const act = {
       s: () => cuVerb("scan"), e: () => cuVerb("wait"), t: () => cuVerb("trade"), p: () => cuVerb("plot_course", true),
       b: () => cuQuick(els.buy, "buy"), x: () => cuQuick(els.sell, "sell"), m: () => toggleMore(), r: () => els.poll.click(),
-      h: () => toggleHold(), g: () => openRouteForm(),
+      h: () => toggleHold(), g: () => openRouteForm(), c: () => resetMapView(),
     }[k.toLowerCase()];
     if (act) { ev.preventDefault(); act(); }
   }
@@ -3024,6 +3070,7 @@
     ["Esc", "Close this list"],
     ["Enter", "Confirm trade"],
     ["Space", "Plot sector"],
+    ["c", "Re-center map"],
   ];
   function paintKeys() {
     const list = $("keysHelpList");
@@ -3061,6 +3108,7 @@
     if (low === "s") return "S";
     if (low === "h") return "H";
     if (low === "p") return "P";
+    if (low === "c") return "c";
     return "";
   }
   paintKeys();
@@ -3115,11 +3163,52 @@
         if (input) input.focus();
         return;
       }
+      if (id === "c") {
+        ev.preventDefault();
+        resetMapView();
+        return;
+      }
       if (id !== "H") return;
       ev.preventDefault();
       toggleHold();
     });
   }
+  const mapSvg = $("knownMap");
+  if (mapSvg) {
+    mapSvg.addEventListener("wheel", (ev) => {
+      ev.preventDefault();
+      zoomMap(ev.deltaY > 0 ? 1.18 : 1 / 1.18);
+    }, { passive: false });
+    let drag = null;
+    mapSvg.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== 0) return;
+      if (ev.target.closest && ev.target.closest(".node")) return;
+      drag = { x: ev.clientX, y: ev.clientY, vx: mapView.x, vy: mapView.y };
+      mapSvg.setPointerCapture(ev.pointerId);
+    });
+    mapSvg.addEventListener("pointermove", (ev) => {
+      if (!drag) return;
+      const rect = mapSvg.getBoundingClientRect();
+      const dx = ((ev.clientX - drag.x) / Math.max(1, rect.width)) * mapView.w;
+      const dy = ((ev.clientY - drag.y) / Math.max(1, rect.height)) * mapView.h;
+      placeMapView(drag.vx - dx, drag.vy - dy, mapView.w, mapView.h);
+    });
+    mapSvg.addEventListener("pointerup", () => { drag = null; });
+    mapSvg.addEventListener("pointerover", (ev) => {
+      const g = ev.target.closest && ev.target.closest(".node");
+      const tip = $("mapTip");
+      if (!tip) return;
+      if (!g) { tip.hidden = true; return; }
+      const title = g.querySelector("title");
+      tip.textContent = title ? title.textContent : "";
+      tip.hidden = !tip.textContent;
+    });
+    mapSvg.addEventListener("pointerleave", () => { const tip = $("mapTip"); if (tip) tip.hidden = true; });
+  }
+  const zoomIn = $("mapZoomIn"), zoomOut = $("mapZoomOut"), recenter = $("mapRecenter");
+  if (zoomIn) zoomIn.addEventListener("click", () => zoomMap(1 / 1.25));
+  if (zoomOut) zoomOut.addEventListener("click", () => zoomMap(1.25));
+  if (recenter) recenter.addEventListener("click", () => resetMapView());
   if (state.token || params.get("seat")) {
     els.poll.disabled = false;
     els.connect.click();

@@ -114,7 +114,7 @@ body:not(.mode-cu) #verbPad button[data-key]::after { content: " (" attr(data-ke
 .rivals { font-size: 0.9rem; color: var(--muted); margin-top: 8px; }
 
 /* ---- Parity S2: three-column cockpit ---- */
-main.bot-main.cols3 { grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.7fr) minmax(220px, 0.72fr); max-width: 2200px; }
+main.bot-main.cols3 { grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr) minmax(220px, 1fr); max-width: 2200px; }
 @media (max-width: 1250px) { main.bot-main.cols3 { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 900px) { main.bot-main.cols3 { grid-template-columns: 1fr; } }
 .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -364,14 +364,38 @@ body:not(.mode-cu) .route-cost {
 }
 body:not(.mode-cu) .route-cost[hidden], body.mode-cu .route-cost { display: none !important; }
 body:not(.mode-cu) #colAct .known-map {
-  width: min(100%, 760px);
+  width: 100%;
   height: auto;
   aspect-ratio: 1 / 1;
-  margin-inline: auto;
+  margin-inline: 0;
+}
+.map-tools {
+  position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; gap: 4px;
+}
+.map-tools button {
+  min-width: 36px; min-height: 32px; padding: 4px 8px; border-radius: 8px;
+  border: 1px solid #3a4a7a; background: rgba(7, 11, 24, 0.92); color: #d5def6;
+  font-weight: 700; cursor: pointer;
+}
+.map-tip {
+  position: absolute; left: 8px; top: 8px; z-index: 3; margin: 0; max-width: 70%;
+  padding: 3px 8px; border-radius: 8px; border: 1px solid #3a4a7a;
+  background: rgba(7, 11, 24, 0.92); color: #d5def6; font-size: 12px; font-weight: 700;
+}
+@media (prefers-reduced-motion: no-preference) {
+  body:not(.mode-cu) .known-map .node.here circle { animation: here-pulse 1.6s ease-in-out infinite; }
+}
+@keyframes here-pulse {
+  0%, 100% { stroke-width: 1.2; }
+  50% { stroke-width: 2.4; }
 }
 @media (max-height: 920px) {
   body:not(.mode-cu) #colAct .vp-screen,
   body:not(.mode-cu) #colAct #vpCaption { width: min(100%, 604px); margin-inline: auto; }
+}
+@media (min-height: 921px) {
+  body:not(.mode-cu) #colAct .vp-screen,
+  body:not(.mode-cu) #colAct #vpCaption { width: min(100%, 986px); margin-inline: auto; }
 }
 .known-map .edge { stroke: #3a4a7a; stroke-width: 0.6; fill: none; }
 .known-map .edge.oneway { stroke-dasharray: 1.6 1.2; }
