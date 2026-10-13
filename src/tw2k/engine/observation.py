@@ -1094,6 +1094,11 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             # Same shape as sector.planets[] (_planet_brief): per-pool dict + total.
             "colonists": colonists,
             "colonists_total": sum(colonists.values()),
+            **(
+                {"colonists_text": colonist_trend(planet.class_id, sum(colonists.values()))}
+                if planet.class_id.value == "M" and K.class_m_fidelity_live()
+                else {}
+            ),
             "stockpile": {c.value: int(n) for c, n in planet.stockpile.items()},
             "production": growth["production"],
             "organics_consumption_per_day": growth["organics_consumption_per_day"],

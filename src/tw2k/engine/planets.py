@@ -127,6 +127,12 @@ def planet_growth_status(class_id: PlanetClass | str, colonists: dict, organics_
 def colonist_trend(class_id: PlanetClass | str, total: int) -> str:
     """One line for the planet panel. Live die-off, otherwise the 5% growth."""
     count = int(total)
+    if _class_id(class_id).value == "M" and K.class_m_fidelity_live():
+        cap = int(K.CLASS_M_CATEGORY_CAP)
+        shown = f"{count:,} (i.e. {count // 1000:,} thousands)"
+        if count > cap:
+            return f"{shown}; above a product pool cap, about 5% of the extra die off each day"
+        return f"{shown}; each product pool holds 30,000 thousand"
     if not K.planet_prod_live():
         return "about 5% more each day while organics last"
     cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
@@ -210,10 +216,24 @@ def _apply_one_day(planet) -> None:
     if planet.owner_id is None:
         return
     gain = fighters_from_colonists(planet.class_id, worked)
-    if gain <= 0:
+    if gain > 0:
+        room = max(0, K.PLANET_FIGHTER_CAP - int(planet.fighters))
+        planet.fighters = int(planet.fighters) + min(room, gain)
+    _trim_class_m_excess(planet)
+
+
+def _trim_class_m_excess(planet) -> None:
+    """Only colonists past a class M product pool die. The 5% is unverified."""
+    if planet.class_id.value != "M" or not K.class_m_fidelity_live():
         return
-    room = max(0, K.PLANET_FIGHTER_CAP - int(planet.fighters))
-    planet.fighters = int(planet.fighters) + min(room, gain)
+    cap = int(K.CLASS_M_CATEGORY_CAP)
+    for name in ("fuel_ore", "organics", "equipment", "colonists"):
+        have = int(planet.colonists.get(name, 0) or 0)
+        if have <= cap:
+            continue
+        die = int((have - cap) * 0.05)
+        if die > 0:
+            planet.colonists[name] = have - die
 
 
 def _split_units(daily: int, seconds: int, remain: int) -> tuple[int, int]:
@@ -355,7 +375,11 @@ def _produce_and_grow_live(planet) -> None:
         planet.stockpile[Commodity.ORGANICS] = max(
             0, planet.stockpile[Commodity.ORGANICS] - organics_consumption(total_col)
         )
-    elif total_col > half and total_col > 0:
+    elif (
+        total_col > half
+        and total_col > 0
+        and not (planet.class_id.value == "M" and K.class_m_fidelity_live())
+    ):
         die = int(total_col * 0.05)
         if die > 0:
             for c in list(planet.colonists.keys()):
