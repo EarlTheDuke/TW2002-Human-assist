@@ -973,6 +973,29 @@ def create_app(
             },
         )
 
+    @app.get("/bot2", response_class=HTMLResponse)
+    async def bot2_page() -> HTMLResponse:
+        """Redesigned cockpit. /bot stays the page it already is."""
+        page = web_root / "bot2.html"
+        if not page.is_file():
+            raise HTTPException(status_code=404, detail="bot2.html not found")
+        html = page.read_text(encoding="utf-8")
+        try:
+            js_v = int((web_root / "bot2.js").stat().st_mtime)
+            css_v = int((web_root / "bot2.css").stat().st_mtime)
+        except OSError:
+            js_v = css_v = 0
+        html = html.replace("/static/bot2.js", f"/static/bot2.js?v={js_v}")
+        html = html.replace("/static/bot2.css", f"/static/bot2.css?v={css_v}")
+        return HTMLResponse(
+            html,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
     @app.get("/play", response_class=HTMLResponse)
     async def play_page() -> HTMLResponse:
         """Human cockpit. One page for every human slot in the match.
