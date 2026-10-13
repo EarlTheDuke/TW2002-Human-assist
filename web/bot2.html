@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trade Wars 2002</title>
+  <link rel="stylesheet" href="/static/bot2.css" />
+</head>
+<body>
+  <header class="mast" data-testid="mast">
+    <pre class="title" aria-hidden="true">╔══════════════════════╗
+║  TRADE WARS 2002     ║
+╚══════════════════════╝</pre>
+    <p class="status" data-testid="status-line">Sign in to take the helm.</p>
+  </header>
+
+  <section class="sign-in" id="signIn">
+    <label>Seat <select id="seatSelect" data-testid="seat"><option>P2</option><option>P3</option><option>P4</option><option>P5</option></select></label>
+    <label>Token <input id="tokenInput" data-testid="token" type="password" autocomplete="off" /></label>
+    <button type="button" id="connectBtn" data-testid="connect">Connect</button>
+    <p id="err" class="err" data-testid="error"></p>
+  </section>
+
+  <main class="deck">
+    <section class="panel scene-panel">
+      <h2>View</h2>
+      <section id="viewport" class="viewport" data-testid="viewport" aria-label="Viewport" data-hull="hauler" data-mode="live">
+        <div id="vpScreen" class="vp-screen" role="img" aria-label="View from the cockpit">
+          <canvas id="vpStars" class="vp-stars" data-testid="viewport-stars" aria-hidden="true"></canvas>
+          <img id="sceneStill" data-testid="scene-still" alt="" hidden />
+          <div class="vp-frame" data-testid="viewport-frame" aria-hidden="true"></div>
+        </div>
+        <div id="vpCaption" class="vp-caption" data-testid="viewport-caption">Deep space</div>
+      </section>
+      <div class="vp-controls" id="vpControls">
+        <button type="button" id="vpSkip" data-testid="viewport-skip">Skip</button>
+        <div class="vp-modes" role="group" aria-label="Viewport">
+          <button type="button" data-vp-mode="live" data-testid="viewport-mode-live" aria-pressed="true">Live</button>
+          <button type="button" data-vp-mode="stills" data-testid="viewport-mode-stills" aria-pressed="false">Stills</button>
+          <button type="button" data-vp-mode="off" data-testid="viewport-mode-off" aria-pressed="false">Off</button>
+        </div>
+      </div>
+      <p class="here" data-testid="here-line">Sector —</p>
+      <div class="warps" id="warpRow" data-testid="warps"></div>
+    </section>
+
+    <section class="panel ship-panel" data-testid="ship-board">
+      <h2>Ship <span id="shipClass" data-testid="ship-class">—</span></h2>
+      <div id="shipArt" class="ship-art" data-testid="ship-art"></div>
+      <dl class="gear" id="gear" data-testid="ship-gear"></dl>
+      <div class="holds" id="holds" data-testid="ship-cargo"></div>
+    </section>
+  </main>
+
+  <section class="tape" data-testid="event-tape">
+    <h2>Last notes</h2>
+    <div id="tape"></div>
+  </section>
+
+  <form class="prompt" id="prompt" data-testid="command-form" hidden></form>
+
+  <nav class="keys" id="keys" data-testid="command-keys" aria-label="Commands"></nav>
+  <section class="more" id="more" data-testid="more-commands" hidden></section>
+  <p class="prompt-line" data-testid="prompt-line">Command [TL=—] (?=Help) :</p>
+
+  <script src="/static/media-resolver.js"></script>
+  <script src="/static/media-player.js"></script>
+  <script src="/static/viewport.js"></script>
+  <script src="/static/bot2.js"></script>
+</body>
+</html>

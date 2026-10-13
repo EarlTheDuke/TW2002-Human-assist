@@ -1,0 +1,81 @@
+/* Classic 16-colour BBS palette. Black screen, cyan frames, yellow prompts. */
+:root {
+  --black: #000;
+  --blue: #0000aa;
+  --green: #00aa00;
+  --cyan: #00aaaa;
+  --red: #aa0000;
+  --magenta: #aa00aa;
+  --brown: #aa5500;
+  --gray: #aaaaaa;
+  --dgray: #555555;
+  --bblue: #5555ff;
+  --bgreen: #55ff55;
+  --bcyan: #55ffff;
+  --bred: #ff5555;
+  --bmagenta: #ff55ff;
+  --yellow: #ffff55;
+  --white: #ffffff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--black); color: var(--gray); }
+body {
+  font: 16px/1.35 Consolas, "Courier New", monospace;
+  min-height: 100vh;
+  padding-bottom: 8px;
+}
+button, select, input { font: inherit; color: var(--yellow); background: var(--black); border: 1px solid var(--cyan); }
+button { cursor: pointer; padding: 4px 8px; }
+button:disabled { color: var(--dgray); border-color: var(--dgray); cursor: default; }
+button.on, button[aria-pressed="true"] { color: var(--black); background: var(--bcyan); }
+h2 { margin: 0 0 8px; color: var(--bcyan); font-size: 16px; font-weight: normal; letter-spacing: 0.08em; }
+.mast { padding: 10px 14px 0; }
+.title { margin: 0; color: var(--bcyan); font: inherit; white-space: pre; overflow: auto; }
+.status { margin: 6px 0 0; color: var(--yellow); }
+.sign-in { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 14px; }
+.sign-in label { color: var(--white); }
+.err { color: var(--bred); margin: 0; min-height: 1.2em; }
+.deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 12px;
+  padding: 8px 14px;
+}
+.panel { border: 1px solid var(--bcyan); padding: 10px; min-width: 0; }
+.viewport { position: relative; background: #000; min-height: 280px; }
+.vp-screen { position: relative; height: 280px; overflow: hidden; background: #000; }
+.vp-stars, #sceneStill, .vp-frame { position: absolute; inset: 0; width: 100%; height: 100%; }
+#sceneStill { object-fit: cover; z-index: 1; }
+.vp-frame { z-index: 2; pointer-events: none; box-shadow: inset 0 0 0 8px rgba(0, 0, 0, 0.45); }
+.vp-caption, .here { color: var(--bgreen); margin: 6px 0 0; }
+.vp-controls { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.warps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ship-art { min-height: 160px; color: var(--bcyan); }
+.ship-art svg { width: 100%; height: 180px; display: block; }
+.gear { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 8px 0; }
+.gear dt { color: var(--white); }
+.gear dd { margin: 0; color: var(--bgreen); }
+.holds { display: flex; flex-wrap: wrap; gap: 6px; }
+.hold { border: 1px solid var(--brown); padding: 4px 6px; min-width: 7em; }
+.hold b { color: var(--yellow); font-weight: normal; }
+.hold.fuel { border-color: var(--yellow); }
+.hold.org { border-color: var(--bgreen); }
+.hold.equip { border-color: var(--bcyan); }
+.hold.col { border-color: var(--white); }
+.tape { margin: 0 14px; border: 1px solid var(--cyan); padding: 8px; color: var(--gray); }
+.tape div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.keys, .more { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px 0; }
+.prompt { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 8px 14px; padding: 8px; border: 1px solid var(--yellow); }
+.prompt[hidden], .more[hidden] { display: none; }
+.prompt label { color: var(--white); display: flex; flex-direction: column; gap: 2px; }
+.prompt-line { margin: 8px 14px 0; color: var(--yellow); }
+.fighters { display: flex; gap: 3px; align-items: flex-end; height: 28px; }
+.fighters i { display: block; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 10px solid var(--dgray); }
+.fighters i.on { border-bottom-color: var(--bred); }
+@media (max-width: 800px) {
+  .deck { grid-template-columns: 1fr; }
+  .title { font-size: 11px; }
+  .vp-screen, .viewport { min-height: 180px; height: auto; }
+  .vp-screen { height: 180px; }
+  .ship-art svg { height: 140px; }
+}
