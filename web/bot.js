@@ -1381,7 +1381,7 @@
     stardock: ["buy_ship", "buy_equip", "corp_create", "sell_ship", "terra_colonists", "bank_deposit", "bank_withdraw", "bank_transfer", "apply_commission", "post_reward", "claim_reward"],
     planet: ["land_planet", "liftoff", "claim_planet", "load_planet_cargo", "dump_planet_cargo", "assign_colonists", "build_citadel", "deploy_genesis", "deposit_planet_defense", "withdraw_planet_defense", "set_military_reaction", "deposit_treasury", "withdraw_treasury", "set_quasar_sector", "set_quasar_atm", "planet_transwarp", "planet_buy_transporter", "planet_transport", "planet_destroy", "planet_trade"],
     port: ["rob", "steal", "port_upgrade", "port_build"],
-    comms: ["hail", "broadcast", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_set_password", "corp_drop", "corp_transfer", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets", "avoid", "ship_set_corporate", "ship_set_personal", "ship_set_password"],
+    comms: ["hail", "broadcast", "radio", "propose_alliance", "accept_alliance", "break_alliance", "corp_invite", "corp_join", "corp_leave", "corp_set_password", "corp_drop", "corp_transfer", "corp_deposit", "corp_withdraw", "corp_memo", "query_limpets", "avoid", "ship_set_corporate", "ship_set_personal", "ship_set_password"],
     tavern: ["tavern_announce", "tavern_talk", "tavern_graffiti", "tavern_order", "grimy_ask", "grimy_curse", "underground_enter", "underground_contract", "underground_claim", "tricron", "cineplex"],
   };
   const LABEL = (k) => k.replace(/_/g, " ").toUpperCase();
@@ -1475,6 +1475,7 @@
     deploy_genesis: { fields: [] },
     hail: { fields: [{ n: "target", l: "To", t: "choice" }, { n: "message", l: "Message", t: "text" }] },
     broadcast: { fields: [{ n: "message", l: "Message to everyone", t: "text" }] },
+    radio: { fields: [{ n: "channel", l: "Channel", t: "int", optional: true }, { n: "message", l: "Message", t: "text", optional: true }] },
     propose_alliance: { fields: [{ n: "target", l: "To", t: "choice" }, { n: "terms", l: "Terms (optional)", t: "text", optional: true }] },
     accept_alliance: { fields: [{ n: "alliance_id", l: "Proposal", t: "choice" }] },
     break_alliance: { fields: [{ n: "alliance_id", l: "Alliance", t: "choice" }] },

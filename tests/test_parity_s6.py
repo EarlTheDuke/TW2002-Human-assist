@@ -89,7 +89,8 @@ def test_two_pathb_brains_plus_unattended_seat_no_stalls(tmp_path: Path) -> None
         # the nine tavern and underground verbs make it 85;
         # tricron and cineplex (stardock-leftovers-v1) make it 87.
         # avoid (avoid-list-v1) makes it 88. The switch stays off, so the verb is refused.
-        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 88
+        # radio (radio-channels-v1) makes it 89. That switch stays off, so the verb is refused.
+        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 89
         # No external timeout errors for the attended seats; idle auto-waits only for P4.
         errs = [e for e in u.events if e.kind is EventKind.AGENT_ERROR and e.actor_id in ("P2", "P3")
                 and (e.payload or {}).get("external_timeout")]

@@ -370,6 +370,8 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={})
     if ak is ActionKind.AVOID:
         return Action(kind=ak, args={"sector": 0})
+    if ak is ActionKind.RADIO:
+        return Action(kind=ak, args={"channel": 1, "message": "hold"})
     raise AssertionError(f"no builder for {kind}")
 
 
@@ -377,7 +379,7 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
 def test_every_verb_matches_engine(label: str, fx) -> None:
     pid, u = fx if isinstance(fx, tuple) else ("P1", fx)
     las = {la.kind: la for la in legal_actions(u, pid)}
-    offered = [k for k in ALL if k != "avoid" or K.avoid_live()]
+    offered = [k for k in ALL if (k != "avoid" or K.avoid_live()) and (k != "radio" or K.radio_channel_live())]
     assert set(las) == set(offered)
     assert all(la.detail == "precise" for la in las.values()), [k for k, la in las.items() if la.detail != "precise"]
     for kind in offered:
