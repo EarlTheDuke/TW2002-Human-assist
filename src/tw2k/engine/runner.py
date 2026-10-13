@@ -1928,10 +1928,11 @@ def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> A
             return error
         pool = _production_pool(pool)
         total_col = sum(int(n) for n in planet.colonists.values())
-        room = K.planet_colonist_room(planet.class_id.value, total_col)
-        if room is not None and qty > room:
-            cap = K.planet_colonist_cap(planet.class_id.value)
-            return ActionResult(ok=False, error=f"planet colonist cap is {cap}")
+        blocked = K.colonist_drop_error(
+            planet.class_id.value, int(planet.colonists.get(pool, 0)), total_col, qty,
+        )
+        if blocked:
+            return ActionResult(ok=False, error=blocked)
         pool_label = pool.value
         planet.colonists[pool] = planet.colonists.get(pool, 0) + qty
     else:
@@ -2011,10 +2012,12 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
         return ActionResult(ok=False, error="out of turns")
     if src == "ship" and dst != "ship":
         total_col = sum(int(n) for n in planet.colonists.values())
-        room = K.planet_colonist_room(planet.class_id.value, total_col)
-        if room is not None and qty > room:
-            cap = K.planet_colonist_cap(planet.class_id.value)
-            return ActionResult(ok=False, error=f"planet colonist cap is {cap}")
+        dest = pool_keys[dst]
+        blocked = K.colonist_drop_error(
+            planet.class_id.value, int(planet.colonists.get(dest, 0)), total_col, qty,
+        )
+        if blocked:
+            return ActionResult(ok=False, error=blocked)
 
     # Withdraw
     if src == "ship":

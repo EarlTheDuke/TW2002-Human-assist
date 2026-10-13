@@ -1169,7 +1169,11 @@ def citadel_build_days(raw_days: int) -> int:
 def citadel_class_cost(class_id: str, level: int) -> tuple[int, int, int, int, int]:
     """Colonists, fuel ore, organics, equipment, and scaled days for one level."""
     colonists, fuel, organics, equipment, raw_days = CITADEL_CLASS_COSTS[class_id][level - 1]
-    return colonists, fuel, organics, equipment, citadel_build_days(raw_days)
+    days = citadel_build_days(raw_days)
+    if class_id == "M" and class_m_fidelity_live():
+        colonists *= CLASS_M_PEOPLE_PER_THOUSAND
+        days = max(1, int(raw_days))
+    return colonists, fuel, organics, equipment, days
 
 
 def citadel_fidelity_on() -> bool:
@@ -3547,3 +3551,43 @@ GOLD_GRUDGE_LIMIT = 10
 def gold_alien_live() -> bool:
     """True when a witnessed alien kill starts a race grudge."""
     return GOLD_ALIEN_MODE == "live" or tw2002_live_profile()
+
+
+# class-m-fidelity-v1. Appended so later slices can rebase cleanly.
+# Ben's rule: the original counts class M colonists in thousands.
+# The live screen's 1,000,000 is the handbook's 1,000.
+# "legacy": class M still uses the handbook unit as stored.
+# "live": a citadel level asks for that many thousands of people,
+# each product pool holds 30,000 thousand, and only the extra
+# above that pool dies. The 5% on the extra is not a published rate.
+CLASS_M_FIDELITY_MODE = "legacy"  # "legacy" | "live"
+CLASS_M_PEOPLE_PER_THOUSAND = 1_000
+CLASS_M_CATEGORY_CAP = 30_000 * CLASS_M_PEOPLE_PER_THOUSAND
+
+
+def class_m_fidelity_live() -> bool:
+    """True when class M uses people, not the handbook unit, as stored."""
+    return CLASS_M_FIDELITY_MODE == "live" or tw2002_live_profile()
+
+
+def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
+    """How many more colonists fit. Class M live uses one cap per pool."""
+    if class_id == "M" and class_m_fidelity_live():
+        best = 0
+        for name in ("fuel_ore", "organics", "equipment", "colonists"):
+            have = int(pools.get(name, 0) or 0)
+            best = max(best, CLASS_M_CATEGORY_CAP - have)
+        return max(0, best)
+    return planet_colonist_room(class_id, total)
+
+
+def colonist_drop_error(class_id: str, pool_count: int, total: int, qty: int) -> str | None:
+    """A refusal sentence, or nothing when the drop fits."""
+    if class_id == "M" and class_m_fidelity_live():
+        if int(pool_count) + int(qty) > CLASS_M_CATEGORY_CAP:
+            return f"planet colonist cap is {CLASS_M_CATEGORY_CAP}"
+        return None
+    room = planet_colonist_room(class_id, total)
+    if room is not None and int(qty) > room:
+        return f"planet colonist cap is {planet_colonist_cap(class_id)}"
+    return None

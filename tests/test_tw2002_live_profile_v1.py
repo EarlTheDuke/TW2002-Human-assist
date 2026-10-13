@@ -61,6 +61,7 @@ HELPERS = (
     "fedcomm_live",
     "corp_rank_live",
     "gold_alien_live",
+    "class_m_fidelity_live",
 )
 
 
@@ -68,7 +69,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 59
+    assert len(names) == 60
     for name in names:
         assert getattr(K, name)() is False, name
 

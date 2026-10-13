@@ -977,7 +977,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     dump_max = dict(cargo_have)
     if owned_landed and K.planet_limits_on():
         total_col = sum(int(n) for n in landed_planet.colonists.values())
-        col_room = K.planet_colonist_room(landed_planet.class_id.value, total_col)
+        pools = {c.value: int(n) for c, n in landed_planet.colonists.items()}
+        col_room = K.colonist_drop_room(landed_planet.class_id.value, pools, total_col)
         for name, have in list(dump_max.items()):
             if name == Commodity.COLONISTS.value:
                 room = col_room
@@ -1007,7 +1008,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     ship_room = ship_cols
     if owned_landed and ship_cols > 0 and K.planet_limits_on():
         total_col = sum(int(n) for n in landed_planet.colonists.values())
-        room = K.planet_colonist_room(landed_planet.class_id.value, total_col)
+        pools = {c.value: int(n) for c, n in landed_planet.colonists.items()}
+        room = K.colonist_drop_room(landed_planet.class_id.value, pools, total_col)
         if room is not None:
             ship_room = min(ship_cols, int(room))
     from_choices = (["ship"] if ship_room > 0 else []) + sorted(pools_have)
