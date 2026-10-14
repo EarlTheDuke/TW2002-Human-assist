@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trade Wars 2002</title>
+  <link rel="stylesheet" href="/static/redesign.css" />
+</head>
+<body>
+<header id="cmdline" class="ansi">
+  <pre class="title-frame" aria-hidden="true">╔══════════════════════╗
+║  TRADE WARS 2002     ║
+╚══════════════════════╝</pre>
+  <span class="prompt"><span class="m">Command</span> <span class="y">[</span>TL=<span class="g" id="tl">--</span><span class="y">]</span>:<span class="y">[</span><span class="c" id="pSector">-</span><span class="y">]</span> (?=Help)? :</span>
+  <span class="stat"><i>Turns</i><b class="g" id="turns">-</b></span>
+  <span class="stat"><i>Credits</i><b class="y" id="credits">-</b></span>
+  <span class="stat"><i>Day</i><b class="c"><span id="sbDay">-</span>/<span id="maxDays">-</span></b></span>
+  <span class="stat hide-s"><i>Net worth</i><b class="w" id="nw">-</b></span>
+  <span class="stat hide-s"><i>Rank</i><b class="m" id="rank">-</b></span>
+  <span class="stat hide-s"><i>Align</i><b id="align">-</b></span>
+  <span id="waitchip" class="chip">YOUR MOVE</span>
+  <span class="sign-in">
+    <label>Seat <select id="seatSelect" data-testid="seat"><option>P2</option><option>P3</option><option>P4</option><option>P5</option><option>P1</option></select></label>
+    <label>Token <input id="tokenInput" data-testid="token" type="password" autocomplete="off" /></label>
+    <button type="button" id="connectBtn" data-testid="connect">Connect</button>
+  </span>
+</header>
+<p id="err" class="r" data-testid="error" hidden></p>
+
+<main id="deck">
+  <section id="viewport" class="panel" data-testid="viewport" aria-label="Viewport" data-hull="hauler" data-mode="live">
+    <div id="vpScreen" role="img" aria-label="View from the cockpit">
+      <canvas id="vpStars" class="vp-stars" data-testid="viewport-stars" aria-hidden="true"></canvas>
+      <img id="sceneStill" data-testid="scene-still" alt="" hidden />
+      <div class="scan"></div>
+      <div id="sectorText" class="ansi"></div>
+      <div id="sceneTag" class="ansi"></div>
+    </div>
+    <div id="vpCaption" class="vp-caption" data-testid="viewport-caption">Deep space</div>
+    <div class="vp-controls" id="vpControls">
+      <button type="button" id="vpSkip" data-testid="viewport-skip">Skip</button>
+      <div class="vp-modes" role="group" aria-label="Viewport">
+        <button type="button" data-vp-mode="live" data-testid="viewport-mode-live" aria-pressed="true">Live</button>
+        <button type="button" data-vp-mode="stills" data-testid="viewport-mode-stills" aria-pressed="false">Stills</button>
+        <button type="button" data-vp-mode="off" data-testid="viewport-mode-off" aria-pressed="false">Off</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="nav" class="panel">
+    <h2 class="ansi"><span class="g">◄</span> NAV COMPUTER <span class="dim">click: adjacent = warp · far = plot, ENTER flies</span></h2>
+    <svg id="map" viewBox="-300 -300 600 600"></svg>
+    <div id="warps" class="ansi" data-testid="warps"></div>
+  </section>
+
+  <section id="ship" class="panel" data-testid="ship-board">
+    <h2 class="ansi"><span class="c">◄</span> <span id="shipName">SHIP</span> <span class="dim" id="shipCls" data-testid="ship-class">—</span></h2>
+    <svg id="shipSvg" viewBox="0 0 400 260"></svg>
+    <div id="fighterRow" class="fighters" data-testid="fighter-row"></div>
+    <div id="shipStats" class="ansi"></div>
+    <div id="holds" class="holds" data-testid="ship-cargo"></div>
+  </section>
+
+  <section id="context" class="panel">
+    <h2 class="ansi"><span class="y">◄</span> HERE <span class="dim">what you can do in this sector</span></h2>
+    <div id="here"></div>
+  </section>
+
+  <section id="term" class="panel">
+    <h2 class="ansi"><span class="m">◄</span> SUBSPACE LOG</h2>
+    <div id="log" class="ansi" data-testid="log"></div>
+  </section>
+</main>
+
+<footer id="keys" class="ansi" data-testid="command-keys"></footer>
+<p id="lastResult" data-testid="last-result"></p>
+<p class="prompt-line" data-testid="prompt-line">Command [TL=—] (?=Help) :</p>
+<div id="menu" hidden class="ansi"></div>
+<script src="/static/media-resolver.js"></script>
+<script src="/static/media-player.js"></script>
+<script src="/static/viewport.js"></script>
+<script src="/static/redesign.js"></script>
+</body>
+</html>

@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
 from ..agents.human import HumanAgent
@@ -141,6 +141,37 @@ def _web_root() -> Path:
         if c.exists():
             return c
     raise FileNotFoundError(f"Couldn't locate web/ assets. Tried: {candidates}")
+
+
+def _cockpit_layout(request: Request) -> str:
+    """Default is the existing page. redesign only when asked."""
+    query = (request.query_params.get("layout") or "").strip().lower()
+    if query in ("redesign", "legacy"):
+        return query
+    env = (os.environ.get("COCKPIT_LAYOUT") or "").strip().lower()
+    return "redesign" if env == "redesign" else "legacy"
+
+
+def _redesign_page(web_root: Path) -> HTMLResponse:
+    page = web_root / "redesign.html"
+    if not page.is_file():
+        raise HTTPException(status_code=404, detail="redesign.html not found")
+    html = page.read_text(encoding="utf-8")
+    try:
+        js_v = int((web_root / "redesign.js").stat().st_mtime)
+        css_v = int((web_root / "redesign.css").stat().st_mtime)
+    except OSError:
+        js_v = css_v = 0
+    html = html.replace("/static/redesign.js", f"/static/redesign.js?v={js_v}")
+    html = html.replace("/static/redesign.css", f"/static/redesign.css?v={css_v}")
+    return HTMLResponse(
+        html,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 class _RedactTokenQuery(logging.Filter):
@@ -940,8 +971,10 @@ def create_app(
         }
 
     @app.get("/bot", response_class=HTMLResponse)
-    async def bot_page() -> HTMLResponse:
+    async def bot_page(request: Request) -> HTMLResponse:
         """Grok Bot / computer-use cockpit for external harness seats."""
+        if _cockpit_layout(request) == "redesign":
+            return _redesign_page(web_root)
         bot_path = web_root / "bot.html"
         if not bot_path.is_file():
             raise HTTPException(status_code=404, detail="bot.html not found")
@@ -975,26 +1008,8 @@ def create_app(
 
     @app.get("/bot2", response_class=HTMLResponse)
     async def bot2_page() -> HTMLResponse:
-        """Redesigned cockpit. /bot stays the page it already is."""
-        page = web_root / "bot2.html"
-        if not page.is_file():
-            raise HTTPException(status_code=404, detail="bot2.html not found")
-        html = page.read_text(encoding="utf-8")
-        try:
-            js_v = int((web_root / "bot2.js").stat().st_mtime)
-            css_v = int((web_root / "bot2.css").stat().st_mtime)
-        except OSError:
-            js_v = css_v = 0
-        html = html.replace("/static/bot2.js", f"/static/bot2.js?v={js_v}")
-        html = html.replace("/static/bot2.css", f"/static/bot2.css?v={css_v}")
-        return HTMLResponse(
-            html,
-            headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0",
-            },
-        )
+        """The winning cockpit. The default /bot page is unchanged."""
+        return _redesign_page(web_root)
 
     @app.get("/play", response_class=HTMLResponse)
     async def play_page() -> HTMLResponse:
