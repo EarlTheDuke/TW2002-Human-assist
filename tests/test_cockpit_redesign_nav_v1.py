@@ -50,7 +50,7 @@ def test_server_course_turn_cost_and_a_centred_map(tmp_path: Path, monkeypatch) 
                   const target = here === 1 ? 2 : 1;
                   const posted = await fetch("/harness/v1/P2/action", {method: "POST", headers, body: JSON.stringify({turn_seq: obs.turn_seq, action: {kind: "plot_course", args: {target, execute: false}}})});
                   if (!posted.ok) throw new Error(await posted.text());
-                  const events = await fetch("/harness/v1/P2/events?since=0&limit=100", {headers}).then((r) => r.json());
+                  const events = await fetch("/harness/v1/P2/events?since=0&limit=100&course=1", {headers}).then((r) => r.json());
                   const plot = [...(events.events || [])].reverse().find((ev) => ev.kind === "autopilot" && ev.facts && ev.facts.path);
                   const warp = (obs.observation.legal_actions || []).find((a) => a.kind === "warp") || {};
                   return {path: plot.facts.path, cost: warp.turn_cost || 0, planets: (obs.observation.sector.planets || []).map((p) => p.id)};

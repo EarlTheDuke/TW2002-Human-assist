@@ -487,6 +487,7 @@ def build_harness_router(runner) -> APIRouter:
         request: Request,
         since: int = 0,
         limit: int = 200,
+        course: int = 0,
     ) -> dict[str, Any]:
         """Fogged event stream for this seat (Parity S1 / presentation boundary).
 
@@ -509,7 +510,15 @@ def build_harness_router(runner) -> APIRouter:
                 continue
             if not _event_visible_to(ev, agent.player_id, u):
                 continue
-            out.append(event_view(ev))
+            view = event_view(ev)
+            if course and ev.kind.value == "autopilot":
+                path = (ev.payload or {}).get("path")
+                if isinstance(path, list):
+                    view = dict(view)
+                    facts = dict(view.get("facts") or {})
+                    facts["path"] = [int(hop) for hop in path]
+                    view["facts"] = facts
+            out.append(view)
             if len(out) >= limit:
                 break
         latest = u.events[-1].seq if u.events else 0

@@ -445,7 +445,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.GAME_OVER: ("reason", "net_worth", "credits"),
     EventKind.WARP: ("from", "to"),
     EventKind.WARP_BLOCKED: ("target",),
-    EventKind.AUTOPILOT: ("target", "executed", "hops_done", "path"),
+    EventKind.AUTOPILOT: ("target", "executed", "hops_done"),
     EventKind.TRADE: ("commodity", "qty", "side", "unit", "total", "realized_profit", "toll_to", "amount"),
     EventKind.TRADE_FAILED: ("commodity", "qty", "side", "reason"),
     # planetary-trading-v1 pt24: who sold what here; never the planet's remaining stock
