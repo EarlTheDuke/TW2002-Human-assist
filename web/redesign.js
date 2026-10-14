@@ -703,6 +703,8 @@
     try {
       state.connected = true;
       await refresh();
+      const sign = document.querySelector(".sign-in");
+      if (sign) sign.hidden = true;
     } catch (e) {
       state.connected = false;
       $("err").hidden = false;
