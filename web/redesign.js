@@ -171,8 +171,18 @@
     let t = '<span class="g">Sector  </span><span class="y">:</span> <span class="c">' + s.id + "</span> <span class=\"g\">in</span> <span class=\"c\">" + (s.is_fedspace ? "The Federation" : "uncharted space") + ".</span>\n";
     if (s.port) t += '<span class="g">Ports   </span><span class="y">:</span> <span class="c">' + esc(s.port.name) + '</span><span class="y">,</span> <span class="g">Class</span> <span class="c">' + s.port.class_id + '</span> <span class="w">(</span><span class="m">' + esc(s.port.code) + "</span><span class=\"w\">)</span>\n";
     (s.planets || []).forEach((p) => { t += '<span class="g">Planets </span><span class="y">:</span> <span class="c">' + esc(p.name) + "</span>\n"; });
-    (s.occupants || []).forEach((o) => { t += '<span class="g">Traders </span><span class="y">:</span> <span class="c">' + esc(typeof o === "string" ? o : (o.name || o.id)) + "</span>\n"; });
-    if (s.fighter_group) t += '<span class="g">Fighters</span><span class="y">:</span> <span class="c">' + fmt(s.fighter_group.count) + "</span>\n";
+    (s.occupants || []).forEach((o) => {
+      const id = typeof o === "string" ? o : (o.id || "");
+      if (id === S.self_id) return;
+      const knownTrader = (S.others || []).find((row) => row.id === id) || (typeof o === "object" ? o : null);
+      const name = knownTrader && knownTrader.name ? knownTrader.name : id;
+      const hull = knownTrader && knownTrader.ship_class ? String(knownTrader.ship_class).replaceAll("_", " ") : "";
+      t += '<span class="g">Traders </span><span class="y">:</span> <span class="c">' + esc(name + (hull ? " in a " + hull : "")) + "</span>\n";
+    });
+    if (s.fighter_group) {
+      const yours = s.fighter_group.owner_id === S.self_id ? " yours" : "";
+      t += '<span class="g">Fighters</span><span class="y">:</span> <span class="c">' + fmt(s.fighter_group.count) + yours + "</span>\n";
+    }
     t += '<span class="g">Warps to Sector(s) </span><span class="y">:</span> ' + (s.warps_out || []).map((w) => known(w) ? '<span class="c">' + w + "</span>" : '<span class="r">(' + w + ")</span>").join(" - ");
     if (landed) t += '\n<span class="y">You are LANDED on ' + esc(landed.name) + "</span>";
     $("sectorText").innerHTML = t;
@@ -280,6 +290,26 @@
     if (root && window.TW2KViewport) window.TW2KViewport.update(S);
   }
 
+  function tradeWhy(commodity, stock, ship, side) {
+    const name = (COM[commodity] || [commodity])[0];
+    const onboard = Number((ship.cargo || {})[commodity] || 0);
+    const used = Object.values(ship.cargo || {}).reduce((sum, n) => sum + Number(n || 0), 0);
+    if (side === "buy" && !(Number(stock.current) > 0)) return "This port has no " + name + " to sell right now";
+    if (side === "sell" && onboard <= 0) return "You have no " + name + " on board";
+    if (side === "sell" && !(Number(stock.current) > 0)) return "This port is not buying " + name + " today";
+    if (side === "buy" && used >= Number(ship.holds || 0)) return "No empty holds";
+    if (side === "buy" && stock.price && S.credits < Number(stock.price)) return "Not enough credits";
+    return "Nothing to trade";
+  }
+  function plainReason(text) {
+    if (!state.awaiting) return "Waiting for your turn.";
+    return String(text || "not available here")
+      .replace(/pool=fuel_ore/g, "fuel ore")
+      .replace(/pool=organics/g, "organics")
+      .replace(/pool=equipment/g, "equipment")
+      .replace(/buy_equip/g, "buy gear")
+      .replace(/_/g, " ");
+  }
   function maxBy(kind, commodity, side) {
     const p = (LA(kind) || {}).params || {};
     return (((p.qty || {}).max_by || {})[commodity] || {})[side] || 0;
@@ -316,6 +346,8 @@
           b.textContent = (side === "sell" ? "SELL " : "BUY ") + mx;
           b.addEventListener("click", () => act("trade", { side, commodity: k, qty: mx }, "P — " + side + " " + mx + " " + meta[0]));
           tr.lastChild.appendChild(b);
+        } else {
+          tr.lastChild.textContent = tradeWhy(k, v, sh, side);
         }
         table.appendChild(tr);
       });
@@ -323,7 +355,7 @@
       if (!legal("trade")) {
         const why = document.createElement("div");
         why.className = "dk";
-        why.textContent = (LA("trade") || {}).reason || "";
+        why.textContent = "";
         box.appendChild(why);
       }
     }
@@ -341,7 +373,7 @@
   }
   function openForm(kind) {
     const a = LA(kind) || { params: {} };
-    if (!a.legal) { setResult((a.reason || kind + " is not available"), true); return; }
+    if (!a.legal) { setResult(plainReason(a.reason || kind + " is not available"), true); return; }
     const slot = $("formSlot");
     if (!slot) return;
     slot.innerHTML = "";
@@ -403,7 +435,7 @@
       b.dataset.key = k;
       const off = kind && !legal(kind);
       b.className = off ? "off" : "on";
-      b.disabled = !!(kind && (off || !state.awaiting || state.busy));
+      b.disabled = !state.awaiting || state.busy;
       if (kind === "wait") b.setAttribute("data-testid", "action-wait");
       b.innerHTML = "<kbd>" + k + "</kbd>" + label;
       b.addEventListener("click", () => key(k));
@@ -442,7 +474,7 @@
     if (k === "I") { $("ship").scrollIntoView({ behavior: "smooth" }); return; }
     const hit = KEYS.find((x) => x[0] === k);
     if (!hit) return;
-    if (hit[2] && !legal(hit[2])) { setResult(hit[1] + ": " + ((LA(hit[2]) || {}).reason || "not available here"), true); return; }
+    if (hit[2] && !legal(hit[2])) { setResult(hit[1] + ": " + plainReason((LA(hit[2]) || {}).reason), true); return; }
     if (k === "M") {
       const w = S.sector.warps_out || [];
       if (w.length === 1) return go(w[0]);
@@ -462,21 +494,26 @@
   }
 
   async function act(kind, args, label) {
-    if (!state.awaiting || state.busy) { setResult("waiting for your turn", true); return; }
+    if (!state.awaiting || state.busy) { setResult("Waiting for your turn.", true); return; }
     state.busy = true;
     keys();
+    const creditsBefore = S ? S.credits : 0;
+    const turnsBefore = S ? S.turns_remaining : 0;
     try {
       await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
-      setResult("ok — " + (label || kind), false);
-      $("err").hidden = true;
       state.awaiting = false;
+      await refresh();
+      const spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
+      const delta = (S ? S.credits : creditsBefore) - creditsBefore;
+      setResult("ok — " + (label || kind) + ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".", false);
+      $("err").hidden = true;
     } catch (e) {
-      setResult("refused: " + (e.message || e), true);
+      setResult("refused: " + plainReason(e.message || e) + ". Turns spent 0.", true);
       $("err").hidden = false;
       $("err").textContent = String(e.message || e);
     } finally {
       state.busy = false;
-      await refresh();
+      keys();
     }
   }
 
