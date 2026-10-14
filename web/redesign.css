@@ -40,7 +40,7 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 .verb{display:inline-flex;gap:6px;border-color:var(--g);color:var(--w)}.verb kbd{color:var(--y);font:inherit}
 .verb.big{font-size:16px;padding:8px 14px;border-color:var(--y)}
 #log{height:100%;min-height:0;overflow:auto;padding:6px 10px;font-size:14px}
-#log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#log div{white-space:normal}
 #keys{position:static;display:flex;flex-wrap:wrap;gap:2px;padding:4px 10px;background:#000;border-top:2px solid var(--b)}
 #keys button{border-color:var(--dk);color:var(--gr)}#keys button kbd{color:var(--y);font:inherit;margin-right:4px}
 #keys button.on{border-color:var(--g);color:var(--w)}#keys button.off{opacity:.35}
