@@ -568,7 +568,7 @@
   }
 
   async function fetchEvents() {
-    const r = await api("/" + state.seat + "/events?since=" + state.eventsSince + "&limit=100");
+    const r = await api("/" + state.seat + "/events?since=" + state.eventsSince + "&limit=100&course=1");
     if (state.mediaHistoryUntil == null) state.mediaHistoryUntil = typeof r.latest_seq === "number" ? r.latest_seq : 0;
     const catchingUp = !state.mediaCaughtUp && state.eventsSince < state.mediaHistoryUntil;
     const fresh = r.events || [];
