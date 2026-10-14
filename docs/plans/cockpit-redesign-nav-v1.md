@@ -1,0 +1,3 @@
+# cockpit-redesign-nav-v1
+
+The map draws the server course from the autopilot event (`facts.path`), not a guess along sectors the ship has already visited. Warp buttons show the turn cost. ENGAGE shows hops and the turn total before the ship flies. The current sector stays at the middle of the map, labels are nudged apart, and the sector number itself takes a click. A refresh does not wipe the line. Engage and a one-hop warp refuse with "Lift off first" while the ship is landed. The only engine change is adding `path` to the autopilot event view so the page can see the course the server already computed.
