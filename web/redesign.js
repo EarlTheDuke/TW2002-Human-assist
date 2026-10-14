@@ -41,6 +41,8 @@
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null;
+  const streamLog = [];
+  const streamSeen = new Set();
   if (params.get("token")) {
     params.delete("token");
     const q = params.toString();
@@ -64,11 +66,28 @@
   }
   const LA = (k) => ((S && S.legal_actions) || []).find((a) => a.kind === k);
   const legal = (k) => !!(LA(k) || {}).legal;
-  function log(html) {
-    const d = document.createElement("div");
-    d.innerHTML = html;
-    $("log").prepend(d);
-    while ($("log").children.length > 40) $("log").lastChild.remove();
+  function plainEvent(ev) {
+    const text = ev && (ev.summary || ev.kind) || "";
+    return String(text).replace(/_/g, " ");
+  }
+  function paintLog() {
+    const rows = [];
+    const seen = new Set();
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || seen.has(ev.seq)) return;
+      seen.add(ev.seq);
+      rows.push(ev);
+    });
+    rows.sort((a, b) => (b.seq || 0) - (a.seq || 0));
+    const box = $("log");
+    box.innerHTML = "";
+    rows.slice(0, 40).forEach((ev) => {
+      const d = document.createElement("div");
+      d.dataset.seq = String(ev.seq || 0);
+      d.textContent = plainEvent(ev);
+      box.appendChild(d);
+    });
+    box.scrollTop = 0;
   }
   function setResult(text, bad) {
     const el = $("lastResult");
@@ -189,6 +208,7 @@
   }
   function noteCourse(events) {
     (events || []).forEach((ev) => {
+      if (ev.seq != null && !streamSeen.has(ev.seq)) { streamSeen.add(ev.seq); streamLog.push(ev); }
       if (ev.kind !== "autopilot") return;
       if (!courseEvent || (ev.seq || 0) >= (courseEvent.seq || 0)) courseEvent = ev;
     });
@@ -378,7 +398,13 @@
     box.innerHTML = "";
     const s = S.sector, sh = S.ship || {};
     const landed = landedPlanet();
-    if (landed) box.appendChild(button("<kbd>Q</kbd>Lift off", () => act("liftoff", {}, "Q — lift off")));
+    if (landed) {
+      box.appendChild(button("<kbd>Q</kbd>Lift off", () => act("liftoff", {}, "Q — lift off")));
+      const settings = document.createElement("div");
+      settings.className = "c";
+      settings.textContent = "Citadel " + (landed.citadel_level || 0) + ". Quasar sector " + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%.";
+      box.appendChild(settings);
+    }
     if (s.port && !landed) {
       const table = document.createElement("table");
       table.className = "porttbl";
@@ -433,6 +459,13 @@
     title.className = "y";
     title.textContent = kind.replaceAll("_", " ").toUpperCase();
     wrap.appendChild(title);
+    const preview = formPreview(kind);
+    if (preview) {
+      const line = document.createElement("div");
+      line.className = "c";
+      line.textContent = preview;
+      wrap.appendChild(line);
+    }
     const fields = [];
     Object.entries(a.params || {}).forEach(([name, spec]) => {
       if (!spec || typeof spec !== "object" || !spec.type) return;
@@ -450,6 +483,17 @@
       } else if (spec.type === "bool") {
         input = document.createElement("input");
         input.type = "checkbox";
+      } else if (spec.type === "int" && /pct|percent/i.test(name)) {
+        input = document.createElement("input");
+        input.type = "range";
+        input.min = spec.min != null ? spec.min : 0;
+        input.max = spec.max != null ? spec.max : 100;
+        input.value = spec.default != null ? spec.default : input.max;
+        const read = document.createElement("b");
+        read.className = "y";
+        read.textContent = input.value + "%";
+        input.addEventListener("input", () => { read.textContent = input.value + "%"; });
+        label.appendChild(read);
       } else {
         input = document.createElement("input");
         input.type = spec.type === "int" ? "number" : "text";
@@ -474,6 +518,38 @@
     }));
     wrap.appendChild(button("ESC", () => { slot.innerHTML = ""; }));
     slot.appendChild(wrap);
+  }
+  function formPreview(kind) {
+    const planet = landedPlanet();
+    if (!planet || planet.citadel_level == null && planet.quasar_sector_pct == null) return "";
+    if (/quasar/i.test(kind)) return "Now: sector " + (planet.quasar_sector_pct || 0) + "%, atmosphere " + (planet.quasar_atm_pct || 0) + "%. Citadel level " + (planet.citadel_level || 0) + ".";
+    if (/citadel|build/i.test(kind)) return "Citadel level " + (planet.citadel_level || 0) + (planet.citadel_target ? ", building toward " + planet.citadel_target : "") + ".";
+    return "";
+  }
+  function shipInfo() {
+    const sh = S.ship || {};
+    const def = SHIPS[sh.class] || { name: String(sh.class || "ship").replaceAll("_", " ") };
+    const hop = (LA("warp") || {}).turn_cost || (((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || "";
+    const gear = [];
+    [["scanner", sh.scanner], ["genesis", sh.genesis], ["ether probes", sh.ether_probes], ["photons", sh.photon_missiles], ["cloaks", sh.cloaks], ["disruptors", sh.mine_disruptors], ["beacons", sh.marker_beacons], ["atomic detonators", sh.atomic_detonators]].forEach(([label, n]) => {
+      if (n) gear.push(label + " " + n);
+    });
+    Object.entries(sh.mines || {}).forEach(([name, n]) => { if (n) gear.push(String(name).replaceAll("_", " ") + " " + n); });
+    if (sh.transwarp && sh.transwarp.fitted) gear.push("transwarp " + sh.transwarp.fitted);
+    const row = (k, v) => '<div class="row"><span class="g">' + k + '</span> <span class="c">' + esc(v) + "</span></div>";
+    const m = $("menu");
+    m.hidden = false;
+    m.dataset.screen = "ship-info";
+    m.innerHTML = '<div class="y">Ship information</div>'
+      + row("Name", def.name)
+      + row("Commander", S.self_name || "")
+      + row("Class", String(sh.class || "").replaceAll("_", " "))
+      + row("Holds", fmt(sh.holds))
+      + row("Fighters", fmt(sh.fighters))
+      + row("Shields", fmt(sh.shields))
+      + row("Turns per warp", hop === "" ? "" : String(hop))
+      + row("Gear", gear.join(", ") || "none")
+      + '<br><span class="dk">Esc to close</span>';
   }
 
   function keys() {
@@ -521,7 +597,7 @@
     }
     if (k === "Q" && landedPlanet()) return act("liftoff", {}, "Q — lift off");
     if (k === "D") { render(); return; }
-    if (k === "I") { $("ship").scrollIntoView({ behavior: "smooth" }); return; }
+    if (k === "I") { shipInfo(); return; }
     const hit = KEYS.find((x) => x[0] === k);
     if (!hit) return;
     if (hit[2] && !legal(hit[2])) { setResult(hit[1] + ": " + plainReason((LA(hit[2]) || {}).reason), true); return; }
@@ -575,6 +651,7 @@
     if (fresh.length) state.eventsSince = r.next_since;
     else state.mediaCaughtUp = true;
     noteCourse(fresh);
+    if (S) paintLog();
     if (fresh.some((ev) => ev.kind === "autopilot")) { mapSig = ""; map(); }
     if (window.TW2KMedia && fresh.length) {
       const hist = catchingUp ? fresh.filter((ev) => ev.seq <= state.mediaHistoryUntil) : [];
@@ -602,6 +679,7 @@
     chip.className = "chip" + (state.awaiting ? "" : " idle");
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
     paintScene();
+    paintLog();
     sectorText();
     map();
     paintShip();
