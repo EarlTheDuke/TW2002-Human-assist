@@ -26,7 +26,7 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #map .node.here circle{fill:var(--y);stroke:var(--y)}
 #map .node.port circle{stroke:var(--c)}#map .node.dock circle{stroke:var(--m);fill:#200020}
 #map .node:hover circle{stroke:var(--w)}
-#map text{fill:var(--c);font:13px Consolas,monospace;pointer-events:none}#map .node.here text{fill:var(--y)}
+#map text{fill:var(--c);font:13px Consolas,monospace;pointer-events:auto;cursor:pointer}#map .node.here text{fill:var(--y)}
 #map .pc{fill:var(--m);font-size:10px}
 #warps{padding:6px 10px;border-top:1px solid var(--b)}
 #warps button,.verb,#keys button{font:inherit;background:#000;border:1px solid var(--dc);color:var(--c);padding:4px 10px;margin:2px;cursor:pointer}

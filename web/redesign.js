@@ -40,7 +40,7 @@
     connected: false, awaiting: false, busy: false, turnSeq: 0,
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
-  let S = null, plotted = null, inComputer = false, sceneTable = null;
+  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null;
   if (params.get("token")) {
     params.delete("token");
     const q = params.toString();
@@ -187,92 +187,142 @@
     if (landed) t += '\n<span class="y">You are LANDED on ' + esc(landed.name) + "</span>";
     $("sectorText").innerHTML = t;
   }
-  function bfs(a, b) {
-    const W = S.known_warps || {};
-    const prev = { [a]: null };
-    const q = [a];
-    while (q.length) {
-      const c = q.shift();
-      if (c === b) break;
-      (W[c] || W[String(c)] || []).forEach((n) => { if (!(n in prev)) { prev[n] = c; q.push(n); } });
-    }
-    if (!(b in prev)) return [];
-    const p = [];
-    for (let c = b; c != null; c = prev[c]) p.unshift(+c);
-    return p;
+  function noteCourse(events) {
+    (events || []).forEach((ev) => {
+      if (ev.kind !== "autopilot") return;
+      if (!courseEvent || (ev.seq || 0) >= (courseEvent.seq || 0)) courseEvent = ev;
+    });
+  }
+  function syncPlot() {
+    const list = ((S && S.recent_events) || []).slice();
+    if (courseEvent) list.push(courseEvent);
+    let best = null;
+    list.forEach((ev) => {
+      if (!ev || ev.kind !== "autopilot") return;
+      if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
+    });
+    if (!best || (best.seq || 0) <= ignorePlotSeq) return;
+    const facts = best.facts || {};
+    if (facts.executed) { plotted = null; return; }
+    const path = Array.isArray(facts.path) ? facts.path.map(Number) : [];
+    const here = Number(S.sector.id);
+    const start = Number(best.sector_id);
+    if (!path.length || (here !== start && !path.includes(here))) { plotted = null; return; }
+    const draw = here === start || !path.includes(here) ? [here].concat(path) : path.slice(path.indexOf(here));
+    plotted = { target: Number(facts.target), path: draw, server: path, seq: best.seq || 0 };
   }
   function map() {
+    syncPlot();
     const svg = $("map");
-    const ks = S.known_sectors || [];
+    const hereId = Number(S.sector.id);
+    const path = (plotted && plotted.path) || [];
+    const serverPath = (plotted && plotted.server) || [];
+    const cost = Number((LA("warp") || {}).turn_cost || 0);
+    const sig = JSON.stringify([hereId, serverPath, plotted && plotted.target, S.sector.warps_out, (S.known_sectors || []).map((k) => k.id), state.awaiting, state.busy, cost, S.planet_landed]);
+    if (sig === mapSig && svg.childElementCount) return;
+    mapSig = sig;
+    const known = {};
+    (S.known_sectors || []).forEach((k) => { known[Number(k.id)] = k; });
+    if (!known[hereId]) known[hereId] = { id: hereId, port: S.sector.port };
+    path.forEach((id) => { if (!known[id]) known[id] = { id: id }; });
+    const warps = S.known_warps || {};
+    const dist = {};
+    dist[hereId] = 0;
+    const queue = [hereId];
+    while (queue.length) {
+      const current = queue.shift();
+      (warps[current] || warps[String(current)] || []).forEach((next) => {
+        const id = Number(next);
+        if (dist[id] == null) { dist[id] = dist[current] + 1; queue.push(id); }
+      });
+    }
+    path.forEach((id, i) => { if (dist[id] == null) dist[id] = i; });
+    const rings = {};
+    Object.keys(known).forEach((id) => {
+      const hop = dist[id] == null ? 8 : dist[id];
+      (rings[hop] = rings[hop] || []).push(Number(id));
+    });
     const pos = {};
-    ks.forEach((k) => { pos[k.id] = k; });
-    const here = pos[S.sector.id] || { x: 0, y: 0, id: S.sector.id };
-    if (!pos[S.sector.id]) pos[S.sector.id] = here;
-    const nodes = Object.values(pos);
-    const ds = nodes.map((k) => Math.hypot((k.x || 0) - (here.x || 0), (k.y || 0) - (here.y || 0))).sort((a, b) => a - b);
-    const maxd = Math.max(1, ds[ds.length - 1] || 1);
-    const P = (k) => {
-      const dx = (k.x || 0) - (here.x || 0), dy = (k.y || 0) - (here.y || 0), d = Math.hypot(dx, dy);
-      if (!d) return [0, 0];
-      const r = 265 * Math.sqrt(d / maxd);
-      return [dx / d * r, dy / d * r];
-    };
-    let h = "";
+    Object.keys(rings).forEach((hop) => {
+      const ring = rings[hop].sort((a, b) => a - b);
+      ring.forEach((id, i) => {
+        if (Number(hop) === 0) { pos[id] = [0, 0]; return; }
+        const angle = (i / ring.length) * Math.PI * 2 - Math.PI / 2;
+        const radius = Math.min(250, 72 * Number(hop));
+        pos[id] = [Math.cos(angle) * radius, Math.sin(angle) * radius];
+      });
+    });
+    let html = "";
     const seen = new Set();
-    const route = new Set((plotted && plotted.path) || []);
-    Object.entries(S.known_warps || {}).forEach(([a, bs]) => (bs || []).forEach((b) => {
+    Object.entries(warps).forEach(([from, tos]) => (tos || []).forEach((to) => {
+      const a = Number(from), b = Number(to);
       if (!pos[a] || !pos[b]) return;
       const key = [a, b].sort().join();
       if (seen.has(key)) return;
       seen.add(key);
-      const [x1, y1] = P(pos[a]), [x2, y2] = P(pos[b]);
-      h += '<line class="lane' + (route.has(+a) && route.has(+b) ? " route" : "") + '" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/>';
+      html += '<line class="lane" x1="' + pos[a][0] + '" y1="' + pos[a][1] + '" x2="' + pos[b][0] + '" y2="' + pos[b][1] + '"/>';
     }));
-    nodes.forEach((k) => {
-      const [x, y] = P(k);
-      const adj = (S.sector.warps_out || []).includes(k.id);
-      const cls = ["node", k.id === S.sector.id ? "here" : "", adj ? "adj" : "", k.port ? "port" : "", plotted && plotted.target === k.id ? "tgt" : ""].join(" ");
-      h += '<g class="' + cls + '" data-id="' + k.id + '"><circle cx="' + x + '" cy="' + y + '" r="' + (k.id === S.sector.id ? 11 : adj ? 9 : 6) + '"/><text x="' + (x + 11) + '" y="' + (y + 4) + '">' + k.id + "</text></g>";
+    for (let i = 1; i < path.length; i++) {
+      const a = pos[path[i - 1]], b = pos[path[i]];
+      if (!a || !b) continue;
+      html += '<line class="lane route" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>';
+    }
+    const labels = [];
+    Object.values(known).forEach((k) => {
+      const id = Number(k.id);
+      const at = pos[id] || [0, 0];
+      let lx = at[0] + 12, ly = at[1] + 4;
+      for (let n = 0; n < 6 && labels.some((p) => Math.hypot(p[0] - lx, p[1] - ly) < 18); n++) ly += 16;
+      labels.push([lx, ly]);
+      const adj = (S.sector.warps_out || []).map(Number).includes(id);
+      const cls = ["node", id === hereId ? "here" : "", adj ? "adj" : "", k.port ? "port" : "", plotted && plotted.target === id ? "tgt" : ""].join(" ");
+      html += '<g class="' + cls + '" data-id="' + id + '"><circle cx="' + at[0] + '" cy="' + at[1] + '" r="' + (id === hereId ? 11 : adj ? 9 : 6) + '"/><text x="' + lx + '" y="' + ly + '">' + id + "</text></g>";
     });
-    svg.innerHTML = h;
+    svg.innerHTML = html;
+    svg.setAttribute("data-route", serverPath.join(","));
     svg.querySelectorAll(".node").forEach((n) => n.addEventListener("click", () => go(+n.dataset.id)));
     const row = $("warps");
     row.innerHTML = '<span class="g">Warps:</span> ';
     (S.sector.warps_out || []).forEach((w, i) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = (i + 1) + ":" + w;
-      b.disabled = !legal("warp") || !state.awaiting;
-      b.addEventListener("click", () => act("warp", { target: w }, "M — warp to " + w));
+      b.textContent = (i + 1) + ":" + w + (cost ? " (" + cost + "t)" : "");
+      b.disabled = !state.awaiting || state.busy;
+      b.addEventListener("click", () => {
+        if (S.planet_landed != null) { setResult("Lift off first", true); return; }
+        if (!legal("warp")) { setResult("Move: " + plainReason((LA("warp") || {}).reason), true); return; }
+        act("warp", { target: w }, "M — warp to " + w);
+      });
       row.appendChild(b);
     });
-    if (plotted) {
+    if (plotted && path.length > 1) {
+      const hops = serverPath.length;
+      const hopCost = Number((((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || cost || 0);
       const eng = document.createElement("button");
       eng.type = "button";
       eng.className = "eng";
-      eng.textContent = "ENGAGE → " + plotted.target;
+      eng.textContent = "ENGAGE  " + hops + " hops, " + (hops * hopCost) + " turns";
       eng.addEventListener("click", engage);
       const cancel = document.createElement("button");
       cancel.type = "button";
       cancel.textContent = "✕";
-      cancel.addEventListener("click", () => { plotted = null; map(); });
+      cancel.addEventListener("click", () => { ignorePlotSeq = plotted.seq || ignorePlotSeq; plotted = null; mapSig = ""; map(); });
       row.appendChild(eng);
       row.appendChild(cancel);
     }
   }
   function go(id) {
-    if (!S || id === S.sector.id) return;
-    if ((S.sector.warps_out || []).includes(id)) return act("warp", { target: id }, "M — warp to " + id);
-    plotted = { target: id, path: bfs(S.sector.id, id) };
+    if (!S || Number(id) === Number(S.sector.id)) return;
+    if ((S.sector.warps_out || []).map(Number).includes(Number(id))) {
+      if (S.planet_landed != null) { setResult("Lift off first", true); return; }
+      return act("warp", { target: id }, "M — warp to " + id);
+    }
     act("plot_course", { target: id, execute: false }, "C·F — plot course to " + id);
-    log('<span class="y">Route plotted to ' + id + ". Press ENTER to fly it.</span>");
-    map();
   }
   function engage() {
     if (!plotted) return;
-    const t = plotted.target;
-    plotted = null;
-    act("plot_course", { target: t, execute: true }, "Autopilot engaged → " + t);
+    if (S && S.planet_landed != null) { setResult("Lift off first", true); return; }
+    act("plot_course", { target: plotted.target, execute: true }, "Autopilot engaged → " + plotted.target);
   }
 
   function paintShip() {
@@ -524,6 +574,8 @@
     const fresh = r.events || [];
     if (fresh.length) state.eventsSince = r.next_since;
     else state.mediaCaughtUp = true;
+    noteCourse(fresh);
+    if (fresh.some((ev) => ev.kind === "autopilot")) { mapSig = ""; map(); }
     if (window.TW2KMedia && fresh.length) {
       const hist = catchingUp ? fresh.filter((ev) => ev.seq <= state.mediaHistoryUntil) : [];
       const live = catchingUp ? fresh.filter((ev) => ev.seq > state.mediaHistoryUntil) : fresh;
