@@ -40,7 +40,7 @@
     connected: false, awaiting: false, busy: false, turnSeq: 0,
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
-  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null;
+  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "";
   const streamLog = [];
   const streamSeen = new Set();
   if (params.get("token")) {
@@ -193,7 +193,8 @@
     (s.occupants || []).forEach((o) => {
       const id = typeof o === "string" ? o : (o.id || "");
       if (id === S.self_id) return;
-      const knownTrader = (S.others || []).find((row) => row.id === id) || (typeof o === "object" ? o : null);
+      const roster = S.other_players || S.others || [];
+      const knownTrader = roster.find((row) => row.id === id) || (typeof o === "object" ? o : null);
       const name = knownTrader && knownTrader.name ? knownTrader.name : id;
       const hull = knownTrader && knownTrader.ship_class ? String(knownTrader.ship_class).replaceAll("_", " ") : "";
       t += '<span class="g">Traders </span><span class="y">:</span> <span class="c">' + esc(name + (hull ? " in a " + hull : "")) + "</span>\n";
@@ -245,6 +246,10 @@
     (S.known_sectors || []).forEach((k) => { known[Number(k.id)] = k; });
     if (!known[hereId]) known[hereId] = { id: hereId, port: S.sector.port };
     path.forEach((id) => { if (!known[id]) known[id] = { id: id }; });
+    (S.sector.warps_out || []).forEach((w) => {
+      const id = Number(w);
+      if (!known[id]) known[id] = { id: id, unexplored: true };
+    });
     const warps = S.known_warps || {};
     const dist = {};
     dist[hereId] = 0;
@@ -257,6 +262,7 @@
       });
     }
     path.forEach((id, i) => { if (dist[id] == null) dist[id] = i; });
+    (S.sector.warps_out || []).forEach((w) => { const id = Number(w); if (dist[id] == null) dist[id] = 1; });
     const rings = {};
     Object.keys(known).forEach((id) => {
       const hop = dist[id] == null ? 8 : dist[id];
@@ -271,6 +277,12 @@
         const radius = Math.min(250, 72 * Number(hop));
         pos[id] = [Math.cos(angle) * radius, Math.sin(angle) * radius];
       });
+    });
+    path.forEach((id, i) => {
+      if (!i) { pos[id] = [0, 0]; return; }
+      const t = i / Math.max(1, path.length - 1);
+      const angle = -2.4 + t * 2.2;
+      pos[id] = [Math.cos(angle) * (55 + t * 190), Math.sin(angle) * (55 + t * 190)];
     });
     let html = "";
     const seen = new Set();
@@ -295,7 +307,7 @@
       for (let n = 0; n < 6 && labels.some((p) => Math.hypot(p[0] - lx, p[1] - ly) < 18); n++) ly += 16;
       labels.push([lx, ly]);
       const adj = (S.sector.warps_out || []).map(Number).includes(id);
-      const cls = ["node", id === hereId ? "here" : "", adj ? "adj" : "", k.port ? "port" : "", plotted && plotted.target === id ? "tgt" : ""].join(" ");
+      const cls = ["node", id === hereId ? "here" : "", adj ? "adj" : "", k.unexplored ? "unk" : "", k.port ? "port" : "", plotted && plotted.target === id ? "tgt" : ""].join(" ");
       html += '<g class="' + cls + '" data-id="' + id + '"><circle cx="' + at[0] + '" cy="' + at[1] + '" r="' + (id === hereId ? 11 : adj ? 9 : 6) + '"/><text x="' + lx + '" y="' + ly + '">' + id + "</text></g>";
     });
     svg.innerHTML = html;
@@ -311,7 +323,7 @@
       b.addEventListener("click", () => {
         if (S.planet_landed != null) { setResult("Lift off first", true); return; }
         if (!legal("warp")) { setResult("Move: " + plainReason((LA("warp") || {}).reason), true); return; }
-        act("warp", { target: w }, "M — warp to " + w);
+        act("warp", { target: w }, "warp to " + w);
       });
       row.appendChild(b);
     });
@@ -335,14 +347,14 @@
     if (!S || Number(id) === Number(S.sector.id)) return;
     if ((S.sector.warps_out || []).map(Number).includes(Number(id))) {
       if (S.planet_landed != null) { setResult("Lift off first", true); return; }
-      return act("warp", { target: id }, "M — warp to " + id);
+      return act("warp", { target: id }, "warp to " + id);
     }
-    act("plot_course", { target: id, execute: false }, "C·F — plot course to " + id);
+    act("plot_course", { target: id, execute: false }, "plot course to " + id);
   }
   function engage() {
     if (!plotted) return;
     if (S && S.planet_landed != null) { setResult("Lift off first", true); return; }
-    act("plot_course", { target: plotted.target, execute: true }, "Autopilot engaged → " + plotted.target);
+    act("plot_course", { target: plotted.target, execute: true }, "engage course to " + plotted.target);
   }
 
   function paintShip() {
@@ -378,7 +390,8 @@
       .replace(/pool=organics/g, "organics")
       .replace(/pool=equipment/g, "equipment")
       .replace(/buy_equip/g, "buy gear")
-      .replace(/_/g, " ");
+      .replace(/_/g, " ")
+      .replace(/no long range scanner \(buy gear density scanner or holo scanner at StarDock\)/gi, "Buy a density scanner or a holo scanner at StarDock");
   }
   function maxBy(kind, commodity, side) {
     const p = (LA(kind) || {}).params || {};
@@ -394,6 +407,15 @@
     return b;
   }
   function here() {
+    const saved = {};
+    const restore = openFormKind;
+    if (restore) {
+      const active = document.activeElement;
+      if (active && active.dataset && active.dataset.n) formFocus = active.dataset.n;
+      document.querySelectorAll("#formSlot [data-n]").forEach((el) => {
+        saved[el.dataset.n] = el.dataset.t === "bool" ? el.checked : el.value;
+      });
+    }
     const box = $("here");
     box.innerHTML = "";
     const s = S.sector, sh = S.ship || {};
@@ -436,7 +458,7 @@
       }
     }
     if (!landed) (s.planets || []).forEach((p) => {
-      box.appendChild(button("<kbd>L</kbd>Land on " + esc(p.name), () => act("land_planet", { planet_id: p.id }, "L — land on " + p.name)));
+      box.appendChild(button("<kbd>L</kbd>Land on " + esc(p.name), () => act("land_planet", { planet_id: p.id }, "land on " + p.name)));
     });
     if (Number(s.id) === 1 || (s.port && /stardock/i.test(String(s.port.name || "")))) {
       if (legal("buy_equip")) box.appendChild(button("StarDock: buy gear", () => openForm("buy_equip")));
@@ -446,12 +468,14 @@
     const slot = document.createElement("div");
     slot.id = "formSlot";
     box.appendChild(slot);
+    if (restore) openForm(restore, saved);
   }
-  function openForm(kind) {
+  function openForm(kind, saved) {
     const a = LA(kind) || { params: {} };
-    if (!a.legal) { setResult(plainReason(a.reason || kind + " is not available"), true); return; }
+    if (!a.legal && !saved) { setResult(plainReason(a.reason || kind + " is not available"), true); openFormKind = null; return; }
     const slot = $("formSlot");
     if (!slot) return;
+    openFormKind = kind;
     slot.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.className = "frm";
@@ -501,6 +525,12 @@
       }
       input.dataset.n = name;
       input.dataset.t = spec.type;
+      if (saved && saved[name] != null && saved[name] !== "") {
+        if (spec.type === "bool") input.checked = !!saved[name];
+        else input.value = saved[name];
+        const read = label.querySelector("b");
+        if (read && input.type === "range") read.textContent = input.value + "%";
+      }
       label.appendChild(input);
       wrap.appendChild(label);
       fields.push(input);
@@ -513,11 +543,17 @@
         if (t === "int") v = Number(v);
         if (v !== "" && v !== null) args[el.dataset.n] = v;
       });
+      openFormKind = null;
+      formFocus = "";
       slot.innerHTML = "";
       act(kind, args, kind.replaceAll("_", " "));
     }));
-    wrap.appendChild(button("ESC", () => { slot.innerHTML = ""; }));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; formFocus = ""; slot.innerHTML = ""; }));
     slot.appendChild(wrap);
+    if (saved && formFocus) {
+      const again = slot.querySelector('[data-n="' + formFocus + '"]');
+      if (again) again.focus();
+    }
   }
   function formPreview(kind) {
     const planet = landedPlanet();
@@ -574,15 +610,47 @@
     help.addEventListener("click", () => key("?"));
     bar.appendChild(help);
   }
+  function askSector(done) {
+    const m = $("menu");
+    m.hidden = false;
+    m.dataset.screen = "ask-sector";
+    inComputer = false;
+    m.innerHTML = '<div class="y">What is the destination sector?</div><input id="sectorAsk" /> <button type="button" id="sectorGo">ENTER</button><br><span class="dk">Esc to close</span>';
+    const input = $("sectorAsk");
+    const go = () => {
+      const n = Number(input.value);
+      m.hidden = true;
+      if (n) done(n);
+    };
+    $("sectorGo").addEventListener("click", go);
+    input.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
+      if (ev.key === "Escape") { ev.preventDefault(); m.hidden = true; return; }
+      if (ev.key === "Enter") { ev.preventDefault(); go(); }
+    });
+    input.focus();
+  }
+  function newestSummary() {
+    let best = null;
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || !ev.summary) return;
+      if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
+    });
+    return best ? String(best.summary) : "";
+  }
   function key(k) {
     const m = $("menu");
-    if (k === "Escape") { m.hidden = true; inComputer = false; return; }
+    if (k === "Escape") {
+      m.hidden = true; inComputer = false; openFormKind = null; formFocus = "";
+      const slot = $("formSlot"); if (slot) slot.innerHTML = "";
+      return;
+    }
     if (k === "Enter") { if (plotted) engage(); return; }
     if (inComputer) {
       inComputer = false; m.hidden = true;
       const c = CKEYS.find((x) => x[0] === k);
       if (!c) return;
-      if (k === "F") { const t = prompt("Course plotter — destination sector?"); if (t) go(+t); return; }
+      if (k === "F") { askSector((n) => go(n)); return; }
       if (c[2]) return openForm(c[2]);
       return;
     }
@@ -604,18 +672,17 @@
     if (k === "M") {
       const w = S.sector.warps_out || [];
       if (w.length === 1) return go(w[0]);
-      const t = prompt("Move to which sector? (" + w.join(" - ") + ")");
-      if (t) go(+t);
+      askSector((n) => go(n));
       return;
     }
     if (k === "P") return openForm("trade");
     if (k === "L") {
       const p = (S.sector.planets || [])[0];
-      if (p) return act("land_planet", { planet_id: p.id }, "L — land");
+      if (p) return act("land_planet", { planet_id: p.id }, "land");
       return;
     }
     if (k === ".") return act("wait", {}, "wait one turn");
-    if (k === "S") return act("scan", {}, "S — long range scan");
+    if (k === "S") return act("scan", {}, "long range scan");
     if (hit[2]) return openForm(hit[2]);
   }
 
@@ -631,7 +698,8 @@
       await refresh();
       const spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
       const delta = (S ? S.credits : creditsBefore) - creditsBefore;
-      setResult("ok — " + (label || kind) + ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".", false);
+      const said = newestSummary();
+      setResult("ok — " + (said || label || kind) + ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".", false);
       $("err").hidden = true;
     } catch (e) {
       setResult("refused: " + plainReason(e.message || e) + ". Turns spent 0.", true);
@@ -675,7 +743,7 @@
     al.textContent = fmt(S.alignment) + " " + (S.alignment_label || "");
     al.className = S.alignment < 0 ? "r" : S.alignment > 0 ? "c" : "w";
     const chip = $("waitchip");
-    chip.textContent = state.awaiting ? "YOUR MOVE" : "Other commanders moving";
+    chip.textContent = state.awaiting ? "YOUR MOVE" : "WAITING";
     chip.className = "chip" + (state.awaiting ? "" : " idle");
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
     paintScene();
@@ -714,9 +782,9 @@
   $("connectBtn").addEventListener("click", connect);
   document.addEventListener("keydown", (ev) => {
     const tag = (ev.target && ev.target.tagName) || "";
+    if (ev.key === "Escape") { ev.preventDefault(); key("Escape"); return; }
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag) || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === "Enter") { ev.preventDefault(); key("Enter"); return; }
-    if (ev.key === "Escape") { ev.preventDefault(); key("Escape"); return; }
     if (ev.key === "?") { ev.preventDefault(); key("?"); return; }
     if (ev.key === ".") { ev.preventDefault(); key("."); return; }
     if (ev.key.length === 1) { ev.preventDefault(); key(ev.key.toUpperCase()); }

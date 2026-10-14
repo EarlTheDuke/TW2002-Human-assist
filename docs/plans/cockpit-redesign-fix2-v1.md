@@ -1,0 +1,3 @@
+# cockpit-redesign-fix2-v1
+
+An open StarDock or trade form stays up across the two-second refresh until CONFIRM or ESC. The warp row and the ship stats stay inside their panels, including when the warps wrap and at 1366x768. Traders use the name and ship from the seat list. The plotted course bends so hops do not stack on one line, and every warp out of this sector is drawn. C then F asks "What is the destination sector?" on the page. On a phone the deck scrolls and the result line sits on screen with the keys. The waiting chip stays one short word, and a finished command quotes the server's sentence.
