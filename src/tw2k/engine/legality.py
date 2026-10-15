@@ -335,36 +335,58 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         sell_choices: list[str] = []
         qty_max: dict[str, dict[str, int]] = {}
         listed: dict[str, dict[str, int]] = {}
+        why: dict[str, str] = {}
+        names = {"fuel_ore": "Fuel Ore", "organics": "Organics", "equipment": "Equipment"}
         for c in TRADE_COMMODITIES:
             st = port.stock.get(c)
             if st is None:
                 continue
+            label = names.get(c.value, c.value)
             if port.sells(c):
                 unit = port_sell_price(port, c, player.experience)
                 afford = player.credits // unit if unit > 0 else 0
                 mx = max(0, min(st.current, player.ship.cargo_free, afford))
                 if mx > 0:
                     buy_choices.append(c.value)
+                elif K.port_stock_fidelity_live():
+                    if int(st.current) <= 0:
+                        why[c.value] = f"{label}: port has 0 of {int(st.maximum):,} to sell today (refills ~5%/day)"
+                    elif int(player.ship.cargo_free) <= 0:
+                        why[c.value] = f"{label}: no empty holds"
+                    elif unit > 0 and afford < 1:
+                        why[c.value] = f"{label}: not enough credits for 1 unit ({unit:,} cr)"
                 qty_max.setdefault(c.value, {})["buy"] = mx
                 listed.setdefault(c.value, {})["buy"] = unit
             if port.buys(c):
                 unit = port_buy_price(port, c, player.experience)
                 have = int(player.ship.cargo.get(c, 0))
-                mx = max(0, min(have, st.maximum - st.current))
+                room = int(st.maximum) - int(st.current)
+                mx = max(0, min(have, room))
                 if mx > 0:
                     sell_choices.append(c.value)
+                elif K.port_stock_fidelity_live():
+                    if have <= 0:
+                        why[c.value] = f"{label}: port buys, but your holds have none"
+                    elif room <= 0:
+                        why[c.value] = f"{label}: port is full, it will not buy more today"
                 qty_max.setdefault(c.value, {})["sell"] = mx
                 listed.setdefault(c.value, {})["sell"] = unit
         if reason is None and not buy_choices and not sell_choices:
-            reason = "nothing you can buy or sell here right now (cargo, credits, holds or port stock)"
-        out.append(_la(ActionKind.TRADE, legal=reason is None, reason=reason, cost=tc, params={
+            if K.port_stock_fidelity_live() and why:
+                reason = "; ".join(why[key] for key in sorted(why))
+            else:
+                reason = "nothing you can buy or sell here right now (cargo, credits, holds or port stock)"
+        trade_params: dict[str, Any] = {
             "side": {"type": "str", "required": True, "choices": ["buy", "sell"]},
             "commodity": {"type": "str", "required": True,
                           "choices": sorted(set(buy_choices) | set(sell_choices)),
                           "buy_choices": buy_choices, "sell_choices": sell_choices},
             "qty": {"type": "int", "required": True, "min": 1, "max_by": qty_max},
             "unit_price": {"type": "int", "required": False, "listed_by": listed},
-        }))
+        }
+        if K.port_stock_fidelity_live() and why:
+            trade_params["why"] = why
+        out.append(_la(ActionKind.TRADE, legal=reason is None, reason=reason, cost=tc, params=trade_params))
 
 
     # rob / steal (ROB_MODE tw2002) — docs/playtests/ports/ROB_STEAL.md

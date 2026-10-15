@@ -212,7 +212,9 @@ def _make_port(rng: random.Random, class_id: PortClass, sector_id: int, seed: in
         maximum = K.PORT_DEFAULT_MAX_STOCK + rng.randint(-500, 1500)
         # The old 35-95% draw stays in the stream so later sectors do not move.
         rng.uniform(0.35, 0.95)
-        if K.port_open_full():
+        if K.port_stock_fidelity_live():
+            current = 0 if deal is True else maximum
+        elif K.port_open_full():
             current = maximum
         else:
             current = int(maximum * K.PORT_START_STOCK_PERCENT)

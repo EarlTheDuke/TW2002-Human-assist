@@ -191,7 +191,7 @@ def can_trade(port: Port, commodity: Commodity, qty: int, side: str) -> tuple[bo
         if not port.sells(commodity):
             return False, f"Port does not sell {commodity.value}"
         s = port.stock.get(commodity)
-        if s is not None and K.port_regen_live() and qty > int(s.maximum):
+        if s is not None and (K.port_regen_live() or K.port_stock_fidelity_live()) and qty > int(s.maximum):
             return False, "a visit can move at most 100% of this port's max"
         if s is None or s.current < qty:
             return False, "Port does not have enough stock"
@@ -202,7 +202,7 @@ def can_trade(port: Port, commodity: Commodity, qty: int, side: str) -> tuple[bo
         s = port.stock.get(commodity)
         if s is None:
             return False, "Port has no capacity for this commodity"
-        if K.port_regen_live() and qty > int(s.maximum):
+        if (K.port_regen_live() or K.port_stock_fidelity_live()) and qty > int(s.maximum):
             return False, "a visit can move at most 100% of this port's max"
         # Capacity to buy more from player = maximum - current (how much more it can stockpile)
         capacity = s.maximum - s.current
@@ -337,7 +337,11 @@ def regenerate_ports(universe: Universe) -> None:
             continue
         for commodity, stock in port.stock.items():
             prod = int(port.productivity.get(commodity, 0) or 0)
-            if K.port_regen_live() or K.port_open_full():
+            if K.port_stock_fidelity_live() and port.buys(commodity):
+                give_back = round(int(stock.maximum) * K.PORT_REGEN_PER_DAY)
+                stock.current = max(0, int(stock.current) - give_back)
+                continue
+            if K.port_regen_live() or K.port_open_full() or K.port_stock_fidelity_live():
                 gain = round(int(stock.maximum) * K.PORT_REGEN_PER_DAY)
             else:
                 gain = round(prod * K.PORT_REGEN_PER_DAY)

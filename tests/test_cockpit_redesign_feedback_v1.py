@@ -22,7 +22,7 @@ def test_turns_reasons_and_a_result_line(tmp_path: Path, monkeypatch) -> None:
             page.wait_for_function("() => document.querySelector('#tl').textContent === '60'", timeout=20_000)
             assert "D" not in page.locator("#tl").inner_text()
             table = page.locator(".porttbl").inner_text()
-            assert "to sell right now" in table or "not buying" in table or "on board" in table
+            assert "to sell" in table or "not buying" in table or "on board" in table or "room " in table
             assert "cargo, credits, holds or port stock" not in table
             page.locator("#keys button", has_text="Attack").click()
             reason = page.locator("#lastResult").inner_text()
