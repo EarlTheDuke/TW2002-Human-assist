@@ -21,6 +21,8 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #sceneTag{position:absolute;top:8px;left:10px;color:var(--y);background:rgba(0,0,0,.6);padding:2px 6px;font-size:12px}
 #map{width:100%;flex:1 1 auto;height:auto;min-height:0;display:block;background:radial-gradient(#000016,#000)}
 #map .lane{stroke:var(--dc);stroke-width:1.2;opacity:.55}
+#map .lane.unk{stroke:var(--r);stroke-dasharray:3 2;opacity:.8}
+.planet{padding:2px 0 6px;line-height:1.35}
 #map .node circle{fill:#000;stroke:var(--dg);stroke-width:2;cursor:pointer}
 #map .node.adj circle{stroke:var(--g);stroke-width:3}
 #map .node.here circle{fill:var(--y);stroke:var(--y)}
@@ -53,7 +55,8 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
  .title-frame{font-size:9px;line-height:1.02;padding:0 3px}
  #cmdline{gap:1px 6px;padding:2px 4px;flex:0 0 auto}.stat b{font-size:13px}.prompt{font-size:11px}
  #deck{display:block;flex:1 1 auto;min-height:0;height:auto;overflow:auto;padding:4px}
- #vpScreen{height:140px}
+ #vpScreen{height:120px}
+ #nav{max-height:200px}
  #keys,#lastResult,.prompt-line{flex:0 0 auto}
  #keys{position:static;max-height:none;overflow:visible;font-size:11px;padding:1px 4px;gap:1px}
  #keys button{padding:1px 4px;margin:0}
