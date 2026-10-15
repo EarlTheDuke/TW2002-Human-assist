@@ -14,6 +14,12 @@
     ["T", "Corporate Menu", "corp_create", 0], ["R", "Release Beacon", "launch_beacon", 0],
     ["X", "Transporter Pad", "ship_transport", 0], ["W", "Tow SpaceCraft", "tow_engage", 0],
   ];
+  const PLANET_KEYS = [
+    ["T", "Take product", "load_planet_cargo"], ["V", "Leave product", "dump_planet_cargo"],
+    ["N", "Colonists", "assign_colonists"], ["F", "Stock fighters", "deposit_planet_defense"],
+    ["G", "Take fighters", "withdraw_planet_defense"], ["B", "Build citadel", "build_citadel"],
+  ];
+  const SPACE_OFF = ["M", "P", "L", "S", "A", "H", "U", "E"];
   const CKEYS = [
     ["F", "Course Plotter", "plot_course"], ["P", "Fire Photon Missile", "photon_missile"],
     ["R", "Port Report", null], ["K", "Your Known Universe", null], ["A", "Make Announcement", "broadcast"],
@@ -40,7 +46,7 @@
     connected: false, awaiting: false, busy: false, turnSeq: 0,
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
-  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "";
+  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null;
   const streamLog = [];
   const streamSeen = new Set();
   if (params.get("token")) {
@@ -66,9 +72,30 @@
   }
   const LA = (k) => ((S && S.legal_actions) || []).find((a) => a.kind === k);
   const legal = (k) => !!(LA(k) || {}).legal;
+  function courseSentence() {
+    const facts = courseEvent && courseEvent.facts;
+    const path = facts && Array.isArray(facts.path) ? facts.path.map(Number) : [];
+    if (!path.length) return "";
+    const start = Number(courseEvent.sector_id);
+    const full = !start || path[0] === start ? path.slice() : [start].concat(path);
+    const target = Number(facts.target);
+    if (target && full[full.length - 1] !== target) full.push(target);
+    const hops = path.length;
+    const hopCost = Number((((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || (LA("warp") || {}).turn_cost || 0);
+    return "plotted course " + full.join(" > ") + ", " + hops + " hops" + (hopCost ? ", " + (hops * hopCost) + " turns" : "");
+  }
+  function shownSentence(text) {
+    let s = String(text || "");
+    if (/plotted course/i.test(s)) {
+      const nice = courseSentence();
+      if (nice) s = s.replace(/plotted course[\s\S]*$/i, nice);
+    }
+    s = s.replace(/(\d+)cr\b/gi, (m, n) => Number(n).toLocaleString("en-US") + " cr");
+    return s.replace(/\.\.+/g, ".").trim();
+  }
   function plainEvent(ev) {
     const text = ev && (ev.summary || ev.kind) || "";
-    return String(text).replace(/_/g, " ");
+    return shownSentence(String(text).replace(/_/g, " "));
   }
   function paintLog() {
     const rows = [];
@@ -97,9 +124,14 @@
   function landedPlanet() {
     if (!S || S.planet_landed == null) return null;
     const id = Number(S.planet_landed);
-    return (S.sector.planets || []).find((p) => Number(p.id) === id)
-      || (S.owned_planets || []).find((p) => Number(p.id) === id)
-      || { id, name: "planet " + id };
+    const brief = (S.sector.planets || []).find((p) => Number(p.id) === id);
+    const owned = (S.owned_planets || []).find((p) => Number(p.id) === id);
+    if (!brief && !owned) return { id, name: "planet " + id };
+    return Object.assign({}, owned || {}, brief || {}, {
+      production: (owned && owned.production) || null,
+      stockpile: (brief && brief.stockpile) || (owned && owned.stockpile) || {},
+      colonists: (brief && brief.colonists) || (owned && owned.colonists) || {},
+    });
   }
 
   function paintScene() {
@@ -263,27 +295,74 @@
     }
     path.forEach((id, i) => { if (dist[id] == null) dist[id] = i; });
     (S.sector.warps_out || []).forEach((w) => { const id = Number(w); if (dist[id] == null) dist[id] = 1; });
-    const rings = {};
+    const children = {};
+    const seenNode = new Set([hereId]);
+    const walk = [hereId];
+    while (walk.length) {
+      const current = walk.shift();
+      const nexts = (warps[current] || warps[String(current)] || []).map(Number);
+      if (current === hereId) (S.sector.warps_out || []).forEach((w) => { if (!nexts.includes(Number(w))) nexts.push(Number(w)); });
+      nexts.forEach((id) => {
+        if (!known[id] || seenNode.has(id)) return;
+        seenNode.add(id);
+        (children[current] = children[current] || []).push(id);
+        walk.push(id);
+      });
+    }
     Object.keys(known).forEach((id) => {
-      const hop = dist[id] == null ? 8 : dist[id];
-      (rings[hop] = rings[hop] || []).push(Number(id));
+      const n = Number(id);
+      if (seenNode.has(n)) return;
+      seenNode.add(n);
+      (children[hereId] = children[hereId] || []).push(n);
     });
     const pos = {};
-    Object.keys(rings).forEach((hop) => {
-      const ring = rings[hop].sort((a, b) => a - b);
-      ring.forEach((id, i) => {
-        if (Number(hop) === 0) { pos[id] = [0, 0]; return; }
-        const angle = (i / ring.length) * Math.PI * 2 - Math.PI / 2;
-        const radius = Math.min(250, 72 * Number(hop));
-        pos[id] = [Math.cos(angle) * radius, Math.sin(angle) * radius];
+    pos[hereId] = [0, 0];
+    (function place(id, a0, a1, depth) {
+      const kids = (children[id] || []).slice().sort((a, b) => a - b);
+      if (!kids.length) return;
+      const span = a1 - a0;
+      kids.forEach((kid, i) => {
+        const t0 = a0 + (span * i) / kids.length;
+        const t1 = a0 + (span * (i + 1)) / kids.length;
+        let mid = (t0 + t1) / 2;
+        if (kids.length === 1) mid += depth % 2 === 0 ? 0.7 : -0.7;
+        const radius = Math.min(240, 62 + depth * 38);
+        pos[kid] = [Math.cos(mid) * radius, Math.sin(mid) * radius];
+        place(kid, t0, t1, depth + 1);
       });
-    });
+    })(hereId, -Math.PI, Math.PI, 1);
     path.forEach((id, i) => {
       if (!i) { pos[id] = [0, 0]; return; }
       const t = i / Math.max(1, path.length - 1);
       const angle = -2.4 + t * 2.2;
-      pos[id] = [Math.cos(angle) * (55 + t * 190), Math.sin(angle) * (55 + t * 190)];
+      pos[id] = [Math.cos(angle) * (55 + t * 170), Math.sin(angle) * (55 + t * 150)];
     });
+    const ids = Object.keys(pos).map(Number).filter((id) => id !== hereId);
+    const edges = [];
+    Object.entries(warps).forEach(([from, tos]) => (tos || []).forEach((to) => {
+      const a = Number(from), b = Number(to);
+      if (pos[a] && pos[b]) edges.push([a, b]);
+    }));
+    (S.sector.warps_out || []).forEach((w) => { if (pos[Number(w)]) edges.push([hereId, Number(w)]); });
+    for (let pass = 0; pass < 5; pass++) {
+      edges.forEach(([a, b]) => {
+        const ax = pos[a], bx = pos[b];
+        ids.forEach((id) => {
+          if (id === a || id === b) return;
+          const p = pos[id];
+          const dx = bx[0] - ax[0], dy = bx[1] - ax[1];
+          const len2 = dx * dx + dy * dy || 1;
+          let t = ((p[0] - ax[0]) * dx + (p[1] - ax[1]) * dy) / len2;
+          if (t < 0.12 || t > 0.88) return;
+          const x = ax[0] + t * dx, y = ax[1] + t * dy;
+          const gap = Math.hypot(p[0] - x, p[1] - y);
+          if (gap > 22) return;
+          const nx = -dy, ny = dx;
+          const nlen = Math.hypot(nx, ny) || 1;
+          pos[id] = [p[0] + (nx / nlen) * (28 - gap), p[1] + (ny / nlen) * (28 - gap)];
+        });
+      });
+    }
     let html = "";
     const seen = new Set();
     Object.entries(warps).forEach(([from, tos]) => (tos || []).forEach((to) => {
@@ -294,6 +373,15 @@
       seen.add(key);
       html += '<line class="lane" x1="' + pos[a][0] + '" y1="' + pos[a][1] + '" x2="' + pos[b][0] + '" y2="' + pos[b][1] + '"/>';
     }));
+    (S.sector.warps_out || []).forEach((w) => {
+      const b = Number(w);
+      if (!pos[hereId] || !pos[b]) return;
+      const key = [hereId, b].sort().join();
+      if (seen.has(key)) return;
+      seen.add(key);
+      const unk = known[b] && known[b].unexplored;
+      html += '<line class="lane' + (unk ? " unk" : "") + '" x1="0" y1="0" x2="' + pos[b][0] + '" y2="' + pos[b][1] + '"/>';
+    });
     for (let i = 1; i < path.length; i++) {
       const a = pos[path[i - 1]], b = pos[path[i]];
       if (!a || !b) continue;
@@ -319,7 +407,7 @@
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = (i + 1) + ":" + w + (cost ? " (" + cost + "t)" : "");
-      b.disabled = !state.awaiting || state.busy;
+      b.disabled = state.busy;
       b.addEventListener("click", () => {
         if (S.planet_landed != null) { setResult("Lift off first", true); return; }
         if (!legal("warp")) { setResult("Move: " + plainReason((LA("warp") || {}).reason), true); return; }
@@ -421,11 +509,29 @@
     const s = S.sector, sh = S.ship || {};
     const landed = landedPlanet();
     if (landed) {
-      box.appendChild(button("<kbd>Q</kbd>Lift off", () => act("liftoff", {}, "Q — lift off")));
-      const settings = document.createElement("div");
-      settings.className = "c";
-      settings.textContent = "Citadel " + (landed.citadel_level || 0) + ". Quasar sector " + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%.";
-      box.appendChild(settings);
+      const card = document.createElement("div");
+      card.className = "planet";
+      const owner = landed.owner_id === S.self_id ? (S.self_name || "you")
+        : (((S.other_players || []).find((r) => r.id === landed.owner_id) || {}).name || (landed.owner_id || "unowned"));
+      let body = '<div class="y">' + esc(landed.name || "planet") + "</div>";
+      body += '<div>Class <span class="c">' + esc(landed.class || "?") + '</span>  Owner <span class="c">' + esc(owner) + "</span></div>";
+      body += '<div>Citadel <span class="c">' + (landed.citadel_level || 0) + "</span>";
+      if (landed.citadel_target) body += '  building toward <span class="y">' + landed.citadel_target + "</span>";
+      body += '  Fighters <span class="c">' + fmt(landed.fighters || 0) + '</span>  Shields <span class="c">' + fmt(landed.shields || 0) + "</span></div>";
+      ["fuel_ore", "organics", "equipment"].forEach((k) => {
+        const meta = COM[k] || [k, "#fff"];
+        const cols = (landed.colonists || {})[k] || 0;
+        const stock = (landed.stockpile || {})[k] || 0;
+        const made = landed.production ? (landed.production[k] || 0) : null;
+        body += '<div style="color:' + meta[1] + '">' + esc(meta[0]) + '</div><div class="c">Colonists ' + fmt(cols) + "  On planet " + fmt(stock) + (made == null ? "" : "  " + fmt(made) + " per day") + "</div>";
+      });
+      if (landed.quasar_sector_pct || landed.quasar_atm_pct) body += '<div class="dk">Quasar sector ' + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%</div>";
+      card.innerHTML = body;
+      box.appendChild(card);
+      box.appendChild(button("<kbd>Q</kbd>Lift off", () => act("liftoff", {}, "lift off")));
+      PLANET_KEYS.filter((row) => row[2]).forEach(([k, label, kind]) => {
+        box.appendChild(button("<kbd>" + k + "</kbd>" + label, () => planetAct(k)));
+      });
     }
     if (s.port && !landed) {
       const table = document.createElement("table");
@@ -588,16 +694,50 @@
       + '<br><span class="dk">Esc to close</span>';
   }
 
+  function planetAct(k) {
+    if (k === "Q") return act("liftoff", {}, "lift off");
+    const row = PLANET_KEYS.find((x) => x[0] === k);
+    if (!row) return;
+    if (!legal(row[2])) { setResult(row[1] + ": " + plainReason((LA(row[2]) || {}).reason), true); return; }
+    const pid = landedPlanet();
+    openForm(row[2]);
+    if (pid && $("formSlot")) {
+      const field = $("formSlot").querySelector('[data-n="planet_id"]');
+      if (field && !field.value) field.value = String(pid.id);
+    }
+  }
   function keys() {
     const bar = $("keys");
     bar.innerHTML = "";
+    const onPlanet = !!landedPlanet();
+    if (onPlanet) {
+      const q = document.createElement("button");
+      q.type = "button";
+      q.dataset.key = "Q";
+      q.className = legal("liftoff") ? "on" : "off";
+      q.disabled = state.busy;
+      q.innerHTML = "<kbd>Q</kbd>Lift off";
+      q.addEventListener("click", () => planetAct("Q"));
+      bar.appendChild(q);
+      PLANET_KEYS.forEach(([k, label, kind]) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.dataset.key = k;
+        b.className = legal(kind) ? "on" : "off";
+        b.disabled = state.busy;
+        b.innerHTML = "<kbd>" + k + "</kbd>" + label;
+        b.addEventListener("click", () => planetAct(k));
+        bar.appendChild(b);
+      });
+    }
     KEYS.filter((row) => row[3]).forEach(([k, label, kind]) => {
+      if (onPlanet && (k === "F" || PLANET_KEYS.some((row) => row[0] === k))) return;
       const b = document.createElement("button");
       b.type = "button";
       b.dataset.key = k;
-      const off = kind && !legal(kind);
+      const off = (kind && !legal(kind)) || (onPlanet && SPACE_OFF.includes(k));
       b.className = off ? "off" : "on";
-      b.disabled = !state.awaiting || state.busy;
+      b.disabled = state.busy;
       if (kind === "wait") b.setAttribute("data-testid", "action-wait");
       b.innerHTML = "<kbd>" + k + "</kbd>" + label;
       b.addEventListener("click", () => key(k));
@@ -663,7 +803,8 @@
         '<br><span class="dk">Esc to close</span>';
       return;
     }
-    if (k === "Q" && landedPlanet()) return act("liftoff", {}, "Q — lift off");
+    if (landedPlanet() && (k === "Q" || PLANET_KEYS.some((row) => row[0] === k))) return planetAct(k);
+    if (landedPlanet() && SPACE_OFF.includes(k)) { setResult("Lift off first", true); return; }
     if (k === "D") { render(); return; }
     if (k === "I") { shipInfo(); return; }
     const hit = KEYS.find((x) => x[0] === k);
@@ -686,8 +827,24 @@
     if (hit[2]) return openForm(hit[2]);
   }
 
+  function flushPending() {
+    if (!state.awaiting || state.busy || !pending) return;
+    const job = pending;
+    pending = null;
+    act(job.kind, job.args, job.label);
+  }
+  function clearStaleWait() {
+    const el = $("lastResult");
+    if (!state.awaiting || pending || !el) return;
+    if (/Waiting for your turn/.test(el.textContent || "")) setResult("Your move. Press the command again.", false);
+  }
   async function act(kind, args, label) {
-    if (!state.awaiting || state.busy) { setResult("Waiting for your turn.", true); return; }
+    if (state.busy || !state.awaiting) {
+      pending = { kind, args, label };
+      setResult("Waiting for your turn.", true);
+      return;
+    }
+    pending = null;
     state.busy = true;
     keys();
     const creditsBefore = S ? S.credits : 0;
@@ -698,8 +855,9 @@
       await refresh();
       const spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
       const delta = (S ? S.credits : creditsBefore) - creditsBefore;
-      const said = newestSummary();
-      setResult("ok — " + (said || label || kind) + ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".", false);
+      const said = shownSentence(newestSummary());
+      const body = (said || label || kind).replace(/[.\s]+$/, "");
+      setResult("ok — " + body + ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".", false);
       $("err").hidden = true;
     } catch (e) {
       setResult("refused: " + plainReason(e.message || e) + ". Turns spent 0.", true);
@@ -708,6 +866,8 @@
     } finally {
       state.busy = false;
       keys();
+      if (state.awaiting && pending) flushPending();
+      else clearStaleWait();
     }
   }
 
@@ -763,6 +923,8 @@
     if (st.observation) { S = st.observation; render(); }
     await fetchEvents();
     keys();
+    if (!state.busy && state.awaiting && pending) flushPending();
+    else if (!state.busy) clearStaleWait();
   }
   async function connect() {
     state.seat = $("seatSelect").value.toUpperCase();

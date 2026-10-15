@@ -1,0 +1,3 @@
+# cockpit-redesign-fix3-v1
+
+Landing shows the planet the seat already knows: name, class, owner, colonists, stock, daily output, fighters, shields, and citadel. The planet commands are buttons and keys, and the space keys that cannot work are dim, including Land. A command pressed while it is not your turn is sent when the move returns, and the result line does not keep saying waiting once the header says your move. Visited sectors spread out so a warp line does not run through the nodes in between. On a phone the warp row, including ENGAGE, sits above the key bar. A plotted course is written as a full path with hops and turns, and credit amounts in those sentences use thousands separators.
