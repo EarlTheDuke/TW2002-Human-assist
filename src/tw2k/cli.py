@@ -276,6 +276,11 @@ def serve(
         "--ferrengi-min-strength-scale",
         help="Starting Ferrengi strength multiplier before the ramp, e.g. 0.25 for 25%.",
     ),
+    port_stock_fidelity: str | None = typer.Option(
+        None,
+        "--port-stock-fidelity",
+        help="legacy or live. Live opens a selling port full and a buying port hungry. Env TW2K_PORT_STOCK_FIDELITY.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -489,6 +494,13 @@ def serve(
         )
     console.print(f"[cyan]Open:[/] http://{host}:{port}")
     console.rule()
+
+    from .engine import constants as _K
+
+    _stock = (port_stock_fidelity or _os.environ.get("TW2K_PORT_STOCK_FIDELITY") or "").strip().lower()
+    if _stock in ("live", "legacy"):
+        _os.environ["TW2K_PORT_STOCK_FIDELITY"] = _stock
+        _K.PORT_STOCK_FIDELITY_MODE = _stock
 
     application = create_app(
         seed=seed,

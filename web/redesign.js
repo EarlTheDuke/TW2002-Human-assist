@@ -462,13 +462,18 @@
 
   function tradeWhy(commodity, stock, ship, side) {
     const name = (COM[commodity] || [commodity])[0];
+    const server = ((((LA("trade") || {}).params || {}).why) || {})[commodity];
+    if (server) return server;
     const onboard = Number((ship.cargo || {})[commodity] || 0);
     const used = Object.values(ship.cargo || {}).reduce((sum, n) => sum + Number(n || 0), 0);
-    if (side === "buy" && !(Number(stock.current) > 0)) return "This port has no " + name + " to sell right now";
-    if (side === "sell" && onboard <= 0) return "You have no " + name + " on board";
-    if (side === "sell" && !(Number(stock.current) > 0)) return "This port is not buying " + name + " today";
-    if (side === "buy" && used >= Number(ship.holds || 0)) return "No empty holds";
-    if (side === "buy" && stock.price && S.credits < Number(stock.price)) return "Not enough credits";
+    const cur = Number(stock.current || 0);
+    const max = Number(stock.max || 0);
+    const room = Math.max(0, max - cur);
+    if (side === "buy" && cur <= 0) return name + ": port has 0 of " + fmt(max) + " to sell today (refills ~5%/day)";
+    if (side === "sell" && onboard <= 0) return name + ": port buys, but you have none on board";
+    if (side === "sell" && room <= 0) return name + ": port is full, it will not buy more today";
+    if (side === "buy" && used >= Number(ship.holds || 0)) return name + ": no empty holds";
+    if (side === "buy" && stock.price && S.credits < Number(stock.price)) return name + ": not enough credits for 1 unit (" + fmt(stock.price) + " cr)";
     return "Nothing to trade";
   }
   function plainReason(text) {
@@ -541,27 +546,26 @@
         const meta = COM[k] || [k, "#fff"];
         const side = v.side === "buys_from_player" ? "sell" : "buy";
         const mx = maxBy("trade", k, side);
+        const room = Math.max(0, Number(v.max || 0) - Number(v.current || 0));
+        const status = side === "sell" ? "Buying, room " + fmt(room) : "Selling " + fmt(v.current) + "/" + fmt(v.max);
         const tr = document.createElement("tr");
-        tr.innerHTML = "<td style=\"color:" + meta[1] + "\">" + esc(meta[0]) + "</td><td>" + (side === "sell" ? "Buying" : "Selling") + "</td><td class=\"c\">" + fmt(v.current) + "</td><td class=\"y\">" + (v.price ?? "") + "</td><td class=\"w\">" + (sh.cargo[k] || 0) + "</td><td></td>";
+        tr.innerHTML = "<td style=\"color:" + meta[1] + "\">" + esc(meta[0]) + "</td><td>" + status + "</td><td class=\"c\">" + fmt(v.current) + "</td><td class=\"y\">" + (v.price ?? "") + "</td><td class=\"w\">" + (sh.cargo[k] || 0) + "</td><td></td>";
         if (mx > 0 && legal("trade") && state.awaiting) {
           const b = document.createElement("button");
           b.type = "button";
           b.className = "tbtn " + side;
           b.textContent = (side === "sell" ? "SELL " : "BUY ") + mx;
-          b.addEventListener("click", () => act("trade", { side, commodity: k, qty: mx }, "P — " + side + " " + mx + " " + meta[0]));
+          b.addEventListener("click", () => act("trade", { side, commodity: k, qty: mx }, side + " " + mx + " " + meta[0]));
           tr.lastChild.appendChild(b);
         } else {
-          tr.lastChild.textContent = tradeWhy(k, v, sh, side);
+          const why = tradeWhy(k, v, sh, side);
+          tr.lastChild.textContent = why;
+          if (tr.children[3]) tr.children[3].classList.add("dim");
+          tr.addEventListener("click", () => setResult(why, true));
         }
         table.appendChild(tr);
       });
       box.appendChild(table);
-      if (!legal("trade")) {
-        const why = document.createElement("div");
-        why.className = "dk";
-        why.textContent = "";
-        box.appendChild(why);
-      }
     }
     if (!landed) (s.planets || []).forEach((p) => {
       box.appendChild(button("<kbd>L</kbd>Land on " + esc(p.name), () => act("land_planet", { planet_id: p.id }, "land on " + p.name)));
@@ -809,7 +813,16 @@
     if (k === "I") { shipInfo(); return; }
     const hit = KEYS.find((x) => x[0] === k);
     if (!hit) return;
-    if (hit[2] && !legal(hit[2])) { setResult(hit[1] + ": " + plainReason((LA(hit[2]) || {}).reason), true); return; }
+    if (hit[2] && !legal(hit[2])) {
+      if (k === "P") {
+        const stock = ((S.sector || {}).port || {}).stock || {};
+        const lines = Object.entries(stock).map(([name, row]) => tradeWhy(name, row, S.ship || {}, row.side === "buys_from_player" ? "sell" : "buy")).filter(Boolean);
+        setResult(lines.join(" ") || plainReason((LA("trade") || {}).reason), true);
+        return;
+      }
+      setResult(hit[1] + ": " + plainReason((LA(hit[2]) || {}).reason), true);
+      return;
+    }
     if (k === "M") {
       const w = S.sector.warps_out || [];
       if (w.length === 1) return go(w[0]);

@@ -1166,6 +1166,15 @@ def create_app(
     return app
 
 
+def _apply_port_stock_fidelity() -> None:
+    """A test game can turn the port stock on with the env or the serve flag."""
+    from ..engine import constants as K
+
+    raw = (os.environ.get("TW2K_PORT_STOCK_FIDELITY") or "").strip().lower()
+    if raw in ("live", "legacy"):
+        K.PORT_STOCK_FIDELITY_MODE = raw
+
+
 def _build_default_spec(
     *,
     seed: int,
@@ -1196,6 +1205,7 @@ def _build_default_spec(
     pause_on_seat_drop: bool = False,
     seat_drop_after_s: float = 45.0,
 ) -> MatchSpec:
+    _apply_port_stock_fidelity()
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
         names = names + _default_agent_names(num_agents)[len(names):num_agents]

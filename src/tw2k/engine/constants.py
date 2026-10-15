@@ -3570,6 +3570,19 @@ def class_m_fidelity_live() -> bool:
     return CLASS_M_FIDELITY_MODE == "live" or tw2002_live_profile()
 
 
+# port-stock-and-trade-reason-v1. Appended so later slices can rebase cleanly.
+# "legacy": a port opens empty and a day adds stock on both sides.
+# "live": a selling side opens full and regains 5% of max a day.
+# A buying side opens wanting a full load, and a day gives room back.
+# It never takes room away. PORT_OPEN_STOCK_MODE stays legacy.
+PORT_STOCK_FIDELITY_MODE = "legacy"  # "legacy" | "live"
+
+
+def port_stock_fidelity_live() -> bool:
+    """True when selling ports open full and buying ports open hungry."""
+    return PORT_STOCK_FIDELITY_MODE == "live" or tw2002_live_profile()
+
+
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
     """How many more colonists fit. Class M live uses one cap per pool."""
     if class_id == "M" and class_m_fidelity_live():
