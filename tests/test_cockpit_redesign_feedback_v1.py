@@ -31,7 +31,7 @@ def test_turns_reasons_and_a_result_line(tmp_path: Path, monkeypatch) -> None:
             page.wait_for_selector("[data-testid=action-wait]:not([disabled])", timeout=20_000)
             page.get_by_test_id("action-wait").click()
             page.wait_for_function(
-                "() => /ok/.test(document.querySelector('#lastResult').textContent || '') && /Turns spent/.test(document.querySelector('#lastResult').textContent || '')",
+                "() => /You wait/.test(document.querySelector('#lastResult').textContent || '') && /Turns spent/.test(document.querySelector('#lastResult').textContent || '')",
                 timeout=20_000,
             )
         finally:
