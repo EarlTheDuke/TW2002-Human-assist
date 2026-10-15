@@ -14,6 +14,10 @@
     ["T", "Corporate Menu", "corp_create", 0], ["R", "Release Beacon", "launch_beacon", 0],
     ["X", "Transporter Pad", "ship_transport", 0], ["W", "Tow SpaceCraft", "tow_engage", 0],
   ];
+  const MENU_KEYS = KEYS.concat([
+    ["V", "Game Status"], ["G", "Show Deployed Fighters"], ["B", "Self Destruct"],
+    ["J", "Jettison Cargo"], ["Q", "Quit"],
+  ]);
   const PLANET_KEYS = [
     ["T", "Take product", "load_planet_cargo"], ["V", "Leave product", "dump_planet_cargo"],
     ["N", "Colonists", "assign_colonists"], ["F", "Stock fighters", "deposit_planet_defense"],
@@ -92,6 +96,30 @@
     }
     s = s.replace(/(\d+)cr\b/gi, (m, n) => Number(n).toLocaleString("en-US") + " cr");
     return s.replace(/\.\.+/g, ".").trim();
+  }
+  function plainWords(text) {
+    let s = String(text || "").replace(/^\[[^\]]+\]\s*/, "");
+    s = s.replace(/pool=fuel_ore/g, "fuel ore").replace(/pool=organics/g, "organics").replace(/pool=equipment/g, "equipment");
+    s = s.replace(/buy_equip/g, "buy gear").replace(/_/g, " ");
+    s = s.replace(/no photon missiles loaded \(buy gear photon missiles at StarDock\)/gi, "No photon missiles on board. Buy them at StarDock.");
+    s = s.replace(/no long range scanner \(buy gear density scanner or holo scanner at StarDock\)/gi, "Buy a density scanner or a holo scanner at StarDock.");
+    s = s.replace(/insufficient credits \((\d+) < (\d+)\)/gi, (m, have, need) => "not enough credits: you need " + fmt(need) + " cr, you have " + fmt(have) + " cr");
+    s = s.replace(/\binvalid action:\s*/gi, "").replace(/\btrade failed:\s*/gi, "");
+    return shownSentence(s);
+  }
+  function creditLine(kind, args, text) {
+    const m = /insufficient credits \((\d+) < (\d+)\)/i.exec(String(text || ""));
+    if (!m || kind !== "buy_equip" || !args || !args.item) return "";
+    const name = String(args.item).replace(/_/g, " ");
+    return "not enough credits: " + fmt(args.qty || 0) + " " + name + " cost " + fmt(m[2]) + " cr, you have " + fmt(m[1]) + " cr";
+  }
+  function latestAfter(seq) {
+    let best = null;
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || (ev.seq || 0) <= seq) return;
+      if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
+    });
+    return best;
   }
   function plainEvent(ev) {
     const text = ev && (ev.summary || ev.kind) || "";
@@ -478,13 +506,7 @@
   }
   function plainReason(text) {
     if (!state.awaiting) return "Waiting for your turn.";
-    return String(text || "not available here")
-      .replace(/pool=fuel_ore/g, "fuel ore")
-      .replace(/pool=organics/g, "organics")
-      .replace(/pool=equipment/g, "equipment")
-      .replace(/buy_equip/g, "buy gear")
-      .replace(/_/g, " ")
-      .replace(/no long range scanner \(buy gear density scanner or holo scanner at StarDock\)/gi, "Buy a density scanner or a holo scanner at StarDock");
+    return plainWords(text || "not available here");
   }
   function maxBy(kind, commodity, side) {
     const p = (LA(kind) || {}).params || {};
@@ -573,7 +595,7 @@
     if (Number(s.id) === 1 || (s.port && /stardock/i.test(String(s.port.name || "")))) {
       if (legal("buy_equip")) box.appendChild(button("StarDock: buy gear", () => openForm("buy_equip")));
       if (legal("buy_ship")) box.appendChild(button("Shipyards", () => openForm("buy_ship")));
-      if (legal("bank_deposit")) box.appendChild(button("Bank", () => openForm("bank_deposit")));
+      if (legal("bank_deposit") || legal("bank_withdraw")) box.appendChild(button("Bank", () => bankForm()));
     }
     const slot = document.createElement("div");
     slot.id = "formSlot";
@@ -645,25 +667,144 @@
       wrap.appendChild(label);
       fields.push(input);
     });
-    wrap.appendChild(button("CONFIRM", () => {
+    const submit = () => {
       const args = {};
       fields.forEach((el) => {
         const t = el.dataset.t;
-        let v = t === "bool" ? el.checked : el.value;
-        if (t === "int") v = Number(v);
-        if (v !== "" && v !== null) args[el.dataset.n] = v;
+        if (t === "bool") { args[el.dataset.n] = el.checked; return; }
+        if (el.value === "") return;
+        args[el.dataset.n] = t === "int" ? Number(el.value) : el.value;
       });
+      if (kind === "buy_equip" && args.qty == null) { setResult("How many? Type a number.", true); return; }
       openFormKind = null;
       formFocus = "";
       slot.innerHTML = "";
       act(kind, args, kind.replaceAll("_", " "));
-    }));
+    };
+    wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; formFocus = ""; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      submit();
+    });
+    if (kind === "trade") {
+      const listed = ((a.params.unit_price || {}).listed_by) || {};
+      const sideEl = fields.find((el) => el.dataset.n === "side");
+      const comEl = fields.find((el) => el.dataset.n === "commodity");
+      const priceEl = fields.find((el) => el.dataset.n === "unit_price");
+      const pair = () => {
+        const side = sideEl && sideEl.value;
+        const com = comEl && comEl.value;
+        const direct = (listed[com] || {})[side];
+        if (direct) return [side, com, direct];
+        for (const [name, sides] of Object.entries(listed)) {
+          if (sides && sides[side]) return [side, name, sides[side]];
+        }
+        for (const [name, sides] of Object.entries(listed)) {
+          const picked = Object.entries(sides || {}).find((row) => row[1]);
+          if (picked) return [picked[0], name, picked[1]];
+        }
+        return null;
+      };
+      const fill = () => {
+        const found = pair();
+        if (!found || !priceEl || priceEl.value !== "") return;
+        if (sideEl) sideEl.value = found[0];
+        if (comEl) comEl.value = found[1];
+        priceEl.value = found[2];
+      };
+      if (sideEl) sideEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); });
+      if (comEl) comEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); });
+      if (!(saved && saved.unit_price)) fill();
+    }
+    if (kind === "buy_equip") {
+      const prices = ((a.params.item || {}).unit_price_by) || {};
+      const maxes = ((a.params.qty || {}).max_by) || {};
+      const item = fields.find((el) => el.dataset.n === "item");
+      const note = document.createElement("div");
+      note.className = "c";
+      note.dataset.gear = "price";
+      const paint = () => {
+        const key = item ? item.value : "";
+        const price = prices[key];
+        const mx = maxes[key];
+        note.textContent = String(key).replaceAll("_", " ") + ": " + fmt(price) + " cr each, up to " + fmt(mx);
+      };
+      if (item) item.addEventListener("change", paint);
+      paint();
+      wrap.appendChild(note);
+    }
     slot.appendChild(wrap);
     if (saved && formFocus) {
       const again = slot.querySelector('[data-n="' + formFocus + '"]');
       if (again) again.focus();
+    } else {
+      const first = fields.find((el) => el.type !== "checkbox");
+      if (first) first.focus();
     }
+  }
+  function bankForm() {
+    const dep = LA("bank_deposit") || { params: {}, legal: false, reason: "" };
+    const wd = LA("bank_withdraw") || { params: {}, legal: false, reason: "" };
+    const slot = $("formSlot");
+    if (!slot) return;
+    openFormKind = "bank";
+    const balance = Number((dep.params || {}).balance || (wd.params || {}).balance || (S && S.bank_balance) || 0);
+    const room = Number((dep.params || {}).room || 0);
+    const depMax = Number((dep.params || {}).max_amount || 0);
+    const wdMax = Number((wd.params || {}).max_amount || 0);
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "bank";
+    wrap.innerHTML = '<div class="y">BANK</div><div class="c">Balance ' + fmt(balance) + " cr. Room " + fmt(room) + " cr.</div>";
+    const side = document.createElement("select");
+    side.dataset.n = "side";
+    [["deposit", "Deposit", dep.legal], ["withdraw", "Withdraw", wd.legal]].forEach(([value, label, ok]) => {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = label;
+      o.disabled = !ok;
+      side.appendChild(o);
+    });
+    if (dep.legal) side.value = "deposit";
+    else if (wd.legal) side.value = "withdraw";
+    const amount = document.createElement("input");
+    amount.type = "number";
+    amount.min = "1";
+    amount.dataset.n = "amount";
+    const fill = () => { amount.value = side.value === "withdraw" ? wdMax : depMax; };
+    side.addEventListener("change", fill);
+    fill();
+    const sideLabel = document.createElement("label");
+    sideLabel.appendChild(document.createTextNode("side "));
+    sideLabel.appendChild(side);
+    const amtLabel = document.createElement("label");
+    amtLabel.appendChild(document.createTextNode("amount "));
+    amtLabel.appendChild(amount);
+    wrap.appendChild(sideLabel);
+    wrap.appendChild(amtLabel);
+    const submit = () => {
+      const n = Number(amount.value);
+      if (!n) { setResult("Type an amount.", true); return; }
+      const which = side.value === "withdraw" ? wd : dep;
+      if (!which.legal) { setResult(plainReason(which.reason), true); return; }
+      openFormKind = null;
+      slot.innerHTML = "";
+      act(side.value === "withdraw" ? "bank_withdraw" : "bank_deposit", { amount: n }, side.value);
+    };
+    wrap.appendChild(button("CONFIRM", submit));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      submit();
+    });
+    slot.appendChild(wrap);
+    amount.focus();
   }
   function formPreview(kind) {
     const planet = landedPlanet();
@@ -782,6 +923,87 @@
     });
     return best ? String(best.summary) : "";
   }
+  function overlay(title, body) {
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = title;
+    m.innerHTML = '<div class="y">' + title + "</div>" + body + '<br><span class="dk">Esc to close</span>';
+  }
+  function portReport() {
+    const rows = (S.known_ports || []).slice();
+    const here = (S.sector || {}).port;
+    const id = Number((S.sector || {}).id);
+    if (here && !rows.some((row) => Number(row.sector_id) === id)) {
+      rows.unshift({ sector_id: id, class: here.code, name: here.name, stock: here.stock, last_seen_day: S.day });
+    }
+    if (!rows.length) { setResult("No ports in your computer yet.", true); return; }
+    const body = rows.map((row) => {
+      const stock = row.stock || {};
+      const lines = Object.entries(stock).map(([name, item]) => {
+        const label = (COM[name] || [name])[0];
+        const side = item.side === "buys_from_player" ? "buys" : item.side === "sells_to_player" ? "sells" : "holds";
+        return label + " " + side + " " + fmt(item.price) + " cr";
+      }).join(", ");
+      const seen = row.last_seen_day != null ? " day " + row.last_seen_day : "";
+      return '<div class="row"><span class="c">' + row.sector_id + "</span> " + esc(row.class || row.name || "") + esc(seen) + "<br>" + esc(lines) + "</div>";
+    }).join("");
+    overlay("Port Report", body);
+  }
+  function knownUniverse() {
+    const map = Object.assign({}, S.known_warps || {});
+    const id = String((S.sector || {}).id ?? "");
+    if (id && !map[id]) map[id] = (S.sector || {}).warps_out || [];
+    const ids = Object.keys(map);
+    if (!ids.length) { setResult("No sectors in your computer yet.", true); return; }
+    const body = ids.sort((a, b) => Number(a) - Number(b)).map((sid) => {
+      const hops = map[sid] || [];
+      return '<div class="row"><span class="c">' + sid + "</span> warps " + hops.join(", ") + "</div>";
+    }).join("");
+    overlay("Known Universe", body);
+  }
+  function gameStatus() {
+    const stats = S.daily_stats || {};
+    const lines = [
+      ["Day", S.day + " of " + S.max_days],
+      ["Turns", fmt(S.turns_remaining) + " / " + fmt(S.turns_per_day)],
+      ["Credits", fmt(S.credits) + " cr"],
+      ["Bank", S.bank_balance == null ? "none" : fmt(S.bank_balance) + " cr"],
+      ["Net worth", fmt(S.net_worth) + " cr"],
+      ["Rank", S.rank || ""],
+      ["Alignment", fmt(S.alignment) + " " + (S.alignment_label || "")],
+      ["Planets", fmt((S.owned_planets || []).length)],
+      ["Known ports", fmt((S.known_ports || []).length)],
+      ["Known sectors", fmt(Object.keys(S.known_warps || {}).length)],
+    ];
+    Object.entries(stats).forEach(([k, v]) => lines.push([k.replaceAll("_", " "), fmt(v)]));
+    overlay("Game Status", lines.map(([k, v]) => '<div class="row"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join(""));
+  }
+  function showFighters() {
+    const lines = [];
+    const group = (S.sector || {}).fighter_group;
+    if (group) lines.push("This sector: " + fmt(group.count) + " " + (group.mode || "") + (group.owner_id === S.self_id ? " (yours)" : ""));
+    (S.owned_planets || []).forEach((p) => {
+      if (Number(p.fighters) > 0) lines.push(esc(p.name || "planet") + ": " + fmt(p.fighters));
+    });
+    lines.push("On your ship: " + fmt((S.ship || {}).fighters || 0));
+    if (!group && lines.length === 1) lines.unshift("No deployed fighters on this screen.");
+    overlay("Deployed Fighters", lines.map((line) => '<div class="row">' + line + "</div>").join(""));
+  }
+  function confirmWords(title, line) {
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = title;
+    m.innerHTML = '<div class="y">' + title + "</div><div>" + line + '</div><button type="button" id="dangerOk">CONFIRM</button><br><span class="dk">Esc to close</span>';
+    $("dangerOk").addEventListener("click", () => { m.hidden = true; setResult(line, true); });
+  }
+  function scanAsk() {
+    if (!legal("scan")) { setResult(plainReason((LA("scan") || {}).reason), true); return; }
+    const tiers = ((((LA("scan") || {}).params || {}).tier || {}).choices) || [];
+    if (tiers.length <= 1) return act("scan", tiers[0] ? { tier: tiers[0] } : {}, "scan");
+    openForm("scan");
+  }
   function key(k) {
     const m = $("menu");
     if (k === "Escape") {
@@ -791,17 +1013,21 @@
     }
     if (k === "Enter") { if (plotted) engage(); return; }
     if (inComputer) {
-      inComputer = false; m.hidden = true;
+      inComputer = false;
       const c = CKEYS.find((x) => x[0] === k);
-      if (!c) return;
-      if (k === "F") { askSector((n) => go(n)); return; }
+      if (!c) { m.hidden = true; setResult("That is not a computer command.", true); return; }
+      if (k === "Q") { m.hidden = true; return; }
+      if (k === "F") { m.hidden = true; askSector((n) => go(n)); return; }
+      if (k === "R") return portReport();
+      if (k === "K") return knownUniverse();
+      m.hidden = true;
       if (c[2]) return openForm(c[2]);
       return;
     }
     if (k === "?" || k === "C") {
       m.hidden = false;
       inComputer = k === "C";
-      const list = k === "C" ? CKEYS : KEYS;
+      const list = k === "C" ? CKEYS : MENU_KEYS;
       m.innerHTML = '<div class="y">' + (k === "C" ? "Computer command" : "Main menu") + "</div>" +
         list.map(([kk, l]) => '<div class="row"><kbd>&lt;' + kk + "&gt;</kbd> <span class=\"c\">" + l + "</span></div>").join("") +
         '<br><span class="dk">Esc to close</span>';
@@ -811,6 +1037,11 @@
     if (landedPlanet() && SPACE_OFF.includes(k)) { setResult("Lift off first", true); return; }
     if (k === "D") { render(); return; }
     if (k === "I") { shipInfo(); return; }
+    if (k === "V") return gameStatus();
+    if (k === "G") return showFighters();
+    if (k === "B") return confirmWords("Self Destruct", "Self-destruct is not in this game. Your ship stays.");
+    if (k === "J") return confirmWords("Jettison Cargo", "Jettison is not in this game. Sell the cargo, or leave it on a planet.");
+    if (k === "Q") return confirmWords("Quit", "Quit is not in this game. You are still in the cockpit.");
     const hit = KEYS.find((x) => x[0] === k);
     if (!hit) return;
     if (hit[2] && !legal(hit[2])) {
@@ -836,7 +1067,7 @@
       return;
     }
     if (k === ".") return act("wait", {}, "wait one turn");
-    if (k === "S") return act("scan", {}, "long range scan");
+    if (k === "S") return scanAsk();
     if (hit[2]) return openForm(hit[2]);
   }
 
@@ -863,17 +1094,41 @@
     const creditsBefore = S ? S.credits : 0;
     const turnsBefore = S ? S.turns_remaining : 0;
     try {
+      const before = state.eventsSince;
       await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
       state.awaiting = false;
       await refresh();
       const spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
       const delta = (S ? S.credits : creditsBefore) - creditsBefore;
-      const said = shownSentence(newestSummary());
-      const body = (said || label || kind).replace(/[.\s]+$/, "");
-      setResult("ok — " + body + ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".", false);
+      const tail = ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".";
+      if (kind === "wait") { setResult("You wait" + tail, false); $("err").hidden = true; return; }
+      const ev = latestAfter(before - 1);
+      const raw = ev && ev.summary ? String(ev.summary) : "";
+      const counter = /counter (\d+)/i.exec(raw);
+      if (kind === "trade" && counter) {
+        setResult("The port counters at " + fmt(counter[1]) + " cr. Enter that price, or try another." + tail, true);
+        openForm("trade", { unit_price: counter[1] });
+        $("err").hidden = true;
+        return;
+      }
+      const bad = /invalid action|trade failed|lost patience|refused|cannot |not enough|insufficient/i.test(raw);
+      const special = creditLine(kind, args, raw);
+      let body = (special || plainWords(raw) || label || kind).replace(/[.\s]+$/, "");
+      if (kind === "scan" && args && args.tier === "holo") {
+        const ids = new Set(((S.sector || {}).warps_out || []).map(Number));
+        const bits = (S.known_ports || []).filter((row) => ids.has(Number(row.sector_id))).map((row) => {
+          const part = Object.entries(row.stock || {}).map(([name, item]) => (COM[name] || [name])[0] + " " + fmt(item.price)).join(", ");
+          return "sector " + row.sector_id + (part ? " " + part : "");
+        });
+        if (bits.length) body = body + ". " + bits.join("; ");
+      }
+      if (bad) {
+        setResult((/trade failed|lost patience/i.test(raw) ? "FAILED" : "REFUSED") + " — " + body + tail, true);
+        if (kind === "trade") openForm("trade");
+      } else setResult("ok — " + body + tail, false);
       $("err").hidden = true;
     } catch (e) {
-      setResult("refused: " + plainReason(e.message || e) + ". Turns spent 0.", true);
+      setResult("REFUSED — " + plainWords(e.message || e) + ". Turns spent 0.", true);
       $("err").hidden = false;
       $("err").textContent = String(e.message || e);
     } finally {

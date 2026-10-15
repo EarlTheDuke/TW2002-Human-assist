@@ -66,7 +66,7 @@ def test_screens_and_a_wait(tmp_path: Path, monkeypatch) -> None:
             page.wait_for_selector("[data-testid=action-wait]:not([disabled])", timeout=20_000)
             page.get_by_test_id("action-wait").click()
             page.wait_for_function(
-                "() => (document.querySelector('#lastResult').textContent || '').includes('ok')",
+                "() => (document.querySelector('#lastResult').textContent || '').includes('You wait')",
                 timeout=20_000,
             )
             page.close()

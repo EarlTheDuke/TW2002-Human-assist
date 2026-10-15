@@ -50,6 +50,7 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #menu{position:fixed;inset:12% 25%;z-index:9;background:#000;border:2px double var(--c);padding:14px 20px;box-shadow:0 0 0 4px #0000aa}
 #menu .row{padding:2px 0}#menu .row kbd{color:var(--y);font:inherit}
 #menu input{background:#000;color:var(--y);border:1px solid var(--c);font:inherit;padding:4px 8px}
+@media (max-width:1366px) and (min-width:701px){#cmdline{flex-wrap:nowrap;gap:2px 8px;padding:4px 8px}.title-frame{font-size:9px;line-height:1.05;padding:0 4px}.stat b{font-size:14px}.stat i{font-size:9px;margin-right:3px}.prompt{font-size:12px}}
 @media (max-width:1100px){#deck{grid-template-columns:1fr 1fr;grid-template-areas:"view nav" "ship here" "term term"}}
 @media (max-width:700px){body{font-size:12px;overflow:hidden;height:100vh}.hide-s{display:none}
  .title-frame{font-size:9px;line-height:1.02;padding:0 3px}
