@@ -381,3 +381,24 @@ def test_small_lines_name_the_command_and_the_probe(world):
     assert "Press warp to" in text
     _shoot(page, "waiting", "#lastResult")
     page.evaluate("() => window.__tw2kTest.setAwaiting(true)")
+
+
+def test_stardock_names_the_remaining_gear(world):
+    page = world["page"]
+    universe = world["universe"]
+    me = universe.players["P2"]
+
+    def dock():
+        _sit(universe, "P2", 1)
+        me.credits = 5_000_000
+        me.ship.scanner = None
+        me.ship.genesis = 0
+
+    _next(page, dock)
+    page.locator("#here button", has_text="StarDock: buy gear").click()
+    page.wait_for_selector(".frm", timeout=10_000)
+    options = page.locator(".frm option").evaluate_all("els => els.map(el => el.textContent)")
+    for name in ("Genesis Torpedo", "Cloaking Device", "Density Scanner", "Holographic Scanner"):
+        assert name in options
+    _shoot(page, "gear", ".frm")
+    page.keyboard.press("Escape")

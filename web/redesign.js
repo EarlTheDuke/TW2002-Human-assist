@@ -303,7 +303,10 @@
       marker_beacon: "Marker Beacon", psychic_probe: "Psychic Probe", atomic_detonator: "Atomic Detonator",
       atomic_mines: "Atomic Mines", corbomite: "Corbomite",
       photon_missiles: "Photon Missiles", ether_probes: "Ether Probes", genesis_torpedoes: "Genesis Torpedoes",
-      cloaking_device: "Cloaking Device", fighters: "Fighters", shields: "Shields", holds: "Holds",
+      genesis: "Genesis Torpedo", cloak: "Cloaking Device", cloaking_device: "Cloaking Device",
+      density_scanner: "Density Scanner", holo_scanner: "Holographic Scanner",
+      density: "Density Scanner", holo: "Holographic Scanner",
+      fighters: "Fighters", shields: "Shields", holds: "Holds",
     };
     return names[key] || String(key || "").replaceAll("_", " ");
   }
@@ -658,7 +661,7 @@
       ["detonator", "Atomic detonator", Number(sh.atomic_detonators || 0)],
     ];
     carried.forEach(([key, label, n]) => { if (n) $("shipStats").insertAdjacentHTML("beforeend", countRow(key, label, n)); });
-    if (sh.scanner) $("shipStats").insertAdjacentHTML("beforeend", '<div class="bar" data-gear="scanner"><span>Scanner</span><span class="w">' + esc(String(sh.scanner).replaceAll("_", " ")) + "</span></div>");
+    if (sh.scanner) $("shipStats").insertAdjacentHTML("beforeend", '<div class="bar" data-gear="scanner"><span>Scanner</span><span class="w">' + esc(gearName(sh.scanner)) + "</span></div>");
     const paid = sh.cargo_cost_avg || {};
     $("holds").innerHTML = Object.entries(COM).map(([k, row]) => {
       const avg = paid[k];
@@ -1711,7 +1714,7 @@
     const hop = (LA("warp") || {}).turn_cost || (((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || "";
     const mines = sh.mines || {};
     const gear = [
-      ["Scanner", sh.scanner || "none"],
+      ["Scanner", sh.scanner ? gearName(sh.scanner) : "none"],
       ["Genesis", fmt(sh.genesis || 0)],
       ["Ether probes", fmt(sh.ether_probes || 0)],
       ["Photons", fmt(sh.photon_missiles || 0)],
