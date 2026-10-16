@@ -264,7 +264,8 @@ def test_photon_refusal_is_plain(seats) -> None:
     dock.wait_for_function("() => /photon/i.test(document.querySelector('#lastResult').textContent || '')", timeout=10_000)
     text = dock.locator("#lastResult").inner_text()
     assert "buy gear" not in text.lower()
-    assert "No photon missiles" in text
+    assert "cannot carry photon missiles" in text
+    assert "Missile Frigate" in text and "Imperial StarShip" in text
 
 
 def test_bank_screen_at_each_width(seats) -> None:
