@@ -78,7 +78,7 @@ def page(tmp_path_factory):
 def test_carried_gear_shows_on_the_ship_and_zeros_on_ship_info(page) -> None:
     page.locator("#shipStats").scroll_into_view_if_needed()
     stats = page.locator("#shipStats").inner_text()
-    for label in ("Atomic mines", "Ether probes", "Genesis", "Photons", "Corbomite", "Beacons", "Psychic probe", "holo"):
+    for label in ("Atomic mines", "Ether probes", "Genesis", "Photons", "Corbomite", "Beacons", "Psychic probe", "Holographic Scanner"):
         assert label in stats
     assert page.locator("[data-gear=detonator]").count() == 0
     _shoot(page, "gear", "#shipStats")
