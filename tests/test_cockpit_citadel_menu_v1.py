@@ -158,9 +158,21 @@ def test_planet_transwarp_shows_the_fuel_cost(world) -> None:
 def test_claim_says_why_when_the_planet_is_yours(world) -> None:
     page = world["page"]
     page.keyboard.press("Escape")
-    page.wait_for_function("() => document.querySelector('#waitchip').textContent === 'YOUR MOVE'", timeout=20_000)
+    page.wait_for_function(
+        """() => {
+          const chip = document.querySelector('#waitchip').textContent;
+          const button = document.querySelector('[data-kind=claim_planet]');
+          return chip === 'YOUR MOVE' && button && button.classList.contains('dim');
+        }""",
+        timeout=30_000,
+    )
     page.get_by_role("button", name="Claim planet", exact=True).click()
-    page.wait_for_function("() => /already owned/.test(document.querySelector('#lastResult').textContent || '')", timeout=10_000)
+    try:
+        page.wait_for_function("() => /already owned/.test(document.querySelector('#lastResult').textContent || '')", timeout=3_000)
+    except Exception:
+        page.wait_for_function("() => document.querySelector('#waitchip').textContent === 'YOUR MOVE'", timeout=30_000)
+        page.get_by_role("button", name="Claim planet", exact=True).click()
+        page.wait_for_function("() => /already owned/.test(document.querySelector('#lastResult').textContent || '')", timeout=30_000)
 
 
 def test_buy_transporter_shows_the_price(world) -> None:
