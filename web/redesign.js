@@ -71,7 +71,13 @@
     const text = await r.text();
     let data = {};
     try { data = text ? JSON.parse(text) : {}; } catch (e) { data = {}; }
-    if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : (data.message || text.slice(0, 180) || String(r.status)));
+    if (!r.ok) {
+      const raw = typeof data.detail === "string" ? data.detail : (data.message || text.slice(0, 180) || String(r.status));
+      if (Array.isArray(data.detail) || /validation error|input should be/i.test(String(raw))) {
+        throw new Error("That command was not accepted.");
+      }
+      throw new Error(raw);
+    }
     return data;
   }
   const LA = (k) => ((S && S.legal_actions) || []).find((a) => a.kind === k);
@@ -88,23 +94,39 @@
     const hopCost = Number((((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || (LA("warp") || {}).turn_cost || 0);
     return "plotted course " + full.join(" > ") + ", " + hops + " hops" + (hopCost ? ", " + (hops * hopCost) + " turns" : "");
   }
+  function dropSeat(text) {
+    const name = S && S.self_name;
+    if (!name) return text;
+    const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return String(text).replace(new RegExp("\\b" + escaped + "\\s+", "gi"), "");
+  }
   function shownSentence(text) {
     let s = String(text || "");
     if (/plotted course/i.test(s)) {
       const nice = courseSentence();
       if (nice) s = s.replace(/plotted course[\s\S]*$/i, nice);
     }
+    const nouns = { beacon: "beacons", fighter: "fighters", shield: "shields", probe: "probes", hold: "holds", mine: "mines", torpedo: "torpedoes", missile: "missiles" };
+    s = s.replace(/\b(\d+)\s+((?:[A-Za-z]+\s+)?)(beacon|fighter|shield|probe|hold|mine|torpedo|missile)\b/gi, (m, n, mid, word) => {
+      if (Number(n) === 1) return m;
+      return n + " " + mid + nouns[word.toLowerCase()];
+    });
+    s = s.replace(/(\d{4,})\s*cr\b/gi, (m, n) => Number(n).toLocaleString("en-US") + " cr");
     s = s.replace(/(\d+)cr\b/gi, (m, n) => Number(n).toLocaleString("en-US") + " cr");
     return s.replace(/\.\.+/g, ".").trim();
   }
   function plainWords(text) {
-    let s = String(text || "").replace(/^\[[^\]]+\]\s*/, "");
+    let s = dropSeat(String(text || "").replace(/^\[[^\]]+\]\s*/, ""));
     s = s.replace(/pool=fuel_ore/g, "fuel ore").replace(/pool=organics/g, "organics").replace(/pool=equipment/g, "equipment");
     s = s.replace(/buy_equip/g, "buy gear").replace(/_/g, " ");
     s = s.replace(/no photon missiles loaded \(buy gear photon missiles at StarDock\)/gi, "No photon missiles on board. Buy them at StarDock.");
     s = s.replace(/no long range scanner \(buy gear density scanner or holo scanner at StarDock\)/gi, "Buy a density scanner or a holo scanner at StarDock.");
+    s = s.replace(/no genesis torpedoes loaded \(buy gear genesis at StarDock\)/gi, "No Genesis torpedoes on board. Buy them at StarDock.");
+    s = s.replace(/quantity must be positive/gi, "Type how many.");
     s = s.replace(/insufficient credits \((\d+) < (\d+)\)/gi, (m, have, need) => "not enough credits: you need " + fmt(need) + " cr, you have " + fmt(have) + " cr");
     s = s.replace(/\binvalid action:\s*/gi, "").replace(/\btrade failed:\s*/gi, "");
+    s = dropSeat(s);
+    if (/validation error|input should be/i.test(s)) return "That command was not accepted.";
     return shownSentence(s);
   }
   function creditLine(kind, args, text) {
@@ -560,18 +582,20 @@
         box.appendChild(button("<kbd>" + k + "</kbd>" + label, () => planetAct(k)));
       });
     }
-    if (s.port && !landed) {
+    const stockRows = (s.port && s.port.stock) || {};
+    if (s.port && !landed && Object.keys(stockRows).length) {
       const table = document.createElement("table");
       table.className = "porttbl";
       table.innerHTML = "<tr><th>Items</th><th>Status</th><th>Trading</th><th>Price</th><th>OnBoard</th><th></th></tr>";
-      Object.entries(s.port.stock || {}).forEach(([k, v]) => {
+      Object.entries(stockRows).forEach(([k, v]) => {
         const meta = COM[k] || [k, "#fff"];
         const side = v.side === "buys_from_player" ? "sell" : "buy";
         const mx = maxBy("trade", k, side);
         const room = Math.max(0, Number(v.max || 0) - Number(v.current || 0));
+        const trading = side === "sell" ? room : Number(v.current || 0);
         const status = side === "sell" ? "Buying, room " + fmt(room) : "Selling " + fmt(v.current) + "/" + fmt(v.max);
         const tr = document.createElement("tr");
-        tr.innerHTML = "<td style=\"color:" + meta[1] + "\">" + esc(meta[0]) + "</td><td>" + status + "</td><td class=\"c\">" + fmt(v.current) + "</td><td class=\"y\">" + (v.price ?? "") + "</td><td class=\"w\">" + (sh.cargo[k] || 0) + "</td><td></td>";
+        tr.innerHTML = "<td style=\"color:" + meta[1] + "\">" + esc(meta[0]) + "</td><td>" + status + "</td><td class=\"c\">" + fmt(trading) + "</td><td class=\"y\">" + (v.price ?? "") + "</td><td class=\"w\">" + (sh.cargo[k] || 0) + "</td><td></td>";
         if (mx > 0 && legal("trade") && state.awaiting) {
           const b = document.createElement("button");
           b.type = "button";
@@ -580,7 +604,7 @@
           b.addEventListener("click", () => act("trade", { side, commodity: k, qty: mx }, side + " " + mx + " " + meta[0]));
           tr.lastChild.appendChild(b);
         } else {
-          const why = tradeWhy(k, v, sh, side);
+          const why = mx > 0 && legal("trade") && !state.awaiting ? "Waiting for your turn." : tradeWhy(k, v, sh, side);
           tr.lastChild.textContent = why;
           if (tr.children[3]) tr.children[3].classList.add("dim");
           tr.addEventListener("click", () => setResult(why, true));
@@ -600,9 +624,11 @@
     const slot = document.createElement("div");
     slot.id = "formSlot";
     box.appendChild(slot);
-    if (restore) openForm(restore, saved);
+    if (restore === "bank") bankForm(saved);
+    else if (restore) openForm(restore, saved);
   }
   function openForm(kind, saved) {
+    if (kind === "bank") { bankForm(saved); return; }
     const a = LA(kind) || { params: {} };
     if (!a.legal && !saved) { setResult(plainReason(a.reason || kind + " is not available"), true); openFormKind = null; return; }
     const slot = $("formSlot");
@@ -708,16 +734,36 @@
         }
         return null;
       };
+      const hint = document.createElement("div");
+      hint.className = "c";
+      hint.dataset.list = "price";
+      const paintHint = () => {
+        const side = sideEl && sideEl.value;
+        const com = comEl && comEl.value;
+        const list = (listed[com] || {})[side];
+        hint.textContent = list ? "list " + fmt(list) + " cr" : "";
+      };
       const fill = () => {
-        const found = pair();
-        if (!found || !priceEl || priceEl.value !== "") return;
-        if (sideEl) sideEl.value = found[0];
-        if (comEl) comEl.value = found[1];
-        priceEl.value = found[2];
+        if (priceEl && priceEl.value === "") {
+          const side = sideEl && sideEl.value;
+          const com = comEl && comEl.value;
+          const direct = (listed[com] || {})[side];
+          if (direct) priceEl.value = direct;
+          else {
+            const found = pair();
+            if (found) {
+              if (sideEl) sideEl.value = found[0];
+              if (comEl) comEl.value = found[1];
+              priceEl.value = found[2];
+            }
+          }
+        }
+        paintHint();
       };
       if (sideEl) sideEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); });
       if (comEl) comEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); });
-      if (!(saved && saved.unit_price)) fill();
+      fill();
+      wrap.appendChild(hint);
     }
     if (kind === "buy_equip") {
       const prices = ((a.params.item || {}).unit_price_by) || {};
@@ -741,11 +787,15 @@
       const again = slot.querySelector('[data-n="' + formFocus + '"]');
       if (again) again.focus();
     } else {
-      const first = fields.find((el) => el.type !== "checkbox");
-      if (first) first.focus();
+      const first = fields.find((el) => el.tagName === "INPUT" && (el.type === "number" || el.type === "text"))
+        || fields.find((el) => el.type !== "checkbox");
+      if (first) {
+        first.focus();
+        if (first.type === "number" || first.type === "text") first.select();
+      }
     }
   }
-  function bankForm() {
+  function bankForm(saved) {
     const dep = LA("bank_deposit") || { params: {}, legal: false, reason: "" };
     const wd = LA("bank_withdraw") || { params: {}, legal: false, reason: "" };
     const slot = $("formSlot");
@@ -769,7 +819,8 @@
       o.disabled = !ok;
       side.appendChild(o);
     });
-    if (dep.legal) side.value = "deposit";
+    if (saved && (saved.side === "deposit" || saved.side === "withdraw")) side.value = saved.side;
+    else if (dep.legal) side.value = "deposit";
     else if (wd.legal) side.value = "withdraw";
     const amount = document.createElement("input");
     amount.type = "number";
@@ -777,7 +828,8 @@
     amount.dataset.n = "amount";
     const fill = () => { amount.value = side.value === "withdraw" ? wdMax : depMax; };
     side.addEventListener("change", fill);
-    fill();
+    if (saved && saved.amount != null && saved.amount !== "") amount.value = saved.amount;
+    else fill();
     const sideLabel = document.createElement("label");
     sideLabel.appendChild(document.createTextNode("side "));
     sideLabel.appendChild(side);
@@ -804,7 +856,10 @@
       submit();
     });
     slot.appendChild(wrap);
-    amount.focus();
+    const focusName = (saved && formFocus) || "amount";
+    const again = wrap.querySelector('[data-n="' + focusName + '"]') || amount;
+    again.focus();
+    if (again.type === "number" || again.type === "text") again.select();
   }
   function formPreview(kind) {
     const planet = landedPlanet();
@@ -979,15 +1034,60 @@
     Object.entries(stats).forEach(([k, v]) => lines.push([k.replaceAll("_", " "), fmt(v)]));
     overlay("Game Status", lines.map(([k, v]) => '<div class="row"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join(""));
   }
+  function deployedHoldings() {
+    const rows = {};
+    const touch = (sector) => {
+      const id = Number(sector);
+      if (!id) return null;
+      if (!rows[id]) rows[id] = { fighters: 0, mode: "", mines: {} };
+      return rows[id];
+    };
+    const seen = new Set();
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || ev.actor_id !== S.self_id || seen.has(ev.seq)) return;
+      seen.add(ev.seq);
+      const row = touch(ev.sector_id);
+      if (!row) return;
+      const facts = ev.facts || {};
+      const qty = Number(facts.qty || 0);
+      if (ev.kind === "deploy_fighters") {
+        row.fighters += qty;
+        if (facts.mode) row.mode = facts.mode;
+      } else if (ev.kind === "deploy_mines") {
+        const kind = facts.kind || "mines";
+        row.mines[kind] = (row.mines[kind] || 0) + qty;
+      } else if (ev.kind === "recall_deployed") {
+        if (facts.what === "fighters") row.fighters -= qty;
+        else if (facts.kind) row.mines[facts.kind] = (row.mines[facts.kind] || 0) - qty;
+      }
+    });
+    const group = (S.sector || {}).fighter_group;
+    if (group && group.owner_id === S.self_id) {
+      const row = touch(S.sector.id);
+      if (row) {
+        row.fighters = Number(group.count || 0);
+        if (group.mode) row.mode = group.mode;
+      }
+    }
+    return rows;
+  }
   function showFighters() {
     const lines = [];
-    const group = (S.sector || {}).fighter_group;
-    if (group) lines.push("This sector: " + fmt(group.count) + " " + (group.mode || "") + (group.owner_id === S.self_id ? " (yours)" : ""));
+    const held = deployedHoldings();
+    Object.keys(held).map(Number).sort((a, b) => a - b).forEach((id) => {
+      const row = held[id];
+      const bits = [];
+      if (row.fighters > 0) bits.push(fmt(row.fighters) + " " + (row.mode || "") + " fighters");
+      Object.entries(row.mines).forEach(([kind, n]) => {
+        if (n > 0) bits.push(fmt(n) + " " + String(kind).replaceAll("_", " ") + (n === 1 ? " mine" : " mines"));
+      });
+      if (bits.length) lines.push("Sector " + id + ": " + bits.join(", "));
+    });
+    if (!lines.length) lines.push("No deployed fighters.");
     (S.owned_planets || []).forEach((p) => {
       if (Number(p.fighters) > 0) lines.push(esc(p.name || "planet") + ": " + fmt(p.fighters));
     });
     lines.push("On your ship: " + fmt((S.ship || {}).fighters || 0));
-    if (!group && lines.length === 1) lines.unshift("No deployed fighters on this screen.");
     overlay("Deployed Fighters", lines.map((line) => '<div class="row">' + line + "</div>").join(""));
   }
   function confirmWords(title, line) {
@@ -1051,7 +1151,10 @@
         setResult(lines.join(" ") || plainReason((LA("trade") || {}).reason), true);
         return;
       }
-      setResult(hit[1] + ": " + plainReason((LA(hit[2]) || {}).reason), true);
+      const raw = (LA(hit[2]) || {}).reason || "";
+      const nice = plainWords(raw);
+      if (/No Genesis torpedoes|No photon missiles|Buy a density scanner|Type how many/.test(nice)) setResult(nice, true);
+      else setResult(hit[1] + ": " + plainReason(raw), true);
       return;
     }
     if (k === "M") {
@@ -1083,6 +1186,7 @@
     if (/Waiting for your turn/.test(el.textContent || "")) setResult("Your move. Press the command again.", false);
   }
   async function act(kind, args, label) {
+    if (kind === "bank") { setResult("That command was not accepted.", true); return; }
     if (state.busy || !state.awaiting) {
       pending = { kind, args, label };
       setResult("Waiting for your turn.", true);
@@ -1105,9 +1209,10 @@
       const ev = latestAfter(before - 1);
       const raw = ev && ev.summary ? String(ev.summary) : "";
       const counter = /counter (\d+)/i.exec(raw);
+      const retry = { side: (args || {}).side, commodity: (args || {}).commodity, qty: (args || {}).qty };
       if (kind === "trade" && counter) {
         setResult("The port counters at " + fmt(counter[1]) + " cr. Enter that price, or try another." + tail, true);
-        openForm("trade", { unit_price: counter[1] });
+        openForm("trade", Object.assign({}, retry, { unit_price: counter[1] }));
         $("err").hidden = true;
         return;
       }
@@ -1124,7 +1229,7 @@
       }
       if (bad) {
         setResult((/trade failed|lost patience/i.test(raw) ? "FAILED" : "REFUSED") + " — " + body + tail, true);
-        if (kind === "trade") openForm("trade");
+        if (kind === "trade") openForm("trade", retry);
       } else setResult("ok — " + body + tail, false);
       $("err").hidden = true;
     } catch (e) {
@@ -1219,6 +1324,7 @@
     if (ev.key === ".") { ev.preventDefault(); key("."); return; }
     if (ev.key.length === 1) { ev.preventDefault(); key(ev.key.toUpperCase()); }
   });
+  window.__tw2kTest = { setAwaiting(flag) { state.awaiting = !!flag; render(); } };
   if (state.token) connect();
   setInterval(() => { if (state.connected && !state.busy) refresh().catch((e) => { $("err").hidden = false; $("err").textContent = String(e.message || e); }); }, 2000);
 })();
