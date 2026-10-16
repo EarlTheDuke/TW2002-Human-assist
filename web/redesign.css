@@ -1,6 +1,7 @@
 @font-face{font-family:dos;src:local("Px437 IBM VGA8"),local("Consolas")}
 :root{--k:#000;--b:#0000aa;--g:#55ff55;--dg:#00aa00;--c:#55ffff;--dc:#00aaaa;--r:#ff5555;--dr:#aa0000;--m:#ff55ff;--dm:#aa00aa;--y:#ffff55;--br:#aa5500;--w:#ffffff;--gr:#aaaaaa;--dk:#555555}
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 html,body{margin:0;height:100%;background:#000;color:var(--gr);font:15px/1.35 "Px437 IBM VGA8","Consolas","Lucida Console",monospace}
 body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .ansi .g,.g{color:var(--g)}.c{color:var(--c)}.y{color:var(--y)}.m{color:var(--m)}.r{color:var(--r)}.w{color:var(--w)}.dg{color:var(--dg)}.dc{color:var(--dc)}.dm{color:var(--dm)}.br{color:var(--br)}.dim{color:var(--dk);font-size:12px}
