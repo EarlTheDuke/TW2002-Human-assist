@@ -181,8 +181,19 @@
     return best;
   }
   function plainEvent(ev) {
+    const facts = (ev && ev.facts) || {};
+    if (ev && ev.kind === "combat" && facts.vs === "planet" && facts.planet_fighters_lost != null) return siegeSentence(facts);
     const text = ev && (ev.summary || ev.kind) || "";
-    return shownSentence(String(text).replace(/_/g, " "), ev);
+    const shown = shownSentence(String(text).replace(/_/g, " "), ev);
+    if (/planetary defenses repelled landing/i.test(shown)) {
+      let combat = null;
+      streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+        const rowFacts = (row && row.facts) || {};
+        if (row && row.kind === "combat" && rowFacts.vs === "planet" && rowFacts.planet_fighters_lost != null) combat = row;
+      });
+      if (combat) return siegeSentence(combat.facts);
+    }
+    return shown;
   }
   function paintLog() {
     const rows = [];
@@ -359,10 +370,28 @@
     const garrison = known ? "Fighters " + fmt(p.fighters || 0) + ", shields " + fmt(p.shields || 0) + "." : "Fighters and shields are not on this scan.";
     if (!p.owner_id || p.owner_id === S.self_id) return "Your planet. " + garrison;
     const holds = traderName(p.owner_id) + " holds this planet. " + garrison;
-    if (Number(p.citadel_level || 0) >= 2 || known) return holds + " This planet has a Combat Control computer: its fighters and shields will fight your landing.";
+    if (Number(p.citadel_level || 0) >= 2) return holds + " This planet has a Combat Control computer: its fighters and shields will fight your landing.";
+    if (known) return holds + " Its fighters will fight your landing.";
     return holds + " Landing claims it when those fighters are not defending. A defended planet is fought first only when that switch is on.";
   }
+  function siegeSentence(facts) {
+    const after = Number(facts.defender_s || 0);
+    const before = after + Number(facts.planet_shields_lost || 0);
+    const remain = facts.attacker_f != null ? Number(facts.attacker_f) : Number(((S && S.ship) || {}).fighters || 0);
+    let line = "Landing repelled: ";
+    if (before > 0) line += "planet shields " + fmt(before) + " -> " + fmt(after) + ", ";
+    line += "reaction and defending fighters killed " + fmt(facts.planet_fighters_lost || 0) + "; you lost " + fmt(facts.attacker_losses || 0) + " fighters, " + fmt(remain) + " remain";
+    return line;
+  }
+  function fighterChallengeOpen() {
+    const sector = (S && S.sector) || {};
+    const challenge = S && S.fighter_challenge;
+    if (challenge && (challenge.sector_id == null || Number(challenge.sector_id) === Number(sector.id))) return true;
+    const group = sector.fighter_group;
+    return !!(group && group.owner_id && group.owner_id !== S.self_id && Number(group.count || 0) > 0);
+  }
   function challengeLine() {
+    if (!fighterChallengeOpen()) return "";
     const opts = [];
     if (legal("attack")) opts.push("attack");
     if (legal("retreat")) opts.push("retreat");
@@ -788,7 +817,7 @@
       body += '<div data-reaction="pct">Military reaction ' + fmt(landed.military_reaction_pct || 0) + "%</div>";
       if (landed.treasury != null) body += '<div data-treasury="balance">Treasury ' + fmt(landed.treasury) + " cr</div>";
       const planetFuel = Number((landed.stockpile || {}).fuel_ore || 0);
-      body += '<div data-range="transporter">' + (landed.has_transporter ? "Planet fuel " + fmt(planetFuel) + " ore. Transporter range " + fmt(Math.floor(planetFuel / 10)) + " sectors at 10 ore each." : "No transporter (buy one).") + "</div>";
+      body += '<div data-range="transporter">Planet fuel ' + fmt(planetFuel) + " ore. " + (landed.has_transporter ? "Transporter range " + fmt(Math.floor(planetFuel / 10)) + " sectors at 10 ore each." : "No transporter (buy one).") + "</div>";
       card.innerHTML = body;
       box.appendChild(card);
       box.appendChild(button("<kbd>Q</kbd>Lift off", () => act("liftoff", {}, "lift off")));
@@ -961,6 +990,13 @@
           }
           input.appendChild(o);
         });
+        if (kind === "deposit_planet_defense" && name === "kind" && Number((landedPlanet() || {}).citadel_level || 0) < 5 && !Array.from(input.options).some((o) => o.value === "shields")) {
+          const missing = document.createElement("option");
+          missing.value = "shields";
+          missing.disabled = true;
+          missing.textContent = "shields (needs a Level 5 citadel)";
+          input.appendChild(missing);
+        }
       } else if (spec.type === "bool") {
         input = document.createElement("input");
         input.type = "checkbox";
@@ -2841,7 +2877,8 @@
           bits.push(lost || ("Fighters " + fmt(((S && S.ship) || {}).fighters || 0) + " remain"));
         }
         if (avoid) bits.push(avoid);
-        const challenge = challengeLine();
+        const ferrengiChoices = /ferrengi/i.test(body) && /flee, attack or surrender/i.test(body);
+        const challenge = ferrengiChoices ? "" : challengeLine();
         if (challenge) bits.push(challenge);
         body = bits.filter(Boolean).join(". ");
       }
@@ -2851,8 +2888,29 @@
         streamLog.concat((S && S.recent_events) || []).forEach((row) => {
           if (row && row.kind === "combat" && (row.seq || 0) > before - 1) combat = row;
         });
-        const facts = (combat && combat.facts) || {};
-        if (facts.attacker_losses != null) {
+        let mine = null;
+        let back = null;
+        streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+          if (!row || row.kind !== "combat" || (row.seq || 0) <= before - 1) return;
+          const facts = row.facts || {};
+          if (facts.attacker === S.self_id || row.actor_id === S.self_id) mine = row;
+          if (facts.defender === S.self_id && facts.exchange_kind === "ferrengi_vs_ship") back = row;
+        });
+        const facts = (mine && mine.facts) || (combat && combat.facts) || {};
+        if (back && mine) {
+          const lost = Number((mine.facts || {}).attacker_losses || 0);
+          const sent = (mine.facts || {}).sent != null ? Number(mine.facts.sent) : lost;
+          const backFacts = back.facts || {};
+          let who = ((((S && S.sector) || {}).ferrengi || []).find((ship) => ship.id === backFacts.attacker) || {}).name;
+          if (!who) {
+            const named = streamLog.concat((S && S.recent_events) || []).find((row) => {
+              return row && (row.seq || 0) > before - 1 && /Ferrengi .+ attacks/i.test(row.summary || "");
+            });
+            const match = named && /Ferrengi (.+?) attacks/i.exec(named.summary || "");
+            who = match && match[1];
+          }
+          body = body + ". You sent " + fmt(sent) + " and lost " + fmt(lost) + " fighter" + (lost === 1 ? "" : "s") + ". " + (who || "The Ferrengi") + " struck back: you lost " + fmt(backFacts.defender_losses || 0) + " fighters and " + fmt(backFacts.shield_losses || 0) + " shields";
+        } else if (facts.attacker_losses != null) {
           const lost = Number(facts.attacker_losses);
           const remain = Number(((S && S.ship) || {}).fighters || 0);
           body = body + ". You lost " + fmt(lost) + " fighter" + (lost === 1 ? "" : "s") + ", " + fmt(remain) + " remain";
@@ -2865,13 +2923,7 @@
           if (row && row.kind === "combat" && facts.vs === "planet" && (row.seq || 0) > before - 1) combat = row;
         });
         const facts = (combat && combat.facts) || {};
-        if (facts.planet_fighters_lost != null && /repelled/i.test(raw)) {
-          const after = Number(facts.defender_s || 0);
-          const lostS = Number(facts.planet_shields_lost || 0);
-          const lostA = Number(facts.attacker_losses || 0);
-          const remain = facts.attacker_f != null ? Number(facts.attacker_f) : Number(((S && S.ship) || {}).fighters || 0);
-          body = "Landing repelled: planet shields " + fmt(after + lostS) + " -> " + fmt(after) + ", reaction and defending fighters killed " + fmt(facts.planet_fighters_lost) + "; you lost " + fmt(lostA) + " fighters, " + fmt(remain) + " remain";
-        }
+        if (facts.planet_fighters_lost != null && /repelled/i.test(raw)) body = siegeSentence(facts);
       }
       if (kind === "set_military_reaction" && args && args.pct != null) body = body + " to " + fmt(args.pct) + "%";
       if (!dayNote && bad) {

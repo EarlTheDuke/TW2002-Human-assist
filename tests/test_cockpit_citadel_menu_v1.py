@@ -91,7 +91,9 @@ def test_planet_card_shows_quasar_treasury_and_range(world) -> None:
     card = page.locator(".planet").inner_text()
     assert "Quasar sector 10%" in card and "atmosphere 20%" in card
     assert "Treasury" in page.locator("[data-treasury=balance]").inner_text()
-    assert "500" in page.locator("[data-range=transporter]").inner_text()
+    range_line = page.locator("[data-range=transporter]").inner_text()
+    assert "Planet fuel 5,000 ore" in range_line
+    assert "No transporter (buy one)." in range_line
     _shoot(page, "planet")
     _shoot(page, "commands", "[data-kind=planet_transwarp]")
 
