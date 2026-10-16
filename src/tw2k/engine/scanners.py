@@ -78,7 +78,12 @@ def visible_mines(universe: Universe, viewer_id: str, sector) -> list[dict[str, 
                 label = "corporate"
             else:
                 label = "personal"
-        out.append({"owner": label if K.corp_rules_on() else m.owner_id, "kind": m.kind.value, "count": int(m.count)})
+        out.append({
+            "owner": label if K.corp_rules_on() else m.owner_id,
+            "owner_id": m.owner_id,
+            "kind": m.kind.value,
+            "count": int(m.count),
+        })
     return out
 
 
