@@ -291,6 +291,26 @@
   function noTurnsLine() {
     return "No turns left today. Day " + (Number(S.day) + 1) + " starts when the other traders finish.";
   }
+  function hullPhrase(raw) {
+    const key = String(raw || "");
+    const name = (SHIPS[key] && SHIPS[key].name) || key.replaceAll("_", " ");
+    if (!name) return "";
+    return (/^[aeiou]/i.test(name) ? "an " : "a ") + name;
+  }
+  function gearName(key) {
+    const names = {
+      armid_mines: "Armid Mines", limpet_mines: "Limpet Mines", mine_disruptor: "Mine Disruptor",
+      marker_beacon: "Marker Beacon", psychic_probe: "Psychic Probe", atomic_detonator: "Atomic Detonator",
+      atomic_mines: "Atomic Mines", corbomite: "Corbomite",
+      photon_missiles: "Photon Missiles", ether_probes: "Ether Probes", genesis_torpedoes: "Genesis Torpedoes",
+      cloaking_device: "Cloaking Device", fighters: "Fighters", shields: "Shields", holds: "Holds",
+    };
+    return names[key] || String(key || "").replaceAll("_", " ");
+  }
+  let seenDay = null;
+  let taxFresh = true;
+  let taxSeenSeq = -1;
+  let dayNote = false;
   function shipsHere() {
     const s = (S && S.sector) || {};
     const rows = [];
@@ -310,7 +330,13 @@
     const ship = shipsHere().find((row) => String(row.id) === String(id));
     if (ship) return ship.name + ", " + ship.owner + (ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters");
     const roster = ((S && S.other_players) || []).find((row) => row.id === id);
-    if (roster) return (roster.name || id) + (roster.fighters != null ? ", " + fmt(roster.fighters) + " fighters" : "");
+    if (roster) {
+      const bits = [roster.name || id];
+      if (roster.ship_class) bits.push(hullPhrase(roster.ship_class));
+      if (roster.fighters != null) bits.push(fmt(roster.fighters) + " fighters");
+      if (roster.shields != null) bits.push(fmt(roster.shields) + " shields");
+      return bits.join(", ");
+    }
     return String(id).replaceAll("_", " ");
   }
   function overnightTax() {
@@ -323,6 +349,11 @@
     if (!best) return "";
     const facts = best.facts || {};
     if (facts.tax == null) return "";
+    if ((best.seq || 0) !== taxSeenSeq) {
+      taxSeenSeq = best.seq || 0;
+      taxFresh = true;
+    }
+    if (!taxFresh) return "";
     return "Overnight Federation tax " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0) + ".";
   }
   function sectorText() {
@@ -341,8 +372,11 @@
       const roster = S.other_players || S.others || [];
       const knownTrader = roster.find((row) => row.id === id) || (typeof o === "object" ? o : null);
       const name = knownTrader && knownTrader.name ? knownTrader.name : id;
-      const hull = knownTrader && knownTrader.ship_class ? String(knownTrader.ship_class).replaceAll("_", " ") : "";
-      t += '<span class="g">Traders </span><span class="y">:</span> <span class="c">' + esc(name + (hull ? " in a " + hull : "")) + "</span>\n";
+      const hull = knownTrader && knownTrader.ship_class ? hullPhrase(knownTrader.ship_class) : "";
+      const strength = [];
+      if (knownTrader && knownTrader.fighters != null) strength.push(fmt(knownTrader.fighters) + " fighters");
+      if (knownTrader && knownTrader.shields != null) strength.push(fmt(knownTrader.shields) + " shields");
+      t += '<span class="g">Traders </span><span class="y">:</span> <span class="c">' + esc(name + (hull ? " in " + hull : "") + (strength.length ? " (" + strength.join(", ") + ")" : "")) + "</span>\n";
     });
     if (s.fighter_group) {
       const yours = s.fighter_group.owner_id === S.self_id ? " yours" : "";
@@ -532,9 +566,16 @@
       const way = oneWay(w);
       b.textContent = (i + 1) + ":" + w + (cost ? " (" + cost + "t)" : "") + (way ? " one-way" : "");
       if (way) b.className = "oneway";
+      const turnsLeft = Number((S && S.turns_remaining) || 0);
+      const hop = Number(cost || 0);
+      if (hop > turnsLeft) b.classList.add("dim");
       b.disabled = state.busy;
       b.addEventListener("click", () => {
         if (S.planet_landed != null) { setResult("Lift off first", true); return; }
+        if (hop > Number((S && S.turns_remaining) || 0)) {
+          setResult("Move: out of turns (" + (S.turns_remaining || 0) + " left, needs " + hop + ")", true);
+          return;
+        }
         if (!legal("warp")) { setResult("Move: " + plainReason((LA("warp") || {}).reason), true); return; }
         act("warp", { target: w }, "warp to " + w);
       });
@@ -547,6 +588,7 @@
       eng.type = "button";
       eng.className = "eng";
       eng.textContent = "ENGAGE  " + hops + " hops, " + (hops * hopCost) + " turns";
+      if (hopCost > Number((S && S.turns_remaining) || 0)) eng.classList.add("dim");
       eng.addEventListener("click", engage);
       const cancel = document.createElement("button");
       cancel.type = "button";
@@ -572,6 +614,9 @@
   function engage() {
     if (!plotted) return;
     if (S && S.planet_landed != null) { setResult("Lift off first", true); return; }
+    const hopCost = Number((((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || 0);
+    const left = Number((S && S.turns_remaining) || 0);
+    if (hopCost > left) { setResult("REFUSED — first hop unaffordable (need " + hopCost + " turns, have " + left + ").", true); return; }
     act("plot_course", { target: plotted.target, execute: true }, "engage course to " + plotted.target);
   }
 
@@ -672,9 +717,9 @@
         : (((S.other_players || []).find((r) => r.id === landed.owner_id) || {}).name || (landed.owner_id || "unowned"));
       let body = '<div class="y">' + esc(landed.name || "planet") + "</div>";
       body += '<div>Class <span class="c">' + esc(landed.class || "?") + '</span>  Owner <span class="c">' + esc(owner) + "</span></div>";
-      body += '<div>Citadel <span class="c">' + (landed.citadel_level || 0) + "</span>";
-      if (landed.citadel_target) body += '  building toward <span class="y">' + landed.citadel_target + "</span>";
-      if (landed.citadel_complete_day) body += '  finishes day <span class="y">' + landed.citadel_complete_day + "</span>";
+      const building = landed.citadel_target && Number(landed.citadel_target) > Number(landed.citadel_level || 0);
+      body += '<div>Citadel <span class="c">' + (building ? "building toward " + landed.citadel_target : "level " + (landed.citadel_level || 0)) + "</span>";
+      if (building && landed.citadel_complete_day) body += '  ready day <span class="y">' + landed.citadel_complete_day + "</span>";
       body += '  Fighters <span class="c">' + fmt(landed.fighters || 0) + '</span>  Shields <span class="c">' + fmt(landed.shields || 0) + "</span></div>";
       ["fuel_ore", "organics", "equipment"].forEach((k) => {
         const meta = COM[k] || [k, "#fff"];
@@ -849,7 +894,8 @@
           const o = document.createElement("option");
           o.value = typeof choice === "object" ? (choice.id ?? "") : choice;
           o.textContent = kind === "attack" && name === "target" ? shipChoiceLabel(String(o.value))
-            : (kind === "ship_transport" && name === "ship_id" ? shipTransportLabel(o.value) : o.value);
+            : (kind === "buy_equip" && name === "item" ? gearName(o.value)
+            : (kind === "ship_transport" && name === "ship_id" ? shipTransportLabel(o.value) : o.value));
           input.appendChild(o);
         });
       } else if (spec.type === "bool") {
@@ -877,6 +923,7 @@
           input.max = String(cap);
           input.dataset.cap = String(cap);
           if (!(saved && saved[name] != null && saved[name] !== "")) input.value = String(cap);
+          label.childNodes[0].textContent = "fighters (0 to " + fmt(cap) + ") ";
         }
       }
       input.dataset.n = name;
@@ -905,6 +952,17 @@
       slot.innerHTML = "";
       act(kind, args, kind.replaceAll("_", " "));
     };
+    if (kind === "attack") {
+      const note = (((a.params || {}).target || {}).note) || "";
+      const feds = (((a.params || {}).target || {}).federals) || [];
+      if (note || feds.length) {
+        const warn = document.createElement("div");
+        warn.className = "r";
+        warn.dataset.fed = "warn";
+        warn.textContent = note || "Attacking a Federal ship pods you. The ship is indestructible.";
+        wrap.appendChild(warn);
+      }
+    }
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; formFocus = ""; slot.innerHTML = ""; }));
     wrap.addEventListener("keydown", (ev) => {
@@ -974,7 +1032,7 @@
         const key = item ? item.value : "";
         const price = prices[key];
         const mx = maxes[key];
-        note.textContent = String(key).replaceAll("_", " ") + ": " + fmt(price) + " cr each, up to " + fmt(mx);
+        note.textContent = gearName(key) + ": " + fmt(price) + " cr each, up to " + fmt(mx);
       };
       if (item) item.addEventListener("change", paint);
       paint();
@@ -2440,7 +2498,7 @@
     m.hidden = false;
     inComputer = false;
     m.dataset.screen = title;
-    m.innerHTML = '<div class="y">' + title + "</div><div>" + line + '</div><button type="button" id="dangerOk">CONFIRM</button><br><span class="dk">Esc to close</span>';
+    m.innerHTML = '<div class="y">' + title + "</div><div>" + line + '</div><button type="button" id="dangerOk">' + (onYes ? "CONFIRM" : "OK") + '</button><br><span class="dk">Esc to close</span>';
     $("dangerOk").addEventListener("click", () => { m.hidden = true; if (onYes) onYes(); else setResult(line, true); });
   }
   function askWait() {
@@ -2558,6 +2616,8 @@
     if (/Waiting for your turn/.test(el.textContent || "")) setResult("Your move. Press the command again.", false);
   }
   async function act(kind, args, label) {
+    taxFresh = false;
+    dayNote = false;
     if (kind === "bank") { setResult("That command was not accepted.", true); return; }
     if (kind !== "wait") waitStreak = 0;
     if (state.busy || !state.awaiting) {
@@ -2579,7 +2639,7 @@
       const spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
       const delta = (S ? S.credits : creditsBefore) - creditsBefore;
       const tail = ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".";
-      if (kind === "wait") { setResult("You wait" + tail, false); $("err").hidden = true; return; }
+      if (kind === "wait") { if (!dayNote) setResult("You wait" + tail, false); $("err").hidden = true; return; }
       const ev = latestAfter(before - 1);
       const raw = ev && ev.summary ? String(ev.summary) : "";
       const counter = /counter (\d+)/i.exec(raw);
@@ -2602,10 +2662,22 @@
         if (bits.length) body = body + ". " + bits.join("; ");
       }
       if (kind === "buy_ship" && args && args.trade_in === false) body = body + ". The new ship is in orbit. Press X to board it";
-      if (bad) {
+      if (kind === "attack") {
+        let combat = null;
+        streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+          if (row && row.kind === "combat" && (row.seq || 0) > before - 1) combat = row;
+        });
+        const facts = (combat && combat.facts) || {};
+        if (facts.attacker_losses != null) {
+          const lost = Number(facts.attacker_losses);
+          const remain = Number(((S && S.ship) || {}).fighters || 0);
+          body = body + ". You lost " + fmt(lost) + " fighter" + (lost === 1 ? "" : "s") + ", " + fmt(remain) + " remain";
+        }
+      }
+      if (!dayNote && bad) {
         setResult((/trade failed|lost patience/i.test(raw) ? "FAILED" : "REFUSED") + " — " + body + tail, true);
         if (kind === "trade") openForm("trade", retry);
-      } else setResult("ok — " + body + tail, false);
+      } else if (!dayNote) setResult("ok — " + body + tail, false);
       $("err").hidden = true;
     } catch (e) {
       setResult("REFUSED — " + plainWords(e.message || e) + ". Turns spent 0.", true);
@@ -2653,6 +2725,14 @@
     setResult("You were attacked by " + who + (lost == null ? "." : ". You lost " + lost + "."), true);
   }
   function render() {
+    const dayNow = Number(S.day);
+    if (seenDay != null && dayNow !== seenDay) {
+      taxFresh = true;
+      dayNote = true;
+      const tax = overnightTax();
+      setResult("Day " + dayNow + ". Turns refilled to " + fmt(S.turns_remaining) + "." + (tax ? " " + tax : ""), false);
+    }
+    seenDay = dayNow;
     const sec = S.sector || {};
     $("pSector").textContent = sec.id ?? "-";
     $("tl").textContent = fmt(S.turns_remaining);

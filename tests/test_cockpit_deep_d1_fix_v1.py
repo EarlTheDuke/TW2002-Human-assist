@@ -149,7 +149,7 @@ def test_citadel_card_shows_the_finish_day(seats) -> None:
     _quiet(port)
     port.keyboard.press("l")
     port.wait_for_function(
-        "(day) => new RegExp('finishes day ' + day).test(document.querySelector('#here').textContent || '')",
+        "(day) => new RegExp('ready day ' + day).test(document.querySelector('#here').textContent || '')",
         arg=seats["finish"], timeout=20_000,
     )
     _shoot(port, "citadel", ".planet")
