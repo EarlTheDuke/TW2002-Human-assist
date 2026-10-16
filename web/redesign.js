@@ -82,13 +82,14 @@
   }
   const LA = (k) => ((S && S.legal_actions) || []).find((a) => a.kind === k);
   const legal = (k) => !!(LA(k) || {}).legal;
-  function courseSentence() {
-    const facts = courseEvent && courseEvent.facts;
+  function courseSentence(ev) {
+    const facts = ev && ev.facts;
     const path = facts && Array.isArray(facts.path) ? facts.path.map(Number) : [];
     if (!path.length) return "";
-    const start = Number(courseEvent.sector_id);
-    const full = !start || path[0] === start ? path.slice() : [start].concat(path);
     const target = Number(facts.target);
+    const start = Number(ev.sector_id);
+    const origin = start && start !== target && path[0] !== start ? start : null;
+    const full = origin ? [origin].concat(path) : path.slice();
     if (target && full[full.length - 1] !== target) full.push(target);
     const hops = path.length;
     const hopCost = Number((((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || (LA("warp") || {}).turn_cost || 0);
@@ -100,10 +101,10 @@
     const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return String(text).replace(new RegExp("\\b" + escaped + "\\s+", "gi"), "");
   }
-  function shownSentence(text) {
+  function shownSentence(text, ev) {
     let s = String(text || "");
     if (/plotted course/i.test(s)) {
-      const nice = courseSentence();
+      const nice = courseSentence(ev || courseEvent);
       if (nice) s = s.replace(/plotted course[\s\S]*$/i, nice);
     }
     const nouns = { beacon: "beacons", fighter: "fighters", shield: "shields", probe: "probes", hold: "holds", mine: "mines", torpedo: "torpedoes", missile: "missiles" };
@@ -119,7 +120,12 @@
     let s = dropSeat(String(text || "").replace(/^\[[^\]]+\]\s*/, ""));
     s = s.replace(/pool=fuel_ore/g, "fuel ore").replace(/pool=organics/g, "organics").replace(/pool=equipment/g, "equipment");
     s = s.replace(/buy_equip/g, "buy gear").replace(/_/g, " ");
-    s = s.replace(/no photon missiles loaded \(buy gear photon missiles at StarDock\)/gi, "No photon missiles on board. Buy them at StarDock.");
+    s = s.replace(/no photon missiles loaded \(buy gear photon missiles at StarDock\)/gi, () => {
+      const cls = (S && S.ship && S.ship.class) || "";
+      if (cls === "missile_frigate" || cls === "imperial_starship") return "No photon missiles on board. Buy them at StarDock.";
+      if (cls) return "This ship cannot carry photon missiles. A Missile Frigate or an Imperial StarShip can.";
+      return "No photon missiles on board. Buy them at StarDock.";
+    });
     s = s.replace(/no long range scanner \(buy gear density scanner or holo scanner at StarDock\)/gi, "Buy a density scanner or a holo scanner at StarDock.");
     s = s.replace(/no genesis torpedoes loaded \(buy gear genesis at StarDock\)/gi, "No Genesis torpedoes on board. Buy them at StarDock.");
     s = s.replace(/quantity must be positive/gi, "Type how many.");
@@ -145,7 +151,7 @@
   }
   function plainEvent(ev) {
     const text = ev && (ev.summary || ev.kind) || "";
-    return shownSentence(String(text).replace(/_/g, " "));
+    return shownSentence(String(text).replace(/_/g, " "), ev);
   }
   function paintLog() {
     const rows = [];
@@ -266,12 +272,50 @@
   }
 
   const known = (id) => !!((S.known_warps || {})[id] || (S.known_warps || {})[String(id)]);
+  function outOfTurns() {
+    return !!(S && Number(S.turns_remaining) <= 0);
+  }
+  function noTurnsLine() {
+    return "No turns left today. Day " + (Number(S.day) + 1) + " starts when the other traders finish.";
+  }
+  function shipsHere() {
+    const s = (S && S.sector) || {};
+    const rows = [];
+    (s.ferrengi || []).forEach((f) => rows.push({ id: f.id, name: f.name, owner: "Ferrengi", fighters: f.fighters }));
+    (s.aliens || []).forEach((a) => rows.push({ id: a.id, name: a.ship_name || a.name, owner: a.name || "alien", fighters: a.fighters }));
+    (s.federals || []).forEach((f) => rows.push({ id: f.name, name: f.name, owner: f.title || "Federation", fighters: null }));
+    (s.unmanned_ships || []).forEach((u) => rows.push({ id: u.ship_id || u.id, name: u.name || String(u.hull || "ship").replaceAll("_", " "), owner: u.owner_name || u.owner_id || "unmanned", fighters: u.fighters }));
+    return rows;
+  }
+  function shipChoiceLabel(id) {
+    const ship = shipsHere().find((row) => String(row.id) === String(id));
+    if (ship) return ship.name + ", " + ship.owner + (ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters");
+    const roster = ((S && S.other_players) || []).find((row) => row.id === id);
+    if (roster) return (roster.name || id) + (roster.fighters != null ? ", " + fmt(roster.fighters) + " fighters" : "");
+    return String(id).replaceAll("_", " ");
+  }
+  function overnightTax() {
+    let best = null;
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || ev.kind !== "tax_collected") return;
+      if (ev.actor_id && S && ev.actor_id !== S.self_id) return;
+      if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
+    });
+    if (!best) return "";
+    const facts = best.facts || {};
+    if (facts.tax == null) return "";
+    return "Overnight Federation tax " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0) + ".";
+  }
   function sectorText() {
     const s = S.sector;
     const landed = landedPlanet();
     let t = '<span class="g">Sector  </span><span class="y">:</span> <span class="c">' + s.id + "</span> <span class=\"g\">in</span> <span class=\"c\">" + (s.is_fedspace ? "The Federation" : "uncharted space") + ".</span>\n";
     if (s.port) t += '<span class="g">Ports   </span><span class="y">:</span> <span class="c">' + esc(s.port.name) + '</span><span class="y">,</span> <span class="g">Class</span> <span class="c">' + s.port.class_id + '</span> <span class="w">(</span><span class="m">' + esc(s.port.code) + "</span><span class=\"w\">)</span>\n";
     (s.planets || []).forEach((p) => { t += '<span class="g">Planets </span><span class="y">:</span> <span class="c">' + esc(p.name) + "</span>\n"; });
+    shipsHere().forEach((ship) => {
+      const fig = ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters";
+      t += '<span class="g">Ships   </span><span class="y">:</span> <span class="c">' + esc(ship.name + ", " + ship.owner + fig) + "</span>\n";
+    });
     (s.occupants || []).forEach((o) => {
       const id = typeof o === "string" ? o : (o.id || "");
       if (id === S.self_id) return;
@@ -538,7 +582,7 @@
     return "Nothing to trade";
   }
   function plainReason(text) {
-    if (!state.awaiting) return "Waiting for your turn.";
+    if (!state.awaiting) return outOfTurns() ? noTurnsLine() : "Waiting for your turn.";
     return plainWords(text || "not available here");
   }
   function maxBy(kind, commodity, side) {
@@ -577,6 +621,7 @@
       body += '<div>Class <span class="c">' + esc(landed.class || "?") + '</span>  Owner <span class="c">' + esc(owner) + "</span></div>";
       body += '<div>Citadel <span class="c">' + (landed.citadel_level || 0) + "</span>";
       if (landed.citadel_target) body += '  building toward <span class="y">' + landed.citadel_target + "</span>";
+      if (landed.citadel_complete_day) body += '  finishes day <span class="y">' + landed.citadel_complete_day + "</span>";
       body += '  Fighters <span class="c">' + fmt(landed.fighters || 0) + '</span>  Shields <span class="c">' + fmt(landed.shields || 0) + "</span></div>";
       ["fuel_ore", "organics", "equipment"].forEach((k) => {
         const meta = COM[k] || [k, "#fff"];
@@ -623,6 +668,22 @@
         table.appendChild(tr);
       });
       box.appendChild(table);
+    }
+    const ships = shipsHere();
+    if (!landed && ships.length) {
+      const line = document.createElement("div");
+      line.className = "c";
+      line.dataset.ships = "here";
+      line.textContent = ships.map((ship) => ship.name + ", " + ship.owner + (ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters")).join(" / ");
+      box.appendChild(line);
+    }
+    const taxLine = overnightTax();
+    if (taxLine) {
+      const tax = document.createElement("div");
+      tax.className = "y";
+      tax.dataset.tax = "overnight";
+      tax.textContent = taxLine;
+      box.appendChild(tax);
     }
     if (!landed) (s.planets || []).forEach((p) => {
       box.appendChild(button("<kbd>L</kbd>Land on " + esc(p.name), () => act("land_planet", { planet_id: p.id }, "land on " + p.name)));
@@ -678,7 +739,7 @@
         spec.choices.forEach((choice) => {
           const o = document.createElement("option");
           o.value = typeof choice === "object" ? (choice.id ?? "") : choice;
-          o.textContent = o.value;
+          o.textContent = kind === "attack" && name === "target" ? shipChoiceLabel(String(o.value)) : o.value;
           input.appendChild(o);
         });
       } else if (spec.type === "bool") {
@@ -699,6 +760,12 @@
         input = document.createElement("input");
         input.type = spec.type === "int" ? "number" : "text";
         if (spec.min != null) input.min = spec.min;
+        if (kind === "attack" && name === "qty") {
+          const aboard = Number(((S || {}).ship || {}).fighters || 0);
+          const cap = spec.max != null ? Math.min(Number(spec.max), aboard) : aboard;
+          input.max = String(cap);
+          input.dataset.cap = String(cap);
+        }
       }
       input.dataset.n = name;
       input.dataset.t = spec.type;
@@ -1275,7 +1342,7 @@
       const b = document.createElement("button");
       b.type = "button";
       b.dataset.key = k;
-      const off = (kind && !legal(kind)) || (onPlanet && SPACE_OFF.includes(k));
+      const off = outOfTurns() || (kind && !legal(kind)) || (onPlanet && SPACE_OFF.includes(k));
       b.className = off ? "off" : "on";
       b.disabled = state.busy;
       if (kind === "wait") b.setAttribute("data-testid", "action-wait");
@@ -1367,6 +1434,8 @@
       ["Net worth", fmt(S.net_worth) + " cr"],
       ["Rank", S.rank || ""],
       ["Alignment", fmt(S.alignment) + " " + (S.alignment_label || "")],
+      ["Overnight tax", overnightTax() || "none yet"],
+      ["Tax due tomorrow", S.tax_due_tomorrow == null ? "none" : fmt(S.tax_due_tomorrow) + " cr"],
       ["Planets", fmt((S.owned_planets || []).length)],
       ["Known ports", fmt((S.known_ports || []).length)],
       ["Known sectors", fmt(Object.keys(S.known_warps || {}).length)],
@@ -1446,6 +1515,7 @@
   }
   function key(k) {
     const m = $("menu");
+    if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G"].includes(k)) { setResult(noTurnsLine(), true); return; }
     if (k === "Escape") {
       m.hidden = true; inComputer = false; openFormKind = null; formFocus = "";
       const slot = $("formSlot"); if (slot) slot.innerHTML = "";
@@ -1530,6 +1600,7 @@
   async function act(kind, args, label) {
     if (kind === "bank") { setResult("That command was not accepted.", true); return; }
     if (state.busy || !state.awaiting) {
+      if (outOfTurns()) { setResult(noTurnsLine(), true); return; }
       pending = { kind, args, label };
       setResult("Waiting for your turn.", true);
       return;
@@ -1618,8 +1689,8 @@
     al.textContent = fmt(S.alignment) + " " + (S.alignment_label || "");
     al.className = S.alignment < 0 ? "r" : S.alignment > 0 ? "c" : "w";
     const chip = $("waitchip");
-    chip.textContent = state.awaiting ? "YOUR MOVE" : "WAITING";
-    chip.className = "chip" + (state.awaiting ? "" : " idle");
+    chip.textContent = outOfTurns() ? "NO TURNS" : (state.awaiting ? "YOUR MOVE" : "WAITING");
+    chip.className = "chip" + (state.awaiting && !outOfTurns() ? "" : " idle");
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
     paintScene();
     paintLog();
