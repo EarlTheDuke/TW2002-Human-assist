@@ -343,6 +343,7 @@ def build_harness_router(runner) -> APIRouter:
             "timeout_s": timeout_s,
             "deadline_at": deadline_at,
             "server_time": time.time(),
+            "wait_streak": int(getattr(runner, "_wait_streak", {}).get(agent.player_id, 0) or 0),
             **_status_and_result(agent),
             **_video_custom_flag(),
         }

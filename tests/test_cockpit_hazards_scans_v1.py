@@ -292,7 +292,8 @@ def test_citadel_form_shows_the_cost_before_confirm(world):
     text = page.locator("#menu").inner_text()
     assert "Fuel ore" in text
     assert "Colonists" in text
-    assert "days" in text
+    assert "1 day" in text
+    assert "1 days" not in text
     assert page.locator("#dangerOk").inner_text() == "CONFIRM"
     assert page.locator("[data-n=planet_id]").count() == 0
     _shoot(page, "citadel", "#menu")
@@ -378,7 +379,7 @@ def test_small_lines_name_the_command_and_the_probe(world):
     page.evaluate("() => window.__tw2kTest.setAwaiting(false)")
     page.locator("#warps button").first.click()
     text = page.locator("#lastResult").inner_text()
-    assert "Press warp to" in text
+    assert "will run when your turn comes" in text
     _shoot(page, "waiting", "#lastResult")
     page.evaluate("() => window.__tw2kTest.setAwaiting(true)")
 

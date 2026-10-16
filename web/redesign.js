@@ -64,6 +64,10 @@
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0;
+  function rememberAlert(seq) {
+    alertedSeq = seq;
+    try { localStorage.setItem("tw2k-alert-" + (state.seat || ""), String(seq)); } catch (e) { /* keep the page count */ }
+  }
   const streamLog = [];
   const streamSeen = new Set();
   if (params.get("token")) {
@@ -335,6 +339,20 @@
     const row = ((S && S.other_players) || []).find((r) => r.id === id);
     return (row && row.name) || id;
   }
+  function landLine(p) {
+    const known = p.fighters != null || p.shields != null;
+    const garrison = known ? "Fighters " + fmt(p.fighters || 0) + ", shields " + fmt(p.shields || 0) + "." : "Fighters and shields are not on this scan.";
+    if (!p.owner_id || p.owner_id === S.self_id) return "Your planet. " + garrison;
+    return traderName(p.owner_id) + " holds this planet. " + garrison + " Landing claims it when those fighters are not defending. A defended planet is fought first only when that switch is on.";
+  }
+  function challengeLine() {
+    const opts = [];
+    if (legal("attack")) opts.push("attack");
+    if (legal("retreat")) opts.push("retreat");
+    if (legal("pay_toll")) opts.push("pay the toll");
+    if (legal("surrender")) opts.push("surrender");
+    return opts.length ? "answer the fighters first: " + opts.join(", ") : "";
+  }
   function shipChoiceLabel(id) {
     const ship = shipsHere().find((row) => String(row.id) === String(id));
     if (ship) return ship.name + ", " + ship.owner + (ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters");
@@ -396,7 +414,8 @@
     (s.mines || []).forEach((row) => {
       const kind = String(row.kind || "");
       if (kind !== "armid" && kind !== "limpet") return;
-      mineBits.push(kind + " " + fmt(row.count || 0) + " belong to " + traderName(row.owner || row.owner_id));
+      const who = traderName(row.owner_id || row.owner);
+      mineBits.push(kind + " " + fmt(row.count || 0) + " (belong to " + (who === "personal" || who === "corporate" || who === "rogue" ? "someone" : who) + ")");
     });
     if (mineBits.length) t += '<span class="g">Mines   </span><span class="y">:</span> <span class="c" data-mines="sector">' + esc(mineBits.join(", ")) + "</span>\n";
     if (s.beacon) t += '<span class="g">Beacon  </span><span class="y">:</span> <span class="c" data-beacon="here">' + esc(s.beacon) + "</span>\n";
@@ -820,11 +839,7 @@
     }
     if (!landed) (s.planets || []).forEach((p) => {
       box.appendChild(button("<kbd>L</kbd>Land on " + esc(p.name), () => {
-        const owner = p.owner_id && p.owner_id !== S.self_id ? traderName(p.owner_id) : (p.owner_id ? "you" : "nobody");
-        const known = p.fighters != null || p.shields != null;
-        const garrison = known ? "Fighters " + fmt(p.fighters || 0) + ", shields " + fmt(p.shields || 0) + "." : "Fighters and shields are not on this scan.";
-        const line = owner + " holds this planet. " + garrison + " Landing claims it when those fighters are not defending. A defended planet is fought first only when that switch is on.";
-        confirmWords("Land", line, () => act("land_planet", { planet_id: p.id }, "land on " + p.name));
+        confirmWords("Land", landLine(p), () => act("land_planet", { planet_id: p.id }, "land on " + p.name));
       }));
     });
     if (Number(s.id) === 1 || (s.port && /stardock/i.test(String(s.port.name || "")))) {
@@ -1753,8 +1768,25 @@
     const stock = planet.stockpile || {};
     const cols = Object.values(planet.colonists || {}).reduce((n, v) => n + Number(v || 0), 0);
     const level = next.level || (Number(planet.citadel_level || 0) + 1);
-    const ready = next.days ? " Ready day " + (Number(S.day || 0) + Number(next.days)) + "." : "";
-    const note = "Citadel level " + level + ". Fuel ore " + fmt(next.fuel_ore || next.credits || 0) + " (have " + fmt(next.fuel_have != null ? next.fuel_have : stock.fuel_ore || 0) + "). Organics " + fmt(next.organics || 0) + " (have " + fmt(next.organics_have != null ? next.organics_have : stock.organics || 0) + "). Equipment " + fmt(next.equipment || 0) + " (have " + fmt(next.equipment_have != null ? next.equipment_have : stock.equipment || 0) + "). Colonists " + fmt(next.colonists || 0) + " (have " + fmt(next.colonists_have != null ? next.colonists_have : cols) + "). " + fmt(next.days || 0) + " days." + ready + (a.legal ? "" : " " + plainReason(a.reason));
+    const target = Number(planet.citadel_target || 0);
+    const now = Number(planet.citadel_level || 0);
+    const building = target > now || /under construction/i.test(a.reason || "");
+    const days = Number(next.days || 0);
+    const ready = days ? " Ready day " + (Number(S.day || 0) + days) + "." : "";
+    const have = (key, stockKey) => next[key] != null ? next[key] : stock[stockKey] || 0;
+    const gaps = [];
+    [["fuel ore", next.fuel_ore, have("fuel_have", "fuel_ore")], ["organics", next.organics, have("organics_have", "organics")], ["equipment", next.equipment, have("equipment_have", "equipment")], ["colonists", next.colonists, have("colonists_have", "colonists")]].forEach(([name, need, got]) => {
+      const gap = Number(need || 0) - Number(name === "colonists" && next.colonists_have == null ? cols : got || 0);
+      if (gap > 0) gaps.push(name + " " + fmt(gap) + " short");
+    });
+    const dayWord = days === 1 ? "1 day" : fmt(days) + " days";
+    let note;
+    if (building) {
+      const readyDay = planet.citadel_complete_day || ((String(a.reason || "").match(/done day (\d+)/) || [])[1] || "");
+      note = "Citadel L" + (target || level) + " is being built" + (readyDay ? ", ready day " + readyDay : "") + ".";
+    } else {
+      note = "Citadel level " + level + ". Fuel ore " + fmt(next.fuel_ore || next.credits || 0) + " (have " + fmt(have("fuel_have", "fuel_ore")) + "). Organics " + fmt(next.organics || 0) + " (have " + fmt(have("organics_have", "organics")) + "). Equipment " + fmt(next.equipment || 0) + " (have " + fmt(have("equipment_have", "equipment")) + "). Colonists " + fmt(next.colonists || 0) + " (have " + fmt(next.colonists_have != null ? next.colonists_have : cols) + "). " + dayWord + "." + ready + (gaps.length ? " " + gaps.join(", ") + "." : "");
+    }
     if (!a.legal) {
       confirmWords("Build citadel", note);
       const btn = $("dangerOk");
@@ -1877,15 +1909,18 @@
         return label + " " + side + " " + fmt(item.price) + " cr";
       }).join(", ");
       const hereId = Number((S.sector || {}).id);
-      if (row.last_seen_day == null && Number(row.sector_id) !== hereId) {
-        return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(row.class || row.name || "") + " not visited</div>";
+      const docked = Number(row.sector_id) === hereId || Object.values(stock).some((item) => item && (item.side === "buys_from_player" || item.side === "sells_to_player"));
+      if (!docked) {
+        const word = row.last_seen_day == null ? "not visited" : "not docked";
+        return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(row.class || row.name || "") + " " + word + "</div>";
       }
       const detailed = Object.entries(stock).map(([name, item]) => {
         const label = (COM[name] || [name])[0];
-        const side = item.side === "buys_from_player" ? "Buying" : item.side === "sells_to_player" ? "Selling" : "Holds";
-        const amount = item.current != null ? fmt(item.current) : "";
-        const pct = item.max ? " (" + Math.round(100 * Number(item.current || 0) / Number(item.max)) + "%)" : "";
-        return label + " " + side + " " + amount + pct + " " + fmt(item.price) + " cr";
+        const buying = item.side === "buys_from_player";
+        const side = buying ? "Buying" : item.side === "sells_to_player" ? "Selling" : "Holds";
+        const amount = buying ? Math.max(0, Number(item.max || 0) - Number(item.current || 0)) : Number(item.current || 0);
+        const pct = item.max ? " (" + Math.round(100 * amount / Number(item.max)) + "%)" : "";
+        return label + " " + side + " " + fmt(amount) + pct + " " + fmt(item.price) + " cr";
       }).join(", ");
       const seen = row.last_seen_day != null ? " day " + row.last_seen_day : "";
       return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(row.class || row.name || "") + esc(seen) + "<br>" + esc(detailed || lines) + "</div>";
@@ -1899,13 +1934,18 @@
     const ids = Object.keys(map);
     if (!ids.length) { setResult("No sectors in your computer yet.", true); return; }
     const explored = ((S.known_sectors || []).filter((row) => row.warps_known).length) || ids.length;
-    const universeSize = Number(S.universe_size || 0);
+    let universeSize = Number(S.universe_size || 0);
+    if (!universeSize) {
+      const hit = streamLog.concat((S && S.recent_events) || []).map((ev) => (ev && ev.summary) || "").join(" ").match(/(\d+)-sector galaxy/);
+      if (hit) universeSize = Number(hit[1]);
+    }
     const pct = universeSize ? Math.round(100 * explored / universeSize) : 0;
     const body = ids.sort((a, b) => Number(a) - Number(b)).map((sid) => {
       const hops = map[sid] || [];
       return '<div class="row"><span class="c">' + sid + "</span> warps " + hops.join(", ") + "</div>";
     }).join("");
-    overlay("Known Universe", '<div class="row">You have explored ' + fmt(explored) + " sectors" + (universeSize ? ", " + pct + "% of the universe" : "") + ".</div>" + body);
+    const sectorWord = explored === 1 ? "sector" : "sectors";
+    overlay("Known Universe", '<div class="row">You have explored ' + fmt(explored) + " " + sectorWord + (universeSize ? ", " + pct + "% of the universe" : "") + ".</div>" + body);
   }
   function gameStatus() {
     const stats = S.daily_stats || {};
@@ -2552,7 +2592,8 @@
     $("dangerOk").addEventListener("click", () => { m.hidden = true; if (onYes) onYes(); else setResult(line, true); });
   }
   function askWait() {
-    if (waitStreak >= 2) {
+    const server = Number(state.waitStreak || 0);
+    if (waitStreak >= 2 || server >= 3) {
       confirmWords("Wait", "One more Wait ends your day (" + fmt(S.turns_remaining) + " turns left). Continue?", () => {
         waitStreak += 1;
         act("wait", {}, "wait one turn");
@@ -2633,8 +2674,8 @@
         return;
       }
       const raw = (LA(hit[2]) || {}).reason || "";
-      const nice = plainWords(raw);
-      if (/No Genesis torpedoes|No photon missiles|Buy a density scanner|Type how many/.test(nice)) setResult(nice, true);
+      const nice = /answer the fighters first/i.test(raw) ? challengeLine() : plainWords(raw);
+      if (/No Genesis torpedoes|No photon missiles|Buy a density scanner|Type how many|answer the fighters first/.test(nice)) setResult(nice, true);
       else setResult(hit[1] + ": " + plainReason(raw), true);
       return;
     }
@@ -2648,11 +2689,7 @@
     if (k === "L") {
       const p = (S.sector.planets || [])[0];
       if (!p) return;
-      const owner = p.owner_id && p.owner_id !== S.self_id ? traderName(p.owner_id) : (p.owner_id ? "you" : "nobody");
-      const known = p.fighters != null || p.shields != null;
-      const garrison = known ? "Fighters " + fmt(p.fighters || 0) + ", shields " + fmt(p.shields || 0) + "." : "Fighters and shields are not on this scan.";
-      const line = owner + " holds this planet. " + garrison + " Landing claims it when those fighters are not defending. A defended planet is fought first only when that switch is on.";
-      return confirmWords("Land", line, () => act("land_planet", { planet_id: p.id }, "land on " + p.name));
+      return confirmWords("Land", landLine(p), () => act("land_planet", { planet_id: p.id }, "land on " + p.name));
     }
     if (k === ".") return askWait();
     if (k === "S") return scanAsk();
@@ -2677,9 +2714,13 @@
     if (kind !== "wait") waitStreak = 0;
     if (state.busy || !state.awaiting) {
       if (outOfTurns()) { setResult(noTurnsLine(), true); return; }
+      if (pending && pending.kind === kind) {
+        setResult((label || kind) + " will run when your turn comes.", true);
+        return;
+      }
       pending = { kind, args, label };
       heldLabel = label || kind;
-      setResult("Waiting for your turn. Press " + (heldLabel || "the command") + " again.", true);
+      setResult((label || kind) + " will run when your turn comes.", true);
       return;
     }
     pending = null;
@@ -2725,17 +2766,26 @@
         if (rows.length) body = body + ". " + rows.join("; ");
       }
       if (kind === "warp" || kind === "plot_course") {
-        const hits = [];
+        const seen = new Set();
+        let mines = "";
+        let lost = "";
+        let avoid = "";
         streamLog.concat((S && S.recent_events) || []).forEach((row) => {
-          if (!row || (row.seq || 0) <= before - 1) return;
+          if (!row || seen.has(row.seq)) return;
+          if (row.seq) seen.add(row.seq);
+          if ((row.seq || 0) <= before - 1) return;
           const facts = row.facts || {};
-          if (row.kind === "mine_detonated") hits.push(fmt(facts.hits || 0) + " mines hit for " + fmt(facts.damage || 0));
+          if (row.kind === "mine_detonated") mines = fmt(facts.hits || 0) + " mines hit for " + fmt(facts.damage || 0);
           if (row.kind === "combat" && facts.vs === "fighter_sector" && facts.attacker_losses != null) {
-            hits.push("You lost " + fmt(facts.attacker_losses) + " fighter(s), " + fmt(((S && S.ship) || {}).fighters || 0) + " remain");
+            const n = Number(facts.attacker_losses);
+            lost = "You lost " + fmt(n) + " fighter" + (n === 1 ? "" : "s") + ", " + fmt(((S && S.ship) || {}).fighters || 0) + " remain";
           }
-          if (row.kind === "hazard_avoid_prompt") hits.push("Mines are in this sector. Computer, then O, adds it to the avoid list");
+          if (row.kind === "hazard_avoid_prompt") avoid = "Mines are in this sector. Computer, then O, adds it to the avoid list";
         });
-        if (hits.length) body = body + ". " + hits.join(". ") + ". Shields " + fmt(((S && S.ship) || {}).shields || 0) + ", fighters " + fmt(((S && S.ship) || {}).fighters || 0) + " remain";
+        if (/avoid this sector/i.test(body)) body = "";
+        if (!lost) lost = "fighters " + fmt(((S && S.ship) || {}).fighters || 0) + " remain";
+        const bits = [body, mines, "Shields " + fmt(((S && S.ship) || {}).shields || 0), lost, avoid, challengeLine()].filter(Boolean);
+        if (bits.length) body = bits.join(". ");
       }
       if (kind === "buy_ship" && args && args.trade_in === false) body = body + ". The new ship is in orbit. Press X to board it";
       if (kind === "attack") {
@@ -2804,14 +2854,14 @@
         if (ev.kind === "combat" && (ev.facts || {}).defender_owner === S.self_id && ev.actor_id !== S.self_id) notice = ev;
       });
       if (!notice) return;
-      alertedSeq = notice.seq;
+      rememberAlert(notice.seq);
       const facts = notice.facts || {};
-      if (notice.kind === "mine_detonated") setResult("Your mines hit " + (facts.victim || "someone") + " for " + fmt(facts.damage || 0) + ".", true);
+      if (notice.kind === "mine_detonated") setResult("Your mines hit " + traderName(facts.victim) + " in sector " + (notice.sector_id || "") + " for " + fmt(facts.damage || 0) + " damage.", true);
       else if (notice.kind === "combat") setResult("Your fighters fought in sector " + (notice.sector_id || "") + ".", true);
       else setResult("Someone landed on your planet" + (facts.seized ? " and took it." : "."), true);
       return;
     }
-    alertedSeq = best.seq;
+    rememberAlert(best.seq);
     const who = (best.facts || {}).attacker || "someone";
     const lost = (best.facts || {}).defender_losses;
     setResult("You were attacked by " + who + (lost == null ? "." : ". You lost " + lost + "."), true);
@@ -2855,6 +2905,8 @@
   async function refresh() {
     const st = await api("/" + state.seat + "/observation?wait_s=0&peek=1&format=both");
     state.awaiting = !!st.awaiting_input;
+    if (state.holdAwait) state.awaiting = false;
+    if (typeof st.wait_streak === "number") state.waitStreak = st.wait_streak;
     state.turnSeq = st.turn_seq ?? state.turnSeq;
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     if (st.observation) { S = st.observation; render(); }
@@ -2866,6 +2918,7 @@
   async function connect() {
     state.seat = $("seatSelect").value.toUpperCase();
     state.token = $("tokenInput").value.trim();
+    try { alertedSeq = Number(localStorage.getItem("tw2k-alert-" + state.seat) || 0); } catch (e) { alertedSeq = 0; }
     $("err").hidden = true;
     try {
       state.connected = true;
@@ -2888,7 +2941,16 @@
     if (ev.key === ".") { ev.preventDefault(); key("."); return; }
     if (ev.key.length === 1) { ev.preventDefault(); key(ev.key.toUpperCase()); }
   });
-  window.__tw2kTest = { setAwaiting(flag) { state.awaiting = !!flag; render(); } };
+  window.__tw2kTest = {
+    setAwaiting(flag) {
+      state.awaiting = !!flag;
+      state.holdAwait = !flag;
+      if (flag) pending = null;
+      if (S) render();
+    },
+    serverWaits() { return Number(state.waitStreak || 0); },
+    resetWaits() { waitStreak = 0; state.waitStreak = 0; },
+  };
   if (state.token) connect();
   setInterval(() => { if (state.connected && !state.busy) refresh().catch((e) => { $("err").hidden = false; $("err").textContent = String(e.message || e); }); }, 2000);
 })();
