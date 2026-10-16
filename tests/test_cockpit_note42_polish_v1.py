@@ -141,7 +141,7 @@ def test_a_landing_that_destroys_the_ship_names_the_losses(world):
             timeout=20_000,
         )
         text = page.evaluate("() => window.__hit")
-        assert "reaction and defending fighters killed" in text
+        assert "Reaction and defending fighters killed" in text
         assert "you lost" in text
         assert "Credits on board lost" in text
         _shoot(page, "siege", "#lastResult")
