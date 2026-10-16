@@ -504,7 +504,10 @@
     fighterPips(sh.fighters || 0, sh.fighter_cap || 0);
     const used = Object.values(sh.cargo || {}).reduce((a, b) => a + Number(b || 0), 0);
     const bar = (k, v, c, col) => '<div class="bar"><span>' + k + '</span><span class="t"><span class="f" style="width:' + (c ? Math.min(100, v / c * 100) : 0) + "%;background:" + col + '"></span></span><span class="w">' + fmt(v) + '<span class="dk">/' + fmt(c) + "</span></span></div>";
-    $("shipStats").innerHTML = bar("Fighters", sh.fighters, sh.fighter_cap, "#ff5555") + bar("Shields", sh.shields, sh.shield_cap, "#55ffff") + bar("Holds", used, sh.holds, "#ffff55");
+    const mines = sh.mines || {};
+    const mineRow = (name, n) => '<div class="bar" data-mines="' + name + '"><span>' + name + ' mines</span><span class="w">' + fmt(n) + "</span></div>";
+    $("shipStats").innerHTML = bar("Fighters", sh.fighters, sh.fighter_cap, "#ff5555") + bar("Shields", sh.shields, sh.shield_cap, "#55ffff") + bar("Holds", used, sh.holds, "#ffff55")
+      + mineRow("armid", Number(mines.armid || 0)) + mineRow("limpet", Number(mines.limpet || 0));
     $("holds").innerHTML = Object.entries(COM).map(([k, row]) => '<div class="hold"><b>' + row[0] + "</b><br>" + fmt((sh.cargo || {})[k]) + "</div>").join("");
     const root = $("viewport");
     if (root && window.TW2KViewport) window.TW2KViewport.update(S);
@@ -625,10 +628,14 @@
     slot.id = "formSlot";
     box.appendChild(slot);
     if (restore === "bank") bankForm(saved);
+    else if (restore === "fighters") fighterForm(saved);
+    else if (restore === "mines") mineForm(saved);
     else if (restore) openForm(restore, saved);
   }
   function openForm(kind, saved) {
     if (kind === "bank") { bankForm(saved); return; }
+    if (kind === "fighters") { fighterForm(saved); return; }
+    if (kind === "mines") { mineForm(saved); return; }
     const a = LA(kind) || { params: {} };
     if (!a.legal && !saved) { setResult(plainReason(a.reason || kind + " is not available"), true); openFormKind = null; return; }
     const slot = $("formSlot");
@@ -794,6 +801,156 @@
         if (first.type === "number" || first.type === "text") first.select();
       }
     }
+  }
+  function yoursHere() {
+    const group = (S.sector || {}).fighter_group;
+    if (!group || group.owner_id !== S.self_id) return { count: 0, mode: "" };
+    return { count: Number(group.count || 0), mode: group.mode || "" };
+  }
+  function fighterForm(saved) {
+    const slot = $("formSlot");
+    if (!slot) return;
+    openFormKind = "fighters";
+    const here = yoursHere();
+    const sh = S.ship || {};
+    const aboard = Number(sh.fighters || 0);
+    const cap = Number(sh.fighter_cap || 0);
+    const modes = ((((LA("deploy_fighters") || {}).params || {}).mode || {}).choices) || ["defensive", "offensive", "toll"];
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "fighters";
+    wrap.innerHTML = '<div class="y">FIGHTERS</div><div class="c">In this sector: ' + fmt(here.count) + " yours. On board: " + fmt(aboard) + ". This ship holds up to " + fmt(cap) + ".</div>";
+    const leave = document.createElement("input");
+    leave.type = "number";
+    leave.min = "0";
+    leave.dataset.n = "leave";
+    leave.value = saved && saved.leave != null && saved.leave !== "" ? saved.leave : String(here.count);
+    const mode = document.createElement("select");
+    mode.dataset.n = "mode";
+    modes.forEach((name) => {
+      const o = document.createElement("option");
+      o.value = name;
+      o.textContent = name;
+      mode.appendChild(o);
+    });
+    if (saved && saved.mode) mode.value = saved.mode;
+    else if (here.mode) mode.value = here.mode;
+    const leaveLabel = document.createElement("label");
+    leaveLabel.appendChild(document.createTextNode("leave in sector "));
+    leaveLabel.appendChild(leave);
+    const modeLabel = document.createElement("label");
+    modeLabel.appendChild(document.createTextNode("mode "));
+    modeLabel.appendChild(mode);
+    wrap.appendChild(leaveLabel);
+    wrap.appendChild(modeLabel);
+    const submit = () => {
+      const want = Number(leave.value);
+      if (leave.value === "" || !Number.isFinite(want) || want < 0) { setResult("Type how many to leave.", true); return; }
+      const have = yoursHere().count;
+      const onShip = Number((S.ship || {}).fighters || 0);
+      const room = Math.max(0, cap - onShip);
+      if (want === have) { setResult("That many are already in this sector.", true); return; }
+      openFormKind = null;
+      slot.innerHTML = "";
+      if (want > have) {
+        const diff = want - have;
+        if (diff > onShip) { setResult("You only have " + fmt(onShip) + " fighters on board.", true); return; }
+        if (!legal("deploy_fighters")) { setResult(plainReason((LA("deploy_fighters") || {}).reason), true); return; }
+        act("deploy_fighters", { qty: diff, mode: mode.value }, "leave fighters");
+        return;
+      }
+      let diff = have - want;
+      if (diff > room) {
+        if (room <= 0) { setResult("This ship holds " + fmt(cap) + " fighters.", true); return; }
+        diff = room;
+      }
+      if (!legal("recall_deployed")) { setResult(plainReason((LA("recall_deployed") || {}).reason), true); return; }
+      act("recall_deployed", { what: "fighters", qty: diff }, "take fighters");
+    };
+    wrap.appendChild(button("CONFIRM", submit));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      submit();
+    });
+    slot.appendChild(wrap);
+    const again = (saved && formFocus && wrap.querySelector('[data-n="' + formFocus + '"]')) || leave;
+    again.focus();
+    if (again.type === "number" || again.type === "text") again.select();
+  }
+  function mineCounts() {
+    const aboard = (S.ship || {}).mines || {};
+    const on = { armid: Number(aboard.armid || 0), limpet: Number(aboard.limpet || 0) };
+    const here = { armid: 0, limpet: 0 };
+    ((S.sector || {}).mines || []).forEach((row) => {
+      const owner = row.owner || row.owner_id;
+      if (owner !== S.self_id || here[row.kind] == null) return;
+      here[row.kind] += Number(row.count || 0);
+    });
+    return { on, here };
+  }
+  function mineForm(saved) {
+    const slot = $("formSlot");
+    if (!slot) return;
+    openFormKind = "mines";
+    const counts = mineCounts();
+    const a = LA("deploy_mines") || { params: {}, legal: false, reason: "" };
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "mines";
+    wrap.innerHTML = '<div class="y">MINES</div><div class="c" data-mines="form">On board: armid ' + fmt(counts.on.armid) + ", limpet " + fmt(counts.on.limpet)
+      + ". In this sector: armid " + fmt(counts.here.armid) + ", limpet " + fmt(counts.here.limpet) + ".</div>";
+    let qty = null;
+    if (a.legal) {
+      const kinds = ((a.params.kind || {}).choices) || [];
+      const kind = document.createElement("select");
+      kind.dataset.n = "kind";
+      kinds.forEach((name) => {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        kind.appendChild(o);
+      });
+      if (saved && saved.kind) kind.value = saved.kind;
+      qty = document.createElement("input");
+      qty.type = "number";
+      qty.min = "1";
+      qty.dataset.n = "qty";
+      if (saved && saved.qty != null && saved.qty !== "") qty.value = saved.qty;
+      const kindLabel = document.createElement("label");
+      kindLabel.appendChild(document.createTextNode("kind "));
+      kindLabel.appendChild(kind);
+      const qtyLabel = document.createElement("label");
+      qtyLabel.appendChild(document.createTextNode("qty "));
+      qtyLabel.appendChild(qty);
+      wrap.appendChild(kindLabel);
+      wrap.appendChild(qtyLabel);
+      const submit = () => {
+        const n = Number(qty.value);
+        if (!n) { setResult("How many? Type a number.", true); return; }
+        openFormKind = null;
+        slot.innerHTML = "";
+        act("deploy_mines", { kind: kind.value, qty: n }, "deploy mines");
+      };
+      wrap.appendChild(button("CONFIRM", submit));
+      wrap.addEventListener("keydown", (ev) => {
+        if (ev.key !== "Enter") return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        submit();
+      });
+    } else {
+      const why = document.createElement("div");
+      why.textContent = plainReason(a.reason);
+      wrap.appendChild(why);
+    }
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    slot.appendChild(wrap);
+    if (qty) { qty.focus(); qty.select(); }
   }
   function bankForm(saved) {
     const dep = LA("bank_deposit") || { params: {}, legal: false, reason: "" };
@@ -1138,6 +1295,8 @@
     if (k === "D") { render(); return; }
     if (k === "I") { shipInfo(); return; }
     if (k === "V") return gameStatus();
+    if (k === "F" && !landedPlanet()) return fighterForm();
+    if (k === "H" && !landedPlanet()) return mineForm();
     if (k === "G") return showFighters();
     if (k === "B") return confirmWords("Self Destruct", "Self-destruct is not in this game. Your ship stays.");
     if (k === "J") return confirmWords("Jettison Cargo", "Jettison is not in this game. Sell the cargo, or leave it on a planet.");
