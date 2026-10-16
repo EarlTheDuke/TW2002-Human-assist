@@ -131,6 +131,8 @@
     });
     s = s.replace(/(\d{4,})\s*cr\b/gi, (m, n) => Number(n).toLocaleString("en-US") + " cr");
     s = s.replace(/(\d+)cr\b/gi, (m, n) => Number(n).toLocaleString("en-US") + " cr");
+    s = s.replace(/\b1 days\b/g, "1 day");
+    s = s.replace(/\b1 ((?:[A-Za-z]+ )?)fighters\b/gi, "1 $1fighter");
     return s.replace(/\.\.+/g, ".").trim();
   }
   function plainWords(text) {
@@ -146,6 +148,8 @@
     s = s.replace(/no long range scanner \(buy gear density scanner or holo scanner at StarDock\)/gi, "Buy a density scanner or a holo scanner at StarDock.");
     s = s.replace(/no genesis torpedoes loaded \(buy gear genesis at StarDock\)/gi, "No Genesis torpedoes on board. Buy them at StarDock.");
     s = s.replace(/quantity must be positive/gi, "Type how many.");
+    s = s.replace(/fighters per attack must be 1\.\.(\d+)/gi, "fighters per attack must be 1 to $1");
+    s = s.replace(/\b(withdrew [\d,]+ (?:fighters|shields)) on /gi, "$1 from ");
     s = s.replace(/insufficient credits \((\d+) < (\d+)\)/gi, (m, have, need) => "not enough credits: you need " + fmt(need) + " cr, you have " + fmt(have) + " cr");
     s = s.replace(/\binvalid action:\s*/gi, "").replace(/\btrade failed:\s*/gi, "");
     s = dropSeat(s);
@@ -317,6 +321,7 @@
   let seenDay = null;
   let taxFresh = true;
   let taxSeenSeq = -1;
+  let fellSeenSeq = 0;
   let dayNote = false;
   function shipsHere() {
     const s = (S && S.sector) || {};
@@ -343,7 +348,9 @@
     const known = p.fighters != null || p.shields != null;
     const garrison = known ? "Fighters " + fmt(p.fighters || 0) + ", shields " + fmt(p.shields || 0) + "." : "Fighters and shields are not on this scan.";
     if (!p.owner_id || p.owner_id === S.self_id) return "Your planet. " + garrison;
-    return traderName(p.owner_id) + " holds this planet. " + garrison + " Landing claims it when those fighters are not defending. A defended planet is fought first only when that switch is on.";
+    const holds = traderName(p.owner_id) + " holds this planet. " + garrison;
+    if (Number(p.citadel_level || 0) >= 2 || known) return holds + " This planet has a Combat Control computer: its fighters and shields will fight your landing.";
+    return holds + " Landing claims it when those fighters are not defending. A defended planet is fought first only when that switch is on.";
   }
   function challengeLine() {
     const opts = [];
@@ -381,6 +388,17 @@
       taxFresh = true;
     }
     if (!taxFresh) return "";
+    return "Overnight Federation tax " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0) + ".";
+  }
+  function lastTaxLine() {
+    let best = null;
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || ev.kind !== "tax_collected") return;
+      if (ev.actor_id && S && ev.actor_id !== S.self_id) return;
+      if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
+    });
+    const facts = (best && best.facts) || {};
+    if (facts.tax == null) return "";
     return "Overnight Federation tax " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0) + ".";
   }
   function sectorText() {
@@ -757,9 +775,10 @@
         body += '<div style="color:' + meta[1] + '">' + esc(meta[0]) + '</div><div class="c">Colonists ' + fmt(cols) + "  On planet " + fmt(stock) + (made == null ? "" : "  " + fmt(made) + " per day") + "</div>";
       });
       body += '<div data-quasar="now">Quasar sector ' + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%</div>";
+      body += '<div data-reaction="pct">Military reaction ' + fmt(landed.military_reaction_pct || 0) + "%</div>";
       if (landed.treasury != null) body += '<div data-treasury="balance">Treasury ' + fmt(landed.treasury) + " cr</div>";
       const planetFuel = Number((landed.stockpile || {}).fuel_ore || 0);
-      body += '<div data-range="transporter">Planet fuel ' + fmt(planetFuel) + " ore. Transporter range " + fmt(Math.floor(planetFuel / 10)) + " sectors at 10 ore each.</div>";
+      body += '<div data-range="transporter">' + (landed.has_transporter ? "Planet fuel " + fmt(planetFuel) + " ore. Transporter range " + fmt(Math.floor(planetFuel / 10)) + " sectors at 10 ore each." : "No transporter (buy one).") + "</div>";
       card.innerHTML = body;
       box.appendChild(card);
       box.appendChild(button("<kbd>Q</kbd>Lift off", () => act("liftoff", {}, "lift off")));
@@ -926,6 +945,10 @@
           o.textContent = kind === "attack" && name === "target" ? shipChoiceLabel(String(o.value))
             : (kind === "buy_equip" && name === "item" ? gearName(o.value)
             : (kind === "ship_transport" && name === "ship_id" ? shipTransportLabel(o.value) : o.value));
+          if (kind === "deposit_planet_defense" && name === "kind" && o.value === "shields" && Number((landedPlanet() || {}).citadel_level || 0) < 5) {
+            o.disabled = true;
+            o.textContent = "shields (needs a Level 5 citadel)";
+          }
           input.appendChild(o);
         });
       } else if (spec.type === "bool") {
@@ -953,7 +976,8 @@
           input.max = String(cap);
           input.dataset.cap = String(cap);
           if (!(saved && saved[name] != null && saved[name] !== "")) input.value = String(cap);
-          label.childNodes[0].textContent = "fighters (0 to " + fmt(cap) + ") ";
+          input.min = "1";
+          label.childNodes[0].textContent = "fighters (1 to " + fmt(cap) + ") ";
         }
       }
       input.dataset.n = name;
@@ -976,6 +1000,15 @@
         if (el.value === "") return;
         args[el.dataset.n] = t === "int" ? Number(el.value) : el.value;
       });
+      if (kind === "attack" && args.qty != null) {
+        const box = fields.find((el) => el.dataset.n === "qty");
+        const cap = Number((box && box.dataset.cap) || args.qty);
+        args.qty = Math.max(1, Math.min(cap, Number(args.qty)));
+      }
+      if (kind === "deposit_planet_defense" && args.kind === "shields" && Number((landedPlanet() || {}).citadel_level || 0) < 5) {
+        setResult("Planetary shields need a Level 5 citadel.", true);
+        return;
+      }
       if (kind === "launch_beacon" && !String(args.message || "").trim()) { setResult("Type a beacon message first.", true); return; }
       if (kind === "buy_equip" && args.qty == null) { setResult("How many? Type a number.", true); return; }
       openFormKind = null;
@@ -1958,7 +1991,7 @@
       ["Rank", S.rank || ""],
       ["Experience", fmt(S.experience)],
       ["Alignment", fmt(S.alignment) + " " + (S.alignment_label || "")],
-      ["Overnight tax", overnightTax() || "none yet"],
+      ["Overnight tax", lastTaxLine() || "none yet"],
       ["Tax due tomorrow", S.tax_due_tomorrow == null ? "none" : fmt(S.tax_due_tomorrow) + " cr"],
       ["Planets", fmt((S.owned_planets || []).length)],
       ["Known ports", fmt((S.known_ports || []).length)],
@@ -2754,8 +2787,9 @@
         const rows = ((S && S.adjacent) || []).map((row) => {
           const bits = ["Sector " + row.id + " ==> " + fmt(row.density) + " Warps : " + fmt(row.warps) + " NavHaz : " + fmt(row.navhaz) + "% Anom : " + (row.anomaly ? "Yes" : "No")];
           const seen = row.seen || {};
-          if (args && args.tier === "holo" && (seen.port || seen.traders || seen.planets || seen.fighters || seen.mines)) {
+          if (args && args.tier === "holo" && (seen.port || seen.traders || seen.planets || seen.fighters || seen.mines || (seen.ferrengi || []).length)) {
             if (seen.port) bits.push("Port " + (seen.port.name || "") + " " + (seen.port.code || ""));
+            (seen.ferrengi || []).forEach((ship) => bits.push("Ships " + (ship.name || ship.id) + " " + fmt(ship.fighters) + " fighters"));
             (seen.traders || []).forEach((tr) => bits.push((tr.name || tr.id) + " " + fmt(tr.fighters) + " fighters"));
             if (seen.fighters) bits.push("Fighters " + fmt(seen.fighters.count) + " belong to " + traderName(seen.fighters.owner_id));
             (seen.mines || []).forEach((m) => bits.push((m.kind || "mines") + " " + fmt(m.count)));
@@ -2800,6 +2834,22 @@
           body = body + ". You lost " + fmt(lost) + " fighter" + (lost === 1 ? "" : "s") + ", " + fmt(remain) + " remain";
         }
       }
+      if (kind === "land_planet") {
+        let combat = null;
+        streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+          const facts = (row && row.facts) || {};
+          if (row && row.kind === "combat" && facts.vs === "planet" && (row.seq || 0) > before - 1) combat = row;
+        });
+        const facts = (combat && combat.facts) || {};
+        if (facts.planet_fighters_lost != null && /repelled/i.test(raw)) {
+          const after = Number(facts.defender_s || 0);
+          const lostS = Number(facts.planet_shields_lost || 0);
+          const lostA = Number(facts.attacker_losses || 0);
+          const remain = facts.attacker_f != null ? Number(facts.attacker_f) : Number(((S && S.ship) || {}).fighters || 0);
+          body = "Landing repelled: planet shields " + fmt(after + lostS) + " -> " + fmt(after) + ", reaction and defending fighters killed " + fmt(facts.planet_fighters_lost) + "; you lost " + fmt(lostA) + " fighters, " + fmt(remain) + " remain";
+        }
+      }
+      if (kind === "set_military_reaction" && args && args.pct != null) body = body + " to " + fmt(args.pct) + "%";
       if (!dayNote && bad) {
         setResult((/trade failed|lost patience/i.test(raw) ? "FAILED" : "REFUSED") + " — " + body + tail, true);
         if (kind === "trade") openForm("trade", retry);
@@ -2857,14 +2907,20 @@
       rememberAlert(notice.seq);
       const facts = notice.facts || {};
       if (notice.kind === "mine_detonated") setResult("Your mines hit " + traderName(facts.victim) + " in sector " + (notice.sector_id || "") + " for " + fmt(facts.damage || 0) + " damage.", true);
+      else if (notice.kind === "combat" && facts.planet_fighters_lost != null) setResult(traderName(notice.actor_id) + " attacked " + (facts.planet_name || "your planet") + ": the planet lost " + fmt(facts.planet_fighters_lost) + " fighters and " + fmt(facts.planet_shields_lost || 0) + " shields.", true);
       else if (notice.kind === "combat") setResult("Your fighters fought in sector " + (notice.sector_id || "") + ".", true);
       else setResult("Someone landed on your planet" + (facts.seized ? " and took it." : "."), true);
       return;
     }
     rememberAlert(best.seq);
-    const who = (best.facts || {}).attacker || "someone";
-    const lost = (best.facts || {}).defender_losses;
-    setResult("You were attacked by " + who + (lost == null ? "." : ". You lost " + lost + "."), true);
+    const facts = best.facts || {};
+    if (facts.shield_losses != null) {
+      setResult(traderName(facts.attacker) + " attacked you in " + (best.sector_id || "") + ": you lost " + fmt(facts.shield_losses) + " shields, " + fmt(facts.defender_losses || 0) + " fighters (" + fmt(facts.defender_s || 0) + " shields left).", true);
+    } else {
+      const who = facts.attacker || "someone";
+      const lost = facts.defender_losses;
+      setResult("You were attacked by " + who + (lost == null ? "." : ". You lost " + lost + "."), true);
+    }
   }
   function render() {
     const dayNow = Number(S.day);
@@ -2872,7 +2928,12 @@
       taxFresh = true;
       dayNote = true;
       const tax = overnightTax();
-      setResult("Day " + dayNow + ". Turns refilled to " + fmt(S.turns_remaining) + "." + (tax ? " " + tax : ""), false);
+      let fell = "";
+      streamLog.concat(S.recent_events || []).forEach((ev) => {
+        if (!ev || (ev.seq || 0) <= fellSeenSeq) return;
+        if (/fell back/i.test(ev.summary || "")) { fell = plainWords(ev.summary); fellSeenSeq = ev.seq || fellSeenSeq; }
+      });
+      setResult("Day " + dayNow + ". Turns refilled to " + fmt(S.turns_remaining) + "." + (tax ? " " + tax : "") + (fell ? " " + fell : ""), false);
     }
     seenDay = dayNow;
     const sec = S.sector || {};

@@ -69,6 +69,10 @@ HELPERS = (
     "planet_landing_combat_on",
     "offensive_clash_held",
     "owner_hazard_notice_on",
+    "ship_flee_published",
+    "planet_shield_l5",
+    "ferrengi_engage_on",
+    "siege_report_on",
 )
 
 
@@ -76,7 +80,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 67
+    assert len(names) == 71
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -93,4 +97,8 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.PLANET_LANDING_COMBAT_MODE == "legacy"
     assert K.OFFENSIVE_CLASH_MODE == "legacy"
     assert K.OWNER_HAZARD_NOTICE_MODE == "legacy"
+    assert K.SHIP_FLEE_MODE == "legacy"
+    assert K.PLANET_SHIELD_MODE == "legacy"
+    assert K.FERRENGI_ENGAGE_MODE == "legacy"
+    assert K.SIEGE_REPORT_MODE == "legacy"
     assert K.EXP_SCORE_MODE == "legacy"

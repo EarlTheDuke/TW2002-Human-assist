@@ -466,6 +466,46 @@ def record_ferrengi_grudge(universe: Universe, player_id: str) -> None:
     grudges.add(player_id)
 
 
+def ferrengi_retaliate(universe: Universe, ferr: FerrengiShip, victim) -> None:
+    """Strike back in the same sector after the player attacked this Ferrengi."""
+    if not K.ferrengi_engage_on() or not ferr.alive or not victim.alive:
+        return
+    if int(ferr.sector_id) != int(victim.sector_id):
+        return
+    if int(ferr.aggression) < int(K.FERRENGI_HUNT_AGGRESSION_THRESHOLD):
+        return
+    universe.emit(
+        EventKind.FERRENGI_ATTACK,
+        **_tw_actor(ferr.id),
+        sector_id=ferr.sector_id,
+        payload={"victim": victim.id},
+        summary=f"!!! Ferrengi {ferr.name} attacks {victim.name} in {ferr.sector_id} !!!",
+    )
+    _resolve_ship_combat_attacker_npc(universe, ferr, victim)
+
+
+def engage_entrant(universe: Universe, pid: str) -> None:
+    """An aggressive Ferrengi in this sector boards an armed trader who just arrived."""
+    if not K.ferrengi_engage_on() or not K.ferrengi_tw2002():
+        return
+    player = universe.players.get(pid)
+    if player is None or not player.alive or int(player.ship.fighters) <= 0:
+        return
+    if player.sector_id in K.FEDSPACE_SECTORS or getattr(player, "ferrengi_encounter", None):
+        return
+    if _player_cloaked(player):
+        return
+    here = [f for f in universe.ferrengi.values() if f.alive and int(f.sector_id) == int(player.sector_id)]
+    for ferr in here:
+        if not ferr.alive or int(ferr.aggression) < int(K.FERRENGI_HUNT_AGGRESSION_THRESHOLD):
+            continue
+        if K.FERRENGI_ENCOUNTER == "tribute":
+            open_ferrengi_encounter(universe, ferr, player)
+        else:
+            ferrengi_retaliate(universe, ferr, player)
+        return
+
+
 def clear_ferrengi_encounter(universe: Universe, pid: str) -> None:
     player = universe.players.get(pid)
     if player is not None:
