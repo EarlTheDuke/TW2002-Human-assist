@@ -98,6 +98,8 @@ class ActionKind(str, Enum):
     TRICRON = "tricron"  # stardock-leftovers-v1
     CINEPLEX = "cineplex"  # stardock-leftovers-v1
     AVOID = "avoid"  # avoid-list-v1
+    JETTISON = "jettison"  # ship-exit-v1
+    SELF_DESTRUCT = "self_destruct"  # ship-exit-v1
 
 
 class Action(BaseModel):

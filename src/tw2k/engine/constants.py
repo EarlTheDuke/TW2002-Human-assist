@@ -3583,6 +3583,17 @@ def port_stock_fidelity_live() -> bool:
     return PORT_STOCK_FIDELITY_MODE == "live" or tw2002_live_profile()
 
 
+# ship-exit-v1. Off, Jettison and Self-destruct stay "not in this game".
+# On, jettison dumps cargo and self-destruct costs half your experience
+# and alignment and keeps you out today and tomorrow.
+SHIP_EXIT_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def ship_exit_on() -> bool:
+    """True when Jettison and Self-destruct are real commands."""
+    return SHIP_EXIT_MODE == "tw2002" or tw2002_live_profile()
+
+
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
     """How many more colonists fit. Class M live uses one cap per pool."""
     if class_id == "M" and class_m_fidelity_live():

@@ -1654,6 +1654,14 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         out.append(_la(ActionKind.AVOID, legal=True, cost=0,
                        params={"sector": "a sector id, or 0 to clear the list"}))
 
+    # Absent while SHIP_EXIT_MODE is legacy, so the pin keeps the old catalog.
+    if K.ship_exit_on():
+        from .ship_exit import jettison_spec, self_destruct_spec
+        ok, why, cost, params = jettison_spec(universe, player_id)
+        out.append(_la(ActionKind.JETTISON, legal=ok, reason=why, cost=cost, params=params))
+        ok, why, cost, params = self_destruct_spec(universe, player_id)
+        out.append(_la(ActionKind.SELF_DESTRUCT, legal=ok, reason=why, cost=cost, params=params))
+
     return out
 
 

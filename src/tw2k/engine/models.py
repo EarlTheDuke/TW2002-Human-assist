@@ -660,6 +660,9 @@ class Player(BaseModel):
             "reject_loop_key": "",
             "reject_loop_count": 0,
             "radio_channel": None,
+            "self_destruct_lock_day": 0,
+            "jettison_day": 0,
+            "jettison_colonists": 0,
         })
 
     id: str
@@ -727,6 +730,10 @@ class Player(BaseModel):
     corp_ticker: str | None = None
     # radio-channels-v1. Subspace channel. Omitted while unset.
     radio_channel: int | None = None
+    # ship-exit-v1. Omitted at 0 so a legacy dump stays identical.
+    self_destruct_lock_day: int = 0
+    jettison_day: int = 0
+    jettison_colonists: int = 0
     # CORP_RULES.md cr6. Wrong join attempts today. Omitted while 0.
     corp_breakins_today: int = 0
     turns_today: int = 0
