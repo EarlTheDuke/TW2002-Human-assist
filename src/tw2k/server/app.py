@@ -1175,6 +1175,15 @@ def _apply_port_stock_fidelity() -> None:
         K.PORT_STOCK_FIDELITY_MODE = raw
 
 
+def _apply_haggle_live() -> None:
+    """A test game can turn port counters on with the env or the serve flag."""
+    from ..engine import constants as K
+
+    raw = (os.environ.get("TW2K_HAGGLE_LIVE") or "").strip().lower()
+    if raw in ("live", "legacy"):
+        K.HAGGLE_LIVE_MODE = raw
+
+
 def _build_default_spec(
     *,
     seed: int,
@@ -1206,6 +1215,7 @@ def _build_default_spec(
     seat_drop_after_s: float = 45.0,
 ) -> MatchSpec:
     _apply_port_stock_fidelity()
+    _apply_haggle_live()
     names = agent_names or _default_agent_names(num_agents)
     if len(names) < num_agents:
         names = names + _default_agent_names(num_agents)[len(names):num_agents]

@@ -281,6 +281,11 @@ def serve(
         "--port-stock-fidelity",
         help="legacy or live. Live opens a selling port full and a buying port hungry. Env TW2K_PORT_STOCK_FIDELITY.",
     ),
+    haggle_live: str | None = typer.Option(
+        None,
+        "--haggle-live",
+        help="legacy or live. Live lets a port counter a trade offer. Default legacy. Env TW2K_HAGGLE_LIVE.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -501,6 +506,10 @@ def serve(
     if _stock in ("live", "legacy"):
         _os.environ["TW2K_PORT_STOCK_FIDELITY"] = _stock
         _K.PORT_STOCK_FIDELITY_MODE = _stock
+    _haggle = (haggle_live or _os.environ.get("TW2K_HAGGLE_LIVE") or "").strip().lower()
+    if _haggle in ("live", "legacy"):
+        _os.environ["TW2K_HAGGLE_LIVE"] = _haggle
+        _K.HAGGLE_LIVE_MODE = _haggle
 
     application = create_app(
         seed=seed,
