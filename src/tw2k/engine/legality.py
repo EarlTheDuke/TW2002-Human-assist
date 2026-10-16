@@ -125,17 +125,21 @@ def _fidelity_citadel_legal(planet, level: int) -> tuple[str | None, dict[str, A
         "equipment": equipment,
         "days": days,
         "colonists_have": avail_col,
+        "fuel_have": have_fuel,
+        "organics_have": have_org,
+        "equipment_have": have_eq,
         "pay_from": "stockpile",
     }
+    missing = []
     if have_fuel < fuel:
-        return f"need {fuel} fuel_ore on planet (have {have_fuel})", nxt
+        missing.append(f"need {fuel} fuel ore on planet (have {have_fuel})")
     if have_org < organics:
-        return f"need {organics} organics on planet (have {have_org})", nxt
+        missing.append(f"need {organics} organics on planet (have {have_org})")
     if have_eq < equipment:
-        return f"need {equipment} equipment on planet (have {have_eq})", nxt
+        missing.append(f"need {equipment} equipment on planet (have {have_eq})")
     if avail_col < colonists:
-        return f"need {colonists} colonists on planet (have {avail_col})", nxt
-    return None, nxt
+        missing.append(f"need {colonists} colonists on planet (have {avail_col})")
+    return ("; ".join(missing) or None), nxt
 
 
 def planet_destroy_reason(universe: Universe, player, planet) -> str | None:

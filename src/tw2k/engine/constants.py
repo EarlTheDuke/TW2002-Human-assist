@@ -3615,6 +3615,42 @@ def kill_cash_held() -> bool:
     return KILL_CASH_MODE == "tw2002" or tw2002_live_profile()
 
 
+# hazards-scans-v1. Legacy keeps today's landing: a rival planet whose
+# fighters are not defending is claimed by landing, fighters included.
+# tw2002 fights the planet's fighters and shields first and claims it
+# only if that fight clears them.
+PLANET_LANDING_COMBAT_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def planet_landing_combat_on() -> bool:
+    """True when landing on a defended planet fights before it can be claimed."""
+    return PLANET_LANDING_COMBAT_MODE == "tw2002" or tw2002_live_profile()
+
+
+# hazards-scans-v1. Legacy keeps today's entry clash: one exchange, and a
+# wiped group is removed. The published wave (shields absorb, survivors
+# stay) is not a number in the local references, so tw2002 only spends
+# the attacker's losses against shields before the same exchange. A wiped
+# group is still removed. Ben decides any flip.
+OFFENSIVE_CLASH_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def offensive_clash_held() -> bool:
+    """True when an entry clash spends losses on shields before the exchange."""
+    return OFFENSIVE_CLASH_MODE == "tw2002" or tw2002_live_profile()
+
+
+# hazards-scans-v1. Legacy keeps mine hits, landings, and fighter clashes
+# on the actor and the people in the sector. tw2002 also shows the mine
+# owner, the planet's old owner, and the fighter group's owner.
+OWNER_HAZARD_NOTICE_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def owner_hazard_notice_on() -> bool:
+    """True when the owner is told about a landing, a clash, or a mine hit."""
+    return OWNER_HAZARD_NOTICE_MODE == "tw2002" or tw2002_live_profile()
+
+
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
     """How many more colonists fit. Class M live uses one cap per pool."""
     if class_id == "M" and class_m_fidelity_live():

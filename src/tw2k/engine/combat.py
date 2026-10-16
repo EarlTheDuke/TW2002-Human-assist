@@ -103,6 +103,9 @@ def _resolve_fighter_sector_combat(
         return
     attacker = universe.players[attacker_id]
     attack_pool = incoming_fighters if incoming_fighters is not None else attacker.ship.fighters
+    if K.offensive_clash_held() and incoming_fighters is None:
+        soak = min(int(attacker.ship.shields), int(defender_dep.count))
+        attacker.ship.shields = int(attacker.ship.shields) - soak
 
     defender_count = defender_dep.count
     pot = int(defender_dep.toll_credits or 0)
