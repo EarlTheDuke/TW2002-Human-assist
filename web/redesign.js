@@ -374,14 +374,17 @@
     if (known) return holds + " Its fighters will fight your landing.";
     return holds + " Landing claims it when those fighters are not defending. A defended planet is fought first only when that switch is on.";
   }
-  function siegeSentence(facts) {
+  function siegeLosses(facts) {
     const after = Number(facts.defender_s || 0);
     const before = after + Number(facts.planet_shields_lost || 0);
     const remain = facts.attacker_f != null ? Number(facts.attacker_f) : Number(((S && S.ship) || {}).fighters || 0);
-    let line = "Landing repelled: ";
+    let line = "";
     if (before > 0) line += "planet shields " + fmt(before) + " -> " + fmt(after) + ", ";
     line += "reaction and defending fighters killed " + fmt(facts.planet_fighters_lost || 0) + "; you lost " + fmt(facts.attacker_losses || 0) + " fighters, " + fmt(remain) + " remain";
     return line;
+  }
+  function siegeSentence(facts) {
+    return "Landing repelled: " + siegeLosses(facts);
   }
   function fighterChallengeOpen() {
     const sector = (S && S.sector) || {};
@@ -2869,7 +2872,13 @@
           }
           if (row.kind === "hazard_avoid_prompt") avoid = "Mines are in this sector. Computer, then O, adds it to the avoid list";
         });
-        if (/avoid this sector/i.test(body)) body = "";
+        if (/adds it to the avoid list|avoid this sector/i.test(body)) {
+          body = body
+            .replace(/Mines are in this sector\. Computer, then O, adds it to the avoid list\.?/gi, "")
+            .replace(/mines in sector \d+: avoid this sector\?\s*\(autopilot stops here\)\.?/gi, "")
+            .replace(/^[.\s]+|[.\s]+$/g, "");
+          if (!avoid) avoid = "Mines are in this sector. Computer, then O, adds it to the avoid list";
+        }
         const bits = [body];
         if (hit) {
           if (mines) bits.push(mines);
@@ -2924,6 +2933,10 @@
         });
         const facts = (combat && combat.facts) || {};
         if (facts.planet_fighters_lost != null && /repelled/i.test(raw)) body = siegeSentence(facts);
+        else if (facts.planet_fighters_lost != null && /ship destroyed/i.test(body)) {
+          body = body.replace(/[.\s]+$/, "") + ". " + siegeLosses(facts);
+          if (delta < 0) body += ". Credits on board lost: " + fmt(-delta) + " cr";
+        }
       }
       if (kind === "set_military_reaction" && args && args.pct != null) body = body + " to " + fmt(args.pct) + "%";
       if (!dayNote && bad) {
