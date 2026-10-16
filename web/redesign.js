@@ -786,6 +786,11 @@
     else if (restore === "treasury") treasuryForm(saved && saved.side, saved);
     else if (restore === "quasar") quasarForm(saved && saved.kind, saved);
     else if (restore === "jump") jumpForm(saved && saved.kind, saved);
+    else if (restore === "memo") memoForm(saved);
+    else if (restore === "corpPassword") passwordForm(saved);
+    else if (restore === "join") joinForm(saved);
+    else if (restore === "drop") dropForm(null, saved);
+    else if (restore === "transfer") transferForm(null, saved);
     else if (restore) openForm(restore, saved);
   }
   function openForm(kind, saved) {
@@ -1851,6 +1856,282 @@
     lines.push("On your ship: " + fmt((S.ship || {}).fighters || 0));
     overlay("Deployed Fighters", lines.map((line) => '<div class="row">' + line + "</div>").join(""));
   }
+  function corpField(kind, title, note, field, saved, submit) {
+    const slot = $("formSlot");
+    if (!slot) return;
+    openFormKind = kind;
+    const menu = $("menu");
+    if (menu) menu.hidden = true;
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = kind;
+    wrap.innerHTML = '<div class="y">' + title + "</div>" + (note ? '<div class="c">' + note + "</div>" : "");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.dataset.n = field;
+    if (saved && saved[field]) input.value = saved[field];
+    const label = document.createElement("label");
+    label.appendChild(document.createTextNode(field + " "));
+    label.appendChild(input);
+    wrap.appendChild(label);
+    const go = () => {
+      const value = String(input.value || "").trim();
+      if (!value) { setResult("Type the " + field + ".", true); return; }
+      openFormKind = null;
+      slot.innerHTML = "";
+      submit(value);
+    };
+    wrap.appendChild(button("CONFIRM", go));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      go();
+    });
+    slot.appendChild(wrap);
+    input.focus();
+    input.select();
+  }
+  function memoForm(saved) {
+    const a = LA("corp_memo") || { legal: false, reason: "" };
+    if (!a.legal && !saved) { setResult("Memo: " + plainReason(a.reason), true); return; }
+    corpField("memo", "MEMO", "This goes to the corporation.", "message", saved, (message) => act("corp_memo", { message }, "memo"));
+  }
+  function passwordForm(saved) {
+    const a = LA("corp_set_password") || { legal: false, reason: "" };
+    if (!a.legal && !saved) { setResult("Set password: " + plainReason(a.reason), true); return; }
+    corpField("corpPassword", "PASSWORD", "The corporation asks for this when someone joins.", "password", saved, (password) => act("corp_set_password", { password }, "password"));
+  }
+  function joinForm(saved) {
+    const a = LA("corp_join") || { legal: false, reason: "", params: {} };
+    const slot = $("formSlot");
+    if (!slot) return;
+    if (!a.legal && !saved) { setResult("Join: " + plainReason(a.reason), true); return; }
+    openFormKind = "join";
+    const menu = $("menu");
+    if (menu) menu.hidden = true;
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "join";
+    wrap.innerHTML = '<div class="y">JOIN</div><div class="c">The corporation asks for its password.</div>';
+    const ticker = document.createElement("select");
+    ticker.dataset.n = "ticker";
+    ((((a.params || {}).ticker || {}).choices) || []).forEach((id) => {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = id;
+      ticker.appendChild(o);
+    });
+    if (saved && saved.ticker) ticker.value = saved.ticker;
+    const password = document.createElement("input");
+    password.type = "text";
+    password.dataset.n = "password";
+    if (saved && saved.password) password.value = saved.password;
+    const tickerLabel = document.createElement("label");
+    tickerLabel.appendChild(document.createTextNode("ticker "));
+    tickerLabel.appendChild(ticker);
+    const passwordLabel = document.createElement("label");
+    passwordLabel.appendChild(document.createTextNode("password "));
+    passwordLabel.appendChild(password);
+    wrap.appendChild(tickerLabel);
+    wrap.appendChild(passwordLabel);
+    const go = () => {
+      const word = String(password.value || "").trim();
+      if (!ticker.value || !word) { setResult("Type the password.", true); return; }
+      openFormKind = null;
+      slot.innerHTML = "";
+      act("corp_join", { ticker: ticker.value, password: word }, "join");
+    };
+    wrap.appendChild(button("CONFIRM", go));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      go();
+    });
+    slot.appendChild(wrap);
+    password.focus();
+    password.select();
+  }
+  function dropForm(a, saved) {
+    const spec = a || LA("corp_drop") || { legal: false, reason: "", params: {} };
+    const slot = $("formSlot");
+    if (!slot) return;
+    if (!spec.legal && !saved) { setResult("Drop member: " + plainReason(spec.reason), true); return; }
+    openFormKind = "drop";
+    const menu = $("menu");
+    if (menu) menu.hidden = true;
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "drop";
+    wrap.innerHTML = '<div class="y">DROP MEMBER</div>';
+    const target = document.createElement("select");
+    target.dataset.n = "target";
+    const members = ((spec.params || {}).members) || [];
+    ((((spec.params || {}).target || {}).choices) || []).forEach((id) => {
+      const o = document.createElement("option");
+      o.value = id;
+      const named = members.find((row) => row.player_id === id);
+      o.textContent = named ? named.name : id;
+      target.appendChild(o);
+    });
+    if (saved && saved.target) target.value = saved.target;
+    const label = document.createElement("label");
+    label.appendChild(document.createTextNode("member "));
+    label.appendChild(target);
+    wrap.appendChild(label);
+    const go = () => {
+      if (!target.value) { setResult("Pick a member.", true); return; }
+      openFormKind = null;
+      slot.innerHTML = "";
+      act("corp_drop", { target: target.value }, "drop");
+    };
+    wrap.appendChild(button("CONFIRM", go));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      go();
+    });
+    slot.appendChild(wrap);
+  }
+  function transferForm(a, saved) {
+    const spec = a || LA("corp_transfer") || { legal: false, reason: "", params: {} };
+    const slot = $("formSlot");
+    if (!slot) return;
+    if (!spec.legal && !saved) { setResult("Give or take: " + plainReason(spec.reason), true); return; }
+    openFormKind = "transfer";
+    const menu = $("menu");
+    if (menu) menu.hidden = true;
+    const params = spec.params || {};
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "transfer";
+    wrap.innerHTML = '<div class="y">GIVE OR TAKE</div><div class="c">A mate in this sector. This does not hand over the C.E.O. seat.</div>';
+    const target = document.createElement("select");
+    target.dataset.n = "target";
+    ((params.target || {}).choices || []).forEach((id) => {
+      const o = document.createElement("option");
+      o.value = id;
+      const named = (params.partners || []).find((row) => row.player_id === id);
+      o.textContent = named ? named.name : id;
+      target.appendChild(o);
+    });
+    const item = document.createElement("select");
+    item.dataset.n = "item";
+    ["credits", "fighters", "shields", "armid_mines", "limpet_mines"].forEach((name) => {
+      const o = document.createElement("option");
+      o.value = name;
+      o.textContent = name.replaceAll("_", " ");
+      item.appendChild(o);
+    });
+    const direction = document.createElement("select");
+    direction.dataset.n = "direction";
+    ["give", "take"].forEach((name) => {
+      const o = document.createElement("option");
+      o.value = name;
+      o.textContent = name;
+      direction.appendChild(o);
+    });
+    const qty = document.createElement("input");
+    qty.type = "number";
+    qty.min = "1";
+    qty.dataset.n = "qty";
+    qty.value = "1";
+    if (saved) {
+      if (saved.target) target.value = saved.target;
+      if (saved.item) item.value = saved.item;
+      if (saved.direction) direction.value = saved.direction;
+      if (saved.qty) qty.value = saved.qty;
+    }
+    [["mate ", target], ["item ", item], ["direction ", direction], ["qty ", qty]].forEach(([name, el]) => {
+      const label = document.createElement("label");
+      label.appendChild(document.createTextNode(name));
+      label.appendChild(el);
+      wrap.appendChild(label);
+    });
+    const go = () => {
+      const n = Number(qty.value);
+      if (!target.value || !n) { setResult("Pick a mate and an amount.", true); return; }
+      openFormKind = null;
+      slot.innerHTML = "";
+      act("corp_transfer", { target: target.value, item: item.value, qty: n, direction: direction.value }, "transfer");
+    };
+    wrap.appendChild(button("CONFIRM", go));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      go();
+    });
+    slot.appendChild(wrap);
+    qty.focus();
+    qty.select();
+  }
+  function corpMenu() {
+    const c = S.corp || {};
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "Corporate Menu";
+    const members = (c.members || []).map((row) => {
+      return '<div class="row" data-member="' + esc(row.id) + '">' + esc(row.name) + (row.ceo ? " C.E.O." : "") + " " + fmt(row.credits) + " cr</div>";
+    }).join("");
+    const total = (c.members || []).reduce((sum, row) => sum + Number(row.credits || 0), 0);
+    m.innerHTML = '<div class="y" data-corp="ticker">' + esc(c.ticker || "") + " " + esc(c.name || "") + "</div>"
+      + members
+      + '<div data-corp="credits">Member credits ' + fmt(total) + " cr</div>"
+      + '<div id="corpBtns"></div><br><span class="dk">Esc to close</span>';
+    const box = document.getElementById("corpBtns");
+    const add = (kind, label, onLegal) => box.appendChild(reasonButton(kind, label, onLegal));
+    add("corp_invite", "Invite", (a) => {
+      const id = ((((a.params || {}).target || {}).choices) || [])[0];
+      if (!id) { setResult("Invite: no trader to invite", true); return; }
+      const named = ((a.params || {}).targets || []).find((row) => row.player_id === id);
+      confirmWords("Invite", "Invite " + esc(named ? named.name : id) + "?", () => act("corp_invite", { target: id }, "invite"));
+    });
+    add("corp_join", "Join", () => joinForm());
+    add("corp_leave", "Leave", (a) => {
+      const line = (a.params || {}).dissolves
+        ? "Leave the corporation? You are the C.E.O., so it dissolves."
+        : "Leave the corporation?";
+      confirmWords("Leave", line, () => act("corp_leave", {}, "leave"));
+    });
+    add("corp_memo", "Memo", () => memoForm());
+    add("corp_deposit", "Deposit credits", () => {});
+    add("corp_withdraw", "Withdraw credits", () => {});
+    add("corp_set_password", "Set password", () => passwordForm());
+    add("corp_drop", "Drop member", (a) => dropForm(a));
+    const ceo = button("Transfer C.E.O.", () => setResult("Handing the C.E.O. seat to another member is not in this game.", true));
+    ceo.dataset.kind = "transfer_ceo";
+    box.appendChild(ceo);
+    add("corp_transfer", "Give or take", (a) => transferForm(a));
+    add("ship_set_corporate", "Make ship corporate", () => act("ship_set_corporate", {}, "corporate"));
+    add("ship_set_personal", "Make ship personal", () => act("ship_set_personal", {}, "personal"));
+    add("propose_alliance", "Propose alliance", (a) => {
+      const id = ((((a.params || {}).target || {}).choices) || [])[0];
+      if (!id) { setResult("Propose alliance: no other commander", true); return; }
+      confirmWords("Propose alliance", "Propose an alliance to " + esc(id) + "?", () => act("propose_alliance", { target: id }, "propose"));
+    });
+    add("accept_alliance", "Accept alliance", (a) => {
+      const id = ((((a.params || {}).alliance_id || {}).choices) || [])[0];
+      if (!id) { setResult("Accept alliance: no alliance proposal pending for you", true); return; }
+      confirmWords("Accept alliance", "Accept alliance " + esc(id) + "?", () => act("accept_alliance", { alliance_id: id }, "accept"));
+    });
+    add("break_alliance", "Break alliance", (a) => {
+      const id = ((((a.params || {}).alliance_id || {}).choices) || [])[0];
+      if (!id) { setResult("Break alliance: you are in no alliance", true); return; }
+      confirmWords("Break alliance", "Break alliance " + esc(id) + "?", () => act("break_alliance", { alliance_id: id }, "break"));
+    });
+  }
   function confirmWords(title, line, onYes) {
     const m = $("menu");
     m.hidden = false;
@@ -1918,6 +2199,7 @@
     if (k === "B") return confirmWords("Self Destruct", "Self-destruct is not in this game. Your ship stays.");
     if (k === "J") return confirmWords("Jettison Cargo", "Jettison is not in this game. Sell the cargo, or leave it on a planet.");
     if (k === "Q") return confirmWords("Quit", "Quit is not in this game. You are still in the cockpit.");
+    if (k === "T" && (S.corp || {}).ticker) return corpMenu();
     const hit = KEYS.find((x) => x[0] === k);
     if (!hit) return;
     if (hit[2] && !legal(hit[2])) {
