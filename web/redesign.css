@@ -23,6 +23,8 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #map{width:100%;flex:1 1 auto;height:auto;min-height:0;display:block;background:radial-gradient(#000016,#000)}
 #map .lane{stroke:var(--dc);stroke-width:1.2;opacity:.55}
 #map .lane.unk{stroke:var(--r);stroke-dasharray:3 2;opacity:.8}
+#map .lane.oneway{stroke:var(--m);stroke-dasharray:6 4;opacity:.9}
+#warps button.oneway{color:var(--m);border-color:var(--m)}
 .planet{padding:2px 0 6px;line-height:1.35}
 #map .node circle{fill:#000;stroke:var(--dg);stroke-width:2;cursor:pointer}
 #map .node.adj circle{stroke:var(--g);stroke-width:3}

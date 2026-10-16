@@ -10,7 +10,7 @@
     ["D", "Re-Display", null, 1], ["S", "Long Range Scan", "scan", 1], ["A", "Attack", "attack", 1],
     ["F", "Take/Leave Fighters", "deploy_fighters", 1], ["H", "Handle Mines", "deploy_mines", 1],
     ["U", "Use Genesis", "deploy_genesis", 1], ["E", "Ether Probe", "probe", 1],
-    ["C", "Computer", null, 1], ["I", "Ship Info", null, 1], [".", "Wait", "wait", 1],
+    ["C", "Computer", null, 1], ["I", "Ship Info", null, 1], ["Y", "Read Mail", null, 1], [".", "Wait", "wait", 1],
     ["T", "Corporate Menu", "corp_create", 0], ["R", "Release Beacon", "launch_beacon", 0],
     ["X", "Transporter Pad", "ship_transport", 0], ["W", "Tow SpaceCraft", "tow_engage", 0],
   ];
@@ -347,6 +347,15 @@
       const yours = s.fighter_group.owner_id === S.self_id ? " yours" : "";
       t += '<span class="g">Fighters</span><span class="y">:</span> <span class="c">' + fmt(s.fighter_group.count) + " " + esc(s.fighter_group.mode || "") + yours + "</span>\n";
     }
+    const pile = {};
+    (s.mines || []).forEach((row) => {
+      const kind = String(row.kind || "");
+      if (kind !== "armid" && kind !== "limpet") return;
+      pile[kind] = (pile[kind] || 0) + Number(row.count || 0);
+    });
+    const mineBits = ["armid", "limpet"].filter((kind) => pile[kind]).map((kind) => kind + " " + fmt(pile[kind]));
+    if (mineBits.length) t += '<span class="g">Mines   </span><span class="y">:</span> <span class="c" data-mines="sector">' + esc(mineBits.join(", ")) + "</span>\n";
+    if (s.beacon) t += '<span class="g">Beacon  </span><span class="y">:</span> <span class="c" data-beacon="here">' + esc(s.beacon) + "</span>\n";
     t += '<span class="g">Warps to Sector(s) </span><span class="y">:</span> ' + (s.warps_out || []).map((w) => known(w) ? '<span class="c">' + w + "</span>" : '<span class="r">(' + w + ")</span>").join(" - ");
     if (landed) t += '\n<span class="y">You are LANDED on ' + esc(landed.name) + "</span>";
     $("sectorText").innerHTML = t;
@@ -383,7 +392,8 @@
     const path = (plotted && plotted.path) || [];
     const serverPath = (plotted && plotted.server) || [];
     const cost = Number((LA("warp") || {}).turn_cost || 0);
-    const sig = JSON.stringify([hereId, serverPath, plotted && plotted.target, S.sector.warps_out, (S.known_sectors || []).map((k) => k.id), state.awaiting, state.busy, cost, S.planet_landed]);
+    const oneWays = (S.sector.warps_out || []).filter((w) => oneWay(w));
+    const sig = JSON.stringify([hereId, serverPath, plotted && plotted.target, S.sector.warps_out, oneWays, (S.known_sectors || []).map((k) => k.id), state.awaiting, state.busy, cost, S.planet_landed]);
     if (sig === mapSig && svg.childElementCount) return;
     mapSig = sig;
     const known = {};
@@ -492,7 +502,7 @@
       if (seen.has(key)) return;
       seen.add(key);
       const unk = known[b] && known[b].unexplored;
-      html += '<line class="lane' + (unk ? " unk" : "") + '" x1="0" y1="0" x2="' + pos[b][0] + '" y2="' + pos[b][1] + '"/>';
+      html += '<line class="lane' + (unk ? " unk" : "") + (oneWay(b) ? " oneway" : "") + '" x1="0" y1="0" x2="' + pos[b][0] + '" y2="' + pos[b][1] + '"/>';
     });
     for (let i = 1; i < path.length; i++) {
       const a = pos[path[i - 1]], b = pos[path[i]];
@@ -518,7 +528,9 @@
     (S.sector.warps_out || []).forEach((w, i) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = (i + 1) + ":" + w + (cost ? " (" + cost + "t)" : "");
+      const way = oneWay(w);
+      b.textContent = (i + 1) + ":" + w + (cost ? " (" + cost + "t)" : "") + (way ? " one-way" : "");
+      if (way) b.className = "oneway";
       b.disabled = state.busy;
       b.addEventListener("click", () => {
         if (S.planet_landed != null) { setResult("Lift off first", true); return; }
@@ -542,6 +554,11 @@
       row.appendChild(eng);
       row.appendChild(cancel);
     }
+  }
+  function oneWay(id) {
+    const back = (S.known_warps || {})[String(id)];
+    if (!back) return false;
+    return !back.map(Number).includes(Number(S.sector.id));
   }
   function go(id) {
     if (!S || Number(id) === Number(S.sector.id)) return;
@@ -578,7 +595,24 @@
       + countRow("disruptors", "Disruptors", Number(sh.mine_disruptors || 0))
       + '<div class="bar" data-gear="limpet"' + (limpets ? "" : " hidden") + '><span class="r">Limpet attached</span><span class="w">' + fmt(limpets) + "</span></div>"
       + '<div class="bar" data-gear="tow"><span>' + esc(towText) + "</span></div>";
-    $("holds").innerHTML = Object.entries(COM).map(([k, row]) => '<div class="hold"><b>' + row[0] + "</b><br>" + fmt((sh.cargo || {})[k]) + "</div>").join("");
+    const carried = [
+      ["atomic", "Atomic mines", Number(mines.atomic || 0)],
+      ["ether", "Ether probes", Number(sh.ether_probes || 0)],
+      ["genesis", "Genesis", Number(sh.genesis || 0)],
+      ["photons", "Photons", Number(sh.photon_missiles || 0)],
+      ["corbomite", "Corbomite", Number(sh.corbomite || 0)],
+      ["beacons", "Beacons", Number(sh.marker_beacons || 0)],
+      ["psychic", "Psychic probe", Number(sh.psychic_probe || 0)],
+      ["detonator", "Atomic detonator", Number(sh.atomic_detonators || 0)],
+    ];
+    carried.forEach(([key, label, n]) => { if (n) $("shipStats").insertAdjacentHTML("beforeend", countRow(key, label, n)); });
+    if (sh.scanner) $("shipStats").insertAdjacentHTML("beforeend", '<div class="bar" data-gear="scanner"><span>Scanner</span><span class="w">' + esc(String(sh.scanner).replaceAll("_", " ")) + "</span></div>");
+    const paid = sh.cargo_cost_avg || {};
+    $("holds").innerHTML = Object.entries(COM).map(([k, row]) => {
+      const avg = paid[k];
+      const price = avg ? '<div class="dk" data-paid="' + k + '">paid ' + fmt(avg) + " cr</div>" : "";
+      return '<div class="hold"><b>' + row[0] + "</b><br>" + fmt((sh.cargo || {})[k]) + price + "</div>";
+    }).join("");
     const root = $("viewport");
     if (root && window.TW2KViewport) window.TW2KViewport.update(S);
   }
@@ -656,8 +690,21 @@
         box.appendChild(button("<kbd>" + k + "</kbd>" + label, () => planetAct(k)));
       });
     }
+    const mail = (S.inbox || []).filter((row) => row && (row.message || row.text));
+    if (mail.length) {
+      const line = document.createElement("div");
+      line.className = "y";
+      line.dataset.mail = "unread";
+      line.textContent = "Mail: " + mail.length + " unread. " + (mail[0].message || mail[0].text);
+      box.appendChild(line);
+    }
     const stockRows = (s.port && s.port.stock) || {};
     if (s.port && !landed && Object.keys(stockRows).length) {
+      const cap = document.createElement("div");
+      cap.className = "c";
+      cap.dataset.port = "code";
+      cap.textContent = "Port " + (s.port.name || "") + " " + (s.port.code || "");
+      box.appendChild(cap);
       const table = document.createElement("table");
       table.className = "porttbl";
       table.innerHTML = "<tr><th>Items</th><th>Status</th><th>Trading</th><th>Price</th><th>OnBoard</th><th></th></tr>";
@@ -1418,12 +1465,23 @@
     const sh = S.ship || {};
     const def = SHIPS[sh.class] || { name: String(sh.class || "ship").replaceAll("_", " ") };
     const hop = (LA("warp") || {}).turn_cost || (((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || "";
-    const gear = [];
-    [["scanner", sh.scanner], ["genesis", sh.genesis], ["ether probes", sh.ether_probes], ["photons", sh.photon_missiles], ["cloaks", sh.cloaks], ["disruptors", sh.mine_disruptors], ["beacons", sh.marker_beacons], ["atomic detonators", sh.atomic_detonators]].forEach(([label, n]) => {
-      if (n) gear.push(label + " " + n);
-    });
-    Object.entries(sh.mines || {}).forEach(([name, n]) => { if (n) gear.push(String(name).replaceAll("_", " ") + " " + n); });
-    if (sh.transwarp && sh.transwarp.fitted) gear.push("transwarp " + sh.transwarp.fitted);
+    const mines = sh.mines || {};
+    const gear = [
+      ["Scanner", sh.scanner || "none"],
+      ["Genesis", fmt(sh.genesis || 0)],
+      ["Ether probes", fmt(sh.ether_probes || 0)],
+      ["Photons", fmt(sh.photon_missiles || 0)],
+      ["Cloaks", fmt(sh.cloaks || 0)],
+      ["Disruptors", fmt(sh.mine_disruptors || 0)],
+      ["Beacons", fmt(sh.marker_beacons || 0)],
+      ["Corbomite", fmt(sh.corbomite || 0)],
+      ["Psychic probe", fmt(sh.psychic_probe || 0)],
+      ["Atomic detonators", fmt(sh.atomic_detonators || 0)],
+      ["Atomic mines", fmt(mines.atomic || 0)],
+      ["Armid mines", fmt(mines.armid || 0)],
+      ["Limpet mines", fmt(mines.limpet || 0)],
+    ];
+    if (sh.transwarp && sh.transwarp.fitted) gear.push(["Transwarp", String(sh.transwarp.fitted)]);
     const row = (k, v) => '<div class="row"><span class="g">' + k + '</span> <span class="c">' + esc(v) + "</span></div>";
     const m = $("menu");
     m.hidden = false;
@@ -1436,7 +1494,8 @@
       + row("Fighters", fmt(sh.fighters))
       + row("Shields", fmt(sh.shields))
       + row("Turns per warp", hop === "" ? "" : String(hop))
-      + row("Gear", gear.join(", ") || "none")
+      + '<div class="y">Gear</div>'
+      + gear.map(([label, n]) => row(label, n)).join("")
       + '<br><span class="dk">Esc to close</span>';
   }
 
@@ -1524,6 +1583,12 @@
     });
     return best ? String(best.summary) : "";
   }
+  function readMail() {
+    const rows = (S.inbox || []).filter((row) => row && (row.message || row.text));
+    if (!rows.length) { setResult("No mail.", true); return; }
+    const body = rows.map((row) => '<div class="row" data-mail="letter"><span class="y">' + esc(row.from_name || row.from || "someone") + "</span> " + esc(row.message || row.text) + "</div>").join("");
+    overlay("Mail", body);
+  }
   function overlay(title, body) {
     const m = $("menu");
     m.hidden = false;
@@ -1547,7 +1612,7 @@
         return label + " " + side + " " + fmt(item.price) + " cr";
       }).join(", ");
       const seen = row.last_seen_day != null ? " day " + row.last_seen_day : "";
-      return '<div class="row"><span class="c">' + row.sector_id + "</span> " + esc(row.class || row.name || "") + esc(seen) + "<br>" + esc(lines) + "</div>";
+      return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(row.class || row.name || "") + esc(seen) + "<br>" + esc(lines) + "</div>";
     }).join("");
     overlay("Port Report", body);
   }
@@ -1572,6 +1637,7 @@
       ["Bank", S.bank_balance == null ? "none" : fmt(S.bank_balance) + " cr"],
       ["Net worth", fmt(S.net_worth) + " cr"],
       ["Rank", S.rank || ""],
+      ["Experience", fmt(S.experience)],
       ["Alignment", fmt(S.alignment) + " " + (S.alignment_label || "")],
       ["Overnight tax", overnightTax() || "none yet"],
       ["Tax due tomorrow", S.tax_due_tomorrow == null ? "none" : fmt(S.tax_due_tomorrow) + " cr"],
@@ -1665,7 +1731,7 @@
   }
   function key(k) {
     const m = $("menu");
-    if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G"].includes(k)) { setResult(noTurnsLine(), true); return; }
+    if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G", "Y"].includes(k)) { setResult(noTurnsLine(), true); return; }
     if (k === "Escape") {
       m.hidden = true; inComputer = false; openFormKind = null; formFocus = "";
       const slot = $("formSlot"); if (slot) slot.innerHTML = "";
@@ -1698,6 +1764,7 @@
     if (k === "D") { render(); return; }
     if (k === "I") { shipInfo(); return; }
     if (k === "V") return gameStatus();
+    if (k === "Y") return readMail();
     if (k === "F" && !landedPlanet()) return fighterForm();
     if (k === "H" && !landedPlanet()) return mineForm();
     if (k === "G") return showFighters();
@@ -1849,6 +1916,7 @@
     $("turns").textContent = fmt(S.turns_remaining) + "/" + fmt(S.turns_per_day);
     $("credits").textContent = fmt(S.credits) + " cr";
     $("sbDay").textContent = String(S.day);
+    $("xp").textContent = fmt(S.experience);
     $("maxDays").textContent = String(S.max_days);
     $("nw").textContent = fmt(S.net_worth);
     $("rank").textContent = S.rank || "";
