@@ -15,7 +15,7 @@
     ["X", "Transporter Pad", "ship_transport", 0], ["W", "Tow SpaceCraft", "tow_engage", 0],
   ];
   const MENU_KEYS = KEYS.concat([
-    ["V", "Game Status"], ["G", "Show Deployed Fighters"], ["B", "Self Destruct"],
+    ["V", "Game Status"], ["Z", "Rules and Help"], ["G", "Show Deployed Fighters"], ["B", "Self Destruct"],
     ["J", "Jettison Cargo"], ["Q", "Quit"],
   ]);
   const PLANET_KEYS = [
@@ -448,7 +448,10 @@
     const landed = landedPlanet();
     let t = '<span class="g">Sector  </span><span class="y">:</span> <span class="c">' + s.id + "</span> <span class=\"g\">in</span> <span class=\"c\">" + (s.is_fedspace ? "The Federation" : "uncharted space") + ".</span>\n";
     if (s.port) t += '<span class="g">Ports   </span><span class="y">:</span> <span class="c">' + esc(s.port.name) + '</span><span class="y">,</span> <span class="g">Class</span> <span class="c">' + s.port.class_id + '</span> <span class="w">(</span><span class="m">' + esc(s.port.code) + "</span><span class=\"w\">)</span>\n";
-    (s.planets || []).forEach((p) => { t += '<span class="g">Planets </span><span class="y">:</span> <span class="c">' + esc(p.name) + "</span>\n"; });
+    (s.planets || []).forEach((p) => {
+      const cls = p.class ? " (" + p.class + ")" : "";
+      t += '<span class="g">Planets </span><span class="y">:</span> <span class="c" data-planet="class">' + esc((p.name || "planet") + cls) + "</span>\n";
+    });
     shipsHere().forEach((ship) => {
       const fig = ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters";
       t += '<span class="g">Ships   </span><span class="y">:</span> <span class="c">' + esc(ship.name + ", " + ship.owner + fig) + "</span>\n";
@@ -809,11 +812,16 @@
       body += '<div>Citadel <span class="c">' + (building ? "building toward " + landed.citadel_target : "level " + (landed.citadel_level || 0)) + "</span>";
       if (building && landed.citadel_complete_day) body += '  ready day <span class="y">' + landed.citadel_complete_day + "</span>";
       body += '  Fighters <span class="c">' + fmt(landed.fighters || 0) + '</span>  Shields <span class="c">' + fmt(landed.shields || 0) + "</span></div>";
+      let production = landed.production;
+      if (!production && landed.id != null && landed.owner_id === S.self_id) {
+        const owned = (S.owned_planets || []).find((row) => row.id === landed.id);
+        if (owned && owned.production) production = owned.production;
+      }
       ["fuel_ore", "organics", "equipment"].forEach((k) => {
         const meta = COM[k] || [k, "#fff"];
         const cols = (landed.colonists || {})[k] || 0;
         const stock = (landed.stockpile || {})[k] || 0;
-        const made = landed.production ? (landed.production[k] || 0) : null;
+        const made = production ? (production[k] || 0) : null;
         body += '<div style="color:' + meta[1] + '">' + esc(meta[0]) + '</div><div class="c">Colonists ' + fmt(cols) + "  On planet " + fmt(stock) + (made == null ? "" : "  " + fmt(made) + " per day") + "</div>";
       });
       body += '<div data-quasar="now">Quasar sector ' + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%</div>";
@@ -1805,6 +1813,11 @@
     if (/citadel|build/i.test(kind)) return "Citadel level " + (planet.citadel_level || 0) + (planet.citadel_target ? ", building toward " + planet.citadel_target : "") + ".";
     return "";
   }
+  function usedHolds(sh) {
+    const cap = Number((sh && sh.holds) || 0);
+    if (sh && sh.cargo_free != null) return Math.max(0, cap - Number(sh.cargo_free));
+    return Object.values((sh && sh.cargo) || {}).reduce((sum, n) => sum + Number(n || 0), 0);
+  }
   function shipInfo() {
     const sh = S.ship || {};
     const def = SHIPS[sh.class] || { name: String(sh.class || "ship").replaceAll("_", " ") };
@@ -1834,13 +1847,39 @@
       + row("Name", def.name)
       + row("Commander", S.self_name || "")
       + row("Class", String(sh.class || "").replaceAll("_", " "))
-      + row("Holds", fmt(sh.holds))
-      + row("Fighters", fmt(sh.fighters))
-      + row("Shields", fmt(sh.shields))
+      + row("Holds", fmt(usedHolds(sh)) + " of " + fmt(sh.holds))
+      + row("Empty holds", fmt(Math.max(0, Number(sh.holds || 0) - usedHolds(sh))))
+      + row("Fighters", fmt(sh.fighters) + " of " + fmt(sh.fighter_cap || 0))
+      + row("Shields", fmt(sh.shields) + " of " + fmt(sh.shield_cap || 0))
       + row("Turns per warp", hop === "" ? "" : String(hop))
       + '<div class="y">Gear</div>'
       + gear.map(([label, n]) => row(label, n)).join("")
       + '<br><span class="dk">Esc to close</span>';
+  }
+  async function rulesPanel() {
+    const m = $("menu");
+    m.hidden = false;
+    m.dataset.screen = "rules";
+    m.innerHTML = '<div class="y">Rules and Help</div><div class="c">Loading.</div>';
+    try {
+      const data = await api("/" + state.seat + "/reference");
+      const blocks = (data.sections || []).map((section) => {
+        let body = '<div class="y">' + esc(section.title || "") + "</div>";
+        body += '<div class="dk">' + esc(section.source || "") + "</div>";
+        if (section.body) body += '<div class="row">' + esc(section.body) + "</div>";
+        (section.rows || []).forEach((row) => {
+          if (row.cost != null) {
+            body += '<div class="row" data-ship="' + esc(row.id) + '">' + esc(row.name) + " " + fmt(row.cost) + " cr, holds " + fmt(row.holds) + ", fighters " + fmt(row.max_fighters) + ", shields " + fmt(row.max_shields) + ", " + fmt(row.turns_per_warp) + " turns per warp</div>";
+          } else if (row.price != null) {
+            body += '<div class="row" data-price="' + esc(row.name) + '">' + esc(row.name) + " " + fmt(row.price) + " cr</div>";
+          }
+        });
+        return body;
+      }).join("");
+      m.innerHTML = '<div class="y">Rules and Help</div>' + blocks + '<br><span class="dk">Esc to close</span>';
+    } catch (e) {
+      m.innerHTML = '<div class="y">Rules and Help</div><div class="r">' + esc(e.message || e) + "</div>";
+    }
   }
 
   function citadelForm() {
@@ -2693,7 +2732,7 @@
   }
   function key(k) {
     const m = $("menu");
-    if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G", "Y"].includes(k)) { setResult(noTurnsLine(), true); return; }
+    if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G", "Y", "Z"].includes(k)) { setResult(noTurnsLine(), true); return; }
     if (k === "Escape") {
       m.hidden = true; inComputer = false; openFormKind = null; formFocus = "";
       const slot = $("formSlot"); if (slot) slot.innerHTML = "";
@@ -2726,6 +2765,7 @@
     if (landedPlanet() && SPACE_OFF.includes(k)) { setResult("Lift off first", true); return; }
     if (k === "D") { render(); return; }
     if (k === "I") { shipInfo(); return; }
+    if (k === "Z") { rulesPanel(); return; }
     if (k === "V") return gameStatus();
     if (k === "Y") return readMail();
     if (k === "F" && !landedPlanet()) return fighterForm();

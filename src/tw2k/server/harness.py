@@ -396,6 +396,12 @@ def build_harness_router(runner) -> APIRouter:
             "server_time": time.time(),
         }
 
+    @router.get("/{player_id}/reference")
+    async def reference(player_id: str, request: Request) -> dict[str, Any]:
+        _require_seat(player_id, request)
+        from .reference import game_reference
+        return game_reference()
+
     @router.get("/rules")
     async def rules(request: Request) -> dict[str, Any]:
         _authenticate_any(request)
