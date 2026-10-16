@@ -682,13 +682,26 @@
         const made = landed.production ? (landed.production[k] || 0) : null;
         body += '<div style="color:' + meta[1] + '">' + esc(meta[0]) + '</div><div class="c">Colonists ' + fmt(cols) + "  On planet " + fmt(stock) + (made == null ? "" : "  " + fmt(made) + " per day") + "</div>";
       });
-      if (landed.quasar_sector_pct || landed.quasar_atm_pct) body += '<div class="dk">Quasar sector ' + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%</div>";
+      body += '<div data-quasar="now">Quasar sector ' + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%</div>";
+      if (landed.treasury != null) body += '<div data-treasury="balance">Treasury ' + fmt(landed.treasury) + " cr</div>";
+      const planetFuel = Number((landed.stockpile || {}).fuel_ore || 0);
+      body += '<div data-range="transporter">Planet fuel ' + fmt(planetFuel) + " ore. Transporter range " + fmt(Math.floor(planetFuel / 10)) + " sectors at 10 ore each.</div>";
       card.innerHTML = body;
       box.appendChild(card);
       box.appendChild(button("<kbd>Q</kbd>Lift off", () => act("liftoff", {}, "lift off")));
       PLANET_KEYS.filter((row) => row[2]).forEach(([k, label, kind]) => {
         box.appendChild(button("<kbd>" + k + "</kbd>" + label, () => planetAct(k)));
       });
+      const pid = landed.id;
+      box.appendChild(reasonButton("deposit_treasury", "Treasury deposit", () => treasuryForm("deposit")));
+      box.appendChild(reasonButton("withdraw_treasury", "Treasury withdraw", () => treasuryForm("withdraw")));
+      box.appendChild(reasonButton("set_quasar_sector", "Quasar sector", () => quasarForm("set_quasar_sector")));
+      box.appendChild(reasonButton("set_quasar_atm", "Quasar atmosphere", () => quasarForm("set_quasar_atm")));
+      box.appendChild(reasonButton("planet_transwarp", "Planet TransWarp", () => jumpForm("planet_transwarp")));
+      box.appendChild(reasonButton("planet_buy_transporter", "Buy transporter", () => confirmWords("Buy transporter", "Buy a transporter for 50,000 cr?", () => act("planet_buy_transporter", { planet_id: pid }, "buy transporter"))));
+      box.appendChild(reasonButton("planet_transport", "Use transporter", () => jumpForm("planet_transport")));
+      box.appendChild(reasonButton("claim_planet", "Claim planet", () => act("claim_planet", { planet_id: pid }, "claim planet")));
+      box.appendChild(reasonButton("planet_destroy", "Destroy planet", () => confirmWords("Destroy planet", "Destroy " + (landed.name || "this planet") + "? This cannot be undone.", () => act("planet_destroy", { planet_id: pid }, "destroy planet"))));
     }
     const mail = (S.inbox || []).filter((row) => row && (row.message || row.text));
     if (mail.length) {
@@ -770,6 +783,9 @@
     else if (restore === "disruptor") disruptorForm(saved);
     else if (restore === "transwarp") transwarpForm(saved);
     else if (restore === "terra") terraForm(saved);
+    else if (restore === "treasury") treasuryForm(saved && saved.side, saved);
+    else if (restore === "quasar") quasarForm(saved && saved.kind, saved);
+    else if (restore === "jump") jumpForm(saved && saved.kind, saved);
     else if (restore) openForm(restore, saved);
   }
   function openForm(kind, saved) {
@@ -1453,6 +1469,137 @@
     const again = wrap.querySelector('[data-n="' + focusName + '"]') || amount;
     again.focus();
     if (again.type === "number" || again.type === "text") again.select();
+  }
+  function treasuryForm(side, saved) {
+    const slot = $("formSlot");
+    const planet = landedPlanet();
+    if (!slot || !planet) return;
+    openFormKind = "treasury";
+    const which = (saved && saved.side) || side || "deposit";
+    const action = LA(which === "withdraw" ? "withdraw_treasury" : "deposit_treasury") || { params: {} };
+    const max = Number(((action.params || {}).amount || {}).max || 1);
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "treasury";
+    wrap.innerHTML = '<div class="y">TREASURY</div><div class="c" data-treasury="form">Treasury ' + fmt(planet.treasury || 0) + " cr.</div>";
+    const pick = document.createElement("select");
+    pick.dataset.n = "side";
+    [["deposit", "Deposit"], ["withdraw", "Withdraw"]].forEach(([value, label]) => {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = label;
+      pick.appendChild(o);
+    });
+    pick.value = which === "withdraw" ? "withdraw" : "deposit";
+    const amount = document.createElement("input");
+    amount.type = "number";
+    amount.min = "1";
+    amount.max = String(max);
+    amount.dataset.n = "amount";
+    amount.value = (saved && saved.amount) || String(max);
+    wrap.appendChild(pick);
+    wrap.appendChild(amount);
+    const submit = () => {
+      const kind = pick.value === "withdraw" ? "withdraw_treasury" : "deposit_treasury";
+      const n = Number(amount.value);
+      if (!n) { setResult("Type an amount.", true); return; }
+      openFormKind = null;
+      slot.innerHTML = "";
+      act(kind, { planet_id: planet.id, amount: n }, pick.value);
+    };
+    wrap.appendChild(button("CONFIRM", submit));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    slot.appendChild(wrap);
+    amount.focus();
+    amount.select();
+  }
+  function quasarForm(kind, saved) {
+    const slot = $("formSlot");
+    const planet = landedPlanet();
+    if (!slot || !planet) return;
+    openFormKind = "quasar";
+    const which = (saved && saved.kind) || kind || "set_quasar_sector";
+    const now = which === "set_quasar_atm" ? (planet.quasar_atm_pct || 0) : (planet.quasar_sector_pct || 0);
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "quasar";
+    wrap.innerHTML = '<div class="y">QUASAR</div><div class="c">Now ' + now + "%.</div>";
+    const pick = document.createElement("select");
+    pick.dataset.n = "kind";
+    [["set_quasar_sector", "Sector"], ["set_quasar_atm", "Atmosphere"]].forEach(([value, label]) => {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = label;
+      pick.appendChild(o);
+    });
+    pick.value = which;
+    const pct = document.createElement("input");
+    pct.type = "number";
+    pct.min = "0";
+    pct.max = "100";
+    pct.dataset.n = "pct";
+    pct.value = (saved && saved.pct != null && saved.pct !== "") ? saved.pct : String(now);
+    wrap.appendChild(pick);
+    wrap.appendChild(pct);
+    const submit = () => {
+      openFormKind = null;
+      slot.innerHTML = "";
+      act(pick.value, { planet_id: planet.id, pct: Number(pct.value) }, "set quasar");
+    };
+    wrap.appendChild(button("CONFIRM", submit));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    slot.appendChild(wrap);
+    pct.focus();
+    pct.select();
+  }
+  function jumpForm(kind, saved) {
+    const slot = $("formSlot");
+    const planet = landedPlanet();
+    if (!slot || !planet) return;
+    openFormKind = "jump";
+    const which = (saved && saved.kind) || kind || "planet_transwarp";
+    const fuel = Number((planet.stockpile || {}).fuel_ore || 0);
+    const note = which === "planet_transport"
+      ? "10 fuel ore per sector. Range " + fmt(Math.floor(fuel / 10)) + " sectors. 50,000 cr plus 25,000 cr for each hop after the first."
+      : "Fuel cost 400 ore per sector.";
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "jump";
+    wrap.innerHTML = '<div class="y">' + (which === "planet_transport" ? "TRANSPORTER" : "PLANET TRANSWARP") + '</div><div class="c" data-fuel="jump">' + note + "</div>";
+    const pick = document.createElement("select");
+    pick.dataset.n = "kind";
+    [["planet_transwarp", "Planet TransWarp"], ["planet_transport", "Use transporter"]].forEach(([value, label]) => {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = label;
+      pick.appendChild(o);
+    });
+    pick.value = which;
+    const dest = document.createElement("input");
+    dest.type = "number";
+    dest.min = "1";
+    dest.dataset.n = "dest";
+    dest.value = (saved && saved.dest) || "";
+    wrap.appendChild(pick);
+    wrap.appendChild(dest);
+    const submit = () => {
+      const n = Number(dest.value);
+      if (!n) { setResult("Type a destination sector.", true); return; }
+      const posted = pick.value;
+      openFormKind = null;
+      slot.innerHTML = "";
+      act(posted, { planet_id: planet.id, dest_sector: n }, posted);
+    };
+    wrap.appendChild(button("CONFIRM", submit));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    slot.appendChild(wrap);
+    dest.focus();
   }
   function formPreview(kind) {
     const planet = landedPlanet();
