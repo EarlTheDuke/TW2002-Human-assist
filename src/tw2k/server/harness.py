@@ -400,7 +400,8 @@ def build_harness_router(runner) -> APIRouter:
     async def reference(player_id: str, request: Request) -> dict[str, Any]:
         _require_seat(player_id, request)
         from .reference import game_reference
-        return game_reference()
+        universe = runner.state.universe
+        return game_reference(universe.players.get(player_id), int(universe.day))
 
     @router.get("/rules")
     async def rules(request: Request) -> dict[str, Any]:

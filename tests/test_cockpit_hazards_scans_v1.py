@@ -341,11 +341,12 @@ def test_owner_hears_when_their_mine_hits(world):
 
     _next(page, hit)
     page.wait_for_function(
-        "() => (document.querySelector('#lastResult').textContent || '').includes('Your mines hit')",
+        "() => (document.querySelector('#lastResult').textContent || '').includes('for 30 damage')",
         timeout=20_000,
     )
     text = page.locator("#lastResult").inner_text()
     assert "Your mines hit" in text
+    assert "for 30 damage" in page.locator("#log").inner_text()
     _shoot(page, "alert", "#lastResult")
 
 

@@ -1,7 +1,8 @@
 """Read-only rules, scoring, ship stats, and StarDock prices.
 
 Every number is read from the engine table named on the row. Nothing here
-is a second copy of a price.
+is a second copy of a price. The cockpit prints the words. The source
+fields stay on the JSON for the bot seat.
 """
 
 from __future__ import annotations
@@ -13,8 +14,12 @@ from tw2k.engine import constants as K
 
 def _ship_rows() -> list[dict[str, Any]]:
     rows = []
+    extra = (
+        "max_holds", "offensive_odds", "fighters_per_attack",
+        "max_mines", "max_photons", "max_genesis",
+    )
     for key, spec in K.ship_specs().items():
-        rows.append({
+        row: dict[str, Any] = {
             "id": key,
             "name": spec.get("display_name") or key,
             "cost": int(spec.get("cost") or 0),
@@ -23,7 +28,11 @@ def _ship_rows() -> list[dict[str, Any]]:
             "max_shields": int(spec.get("max_shields") or 0),
             "turns_per_warp": int(spec.get("turns_per_warp") or 0),
             "source": "src/tw2k/engine/constants.py ship_specs()",
-        })
+        }
+        for field in extra:
+            if field in spec and spec[field] is not None:
+                row[field] = spec[field]
+        rows.append(row)
     return rows
 
 
@@ -31,13 +40,15 @@ def _price(name: str, amount: int, source: str) -> dict[str, Any]:
     return {"name": name, "price": int(amount), "source": source}
 
 
-def _prices() -> list[dict[str, Any]]:
+def _prices(ship_class: str, holds: int, day: int) -> list[dict[str, Any]]:
     base = "src/tw2k/engine/constants.py"
-    return [
+    rows = [
         _price("Fuel ore, base", K.COMMODITY_BASE_PRICE["fuel_ore"], base + " COMMODITY_BASE_PRICE"),
         _price("Organics, base", K.COMMODITY_BASE_PRICE["organics"], base + " COMMODITY_BASE_PRICE"),
         _price("Equipment, base", K.COMMODITY_BASE_PRICE["equipment"], base + " COMMODITY_BASE_PRICE"),
-        _price("Colonist", K.COLONIST_PRICE, base + " COLONIST_PRICE"),
+        _price("Fighter", K.fighter_unit_price(day), base + " fighter_unit_price()"),
+        _price("Shield", K.shield_unit_price(day), base + " shield_unit_price()"),
+        _price("Next cargo hold", K.hold_next_price(ship_class, holds, day), base + " hold_next_price()"),
         _price("Armid mine", K.armid_mine_cost(), base + " armid_mine_cost()"),
         _price("Limpet mine", K.limpet_mine_cost(), base + " limpet_mine_cost()"),
         _price("Atomic mine", K.ATOMIC_MINE_COST, base + " ATOMIC_MINE_COST"),
@@ -53,36 +64,59 @@ def _prices() -> list[dict[str, Any]]:
         _price("Density scanner", K.DENSITY_SCANNER_COST, base + " DENSITY_SCANNER_COST"),
         _price("Holographic scanner", K.HOLO_SCANNER_COST, base + " HOLO_SCANNER_COST"),
         _price("Planet scanner", K.PLANET_SCANNER_COST, base + " PLANET_SCANNER_COST"),
-        _price("Fighter, net-worth value", K.nw_fighter_value(), base + " nw_fighter_value()"),
-        _price("Shield, net-worth value", K.nw_shield_value(), base + " nw_shield_value()"),
+    ]
+    if K.ship_tw_on():
+        rows.append(_price("TransWarp type 1", K.SHIP_TW_TYPE1_COST, base + " SHIP_TW_TYPE1_COST"))
+        if K.tow_on():
+            rows.append(_price("TransWarp type 2", K.SHIP_TW_TYPE2_COST, base + " SHIP_TW_TYPE2_COST"))
+    return rows
+
+
+def _rank_rows() -> list[dict[str, Any]]:
+    if K.rank_tw2002():
+        source = "src/tw2k/engine/victory.py rank_for; src/tw2k/engine/constants.py RANK_THRESHOLDS, GOOD_RANKS, EVIL_RANKS"
+        return [
+            {"experience": int(thresh), "good": K.GOOD_RANKS[i], "evil": K.EVIL_RANKS[i], "source": source}
+            for i, thresh in enumerate(K.RANK_THRESHOLDS)
+        ]
+    return [
+        {"experience": int(thresh), "good": name, "evil": name, "source": "src/tw2k/engine/constants.py RANK_TABLE"}
+        for thresh, name in K.RANK_TABLE
     ]
 
 
-def game_reference() -> dict[str, Any]:
+def game_reference(player=None, day: int = 1) -> dict[str, Any]:
+    ship = getattr(player, "ship", None)
+    ship_class = getattr(getattr(ship, "ship_class", None), "value", None) or "merchant_cruiser"
+    holds = int(getattr(ship, "holds", 0) or 0)
+    today = int(day or 1)
     fighter = int(K.nw_fighter_value())
     shield = int(K.nw_shield_value())
-    hull = K.NW_HULL_FRACTION
+    colonist = int(K.COLONIST_PRICE)
     scoring = (
-        f"Ship net worth is Player.net_worth in src/tw2k/engine/models.py. "
-        f"A fighter counts as {fighter} cr (constants.py nw_fighter_value). "
-        f"A shield counts as {shield} cr (nw_shield_value). "
-        f"The hull counts as {hull} of ship_cost (NW_HULL_FRACTION). "
-        f"Cargo counts at COMMODITY_BASE_PRICE. Colonists in the holds count at COLONIST_PRICE. "
-        f"Other gear counts at the StarDock price in the prices section. "
-        f"The bank balance is added when the bank is on and BANK_IN_NET_WORTH is true. "
-        f"The number on V is victory.py full_net_worth: that ship total, plus each planet's "
-        f"asset value, plus this seat's share of the corp treasury, plus parked ships."
+        f"The number on V is your net worth. It adds your credits, the cargo in your holds at the base prices, "
+        f"and colonists in the holds at {colonist} cr each. "
+        f"A fighter on your ship counts as {fighter} cr. A shield counts as {shield} cr. "
+        f"The hull counts at half its price. Other gear counts at its StarDock price. "
+        f"Your bank balance counts when the bank is on. "
+        f"V also adds each planet, your share of the corp treasury, and parked ships. "
+        f"Taking colonists at Terra does not charge credits. "
+        f"Experience ranks are listed below. Zero alignment or above uses the good title. "
+        f"Below zero uses the evil title."
     )
     rules = (
         "Play from the cockpit. V is day, turns, credits, bank, net worth, rank, experience, "
         "and alignment. I is this ship: holds in use, empty holds, and fighter and shield room. "
-        "The sector line shows the port, each planet and its class, traders, ships, fighters, "
-        "mines, a beacon, and the warps. A warp in parentheses is not on this map yet. "
+        "The sector line shows the port, each planet with its class first, traders, ships, fighters, "
+        "mines, a beacon, NavHaz when this sector has it, and the warps. A warp in parentheses is not on this map yet. "
         "The port table is the trade screen. Computer, then R, is the port report. "
         "Computer, then K, is the known universe. Computer, then O, is the avoid list. "
-        "The numbers in the other sections are read from the engine tables named on each row."
+        "The prices below are what StarDock charges today, including a fighter, a shield, and the next cargo hold on this ship."
     )
     return {
+        "day": today,
+        "ship_class": ship_class,
+        "holds": holds,
         "sections": [
             {"id": "rules", "title": "Rules", "source": "src/tw2k/server/reference.py", "body": rules},
             {
@@ -90,6 +124,12 @@ def game_reference() -> dict[str, Any]:
                 "title": "Scoring and net worth",
                 "source": "src/tw2k/engine/models.py Player.net_worth; src/tw2k/engine/victory.py full_net_worth",
                 "body": scoring,
+            },
+            {
+                "id": "ranks",
+                "title": "Experience ranks",
+                "source": "src/tw2k/engine/victory.py rank_for",
+                "rows": _rank_rows(),
             },
             {
                 "id": "ships",
@@ -101,7 +141,7 @@ def game_reference() -> dict[str, Any]:
                 "id": "prices",
                 "title": "StarDock prices",
                 "source": "src/tw2k/engine/constants.py",
-                "rows": _prices(),
+                "rows": _prices(ship_class, holds, today),
             },
-        ]
+        ],
     }

@@ -76,9 +76,8 @@ def test_the_sector_line_shows_the_planet_class(world):
     page.keyboard.press(".")
     page.wait_for_function("() => document.querySelector('#waitchip').textContent !== 'YOUR MOVE'", timeout=20_000)
     page.wait_for_function("() => document.querySelector('#waitchip').textContent === 'YOUR MOVE'", timeout=20_000)
-    text = page.locator("[data-planet=class]").inner_text()
-    assert "Audit Rock" in text
-    assert "(" in text and ")" in text
+    text = page.locator("[data-planet=class]", has_text="Audit Rock").inner_text()
+    assert text.index("(") < text.index("Audit Rock")
     _shoot(page, "sector", "#sectorText")
 
 
@@ -103,6 +102,10 @@ def test_rules_panel_and_the_reference_match_the_engine(world):
     assert "Merchant Cruiser" in text
     assert f"{spec['cost']:,}" in text or str(spec["cost"]) in text
     assert "net worth" in text.lower()
+    assert "src/" not in text
+    assert "half its price" in text.lower()
+    if "max_holds" in spec:
+        assert "max holds" in text
     _shoot(page, "rules", "#menu")
     req = Request(
         f"{host.base}/harness/v1/P2/reference",
@@ -115,6 +118,15 @@ def test_rules_panel_and_the_reference_match_the_engine(world):
     assert cruiser["cost"] == int(spec["cost"])
     assert cruiser["max_fighters"] == int(spec["max_fighters"])
     prices = next(section["rows"] for section in body["sections"] if section["id"] == "prices")
-    colonist = next(row for row in prices if row["name"] == "Colonist")
-    assert colonist["price"] == int(K.COLONIST_PRICE)
-    assert "constants.py" in colonist["source"]
+    fighter = next(row for row in prices if row["name"] == "Fighter")
+    day = int(world["universe"].day)
+    holds = int(world["universe"].players["P2"].ship.holds)
+    assert fighter["price"] == int(K.fighter_unit_price(day))
+    assert "constants.py" in fighter["source"]
+    shield = next(row for row in prices if row["name"] == "Shield")
+    assert shield["price"] == int(K.shield_unit_price(day))
+    hold = next(row for row in prices if row["name"] == "Next cargo hold")
+    assert hold["price"] == int(K.hold_next_price("merchant_cruiser", holds, day))
+    assert all(row["name"] != "Colonist" for row in prices)
+    if "max_holds" in spec:
+        assert cruiser["max_holds"] == int(spec["max_holds"])
