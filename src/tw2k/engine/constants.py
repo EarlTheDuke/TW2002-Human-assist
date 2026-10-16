@@ -3651,6 +3651,48 @@ def owner_hazard_notice_on() -> bool:
     return OWNER_HAZARD_NOTICE_MODE == "tw2002" or tw2002_live_profile()
 
 
+# d8-combat-planet-fixes-v1. Legacy flees after the exchange, on whatever
+# fighters and shields are left. tw2002 flees only when the fighters sent
+# are strictly more than 1.25 times the defender's fighters plus shields
+# before the hit (GAP 5.9).
+SHIP_FLEE_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def ship_flee_published() -> bool:
+    """True when a ship flees on the fighters sent, against the strength before the hit."""
+    return SHIP_FLEE_MODE == "tw2002" or tw2002_live_profile()
+
+
+# d8. Legacy still lets a citadel below level 5 take planet shields.
+# tw2002 refuses: the Planetary Shielding System is level 5.
+PLANET_SHIELD_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def planet_shield_l5() -> bool:
+    """True when planet shields require a level 5 citadel."""
+    return PLANET_SHIELD_MODE == "tw2002" or tw2002_live_profile()
+
+
+# d8. Legacy Ferrengi hunt only on their own roam. tw2002 also engages an
+# armed trader who enters their sector, and strikes back after an attack.
+FERRENGI_ENGAGE_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def ferrengi_engage_on() -> bool:
+    """True when a Ferrengi engages on entry and retaliates in the same sector."""
+    return FERRENGI_ENGAGE_MODE == "tw2002" or tw2002_live_profile()
+
+
+# d8. Legacy siege facts stay the after-counts already on the event.
+# tw2002 adds how many fighters and shields each side lost.
+SIEGE_REPORT_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def siege_report_on() -> bool:
+    """True when a landing fight reports the losses on both sides."""
+    return SIEGE_REPORT_MODE == "tw2002" or tw2002_live_profile()
+
+
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
     """How many more colonists fit. Class M live uses one cap per pool."""
     if class_id == "M" and class_m_fidelity_live():

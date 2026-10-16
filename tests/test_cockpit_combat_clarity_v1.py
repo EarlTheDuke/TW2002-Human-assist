@@ -128,7 +128,7 @@ def test_rival_fighters_and_shields_show_before_the_attack(world) -> None:
     text = page.locator(".frm").inner_text()
     assert "40 fighters" in text
     assert "15 shields" in text
-    assert "0 to" in text
+    assert "1 to" in text
     _shoot(page, "attack", ".frm")
     page.keyboard.press("Escape")
 

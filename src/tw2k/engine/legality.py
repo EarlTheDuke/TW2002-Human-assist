@@ -1248,9 +1248,16 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     level_block = None
     if owned_landed and int(landed_planet.citadel_level or 0) < K.PLANET_DEFENSE_MIN_LEVEL:
         level_block = "planet citadel level is below the defense stocking minimum"
+    shield_room = ship_shields // ratio
+    if (
+        K.planet_shield_l5()
+        and owned_landed
+        and int(landed_planet.citadel_level or 0) < 5
+    ):
+        shield_room = 0
     deposit_max = {
         "fighters": max(0, min(ship_fighters, K.PLANET_FIGHTER_CAP - planet_fighters)),
-        "shields": ship_shields // ratio,
+        "shields": shield_room,
     }
     withdraw_max = {
         "fighters": max(0, min(planet_fighters, fighter_cap - ship_fighters)),

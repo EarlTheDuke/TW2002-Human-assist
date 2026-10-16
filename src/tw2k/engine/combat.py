@@ -593,6 +593,7 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
         record_ferrengi_grudge(universe, attacker_id)
     d_f = int(target.fighters if is_ferr else target.ship.fighters)
     d_s = int(target.shields if is_ferr else target.ship.shields)
+    d_f_before, d_s_before = d_f, d_s
     d_disabled = (not is_ferr) and getattr(target.ship, "photon_disabled_ticks", 0) > 0
     a_odds = combat_odds_of(attacker)
     d_odds = combat_odds_of(target)
@@ -620,12 +621,18 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
 
     sector = universe.sectors[attacker.sector_id]
     flee_to = None
+    # Legacy compares what is left after the exchange. The published line
+    # compares the fighters sent with the defender's strength before the hit.
+    if K.ship_flee_published():
+        outgunned = Fraction(int(qty)) > (d_f_before + d_s_before) * _odds(K.COMBAT_FLEE_RATIO)
+    else:
+        outgunned = Fraction(int(attacker.ship.fighters)) > (d_f + d_s) * _odds(K.COMBAT_FLEE_RATIO)
     if not beaten and is_alien and K.ALIEN_FLEE_RULE == "player":
-        if Fraction(int(attacker.ship.fighters)) > (d_f + d_s) * _odds(K.COMBAT_FLEE_RATIO):
+        if outgunned:
             from .alien import alien_flee_destination
             flee_to = alien_flee_destination(universe, target)
     elif not beaten and not is_ferr and not _flee_blocked(universe, attacker, target, sector):
-        if Fraction(int(attacker.ship.fighters)) > (d_f + d_s) * _odds(K.COMBAT_FLEE_RATIO):
+        if outgunned:
             flee_to = _flee_destination(universe, target, sector)
 
     a_f, a_s = int(attacker.ship.fighters), int(attacker.ship.shields)
@@ -681,6 +688,7 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
             "attacker_losses": att_losses,
             "defender_losses": f_lost,
             "outcome": outcome,
+            **({"shield_losses": sh_lost} if K.ship_flee_published() else {}),
         },
         summary=(
             f"Combat in {attacker.sector_id}: {attacker.name} sent {qty} fighters, lost {att_losses}; "
@@ -708,6 +716,9 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
         )
     elif flee_to is not None:
         _flee(universe, target, flee_to)
+    if is_ferr and K.ferrengi_engage_on() and getattr(target, "alive", False) and int(target.sector_id) == int(attacker.sector_id):
+        from .ferrengi import ferrengi_retaliate
+        ferrengi_retaliate(universe, target, attacker)
 
 
 def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) -> None:

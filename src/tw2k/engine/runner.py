@@ -883,6 +883,8 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
             _apply_sector_quasar(universe, pid, dest)
         if player.alive and player.deaths == deaths_before and player.sector_id == target_id:
             open_challenge(universe, pid, dest, cur.id)
+            from .ferrengi import engage_entrant
+            engage_entrant(universe, pid)
         if mined and player.alive and player.deaths == deaths_before and player.sector_id == target_id:
             # v28: "you will be asked whether you want to avoid the sector" - back at the prompt.
             universe.emit(
@@ -1444,7 +1446,7 @@ def _attack_qty(player, action: Action) -> tuple[int, ActionResult | None]:
     except (TypeError, ValueError):
         return 0, _reject_free("invalid fighter quantity")
     if qty <= 0 or qty > cap:
-        return 0, _reject_free(f"fighters per attack must be 1..{cap}")
+        return 0, _reject_free(f"fighters per attack must be 1 to {cap}")
     return qty, None
 
 
@@ -1678,6 +1680,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             _fire_atmospheric_quasar(universe, pid, planet)
 
         deaths_at_fight = player.deaths
+        siege_attackers = int(player.ship.fighters)
         a_fighters, d_fighters, d_shields, rounds = _planet_odds_fight(
             player, planet, None if shields_already_down else _atm_after_shields,
         )
@@ -1705,6 +1708,15 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
                 "defender_f": d_fighters,
                 "defender_s": d_shields,
                 "rounds": rounds,
+                **(
+                    {
+                        "attacker_losses": max(0, siege_attackers - int(a_fighters)),
+                        "planet_fighters_lost": max(0, int(defending_fighters) - int(d_fighters)),
+                        "planet_shields_lost": max(0, int(fighting_shields) - int(d_shields)),
+                        "defender_owner": planet.owner_id,
+                    }
+                    if K.siege_report_on() else {}
+                ),
             },
             summary=(
                 f"Siege of {planet.name}: "
@@ -4016,6 +4028,8 @@ def _handle_deposit_planet_defense(universe: Universe, pid: str, action: Action)
         player.ship.fighters -= qty
         planet.fighters += qty
     else:
+        if K.planet_shield_l5() and int(planet.citadel_level or 0) < 5:
+            return ActionResult(ok=False, error="Planetary shields need a Level 5 citadel")
         need = qty * K.PLANET_SHIELD_SHIP_COST
         if int(player.ship.shields) < need:
             return ActionResult(ok=False, error="not enough shields on the ship (10 ship shields = 1 planet shield)")

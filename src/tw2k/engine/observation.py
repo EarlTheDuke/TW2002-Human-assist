@@ -580,6 +580,13 @@ def event_facts(event: Event) -> dict[str, Any]:
         for extra in ("former_owner", "defender_owner"):
             if extra in payload and extra not in out:
                 out[extra] = payload[extra]
+    if _K.siege_report_on():
+        for extra in ("attacker_losses", "planet_fighters_lost", "planet_shields_lost", "defender_owner"):
+            if extra in payload and extra not in out:
+                out[extra] = payload[extra]
+    if _K.ship_flee_published():
+        if "shield_losses" in payload and "shield_losses" not in out:
+            out["shield_losses"] = payload["shield_losses"]
     return out
 
 
