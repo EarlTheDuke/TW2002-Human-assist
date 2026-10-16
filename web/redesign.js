@@ -771,6 +771,7 @@
       box.appendChild(button("Load colonists (Terra)", () => terraForm()));
       if (legal("buy_ship")) box.appendChild(button("Shipyards", () => openForm("buy_ship")));
       if (legal("bank_deposit") || legal("bank_withdraw")) box.appendChild(button("Bank", () => bankForm()));
+      box.appendChild(dockBox());
     }
     box.appendChild(defenseBox());
     const slot = document.createElement("div");
@@ -791,6 +792,15 @@
     else if (restore === "join") joinForm(saved);
     else if (restore === "drop") dropForm(null, saved);
     else if (restore === "transfer") transferForm(null, saved);
+    else if (restore === "tavernText") tavernText(saved && saved.which, saved);
+    else if (restore === "tavernOrder") tavernOrder(saved);
+    else if (restore === "grimyAsk") grimyAsk(saved);
+    else if (restore === "ugEnter") ugEnter(saved);
+    else if (restore === "ugContract") ugContract(saved);
+    else if (restore === "postReward") postReward(saved);
+    else if (restore === "shipPassword") shipPassword(saved);
+    else if (restore === "sellShip") sellShip(saved);
+    else if (restore === "bankWire") bankWire(saved);
     else if (restore) openForm(restore, saved);
   }
   function openForm(kind, saved) {
@@ -1855,6 +1865,195 @@
     });
     lines.push("On your ship: " + fmt((S.ship || {}).fighters || 0));
     overlay("Deployed Fighters", lines.map((line) => '<div class="row">' + line + "</div>").join(""));
+  }
+  function dockForm(kind, title, note, fields, saved, submit) {
+    const slot = $("formSlot");
+    if (!slot) return;
+    openFormKind = kind;
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = kind;
+    wrap.innerHTML = '<div class="y">' + title + "</div>";
+    if (note) {
+      const line = document.createElement("div");
+      line.className = "c";
+      line.dataset.price = "dock";
+      line.textContent = note;
+      wrap.appendChild(line);
+    }
+    const inputs = {};
+    fields.forEach((field) => {
+      const el = field.choices ? document.createElement("select") : document.createElement("input");
+      if (field.choices) {
+        field.choices.forEach((choice) => {
+          const o = document.createElement("option");
+          o.value = choice.value;
+          o.textContent = choice.label;
+          el.appendChild(o);
+        });
+      } else {
+        el.type = field.type || "text";
+        if (field.min != null) el.min = String(field.min);
+      }
+      el.dataset.n = field.n;
+      if (saved && saved[field.n] != null && saved[field.n] !== "") el.value = saved[field.n];
+      inputs[field.n] = el;
+      const label = document.createElement("label");
+      label.appendChild(document.createTextNode((field.label || field.n) + " "));
+      label.appendChild(el);
+      wrap.appendChild(label);
+    });
+    const go = () => {
+      const values = {};
+      Object.entries(inputs).forEach(([name, el]) => {
+        values[name] = el.type === "number" ? Number(el.value) : String(el.value || "").trim();
+      });
+      if (fields.some((field) => field.required !== false && !values[field.n])) { setResult("Fill in the form.", true); return; }
+      openFormKind = null;
+      slot.innerHTML = "";
+      submit(values);
+    };
+    wrap.appendChild(button("CONFIRM", go));
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    wrap.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      go();
+    });
+    slot.appendChild(wrap);
+    const first = wrap.querySelector('input[type="number"], input[type="text"]') || wrap.querySelector("select");
+    if (first) {
+      first.focus();
+      if (first.select) first.select();
+    }
+  }
+  function tavernText(which, saved) {
+    const kind = which || (saved && saved.which) || "tavern_talk";
+    const a = LA(kind) || { legal: false, reason: "", params: {} };
+    if (!a.legal && !saved) { setResult(plainReason(a.reason), true); return; }
+    const cost = Number((a.params || {}).cost || 0);
+    const titles = { tavern_announce: "ANNOUNCE", tavern_talk: "TALK", tavern_graffiti: "GRAFFITI" };
+    dockForm("tavernText", titles[kind] || "TAVERN", cost ? "This costs " + fmt(cost) + " cr." : "This is free.", [
+      { n: "which", label: "which", choices: [{ value: kind, label: titles[kind] || kind }] },
+      { n: "text", label: "text", type: "text" },
+    ], Object.assign({ which: kind }, saved || {}), (values) => act(values.which || kind, { text: values.text }, kind));
+  }
+  function tavernOrder(saved) {
+    const a = LA("tavern_order") || { legal: false, reason: "", params: {} };
+    if (!a.legal && !saved) { setResult("Order: " + plainReason(a.reason), true); return; }
+    const costs = (a.params || {}).cost_by || {};
+    dockForm("tavernOrder", "ORDER", "Drink " + fmt(costs.drink || 0) + " cr. Food " + fmt(costs.food || 0) + " cr.", [
+      { n: "item", label: "item", choices: [{ value: "drink", label: "drink" }, { value: "food", label: "food" }] },
+    ], saved, (values) => act("tavern_order", { item: values.item }, "order"));
+  }
+  function grimyAsk(saved) {
+    const a = LA("grimy_ask") || { legal: false, reason: "", params: {} };
+    if (!a.legal && !saved) { setResult("Ask Grimy: " + plainReason(a.reason), true); return; }
+    const topics = (((a.params || {}).topic || {}).choices) || [];
+    const targets = (((a.params || {}).target || {}).choices) || [];
+    const costs = (a.params || {}).cost_by || {};
+    const fields = [{ n: "topic", label: "topic", choices: topics.map((topic) => ({ value: topic, label: topic })) }];
+    if (targets.length) fields.push({ n: "target", label: "target", required: false, choices: targets.map((id) => ({ value: id, label: id })) });
+    const note = "A trader trace costs " + fmt(costs.trader || 0) + " cr. Underground or mafia costs " + fmt(costs.underground || costs.mafia || 0) + " cr.";
+    dockForm("grimyAsk", "ASK GRIMY", note, fields, saved, (values) => {
+      const args = { topic: values.topic };
+      if (values.topic === "trader" && values.target) args.target = values.target;
+      act("grimy_ask", args, "ask");
+    });
+  }
+  function ugEnter(saved) {
+    const a = LA("underground_enter") || { legal: false, reason: "" };
+    if (!a.legal && !saved) { setResult("Enter underground: " + plainReason(a.reason), true); return; }
+    dockForm("ugEnter", "UNDERGROUND", "The Underground asks for its password.", [
+      { n: "password", label: "password", type: "text" },
+    ], saved, (values) => act("underground_enter", { password: values.password }, "enter"));
+  }
+  function ugContract(saved) {
+    const a = LA("underground_contract") || { legal: false, reason: "", params: {} };
+    if (!a.legal && !saved) { setResult("Contract: " + plainReason(a.reason), true); return; }
+    const params = a.params || {};
+    const targets = ((params.target || {}).choices) || [];
+    const min = Number((params.amount || {}).min || 0);
+    dockForm("ugContract", "CONTRACT", "At least " + fmt(min) + " cr. " + fmt(params.credits_per_align || 0) + " cr per alignment point.", [
+      { n: "target", label: "target", choices: targets.map((id) => ({ value: id, label: id })) },
+      { n: "amount", label: "amount", type: "number", min: min },
+    ], saved, (values) => act("underground_contract", { target: values.target, amount: Number(values.amount) }, "contract"));
+  }
+  function postReward(saved) {
+    const a = LA("post_reward") || { legal: false, reason: "", params: {} };
+    if (!a.legal && !saved) { setResult("Post a reward: " + plainReason(a.reason), true); return; }
+    const params = a.params || {};
+    const targets = ((params.target_id || {}).choices) || [];
+    const min = Number((params.amount || {}).min || 0);
+    dockForm("postReward", "POST A REWARD", "At least " + fmt(min) + " cr.", [
+      { n: "target_id", label: "target", choices: targets.map((id) => ({ value: id, label: id })) },
+      { n: "amount", label: "amount", type: "number", min: min },
+    ], saved, (values) => act("post_reward", { target_id: values.target_id, amount: Number(values.amount) }, "reward"));
+  }
+  function shipPassword(saved) {
+    const a = LA("ship_set_password") || { legal: false, reason: "" };
+    if (!a.legal && !saved) { setResult("Ship password: " + plainReason(a.reason), true); return; }
+    dockForm("shipPassword", "SHIP PASSWORD", "A corp mate needs this word to board the ship.", [
+      { n: "password", label: "password", type: "text" },
+    ], saved, (values) => act("ship_set_password", { password: values.password }, "password"));
+  }
+  function sellShip(saved) {
+    const a = LA("sell_ship") || { legal: false, reason: "", params: {} };
+    if (!a.legal && !saved) { setResult("Sell a spare ship: " + plainReason(a.reason), true); return; }
+    const spec = (a.params || {}).ship_id || {};
+    const credits = spec.credit_by || {};
+    const choices = (spec.choices || []).map((id) => ({ value: String(id), label: "ship " + id + " for " + fmt(credits[String(id)] || 0) + " cr" }));
+    const first = choices[0];
+    dockForm("sellShip", "SELL A SPARE", first ? "You get " + fmt(credits[first.value] || 0) + " cr." : "", [
+      { n: "ship_id", label: "ship", choices: choices },
+    ], saved, (values) => act("sell_ship", { ship_id: Number(values.ship_id) }, "sell"));
+  }
+  function bankWire(saved) {
+    const a = LA("bank_transfer") || { legal: false, reason: "", params: {} };
+    if (!a.legal && !saved) { setResult("Bank transfer: " + plainReason(a.reason), true); return; }
+    const people = (a.params || {}).recipients || [];
+    dockForm("bankWire", "BANK TRANSFER", "Up to " + fmt((a.params || {}).max_amount || 0) + " cr from the credits you hold.", [
+      { n: "to_player", label: "to", choices: people.map((row) => ({ value: row.player_id, label: row.name + " up to " + fmt(row.max_amount) + " cr" })) },
+      { n: "amount", label: "amount", type: "number", min: 1 },
+    ], saved, (values) => act("bank_transfer", { to_player: values.to_player, amount: Number(values.amount) }, "transfer"));
+  }
+  function dockBox() {
+    const box = document.createElement("div");
+    box.className = "encounter";
+    box.dataset.screen = "stardock";
+    const title = document.createElement("div");
+    title.className = "y";
+    title.textContent = "StarDock";
+    box.appendChild(title);
+    const add = (kind, label, onLegal) => box.appendChild(reasonButton(kind, label, onLegal));
+    add("tavern_order", "Order", () => tavernOrder());
+    add("tavern_talk", "Talk", () => tavernText("tavern_talk"));
+    add("tavern_announce", "Announce", () => tavernText("tavern_announce"));
+    add("tavern_graffiti", "Graffiti", () => tavernText("tavern_graffiti"));
+    add("grimy_ask", "Ask Grimy", () => grimyAsk());
+    add("grimy_curse", "Curse", (a) => confirmWords("Curse", "This spends " + fmt(a.turn_cost || 1) + " turn.", () => act("grimy_curse", {}, "curse")));
+    add("underground_enter", "Enter underground", () => ugEnter());
+    add("underground_contract", "Contract", () => ugContract());
+    add("underground_claim", "Claim underground", (a) => confirmWords("Claim underground", "Claim " + fmt((a.params || {}).pending || 0) + " cr?", () => act("underground_claim", {}, "claim")));
+    add("cineplex", "Cineplex", (a) => {
+      const cost = Number((a.params || {}).cost || 0);
+      const line = cost ? "The picture costs " + fmt(cost) + " cr. It has no secrets." : "The picture is free. It has no secrets.";
+      confirmWords("Cineplex", line, () => act("cineplex", {}, "cineplex"));
+    });
+    add("tricron", "Tri-Cron", (a) => {
+      const ante = Number((a.params || {}).ante || 0);
+      const rounds = Number((a.params || {}).rounds || 0);
+      confirmWords("Tri-Cron", "Ante " + fmt(ante) + " cr. " + rounds + " rounds.", () => act("tricron", {}, "tricron"));
+    });
+    add("apply_commission", "Federal commission", () => confirmWords("Federal commission", "Apply for a Federal commission? You can take it once.", () => act("apply_commission", {}, "commission")));
+    add("post_reward", "Post a reward", () => postReward());
+    add("claim_reward", "Claim a reward", () => act("claim_reward", {}, "reward"));
+    add("ship_set_password", "Ship password", () => shipPassword());
+    add("sell_ship", "Sell a spare ship", () => sellShip());
+    add("bank_transfer", "Transfer credits", () => bankWire());
+    return box;
   }
   function corpField(kind, title, note, field, saved, submit) {
     const slot = $("formSlot");
