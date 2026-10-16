@@ -70,10 +70,14 @@
   }
   const streamLog = [];
   const streamSeen = new Set();
+  const tokenKey = "tw2k-token-" + state.seat;
   if (params.get("token")) {
+    try { sessionStorage.setItem(tokenKey, params.get("token")); } catch (e) { /* the address still has it this once */ }
     params.delete("token");
     const q = params.toString();
     history.replaceState(null, "", location.pathname + (q ? "?" + q : ""));
+  } else if (!state.token) {
+    try { state.token = sessionStorage.getItem(tokenKey) || ""; } catch (e) { state.token = ""; }
   }
   $("seatSelect").value = state.seat;
   if (state.token) $("tokenInput").value = state.token;
@@ -118,6 +122,10 @@
     const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return String(text).replace(new RegExp("\\b" + escaped + "\\s+", "gi"), "");
   }
+  function capFirst(text) {
+    const s = String(text || "");
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
   function shownSentence(text, ev) {
     let s = String(text || "");
     if (/plotted course/i.test(s)) {
@@ -133,6 +141,8 @@
     s = s.replace(/(\d+)cr\b/gi, (m, n) => Number(n).toLocaleString("en-US") + " cr");
     s = s.replace(/\b1 days\b/g, "1 day");
     s = s.replace(/\b1 ((?:[A-Za-z]+ )?)fighters\b/gi, "1 $1fighter");
+    s = s.replace(/\b1 shields\b/gi, "1 shield");
+    s = s.replace(/mines in sector \d+: avoid this sector\?\s*\(autopilot stops here\)/gi, "Mines are in this sector. Computer, then O, adds it to the avoid list");
     return s.replace(/\.\.+/g, ".").trim();
   }
   function plainWords(text) {
@@ -358,7 +368,7 @@
     if (legal("retreat")) opts.push("retreat");
     if (legal("pay_toll")) opts.push("pay the toll");
     if (legal("surrender")) opts.push("surrender");
-    return opts.length ? "answer the fighters first: " + opts.join(", ") : "";
+    return opts.length ? "Answer the fighters first: " + opts.join(", ") : "";
   }
   function shipChoiceLabel(id) {
     const ship = shipsHere().find((row) => String(row.id) === String(id));
@@ -2626,7 +2636,7 @@
   }
   function askWait() {
     const server = Number(state.waitStreak || 0);
-    if (waitStreak >= 2 || server >= 3) {
+    if (server >= 3) {
       confirmWords("Wait", "One more Wait ends your day (" + fmt(S.turns_remaining) + " turns left). Continue?", () => {
         waitStreak += 1;
         act("wait", {}, "wait one turn");
@@ -2708,7 +2718,7 @@
       }
       const raw = (LA(hit[2]) || {}).reason || "";
       const nice = /answer the fighters first/i.test(raw) ? challengeLine() : plainWords(raw);
-      if (/No Genesis torpedoes|No photon missiles|Buy a density scanner|Type how many|answer the fighters first/.test(nice)) setResult(nice, true);
+      if (/No Genesis torpedoes|No photon missiles|Buy a density scanner|Type how many|answer the fighters first/i.test(nice)) setResult(nice, true);
       else setResult(hit[1] + ": " + plainReason(raw), true);
       return;
     }
@@ -2748,12 +2758,12 @@
     if (state.busy || !state.awaiting) {
       if (outOfTurns()) { setResult(noTurnsLine(), true); return; }
       if (pending && pending.kind === kind) {
-        setResult((label || kind) + " will run when your turn comes.", true);
+        setResult(capFirst((label || kind) + " will run when your turn comes."), true);
         return;
       }
       pending = { kind, args, label };
       heldLabel = label || kind;
-      setResult((label || kind) + " will run when your turn comes.", true);
+      setResult(capFirst((label || kind) + " will run when your turn comes."), true);
       return;
     }
     pending = null;
@@ -2799,27 +2809,41 @@
         });
         if (rows.length) body = body + ". " + rows.join("; ");
       }
-      if (kind === "warp" || kind === "plot_course") {
+      if (kind === "warp") {
         const seen = new Set();
         let mines = "";
         let lost = "";
         let avoid = "";
+        let hit = false;
         streamLog.concat((S && S.recent_events) || []).forEach((row) => {
           if (!row || seen.has(row.seq)) return;
           if (row.seq) seen.add(row.seq);
           if ((row.seq || 0) <= before - 1) return;
           const facts = row.facts || {};
-          if (row.kind === "mine_detonated") mines = fmt(facts.hits || 0) + " mines hit for " + fmt(facts.damage || 0);
-          if (row.kind === "combat" && facts.vs === "fighter_sector" && facts.attacker_losses != null) {
-            const n = Number(facts.attacker_losses);
-            lost = "You lost " + fmt(n) + " fighter" + (n === 1 ? "" : "s") + ", " + fmt(((S && S.ship) || {}).fighters || 0) + " remain";
+          if (row.kind === "mine_detonated") {
+            mines = fmt(facts.hits || 0) + " mines hit for " + fmt(facts.damage || 0);
+            hit = true;
+          }
+          if (row.kind === "combat" && (facts.vs === "fighter_sector" || facts.exchange_kind === "offensive_clash")) {
+            hit = true;
+            if (facts.attacker_losses != null) {
+              const n = Number(facts.attacker_losses);
+              lost = "You lost " + fmt(n) + " fighter" + (n === 1 ? "" : "s") + ", " + fmt(((S && S.ship) || {}).fighters || 0) + " remain";
+            }
           }
           if (row.kind === "hazard_avoid_prompt") avoid = "Mines are in this sector. Computer, then O, adds it to the avoid list";
         });
         if (/avoid this sector/i.test(body)) body = "";
-        if (!lost) lost = "fighters " + fmt(((S && S.ship) || {}).fighters || 0) + " remain";
-        const bits = [body, mines, "Shields " + fmt(((S && S.ship) || {}).shields || 0), lost, avoid, challengeLine()].filter(Boolean);
-        if (bits.length) body = bits.join(". ");
+        const bits = [body];
+        if (hit) {
+          if (mines) bits.push(mines);
+          bits.push("Shields " + fmt(((S && S.ship) || {}).shields || 0));
+          bits.push(lost || ("Fighters " + fmt(((S && S.ship) || {}).fighters || 0) + " remain"));
+        }
+        if (avoid) bits.push(avoid);
+        const challenge = challengeLine();
+        if (challenge) bits.push(challenge);
+        body = bits.filter(Boolean).join(". ");
       }
       if (kind === "buy_ship" && args && args.trade_in === false) body = body + ". The new ship is in orbit. Press X to board it";
       if (kind === "attack") {

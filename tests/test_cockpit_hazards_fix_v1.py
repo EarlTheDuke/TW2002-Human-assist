@@ -283,7 +283,7 @@ def test_defensive_challenge_names_only_the_real_options(world):
     _next(page, world["host"], plant)
     page.keyboard.press("L")
     page.wait_for_function(
-        "() => (document.querySelector('#lastResult').textContent || '').includes('answer the fighters first')",
+        "() => (document.querySelector('#lastResult').textContent || '').includes('Answer the fighters first')",
         timeout=10_000,
     )
     text = page.locator("#lastResult").inner_text()

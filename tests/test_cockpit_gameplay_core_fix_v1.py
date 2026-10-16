@@ -97,7 +97,7 @@ def test_terra_form_shows_the_pool_and_posts_the_move(seats) -> None:
 def test_third_wait_asks_before_it_ends_the_day(seats) -> None:
     dock = seats["dock"]
     _quiet(dock)
-    for _ in range(2):
+    for _ in range(3):
         dock.keyboard.press(".")
         dock.wait_for_function("() => /You wait/.test(document.querySelector('#lastResult').textContent || '')", timeout=20_000)
         _quiet(dock)
