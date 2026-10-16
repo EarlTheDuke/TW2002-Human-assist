@@ -352,7 +352,8 @@ def handle_probe(universe: Universe, pid: str, action: Action) -> ActionResult:
         reported.append(sid)
     # PROBE is an actor-only event: the firer is told (s13), the fighters' owner is not.
     end = destroyed_at if destroyed_at is not None else tid
-    summary = (f"{player.name}'s probe was destroyed by fighters in {destroyed_at} after {len(reported)} sectors"
+    hops = len(reported) + (1 if destroyed_at is not None else 0)
+    summary = (f"{player.name}'s probe was destroyed by fighters in sector {destroyed_at} ({hops} sector{'s' if hops != 1 else ''} out)"
                if destroyed_at is not None
                else f"{player.name}'s probe reached {tid} ({len(reported)} sectors) and self-destructed")
     universe.emit(

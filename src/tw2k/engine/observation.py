@@ -219,6 +219,10 @@ def _event_visible_base(event: Event, player_id: str, universe: Universe) -> boo
         return True
     if event.payload.get("victim") == player_id:
         return True
+    if _K.owner_hazard_notice_on() and (
+        event.payload.get("former_owner") == player_id or event.payload.get("defender_owner") == player_id
+    ):
+        return True
     witnesses = event.payload.get("_witnesses")
     if isinstance(witnesses, (list, tuple, set)):
         return player_id in witnesses
@@ -572,6 +576,10 @@ def event_facts(event: Event) -> dict[str, Any]:
             if hasattr(v, "value") and not isinstance(v, (str, int, float, bool)):
                 v = v.value
             out[k] = v
+    if _K.owner_hazard_notice_on():
+        for extra in ("former_owner", "defender_owner"):
+            if extra in payload and extra not in out:
+                out[extra] = payload[extra]
     return out
 
 
@@ -1843,6 +1851,10 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
             brief["owner_id"] = planet.owner_id
             brief["fighters"] = int(planet.fighters)
             brief["shields"] = int(planet.shields)
+    if K.planet_landing_combat_on():
+        brief["owner_id"] = planet.owner_id
+        brief["fighters"] = int(planet.fighters)
+        brief["shields"] = int(planet.shields)
     return brief
 
 

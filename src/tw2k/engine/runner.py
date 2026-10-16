@@ -1642,6 +1642,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         and planet.owner_id is not None
         and _are_allied(universe, pid, planet.owner_id)
     )
+    former_owner = planet.owner_id
     hostile = planet.owner_id is not None and planet.owner_id != pid and not same_corp and not allied
     if hostile and _toll_blocks(universe, pid, sector):
         return ActionResult(ok=False, error="toll fighters demand payment")
@@ -1664,7 +1665,7 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
             _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
 
-    fighting_shields = K.fighting_planet_shields(planet)
+    fighting_shields = int(planet.shields or 0) if K.planet_landing_combat_on() else K.fighting_planet_shields(planet)
     shields_already_down = hostile and fighting_shields <= 0
     defending_fighters = int(planet.fighters) if _planet_fighters_defend(planet) else 0
     if hostile and defending_fighters <= 0 and fighting_shields > 0 and player.ship.fighters <= 0:
@@ -1761,7 +1762,8 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         EventKind.LAND_PLANET,
         actor_id=pid,
         sector_id=sector.id,
-        payload={"planet_id": planet.id, "class": planet.class_id.value, "seized": hostile},
+        payload={"planet_id": planet.id, "class": planet.class_id.value, "seized": hostile,
+                 **({"former_owner": former_owner} if K.owner_hazard_notice_on() and former_owner and former_owner != pid else {})},
         summary=(
             f"{player.name} landed on {planet.name} ({planet.class_id.value})"
             + (" — SEIZED!" if hostile else "")
@@ -2070,6 +2072,8 @@ def _production_pool(pool: Commodity) -> Commodity:
 
 def _planet_fighters_defend(planet) -> bool:
     """Fighters on a planet do not shoot until citadel L2 when fidelity is on."""
+    if K.planet_landing_combat_on():
+        return True
     if K.citadel_fidelity_on() and int(planet.citadel_level or 0) < 2:
         return False
     return True
@@ -2083,14 +2087,14 @@ def _start_fidelity_citadel(universe: Universe, player, sector, planet, next_lev
     have_eq = int(planet.stockpile.get(Commodity.EQUIPMENT, 0))
     avail_col = sum(planet.colonists.get(c, 0) for c in planet.colonists)
     short = (
-        (have_fuel < fuel, f"need {fuel} fuel_ore on planet (have {have_fuel})"),
+        (have_fuel < fuel, f"need {fuel} fuel ore on planet (have {have_fuel})"),
         (have_org < organics, f"need {organics} organics on planet (have {have_org})"),
         (have_eq < equipment, f"need {equipment} equipment on planet (have {have_eq})"),
         (avail_col < colonists, f"need {colonists} colonists on planet (have {avail_col})"),
     )
-    for missing, message in short:
-        if missing:
-            return ActionResult(ok=False, error=message)
+    missing_bits = [message for missing, message in short if missing]
+    if missing_bits:
+        return ActionResult(ok=False, error="; ".join(missing_bits))
     planet.stockpile[Commodity.FUEL_ORE] = have_fuel - fuel
     planet.stockpile[Commodity.ORGANICS] = have_org - organics
     planet.stockpile[Commodity.EQUIPMENT] = have_eq - equipment

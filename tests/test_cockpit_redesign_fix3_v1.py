@@ -73,6 +73,7 @@ def test_landed_screen_map_phone_and_wording(tmp_path: Path, monkeypatch) -> Non
             assert " > " in said and "[" not in said and ".." not in said
             page.screenshot(path=str(SHOTS / "1440.png"))
             page.locator("#keys button", has_text="Land").click()
+            page.locator("#dangerOk").click()
             page.wait_for_selector(".planet", timeout=20_000)
             panel = page.locator("#here").inner_text()
             for word in ("Class", "Colonists", "Citadel", "Lift off", "Take product", "Build citadel"):
