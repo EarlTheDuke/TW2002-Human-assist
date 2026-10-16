@@ -29,6 +29,18 @@
     ["R", "Port Report", null], ["K", "Your Known Universe", null], ["A", "Make Announcement", "broadcast"],
     ["Q", "Exit Computer", null],
   ];
+  const HULL = {
+    merchant_cruiser: { holds: 20, fighters: 2500, shields: 400, tpw: 3, photons: false, tw: false },
+    scout_marauder: { holds: 25, fighters: 150, shields: 100, tpw: 2, photons: false, tw: false },
+    missile_frigate: { holds: 40, fighters: 5000, shields: 400, tpw: 3, photons: true, tw: false },
+    battleship: { holds: 80, fighters: 10000, shields: 750, tpw: 4, photons: false, tw: false },
+    corporate_flagship: { holds: 85, fighters: 20000, shields: 1500, tpw: 3, photons: false, tw: true },
+    colonial_transport: { holds: 50, fighters: 200, shields: 500, tpw: 6, photons: false, tw: false },
+    cargotran: { holds: 75, fighters: 400, shields: 1000, tpw: 4, photons: false, tw: false },
+    merchant_freighter: { holds: 65, fighters: 300, shields: 500, tpw: 2, photons: false, tw: false },
+    havoc_gunstar: { holds: 50, fighters: 10000, shields: 3000, tpw: 3, photons: false, tw: true },
+    imperial_starship: { holds: 150, fighters: 50000, shields: 2000, tpw: 4, photons: true, tw: true },
+  };
   const SHIPS = {
     escape_pod: { name: "Escape Pod", len: 60, w: 40, pods: 0, eng: 1 },
     merchant_cruiser: { name: "Merchant Cruiser", len: 190, w: 70, pods: 2, eng: 2 },
@@ -50,7 +62,7 @@
     connected: false, awaiting: false, busy: false, turnSeq: 0,
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
-  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null;
+  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, waitStreak = 0, alertedSeq = 0;
   const streamLog = [];
   const streamSeen = new Set();
   if (params.get("token")) {
@@ -286,6 +298,12 @@
     (s.federals || []).forEach((f) => rows.push({ id: f.name, name: f.name, owner: f.title || "Federation", fighters: null }));
     (s.unmanned_ships || []).forEach((u) => rows.push({ id: u.ship_id || u.id, name: u.name || String(u.hull || "ship").replaceAll("_", " "), owner: u.owner_name || u.owner_id || "unmanned", fighters: u.fighters }));
     return rows;
+  }
+  function shipTransportLabel(id) {
+    const fleet = (((S || {}).fleet || {}).ships || []).find((row) => String(row.ship_id) === String(id));
+    if (!fleet) return String(id);
+    const name = fleet.name || String(fleet.hull || "ship").replaceAll("_", " ");
+    return name + " in sector " + fleet.sector_id;
   }
   function shipChoiceLabel(id) {
     const ship = shipsHere().find((row) => String(row.id) === String(id));
@@ -690,6 +708,7 @@
     });
     if (Number(s.id) === 1 || (s.port && /stardock/i.test(String(s.port.name || "")))) {
       if (legal("buy_equip")) box.appendChild(button("StarDock: buy gear", () => openForm("buy_equip")));
+      box.appendChild(button("Load colonists (Terra)", () => terraForm()));
       if (legal("buy_ship")) box.appendChild(button("Shipyards", () => openForm("buy_ship")));
       if (legal("bank_deposit") || legal("bank_withdraw")) box.appendChild(button("Bank", () => bankForm()));
     }
@@ -703,6 +722,7 @@
     else if (restore === "reaction") reactionForm(saved);
     else if (restore === "disruptor") disruptorForm(saved);
     else if (restore === "transwarp") transwarpForm(saved);
+    else if (restore === "terra") terraForm(saved);
     else if (restore) openForm(restore, saved);
   }
   function openForm(kind, saved) {
@@ -739,12 +759,14 @@
         spec.choices.forEach((choice) => {
           const o = document.createElement("option");
           o.value = typeof choice === "object" ? (choice.id ?? "") : choice;
-          o.textContent = kind === "attack" && name === "target" ? shipChoiceLabel(String(o.value)) : o.value;
+          o.textContent = kind === "attack" && name === "target" ? shipChoiceLabel(String(o.value))
+            : (kind === "ship_transport" && name === "ship_id" ? shipTransportLabel(o.value) : o.value);
           input.appendChild(o);
         });
       } else if (spec.type === "bool") {
         input = document.createElement("input");
         input.type = "checkbox";
+        if (spec.default) input.checked = true;
       } else if (spec.type === "int" && /pct|percent/i.test(name)) {
         input = document.createElement("input");
         input.type = "range";
@@ -765,6 +787,7 @@
           const cap = spec.max != null ? Math.min(Number(spec.max), aboard) : aboard;
           input.max = String(cap);
           input.dataset.cap = String(cap);
+          if (!(saved && saved[name] != null && saved[name] !== "")) input.value = String(cap);
         }
       }
       input.dataset.n = name;
@@ -868,6 +891,35 @@
       paint();
       wrap.appendChild(note);
     }
+    if (kind === "buy_ship") {
+      const nets = ((a.params.ship_class || {}).net_cost_by) || {};
+      const spare = ((a.params.trade_in || {}).spare_cost_by) || {};
+      const credit = (a.params.ship_class || {}).trade_in;
+      const item = fields.find((el) => el.dataset.n === "ship_class");
+      const deal = fields.find((el) => el.dataset.n === "trade_in");
+      const note = document.createElement("div");
+      note.className = "c";
+      note.dataset.yard = "deal";
+      const paint = () => {
+        const key = item ? item.value : "";
+        const hull = HULL[key] || {};
+        const name = (SHIPS[key] && SHIPS[key].name) || String(key).replaceAll("_", " ");
+        const net = nets[key];
+        const full = spare[key];
+        const trading = !deal || deal.checked;
+        const price = trading ? net : full;
+        const gear = (hull.photons ? "photons" : "no photons") + ", " + (hull.tw ? "TransWarp" : "no TransWarp");
+        note.textContent = name + ": " + (price == null ? "" : fmt(price) + " cr. ")
+          + "Holds " + fmt(hull.holds || 0) + ", fighters " + fmt(hull.fighters || 0) + ", shields " + fmt(hull.shields || 0)
+          + ", " + (hull.tpw || "?") + " turns per warp, " + gear + ". "
+          + (trading ? "Trade-in sells your ship" + (credit ? " for " + fmt(credit) + " cr" : "") + " and you fly the new one."
+            : "You stay aboard. The new ship waits at StarDock.");
+      };
+      if (item) item.addEventListener("change", paint);
+      if (deal) deal.addEventListener("change", paint);
+      paint();
+      wrap.appendChild(note);
+    }
     slot.appendChild(wrap);
     if (saved && formFocus) {
       const again = slot.querySelector('[data-n="' + formFocus + '"]');
@@ -916,11 +968,7 @@
     box.appendChild(reasonButton("pay_toll", "Pay toll", () => act("pay_toll", {}, "pay toll")));
     box.appendChild(reasonButton("retreat", "Retreat", () => act("retreat", {}, "retreat")));
     box.appendChild(reasonButton("surrender", "Surrender", () => act("surrender", {}, "surrender")));
-    box.appendChild(reasonButton("attack", "Attack", (a) => {
-      const choices = (((a.params || {}).target || {}).choices) || [];
-      if (choices.length === 1) act("attack", { target: choices[0] }, "attack");
-      else openForm("attack");
-    }));
+    box.appendChild(reasonButton("attack", "Attack", () => openForm("attack")));
     box.appendChild(reasonButton("set_military_reaction", "Set reaction", () => reactionForm()));
     box.appendChild(reasonButton("cloak", "Cloak", () => act("cloak", {}, "cloak")));
     box.appendChild(reasonButton("fire_disruptor", "Disruptor", () => disruptorForm()));
@@ -1198,9 +1246,100 @@
       why.textContent = plainReason(a.reason);
       wrap.appendChild(why);
     }
+    const recall = LA("recall_deployed") || { params: {} };
+    const pickupKinds = (((recall.params || {}).kind || {}).choices) || [];
+    if (pickupKinds.length) {
+      const pickKind = document.createElement("select");
+      pickKind.dataset.n = "pickup_kind";
+      pickupKinds.forEach((name) => {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        pickKind.appendChild(o);
+      });
+      const pickQty = document.createElement("input");
+      pickQty.type = "number";
+      pickQty.min = "1";
+      pickQty.dataset.n = "pickup";
+      const maxes = ((recall.params || {}).qty || {}).max_by || {};
+      const fillPick = () => { pickQty.max = String(maxes[pickKind.value] || counts.here[pickKind.value] || 1); pickQty.value = pickQty.max; };
+      pickKind.addEventListener("change", fillPick);
+      fillPick();
+      const pickLabel = document.createElement("label");
+      pickLabel.appendChild(document.createTextNode("pick up "));
+      pickLabel.appendChild(pickKind);
+      pickLabel.appendChild(pickQty);
+      wrap.appendChild(pickLabel);
+      wrap.appendChild(button("PICK UP", () => {
+        const n = Number(pickQty.value);
+        if (!n) { setResult("How many? Type a number.", true); return; }
+        if (!recall.legal) { setResult(plainReason(recall.reason), true); return; }
+        openFormKind = null;
+        slot.innerHTML = "";
+        act("recall_deployed", { what: "mines", kind: pickKind.value, qty: n }, "pick up mines");
+      }));
+    }
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
     slot.appendChild(wrap);
     if (qty) { qty.focus(); qty.select(); }
+  }
+  function terraForm(saved) {
+    const slot = $("formSlot");
+    if (!slot) return;
+    openFormKind = "terra";
+    const a = LA("terra_colonists") || { params: {}, legal: false, reason: "Terra colonists unavailable here" };
+    const pool = Number(a.params.pool || 0);
+    const cap = Number(a.params.max || 0);
+    const maxBy = ((a.params.qty || {}).max_by) || {};
+    slot.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "frm";
+    wrap.dataset.screen = "terra";
+    wrap.innerHTML = '<div class="y">TERRA</div><div class="c" data-terra="pool">Terra holds ' + fmt(pool) + " of " + fmt(cap) + " colonists. Free holds " + fmt(Number(((S.ship || {}).holds || 0) - Object.values((S.ship || {}).cargo || {}).reduce((sum, n) => sum + Number(n || 0), 0))) + ".</div>";
+    if (!a.legal) {
+      const why = document.createElement("div");
+      why.textContent = plainReason(a.reason);
+      wrap.appendChild(why);
+    } else {
+      const mode = document.createElement("select");
+      mode.dataset.n = "mode";
+      ((a.params.mode || {}).choices || []).forEach((name) => {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        mode.appendChild(o);
+      });
+      if (saved && saved.mode) mode.value = saved.mode;
+      const qty = document.createElement("input");
+      qty.type = "number";
+      qty.min = "1";
+      qty.dataset.n = "qty";
+      const fill = () => { qty.max = String(maxBy[mode.value] || 1); if (!(saved && saved.qty)) qty.value = qty.max; };
+      mode.addEventListener("change", fill);
+      fill();
+      if (saved && saved.qty) qty.value = saved.qty;
+      const modeLabel = document.createElement("label");
+      modeLabel.appendChild(document.createTextNode("take or leave "));
+      modeLabel.appendChild(mode);
+      const qtyLabel = document.createElement("label");
+      qtyLabel.appendChild(document.createTextNode("holds "));
+      qtyLabel.appendChild(qty);
+      wrap.appendChild(modeLabel);
+      wrap.appendChild(qtyLabel);
+      const submit = () => {
+        const n = Number(qty.value);
+        if (!n) { setResult("How many? Type a number.", true); return; }
+        openFormKind = null;
+        slot.innerHTML = "";
+        act("terra_colonists", { mode: mode.value, qty: n }, mode.value + " colonists");
+      };
+      wrap.appendChild(button("CONFIRM", submit));
+      wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+      qty.focus();
+      qty.select();
+    }
+    wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
+    slot.appendChild(wrap);
   }
   function bankForm(saved) {
     const dep = LA("bank_deposit") || { params: {}, legal: false, reason: "" };
@@ -1499,13 +1638,24 @@
     lines.push("On your ship: " + fmt((S.ship || {}).fighters || 0));
     overlay("Deployed Fighters", lines.map((line) => '<div class="row">' + line + "</div>").join(""));
   }
-  function confirmWords(title, line) {
+  function confirmWords(title, line, onYes) {
     const m = $("menu");
     m.hidden = false;
     inComputer = false;
     m.dataset.screen = title;
     m.innerHTML = '<div class="y">' + title + "</div><div>" + line + '</div><button type="button" id="dangerOk">CONFIRM</button><br><span class="dk">Esc to close</span>';
-    $("dangerOk").addEventListener("click", () => { m.hidden = true; setResult(line, true); });
+    $("dangerOk").addEventListener("click", () => { m.hidden = true; if (onYes) onYes(); else setResult(line, true); });
+  }
+  function askWait() {
+    if (waitStreak >= 2) {
+      confirmWords("Wait", "One more Wait ends your day (" + fmt(S.turns_remaining) + " turns left). Continue?", () => {
+        waitStreak += 1;
+        act("wait", {}, "wait one turn");
+      });
+      return;
+    }
+    waitStreak += 1;
+    act("wait", {}, "wait one turn");
   }
   function scanAsk() {
     if (!legal("scan")) { setResult(plainReason((LA("scan") || {}).reason), true); return; }
@@ -1581,7 +1731,7 @@
       if (p) return act("land_planet", { planet_id: p.id }, "land");
       return;
     }
-    if (k === ".") return act("wait", {}, "wait one turn");
+    if (k === ".") return askWait();
     if (k === "S") return scanAsk();
     if (hit[2]) return openForm(hit[2]);
   }
@@ -1599,6 +1749,7 @@
   }
   async function act(kind, args, label) {
     if (kind === "bank") { setResult("That command was not accepted.", true); return; }
+    if (kind !== "wait") waitStreak = 0;
     if (state.busy || !state.awaiting) {
       if (outOfTurns()) { setResult(noTurnsLine(), true); return; }
       pending = { kind, args, label };
@@ -1640,6 +1791,7 @@
         });
         if (bits.length) body = body + ". " + bits.join("; ");
       }
+      if (kind === "buy_ship" && args && args.trade_in === false) body = body + ". The new ship is in orbit. Press X to board it";
       if (bad) {
         setResult((/trade failed|lost patience/i.test(raw) ? "FAILED" : "REFUSED") + " — " + body + tail, true);
         if (kind === "trade") openForm("trade", retry);
@@ -1675,6 +1827,21 @@
     }
   }
 
+  function paintAttackAlert() {
+    if (!S) return;
+    let best = null;
+    streamLog.concat(S.recent_events || []).forEach((ev) => {
+      if (!ev || ev.kind !== "combat" || ev.actor_id === S.self_id) return;
+      const facts = ev.facts || {};
+      if (facts.defender !== S.self_id && facts.victim !== S.self_id) return;
+      if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
+    });
+    if (!best || (best.seq || 0) <= alertedSeq) return;
+    alertedSeq = best.seq;
+    const who = (best.facts || {}).attacker || "someone";
+    const lost = (best.facts || {}).defender_losses;
+    setResult("You were attacked by " + who + (lost == null ? "." : ". You lost " + lost + "."), true);
+  }
   function render() {
     const sec = S.sector || {};
     $("pSector").textContent = sec.id ?? "-";
@@ -1694,6 +1861,7 @@
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
     paintScene();
     paintLog();
+    paintAttackAlert();
     sectorText();
     map();
     paintShip();
