@@ -797,6 +797,7 @@ def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) 
             "defender_f": d_fighters,
             "defender_s": d_shields,
             "rounds": rounds,
+            **({"shield_losses": sum(int(r.get("defender_shield_absorbed") or 0) for r in rounds)} if K.ferrengi_engage_on() else {}),
             **_exchange_outcome(rounds, a_fighters, d_fighters),
         },
         summary=(

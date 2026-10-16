@@ -482,7 +482,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.COMBAT: (
         "exchange_kind", "vs", "attacker", "defender", "attacker_f", "attacker_s",
         "defender_f", "defender_s", "attacker_losses", "defender_losses", "outcome", "sector_claimed",
-        "planet_id", "planet_name", "citadel_level", "sent", "defender_fled",
+        "planet_id", "planet_name", "citadel_level", "sent", "defender_fled", "shield_losses",
     ),
     EventKind.SHIP_DESTROYED: ("victim", "reason", "deaths", "death_sector", "killer_id", "kind", "bounty", "outcome"),
     EventKind.PLAYER_ELIMINATED: ("killer", "deaths"),
