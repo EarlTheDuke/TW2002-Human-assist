@@ -391,6 +391,8 @@ def tick_day(universe: Universe) -> None:
         played = int(player.turns_today) > 0
         if not K.starting_package_live() and not K.turn_regen_live():
             player.turns_today = 0
+        if K.ship_exit_on() and int(player.self_destruct_lock_day or 0) >= int(universe.day):
+            player.turns_today = max(int(player.turns_today), int(player.turns_per_day))
         if K.seat_deadline_live():
             player.seat_timeout_streak = 0
             player.seat_timeouts_today = 0
@@ -4572,6 +4574,14 @@ _bind_corpships()
 _bind_fed_handlers()
 _bind_tavern()
 
+
+def _bind_ship_exit() -> None:
+    from .ship_exit import handle_jettison, handle_self_destruct
+    _DISPATCH[ActionKind.JETTISON] = handle_jettison
+    _DISPATCH[ActionKind.SELF_DESTRUCT] = handle_self_destruct
+
+
+_bind_ship_exit()
 
 
 # ---------------------------------------------------------------------------

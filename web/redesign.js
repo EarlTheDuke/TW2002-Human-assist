@@ -27,6 +27,7 @@
   const CKEYS = [
     ["F", "Course Plotter", "plot_course"], ["P", "Fire Photon Missile", "photon_missile"],
     ["R", "Port Report", null], ["K", "Your Known Universe", null], ["A", "Make Announcement", "broadcast"],
+    ["O", "Avoid sectors", null],
     ["Q", "Exit Computer", null],
   ];
   const HULL = {
@@ -773,6 +774,7 @@
       if (legal("bank_deposit") || legal("bank_withdraw")) box.appendChild(button("Bank", () => bankForm()));
       box.appendChild(dockBox());
     }
+    box.appendChild(spaceBox());
     box.appendChild(defenseBox());
     const slot = document.createElement("div");
     slot.id = "formSlot";
@@ -801,6 +803,15 @@
     else if (restore === "shipPassword") shipPassword(saved);
     else if (restore === "sellShip") sellShip(saved);
     else if (restore === "bankWire") bankWire(saved);
+    else if (restore === "rob") robForm(saved);
+    else if (restore === "steal") stealForm(saved);
+    else if (restore === "portUpgrade") upgradeForm(saved);
+    else if (restore === "portBuild") buildForm(saved);
+    else if (restore === "planetTrade") tradeForm(saved);
+    else if (restore === "atomic") atomicForm(saved);
+    else if (restore === "avoid") avoidForm(saved);
+    else if (restore === "hail") hailForm(saved);
+    else if (restore === "jettison") jettisonForm(saved);
     else if (restore) openForm(restore, saved);
   }
   function openForm(kind, saved) {
@@ -1898,6 +1909,7 @@
       }
       el.dataset.n = field.n;
       if (saved && saved[field.n] != null && saved[field.n] !== "") el.value = saved[field.n];
+      else if (field.value != null) el.value = String(field.value);
       inputs[field.n] = el;
       const label = document.createElement("label");
       label.appendChild(document.createTextNode((field.label || field.n) + " "));
@@ -2331,6 +2343,98 @@
       confirmWords("Break alliance", "Break alliance " + esc(id) + "?", () => act("break_alliance", { alliance_id: id }, "break"));
     });
   }
+  function spaceBox() {
+    const box = document.createElement("div");
+    box.className = "encounter";
+    box.dataset.screen = "space";
+    box.appendChild(reasonButton("rob", "Rob this port", () => robForm()));
+    box.appendChild(reasonButton("steal", "Steal cargo", () => stealForm()));
+    box.appendChild(reasonButton("port_upgrade", "Upgrade this port", () => upgradeForm()));
+    box.appendChild(reasonButton("port_build", "Build a port", () => buildForm()));
+    box.appendChild(reasonButton("planet_trade", "Planet trade", () => tradeForm()));
+    box.appendChild(reasonButton("deploy_atomic", "Atomic detonator", () => atomicForm()));
+    box.appendChild(reasonButton("hail", "Hail one player", () => hailForm()));
+    return box;
+  }
+  function robForm(saved) {
+    const max = Number((((LA("rob") || {}).params || {}).amount || {}).max || 1);
+    dockForm("rob", "ROB THIS PORT", "About 1 chance in 50 of a bust. Alignment must be -100 or lower. This vault allows up to " + fmt(max) + " cr.", [
+      { n: "amount", label: "Credits", type: "number", min: 1, value: "1" },
+    ], saved, (values) => act("rob", { amount: values.amount }, "rob"));
+  }
+  function stealForm(saved) {
+    const choices = ((((LA("steal") || {}).params || {}).commodity || {}).choices) || [];
+    dockForm("steal", "STEAL CARGO", "About 1 chance in 50 of a bust. You can take only what is on the shelf and what your holds can carry.", [
+      { n: "commodity", label: "Cargo", choices: choices.map((name) => ({ value: name, label: (COM[name] || [name])[0] })) },
+      { n: "qty", label: "Quantity", type: "number", min: 1, value: "1" },
+    ], saved, (values) => act("steal", { commodity: values.commodity, qty: values.qty }, "steal"));
+  }
+  function upgradeForm(saved) {
+    const rows = ((LA("port_upgrade") || {}).params || {}).commodities || {};
+    const choices = Object.entries(rows).filter((pair) => Number(pair[1].max_units) >= 1);
+    const note = choices.map((pair) => (COM[pair[0]] || [pair[0]])[0] + " " + fmt(pair[1].unit_cost) + " cr a unit, " + fmt(pair[1].holds_per_unit) + " holds").join(". ") + ".";
+    dockForm("portUpgrade", "UPGRADE THIS PORT", note, [
+      { n: "commodity", label: "Commodity", choices: choices.map((pair) => ({ value: pair[0], label: (COM[pair[0]] || [pair[0]])[0] })) },
+      { n: "units", label: "Units", type: "number", min: 1, value: "1" },
+    ], saved, (values) => act("port_upgrade", { commodity: values.commodity, units: values.units }, "upgrade"));
+  }
+  function buildForm(saved) {
+    const params = (LA("port_build") || {}).params || {};
+    const classes = params.classes || {};
+    const planets = params.planets || [];
+    const note = Object.entries(classes).map((pair) => pair[0] + " " + fmt(pair[1].cost) + " cr, " + pair[1].days + " days").join(". ") + ".";
+    dockForm("portBuild", "BUILD A PORT", note, [
+      { n: "port_class", label: "Class", choices: Object.keys(classes).map((code) => ({ value: code, label: code + " " + fmt(classes[code].cost) + " cr" })) },
+      { n: "planet_id", label: "Planet", choices: planets.map((row) => ({ value: String(row.planet_id), label: row.name })) },
+    ], saved, (values) => act("port_build", { port_class: values.port_class, planet_id: Number(values.planet_id) }, "build a port"));
+  }
+  function tradeForm(saved) {
+    const planets = ((LA("planet_trade") || {}).params || {}).planets || [];
+    const first = planets[0] || { sellable: {}, quote: {}, name: "This planet" };
+    const goods = Object.keys(first.sellable || {});
+    const commodity = goods[0];
+    const quote = commodity ? (first.quote || {})[commodity] : null;
+    const note = (first.name || "This planet") + (commodity ? " can sell " + (COM[commodity] || [commodity])[0] + " for " + fmt(quote) + " cr at the quote." : " has nothing this port is buying.") + " One counter only. A greedy one is refused.";
+    dockForm("planetTrade", "PLANET TRADE", note, [
+      { n: "planet_id", label: "Planet", choices: planets.map((row) => ({ value: String(row.planet_id), label: row.name })) },
+      { n: "commodity", label: "Commodity", choices: goods.map((name) => ({ value: name, label: (COM[name] || [name])[0] })) },
+      { n: "qty", label: "Quantity", type: "number", min: 1, value: "1" },
+    ], saved, (values) => act("planet_trade", { planet_id: Number(values.planet_id), commodity: values.commodity, qty: values.qty }, "planet trade"));
+  }
+  function atomicForm(saved) {
+    const params = (LA("deploy_atomic") || {}).params || {};
+    const ids = ((params.planet_id || {}).choices) || [];
+    const note = "Detonators aboard: " + fmt(params.detonators_aboard) + ". " + (params.note || "colonists still alive disarm it and the blast destroys YOUR ship") + (params.colonists_alive ? " Colonists are still alive." : " No colonists are alive, so the planet is destroyed.");
+    dockForm("atomic", "ATOMIC DETONATOR", note, [
+      { n: "planet_id", label: "Planet", choices: ids.map((id) => ({ value: String(id), label: "Planet " + id })) },
+    ], saved, (values) => act("deploy_atomic", { planet_id: Number(values.planet_id) }, "atomic detonator"));
+  }
+  function hailForm(saved) {
+    const ids = ((((LA("hail") || {}).params || {}).target || {}).choices) || [];
+    const labelFor = (id) => {
+      const row = (S.other_players || []).find((item) => item.id === id);
+      return (row && row.name) || id;
+    };
+    dockForm("hail", "HAIL ONE PLAYER", "This goes only to " + (ids[0] ? labelFor(ids[0]) : "that player") + ", not the whole sector.", [
+      { n: "target", label: "Player", choices: ids.map((id) => ({ value: id, label: labelFor(id) })) },
+      { n: "message", label: "Message", type: "text", value: "Hello" },
+    ], saved, (values) => act("hail", { target: values.target, message: values.message }, "hail"));
+  }
+  function avoidForm(saved) {
+    const a = LA("avoid");
+    if (!a) { setResult("Avoid sectors: Avoid sectors is not in this game.", true); return; }
+    if (!a.legal) { setResult("Avoid sectors: " + plainReason(a.reason), true); return; }
+    dockForm("avoid", "AVOID SECTORS", "Type a sector the computer should not plot through, or 0 to clear the list.", [
+      { n: "sector", label: "Sector", type: "number", min: 0, value: "2" },
+    ], saved, (values) => act("avoid", { sector: values.sector }, "avoid"));
+  }
+  function jettisonForm(saved) {
+    const choices = ((((LA("jettison") || {}).params || {}).commodity || {}).choices) || [];
+    dockForm("jettison", "JETTISON CARGO", "Dumping colonists costs a good trader 1 alignment each, up to 250 a day. A trader who is not good pays no alignment. Other cargo is dumped into space and is gone.", [
+      { n: "commodity", label: "Cargo", choices: choices.map((name) => ({ value: name, label: (COM[name] || [name])[0] })) },
+      { n: "qty", label: "Quantity", type: "number", min: 1, value: "1" },
+    ], saved, (values) => act("jettison", { commodity: values.commodity, qty: values.qty }, "jettison"));
+  }
   function confirmWords(title, line, onYes) {
     const m = $("menu");
     m.hidden = false;
@@ -2373,6 +2477,7 @@
       if (k === "F") { m.hidden = true; askSector((n) => go(n)); return; }
       if (k === "R") return portReport();
       if (k === "K") return knownUniverse();
+      if (k === "O") { m.hidden = true; return avoidForm(); }
       m.hidden = true;
       if (c[2]) return openForm(c[2]);
       return;
@@ -2395,8 +2500,18 @@
     if (k === "F" && !landedPlanet()) return fighterForm();
     if (k === "H" && !landedPlanet()) return mineForm();
     if (k === "G") return showFighters();
-    if (k === "B") return confirmWords("Self Destruct", "Self-destruct is not in this game. Your ship stays.");
-    if (k === "J") return confirmWords("Jettison Cargo", "Jettison is not in this game. Sell the cargo, or leave it on a planet.");
+    if (k === "B") {
+      const gone = LA("self_destruct");
+      if (!gone) return confirmWords("Self Destruct", "Self-destruct is not in this game. Your ship stays.");
+      if (!gone.legal) return confirmWords("Self Destruct", plainReason(gone.reason));
+      return confirmWords("Self Destruct", "You lose half your experience and half your alignment. The ship is gone. You are out for the rest of today and all of tomorrow.", () => act("self_destruct", {}, "self-destruct"));
+    }
+    if (k === "J") {
+      const dump = LA("jettison");
+      if (!dump) return confirmWords("Jettison Cargo", "Jettison is not in this game. Sell the cargo, or leave it on a planet.");
+      if (!dump.legal) return setResult("Jettison Cargo: " + plainReason(dump.reason), true);
+      return jettisonForm();
+    }
     if (k === "Q") return confirmWords("Quit", "Quit is not in this game. You are still in the cockpit.");
     if (k === "T" && (S.corp || {}).ticker) return corpMenu();
     const hit = KEYS.find((x) => x[0] === k);
