@@ -3594,6 +3594,27 @@ def ship_exit_on() -> bool:
     return SHIP_EXIT_MODE == "tw2002" or tw2002_live_profile()
 
 
+# combat-clarity-v1. Off, a same-sector rival's fighters and shields stay out of
+# the seat view, so the bank pin stays put. On, the sector line can show them.
+RIVAL_STRENGTH_MODE = "legacy"  # "legacy" | "live"
+
+
+def rival_strength_live() -> bool:
+    """True when a trader in your sector shows fighters and shields."""
+    return RIVAL_STRENGTH_MODE == "live" or tw2002_live_profile()
+
+
+# combat-clarity-v1. Legacy keeps today's kill: the killer is paid the victim's
+# cash on hand (DEATH_CREDITS_RECOVER_PCT, currently 100) through bank.on_ship_lost.
+# tw2002 pays the killer nothing. Holds salvage is a different path and stays.
+KILL_CASH_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def kill_cash_held() -> bool:
+    """True when a kill does not hand the victim's cash to the killer."""
+    return KILL_CASH_MODE == "tw2002" or tw2002_live_profile()
+
+
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
     """How many more colonists fit. Class M live uses one cap per pool."""
     if class_id == "M" and class_m_fidelity_live():

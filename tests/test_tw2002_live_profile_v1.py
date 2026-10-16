@@ -64,6 +64,8 @@ HELPERS = (
     "class_m_fidelity_live",
     "port_stock_fidelity_live",
     "ship_exit_on",
+    "rival_strength_live",
+    "kill_cash_held",
 )
 
 
@@ -71,7 +73,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 62
+    assert len(names) == 64
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -83,4 +85,6 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
         assert getattr(K, name)() is True, name
     assert K.TERRA_COLONIST_MODE == "legacy"
     assert K.SHIP_EXIT_MODE == "legacy"
+    assert K.RIVAL_STRENGTH_MODE == "legacy"
+    assert K.KILL_CASH_MODE == "legacy"
     assert K.EXP_SCORE_MODE == "legacy"

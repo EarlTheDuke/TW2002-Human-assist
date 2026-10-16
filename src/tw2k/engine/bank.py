@@ -268,7 +268,7 @@ def on_ship_lost(universe: Universe, player: Player, killer_id: str | None, by_o
     recovered = 0
     real_hull = hull not in _POD_SCOUT
     killer = universe.players.get(str(killer_id or ""))
-    if by_other and real_hull and K.DEATH_CREDITS_TO_KILLER == "player_ship_kill" and killer is not None:
+    if by_other and real_hull and K.DEATH_CREDITS_TO_KILLER == "player_ship_kill" and killer is not None and not K.kill_cash_held():
         recovered = lost * int(K.DEATH_CREDITS_RECOVER_PCT) // 100
         killer.credits = int(killer.credits) + recovered
         universe.emit(
