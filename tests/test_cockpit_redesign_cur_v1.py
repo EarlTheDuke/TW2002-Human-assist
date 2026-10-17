@@ -15,6 +15,7 @@ TOK = "bot2-e2e-token-p2-0000000000000"
 
 
 def test_bot_stays_and_bot2_is_open(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("COCKPIT_LAYOUT", raising=False)
     monkeypatch.setenv("TW2K_SPECTATOR_TOKEN", "not-the-seat-token")
     with CuHost(tmp_path, TOK) as host:
         bot = urlopen(host.base + "/bot", timeout=10).read().decode("utf-8")
