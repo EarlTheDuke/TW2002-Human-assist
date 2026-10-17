@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import os
 from pathlib import Path
 
 import tw2k.agents.cockpit_seat as seat
@@ -17,6 +18,12 @@ import tw2k.engine.constants as K
 from tests.test_external_harness_phase1 import TOK2, _app_and_client, _auth, _http_spec, _wait_until
 
 LOG = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-ai-seat-v1"
+ARTIFACT_ENV = "TW2K_SEAT_ARTIFACTS"
+
+
+def artifact_dir(tmp_path: Path) -> Path:
+    """The committed log folder only when TW2K_SEAT_ARTIFACTS=1 asks for it."""
+    return LOG if os.environ.get(ARTIFACT_ENV) == "1" else tmp_path / "cockpit-ai-seat-v1"
 
 
 def _stardock_spec():
@@ -112,8 +119,9 @@ def test_flag_on_leaves_stardock_then_docks_or_waits(tmp_path, monkeypatch) -> N
     if dock["port"] and dock["kind"] == "trade":
         assert dock["args"]["qty"] == 1
         assert dock["args"]["side"] in ("buy", "sell")
-    LOG.mkdir(parents=True, exist_ok=True)
-    (LOG / "day1.json").write_text(json.dumps(log, indent=2) + "\n", encoding="utf-8")
+    out = artifact_dir(tmp_path)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "day1.json").write_text(json.dumps(log, indent=2) + "\n", encoding="utf-8")
     lines = [
         "P2 day 1, cockpit reads only.",
         f"reference sections: {', '.join(log[0]['sections'])}",
@@ -121,4 +129,4 @@ def test_flag_on_leaves_stardock_then_docks_or_waits(tmp_path, monkeypatch) -> N
         f"then {dock['kind']} in sector {dock['from_sector']}"
         + ("" if dock["kind"] == "trade" else f" ({dock.get('trade_reason') or 'no port'})"),
     ]
-    (LOG / "day1.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (out / "day1.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
