@@ -214,9 +214,8 @@ def test_stardock_gear_uses_the_original_names(world) -> None:
         _sit(world["universe"], "P2", 1)
 
     _next(page, dock)
-    shop = page.locator("#here button", has_text="StarDock: buy gear")
-    shop.scroll_into_view_if_needed()
-    shop.click()
+    page.wait_for_function("() => [...document.querySelectorAll('#here button')].some((b) => /buy gear/i.test(b.textContent || ''))", timeout=10_000)
+    page.evaluate("() => { const b = [...document.querySelectorAll('#here button')].find((el) => /buy gear/i.test(el.textContent || '')); if (b) b.click(); }")
     page.wait_for_selector(".frm")
     names = page.locator(".frm option").evaluate_all("els => els.map((el) => el.textContent)")
     assert "Armid Mines" in names

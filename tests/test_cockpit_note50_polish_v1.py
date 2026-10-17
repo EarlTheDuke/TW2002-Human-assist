@@ -190,6 +190,12 @@ def test_a_citadel_climbs_from_level_1_to_level_3(world):
                 "() => /began|citadel/i.test(document.querySelector('#lastResult').textContent || '')",
                 timeout=20_000,
             )
+            page.wait_for_function(
+                "() => ((document.querySelector('[data-citadel=level]') || {}).textContent || '').includes('building toward "
+                + str(level)
+                + "')",
+                timeout=20_000,
+            )
             card = page.locator("[data-citadel=level]").inner_text()
             assert f"building toward {level}" in card
             assert "ready day" in card.lower()

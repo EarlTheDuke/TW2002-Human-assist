@@ -142,6 +142,7 @@
     s = s.replace(/\b1 days\b/g, "1 day");
     s = s.replace(/\b1 ((?:[A-Za-z]+ )?)fighters\b/gi, "1 $1fighter");
     s = s.replace(/\b1 shields\b/gi, "1 shield");
+    if (/ferrengi/i.test(s)) s = s.replace(/\s+/g, " ");
     s = s.replace(/\b1 holds\b/g, "1 cargo hold");
     s = s.replace(/\b(\d[\d,]*) holds\b/g, (m, n) => n + " cargo holds");
     s = s.replace(/mines in sector \d+: avoid this sector\?\s*\(autopilot stops here\)/gi, "Mines are in this sector. Computer, then O, adds it to the avoid list");
@@ -186,6 +187,15 @@
     const facts = (ev && ev.facts) || {};
     if (ev && ev.kind === "mine_detonated" && S && ev.actor_id === S.self_id && facts.victim && facts.victim !== S.self_id) {
       return "Your mines hit " + traderName(facts.victim) + " in sector " + (ev.sector_id || "") + " for " + fmt(facts.damage || 0) + " damage.";
+    }
+    if (ev && ev.kind === "ferrengi_encounter") {
+      const boarded = boardingSentence(ev);
+      if (boarded) return boarded;
+    }
+    if (ev && ev.kind === "ferrengi_tribute") return tributePaid(ev);
+    if (ev && ev.kind === "combat" && (eventFacts(ev).exchange_kind === "ship_vs_ship" || /shields and \d+ fighters/i.test(ev.summary || ""))) {
+      const said = fightSentence(ev);
+      if (said) return said;
     }
     if (ev && ev.kind === "combat" && facts.vs === "planet" && facts.planet_fighters_lost != null) {
       const twin = streamLog.concat((S && S.recent_events) || []).some((row) => {
@@ -368,10 +378,13 @@
   let taxSeenSeq = -1;
   let fellSeenSeq = 0;
   let dayNote = false;
+  function ferrengiName(name) {
+    return String(name || "").replace(/_([A-Za-z0-9]+)/g, " $1").replace(/\s+/g, " ").trim();
+  }
   function shipsHere() {
     const s = (S && S.sector) || {};
     const rows = [];
-    (s.ferrengi || []).forEach((f) => rows.push({ id: f.id, name: f.name, owner: "Ferrengi", fighters: f.fighters }));
+    (s.ferrengi || []).forEach((f) => rows.push({ id: f.id, name: ferrengiName(f.name), owner: "Ferrengi", fighters: f.fighters }));
     (s.aliens || []).forEach((a) => rows.push({ id: a.id, name: a.ship_name || a.name, owner: a.name || "alien", fighters: a.fighters }));
     (s.federals || []).forEach((f) => rows.push({ id: f.name, name: f.name, owner: f.title || "Federation", fighters: null }));
     (s.unmanned_ships || []).forEach((u) => rows.push({ id: u.ship_id || u.id, name: u.name || String(u.hull || "ship").replaceAll("_", " "), owner: u.owner_name || u.owner_id || "unmanned", fighters: u.fighters }));
@@ -430,7 +443,7 @@
   }
   function shipChoiceLabel(id) {
     const ship = shipsHere().find((row) => String(row.id) === String(id));
-    if (ship) return ship.name + ", " + ship.owner + (ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters");
+    if (ship) return (ship.owner === "Ferrengi" ? ferrengiName(ship.name) : ship.name) + ", " + ship.owner + (ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters");
     const roster = ((S && S.other_players) || []).find((row) => row.id === id);
     if (roster) {
       const bits = [roster.name || id];
@@ -1117,6 +1130,19 @@
       if (fromEl) fromEl.addEventListener("change", () => { if (qtyEl) qtyEl.value = ""; syncColonists(); });
       syncColonists();
     }
+    if (kind === "dump_planet_cargo") {
+      const comEl = fields.find((el) => el.dataset.n === "commodity");
+      const qtyEl = fields.find((el) => el.dataset.n === "qty");
+      const maxBy = (((a.params || {}).qty || {}).max_by) || {};
+      const fillDump = () => {
+        if (!qtyEl || !comEl) return;
+        const cap = Number(maxBy[comEl.value] || 0);
+        if (cap > 0) qtyEl.max = String(cap);
+        if (qtyEl.value === "" || Number(qtyEl.value) <= 0) qtyEl.value = cap > 0 ? String(cap) : "";
+      };
+      if (comEl) comEl.addEventListener("change", () => { if (qtyEl) qtyEl.value = ""; fillDump(); });
+      fillDump();
+    }
     const submit = () => {
       const args = {};
       fields.forEach((el) => {
@@ -1136,6 +1162,10 @@
       }
       if (kind === "assign_colonists" && args.from && args.from === args.to) {
         setResult("Move colonists to a different product.", true);
+        return;
+      }
+      if (kind === "dump_planet_cargo" && !(Number(args.qty) > 0)) {
+        setResult("How many? Type a number.", true);
         return;
       }
       if (kind === "launch_beacon" && !String(args.message || "").trim()) { setResult("Type a beacon message first.", true); return; }
@@ -2953,19 +2983,67 @@
   function eventFacts(ev) {
     return (ev && (ev.facts || ev.payload)) || {};
   }
+  function fightCount(value) {
+    return fmt(Number(String(value == null ? 0 : value).replace(/,/g, "")));
+  }
   function fightSentence(ev) {
     const summary = String((ev && ev.summary) || "");
-    const sent = /:\s*(.+?) sent ([\d,]+) fighters, lost ([\d,]+);\s*(.+?) lost ([\d,]+) shields and ([\d,]+) fighters/i.exec(summary);
-    if (!sent) return "";
+    const sent = /:\s*(.+?) sent ([\d,]+) fighters?, lost ([\d,]+);\s*(.+?) lost ([\d,]+) shields? and ([\d,]+) fighters?/i.exec(summary);
     const facts = eventFacts(ev);
-    const youAttacked = facts.attacker === (S && S.self_id) || ev.actor_id === (S && S.self_id);
-    const mineFighters = youAttacked ? sent[3] : sent[6];
-    const mineShields = youAttacked ? "0" : sent[5];
-    const theirName = youAttacked ? sent[4] : sent[1];
-    const theirFighters = youAttacked ? sent[6] : sent[3];
-    const theirShields = youAttacked ? sent[5] : "0";
-    const remain = fmt(Number(((S && S.ship) || {}).fighters || 0));
-    return "You lost " + fmt(Number(String(mineFighters).replace(/,/g, ""))) + " fighters and " + fmt(Number(String(mineShields).replace(/,/g, ""))) + " shields, " + remain + " remain. " + theirName + " lost " + fmt(Number(String(theirFighters).replace(/,/g, ""))) + " fighters and " + fmt(Number(String(theirShields).replace(/,/g, ""))) + " shields";
+    if (!sent && facts.exchange_kind !== "ship_vs_ship") return "";
+    const youAttacked = facts.attacker === (S && S.self_id) || (ev.actor_id === (S && S.self_id) && facts.defender !== (S && S.self_id));
+    const mineF = youAttacked ? (facts.attacker_losses != null ? facts.attacker_losses : (sent && sent[3])) : (facts.defender_losses != null ? facts.defender_losses : (sent && sent[6]));
+    const mineS = youAttacked ? 0 : (sent ? sent[5] : (facts.shield_losses || 0));
+    const theirName = ferrengiName(youAttacked ? (sent && sent[4]) : (sent && sent[1]));
+    const theirF = youAttacked ? (facts.defender_losses != null ? facts.defender_losses : (sent && sent[6])) : (facts.attacker_losses != null ? facts.attacker_losses : (sent && sent[3]));
+    const theirS = youAttacked ? (sent ? sent[5] : 0) : 0;
+    if (mineF == null || !theirName) return "";
+    const ship = (S && S.ship) || {};
+    const leftF = youAttacked ? (facts.attacker_f != null ? facts.attacker_f : ship.fighters) : (facts.defender_f != null ? facts.defender_f : ship.fighters);
+    const leftS = youAttacked ? (facts.attacker_s != null ? facts.attacker_s : ship.shields) : (facts.defender_s != null ? facts.defender_s : ship.shields);
+    const theirs = theirName + " lost " + fightCount(theirF) + " fighters and " + fightCount(theirS) + " shields";
+    if (youAttacked) return "You lost " + fightCount(mineF) + " fighters and " + fightCount(mineS) + " shields, " + fightCount(leftF) + " fighters remain. " + theirs;
+    const sector = ev.sector_id || ((/Combat in (\d+)/.exec(summary) || [])[1] || "");
+    return theirName + " attacked you in " + sector + ": you lost " + fightCount(mineF) + " fighters and " + fightCount(mineS) + " shields (" + fightCount(leftF) + " fighters and " + fightCount(leftS) + " shields left). " + theirs;
+  }
+  function boardingSentence(ev) {
+    const summary = String((ev && ev.summary) || "");
+    const match = /\*\* Ferrengi Fighter Attack! \*\* (.+) boards (.+) in (\d+): flee, attack or surrender/i.exec(summary);
+    if (!match) return "";
+    const figs = eventFacts(ev).ferr_fighters;
+    const count = figs == null ? "" : " (" + fmt(figs) + " fighters)";
+    return "** Ferrengi Fighter Attack! ** " + ferrengiName(match[1]) + count + " boards " + match[2] + " in " + match[3] + ": flee, attack or surrender (surrender costs 5 cargo holds, or 10% of the credits on board)";
+  }
+  function tributePaid(ev) {
+    const summary = String((ev && ev.summary) || "");
+    const match = /^(.+?) surrendered tribute to (.+?):/.exec(summary);
+    const who = match ? match[1] : "You";
+    const ferr = ferrengiName(match ? match[2] : "the Ferrengi");
+    const facts = eventFacts(ev);
+    const bits = [];
+    const cargo = facts.cargo;
+    if (cargo && typeof cargo === "object") {
+      Object.entries(cargo).forEach(([key, qty]) => {
+        if (Number(qty) > 0) bits.push(fmt(qty) + " " + String(key).replaceAll("_", " "));
+      });
+    }
+    const holds = Number(facts.holds_stolen || 0);
+    const credits = Number(facts.credits || 0);
+    if (holds) bits.push(fmt(holds) + (holds === 1 ? " cargo hold" : " cargo holds"));
+    if (credits) bits.push(fmt(credits) + " cr");
+    return who + " paid tribute to " + ferr + ": " + (bits.join(" and ") || "nothing") + ".";
+  }
+  function ignoredTributeLine(afterSeq) {
+    let row = null;
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || ev.kind !== "ferrengi_tribute" || (ev.seq || 0) <= afterSeq) return;
+      row = ev;
+    });
+    if (!row) return "";
+    const paid = tributePaid(row);
+    const ferr = (paid.match(/to (.+?):/) || [])[1] || "the Ferrengi";
+    const took = paid.split(":").slice(1).join(":").replace(/\.\s*$/, "").trim();
+    return "You ignored the " + ferr + ": it took " + (took || "tribute");
   }
   function destroyedExtra(afterSeq) {
     let line = "";
@@ -3031,7 +3109,9 @@
       if (kind === "wait") {
         let line = "You wait" + tail;
         if (noticeSeq > before && noticeLine && line.indexOf(noticeLine) < 0) line += " " + noticeLine;
-        if (!dayNote) setResult(line, noticeSeq > before);
+        const ignored = ignoredTributeLine(before - 1);
+        if (ignored && line.indexOf(ignored) < 0) line += " " + ignored;
+        if (!dayNote) setResult(line, noticeSeq > before || !!ignored);
         $("err").hidden = true;
         return;
       }
@@ -3173,6 +3253,11 @@
         }
       }
       if (noticeSeq > before && noticeLine && body.indexOf(noticeLine) < 0) body += ". " + noticeLine;
+      const boarded = streamLog.concat((S && S.recent_events) || []).map(boardingSentence).filter(Boolean).pop();
+      if (boarded && /Ferrengi Fighter Attack/i.test(body)) body = body.replace(/\*\* Ferrengi Fighter Attack! \*\*[\s\S]*?flee, attack or surrender/i, boarded);
+      const answered = kind === "retreat" || kind === "surrender" || kind === "hail" || kind === "broadcast" || kind === "radio";
+      const ignored = answered ? "" : ignoredTributeLine(before - 1);
+      if (ignored && body.indexOf("You ignored") < 0) body += ". " + ignored;
       if (/ship destroyed/i.test(body) && !/Credits on board lost/i.test(body)) {
         if (delta < 0) body += ". Credits on board lost: " + fmt(-delta) + " cr";
         else if (delta > 0) body += ". Credits on board lost: " + fmt(delta) + " cr";
