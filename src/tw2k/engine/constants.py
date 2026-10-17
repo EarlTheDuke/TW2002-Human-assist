@@ -102,7 +102,7 @@ FEDSPACE_DEPLOY_MODE = "legacy"  # "legacy" | "live"
 
 def fedspace_deploy_live() -> bool:
     """True when a FedSpace fighter drop is annihilated instead of refused."""
-    return FEDSPACE_DEPLOY_MODE == "live" or tw2002_live_profile()
+    return FEDSPACE_DEPLOY_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def fedspace_tenth_loss(count: int) -> int:
@@ -149,7 +149,7 @@ _PORT_CLASS_TRADES_LIVE: dict[int, tuple[bool | None, bool | None, bool | None]]
 
 def port_class_live() -> bool:
     """True when class 1/6 letters match v3.34b and StarDock buys goods."""
-    return PORT_CLASS_MAP_MODE == "live" or tw2002_live_profile()
+    return PORT_CLASS_MAP_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def port_class_trades(class_id: int) -> tuple[bool | None, bool | None, bool | None]:
@@ -209,7 +209,7 @@ PORT_HAGGLE_LIVE_END_PCT = 130
 
 def haggle_window_live() -> bool:
     """True when a counter has to sit inside the live +8% / -8% band."""
-    return HAGGLE_WINDOW_MODE == "live" or tw2002_live_profile()
+    return HAGGLE_WINDOW_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # --- Ships --------------------------------------------------------------------
@@ -333,7 +333,7 @@ LIVE_TURN_RECOVERY_DEN = 24 * 3600
 
 def starting_package_live() -> bool:
     """True when a new game uses the TWGS opening pocket."""
-    return STARTING_PACKAGE_MODE == "live" or tw2002_live_profile()
+    return STARTING_PACKAGE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def opening_loadout(spec_credits: int, spec_turns: int, slot: int) -> tuple[int, int, int]:
@@ -409,7 +409,7 @@ OWN_PLANET_TURN_MODE = "legacy"  # "legacy" | "live"
 
 def own_planet_turn_live() -> bool:
     """True when an owned-planet landing is free and the turn is taken on liftoff."""
-    return OWN_PLANET_TURN_MODE == "live" or tw2002_live_profile()
+    return OWN_PLANET_TURN_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def land_turn_cost(owned_by_you: bool) -> int:
@@ -727,6 +727,18 @@ def ship_specs() -> dict[str, dict]:
     if not ship_roster_live():
         return table
     out = dict(table)
+    # v311-rulings-v1 item 3, RULINGS_v311.md s4: "Original answer (base cost / initial-max
+    # holds / max fighters / turns per warp / offensive odds), from the real v3.34b shipyard
+    # catalog" and "load the full table above". Keys the active table does not carry stay out.
+    for key, row in SHIP_ROSTER_LIVE_TABLE.items():
+        spec = out.get(key)
+        if spec is None:
+            continue
+        spec = dict(spec)
+        cost, holds, max_holds, max_fighters, tpw, odds = row
+        spec.update(cost=cost, holds=holds, max_holds=max_holds, max_fighters=max_fighters,
+                    turns_per_warp=tpw, offensive_odds=odds)
+        out[key] = spec
     iss = out.get("imperial_starship")
     if iss is not None:
         iss = dict(iss)
@@ -743,6 +755,11 @@ def ship_specs() -> dict[str, dict]:
 def hull_spec(class_key: str) -> dict | None:
     """The spec of a hull a ship can be flying: the roster, or the escape pod (never for sale)."""
     if class_key == ESCAPE_POD:
+        if ship_roster_live():
+            # RULINGS_v311.md s4: "Escape Pod 14,446 | 1-5 | 50 | 6 | 0.8". The yard still never sells it.
+            cost, holds, max_holds, max_fighters, tpw, odds = SHIP_ROSTER_LIVE_POD
+            return {**POD_SPEC, "cost": cost, "holds": holds, "max_holds": max_holds,
+                    "max_fighters": max_fighters, "turns_per_warp": tpw, "offensive_odds": odds}
         return POD_SPEC
     return ship_specs().get(class_key)
 
@@ -753,6 +770,8 @@ def ship_cost(class_key: str) -> int:
         return 0
     if ship_roster_live() and class_key == "imperial_starship":
         return SHIP_ROSTER_ISS_COST
+    if ship_roster_live() and class_key in SHIP_ROSTER_LIVE_TABLE:
+        return int(SHIP_ROSTER_LIVE_TABLE[class_key][0])
     if ECONOMY_SCALE_MODE == "tw2002":
         return int(SHIP_COST_TW2002[class_key])
     return int(SHIP_SPECS[class_key]["cost"])
@@ -771,7 +790,7 @@ TRADE_IN_FRACTION_LIVE = 0.90
 
 def trade_in_live() -> bool:
     """True when the yard pays 90% of the hull and hands back a surplus."""
-    return TRADE_IN_MODE == "live" or tw2002_live_profile()
+    return TRADE_IN_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def trade_in_fraction() -> float:
@@ -977,7 +996,7 @@ ARMID_DAMAGE_LIVE = 30
 
 def hardware_price_live() -> bool:
     """True when the shop uses the live armid, limpet, genesis, and ether prices."""
-    return HARDWARE_PRICE_MODE == "live" or tw2002_live_profile()
+    return HARDWARE_PRICE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def armid_mine_cost() -> int:
@@ -1155,7 +1174,7 @@ CITADEL_PERK: list[tuple[int, str, str]] = [
 ]
 def citadel_days_live() -> bool:
     """True when a citadel uses the screen's raw day count."""
-    return CITADEL_DAYS_MODE == "live" or tw2002_live_profile()
+    return CITADEL_DAYS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def citadel_build_days(raw_days: int) -> int:
@@ -1224,7 +1243,7 @@ PLANET_SHIELD_ODDS = 20
 
 def planet_shields_active() -> bool:
     """True when stocked shields fight only at citadel level 5 and up."""
-    return PLANET_SHIELD_ACTIVE_MODE == "live" or tw2002_live_profile()
+    return PLANET_SHIELD_ACTIVE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def fighting_planet_shields(planet) -> int:
@@ -1918,7 +1937,7 @@ def net_worth_tw2002() -> bool:
 
 def genesis_score_fair() -> bool:
     """True when a fresh genesis planet does not score its seeded citadel goods."""
-    return GENESIS_SCORE_MODE == "fair"
+    return GENESIS_SCORE_MODE == "fair" or v311_profile()
 
 
 # action-result-v1. "legacy" answers POST /action as soon as the move is queued,
@@ -1933,7 +1952,7 @@ ACTION_RESULT_WAIT_S = 5.0
 
 def action_result_report() -> bool:
     """True when the action POST includes the engine's ok or reject."""
-    return ACTION_RESULT_MODE == "report"
+    return ACTION_RESULT_MODE == "report" or v311_profile()
 
 
 def _nw_wave_share() -> int:
@@ -2806,7 +2825,7 @@ ASSIGN_POOL_FIX_MODE = "legacy"  # "legacy" | "live"
 
 def assign_pool_fix_live() -> bool:
     """True when assign_colonists to=colonists stays in the colonists pool."""
-    return ASSIGN_POOL_FIX_MODE == "live" or tw2002_live_profile()
+    return ASSIGN_POOL_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # hold-endpoint-rules-v1. Appended so later slices can rebase cleanly.
@@ -2824,7 +2843,7 @@ HOLD_RULES_NOTE = (
 
 def hold_rules_live() -> bool:
     """True when the rules text names POST /hold and ok versus rejected."""
-    return HOLD_RULES_MODE == "live" or tw2002_live_profile()
+    return HOLD_RULES_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # planet-nw-construction-v1. Appended so later slices can rebase cleanly.
@@ -2835,7 +2854,7 @@ PLANET_NW_MODE = "legacy"  # "legacy" | "live"
 
 def planet_nw_live() -> bool:
     """True when a citadel under construction keeps the goods it already spent."""
-    return PLANET_NW_MODE == "live" or tw2002_live_profile()
+    return PLANET_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # trade-dock-turn-v1. Appended so later slices can rebase cleanly.
@@ -2889,7 +2908,7 @@ PORT_PRICE_BUY_FULL_MULT = 0.75   # 1.45 - 0.70 at a full port
 
 def port_price_live() -> bool:
     """True when quotes use the live full-port anchors."""
-    return PORT_PRICE_MODE == "live" or tw2002_live_profile()
+    return PORT_PRICE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # port-regen-mcic-v1. Appended so later slices can rebase cleanly.
@@ -2901,7 +2920,7 @@ PORT_REGEN_MODE = "legacy"  # "legacy" | "live"
 
 def port_regen_live() -> bool:
     """True when a day puts back 5 percent of max stock."""
-    return PORT_REGEN_MODE == "live" or tw2002_live_profile()
+    return PORT_REGEN_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # hold-fighter-shield-price-v1. Appended so later slices can rebase cleanly.
@@ -2914,7 +2933,7 @@ SHOP_PRICE_MODE = "legacy"  # "legacy" | "live"
 
 def shop_price_live() -> bool:
     """True when the next hold uses the flat 550 screen formula."""
-    return SHOP_PRICE_MODE == "live" or tw2002_live_profile()
+    return SHOP_PRICE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # ship-roster-stats-v1. Appended so later slices can rebase cleanly.
@@ -2924,11 +2943,32 @@ def shop_price_live() -> bool:
 SHIP_ROSTER_MODE = "legacy"  # "legacy" | "live"
 SHIP_ROSTER_ISS_COST = 329_000
 SHIP_ROSTER_SCOUT_FIGHTERS = 250
+# v311-rulings-v1 item 3. RULINGS_v311.md s4, the real v3.34b shipyard catalog:
+# (cost, initial holds, max holds, max fighters, turns per warp, offensive odds).
+SHIP_ROSTER_LIVE_TABLE: dict[str, tuple[int, int, int, int, int, float]] = {
+    "merchant_cruiser": (41_300, 20, 75, 2_500, 3, 1.0),
+    "scout_marauder": (15_950, 10, 25, 250, 2, 2.0),
+    "missile_frigate": (100_800, 12, 60, 5_000, 3, 1.3),
+    "battleship": (88_500, 16, 80, 10_000, 4, 1.6),
+    "corporate_flagship": (163_500, 20, 85, 20_000, 3, 1.2),
+    "colonial_transport": (63_600, 50, 250, 200, 6, 0.6),
+    "cargotran": (51_950, 50, 125, 400, 4, 0.8),
+    "merchant_freighter": (33_400, 30, 65, 300, 2, 0.8),
+    "imperial_starship": (329_000, 40, 150, 50_000, 4, 1.5),
+    "havoc_gunstar": (79_000, 12, 50, 10_000, 3, 1.2),
+    "star_master": (61_300, 20, 73, 5_000, 3, 1.4),
+    "constellation": (72_500, 20, 80, 5_000, 3, 1.4),
+    "tkhasi_orion": (42_250, 30, 60, 750, 2, 1.1),
+    "tholian_sentinel": (47_500, 10, 50, 2_500, 4, 1.0),
+    "taurean_mule": (63_600, 50, 150, 300, 4, 0.5),
+    "interdictor_cruiser": (539_000, 10, 40, 100_000, 15, 1.2),
+}
+SHIP_ROSTER_LIVE_POD: tuple[int, int, int, int, int, float] = (14_446, 1, 5, 50, 6, 0.8)
 
 
 def ship_roster_live() -> bool:
-    """True when the yard uses the live ISS price and Scout fighter cap."""
-    return SHIP_ROSTER_MODE == "live" or tw2002_live_profile()
+    """True when the yard uses the full RULINGS s4 table (ISS price, Scout cap, holds, odds)."""
+    return SHIP_ROSTER_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # genesis-start-and-cap-v1. Appended so later slices can rebase cleanly.
@@ -2940,7 +2980,7 @@ GENESIS_START_MODE = "legacy"  # "legacy" | "live"
 
 def genesis_start_live() -> bool:
     """True when a genesis planet starts with no colonists and no goods."""
-    return GENESIS_START_MODE == "live" or tw2002_live_profile()
+    return GENESIS_START_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # terra-colonists-v1. Appended so later slices can rebase cleanly.
@@ -2954,7 +2994,7 @@ TERRA_LIVE_PER_HOLD = 1_000
 
 def terra_colonist_live() -> bool:
     """True when Terra opens at 30,000 and a hold carries 1,000 colonists."""
-    return TERRA_COLONIST_MODE == "live" or tw2002_live_profile()
+    return TERRA_COLONIST_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def terra_start_pool() -> int:
@@ -2991,7 +3031,7 @@ PLANET_PROD_PER_UNIT = {
 
 def planet_prod_live() -> bool:
     """True when a day uses the S1 colonists-per-unit table."""
-    return PLANET_PROD_MODE == "live" or tw2002_live_profile()
+    return PLANET_PROD_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # citadel-perks-live-v1. Appended so later slices can rebase cleanly.
@@ -3005,7 +3045,7 @@ CITADEL_PERK_MODE = "legacy"  # "legacy" | "live"
 
 def citadel_perk_live() -> bool:
     """True when citadel perks use the level gates from the handbook."""
-    return CITADEL_PERK_MODE == "live" or tw2002_live_profile()
+    return CITADEL_PERK_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def citadel_perks() -> list[tuple[int, str, str]]:
@@ -3038,7 +3078,7 @@ EXP_SCORE_MODE = "legacy"  # "legacy" | "live"
 
 def exp_score_live() -> bool:
     """True when the public rank follows experience, not net worth."""
-    return EXP_SCORE_MODE == "live" or tw2002_live_profile()
+    return EXP_SCORE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # alignment-v1. Appended so later slices can rebase cleanly.
@@ -3077,7 +3117,7 @@ DEATH_POD_MODE = "legacy"  # "legacy" | "live"
 
 def death_pod_live() -> bool:
     """True when a fresh pod uses the clean-game loadout."""
-    return DEATH_POD_MODE == "live" or tw2002_live_profile()
+    return DEATH_POD_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # ship-combat-odds-v1. Appended so later slices can rebase cleanly.
@@ -3139,7 +3179,7 @@ PORT_ATTACK_CONFIRM = "Attacks on Federation ports are prohibited! Are you sure?
 
 
 def port_attack_live() -> bool:
-    return PORT_ATTACK_MODE == "live" or tw2002_live_profile()
+    return PORT_ATTACK_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # haggle-detail-v1. Off, the older haggle window is unchanged.
@@ -3152,7 +3192,7 @@ HAGGLE_LIVE_MODE = "legacy"  # "legacy" | "live"
 
 
 def haggle_live() -> bool:
-    return HAGGLE_LIVE_MODE == "live" or tw2002_live_profile()
+    return HAGGLE_LIVE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # discovery-exp-daily-bonus-v1. Off, the first trader at a port still gets the
@@ -3163,7 +3203,7 @@ DISCOVERY_EXP_MODE = "legacy"  # "legacy" | "live"
 
 
 def discovery_exp_live() -> bool:
-    return DISCOVERY_EXP_MODE == "live" or tw2002_live_profile()
+    return DISCOVERY_EXP_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # fed-ships-ferrengi-v1. Off, the three police captains stay as they are.
@@ -3174,7 +3214,7 @@ FED_SHIPS_MODE = "legacy"  # "legacy" | "live"
 
 
 def fed_ships_live() -> bool:
-    return FED_SHIPS_MODE == "live" or tw2002_live_profile()
+    return FED_SHIPS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # planet-class-types-v1. Off, genesis still rolls every class, costs 4 turns,
@@ -3199,7 +3239,7 @@ TURN_REGEN_DAY_SECONDS = 24 * 3600
 
 
 def turn_regen_live() -> bool:
-    return TURN_REGEN_MODE == "live" or tw2002_live_profile()
+    return TURN_REGEN_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # detect-gear-v1. Off, the shop prices stay as written above.
@@ -3212,7 +3252,7 @@ DETECT_GEAR_MODE = "legacy"  # "legacy" | "live"
 
 
 def detect_gear_live() -> bool:
-    return DETECT_GEAR_MODE == "live" or tw2002_live_profile()
+    return DETECT_GEAR_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # avoid-list-v1. Off, the computer has no avoid list. A death does not
@@ -3223,7 +3263,7 @@ AVOID_MODE = "legacy"  # "legacy" | "live"
 
 
 def avoid_live() -> bool:
-    return AVOID_MODE == "live" or tw2002_live_profile()
+    return AVOID_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # bank-live-v1. Off, the account still stops at 500,000.
@@ -3276,7 +3316,7 @@ OWN_PLANET_FIGHTER_MODE = "legacy"  # "legacy" | "live"
 
 
 def own_planet_fighter_live() -> bool:
-    return OWN_PLANET_FIGHTER_MODE == "live" or tw2002_live_profile()
+    return OWN_PLANET_FIGHTER_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # alliance-flow-v1. Off, a hail is only a message and an ally still
@@ -3295,7 +3335,7 @@ RANK_DISPLAY_MODE = "legacy"  # "legacy" | "exp" | "networth" | "both"
 
 
 def rank_display() -> str:
-    if RANK_DISPLAY_MODE == "legacy" and tw2002_live_profile():
+    if RANK_DISPLAY_MODE == "legacy" and (tw2002_live_profile() or v311_profile()):
         return "exp"
     return RANK_DISPLAY_MODE
 
@@ -3314,7 +3354,7 @@ API_REJECT_STREAK = 20
 
 
 def api_args_live() -> bool:
-    return API_ARGS_MODE == "live" or tw2002_live_profile()
+    return API_ARGS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def async_day_should_roll(all_done: bool, elapsed_s: float) -> bool:
@@ -3336,7 +3376,7 @@ PLANET_COLONIST_CAP_MODE = "legacy"  # "legacy" | "live"
 
 def planet_colonist_cap_live() -> bool:
     """True when a class can hold every citadel level it is asked to build."""
-    return PLANET_COLONIST_CAP_MODE == "live" or tw2002_live_profile()
+    return PLANET_COLONIST_CAP_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def planet_colonist_cap(class_id: str) -> int:
@@ -3359,7 +3399,7 @@ LANDED_STATE_MODE = "legacy"  # "legacy" | "live"
 
 def landed_state_live() -> bool:
     """True when a landing has to match the sector the ship is in."""
-    return LANDED_STATE_MODE == "live" or tw2002_live_profile()
+    return LANDED_STATE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # planet-dividend-fidelity-v1. Appended so later slices can rebase cleanly.
@@ -3371,7 +3411,7 @@ PLANET_DIVIDEND_PAY_MODE = "legacy"  # "legacy" | "off"
 
 def planet_dividend_off() -> bool:
     """True when a planet's new value does not pay credits."""
-    return PLANET_DIVIDEND_PAY_MODE == "off" or tw2002_live_profile()
+    return PLANET_DIVIDEND_PAY_MODE == "off" or tw2002_live_profile() or v311_profile()
 
 
 def _forced_mode(env_name: str, current: str) -> str:
@@ -3393,7 +3433,7 @@ LIVE_PACE_MODE = "legacy"  # "legacy" | "live"
 
 def live_pace() -> bool:
     """True when a live game waits on the clock instead of racing the day."""
-    return LIVE_PACE_MODE == "live" or tw2002_live_profile()
+    return LIVE_PACE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # planet-value-cap-v1. Appended so later slices can rebase cleanly.
@@ -3409,7 +3449,7 @@ def planet_value_score_mode() -> str:
     mode = PLANET_VALUE_SCORE_MODE
     if mode != "legacy":
         return mode
-    if tw2002_live_profile():
+    if tw2002_live_profile() or v311_profile():
         return "experience"
     return "legacy"
 
@@ -3456,7 +3496,7 @@ PLANET_SCANNER_COST = 30_000
 
 def planet_scanner_live() -> bool:
     """True when StarDock sells a planet scanner."""
-    return PLANET_SCANNER_MODE == "live" or tw2002_live_profile()
+    return PLANET_SCANNER_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # scanner-fog-v1. Appended so later slices can rebase cleanly.
@@ -3470,7 +3510,7 @@ SCANNER_FOG_MODE = "legacy"  # "legacy" | "live"
 
 def scanner_fog_live() -> bool:
     """True when a planet's owner and fighters are hidden until a scan or a landing."""
-    return SCANNER_FOG_MODE == "live" or tw2002_live_profile()
+    return SCANNER_FOG_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # citadel-parking-v1. Appended so later slices can rebase cleanly.
@@ -3483,7 +3523,7 @@ CITADEL_PARK_MODE = "legacy"  # "legacy" | "live"
 
 def citadel_park_live() -> bool:
     """True when a ship on your citadel is parked inside it."""
-    return CITADEL_PARK_MODE == "live" or tw2002_live_profile()
+    return CITADEL_PARK_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # radio-channels-v1. Appended so later slices can rebase cleanly.
@@ -3496,7 +3536,7 @@ RADIO_CHANNEL_MAX = 60_000
 
 def radio_channel_live() -> bool:
     """True when corp mates can share a subspace radio channel."""
-    return RADIO_CHANNEL_MODE == "live" or tw2002_live_profile()
+    return RADIO_CHANNEL_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # daily-stats-v1. Appended so later slices can rebase cleanly.
@@ -3510,7 +3550,7 @@ DAILY_STATS_MODE = "legacy"  # "legacy" | "live"
 
 def daily_stats_live() -> bool:
     """True when the V-screen counts are on the observation."""
-    return DAILY_STATS_MODE == "live" or tw2002_live_profile()
+    return DAILY_STATS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # fedcomm-v1. Appended so later slices can rebase cleanly.
@@ -3522,7 +3562,7 @@ FEDCOMM_MSL_LINE = "Don't deploy fighters in the MSL's."
 
 def fedcomm_live() -> bool:
     """True when a lane sweep also sends the Federation note."""
-    return FEDCOMM_MODE == "live" or tw2002_live_profile()
+    return FEDCOMM_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # corp-rankings-v1. Appended so later slices can rebase cleanly.
@@ -3534,7 +3574,7 @@ CORP_RANK_MODE = "legacy"  # "legacy" | "live"
 
 def corp_rank_live() -> bool:
     """True when the corporation ranking is on the observation."""
-    return CORP_RANK_MODE == "live" or tw2002_live_profile()
+    return CORP_RANK_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # gold-aliens-v1. Appended so later slices can rebase cleanly.
@@ -3567,7 +3607,7 @@ CLASS_M_CATEGORY_CAP = 30_000 * CLASS_M_PEOPLE_PER_THOUSAND
 
 def class_m_fidelity_live() -> bool:
     """True when class M uses people, not the handbook unit, as stored."""
-    return CLASS_M_FIDELITY_MODE == "live" or tw2002_live_profile()
+    return CLASS_M_FIDELITY_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # port-stock-and-trade-reason-v1. Appended so later slices can rebase cleanly.
@@ -3580,7 +3620,7 @@ PORT_STOCK_FIDELITY_MODE = "legacy"  # "legacy" | "live"
 
 def port_stock_fidelity_live() -> bool:
     """True when selling ports open full and buying ports open hungry."""
-    return PORT_STOCK_FIDELITY_MODE == "live" or tw2002_live_profile()
+    return PORT_STOCK_FIDELITY_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # ship-exit-v1. Off, Jettison and Self-destruct stay "not in this game".
@@ -3591,7 +3631,7 @@ SHIP_EXIT_MODE = "legacy"  # "legacy" | "tw2002"
 
 def ship_exit_on() -> bool:
     """True when Jettison and Self-destruct are real commands."""
-    return SHIP_EXIT_MODE == "tw2002" or tw2002_live_profile()
+    return SHIP_EXIT_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # combat-clarity-v1. Off, a same-sector rival's fighters and shields stay out of
@@ -3601,7 +3641,7 @@ RIVAL_STRENGTH_MODE = "legacy"  # "legacy" | "live"
 
 def rival_strength_live() -> bool:
     """True when a trader in your sector shows fighters and shields."""
-    return RIVAL_STRENGTH_MODE == "live" or tw2002_live_profile()
+    return RIVAL_STRENGTH_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # combat-clarity-v1. Legacy keeps today's kill: the killer is paid the victim's
@@ -3624,7 +3664,7 @@ PLANET_LANDING_COMBAT_MODE = "legacy"  # "legacy" | "tw2002"
 
 def planet_landing_combat_on() -> bool:
     """True when landing on a defended planet fights before it can be claimed."""
-    return PLANET_LANDING_COMBAT_MODE == "tw2002" or tw2002_live_profile()
+    return PLANET_LANDING_COMBAT_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # hazards-scans-v1. Legacy keeps today's entry clash: one exchange, and a
@@ -3636,8 +3676,8 @@ OFFENSIVE_CLASH_MODE = "legacy"  # "legacy" | "tw2002"
 
 
 def offensive_clash_held() -> bool:
-    """True when an entry clash spends losses on shields before the exchange."""
-    return OFFENSIVE_CLASH_MODE == "tw2002" or tw2002_live_profile()
+    """True when offensive sector fighters send the RULINGS s6 wave (combat._offensive_wave_tw2002)."""
+    return OFFENSIVE_CLASH_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # hazards-scans-v1. Legacy keeps mine hits, landings, and fighter clashes
@@ -3648,7 +3688,7 @@ OWNER_HAZARD_NOTICE_MODE = "legacy"  # "legacy" | "tw2002"
 
 def owner_hazard_notice_on() -> bool:
     """True when the owner is told about a landing, a clash, or a mine hit."""
-    return OWNER_HAZARD_NOTICE_MODE == "tw2002" or tw2002_live_profile()
+    return OWNER_HAZARD_NOTICE_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # d8-combat-planet-fixes-v1. Legacy flees after the exchange, on whatever
@@ -3660,7 +3700,7 @@ SHIP_FLEE_MODE = "legacy"  # "legacy" | "tw2002"
 
 def ship_flee_published() -> bool:
     """True when a ship flees on the fighters sent, against the strength before the hit."""
-    return SHIP_FLEE_MODE == "tw2002" or tw2002_live_profile()
+    return SHIP_FLEE_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # d8. Legacy still lets a citadel below level 5 take planet shields.
@@ -3670,7 +3710,7 @@ PLANET_SHIELD_MODE = "legacy"  # "legacy" | "tw2002"
 
 def planet_shield_l5() -> bool:
     """True when planet shields require a level 5 citadel."""
-    return PLANET_SHIELD_MODE == "tw2002" or tw2002_live_profile()
+    return PLANET_SHIELD_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # d8. Legacy Ferrengi hunt only on their own roam. tw2002 also engages an
@@ -3680,7 +3720,7 @@ FERRENGI_ENGAGE_MODE = "legacy"  # "legacy" | "tw2002"
 
 def ferrengi_engage_on() -> bool:
     """True when a Ferrengi engages on entry and retaliates in the same sector."""
-    return FERRENGI_ENGAGE_MODE == "tw2002" or tw2002_live_profile()
+    return FERRENGI_ENGAGE_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # d8. Legacy siege facts stay the after-counts already on the event.
@@ -3690,7 +3730,7 @@ SIEGE_REPORT_MODE = "legacy"  # "legacy" | "tw2002"
 
 def siege_report_on() -> bool:
     """True when a landing fight reports the losses on both sides."""
-    return SIEGE_REPORT_MODE == "tw2002" or tw2002_live_profile()
+    return SIEGE_REPORT_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # note49-polish-v1. Legacy still burns max(1, colonists // 100) organics
@@ -3704,7 +3744,7 @@ PLANET_GROWTH_MODE = "legacy"  # "legacy" | "tw2002"
 
 def planet_growth_tw2002() -> bool:
     """True when colonists follow the half-cap rule and do not eat organics."""
-    return PLANET_GROWTH_MODE == "tw2002" or tw2002_live_profile()
+    return PLANET_GROWTH_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # cockpit-ai-seat-v1. Legacy games do not start this seat. tw2002 lets a
@@ -3728,6 +3768,107 @@ COCKPIT_FIELDS_MODE = "legacy"  # "legacy" | "tw2002"
 def cockpit_fields_on() -> bool:
     """True when the harness observation carries the cockpit block."""
     return COCKPIT_FIELDS_MODE == "tw2002" or tw2002_live_profile()
+
+
+# v311-rulings-v1 (NOTE 57) item 6. RULINGS_v311.md s7: "good traders (alignment above 0)
+# carrying over 49,999 credits on the ship pay 10% of the cash on hand, once per day when
+# they enter; +1 alignment per 1,500 credits paid; evil traders are never taxed. MBBS mode
+# uses 5% over 100,000 (not the default)." Legacy keeps the MBBS figures above.
+TAX_RULE_MODE = "legacy"  # "legacy" | "v311"
+V311_TAX_RATE_PCT = 10
+V311_TAX_OVER = 49_999
+V311_TAX_MIN_ALIGNMENT = 1
+
+
+def tax_v311() -> bool:
+    """True when the nightly tax uses the v3 TWGS default (10% at 50,000 or more, good only)."""
+    return TAX_RULE_MODE == "v311" or tw2002_live_profile() or v311_profile()
+
+
+def tax_terms() -> tuple[int, int, int]:
+    """(rate percent, cash a trader must carry MORE than, lowest taxed alignment)."""
+    if tax_v311():
+        return int(V311_TAX_RATE_PCT), int(V311_TAX_OVER), int(V311_TAX_MIN_ALIGNMENT)
+    return int(TAX_RATE_PCT), int(TAX_THRESHOLD), int(TAX_MIN_ALIGNMENT)
+
+
+# v311-rulings-v1 (NOTE 57) item 8. One switch for a game run on the v3.11 rulings:
+# RULINGS_v311.md s2-s7 plus every MASTER_PLAN switch marked yes. Its own switch,
+# separate from TW2002_LIVE_PROFILE, so KILL_CASH_MODE (RULINGS s1, percentage
+# unresolved) stays legacy. docs/plans/v311-profile-v1.md lists the set with reasons.
+V311_PROFILE = "legacy"  # "legacy" | "v311"
+
+
+def v311_profile() -> bool:
+    """True when a game wants the documented v3.11 switch set (V311_PROFILE_HELPERS)."""
+    return V311_PROFILE == "v311"
+
+
+# helper -> (switch it reads, why it is in the set). Every helper here returns True
+# under V311_PROFILE alone. rank_display() and planet_value_score_mode() also return
+# "exp" and "experience". citadel_fidelity_rules is already on by default.
+V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
+    "starting_package_live": ("STARTING_PACKAGE_MODE", "RULINGS s2"),
+    "citadel_days_live": ("CITADEL_DAYS_MODE", "RULINGS s3"),
+    "citadel_fidelity_rules": ("CITADEL_COST_MODE", "RULINGS s3; MASTER_PLAN yes, after check"),
+    "ship_roster_live": ("SHIP_ROSTER_MODE", "RULINGS s4"),
+    "turn_regen_live": ("TURN_REGEN_MODE", "RULINGS s5"),
+    "live_pace": ("LIVE_PACE_MODE", "RULINGS s5"),
+    "offensive_clash_held": ("OFFENSIVE_CLASH_MODE", "RULINGS s6"),
+    "tax_v311": ("TAX_RULE_MODE", "RULINGS s7"),
+    "fedspace_deploy_live": ("FEDSPACE_DEPLOY_MODE", "MASTER_PLAN yes"),
+    "port_class_live": ("PORT_CLASS_MAP_MODE", "MASTER_PLAN yes"),
+    "haggle_window_live": ("HAGGLE_WINDOW_MODE", "MASTER_PLAN yes"),
+    "own_planet_turn_live": ("OWN_PLANET_TURN_MODE", "MASTER_PLAN yes"),
+    "trade_in_live": ("TRADE_IN_MODE", "MASTER_PLAN yes"),
+    "hardware_price_live": ("HARDWARE_PRICE_MODE", "MASTER_PLAN yes"),
+    "planet_shields_active": ("PLANET_SHIELD_ACTIVE_MODE", "MASTER_PLAN yes"),
+    "genesis_score_fair": ("GENESIS_SCORE_MODE", "MASTER_PLAN yes (fair)"),
+    "action_result_report": ("ACTION_RESULT_MODE", "MASTER_PLAN yes for AI-seat games (report)"),
+    "assign_pool_fix_live": ("ASSIGN_POOL_FIX_MODE", "MASTER_PLAN yes"),
+    "hold_rules_live": ("HOLD_RULES_MODE", "MASTER_PLAN yes"),
+    "planet_nw_live": ("PLANET_NW_MODE", "MASTER_PLAN yes"),
+    "port_price_live": ("PORT_PRICE_MODE", "MASTER_PLAN yes"),
+    "port_regen_live": ("PORT_REGEN_MODE", "MASTER_PLAN yes"),
+    "shop_price_live": ("SHOP_PRICE_MODE", "MASTER_PLAN yes"),
+    "genesis_start_live": ("GENESIS_START_MODE", "MASTER_PLAN yes"),
+    "terra_colonist_live": ("TERRA_COLONIST_MODE", "MASTER_PLAN yes"),
+    "planet_prod_live": ("PLANET_PROD_MODE", "MASTER_PLAN yes"),
+    "citadel_perk_live": ("CITADEL_PERK_MODE", "MASTER_PLAN yes"),
+    "exp_score_live": ("EXP_SCORE_MODE", "MASTER_PLAN yes, Ben confirm"),
+    "death_pod_live": ("DEATH_POD_MODE", "MASTER_PLAN yes"),
+    "port_attack_live": ("PORT_ATTACK_MODE", "MASTER_PLAN yes"),
+    "haggle_live": ("HAGGLE_LIVE_MODE", "MASTER_PLAN yes"),
+    "discovery_exp_live": ("DISCOVERY_EXP_MODE", "MASTER_PLAN yes"),
+    "fed_ships_live": ("FED_SHIPS_MODE", "MASTER_PLAN yes"),
+    "detect_gear_live": ("DETECT_GEAR_MODE", "MASTER_PLAN yes"),
+    "avoid_live": ("AVOID_MODE", "MASTER_PLAN yes"),
+    "own_planet_fighter_live": ("OWN_PLANET_FIGHTER_MODE", "MASTER_PLAN yes"),
+    "rank_display_live": ("RANK_DISPLAY_MODE", "MASTER_PLAN yes (exp)"),
+    "api_args_live": ("API_ARGS_MODE", "MASTER_PLAN yes for AI-seat games"),
+    "planet_colonist_cap_live": ("PLANET_COLONIST_CAP_MODE", "MASTER_PLAN yes"),
+    "landed_state_live": ("LANDED_STATE_MODE", "MASTER_PLAN yes"),
+    "planet_dividend_off": ("PLANET_DIVIDEND_PAY_MODE", "MASTER_PLAN yes (off)"),
+    "planet_value_scored": ("PLANET_VALUE_SCORE_MODE", "MASTER_PLAN yes (experience)"),
+    "planet_scanner_live": ("PLANET_SCANNER_MODE", "MASTER_PLAN yes"),
+    "scanner_fog_live": ("SCANNER_FOG_MODE", "MASTER_PLAN yes"),
+    "citadel_park_live": ("CITADEL_PARK_MODE", "MASTER_PLAN yes"),
+    "radio_channel_live": ("RADIO_CHANNEL_MODE", "MASTER_PLAN yes"),
+    "daily_stats_live": ("DAILY_STATS_MODE", "MASTER_PLAN yes"),
+    "fedcomm_live": ("FEDCOMM_MODE", "MASTER_PLAN yes"),
+    "corp_rank_live": ("CORP_RANK_MODE", "MASTER_PLAN yes"),
+    "class_m_fidelity_live": ("CLASS_M_FIDELITY_MODE", "MASTER_PLAN yes (Ben NOTE 19)"),
+    "port_stock_fidelity_live": ("PORT_STOCK_FIDELITY_MODE", "MASTER_PLAN yes"),
+    "ship_exit_on": ("SHIP_EXIT_MODE", "MASTER_PLAN yes"),
+    "rival_strength_live": ("RIVAL_STRENGTH_MODE", "MASTER_PLAN yes"),
+    "planet_landing_combat_on": ("PLANET_LANDING_COMBAT_MODE", "MASTER_PLAN yes"),
+    "owner_hazard_notice_on": ("OWNER_HAZARD_NOTICE_MODE", "MASTER_PLAN yes"),
+    "ship_flee_published": ("SHIP_FLEE_MODE", "MASTER_PLAN yes"),
+    "planet_shield_l5": ("PLANET_SHIELD_MODE", "MASTER_PLAN yes"),
+    "ferrengi_engage_on": ("FERRENGI_ENGAGE_MODE", "MASTER_PLAN yes"),
+    "siege_report_on": ("SIEGE_REPORT_MODE", "MASTER_PLAN yes"),
+    "planet_growth_tw2002": ("PLANET_GROWTH_MODE", "MASTER_PLAN yes"),
+}
 
 
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:

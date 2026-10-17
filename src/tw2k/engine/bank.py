@@ -43,12 +43,13 @@ def room(player: Player) -> int:
 def tax_on(player: Player, credits: int | None = None) -> tuple[int, int]:
     """Tax and alignment this cash would owe. (0, 0) when the trader is exempt."""
     cash = int(player.credits if credits is None else credits)
-    if int(player.alignment) < int(K.TAX_MIN_ALIGNMENT) or cash <= int(K.TAX_THRESHOLD):
+    rate, over, min_align = K.tax_terms()
+    if int(player.alignment) < min_align or cash <= over:
         return 0, 0
     if K.TAX_ROUNDING == "floor":
-        tax = cash * int(K.TAX_RATE_PCT) // 100
+        tax = cash * rate // 100
     else:
-        tax = round(cash * int(K.TAX_RATE_PCT) / 100)
+        tax = round(cash * rate / 100)
     per = int(K.TAX_CREDITS_PER_ALIGN)
     award = tax // per if per else 0
     if award > int(K.TAX_ALIGN_AWARD_MAX) and K.TAX_ALIGN_OVERFLOW == "none":

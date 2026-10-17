@@ -634,8 +634,8 @@ def _bank_note() -> str:
         f"\nStarDock's Galactic Bank holds up to {int(K.BANK_MAX_BALANCE):,} credits per trader; "
         "banked credits are not lost when your ship is destroyed and are not taxed. Credits carried "
         "on your ship are lost if your ship is destroyed, and a trader with "
-        f"{int(K.TAX_MIN_ALIGNMENT)} or more alignment carrying over {int(K.TAX_THRESHOLD):,} credits "
-        f"pays {int(K.TAX_RATE_PCT)}% at the start of each day.\n"
+        f"{K.tax_terms()[2]} or more alignment carrying over {K.tax_terms()[1]:,} credits "
+        f"pays {K.tax_terms()[0]}% at the start of each day.\n"
     )
 
 _CORPSHIP_NOTE = (

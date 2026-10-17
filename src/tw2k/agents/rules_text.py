@@ -44,8 +44,8 @@ def bank_block() -> str:
         f'`bank_transfer {{"to_player":"P3","amount":N}}` work at StarDock only and cost '
         f"{int(K.BANK_TURN_COST)} turns. The account holds up to {int(K.BANK_MAX_BALANCE):,} credits. "
         "Banked credits are not lost when your ship is destroyed and are not taxed. Credits on the ship "
-        f"are lost if the ship is destroyed. Alignment {int(K.TAX_MIN_ALIGNMENT)} or higher, carrying over "
-        f"{int(K.TAX_THRESHOLD):,} credits, pays {int(K.TAX_RATE_PCT)}% at the start of each day.\n"
+        f"are lost if the ship is destroyed. Alignment {K.tax_terms()[2]} or higher, carrying over "
+        f"{K.tax_terms()[1]:,} credits, pays {K.tax_terms()[0]}% at the start of each day.\n"
     )
 
 

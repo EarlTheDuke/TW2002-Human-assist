@@ -368,6 +368,15 @@ def recover_turns(player, elapsed_s: float) -> int:
     """
     if not K.starting_package_live():
         return 0
+    if K.turn_regen_live():
+        # v311-rulings-v1 item 4. RULINGS_v311.md s5: "turns come back hourly, pro-rated from
+        # the daily allowance (about turns_per_day / 24 per hour), capped at the daily
+        # allowance; no midnight full refill". One clock: refresh_offline_turns keeps the
+        # stamp and the fraction, so this path and apply_action never both pay the same
+        # seconds, and calls a fraction of a second apart still add up.
+        before = int(player.turns_today)
+        refresh_offline_turns(player)
+        return before - int(player.turns_today)
     if elapsed_s <= 0:
         return 0
     gain = int(elapsed_s) * K.LIVE_TURN_RECOVERY_NUM // K.LIVE_TURN_RECOVERY_DEN

@@ -89,6 +89,73 @@ def _attach_limpet(universe: Universe, owner_id: str, target_id: str, corp_ticke
     )
 
 
+def offensive_wave_size(ship) -> int:
+    """RULINGS_v311.md s6: "send 1.25 times the number of combined shields and figs that your
+    ship can carry" (S2 cabal formulas ~1590), sized on "your max total shields and figs, not
+    your current" (~1832)."""
+    spec = K.hull_spec(ship.ship_class.value) or {}
+    cap = int(spec.get("max_fighters", 0) or 0) + int(spec.get("max_shields", 0) or 0)
+    return -(-cap * 5 // 4)  # ceil(1.25 x cap)
+
+
+def _offensive_wave_tw2002(universe: Universe, attacker_id: str, sector_id: int) -> None:
+    """OFFENSIVE_CLASH_MODE tw2002 (v311-rulings-v1 item 5).
+
+    RULINGS_v311.md s6: "offensive sector fighters attack an entering ship at 1:1 odds, sending
+    1.25 x (the ship's MAX fighters + MAX shields), or all they have if fewer; fighters not used
+    or surviving stay in the sector; afterwards they act as defenders."
+    At 1:1 each wave fighter cancels one shield (shields first) or one ship fighter. A wave
+    larger than the ship's shields plus fighters gets through and destroys the ship.
+    No random draw, so the duel does not touch the game's random stream.
+    """
+    sector = universe.sectors[sector_id]
+    dep = sector.fighters
+    if dep is None:
+        return
+    player = universe.players[attacker_id]
+    ship = player.ship
+    stack = int(dep.count)
+    wave = min(stack, offensive_wave_size(ship))
+    shields, fighters = int(ship.shields), int(ship.fighters)
+    spent = min(wave, shields + fighters)
+    shield_loss = min(shields, spent)
+    fighter_loss = spent - shield_loss
+    ship.shields = shields - shield_loss
+    ship.fighters = fighters - fighter_loss
+    left = stack - spent
+    destroyed = wave > shields + fighters
+    pot = int(dep.toll_credits or 0)
+    if left <= 0:
+        if K.sector_fighter_tw2002() and pot > 0:
+            player.credits += pot
+        sector.fighters = None
+    else:
+        dep.count = left
+    universe.emit(
+        EventKind.COMBAT,
+        actor_id=attacker_id,
+        sector_id=sector_id,
+        payload={
+            "vs": "fighter_sector",
+            "defender_owner": dep.owner_id,
+            "wave": wave,
+            "attacker_losses": fighter_loss,
+            "attacker_shield_losses": shield_loss,
+            "defender_losses": spent,
+            "defender_left": max(0, left),
+            "sector_claimed": left <= 0,
+            "ship_destroyed": destroyed,
+        },
+        summary=(
+            f"Offensive fighters in {sector_id} sent {wave} at {player.name}: "
+            f"{shield_loss} shields and {fighter_loss} fighters lost, {max(0, left)} fighters stay"
+            + (" — SHIP DESTROYED" if destroyed else "")
+        ),
+    )
+    if destroyed:
+        _destroy_ship(universe, attacker_id, reason="sector_fighters", killer_id=dep.owner_id)
+
+
 def _resolve_fighter_sector_combat(
     universe: Universe,
     attacker_id: str,
@@ -104,8 +171,8 @@ def _resolve_fighter_sector_combat(
     attacker = universe.players[attacker_id]
     attack_pool = incoming_fighters if incoming_fighters is not None else attacker.ship.fighters
     if K.offensive_clash_held() and incoming_fighters is None:
-        soak = min(int(attacker.ship.shields), int(defender_dep.count))
-        attacker.ship.shields = int(attacker.ship.shields) - soak
+        _offensive_wave_tw2002(universe, attacker_id, sector_id)
+        return
 
     defender_count = defender_dep.count
     pot = int(defender_dep.toll_credits or 0)
