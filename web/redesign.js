@@ -841,9 +841,12 @@
       let body = '<div class="y">' + esc(landed.name || "planet") + "</div>";
       body += '<div>Class <span class="c">' + esc(landed.class || "?") + '</span>  Owner <span class="c">' + esc(owner) + "</span></div>";
       const building = landed.citadel_target && Number(landed.citadel_target) > Number(landed.citadel_level || 0);
-      body += '<div>Citadel <span class="c">' + (building ? "building toward " + landed.citadel_target : "level " + (landed.citadel_level || 0)) + "</span>";
+      body += '<div data-citadel="level">Citadel <span class="c">' + (building ? "building toward " + landed.citadel_target : "level " + (landed.citadel_level || 0)) + "</span>";
       if (building && landed.citadel_complete_day) body += '  ready day <span class="y">' + landed.citadel_complete_day + "</span>";
       body += '  Fighters <span class="c">' + fmt(landed.fighters || 0) + '</span>  Shields <span class="c">' + fmt(landed.shields || 0) + "</span></div>";
+      const perks = [[1, "Treasury"], [2, "Combat Control Computer"], [3, "Quasar cannon"], [4, "Planet TransWarp"], [5, "Planetary shields"], [6, "Interdictor"]];
+      const unlocked = perks.filter((row) => row[0] <= Number(landed.citadel_level || 0)).map((row) => row[1]);
+      if (unlocked.length) body += '<div data-perk="now">' + esc(unlocked.join(". ")) + ".</div>";
       const owned = landed.id != null && landed.owner_id === S.self_id
         ? (S.owned_planets || []).find((row) => row.id === landed.id)
         : null;
@@ -2947,6 +2950,49 @@
     if (!state.awaiting || pending || !el) return;
       if (/Waiting for your turn/.test(el.textContent || "")) setResult("Your move. Press " + (heldLabel || "the command") + " again.", false);
   }
+  function eventFacts(ev) {
+    return (ev && (ev.facts || ev.payload)) || {};
+  }
+  function fightSentence(ev) {
+    const summary = String((ev && ev.summary) || "");
+    const sent = /:\s*(.+?) sent ([\d,]+) fighters, lost ([\d,]+);\s*(.+?) lost ([\d,]+) shields and ([\d,]+) fighters/i.exec(summary);
+    if (!sent) return "";
+    const facts = eventFacts(ev);
+    const youAttacked = facts.attacker === (S && S.self_id) || ev.actor_id === (S && S.self_id);
+    const mineFighters = youAttacked ? sent[3] : sent[6];
+    const mineShields = youAttacked ? "0" : sent[5];
+    const theirName = youAttacked ? sent[4] : sent[1];
+    const theirFighters = youAttacked ? sent[6] : sent[3];
+    const theirShields = youAttacked ? sent[5] : "0";
+    const remain = fmt(Number(((S && S.ship) || {}).fighters || 0));
+    return "You lost " + fmt(Number(String(mineFighters).replace(/,/g, ""))) + " fighters and " + fmt(Number(String(mineShields).replace(/,/g, ""))) + " shields, " + remain + " remain. " + theirName + " lost " + fmt(Number(String(theirFighters).replace(/,/g, ""))) + " fighters and " + fmt(Number(String(theirShields).replace(/,/g, ""))) + " shields";
+  }
+  function destroyedExtra(afterSeq) {
+    let line = "";
+    streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+      if (!row || (row.seq || 0) <= afterSeq) return;
+      const summary = String(row.summary || "");
+      if (/ship destroyed/i.test(summary) && line.indexOf("ship destroyed") < 0) line = plainWords(summary);
+      const lost = eventFacts(row).credits_lost;
+      if (lost && line.indexOf("Credits on board lost") < 0) line += (line ? ". " : "") + "Credits on board lost: " + fmt(lost) + " cr";
+    });
+    return line;
+  }
+  function showIncoming() {
+    if (state.busy || !state.awaiting || !S) return;
+    let best = null;
+    streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+      if (!row || row.kind !== "combat" || (row.seq || 0) <= (state.seenFight || 0)) return;
+      const facts = eventFacts(row);
+      if (facts.defender === S.self_id && facts.attacker !== S.self_id && row.actor_id !== S.self_id && (!best || (row.seq || 0) >= best.seq)) best = row;
+    });
+    if (!best) return;
+    state.seenFight = best.seq || 0;
+    let line = fightSentence(best);
+    const extra = destroyedExtra((best.seq || 1) - 1);
+    if (extra && line.indexOf("ship destroyed") < 0) line = (line ? line + ". " : "") + extra;
+    if (line) setResult(line, /ship destroyed/i.test(line));
+  }
   async function act(kind, args, label) {
     taxFresh = false;
     dayNote = false;
@@ -3079,17 +3125,17 @@
       if (kind === "attack") {
         let combat = null;
         streamLog.concat((S && S.recent_events) || []).forEach((row) => {
-          if (row && row.kind === "combat" && (row.seq || 0) > before - 1) combat = row;
+          if (row && row.kind === "combat" && (row.seq || 0) > before - 1 && (!combat || (row.seq || 0) >= combat.seq)) combat = row;
         });
         let mine = null;
         let back = null;
         streamLog.concat((S && S.recent_events) || []).forEach((row) => {
           if (!row || row.kind !== "combat" || (row.seq || 0) <= before - 1) return;
-          const facts = row.facts || {};
-          if (facts.attacker === S.self_id || row.actor_id === S.self_id) mine = row;
-          if (facts.defender === S.self_id && facts.exchange_kind === "ferrengi_vs_ship") back = row;
+          const facts = eventFacts(row);
+          if ((facts.attacker === S.self_id || row.actor_id === S.self_id) && (!mine || (row.seq || 0) >= mine.seq)) mine = row;
+          if (facts.defender === S.self_id && facts.exchange_kind === "ferrengi_vs_ship" && (!back || (row.seq || 0) >= back.seq)) back = row;
         });
-        const facts = (mine && mine.facts) || (combat && combat.facts) || {};
+        const facts = eventFacts(mine || combat);
         if (back && mine) {
           const lost = Number((mine.facts || {}).attacker_losses || 0);
           const sent = (mine.facts || {}).sent != null ? Number(mine.facts.sent) : lost;
@@ -3103,6 +3149,11 @@
             who = match && match[1];
           }
           body = body + ". You sent " + fmt(sent) + " and lost " + fmt(lost) + " fighter" + (lost === 1 ? "" : "s") + ". " + (who || "The Ferrengi") + " struck back: you lost " + fmt(backFacts.defender_losses || 0) + " fighters and " + fmt(backFacts.shield_losses || 0) + " shields";
+        } else if ((facts.exchange_kind === "ship_vs_ship" || /shields and \d+ fighters/i.test((mine || combat || {}).summary || "")) && fightSentence(mine || combat)) {
+          body = fightSentence(mine || combat);
+          const extra = destroyedExtra(before - 1);
+          if (extra && body.indexOf("ship destroyed") < 0) body += ". " + extra;
+          if (mine && mine.seq) state.seenFight = Math.max(state.seenFight || 0, mine.seq);
         } else if (facts.attacker_losses != null) {
           const lost = Number(facts.attacker_losses);
           const remain = Number(((S && S.ship) || {}).fighters || 0);
@@ -3122,8 +3173,9 @@
         }
       }
       if (noticeSeq > before && noticeLine && body.indexOf(noticeLine) < 0) body += ". " + noticeLine;
-      if (/ship destroyed/i.test(body) && delta < 0 && !/Credits on board lost/i.test(body)) {
-        body += ". Credits on board lost: " + fmt(-delta) + " cr";
+      if (/ship destroyed/i.test(body) && !/Credits on board lost/i.test(body)) {
+        if (delta < 0) body += ". Credits on board lost: " + fmt(-delta) + " cr";
+        else if (delta > 0) body += ". Credits on board lost: " + fmt(delta) + " cr";
       }
       if (/ship destroyed/i.test(body)) {
         const had = new Set(avoidIds(avoidBefore));
@@ -3179,7 +3231,13 @@
       if (facts.defender !== S.self_id && facts.victim !== S.self_id) return;
       if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
     });
-    if (!best || (best.seq || 0) <= alertedSeq) {
+    let ownSeq = 0;
+    streamLog.concat(S.recent_events || []).forEach((ev) => {
+      if (!ev || ev.kind !== "combat") return;
+      const row = eventFacts(ev);
+      if (row.attacker === S.self_id || ev.actor_id === S.self_id) ownSeq = Math.max(ownSeq, ev.seq || 0);
+    });
+    if (!best || (best.seq || 0) <= alertedSeq || (best.seq || 0) <= ownSeq) {
       let notice = null;
       streamLog.concat(S.recent_events || []).forEach((ev) => {
         if (!ev || (ev.seq || 0) <= alertedSeq) return;
@@ -3201,7 +3259,16 @@
       return;
     }
     rememberAlert(best.seq);
-    const facts = best.facts || {};
+    const facts = eventFacts(best);
+    const said = fightSentence(best);
+    if (said && (facts.exchange_kind === "ship_vs_ship" || /shields and \d+ fighters/i.test(best.summary || ""))) {
+      let line = said;
+      const extra = destroyedExtra((best.seq || 1) - 1);
+      if (extra && line.indexOf("ship destroyed") < 0) line += ". " + extra;
+      setResult(line, /ship destroyed/i.test(line));
+      if (best.seq) state.seenFight = Math.max(state.seenFight || 0, best.seq);
+      return;
+    }
     if (facts.shield_losses != null) {
       setResult(traderName(facts.attacker) + " attacked you in " + (best.sector_id || "") + ": you lost " + fmt(facts.shield_losses) + " shields, " + fmt(facts.defender_losses || 0) + " fighters (" + fmt(facts.defender_s || 0) + " shields left).", true);
     } else {
@@ -3263,6 +3330,7 @@
     keys();
     if (!state.busy && state.awaiting && pending) flushPending();
     else if (!state.busy) clearStaleWait();
+    showIncoming();
   }
   async function connect() {
     state.seat = $("seatSelect").value.toUpperCase();

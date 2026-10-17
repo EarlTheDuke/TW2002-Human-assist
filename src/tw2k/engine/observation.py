@@ -1114,7 +1114,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             "colonists_total": sum(colonists.values()),
             **(
                 {"colonists_text": colonist_trend(planet.class_id, sum(colonists.values()))}
-                if planet.class_id.value == "M" and K.class_m_fidelity_live()
+                if K.planet_growth_tw2002() or (planet.class_id.value == "M" and K.class_m_fidelity_live())
                 else {}
             ),
             "stockpile": {c.value: int(n) for c, n in planet.stockpile.items()},
