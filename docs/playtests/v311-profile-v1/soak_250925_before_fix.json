@@ -1,0 +1,885 @@
+{
+  "seed": 250925,
+  "days_asked": 10,
+  "day_reached": 11,
+  "size": 1000,
+  "day_seconds": 60.0,
+  "elapsed_s": 542.3,
+  "port_range": "8020-8030",
+  "status": "finished",
+  "game_over": false,
+  "exceptions": [],
+  "offensive_waves": 0,
+  "citadel_starts": [],
+  "taxes": [],
+  "seats": {
+    "P1": {
+      "credits": 23054,
+      "net_worth": 1960744,
+      "alive": true,
+      "ship": "merchant_cruiser",
+      "alignment": 10,
+      "experience": 45,
+      "actions_ok": 2304,
+      "rejected": 0,
+      "reject_samples": [],
+      "turn_regen_total": 2253,
+      "taxes_paid": 0,
+      "deaths": 0,
+      "citadels": {
+        "32": {
+          "class": "M",
+          "level": 0,
+          "target": 0
+        }
+      },
+      "kinds": {
+        "warp": 29,
+        "trade": 23,
+        "plot_course": 13,
+        "buy_equip": 1,
+        "scan": 18,
+        "tavern_talk": 1,
+        "wait": 2219
+      },
+      "days_in_same_sector_at_end": 0
+    },
+    "P2": {
+      "credits": 13108,
+      "net_worth": 1952028,
+      "alive": true,
+      "ship": "merchant_cruiser",
+      "alignment": 10,
+      "experience": 46,
+      "actions_ok": 2318,
+      "rejected": 0,
+      "reject_samples": [],
+      "turn_regen_total": 2253,
+      "taxes_paid": 0,
+      "deaths": 0,
+      "citadels": {
+        "33": {
+          "class": "M",
+          "level": 0,
+          "target": 0
+        }
+      },
+      "kinds": {
+        "warp": 44,
+        "trade": 24,
+        "plot_course": 13,
+        "buy_equip": 1,
+        "scan": 16,
+        "tavern_talk": 1,
+        "bank_deposit": 1,
+        "wait": 2218
+      },
+      "days_in_same_sector_at_end": 0
+    },
+    "P3": {
+      "credits": 9405,
+      "net_worth": 1949482,
+      "alive": true,
+      "ship": "merchant_cruiser",
+      "alignment": 10,
+      "experience": 43,
+      "actions_ok": 2316,
+      "rejected": 0,
+      "reject_samples": [],
+      "turn_regen_total": 2253,
+      "taxes_paid": 0,
+      "deaths": 0,
+      "citadels": {
+        "34": {
+          "class": "M",
+          "level": 0,
+          "target": 0
+        }
+      },
+      "kinds": {
+        "warp": 42,
+        "trade": 20,
+        "plot_course": 12,
+        "buy_equip": 1,
+        "scan": 17,
+        "tavern_talk": 1,
+        "wait": 2222,
+        "bank_deposit": 1
+      },
+      "days_in_same_sector_at_end": 0
+    },
+    "P4": {
+      "credits": 22340,
+      "net_worth": 1959110,
+      "alive": true,
+      "ship": "merchant_cruiser",
+      "alignment": 10,
+      "experience": 48,
+      "actions_ok": 2315,
+      "rejected": 0,
+      "reject_samples": [],
+      "turn_regen_total": 2253,
+      "taxes_paid": 0,
+      "deaths": 0,
+      "citadels": {
+        "35": {
+          "class": "M",
+          "level": 0,
+          "target": 0
+        }
+      },
+      "kinds": {
+        "warp": 41,
+        "trade": 25,
+        "plot_course": 12,
+        "buy_equip": 1,
+        "scan": 16,
+        "tavern_talk": 1,
+        "wait": 2219
+      },
+      "days_in_same_sector_at_end": 0
+    }
+  },
+  "days": [
+    {
+      "day": 1,
+      "t": 0.4,
+      "seats": {
+        "P1": {
+          "credits": 3834,
+          "net_worth": 1938604,
+          "sector": 850,
+          "turns_used": 21,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 2210,
+          "net_worth": 1937900,
+          "sector": 794,
+          "turns_used": 18,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 677,
+          "net_worth": 1934847,
+          "sector": 137,
+          "turns_used": 24,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 1320,
+          "net_worth": 1934970,
+          "sector": 114,
+          "turns_used": 26,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 2,
+      "t": 0.9,
+      "seats": {
+        "P1": {
+          "credits": 11734,
+          "net_worth": 1947384,
+          "sector": 43,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 12250,
+          "net_worth": 1947900,
+          "sector": 1,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 12897,
+          "net_worth": 1948547,
+          "sector": 1,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 10140,
+          "net_worth": 1945790,
+          "sector": 301,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 3,
+      "t": 61.0,
+      "seats": {
+        "P1": {
+          "credits": 11034,
+          "net_worth": 1948724,
+          "sector": 137,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 9640,
+          "net_worth": 1948060,
+          "sector": 44,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 9640,
+          "net_worth": 1948707,
+          "sector": 44,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 9500,
+          "net_worth": 1946270,
+          "sector": 408,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 4,
+      "t": 121.0,
+      "seats": {
+        "P1": {
+          "credits": 11034,
+          "net_worth": 1948724,
+          "sector": 316,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 10700,
+          "net_worth": 1950640,
+          "sector": 14,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 9640,
+          "net_worth": 1948707,
+          "sector": 560,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 9500,
+          "net_worth": 1946270,
+          "sector": 3,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 5,
+      "t": 181.1,
+      "seats": {
+        "P1": {
+          "credits": 11034,
+          "net_worth": 1948724,
+          "sector": 930,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 12660,
+          "net_worth": 1951680,
+          "sector": 428,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 9640,
+          "net_worth": 1948707,
+          "sector": 918,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 11480,
+          "net_worth": 1949170,
+          "sector": 410,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 6,
+      "t": 241.1,
+      "seats": {
+        "P1": {
+          "credits": 14654,
+          "net_worth": 1951424,
+          "sector": 964,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 12660,
+          "net_worth": 1951680,
+          "sector": 14,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 9640,
+          "net_worth": 1948707,
+          "sector": 238,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 14540,
+          "net_worth": 1950710,
+          "sector": 179,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 7,
+      "t": 301.1,
+      "seats": {
+        "P1": {
+          "credits": 16514,
+          "net_worth": 1954204,
+          "sector": 759,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 14640,
+          "net_worth": 1953060,
+          "sector": 44,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 9640,
+          "net_worth": 1948707,
+          "sector": 918,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 15720,
+          "net_worth": 1952490,
+          "sector": 436,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 8,
+      "t": 361.2,
+      "seats": {
+        "P1": {
+          "credits": 20134,
+          "net_worth": 1956904,
+          "sector": 964,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 14640,
+          "net_worth": 1953060,
+          "sector": 560,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 9640,
+          "net_worth": 1948707,
+          "sector": 560,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 17780,
+          "net_worth": 1953950,
+          "sector": 755,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 9,
+      "t": 421.2,
+      "seats": {
+        "P1": {
+          "credits": 22234,
+          "net_worth": 1958404,
+          "sector": 646,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 15020,
+          "net_worth": 1954960,
+          "sector": 74,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 10020,
+          "net_worth": 1950607,
+          "sector": 74,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 18960,
+          "net_worth": 1955730,
+          "sector": 436,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 10,
+      "t": 481.3,
+      "seats": {
+        "P1": {
+          "credits": 22234,
+          "net_worth": 1958404,
+          "sector": 60,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 15020,
+          "net_worth": 1952920,
+          "sector": 497,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 10020,
+          "net_worth": 1948567,
+          "sector": 497,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 21260,
+          "net_worth": 1957430,
+          "sector": 92,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    },
+    {
+      "day": 11,
+      "t": 541.3,
+      "seats": {
+        "P1": {
+          "credits": 23054,
+          "net_worth": 1960744,
+          "sector": 526,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P2": {
+          "credits": 13108,
+          "net_worth": 1952028,
+          "sector": 55,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P3": {
+          "credits": 9405,
+          "net_worth": 1949482,
+          "sector": 55,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        },
+        "P4": {
+          "credits": 22340,
+          "net_worth": 1959110,
+          "sector": 754,
+          "turns_used": 250,
+          "ship": "merchant_cruiser",
+          "alive": true
+        }
+      }
+    }
+  ],
+  "regen_by_day": {
+    "1": {
+      "P2": 2,
+      "P1": 2,
+      "P3": 2,
+      "P4": 2
+    },
+    "2": {
+      "P1": 250,
+      "P2": 250,
+      "P3": 250,
+      "P4": 250
+    },
+    "3": {
+      "P1": 250,
+      "P2": 250,
+      "P3": 250,
+      "P4": 250
+    },
+    "4": {
+      "P1": 250,
+      "P2": 250,
+      "P3": 250,
+      "P4": 250
+    },
+    "5": {
+      "P1": 250,
+      "P2": 250,
+      "P3": 250,
+      "P4": 250
+    },
+    "6": {
+      "P1": 250,
+      "P2": 250,
+      "P3": 250,
+      "P4": 250
+    },
+    "7": {
+      "P1": 250,
+      "P2": 250,
+      "P3": 250,
+      "P4": 250
+    },
+    "8": {
+      "P1": 250,
+      "P2": 250,
+      "P3": 250,
+      "P4": 250
+    },
+    "9": {
+      "P1": 251,
+      "P2": 251,
+      "P3": 251,
+      "P4": 251
+    },
+    "10": {
+      "P1": 250,
+      "P2": 250,
+      "P3": 250,
+      "P4": 250
+    }
+  },
+  "kinds_by_day": {
+    "1": {
+      "P1": {
+        "warp": 21,
+        "trade": 12,
+        "plot_course": 12,
+        "buy_equip": 1,
+        "scan": 4,
+        "tavern_talk": 1,
+        "wait": 1
+      },
+      "P2": {
+        "warp": 35,
+        "trade": 14,
+        "plot_course": 13,
+        "buy_equip": 1,
+        "scan": 4,
+        "tavern_talk": 1
+      },
+      "P3": {
+        "warp": 33,
+        "trade": 16,
+        "plot_course": 12,
+        "buy_equip": 1,
+        "scan": 5,
+        "tavern_talk": 1,
+        "wait": 1
+      },
+      "P4": {
+        "warp": 33,
+        "trade": 10,
+        "plot_course": 11,
+        "buy_equip": 1,
+        "scan": 1,
+        "tavern_talk": 1,
+        "wait": 3
+      }
+    },
+    "2": {
+      "P1": {
+        "plot_course": 1,
+        "trade": 1,
+        "scan": 1,
+        "wait": 246
+      },
+      "P2": {
+        "scan": 2,
+        "bank_deposit": 1,
+        "warp": 1,
+        "trade": 1,
+        "wait": 246
+      },
+      "P3": {
+        "scan": 2,
+        "bank_deposit": 1,
+        "warp": 1,
+        "trade": 1,
+        "wait": 246
+      },
+      "P4": {
+        "plot_course": 1,
+        "trade": 1,
+        "scan": 1,
+        "wait": 246
+      }
+    },
+    "3": {
+      "P1": {
+        "scan": 2,
+        "warp": 1,
+        "wait": 247
+      },
+      "P2": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      },
+      "P3": {
+        "scan": 2,
+        "warp": 1,
+        "wait": 247
+      },
+      "P4": {
+        "scan": 2,
+        "warp": 1,
+        "wait": 247
+      }
+    },
+    "4": {
+      "P1": {
+        "scan": 2,
+        "warp": 1,
+        "wait": 247
+      },
+      "P2": {
+        "scan": 1,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      },
+      "P3": {
+        "scan": 2,
+        "warp": 1,
+        "wait": 247
+      },
+      "P4": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      }
+    },
+    "5": {
+      "P1": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      },
+      "P2": {
+        "warp": 1,
+        "wait": 247
+      },
+      "P3": {
+        "scan": 1,
+        "warp": 1,
+        "wait": 247
+      },
+      "P4": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      }
+    },
+    "6": {
+      "P1": {
+        "scan": 1,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      },
+      "P2": {
+        "warp": 1,
+        "trade": 2,
+        "scan": 1,
+        "wait": 246
+      },
+      "P3": {
+        "warp": 1,
+        "wait": 247
+      },
+      "P4": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      }
+    },
+    "7": {
+      "P1": {
+        "warp": 1,
+        "trade": 2,
+        "scan": 1,
+        "wait": 246
+      },
+      "P2": {
+        "scan": 2,
+        "warp": 1,
+        "wait": 247
+      },
+      "P3": {
+        "warp": 1,
+        "scan": 1,
+        "wait": 247
+      },
+      "P4": {
+        "scan": 1,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      }
+    },
+    "8": {
+      "P1": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      },
+      "P2": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      },
+      "P3": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      },
+      "P4": {
+        "warp": 1,
+        "trade": 2,
+        "scan": 1,
+        "wait": 246
+      }
+    },
+    "9": {
+      "P1": {
+        "scan": 2,
+        "warp": 1,
+        "wait": 248
+      },
+      "P2": {
+        "scan": 1,
+        "warp": 1,
+        "wait": 248
+      },
+      "P3": {
+        "scan": 1,
+        "warp": 1,
+        "wait": 248
+      },
+      "P4": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 247
+      }
+    },
+    "10": {
+      "P1": {
+        "scan": 1,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      },
+      "P2": {
+        "warp": 1,
+        "trade": 1,
+        "scan": 1,
+        "wait": 246
+      },
+      "P3": {
+        "warp": 1,
+        "trade": 1,
+        "scan": 1,
+        "wait": 246
+      },
+      "P4": {
+        "scan": 2,
+        "warp": 1,
+        "trade": 2,
+        "wait": 246
+      }
+    }
+  }
+}

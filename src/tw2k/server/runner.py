@@ -111,6 +111,12 @@ def _is_day_done(player) -> bool:
         spec = K.hull_spec(ship.ship_class.value)
         if spec and "turns_per_warp" in spec:
             warp_cost = int(spec["turns_per_warp"])
+    if K.turn_regen_live():
+        # v311-rulings-v1 soak: turns come back one at a time (RULINGS s5). A seat offered a
+        # single turn it cannot warp with spent it on a wait, so turns never pooled to a warp
+        # and every code bot waited out the day from day 2. Short of a warp, the seat rests
+        # until the clock gives the rest back.
+        return remaining < warp_cost
     from ..engine.economy import trade_turn_cost
     trade_cost = trade_turn_cost(player)
     # If the agent can't warp AND can't trade, everything it could do is a
@@ -767,6 +773,10 @@ class MatchRunner:
                             now = time.time()
                             last = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
                             gap = K.LIVE_TURN_RECOVERY_DEN / K.LIVE_TURN_RECOVERY_NUM
+                            if K.turn_regen_live():
+                                # v311-rulings-v1 item 4: a day is the regen clock's day, so a
+                                # spent seat earns its allowance back before the next day.
+                                gap = float(K.TURN_REGEN_DAY_SECONDS)
                             if last and now - last < gap:
                                 await self._sleep_scaled(0.05)
                                 self.state.current_player_idx = (self.state.current_player_idx + 1) % len(agents)

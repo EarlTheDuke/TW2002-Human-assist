@@ -150,9 +150,9 @@ def tax_keep(reserve: int, planned_max: int, alignment: int) -> int:
 
     Evil seats are never taxed, so they keep the whole reserve.
     """
-    if int(alignment) < int(K.TAX_MIN_ALIGNMENT):
+    if int(alignment) < K.tax_terms()[2]:
         return int(reserve)
-    line = int(K.TAX_THRESHOLD)
+    line = K.tax_terms()[1]
     if int(planned_max) > line:
         return int(reserve)
     return min(int(reserve), line)

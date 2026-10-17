@@ -3308,8 +3308,8 @@ class SeatBrain:
         )
         if qty is None and engine_k.BOT_CORP_TAX_SHIELD and engine_k.bank_on():
             sides = {str(r.get("id")): str(r.get("side") or "") for r in v.rivals}
-            if sides.get(partner) == "evil" and int(v.obs.get("alignment") or 0) >= int(engine_k.TAX_MIN_ALIGNMENT):
-                qty = corp_brain.tax_give(int(v.credits), int(engine_k.TAX_THRESHOLD),
+            if sides.get(partner) == "evil" and int(v.obs.get("alignment") or 0) >= engine_k.tax_terms()[2]:
+                qty = corp_brain.tax_give(int(v.credits), engine_k.tax_terms()[1],
                                           minimum=int(engine_k.BOT_CORP_MIN_TRANSFER))
         if qty is None:
             return None
