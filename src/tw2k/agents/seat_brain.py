@@ -70,6 +70,7 @@ from ..engine.constants import (
     combat_hull,
     fighter_unit_price,
     info_tw2002,
+    planet_growth_tw2002,
     scanner_room,
     ship_cost,
     ship_specs,
@@ -737,6 +738,18 @@ def _class_coeff(planet: dict[str, Any]) -> int | None:
         return organics_coeff(cls)
     except ValueError:
         return None
+
+
+def _organics_burn(growth: dict[str, Any]) -> int:
+    """Organics a world eats in a day. A reported 0 stays 0 only on the new rule.
+
+    Legacy observations use 0 for an empty world, and the import math still
+    treats that as 1 so those trips stay the same.
+    """
+    number = int(growth.get("organics_consumption_per_day") or 0)
+    if planet_growth_tw2002():
+        return max(0, number)
+    return max(1, number or 1)
 
 
 def growth_view(planet: dict[str, Any]) -> dict[str, Any] | None:
@@ -2088,7 +2101,7 @@ class SeatBrain:
                 continue
             sid = int(planet["sector_id"])
             g = growth_view(planet) or {}
-            burn = max(1, int(g.get("organics_consumption_per_day") or 1))
+            burn = _organics_burn(g)
             for commodity, base in COMMODITY_BASE_PRICE.items():
                 qty = int(stock.get(commodity) or 0)
                 need = _citadel_need_qty(planet, commodity)
@@ -2156,7 +2169,7 @@ class SeatBrain:
             qty = max(0, qty - citadel_need)
         if commodity == "organics":
             g = growth_view(planet) or {}
-            burn = max(1, int(g.get("organics_consumption_per_day") or 1))
+            burn = _organics_burn(g)
             qty = max(0, qty - max(ORGANICS_LOAD, burn * 4))
         cap = v.max_by("load_planet_cargo", "qty", commodity) or qty
         qty = min(qty, cap, v.cargo_free or qty)
@@ -2824,7 +2837,7 @@ class SeatBrain:
         # (genesis or the colonist ferry). An empty stockpile cannot.
         if not must and self._needs_stardock(v):
             return None
-        burn = max(1, int(g.get("organics_consumption_per_day") or 1))
+        burn = _organics_burn(g)
         want = max(ORGANICS_LOAD, burn * 3)
         offer = self._organics_offer_here(v)
         seller = self._cheapest_organics_seller(v)
@@ -3855,7 +3868,7 @@ class SeatBrain:
                         qty = min(qty, max(0, stock - need))
                 if commodity == "organics":
                     g = (growth_view(planet) or {}) if planet else {}
-                    burn = max(1, int(g.get("organics_consumption_per_day") or 1))
+                    burn = _organics_burn(g)
                     keep = max(ORGANICS_LOAD, burn * 4)
                     stock = int(((planet or {}).get("stockpile") or {}).get("organics") or 0) if planet else qty + keep
                     qty = min(qty, max(0, stock - keep))
@@ -3916,7 +3929,7 @@ class SeatBrain:
         qty = int(stock.get(commodity) or 0) if isinstance(stock, dict) else 0
         if commodity == "organics":
             g = growth_view(planet) or {}
-            burn = max(1, int(g.get("organics_consumption_per_day") or 1))
+            burn = _organics_burn(g)
             qty = max(0, qty - max(ORGANICS_LOAD, burn * 4))
         return qty
 
