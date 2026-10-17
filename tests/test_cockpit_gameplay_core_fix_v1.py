@@ -97,13 +97,20 @@ def test_terra_form_shows_the_pool_and_posts_the_move(seats) -> None:
 def test_third_wait_asks_before_it_ends_the_day(seats) -> None:
     dock = seats["dock"]
     _quiet(dock)
+    dock.evaluate("() => { if (window.__tw2kTest) window.__tw2kTest.resetWaits(); }")
     for _ in range(3):
+        dock.evaluate("() => { const el = document.querySelector('#lastResult'); if (el) el.textContent = ''; }")
         dock.keyboard.press(".")
-        dock.wait_for_function("() => /You wait/.test(document.querySelector('#lastResult').textContent || '')", timeout=20_000)
-        _quiet(dock)
+        dock.wait_for_function(
+            "() => (document.querySelector('#lastResult').textContent || '').includes('You wait')",
+            timeout=20_000,
+        )
+        dock.wait_for_function("() => document.querySelector('#waitchip').textContent === 'YOUR MOVE'", timeout=20_000)
     dock.keyboard.press(".")
-    dock.wait_for_selector("#menu[data-screen=Wait]", timeout=10_000)
-    assert "One more Wait ends your day" in dock.locator("#menu").inner_text()
+    dock.wait_for_function(
+        "() => { const menu = document.querySelector('#menu'); return !!(menu && !menu.hidden && /One more Wait ends your day/.test(menu.textContent || '')); }",
+        timeout=20_000,
+    )
     assert "turns left" in dock.locator("#menu").inner_text()
     _shoot(dock, "wait")
     dock.keyboard.press("Escape")

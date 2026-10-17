@@ -225,6 +225,12 @@
     });
     box.scrollTop = 0;
   }
+  let noteSeq = 1000000000;
+  function rememberLine(sentence) {
+    noteSeq += 1;
+    streamLog.push({ seq: noteSeq, kind: "cockpit_note", summary: sentence });
+    paintLog();
+  }
   function setResult(text, bad) {
     const el = $("lastResult");
     el.textContent = text || "";
@@ -389,9 +395,11 @@
     const after = Number(facts.defender_s || 0);
     const before = after + Number(facts.planet_shields_lost || 0);
     const remain = facts.attacker_f != null ? Number(facts.attacker_f) : Number(((S && S.ship) || {}).fighters || 0);
+    const theirs = fmt(facts.planet_fighters_lost || 0);
+    const mine = fmt(facts.attacker_losses || 0);
     let line = "";
-    if (before > 0) line += "planet shields " + fmt(before) + " -> " + fmt(after) + ", ";
-    line += "reaction and defending fighters killed " + fmt(facts.planet_fighters_lost || 0) + "; you lost " + fmt(facts.attacker_losses || 0) + " fighters, " + fmt(remain) + " remain";
+    if (before > 0) line += "Planet shields " + fmt(before) + " -> " + fmt(after) + ". ";
+    line += "You killed " + theirs + " of the planet's fighters. The planet's reaction and defending fighters killed " + mine + " of your fighters, " + fmt(remain) + " remain";
     return line;
   }
   function siegeSentence(facts) {
@@ -2239,10 +2247,14 @@
     });
     const go = () => {
       const values = {};
-      Object.entries(inputs).forEach(([name, el]) => {
-        values[name] = el.type === "number" ? Number(el.value) : String(el.value || "").trim();
+      let missing = false;
+      fields.forEach((field) => {
+        const el = inputs[field.n];
+        const raw = String(el.value == null ? "" : el.value).trim();
+        values[field.n] = el.type === "number" ? (raw === "" ? "" : Number(raw)) : raw;
+        if (field.required !== false && raw === "") missing = true;
       });
-      if (fields.some((field) => field.required !== false && !values[field.n])) { setResult("Fill in the form.", true); return; }
+      if (missing) { setResult("Fill in the form.", true); return; }
       openFormKind = null;
       slot.innerHTML = "";
       submit(values);
@@ -2743,11 +2755,18 @@
       { n: "message", label: "Message", type: "text", value: "Hello" },
     ], saved, (values) => act("hail", { target: values.target, message: values.message }, "hail"));
   }
+  function avoidSentence(sector) {
+    if (Number(sector) === 0) return "Avoid list cleared. Avoided sectors: none.";
+    const listed = (S && S.avoid_prompt) || "";
+    const match = /Avoided sectors:\s*([^.]*)/i.exec(listed);
+    const names = match ? match[1].trim() : "";
+    return "Sector " + fmt(sector) + " added to the avoid list" + (names ? " (avoided: " + names + ")" : "");
+  }
   function avoidForm(saved) {
     const a = LA("avoid");
     if (!a) { setResult("Avoid sectors: Avoid sectors is not in this game.", true); return; }
     if (!a.legal) { setResult("Avoid sectors: " + plainReason(a.reason), true); return; }
-    const listed = (S && S.avoid_prompt) || "Avoid list: none.";
+    const listed = (S && S.avoid_prompt) || "Avoided sectors: none.";
     dockForm("avoid", "AVOID SECTORS", listed + " Type a sector the computer should not plot through, or 0 to clear the list.", [
       { n: "sector", label: "Sector", type: "number", min: 0, value: "2" },
     ], saved, (values) => act("avoid", { sector: values.sector }, "avoid"));
@@ -2907,6 +2926,10 @@
     const turnsBefore = S ? S.turns_remaining : 0;
     try {
       const before = state.eventsSince;
+      let maxSeq = 0;
+      streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+        if (row && (row.seq || 0) > maxSeq) maxSeq = row.seq || 0;
+      });
       await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
       state.awaiting = false;
       await refresh();
@@ -2919,6 +2942,17 @@
         if (!dayNote) setResult(line, noticeSeq > before);
         $("err").hidden = true;
         return;
+      }
+      if (kind === "avoid") {
+        const newer = latestAfter(maxSeq);
+        const fresh = newer && newer.summary ? String(newer.summary) : "";
+        if (!/invalid action|needs a sector|invalid sector/i.test(fresh)) {
+          const sentence = avoidSentence((args || {}).sector);
+          rememberLine(sentence);
+          if (!dayNote) setResult("ok — " + sentence + tail, false);
+          $("err").hidden = true;
+          return;
+        }
       }
       const ev = latestAfter(before - 1);
       const raw = ev && ev.summary ? String(ev.summary) : "";

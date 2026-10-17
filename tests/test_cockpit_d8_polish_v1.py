@@ -194,9 +194,12 @@ def test_a_shieldless_repulse_skips_the_zero_shields(world):
         text = page.evaluate("() => window.__hit")
         assert "Landing repelled" in text, text
         assert "planet shields" not in text
-        assert "fighters killed" in text
+        assert "of the planet's fighters" in text
+        assert "of your fighters" in text
         log = page.locator("#log").inner_text()
         assert "Landing repelled" in log
+        assert "of the planet's fighters" in log
+        assert "of your fighters" in log
         assert log.lower().count("landing repelled") == 1
         assert "invalid action" not in log.lower()
         _shoot(page, "siege", "#lastResult")
