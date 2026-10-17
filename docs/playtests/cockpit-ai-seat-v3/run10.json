@@ -1,0 +1,600 @@
+{
+  "note": "NOTE 56 cockpit-ai-seat-v3 run10",
+  "settings": {
+    "port": 8020,
+    "seed": 250925,
+    "universe_size": 200,
+    "max_days": 10,
+    "turns_per_day": 100,
+    "starting_credits": 20000,
+    "all_start_stardock": true,
+    "enable_ferrengi": true,
+    "port_stock_fidelity": "live",
+    "haggle_live": "live",
+    "cockpit_fields": "tw2002",
+    "seats": {
+      "P1": "heuristic",
+      "P2": "cockpit seat"
+    }
+  },
+  "days": [
+    {
+      "day": 1,
+      "credits_start": 19317,
+      "net_worth_start": 41967,
+      "credits_end": 50280,
+      "net_worth_end": 72930,
+      "turns_used": 99,
+      "trades": 38,
+      "buys": 19,
+      "sells": 19,
+      "holds_bought": 55,
+      "posts": 68,
+      "refused": 0,
+      "sector_end": 138,
+      "holds_end": 75,
+      "verdict_turn": 68
+    },
+    {
+      "day": 2,
+      "credits_start": 50280,
+      "net_worth_start": 72930,
+      "credits_end": 169005,
+      "net_worth_end": 191655,
+      "turns_used": 99,
+      "trades": 50,
+      "buys": 25,
+      "sells": 25,
+      "holds_bought": 0,
+      "posts": 75,
+      "refused": 0,
+      "sector_end": 84,
+      "holds_end": 75,
+      "verdict_turn": 143
+    },
+    {
+      "day": 3,
+      "credits_start": 160555,
+      "net_worth_start": 183205,
+      "credits_end": 249430,
+      "net_worth_end": 272080,
+      "turns_used": 99,
+      "trades": 50,
+      "buys": 25,
+      "sells": 25,
+      "holds_bought": 0,
+      "posts": 75,
+      "refused": 0,
+      "sector_end": 138,
+      "holds_end": 75,
+      "verdict_turn": 218
+    },
+    {
+      "day": 4,
+      "credits_start": 236959,
+      "net_worth_start": 259609,
+      "credits_end": 298834,
+      "net_worth_end": 321484,
+      "turns_used": 99,
+      "trades": 50,
+      "buys": 25,
+      "sells": 25,
+      "holds_bought": 0,
+      "posts": 75,
+      "refused": 0,
+      "sector_end": 84,
+      "holds_end": 75,
+      "verdict_turn": 293
+    },
+    {
+      "day": 5,
+      "credits_start": 283893,
+      "net_worth_start": 306543,
+      "credits_end": 373668,
+      "net_worth_end": 403968,
+      "turns_used": 99,
+      "trades": 29,
+      "buys": 15,
+      "sells": 14,
+      "holds_bought": 0,
+      "posts": 59,
+      "refused": 0,
+      "sector_end": 193,
+      "holds_end": 75,
+      "verdict_turn": 352
+    },
+    {
+      "day": 6,
+      "credits_start": 354985,
+      "net_worth_start": 385285,
+      "credits_end": 435985,
+      "net_worth_end": 458635,
+      "turns_used": 99,
+      "trades": 37,
+      "buys": 18,
+      "sells": 19,
+      "holds_bought": 0,
+      "posts": 64,
+      "refused": 0,
+      "sector_end": 138,
+      "holds_end": 75,
+      "verdict_turn": 416
+    },
+    {
+      "day": 7,
+      "credits_start": 414186,
+      "net_worth_start": 436836,
+      "credits_end": 479261,
+      "net_worth_end": 501911,
+      "turns_used": 97,
+      "trades": 30,
+      "buys": 15,
+      "sells": 15,
+      "holds_bought": 0,
+      "posts": 58,
+      "refused": 0,
+      "sector_end": 1,
+      "holds_end": 75,
+      "verdict_turn": 474
+    },
+    {
+      "day": 8,
+      "credits_start": 455298,
+      "net_worth_start": 477948,
+      "credits_end": 511566,
+      "net_worth_end": 541866,
+      "turns_used": 99,
+      "trades": 29,
+      "buys": 15,
+      "sells": 14,
+      "holds_bought": 0,
+      "posts": 58,
+      "refused": 0,
+      "sector_end": 193,
+      "holds_end": 75,
+      "verdict_turn": 532
+    },
+    {
+      "day": 9,
+      "credits_start": 485988,
+      "net_worth_start": 516288,
+      "credits_end": 556395,
+      "net_worth_end": 579045,
+      "turns_used": 99,
+      "trades": 27,
+      "buys": 13,
+      "sells": 14,
+      "holds_bought": 0,
+      "posts": 55,
+      "refused": 0,
+      "sector_end": 84,
+      "holds_end": 75,
+      "verdict_turn": 587
+    },
+    {
+      "day": 10,
+      "credits_start": 528576,
+      "net_worth_start": 551226,
+      "credits_end": 582519,
+      "net_worth_end": 605169,
+      "turns_used": 99,
+      "trades": 26,
+      "buys": 13,
+      "sells": 13,
+      "holds_bought": 0,
+      "posts": 56,
+      "refused": 0,
+      "sector_end": 166,
+      "holds_end": 75,
+      "verdict_turn": 643
+    }
+  ],
+  "posts": 643,
+  "refused": [],
+  "kinds": {
+    "buy_equip": 4,
+    "warp": 266,
+    "trade": 366,
+    "wait": 7
+  },
+  "gaps": [
+    {
+      "id": "haggle_band",
+      "count": 366,
+      "decision": "What price to offer on the trade form",
+      "needed": "How far the port will move on price",
+      "cockpit": "The trade form shows the port's quote, each counter and how the haggle ended. The accept band is not printed, as in the original. The seat still offers 92% on a buy and 103% on a sale.",
+      "original": "The original port haggles in its own prompts and says 'We'll buy them for N'",
+      "status": "not in original"
+    },
+    {
+      "id": "price_rule",
+      "count": 276,
+      "decision": "Guess a price from the port report",
+      "needed": "How a port's stock moves its price",
+      "cockpit": "Not printed: the original never shows a stock-to-price rule (REPORT2.md line 32 'Prices fall as the port fills'). Rules and Help lists it as not shown in the original. The seat still guesses for a port it never docked at.",
+      "original": "Not shown either. Players learn it from the port screen over time",
+      "status": "not in original"
+    },
+    {
+      "id": "price_away",
+      "count": 0,
+      "decision": "Pick a port pair before docking",
+      "needed": "The price at a port you are not docked at",
+      "cockpit": "Computer R lists this seat's own last-seen price per product with the day, at ports it docked at (cockpit.port_notes), next to the original status, amount and % of max.",
+      "original": "Computer R (CIM port report) also lists class, amount and percent, not the price",
+      "status": "closed"
+    },
+    {
+      "id": "hold_curve",
+      "count": 0,
+      "decision": "How many cargo holds to buy",
+      "needed": "What the next few holds cost in total",
+      "cockpit": "The StarDock holds form shows the next-hold price, how many you can afford and, once an amount is typed, the total before CONFIRM (cockpit.hold_quote).",
+      "original": "The StarDock Hardware Emporium quotes the hold price and how many you can afford before you choose",
+      "status": "closed"
+    },
+    {
+      "id": "one_way",
+      "count": 0,
+      "decision": "Plan a route back",
+      "needed": "Whether a warp runs both ways",
+      "cockpit": "Computer K lists warps for visited sectors only, as the original's CIM warp data.",
+      "original": "Same in the original: CIM warp data covers explored sectors only",
+      "status": "same as original"
+    },
+    {
+      "id": "result_line",
+      "count": 0,
+      "decision": "Know whether the last move worked",
+      "needed": "The engine verdict for the action just posted",
+      "cockpit": "The verdict field under the command keys: OK or REFUSED, the reason, turns spent and the credits change (cockpit.verdict). It survives a reload.",
+      "original": "The original prints the outcome right after the command",
+      "status": "closed"
+    },
+    {
+      "id": "counter_in_log",
+      "count": 0,
+      "decision": "Answer a port's counter offer",
+      "needed": "The counter price",
+      "cockpit": "The trade form shows the counter and the next offer (cockpit.haggle).",
+      "original": "The original port prompt prints its counter price",
+      "status": "closed"
+    },
+    {
+      "id": "challenge_strength",
+      "count": 0,
+      "decision": "Answer a fighter challenge or a Ferrengi",
+      "needed": "Whether attacking would win",
+      "cockpit": "The challenge shows the enemy fighters and your own, as the original.",
+      "original": "The original shows the fighter count and your own fighters on the same screen",
+      "status": "same as original"
+    }
+  ],
+  "day_end_source": "verdict after the last result",
+  "start_day": 1,
+  "end_day": 10,
+  "final": {
+    "day": 11,
+    "credits": 553394,
+    "net_worth": 576044,
+    "sector": 166,
+    "holds": 75
+  },
+  "replay": [
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day01.png",
+      "day": 1,
+      "turns_remaining": 48,
+      "seat_credits": 10216,
+      "cockpit_credits": 10216,
+      "seat_sector": 84,
+      "cockpit_sector": 84,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day02.png",
+      "day": 2,
+      "turns_remaining": 49,
+      "seat_credits": 110580,
+      "cockpit_credits": 110580,
+      "seat_sector": 84,
+      "cockpit_sector": 84,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day03.png",
+      "day": 3,
+      "turns_remaining": 49,
+      "seat_credits": 202630,
+      "cockpit_credits": 202630,
+      "seat_sector": 138,
+      "cockpit_sector": 138,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day04.png",
+      "day": 4,
+      "turns_remaining": 49,
+      "seat_credits": 267484,
+      "cockpit_credits": 267484,
+      "seat_sector": 84,
+      "cockpit_sector": 84,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day05.png",
+      "day": 5,
+      "turns_remaining": 48,
+      "seat_credits": 331968,
+      "cockpit_credits": 331968,
+      "seat_sector": 1,
+      "cockpit_sector": 1,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day06.png",
+      "day": 6,
+      "turns_remaining": 48,
+      "seat_credits": 403810,
+      "cockpit_credits": 403810,
+      "seat_sector": 1,
+      "cockpit_sector": 1,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day07.png",
+      "day": 7,
+      "turns_remaining": 49,
+      "seat_credits": 436886,
+      "cockpit_credits": 436886,
+      "seat_sector": 1,
+      "cockpit_sector": 1,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day08.png",
+      "day": 8,
+      "turns_remaining": 50,
+      "seat_credits": 493923,
+      "cockpit_credits": 493923,
+      "seat_sector": 138,
+      "cockpit_sector": 138,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day09.png",
+      "day": 9,
+      "turns_remaining": 50,
+      "seat_credits": 529638,
+      "cockpit_credits": 529638,
+      "seat_sector": 84,
+      "cockpit_sector": 84,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/day10.png",
+      "day": 10,
+      "turns_remaining": 49,
+      "seat_credits": 548394,
+      "cockpit_credits": 548394,
+      "seat_sector": 31,
+      "cockpit_sector": 31,
+      "match": true
+    },
+    {
+      "shot": "docs/playtests/cockpit-ai-seat-v3/final.png",
+      "day": 11,
+      "turns_remaining": 100,
+      "seat_credits": 553394,
+      "cockpit_credits": 553394,
+      "seat_sector": 166,
+      "cockpit_sector": 166,
+      "match": true
+    }
+  ],
+  "replay_all_match": true,
+  "final_matches_seat_report": true,
+  "log_tail": [
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat buy 75 fuel_ore @ 14cr = 1050cr  [haggle won at 14cr (list 15)]"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 138 \u2192 84"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat sell 75 fuel_ore @ 47cr = 3525cr  [haggle won at 47cr (list 46)]  (+2475cr profit)"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 84 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 193"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat buy 75 equipment @ 46cr = 3450cr  [haggle won at 46cr (list 50)]"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 193 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 31"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat sell 75 equipment @ 163cr = 12225cr  [haggle won at 163cr (list 159)]  (+8775cr profit)"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat buy 75 organics @ 36cr = 2700cr  [haggle won at 36cr (list 39)]"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 31 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 193"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat sell 75 organics @ 74cr = 5550cr  [haggle won at 74cr (list 72)]  (+2850cr profit)"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat buy 75 equipment @ 46cr = 3450cr  [haggle won at 46cr (list 50)]"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 193 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 31"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat sell 75 equipment @ 161cr = 12075cr  [haggle won at 161cr (list 157)]  (+8625cr profit)"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat buy 75 fuel_ore @ 10cr = 750cr"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 31 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 84"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat sell 75 fuel_ore @ 46cr = 3450cr  [haggle won at 46cr (list 45)]  (+2700cr profit)"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 84 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 193"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat buy 75 equipment @ 47cr = 3525cr  [haggle won at 47cr (list 51)]"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 193 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 31"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat sell 75 equipment @ 159cr = 11925cr  [haggle won at 159cr (list 155)]  (+8400cr profit)"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat buy 75 fuel_ore @ 10cr = 750cr"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 31 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 84"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat sell 75 fuel_ore @ 46cr = 3450cr  [haggle won at 46cr (list 45)]  (+2700cr profit)"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 84 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 193"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat buy 75 equipment @ 48cr = 3600cr  [haggle won at 48cr (list 52)]"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 193 \u2192 1"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 1 \u2192 31"
+    },
+    {
+      "day": 10,
+      "kind": "trade",
+      "summary": "CockpitSeat sell 75 equipment @ 158cr = 11850cr  [haggle won at 158cr (list 154)]  (+8250cr profit)"
+    },
+    {
+      "day": 10,
+      "kind": "warp",
+      "summary": "CockpitSeat warped 31 \u2192 166"
+    },
+    {
+      "day": 11,
+      "kind": "tax_collected",
+      "summary": "The Federation collected 29125 credits in taxes (+19 alignment)"
+    },
+    {
+      "day": 11,
+      "kind": "game_over",
+      "summary": "GAME OVER \u2014 time expired; CockpitSeat wins on net worth (576044cr = 576044cr ship + 0cr planets)"
+    }
+  ]
+}

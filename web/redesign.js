@@ -63,6 +63,9 @@
     connected: false, awaiting: false, busy: false, turnSeq: 0,
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
+  // cockpit-gaps-v1: the server's cockpit block (verdict, haggle, port notes, hold quote).
+  // Null unless COCKPIT_FIELDS_MODE is on, so the legacy cockpit is unchanged.
+  let CK = null;
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
   function rememberAlert(seq) {
     alertedSeq = seq;
@@ -252,6 +255,35 @@
     const el = $("lastResult");
     el.textContent = text || "";
     el.className = bad ? "bad" : "";
+  }
+  function verdictAction(v) {
+    const a = v.args || {};
+    const name = (COM[a.commodity] || [a.commodity])[0];
+    if (v.kind === "warp") return "warp to " + a.target;
+    if (v.kind === "trade") return (a.side || "trade") + " " + fmt(a.qty) + " " + (name || "") + (a.unit_price != null ? " at " + fmt(a.unit_price) + " cr" : "");
+    if (v.kind === "buy_equip") return "buy " + fmt(a.qty) + " " + gearName(a.item);
+    if (v.kind === "plot_course") return "plot course to " + a.target;
+    return String(v.kind || "").replaceAll("_", " ");
+  }
+  function paintVerdict() {
+    // cockpit-gaps-v1 item 1: the engine verdict as its own field, read from the server, so a reload keeps it.
+    // Original: the outcome prints right after the command (transcript.txt 2432-2433, 2454, 2470, 9241).
+    const el = $("verdict");
+    if (!el) return;
+    const v = CK && CK.verdict;
+    if (!v) { el.hidden = true; el.textContent = ""; return; }
+    const delta = Number(v.credits_change || 0);
+    const turns = v.turns_spent == null ? "the day ended" : fmt(v.turns_spent) + " turn" + (Number(v.turns_spent) === 1 ? "" : "s") + " spent, " + fmt(v.turns_left) + " left";
+    const hg = v.haggle || {};
+    const why = v.ok ? "" : " — " + (hg.outcome === "countered" && hg.counter != null
+      ? "the port countered at " + fmt(hg.counter) + " cr each"
+      : plainWords(String(v.reason || "refused")));
+    el.hidden = false;
+    el.dataset.ok = v.ok ? "true" : "false";
+    el.dataset.kind = v.kind || "";
+    el.dataset.turn = String(v.turn_seq || 0);
+    el.className = v.ok ? "verdict ok" : "verdict bad";
+    el.textContent = "Last action: " + verdictAction(v) + ". " + (v.ok ? "OK" : "REFUSED") + why + ". " + capFirst(turns) + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".";
   }
   function onSurface() {
     return !!landedPlanet() || surface;
@@ -930,7 +962,11 @@
       box.appendChild(cap);
       const table = document.createElement("table");
       table.className = "porttbl";
-      table.innerHTML = "<tr><th>Items</th><th>Status</th><th>Trading</th><th>Price</th><th>OnBoard</th><th></th></tr>";
+      // cockpit-gaps-v1 item 3: the original commerce table header is 'Items Status Trading % of max OnBoard'
+      // (transcript.txt 2441). The % column shows only with the cockpit block on.
+      table.innerHTML = CK
+        ? "<tr><th>Items</th><th>Status</th><th>Trading</th><th>% of max</th><th>Price</th><th>OnBoard</th><th></th></tr>"
+        : "<tr><th>Items</th><th>Status</th><th>Trading</th><th>Price</th><th>OnBoard</th><th></th></tr>";
       Object.entries(stockRows).forEach(([k, v]) => {
         const meta = COM[k] || [k, "#fff"];
         const side = v.side === "buys_from_player" ? "sell" : "buy";
@@ -939,7 +975,8 @@
         const trading = side === "sell" ? room : Number(v.current || 0);
         const status = side === "sell" ? "Buying, room " + fmt(room) : "Selling " + fmt(v.current) + "/" + fmt(v.max);
         const tr = document.createElement("tr");
-        tr.innerHTML = "<td style=\"color:" + meta[1] + "\">" + esc(meta[0]) + "</td><td>" + status + "</td><td class=\"c\">" + fmt(trading) + "</td><td class=\"y\">" + (v.price ?? "") + "</td><td class=\"w\">" + (sh.cargo[k] || 0) + "</td><td></td>";
+        const pctCell = CK ? "<td class=\"pct\" data-pct=\"" + k + "\">" + (Number(v.max) > 0 ? Math.round(100 * trading / Number(v.max)) : 0) + "%</td>" : "";
+        tr.innerHTML = "<td style=\"color:" + meta[1] + "\">" + esc(meta[0]) + "</td><td>" + status + "</td><td class=\"c\">" + fmt(trading) + "</td>" + pctCell + "<td class=\"y\">" + (v.price ?? "") + "</td><td class=\"w\">" + (sh.cargo[k] || 0) + "</td><td></td>";
         if (mx > 0 && legal("trade") && state.awaiting) {
           const b = document.createElement("button");
           b.type = "button";
@@ -950,7 +987,8 @@
         } else {
           const why = mx > 0 && legal("trade") && !state.awaiting ? "Waiting for your turn." : tradeWhy(k, v, sh, side);
           tr.lastChild.textContent = why;
-          if (tr.children[3]) tr.children[3].classList.add("dim");
+          const priceCell = tr.children[CK ? 4 : 3];
+          if (priceCell) priceCell.classList.add("dim");
           tr.addEventListener("click", () => setResult(why, true));
         }
         table.appendChild(tr);
@@ -1250,6 +1288,7 @@
       if (comEl) comEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); });
       fill();
       wrap.appendChild(hint);
+      if (CK) haggleLines(wrap, listed, sideEl, comEl, fields.find((el) => el.dataset.n === "qty"), priceEl, saved);
     }
     if (kind === "buy_equip") {
       const prices = ((a.params.item || {}).unit_price_by) || {};
@@ -1267,6 +1306,7 @@
       if (item) item.addEventListener("change", paint);
       paint();
       wrap.appendChild(note);
+      holdTotalLine(wrap, item, fields.find((el) => el.dataset.n === "qty"));
     }
     if (kind === "buy_ship") {
       const nets = ((a.params.ship_class || {}).net_cost_by) || {};
@@ -1309,6 +1349,80 @@
         if (first.type === "number" || first.type === "text") first.select();
       }
     }
+  }
+  function haggleLines(wrap, listed, sideEl, comEl, qtyEl, priceEl, saved) {
+    // cockpit-gaps-v1 item 2. Original haggle (transcript.txt 2456-2470): "We'll sell them for 317 credits.",
+    // offer 280, "We'll sell them for 309 credits.", ... "Very well, we'll take that offer." A failed haggle
+    // ends the trade (REPORT2.md lines 20, 25-31). The original never prints its accept band, so none is shown.
+    const quote = document.createElement("div");
+    quote.className = "haggle";
+    quote.dataset.haggle = "quote";
+    const counter = document.createElement("div");
+    counter.className = "haggle";
+    counter.dataset.haggle = "counter";
+    const ended = document.createElement("div");
+    ended.className = "haggle";
+    ended.dataset.haggle = "ended";
+    const verb = (side) => (side === "sell" ? "We'll buy them for " : "We'll sell them for ");
+    const pendingFor = (side, com) => {
+      const h = CK && CK.haggle;
+      return h && h.side === side && h.commodity === com ? h : null;
+    };
+    const paint = () => {
+      const side = sideEl && sideEl.value;
+      const com = comEl && comEl.value;
+      const qty = Math.max(0, Number((qtyEl && qtyEl.value) || 0));
+      const list = Number((listed[com] || {})[side] || 0);
+      const h = pendingFor(side, com);
+      quote.textContent = list && qty ? verb(side) + fmt(list * qty) + " credits (" + fmt(qty) + " at " + fmt(list) + " cr)." : "";
+      counter.hidden = !h;
+      counter.textContent = h && qty ? "Counter: " + verb(side).toLowerCase() + fmt(h.counter * qty) + " credits (" + fmt(h.counter) + " cr each). Your offer [" + fmt(h.next_offer) + "]" : "";
+    };
+    const v = CK && CK.verdict;
+    const last = v && v.kind === "trade" ? v.haggle : null;
+    if (last) {
+      const name = (COM[last.commodity] || [last.commodity])[0];
+      if (last.outcome === "taken") ended.textContent = "Last haggle: the port took your offer, " + fmt(last.qty) + " " + name + " for " + fmt(last.paid_total) + " credits.";
+      else if (last.outcome === "countered") ended.textContent = "Last haggle: countered at " + fmt(last.counter) + " cr each. Offer again or leave.";
+      else if (last.outcome === "ended") ended.textContent = "Last haggle: refused, the trade ended (" + plainWords(String(v.reason || "")) + "). Dock again to trade.";
+      else ended.textContent = "Last trade refused: " + plainWords(String(v.reason || "")) + ".";
+      ended.dataset.outcome = last.outcome;
+      if (last.outcome !== "taken") ended.classList.add("bad");
+    } else ended.hidden = true;
+    const h = pendingFor(sideEl && sideEl.value, comEl && comEl.value);
+    if (h && priceEl && !(saved && saved.unit_price != null && saved.unit_price !== "")) priceEl.value = String(h.next_offer);
+    const offer = () => {
+      const pend = pendingFor(sideEl && sideEl.value, comEl && comEl.value);
+      if (pend && priceEl) priceEl.value = String(pend.next_offer);
+    };
+    [sideEl, comEl, qtyEl].forEach((el) => el && el.addEventListener("input", paint));
+    [sideEl, comEl].forEach((el) => el && el.addEventListener("change", () => { offer(); paint(); }));
+    paint();
+    wrap.appendChild(quote);
+    wrap.appendChild(counter);
+    wrap.appendChild(ended);
+  }
+  function holdTotalLine(wrap, item, qtyEl) {
+    // cockpit-gaps-v1 item 5. Original StarDock: "A  Cargo holds : 550 credits / next hold 14" (transcript.txt 4174)
+    // and, once an amount is typed, "The cost for 10 more holds is 6,410 credits." (4186) before you confirm.
+    const hq = CK && CK.hold_quote;
+    if (!hq) return;
+    const line = document.createElement("div");
+    line.className = "haggle";
+    line.dataset.gear = "hold-total";
+    const paint = () => {
+      if (!item || item.value !== "holds") { line.hidden = true; return; }
+      line.hidden = false;
+      const qty = Number((qtyEl && qtyEl.value) || 0);
+      const head = "Cargo holds: " + fmt(hq.next_price) + " credits / next hold. You can buy " + fmt(hq.afford) + ". You have " + fmt(hq.holds) + " of " + fmt(hq.max_holds) + ".";
+      const total = qty > 0 ? (hq.totals || {})[String(qty)] : null;
+      if (qty > 0 && total == null) line.textContent = head + " You cannot afford " + fmt(qty) + " more holds.";
+      else line.textContent = head + (total != null ? " The cost for " + fmt(qty) + " more hold" + (qty === 1 ? "" : "s") + " is " + fmt(total) + " credits." : "");
+    };
+    if (item) item.addEventListener("change", paint);
+    if (qtyEl) qtyEl.addEventListener("input", paint);
+    paint();
+    wrap.appendChild(line);
   }
   function reasonButton(kind, label, onLegal) {
     const a = LA(kind) || { legal: false, reason: kind + " is not available" };
@@ -2146,6 +2260,7 @@
       rows.unshift({ sector_id: id, class: here.code, name: here.name, stock: here.stock, last_seen_day: S.day });
     }
     if (!rows.length) { setResult("No ports in your computer yet.", true); return; }
+    if (CK) { overlay("Port Report", rows.map(cockpitPortRow).join("")); return; }
     const body = rows.map((row) => {
       const stock = row.stock || {};
       const lines = Object.entries(stock).map(([name, item]) => {
@@ -2171,6 +2286,33 @@
       return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(row.class || row.name || "") + esc(seen) + "<br>" + esc(detailed || lines) + "</div>";
     }).join("");
     overlay("Port Report", body);
+  }
+  function cockpitPortRow(row) {
+    // cockpit-gaps-v1 item 3. The original Computer R port report lists each item, its status, the units
+    // traded and what % of max that is (transcript.txt 1141-1150). It never lists a price, so the price here
+    // is this seat's own note from its last dock (the original player keeps notes: S3 bible ~3186-3188).
+    const sid = String(row.sector_id);
+    const notes = ((CK && CK.port_notes) || {})[sid] || {};
+    const stock = row.stock || {};
+    const code = String(row.class || "");
+    const names = ["fuel_ore", "organics", "equipment"];
+    const lettered = /^[BS]{3}$/.test(code);
+    const items = names.filter((name) => stock[name] || notes[name]).map((name) => {
+      const item = stock[name] || {};
+      const note = notes[name];
+      const letter = lettered ? code[names.indexOf(name)] : "";
+      const buying = item.side ? item.side === "buys_from_player" : (letter ? letter === "B" : (note && note.side === "buys"));
+      const top = Number(item.max || 0);
+      const amount = buying ? Math.max(0, top - Number(item.current || 0)) : Number(item.current || 0);
+      const pct = top > 0 ? Math.round(100 * amount / top) : null;
+      const seen = note ? "last seen " + fmt(note.price) + " cr on day " + note.day + " when you docked" : "no price: not docked here";
+      return '<div class="row" data-port-item="' + esc(sid + ":" + name) + '">' + esc((COM[name] || [name])[0])
+        + " " + (buying ? "Buying" : "Selling") + " " + (item.current == null ? "?" : fmt(amount))
+        + (pct == null ? "" : " " + pct + "% of max") + ", " + esc(seen) + "</div>";
+    }).join("");
+    const age = row.age_days != null ? ", report " + fmt(row.age_days) + " day" + (Number(row.age_days) === 1 ? "" : "s") + " old" : "";
+    return '<div class="row" data-port="report" data-sector="' + esc(sid) + '"><span class="c">' + esc(sid) + "</span> class "
+      + esc(code || row.name || "") + esc(age) + (items || '<div class="row dk">No items listed.</div>') + "</div>";
   }
   function knownUniverse() {
     const map = Object.assign({}, S.known_warps || {});
@@ -3156,7 +3298,7 @@
       const counter = /counter (\d+)/i.exec(raw);
       const retry = { side: (args || {}).side, commodity: (args || {}).commodity, qty: (args || {}).qty };
       if (kind === "trade" && counter) {
-        setResult("The port counters at " + fmt(counter[1]) + " cr. Enter that price, or try another." + tail, true);
+        setResult("The port counters at " + fmt(counter[1]) + " cr. Enter that price, or try another" + tail, true);
         openForm("trade", Object.assign({}, retry, { unit_price: counter[1] }));
         $("err").hidden = true;
         return;
@@ -3415,17 +3557,19 @@
     $("tl").textContent = fmt(S.turns_remaining);
     $("turns").textContent = fmt(S.turns_remaining) + "/" + fmt(S.turns_per_day);
     $("credits").textContent = fmt(S.credits) + " cr";
-    $("sbDay").textContent = String(S.day);
+    const over = state.gameOver || (Number(S.max_days) > 0 && Number(S.day) > Number(S.max_days));
+    $("sbDay").textContent = String(over && Number(S.max_days) > 0 ? Math.min(Number(S.day), Number(S.max_days)) : S.day);
     $("xp").textContent = fmt(S.experience);
     $("maxDays").textContent = String(S.max_days);
+    paintVerdict();
     $("nw").textContent = fmt(S.net_worth);
     $("rank").textContent = S.rank || "";
     const al = $("align");
     al.textContent = fmt(S.alignment) + " " + (S.alignment_label || "");
     al.className = S.alignment < 0 ? "r" : S.alignment > 0 ? "c" : "w";
     const chip = $("waitchip");
-    chip.textContent = outOfTurns() ? "NO TURNS" : (state.awaiting ? "YOUR MOVE" : "WAITING");
-    chip.className = "chip" + (state.awaiting && !outOfTurns() ? "" : " idle");
+    chip.textContent = over ? "GAME OVER" : outOfTurns() ? "NO TURNS" : (state.awaiting ? "YOUR MOVE" : "WAITING");
+    chip.className = "chip" + (state.awaiting && !outOfTurns() && !over ? "" : " idle");
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
     paintScene();
     paintLog();
@@ -3443,6 +3587,8 @@
     if (state.holdAwait) state.awaiting = false;
     if (typeof st.wait_streak === "number") state.waitStreak = st.wait_streak;
     state.turnSeq = st.turn_seq ?? state.turnSeq;
+    state.gameOver = !!st.game_over;
+    CK = st.cockpit || null;
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     if (st.observation) { S = st.observation; render(); }
     await fetchEvents();

@@ -87,6 +87,9 @@ class ExternalAgent(BaseAgent):
         self.turn_due: asyncio.Event = asyncio.Event()
         self.current_observation: Observation | None = None
         self.last_result: dict[str, Any] | None = None
+        # cockpit-gaps-v1: filled only when K.cockpit_fields_on() (server/cockpit_fields.py).
+        self.cockpit_verdict: dict[str, Any] | None = None
+        self.cockpit_port_notes: dict[int, dict[str, Any]] = {}
         # Set when record_result writes the engine verdict for the queued action.
         self._result_ready: asyncio.Event = asyncio.Event()
         self.closed: bool = False

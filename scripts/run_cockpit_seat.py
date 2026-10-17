@@ -26,7 +26,8 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--seat", required=True)
     parser.add_argument("--tokens-file", required=True)
-    parser.add_argument("--days", type=int, default=10)
+    parser.add_argument("--days", type=int, default=10,
+                        help="game days to play, counted from the day the seat starts on")
     parser.add_argument("--out", default="", help="write the run report JSON here")
     parser.add_argument("--idle-s", type=float, default=600.0)
     return parser.parse_args(argv)
@@ -76,6 +77,10 @@ def main(argv: list[str] | None = None) -> int:
               f"net worth {row['net_worth_start']:,} -> {row['net_worth_end']:,}, "
               f"turns {row['turns_used']}, trades {row['trades']}, refused {row['refused']}")
     print(f"posts {report['posts']}, refused {len(report['refused'])}")
+    if report["posts"] == 0:
+        print(f"the seat made 0 posts: started on day {report.get('start_day')}, asked for {args.days} day(s)"
+              f" through day {report.get('end_day')}, and no turn of its own opened", file=sys.stderr)
+        return 3
     return 0
 
 

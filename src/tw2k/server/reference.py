@@ -113,7 +113,7 @@ def game_reference(player=None, day: int = 1) -> dict[str, Any]:
         "Computer, then K, is the known universe. Computer, then O, is the avoid list. "
         "The prices below are what StarDock charges today, including a fighter, a shield, and the next cargo hold on this ship."
     )
-    return {
+    out: dict[str, Any] = {
         "day": today,
         "ship_class": ship_class,
         "holds": holds,
@@ -144,4 +144,20 @@ def game_reference(player=None, day: int = 1) -> dict[str, Any]:
                 "rows": _prices(ship_class, holds, today),
             },
         ],
+    }
+    if K.cockpit_fields_on():
+        out["sections"].append(_not_in_original())
+    return out
+
+
+def _not_in_original() -> dict[str, Any]:
+    """cockpit-gaps-v1 item 4. Listed as missing on purpose, with no hint."""
+    return {
+        "id": "not_in_original",
+        "title": "Not shown in the original",
+        "source": "live_twgs/REPORT2.md line 32; S3_tw2002_bible_v1.htm around lines 3150-3188",
+        "body": (
+            "How a port's stock moves its prices is not printed on any screen of the original game, "
+            "so the cockpit does not print it either. Players learn it from play and keep their own notes."
+        ),
     }
