@@ -3707,6 +3707,17 @@ def planet_growth_tw2002() -> bool:
     return PLANET_GROWTH_MODE == "tw2002" or tw2002_live_profile()
 
 
+# cockpit-ai-seat-v1. Legacy games do not start this seat. tw2002 lets a
+# test run the client that reads only the cockpit harness. The server never
+# constructs that client. Ben decides any flip.
+AI_COCKPIT_SEAT_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def ai_cockpit_seat_on() -> bool:
+    """True when a test may run the cockpit-only seat. Default games never do."""
+    return AI_COCKPIT_SEAT_MODE == "tw2002" or tw2002_live_profile()
+
+
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
     """How many more colonists fit. Class M live uses one cap per pool."""
     if class_id == "M" and class_m_fidelity_live():

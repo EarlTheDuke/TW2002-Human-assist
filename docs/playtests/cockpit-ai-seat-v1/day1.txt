@@ -1,0 +1,4 @@
+P2 day 1, cockpit reads only.
+reference sections: rules, scoring, ranks, ships, prices
+warp 1 -> 18
+then wait in sector 18 (nothing you can buy or sell here right now (cargo, credits, holds or port stock))
