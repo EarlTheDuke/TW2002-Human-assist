@@ -117,8 +117,14 @@ def test_arrival_counts_each_hit_once(world):
         me.ship.shields = 400
 
     _next(page, world["host"], lay)
+    page.evaluate("() => { const el = document.querySelector('#lastResult'); if (el) el.textContent = ''; }")
     page.locator("#warps button", has_text=str(target)).first.click()
-    _back(page, "mines hit")
+    page.wait_for_function(
+        "() => { const t = document.querySelector('#lastResult').textContent || '';"
+        " return t.includes('mines hit') && t.includes('Computer, then O'); }",
+        timeout=40_000,
+    )
+    page.wait_for_function("() => document.querySelector('#waitchip').textContent === 'YOUR MOVE'", timeout=20_000)
     text = page.locator("#lastResult").inner_text()
     assert text.count("mines hit") == 1
     assert "avoid this sector" not in text

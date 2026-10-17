@@ -175,7 +175,7 @@
   function latestAfter(seq) {
     let best = null;
     streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
-      if (!ev || (ev.seq || 0) <= seq) return;
+      if (!ev || ev.kind === "cockpit_note" || (ev.seq || 0) <= seq) return;
       if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
     });
     return best;
@@ -225,10 +225,15 @@
     });
     box.scrollTop = 0;
   }
-  let noteSeq = 1000000000;
+  let noteFrac = 0;
   function rememberLine(sentence) {
-    noteSeq += 1;
-    streamLog.push({ seq: noteSeq, kind: "cockpit_note", summary: sentence });
+    let maxReal = 0;
+    streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+      if (!row || row.kind === "cockpit_note") return;
+      if ((row.seq || 0) > maxReal) maxReal = row.seq || 0;
+    });
+    noteFrac += 1;
+    streamLog.push({ seq: maxReal + noteFrac / 1000000, kind: "cockpit_note", summary: sentence });
     paintLog();
   }
   function setResult(text, bad) {
@@ -847,7 +852,17 @@
         const cols = (landed.colonists || {})[k] || 0;
         const stock = (landed.stockpile || {})[k] || 0;
         const made = production ? (production[k] || 0) : null;
-        body += '<div style="color:' + meta[1] + '">' + esc(meta[0]) + '</div><div class="c">Colonists ' + fmt(cols) + "  On planet " + fmt(stock) + (made == null ? "" : "  " + fmt(made) + " per day") + "</div>";
+        let shown = made;
+        let why = "";
+        if (k === "organics" && made != null) {
+          const eat = Number((owned && owned.organics_consumption_per_day) || 0);
+          if (eat > 0 && Number(stock) + Number(made) > 0) {
+            const burned = Math.min(eat, Number(stock) + Number(made));
+            shown = Math.max(0, Number(made) - burned);
+            if (burned > 0 && shown !== Number(made)) why = ", colonists eat " + fmt(burned);
+          }
+        }
+        body += '<div style="color:' + meta[1] + '" data-day="' + k + '">' + esc(meta[0]) + '</div><div class="c">Colonists ' + fmt(cols) + "  On planet " + fmt(stock) + (shown == null ? "" : "  " + fmt(shown) + " per day" + why) + "</div>";
       });
       const trend = (owned && owned.colonists_text) || landed.colonists_text;
       if (trend) body += '<div data-colonists="trend">' + esc(trend) + "</div>";
@@ -2235,6 +2250,7 @@
       } else {
         el.type = field.type || "text";
         if (field.min != null) el.min = String(field.min);
+        if (field.max != null) el.max = String(field.max);
       }
       el.dataset.n = field.n;
       if (saved && saved[field.n] != null && saved[field.n] !== "") el.value = saved[field.n];
@@ -2755,21 +2771,47 @@
       { n: "message", label: "Message", type: "text", value: "Hello" },
     ], saved, (values) => act("hail", { target: values.target, message: values.message }, "hail"));
   }
-  function avoidSentence(sector) {
-    if (Number(sector) === 0) return "Avoid list cleared. Avoided sectors: none.";
+  function galaxySize() {
+    let size = Number(S && S.universe_size || 0);
+    if (!size) {
+      const hit = streamLog.concat((S && S.recent_events) || []).map((ev) => (ev && ev.summary) || "").join(" ").match(/(\d+)-sector galaxy/);
+      if (hit) size = Number(hit[1]);
+    }
+    return size;
+  }
+  function avoidedNames() {
     const listed = (S && S.avoid_prompt) || "";
     const match = /Avoided sectors:\s*([^.]*)/i.exec(listed);
-    const names = match ? match[1].trim() : "";
-    return "Sector " + fmt(sector) + " added to the avoid list" + (names ? " (avoided: " + names + ")" : "");
+    return match ? match[1].trim() : "";
+  }
+  function avoidIds(text) {
+    return String(text || "").split(",").map((part) => part.trim()).filter(Boolean);
+  }
+  function avoidSentence(sector, prior) {
+    if (Number(sector) === 0) return "Avoid list cleared. Avoided sectors: none.";
+    const names = avoidedNames();
+    const id = fmt(sector);
+    const had = avoidIds(prior).includes(id);
+    const verb = had ? " is already on the avoid list" : " added to the avoid list";
+    return "Sector " + id + verb + (names ? " (avoided: " + names + ")" : "");
   }
   function avoidForm(saved) {
     const a = LA("avoid");
     if (!a) { setResult("Avoid sectors: Avoid sectors is not in this game.", true); return; }
     if (!a.legal) { setResult("Avoid sectors: " + plainReason(a.reason), true); return; }
     const listed = (S && S.avoid_prompt) || "Avoided sectors: none.";
+    const size = galaxySize();
     dockForm("avoid", "AVOID SECTORS", listed + " Type a sector the computer should not plot through, or 0 to clear the list.", [
-      { n: "sector", label: "Sector", type: "number", min: 0, value: "2" },
-    ], saved, (values) => act("avoid", { sector: values.sector }, "avoid"));
+      { n: "sector", label: "Sector", type: "number", min: 0, max: size || null, value: "2" },
+    ], saved, (values) => {
+      const sector = Number(values.sector);
+      const cap = galaxySize();
+      if (sector !== 0 && cap && (sector < 1 || sector > cap)) {
+        setResult("REFUSED — there is no sector " + fmt(sector) + ". Turns spent 0. Credits +0.", true);
+        return;
+      }
+      act("avoid", { sector: values.sector }, "avoid");
+    });
   }
   function jettisonForm(saved) {
     const choices = ((((LA("jettison") || {}).params || {}).commodity || {}).choices) || [];
@@ -2926,9 +2968,11 @@
     const turnsBefore = S ? S.turns_remaining : 0;
     try {
       const before = state.eventsSince;
+      const avoidBefore = avoidedNames();
       let maxSeq = 0;
       streamLog.concat((S && S.recent_events) || []).forEach((row) => {
-        if (row && (row.seq || 0) > maxSeq) maxSeq = row.seq || 0;
+        if (!row || row.kind === "cockpit_note") return;
+        if ((row.seq || 0) > maxSeq) maxSeq = row.seq || 0;
       });
       await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
       state.awaiting = false;
@@ -2946,13 +2990,16 @@
       if (kind === "avoid") {
         const newer = latestAfter(maxSeq);
         const fresh = newer && newer.summary ? String(newer.summary) : "";
-        if (!/invalid action|needs a sector|invalid sector/i.test(fresh)) {
-          const sentence = avoidSentence((args || {}).sector);
-          rememberLine(sentence);
-          if (!dayNote) setResult("ok — " + sentence + tail, false);
+        if (/invalid sector|needs a sector/i.test(fresh)) {
+          if (!dayNote) setResult("REFUSED — there is no sector " + fmt((args || {}).sector) + tail, true);
           $("err").hidden = true;
           return;
         }
+        const sentence = avoidSentence((args || {}).sector, avoidBefore).replace(/[.\s]+$/, "");
+        rememberLine(sentence + ".");
+        if (!dayNote) setResult("ok — " + sentence + tail, false);
+        $("err").hidden = true;
+        return;
       }
       const ev = latestAfter(before - 1);
       const raw = ev && ev.summary ? String(ev.summary) : "";
@@ -3075,6 +3122,14 @@
       if (noticeSeq > before && noticeLine && body.indexOf(noticeLine) < 0) body += ". " + noticeLine;
       if (/ship destroyed/i.test(body) && delta < 0 && !/Credits on board lost/i.test(body)) {
         body += ". Credits on board lost: " + fmt(-delta) + " cr";
+      }
+      if (/ship destroyed/i.test(body)) {
+        const had = new Set(avoidIds(avoidBefore));
+        avoidIds(avoidedNames()).filter((id) => !had.has(id)).forEach((id) => {
+          const line = "Sector " + id + " is now on your avoid list";
+          if (body.indexOf(line) < 0) body += ". " + line;
+          rememberLine(line + ".");
+        });
       }
       if (kind === "set_military_reaction" && args && args.pct != null) body = body + " to " + fmt(args.pct) + "%";
       if (!dayNote && bad) {
