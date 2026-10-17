@@ -1,0 +1,35 @@
+[
+  {
+    "read": "reference",
+    "sections": [
+      "rules",
+      "scoring",
+      "ranks",
+      "ships",
+      "prices"
+    ]
+  },
+  {
+    "read": "status",
+    "awaiting_input": true
+  },
+  {
+    "from_sector": 1,
+    "kind": "warp",
+    "args": {
+      "target": 18
+    },
+    "accepted": true,
+    "events_before": 1
+  },
+  {
+    "from_sector": 18,
+    "port": true,
+    "trade_legal": false,
+    "trade_reason": "nothing you can buy or sell here right now (cargo, credits, holds or port stock)",
+    "kind": "wait",
+    "args": {},
+    "accepted": true,
+    "events_after": 2
+  }
+]
