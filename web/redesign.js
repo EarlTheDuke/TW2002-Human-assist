@@ -142,6 +142,8 @@
     s = s.replace(/\b1 days\b/g, "1 day");
     s = s.replace(/\b1 ((?:[A-Za-z]+ )?)fighters\b/gi, "1 $1fighter");
     s = s.replace(/\b1 shields\b/gi, "1 shield");
+    s = s.replace(/\b1 holds\b/g, "1 cargo hold");
+    s = s.replace(/\b(\d[\d,]*) holds\b/g, (m, n) => n + " cargo holds");
     s = s.replace(/mines in sector \d+: avoid this sector\?\s*\(autopilot stops here\)/gi, "Mines are in this sector. Computer, then O, adds it to the avoid list");
     return s.replace(/\.\.+/g, ".").trim();
   }
@@ -1975,7 +1977,7 @@
     const gaps = [];
     [["fuel ore", next.fuel_ore, have("fuel_have", "fuel_ore")], ["organics", next.organics, have("organics_have", "organics")], ["equipment", next.equipment, have("equipment_have", "equipment")], ["colonists", next.colonists, have("colonists_have", "colonists")]].forEach(([name, need, got]) => {
       const gap = Number(need || 0) - Number(name === "colonists" && next.colonists_have == null ? cols : got || 0);
-      if (gap > 0) gaps.push(name + " " + fmt(gap) + " short");
+      if (gap > 0) gaps.push(name + " " + fmt(gap));
     });
     const dayWord = days === 1 ? "1 day" : fmt(days) + " days";
     let note;
@@ -1983,7 +1985,7 @@
       const readyDay = planet.citadel_complete_day || ((String(a.reason || "").match(/done day (\d+)/) || [])[1] || "");
       note = "Citadel L" + (target || level) + " is being built" + (readyDay ? ", ready day " + readyDay : "") + ".";
     } else {
-      note = "Citadel level " + level + ". Fuel ore " + fmt(next.fuel_ore || next.credits || 0) + " (have " + fmt(have("fuel_have", "fuel_ore")) + "). Organics " + fmt(next.organics || 0) + " (have " + fmt(have("organics_have", "organics")) + "). Equipment " + fmt(next.equipment || 0) + " (have " + fmt(have("equipment_have", "equipment")) + "). Colonists " + fmt(next.colonists || 0) + " (have " + fmt(next.colonists_have != null ? next.colonists_have : cols) + "). " + dayWord + "." + ready + (gaps.length ? " " + gaps.join(", ") + "." : "");
+      note = "Citadel level " + level + ". Fuel ore " + fmt(next.fuel_ore || next.credits || 0) + " (have " + fmt(have("fuel_have", "fuel_ore")) + "). Organics " + fmt(next.organics || 0) + " (have " + fmt(have("organics_have", "organics")) + "). Equipment " + fmt(next.equipment || 0) + " (have " + fmt(have("equipment_have", "equipment")) + "). Colonists " + fmt(next.colonists || 0) + " (have " + fmt(next.colonists_have != null ? next.colonists_have : cols) + "). " + dayWord + "." + ready + (gaps.length ? " Short: " + gaps.join(", ") + "." : "");
     }
     if (!a.legal) {
       confirmWords("Build citadel", note);

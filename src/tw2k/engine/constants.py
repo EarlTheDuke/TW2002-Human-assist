@@ -3693,6 +3693,20 @@ def siege_report_on() -> bool:
     return SIEGE_REPORT_MODE == "tw2002" or tw2002_live_profile()
 
 
+# note49-polish-v1. Legacy still burns max(1, colonists // 100) organics
+# and grows 5% only while organics remain. tw2002 does not eat organics.
+# Below half of PLANET_MAX_COLONISTS the colony grows about 5% a day, and
+# above that half it shrinks about 5% a day. The handbook states the half
+# cap and a proportional rate, and this engine already used 5% for that
+# shape. Ben decides any flip.
+PLANET_GROWTH_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def planet_growth_tw2002() -> bool:
+    """True when colonists follow the half-cap rule and do not eat organics."""
+    return PLANET_GROWTH_MODE == "tw2002" or tw2002_live_profile()
+
+
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
     """How many more colonists fit. Class M live uses one cap per pool."""
     if class_id == "M" and class_m_fidelity_live():

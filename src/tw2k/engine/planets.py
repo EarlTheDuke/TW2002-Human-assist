@@ -69,7 +69,7 @@ def organics_worker_target(total_colonists: int, coeff: int) -> int:
     half and import the rest. The target is never above the population.
     """
     total = int(total_colonists)
-    if coeff <= 0 or total <= 0:
+    if K.planet_growth_tw2002() or coeff <= 0 or total <= 0:
         return 0
     need = organics_consumption(total) + 1
     target = (need * 100 + coeff - 1) // coeff
@@ -104,6 +104,14 @@ def planet_growth_status(class_id: PlanetClass | str, colonists: dict, organics_
     if total == 0 and colonists:
         total = sum(int(v or 0) for v in colonists.values())
     stock = int(organics_stock)
+    if K.planet_growth_tw2002():
+        cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
+        return {
+            "production": production,
+            "organics_consumption_per_day": 0,
+            "growth_active": total < cap // 2,
+            "organics_days_left": ORGANICS_DAYS_SUSTAINABLE,
+        }
     # Appetite of one growth day. Reported even while the gate is shut so a
     # restock can be sized; the engine subtracts it only when post-production
     # organics are positive (see `_advance_planets`).
@@ -133,6 +141,14 @@ def colonist_trend(class_id: PlanetClass | str, total: int) -> str:
         if count > cap:
             return f"{shown}; above a product pool cap, about 5% of the extra die off each day"
         return f"{shown}; each product pool holds 30,000 thousand"
+    if K.planet_growth_tw2002():
+        cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
+        half = cap // 2
+        if count > half:
+            return f"above half the class cap ({cap}), about 5% die off each day"
+        if count < half:
+            return f"below half the class cap ({cap}), about 5% more each day"
+        return f"at half the class cap ({cap})"
     if not K.planet_prod_live():
         return "about 5% more each day while organics last"
     cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
@@ -331,6 +347,38 @@ def _stock_product(planet, commodity: Commodity, produced: int) -> None:
     planet.stockpile[commodity] = before + added
 
 
+def _grow_by_half_cap(planet) -> None:
+    """5% toward half of the class cap. Nothing is taken from the stockpile.
+
+    The handbook says a colony below half of its maximum multiplies, and one
+    above that half dies off, at a proportional rate. It does not print the
+    percent. This engine already used 5% for that rule, so the new switch
+    keeps 5%.
+    """
+    total_col = sum(int(v) for v in planet.colonists.values())
+    if total_col <= 0:
+        return
+    half = int(K.PLANET_MAX_COLONISTS[planet.class_id.value]) // 2
+    if total_col < half:
+        growth = int(total_col * 0.05)
+        room = K.planet_colonist_room(planet.class_id.value, total_col)
+        if room is not None:
+            growth = min(growth, room)
+        if growth <= 0:
+            return
+        for name in list(planet.colonists.keys()):
+            share = int(growth * int(planet.colonists[name]) / total_col)
+            planet.colonists[name] = int(planet.colonists[name]) + share
+        return
+    if total_col > half and not (planet.class_id.value == "M" and K.class_m_fidelity_live()):
+        die = int(total_col * 0.05)
+        if die <= 0:
+            return
+        for name in list(planet.colonists.keys()):
+            share = int(die * int(planet.colonists[name]) / total_col)
+            planet.colonists[name] = max(0, int(planet.colonists[name]) - share)
+
+
 def _produce_and_grow_legacy(planet) -> None:
     coeffs = PLANET_PROD_COEFF[planet.class_id]
     for commodity, coeff in coeffs.items():
@@ -338,6 +386,9 @@ def _produce_and_grow_legacy(planet) -> None:
         raw = int(colonists * coeff / 100)
         produced = raw if raw > 0 else 0
         _stock_product(planet, commodity, produced)
+    if K.planet_growth_tw2002():
+        _grow_by_half_cap(planet)
+        return
     if planet.stockpile.get(Commodity.ORGANICS, 0) > 0:
         total_col = sum(planet.colonists.values())
         growth = int(total_col * 0.05)
@@ -360,6 +411,9 @@ def _produce_and_grow_live(planet) -> None:
         colonists = int(planet.colonists.get(commodity, 0))
         produced = 0 if int(ratio) <= 0 else colonists // int(ratio)
         _stock_product(planet, commodity, produced)
+    if K.planet_growth_tw2002():
+        _grow_by_half_cap(planet)
+        return
     total_col = sum(int(v) for v in planet.colonists.values())
     cap = int(K.PLANET_MAX_COLONISTS[planet.class_id.value])
     half = cap // 2
