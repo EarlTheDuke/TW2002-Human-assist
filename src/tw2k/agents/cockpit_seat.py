@@ -149,37 +149,55 @@ class CockpitSeat:
         ]
 
     async def run(self, days: int, *, idle_s: float = 600.0, max_posts: int = 6000) -> dict[str, Any]:
-        """Play ``days`` game days. Returns the day table, refusals, and gaps."""
+        """Play ``days`` game days from the day the seat starts on. Returns the day table, refusals, and gaps.
+
+        NOTE 56 item 7a: ``days`` counts from now. A seat that joins on day 4 with
+        days=1 plays day 4.
+        """
         if not K.ai_cockpit_seat_on():
             raise CockpitSeatOff("AI_COCKPIT_SEAT_MODE is legacy")
         reference = await self.read("reference")
-        brain = SeatBrain(days, base=reference_base(reference), hold_price=reference_hold_price(reference))
+        first = await self.read("observation", {"wait_s": 2, "peek": 1})
+        start_day = int((first.get("observation") or {}).get("day") or first.get("day") or 1)
+        end_day = start_day + max(0, int(days)) - 1
+        brain = SeatBrain(end_day, base=reference_base(reference), hold_price=reference_hold_price(reference))
         report: dict[str, Any] = {
             "seat": self.seat_id,
             "days_asked": int(days),
+            "start_day": start_day,
+            "end_day": end_day,
             "reference_sections": [row.get("id") for row in (reference.get("sections") or [])],
             "days": [],
             "posts": 0,
             "refused": [],
             "kinds": {},
             "log": [],
+            "cockpit_fields": False,
         }
         table: dict[int, dict[str, Any]] = {}
         since = 0
         last_turn = 0
         last_progress = time.monotonic()
-        finished = False
+        finished = days <= 0 or bool(first.get("game_over"))
+        seen_day = start_day
         while not finished:
             if time.monotonic() - last_progress > idle_s:
                 raise CockpitSeatError("no turn opened for the seat")
             body = await self.read("observation", {"wait_s": 2, "peek": 1})
             obs = body.get("observation") or {}
-            if obs:
-                _note_day(table, obs)
+            cockpit = body.get("cockpit")
+            if cockpit is not None:
+                report["cockpit_fields"] = True
+            if obs and start_day <= int(obs.get("day") or 0) <= end_day:
+                _note_day(table, obs, int(body.get("turn_seq") or 0) if cockpit is not None else None)
             if body.get("game_over") or obs.get("finished"):
                 break
-            if obs and int(obs.get("day") or 0) > days:
+            if obs and int(obs.get("day") or 0) > end_day:
                 break
+            if obs and cockpit is not None and int(obs.get("day") or 0) != seen_day:
+                # A new day: Rules and Help prints today's next-hold price.
+                seen_day = int(obs.get("day") or 0)
+                brain.hold_price = reference_hold_price(await self.read("reference")) or brain.hold_price
             if not body.get("awaiting_input") or body.get("peek") or not obs:
                 await asyncio.sleep(0.05)
                 continue
@@ -188,7 +206,7 @@ class CockpitSeat:
                 await asyncio.sleep(0.05)
                 continue
             last_progress = time.monotonic()
-            kind, args, why = brain.decide(obs)
+            kind, args, why = brain.decide(obs, cockpit)
             day = int(obs.get("day") or 0)
             row = table[day]
             report["posts"] += 1
@@ -206,16 +224,19 @@ class CockpitSeat:
                 last_turn = turn
                 continue
             last_turn = turn
-            result = await self._result(turn)
+            result = await self._result(turn, fields=cockpit is not None)
+            _note_result(table, day, result, turn)
             ok = result.get("ok")
             if ok is False:
                 error = str(result.get("error") or "")
-                report["refused"].append({"day": day, "turn_seq": turn, "kind": kind, "args": args,
-                                          "why": why, "error": error})
+                refusal = {"day": day, "turn_seq": turn, "kind": kind, "args": args, "why": why, "error": error}
+                if result.get("haggle"):
+                    refusal["haggle"] = result["haggle"]
+                report["refused"].append(refusal)
                 row["refused"] += 1
                 brain.refused(kind, args, error)
             elif ok:
-                brain.done(kind, args)
+                brain.done(kind, args, verdict=bool(result.get("verdict")))
                 if kind == "trade":
                     row["trades"] += 1
                     row["buys" if args.get("side") == "buy" else "sells"] += 1
@@ -225,20 +246,37 @@ class CockpitSeat:
             if result.get("game_over"):
                 finished = True
         final = await self.read("observation", {"peek": 1})
-        if final.get("observation"):
-            _note_day(table, final["observation"])
-        report["days"] = [table[d] for d in sorted(table) if d <= days]
-        report["gaps"] = brain.gap_rows()
-        report["final"] = _snapshot(final.get("observation") or {})
+        final_obs = final.get("observation") or {}
+        if final_obs and start_day <= int(final_obs.get("day") or 0) <= end_day:
+            _note_day(table, final_obs)
+        report["days"] = [table[d] for d in sorted(table) if start_day <= d <= end_day]
+        report["gaps"] = brain.gap_rows(fields=bool(report["cockpit_fields"]))
+        report["day_end_source"] = "verdict after the last result" if report["cockpit_fields"] else "last read of the day"
+        report["final"] = _snapshot(final_obs)
         return report
 
-    async def _result(self, turn: int) -> dict[str, Any]:
-        """The engine's verdict for ``turn``, read from the seat's own status."""
+    async def _result(self, turn: int, *, fields: bool = False) -> dict[str, Any]:
+        """The engine's verdict for ``turn``: the cockpit verdict field when it is on, else status last_result.
+
+        The verdict carries the day, credits and net worth right after the action, so
+        the day row ends after its last result even when the day rolls before the
+        next read. Without it, the row ends at the last read of that day.
+        """
         for _ in range(200):
             body = await self.read("observation", {"wait_s": 1, "peek": 1})
+            verdict = (body.get("cockpit") or {}).get("verdict") or {}
+            if fields and int(verdict.get("turn_seq") or -1) >= turn:
+                return {
+                    "ok": verdict.get("ok"), "error": verdict.get("reason"), "game_over": body.get("game_over"),
+                    "verdict": True, "day": verdict.get("day"), "credits": verdict.get("credits"),
+                    "net_worth": verdict.get("net_worth"), "turns_left": verdict.get("turns_left"),
+                    "sector": verdict.get("sector_id"), "haggle": verdict.get("haggle"),
+                }
             last = body.get("last_result") or {}
-            if int(last.get("turn_seq") or -1) >= turn:
-                return {"ok": last.get("ok"), "error": last.get("error"), "game_over": body.get("game_over")}
+            if not fields and int(last.get("turn_seq") or -1) >= turn:
+                obs = body.get("observation") or {}
+                return {"ok": last.get("ok"), "error": last.get("error"), "game_over": body.get("game_over"),
+                        "observation": obs}
             if body.get("game_over"):
                 return {"ok": None, "error": None, "game_over": True}
             await asyncio.sleep(0.02)
@@ -257,9 +295,12 @@ class CockpitSeat:
         return int(page.get("next_since") or since)
 
 
-def _note_day(table: dict[int, dict[str, Any]], obs: dict[str, Any]) -> None:
+def _note_day(table: dict[int, dict[str, Any]], obs: dict[str, Any], turn: int | None = None) -> None:
     day = int(obs.get("day") or 0)
     if day <= 0:
+        return
+    held = table.get(day)
+    if held is not None and turn is not None and turn <= int(held.get("verdict_turn") or 0):
         return
     credits = int(obs.get("credits") or 0)
     worth = int(obs.get("net_worth") or 0)
@@ -278,6 +319,28 @@ def _note_day(table: dict[int, dict[str, Any]], obs: dict[str, Any]) -> None:
     row["turns_used"] = max(int(row["turns_used"]), per_day - left)
     row["sector_end"] = int((obs.get("sector") or {}).get("id") or 0)
     row["holds_end"] = int((obs.get("ship") or {}).get("holds") or 0)
+
+
+def _note_result(table: dict[int, dict[str, Any]], day: int, result: dict[str, Any], turn: int = 0) -> None:
+    """NOTE 56 item 7b: the day ends after its last result lands, not at the read before it."""
+    row = table.get(day)
+    if row is None:
+        return
+    if result.get("verdict"):
+        if int(result.get("day") or 0) != day:
+            return
+        # A cached read from before this action must not move the day end back.
+        row["verdict_turn"] = int(turn)
+        if result.get("credits") is not None:
+            row["credits_end"] = int(result["credits"])
+        if result.get("net_worth") is not None:
+            row["net_worth_end"] = int(result["net_worth"])
+        if result.get("sector") is not None:
+            row["sector_end"] = int(result["sector"])
+        return
+    obs = result.get("observation") or {}
+    if obs and int(obs.get("day") or 0) == day:
+        _note_day(table, obs)
 
 
 def _snapshot(obs: dict[str, Any]) -> dict[str, Any]:
@@ -369,6 +432,18 @@ GAP_TEXT = {
     ),
 }
 
+# NOTE 56: where each gap sits once the cockpit block is on (COCKPIT_FIELDS_MODE tw2002).
+GAP_FIELDS = {
+    "result_line": ("closed", "The verdict field under the command keys: OK or REFUSED, the reason, turns spent and the credits change (cockpit.verdict). It survives a reload."),
+    "haggle_band": ("not in original", "The trade form shows the port's quote, each counter and how the haggle ended. The accept band is not printed, as in the original. The seat still offers 92% on a buy and 103% on a sale."),
+    "counter_in_log": ("closed", "The trade form shows the counter and the next offer (cockpit.haggle)."),
+    "price_away": ("closed", "Computer R lists this seat's own last-seen price per product with the day, at ports it docked at (cockpit.port_notes), next to the original status, amount and % of max."),
+    "price_rule": ("not in original", "Not printed: the original never shows a stock-to-price rule (REPORT2.md line 32 'Prices fall as the port fills'). Rules and Help lists it as not shown in the original. The seat still guesses for a port it never docked at."),
+    "hold_curve": ("closed", "The StarDock holds form shows the next-hold price, how many you can afford and, once an amount is typed, the total before CONFIRM (cockpit.hold_quote)."),
+    "one_way": ("same as original", "Computer K lists warps for visited sectors only, as the original's CIM warp data."),
+    "challenge_strength": ("same as original", "The challenge shows the enemy fighters and your own, as the original."),
+}
+
 
 class SeatBrain:
     """One turn's choice from the cockpit view and the seat's own notes."""
@@ -386,6 +461,8 @@ class SeatBrain:
         self._turn_gaps: set[str] | None = None
         self.hold_price = int(hold_price or 0)
         self.dock_trip = False
+        # NOTE 56: the cockpit block for this turn (None on a legacy server).
+        self.cockpit: dict[str, Any] | None = None
 
     # ---- notes ---------------------------------------------------------------
 
@@ -396,31 +473,42 @@ class SeatBrain:
         else:
             self._turn_gaps.add(gid)
 
-    def gap_rows(self) -> list[dict[str, Any]]:
+    def gap_rows(self, fields: bool = False) -> list[dict[str, Any]]:
+        """Gap rows, most turns first. With the cockpit block, every listed gap gets a row and a status."""
         rows = []
-        for gid, count in sorted(self.gaps.items(), key=lambda item: -item[1]):
+        ids = list(self.gaps)
+        if fields:
+            ids += [gid for gid in GAP_TEXT if gid not in self.gaps]
+        for gid in sorted(ids, key=lambda g: (-self.gaps.get(g, 0), list(GAP_TEXT).index(g))):
             decision, needed, cockpit, original = GAP_TEXT[gid]
-            rows.append({"id": gid, "count": count, "decision": decision, "needed": needed,
-                         "cockpit": cockpit, "original": original})
+            row = {"id": gid, "count": self.gaps.get(gid, 0), "decision": decision, "needed": needed,
+                   "cockpit": cockpit, "original": original}
+            if fields:
+                status, where = GAP_FIELDS[gid]
+                row["status"] = status
+                row["cockpit"] = where
+            rows.append(row)
         return rows
 
     def read_log(self, ev: dict[str, Any]) -> None:
         summary = str(ev.get("summary") or "")
-        if "counter " in summary:
+        if "counter " in summary and self.cockpit is None:
             self.gap("counter_in_log")
 
     def refused(self, kind: str, args: dict[str, Any], error: str) -> None:
         if kind == "trade":
             side = str(args.get("side") or "")
-            if side in self.haggle:
+            countered = "counter" in error
+            if side in self.haggle and not (countered and self.cockpit is not None):
                 self.haggle[side] = 100
-            if "counter" in error:
+            if countered and self.cockpit is None:
                 self.gap("counter_in_log")
         if kind == "warp" and self.last_plan:
             self.bad_warps.add((int(self.last_plan.get("from") or 0), int(args.get("target") or 0)))
 
-    def done(self, kind: str, args: dict[str, Any]) -> None:
-        self.gap("result_line")
+    def done(self, kind: str, args: dict[str, Any], *, verdict: bool = False) -> None:
+        if not verdict:
+            self.gap("result_line")
 
     # ---- reading the view ----------------------------------------------------
 
@@ -487,11 +575,22 @@ class SeatBrain:
         return dist, first
 
     def _price(self, sid: int, name: str, info: dict[str, Any], side: str, day: int) -> float:
+        if self.cockpit is not None:
+            # NOTE 56: Computer R now lists this seat's own last-seen price at a port it docked at.
+            note = ((self.cockpit.get("port_notes") or {}).get(str(sid)) or {}).get(name)
+            if note and note.get("side") == side and note.get("price") is not None:
+                return float(note["price"])
+            # Never docked there: the original shows no price either, so only the stock rule is left.
+            self.gap("price_rule")
+            return self._rule_price(name, info, side)
         seen = self.prices.get((sid, name))
         if seen and seen["side"] == side and int(seen["day"]) >= day - 1:
             return float(seen["price"])
         self.gap("price_away")
         self.gap("price_rule")
+        return self._rule_price(name, info, side)
+
+    def _rule_price(self, name: str, info: dict[str, Any], side: str) -> float:
         row = (info.get("stock") or {}).get(name) or {}
         top = max(1, int(row.get("max") or 0))
         frac = min(1.0, max(0.0, int(row.get("current") or 0) / top))
@@ -510,7 +609,12 @@ class SeatBrain:
 
     # ---- the choice ----------------------------------------------------------
 
-    def decide(self, obs: dict[str, Any]) -> tuple[str, dict[str, Any], str]:
+    def decide(self, obs: dict[str, Any], cockpit: dict[str, Any] | None = None) -> tuple[str, dict[str, Any], str]:
+        self.cockpit = cockpit
+        if cockpit is not None:
+            quote = cockpit.get("hold_quote") or {}
+            if quote.get("next_price"):
+                self.hold_price = int(quote["next_price"])
         self._turn_gaps = set()
         try:
             return self._decide(obs)
@@ -547,6 +651,9 @@ class SeatBrain:
             return holds
 
         if trade.get("legal"):
+            answer = self._take_counter(trade, cargo, free, credits)
+            if answer is not None:
+                return answer
             sale = self._sell_here(obs, trade, cargo, ship, last_day)
             if sale is not None:
                 return sale
@@ -573,6 +680,24 @@ class SeatBrain:
         if last_day and target in dist and dist[target] * warp_t + trade_t > turns and sum(cargo.values()) == 0:
             return "wait", {}, "no trip fits in today's turns"
         return self._go(obs, warp, target, first, why)
+
+    def _take_counter(self, trade: dict[str, Any], cargo: dict[str, int], free: int, credits: int):
+        """NOTE 56: the trade form shows the port's counter. Offer what it says, as the original's [default]."""
+        pending = (self.cockpit or {}).get("haggle")
+        if not pending:
+            return None
+        name = str(pending.get("commodity") or "")
+        side = str(pending.get("side") or "")
+        offer = int(pending.get("next_offer") or 0)
+        params = trade.get("params") or {}
+        choices = (params.get("commodity") or {}).get("buy_choices" if side == "buy" else "sell_choices") or []
+        most = int((((params.get("qty") or {}).get("max_by") or {}).get(name) or {}).get(side) or 0)
+        if name not in choices or offer <= 0:
+            return None
+        qty = min(cargo.get(name, 0), most) if side == "sell" else min(free, most, credits // offer)
+        if qty <= 0:
+            return None
+        return "trade", {"side": side, "commodity": name, "qty": qty, "unit_price": offer}, f"take the port's counter of {offer}"
 
     def _go(self, obs: dict[str, Any], warp: dict[str, Any], target: int, first: dict[int, int], why: str) -> tuple[str, dict[str, Any], str]:
         here = int((obs.get("sector") or {}).get("id") or 0)
@@ -638,6 +763,15 @@ class SeatBrain:
         most = int(((params.get("qty") or {}).get("max_by") or {}).get("holds") or 0)
         holds = int(ship.get("holds") or 0)
         room = int(ship.get("hold_cap") or holds) - holds
+        quote = (self.cockpit or {}).get("hold_quote")
+        if quote is not None:
+            # NOTE 56: the StarDock form prints the total for each amount before CONFIRM.
+            totals = {int(q): int(t) for q, t in (quote.get("totals") or {}).items()}
+            fits = [q for q, total in totals.items() if q <= min(most, room) and credits - total >= (holds + q) * 70]
+            if not fits:
+                return None
+            qty = max(fits)
+            return "buy_equip", {"item": "holds", "qty": qty}, f"buy {qty} holds for {totals[qty]:,} cr"
         qty = min(5, most, room)
         if qty <= 0 or price <= 0:
             return None
@@ -778,7 +912,8 @@ class SeatBrain:
         price = self.hold_price or 0
         if price <= 0:
             return None
-        self.gap("hold_curve")
+        if self.cockpit is None:
+            self.gap("hold_curve")
         if credits < 4 * int(5 * price * 1.15) + (holds + 5) * 70:
             return None
         return STARDOCK_SECTOR, f"back to StarDock for holds (about {price} cr each)"

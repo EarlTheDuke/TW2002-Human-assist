@@ -1019,6 +1019,11 @@ class MatchRunner:
                 # manual-human submissions).
                 override = getattr(action, "actor_kind", None)
                 turns_before = player.turns_today
+                cockpit_pre = None
+                if K.cockpit_fields_on() and hasattr(agent, "cockpit_verdict"):
+                    from .cockpit_fields import before_action
+
+                    cockpit_pre = before_action(universe, player, action)
                 if override:
                     with actor_kind_override(override):
                         result = apply_action(universe, agent.player_id, action)
@@ -1039,6 +1044,13 @@ class MatchRunner:
                         record_fn(result.ok, result.error, list(result.event_seqs),
                                   action_kind=getattr(action.kind, "value", str(action.kind)), auto=auto,
                                   turns_used=max(0, player.turns_today - turns_before))
+                    except Exception:
+                        pass
+                if cockpit_pre is not None:
+                    try:
+                        from .cockpit_fields import after_action
+
+                        after_action(agent, universe, player, action, result, cockpit_pre)
                     except Exception:
                         pass
 

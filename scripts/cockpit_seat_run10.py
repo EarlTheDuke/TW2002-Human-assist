@@ -31,6 +31,12 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "playtests" / "cockpit-ai-seat-v2"
+V2 = OUT
+# NOTE 56: --v3 turns the cockpit block on in the server and writes cockpit-ai-seat-v3.
+V3 = "--v3" in sys.argv[1:]
+if V3:
+    OUT = ROOT / "docs" / "playtests" / "cockpit-ai-seat-v3"
+TAG = "v3" if V3 else "v2"
 PORTS = range(8020, 8031)
 SEED, DAYS, TURNS, CREDITS, SECTORS = 250925, 10, 100, 20_000, 200
 VIEW = {"width": 1440, "height": 900}
@@ -58,6 +64,8 @@ class Host:
 
         K.PORT_STOCK_FIDELITY_MODE = "live"
         K.HAGGLE_LIVE_MODE = "live"
+        if V3:
+            K.COCKPIT_FIELDS_MODE = "tw2002"
         self.token = token
         self.port = free_port()
         self.app = create_app(auto_start=False)
@@ -137,7 +145,7 @@ def shoot(page, http: httpx.Client, host: Host, name: str) -> dict:
     path = OUT / f"{name}.png"
     page.screenshot(path=str(path))
     return {
-        "shot": f"docs/playtests/cockpit-ai-seat-v2/{name}.png",
+        "shot": f"docs/playtests/cockpit-ai-seat-{TAG}/{name}.png",
         "day": int(obs.get("day") or 0),
         "turns_remaining": int(obs.get("turns_remaining") or 0),
         "seat_credits": seat_credits, "cockpit_credits": cockpit_credits,
@@ -170,11 +178,40 @@ def gaps_md(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def gaps_md_v3(report: dict) -> str:
+    """NOTE 56: each v2 gap with its v2 count, its v3 count, and what closed it."""
+    from tw2k.agents.cockpit_seat import GAP_FIELDS, GAP_TEXT
+
+    before: dict[str, int] = {}
+    try:
+        v2 = json.loads((V2 / "run10.json").read_text(encoding="utf-8"))
+        before = {row["id"]: int(row["count"]) for row in v2.get("gaps") or []}
+    except (OSError, ValueError, KeyError):
+        pass
+    after = {row["id"]: int(row["count"]) for row in report.get("gaps") or []}
+    lines = [
+        "# Cockpit seat v3: the gaps after cockpit-gaps-v1",
+        "",
+        "Each row is one gap the cockpit-only seat found in the v2 run10. \"v2\" is the",
+        "number of turns it needed the missing piece then (cockpit-ai-seat-v2/run10.json);",
+        "\"v3\" is the count in this run, with the cockpit block on (COCKPIT_FIELDS_MODE=tw2002).",
+        "A gap marked \"not in original\" is one the original TW2002 never prints either, so the",
+        "cockpit adds no hint and the seat keeps its guess there.",
+        "",
+        "| Decision | v2 | v3 | Status | Where the cockpit has it now | Original TW2002 screen |",
+        "| --- | ---: | ---: | --- | --- | --- |",
+    ]
+    for gid, (decision, _needed, _cockpit, original) in GAP_TEXT.items():
+        status, where = GAP_FIELDS[gid]
+        lines.append(f"| {decision} | {before.get(gid, 0)} | {after.get(gid, 0)} | {status} | {where} | {original} |")
+    return "\n".join(lines) + "\n"
+
+
 def run10_txt(report: dict, replay: list[dict], port: int, seat_out: str) -> str:
     days = report["days"]
     first, last = days[0], days[-1]
     lines = [
-        "Cockpit seat v2, run10 (NOTE 55).",
+        "Cockpit seat v3, run10 (NOTE 56, the seat reads the cockpit block)." if V3 else "Cockpit seat v2, run10 (NOTE 55).",
         f"Local server on port {port}. Seed {SEED}, {SECTORS} sectors, {DAYS} days, {TURNS} turns a day,"
         f" {CREDITS:,} starting credits, all seats start at StarDock, Ferrengi on.",
         "Port stock live and haggle live. P1 heuristic, P2 the cockpit-only seat over HTTP.",
@@ -254,17 +291,21 @@ def main() -> int:
     last = replay[-1]
     report_final_match = last["seat_credits"] == final.get("credits") and last["seat_sector"] == final.get("sector")
     run = {
-        "note": "NOTE 55 cockpit-ai-seat-v2 run10",
+        "note": "NOTE 56 cockpit-ai-seat-v3 run10" if V3 else "NOTE 55 cockpit-ai-seat-v2 run10",
         "settings": {
             "port": host.port, "seed": SEED, "universe_size": SECTORS, "max_days": DAYS, "turns_per_day": TURNS,
             "starting_credits": CREDITS, "all_start_stardock": True, "enable_ferrengi": True,
-            "port_stock_fidelity": "live", "haggle_live": "live", "seats": {"P1": "heuristic", "P2": "cockpit seat"},
+            "port_stock_fidelity": "live", "haggle_live": "live",
+            "cockpit_fields": "tw2002" if V3 else "legacy", "seats": {"P1": "heuristic", "P2": "cockpit seat"},
         },
         "days": report["days"],
         "posts": report["posts"],
         "refused": report["refused"],
         "kinds": report["kinds"],
         "gaps": report["gaps"],
+        "day_end_source": report.get("day_end_source"),
+        "start_day": report.get("start_day"),
+        "end_day": report.get("end_day"),
         "final": final,
         "replay": replay,
         "replay_all_match": all(row["match"] for row in replay),
@@ -276,7 +317,7 @@ def main() -> int:
         raise SystemExit("the token leaked into the output; nothing written")
     (OUT / "run10.json").write_text(text, encoding="utf-8")
     (OUT / "run10.txt").write_text(run10_txt(report, replay, host.port, seat_out), encoding="utf-8")
-    (OUT / "gaps.md").write_text(gaps_md(report), encoding="utf-8")
+    (OUT / "gaps.md").write_text(gaps_md_v3(report) if V3 else gaps_md(report), encoding="utf-8")
     days = report["days"]
     print(f"port {host.port}: credits {days[0]['credits_start']:,} -> {days[-1]['credits_end']:,},"
           f" net worth {days[0]['net_worth_start']:,} -> {days[-1]['net_worth_end']:,},"

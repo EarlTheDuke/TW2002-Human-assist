@@ -94,6 +94,11 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 .prompt-line{margin:0;padding:4px 14px 8px;color:var(--y)}
 #lastResult{min-height:1.2em;padding:0 14px;color:var(--g)}
 #lastResult.bad{color:var(--r)}
+#verdict{margin:0;min-height:1.2em;padding:0 14px;flex:0 0 auto;color:var(--c)}
+#verdict.ok{color:var(--g)}#verdict.bad{color:var(--r)}
+.frm .haggle{flex:1 0 100%;color:var(--y)}.frm .haggle.bad{color:var(--r)}
+.porttbl td.pct{color:var(--c);text-align:right}
+@media (max-width:700px){#verdict{padding:1px 8px}}
 .vp-screen{position:relative;min-height:220px;background:#000}
 .vp-stars,#sceneStill,#sceneImg{position:absolute;inset:0;width:100%;height:100%}
 #sceneStill,#sceneImg{object-fit:cover;z-index:1}

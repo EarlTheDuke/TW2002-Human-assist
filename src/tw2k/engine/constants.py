@@ -3718,6 +3718,18 @@ def ai_cockpit_seat_on() -> bool:
     return AI_COCKPIT_SEAT_MODE == "tw2002" or tw2002_live_profile()
 
 
+# cockpit-gaps-v1 (NOTE 56). Legacy observations carry no cockpit block.
+# tw2002 adds one block to the seat's own harness observation: the last
+# action's verdict, the port's quote and counter, this seat's last-seen
+# prices, and the StarDock hold total. Ben decides any flip.
+COCKPIT_FIELDS_MODE = "legacy"  # "legacy" | "tw2002"
+
+
+def cockpit_fields_on() -> bool:
+    """True when the harness observation carries the cockpit block."""
+    return COCKPIT_FIELDS_MODE == "tw2002" or tw2002_live_profile()
+
+
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
     """How many more colonists fit. Class M live uses one cap per pool."""
     if class_id == "M" and class_m_fidelity_live():

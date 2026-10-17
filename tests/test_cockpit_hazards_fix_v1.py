@@ -265,11 +265,25 @@ def test_small_words_use_the_singular(world):
     me.known_warps = {int(me.sector_id): []}
     me.known_sectors = {int(me.sector_id)}
     _next(page, world["host"])
-    page.keyboard.press("C")
-    page.keyboard.press("K")
-    page.wait_for_selector("#menu", timeout=10_000)
-    assert "1 sector" in page.locator("#menu").inner_text()
-    assert "1 sectors" not in page.locator("#menu").inner_text()
+    # Under load the page can still hold the observation from before the known map was cut to one
+    # sector (peek reads are cached for half a second), so open the panel again until it reads that map.
+    text = ""
+    for _ in range(40):
+        page.keyboard.press("Escape")
+        page.keyboard.press("C")
+        page.keyboard.press("K")
+        page.wait_for_function(
+            "() => { const m = document.querySelector('#menu');"
+            " return !!m && !m.hidden && (m.textContent || '').includes('You have explored'); }",
+            timeout=10_000,
+        )
+        text = page.locator("#menu").inner_text()
+        if text.count("warps") == 1:
+            break
+        page.wait_for_timeout(500)
+    assert text.count("warps") == 1, text
+    assert "1 sector" in text
+    assert "1 sectors" not in text
     _shoot(page, "known")
     page.keyboard.press("Escape")
 

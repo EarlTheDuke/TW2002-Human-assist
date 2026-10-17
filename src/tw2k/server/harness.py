@@ -487,6 +487,10 @@ def build_harness_router(runner) -> APIRouter:
         body["observation"] = obs.model_dump(mode="json") if (obs is not None and fmt in ("json", "both")) else None
         if obs is not None and fmt in ("llm", "both"):
             body["llm_user_message"] = format_observation(obs)
+        if K.cockpit_fields_on() and runner.state.universe is not None:
+            from .cockpit_fields import cockpit_block
+
+            body["cockpit"] = cockpit_block(runner.state.universe, agent)
         return body
 
     @router.get("/{player_id}/events")

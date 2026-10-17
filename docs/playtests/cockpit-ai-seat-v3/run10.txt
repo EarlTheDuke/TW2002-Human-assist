@@ -1,0 +1,45 @@
+Cockpit seat v3, run10 (NOTE 56, the seat reads the cockpit block).
+Local server on port 8020. Seed 250925, 200 sectors, 10 days, 100 turns a day, 20,000 starting credits, all seats start at StarDock, Ferrengi on.
+Port stock live and haggle live. P1 heuristic, P2 the cockpit-only seat over HTTP.
+
+day  credits start -> end      net worth start -> end    turns  trades  buys  sells  holds+  refused
+  1      19,317 ->     50,280      41,967 ->     72,930     99      38    19     19      55        0
+  2      50,280 ->    169,005      72,930 ->    191,655     99      50    25     25       0        0
+  3     160,555 ->    249,430     183,205 ->    272,080     99      50    25     25       0        0
+  4     236,959 ->    298,834     259,609 ->    321,484     99      50    25     25       0        0
+  5     283,893 ->    373,668     306,543 ->    403,968     99      29    15     14       0        0
+  6     354,985 ->    435,985     385,285 ->    458,635     99      37    18     19       0        0
+  7     414,186 ->    479,261     436,836 ->    501,911     97      30    15     15       0        0
+  8     455,298 ->    511,566     477,948 ->    541,866     99      29    15     14       0        0
+  9     485,988 ->    556,395     516,288 ->    579,045     99      27    13     14       0        0
+ 10     528,576 ->    582,519     551,226 ->    605,169     99      26    13     13       0        0
+
+Credits 19,317 -> 582,519. Net worth 41,967 -> 605,169.
+Posts 643, refused 0. Kinds: buy_equip 4, trade 366, wait 7, warp 266.
+Final (after the last day): day 11, credits 553,394, sector 166, holds 75.
+
+Replay check (cockpit vs seat, while paused):
+  day01.png: day 1, seat 10,216 cr in 84, cockpit 10216 cr in 84, match
+  day02.png: day 2, seat 110,580 cr in 84, cockpit 110580 cr in 84, match
+  day03.png: day 3, seat 202,630 cr in 138, cockpit 202630 cr in 138, match
+  day04.png: day 4, seat 267,484 cr in 84, cockpit 267484 cr in 84, match
+  day05.png: day 5, seat 331,968 cr in 1, cockpit 331968 cr in 1, match
+  day06.png: day 6, seat 403,810 cr in 1, cockpit 403810 cr in 1, match
+  day07.png: day 7, seat 436,886 cr in 1, cockpit 436886 cr in 1, match
+  day08.png: day 8, seat 493,923 cr in 138, cockpit 493923 cr in 138, match
+  day09.png: day 9, seat 529,638 cr in 84, cockpit 529638 cr in 84, match
+  day10.png: day 10, seat 548,394 cr in 31, cockpit 548394 cr in 31, match
+  final.png: day 11, seat 553,394 cr in 166, cockpit 553394 cr in 166, match
+
+Seat runner output:
+  day 1: credits 19,317 -> 50,280, net worth 41,967 -> 72,930, turns 99, trades 38, refused 0
+  day 2: credits 50,280 -> 169,005, net worth 72,930 -> 191,655, turns 99, trades 50, refused 0
+  day 3: credits 160,555 -> 249,430, net worth 183,205 -> 272,080, turns 99, trades 50, refused 0
+  day 4: credits 236,959 -> 298,834, net worth 259,609 -> 321,484, turns 99, trades 50, refused 0
+  day 5: credits 283,893 -> 373,668, net worth 306,543 -> 403,968, turns 99, trades 29, refused 0
+  day 6: credits 354,985 -> 435,985, net worth 385,285 -> 458,635, turns 99, trades 37, refused 0
+  day 7: credits 414,186 -> 479,261, net worth 436,836 -> 501,911, turns 97, trades 30, refused 0
+  day 8: credits 455,298 -> 511,566, net worth 477,948 -> 541,866, turns 99, trades 29, refused 0
+  day 9: credits 485,988 -> 556,395, net worth 516,288 -> 579,045, turns 99, trades 27, refused 0
+  day 10: credits 528,576 -> 582,519, net worth 551,226 -> 605,169, turns 99, trades 26, refused 0
+  posts 643, refused 0
