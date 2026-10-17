@@ -214,8 +214,17 @@ def test_stardock_gear_uses_the_original_names(world) -> None:
         _sit(world["universe"], "P2", 1)
 
     _next(page, dock)
-    page.wait_for_function("() => [...document.querySelectorAll('#here button')].some((b) => /buy gear/i.test(b.textContent || ''))", timeout=10_000)
-    page.evaluate("() => { const b = [...document.querySelectorAll('#here button')].find((el) => /buy gear/i.test(el.textContent || '')); if (b) b.click(); }")
+    clicked = False
+    for _ in range(4):
+        button = page.locator("#here button", has_text="buy gear")
+        try:
+            button.wait_for(state="visible", timeout=5_000)
+            button.click(timeout=5_000)
+            clicked = True
+            break
+        except Exception:
+            page.wait_for_timeout(400)
+    assert clicked, "buy gear was not clickable"
     page.wait_for_selector(".frm")
     names = page.locator(".frm option").evaluate_all("els => els.map((el) => el.textContent)")
     assert "Armid Mines" in names

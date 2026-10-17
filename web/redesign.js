@@ -63,7 +63,7 @@
     connected: false, awaiting: false, busy: false, turnSeq: 0,
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
-  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0;
+  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
   function rememberAlert(seq) {
     alertedSeq = seq;
     try { localStorage.setItem("tw2k-alert-" + (state.seat || ""), String(seq)); } catch (e) { /* keep the page count */ }
@@ -252,6 +252,9 @@
     const el = $("lastResult");
     el.textContent = text || "";
     el.className = bad ? "bad" : "";
+  }
+  function onSurface() {
+    return !!landedPlanet() || surface;
   }
   function landedPlanet() {
     if (!S || S.planet_landed == null) return null;
@@ -834,7 +837,11 @@
   }
   function here() {
     const saved = {};
-    const restore = openFormKind;
+    let restore = openFormKind;
+    if (onSurface() && (restore === "fighters" || restore === "mines")) {
+      openFormKind = null;
+      restore = null;
+    }
     if (restore) {
       const active = document.activeElement;
       if (active && active.dataset && active.dataset.n) formFocus = active.dataset.n;
@@ -2028,6 +2035,11 @@
     }
     confirmWords("Build citadel", note, () => act("build_citadel", { planet_id: planet.id }, "build citadel"));
   }
+  async function planetKey(k) {
+    if (!landedPlanet()) await refresh();
+    if (k === "B") return citadelForm();
+    return planetAct(k);
+  }
   function planetAct(k) {
     if (k === "Q") return act("liftoff", {}, "lift off");
     if (k === "B") return citadelForm();
@@ -2044,7 +2056,7 @@
   function keys() {
     const bar = $("keys");
     bar.innerHTML = "";
-    const onPlanet = !!landedPlanet();
+    const onPlanet = onSurface();
     if (onPlanet) {
       const q = document.createElement("button");
       q.type = "button";
@@ -2889,6 +2901,10 @@
       const slot = $("formSlot"); if (slot) slot.innerHTML = "";
       return;
     }
+    if (state.busy && (k === "F" || k === "Q" || PLANET_KEYS.some((row) => row[0] === k))) {
+      pendingPlanetKey = k;
+      return;
+    }
     if (k === "Enter") { if (plotted) engage(); return; }
     if (inComputer) {
       inComputer = false;
@@ -2912,17 +2928,17 @@
         '<br><span class="dk">Esc to close</span>';
       return;
     }
-    if (landedPlanet() && (k === "Q" || PLANET_KEYS.some((row) => row[0] === k))) return planetAct(k);
-    if (landedPlanet() && SPACE_OFF.includes(k)) { setResult("Lift off first", true); return; }
+    if (onSurface() && (k === "Q" || PLANET_KEYS.some((row) => row[0] === k))) { planetKey(k); return; }
+    if (onSurface() && SPACE_OFF.includes(k)) { setResult("Lift off first", true); return; }
     if (k === "D") { render(); return; }
     if (k === "I") { shipInfo(); return; }
     if (k === "Z") { rulesPanel(); return; }
     if (k === "V") return gameStatus();
     if (k === "Y") return readMail();
-    if (k === "F" && !landedPlanet()) return fighterForm();
-    if (k === "H" && !landedPlanet()) return mineForm();
+    if (k === "F" && !onSurface()) return fighterForm();
+    if (k === "H" && !onSurface()) return mineForm();
     if (k === "G") return showFighters();
-    if (k === "B" && landedPlanet()) return citadelForm();
+    if (k === "B" && onSurface()) return citadelForm();
     if (k === "B") {
       const gone = LA("self_destruct");
       if (!gone) return confirmWords("Self Destruct", "Self-destruct is not in this game. Your ship stays.");
@@ -3001,10 +3017,16 @@
     const ship = (S && S.ship) || {};
     const leftF = youAttacked ? (facts.attacker_f != null ? facts.attacker_f : ship.fighters) : (facts.defender_f != null ? facts.defender_f : ship.fighters);
     const leftS = youAttacked ? (facts.attacker_s != null ? facts.attacker_s : ship.shields) : (facts.defender_s != null ? facts.defender_s : ship.shields);
-    const theirs = theirName + " lost " + fightCount(theirF) + " fighters and " + fightCount(theirS) + " shields";
-    if (youAttacked) return "You lost " + fightCount(mineF) + " fighters and " + fightCount(mineS) + " shields, " + fightCount(leftF) + " fighters remain. " + theirs;
+    const countPhrase = (value, one, many) => {
+      const num = Number(String(value == null ? 0 : value).replace(/,/g, ""));
+      return fightCount(value) + " " + (Math.abs(num) === 1 ? one : many);
+    };
+    const leftNum = Number(String(leftF == null ? 0 : leftF).replace(/,/g, ""));
+    const remain = fightCount(leftF) + (Math.abs(leftNum) === 1 ? " fighter remains" : " fighters remain");
+    const theirs = theirName + " lost " + countPhrase(theirF, "fighter", "fighters") + " and " + countPhrase(theirS, "shield", "shields");
+    if (youAttacked) return "You lost " + countPhrase(mineF, "fighter", "fighters") + " and " + countPhrase(mineS, "shield", "shields") + ", " + remain + ". " + theirs;
     const sector = ev.sector_id || ((/Combat in (\d+)/.exec(summary) || [])[1] || "");
-    return theirName + " attacked you in " + sector + ": you lost " + fightCount(mineF) + " fighters and " + fightCount(mineS) + " shields (" + fightCount(leftF) + " fighters and " + fightCount(leftS) + " shields left). " + theirs;
+    return theirName + " attacked you in " + sector + ": you lost " + countPhrase(mineF, "fighter", "fighters") + " and " + countPhrase(mineS, "shield", "shields") + " (" + countPhrase(leftF, "fighter", "fighters") + " and " + countPhrase(leftS, "shield", "shields") + " left). " + theirs;
   }
   function boardingSentence(ev) {
     const summary = String((ev && ev.summary) || "");
@@ -3271,6 +3293,11 @@
         });
       }
       if (kind === "set_military_reaction" && args && args.pct != null) body = body + " to " + fmt(args.pct) + "%";
+      if (kind === "liftoff") surface = false;
+      if (kind === "land_planet" && /landed/i.test(body) && !/repelled/i.test(body)) {
+        surface = true;
+        surfaceTurn = state.turnSeq;
+      }
       if (!dayNote && bad) {
         setResult((/trade failed|lost patience/i.test(raw) ? "FAILED" : "REFUSED") + " — " + body + tail, true);
         if (kind === "trade") openForm("trade", retry);
@@ -3286,6 +3313,9 @@
       if (state.awaiting && pending) flushPending();
       else clearStaleWait();
       paintAttackAlert();
+      const follow = pendingPlanetKey;
+      pendingPlanetKey = "";
+      if (follow && surface) planetKey(follow);
     }
   }
 
@@ -3363,6 +3393,10 @@
     }
   }
   function render() {
+    if (S && S.planet_landed != null) {
+      surface = true;
+      surfaceTurn = state.turnSeq;
+    } else if (state.awaiting && surface && state.turnSeq > surfaceTurn) surface = false;
     const dayNow = Number(S.day);
     if (seenDay != null && dayNow !== seenDay) {
       taxFresh = true;
