@@ -144,11 +144,12 @@ def colonist_trend(class_id: PlanetClass | str, total: int) -> str:
     if K.planet_growth_tw2002():
         cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
         half = cap // 2
+        shown = f"{cap:,}"
         if count > half:
-            return f"above half the class cap ({cap}), about 5% die off each day"
+            return f"above half the class cap ({shown}), about 5% die off each day"
         if count < half:
-            return f"below half the class cap ({cap}), about 5% more each day"
-        return f"at half the class cap ({cap})"
+            return f"below half the class cap ({shown}), about 5% more each day"
+        return f"at half the class cap ({shown})"
     if not K.planet_prod_live():
         return "about 5% more each day while organics last"
     cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])

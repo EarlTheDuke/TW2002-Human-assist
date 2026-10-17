@@ -45,10 +45,12 @@ def free_port(start: int = 8050) -> int:
 
 class CuHost:
     def __init__(self, tmp: Path, token: str, *, max_days: int = 3, turns_per_day: int = 60,
-                 seed: int = 250925, park_at: int | None = None, fuel: int = 10) -> None:
+                 seed: int = 250925, park_at: int | None = None, fuel: int = 10,
+                 p1_token: str | None = None) -> None:
         import uvicorn
 
         self.token = token
+        self.p1_token = p1_token
         self.max_days, self.turns_per_day = max_days, turns_per_day
         self.seed, self.park_at, self.fuel = seed, park_at, fuel
         self.parked = False  # set once P2 sits on the parking port with its fuel
@@ -66,8 +68,12 @@ class CuHost:
             config=GameConfig(seed=self.seed, universe_size=200, max_days=self.max_days, turns_per_day=self.turns_per_day,
                               starting_credits=50_000,
                               enable_ferrengi=False, enable_planets=True, action_delay_s=0.0),
-            agents=[AgentSpec(player_id="P1", name="HBot", kind="heuristic"),
-                    AgentSpec(player_id="P2", name="Commander", kind="external", external_token=self.token)],
+            agents=[
+                AgentSpec(player_id="P1", name="HBot", kind="external", external_token=self.p1_token)
+                if self.p1_token else
+                AgentSpec(player_id="P1", name="HBot", kind="heuristic"),
+                AgentSpec(player_id="P2", name="Commander", kind="external", external_token=self.token),
+            ],
             action_delay_s=0.1,
             external_timeout_s=600.0,
         ))
