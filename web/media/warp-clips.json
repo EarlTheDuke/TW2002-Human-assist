@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "fallback_clip": "warp.out",
+  "duration_ms": 2000,
+  "hulls": {
+    "escape_pod": [{"id": "escape_pod.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "merchant_cruiser": [{"id": "merchant_cruiser.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "scout_marauder": [{"id": "scout_marauder.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "missile_frigate": [{"id": "missile_frigate.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "battleship": [{"id": "battleship.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "corporate_flagship": [{"id": "corporate_flagship.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "colonial_transport": [{"id": "colonial_transport.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "cargotran": [{"id": "cargotran.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "merchant_freighter": [{"id": "merchant_freighter.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "havoc_gunstar": [{"id": "havoc_gunstar.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "imperial_starship": [{"id": "imperial_starship.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "star_master": [{"id": "star_master.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "constellation": [{"id": "constellation.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "tkhasi_orion": [{"id": "tkhasi_orion.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "tholian_sentinel": [{"id": "tholian_sentinel.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "taurean_mule": [{"id": "taurean_mule.streak.01", "kind": "svg", "duration_ms": 2000}],
+    "interdictor_cruiser": [{"id": "interdictor_cruiser.streak.01", "kind": "svg", "duration_ms": 2000}]
+  }
+}
