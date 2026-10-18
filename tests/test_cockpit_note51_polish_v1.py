@@ -274,7 +274,7 @@ def test_a_boarding_names_fighters_and_the_surrender_cost(world):
     universe = world["universe"]
     _plant_ferrengi(universe)
     page.wait_for_function(
-        "() => /1,200 fighters/.test(document.querySelector('#log').textContent || '') && /surrender costs 5 cargo holds, or 10% of the credits on board/.test(document.querySelector('#log').textContent || '')",
+        "() => /1,200 fighters/.test(document.querySelector('#log').textContent || '') && /surrender costs 5 cargo holds and all your cargo; with empty holds, 5 cargo holds and 10% of the credits on board/.test(document.querySelector('#log').textContent || '')",
         timeout=15_000,
     )
     _shoot(page, "board", "#log")
