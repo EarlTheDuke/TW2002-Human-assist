@@ -1093,7 +1093,14 @@ def hardware_v2_prices() -> dict[str, int]:
 
 
 def atomic_mines_sold() -> bool:
-    """v19: legacy always sells atomic_mines; tw2002 only while ATOMIC_MINES_PORT_NUKE is kept."""
+    """v19: legacy always sells atomic_mines; tw2002 only while ATOMIC_MINES_PORT_NUKE is kept.
+
+    NOTE 78: ATOMIC_DETONATOR_MODE live retires the port-nuke mine. The stored
+    ATOMIC_MINES_PORT_NUKE flag stays True. The detonator kills the planet
+    (colonists first, then the planet).
+    """
+    if atomic_detonator_live():
+        return False
     return (not hardware_tw2002()) or bool(ATOMIC_MINES_PORT_NUKE)
 
 
@@ -4110,6 +4117,26 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PORT_BUY_PRICE_ANCHOR_MODE",
         "D25-1 (NOTE 69): hungry buy quotes use the live anchors, not the 1.93x full-hold curve",
     ),
+    "treasury_cap_live": (
+        "TREASURY_CAP_MODE",
+        "PLN-r (NOTE 78): S1 treasury cap is 999,999,999,999,999",
+    ),
+    "course_max_live": (
+        "COURSE_MAX_MODE",
+        "MOV-g (NOTE 78): a plotted course longer than 45 hops is refused (45 UNVERIFIED for 3.11)",
+    ),
+    "big_bang_density_live": (
+        "BIG_BANG_DENSITY_MODE",
+        "MOV-h, MOV-i (NOTE 78): ports about 40%, planets up to 20%, no decorative Fed ports in 2-10",
+    ),
+    "one_way_share_live": (
+        "ONE_WAY_SHARE_MODE",
+        "MOV-f (NOTE 78): one-way share about 3% when the game does not set one_way_fraction",
+    ),
+    "atomic_detonator_live": (
+        "ATOMIC_DETONATOR_MODE",
+        "SD-l (NOTE 78): the detonator is the planet killer; the port-nuke atomic mine is retired",
+    ),
 }
 
 
@@ -4421,3 +4448,92 @@ DAY_ROLL_CLOCK_MODE = "legacy"  # "legacy" | "live"
 def day_roll_clock_live() -> bool:
     """True when a held turn still lets the day roll on the clock."""
     return DAY_ROLL_CLOCK_MODE == "live" or v311_profile()
+
+
+# v311-universe-planet-gaps-v1 (NOTE 78). Each stored default is legacy.
+# V311_PROFILE turns the five helpers on. Appended so later slices can rebase.
+# Rows 85-89. Rows 83-84 are reserved for NOTE 75.
+
+TREASURY_CAP_MODE = "legacy"  # "legacy" | "live"
+# S1_planet_handbook_v1.01.html. Fifteen 9s.
+S1_PLANET_TREASURY_CAP = 999_999_999_999_999
+
+
+def treasury_cap_live() -> bool:
+    """True when a planet treasury uses the S1 cap."""
+    return TREASURY_CAP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def planet_treasury_cap() -> int:
+    """Credits a citadel treasury may hold. Legacy stays PLANET_TREASURY_CAP."""
+    if treasury_cap_live():
+        return int(S1_PLANET_TREASURY_CAP)
+    return int(PLANET_TREASURY_CAP)
+
+
+COURSE_MAX_MODE = "legacy"  # "legacy" | "live"
+# UNVERIFIED for TWGS 3.11. Big_Bang.html option B, Maximum Course Length,
+# default 45 (range 20-255). That setting shapes the map. It is not confirmed
+# as the in-game plot limit. The clone autopilot searches PLOT_COURSE_MAX_DEPTH * 6.
+V311_COURSE_MAX_HOPS = 45
+
+
+def course_max_live() -> bool:
+    """True when a plotted course longer than V311_COURSE_MAX_HOPS is refused."""
+    return COURSE_MAX_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def plot_course_hop_limit() -> int:
+    """Hops a plotted course may take. Legacy is 60. Live is 45 (UNVERIFIED)."""
+    if course_max_live():
+        return int(V311_COURSE_MAX_HOPS)
+    return int(PLOT_COURSE_MAX_DEPTH) * 6
+
+
+BIG_BANG_DENSITY_MODE = "legacy"  # "legacy" | "live"
+# Big_Bang.html: port density default 40% (clone PORT_SPAWN_PROBABILITY is 0.65
+# of sectors past FedSpace). Planet density default 20%, range 2-40% (clone
+# GameConfig.planet_spawn_probability is 0.03). Decorative Fed ports in
+# sectors 2-10 have no source.
+V311_PORT_DENSITY = 0.40
+V311_PLANET_DENSITY = 0.20
+
+
+def big_bang_density_live() -> bool:
+    """True when a new universe uses the Big Bang port and planet densities."""
+    return BIG_BANG_DENSITY_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+ONE_WAY_SHARE_MODE = "legacy"  # "legacy" | "live"
+# Big_Bang.html option G. Default is 3%. The clone stored default stays 0.15.
+V311_ONE_WAY_FRACTION = 0.03
+
+
+def one_way_share_live() -> bool:
+    """True when an unset one-way share is about 3%."""
+    return ONE_WAY_SHARE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def one_way_fraction_for(config) -> float:
+    """The bang's one-way share. A game setting that sets it always wins."""
+    fields = getattr(config, "model_fields_set", ())
+    if "one_way_fraction" in fields:
+        return float(config.one_way_fraction)
+    if one_way_share_live():
+        return float(V311_ONE_WAY_FRACTION)
+    return float(getattr(config, "one_way_fraction", DEFAULT_ONE_WAY_FRACTION))
+
+
+ATOMIC_DETONATOR_MODE = "legacy"  # "legacy" | "live"
+
+
+def atomic_detonator_live() -> bool:
+    """True when the detonator is the planet killer and the port-nuke mine is retired."""
+    return ATOMIC_DETONATOR_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def atomic_mine_retired_error() -> str:
+    """Why an atomic mine cannot be deployed. The stored flag's sentence stays for that switch."""
+    if atomic_detonator_live():
+        return "atomic mines are retired; an atomic detonator kills the colonists first, then the planet"
+    return "atomic mines are retired (ATOMIC_MINES_PORT_NUKE off)"

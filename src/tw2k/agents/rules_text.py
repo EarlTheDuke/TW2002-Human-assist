@@ -30,7 +30,8 @@ def plot_course_call(target: object = "<sector_id>") -> str:
 
 
 def plot_course_line() -> str:
-    depth = int(K.PLOT_COURSE_MAX_DEPTH)
+    # Legacy reports PLOT_COURSE_MAX_DEPTH (10). Live reports 45 (UNVERIFIED for 3.11).
+    depth = int(K.plot_course_hop_limit()) if K.course_max_live() else int(K.PLOT_COURSE_MAX_DEPTH)
     return (
         f"- `{plot_course_call()}` — moves along the shortest known path, "
         f"up to {depth} warps. Each warp costs its normal turns. `execute` false only previews."

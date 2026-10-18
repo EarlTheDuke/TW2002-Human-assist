@@ -783,7 +783,7 @@ def handle_deploy_mines(universe: Universe, pid: str, action: Action) -> ActionR
         return ActionResult(ok=False, error=err)
     ticker = player.corp_ticker if ownership == "corporate" else None
     if kind == MineType.ATOMIC and not K.atomic_mines_sold():
-        return ActionResult(ok=False, error="atomic mines are retired (ATOMIC_MINES_PORT_NUKE off)")
+        return ActionResult(ok=False, error=K.atomic_mine_retired_error())
     if qty <= 0 or qty > player.ship.mines.get(kind, 0):
         return ActionResult(ok=False, error="insufficient mines")
     if sector.id in K.FEDSPACE_SECTORS:
