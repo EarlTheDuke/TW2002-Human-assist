@@ -38,7 +38,13 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #warps{flex:0 0 auto;padding:6px 10px;border-top:1px solid var(--b)}
 #warps button,.verb,#keys button{font:inherit;background:#000;border:1px solid var(--dc);color:var(--c);padding:4px 10px;margin:2px;cursor:pointer}
 #warps button:hover,.verb:hover,#keys button:hover{background:var(--b);color:var(--w)}
-#shipSvg{width:100%;flex:1 1 auto;min-height:40px;max-height:42%;display:block;background:radial-gradient(ellipse at 50% 55%,#001020,#000 70%)}
+#shipSvg{width:100%;height:auto;aspect-ratio:400/260;flex:0 0 auto;max-height:140px;display:block;background:radial-gradient(ellipse at 50% 45%,#0a1a32,#000 70%);overflow:hidden}
+@media (min-height:900px){#shipSvg{max-height:164px}}
+@media (max-height:780px){#shipSvg{flex:1 1 auto;min-height:0;max-height:34%}}
+@media (max-width:700px){#shipSvg{flex:0 0 auto;max-height:210px}}
+#shipSvg .hull-float{animation:ship-float 5.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes ship-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){#shipSvg .hull-float{animation:none}}
 #fighterRow,#shipStats,#holds{flex:0 0 auto}
 #shipStats{padding:6px 10px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:13px}
 .bar{display:flex;gap:6px;align-items:center}.bar .t{flex:1;height:8px;border:1px solid var(--dk);background:#111}.bar .f{display:block;height:100%}
@@ -108,12 +114,11 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 #sceneStill,#sceneImg{object-fit:cover;z-index:1}
 .scan,#sectorText,#sceneTag{z-index:2}
 .vp-controls{display:flex;gap:8px;align-items:center;padding:4px 8px}
-.holds{display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px}
-.hold{border:1px solid var(--br);padding:3px 6px;min-width:6.5em}
+.holds{display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px;width:100%;min-width:0}
+.hold{border:1px solid var(--br);padding:3px 6px;flex:1 1 22%;min-width:0}
 .hold b{color:var(--y);font-weight:normal}
-.fighters{display:flex;gap:3px;padding:0 10px 6px}
-.fighters i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:10px solid var(--dk)}
-.fighters i.on{border-bottom-color:var(--r)}
+.fighters{display:block;padding:0 10px 4px;color:var(--r);font-size:12px;line-height:1.35}
+.fighters:empty{display:none;padding:0}
 #vpSkip,[data-vp-mode]{font:inherit;background:#000;color:var(--y);border:1px solid var(--dc);padding:2px 8px}
 #mapTools{display:flex;gap:4px;padding:2px 8px;flex:0 0 auto}
 #mapTools button{font:inherit;background:#000;border:1px solid var(--dc);color:var(--c);padding:2px 8px;cursor:pointer}
