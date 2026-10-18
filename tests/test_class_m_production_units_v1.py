@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
-from tests.test_citadel_class_tables_v1 import _plant
+from tests.test_citadel_class_tables_v1 import _build, _fill, _land, _plant
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.observation import build_observation
@@ -24,6 +24,25 @@ from tw2k.engine.planets import (
 )
 
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "class-m-production-units-v1"
+# S1_planet_handbook_v1.01.html section VII, CITADEL ADVANCEMENT TABLES, rows L1..L6 as printed.
+S1_SECTION_VII = """
+M Colo 1000 2000 4000 6000 6000 6000 | F/O 300 200 500 1000 300 1000 | Org 200 50 250 1200 400 1200 | Equ 250 250 500 1000 1000 2000 | Days 4 4 5 10 5 15
+K Colo 1000 2400 4400 7000 8000 7000 | F/O 400 300 600 700 800 700 | Org 300 80 400 900 400 900 | Equ 600 400 650 800 1000 1600 | Days 6 5 8 5 4 8
+O Colo 1400 2400 4400 7000 8000 7000 | F/O 500 200 600 700 300 700 | Org 200 50 400 900 400 900 | Equ 400 300 650 800 1000 1600 | Days 6 5 8 5 4 8
+L Colo 400 1400 3600 5600 7000 5600 | F/O 150 200 600 1000 300 1000 | Org 100 50 250 1200 400 1200 | Equ 150 250 700 1000 1000 2000 | Days 2 5 5 8 5 12
+C Colo 1000 2400 4400 6600 9000 6600 | F/O 400 300 600 700 300 700 | Org 300 80 400 900 400 900 | Equ 600 400 650 700 1000 1400 | Days 5 5 7 5 4 8
+H Colo 800 1600 4400 7000 10000 7000 | F/O 500 300 1200 2000 3000 2000 | Org 300 100 400 2000 1200 2000 | Equ 600 400 1500 2500 2000 5000 | Days 4 5 8 12 5 18
+U Colo 3000 3000 8000 6000 8000 6000 | F/O 1200 300 500 500 200 500 | Org 400 100 500 200 200 200 | Equ 2500 400 2000 600 600 1200 | Days 8 4 5 5 4 8
+"""
+
+
+def _s1_rows() -> dict[str, list[tuple[int, int, int, int, int]]]:
+    rows = {}
+    for line in S1_SECTION_VII.strip().splitlines():
+        cls, rest = line.split(" ", 1)
+        cols = [[int(n) for n in part.split()[1:]] for part in rest.split("|")]
+        rows[cls] = list(zip(*cols))
+    return rows
 TOK = "note64-classm-token-p2-00000000000"
 
 
@@ -217,3 +236,40 @@ def test_the_planet_card_shows_the_class_m_day(tmp_path):
         browser.close()
         host.__exit__(None, None, None)
         pw.stop()
+
+
+def test_every_citadel_row_matches_s1_under_the_profile(v311):
+    """S1 section VII, all 42 class/level rows (colonists, fuel ore, organics, equipment, days); class M
+    colonists are people (NOTE 19), so 1,000 thousand is 1,000,000. Class U L3: "Colo 3000 3000 8000 6000 8000 6000"."""
+    rows = _s1_rows()
+    assert sum(len(levels) for levels in rows.values()) == 42
+    for cls, levels in rows.items():
+        for level, (colonists, fuel, organics, equipment, days) in enumerate(levels, start=1):
+            want = (colonists * (K.CLASS_M_PEOPLE_PER_THOUSAND if cls == "M" else 1), fuel, organics, equipment, days)
+            assert K.citadel_class_cost(cls, level) == want, (cls, level)
+    assert K.planet_colonist_cap("U") == 8_000
+    assert K.citadel_class_cost("K", 5)[1] == 800
+
+
+def test_class_u_level_3_asks_for_8000_only_with_the_switch():
+    """Legacy keeps the stored 5,000; the new switch alone asks for the S1 8,000 and a build at 7,999 is refused."""
+    assert K.CITADEL_TABLE_FIX_MODE == "legacy" and not K.citadel_table_fix_live()
+    assert K.citadel_class_cost("U", 3)[0] == 5_000
+    assert K.CITADEL_CLASS_COSTS["U"][2][0] == 5_000
+    saved = (K.CITADEL_TABLE_FIX_MODE, K.PLANET_COLONIST_CAP_MODE)
+    K.CITADEL_TABLE_FIX_MODE, K.PLANET_COLONIST_CAP_MODE = "live", "live"
+    try:
+        assert K.citadel_class_cost("U", 3)[0] == 8_000
+        u, _players = _make_universe(seed=64018)
+        owner = next(iter(u.players.values()))
+        planet = _plant(u, owner.id, class_id=PlanetClass.U, level=2)
+        _fill(planet, 7_999, 500, 500, 2_000)
+        _land(u, owner, planet)
+        refused = _build(u, owner, planet.id)
+        assert refused.ok is False and "8000" in refused.error, refused.error
+        planet.colonists[Commodity.COLONISTS] = 8_000
+        allowed = _build(u, owner, planet.id)
+        assert allowed.ok, allowed.error
+        assert planet.citadel_target == 3
+    finally:
+        K.CITADEL_TABLE_FIX_MODE, K.PLANET_COLONIST_CAP_MODE = saved

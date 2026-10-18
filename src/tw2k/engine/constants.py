@@ -1188,6 +1188,8 @@ def citadel_build_days(raw_days: int) -> int:
 def citadel_class_cost(class_id: str, level: int) -> tuple[int, int, int, int, int]:
     """Colonists, fuel ore, organics, equipment, and scaled days for one level."""
     colonists, fuel, organics, equipment, raw_days = CITADEL_CLASS_COSTS[class_id][level - 1]
+    if citadel_table_fix_live():
+        colonists = CITADEL_S1_COLONISTS.get((class_id, level), colonists)
     days = citadel_build_days(raw_days)
     if class_id == "M" and class_m_fidelity_live():
         colonists *= CLASS_M_PEOPLE_PER_THOUSAND
@@ -3365,8 +3367,8 @@ def async_day_should_roll(all_done: bool, elapsed_s: float) -> bool:
 
 # planet-colonist-cap-fidelity-v1. Appended so later slices can rebase cleanly.
 # The handbook, the Gypsy guide, and the modern manual agree: a class U planet
-# holds 3,000 colonists. A class U citadel level 3 asks for 5,000, so that
-# level cannot be started. Legacy keeps the handbook number. Live raises a
+# holds 3,000 colonists. A class U citadel level 3 asks for 8,000 (S1; the
+# stored table says 5,000, see CITADEL_TABLE_FIX_MODE), so that level cannot be started. Legacy keeps the handbook number. Live raises a
 # class only when its handbook cap is below the most colonists any citadel
 # level on that class asks for. Class U becomes 8,000 (level 5). Class M
 # stays 30,000. Four sources say 30,000. The million figure is the unsettled
@@ -3874,6 +3876,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "kill_cash_held": ("KILL_CASH_MODE", "RULINGS Addendum A (killer not paid)"),
     "pod_cash_live": ("POD_CASH_MODE", "RULINGS Addendum A (the pod has 25 credits)"),
     "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
+    "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
 }
 
 
@@ -3955,3 +3958,16 @@ def colonist_drop_error(class_id: str, pool_count: int, total: int, qty: int) ->
     if room is not None and int(qty) > room:
         return f"planet colonist cap is {planet_colonist_cap(class_id)}"
     return None
+
+
+# class-m-production-units-v1 (NOTE 64 ADDENDUM). S1_planet_handbook_v1.01.html section VII, class U
+# row "Colo 3000 3000 8000 6000 8000 6000", and TWFAQ_20PLANET.txt: a class U citadel level 3 asks
+# for 8,000 colonists. CITADEL_CLASS_COSTS keeps its 5,000, so "legacy" builds as before; "live"
+# asks for the S1 count. Appended so later slices can rebase cleanly.
+CITADEL_TABLE_FIX_MODE = "legacy"  # "legacy" | "live"
+CITADEL_S1_COLONISTS: dict[tuple[str, int], int] = {("U", 3): 8_000}
+
+
+def citadel_table_fix_live() -> bool:
+    """True when a citadel level asks for the S1 colonist count where the stored table differs."""
+    return CITADEL_TABLE_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
