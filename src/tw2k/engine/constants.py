@@ -3935,6 +3935,9 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "corp_leaver_to_ceo": ("CORP_LEAVER_DEPLOYMENTS", "live TWGS v3.34b: a leaver's corporate fighters stay with the corp under the C.E.O."),
     "corp_join_check": ("CORP_ALIGNMENT_RULE", "EIS join: signs must agree, 0 fits either side, later drift is not an oust"),
     "mixed_corp_least_extreme": ("MIXED_CORP_EXP_RULE", "Cabal MIN(ABS(lowest alignment), highest alignment) / 4"),
+    "alien_combat_fix_live": ("ALIEN_COMBAT_FIX_MODE", "NOTE 71: alien fighters trade 1:1 and shields soak first"),
+    "haggle_counter_live": ("HAGGLE_COUNTER_MODE", "NOTE 71: a port counter keeps the turn; holds are checked first"),
+    "bot_hazard_memory_live": ("BOT_HAZARD_MEMORY_MODE", "NOTE 71: a bot does not flee back into Ferrengal or a mined sector"),
 }
 
 
@@ -4149,3 +4152,40 @@ def mixed_corp_exp_rule() -> str:
 def mixed_corp_least_extreme() -> bool:
     """True when the Extern loss is min(most good, most evil) / 4."""
     return mixed_corp_exp_rule() == "least_extreme"
+
+
+# beta-combat-haggle-v1 (NOTE 71). "legacy" keeps the odds formula, where a
+# defender odds below 1 can make shields absorb more than the volley.
+# "live" trades alien fighters 1:1 and lets shields soak first, never more
+# than the volley or more than they hold. Appended so later slices rebase.
+ALIEN_COMBAT_FIX_MODE = "legacy"  # "legacy" | "live"
+
+
+def alien_combat_fix_live() -> bool:
+    """True when an alien exchange uses the 1:1 shield-first numbers."""
+    return ALIEN_COMBAT_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# beta-combat-haggle-v1 (NOTE 71). "legacy" answers a counter and then the
+# seat's turn ends. "live" keeps the seat for the next offer or accept
+# (HAGGLE_COUNTER_ROUNDS times; the live game showed 3-4) and checks empty
+# holds or cargo on board before credits or the port's stock cap. An offer
+# past the counter can still be taken inside the existing band.
+HAGGLE_COUNTER_MODE = "legacy"  # "legacy" | "live"
+HAGGLE_COUNTER_ROUNDS = 4
+
+
+def haggle_counter_live() -> bool:
+    """True when a port counter keeps the turn open and holds are checked first."""
+    return HAGGLE_COUNTER_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# beta-combat-haggle-v1 (NOTE 71). "legacy" flees and routes with no memory
+# of Ferrengal or a sector that just mined the ship. "live" refuses those
+# warps unless every exit is one of them, in which case the bot stays.
+BOT_HAZARD_MEMORY_MODE = "legacy"  # "legacy" | "live"
+
+
+def bot_hazard_memory_live() -> bool:
+    """True when a bot will not re-enter Ferrengal or a hazard it met today."""
+    return BOT_HAZARD_MEMORY_MODE == "live" or tw2002_live_profile() or v311_profile()

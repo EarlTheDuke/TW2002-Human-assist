@@ -676,6 +676,24 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
         units = math.floor(power / d_odds)
         sh_lost = min(s_eff, units)
         f_lost = min(d_f, units - sh_lost)
+    # NOTE 71. Legacy odds below 1 make floor(power / d_odds) larger than the
+    # volley, so shields can absorb more than was sent. Live alien combat
+    # trades 1:1: one volley point removes one shield, then one fighter, and
+    # never more than the shields hold. Player and Ferrengi exchanges stay
+    # on the odds formula.
+    if is_alien and K.alien_combat_fix_live():
+        volley = max(0, math.floor(power))
+        pool = s_eff + d_f
+        if qty > 0 and volley >= pool:
+            beaten = True
+            att_losses = min(qty, pool) if a_odds >= 1 else qty
+            sh_lost, f_lost = s_eff, d_f
+        else:
+            beaten = False
+            units = min(volley, pool)
+            sh_lost = min(s_eff, units)
+            f_lost = min(d_f, max(0, units - sh_lost))
+            att_losses = qty
     attacker.ship.fighters = int(attacker.ship.fighters) - att_losses
     if not is_ferr:
         combat_rewards(universe, attacker_id, int(target.alignment), att_losses)

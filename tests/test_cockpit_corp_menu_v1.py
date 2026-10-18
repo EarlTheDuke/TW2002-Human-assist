@@ -123,9 +123,10 @@ def test_invite_posts_the_other_trader(world) -> None:
     page = world["page"]
     _menu(page)
     page.get_by_role("button", name="Invite", exact=True).click()
-    page.wait_for_selector("#dangerOk", timeout=10_000)
+    page.wait_for_selector("#commanderPick", timeout=10_000)
     assert "HBot" in page.locator("#menu").inner_text()
     _shoot(page, "invite", "#menu")
+    page.locator("#dangerOk").click()
     action = _confirm(page)
     assert action["kind"] == "corp_invite"
     assert action["args"]["target"] == "P1"
@@ -150,13 +151,11 @@ def test_memo_posts_the_message(world) -> None:
     assert action["args"]["message"] == "Meet at Terra"
 
 
-def test_deposit_and_withdraw_say_unsupported(world) -> None:
+def test_deposit_and_withdraw_are_hidden_while_the_treasury_is_off(world) -> None:
     page = world["page"]
     _menu(page)
-    page.get_by_role("button", name="Deposit credits", exact=True).click()
-    assert "unsupported action" in page.locator("#lastResult").inner_text()
-    page.get_by_role("button", name="Withdraw credits", exact=True).click()
-    assert "unsupported action" in page.locator("#lastResult").inner_text()
+    assert page.get_by_role("button", name="Deposit credits", exact=True).count() == 0
+    assert page.get_by_role("button", name="Withdraw credits", exact=True).count() == 0
 
 
 def test_set_password_posts_the_word(world) -> None:
@@ -206,8 +205,9 @@ def test_alliances_propose_and_the_others_say_why(world) -> None:
     page.get_by_role("button", name="Break alliance", exact=True).click()
     assert "no alliance" in page.locator("#lastResult").inner_text()
     page.get_by_role("button", name="Propose alliance", exact=True).click()
-    page.wait_for_selector("#dangerOk", timeout=10_000)
-    assert "P1" in page.locator("#menu").inner_text()
+    page.wait_for_selector("#commanderPick", timeout=10_000)
+    assert "HBot" in page.locator("#menu").inner_text()
+    page.locator("#dangerOk").click()
     action = _confirm(page)
     assert action["kind"] == "propose_alliance"
     assert action["args"]["target"] == "P1"
