@@ -49,8 +49,15 @@
   </section>
 
   <section id="nav" class="panel">
-    <h2 class="ansi"><span class="g">◄</span> NAV COMPUTER <span class="dim">click: adjacent = warp · far = plot, ENTER flies</span></h2>
+    <h2 class="ansi"><span class="g">◄</span> NAV COMPUTER <span class="dim">click: adjacent = warp · far = course, ENTER flies</span></h2>
+    <div id="mapTools" class="ansi">
+      <button type="button" id="mapZoomIn" data-testid="map-zoom-in">+</button>
+      <button type="button" id="mapZoomOut" data-testid="map-zoom-out">−</button>
+      <button type="button" id="mapCenter" data-testid="map-center">Center</button>
+      <button type="button" id="mapEnlarge" data-testid="map-enlarge" aria-pressed="false">Enlarge</button>
+    </div>
     <svg id="map" viewBox="-300 -300 600 600"></svg>
+    <div id="course" class="ansi" data-testid="course" hidden></div>
     <div id="warps" class="ansi" data-testid="warps"></div>
   </section>
 

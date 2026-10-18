@@ -49,7 +49,7 @@ from ..engine import build_observation
 from ..engine import constants as K
 from ..engine.actions import Action, ActionKind
 from ..engine.observation import _event_visible_to, event_view, status_fields
-from ..engine.runner import full_net_worth
+from ..engine.runner import full_net_worth, query_route
 from . import harness_tokens as ht
 from . import seat_links
 
@@ -497,6 +497,23 @@ def build_harness_router(runner) -> APIRouter:
         override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
         body["starting_credits_line"] = K.starting_credits_line(override, K.opening_original_credits())
         return body
+
+    @router.get("/{player_id}/route")
+    async def route(player_id: str, request: Request, target: int) -> dict[str, Any]:
+        """NOTE 65 item 2. Read-only course over the real warp graph.
+
+        Same avoids as plot_course. No event, no turn, and it works when it
+        is not this seat's turn. A lobby GET is a public-mode read: the action
+        limiter stays on harness POSTs only.
+        """
+        agent = _require_seat(player_id, request)
+        runner.note_harness_poll(agent.player_id)
+        u = runner.state.universe
+        if u is None:
+            raise HTTPException(status_code=503, detail="match not running")
+        if player_id not in u.players:
+            raise HTTPException(status_code=404, detail=f"no such player {player_id}")
+        return query_route(u, player_id, target)
 
     def _turn_clock(player_id: str) -> dict[str, Any] | None:
         """NOTE 60 item 4: when this seat's next turn comes back and when the next day starts.
