@@ -587,7 +587,8 @@ class Lobby:
         info = self.live.get(g["id"], {})
         return JSONResponse({"id": g["id"], "name": g["name"], "status": g["status"], "day": info.get("day"),
                              "finished": info.get("finished"), "open_seats":
-                             sum(1 for s in self.store.seats(g["id"]) if not s["guest_id"])})
+                             sum(1 for s in self.store.seats(g["id"]) if not s["guest_id"]),
+                             "starting_credits": pages.credits_phrase(g["settings"])})
 
     async def status(self, request: Request) -> Response:
         open_seats = sum(1 for g in self._listed() for _ in range(g["open_seats"]))

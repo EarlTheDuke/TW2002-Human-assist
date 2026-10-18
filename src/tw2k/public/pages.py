@@ -6,7 +6,7 @@ import time
 from html import escape
 from typing import Any, Iterable
 
-from .security import DAY_PRESETS, UNIVERSE_SIZES
+from .security import DAY_PRESETS, UNIVERSE_SIZES, credits_phrase
 
 FULL_TEXT = "The beta is full right now, try again later"
 
@@ -114,7 +114,7 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         rows.append(
             f"<tr><td><b>{escape(g['name'])}</b><br><span class=\"note\">"
             f"{'v3.11' if s['rules'] == 'v311' else 'legacy'} rules &middot; {s['universe_size']} sectors &middot; "
-            f"{_day_label(s['day_seconds'])} days &middot; {s['bots']} bots</span></td>"
+            f"{_day_label(s['day_seconds'])} days &middot; {s['bots']} bots<br>{escape(credits_phrase(s))}</span></td>"
             f"<td>{_status_tag(g['status'])} <span class=\"note\">{escape(day)}</span></td>"
             f"<td>{open_seats} of {s['humans']} seats open</td><td>{join} {watch}</td></tr>"
         )
@@ -147,7 +147,7 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
              presets: dict[str, int] | None = None) -> str:
     v = {"name": "", "rules": "v311", "universe_size": "1000", "max_days": "30", "turns_per_day": "250",
          "starting_package": "v311", "bots": "2", "ferrengi": "on", "day": "30m", "humans": "1",
-         "visibility": "listed"}
+         "visibility": "listed", "starting_credits": "original", "starting_credits_custom": ""}
     v.update({k: str(val) for k, val in (values or {}).items()})
     err = f"<div class=\"err\">{escape(error)}</div>" if error else ""
     sizes = "".join(_opt(str(n), f"{n} sectors", v["universe_size"]) for n in UNIVERSE_SIZES)
@@ -162,6 +162,9 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 <label for="rules">Rule set</label><select id="rules" name="rules">{_opt('v311', 'v3.11 (recommended)', v['rules'])}{_opt('legacy', 'Legacy (this project)', v['rules'])}</select>
 <label for="starting_package">Starting package</label><select id="starting_package" name="starting_package">{_opt('v311', 'v3.11 starting package', v['starting_package'])}{_opt('classic', 'Classic (legacy rules only)', v['starting_package'])}</select>
 <p class="note">v3.11 rules always use the v3.11 starting package.</p>
+<label for="starting_credits">Starting credits</label><select id="starting_credits" name="starting_credits">{_opt('original', 'Original (v3.11 default, 300 cr)', v['starting_credits'])}{_opt('10000', '10,000', v['starting_credits'])}{_opt('100000', '100,000', v['starting_credits'])}{_opt('1000000', '1,000,000', v['starting_credits'])}{_opt('custom', 'Custom', v['starting_credits'])}</select>
+<label for="starting_credits_custom">Custom amount</label><input id="starting_credits_custom" name="starting_credits_custom" type="number" min="0" max="10000000" value="{escape(v['starting_credits_custom'])}">
+<p class="note">Original leaves the package as it is (300 cr under v3.11). A preset or a custom amount, 0 to 10,000,000, is the opening credits for every human and every bot.</p>
 <label for="universe_size">Universe size</label><select id="universe_size" name="universe_size">{sizes}</select>
 <label for="max_days">Max days</label><input id="max_days" name="max_days" type="number" min="1" max="365" value="{escape(v['max_days'])}">
 <label for="turns_per_day">Turns per day</label><input id="turns_per_day" name="turns_per_day" type="number" min="20" max="2000" value="{escape(v['turns_per_day'])}">

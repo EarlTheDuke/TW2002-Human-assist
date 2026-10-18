@@ -152,9 +152,11 @@ class GameForm:
     humans: int = 1
     listed: bool = True
     day_seconds: int = 1800
+    # None is Original: the worker does not pass an override.
+    starting_credits_override: int | None = None
 
     def settings(self) -> dict[str, Any]:
-        return {
+        out = {
             "rules": self.rules,
             "universe_size": self.universe_size,
             "max_days": self.max_days,
@@ -167,6 +169,9 @@ class GameForm:
             "humans": self.humans,
             "seed": secrets.randbelow(2**31 - 1) + 1,
         }
+        if self.starting_credits_override is not None:
+            out["starting_credits_override"] = self.starting_credits_override
+        return out
 
 
 class FormError(ValueError):
@@ -199,7 +204,50 @@ def _as_bool(data: dict, key: str, default: bool) -> bool:
 
 
 _ALLOWED = {"name", "rules", "universe_size", "max_days", "turns_per_day", "starting_package", "bots", "ferrengi",
-            "day", "humans", "listed", "visibility"}
+            "day", "humans", "listed", "visibility", "starting_credits", "starting_credits_custom"}
+
+_CREDITS_MAX = 10_000_000
+
+
+def starting_credits_line(override: int | None, original: int) -> str:
+    """Same sentence the cockpit and the worker show."""
+    if override is None:
+        return f"Starting credits: {int(original):,} (original)"
+    return f"Starting credits: {int(override):,} (test setting)"
+
+
+def credits_phrase(settings: dict) -> str:
+    """Lobby card line. v3.11 original is 300; classic original is 20,000."""
+    override = settings.get("starting_credits_override")
+    original = 300 if settings.get("rules") == "v311" or settings.get("starting_package") == "v311" else 20_000
+    return starting_credits_line(None if override is None else int(override), original)
+
+
+def _credits_override(data: dict) -> int | None:
+    """Original (missing or 'original') is no override. Anything else is 0..10,000,000."""
+    if "starting_credits" not in data and "starting_credits_custom" not in data:
+        return None
+    raw = data.get("starting_credits", "original")
+    if isinstance(raw, bool):
+        raise FormError("starting credits must be a whole number")
+    if raw is None:
+        return None
+    text = str(raw).strip().lower().replace(",", "").replace("_", "")
+    if text in ("", "original", "none"):
+        return None
+    if text == "custom":
+        if "starting_credits_custom" not in data or str(data.get("starting_credits_custom", "")).strip() == "":
+            raise FormError("Type a starting credit amount.")
+        return _as_int(data, "starting_credits_custom", 0, 0, _CREDITS_MAX)
+    if isinstance(raw, float) or "." in text:
+        raise FormError("starting credits must be a whole number")
+    try:
+        val = int(text)
+    except ValueError:
+        raise FormError("starting credits must be a whole number") from None
+    if not 0 <= val <= _CREDITS_MAX:
+        raise FormError(f"starting credits must be between 0 and {_CREDITS_MAX}")
+    return val
 
 
 def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameForm:
@@ -241,6 +289,7 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         humans=_as_int(data, "humans", 1, 1, 4),
         listed=listed,
         day_seconds=int(presets[day]),
+        starting_credits_override=_credits_override(data),
     )
 
 

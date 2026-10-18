@@ -243,10 +243,13 @@ class ReplayRunner(MatchRunner):
             ship = Ship()
             base_credits = getattr(self._spec.config, "starting_credits", K.STARTING_CREDITS)
             base_tpd = getattr(self._spec.config, "turns_per_day", K.STARTING_TURNS_PER_DAY)
+            override = getattr(self._spec.config, "starting_credits_override", None)
+            # None keeps the slot skew. An override is the same amount on every seat.
+            credits = base_credits + credit_skew if override is None else int(override)
             player = Player(
                 id=ag.player_id,
                 name=ag.name,
-                credits=base_credits + credit_skew,
+                credits=credits,
                 turns_per_day=base_tpd,
                 ship=ship,
                 sector_id=start_sid,

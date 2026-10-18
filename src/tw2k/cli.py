@@ -292,6 +292,12 @@ def serve(
         help="Seconds in one turn-regen day (the v3.11 day roll, the hourly turn trickle and planet "
         "day math; 10 to 604800). Default 86400. Env TW2K_TURN_REGEN_DAY_SECONDS.",
     ),
+    starting_credits_override: int = typer.Option(
+        None,
+        "--starting-credits-override",
+        help="Opening credits for every seat, human and bot (0 to 10000000). "
+        "Omit to keep the original package (300 under v3.11, 20,000 with the legacy skew).",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -305,6 +311,11 @@ def serve(
     except ValueError as exc:
         src = "--day-seconds" if day_seconds is not None else _Kday.TURN_REGEN_DAY_SECONDS_ENV
         console.print(f"[red]error:[/] {src}: {exc}")
+        raise typer.Exit(code=2) from None
+    try:
+        credits_override = _Kday.parse_credits_override(starting_credits_override)
+    except ValueError as exc:
+        console.print(f"[red]error:[/] --starting-credits-override: {exc}")
         raise typer.Exit(code=2) from None
 
     # Parse per-agent overrides from comma lists. Blanks in a slot fall
@@ -561,6 +572,7 @@ def serve(
         pause_on_seat_drop=pause_on_seat_drop,
         seat_drop_after_s=seat_drop_after_s,
         turn_regen_day_seconds=day_length,
+        starting_credits_override=credits_override,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

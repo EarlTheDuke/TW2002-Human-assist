@@ -127,6 +127,9 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
     ]
     if not settings.get("ferrengi", True):
         cmd.append("--no-ferrengi")
+    override = settings.get("starting_credits_override")
+    if override is not None:
+        cmd.extend(["--starting-credits-override", str(int(override))])
     return cmd
 
 

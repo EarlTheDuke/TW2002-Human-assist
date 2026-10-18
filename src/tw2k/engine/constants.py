@@ -336,11 +336,48 @@ def starting_package_live() -> bool:
     return STARTING_PACKAGE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
-def opening_loadout(spec_credits: int, spec_turns: int, slot: int) -> tuple[int, int, int]:
+# NOTE 65 item 0. None keeps today's opening. A number is the credits every
+# seat starts with (human and bot, no slot skew). 0 to 10,000,000.
+CREDITS_OVERRIDE_MAX = 10_000_000
+
+
+def parse_credits_override(value: object) -> int | None:
+    """Per-game opening credits, or None for the original package."""
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    if isinstance(value, bool):
+        raise ValueError("starting credits must be a whole number")
+    try:
+        number = int(str(value).strip().replace(",", "").replace("_", ""))
+    except (TypeError, ValueError):
+        raise ValueError("starting credits must be a whole number") from None
+    if not 0 <= number <= CREDITS_OVERRIDE_MAX:
+        raise ValueError(f"starting credits must be between 0 and {CREDITS_OVERRIDE_MAX}")
+    return number
+
+
+def opening_original_credits() -> int:
+    """What a seat starts with when the game did not pick an override."""
+    return LIVE_STARTING_CREDITS if starting_package_live() else STARTING_CREDITS
+
+
+def starting_credits_line(override: int | None, original: int) -> str:
+    """Game-info sentence. An override is a test setting."""
+    if override is None:
+        return f"Starting credits: {int(original):,} (original)"
+    return f"Starting credits: {int(override):,} (test setting)"
+
+
+def opening_loadout(spec_credits: int, spec_turns: int, slot: int,
+                    credits_override: int | None = None) -> tuple[int, int, int]:
     """Credits, turns per day, and fighters for seat `slot`.
 
     Legacy keeps the ±1000 credit skew. Live uses the measured pocket and
     skips the skew, which is larger than the whole 300-credit stake.
+    A credits_override replaces the credits only, for every seat, with no skew.
+    None leaves this function byte-for-byte as it was.
     """
     if starting_package_live():
         # The engine default of 1,000 means the caller did not ask. A live
@@ -349,9 +386,13 @@ def opening_loadout(spec_credits: int, spec_turns: int, slot: int) -> tuple[int,
         turns = int(spec_turns)
         if not live_pace() or turns == STARTING_TURNS_PER_DAY:
             turns = LIVE_STARTING_TURNS
-        return LIVE_STARTING_CREDITS, turns, LIVE_STARTING_FIGHTERS
-    skew = (slot * 317) % 2001 - 1000
-    return int(spec_credits) + skew, int(spec_turns), STARTING_FIGHTERS
+        credits, fighters = LIVE_STARTING_CREDITS, LIVE_STARTING_FIGHTERS
+    else:
+        skew = (slot * 317) % 2001 - 1000
+        credits, turns, fighters = int(spec_credits) + skew, int(spec_turns), STARTING_FIGHTERS
+    if credits_override is not None:
+        credits = int(credits_override)
+    return credits, turns, fighters
 
 # --- Operator directives ------------------------------------------------------
 
