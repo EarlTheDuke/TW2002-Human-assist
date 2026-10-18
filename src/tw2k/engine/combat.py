@@ -1192,6 +1192,9 @@ def _destroy_ship_tw2002(
             player.ship.holds = 1
             player.ship.fighters = 1
             player.ship.shields = 30
+        if by_other and K.pod_cash_live():
+            # RULINGS_v311.md Addendum A: "the victim's cash was gone and the pod held 25 credits".
+            player.credits = max(int(player.credits), int(K.POD_CASH_CREDITS))
         _place(universe, player, dest)
         outcome = "escape_pod"
         # The summary reaches the killer and every witness; where the pod went does not (fog).

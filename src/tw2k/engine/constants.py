@@ -3647,12 +3647,15 @@ def rival_strength_live() -> bool:
 # combat-clarity-v1. Legacy keeps today's kill: the killer is paid the victim's
 # cash on hand (DEATH_CREDITS_RECOVER_PCT, currently 100) through bank.on_ship_lost.
 # tw2002 pays the killer nothing. Holds salvage is a different path and stays.
+# v311-kill-cash-addendum-v1 (NOTE 59): V311_PROFILE turns it on. RULINGS_v311.md
+# Addendum A, live v3.34b: "in normal play the killer gets nothing from a logged-off
+# victim, and the victim's on-hand cash is destroyed (the pod has 25 credits)".
 KILL_CASH_MODE = "legacy"  # "legacy" | "tw2002"
 
 
 def kill_cash_held() -> bool:
     """True when a kill does not hand the victim's cash to the killer."""
-    return KILL_CASH_MODE == "tw2002" or tw2002_live_profile()
+    return KILL_CASH_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
 # hazards-scans-v1. Legacy keeps today's landing: a rival planet whose
@@ -3793,9 +3796,9 @@ def tax_terms() -> tuple[int, int, int]:
 
 
 # v311-rulings-v1 (NOTE 57) item 8. One switch for a game run on the v3.11 rulings:
-# RULINGS_v311.md s2-s7 plus every MASTER_PLAN switch marked yes. Its own switch,
-# separate from TW2002_LIVE_PROFILE, so KILL_CASH_MODE (RULINGS s1, percentage
-# unresolved) stays legacy. docs/plans/v311-profile-v1.md lists the set with reasons.
+# RULINGS_v311.md s2-s7 and Addendum A plus every MASTER_PLAN switch marked yes. Its own
+# switch, separate from TW2002_LIVE_PROFILE. docs/plans/v311-profile-v1.md lists the set
+# with reasons.
 V311_PROFILE = "legacy"  # "legacy" | "v311"
 
 
@@ -3868,7 +3871,22 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "ferrengi_engage_on": ("FERRENGI_ENGAGE_MODE", "MASTER_PLAN yes"),
     "siege_report_on": ("SIEGE_REPORT_MODE", "MASTER_PLAN yes"),
     "planet_growth_tw2002": ("PLANET_GROWTH_MODE", "MASTER_PLAN yes"),
+    "kill_cash_held": ("KILL_CASH_MODE", "RULINGS Addendum A (killer not paid)"),
+    "pod_cash_live": ("POD_CASH_MODE", "RULINGS Addendum A (the pod has 25 credits)"),
 }
+
+
+# v311-kill-cash-addendum-v1 (NOTE 59). RULINGS_v311.md Addendum A: "In every trial the
+# victim's cash was gone and the pod held 25 credits." Legacy leaves the pod with what
+# bank.on_ship_lost left (0 under DEATH_CREDITS_ON_HAND "lost"). "live" puts 25 credits
+# in the pod after a kill by another player. Appended so later slices can rebase cleanly.
+POD_CASH_MODE = "legacy"  # "legacy" | "live"
+POD_CASH_CREDITS = 25
+
+
+def pod_cash_live() -> bool:
+    """True when a pod after a player kill holds POD_CASH_CREDITS."""
+    return POD_CASH_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:

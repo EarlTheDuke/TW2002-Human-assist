@@ -1,12 +1,12 @@
-# v311-profile-v1 (COMMANDER NOTE 57)
+# v311-profile-v1 (COMMANDER NOTE 57, kill cash from NOTE 59)
 
-`V311_PROFILE` is one switch in `src/tw2k/engine/constants.py`. Default `"legacy"`. Set to `"v311"`, it turns on the RULINGS_v311.md rulings for items 1-6 and every MASTER_PLAN switch marked yes ("yes", "yes, after check", "yes, Ben confirm", "yes for AI-seat games"). Nothing is flipped by default; the bank pin `9b607d3dae940c0b1a69f6d7` and the 10-day digests `24863a3d` / `98a47c8a` stay with the profile off.
+`V311_PROFILE` is one switch in `src/tw2k/engine/constants.py`. Default `"legacy"`. Set to `"v311"`, it turns on the RULINGS_v311.md rulings for items 1-6, the Addendum A kill rule (NOTE 59) and every MASTER_PLAN switch marked yes ("yes", "yes, after check", "yes, Ben confirm", "yes for AI-seat games"). Nothing is flipped by default; the bank pin `9b607d3dae940c0b1a69f6d7` and the 10-day digests `24863a3d` / `98a47c8a` stay with the profile off.
 
 It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build a v3.11 profile from the yes list instead"); turning the live profile on does not turn `v311_profile()` on. The code list is `K.V311_PROFILE_HELPERS`, and `tests/test_v311_rulings_v1.py::test_profile_sets_exactly_the_documented_set` checks that this file, that dict, and the helpers agree: with only `V311_PROFILE` on, every helper below returns True and every other helper in `tests/test_tw2002_live_profile_v1.py` HELPERS returns False.
 
-Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
+Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (60 helpers)
+## The switch set (62 helpers)
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -70,6 +70,10 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7) and `C:\Users
 | 58 | `FERRENGI_ENGAGE_MODE` | `ferrengi_engage_on` | MASTER_PLAN yes | GAP 8.2 behaviour; tribute amounts UNVERIFIED |
 | 59 | `SIEGE_REPORT_MODE` | `siege_report_on` | MASTER_PLAN yes | S1 s IX visible order of events |
 | 60 | `PLANET_GROWTH_MODE` | `planet_growth_tw2002` | MASTER_PLAN yes | S1 half-cap growth/die-off; no upkeep |
+| 61 | `KILL_CASH_MODE` | `kill_cash_held` | RULINGS Addendum A (live v3.34b, T1 and T6): "in normal play the killer gets nothing from a logged-off victim, and the victim's on-hand cash is destroyed". The 100% "credits worth" pay showed only for cash set in the sysop editor (T2-T5). Holds salvage stays ("salvaged these cargo holds: 7 empty") | NOTE 57 ADDENDUM replaces the old hold |
+| 62 | `POD_CASH_MODE` | `pod_cash_live` | RULINGS Addendum A: "In every trial the victim's cash was gone and the pod held 25 credits." New switch (NOTE 59): after a kill by another player the pod holds `POD_CASH_CREDITS` (25) | - |
+
+`DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 
 Mode values under the profile: `rank_display()` returns `"exp"`, `planet_value_score_mode()` returns `"experience"`, `genesis_score_fair()` and `action_result_report()` return True. Stored values stay `"legacy"`.
 
@@ -79,7 +83,6 @@ MASTER_PLAN no, no-op, or hold, with no ruling in NOTE 57. The profile does not 
 
 | switch | MASTER_PLAN | why |
 |---|---|---|
-| `KILL_CASH_MODE` | hold | NOTE 57 item 7, RULINGS s1: the killer's percentage is not stated in any source. Stays legacy and is not in the profile. |
 | `PORT_OPEN_STOCK_MODE` | no | superseded by `PORT_STOCK_FIDELITY_MODE` |
 | `TRADE_TURN_MODE`, `WARP_COST_MODE` | no-op | rule already on |
 | `ALIGNMENT_MODE`, `RANK_TITLES_MODE`, `COMBAT_ODDS_MODE`, `CORP_RULES_V2_MODE`, `COCKPIT_PARITY_MODE` | no-op | legacy and live are the same |
@@ -102,7 +105,7 @@ MASTER_PLAN no, no-op, or hold, with no ruling in NOTE 57. The profile does not 
 - Item 4 (s5): `recover_turns` (the scheduler's clock) now goes through `refresh_offline_turns` (the action clock) when turn regen is live. Before, both paid the same seconds, and `recover_turns` floored each call, so calls a fraction of a second apart paid nothing. Under live pace with turn regen, a day rolls no sooner than `TURN_REGEN_DAY_SECONDS` after the last one, so a spent seat earns its allowance back first.
 - Item 5 (s6): `combat._offensive_wave_tw2002` replaces the partial path. Wave = min(stack, ceil(1.25 x (max fighters + max shields))). At 1:1 it cancels shields first, then fighters. A wave larger than the ship's shields plus fighters destroys the ship. The rest of the stack stays as the sector's fighters. No random draw.
 - Item 6 (s7): `TAX_RULE_MODE` (`"legacy"` | `"v311"`) and `tax_terms()`. Legacy is 5% over 100,000 at alignment 0 or more. v311 is 10% over 49,999 at alignment 1 or more. The bank, the prompt, the rules text and the bot tax-keep logic all read `tax_terms()`. Still collected once at the day tick.
-- Item 7 (s1): `kill_cash_held()` does not read `V311_PROFILE`.
+- Item 7 (s1, replaced by Addendum A in NOTE 59): `kill_cash_held()` reads `V311_PROFILE`, so a kill under the profile pays the killer 0 and `bank.on_ship_lost` destroys the victim's cash on hand. `combat._destroy_ship_tw2002` then gives the pod `POD_CASH_CREDITS` (25) under `pod_cash_live()` when another player made the kill. `corpships.apply_furb` still salvages the holds ((holds + 3) // 3, so 7 from a 20-hold Merchant Cruiser). Addendum A Q6(b) was already true and is pinned by tests: a ship entering a non-corp player's fighters is challenged, the answers are attack, pay toll (toll fighters only, "if applicable"), retreat and surrender, other verbs are refused, the day tick sends it back, and the fighter exchange is 1:1 for a Merchant Cruiser.
 
 - Soak fix (MASTER_PLAN DAY-g stall): with turn regen live, `_is_day_done` treats a seat short of a warp as done until its turns pool back. Before, a seat offered one returned turn spent it on a wait, and every code bot waited out each day from day 2.
 
