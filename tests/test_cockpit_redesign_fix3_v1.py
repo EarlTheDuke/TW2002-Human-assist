@@ -14,6 +14,8 @@ TOK = "fix3-e2e-token-p2-00000000000000"
 
 
 def _park_on_planet(host: CuHost) -> None:
+    from tw2k.engine.observation import build_observation
+
     universe = host.runner.state.universe
     me = universe.players["P2"]
     dest = next(sector for sector in universe.sectors.values() if sector.planet_ids and sector.id > 10)
@@ -22,6 +24,10 @@ def _park_on_planet(host: CuHost) -> None:
     if "P2" not in dest.occupant_ids:
         dest.occupant_ids.append("P2")
     me.known_sectors.add(dest.id)
+    # The course read does not take a turn, so it does not publish a new
+    # observation. Hand the seat the sector it was just moved to.
+    agent = next(a for a in host.runner.state.agents if a.player_id == "P2")
+    agent.current_observation = build_observation(universe, "P2")
 
 
 def test_landed_screen_map_phone_and_wording(tmp_path: Path, monkeypatch) -> None:
