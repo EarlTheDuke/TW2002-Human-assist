@@ -663,6 +663,7 @@ class Player(BaseModel):
             "self_destruct_lock_day": 0,
             "jettison_day": 0,
             "jettison_colonists": 0,
+            "death_delay_left": 0,
         })
 
     id: str
@@ -688,6 +689,9 @@ class Player(BaseModel):
     prev_sector_id: int | None = None
     pods_day: int = 0
     pods_today: int = 0
+    # NOTE 79 CMB-n. Midnights left before a pod may act. 0 means flying.
+    # Omitted from dumps while 0.
+    death_delay_left: int = 0
     # Sector of the open port visit. Cleared when the player leaves.
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None
@@ -1161,6 +1165,25 @@ class GameConfig(BaseModel):
     # NOTE 66. None keeps "<trader>'s Home" (legacy: "<trader> Home"). The lobby
     # name, when set, is the first human seat's planet. Left out of dumps while None.
     home_planet_name: str | None = None
+    # NOTE 79 CMB-n. None is death delay 0 (the pod flies at once). A number
+    # is how many midnights a new pod waits, once DEATH_DELAY_MODE is live.
+    # Left out of dumps while None. No printed maximum (UNVERIFIED).
+    death_delay: int | None = None
+
+    @field_validator("death_delay", mode="before")
+    @classmethod
+    def _check_death_delay(cls, value: Any) -> Any:
+        if value is None or value == "":
+            return None
+        if isinstance(value, bool):
+            raise ValueError("death delay must be a whole number of days")
+        try:
+            days = int(value)
+        except (TypeError, ValueError):
+            raise ValueError("death delay must be a whole number of days") from None
+        if days < 0:
+            raise ValueError("death delay must be a whole number of days")
+        return days
 
     @field_validator("turn_regen_day_seconds", mode="before")
     @classmethod
@@ -1193,6 +1216,8 @@ class GameConfig(BaseModel):
             data.pop("starting_credits_override", None)
         if isinstance(data, dict) and data.get("home_planet_name", 0) is None:
             data.pop("home_planet_name", None)
+        if isinstance(data, dict) and data.get("death_delay", 0) is None:
+            data.pop("death_delay", None)
         return data
 
 
