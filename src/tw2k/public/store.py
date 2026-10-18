@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS games (
     listed INTEGER NOT NULL DEFAULT 1,
     restarts INTEGER NOT NULL DEFAULT 0,
     last_activity REAL NOT NULL,
-    note TEXT
+    note TEXT,
+    ended_by TEXT
 );
 CREATE TABLE IF NOT EXISTS seats (
     game_id TEXT NOT NULL,
@@ -58,6 +59,12 @@ class Store:
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        cols = {row[1] for row in self._db.execute("PRAGMA table_info(games)")}
+        if "ended_by" not in cols:
+            self._db.execute("ALTER TABLE games ADD COLUMN ended_by TEXT")
 
     def close(self) -> None:
         with self._lock:
@@ -158,6 +165,10 @@ class Store:
             " ORDER BY g.created_at",
             (guest,),
         )
+        return [_game(r) for r in rows]
+
+    def created_games(self, guest: str) -> list[dict[str, Any]]:
+        rows = self._x("SELECT * FROM games WHERE creator=? ORDER BY created_at", (guest,))
         return [_game(r) for r in rows]
 
     # flags --------------------------------------------------------------

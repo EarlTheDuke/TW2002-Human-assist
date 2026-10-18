@@ -305,9 +305,34 @@ class MatchRunner:
         self._history = {}
         self.broadcaster.reset_history()
         self._open_save_sink(spec)
+        self._loop = asyncio.get_running_loop()
         self._task = asyncio.create_task(self._run(), name="tw2k-match")
         if spec.pause_on_seat_drop:
             self._drop_task = asyncio.create_task(self._watch_seat_drops(), name="tw2k-seat-drop")
+
+    def end_by_creator(self) -> bool:
+        """Finish the match for its creator and wake a seat that is waiting.
+
+        Call this on the match loop. The waiting seat's action is not applied:
+        the turn loop drops it once the universe is already finished.
+        """
+        universe = self.state.universe
+        if universe is None:
+            return False
+        from ..engine.victory import end_match_by_creator
+
+        ended = end_match_by_creator(universe)
+        self._stop.set()
+        self._pause.set()
+        for agent in self.state.agents:
+            queue = getattr(agent, "_queue", None)
+            if queue is None or not getattr(agent, "awaiting_input", False) or queue.full():
+                continue
+            try:
+                queue.put_nowait(Action(kind=ActionKind.WAIT, thought="[creator end]"))
+            except Exception:
+                pass
+        return ended
 
     async def stop(self) -> None:
         self._stop.set()
@@ -1052,6 +1077,12 @@ class MatchRunner:
 
                 if K.seat_deadline_live() and not missed and not passed_for_day:
                     player.seat_timeout_streak = 0
+
+                # creator-end-game-v1: the creator ended the match while this seat
+                # was waiting. Drop the action that only woke the scheduler.
+                # A day-cap finish still applies the action already in hand.
+                if is_finished(universe) and universe.win_reason == "creator":
+                    break
 
                 # Capture per-call LLM usage + cost if the agent exposes
                 # it. LLMAgent populates ``_last_usage`` in each _call_*

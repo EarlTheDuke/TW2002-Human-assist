@@ -423,6 +423,15 @@ def install(app, runner) -> None:
             asyncio.get_running_loop().call_later(0.3, signal.raise_signal, signal.SIGINT)
             return {"ok": True, "file": path.name if path else None}
 
+        @app.post("/control/end")
+        async def end_for_creator(request: Request) -> dict[str, Any]:
+            """Lobby-only. Finish the match so the end screen can load. The process stays up."""
+            _lobby_only(request)
+            if runner.state.universe is None:
+                raise HTTPException(status_code=409, detail="no match")
+            ended = runner.end_by_creator()
+            return {"ok": True, "ended": bool(ended), "finished": True}
+
         app.add_middleware(PublicLock)
     if base or brand_name:
         app.add_middleware(PageRewrite, base=base, brand_name=brand_name)
