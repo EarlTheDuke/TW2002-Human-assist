@@ -43,19 +43,40 @@
     havoc_gunstar: { holds: 50, fighters: 10000, shields: 3000, tpw: 3, photons: false, tw: true },
     imperial_starship: { holds: 150, fighters: 50000, shields: 2000, tpw: 4, photons: true, tw: true },
   };
+  // cockpit-ship-view-v1. The ANSI top/front pictures in the shipyard are copyright
+  // Martech / EIS (Drew Markham) and the EIS wallpaper licence forbids derivatives.
+  // These outlines are ours. Role comes from the public spec tables. The classic
+  // silhouette of each hull is UNVERIFIED. Names already on the panel stay as they were.
+  const FIGHTER_EXACT_CAP = 200;
   const SHIPS = {
-    escape_pod: { name: "Escape Pod", len: 60, w: 40, pods: 0, eng: 1 },
-    merchant_cruiser: { name: "Merchant Cruiser", len: 190, w: 70, pods: 2, eng: 2 },
-    scout_marauder: { name: "Scout Marauder", len: 150, w: 44, pods: 0, eng: 2 },
-    missile_frigate: { name: "Missile Frigate", len: 200, w: 60, pods: 1, eng: 2 },
-    battleship: { name: "BattleShip", len: 250, w: 96, pods: 2, eng: 3 },
-    corporate_flagship: { name: "Corporate FlagShip", len: 260, w: 100, pods: 3, eng: 3 },
-    colonial_transport: { name: "Colonial Transport", len: 240, w: 110, pods: 5, eng: 2 },
-    cargotran: { name: "CargoTran", len: 240, w: 110, pods: 6, eng: 2 },
-    merchant_freighter: { name: "Merchant Freighter", len: 220, w: 96, pods: 4, eng: 2 },
-    imperial_starship: { name: "Imperial StarShip", len: 290, w: 110, pods: 3, eng: 4 },
-    havoc_gunstar: { name: "Havoc GunStar", len: 200, w: 90, pods: 1, eng: 3 },
-    interdictor_cruiser: { name: "Interdictor Cruiser", len: 280, w: 120, pods: 4, eng: 4 },
+    escape_pod: { name: "Escape Pod", kind: "pod", len: 70, beam: 34, engines: 1, accent: "#55ffff", detail: "" },
+    merchant_cruiser: { name: "Merchant Cruiser", kind: "arrow", len: 148, beam: 52, engines: 2, accent: "#7aa2ff", detail: "pods bridge" },
+    scout_marauder: { name: "Scout Marauder", kind: "needle", len: 128, beam: 28, engines: 2, accent: "#5dffc8", detail: "bridge" },
+    missile_frigate: { name: "Missile Frigate", kind: "arrow", len: 154, beam: 44, engines: 2, accent: "#ffb15a", detail: "rails bridge" },
+    battleship: { name: "BattleShip", kind: "delta", len: 160, beam: 68, engines: 3, accent: "#c5c8ff", detail: "bridge guns" },
+    corporate_flagship: { name: "Corporate FlagShip", kind: "flag", len: 164, beam: 62, engines: 3, accent: "#ff77ff", detail: "bridge pods" },
+    colonial_transport: { name: "Colonial Transport", kind: "barge", len: 162, beam: 76, engines: 2, accent: "#7dff7d", detail: "pods" },
+    cargotran: { name: "CargoTran", kind: "barge", len: 168, beam: 70, engines: 2, accent: "#ffe566", detail: "pods" },
+    merchant_freighter: { name: "Merchant Freighter", kind: "arrow", len: 156, beam: 58, engines: 2, accent: "#7af0ff", detail: "pods bridge" },
+    imperial_starship: { name: "Imperial StarShip", kind: "capital", len: 172, beam: 70, engines: 4, accent: "#ffe9a0", detail: "bridge nacelles" },
+    havoc_gunstar: { name: "Havoc GunStar", kind: "gun", len: 150, beam: 56, engines: 3, accent: "#ff8844", detail: "guns bridge" },
+    star_master: { name: "Star Master", kind: "arrow", len: 144, beam: 46, engines: 2, accent: "#9ad7ff", detail: "dish bridge" },
+    constellation: { name: "Constellation", kind: "delta", len: 156, beam: 64, engines: 4, accent: "#d0d6ff", detail: "nacelles bridge" },
+    tkhasi_orion: { name: "T'Khasi Orion", kind: "needle", len: 146, beam: 40, engines: 2, accent: "#ff6d8a", detail: "wings bridge" },
+    tholian_sentinel: { name: "Tholian Sentinel", kind: "sentinel", len: 138, beam: 78, engines: 2, accent: "#62f0c8", detail: "bridge" },
+    taurean_mule: { name: "Taurean Mule", kind: "barge", len: 160, beam: 68, engines: 2, accent: "#d7b48a", detail: "pods" },
+    interdictor_cruiser: { name: "Interdictor Cruiser", kind: "block", len: 170, beam: 74, engines: 4, accent: "#ff5cab", detail: "ring bridge" },
+  };
+  const HULL_NORM = {
+    arrow: [[1, 0], [0.55, -0.42], [0.05, -0.95], [-0.55, -0.78], [-0.92, -0.35], [-0.72, 0], [-0.92, 0.35], [-0.55, 0.78], [0.05, 0.95], [0.55, 0.42]],
+    needle: [[1, 0], [0.15, -0.45], [-0.75, -0.7], [-1, -0.22], [-0.82, 0], [-1, 0.22], [-0.75, 0.7], [0.15, 0.45]],
+    delta: [[1, 0], [0.2, -1], [-1, -0.42], [-0.62, 0], [-1, 0.42], [0.2, 1]],
+    barge: [[0.78, 0], [0.62, -0.62], [-0.82, -1], [-1, -0.55], [-1, 0.55], [-0.82, 1], [0.62, 0.62]],
+    flag: [[1, 0], [0.48, -0.38], [0.05, -1], [-0.7, -0.88], [-1, -0.4], [-0.78, 0], [-1, 0.4], [-0.7, 0.88], [0.05, 1], [0.48, 0.38]],
+    gun: [[0.72, -0.12], [1, -0.38], [0.42, -1], [-0.78, -0.72], [-1, -0.28], [-0.8, 0], [-1, 0.28], [-0.78, 0.72], [0.42, 1], [1, 0.38], [0.72, 0.12], [0.58, 0]],
+    capital: [[1, 0], [0.7, -0.35], [0.25, -1], [-0.35, -0.92], [-1, -0.48], [-0.7, 0], [-1, 0.48], [-0.35, 0.92], [0.25, 1], [0.7, 0.35]],
+    sentinel: [[0.62, 0], [0.4, -0.78], [-0.15, -1], [-1, -0.62], [-0.72, 0], [-1, 0.62], [-0.15, 1], [0.4, 0.78]],
+    block: [[0.88, 0], [0.7, -0.48], [0.2, -0.82], [-0.65, -1], [-1, -0.58], [-1, 0.58], [-0.65, 1], [0.2, 0.82], [0.7, 0.48]],
   };
   function fragmentToken() {
     const raw = String(location.hash || "").replace(/^#/, "");
@@ -376,44 +397,157 @@
     }).catch(() => { img.hidden = true; });
   }
 
-  function shipSvg(sh, d) {
-    const cx = 200, cy = 135, L = d.len, W = d.w, x0 = cx - L / 2, x1 = cx + L / 2;
-    let g = "";
-    const sp = sh.shield_cap ? sh.shields / sh.shield_cap : 0;
-    if (sp > 0) g += '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + (L / 2 + 28) + '" ry="' + (W / 2 + 40) + '" fill="none" stroke="#55ffff" stroke-width="' + (1 + sp * 3) + '" opacity="' + (0.25 + sp * 0.6) + '" stroke-dasharray="6 4"/>';
-    const n = sh.fighters ? Math.min(48, Math.round(Math.log10(sh.fighters + 1) * 10)) : 0;
-    let seed = sh.fighters || 1;
+  function fighterPlan(n) {
+    const count = Math.max(0, Math.floor(Number(n) || 0));
+    if (count <= FIGHTER_EXACT_CAP) return { fighters: count, triangles: count, scale: 1 };
+    const scale = Math.ceil(count / FIGHTER_EXACT_CAP);
+    return { fighters: count, triangles: Math.ceil(count / scale), scale: scale };
+  }
+  function poly(points, fill, stroke, width, opacity) {
+    const p = points.map((xy) => xy[0].toFixed(1) + "," + xy[1].toFixed(1)).join(" ");
+    const op = opacity == null ? "" : ' opacity="' + opacity + '"';
+    const st = stroke ? ' stroke="' + stroke + '" stroke-width="' + (width || 1) + '"' : "";
+    return '<polygon points="' + p + '" fill="' + fill + '"' + st + op + "/>";
+  }
+  function hullOutline(def) {
+    const norm = HULL_NORM[def.kind] || HULL_NORM.arrow;
+    return norm.map((p) => [p[0] * def.len * 0.5, p[1] * def.beam * 0.5]);
+  }
+  function starfield() {
+    let seed = 77;
     const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
-    for (let i = 0; i < n; i++) {
-      const a = rnd() * 6.283, rad = L / 2 + 36 + rnd() * 22;
-      g += '<path d="M0,-3 L2.5,3 L-2.5,3Z" fill="#ff5555" transform="translate(' + (cx + Math.cos(a) * rad) + "," + (cy + Math.sin(a) * rad * 0.55) + ") rotate(" + (a * 57) + ')" opacity=".85"/>';
+    let g = "";
+    for (let i = 0; i < 46; i++) {
+      const x = (rnd() * 388 + 6).toFixed(1);
+      const y = (rnd() * 246 + 6).toFixed(1);
+      const r = (rnd() * 1.05 + 0.35).toFixed(2);
+      g += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="#d5e4ff" opacity="' + (0.28 + rnd() * 0.55).toFixed(2) + '"/>';
     }
-    const tw = sh.transwarp && sh.transwarp.fitted;
-    for (let i = 0; i < d.eng; i++) {
-      const y = cy - W / 3 + (i + 0.5) * (W * 0.66 / d.eng);
-      g += '<rect x="' + (x0 - 14) + '" y="' + (y - 5) + '" width="16" height="10" fill="#555"/><rect x="' + (x0 - 28) + '" y="' + (y - 3) + '" width="14" height="6" fill="' + (tw ? "#ff55ff" : "#55ffff") + '"/>';
-    }
-    g += '<path d="M' + x0 + "," + (cy - W / 2) + " L" + (x1 - W * 0.6) + "," + (cy - W / 2) + " L" + x1 + "," + cy + " L" + (x1 - W * 0.6) + "," + (cy + W / 2) + " L" + x0 + "," + (cy + W / 2) + ' Z" fill="#0b0b2a" stroke="#5555ff" stroke-width="2"/>';
-    const holds = Math.min(sh.holds || 0, 80);
-    const cols = Math.max(1, Math.ceil(holds / (W > 80 ? 6 : 4)));
-    const rows = Math.max(1, Math.ceil(holds / cols));
-    const gw = (L - W * 0.6 - 20) / cols, gh = (W - 14) / rows;
-    const fill = [];
-    Object.entries(sh.cargo || {}).forEach(([k, v]) => { for (let i = 0; i < v && fill.length < holds; i++) fill.push((COM[k] || ["", "#111"])[1]); });
-    for (let i = 0; i < holds; i++) {
-      const c = i % cols, rr = Math.floor(i / cols);
-      g += '<rect x="' + (x0 + 10 + c * gw) + '" y="' + (cy - W / 2 + 7 + rr * gh) + '" width="' + (gw - 1.5) + '" height="' + (gh - 1.5) + '" fill="' + (fill[i] || "#111") + '"/>';
-    }
-    if (sh.scanner) g += '<path d="M' + cx + "," + (cy - W / 2) + " l-12,-18 a14,14 0 0 0 24,0 z" + '" fill="#00aa00" stroke="#55ff55"/>';
     return g;
   }
-  function fighterPips(have, cap) {
-    const n = 12;
-    let on = cap > 0 ? Math.round(n * Math.min(1, have / cap)) : 0;
-    if (have > 0 && on < 1) on = 1;
+  function fighterMarks(triangles) {
+    if (!triangles) return "";
+    const cx = 200, cy = 124;
     let html = "";
-    for (let i = 0; i < n; i++) html += '<i class="' + (i < on ? "on" : "") + '"></i>';
-    $("fighterRow").innerHTML = html;
+    let placed = 0;
+    let ring = 0;
+    while (placed < triangles && ring < 6) {
+      const rx = Math.min(168, 126 + ring * 16);
+      const ry = Math.min(102, 80 + ring * 10);
+      const room = Math.max(12, Math.floor((2 * Math.PI * ((rx + ry) / 2)) / 6.4));
+      const use = ring >= 3 ? triangles - placed : Math.min(room, triangles - placed);
+      for (let i = 0; i < use; i++) {
+        const a = -Math.PI / 2 + ((i + 0.5) / use) * Math.PI * 2;
+        const x = cx + Math.cos(a) * rx;
+        const y = cy + Math.sin(a) * ry;
+        const rot = (a * 180 / Math.PI + 90).toFixed(1);
+        html += '<path class="fighter" data-testid="fighter-triangle" d="M0,-3.1 L2.35,2.45 L-2.35,2.45 Z" fill="#ff2a2a" stroke="#ff8888" stroke-width="0.4" transform="translate(' + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot + ')"/>';
+      }
+      placed += use;
+      ring += 1;
+    }
+    return html;
+  }
+  function shipBody(sh, def) {
+    const accent = def.accent || "#7aa2ff";
+    const detail = new Set(String(def.detail || "").split(" ").filter(Boolean));
+    const tw = !!(sh.transwarp && sh.transwarp.fitted);
+    if (def.kind === "pod") {
+      return '<ellipse cx="4" cy="10" rx="36" ry="16" fill="#000" opacity="0.45"/>'
+        + '<ellipse cx="0" cy="0" rx="30" ry="15" fill="#102433" stroke="' + accent + '" stroke-width="1.6"/>'
+        + '<ellipse cx="-6" cy="-4" rx="16" ry="7" fill="#1b4558"/>'
+        + '<circle cx="8" cy="0" r="6.5" fill="#071018" stroke="' + accent + '" stroke-width="1.2"/>'
+        + '<circle cx="8" cy="-1" r="2.4" fill="' + accent + '" opacity="0.8"/>'
+        + '<rect x="-42" y="-3" width="12" height="6" rx="1" fill="#243044"/>'
+        + '<rect x="-50" y="-1.6" width="9" height="3.2" fill="#bff"/>';
+    }
+    const outline = hullOutline(def);
+    const thick = outline.map((p) => [p[0] + 7, p[1] + 11]);
+    const top = outline.map((p) => [p[0] * 0.56 - 3, p[1] * 0.4 - 7]);
+    const gloss = outline.map((p) => [p[0] * 0.26 - 1, p[1] * 0.16 - 11]);
+    let g = '<ellipse cx="4" cy="18" rx="' + (def.len * 0.42).toFixed(1) + '" ry="12" fill="#000" opacity="0.4"/>';
+    if (detail.has("nacelles")) {
+      const tail = -def.len * 0.32;
+      const span = def.len * 0.46;
+      g += '<rect x="' + tail.toFixed(1) + '" y="-24" width="' + span.toFixed(1) + '" height="5" rx="2" fill="#0c1424" stroke="' + accent + '"/>';
+      g += '<rect x="' + tail.toFixed(1) + '" y="19" width="' + span.toFixed(1) + '" height="5" rx="2" fill="#0c1424" stroke="' + accent + '"/>';
+    }
+    if (detail.has("wings")) {
+      g += poly([[18, -6], [-8, -30], [-24, -8]], "#10182e", accent, 1.1);
+      g += poly([[18, 6], [-8, 30], [-24, 8]], "#10182e", accent, 1.1);
+    }
+    g += poly(thick, "#050814", "#152038", 1);
+    g += poly(outline, "#121a30", accent, 1.5);
+    g += poly(top, "#2a3d68", null, 0);
+    g += poly(gloss, "#ffffff", null, 0, 0.22);
+    if (detail.has("pods")) {
+      const y = Math.max(16, def.beam * 0.36);
+      g += '<ellipse cx="-6" cy="' + (-y).toFixed(1) + '" rx="18" ry="6.5" fill="#0c1428" stroke="' + accent + '" stroke-width="1"/>';
+      g += '<ellipse cx="-6" cy="' + y.toFixed(1) + '" rx="18" ry="6.5" fill="#0c1428" stroke="' + accent + '" stroke-width="1"/>';
+    }
+    if (detail.has("rails")) {
+      g += '<rect x="-12" y="-18" width="34" height="3.5" fill="#3a2a16" stroke="' + accent + '" stroke-width="0.8"/>';
+      g += '<rect x="-2" y="-21" width="8" height="3" fill="' + accent + '"/>';
+      g += '<rect x="10" y="-21" width="8" height="3" fill="' + accent + '"/>';
+    }
+    if (detail.has("guns")) {
+      g += '<rect x="' + (def.len * 0.28).toFixed(1) + '" y="-9" width="20" height="2.6" fill="' + accent + '"/>';
+      g += '<rect x="' + (def.len * 0.28).toFixed(1) + '" y="6.4" width="20" height="2.6" fill="' + accent + '"/>';
+    }
+    if (detail.has("ring")) {
+      g += '<ellipse cx="' + (def.len * 0.42).toFixed(1) + '" cy="0" rx="8" ry="' + (def.beam * 0.34).toFixed(1) + '" fill="none" stroke="' + accent + '" stroke-width="2"/>';
+    }
+    if (detail.has("dish")) {
+      g += '<ellipse cx="-2" cy="-16" rx="8" ry="4.5" fill="none" stroke="' + accent + '" stroke-width="1.3"/>';
+      g += '<line x1="-2" y1="-12" x2="-2" y2="-6" stroke="' + accent + '" stroke-width="1.2"/>';
+    }
+    if (detail.has("bridge")) {
+      g += poly([[-4, -5], [12, -3.2], [16, 0], [12, 3.2], [-4, 5], [-10, 3], [-10, -3]], "#182848", accent, 1);
+      g += '<ellipse cx="8" cy="0" rx="3.6" ry="2.2" fill="#d8fbff" opacity="0.8"/>';
+    }
+    const windows = def.kind === "barge" ? 6 : 4;
+    for (let i = 0; i < windows; i++) {
+      g += '<rect x="' + (-18 + i * 7) + '" y="-1.3" width="3.2" height="2" fill="' + accent + '" opacity="0.75"/>';
+    }
+    const tail = Math.min.apply(null, outline.map((p) => p[0]));
+    const glow = tw ? "#ff55ff" : "#9fffff";
+    const core = tw ? "#ffe6ff" : "#f4ffff";
+    const n = Math.max(1, def.engines || 1);
+    for (let i = 0; i < n; i++) {
+      const y = (i - (n - 1) / 2) * (n > 3 ? 8 : 11);
+      g += '<rect x="' + (tail - 14).toFixed(1) + '" y="' + (y - 3.2).toFixed(1) + '" width="13" height="6.4" rx="1" fill="#243044"/>';
+      g += '<rect x="' + (tail - 20).toFixed(1) + '" y="' + (y - 1.6).toFixed(1) + '" width="7" height="3.2" fill="' + glow + '"/>';
+      g += '<ellipse cx="' + (tail - 22).toFixed(1) + '" cy="' + y.toFixed(1) + '" rx="5" ry="1.8" fill="' + core + '" opacity="0.9"/>';
+    }
+    const cap = Number(sh.shield_cap) || 0;
+    const have = Number(sh.shields) || 0;
+    if (have > 0 && cap > 0) {
+      const sp = Math.min(1, have / cap);
+      g += '<ellipse cx="0" cy="2" rx="' + Math.max(40, def.len * 0.58).toFixed(1) + '" ry="' + Math.max(22, def.beam * 0.7).toFixed(1) + '" fill="none" stroke="#55ffff" stroke-width="' + (1 + sp * 2).toFixed(1) + '" opacity="' + (0.28 + sp * 0.4).toFixed(2) + '" stroke-dasharray="5 4"/>';
+    }
+    return g;
+  }
+  function paintShipView(sh, def) {
+    const plan = fighterPlan(sh.fighters);
+    const svg = $("shipSvg");
+    svg.setAttribute("data-hull", sh.class || "ship");
+    svg.setAttribute("data-kind", def.kind || "arrow");
+    svg.setAttribute("data-fighters", String(plan.fighters));
+    svg.setAttribute("data-triangles", String(plan.triangles));
+    svg.setAttribute("data-scale", String(plan.scale));
+    svg.setAttribute("aria-label", def.name + ", " + fmt(plan.fighters) + " fighters");
+    svg.innerHTML = starfield()
+      + '<g class="hull-float" data-testid="ship-hull">'
+      + '<g data-testid="ship-body" transform="translate(200 124)">' + shipBody(sh, def) + "</g>"
+      + fighterMarks(plan.triangles)
+      + "</g>";
+    const row = $("fighterRow");
+    if (plan.scale > 1) {
+      const word = plan.scale === 1 ? "fighter" : "fighters";
+      row.innerHTML = '<span class="fighter-legend" data-testid="fighter-legend">each triangle = ' + plan.scale + " " + word + "</span>";
+    } else {
+      row.innerHTML = "";
+    }
   }
 
   const known = (id) => !!((S.known_warps || {})[id] || (S.known_warps || {})[String(id)]);
@@ -1189,11 +1323,10 @@
 
   function paintShip() {
     const sh = S.ship || {};
-    const def = SHIPS[sh.class] || { name: String(sh.class || "ship").replaceAll("_", " "), len: 200, w: 80, pods: 2, eng: 2 };
+    const def = SHIPS[sh.class] || { name: String(sh.class || "ship").replaceAll("_", " "), kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
     $("shipName").textContent = def.name.toUpperCase();
     $("shipCls").textContent = String(sh.class || "ship").replaceAll("_", " ");
-    $("shipSvg").innerHTML = shipSvg(sh, def);
-    fighterPips(sh.fighters || 0, sh.fighter_cap || 0);
+    paintShipView(sh, def);
     const used = Object.values(sh.cargo || {}).reduce((a, b) => a + Number(b || 0), 0);
     const bar = (k, v, c, col) => '<div class="bar"><span>' + k + '</span><span class="t"><span class="f" style="width:' + (c ? Math.min(100, v / c * 100) : 0) + "%;background:" + col + '"></span></span><span class="w">' + fmt(v) + '<span class="dk">/' + fmt(c) + "</span></span></div>";
     const mines = sh.mines || {};
