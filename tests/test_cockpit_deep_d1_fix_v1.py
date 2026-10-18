@@ -172,7 +172,10 @@ def test_plotted_course_log_starts_at_the_origin(seats) -> None:
         arg=origin, timeout=20_000,
     )
     port.locator("button.eng").click()
-    port.wait_for_function("() => /^ok —/.test(document.querySelector('#lastResult').textContent || '')", timeout=20_000)
+    port.wait_for_function(
+        "() => /^ok —/.test(document.querySelector('#lastResult').textContent || '') || /Autopilot: arrived/.test(document.querySelector('#lastResult').textContent || '')",
+        timeout=20_000,
+    )
     log = port.locator("#log").inner_text()
     assert f"plotted course {origin} >" in log
     assert f"plotted course {beyond} >" not in log

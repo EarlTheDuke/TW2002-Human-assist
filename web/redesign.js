@@ -831,8 +831,14 @@
     if (!row || row.ok === false) { setResult("REFUSED — " + plainWords((row && row.error) || "no route"), true); return; }
     row.note = oneWaySentence(row);
     courseCard = row;
+    const hops = (row.path || []).map(Number);
+    const full = [Number(row.from)].concat(hops);
+    const turns = Number(row.total_turns || 0);
+    const sentence = "plotted course " + full.join(" > ") + ", " + hops.length + " hops" + (turns ? ", " + turns + " turns" : "");
+    rememberLine(sentence);
     mapSig = "";
-    if (S) map();
+    await refresh();
+    setResult(sentence);
   }
   function paintCourse() {
     const box = $("course");
@@ -851,7 +857,10 @@
     let html = '<div data-testid="course-line">Course to ' + courseCard.target + ": " + full.join(" > ") + ". " + hops.length + " hops, " + Number(courseCard.total_turns || 0) + " turns.</div>";
     if (courseCard.note) html += '<div data-testid="one-way-note">' + esc(courseCard.note) + "</div>";
     if (courseCard.avoiding && courseCard.avoiding.length) html += '<button type="button" data-testid="avoid-link">Avoiding: ' + courseCard.avoiding.join(", ") + "</button>";
-    html += '<button type="button" class="eng" data-testid="engage">Engage Express</button><button type="button" data-testid="course-cancel">Cancel</button>';
+    const hopCost = Number(courseCard.turns_per_hop || 0);
+    const left = Number((S && S.turns_remaining) || 0);
+    const grey = hopCost > left ? " dim" : "";
+    html += '<button type="button" class="eng' + grey + '" data-testid="engage">Engage Express</button><button type="button" data-testid="course-cancel">Cancel</button>';
     box.innerHTML = html;
     box.querySelector("[data-testid=engage]").addEventListener("click", engage);
     box.querySelector("[data-testid=course-cancel]").addEventListener("click", () => { courseCard = null; mapSig = ""; map(); });
