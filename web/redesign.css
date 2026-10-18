@@ -31,7 +31,7 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #map .node.here circle{fill:var(--y);stroke:var(--y)}
 #map .node.port circle{stroke:var(--c)}#map .node.unk circle{stroke:var(--r);stroke-dasharray:3 2}#map .node.unk text{fill:var(--r)}#map .node.dock circle{stroke:var(--m);fill:#200020}
 #map .node:hover circle{stroke:var(--w)}
-#map text{fill:var(--c);font:13px Consolas,monospace;pointer-events:auto;cursor:pointer}#map .node.here text{fill:var(--y)}
+#map text{fill:var(--c);font-family:Consolas,monospace;font-size:var(--map-font,13px);pointer-events:auto;cursor:pointer}#map .node.here text{fill:var(--y)}
 #map .pc{fill:var(--m);font-size:10px}
 #warps{flex:0 0 auto;padding:6px 10px;border-top:1px solid var(--b)}
 #warps button,.verb,#keys button{font:inherit;background:#000;border:1px solid var(--dc);color:var(--c);padding:4px 10px;margin:2px;cursor:pointer}
@@ -111,3 +111,12 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 .fighters i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:10px solid var(--dk)}
 .fighters i.on{border-bottom-color:var(--r)}
 #vpSkip,[data-vp-mode]{font:inherit;background:#000;color:var(--y);border:1px solid var(--dc);padding:2px 8px}
+#mapTools{display:flex;gap:4px;padding:2px 8px;flex:0 0 auto}
+#mapTools button{font:inherit;background:#000;border:1px solid var(--dc);color:var(--c);padding:2px 8px;cursor:pointer}
+#course{flex:0 0 auto;padding:6px 10px;color:var(--y);border-top:1px solid var(--b)}
+#course button{font:inherit;background:#000;border:1px solid var(--y);color:var(--y);padding:4px 10px;margin:2px;cursor:pointer}
+#map .lane,#map .node circle{vector-effect:non-scaling-stroke}
+#map .arrowhead{fill:var(--m)}
+#map circle.hit{fill:transparent;stroke:none;pointer-events:all}
+#nav.enlarged{position:fixed;inset:0;z-index:30;width:100%;height:100%;max-height:none;background:#000}
+#nav.enlarged #map{width:100%;height:auto;flex:1 1 auto}

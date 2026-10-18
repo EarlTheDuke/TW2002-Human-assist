@@ -3175,6 +3175,75 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     return _report_plot(True, None, turns_spent_total, 0)
 
 
+def query_route(universe: Universe, pid: str, target: object) -> dict:
+    """Read-only course. Same graph and avoids as plot_course, no event and no turn.
+
+    NOTE 65 item 2. The ship stays put. `path` excludes the sector the ship is in,
+    matching _bfs_path. One-way lanes are directed edges that touch the route
+    (the start sector included) and have no reverse.
+    """
+    player = universe.players[pid]
+    seq = int(universe.seq)
+    events = len(universe.events)
+    sector = int(player.sector_id)
+    turns = int(player.turns_today)
+    try:
+        target_id = int(target)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "target must be a sector number", "from": sector, "path": []}
+    if target_id not in universe.sectors:
+        return {"ok": False, "error": "no such sector", "from": sector, "target": target_id, "path": []}
+    blocked = None
+    avoiding: list[int] = []
+    if K.avoid_live():
+        avoiding = sorted(int(s) for s in player.avoided_sectors)
+        blocked = {s for s in avoiding if s != target_id}
+    path = [] if target_id == sector else _bfs_path(
+        universe, sector, target_id, max_depth=K.PLOT_COURSE_MAX_DEPTH * 6, blocked=blocked,
+    )
+    if target_id != sector and not path:
+        assert universe.seq == seq and len(universe.events) == events and player.turns_today == turns
+        return {"ok": False, "error": "no route", "from": sector, "target": target_id, "path": [],
+                "avoiding": avoiding}
+    hop = int(_warp_cost_for(player))
+    if K.tow_on():
+        from .tow import move_cost as tow_move_cost
+        hop = int(tow_move_cost(universe, player))
+    nodes = [sector, *path]
+    one_way = []
+    seen = set()
+
+    def _add_one_way(src: int, dst: int) -> None:
+        key = (int(src), int(dst))
+        if key in seen:
+            return
+        seen.add(key)
+        one_way.append({"from": key[0], "to": key[1]})
+
+    for node in nodes:
+        for nxt in universe.sectors[node].warps:
+            if node in universe.sectors[int(nxt)].warps:
+                continue
+            _add_one_way(node, int(nxt))
+    for other_id, sec in universe.sectors.items():
+        oid = int(other_id)
+        if sector in sec.warps and oid not in universe.sectors[sector].warps:
+            _add_one_way(oid, sector)
+    assert universe.seq == seq and len(universe.events) == events
+    assert player.sector_id == sector and player.turns_today == turns
+    return {
+        "ok": True,
+        "from": sector,
+        "target": target_id,
+        "path": list(path),
+        "hops": len(path),
+        "turns_per_hop": hop,
+        "total_turns": hop * len(path),
+        "one_way": one_way,
+        "avoiding": avoiding,
+    }
+
+
 def _bfs_path(
     universe: Universe, src: int, dst: int, max_depth: int = 60,
     blocked: set[int] | None = None,

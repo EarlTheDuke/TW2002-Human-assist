@@ -72,6 +72,10 @@
   // NOTE 65 item 0. The server's starting-credits sentence. Empty until the first refresh.
   let SC = "";
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
+  let courseCard = null, cameFrom = null, mapEnlarged = false, mapSuppressClick = false;
+  const mapView = { k: 1, x: 0, y: 0 };
+  const mapPointers = new Map();
+  let mapPtr = null, mapPinch = null, mapDownNode = null;
   function rememberAlert(seq) {
     alertedSeq = seq;
     try { localStorage.setItem("tw2k-alert-" + (state.seat || ""), String(seq)); } catch (e) { /* keep the page count */ }
@@ -620,6 +624,10 @@
   function noteCourse(events) {
     (events || []).forEach((ev) => {
       if (ev.seq != null && !streamSeen.has(ev.seq)) { streamSeen.add(ev.seq); streamLog.push(ev); }
+      if (S && ev.kind === "warp" && ev.actor_id === S.self_id) {
+        const hopped = ev.facts || {};
+        if (hopped.from != null && hopped.to != null && Number(hopped.to) !== Number(hopped.from)) cameFrom = Number(hopped.from);
+      }
       if (ev.kind !== "autopilot") return;
       if (!courseEvent || (ev.seq || 0) >= (courseEvent.seq || 0)) courseEvent = ev;
     });
@@ -642,8 +650,166 @@
     const draw = here === start || !path.includes(here) ? [here].concat(path) : path.slice(path.indexOf(here));
     plotted = { target: Number(facts.target), path: draw, server: path, seq: best.seq || 0 };
   }
+  function mapMetrics() {
+    const rect = $("map").getBoundingClientRect();
+    const fit = Math.min(rect.width || 300, rect.height || 300) / 600;
+    const unit = (fit || 1) * (mapView.k || 1);
+    return { font: 20 / unit, hit: 13 / unit };
+  }
+  function applyMapView() {
+    const svg = $("map");
+    const g = document.getElementById("mapWorld");
+    if (!g) return;
+    g.setAttribute("transform", "translate(" + mapView.x + " " + mapView.y + ") scale(" + mapView.k + ")");
+    const m = mapMetrics();
+    svg.style.setProperty("--map-font", m.font + "px");
+    g.querySelectorAll("circle.hit").forEach((c) => c.setAttribute("r", m.hit));
+  }
+  function arrowHead(x1, y1, x2, y2, from, to) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    const tipx = x2 - ux * 16, tipy = y2 - uy * 16;
+    const px = -uy * 6, py = ux * 6;
+    const bx = tipx - ux * 12, by = tipy - uy * 12;
+    return '<polygon class="arrowhead" data-from="' + from + '" data-to="' + to + '" points="' + tipx + "," + tipy + " " + (bx + px) + "," + (by + py) + " " + (bx - px) + "," + (by - py) + '"/>';
+  }
+  function laneOneWay(from, to) {
+    const back = (S.known_warps || {})[String(to)];
+    if (!back) return false;
+    return !back.map(Number).includes(Number(from));
+  }
+  function zoomMap(factor, clientX, clientY) {
+    const svg = $("map");
+    const rect = svg.getBoundingClientRect();
+    const cx = clientX == null ? rect.left + rect.width / 2 : clientX;
+    const cy = clientY == null ? rect.top + rect.height / 2 : clientY;
+    const k0 = mapView.k;
+    const k1 = Math.min(8, Math.max(0.4, k0 * factor));
+    const vx = ((cx - rect.left) / (rect.width || 1)) * 600 - 300;
+    const vy = ((cy - rect.top) / (rect.height || 1)) * 600 - 300;
+    const wx = (vx - mapView.x) / k0;
+    const wy = (vy - mapView.y) / k0;
+    mapView.k = k1;
+    mapView.x = vx - wx * k1;
+    mapView.y = vy - wy * k1;
+    applyMapView();
+  }
+  function toggleEnlarge(on) {
+    mapEnlarged = on != null ? !!on : !mapEnlarged;
+    $("nav").classList.toggle("enlarged", mapEnlarged);
+    const b = $("mapEnlarge");
+    if (b) b.setAttribute("aria-pressed", mapEnlarged ? "true" : "false");
+    mapSig = "";
+    if (S) map();
+  }
+  function bindMapPointer(svg) {
+    if (svg.dataset.bound) return;
+    svg.dataset.bound = "1";
+    svg.addEventListener("wheel", (ev) => { ev.preventDefault(); zoomMap(ev.deltaY < 0 ? 1.15 : 1 / 1.15, ev.clientX, ev.clientY); }, { passive: false });
+    svg.addEventListener("pointerdown", (ev) => {
+      if (ev.button != null && ev.button !== 0) return;
+      mapPointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (mapPointers.size === 1) {
+        mapPtr = { x: ev.clientX, y: ev.clientY, ox: mapView.x, oy: mapView.y, moved: false };
+        mapDownNode = ev.target.closest ? ev.target.closest(".node") : null;
+      } else if (mapPointers.size >= 2) mapPinch = { dist: pinchDist(), k: mapView.k };
+    });
+    svg.addEventListener("pointermove", (ev) => {
+      if (!mapPointers.has(ev.pointerId)) return;
+      mapPointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (mapPointers.size >= 2 && mapPinch) {
+        const dist = pinchDist() || mapPinch.dist;
+        mapView.k = Math.min(8, Math.max(0.4, mapPinch.k * (dist / mapPinch.dist)));
+        applyMapView();
+        return;
+      }
+      if (!mapPtr) return;
+      const dx = ev.clientX - mapPtr.x, dy = ev.clientY - mapPtr.y;
+      if (Math.hypot(dx, dy) > 5) mapPtr.moved = true;
+      const rect = svg.getBoundingClientRect();
+      const scale = 600 / (rect.width || 600);
+      mapView.x = mapPtr.ox + dx * scale;
+      mapView.y = mapPtr.oy + dy * scale;
+      applyMapView();
+    });
+    svg.addEventListener("pointerup", endPointer);
+    svg.addEventListener("pointercancel", endPointer);
+    svg.addEventListener("click", () => {
+      const node = mapDownNode;
+      mapDownNode = null;
+      if (mapSuppressClick) { mapSuppressClick = false; return; }
+      if (!node) return;
+      go(+node.dataset.id);
+    });
+    function endPointer(ev) {
+      const moved = mapPtr && mapPtr.moved && mapPointers.size === 1;
+      mapPointers.delete(ev.pointerId);
+      if (mapPointers.size < 2) mapPinch = null;
+      if (!mapPointers.size) {
+        if (moved) mapSuppressClick = true;
+        mapPtr = null;
+      }
+    }
+    function pinchDist() {
+      const pts = [...mapPointers.values()];
+      if (pts.length < 2) return 0;
+      return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+    }
+  }
+  function oneWaySentence(card) {
+    const here = Number(card.from);
+    const incoming = [...new Set((card.one_way || []).filter((e) => Number(e.to) === here).map((e) => Number(e.from)))].sort((a, b) => a - b);
+    if (cameFrom && incoming.includes(cameFrom)) {
+      incoming.splice(incoming.indexOf(cameFrom), 1);
+      incoming.unshift(cameFrom);
+    }
+    if (!incoming.length || Number(card.hops) <= 1) return "";
+    return incoming.slice(0, 3).map((pick) => here + " -> " + pick + " is one-way (" + pick + " -> " + here + " only), so the shortest way back is " + card.hops + " hops.").join(" ");
+  }
+  async function loadCourse(target) {
+    const row = await api("/" + state.seat + "/route?target=" + encodeURIComponent(target));
+    if (!row || row.ok === false) { setResult("REFUSED — " + plainWords((row && row.error) || "no route"), true); return; }
+    row.note = oneWaySentence(row);
+    courseCard = row;
+    mapSig = "";
+    if (S) map();
+  }
+  function paintCourse() {
+    const box = $("course");
+    if (!box) return;
+    if (!courseCard || !S) { box.hidden = true; box.innerHTML = ""; return; }
+    const here = Number(S.sector.id);
+    const hops = (courseCard.path || []).map(Number);
+    const on = here === Number(courseCard.from) || hops.includes(here);
+    box.hidden = false;
+    if (!on) {
+      box.innerHTML = '<div data-testid="off-course">Off course - re-plot to ' + courseCard.target + '?</div><button type="button" data-testid="replot">Re-plot</button>';
+      box.querySelector("[data-testid=replot]").addEventListener("click", () => loadCourse(courseCard.target));
+      return;
+    }
+    const full = [Number(courseCard.from)].concat(hops);
+    let html = '<div data-testid="course-line">Course to ' + courseCard.target + ": " + full.join(" > ") + ". " + hops.length + " hops, " + Number(courseCard.total_turns || 0) + " turns.</div>";
+    if (courseCard.note) html += '<div data-testid="one-way-note">' + esc(courseCard.note) + "</div>";
+    if (courseCard.avoiding && courseCard.avoiding.length) html += '<button type="button" data-testid="avoid-link">Avoiding: ' + courseCard.avoiding.join(", ") + "</button>";
+    html += '<button type="button" class="eng" data-testid="engage">Engage Express</button><button type="button" data-testid="course-cancel">Cancel</button>';
+    box.innerHTML = html;
+    box.querySelector("[data-testid=engage]").addEventListener("click", engage);
+    box.querySelector("[data-testid=course-cancel]").addEventListener("click", () => { courseCard = null; mapSig = ""; map(); });
+    const avoid = box.querySelector("[data-testid=avoid-link]");
+    if (avoid) avoid.addEventListener("click", () => avoidForm());
+  }
   function map() {
     syncPlot();
+    if (courseCard && S) {
+      const here = Number(S.sector.id);
+      const hops = (courseCard.path || []).map(Number);
+      if (here === Number(courseCard.from) || hops.includes(here)) {
+        const draw = here === Number(courseCard.from) ? [here].concat(hops) : hops.slice(hops.indexOf(here));
+        plotted = { target: Number(courseCard.target), path: draw, server: hops, seq: (plotted && plotted.seq) || 0, free: true };
+      }
+    }
+    paintCourse();
     const svg = $("map");
     const hereId = Number(S.sector.id);
     const path = (plotted && plotted.path) || [];
@@ -742,24 +908,44 @@
         });
       });
     }
-    let html = "";
+    const metrics = mapMetrics();
+    const minDist = metrics.hit * 2.4;
+    for (let pass = 0; pass < 14; pass++) {
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const a = pos[ids[i]], b = pos[ids[j]];
+          const dx = b[0] - a[0], dy = b[1] - a[1];
+          const dist = Math.hypot(dx, dy) || 0.01;
+          if (dist >= minDist) continue;
+          const push = (minDist - dist) / 2;
+          const ux = dx / dist, uy = dy / dist;
+          a[0] -= ux * push; a[1] -= uy * push;
+          b[0] += ux * push; b[1] += uy * push;
+        }
+      }
+    }
+    let html = '<g id="mapWorld">';
     const seen = new Set();
-    Object.entries(warps).forEach(([from, tos]) => (tos || []).forEach((to) => {
-      const a = Number(from), b = Number(to);
+    function addLane(a, b, extra) {
       if (!pos[a] || !pos[b]) return;
-      const key = [a, b].sort().join();
-      if (seen.has(key)) return;
+      const one = laneOneWay(a, b) && !laneOneWay(b, a);
+      const other = laneOneWay(b, a) && !laneOneWay(a, b);
+      const key = one || other ? "d" + a + ">" + b : "u" + [a, b].sort().join();
+      if (seen.has(key) || (other && seen.has("d" + b + ">" + a))) return;
       seen.add(key);
-      html += '<line class="lane" x1="' + pos[a][0] + '" y1="' + pos[a][1] + '" x2="' + pos[b][0] + '" y2="' + pos[b][1] + '"/>';
-    }));
+      const x1 = pos[a][0], y1 = pos[a][1], x2 = pos[b][0], y2 = pos[b][1];
+      let cls = "lane" + (extra || "");
+      let arrow = "";
+      let from = a, to = b;
+      if (one) { cls += " oneway"; arrow = arrowHead(x1, y1, x2, y2, a, b); }
+      else if (other) { cls += " oneway"; arrow = arrowHead(x2, y2, x1, y1, b, a); from = b; to = a; }
+      html += '<line class="' + cls + '" data-from="' + from + '" data-to="' + to + '" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/>' + arrow;
+    }
+    Object.entries(warps).forEach(([from, tos]) => (tos || []).forEach((to) => addLane(Number(from), Number(to), "")));
     (S.sector.warps_out || []).forEach((w) => {
       const b = Number(w);
-      if (!pos[hereId] || !pos[b]) return;
-      const key = [hereId, b].sort().join();
-      if (seen.has(key)) return;
-      seen.add(key);
-      const unk = known[b] && known[b].unexplored;
-      html += '<line class="lane' + (unk ? " unk" : "") + (oneWay(b) ? " oneway" : "") + '" x1="0" y1="0" x2="' + pos[b][0] + '" y2="' + pos[b][1] + '"/>';
+      const unk = known[b] && known[b].unexplored ? " unk" : "";
+      addLane(hereId, b, unk);
     });
     for (let i = 1; i < path.length; i++) {
       const a = pos[path[i - 1]], b = pos[path[i]];
@@ -770,16 +956,20 @@
     Object.values(known).forEach((k) => {
       const id = Number(k.id);
       const at = pos[id] || [0, 0];
-      let lx = at[0] + 12, ly = at[1] + 4;
-      for (let n = 0; n < 6 && labels.some((p) => Math.hypot(p[0] - lx, p[1] - ly) < 18); n++) ly += 16;
+      const gap = metrics.font;
+      let lx = at[0] + gap * 0.55, ly = at[1] + gap * 0.25;
+      for (let n = 0; n < 8 && labels.some((p) => Math.hypot(p[0] - lx, p[1] - ly) < gap); n++) ly += gap * 0.85;
       labels.push([lx, ly]);
       const adj = (S.sector.warps_out || []).map(Number).includes(id);
       const cls = ["node", id === hereId ? "here" : "", adj ? "adj" : "", k.unexplored ? "unk" : "", k.port ? "port" : "", plotted && plotted.target === id ? "tgt" : ""].join(" ");
-      html += '<g class="' + cls + '" data-id="' + id + '"><circle cx="' + at[0] + '" cy="' + at[1] + '" r="' + (id === hereId ? 11 : adj ? 9 : 6) + '"/><text x="' + lx + '" y="' + ly + '">' + id + "</text></g>";
+      const r = id === hereId ? 11 : adj ? 9 : 6;
+      html += '<g class="' + cls + '" data-id="' + id + '"><circle cx="' + at[0] + '" cy="' + at[1] + '" r="' + r + '"/><circle class="hit" cx="' + at[0] + '" cy="' + at[1] + '" r="' + metrics.hit + '"/><text x="' + lx + '" y="' + ly + '" font-size="' + metrics.font + '">' + id + "</text></g>";
     });
+    html += "</g>";
     svg.innerHTML = html;
+    applyMapView();
+    bindMapPointer(svg);
     svg.setAttribute("data-route", serverPath.join(","));
-    svg.querySelectorAll(".node").forEach((n) => n.addEventListener("click", () => go(+n.dataset.id)));
     const row = $("warps");
     row.innerHTML = '<span class="g">Warps:</span> ';
     (S.sector.warps_out || []).forEach((w, i) => {
@@ -803,7 +993,7 @@
       });
       row.appendChild(b);
     });
-    if (plotted && path.length > 1) {
+    if (!courseCard && plotted && path.length > 1) {
       const hops = serverPath.length;
       const hopCost = Number((((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || cost || 0);
       const eng = document.createElement("button");
@@ -826,20 +1016,22 @@
     return !back.map(Number).includes(Number(S.sector.id));
   }
   function go(id) {
+    if (mapSuppressClick) return;
     if (!S || Number(id) === Number(S.sector.id)) return;
     if ((S.sector.warps_out || []).map(Number).includes(Number(id))) {
       if (S.planet_landed != null) { setResult("Lift off first", true); return; }
       return act("warp", { target: id }, "warp to " + id);
     }
-    act("plot_course", { target: id, execute: false }, "plot course to " + id);
+    loadCourse(id);
   }
   function engage() {
-    if (!plotted) return;
-    if (S && S.planet_landed != null) { setResult("Lift off first", true); return; }
-    const hopCost = Number((((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || 0);
+    const target = courseCard ? courseCard.target : (plotted && plotted.target);
+    if (target == null) return;
+    if (S && S.planet_landed != null) { setResult("REFUSED — Lift off first", true); return; }
+    const hopCost = Number((courseCard && courseCard.turns_per_hop) || (((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || 0);
     const left = Number((S && S.turns_remaining) || 0);
     if (hopCost > left) { setResult("REFUSED — first hop unaffordable (need " + hopCost + " turns, have " + left + ").", true); return; }
-    act("plot_course", { target: plotted.target, execute: true }, "engage course to " + plotted.target);
+    act("plot_course", { target: target, execute: true }, "engage course to " + target);
   }
 
   function paintShip() {
@@ -3139,15 +3331,17 @@
     const m = $("menu");
     if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G", "Y", "Z"].includes(k)) { setResult(noTurnsLine(), true); return; }
     if (k === "Escape") {
+      const menuOpen = !m.hidden;
       m.hidden = true; inComputer = false; openFormKind = null; formFocus = "";
       const slot = $("formSlot"); if (slot) slot.innerHTML = "";
+      if (!menuOpen && mapEnlarged) toggleEnlarge(false);
       return;
     }
     if (state.busy && (k === "F" || k === "Q" || PLANET_KEYS.some((row) => row[0] === k))) {
       pendingPlanetKey = k;
       return;
     }
-    if (k === "Enter") { if (plotted) engage(); return; }
+    if (k === "Enter") { if (courseCard || plotted) engage(); return; }
     if (inComputer) {
       inComputer = false;
       const c = CKEYS.find((x) => x[0] === k);
@@ -3376,10 +3570,15 @@
         if (!row || row.kind === "cockpit_note") return;
         if ((row.seq || 0) > maxSeq) maxSeq = row.seq || 0;
       });
-      await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
+      const resp = await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
       state.awaiting = false;
       await refresh();
       const spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
+      if (kind === "plot_course" && args && args.execute) {
+        finishCourse(args, resp, spent);
+        $("err").hidden = true;
+        return;
+      }
       const delta = (S ? S.credits : creditsBefore) - creditsBefore;
       const tail = ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".";
       if (kind === "wait") {
@@ -3574,6 +3773,58 @@
     }
   }
 
+  function clipEvents(list) {
+    return (list || []).filter((ev) => {
+      if (!ev || !S || ev.actor_id !== S.self_id) return true;
+      if (ev.kind === "warp") {
+        const f = ev.facts || {};
+        const from = f.from != null ? Number(f.from) : Number(ev.sector_id);
+        const to = f.to != null ? Number(f.to) : (f.target != null ? Number(f.target) : NaN);
+        return to !== from;
+      }
+      if (ev.kind === "autopilot") {
+        const f = ev.facts || {};
+        return !!f.executed && Number(f.hops_done || 0) >= 1;
+      }
+      return true;
+    });
+  }
+  function finishCourse(args, resp, spent) {
+    const target = Number(args.target);
+    const here = S ? Number(S.sector.id) : 0;
+    let ev = null;
+    streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+      if (!row || row.kind !== "autopilot" || row.actor_id !== (S && S.self_id)) return;
+      if (!ev || (row.seq || 0) >= (ev.seq || 0)) ev = row;
+    });
+    const facts = (ev && ev.facts) || {};
+    const hopsDone = Number(facts.hops_done || 0);
+    const planned = Array.isArray(facts.path) && facts.path.length ? facts.path.length : (courseCard && Number(courseCard.target) === target ? Number(courseCard.hops) : hopsDone);
+    const per = courseCard && courseCard.turns_per_hop ? Number(courseCard.turns_per_hop) : 0;
+    const result = resp && resp.result;
+    if (result && result.ok === false && hopsDone < 1) {
+      setResult("REFUSED — " + plainWords(result.error || resp.reason || "refused"), true);
+      return;
+    }
+    if (hopsDone >= 1 && here === target && (!planned || hopsDone >= planned)) {
+      const used = per ? hopsDone * per : spent;
+      setResult("Autopilot: arrived at " + target + " (" + hopsDone + " hops, " + used + " turns).", false);
+      courseCard = null;
+      mapSig = "";
+      map();
+      return;
+    }
+    const why = plainWords((result && result.error) || (ev && ev.summary) || "stopped");
+    setResult("Autopilot stopped at " + here + " after " + hopsDone + " of " + planned + " hops: " + why, true);
+    if (courseCard) {
+      const rest = (courseCard.path || []).map(Number);
+      const at = rest.indexOf(here);
+      const left = at >= 0 ? rest.slice(at + 1) : rest;
+      courseCard = Object.assign({}, courseCard, { from: here, path: left, hops: left.length, total_turns: left.length * Number(courseCard.turns_per_hop || 0) });
+    }
+    mapSig = "";
+    map();
+  }
   async function fetchEvents() {
     const r = await api("/" + state.seat + "/events?since=" + state.eventsSince + "&limit=100&course=1");
     if (state.mediaHistoryUntil == null) state.mediaHistoryUntil = typeof r.latest_seq === "number" ? r.latest_seq : 0;
@@ -3587,8 +3838,8 @@
     if (window.TW2KMedia && fresh.length) {
       const hist = catchingUp ? fresh.filter((ev) => ev.seq <= state.mediaHistoryUntil) : [];
       const live = catchingUp ? fresh.filter((ev) => ev.seq > state.mediaHistoryUntil) : fresh;
-      if (hist.length) window.TW2KMedia.onEvents(hist, S, { history: true });
-      if (live.length) window.TW2KMedia.onEvents(live, S);
+      if (hist.length) window.TW2KMedia.onEvents(clipEvents(hist), S, { history: true });
+      if (live.length) window.TW2KMedia.onEvents(clipEvents(live), S);
     }
   }
 
@@ -3752,9 +4003,29 @@
       if (flag) pending = null;
       if (S) render();
     },
+    release() {
+      state.holdAwait = false;
+      state.awaiting = true;
+      if (pending) flushPending();
+    },
     serverWaits() { return Number(state.waitStreak || 0); },
     resetWaits() { waitStreak = 0; state.waitStreak = 0; },
   };
+  $("mapZoomIn").addEventListener("click", () => zoomMap(1.25));
+  $("mapZoomOut").addEventListener("click", () => zoomMap(1 / 1.25));
+  $("mapCenter").addEventListener("click", () => { mapView.x = 0; mapView.y = 0; applyMapView(); });
+  $("mapEnlarge").addEventListener("click", () => toggleEnlarge());
+  if (window.ResizeObserver) {
+    let mapBox = "";
+    new ResizeObserver(() => {
+      const rect = $("map").getBoundingClientRect();
+      const box = Math.round(rect.width) + "x" + Math.round(rect.height);
+      if (!box || box === mapBox) return;
+      mapBox = box;
+      mapSig = "";
+      if (S) map();
+    }).observe($("map"));
+  }
   if (state.token || params.get("mode") === "cu") connect();
   setInterval(() => { if (state.connected && !state.busy) refresh().catch((e) => { $("err").hidden = false; $("err").textContent = String(e.message || e); }); }, 2000);
 })();
