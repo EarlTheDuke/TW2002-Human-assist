@@ -180,7 +180,10 @@ def handle_tricron(universe: Universe, pid: str, action: Action) -> ActionResult
     state["tricron_played"] = played + 1
     _actor(
         universe, player, EventKind.TRICRON,
-        f"{player.name} played Tri-Cron",
+        (
+            f"{player.name} played Tri-Cron. Ante {int(K.TRICRON_ANTE)} cr, "
+            f"{int(K.TRICRON_ROUNDS)} rounds, pays 2:1, jackpot {int(K.TRICRON_OPENING_JACKPOT)} cr."
+        ),
         {
             "player_total": int(result["player_total"]),
             "house_total": int(result["house_total"]),

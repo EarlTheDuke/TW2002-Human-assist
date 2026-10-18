@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (63 helpers)
+## The switch set (70 helpers)
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -75,6 +75,11 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A
 | 63 | `YARD_STATS_MODE` | `yard_stats_on` | RULINGS s4 (the yard shows the s4 roster figures). New switch (NOTE 60): the buy_ship params carry `stats_by`, the server figures of every hull (name, cost, holds of max holds, fighters, shields, turns per warp, odds, photons, TransWarp) for the roster in play | - |
 | 64 | `CITADEL_TABLE_FIX_MODE` | `citadel_table_fix_live` | S1 section VII, class U row "Colo 3000 3000 8000 6000 8000 6000" (TWFAQ_20PLANET.txt agrees). New switch (NOTE 64 ADDENDUM): a class U citadel level 3 asks for 8,000 colonists (`CITADEL_S1_COLONISTS`); the stored `CITADEL_CLASS_COSTS` keeps 5,000 for legacy | - |
 | 65 | `HOME_PLANET_MODE` | `home_planet_live` | REVISION.TXT 1558 (no new planet in an occupied sector) and the new-character transcript (Fuel Ore 45 / Organics 65 / Equipment 81 thousand). New switch (NOTE 66): the home planet is outside FedSpace, the player starts landed on it, and the 191,000 start is that split. Legacy stays in the start sector with the colonists unassigned | - |
+| 66 | `TRADE_IN_PARTS_MODE` | `trade_in_parts_live` | NOTE 73: the yard credits the old ship part by part (hull, holds, drive, computer, fighters, shields, scanner) at 90 percent, one credit less when that tenth is exact. `TRADE_IN_MODE` stays the surplus gate. Legacy stays a fraction of the sticker, and a pod still counts as a Scout | - |
+| 67 | `TRADER_RANK_LIST_MODE` | `trader_rank_list_live` | NOTE 73: the observation lists every trader by experience (rank, name, title, experience, corp, ship, alive) and the end rule. No credits, net worth, or location | - |
+| 68 | `NW_ESTIMATE_MODE` | `nw_estimate_live` | NOTE 73: extra holds at their trade-in value, cargo at what the seat paid, sector fighters at the fighter rate. It does not change the experience winner | - |
+| 69 | `SEAT_IDLE_START_MODE` | `seat_idle_start_live` | NOTE 73: a seat's short idle clock starts when its client first connects. Before that there is no auto-WAIT | - |
+| 70 | `BOT_DIPLOMACY_MODE` | `bot_diplomacy_live` | NOTE 73: a code bot accepts or declines an alliance on its next turn, and answers a hail with one canned line. `ALLIANCE_MODE` stays legacy | - |
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 
