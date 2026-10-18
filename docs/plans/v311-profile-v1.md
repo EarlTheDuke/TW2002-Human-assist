@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (63 helpers)
+## The switch set (68 helpers)
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -75,6 +75,9 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A
 | 63 | `YARD_STATS_MODE` | `yard_stats_on` | RULINGS s4 (the yard shows the s4 roster figures). New switch (NOTE 60): the buy_ship params carry `stats_by`, the server figures of every hull (name, cost, holds of max holds, fighters, shields, turns per warp, odds, photons, TransWarp) for the roster in play | - |
 | 64 | `CITADEL_TABLE_FIX_MODE` | `citadel_table_fix_live` | S1 section VII, class U row "Colo 3000 3000 8000 6000 8000 6000" (TWFAQ_20PLANET.txt agrees). New switch (NOTE 64 ADDENDUM): a class U citadel level 3 asks for 8,000 colonists (`CITADEL_S1_COLONISTS`); the stored `CITADEL_CLASS_COSTS` keeps 5,000 for legacy | - |
 | 65 | `HOME_PLANET_MODE` | `home_planet_live` | REVISION.TXT 1558 (no new planet in an occupied sector) and the new-character transcript (Fuel Ore 45 / Organics 65 / Equipment 81 thousand). New switch (NOTE 66): the home planet is outside FedSpace, the player starts landed on it, and the 191,000 start is that split. Legacy stays in the start sector with the colonists unassigned | - |
+| 66 | `CLASS_M_NW_MODE` | `class_m_nw_units` | S1 class M population is counted in thousands (Ben NOTE 19; `CLASS_M_PEOPLE_PER_THOUSAND`). `COLONIST_PRICE` is that handbook unit. A class M planet's net worth divides stored people by 1,000. The growth-dividend basis stays per person. | - |
+| 67 | `CLASS_M_DROP_MODE` | `class_m_drop_units` | Terra live packs 1,000 people in a hold (`terra-colonists-v1`). Class M stores people. A drop of one hold adds 1,000 people; loading those people back uses one hold. Legacy Terra (one colonist per hold) is one handbook thousand, so the planet gains 1,000 people. | - |
+| 68 | `CLASS_M_GENESIS_MODE` | `class_m_genesis_units` | `GENESIS_SEED_COLONISTS` (2,500) is the handbook founding population, sized for an L1 of 1,000. On a class M planet that stores people the seed is 2,500,000. The scale runs only while the seed is still placed. `GENESIS_START_MODE` (row 24, S1 / GAP 6.5) leaves a new planet empty, and that empty start wins when both are on. | - |
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 

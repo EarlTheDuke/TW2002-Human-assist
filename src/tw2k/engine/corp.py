@@ -284,6 +284,29 @@ def _planets_on_leave(universe: Universe, pid: str, ticker: str, ceo_id: str) ->
             planet.owner_id = ceo_id
 
 
+def _deployments_on_leave(universe: Universe, pid: str, ticker: str, ceo_id: str) -> None:
+    """Move the leaver's corporate fighters and mines onto the C.E.O.
+
+    EIS CorporateMenu.html, Leave Your Corporation: a member who leaves
+    "will no longer have access to any of the corporation's assets." Fighters
+    go rogue only when the C.E.O. dissolves the corp. The reported owner is
+    still a player id (cr21). Off, that id stays the ex-member, so the toll
+    line and the "your fighters" pot name an outsider. On, it becomes the C.E.O.
+    The corp ticker stays, so the group is still corporate.
+    """
+    if K.CORP_LEAVER_DEPLOYMENTS != "to_ceo":
+        return
+    if not ceo_id or ceo_id == pid:
+        return
+    for sector in universe.sectors.values():
+        dep = sector.fighters
+        if dep is not None and dep.owner_id == pid and getattr(dep, "corp_ticker", None) == ticker:
+            dep.owner_id = ceo_id
+        for mine in sector.mines:
+            if mine.owner_id == pid and getattr(mine, "corp_ticker", None) == ticker:
+                mine.owner_id = ceo_id
+
+
 def _call_corpship(which: str, universe: Universe, *args) -> None:
     if not K.corpship_on():
         return
@@ -299,6 +322,7 @@ def remove_member(universe: Universe, pid: str, corp: Corporation, *, dissolve: 
     corp.member_ids = [m for m in corp.member_ids if m != pid]
     if not dissolve:
         _planets_on_leave(universe, pid, corp.ticker, corp.ceo_id)
+        _deployments_on_leave(universe, pid, corp.ticker, corp.ceo_id)
         _call_corpship("on_member_leave", universe, pid, corp.ticker)
 
 
@@ -588,13 +612,21 @@ def _mixed_penalty(universe: Universe) -> None:
         if loss <= 0:
             continue
         for player in alive:
-            if int(player.experience) <= int(K.MIXED_CORP_EXP_FLOOR):
+            before = int(player.experience)
+            floor = int(K.MIXED_CORP_EXP_FLOOR)
+            if before <= floor:
                 continue
-            player.experience = max(int(K.MIXED_CORP_EXP_FLOOR), int(player.experience) - loss)
+            player.experience = max(floor, before - loss)
+            taken = before - int(player.experience)
+            # Hekate's TWGS table (Misc_Alignment_changes_how_to_lower_twgs.txt):
+            # a trader with 102 experience ended at 1, not at 102-582. The
+            # summary and the loss field name what was actually taken.
+            if taken <= 0:
+                continue
             universe.emit(
                 EventKind.CORP_EXP_PENALTY, actor_id=player.id,
-                payload={"ticker": corp.ticker, "loss": loss, "experience": int(player.experience)},
-                summary=f"{player.name} lost {loss} experience for a mixed corp",
+                payload={"ticker": corp.ticker, "loss": taken, "experience": int(player.experience)},
+                summary=f"{player.name} lost {taken} experience for a mixed corp",
             )
 
 
