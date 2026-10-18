@@ -85,14 +85,28 @@ def _rank_rows() -> list[dict[str, Any]]:
     ]
 
 
-def game_reference(player=None, day: int = 1) -> dict[str, Any]:
+def game_reference(player=None, day: int = 1, max_days: int | None = None) -> dict[str, Any]:
+    from tw2k.engine.victory import end_rule_line
+
     ship = getattr(player, "ship", None)
     ship_class = getattr(getattr(ship, "ship_class", None), "value", None) or "merchant_cruiser"
     holds = int(getattr(ship, "holds", 0) or 0)
     today = int(day or 1)
+    days = int(max_days if max_days is not None else K.VICTORY_DEFAULT_MAX_DAYS)
     fighter = int(K.nw_fighter_value())
     shield = int(K.nw_shield_value())
     colonist = int(K.COLONIST_PRICE)
+    next_hold = int(K.hold_next_price(ship_class, holds, today))
+    if K.shop_price_live():
+        hold_formula = "550 + 20 * (holds already owned - 20)"
+    else:
+        hold_formula = f"the day's base ({int(K.hold_day_base(today))}) + 20 per hold already owned"
+    regen_pct = int(round(float(K.PORT_REGEN_PER_DAY) * 100))
+    if int(K.CORP_CREATE_COST) == 0:
+        corp_line = "A corporation costs nothing."
+    else:
+        corp_line = f"A corporation costs {int(K.CORP_CREATE_COST):,} cr."
+    estimate = f" {K.NW_ESTIMATE_NOTE}" if K.nw_estimate_live() else ""
     scoring = (
         f"The number on V is your net worth. It adds your credits, the cargo in your holds at the base prices, "
         f"and colonists in the holds at {colonist} cr each. "
@@ -100,7 +114,7 @@ def game_reference(player=None, day: int = 1) -> dict[str, Any]:
         f"The hull counts at half its price. Other gear counts at its StarDock price. "
         f"Your bank balance counts when the bank is on. "
         f"V also adds each planet, your share of the corp treasury, and parked ships. "
-        f"Taking colonists at Terra does not charge credits. "
+        f"Taking colonists at Terra does not charge credits.{estimate} "
         f"Experience ranks are listed below. Zero alignment or above uses the good title. "
         f"Below zero uses the evil title."
     )
@@ -111,7 +125,14 @@ def game_reference(player=None, day: int = 1) -> dict[str, Any]:
         "mines, a beacon, NavHaz when this sector has it, and the warps. A warp in parentheses is not on this map yet. "
         "The port table is the trade screen. Computer, then R, is the port report. "
         "Computer, then K, is the known universe. Computer, then O, is the avoid list. "
-        "The prices below are what StarDock charges today, including a fighter, a shield, and the next cargo hold on this ship."
+        "The prices below are what StarDock charges today, including a fighter, a shield, and the next cargo hold on this ship. "
+        f"The bank holds at most {int(K.BANK_MAX_BALANCE):,} cr. "
+        f"A port buys only until it is full. The price eases as it fills. Stock grows back at {regen_pct}% per day. "
+        f"The next hold on this ship costs {next_hold:,} cr. Formula: {hold_formula}. "
+        f"{end_rule_line(days)} "
+        f"Tri-Cron: ante {int(K.TRICRON_ANTE):,} cr, {int(K.TRICRON_ROUNDS)} rounds, pays 2:1, "
+        f"jackpot {int(K.TRICRON_OPENING_JACKPOT):,} cr. "
+        f"{corp_line}"
     )
     out: dict[str, Any] = {
         "day": today,

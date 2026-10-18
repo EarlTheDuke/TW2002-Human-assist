@@ -118,6 +118,13 @@ class Lobby:
     def live_games(self) -> int:
         return self.store.count_games(LIVE)
 
+    def _worker_serves(self, g: dict[str, Any]) -> bool:
+        """A running worker, or a finished one that is still up for the end screen."""
+        w = self.workers.workers.get(g["id"])
+        if w is None or not w.alive():
+            return False
+        return g["status"] in ("running", "finished")
+
     def full_for(self, humans: int) -> bool:
         return (self.live_games() >= self.cfg.max_games
                 or self.store.count_human_seats(ACTIVE) + humans > self.cfg.max_human_seats)
@@ -291,14 +298,34 @@ class Lobby:
                 info = None
             if info:
                 self.live[gid] = info
+            # A finished game leaves the running list at once, while the worker
+            # stays up so the end screen and the watch page keep loading.
+            # set_game stamps updated_at, which is when the archive clock starts.
+            if info and info.get("finished") and g["status"] == "running":
+                self.store.set_game(gid, status="finished")
+                g = dict(g)
+                g["status"] = "finished"
             last = max(self.activity.get(gid, 0.0), float(g["last_activity"] or 0.0))
             if self.open_ws.get(gid, 0) == 0 and now - last > self.cfg.idle_s:
-                done = bool(info and info.get("finished"))
+                done = g["status"] == "finished" or bool(info and info.get("finished"))
                 await self.stop_game(gid, status="finished" if done else "sleeping")
                 continue
             if gid in self.activity and self.activity[gid] - float(g["last_activity"] or 0.0) > 30:
                 self.store.set_game(gid, last_activity=self.activity[gid])
+        for g in self.store.games(("finished",)):
+            gid = g["id"]
+            w = self.workers.workers.get(gid)
+            if w is None or not w.alive() or self.lock(gid).locked():
+                continue
+            last = max(self.activity.get(gid, 0.0), float(g["last_activity"] or 0.0))
+            if self.open_ws.get(gid, 0) == 0 and now - last > self.cfg.idle_s:
+                await self.stop_game(gid, status="finished")
         for g in self.store.games(("finished", "failed", "sleeping", "stopped")):
+            still = self.workers.workers.get(g["id"])
+            # A tab on the end screen keeps the worker. An idle worker is the
+            # reaper's job; once that clock has passed, the archive can move the files.
+            if still is not None and still.alive() and self.open_ws.get(g["id"], 0) > 0:
+                continue
             if now - float(g["updated_at"]) > self.cfg.archive_s:
                 src = self.workers.game_dir(g["id"])
                 dst = self.cfg.archive_dir / g["id"]
@@ -666,7 +693,7 @@ class Lobby:
                 return self.msg("Watch from the lobby", "Use the Watch button in the lobby to see this game.", 403)
             return JSONResponse({"detail": "watch this game from the lobby"}, status_code=403)
         w = self.workers.workers.get(gid)
-        if g["status"] != "running" or w is None or not w.alive():
+        if not self._worker_serves(g):
             return await self._not_running(request, g, wants_html)
         if request.method == "POST" and rest.startswith("harness/"):
             who = (guest_id(request.cookies.get(GUEST_COOKIE)) or "") + "|" + self.ip(request)
@@ -715,7 +742,7 @@ class Lobby:
         gid = g["id"]
         ok, extra = self._spectator_extra(ws, gid, rest)
         w = self.workers.workers.get(gid)
-        if not ok or g["status"] != "running" or w is None or not w.alive():
+        if not ok or not self._worker_serves(g):
             await ws.close(code=1008)
             return
         self.open_ws[gid] = self.open_ws.get(gid, 0) + 1
@@ -858,7 +885,10 @@ def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = Non
         Route("/admin/open", lobby.admin_open, methods=["POST"]),
         Route("/admin/shutdown", lobby.admin_shutdown, methods=["POST"]),
         Route("/g/{gid:str}/watch", lobby.watch),
-        Route("/g/{gid:str}", lambda r: RedirectResponse(f"/g/{r.path_params['gid']}/", status_code=307)),
+        # Bare /g/<id> goes through the watch gate (cookie, then the spectator page).
+        # /g/<id>/ is that page: /watch already 303s here, so sending it back to
+        # /watch would loop. Without the cookie it stays the 403 from the lobby.
+        Route("/g/{gid:str}", lambda r: RedirectResponse(f"/g/{r.path_params['gid']}/watch", status_code=307)),
         WebSocketRoute("/g/{gid:str}/{rest:path}", lobby.game_ws),
         Route("/g/{gid:str}/{rest:path}", lobby.game_http,
               methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]),

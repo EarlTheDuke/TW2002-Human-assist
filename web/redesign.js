@@ -28,6 +28,7 @@
     ["F", "Course Plotter", "plot_course"], ["P", "Fire Photon Missile", "photon_missile"],
     ["R", "Port Report", null], ["K", "Your Known Universe", null], ["A", "Make Announcement", "broadcast"],
     ["O", "Avoid sectors", null],
+    ["L", "Trader Rankings", null],
     ["Q", "Exit Computer", null],
   ];
   const HULL = {
@@ -56,10 +57,15 @@
     havoc_gunstar: { name: "Havoc GunStar", len: 200, w: 90, pods: 1, eng: 3 },
     interdictor_cruiser: { name: "Interdictor Cruiser", len: 280, w: 120, pods: 4, eng: 4 },
   };
+  function fragmentToken() {
+    const raw = String(location.hash || "").replace(/^#/, "");
+    if (!raw) return "";
+    return new URLSearchParams(raw).get("token") || "";
+  }
   const params = new URLSearchParams(location.search);
   const state = {
     seat: (params.get("seat") || "P2").toUpperCase(),
-    token: params.get("token") || "",
+    token: params.get("token") || fragmentToken() || "",
     connected: false, awaiting: false, busy: false, turnSeq: 0,
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
@@ -83,8 +89,8 @@
   const streamLog = [];
   const streamSeen = new Set();
   const tokenKey = "tw2k-token-" + state.seat;
-  if (params.get("token")) {
-    try { sessionStorage.setItem(tokenKey, params.get("token")); } catch (e) { /* the address still has it this once */ }
+  if (params.get("token") || fragmentToken()) {
+    try { sessionStorage.setItem(tokenKey, state.token); } catch (e) { /* the address still has it this once */ }
     params.delete("token");
     const q = params.toString();
     history.replaceState(null, "", location.pathname + (q ? "?" + q : ""));
@@ -108,6 +114,9 @@
       const raw = typeof data.detail === "string" ? data.detail : (data.message || text.slice(0, 180) || String(r.status));
       if (Array.isArray(data.detail) || /validation error|input should be/i.test(String(raw))) {
         throw new Error("That command was not accepted.");
+      }
+      if (/missing bearer token/i.test(String(raw))) {
+        throw new Error("This seat needs its join link. Open it from the lobby, or use Re-open my seat in the browser you joined from.");
       }
       throw new Error(raw);
     }
@@ -420,6 +429,33 @@
     const s = (stats || {})[key];
     return (s && s.name) || (SHIPS[key] && SHIPS[key].name) || String(key).replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
+  function gearOptions(sel, spec) {
+    // Every priced item, including the ones this seat cannot afford. Grey those.
+    const prices = spec.unit_price_by || {};
+    const open = new Set(spec.choices || []);
+    const credits = Number((S && S.credits) || 0);
+    const keys = Object.keys(prices).length ? Object.keys(prices) : (spec.choices || []);
+    let picked = false;
+    keys.forEach((key) => {
+      const o = document.createElement("option");
+      o.value = key;
+      const price = prices[key];
+      const name = gearName(key);
+      // textContent stays the gear's name. Earlier cockpit tests read that.
+      // The label is what the list shows: price, and why a row is grey.
+      let shown = name + (price == null ? "" : " - " + fmt(price) + " cr");
+      o.textContent = name;
+      if (!open.has(key)) {
+        o.disabled = true;
+        shown += " (need " + fmt(price) + " cr, have " + fmt(credits) + ")";
+      } else if (!picked) {
+        o.selected = true;
+        picked = true;
+      }
+      o.label = shown;
+      sel.appendChild(o);
+    });
+  }
   function yardOptions(sel, spec) {
     // NOTE 60 item 6: the whole catalog with prices, as the original "?" list; ships you cannot buy are grey.
     const nets = spec.net_cost_by || {};
@@ -542,18 +578,22 @@
     if (legal("surrender")) opts.push("surrender");
     return opts.length ? "Answer the fighters first: " + opts.join(", ") : "";
   }
+  function codeBotSuffix(id) {
+    const ids = (S && S.code_bots) || [];
+    return ids.indexOf(String(id)) >= 0 ? " (code bot)" : "";
+  }
   function shipChoiceLabel(id) {
     const ship = shipsHere().find((row) => String(row.id) === String(id));
-    if (ship) return (ship.owner === "Ferrengi" ? ferrengiName(ship.name) : ship.name) + ", " + ship.owner + (ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters");
+    if (ship) return (ship.owner === "Ferrengi" ? ferrengiName(ship.name) : ship.name) + ", " + ship.owner + (ship.fighters == null ? "" : ", " + fmt(ship.fighters) + " fighters") + codeBotSuffix(id);
     const roster = ((S && S.other_players) || []).find((row) => row.id === id);
     if (roster) {
       const bits = [roster.name || id];
       if (roster.ship_class) bits.push(hullPhrase(roster.ship_class));
       if (roster.fighters != null) bits.push(fmt(roster.fighters) + " fighters");
       if (roster.shields != null) bits.push(fmt(roster.shields) + " shields");
-      return bits.join(", ");
+      return bits.join(", ") + codeBotSuffix(id);
     }
-    return String(id).replaceAll("_", " ");
+    return String(id).replaceAll("_", " ") + codeBotSuffix(id);
   }
   function overnightTax() {
     let best = null;
@@ -1113,6 +1153,14 @@
     const p = (LA(kind) || {}).params || {};
     return (((p.qty || {}).max_by || {})[commodity] || {})[side] || 0;
   }
+  function reveal(el) {
+    if (!el) return;
+    try { el.scrollIntoView({ block: "center", inline: "nearest" }); } catch (e) { /* keep the form */ }
+    const focus = el.querySelector("input, select, textarea, button");
+    if (focus && focus.focus) {
+      try { focus.focus(); } catch (e) { /* a hidden panel */ }
+    }
+  }
   function button(label, fn, extra) {
     const b = document.createElement("button");
     b.type = "button";
@@ -1295,7 +1343,16 @@
     });
     if (Number(s.id) === 1 || (s.port && /stardock/i.test(String(s.port.name || "")))) {
       if (legal("buy_equip")) box.appendChild(button("StarDock: buy gear", () => openForm("buy_equip")));
-      box.appendChild(button("Load colonists (Terra)", () => terraForm()));
+      const terra = LA("terra_colonists") || {};
+      const terraBtn = button("Load colonists (Terra)", () => {
+        if (!terra.legal) { setResult(plainReason(terra.reason || "Terra colonists unavailable here"), true); return; }
+        terraForm();
+      });
+      if (!terra.legal) {
+        terraBtn.disabled = true;
+        terraBtn.title = plainReason(terra.reason || "Terra colonists unavailable here");
+      }
+      box.appendChild(terraBtn);
       if (legal("buy_ship")) box.appendChild(button("Shipyards", () => openForm("buy_ship")));
       if (legal("bank_deposit") || legal("bank_withdraw")) box.appendChild(button("Bank", () => bankForm()));
       box.appendChild(dockBox());
@@ -1373,6 +1430,9 @@
       if (Array.isArray(spec.choices) && kind === "buy_ship" && name === "ship_class") {
         input = document.createElement("select");
         yardOptions(input, spec);
+      } else if (Array.isArray(spec.choices) && kind === "buy_equip" && name === "item") {
+        input = document.createElement("select");
+        gearOptions(input, spec);
       } else if (Array.isArray(spec.choices)) {
         input = document.createElement("select");
         spec.choices.forEach((choice) => {
@@ -1380,7 +1440,7 @@
           o.value = typeof choice === "object" ? (choice.id ?? "") : choice;
           o.textContent = kind === "attack" && name === "target" ? shipChoiceLabel(String(o.value))
             : (kind === "buy_equip" && name === "item" ? gearName(o.value)
-            : (kind === "ship_transport" && name === "ship_id" ? shipTransportLabel(o.value) : o.value));
+            : (kind === "ship_transport" && name === "ship_id" ? shipTransportLabel(o.value) : String(o.value) + codeBotSuffix(o.value)));
           if (kind === "deposit_planet_defense" && name === "kind" && o.value === "shields" && Number((landedPlanet() || {}).citadel_level || 0) < 5) {
             o.disabled = true;
             o.textContent = "shields (needs a Level 5 citadel)";
@@ -1632,8 +1692,29 @@
       if (deal) deal.addEventListener("change", paint);
       paint();
       wrap.appendChild(note);
+      const rec = (a.params.ship_class || {}).trade_in_parts;
+      if (rec) {
+        const receipt = document.createElement("div");
+        receipt.className = "c";
+        receipt.dataset.yard = "receipt";
+        const mine = (S && S.ship && S.ship.class) || "";
+        const oldName = yardName(mine, stats);
+        const bits = ["Hull " + fmt(rec.hull), "Holds " + fmt(rec.holds)];
+        if (Number(rec.drive)) bits.push("Drive " + fmt(rec.drive));
+        if (Number(rec.computer)) bits.push("Computer " + fmt(rec.computer));
+        if (Number(rec.fighter_count)) bits.push("Fighters " + fmt(rec.fighters));
+        if (Number(rec.shield_count)) bits.push("Shields " + fmt(rec.shields));
+        if (Number(rec.scanner)) bits.push("Scanner " + fmt(rec.scanner));
+        const lost = [];
+        if (Number(rec.hold_count)) lost.push(fmt(rec.hold_count) + " holds");
+        if (Number(rec.fighter_count)) lost.push(fmt(rec.fighter_count) + " fighters");
+        receipt.textContent = "We'll give you " + fmt(rec.total) + " for your " + oldName + ": " + bits.join(", ") + "."
+          + (lost.length ? " Your " + lost.join(" and ") + " go with the old ship." : "");
+        wrap.appendChild(receipt);
+      }
     }
     slot.appendChild(wrap);
+    reveal(wrap);
     if (saved && formFocus) {
       const again = slot.querySelector('[data-n="' + formFocus + '"]');
       if (again) again.focus();
@@ -2127,6 +2208,7 @@
     }
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
     slot.appendChild(wrap);
+    reveal(wrap);
   }
   function bankForm(saved) {
     const dep = LA("bank_deposit") || { params: {}, legal: false, reason: "" };
@@ -2136,13 +2218,14 @@
     openFormKind = "bank";
     const balance = Number((dep.params || {}).balance || (wd.params || {}).balance || (S && S.bank_balance) || 0);
     const room = Number((dep.params || {}).room || 0);
+    const capacity = Number((dep.params || {}).capacity || (wd.params || {}).capacity || 0);
     const depMax = Number((dep.params || {}).max_amount || 0);
     const wdMax = Number((wd.params || {}).max_amount || 0);
     slot.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.className = "frm";
     wrap.dataset.screen = "bank";
-    wrap.innerHTML = '<div class="y">BANK</div><div class="c">Balance ' + fmt(balance) + " cr. Room " + fmt(room) + " cr.</div>";
+    wrap.innerHTML = '<div class="y">BANK</div><div class="c">Balance ' + fmt(balance) + " cr. Room " + fmt(room) + (capacity ? " of " + fmt(capacity) : "") + " cr.</div>";
     const side = document.createElement("select");
     side.dataset.n = "side";
     [["deposit", "Deposit", dep.legal], ["withdraw", "Withdraw", wd.legal]].forEach(([value, label, ok]) => {
@@ -2189,6 +2272,7 @@
       submit();
     });
     slot.appendChild(wrap);
+    reveal(wrap);
     const focusName = (saved && formFocus) || "amount";
     const again = wrap.querySelector('[data-n="' + focusName + '"]') || amount;
     again.focus();
@@ -2650,6 +2734,8 @@
       ["Known sectors", fmt(Object.keys(S.known_warps || {}).length)],
     ];
     Object.entries(stats).forEach(([k, v]) => lines.push([k.replaceAll("_", " "), fmt(v)]));
+    if (S.end_rule) lines.push(["How this game ends", S.end_rule]);
+    if (S.nw_note) lines.push(["Net worth estimate", S.nw_note]);
     const rows = lines.map(([k, v]) => '<div class="row"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join("");
     const info = SC ? '<div class="row" data-game-info="credits"><span class="c">' + esc(SC) + "</span></div>" : "";
     overlay("Game Status", rows + info);
@@ -2900,7 +2986,8 @@
     add("tricron", "Tri-Cron", (a) => {
       const ante = Number((a.params || {}).ante || 0);
       const rounds = Number((a.params || {}).rounds || 0);
-      confirmWords("Tri-Cron", "Ante " + fmt(ante) + " cr. " + rounds + " rounds.", () => act("tricron", {}, "tricron"));
+      const pot = (S && S.tavern && S.tavern.tricron && S.tavern.tricron.jackpot) || 0;
+      confirmWords("Tri-Cron", "Ante " + fmt(ante) + " cr. " + rounds + " rounds. Pays 2:1." + (pot ? " Jackpot " + fmt(pot) + " cr." : ""), () => act("tricron", {}, "tricron"));
     });
     add("apply_commission", "Federal commission", () => confirmWords("Federal commission", "Apply for a Federal commission? You can take it once.", () => act("apply_commission", {}, "commission")));
     add("post_reward", "Post a reward", () => postReward());
@@ -3322,6 +3409,7 @@
     m.dataset.screen = title;
     m.innerHTML = '<div class="y">' + title + "</div><div>" + line + '</div><button type="button" id="dangerOk">' + (onYes ? "CONFIRM" : "OK") + '</button><br><span class="dk">Esc to close</span>';
     $("dangerOk").addEventListener("click", () => { m.hidden = true; if (onYes) onYes(); else setResult(line, true); });
+    reveal(m);
   }
   function askWait() {
     const server = Number(state.waitStreak || 0);
@@ -3340,6 +3428,65 @@
     const tiers = ((((LA("scan") || {}).params || {}).tier || {}).choices) || [];
     if (tiers.length <= 1) return act("scan", tiers[0] ? { tier: tiers[0] } : {}, "scan");
     openForm("scan");
+  }
+  function landKey() {
+    const planets = ((S.sector || {}).planets || []).slice();
+    const terraHere = Number((S.sector || {}).id) === 1 || !!((S.sector || {}).terra);
+    if (!planets.length && !terraHere) return;
+    if (planets.length === 1 && !terraHere) {
+      const p = planets[0];
+      return confirmWords("Land", landLine(p), () => act("land_planet", { planet_id: p.id }, "land on " + p.name));
+    }
+    const m = $("menu");
+    m.hidden = false;
+    m.dataset.screen = "land";
+    m.innerHTML = '<div class="y">Land</div>';
+    planets.forEach((p) => {
+      m.appendChild(button(esc(p.name || "planet"), () => {
+        m.hidden = true;
+        confirmWords("Land", landLine(p), () => act("land_planet", { planet_id: p.id }, "land on " + p.name));
+      }));
+    });
+    if (terraHere) {
+      const terra = LA("terra_colonists") || {};
+      const b = button("Terra (1 turn, take or leave colonists)", () => {
+        m.hidden = true;
+        if (!terra.legal) { setResult(plainReason(terra.reason || "Terra colonists unavailable here"), true); return; }
+        terraForm();
+      });
+      if (!terra.legal) b.disabled = true;
+      m.appendChild(b);
+    }
+    reveal(m);
+  }
+  function traderRankings() {
+    const rows = (S && S.trader_rankings) || [];
+    const m = $("menu");
+    m.hidden = false;
+    m.dataset.screen = "rankings";
+    let mode = "titles";
+    const paint = () => {
+      const head = '<div class="y">Trader Rankings</div><button type="button" id="rankToggle">'
+        + (mode === "titles" ? "Values" : "Titles") + "</button>";
+      const body = rows.map((row) => {
+        const mid = mode === "titles" ? esc(row.title || "") : fmt(row.experience) + " experience";
+        const corp = row.corp ? " [" + esc(row.corp) + "]" : "";
+        return '<div class="row" data-rank-row="' + esc(String(row.rank)) + '">' + esc(String(row.rank)) + ". "
+          + esc(row.name) + " — " + mid + corp + " " + esc(String(row.ship || "").replaceAll("_", " "))
+          + (row.alive ? "" : " (dead)") + "</div>";
+      }).join("") || '<div class="row">No traders listed.</div>';
+      m.innerHTML = head + body + '<br><span class="dk">Esc to close</span>';
+      const btn = $("rankToggle");
+      if (btn) btn.addEventListener("click", () => { mode = mode === "titles" ? "values" : "titles"; paint(); });
+    };
+    paint();
+  }
+  function showEndPanel(text) {
+    const m = $("menu");
+    if (!m || m.dataset.screen === "game-over") return;
+    m.hidden = false;
+    m.dataset.screen = "game-over";
+    m.innerHTML = '<div class="y" data-game-over="panel">' + esc(text) + "</div>";
   }
   function key(k) {
     const m = $("menu");
@@ -3365,6 +3512,7 @@
       if (k === "R") return portReport();
       if (k === "K") return knownUniverse();
       if (k === "O") { m.hidden = true; return avoidForm(); }
+      if (k === "L") return traderRankings();
       m.hidden = true;
       if (c[2]) return openForm(c[2]);
       return;
@@ -3425,11 +3573,7 @@
       return;
     }
     if (k === "P") return openForm("trade");
-    if (k === "L") {
-      const p = (S.sector.planets || [])[0];
-      if (!p) return;
-      return confirmWords("Land", landLine(p), () => act("land_planet", { planet_id: p.id }, "land on " + p.name));
-    }
+    if (k === "L") return landKey();
     if (k === ".") return askWait();
     if (k === "S") return scanAsk();
     if (hit[2]) return openForm(hit[2]);
@@ -3965,6 +4109,7 @@
     al.className = S.alignment < 0 ? "r" : S.alignment > 0 ? "c" : "w";
     const chip = $("waitchip");
     chip.textContent = over ? "GAME OVER" : outOfTurns() ? "NO TURNS" : (state.awaiting ? "YOUR MOVE" : "WAITING");
+    if (over && S.game_over_panel) showEndPanel(S.game_over_panel);
     chip.className = "chip" + (state.awaiting && !outOfTurns() && !over ? "" : " idle");
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
     paintScene();
@@ -3995,6 +4140,18 @@
     else if (!state.busy) clearStaleWait();
     showIncoming();
   }
+  function rememberSeat() {
+    if (!state.token) return;
+    const gid = ((location.pathname || "").match(/\/g\/([^/]+)/) || [])[1] || "";
+    if (!gid) return;
+    try {
+      const raw = localStorage.getItem("tw2k-my-seats");
+      const rows = raw ? JSON.parse(raw) : [];
+      const next = (Array.isArray(rows) ? rows : []).filter((r) => !(r && r.gid === gid && r.seat === state.seat));
+      next.push({ gid: gid, seat: state.seat, token: state.token });
+      localStorage.setItem("tw2k-my-seats", JSON.stringify(next));
+    } catch (e) { /* this browser keeps no seat list */ }
+  }
   async function connect() {
     state.seat = $("seatSelect").value.toUpperCase();
     state.token = $("tokenInput").value.trim();
@@ -4003,6 +4160,7 @@
     try {
       state.connected = true;
       await refresh();
+      rememberSeat();
       const sign = document.querySelector(".sign-in");
       if (sign) sign.hidden = true;
     } catch (e) {

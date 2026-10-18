@@ -820,13 +820,40 @@ def ship_cost(class_key: str) -> int:
 
 # "legacy": the yard pays 25% of the hull sticker and keeps any surplus.
 # "live": the yard pays 90% of the hull sticker and pays the surplus as cash.
-# Live receipts also itemize holds, drive, computer, fighters, shields, and a
-# scanner at about 90% each. Those part prices were not published as a formula
-# (two receipts only), so they are not invented here. A pod still counts as a
-# Scout's hull. Default stays legacy so the pin and the digests do not move.
+# TRADE_IN_MODE stays that gate. Itemised parts (holds, drive, computer,
+# fighters, shields, scanner) are TRADE_IN_PARTS_MODE, off unless that switch
+# or the v3.11 profile is on. A pod still counts as a Scout's hull while the
+# parts switch is off. Default stays legacy so the pin and the digests do not move.
 TRADE_IN_MODE = "legacy"  # "legacy" | "live"
 TRADE_IN_FRACTION_LEGACY = 0.25
 TRADE_IN_FRACTION_LIVE = 0.90
+# Catalog unit the measured receipts used for a fighter. Shields use the same
+# base (UNVERIFIED: the receipts did not separate a shield rate).
+FIGHTER_TRADE_CATALOG = 160
+SHIELD_TRADE_CATALOG = 160
+# (hull, drive, computer, stock holds). Live v3.34b catalog
+# (ships_catalog.txt / the Tyrriny ship list) checked against the measured
+# receipts. The escape pod is its own parts, never a Scout's hull:
+# hull 5,000 -> 4,499, one hold -> 179, drive 4,246 -> 3,821, computer 4,700 -> 4,229.
+SHIP_PARTS: dict[str, tuple[int, int, int, int]] = {
+    "merchant_cruiser": (10_000, 1_000, 20_300, 20),
+    "scout_marauder": (2_750, 3_000, 5_200, 10),
+    "missile_frigate": (11_000, 1_000, 82_800, 12),
+    "battleship": (18_000, 1_000, 61_500, 16),
+    "corporate_flagship": (28_500, 5_000, 120_000, 20),
+    "colonial_transport": (25_200, 1_000, 10_400, 50),
+    "cargotran": (12_900, 1_000, 11_050, 50),
+    "merchant_freighter": (6_800, 2_000, 9_600, 30),
+    "imperial_starship": (65_000, 10_000, 231_000, 40),
+    "havoc_gunstar": (15_000, 10_000, 48_000, 12),
+    "star_master": (12_300, 10_000, 29_000, 20),
+    "constellation": (13_000, 10_000, 39_500, 20),
+    "tkhasi_orion": (6_750, 10_000, 10_500, 30),
+    "tholian_sentinel": (7_500, 10_000, 25_000, 10),
+    "taurean_mule": (15_300, 10_000, 10_300, 50),
+    "interdictor_cruiser": (104_000, 50_000, 380_000, 10),
+    "escape_pod": (5_000, 4_246, 4_700, 1),
+}
 
 
 def trade_in_live() -> bool:
@@ -840,27 +867,145 @@ def trade_in_fraction() -> float:
     return TRADE_IN_FRACTION_LEGACY
 
 
-def trade_in_credit(class_key: str) -> int:
-    """The yard's credit for this hull. An escape pod counts as a Scout.
+def part_trade_credit(price: int) -> int:
+    """90% of a catalog price, one credit less when that tenth lands exactly.
 
-    DEATH_ESCAPE_PODS.md d17: under legacy the pod trades for a Scout outright
-    (net_hull_cost), and toward any other hull it counts as a Scout's trade-in.
+    10,000 -> 8,999. A price that is not an exact tenth stays at the floored 90%.
     """
+    price = int(price)
+    if price <= 0:
+        return 0
+    credit = (price * 9) // 10
+    if (price * 9) % 10 == 0 and credit > 0:
+        credit -= 1
+    return credit
+
+
+def hold_catalog_price(n: int) -> int:
+    """Catalog price of n holds: 200n + 9n(n-1). Not the day's Class 0 quote."""
+    n = int(n)
+    if n <= 0:
+        return 0
+    return 200 * n + 9 * n * (n - 1)
+
+
+def hold_trade_value(n: int) -> int:
+    """What the yard pays for n holds. 20 -> 6,677, 1 -> 179, 42 -> 21,508."""
+    return part_trade_credit(hold_catalog_price(n))
+
+
+def ship_parts(class_key: str) -> tuple[int, int, int, int]:
+    """Hull, drive, computer, and the stock hold count for a trade-in."""
+    row = SHIP_PARTS.get(class_key)
+    if row is not None:
+        return row
+    spec = hull_spec(class_key) or {}
+    return (int(ship_cost(class_key)), 0, 0, int(spec.get("holds") or 0))
+
+
+def scanner_trade_credit(name: str | None) -> int:
+    """90% of the density or holo price the emporium charges. Nothing if bare."""
+    if name in ("density", "density_scanner"):
+        return part_trade_credit(DENSITY_SCANNER_COST)
+    if name in ("holo", "holo_scanner"):
+        return part_trade_credit(HOLO_SCANNER_COST)
+    return 0
+
+
+def trade_in_receipt(
+    class_key: str,
+    *,
+    ship=None,
+    holds: int | None = None,
+    fighters: int | None = None,
+    shields: int | None = None,
+    scanner: str | None = None,
+) -> dict[str, int | str | None]:
+    """Itemised yard credit for the ship as it sits.
+
+    Mines and the other gear are stripped with the old hull and are not on
+    this receipt (UNVERIFIED: the measured receipts did not price them).
+    Shield credits use SHIELD_TRADE_CATALOG (UNVERIFIED, same 160 base as fighters).
+    """
+    hull, drive, computer, stock = ship_parts(class_key)
+    if ship is not None:
+        holds = int(ship.holds)
+        fighters = int(ship.fighters)
+        shields = int(ship.shields)
+        scanner = getattr(ship, "scanner", None)
+    else:
+        holds = stock if holds is None else int(holds)
+        fighters = 0 if fighters is None else int(fighters)
+        shields = 0 if shields is None else int(shields)
+    hull_c = part_trade_credit(hull)
+    drive_c = part_trade_credit(drive)
+    computer_c = part_trade_credit(computer)
+    holds_c = hold_trade_value(int(holds))
+    fighter_c = part_trade_credit(FIGHTER_TRADE_CATALOG * int(fighters))
+    shield_c = part_trade_credit(SHIELD_TRADE_CATALOG * int(shields))
+    scan_c = scanner_trade_credit(scanner)
+    total = hull_c + holds_c + drive_c + computer_c + fighter_c + shield_c + scan_c
+    return {
+        "hull": hull_c,
+        "holds": holds_c,
+        "hold_count": int(holds),
+        "drive": drive_c,
+        "computer": computer_c,
+        "fighters": fighter_c,
+        "fighter_count": int(fighters),
+        "shields": shield_c,
+        "shield_count": int(shields),
+        "scanner": scan_c,
+        "scanner_name": scanner,
+        "total": total,
+    }
+
+
+def extra_hold_trade_value(class_key: str, holds: int) -> int:
+    """Trade-in of the holds above the hull's stock count. Stock itself is in the hull."""
+    stock = int(ship_parts(class_key)[3])
+    extra = int(holds) - stock
+    if extra <= 0:
+        return 0
+    return hold_trade_value(int(holds)) - hold_trade_value(stock)
+
+
+def trade_in_credit(
+    class_key: str,
+    *,
+    ship=None,
+    holds: int | None = None,
+    fighters: int | None = None,
+    shields: int | None = None,
+    scanner: str | None = None,
+) -> int:
+    """The yard's credit for this hull.
+
+    Parts mode off: an escape pod counts as a Scout (DEATH_ESCAPE_PODS.md d17)
+    and the extra keyword arguments are ignored, so a legacy call stays the
+    sticker fraction. Parts mode on: the itemised receipt, stock fit when no
+    ship is passed.
+    """
+    if trade_in_parts_live():
+        return int(trade_in_receipt(
+            class_key, ship=ship, holds=holds, fighters=fighters, shields=shields, scanner=scanner,
+        )["total"])
     fraction = trade_in_fraction()
     if class_key == ESCAPE_POD:
         return int(ship_cost("scout_marauder") * fraction)
     return int(ship_cost(class_key) * fraction)
 
 
-def net_hull_cost(old_key: str, new_key: str) -> int:
+def net_hull_cost(old_key: str, new_key: str, *, ship=None) -> int:
     """Credits a trade-in moves. Negative means the yard pays the player.
 
     Legacy never pays a surplus, and a pod buys a Scout for nothing. Live pays
-    the difference when the credit is larger than the new hull.
+    the difference when the credit is larger than the new hull. `ship` is the
+    old hull; it only changes the credit while TRADE_IN_PARTS_MODE is live.
     """
     if not trade_in_live() and old_key == ESCAPE_POD and new_key == "scout_marauder":
         return 0  # d17: the pod buys a Scout outright
-    net = ship_cost(new_key) - trade_in_credit(old_key)
+    net = ship_cost(new_key) - trade_in_credit(old_key, ship=ship)
     if net < 0 and not trade_in_live():
         return 0
     return net
@@ -2684,7 +2829,7 @@ CORP_FIX_MODE = "tw2002"                  # CORP_LOOSE_ENDS.md cl1 | "legacy"
 ROGUE_TOLL_POT_CAP = None                 # cl8 UNVERIFIED: no cap
 ROGUE_TOLL_CHARGES = True                 # cl8 UNVERIFIED: a rogue group still collects tolls
 LIMPET_CORP_VIEW = "corporate_only"       # cl6 | "all_corp"
-CORP_CREATE_COST = 0                      # cr2 UNVERIFIED (alt 500_000 = CORP_FORMATION_COST)
+CORP_CREATE_COST = 0                      # cr2: REPORT.md line 279 (free; 500_000 is CORP_FORMATION_COST, legacy path only)
 CORP_TURN_COST = 0                        # cr2 UNVERIFIED
 CORP_NEW_PASSWORD = ""                    # cr3 UNVERIFIED: blank means closed
 CORP_APPROVER = "member"                  # cr4 SOURCE-CONFLICT: "member" | "ceo"
@@ -3919,6 +4064,11 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
     "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
+    "trade_in_parts_live": ("TRADE_IN_PARTS_MODE", "NOTE 73: the yard itemises the old ship"),
+    "trader_rank_list_live": ("TRADER_RANK_LIST_MODE", "NOTE 73: the computer lists every trader by experience"),
+    "nw_estimate_live": ("NW_ESTIMATE_MODE", "NOTE 73: the net-worth estimate follows what you paid"),
+    "seat_idle_start_live": ("SEAT_IDLE_START_MODE", "NOTE 73: a seat's idle clock starts at the first connect"),
+    "bot_diplomacy_live": ("BOT_DIPLOMACY_MODE", "NOTE 73: a code bot answers a hail and an alliance"),
 }
 
 
@@ -4029,3 +4179,50 @@ HOME_PLANET_EQUIPMENT = 81_000
 def home_planet_live() -> bool:
     """True when a new seat's class M world is placed and stocked the v3.11 way."""
     return HOME_PLANET_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# beta-playtest-addendum-v1 (NOTE 73). Each stored default is legacy. The v3.11
+# profile turns them on. Appended so later slices can rebase cleanly.
+TRADE_IN_PARTS_MODE = "legacy"  # "legacy" | "live"
+
+
+def trade_in_parts_live() -> bool:
+    """True when a trade-in is the itemised parts of the ship as it sits."""
+    return TRADE_IN_PARTS_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+TRADER_RANK_LIST_MODE = "legacy"  # "legacy" | "live"
+
+
+def trader_rank_list_live() -> bool:
+    """True when every seat can see the experience ranking, and the end rule."""
+    return TRADER_RANK_LIST_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+NW_ESTIMATE_MODE = "legacy"  # "legacy" | "live"
+NW_ESTIMATE_NOTE = "Bought holds count at their trade-in value; cargo at what you paid; sector fighters count."
+
+
+def nw_estimate_live() -> bool:
+    """True when the estimate follows paid cargo, extra holds, and sector fighters.
+
+    It does not change who wins. Under the v3.11 profile the winner is still
+    the trader with the most experience.
+    """
+    return NW_ESTIMATE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+SEAT_IDLE_START_MODE = "legacy"  # "legacy" | "live"
+
+
+def seat_idle_start_live() -> bool:
+    """True when an unconnected seat does not auto-WAIT before its first client."""
+    return SEAT_IDLE_START_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+BOT_DIPLOMACY_MODE = "legacy"  # "legacy" | "live"
+
+
+def bot_diplomacy_live() -> bool:
+    """True when a code bot answers an alliance proposal and a hail on its turn."""
+    return BOT_DIPLOMACY_MODE == "live" or tw2002_live_profile() or v311_profile()

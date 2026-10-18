@@ -12,6 +12,7 @@ It's not intended to beat an LLM - just to play a valid game.
 
 from __future__ import annotations
 
+import hashlib
 import random
 
 from tw2k.engine.constants import (
@@ -28,6 +29,47 @@ from ..engine.constants import STARDOCK_SECTOR, combat_hull
 from .base import BaseAgent
 
 _PORT_CODE_ORDER = ("fuel_ore", "organics", "equipment")
+_HAIL_LINES = (
+    "Copy that.",
+    "I hear you.",
+    "Noted.",
+    "Standing by.",
+    "Message received.",
+)
+
+
+def _signs_differ(left: int, right: int) -> bool:
+    """Zero does not differ from either side. Only a positive and a negative do."""
+    return (int(left) > 0 and int(right) < 0) or (int(left) < 0 and int(right) > 0)
+
+
+def _decline_reason(universe, me, proposer) -> str | None:
+    from tw2k.engine.models import EventKind
+
+    if _signs_differ(me.alignment, proposer.alignment):
+        return "our alignments differ"
+    for ev in universe.events:
+        if ev.actor_id != proposer.id:
+            continue
+        payload = ev.payload or {}
+        if ev.kind == EventKind.COMBAT:
+            if payload.get("defender") == me.id and payload.get("exchange_kind") == "ship_vs_ship":
+                return "you attacked me"
+            if payload.get("defender_owner") == me.id:
+                return "you hit my fighters"
+        if ev.kind in (EventKind.ROB, EventKind.STEAL) and (
+            payload.get("victim") == me.id or payload.get("target") == me.id
+        ):
+            return "you robbed me"
+    return None
+
+
+def _canned_hail(universe, me, msg: dict) -> str:
+    other = universe.players.get(msg.get("from"))
+    other_name = other.name if other is not None else str(msg.get("from") or "")
+    raw = f"{int(universe.config.seed)}|{other_name}|{me.name}|{msg.get('message') or ''}"
+    pick = hashlib.sha256(raw.encode()).digest()[0] % len(_HAIL_LINES)
+    return _HAIL_LINES[pick]
 
 
 def _port_buys_any(code: str, held: set[str]) -> bool:
@@ -174,6 +216,71 @@ class HeuristicAgent(BaseAgent):
         seen = self._dry_port.get(int(a["id"]))
         return seen is not None and day is not None and int(day) - seen <= 1
 
+    def _diplomacy_due(self) -> bool:
+        from tw2k.engine.constants import bot_diplomacy_live
+
+        return bool(bot_diplomacy_live() and getattr(self, "_tw_universe", None) is not None)
+
+    def _diplomacy(self, obs: Observation) -> Action | None:
+        """Accept or decline a pending alliance, or answer one hail. Deterministic."""
+        from tw2k.engine.models import EventKind
+
+        universe = self._tw_universe
+        me = universe.players.get(self.player_id)
+        if me is None:
+            return None
+        seen = self.__dict__.setdefault("_diplo_answered", set())
+        for ally in universe.alliances.values():
+            if ally.active or self.player_id not in ally.member_ids or ally.proposed_by == self.player_id:
+                continue
+            key = ("proposal", ally.id)
+            if key in seen:
+                continue
+            seen.add(key)
+            proposer = universe.players.get(ally.proposed_by)
+            why = _decline_reason(universe, me, proposer) if proposer is not None else "no proposer"
+            if why:
+                return Action(
+                    kind=ActionKind.BREAK_ALLIANCE,
+                    args={"alliance_id": ally.id},
+                    thought=f"Decline the alliance: {why}",
+                )
+            return Action(
+                kind=ActionKind.ACCEPT_ALLIANCE,
+                args={"alliance_id": ally.id},
+                thought="Accept the alliance.",
+            )
+        for msg in reversed(list(me.inbox or [])):
+            if not isinstance(msg, dict) or msg.get("kind") != "hail":
+                continue
+            key = ("hail", msg.get("from"), msg.get("day"), msg.get("tick"), msg.get("message"))
+            if key in seen:
+                continue
+            who = msg.get("from")
+            if who not in universe.players:
+                continue
+            seen.add(key)
+            return Action(
+                kind=ActionKind.HAIL,
+                args={"target": who, "message": _canned_hail(universe, me, msg)},
+                thought="Answer the hail.",
+            )
+        for ev in reversed(universe.events):
+            if ev.kind != EventKind.ALLIANCE_BROKEN or ev.actor_id == self.player_id:
+                continue
+            key = ("broken", ev.seq)
+            if key in seen:
+                continue
+            seen.add(key)
+            breaker = ev.actor_id
+            if breaker and breaker in universe.players:
+                return Action(
+                    kind=ActionKind.HAIL,
+                    args={"target": breaker, "message": "Noted."},
+                    thought="The alliance was broken.",
+                )
+        return None
+
     async def act(self, obs: Observation) -> Action:
         # A new v3.11 trader starts on the home planet (NOTE 66). This bot never
         # lands on its own, so a landed ship is the opening: blast off first.
@@ -219,6 +326,13 @@ class HeuristicAgent(BaseAgent):
             bought = self._recovery_buy(obs)
             if bought is not None:
                 return bought
+
+        # NOTE 73: a code bot answers diplomacy on this turn, and only when the switch is on,
+        # so a legacy turn still buys, trades, and warps in the same order.
+        if self._diplomacy_due():
+            reply = self._diplomacy(obs)
+            if reply is not None:
+                return reply
 
         # An empty bank leaves the starting purse on the ship. One death then sticks H at 7,975.
         opened = self._open_the_bank(obs)
