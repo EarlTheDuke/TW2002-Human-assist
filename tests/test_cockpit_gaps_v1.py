@@ -329,7 +329,7 @@ def test_trade_form_quotes_counters_and_says_how_the_haggle_ended(world):
     pending = me.haggle_counter
     assert pending and int(pending["counter"]) > 0
     offer = int(pending["counter"])
-    assert counter.inner_text() == f"Counter: we'll buy them for {offer * 10:,} credits ({offer:,} cr each). Your offer [{offer:,}]"
+    assert counter.inner_text() == f"Port counters: we'll buy them for {offer * 10:,} credits ({offer:,} each). Your offer?"
     assert page.locator("#formSlot [data-n=unit_price]").input_value() == str(offer)
     ended = page.locator("#formSlot [data-haggle=ended]")
     assert ended.get_attribute("data-outcome") == "countered"

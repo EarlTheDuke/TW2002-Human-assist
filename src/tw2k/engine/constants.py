@@ -3919,6 +3919,9 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
     "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
+    "alien_combat_fix_live": ("ALIEN_COMBAT_FIX_MODE", "NOTE 71: alien fighters trade 1:1 and shields soak first"),
+    "haggle_counter_live": ("HAGGLE_COUNTER_MODE", "NOTE 71: a port counter keeps the turn; holds are checked first"),
+    "bot_hazard_memory_live": ("BOT_HAZARD_MEMORY_MODE", "NOTE 71: a bot does not flee back into Ferrengal or a mined sector"),
 }
 
 
@@ -4029,3 +4032,40 @@ HOME_PLANET_EQUIPMENT = 81_000
 def home_planet_live() -> bool:
     """True when a new seat's class M world is placed and stocked the v3.11 way."""
     return HOME_PLANET_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# beta-combat-haggle-v1 (NOTE 71). "legacy" keeps the odds formula, where a
+# defender odds below 1 can make shields absorb more than the volley.
+# "live" trades alien fighters 1:1 and lets shields soak first, never more
+# than the volley or more than they hold. Appended so later slices rebase.
+ALIEN_COMBAT_FIX_MODE = "legacy"  # "legacy" | "live"
+
+
+def alien_combat_fix_live() -> bool:
+    """True when an alien exchange uses the 1:1 shield-first numbers."""
+    return ALIEN_COMBAT_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# beta-combat-haggle-v1 (NOTE 71). "legacy" answers a counter and then the
+# seat's turn ends. "live" keeps the seat for the next offer or accept
+# (HAGGLE_COUNTER_ROUNDS times; the live game showed 3-4) and checks empty
+# holds or cargo on board before credits or the port's stock cap. An offer
+# past the counter can still be taken inside the existing band.
+HAGGLE_COUNTER_MODE = "legacy"  # "legacy" | "live"
+HAGGLE_COUNTER_ROUNDS = 4
+
+
+def haggle_counter_live() -> bool:
+    """True when a port counter keeps the turn open and holds are checked first."""
+    return HAGGLE_COUNTER_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# beta-combat-haggle-v1 (NOTE 71). "legacy" flees and routes with no memory
+# of Ferrengal or a sector that just mined the ship. "live" refuses those
+# warps unless every exit is one of them, in which case the bot stays.
+BOT_HAZARD_MEMORY_MODE = "legacy"  # "legacy" | "live"
+
+
+def bot_hazard_memory_live() -> bool:
+    """True when a bot will not re-enter Ferrengal or a hazard it met today."""
+    return BOT_HAZARD_MEMORY_MODE == "live" or tw2002_live_profile() or v311_profile()
