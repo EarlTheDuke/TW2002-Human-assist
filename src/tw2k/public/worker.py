@@ -297,6 +297,10 @@ def write_snapshot(runner, reason: str, directory: Path | None = None) -> Path |
         "day_started_at": float(getattr(runner, "_live_day_mark", 0.0) or 0.0) or None,
         "status": runner.state.status,
     }
+    spec = getattr(runner, "_spec", None)
+    override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
+    if override is not None:
+        meta["starting_credits_override"] = int(override)
     stamp = int(meta["saved_at"] * 1000)
     final = target / f"snap-{stamp:015d}.jsonl"
     tmp = target / f".snap-{stamp:015d}.tmp"
@@ -368,9 +372,14 @@ def install(app, runner) -> None:
         @app.get("/healthz")
         async def healthz() -> dict[str, Any]:
             u = runner.state.universe
+            from ..engine import constants as K
+
+            spec = getattr(runner, "_spec", None)
+            override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
             return {"ok": True, "status": runner.state.status,
                     "day": int(u.day) if u is not None else None,
-                    "finished": runner.state.status == "finished"}
+                    "finished": runner.state.status == "finished",
+                    "starting_credits": K.starting_credits_line(override, K.opening_original_credits())}
 
         @app.post("/control/seat-token")
         async def seat_token(request: Request) -> dict[str, Any]:

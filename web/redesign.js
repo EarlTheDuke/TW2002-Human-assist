@@ -69,6 +69,8 @@
   // v311-daylen-and-yard-v1: the server's turn clock (next turn, next day). Null unless turn regen
   // is live, so the legacy lines are unchanged.
   let TC = null;
+  // NOTE 65 item 0. The server's starting-credits sentence. Empty until the first refresh.
+  let SC = "";
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
   function rememberAlert(seq) {
     alertedSeq = seq;
@@ -2442,7 +2444,9 @@
       ["Known sectors", fmt(Object.keys(S.known_warps || {}).length)],
     ];
     Object.entries(stats).forEach(([k, v]) => lines.push([k.replaceAll("_", " "), fmt(v)]));
-    overlay("Game Status", lines.map(([k, v]) => '<div class="row"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join(""));
+    const rows = lines.map(([k, v]) => '<div class="row"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join("");
+    const info = SC ? '<div class="row" data-game-info="credits"><span class="c">' + esc(SC) + "</span></div>" : "";
+    overlay("Game Status", rows + info);
   }
   function deployedHoldings() {
     const rows = {};
@@ -3704,6 +3708,7 @@
     state.gameOver = !!st.game_over;
     CK = st.cockpit || null;
     TC = st.turn_clock || null;
+    SC = st.starting_credits_line || "";
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     if (st.observation) { S = st.observation; render(); }
     await fetchEvents();

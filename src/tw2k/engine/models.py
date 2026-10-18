@@ -1136,17 +1136,27 @@ class GameConfig(BaseModel):
     # (K.TURN_REGEN_DAY_SECONDS): the v3.11 day-roll gap, the hourly trickle and the planet day
     # math. None keeps the constant (86,400). Left out of dumps while None.
     turn_regen_day_seconds: float | None = None
+    # NOTE 65 item 0. None keeps today's opening credits. A number is what every
+    # seat starts with. Left out of dumps while None, so old saves stay put.
+    starting_credits_override: int | None = None
 
     @field_validator("turn_regen_day_seconds", mode="before")
     @classmethod
     def _check_day_seconds(cls, value: Any) -> Any:
         return None if value is None else K.parse_day_seconds(value)
 
+    @field_validator("starting_credits_override", mode="before")
+    @classmethod
+    def _check_credits_override(cls, value: Any) -> Any:
+        return K.parse_credits_override(value)
+
     @model_serializer(mode="wrap")
     def _omit_unset_day_seconds(self, handler: SerializerFunctionWrapHandler) -> Any:
         data = handler(self)
         if isinstance(data, dict) and data.get("turn_regen_day_seconds", 0) is None:
             del data["turn_regen_day_seconds"]
+        if isinstance(data, dict) and data.get("starting_credits_override", 0) is None:
+            data.pop("starting_credits_override", None)
         return data
 
 

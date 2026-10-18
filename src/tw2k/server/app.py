@@ -224,6 +224,7 @@ def create_app(
     pause_on_seat_drop: bool = False,
     seat_drop_after_s: float = 45.0,
     turn_regen_day_seconds: float | None = None,
+    starting_credits_override: int | None = None,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -290,6 +291,7 @@ def create_app(
                 pause_on_seat_drop=pause_on_seat_drop,
                 seat_drop_after_s=seat_drop_after_s,
                 turn_regen_day_seconds=turn_regen_day_seconds,
+                starting_credits_override=starting_credits_override,
             )
             spec.paused = start_paused
             spec.resume_from = _public.resume_path()
@@ -1138,6 +1140,11 @@ def create_app(
             pause_on_seat_drop=pause_on_seat_drop,
             seat_drop_after_s=seat_drop_after_s,
             turn_regen_day_seconds=day_raw,
+            starting_credits_override=(
+                int(body["starting_credits_override"])
+                if "starting_credits_override" in body and body["starting_credits_override"] is not None
+                else starting_credits_override
+            ),
         )
         if body.get("external_hold_max_actions") is not None:
             spec.external_hold_max_actions = max(0, int(body["external_hold_max_actions"]))
@@ -1237,6 +1244,7 @@ def _build_default_spec(
     pause_on_seat_drop: bool = False,
     seat_drop_after_s: float = 45.0,
     turn_regen_day_seconds: float | None = None,
+    starting_credits_override: int | None = None,
 ) -> MatchSpec:
     _apply_port_stock_fidelity()
     _apply_haggle_live()
@@ -1296,6 +1304,8 @@ def _build_default_spec(
                    else K.day_seconds_from_env())
     if day_seconds is not None:
         cfg_kwargs["turn_regen_day_seconds"] = day_seconds
+    if starting_credits_override is not None:
+        cfg_kwargs["starting_credits_override"] = starting_credits_override
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each

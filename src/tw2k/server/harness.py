@@ -493,6 +493,9 @@ def build_harness_router(runner) -> APIRouter:
             body["cockpit"] = cockpit_block(runner.state.universe, agent)
         if K.turn_regen_live() and runner.state.universe is not None:
             body["turn_clock"] = _turn_clock(agent.player_id)
+        spec = getattr(runner, "_spec", None)
+        override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
+        body["starting_credits_line"] = K.starting_credits_line(override, K.opening_original_credits())
         return body
 
     def _turn_clock(player_id: str) -> dict[str, Any] | None:

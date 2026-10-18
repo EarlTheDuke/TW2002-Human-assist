@@ -1467,7 +1467,8 @@ class MatchRunner:
                 # back to K.STARTING_TURNS_PER_DAY = 1000, which meant day 1 never
                 # actually ended in watchable sanity runs.
                 base_tpd = getattr(spec.config, "turns_per_day", K.STARTING_TURNS_PER_DAY)
-                credits, turns_per_day, fighters = K.opening_loadout(base_credits, base_tpd, i)
+                override = getattr(spec.config, "starting_credits_override", None)
+                credits, turns_per_day, fighters = K.opening_loadout(base_credits, base_tpd, i, override)
                 ship.fighters = fighters
                 player = Player(
                     id=ag.player_id,
