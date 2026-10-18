@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (82 helpers)
+## The switch set (85 helpers)
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -92,6 +92,11 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A
 | 80 | `BOT_DIPLOMACY_MODE` | `bot_diplomacy_live` | NOTE 73: a code bot accepts or declines an alliance on its next turn, and answers a hail with one canned line. `ALLIANCE_MODE` stays legacy | - |
 | 81 | `DAY_ROLL_CLOCK_MODE` | `day_roll_clock_live` | NOTE 74: with the regen clock on, the day rolls when the mark passes even while an external seat holds the turn, and the next mark is the old mark plus the day length. Stored default stays legacy. Self-hosted beta games set the switch live | - |
 | 82 | `PORT_BUY_PRICE_ANCHOR_MODE` | `port_buy_price_anchor_on` | D25-1 (NOTE 69): a buying port's live anchor is the hungry quote. `PORT_STOCK_FIDELITY` opens buyers at current 0, and the full-hold curve `(1.45 - 0.70*frac) / 0.75` then quotes about 1.93x (`38/73/102` become roughly fuel 51-87, organics 97-169, equipment 134-241). Live v3.34b day 1 is fuel 34.9-40.65, organics 62-75, equipment 100.7-105, and the price eases only a few percent as the port fills (StarDock equipment 105 at 51% remaining, about 100.8 at 37%). MCIC and the haggle window stay on top. The sell side is unchanged | - |
+| 94 | `BUST_CLEAR_MODE` | `bust_record_clear_live` | NOTE 82 TRD-k. REV v3.05: TEDIT sets how often Extern clears bust records. It defaults to nightly ("Clear Busts Every : 1 Days" in the cabal editor sample) and can be every 28th day. Stored default stays legacy, which still clears every Extern. Live reads `GameConfig.bust_clear_days`: 1 or 7. REPORT.md is on Ben's PC (UNVERIFIED). Rows 83-93 are left open | - |
+| 96 | `SHIP_CHART_CAP_MODE` | `ship_chart_cap_live` | NOTE 82 SD-e. Mines, genesis and photons already follow the Bible ship chart on `SHIP_SPECS_TW2002` (`equip_room`). Cloaks are already 5 for any ship (`CLOAK_MAX`). Live adds the Bible probe cap of 25. Legacy leaves probes uncapped. The pod uses the same 25 (UNVERIFIED; the chart has no probe column) | - |
+| 97 | `CORP_PLANET_DISBAND_MODE` | `corp_planet_disband_v306` | NOTE 82 PLN-q. Today's rule stays `CORP_DISBAND_PLANETS` `owner_keeps`. Live is REV v3.06: planets in the C.E.O.'s sector become his, and the rest are unclaimed. The older constant `v306` still selects that path. Unclaimed is the existing orphan, not a fighter-style rogue owner | - |
+
+Rows 95 and 98 were already done on this tip, so they are not helpers. Row 95, Class 0 price change and FedSpace tows and clean-up, already run in `tick_day`: `fighter_unit_price`, `shield_unit_price` and `hold_day_base` move with the day; `fed.run_tows` tows ships; `class0.extern_sweep` clears MSL and Class 0 fighters and mines; `hardware.tick_navhaz` clears FedSpace NavHaz. Row 98, the C.E.O. leaving, already dissolves the corp and rogues fighters outside his sector (`corp.handle_corp_leave`, `corp.disband`).
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 

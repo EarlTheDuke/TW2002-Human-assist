@@ -394,7 +394,7 @@ def disband(universe: Universe, corp: Corporation) -> None:
                 md.corp_ticker = None
                 kept.append(md)
         sector.mines = kept
-    if K.CORP_DISBAND_PLANETS == "v306":
+    if K.corp_planet_disband_v306():
         # REV 372-374: planets in the C.E.O.'s sector become his, the rest are orphaned (QC 57: the
         # orphan event names the real former owner instead of None).
         for planet in list(universe.planets.values()):
