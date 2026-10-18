@@ -202,7 +202,7 @@ def test_plant_entry_order_navhaz_before_limpet(tw) -> None:
 def test_free_port_skips_reserved_live_range() -> None:
     from tests._cu_host import RESERVED_TEST_PORTS, free_port
 
-    assert frozenset(range(8031, 8037)) == RESERVED_TEST_PORTS
+    assert frozenset(range(8031, 8037)) | frozenset(range(8099, 8120)) == RESERVED_TEST_PORTS
     # Occupy 8040 so the helper must walk past it; still must never return 8031-8036.
     held = []
     try:

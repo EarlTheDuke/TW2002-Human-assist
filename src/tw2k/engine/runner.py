@@ -268,6 +268,12 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
         "interdicted by a planet",
         "the port lost patience",
         "We're not interested.",  # PLANETARY_TRADING.md pt12: a refused counter still spends the visit turn
+        # NOTE 71. A final haggle refusal ends the deal and spends the turn.
+        # A counter does not: its turns_spent stays 0, so it never reaches here.
+        *(
+            ("Get lost creep", "Swine, go peddle your wares")
+            if K.haggle_counter_live() else ()
+        ),
     }
     if result.turns_spent > 0 and (result.ok or charged_fail):
         player.turns_today += result.turns_spent
@@ -1038,12 +1044,15 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
         _award_xp(universe, pid, "first_dock")
 
     if not ok:
+        summary = f"{player.name} trade failed: {msg}"
+        if K.haggle_counter_live() and str(msg).startswith("counter "):
+            summary = f"{player.name} port countered at {str(msg).split(' ', 1)[1]}"
         universe.emit(
             EventKind.TRADE_FAILED,
             actor_id=pid,
             sector_id=sector.id,
             payload={"commodity": commodity.value, "qty": qty, "side": side, "reason": msg},
-            summary=f"{player.name} trade failed: {msg}",
+            summary=summary,
         )
         if K.haggle_live() and str(msg).startswith("counter "):
             return ActionResult(ok=False, error=msg, turns_spent=0)

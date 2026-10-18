@@ -234,6 +234,23 @@ def execute_trade(
     if qty <= 0:
         return False, 0, 0, "Quantity must be positive", None
 
+    # NOTE 71. Holds and cargo on board are checked before credits and before
+    # the port's "100% of this port's max" cap, so a too-big order says what
+    # the ship can carry.
+    if K.haggle_counter_live():
+        if side == "buy" and int(player.ship.cargo_free) < qty:
+            free = int(player.ship.cargo_free)
+            return False, 0, 0, f"You only have {free} empty holds.", None
+        if side == "sell":
+            have = int(player.ship.cargo.get(commodity, 0) or 0)
+            if have < qty:
+                label = {
+                    Commodity.FUEL_ORE: "Fuel Ore",
+                    Commodity.ORGANICS: "Organics",
+                    Commodity.EQUIPMENT: "Equipment",
+                }.get(commodity, str(getattr(commodity, "value", commodity)))
+                return False, 0, 0, f"You only have {have} {label} in your holds.", None
+
     ok, err = can_trade(port, commodity, qty, side)
     if not ok:
         return False, 0, 0, err, None

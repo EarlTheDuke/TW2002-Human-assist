@@ -301,12 +301,13 @@ def test_tax_shows_until_an_action_and_a_new_day_replaces_the_line(world) -> Non
 
     def roll() -> None:
         me = world["me"]
+        # Dawn tax is stamped on the new day (collect_daily_tax runs after day += 1).
+        world["universe"].day += 1
         world["universe"].emit(
             EventKind.TAX_COLLECTED, actor_id="P2", sector_id=me.sector_id,
             payload={"credits_before": 1000, "tax": 50, "align_gain": 1, "new_alignment": 1},
             summary="The Federation collected 50 credits in taxes (+1 alignment)",
         )
-        world["universe"].day += 1
 
     _next(page, roll)
     page.wait_for_selector("[data-tax=overnight]", timeout=10_000)

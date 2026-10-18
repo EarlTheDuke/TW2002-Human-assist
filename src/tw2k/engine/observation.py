@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, model_serializer
+from pydantic import BaseModel, Field, PrivateAttr, model_serializer
 
 from . import constants as _K
 from .agency import is_minimal
@@ -785,6 +785,10 @@ class Observation(BaseModel):
     daily_stats: dict[str, Any] | None = None
     # corp-rankings-v1. Omitted while the ranking switch is legacy.
     corp_rankings: list[dict[str, Any]] | None = None
+    # beta-combat-haggle-v1. Not a model field: /bot's data-obs contract
+    # lists every field, and a legacy dump must not grow a key. The in-process
+    # heuristic reads this. It is unset while the switch is legacy.
+    _ferrengal_sector: int | None = PrivateAttr(default=None)
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -1306,6 +1310,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     if K.avoid_live() and player.avoided_sectors:
         shown = ", ".join(str(s) for s in player.avoided_sectors)
         obs.avoid_prompt = f"Avoided sectors: {shown}. 0 clears the list."
+    if K.bot_hazard_memory_live() and getattr(universe, "ferrengal_sector", None) is not None:
+        obs._ferrengal_sector = int(universe.ferrengal_sector)
     return obs
 
 

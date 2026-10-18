@@ -84,6 +84,9 @@ HELPERS = (
     "class_m_nw_units",
     "class_m_drop_units",
     "class_m_genesis_units",
+    "alien_combat_fix_live",
+    "haggle_counter_live",
+    "bot_hazard_memory_live",
 )
 
 
@@ -91,7 +94,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 82
+    assert len(names) == 85
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -123,3 +126,6 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.CLASS_M_NW_MODE == "legacy"
     assert K.CLASS_M_DROP_MODE == "legacy"
     assert K.CLASS_M_GENESIS_MODE == "legacy"
+    assert K.ALIEN_COMBAT_FIX_MODE == "legacy"
+    assert K.HAGGLE_COUNTER_MODE == "legacy"
+    assert K.BOT_HAZARD_MEMORY_MODE == "legacy"

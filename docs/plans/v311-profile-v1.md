@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (72 helpers)
+## The switch set (75 helpers)
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -82,6 +82,9 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A
 | 70 | `CORP_LEAVER_DEPLOYMENTS` | `corp_leaver_to_ceo` | Live TWGS v3.34b: a member who leaves keeps no corporate fighters; they stay with the corp under the C.E.O. (`"to_ceo"`). The corp ticker stays. Personal deployments and limpets stay. A C.E.O. who leaves still dissolves the corp and rogues off-sector fighters. Stored default stays `"legacy"` | - |
 | 71 | `CORP_ALIGNMENT_RULE` | `corp_join_check` | EIS Corporate menu, Join: the same alignment as the C.E.O. `"join_check"` refuses a join when the signs conflict. Alignment 0 fits either side. A member who later drifts is not ousted. The Extern experience penalty still runs. Stored default stays `"mixed"`; V311 selects `"join_check"` | - |
 | 72 | `MIXED_CORP_EXP_RULE` | `mixed_corp_least_extreme` | Cabal `formulas.html`: Experience Loss = MIN(ABS(lowest_alignment), highest_alignment) / 4. Live tests agree. Stored default stays `"highest_good"`; V311 selects `"least_extreme"`. `MIXED_CORP_EXP_FLOOR` stays 1 | - |
+| 73 | `ALIEN_COMBAT_FIX_MODE` | `alien_combat_fix_live` | NOTE 71: alien fighters trade 1:1 and shields soak first, so shields absorbed never exceed the volley or the shields held. Legacy keeps the odds formula | - |
+| 74 | `HAGGLE_COUNTER_MODE` | `haggle_counter_live` | NOTE 71: a port counter keeps the seat's turn open (up to 4 rounds) and only a final refusal ends the trade. Empty holds and cargo on board are checked before credits. An offer past the counter can still be taken | - |
+| 75 | `BOT_HAZARD_MEMORY_MODE` | `bot_hazard_memory_live` | NOTE 71: a bot's flee and route pick never choose Ferrengal, or a sector where it took mines or met hostile fighters that day, unless no other warp exists | - |
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 

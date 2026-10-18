@@ -293,6 +293,22 @@
     el.dataset.turn = String(v.turn_seq || 0);
     el.className = v.ok ? "verdict ok" : "verdict bad";
     el.textContent = "Last action: " + verdictAction(v) + ". " + (v.ok ? "OK" : "REFUSED") + why + ". " + capFirst(turns) + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".";
+    releaseTradeFocus(v);
+  }
+  let tradeFocusSeq = null;
+  function releaseTradeFocus(v) {
+    if (!v || v.kind !== "trade") return;
+    const seq = Number(v.turn_seq || 0);
+    if (tradeFocusSeq === seq) return;
+    tradeFocusSeq = seq;
+    const slot = $("formSlot");
+    if (slot) {
+      openFormKind = null;
+      formFocus = "";
+      slot.innerHTML = "";
+    }
+    const active = document.activeElement;
+    if (active && active.blur) active.blur();
   }
   function onSurface() {
     return !!landedPlanet() || surface;
@@ -602,24 +618,7 @@
     }
     return String(id).replaceAll("_", " ");
   }
-  function overnightTax() {
-    let best = null;
-    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
-      if (!ev || ev.kind !== "tax_collected") return;
-      if (ev.actor_id && S && ev.actor_id !== S.self_id) return;
-      if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
-    });
-    if (!best) return "";
-    const facts = best.facts || {};
-    if (facts.tax == null) return "";
-    if ((best.seq || 0) !== taxSeenSeq) {
-      taxSeenSeq = best.seq || 0;
-      taxFresh = true;
-    }
-    if (!taxFresh) return "";
-    return "Overnight Federation tax " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0) + ".";
-  }
-  function lastTaxLine() {
+  function newestTax() {
     let best = null;
     streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
       if (!ev || ev.kind !== "tax_collected") return;
@@ -627,8 +626,29 @@
       if (!best || (ev.seq || 0) >= (best.seq || 0)) best = ev;
     });
     const facts = (best && best.facts) || {};
-    if (facts.tax == null) return "";
-    return "Overnight Federation tax " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0) + ".";
+    if (!best || facts.tax == null) return null;
+    return best;
+  }
+  function taxSentence(ev) {
+    const facts = (ev && ev.facts) || {};
+    return "Overnight Federation tax. Day " + ev.day + ": " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0);
+  }
+  function overnightTax() {
+    const best = newestTax();
+    if (!best || Number(best.day) !== Number(S && S.day)) return "";
+    if ((best.seq || 0) !== taxSeenSeq) {
+      taxSeenSeq = best.seq || 0;
+      taxFresh = true;
+    }
+    if (!taxFresh) return "";
+    return taxSentence(best) + ".";
+  }
+  function lastTaxLine() {
+    const best = newestTax();
+    const today = Number(S && S.day);
+    if (!best) return today > 1 ? "Last night: no tax" : "";
+    if (Number(best.day) === today) return taxSentence(best);
+    return taxSentence(best) + ". Last night: no tax";
   }
   function sectorText() {
     const s = S.sector;
@@ -1350,10 +1370,24 @@
       }));
     });
     if (Number(s.id) === 1 || (s.port && /stardock/i.test(String(s.port.name || "")))) {
-      if (legal("buy_equip")) box.appendChild(button("StarDock: buy gear", () => openForm("buy_equip")));
+      // NOTE 71. The three StarDock buttons stay in this order. One that
+      // cannot be used is grey, with its reason, and is never removed.
+      box.appendChild(reasonButton("buy_equip", "StarDock: buy gear", () => openForm("buy_equip")));
       box.appendChild(button("Load colonists (Terra)", () => terraForm()));
-      if (legal("buy_ship")) box.appendChild(button("Shipyards", () => openForm("buy_ship")));
-      if (legal("bank_deposit") || legal("bank_withdraw")) box.appendChild(button("Bank", () => bankForm()));
+      box.appendChild(reasonButton("buy_ship", "Shipyards", () => openForm("buy_ship")));
+      const bankLegal = legal("bank_deposit") || legal("bank_withdraw");
+      const bankWhy = plainReason((LA("bank_deposit") || {}).reason || (LA("bank_withdraw") || {}).reason || "the bank is not open");
+      const bankBtn = document.createElement("button");
+      bankBtn.type = "button";
+      bankBtn.className = "verb";
+      bankBtn.dataset.kind = "bank";
+      bankBtn.textContent = "Bank";
+      if (!bankLegal) {
+        bankBtn.classList.add("dim");
+        bankBtn.title = bankWhy;
+        bankBtn.addEventListener("click", () => setResult("Bank: " + bankWhy, true));
+      } else bankBtn.addEventListener("click", () => bankForm());
+      box.appendChild(bankBtn);
       box.appendChild(dockBox());
     }
     box.appendChild(spaceBox());
@@ -1557,6 +1591,14 @@
         setResult(/^(qty|amount|units|count|credits)$/.test(blank.dataset.n) ? "Type an amount." : "Type a number for " + blank.dataset.n.replaceAll("_", " ") + ".", true);
         return;
       }
+      if (kind === "buy_ship") {
+        const posted = Object.assign({}, args);
+        openFormKind = null;
+        formFocus = "";
+        slot.innerHTML = "";
+        yardConfirm(posted, a);
+        return;
+      }
       openFormKind = null;
       formFocus = "";
       slot.innerHTML = "";
@@ -1575,12 +1617,7 @@
     }
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; formFocus = ""; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      submit();
-    });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     if (kind === "trade") {
       const listed = ((a.params.unit_price || {}).listed_by) || {};
       const sideEl = fields.find((el) => el.dataset.n === "side");
@@ -1633,7 +1670,38 @@
       if (comEl) comEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); });
       fill();
       wrap.appendChild(hint);
-      if (CK) haggleLines(wrap, listed, sideEl, comEl, fields.find((el) => el.dataset.n === "qty"), priceEl, saved);
+      const qtyEl = fields.find((el) => el.dataset.n === "qty");
+      if (CK) haggleLines(wrap, listed, sideEl, comEl, qtyEl, priceEl, saved);
+      const capNote = document.createElement("div");
+      capNote.className = "c";
+      capNote.dataset.trade = "cap";
+      const capQty = () => {
+        if (!qtyEl) return;
+        const side = sideEl && sideEl.value;
+        const com = comEl && comEl.value;
+        const ship = (S && S.ship) || {};
+        const cargo = ship.cargo || {};
+        const holds = Number(ship.holds || 0);
+        const used = Object.values(cargo).reduce((sum, n) => sum + Number(n || 0), 0);
+        const empty = Math.max(0, holds - used);
+        const carried = Number(cargo[com] || 0);
+        const price = Number((listed[com] || {})[side] || 0);
+        const afford = price > 0 ? Math.floor(Number((S && S.credits) || 0) / price) : empty;
+        const name = (COM[com] || [com || "cargo"])[0];
+        let cap = side === "sell" ? carried : Math.min(empty, Number.isFinite(afford) ? afford : empty);
+        if (cap < 0) cap = 0;
+        const typed = Number(qtyEl.value);
+        if (qtyEl.value !== "" && Number.isFinite(typed) && typed > cap) {
+          qtyEl.value = String(cap);
+          capNote.textContent = side === "sell"
+            ? "You only have " + fmt(carried) + " " + name + " in your holds."
+            : (empty <= afford ? "You only have " + fmt(empty) + " empty holds." : "You can afford " + fmt(afford) + ".");
+        } else capNote.textContent = "";
+      };
+      if (qtyEl) qtyEl.addEventListener("input", capQty);
+      if (sideEl) sideEl.addEventListener("change", capQty);
+      if (comEl) comEl.addEventListener("change", capQty);
+      wrap.appendChild(capNote);
     }
     if (kind === "buy_equip") {
       const prices = ((a.params.item || {}).unit_price_by) || {};
@@ -1728,7 +1796,9 @@
       const h = pendingFor(side, com);
       quote.textContent = list && qty ? verb(side) + fmt(list * qty) + " credits (" + fmt(qty) + " at " + fmt(list) + " cr)." : "";
       counter.hidden = !h;
-      counter.textContent = h && qty ? "Counter: " + verb(side).toLowerCase() + fmt(h.counter * qty) + " credits (" + fmt(h.counter) + " cr each). Your offer [" + fmt(h.next_offer) + "]" : "";
+      counter.textContent = h && qty
+        ? "Port counters: " + verb(side).toLowerCase() + fmt(h.counter * qty) + " credits (" + fmt(h.counter) + " each). Your offer?"
+        : "";
     };
     const v = CK && CK.verdict;
     const last = v && v.kind === "trade" ? v.haggle : null;
@@ -1749,9 +1819,23 @@
     };
     [sideEl, comEl, qtyEl].forEach((el) => el && el.addEventListener("input", paint));
     [sideEl, comEl].forEach((el) => el && el.addEventListener("change", () => { offer(); paint(); }));
+    const accept = document.createElement("button");
+    accept.type = "button";
+    accept.textContent = "Accept";
+    accept.dataset.haggle = "accept";
+    accept.addEventListener("click", () => {
+      offer();
+      const confirm = Array.from(wrap.querySelectorAll("button")).find((b) => (b.textContent || "").trim() === "CONFIRM");
+      if (confirm) confirm.click();
+    });
+    const syncAccept = () => { accept.hidden = counter.hidden; };
+    [sideEl, comEl, qtyEl].forEach((el) => el && el.addEventListener("input", syncAccept));
+    [sideEl, comEl].forEach((el) => el && el.addEventListener("change", syncAccept));
     paint();
+    syncAccept();
     wrap.appendChild(quote);
     wrap.appendChild(counter);
+    wrap.appendChild(accept);
     wrap.appendChild(ended);
   }
   function holdTotalLine(wrap, item, qtyEl) {
@@ -1776,13 +1860,51 @@
     paint();
     wrap.appendChild(line);
   }
+  function formKey(ev, submit) {
+    // NOTE 71. Enter on a select picks the option and never submits. Enter
+    // submits only from the last input or from the submit button.
+    if (ev.key !== "Enter") return;
+    const t = ev.target;
+    if (!t) return;
+    if (t.tagName === "SELECT" || t.tagName === "TEXTAREA") return;
+    if (t.tagName === "BUTTON") {
+      const label = (t.textContent || "").trim().toUpperCase();
+      if (label === "ESC" || label === "NO" || label === "CANCEL") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      submit();
+      return;
+    }
+    if (t.tagName !== "INPUT") return;
+    const type = (t.type || "").toLowerCase();
+    if (type === "checkbox" || type === "radio" || type === "button" || type === "hidden") return;
+    const wrap = t.closest(".frm");
+    if (!wrap) return;
+    const inputs = Array.from(wrap.querySelectorAll("input")).filter((el) => {
+      const kind = (el.type || "").toLowerCase();
+      return kind !== "checkbox" && kind !== "radio" && kind !== "hidden" && kind !== "button" && !el.disabled;
+    });
+    const last = inputs[inputs.length - 1];
+    if (last && t !== last) {
+      ev.preventDefault();
+      const i = inputs.indexOf(t);
+      if (i >= 0 && inputs[i + 1]) inputs[i + 1].focus();
+      return;
+    }
+    ev.preventDefault();
+    ev.stopPropagation();
+    submit();
+  }
   function reasonButton(kind, label, onLegal) {
     const a = LA(kind) || { legal: false, reason: kind + " is not available" };
     const b = document.createElement("button");
     b.type = "button";
     b.className = "verb";
     b.dataset.kind = kind;
-    if (!a.legal) b.classList.add("dim");
+    if (!a.legal) {
+      b.classList.add("dim");
+      b.title = plainReason(a.reason);
+    }
     b.textContent = label;
     b.addEventListener("click", () => {
       if (!a.legal) { setResult(label + ": " + plainReason(a.reason), true); return; }
@@ -1851,7 +1973,7 @@
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
     pct.focus();
     pct.select();
@@ -1886,7 +2008,7 @@
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
   }
   function transwarpForm(saved) {
@@ -1931,7 +2053,7 @@
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
   }
   function yoursHere() {
@@ -2011,12 +2133,7 @@
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      submit();
-    });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
     const again = (saved && formFocus && wrap.querySelector('[data-n="' + formFocus + '"]')) || leave;
     again.focus();
@@ -2078,12 +2195,7 @@
         act("deploy_mines", { kind: kind.value, qty: n }, "deploy mines");
       };
       wrap.appendChild(button("CONFIRM", submit));
-      wrap.addEventListener("keydown", (ev) => {
-        if (ev.key !== "Enter") return;
-        ev.preventDefault();
-        ev.stopPropagation();
-        submit();
-      });
+      wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     } else {
       const why = document.createElement("div");
       why.textContent = plainReason(a.reason);
@@ -2177,7 +2289,7 @@
         act("terra_colonists", { mode: mode.value, qty: n }, mode.value + " colonists");
       };
       wrap.appendChild(button("CONFIRM", submit));
-      wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+      wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
       qty.focus();
       qty.select();
     }
@@ -2215,7 +2327,7 @@
     amount.type = "number";
     amount.min = "1";
     amount.dataset.n = "amount";
-    const fill = () => { amount.value = side.value === "withdraw" ? wdMax : depMax; };
+    const fill = () => { amount.value = side.value === "withdraw" ? "" : (depMax ? String(depMax) : ""); };
     side.addEventListener("change", fill);
     if (saved && saved.amount != null && saved.amount !== "") amount.value = saved.amount;
     else fill();
@@ -2232,18 +2344,20 @@
       if (!n) { setResult("Type an amount.", true); return; }
       const which = side.value === "withdraw" ? wd : dep;
       if (!which.legal) { setResult(plainReason(which.reason), true); return; }
-      openFormKind = null;
-      slot.innerHTML = "";
-      act(side.value === "withdraw" ? "bank_withdraw" : "bank_deposit", { amount: n }, side.value);
+      const post = () => {
+        openFormKind = null;
+        slot.innerHTML = "";
+        act(side.value === "withdraw" ? "bank_withdraw" : "bank_deposit", { amount: n }, side.value);
+      };
+      if (side.value === "withdraw" && Number((S && S.credits) || 0) + n > 49999) {
+        confirmWords("Withdraw", "Withdraw " + fmt(n) + " cr? The dawn tax takes 10% of the cash on your ship when it is over 49,999.", post);
+        return;
+      }
+      post();
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      submit();
-    });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
     const focusName = (saved && formFocus) || "amount";
     const again = wrap.querySelector('[data-n="' + focusName + '"]') || amount;
@@ -2290,7 +2404,7 @@
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
     amount.focus();
     amount.select();
@@ -2333,7 +2447,7 @@
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
     pct.focus();
     pct.select();
@@ -2379,7 +2493,7 @@
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => { if (ev.key !== "Enter") return; ev.preventDefault(); ev.stopPropagation(); submit(); });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
     dest.focus();
   }
@@ -2698,20 +2812,57 @@
       ["Turns", fmt(S.turns_remaining) + " / " + fmt(S.turns_per_day)],
       ["Credits", fmt(S.credits) + " cr"],
       ["Bank", S.bank_balance == null ? "none" : fmt(S.bank_balance) + " cr"],
-      ["Net worth", fmt(S.net_worth) + " cr"],
-      ["Rank", S.rank || ""],
+      ["Net worth (estimate)", fmt(S.net_worth) + " cr"],
+      ["Rank", (S.rank || "") + (S.experience != null ? " (experience " + fmt(S.experience) + ")" : "")],
       ["Experience", fmt(S.experience)],
       ["Alignment", fmt(S.alignment) + " " + (S.alignment_label || "")],
       ["Overnight tax", lastTaxLine() || "none yet"],
-      ["Tax due tomorrow", S.tax_due_tomorrow == null ? "none" : fmt(S.tax_due_tomorrow) + " cr"],
+      ["Tax due tomorrow", S.tax_due_tomorrow == null ? "none" : fmt(S.tax_due_tomorrow) + " cr (10% of the cash on your ship when it is over 49,999 at dawn; the bank is not taxed)"],
       ["Planets", fmt((S.owned_planets || []).length)],
       ["Known ports", fmt((S.known_ports || []).length)],
       ["Known sectors", fmt(Object.keys(S.known_warps || {}).length)],
     ];
     Object.entries(stats).forEach(([k, v]) => lines.push([k.replaceAll("_", " "), fmt(v)]));
+    netWorthLines().forEach((pair) => lines.push(pair));
     const rows = lines.map(([k, v]) => '<div class="row"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join("");
+    const note = '<div class="row" data-worth="note">Under v3.11 rules you are ranked by experience; net worth is this game\'s estimate. Bought holds and fighters left in sectors are not counted.</div>';
     const info = SC ? '<div class="row" data-game-info="credits"><span class="c">' + esc(SC) + "</span></div>" : "";
-    overlay("Game Status", rows + info);
+    overlay("Game Status", rows + note + info);
+  }
+  function netWorthLines() {
+    const ship = (S && S.ship) || {};
+    const cargo = ship.cargo || {};
+    const base = { fuel_ore: 26, organics: 56, equipment: 102, colonists: 10 };
+    const lines = [
+      ["Cash", fmt(S.credits) + " cr"],
+      ["Bank", S.bank_balance == null ? "none" : fmt(S.bank_balance) + " cr"],
+    ];
+    Object.keys(base).forEach((key) => {
+      const n = Number(cargo[key] || 0);
+      if (!n) return;
+      const name = (COM[key] || [key])[0];
+      lines.push([name, fmt(n) + " at " + fmt(base[key]) + " cr"]);
+    });
+    lines.push(["Hull", "half the shipyard price"]);
+    lines.push(["Carried fighters", fmt(ship.fighters || 0)]);
+    lines.push(["Carried shields", fmt(ship.shields || 0)]);
+    (S.owned_planets || []).forEach((p) => {
+      const col = Number(p.colonists_total || 0);
+      const goods = Object.entries(p.stockpile || {}).filter((pair) => Number(pair[1]) > 0)
+        .map((pair) => ((COM[pair[0]] || [pair[0]])[0]) + " " + fmt(pair[1])).join(", ") || "none";
+      lines.push([
+        p.name || "Planet",
+        "colonists " + fmt(col) + " x 10 = " + fmt(col * 10) + " cr; goods " + goods
+          + "; defences " + fmt(p.fighters || 0) + " fighters, " + fmt(p.shields || 0) + " shields",
+      ]);
+    });
+    lines.push(["Engine net worth", fmt(S.net_worth) + " cr"]);
+    return lines;
+  }
+  function netWorthPage() {
+    const rows = netWorthLines().map(([k, v]) => '<div class="row"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join("");
+    const note = '<div class="row" data-worth="note">Under v3.11 rules you are ranked by experience; net worth is this game\'s estimate. Bought holds and fighters left in sectors are not counted.</div>';
+    overlay("Net worth (estimate)", rows + note);
   }
   function deployedHoldings() {
     const rows = {};
@@ -2830,12 +2981,7 @@
     };
     wrap.appendChild(button("CONFIRM", go));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      go();
-    });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, go));
     slot.appendChild(wrap);
     const first = wrap.querySelector('input[type="number"], input[type="text"]') || wrap.querySelector("select");
     if (first) {
@@ -2869,7 +3015,7 @@
     const targets = (((a.params || {}).target || {}).choices) || [];
     const costs = (a.params || {}).cost_by || {};
     const fields = [{ n: "topic", label: "topic", choices: topics.map((topic) => ({ value: topic, label: topic })) }];
-    if (targets.length) fields.push({ n: "target", label: "target", required: false, choices: targets.map((id) => ({ value: id, label: id })) });
+    if (targets.length) fields.push({ n: "target", label: "target", required: false, choices: targets.map((id) => ({ value: id, label: commanderName(id) })) });
     const note = "A trader trace costs " + fmt(costs.trader || 0) + " cr. Underground or mafia costs " + fmt(costs.underground || costs.mafia || 0) + " cr.";
     dockForm("grimyAsk", "ASK GRIMY", note, fields, saved, (values) => {
       const args = { topic: values.topic };
@@ -2891,7 +3037,7 @@
     const targets = ((params.target || {}).choices) || [];
     const min = Number((params.amount || {}).min || 0);
     dockForm("ugContract", "CONTRACT", "At least " + fmt(min) + " cr. " + fmt(params.credits_per_align || 0) + " cr per alignment point.", [
-      { n: "target", label: "target", choices: targets.map((id) => ({ value: id, label: id })) },
+      { n: "target", label: "target", choices: targets.map((id) => ({ value: id, label: commanderName(id) })) },
       { n: "amount", label: "amount", type: "number", min: min },
     ], saved, (values) => act("underground_contract", { target: values.target, amount: Number(values.amount) }, "contract"));
   }
@@ -2902,7 +3048,7 @@
     const targets = ((params.target_id || {}).choices) || [];
     const min = Number((params.amount || {}).min || 0);
     dockForm("postReward", "POST A REWARD", "At least " + fmt(min) + " cr.", [
-      { n: "target_id", label: "target", choices: targets.map((id) => ({ value: id, label: id })) },
+      { n: "target_id", label: "target", choices: targets.map((id) => ({ value: id, label: commanderName(id) })) },
       { n: "amount", label: "amount", type: "number", min: min },
     ], saved, (values) => act("post_reward", { target_id: values.target_id, amount: Number(values.amount) }, "reward"));
   }
@@ -2997,12 +3143,7 @@
     };
     wrap.appendChild(button("CONFIRM", go));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      go();
-    });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, go));
     slot.appendChild(wrap);
     input.focus();
     input.select();
@@ -3060,12 +3201,7 @@
     };
     wrap.appendChild(button("CONFIRM", go));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      go();
-    });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, go));
     slot.appendChild(wrap);
     password.focus();
     password.select();
@@ -3090,7 +3226,7 @@
       const o = document.createElement("option");
       o.value = id;
       const named = members.find((row) => row.player_id === id);
-      o.textContent = named ? named.name : id;
+      o.textContent = named ? named.name : commanderName(id);
       target.appendChild(o);
     });
     if (saved && saved.target) target.value = saved.target;
@@ -3106,12 +3242,7 @@
     };
     wrap.appendChild(button("CONFIRM", go));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      go();
-    });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, go));
     slot.appendChild(wrap);
   }
   function transferForm(a, saved) {
@@ -3134,7 +3265,7 @@
       const o = document.createElement("option");
       o.value = id;
       const named = (params.partners || []).find((row) => row.player_id === id);
-      o.textContent = named ? named.name : id;
+      o.textContent = named ? named.name : commanderName(id);
       target.appendChild(o);
     });
     const item = document.createElement("select");
@@ -3180,15 +3311,38 @@
     };
     wrap.appendChild(button("CONFIRM", go));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
-    wrap.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      go();
-    });
+    wrap.addEventListener("keydown", (ev) => formKey(ev, go));
     slot.appendChild(wrap);
     qty.focus();
     qty.select();
+  }
+  function commanderName(id) {
+    const row = ((S && S.other_players) || []).find((item) => item.id === id);
+    if (row && row.name) return row.name;
+    const member = (((S && S.corp) || {}).members || []).find((item) => item.id === id);
+    return (member && member.name) || id;
+  }
+  function allianceCommander(id) {
+    const row = ((S && S.alliances) || []).find((item) => item.id === id);
+    if (!row) return id;
+    const other = (row.members || []).find((m) => m !== S.self_id) || row.proposed_by;
+    return commanderName(other);
+  }
+  function commanderPick(title, line, ids, onPick, labelFor) {
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = title;
+    const nameOf = labelFor || commanderName;
+    const options = ids.map((id) => '<option value="' + esc(id) + '">' + esc(nameOf(id)) + "</option>").join("");
+    m.innerHTML = '<div class="y">' + esc(title) + "</div><div>" + esc(line) + "</div>"
+      + '<label>Commander <select id="commanderPick" data-player-pick="1">' + options + "</select></label> "
+      + '<button type="button" id="dangerOk">CONFIRM</button><br><span class="dk">Esc to close</span>';
+    $("dangerOk").addEventListener("click", () => {
+      const id = $("commanderPick").value;
+      m.hidden = true;
+      onPick(id);
+    });
   }
   function corpMenu() {
     const c = S.corp || {};
@@ -3207,10 +3361,11 @@
     const box = document.getElementById("corpBtns");
     const add = (kind, label, onLegal) => box.appendChild(reasonButton(kind, label, onLegal));
     add("corp_invite", "Invite", (a) => {
-      const id = ((((a.params || {}).target || {}).choices) || [])[0];
-      if (!id) { setResult("Invite: no trader to invite", true); return; }
-      const named = ((a.params || {}).targets || []).find((row) => row.player_id === id);
-      confirmWords("Invite", "Invite " + esc(named ? named.name : id) + "?", () => act("corp_invite", { target: id }, "invite"));
+      const ids = ((((a.params || {}).target || {}).choices) || []);
+      if (!ids.length) { setResult("Invite: no trader to invite", true); return; }
+      commanderPick("Invite", "Invite a commander", ids, (id) => {
+        confirmWords("Invite", "Invite " + esc(commanderName(id)) + "?", () => act("corp_invite", { target: id }, "invite"));
+      });
     });
     add("corp_join", "Join", () => joinForm());
     add("corp_leave", "Leave", (a) => {
@@ -3220,8 +3375,22 @@
       confirmWords("Leave", line, () => act("corp_leave", {}, "leave"));
     });
     add("corp_memo", "Memo", () => memoForm());
-    add("corp_deposit", "Deposit credits", () => {});
-    add("corp_withdraw", "Withdraw credits", () => {});
+    if ((LA("corp_deposit") || {}).legal) {
+      add("corp_deposit", "Deposit credits", (a) => {
+        const max = Number((((a.params || {}).amount || {}).max) || (S && S.credits) || 0);
+        dockForm("corpDeposit", "DEPOSIT CREDITS", "Up to " + fmt(max) + " cr.", [
+          { n: "amount", label: "amount", type: "number", min: 1 },
+        ], null, (values) => act("corp_deposit", { amount: Number(values.amount) }, "deposit"));
+      });
+    }
+    if ((LA("corp_withdraw") || {}).legal) {
+      add("corp_withdraw", "Withdraw credits", (a) => {
+        const max = Number((((a.params || {}).amount || {}).max) || 0);
+        dockForm("corpWithdraw", "WITHDRAW CREDITS", "Up to " + fmt(max) + " cr.", [
+          { n: "amount", label: "amount", type: "number", min: 1 },
+        ], null, (values) => act("corp_withdraw", { amount: Number(values.amount) }, "withdraw"));
+      });
+    }
     add("corp_set_password", "Set password", () => passwordForm());
     add("corp_drop", "Drop member", (a) => dropForm(a));
     const ceo = button("Transfer C.E.O.", () => setResult("Handing the C.E.O. seat to another member is not in this game.", true));
@@ -3231,14 +3400,18 @@
     add("ship_set_corporate", "Make ship corporate", () => act("ship_set_corporate", {}, "corporate"));
     add("ship_set_personal", "Make ship personal", () => act("ship_set_personal", {}, "personal"));
     add("propose_alliance", "Propose alliance", (a) => {
-      const id = ((((a.params || {}).target || {}).choices) || [])[0];
-      if (!id) { setResult("Propose alliance: no other commander", true); return; }
-      confirmWords("Propose alliance", "Propose an alliance to " + esc(id) + "?", () => act("propose_alliance", { target: id }, "propose"));
+      const ids = ((((a.params || {}).target || {}).choices) || []);
+      if (!ids.length) { setResult("Propose alliance: no other commander", true); return; }
+      commanderPick("Propose alliance", "Propose an alliance to", ids, (id) => {
+        confirmWords("Propose alliance", "Propose an alliance to " + esc(commanderName(id)) + "?", () => act("propose_alliance", { target: id }, "propose"));
+      });
     });
     add("accept_alliance", "Accept alliance", (a) => {
-      const id = ((((a.params || {}).alliance_id || {}).choices) || [])[0];
-      if (!id) { setResult("Accept alliance: no alliance proposal pending for you", true); return; }
-      confirmWords("Accept alliance", "Accept alliance " + esc(id) + "?", () => act("accept_alliance", { alliance_id: id }, "accept"));
+      const ids = ((((a.params || {}).alliance_id || {}).choices) || []);
+      if (!ids.length) { setResult("Accept alliance: no alliance proposal pending for you", true); return; }
+      commanderPick("Accept alliance", "Accept an alliance with", ids, (id) => {
+        act("accept_alliance", { alliance_id: id }, "accept");
+      }, allianceCommander);
     });
     add("break_alliance", "Break alliance", (a) => {
       const id = ((((a.params || {}).alliance_id || {}).choices) || [])[0];
@@ -3373,6 +3546,45 @@
       { n: "commodity", label: "Cargo", choices: choices.map((name) => ({ value: name, label: (COM[name] || [name])[0] })) },
       { n: "qty", label: "Quantity", type: "number", min: 1, value: "1" },
     ], saved, (values) => act("jettison", { commodity: values.commodity, qty: values.qty }, "jettison"));
+  }
+  function yardConfirm(args, action) {
+    const params = (action && action.params) || {};
+    const shipParams = params.ship_class || {};
+    const stats = shipParams.stats_by || {};
+    const nets = shipParams.net_cost_by || {};
+    const spare = (params.trade_in || {}).spare_cost_by || {};
+    const key = args.ship_class;
+    const s = stats[key] || HULL[key] || {};
+    const ship = (S && S.ship) || {};
+    const fromH = Number(ship.holds || 0);
+    const toH = Number(s.max_holds != null ? s.max_holds : (s.holds || 0));
+    const fromF = Number(ship.fighters || 0);
+    const toF = Number(s.max_fighters != null ? s.max_fighters : (s.fighters || 0));
+    const fromS = Number(ship.shields || 0);
+    const toS = Number(s.max_shields != null ? s.max_shields : (s.shields || 0));
+    const net = Number(nets[key]);
+    const credit = Number(shipParams.trade_in || 0);
+    const price = spare[key] != null ? Number(spare[key]) : null;
+    const money = net < 0 ? "You get " + fmt(-net) + " cr back" : "The cost is " + fmt(net) + " cr";
+    const holds = toH < fromH
+      ? "drop from " + fmt(fromH) + " holds to " + fmt(toH)
+      : (toH > fromH ? "go from " + fmt(fromH) + " holds to " + fmt(toH) : "keep " + fmt(fromH) + " holds");
+    const gear = (name, from, to) => {
+      if (to === from) return "";
+      return (to > from ? ", gain " : ", lose ") + fmt(Math.abs(to - from)) + " " + name;
+    };
+    const deal = "Trade-in " + fmt(credit) + " cr"
+      + (price == null ? "" : ", the new ship is " + fmt(price) + " cr")
+      + ", net " + fmt(net) + " cr. ";
+    const line = "Want to buy it? " + deal + money + " and " + holds + gear("fighters", fromF, toF) + gear("shields", fromS, toS) + ".";
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "Want to buy it?";
+    m.innerHTML = '<div class="y">Want to buy it?</div><div data-yard="confirm">' + esc(line) + '</div>'
+      + '<button type="button" id="dangerOk">Yes</button> <button type="button" id="dangerNo">No</button>';
+    $("dangerOk").addEventListener("click", () => { m.hidden = true; act("buy_ship", args, "buy ship"); });
+    $("dangerNo").addEventListener("click", () => { m.hidden = true; setResult("You leave with nothing.", false); });
   }
   function confirmWords(title, line, onYes) {
     const m = $("menu");
@@ -4013,7 +4225,8 @@
         ? "Day " + dayNow + " dawns. Turns come back a little at a time; you have "
           + fmt(S.turns_remaining) + " of " + fmt(S.turns_per_day) + "."
         : "Day " + dayNow + ". Turns refilled to " + fmt(S.turns_remaining) + ".";
-      setResult(roll + (tax ? " " + tax : "") + (fell ? " " + fell : ""), false);
+      const quiet = tax ? "" : (dayNow > 1 ? " Last night: no tax." : "");
+      setResult(roll + (tax ? " " + tax : "") + quiet + (fell ? " " + fell : ""), false);
     }
     seenDay = dayNow;
     const sec = S.sector || {};
@@ -4082,6 +4295,27 @@
     }
   }
   $("connectBtn").addEventListener("click", connect);
+  const nwBtn = $("nwBtn");
+  if (nwBtn) nwBtn.addEventListener("click", () => { if (S) netWorthPage(); });
+  document.addEventListener("focusin", (ev) => {
+    const t = ev.target;
+    if (!t || t.tagName !== "INPUT") return;
+    if (!t.closest || !t.closest(".frm")) return;
+    const type = (t.type || "").toLowerCase();
+    if (type !== "number" && type !== "text") return;
+    try { t.select(); } catch (e) { /* a number input can refuse select in some browsers */ }
+  });
+  // Number inputs often ignore select(), so the first typed character would
+  // append to the prefill (83 typed onto 83 became 8383). Replace it instead.
+  document.addEventListener("keydown", (ev) => {
+    const t = ev.target;
+    if (!t || t.tagName !== "INPUT" || !t.closest || !t.closest(".frm")) return;
+    if (t.dataset.touched || t.value === "") return;
+    const type = (t.type || "").toLowerCase();
+    if (type !== "number" && type !== "text") return;
+    if (ev.key.length !== 1 || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    t.value = "";
+  }, true);
   document.addEventListener("input", markTouched, true);
   document.addEventListener("change", markTouched, true);
   document.addEventListener("keydown", (ev) => {

@@ -19,6 +19,7 @@ from tw2k.engine.constants import (
     HOLO_SCANNER_COST,
     SCANNER_DENSITY,
     SCANNER_HOLO,
+    bot_hazard_memory_live,
     info_tw2002,
     scanner_room,
 )
@@ -330,6 +331,13 @@ class HeuristicAgent(BaseAgent):
         adj = obs.adjacent or []
         day = getattr(obs, "day", None)
         adj = [a for a in adj if self._held.get(int(a["id"])) != day] or adj
+        if bot_hazard_memory_live():
+            bad = self._remembered_hazards(obs)
+            safe_adj = [a for a in adj if int(a["id"]) not in bad]
+            if safe_adj:
+                adj = safe_adj
+            elif adj and bad:
+                return self._stay_put(obs, "No safe warp. Ferrengal and sectors that hit this ship today are closed.")
         if adj and self._short_for_warp(obs):
             return Action(kind=ActionKind.WAIT, thought="Not enough turns left for a warp; waiting for tomorrow.")
         if adj:
@@ -667,6 +675,53 @@ class HeuristicAgent(BaseAgent):
         return Action(kind=ActionKind.SHIP_TRANSWARP, args={"sector_id": STARDOCK_SECTOR},
                       thought=f"TransWarp to StarDock ({hops} hops, {need} ore), ore kept for the return.")
 
+    def _remembered_hazards(self, obs: Observation) -> set[int]:
+        """Sectors a live bot will not enter: Ferrengal, and any sector where
+        this ship took mines or met hostile fighters today or yesterday.
+
+        Empty while the switch is off, so the flee and the walk stay put.
+        """
+        if not bot_hazard_memory_live():
+            return set()
+        bad: set[int] = set()
+        ferr = getattr(obs, "_ferrengal_sector", None)
+        if ferr is not None:
+            bad.add(int(ferr))
+        day = getattr(obs, "day", None)
+        me = getattr(obs, "self_id", None)
+        for ev in getattr(obs, "recent_events", None) or []:
+            if not isinstance(ev, dict):
+                continue
+            ev_day = ev.get("day")
+            if day is not None and ev_day is not None and int(ev_day) < int(day) - 1:
+                continue
+            kind = ev.get("kind")
+            facts = ev.get("facts") or {}
+            sector = ev.get("sector_id")
+            if kind == "mine_detonated" and (facts.get("victim") == me or ev.get("actor_id") == me):
+                if sector is not None:
+                    bad.add(int(sector))
+            elif kind == "hazard_avoid_prompt" and ev.get("actor_id") == me:
+                sid = facts.get("sector", sector)
+                if sid is not None:
+                    bad.add(int(sid))
+            elif kind == "fighter_challenge" and ev.get("actor_id") == me and sector is not None:
+                bad.add(int(sector))
+            elif kind == "retreat" and ev.get("actor_id") == me:
+                src = facts.get("from", sector)
+                if src is not None:
+                    bad.add(int(src))
+        return bad
+
+    def _stay_put(self, obs: Observation, thought: str) -> Action:
+        """No safe warp. Pay, surrender, or wait. Do not step into the hazard."""
+        legal = {la.get("kind"): la for la in (getattr(obs, "legal_actions", None) or [])}
+        if (legal.get("pay_toll") or {}).get("legal"):
+            return Action(kind=ActionKind.PAY_TOLL, thought=thought + " No other warp; paying the toll.")
+        if (legal.get("surrender") or {}).get("legal"):
+            return Action(kind=ActionKind.SURRENDER, thought=thought + " No other warp; surrendering.")
+        return Action(kind=ActionKind.WAIT, thought=thought + " No other warp; staying.")
+
     def _flee(self, obs: Observation, thought: str) -> Action:
         adj = obs.adjacent or []
         if not adj:
@@ -688,6 +743,13 @@ class HeuristicAgent(BaseAgent):
         calm = [a for a in candidates if _haz(a) < 10]
         if calm and len(calm) < len(candidates):
             candidates = calm
+        if bot_hazard_memory_live():
+            bad = self._remembered_hazards(obs)
+            safe = [a for a in candidates if int(a["id"]) not in bad]
+            if safe:
+                candidates = safe
+            elif bad:
+                return self._stay_put(obs, thought)
         choice = min(candidates, key=lambda a: (self._visit_counts.get(int(a["id"]), 0), int(a["id"])))
         self._last_from = here
         self._last_to = int(choice["id"])
