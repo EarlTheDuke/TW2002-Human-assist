@@ -3918,6 +3918,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "pod_cash_live": ("POD_CASH_MODE", "RULINGS Addendum A (the pod has 25 credits)"),
     "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
+    "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
 }
 
 
@@ -4012,3 +4013,19 @@ CITADEL_S1_COLONISTS: dict[tuple[str, int], int] = {("U", 3): 8_000}
 def citadel_table_fix_live() -> bool:
     """True when a citadel level asks for the S1 colonist count where the stored table differs."""
     return CITADEL_TABLE_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# terra-and-planet-ownership-v1 (NOTE 66). "legacy" keeps the home planet in the
+# seat's start sector with all 191,000 colonists unassigned. "live" places it in
+# an empty sector outside FedSpace and splits the start 45 / 65 / 81 thousand
+# (transcript.txt, new character: Fuel Ore 45, Organics 65, Equipment 81).
+# Appended so later slices can rebase cleanly.
+HOME_PLANET_MODE = "legacy"  # "legacy" | "live"
+HOME_PLANET_FUEL = 45_000
+HOME_PLANET_ORGANICS = 65_000
+HOME_PLANET_EQUIPMENT = 81_000
+
+
+def home_planet_live() -> bool:
+    """True when a new seat's class M world is placed and stocked the v3.11 way."""
+    return HOME_PLANET_MODE == "live" or tw2002_live_profile() or v311_profile()

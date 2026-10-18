@@ -36,6 +36,7 @@ from .security import (
     Secrets,
     client_ip,
     guest_id,
+    home_planet_name,
     is_https,
     is_local_admin,
     new_guest_cookie,
@@ -500,6 +501,17 @@ class Lobby:
             return self._api_or(api, 413, "That request is too large.", request)
         except (FormError, ValueError):
             form = {}
+        try:
+            home_planet_name(form.get("home_planet_name"))
+        except FormError as exc:
+            if api:
+                return self._api_or(api, 400, str(exc), request)
+            seat = str(form.get("seat") or "")
+            key = str(form.get("k") or "")
+            g = self.store.game(gid)
+            if g is None:
+                return self.msg("Not found", "That game is not open.", 404)
+            return self.html(pages.join_confirm(self.brand, game=g, seat=seat, key=key, error=str(exc)), 400)
         g = self.store.game(gid)
         if g is None or g["status"] not in ACTIVE:
             return self._api_or(api, 404, "That game is not open.", request)

@@ -298,6 +298,12 @@ def serve(
         help="Opening credits for every seat, human and bot (0 to 10000000). "
         "Omit to keep the original package (300 under v3.11, 20,000 with the legacy skew).",
     ),
+    home_planet_name: str = typer.Option(
+        None,
+        "--home-planet-name",
+        help="Name for the first human seat's home planet (1 to 30 characters). "
+        "Omit to use the trader's name.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -573,6 +579,7 @@ def serve(
         seat_drop_after_s=seat_drop_after_s,
         turn_regen_day_seconds=day_length,
         starting_credits_override=credits_override,
+        home_planet_name=home_planet_name,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

@@ -130,6 +130,9 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
     override = settings.get("starting_credits_override")
     if override is not None:
         cmd.extend(["--starting-credits-override", str(int(override))])
+    home = settings.get("home_planet_name")
+    if home:
+        cmd.extend(["--home-planet-name", str(home)])
     return cmd
 
 

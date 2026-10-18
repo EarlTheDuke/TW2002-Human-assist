@@ -175,6 +175,10 @@ class HeuristicAgent(BaseAgent):
         return seen is not None and day is not None and int(day) - seen <= 1
 
     async def act(self, obs: Observation) -> Action:
+        # A new v3.11 trader starts on the home planet (NOTE 66). This bot never
+        # lands on its own, so a landed ship is the opening: blast off first.
+        if getattr(obs, "planet_landed", None) is not None:
+            return Action(kind=ActionKind.LIFTOFF, thought="Blasting off from the home planet.")
         # Fighters holding the ship must be answered first (ship-combat-core-v1).
         challenge = getattr(obs, "fighter_challenge", None)
         if challenge:

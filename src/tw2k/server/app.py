@@ -225,6 +225,7 @@ def create_app(
     seat_drop_after_s: float = 45.0,
     turn_regen_day_seconds: float | None = None,
     starting_credits_override: int | None = None,
+    home_planet_name: str | None = None,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -292,6 +293,7 @@ def create_app(
                 seat_drop_after_s=seat_drop_after_s,
                 turn_regen_day_seconds=turn_regen_day_seconds,
                 starting_credits_override=starting_credits_override,
+                home_planet_name=home_planet_name,
             )
             spec.paused = start_paused
             spec.resume_from = _public.resume_path()
@@ -1145,6 +1147,11 @@ def create_app(
                 if "starting_credits_override" in body and body["starting_credits_override"] is not None
                 else starting_credits_override
             ),
+            home_planet_name=(
+                body["home_planet_name"]
+                if "home_planet_name" in body and body["home_planet_name"] is not None
+                else home_planet_name
+            ),
         )
         if body.get("external_hold_max_actions") is not None:
             spec.external_hold_max_actions = max(0, int(body["external_hold_max_actions"]))
@@ -1245,6 +1252,7 @@ def _build_default_spec(
     seat_drop_after_s: float = 45.0,
     turn_regen_day_seconds: float | None = None,
     starting_credits_override: int | None = None,
+    home_planet_name: str | None = None,
 ) -> MatchSpec:
     _apply_port_stock_fidelity()
     _apply_haggle_live()
@@ -1306,6 +1314,8 @@ def _build_default_spec(
         cfg_kwargs["turn_regen_day_seconds"] = day_seconds
     if starting_credits_override is not None:
         cfg_kwargs["starting_credits_override"] = starting_credits_override
+    if home_planet_name:
+        cfg_kwargs["home_planet_name"] = home_planet_name
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each
