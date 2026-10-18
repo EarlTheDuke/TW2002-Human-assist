@@ -228,10 +228,14 @@ def create_app(
     from .runner import _default_saves_root
 
     _install_access_log_redaction()
+    # selfhost-beta-v1: per-game switches for a lobby worker (no-op unless TW2K_SWITCH_OVERLAY is set).
+    from ..public import worker as _public
+
+    _public.apply_switch_overlay()
 
     def _write_seat_links(spec: MatchSpec) -> None:
         """G3: one claim link per external seat in .tw2k/seat_links/ (`tw2k serve` only)."""
-        if not seat_links:
+        if not seat_links or _public.public_mode():
             return
         from . import seat_links as _sl
 
@@ -288,6 +292,8 @@ def create_app(
                 turn_regen_day_seconds=turn_regen_day_seconds,
             )
             spec.paused = start_paused
+            spec.resume_from = _public.resume_path()
+            runner._snapshot_dir = _public.snapshot_dir()
             await runner.start(spec)
             _write_seat_links(spec)
             # runner.start kicks off the scheduler loop in a background
@@ -312,6 +318,11 @@ def create_app(
         yield
         if custom_queue is not None:
             custom_queue.stop()
+        if getattr(runner, "_snapshot_dir", None) is not None:
+            try:
+                _public.write_snapshot(runner, "stop", runner._snapshot_dir)
+            except OSError:
+                pass
         await runner.stop()
         copilot_registry.clear()
 
@@ -1174,6 +1185,7 @@ def create_app(
             task.cancel()
             await broadcaster.unsubscribe(queue)
 
+    _public.install(app, runner)
     return app
 
 

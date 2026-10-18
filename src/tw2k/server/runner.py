@@ -207,6 +207,8 @@ class MatchSpec:
     # status or observation. Off leaves every match exactly as it is today.
     pause_on_seat_drop: bool = False
     seat_drop_after_s: float = 45.0
+    # selfhost-beta-v1: start from this snapshot (public/worker.py) instead of a new universe.
+    resume_from: str | None = None
 
 
 @dataclass
@@ -557,6 +559,10 @@ class MatchRunner:
 
     def _record_day_tick(self) -> None:
         """Append a day_tick marker so replay knows when to call tick_day."""
+        if getattr(self, "_snapshot_dir", None) is not None:
+            from ..public.worker import maybe_snapshot
+
+            maybe_snapshot(self, rolled=True)
         if self._actions_fp is None:
             return
         u = self.state.universe
@@ -717,11 +723,17 @@ class MatchRunner:
             self.state.status = "running" if self._pause.is_set() else "paused"
             self.state.started_at = time.time()
 
-            universe = generate_universe(self._spec.config)
+            resume_meta = None
+            if getattr(self._spec, "resume_from", None):
+                from ..public.worker import load_snapshot
+
+                resume_meta, universe = load_snapshot(self._spec.resume_from)
+            else:
+                universe = generate_universe(self._spec.config)
             self.state.universe = universe
             self._apply_day_length(universe)
 
-            agents = self._build_agents(self._spec, universe)
+            agents = self._build_agents(self._spec, universe, seat_players=resume_meta is None)
             self.state.agents = agents
 
             await self._emit_init()
@@ -732,28 +744,37 @@ class MatchRunner:
             # spectators see what's happening.
             await self._warmup_llm_agents(agents)
 
-            universe.emit(
-                EventKind.GAME_START,
-                payload={
-                    "players": [
-                        {"id": a.player_id, "name": a.name, "kind": a.kind}
-                        for a in agents
-                    ],
-                    "config": universe.config.model_dump(),
-                },
-                summary=f"Match begins — {len(agents)} players in a {universe.config.universe_size}-sector galaxy.",
-            )
-            await self._flush_events()
+            if resume_meta is None:
+                universe.emit(
+                    EventKind.GAME_START,
+                    payload={
+                        "players": [
+                            {"id": a.player_id, "name": a.name, "kind": a.kind}
+                            for a in agents
+                        ],
+                        "config": universe.config.model_dump(),
+                    },
+                    summary=f"Match begins — {len(agents)} players in a {universe.config.universe_size}-sector galaxy.",
+                )
+                await self._flush_events()
 
             # Turn loop: round-robin agents, day advances when all have exhausted turns.
             regen_clock = self._regen_day_clock()
             if regen_clock:
                 # NOTE 60 item 2 (RULINGS s5): day 1 starts now and each day lasts the day length.
+                # A resumed game keeps the day it was in.
                 self._live_day_mark = time.time()
+                if resume_meta is not None and resume_meta.get("day_started_at"):
+                    self._live_day_mark = float(resume_meta["day_started_at"])
+            snap_dir = getattr(self, "_snapshot_dir", None)
             while not is_finished(universe) and not self._stop.is_set():
                 await self._pause.wait()
                 if self._stop.is_set():
                     break
+                if snap_dir is not None:
+                    from ..public.worker import maybe_snapshot
+
+                    maybe_snapshot(self)
 
                 if K.async_day_live():
                     await self._async_day_round(agents, universe)
@@ -1411,7 +1432,7 @@ class MatchRunner:
                 await act_task
             raise ExternalIdleTimeoutError() from None
 
-    def _build_agents(self, spec: MatchSpec, universe: Universe) -> list[BaseAgent]:
+    def _build_agents(self, spec: MatchSpec, universe: Universe, *, seat_players: bool = True) -> list[BaseAgent]:
         from ..agents import HeuristicAgent, LLMAgent
         from ..engine import constants as K
 
@@ -1426,70 +1447,72 @@ class MatchRunner:
 
         agents: list[BaseAgent] = []
         for i, ag in enumerate(spec.agents):
-            color = AGENT_COLORS[i % len(AGENT_COLORS)]
-            if bool(getattr(spec.config, "all_start_stardock", False)):
-                start_sid = K.STARDOCK_SECTOR
-            else:
-                start_sid = start_order[i % len(start_order)]
-            # Tiny deterministic loadout variance per player slot so two
-            # otherwise-identical LLMs don't produce bit-for-bit identical plays.
-            # The ±1000 skew lives in opening_loadout and is skipped on the live pocket.
-            ship = Ship()
-            # Respect the per-match starting_credits override from GameConfig
-            # so `tw2k serve --starting-credits 75000` actually changes the
-            # opening bankroll. Defaults to the canonical K.STARTING_CREDITS.
-            base_credits = getattr(spec.config, "starting_credits", K.STARTING_CREDITS)
-            # Likewise honor the per-match turns_per_day override. Without this,
-            # `--turns-per-day 80` silently had no effect because Player() fell
-            # back to K.STARTING_TURNS_PER_DAY = 1000, which meant day 1 never
-            # actually ended in watchable sanity runs.
-            base_tpd = getattr(spec.config, "turns_per_day", K.STARTING_TURNS_PER_DAY)
-            credits, turns_per_day, fighters = K.opening_loadout(base_credits, base_tpd, i)
-            ship.fighters = fighters
-            player = Player(
-                id=ag.player_id,
-                name=ag.name,
-                credits=credits,
-                turns_per_day=turns_per_day,
-                ship=ship,
-                sector_id=start_sid,
-                agent_kind=ag.kind,
-                color=color,
-            )
-            universe.players[ag.player_id] = player
-            universe.sectors[start_sid].occupant_ids.append(ag.player_id)
-            if K.starting_package_live():
-                from ..engine.runner import grant_starting_planet
-                grant_starting_planet(universe, player)
-            # Agents start knowing their immediate neighborhood (current sector
-            # + adjacent warps and any ports there), not just "sector 1". This
-            # removes the awkward "scan FedSpace first" opening move.
-            player.known_sectors.add(start_sid)
-            sector = universe.sectors[start_sid]
-            # Seed the warp graph for the start sector so the LLM has
-            # navigational memory from turn 1 without having to scan.
-            player.known_warps[start_sid] = list(sector.warps)
-            if sector.port is not None:
-                player.known_ports[start_sid] = {
-                    "class": sector.port.code,
-                    "stock": {
-                        c.value: {"current": s.current, "max": s.maximum}
-                        for c, s in sector.port.stock.items()
-                    },
-                    "last_seen_day": universe.day,
-                }
-            for wid in sector.warps:
-                player.known_sectors.add(wid)
-                w = universe.sectors[wid]
-                if w.port is not None:
-                    player.known_ports[wid] = {
-                        "class": w.port.code,
+            if seat_players:
+                # A resumed game already has its players.
+                color = AGENT_COLORS[i % len(AGENT_COLORS)]
+                if bool(getattr(spec.config, "all_start_stardock", False)):
+                    start_sid = K.STARDOCK_SECTOR
+                else:
+                    start_sid = start_order[i % len(start_order)]
+                # Tiny deterministic loadout variance per player slot so two
+                # otherwise-identical LLMs don't produce bit-for-bit identical plays.
+                # The ±1000 skew lives in opening_loadout and is skipped on the live pocket.
+                ship = Ship()
+                # Respect the per-match starting_credits override from GameConfig
+                # so `tw2k serve --starting-credits 75000` actually changes the
+                # opening bankroll. Defaults to the canonical K.STARTING_CREDITS.
+                base_credits = getattr(spec.config, "starting_credits", K.STARTING_CREDITS)
+                # Likewise honor the per-match turns_per_day override. Without this,
+                # `--turns-per-day 80` silently had no effect because Player() fell
+                # back to K.STARTING_TURNS_PER_DAY = 1000, which meant day 1 never
+                # actually ended in watchable sanity runs.
+                base_tpd = getattr(spec.config, "turns_per_day", K.STARTING_TURNS_PER_DAY)
+                credits, turns_per_day, fighters = K.opening_loadout(base_credits, base_tpd, i)
+                ship.fighters = fighters
+                player = Player(
+                    id=ag.player_id,
+                    name=ag.name,
+                    credits=credits,
+                    turns_per_day=turns_per_day,
+                    ship=ship,
+                    sector_id=start_sid,
+                    agent_kind=ag.kind,
+                    color=color,
+                )
+                universe.players[ag.player_id] = player
+                universe.sectors[start_sid].occupant_ids.append(ag.player_id)
+                if K.starting_package_live():
+                    from ..engine.runner import grant_starting_planet
+                    grant_starting_planet(universe, player)
+                # Agents start knowing their immediate neighborhood (current sector
+                # + adjacent warps and any ports there), not just "sector 1". This
+                # removes the awkward "scan FedSpace first" opening move.
+                player.known_sectors.add(start_sid)
+                sector = universe.sectors[start_sid]
+                # Seed the warp graph for the start sector so the LLM has
+                # navigational memory from turn 1 without having to scan.
+                player.known_warps[start_sid] = list(sector.warps)
+                if sector.port is not None:
+                    player.known_ports[start_sid] = {
+                        "class": sector.port.code,
                         "stock": {
                             c.value: {"current": s.current, "max": s.maximum}
-                            for c, s in w.port.stock.items()
+                            for c, s in sector.port.stock.items()
                         },
                         "last_seen_day": universe.day,
                     }
+                for wid in sector.warps:
+                    player.known_sectors.add(wid)
+                    w = universe.sectors[wid]
+                    if w.port is not None:
+                        player.known_ports[wid] = {
+                            "class": w.port.code,
+                            "stock": {
+                                c.value: {"current": s.current, "max": s.maximum}
+                                for c, s in w.port.stock.items()
+                            },
+                            "last_seen_day": universe.day,
+                        }
 
             if ag.kind == "llm":
                 agents.append(

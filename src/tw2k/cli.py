@@ -566,6 +566,29 @@ def serve(
 
 
 @app.command()
+def lobby(
+    port: int = typer.Option(None, help="Lobby port on 127.0.0.1 (default 8099, env TW2K_LOBBY_PORT)."),
+    game_ports: str = typer.Option(None, help="Game worker ports, e.g. 8100-8119 (env TW2K_GAME_PORTS)."),
+    root: str = typer.Option(None, help="State folder (default saves/selfhost, env TW2K_LOBBY_ROOT)."),
+) -> None:
+    """Self-host closed beta: a lobby that starts one game worker per game and proxies /g/<id>/."""
+    from .public import config as _lc
+    from .public import lobby as _lobby
+
+    cfg = _lc.LobbyConfig.from_env(
+        port=port,
+        game_ports=_lc.parse_port_range(game_ports) if game_ports else None,
+        root=root,
+    )
+    console.print(
+        f"[bold cyan]{cfg.brand} lobby[/] http://{cfg.host}:{cfg.port}/  "
+        f"[dim]games on {cfg.game_ports.start}-{cfg.game_ports.stop - 1}; state in {cfg.root}; "
+        f"admin http://{cfg.host}:{cfg.port}/admin (this PC only)[/]"
+    )
+    _lobby.run(cfg)
+
+
+@app.command()
 def replay(
     run_dir: str = typer.Argument(
         ...,

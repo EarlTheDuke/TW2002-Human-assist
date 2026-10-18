@@ -1,0 +1,873 @@
+{
+  "ports": [
+    8099,
+    8100,
+    8101,
+    8102
+  ],
+  "timeline": [
+    {
+      "t_s": 1.4,
+      "event": "lobby up",
+      "pid": 43332
+    },
+    {
+      "t_s": 2.4,
+      "event": "screenshots before games"
+    },
+    {
+      "t_s": 4.8,
+      "event": "game created",
+      "game": "d1c6f83b",
+      "seconds": 1.4
+    },
+    {
+      "t_s": 6.5,
+      "event": "game created",
+      "game": "711e73cc",
+      "seconds": 1.4
+    },
+    {
+      "t_s": 8.3,
+      "event": "game created",
+      "game": "5b17e0fa",
+      "seconds": 1.4
+    },
+    {
+      "t_s": 8.9,
+      "event": "fourth game",
+      "status": 503,
+      "detail": "The beta is full right now, try again later"
+    },
+    {
+      "t_s": 11.1,
+      "event": "cross-game tokens",
+      "codes": [
+        401
+      ],
+      "checks": 6
+    },
+    {
+      "t_s": 21.8,
+      "event": "spectator",
+      "game": "d1c6f83b",
+      "state": 200,
+      "ws_frames_10s": 143,
+      "control_pause": 404,
+      "seat_observation": 401,
+      "seat_action": 401
+    },
+    {
+      "t_s": 31.9,
+      "event": "spectator",
+      "game": "711e73cc",
+      "state": 200,
+      "ws_frames_10s": 187,
+      "control_pause": 404,
+      "seat_observation": 401,
+      "seat_action": 401
+    },
+    {
+      "t_s": 42.6,
+      "event": "spectator",
+      "game": "5b17e0fa",
+      "state": 200,
+      "ws_frames_10s": 231,
+      "control_pause": 404,
+      "seat_observation": 401,
+      "seat_action": 401
+    },
+    {
+      "t_s": 54.7,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 1,
+        "711e73cc": 1,
+        "5b17e0fa": 1
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 67.8,
+      "event": "screenshots",
+      "folder": "C:\\Users\\sugar\\qc_bridge\\wt_wire\\docs\\playtests\\selfhost-beta-v1"
+    },
+    {
+      "t_s": 78.9,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 1,
+        "711e73cc": 1,
+        "5b17e0fa": 1
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 90.8,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 1,
+        "711e73cc": 1,
+        "5b17e0fa": 1
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 98.0,
+      "event": "admin sleep",
+      "game": "5b17e0fa",
+      "status": "sleeping",
+      "seconds": 6.9
+    },
+    {
+      "t_s": 101.1,
+      "event": "woken by its player",
+      "game": "5b17e0fa",
+      "seconds": 3.1,
+      "resumed": 1
+    },
+    {
+      "t_s": 112.1,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 1,
+        "711e73cc": 1,
+        "5b17e0fa": 1
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 123.2,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 1,
+        "711e73cc": 1,
+        "5b17e0fa": 1
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 134.2,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 145.3,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 156.3,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 167.4,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 177.6,
+      "event": "lobby restarted",
+      "stop_seconds": 7.3,
+      "start_seconds": 2.8,
+      "pid": 49176
+    },
+    {
+      "t_s": 188.9,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 200.3,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 211.3,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 222.4,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 233.4,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 244.4,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 2,
+        "711e73cc": 2,
+        "5b17e0fa": 2
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 255.5,
+      "event": "days",
+      "days": {
+        "d1c6f83b": 3,
+        "711e73cc": 3,
+        "5b17e0fa": 3
+      },
+      "status": {
+        "d1c6f83b": "running",
+        "711e73cc": "running",
+        "5b17e0fa": "running"
+      }
+    },
+    {
+      "t_s": 255.5,
+      "event": "all games reached day",
+      "day": 3
+    }
+  ],
+  "samples": [
+    {
+      "t": 1792303922,
+      "processes": 7,
+      "cpu_percent": 3.1,
+      "rss_mb": 332,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 0.0,
+          "rss_mb": 75
+        },
+        "worker:8100": {
+          "cpu_percent": 0.0,
+          "rss_mb": 77
+        },
+        "worker:8101": {
+          "cpu_percent": 3.1,
+          "rss_mb": 77
+        },
+        "worker:8102": {
+          "cpu_percent": 0.0,
+          "rss_mb": 77
+        }
+      }
+    },
+    {
+      "t": 1792303933,
+      "processes": 7,
+      "cpu_percent": 98.5,
+      "rss_mb": 332,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 93.7,
+          "rss_mb": 75
+        },
+        "worker:8100": {
+          "cpu_percent": 1.6,
+          "rss_mb": 77
+        },
+        "worker:8101": {
+          "cpu_percent": 1.6,
+          "rss_mb": 77
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 77
+        }
+      }
+    },
+    {
+      "t": 1792303958,
+      "processes": 7,
+      "cpu_percent": 84.3,
+      "rss_mb": 335,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 84.3,
+          "rss_mb": 77
+        },
+        "worker:8100": {
+          "cpu_percent": 0.0,
+          "rss_mb": 78
+        },
+        "worker:8101": {
+          "cpu_percent": 0.0,
+          "rss_mb": 77
+        },
+        "worker:8102": {
+          "cpu_percent": 0.0,
+          "rss_mb": 77
+        }
+      }
+    },
+    {
+      "t": 1792303969,
+      "processes": 7,
+      "cpu_percent": 17.3,
+      "rss_mb": 333,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 12.5,
+          "rss_mb": 75
+        },
+        "worker:8100": {
+          "cpu_percent": 1.6,
+          "rss_mb": 78
+        },
+        "worker:8101": {
+          "cpu_percent": 1.6,
+          "rss_mb": 77
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 77
+        }
+      }
+    },
+    {
+      "t": 1792303991,
+      "processes": 7,
+      "cpu_percent": 10.9,
+      "rss_mb": 341,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 3.1,
+          "rss_mb": 81
+        },
+        "worker:8100": {
+          "cpu_percent": 1.6,
+          "rss_mb": 78
+        },
+        "worker:8101": {
+          "cpu_percent": 3.1,
+          "rss_mb": 77
+        },
+        "worker:8102": {
+          "cpu_percent": 3.1,
+          "rss_mb": 80
+        }
+      }
+    },
+    {
+      "t": 1792304002,
+      "processes": 7,
+      "cpu_percent": 3.2,
+      "rss_mb": 339,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 0.0,
+          "rss_mb": 79
+        },
+        "worker:8100": {
+          "cpu_percent": 1.6,
+          "rss_mb": 78
+        },
+        "worker:8101": {
+          "cpu_percent": 0.0,
+          "rss_mb": 77
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 80
+        }
+      }
+    },
+    {
+      "t": 1792304013,
+      "processes": 7,
+      "cpu_percent": 0.0,
+      "rss_mb": 345,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 0.0,
+          "rss_mb": 81
+        },
+        "worker:8100": {
+          "cpu_percent": 0.0,
+          "rss_mb": 80
+        },
+        "worker:8101": {
+          "cpu_percent": 0.0,
+          "rss_mb": 78
+        },
+        "worker:8102": {
+          "cpu_percent": 0.0,
+          "rss_mb": 81
+        }
+      }
+    },
+    {
+      "t": 1792304024,
+      "processes": 7,
+      "cpu_percent": 3.1,
+      "rss_mb": 347,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 3.1,
+          "rss_mb": 83
+        },
+        "worker:8100": {
+          "cpu_percent": 0.0,
+          "rss_mb": 80
+        },
+        "worker:8101": {
+          "cpu_percent": 0.0,
+          "rss_mb": 78
+        },
+        "worker:8102": {
+          "cpu_percent": 0.0,
+          "rss_mb": 81
+        }
+      }
+    },
+    {
+      "t": 1792304035,
+      "processes": 7,
+      "cpu_percent": 0.0,
+      "rss_mb": 342,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 0.0,
+          "rss_mb": 77
+        },
+        "worker:8100": {
+          "cpu_percent": 0.0,
+          "rss_mb": 80
+        },
+        "worker:8101": {
+          "cpu_percent": 0.0,
+          "rss_mb": 78
+        },
+        "worker:8102": {
+          "cpu_percent": 0.0,
+          "rss_mb": 81
+        }
+      }
+    },
+    {
+      "t": 1792304046,
+      "processes": 7,
+      "cpu_percent": 3.2,
+      "rss_mb": 343,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 1.6,
+          "rss_mb": 78
+        },
+        "worker:8100": {
+          "cpu_percent": 0.0,
+          "rss_mb": 80
+        },
+        "worker:8101": {
+          "cpu_percent": 0.0,
+          "rss_mb": 78
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 81
+        }
+      }
+    },
+    {
+      "t": 1792304067,
+      "processes": 7,
+      "cpu_percent": 47.0,
+      "rss_mb": 340,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 42.2,
+          "rss_mb": 69
+        },
+        "worker:8100": {
+          "cpu_percent": 1.6,
+          "rss_mb": 81
+        },
+        "worker:8101": {
+          "cpu_percent": 1.6,
+          "rss_mb": 83
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 82
+        }
+      }
+    },
+    {
+      "t": 1792304079,
+      "processes": 7,
+      "cpu_percent": 26.7,
+      "rss_mb": 341,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 21.9,
+          "rss_mb": 70
+        },
+        "worker:8100": {
+          "cpu_percent": 1.6,
+          "rss_mb": 81
+        },
+        "worker:8101": {
+          "cpu_percent": 1.6,
+          "rss_mb": 83
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 82
+        }
+      }
+    },
+    {
+      "t": 1792304090,
+      "processes": 7,
+      "cpu_percent": 0.0,
+      "rss_mb": 344,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 0.0,
+          "rss_mb": 73
+        },
+        "worker:8100": {
+          "cpu_percent": 0.0,
+          "rss_mb": 81
+        },
+        "worker:8101": {
+          "cpu_percent": 0.0,
+          "rss_mb": 83
+        },
+        "worker:8102": {
+          "cpu_percent": 0.0,
+          "rss_mb": 82
+        }
+      }
+    },
+    {
+      "t": 1792304101,
+      "processes": 7,
+      "cpu_percent": 4.8,
+      "rss_mb": 345,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 1.6,
+          "rss_mb": 74
+        },
+        "worker:8100": {
+          "cpu_percent": 1.6,
+          "rss_mb": 81
+        },
+        "worker:8101": {
+          "cpu_percent": 1.6,
+          "rss_mb": 83
+        },
+        "worker:8102": {
+          "cpu_percent": 0.0,
+          "rss_mb": 82
+        }
+      }
+    },
+    {
+      "t": 1792304112,
+      "processes": 7,
+      "cpu_percent": 4.8,
+      "rss_mb": 345,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 0.0,
+          "rss_mb": 74
+        },
+        "worker:8100": {
+          "cpu_percent": 1.6,
+          "rss_mb": 81
+        },
+        "worker:8101": {
+          "cpu_percent": 1.6,
+          "rss_mb": 83
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 82
+        }
+      }
+    },
+    {
+      "t": 1792304123,
+      "processes": 7,
+      "cpu_percent": 1.6,
+      "rss_mb": 344,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 0.0,
+          "rss_mb": 73
+        },
+        "worker:8100": {
+          "cpu_percent": 0.0,
+          "rss_mb": 81
+        },
+        "worker:8101": {
+          "cpu_percent": 0.0,
+          "rss_mb": 83
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 81
+        }
+      }
+    },
+    {
+      "t": 1792304134,
+      "processes": 7,
+      "cpu_percent": 9.4,
+      "rss_mb": 346,
+      "per_process": {
+        "lobby": {
+          "cpu_percent": 0.0,
+          "rss_mb": 76
+        },
+        "worker:8100": {
+          "cpu_percent": 4.7,
+          "rss_mb": 81
+        },
+        "worker:8101": {
+          "cpu_percent": 3.1,
+          "rss_mb": 84
+        },
+        "worker:8102": {
+          "cpu_percent": 1.6,
+          "rss_mb": 81
+        }
+      }
+    }
+  ],
+  "beta_full": {
+    "status": 503,
+    "detail": "The beta is full right now, try again later"
+  },
+  "cross_game_token_checks": [
+    401,
+    401,
+    401,
+    401,
+    401,
+    401
+  ],
+  "spectator": {
+    "d1c6f83b": {
+      "state": 200,
+      "ws_frames_10s": 143,
+      "control_pause": 404,
+      "seat_observation": 401,
+      "seat_action": 401
+    },
+    "711e73cc": {
+      "state": 200,
+      "ws_frames_10s": 187,
+      "control_pause": 404,
+      "seat_observation": 401,
+      "seat_action": 401
+    },
+    "5b17e0fa": {
+      "state": 200,
+      "ws_frames_10s": 231,
+      "control_pause": 404,
+      "seat_observation": 401,
+      "seat_action": 401
+    }
+  },
+  "guests": {
+    "d1c6f83b": {
+      "actions": 125,
+      "accepted": 125,
+      "rejected": 0,
+      "polls": 127,
+      "waking_503": 0,
+      "resumed": 1,
+      "conn_errors": 3,
+      "unauthorized": 1
+    },
+    "711e73cc": {
+      "actions": 124,
+      "accepted": 124,
+      "rejected": 0,
+      "polls": 126,
+      "waking_503": 0,
+      "resumed": 1,
+      "conn_errors": 3,
+      "unauthorized": 1
+    },
+    "5b17e0fa": {
+      "actions": 120,
+      "accepted": 119,
+      "rejected": 1,
+      "polls": 125,
+      "waking_503": 2,
+      "resumed": 2,
+      "conn_errors": 3,
+      "unauthorized": 2
+    }
+  },
+  "final": {
+    "d1c6f83b": {
+      "id": "d1c6f83b",
+      "name": "Smoke 1",
+      "status": "running",
+      "day": 3,
+      "finished": false,
+      "open_seats": 0
+    },
+    "711e73cc": {
+      "id": "711e73cc",
+      "name": "Smoke 2",
+      "status": "running",
+      "day": 3,
+      "finished": false,
+      "open_seats": 0
+    },
+    "5b17e0fa": {
+      "id": "5b17e0fa",
+      "name": "Smoke 3",
+      "status": "running",
+      "day": 3,
+      "finished": false,
+      "open_seats": 0
+    }
+  },
+  "final_stop_seconds": 7.3,
+  "log_secret_hits": 0,
+  "ports_free_after": true,
+  "elapsed_s": 264.4,
+  "per_process_summary": {
+    "lobby": {
+      "samples": 17,
+      "cpu_avg": 15.5,
+      "cpu_peak": 93.7,
+      "rss_avg_mb": 76,
+      "rss_peak_mb": 83
+    },
+    "worker:8100": {
+      "samples": 17,
+      "cpu_avg": 1.0,
+      "cpu_peak": 4.7,
+      "rss_avg_mb": 80,
+      "rss_peak_mb": 81
+    },
+    "worker:8101": {
+      "samples": 17,
+      "cpu_avg": 1.1,
+      "cpu_peak": 3.1,
+      "rss_avg_mb": 80,
+      "rss_peak_mb": 84
+    },
+    "worker:8102": {
+      "samples": 17,
+      "cpu_avg": 1.0,
+      "cpu_peak": 3.1,
+      "rss_avg_mb": 80,
+      "rss_peak_mb": 82
+    }
+  }
+}

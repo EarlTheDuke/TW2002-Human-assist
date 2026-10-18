@@ -3698,6 +3698,6 @@
     serverWaits() { return Number(state.waitStreak || 0); },
     resetWaits() { waitStreak = 0; state.waitStreak = 0; },
   };
-  if (state.token) connect();
+  if (state.token || params.get("mode") === "cu") connect();
   setInterval(() => { if (state.connected && !state.busy) refresh().catch((e) => { $("err").hidden = false; $("err").textContent = String(e.message || e); }); }, 2000);
 })();
