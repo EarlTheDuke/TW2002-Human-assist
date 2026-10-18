@@ -3873,6 +3873,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "planet_growth_tw2002": ("PLANET_GROWTH_MODE", "MASTER_PLAN yes"),
     "kill_cash_held": ("KILL_CASH_MODE", "RULINGS Addendum A (killer not paid)"),
     "pod_cash_live": ("POD_CASH_MODE", "RULINGS Addendum A (the pod has 25 credits)"),
+    "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
 }
 
 
@@ -3887,6 +3888,50 @@ POD_CASH_CREDITS = 25
 def pod_cash_live() -> bool:
     """True when a pod after a player kill holds POD_CASH_CREDITS."""
     return POD_CASH_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-daylen-and-yard-v1 (NOTE 60) item 1. RULINGS_v311.md s5: "turns come back hourly,
+# pro-rated from the daily allowance". A real TWGS day is 86,400 s; a local, test or showcase
+# game may pick a shorter one with TW2K_TURN_REGEN_DAY_SECONDS, `tw2k serve --day-seconds` or
+# GameConfig.turn_regen_day_seconds. Nothing set keeps TURN_REGEN_DAY_SECONDS as it is.
+TURN_REGEN_DAY_SECONDS_ENV = "TW2K_TURN_REGEN_DAY_SECONDS"
+TURN_REGEN_DAY_SECONDS_MIN = 10.0
+TURN_REGEN_DAY_SECONDS_MAX = 7 * 86_400.0
+
+
+def parse_day_seconds(raw) -> float:
+    """A day length in seconds, or ValueError with a sentence that says what is wrong."""
+    if isinstance(raw, bool):
+        raise ValueError(f"day length must be a number of seconds, not {raw!r}")
+    try:
+        value = float(str(raw).strip())
+    except (TypeError, ValueError):
+        raise ValueError(f"day length must be a number of seconds, not {raw!r}") from None
+    if not math.isfinite(value) or not TURN_REGEN_DAY_SECONDS_MIN <= value <= TURN_REGEN_DAY_SECONDS_MAX:
+        raise ValueError(
+            f"day length must be between {TURN_REGEN_DAY_SECONDS_MIN:g} and {TURN_REGEN_DAY_SECONDS_MAX:g}"
+            f" seconds, not {raw!r}")
+    return value
+
+
+def day_seconds_from_env() -> float | None:
+    """TW2K_TURN_REGEN_DAY_SECONDS, checked, or None when it is not set."""
+    import os
+
+    raw = (os.environ.get(TURN_REGEN_DAY_SECONDS_ENV) or "").strip()
+    return parse_day_seconds(raw) if raw else None
+
+
+# v311-daylen-and-yard-v1 (NOTE 60) item 5. Legacy sends no hull figures with buy_ship and the
+# cockpit reads its own table. "live" adds stats_by (name, cost, trade-in, holds, fighters,
+# shields, turns per warp, odds) from ship_specs(), so the yard shows the roster in play
+# (RULINGS_v311.md s4 under SHIP_ROSTER_MODE live). Appended so later slices can rebase cleanly.
+YARD_STATS_MODE = "legacy"  # "legacy" | "live"
+
+
+def yard_stats_on() -> bool:
+    """True when buy_ship carries each hull's figures from the server's ship list."""
+    return YARD_STATS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:

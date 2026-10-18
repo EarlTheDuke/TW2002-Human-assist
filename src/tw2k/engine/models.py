@@ -11,7 +11,7 @@ import random
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, PrivateAttr, SerializerFunctionWrapHandler, model_serializer
+from pydantic import BaseModel, Field, PrivateAttr, SerializerFunctionWrapHandler, field_validator, model_serializer
 
 from . import constants as K
 
@@ -1132,6 +1132,22 @@ class GameConfig(BaseModel):
     # Ship losses that remove a player for good (TWGS tournament lockout, "Pods and Deaths").
     # None is the DEATH_MODE default: 3 in legacy, never in tw2002. 0 turns it off.
     elimination_deaths: int | None = None
+    # v311-daylen-and-yard-v1 (NOTE 60) item 1. Seconds in one turn-regen day for this game
+    # (K.TURN_REGEN_DAY_SECONDS): the v3.11 day-roll gap, the hourly trickle and the planet day
+    # math. None keeps the constant (86,400). Left out of dumps while None.
+    turn_regen_day_seconds: float | None = None
+
+    @field_validator("turn_regen_day_seconds", mode="before")
+    @classmethod
+    def _check_day_seconds(cls, value: Any) -> Any:
+        return None if value is None else K.parse_day_seconds(value)
+
+    @model_serializer(mode="wrap")
+    def _omit_unset_day_seconds(self, handler: SerializerFunctionWrapHandler) -> Any:
+        data = handler(self)
+        if isinstance(data, dict) and data.get("turn_regen_day_seconds", 0) is None:
+            del data["turn_regen_day_seconds"]
+        return data
 
 
 # ---------------------------------------------------------------------------

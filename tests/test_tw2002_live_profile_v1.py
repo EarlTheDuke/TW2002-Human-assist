@@ -78,6 +78,7 @@ HELPERS = (
     "cockpit_fields_on",
     "tax_v311",
     "pod_cash_live",
+    "yard_stats_on",
 )
 
 
@@ -85,7 +86,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 76
+    assert len(names) == 77
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -112,4 +113,5 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.TAX_RULE_MODE == "legacy"
     assert K.V311_PROFILE == "legacy"
     assert K.POD_CASH_MODE == "legacy"
+    assert K.YARD_STATS_MODE == "legacy"
     assert K.EXP_SCORE_MODE == "legacy"

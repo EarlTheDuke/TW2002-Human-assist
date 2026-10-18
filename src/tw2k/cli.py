@@ -286,12 +286,26 @@ def serve(
         "--haggle-live",
         help="legacy or live. Live lets a port counter a trade offer. Default legacy. Env TW2K_HAGGLE_LIVE.",
     ),
+    day_seconds: str | None = typer.Option(
+        None,
+        "--day-seconds",
+        help="Seconds in one turn-regen day (the v3.11 day roll, the hourly turn trickle and planet "
+        "day math; 10 to 604800). Default 86400. Env TW2K_TURN_REGEN_DAY_SECONDS.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
 
+    from .engine import constants as _Kday
     from .server.app import create_app
     provider_display = provider or default_provider()
+    try:
+        day_length = (_Kday.parse_day_seconds(day_seconds) if day_seconds is not None
+                      else _Kday.day_seconds_from_env())
+    except ValueError as exc:
+        src = "--day-seconds" if day_seconds is not None else _Kday.TURN_REGEN_DAY_SECONDS_ENV
+        console.print(f"[red]error:[/] {src}: {exc}")
+        raise typer.Exit(code=2) from None
 
     # Parse per-agent overrides from comma lists. Blanks in a slot fall
     # back to the global --provider / --model, so 'xai,anthropic' + no
@@ -395,6 +409,10 @@ def serve(
         console.print(f"[cyan]One-way warp fraction:[/] {_owf:.2f}  [dim]({_owf_note})[/]")
     pcap = "ON (time_net_worth only)" if play_to_day_cap else "OFF (early wins allowed)"
     console.print(f"[cyan]Play to day cap:[/] {pcap}")
+    if day_length is None:
+        console.print(f"[cyan]Turn regen day:[/] {float(_Kday.TURN_REGEN_DAY_SECONDS):g} s (default)")
+    else:
+        console.print(f"[cyan]Turn regen day:[/] {day_length:g} s")
     if no_ferrengi:
         console.print("[cyan]Ferrengi:[/] OFF")
     elif (
@@ -542,6 +560,7 @@ def serve(
         start_paused=start_paused,
         pause_on_seat_drop=pause_on_seat_drop,
         seat_drop_after_s=seat_drop_after_s,
+        turn_regen_day_seconds=day_length,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

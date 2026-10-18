@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -44,6 +45,8 @@ from ..engine.llm_pricing import MatchCostTracker
 from ..engine.match_metrics import build_match_metrics_payload
 from ..engine.models import Player, Ship
 from .broadcaster import Broadcaster
+
+_log = logging.getLogger(__name__)
 
 
 def _default_saves_root() -> Path:
@@ -716,6 +719,7 @@ class MatchRunner:
 
             universe = generate_universe(self._spec.config)
             self.state.universe = universe
+            self._apply_day_length(universe)
 
             agents = self._build_agents(self._spec, universe)
             self.state.agents = agents
@@ -742,6 +746,10 @@ class MatchRunner:
             await self._flush_events()
 
             # Turn loop: round-robin agents, day advances when all have exhausted turns.
+            regen_clock = self._regen_day_clock()
+            if regen_clock:
+                # NOTE 60 item 2 (RULINGS s5): day 1 starts now and each day lasts the day length.
+                self._live_day_mark = time.time()
             while not is_finished(universe) and not self._stop.is_set():
                 await self._pause.wait()
                 if self._stop.is_set():
@@ -749,6 +757,17 @@ class MatchRunner:
 
                 if K.async_day_live():
                     await self._async_day_round(agents, universe)
+                    continue
+
+                if regen_clock and time.time() - self._live_day_mark >= float(K.TURN_REGEN_DAY_SECONDS):
+                    # The day rolls on the clock, whoever still has turns; the trickle keeps paying.
+                    self._live_day_mark = time.time()
+                    tick_day(universe)
+                    self._record_day_tick()
+                    await self._flush_events()
+                    # One scheduler pass, not the old 1 s pause: on a short day 1 s is
+                    # more than a turn interval, and a resting seat is owed its turn.
+                    await self._sleep_scaled(0.05)
                     continue
 
                 agent = agents[self.state.current_player_idx]
@@ -768,7 +787,10 @@ class MatchRunner:
                         or not universe.players[a.player_id].alive
                         for a in agents
                     )
-                    if all_done:
+                    if all_done and regen_clock:
+                        # NOTE 60 item 2: everyone is resting; the day rolls on the clock above.
+                        await self._sleep_scaled(0.05)
+                    elif all_done:
                         if K.live_pace() and K.starting_package_live():
                             now = time.time()
                             last = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
@@ -1249,6 +1271,10 @@ class MatchRunner:
                 {"type": "error", "message": self.state.last_error}
             )
         finally:
+            saved_day = getattr(self, "_saved_day_seconds", None)
+            if saved_day is not None:
+                K.TURN_REGEN_DAY_SECONDS = saved_day
+                self._saved_day_seconds = None
             for agent in self.state.agents:
                 try:
                     await agent.close()
@@ -1256,6 +1282,33 @@ class MatchRunner:
                     pass
 
     # ---------------- helpers ---------------- #
+
+    def _apply_day_length(self, universe) -> None:
+        """NOTE 60 item 1: this game's turn-regen day (GameConfig.turn_regen_day_seconds).
+
+        Unset keeps K.TURN_REGEN_DAY_SECONDS. The value in use is logged at start."""
+        self._saved_day_seconds = None
+        chosen = getattr(universe.config, "turn_regen_day_seconds", None)
+        if chosen is not None:
+            self._saved_day_seconds = K.TURN_REGEN_DAY_SECONDS
+            K.TURN_REGEN_DAY_SECONDS = float(chosen)
+        _log.info("turn regen day length %g s (%s)", float(K.TURN_REGEN_DAY_SECONDS),
+                  "game setting" if chosen is not None else "default")
+
+    @staticmethod
+    def _regen_day_clock() -> bool:
+        """NOTE 60 item 2: under the v3.11 turn clock the day rolls on that clock."""
+        return K.live_pace() and K.starting_package_live() and K.turn_regen_live()
+
+    def day_clock(self) -> dict | None:
+        """When the current day started and when the next one rolls (epoch seconds), or None."""
+        if not self._regen_day_clock():
+            return None
+        mark = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
+        if not mark:
+            return None
+        day_s = float(K.TURN_REGEN_DAY_SECONDS)
+        return {"day_seconds": day_s, "day_started_at": mark, "next_day_at": mark + day_s}
 
     async def _notify_game_over(self, universe) -> None:
         """G6: final `game_over` webhook for external seats (bounded; never blocks the finish)."""
