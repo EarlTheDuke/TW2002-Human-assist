@@ -312,7 +312,12 @@ def test_tax_shows_until_an_action_and_a_new_day_replaces_the_line(world) -> Non
     _next(page, roll)
     page.wait_for_selector("[data-tax=overnight]", timeout=10_000)
     assert "50" in page.locator("[data-tax=overnight]").inner_text()
-    page.wait_for_function("() => /^Day /.test(document.querySelector('#lastResult').textContent || '')", timeout=10_000)
+    page.wait_for_function(
+        "() => /You wait/.test(document.querySelector('#lastResult').textContent || '') && /Day \\d+/.test(document.querySelector('#lastResult').textContent || '')",
+        timeout=10_000,
+    )
+    rolled = page.locator("#lastResult").inner_text()
+    assert rolled.index("You wait") < rolled.index("Day ")
     _shoot(page, "tax", "[data-tax=overnight]")
     _shoot(page, "day", "#lastResult")
     page.keyboard.press(".")
