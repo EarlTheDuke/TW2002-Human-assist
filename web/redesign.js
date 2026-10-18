@@ -989,6 +989,7 @@
         }
         body += '<div style="color:' + meta[1] + '" data-day="' + k + '">' + esc(meta[0]) + '</div><div class="c">Colonists ' + fmt(cols) + "  On planet " + fmt(stock) + (shown == null ? "" : "  " + fmt(shown) + " per day" + why) + "</div>";
       });
+      if (owned && owned.fighters_per_day != null) body += '<div data-day="fighters">Fighters</div><div class="c">' + fmt(owned.fighters_per_day) + " per day</div>";
       const trend = (owned && owned.colonists_text) || landed.colonists_text;
       if (trend) body += '<div data-colonists="trend">' + esc(trend) + "</div>";
       body += '<div data-quasar="now">Quasar sector ' + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%</div>";
