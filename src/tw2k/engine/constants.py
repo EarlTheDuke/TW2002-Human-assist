@@ -2693,12 +2693,21 @@ CORP_BREAKIN_RULE = "wrong_guesses"       # cl7 | "attempts"
 CORP_BREAKIN_ALIGN_LOSS = 0               # cr6 UNVERIFIED
 CORP_BREAKIN_TELL_CEO = False             # cr6 UNVERIFIED
 CORP_MAX_MEMBERS = 5                      # cr7 CONFIRMED
-CORP_ALIGNMENT_RULE = "mixed"             # cr8 SOURCE-CONFLICT: "mixed" | "same_side"
+CORP_ALIGNMENT_RULE = "mixed"             # cr8: "mixed" | "same_side" | "join_check"
 CORP_SIDE_OF_ZERO = "good"                # cr8 UNVERIFIED
-MIXED_CORP_EXP_RULE = "highest_good"      # cr9 SOURCE-CONFLICT: "highest_good" | "least_extreme"
+MIXED_CORP_EXP_RULE = "highest_good"      # cr9: "highest_good" | "least_extreme"
 MIXED_CORP_EXP_DIVISOR = 4                # cr9
-MIXED_CORP_EXP_FLOOR = 1                  # cr9 UNVERIFIED
+MIXED_CORP_EXP_FLOOR = 1                  # cr9 UNVERIFIED; a live overnight read is still open
+# D22-1. "legacy" puts the formula loss in the CORP_EXP_PENALTY summary and
+# loss field. "taken" names the experience actually removed (the floor).
+# The experience math is the same either way. V311 turns "taken" on.
+CORP_EXP_PENALTY_MODE = "legacy"          # "legacy" | "taken"
 CORP_LEAVER_PLANETS = "corp_keeps"        # cr10: "corp_keeps" | "leaver_keeps"
+# D22-2. "legacy": a leaver's corporate fighters and mines keep his owner_id.
+# "to_ceo": that owner_id becomes the C.E.O. The corp ticker stays.
+# Live TWGS v3.34b: those fighters stay with the corp under the C.E.O.
+# The stored default stays "legacy"; V311 turns "to_ceo" on.
+CORP_LEAVER_DEPLOYMENTS = "legacy"        # "legacy" | "to_ceo"
 CORP_DISBAND_MINES = "rogue"              # cr12 UNVERIFIED: "rogue" | "removed"
 CORP_DISBAND_PLANETS = "owner_keeps"      # cr12: "owner_keeps" | "v306"
 ROGUE_OWNER_ID = "rogue"                  # cr13
@@ -3919,6 +3928,13 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
     "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
+    "class_m_nw_units": ("CLASS_M_NW_MODE", "S1 / NOTE 19 (class M net worth is thousands, not people)"),
+    "class_m_drop_units": ("CLASS_M_DROP_MODE", "S1 / NOTE 19 and terra-colonists-v1 (a hold of Terra colonists is one thousand people)"),
+    "class_m_genesis_units": ("CLASS_M_GENESIS_MODE", "S1 class M L1 is 1,000 thousand; the 2,500 seed is handbook units"),
+    "corp_exp_penalty_taken": ("CORP_EXP_PENALTY_MODE", "Hekate TWGS table: the event names the experience taken, not the formula"),
+    "corp_leaver_to_ceo": ("CORP_LEAVER_DEPLOYMENTS", "live TWGS v3.34b: a leaver's corporate fighters stay with the corp under the C.E.O."),
+    "corp_join_check": ("CORP_ALIGNMENT_RULE", "EIS join: signs must agree, 0 fits either side, later drift is not an oust"),
+    "mixed_corp_least_extreme": ("MIXED_CORP_EXP_RULE", "Cabal MIN(ABS(lowest alignment), highest alignment) / 4"),
 }
 
 
@@ -4029,3 +4045,107 @@ HOME_PLANET_EQUIPMENT = 81_000
 def home_planet_live() -> bool:
     """True when a new seat's class M world is placed and stocked the v3.11 way."""
     return HOME_PLANET_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# class-m-planet-units-v1. Appended so later slices can rebase cleanly.
+# Class M under class_m_fidelity_live stores people. S1 and NOTE 19 count
+# those people in thousands (CLASS_M_PEOPLE_PER_THOUSAND). Three switches,
+# each "legacy" until a profile turns it on:
+#   net worth prices a thousand, not one person (COLONIST_PRICE);
+#   a Terra drop lands as people, and one thousand fills one hold;
+#   a genesis seed of GENESIS_SEED_COLONISTS is that many thousands.
+# The genesis scale runs only when the seed is still placed. V311 also
+# turns genesis_start_live on, and S1 / GAP 6.5 leave that planet empty.
+CLASS_M_NW_MODE = "legacy"  # "legacy" | "live"
+CLASS_M_DROP_MODE = "legacy"  # "legacy" | "live"
+CLASS_M_GENESIS_MODE = "legacy"  # "legacy" | "live"
+
+
+def class_m_nw_units() -> bool:
+    """True when class M net worth prices handbook thousands."""
+    return CLASS_M_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def class_m_drop_units() -> bool:
+    """True when a class M colonist drop converts Terra holds into people."""
+    return CLASS_M_DROP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def class_m_genesis_units() -> bool:
+    """True when a class M genesis seed is stored as people."""
+    return CLASS_M_GENESIS_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def class_m_transfer_on(class_id: str) -> bool:
+    """True when this planet stores class M people and drops convert units."""
+    token = getattr(class_id, "value", class_id)
+    return str(token) == "M" and class_m_drop_units() and class_m_fidelity_live()
+
+
+def class_m_people_for_cargo(qty: int) -> int:
+    """People a class M planet gains for `qty` cargo colonists.
+
+    Terra live already stores people (1,000 per hold). Legacy Terra stores
+    one colonist per hold, and that colonist is one handbook thousand.
+    """
+    per = int(colonists_per_hold())
+    thousand = int(CLASS_M_PEOPLE_PER_THOUSAND)
+    amount = int(qty)
+    if per <= 1:
+        return amount * thousand
+    return amount * thousand // per
+
+
+def class_m_cargo_for_people(people: int) -> int:
+    """Cargo colonists for `people` stored on a class M planet."""
+    per = int(colonists_per_hold())
+    thousand = int(CLASS_M_PEOPLE_PER_THOUSAND)
+    amount = int(people)
+    if per <= 1:
+        return amount // thousand
+    return amount * per // thousand
+
+
+def colonist_holds_for_cargo(amount: int) -> int:
+    """Holds filled by this many cargo colonists. Matches Ship.cargo_used."""
+    per = int(colonists_per_hold())
+    count = int(amount)
+    if count <= 0:
+        return 0
+    if per <= 1:
+        return count
+    return (count + per - 1) // per
+
+
+def corp_exp_penalty_taken() -> bool:
+    """True when a mixed-corp event names the experience that was taken."""
+    return CORP_EXP_PENALTY_MODE == "taken" or v311_profile()
+
+
+def corp_leaver_to_ceo() -> bool:
+    """True when a leaver's corporate fighters and mines move to the C.E.O."""
+    return CORP_LEAVER_DEPLOYMENTS == "to_ceo" or v311_profile()
+
+
+def corp_alignment_rule() -> str:
+    """Effective cr8 rule. Stored default stays mixed. V311 checks signs at join."""
+    if CORP_ALIGNMENT_RULE == "mixed" and v311_profile():
+        return "join_check"
+    return CORP_ALIGNMENT_RULE
+
+
+def corp_join_check() -> bool:
+    """True when a join is refused for opposite alignment signs and drift is kept."""
+    return corp_alignment_rule() == "join_check"
+
+
+def mixed_corp_exp_rule() -> str:
+    """Effective cr9 formula. Stored default stays highest_good. V311 uses least extreme."""
+    if MIXED_CORP_EXP_RULE == "least_extreme" or v311_profile():
+        return "least_extreme"
+    return MIXED_CORP_EXP_RULE
+
+
+def mixed_corp_least_extreme() -> bool:
+    """True when the Extern loss is min(most good, most evil) / 4."""
+    return mixed_corp_exp_rule() == "least_extreme"

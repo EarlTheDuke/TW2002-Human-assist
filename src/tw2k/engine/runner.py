@@ -1964,7 +1964,14 @@ def _handle_load_planet_cargo(universe: Universe, pid: str, action: Action) -> A
     cost = _colonist_menu_turns() if commodity == Commodity.COLONISTS else K.TURN_COST.get("liftoff", 1)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
-    if player.ship.cargo_used + qty > player.ship.holds:
+    cargo_move = qty
+    holds_needed = qty
+    if commodity == Commodity.COLONISTS and K.class_m_transfer_on(planet.class_id):
+        cargo_move = K.class_m_cargo_for_people(qty)
+        if cargo_move <= 0 or K.class_m_people_for_cargo(cargo_move) != qty:
+            return ActionResult(ok=False, error="class M colonists move by the thousand")
+        holds_needed = K.colonist_holds_for_cargo(cargo_move)
+    if player.ship.cargo_used + holds_needed > player.ship.holds:
         return ActionResult(ok=False, error="not enough cargo holds")
 
     pool_label = None
@@ -1985,7 +1992,7 @@ def _handle_load_planet_cargo(universe: Universe, pid: str, action: Action) -> A
 
     old_qty = player.ship.cargo.get(commodity, 0)
     old_avg = player.ship.cargo_cost.get(commodity, 0.0) if old_qty > 0 else 0.0
-    new_qty = old_qty + qty
+    new_qty = old_qty + cargo_move
     # Planet-produced goods have no ship-side purchase cost. If mixed with
     # bought cargo, preserve a weighted basis so later trade P&L is honest.
     player.ship.cargo[commodity] = new_qty
@@ -2032,14 +2039,15 @@ def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> A
         if error is not None:
             return error
         pool = _production_pool(pool)
+        planet_add = K.class_m_people_for_cargo(qty) if K.class_m_transfer_on(planet.class_id) else qty
         total_col = sum(int(n) for n in planet.colonists.values())
         blocked = K.colonist_drop_error(
-            planet.class_id.value, int(planet.colonists.get(pool, 0)), total_col, qty,
+            planet.class_id.value, int(planet.colonists.get(pool, 0)), total_col, planet_add,
         )
         if blocked:
             return ActionResult(ok=False, error=blocked)
         pool_label = pool.value
-        planet.colonists[pool] = planet.colonists.get(pool, 0) + qty
+        planet.colonists[pool] = planet.colonists.get(pool, 0) + planet_add
     else:
         before = int(planet.stockpile.get(commodity, 0))
         room = K.planet_stock_room(planet.class_id.value, commodity.value, before)
@@ -2115,11 +2123,21 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
     cost = _colonist_menu_turns()
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
+    ship_qty = qty
+    planet_qty = qty
+    if K.class_m_transfer_on(planet.class_id):
+        if src == "ship" and dst != "ship":
+            planet_qty = K.class_m_people_for_cargo(qty)
+        elif dst == "ship" and src != "ship":
+            ship_qty = K.class_m_cargo_for_people(qty)
+            if ship_qty <= 0 or K.class_m_people_for_cargo(ship_qty) != qty:
+                return ActionResult(ok=False, error="class M colonists move by the thousand")
+            planet_qty = qty
     if src == "ship" and dst != "ship":
         total_col = sum(int(n) for n in planet.colonists.values())
         dest = pool_keys[dst]
         blocked = K.colonist_drop_error(
-            planet.class_id.value, int(planet.colonists.get(dest, 0)), total_col, qty,
+            planet.class_id.value, int(planet.colonists.get(dest, 0)), total_col, planet_qty,
         )
         if blocked:
             return ActionResult(ok=False, error=blocked)
@@ -2127,32 +2145,33 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
     # Withdraw
     if src == "ship":
         avail = player.ship.cargo.get(Commodity.COLONISTS, 0)
-        if avail < qty:
+        if avail < ship_qty:
             return ActionResult(ok=False, error=f"only {avail} colonists in cargo")
-        player.ship.cargo[Commodity.COLONISTS] = avail - qty
+        player.ship.cargo[Commodity.COLONISTS] = avail - ship_qty
     else:
         key = pool_keys[src]
         avail = planet.colonists.get(key, 0)
-        if avail < qty:
+        if avail < planet_qty:
             return ActionResult(ok=False, error=f"only {avail} on {src} pool")
-        planet.colonists[key] = avail - qty
+        planet.colonists[key] = avail - planet_qty
 
     # Deposit
     if dst == "ship":
+        holds_needed = K.colonist_holds_for_cargo(ship_qty) if K.class_m_transfer_on(planet.class_id) else qty
         used = player.ship.cargo_used
-        if used + qty > player.ship.holds:
+        if used + holds_needed > player.ship.holds:
             # Refund withdrawal to avoid losing colonists
             if src == "ship":
-                player.ship.cargo[Commodity.COLONISTS] += qty
+                player.ship.cargo[Commodity.COLONISTS] += ship_qty
             else:
-                planet.colonists[pool_keys[src]] += qty
+                planet.colonists[pool_keys[src]] += planet_qty
             return ActionResult(ok=False, error="not enough cargo holds")
         player.ship.cargo[Commodity.COLONISTS] = (
-            player.ship.cargo.get(Commodity.COLONISTS, 0) + qty
+            player.ship.cargo.get(Commodity.COLONISTS, 0) + ship_qty
         )
     else:
         key = pool_keys[dst]
-        planet.colonists[key] = planet.colonists.get(key, 0) + qty
+        planet.colonists[key] = planet.colonists.get(key, 0) + planet_qty
 
     universe.emit(
         EventKind.ASSIGN_COLONISTS,
@@ -2424,6 +2443,10 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         # after the player ferries the standard tier if they choose, or from the
         # seed alone in a pinch.
         seed_total = K.GENESIS_SEED_COLONISTS
+        # The 2,500 is the handbook count (enough for an L1 of 1,000). Class M
+        # stores people, so one handbook colonist is CLASS_M_PEOPLE_PER_THOUSAND.
+        if cls.value == "M" and K.class_m_genesis_units() and K.class_m_fidelity_live():
+            seed_total *= int(K.CLASS_M_PEOPLE_PER_THOUSAND)
         planet.colonists[Commodity.FUEL_ORE] = int(seed_total * 0.40)
         planet.colonists[Commodity.ORGANICS] = int(seed_total * 0.25)
         planet.colonists[Commodity.EQUIPMENT] = int(seed_total * 0.15)
