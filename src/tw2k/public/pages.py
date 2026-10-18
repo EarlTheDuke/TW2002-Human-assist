@@ -147,7 +147,8 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
              presets: dict[str, int] | None = None) -> str:
     v = {"name": "", "rules": "v311", "universe_size": "1000", "max_days": "30", "turns_per_day": "250",
          "starting_package": "v311", "bots": "2", "ferrengi": "on", "day": "30m", "humans": "1",
-         "visibility": "listed", "starting_credits": "original", "starting_credits_custom": ""}
+         "visibility": "listed", "starting_credits": "original", "starting_credits_custom": "",
+         "home_planet_name": ""}
     v.update({k: str(val) for k, val in (values or {}).items()})
     err = f"<div class=\"err\">{escape(error)}</div>" if error else ""
     sizes = "".join(_opt(str(n), f"{n} sectors", v["universe_size"]) for n in UNIVERSE_SIZES)
@@ -171,6 +172,8 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 <label for="day">Day length</label><select id="day" name="day">{days}</select>
 </fieldset>
 <fieldset><legend>Players</legend>
+<label for="home_planet_name">Home planet name</label><input id="home_planet_name" name="home_planet_name" maxlength="30" value="{escape(v['home_planet_name'])}">
+<p class="note">Optional. 1 to 30 characters. Blank uses your trader name plus 's Home.</p>
 <label for="humans">Open human seats</label><select id="humans" name="humans">{humans}</select>
 <label for="bots">Code bots</label><select id="bots" name="bots">{bots}</select>
 <label for="ferrengi">Ferrengi</label><select id="ferrengi" name="ferrengi">{_opt('on', 'On', v['ferrengi'])}{_opt('off', 'Off', v['ferrengi'])}</select>
@@ -192,11 +195,15 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
     return page("Game created", body, brand=brand)
 
 
-def join_confirm(brand: str, *, game: dict[str, Any], seat: str, key: str) -> str:
+def join_confirm(brand: str, *, game: dict[str, Any], seat: str, key: str, error: str | None = None) -> str:
+    err = f"<div class=\"err\">{escape(error)}</div>" if error else ""
     body = (f"<p class=\"sub\">Join a game</p><div class=\"card\"><h2>{escape(game['name'])}</h2>"
-            f"<p>You were invited to seat {escape(seat)}.</p>"
+            f"<p>You were invited to seat {escape(seat)}.</p>{err}"
             f"<form method=\"post\" action=\"/games/{game['id']}/join\">"
             f"<input type=\"hidden\" name=\"seat\" value=\"{escape(seat)}\"><input type=\"hidden\" name=\"k\" value=\"{escape(key)}\">"
+            "<label for=\"home_planet_name\">Home planet name</label>"
+            "<input id=\"home_planet_name\" name=\"home_planet_name\" maxlength=\"30\">"
+            "<p class=\"note\">Optional. 1 to 30 characters. Blank keeps the name from the new-game form.</p>"
             "<button class=\"primary\" type=\"submit\">Take this seat</button></form></div>")
     return page("Join", body, brand=brand)
 

@@ -1139,6 +1139,9 @@ class GameConfig(BaseModel):
     # NOTE 65 item 0. None keeps today's opening credits. A number is what every
     # seat starts with. Left out of dumps while None, so old saves stay put.
     starting_credits_override: int | None = None
+    # NOTE 66. None keeps "<trader>'s Home" (legacy: "<trader> Home"). The lobby
+    # name, when set, is the first human seat's planet. Left out of dumps while None.
+    home_planet_name: str | None = None
 
     @field_validator("turn_regen_day_seconds", mode="before")
     @classmethod
@@ -1150,6 +1153,18 @@ class GameConfig(BaseModel):
     def _check_credits_override(cls, value: Any) -> Any:
         return K.parse_credits_override(value)
 
+    @field_validator("home_planet_name", mode="before")
+    @classmethod
+    def _check_home_planet_name(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        if len(text) > 30 or any(ord(ch) < 32 for ch in text):
+            raise ValueError("home planet name must be 1 to 30 characters")
+        return text
+
     @model_serializer(mode="wrap")
     def _omit_unset_day_seconds(self, handler: SerializerFunctionWrapHandler) -> Any:
         data = handler(self)
@@ -1157,6 +1172,8 @@ class GameConfig(BaseModel):
             del data["turn_regen_day_seconds"]
         if isinstance(data, dict) and data.get("starting_credits_override", 0) is None:
             data.pop("starting_credits_override", None)
+        if isinstance(data, dict) and data.get("home_planet_name", 0) is None:
+            data.pop("home_planet_name", None)
         return data
 
 

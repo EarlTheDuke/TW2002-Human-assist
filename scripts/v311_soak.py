@@ -74,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     import tw2k.server.runner as SR
     from tw2k.engine import GameConfig
     from tw2k.engine.models import EventKind
+    from tw2k.engine.planets import daily_production
     from tw2k.engine.victory import full_net_worth
     from tw2k.server.app import create_app
     from tw2k.server.runner import AgentSpec, MatchSpec
@@ -219,6 +220,21 @@ def main(argv: list[str] | None = None) -> int:
     for pid in SEATS:
         p = u.players[pid]
         planets = [pl for pl in u.planets.values() if pl.owner_id == pid]
+        home = next((pl for pl in planets if pl.origin == "other"), None)
+        home_row = None
+        if home is not None:
+            made = daily_production(home.class_id, home.colonists)
+            fuel = 0
+            for key, value in home.colonists.items():
+                token = key.value if hasattr(key, "value") else str(key)
+                if token == "fuel_ore":
+                    fuel = int(value or 0)
+            home_row = {
+                "id": int(home.id), "sector": int(home.sector_id),
+                "fedspace": int(home.sector_id) in K.FEDSPACE_SECTORS,
+                "fuel": fuel,
+                "production": made,
+            }
         seats[pid] = {
             "credits": int(p.credits), "net_worth": int(full_net_worth(u, p)), "alive": bool(p.alive),
             "ship": p.ship.ship_class.value, "alignment": int(p.alignment), "experience": int(p.experience),
@@ -229,6 +245,7 @@ def main(argv: list[str] | None = None) -> int:
                                       "target": int(getattr(pl, "citadel_target", 0) or 0)} for pl in planets},
             "kinds": dict(kinds[pid]), "days_in_same_sector_at_end": int(still[pid]),
             "wait_reasons": dict(sorted(wait_reasons[pid].items(), key=lambda kv: -kv[1])[:6]),
+            "home": home_row,
         }
     result = {
         "seed": a.seed, "days_asked": a.days, "day_reached": int(u.day), "size": a.size,
@@ -245,12 +262,16 @@ def main(argv: list[str] | None = None) -> int:
              f"V311_PROFILE on in this process only. {a.days} days asked, day {u.day} reached, "
              f"status {runner.state.status}, {elapsed} s wall clock, one game day = {a.day_seconds:g} s of "
              f"the turn clock. Exceptions: {len(result['exceptions'])}. Offensive waves: {clashes}.", "",
-             "| seat | credits | net worth | ship | ok | rejected | regen turns | taxes | deaths | citadels |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "| seat | credits | net worth | ship | ok | rejected | regen turns | taxes | deaths | citadels | home |",
+             "|---|---|---|---|---|---|---|---|---|---|---|"]
     for pid, s in seats.items():
         cit = ", ".join(f"{c['class']} L{c['level']}" for c in s["citadels"].values()) or "-"
+        home = s.get("home") or {}
+        where = "-" if not home else f"#{home['id']} s{home['sector']}" + (" FED" if home["fedspace"] else "")
+        made = (home.get("production") or {}) if home else {}
+        prod = "" if not made else f" {made.get('fuel_ore', 0)}/{made.get('organics', 0)}/{made.get('equipment', 0)}"
         lines.append(f"| {pid} | {s['credits']:,} | {s['net_worth']:,} | {s['ship']} | {s['actions_ok']} | "
-                     f"{s['rejected']} | {s['turn_regen_total']} | {s['taxes_paid']:,} | {s['deaths']} | {cit} |")
+                     f"{s['rejected']} | {s['turn_regen_total']} | {s['taxes_paid']:,} | {s['deaths']} | {cit} | {where}{prod} |")
     (OUT / f"soak_{a.seed}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
     return 0

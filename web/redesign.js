@@ -486,6 +486,17 @@
     const name = fleet.name || String(fleet.hull || "ship").replaceAll("_", " ");
     return name + " in sector " + fleet.sector_id;
   }
+  function claimSuffix(p) {
+    const owned = ((S && S.owned_planets) || []).find((row) => Number(row.id) === Number(p.id));
+    const ownerId = p.owner_id != null && p.owner_id !== "" ? p.owner_id : (owned ? S.self_id : null);
+    let line = "";
+    if (ownerId && ownerId === S.self_id) line = ". Claimed by: " + (S.self_name || "you") + " (you)";
+    else if (ownerId) line = ". Claimed by: " + traderName(ownerId);
+    else if (Object.prototype.hasOwnProperty.call(p, "owner_id")) line = ". Unclaimed";
+    const origin = (owned && owned.origin) || p.origin;
+    if (ownerId === S.self_id && origin === "other") line += ". Your home planet";
+    return line;
+  }
   function traderName(id) {
     if (!id) return "someone";
     if (S && id === S.self_id) return S.self_name || "you";
@@ -579,10 +590,11 @@
     if (s.port) t += '<span class="g">Ports   </span><span class="y">:</span> <span class="c">' + esc(s.port.name) + '</span><span class="y">,</span> <span class="g">Class</span> <span class="c">' + s.port.class_id + '</span> <span class="w">(</span><span class="m">' + esc(s.port.code) + "</span><span class=\"w\">)</span>\n";
     (s.planets || []).forEach((p) => {
       const cls = p.class ? "(" + p.class + ") " : "";
-      t += '<span class="g">Planets </span><span class="y">:</span> <span class="c" data-planet="class">' + esc(cls + (p.name || "planet")) + "</span>\n";
+      t += '<span class="g">Planets </span><span class="y">:</span> <span class="c" data-planet="class">' + esc(cls + (p.name || "planet") + claimSuffix(p)) + "</span>\n";
     });
-    if (s.terra && !(s.planets || []).some((p) => /terra/i.test(p.name || ""))) {
-      t += '<span class="g">Planets </span><span class="y">:</span> <span class="c" data-planet="class">(M) Terra</span>\n';
+    if (s.terra) {
+      const pool = s.terra.colonists_available != null ? s.terra.colonists_available : 0;
+      t += '<span class="g">Terra   </span><span class="y">:</span> <span class="c" data-terra="row">Terra (colonist source, cannot be claimed). Colonists ' + fmt(pool) + "</span>\n";
     }
     if (Number(s.nav_hazard_pct) > 0) {
       t += '<span class="g">NavHaz  </span><span class="y">:</span> <span class="c" data-navhaz="here">' + fmt(s.nav_hazard_pct) + "%</span>\n";
@@ -1150,10 +1162,12 @@
     if (landed) {
       const card = document.createElement("div");
       card.className = "planet";
-      const owner = landed.owner_id === S.self_id ? (S.self_name || "you")
-        : (((S.other_players || []).find((r) => r.id === landed.owner_id) || {}).name || (landed.owner_id || "unowned"));
+      const yours = landed.owner_id === S.self_id;
+      const claim = !landed.owner_id ? "Unclaimed"
+        : (yours ? "Claimed by: " + (S.self_name || "you") + " (you)" : "Claimed by: " + traderName(landed.owner_id));
+      const home = yours && landed.origin === "other" ? " Your home planet" : "";
       let body = '<div class="y">' + esc(landed.name || "planet") + "</div>";
-      body += '<div>Class <span class="c">' + esc(landed.class || "?") + '</span>  Owner <span class="c">' + esc(owner) + "</span></div>";
+      body += '<div data-claim="owner">Class <span class="c">' + esc(landed.class || "?") + "</span>  " + esc(claim + home) + "</div>";
       const building = landed.citadel_target && Number(landed.citadel_target) > Number(landed.citadel_level || 0);
       body += '<div data-citadel="level">Citadel <span class="c">' + (building ? "building toward " + landed.citadel_target : "level " + (landed.citadel_level || 0)) + "</span>";
       if (building && landed.citadel_complete_day) body += '  ready day <span class="y">' + landed.citadel_complete_day + "</span>";
@@ -3747,6 +3761,19 @@
         });
       }
       if (kind === "set_military_reaction" && args && args.pct != null) body = body + " to " + fmt(args.pct) + "%";
+      if (kind === "assign_colonists" || kind === "load_planet_cargo" || kind === "dump_planet_cargo" || kind === "build_citadel") {
+        const pid = Number((args && args.planet_id) || (S && S.planet_landed) || 0);
+        const found = ((S && S.sector && S.sector.planets) || []).find((row) => Number(row.id) === pid)
+          || ((S && S.owned_planets) || []).find((row) => Number(row.id) === pid);
+        if (found) {
+          const who = found.owner_id === S.self_id ? "yours" : (found.owner_id ? traderName(found.owner_id) : "unclaimed");
+          let verb = body;
+          if (kind === "assign_colonists") {
+            verb = "moved " + fmt((args || {}).qty || 0) + " colonists " + String((args || {}).from || "").replaceAll("_", " ") + " -> " + String((args || {}).to || "").replaceAll("_", " ");
+          }
+          body = "Planet #" + found.id + " " + (found.name || "") + " (" + who + "): " + verb;
+        }
+      }
       if (kind === "liftoff") surface = false;
       if (kind === "land_planet" && /landed/i.test(body) && !/repelled/i.test(body)) {
         surface = true;

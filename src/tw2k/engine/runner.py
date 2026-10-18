@@ -328,36 +328,104 @@ def _seqs_after(events: list, before_seq: int) -> list[int]:
     return [e.seq for e in events[i:]]
 
 
-def grant_starting_planet(universe: Universe, player) -> None:
-    """A free class M world for this seat. Stock is empty.
+def _sector_holds_someone(sector) -> bool:
+    """A player, a planet, fighters or mines. REVISION.TXT 1558."""
+    if sector.planet_ids or sector.occupant_ids:
+        return True
+    fighters = sector.fighters
+    if fighters is not None and int(getattr(fighters, "count", 0) or 0) > 0:
+        return True
+    return bool(sector.mines)
 
-    The live screen showed 191,000 colonists and did not say which pool, so
-    they sit unassigned and do not produce. The live planet was 10 hops away
-    (sector 557 in that session). Where a new game places it was not published,
-    so this one is in the seat's start sector. UNVERIFIED placement.
+
+def _pick_home_sector(universe: Universe) -> int | None:
+    """An empty sector outside FedSpace that can reach sector 1 and be reached from it.
+
+    The both-ways check is a clone rule so a seat is never trapped behind a
+    one-way lane. It is not an original rule. The draw uses the universe RNG,
+    so the same seed places the same planet.
+    """
+    blocked = set(int(s) for s in K.FEDSPACE_SECTORS)
+    blocked.add(int(K.STARDOCK_SECTOR))
+    open_ids = [
+        int(sid) for sid, sector in universe.sectors.items()
+        if int(sid) not in blocked and not _sector_holds_someone(sector)
+    ]
+    universe.rng.shuffle(open_ids)
+    dock = int(K.STARDOCK_SECTOR)
+    for sid in open_ids:
+        if _bfs_path(universe, dock, sid) and _bfs_path(universe, sid, dock):
+            return sid
+    return open_ids[0] if open_ids else None
+
+
+def grant_starting_planet(universe: Universe, player) -> None:
+    """A free class M world for this seat.
+
+    Legacy keeps the planet in the seat's start sector. The 191,000 colonists
+    sit unassigned and do not produce. That split was unpublished when this
+    was written; the new-character transcript does show the pools (Fuel Ore
+    45, Organics 65, Equipment 81 thousand).
+
+    Live (HOME_PLANET_MODE) uses that split, so the planet produces from day
+    1, and puts the planet in a random empty sector outside FedSpace
+    (REVISION.TXT 1558). The player starts landed on it. With planets
+    disabled the start sector is unchanged (REVISION.TXT 2894).
     """
     from .models import Commodity, Planet, PlanetClass
 
+    live = K.home_planet_live() and bool(getattr(universe.config, "enable_planets", True))
+    if live:
+        sid = _pick_home_sector(universe)
+        if sid is not None and sid != int(player.sector_id):
+            old = universe.sectors[player.sector_id]
+            if player.id in old.occupant_ids:
+                old.occupant_ids.remove(player.id)
+            player.sector_id = sid
+            if player.id not in universe.sectors[sid].occupant_ids:
+                universe.sectors[sid].occupant_ids.append(player.id)
+        colonists = {
+            Commodity.FUEL_ORE: K.HOME_PLANET_FUEL,
+            Commodity.ORGANICS: K.HOME_PLANET_ORGANICS,
+            Commodity.EQUIPMENT: K.HOME_PLANET_EQUIPMENT,
+            Commodity.COLONISTS: 0,
+        }
+        custom = str(getattr(universe.config, "home_planet_name", None) or "").strip()
+        taken = bool(custom) and any(pl.name == custom for pl in universe.planets.values())
+        if custom and getattr(player, "agent_kind", "") == "external" and not taken:
+            name = custom
+        else:
+            name = f"{player.name}'s Home"
+    else:
+        colonists = {
+            Commodity.FUEL_ORE: 0,
+            Commodity.ORGANICS: 0,
+            Commodity.EQUIPMENT: 0,
+            Commodity.COLONISTS: K.LIVE_STARTING_COLONISTS,
+        }
+        name = f"{player.name} Home"
     pid = int(getattr(universe, "next_planet_id", 0) or 0)
     if pid <= 0:
         pid = max(universe.planets, default=0) + 1
     planet = Planet(
         id=pid,
         sector_id=player.sector_id,
-        name=f"{player.name} Home",
+        name=name,
         class_id=PlanetClass.M,
         owner_id=player.id,
         origin="other",
-        colonists={
-            Commodity.FUEL_ORE: 0,
-            Commodity.ORGANICS: 0,
-            Commodity.EQUIPMENT: 0,
-            Commodity.COLONISTS: K.LIVE_STARTING_COLONISTS,
-        },
+        colonists=colonists,
     )
     universe.planets[pid] = planet
     universe.sectors[player.sector_id].planet_ids.append(pid)
     universe.next_planet_id = pid + 1
+    if live:
+        player.planet_landed = pid
+        player.known_sectors.add(int(player.sector_id))
+        warps = list(universe.sectors[player.sector_id].warps)
+        player.known_warps[int(player.sector_id)] = warps
+        for wid in warps:
+            player.known_sectors.add(int(wid))
 
 
 def recover_turns(player, elapsed_s: float) -> int:
@@ -1869,6 +1937,18 @@ def _parse_colonist_pool(action: Action) -> tuple[Commodity | None, ActionResult
     return pool, None
 
 
+def _colonist_menu_turns() -> int:
+    """Turns for P Change Population Levels and S Load/Unload of colonists.
+
+    REPORT2 line 49 has land and liftoff on a planet at 0 turns. The live
+    planet menu shows no turn deduction for these two commands.
+    UNVERIFIED-by-absence. Legacy still charges one turn (liftoff).
+    """
+    if K.home_planet_live():
+        return 0
+    return int(K.TURN_COST.get("liftoff", 1))
+
+
 def _handle_load_planet_cargo(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     planet, error = _require_landed_owned_planet(universe, pid, action.args.get("planet_id"))
@@ -1881,7 +1961,7 @@ def _handle_load_planet_cargo(universe: Universe, pid: str, action: Action) -> A
     if qty <= 0:
         return ActionResult(ok=False, error="qty must be positive")
 
-    cost = K.TURN_COST.get("liftoff", 1)
+    cost = _colonist_menu_turns() if commodity == Commodity.COLONISTS else K.TURN_COST.get("liftoff", 1)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     if player.ship.cargo_used + qty > player.ship.holds:
@@ -1939,7 +2019,7 @@ def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> A
     if qty <= 0:
         return ActionResult(ok=False, error="qty must be positive")
 
-    cost = K.TURN_COST.get("liftoff", 1)
+    cost = _colonist_menu_turns() if commodity == Commodity.COLONISTS else K.TURN_COST.get("liftoff", 1)
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     avail = player.ship.cargo.get(commodity, 0)
@@ -2032,7 +2112,7 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
     if K.citadel_fidelity_on() and dst == "colonists" and not K.assign_pool_fix_live():
         dst = "fuel_ore"
 
-    cost = K.TURN_COST.get("liftoff", 1)
+    cost = _colonist_menu_turns()
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     if src == "ship" and dst != "ship":

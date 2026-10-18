@@ -154,6 +154,7 @@ class GameForm:
     day_seconds: int = 1800
     # None is Original: the worker does not pass an override.
     starting_credits_override: int | None = None
+    home_planet_name: str | None = None
 
     def settings(self) -> dict[str, Any]:
         out = {
@@ -171,6 +172,8 @@ class GameForm:
         }
         if self.starting_credits_override is not None:
             out["starting_credits_override"] = self.starting_credits_override
+        if self.home_planet_name:
+            out["home_planet_name"] = self.home_planet_name
         return out
 
 
@@ -204,9 +207,22 @@ def _as_bool(data: dict, key: str, default: bool) -> bool:
 
 
 _ALLOWED = {"name", "rules", "universe_size", "max_days", "turns_per_day", "starting_package", "bots", "ferrengi",
-            "day", "humans", "listed", "visibility", "starting_credits", "starting_credits_custom"}
+            "day", "humans", "listed", "visibility", "starting_credits", "starting_credits_custom",
+            "home_planet_name"}
 
 _CREDITS_MAX = 10_000_000
+
+
+def home_planet_name(raw) -> str | None:
+    """1 to 30 characters, or None when the trader leaves it blank."""
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    if len(text) > 30 or any(ord(ch) < 32 for ch in text):
+        raise FormError("home planet name must be 1 to 30 characters")
+    return text
 
 
 def starting_credits_line(override: int | None, original: int) -> str:
@@ -290,6 +306,7 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         listed=listed,
         day_seconds=int(presets[day]),
         starting_credits_override=_credits_override(data),
+        home_planet_name=home_planet_name(data.get("home_planet_name")),
     )
 
 
