@@ -98,11 +98,13 @@ def seat_ids(humans: int) -> list[str]:
 
 
 def switch_overlay(settings: dict[str, Any]) -> dict[str, str]:
+    # NOTE 74: every self-hosted beta game rolls the day on the clock.
+    out: dict[str, str] = {"DAY_ROLL_CLOCK_MODE": "live"}
     if settings.get("rules") == "v311":
-        return {"V311_PROFILE": "v311"}
-    if settings.get("starting_package") == "v311":
-        return {"STARTING_PACKAGE_MODE": "live"}
-    return {}
+        out["V311_PROFILE"] = "v311"
+    elif settings.get("starting_package") == "v311":
+        out["STARTING_PACKAGE_MODE"] = "live"
+    return out
 
 
 def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python: str | None = None,
