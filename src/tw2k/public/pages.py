@@ -176,7 +176,21 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         new = f"<div class=\"err\">{escape(FULL_TEXT)}.</div>"
     else:
         new = "<a class=\"btn primary\" href=\"/new\">New game</a>"
-    body = (f"<p class=\"sub\">Closed beta lobby</p>{mine_html}<div class=\"row\"><h2>Games</h2>{new}</div>"
+    reopen = (
+        '<div id="reopen" class="card" hidden></div><script>(function(){'
+        'var box=document.getElementById("reopen");if(!box)return;var raw="";'
+        'try{raw=localStorage.getItem("tw2k-my-seats")||"";}catch(e){return;}'
+        'var rows=[];try{rows=raw?JSON.parse(raw):[];}catch(e){return;}'
+        'if(!rows||!rows.length)return;var html="<h2>Re-open my seat</h2>";'
+        'rows.forEach(function(r){if(!r||!r.gid||!r.seat||!r.token)return;'
+        'var href="/g/"+encodeURIComponent(r.gid)+"/bot?seat="+encodeURIComponent(r.seat)'
+        '+"&mode=cu#token="+encodeURIComponent(r.token);'
+        'html+="<p><a class=\\"btn primary\\" data-reopen=\\""+String(r.seat).replace(/[^A-Za-z0-9]/g,"")'
+        '+"\\" href=\\""+href+"\\">Re-open "+String(r.seat).replace(/[<>&]/g,"")+"</a></p>";});'
+        'box.innerHTML=html;box.hidden=false;})();</script>'
+    )
+    body = (f"<p class=\"sub\">Closed beta lobby</p>{mine_html}{reopen}"
+            f"<div class=\"row\"><h2>Games</h2>{new}</div>"
             f"<div class=\"card\">{table}</div>")
     return page("Lobby", body, brand=brand)
 

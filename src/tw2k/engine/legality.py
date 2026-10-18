@@ -719,7 +719,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                                                       "net_cost_by": {}, "trade_in": 0, "blocked_by": {}}}))
             else:
                 old_key = player.ship.ship_class.value
-                trade_in = K.trade_in_credit(old_key)
+                trade_in = K.trade_in_credit(old_key, ship=player.ship)
                 owned_classes = {p.ship.ship_class.value for p in universe.players.values()}
                 owned_classes.update(p.ship.ship_class.value for p in universe.parked_ships.values())  # fl6
                 ship_choices: list[str] = []
@@ -727,7 +727,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 blocked_by: dict[str, str] = {}
                 from .corp import flagship_buy_block
                 for key, spec in K.ship_specs().items():
-                    net = K.net_hull_cost(old_key, key)
+                    net = K.net_hull_cost(old_key, key, ship=player.ship)
                     net_cost_by[key] = net
                     if spec.get("corp_only") and player.corp_ticker is None:
                         blocked_by[key] = "corporation-only"
@@ -746,6 +746,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                                reason=None if ship_choices else "no ship you can buy right now (credits / alignment / corp)",
                                params={"ship_class": {"type": "str", "required": True, "choices": ship_choices,
                                                       "net_cost_by": net_cost_by, "trade_in": trade_in, "blocked_by": blocked_by}}))
+                if K.trade_in_parts_live():
+                    out[-1].params["ship_class"]["trade_in_parts"] = K.trade_in_receipt(old_key, ship=player.ship)
                 if K.yard_stats_on():
                     # v311-daylen-and-yard-v1 item 5: the hull figures of the roster in play.
                     out[-1].params["ship_class"]["stats_by"] = {

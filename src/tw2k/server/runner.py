@@ -1441,6 +1441,30 @@ class MatchRunner:
         attended_fn = getattr(agent, "is_attended", None)
         idle_rule = idle_s > 0 and callable(attended_fn)
 
+        # NOTE 73: before the first client, do not auto-WAIT on the short idle clock.
+        # The normal timeout starts when the client connects.
+        if idle_rule and K.seat_idle_start_live() and getattr(agent, "last_client_seen_at", None) is None:
+            act_task = asyncio.ensure_future(agent.act(obs))
+            try:
+                while getattr(agent, "last_client_seen_at", None) is None and not attended_fn(window_s):
+                    try:
+                        return await asyncio.wait_for(asyncio.shield(act_task), timeout=0.05), False
+                    except TimeoutError:
+                        continue
+                agent.turn_deadline_at = time.time() + full_s  # type: ignore[attr-defined]
+                try:
+                    return await asyncio.wait_for(asyncio.shield(act_task), timeout=full_s), False
+                except TimeoutError:
+                    act_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError, Exception):
+                        await act_task
+                    raise
+            except asyncio.CancelledError:
+                act_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await act_task
+                raise
+
         if not idle_rule or attended_fn(window_s):
             agent.turn_deadline_at = time.time() + full_s  # type: ignore[attr-defined]
             return await asyncio.wait_for(agent.act(obs), timeout=full_s), False
@@ -1579,7 +1603,9 @@ class MatchRunner:
                     ext.action_log_path = self.state.save_dir / "external_actions.jsonl"
                 agents.append(ext)
             else:
-                agents.append(HeuristicAgent(player_id=ag.player_id, name=ag.name))
+                bot = HeuristicAgent(player_id=ag.player_id, name=ag.name)
+                bot._tw_universe = universe  # type: ignore[attr-defined]
+                agents.append(bot)
         return agents
 
     async def _warmup_llm_agents(self, agents: list[BaseAgent]) -> None:

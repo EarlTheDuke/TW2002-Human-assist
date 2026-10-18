@@ -325,6 +325,72 @@ def _corp_treasury_share(universe: Universe, player) -> int:
     return corp.treasury // len(alive_members)
 
 
+def economic_threshold(max_days: int) -> int:
+    """Credits on hand that end the game. 100,000,000 at 30 days, never under 500,000."""
+    threshold = int(K.VICTORY_CREDITS_THRESHOLD * (int(max_days) / K.VICTORY_DEFAULT_MAX_DAYS))
+    return max(500_000, threshold)
+
+
+def end_rule_line(max_days: int) -> str:
+    """The one line Game Status and Help print. Numbers come from this game."""
+    days = int(max_days)
+    bar = f"{economic_threshold(days):,}"
+    if K.planet_value_score_mode() == "experience":
+        measure = (
+            "the trader with the most experience wins "
+            "(v3.11 ranks traders by experience; the original game has no end date, this beta adds one)"
+        )
+    else:
+        measure = "the trader with the highest net worth wins"
+    return (
+        f"How this game ends: at the end of Day {days} {measure}. "
+        f"Instant win: {bar} credits on hand."
+    )
+
+
+def _place_word(n: int) -> str:
+    if 10 <= (n % 100) <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def game_over_panel(universe: Universe, player) -> str | None:
+    """The end screen, from the game-over record. None until the game has ended."""
+    if not universe.finished:
+        return None
+    ev = None
+    for row in reversed(universe.events):
+        if row.kind is EventKind.GAME_OVER:
+            ev = row
+            break
+    if ev is None:
+        return None
+    payload = ev.payload or {}
+    reason = str(payload.get("reason") or universe.win_reason or "")
+    if reason not in ("time_experience", "time_net_worth"):
+        return None
+    scores = payload.get("all_scores") if reason == "time_experience" else payload.get("all_worths")
+    if not isinstance(scores, dict) or not scores:
+        return None
+    kind = "experience" if payload.get("score_kind") == "experience" or reason == "time_experience" else "net worth"
+    ordered = sorted(scores.items(), key=lambda item: (-int(item[1]), str(item[0])))
+    bits = []
+    place = None
+    for index, (pid, score) in enumerate(ordered, 1):
+        who = universe.players.get(pid)
+        name = who.name if who is not None else str(pid)
+        bits.append(f"{_place_word(index)} {name} {int(score)}")
+        if pid == player.id:
+            place = index
+    yours = f" You finished {_place_word(place)} of {len(ordered)}." if place else ""
+    return (
+        f"GAME OVER - time ran out after day {int(universe.config.max_days)}. "
+        f"Decided by {kind}: {', '.join(bits)}.{yours}"
+    )
+
+
 def full_net_worth(universe: Universe, player) -> int:
     """Total net worth = ship-side (Player.net_worth) + all planet assets
     + per-member share of corp treasury.
@@ -347,6 +413,13 @@ def full_net_worth(universe: Universe, player) -> int:
         if planet.owner_id == player.id:
             total += _planet_asset_value(planet)
     total += _corp_treasury_share(universe, player)
+    if K.nw_estimate_live():
+        # Fighters this seat left in sectors, at the same rate as fighters aboard.
+        # Planet fighters stay inside the planet value above.
+        for sector in universe.sectors.values():
+            group = sector.fighters
+            if group is not None and group.owner_id == player.id:
+                total += int(group.count) * int(K.nw_fighter_value())
     if universe.parked_ships:  # SHIP_FLEET.md fl27: own parked hulls, valued like the manned ship
         from .fleet import fleet_net_worth
         total += fleet_net_worth(universe, player.id)
@@ -404,11 +477,7 @@ def check_victory(universe: Universe) -> None:
     # Also gated by play_to_day_cap so a long watch-match can't be cut short
     # by a credit spike.
     if not play_to_cap:
-        threshold = int(
-            K.VICTORY_CREDITS_THRESHOLD
-            * (universe.config.max_days / K.VICTORY_DEFAULT_MAX_DAYS)
-        )
-        threshold = max(500_000, threshold)
+        threshold = economic_threshold(universe.config.max_days)
         for p in alive:
             if p.credits >= threshold:
                 universe.finished = True
@@ -429,37 +498,61 @@ def check_victory(universe: Universe) -> None:
         universe.finished = True
         if alive:
             if K.planet_value_score_mode() == "experience":
+                # Experience is the score. Ship and planet figures are the real
+                # full_net_worth parts, never experience minus credits.
                 worths = {p.id: int(p.experience) for p in alive}
+                winner = max(alive, key=lambda p: worths[p.id])
+                winner_worth = worths[winner.id]
+                universe.winner_id = winner.id
+                universe.win_reason = "time_experience"
+                summary = f"GAME OVER — time expired; {winner.name} wins on experience ({winner_worth})"
+                ship_parts: dict[str, int] = {}
+                planet_parts: dict[str, int] = {}
+                for seat in alive:
+                    ship_nw = int(seat.net_worth)
+                    full = int(full_net_worth(universe, seat))
+                    ship_parts[seat.id] = ship_nw
+                    planet_parts[seat.id] = full - ship_nw
+                universe.emit(
+                    EventKind.GAME_OVER,
+                    actor_id=winner.id,
+                    payload={
+                        "reason": "time_experience",
+                        "score_kind": "experience",
+                        "all_scores": worths,
+                        "summary": summary,
+                        "net_worth_ship": ship_parts,
+                        "net_worth_planets": planet_parts,
+                    },
+                    summary=summary,
+                )
             else:
                 worths = {p.id: full_net_worth(universe, p) for p in alive}
-            winner = max(alive, key=lambda p: worths[p.id])
-            winner_worth = worths[winner.id]
-            # Show the breakdown in the summary so spectators can see
-            # WHY the winner won — ship vs planets. Crucial feedback for
-            # tuning agent behavior.
-            ship_side = winner.net_worth
-            planet_side = winner_worth - ship_side
-            universe.winner_id = winner.id
-            universe.win_reason = "time_net_worth"
-            if K.planet_value_score_mode() == "experience":
-                summary = f"GAME OVER — time expired; {winner.name} wins on experience ({winner_worth})"
-            else:
+                winner = max(alive, key=lambda p: worths[p.id])
+                winner_worth = worths[winner.id]
+                # Show the breakdown in the summary so spectators can see
+                # WHY the winner won — ship vs planets. Crucial feedback for
+                # tuning agent behavior.
+                ship_side = winner.net_worth
+                planet_side = winner_worth - ship_side
+                universe.winner_id = winner.id
+                universe.win_reason = "time_net_worth"
                 summary = (
                     f"GAME OVER — time expired; {winner.name} wins on net worth "
                     f"({winner_worth}cr = {ship_side}cr ship + {planet_side}cr planets)"
                 )
-            universe.emit(
-                EventKind.GAME_OVER,
-                actor_id=winner.id,
-                payload={
-                    "reason": "time_net_worth",
-                    "net_worth": winner_worth,
-                    "net_worth_ship": ship_side,
-                    "net_worth_planets": planet_side,
-                    "all_worths": worths,
-                },
-                summary=summary,
-            )
+                universe.emit(
+                    EventKind.GAME_OVER,
+                    actor_id=winner.id,
+                    payload={
+                        "reason": "time_net_worth",
+                        "net_worth": winner_worth,
+                        "net_worth_ship": ship_side,
+                        "net_worth_planets": planet_side,
+                        "all_worths": worths,
+                    },
+                    summary=summary,
+                )
         else:
             universe.emit(EventKind.GAME_OVER, summary="GAME OVER — no survivors")
 

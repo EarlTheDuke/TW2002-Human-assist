@@ -789,6 +789,12 @@ class Observation(BaseModel):
     # lists every field, and a legacy dump must not grow a key. The in-process
     # heuristic reads this. It is unset while the switch is legacy.
     _ferrengal_sector: int | None = PrivateAttr(default=None)
+    # NOTE 73. Omitted while the matching switch is legacy so a digest stays byte-identical.
+    trader_rankings: list[dict[str, Any]] | None = None
+    end_rule: str | None = None
+    game_over_panel: str | None = None
+    nw_note: str | None = None
+    code_bots: list[str] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -824,6 +830,9 @@ class Observation(BaseModel):
                 data.pop("daily_stats", None)
             if data.get("corp_rankings") is None:  # corp-rankings-v1
                 data.pop("corp_rankings", None)
+            for key in ("trader_rankings", "end_rule", "game_over_panel", "nw_note", "code_bots"):
+                if data.get(key) is None:  # NOTE 73: omitted while the switch is off
+                    data.pop(key, None)
         return data
 
 
@@ -1312,6 +1321,31 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         obs.avoid_prompt = f"Avoided sectors: {shown}. 0 clears the list."
     if K.bot_hazard_memory_live() and getattr(universe, "ferrengal_sector", None) is not None:
         obs._ferrengal_sector = int(universe.ferrengal_sector)
+    if K.trader_rank_list_live():
+        from .victory import end_rule_line, game_over_panel, rank_for as _rank_for
+
+        ranked = []
+        for seat in universe.players.values():
+            ranked.append({
+                "name": seat.name,
+                "title": _rank_for(int(seat.experience), int(seat.alignment)),
+                "experience": int(seat.experience),
+                "corp": seat.corp_ticker or "",
+                "ship": seat.ship.ship_class.value,
+                "alive": bool(seat.alive),
+            })
+        ranked.sort(key=lambda row: (-int(row["experience"]), str(row["name"])))
+        for index, row in enumerate(ranked, 1):
+            row["rank"] = index
+        obs.trader_rankings = ranked
+        obs.end_rule = end_rule_line(int(universe.config.max_days))
+        obs.game_over_panel = game_over_panel(universe, player)
+    if K.nw_estimate_live():
+        obs.nw_note = K.NW_ESTIMATE_NOTE
+    if K.bot_diplomacy_live():
+        obs.code_bots = [
+            seat.id for seat in universe.players.values() if seat.agent_kind == "heuristic"
+        ]
     return obs
 
 
