@@ -824,6 +824,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "armid_mines": mines_aboard,
             "limpet_mines": mines_aboard,
             "atomic_mines": mines_aboard,
+            "ether_probes": int(getattr(player.ship, "ether_probes", 0) or 0),
             "cloak": int(getattr(player.ship, "cloaks", 0) or 0),
             "mine_disruptor": int(getattr(player.ship, "mine_disruptors", 0) or 0),
         }
@@ -840,7 +841,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         for capped in (
             "fighters", "shields", "holds", "genesis", "photon_missiles",
             "armid_mines", "limpet_mines", "atomic_mines",
-            "cloak", "mine_disruptor",
+            "ether_probes", "cloak", "mine_disruptor",
         ):
             if capped not in prices:
                 continue
