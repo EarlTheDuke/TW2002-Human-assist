@@ -84,6 +84,88 @@ def test_numbers_follow_the_engine_under_legacy_and_v311(monkeypatch) -> None:
     assert "Loading them costs 1 turn" not in planted
 
 
+def test_added_sections_follow_the_engine_and_name_v311_only_rules(monkeypatch) -> None:
+    """NOTE 84. New sections read the live helpers. Profile-only rules say so."""
+    from tw2k.engine.victory import end_rule_line
+
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    monkeypatch.setattr(K, "TW2002_LIVE_PROFILE", "legacy")
+    legacy = render("Galaxy War Command")
+    for sid in ("ship-trade-in", "rankings"):
+        assert f'id="{sid}"' in legacy
+    assert "Ship trade-in" in legacy
+    assert "Rankings and the end of the game" in legacy
+    assert "Fighters to the C.E.O. when a member leaves: Only the v3.11 profile turns this on. In this process it is off." in legacy
+    assert "Alignment join check: Only the v3.11 profile turns this on. In this process it is off." in legacy
+    assert "Least-extreme mixed-corp experience: Only the v3.11 profile turns this on. In this process it is off." in legacy
+    assert "the highest good alignment, divided by 4" in legacy
+    assert "Day roll while a seat holds the turn: Only the v3.11 profile turns this on. In this process it is off." in legacy
+    assert "The day does not roll while a seat holds its turn." in legacy
+    assert "Part-by-part trade-in: The v3.11 profile turns this on. In this process it is off." in legacy
+    assert "Trade-in surplus: The v3.11 profile turns this on. In this process it is off." in legacy
+    assert "25 percent of the hull" in legacy
+    assert f"{K.trade_in_credit(K.STARTING_SHIP):,} credits" in legacy
+    assert "Hungry buy-price anchor: The v3.11 profile turns this on. In this process it is off." in legacy
+    assert "fuel 38, organics 73, equipment 102" in legacy
+    assert "Experience ranking of every trader: The v3.11 profile turns this on. In this process it is off." in legacy
+    assert "not published" in legacy
+    assert end_rule_line(10) in legacy
+    assert "highest net worth" in legacy
+    assert "End game for everyone" in legacy
+    assert "GAME OVER - Ended by the game's creator." in legacy
+    assert "not a v3.11-only rule" in legacy
+    assert "until the next day" in legacy
+    assert "still faces the quasar" in legacy
+    assert "200 shields" in legacy
+    assert "The day clears every bust." in legacy
+    assert "not a v3.11-only switch" in legacy
+    assert f"{K.ether_probe_cost():,} credits" in legacy
+    assert "No maximum number of ether probes" in legacy
+    assert "No death delay is loaded." in legacy
+    assert "Prime Evil" in legacy
+    assert "Captain First" not in legacy
+
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    live = render("Galaxy War Command")
+    assert live != legacy
+    assert "Fighters to the C.E.O. when a member leaves: Only the v3.11 profile turns this on. In this process it is on." in live
+    assert "move to the C.E.O. when you leave" in live
+    assert "Alignment join check: Only the v3.11 profile turns this on. In this process it is on." in live
+    assert "opposite signs" in live
+    assert "Least-extreme mixed-corp experience: Only the v3.11 profile turns this on. In this process it is on." in live
+    assert "smaller of the highest good alignment" in live
+    assert "Day roll while a seat holds the turn: Only the v3.11 profile turns this on. In this process it is on." in live
+    assert "even while a seat still holds its turn" in live
+    assert "Part-by-part trade-in: The v3.11 profile turns this on. In this process it is on." in live
+    receipt = K.trade_in_receipt(K.STARTING_SHIP)
+    assert f"The total is {receipt['total']:,}" in live
+    assert f"{K.part_trade_credit(10_000):,}" in live
+    assert "Hungry buy-price anchor: The v3.11 profile turns this on. In this process it is on." in live
+    assert "hungry quotes: fuel 38, organics 73, equipment 102" in live
+    assert "Experience ranking of every trader: The v3.11 profile turns this on. In this process it is on." in live
+    assert "place, name, title, experience, corporation" in live
+    assert end_rule_line(10) in live
+    assert "most experience" in live
+    assert f"{K.ether_probe_cost():,} credits" in live
+    assert K.ether_probe_cost() == K.ETHER_PROBE_COST_LIVE
+    assert "still faces the quasar" in live
+    assert "No death delay is loaded." in live
+
+    monkeypatch.setattr(K, "PHOTON_WAVE_DURATION", 3)
+    longer = render("Galaxy War Command")
+    assert "mines and fighters until 3 days" in longer
+    assert "mines and fighters until the next day" not in longer
+
+    monkeypatch.setattr(K, "CORP_DISBAND_PLANETS", "v306")
+    disbanded = render("Galaxy War Command")
+    assert "planets in the C.E.O.'s sector become the C.E.O.'s" in disbanded
+
+    monkeypatch.setattr(K, "RANK_MODE", "legacy")
+    old_ranks = render("Galaxy War Command")
+    assert "Captain First" in old_ranks
+    assert "Prime Evil" not in old_ranks
+
+
 def test_a_games_own_settings_are_the_numbers_on_its_page() -> None:
     cfg = GameConfig(starting_credits_override=43210, turns_per_day=222, turn_regen_day_seconds=600)
     html = render("Galaxy War Command", cfg)
