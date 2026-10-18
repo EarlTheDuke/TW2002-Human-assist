@@ -127,6 +127,7 @@ class ExternalAgent(BaseAgent):
         self._macro_used: bool = False
         self._slot_base: dict[str, Any] | None = None
         self._slot_actions: int = 0
+        self._slot_turns: int = 0
         self._last_applied_seq: int | None = None
         self.last_digest: dict[str, Any] | None = None
 
@@ -182,6 +183,7 @@ class ExternalAgent(BaseAgent):
         if not auto:
             self._slot_actions += 1
             self._last_applied_seq = self.turn_seq
+            self._slot_turns = int(getattr(self, "_slot_turns", 0)) + int(turns_used or 0)
         if self.macro is not None and not ok:
             self._end_macro(f"step failed: {error or 'rejected'}")
         self.last_result = {
@@ -264,7 +266,7 @@ class ExternalAgent(BaseAgent):
             digest = {
                 "kind": "route" if self._macro_used else "chain",
                 "actions": self._slot_actions,
-                "turns_used": (base["turns_left"] - turns_left) if base["day"] == day else None,
+                "turns_used": (int(getattr(self, "_slot_turns", 0)) or ((base["turns_left"] - turns_left) if base["day"] == day else None)),
                 "credits_before": base["credits"],
                 "credits_after": credits,
                 "stopped": self.macro_stop or reason,
@@ -275,7 +277,7 @@ class ExternalAgent(BaseAgent):
             self.last_digest = digest
             self.log_action("digest", **digest)
         self.macro, self.macro_stop, self._macro_used = None, None, False
-        self._slot_base, self._slot_actions = None, 0
+        self._slot_base, self._slot_actions, self._slot_turns = None, 0, 0
         return digest
 
     # ---- per-action log (G5 pilot) -----------------------------------------
@@ -511,6 +513,7 @@ class ExternalAgent(BaseAgent):
             self._slot_base = {"credits": getattr(observation, "credits", 0),
                                "turns_left": getattr(observation, "turns_remaining", 0), "day": getattr(observation, "day", 0)}
             self._slot_actions = 0
+            self._slot_turns = 0
             self._webhook_task = asyncio.create_task(self._fire_turn_due_webhook(observation))
         try:
             if self.macro is not None and self.in_held_continuation:

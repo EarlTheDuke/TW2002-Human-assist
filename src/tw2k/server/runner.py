@@ -243,6 +243,11 @@ class RunnerState:
 # ---------------------------------------------------------------------------
 
 
+def reported_turns_used(result) -> int:
+    """The action's own charge. A refill in the same call does not shrink it."""
+    return max(0, int(getattr(result, "turns_spent", 0) or 0))
+
+
 class MatchRunner:
     """Owns the game loop. Safe to start/stop/pause from the server app."""
 
@@ -1096,7 +1101,7 @@ class MatchRunner:
                         auto = str(action.thought or "").startswith("[external")
                         record_fn(result.ok, result.error, list(result.event_seqs),
                                   action_kind=getattr(action.kind, "value", str(action.kind)), auto=auto,
-                                  turns_used=max(0, player.turns_today - turns_before))
+                                  turns_used=reported_turns_used(result))
                     except Exception:
                         pass
                 if cockpit_pre is not None:

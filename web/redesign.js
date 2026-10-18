@@ -406,6 +406,53 @@
     if (s < 5400) return Math.round(s / 60) + " min";
     return (s / 3600).toFixed(1).replace(/\.0$/, "") + " h";
   }
+  let dayDeadline = null;
+  let turnDeadline = null;
+  function clockRemain(total) {
+    let s = Math.max(0, Math.round(Number(total) || 0));
+    const h = Math.floor(s / 3600);
+    s -= h * 3600;
+    const m = Math.floor(s / 60);
+    const sec = s - m * 60;
+    const pad = (n) => String(n).padStart(2, "0");
+    return h > 0 ? h + ":" + pad(m) + ":" + pad(sec) : pad(m) + ":" + pad(sec);
+  }
+  function everyWords(seconds) {
+    const s = Number(seconds) || 0;
+    if (s < 90) return String(Math.round(s * 10) / 10).replace(/\.0$/, "") + " s";
+    return String(Math.round(s / 6) / 10).replace(/\.0$/, "") + " min";
+  }
+  function leftOf(deadline) {
+    if (deadline == null) return null;
+    return Math.max(0, (deadline - performance.now()) / 1000);
+  }
+  function syncClocks() {
+    dayDeadline = TC && TC.next_day_in_s != null ? performance.now() + Number(TC.next_day_in_s) * 1000 : null;
+    turnDeadline = TC && TC.next_turn_in_s != null ? performance.now() + Number(TC.next_turn_in_s) * 1000 : null;
+  }
+  function turnFace() {
+    const left = fmt(S.turns_remaining);
+    const cap = fmt(S.turns_per_day);
+    if (!TC || TC.seconds_per_turn == null) return left + "/" + cap;
+    if (Number(S.turns_remaining) >= Number(S.turns_per_day)) return left + "/" + cap + " (full)";
+    const next = leftOf(turnDeadline);
+    const nextText = next == null ? "" : ", next in " + (next < 90 ? Math.max(1, Math.round(next)) + " s" : everyWords(next));
+    return left + "/" + cap + " (+1 every " + everyWords(TC.seconds_per_turn) + nextText + ")";
+  }
+  function paintClocks() {
+    const day = $("dayClock");
+    if (day) {
+      const left = leftOf(dayDeadline);
+      day.textContent = left == null ? "" : ", next day in " + clockRemain(left);
+    }
+    if (S && $("turns")) $("turns").textContent = turnFace();
+    const stat = $("turnsStat");
+    if (stat) {
+      stat.title = TC
+        ? "Under v3.11, turns come back a little at a time all day. The day rolls on the clock, not when everyone is out of turns."
+        : "Turns left today";
+    }
+  }
   function noTurnsLine() {
     if (TC) {
       // NOTE 60 item 4: turns come back on the server's clock and the day starts at a clock time.
@@ -3376,7 +3423,10 @@
       m.hidden = false;
       inComputer = k === "C";
       const list = k === "C" ? CKEYS : MENU_KEYS;
-      m.innerHTML = '<div class="y">' + (k === "C" ? "Computer command" : "Main menu") + "</div>" +
+      const clockNote = TC
+        ? '<div class="row">Under v3.11, turns come back a little at a time all day. The day rolls on the clock, not when everyone is out of turns.</div>'
+        : "";
+      m.innerHTML = '<div class="y">' + (k === "C" ? "Computer command" : "Main menu") + "</div>" + clockNote +
         list.map(([kk, l]) => '<div class="row"><kbd>&lt;' + kk + "&gt;</kbd> <span class=\"c\">" + l + "</span></div>").join("") +
         '<br><span class="dk">Esc to close</span>';
       return;
@@ -3590,14 +3640,20 @@
       const resp = await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
       state.awaiting = false;
       await refresh();
-      const spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
+      let spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
+      let cameBack = 0;
+      const gross = resp && resp.result ? resp.result.turns_spent : null;
+      if (gross != null) {
+        cameBack = Math.max(0, Number(gross) - spent);
+        spent = Number(gross);
+      }
       if (kind === "plot_course" && args && args.execute) {
         finishCourse(args, resp, spent);
         $("err").hidden = true;
         return;
       }
       const delta = (S ? S.credits : creditsBefore) - creditsBefore;
-      const tail = ". Turns spent " + spent + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".";
+      const tail = ". Turns spent " + spent + (cameBack ? ", " + cameBack + " came back" : "") + ". Credits " + (delta >= 0 ? "+" : "") + fmt(delta) + ".";
       if (kind === "wait") {
         let line = "You wait" + tail;
         if (noticeSeq > before && noticeLine && line.indexOf(noticeLine) < 0) line += " " + noticeLine;
@@ -3945,7 +4001,7 @@
       });
       // NOTE 60 item 7: under the v3.11 clock no turns are refilled at the roll; they come back hourly.
       const roll = TC
-        ? "Day " + dayNow + ". Turns come back about " + fmt(Math.round(Number(TC.turns_per_hour) || 0)) + " an hour; you have "
+        ? "Day " + dayNow + " dawns. Turns come back a little at a time; you have "
           + fmt(S.turns_remaining) + " of " + fmt(S.turns_per_day) + "."
         : "Day " + dayNow + ". Turns refilled to " + fmt(S.turns_remaining) + ".";
       setResult(roll + (tax ? " " + tax : "") + (fell ? " " + fell : ""), false);
@@ -3954,7 +4010,8 @@
     const sec = S.sector || {};
     $("pSector").textContent = sec.id ?? "-";
     $("tl").textContent = fmt(S.turns_remaining);
-    $("turns").textContent = fmt(S.turns_remaining) + "/" + fmt(S.turns_per_day);
+    $("turns").textContent = turnFace();
+    paintClocks();
     $("credits").textContent = fmt(S.credits) + " cr";
     const over = state.gameOver || (Number(S.max_days) > 0 && Number(S.day) > Number(S.max_days));
     $("sbDay").textContent = String(over && Number(S.max_days) > 0 ? Math.min(Number(S.day), Number(S.max_days)) : S.day);
@@ -3989,6 +4046,7 @@
     state.gameOver = !!st.game_over;
     CK = st.cockpit || null;
     TC = st.turn_clock || null;
+    syncClocks();
     SC = st.starting_credits_line || "";
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     if (st.observation) { S = st.observation; render(); }
@@ -4058,4 +4116,5 @@
   }
   if (state.token || params.get("mode") === "cu") connect();
   setInterval(() => { if (state.connected && !state.busy) refresh().catch((e) => { $("err").hidden = false; $("err").textContent = String(e.message || e); }); }, 2000);
+  setInterval(() => { if (S) paintClocks(); }, 1000);
 })();

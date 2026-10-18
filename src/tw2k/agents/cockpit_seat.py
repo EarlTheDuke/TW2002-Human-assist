@@ -338,6 +338,9 @@ def _note_result(table: dict[int, dict[str, Any]], day: int, result: dict[str, A
         if result.get("sector") is not None:
             row["sector_end"] = int(result["sector"])
         return
+    spent = result.get("turns_spent")
+    if spent is not None:
+        row["turns_used"] = int(row["turns_used"]) + int(spent)
     obs = result.get("observation") or {}
     if obs and int(obs.get("day") or 0) == day:
         _note_day(table, obs)

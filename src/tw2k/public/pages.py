@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from html import escape
 from typing import Any, Iterable
@@ -91,7 +92,46 @@ def _status_tag(status: str) -> str:
     return f"<span class=\"tag {escape(status)}\">{escape(status)}</span>"
 
 
-_DAY_NAMES = {"10m": "10 minutes", "30m": "30 minutes", "1h": "1 hour", "24h": "24 hours"}
+_DAY_NAMES = {"10m": "10 minutes", "30m": "30 minutes", "1h": "1 hour", "24h": "Real time, 24 h (original)"}
+
+
+def day_length_hint(day_seconds: int, turns_per_day: int, max_days: int) -> str:
+    """Plain consequence of a day length, from the preset, the turn pocket and the day count."""
+    seconds = max(1, int(day_seconds))
+    turns = max(1, int(turns_per_day))
+    days = max(1, int(max_days))
+    if seconds % 86400 == 0:
+        name = f"{seconds // 86400 * 24} h" if seconds != 86400 else "24 h"
+    elif seconds % 3600 == 0:
+        name = f"{seconds // 3600} h"
+    elif seconds % 60 == 0:
+        name = f"{seconds // 60} min"
+    else:
+        name = f"{seconds} s"
+    per = seconds / turns
+    if per < 90:
+        every = f"{per:.1f}".rstrip("0").rstrip(".") + " s"
+    else:
+        every = f"{per / 60:.1f}".rstrip("0").rstrip(".") + " min"
+    total = seconds * days
+    if total % 86400 == 0:
+        span = f"{total // 86400} real day" + ("s" if total != 86400 else "")
+    else:
+        hours, rem = divmod(total, 3600)
+        minutes = rem // 60
+        if hours and minutes:
+            span = f"{hours} h {minutes} min"
+        elif hours:
+            span = f"{hours} h"
+        elif minutes:
+            span = f"{minutes} min"
+        else:
+            span = f"{total} s"
+    if seconds >= 86400:
+        return f"{name} days: a turn comes back every {every}, like the original; {days} days take {span}"
+    if per < 60:
+        return f"{name} days: {days} days take about {span}; a turn comes back every {every}, so turns rarely run out"
+    return f"{name} days: {days} days take about {span}; a turn comes back every {every}"
 
 
 def _day_label(seconds: int) -> str:
@@ -173,6 +213,34 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 <label for="max_days">Max days</label><input id="max_days" name="max_days" type="number" min="1" max="365" value="{escape(v['max_days'])}">
 <label for="turns_per_day">Turns per day</label><input id="turns_per_day" name="turns_per_day" type="number" min="20" max="2000" value="{escape(v['turns_per_day'])}">
 <label for="day">Day length</label><select id="day" name="day">{days}</select>
+<p class="note" id="dayHint">{escape(day_length_hint(int((presets or DAY_PRESETS).get(v['day'], 1800)), int(v['turns_per_day'] or 250), int(v['max_days'] or 30)))}</p>
+<script>
+const dayPresets = {json.dumps(presets or DAY_PRESETS)};
+function paintDayHint() {{
+  const secs = dayPresets[document.getElementById("day").value] || 0;
+  const turns = Number(document.getElementById("turns_per_day").value) || 1;
+  const days = Number(document.getElementById("max_days").value) || 1;
+  const per = secs / turns;
+  const every = per < 90 ? (Math.round(per * 10) / 10).toString().replace(/\\.0$/, "") + " s"
+    : (Math.round(per / 6) / 10).toString().replace(/\\.0$/, "") + " min";
+  const total = secs * days;
+  let span;
+  if (total % 86400 === 0) span = (total / 86400) + " real day" + (total === 86400 ? "" : "s");
+  else {{
+    const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60);
+    span = h && m ? h + " h " + m + " min" : (h ? h + " h" : m + " min");
+  }}
+  let name = secs % 60 === 0 && secs < 3600 ? (secs / 60) + " min" : (secs % 3600 === 0 ? (secs / 3600) + " h" : secs + " s");
+  if (secs === 86400) name = "24 h";
+  const hint = secs >= 86400
+    ? name + " days: a turn comes back every " + every + ", like the original; " + days + " days take " + span
+    : (per < 60
+      ? name + " days: " + days + " days take about " + span + "; a turn comes back every " + every + ", so turns rarely run out"
+      : name + " days: " + days + " days take about " + span + "; a turn comes back every " + every);
+  document.getElementById("dayHint").textContent = hint;
+}}
+["day", "turns_per_day", "max_days"].forEach((id) => document.getElementById(id).addEventListener("input", paintDayHint));
+</script>
 </fieldset>
 <fieldset><legend>Players</legend>
 <label for="home_planet_name">Home planet name</label><input id="home_planet_name" name="home_planet_name" maxlength="30" value="{escape(v['home_planet_name'])}">
@@ -189,7 +257,12 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 
 def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str]], watch_link: str) -> str:
     links = "".join(f"<p>Seat {escape(seat)}<code class=\"link\">{escape(url)}</code></p>" for seat, url in join_links)
+    settings = game.get("settings") or {}
+    key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
+    length = _DAY_NAMES.get(key, key)
+    shown = f"<p>Day length: {escape(length)}</p>" if length else ""
     body = (f"<p class=\"sub\">Game created</p><div class=\"card\"><h2>{escape(game['name'])}</h2>"
+            f"{shown}"
             "<p>One join link per open seat. Send each link to one player; the first person to open it gets the seat.</p>"
             f"{links}<p>Watch link (read-only)<code class=\"link\">{escape(watch_link)}</code></p>"
             f"<form method=\"post\" action=\"/games/{game['id']}/join\" style=\"display:inline\">"
@@ -200,7 +273,12 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
 
 def join_confirm(brand: str, *, game: dict[str, Any], seat: str, key: str, error: str | None = None) -> str:
     err = f"<div class=\"err\">{escape(error)}</div>" if error else ""
+    settings = game.get("settings") or {}
+    key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
+    length = _DAY_NAMES.get(key, key)
+    shown = f"<p>Day length: {escape(length)}</p>" if length else ""
     body = (f"<p class=\"sub\">Join a game</p><div class=\"card\"><h2>{escape(game['name'])}</h2>"
+            f"{shown}"
             f"<p>You were invited to seat {escape(seat)}.</p>{err}"
             f"<form method=\"post\" action=\"/games/{game['id']}/join\">"
             f"<input type=\"hidden\" name=\"seat\" value=\"{escape(seat)}\"><input type=\"hidden\" name=\"k\" value=\"{escape(key)}\">"

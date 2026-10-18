@@ -128,6 +128,7 @@ def _facts(config) -> dict:
         day_seconds = K.TURN_REGEN_DAY_SECONDS
     fuel, organics, equipment = K.PLANET_PROD_PER_UNIT["M"]
     rate, over, align = K.tax_terms()
+    max_days = int(getattr(config, "max_days", None) or 10)
     return {
         "credits": int(credits),
         "turns": int(turns),
@@ -143,6 +144,7 @@ def _facts(config) -> dict:
         "tax_rate": int(rate),
         "tax_over": int(over),
         "tax_align": int(align),
+        "max_days": max_days,
         "scoped": config is not None,
     }
 
@@ -445,13 +447,17 @@ def _tax(f: dict) -> str:
 
 
 def _turns(f: dict) -> str:
+    from .pages import day_length_hint
+
     minutes = f["day_seconds"] / 60
     minute_text = str(int(minutes)) if minutes == int(minutes) else f"{minutes:.1f}"
+    hint = day_length_hint(f["day_seconds"], f["turns"], f["max_days"])
     return (
         f"<p>You start the day with {_n(f['turns'])} turns. A warp on the starting hull costs {_n(f['tpw'])} of them. "
         f"A day lasts {_n(f['day_seconds'])} seconds ({minute_text} minutes) in this game.</p>"
-        "<p>Turns come back on the day's clock. Spending them on warps, trades and building is how the day goes. "
-        "When they hit zero, the day advances once the clock says so.</p>"
+        f"<p>{escape(hint)}</p>"
+        "<p>Under v3.11, turns come back a little at a time all day. The day rolls on the clock, "
+        "not when everyone is out of turns. On a longer day the same pocket comes back more slowly.</p>"
         + _src("The game's turn pocket and day length, read from this game's settings when you opened the manual from a game.")
     )
 
