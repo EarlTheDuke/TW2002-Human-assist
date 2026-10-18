@@ -40,6 +40,7 @@ th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #1a2638;vertical-a
 th{color:#8aa0b8;font-weight:600;font-size:14px}
 .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:13px;background:#1a2638}
 .tag.running{background:#14432c}.tag.sleeping{background:#3a3214}.tag.failed{background:#4a1616}
+.tag.finished{background:#1e3a5f}
 label{display:block;margin:12px 0 4px;color:#b8c8da}
 input,select{width:100%;max-width:420px;background:#070b14;color:#e8f6ff;border:1px solid #2a3a55;border-radius:8px;
   padding:10px;font:inherit;min-height:44px}
@@ -141,10 +142,24 @@ def _day_label(seconds: int) -> str:
     return f"{int(seconds)}s"
 
 
+def _end_button(g: dict[str, Any]) -> str:
+    """Confirm dialog names the game; the form sends confirm=true only after OK."""
+    question = escape(json.dumps(f"End {g['name']} for everyone?"))
+    gid = escape(g["id"])
+    return (
+        f"<form method=\"post\" action=\"/games/{gid}/end\" style=\"display:inline\" "
+        f"onsubmit=\"if(!window.confirm({question}))return false;this.elements.confirm.value='true';\">"
+        "<input type=\"hidden\" name=\"confirm\" value=\"\">"
+        f"<button class=\"warn\" type=\"submit\" data-end-game=\"{gid}\">End game</button></form>"
+    )
+
+
 def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[str, Any]], closed: bool,
-          full: bool, live: dict[str, dict[str, Any]]) -> str:
+          full: bool, live: dict[str, dict[str, Any]], owned: Iterable[dict[str, Any]] | None = None) -> str:
     mine = list(mine)
+    owned = list(owned or [])
     seated = {g["id"] for g in mine}
+    running_owned = {g["id"] for g in owned if g["status"] == "running"}
     rows = []
     for g in games:
         s = g["settings"]
@@ -154,22 +169,51 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         join = (f"<form method=\"post\" action=\"/games/{g['id']}/join\" style=\"display:inline\">"
                 "<button class=\"primary\" type=\"submit\">Join</button></form>") if open_seats and not closed else ""
         watch = "" if g["id"] in seated else f"<a class=\"btn\" href=\"/g/{g['id']}/watch\">Watch</a>"
+        # The seat row carries the button once the creator has sat down.
+        end = _end_button(g) if g["id"] in running_owned and g["id"] not in seated else ""
         rows.append(
             f"<tr><td><b>{escape(g['name'])}</b><br><span class=\"note\">"
             f"{'v3.11' if s['rules'] == 'v311' else 'legacy'} rules &middot; {s['universe_size']} sectors &middot; "
             f"{_day_label(s['day_seconds'])} days &middot; {s['bots']} bots<br>{escape(credits_phrase(s))}</span></td>"
             f"<td>{_status_tag(g['status'])} <span class=\"note\">{escape(day)}</span></td>"
-            f"<td>{open_seats} of {s['humans']} seats open</td><td>{join} {watch}</td></tr>"
+            f"<td>{open_seats} of {s['humans']} seats open</td><td>{join} {watch} {end}</td></tr>"
         )
     table = ("<table class=\"games\"><thead><tr><th>Game</th><th>Status</th><th>Seats</th><th></th></tr></thead>"
              "<tbody>" + "".join(rows) + "</tbody></table>") if rows else "<p class=\"note\">No open games yet.</p>"
-    my_rows = "".join(
-        f"<tr><td><b>{escape(g['name'])}</b> &middot; seat {escape(g['my_seat'])}</td><td>{_status_tag(g['status'])}</td>"
-        f"<td><a class=\"btn primary\" href=\"/resume/{g['id']}\">Resume my seat</a></td></tr>"
-        for g in mine if g["status"] not in ("archived",)
-    )
+    seat_rows = []
+    for g in mine:
+        if g["status"] in ("archived", "finished"):
+            continue
+        end = _end_button(g) if g["id"] in running_owned else ""
+        seat_rows.append(
+            f"<tr><td><b>{escape(g['name'])}</b> &middot; seat {escape(g['my_seat'])}</td>"
+            f"<td>{_status_tag(g['status'])}</td>"
+            f"<td><a class=\"btn primary\" href=\"/resume/{g['id']}\">Resume my seat</a> {end}</td></tr>"
+        )
+    for g in owned:
+        if g["status"] != "running" or g["id"] in seated or g["listed"]:
+            continue
+        seat_rows.append(
+            f"<tr><td><b>{escape(g['name'])}</b> &middot; link only</td><td>{_status_tag(g['status'])}</td>"
+            f"<td>{_end_button(g)}</td></tr>"
+        )
+    my_rows = "".join(seat_rows)
     mine_html = (f"<h2>Your seats</h2><div class=\"card\"><table class=\"games\"><tbody>{my_rows}</tbody></table></div>"
                  if my_rows else "")
+    finished = []
+    seen: set[str] = set()
+    for g in list(mine) + list(owned):
+        if g["status"] != "finished" or g["id"] in seen:
+            continue
+        seen.add(g["id"])
+        finished.append(
+            f"<tr data-finished=\"{escape(g['id'])}\"><td><b>{escape(g['name'])}</b></td>"
+            f"<td>{_status_tag('finished')}</td><td></td></tr>"
+        )
+    finished_html = (
+        f"<h2>Finished</h2><div class=\"card\" id=\"finished\"><table class=\"games\"><tbody>{''.join(finished)}</tbody></table></div>"
+        if finished else ""
+    )
     if closed:
         new = "<div class=\"err\">New games are switched off right now.</div>"
     elif full:
@@ -191,7 +235,7 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
     )
     body = (f"<p class=\"sub\">Closed beta lobby</p>{mine_html}{reopen}"
             f"<div class=\"row\"><h2>Games</h2>{new}</div>"
-            f"<div class=\"card\">{table}</div>")
+            f"<div class=\"card\">{table}</div>{finished_html}")
     return page("Lobby", body, brand=brand)
 
 
