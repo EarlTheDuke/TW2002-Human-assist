@@ -150,7 +150,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
               corp_policy: str | None = None,
               corp_pairs: list[tuple[str, str]] | None = None,
               action_digest: bool = False, reader_start: str | None = None,
-              war_report: bool = False) -> dict[str, Any]:
+              war_report: bool = False, reject_report: int = 5) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
     from tw2k.agents.seat_brain import SeatBrain
@@ -338,7 +338,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "realized_profit": s["realized"],
             "profit_per_unit": round(s["realized"] / s["units_sold"], 1) if s["units_sold"] else 0.0,
             "rejected_validate": s["rej_validate"], "rejected_engine": s["rej_engine"],
-            "rejected_top": [[k, v] for k, v in sorted(s["rej_top"].items(), key=lambda kv: (-kv[1], kv[0]))[:5]],
+            "rejected_top": [[k, v] for k, v in sorted(s["rej_top"].items(), key=lambda kv: (-kv[1], kv[0]))[:reject_report]],
             "exceptions": s["exceptions"], "forced_done": s["forced_done"], "wasted_turns": s["wasted_turns"],
             "aba_bounces": aba_bounces(s["rows"]), "daily": s["daily"],
         }

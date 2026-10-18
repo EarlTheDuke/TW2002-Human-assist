@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (63 helpers)
+## The switch set (66 helpers)
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -75,6 +75,7 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A
 | 63 | `YARD_STATS_MODE` | `yard_stats_on` | RULINGS s4 (the yard shows the s4 roster figures). New switch (NOTE 60): the buy_ship params carry `stats_by`, the server figures of every hull (name, cost, holds of max holds, fighters, shields, turns per warp, odds, photons, TransWarp) for the roster in play | - |
 | 64 | `CITADEL_TABLE_FIX_MODE` | `citadel_table_fix_live` | S1 section VII, class U row "Colo 3000 3000 8000 6000 8000 6000" (TWFAQ_20PLANET.txt agrees). New switch (NOTE 64 ADDENDUM): a class U citadel level 3 asks for 8,000 colonists (`CITADEL_S1_COLONISTS`); the stored `CITADEL_CLASS_COSTS` keeps 5,000 for legacy | - |
 | 65 | `HOME_PLANET_MODE` | `home_planet_live` | REVISION.TXT 1558 (no new planet in an occupied sector) and the new-character transcript (Fuel Ore 45 / Organics 65 / Equipment 81 thousand). New switch (NOTE 66): the home planet is outside FedSpace, the player starts landed on it, and the 191,000 start is that split. Legacy stays in the start sector with the colonists unassigned | - |
+| 66 | `PORT_BUY_PRICE_ANCHOR_MODE` | `port_buy_price_anchor_on` | D25-1 (NOTE 69): a buying port's live anchor is the hungry quote. `PORT_STOCK_FIDELITY` opens buyers at current 0, and the full-hold curve `(1.45 - 0.70*frac) / 0.75` then quotes about 1.93x (`38/73/102` become roughly fuel 51-87, organics 97-169, equipment 134-241). Live v3.34b day 1 is fuel 34.9-40.65, organics 62-75, equipment 100.7-105, and the price eases only a few percent as the port fills (StarDock equipment 105 at 51% remaining, about 100.8 at 37%). MCIC and the haggle window stay on top. The sell side is unchanged | - |
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 
@@ -122,3 +123,9 @@ MASTER_PLAN no, no-op, or hold, with no ruling in NOTE 57. The profile does not 
 ## Soak
 
 `docs/playtests/v311-profile-v1/README.md`: seed 250925, 10 days, port 8020, rejected 0 and exceptions 0 on every seat, 2,253 regen turns per seat, taxes 5,384 / 16,096 / 0 / 0, all citadels L0 (the bots have no citadel step), and the day-2 stall found and fixed.
+
+## Buying-port anchors (NOTE 69, v311-port-buy-price-v1)
+
+D25-1 (seed 41) showed day-1 buy quotes under the profile at fuel 51-87, organics 97-169, equipment 134-241 (StarDock fuel 86, equipment 185). Live v3.34b day 1 is fuel 34.9-40.65, organics 62-75, equipment 100.7-105. The cause is the two slices reading "full" the opposite way. `port_price_live()` hits `PORT_PRICE_LIVE_BUY_FULL` (`38` / `73` / `102`) only when `current / maximum` is 1, because it divides by `PORT_PRICE_BUY_FULL_MULT` (0.75). `port_stock_fidelity_live()` opens a buying port at current 0, so the same formula quotes `1.45 / 0.75`, about 1.93 times the anchor. MCIC from -100 to -1 then spreads that into the D25-1 ranges. The legacy path (anchor switch off, `PORT_PRICE_MODE` live) still does this, and the tests pin it.
+
+`PORT_BUY_PRICE_ANCHOR_MODE` stays `"legacy"`. The profile turns `port_buy_price_anchor_on()` on without writing the stored flag. With it on, remaining demand prices the buy: a hungry port (current 0) pays the anchor times MCIC times experience, and `PORT_BUY_FILL_EASE` (0.25) eases the quote as the hold fills. From 51% remaining demand to 37% the quote drops about 4% (live StarDock equipment 105 to about 100.8). StarDock's buy rows use that same curve. The sell side still hits the full-port screen anchors (fuel 16, organics 35, equipment 36 at MCIC 50) and was left alone. The haggle window still reads the listed quote.
