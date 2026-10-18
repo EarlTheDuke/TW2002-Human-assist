@@ -6,6 +6,9 @@ Defaults stay legacy, so the bank pin and the 10-day digests do not move.
 Plants:
   pb1 - the offensive wave is sized 1 x (max fighters + max shields) instead of 1.25 x.
   pb2 - recover_turns pays its own 250/86400 next to refresh_offline_turns (double regen).
+NOTE 59 (v311-kill-cash-addendum-v1) plants:
+  pb3 - kill_cash_held() drops `or v311_profile()`, so a kill under the profile pays the killer.
+  pb4 - the pod top-up is skipped, so the pod after a kill holds 0 credits instead of 25.
 """
 
 from __future__ import annotations
@@ -15,11 +18,13 @@ from pathlib import Path
 import tw2k.engine.constants as K
 from tests.test_citadel_class_tables_v1 import _build, _fill, _land, _plant
 from tests.test_phase_abc import _make_universe
+from tests.test_ship_combat_core_v1 import _challenge, _duel
 from tests.test_tw2002_live_profile_v1 import HELPERS
 from tw2k.engine import GameConfig, generate_universe, tick_day
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.bank import collect_daily_tax, tax_on
 from tw2k.engine.combat import _resolve_fighter_sector_combat, offensive_wave_size
+from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import (
     Commodity,
     EventKind,
@@ -56,6 +61,10 @@ def test_defaults_stay_legacy() -> None:
     assert K.tax_v311() is False
     assert K.tax_terms() == (5, 100_000, 0)
     assert K.KILL_CASH_MODE == "legacy"
+    assert K.kill_cash_held() is False
+    assert K.POD_CASH_MODE == "legacy"
+    assert K.pod_cash_live() is False
+    assert K.DEATH_CREDITS_ON_HAND == "lost"
     assert K.CITADEL_COST_MODE == "credits"
     assert K.CITADEL_BUILD_TIME_SCALE == 0.25
 
@@ -276,15 +285,85 @@ def test_s7_tax(monkeypatch) -> None:
     assert seat.credits == 54_000 and seat.alignment == 14
 
 
-def test_s1_kill_cash_stays_legacy_under_the_profile(monkeypatch) -> None:
-    """RULINGS s1: "The exact percentage the killer gets is NOT stated in any source we hold."
-    NOTE 57 item 7: KILL_CASH_MODE stays legacy and is not in the profile.
+def _kill(monkeypatch, seed: int):
+    u, killer, victim, _c, sid = _duel(seed)
+    killer.ship.fighters, killer.credits, killer.ship.holds = 2_000, 300, 20
+    victim.ship.fighters, victim.ship.shields, victim.ship.holds = 30, 0, 20
+    victim.credits = 10_000
+    deaths = victim.deaths
+    res = apply_action(u, killer.id, Action(kind=ActionKind.ATTACK, args={"target": victim.id, "qty": 200}))
+    assert res.ok, res.error
+    assert victim.deaths == deaths + 1
+    return u, killer, victim
+
+
+def test_addendum_a_kill_pays_the_killer_nothing_and_the_pod_has_25(monkeypatch) -> None:
+    """RULINGS Addendum A (live v3.34b, trials T1 and T6): "in normal play the killer gets nothing
+    from a logged-off victim, and the victim's on-hand cash is destroyed (the pod has 25 credits)";
+    "the killer took the victim's 7 extra holds ("7 empty"). Keep the holds-salvage path."
+    """
+    u, killer, victim = _kill(monkeypatch, 59001)  # profile off: the old game pays the killer
+    assert killer.credits == 300 + 10_000 and victim.credits == 0
+    _on(monkeypatch)
+    assert K.kill_cash_held() and K.pod_cash_live()
+    assert K.KILL_CASH_MODE == "legacy" and K.POD_CASH_MODE == "legacy"
+    assert K.DEATH_CREDITS_ON_HAND == "lost"
+    u, killer, victim = _kill(monkeypatch, 59001)
+    assert killer.credits == 300  # "Killer paid 0 (300 -> 300)"
+    assert victim.ship.ship_class is ShipClass.ESCAPE_POD
+    assert victim.credits == K.POD_CASH_CREDITS == 25  # "pod, 25 cr"
+    assert not [e for e in u.events if e.kind is EventKind.CREDITS_RECOVERED]
+    lost = [e for e in u.events if e.kind is EventKind.SHIP_DESTROYED and e.payload.get("victim") == victim.id]
+    assert lost[-1].payload["credits_lost"] == 10_000
+    furb = [e for e in u.events if e.kind is EventKind.SHIP_FURBED]
+    assert furb and furb[-1].payload["holds_gained"] == 7  # "salvaged these cargo holds: 7 empty"
+    assert killer.ship.holds == 27
+
+
+def test_addendum_a_no_shared_sector_the_challenge_answers(monkeypatch) -> None:
+    """RULINGS Addendum A Q6(b): "Fighters: 5 (belong to Ktvictim) [Defensive] / You have to destroy
+    the fighters to remain in this sector." The help lists "<A> Attack Deployed Fighters", "<P> Pay
+    Toll (if applicable)", "<R> RETREAT", "<S> Surrender your ship"; the defensive prompt is
+    "Option? (A,D,I,R,S,?)". So a non-corp player cannot stay without clearing them.
     """
     _on(monkeypatch)
-    assert K.KILL_CASH_MODE == "legacy"
-    assert K.kill_cash_held() is False
-    assert "kill_cash_held" not in K.V311_PROFILE_HELPERS
-    assert "KILL_CASH_MODE" not in {switch for switch, _ in K.V311_PROFILE_HELPERS.values()}
+    from tw2k.engine.runner import CHALLENGE_REFUSAL, CHALLENGE_VERBS
+
+    free = {ActionKind.WAIT, ActionKind.HAIL, ActionKind.BROADCAST, ActionKind.RADIO, ActionKind.QUERY_LIMPETS}
+    answers = {k.value for k in CHALLENGE_VERBS - free}
+    assert answers == {"attack", "pay_toll", "retreat", "surrender"}
+    assert CHALLENGE_REFUSAL == "answer the fighters first: attack, retreat, pay the toll or surrender"
+    for mode, toll_legal in (("defensive", False), ("toll", True)):
+        u, owner, ship, home, there = _challenge(59002, mode=mode, count=5)
+        assert ship.fighter_challenge and ship.fighter_challenge["mode"] == mode
+        las = {la.kind: la for la in legal_actions(u, ship.id)}
+        assert las["attack"].legal and las["retreat"].legal and las["surrender"].legal
+        assert las["pay_toll"].legal is toll_legal, mode  # "Pay Toll (if applicable)"
+        for kind in ("warp", "scan", "trade", "land_planet", "deploy_fighters"):
+            assert not las[kind].legal, (mode, kind)
+        assert not apply_action(u, ship.id, Action(kind=ActionKind.SCAN, args={})).ok
+        assert ship.sector_id == there and ship.fighter_challenge is not None
+        tick_day(u)  # waiting out the day does not let it stay
+        assert ship.sector_id == home and ship.fighter_challenge is None
+
+
+def test_addendum_a_fighter_exchange_is_one_to_one(monkeypatch) -> None:
+    """RULINGS Addendum A Q6(b): "How many fighters do you wish to use (0 to 750) [0]? 10 /
+    You lost 5 fighter(s) / You destroyed 5 enemy fighters. / You destroyed all the fighters."
+    """
+    _on(monkeypatch)
+    u, owner, ship, home, there = _challenge(59003, count=5)
+    assert ship.ship.ship_class is ShipClass.MERCHANT_CRUISER
+    ship.ship.fighters = 1_990
+    res = apply_action(u, ship.id, Action(kind=ActionKind.ATTACK, args={"target": "fighters", "qty": 10}))
+    assert res.ok, res.error
+    assert ship.ship.fighters == 1_985  # "You lost 5 fighter(s)"
+    assert u.sectors[there].fighters is None  # "You destroyed all the fighters."
+    assert ship.fighter_challenge is None
+    u, owner, ship, home, there = _challenge(59004, count=50)
+    ship.ship.fighters = 30
+    assert apply_action(u, ship.id, Action(kind=ActionKind.ATTACK, args={"target": "fighters", "qty": 30})).ok
+    assert ship.ship.fighters == 0 and u.sectors[there].fighters.count == 20  # 30 for 30
 
 
 def test_profile_sets_exactly_the_documented_set(monkeypatch) -> None:
