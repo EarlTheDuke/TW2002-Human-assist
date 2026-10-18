@@ -172,7 +172,7 @@ def _frame(name: str) -> str:
 def rewrite_text(path: str, text: str, *, base: str, brand_name: str) -> str:
     """The prefix and the brand for one served page or script (no-op with both unset)."""
     name = path.rsplit("/", 1)[-1].split("?", 1)[0]
-    is_html = path in ("/", "/bot", "/bot2", "/play") or name.endswith(".html")
+    is_html = path in ("/", "/bot", "/bot2", "/play", "/manual") or name.endswith(".html")
     if base:
         if is_html:
             for attr in ('src="/', 'href="/', 'action="/'):

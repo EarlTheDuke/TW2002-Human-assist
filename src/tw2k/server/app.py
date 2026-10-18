@@ -987,6 +987,27 @@ def create_app(
             "suggest": suggest_next_move(obs),
         }
 
+    @app.get("/manual", response_class=HTMLResponse)
+    async def manual_page() -> HTMLResponse:
+        """Player's manual. No token. Numbers come from this process and this game."""
+        from ..public.manual import render
+        from ..public.worker import brand as worker_brand
+
+        name = worker_brand() or "Trade Wars 2002"
+        cfg = None
+        state = getattr(runner, "state", None)
+        universe = getattr(state, "universe", None)
+        if universe is not None:
+            cfg = getattr(universe, "config", None)
+        return HTMLResponse(
+            render(name, config=cfg, lobby=False),
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
     @app.get("/bot", response_class=HTMLResponse)
     async def bot_page(request: Request) -> HTMLResponse:
         """Grok Bot / computer-use cockpit for external harness seats."""

@@ -9,6 +9,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .logo b{font-size:19px;letter-spacing:1px}.logo .y{text-shadow:0 0 6px #aa5500}
 .stat i{font-style:normal;color:var(--dk);font-size:11px;margin-right:6px;text-transform:uppercase}.stat b{font-size:18px}
 .chip{border:1px solid var(--y);color:var(--y);padding:2px 8px;animation:blink 1.6s steps(2) infinite;white-space:nowrap;flex-shrink:0}
+.manual-link{color:var(--c);margin-left:8px;white-space:nowrap;flex-shrink:0;font-size:16px;text-decoration:underline}
 @keyframes blink{50%{border-color:var(--br);color:var(--br)}}
 select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;margin-left:auto}
 #deck{display:grid;gap:8px;padding:8px;min-height:0;flex:1;grid-template-columns:1.15fr 1fr 0.95fr;grid-template-rows:minmax(0,1.35fr) minmax(110px,0.7fr);grid-template-areas:"view nav ship" "here here term"}
