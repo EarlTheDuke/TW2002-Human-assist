@@ -16,6 +16,8 @@ With nothing saved, the deck is the stylesheet grid: `view nav ship` on the firs
 
 The value is `{v:1, order, hidden, cols, rows, font, zoom}`. `cols` and `rows` are track weights, or null when they are still the default. `font` is null or a pixel size from 12 to 24. `zoom` is 1, or 0.8–1.5 in steps of 0.1. Reset deletes the key and clears the inline styles.
 
-The Layout menu (button on the header, does not take a flex slot) lists the five panels: Viewport, Nav computer, Ship, Here, Subspace log. Each row can be hidden, dragged, or moved with Up and Down. Those moves swap grid slots on a wide screen. Font and zoom are in the same menu. A focused splitter moves with the arrow keys; mouse and touch drag it.
+The Layout button sits in the cockpit header, next to Manual, outside every panel. Hiding Viewport, or hiding every panel the menu will allow, still leaves that button on screen. Reset is inside the menu the button opens. From 1367px to 1680px the header gaps draw in so the button stays on the first row and the header stays the same height. A saved font may wrap the header onto a second line; with nothing saved, the header height is unchanged and the deck boxes stay put.
+
+The menu lists the five panels: Viewport, Nav computer, Ship, Here, Subspace log. Each row can be hidden, dragged, or moved with Up and Down. Those moves swap grid slots on a wide screen. Font and zoom are in the same menu. A focused splitter moves with the arrow keys; mouse and touch drag it.
 
 The ship picture and the warp scene stay inside their panels. Hiding Ship or Viewport hides that panel; Reset brings it back.

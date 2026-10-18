@@ -128,6 +128,15 @@ def test_dashboard_saves_reloads_and_resets(tmp_path: Path, monkeypatch) -> None
             phone.locator("[data-testid=layout-reset]").click()
             _ready(phone, "default")
             assert phone.locator("#term").is_visible()
+            phone.locator("[data-testid=show-viewport]").uncheck()
+            phone.wait_for_function("() => document.getElementById('viewport').hidden")
+            phone.locator("[data-testid=layout-close]").click()
+            assert phone.locator("#viewport").is_hidden()
+            assert phone.locator("[data-testid=layout-open]").is_visible()
+            phone.locator("[data-testid=layout-open]").click()
+            phone.locator("[data-testid=layout-reset]").click()
+            _ready(phone, "default")
+            assert phone.locator("#viewport").is_visible()
 
             wide.locator("[data-testid=layout-open]").click()
             wide.locator("[data-testid=up-ship]").click()
@@ -204,5 +213,34 @@ def test_dashboard_saves_reloads_and_resets(tmp_path: Path, monkeypatch) -> None
             assert wide.evaluate("() => localStorage.getItem('tw2k-deck-v1:lobby:P2')") is None
             assert wide.locator("#shipSvg [data-testid=ship-body]").count() == 1
             assert wide.locator("#term").is_visible()
+            wide.locator("[data-testid=show-viewport]").uncheck()
+            wide.wait_for_function("() => document.getElementById('viewport').hidden")
+            wide.locator("[data-testid=layout-close]").click()
+            assert wide.locator("#viewport").is_hidden()
+            opener = wide.locator("[data-testid=layout-open]")
+            assert opener.is_visible()
+            assert wide.evaluate(
+                """() => {
+                  const button = document.getElementById('layoutOpen');
+                  const header = document.getElementById('cmdline');
+                  const manual = document.getElementById('manualLink').getBoundingClientRect();
+                  const box = button.getBoundingClientRect();
+                  const head = header.getBoundingClientRect();
+                  const clear = box.right <= manual.left + 1 || manual.right <= box.left + 1
+                    || box.bottom <= manual.top + 1 || manual.bottom <= box.top + 1;
+                  return button.closest('#viewport') === null
+                    && button.closest('#cmdline') === header
+                    && box.width > 20
+                    && box.top >= head.top - 1
+                    && box.bottom <= head.bottom + 1
+                    && clear;
+                }"""
+            )
+            opener.click()
+            wide.locator("[data-testid=layout-reset]").click()
+            _ready(wide, "default")
+            assert wide.locator("#viewport").is_visible()
+            assert wide.locator("#term").is_visible()
+            _close(fresh, _boxes(wide))
         finally:
             browser.close()
