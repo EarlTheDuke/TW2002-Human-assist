@@ -6,7 +6,9 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (82 helpers)
+## The switch set (87 helpers)
+
+Rows 83 and 84 are reserved for NOTE 75 and are not in this table yet. NOTE 78 uses rows 85-89.
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -92,6 +94,11 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A
 | 80 | `BOT_DIPLOMACY_MODE` | `bot_diplomacy_live` | NOTE 73: a code bot accepts or declines an alliance on its next turn, and answers a hail with one canned line. `ALLIANCE_MODE` stays legacy | - |
 | 81 | `DAY_ROLL_CLOCK_MODE` | `day_roll_clock_live` | NOTE 74: with the regen clock on, the day rolls when the mark passes even while an external seat holds the turn, and the next mark is the old mark plus the day length. Stored default stays legacy. Self-hosted beta games set the switch live | - |
 | 82 | `PORT_BUY_PRICE_ANCHOR_MODE` | `port_buy_price_anchor_on` | D25-1 (NOTE 69): a buying port's live anchor is the hungry quote. `PORT_STOCK_FIDELITY` opens buyers at current 0, and the full-hold curve `(1.45 - 0.70*frac) / 0.75` then quotes about 1.93x (`38/73/102` become roughly fuel 51-87, organics 97-169, equipment 134-241). Live v3.34b day 1 is fuel 34.9-40.65, organics 62-75, equipment 100.7-105, and the price eases only a few percent as the port fills (StarDock equipment 105 at 51% remaining, about 100.8 at 37%). MCIC and the haggle window stay on top. The sell side is unchanged | - |
+| 85 | `TREASURY_CAP_MODE` | `treasury_cap_live` | PLN-r (NOTE 78): S1 treasury cap is 999,999,999,999,999. The stored cap stays 10,000,000. Interest, the deposit refusal, the legal room and the cockpit room line all read `planet_treasury_cap()` | - |
+| 86 | `COURSE_MAX_MODE` | `course_max_live` | MOV-g (NOTE 78): a plotted course longer than 45 hops is refused. The 45 is UNVERIFIED for TWGS 3.11 (Big_Bang.html option B shapes the map; it is not confirmed as the plot limit). Legacy still searches 60 hops and the rules line still says 10 | - |
+| 87 | `BIG_BANG_DENSITY_MODE` | `big_bang_density_live` | MOV-h, MOV-i (NOTE 78): a new universe puts ports in about 40% of the deep sectors (the clone uses 65%) and planets in up to 20% (the clone uses 3%). Sectors 2-10 get no decorative Fed ports. Sol, Terra, StarDock (sector 1) and the Class 0 sectors chosen on the clone layout stay | - |
+| 88 | `ONE_WAY_SHARE_MODE` | `one_way_share_live` | MOV-f (NOTE 78): when the game settings do not set `one_way_fraction`, the bang uses 0.03. A setting that sets it, including a beta game, keeps that value. The stored default stays 0.15 | - |
+| 89 | `ATOMIC_DETONATOR_MODE` | `atomic_detonator_live` | SD-l (NOTE 78): the atomic detonator is the planet killer (colonists first, then the planet). The clone's port-nuke atomic mine is not sold and cannot be deployed. `ATOMIC_MINES_PORT_NUKE` stays True | - |
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 
@@ -145,3 +152,13 @@ MASTER_PLAN no, no-op, or hold, with no ruling in NOTE 57. The profile does not 
 D25-1 (seed 41) showed day-1 buy quotes under the profile at fuel 51-87, organics 97-169, equipment 134-241 (StarDock fuel 86, equipment 185). Live v3.34b day 1 is fuel 34.9-40.65, organics 62-75, equipment 100.7-105. The cause is the two slices reading "full" the opposite way. `port_price_live()` hits `PORT_PRICE_LIVE_BUY_FULL` (`38` / `73` / `102`) only when `current / maximum` is 1, because it divides by `PORT_PRICE_BUY_FULL_MULT` (0.75). `port_stock_fidelity_live()` opens a buying port at current 0, so the same formula quotes `1.45 / 0.75`, about 1.93 times the anchor. MCIC from -100 to -1 then spreads that into the D25-1 ranges. The legacy path (anchor switch off, `PORT_PRICE_MODE` live) still does this, and the tests pin it.
 
 `PORT_BUY_PRICE_ANCHOR_MODE` stays `"legacy"`. The profile turns `port_buy_price_anchor_on()` on without writing the stored flag. With it on, remaining demand prices the buy: a hungry port (current 0) pays the anchor times MCIC times experience, and `PORT_BUY_FILL_EASE` (0.25) eases the quote as the hold fills. From 51% remaining demand to 37% the quote drops about 4% (live StarDock equipment 105 to about 100.8). StarDock's buy rows use that same curve. The sell side still hits the full-port screen anchors (fuel 16, organics 35, equipment 36 at MCIC 50) and was left alone. The haggle window still reads the listed quote.
+
+## Universe and planet gaps (NOTE 78, v311-universe-planet-gaps-v1)
+
+Five switches, stored default `"legacy"`. The profile turns the helpers on and does not write the stored flags. Rows 83 and 84 stay free for NOTE 75.
+
+- Treasury. `planet_treasury_cap()` is 10,000,000 until `treasury_cap_live()`. Then it is the S1 figure 999,999,999,999,999. Interest, the deposit handler, the legal deposit room and the redesign cockpit room line ("Room N of CAP cr") all read that helper. The room and capacity keys are added to `deposit_treasury` only while the helper is on.
+- Course. Legacy still searches `PLOT_COURSE_MAX_DEPTH * 6` (60) hops, and the rules line still says 10. Live refuses a shortest path longer than 45 hops with "plotted course is longer than 45 hops". The 45 is marked UNVERIFIED for 3.11. Source: Big_Bang.html option B.
+- Densities. Live generation still draws the clone ports and planets on the main rng, records the Class 0 sectors that layout would pick, then replaces the fill from a side rng: about 40% ports, up to 20% planets, and no decorative Fed ports in sectors 2-10. StarDock stays sector 1. Terra's pool is unchanged. Class 0 is installed in the sectors the clone layout chose, so a density-only flip does not move Alpha Centauri or Rylos. A one-way flip can, because the lanes moved.
+- One-way share. `one_way_fraction_for` returns 0.03 only when the helper is on and `one_way_fraction` was not set on the game config. An explicit setting, including 0.15, is kept.
+- Detonator. `atomic_detonator_live()` makes `atomic_mines_sold()` false. The port-nuke mine is not sold and deploy is refused. The detonator path is unchanged: colonists first (a detonator set while colonists remain destroys the ship; `planet_destroy` clears them), then the planet. `ATOMIC_MINES_PORT_NUKE` stays True.

@@ -93,6 +93,11 @@ HELPERS = (
     "seat_idle_start_live",
     "bot_diplomacy_live",
     "port_buy_price_anchor_on",
+    "treasury_cap_live",
+    "course_max_live",
+    "big_bang_density_live",
+    "one_way_share_live",
+    "atomic_detonator_live",
 )
 
 
@@ -100,7 +105,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 91
+    assert len(names) == 96
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -136,3 +141,12 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.ALIEN_COMBAT_FIX_MODE == "legacy"
     assert K.HAGGLE_COUNTER_MODE == "legacy"
     assert K.BOT_HAZARD_MEMORY_MODE == "legacy"
+    assert K.TREASURY_CAP_MODE == "legacy"
+    assert K.COURSE_MAX_MODE == "legacy"
+    assert K.BIG_BANG_DENSITY_MODE == "legacy"
+    assert K.ONE_WAY_SHARE_MODE == "legacy"
+    assert K.ATOMIC_DETONATOR_MODE == "legacy"
+    assert K.ATOMIC_MINES_PORT_NUKE is True
+    assert K.PLANET_TREASURY_CAP == 10_000_000
+    assert K.DEFAULT_ONE_WAY_FRACTION == 0.15
+    assert K.PORT_SPAWN_PROBABILITY == 0.65

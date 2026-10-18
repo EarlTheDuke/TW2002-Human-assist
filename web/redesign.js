@@ -1333,7 +1333,14 @@
       if (trend) body += '<div data-colonists="trend">' + esc(trend) + "</div>";
       body += '<div data-quasar="now">Quasar sector ' + (landed.quasar_sector_pct || 0) + "%, atmosphere " + (landed.quasar_atm_pct || 0) + "%</div>";
       body += '<div data-reaction="pct">Military reaction ' + fmt(landed.military_reaction_pct || 0) + "%</div>";
-      if (landed.treasury != null) body += '<div data-treasury="balance">Treasury ' + fmt(landed.treasury) + " cr</div>";
+      if (landed.treasury != null) {
+        const dep = LA("deposit_treasury");
+        const room = dep && dep.params ? dep.params.room : null;
+        const cap = dep && dep.params ? dep.params.capacity : null;
+        let treasuryLine = "Treasury " + fmt(landed.treasury) + " cr";
+        if (room != null && cap) treasuryLine += ". Room " + fmt(room) + " of " + fmt(cap) + " cr";
+        body += '<div data-treasury="balance">' + treasuryLine + "</div>";
+      }
       const planetFuel = Number((landed.stockpile || {}).fuel_ore || 0);
       body += '<div data-range="transporter">Planet fuel ' + fmt(planetFuel) + " ore. " + (landed.has_transporter ? "Transporter range " + fmt(Math.floor(planetFuel / 10)) + " sectors at 10 ore each." : "No transporter (buy one).") + "</div>";
       card.innerHTML = body;
@@ -2468,7 +2475,12 @@
     const wrap = document.createElement("div");
     wrap.className = "frm";
     wrap.dataset.screen = "treasury";
-    wrap.innerHTML = '<div class="y">TREASURY</div><div class="c" data-treasury="form">Treasury ' + fmt(planet.treasury || 0) + " cr.</div>";
+    const deposit = LA("deposit_treasury") || { params: {} };
+    const room = (deposit.params || {}).room;
+    const capacity = (deposit.params || {}).capacity;
+    let treasuryLine = "Treasury " + fmt(planet.treasury || 0) + " cr.";
+    if (room != null && capacity) treasuryLine += " Room " + fmt(room) + " of " + fmt(capacity) + " cr.";
+    wrap.innerHTML = '<div class="y">TREASURY</div><div class="c" data-treasury="form">' + treasuryLine + "</div>";
     const pick = document.createElement("select");
     pick.dataset.n = "side";
     [["deposit", "Deposit"], ["withdraw", "Withdraw"]].forEach(([value, label]) => {
