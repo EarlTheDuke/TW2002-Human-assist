@@ -49,6 +49,42 @@ def _pool_count(colonists: dict, name: str) -> int:
     return 0
 
 
+_GOODS = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)
+
+
+def _class_m_people(class_id: PlanetClass | str) -> bool:
+    return _class_id(class_id).value == "M" and K.class_m_fidelity_live()
+
+
+def _worked(class_id: PlanetClass | str, count: int) -> int:
+    """One product pool's workers in the handbook unit the S1 ratios divide.
+
+    Class M under the switch stores people; NOTE 19: "production is
+    colonists(1000s)/ratio". S1 puts the class M peak at 15,000 (thousand) per
+    pool, half its 30,000 maximum, and prints that peak as Max/Day (5,000 /
+    2,142 / 1,153, fighters 829). S1 publishes no bell-curve shape, so output
+    stays at the peak above 15,000 instead of an invented falloff.
+    """
+    n = int(count)
+    if not _class_m_people(class_id):
+        return n
+    return min(n // int(K.CLASS_M_PEOPLE_PER_THOUSAND), int(K.PLANET_MAX_COLONISTS["M"]) // 2)
+
+
+def daily_production(class_id: PlanetClass | str, colonists: dict) -> dict[str, int]:
+    """Each product pool's output for one day before the stock cap, as the day tick makes it."""
+    cid = _class_id(class_id)
+    if K.planet_prod_live():
+        return {
+            good.value: 0 if int(ratio) <= 0 else _worked(cid, _pool_count(colonists, good.value)) // int(ratio)
+            for good, ratio in zip(_GOODS, K.PLANET_PROD_PER_UNIT[cid.value])
+        }
+    return {
+        commodity.value: int(_worked(cid, _pool_count(colonists, commodity.value)) * coeff / 100)
+        for commodity, coeff in PLANET_PROD_COEFF[cid].items()
+    }
+
+
 def organics_coeff(class_id: PlanetClass | str) -> int:
     """Organics column of the class production matrix."""
     return int(PLANET_PROD_COEFF[_class_id(class_id)][Commodity.ORGANICS])
@@ -92,11 +128,7 @@ def planet_growth_status(class_id: PlanetClass | str, colonists: dict, organics_
     survives. Already empty is 0. A stockpile that is not falling is
     `ORGANICS_DAYS_SUSTAINABLE`.
     """
-    coeffs = PLANET_PROD_COEFF[_class_id(class_id)]
-    production = {
-        commodity.value: int(_pool_count(colonists, commodity.value) * coeff / 100)
-        for commodity, coeff in coeffs.items()
-    }
+    production = daily_production(class_id, colonists)
     total = sum(_pool_count(colonists, c.value) for c in (
         Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT, Commodity.COLONISTS,
     ))
@@ -106,12 +138,18 @@ def planet_growth_status(class_id: PlanetClass | str, colonists: dict, organics_
     stock = int(organics_stock)
     if K.planet_growth_tw2002():
         cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
+        growing = total < cap // 2
+        if _class_m_people(class_id):
+            half = int(K.CLASS_M_CATEGORY_CAP) // 2
+            growing = any(0 < int(v or 0) < half for v in colonists.values())
         return {
             "production": production,
             "organics_consumption_per_day": 0,
-            "growth_active": total < cap // 2,
+            "growth_active": growing,
             "organics_days_left": ORGANICS_DAYS_SUSTAINABLE,
         }
+    if _class_m_people(class_id):
+        total //= int(K.CLASS_M_PEOPLE_PER_THOUSAND)
     # Appetite of one growth day. Reported even while the gate is shut so a
     # restock can be sized; the engine subtracts it only when post-production
     # organics are positive (see `_advance_planets`).
@@ -140,7 +178,7 @@ def colonist_trend(class_id: PlanetClass | str, total: int) -> str:
         shown = f"{count:,} (i.e. {count // 1000:,} thousands)"
         if count > cap:
             return f"{shown}; above a product pool cap, about 5% of the extra die off each day"
-        return f"{shown}; each product pool holds 30,000 thousand"
+        return f"{shown}; a pool below 15,000 thousand grows about 5% a day, and each product pool holds 30,000 thousand"
     if K.planet_growth_tw2002():
         cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
         half = cap // 2
@@ -215,7 +253,7 @@ def fighters_from_colonists(class_id: PlanetClass | str, colonists: dict) -> int
     for name, divisor in table.items():
         if int(divisor) <= 0:
             continue
-        made += _pool_count(colonists, name) // int(divisor)
+        made += _worked(class_id, _pool_count(colonists, name)) // int(divisor)
     return made * int(K.PLANET_FIGHTER_RATE_PCT) // 100
 
 
@@ -348,6 +386,33 @@ def _stock_product(planet, commodity: Commodity, produced: int) -> None:
     planet.stockpile[commodity] = before + added
 
 
+def _grow_class_m_pools(planet) -> None:
+    """S1: "Colonists below the 50% mark tend to multiply and increase."
+
+    Class M under the switch caps each product pool at CLASS_M_CATEGORY_CAP, so
+    each pool below half of it grows on its own. S1 publishes no rate; 5% is
+    the rate this engine already used. A pool above half does not shrink;
+    only the extra above the pool cap dies back (NOTE 19 (c)).
+    """
+    cap = int(K.CLASS_M_CATEGORY_CAP)
+    for name in list(planet.colonists.keys()):
+        have = int(planet.colonists[name] or 0)
+        if 0 < have < cap // 2:
+            planet.colonists[name] = min(cap, have + int(have * 0.05))
+
+
+def _grow_class_m_fed(planet) -> None:
+    """Growth switch legacy: the pools grow only while organics last, and eat by the thousand."""
+    stock = int(planet.stockpile.get(Commodity.ORGANICS, 0))
+    if stock <= 0:
+        return
+    total = sum(int(v) for v in planet.colonists.values())
+    _grow_class_m_pools(planet)
+    planet.stockpile[Commodity.ORGANICS] = max(
+        0, stock - organics_consumption(total // int(K.CLASS_M_PEOPLE_PER_THOUSAND))
+    )
+
+
 def _grow_by_half_cap(planet) -> None:
     """5% toward half of the class cap. Nothing is taken from the stockpile.
 
@@ -356,6 +421,9 @@ def _grow_by_half_cap(planet) -> None:
     percent. This engine already used 5% for that rule, so the new switch
     keeps 5%.
     """
+    if _class_m_people(planet.class_id):
+        _grow_class_m_pools(planet)
+        return
     total_col = sum(int(v) for v in planet.colonists.values())
     if total_col <= 0:
         return
@@ -381,14 +449,16 @@ def _grow_by_half_cap(planet) -> None:
 
 
 def _produce_and_grow_legacy(planet) -> None:
-    coeffs = PLANET_PROD_COEFF[planet.class_id]
-    for commodity, coeff in coeffs.items():
-        colonists = planet.colonists.get(commodity, 0)
-        raw = int(colonists * coeff / 100)
+    made = daily_production(planet.class_id, planet.colonists)
+    for commodity in PLANET_PROD_COEFF[planet.class_id]:
+        raw = made[commodity.value]
         produced = raw if raw > 0 else 0
         _stock_product(planet, commodity, produced)
     if K.planet_growth_tw2002():
         _grow_by_half_cap(planet)
+        return
+    if _class_m_people(planet.class_id):
+        _grow_class_m_fed(planet)
         return
     if planet.stockpile.get(Commodity.ORGANICS, 0) > 0:
         total_col = sum(planet.colonists.values())
@@ -406,14 +476,14 @@ def _produce_and_grow_legacy(planet) -> None:
 
 
 def _produce_and_grow_live(planet) -> None:
-    ratios = K.PLANET_PROD_PER_UNIT[planet.class_id.value]
-    goods = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)
-    for commodity, ratio in zip(goods, ratios):
-        colonists = int(planet.colonists.get(commodity, 0))
-        produced = 0 if int(ratio) <= 0 else colonists // int(ratio)
-        _stock_product(planet, commodity, produced)
+    made = daily_production(planet.class_id, planet.colonists)
+    for commodity in _GOODS:
+        _stock_product(planet, commodity, made[commodity.value])
     if K.planet_growth_tw2002():
         _grow_by_half_cap(planet)
+        return
+    if _class_m_people(planet.class_id):
+        _grow_class_m_fed(planet)
         return
     total_col = sum(int(v) for v in planet.colonists.values())
     cap = int(K.PLANET_MAX_COLONISTS[planet.class_id.value])
