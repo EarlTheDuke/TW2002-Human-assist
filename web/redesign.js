@@ -641,7 +641,7 @@
     });
     if (s.terra) {
       const pool = s.terra.colonists_available != null ? s.terra.colonists_available : 0;
-      t += '<span class="g">Terra   </span><span class="y">:</span> <span class="c" data-terra="row">Terra (colonist source, cannot be claimed). Colonists ' + fmt(pool) + "</span>\n";
+      t += '<span class="g">Planets </span><span class="y">:</span> <span class="c" data-planet="class" data-terra="row">(M) Terra (colonist source, cannot be claimed). Colonists ' + fmt(pool) + "</span>\n";
     }
     if (Number(s.nav_hazard_pct) > 0) {
       t += '<span class="g">NavHaz  </span><span class="y">:</span> <span class="c" data-navhaz="here">' + fmt(s.nav_hazard_pct) + "%</span>\n";
