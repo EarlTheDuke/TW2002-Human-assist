@@ -66,7 +66,7 @@
   const state = {
     seat: (params.get("seat") || "P2").toUpperCase(),
     token: params.get("token") || fragmentToken() || "",
-    connected: false, awaiting: false, busy: false, turnSeq: 0,
+    connected: false, awaiting: false, busy: false, turnSeq: 0, canEnd: false, gameName: "",
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
   // cockpit-gaps-v1: the server's cockpit block (verdict, haggle, port notes, hold quote).
@@ -3765,12 +3765,61 @@
     };
     paint();
   }
+  function gameId() {
+    return ((location.pathname || "").match(/\/g\/([^/]+)/) || [])[1] || "";
+  }
   function showEndPanel(text) {
     const m = $("menu");
     if (!m || m.dataset.screen === "game-over") return;
     m.hidden = false;
     m.dataset.screen = "game-over";
     m.innerHTML = '<div class="y" data-game-over="panel">' + esc(text) + "</div>";
+  }
+  async function refreshCreator() {
+    const gid = gameId();
+    state.canEnd = false;
+    state.gameName = "";
+    if (!gid) return;
+    try {
+      const r = await fetch("/api/games/" + encodeURIComponent(gid) + "/creator", { credentials: "same-origin" });
+      if (!r.ok) return;
+      const data = await r.json();
+      state.gameName = data.name || "";
+      state.canEnd = !!(data.creator && data.status === "running" && data.seat && data.seat === state.seat);
+    } catch (e) { state.canEnd = false; }
+  }
+  function askEndGame() {
+    const gid = gameId();
+    if (!gid || !state.canEnd) return;
+    const name = state.gameName || "this game";
+    confirmWords("End game for everyone", "End " + name + " for everyone? This stops the game.", () => {
+      fetch("/games/" + encodeURIComponent(gid) + "/end", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      }).then((r) => {
+        if (!r.ok) throw new Error("The game did not end.");
+        state.canEnd = false;
+        return refresh();
+      }).catch((e) => setResult(String(e.message || e), true));
+    });
+  }
+  function menuHtml(which) {
+    const list = which === "C" ? CKEYS : MENU_KEYS;
+    const clockNote = TC
+      ? '<div class="row">Under v3.11, turns come back a little at a time all day. The day rolls on the clock, not when everyone is out of turns.</div>'
+      : "";
+    const endRow = which === "?" && state.canEnd
+      ? '<div class="row"><button type="button" id="endForEveryone" data-testid="end-for-everyone">End game for everyone</button></div>'
+      : "";
+    return '<div class="y">' + (which === "C" ? "Computer command" : "Main menu") + "</div>" + clockNote +
+      list.map(([kk, l]) => '<div class="row"><kbd>&lt;' + kk + "&gt;</kbd> <span class=\"c\">" + l + "</span></div>").join("") +
+      endRow + '<br><span class="dk">Esc to close</span>';
+  }
+  function wireEnd() {
+    const btn = $("endForEveryone");
+    if (btn) btn.addEventListener("click", askEndGame);
   }
   function key(k) {
     const m = $("menu");
@@ -3804,13 +3853,16 @@
     if (k === "?" || k === "C") {
       m.hidden = false;
       inComputer = k === "C";
-      const list = k === "C" ? CKEYS : MENU_KEYS;
-      const clockNote = TC
-        ? '<div class="row">Under v3.11, turns come back a little at a time all day. The day rolls on the clock, not when everyone is out of turns.</div>'
-        : "";
-      m.innerHTML = '<div class="y">' + (k === "C" ? "Computer command" : "Main menu") + "</div>" + clockNote +
-        list.map(([kk, l]) => '<div class="row"><kbd>&lt;' + kk + "&gt;</kbd> <span class=\"c\">" + l + "</span></div>").join("") +
-        '<br><span class="dk">Esc to close</span>';
+      m.dataset.screen = k === "C" ? "computer" : "main";
+      m.innerHTML = menuHtml(k);
+      wireEnd();
+      if (k === "?") {
+        refreshCreator().then(() => {
+          if (m.hidden || inComputer || m.dataset.screen !== "main") return;
+          m.innerHTML = menuHtml("?");
+          wireEnd();
+        });
+      }
       return;
     }
     if (onSurface() && (k === "Q" || PLANET_KEYS.some((row) => row[0] === k))) { planetKey(k); return; }
@@ -4470,6 +4522,7 @@
     try {
       state.connected = true;
       await refresh();
+      await refreshCreator();
       rememberSeat();
       const sign = document.querySelector(".sign-in");
       if (sign) sign.hidden = true;
