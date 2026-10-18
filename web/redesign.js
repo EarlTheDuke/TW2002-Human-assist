@@ -2381,7 +2381,10 @@
     const m = $("menu");
     m.hidden = false;
     m.dataset.screen = "rules";
-    m.innerHTML = '<div class="y">Rules and Help</div><div class="c">Loading.</div>';
+    const manual = $("manualLink");
+    const manualHref = manual ? manual.getAttribute("href") : "/manual";
+    const manualLink = '<div class="row"><a id="rulesManual" href="' + manualHref + '" target="_blank" rel="noopener">Player manual</a></div>';
+    m.innerHTML = '<div class="y">Rules and Help</div>' + manualLink + '<div class="c">Loading.</div>';
     try {
       const data = await api("/" + state.seat + "/reference");
       const blocks = (data.sections || []).map((section) => {
@@ -2407,9 +2410,9 @@
         });
         return body;
       }).join("");
-      m.innerHTML = '<div class="y">Rules and Help</div>' + blocks + '<br><span class="dk">Esc to close</span>';
+      m.innerHTML = '<div class="y">Rules and Help</div>' + manualLink + blocks + '<br><span class="dk">Esc to close</span>';
     } catch (e) {
-      m.innerHTML = '<div class="y">Rules and Help</div><div class="r">' + esc(e.message || e) + "</div>";
+      m.innerHTML = '<div class="y">Rules and Help</div>' + manualLink + '<div class="r">' + esc(e.message || e) + "</div>";
     }
   }
 

@@ -60,7 +60,10 @@ def page(title: str, body: str, *, brand: str, refresh_s: int | None = None) -> 
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
         f"{meta}<title>{escape(title)} - {escape(brand)}</title><style>{_CSS}</style></head><body><main>"
-        f"<h1>{escape(brand)}</h1>{body}</main>"
+        f"<h1>{escape(brand)}</h1>"
+        '<p class="sub"><a href="/">Lobby</a> · <a href="/manual">Manual</a> · '
+        '<a href="/about">About these test games</a></p>'
+        f"{body}</main>"
         "<footer>Closed beta test games &middot; <a href=\"/about\">About these test games</a></footer>"
         "</body></html>"
     )

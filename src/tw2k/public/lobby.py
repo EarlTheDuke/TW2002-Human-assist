@@ -383,6 +383,11 @@ class Lobby:
     async def about(self, request: Request) -> Response:
         return self.html(pages.about(self.brand))
 
+    async def manual(self, request: Request) -> Response:
+        from .manual import render
+
+        return self.html(render(self.brand))
+
     async def accept(self, request: Request) -> Response:
         if not self.same_origin(request):
             return self.msg("Not allowed", "That form came from another site.", 403)
@@ -837,6 +842,7 @@ def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = Non
     routes = [
         Route("/", lobby.home),
         Route("/about", lobby.about),
+        Route("/manual", lobby.manual),
         Route("/accept", lobby.accept, methods=["POST"]),
         Route("/new", lobby.new_form, methods=["GET"]),
         Route("/new", lobby.create, methods=["POST"]),
