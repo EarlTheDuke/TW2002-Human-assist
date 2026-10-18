@@ -916,8 +916,26 @@
     b.addEventListener("click", fn);
     return b;
   }
+  function keepTouched(saved, touched) {
+    document.querySelectorAll("#formSlot [data-n]").forEach((el) => {
+      const name = el.dataset.n;
+      if (!touched.has(name) || !(name in saved)) return;
+      el.dataset.touched = "1";
+      if (el.type === "checkbox") { el.checked = !!saved[name]; return; }
+      const want = String(saved[name]);
+      if (el.value === want) return;
+      if (el.tagName === "SELECT" && !Array.from(el.options).some((o) => o.value === want)) return;
+      el.value = want;
+      if (el.tagName !== "SELECT") el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+  function markTouched(ev) {
+    const el = ev.target;
+    if (el && el.dataset && el.dataset.n && el.closest && el.closest("#formSlot")) el.dataset.touched = "1";
+  }
   function here() {
     const saved = {};
+    const touched = new Set();
     let restore = openFormKind;
     if (onSurface() && (restore === "fighters" || restore === "mines")) {
       openFormKind = null;
@@ -928,6 +946,7 @@
       if (active && active.dataset && active.dataset.n) formFocus = active.dataset.n;
       document.querySelectorAll("#formSlot [data-n]").forEach((el) => {
         saved[el.dataset.n] = el.dataset.t === "bool" ? el.checked : el.value;
+        if (el.dataset.touched) touched.add(el.dataset.n);
       });
     }
     const box = $("here");
@@ -1111,6 +1130,7 @@
     else if (restore === "hail") hailForm(saved);
     else if (restore === "jettison") jettisonForm(saved);
     else if (restore) openForm(restore, saved);
+    if (restore && touched.size) keepTouched(saved, touched);
   }
   function openForm(kind, saved) {
     if (kind === "bank") { bankForm(saved); return; }
@@ -1196,6 +1216,7 @@
       }
       input.dataset.n = name;
       input.dataset.t = spec.type;
+      if (spec.required) input.dataset.req = "1";
       if (saved && saved[name] != null && saved[name] !== "") {
         if (spec.type === "bool") input.checked = !!saved[name];
         else input.value = saved[name];
@@ -1262,11 +1283,15 @@
         return;
       }
       if (kind === "dump_planet_cargo" && !(Number(args.qty) > 0)) {
-        setResult("How many? Type a number.", true);
+        setResult("Type an amount.", true);
         return;
       }
       if (kind === "launch_beacon" && !String(args.message || "").trim()) { setResult("Type a beacon message first.", true); return; }
-      if (kind === "buy_equip" && args.qty == null) { setResult("How many? Type a number.", true); return; }
+      const blank = fields.find((el) => el.tagName === "INPUT" && el.dataset.t === "int" && el.dataset.req && el.value === "");
+      if (blank) {
+        setResult(/^(qty|amount|units|count|credits)$/.test(blank.dataset.n) ? "Type an amount." : "Type a number for " + blank.dataset.n.replaceAll("_", " ") + ".", true);
+        return;
+      }
       openFormKind = null;
       formFocus = "";
       slot.innerHTML = "";
@@ -1296,15 +1321,18 @@
       const sideEl = fields.find((el) => el.dataset.n === "side");
       const comEl = fields.find((el) => el.dataset.n === "commodity");
       const priceEl = fields.find((el) => el.dataset.n === "unit_price");
+      const offered = comEl ? Array.from(comEl.options).map((o) => o.value) : [];
+      const tradable = (name) => !offered.length || offered.includes(name);
       const pair = () => {
         const side = sideEl && sideEl.value;
         const com = comEl && comEl.value;
         const direct = (listed[com] || {})[side];
         if (direct) return [side, com, direct];
         for (const [name, sides] of Object.entries(listed)) {
-          if (sides && sides[side]) return [side, name, sides[side]];
+          if (tradable(name) && sides && sides[side]) return [side, name, sides[side]];
         }
         for (const [name, sides] of Object.entries(listed)) {
+          if (!tradable(name)) continue;
           const picked = Object.entries(sides || {}).find((row) => row[1]);
           if (picked) return [picked[0], name, picked[1]];
         }
@@ -1685,7 +1713,7 @@
     wrap.appendChild(modeLabel);
     const submit = () => {
       const want = Number(leave.value);
-      if (leave.value === "" || !Number.isFinite(want) || want < 0) { setResult("Type how many to leave.", true); return; }
+      if (leave.value === "" || !Number.isFinite(want) || want < 0) { setResult("Type an amount.", true); return; }
       const have = yoursHere().count;
       const onShip = Number((S.ship || {}).fighters || 0);
       const room = Math.max(0, cap - onShip);
@@ -1779,7 +1807,7 @@
       wrap.appendChild(qtyLabel);
       const submit = () => {
         const n = Number(qty.value);
-        if (!n) { setResult("How many? Type a number.", true); return; }
+        if (!n) { setResult("Type an amount.", true); return; }
         openFormKind = null;
         slot.innerHTML = "";
         act("deploy_mines", { kind: kind.value, qty: n }, "deploy mines");
@@ -1822,7 +1850,7 @@
       wrap.appendChild(pickLabel);
       wrap.appendChild(button("PICK UP", () => {
         const n = Number(pickQty.value);
-        if (!n) { setResult("How many? Type a number.", true); return; }
+        if (!n) { setResult("Type an amount.", true); return; }
         if (!recall.legal) { setResult(plainReason(recall.reason), true); return; }
         openFormKind = null;
         slot.innerHTML = "";
@@ -1878,7 +1906,7 @@
       wrap.appendChild(qtyLabel);
       const submit = () => {
         const n = Number(qty.value);
-        if (!n) { setResult("How many? Type a number.", true); return; }
+        if (!n) { setResult("Type an amount.", true); return; }
         openFormKind = null;
         slot.innerHTML = "";
         act("terra_colonists", { mode: mode.value, qty: n }, mode.value + " colonists");
@@ -2032,9 +2060,11 @@
     wrap.appendChild(pick);
     wrap.appendChild(pct);
     const submit = () => {
+      const n = Number(pct.value);
+      if (pct.value === "" || n < 0 || n > 100) { setResult("Type a percent from 0 to 100.", true); return; }
       openFormKind = null;
       slot.innerHTML = "";
-      act(pick.value, { planet_id: planet.id, pct: Number(pct.value) }, "set quasar");
+      act(pick.value, { planet_id: planet.id, pct: n }, "set quasar");
     };
     wrap.appendChild(button("CONFIRM", submit));
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
@@ -2512,12 +2542,17 @@
     const go = () => {
       const values = {};
       let missing = false;
+      let noAmount = false;
       fields.forEach((field) => {
         const el = inputs[field.n];
         const raw = String(el.value == null ? "" : el.value).trim();
         values[field.n] = el.type === "number" ? (raw === "" ? "" : Number(raw)) : raw;
-        if (field.required !== false && raw === "") missing = true;
+        if (field.required !== false && raw === "") {
+          missing = true;
+          if (/^(qty|amount|units)$/.test(field.n)) noAmount = true;
+        }
       });
+      if (noAmount) { setResult("Type an amount.", true); return; }
       if (missing) { setResult("Fill in the form.", true); return; }
       openFormKind = null;
       slot.innerHTML = "";
@@ -2867,7 +2902,8 @@
     });
     const go = () => {
       const n = Number(qty.value);
-      if (!target.value || !n) { setResult("Pick a mate and an amount.", true); return; }
+      if (!target.value) { setResult("Pick a mate.", true); return; }
+      if (!n) { setResult("Type an amount.", true); return; }
       openFormKind = null;
       slot.innerHTML = "";
       act("corp_transfer", { target: target.value, item: item.value, qty: n, direction: direction.value }, "transfer");
@@ -3679,6 +3715,8 @@
     }
   }
   $("connectBtn").addEventListener("click", connect);
+  document.addEventListener("input", markTouched, true);
+  document.addEventListener("change", markTouched, true);
   document.addEventListener("keydown", (ev) => {
     const tag = (ev.target && ev.target.tagName) || "";
     if (ev.key === "Escape") { ev.preventDefault(); key("Escape"); return; }
