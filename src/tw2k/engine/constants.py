@@ -2699,6 +2699,12 @@ MIXED_CORP_EXP_RULE = "highest_good"      # cr9 SOURCE-CONFLICT: "highest_good" 
 MIXED_CORP_EXP_DIVISOR = 4                # cr9
 MIXED_CORP_EXP_FLOOR = 1                  # cr9 UNVERIFIED
 CORP_LEAVER_PLANETS = "corp_keeps"        # cr10: "corp_keeps" | "leaver_keeps"
+# D22-2. "legacy": a leaver's corporate fighters and mines keep his owner_id.
+# "to_ceo": that owner_id becomes the C.E.O. The corp ticker stays.
+# EIS CorporateMenu.html Leave: the leaver loses access to corporation assets;
+# fighters go rogue only if the C.E.O. dissolves the corp. The menu does not
+# say the reported owner becomes the C.E.O., so this stays off.
+CORP_LEAVER_DEPLOYMENTS = "legacy"        # "legacy" | "to_ceo"
 CORP_DISBAND_MINES = "rogue"              # cr12 UNVERIFIED: "rogue" | "removed"
 CORP_DISBAND_PLANETS = "owner_keeps"      # cr12: "owner_keeps" | "v306"
 ROGUE_OWNER_ID = "rogue"                  # cr13
@@ -3919,6 +3925,9 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
     "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
+    "class_m_nw_units": ("CLASS_M_NW_MODE", "S1 / NOTE 19 (class M net worth is thousands, not people)"),
+    "class_m_drop_units": ("CLASS_M_DROP_MODE", "S1 / NOTE 19 and terra-colonists-v1 (a hold of Terra colonists is one thousand people)"),
+    "class_m_genesis_units": ("CLASS_M_GENESIS_MODE", "S1 class M L1 is 1,000 thousand; the 2,500 seed is handbook units"),
 }
 
 
@@ -4029,3 +4038,73 @@ HOME_PLANET_EQUIPMENT = 81_000
 def home_planet_live() -> bool:
     """True when a new seat's class M world is placed and stocked the v3.11 way."""
     return HOME_PLANET_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# class-m-planet-units-v1. Appended so later slices can rebase cleanly.
+# Class M under class_m_fidelity_live stores people. S1 and NOTE 19 count
+# those people in thousands (CLASS_M_PEOPLE_PER_THOUSAND). Three switches,
+# each "legacy" until a profile turns it on:
+#   net worth prices a thousand, not one person (COLONIST_PRICE);
+#   a Terra drop lands as people, and one thousand fills one hold;
+#   a genesis seed of GENESIS_SEED_COLONISTS is that many thousands.
+# The genesis scale runs only when the seed is still placed. V311 also
+# turns genesis_start_live on, and S1 / GAP 6.5 leave that planet empty.
+CLASS_M_NW_MODE = "legacy"  # "legacy" | "live"
+CLASS_M_DROP_MODE = "legacy"  # "legacy" | "live"
+CLASS_M_GENESIS_MODE = "legacy"  # "legacy" | "live"
+
+
+def class_m_nw_units() -> bool:
+    """True when class M net worth prices handbook thousands."""
+    return CLASS_M_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def class_m_drop_units() -> bool:
+    """True when a class M colonist drop converts Terra holds into people."""
+    return CLASS_M_DROP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def class_m_genesis_units() -> bool:
+    """True when a class M genesis seed is stored as people."""
+    return CLASS_M_GENESIS_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def class_m_transfer_on(class_id: str) -> bool:
+    """True when this planet stores class M people and drops convert units."""
+    token = getattr(class_id, "value", class_id)
+    return str(token) == "M" and class_m_drop_units() and class_m_fidelity_live()
+
+
+def class_m_people_for_cargo(qty: int) -> int:
+    """People a class M planet gains for `qty` cargo colonists.
+
+    Terra live already stores people (1,000 per hold). Legacy Terra stores
+    one colonist per hold, and that colonist is one handbook thousand.
+    """
+    per = int(colonists_per_hold())
+    thousand = int(CLASS_M_PEOPLE_PER_THOUSAND)
+    amount = int(qty)
+    if per <= 1:
+        return amount * thousand
+    return amount * thousand // per
+
+
+def class_m_cargo_for_people(people: int) -> int:
+    """Cargo colonists for `people` stored on a class M planet."""
+    per = int(colonists_per_hold())
+    thousand = int(CLASS_M_PEOPLE_PER_THOUSAND)
+    amount = int(people)
+    if per <= 1:
+        return amount // thousand
+    return amount * per // thousand
+
+
+def colonist_holds_for_cargo(amount: int) -> int:
+    """Holds filled by this many cargo colonists. Matches Ship.cargo_used."""
+    per = int(colonists_per_hold())
+    count = int(amount)
+    if count <= 0:
+        return 0
+    if per <= 1:
+        return count
+    return (count + per - 1) // per

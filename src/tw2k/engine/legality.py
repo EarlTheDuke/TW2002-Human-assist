@@ -1008,11 +1008,15 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = "no free cargo holds"
     else:
         reason = _need_turns(player, xfer_cost)
+    load_max: dict[str, int] = {}
+    class_m_move = owned_landed and K.class_m_transfer_on(landed_planet.class_id)
+    for name, count in load_avail.items():
+        cap = free * int(K.CLASS_M_PEOPLE_PER_THOUSAND) if name == Commodity.COLONISTS.value and class_m_move else free
+        load_max[name] = min(count, cap)
     out.append(_la(ActionKind.LOAD_PLANET_CARGO, legal=reason is None, reason=reason, cost=xfer_cost,
                    params={"planet_id": pid_param,
                            "commodity": {"type": "str", "required": True, "choices": sorted(load_avail)},
-                           "qty": {"type": "int", "required": True, "min": 1,
-                                   "max_by": {c: min(n, free) for c, n in load_avail.items()}},
+                           "qty": {"type": "int", "required": True, "min": 1, "max_by": load_max},
                            "pool": {"type": "str", "required": False, "choices": pool_names,
                                     "pools": ({c.value: int(n) for c, n in landed_planet.colonists.items()} if owned_landed else {})}}))
 
@@ -1026,6 +1030,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         for name, have in list(dump_max.items()):
             if name == Commodity.COLONISTS.value:
                 room = col_room
+                if room is not None and K.class_m_transfer_on(landed_planet.class_id):
+                    room = K.class_m_cargo_for_people(int(room))
             else:
                 held = int(landed_planet.stockpile.get(Commodity(name), 0))
                 room = K.planet_stock_room(landed_planet.class_id.value, name, held)
@@ -1055,7 +1061,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         pools = {c.value: int(n) for c, n in landed_planet.colonists.items()}
         room = K.colonist_drop_room(landed_planet.class_id.value, pools, total_col)
         if room is not None:
-            ship_room = min(ship_cols, int(room))
+            cap = K.class_m_cargo_for_people(int(room)) if K.class_m_transfer_on(landed_planet.class_id) else int(room)
+            ship_room = min(ship_cols, cap)
     from_choices = (["ship"] if ship_room > 0 else []) + sorted(pools_have)
     if owned_reason:
         reason = owned_reason
