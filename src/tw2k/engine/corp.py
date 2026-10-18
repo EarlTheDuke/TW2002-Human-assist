@@ -33,6 +33,14 @@ def _side(alignment: int) -> str:
     return "good" if K.CORP_SIDE_OF_ZERO == "good" or int(alignment) > 0 else "evil"
 
 
+def _signs_conflict(left: int, right: int) -> bool:
+    """Opposite non-zero signs. Zero fits either side (join_check)."""
+    a, b = int(left), int(right)
+    if a == 0 or b == 0:
+        return False
+    return (a > 0) != (b > 0)
+
+
 def _corp_of(universe: Universe, pid: str):
     player = universe.players.get(pid)
     if player is None or not player.corp_ticker:
@@ -236,9 +244,14 @@ def _join_block(universe: Universe, pid: str, corp: Corporation | None, password
         return "wrong password"
     if len(corp.member_ids) >= int(K.CORP_MAX_MEMBERS):
         return "corp is full"
-    if K.CORP_ALIGNMENT_RULE == "same_side":
+    rule = K.corp_alignment_rule()
+    if rule == "same_side":
         ceo = universe.players.get(corp.ceo_id)
         if ceo is not None and _side(player.alignment) != _side(ceo.alignment):
+            return "alignment does not match the C.E.O."
+    elif rule == "join_check":
+        ceo = universe.players.get(corp.ceo_id)
+        if ceo is not None and _signs_conflict(player.alignment, ceo.alignment):
             return "alignment does not match the C.E.O."
     held = flagship_join_block(player)
     if held:
@@ -289,12 +302,12 @@ def _deployments_on_leave(universe: Universe, pid: str, ticker: str, ceo_id: str
 
     EIS CorporateMenu.html, Leave Your Corporation: a member who leaves
     "will no longer have access to any of the corporation's assets." Fighters
-    go rogue only when the C.E.O. dissolves the corp. The reported owner is
-    still a player id (cr21). Off, that id stays the ex-member, so the toll
-    line and the "your fighters" pot name an outsider. On, it becomes the C.E.O.
-    The corp ticker stays, so the group is still corporate.
+    go rogue only when the C.E.O. dissolves the corp. Live TWGS v3.34b keeps
+    the group with the corp and reports the C.E.O. as the owner. Off, the
+    owner id stays the ex-member, so the toll line names an outsider. The
+    corp ticker stays, so the group is still corporate.
     """
-    if K.CORP_LEAVER_DEPLOYMENTS != "to_ceo":
+    if not K.corp_leaver_to_ceo():
         return
     if not ceo_id or ceo_id == pid:
         return
@@ -567,9 +580,10 @@ def handle_corp_withdraw(universe: Universe, pid: str, action: Action) -> Action
 def extern_corp_step(universe: Universe) -> None:
     for player in universe.players.values():
         player.corp_breakins_today = 0
-    if K.CORP_ALIGNMENT_RULE == "mixed":
+    rule = K.corp_alignment_rule()
+    if rule in ("mixed", "join_check"):
         _mixed_penalty(universe)
-    elif K.CORP_ALIGNMENT_RULE == "same_side":
+    elif rule == "same_side":
         _oust_opposite(universe)
     for corp in list(universe.corporations.values()):
         ceo = universe.players.get(corp.ceo_id)
@@ -587,7 +601,7 @@ def extern_corp_step(universe: Universe) -> None:
 
 def mixed_loss(universe: Universe, corp: Corporation) -> int:
     """cr9: experience each alive member loses at the next Extern (0 for a straight corp or same_side)."""
-    if K.CORP_ALIGNMENT_RULE != "mixed":
+    if K.corp_alignment_rule() not in ("mixed", "join_check"):
         return 0
     alive = [universe.players[m] for m in corp.member_ids
              if m in universe.players and universe.players[m].alive]
@@ -595,7 +609,7 @@ def mixed_loss(universe: Universe, corp: Corporation) -> int:
     evils = [p for p in alive if int(p.alignment) < 0]
     if not goods or not evils:
         return 0
-    if K.MIXED_CORP_EXP_RULE == "least_extreme":
+    if K.mixed_corp_exp_rule() == "least_extreme":
         most_good = max(int(p.alignment) for p in goods)
         most_evil = min(int(p.alignment) for p in evils)
         base = min(most_good, abs(most_evil))
@@ -617,16 +631,18 @@ def _mixed_penalty(universe: Universe) -> None:
             if before <= floor:
                 continue
             player.experience = max(floor, before - loss)
-            taken = before - int(player.experience)
-            # Hekate's TWGS table (Misc_Alignment_changes_how_to_lower_twgs.txt):
-            # a trader with 102 experience ended at 1, not at 102-582. The
-            # summary and the loss field name what was actually taken.
-            if taken <= 0:
-                continue
+            # Legacy names the formula. "taken" (on under V311) names what the
+            # floor actually removed. Hekate's TWGS table: 102 experience ended
+            # at 1, which is 101 taken, not 582.
+            reported = loss
+            if K.corp_exp_penalty_taken():
+                reported = before - int(player.experience)
+                if reported <= 0:
+                    continue
             universe.emit(
                 EventKind.CORP_EXP_PENALTY, actor_id=player.id,
-                payload={"ticker": corp.ticker, "loss": taken, "experience": int(player.experience)},
-                summary=f"{player.name} lost {taken} experience for a mixed corp",
+                payload={"ticker": corp.ticker, "loss": reported, "experience": int(player.experience)},
+                summary=f"{player.name} lost {reported} experience for a mixed corp",
             )
 
 
