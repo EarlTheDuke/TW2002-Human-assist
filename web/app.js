@@ -3078,10 +3078,19 @@
 
   function showGameOver(ev) {
     const winner = state.winner_id ? state.players.get(state.winner_id) : null;
-    const reason = state.win_reason || (ev && ev.payload && ev.payload.reason) || "unknown";
-    gameOverSummary.innerHTML = winner
-      ? `<strong style="color:${winner.color}">${esc(winner.name)}</strong> wins by <em>${esc(reason)}</em>.<br/>Final net worth: ${fmt(winner.net_worth || winner.credits || 0)} credits.`
-      : `The match has ended (${esc(reason)}).`;
+    const payload = (ev && ev.payload) || {};
+    const reason = state.win_reason || payload.reason || "unknown";
+    if (payload.score_kind === "experience" || reason === "time_experience") {
+      const scores = payload.all_scores || {};
+      const score = state.winner_id != null && scores[state.winner_id] != null ? scores[state.winner_id] : null;
+      gameOverSummary.innerHTML = winner
+        ? `<strong style="color:${winner.color}">${esc(winner.name)}</strong> wins by experience${score == null ? "" : ` (${fmt(score)})`}.`
+        : `The match has ended (experience).`;
+    } else {
+      gameOverSummary.innerHTML = winner
+        ? `<strong style="color:${winner.color}">${esc(winner.name)}</strong> wins by <em>${esc(reason)}</em>.<br/>Final net worth: ${fmt(winner.net_worth || winner.credits || 0)} credits.`
+        : `The match has ended (${esc(reason)}).`;
+    }
     gameOverModal.hidden = false;
   }
 

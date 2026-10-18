@@ -401,7 +401,9 @@ def build_harness_router(runner) -> APIRouter:
         _require_seat(player_id, request)
         from .reference import game_reference
         universe = runner.state.universe
-        return game_reference(universe.players.get(player_id), int(universe.day))
+        return game_reference(
+            universe.players.get(player_id), int(universe.day), int(universe.config.max_days),
+        )
 
     @router.get("/rules")
     async def rules(request: Request) -> dict[str, Any]:
@@ -858,9 +860,15 @@ def build_seat_claim_router(runner) -> APIRouter:
             raise HTTPException(status_code=401, detail="invalid seat link")
         if owner.player_id != seat:
             raise HTTPException(status_code=403, detail="this link belongs to a different seat")
+        from urllib.parse import quote
+
         target = f"/bot?seat={seat}" + ("&mode=cu" if mode == "cu" else "")
+        # The fragment is not sent back to the server, so a copied cockpit link
+        # still carries the token and the access log does not.
+        located = target + "#token=" + quote(token, safe="")
         secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "").lower() == "https"
         resp = RedirectResponse(target, status_code=303)
+        resp.headers["location"] = located
         resp.set_cookie(
             seat_links.cookie_name(seat), token, path=seat_links.COOKIE_PATH, httponly=True, samesite="lax",
             secure=secure, max_age=14 * 24 * 3600,

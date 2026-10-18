@@ -2610,7 +2610,10 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     traded = exmember_tradein_block(player)
     if traded:
         return ActionResult(ok=False, error=traded)
-    net_cost = K.net_hull_cost(player.ship.ship_class.value, class_key)
+    old_ship = player.ship
+    old_key = old_ship.ship_class.value
+    receipt = K.trade_in_receipt(old_key, ship=old_ship) if K.trade_in_parts_live() else None
+    net_cost = K.net_hull_cost(old_key, class_key, ship=old_ship)
     if player.credits < net_cost:
         return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {net_cost})")
 
@@ -2621,6 +2624,27 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     player.ship.dock_log.clear()
     if K.info_tw2002():
         player.ship.scanner = None  # s4: the scanner stays with the old ship
+    if receipt is not None:
+        # Fighters, shields, mines and the other gear go with the old ship.
+        # The new hull starts at its stock fit (0 fighters). Cargo handling
+        # below is unchanged (UNVERIFIED: the receipts did not say what happens
+        # to the cargo).
+        player.ship.fighters = 0
+        player.ship.shields = 0
+        player.ship.mines = {MineType.ARMID: 0, MineType.LIMPET: 0, MineType.ATOMIC: 0}
+        player.ship.genesis = 0
+        player.ship.photon_missiles = 0
+        player.ship.ether_probes = 0
+        player.ship.cloaks = 0
+        player.ship.mine_disruptors = 0
+        player.ship.cloaked = False
+        player.ship.cloak_activated_day = None
+        player.ship.corbomite = 0
+        player.ship.marker_beacons = 0
+        player.ship.psychic_probe = 0
+        player.ship.atomic_detonators = 0
+        player.ship.planet_scanner = False
+        player.ship.scanner = None
     from .ship_transwarp import clear_drive
     clear_drive(player.ship)  # tw5: the drive stays with the old hull
     if K.corpship_on():
@@ -2640,11 +2664,16 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
             else:
                 keep -= n
 
+    payload: dict = {"ship_class": class_key, "net_cost": net_cost}
+    if receipt is not None:
+        payload["trade_in"] = receipt
+        payload["new_price"] = int(K.ship_cost(class_key))
+        payload["net"] = int(net_cost)
     universe.emit(
         EventKind.BUY_SHIP,
         actor_id=pid,
         sector_id=player.sector_id,
-        payload={"ship_class": class_key, "net_cost": net_cost},
+        payload=payload,
         summary=f"{player.name} bought a {spec['display_name']} ({net_cost} cr)",
     )
     return ActionResult(ok=True, turns_spent=0)

@@ -77,7 +77,7 @@ def test_claim_sets_httponly_seat_cookie_and_redirects_to_cu(tmp_path: Path, mon
     async def body(client, runner) -> None:
         r = await client.get("/bot/claim", params={"seat": "p2", "token": TOK2})
         assert r.status_code == 303
-        assert r.headers["location"] == "/bot?seat=P2&mode=cu"
+        assert r.headers["location"] == f"/bot?seat=P2&mode=cu#token={TOK2}"
         sc = r.headers["set-cookie"]
         assert sc.startswith(f"tw2k_seat_P2={TOK2};")
         assert "HttpOnly" in sc and "samesite=lax" in sc.lower() and "Path=/harness/" in sc and "Secure" not in sc
@@ -87,7 +87,7 @@ def test_claim_sets_httponly_seat_cookie_and_redirects_to_cu(tmp_path: Path, mon
         assert "Secure" in r.headers["set-cookie"]
         # mode=default lands on the classic layout.
         r = await client.get("/bot/claim", params={"seat": "P2", "token": TOK2, "mode": "default"})
-        assert r.headers["location"] == "/bot?seat=P2"
+        assert r.headers["location"] == f"/bot?seat=P2#token={TOK2}"
 
     _run(tmp_path, body)
 
@@ -224,7 +224,8 @@ def test_browser_claim_link_plays_without_pasting(browser, tmp_path: Path, monke
         ctx = browser.new_context(viewport={"width": 1280, "height": 800})
         page = ctx.new_page()
         page.goto(seat_links.claim_url(host.base, "P2", TOK2))
-        assert page.url == f"{host.base}/bot?seat=P2&mode=cu"
+        assert page.url.split("#", 1)[0] == f"{host.base}/bot?seat=P2&mode=cu"
+        assert page.url.split("#", 1)[1] == f"token={TOK2}"
         page.wait_for_selector("#cuTurn.turn", timeout=20_000)
         assert page.locator("#tokenInput").input_value() == ""
         assert page.evaluate("Object.keys(localStorage).filter((k) => k.startsWith('tw2k_bot_token'))") == []

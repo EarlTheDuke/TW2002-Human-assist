@@ -878,15 +878,32 @@ class Player(BaseModel):
           + mines, photon missiles, ether probes, genesis torpedoes and the
             other gear at their StarDock prices
         """
-        cargo_value = (
-            self.ship.cargo.get(Commodity.FUEL_ORE, 0) * K.COMMODITY_BASE_PRICE["fuel_ore"]
-            + self.ship.cargo.get(Commodity.ORGANICS, 0) * K.COMMODITY_BASE_PRICE["organics"]
-            + self.ship.cargo.get(Commodity.EQUIPMENT, 0) * K.COMMODITY_BASE_PRICE["equipment"]
-            # Colonists in cargo were almost certainly bought from StarDock
-            # at K.COLONIST_PRICE per head — value them at what they cost
-            # to acquire, not at zero.
-            + self.ship.cargo.get(Commodity.COLONISTS, 0) * K.COLONIST_PRICE
-        )
+        if K.nw_estimate_live():
+            # Cargo at the average this seat paid. The base price is only used
+            # when no buy is on record (cargo_cost stays 0 for free cargo).
+            cargo_value = 0
+            _bases = (
+                (Commodity.FUEL_ORE, K.COMMODITY_BASE_PRICE["fuel_ore"]),
+                (Commodity.ORGANICS, K.COMMODITY_BASE_PRICE["organics"]),
+                (Commodity.EQUIPMENT, K.COMMODITY_BASE_PRICE["equipment"]),
+                (Commodity.COLONISTS, K.COLONIST_PRICE),
+            )
+            for _commodity, _base in _bases:
+                _qty = int(self.ship.cargo.get(_commodity, 0) or 0)
+                if _qty <= 0:
+                    continue
+                _paid = float(self.ship.cargo_cost.get(_commodity, 0.0) or 0.0)
+                cargo_value += int(round(_qty * _paid)) if _paid > 0 else _qty * int(_base)
+        else:
+            cargo_value = (
+                self.ship.cargo.get(Commodity.FUEL_ORE, 0) * K.COMMODITY_BASE_PRICE["fuel_ore"]
+                + self.ship.cargo.get(Commodity.ORGANICS, 0) * K.COMMODITY_BASE_PRICE["organics"]
+                + self.ship.cargo.get(Commodity.EQUIPMENT, 0) * K.COMMODITY_BASE_PRICE["equipment"]
+                # Colonists in cargo were almost certainly bought from StarDock
+                # at K.COLONIST_PRICE per head — value them at what they cost
+                # to acquire, not at zero.
+                + self.ship.cargo.get(Commodity.COLONISTS, 0) * K.COLONIST_PRICE
+            )
         ship_value = int(K.ship_cost(self.ship.ship_class.value) * K.NW_HULL_FRACTION)
         # Ship equipment — valued at StarDock buy price (mirrors
         # _handle_buy_equip), except fighters / shields: NET_WORTH_MODE
@@ -914,6 +931,8 @@ class Player(BaseModel):
             + K.scanner_value(getattr(self.ship, "scanner", None))
         )
         total = self.credits + cargo_value + ship_value + equip_value
+        if K.nw_estimate_live():
+            total += K.extra_hold_trade_value(self.ship.ship_class.value, int(self.ship.holds))
         if K.bank_on() and K.BANK_IN_NET_WORTH:
             total += int(self.bank_balance)
         return total
