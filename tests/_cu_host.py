@@ -27,7 +27,7 @@ VIEW_W, VIEW_H = 1280, 800
 
 # Live hosted matches and the full QC game occupy 8031-8036; browser tests
 # must never bind those (a free-port scan starting at 8033 could steal 8033/8035).
-RESERVED_TEST_PORTS = frozenset(range(8031, 8037))
+RESERVED_TEST_PORTS = frozenset(range(8031, 8037)) | frozenset(range(8099, 8120))
 
 
 def free_port(start: int = 8050) -> int:

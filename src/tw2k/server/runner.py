@@ -1238,6 +1238,11 @@ class MatchRunner:
                     oot_streak[agent.player_id] = 0
 
                 await self._flush_events()
+                # NOTE 71: a port counter keeps this seat's turn so the next
+                # offer or accept is answered in the same slot. The cap is
+                # how many counters hold the slot, not a ceiling on the price.
+                if self._counter_keeps_the_turn(agent.player_id, getattr(result, "error", None), player):
+                    continue
                 # G4 hold-my-slot: a holding external seat keeps the scheduler
                 # for its next action (bounded by hold_max and its turns).
                 # A running route macro has its own step cap instead of hold_max.
@@ -1362,6 +1367,32 @@ class MatchRunner:
             if prev is not None:
                 recover_turns(player, now - prev)
             clock[player.id] = now
+
+    def _counter_keeps_the_turn(self, player_id: str, error: str | None, player) -> bool:
+        """True when a haggle counter should leave the scheduler on this seat.
+
+        Only a message that starts with "counter " holds the slot, and only
+        for HAGGLE_COUNTER_ROUNDS answers. A final refusal, an accepted
+        trade, or any other action ends the slot as before.
+        """
+        holds = getattr(self, "_haggle_counter_holds", None)
+        if not K.haggle_counter_live() or not player.alive or _is_day_done(player):
+            if holds is not None:
+                holds.pop(player_id, None)
+            return False
+        if not (isinstance(error, str) and error.startswith("counter ")):
+            if holds is not None:
+                holds.pop(player_id, None)
+            return False
+        if holds is None:
+            holds = {}
+            self._haggle_counter_holds = holds
+        n = int(holds.get(player_id, 0)) + 1
+        if n <= int(K.HAGGLE_COUNTER_ROUNDS):
+            holds[player_id] = n
+            return True
+        holds.pop(player_id, None)
+        return False
 
     @staticmethod
     def _end_external_slot(agent, player, universe, reason: str) -> None:
