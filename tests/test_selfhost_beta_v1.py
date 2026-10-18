@@ -155,13 +155,13 @@ def test_item1_each_game_is_one_serve_worker_with_its_own_switches(tmp_path) -> 
                         resume=None, base=base)
     assert "TW2002_HAGGLE_LIVE" not in env and "AI_COCKPIT_SEAT_MODE" not in env
     assert env["COCKPIT_LAYOUT"] == "redesign" and env["TW2K_PUBLIC_MODE"] == "1"
-    assert json.loads(env["TW2K_SWITCH_OVERLAY"]) == {"V311_PROFILE": "v311"}
+    assert json.loads(env["TW2K_SWITCH_OVERLAY"]) == {"DAY_ROLL_CLOCK_MODE": "live", "V311_PROFILE": "v311"}
     assert env["TW2K_BASE_PATH"] == "/g/ab12cd34" and env["TW2K_SPECTATOR_TOKEN"] == "T" * 64
     assert env["TW2K_EXTERNAL_TOKEN_P1"] == "a" * 43 and "a" * 43 not in joined
     legacy = S.parse_game_form({"name": "B", "rules": "legacy", "starting_package": "v311"}).settings()
-    assert WM.switch_overlay(legacy) == {"STARTING_PACKAGE_MODE": "live"}
+    assert WM.switch_overlay(legacy) == {"DAY_ROLL_CLOCK_MODE": "live", "STARTING_PACKAGE_MODE": "live"}
     classic = S.parse_game_form({"name": "C", "rules": "legacy", "starting_package": "classic"}).settings()
-    assert WM.switch_overlay(classic) == {}
+    assert WM.switch_overlay(classic) == {"DAY_ROLL_CLOCK_MODE": "live"}
 
 
 def test_item1_switch_overlay_sets_only_named_switches(monkeypatch) -> None:

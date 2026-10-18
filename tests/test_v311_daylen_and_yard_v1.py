@@ -388,7 +388,7 @@ def test_item6_yard_list_has_every_hull_and_greys_the_unaffordable(monkeypatch) 
 
 def test_item7_day_roll_wording_reads_the_server_rate() -> None:
     src = (ROOT / "web" / "redesign.js").read_text(encoding="utf-8")
-    assert "Turns come back about " in src and " an hour; you have " in src
+    assert "Turns come back a little at a time; you have " in src
     # v3.11 default day: 250 turns over 86,400 s is about 10 an hour.
     assert round(250 * 3600 / K.TURN_REGEN_DAY_SECONDS) == 10
 

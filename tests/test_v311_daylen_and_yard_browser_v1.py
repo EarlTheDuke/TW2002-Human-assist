@@ -139,10 +139,10 @@ def test_v311_cockpit_yard_turns_day_roll_and_citadel(browser, tmp_path) -> None
 
             # Item 7 (and item 2): day 2 comes on the clock; turns come back hourly.
             _roll(host, 2)
-            page.wait_for_function("() => /Turns come back about/.test(document.querySelector('#lastResult').textContent)",
+            page.wait_for_function("() => /Day 2 dawns/.test(document.querySelector('#lastResult').textContent)",
                                    timeout=20_000)
             line = page.locator("#lastResult").inner_text()
-            assert re.match(r"Day 2\. Turns come back about 360 an hour; you have \d+ of 60\.", line), line
+            assert re.search(r"Day 2 dawns\. Turns come back a little at a time; you have \d+ of 60\.", line), line
             _shoot(page, "day-roll-v311", "#lastResult")
 
             # Item 3: Citadel L1 on a class M planet on day 2, ready day 6.

@@ -4105,6 +4105,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "nw_estimate_live": ("NW_ESTIMATE_MODE", "NOTE 73: the net-worth estimate follows what you paid"),
     "seat_idle_start_live": ("SEAT_IDLE_START_MODE", "NOTE 73: a seat's idle clock starts at the first connect"),
     "bot_diplomacy_live": ("BOT_DIPLOMACY_MODE", "NOTE 73: a code bot answers a hail and an alliance"),
+    "day_roll_clock_live": ("DAY_ROLL_CLOCK_MODE", "NOTE 74: the day rolls on the clock while a seat holds the turn"),
     "port_buy_price_anchor_on": (
         "PORT_BUY_PRICE_ANCHOR_MODE",
         "D25-1 (NOTE 69): hungry buy quotes use the live anchors, not the 1.93x full-hold curve",
@@ -4407,3 +4408,16 @@ BOT_DIPLOMACY_MODE = "legacy"  # "legacy" | "live"
 def bot_diplomacy_live() -> bool:
     """True when a code bot answers an alliance proposal and a hail on its turn."""
     return BOT_DIPLOMACY_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# day-roll-on-clock-v1 (NOTE 74). The regen day used to roll only when the
+# scheduler loop reached the top, so a seat that held its turn froze the day,
+# and the next mark was set to "now", which added the wait onto the day.
+# "live" rolls when the mark passes, even during that wait, and the next mark
+# is the old mark plus the day length. Default stays legacy.
+DAY_ROLL_CLOCK_MODE = "legacy"  # "legacy" | "live"
+
+
+def day_roll_clock_live() -> bool:
+    """True when a held turn still lets the day roll on the clock."""
+    return DAY_ROLL_CLOCK_MODE == "live" or v311_profile()
