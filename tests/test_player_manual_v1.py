@@ -117,10 +117,14 @@ def test_added_sections_follow_the_engine_and_name_v311_only_rules(monkeypatch) 
     assert "until the next day" in legacy
     assert "still faces the quasar" in legacy
     assert "200 shields" in legacy
-    assert "The day clears every bust." in legacy
+    assert "Bust-clear interval: The v3.11 profile turns this on. In this process it is off." in legacy
+    assert "Every day clears every bust." in legacy
+    assert "Ether probe cap: The v3.11 profile turns this on. In this process it is off." in legacy
+    assert "No maximum number of ether probes" in legacy
+    assert "Corp planet disband: The v3.11 profile turns this on. In this process it is off." in legacy
+    assert "stays with its owner" in legacy
     assert "not a v3.11-only switch" in legacy
     assert f"{K.ether_probe_cost():,} credits" in legacy
-    assert "No maximum number of ether probes" in legacy
     assert "No death delay is loaded." in legacy
     assert "Prime Evil" in legacy
     assert "Captain First" not in legacy
@@ -150,6 +154,16 @@ def test_added_sections_follow_the_engine_and_name_v311_only_rules(monkeypatch) 
     assert K.ether_probe_cost() == K.ETHER_PROBE_COST_LIVE
     assert "still faces the quasar" in live
     assert "No death delay is loaded." in live
+    assert "Bust-clear interval: The v3.11 profile turns this on. In this process it is on." in live
+    assert "No interval is set, so bust records clear every day." in live
+    assert "A game can set the interval to 1 or to 7." in live
+    assert "Ether probe cap: The v3.11 profile turns this on. In this process it is on." in live
+    assert f"stops at {K.PROBE_CHART_MAX} ether probes" in live
+    assert "Corp planet disband: The v3.11 profile turns this on. In this process it is on." in live
+    assert "planets in the C.E.O.'s sector become the C.E.O.'s" in live
+    weekly = render("Galaxy War Command", GameConfig(bust_clear_days=7))
+    assert "every 7 days" in weekly
+    assert "No interval is set" not in weekly
 
     monkeypatch.setattr(K, "PHOTON_WAVE_DURATION", 3)
     longer = render("Galaxy War Command")
