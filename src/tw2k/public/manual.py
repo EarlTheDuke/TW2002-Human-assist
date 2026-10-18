@@ -155,6 +155,7 @@ def _facts(config) -> dict:
         "tax_align": int(align),
         "max_days": max_days,
         "scoped": config is not None,
+        "bust_clear_days": getattr(config, "bust_clear_days", None) if config is not None else None,
     }
 
 
@@ -306,7 +307,7 @@ def _trading(f: dict) -> str:
         f"The older window runs from {_n(K.PORT_HAGGLE_MIN_PCT)} to {_n(K.PORT_HAGGLE_MAX_PCT)} percent. "
         f"A failed haggle costs {_n(K.PORT_HAGGLE_FAIL_TURNS)} turn.</p>"
         + _buy_anchor()
-        + _busts()
+        + _busts(f)
         + _src("Port haggling notes (HAGGLE.md), the live buy-price anchor, and the bust clear on the day tick.")
     )
 
@@ -514,7 +515,8 @@ def _corp_planets() -> str:
             "Planets you owned for the corporation become the C.E.O.'s when you leave. "
             "You do not keep them."
         )
-    if K.CORP_DISBAND_PLANETS == "v306":
+    v306 = K.corp_planet_disband_v306()
+    if v306:
         end = (
             "When the corporation ends, planets in the C.E.O.'s sector become the C.E.O.'s. "
             "Every other corporation planet is unclaimed."
@@ -525,8 +527,7 @@ def _corp_planets() -> str:
             "A planet whose owner is gone is unclaimed."
         )
     return (
-        f"<p>{leave} {end} "
-        "This planet rule is already loaded. It is not a v3.11-only switch.</p>"
+        f"<p>{leave} {_profile('Corp planet disband', v306, only_v311=False)} {end}</p>"
     )
 
 
@@ -661,20 +662,34 @@ def _buy_anchor() -> str:
     )
 
 
-def _busts() -> str:
-    if K.rob_tw2002():
-        body = (
-            "If you are busted at a port, you cannot trade, rob, or steal there until the next day. "
-            "The day clears every bust."
+def _busts(f: dict) -> str:
+    on = K.rob_tw2002() and K.bust_record_clear_live()
+    days = f.get("bust_clear_days")
+    if not K.rob_tw2002():
+        rule = "Port busts are not in force."
+    elif not on:
+        rule = (
+            "A bust blocks trade, rob, and steal at that port until the next day. "
+            "Every day clears every bust. A game setting of 7 is ignored."
         )
-        state = "on"
+    elif days == 7:
+        rule = (
+            "A bust blocks trade, rob, and steal at that port until the records clear. "
+            "This game clears bust records every 7 days, when the day number is a multiple of 7."
+        )
+    elif days == 1:
+        rule = (
+            "A bust blocks trade, rob, and steal at that port until the next day. "
+            "This game clears bust records every 1 day."
+        )
     else:
-        body = "Port busts are not in force."
-        state = "off"
-    return (
-        f"<p>{body} This is the rob rule already loaded. It is not a v3.11-only switch. "
-        f"In this process it is {state}.</p>"
-    )
+        rule = (
+            "A bust blocks trade, rob, and steal at that port until the records clear. "
+            "No interval is set, so bust records clear every day. "
+            "A game can set the interval to 1 or to 7. "
+            "7 clears when the day number is a multiple of 7."
+        )
+    return f"<p>{_profile('Bust-clear interval', on, only_v311=False)} {rule}</p>"
 
 
 def _photon_wave() -> str:
@@ -700,10 +715,14 @@ def _photon_wave() -> str:
 
 
 def _probes() -> str:
+    on = K.ship_chart_cap_live()
+    if on:
+        cap = f"A ship stops at {_n(K.PROBE_CHART_MAX)} ether probes. One more is refused."
+    else:
+        cap = "No maximum number of ether probes is loaded on a ship."
     return (
         f"<p>An ether probe costs {_n(K.ether_probe_cost())} credits. "
-        "No maximum number of ether probes is loaded on a ship. "
-        "A carry cap is not a v3.11 switch in this process.</p>"
+        f"{_profile('Ether probe cap', on, only_v311=False)} {cap}</p>"
     )
 
 
