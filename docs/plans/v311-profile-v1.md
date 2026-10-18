@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (82 helpers)
+## The switch set (84 helpers)
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -92,6 +92,10 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A
 | 80 | `BOT_DIPLOMACY_MODE` | `bot_diplomacy_live` | NOTE 73: a code bot accepts or declines an alliance on its next turn, and answers a hail with one canned line. `ALLIANCE_MODE` stays legacy | - |
 | 81 | `DAY_ROLL_CLOCK_MODE` | `day_roll_clock_live` | NOTE 74: with the regen clock on, the day rolls when the mark passes even while an external seat holds the turn, and the next mark is the old mark plus the day length. Stored default stays legacy. Self-hosted beta games set the switch live | - |
 | 82 | `PORT_BUY_PRICE_ANCHOR_MODE` | `port_buy_price_anchor_on` | D25-1 (NOTE 69): a buying port's live anchor is the hungry quote. `PORT_STOCK_FIDELITY` opens buyers at current 0, and the full-hold curve `(1.45 - 0.70*frac) / 0.75` then quotes about 1.93x (`38/73/102` become roughly fuel 51-87, organics 97-169, equipment 134-241). Live v3.34b day 1 is fuel 34.9-40.65, organics 62-75, equipment 100.7-105, and the price eases only a few percent as the port fills (StarDock equipment 105 at 51% remaining, about 100.8 at 37%). MCIC and the haggle window stay on top. The sell side is unchanged | - |
+| 90 | `PHOTON_FOLLOW_DAMP_MODE` | `photon_follow_damp_live` | NOTE 79 SD-o. A photon into the next sector already shuts mines and fighters for the wave, and damps the quasar for the shooter and anyone already in that sector. Live also damps the quasar for a ship that enters while the wave is up. S1: citadel L5 with 200 shields still fires. Stored default stays legacy. Rows 83-89 are left open | - |
+| 93 | `DEATH_DELAY_MODE` | `death_delay_live` | NOTE 79 CMB-n. S7 #16: `GameConfig.death_delay` of 0 or unset lets the pod fly. A number keeps that pod out until that many midnights pass. Blowing the pod up during the sentence adds the same number again. Stored default stays legacy, so the setting is ignored. The TEDIT maximum is not printed (UNVERIFIED). A flying pod that is destroyed does not start a new sentence (UNVERIFIED; the paragraph only adds days while the pilot is knocked out) | - |
+
+Rows 91 and 92 were already done on this tip, so they are not helpers. Row 91, player-kill experience, already uses `COMBAT_EXP_DIVISOR` (`opposite` 15, `same` 35, `neutral` 25) and `KILL_EXP_SHARE` 0.10 (`victory.combat_rewards`, `victory.kill_rewards`). The cabal page prints one experience formula for MBBS and Gold, and says the sector-fighter experience is the same as MBBS. A separate classic experience table is not printed. Row 92, armid mines, already detonates `count // 2` of them (`hardware.armid_detonation_hits`) at `ARMID_DAMAGE_TW2002` (20), or 30 when the live shop card is on (`armid_hit_damage`). CMB-c is a plan only (`docs/plans/ship-odds-exchange-v1.md`), not a helper.
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 

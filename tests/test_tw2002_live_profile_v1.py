@@ -93,6 +93,8 @@ HELPERS = (
     "seat_idle_start_live",
     "bot_diplomacy_live",
     "port_buy_price_anchor_on",
+    "photon_follow_damp_live",
+    "death_delay_live",
 )
 
 
@@ -100,7 +102,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 91
+    assert len(names) == 93
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -129,6 +131,8 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.POD_CASH_MODE == "legacy"
     assert K.YARD_STATS_MODE == "legacy"
     assert K.PORT_BUY_PRICE_ANCHOR_MODE == "legacy"
+    assert K.PHOTON_FOLLOW_DAMP_MODE == "legacy"
+    assert K.DEATH_DELAY_MODE == "legacy"
     assert K.EXP_SCORE_MODE == "legacy"
     assert K.CLASS_M_NW_MODE == "legacy"
     assert K.CLASS_M_DROP_MODE == "legacy"
