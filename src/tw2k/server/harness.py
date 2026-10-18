@@ -491,7 +491,48 @@ def build_harness_router(runner) -> APIRouter:
             from .cockpit_fields import cockpit_block
 
             body["cockpit"] = cockpit_block(runner.state.universe, agent)
+        if K.turn_regen_live() and runner.state.universe is not None:
+            body["turn_clock"] = _turn_clock(agent.player_id)
         return body
+
+    def _turn_clock(player_id: str) -> dict[str, Any] | None:
+        """NOTE 60 item 4: when this seat's next turn comes back and when the next day starts.
+
+        Server facts only (epoch seconds and seconds from now), so the cockpit never guesses."""
+        import time as _time
+
+        u = runner.state.universe
+        player = u.players.get(player_id) if u is not None else None
+        if player is None:
+            return None
+        now = _time.time()
+        day_s = float(K.TURN_REGEN_DAY_SECONDS)
+        cap = max(0, int(player.turns_per_day))
+        used = max(0, int(player.turns_today))
+        out: dict[str, Any] = {
+            "server_now": now,
+            "day_seconds": day_s,
+            "turns_per_hour": round(cap * 3600.0 / day_s, 1) if day_s > 0 else 0.0,
+            "seconds_per_turn": round(day_s / cap, 3) if cap else None,
+            "next_turn_at": None,
+            "next_turn_in_s": None,
+            "next_day_at": None,
+            "next_day_in_s": None,
+        }
+        if cap and used > 0:
+            per_turn = day_s / cap
+            last = player.turn_regen_at
+            earned = float(player.turn_regen_frac)
+            if last is not None:
+                earned += max(0.0, now - float(last)) / per_turn
+            wait = (1.0 - (earned % 1.0)) * per_turn
+            out["next_turn_in_s"] = round(wait, 1)
+            out["next_turn_at"] = now + wait
+        clock = runner.day_clock()
+        if clock is not None:
+            out["next_day_at"] = clock["next_day_at"]
+            out["next_day_in_s"] = round(max(0.0, clock["next_day_at"] - now), 1)
+        return out
 
     @router.get("/{player_id}/events")
     async def events(

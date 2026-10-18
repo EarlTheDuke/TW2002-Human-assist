@@ -66,6 +66,9 @@
   // cockpit-gaps-v1: the server's cockpit block (verdict, haggle, port notes, hold quote).
   // Null unless COCKPIT_FIELDS_MODE is on, so the legacy cockpit is unchanged.
   let CK = null;
+  // v311-daylen-and-yard-v1: the server's turn clock (next turn, next day). Null unless turn regen
+  // is live, so the legacy lines are unchanged.
+  let TC = null;
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
   function rememberAlert(seq) {
     alertedSeq = seq;
@@ -386,8 +389,54 @@
   function outOfTurns() {
     return !!(S && Number(S.turns_remaining) <= 0);
   }
+  function clockTime(epoch) {
+    const short = TC && Number(TC.day_seconds) < 3600;
+    return new Date(Number(epoch) * 1000).toLocaleTimeString([], short
+      ? { hour: "numeric", minute: "2-digit", second: "2-digit" } : { hour: "numeric", minute: "2-digit" });
+  }
+  function inWords(seconds) {
+    const s = Math.max(0, Number(seconds) || 0);
+    if (s < 90) return Math.max(1, Math.round(s)) + " s";
+    if (s < 5400) return Math.round(s / 60) + " min";
+    return (s / 3600).toFixed(1).replace(/\.0$/, "") + " h";
+  }
   function noTurnsLine() {
+    if (TC) {
+      // NOTE 60 item 4: turns come back on the server's clock and the day starts at a clock time.
+      let line = "No turns left.";
+      if (TC.next_turn_in_s != null) line += " Next turn in about " + inWords(TC.next_turn_in_s) + " (" + clockTime(TC.next_turn_at) + ").";
+      if (TC.next_day_at != null) line += " Day " + (Number(S.day) + 1) + " starts at " + clockTime(TC.next_day_at) + ".";
+      return line;
+    }
     return "No turns left today. Day " + (Number(S.day) + 1) + " starts when the other traders finish.";
+  }
+  function yardName(key, stats) {
+    const s = (stats || {})[key];
+    return (s && s.name) || (SHIPS[key] && SHIPS[key].name) || String(key).replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  function yardOptions(sel, spec) {
+    // NOTE 60 item 6: the whole catalog with prices, as the original "?" list; ships you cannot buy are grey.
+    const nets = spec.net_cost_by || {};
+    const stats = spec.stats_by || {};
+    const blocked = spec.blocked_by || {};
+    const open = new Set(spec.choices || []);
+    const keys = Object.keys(nets).length ? Object.keys(nets) : (spec.choices || []);
+    let picked = false;
+    keys.forEach((key) => {
+      const o = document.createElement("option");
+      o.value = key;
+      const s = stats[key];
+      const price = s ? fmt(s.cost) + " cr" : (nets[key] != null ? "net " + fmt(nets[key]) + " cr" : "");
+      o.textContent = yardName(key, stats) + (price ? " - " + price : "");
+      if (!open.has(key)) {
+        o.disabled = true;
+        o.textContent += " (" + plainWords(blocked[key] || "not for sale to you") + ")";
+      } else if (!picked) {
+        o.selected = true;
+        picked = true;
+      }
+      sel.appendChild(o);
+    });
   }
   function hullPhrase(raw) {
     const key = String(raw || "");
@@ -1092,7 +1141,10 @@
       const label = document.createElement("label");
       label.appendChild(document.createTextNode(name + " "));
       let input;
-      if (Array.isArray(spec.choices)) {
+      if (Array.isArray(spec.choices) && kind === "buy_ship" && name === "ship_class") {
+        input = document.createElement("select");
+        yardOptions(input, spec);
+      } else if (Array.isArray(spec.choices)) {
         input = document.createElement("select");
         spec.choices.forEach((choice) => {
           const o = document.createElement("option");
@@ -1317,18 +1369,25 @@
       const note = document.createElement("div");
       note.className = "c";
       note.dataset.yard = "deal";
+      const stats = (a.params.ship_class || {}).stats_by || {};
       const paint = () => {
         const key = item ? item.value : "";
-        const hull = HULL[key] || {};
-        const name = (SHIPS[key] && SHIPS[key].name) || String(key).replaceAll("_", " ");
+        // NOTE 60 item 5: the server's ship list. HULL is only the fallback when the server sends no figures.
+        const s = stats[key];
+        const hull = s ? { holds: s.holds, max_holds: s.max_holds, fighters: s.max_fighters, shields: s.max_shields,
+          tpw: s.turns_per_warp, photons: s.photons, tw: s.transwarp, odds: s.offensive_odds } : (HULL[key] || {});
+        const name = yardName(key, stats);
         const net = nets[key];
         const full = spare[key];
         const trading = !deal || deal.checked;
         const price = trading ? net : full;
         const gear = (hull.photons ? "photons" : "no photons") + ", " + (hull.tw ? "TransWarp" : "no TransWarp");
-        note.textContent = name + ": " + (price == null ? "" : fmt(price) + " cr. ")
-          + "Holds " + fmt(hull.holds || 0) + ", fighters " + fmt(hull.fighters || 0) + ", shields " + fmt(hull.shields || 0)
-          + ", " + (hull.tpw || "?") + " turns per warp, " + gear + ". "
+        const holds = hull.max_holds != null && hull.max_holds !== hull.holds
+          ? fmt(hull.holds || 0) + " of " + fmt(hull.max_holds) : fmt(hull.holds || 0);
+        const cost = price == null ? "" : Number(price) < 0 ? "you get " + fmt(-Number(price)) + " cr back. " : fmt(price) + " cr. ";
+        note.textContent = name + ": " + cost
+          + "Holds " + holds + ", fighters " + fmt(hull.fighters || 0) + ", shields " + fmt(hull.shields || 0)
+          + ", " + (hull.tpw || "?") + " turns per warp" + (hull.odds != null ? ", odds " + hull.odds : "") + ", " + gear + ". "
           + (trading ? "Trade-in sells your ship" + (credit ? " for " + fmt(credit) + " cr" : "") + " and you fly the new one."
             : "You stay aboard. The new ship waits at StarDock.");
       };
@@ -3549,7 +3608,12 @@
         if (!ev || (ev.seq || 0) <= fellSeenSeq) return;
         if (/fell back/i.test(ev.summary || "")) { fell = plainWords(ev.summary); fellSeenSeq = ev.seq || fellSeenSeq; }
       });
-      setResult("Day " + dayNow + ". Turns refilled to " + fmt(S.turns_remaining) + "." + (tax ? " " + tax : "") + (fell ? " " + fell : ""), false);
+      // NOTE 60 item 7: under the v3.11 clock no turns are refilled at the roll; they come back hourly.
+      const roll = TC
+        ? "Day " + dayNow + ". Turns come back about " + fmt(Math.round(Number(TC.turns_per_hour) || 0)) + " an hour; you have "
+          + fmt(S.turns_remaining) + " of " + fmt(S.turns_per_day) + "."
+        : "Day " + dayNow + ". Turns refilled to " + fmt(S.turns_remaining) + ".";
+      setResult(roll + (tax ? " " + tax : "") + (fell ? " " + fell : ""), false);
     }
     seenDay = dayNow;
     const sec = S.sector || {};
@@ -3589,6 +3653,7 @@
     state.turnSeq = st.turn_seq ?? state.turnSeq;
     state.gameOver = !!st.game_over;
     CK = st.cockpit || null;
+    TC = st.turn_clock || null;
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     if (st.observation) { S = st.observation; render(); }
     await fetchEvents();

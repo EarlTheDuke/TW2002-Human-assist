@@ -223,6 +223,7 @@ def create_app(
     start_paused: bool = False,
     pause_on_seat_drop: bool = False,
     seat_drop_after_s: float = 45.0,
+    turn_regen_day_seconds: float | None = None,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -284,6 +285,7 @@ def create_app(
                 external_idle_wait_s=external_idle_wait_s,
                 pause_on_seat_drop=pause_on_seat_drop,
                 seat_drop_after_s=seat_drop_after_s,
+                turn_regen_day_seconds=turn_regen_day_seconds,
             )
             spec.paused = start_paused
             await runner.start(spec)
@@ -1046,6 +1048,14 @@ def create_app(
     async def restart(body: dict[str, Any] | None = None) -> dict[str, Any]:
         _forbid_spectator_control()
         body = body or {}
+        day_raw = body.get("turn_regen_day_seconds", turn_regen_day_seconds)
+        if day_raw is not None:
+            from ..engine import constants as _K
+
+            try:
+                day_raw = _K.parse_day_seconds(day_raw)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=f"turn_regen_day_seconds: {exc}") from None
         spec = _build_default_spec(
             seed=int(body.get("seed", seed)),
             universe_size=int(body.get("universe_size", universe_size)),
@@ -1116,6 +1126,7 @@ def create_app(
             ),
             pause_on_seat_drop=pause_on_seat_drop,
             seat_drop_after_s=seat_drop_after_s,
+            turn_regen_day_seconds=day_raw,
         )
         if body.get("external_hold_max_actions") is not None:
             spec.external_hold_max_actions = max(0, int(body["external_hold_max_actions"]))
@@ -1213,6 +1224,7 @@ def _build_default_spec(
     external_idle_wait_s: float | None = None,
     pause_on_seat_drop: bool = False,
     seat_drop_after_s: float = 45.0,
+    turn_regen_day_seconds: float | None = None,
 ) -> MatchSpec:
     _apply_port_stock_fidelity()
     _apply_haggle_live()
@@ -1265,6 +1277,13 @@ def _build_default_spec(
         env_think = 0.0
     if env_think > 0:
         cfg_kwargs["llm_think_cap_s"] = env_think
+    # NOTE 60 item 1: the game's day length; the option wins over TW2K_TURN_REGEN_DAY_SECONDS.
+    from ..engine import constants as K
+
+    day_seconds = (K.parse_day_seconds(turn_regen_day_seconds) if turn_regen_day_seconds is not None
+                   else K.day_seconds_from_env())
+    if day_seconds is not None:
+        cfg_kwargs["turn_regen_day_seconds"] = day_seconds
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each
