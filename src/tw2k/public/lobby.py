@@ -404,8 +404,11 @@ class Lobby:
         if gate:
             return gate
         guest = self.accepted(request)
-        return self.html(pages.lobby(self.brand, games=self._listed(), mine=self.store.guest_games(guest["id"]),
-                                     closed=self.closed, full=self.full_for(1), live=self.live))
+        guest_id = guest["id"]
+        return self.html(pages.lobby(
+            self.brand, games=self._listed(), mine=self.store.guest_games(guest_id),
+            owned=self.store.created_games(guest_id), closed=self.closed, full=self.full_for(1), live=self.live,
+        ))
 
     async def about(self, request: Request) -> Response:
         return self.html(pages.about(self.brand))
@@ -616,6 +619,82 @@ class Lobby:
             return self._api_or(api, 429, "Too many joins in ten minutes. Try again shortly.", request)
         log.info("resume game=%s seat=%s %s", gid, seat, self.tag(request))
         return await self._hand_over(request, g, seat, api)
+
+    def _confirmed(self, form: dict) -> bool:
+        value = form.get("confirm")
+        if value is True:
+            return True
+        return isinstance(value, str) and value.strip().lower() in {"true", "1", "yes", "on"}
+
+    def _end_payload(self, response: Any) -> dict[str, Any]:
+        raw = getattr(response, "json", None)
+        if not callable(raw):
+            return {}
+        try:
+            data = raw()
+        except Exception:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    async def creator_view(self, request: Request) -> Response:
+        """Whether this guest created the game, and which seat they hold. Others learn nothing."""
+        guest = self.accepted(request)
+        g = self.store.game(request.path_params["gid"])
+        if guest is None or g is None or g["creator"] != guest["id"]:
+            return JSONResponse({"creator": False})
+        return JSONResponse({
+            "creator": True,
+            "seat": self.store.guest_seat(g["id"], guest["id"]),
+            "name": g["name"],
+            "status": g["status"],
+            "ended_by": g.get("ended_by"),
+        })
+
+    async def end_game(self, request: Request) -> Response:
+        """Creator-only end. confirm=true is sent after the dialog. Anyone else gets 403."""
+        api = request.url.path.startswith("/api/") or "application/json" in request.headers.get("content-type", "")
+        guest = self.accepted(request)
+        if guest is None:
+            return self._api_or(api, 403, "Accept the test-game notice first.", request)
+        if not self.same_origin(request):
+            return self._api_or(api, 403, "That form came from another site.", request)
+        gid = request.path_params["gid"]
+        g = self.store.game(gid)
+        if g is None:
+            return self._api_or(api, 404, "That game is not open.", request)
+        if g["creator"] != guest["id"]:
+            return self._api_or(api, 403, "Only the person who created this game can end it.", request)
+        if g["status"] == "finished":
+            return self._end_done(request, g, api=api, already=True)
+        try:
+            form = await self.read_form(request)
+        except TooLarge:
+            return self._api_or(api, 413, "That request is too large.", request)
+        except (FormError, ValueError):
+            form = {}
+        if not self._confirmed(form):
+            return self._api_or(api, 400, "Confirm the end first.", request)
+        if g["status"] not in ("running", "starting"):
+            return self._api_or(api, 409, "That game is not running.", request)
+        response = await self.worker_call(gid, "POST", "/control/end", {})
+        if response is None or getattr(response, "status_code", None) != 200:
+            return self._api_or(api, 503, "The game did not answer. Try again in a moment.", request)
+        payload = self._end_payload(response)
+        # The worker stays up so the end screen keeps loading (the same finished
+        # state a day-cap game already uses). The idle reaper stops the process.
+        if payload.get("ended") is False:
+            self.store.set_game(gid, status="finished")
+        else:
+            self.store.set_game(gid, status="finished", ended_by="creator")
+        log.info("end game=%s by=creator", gid)
+        return self._end_done(request, self.store.game(gid) or g, api=api, already=False)
+
+    def _end_done(self, request: Request, g: dict[str, Any], *, api: bool, already: bool) -> Response:
+        if api:
+            return JSONResponse({
+                "ok": True, "id": g["id"], "status": g["status"], "ended_by": g.get("ended_by"), "already": already,
+            })
+        return RedirectResponse("/", status_code=303)
 
     async def api_games(self, request: Request) -> Response:
         out = []
@@ -875,6 +954,7 @@ def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = Non
         Route("/new", lobby.create, methods=["POST"]),
         Route("/join/{gid:str}/{seat:str}", lobby.join_link),
         Route("/games/{gid:str}/join", lobby.join, methods=["POST"]),
+        Route("/games/{gid:str}/end", lobby.end_game, methods=["POST"]),
         Route("/resume/{gid:str}", lobby.resume),
         Route("/status", lobby.status),
         Route("/healthz", lobby.healthz),
@@ -883,6 +963,8 @@ def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = Non
         Route("/api/games", lobby.create, methods=["POST"]),
         Route("/api/games/{gid:str}", lobby.api_game, methods=["GET"]),
         Route("/api/games/{gid:str}/join", lobby.join, methods=["POST"]),
+        Route("/api/games/{gid:str}/end", lobby.end_game, methods=["POST"]),
+        Route("/api/games/{gid:str}/creator", lobby.creator_view, methods=["GET"]),
         Route("/api/games/{gid:str}/resume", lobby.resume, methods=["POST"]),
         Route("/admin", lobby.admin),
         Route("/admin/games/{gid:str}/stop", lobby.admin_stop, methods=["POST"]),

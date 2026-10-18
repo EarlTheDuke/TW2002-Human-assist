@@ -1340,6 +1340,13 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         obs.trader_rankings = ranked
         obs.end_rule = end_rule_line(int(universe.config.max_days))
         obs.game_over_panel = game_over_panel(universe, player)
+    elif universe.finished and universe.win_reason == "creator":
+        # creator-end-game-v1. Not a rule switch: a profile-off game that runs
+        # to the day cap still omits this key. Only an ended-by-creator match
+        # carries the end screen, and the field already has a data-obs home.
+        from .victory import game_over_panel
+
+        obs.game_over_panel = game_over_panel(universe, player)
     if K.nw_estimate_live():
         obs.nw_note = K.NW_ESTIMATE_NOTE
     if K.bot_diplomacy_live():
