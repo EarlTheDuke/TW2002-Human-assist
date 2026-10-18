@@ -3271,7 +3271,7 @@
     if (!match) return "";
     const figs = eventFacts(ev).ferr_fighters;
     const count = figs == null ? "" : " (" + fmt(figs) + " fighters)";
-    return "** Ferrengi Fighter Attack! ** " + ferrengiName(match[1]) + count + " boards " + match[2] + " in " + match[3] + ": flee, attack or surrender (surrender costs 5 cargo holds, or 10% of the credits on board)";
+    return "** Ferrengi Fighter Attack! ** " + ferrengiName(match[1]) + count + " boards " + match[2] + " in " + match[3] + ": flee, attack or surrender (surrender costs 5 cargo holds and all your cargo; with empty holds, 5 cargo holds and 10% of the credits on board)";
   }
   function tributePaid(ev) {
     const summary = String((ev && ev.summary) || "");
@@ -3315,6 +3315,17 @@
     });
     return line;
   }
+  function shipLossSides(afterSeq) {
+    const sides = { mine: false, other: false };
+    streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+      if (!row || (row.seq || 0) <= afterSeq || (row.kind !== "ship_destroyed" && row.kind !== "ship_captured")) return;
+      const facts = eventFacts(row);
+      const who = row.kind === "ship_captured" ? facts.former_owner : facts.victim;
+      if (who && who === (S && S.self_id)) sides.mine = true;
+      else if (who) sides.other = true;
+    });
+    return sides;
+  }
   function showIncoming() {
     if (state.busy || !state.awaiting || !S) return;
     let best = null;
@@ -3337,13 +3348,14 @@
     if (kind !== "wait") waitStreak = 0;
     if (state.busy || !state.awaiting) {
       if (outOfTurns()) { setResult(noTurnsLine(), true); return; }
-      if (pending && pending.kind === kind) {
+      if (pending && pending.kind === kind && JSON.stringify(pending.args || {}) === JSON.stringify(args || {})) {
         setResult(capFirst((label || kind) + " will run when your turn comes."), true);
         return;
       }
+      const dropped = pending ? (pending.label || pending.kind) : "";
       pending = { kind, args, label };
       heldLabel = label || kind;
-      setResult(capFirst((label || kind) + " will run when your turn comes."), true);
+      setResult(capFirst((label || kind) + " will run when your turn comes.") + (dropped ? " This replaces your queued " + dropped + "." : ""), true);
       return;
     }
     pending = null;
@@ -3517,7 +3529,8 @@
       const answered = kind === "retreat" || kind === "surrender" || kind === "hail" || kind === "broadcast" || kind === "radio";
       const ignored = answered ? "" : ignoredTributeLine(before - 1);
       if (ignored && body.indexOf("You ignored") < 0) body += ". " + ignored;
-      if (/ship destroyed/i.test(body) && !/Credits on board lost/i.test(body)) {
+      const losers = shipLossSides(before - 1);
+      if (/ship destroyed/i.test(body) && !/Credits on board lost/i.test(body) && (losers.mine || !losers.other)) {
         if (delta < 0) body += ". Credits on board lost: " + fmt(-delta) + " cr";
         else if (delta > 0) body += ". Credits on board lost: " + fmt(delta) + " cr";
       }
