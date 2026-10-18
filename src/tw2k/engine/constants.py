@@ -2693,17 +2693,20 @@ CORP_BREAKIN_RULE = "wrong_guesses"       # cl7 | "attempts"
 CORP_BREAKIN_ALIGN_LOSS = 0               # cr6 UNVERIFIED
 CORP_BREAKIN_TELL_CEO = False             # cr6 UNVERIFIED
 CORP_MAX_MEMBERS = 5                      # cr7 CONFIRMED
-CORP_ALIGNMENT_RULE = "mixed"             # cr8 SOURCE-CONFLICT: "mixed" | "same_side"
+CORP_ALIGNMENT_RULE = "mixed"             # cr8: "mixed" | "same_side" | "join_check"
 CORP_SIDE_OF_ZERO = "good"                # cr8 UNVERIFIED
-MIXED_CORP_EXP_RULE = "highest_good"      # cr9 SOURCE-CONFLICT: "highest_good" | "least_extreme"
+MIXED_CORP_EXP_RULE = "highest_good"      # cr9: "highest_good" | "least_extreme"
 MIXED_CORP_EXP_DIVISOR = 4                # cr9
-MIXED_CORP_EXP_FLOOR = 1                  # cr9 UNVERIFIED
+MIXED_CORP_EXP_FLOOR = 1                  # cr9 UNVERIFIED; a live overnight read is still open
+# D22-1. "legacy" puts the formula loss in the CORP_EXP_PENALTY summary and
+# loss field. "taken" names the experience actually removed (the floor).
+# The experience math is the same either way. V311 turns "taken" on.
+CORP_EXP_PENALTY_MODE = "legacy"          # "legacy" | "taken"
 CORP_LEAVER_PLANETS = "corp_keeps"        # cr10: "corp_keeps" | "leaver_keeps"
 # D22-2. "legacy": a leaver's corporate fighters and mines keep his owner_id.
 # "to_ceo": that owner_id becomes the C.E.O. The corp ticker stays.
-# EIS CorporateMenu.html Leave: the leaver loses access to corporation assets;
-# fighters go rogue only if the C.E.O. dissolves the corp. The menu does not
-# say the reported owner becomes the C.E.O., so this stays off.
+# Live TWGS v3.34b: those fighters stay with the corp under the C.E.O.
+# The stored default stays "legacy"; V311 turns "to_ceo" on.
 CORP_LEAVER_DEPLOYMENTS = "legacy"        # "legacy" | "to_ceo"
 CORP_DISBAND_MINES = "rogue"              # cr12 UNVERIFIED: "rogue" | "removed"
 CORP_DISBAND_PLANETS = "owner_keeps"      # cr12: "owner_keeps" | "v306"
@@ -3928,6 +3931,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "class_m_nw_units": ("CLASS_M_NW_MODE", "S1 / NOTE 19 (class M net worth is thousands, not people)"),
     "class_m_drop_units": ("CLASS_M_DROP_MODE", "S1 / NOTE 19 and terra-colonists-v1 (a hold of Terra colonists is one thousand people)"),
     "class_m_genesis_units": ("CLASS_M_GENESIS_MODE", "S1 class M L1 is 1,000 thousand; the 2,500 seed is handbook units"),
+    "corp_exp_penalty_taken": ("CORP_EXP_PENALTY_MODE", "Hekate TWGS table: the event names the experience taken, not the formula"),
+    "corp_leaver_to_ceo": ("CORP_LEAVER_DEPLOYMENTS", "live TWGS v3.34b: a leaver's corporate fighters stay with the corp under the C.E.O."),
+    "corp_join_check": ("CORP_ALIGNMENT_RULE", "EIS join: signs must agree, 0 fits either side, later drift is not an oust"),
+    "mixed_corp_least_extreme": ("MIXED_CORP_EXP_RULE", "Cabal MIN(ABS(lowest alignment), highest alignment) / 4"),
 }
 
 
@@ -4108,3 +4115,37 @@ def colonist_holds_for_cargo(amount: int) -> int:
     if per <= 1:
         return count
     return (count + per - 1) // per
+
+
+def corp_exp_penalty_taken() -> bool:
+    """True when a mixed-corp event names the experience that was taken."""
+    return CORP_EXP_PENALTY_MODE == "taken" or v311_profile()
+
+
+def corp_leaver_to_ceo() -> bool:
+    """True when a leaver's corporate fighters and mines move to the C.E.O."""
+    return CORP_LEAVER_DEPLOYMENTS == "to_ceo" or v311_profile()
+
+
+def corp_alignment_rule() -> str:
+    """Effective cr8 rule. Stored default stays mixed. V311 checks signs at join."""
+    if CORP_ALIGNMENT_RULE == "mixed" and v311_profile():
+        return "join_check"
+    return CORP_ALIGNMENT_RULE
+
+
+def corp_join_check() -> bool:
+    """True when a join is refused for opposite alignment signs and drift is kept."""
+    return corp_alignment_rule() == "join_check"
+
+
+def mixed_corp_exp_rule() -> str:
+    """Effective cr9 formula. Stored default stays highest_good. V311 uses least extreme."""
+    if MIXED_CORP_EXP_RULE == "least_extreme" or v311_profile():
+        return "least_extreme"
+    return MIXED_CORP_EXP_RULE
+
+
+def mixed_corp_least_extreme() -> bool:
+    """True when the Extern loss is min(most good, most evil) / 4."""
+    return mixed_corp_exp_rule() == "least_extreme"

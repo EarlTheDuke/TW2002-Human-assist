@@ -18,7 +18,7 @@ import pytest
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.actions import Action, ActionKind
-from tw2k.engine.corp import _mixed_penalty, mixed_loss
+from tw2k.engine.corp import _mixed_penalty, extern_corp_step, mixed_loss
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import (
     Commodity,
@@ -145,11 +145,7 @@ def _stand(u, pid: str, sid: int) -> None:
         u.sectors[sid].occupant_ids.append(pid)
 
 
-@pytest.mark.parametrize("profile", ["legacy", "v311"])
-def test_d22_1_cid_summary_names_the_experience_taken(monkeypatch, profile):
-    """Good 800 / 4 is 200. Cid has 30, so the floor leaves him 1 and he lost 29."""
-    _profile(monkeypatch, profile)
-    u = _u()
+def _cid_corp(u):
     _join_xyz(u)
     u.players["P1"].alignment = 800
     u.players["P1"].experience = 5_000
@@ -158,23 +154,9 @@ def test_d22_1_cid_summary_names_the_experience_taken(monkeypatch, profile):
     u.players["P3"].name = "Cid"
     u.players["P3"].alignment = 100
     u.players["P3"].experience = 30
-    assert mixed_loss(u, u.corporations["XYZ"]) == 200
-    _mixed_penalty(u)
-    assert u.players["P3"].experience == 1
-    assert u.players["P1"].experience == 4_800
-    event = _penalty_for(u, "P3")
-    assert event.payload == {"ticker": "XYZ", "loss": 29, "experience": 1}
-    assert event.summary == "Cid lost 29 experience for a mixed corp"
-    ann = _penalty_for(u, "P1")
-    assert ann.payload["loss"] == 200
-    assert ann.summary == "Ann lost 200 experience for a mixed corp"
 
 
-@pytest.mark.parametrize("profile", ["legacy", "v311"])
-def test_d22_1_hekate_table_stops_at_the_floor(monkeypatch, profile):
-    """Hekate's TWGS table: 102 experience and alignment 2,328 ends at 1 (101 taken, not 582)."""
-    _profile(monkeypatch, profile)
-    u = _u()
+def _hekate_corp(u):
     _join_xyz(u)
     u.players["P1"].name = "Hekate"
     u.players["P1"].alignment = 2328
@@ -185,24 +167,82 @@ def test_d22_1_hekate_table_stops_at_the_floor(monkeypatch, profile):
     u.players["P3"].name = "Acid"
     u.players["P3"].alignment = -80558
     u.players["P3"].experience = 7890
-    assert mixed_loss(u, u.corporations["XYZ"]) == 2328 // 4
+
+
+def test_d22_1_legacy_message_names_the_formula():
+    """Profile off is the old sentence: the formula, even when the floor took less."""
+    assert K.CORP_EXP_PENALTY_MODE == "legacy"
+    assert K.corp_exp_penalty_taken() is False
+    u = _u()
+    _cid_corp(u)
+    assert mixed_loss(u, u.corporations["XYZ"]) == 200
+    _mixed_penalty(u)
+    assert u.players["P3"].experience == 1
+    assert u.players["P1"].experience == 4_800
+    event = _penalty_for(u, "P3")
+    assert event.payload == {"ticker": "XYZ", "loss": 200, "experience": 1}
+    assert event.summary == "Cid lost 200 experience for a mixed corp"
+
+
+def test_d22_1_taken_flag_names_the_experience_removed(monkeypatch):
+    monkeypatch.setattr(K, "CORP_EXP_PENALTY_MODE", "taken")
+    u = _u()
+    _cid_corp(u)
+    assert mixed_loss(u, u.corporations["XYZ"]) == 200
+    _mixed_penalty(u)
+    assert u.players["P3"].experience == 1
+    event = _penalty_for(u, "P3")
+    assert event.payload == {"ticker": "XYZ", "loss": 29, "experience": 1}
+    assert event.summary == "Cid lost 29 experience for a mixed corp"
+    ann = _penalty_for(u, "P1")
+    assert ann.payload["loss"] == 200
+    assert ann.summary == "Ann lost 200 experience for a mixed corp"
+
+
+def test_d22_1_legacy_hekate_message_is_the_formula():
+    u = _u()
+    _hekate_corp(u)
+    assert mixed_loss(u, u.corporations["XYZ"]) == 582
     _mixed_penalty(u)
     assert u.players["P1"].experience == 1
     assert u.players["P2"].experience == 1
     assert u.players["P3"].experience == 7890 - 582
     hekate = _penalty_for(u, "P1")
-    assert hekate.payload["loss"] == 101
-    assert hekate.payload["experience"] == 1
-    assert hekate.summary == "Hekate lost 101 experience for a mixed corp"
+    assert hekate.payload == {"ticker": "XYZ", "loss": 582, "experience": 1}
+    assert hekate.summary == "Hekate lost 582 experience for a mixed corp"
     assert not any(e.kind == EventKind.CORP_EXP_PENALTY and e.actor_id == "P2" for e in u.events)
-    acid = _penalty_for(u, "P3")
-    assert acid.payload["loss"] == 582
 
 
-@pytest.mark.parametrize("profile", ["legacy", "v311"])
-def test_d22_2_leaver_keeps_the_reported_owner(monkeypatch, profile):
-    _profile(monkeypatch, profile)
+def test_d22_1_v311_names_the_taken_amount_and_uses_least_extreme(monkeypatch):
+    """Evil -400 and good 800: least extreme is 100. Cid's 30 becomes 1, so the event says 29."""
+    _profile(monkeypatch, "v311")
+    assert K.corp_exp_penalty_taken() is True
+    assert K.mixed_corp_exp_rule() == "least_extreme"
+    assert K.MIXED_CORP_EXP_FLOOR == 1
+    u = _u()
+    _cid_corp(u)
+    u.players["P2"].alignment = -400
+    assert mixed_loss(u, u.corporations["XYZ"]) == 100
+    _mixed_penalty(u)
+    assert u.players["P3"].experience == 1
+    assert u.players["P1"].experience == 4_900
+    event = _penalty_for(u, "P3")
+    assert event.payload == {"ticker": "XYZ", "loss": 29, "experience": 1}
+    assert event.summary == "Cid lost 29 experience for a mixed corp"
+    u2 = _u()
+    _hekate_corp(u2)
+    assert mixed_loss(u2, u2.corporations["XYZ"]) == 582
+    _mixed_penalty(u2)
+    assert u2.players["P1"].experience == 1
+    hekate = _penalty_for(u2, "P1")
+    assert hekate.payload["loss"] == 101
+    assert hekate.summary == "Hekate lost 101 experience for a mixed corp"
+    assert not any(e.kind == EventKind.CORP_EXP_PENALTY and e.actor_id == "P2" for e in u2.events)
+
+
+def test_d22_2_legacy_keeps_the_reported_owner():
     assert K.CORP_LEAVER_DEPLOYMENTS == "legacy"
+    assert K.corp_leaver_to_ceo() is False
     u = _u()
     _join_xyz(u)
     for pid in ("P1", "P2", "P3"):
@@ -307,20 +347,114 @@ def test_d22_2_ceo_leave_still_rogues_off_sector_fighters(monkeypatch):
     assert u.sectors[home].fighters.corp_ticker is None
 
 
-def test_d22_3_alignment_and_exp_rule_stay_at_the_stored_defaults(monkeypatch):
+def test_d22_3_stored_defaults_stay_and_v311_selects_the_live_rules(monkeypatch):
     assert K.CORP_ALIGNMENT_RULE == "mixed"
     assert K.MIXED_CORP_EXP_RULE == "highest_good"
     assert K.MIXED_CORP_EXP_FLOOR == 1
     assert K.CORP_LEAVER_DEPLOYMENTS == "legacy"
-    switches = {switch for switch, _why in K.V311_PROFILE_HELPERS.values()}
-    assert "CORP_LEAVER_DEPLOYMENTS" not in switches
-    assert "CORP_ALIGNMENT_RULE" not in switches
-    assert "MIXED_CORP_EXP_RULE" not in switches
+    assert K.CORP_EXP_PENALTY_MODE == "legacy"
+    assert K.corp_alignment_rule() == "mixed"
+    assert K.mixed_corp_exp_rule() == "highest_good"
+    assert K.corp_join_check() is False
+    assert K.corp_leaver_to_ceo() is False
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     assert K.CORP_ALIGNMENT_RULE == "mixed"
     assert K.MIXED_CORP_EXP_RULE == "highest_good"
     assert K.MIXED_CORP_EXP_FLOOR == 1
     assert K.CORP_LEAVER_DEPLOYMENTS == "legacy"
+    assert K.CORP_EXP_PENALTY_MODE == "legacy"
+    assert K.corp_alignment_rule() == "join_check"
+    assert K.corp_join_check() is True
+    assert K.mixed_corp_exp_rule() == "least_extreme"
+    assert K.mixed_corp_least_extreme() is True
+    assert K.corp_leaver_to_ceo() is True
+    assert K.corp_exp_penalty_taken() is True
+    monkeypatch.setattr(K, "TW2002_LIVE_PROFILE", "live")
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    assert K.corp_alignment_rule() == "mixed"
+    assert K.mixed_corp_exp_rule() == "highest_good"
+    assert K.corp_leaver_to_ceo() is False
+    assert K.corp_exp_penalty_taken() is False
+
+
+def test_d22_2_v311_moves_corporate_fighters_to_the_ceo(monkeypatch):
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    assert K.CORP_LEAVER_DEPLOYMENTS == "legacy"
+    assert K.corp_leaver_to_ceo() is True
+    u = _u()
+    _join_xyz(u)
+    for pid in ("P1", "P2", "P3"):
+        u.players[pid].alignment = 50
+    corp_sid, personal_sid = _quiet_sectors(u, 2)
+    u.sectors[corp_sid].fighters = FighterDeployment(
+        owner_id="P2", count=300, mode=FighterMode.DEFENSIVE, corp_ticker="XYZ", toll_credits=40,
+    )
+    u.sectors[corp_sid].mines.append(
+        MineDeployment(owner_id="P2", kind=MineType.ARMID, count=5, corp_ticker="XYZ"),
+    )
+    u.sectors[personal_sid].fighters = FighterDeployment(owner_id="P2", count=8, mode=FighterMode.DEFENSIVE)
+    for _ in range(4):
+        tick_day(u)
+    assert _act(u, "P2", "corp_leave").ok
+    assert u.sectors[corp_sid].fighters.owner_id == "P1"
+    assert u.sectors[corp_sid].fighters.corp_ticker == "XYZ"
+    assert u.sectors[corp_sid].fighters.toll_credits == 40
+    assert u.sectors[corp_sid].mines[0].owner_id == "P1"
+    assert u.sectors[personal_sid].fighters.owner_id == "P2"
+    assert u.sectors[personal_sid].fighters.corp_ticker is None
+    ceo = _sector_detail(u, u.sectors[corp_sid], "P1")
+    leaver = _sector_detail(u, u.sectors[corp_sid], "P2")
+    assert ceo["fighter_group"]["toll_credits"] == 40
+    assert "toll_credits" not in leaver["fighter_group"]
+
+
+def _arm_join_check(monkeypatch, how: str) -> None:
+    if how == "v311":
+        monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    else:
+        monkeypatch.setattr(K, "CORP_ALIGNMENT_RULE", "join_check")
+
+
+@pytest.mark.parametrize("how", ["constant", "v311"])
+def test_join_check_zero_may_join_and_opposite_signs_may_not(monkeypatch, how):
+    _arm_join_check(monkeypatch, how)
+    u = _u()
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    assert _act(u, "P1", "corp_set_password", password="Zx9").ok
+    u.players["P1"].alignment = -1
+    u.players["P2"].alignment = 0
+    assert _act(u, "P2", "corp_join", ticker="XYZ", password="Zx9").ok
+    assert u.players["P2"].corp_ticker == "XYZ"
+    u.players["P3"].alignment = 2
+    refused = _act(u, "P3", "corp_join", ticker="XYZ", password="Zx9")
+    assert refused.ok is False
+    assert refused.error == "alignment does not match the C.E.O."
+    assert u.players["P3"].corp_ticker is None
+    listed = {la.kind: la for la in legal_actions(u, "P3")}
+    assert "XYZ" not in listed["corp_join"].params["ticker"]["choices"]
+
+
+@pytest.mark.parametrize("how", ["constant", "v311"])
+def test_join_check_drift_stays_in_and_the_extern_penalty_still_runs(monkeypatch, how):
+    _arm_join_check(monkeypatch, how)
+    u = _u()
+    assert _act(u, "P1", "corp_create", ticker="XYZ", name="Ex").ok
+    assert _act(u, "P1", "corp_set_password", password="Zx9").ok
+    u.players["P1"].alignment = -1
+    u.players["P2"].alignment = -5
+    assert _act(u, "P2", "corp_join", ticker="XYZ", password="Zx9").ok
+    u.players["P1"].alignment = -400
+    u.players["P1"].experience = 5_000
+    u.players["P2"].alignment = 800
+    u.players["P2"].experience = 5_000
+    extern_corp_step(u)
+    assert u.players["P2"].corp_ticker == "XYZ"
+    assert "XYZ" in u.corporations
+    assert not any(e.kind == EventKind.CORP_OUSTED for e in u.events)
+    loss = 100 if how == "v311" else 200
+    assert mixed_loss(u, u.corporations["XYZ"]) == loss
+    assert u.players["P1"].experience == 5_000 - loss
+    assert u.players["P2"].experience == 5_000 - loss
 
 
 def test_class_m_flags_default_legacy_and_v311_turns_the_helpers_on(monkeypatch):
