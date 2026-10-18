@@ -787,10 +787,13 @@ class MatchRunner:
 
                 if regen_clock and time.time() - self._live_day_mark >= float(K.TURN_REGEN_DAY_SECONDS):
                     # The day rolls on the clock, whoever still has turns; the trickle keeps paying.
-                    self._live_day_mark = time.time()
-                    tick_day(universe)
-                    self._record_day_tick()
-                    await self._flush_events()
+                    if K.day_roll_clock_live():
+                        await self._roll_clock_if_due(universe)
+                    else:
+                        self._live_day_mark = time.time()
+                        tick_day(universe)
+                        self._record_day_tick()
+                        await self._flush_events()
                     # One scheduler pass, not the old 1 s pause: on a short day 1 s is
                     # more than a turn interval, and a resting seat is owed its turn.
                     await self._sleep_scaled(0.05)
@@ -1409,6 +1412,63 @@ class MatchRunner:
             except Exception:
                 pass
 
+    async def _roll_clock_if_due(self, universe: Universe) -> bool:
+        """NOTE 74. Roll every day the mark has passed. The next mark is the old one plus the day length."""
+        if not self._regen_day_clock() or not K.day_roll_clock_live():
+            return False
+        day_s = float(K.TURN_REGEN_DAY_SECONDS)
+        mark = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
+        if day_s <= 0 or not mark:
+            return False
+        now = time.time()
+        rolled = False
+        while now - mark >= day_s and (now - mark) / day_s <= 8:
+            mark += day_s
+            self._live_day_mark = mark
+            tick_day(universe)
+            self._record_day_tick()
+            rolled = True
+        if rolled:
+            for agent in self.state.agents:
+                if getattr(agent, "awaiting_input", False) and getattr(agent, "current_observation", None) is not None:
+                    agent.current_observation = build_observation(universe, agent.player_id)
+            await self._flush_events()
+        return rolled
+
+    async def _wait_acting(self, act_coro, timeout: float):
+        """Wait out an external turn, rolling the day when its mark passes."""
+        task = asyncio.ensure_future(act_coro)
+        try:
+            return await self._wait_acting_task(task, timeout)
+        finally:
+            if not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
+
+    async def _wait_acting_task(self, task: asyncio.Task, timeout: float):
+        deadline = time.time() + float(timeout)
+        while True:
+            left = deadline - time.time()
+            if left <= 0:
+                raise TimeoutError
+            slice_s = left
+            universe = self.state.universe
+            if universe is not None and K.day_roll_clock_live() and self._regen_day_clock():
+                mark = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
+                due = (mark + float(K.TURN_REGEN_DAY_SECONDS) - time.time()) if mark else left
+                if due <= 0:
+                    await self._roll_clock_if_due(universe)
+                    continue
+                slice_s = min(left, due)
+            try:
+                return await asyncio.wait_for(asyncio.shield(task), timeout=max(0.05, slice_s))
+            except TimeoutError:
+                if time.time() >= deadline - 0.02:
+                    raise
+                if universe is not None:
+                    await self._roll_clock_if_due(universe)
+
     async def _await_external(self, agent: BaseAgent, obs, full_s: float) -> tuple[Action, bool]:
         """Name the seat on the dashboard for as long as this wait lasts."""
         universe = self.state.universe
@@ -1467,6 +1527,8 @@ class MatchRunner:
 
         if not idle_rule or attended_fn(window_s):
             agent.turn_deadline_at = time.time() + full_s  # type: ignore[attr-defined]
+            if K.day_roll_clock_live() and self._regen_day_clock():
+                return await self._wait_acting(agent.act(obs), full_s), False
             return await asyncio.wait_for(agent.act(obs), timeout=full_s), False
 
         # Unattended: the effective deadline is the short idle window (F8 - the
@@ -1481,6 +1543,8 @@ class MatchRunner:
                 remaining = max(0.1, full_s - min(idle_s, full_s))
                 agent.turn_deadline_at = time.time() + remaining  # type: ignore[attr-defined]
                 try:
+                    if K.day_roll_clock_live() and self._regen_day_clock():
+                        return await self._wait_acting_task(act_task, remaining), False
                     return await asyncio.wait_for(asyncio.shield(act_task), timeout=remaining), False
                 except TimeoutError:
                     act_task.cancel()

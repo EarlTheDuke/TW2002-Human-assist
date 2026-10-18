@@ -566,7 +566,14 @@
   let taxFresh = true;
   let taxSeenSeq = -1;
   let fellSeenSeq = 0;
-  let dayNote = false;
+  let dayNote = false, dawnLine = "", justActed = false;
+  function withDawn(line) {
+    if (!(dayNote && dawnLine)) return line;
+    const dawn = dawnLine;
+    dawnLine = "";
+    dayNote = false;
+    return String(line || "").replace(/\s+$/, "") + " " + dawn;
+  }
   function ferrengiName(name) {
     return String(name || "").replace(/_([A-Za-z0-9]+)/g, " $1").replace(/\s+/g, " ").trim();
   }
@@ -4010,6 +4017,7 @@
       });
       const resp = await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
       state.awaiting = false;
+      justActed = true;
       await refresh();
       let spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
       let cameBack = 0;
@@ -4030,7 +4038,7 @@
         if (noticeSeq > before && noticeLine && line.indexOf(noticeLine) < 0) line += " " + noticeLine;
         const ignored = ignoredTributeLine(before - 1);
         if (ignored && line.indexOf(ignored) < 0) line += " " + ignored;
-        if (!dayNote) setResult(line, noticeSeq > before || !!ignored);
+        setResult(withDawn(line), noticeSeq > before || !!ignored);
         $("err").hidden = true;
         return;
       }
@@ -4038,13 +4046,13 @@
         const newer = latestAfter(maxSeq);
         const fresh = newer && newer.summary ? String(newer.summary) : "";
         if (/invalid sector|needs a sector/i.test(fresh)) {
-          if (!dayNote) setResult("REFUSED — there is no sector " + fmt((args || {}).sector) + tail, true);
+          setResult(withDawn("REFUSED — there is no sector " + fmt((args || {}).sector) + tail), true);
           $("err").hidden = true;
           return;
         }
         const sentence = avoidSentence((args || {}).sector, avoidBefore).replace(/[.\s]+$/, "");
         rememberLine(sentence + ".");
-        if (!dayNote) setResult("ok — " + sentence + tail, false);
+        setResult(withDawn("ok — " + sentence + tail), false);
         $("err").hidden = true;
         return;
       }
@@ -4209,10 +4217,10 @@
         surface = true;
         surfaceTurn = state.turnSeq;
       }
-      if (!dayNote && bad) {
-        setResult((/trade failed|lost patience/i.test(raw) ? "FAILED" : "REFUSED") + " — " + body + tail, true);
+      if (bad) {
+        setResult(withDawn((/trade failed|lost patience/i.test(raw) ? "FAILED" : "REFUSED") + " — " + body + tail), true);
         if (kind === "trade") openForm("trade", retry);
-      } else if (!dayNote) setResult("ok — " + body + tail, false);
+      } else setResult(withDawn("ok — " + body + tail), false);
       $("err").hidden = true;
     } catch (e) {
       setResult("REFUSED — " + plainWords(e.message || e) + ". Turns spent 0.", true);
@@ -4265,7 +4273,7 @@
     }
     if (hopsDone >= 1 && here === target && (!planned || hopsDone >= planned)) {
       const used = per ? hopsDone * per : spent;
-      setResult("Autopilot: arrived at " + target + " (" + hopsDone + " hops, " + used + " turns).", false);
+      setResult(withDawn("Autopilot: arrived at " + target + " (" + hopsDone + " hops, " + used + " turns)."), false);
       courseCard = null;
       mapSig = "";
       map();
@@ -4363,7 +4371,6 @@
     const dayNow = Number(S.day);
     if (seenDay != null && dayNow !== seenDay) {
       taxFresh = true;
-      dayNote = true;
       const tax = overnightTax();
       let fell = "";
       streamLog.concat(S.recent_events || []).forEach((ev) => {
@@ -4376,7 +4383,19 @@
           + fmt(S.turns_remaining) + " of " + fmt(S.turns_per_day) + "."
         : "Day " + dayNow + ". Turns refilled to " + fmt(S.turns_remaining) + ".";
       const quiet = tax ? "" : (dayNow > 1 ? " Last night: no tax." : "");
-      setResult(roll + (tax ? " " + tax : "") + quiet + (fell ? " " + fell : ""), false);
+      dawnLine = roll + (tax ? " " + tax : "") + quiet + (fell ? " " + fell : "");
+      const prior = (($("lastResult") && $("lastResult").textContent) || "").trim();
+      if (state.busy) {
+        dayNote = true;
+      } else if (justActed && prior && prior.indexOf(dawnLine) < 0) {
+        setResult(prior + " " + dawnLine, false);
+        dawnLine = "";
+        justActed = false;
+      } else {
+        setResult(dawnLine, false);
+        dawnLine = "";
+        justActed = false;
+      }
     }
     seenDay = dayNow;
     const sec = S.sector || {};
@@ -4422,7 +4441,9 @@
     syncClocks();
     SC = st.starting_credits_line || "";
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
+    const dayBefore = S ? Number(S.day) : null;
     if (st.observation) { S = st.observation; render(); }
+    if (!state.busy && S && dayBefore != null && Number(S.day) === dayBefore) justActed = false;
     await fetchEvents();
     keys();
     if (!state.busy && state.awaiting && pending) flushPending();

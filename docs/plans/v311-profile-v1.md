@@ -90,6 +90,7 @@ Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A
 | 78 | `NW_ESTIMATE_MODE` | `nw_estimate_live` | NOTE 73: extra holds at their trade-in value, cargo at what the seat paid, sector fighters at the fighter rate. It does not change the experience winner | - |
 | 79 | `SEAT_IDLE_START_MODE` | `seat_idle_start_live` | NOTE 73: a seat's short idle clock starts when its client first connects. Before that there is no auto-WAIT | - |
 | 80 | `BOT_DIPLOMACY_MODE` | `bot_diplomacy_live` | NOTE 73: a code bot accepts or declines an alliance on its next turn, and answers a hail with one canned line. `ALLIANCE_MODE` stays legacy | - |
+| 81 | `DAY_ROLL_CLOCK_MODE` | `day_roll_clock_live` | NOTE 74: with the regen clock on, the day rolls when the mark passes even while an external seat holds the turn, and the next mark is the old mark plus the day length. Stored default stays legacy. Self-hosted beta games set the switch live | - |
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 
