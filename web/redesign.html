@@ -31,6 +31,7 @@
 
 <main id="deck">
   <section id="viewport" class="panel" data-testid="viewport" aria-label="Viewport" data-hull="hauler" data-mode="live">
+    <button type="button" id="layoutOpen" data-testid="layout-open">Layout</button>
     <div id="vpScreen" role="img" aria-label="View from the cockpit">
       <canvas id="vpStars" class="vp-stars" data-testid="viewport-stars" aria-hidden="true"></canvas>
       <img id="sceneStill" data-testid="scene-still" alt="" hidden />
@@ -90,9 +91,27 @@
 <p id="lastResult" data-testid="last-result"></p>
 <p class="prompt-line" data-testid="prompt-line">Command [TL=—] (?=Help) :</p>
 <div id="menu" hidden class="ansi"></div>
+<div id="layoutMenu" data-testid="layout-menu" hidden class="ansi">
+  <div class="layout-head">Layout <button type="button" data-testid="layout-close">Close</button></div>
+  <div id="layoutList" data-testid="layout-list"></div>
+  <div class="layout-setting">
+    <span>Font</span>
+    <button type="button" data-testid="font-dec" aria-label="Smaller font">−</button>
+    <b data-testid="font-readout">Default</b>
+    <button type="button" data-testid="font-inc" aria-label="Larger font">+</button>
+  </div>
+  <div class="layout-setting">
+    <span>Zoom</span>
+    <button type="button" data-testid="zoom-dec" aria-label="Zoom out">−</button>
+    <b data-testid="zoom-readout">100%</b>
+    <button type="button" data-testid="zoom-inc" aria-label="Zoom in">+</button>
+  </div>
+  <button type="button" data-testid="layout-reset">Reset to default</button>
+</div>
 <script src="/static/media-resolver.js"></script>
 <script src="/static/media-player.js"></script>
 <script src="/static/viewport.js"></script>
 <script src="/static/redesign.js"></script>
+<script src="/static/layout.js"></script>
 </body>
 </html>
