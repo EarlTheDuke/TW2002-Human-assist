@@ -69,7 +69,8 @@ def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int
 
     Low stock pays more, a full port pays less (0.75x to 1.45x base).
     A more negative MCIC pays more. Experience up to the cap pays more.
-    A federal port stays at the base price.
+    A federal port stays at the base price. With the buy-price anchor on, a
+    hungry port pays the live anchor and the quote eases as it fills.
     """
     base = K.COMMODITY_BASE_PRICE[commodity.value]
     if port.class_id == PortClass.FEDERAL:
@@ -83,7 +84,13 @@ def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int
     exp_mult = 1.0 + K.PORT_EXPERIENCE_SELL_BONUS * _experience_span(experience)
     if K.port_price_live():
         anchor = K.PORT_PRICE_LIVE_BUY_FULL[commodity.value]
-        raw = anchor * (stock_mult / K.PORT_PRICE_BUY_FULL_MULT) * mcic_mult * exp_mult
+        if K.port_buy_price_anchor_on():
+            # Remaining demand is 1 when the port is hungry (current 0). That
+            # point pays the anchor. Filling the hold eases the quote.
+            ease = 1.0 - K.PORT_BUY_FILL_EASE * frac
+            raw = anchor * ease * mcic_mult * exp_mult
+        else:
+            raw = anchor * (stock_mult / K.PORT_PRICE_BUY_FULL_MULT) * mcic_mult * exp_mult
         return _unit_price(anchor, raw)
     return _unit_price(base, base * stock_mult * mcic_mult * exp_mult)
 
