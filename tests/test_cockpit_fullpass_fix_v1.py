@@ -243,7 +243,7 @@ def test_gear_shows_the_price_and_a_blank_qty_asks(seats) -> None:
     assert "cr each" in dock.locator("[data-gear=price]").inner_text()
     dock.locator(".frm [data-n=qty]").fill("")
     dock.locator(".frm button.verb", has_text="CONFIRM").click()
-    dock.wait_for_function("() => /How many/.test(document.querySelector('#lastResult').textContent || '')", timeout=10_000)
+    dock.wait_for_function("() => /Type an amount\\./.test(document.querySelector('#lastResult').textContent || '')", timeout=10_000)
     dock.locator(".frm [data-n=item]").select_option("fighters")
     dock.locator(".frm [data-n=qty]").fill("9999999")
     dock.locator(".frm button.verb", has_text="CONFIRM").click()
