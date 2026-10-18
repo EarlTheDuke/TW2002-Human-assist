@@ -2944,6 +2944,7 @@ PORT_PRICE_MODE = "legacy"  # "legacy" | "live"
 PORT_PRICE_LIVE_SELL_FULL = {"fuel_ore": 16, "organics": 35, "equipment": 36}
 # Full-port buy anchors, midpoints of the seen ranges. The stock on those
 # screens was not written down, so treating them as full is UNVERIFIED.
+# NOTE 69: PORT_BUY_PRICE_ANCHOR_MODE live treats these as the hungry quotes.
 PORT_PRICE_LIVE_BUY_FULL = {"fuel_ore": 38, "organics": 73, "equipment": 102}
 PORT_PRICE_SELL_FULL_MULT = 0.60  # 1.25 - 0.65 at a full port
 PORT_PRICE_BUY_FULL_MULT = 0.75   # 1.45 - 0.70 at a full port
@@ -2952,6 +2953,22 @@ PORT_PRICE_BUY_FULL_MULT = 0.75   # 1.45 - 0.70 at a full port
 def port_price_live() -> bool:
     """True when quotes use the live full-port anchors."""
     return PORT_PRICE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-port-buy-price-v1 (NOTE 69). "legacy" keeps the full-hold anchor above:
+# a buying port pays PORT_PRICE_LIVE_BUY_FULL only when current == maximum, so a
+# hungry port (current 0, which PORT_STOCK_FIDELITY opens) quotes about 1.93x.
+# "live" prices a buying port from remaining demand. A hungry port pays the
+# anchor, and the quote eases as the hold fills. 0.25 makes a port go from 51%
+# remaining demand to 37% about 4% cheaper (live v3.34b equipment 105 -> 100.8).
+# Stored default stays legacy. Appended so later slices can rebase cleanly.
+PORT_BUY_PRICE_ANCHOR_MODE = "legacy"  # "legacy" | "live"
+PORT_BUY_FILL_EASE = 0.25
+
+
+def port_buy_price_anchor_on() -> bool:
+    """True when a buying port's anchor is the hungry quote, not a full hold."""
+    return PORT_BUY_PRICE_ANCHOR_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # port-regen-mcic-v1. Appended so later slices can rebase cleanly.
@@ -3919,6 +3936,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
     "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
+    "port_buy_price_anchor_on": (
+        "PORT_BUY_PRICE_ANCHOR_MODE",
+        "D25-1 (NOTE 69): hungry buy quotes use the live anchors, not the 1.93x full-hold curve",
+    ),
 }
 
 
