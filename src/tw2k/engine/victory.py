@@ -356,6 +356,20 @@ def _place_word(n: int) -> str:
     return f"{n}{suffix}"
 
 
+def _ranking_bits(universe: Universe, player, scores: dict) -> tuple[str, str]:
+    ordered = sorted(scores.items(), key=lambda item: (-int(item[1]), str(item[0])))
+    bits = []
+    place = None
+    for index, (pid, score) in enumerate(ordered, 1):
+        who = universe.players.get(pid)
+        name = who.name if who is not None else str(pid)
+        bits.append(f"{_place_word(index)} {name} {int(score)}")
+        if pid == player.id:
+            place = index
+    yours = f" You finished {_place_word(place)} of {len(ordered)}." if place else ""
+    return ", ".join(bits), yours
+
+
 def game_over_panel(universe: Universe, player) -> str | None:
     """The end screen, from the game-over record. None until the game has ended."""
     if not universe.finished:
@@ -369,26 +383,73 @@ def game_over_panel(universe: Universe, player) -> str | None:
         return None
     payload = ev.payload or {}
     reason = str(payload.get("reason") or universe.win_reason or "")
-    if reason not in ("time_experience", "time_net_worth"):
+    creator = reason == "creator"
+    if reason not in ("time_experience", "time_net_worth", "creator"):
         return None
-    scores = payload.get("all_scores") if reason == "time_experience" else payload.get("all_worths")
+    if creator and payload.get("score_kind") == "experience":
+        scores = payload.get("all_scores")
+        kind = "experience"
+    elif creator:
+        scores = payload.get("all_worths")
+        kind = "net worth"
+    else:
+        scores = payload.get("all_scores") if reason == "time_experience" else payload.get("all_worths")
+        kind = "experience" if payload.get("score_kind") == "experience" or reason == "time_experience" else "net worth"
+    if creator and (not isinstance(scores, dict) or not scores):
+        return "GAME OVER - Ended by the game's creator."
     if not isinstance(scores, dict) or not scores:
         return None
-    kind = "experience" if payload.get("score_kind") == "experience" or reason == "time_experience" else "net worth"
-    ordered = sorted(scores.items(), key=lambda item: (-int(item[1]), str(item[0])))
-    bits = []
-    place = None
-    for index, (pid, score) in enumerate(ordered, 1):
-        who = universe.players.get(pid)
-        name = who.name if who is not None else str(pid)
-        bits.append(f"{_place_word(index)} {name} {int(score)}")
-        if pid == player.id:
-            place = index
-    yours = f" You finished {_place_word(place)} of {len(ordered)}." if place else ""
+    bits, yours = _ranking_bits(universe, player, scores)
+    if creator:
+        return f"GAME OVER - Ended by the game's creator. Decided by {kind}: {bits}.{yours}"
     return (
         f"GAME OVER - time ran out after day {int(universe.config.max_days)}. "
-        f"Decided by {kind}: {', '.join(bits)}.{yours}"
+        f"Decided by {kind}: {bits}.{yours}"
     )
+
+
+def end_match_by_creator(universe: Universe) -> bool:
+    """Stop this match now and rank whoever is still alive.
+
+    Match infrastructure (creator-end-game-v1), not a rule switch: nothing here
+    runs unless the creator ends the game. A second call is a no-op. Rankings
+    use the same day-cap measure this process already uses.
+    """
+    if universe.finished:
+        return False
+    alive = [p for p in universe.players.values() if p.alive]
+    universe.finished = True
+    universe.win_reason = "creator"
+    if not alive:
+        universe.emit(
+            EventKind.GAME_OVER,
+            payload={"reason": "creator"},
+            summary="Ended by the game's creator.",
+        )
+        return True
+    if K.planet_value_score_mode() == "experience":
+        scores = {p.id: int(p.experience) for p in alive}
+        winner = max(alive, key=lambda p: scores[p.id])
+        universe.winner_id = winner.id
+        summary = f"Ended by the game's creator. {winner.name} leads on experience ({scores[winner.id]})"
+        universe.emit(
+            EventKind.GAME_OVER,
+            actor_id=winner.id,
+            payload={"reason": "creator", "score_kind": "experience", "all_scores": scores, "summary": summary},
+            summary=summary,
+        )
+        return True
+    worths = {p.id: full_net_worth(universe, p) for p in alive}
+    winner = max(alive, key=lambda p: worths[p.id])
+    universe.winner_id = winner.id
+    summary = f"Ended by the game's creator. {winner.name} leads on net worth ({worths[winner.id]})"
+    universe.emit(
+        EventKind.GAME_OVER,
+        actor_id=winner.id,
+        payload={"reason": "creator", "all_worths": worths, "summary": summary},
+        summary=summary,
+    )
+    return True
 
 
 def full_net_worth(universe: Universe, player) -> int:
