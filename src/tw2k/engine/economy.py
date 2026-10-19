@@ -57,6 +57,17 @@ def port_sell_price(port: Port, commodity: Commodity, experience: int = 0) -> in
         1.0 + (_stored_mcic(port, commodity) - K.PORT_MCIC_DEFAULT_SELL) * K.PORT_MCIC_POINT,
     )
     exp_mult = 1.0 - K.PORT_EXPERIENCE_BUY_DISCOUNT * _experience_span(experience)
+    if K.price_scale_live():
+        # Chart point: a full selling port at MCIC 50. The slope is the same
+        # stock, MCIC, and experience curve, measured from that point.
+        anchor = K.price_scale_unit(K.PRICE_SCALE_SELL_250[commodity.value])
+        chart_stock = 1.25 - 0.65 * 1.0
+        chart_mcic = max(
+            0.05,
+            1.0 + (K.PRICE_SCALE_SELL_MCIC - K.PORT_MCIC_DEFAULT_SELL) * K.PORT_MCIC_POINT,
+        )
+        raw = anchor * (stock_mult / chart_stock) * (mcic_mult / chart_mcic) * exp_mult
+        return _unit_price(anchor, raw)
     if K.port_price_live():
         anchor = K.PORT_PRICE_LIVE_SELL_FULL[commodity.value]
         raw = anchor * (stock_mult / K.PORT_PRICE_SELL_FULL_MULT) * mcic_mult * exp_mult
@@ -82,6 +93,17 @@ def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int
         1.0 + (K.PORT_MCIC_DEFAULT_BUY - _stored_mcic(port, commodity)) * K.PORT_MCIC_POINT,
     )
     exp_mult = 1.0 + K.PORT_EXPERIENCE_SELL_BONUS * _experience_span(experience)
+    if K.price_scale_live():
+        # Chart point: an empty buying port at MCIC -50. economy2 calls that
+        # 100 percent, because a buying port with nothing left is ready to buy.
+        anchor = K.price_scale_unit(K.PRICE_SCALE_BUY_250[commodity.value])
+        chart_stock = 1.45 - 0.70 * 0.0
+        chart_mcic = max(
+            0.05,
+            1.0 + (K.PORT_MCIC_DEFAULT_BUY - K.PRICE_SCALE_BUY_MCIC) * K.PORT_MCIC_POINT,
+        )
+        raw = anchor * (stock_mult / chart_stock) * (mcic_mult / chart_mcic) * exp_mult
+        return _unit_price(anchor, raw)
     if K.port_price_live():
         anchor = K.PORT_PRICE_LIVE_BUY_FULL[commodity.value]
         if K.port_buy_price_anchor_on():
