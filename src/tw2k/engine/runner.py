@@ -2489,6 +2489,12 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
     universe.next_planet_id += 1
     name_roots = ["New", "Genesis", "Phoenix", "Wyrd", "Eden"]
     planet_name = f"{rng.choice(name_roots)} {sector.id}-{pid_planet}"
+    if K.genesis_name_live():
+        asked = str((action.args or {}).get("name") or "").strip()
+        asked = "".join(ch for ch in asked if ch.isprintable())
+        asked = " ".join(asked.split())[: int(K.GENESIS_NAME_MAX)].strip()
+        if asked:
+            planet_name = asked
     planet = Planet(
         id=pid_planet,
         sector_id=sector.id,
@@ -3362,6 +3368,34 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
             for e in universe.events[-8:]
         ):
             break  # v28: the avoid prompt returns the pilot to the command prompt
+        # NOTE 90. Only a client that asks (the redesign cockpit) pauses.
+        # A code bot posts execute without stop_at_ports and flies on.
+        if (
+            K.autopilot_port_stop_live()
+            and action.args.get("stop_at_ports")
+            and int(player.sector_id) != int(path[-1])
+            and universe.sectors[player.sector_id].port is not None
+        ):
+            stopped = {
+                "target": target_id,
+                "path": path,
+                "executed": True,
+                "hops_done": hops_done,
+                "stopped": "port",
+            }
+            if K.action_result_report():
+                stopped["turns_spent"] = turns_spent_total
+            universe.emit(
+                EventKind.AUTOPILOT,
+                actor_id=pid,
+                sector_id=player.sector_id,
+                payload=stopped,
+                summary=(
+                    f"{player.name} autopilot stopped at the port in {player.sector_id} "
+                    f"after {hops_done}/{len(path)} hops toward {target_id}"
+                ),
+            )
+            return _report_plot(True, None, turns_spent_total, 0)
 
     if hops_done == 0:
         return ActionResult(ok=False, error=last_error)

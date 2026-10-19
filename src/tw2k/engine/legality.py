@@ -312,7 +312,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                    params={"target": {"type": "int", "required": True, "suggested": known},
                            "execute": {"type": "bool", "required": False, "legal": execute_ok,
                                        "reason": None if execute_ok else f"first hop unaffordable: {hop_block}",
-                                       "first_hop_turns": wc}}))
+                                       "first_hop_turns": wc,
+                                       **({"stop_at_ports": True} if K.autopilot_port_stop_live() else {})}}))
 
     # probe
     probes = int(getattr(player.ship, "ether_probes", 0) or 0)
@@ -1129,8 +1130,19 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = _need_turns(player, gen_cost)
         if reason is None and not K.sector_has_planet_room(len(sector.planet_ids)):
             reason = "sector already holds 5 planets"
+    gen_params: dict[str, Any] = {
+        "hops_from_stardock": hops,
+        "min_hops": int(K.GENESIS_MIN_HOPS_FROM_STARDOCK),
+    }
+    if K.genesis_name_live():
+        gen_params["name"] = {
+            "type": "str",
+            "required": False,
+            "max": int(K.GENESIS_NAME_MAX),
+            "default": f"New {sector.id}-{universe.next_planet_id}",
+        }
     out.append(_la(ActionKind.DEPLOY_GENESIS, legal=reason is None, reason=reason, cost=gen_cost,
-                   params={"hops_from_stardock": hops, "min_hops": int(K.GENESIS_MIN_HOPS_FROM_STARDOCK)}))
+                   params=gen_params))
 
     # claim_planet: landed on a former-player orphan.
     cp_cost = int(K.TURN_COST.get("claim_planet", 2))

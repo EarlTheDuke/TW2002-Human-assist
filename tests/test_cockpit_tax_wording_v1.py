@@ -40,9 +40,12 @@ def _show(page, host):
 def _host(tmp_path_factory, name):
     host = CuHost(tmp_path_factory.mktemp(name), TOK, seed=8301)
     host.__enter__()
-    if host.port in range(8031, 8120):
+    # The helper skips its own reserved ports and starts at 8050. Refusing
+    # every port from 8031 through 8119 made these three tests fail on that start.
+    from tests._cu_host import RESERVED_TEST_PORTS
+    if host.port in RESERVED_TEST_PORTS:
         host.__exit__(None, None, None)
-        pytest.fail(f"host bound a protected port {host.port}")
+        pytest.fail(f"host bound a reserved port {host.port}")
     return host
 
 
