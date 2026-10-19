@@ -873,3 +873,43 @@ def test_qc_captured_from_survives_save_and_resume():
     again = back.parked_ships[rec.id]
     assert (again.captured_from, again.captured_day) == ("B", u.day)
     assert '"captured_from"' not in ParkedShip(id=1, owner_id="A", sector_id=2, ship=Ship(), parked_day=1).model_dump_json()
+
+
+def _capture_views(monkeypatch, mode: str):
+    monkeypatch.setattr(K, "CAPTURE_CREDIT_LINE_MODE", mode)
+    u = _world()
+    sec = _sector(u)
+    att = _sit(u, "A", sec, fighters=40, credits=1_000)
+    vic = _sit(u, "B", sec, fighters=10, shields=0, credits=4_000)
+    _sit(u, "W", sec, fighters=0, credits=0)
+    need = _need_player(att, vic)
+    assert _attack(u, "A", "B", need).ok
+    assert u.players["B"].credits == 0 and u.players["A"].credits == 5_000
+
+    def facts(pid, kind):
+        obs = build_observation(u, pid).model_dump()
+        return [e.get("facts") or {} for e in obs["recent_events"] if e.get("kind") == kind]
+
+    return u, facts
+
+
+def test_capture_credit_line_stays_off_until_the_switch(monkeypatch):
+    """NOTE 105. The cash already moves (gb15). The capture event names it only when the sentence is on."""
+    assert K.capture_credit_line_live() is False
+    u, facts = _capture_views(monkeypatch, "legacy")
+    captured = _captured(u)[-1]
+    assert "credits_lost" not in (captured.payload or {})
+    assert all("credits_lost" not in row for row in facts("A", "ship_captured"))
+    assert all("credits_lost" not in row for row in facts("B", "ship_captured"))
+    assert any(row.get("credits_lost") == 4_000 for row in facts("B", "ship_destroyed"))
+    assert all("credits_lost" not in row for row in facts("W", "ship_destroyed"))
+
+    u, facts = _capture_views(monkeypatch, "live")
+    captured = _captured(u)[-1]
+    assert captured.payload["credits_lost"] == 4_000
+    assert facts("A", "ship_captured")[-1]["credits_lost"] == 4_000
+    assert facts("B", "ship_captured")[-1]["credits_lost"] == 4_000
+    assert "credits_lost" not in facts("W", "ship_captured")[-1]
+    monkeypatch.setattr(K, "CAPTURE_CREDIT_LINE_MODE", "legacy")
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    assert K.capture_credit_line_live() is True

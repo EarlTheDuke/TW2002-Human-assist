@@ -4353,6 +4353,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "BOT_BANK_FLOAT_MODE",
         "NOTE 88 row 114: a code bot keeps a full hold at its route buy price before it deposits",
     ),
+    "capture_credit_line_live": (
+        "CAPTURE_CREDIT_LINE_MODE",
+        "NOTE 105: a capture already takes credits on hand the same way as a destroy; the cockpit says so",
+    ),
 }
 
 
@@ -5136,3 +5140,15 @@ PLANET_BUST_EXP_MODE = "legacy"  # "legacy" | "live"
 def planet_bust_exp_live() -> bool:
     """True when the owner may destroy a planet they created."""
     return PLANET_BUST_EXP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# NOTE 105. gb15 and the MBBS manual: capturing a player takes the credits
+# they are carrying, the same as a kill. The engine already does that
+# (apply_manned_capture -> on_ship_lost). This switch is only the cockpit
+# sentence. Stored default stays legacy, so a capture line stays as it was.
+CAPTURE_CREDIT_LINE_MODE = "legacy"  # "legacy" | "live"
+
+
+def capture_credit_line_live() -> bool:
+    """True when a capture result says the credits that were on board."""
+    return CAPTURE_CREDIT_LINE_MODE == "live" or tw2002_live_profile() or v311_profile()

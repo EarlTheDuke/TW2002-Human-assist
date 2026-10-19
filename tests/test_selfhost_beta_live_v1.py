@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import random
 import subprocess
 import sys
 import time
@@ -26,12 +25,9 @@ pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows host (job objec
 
 
 def _free_block(n: int) -> int:
-    rng = random.Random()
-    for _ in range(200):
-        base = rng.randrange(40000, 46000)
-        if all(port_is_free(base + i) for i in range(n)):
-            return base
-    raise RuntimeError("no free port block")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(n, low=40000, high=46000)
 
 
 def _start(env: dict, root: Path, url: str) -> subprocess.Popen:
@@ -132,5 +128,8 @@ def test_item8_two_real_games_through_the_lobby(tmp_path) -> None:
         if lob.poll() is None:
             lob.kill()
             lob.wait(10)
+        from tests._port_lock import release_ports
+
+        release_ports(*range(base, base + 4))
     for port in range(base, base + 4):
         assert port_is_free(port)

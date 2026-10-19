@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import socket
 import threading
 import time
 from pathlib import Path
@@ -17,14 +16,9 @@ from tw2k.server.runner import AgentSpec, MatchSpec
 
 
 def _port() -> int:
-    for port in range(42000, 42100):
-        with socket.socket() as sock:
-            try:
-                sock.bind(("127.0.0.1", port))
-                return port
-            except OSError:
-                continue
-    raise RuntimeError("no free port in 42000-42099")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(1, low=42000, high=42100, sequential=True)
 
 
 def test_a_held_turn_reaches_day_3_on_a_10_second_clock(tmp_path: Path, monkeypatch) -> None:

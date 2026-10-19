@@ -590,6 +590,14 @@ def build_harness_router(runner) -> APIRouter:
             if not _event_visible_to(ev, agent.player_id, u):
                 continue
             view = event_view(ev)
+            # NOTE 105. Same viewer rule as Observation.recent_events. Absent
+            # unless the capture-credit sentence is on, so a legacy stream is unchanged.
+            if (ev.kind.value == "ship_captured" and "credits_lost" in (ev.payload or {})
+                    and (ev.payload.get("victim") == agent.player_id or ev.actor_id == agent.player_id)):
+                view = dict(view)
+                facts = dict(view.get("facts") or {})
+                facts["credits_lost"] = int(ev.payload["credits_lost"])
+                view["facts"] = facts
             if course and ev.kind.value == "autopilot":
                 path = (ev.payload or {}).get("path")
                 if isinstance(path, list):

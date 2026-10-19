@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import random
 import subprocess
 import sys
 import threading
@@ -21,7 +20,6 @@ import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, build_observation, generate_universe
 from tw2k.engine.models import Player
 from tw2k.engine.runner import query_route
-from tw2k.public.config import port_is_free
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
 
@@ -32,12 +30,9 @@ PATH = [173, 975, 948, 445, 739, 1]
 
 
 def _free_block(n: int) -> int:
-    rng = random.Random()
-    for _ in range(200):
-        base = rng.randrange(40000, 46000)
-        if all(port_is_free(base + i) for i in range(n)):
-            return base
-    raise RuntimeError("no free port block")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(n, low=40000, high=46000)
 
 
 def test_item2_route_query_does_not_spend_a_turn_and_names_the_one_way(monkeypatch) -> None:
@@ -72,12 +67,13 @@ class NavHost:
         import uvicorn
 
         self.token = TOK
-        self.port = _free_block(1)
+        self.port = 0
         self.app = create_app(auto_start=False)
         self.runner = self.app.state.runner
         self.runner._saves_root = tmp / "saves"
-        self.server = uvicorn.Server(uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning"))
-        self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
+        self.server = None
+        self.thread = None
+        self._uvicorn = uvicorn
         self.ready = False
         self._info = K.INFO_MODE
 
@@ -133,7 +129,17 @@ class NavHost:
 
     def __enter__(self) -> NavHost:
         K.INFO_MODE = "legacy"
+        # _free_block reserves the port across processes before uvicorn binds it.
+        self.port = _free_block(1)
+        self.server = self._uvicorn.Server(
+            self._uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning")
+        )
+        self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
         self.thread.start()
+        deadline = time.time() + 40
+        while time.time() < deadline and not (self.server and self.server.started):
+            time.sleep(0.05)
+        assert self.server and self.server.started, "nav host did not bind"
         deadline = time.time() + 40
         while time.time() < deadline and not self.ready:
             time.sleep(0.1)
@@ -143,6 +149,10 @@ class NavHost:
     def __exit__(self, *exc) -> None:
         self.server.should_exit = True
         self.thread.join(timeout=15)
+        if self.port:
+            from tests._port_lock import release_ports
+
+            release_ports(self.port)
         K.INFO_MODE = self._info
 
     @property
@@ -192,6 +202,12 @@ def _seat(page) -> dict:
 
 def _batches(page) -> int:
     return page.evaluate("() => window.__warpBatches")
+
+
+def _wait_batches(page, n: int) -> None:
+    """The result line can land before the media callback under load. The count stays exact."""
+    page.wait_for_function(f"() => (window.__warpBatches || 0) >= {n}", timeout=20_000)
+    assert _batches(page) == n
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows host")
@@ -247,7 +263,7 @@ def test_item6b_engage_flies_the_course_and_plays_one_clip(nav) -> None:
             )
             assert "Autopilot: arrived at 1 (6 hops, 18 turns)." in page.locator("#lastResult").inner_text()
             page.wait_for_function("() => document.querySelector('#pSector').textContent.trim() === '1'", timeout=10_000)
-            assert _batches(page) == 1
+            _wait_batches(page, 1)
             assert _seat(page)["sector"] == 1
         finally:
             browser.close()
@@ -311,7 +327,7 @@ def test_item6d_engage_off_turn_queues_then_flies(nav) -> None:
                 "() => (document.querySelector('#lastResult').textContent || '').includes('arrived at 1')",
                 timeout=20_000,
             )
-            assert _batches(page) == 1
+            _wait_batches(page, 1)
             assert _seat(page)["sector"] == 1
         finally:
             browser.close()
@@ -327,7 +343,7 @@ def test_item6e_a_single_warp_plays_one_clip(nav) -> None:
             _open(page, nav)
             page.locator("#warps button", has_text="173").click()
             page.wait_for_function("() => document.querySelector('#pSector').textContent.trim() === '173'", timeout=15_000)
-            assert _batches(page) == 1
+            _wait_batches(page, 1)
         finally:
             browser.close()
 
@@ -473,20 +489,23 @@ def test_item6j_bot_and_the_shared_resolver_stay_untouched() -> None:
 @pytest.mark.skipif(os.name != "nt", reason="Windows host")
 def test_item6i_a_lobby_game_serves_the_same_redesign(tmp_path) -> None:
     """Own ports, never 8099-8119. The proxied cockpit is the redesign, and a route read spends nothing."""
-    base = _free_block(3)
-    root = tmp_path / "selfhost"
-    root.mkdir()
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("TW2K_", "TW2002_")) and k != "COCKPIT_LAYOUT"}
-    env.update(
-        TW2K_LOBBY_ROOT=str(root), TW2K_LOBBY_PORT=str(base), TW2K_GAME_PORTS=f"{base + 1}-{base + 2}",
-        PYTHONPATH=str(REPO / "src"), PYTHONHASHSEED="0",
-    )
-    url = f"http://127.0.0.1:{base}"
-    lob = subprocess.Popen(
-        [sys.executable, "-m", "tw2k.cli", "lobby"], env=env, cwd=str(REPO),
-        stdout=open(root / "lobby.out", "ab"), stderr=subprocess.STDOUT,  # noqa: SIM115
-    )
+    lob = None
+    base = None
     try:
+        # _free_block reserves the three ports across processes before the lobby binds them.
+        base = _free_block(3)
+        root = tmp_path / "selfhost"
+        root.mkdir()
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("TW2K_", "TW2002_")) and k != "COCKPIT_LAYOUT"}
+        env.update(
+            TW2K_LOBBY_ROOT=str(root), TW2K_LOBBY_PORT=str(base), TW2K_GAME_PORTS=f"{base + 1}-{base + 2}",
+            PYTHONPATH=str(REPO / "src"), PYTHONHASHSEED="0",
+        )
+        url = f"http://127.0.0.1:{base}"
+        lob = subprocess.Popen(
+            [sys.executable, "-m", "tw2k.cli", "lobby"], env=env, cwd=str(REPO),
+            stdout=open(root / "lobby.out", "ab"), stderr=subprocess.STDOUT,  # noqa: SIM115
+        )
         deadline = time.time() + 60
         while time.time() < deadline:
             assert lob.poll() is None, (root / "lobby.out").read_text(errors="replace")[-2000:]
@@ -536,6 +555,10 @@ def test_item6i_a_lobby_game_serves_the_same_redesign(tmp_path) -> None:
         ).json()["latest_seq"]
         assert latest == before_events
     finally:
-        if lob.poll() is None:
+        if lob is not None and lob.poll() is None:
             lob.kill()
             lob.wait(10)
+        if base is not None:
+            from tests._port_lock import release_ports
+
+            release_ports(base, base + 1, base + 2)

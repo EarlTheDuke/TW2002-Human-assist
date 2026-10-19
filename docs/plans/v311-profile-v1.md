@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (111 helpers)
+## The switch set (112 helpers)
 
 The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112.
 
@@ -123,6 +123,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 146 | `SPECIAL_PORT_DEFENCE_MODE` | `special_port_defence_live` | NOTE 102 GAP 11.10: StarDock and Class 0 ports are not a cheap kill. The first one takes 248,000 fighters spent; after any of them has been destroyed the budget is 890,000. The Feds rebuild the port 14 days later. The fighter numbers and the 2,500 / 5,000 ratings are the cabal rule of thumb (UNVERIFIED). Stored default stays legacy | - |
 | 148 | `PLANET_COLLISION_MODE` | `planet_collision_live` | NOTE 102 GAP 6.6: Extern names an overloaded sector, then may destroy two planets at random. The chance is 10 percent per planet over the cap of 5 (UNVERIFIED). Sector 1 is skipped. The five-planet cap on genesis and transwarp stays. Stored default stays legacy | - |
 | 149 | `PLANET_BUST_EXP_MODE` | `planet_bust_exp_live` | NOTE 102 GAP 14.3: the owner may destroy the planet they created. Genesis pays 25 and the destroy pays 50, which is the glossary's 75 and not more. Stored default stays legacy | - |
+| 153 | `CAPTURE_CREDIT_LINE_MODE` | `capture_credit_line_live` | NOTE 105: gb15 and the MBBS manual take the credits a captured player is carrying, the same as a kill. The engine already does that. Live, the cockpit line says "Credits on board lost". Stored default stays legacy, so the line stays as it was | - |
 
 Row 147 is unused. Alien traders already refuse a sector that holds fighters (`alien._fighter_blocked`, `alien_day_step`) and take mine hits (`apply_mines_to_alien`). Federal ships already refuse those sectors (`fed._fed_blocked`). Ferrengi already ignore fighters (`FERRENGI_FIGHTER_BLOCK` is False; Iago's War Manual v1.1) and take armid hits (`FERRENGI_HIT_MINES`, `_apply_mines_to_ferrengi`). That is the stored rule, so `NPC_FIGHTER_SECTOR_MODE` is not added.
 

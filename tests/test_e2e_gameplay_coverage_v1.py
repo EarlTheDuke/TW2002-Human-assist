@@ -12,7 +12,6 @@ docs/playtests/e2e-gameplay-coverage-v1/. No engine default changes.
 from __future__ import annotations
 
 import os
-import socket
 import time
 from pathlib import Path
 
@@ -693,14 +692,9 @@ def _stock(planet: Planet, level: int) -> None:
 
 
 def _free_port() -> int:
-    for port in range(9201, 9220):
-        with socket.socket() as sock:
-            try:
-                sock.bind(("127.0.0.1", port))
-            except OSError:
-                continue
-            return port
-    raise RuntimeError("no free port in 9201-9219")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(1, low=9201, high=9220, sequential=True)
 
 
 class _TwoSeat:
@@ -763,6 +757,10 @@ class _TwoSeat:
     def __exit__(self, *exc) -> None:
         self.server.should_exit = True
         self.thread.join(timeout=15)
+        if self.port:
+            from tests._port_lock import release_ports
+
+            release_ports(self.port)
         if self._info is not None:
             K.INFO_MODE = self._info
 
