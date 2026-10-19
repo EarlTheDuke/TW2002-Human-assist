@@ -158,6 +158,51 @@ def tax_keep(reserve: int, planned_max: int, alignment: int) -> int:
     return min(int(reserve), line)
 
 
+def route_buy_price(ports) -> int | None:
+    """Cheapest unit a remembered port sells, when another port pays more for it.
+
+    That ask is the buy leg of a profitable pair. None when no such pair is priced.
+    """
+    sells: dict[str, int] = {}
+    buys: dict[str, int] = {}
+    for kp in ports or []:
+        if not isinstance(kp, dict):
+            continue
+        for commodity, stock in (kp.get("stock") or {}).items():
+            if not isinstance(stock, dict) or not isinstance(stock.get("price"), int):
+                continue
+            price = int(stock["price"])
+            if stock.get("side") == "sells_to_player" and int(stock.get("current") or 0) > 0:
+                old = sells.get(str(commodity))
+                if old is None or price < old:
+                    sells[str(commodity)] = price
+            elif stock.get("side") == "buys_from_player":
+                full = stock.get("max") is not None and int(stock.get("current") or 0) >= int(stock["max"])
+                if full:
+                    continue
+                old = buys.get(str(commodity))
+                if old is None or price > old:
+                    buys[str(commodity)] = price
+    best: int | None = None
+    for commodity, ask in sells.items():
+        bid = buys.get(commodity)
+        if bid is None or bid <= ask:
+            continue
+        if best is None or ask < best:
+            best = ask
+    return best
+
+
+def full_hold_cash(holds: int, ports) -> int:
+    """Cash for every hold at the route buy price. Zero while the switch is off."""
+    if not K.bot_bank_float_live():
+        return 0
+    price = route_buy_price(ports)
+    if price is None or int(holds) < 1:
+        return 0
+    return int(holds) * int(price)
+
+
 def deposit_amount(credits: int, reserve: int, deposit_max: int, *, day1: bool) -> int:
     """Spare above the away reserve. Day 1 deposits at most the first nest stage,
     and only when that still leaves the reserve on the ship."""

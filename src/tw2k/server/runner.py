@@ -247,7 +247,7 @@ class RunnerState:
 
 
 def reported_turns_used(result) -> int:
-    """The action's own charge. A refill in the same call does not shrink it."""
+    """The action's own charge (engine turns_spent). A refill in the same call does not shrink it."""
     return max(0, int(getattr(result, "turns_spent", 0) or 0))
 
 
@@ -1157,9 +1157,12 @@ class MatchRunner:
                 if callable(record_fn):
                     try:
                         auto = str(action.thought or "").startswith("[external")
+                        from ..engine.runner import last_turns_regenerated
+
                         record_fn(result.ok, result.error, list(result.event_seqs),
                                   action_kind=getattr(action.kind, "value", str(action.kind)), auto=auto,
-                                  turns_used=reported_turns_used(result))
+                                  turns_used=reported_turns_used(result),
+                                  turns_regenerated=last_turns_regenerated())
                     except Exception:
                         pass
                 if cockpit_pre is not None:
