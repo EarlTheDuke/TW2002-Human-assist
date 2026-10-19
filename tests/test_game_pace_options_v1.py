@@ -7,7 +7,6 @@ field leaves today's command and today's opening pocket alone.
 from __future__ import annotations
 
 import asyncio
-import random
 import threading
 import time
 from pathlib import Path
@@ -23,7 +22,6 @@ from tw2k.public import config as C
 from tw2k.public import pages
 from tw2k.public import security as S
 from tw2k.public import workers as WM
-from tw2k.public.config import port_is_free
 from tw2k.public.lobby import create_lobby_app
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
@@ -192,13 +190,9 @@ def test_the_redesign_cockpit_counts_the_seat_timer(monkeypatch, tmp_path) -> No
     import uvicorn
 
     monkeypatch.setattr(K, "V311_PROFILE", "legacy")
-    port = None
-    for _ in range(200):
-        candidate = random.Random(93).randrange(41000, 46000)
-        if port_is_free(candidate):
-            port = candidate
-            break
-    assert port
+    from tests._port_lock import claim_ports
+
+    port = claim_ports(1, low=41000, high=46000)
     app = create_app(auto_start=False)
     runner = app.state.runner
     runner._saves_root = tmp_path / "saves"

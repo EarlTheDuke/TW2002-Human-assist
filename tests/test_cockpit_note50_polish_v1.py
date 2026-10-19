@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tw2k.engine.capture import min_capture_qty
+from tw2k.engine.combat import combat_odds_of
 from tw2k.engine.models import Commodity, PlanetClass
 from tw2k.engine.planets import _complete_citadels
 
@@ -65,6 +67,16 @@ def _your_move(page) -> None:
     page.wait_for_function("() => document.querySelector('#waitchip').textContent === 'YOUR MOVE'", timeout=25_000)
 
 
+def _colonist_line(page, expected: str) -> str:
+    """The planet card is painted on the next cockpit refresh, after YOUR MOVE."""
+    page.wait_for_function(
+        "(want) => (document.querySelector('[data-colonists=trend]') || {}).textContent === want",
+        arg=expected,
+        timeout=20_000,
+    )
+    return page.locator("[data-colonists=trend]").inner_text()
+
+
 @pytest.fixture
 def world(tmp_path):
     sync = pytest.importorskip("playwright.sync_api").sync_playwright
@@ -112,12 +124,12 @@ def test_the_half_cap_line_shows_only_when_the_switch_is_on(world):
     assert all("colonists_text" not in row for row in owned)
     K.PLANET_GROWTH_MODE = "tw2002"
     _next(page, world["host"])
-    text = page.locator("[data-colonists=trend]").inner_text()
+    text = _colonist_line(page, "below half the class cap (30,000), about 5% more each day")
     assert text == "below half the class cap (30,000), about 5% more each day"
     _shoot(page, "below", "[data-colonists=trend]")
     planet.colonists[Commodity.ORGANICS] = 20_000
     _next(page, world["host"])
-    above = page.locator("[data-colonists=trend]").inner_text()
+    above = _colonist_line(page, "above half the class cap (30,000), about 5% die off each day")
     assert above == "above half the class cap (30,000), about 5% die off each day"
     _shoot(page, "above", "[data-colonists=trend]")
 
@@ -261,20 +273,24 @@ def test_two_cockpits_fight_outside_fedspace(tmp_path):
             spend_wait(ready())
         start = {pid: (int(universe.players[pid].experience), int(universe.players[pid].alignment)) for pid in ("P1", "P2")}
         lost = None
-        traded = {"P1": False, "P2": False}
+        # Who is offered the next move depends on the seat clock. At equal
+        # odds the exact fighter total captures, and one more destroys.
+        # Always send one over that window so the credit line is a destroy.
         for _ in range(6):
             actor = ready()
             other = "P2" if actor == "P1" else "P1"
             page = pages[actor]
+            df = int(universe.players[other].ship.fighters)
+            ds = int(universe.players[other].ship.shields)
+            defense = (df + ds) * combat_odds_of(universe.players[other])
+            qty = min_capture_qty(defense, combat_odds_of(universe.players[actor])) + 1
+            attacker_ship = universe.players[actor].ship
+            if int(attacker_ship.fighters) < qty:
+                attacker_ship.fighters = qty
             before = {
                 actor: (int(universe.players[actor].ship.fighters), int(universe.players[actor].ship.shields)),
-                other: (int(universe.players[other].ship.fighters), int(universe.players[other].ship.shields)),
+                other: (df, ds),
             }
-            df, ds = before[other]
-            if traded["P1"] and traded["P2"] and before[actor][0] >= df + ds > 0:
-                qty = df + ds
-            else:
-                qty = min(40, before[actor][0])
             page.keyboard.press("Escape")
             page.locator("[data-key=A]").click()
             try:
@@ -312,7 +328,6 @@ def test_two_cockpits_fight_outside_fedspace(tmp_path):
                 assert pairs[1] == before[other]
             else:
                 assert pairs[1] == (before[other][0] - after[other][0], before[other][1] - after[other][1])
-            traded[actor] = True
             log = page.locator("#log").inner_text()
             assert "fighters" in log and "shields" in log
             victim = pages[other]

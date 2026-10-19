@@ -262,19 +262,11 @@ def test_the_cockpit_names_the_owner_and_keeps_terra_apart(tmp_path) -> None:
     sync = pytest.importorskip("playwright.sync_api").sync_playwright
     import uvicorn
 
-    from tw2k.public.config import port_is_free
+    from tests._port_lock import claim_ports
     from tw2k.server.app import create_app
     from tw2k.server.runner import AgentSpec, MatchSpec
 
-    import random
-    base_port = None
-    rng = random.Random()
-    for _ in range(200):
-        cand = rng.randrange(40000, 46000)
-        if port_is_free(cand):
-            base_port = cand
-            break
-    assert base_port
+    base_port = claim_ports(1, low=40000, high=46000)
     token = "n" * 40
     app = create_app(auto_start=False)
     runner = app.state.runner

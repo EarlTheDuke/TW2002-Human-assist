@@ -6,7 +6,6 @@ import json
 import os
 import re
 import shutil
-import socket
 import subprocess
 import sys
 import threading
@@ -746,20 +745,9 @@ def _serve(handler) -> ThreadingHTTPServer:
 
 def _free_port() -> int:
     # Skip reserved live/QC ports 8031-8036 (same rule as tests/_cu_host.py).
-    port = 8040
-    while port < 8200:
-        if 8031 <= port <= 8036:
-            port += 1
-            continue
-        sock = socket.socket()
-        try:
-            sock.bind(("127.0.0.1", port))
-            return port
-        except OSError:
-            port += 1
-        finally:
-            sock.close()
-    raise RuntimeError("no free port")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(1, low=8040, high=8200, sequential=True)
 
 
 def _encode(path: Path, width: int, height: int, seconds: int, rate: int, pattern: list[tuple[int, int, int]]) -> bytes:

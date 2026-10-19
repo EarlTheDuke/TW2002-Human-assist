@@ -8,7 +8,6 @@ panel, and a tokenless seat use the words from the engine. Ports stay at
 
 from __future__ import annotations
 
-import socket
 from pathlib import Path
 
 import pytest
@@ -25,17 +24,10 @@ BLOCKED = set(range(8031, 8037)) | set(range(8099, 8120))
 
 
 def _safe_port(start: int = 8200) -> int:
+    from tests._port_lock import claim_ports
+
     begin = start if start >= 8200 else 8200
-    for port in range(begin, begin + 200):
-        if port in BLOCKED:
-            continue
-        with socket.socket() as sock:
-            try:
-                sock.bind(("127.0.0.1", port))
-                return port
-            except OSError:
-                continue
-    raise RuntimeError("no free port at or above 8200")
+    return claim_ports(1, low=begin, high=begin + 200, avoid=set(BLOCKED), sequential=True)
 
 
 def _box_in_view(page, selector: str) -> None:

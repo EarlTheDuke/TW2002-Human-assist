@@ -201,7 +201,6 @@ def test_redesign_registration_form_renames_the_ship(tmp_path, monkeypatch) -> N
     sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
     import tests._cu_host as hostmod
 
-    monkeypatch.setattr(hostmod, "free_port", lambda start=8050: 8058)
     monkeypatch.setattr(K, "SHIP_RENAME_MODE", "live")
     monkeypatch.delenv("COCKPIT_LAYOUT", raising=False)
     token = "note87-rename-token-p2-000000000000"
