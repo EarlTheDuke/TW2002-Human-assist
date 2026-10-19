@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (103 helpers)
+## The switch set (106 helpers)
 
 Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses rows 85-89. NOTE 86 uses rows 105-107.
 The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`).
@@ -118,6 +118,10 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 142 | `PORT_CLASS_NUMBER_FIX_MODE` | `port_class_number_fix` | NOTE 98 TRD-c. With the live class map, class 7 trades and displays as SSS. Class 8 stays the StarDock id and its buy-all book, which is the BBB tuple. Class 9 stays the built SSS port. No legacy class number changes. Stored default stays legacy | - |
 
 Rows 95 and 98 were already done on this tip, so they are not helpers. Row 95, Class 0 price change and FedSpace tows and clean-up, already run in `tick_day`: `fighter_unit_price`, `shield_unit_price` and `hold_day_base` move with the day; `fed.run_tows` tows ships; `class0.extern_sweep` clears MSL and Class 0 fighters and mines; `hardware.tick_navhaz` clears FedSpace NavHaz. Row 98, the C.E.O. leaving, already dissolves the corp and rogues fighters outside his sector (`corp.handle_corp_leave`, `corp.disband`).
+
+| 126 | `BOTS_UPGRADE_MODE` | `bots_upgrade_live` | NOTE 92: a code bot with spare cash buys holds up to the hull max, then trades up to a bigger trading hull at the yard's net cost (`TRADE_IN_PARTS_MODE` when that switch is on) and keeps a working float. It does not sell fighters to pay. Stored default stays legacy | - |
+| 127 | `BOTS_FERRENGI_RECOVERY_MODE` | `bots_ferrengi_recovery_live` | NOTE 92: after a Ferrengi tribute takes holds, the bot rebuys them at the next StarDock visit, plots there when holds fall under 10, and avoids that sector for two days using the hazard-memory window. Stored default stays legacy | - |
+| 128 | `BOTS_ESCAPE_MODE` | `bots_escape_live` | NOTE 92 DAY-g: a bot in a dead end, behind a one-way with no fresh exit, or after 8 quiet actions in one or two sectors, plots the shortest course toward StarDock (a waypoint when the full course is past the hop limit). That is before the 20-action stuck mark. Stored default stays legacy | - |
 
 Rows 91 and 92 were already done on this tip, so they are not helpers. Row 91, player-kill experience, already uses `COMBAT_EXP_DIVISOR` (`opposite` 15, `same` 35, `neutral` 25) and `KILL_EXP_SHARE` 0.10 (`victory.combat_rewards`, `victory.kill_rewards`). The cabal page prints one experience formula for MBBS and Gold, and says the sector-fighter experience is the same as MBBS. A separate classic experience table is not printed. Row 92, armid mines, already detonates `count // 2` of them (`hardware.armid_detonation_hits`) at `ARMID_DAMAGE_TW2002` (20), or 30 when the live shop card is on (`armid_hit_damage`). CMB-c is a plan only (`docs/plans/ship-odds-exchange-v1.md`), not a helper.
 

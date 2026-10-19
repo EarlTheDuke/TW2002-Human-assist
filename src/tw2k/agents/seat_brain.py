@@ -930,7 +930,13 @@ class SeatBrain:
             mem.last_action_sig = _signature(answer, v)
             mem.last_warp = None
             return self._finish(v, answer)
-        answer = self._corp_pair(v) or self._bank(v) or self._treasury(v) or self._port_upgrade(v) or self._port_build(v)
+        answer = self._note92_move(v)
+        if answer is not None:  # NOTE 92: off returns None, so the ladder below is unchanged
+            self._intent = Intent()
+            mem.last_action_sig = _signature(answer, v)
+            mem.last_warp = None
+            return self._finish(v, answer)
+        answer = self._corp_pair(v) or self._note92_dock(v) or self._bank(v) or self._treasury(v) or self._port_upgrade(v) or self._port_build(v)
         if answer is not None:  # port-upgrade-build-v1: widen a buying port, or (policy on) order one
             self._intent = Intent()
             mem.last_action_sig = _signature(answer, v)
@@ -6035,7 +6041,93 @@ class SeatBrain:
         # attach that price: a counter the port refuses spends the turn.
         return {"kind": kind, "args": args, "thought": f"SeatBrain: {thought}"}
 
+    def _note92_dock(self, v: View) -> dict[str, Any] | None:
+        from ..engine.constants import bots_ferrengi_recovery_live, bots_upgrade_live
+        from .bot_upgrades import dock_step
+
+        if not bots_upgrade_live() and not bots_ferrengi_recovery_live():
+            return None
+        ship = v.ship or {}
+        step = dock_step(
+            here=int(v.here) if v.here is not None else None,
+            class_key=str(v.ship_class or ""),
+            holds=int(ship.get("holds") or 0),
+            max_holds=int(ship.get("hold_cap") or ship.get("max_holds") or 0),
+            fighters=int(ship.get("fighters") or 0),
+            credits=int(v.credits),
+            day=int(v.day or 1),
+            legal_actions=v.obs.get("legal_actions"),
+        )
+        if step is None:
+            return None
+        return self._act(step["kind"], dict(step["args"]), step["thought"])
+
+    def _note92_move(self, v: View) -> dict[str, Any] | None:
+        from ..engine.constants import bots_escape_live, bots_ferrengi_recovery_live
+        from .bot_upgrades import escape_course, recovery_course
+
+        if not bots_escape_live() and not bots_ferrengi_recovery_live():
+            return None
+        if v.landed is not None or v.here is None:
+            return None
+        holds = int((v.ship or {}).get("holds") or 0)
+        home = None
+        if self.mem is not None and self.mem.home_sector is not None:
+            home = int(self.mem.home_sector)
+        execute = v.params("plot_course").get("execute") or {}
+        course_ok = bool(execute.get("legal")) if isinstance(execute, dict) else False
+        nav = getattr(self, "_nav_universe", None)
+        step = recovery_course(
+            here=int(v.here), holds=holds,
+            plot_legal=course_ok, warp_legal=True, home=home, universe=nav,
+        )
+        if step is None:
+            adj = [int(c) for c in v.choices("warp", "target")]
+            last = None
+            if self.mem is not None and self.mem.last_warp:
+                last = int(self.mem.last_warp[0])
+            step = escape_course(
+                here=int(v.here), adjacent_ids=adj, last_from=last,
+                trail=list(self.__dict__.get("_escape_trail") or []),
+                plot_legal=course_ok, warp_legal=True, universe=nav,
+            )
+        if step is None:
+            return None
+        return self._act(step["kind"], dict(step["args"]), step["thought"])
+
+    def _steer_ferrengi(self, v: View, action: dict[str, Any]) -> dict[str, Any]:
+        from ..engine.constants import bots_ferrengi_recovery_live
+        from .bot_upgrades import ferrengi_loss_sectors, steer_off_loss
+
+        if not bots_ferrengi_recovery_live():
+            return action
+        bad = ferrengi_loss_sectors(v.events, v.day, v.self_id)
+        if not bad:
+            return action
+        steered = steer_off_loss(action, bad, [int(c) for c in v.choices("warp", "target")])
+        if steered is action:
+            return action
+        return self._act(steered["kind"], dict(steered["args"]), steered["thought"])
+
     def _finish(self, v: View, action: dict[str, Any]) -> dict[str, Any]:
+        from ..engine.constants import bots_escape_live, bots_ferrengi_recovery_live
+
+        if bots_ferrengi_recovery_live():
+            steered = self._steer_ferrengi(v, action)
+            if steered is not action:
+                action = steered
+                if self.mem is not None:
+                    self.mem.last_action_sig = _signature(action, v)
+                    if (action.get("kind") == "warp" and v.here is not None
+                            and (action.get("args") or {}).get("target") is not None):
+                        self.mem.last_warp = (int(v.here), int(action["args"]["target"]))
+                    elif action.get("kind") in ("plot_course", "ship_transwarp"):
+                        self.mem.last_warp = None
+        if bots_escape_live() and v.here is not None:
+            trail = self.__dict__.setdefault("_escape_trail", [])
+            trail.append((int(v.here), str(action.get("kind") or "") == "trade"))
+            if len(trail) > 40:
+                del trail[:-40]
         mem = self.mem
         if mem is not None and str(action.get("kind") or "").startswith("buy_"):
             mem.bank_unspent = False

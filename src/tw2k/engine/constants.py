@@ -4312,6 +4312,19 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PORT_CLASS_NUMBER_FIX_MODE",
         "NOTE 98 TRD-c: live class 7 is SSS while StarDock stays id 8",
     ),
+    # NOTE 92 rows 126-128. Bot behaviour only. Stored default legacy.
+    "bots_upgrade_live": (
+        "BOTS_UPGRADE_MODE",
+        "NOTE 92: a code bot buys holds up to the hull max, then a bigger trading hull, and keeps a float",
+    ),
+    "bots_ferrengi_recovery_live": (
+        "BOTS_FERRENGI_RECOVERY_MODE",
+        "NOTE 92: after Ferrengi take holds, a code bot rebuys them and stays out of that sector",
+    ),
+    "bots_escape_live": (
+        "BOTS_ESCAPE_MODE",
+        "NOTE 92: a code bot in a dead end or behind a one-way plots the shortest course out",
+    ),
 }
 
 
@@ -4957,3 +4970,30 @@ def port_figs_to_blow(rating: int, odds: float) -> int:
 def port_class_number_fix() -> bool:
     """True when live class 7 trades and displays as SSS. StarDock stays id 8."""
     return PORT_CLASS_NUMBER_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# code-bot-upgrades-v1 (NOTE 92). Bot policy only. Each stored default stays
+# legacy; V311_PROFILE turns the helper on. The floor of 10 is the commander's
+# number for this slice (UNVERIFIED as a TWGS rule). The float matches the
+# existing H keep so a purchase still leaves a purse; it does not change the bank.
+BOTS_UPGRADE_MODE = "legacy"  # "legacy" | "live"
+BOTS_FERRENGI_RECOVERY_MODE = "legacy"  # "legacy" | "live"
+BOTS_ESCAPE_MODE = "legacy"  # "legacy" | "live"
+BOTS_HOLD_FLOOR = 10
+BOTS_WORKING_FLOAT = 10_000
+BOTS_ESCAPE_WINDOW = 20
+
+
+def bots_upgrade_live() -> bool:
+    """True when a code bot spends spare cash on holds, then a bigger trading hull."""
+    return BOTS_UPGRADE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def bots_ferrengi_recovery_live() -> bool:
+    """True when a code bot rebuys holds Ferrengi took and avoids that sector."""
+    return BOTS_FERRENGI_RECOVERY_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def bots_escape_live() -> bool:
+    """True when a code bot plots out of a dead end or a one-way pocket."""
+    return BOTS_ESCAPE_MODE == "live" or tw2002_live_profile() or v311_profile()

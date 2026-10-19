@@ -154,7 +154,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
               action_digest: bool = False, reader_start: str | None = None,
               war_report: bool = False, reject_report: int = 5,
               session_cap: dict[str, int] | None = None,
-              study: bool = False, play_to_day_cap: bool = False) -> dict[str, Any]:
+              study: bool = False, play_to_day_cap: bool = False,
+              include_rows: bool = False) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
     from tw2k.agents.seat_brain import SeatBrain
@@ -190,10 +191,15 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "rej_validate": 0, "rej_engine": 0,
             "rej_top": collections.Counter(), "exceptions": 0, "buys": 0, "sells": 0, "units_sold": 0,
             "realized": 0, "idle_done": False, "zero_streak": 0, "forced_done": 0, "wasted_turns": 0,
-            "rows": [], "daily": [], "start_sector": p.sector_id,
+            "rows": [], "row_days": [], "daily": [], "start_sector": p.sector_id,
             "exp0": int(p.experience), "align0": int(p.alignment),
             "bank_carry": 0, "bank_detours": 0, "broke_days": 0,
         }
+        # Read only while a NOTE 92 switch is on. Profile-off never consults it.
+        if st[pid]["brain"] is not None:
+            st[pid]["brain"]._nav_universe = u
+        if st[pid]["agent"] is not None:
+            st[pid]["agent"]._course_universe_ref = u
     if reader_start == "f1":
         for pid, row in st.items():
             if row["kind"] == "R":
@@ -328,6 +334,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
                 if "bank the spare cash on the way" in thought:
                     s["bank_detours"] += 1
             s["rows"].append((sector_before, kind, args.get("target") or args.get("planet_id")))
+            s["row_days"].append(int(day_before))
             if kind == "query_limpets":
                 s["idle_done"] = True
             s["zero_streak"] = s["zero_streak"] + 1 if spent == 0 else 0
@@ -366,6 +373,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         # SEAT_XP is a report switch. Unset, this dict stays the legacy shape the bank pin hashes.
         if os.environ.get("SEAT_XP"):
             players[pid]["experience"] = int(p.experience)
+        if include_rows:
+            players[pid]["rows"] = list(s["rows"])
+            players[pid]["row_days"] = list(s["row_days"])
         # An all-legacy digest hashes this dict. The key appears only while a tw2002
         # switch that this slice teaches is on, so the legacy golden stays put.
         if K.rob_tw2002() or K.hardware_tw2002() or K.class0_tw2002():
