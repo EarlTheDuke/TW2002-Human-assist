@@ -25,9 +25,9 @@ pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows host (job objec
 
 
 def _free_block(n: int) -> int:
-    from tests._port_lock import claim_ports
+    from tests._cu_host import LOBBY_FREE_START, free_port
 
-    return claim_ports(n, low=40000, high=46000)
+    return free_port(LOBBY_FREE_START, count=n)
 
 
 def _start(env: dict, root: Path, url: str) -> subprocess.Popen:

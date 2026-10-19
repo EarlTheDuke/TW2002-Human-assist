@@ -65,10 +65,9 @@ def release_info_mode(holder) -> None:
 
 
 # Live games and standing test servers. free_port may hand out only the open
-# pockets below. Every other port from 8031 through 8119 is listed here so
-# other claim_ports callers can avoid them. 8060 and above stay out of the
-# free_port walk, including 8120-8249; this set stops at 8119 so a host that
-# deliberately claims 8200+ still can. 8037 is a live game. 8058 is the
+# pockets below, then an OS ephemeral port. Every other port from 8031 through
+# 8119 is listed here so a caller can tell a live port from a pocket. 8060 and
+# above are not scanned, including 8120-8249. 8037 is a live game. 8058 is the
 # watcher and 8059 is the Commander test.
 OPEN_TEST_PORTS = (
     8038, 8039, 8040,
@@ -83,25 +82,41 @@ RESERVED_TEST_PORTS = frozenset().union(
     range(8060, 8099),
     range(8099, 8120),
 )
+# LobbyConfig refuses 8031-8098, and that band includes the open pockets.
+# A lobby test starts here so the only answer is an OS ephemeral port.
+LOBBY_FREE_START = 8099
 _EPHEMERAL_TRIES = 16
 _SCAN_GAP = range(8120, 8250)
 
 
-def free_port(start: int = 8050) -> int:
-    """An open-pocket port, or an OS ephemeral port when those are busy.
+def allowed_test_port(port: int) -> bool:
+    """True for an open pocket or an OS port outside the protected band."""
+    port = int(port)
+    if port in OPEN_TEST_PORTS:
+        return True
+    return port not in RESERVED_TEST_PORTS and port not in _SCAN_GAP and port >= 8060
 
-    The walk is only OPEN_TEST_PORTS at or above ``start``. It does not scan
-    8060 or any higher port, so 8120-8249 is never visited. Binding port 0
-    is the fallback.
+
+def free_port(start: int = 8050, *, count: int = 1) -> int:
+    """The base of ``count`` ports from the open pockets, or an OS ephemeral block.
+
+    The walk is only OPEN_TEST_PORTS at or above ``start``, and only a contiguous
+    run. It does not scan 8060 or any higher port, so 8120-8249 is never visited.
+    Binding port 0 is the fallback. A block longer than one port binds the ports
+    immediately above that OS assignment, and the whole block is dropped if any
+    of them is protected or already held.
     """
     from tests._port_lock import claim_ports
 
+    count = int(count)
+    if count < 1:
+        raise RuntimeError("port count must be positive")
     candidates = [p for p in OPEN_TEST_PORTS if p >= int(start)]
-    if candidates:
+    if _has_run(candidates, count):
         window = set(range(candidates[0], candidates[-1] + 1))
         try:
             return claim_ports(
-                1,
+                count,
                 low=candidates[0],
                 high=candidates[-1] + 1,
                 avoid=window - set(candidates),
@@ -109,27 +124,57 @@ def free_port(start: int = 8050) -> int:
             )
         except RuntimeError:
             pass
-    return _ephemeral_port()
+    return _ephemeral_port(count)
 
 
-def _ephemeral_port() -> int:
+def _has_run(ports: list[int], count: int) -> bool:
+    run = 0
+    prev = None
+    for port in ports:
+        run = run + 1 if prev is not None and port == prev + 1 else 1
+        if run >= count:
+            return True
+        prev = port
+    return False
+
+
+def _ephemeral_port(count: int = 1) -> int:
     """Bind port 0 and record the OS assignment in the shared port book."""
     import socket
 
     from tests._port_lock import _HOLD_S, _read, _write, port_lock
 
+    def blocked(port: int) -> bool:
+        return port in RESERVED_TEST_PORTS or port in _SCAN_GAP or port < 8060
+
     with port_lock():
         taken = _read()
         held = {int(k) for k in taken}
         for _ in range(_EPHEMERAL_TRIES):
-            with socket.socket() as sock:
-                sock.bind(("127.0.0.1", 0))
-                port = int(sock.getsockname()[1])
-            if port in held or port in RESERVED_TEST_PORTS or port in _SCAN_GAP or port < 8060:
+            socks: list = []
+            try:
+                first = socket.socket()
+                socks.append(first)
+                first.bind(("127.0.0.1", 0))
+                base = int(first.getsockname()[1])
+                ports = list(range(base, base + count))
+                if any(port in held or blocked(port) for port in ports):
+                    continue
+                for port in ports[1:]:
+                    extra = socket.socket()
+                    socks.append(extra)
+                    extra.bind(("127.0.0.1", port))
+                until = time.time() + _HOLD_S
+                for port in ports:
+                    taken[str(port)] = until
+                    held.add(port)
+                _write(taken)
+                return base
+            except OSError:
                 continue
-            taken[str(port)] = time.time() + _HOLD_S
-            _write(taken)
-            return port
+            finally:
+                for sock in socks:
+                    sock.close()
     raise RuntimeError("no ephemeral port")
 
 

@@ -692,9 +692,9 @@ def _stock(planet: Planet, level: int) -> None:
 
 
 def _free_port() -> int:
-    from tests._port_lock import claim_ports
+    from tests._cu_host import free_port
 
-    return claim_ports(1, low=9201, high=9220, sequential=True)
+    return free_port()
 
 
 class _TwoSeat:
@@ -819,8 +819,8 @@ def test_two_cockpits_show_the_pod_and_the_siege(monkeypatch, tmp_path) -> None:
     import httpx
 
     _profile(monkeypatch, True)
-    lines = ["two cockpits, profile on, ports 9201-9219"]
     with _TwoSeat(tmp_path) as host:
+        lines = [f"two cockpits, profile on, port {host.port}"]
         universe = host.runner.state.universe
         assert universe is not None
         alice = universe.players["P1"]

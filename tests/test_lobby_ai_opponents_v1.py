@@ -123,13 +123,21 @@ def test_a_posted_key_stays_out_of_files_logs_and_responses(tmp_path, monkeypatc
     monkeypatch.setattr(K, "LOBBY_AI_SEAT_MODE", "on")
     secret = _runtime_key()
     endpoint = "http://127.0.0.1:9/note100-endpoint"
-    cfg = LobbyConfig(root=tmp_path / "selfhost", port=47299, game_ports=range(47300, 47310), tick_s=3600.0)
+    from tests._cu_host import LOBBY_FREE_START, free_port
+    from tests._port_lock import release_ports
+
+    lobby_port = free_port(LOBBY_FREE_START)
+    game_base = free_port(LOBBY_FREE_START, count=10)
+    cfg = LobbyConfig(
+        root=tmp_path / "selfhost", port=lobby_port,
+        game_ports=range(game_base, game_base + 10), tick_s=3600.0,
+    )
     app = create_lobby_app(cfg, port_probe=lambda _p: True)
     lob = app.state.lobby
     lob.cfg.new_games_per_hour = 100
 
     async def fake_start(gid, *, resume):
-        lob.store.set_game(gid, status="running", port=47300)
+        lob.store.set_game(gid, status="running", port=game_base)
         return True
 
     lob.start_game = fake_start
@@ -161,6 +169,7 @@ def test_a_posted_key_stays_out_of_files_logs_and_responses(tmp_path, monkeypatc
         lob._drop_ai(gid)
         assert lob.ai_memory.row(gid) is None
         assert secret not in _walk_text(lob.cfg.root)
+    release_ports(lobby_port, *range(game_base, game_base + 10))
 
 
 def test_profile_does_not_turn_lobby_ai_on(monkeypatch) -> None:

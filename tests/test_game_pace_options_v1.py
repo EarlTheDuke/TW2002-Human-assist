@@ -121,26 +121,37 @@ def test_hold_box_defaults_on_and_a_missing_field_stays_off() -> None:
 def test_new_game_screen_links_a_game_that_is_already_waiting(tmp_path, monkeypatch) -> None:
     for name in ("TW2K_PUBLIC_MODE", "TW2K_BRAND", "TW2K_BASE_PATH", "TW2K_SPECTATOR_TOKEN"):
         monkeypatch.delenv(name, raising=False)
-    cfg = C.LobbyConfig(root=tmp_path / "selfhost", port=47221, game_ports=range(47230, 47240), tick_s=3600.0)
-    app = create_lobby_app(cfg, port_probe=lambda _p: True)
-    lob = app.state.lobby
+    from tests._cu_host import LOBBY_FREE_START, free_port
+    from tests._port_lock import release_ports
 
-    async def fake_start(gid, *, resume):
-        lob.store.set_game(gid, status="running", port=47230)
-        return True
+    lobby_port = free_port(LOBBY_FREE_START)
+    game_base = free_port(LOBBY_FREE_START, count=10)
+    try:
+        cfg = C.LobbyConfig(
+            root=tmp_path / "selfhost", port=lobby_port,
+            game_ports=range(game_base, game_base + 10), tick_s=3600.0,
+        )
+        app = create_lobby_app(cfg, port_probe=lambda _p: True)
+        lob = app.state.lobby
 
-    lob.start_game = fake_start
-    with TestClient(app) as client:
-        assert client.post("/api/accept", json={}).status_code == 200
-        made = client.post("/api/games", json={"name": "Waiting", "humans": 1, "bots": 0})
-        assert made.status_code == 200, made.text
-        gid = made.json()["id"]
-        page = client.get("/new")
-        assert page.status_code == 200
-        assert 'data-waiting="game"' in page.text
-        assert "You have a game waiting." in page.text
-        assert f'href="/games/{gid}/join"' in page.text
-        assert "Join it" in page.text
+        async def fake_start(gid, *, resume):
+            lob.store.set_game(gid, status="running", port=game_base)
+            return True
+
+        lob.start_game = fake_start
+        with TestClient(app) as client:
+            assert client.post("/api/accept", json={}).status_code == 200
+            made = client.post("/api/games", json={"name": "Waiting", "humans": 1, "bots": 0})
+            assert made.status_code == 200, made.text
+            gid = made.json()["id"]
+            page = client.get("/new")
+            assert page.status_code == 200
+            assert 'data-waiting="game"' in page.text
+            assert "You have a game waiting." in page.text
+            assert f'href="/games/{gid}/join"' in page.text
+            assert "Join it" in page.text
+    finally:
+        release_ports(lobby_port, *range(game_base, game_base + 10))
 
 
 def test_the_clock_and_the_bots_wait_for_the_first_open_seat(monkeypatch, tmp_path) -> None:
@@ -196,9 +207,10 @@ def test_the_redesign_cockpit_counts_the_seat_timer(monkeypatch, tmp_path) -> No
     import uvicorn
 
     monkeypatch.setattr(K, "V311_PROFILE", "legacy")
-    from tests._port_lock import claim_ports, release_ports
+    from tests._cu_host import free_port
+    from tests._port_lock import release_ports
 
-    port = claim_ports(1, low=41000, high=46000)
+    port = free_port()
     app = create_app(auto_start=False)
     runner = app.state.runner
     runner._saves_root = tmp_path / "saves"

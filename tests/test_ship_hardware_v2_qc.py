@@ -225,11 +225,11 @@ def test_free_port_skips_reserved_live_range(monkeypatch) -> None:
     assert 8037 in RESERVED_TEST_PORTS
     assert 8058 in RESERVED_TEST_PORTS and 8059 in RESERVED_TEST_PORTS
 
-    calls: list[tuple[int, int]] = []
+    calls: list[tuple[int, int, int]] = []
     real_claim = _port_lock.claim_ports
 
     def _spy(n, *, low, high, avoid=None, sequential=False):
-        calls.append((low, high))
+        calls.append((n, low, high))
         return real_claim(n, low=low, high=high, avoid=avoid, sequential=sequential)
 
     monkeypatch.setattr(cfg, "port_is_free", lambda port, host="127.0.0.1": True)
@@ -241,14 +241,17 @@ def test_free_port_skips_reserved_live_range(monkeypatch) -> None:
     assert free_port(start=8031) == 8038
     assert free_port(start=8041) == 8043
     assert free_port(start=8045) == 8050
-    assert calls
-    for low, high in calls:
+    for count, low, high in calls:
+        assert count == 1
         assert low >= 8038 and high <= 8055
         assert not set(range(low, high)) & set(range(8120, 8250))
+    calls.clear()
+    assert free_port(count=2) == 8050
+    assert calls == [(2, 8050, 8055)]
 
     book: dict[str, float] = {}
     binds: list[tuple[str, int]] = []
-    offered = iter([8120, 45555, 8249, 47001, 8125, 47002])
+    offered = iter([8120, 45555, 8249, 47001, 8125, 47002, 47010])
 
     class _Sock:
         def __enter__(self):
@@ -259,10 +262,13 @@ def test_free_port_skips_reserved_live_range(monkeypatch) -> None:
 
         def bind(self, addr):
             binds.append(addr)
-            self._port = next(offered)
+            self._port = next(offered) if addr[1] == 0 else addr[1]
 
         def getsockname(self):
             return ("127.0.0.1", self._port)
+
+        def close(self):
+            return None
 
     def _read():
         return dict(book)
@@ -280,16 +286,18 @@ def test_free_port_skips_reserved_live_range(monkeypatch) -> None:
     assert free_port() == 45555
     assert free_port(start=8055) == 47001
     assert free_port(start=8099) == 47002
+    assert free_port(start=8099, count=10) == 47010
     assert len(calls) == 1
-    low, high = calls[0]
+    count, low, high = calls[0]
+    assert count == 1
     assert low >= 8038 and high <= 8055
     assert not set(range(low, high)) & set(range(8120, 8250))
-    assert binds
-    assert all(addr == ("127.0.0.1", 0) for addr in binds)
-    assert "45555" in book and "47001" in book and "47002" in book
+    assert any(addr == ("127.0.0.1", 0) for addr in binds)
+    assert all(addr[1] == 0 or addr[1] >= 8250 for addr in binds)
+    assert "45555" in book and "47001" in book and "47002" in book and "47010" in book
     for blocked in ("8120", "8249", "8125"):
         assert blocked not in book
-    for port in (45555, 47001, 47002):
+    for port in (45555, 47001, 47002, 47010):
         assert port not in range(8120, 8250)
         assert port not in RESERVED_TEST_PORTS
 

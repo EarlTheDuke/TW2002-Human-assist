@@ -118,9 +118,9 @@ def test_the_cockpit_shows_the_day_clock_and_the_refill(monkeypatch, tmp_path) -
     # The match copies this game's 600s day onto the process-wide clock and the
     # server thread outlives the test. Put the saved value back with the test.
     monkeypatch.setattr(K, "TURN_REGEN_DAY_SECONDS", K.TURN_REGEN_DAY_SECONDS)
-    from tests._port_lock import claim_ports
+    from tests._cu_host import free_port
 
-    port = claim_ports(1, low=40000, high=46000)
+    port = free_port()
     app = create_app(auto_start=False)
     runner = app.state.runner
     runner._saves_root = tmp_path / "saves"
