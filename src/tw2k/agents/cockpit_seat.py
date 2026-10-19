@@ -10,12 +10,21 @@ turn from the observation the cockpit paints, the Rules and Help page, and
 the seat's own notes of what it saw. ``run_http`` wires the seat to a server
 over HTTP with one bearer token. Each time the seat has to guess something
 the cockpit does not show, it writes a gap row.
+
+NOTE 95. The same client plays a V311_PROFILE game. It lifts off the home
+world before it warps, waits out an HTTP 429 from the live action route,
+drops a plotted course the route refused, and stays out of a sector an event
+already named as a hazard. An optional LLM hook reads its key from the
+environment and is skipped when that variable is empty, so tests open no socket.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 import time
+import urllib.request
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -102,6 +111,29 @@ class CockpitSeat:
             "action": {"kind": kind, "args": args},
         })
 
+    async def _post_turn(self, turn_seq: int, kind: str, args: dict[str, Any]) -> str:
+        """Post one action. ``skip`` means the turn closed before the post landed.
+
+        NOTE 95. V311_PROFILE turns the live action route on, and that route
+        answers 429 once 30 posts land inside 10 seconds. The seat waits and
+        retries the same turn. A 409 means the day clock moved the turn on.
+        """
+        try:
+            await self.post_action(turn_seq, kind, args)
+        except CockpitHTTPError as exc:
+            text = _http_text(exc.detail)
+            if exc.status == 409 and "game_over" in text:
+                return "over"
+            if exc.status == 409 and ("stale_turn" in text or "not_awaiting" in text):
+                return "skip"
+            # The live route counts every post. Replaying the same action after the
+            # wait can land on a day the clock already rolled, so decide again.
+            if exc.status == 429:
+                await asyncio.sleep(1.0)
+                return "reread"
+            raise
+        return "ok"
+
     async def run_day1(self) -> list[dict[str, Any]]:
         """Leave StarDock, warp one hop, then buy one unit or wait."""
         if not K.ai_cockpit_seat_on():
@@ -148,7 +180,8 @@ class CockpitSeat:
             },
         ]
 
-    async def run(self, days: int, *, idle_s: float = 600.0, max_posts: int = 6000) -> dict[str, Any]:
+    async def run(self, days: int, *, idle_s: float = 600.0, max_posts: int = 6000,
+                  llm_ask: Callable[..., Any] | None = None) -> dict[str, Any]:
         """Play ``days`` game days from the day the seat starts on. Returns the day table, refusals, and gaps.
 
         NOTE 56 item 7a: ``days`` counts from now. A seat that joins on day 4 with
@@ -173,6 +206,7 @@ class CockpitSeat:
             "kinds": {},
             "log": [],
             "cockpit_fields": False,
+            "died": False,
         }
         table: dict[int, dict[str, Any]] = {}
         since = 0
@@ -198,6 +232,9 @@ class CockpitSeat:
                 # A new day: Rules and Help prints today's next-hold price.
                 seen_day = int(obs.get("day") or 0)
                 brain.hold_price = reference_hold_price(await self.read("reference")) or brain.hold_price
+            if obs and obs.get("alive") is False:
+                report["died"] = True
+                break
             if not body.get("awaiting_input") or body.get("peek") or not obs:
                 await asyncio.sleep(0.05)
                 continue
@@ -206,7 +243,11 @@ class CockpitSeat:
                 await asyncio.sleep(0.05)
                 continue
             last_progress = time.monotonic()
-            kind, args, why = brain.decide(obs, cockpit)
+            picked = llm_choose(obs, cockpit, ask=llm_ask)
+            if picked is None:
+                kind, args, why = brain.decide(obs, cockpit)
+            else:
+                kind, args, why = picked
             day = int(obs.get("day") or 0)
             row = table[day]
             report["posts"] += 1
@@ -215,14 +256,32 @@ class CockpitSeat:
             if report["posts"] > max_posts:
                 raise CockpitSeatError("too many posts")
             try:
-                await self.post_action(turn, kind, args)
+                outcome = await self._post_turn(turn, kind, args)
             except CockpitHTTPError as exc:
                 report["refused"].append({"day": day, "turn_seq": turn, "kind": kind, "args": args,
                                           "why": why, "http": exc.status, "detail": exc.detail})
                 row["refused"] += 1
-                brain.refused(kind, args, str(exc.detail))
+                brain.refused(kind, args, _http_text(exc.detail))
                 last_turn = turn
                 continue
+            if outcome in ("skip", "reread"):
+                # The day clock rolled, the turn closed, or the live route asked for a pause.
+                report["posts"] -= 1
+                row["posts"] -= 1
+                report["kinds"][kind] = report["kinds"].get(kind, 1) - 1
+                if report["kinds"][kind] <= 0:
+                    report["kinds"].pop(kind, None)
+                if outcome == "skip":
+                    last_turn = turn
+                continue
+            if outcome == "over":
+                report["posts"] -= 1
+                row["posts"] -= 1
+                report["kinds"][kind] = report["kinds"].get(kind, 1) - 1
+                if report["kinds"][kind] <= 0:
+                    report["kinds"].pop(kind, None)
+                finished = True
+                break
             last_turn = turn
             result = await self._result(turn, fields=cockpit is not None)
             _note_result(table, day, result, turn)
@@ -319,6 +378,15 @@ def _note_day(table: dict[int, dict[str, Any]], obs: dict[str, Any], turn: int |
     row["turns_used"] = max(int(row["turns_used"]), per_day - left)
     row["sector_end"] = int((obs.get("sector") or {}).get("id") or 0)
     row["holds_end"] = int((obs.get("ship") or {}).get("holds") or 0)
+    row["experience_end"] = int(obs.get("experience") or 0)
+    row["rank_title"] = str(obs.get("rank") or "")
+    name = str(obs.get("self_name") or "")
+    for ranked in obs.get("trader_rankings") or []:
+        if str(ranked.get("name") or "") == name and ranked.get("rank") is not None:
+            row["experience_place"] = int(ranked["rank"])
+            break
+    rivals = obs.get("rivals") or []
+    row["net_worth_place"] = 1 + sum(1 for rival in rivals if int(rival.get("net_worth") or 0) > worth)
 
 
 def _note_result(table: dict[int, dict[str, Any]], day: int, result: dict[str, Any], turn: int = 0) -> None:
@@ -433,6 +501,14 @@ GAP_TEXT = {
         "The challenge shows the enemy fighter count. The seat compares it to its own fighters and prefers pay or retreat.",
         "The original shows the fighter count and your own fighters on the same screen",
     ),
+    # NOTE 95 (AI-c). The adjacent row grows mines, fighters and NavHaz only after a scan.
+    # The v3.11 stake is 300 credits and a density scanner is 2,000, so this seat cannot buy one.
+    "hazard_unseen": (
+        "Warp into a sector the cockpit has not described",
+        "Mines, fighters and NavHaz in the next sector",
+        "The adjacent row lists them only after a scan. This seat cannot afford a scanner on the v3.11 stake, so it learns a sector from the event after it enters.",
+        "The original also hides mines and fighters until a scanner or a hit",
+    ),
 }
 
 # NOTE 56: where each gap sits once the cockpit block is on (COCKPIT_FIELDS_MODE tw2002).
@@ -445,6 +521,10 @@ GAP_FIELDS = {
     "hold_curve": ("closed", "The StarDock holds form shows the next-hold price, how many you can afford and, once an amount is typed, the total before CONFIRM (cockpit.hold_quote)."),
     "one_way": ("same as original", "Computer K lists warps for visited sectors only, as the original's CIM warp data."),
     "challenge_strength": ("same as original", "The challenge shows the enemy fighters and your own, as the original."),
+    "hazard_unseen": (
+        "cockpit bug",
+        "Still absent on the adjacent row before a scan. The seat avoids a sector after an event names the mines, fighters or NavHaz.",
+    ),
 }
 
 
@@ -461,6 +541,8 @@ class SeatBrain:
         self.gaps: dict[str, int] = {}
         self.last_plan: dict[str, Any] | None = None
         self.bad_warps: set[tuple[int, int]] = set()
+        self.bad_plots: set[int] = set()
+        self.hazards: set[int] = set()
         self._turn_gaps: set[str] | None = None
         self.hold_price = int(hold_price or 0)
         self.dock_trip = False
@@ -497,6 +579,12 @@ class SeatBrain:
         summary = str(ev.get("summary") or "")
         if "counter " in summary and self.cockpit is None:
             self.gap("counter_in_log")
+        low = summary.lower()
+        sid = ev.get("sector_id")
+        if sid is None:
+            sid = (ev.get("facts") or {}).get("sector_id")
+        if sid is not None and any(tok in low for tok in ("mines hit", "navhaz", "armid", "limpet")):
+            self.hazards.add(int(sid))
 
     def refused(self, kind: str, args: dict[str, Any], error: str) -> None:
         if kind == "trade":
@@ -508,6 +596,11 @@ class SeatBrain:
                 self.gap("counter_in_log")
         if kind == "warp" and self.last_plan:
             self.bad_warps.add((int(self.last_plan.get("from") or 0), int(args.get("target") or 0)))
+        if kind == "plot_course":
+            self.bad_plots.add(int(args.get("target") or 0))
+        low = error.lower()
+        if any(tok in low for tok in ("mines", "navhaz", "armid", "limpet")) and self.last_plan:
+            self.hazards.add(int(args.get("target") or self.last_plan.get("to") or 0))
 
     def done(self, kind: str, args: dict[str, Any], *, verdict: bool = False) -> None:
         if not verdict:
@@ -560,6 +653,15 @@ class SeatBrain:
         sector = obs.get("sector") or {}
         here = int(sector.get("id") or 0)
         edges[here] = {int(w) for w in (sector.get("warps_out") or [])} - {b for a, b in self.bad_warps if a == here}
+        # A sector that already dealt mine or NavHaz damage stays off the route.
+        # The hop out of the sector we are standing in is kept when every neighbor is one.
+        for src in list(edges):
+            if src == here:
+                continue
+            edges[src] = {dst for dst in edges[src] if dst not in self.hazards}
+        safe_here = {dst for dst in edges[here] if dst not in self.hazards}
+        if safe_here:
+            edges[here] = safe_here
         return edges
 
     @staticmethod
@@ -628,8 +730,14 @@ class SeatBrain:
 
     def _decide(self, obs: dict[str, Any]) -> tuple[str, dict[str, Any], str]:
         self._record(obs)
+        self._note_here(obs)
         if obs.get("ferrengi_encounter") or obs.get("fighter_challenge"):
             return self._answer(obs)
+        # V311 starts the seat landed on its home world. Warp and trade both say
+        # "lift off first", and a wait there only burns the day.
+        lift = _legal(obs, "liftoff") or {}
+        if lift.get("legal"):
+            return "liftoff", {}, "lift off before warp or trade"
         sector = obs.get("sector") or {}
         here = int(sector.get("id") or 0)
         day = int(obs.get("day") or 0)
@@ -706,23 +814,74 @@ class SeatBrain:
         here = int((obs.get("sector") or {}).get("id") or 0)
         choices = [int(x) for x in (((warp.get("params") or {}).get("target") or {}).get("choices") or [])]
         hop = first.get(target)
-        if hop is not None and hop in choices:
-            self.last_plan = {"from": here, "to": target}
-            return "warp", {"target": hop}, why
-        if hop is not None:
+        if hop is not None and hop in choices and hop not in self.hazards:
+            return self._warp_hop(obs, here, hop, target, why)
+        if hop is not None and hop in self.hazards:
+            safe = [c for c in choices if c not in self.hazards]
+            if safe:
+                return self._warp_hop(obs, here, safe[0], target, "around a known hazard")
+        elif hop is not None:
             self.no_edge.add((here, hop))
             self.gap("one_way")
         plot = _legal(obs, "plot_course") or {}
         execute = ((plot.get("params") or {}).get("execute") or {})
-        if plot.get("legal") and execute.get("legal", True):
+        if plot.get("legal") and execute.get("legal", True) and target not in self.bad_plots:
             self.last_plan = {"from": here, "to": target}
+            if hop is None or self._hop_unread(obs, hop):
+                self.gap("hazard_unseen")
             return "plot_course", {"target": target, "execute": True}, why + " (course plotter)"
+        safe = [c for c in choices if c not in self.hazards]
+        if safe:
+            return self._warp_hop(obs, here, safe[0], target, "first warp")
         if choices:
-            return "warp", {"target": choices[0]}, "first warp"
+            return self._warp_hop(obs, here, choices[0], target, "first warp")
         return "wait", {}, "no warp out"
+
+    def _warp_hop(self, obs: dict[str, Any], here: int, hop: int, target: int, why: str):
+        self.last_plan = {"from": here, "to": target}
+        if self._hop_unread(obs, hop):
+            self.gap("hazard_unseen")
+        return "warp", {"target": hop}, why
+
+    def _note_here(self, obs: dict[str, Any]) -> None:
+        """Remember a hazard the cockpit is showing right now."""
+        sector = obs.get("sector") or {}
+        here = int(sector.get("id") or 0)
+        if sector.get("mines") or sector.get("nav_hazard_pct"):
+            self.hazards.add(here)
+        me = str(obs.get("self_id") or "")
+        for row in obs.get("adjacent") or []:
+            sid = int(row.get("id") or 0)
+            if not sid:
+                continue
+            if int(row.get("mines") or 0) > 0:
+                self.hazards.add(sid)
+            owner = row.get("fighter_owner")
+            if owner and str(owner) != me and int(row.get("fighter_count") or 0) > 0:
+                self.hazards.add(sid)
+            nav = row.get("navhaz")
+            try:
+                nav_n = float(nav) if nav not in (None, "") else 0.0
+            except (TypeError, ValueError):
+                nav_n = 0.0
+            if nav_n > 0:
+                self.hazards.add(sid)
+
+    def _hop_unread(self, obs: dict[str, Any], hop: int) -> bool:
+        """True when this hop's mines, fighters and NavHaz are not on the adjacent row."""
+        if hop in self.visited or hop in self.hazards:
+            return False
+        for row in obs.get("adjacent") or []:
+            if int(row.get("id") or 0) != hop:
+                continue
+            if any(key in row for key in ("mines", "fighter_count", "navhaz")):
+                return False
+            return True
+        return True
 
     def _answer(self, obs: dict[str, Any]) -> tuple[str, dict[str, Any], str]:
         self.gap("challenge_strength")
+        here = int((obs.get("sector") or {}).get("id") or 0)
         credits = int(obs.get("credits") or 0)
         mine = int((obs.get("ship") or {}).get("fighters") or 0)
         ferrengi = obs.get("ferrengi_encounter")
@@ -749,6 +908,9 @@ class SeatBrain:
                 return "attack", {"target": picks[0], "qty": qty}, "attack, more fighters than the enemy"
             if kind == "surrender" and not ferrengi and mine > 0:
                 continue
+            if kind == "retreat":
+                # Walking back into the same fighters spends the day. Stay out.
+                self.hazards.add(here)
             return kind, {}, f"{kind} the challenge"
         return "wait", {}, "no answer is open"
 
@@ -1034,3 +1196,101 @@ async def run_http(client: Any, seat_id: str, token: str, days: int, **kwargs: A
     """Play ``days`` days for one seat through an httpx.AsyncClient."""
     get, post = http_calls(client, token)
     return await CockpitSeat(seat_id, get, post).run(days, **kwargs)
+
+
+def _http_text(detail: Any) -> str:
+    if isinstance(detail, dict):
+        return json.dumps(detail, sort_keys=True)
+    return str(detail)
+
+
+# NOTE 95. The heuristic brain stays the default. A key in the environment
+# selects the optional hook. No key, no URL, and no socket.
+LLM_KEY_ENV = "TW2K_COCKPIT_LLM_KEY"
+LLM_URL_ENV = "TW2K_COCKPIT_LLM_URL"
+LLM_MODEL_ENV = "TW2K_COCKPIT_LLM_MODEL"
+
+
+def cockpit_llm_key() -> str:
+    """The seat's LLM key, or "" when the operator did not set one. Never a default."""
+    return os.environ.get(LLM_KEY_ENV, "").strip()
+
+
+def llm_choose(
+    obs: dict[str, Any],
+    cockpit: dict[str, Any] | None = None,
+    *,
+    key: str | None = None,
+    ask: Callable[..., Any] | None = None,
+) -> tuple[str, dict[str, Any], str] | None:
+    """One LLM choice, or None so the heuristic decides.
+
+    ``key`` defaults to ``TW2K_COCKPIT_LLM_KEY``. An empty key returns before
+    ``ask`` is called. Tests pass ``ask`` and never open a socket.
+    """
+    secret = cockpit_llm_key() if key is None else str(key or "").strip()
+    if not secret:
+        return None
+    caller = ask or _llm_http_choose
+    try:
+        picked = caller(secret, obs, cockpit)
+    except Exception:
+        return None
+    return _coerce_llm(picked)
+
+
+def _coerce_llm(picked: Any) -> tuple[str, dict[str, Any], str] | None:
+    if not isinstance(picked, (tuple, list)) or len(picked) < 2:
+        return None
+    kind = str(picked[0] or "")
+    args = picked[1] if isinstance(picked[1], dict) else None
+    if kind not in COCKPIT_KINDS or args is None:
+        return None
+    why = str(picked[2]) if len(picked) > 2 else "llm"
+    return kind, args, why
+
+
+def _llm_http_choose(key: str, obs: dict[str, Any], cockpit: dict[str, Any] | None) -> Any:
+    """OpenAI-compatible chat completion. The URL comes from the environment too.
+
+    UNVERIFIED: no single public endpoint is specified for this hook, so the
+    operator supplies ``TW2K_COCKPIT_LLM_URL``. Missing URL returns None and
+    does not open a socket. The key is sent as a bearer header and is not logged.
+    """
+    url = os.environ.get(LLM_URL_ENV, "").strip()
+    if not url or not key:
+        return None
+    legal = [row.get("kind") for row in (obs.get("legal_actions") or []) if row.get("legal")]
+    prompt = {
+        "sector": (obs.get("sector") or {}).get("id"),
+        "day": obs.get("day"),
+        "turns_remaining": obs.get("turns_remaining"),
+        "credits": obs.get("credits"),
+        "planet_landed": obs.get("planet_landed"),
+        "legal": legal,
+        "cockpit": bool(cockpit),
+    }
+    body = json.dumps({
+        "model": os.environ.get(LLM_MODEL_ENV, "").strip() or "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": "Reply with one JSON object {\"kind\", \"args\", \"why\"}. kind must be one of legal."},
+            {"role": "user", "content": json.dumps(prompt)},
+        ],
+    }).encode()
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"authorization": f"Bearer {key}", "content-type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=20) as reply:  # noqa: S310 - operator-supplied URL
+        payload = json.loads(reply.read().decode())
+    text = ""
+    choices = payload.get("choices") or []
+    if choices:
+        text = str(((choices[0].get("message") or {}).get("content")) or "")
+    start, end = text.find("{"), text.rfind("}")
+    if start < 0 or end <= start:
+        return None
+    row = json.loads(text[start:end + 1])
+    return (row.get("kind"), row.get("args") or {}, row.get("why") or "llm")

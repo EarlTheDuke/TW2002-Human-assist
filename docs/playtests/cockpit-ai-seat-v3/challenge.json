@@ -1,0 +1,83 @@
+{
+  "bot_sector": 74,
+  "seat_deploy_qty": 10,
+  "bot_deploy_qty": 8,
+  "answered": {
+    "kind": "retreat",
+    "why": "retreat the challenge",
+    "challenge": {
+      "sector_id": 74,
+      "mode": "defensive",
+      "count": 8,
+      "can_retreat": true,
+      "retreat_to": 27,
+      "toll": null
+    },
+    "ok": true,
+    "error": null
+  },
+  "sector_after": 27,
+  "log": [
+    {
+      "seat": "bot",
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok"
+    },
+    {
+      "seat": "seat",
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok"
+    },
+    {
+      "seat": "bot",
+      "kind": "deploy_fighters",
+      "args": {
+        "qty": 8,
+        "mode": "defensive"
+      },
+      "outcome": "ok"
+    },
+    {
+      "seat": "seat",
+      "kind": "deploy_fighters",
+      "args": {
+        "qty": 10,
+        "mode": "defensive"
+      },
+      "outcome": "ok"
+    },
+    {
+      "seat": "bot",
+      "kind": "warp",
+      "args": {
+        "target": 1
+      },
+      "outcome": "ok"
+    },
+    {
+      "seat": "seat",
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok"
+    },
+    {
+      "seat": "bot",
+      "kind": "wait",
+      "args": {},
+      "outcome": "ok"
+    },
+    {
+      "seat": "seat",
+      "kind": "retreat",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    }
+  ]
+}
