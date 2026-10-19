@@ -130,7 +130,9 @@ def _letters(trades: tuple[bool | None, bool | None, bool | None]) -> str:
 def _facts(config) -> dict:
     turns_asked = int(getattr(config, "turns_per_day", None) or K.STARTING_TURNS_PER_DAY)
     override = getattr(config, "starting_credits_override", None) if config is not None else None
-    credits, turns, fighters = K.opening_loadout(K.STARTING_CREDITS, turns_asked, 0, override)
+    turns_override = getattr(config, "turns_per_day_override", None) if config is not None else None
+    credits, turns, fighters = K.opening_loadout(
+        K.STARTING_CREDITS, turns_asked, 0, override, turns_override)
     ship = K.ship_specs()[K.STARTING_SHIP]
     day_seconds = getattr(config, "turn_regen_day_seconds", None) if config is not None else None
     if day_seconds is None:

@@ -209,6 +209,9 @@ class MatchSpec:
     seat_drop_after_s: float = 45.0
     # selfhost-beta-v1: start from this snapshot (public/worker.py) instead of a new universe.
     resume_from: str | None = None
+    # NOTE 93. Off, the day clock and the bots start with the match. On, a game
+    # with a human seat waits until that seat is opened.
+    hold_until_human: bool = False
 
 
 @dataclass
@@ -790,7 +793,16 @@ class MatchRunner:
 
             # Turn loop: round-robin agents, day advances when all have exhausted turns.
             regen_clock = self._regen_day_clock()
-            if regen_clock:
+            # NOTE 93. A lobby game can wait here until the first human opens a seat.
+            # No day mark and no bot turn until then. A resumed day already started.
+            self._hold_until_human = bool(getattr(self._spec, "hold_until_human", False))
+            if self._hold_until_human and not any(
+                getattr(agent, "kind", None) == "external" for agent in agents
+            ):
+                self._hold_until_human = False
+            if resume_meta is not None and resume_meta.get("day_started_at"):
+                self._hold_until_human = False
+            if regen_clock and not self._hold_until_human:
                 # NOTE 60 item 2 (RULINGS s5): day 1 starts now and each day lasts the day length.
                 # A resumed game keeps the day it was in.
                 self._live_day_mark = time.time()
@@ -801,6 +813,18 @@ class MatchRunner:
                 await self._pause.wait()
                 if self._stop.is_set():
                     break
+                if getattr(self, "_hold_until_human", False):
+                    if self._first_human_opened():
+                        self._hold_until_human = False
+                        if regen_clock:
+                            self._live_day_mark = time.time()
+                        self._turn_clock = {}
+                        for held in universe.players.values():
+                            held.turn_regen_at = None
+                            held.turn_regen_frac = 0.0
+                    else:
+                        await self._sleep_scaled(0.05)
+                        continue
                 if snap_dir is not None:
                     from ..public.worker import maybe_snapshot
 
@@ -1365,6 +1389,13 @@ class MatchRunner:
         """NOTE 60 item 2: under the v3.11 turn clock the day rolls on that clock."""
         return K.live_pace() and K.starting_package_live() and K.turn_regen_live()
 
+    def _first_human_opened(self) -> bool:
+        """True once any human seat has called the harness (opened the cockpit)."""
+        for agent in self.state.agents:
+            if getattr(agent, "kind", None) == "external" and getattr(agent, "last_client_seen_at", None):
+                return True
+        return False
+
     def day_clock(self) -> dict | None:
         """When the current day started and when the next one rolls (epoch seconds), or None."""
         if not self._regen_day_clock():
@@ -1623,7 +1654,9 @@ class MatchRunner:
                 # actually ended in watchable sanity runs.
                 base_tpd = getattr(spec.config, "turns_per_day", K.STARTING_TURNS_PER_DAY)
                 override = getattr(spec.config, "starting_credits_override", None)
-                credits, turns_per_day, fighters = K.opening_loadout(base_credits, base_tpd, i, override)
+                turns_override = getattr(spec.config, "turns_per_day_override", None)
+                credits, turns_per_day, fighters = K.opening_loadout(
+                    base_credits, base_tpd, i, override, turns_override)
                 ship.fighters = fighters
                 player = Player(
                     id=ag.player_id,

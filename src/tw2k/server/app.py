@@ -226,6 +226,8 @@ def create_app(
     turn_regen_day_seconds: float | None = None,
     starting_credits_override: int | None = None,
     home_planet_name: str | None = None,
+    turns_per_day_override: int | None = None,
+    hold_until_human: bool = False,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -294,6 +296,8 @@ def create_app(
                 turn_regen_day_seconds=turn_regen_day_seconds,
                 starting_credits_override=starting_credits_override,
                 home_planet_name=home_planet_name,
+                turns_per_day_override=turns_per_day_override,
+                hold_until_human=hold_until_human,
             )
             spec.paused = start_paused
             spec.resume_from = _public.resume_path()
@@ -1173,6 +1177,16 @@ def create_app(
                 if "home_planet_name" in body and body["home_planet_name"] is not None
                 else home_planet_name
             ),
+            turns_per_day_override=(
+                int(body["turns_per_day_override"])
+                if "turns_per_day_override" in body and body["turns_per_day_override"] is not None
+                else turns_per_day_override
+            ),
+            hold_until_human=(
+                bool(body["hold_until_human"])
+                if "hold_until_human" in body
+                else hold_until_human
+            ),
         )
         if body.get("external_hold_max_actions") is not None:
             spec.external_hold_max_actions = max(0, int(body["external_hold_max_actions"]))
@@ -1274,6 +1288,8 @@ def _build_default_spec(
     turn_regen_day_seconds: float | None = None,
     starting_credits_override: int | None = None,
     home_planet_name: str | None = None,
+    turns_per_day_override: int | None = None,
+    hold_until_human: bool = False,
 ) -> MatchSpec:
     _apply_port_stock_fidelity()
     _apply_haggle_live()
@@ -1337,6 +1353,8 @@ def _build_default_spec(
         cfg_kwargs["starting_credits_override"] = starting_credits_override
     if home_planet_name:
         cfg_kwargs["home_planet_name"] = home_planet_name
+    if turns_per_day_override is not None:
+        cfg_kwargs["turns_per_day_override"] = turns_per_day_override
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each
@@ -1407,6 +1425,7 @@ def _build_default_spec(
         external_idle_wait_s=max(0.0, float(external_idle_wait_s)),
         pause_on_seat_drop=bool(pause_on_seat_drop),
         seat_drop_after_s=max(0.05, float(seat_drop_after_s)),
+        hold_until_human=bool(hold_until_human),
     )
 
 

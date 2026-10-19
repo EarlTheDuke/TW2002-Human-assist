@@ -135,6 +135,11 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
     home = settings.get("home_planet_name")
     if home:
         cmd.extend(["--home-planet-name", str(home)])
+    turns_override = settings.get("turns_per_day_override")
+    if turns_override is not None:
+        cmd.extend(["--turns-per-day-override", str(int(turns_override))])
+    if settings.get("hold_until_human"):
+        cmd.append("--hold-until-human")
     return cmd
 
 

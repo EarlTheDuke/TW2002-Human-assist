@@ -7,7 +7,7 @@ import time
 from html import escape
 from typing import Any, Iterable
 
-from .security import DAY_PRESETS, UNIVERSE_SIZES, credits_phrase
+from .security import DAY_PRESETS, UNIVERSE_SIZES, credits_phrase, turns_phrase
 
 FULL_TEXT = "The beta is full right now, try again later"
 
@@ -42,8 +42,10 @@ th{color:#8aa0b8;font-weight:600;font-size:14px}
 .tag.running{background:#14432c}.tag.sleeping{background:#3a3214}.tag.failed{background:#4a1616}
 .tag.finished{background:#1e3a5f}
 label{display:block;margin:12px 0 4px;color:#b8c8da}
+label.check{display:flex;align-items:center;gap:10px;max-width:640px}
 input,select{width:100%;max-width:420px;background:#070b14;color:#e8f6ff;border:1px solid #2a3a55;border-radius:8px;
   padding:10px;font:inherit;min-height:44px}
+label.check input{width:auto;min-height:44px;max-width:none}
 fieldset{border:1px solid #1f2d45;border-radius:10px;margin:12px 0;padding:8px 16px 16px}
 legend{color:#ffd27f;padding:0 6px}
 .err{background:#3a1212;border:1px solid #a33;border-radius:8px;padding:10px 14px}
@@ -174,7 +176,8 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         rows.append(
             f"<tr><td><b>{escape(g['name'])}</b><br><span class=\"note\">"
             f"{'v3.11' if s['rules'] == 'v311' else 'legacy'} rules &middot; {s['universe_size']} sectors &middot; "
-            f"{_day_label(s['day_seconds'])} days &middot; {s['bots']} bots<br>{escape(credits_phrase(s))}</span></td>"
+            f"{_day_label(s['day_seconds'])} days &middot; {s['bots']} bots<br>{escape(credits_phrase(s))}"
+            f"<br>{escape(turns_phrase(s))}</span></td>"
             f"<td>{_status_tag(g['status'])} <span class=\"note\">{escape(day)}</span></td>"
             f"<td>{open_seats} of {s['humans']} seats open</td><td>{join} {watch} {end}</td></tr>"
         )
@@ -244,12 +247,27 @@ def _opt(value: str, label: str, selected: str) -> str:
     return f"<option value=\"{escape(str(value))}\"{sel}>{escape(label)}</option>"
 
 
+def _waiting_banner(waiting: Iterable[dict[str, Any]] | None) -> str:
+    rows = [row for row in (waiting or []) if row.get("href")]
+    if not rows:
+        return ""
+    links = " · ".join(
+        f'<a href="{escape(str(row["href"]))}">Join it</a> ({escape(str(row.get("name") or "game"))})'
+        for row in rows
+    )
+    return (
+        f'<div class="card" data-waiting="game"><p><b>You have a game waiting.</b> {links}'
+        " before making another.</p></div>"
+    )
+
+
 def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | None = None,
-             presets: dict[str, int] | None = None) -> str:
-    v = {"name": "", "rules": "v311", "universe_size": "1000", "max_days": "30", "turns_per_day": "250",
+             presets: dict[str, int] | None = None,
+             waiting: Iterable[dict[str, Any]] | None = None) -> str:
+    v = {"name": "", "rules": "v311", "universe_size": "1000", "max_days": "30", "turns_per_day": "original",
          "starting_package": "v311", "bots": "2", "ferrengi": "on", "day": "30m", "humans": "1",
          "visibility": "listed", "starting_credits": "original", "starting_credits_custom": "",
-         "home_planet_name": ""}
+         "home_planet_name": "", "turns_per_day_custom": "", "hold_until_human": "on"}
     v.update({k: str(val) for k, val in (values or {}).items()})
     err = f"<div class=\"err\">{escape(error)}</div>" if error else ""
     sizes = "".join(_opt(str(n), f"{n} sectors", v["universe_size"]) for n in UNIVERSE_SIZES)
@@ -257,7 +275,21 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
                    for k, secs in (presets or DAY_PRESETS).items())
     bots = "".join(_opt(str(n), str(n), v["bots"]) for n in range(6))
     humans = "".join(_opt(str(n), str(n), v["humans"]) for n in range(1, 5))
-    body = f"""<p class="sub">New game</p>{err}
+    hold_checked = " checked" if v.get("hold_until_human") == "on" else ""
+    picked_turns = v.get("turns_per_day") or "original"
+    if picked_turns == "custom":
+        try:
+            hint_turns = int(v.get("turns_per_day_custom") or 250)
+        except ValueError:
+            hint_turns = 250
+    elif picked_turns in ("original", ""):
+        hint_turns = 250
+    else:
+        try:
+            hint_turns = int(picked_turns)
+        except ValueError:
+            hint_turns = 250
+    body = f"""<p class="sub">New game</p>{_waiting_banner(waiting)}{err}
 <form method="post" action="/new" class="card">
 <label for="name">Game name</label><input id="name" name="name" maxlength="40" required value="{escape(v['name'])}">
 <fieldset><legend>Rules</legend>
@@ -267,16 +299,21 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 <label for="starting_credits">Starting credits</label><select id="starting_credits" name="starting_credits">{_opt('original', 'Original (v3.11 default, 300 cr)', v['starting_credits'])}{_opt('10000', '10,000', v['starting_credits'])}{_opt('100000', '100,000', v['starting_credits'])}{_opt('1000000', '1,000,000', v['starting_credits'])}{_opt('custom', 'Custom', v['starting_credits'])}</select>
 <label for="starting_credits_custom">Custom amount</label><input id="starting_credits_custom" name="starting_credits_custom" type="number" min="0" max="10000000" value="{escape(v['starting_credits_custom'])}">
 <p class="note">Original leaves the package as it is (300 cr under v3.11). A preset or a custom amount, 0 to 10,000,000, is the opening credits for every human and every bot.</p>
+<label for="turns_per_day">Turns per day</label><select id="turns_per_day" name="turns_per_day">{_opt('original', 'Original (250)', v['turns_per_day'])}{_opt('500', '500', v['turns_per_day'])}{_opt('1000', '1,000', v['turns_per_day'])}{_opt('custom', 'Custom', v['turns_per_day'])}</select>
+<label for="turns_per_day_custom">Custom turns per day</label><input id="turns_per_day_custom" name="turns_per_day_custom" type="number" min="50" max="5000" value="{escape(v['turns_per_day_custom'])}">
+<p class="note">Original is 250 turns for every seat, the same pocket as today. 500, 1,000, or a custom amount from 50 to 5,000 replaces that pocket for every human and every bot.</p>
 <label for="universe_size">Universe size</label><select id="universe_size" name="universe_size">{sizes}</select>
 <label for="max_days">Max days</label><input id="max_days" name="max_days" type="number" min="1" max="365" value="{escape(v['max_days'])}">
-<label for="turns_per_day">Turns per day</label><input id="turns_per_day" name="turns_per_day" type="number" min="20" max="2000" value="{escape(v['turns_per_day'])}">
 <label for="day">Day length</label><select id="day" name="day">{days}</select>
-<p class="note" id="dayHint">{escape(day_length_hint(int((presets or DAY_PRESETS).get(v['day'], 1800)), int(v['turns_per_day'] or 250), int(v['max_days'] or 30)))}</p>
+<p class="note" id="dayHint">{escape(day_length_hint(int((presets or DAY_PRESETS).get(v['day'], 1800)), hint_turns, int(v['max_days'] or 30)))}</p>
 <script>
 const dayPresets = {json.dumps(presets or DAY_PRESETS)};
 function paintDayHint() {{
   const secs = dayPresets[document.getElementById("day").value] || 0;
-  const turns = Number(document.getElementById("turns_per_day").value) || 1;
+  const picked = document.getElementById("turns_per_day").value;
+  const turns = picked === "custom"
+    ? (Number(document.getElementById("turns_per_day_custom").value) || 250)
+    : (picked === "original" || picked === "" ? 250 : (Number(picked) || 250));
   const days = Number(document.getElementById("max_days").value) || 1;
   const per = secs / turns;
   const every = per < 90 ? (Math.round(per * 10) / 10).toString().replace(/\\.0$/, "") + " s"
@@ -297,7 +334,7 @@ function paintDayHint() {{
       : name + " days: " + days + " days take about " + span + "; a turn comes back every " + every);
   document.getElementById("dayHint").textContent = hint;
 }}
-["day", "turns_per_day", "max_days"].forEach((id) => document.getElementById(id).addEventListener("input", paintDayHint));
+["day", "turns_per_day", "turns_per_day_custom", "max_days"].forEach((id) => document.getElementById(id).addEventListener("input", paintDayHint));
 </script>
 </fieldset>
 <fieldset><legend>Players</legend>
@@ -307,6 +344,9 @@ function paintDayHint() {{
 <label for="bots">Code bots</label><select id="bots" name="bots">{bots}</select>
 <label for="ferrengi">Ferrengi</label><select id="ferrengi" name="ferrengi">{_opt('on', 'On', v['ferrengi'])}{_opt('off', 'Off', v['ferrengi'])}</select>
 <label for="visibility">Who can find it</label><select id="visibility" name="visibility">{_opt('listed', 'Listed in the lobby', v['visibility'])}{_opt('link', 'Link only', v['visibility'])}</select>
+<input type="hidden" name="hold_until_human" value="off">
+<label class="check" for="hold_until_human"><input id="hold_until_human" name="hold_until_human" type="checkbox" value="on"{hold_checked}>Hold the clock until the first player opens a seat</label>
+<p class="note">On for a new game from this form. The day clock and the bots wait until someone opens a seat. Uncheck to start at once, which is how games start today when this box is left off.</p>
 </fieldset>
 <button class="primary" type="submit">Create game</button> <a class="btn" href="/">Cancel</a>
 </form>"""

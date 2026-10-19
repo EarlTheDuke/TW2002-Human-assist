@@ -152,7 +152,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
               corp_policy: str | None = None,
               corp_pairs: list[tuple[str, str]] | None = None,
               action_digest: bool = False, reader_start: str | None = None,
-              war_report: bool = False, reject_report: int = 5) -> dict[str, Any]:
+              war_report: bool = False, reject_report: int = 5,
+              session_cap: dict[str, int] | None = None,
+              study: bool = False, play_to_day_cap: bool = False) -> dict[str, Any]:
     """Play the match and return a JSON-ready summary."""
     from tw2k.agents.seat_acceptance import aba_bounces, validate_action
     from tw2k.agents.seat_brain import SeatBrain
@@ -172,7 +174,8 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
     makers = {"N1": sba.n1_brain, "N2": sba.n2_brain, "N3": SeatBrain}
     u = generate_universe(GameConfig(seed=seed, universe_size=universe_size, max_days=max(30, days + 2),
                                      turns_per_day=turns_per_day, starting_credits=credits,
-                                     enable_ferrengi=ferrengi, enable_planets=True))
+                                     enable_ferrengi=ferrengi, enable_planets=True,
+                                     play_to_day_cap=play_to_day_cap))
     fed = sorted(K.FEDSPACE_SECTORS)
     st: dict[str, dict[str, Any]] = {}
     for i, kind in enumerate(seats):
@@ -214,8 +217,13 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         for pid, s in st.items():
             p = u.players[pid]
             ship = p.ship.ship_class.value
-            s["daily"].append({"day": u.day, "net_worth": full_net_worth(u, p), "credits": p.credits,
-                               "ship": ship, "alive": p.alive})
+            row = {"day": u.day, "net_worth": full_net_worth(u, p), "credits": p.credits,
+                   "ship": ship, "alive": p.alive}
+            if study:
+                row["experience"] = int(p.experience)
+                row["turns_used"] = int(p.turns_today)
+                row["wasted"] = max(0, int(p.turns_per_day) - int(p.turns_today))
+            s["daily"].append(row)
             if bank_report and ship in ("escape_pod", "scout_marauder"):
                 if int(p.credits) + int(p.bank_balance) < int(K.BOT_BANK_BROKE_LINE):
                     s["broke_days"] += 1
@@ -260,6 +268,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
                 continue
             s = st[pid]
             p = u.players[pid]
+            if session_cap is not None and int(p.turns_today) >= int(session_cap.get(pid, 1 << 30)):
+                s["idle_done"] = True
+                continue
             steps += 1
             obs_model = build_observation(u, pid)
             obs = obs_model.model_dump(mode="json")
