@@ -67,6 +67,16 @@ def _your_move(page) -> None:
     page.wait_for_function("() => document.querySelector('#waitchip').textContent === 'YOUR MOVE'", timeout=25_000)
 
 
+def _colonist_line(page, expected: str) -> str:
+    """The planet card is painted on the next cockpit refresh, after YOUR MOVE."""
+    page.wait_for_function(
+        "(want) => (document.querySelector('[data-colonists=trend]') || {}).textContent === want",
+        arg=expected,
+        timeout=20_000,
+    )
+    return page.locator("[data-colonists=trend]").inner_text()
+
+
 @pytest.fixture
 def world(tmp_path):
     sync = pytest.importorskip("playwright.sync_api").sync_playwright
@@ -114,12 +124,12 @@ def test_the_half_cap_line_shows_only_when_the_switch_is_on(world):
     assert all("colonists_text" not in row for row in owned)
     K.PLANET_GROWTH_MODE = "tw2002"
     _next(page, world["host"])
-    text = page.locator("[data-colonists=trend]").inner_text()
+    text = _colonist_line(page, "below half the class cap (30,000), about 5% more each day")
     assert text == "below half the class cap (30,000), about 5% more each day"
     _shoot(page, "below", "[data-colonists=trend]")
     planet.colonists[Commodity.ORGANICS] = 20_000
     _next(page, world["host"])
-    above = page.locator("[data-colonists=trend]").inner_text()
+    above = _colonist_line(page, "above half the class cap (30,000), about 5% die off each day")
     assert above == "above half the class cap (30,000), about 5% die off each day"
     _shoot(page, "above", "[data-colonists=trend]")
 

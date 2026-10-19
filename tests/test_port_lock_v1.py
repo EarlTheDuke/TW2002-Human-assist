@@ -39,13 +39,15 @@ def test_import_does_not_need_fcntl() -> None:
     assert out.stdout.strip() == "imported"
 
 
-def test_two_processes_do_not_claim_the_same_ports() -> None:
-    def grab(q):
-        base = claim_ports(2, low=47000, high=47200)
-        q.put(base)
+def _grab(q) -> None:
+    """Top-level so Windows spawn can pickle it. A nested function cannot."""
+    base = claim_ports(2, low=47000, high=47200)
+    q.put(base)
 
+
+def test_two_processes_do_not_claim_the_same_ports() -> None:
     queue: mp.Queue = mp.Queue()
-    procs = [mp.Process(target=grab, args=(queue,)) for _ in range(6)]
+    procs = [mp.Process(target=_grab, args=(queue,)) for _ in range(6)]
     for proc in procs:
         proc.start()
     for proc in procs:
