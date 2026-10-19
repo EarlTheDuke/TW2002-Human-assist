@@ -40,3 +40,11 @@ Numbers a v3.11 source does not settle. Each row is the live test that would pin
 | Planet collision chance | 10 percent per planet over the cap of 5, never past 100 | Overload a sector past the planet limit and run Extern for several days | Whether a collision happens, and how many planets are lost | `PLANET_COLLISION_PCT_PER_EXCESS` |
 | Collision log wording | "Unstable planetary mass in sector N" every night; the loss line names the planets and leaves the sector number out | Same overload | The exact daily-log lines | the two `PLANET_COLLISION` summaries |
 | Sector 1 overload | skipped (Old FAQ v2) | Overload sector 1 if the game allows it | Whether Extern collides planets there | the `STARDOCK_SECTOR` skip in `_planet_collisions` |
+
+## Live TWGS test queue (NOTE 103)
+
+GeneralNew.html gives `<` and `>` to quick stats. The v3.11 revision history says the backtrack key is `<` only. The cockpit uses `>` for quick stats and `<` for backtrack, and both commands are also on the Computer menu.
+
+| item | current value | live test | what to record | constant |
+|---|---|---|---|---|
+| Quick-stats and backtrack keys | `>` quick stats, `<` backtrack | From a prompt, press each key | Which screen opens | the two keys in the cockpit |

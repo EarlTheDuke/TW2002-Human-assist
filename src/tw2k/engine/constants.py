@@ -4357,6 +4357,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "CAPTURE_CREDIT_LINE_MODE",
         "NOTE 105: a capture already takes credits on hand the same way as a destroy; the cockpit says so",
     ),
+    "mail_live": (
+        "MAIL_MODE",
+        "NOTE 103: a hail flashes for an open cockpit and waits as mail when the seat is offline",
+    ),
     "colonist_units_live": (
         "COLONIST_UNITS_MODE",
         "NOTE 89: a non-M drop turns Terra people into handbook colonists, one thousand per hold",
@@ -5063,6 +5067,24 @@ SHIP_RENAME_NAME_MAX = 30  # UNVERIFIED (EIS ShipyardMenu prints no length)
 def ship_rename_live() -> bool:
     """True when the shipyard will change this ship's registration and name."""
     return SHIP_RENAME_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# NOTE 103 GAP 13.1 / 13.3, row 161. EIS GeneralUpdated.html "New Mail", and the
+# v3.11 revision history: a message lasts about 10 seconds. A hail to a seat
+# with an open cockpit (or any code bot) is that flash. A hail to an offline
+# trader is stored mail, and the cockpit says New Mail. Stored default stays
+# legacy, so every hail still lands in the inbox and the digests do not move.
+# Rows 162 and 163 are unused: NavPoints, backtrack, quick stats, and find
+# route read the seat's known map in the cockpit, and fighter reports are
+# lines on the daily log the owner can already see.
+MAIL_MODE = "legacy"  # "legacy" | "live"
+HAIL_SHOW_SECONDS = 10
+NAVPOINT_SLOTS = 4  # EIS GeneralNew.html: four programmable NavPoints
+
+
+def mail_live() -> bool:
+    """True when an offline hail is stored mail and an online hail only flashes."""
+    return MAIL_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1

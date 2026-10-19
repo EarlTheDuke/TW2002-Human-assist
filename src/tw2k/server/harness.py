@@ -628,6 +628,10 @@ def build_harness_router(runner) -> APIRouter:
             raise
 
     async def _submit(agent: ExternalAgent, player_id: str, body: ActionSubmission) -> dict[str, Any]:
+        if runner.state.universe is not None:
+            from tw2k.engine.presence import note_poll
+
+            note_poll(runner.state.universe, player_id)
         raw = dict(body.action or {})
         raw.pop("actor_kind", None)
         try:
