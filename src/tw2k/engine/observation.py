@@ -3202,10 +3202,20 @@ def _ferrengi_check(player, sector_info: dict[str, Any]) -> str:
         odds = K.ferrengi_odds_for_hull(f.get("hull"))
         defense = (f_f + f_s) * odds
         verdict = "you destroy it in one attack" if power >= defense else "one attack will NOT destroy it"
+        if K.ferrengi_reward_live():
+            reward = (
+                f"{agg * K.FERRENGI_BOUNTY_PER_AGG:,} cr bounty + salvage, "
+                f"{K.ferrengi_kill_xp(f.get('hull'), agg)} exp by hull, "
+                f"+{K.FERRENGI_ALIGN_ON_KILL} alignment if you are a good trader"
+            )
+        else:
+            reward = (
+                f"{agg * K.FERRENGI_BOUNTY_PER_AGG:,} cr bounty + salvage, {agg * K.xp_award('kill_ferr')} exp, "
+                f"+{K.FERRENGI_ALIGN_ON_KILL} alignment"
+            )
         parts.append(
             f"{f.get('id')} (aggression {agg}, {f_f} ftrs / {f_s} shields x{odds:g}): kill = "
-            f"{agg * K.FERRENGI_BOUNTY_PER_AGG:,} cr bounty + salvage, {agg * K.xp_award('kill_ferr')} exp, "
-            f"+{K.FERRENGI_ALIGN_ON_KILL} alignment; your {cap} ftrs = power {power:.0f} vs defence {defense:.0f} -> {verdict}"
+            f"{reward}; your {cap} ftrs = power {power:.0f} vs defence {defense:.0f} -> {verdict}"
         )
     return "; ".join(parts) + "."
 
