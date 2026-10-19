@@ -4419,6 +4419,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "COLONIST_NW_UNITS_MODE",
         "NOTE 89: cargo colonists stored as people are scored as handbook thousands",
     ),
+    "evil_trade_loop_live": (
+        "EVIL_TRADE_LOOP_MODE",
+        "NOTE 115 GAP 14.5: a negative-alignment seat steals, dumps, and beams, or robs and beams",
+    ),
 }
 
 
@@ -4758,6 +4762,18 @@ LEGACY_DAY_CLOCK_MODE = "legacy"  # "legacy" | "live"
 def legacy_day_clock_live() -> bool:
     """True when a legacy game with its own day length rolls that day on the clock."""
     return LEGACY_DAY_CLOCK_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-evil-trading-loops-v1 (NOTE 115) row 166. Glossary SDT and RTR: steal
+# equipment, land, dump, beam to the other ship; or rob, beam, rob. Rob, steal,
+# bust, and the transporter already run. This only picks that cycle. Row 165
+# is the price scale. Stored default stays legacy so a profile-off match does not move.
+EVIL_TRADE_LOOP_MODE = "legacy"  # "legacy" | "live"
+
+
+def evil_trade_loop_live() -> bool:
+    """True when a negative-alignment seat runs the steal-dump and rob-transport loops."""
+    return EVIL_TRADE_LOOP_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # v311-followups-v1 (NOTE 75). The free home-planet colonists are a clone
