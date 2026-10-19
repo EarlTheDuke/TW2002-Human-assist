@@ -4670,10 +4670,11 @@
       const liveMedia = clipEvents(live).filter((ev) => {
         if (!ev) return false;
         if (ev.kind === "warp_blocked" || ev.kind === "plot_course") return false;
-        if (playedHull && isRealMove(ev)) return false;
         return true;
       });
-      if (liveMedia.length) window.TW2KMedia.onEvents(liveMedia, S);
+      // The hull scene already played. The real-move events still go to onEvents
+      // so a listener sees the batch. hullPlayed tells the player not to start warp.out as well.
+      if (liveMedia.length) window.TW2KMedia.onEvents(liveMedia, S, playedHull ? { hullPlayed: true } : undefined);
     }
   }
 
