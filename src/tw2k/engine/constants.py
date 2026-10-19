@@ -3862,6 +3862,8 @@ def radio_channel_live() -> bool:
 # and fighters and mines in use. A live game showed the port count
 # and a fighters-and-mines line. Whether cargo fighters count the
 # same way as deployed ones is UNVERIFIED; this count includes both.
+# Fighters on unmanned ships are left out (docs wiki Interdictor_Cruiser,
+# GAP 14.4). That exclusion is display-only and rides on this switch.
 DAILY_STATS_MODE = "legacy"  # "legacy" | "live"
 
 
@@ -4330,6 +4332,22 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "ship_rename_live": (
         "SHIP_RENAME_MODE",
         "NOTE 87: the shipyard sells a new registration and ship name",
+    ),
+    "exp_sources_live": (
+        "EXP_SOURCES_MODE",
+        "NOTE 102 GAP 9.2: destroying a port pays 50 experience and costs 50 alignment",
+    ),
+    "special_port_defence_live": (
+        "SPECIAL_PORT_DEFENCE_MODE",
+        "NOTE 102 GAP 11.10: StarDock and Class 0 take a huge fighter budget and the Feds rebuild them",
+    ),
+    "planet_collision_live": (
+        "PLANET_COLLISION_MODE",
+        "NOTE 102 GAP 6.6: an overloaded sector can lose two planets at Extern",
+    ),
+    "planet_bust_exp_live": (
+        "PLANET_BUST_EXP_MODE",
+        "NOTE 102 GAP 14.3: the owner can create and destroy a planet for 75 experience",
     ),
 }
 
@@ -5018,3 +5036,87 @@ def ship_rename_live() -> bool:
     """True when the shipyard will change this ship's registration and name."""
     return SHIP_RENAME_MODE == "live" or tw2002_live_profile() or v311_profile()
 
+
+# NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1
+# on a personal first dock, already run under DISCOVERY_EXP_MODE (runner.tick_day,
+# runner._handle_trade). Atomic destruction of an ordinary port already pays
+# xp_award("destroy_port"), which is 50 while RANK_MODE is tw2002.
+# This switch is the missing pay on a StarDock or Class 0 kill: +50 experience
+# and -50 alignment (EXPERIENCE_ALIGNMENT.md x11). Stored default stays legacy.
+EXP_SOURCES_MODE = "legacy"  # "legacy" | "live"
+PORT_DESTROY_EXPERIENCE = 50
+PORT_DESTROY_ALIGNMENT = 50
+
+
+def exp_sources_live() -> bool:
+    """True when destroying a special port pays the documented 50 experience."""
+    return EXP_SOURCES_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# NOTE 102 GAP 11.10. Cabal formulas.html (Destroying a port): StarDock and the
+# Class 0 ports do not use the ordinary rating × (22 / odds) line. A stock
+# Interdictor needs about 248,000 fighters and 32,000 shields the first time
+# (or about 280,000 fighters with no shields), in about 11 waves of 15,000.
+# After any of those ports has been killed, the rest, including the rebuilt
+# one, need about 890,000. Ratings are described as going from 2,500 to 5,000.
+# UNVERIFIED, searched: cabal formulas.html, REV v3.10 (14-day Fed rebuild of
+# Sol, Alpha Centauri, Rylos and Stargate Alpha I; StarDock rebuilds on the
+# same radiation clear). Return fire has no consistent pattern in that page,
+# so a wave only spends the fighters sent. It does not invent a barrage.
+SPECIAL_PORT_DEFENCE_MODE = "legacy"  # "legacy" | "live"
+SPECIAL_PORT_FIGS_FIRST = 248_000
+SPECIAL_PORT_FIGS_AFTER = 890_000
+SPECIAL_PORT_RATING_FIRST = 2_500
+SPECIAL_PORT_RATING_AFTER = 5_000
+SPECIAL_PORT_RADIATION_DAYS = 14
+
+
+def special_port_defence_live() -> bool:
+    """True when StarDock and Class 0 ports use the huge defence and Fed rebuild."""
+    return SPECIAL_PORT_DEFENCE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def special_port_figs_needed(already_destroyed: int) -> int:
+    """Fighters that have to be spent before that port goes down."""
+    if int(already_destroyed) > 0:
+        return SPECIAL_PORT_FIGS_AFTER
+    return SPECIAL_PORT_FIGS_FIRST
+
+
+def special_port_rating(already_destroyed: int) -> int:
+    """The cabal's stated rating for the current rebuild tier."""
+    if int(already_destroyed) > 0:
+        return SPECIAL_PORT_RATING_AFTER
+    return SPECIAL_PORT_RATING_FIRST
+
+
+# NOTE 102 GAP 6.6. Iago's War Manual v1.1 (Leonard Adolph): an overloaded
+# sector gets a daily log line with the sector number every Extern, and a
+# collision is random, not guaranteed. The two planets that go are random,
+# not by time, name or number. The destruction line names them and leaves
+# the sector number out. Gypsy's "unstable planetary crusts" is the Class H
+# blurb, not this rule. The chance is not printed.
+# UNVERIFIED, searched: Iago_War_Manual.txt v1.1, Gypsy_Big_Dummies_Guide.html,
+# Someguy_MBBS_manual.txt, OldBBS_TW.faq.txt, REV v3 (collisions generate NavHaz).
+# 10 percent per planet over the cap of 5, never past 100, is the stand-in.
+# Sector 1 is skipped (Old FAQ v2 says overload skips sector one).
+PLANET_COLLISION_MODE = "legacy"  # "legacy" | "live"
+PLANET_COLLISION_PCT_PER_EXCESS = 10
+
+
+def planet_collision_live() -> bool:
+    """True when Extern can collide planets in an overloaded sector."""
+    return PLANET_COLLISION_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# NOTE 102 GAP 14.3. Cabal glossary: one create-and-destroy loop is 75
+# experience. Genesis already pays 25 and the destroy pays 50 (XP_AWARDS_TW2002),
+# which is 75 and not more. The missing step is that the owner was refused
+# ("planet is friendly"), so the loop could not be finished. This switch
+# lets the owner destroy that planet. It does not add a third award.
+PLANET_BUST_EXP_MODE = "legacy"  # "legacy" | "live"
+
+
+def planet_bust_exp_live() -> bool:
+    """True when the owner may destroy a planet they created."""
+    return PLANET_BUST_EXP_MODE == "live" or tw2002_live_profile() or v311_profile()
