@@ -96,6 +96,7 @@ def _install():
         pw = sync().start()
         host = CuHost(tmp_path_factory.mktemp("d8"), TOK)
         host.__enter__()
+        saved_info = K.INFO_MODE
         K.INFO_MODE = "tw2002"
         universe = host.runner.state.universe
         me = universe.players["P2"]
@@ -106,7 +107,7 @@ def _install():
         try:
             yield {"page": page, "universe": universe, "host": host}
         finally:
-            K.INFO_MODE = "legacy"
+            K.INFO_MODE = saved_info
             browser.close()
             host.__exit__(None, None, None)
             pw.stop()
