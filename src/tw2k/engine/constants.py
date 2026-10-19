@@ -1033,6 +1033,12 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
     Holds with no per-ship max still stop at 150.
     Cloaks / disruptors use HARDWARE_MODE global caps when tw2002.
     """
+    if item == "ether_probes":
+        # NOTE 82 SD-e. Bible: any ship, 25. The pod is not on the chart
+        # (UNVERIFIED); the same 25 applies. Off, probes stay uncapped.
+        if not ship_chart_cap_live():
+            return None
+        return max(0, int(PROBE_CHART_MAX) - int(have))
     if item == "cloak":
         if not hardware_tw2002():
             return 0
@@ -1095,7 +1101,14 @@ def hardware_v2_prices() -> dict[str, int]:
 
 
 def atomic_mines_sold() -> bool:
-    """v19: legacy always sells atomic_mines; tw2002 only while ATOMIC_MINES_PORT_NUKE is kept."""
+    """v19: legacy always sells atomic_mines; tw2002 only while ATOMIC_MINES_PORT_NUKE is kept.
+
+    NOTE 78: ATOMIC_DETONATOR_MODE live retires the port-nuke mine. The stored
+    ATOMIC_MINES_PORT_NUKE flag stays True. The detonator kills the planet
+    (colonists first, then the planet).
+    """
+    if atomic_detonator_live():
+        return False
     return (not hardware_tw2002()) or bool(ATOMIC_MINES_PORT_NUKE)
 
 
@@ -4133,6 +4146,48 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PORT_BUY_PRICE_ANCHOR_MODE",
         "D25-1 (NOTE 69): hungry buy quotes use the live anchors, not the 1.93x full-hold curve",
     ),
+    # NOTE 82 rows 94, 96, 97. Rows 95 and 98 were already on this tip.
+    "bust_record_clear_live": (
+        "BUST_CLEAR_MODE",
+        "NOTE 82 TRD-k: a game may clear bust records daily or every 7 days",
+    ),
+    "ship_chart_cap_live": (
+        "SHIP_CHART_CAP_MODE",
+        "NOTE 82 SD-e: an ether probe cap of 25, with the Bible chart caps",
+    ),
+    "corp_planet_disband_v306": (
+        "CORP_PLANET_DISBAND_MODE",
+        "NOTE 82 PLN-q: on disband the C.E.O.'s sector stays, the rest go unclaimed",
+    ),
+    # NOTE 79 rows 90 and 93. Rows 91 and 92 were already on this tip.
+    "photon_follow_damp_live": (
+        "PHOTON_FOLLOW_DAMP_MODE",
+        "NOTE 79 SD-o: a ship that enters a live photon wave has the quasar damped",
+    ),
+    "death_delay_live": (
+        "DEATH_DELAY_MODE",
+        "NOTE 79 CMB-n: a pod can be locked out for N midnights",
+    ),
+    "treasury_cap_live": (
+        "TREASURY_CAP_MODE",
+        "PLN-r (NOTE 78): S1 treasury cap is 999,999,999,999,999",
+    ),
+    "course_max_live": (
+        "COURSE_MAX_MODE",
+        "MOV-g (NOTE 78): a plotted course longer than 45 hops is refused (45 UNVERIFIED for 3.11)",
+    ),
+    "big_bang_density_live": (
+        "BIG_BANG_DENSITY_MODE",
+        "MOV-h, MOV-i (NOTE 78): ports about 40%, planets up to 20%, no decorative Fed ports in 2-10",
+    ),
+    "one_way_share_live": (
+        "ONE_WAY_SHARE_MODE",
+        "MOV-f (NOTE 78): one-way share about 3% when the game does not set one_way_fraction",
+    ),
+    "atomic_detonator_live": (
+        "ATOMIC_DETONATOR_MODE",
+        "SD-l (NOTE 78): the detonator is the planet killer; the port-nuke atomic mine is retired",
+    ),
     "probe_shootdown_live": (
         "PROBE_SHOOTDOWN_MODE",
         "NOTE 85 MOV-c: a shot-down probe names the sector and who owned the fighters",
@@ -4506,3 +4561,173 @@ FERRENGAL_QUASAR_MODE = "legacy"  # "legacy" | "live"
 def ferrengal_quasar_live() -> bool:
     """True when entering Ferrengal draws a quasar shot."""
     return FERRENGAL_QUASAR_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-extern-gaps-v1 (NOTE 82) TRD-k, row 94. REV v3.05: a TEDIT setting
+# chooses how often Extern clears bust records. It defaults to nightly and
+# can be as high as every 28th day. The cabal editor sample is "Clear Busts
+# Every : 1 Days". "legacy" keeps today's clear-every-Extern. "live" reads
+# GameConfig.bust_clear_days (1 or 7). REPORT.md is on Ben's PC (UNVERIFIED).
+# The missed-Extern catch-up is not built: this day tick always runs.
+BUST_CLEAR_MODE = "legacy"  # "legacy" | "live"
+
+
+def bust_record_clear_live() -> bool:
+    """True when this game's bust-clear interval is honored (1 day or 7)."""
+    return BUST_CLEAR_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-extern-gaps-v1 (NOTE 82) SD-e, row 96. The Bible ship chart already
+# caps mines, genesis and photons on SHIP_SPECS_TW2002, and cloaks are 5
+# (CLOAK_MAX, "the maximum any ship can carry is five"). Probes were uncapped.
+# The Bible says any ship carries at most 25. "legacy" leaves probes uncapped.
+PROBE_CHART_MAX = 25
+SHIP_CHART_CAP_MODE = "legacy"  # "legacy" | "live"
+
+
+def ship_chart_cap_live() -> bool:
+    """True when a ship stops at 25 ether probes."""
+    return SHIP_CHART_CAP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-extern-gaps-v1 (NOTE 82) PLN-q, row 97. Today's rule is
+# CORP_DISBAND_PLANETS "owner_keeps". REV v3.06 gives the C.E.O. the planets
+# in his sector and leaves the rest unclaimed. "legacy" keeps owner_keeps.
+# The older constant "v306" still selects that path on its own.
+CORP_PLANET_DISBAND_MODE = "legacy"  # "legacy" | "v306"
+
+
+def corp_planet_disband_v306() -> bool:
+    """True when a disband follows REV v3.06 for planets."""
+    if CORP_DISBAND_PLANETS == "v306" or CORP_PLANET_DISBAND_MODE == "v306":
+        return True
+    return tw2002_live_profile() or v311_profile()
+
+
+# v311-combat-gaps-v1 (NOTE 79) SD-o, row 90. A photon into the next sector
+# already neutralizes that sector's mines and fighters for the wave
+# (hardware.mark_sector_photon_wave, runner sector_photon_active) and damps
+# the quasars for the shooter and anyone already there. "live" also damps
+# the quasars for a ship that enters while the wave is still up. S1: below
+# citadel L5, or under 200 shields, the cannon does not fire. L5 with 200
+# shields still fires. Stored default stays legacy.
+PHOTON_FOLLOW_DAMP_MODE = "legacy"  # "legacy" | "live"
+
+
+def photon_follow_damp_live() -> bool:
+    """True when a following ship inherits the photon wave's quasar damp."""
+    return PHOTON_FOLLOW_DAMP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-combat-gaps-v1 (NOTE 79) CMB-n, row 93. S7 #16: death delay 0 lets the
+# pod fly at once. 1 or more keeps the pilot out until that many midnights
+# pass. A pod destroyed while that sentence is running has the same number
+# added again. Whether a pod that is already flying starts a new sentence
+# when it is destroyed is not what that paragraph says (UNVERIFIED). The
+# TEDIT maximum is not printed (UNVERIFIED). Stored default stays legacy,
+# which ignores GameConfig.death_delay.
+DEATH_DELAY_MODE = "legacy"  # "legacy" | "live"
+
+
+def death_delay_live() -> bool:
+    """True when GameConfig.death_delay locks a fresh pod out."""
+    return DEATH_DELAY_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def death_delay_days(config) -> int:
+    """Midnights a new pod must wait. 0 when the switch is off or unset."""
+    if not death_delay_live():
+        return 0
+    raw = getattr(config, "death_delay", None)
+    if raw is None:
+        return 0
+    return max(0, int(raw))
+
+
+# v311-universe-planet-gaps-v1 (NOTE 78). Each stored default is legacy.
+# V311_PROFILE turns the five helpers on. Appended so later slices can rebase.
+# Rows 85-89. Rows 83-84 are reserved for NOTE 75.
+
+TREASURY_CAP_MODE = "legacy"  # "legacy" | "live"
+# S1_planet_handbook_v1.01.html. Fifteen 9s.
+S1_PLANET_TREASURY_CAP = 999_999_999_999_999
+
+
+def treasury_cap_live() -> bool:
+    """True when a planet treasury uses the S1 cap."""
+    return TREASURY_CAP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def planet_treasury_cap() -> int:
+    """Credits a citadel treasury may hold. Legacy stays PLANET_TREASURY_CAP."""
+    if treasury_cap_live():
+        return int(S1_PLANET_TREASURY_CAP)
+    return int(PLANET_TREASURY_CAP)
+
+
+COURSE_MAX_MODE = "legacy"  # "legacy" | "live"
+# UNVERIFIED for TWGS 3.11. Big_Bang.html option B, Maximum Course Length,
+# default 45 (range 20-255). That setting shapes the map. It is not confirmed
+# as the in-game plot limit. The clone autopilot searches PLOT_COURSE_MAX_DEPTH * 6.
+V311_COURSE_MAX_HOPS = 45
+
+
+def course_max_live() -> bool:
+    """True when a plotted course longer than V311_COURSE_MAX_HOPS is refused."""
+    return COURSE_MAX_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def plot_course_hop_limit() -> int:
+    """Hops a plotted course may take. Legacy is 60. Live is 45 (UNVERIFIED)."""
+    if course_max_live():
+        return int(V311_COURSE_MAX_HOPS)
+    return int(PLOT_COURSE_MAX_DEPTH) * 6
+
+
+BIG_BANG_DENSITY_MODE = "legacy"  # "legacy" | "live"
+# Big_Bang.html: port density default 40% (clone PORT_SPAWN_PROBABILITY is 0.65
+# of sectors past FedSpace). Planet density default 20%, range 2-40% (clone
+# GameConfig.planet_spawn_probability is 0.03). Decorative Fed ports in
+# sectors 2-10 have no source.
+V311_PORT_DENSITY = 0.40
+V311_PLANET_DENSITY = 0.20
+
+
+def big_bang_density_live() -> bool:
+    """True when a new universe uses the Big Bang port and planet densities."""
+    return BIG_BANG_DENSITY_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+ONE_WAY_SHARE_MODE = "legacy"  # "legacy" | "live"
+# Big_Bang.html option G. Default is 3%. The clone stored default stays 0.15.
+V311_ONE_WAY_FRACTION = 0.03
+
+
+def one_way_share_live() -> bool:
+    """True when an unset one-way share is about 3%."""
+    return ONE_WAY_SHARE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def one_way_fraction_for(config) -> float:
+    """The bang's one-way share. A game setting that sets it always wins."""
+    fields = getattr(config, "model_fields_set", ())
+    if "one_way_fraction" in fields:
+        return float(config.one_way_fraction)
+    if one_way_share_live():
+        return float(V311_ONE_WAY_FRACTION)
+    return float(getattr(config, "one_way_fraction", DEFAULT_ONE_WAY_FRACTION))
+
+
+ATOMIC_DETONATOR_MODE = "legacy"  # "legacy" | "live"
+
+
+def atomic_detonator_live() -> bool:
+    """True when the detonator is the planet killer and the port-nuke mine is retired."""
+    return ATOMIC_DETONATOR_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def atomic_mine_retired_error() -> str:
+    """Why an atomic mine cannot be deployed. The stored flag's sentence stays for that switch."""
+    if atomic_detonator_live():
+        return "atomic mines are retired; an atomic detonator kills the colonists first, then the planet"
+    return "atomic mines are retired (ATOMIC_MINES_PORT_NUKE off)"

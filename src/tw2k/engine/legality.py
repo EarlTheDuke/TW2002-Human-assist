@@ -204,8 +204,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     sector = universe.sectors[player.sector_id]
     out: list[LegalAction] = []
 
-    if not player.alive:
-        return [_la(k, legal=False, reason="player is destroyed", detail="precise") for k in ActionKind
+    if not player.alive or int(getattr(player, "death_delay_left", 0) or 0) > 0:
+        locked = "player is destroyed" if not player.alive else "death delay"
+        return [_la(k, legal=False, reason=locked, detail="precise") for k in ActionKind
                 if (K.hardware_tw2002() or k != ActionKind.LAUNCH_BEACON)
                 and (K.planet_trade_on() or k != ActionKind.PLANET_TRADE)
                 and (K.port_upgrade_on() or k not in (ActionKind.PORT_UPGRADE, ActionKind.PORT_BUILD))
@@ -824,6 +825,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "armid_mines": mines_aboard,
             "limpet_mines": mines_aboard,
             "atomic_mines": mines_aboard,
+            "ether_probes": int(getattr(player.ship, "ether_probes", 0) or 0),
             "cloak": int(getattr(player.ship, "cloaks", 0) or 0),
             "mine_disruptor": int(getattr(player.ship, "mine_disruptors", 0) or 0),
         }
@@ -840,7 +842,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         for capped in (
             "fighters", "shields", "holds", "genesis", "photon_missiles",
             "armid_mines", "limpet_mines", "atomic_mines",
-            "cloak", "mine_disruptor",
+            "ether_probes", "cloak", "mine_disruptor",
         ):
             if capped not in prices:
                 continue
@@ -1330,7 +1332,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                            "pct": {"type": "int", "required": True, "min": 0, "max": 100}}))
 
     level_ok = owned_landed and int(landed_planet.citadel_level or 0) >= 1
-    room = max(0, K.PLANET_TREASURY_CAP - int(landed_planet.treasury)) if owned_landed else 0
+    treasury_cap = K.planet_treasury_cap()
+    room = max(0, treasury_cap - int(landed_planet.treasury)) if owned_landed else 0
     deposit_max = min(int(player.credits), room) if level_ok else 0
     withdraw_max = int(landed_planet.treasury) if level_ok else 0
 
@@ -1344,9 +1347,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             reason = empty_reason
         else:
             reason = _need_turns(player, cost)
-        out.append(_la(kind, legal=reason is None, reason=reason, cost=cost,
-                       params={"planet_id": pid_param,
-                               "amount": {"type": "int", "required": True, "min": 1, "max": max(1, maxima)}}))
+        params = {"planet_id": pid_param,
+                  "amount": {"type": "int", "required": True, "min": 1, "max": max(1, maxima)}}
+        # Cockpit room line. Only while the S1 cap is on, so a legacy legal list stays put.
+        if kind is ActionKind.DEPOSIT_TREASURY and K.treasury_cap_live() and owned_landed:
+            params["room"] = int(room)
+            params["capacity"] = int(treasury_cap)
+        out.append(_la(kind, legal=reason is None, reason=reason, cost=cost, params=params))
 
     _treasury_la(ActionKind.DEPOSIT_TREASURY, deposit_max, "not enough credits, or the planet treasury is full")
     _treasury_la(ActionKind.WITHDRAW_TREASURY, withdraw_max, "nothing in the planet treasury")

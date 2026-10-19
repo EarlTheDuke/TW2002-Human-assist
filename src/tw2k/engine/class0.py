@@ -205,19 +205,8 @@ def _out_degree(universe: Universe, sid: int) -> int:
     return len(sector.warps) if sector is not None else 0
 
 
-def place_class0_ports(universe: Universe) -> dict[str, Any]:
-    """Place Alpha Centauri and Rylos; init Terra; compute MSL. Mutates universe."""
-    summary: dict[str, Any] = {"replaced_ports": [], "alpha_centauri": None, "rylos": None}
-    if not class0_tw2002():
-        universe.terra_colonists = None
-        universe.terra_max = 0
-        universe.class0_sectors = {}
-        universe.msl_sectors = []
-        return summary
-
-    universe.terra_max = int(K.TERRA_MAX_COLONISTS)
-    universe.terra_colonists = int(K.terra_start_pool())
-
+def choose_class0_sectors(universe: Universe) -> tuple[int, int]:
+    """Alpha Centauri and Rylos for this layout. Same draws as an unpinned placement."""
     rng = class0_rng(int(universe.config.seed))
     hops = bfs_hops(universe, K.STARDOCK_SECTOR)
     fed = set(K.FEDSPACE_SECTORS)
@@ -278,6 +267,27 @@ def place_class0_ports(universe: Universe) -> dict[str, Any]:
         ry_list = [s for s in range(11, n + 1) if s not in exclude and s not in fed]
         rng.shuffle(ry_list)
     ry = int(ry_list[0])
+    return ac, ry
+
+
+def place_class0_ports(universe: Universe, pinned: tuple[int, int] | None = None) -> dict[str, Any]:
+    """Place Alpha Centauri and Rylos; init Terra; compute MSL. Mutates universe.
+
+    pinned keeps those two sectors when a later density pass rebuilt the ports
+    and planets. Sol, Terra and StarDock are not moved. Unpinned, the choice
+    is the same function and the same draws as before.
+    """
+    summary: dict[str, Any] = {"replaced_ports": [], "alpha_centauri": None, "rylos": None}
+    if not class0_tw2002():
+        universe.terra_colonists = None
+        universe.terra_max = 0
+        universe.class0_sectors = {}
+        universe.msl_sectors = []
+        return summary
+
+    universe.terra_max = int(K.TERRA_MAX_COLONISTS)
+    universe.terra_colonists = int(K.terra_start_pool())
+    ac, ry = choose_class0_sectors(universe) if pinned is None else (int(pinned[0]), int(pinned[1]))
 
     def install(sid: int, key: str, name: str) -> None:
         sector = universe.sectors[sid]

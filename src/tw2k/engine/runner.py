@@ -92,7 +92,7 @@ from .planets import (
     _pay_planet_value_tax,
     refresh_planet_production,
 )
-from .rob_steal import clear_all_busts, handle_rob, handle_steal
+from .rob_steal import busts_clear_this_extern, clear_all_busts, handle_rob, handle_steal
 from .victory import (
     _award_xp,
     _check_victory,
@@ -186,6 +186,8 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
         return ActionResult(ok=False, error=f"unknown player {player_id}")
     if not player.alive:
         return ActionResult(ok=False, error="player is destroyed")
+    if int(getattr(player, "death_delay_left", 0) or 0) > 0:
+        return ActionResult(ok=False, error="death delay")
 
     from .legality import release_stale_landing
     release_stale_landing(universe, player)
@@ -460,7 +462,22 @@ def recover_turns(player, elapsed_s: float) -> int:
 
 
 def tick_day(universe: Universe) -> None:
-    """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets."""
+    """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets.
+
+    Extern jobs already on this path (NOTE 82 DAY-b, cabal glossary Extern /
+    Midnight). No new switch: they already run.
+    - overnight fighter retreats, then a tow drop on retreat
+    - Ferrengi encounters, alliance expiry, turn reset, daily experience
+    - corp mixed-alignment penalty and a dead C.E.O. (corp.extern_corp_step)
+    - Class 0 / MSL fighter and mine sweep (class0.extern_sweep) and Terra regen
+    - empty-ship repossession in FedSpace (fleet.extern_repossess)
+    - FedSpace tows for too many fighters and for crowding (fed.run_tows)
+    - port regeneration, bust-record clearing, photon waves, cloak fails
+    - FedSpace NavHaz cleared, other NavHaz dispersed (hardware.tick_navhaz)
+    - Ferrengi and alien movement, planet production, citadels, treasury, tax
+    Class 0 and StarDock fighter, shield and hold prices already follow the
+    day (fighter_unit_price, shield_unit_price, hold_day_base).
+    """
     _overnight_retreats(universe)
     _overnight_ferrengi_encounters(universe)
     if K.tow_on():  # SHIP_TOW.md tt11j: an overnight retreat / flee drops the tow
@@ -487,6 +504,9 @@ def tick_day(universe: Universe) -> None:
             # x3: the first login after midnight, +1 experience and +1 alignment.
             player.experience = int(player.experience) + K.xp_award("daily")
             player.alignment = int(player.alignment) + K.DAILY_ALIGNMENT
+        left = int(getattr(player, "death_delay_left", 0) or 0)
+        if left > 0:
+            player.death_delay_left = left - 1
         player.photon_damped_sector_id = None
         # Photon scramble decays one tick per real game day
         if player.ship.photon_disabled_ticks > 0:
@@ -516,7 +536,7 @@ def tick_day(universe: Universe) -> None:
         tick_federals(universe)
 
     regenerate_ports(universe)
-    if K.rob_tw2002():
+    if K.rob_tw2002() and busts_clear_this_extern(universe):
         clear_all_busts(universe)
     if K.hardware_tw2002():
         tick_photon_waves(universe)
@@ -759,6 +779,10 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
     player = universe.players[pid]
     rng = _rng_for(universe)
     damage = 0
+    # NOTE 79 SD-o. Mines and fighters already skip while the wave is up.
+    # This stamps the same quasar damp a following ship would otherwise miss.
+    if K.photon_follow_damp_live() and sector_photon_active(sector):
+        player.photon_damped_sector_id = sector.id
     # HARDWARE_MODE tw2002 entry order (SHIP_HARDWARE_V2.md v26): NavHaz, one limpet,
     # armids, sector quasar, fighters. Legacy keeps list-order mines then fighters.
     entry_order = K.hardware_tw2002()
@@ -1289,7 +1313,7 @@ def _handle_deploy_mines(universe: Universe, pid: str, action: Action) -> Action
     except ValueError:
         return ActionResult(ok=False, error="invalid mine type")
     if kind == MineType.ATOMIC and not K.atomic_mines_sold():
-        return ActionResult(ok=False, error="atomic mines are retired (ATOMIC_MINES_PORT_NUKE off)")
+        return ActionResult(ok=False, error=K.atomic_mine_retired_error())
     if qty <= 0 or qty > player.ship.mines.get(kind, 0):
         return ActionResult(ok=False, error="insufficient mines")
     if sector.id in K.FEDSPACE_SECTORS:
@@ -2792,6 +2816,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "armid_mines": mines_aboard,
         "limpet_mines": mines_aboard,
         "atomic_mines": mines_aboard,
+        "ether_probes": int(getattr(player.ship, "ether_probes", 0) or 0),
         "cloak": int(getattr(player.ship, "cloaks", 0) or 0),
         "mine_disruptor": int(getattr(player.ship, "mine_disruptors", 0) or 0),
         **v2_have(player.ship),
@@ -2814,6 +2839,8 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
             return ActionResult(ok=False, error="exceeds ship genesis capacity")
         if item == "photon_missiles":
             return ActionResult(ok=False, error="exceeds ship photon capacity")
+        if item == "ether_probes":
+            return ActionResult(ok=False, error="exceeds ship probe capacity")
         if item == "cloak":
             return ActionResult(ok=False, error="exceeds ship cloak capacity")
         if item == "mine_disruptor":
@@ -3208,10 +3235,15 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     blocked = None
     if K.avoid_live():
         blocked = {int(s) for s in player.avoided_sectors if int(s) != target_id}
+    limit = K.plot_course_hop_limit()
+    # Live searches past 45 so a longer course is named. Legacy stays at 60.
+    search = max(limit, len(universe.sectors)) if K.course_max_live() else limit
     path = _bfs_path(
         universe, player.sector_id, target_id,
-        max_depth=K.PLOT_COURSE_MAX_DEPTH * 6, blocked=blocked,
+        max_depth=search, blocked=blocked,
     )
+    if path and len(path) > limit:
+        return ActionResult(ok=False, error=f"plotted course is longer than {limit} hops")
     if not path:
         universe.emit(
             EventKind.WARP_BLOCKED,
@@ -3354,9 +3386,15 @@ def query_route(universe: Universe, pid: str, target: object) -> dict:
     if K.avoid_live():
         avoiding = sorted(int(s) for s in player.avoided_sectors)
         blocked = {s for s in avoiding if s != target_id}
+    limit = K.plot_course_hop_limit()
+    search = max(limit, len(universe.sectors)) if K.course_max_live() else limit
     path = [] if target_id == sector else _bfs_path(
-        universe, sector, target_id, max_depth=K.PLOT_COURSE_MAX_DEPTH * 6, blocked=blocked,
+        universe, sector, target_id, max_depth=search, blocked=blocked,
     )
+    if target_id != sector and path and len(path) > limit:
+        assert universe.seq == seq and len(universe.events) == events and player.turns_today == turns
+        return {"ok": False, "error": f"plotted course is longer than {limit} hops",
+                "from": sector, "target": target_id, "path": [], "avoiding": avoiding}
     if target_id != sector and not path:
         assert universe.seq == seq and len(universe.events) == events and player.turns_today == turns
         return {"ok": False, "error": "no route", "from": sector, "target": target_id, "path": [],
@@ -3821,8 +3859,8 @@ def _handle_deposit_treasury(universe: Universe, pid: str, action: Action) -> Ac
     amount = ready
     if int(player.credits) < amount:
         return ActionResult(ok=False, error="not enough credits")
-    if int(planet.treasury) + amount > K.PLANET_TREASURY_CAP:
-        return ActionResult(ok=False, error=f"planet treasury cap is {K.PLANET_TREASURY_CAP}")
+    if int(planet.treasury) + amount > K.planet_treasury_cap():
+        return ActionResult(ok=False, error=f"planet treasury cap is {K.planet_treasury_cap()}")
     player.credits -= amount
     planet.treasury += amount
     _emit_treasury(universe, player, planet, "deposit", amount)
