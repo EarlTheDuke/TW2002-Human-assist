@@ -1457,6 +1457,15 @@
   function siegeSentence(facts) {
     return "Landing repelled: " + siegeLosses(facts);
   }
+  function reactionHere() {
+    const landed = landedPlanet();
+    const planets = ((S && S.sector) || {}).planets || [];
+    const planet = landed && landed.military_reaction_pct != null
+      ? landed
+      : planets.find((row) => row.military_reaction_pct != null);
+    if (!planet || planet.military_reaction_pct == null) return "";
+    return " Military reaction " + fmt(planet.military_reaction_pct) + "%";
+  }
   function fighterChallengeOpen() {
     const sector = (S && S.sector) || {};
     const challenge = S && S.fighter_challenge;
@@ -1540,11 +1549,34 @@
     if (Number(best.day) === today) return taxSentence(best);
     return taxSentence(best) + " Last night: no tax";
   }
+  let stardockClass = null;
+  function starDockPort(port) {
+    if (!port) return false;
+    const code = String(port.code || port.class || "");
+    const name = String(port.name || "");
+    const id = port.class_id != null ? Number(port.class_id) : NaN;
+    return id === 8 || /stardock/i.test(code) || /stardock/i.test(name);
+  }
+  function portClassShown(port) {
+    // NOTE 97 CV-e. The live class map labels StarDock 9. The stored id stays 8.
+    if (starDockPort(port) && stardockClass != null) return String(stardockClass);
+    if (port && port.class_id != null) return String(port.class_id);
+    return String((port && (port.class || port.code)) || "");
+  }
+  async function loadStardockClass() {
+    try {
+      const data = await api("/" + state.seat + "/reference");
+      if (data && data.stardock_class != null) {
+        stardockClass = Number(data.stardock_class);
+        if (S) { sectorText(); here(); }
+      }
+    } catch (e) { /* the sector line keeps the stored class */ }
+  }
   function sectorText() {
     const s = S.sector;
     const landed = landedPlanet();
     let t = '<span class="g">Sector  </span><span class="y">:</span> <span class="c">' + s.id + "</span> <span class=\"g\">in</span> <span class=\"c\">" + (s.is_fedspace ? "The Federation" : "uncharted space") + ".</span>\n";
-    if (s.port) t += '<span class="g">Ports   </span><span class="y">:</span> <span class="c">' + esc(s.port.name) + '</span><span class="y">,</span> <span class="g">Class</span> <span class="c">' + s.port.class_id + '</span> <span class="w">(</span><span class="m">' + esc(s.port.code) + "</span><span class=\"w\">)</span>\n";
+    if (s.port) t += '<span class="g">Ports   </span><span class="y">:</span> <span class="c">' + esc(s.port.name) + '</span><span class="y">,</span> <span class="g">Class</span> <span class="c" data-port-class="' + esc(portClassShown(s.port)) + '">' + esc(portClassShown(s.port)) + '</span> <span class="w">(</span><span class="m">' + esc(s.port.code) + "</span><span class=\"w\">)</span>\n";
     (s.planets || []).forEach((p) => {
       const cls = p.class ? "(" + p.class + ") " : "";
       t += '<span class="g">Planets </span><span class="y">:</span> <span class="c" data-planet="class">' + esc(cls + (p.name || "planet") + claimSuffix(p)) + "</span>\n";
@@ -2246,7 +2278,8 @@
       const cap = document.createElement("div");
       cap.className = "c";
       cap.dataset.port = "code";
-      cap.textContent = "Port " + (s.port.name || "") + " " + (s.port.code || "");
+      cap.textContent = "Port " + (s.port.name || "") + " Class " + portClassShown(s.port) + " " + (s.port.code || "");
+      cap.dataset.portClass = portClassShown(s.port);
       box.appendChild(cap);
       const table = document.createElement("table");
       table.className = "porttbl";
@@ -3632,6 +3665,8 @@
         (section.rows || []).forEach((row) => {
           if (row.on) {
             body += '<div class="row" data-rule="switch">' + esc(row.name) + " on</div>";
+          } else if (row.letter) {
+            body += '<div class="row" data-planet-class="' + esc(row.letter) + '">Class ' + esc(row.letter) + " " + esc(row.name || "") + " " + esc(String(row.value || "")) + "</div>";
           } else if (row.value != null && row.cost == null && row.price == null && !row.good) {
             const shown = typeof row.value === "number" ? fmt(row.value) : esc(String(row.value));
             body += '<div class="row" data-rule="number"><span class="g">' + esc(row.name) + '</span> <span class="c">' + shown + "</span></div>";
@@ -3976,7 +4011,7 @@
       const docked = Number(row.sector_id) === hereId || Object.values(stock).some((item) => item && (item.side === "buys_from_player" || item.side === "sells_to_player"));
       if (!docked) {
         const word = row.last_seen_day == null ? "not visited" : "not docked";
-        return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(row.class || row.name || "") + " " + word + "</div>";
+        return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(portClassShown(row)) + " " + word + "</div>";
       }
       const detailed = Object.entries(stock).map(([name, item]) => {
         const label = (COM[name] || [name])[0];
@@ -3987,7 +4022,7 @@
         return label + " " + side + " " + fmt(amount) + pct + " " + fmt(item.price) + " cr";
       }).join(", ");
       const seen = row.last_seen_day != null ? " day " + row.last_seen_day : "";
-      return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(row.class || row.name || "") + esc(seen) + "<br>" + esc(detailed || lines) + "</div>";
+      return '<div class="row" data-port="report"><span class="c">' + row.sector_id + "</span> class " + esc(portClassShown(row)) + esc(seen) + "<br>" + esc(detailed || lines) + "</div>";
     }).join("");
     overlay("Port Report", body);
   }
@@ -4949,14 +4984,17 @@
     if (p.colonist_trend) lines.push(["Colonist trend", String(p.colonist_trend)]);
     return lines.map(([k, v]) => '<div class="row" data-spec="' + esc(k) + '"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join("");
   }
-  function planetarySpecs(id) {
+  function planetView(id) {
     const rows = planetChoices();
     const m = $("menu");
     m.hidden = false;
     inComputer = false;
     m.dataset.screen = "planet-specs";
+    const back = '<button type="button" data-catalog="back">Planet classes</button>';
     if (!rows.length) {
-      m.innerHTML = '<div class="y">Planetary Specs</div><div class="row">No planet here, and you own none.</div><br><span class="dk">Esc to close</span>';
+      m.innerHTML = '<div class="y">Your planets</div><div class="row">' + back + '</div><div class="row">No planet here, and you own none.</div><br><span class="dk">Esc to close</span>';
+      const again = m.querySelector("[data-catalog=back]");
+      if (again) again.addEventListener("click", () => planetarySpecs());
       return;
     }
     const current = S && S.planet_landed != null ? Number(S.planet_landed) : null;
@@ -4964,9 +5002,11 @@
       || rows.find((p) => Number(p.id) === current)
       || rows[0];
     const picks = rows.map((p) => '<button type="button" data-planet-pick="' + esc(p.id) + '">' + esc(p.name || "Planet") + " class " + esc(p.class || "") + "</button>").join(" ");
-    m.innerHTML = '<div class="y">Planetary Specs</div><div class="row">' + picks + "</div>" + planetSpecBody(chosen) + '<br><span class="dk">Esc to close</span>';
+    m.innerHTML = '<div class="y">Your planets</div><div class="row">' + back + " " + picks + "</div>" + planetSpecBody(chosen) + '<br><span class="dk">Esc to close</span>';
+    const again = m.querySelector("[data-catalog=back]");
+    if (again) again.addEventListener("click", () => planetarySpecs());
     m.querySelectorAll("[data-planet-pick]").forEach((btn) => {
-      btn.addEventListener("click", () => planetarySpecs(btn.getAttribute("data-planet-pick")));
+      btn.addEventListener("click", () => planetView(btn.getAttribute("data-planet-pick")));
     });
   }
   function ownerHit(ev) {
@@ -4983,6 +5023,27 @@
     const where = ev.sector_id == null ? "" : " in sector " + fmt(ev.sector_id);
     return "day " + fmt(ev.day) + " " + esc(traderName(ev.actor_id)) + " hit your fighters" + where
       + (losses.length ? ", " + losses.join(", ") : "");
+  }
+  async function planetarySpecs() {
+    // NOTE 97. EIS CompDisplays J is one row per planet class. Your worlds stay under their own label.
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "planet-catalog";
+    m.innerHTML = '<div class="y">Planetary Specs</div><div class="c">Loading.</div>';
+    try {
+      const data = await api("/" + state.seat + "/reference");
+      const section = (data.sections || []).find((row) => row.id === "planet_classes") || { rows: [] };
+      const body = (section.rows || []).map((row) => {
+        const citadel = (row.citadel || []).map((level) => "L" + level.level + " colonists " + fmt(level.colonists) + ", fuel " + fmt(level.fuel_ore) + ", organics " + fmt(level.organics) + ", equipment " + fmt(level.equipment) + ", " + fmt(level.days) + " days").join("; ");
+        return '<div class="row" data-planet-class="' + esc(row.letter) + '"><span class="y">Class ' + esc(row.letter) + " " + esc(row.name || "") + '</span> ' + esc(String(row.value || "")) + (citadel ? "<br>" + esc(citadel) : "") + "</div>";
+      }).join("") || '<div class="row">No planet classes.</div>';
+      m.innerHTML = '<div class="y">Planetary Specs</div><div class="row"><button type="button" data-your-planets="1">Your planets</button></div>' + body + '<br><span class="dk">Esc to close</span>';
+      const yours = m.querySelector("[data-your-planets]");
+      if (yours) yours.addEventListener("click", () => planetView());
+    } catch (e) {
+      m.innerHTML = '<div class="y">Planetary Specs</div><div class="r">' + esc(e.message || e) + "</div>";
+    }
   }
   function dailyLog() {
     const seen = new Set();
@@ -5524,6 +5585,9 @@
         else if (facts.planet_fighters_lost != null && /ship destroyed/i.test(body)) {
           body = body.replace(/[.\s]+$/, "") + ". " + capFirst(siegeLosses(facts));
         }
+        // NOTE 97 CIT-j. The percent is already on the planet card. Say it on the result too.
+        const reactionBit = reactionHere();
+        if (reactionBit && body.indexOf("Military reaction") < 0) body += reactionBit;
       }
       if (noticeSeq > before && noticeLine && body.indexOf(noticeLine) < 0) body += ". " + noticeLine;
       const boarded = streamLog.concat((S && S.recent_events) || []).map(boardingSentence).filter(Boolean).pop();
@@ -5851,6 +5915,7 @@
     try {
       state.connected = true;
       await refresh();
+      await loadStardockClass();
       await refreshCreator();
       rememberSeat();
       const sign = document.querySelector(".sign-in");

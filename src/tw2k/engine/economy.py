@@ -109,12 +109,12 @@ def haggle_experience(bargain: int, span: int) -> int:
 
     Legacy is the credit gap, stopped at PORT_HAGGLE_XP_CAP.
     Live (NOTE 87, HAGGLE_EXP_MODE) is +1 for a good haggle and +2 for a
-    great one. REPORT2 s3 and s7 are not in this repo, and cabal
-    haggling.html does not print which counter is which. UNVERIFIED: a
-    great haggle is an accepted price at least as far from the list as
-    the hidden bound (the farthest the port will take). A smaller
-    improvement is a good haggle. The +1 and +2 amounts are the NOTE's
-    reading of REPORT2.
+    great one. UNVERIFIED, searched: HardwareMenu.html lines 240-241 (better
+    deal, more points, no amounts), S2_cabal_formulas.html (no split),
+    S7_softdocs_slice-10.txt ("haggle for 2 points"), and Eugene Hung's
+    player tips (exact best price pays 5, not adopted). A great haggle is
+    an accepted price at least as far from the list as the hidden bound.
+    A smaller improvement is a good haggle.
     """
     gap = int(bargain)
     if gap <= 0:

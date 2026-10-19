@@ -332,7 +332,13 @@ def _ports(_f: dict) -> str:
         + _table(("Class", "What it trades"), rows)
         + "<p>StarDock, in sector "
         + _n(K.STARDOCK_SECTOR)
-        + ", sells hardware and ships and holds the bank. Class 0 is the federal port.</p>"
+        + ", sells hardware and ships and holds the bank. "
+        + (
+            "On the live class map it is shown as Class 9. Its stored id stays 8, and Class 9 in the trade book is still the built SSS port."
+            if K.port_class_live()
+            else "Its stored class id is 8."
+        )
+        + " Class 0 is the federal port.</p>"
         + _src("Trade Wars port class chart. B means the port buys that commodity from the player.")
     )
 
