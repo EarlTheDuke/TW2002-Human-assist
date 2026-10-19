@@ -58,3 +58,17 @@ Numbers a v3.11 source does not settle. Searched before these rows were added: `
 | Good haggle experience | +1 | Make a deal that beats the offer and stops short of the hidden bound | Experience before and after | `HAGGLE_EXP_GOOD` |
 | Great haggle experience | +2, when the accepted price reaches the hidden bound | Repeat and take the price the port will not beat | Experience before and after, and whether 5 is awarded for the exact best price | `HAGGLE_EXP_GREAT` |
 | Ship rename | 5000 credits, 30 characters, 0 turns | At the shipyard, rename the ship | Credits taken, the longest name accepted, and the turn counter | `SHIP_RENAME_COST`, `SHIP_RENAME_NAME_MAX` |
+
+## Live TWGS test queue (NOTE 112)
+
+GAP 2.5 is `PRICE_SCALE_MODE` (profile row 165). The economy2 100% chart totals are the quotes. Shield unit price, the ship-versus-ship loss split, and real-time travel seconds are not in a saved file, so they are not switched.
+
+Searched before these rows were added: `docs/playtests/ports/ECONOMY_SCALE.md` (no shield unit price), `docs/plans/ship-odds-exchange-v1.md` (loss split already queued under NOTE 96), `docs/reference/tw2002/GAP_MAP.md` row 5.7 and row 12.3, `docs/reference/tw2002/eis_tw2002_v3_docs/GeneralUpdated.html` (RealtimeMovement and InteractiveCombat: a rate by size and power, SysOp may cut it to 1/4 or 1/2 or double it, and an attack waits for the hop; no seconds and no per-hull table). StarDock trade-in is already `TRADE_IN_MODE` row 13 and `TRADE_IN_PARTS_MODE` row 76. The published 1.25 flee is already `SHIP_FLEE_MODE` row 56. Day roll while a seat holds the turn is already `DAY_ROLL_CLOCK_MODE` row 81, and a legacy game with its own day length is `LEGACY_DAY_CLOCK_MODE` row 164. `PLANET_REALTIME_PROD_MODE` stays off the profile because the original produces at Extern.
+
+| item | current value | live test | what to record | constant |
+|---|---|---|---|---|
+| Shield unit price | no saved unit price. The flat 10 stays. The fighter wave is 160 to 239 | At StarDock, buy one shield on two different days | The credit price each day, next to that day's fighter price | a shield price, only if the screen prints one |
+| Ship-odds loss split | already queued under NOTE 96. No new switch | See the NOTE 96 row | Fighters and shields left on both ships | `docs/plans/ship-odds-exchange-v1.md` |
+| Attack turn cost | an attack spends 5 turns | Attack a ship and read the turn counter before and after | Turns spent, and whether that number changes with the hull | `TURN_COST["attack"]` |
+| Attacker destroyed by its own attack | the attack does not destroy the attacker | Send every fighter into a stronger ship | Whether the attacker is podded | no constant until a screen shows it |
+| Real-time hop time | no delay. Movement spends turns per warp | Warp one sector in a Merchant Cruiser and in a Scout. Time the hop. Repeat after a SysOp speed change if one is set | Seconds for each hull, and the speed setting | a per-hull travel time, only if the screen or the editor prints one |

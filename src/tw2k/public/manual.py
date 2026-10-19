@@ -344,6 +344,7 @@ def _trading(f: dict) -> str:
         f"The older window runs from {_n(K.PORT_HAGGLE_MIN_PCT)} to {_n(K.PORT_HAGGLE_MAX_PCT)} percent. "
         f"A failed haggle costs {_n(K.PORT_HAGGLE_FAIL_TURNS)} turn.</p>"
         + _buy_anchor()
+        + _price_scale()
         + _busts(f)
         + _src("Port haggling notes (HAGGLE.md), the live buy-price anchor, and the bust clear on the day tick.")
     )
@@ -714,6 +715,28 @@ def _buy_anchor() -> str:
         )
     return (
         f"<p>{_profile('Hungry buy-price anchor', K.port_buy_price_anchor_on(), only_v311=False)} {body}</p>"
+    )
+
+
+def _price_scale() -> str:
+    """GAP 2.5. The chart totals are per 250 holds; the page prints the nearest credit."""
+    if K.price_scale_live():
+        sell = {k: K.price_scale_unit(v) for k, v in K.PRICE_SCALE_SELL_250.items()}
+        buy = {k: K.price_scale_unit(v) for k, v in K.PRICE_SCALE_BUY_250.items()}
+        body = (
+            "A full selling port at MCIC 50, experience 0, asks the economy2 chart: "
+            f"fuel {_n(sell['fuel_ore'])}, organics {_n(sell['organics'])}, "
+            f"equipment {_n(sell['equipment'])} a hold. "
+            "An empty buying port at MCIC -50 pays "
+            f"fuel {_n(buy['fuel_ore'])}, organics {_n(buy['organics'])}, "
+            f"equipment {_n(buy['equipment'])}. "
+            "Those are the 250-hold chart totals, rounded to a whole credit a hold. "
+            "Stock, MCIC, and experience still move the quote from that point."
+        )
+    else:
+        body = "Port quotes stay on the current stock curve. The economy2 chart totals are not the quote."
+    return (
+        f"<p>{_profile('Chart price scale', K.price_scale_live(), only_v311=False)} {body}</p>"
     )
 
 
@@ -1231,7 +1254,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     ),
     "trading": (
         "trade", "rob", "steal", "planet_trade",
-        "PORT_PRICE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
+        "PORT_PRICE_MODE", "PRICE_SCALE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
         "HAGGLE_EXP_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
         "PORT_CLASS_MAP_MODE", "PORT_CLASS_NUMBER_FIX_MODE", "CLASS0_HOLD_FORMULA_MODE",
         "HOLD_RULES_MODE", "SHOP_PRICE_MODE",
