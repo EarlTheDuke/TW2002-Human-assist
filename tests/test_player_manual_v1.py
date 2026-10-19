@@ -29,9 +29,9 @@ HEADINGS = [title for _sid, title in SECTIONS]
 
 
 def _free_port() -> int:
-    from tests._port_lock import claim_ports
+    from tests._cu_host import free_port
 
-    return claim_ports(1, low=40000, high=46000)
+    return free_port()
 
 
 def test_every_section_has_an_anchor_and_the_contents_resolve() -> None:
@@ -189,7 +189,12 @@ def test_a_games_own_settings_are_the_numbers_on_its_page() -> None:
 def test_lobby_pages_link_to_the_manual_and_the_page_is_a_route(tmp_path) -> None:
     for html in (disclaimer("Galaxy War Command"), about("Galaxy War Command")):
         assert 'href="/manual"' in html
-    cfg = LobbyConfig(port=42100, game_ports=range(42110, 42120), root=tmp_path)
+    from tests._cu_host import LOBBY_FREE_START, free_port
+    from tests._port_lock import release_ports
+
+    lobby_port = free_port(LOBBY_FREE_START)
+    game_base = free_port(LOBBY_FREE_START, count=10)
+    cfg = LobbyConfig(port=lobby_port, game_ports=range(game_base, game_base + 10), root=tmp_path)
     app = create_lobby_app(cfg)
     assert any(getattr(route, "path", None) == "/manual" for route in app.routes)
 
@@ -205,6 +210,7 @@ def test_lobby_pages_link_to_the_manual_and_the_page_is_a_route(tmp_path) -> Non
     assert "Getting started" in body and "Combat" in body
     assert home_status == 200
     assert 'href="/manual"' in home
+    release_ports(lobby_port, *range(game_base, game_base + 10))
 
 
 def test_a_worker_prefix_rewrites_the_manual() -> None:

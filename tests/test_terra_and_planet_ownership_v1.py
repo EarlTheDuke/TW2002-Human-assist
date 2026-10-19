@@ -252,9 +252,17 @@ def test_the_lobby_form_validates_the_home_planet_name(tmp_path) -> None:
     html = pages.new_game("Galaxy War Command")
     assert 'name="home_planet_name"' in html
     assert "Home planet name" in pages.join_confirm("Galaxy War Command", game={"id": "g", "name": "Alpha"}, seat="P2", key="k")
-    cmd = WM.serve_command(named.settings(), 44001, tmp_path)
-    assert "--home-planet-name" in cmd and "Probe Base" in cmd
-    assert "--home-planet-name" not in WM.serve_command(blank.settings(), 44002, tmp_path)
+    from tests._cu_host import free_port
+    from tests._port_lock import release_ports
+
+    sample = free_port()
+    other = free_port()
+    try:
+        cmd = WM.serve_command(named.settings(), sample, tmp_path)
+        assert "--home-planet-name" in cmd and "Probe Base" in cmd
+        assert "--home-planet-name" not in WM.serve_command(blank.settings(), other, tmp_path)
+    finally:
+        release_ports(sample, other)
 
 
 def test_the_cockpit_names_the_owner_and_keeps_terra_apart(tmp_path) -> None:
@@ -265,11 +273,12 @@ def test_the_cockpit_names_the_owner_and_keeps_terra_apart(tmp_path) -> None:
         sync = pytest.importorskip("playwright.sync_api").sync_playwright
         import uvicorn
 
-        from tests._port_lock import claim_ports, release_ports
+        from tests._cu_host import free_port
+        from tests._port_lock import release_ports
         from tw2k.server.app import create_app
         from tw2k.server.runner import AgentSpec, MatchSpec
 
-        base_port = claim_ports(1, low=40000, high=46000)
+        base_port = free_port()
         token = "n" * 40
         app = create_app(auto_start=False)
         runner = app.state.runner

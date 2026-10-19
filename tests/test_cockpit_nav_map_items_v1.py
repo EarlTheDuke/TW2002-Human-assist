@@ -30,9 +30,9 @@ PATH = [173, 975, 948, 445, 739, 1]
 
 
 def _free_block(n: int) -> int:
-    from tests._port_lock import claim_ports
+    from tests._cu_host import LOBBY_FREE_START, free_port
 
-    return claim_ports(n, low=40000, high=46000)
+    return free_port(LOBBY_FREE_START, count=n)
 
 
 def test_item2_route_query_does_not_spend_a_turn_and_names_the_one_way(monkeypatch) -> None:

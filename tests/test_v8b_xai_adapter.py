@@ -744,10 +744,9 @@ def _serve(handler) -> ThreadingHTTPServer:
 
 
 def _free_port() -> int:
-    # Skip reserved live/QC ports 8031-8036 (same rule as tests/_cu_host.py).
-    from tests._port_lock import claim_ports
+    from tests._cu_host import free_port
 
-    return claim_ports(1, low=8040, high=8200, sequential=True)
+    return free_port()
 
 
 def _encode(path: Path, width: int, height: int, seconds: int, rate: int, pattern: list[tuple[int, int, int]]) -> bytes:

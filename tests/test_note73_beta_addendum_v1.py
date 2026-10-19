@@ -34,7 +34,6 @@ from tw2k.engine.models import (
     FighterDeployment,
     GameConfig,
     Player,
-    ShipClass,
 )
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
@@ -280,7 +279,15 @@ class _FakeWorker:
 
 
 def test_lobby_marks_a_finished_game_while_the_tab_is_open(tmp_path, monkeypatch):
-    cfg = LobbyConfig(root=tmp_path / "lobby", port=47271, game_ports=range(47272, 47280), tick_s=3600.0, idle_s=30.0)
+    from tests._cu_host import LOBBY_FREE_START, free_port
+    from tests._port_lock import release_ports
+
+    lobby_port = free_port(LOBBY_FREE_START)
+    game_base = free_port(LOBBY_FREE_START, count=8)
+    cfg = LobbyConfig(
+        root=tmp_path / "lobby", port=lobby_port,
+        game_ports=range(game_base, game_base + 8), tick_s=3600.0, idle_s=30.0,
+    )
     lob = Lobby(cfg)
     lob.store.add_game(
         "g73", name="Done", creator="host", listed=True, seats=["P1"],
@@ -322,6 +329,7 @@ def test_lobby_marks_a_finished_game_while_the_tab_is_open(tmp_path, monkeypatch
     asyncio.run(lob.tick())
     assert lob.store.game("g73")["status"] == "finished"
     assert lob.workers.workers["g73"].alive() is False
+    release_ports(lobby_port, *range(game_base, game_base + 8))
 
 
 def test_game_root_redirects_to_the_watch_page(tmp_path):
@@ -329,13 +337,22 @@ def test_game_root_redirects_to_the_watch_page(tmp_path):
     (the gate redirects there after the cookie), so it is not sent back to /watch."""
     from starlette.testclient import TestClient
 
-    cfg = LobbyConfig(root=tmp_path / "lobby2", port=47281, game_ports=range(47282, 47290), tick_s=3600.0)
+    from tests._cu_host import LOBBY_FREE_START, free_port
+    from tests._port_lock import release_ports
+
+    lobby_port = free_port(LOBBY_FREE_START)
+    game_base = free_port(LOBBY_FREE_START, count=8)
+    cfg = LobbyConfig(
+        root=tmp_path / "lobby2", port=lobby_port,
+        game_ports=range(game_base, game_base + 8), tick_s=3600.0,
+    )
     app = create_lobby_app(cfg, port_probe=lambda _p: True)
     with TestClient(app) as client:
         bare = client.get("/g/abcd", follow_redirects=False)
         slash = client.get("/g/abcd/", follow_redirects=False)
     assert bare.status_code == 307 and bare.headers["location"].endswith("/g/abcd/watch")
     assert slash.status_code != 307
+    release_ports(lobby_port, *range(game_base, game_base + 8))
 
 
 # --------------------------------------------------------------------------- item 5

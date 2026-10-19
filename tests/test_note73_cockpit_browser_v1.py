@@ -2,8 +2,8 @@
 
 Terra's form opens in the viewport and CONFIRM posts terra_colonists. The
 StarDock list keeps a Genesis row the seat cannot buy. Rankings, the end
-panel, and a tokenless seat use the words from the engine. Ports stay at
-8200 and above, clear of 8099-8119.
+panel, and a tokenless seat use the words from the engine. The host takes
+an open pocket, or an OS ephemeral port when those are busy.
 """
 
 from __future__ import annotations
@@ -12,22 +12,13 @@ from pathlib import Path
 
 import pytest
 
-import tw2k.engine.constants as K
-from tw2k.engine.victory import check_victory
-
 import tests._cu_host as cu
+import tw2k.engine.constants as K
 from tests._cu_host import CuHost
+from tw2k.engine.victory import check_victory
 
 TOK = "note73-token-p2-00000000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "beta-playtest-addendum-v1"
-BLOCKED = set(range(8031, 8037)) | set(range(8099, 8120))
-
-
-def _safe_port(start: int = 8200) -> int:
-    from tests._port_lock import claim_ports
-
-    begin = start if start >= 8200 else 8200
-    return claim_ports(1, low=begin, high=begin + 200, avoid=set(BLOCKED), sequential=True)
 
 
 def _box_in_view(page, selector: str) -> None:
@@ -72,15 +63,14 @@ def browser():
         launched.close()
 
 
-def test_terra_gear_rankings_and_a_tokenless_seat(browser, tmp_path, monkeypatch) -> None:
+def test_terra_gear_rankings_and_a_tokenless_seat(browser, tmp_path) -> None:
     _prior_v311_profile = K.V311_PROFILE
     try:
-        monkeypatch.setattr(cu, "free_port", _safe_port)
         saved = K.V311_PROFILE
         try:
             K.V311_PROFILE = "v311"
             with CuHost(tmp_path, TOK, max_days=3, turns_per_day=40, park_at=K.STARDOCK_SECTOR, fuel=0) as host:
-                assert host.port >= 8200 and host.port not in BLOCKED
+                assert cu.allowed_test_port(host.port)
                 u = host.runner.state.universe
                 assert u.terra_colonists and u.terra_colonists > 0
                 ctx = browser.new_context()

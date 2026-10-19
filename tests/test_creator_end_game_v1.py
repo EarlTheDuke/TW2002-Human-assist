@@ -39,7 +39,6 @@ BOT_HTML = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")
 BOT_JS = (ROOT / "web" / "bot.js").read_text(encoding="utf-8")
 BOT_PARITY = (ROOT / "web" / "bot-parity.js").read_text(encoding="utf-8")
 SHOTS = ROOT / "docs" / "playtests" / "creator-end-game-v1"
-BLOCKED = set(range(8031, 8120))
 
 
 class _FakeWorker:
@@ -53,20 +52,31 @@ class _FakeWorker:
         return self.up
 
 
-def _cfg(tmp_path: Path) -> LobbyConfig:
-    return LobbyConfig(root=tmp_path / "selfhost", port=47350, game_ports=range(47351, 47360), tick_s=3600.0)
+def _cfg(tmp_path: Path) -> tuple[LobbyConfig, list[int]]:
+    from tests._cu_host import LOBBY_FREE_START, free_port
+
+    lobby_port = free_port(LOBBY_FREE_START)
+    game_base = free_port(LOBBY_FREE_START, count=9)
+    holds = [lobby_port, *range(game_base, game_base + 9)]
+    cfg = LobbyConfig(
+        root=tmp_path / "selfhost", port=lobby_port,
+        game_ports=range(game_base, game_base + 9), tick_s=3600.0,
+    )
+    return cfg, holds
 
 
 @pytest.fixture
 def lobby(tmp_path, monkeypatch):
     for name in ("TW2K_PUBLIC_MODE", "TW2K_BRAND", "TW2K_BASE_PATH", "TW2K_SPECTATOR_TOKEN"):
         monkeypatch.delenv(name, raising=False)
-    app = create_lobby_app(_cfg(tmp_path), port_probe=lambda _p: True)
+    cfg, holds = _cfg(tmp_path)
+    app = create_lobby_app(cfg, port_probe=lambda _p: True)
     lob = app.state.lobby
+    game_port = cfg.game_ports[0]
 
     async def fake_start(gid, *, resume):
-        lob.workers.workers[gid] = _FakeWorker(47351)
-        lob.store.set_game(gid, status="running", port=47351)
+        lob.workers.workers[gid] = _FakeWorker(game_port)
+        lob.store.set_game(gid, status="running", port=game_port)
         return True
 
     async def fake_call(gid, method, path, body=None):
@@ -80,8 +90,13 @@ def lobby(tmp_path, monkeypatch):
     lob.start_game = fake_start
     lob.worker_call = fake_call
     lob.workers.stop = fake_stop
+    from tests._port_lock import release_ports
+
     with TestClient(app) as client:
-        yield client, lob
+        try:
+            yield client, lob
+        finally:
+            release_ports(*holds)
 
 
 def _accept(client) -> None:
@@ -278,12 +293,6 @@ def test_redesign_hides_the_item_unless_this_seat_is_the_creator_and_bot_is_unto
     assert "endForEveryone" not in BOT_PARITY and "End game for everyone" not in BOT_PARITY
 
 
-def _free_port(start: int = 8210) -> int:
-    from tests._port_lock import claim_ports
-
-    return claim_ports(1, low=start, high=start + 80, avoid=set(BLOCKED), sequential=True)
-
-
 def test_screenshots_at_1280_and_390(tmp_path, monkeypatch) -> None:
     sync_api = pytest.importorskip("playwright.sync_api")
     import threading
@@ -291,13 +300,12 @@ def test_screenshots_at_1280_and_390(tmp_path, monkeypatch) -> None:
 
     import uvicorn
 
-    from tests._cu_host import CuHost
+    from tests._cu_host import LOBBY_FREE_START, CuHost, allowed_test_port, free_port
 
-    monkeypatch.setattr("tests._cu_host.free_port", _free_port)
     for name in ("TW2K_PUBLIC_MODE", "TW2K_BRAND", "TW2K_BASE_PATH", "TW2K_SPECTATOR_TOKEN", "COCKPIT_LAYOUT"):
         monkeypatch.delenv(name, raising=False)
 
-    port = _free_port(8210)
+    port = free_port(LOBBY_FREE_START, count=4)
     app = create_lobby_app(
         LobbyConfig(root=tmp_path / "shots", port=port, game_ports=range(port + 1, port + 4), tick_s=3600.0),
         port_probe=lambda _p: True,
@@ -332,6 +340,9 @@ def test_screenshots_at_1280_and_390(tmp_path, monkeypatch) -> None:
     except Exception as exc:
         server.should_exit = True
         thread.join(timeout=5)
+        from tests._port_lock import release_ports
+
+        release_ports(*range(port, port + 4))
         pytest.skip(f"chromium not available: {exc}")
     try:
         page = browser.new_page(viewport={"width": 1280, "height": 800})
@@ -364,7 +375,7 @@ def test_screenshots_at_1280_and_390(tmp_path, monkeypatch) -> None:
 
         token = "c" * 40
         with CuHost(tmp_path / "cu", token, max_days=3, turns_per_day=40, seed=76) as host:
-            assert host.port >= 8210 and host.port not in BLOCKED
+            assert allowed_test_port(host.port)
 
             def install(route):
                 url = route.request.url
@@ -437,3 +448,6 @@ def test_screenshots_at_1280_and_390(tmp_path, monkeypatch) -> None:
         pw.stop()
         server.should_exit = True
         thread.join(timeout=10)
+        from tests._port_lock import release_ports
+
+        release_ports(*range(port, port + 4))
