@@ -1049,6 +1049,8 @@
   let warpManifestPromise = null;
   let warpPlays = 0;
   let warpTimer = 0;
+  let warpBag = [];
+  let lastWarpId = "";
   function ensureWarpManifest() {
     if (warpManifest) return Promise.resolve(warpManifest);
     if (!warpManifestPromise) {
@@ -1070,11 +1072,16 @@
         kind: "fallback",
       };
     }
-    let roll = typeof rnd === "function" ? Number(rnd()) : Math.random();
-    if (!Number.isFinite(roll)) roll = 0;
-    if (roll < 0) roll = 0;
-    if (roll >= 1) roll = 0.999999;
-    const clip = list[Math.floor(roll * list.length)];
+    let clip;
+    if (typeof rnd === "function") {
+      let roll = Number(rnd());
+      if (!Number.isFinite(roll)) roll = 0;
+      if (roll < 0) roll = 0;
+      if (roll >= 1) roll = 0.999999;
+      clip = list[Math.floor(roll * list.length)];
+    } else {
+      clip = takeWarpClip(list);
+    }
     return {
       fallback: false,
       id: String(clip.id),
@@ -1085,6 +1092,74 @@
       mp4: clip.mp4 || "",
       poster: clip.poster || "",
     };
+  }
+  function shuffleWarp(ids) {
+    const bag = ids.slice();
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const swap = bag[i];
+      bag[i] = bag[j];
+      bag[j] = swap;
+    }
+    if (bag.length > 1 && bag[bag.length - 1] === lastWarpId) {
+      const j = Math.floor(Math.random() * (bag.length - 1));
+      const swap = bag[bag.length - 1];
+      bag[bag.length - 1] = bag[j];
+      bag[j] = swap;
+    }
+    return bag;
+  }
+  function takeWarpClip(list) {
+    const ids = list.map((row) => String(row.id));
+    const same = warpBag.length > 0 && warpBag.every((id) => ids.indexOf(id) >= 0);
+    if (!same) warpBag = shuffleWarp(ids);
+    let id = warpBag.pop();
+    if (id === lastWarpId && warpBag.length) {
+      warpBag.unshift(id);
+      id = warpBag.pop();
+    }
+    lastWarpId = id;
+    return list.find((row) => String(row.id) === id) || list[0];
+  }
+  function warpStyleOf(chosen) {
+    const api = window.TW2KWarpVariants;
+    if (!api || !chosen || !chosen.id) return null;
+    return api.lookup(chosen.id);
+  }
+  function warpHullMarkup(sh, def, style) {
+    const sample = {
+      class: (sh && sh.class) || "",
+      fighters: (sh && sh.fighters) || 0,
+      shields: (sh && sh.shields) || 0,
+      shield_cap: (sh && sh.shield_cap) || 0,
+      transwarp: (sh && sh.transwarp) || {},
+    };
+    if (!shipSolidOn()) {
+      const angle = style ? (style.yaw * 36).toFixed(1) : "0";
+      return {
+        model: "outline",
+        xform: ' transform="translate(200 130) rotate(' + angle + ')"',
+        html: shipBody(sample, def),
+      };
+    }
+    if (!style) {
+      return { model: "solid", xform: "", html: shipSolidMarkup(sample, def, 200, 130) };
+    }
+    const drawn = [];
+    buildHullFaces(sample, def).forEach((face) => {
+      const cam = cameraFace(face, style.yaw, style.pitch, style.fit || 1, 200, 130);
+      if (cam) drawn.push(cam);
+    });
+    if (drawn.length < 4) {
+      drawn.length = 0;
+      buildHullFaces(sample, def).forEach((face) => {
+        const cam = cameraFace(face, style.yaw, 0.45, style.fit || 1, 200, 130);
+        if (cam) drawn.push(cam);
+      });
+    }
+    drawn.sort((a, b) => a.depth - b.depth);
+    const html = drawn.map((cam) => '<polygon points="' + cam.points + '" fill="' + cam.fill + '" opacity="' + cam.opacity + '"/>').join("");
+    return { model: "solid", xform: "", html: html };
   }
   function warpMotion() {
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1117,20 +1192,36 @@
     const def = SHIPS[chosen.hull] || SHIPS[sh.class] || { name: chosen.hull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
     const ms = Number(chosen.duration_ms) || Number(warpManifest && warpManifest.duration_ms) || 2000;
     const file = chosen.kind === "file" && (chosen.webm || chosen.mp4);
+    const style = warpStyleOf(chosen);
+    const flying = {
+      class: chosen.hull || (sh && sh.class) || "",
+      fighters: sh && sh.class === chosen.hull ? sh.fighters : 0,
+      shields: sh && sh.class === chosen.hull ? sh.shields : 0,
+      shield_cap: sh && sh.class === chosen.hull ? sh.shield_cap : 0,
+      transwarp: sh && sh.class === chosen.hull ? (sh.transwarp || {}) : {},
+    };
+    const paintAt = performance.now();
     root.hidden = false;
     root.setAttribute("data-hull", chosen.hull);
     root.setAttribute("data-clip", chosen.id);
     root.setAttribute("data-kind", file ? "file" : "svg");
     root.setAttribute("data-motion", motion);
+    root.setAttribute("data-variant", style ? style.n : "");
+    root.setAttribute("data-exit", style ? style.exit : "jump");
+    root.setAttribute("data-camera", style ? style.camera : "");
+    root.setAttribute("data-stars", style ? style.stars : "streaks");
+    root.setAttribute("data-ship", flying.class);
     root.classList.toggle("is-still", motion !== "play");
     svg.hidden = false;
-    const solidWarp = shipSolidOn();
-    const warpBody = solidWarp ? shipSolidMarkup(sh, def, 200, 130) : shipBody(sh, def);
-    const warpXform = solidWarp ? "" : ' transform="translate(200 130)"';
-    svg.innerHTML = warpStars()
+    const drawn = warpHullMarkup(flying, def, style);
+    const field = style && window.TW2KWarpVariants
+      ? window.TW2KWarpVariants.stars(chosen.id, style.stars)
+      : warpStars();
+    svg.innerHTML = field
       + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
-      + (solidWarp ? "solid" : "outline") + '"' + warpXform + ">"
-      + warpBody + "</g></g>";
+      + drawn.model + '"' + drawn.xform + ">"
+      + drawn.html + "</g></g>";
+    root.setAttribute("data-paint-ms", (performance.now() - paintAt).toFixed(2));
     if (video) {
       video.hidden = true;
       video.onerror = null;
@@ -6017,6 +6108,19 @@
       return true;
     },
     hold(ms) { return holdWarp(ms); },
+    paint(hull, id) {
+      const table = (warpManifest && warpManifest.hulls) || {};
+      const list = Array.isArray(table[hull]) ? table[hull] : [];
+      const row = list.find((item) => item && item.id === id) || { id: id, kind: "svg", duration_ms: 2000 };
+      showWarpClip(Object.assign({}, row, { fallback: false, hull: hull, id: id }));
+      return holdWarp(0);
+    },
+    panelMesh(hull) {
+      const def = SHIPS[hull] || { name: hull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
+      const sample = { class: hull, fighters: 0, shields: 0, shield_cap: 0, transwarp: {} };
+      if (!shipSolidOn()) return "outline";
+      return shipSolidMarkup(sample, def, 200, 130);
+    },
     state() {
       const root = $("warpClip");
       return {
