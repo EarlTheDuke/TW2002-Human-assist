@@ -4980,6 +4980,22 @@
     });
     return line;
   }
+  // NOTE 105. The capture event carries credits_lost only while the v3.11
+  // sentence is on. A destroy already says this from its own event.
+  function captureCreditSentence(afterSeq) {
+    let lost = 0;
+    streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+      if (!row || row.kind !== "ship_captured" || (row.seq || 0) <= afterSeq) return;
+      const n = Number(eventFacts(row).credits_lost || 0);
+      if (n) lost = n;
+    });
+    return lost ? "Credits on board lost: " + fmt(lost) + " cr" : "";
+  }
+  function withCaptureCredits(body, afterSeq) {
+    const extra = captureCreditSentence(afterSeq);
+    if (!extra || !body || /Credits on board lost/i.test(body)) return body;
+    return body.replace(/[.\s]+$/, "") + ". " + extra;
+  }
   function shipLossSides(afterSeq) {
     const sides = { mine: false, other: false };
     streamLog.concat((S && S.recent_events) || []).forEach((row) => {
@@ -5004,6 +5020,7 @@
     let line = fightSentence(best);
     const extra = destroyedExtra((best.seq || 1) - 1);
     if (extra && line.indexOf("ship destroyed") < 0) line = (line ? line + ". " : "") + extra;
+    line = withCaptureCredits(line, (best.seq || 1) - 1);
     if (line) setResult(line, /ship destroyed/i.test(line));
   }
   async function act(kind, args, label) {
@@ -5181,6 +5198,7 @@
           body = fightSentence(mine || combat);
           const extra = destroyedExtra(before - 1);
           if (extra && body.indexOf("ship destroyed") < 0) body += ". " + extra;
+          body = withCaptureCredits(body, before - 1);
           if (mine && mine.seq) state.seenFight = Math.max(state.seenFight || 0, mine.seq);
         } else if (facts.attacker_losses != null) {
           const lost = Number(facts.attacker_losses);
@@ -5404,6 +5422,7 @@
       let line = said;
       const extra = destroyedExtra((best.seq || 1) - 1);
       if (extra && line.indexOf("ship destroyed") < 0) line += ". " + extra;
+      line = withCaptureCredits(line, (best.seq || 1) - 1);
       setResult(line, /ship destroyed/i.test(line));
       if (best.seq) state.seenFight = Math.max(state.seenFight || 0, best.seq);
       return;

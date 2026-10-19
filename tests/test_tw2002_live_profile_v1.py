@@ -122,6 +122,7 @@ HELPERS = (
     "planet_collision_live",
     "planet_bust_exp_live",
     "bot_bank_float_live",
+    "capture_credit_line_live",
 )
 
 
@@ -129,7 +130,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 120
+    assert len(names) == 121
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -190,6 +191,7 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.SPECIAL_PORT_DEFENCE_MODE == "legacy"
     assert K.PLANET_COLLISION_MODE == "legacy"
     assert K.PLANET_BUST_EXP_MODE == "legacy"
+    assert K.CAPTURE_CREDIT_LINE_MODE == "legacy"
     assert K.ATOMIC_MINES_PORT_NUKE is True
     assert K.PLANET_TREASURY_CAP == 10_000_000
     assert K.DEFAULT_ONE_WAY_FRACTION == 0.15

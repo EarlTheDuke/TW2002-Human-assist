@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 import threading
 import time
 from pathlib import Path
@@ -15,7 +14,6 @@ import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.models import Player
 from tw2k.public.pages import day_length_hint, new_game
-from tw2k.public.config import port_is_free
 from tw2k.public.security import DAY_PRESETS, parse_game_form
 from tw2k.server.runner import reported_turns_used
 
@@ -117,13 +115,9 @@ def test_the_cockpit_shows_the_day_clock_and_the_refill(monkeypatch, tmp_path) -
     from tw2k.server.runner import AgentSpec, MatchSpec
 
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
-    port = None
-    for _ in range(200):
-        candidate = random.Random().randrange(40000, 46000)
-        if port_is_free(candidate):
-            port = candidate
-            break
-    assert port
+    from tests._port_lock import claim_ports
+
+    port = claim_ports(1, low=40000, high=46000)
     app = create_app(auto_start=False)
     runner = app.state.runner
     runner._saves_root = tmp_path / "saves"

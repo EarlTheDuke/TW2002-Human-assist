@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import random
 import subprocess
 import sys
 import time
@@ -27,7 +26,6 @@ from tw2k.public import config as C
 from tw2k.public import security as S
 from tw2k.public import worker as W
 from tw2k.public import workers as WM
-from tw2k.public.config import port_is_free
 from tw2k.public.lobby import create_lobby_app
 from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
@@ -217,12 +215,9 @@ def test_item0_the_form_shows_the_choice_and_the_card_shows_the_line(tmp_path) -
 
 
 def _free_block(n: int) -> int:
-    rng = random.Random()
-    for _ in range(200):
-        base = rng.randrange(40000, 46000)
-        if all(port_is_free(base + i) for i in range(n)):
-            return base
-    raise RuntimeError("no free port block")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(n, low=40000, high=46000)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows host")
@@ -298,6 +293,9 @@ def test_item0_a_lobby_game_starts_every_seat_at_the_chosen_credits(tmp_path) ->
         if lob.poll() is None:
             lob.kill()
             lob.wait(10)
+        from tests._port_lock import release_ports
+
+        release_ports(base, base + 1, base + 2)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows host")
@@ -360,3 +358,6 @@ def test_item0_browser_form_and_game_info_line(tmp_path) -> None:
         if lob.poll() is None:
             lob.kill()
             lob.wait(10)
+        from tests._port_lock import release_ports
+
+        release_ports(base, base + 1, base + 2)

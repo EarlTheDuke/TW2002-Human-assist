@@ -7,7 +7,6 @@ button exists only on the redesign layout.
 from __future__ import annotations
 
 import asyncio
-import random
 import re
 import threading
 from pathlib import Path
@@ -17,7 +16,7 @@ import pytest
 
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig
-from tw2k.public.config import LobbyConfig, port_is_free
+from tw2k.public.config import LobbyConfig
 from tw2k.public.lobby import create_lobby_app
 from tw2k.public.manual import SECTIONS, render
 from tw2k.public.pages import about, disclaimer
@@ -30,12 +29,9 @@ HEADINGS = [title for _sid, title in SECTIONS]
 
 
 def _free_port() -> int:
-    rng = random.Random()
-    for _ in range(200):
-        port = rng.randrange(40000, 46000)
-        if port_is_free(port):
-            return port
-    raise RuntimeError("no free port")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(1, low=40000, high=46000)
 
 
 def test_every_section_has_an_anchor_and_the_contents_resolve() -> None:
