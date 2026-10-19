@@ -23,6 +23,43 @@ from tw2k.server.runner import AgentSpec, MatchSpec
 
 VIEW_W, VIEW_H = 1280, 800
 
+# Nested hosts each saved INFO_MODE and the later __exit__ put back the inner
+# value, which was already "legacy". One saved value, restored when the last
+# host closes, leaves the mode the suite started with.
+_info_depth = 0
+_info_saved: str | None = None
+
+
+def acquire_info_mode(holder) -> None:
+    """Set INFO_MODE to legacy while this holder is open."""
+    global _info_depth, _info_saved
+    import tw2k.engine.constants as K
+
+    if getattr(holder, "_info_held", False):
+        return
+    if _info_depth == 0:
+        _info_saved = K.INFO_MODE
+    _info_depth += 1
+    holder._info_held = True
+    holder._info_mode = _info_saved
+    K.INFO_MODE = "legacy"
+
+
+def release_info_mode(holder) -> None:
+    """Restore the mode saved before the first open host, once none remain."""
+    global _info_depth, _info_saved
+    if not getattr(holder, "_info_held", False):
+        return
+    holder._info_held = False
+    import tw2k.engine.constants as K
+
+    _info_depth -= 1
+    if _info_depth <= 0:
+        _info_depth = 0
+        if _info_saved is not None:
+            K.INFO_MODE = _info_saved
+        _info_saved = None
+
 
 # Live hosted matches and the full QC game occupy 8031-8036; browser tests
 # must never bind those (a free-port scan starting at 8033 could steal 8033/8035).
@@ -111,9 +148,7 @@ class CuHost:
     def __enter__(self) -> CuHost:
         # The cockpit tests drive the free scan and read today's adjacent view: they test the
         # UI, not the scanner rules (SCANNERS_HIDDEN_INFO.md), so the host runs INFO_MODE legacy.
-        import tw2k.engine.constants as K
-
-        self._info_mode, K.INFO_MODE = K.INFO_MODE, "legacy"
+        acquire_info_mode(self)
         # free_port reserves the port across processes before uvicorn binds it.
         self.port = free_port()
         self.server = self._uvicorn.Server(
@@ -125,7 +160,7 @@ class CuHost:
         while time.time() < deadline and not self.server.started:
             time.sleep(0.05)
         if not self.server.started:
-            K.INFO_MODE = self._info_mode
+            release_info_mode(self)
         assert self.server.started, "host did not start"
         deadline = time.time() + 20
         # Wait for the park too: a test that reads the seat's port right after
@@ -146,9 +181,7 @@ class CuHost:
         running = current()
         if running is not None:
             running.stop()
-        import tw2k.engine.constants as K
-
-        K.INFO_MODE = self._info_mode
+        release_info_mode(self)
 
     @property
     def base(self) -> str:
