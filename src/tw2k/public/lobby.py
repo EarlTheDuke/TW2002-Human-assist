@@ -27,6 +27,7 @@ from . import pages
 from . import worker as W
 from .config import LobbyConfig, pick_port
 from .proxy import Proxy
+from .ai_seat import AiMemory, drive_seats, mask_key
 from .security import (
     GUEST_COOKIE,
     GUEST_COOKIE_MAX_AGE,
@@ -45,7 +46,7 @@ from .security import (
     sha256_hex,
 )
 from .store import ACTIVE, LIVE, Store
-from .workers import WorkerManager, admin_headers, seat_ids
+from .workers import WorkerManager, admin_headers, ai_count, ai_seat_ids, seat_ids
 
 log = logging.getLogger("tw2k.lobby")
 
@@ -94,6 +95,8 @@ class Lobby:
         self.locks: dict[str, asyncio.Lock] = {}
         self.reserved_ports: set[int] = set()
         self._port_probe = port_probe
+        self.ai_memory = AiMemory()
+        self.ai_tasks: dict[str, asyncio.Task] = {}
         self._task: asyncio.Task | None = None
         self._admin_csrf = hmac.new(secrets.token_bytes(32), b"admin", hashlib.sha256).hexdigest()
         self._shutdown_key = secrets.token_hex(24)
@@ -212,9 +215,17 @@ class Lobby:
                 return False
             self.reserved_ports.add(port)
             try:
-                tokens = {seat: new_seat_token() for seat in seat_ids(int(g["settings"]["humans"]))}
-                for seat in tokens:
+                humans_n = int(g["settings"]["humans"])
+                human_seats = seat_ids(humans_n)
+                ai_seats = ai_seat_ids(humans_n, ai_count(g["settings"]))
+                tokens = {seat: new_seat_token() for seat in [*human_seats, *ai_seats]}
+                for seat in human_seats:
                     self.store.set_seat_hash(gid, seat, None)
+                if ai_seats:
+                    self.ai_memory.hold_tokens(
+                        gid, {seat: tokens[seat] for seat in ai_seats},
+                        brain=str(g["settings"].get("ai_brain") or "heuristic"),
+                    )
                 w = self.workers.spawn(gid, g["settings"], port, brand=self.brand,
                                        lobby_secret=self.secrets.lobby_secret(gid),
                                        spectator_token=self.secrets.spectator_token(gid),
@@ -228,6 +239,7 @@ class Lobby:
             if ok:
                 self.activity[gid] = time.time()
                 self.store.set_game(gid, status="running", last_activity=time.time())
+                self._launch_ai(gid)
                 return True
             log.warning("start game=%s: worker did not come up", gid)
             await self.workers.stop(gid, lobby_secret=self.secrets.lobby_secret(gid),
@@ -235,8 +247,47 @@ class Lobby:
             self.store.set_game(gid, status="failed", note="worker did not come up")
             return False
 
+    def _drop_ai(self, gid: str) -> None:
+        """Forget the key and stop the seat tasks. Safe to call more than once."""
+        self.ai_memory.drop(gid)
+        task = self.ai_tasks.pop(gid, None)
+        if task is not None and not task.done():
+            task.cancel()
+
+    def _launch_ai(self, gid: str) -> None:
+        from ..engine import constants as K
+
+        if not K.lobby_ai_seat_on():
+            return
+        row = self.ai_memory.row(gid)
+        w = self.workers.workers.get(gid)
+        g = self.store.game(gid)
+        if row is None or not row.tokens or w is None or g is None:
+            return
+        old = self.ai_tasks.pop(gid, None)
+        if old is not None and not old.done():
+            old.cancel()
+        settings = g["settings"]
+        days = int(settings.get("max_days") or 1)
+        idle_s = max(600.0, float(settings.get("day_seconds") or 600) * 2)
+        self.ai_tasks[gid] = asyncio.create_task(self._run_ai(
+            gid, f"http://127.0.0.1:{w.port}", dict(row.tokens),
+            brain=row.brain, key=row.key, url=row.url, days=days, idle_s=idle_s,
+        ))
+
+    async def _run_ai(self, gid: str, base: str, tokens: dict[str, str], *, brain: str, key: str,
+                      url: str, days: int, idle_s: float) -> None:
+        try:
+            async with httpx.AsyncClient(base_url=base, timeout=60.0) as client:
+                await drive_seats(client, tokens, brain=brain, key=key, url=url, days=days, idle_s=idle_s)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("ai seat game=%s stopped", gid)
+
     async def stop_game(self, gid: str, *, status: str, graceful: bool = True) -> None:
         async with self.lock(gid):
+            self._drop_ai(gid)
             await self.workers.stop(gid, lobby_secret=self.secrets.lobby_secret(gid),
                                     spectator_token=self.secrets.spectator_token(gid), graceful=graceful)
             self.store.set_game(gid, status=status, pid=None)
@@ -302,6 +353,7 @@ class Lobby:
             # stays up so the end screen and the watch page keep loading.
             # set_game stamps updated_at, which is when the archive clock starts.
             if info and info.get("finished") and g["status"] == "running":
+                self._drop_ai(gid)
                 self.store.set_game(gid, status="finished")
                 g = dict(g)
                 g["status"] = "finished"
@@ -361,6 +413,9 @@ class Lobby:
         self._task = asyncio.create_task(self._loop())
 
     async def shutdown(self) -> None:
+        for gid in list(self.ai_tasks):
+            self._drop_ai(gid)
+        self.ai_memory.drop_all()
         if self._task:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
@@ -487,7 +542,8 @@ class Lobby:
         except (FormError, ValueError) as exc:
             if api:
                 return JSONResponse({"detail": str(exc)}, status_code=400)
-            return self.html(pages.new_game(self.brand, error=str(exc), values=form, presets=self.cfg.day_presets,
+            public = {k: v for k, v in form.items() if k not in ("ai_key", "ai_endpoint")}
+            return self.html(pages.new_game(self.brand, error=str(exc), values=public, presets=self.cfg.day_presets,
                                             waiting=self._waiting(request)),
                              400)
         if self.closed:
@@ -503,11 +559,29 @@ class Lobby:
                                 request, title="Slow down")
         gid = secrets.token_hex(4)
         settings = parsed.settings()
+        secret = parsed.ai_key
+        endpoint = parsed.ai_endpoint
+        parsed.ai_key = ""
+        parsed.ai_endpoint = ""
         self.store.add_game(gid, name=parsed.name, creator=guest["id"], settings=settings, listed=parsed.listed,
                             seats=seat_ids(parsed.humans))
+        ai_n = int(settings.get("ai_opponents") or 0)
+        if ai_n and settings.get("ai_brain") == "llm":
+            self.ai_memory.remember(gid, key=secret, url=endpoint, brain="llm")
+            log.info("ai seat game=%s brain=llm seats=%s %s", gid, ai_n, mask_key(secret))
+        elif ai_n:
+            self.ai_memory.remember(gid, key="", url="", brain="heuristic")
+            log.info("ai seat game=%s brain=heuristic seats=%s", gid, ai_n)
+        secret = ""
+        endpoint = ""
         log.info("create game=%s rules=%s humans=%s bots=%s day=%s %s", gid, settings["rules"], settings["humans"],
                  settings["bots"], settings["day"], self.tag(request))
-        ok = await self.start_game(gid, resume=False)
+        ok = False
+        try:
+            ok = await self.start_game(gid, resume=False)
+        finally:
+            if not ok:
+                self._drop_ai(gid)
         if not ok:
             return self._api_or(api, 503, "The game could not start. Please try again later.", request)
         g = self.store.game(gid)
@@ -953,7 +1027,19 @@ class _BodyCap:
         await self.app(scope, receive, send)
 
 
+def _apply_lobby_ai_env() -> None:
+    """Host switch. Unset leaves the stored default. Only ``on`` and ``off`` are read."""
+    import os
+
+    from ..engine import constants as K
+
+    raw = os.environ.get("LOBBY_AI_SEAT_MODE", "").strip().lower()
+    if raw in ("on", "off"):
+        K.LOBBY_AI_SEAT_MODE = raw
+
+
 def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = None, port_probe=None) -> Starlette:
+    _apply_lobby_ai_env()
     cfg = cfg or LobbyConfig.from_env()
     lobby = Lobby(cfg, python=python, port_probe=port_probe)
 
