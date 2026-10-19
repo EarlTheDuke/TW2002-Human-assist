@@ -16,6 +16,8 @@ On this cockpit the warp scene is the viewport. A real move (a warp that changes
 
 Until a filmed clip exists, every hull has one SVG sequence, about 2 seconds: the NOTE 77 silhouette (same `shipBody` as the ship panel) streaks into a star field and shrinks toward the jump. `prefers-reduced-motion: reduce`, and the viewport Stills mode, hold that frame still. Viewport Off stays dark. The sequence is generated in the page. There is no new runtime dependency and no new video file.
 
+The real-move events are still handed to `TW2KMedia.onEvents`. When the hull scene played, that call sets `hullPlayed` so the generic `warp.out` does not start as well. A refused warp and a course plot stay out of the batch.
+
 The diff stays in the redesign viewport (`web/redesign.html`, `web/redesign.js`, `web/redesign.css`) plus the manifest. The deck grid is untouched.
 
 ## Adding about 10 filmed clips per hull
