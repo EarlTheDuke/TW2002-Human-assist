@@ -15,6 +15,7 @@ SECTIONS: tuple[tuple[str, str], ...] = (
     ("moving", "Moving, the course card and Express autopilot"),
     ("trading", "Trading and haggling"),
     ("ports", "Ports and StarDock"),
+    ("ship-trade-in", "Ship trade-in"),
     ("combat", "Combat"),
     ("ferrengi", "Ferrengi"),
     ("planets", "Planets"),
@@ -22,6 +23,7 @@ SECTIONS: tuple[tuple[str, str], ...] = (
     ("colonists", "Colonists and Terra"),
     ("corporations", "Corporations"),
     ("alignment", "Alignment, experience and ranks"),
+    ("rankings", "Rankings and the end of the game"),
     ("tax", "Tax, bank and interest"),
     ("turns", "Turns and days"),
     ("disclaimer", "Beta disclaimer"),
@@ -97,6 +99,13 @@ def _on(flag: bool) -> str:
     return "on" if flag else "off"
 
 
+def _profile(name: str, on: bool, *, only_v311: bool) -> str:
+    """Name a switched rule, say if only the v3.11 profile turns it on, and if it is on here."""
+    state = "on" if on else "off"
+    who = "Only the v3.11 profile turns this on." if only_v311 else "The v3.11 profile turns this on."
+    return f"{name}: {who} In this process it is {state}."
+
+
 def _src(text: str) -> str:
     return f'<p class="note">Original rule source: {escape(text)}</p>'
 
@@ -146,6 +155,7 @@ def _facts(config) -> dict:
         "tax_align": int(align),
         "max_days": max_days,
         "scoped": config is not None,
+        "bust_clear_days": getattr(config, "bust_clear_days", None) if config is not None else None,
     }
 
 
@@ -195,6 +205,7 @@ def _section(sid: str, f: dict) -> str:
         "moving": _moving,
         "trading": _trading,
         "ports": _ports,
+        "ship-trade-in": _ship_trade_in,
         "combat": _combat,
         "ferrengi": _ferrengi,
         "planets": _planets,
@@ -202,6 +213,7 @@ def _section(sid: str, f: dict) -> str:
         "colonists": _colonists,
         "corporations": _corporations,
         "alignment": _alignment,
+        "rankings": _rankings,
         "tax": _tax,
         "turns": _turns,
         "disclaimer": _disclaimer,
@@ -294,7 +306,9 @@ def _trading(f: dict) -> str:
         f"When it is on, a counter has to sit between {_n(room)} and {_n(end)} percent of the quote. "
         f"The older window runs from {_n(K.PORT_HAGGLE_MIN_PCT)} to {_n(K.PORT_HAGGLE_MAX_PCT)} percent. "
         f"A failed haggle costs {_n(K.PORT_HAGGLE_FAIL_TURNS)} turn.</p>"
-        + _src("Port haggling notes (HAGGLE.md) and the experience award for a trade.")
+        + _buy_anchor()
+        + _busts(f)
+        + _src("Port haggling notes (HAGGLE.md), the live buy-price anchor, and the bust clear on the day tick.")
     )
 
 
@@ -339,7 +353,12 @@ def _combat(_f: dict) -> str:
         f"<p>A kill drops you in an escape pod. You lose the ship. Experience drops by {loss} percent "
         f"({_n(K.POD_EXP_LOSS)} of what you had). {pod_credits} "
         "Addendum A is the written source for what the pod keeps.</p>"
-        + _src("RULINGS v3.11 section 6 (fighter exchange) and Addendum A (the escape pod and its credits).")
+        "<p>No death delay is loaded. A pod can act on the turn you land in it. "
+        "A wait of several midnights is not a rule in this process.</p>"
+        + _photon_wave()
+        + _probes()
+        + _src("RULINGS v3.11 section 6 (fighter exchange), Addendum A (the escape pod), "
+               "and the photon wave in the hardware rules.")
     )
 
 
@@ -420,19 +439,290 @@ def _corporations(_f: dict) -> str:
     return (
         f"<p>T opens the corporate menu. A corporation has a password. "
         f"It can hold up to {_n(K.CORP_MAX_MEMBERS)} members. "
-        "Members share the corporation's planets. Creating one, joining one, and the password are on that menu.</p>"
-        + _src("Corporation rules: a password, a member cap, and planets the corporation keeps.")
+        "Members share the corporation's planets. Creating one, joining one, and the password are on that menu. "
+        "The C.E.O. leaving ends the corporation.</p>"
+        + _corp_leave()
+        + _corp_join()
+        + _corp_planets()
+        + _src("Corporation menu, the v3.11 leave and join rules, and the planet rule loaded for a disbanded corporation.")
+    )
+
+
+def _corp_leave() -> str:
+    if K.corp_leaver_to_ceo():
+        body = (
+            "Fighters and mines you deployed for the corporation move to the C.E.O. when you leave. "
+            "The corporation mark stays on them. Fighters and limpets that were only yours stay yours. "
+            "Fighters outside the C.E.O.'s sector go rogue when the C.E.O. leaves and the corporation ends."
+        )
+    else:
+        body = (
+            "Fighters and mines you deployed for the corporation keep your name on them when you leave. "
+            "They do not move to the C.E.O."
+        )
+    return (
+        f"<p>{_profile('Fighters to the C.E.O. when a member leaves', K.corp_leaver_to_ceo(), only_v311=True)} "
+        f"{body}</p>"
+    )
+
+
+def _corp_join() -> str:
+    rule = K.corp_alignment_rule()
+    if rule == "join_check":
+        join = (
+            "A join is refused when your alignment and the C.E.O.'s have opposite signs. "
+            "Alignment 0 fits either side. A member who later changes sign is not removed."
+        )
+    elif rule == "same_side":
+        join = (
+            "A join is refused unless you are on the same alignment side as the C.E.O. "
+            "Alignment 0 counts as good."
+        )
+    else:
+        join = "Good and evil traders may join the same corporation."
+    if rule == "same_side":
+        penalty = (
+            "A member whose alignment side no longer matches the C.E.O. is removed. "
+            "The mixed-corp experience loss does not run."
+        )
+    else:
+        divisor = int(K.MIXED_CORP_EXP_DIVISOR)
+        floor = int(K.MIXED_CORP_EXP_FLOOR)
+        if K.mixed_corp_least_extreme():
+            formula = (
+                "the smaller of the highest good alignment and the strongest evil alignment, "
+                f"divided by {_n(divisor)}"
+            )
+        else:
+            formula = f"the highest good alignment, divided by {_n(divisor)}"
+        penalty = (
+            f"{_profile('Least-extreme mixed-corp experience', K.mixed_corp_least_extreme(), only_v311=True)} "
+            "When the corporation has both a good member and an evil member, every alive member "
+            f"loses experience at the next day. The loss is {formula}. "
+            f"Experience does not go below {_n(floor)}."
+        )
+    return (
+        f"<p>{_profile('Alignment join check', rule == 'join_check', only_v311=True)} {join}</p>"
+        f"<p>{penalty}</p>"
+    )
+
+
+def _corp_planets() -> str:
+    if K.CORP_LEAVER_PLANETS == "leaver_keeps":
+        leave = "Planets you owned stay yours when you leave, and they leave the corporation."
+    else:
+        leave = (
+            "Planets you owned for the corporation become the C.E.O.'s when you leave. "
+            "You do not keep them."
+        )
+    v306 = K.corp_planet_disband_v306()
+    if v306:
+        end = (
+            "When the corporation ends, planets in the C.E.O.'s sector become the C.E.O.'s. "
+            "Every other corporation planet is unclaimed."
+        )
+    else:
+        end = (
+            "When the corporation ends, a planet stays with its owner if that owner is still playing. "
+            "A planet whose owner is gone is unclaimed."
+        )
+    return (
+        f"<p>{leave} {_profile('Corp planet disband', v306, only_v311=False)} {end}</p>"
     )
 
 
 def _alignment(_f: dict) -> str:
-    ranks = _table(("Experience", "Rank"), tuple((_n(xp), name) for xp, name in K.RANK_TABLE))
-    tiers = _table(("Alignment", "Name"), tuple((_n(score), name) for score, name in K.ALIGNMENT_TIERS))
+    if K.rank_tw2002():
+        rows = [
+            (_n(thresh), good, evil)
+            for thresh, good, evil in zip(K.RANK_THRESHOLDS, K.GOOD_RANKS, K.EVIL_RANKS, strict=True)
+        ]
+        tables = (
+            "<p>Zero alignment or above uses the good title. Below zero uses the evil title. "
+            "Below 2 experience the title is Civilian.</p>"
+            + _table(("Experience", "Good title", "Evil title"), rows)
+        )
+    else:
+        tables = (
+            _table(("Experience", "Rank"), [(_n(xp), name) for xp, name in K.RANK_TABLE])
+            + _table(("Alignment", "Name"), [(_n(score), name) for score, name in K.ALIGNMENT_TIERS])
+        )
     return (
         "<p>Experience comes from trades, kills and building. Alignment moves when you dump colonists, "
-        "kill, or take other acts the engine scores. The tables below are the ones loaded in this process.</p>"
-        + ranks + tiers
-        + _src("The engine rank table and alignment tiers.")
+        "kill, or take other acts the engine scores. The tables below are the ones loaded in this process. "
+        "This rank table follows the rank mode loaded in this process. It is not a v3.11-only switch.</p>"
+        + tables
+        + _src("The engine rank table. Under the tw2002 rank mode the good and evil titles are separate.")
+    )
+
+
+def _rankings(f: dict) -> str:
+    from ..engine.victory import end_rule_line
+
+    if K.trader_rank_list_live():
+        listing = (
+            "Game status lists every trader by experience: place, name, title, experience, corporation, "
+            "ship, and whether they are alive. It does not show credits, net worth, or where they are."
+        )
+    else:
+        listing = "The list of every trader by experience is not published."
+    if K.nw_estimate_live():
+        worth = (
+            f"The net-worth note on that screen is: {K.NW_ESTIMATE_NOTE} "
+            "It does not change who wins."
+        )
+    else:
+        worth = "The paid-cargo net-worth note is not shown."
+    return (
+        f"<p>{escape(end_rule_line(int(f['max_days'])))}</p>"
+        f"<p>{_profile('Experience ranking of every trader', K.trader_rank_list_live(), only_v311=False)} "
+        f"{listing}</p>"
+        "<p>When the day cap ends the game, the screen starts "
+        "GAME OVER - time ran out after the last day, then the places and the measure, "
+        "experience or net worth.</p>"
+        f"<p>{_profile('Paid-cargo net-worth note', K.nw_estimate_live(), only_v311=False)} {worth}</p>"
+        + _creator_end()
+        + _src("The end rule and the end screen are built by the victory code. "
+               "The creator end is a lobby and cockpit control, not a profile switch.")
+    )
+
+
+def _creator_end() -> str:
+    return (
+        "<p>The person who created the game can end it for everyone before the day cap. "
+        "On the lobby the button says End game. On the redesign cockpit, in that creator's own seat, "
+        "the button says End game for everyone. The game asks you to confirm. "
+        "The end screen says GAME OVER - Ended by the game's creator. "
+        "Places use the same measure as a day-cap finish. "
+        "This is not a v3.11-only rule.</p>"
+    )
+
+
+def _ship_trade_in(f: dict) -> str:
+    credit = int(K.trade_in_credit(K.STARTING_SHIP))
+    pct = round(K.trade_in_fraction() * 100)
+    if K.trade_in_parts_live():
+        receipt = K.trade_in_receipt(K.STARTING_SHIP)
+        body = (
+            "The yard credits the old ship part by part: hull, holds, drive, computer, fighters, shields, "
+            "and a density or holo scanner. Mines and other gear are not on the receipt. "
+            f"Each part pays 90 percent of its catalog price, and one credit less when that tenth is exact. "
+            f"A catalog price of 10,000 credits pays {_n(K.part_trade_credit(10_000))}. "
+            f"Fighters use a catalog of {_n(K.FIGHTER_TRADE_CATALOG)} each. "
+            f"Shields use a catalog of {_n(K.SHIELD_TRADE_CATALOG)} each. "
+            f"The starting {escape(f['ship'])}, empty, credits {_n(receipt['hull'])} for the hull, "
+            f"{_n(receipt['holds'])} for {_n(receipt['hold_count'])} holds, "
+            f"{_n(receipt['drive'])} for the drive and {_n(receipt['computer'])} for the computer. "
+            f"The total is {_n(receipt['total'])}."
+        )
+        pod = "An escape pod is priced as the parts on it."
+    else:
+        body = (
+            f"The yard pays {pct} percent of the hull's sticker price. "
+            f"The starting {escape(f['ship'])} is worth {_n(credit)} credits toward the next ship. "
+            "Holds, fighters and shields on the old ship are not itemised."
+        )
+        pod = "An escape pod is priced as a Scout Marauder."
+    if K.trade_in_live():
+        surplus = "If that credit is more than the next hull, the yard pays you the difference."
+    else:
+        surplus = "A credit larger than the next hull is not paid back."
+    return (
+        f"<p>{body} {surplus} {pod}</p>"
+        f"<p>{_profile('Part-by-part trade-in', K.trade_in_parts_live(), only_v311=False)} "
+        f"{_profile('Trade-in surplus', K.trade_in_live(), only_v311=False)}</p>"
+        + _src("The shipyard trade-in. Parts mode itemises the ship. The surplus gate is the live trade-in fraction.")
+    )
+
+
+def _buy_anchor() -> str:
+    anchors = K.PORT_PRICE_LIVE_BUY_FULL
+    hungry = (
+        f"fuel {_n(anchors['fuel_ore'])}, organics {_n(anchors['organics'])}, "
+        f"equipment {_n(anchors['equipment'])}"
+    )
+    if K.port_price_live() and K.port_buy_price_anchor_on():
+        body = (
+            f"A port that buys from you, when it is empty, pays these hungry quotes: {hungry}. "
+            f"As the hold fills, the quote eases by {_n(K.PORT_BUY_FILL_EASE)} times how full it is. "
+            "A full port pays less than a hungry one. A federal port stays at the base price."
+        )
+    elif K.port_price_live():
+        body = (
+            f"The live price anchors are {hungry}, and a buying port pays that anchor only when its hold is full. "
+            "A hungry port quotes higher. The hungry-quote anchor is off."
+        )
+    else:
+        body = (
+            "Buying-port prices use the older stock curve. "
+            f"The hungry quotes {hungry} are not applied."
+        )
+    return (
+        f"<p>{_profile('Hungry buy-price anchor', K.port_buy_price_anchor_on(), only_v311=False)} {body}</p>"
+    )
+
+
+def _busts(f: dict) -> str:
+    on = K.rob_tw2002() and K.bust_record_clear_live()
+    days = f.get("bust_clear_days")
+    if not K.rob_tw2002():
+        rule = "Port busts are not in force."
+    elif not on:
+        rule = (
+            "A bust blocks trade, rob, and steal at that port until the next day. "
+            "Every day clears every bust. A game setting of 7 is ignored."
+        )
+    elif days == 7:
+        rule = (
+            "A bust blocks trade, rob, and steal at that port until the records clear. "
+            "This game clears bust records every 7 days, when the day number is a multiple of 7."
+        )
+    elif days == 1:
+        rule = (
+            "A bust blocks trade, rob, and steal at that port until the next day. "
+            "This game clears bust records every 1 day."
+        )
+    else:
+        rule = (
+            "A bust blocks trade, rob, and steal at that port until the records clear. "
+            "No interval is set, so bust records clear every day. "
+            "A game can set the interval to 1 or to 7. "
+            "7 clears when the day number is a multiple of 7."
+        )
+    return f"<p>{_profile('Bust-clear interval', on, only_v311=False)} {rule}</p>"
+
+
+def _photon_wave() -> str:
+    days = int(K.PHOTON_WAVE_DURATION)
+    span = "the next day" if days == 1 else f"{_n(days)} days"
+    if K.hardware_tw2002():
+        body = (
+            "A photon fired into the next sector, Computer then P, shuts that sector's mines and fighters "
+            f"until {span}. Limpets do not attach during the wave. "
+            "The shooter, and anyone already in that sector, is marked so the planet quasar does not fire, "
+            f"unless the citadel is level 5 or higher and has at least {_n(K.QUASAR_PHOTON_SHIELD_MIN)} shields. "
+            "A ship that was not there, and enters while the wave is still up, still faces the quasar. "
+            "NavHaz can still hit."
+        )
+        state = "on"
+    else:
+        body = "The photon wave that shuts mines and fighters is not in force."
+        state = "off"
+    return (
+        f"<p>{body} This is the hardware rule already loaded. It is not a v3.11-only switch. "
+        f"In this process it is {state}.</p>"
+    )
+
+
+def _probes() -> str:
+    on = K.ship_chart_cap_live()
+    if on:
+        cap = f"A ship stops at {_n(K.PROBE_CHART_MAX)} ether probes. One more is refused."
+    else:
+        cap = "No maximum number of ether probes is loaded on a ship."
+    return (
+        f"<p>An ether probe costs {_n(K.ether_probe_cost())} credits. "
+        f"{_profile('Ether probe cap', on, only_v311=False)} {cap}</p>"
     )
 
 
@@ -456,9 +746,30 @@ def _turns(f: dict) -> str:
         f"<p>You start the day with {_n(f['turns'])} turns. A warp on the starting hull costs {_n(f['tpw'])} of them. "
         f"A day lasts {_n(f['day_seconds'])} seconds ({minute_text} minutes) in this game.</p>"
         f"<p>{escape(hint)}</p>"
-        "<p>Under v3.11, turns come back a little at a time all day. The day rolls on the clock, "
-        "not when everyone is out of turns. On a longer day the same pocket comes back more slowly.</p>"
+        + _day_clock()
         + _src("The game's turn pocket and day length, read from this game's settings when you opened the manual from a game.")
+    )
+
+
+def _day_clock() -> str:
+    if K.turn_regen_live():
+        regen = (
+            "Spent turns come back across the day and never past the daily allowance. "
+            "A new day does not refill the whole pocket at once. "
+            "On a longer day the same pocket comes back more slowly."
+        )
+    else:
+        regen = "A new day refills every turn. Turns do not trickle back during the day."
+    if K.day_roll_clock_live():
+        clock = (
+            "The day rolls when the clock mark passes, even while a seat still holds its turn. "
+            "The next mark is the old mark plus the day length."
+        )
+    else:
+        clock = "The day does not roll while a seat holds its turn."
+    return (
+        f"<p>{_profile('Turn regen across the day', K.turn_regen_live(), only_v311=False)} {regen}</p>"
+        f"<p>{_profile('Day roll while a seat holds the turn', K.day_roll_clock_live(), only_v311=True)} {clock}</p>"
     )
 
 
