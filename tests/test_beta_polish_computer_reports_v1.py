@@ -291,6 +291,10 @@ def _walk(browser, host, width, height, tag):
     page.keyboard.press("Escape")
     page.keyboard.press("C")
     page.keyboard.press("J")
+    # NOTE 97: J opens the class catalog. Your planets is the path to one world's specs.
+    page.wait_for_selector("#menu[data-screen=planet-catalog] [data-planet-class]", timeout=10_000)
+    assert "Your planets" in page.locator("#menu").inner_text()
+    page.locator("#menu [data-your-planets]").click()
     page.wait_for_selector("#menu[data-screen=planet-specs] [data-spec=Class]", timeout=10_000)
     page.locator("#menu [data-planet-pick]").first.click()
     page.wait_for_selector("#menu[data-screen=planet-specs] [data-spec=Class]", timeout=10_000)
