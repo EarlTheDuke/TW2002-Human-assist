@@ -218,10 +218,17 @@ def hold_quote(universe: Any, player: Any) -> dict[str, Any] | None:
     room = max(0, cap - holds)
     day = int(universe.day)
     top = int(K.holds_affordable(class_key, holds, int(player.credits), day, room))
-    totals = {str(q): int(K.hold_total_price(class_key, holds, q, day)) for q in range(1, top + 1)}
+    totals: dict[str, int] = {}
+    per_hold: list[int] = []
+    prev = 0
+    for qty in range(1, top + 1):
+        total = int(K.hold_total_price(class_key, holds, qty, day))
+        totals[str(qty)] = total
+        per_hold.append(total - prev)
+        prev = total
     return {
         "holds": holds, "max_holds": cap, "next_price": int(K.hold_next_price(class_key, holds, day)),
-        "afford": top, "totals": totals,
+        "afford": top, "totals": totals, "per_hold": per_hold,
     }
 
 
