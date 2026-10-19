@@ -370,6 +370,8 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={})
     if ak is ActionKind.AVOID:
         return Action(kind=ak, args={"sector": 0})
+    if ak is ActionKind.SHIP_RENAME:
+        return Action(kind=ak, args={"name": "Renamed"})
     if ak is ActionKind.RADIO:
         return Action(kind=ak, args={"channel": 1, "message": "hold"})
     if ak is ActionKind.JETTISON:
@@ -386,8 +388,10 @@ def test_every_verb_matches_engine(label: str, fx) -> None:
     pid, u = fx if isinstance(fx, tuple) else ("P1", fx)
     las = {la.kind: la for la in legal_actions(u, pid)}
     offered = [k for k in ALL
-               if (k != "avoid" or K.avoid_live()) and (k != "radio" or K.radio_channel_live())
-               and (k not in ("jettison", "self_destruct") or K.ship_exit_on())]
+               if (k != "avoid" or K.avoid_live())
+               and (k != "radio" or K.radio_channel_live())
+               and (k not in ("jettison", "self_destruct") or K.ship_exit_on())
+               and (k != "ship_rename" or K.ship_rename_live())]
     assert set(las) == set(offered)
     assert all(la.detail == "precise" for la in las.values()), [k for k, la in las.items() if la.detail != "precise"]
     for kind in offered:

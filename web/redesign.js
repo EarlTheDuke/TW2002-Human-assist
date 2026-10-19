@@ -1741,6 +1741,7 @@
       }
       box.appendChild(terraBtn);
       box.appendChild(reasonButton("buy_ship", "Shipyards", () => openForm("buy_ship")));
+      box.appendChild(reasonButton("ship_rename", "Change registration", () => openForm("ship_rename")));
       const bankLegal = legal("bank_deposit") || legal("bank_withdraw");
       const bankWhy = plainReason((LA("bank_deposit") || {}).reason || (LA("bank_withdraw") || {}).reason || "the bank is not open");
       const bankBtn = document.createElement("button");
@@ -1812,7 +1813,21 @@
     const title = document.createElement("div");
     title.className = "y";
     title.textContent = kind.replaceAll("_", " ").toUpperCase();
+    if (kind === "ship_rename") {
+      const cost = Number((a.params || {}).cost || 0);
+      title.textContent = "CHANGE REGISTRATION" + (cost ? " — " + fmt(cost) + " cr" : "");
+    }
     wrap.appendChild(title);
+    if (kind === "ship_rename") {
+      const current = String((a.params || {}).current || "");
+      if (current) {
+        const now = document.createElement("div");
+        now.className = "c";
+        now.dataset.shipName = "current";
+        now.textContent = "This ship is registered as " + current + ".";
+        wrap.appendChild(now);
+      }
+    }
     const preview = formPreview(kind);
     if (preview) {
       const line = document.createElement("div");
@@ -1824,7 +1839,7 @@
     Object.entries(a.params || {}).forEach(([name, spec]) => {
       if (!spec || typeof spec !== "object" || !spec.type) return;
       const label = document.createElement("label");
-      label.appendChild(document.createTextNode(name + " "));
+      label.appendChild(document.createTextNode(kind === "ship_rename" && name === "name" ? "New name " : name + " "));
       let input;
       if (Array.isArray(spec.choices) && kind === "buy_ship" && name === "ship_class") {
         input = document.createElement("select");
@@ -1871,6 +1886,7 @@
       } else {
         input = document.createElement("input");
         input.type = spec.type === "int" ? "number" : "text";
+        if (spec.max_length != null) input.maxLength = spec.max_length;
         if (spec.min != null) input.min = spec.min;
         if (kind === "attack" && name === "qty") {
           const aboard = Number(((S || {}).ship || {}).fighters || 0);
@@ -1955,6 +1971,7 @@
         return;
       }
       if (kind === "launch_beacon" && !String(args.message || "").trim()) { setResult("Type a beacon message first.", true); return; }
+      if (kind === "ship_rename" && !String(args.name || "").trim()) { setResult("Type a ship name.", true); return; }
       const blank = fields.find((el) => el.tagName === "INPUT" && el.dataset.t === "int" && el.dataset.req && el.value === "");
       if (blank) {
         setResult(/^(qty|amount|units|count|credits)$/.test(blank.dataset.n) ? "Type an amount." : "Type a number for " + blank.dataset.n.replaceAll("_", " ") + ".", true);

@@ -4927,6 +4927,14 @@ def _bind_ship_exit() -> None:
 _bind_ship_exit()
 
 
+def _bind_ship_rename() -> None:
+    from .class0 import handle_ship_rename
+    _DISPATCH[ActionKind.SHIP_RENAME] = handle_ship_rename
+
+
+_bind_ship_rename()
+
+
 # ---------------------------------------------------------------------------
 # Intel / observation helpers
 # ---------------------------------------------------------------------------

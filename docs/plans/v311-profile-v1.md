@@ -6,10 +6,9 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (99 helpers)
+## The switch set (102 helpers)
 
-Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses rows 85-89. NOTE 86 uses rows 105-107.
-The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`).
+The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112.
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -112,12 +111,17 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 105 | `SPECIAL_HULL_RULES_MODE` | `special_hull_rules_on` | NOTE 86 CMB-m: a living Interdictor Cruiser holds every other ship in its sector (warp, TransWarp, combat flee, fighter retreat, Ferrengi-encounter flee), and a Tholian Sentinel defending a planet of its own corp fights at 4:1. Both need `ship_roster_live`. Stored default stays legacy | row 104 CMB-l was already the stored default |
 | 106 | `FERRENGI_GRUDGE_MODE` | `ferrengi_grudge_on` | NOTE 86 FER-c: the Ferrengi that was attacked remembers that trader and hops toward them. A neighbour bands into a sector where the target has more fighters than this ship and another Ferrengi is already there or one hop away. The strong-target cutoff is UNVERIFIED. Stored default stays legacy | - |
 | 107 | `FERRENGI_PACE_MODE` | `ferrengi_pace_on` | NOTE 86 FER-d: each living Ferrengi has a 1-in-20 chance to hop every 30 seconds (`FERRENGI_MOVE_ONE_IN`, `FERRENGI_MOVE_INTERVAL_S`). Regeneration stays one 20% step per day (`FERRENGI_REGEN_PCT`). The once-a-day hunt still makes the attack. Stored default stays legacy | row 108 SD-q was already the stored default |
+| 109 | `CLASS0_HOLD_FORMULA_MODE` | `class0_hold_formula_live` | NOTE 87 TRD-i: Class 0 holds use cabal `formulas.html`, Cost = (B*H) + 20*H*(H-1)/2, B the daily base. `SHOP_PRICE_MODE` stays the 550 slope. This switch wins while both are on. Stored default stays legacy | - |
+| 110 | `HAGGLE_EXP_MODE` | `haggle_exp_live` | NOTE 87 TRD-q: a good haggle is +1 experience and a great one is +2. REPORT2 s3 and s7 are not in this repo. Which counter counts as great is UNVERIFIED (an accepted price at the hidden bound). `DISCOVERY_EXP_MODE` stays the first dock. Stored default stays the credit gap, capped at 10 | - |
+| 112 | `SHIP_RENAME_MODE` | `ship_rename_live` | NOTE 87 SD-n: EIS ShipyardMenu, change registration and christen the ship. The fee is `SHIP_RENAME_COST` (5,000), UNVERIFIED (GAP 3.17 sample TEDIT; the help page prints no number). The redesign yard has the form. Stored default stays legacy | - |
 
 Rows 95 and 98 were already done on this tip, so they are not helpers. Row 95, Class 0 price change and FedSpace tows and clean-up, already run in `tick_day`: `fighter_unit_price`, `shield_unit_price` and `hold_day_base` move with the day; `fed.run_tows` tows ships; `class0.extern_sweep` clears MSL and Class 0 fighters and mines; `hardware.tick_navhaz` clears FedSpace NavHaz. Row 98, the C.E.O. leaving, already dissolves the corp and rogues fighters outside his sector (`corp.handle_corp_leave`, `corp.disband`).
 
 Rows 91 and 92 were already done on this tip, so they are not helpers. Row 91, player-kill experience, already uses `COMBAT_EXP_DIVISOR` (`opposite` 15, `same` 35, `neutral` 25) and `KILL_EXP_SHARE` 0.10 (`victory.combat_rewards`, `victory.kill_rewards`). The cabal page prints one experience formula for MBBS and Gold, and says the sector-fighter experience is the same as MBBS. A separate classic experience table is not printed. Row 92, armid mines, already detonates `count // 2` of them (`hardware.armid_detonation_hits`) at `ARMID_DAMAGE_TW2002` (20), or 30 when the live shop card is on (`armid_hit_damage`). CMB-c is a plan only (`docs/plans/ship-odds-exchange-v1.md`), not a helper.
 
 NOTE 86 reserved rows 104-108. CMB-l (104) and SD-q (108) already run with the stored defaults, so this slice does not add `FED_RESPONSE_MODE` or `FED_COMMISSION_MODE`. FedSpace protection is `protect_fedspace_attack` (`src/tw2k/engine/fed.py`) called from `_handle_attack`. Commission is `handle_apply_commission` and `is_commissioned`, and an evil ISS is repossessed by `check_iss_repo_on_move`.
+
+Row 111 (SCR-e, other alignment sources) and row 113 (CRP-e / CRP-g, corp transfer and the mixed-corp Extern loss) were already on this tip, so NOTE 87 did not add a switch for them.
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 

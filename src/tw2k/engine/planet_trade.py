@@ -15,7 +15,14 @@ from typing import Any
 
 from . import constants as K
 from .actions import Action, ActionResult
-from .economy import _stored_mcic, begin_port_visit, haggle_bound, port_buy_price, trade_turn_cost
+from .economy import (
+    _stored_mcic,
+    begin_port_visit,
+    haggle_bound,
+    haggle_experience,
+    port_buy_price,
+    trade_turn_cost,
+)
 from .models import (
     TRADE_COMMODITIES,
     Commodity,
@@ -314,7 +321,9 @@ def handle_planet_trade(universe: Universe, pid: str, action: Action) -> ActionR
         if paid > quote:
             bargain = (paid - quote + qty // 2) // qty  # per-unit bargain, as a ship counter is judged
             if bargain > 0:
-                player.experience = int(player.experience) + min(K.PORT_HAGGLE_XP_CAP, bargain)
+                bound = haggle_bound(quote, _stored_mcic(port, commodity), "sell")
+                span = max(0, (int(bound) - int(quote) + qty // 2) // qty)
+                player.experience = int(player.experience) + haggle_experience(bargain, span)
         if first_for_me if K.discovery_exp_live() else unused_port:
             _award_xp(universe, pid, "first_dock")
     from .runner import _record_port_intel
