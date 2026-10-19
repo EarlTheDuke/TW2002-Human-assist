@@ -110,6 +110,7 @@ HELPERS = (
     "probe_shootdown_live",
     "ferrengi_reward_live",
     "ferrengal_quasar_live",
+    "bot_bank_float_live",
 )
 
 
@@ -117,7 +118,8 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 108
+    assert len(names) == 109
+
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -174,3 +176,5 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.PROBE_SHOOTDOWN_MODE == "legacy"
     assert K.FERRENGI_REWARD_MODE == "legacy"
     assert K.FERRENGAL_QUASAR_MODE == "legacy"
+    assert K.BOT_BANK_FLOAT_MODE == "legacy"
+

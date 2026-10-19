@@ -2273,10 +2273,30 @@ class SeatBrain:
 
     def _best_buy_pair(self, v: View) -> tuple[int, int, int] | None:
         """(seller, buyer, unit margin) of the best empty-hold route over priced ports."""
+        detail = self._best_buy_detail(v)
+        if detail is None:
+            return None
+        return detail[0], detail[1], detail[2]
+
+    def _route_hold_cash(self, v: View) -> int:
+        """Cash for a full hold at this route's buy price. Zero while the switch is off."""
+        from ..engine import constants as engine_k
+        if not engine_k.bot_bank_float_live():
+            return 0
+        detail = self._best_buy_detail(v)
+        holds = int((v.ship or {}).get("holds") or 0)
+        if detail is None or holds < 1:
+            return 0
+        return holds * int(detail[3])
+
+    def _best_buy_detail(self, v: View) -> tuple[int, int, int, int] | None:
+        """(seller, buyer, unit margin, buy price) of the best empty-hold route."""
         if v.here is None:
             return None
         sells: dict[str, list[tuple[int, int]]] = {}
         buys: dict[str, list[tuple[int, int]]] = {}
+        # A brain that has not loaded SeatMemory yet still prices the route.
+        bad = {} if self.mem is None else self.mem.bad_sells
         for sid, kp in self._priced_ports(v).items():
             for c, st in (kp.get("stock") or {}).items():
                 price = st.get("price") if isinstance(st, dict) else None
@@ -2286,13 +2306,13 @@ class SeatBrain:
                     sells.setdefault(c, []).append((sid, price))
                 elif st.get("side") == "buys_from_player":
                     full = st.get("max") is not None and int(st.get("current") or 0) >= int(st["max"])
-                    if not full and self.mem.bad_sells.get(f"{sid}:{c}") != int(v.obs.get("day") or 0):
+                    if not full and bad.get(f"{sid}:{c}") != int(v.obs.get("day") or 0):
                         buys.setdefault(c, []).append((sid, price))
         holds = max(1, v.cargo_free)
         here = int(v.here)
         from_here = self._distances_from(v, here)
         from_seller: dict[int, dict[int, int]] = {}
-        best: tuple[float, int, int, int] | None = None
+        best: tuple[float, int, int, int, int] | None = None
         for c, srcs in sells.items():
             for seller, ask in srcs:
                 for buyer, bid in buys.get(c, []):
@@ -2307,10 +2327,10 @@ class SeatBrain:
                     margin = bid - ask
                     score = margin * holds / (d1 + d2 + 2)
                     if best is None or score > best[0]:
-                        best = (score, seller, buyer, margin)
+                        best = (score, seller, buyer, margin, ask)
         if best is None:
             return None
-        return best[1], best[2], best[3]
+        return best[1], best[2], best[3], best[4]
 
     def _cluster_sectors(self, v: View) -> set[int]:
         anchors = self.mem.trade_anchors
@@ -3587,6 +3607,7 @@ class SeatBrain:
         if gap:
             from ..engine import constants as engine_k
             reserve = min(reserve, max(int(engine_k.BOT_BANK_MIN_FLOAT), int(v.credits) - gap))
+        reserve = max(int(reserve), self._route_hold_cash(v))
         amount = deposit_amount(
             int(v.credits), reserve,
             int(v.params("bank_deposit").get("max_amount") or 0),
@@ -3722,7 +3743,7 @@ class SeatBrain:
             return None
         if mem is not None and mem.bank_deposited:
             return None
-        keep = self._bank_keep(v, need)
+        keep = max(self._bank_keep(v, need), self._route_hold_cash(v))
         if v.ok("bank_deposit"):
             spare = int(v.credits) - keep
             maximum = int(v.params("bank_deposit").get("max_amount") or 0)

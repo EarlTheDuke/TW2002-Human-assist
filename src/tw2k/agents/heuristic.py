@@ -547,8 +547,10 @@ class HeuristicAgent(BaseAgent):
 
     def _h_keep(self, obs: Observation) -> int:
         from ..engine.constants import BOT_BANK_CAPITAL_PER_HOLD, BOT_BANK_H_KEEP
+        from .bank_brain import full_hold_cash
         holds = int((obs.ship or {}).get("holds") or 0)
-        return max(int(BOT_BANK_H_KEEP), holds * int(BOT_BANK_CAPITAL_PER_HOLD))
+        base = max(int(BOT_BANK_H_KEEP), holds * int(BOT_BANK_CAPITAL_PER_HOLD))
+        return max(base, full_hold_cash(holds, getattr(obs, "known_ports", None)))
 
     def _h_bank(self, obs: Observation, *, recovery: bool) -> Action | None:
         """One StarDock bank step. A pod withdraws for its hull first. Otherwise
@@ -559,7 +561,7 @@ class HeuristicAgent(BaseAgent):
             return None
         if not self._h_banks():
             return None
-        from .bank_brain import deposit_amount, nest_egg, tax_keep, withdraw_amount
+        from .bank_brain import deposit_amount, full_hold_cash, nest_egg, tax_keep, withdraw_amount
         legal = self._legal(obs)
         balance = int(obs.bank_balance or 0)
         egg = nest_egg(int(getattr(obs, "net_worth", 0) or 0))
@@ -615,7 +617,9 @@ class HeuristicAgent(BaseAgent):
             return None
         maximum = int((deposit.get("params") or {}).get("max_amount") or 0)
         day = int(getattr(obs, "day", 1) or 1)
+        holds = int((obs.ship or {}).get("holds") or 0)
         keep = tax_keep(self._h_keep(obs), 0, int(getattr(obs, "alignment", 0) or 0))
+        keep = max(keep, full_hold_cash(holds, getattr(obs, "known_ports", None)))
         amount = deposit_amount(credits, keep, maximum, day1=day <= 1)
         if amount < 1:
             return None

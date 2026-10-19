@@ -8,6 +8,7 @@ The engine is synchronous and pure. Agent-facing entry points:
 
 from __future__ import annotations
 
+import contextvars
 import random
 from collections import deque
 from collections.abc import Callable
@@ -162,17 +163,31 @@ def _rng_for(universe: Universe) -> random.Random:
 # ---------------------------------------------------------------------------
 
 
-def refresh_offline_turns(player, now: float | None = None) -> None:
-    """Give back spent turns for time away. No-op while the switch is off."""
+# Turns given back inside the current apply_action. The action log reads this
+# so a warp's own charge is not mixed with the refill (NOTE 88).
+_regen_this_action: contextvars.ContextVar[int] = contextvars.ContextVar(
+    "tw2k_turns_regenerated", default=0,
+)
+
+
+def last_turns_regenerated() -> int:
+    """Turns refresh_offline_turns gave back during the latest apply_action."""
+    return int(_regen_this_action.get())
+
+
+def refresh_offline_turns(player, now: float | None = None) -> int:
+    """Give back spent turns for time away. Returns how many. No-op while the switch is off."""
     if not K.turn_regen_live():
-        return
+        _regen_this_action.set(0)
+        return 0
 
     if now is None:
         now = K.regen_now()
     last = player.turn_regen_at
     player.turn_regen_at = float(now)
     if last is None:
-        return
+        _regen_this_action.set(0)
+        return 0
     elapsed = max(0.0, float(now) - float(last))
     cap = max(0, int(player.turns_per_day))
     frac = float(player.turn_regen_frac) + elapsed * cap / float(K.TURN_REGEN_DAY_SECONDS)
@@ -180,6 +195,8 @@ def refresh_offline_turns(player, now: float | None = None) -> None:
     player.turn_regen_frac = frac - whole
     if whole:
         player.turns_today = max(0, int(player.turns_today) - whole)
+    _regen_this_action.set(int(whole))
+    return int(whole)
 
 
 def apply_action(universe: Universe, player_id: str, action: Action) -> ActionResult:

@@ -179,7 +179,8 @@ class ExternalAgent(BaseAgent):
         return self.awaiting_input
 
     def record_result(self, ok: bool, error: str | None, event_seqs: list[int],
-                      action_kind: str | None = None, auto: bool = False, turns_used: int | None = None) -> None:
+                      action_kind: str | None = None, auto: bool = False, turns_used: int | None = None,
+                      turns_regenerated: int | None = None) -> None:
         if not auto:
             self._slot_actions += 1
             self._last_applied_seq = self.turn_seq
@@ -202,6 +203,7 @@ class ExternalAgent(BaseAgent):
         self.log_action("result", ok=bool(ok), error=error or None, kind=action_kind, auto=auto,
                         think_s=round(submitted - started, 3) if (submitted and started and not auto) else None,
                         posts=self._posts, held=self.in_held_continuation, turns_used=turns_used,
+                        turns_regenerated=int(turns_regenerated or 0),
                         macro=self._submitted_at is None and not auto)
 
     async def wait_result(self, bound: int) -> dict[str, Any]:
