@@ -1,0 +1,16 @@
+/* cockpit-ship-view-plan-v1. Cluster counts for the three prototype hulls.
+   Loaded from redesign.js so the layout files stay untouched. */
+#shipSvg[data-prototype="1"]{
+  background:radial-gradient(ellipse at 50% 42%, #123056 0%, #050814 58%, #000 80%);
+}
+#shipSvg [data-testid="fighter-cluster-count"]{
+  font-family:ui-sans-serif, "Segoe UI", sans-serif;
+  font-size:30px;
+  font-weight:700;
+  fill:#ffe8e8;
+  stroke:#140006;
+  stroke-width:6px;
+  paint-order:stroke fill;
+  text-anchor:middle;
+  dominant-baseline:central;
+}
