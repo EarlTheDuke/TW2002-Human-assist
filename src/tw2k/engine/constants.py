@@ -4349,7 +4349,23 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PLANET_BUST_EXP_MODE",
         "NOTE 102 GAP 14.3: the owner can create and destroy a planet for 75 experience",
     ),
+    "bot_bank_float_live": (
+        "BOT_BANK_FLOAT_MODE",
+        "NOTE 88 row 114: a code bot keeps a full hold at its route buy price before it deposits",
+    ),
 }
+
+
+# beta-polish-computer-reports-v1 (NOTE 88) row 114. A code bot that banks its
+# whole purse then buys one unit at a time. "legacy" keeps today's reserve.
+# "live" leaves enough cash for a full hold at the route's buy price. Stored
+# default stays legacy so the profile-off digests do not move. Row 115 is unused.
+BOT_BANK_FLOAT_MODE = "legacy"  # "legacy" | "live"
+
+
+def bot_bank_float_live() -> bool:
+    """True when a code bot keeps a full hold of cash before it deposits."""
+    return BOT_BANK_FLOAT_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # v311-kill-cash-addendum-v1 (NOTE 59). RULINGS_v311.md Addendum A: "In every trial the
