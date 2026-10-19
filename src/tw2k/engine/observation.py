@@ -805,6 +805,9 @@ class Observation(BaseModel):
     game_over_panel: str | None = None
     nw_note: str | None = None
     code_bots: list[str] | None = None
+    # NOTE 101. Need, have, and the unit for the citadel the seat is standing on.
+    # Omitted while colonist clarity is off, so a legacy dump grows no key.
+    citadel_next_build: dict[str, Any] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -843,6 +846,8 @@ class Observation(BaseModel):
             for key in ("trader_rankings", "end_rule", "game_over_panel", "nw_note", "code_bots"):
                 if data.get(key) is None:  # NOTE 73: omitted while the switch is off
                     data.pop(key, None)
+            if data.get("citadel_next_build") is None:  # NOTE 101
+                data.pop("citadel_next_build", None)
         return data
 
 
@@ -1116,6 +1121,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         if planet.owner_id != player.id:
             continue
         colonists = {c.value: int(n) for c, n in planet.colonists.items()}
+        stored = _colonist_stored_label(planet)
         growth = planet_growth_status(
             planet.class_id, planet.colonists, int(planet.stockpile.get(Commodity.ORGANICS, 0)),
         )
@@ -1137,6 +1143,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             # Same shape as sector.planets[] (_planet_brief): per-pool dict + total.
             "colonists": colonists,
             "colonists_total": sum(colonists.values()),
+            **({"colonists_stored": stored} if stored else {}),
             **(
                 {"colonists_text": colonist_trend(planet.class_id, sum(colonists.values()))}
                 if K.planet_growth_tw2002() or (planet.class_id.value == "M" and K.class_m_fidelity_live())
@@ -1308,6 +1315,21 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
             rivals=rivals,
         ),
     )
+    if K.colonist_clarity_on() and player.planet_landed is not None:
+        for row in (sector_info.get("planets") or []):
+            if int(row.get("id") or 0) != int(player.planet_landed):
+                continue
+            nxt = row.get("citadel_next_build") or {}
+            if nxt.get("unit"):
+                obs.citadel_next_build = {
+                    key: nxt[key]
+                    for key in (
+                        "level", "need", "have", "unit", "need_people", "have_people",
+                        "plain", "trips", "haul_holds",
+                    )
+                    if key in nxt
+                }
+            break
     if K.daily_stats_live():
         obs.daily_stats = game_status(universe)
     if K.corp_rank_live():
@@ -1777,6 +1799,8 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
                 "load_turns": int(K.TERRA_LOAD_TURNS),
                 "price": int(K.TERRA_COLONIST_PRICE),
             }
+            if K.terra_colonist_live() and int(K.colonists_per_hold()) > 1:
+                info["terra"]["colonists_stored"] = "people"
         sp = special_port_at(universe, sector.id)
         if sp is not None:
             day = int(universe.day)
@@ -1795,6 +1819,31 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
                 info["port"]["code"] = "0"
 
     return info
+
+
+def _colonist_stored_label(planet) -> str | None:
+    """people or thousands, only when that reading is unambiguous. Off, nothing."""
+    if not _K.colonist_clarity_on():
+        return None
+    if _K.colonist_stored_is_people(planet.class_id):
+        return "people"
+    token = str(getattr(planet.class_id, "value", planet.class_id))
+    if token != "M" and _K.colonist_units_live():
+        return "thousands"
+    if token == "M" and not _K.terra_colonist_live():
+        return "thousands"
+    return None
+
+
+def _annotate_citadel_units(next_build: dict[str, Any] | None, planet, available: int) -> None:
+    if not next_build or not _K.colonist_clarity_on():
+        return
+    people = _colonist_stored_label(planet) == "people"
+    if _colonist_stored_label(planet) is None:
+        return
+    need = int(next_build.get("colonists") or 0)
+    have = int(next_build.get("colonists_have") if next_build.get("colonists_have") is not None else available)
+    next_build.update(_K.citadel_colonist_quote(int(next_build.get("level") or 0), need, have, people=people))
 
 
 def _planet_numbers_visible(planet, viewer) -> bool:
@@ -1935,6 +1984,10 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
         brief["owner_id"] = planet.owner_id
         brief["fighters"] = int(planet.fighters)
         brief["shields"] = int(planet.shields)
+    stored = _colonist_stored_label(planet)
+    if stored:
+        brief["colonists_stored"] = stored
+    _annotate_citadel_units(next_build, planet, available_colonists)
     return brief
 
 
