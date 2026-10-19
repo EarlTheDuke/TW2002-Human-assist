@@ -456,7 +456,7 @@ def apply_ferrengi_tribute(universe: Universe, pid: str, *, ignored: bool = Fals
     }
 
 
-def record_ferrengi_grudge(universe: Universe, player_id: str) -> None:
+def record_ferrengi_grudge(universe: Universe, player_id: str, ferr_id: str | None = None) -> None:
     if not K.ferrengi_tw2002():
         return
     grudges = getattr(universe, "ferrengi_grudges", None)
@@ -464,6 +464,13 @@ def record_ferrengi_grudge(universe: Universe, player_id: str) -> None:
         universe.ferrengi_grudges = set()
         grudges = universe.ferrengi_grudges
     grudges.add(player_id)
+    # NOTE 86. The global set stays today's behaviour. The ship list is only
+    # written when the grudge switch is on, so a legacy dump omits it.
+    if not K.ferrengi_grudge_on() or not ferr_id:
+        return
+    ferr = universe.ferrengi.get(ferr_id)
+    if ferr is not None and player_id not in ferr.grudges:
+        ferr.grudges.append(player_id)
 
 
 def ferrengi_retaliate(universe: Universe, ferr: FerrengiShip, victim) -> None:
@@ -512,6 +519,168 @@ def clear_ferrengi_encounter(universe: Universe, pid: str) -> None:
         player.ferrengi_encounter = None
 
 
+def _ferrengi_hops(universe: Universe, sec) -> list[int]:
+    choices = [w for w in sec.warps if w not in K.FEDSPACE_SECTORS]
+    if K.ferrengi_tw2002() and K.FERRENGI_FIGHTER_BLOCK:
+        choices = [
+            w
+            for w in choices
+            if universe.sectors[w].fighters is None
+            or int(universe.sectors[w].fighters.count) <= 0
+            or universe.sectors[w].fighters.owner_id == K.FERRENGI_OWNER_ID
+        ]
+    return choices
+
+
+def _hop_distance(universe: Universe, start: int, goal: int, limit: int = 40) -> int | None:
+    if start == goal:
+        return 0
+    seen = {start}
+    layer = [start]
+    for dist in range(1, limit + 1):
+        nxt = []
+        for sid in layer:
+            sec = universe.sectors.get(sid)
+            if sec is None:
+                continue
+            for wid in sec.warps:
+                wid = int(wid)
+                if wid in seen or wid not in universe.sectors:
+                    continue
+                if wid == goal:
+                    return dist
+                seen.add(wid)
+                nxt.append(wid)
+        if not nxt:
+            return None
+        layer = nxt
+    return None
+
+
+def preferred_ferrengi_dest(universe: Universe, ferr: FerrengiShip, choices: list[int]) -> int | None:
+    """A hop toward a grudge, or into a neighbour's strong target. None keeps the random hop.
+
+    The strong-target cutoff (more fighters than this ship) is UNVERIFIED. Banding
+    also wants another Ferrengi already in that sector or on another hop into it,
+    which is the Bible's "travel in groups" read, not a numbered rule.
+    """
+    if not K.ferrengi_grudge_on() or not choices:
+        return None
+    remembered = [
+        p for p in universe.players.values()
+        if p.alive and p.id in ferr.grudges and int(p.sector_id) not in K.FEDSPACE_SECTORS
+    ]
+    if remembered:
+        target = min(remembered, key=lambda p: (int(p.sector_id), p.id))
+        here = _hop_distance(universe, int(ferr.sector_id), int(target.sector_id))
+        if here is not None and here > 0:
+            better = []
+            for wid in choices:
+                dist = _hop_distance(universe, int(wid), int(target.sector_id))
+                if dist is not None and dist < here:
+                    better.append((dist, int(wid)))
+            if better:
+                better.sort()
+                return better[0][1]
+    for wid in sorted(int(w) for w in choices):
+        victims = [
+            p for p in universe.players.values()
+            if p.alive and int(p.sector_id) == wid and int(p.ship.fighters) > int(ferr.fighters)
+        ]
+        if not victims:
+            continue
+        company = []
+        for other in universe.ferrengi.values():
+            if not other.alive or other.id == ferr.id:
+                continue
+            if int(other.sector_id) == wid:
+                company.append(other)
+                continue
+            other_sec = universe.sectors.get(int(other.sector_id))
+            if other_sec is not None and wid in other_sec.warps:
+                company.append(other)
+        if company:
+            return wid
+    return None
+
+
+def _relocate_ferrengi(
+    universe: Universe, ferr: FerrengiShip, dest: int, *, reason: str | None = None, fled_from: str | None = None,
+) -> None:
+    old_sid = ferr.sector_id
+    ferr.sector_id = dest
+    payload = {"id": ferr.id, "from": old_sid, "to": ferr.sector_id}
+    if reason:
+        payload["reason"] = reason
+    # The flee line keeps the pre-NOTE wording so a profile-off log stays the same.
+    summary = (
+        f"Ferrengi {ferr.name} fled {fled_from}: {old_sid} → {ferr.sector_id}"
+        if reason == "fled"
+        else f"Ferrengi {ferr.name} prowled {old_sid} → {ferr.sector_id}"
+    )
+    universe.emit(
+        EventKind.FERRENGI_MOVE,
+        sector_id=ferr.sector_id,
+        **({"actor_id": ferr.id, "actor_kind": "ferrengi"} if K.ferrengi_tw2002() else {}),
+        payload=payload,
+        summary=summary,
+    )
+    _apply_mines_to_ferrengi(universe, ferr)
+
+
+def _ferrengi_step(universe: Universe, ferr: FerrengiShip, rng) -> None:
+    sec = universe.sectors.get(ferr.sector_id)
+    if sec is None:
+        return
+    choices = _ferrengi_hops(universe, sec)
+    if not choices:
+        return
+    dest = preferred_ferrengi_dest(universe, ferr, choices)
+    if dest is None:
+        dest = rng.choice(choices)
+    _relocate_ferrengi(universe, ferr, int(dest))
+
+
+def note_ferrengi_pace(universe: Universe, elapsed_s: float) -> None:
+    """Spend live-clock seconds. A profile-off game never calls this."""
+    if not K.ferrengi_pace_on() or elapsed_s <= 0:
+        return
+    universe.ferrengi_pace_covered_s = float(universe.ferrengi_pace_covered_s) + float(elapsed_s)
+    _advance_ferrengi_pace(universe, float(elapsed_s))
+
+
+def settle_ferrengi_pace_day(universe: Universe) -> None:
+    """A scripted day is one day of the clock. Seconds already spent are not spent again."""
+    if not K.ferrengi_pace_on():
+        return
+    remain = float(K.TURN_REGEN_DAY_SECONDS) - float(universe.ferrengi_pace_covered_s or 0)
+    if remain > 0:
+        _advance_ferrengi_pace(universe, remain)
+    universe.ferrengi_pace_covered_s = 0.0
+
+
+def _advance_ferrengi_pace(universe: Universe, elapsed_s: float) -> None:
+    bank = float(universe.ferrengi_pace_bank_s or 0) + float(elapsed_s)
+    interval = float(K.FERRENGI_MOVE_INTERVAL_S)
+    if interval <= 0:
+        universe.ferrengi_pace_bank_s = 0.0
+        return
+    steps = int(bank // interval)
+    universe.ferrengi_pace_bank_s = bank - steps * interval
+    if steps <= 0 or not getattr(universe.config, "enable_ferrengi", True):
+        return
+    one_in = max(1, int(K.FERRENGI_MOVE_ONE_IN))
+    rng = universe.rng
+    for _ in range(steps):
+        for ferr in list(universe.ferrengi.values()):
+            if not ferr.alive:
+                continue
+            # 0 is the hit. randrange(20) draws one number per ship per interval.
+            if rng.randrange(one_in) != 0:
+                continue
+            _ferrengi_step(universe, ferr, rng)
+
+
 def _ferrengi_roam_and_hunt(universe: Universe) -> None:
     """Each living Ferrengi: maybe move 1 sector; if a player is co-located, attack/encounter."""
     rng = universe.rng
@@ -529,28 +698,14 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
         sec = universe.sectors.get(ferr.sector_id)
         if sec is None:
             continue
-        if rng.random() < K.FERRENGI_MOVE_PROB:
-            choices = [w for w in sec.warps if w not in K.FEDSPACE_SECTORS]
-            # n12: Ferrengi ignore player fighters (no filter unless FERRENGI_FIGHTER_BLOCK).
-            if K.ferrengi_tw2002() and K.FERRENGI_FIGHTER_BLOCK:
-                choices = [
-                    w
-                    for w in choices
-                    if universe.sectors[w].fighters is None
-                    or int(universe.sectors[w].fighters.count) <= 0
-                    or universe.sectors[w].fighters.owner_id == K.FERRENGI_OWNER_ID
-                ]
+        # NOTE 86. The 30 s clock already moved them. The once-a-day 0.6 roll stays off.
+        if not K.ferrengi_pace_on() and rng.random() < K.FERRENGI_MOVE_PROB:
+            choices = _ferrengi_hops(universe, sec)
             if choices:
-                old_sid = ferr.sector_id
-                ferr.sector_id = rng.choice(choices)
-                universe.emit(
-                    EventKind.FERRENGI_MOVE,
-                    sector_id=ferr.sector_id,
-                    **({"actor_id": ferr.id, "actor_kind": "ferrengi"} if K.ferrengi_tw2002() else {}),
-                    payload={"id": ferr.id, "from": old_sid, "to": ferr.sector_id},
-                    summary=f"Ferrengi {ferr.name} prowled {old_sid} → {ferr.sector_id}",
-                )
-                _apply_mines_to_ferrengi(universe, ferr)
+                dest = preferred_ferrengi_dest(universe, ferr, choices)
+                if dest is None:
+                    dest = rng.choice(choices)
+                _relocate_ferrengi(universe, ferr, int(dest))
                 if not ferr.alive:
                     continue
                 sec = universe.sectors.get(ferr.sector_id)
@@ -570,7 +725,8 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
         if not victims:
             continue
         # Prefer grudge targets, else weakest.
-        grudge_victims = [p for p in victims if p.id in grudges]
+        remembered = set(ferr.grudges) if K.ferrengi_grudge_on() else set()
+        grudge_victims = [p for p in victims if p.id in grudges or p.id in remembered]
         pool = grudge_victims or victims
         victim = min(pool, key=lambda p: p.ship.fighters)
         unarmed = victim.ship.fighters == 0 and victim.ship.shields == 0
@@ -589,21 +745,10 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
         if victim.ship.fighters > ferr.fighters * K.FERRENGI_FLEE_FIGHTER_RATIO:
             choices = [w for w in sec.warps if w not in K.FEDSPACE_SECTORS]
             if choices:
-                old_sid = ferr.sector_id
-                ferr.sector_id = rng.choice(choices)
-                universe.emit(
-                    EventKind.FERRENGI_MOVE,
-                    sector_id=ferr.sector_id,
-                    **({"actor_id": ferr.id, "actor_kind": "ferrengi"} if K.ferrengi_tw2002() else {}),
-                    payload={
-                        "id": ferr.id,
-                        "from": old_sid,
-                        "to": ferr.sector_id,
-                        "reason": "fled",
-                    },
-                    summary=f"Ferrengi {ferr.name} fled {victim.name}: {old_sid} → {ferr.sector_id}",
-                )
-                _apply_mines_to_ferrengi(universe, ferr)
+                dest = preferred_ferrengi_dest(universe, ferr, choices)
+                if dest is None:
+                    dest = rng.choice(choices)
+                _relocate_ferrengi(universe, ferr, int(dest), reason="fled", fled_from=victim.name)
             continue
         universe.emit(
             EventKind.FERRENGI_ATTACK,

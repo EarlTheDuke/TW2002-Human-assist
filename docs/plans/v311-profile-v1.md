@@ -6,9 +6,9 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (93 helpers)
+## The switch set (96 helpers)
 
-Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses rows 85-89.
+Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses rows 85-89. NOTE 86 uses rows 105-107.
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -105,12 +105,15 @@ Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses 
 | 94 | `BUST_CLEAR_MODE` | `bust_record_clear_live` | NOTE 82 TRD-k. REV v3.05: TEDIT sets how often Extern clears bust records. It defaults to nightly ("Clear Busts Every : 1 Days" in the cabal editor sample) and can be every 28th day. Stored default stays legacy, which still clears every Extern. Live reads `GameConfig.bust_clear_days`: 1 or 7. REPORT.md is on Ben's PC (UNVERIFIED). Rows 83-93 are left open | - |
 | 96 | `SHIP_CHART_CAP_MODE` | `ship_chart_cap_live` | NOTE 82 SD-e. Mines, genesis and photons already follow the Bible ship chart on `SHIP_SPECS_TW2002` (`equip_room`). Cloaks are already 5 for any ship (`CLOAK_MAX`). Live adds the Bible probe cap of 25. Legacy leaves probes uncapped. The pod uses the same 25 (UNVERIFIED; the chart has no probe column) | - |
 | 97 | `CORP_PLANET_DISBAND_MODE` | `corp_planet_disband_v306` | NOTE 82 PLN-q. Today's rule stays `CORP_DISBAND_PLANETS` `owner_keeps`. Live is REV v3.06: planets in the C.E.O.'s sector become his, and the rest are unclaimed. The older constant `v306` still selects that path. Unclaimed is the existing orphan, not a fighter-style rogue owner | - |
+| 105 | `SPECIAL_HULL_RULES_MODE` | `special_hull_rules_on` | NOTE 86 CMB-m: a living Interdictor Cruiser holds every other ship in its sector (warp, TransWarp, combat flee, fighter retreat, Ferrengi-encounter flee), and a Tholian Sentinel defending a planet of its own corp fights at 4:1. Both need `ship_roster_live`. Stored default stays legacy | row 104 CMB-l was already the stored default |
+| 106 | `FERRENGI_GRUDGE_MODE` | `ferrengi_grudge_on` | NOTE 86 FER-c: the Ferrengi that was attacked remembers that trader and hops toward them. A neighbour bands into a sector where the target has more fighters than this ship and another Ferrengi is already there or one hop away. The strong-target cutoff is UNVERIFIED. Stored default stays legacy | - |
+| 107 | `FERRENGI_PACE_MODE` | `ferrengi_pace_on` | NOTE 86 FER-d: each living Ferrengi has a 1-in-20 chance to hop every 30 seconds (`FERRENGI_MOVE_ONE_IN`, `FERRENGI_MOVE_INTERVAL_S`). Regeneration stays one 20% step per day (`FERRENGI_REGEN_PCT`). The once-a-day hunt still makes the attack. Stored default stays legacy | row 108 SD-q was already the stored default |
 
 Rows 95 and 98 were already done on this tip, so they are not helpers. Row 95, Class 0 price change and FedSpace tows and clean-up, already run in `tick_day`: `fighter_unit_price`, `shield_unit_price` and `hold_day_base` move with the day; `fed.run_tows` tows ships; `class0.extern_sweep` clears MSL and Class 0 fighters and mines; `hardware.tick_navhaz` clears FedSpace NavHaz. Row 98, the C.E.O. leaving, already dissolves the corp and rogues fighters outside his sector (`corp.handle_corp_leave`, `corp.disband`).
 
 Rows 91 and 92 were already done on this tip, so they are not helpers. Row 91, player-kill experience, already uses `COMBAT_EXP_DIVISOR` (`opposite` 15, `same` 35, `neutral` 25) and `KILL_EXP_SHARE` 0.10 (`victory.combat_rewards`, `victory.kill_rewards`). The cabal page prints one experience formula for MBBS and Gold, and says the sector-fighter experience is the same as MBBS. A separate classic experience table is not printed. Row 92, armid mines, already detonates `count // 2` of them (`hardware.armid_detonation_hits`) at `ARMID_DAMAGE_TW2002` (20), or 30 when the live shop card is on (`armid_hit_damage`). CMB-c is a plan only (`docs/plans/ship-odds-exchange-v1.md`), not a helper.
 
-
+NOTE 86 reserved rows 104-108. CMB-l (104) and SD-q (108) already run with the stored defaults, so this slice does not add `FED_RESPONSE_MODE` or `FED_COMMISSION_MODE`. FedSpace protection is `protect_fedspace_attack` (`src/tw2k/engine/fed.py`) called from `_handle_attack`. Commission is `handle_apply_commission` and `is_commissioned`, and an evil ISS is repossessed by `check_iss_repo_on_move`.
 
 `DEATH_CREDITS_ON_HAND` is `"lost"` by default already (Addendum A: "DEATH_CREDITS_ON_HAND = \"lost\": CONFIRMED (victim keeps none of it)"). The profile keeps it as it is and reads no helper for it; `test_defaults_stay_legacy` and the Addendum A kill test pin it.
 

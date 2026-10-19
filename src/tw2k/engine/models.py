@@ -1043,6 +1043,11 @@ class ParkedShip(BaseModel):
 
 
 class FerrengiShip(BaseModel):
+    @model_serializer(mode="wrap")
+    def _save_grudges(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # NOTE 86. Empty while no ship remembers an attacker, so a legacy dump stays identical.
+        return _omit_defaults(handler(self), {"grudges": []})
+
     id: str
     name: str
     sector_id: int
@@ -1055,6 +1060,8 @@ class FerrengiShip(BaseModel):
     hull: str = ""
     credits: int = 0
     cargo: dict[str, int] = Field(default_factory=dict)
+    # NOTE 86 FER-c. Traders who attacked this ship. Omitted while empty.
+    grudges: list[str] = Field(default_factory=list)
 
 
 class AlienTrader(BaseModel):
@@ -1272,6 +1279,8 @@ class Universe(BaseModel):
             "aliens": {}, "next_alien_id": 1,
             "tavern": None,
             "gold_grudges": {},
+            "ferrengi_pace_bank_s": 0.0,
+            "ferrengi_pace_covered_s": 0.0,
         })
         # A server restart clears Gold grudges. Never write the list out.
         if isinstance(data, dict):
@@ -1322,6 +1331,10 @@ class Universe(BaseModel):
     # ferrengi-aliens-v1 (FERRENGI.md)
     ferrengal_sector: int | None = None
     ferrengi_grudges: set[str] = Field(default_factory=set)
+    # NOTE 86 FER-d. Seconds not yet spent on a 30 s move roll, and seconds of
+    # this day already fed from the live clock. Omitted while 0.
+    ferrengi_pace_bank_s: float = 0.0
+    ferrengi_pace_covered_s: float = 0.0
     # STARDOCK_TAVERN.md tv28. Omitted while None so a legacy dump stays byte-identical.
     tavern: dict[str, Any] | None = None
 

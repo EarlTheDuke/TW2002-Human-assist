@@ -525,6 +525,9 @@ def retreat_block(universe: Universe, pid: str) -> str | None:
         return "no warp back to the sector you came from"
     if interdictor_planet(universe, pid, sector) is not None:
         return "a planetary interdictor holds this sector"
+    held = hull_interdict_reason(universe, pid)
+    if held is not None:
+        return held
     return None
 
 
@@ -621,6 +624,30 @@ def _flee_destination(universe: Universe, defender, sector) -> int | None:
     return universe.rng.choice(picks)
 
 
+def hull_interdict_reason(universe: Universe, pid: str) -> str | None:
+    """Why this pilot cannot leave, or None.
+
+    NOTE 86 CMB-m. A living Interdictor Cruiser holds every other ship in its
+    sector, including a corp mate. The Interdictor itself can still leave.
+    Off unless the special-hull switch and the live roster are both on.
+    An unmanned parked Interdictor is UNVERIFIED and does not hold.
+    """
+    if not K.special_hull_rules_on() or not K.ship_roster_live():
+        return None
+    player = universe.players.get(pid)
+    if player is None or not player.alive:
+        return None
+    if player.ship.ship_class.value == "interdictor_cruiser":
+        return None
+    here = int(player.sector_id)
+    for other in universe.players.values():
+        if other.id == pid or not other.alive or int(other.sector_id) != here:
+            continue
+        if other.ship.ship_class.value == "interdictor_cruiser":
+            return "an Interdictor Cruiser holds this sector"
+    return None
+
+
 def _flee_blocked(universe: Universe, attacker, defender, sector) -> bool:
     if defender.ship.ship_class.value in K.COMBAT_NEVER_FLEE_HULLS:
         return True
@@ -628,7 +655,9 @@ def _flee_blocked(universe: Universe, attacker, defender, sector) -> bool:
         return True
     if defender.planet_landed is not None:
         return True
-    return interdictor_planet(universe, defender.id, sector) is not None
+    if interdictor_planet(universe, defender.id, sector) is not None:
+        return True
+    return hull_interdict_reason(universe, getattr(defender, "id", "") or "") is not None
 
 
 def _flee(universe: Universe, defender, dest_id: int) -> None:
@@ -657,13 +686,30 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
     is_alien = isinstance(target, AlienTrader)
     if is_ferr:
         from .ferrengi import record_ferrengi_grudge
-        record_ferrengi_grudge(universe, attacker_id)
+        record_ferrengi_grudge(universe, attacker_id, getattr(target, "id", None))
     d_f = int(target.fighters if is_ferr else target.ship.fighters)
     d_s = int(target.shields if is_ferr else target.ship.shields)
     d_f_before, d_s_before = d_f, d_s
     d_disabled = (not is_ferr) and getattr(target.ship, "photon_disabled_ticks", 0) > 0
     a_odds = combat_odds_of(attacker)
     d_odds = combat_odds_of(target)
+    # NOTE 86 CMB-m. Docs wiki flavor: a Tholian defending its corp's planet
+    # fights at 4:1. Its own attack odds stay the hull chart (1:1).
+    if (
+        not is_ferr
+        and not is_alien
+        and target.ship.ship_class.value == "tholian_sentinel"
+        and K.special_hull_rules_on()
+        and K.ship_roster_live()
+    ):
+        ticker = getattr(target, "corp_ticker", None)
+        here = universe.sectors.get(int(attacker.sector_id))
+        if ticker and here is not None:
+            for item in here.planet_ids:
+                planet = universe.planets.get(item)
+                if planet is not None and planet.corp_ticker == ticker:
+                    d_odds = _odds(K.THOLIAN_CORP_DEFENSE_ODDS)
+                    break
     s_eff = 0 if d_disabled else d_s
     power = qty * a_odds
     defense = (s_eff + d_f) * d_odds

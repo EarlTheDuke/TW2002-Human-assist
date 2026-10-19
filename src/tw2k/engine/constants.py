@@ -4174,6 +4174,18 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "ATOMIC_DETONATOR_MODE",
         "SD-l (NOTE 78): the detonator is the planet killer; the port-nuke atomic mine is retired",
     ),
+    "special_hull_rules_on": (
+        "SPECIAL_HULL_RULES_MODE",
+        "NOTE 86 CMB-m: an Interdictor holds every other ship, and a Tholian defends a corp planet at 4:1",
+    ),
+    "ferrengi_grudge_on": (
+        "FERRENGI_GRUDGE_MODE",
+        "NOTE 86 FER-c: a Ferrengi that was attacked seeks that trader, and neighbours band on a strong target",
+    ),
+    "ferrengi_pace_on": (
+        "FERRENGI_PACE_MODE",
+        "NOTE 86 FER-d: Ferrengi move 1 in 20 every 30 s of the live clock, and regenerate 20% a day",
+    ),
 }
 
 
@@ -4666,3 +4678,37 @@ def atomic_mine_retired_error() -> str:
     if atomic_detonator_live():
         return "atomic mines are retired; an atomic detonator kills the colonists first, then the planet"
     return "atomic mines are retired (ATOMIC_MINES_PORT_NUKE off)"
+
+
+# v311-fed-ferrengi-gaps-v1 (NOTE 86). Stored default stays legacy, so a profile-off
+# game keeps today's Fed response, commission, Ferrengi roam, and hull combat.
+# CMB-l and SD-q are already that default (fed.py protect_fedspace_attack and
+# check_iss_repo_on_move); this slice does not add a switch for them.
+SPECIAL_HULL_RULES_MODE = "legacy"  # "legacy" | "live"
+# Docs wiki Tholian Sentinel flavor: "combat odds of 1:1 shoot up to 4:1 when
+# defending a corporate planet."
+THOLIAN_CORP_DEFENSE_ODDS = 4.0
+FERRENGI_GRUDGE_MODE = "legacy"  # "legacy" | "live"
+FERRENGI_PACE_MODE = "legacy"  # "legacy" | "live"
+# cabal twgs.html <H> "Ferrengi moveCh : 1 in 20". v3.00 revision: that chance
+# is once every 30 seconds, not once per player turn.
+FERRENGI_MOVE_ONE_IN = 20
+FERRENGI_MOVE_INTERVAL_S = 30
+# A neighbour bands when the target has more fighters than this Ferrengi.
+# The Bible says they travel in groups; the cutoff is UNVERIFIED.
+FERRENGI_BAND_STRONG = "more_fighters_than_this_ship"
+
+
+def special_hull_rules_on() -> bool:
+    """True when Interdictor and Tholian specials apply to roster hulls."""
+    return SPECIAL_HULL_RULES_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def ferrengi_grudge_on() -> bool:
+    """True when an attacked Ferrengi seeks that trader and neighbours band."""
+    return FERRENGI_GRUDGE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def ferrengi_pace_on() -> bool:
+    """True when Ferrengi hop on the 30 s clock instead of the once-a-day roll."""
+    return FERRENGI_PACE_MODE == "live" or tw2002_live_profile() or v311_profile()
