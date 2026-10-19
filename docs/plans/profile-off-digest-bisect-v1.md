@@ -2,7 +2,14 @@
 
 The written goldens are the action digest from `scripts/run_scripted_match.py --days 10 --action-digest`: `zlib.crc32` of the action rows, printed as `ACTION_DIGEST`. Seed 250925 is `24863a3d`. Seed 4242 is `98a47c8a`. Both rejected 0/0.
 
-A later note compared those prefixes to `tests/fed_legacy_digest.py` `legacy_run_digest`, a 24-character sha256 of observations, prompts, actions, results and state. That is a different checksum. It does not say the action digest moved.
+`f772752b403d2cd51c19e4da` and `1030418c32c76637db7eed97` are not action digests. They are `tests/fed_legacy_digest.py` `legacy_run_digest(root, "N3,N2,N1,H", 10, seed)`, the first 24 hex characters of a sha256 over observations, prompts, actions, results and state. That call also forces every `*_MODE` whose value is `"tw2002"` to `"legacy"`.
+
+Both strings were measured on `717bbf2929d3609b3a95e0b60869a1dc5f1d0bcb`, profile unset, before `ab858ab5` existed (that commit is 01:19 UTC; the logs are 01:10 and 01:13 UTC on 19 Oct 2026):
+
+- `/tmp/note89-digest.log` from `/tmp/note89_digests.py`, `root = Path("/workspace")`. `track-d-note89` was still `717bbf29` (created from `origin/feature/grokbot-player` at that sha).
+- `/tmp/note89-tip.log` and `/tmp/note89-tip4242.log` from a clean worktree `/tmp/note89-before`. The log prints `code /tmp/note89-before/src/tw2k/engine/constants.py` and `colonist_units_live` absent.
+
+The same sha's action digest, measured later with `--action-digest`, is `24863a3d`. The merge queue's reading of tip `c05f7bea` matches that command. The other checksum was the wrong instrument on `717bbf29`.
 
 Bisect of `feature/grokbot-player` first-parent, `fb04cf58` through tip `c05f7bea`. Profile unset (`V311_PROFILE` and `TW2002_LIVE_PROFILE` absent). Command:
 
