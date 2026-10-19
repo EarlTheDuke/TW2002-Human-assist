@@ -244,7 +244,7 @@ def test_holo_scan_costs_a_turn_and_shows_who_is_there(tw) -> None:
     assert mem["fighters"] == {"owner_id": "B", "count": 4321, "mode": "defensive", "ownership": "personal"}  # QC 57 cr17
     assert [t["id"] for t in mem["traders"]] == ["B"]
     assert all(m["kind"] != "limpet" for m in mem["mines"])  # Bob's limpets stay invisible
-    assert {"kind": "armid", "owner": "personal", "count": 7} in mem["mines"]
+    assert {"kind": "armid", "owner": "personal", "owner_id": "B", "count": 7} in mem["mines"]
     assert "stock" not in json.dumps(mem)
     adj = {a["id"]: a for a in build_observation(u, "A").adjacent}
     assert adj[busy]["fighter_count"] == 4321 and adj[busy]["occupants"] == ["B"]
@@ -491,9 +491,10 @@ def test_entering_a_sector_shows_traders_and_hides_foreign_limpets(tw, monkeypat
     sec = build_observation(u, "A").sector
     assert [t["id"] for t in sec["traders"]] == ["C"]
     assert sec["mines"] == []  # Carol's limpets are not visible to Alice
-    assert build_observation(u, "C").sector["mines"] == [{"owner": "personal", "kind": "limpet", "count": 5}]
+    own = [{"owner": "personal", "owner_id": "C", "kind": "limpet", "count": 5}]
+    assert build_observation(u, "C").sector["mines"] == own
     u.players["A"].corp_ticker = u.players["C"].corp_ticker = "QQQ"
-    assert build_observation(u, "A").sector["mines"] == [{"owner": "personal", "kind": "limpet", "count": 5}]
+    assert build_observation(u, "A").sector["mines"] == own
 
 
 def test_unscanned_adjacent_carries_no_live_contents(tw) -> None:
