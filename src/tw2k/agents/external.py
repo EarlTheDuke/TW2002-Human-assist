@@ -180,7 +180,9 @@ class ExternalAgent(BaseAgent):
 
     def record_result(self, ok: bool, error: str | None, event_seqs: list[int],
                       action_kind: str | None = None, auto: bool = False, turns_used: int | None = None,
-                      turns_regenerated: int | None = None) -> None:
+                      turns_regenerated: int | None = None,
+                      credits_before: int | None = None, credits_after: int | None = None,
+                      day: int | None = None, sector_id: int | None = None) -> None:
         if not auto:
             self._slot_actions += 1
             self._last_applied_seq = self.turn_seq
@@ -197,6 +199,14 @@ class ExternalAgent(BaseAgent):
         if K.action_result_report():
             self.last_result["rejected"] = not bool(ok)
             self.last_result["turns_spent"] = int(turns_used or 0)
+            self.last_result["reason"] = None if ok else (error or "refused")
+            if credits_before is not None and credits_after is not None:
+                self.last_result["credits"] = int(credits_after)
+                self.last_result["credits_change"] = int(credits_after) - int(credits_before)
+            if day is not None:
+                self.last_result["day"] = int(day)
+            if sector_id is not None:
+                self.last_result["sector_id"] = int(sector_id)
         self._result_ready.set()
         started = self.turn_started_at
         submitted = self._submitted_at
@@ -216,12 +226,23 @@ class ExternalAgent(BaseAgent):
         if int(last.get("turn_seq") or -1) != int(bound):
             return {"ok": None, "rejected": None, "error": "result pending", "turns_spent": None}
         ok = bool(last.get("ok"))
-        return {
+        out = {
             "ok": ok,
             "rejected": not ok,
             "error": last.get("error"),
             "turns_spent": int(last.get("turns_spent") or 0),
         }
+        if "reason" in last:
+            out["reason"] = last.get("reason")
+        if "credits_change" in last:
+            out["credits_change"] = int(last["credits_change"])
+        if "credits" in last:
+            out["credits"] = int(last["credits"])
+        if "day" in last:
+            out["day"] = int(last["day"])
+        if "sector_id" in last:
+            out["sector_id"] = int(last["sector_id"])
+        return out
 
     # ---- run_route macro + slot digest (G6) ----------------------------------
 

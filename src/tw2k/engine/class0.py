@@ -502,7 +502,7 @@ def terra_legal_params(universe: Universe, player) -> dict[str, Any] | None:
         max_by["leave"] = leave_max
     if not modes:
         return None
-    return {
+    params = {
         "mode": {"type": "str", "required": True, "choices": modes},
         "qty": {"type": "int", "required": True, "min": 1, "max_by": max_by},
         "pool": pool,
@@ -510,6 +510,9 @@ def terra_legal_params(universe: Universe, player) -> dict[str, Any] | None:
         "turns": int(K.TERRA_LOAD_TURNS),
         "price": int(K.TERRA_COLONIST_PRICE),
     }
+    if K.terra_colonist_live() and int(K.colonists_per_hold()) > 1:
+        params["colonists_stored"] = "people"
+    return params
 
 
 def class0_equip_prices(day: int) -> dict[str, int]:

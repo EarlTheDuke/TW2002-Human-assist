@@ -5222,3 +5222,64 @@ def colonist_score_qty(qty: int) -> int:
     if colonist_nw_units() and int(colonists_per_hold()) > 1:
         return amount // int(colonists_per_hold())
     return amount
+
+
+# colonist-units-clarity-v1 (NOTE 101). No new switch and no new helper row.
+# The live switches already agree: one Terra hold is 1,000 people, and that
+# thousand is one planet unit. This only names that unit. Profile-off leaves
+# every count as it was, because none of these helpers is on.
+def colonist_clarity_on() -> bool:
+    """True when a screen should say colonists in thousands, with the people beside them."""
+    return (
+        class_m_fidelity_live()
+        or colonist_units_live()
+        or terra_colonist_live()
+        or cockpit_fields_on()
+    )
+
+
+def colonist_stored_is_people(class_id) -> bool:
+    """True when this planet's colonist pools are people, not handbook thousands."""
+    token = str(getattr(class_id, "value", class_id))
+    return token == "M" and class_m_fidelity_live()
+
+
+def colonist_quote(stored: int, *, people: bool) -> dict[str, int | str]:
+    """Handbook thousands and the people they stand for."""
+    amount = max(0, int(stored))
+    per = int(CLASS_M_PEOPLE_PER_THOUSAND)
+    if people:
+        return {"unit": "thousands", "thousands": amount // per, "people": amount}
+    return {"unit": "thousands", "thousands": amount, "people": amount * per}
+
+
+# The 30-hold haul is the NOTE 101 example (one Terra take). A published
+# "trips remaining" figure was not found. UNVERIFIED as a screen quote.
+CITADEL_HAUL_HOLDS = 30
+
+
+def citadel_colonist_quote(
+    level: int, need_stored: int, have_stored: int, *, people: bool, haul_holds: int = CITADEL_HAUL_HOLDS,
+) -> dict[str, int | str]:
+    """Need, have, and the unit, plus one sentence a form can print."""
+    need = colonist_quote(need_stored, people=people)
+    have = colonist_quote(have_stored, people=people)
+    haul = max(1, int(haul_holds))
+    short = max(0, int(need["thousands"]) - int(have["thousands"]))
+    trips = (short + haul - 1) // haul if short else 0
+    plain = (
+        f"Level {int(level)} needs {int(need['thousands']):,} (thousands) colonists = {int(need['people']):,}; "
+        f"you have {int(have['thousands']):,} (thousands)"
+    )
+    if trips:
+        plain += f"; about {trips} more Terra trips with {haul} holds"
+    return {
+        "need": int(need["thousands"]),
+        "have": int(have["thousands"]),
+        "unit": "thousands",
+        "need_people": int(need["people"]),
+        "have_people": int(have["people"]),
+        "trips": trips,
+        "haul_holds": haul,
+        "plain": plain,
+    }
