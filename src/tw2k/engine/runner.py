@@ -858,6 +858,11 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
             if player.deaths != deaths_before or not player.alive:
                 return damage
 
+    if entering and player.deaths == deaths_before and player.alive:
+        _apply_ferrengal_quasar(universe, pid, sector)
+        if player.deaths != deaths_before or not player.alive:
+            return damage
+
     # Hostile sector fighter check
     if sector.fighters and (K.corp_rules_on() or sector.fighters.owner_id != pid):
         f_mode = sector.fighters.mode
@@ -3998,6 +4003,36 @@ def _fire_interdict_quasar(universe: Universe, pid: str, planet) -> None:
         return
     planet.stockpile[Commodity.FUEL_ORE] = fuel - burned
     _apply_quasar_to_ship(universe, pid, damage, planet, "sector")
+
+
+def _apply_ferrengal_quasar(universe: Universe, pid: str, sector) -> None:
+    """Ferrengal's cannon on entry. S1 formula, fixed UNVERIFIED strength. No RNG.
+
+    Off, this returns before it reads the sector, so a profile-off entry is unchanged.
+    """
+    if not K.ferrengal_quasar_live():
+        return
+    home = getattr(universe, "ferrengal_sector", None)
+    if home is None or int(sector.id) != int(home):
+        return
+    player = universe.players[pid]
+    burned, damage = _quasar_shot(int(K.FERRENGAL_QUASAR_FUEL), int(K.FERRENGAL_QUASAR_PCT))
+    if damage <= 0:
+        return
+    soaked = min(int(player.ship.shields), damage)
+    player.ship.shields = int(player.ship.shields) - soaked
+    rest = damage - soaked
+    if rest > 0:
+        player.ship.fighters = max(0, int(player.ship.fighters) - rest)
+    universe.emit(
+        EventKind.QUASAR_FIRE,
+        actor_id=K.FERRENGI_OWNER_ID,
+        sector_id=sector.id,
+        payload={"mode": "ferrengal", "damage": damage, "burned": burned, "victim": pid},
+        summary=f"The Quasar Cannon on Ferrengal locks onto {player.name} and fires for {damage}",
+    )
+    if player.ship.shields <= 0 and player.ship.fighters <= 0:
+        _destroy_ship(universe, pid, reason="quasar", killer_id=K.FERRENGI_OWNER_ID)
 
 
 def _apply_sector_quasar(universe: Universe, pid: str, sector) -> None:

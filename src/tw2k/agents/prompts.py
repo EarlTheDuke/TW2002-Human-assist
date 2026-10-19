@@ -803,10 +803,26 @@ def _combat_framing_prompt_text(text: str) -> str:
     """
     odds = ", ".join(f"{h} {o:g}" for h, o in K.FERRENGI_ODDS_BY_HULL.items())
     bounty = K.FERRENGI_BOUNTY_PER_AGG
+    if K.ferrengi_reward_live():
+        ferr_pay = (
+            f"bounty and the credits and cargo it carried (salvage, into free holds). "
+            f"Experience is a flat award by hull. A good trader (alignment above 0) gains "
+            f"+{K.FERRENGI_ALIGN_ON_KILL} alignment; a neutral or evil trader does not. "
+        )
+        ferr_short = (
+            "bounty and salvage. Experience is a flat award by hull, and alignment goes up only for a good trader. "
+        )
+    else:
+        ferr_pay = (
+            f"bounty, the credits and cargo it carried (salvage, into free holds), {K.xp_award('kill_ferr')} experience x "
+            f"aggression and +{K.FERRENGI_ALIGN_ON_KILL} alignment. "
+        )
+        ferr_short = (
+            f"bounty + salvage and {K.xp_award('kill_ferr')} experience x aggression; "
+        )
     ferr = (
         f"- FERRENGI are NPC pirates and a fair target outside FedSpace. A kill pays {bounty:,} cr x aggression "
-        f"bounty, the credits and cargo it carried (salvage, into free holds), {K.xp_award('kill_ferr')} experience x "
-        f"aggression and +{K.FERRENGI_ALIGN_ON_KILL} alignment. sector.ferrengi shows its fighters, shields and hull "
+        f"{ferr_pay}sector.ferrengi shows its fighters, shields and hull "
         f"(odds: {odds}). One attack destroys it when qty x your hull odds >= (shields + fighters) x its odds; "
         "otherwise you only trade fighters. Attack when you clearly outgun it; ignoring a hail pays tribute.\n"
         f"- Attacking a trader (outside FedSpace): a kill earns {K.xp_award('kill_player')} experience + "
@@ -818,8 +834,8 @@ def _combat_framing_prompt_text(text: str) -> str:
     text = text.replace(_FERRENGI_LINE_FULL, ferr, 1)
     text = text.replace(
         _FERRENGI_LINE_MINIMAL,
-        f"FERRENGI are NPC pirates and a fair target: a kill pays {bounty:,} cr x aggression bounty + salvage and "
-        f"{K.xp_award('kill_ferr')} experience x aggression; one attack wins when qty x your odds >= (their shields + "
+        f"FERRENGI are NPC pirates and a fair target: a kill pays {bounty:,} cr x aggression {ferr_short}"
+        f"one attack wins when qty x your odds >= (their shields + "
         f"fighters) x their odds. A trader kill earns {K.xp_award('kill_player')} experience + "
         f"{int(K.KILL_EXP_SHARE * 100)}% of theirs and costs alignment (half theirs if they are good). Ship loss",
         1,
