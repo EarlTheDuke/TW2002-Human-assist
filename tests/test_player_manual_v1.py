@@ -242,7 +242,7 @@ def test_the_manual_is_readable_at_both_widths_and_the_bot_page_has_no_button(tm
         manual_page = httpx.get(f"{base}/manual", timeout=5)
         assert manual_page.status_code == 200
         assert 'href="/bot"' in manual_page.text
-        bot = httpx.get(f"{base}/bot", timeout=5)
+        bot = httpx.get(f"{base}/bot?layout=legacy", timeout=5)
         assert bot.status_code == 200
         assert "manualLink" not in bot.text
         redesign = httpx.get(f"{base}/bot?layout=redesign", timeout=5)
