@@ -135,6 +135,10 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
     home = settings.get("home_planet_name")
     if home:
         cmd.extend(["--home-planet-name", str(home)])
+    lockout = settings.get("tournament_lockout")
+    blows = settings.get("tournament_kill_threshold")
+    if lockout and blows is not None:
+        cmd.extend(["--tournament-lockout", str(lockout), "--tournament-kill-threshold", str(int(blows))])
     return cmd
 
 

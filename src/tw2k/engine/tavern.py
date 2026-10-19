@@ -441,6 +441,41 @@ def handle_claim(universe: Universe, pid: str, action: Action) -> ActionResult:
     return ActionResult(ok=True, turns_spent=0)
 
 
+def _trader_name(raw: Any) -> str | None:
+    text = str(raw if raw is not None else "").strip()
+    if not text or any(ord(ch) < 32 for ch in text) or len(text) > int(K.UG_NAME_MAX):
+        return None
+    return text
+
+
+def handle_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """Change the trader's name. UG_NAME_PRICE is the live-screen price; the experience formula is UNVERIFIED."""
+    if not on() or not K.underground_mafia_live():
+        return ActionResult(ok=False, error="unsupported action")
+    player = universe.players[pid]
+    why = guard(player)
+    if why:
+        return ActionResult(ok=False, error=why)
+    if int(player.ug_entered_day) != int(universe.day):
+        return ActionResult(ok=False, error="enter the Underground first")
+    name = _trader_name((action.args or {}).get("name"))
+    if name is None:
+        return ActionResult(ok=False, error=f"name must be 1 to {int(K.UG_NAME_MAX)} characters")
+    if name == player.name:
+        return ActionResult(ok=False, error="that is already your name")
+    price = int(K.UG_NAME_PRICE)
+    short = _pay(player, price)
+    if short:
+        return ActionResult(ok=False, error=short)
+    old = player.name
+    player.name = name
+    _actor(
+        universe, player, EventKind.UG_RENAME, f"{old} is now known as {name}",
+        {"price": price},
+    )
+    return ActionResult(ok=True, turns_spent=0)
+
+
 def record_contract_on_death(universe: Universe, victim_id: str, killer_id: str | None, outcome: str) -> None:
     if not on() or K.UG_CONTRACT_PAYOUT_ON != "ship_destroyed":
         return
@@ -523,6 +558,8 @@ def observation(universe: Universe, player: Player) -> dict[str, Any] | None:
             "contracts": totals,
             "pending_claim": int((state.get("ug_pending") or {}).get(player.id, 0) or 0),
         }
+        if K.underground_mafia_live():
+            block["underground"]["name_price"] = int(K.UG_NAME_PRICE)
     if K.stardock_extra_on():
         block["tricron"] = {
             "ante": int(K.TRICRON_ANTE),
@@ -607,6 +644,23 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
         "enter the Underground first" if not entered else "nothing to claim",
         {"pending": pending},
     )
+    if K.underground_mafia_live():
+        price = int(K.UG_NAME_PRICE)
+        if not entered:
+            rename_reason = "enter the Underground first"
+        elif int(player.credits) < price:
+            rename_reason = "not enough credits"
+        else:
+            rename_reason = ""
+        add(
+            "underground_rename",
+            entered and int(player.credits) >= price,
+            rename_reason,
+            {
+                "name": {"type": "str", "required": True, "max": int(K.UG_NAME_MAX)},
+                "price": price,
+            },
+        )
     if K.stardock_extra_on():
         ante = int(K.TRICRON_ANTE)
         add(

@@ -218,6 +218,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                     ActionKind.TAVERN_ORDER, ActionKind.GRIMY_ASK, ActionKind.GRIMY_CURSE,
                     ActionKind.UNDERGROUND_ENTER, ActionKind.UNDERGROUND_CONTRACT, ActionKind.UNDERGROUND_CLAIM,
                 ))
+                and ((K.tavern_on() and K.underground_mafia_live()) or k != ActionKind.UNDERGROUND_RENAME)
                 and ((K.tavern_on() and K.stardock_extra_on()) or k != ActionKind.TRICRON)
                 and (K.stardock_extra_on() or k != ActionKind.CINEPLEX)]
 
@@ -1681,6 +1682,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "underground_enter": ActionKind.UNDERGROUND_ENTER,
             "underground_contract": ActionKind.UNDERGROUND_CONTRACT,
             "underground_claim": ActionKind.UNDERGROUND_CLAIM,
+            "underground_rename": ActionKind.UNDERGROUND_RENAME,
             "tricron": ActionKind.TRICRON,
         }
         for kind_val, legal, reason, params, cost in tavern_legal_specs(universe, player_id):

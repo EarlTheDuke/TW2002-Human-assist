@@ -1781,6 +1781,7 @@
     else if (restore === "grimyAsk") grimyAsk(saved);
     else if (restore === "ugEnter") ugEnter(saved);
     else if (restore === "ugContract") ugContract(saved);
+    else if (restore === "ugRename") ugRename(saved);
     else if (restore === "postReward") postReward(saved);
     else if (restore === "shipPassword") shipPassword(saved);
     else if (restore === "sellShip") sellShip(saved);
@@ -3450,6 +3451,14 @@
       { n: "amount", label: "amount", type: "number", min: min },
     ], saved, (values) => act("underground_contract", { target: values.target, amount: Number(values.amount) }, "contract"));
   }
+  function ugRename(saved) {
+    const a = LA("underground_rename") || { legal: false, reason: "", params: {} };
+    if (!a.legal && !saved) { setResult("Change name: " + plainReason(a.reason), true); return; }
+    const price = Number((a.params || {}).price || 0);
+    dockForm("ugRename", "CHANGE NAME", "This costs " + fmt(price) + " cr.", [
+      { n: "name", label: "name", type: "text" },
+    ], saved, (values) => act("underground_rename", { name: values.name }, "rename"));
+  }
   function postReward(saved) {
     const a = LA("post_reward") || { legal: false, reason: "", params: {} };
     if (!a.legal && !saved) { setResult("Post a reward: " + plainReason(a.reason), true); return; }
@@ -3506,6 +3515,9 @@
     add("underground_enter", "Enter underground", () => ugEnter());
     add("underground_contract", "Contract", () => ugContract());
     add("underground_claim", "Claim underground", (a) => confirmWords("Claim underground", "Claim " + fmt((a.params || {}).pending || 0) + " cr?", () => act("underground_claim", {}, "claim")));
+    if (LA("underground_rename")) {
+      add("underground_rename", "Change name", () => ugRename());
+    }
     add("cineplex", "Cineplex", (a) => {
       const cost = Number((a.params || {}).cost || 0);
       const line = cost ? "The picture costs " + fmt(cost) + " cr. It has no secrets." : "The picture is free. It has no secrets.";
