@@ -35,6 +35,9 @@ def jettison_spec(universe, pid: str) -> tuple[bool, str | None, int, dict[str, 
     for key, qty in player.ship.cargo.items():
         name = getattr(key, "value", key)
         have = int(qty or 0)
+        if str(name) == Commodity.COLONISTS.value and K.colonist_units_live() and int(K.colonists_per_hold()) > 1:
+            per = int(K.colonists_per_hold())
+            have = have - (have % per)
         if have > 0:
             choices.append(str(name))
             max_by[str(name)] = have
@@ -82,9 +85,16 @@ def handle_jettison(universe, pid: str, action: Action) -> ActionResult:
     have = int(player.ship.cargo.get(key, 0) or 0)
     if qty < 1 or qty > have:
         return ActionResult(ok=False, error="not enough of that cargo")
+    align_qty = qty
+    if key == Commodity.COLONISTS or getattr(key, "value", key) == Commodity.COLONISTS.value:
+        if K.colonist_units_live() and int(K.colonists_per_hold()) > 1:
+            per = int(K.colonists_per_hold())
+            if qty % per != 0:
+                return ActionResult(ok=False, error=K.COLONIST_MOVE_BY_THOUSAND)
+            align_qty = K.colonist_holds_for_cargo(qty)
     player.ship.cargo[key] = have - qty
     if key == Commodity.COLONISTS or getattr(key, "value", key) == Commodity.COLONISTS.value:
-        _colonist_alignment(universe, player, qty)
+        _colonist_alignment(universe, player, align_qty)
     return ActionResult(ok=True, turns_spent=0)
 
 
