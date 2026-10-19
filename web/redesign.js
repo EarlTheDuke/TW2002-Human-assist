@@ -1584,7 +1584,8 @@
       stat.appendChild(el);
     }
     const left = dawnLeft();
-    if (!S || left == null) {
+    const over = state.gameOver || (S && Number(S.max_days) > 0 && Number(S.day) > Number(S.max_days));
+    if (!S || left == null || over) {
       el.hidden = true;
       el.textContent = "";
       return;
@@ -1596,7 +1597,8 @@
     const day = $("dayClock");
     if (day) {
       const left = leftOf(dayDeadline);
-      day.textContent = left == null ? "" : ", next day in " + clockRemain(left);
+      const over = state.gameOver || (S && Number(S.max_days) > 0 && Number(S.day) > Number(S.max_days));
+      day.textContent = left == null || over ? "" : ", next day in " + clockRemain(left);
     }
     if (S && $("turns")) $("turns").textContent = turnFace();
     paintDayEnds();
@@ -6281,6 +6283,10 @@
     do(kind, args) { return act(kind, args || {}, kind); },
     refreshCount() { return refreshCount; },
     refreshNow() { return refresh(); },
+    setGameOver(flag) {
+      state.gameOver = !!flag;
+      if (S) render();
+    },
     setTurnClock(clock) {
       TC = clock || null;
       syncClocks();
