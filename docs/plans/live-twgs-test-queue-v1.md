@@ -1,0 +1,17 @@
+# Live TWGS test queue (NOTE 96)
+
+Cur can run these on Ben's server with a new test character. Nothing below was changed. A v3.11 source did not settle the number, so the constant stays and the comment says `UNVERIFIED, searched:`.
+
+Settled in this slice, and not queued: an unmanned Interdictor does not hold, a cloak or a landing or a port visit drops the well, and a fighter-menu retreat is allowed past an Interdictor Cruiser. Sources are in `src/tw2k/engine/combat.py` (`hull_interdict_reason`, `retreat_block`).
+
+| Item | Current value | What to do on live TWGS | What to record | Constant it settles |
+|---|---|---|---|---|
+| Ferrengi kill experience | Assault trader 50, battle cruiser 100, dreadnought 150 | Kill one of each hull with a good trader (alignment above 0) and again with a neutral or evil trader. Read experience before and after. | The experience change for each hull, and whether alignment changed the award | `FERRENGI_XP_BY_HULL` |
+| Ferrengi alignment on a kill | +10, and only when alignment is already above 0 | Same three kills. Read alignment before and after. | The alignment delta for a good trader and for a neutral or evil trader | `FERRENGI_ALIGN_ON_KILL` |
+| Ferrengal quasar | 10,000 fuel at 10% (333 damage). Does not burn a planet's ore | Enter the Ferrengal sector in a ship with known shields and fighters. Do not land. | The quasar line: damage, fuel burned if shown, and the planet's sector percent and ore if a scan shows them | `FERRENGAL_QUASAR_FUEL`, `FERRENGAL_QUASAR_PCT` |
+| Ferrengi banding cutoff | Bands when the target has more fighters than this Ferrengi, and another Ferrengi is in that sector or one hop out | Watch two Ferrengi near a trader who has more fighters than one of them and fewer than the other. | Whether the weaker ship steps into the trader's sector, and the fighter counts on all three | `FERRENGI_BAND_STRONG` |
+| Ferrengi attack clock | A pace hop only relocates. The tribute menu opens on the day tick | Sit still in one sector until a Ferrengi hops in. Stay for the rest of the day. | Whether the Flee / Attack / Surrender menu appears on the hop, or only after midnight | `FERRENGI_PACE_MODE` attack timing |
+| Plotted course limit | 45 hops when `COURSE_MAX_MODE` is live | From the computer, plot a course you know is longer than 45 hops, and one of 45 or fewer. | The refusal text, or the plotted length, and the General Editor "Maximum Course Length" value | `V311_COURSE_MAX_HOPS` |
+| Death delay maximum | Any whole number of days. No ceiling in the code | In TEDIT, open Death Delay and try 0, 1, 2, and the largest number the field accepts. | The highest accepted value, and the message if it refuses | `GameConfig.death_delay` |
+| Flying pod sentence | A pod that is already flying does not start a death-delay sentence when it is destroyed | With death delay at 1 or more, lose a ship, wait out the sentence so the pod can move, then lose the pod. Repeat with death delay at 0. | Whether a new sentence starts, and how many midnights | `death_delay_days` |
+| Ship-odds loss split | Attacker loses `ceil(R / A)` when `P >= R`, else the defender loses `floor(P / D)` | In a Missile Frigate (odds 1.3) send 100 fighters at a Merchant Cruiser (1.0) with a known fighter and shield count. Repeat from a Merchant Cruiser. | Fighters and shields left on both ships | `docs/plans/ship-odds-exchange-v1.md` (no new switch; `RULINGS_v311.md` is not in the repo or an open pull request) |

@@ -191,3 +191,9 @@ Five switches, stored default `"legacy"`. The profile turns the helpers on and d
 - Densities. Live generation still draws the clone ports and planets on the main rng, records the Class 0 sectors that layout would pick, then replaces the fill from a side rng: about 40% ports, up to 20% planets, and no decorative Fed ports in sectors 2-10. StarDock stays sector 1. Terra's pool is unchanged. Class 0 is installed in the sectors the clone layout chose, so a density-only flip does not move Alpha Centauri or Rylos. A one-way flip can, because the lanes moved.
 - One-way share. `one_way_fraction_for` returns 0.03 only when the helper is on and `one_way_fraction` was not set on the game config. An explicit setting, including 0.15, is kept.
 - Detonator. `atomic_detonator_live()` makes `atomic_mines_sold()` false. The port-nuke mine is not sold and deploy is refused. The detonator path is unchanged: colonists first (a detonator set while colonists remain destroys the ship; `planet_destroy` clears them), then the planet. `ATOMIC_MINES_PORT_NUKE` stays True.
+
+## Unverified follow-ups (NOTE 96, v311-unverified-followups-v2a)
+
+No new switch. Rows 131-134 stay unused. A correction inside an existing live path does not take a row.
+
+The Interdictor well now follows the v3 history through Pending v3.11: an unmanned hull does not hold, a cloak or a landing or a port visit drops the well, and a fighter-menu retreat is allowed past the cruiser. Warp, TransWarp, a Ferrengi flee, and a combat flee stay held. The experience-by-hull awards, the +10 alignment, the Ferrengal 10,000 / 10% shot, the banding cutoff, the attack-on-entry question, the 45-hop plot cap, the death-delay ceiling, the flying-pod sentence, and the ship-odds split stay at their current values. Each searched source is in the constant comment, and each one is a row in `docs/plans/live-twgs-test-queue-v1.md`.
