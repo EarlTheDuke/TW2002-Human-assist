@@ -41,7 +41,8 @@ def _course(u):
 def test_the_tax_file_uses_the_helper_reserved_ports() -> None:
     text = (ROOT / "tests" / "test_cockpit_tax_wording_v1.py").read_text(encoding="utf-8")
     assert "range(8031, 8120)" not in text
-    assert "RESERVED_TEST_PORTS" in text
+    assert "low=8200" not in text
+    assert "free_port" in text
 
 
 def test_two_cruisers_trade_one_for_one_and_a_scout_does_not() -> None:

@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from tests._port_lock import _DIR, claim_ports, release_ports
+from tests._port_lock import _DIR, release_ports
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,8 +41,9 @@ def test_import_does_not_need_fcntl() -> None:
 
 def _grab(q) -> None:
     """Top-level so Windows spawn can pickle it. A nested function cannot."""
-    base = claim_ports(2, low=47000, high=47200)
-    q.put(base)
+    from tests._cu_host import free_port
+
+    q.put(free_port(count=2))
 
 
 def test_two_processes_do_not_claim_the_same_ports() -> None:

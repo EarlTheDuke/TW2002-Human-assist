@@ -25,9 +25,9 @@ TOKEN = "h" * 40
 
 
 def _port() -> int:
-    from tests._port_lock import claim_ports
+    from tests._cu_host import free_port
 
-    return claim_ports(1, low=43200, high=43320, sequential=True)
+    return free_port()
 
 
 @contextlib.contextmanager

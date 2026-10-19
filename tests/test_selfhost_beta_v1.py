@@ -55,8 +55,17 @@ class FakeWorker:
         return self.up
 
 
-def _cfg(tmp_path: Path, **kw) -> C.LobbyConfig:
-    base = dict(root=tmp_path / "selfhost", port=47299, game_ports=range(47300, 47310), tick_s=3600.0)
+def _cfg(tmp_path: Path, holds: list[int], **kw) -> C.LobbyConfig:
+    from tests._cu_host import LOBBY_FREE_START, free_port
+
+    if "port" not in kw:
+        kw["port"] = free_port(LOBBY_FREE_START)
+        holds.append(kw["port"])
+    if "game_ports" not in kw:
+        base = free_port(LOBBY_FREE_START, count=10)
+        kw["game_ports"] = range(base, base + 10)
+        holds.extend(kw["game_ports"])
+    base = dict(root=tmp_path / "selfhost", tick_s=3600.0)
     base.update(kw)
     return C.LobbyConfig(**base)
 
@@ -66,15 +75,17 @@ def make_lobby(tmp_path, monkeypatch):
     for name in ("TW2K_PUBLIC_MODE", "TW2K_BRAND", "TW2K_BASE_PATH", "TW2K_SPECTATOR_TOKEN"):
         monkeypatch.delenv(name, raising=False)
     made = []
+    holds: list[int] = []
 
     def _make(client=("testclient", 50000), **kw):
-        cfg = _cfg(tmp_path, **kw)
+        cfg = _cfg(tmp_path, holds, **kw)
         app = create_lobby_app(cfg, port_probe=lambda p: True)
         lob = app.state.lobby
         lob.started, lob.calls, lob.proxied = [], [], []
+        games = list(cfg.game_ports)
 
         async def fake_start(gid, *, resume):
-            lob.workers.workers[gid] = FakeWorker(47300 + len(lob.started))
+            lob.workers.workers[gid] = FakeWorker(games[len(lob.started)])
             lob.store.set_game(gid, status="running", port=lob.workers.workers[gid].port)
             lob.started.append((gid, resume))
             return True
@@ -102,6 +113,9 @@ def make_lobby(tmp_path, monkeypatch):
     yield _make
     for tc in made:
         tc.__exit__(None, None, None)
+    from tests._port_lock import release_ports
+
+    release_ports(*holds)
 
 
 def _accept(c) -> None:
@@ -327,9 +341,8 @@ def test_item2_public_mode_answers_only_the_lobby(monkeypatch) -> None:
         assert outside.get(path).status_code == 200
     with outside.websocket_connect("/ws") as s:
         assert s.receive_text() == "hi"
-    with pytest.raises(Exception):
-        with outside.websocket_connect("/control/ws"):
-            pass
+    with pytest.raises(Exception), outside.websocket_connect("/control/ws"):
+        pass
     lobby = TestClient(app, client=("127.0.0.1", 5000))
     assert lobby.post("/control/pause", headers={W.LOBBY_HEADER: "s" * 64}).status_code == 200
     assert lobby.post("/control/pause", headers={W.LOBBY_HEADER: "wrong"}).status_code == 404
