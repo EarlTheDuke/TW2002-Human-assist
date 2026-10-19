@@ -494,6 +494,7 @@ class Planet(BaseModel):
             "prod_clock_at": None,
             "prod_paid_s": 0,
             "prod_remain": {},
+            "free_start_colonists": 0,
         })
 
     id: int
@@ -527,6 +528,9 @@ class Planet(BaseModel):
     quasar_atm_pct: int = 0
     # Day number of the last Planet TransWarp. None means it has not moved.
     last_transwarp_day: int | None = None
+    # NOTE 75. Colonists granted with the home planet. They leave this count
+    # first, and net worth skips whatever remains while the switch is on.
+    free_start_colonists: int = 0
     has_transporter: bool = False
     treasury: int = 0
     last_tax_value: int = 0

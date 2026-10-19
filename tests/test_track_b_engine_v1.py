@@ -504,7 +504,8 @@ def test_class_m_net_worth_live_prices_thousands_and_keeps_the_tax_basis(monkeyp
     assert _planet_asset_value(other) == K.LIVE_STARTING_COLONISTS * K.COLONIST_PRICE
 
 
-def test_class_m_net_worth_v311_prices_the_start_planet_in_thousands(monkeypatch):
+def test_class_m_net_worth_v311_leaves_the_free_start_out(monkeypatch):
+    """NOTE 75. The free start is still 191,000 people, and the tax basis still prices each one. Net worth does not."""
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     u = _u()
     player = u.players["P1"]
@@ -513,9 +514,7 @@ def test_class_m_net_worth_v311_prices_the_start_planet_in_thousands(monkeypatch
     home = next(pl for pl in u.planets.values() if pl.owner_id == "P1")
     assert home.class_id == PlanetClass.M
     assert sum(home.colonists.values()) == K.LIVE_STARTING_COLONISTS
-    assert full_net_worth(u, player) - before == (
-        K.LIVE_STARTING_COLONISTS // K.CLASS_M_PEOPLE_PER_THOUSAND
-    ) * K.COLONIST_PRICE
+    assert full_net_worth(u, player) - before == 0
     assert planet_tax_value(home) == K.LIVE_STARTING_COLONISTS * K.COLONIST_PRICE
     other = _valued_planet(PlanetClass.L, 4_000)
     assert _planet_asset_value(other) == 4_000 * K.COLONIST_PRICE

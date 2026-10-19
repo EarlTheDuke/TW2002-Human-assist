@@ -164,10 +164,9 @@ def refresh_offline_turns(player, now: float | None = None) -> None:
     """Give back spent turns for time away. No-op while the switch is off."""
     if not K.turn_regen_live():
         return
-    import time
 
     if now is None:
-        now = time.time()
+        now = K.regen_now()
     last = player.turn_regen_at
     player.turn_regen_at = float(now)
     if last is None:
@@ -421,6 +420,7 @@ def grant_starting_planet(universe: Universe, player) -> None:
         owner_id=player.id,
         origin="other",
         colonists=colonists,
+        free_start_colonists=sum(int(n) for n in colonists.values()) if K.start_colonist_nw_live() else 0,
     )
     universe.planets[pid] = planet
     universe.sectors[player.sector_id].planet_ids.append(pid)
@@ -1993,6 +1993,8 @@ def _handle_load_planet_cargo(universe: Universe, pid: str, action: Action) -> A
         if avail < qty:
             return ActionResult(ok=False, error=f"only {avail} colonists in {pool_label} pool")
         planet.colonists[pool] = avail - qty
+        from .planets import spend_free_start
+        spend_free_start(planet, qty)
     else:
         avail = planet.stockpile.get(commodity, 0)
         if avail < qty:
@@ -2182,6 +2184,10 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
         key = pool_keys[dst]
         planet.colonists[key] = planet.colonists.get(key, 0) + planet_qty
 
+    if src != "ship" and dst == "ship":
+        from .planets import spend_free_start
+        spend_free_start(planet, planet_qty)
+
     universe.emit(
         EventKind.ASSIGN_COLONISTS,
         actor_id=pid,
@@ -2279,6 +2285,8 @@ def _start_class_citadel(universe: Universe, player, sector, planet, next_level:
         take = min(planet.colonists[pool], remaining)
         planet.colonists[pool] -= take
         remaining -= take
+    from .planets import spend_free_start
+    spend_free_start(planet, colonists)
     cost = K.TURN_COST.get("land_planet", 3)
     if player.turns_today + cost > player.turns_per_day:
         cost = 0
@@ -2367,6 +2375,8 @@ def _handle_build_citadel(universe: Universe, pid: str, action: Action) -> Actio
         take = min(planet.colonists[c], remaining)
         planet.colonists[c] -= take
         remaining -= take
+    from .planets import spend_free_start
+    spend_free_start(planet, col_cost)
 
     cost = K.TURN_COST.get("land_planet", 3)
     if player.turns_today + cost > player.turns_per_day:
@@ -2626,9 +2636,9 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         player.ship.scanner = None  # s4: the scanner stays with the old ship
     if receipt is not None:
         # Fighters, shields, mines and the other gear go with the old ship.
-        # The new hull starts at its stock fit (0 fighters). Cargo handling
-        # below is unchanged (UNVERIFIED: the receipts did not say what happens
-        # to the cargo).
+        # The new hull starts at its stock fit (0 fighters). Cargo stays,
+        # clipped to the new holds: TWINSTR.DOC line 1524 lists fighters,
+        # accessories and mines, not the cargo.
         player.ship.fighters = 0
         player.ship.shields = 0
         player.ship.mines = {MineType.ARMID: 0, MineType.LIMPET: 0, MineType.ATOMIC: 0}
@@ -4316,6 +4326,8 @@ def _handle_planet_destroy(universe: Universe, pid: str, action: Action) -> Acti
     if colonists_left > 0:
         for pool in list(planet.colonists.keys()):
             planet.colonists[pool] = 0
+        from .planets import spend_free_start
+        spend_free_start(planet, colonists_left)
         universe.emit(
             EventKind.PLANET_COLONISTS_KILLED,
             actor_id=pid,
