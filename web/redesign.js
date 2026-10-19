@@ -39,6 +39,11 @@
     ["Y", "Personal Planets", null],
     ["J", "Planetary Specs", null],
     ["D", "Daily Log", null],
+    ["M", "Read Mail", null],
+    ["N", "NavPoints", null],
+    ["B", "Backtrack", null],
+    ["S", "Quick stats", null],
+    ["E", "Find route", null],
     ["Q", "Exit Computer", null],
   ];
   const HULL = {
@@ -2213,8 +2218,23 @@
       box.appendChild(reasonButton("claim_planet", "Claim planet", () => act("claim_planet", { planet_id: pid }, "claim planet")));
       box.appendChild(reasonButton("planet_destroy", "Destroy planet", () => confirmWords("Destroy planet", "Destroy " + (landed.name || "this planet") + "? This cannot be undone.", () => act("planet_destroy", { planet_id: pid }, "destroy planet"))));
     }
+    const hail = liveHailLine();
+    if (hail) {
+      const flash = document.createElement("div");
+      flash.className = "y";
+      flash.dataset.hail = "live";
+      flash.textContent = hail;
+      box.appendChild(flash);
+    }
     const mail = (S.inbox || []).filter((row) => row && (row.message || row.text));
-    if (mail.length) {
+    const stored = mail.filter((row) => row.kind === "mail");
+    if (stored.length > mailSeen) {
+      const banner = document.createElement("div");
+      banner.className = "y";
+      banner.dataset.mail = "new";
+      banner.textContent = "New Mail";
+      box.appendChild(banner);
+    } else if (mail.length) {
       const line = document.createElement("div");
       line.className = "y";
       line.dataset.mail = "unread";
@@ -3768,11 +3788,166 @@
     });
     return best ? String(best.summary) : "";
   }
+  let mailSeen = 0;
+  const hailSeen = new Map();
+  function storedMail() {
+    return ((S && S.inbox) || []).filter((row) => row && row.kind === "mail" && (row.message || row.text));
+  }
+  function liveHailLine() {
+    const now = Date.now();
+    let line = "";
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || ev.kind !== "hail") return;
+      const facts = ev.facts || {};
+      if (facts.delivery !== "live" || facts.target !== (S && S.self_id)) return;
+      const ttl = Math.max(1, Number(facts.ttl_s || 10)) * 1000;
+      if (!hailSeen.has(ev.seq)) hailSeen.set(ev.seq, now);
+      if (now - hailSeen.get(ev.seq) > ttl) return;
+      line = traderName(ev.actor_id) + " hails: " + (facts.message || "");
+    });
+    return line;
+  }
   function readMail() {
     const rows = (S.inbox || []).filter((row) => row && (row.message || row.text));
+    mailSeen = storedMail().length;
     if (!rows.length) { setResult("No mail.", true); return; }
     const body = rows.map((row) => '<div class="row" data-mail="letter"><span class="y">' + esc(row.from_name || row.from || "someone") + "</span> " + esc(row.message || row.text) + "</div>").join("");
     overlay("Mail", body);
+    $("menu").dataset.screen = "mail";
+  }
+  function navKey() {
+    return "navpoints:" + (state.seat || "");
+  }
+  function loadNavPoints() {
+    let saved = [];
+    try { saved = JSON.parse(localStorage.getItem(navKey()) || "[]"); } catch (e) { saved = []; }
+    const slots = [];
+    for (let i = 0; i < 4; i += 1) {
+      const row = saved[i] || {};
+      slots.push({ name: String(row.name || ""), sector: row.sector == null ? "" : String(row.sector) });
+    }
+    return slots;
+  }
+  function knownSector(id) {
+    const n = Number(id);
+    if (!n) return false;
+    if (Number((S.sector || {}).id) === n) return true;
+    return ((S && S.known_sectors) || []).some((row) => Number(row.id) === n);
+  }
+  function knownRoute(fromId, toId) {
+    const start = Number(fromId);
+    const goal = Number(toId);
+    const graph = {};
+    const add = (id, next) => {
+      const key = Number(id);
+      if (!key) return;
+      graph[key] = graph[key] || [];
+      (next || []).forEach((hop) => {
+        const dest = Number(hop);
+        if (dest && graph[key].indexOf(dest) < 0) graph[key].push(dest);
+      });
+    };
+    Object.keys((S && S.known_warps) || {}).forEach((id) => add(id, S.known_warps[id]));
+    const here = Number((S.sector || {}).id);
+    if (here) add(here, (S.sector || {}).warps_out || []);
+    if (!knownSector(start) || !knownSector(goal)) return null;
+    const prev = new Map();
+    const queue = [start];
+    prev.set(start, 0);
+    while (queue.length) {
+      const at = queue.shift();
+      if (at === goal) break;
+      (graph[at] || []).forEach((hop) => {
+        if (prev.has(hop) || !knownSector(hop)) return;
+        prev.set(hop, at);
+        queue.push(hop);
+      });
+    }
+    if (!prev.has(goal)) return [];
+    const path = [goal];
+    let walk = goal;
+    while (walk !== start) {
+      walk = prev.get(walk);
+      path.push(walk);
+    }
+    return path.reverse();
+  }
+  function navPoints() {
+    const slots = loadNavPoints();
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "navpoints";
+    const rows = slots.map((slot, i) => {
+      return '<div class="row" data-nav="' + (i + 1) + '">Nav ' + (i + 1)
+        + ' <input data-nav-name="' + i + '" value="' + esc(slot.name).replace(/"/g, "") + '" maxlength="16">'
+        + ' <input data-nav-sector="' + i + '" value="' + esc(slot.sector).replace(/"/g, "") + '" inputmode="numeric">'
+        + ' <button type="button" data-nav-plot="' + i + '">Plot</button></div>';
+    }).join("");
+    m.innerHTML = '<div class="y">NavPoints</div><div class="row">Four named sectors you already know.</div>'
+      + rows + '<div class="row"><button type="button" data-nav-save="1">Save</button></div><br><span class="dk">Esc to close</span>';
+    const save = () => {
+      const next = [0, 1, 2, 3].map((i) => ({
+        name: (m.querySelector('[data-nav-name="' + i + '"]') || {}).value || "",
+        sector: (m.querySelector('[data-nav-sector="' + i + '"]') || {}).value || "",
+      }));
+      localStorage.setItem(navKey(), JSON.stringify(next));
+      return next;
+    };
+    m.querySelector("[data-nav-save]").addEventListener("click", () => {
+      save();
+      setResult("NavPoints saved.", false);
+    });
+    m.querySelectorAll("[data-nav-plot]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = save();
+        const slot = next[Number(btn.getAttribute("data-nav-plot"))];
+        const sector = Number(slot.sector);
+        if (!knownSector(sector)) { setResult("That sector is not in your computer.", true); return; }
+        const path = knownRoute((S.sector || {}).id, sector);
+        m.hidden = true;
+        if (!path || !path.length) { setResult("No known route to " + sector + ".", true); return; }
+        setResult("Known route to " + (slot.name || sector) + ": " + path.join(" - ") + " (" + (path.length - 1) + " hops).", false);
+      });
+    });
+  }
+  function backtrack() {
+    const prev = typeof cameFrom === "number" ? cameFrom : null;
+    const warps = (((S && S.sector) || {}).warps_out || []).map(Number);
+    if (prev == null) { setResult("No previous sector.", true); return; }
+    if (warps.indexOf(prev) < 0) { setResult("You cannot backtrack to " + prev + " from here.", true); return; }
+    act("warp", { target: prev }, "backtrack to " + prev);
+  }
+  function quickStats() {
+    const ship = (S && S.ship) || {};
+    const lines = [
+      (S.self_name || "Trader") + "  " + (S.rank || "") + "  exp " + fmt(S.experience) + "  align " + fmt(S.alignment),
+      "Turns " + fmt(S.turns_remaining) + "  credits " + fmt(S.credits) + "  day " + fmt(S.day),
+      "Fighters " + fmt(ship.fighters) + "  shields " + fmt(ship.shields) + "  holds " + fmt(ship.holds),
+    ];
+    const body = lines.map((line) => '<div class="row" data-stat="line">' + esc(line) + "</div>").join("");
+    overlay("Quick stats", body);
+    $("menu").dataset.screen = "quick-stats";
+  }
+  function findRoute() {
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "find-route";
+    m.innerHTML = '<div class="y">Find route</div>'
+      + '<div class="row">Between two sectors in your computer.</div>'
+      + '<div class="row">From <input data-route="from" inputmode="numeric"> to <input data-route="to" inputmode="numeric"></div>'
+      + '<div class="row"><button type="button" data-route="go">Find</button></div>'
+      + '<div class="row" data-route="path"></div><br><span class="dk">Esc to close</span>';
+    m.querySelector("[data-route=go]").addEventListener("click", () => {
+      const from = Number((m.querySelector("[data-route=from]") || {}).value);
+      const to = Number((m.querySelector("[data-route=to]") || {}).value);
+      const path = knownRoute(from, to);
+      const out = m.querySelector("[data-route=path]");
+      if (path == null) out.textContent = "The computer has no data for one of those sectors.";
+      else if (!path.length) out.textContent = "No known route.";
+      else out.textContent = path.join(" - ") + " (" + (path.length - 1) + " hops)";
+    });
   }
   function overlay(title, body) {
     const m = $("menu");
@@ -4794,11 +4969,27 @@
       btn.addEventListener("click", () => planetarySpecs(btn.getAttribute("data-planet-pick")));
     });
   }
+  function ownerHit(ev) {
+    const facts = (ev && ev.facts) || {};
+    return facts.defender_owner === S.self_id || facts.former_owner === S.self_id;
+  }
+  function dailyLine(ev) {
+    if (!ownerHit(ev) || ev.actor_id === S.self_id) return "day " + fmt(ev.day) + " " + esc(ev.summary || ev.kind);
+    const facts = ev.facts || {};
+    const losses = [];
+    if (facts.defender_losses != null) losses.push("your losses " + fmt(facts.defender_losses));
+    if (facts.attacker_losses != null) losses.push("their losses " + fmt(facts.attacker_losses));
+    if (facts.planet_fighters_lost != null) losses.push("planet fighters lost " + fmt(facts.planet_fighters_lost));
+    const where = ev.sector_id == null ? "" : " in sector " + fmt(ev.sector_id);
+    return "day " + fmt(ev.day) + " " + esc(traderName(ev.actor_id)) + " hit your fighters" + where
+      + (losses.length ? ", " + losses.join(", ") : "");
+  }
   function dailyLog() {
     const seen = new Set();
     const rows = [];
     streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
-      if (!ev || ev.actor_id !== S.self_id) return;
+      if (!ev) return;
+      if (ev.actor_id !== S.self_id && !ownerHit(ev)) return;
       if (ev.day != null && Number(ev.day) !== Number(S.day)) return;
       const key = ev.seq != null ? ev.seq : ev.summary;
       if (seen.has(key)) return;
@@ -4806,7 +4997,7 @@
       rows.push(ev);
     });
     rows.sort((a, b) => (a.seq || 0) - (b.seq || 0));
-    const body = rows.map((ev) => '<div class="row" data-log="' + esc(ev.seq) + '">day ' + fmt(ev.day) + " " + esc(ev.summary || ev.kind) + "</div>").join("")
+    const body = rows.map((ev) => '<div class="row" data-log="' + esc(ev.seq) + '"' + (ownerHit(ev) ? ' data-hit="fighters"' : "") + ">" + dailyLine(ev) + "</div>").join("")
       || '<div class="row">No events of yours today.</div>';
     overlay("Daily Log", body);
     $("menu").dataset.screen = "daily-log";
@@ -4891,7 +5082,7 @@
   }
   function key(k) {
     const m = $("menu");
-    if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G", "Y", "Z"].includes(k)) { setResult(noTurnsLine(), true); return; }
+    if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G", "Y", "Z", "<", ">"].includes(k)) { setResult(noTurnsLine(), true); return; }
     if (k === "Escape") {
       const menuOpen = !m.hidden;
       m.hidden = true; inComputer = false; openFormKind = null; formFocus = "";
@@ -4904,6 +5095,8 @@
       return;
     }
     if (k === "Enter") { if (courseCard || plotted) engage(); return; }
+    if (k === ">") { quickStats(); return; }
+    if (k === "<") { backtrack(); return; }
     if (inComputer) {
       inComputer = false;
       const c = CKEYS.find((x) => x[0] === k);
@@ -4918,6 +5111,11 @@
       if (k === "Y") return personalPlanets();
       if (k === "J") return planetarySpecs();
       if (k === "D") return dailyLog();
+      if (k === "M") return readMail();
+      if (k === "N") return navPoints();
+      if (k === "B") return backtrack();
+      if (k === "S") return quickStats();
+      if (k === "E") return findRoute();
       m.hidden = true;
       if (c[2]) return openForm(c[2]);
       return;

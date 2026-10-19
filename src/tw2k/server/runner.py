@@ -626,6 +626,10 @@ class MatchRunner:
 
     def note_harness_poll(self, player_id: str) -> None:
         """A seat polled harness status or observation. May lift a seat-drop pause."""
+        if self.state.universe is not None:
+            from tw2k.engine.presence import note_poll
+
+            note_poll(self.state.universe, player_id)
         for agent in self.state.agents:
             if agent.player_id == player_id and getattr(agent, "kind", None) == "external":
                 agent.last_poll_at = time.time()
