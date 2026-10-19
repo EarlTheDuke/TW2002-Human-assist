@@ -10,9 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from tw2k.engine.models import ShipClass
-
 from tests._cu_host import CuHost
+from tw2k.engine.models import ShipClass
 
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = ROOT / "docs" / "playtests" / "cockpit-warp-ship-clips-v1"
@@ -70,6 +69,8 @@ def _hold(page) -> None:
 
 
 def _fly(page, hull: str) -> None:
+    # The manifest used to list one clip, <hull>.streak.01. It now lists ten.
+    # A real move plays any of those ids. The rnd-0 pick above still reads the first.
     here = _sector(page)
     page.locator("#warps button").first.click()
     page.wait_for_function(
@@ -78,7 +79,7 @@ def _fly(page, hull: str) -> None:
           const root = document.querySelector('#warpClip');
           return sec && sec !== here && root && !root.hidden
             && root.getAttribute('data-hull') === hull
-            && root.getAttribute('data-clip') === hull + '.streak.01'
+            && root.getAttribute('data-clip').indexOf(hull + '.') === 0
             && !!root.querySelector('[data-testid=warp-body]');
         }""",
         arg=[here, hull],
