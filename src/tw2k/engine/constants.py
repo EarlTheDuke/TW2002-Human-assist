@@ -1142,6 +1142,9 @@ def hold_next_price(class_key: str, holds_already: int, day: int) -> int:
     """Credits for the next single hold."""
     if ECONOMY_SCALE_MODE != "tw2002":
         return int((SHIP_SPECS.get(class_key) or POD_SPEC)["base_hold_cost"])
+    # NOTE 87: the cabal total, even while SHOP_PRICE_MODE is also on.
+    if class0_hold_formula_live():
+        return hold_day_base(day) + 20 * int(holds_already)
     if shop_price_live():
         return 550 + 20 * (int(holds_already) - 20)
     return hold_day_base(day) + 20 * int(holds_already)
@@ -1153,6 +1156,10 @@ def hold_total_price(class_key: str, holds_already: int, qty: int, day: int) -> 
         return int((SHIP_SPECS.get(class_key) or POD_SPEC)["base_hold_cost"]) * int(qty)
     held = int(holds_already)
     count = int(qty)
+    # NOTE 87: Cost = (B*H) + 20*H*(H-1)/2 from zero, including under the shop slope.
+    if class0_hold_formula_live():
+        base = hold_day_base(day)
+        return count * base + 20 * (count * held + count * (count - 1) // 2)
     if shop_price_live():
         return count * 150 + 20 * (count * held + count * (count - 1) // 2)
     base = hold_day_base(day)
@@ -4212,6 +4219,18 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "FERRENGAL_QUASAR_MODE",
         "NOTE 85 FER-h: Ferrengal fires a quasar shot at a ship that enters",
     ),
+    "class0_hold_formula_live": (
+        "CLASS0_HOLD_FORMULA_MODE",
+        "NOTE 87: Class 0 holds use the cabal B*H + 20*H*(H-1)/2 total",
+    ),
+    "haggle_exp_live": (
+        "HAGGLE_EXP_MODE",
+        "NOTE 87: a good haggle is +1 experience and a great one is +2",
+    ),
+    "ship_rename_live": (
+        "SHIP_RENAME_MODE",
+        "NOTE 87: the shipyard sells a new registration and ship name",
+    ),
 }
 
 
@@ -4777,3 +4796,47 @@ def ferrengi_grudge_on() -> bool:
 def ferrengi_pace_on() -> bool:
     """True when Ferrengi hop on the 30 s clock instead of the once-a-day roll."""
     return FERRENGI_PACE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-exp-alignment-trade-gaps-v1 (NOTE 87) TRD-i, row 109.
+# Cabal formulas.html: Cost = (B*H) + ((I*H)*(H-1))/2, I always 20, B the
+# daily base (151..249). SHOP_PRICE_MODE live replaces that with the 550 slope.
+# This switch puts the cabal formula back, including while the slope is also on.
+# Stored default stays legacy so the profile-off digests do not move.
+CLASS0_HOLD_FORMULA_MODE = "legacy"  # "legacy" | "live"
+
+
+def class0_hold_formula_live() -> bool:
+    """True when Class 0 holds use the cabal total, not the 550 slope."""
+    return CLASS0_HOLD_FORMULA_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-exp-alignment-trade-gaps-v1 (NOTE 87) TRD-q, row 110.
+# +1 for a good haggle and +2 for a great one. REPORT2 s3 and s7 are not in
+# this repo. Cabal haggling.html does not print the split. The amounts are
+# the NOTE's reading of REPORT2. Which counter is great is UNVERIFIED: see
+# economy.haggle_experience. DISCOVERY_EXP_MODE stays the first-dock award.
+# Stored default stays legacy (the credit gap, capped at PORT_HAGGLE_XP_CAP).
+HAGGLE_EXP_MODE = "legacy"  # "legacy" | "live"
+HAGGLE_EXP_GOOD = 1
+HAGGLE_EXP_GREAT = 2
+
+
+def haggle_exp_live() -> bool:
+    """True when an accepted haggle awards +1 or +2 instead of the credit gap."""
+    return HAGGLE_EXP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-exp-alignment-trade-gaps-v1 (NOTE 87) SD-n, row 112.
+# EIS ShipyardMenu, Change Ship Registration: "a hefty fee" and a new name.
+# The page prints no price. GAP 3.17 says about 5,000 in a sample TEDIT.
+# SHIP_RENAME_COST and the name length are UNVERIFIED.
+SHIP_RENAME_MODE = "legacy"  # "legacy" | "live"
+SHIP_RENAME_COST = 5_000  # UNVERIFIED (GAP 3.17 sample TEDIT; EIS prints no number)
+SHIP_RENAME_NAME_MAX = 30  # UNVERIFIED (EIS ShipyardMenu prints no length)
+
+
+def ship_rename_live() -> bool:
+    """True when the shipyard will change this ship's registration and name."""
+    return SHIP_RENAME_MODE == "live" or tw2002_live_profile() or v311_profile()
+

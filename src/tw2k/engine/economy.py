@@ -104,6 +104,28 @@ def haggle_room_pct(mcic: int) -> float:
     return K.PORT_HAGGLE_MIN_PCT + extra * span / K.PORT_HAGGLE_MCIC_SPAN
 
 
+def haggle_experience(bargain: int, span: int) -> int:
+    """Experience for one accepted counter that beat the list price.
+
+    Legacy is the credit gap, stopped at PORT_HAGGLE_XP_CAP.
+    Live (NOTE 87, HAGGLE_EXP_MODE) is +1 for a good haggle and +2 for a
+    great one. REPORT2 s3 and s7 are not in this repo, and cabal
+    haggling.html does not print which counter is which. UNVERIFIED: a
+    great haggle is an accepted price at least as far from the list as
+    the hidden bound (the farthest the port will take). A smaller
+    improvement is a good haggle. The +1 and +2 amounts are the NOTE's
+    reading of REPORT2.
+    """
+    gap = int(bargain)
+    if gap <= 0:
+        return 0
+    if not K.haggle_exp_live():
+        return min(int(K.PORT_HAGGLE_XP_CAP), gap)
+    if int(span) > 0 and gap >= int(span):
+        return int(K.HAGGLE_EXP_GREAT)
+    return int(K.HAGGLE_EXP_GOOD)
+
+
 def haggle_bound(listed: int, mcic: int, side: str) -> int:
     """Farthest counter the port will take, in credits.
 
@@ -346,7 +368,9 @@ def execute_trade(
     if haggled:
         bargain = abs(final_unit - listed)
         if bargain:
-            player.experience = int(player.experience) + min(K.PORT_HAGGLE_XP_CAP, bargain)
+            bound = haggle_bound(listed, _stored_mcic(port, commodity), side)
+            span = abs(int(bound) - int(listed))
+            player.experience = int(player.experience) + haggle_experience(bargain, span)
         msg = f"haggle won at {final_unit}cr (list {listed})"
     else:
         msg = "ok"
