@@ -327,8 +327,27 @@ def probe_reason(universe: Universe, pid: str, target: Any) -> str | None:
     return None
 
 
+def _fighter_owner_label(universe: Universe, sector_id: int) -> tuple[str, str]:
+    """(owner id, words for the probe event). EIS: the shot names who owned the fighters."""
+    sector = universe.sectors.get(sector_id)
+    dep = sector.fighters if sector is not None else None
+    owner_id = str(getattr(dep, "owner_id", "") or "")
+    if owner_id == K.FERRENGI_OWNER_ID:
+        return owner_id, "the Ferrengi"
+    if owner_id == K.ROGUE_OWNER_ID:
+        return owner_id, "rogue fighters"
+    owner = universe.players.get(owner_id)
+    if owner is not None:
+        return owner_id, owner.name
+    return owner_id, owner_id
+
+
 def handle_probe(universe: Universe, pid: str, action: Action) -> ActionResult:
-    """s13: fly the route, explore each sector, die at the first hostile fighters."""
+    """s13: fly the route, explore each sector, die at the first hostile fighters.
+
+    Shootdown is already the stored rule (EIS: any enemy fighters; Iago: a hostile
+    fighter, including toll). PROBE_SHOOTDOWN_MODE only adds the owner's name.
+    """
     from .runner import _learn_sector, _record_port_intel
 
     player = universe.players[pid]
@@ -358,14 +377,27 @@ def handle_probe(universe: Universe, pid: str, action: Action) -> ActionResult:
     # PROBE is an actor-only event: the firer is told (s13), the fighters' owner is not.
     end = destroyed_at if destroyed_at is not None else tid
     hops = len(reported) + (1 if destroyed_at is not None else 0)
-    summary = (f"{player.name}'s probe was destroyed by fighters in sector {destroyed_at} ({hops} sector{'s' if hops != 1 else ''} out)"
-               if destroyed_at is not None
-               else f"{player.name}'s probe reached {tid} ({len(reported)} sectors) and self-destructed")
+    payload: dict[str, Any] = {"target": tid, "port_code": None, "route": reported, "destroyed_at": destroyed_at}
+    if destroyed_at is None:
+        summary = f"{player.name}'s probe reached {tid} ({len(reported)} sectors) and self-destructed"
+    elif K.probe_shootdown_live():
+        owner_id, label = _fighter_owner_label(universe, destroyed_at)
+        payload["fighter_owner_id"] = owner_id
+        payload["fighter_owner"] = label
+        summary = (
+            f"{player.name}'s probe was destroyed by fighters owned by {label} in sector {destroyed_at} "
+            f"({hops} sector{'s' if hops != 1 else ''} out)"
+        )
+    else:
+        summary = (
+            f"{player.name}'s probe was destroyed by fighters in sector {destroyed_at} "
+            f"({hops} sector{'s' if hops != 1 else ''} out)"
+        )
     universe.emit(
         EventKind.PROBE,
         actor_id=pid,
         sector_id=end,
-        payload={"target": tid, "port_code": None, "route": reported, "destroyed_at": destroyed_at},
+        payload=payload,
         summary=summary,
     )
     return ActionResult(ok=True, turns_spent=cost)
