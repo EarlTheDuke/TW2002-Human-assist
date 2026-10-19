@@ -4006,7 +4006,7 @@ def _fire_interdict_quasar(universe: Universe, pid: str, planet) -> None:
 
 
 def _apply_ferrengal_quasar(universe: Universe, pid: str, sector) -> None:
-    """Ferrengal's cannon on entry. S1 formula, fixed UNVERIFIED strength. No RNG.
+    """Ferrengal's cannon on entry. S1 formula. Strength UNVERIFIED, searched: S1 example and Iago v1.03d. No RNG.
 
     Off, this returns before it reads the sector, so a profile-off entry is unchanged.
     """

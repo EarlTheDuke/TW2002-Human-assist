@@ -107,7 +107,7 @@ def test_interdictor_holds_only_when_the_rule_and_the_roster_are_on(monkeypatch)
     assert cruiser.sector_id == nxt
 
 
-def test_interdictor_holds_transwarp_and_a_fighter_retreat(monkeypatch) -> None:
+def test_interdictor_holds_transwarp_and_allows_a_fighter_retreat(monkeypatch) -> None:
     _live_hulls(monkeypatch)
     u, (pilot, cruiser, _c) = _make_universe(seed=8602)
     sid = _first_non_fed_sector(u, 40)
@@ -132,13 +132,13 @@ def test_interdictor_holds_transwarp_and_a_fighter_retreat(monkeypatch) -> None:
     ic = u.players["C"]
     _park(u, ic, there)
     ic.ship.ship_class = ShipClass.INTERDICTOR_CRUISER
+    # NOTE 96. v3.06: a fighter retreat is allowed when an IC is in the sector.
     spent = int(ship.turns_today)
     res = apply_action(u, ship.id, Action(kind=ActionKind.RETREAT, args={}))
-    assert not res.ok
-    assert "Interdictor" in (res.error or "")
-    assert ship.sector_id == there
-    assert ship.turns_today == spent
-    assert ship.fighter_challenge is not None
+    assert res.ok, res.error
+    assert ship.sector_id == home
+    assert ship.turns_today == spent + K.warp_turns(ship.ship.ship_class.value)
+    assert ship.fighter_challenge is None
     assert home != there
 
 

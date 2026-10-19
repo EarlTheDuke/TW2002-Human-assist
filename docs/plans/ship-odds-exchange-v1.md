@@ -2,6 +2,8 @@
 
 Plan only. This slice does not change combat code. The live TWGS server is not reachable from here, so a number that no reference file prints is marked UNVERIFIED rather than filled in.
 
+NOTE 96 rechecked the repo and the open pull requests. `RULINGS_v311.md` is not in the tree, and no pull request has landed a ship-odds section from Cur's NOTE 90. The loss split stays `ceil(R / A)` / `floor(P / D)`. It is queued in `docs/plans/live-twgs-test-queue-v1.md`.
+
 ## What is already on the tip
 
 `COMBAT_MODE` defaults to `tw2002`. A player attack then runs `_resolve_ship_attack_tw2002` (`src/tw2k/engine/combat.py`). That exchange already multiplies by the hull's offensive odds. It is not the legacy three-round exchange.

@@ -2031,10 +2031,16 @@ FERRENGI_ENCOUNTER = "tribute"
 FERRENGI_FIGHTER_BLOCK = False  # Iago: Ferrengi ignore deployed fighters
 FERRENGI_HIT_MINES = True
 FERRENGI_ALIGN_ON_KILL = 10
-# UNVERIFIED. The Bible calls a Ferrengi kill a "BIG alignment raise" and pays the
-# bounty whether alignment is negative or positive. It does not give experience by
-# hull. These stand in for that award when FERRENGI_REWARD_MODE is live. A hull
+# UNVERIFIED, searched: TWBible_original_v1x.txt lines 475-480 and
+# Bible_TWGS_edit_2007_Clme.htm (same "BIG alignment raise", bounty either
+# alignment, no number and no experience by hull); TWFAQ_FERRSPEC_ferrengi.txt
+# (hull chart, no awards); classictw_docs_wiki Ferrengi_Assault_Trader.html,
+# Ferrengi_BattleCruiser.html, Ferrengi_Dreadnaught.html (specs only);
+# cabal formulas.html (player and fighter alignment, no Ferrengi kill award);
+# wiki.classictw.com Bible v1.1 and Xeulian Field Manual (no hull award).
+# These stand in for that award when FERRENGI_REWARD_MODE is live. A hull
 # that is not listed keeps the clone formula (kill_ferr x aggression).
+# Queued in docs/plans/live-twgs-test-queue-v1.md.
 FERRENGI_XP_BY_HULL = {
     FERRENGI_HULL_ASSAULT: 50,
     FERRENGI_HULL_CRUISER: 100,
@@ -2043,9 +2049,13 @@ FERRENGI_XP_BY_HULL = {
 FERRENGI_REGEN_PCT = 0.20  # TEDIT 20% of hull max
 FERRENGAL_MINES = 50  # Bible
 FERRENGAL_FIGHTERS = 1000  # UNVERIFIED stand-in for "cloud of Ferrengi ftrs"
-# UNVERIFIED strength. The S1 sector example is 10,000 fuel at 10% (burns 1,000,
-# deals 333). Ferrengal is a sector, not a planet with a fuel stock, so the shot
-# uses these constants and does not burn ore.
+# UNVERIFIED, searched: S1_planet_handbook_v1.01.html lines 583-585 (a planet
+# with 10,000 ore at 10% sector burns 1,000 and deals 333; that is the example,
+# not Ferrengal's setting); Iago_War_Manual.txt lines 3823-3829 (v1.03d, not
+# v3.11: Ferrengal "usually" starts at 10,000 ore, 30% atmosphere, 0% sector);
+# eis CitadelMenu.html Quasar Cannon R-level (the owner sets both percents);
+# cabal twgs.html "<#> Invincible Ferrengal : No" (no strength). The shot
+# uses these constants and does not burn ore. Queued for a live entry.
 FERRENGAL_QUASAR_FUEL = 10_000
 FERRENGAL_QUASAR_PCT = 10
 FERRENGAL_MIN_HOPS = 8
@@ -4634,10 +4644,14 @@ def photon_follow_damp_live() -> bool:
 # v311-combat-gaps-v1 (NOTE 79) CMB-n, row 93. S7 #16: death delay 0 lets the
 # pod fly at once. 1 or more keeps the pilot out until that many midnights
 # pass. A pod destroyed while that sentence is running has the same number
-# added again. Whether a pod that is already flying starts a new sentence
-# when it is destroyed is not what that paragraph says (UNVERIFIED). The
-# TEDIT maximum is not printed (UNVERIFIED). Stored default stays legacy,
-# which ignores GameConfig.death_delay.
+# added again. A flying pod does not start a new sentence. UNVERIFIED, searched:
+# S7_softdocs_slice-10.txt #16 lines 353-378 (the extra days apply while knocked
+# out; 0, 1 and 2 are examples and no ceiling is printed); cabal twgs.html
+# line 253 "<7> Death Delay : Yes" (a sample flag, not a maximum);
+# OldBBS_TW.faq.txt and OldBBS_TW2002V8.faq.txt #12; TWGS_v2_Revision_History.html
+# (a sub-setting for deaths before #SD#, not the day maximum). Stored default
+# stays legacy, which ignores GameConfig.death_delay. Queued in
+# docs/plans/live-twgs-test-queue-v1.md.
 DEATH_DELAY_MODE = "legacy"  # "legacy" | "live"
 
 
@@ -4678,9 +4692,14 @@ def planet_treasury_cap() -> int:
 
 
 COURSE_MAX_MODE = "legacy"  # "legacy" | "live"
-# UNVERIFIED for TWGS 3.11. Big_Bang.html option B, Maximum Course Length,
-# default 45 (range 20-255). That setting shapes the map. It is not confirmed
-# as the in-game plot limit. The clone autopilot searches PLOT_COURSE_MAX_DEPTH * 6.
+# UNVERIFIED, searched: classictw_docs_wiki/Big_Bang.html "B - Maximum Course
+# Length" (lines 201-210: the setting shapes the map and slows course plots;
+# it is not the refusal limit); cabal twgs.html line 214, post-bang General
+# Editor Two, "<:> Maximum Course Length : 45" (a sample value, not stated as
+# the plot cap; range 20-255 is option B); tw-attac revision history line 538
+# "Long course plots are not longer truncated at 160 characters" (display
+# width, not hops). The clone autopilot searches PLOT_COURSE_MAX_DEPTH * 6.
+# Queued in live-twgs-test-queue-v1.md.
 V311_COURSE_MAX_HOPS = 45
 
 
@@ -4690,7 +4709,7 @@ def course_max_live() -> bool:
 
 
 def plot_course_hop_limit() -> int:
-    """Hops a plotted course may take. Legacy is 60. Live is 45 (UNVERIFIED)."""
+    """Hops a plotted course may take. Legacy is 60. Live is 45 (UNVERIFIED, searched: Big_Bang.html option B and cabal twgs.html General Editor Two)."""
     if course_max_live():
         return int(V311_COURSE_MAX_HOPS)
     return int(PLOT_COURSE_MAX_DEPTH) * 6
@@ -4760,7 +4779,10 @@ FERRENGI_PACE_MODE = "legacy"  # "legacy" | "live"
 FERRENGI_MOVE_ONE_IN = 20
 FERRENGI_MOVE_INTERVAL_S = 30
 # A neighbour bands when the target has more fighters than this Ferrengi.
-# The Bible says they travel in groups; the cutoff is UNVERIFIED.
+# UNVERIFIED, searched: TWBible_original_v1x.txt line 177 ("travel in groups",
+# no fighter cutoff); TWFAQ_FERRSPEC_ferrengi.txt (no banding rule);
+# tw-attac revision history lines 697-706 (v3.00: Ferrengi move on a 30 s
+# clock, not when they attack). Queued in live-twgs-test-queue-v1.md.
 FERRENGI_BAND_STRONG = "more_fighters_than_this_ship"
 
 
