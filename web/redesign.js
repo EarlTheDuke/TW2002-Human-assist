@@ -422,17 +422,16 @@
     const scale = Math.ceil(count / FIGHTER_EXACT_CAP);
     return { fighters: count, triangles: Math.ceil(count / scale), scale: scale };
   }
-  // cockpit-ship-view-plan-v1. Three hulls show the next fighter picture.
-  // Up to the cap, one triangle is one fighter. Above it the same triangles
-  // pack into clusters and each cluster prints the fighters it stands for.
-  // The other hulls keep the NOTE 77 rings. No EIS or Markham art is used.
-  const PROTOTYPE_HULLS = { merchant_cruiser: 1, scout_marauder: 1, escape_pod: 1 };
+  // cockpit-ship-view-plan-v1, extended by ship-view-all-hulls-v1.
+  // Every hull we drew ourselves gets the picture. Up to the cap, one triangle
+  // is one fighter. Above it the same triangles pack into clusters and each
+  // cluster prints the fighters it stands for. No EIS or Markham art is used.
   const CLUSTER_MAX = 4;
-  function prototypeHull(cls) {
-    return !!PROTOTYPE_HULLS[cls];
+  function shipViewHull(cls) {
+    return !!SHIPS[cls];
   }
   function fighterClusters(cls, plan) {
-    if (!prototypeHull(cls) || !plan || plan.scale <= 1 || plan.triangles < 1) return [];
+    if (!shipViewHull(cls) || !plan || plan.scale <= 1 || plan.triangles < 1) return [];
     const groups = Math.min(CLUSTER_MAX, plan.triangles);
     const base = Math.floor(plan.triangles / groups);
     let extra = plan.triangles % groups;
@@ -451,9 +450,53 @@
     }
     return clusters;
   }
-  function clusterAnchors(n) {
-    const ring = [[68, 46], [332, 46], [332, 210], [68, 210]];
+  function measureShipView() {
+    const ship = $("ship");
+    const svg = $("shipSvg");
+    if (!svg) return { held: true };
+    if (ship && ship.hidden) return { held: true, why: "hidden" };
+    const box = svg.getBoundingClientRect();
+    if (box.width < 8 || box.height < 8) return { held: true, why: "collapsed" };
+    const scale = Math.min(box.width / 400, box.height / 260) || 0.2;
+    let padX = 68;
+    let padY = 46;
+    let step = 4.4;
+    let font = 30;
+    if (scale < 0.34) {
+      padX = 78;
+      padY = 54;
+      step = 3.1;
+      font = Math.min(36, 12 / scale);
+    } else if (scale > 0.85) {
+      font = 18;
+    }
+    return { held: false, scale: scale, padX: padX, padY: padY, step: step, font: font };
+  }
+  function clusterAnchors(n, layout) {
+    const padX = layout && layout.padX ? layout.padX : 68;
+    const padY = layout && layout.padY ? layout.padY : 46;
+    const ring = [[padX, padY], [400 - padX, padY], [400 - padX, 260 - padY], [padX, 260 - padY]];
     return ring.slice(0, n);
+  }
+  function bindShipPanel() {
+    const ship = $("ship");
+    if (!ship || ship.dataset.shipViewBound || !window.ResizeObserver) return;
+    ship.dataset.shipViewBound = "1";
+    let last = "";
+    new ResizeObserver(() => {
+      const box = ship.getBoundingClientRect();
+      const key = (ship.hidden ? "h" : "v") + Math.round(box.width) + "x" + Math.round(box.height);
+      if (key === last) return;
+      last = key;
+      const svg = $("shipSvg");
+      if (svg) {
+        const collapsed = box.width < 8 || box.height < 8;
+        svg.setAttribute("data-panel", ship.hidden ? "hidden" : (collapsed ? "collapsed" : "shown"));
+      }
+      if (shipScene.mode === "solid" && shipScene.polys && shipScene.polys.length) {
+        drawShipFrame(0, !!(shipScene.hold || shipScene.motion !== "drift"));
+      }
+    }).observe(ship);
   }
   function ensureShipViewCss() {
     if (document.getElementById("ship-view-plan-css")) return;
@@ -965,40 +1008,54 @@
     const ox = 200;
     const clusters = shipScene.clusterNodes || [];
     if (clusters.length) {
-      const fit = shipScene.fit;
-      const anchors = clusterAnchors(clusters.length);
-      let markIndex = 0;
-      clusters.forEach((cluster, index) => {
-        const ax = anchors[index][0];
-        const ay = anchors[index][1];
-        const dx = ox - ax;
-        const dy = oy - ay;
-        const len = Math.hypot(dx, dy) || 1;
-        const ux = dx / len;
-        const uy = dy / len;
-        const gx = ax + ux * 30 * fit;
-        const gy = ay + uy * 22 * fit;
-        const cols = Math.max(1, Math.ceil(Math.sqrt(cluster.triangles)));
-        const rows = Math.ceil(cluster.triangles / cols);
-        const rot = (Math.atan2(-uy, -ux) * 180 / Math.PI + 90).toFixed(1);
-        for (let i = 0; i < cluster.triangles; i++) {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          const stepX = 4.4 * fit;
-          const stepY = 4.0 * fit;
-          const offX = (col - (cols - 1) / 2) * stepX;
-          const offY = (row - (rows - 1) / 2) * stepY;
-          const x = gx + (-uy) * offX + ux * offY;
-          const y = gy + ux * offX + uy * offY;
-          const mark = shipScene.marks[markIndex];
-          markIndex += 1;
-          if (!mark) continue;
-          front.appendChild(mark);
-          mark.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot + ") scale(" + (0.85 * fit).toFixed(2) + ")");
-        }
-        cluster.label.setAttribute("x", Math.max(16, Math.min(384, ax)).toFixed(1));
-        cluster.label.setAttribute("y", Math.max(14, Math.min(246, ay)).toFixed(1));
-      });
+      const layout = measureShipView();
+      const svg = $("shipSvg");
+      const panel = $("ship");
+      if (svg) svg.setAttribute("data-panel", panel && panel.hidden ? "hidden" : (layout.held ? "collapsed" : "shown"));
+      if (!layout.held) {
+        const fit = shipScene.fit;
+        const anchors = clusterAnchors(clusters.length, layout);
+        const step = layout.step || 4.4;
+        let markIndex = 0;
+        clusters.forEach((cluster, index) => {
+          const ax = anchors[index][0];
+          const ay = anchors[index][1];
+          const dx = ox - ax;
+          const dy = oy - ay;
+          const len = Math.hypot(dx, dy) || 1;
+          const ux = dx / len;
+          const uy = dy / len;
+          const gx = ax + ux * 30 * fit;
+          const gy = ay + uy * 22 * fit;
+          const cols = Math.max(1, Math.ceil(Math.sqrt(cluster.triangles)));
+          const rows = Math.ceil(cluster.triangles / cols);
+          const rot = (Math.atan2(-uy, -ux) * 180 / Math.PI + 90).toFixed(1);
+          for (let i = 0; i < cluster.triangles; i++) {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const stepX = step * fit;
+            const stepY = (step - 0.4) * fit;
+            const offX = (col - (cols - 1) / 2) * stepX;
+            const offY = (row - (rows - 1) / 2) * stepY;
+            const x = gx + (-uy) * offX + ux * offY;
+            const y = gy + ux * offX + uy * offY;
+            const mark = shipScene.marks[markIndex];
+            markIndex += 1;
+            if (!mark) continue;
+            front.appendChild(mark);
+            mark.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot + ") scale(" + (0.85 * fit).toFixed(2) + ")");
+          }
+          const lx = Math.max(16, Math.min(384, ax));
+          const ly = Math.max(14, Math.min(246, ay));
+          cluster.label.setAttribute("x", lx.toFixed(1));
+          cluster.label.setAttribute("y", ly.toFixed(1));
+          cluster.label.setAttribute("font-size", layout.font.toFixed(1));
+          cluster.label.setAttribute("stroke", "#140006");
+          cluster.label.setAttribute("stroke-width", (layout.font * 0.2).toFixed(1));
+          cluster.label.setAttribute("paint-order", "stroke");
+          cluster.label.setAttribute("fill", "#ffe8e8");
+        });
+      }
       return;
     }
     const slots = fighterSlots(shipScene.marks.length, pose.orbit);
@@ -1074,7 +1131,7 @@
     const motion = shipMotion();
     const fit = motion === "static" ? 0.72 : 1;
     const tw = !!(sh.transwarp && sh.transwarp.fitted);
-    const glow = prototypeHull(sh.class);
+    const glow = shipViewHull(sh.class);
     const clusters = fighterClusters(sh.class, plan);
     const key = [sh.class || "", plan.fighters, plan.triangles, solid ? "s" : "o", tw ? 1 : 0, fit, motion, glow ? 1 : 0].join("|");
     svg.setAttribute("data-view", solid ? "solid" : "outline");
@@ -1168,6 +1225,7 @@
 
   function paintShipView(sh, def) {
     ensureShipViewCss();
+    bindShipPanel();
     const plan = fighterPlan(sh.fighters);
     const clusters = fighterClusters(sh.class, plan);
     const svg = $("shipSvg");
@@ -1177,7 +1235,7 @@
     svg.setAttribute("data-fighters", String(plan.fighters));
     svg.setAttribute("data-triangles", String(plan.triangles));
     svg.setAttribute("data-scale", String(plan.scale));
-    svg.setAttribute("data-prototype", prototypeHull(sh.class) ? "1" : "0");
+    svg.setAttribute("data-prototype", shipViewHull(sh.class) ? "1" : "0");
     svg.setAttribute("data-clusters", String(clusters.length));
     svg.setAttribute("aria-label", def.name + ", " + fmt(plan.fighters) + " fighters");
     renderShipScene(sh, def, plan);
@@ -1282,32 +1340,35 @@
       shield_cap: (sh && sh.shield_cap) || 0,
       transwarp: (sh && sh.transwarp) || {},
     };
+    const faces = buildHullFaces(sample, def);
     if (!shipSolidOn()) {
       const angle = style ? (style.yaw * 36).toFixed(1) : "0";
       return {
         model: "outline",
+        mesh: "outline",
+        faces: faces.length,
         xform: ' transform="translate(200 130) rotate(' + angle + ')"',
         html: shipBody(sample, def),
       };
     }
     if (!style) {
-      return { model: "solid", xform: "", html: shipSolidMarkup(sample, def, 200, 130) };
+      return { model: "solid", mesh: "panel", faces: faces.length, xform: "", html: shipSolidMarkup(sample, def, 200, 130) };
     }
     const drawn = [];
-    buildHullFaces(sample, def).forEach((face) => {
+    faces.forEach((face) => {
       const cam = cameraFace(face, style.yaw, style.pitch, style.fit || 1, 200, 130);
       if (cam) drawn.push(cam);
     });
     if (drawn.length < 4) {
       drawn.length = 0;
-      buildHullFaces(sample, def).forEach((face) => {
+      faces.forEach((face) => {
         const cam = cameraFace(face, style.yaw, 0.45, style.fit || 1, 200, 130);
         if (cam) drawn.push(cam);
       });
     }
     drawn.sort((a, b) => a.depth - b.depth);
     const html = drawn.map((cam) => '<polygon points="' + cam.points + '" fill="' + cam.fill + '" opacity="' + cam.opacity + '"/>').join("");
-    return { model: "solid", xform: "", html: html };
+    return { model: "solid", mesh: "panel", faces: faces.length, xform: "", html: html };
   }
   function warpMotion() {
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1337,16 +1398,19 @@
     const motion = warpMotion();
     if (motion === "off") { root.hidden = true; return; }
     const sh = (S && S.ship) || {};
-    const def = SHIPS[chosen.hull] || SHIPS[sh.class] || { name: chosen.hull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
+    const liveClass = String((sh && sh.class) || "");
+    const clipHull = chosen.hull || liveClass;
+    const def = SHIPS[clipHull] || SHIPS[liveClass] || { name: clipHull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
     const ms = Number(chosen.duration_ms) || Number(warpManifest && warpManifest.duration_ms) || 2000;
     const file = chosen.kind === "file" && (chosen.webm || chosen.mp4);
     const style = warpStyleOf(chosen);
+    const same = !liveClass || liveClass === clipHull;
     const flying = {
-      class: chosen.hull || (sh && sh.class) || "",
-      fighters: sh && sh.class === chosen.hull ? sh.fighters : 0,
-      shields: sh && sh.class === chosen.hull ? sh.shields : 0,
-      shield_cap: sh && sh.class === chosen.hull ? sh.shield_cap : 0,
-      transwarp: sh && sh.class === chosen.hull ? (sh.transwarp || {}) : {},
+      class: clipHull,
+      fighters: same ? (sh.fighters || 0) : 0,
+      shields: same ? (sh.shields || 0) : 0,
+      shield_cap: same ? (sh.shield_cap || 0) : 0,
+      transwarp: same ? (sh.transwarp || {}) : {},
     };
     const paintAt = performance.now();
     root.hidden = false;
@@ -1362,6 +1426,8 @@
     root.classList.toggle("is-still", motion !== "play");
     svg.hidden = false;
     const drawn = warpHullMarkup(flying, def, style);
+    root.setAttribute("data-mesh", drawn.mesh || drawn.model);
+    root.setAttribute("data-faces", String(drawn.faces || 0));
     const field = style && window.TW2KWarpVariants
       ? window.TW2KWarpVariants.stars(chosen.id, style.stars)
       : warpStars();
@@ -6243,6 +6309,10 @@
       const sample = { class: hull, fighters: 0, shields: 0, shield_cap: 0, transwarp: {} };
       if (!shipSolidOn()) return "outline";
       return shipSolidMarkup(sample, def, 200, 130);
+    },
+    faces(hull) {
+      const def = SHIPS[hull] || { name: hull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
+      return buildHullFaces({ class: hull, fighters: 0, shields: 0, shield_cap: 0, transwarp: {} }, def).length;
     },
   };
   window.__tw2kWarp = {
