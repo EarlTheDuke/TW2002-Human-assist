@@ -259,7 +259,7 @@ def test_help_end_line_follows_max_days():
     other = next(row["body"] for row in long["sections"] if row["id"] == "rules")
     assert "Day 10" in rules and "33,333,333" in rules
     assert "Day 12" in other and "Day 10" not in other
-    assert [row["id"] for row in short["sections"]] == ["rules", "scoring", "ranks", "ships", "prices"]
+    assert [row["id"] for row in short["sections"]] == ["rules_in_force", "rules", "scoring", "ranks", "ships", "prices"]
 
 
 # --------------------------------------------------------------------------- item 4

@@ -6,10 +6,9 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (99 helpers)
+## The switch set (100 helpers)
 
-Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses rows 85-89. NOTE 86 uses rows 105-107.
-The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`).
+The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 88 uses row 114. Row 115 is unused.
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -112,6 +111,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 105 | `SPECIAL_HULL_RULES_MODE` | `special_hull_rules_on` | NOTE 86 CMB-m: a living Interdictor Cruiser holds every other ship in its sector (warp, TransWarp, combat flee, fighter retreat, Ferrengi-encounter flee), and a Tholian Sentinel defending a planet of its own corp fights at 4:1. Both need `ship_roster_live`. Stored default stays legacy | row 104 CMB-l was already the stored default |
 | 106 | `FERRENGI_GRUDGE_MODE` | `ferrengi_grudge_on` | NOTE 86 FER-c: the Ferrengi that was attacked remembers that trader and hops toward them. A neighbour bands into a sector where the target has more fighters than this ship and another Ferrengi is already there or one hop away. The strong-target cutoff is UNVERIFIED. Stored default stays legacy | - |
 | 107 | `FERRENGI_PACE_MODE` | `ferrengi_pace_on` | NOTE 86 FER-d: each living Ferrengi has a 1-in-20 chance to hop every 30 seconds (`FERRENGI_MOVE_ONE_IN`, `FERRENGI_MOVE_INTERVAL_S`). Regeneration stays one 20% step per day (`FERRENGI_REGEN_PCT`). The once-a-day hunt still makes the attack. Stored default stays legacy | row 108 SD-q was already the stored default |
+| 114 | `BOT_BANK_FLOAT_MODE` | `bot_bank_float_live` | NOTE 88 commander row 114: a code bot keeps enough cash for a full hold at its route's buy price before it deposits. Stored default stays `"legacy"`. Commander row 115 is unused | - |
 
 Rows 95 and 98 were already done on this tip, so they are not helpers. Row 95, Class 0 price change and FedSpace tows and clean-up, already run in `tick_day`: `fighter_unit_price`, `shield_unit_price` and `hold_day_base` move with the day; `fed.run_tows` tows ships; `class0.extern_sweep` clears MSL and Class 0 fighters and mines; `hardware.tick_navhaz` clears FedSpace NavHaz. Row 98, the C.E.O. leaving, already dissolves the corp and rogues fighters outside his sector (`corp.handle_corp_leave`, `corp.disband`).
 

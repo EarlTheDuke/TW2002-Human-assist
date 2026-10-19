@@ -85,11 +85,44 @@ def _rank_rows() -> list[dict[str, Any]]:
     ]
 
 
+def _haggle_band() -> str:
+    if K.haggle_window_live():
+        low, high = int(K.PORT_HAGGLE_LIVE_ROOM_PCT), int(K.PORT_HAGGLE_LIVE_END_PCT)
+        return f"{low}% to {high}% of the offer"
+    low, high = int(K.PORT_HAGGLE_MIN_PCT), int(K.PORT_HAGGLE_MAX_PCT)
+    return f"{low}% to {high}% of the offer"
+
+
+def _rules_in_force(player, turns_per_day: int) -> dict[str, Any]:
+    """DOC-b. Switches that are on, and the numbers this game is using."""
+    rate, over, align = K.tax_terms()
+    numbers = [
+        {"name": "Turns per day", "value": int(turns_per_day), "source": "player.turns_per_day"},
+        {"name": "Tax rate", "value": f"{int(rate)}%", "source": "src/tw2k/engine/constants.py tax_terms()"},
+        {"name": "Tax threshold", "value": int(over), "source": "src/tw2k/engine/constants.py tax_terms()"},
+        {"name": "Tax alignment", "value": int(align), "source": "src/tw2k/engine/constants.py tax_terms()"},
+        {"name": "Bank cap", "value": int(K.BANK_MAX_BALANCE), "source": "src/tw2k/engine/constants.py BANK_MAX_BALANCE"},
+        {"name": "Haggle band", "value": _haggle_band(), "source": "src/tw2k/engine/constants.py haggle window"},
+    ]
+    switches = []
+    for helper, (switch, why) in K.V311_PROFILE_HELPERS.items():
+        if getattr(K, helper)():
+            switches.append({"name": switch, "on": True, "why": why, "source": f"src/tw2k/engine/constants.py {helper}()"})
+    return {
+        "id": "rules_in_force",
+        "title": "Rules in force",
+        "source": "src/tw2k/engine/constants.py",
+        "body": "These are the fidelity switches on in this game, and the numbers they use.",
+        "rows": numbers + switches,
+    }
+
+
 def game_reference(player=None, day: int = 1, max_days: int | None = None) -> dict[str, Any]:
     from tw2k.engine.victory import end_rule_line
 
     ship = getattr(player, "ship", None)
     ship_class = getattr(getattr(ship, "ship_class", None), "value", None) or "merchant_cruiser"
+    turns_per_day = int(getattr(player, "turns_per_day", 0) or K.STARTING_TURNS_PER_DAY)
     holds = int(getattr(ship, "holds", 0) or 0)
     today = int(day or 1)
     days = int(max_days if max_days is not None else K.VICTORY_DEFAULT_MAX_DAYS)
@@ -139,6 +172,7 @@ def game_reference(player=None, day: int = 1, max_days: int | None = None) -> di
         "ship_class": ship_class,
         "holds": holds,
         "sections": [
+            _rules_in_force(player, turns_per_day),
             {"id": "rules", "title": "Rules", "source": "src/tw2k/server/reference.py", "body": rules},
             {
                 "id": "scoring",

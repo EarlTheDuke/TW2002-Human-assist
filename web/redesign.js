@@ -29,6 +29,10 @@
     ["R", "Port Report", null], ["K", "Your Known Universe", null], ["A", "Make Announcement", "broadcast"],
     ["O", "Avoid sectors", null],
     ["L", "Trader Rankings", null],
+    ["C", "Ship Catalog", null],
+    ["Y", "Personal Planets", null],
+    ["J", "Planetary Specs", null],
+    ["D", "Daily Log", null],
     ["Q", "Exit Computer", null],
   ];
   const HULL = {
@@ -2729,13 +2733,33 @@
     const amtLabel = document.createElement("label");
     amtLabel.appendChild(document.createTextNode("amount "));
     amtLabel.appendChild(amount);
+    const warn = document.createElement("div");
+    warn.className = "r";
+    warn.dataset.bankWarn = "cap";
+    warn.hidden = true;
+    const capLine = () => {
+      const n = Number(amount.value);
+      const over = side.value === "deposit" && n > room;
+      warn.hidden = !over;
+      if (!over) return "";
+      const cap = capacity || (balance + room);
+      const text = "A deposit of " + fmt(n) + " cr would pass the bank cap of " + fmt(cap) + " cr. " + fmt(room) + " cr still fits.";
+      warn.textContent = text;
+      return text;
+    };
+    amount.addEventListener("input", capLine);
+    side.addEventListener("change", capLine);
     wrap.appendChild(sideLabel);
     wrap.appendChild(amtLabel);
+    wrap.appendChild(warn);
+    capLine();
     const submit = async () => {
       const n = Number(amount.value);
       if (!n) { setResult("Type an amount.", true); return; }
       const which = side.value === "withdraw" ? wd : dep;
       if (!which.legal) { setResult(plainReason(which.reason), true); return; }
+      const blocked = capLine();
+      if (blocked) { setResult(blocked, true); return; }
       const post = () => {
         openFormKind = null;
         slot.innerHTML = "";
@@ -2962,7 +2986,12 @@
         let body = '<div class="y">' + esc(section.title || "") + "</div>";
         if (section.body) body += '<div class="row">' + esc(section.body) + "</div>";
         (section.rows || []).forEach((row) => {
-          if (row.cost != null) {
+          if (row.on) {
+            body += '<div class="row" data-rule="switch">' + esc(row.name) + " on</div>";
+          } else if (row.value != null && row.cost == null && row.price == null && !row.good) {
+            const shown = typeof row.value === "number" ? fmt(row.value) : esc(String(row.value));
+            body += '<div class="row" data-rule="number"><span class="g">' + esc(row.name) + '</span> <span class="c">' + shown + "</span></div>";
+          } else if (row.cost != null) {
             let line = esc(row.name) + " " + fmt(row.cost) + " cr, holds " + fmt(row.holds);
             if (row.max_holds != null) line += ", max holds " + fmt(row.max_holds);
             line += ", fighters " + fmt(row.max_fighters) + ", shields " + fmt(row.max_shields) + ", " + fmt(row.turns_per_warp) + " turns per warp";
@@ -4053,6 +4082,101 @@
     }
     reveal(m);
   }
+  async function shipCatalog() {
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "ship-catalog";
+    m.innerHTML = '<div class="y">Ship Catalog</div><div class="c">Loading.</div>';
+    try {
+      const data = await api("/" + state.seat + "/reference");
+      const ships = ((data.sections || []).find((section) => section.id === "ships") || {}).rows || [];
+      const body = ships.map((row) => {
+        let line = esc(row.name) + " " + fmt(row.cost) + " cr, holds " + fmt(row.holds);
+        if (row.max_holds != null) line += " of " + fmt(row.max_holds);
+        line += ", fighters " + fmt(row.max_fighters) + ", shields " + fmt(row.max_shields) + ", " + fmt(row.turns_per_warp) + " turns per warp";
+        return '<div class="row" data-ship="' + esc(row.id) + '">' + line + "</div>";
+      }).join("") || '<div class="row">No hulls listed.</div>';
+      m.innerHTML = '<div class="y">Ship Catalog</div>' + body + '<br><span class="dk">Esc to close</span>';
+    } catch (e) {
+      m.innerHTML = '<div class="y">Ship Catalog</div><div class="r">' + esc(e.message || e) + "</div>";
+    }
+  }
+  function personalPlanets() {
+    const rows = (S && S.owned_planets) || [];
+    const body = rows.map((p) => {
+      return '<div class="row" data-planet="' + esc(p.id) + '">' + esc(p.name || "Planet") + " class " + esc(p.class || "")
+        + " in sector " + fmt(p.sector_id) + ", citadel " + fmt(p.citadel_level) + ", colonists " + fmt(p.colonists_total) + "</div>";
+    }).join("") || '<div class="row">You have no personal planets.</div>';
+    overlay("Personal Planets", body);
+    $("menu").dataset.screen = "planets";
+  }
+  function planetChoices() {
+    const byId = new Map();
+    (((S && S.sector) || {}).planets || []).forEach((p) => {
+      if (p && p.id != null) byId.set(Number(p.id), Object.assign({ sector_id: (S.sector || {}).id }, p));
+    });
+    ((S && S.owned_planets) || []).forEach((p) => {
+      if (p && p.id != null) byId.set(Number(p.id), Object.assign(byId.get(Number(p.id)) || {}, p));
+    });
+    return [...byId.values()];
+  }
+  function planetSpecBody(p) {
+    const lines = [
+      ["Name", p.name || "Planet"],
+      ["Class", p.class || ""],
+      ["Sector", p.sector_id == null ? "" : fmt(p.sector_id)],
+      ["Citadel", fmt(p.citadel_level || 0)],
+      ["Colonists", fmt(p.colonists_total || 0)],
+    ];
+    if (p.fighters != null) lines.push(["Fighters", fmt(p.fighters)]);
+    if (p.shields != null) lines.push(["Shields", fmt(p.shields)]);
+    if (p.military_reaction_pct != null) lines.push(["Military reaction", fmt(p.military_reaction_pct) + "%"]);
+    const stock = p.stockpile || {};
+    Object.keys(stock).forEach((key) => {
+      lines.push([(COM[key] || [key])[0], fmt(stock[key])]);
+    });
+    if (p.production) lines.push(["Production", JSON.stringify(p.production)]);
+    if (p.colonist_trend) lines.push(["Colonist trend", String(p.colonist_trend)]);
+    return lines.map(([k, v]) => '<div class="row" data-spec="' + esc(k) + '"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join("");
+  }
+  function planetarySpecs(id) {
+    const rows = planetChoices();
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "planet-specs";
+    if (!rows.length) {
+      m.innerHTML = '<div class="y">Planetary Specs</div><div class="row">No planet here, and you own none.</div><br><span class="dk">Esc to close</span>';
+      return;
+    }
+    const current = S && S.planet_landed != null ? Number(S.planet_landed) : null;
+    const chosen = rows.find((p) => Number(p.id) === Number(id))
+      || rows.find((p) => Number(p.id) === current)
+      || rows[0];
+    const picks = rows.map((p) => '<button type="button" data-planet-pick="' + esc(p.id) + '">' + esc(p.name || "Planet") + " class " + esc(p.class || "") + "</button>").join(" ");
+    m.innerHTML = '<div class="y">Planetary Specs</div><div class="row">' + picks + "</div>" + planetSpecBody(chosen) + '<br><span class="dk">Esc to close</span>';
+    m.querySelectorAll("[data-planet-pick]").forEach((btn) => {
+      btn.addEventListener("click", () => planetarySpecs(btn.getAttribute("data-planet-pick")));
+    });
+  }
+  function dailyLog() {
+    const seen = new Set();
+    const rows = [];
+    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+      if (!ev || ev.actor_id !== S.self_id) return;
+      if (ev.day != null && Number(ev.day) !== Number(S.day)) return;
+      const key = ev.seq != null ? ev.seq : ev.summary;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push(ev);
+    });
+    rows.sort((a, b) => (a.seq || 0) - (b.seq || 0));
+    const body = rows.map((ev) => '<div class="row" data-log="' + esc(ev.seq) + '">day ' + fmt(ev.day) + " " + esc(ev.summary || ev.kind) + "</div>").join("")
+      || '<div class="row">No events of yours today.</div>';
+    overlay("Daily Log", body);
+    $("menu").dataset.screen = "daily-log";
+  }
   function traderRankings() {
     const rows = (S && S.trader_rankings) || [];
     const m = $("menu");
@@ -4156,6 +4280,10 @@
       if (k === "K") return knownUniverse();
       if (k === "O") { m.hidden = true; return avoidForm(); }
       if (k === "L") return traderRankings();
+      if (k === "C") return shipCatalog();
+      if (k === "Y") return personalPlanets();
+      if (k === "J") return planetarySpecs();
+      if (k === "D") return dailyLog();
       m.hidden = true;
       if (c[2]) return openForm(c[2]);
       return;
