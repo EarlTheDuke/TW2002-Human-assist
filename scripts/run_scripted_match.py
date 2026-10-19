@@ -15,8 +15,10 @@ driven directly (build_observation -> decide -> apply_action -> tick_day).
 Deterministic: the universe, the engine RNG and each Heuristic seat's RNG are
 seeded from --seed, and seats act in a fixed round-robin. The script re-runs
 itself with PYTHONHASHSEED=0 when that variable is not already "0", so set
-iteration order is pinned too. The JSON holds no wall-clock values, so two
-runs with the same arguments write the same file.
+iteration order is pinned too. Turn regen and planet accrual read regen_now,
+which this script holds still: a scripted day refills at the day boundary, and
+a wall-clock refund made two v3.11 runs of the same seed disagree. The JSON
+holds no wall-clock values, so two runs with the same arguments write the same file.
 """
 
 from __future__ import annotations
@@ -322,7 +324,15 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
                 s["idle_done"] = True
                 s["forced_done"] += 1
 
-    asyncio.run(play())
+    # Mid-day turn regen follows the wall clock. Hold it still for the match so
+    # two runs of the same seed take the same actions. The day boundary above
+    # still refills. Restored so a later test in this process keeps the real clock.
+    prior_now = K.regen_now
+    K.regen_now = lambda: 0.0
+    try:
+        asyncio.run(play())
+    finally:
+        K.regen_now = prior_now
 
     players = {}
     for pid, s in st.items():
@@ -588,6 +598,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", dest="json_out", help="write the JSON summary here")
     ap.add_argument("--md", dest="md_out", help="write the markdown summary here")
     a = ap.parse_args(argv)
+    # A fresh process turns the v3.11 set on with V311_PROFILE=v311. Unset stays legacy, so the profile-off digests do not move.
+    raw_profile = (os.environ.get("V311_PROFILE") or "").strip().lower()
+    if raw_profile in ("v311", "legacy"):
+        from tw2k.engine import constants as K
+        K.V311_PROFILE = raw_profile
+        if raw_profile == "v311":
+            print("V311_PROFILE v311", flush=True)
     if a.bank_legacy or a.llm_parity or a.treasury_policy or a.detour_hops is not None or a.tavern or a.bots_war or a.war_policy or a.corp_fix or a.h_recovery or a.citadel:
         from tw2k.engine import constants as K
         if a.bank_legacy:

@@ -1349,6 +1349,9 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         obs.game_over_panel = game_over_panel(universe, player)
     if K.nw_estimate_live():
         obs.nw_note = K.NW_ESTIMATE_NOTE
+    if K.start_colonist_nw_live():
+        extra = "Free start colonists are not counted."
+        obs.nw_note = (obs.nw_note + " " + extra).strip() if obs.nw_note else extra
     if K.bot_diplomacy_live():
         obs.code_bots = [
             seat.id for seat in universe.players.values() if seat.agent_kind == "heuristic"

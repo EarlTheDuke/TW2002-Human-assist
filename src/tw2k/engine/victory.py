@@ -210,6 +210,10 @@ def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
                 citadel_cost += colonist_cost * K.COLONIST_PRICE
 
     colonist_total = sum(planet.colonists.values()) if planet.colonists else 0
+    # NOTE 75. Free start colonists still on this planet are not an asset.
+    if not tax_basis and K.start_colonist_nw_live():
+        exempt = min(colonist_total, int(getattr(planet, "free_start_colonists", 0) or 0))
+        colonist_total -= exempt
     # Class M under the fidelity switch stores people. The handbook unit is
     # one thousand of them (S1, NOTE 19). COLONIST_PRICE is that unit, not
     # one person. The growth dividend keeps the per-person basis.

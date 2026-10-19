@@ -257,6 +257,17 @@ def fighters_from_colonists(class_id: PlanetClass | str, colonists: dict) -> int
     return made * int(K.PLANET_FIGHTER_RATE_PCT) // 100
 
 
+def spend_free_start(planet, removed: int) -> None:
+    """Free start colonists are the first to leave or die. The count never goes below 0."""
+    n = int(removed or 0)
+    if n <= 0:
+        return
+    free = int(getattr(planet, "free_start_colonists", 0) or 0)
+    if free <= 0:
+        return
+    planet.free_start_colonists = max(0, free - n)
+
+
 def _apply_one_day(planet) -> None:
     # Snapshot before growth. Newborns from today's 5% do not make fighters
     # until the next day, so 1500 fuel colonists on class M stay 50 fighters.
@@ -289,6 +300,7 @@ def _trim_class_m_excess(planet) -> None:
         die = int((have - cap) * 0.05)
         if die > 0:
             planet.colonists[name] = have - die
+            spend_free_start(planet, die)
 
 
 def _split_units(daily: int, seconds: int, remain: int) -> tuple[int, int]:
@@ -321,12 +333,16 @@ def _accrue_planet(planet, seconds: float) -> None:
             _stock_product(planet, commodity, whole)
         elif whole < 0:
             planet.stockpile[commodity] = max(0, int(planet.stockpile.get(commodity, 0)) + whole)
+    before_people = sum(int(v) for v in planet.colonists.values())
     for commodity in list(planet.colonists.keys()):
         delta = int(shadow.colonists.get(commodity, 0)) - int(planet.colonists.get(commodity, 0))
         key = f"c:{commodity.value}"
         whole, remain[key] = _split_units(delta, take, int(remain.get(key, 0)))
         if whole:
             planet.colonists[commodity] = max(0, int(planet.colonists.get(commodity, 0)) + whole)
+    after_people = sum(int(v) for v in planet.colonists.values())
+    if after_people < before_people:
+        spend_free_start(planet, before_people - after_people)
     whole, remain["fighters"] = _split_units(
         int(shadow.fighters) - int(planet.fighters), take, int(remain.get("fighters", 0))
     )
@@ -339,10 +355,9 @@ def refresh_planet_production(universe, now: float | None = None) -> None:
     """Accrue planet goods for time just passed. No-op while the switch is off."""
     if not K.planet_realtime_prod():
         return
-    import time
 
     if now is None:
-        now = time.time()
+        now = K.regen_now()
     day = float(K.TURN_REGEN_DAY_SECONDS)
     for planet in universe.planets.values():
         last = planet.prod_clock_at
@@ -446,6 +461,7 @@ def _grow_by_half_cap(planet) -> None:
         for name in list(planet.colonists.keys()):
             share = int(die * int(planet.colonists[name]) / total_col)
             planet.colonists[name] = max(0, int(planet.colonists[name]) - share)
+            spend_free_start(planet, share)
 
 
 def _produce_and_grow_legacy(planet) -> None:
@@ -510,6 +526,7 @@ def _produce_and_grow_live(planet) -> None:
             for c in list(planet.colonists.keys()):
                 share = int(die * planet.colonists[c] / total_col)
                 planet.colonists[c] = max(0, int(planet.colonists[c]) - share)
+                spend_free_start(planet, share)
 
 
 def _pay_planet_value_tax(universe: Universe) -> None:

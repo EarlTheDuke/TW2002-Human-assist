@@ -827,8 +827,10 @@ def ship_cost(class_key: str) -> int:
 TRADE_IN_MODE = "legacy"  # "legacy" | "live"
 TRADE_IN_FRACTION_LEGACY = 0.25
 TRADE_IN_FRACTION_LIVE = 0.90
-# Catalog unit the measured receipts used for a fighter. Shields use the same
-# base (UNVERIFIED: the receipts did not separate a shield rate).
+# Catalog unit the measured receipts used for a fighter (144 = 90% of 160;
+# tradein_compare_20261018.md). No receipt separated a shield line, so a
+# shield uses that same catalog. TWINSTR.DOC line 1524 takes fighters,
+# accessories and mines, not cargo.
 FIGHTER_TRADE_CATALOG = 160
 SHIELD_TRADE_CATALOG = 160
 # (hull, drive, computer, stock holds). Live v3.34b catalog
@@ -3456,6 +3458,12 @@ def turn_regen_live() -> bool:
     return TURN_REGEN_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
+def regen_now() -> float:
+    """Clock for turn regen and planet accrual. A scripted match replaces this so two runs agree."""
+    import time
+    return time.time()
+
+
 # detect-gear-v1. Off, the shop prices stay as written above.
 # On, a disruptor is 6,000, a psychic probe is 10,000, and an ether probe
 # is 3,000. Density, holo, cloak, beacon, and corbomite already match.
@@ -4106,6 +4114,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "seat_idle_start_live": ("SEAT_IDLE_START_MODE", "NOTE 73: a seat's idle clock starts at the first connect"),
     "bot_diplomacy_live": ("BOT_DIPLOMACY_MODE", "NOTE 73: a code bot answers a hail and an alliance"),
     "day_roll_clock_live": ("DAY_ROLL_CLOCK_MODE", "NOTE 74: the day rolls on the clock while a seat holds the turn"),
+    "start_colonist_nw_live": ("START_COLONIST_NW_MODE", "NOTE 75: free start colonists are left out of net worth"),
     "port_buy_price_anchor_on": (
         "PORT_BUY_PRICE_ANCHOR_MODE",
         "D25-1 (NOTE 69): hungry buy quotes use the live anchors, not the 1.93x full-hold curve",
@@ -4421,3 +4430,14 @@ DAY_ROLL_CLOCK_MODE = "legacy"  # "legacy" | "live"
 def day_roll_clock_live() -> bool:
     """True when a held turn still lets the day roll on the clock."""
     return DAY_ROLL_CLOCK_MODE == "live" or v311_profile()
+
+
+# v311-followups-v1 (NOTE 75). The free home-planet colonists are a clone
+# grant. Under "live" they do not add to net worth while they are still on
+# that planet. Bought, hauled and grown colonists still count. Default legacy.
+START_COLONIST_NW_MODE = "legacy"  # "legacy" | "live"
+
+
+def start_colonist_nw_live() -> bool:
+    """True when free start colonists still on the home planet are not in net worth."""
+    return START_COLONIST_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
