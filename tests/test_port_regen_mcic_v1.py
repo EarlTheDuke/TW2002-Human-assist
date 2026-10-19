@@ -23,39 +23,55 @@ def _universe(productivity: int, maximum: int, current: int) -> Universe:
 
 
 def test_legacy_regen_uses_productivity_not_max():
-    K.PORT_REGEN_MODE = "legacy"
+    _prior_port_regen_mode = K.PORT_REGEN_MODE
     try:
-        universe = _universe(productivity=100, maximum=1000, current=0)
-        regenerate_ports(universe)
-        assert universe.sectors[1].port.stock[Commodity.FUEL_ORE].current == 5
+        try:
+            K.PORT_REGEN_MODE = "legacy"
+            universe = _universe(productivity=100, maximum=1000, current=0)
+            regenerate_ports(universe)
+            assert universe.sectors[1].port.stock[Commodity.FUEL_ORE].current == 5
+        finally:
+            K.PORT_REGEN_MODE = "legacy"
     finally:
-        K.PORT_REGEN_MODE = "legacy"
+        K.PORT_REGEN_MODE = _prior_port_regen_mode
 
 
 def test_live_regen_is_five_percent_of_max():
-    K.PORT_REGEN_MODE = "live"
+    _prior_port_regen_mode = K.PORT_REGEN_MODE
     try:
-        universe = _universe(productivity=100, maximum=1000, current=0)
-        regenerate_ports(universe)
-        assert universe.sectors[1].port.stock[Commodity.FUEL_ORE].current == 50
+        try:
+            K.PORT_REGEN_MODE = "live"
+            universe = _universe(productivity=100, maximum=1000, current=0)
+            regenerate_ports(universe)
+            assert universe.sectors[1].port.stock[Commodity.FUEL_ORE].current == 50
+        finally:
+            K.PORT_REGEN_MODE = "legacy"
     finally:
-        K.PORT_REGEN_MODE = "legacy"
+        K.PORT_REGEN_MODE = _prior_port_regen_mode
 
 
 def test_live_visit_stops_at_the_max():
-    K.PORT_REGEN_MODE = "live"
+    _prior_port_regen_mode = K.PORT_REGEN_MODE
     try:
-        port = _universe(100, 1000, 1000).sectors[1].port
-        ok, msg = can_trade(port, Commodity.FUEL_ORE, 1001, "buy")
-        assert ok is False
-        assert "100%" in msg
+        try:
+            K.PORT_REGEN_MODE = "live"
+            port = _universe(100, 1000, 1000).sectors[1].port
+            ok, msg = can_trade(port, Commodity.FUEL_ORE, 1001, "buy")
+            assert ok is False
+            assert "100%" in msg
+        finally:
+            K.PORT_REGEN_MODE = "legacy"
     finally:
-        K.PORT_REGEN_MODE = "legacy"
+        K.PORT_REGEN_MODE = _prior_port_regen_mode
 
 
 def test_legacy_visit_keeps_the_stock_message():
-    K.PORT_REGEN_MODE = "legacy"
-    port = _universe(100, 1000, 1000).sectors[1].port
-    ok, msg = can_trade(port, Commodity.FUEL_ORE, 1001, "buy")
-    assert ok is False
-    assert "enough stock" in msg
+    _prior_port_regen_mode = K.PORT_REGEN_MODE
+    try:
+        K.PORT_REGEN_MODE = "legacy"
+        port = _universe(100, 1000, 1000).sectors[1].port
+        ok, msg = can_trade(port, Commodity.FUEL_ORE, 1001, "buy")
+        assert ok is False
+        assert "enough stock" in msg
+    finally:
+        K.PORT_REGEN_MODE = _prior_port_regen_mode

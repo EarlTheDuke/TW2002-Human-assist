@@ -128,32 +128,61 @@ class NavHost:
         await self.runner.stop()
 
     def __enter__(self) -> NavHost:
-        K.INFO_MODE = "legacy"
-        # _free_block reserves the port across processes before uvicorn binds it.
-        self.port = _free_block(1)
-        self.server = self._uvicorn.Server(
-            self._uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning")
-        )
-        self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
-        self.thread.start()
-        deadline = time.time() + 40
-        while time.time() < deadline and not (self.server and self.server.started):
-            time.sleep(0.05)
-        assert self.server and self.server.started, "nav host did not bind"
-        deadline = time.time() + 40
-        while time.time() < deadline and not self.ready:
-            time.sleep(0.1)
-        assert self.ready, "nav host did not start"
-        return self
+        from tests._cu_host import acquire_info_mode, release_info_mode
+
+        self._info_pushed = False
+        try:
+            acquire_info_mode(self)
+            self._info_pushed = True
+            # _free_block reserves the port across processes before uvicorn binds it.
+            self.port = _free_block(1)
+            self.server = self._uvicorn.Server(
+                self._uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning")
+            )
+            self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
+            self.thread.start()
+            deadline = time.time() + 40
+            while time.time() < deadline and not (self.server and self.server.started):
+                time.sleep(0.05)
+            if not (self.server and self.server.started):
+                raise AssertionError("nav host did not bind")
+            deadline = time.time() + 40
+            while time.time() < deadline and not self.ready:
+                time.sleep(0.1)
+            if not self.ready:
+                raise AssertionError("nav host did not start")
+            return self
+        except BaseException:
+            if self.server is not None:
+                self.server.should_exit = True
+            if self.thread is not None and self.thread.is_alive():
+                self.thread.join(timeout=15)
+            if self.port:
+                from tests._port_lock import release_ports
+
+                release_ports(self.port)
+                self.port = 0
+            if self._info_pushed:
+                release_info_mode(self)
+                self._info_pushed = False
+            raise
 
     def __exit__(self, *exc) -> None:
-        self.server.should_exit = True
-        self.thread.join(timeout=15)
-        if self.port:
-            from tests._port_lock import release_ports
+        from tests._cu_host import release_info_mode
 
-            release_ports(self.port)
-        K.INFO_MODE = self._info
+        try:
+            if self.server is not None:
+                self.server.should_exit = True
+            if self.thread is not None:
+                self.thread.join(timeout=15)
+            if self.port:
+                from tests._port_lock import release_ports
+
+                release_ports(self.port)
+        finally:
+            if getattr(self, "_info_pushed", False):
+                release_info_mode(self)
+                self._info_pushed = False
 
     @property
     def base(self) -> str:

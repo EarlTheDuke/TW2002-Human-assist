@@ -29,29 +29,33 @@ def _world(count: int) -> Planet:
 
 
 def test_tw2002_growth_keeps_the_organics_and_follows_the_half_cap():
-    before = _world(2500)
-    assert planet_growth_status(before.class_id, before.colonists, 0)["organics_consumption_per_day"] == 25
-    assert _organics_burn({"organics_consumption_per_day": 0}) == 1
-    _apply_one_day(before)
-    assert int(before.stockpile[Commodity.ORGANICS]) == 100
-    K.PLANET_GROWTH_MODE = "tw2002"
+    _prior_planet_growth_mode = K.PLANET_GROWTH_MODE
     try:
-        assert _organics_burn({"organics_consumption_per_day": 0}) == 0
-        growing = _world(2500)
-        status = planet_growth_status(growing.class_id, growing.colonists, 0)
-        assert status["organics_consumption_per_day"] == 0
-        made = int(status["production"]["organics"])
-        _apply_one_day(growing)
-        assert int(growing.stockpile[Commodity.ORGANICS]) == made
-        assert _total(growing) > 2500
-        crowded = _world(20_000)
-        _apply_one_day(crowded)
-        assert _total(crowded) < 20_000
-        assert int(crowded.stockpile[Commodity.ORGANICS]) == int(
-            planet_growth_status(crowded.class_id, {Commodity.ORGANICS: 20_000}, 0)["production"]["organics"]
-        )
+        before = _world(2500)
+        assert planet_growth_status(before.class_id, before.colonists, 0)["organics_consumption_per_day"] == 25
+        assert _organics_burn({"organics_consumption_per_day": 0}) == 1
+        _apply_one_day(before)
+        assert int(before.stockpile[Commodity.ORGANICS]) == 100
+        try:
+            K.PLANET_GROWTH_MODE = "tw2002"
+            assert _organics_burn({"organics_consumption_per_day": 0}) == 0
+            growing = _world(2500)
+            status = planet_growth_status(growing.class_id, growing.colonists, 0)
+            assert status["organics_consumption_per_day"] == 0
+            made = int(status["production"]["organics"])
+            _apply_one_day(growing)
+            assert int(growing.stockpile[Commodity.ORGANICS]) == made
+            assert _total(growing) > 2500
+            crowded = _world(20_000)
+            _apply_one_day(crowded)
+            assert _total(crowded) < 20_000
+            assert int(crowded.stockpile[Commodity.ORGANICS]) == int(
+                planet_growth_status(crowded.class_id, {Commodity.ORGANICS: 20_000}, 0)["production"]["organics"]
+            )
+        finally:
+            K.PLANET_GROWTH_MODE = "legacy"
     finally:
-        K.PLANET_GROWTH_MODE = "legacy"
+        K.PLANET_GROWTH_MODE = _prior_planet_growth_mode
 
 
 def _page(pw, host):

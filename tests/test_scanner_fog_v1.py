@@ -37,30 +37,36 @@ def test_off_still_names_the_owner() -> None:
 
 
 def test_on_hides_until_scan_or_landing() -> None:
-    planet, viewer = _pair(0)
-    shielded, _viewer = _pair(25)
-    K.SCANNER_FOG_MODE = "live"
-    K.PLANET_SCANNER_MODE = "live"
+    _prior_scanner_fog_mode = K.SCANNER_FOG_MODE
+    _prior_planet_scanner_mode = K.PLANET_SCANNER_MODE
     try:
-        dark = _planet_brief(planet, viewer)
-        assert "owner_id" not in dark
-        assert "fighters" not in dark
-        assert "shields" not in dark
-        viewer.ship.planet_scanner = True
-        seen = _planet_brief(planet, viewer)
-        assert seen["owner_id"] == "B"
-        assert seen["fighters"] == 40
-        assert "shields" not in seen
-        blocked = _planet_brief(shielded, viewer)
-        assert "owner_id" not in blocked
-        assert "fighters" not in blocked
-        assert "shields" not in blocked
-        viewer.ship.planet_scanner = False
-        viewer.planet_landed = shielded.id
-        landed = _planet_brief(shielded, viewer)
-        assert landed["owner_id"] == "B"
-        assert landed["fighters"] == 40
-        assert landed["shields"] == 25
+        planet, viewer = _pair(0)
+        shielded, _viewer = _pair(25)
+        try:
+            K.SCANNER_FOG_MODE = "live"
+            K.PLANET_SCANNER_MODE = "live"
+            dark = _planet_brief(planet, viewer)
+            assert "owner_id" not in dark
+            assert "fighters" not in dark
+            assert "shields" not in dark
+            viewer.ship.planet_scanner = True
+            seen = _planet_brief(planet, viewer)
+            assert seen["owner_id"] == "B"
+            assert seen["fighters"] == 40
+            assert "shields" not in seen
+            blocked = _planet_brief(shielded, viewer)
+            assert "owner_id" not in blocked
+            assert "fighters" not in blocked
+            assert "shields" not in blocked
+            viewer.ship.planet_scanner = False
+            viewer.planet_landed = shielded.id
+            landed = _planet_brief(shielded, viewer)
+            assert landed["owner_id"] == "B"
+            assert landed["fighters"] == 40
+            assert landed["shields"] == 25
+        finally:
+            K.SCANNER_FOG_MODE = "legacy"
+            K.PLANET_SCANNER_MODE = "legacy"
     finally:
-        K.SCANNER_FOG_MODE = "legacy"
-        K.PLANET_SCANNER_MODE = "legacy"
+        K.SCANNER_FOG_MODE = _prior_scanner_fog_mode
+        K.PLANET_SCANNER_MODE = _prior_planet_scanner_mode

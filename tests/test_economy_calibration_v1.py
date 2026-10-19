@@ -161,13 +161,17 @@ def test_daily_refill_is_five_percent_of_productivity_and_one_day_of_turns() -> 
 
 
 def test_legacy_switch_keeps_the_old_one_trade() -> None:
-    saved = K.ECONOMY_SCALE_MODE
-    K.ECONOMY_SCALE_MODE = "legacy"
+    _prior_economy_scale_mode = K.ECONOMY_SCALE_MODE
     try:
-        r = _one_trade("equipment", 75)
-        assert (r["buy"], r["sell"]) == (22, 49)
+        saved = K.ECONOMY_SCALE_MODE
+        try:
+            K.ECONOMY_SCALE_MODE = "legacy"
+            r = _one_trade("equipment", 75)
+            assert (r["buy"], r["sell"]) == (22, 49)
+        finally:
+            K.ECONOMY_SCALE_MODE = saved
     finally:
-        K.ECONOMY_SCALE_MODE = saved
+        K.ECONOMY_SCALE_MODE = _prior_economy_scale_mode
 
 
 def _acceptance():

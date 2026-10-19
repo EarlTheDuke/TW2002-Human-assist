@@ -37,35 +37,41 @@ def test_off_keeps_the_handbook_unit() -> None:
 
 
 def test_on_uses_people_and_the_category_cap() -> None:
-    u, _players = _make_universe(seed=91002)
-    owner = next(iter(u.players.values()))
-    planet = _plant(u, owner.id, class_id=PlanetClass.M, level=0)
-    _fill(planet, 999_000, 300, 200, 250)
-    _land(u, owner, planet)
-    K.CLASS_M_FIDELITY_MODE = "live"
-    K.PLANET_PROD_MODE = "live"
+    _prior_class_m_fidelity_mode = K.CLASS_M_FIDELITY_MODE
+    _prior_planet_prod_mode = K.PLANET_PROD_MODE
     try:
-        refused = _build(u, owner, planet.id)
-        assert refused.ok is False
-        assert "1000000" in refused.error
-        planet.colonists[Commodity.COLONISTS] = 1_000_000
-        planet.stockpile[Commodity.FUEL_ORE] = 300
-        planet.stockpile[Commodity.ORGANICS] = 200
-        planet.stockpile[Commodity.EQUIPMENT] = 250
-        allowed = _build(u, owner, planet.id)
-        assert allowed.ok, allowed.error
-        assert planet.citadel_complete_day == u.day + 4
-        blocked = K.colonist_drop_error("M", K.CLASS_M_CATEGORY_CAP, 0, 1)
-        assert blocked == f"planet colonist cap is {K.CLASS_M_CATEGORY_CAP}"
-        assert K.colonist_drop_error("M", K.CLASS_M_CATEGORY_CAP - 1, 0, 1) is None
-        planet.colonists[Commodity.FUEL_ORE] = 20_000
-        _apply_one_day(planet)
-        assert planet.colonists[Commodity.FUEL_ORE] == 20_000
-        planet.colonists[Commodity.FUEL_ORE] = K.CLASS_M_CATEGORY_CAP + 10_000
-        _apply_one_day(planet)
-        assert planet.colonists[Commodity.FUEL_ORE] == K.CLASS_M_CATEGORY_CAP + 9_500
-        text = build_observation(u, owner.id).owned_planets[0]["colonists_text"]
-        assert "thousands" in text
+        u, _players = _make_universe(seed=91002)
+        owner = next(iter(u.players.values()))
+        planet = _plant(u, owner.id, class_id=PlanetClass.M, level=0)
+        _fill(planet, 999_000, 300, 200, 250)
+        _land(u, owner, planet)
+        try:
+            K.CLASS_M_FIDELITY_MODE = "live"
+            K.PLANET_PROD_MODE = "live"
+            refused = _build(u, owner, planet.id)
+            assert refused.ok is False
+            assert "1000000" in refused.error
+            planet.colonists[Commodity.COLONISTS] = 1_000_000
+            planet.stockpile[Commodity.FUEL_ORE] = 300
+            planet.stockpile[Commodity.ORGANICS] = 200
+            planet.stockpile[Commodity.EQUIPMENT] = 250
+            allowed = _build(u, owner, planet.id)
+            assert allowed.ok, allowed.error
+            assert planet.citadel_complete_day == u.day + 4
+            blocked = K.colonist_drop_error("M", K.CLASS_M_CATEGORY_CAP, 0, 1)
+            assert blocked == f"planet colonist cap is {K.CLASS_M_CATEGORY_CAP}"
+            assert K.colonist_drop_error("M", K.CLASS_M_CATEGORY_CAP - 1, 0, 1) is None
+            planet.colonists[Commodity.FUEL_ORE] = 20_000
+            _apply_one_day(planet)
+            assert planet.colonists[Commodity.FUEL_ORE] == 20_000
+            planet.colonists[Commodity.FUEL_ORE] = K.CLASS_M_CATEGORY_CAP + 10_000
+            _apply_one_day(planet)
+            assert planet.colonists[Commodity.FUEL_ORE] == K.CLASS_M_CATEGORY_CAP + 9_500
+            text = build_observation(u, owner.id).owned_planets[0]["colonists_text"]
+            assert "thousands" in text
+        finally:
+            K.CLASS_M_FIDELITY_MODE = "legacy"
+            K.PLANET_PROD_MODE = "legacy"
     finally:
-        K.CLASS_M_FIDELITY_MODE = "legacy"
-        K.PLANET_PROD_MODE = "legacy"
+        K.CLASS_M_FIDELITY_MODE = _prior_class_m_fidelity_mode
+        K.PLANET_PROD_MODE = _prior_planet_prod_mode

@@ -44,20 +44,24 @@ def test_off_records_nothing() -> None:
 
 
 def test_on_needs_a_witness_and_keeps_ten() -> None:
-    u = _world()
-    K.GOLD_ALIEN_MODE = "live"
+    _prior_gold_alien_mode = K.GOLD_ALIEN_MODE
     try:
-        alone = _world()
-        alone.aliens.pop("Y")
-        on_alien_killed(alone, "A", alone.aliens["X"])
-        assert alone.gold_grudges == {}
-        on_alien_killed(u, "A", u.aliens["X"])
-        assert u.gold_grudges["Zed"] == ["A"]
-        assert "gold_grudges" not in u.model_dump()
-        for n in range(11):
-            note_gold_grudge(u, f"P{n}", u.aliens["X"])
-        assert u.gold_grudges["Zed"][0] == "P10"
-        assert len(u.gold_grudges["Zed"]) == 10
-        assert "P0" not in u.gold_grudges["Zed"]
+        u = _world()
+        try:
+            K.GOLD_ALIEN_MODE = "live"
+            alone = _world()
+            alone.aliens.pop("Y")
+            on_alien_killed(alone, "A", alone.aliens["X"])
+            assert alone.gold_grudges == {}
+            on_alien_killed(u, "A", u.aliens["X"])
+            assert u.gold_grudges["Zed"] == ["A"]
+            assert "gold_grudges" not in u.model_dump()
+            for n in range(11):
+                note_gold_grudge(u, f"P{n}", u.aliens["X"])
+            assert u.gold_grudges["Zed"][0] == "P10"
+            assert len(u.gold_grudges["Zed"]) == 10
+            assert "P0" not in u.gold_grudges["Zed"]
+        finally:
+            K.GOLD_ALIEN_MODE = "legacy"
     finally:
-        K.GOLD_ALIEN_MODE = "legacy"
+        K.GOLD_ALIEN_MODE = _prior_gold_alien_mode

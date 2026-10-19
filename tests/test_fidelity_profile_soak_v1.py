@@ -24,18 +24,22 @@ def _runner():
 
 
 def test_profile_on_ten_days_every_seat_moves() -> None:
-    assert K.TW2002_LIVE_PROFILE == "legacy"
-    mod = _runner()
-    K.TW2002_LIVE_PROFILE = "live"
+    _prior_tw2002_live_profile = K.TW2002_LIVE_PROFILE
     try:
-        result = mod.run_match(["N3", "N2", "N1", "H"], seed=250925, days=10)
+        assert K.TW2002_LIVE_PROFILE == "legacy"
+        mod = _runner()
+        try:
+            K.TW2002_LIVE_PROFILE = "live"
+            result = mod.run_match(["N3", "N2", "N1", "H"], seed=250925, days=10)
+        finally:
+            K.TW2002_LIVE_PROFILE = "legacy"
+        assert K.TW2002_LIVE_PROFILE == "legacy"
+        assert result["days_played"] == 10
+        assert len(result["players"]) == 4
+        for row in result["players"].values():
+            assert row["exceptions"] == 0
+            assert len(row["daily"]) == 10
+            assert row["kinds"].get("warp", 0) >= 1
+            assert row["actions"] > 2000
     finally:
-        K.TW2002_LIVE_PROFILE = "legacy"
-    assert K.TW2002_LIVE_PROFILE == "legacy"
-    assert result["days_played"] == 10
-    assert len(result["players"]) == 4
-    for row in result["players"].values():
-        assert row["exceptions"] == 0
-        assert len(row["daily"]) == 10
-        assert row["kinds"].get("warp", 0) >= 1
-        assert row["actions"] > 2000
+        K.TW2002_LIVE_PROFILE = _prior_tw2002_live_profile

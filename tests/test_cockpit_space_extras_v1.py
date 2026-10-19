@@ -142,32 +142,40 @@ def _install():
 
     @pytest.fixture(scope="module")
     def world(tmp_path_factory):
-        sync = pytest.importorskip("playwright.sync_api").sync_playwright
-        saved = (K.AVOID_MODE, K.SHIP_EXIT_MODE, K.ROB_BUST_DENOMINATOR)
-        K.AVOID_MODE = "live"
-        K.SHIP_EXIT_MODE = "tw2002"
-        K.ROB_BUST_DENOMINATOR = 1_000_000_000
-        pw = sync().start()
-        host = CuHost(tmp_path_factory.mktemp("space"), TOK)
-        host.__enter__()
-        universe = host.runner.state.universe
-        me = universe.players["P2"]
-        planet = next(iter(universe.planets.values()))
-        browser, page = _page(pw, host)
+        _prior_avoid_mode = K.AVOID_MODE
+        _prior_ship_exit_mode = K.SHIP_EXIT_MODE
+        _prior_rob_bust_denominator = K.ROB_BUST_DENOMINATOR
         try:
-            yield {
-                "page": page,
-                "universe": universe,
-                "me": me,
-                "planet": planet,
-                "port_a": int(me.sector_id),
-                "port_b": _other_ports(universe, int(me.sector_id))[0],
-            }
+            sync = pytest.importorskip("playwright.sync_api").sync_playwright
+            saved = (K.AVOID_MODE, K.SHIP_EXIT_MODE, K.ROB_BUST_DENOMINATOR)
+            K.AVOID_MODE = "live"
+            K.SHIP_EXIT_MODE = "tw2002"
+            K.ROB_BUST_DENOMINATOR = 1_000_000_000
+            pw = sync().start()
+            host = CuHost(tmp_path_factory.mktemp("space"), TOK)
+            host.__enter__()
+            universe = host.runner.state.universe
+            me = universe.players["P2"]
+            planet = next(iter(universe.planets.values()))
+            browser, page = _page(pw, host)
+            try:
+                yield {
+                    "page": page,
+                    "universe": universe,
+                    "me": me,
+                    "planet": planet,
+                    "port_a": int(me.sector_id),
+                    "port_b": _other_ports(universe, int(me.sector_id))[0],
+                }
+            finally:
+                browser.close()
+                host.__exit__(None, None, None)
+                pw.stop()
+                K.AVOID_MODE, K.SHIP_EXIT_MODE, K.ROB_BUST_DENOMINATOR = saved
         finally:
-            browser.close()
-            host.__exit__(None, None, None)
-            pw.stop()
-            K.AVOID_MODE, K.SHIP_EXIT_MODE, K.ROB_BUST_DENOMINATOR = saved
+            K.AVOID_MODE = _prior_avoid_mode
+            K.SHIP_EXIT_MODE = _prior_ship_exit_mode
+            K.ROB_BUST_DENOMINATOR = _prior_rob_bust_denominator
 
     return world
 

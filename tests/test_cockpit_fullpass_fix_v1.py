@@ -30,25 +30,29 @@ def _quiet(page) -> None:
 
 @pytest.fixture(scope="module")
 def seats(tmp_path_factory):
-    sync = pytest.importorskip("playwright.sync_api").sync_playwright
-    old = K.HAGGLE_LIVE_MODE
-    K.HAGGLE_LIVE_MODE = "live"
-    pw = sync().start()
-    port_host = CuHost(tmp_path_factory.mktemp("fullpass-port"), PORT_TOK)
-    port_host.__enter__()
-    dock_host = CuHost(tmp_path_factory.mktemp("fullpass-dock"), DOCK_TOK, park_at=1)
-    dock_host.__enter__()
-    port_browser, port_page = _page(pw, port_host, PORT_TOK)
-    dock_browser, dock_page = _page(pw, dock_host, DOCK_TOK)
+    _prior_haggle_live_mode = K.HAGGLE_LIVE_MODE
     try:
-        yield {"port": port_page, "dock": dock_page}
+        sync = pytest.importorskip("playwright.sync_api").sync_playwright
+        old = K.HAGGLE_LIVE_MODE
+        K.HAGGLE_LIVE_MODE = "live"
+        pw = sync().start()
+        port_host = CuHost(tmp_path_factory.mktemp("fullpass-port"), PORT_TOK)
+        port_host.__enter__()
+        dock_host = CuHost(tmp_path_factory.mktemp("fullpass-dock"), DOCK_TOK, park_at=1)
+        dock_host.__enter__()
+        port_browser, port_page = _page(pw, port_host, PORT_TOK)
+        dock_browser, dock_page = _page(pw, dock_host, DOCK_TOK)
+        try:
+            yield {"port": port_page, "dock": dock_page}
+        finally:
+            port_browser.close()
+            dock_browser.close()
+            port_host.__exit__(None, None, None)
+            dock_host.__exit__(None, None, None)
+            pw.stop()
+            K.HAGGLE_LIVE_MODE = old
     finally:
-        port_browser.close()
-        dock_browser.close()
-        port_host.__exit__(None, None, None)
-        dock_host.__exit__(None, None, None)
-        pw.stop()
-        K.HAGGLE_LIVE_MODE = old
+        K.HAGGLE_LIVE_MODE = _prior_haggle_live_mode
 
 
 def test_trade_form_prefills_the_listed_price(seats) -> None:

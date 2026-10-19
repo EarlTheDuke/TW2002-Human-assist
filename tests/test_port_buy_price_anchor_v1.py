@@ -118,19 +118,23 @@ def test_switch_stays_legacy_until_the_profile(monkeypatch) -> None:
 
 def test_legacy_hungry_quote_stays_on_the_193x_curve() -> None:
     """Switch off: an empty buyer still pays the full-hold anchor times 1.45/0.75."""
-    assert K.PORT_BUY_PRICE_ANCHOR_MODE == "legacy"
-    prior = K.PORT_PRICE_MODE
-    K.PORT_PRICE_MODE = "live"
+    _prior_port_price_mode = K.PORT_PRICE_MODE
     try:
-        full = _buyer(1000)
-        empty = _buyer(0)
-        assert port_buy_price(full, FUEL) == 38
-        assert port_buy_price(full, ORG) == 73
-        assert port_buy_price(full, EQ) == 102
-        assert port_buy_price(empty, EQ) == round(102 * 1.45 / 0.75)
-        assert port_buy_price(empty, EQ) == 197
+        assert K.PORT_BUY_PRICE_ANCHOR_MODE == "legacy"
+        prior = K.PORT_PRICE_MODE
+        try:
+            K.PORT_PRICE_MODE = "live"
+            full = _buyer(1000)
+            empty = _buyer(0)
+            assert port_buy_price(full, FUEL) == 38
+            assert port_buy_price(full, ORG) == 73
+            assert port_buy_price(full, EQ) == 102
+            assert port_buy_price(empty, EQ) == round(102 * 1.45 / 0.75)
+            assert port_buy_price(empty, EQ) == 197
+        finally:
+            K.PORT_PRICE_MODE = prior
     finally:
-        K.PORT_PRICE_MODE = prior
+        K.PORT_PRICE_MODE = _prior_port_price_mode
 
 
 def test_screen_anchors_hold_when_the_chart_is_off(monkeypatch) -> None:
@@ -285,25 +289,29 @@ def _runner():
 
 
 def _ten_day(profile: str) -> dict:
-    prior = K.V311_PROFILE
-    K.V311_PROFILE = profile
+    _prior_v311_profile = K.V311_PROFILE
     try:
-        result = _runner().run_match(
-            ["N3", "N2", "N1", "H"], seed=250925, days=10, reject_report=100)
+        prior = K.V311_PROFILE
+        try:
+            K.V311_PROFILE = profile
+            result = _runner().run_match(
+                ["N3", "N2", "N1", "H"], seed=250925, days=10, reject_report=100)
+        finally:
+            K.V311_PROFILE = prior
+        seats = {}
+        for row in result["players"].values():
+            seats[row["name"]] = {
+                "net_worth": int(row["net_worth"]),
+                "realized_profit": int(row["realized_profit"]),
+                "rejected_validate": int(row["rejected_validate"]),
+                "rejected_engine": int(row["rejected_engine"]),
+                "rejected_top": list(row["rejected_top"]),
+                "sells": int(row["sells"]),
+                "exceptions": int(row["exceptions"]),
+            }
+        return seats
     finally:
-        K.V311_PROFILE = prior
-    seats = {}
-    for row in result["players"].values():
-        seats[row["name"]] = {
-            "net_worth": int(row["net_worth"]),
-            "realized_profit": int(row["realized_profit"]),
-            "rejected_validate": int(row["rejected_validate"]),
-            "rejected_engine": int(row["rejected_engine"]),
-            "rejected_top": list(row["rejected_top"]),
-            "sells": int(row["sells"]),
-            "exceptions": int(row["exceptions"]),
-        }
-    return seats
+        K.V311_PROFILE = _prior_v311_profile
 
 
 def _refused(row: dict) -> int:

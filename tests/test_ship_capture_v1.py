@@ -523,44 +523,52 @@ def test_cp26_fog():
 
 
 def test_legal_list_has_no_capture_param():
-    u = _world()
-    sec = _sector(u)
-    _sit(u, "A", sec, fighters=10)
-    _sit(u, "B", sec, fighters=10)
-    la = next(a for a in legal_actions(u, "A") if a.kind == "attack")
-    assert "capture_qty" not in la.params
-    K.CAPTURE_MODE = "legacy"
+    _prior_capture_mode = K.CAPTURE_MODE
     try:
-        u2 = _world()
-        sec = _sector(u2)
-        _sit(u2, "A", sec, fighters=10)
-        _sit(u2, "B", sec, fighters=10)
-        la2 = next(a for a in legal_actions(u2, "A") if a.kind == "attack")
-        assert set(la.params) == set(la2.params)
+        u = _world()
+        sec = _sector(u)
+        _sit(u, "A", sec, fighters=10)
+        _sit(u, "B", sec, fighters=10)
+        la = next(a for a in legal_actions(u, "A") if a.kind == "attack")
+        assert "capture_qty" not in la.params
+        try:
+            K.CAPTURE_MODE = "legacy"
+            u2 = _world()
+            sec = _sector(u2)
+            _sit(u2, "A", sec, fighters=10)
+            _sit(u2, "B", sec, fighters=10)
+            la2 = next(a for a in legal_actions(u2, "A") if a.kind == "attack")
+            assert set(la.params) == set(la2.params)
+        finally:
+            K.CAPTURE_MODE = "tw2002"
     finally:
-        K.CAPTURE_MODE = "tw2002"
+        K.CAPTURE_MODE = _prior_capture_mode
 
 
 def test_cp27_prompt_and_bots():
-    text = get_system_prompt()
-    assert "minimum fighters" in text and "Scout Marauders" in text
-    K.CAPTURE_MODE = "legacy"
+    _prior_capture_mode = K.CAPTURE_MODE
     try:
-        assert "SHIP CAPTURE" not in get_system_prompt()
-    finally:
-        K.CAPTURE_MODE = "tw2002"
+        text = get_system_prompt()
+        assert "minimum fighters" in text and "Scout Marauders" in text
+        try:
+            K.CAPTURE_MODE = "legacy"
+            assert "SHIP CAPTURE" not in get_system_prompt()
+        finally:
+            K.CAPTURE_MODE = "tw2002"
 
-    u = _world()
-    sec = _sector(u)
-    a = _sit(u, "A", sec, fighters=40)
-    _sit(u, "B", sec, ShipClass.CARGOTRAN, fighters=0)
-    assert _attack(u, "A", "B", 1).ok
-    a.ship.ship_class = ShipClass.ESCAPE_POD
-    a.ship.fighters = 0
-    a.deaths = 1
-    act = SeatBrain().decide(build_observation(u, "A").model_dump(mode="json"))
-    assert act["kind"] == "ship_transport"
-    assert K.BOT_CAPTURE_POLICY == "incidental"
+        u = _world()
+        sec = _sector(u)
+        a = _sit(u, "A", sec, fighters=40)
+        _sit(u, "B", sec, ShipClass.CARGOTRAN, fighters=0)
+        assert _attack(u, "A", "B", 1).ok
+        a.ship.ship_class = ShipClass.ESCAPE_POD
+        a.ship.fighters = 0
+        a.deaths = 1
+        act = SeatBrain().decide(build_observation(u, "A").model_dump(mode="json"))
+        assert act["kind"] == "ship_transport"
+        assert K.BOT_CAPTURE_POLICY == "incidental"
+    finally:
+        K.CAPTURE_MODE = _prior_capture_mode
 
 
 def test_cp17_tower_capture_releases_and_towed_ship_stays():

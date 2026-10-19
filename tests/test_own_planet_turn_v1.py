@@ -49,27 +49,35 @@ def test_legacy_charges_three_to_land_on_your_own_planet():
 
 
 def test_live_takes_the_one_turn_on_liftoff():
-    universe, player, planet = _seat("P1")
-    K.OWN_PLANET_TURN_MODE = "live"
+    _prior_own_planet_turn_mode = K.OWN_PLANET_TURN_MODE
     try:
-        result = _land(universe, planet.id)
-        assert result.ok is True
-        assert player.turns_today == 0
-        offered = {item.kind: item for item in legal_actions(universe, "P1")}
-        assert offered["liftoff"].turn_cost == 1
-        lift = _lift(universe)
-        assert lift.ok is True
-        assert player.turns_today == 1
+        universe, player, planet = _seat("P1")
+        try:
+            K.OWN_PLANET_TURN_MODE = "live"
+            result = _land(universe, planet.id)
+            assert result.ok is True
+            assert player.turns_today == 0
+            offered = {item.kind: item for item in legal_actions(universe, "P1")}
+            assert offered["liftoff"].turn_cost == 1
+            lift = _lift(universe)
+            assert lift.ok is True
+            assert player.turns_today == 1
+        finally:
+            K.OWN_PLANET_TURN_MODE = "legacy"
     finally:
-        K.OWN_PLANET_TURN_MODE = "legacy"
+        K.OWN_PLANET_TURN_MODE = _prior_own_planet_turn_mode
 
 
 def test_live_still_charges_three_for_a_planet_you_do_not_own():
-    universe, player, planet = _seat("P2")
-    K.OWN_PLANET_TURN_MODE = "live"
+    _prior_own_planet_turn_mode = K.OWN_PLANET_TURN_MODE
     try:
-        result = _land(universe, planet.id)
-        assert result.ok is True
-        assert player.turns_today == 3
+        universe, player, planet = _seat("P2")
+        try:
+            K.OWN_PLANET_TURN_MODE = "live"
+            result = _land(universe, planet.id)
+            assert result.ok is True
+            assert player.turns_today == 3
+        finally:
+            K.OWN_PLANET_TURN_MODE = "legacy"
     finally:
-        K.OWN_PLANET_TURN_MODE = "legacy"
+        K.OWN_PLANET_TURN_MODE = _prior_own_planet_turn_mode
