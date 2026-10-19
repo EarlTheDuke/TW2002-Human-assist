@@ -22,52 +22,72 @@ def _obs():
 
 
 def test_legacy_rank_follows_net_worth_and_the_old_warp():
-    K.EXP_SCORE_MODE = "legacy"
-    saved = K.RANK_MODE
-    K.RANK_MODE = "legacy"
+    _prior_exp_score_mode = K.EXP_SCORE_MODE
+    _prior_rank_mode = K.RANK_MODE
     try:
-        assert status_fields(_obs())["rank"] == 2
-        assert K.xp_award("warp") == 1
+        K.EXP_SCORE_MODE = "legacy"
+        saved = K.RANK_MODE
+        try:
+            K.RANK_MODE = "legacy"
+            assert status_fields(_obs())["rank"] == 2
+            assert K.xp_award("warp") == 1
+        finally:
+            K.RANK_MODE = saved
     finally:
-        K.RANK_MODE = saved
+        K.EXP_SCORE_MODE = _prior_exp_score_mode
+        K.RANK_MODE = _prior_rank_mode
 
 
 def test_live_rank_follows_experience():
-    K.EXP_SCORE_MODE = "live"
+    _prior_exp_score_mode = K.EXP_SCORE_MODE
     try:
-        assert status_fields(_obs())["rank"] == 1
-        assert K.xp_award("warp") == 0
-        assert K.xp_award("trade") == 1
-        assert K.xp_award("first_dock") == 1
-        assert K.xp_award("deploy_genesis") == 25
-        assert K.xp_award("destroy_port") == 50
+        try:
+            K.EXP_SCORE_MODE = "live"
+            assert status_fields(_obs())["rank"] == 1
+            assert K.xp_award("warp") == 0
+            assert K.xp_award("trade") == 1
+            assert K.xp_award("first_dock") == 1
+            assert K.xp_award("deploy_genesis") == 25
+            assert K.xp_award("destroy_port") == 50
+        finally:
+            K.EXP_SCORE_MODE = "legacy"
     finally:
-        K.EXP_SCORE_MODE = "legacy"
+        K.EXP_SCORE_MODE = _prior_exp_score_mode
 
 
 def test_live_warp_is_zero_even_on_the_old_table():
-    K.EXP_SCORE_MODE = "live"
-    saved = K.RANK_MODE
-    K.RANK_MODE = "legacy"
+    _prior_exp_score_mode = K.EXP_SCORE_MODE
+    _prior_rank_mode = K.RANK_MODE
     try:
-        assert K.xp_award("warp") == 0
+        K.EXP_SCORE_MODE = "live"
+        saved = K.RANK_MODE
+        try:
+            K.RANK_MODE = "legacy"
+            assert K.xp_award("warp") == 0
+        finally:
+            K.RANK_MODE = saved
+            K.EXP_SCORE_MODE = "legacy"
     finally:
-        K.RANK_MODE = saved
-        K.EXP_SCORE_MODE = "legacy"
+        K.EXP_SCORE_MODE = _prior_exp_score_mode
+        K.RANK_MODE = _prior_rank_mode
 
 
 def test_live_standings_put_experience_first():
-    K.EXP_SCORE_MODE = "live"
+    _prior_exp_score_mode = K.EXP_SCORE_MODE
     try:
-        u, players = _make_universe(seed=8850)
-        for p in players:
-            p.experience = 0
-        rich, skilled = players[0], players[1]
-        rich.experience = 1
-        skilled.experience = 40
-        rows = final_standings(u)["standings"]
-        assert rows[0]["seat"] == skilled.id
-        assert rows[0]["experience"] == 40
-        assert "net_worth" in rows[0]
+        try:
+            K.EXP_SCORE_MODE = "live"
+            u, players = _make_universe(seed=8850)
+            for p in players:
+                p.experience = 0
+            rich, skilled = players[0], players[1]
+            rich.experience = 1
+            skilled.experience = 40
+            rows = final_standings(u)["standings"]
+            assert rows[0]["seat"] == skilled.id
+            assert rows[0]["experience"] == 40
+            assert "net_worth" in rows[0]
+        finally:
+            K.EXP_SCORE_MODE = "legacy"
     finally:
-        K.EXP_SCORE_MODE = "legacy"
+        K.EXP_SCORE_MODE = _prior_exp_score_mode

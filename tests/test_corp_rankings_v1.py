@@ -37,13 +37,17 @@ def test_off_omits_the_ranking() -> None:
 
 
 def test_on_orders_by_experience() -> None:
-    u = _world()
-    K.CORP_RANK_MODE = "live"
+    _prior_corp_rank_mode = K.CORP_RANK_MODE
     try:
-        rows = corporation_rankings(u)
-        assert [row["ticker"] for row in rows] == ["HIGH", "LOW"]
-        assert rows[0]["experience"] == 40 and rows[0]["alignment"] == -2
-        assert rows[1]["experience"] == 10 and rows[1]["alignment"] == 5
-        assert build_observation(u, "A").model_dump()["corp_rankings"] == rows
+        u = _world()
+        try:
+            K.CORP_RANK_MODE = "live"
+            rows = corporation_rankings(u)
+            assert [row["ticker"] for row in rows] == ["HIGH", "LOW"]
+            assert rows[0]["experience"] == 40 and rows[0]["alignment"] == -2
+            assert rows[1]["experience"] == 10 and rows[1]["alignment"] == 5
+            assert build_observation(u, "A").model_dump()["corp_rankings"] == rows
+        finally:
+            K.CORP_RANK_MODE = "legacy"
     finally:
-        K.CORP_RANK_MODE = "legacy"
+        K.CORP_RANK_MODE = _prior_corp_rank_mode

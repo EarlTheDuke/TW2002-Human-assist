@@ -50,19 +50,23 @@ def test_off_leaves_the_ship_in_the_sector() -> None:
 
 
 def test_on_parks_inside_the_citadel() -> None:
-    u = _world()
-    K.CITADEL_PARK_MODE = "live"
+    _prior_citadel_park_mode = K.CITADEL_PARK_MODE
     try:
-        blocked = apply_action(u, "B", Action(kind=ActionKind.ATTACK, args={"target": "A", "qty": 1}))
-        assert blocked.ok is False
-        assert blocked.error == "that ship is inside the citadel"
-        before = u.players["A"].sector_id
-        assert run_tows(u) >= 0
-        assert u.players["A"].sector_id == before
-        sid = _park_manned(u, "A")
-        assert u.parked_ships[sid].planet_id == 7
-        u.players["A"].planet_landed = None
-        why, _hops = target_block(u, "A", u.parked_ships[sid])
-        assert why == "that ship is inside a citadel"
+        u = _world()
+        try:
+            K.CITADEL_PARK_MODE = "live"
+            blocked = apply_action(u, "B", Action(kind=ActionKind.ATTACK, args={"target": "A", "qty": 1}))
+            assert blocked.ok is False
+            assert blocked.error == "that ship is inside the citadel"
+            before = u.players["A"].sector_id
+            assert run_tows(u) >= 0
+            assert u.players["A"].sector_id == before
+            sid = _park_manned(u, "A")
+            assert u.parked_ships[sid].planet_id == 7
+            u.players["A"].planet_landed = None
+            why, _hops = target_block(u, "A", u.parked_ships[sid])
+            assert why == "that ship is inside a citadel"
+        finally:
+            K.CITADEL_PARK_MODE = "legacy"
     finally:
-        K.CITADEL_PARK_MODE = "legacy"
+        K.CITADEL_PARK_MODE = _prior_citadel_park_mode

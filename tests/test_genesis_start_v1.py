@@ -8,30 +8,36 @@ from tw2k.engine.models import Player, Ship, ShipClass
 
 
 def _deploy(mode: str):
-    prior_mode = K.GENESIS_START_MODE
-    prior_hops = K.GENESIS_MIN_HOPS_FROM_STARDOCK
-    K.GENESIS_START_MODE = mode
-    K.GENESIS_MIN_HOPS_FROM_STARDOCK = 0
+    _prior_genesis_start_mode = K.GENESIS_START_MODE
+    _prior_genesis_min_hops_from_stardock = K.GENESIS_MIN_HOPS_FROM_STARDOCK
     try:
-        universe = generate_universe(GameConfig(
-            seed=7, universe_size=40, enable_ferrengi=False, enable_planets=False,
-        ))
-        universe.players["A"] = Player(
-            id="A",
-            name="Alpha",
-            ship=Ship(holds=20, ship_class=ShipClass.MERCHANT_CRUISER, genesis=1),
-            sector_id=20,
-            credits=1_000,
-            turns_today=0,
-        )
-        universe.sectors[20].occupant_ids.append("A")
-        result = apply_action(universe, "A", Action(kind=ActionKind.DEPLOY_GENESIS, args={}))
-        assert result.ok
-        planet = next(iter(universe.planets.values()))
-        return planet
+        prior_mode = K.GENESIS_START_MODE
+        prior_hops = K.GENESIS_MIN_HOPS_FROM_STARDOCK
+        K.GENESIS_START_MODE = mode
+        K.GENESIS_MIN_HOPS_FROM_STARDOCK = 0
+        try:
+            universe = generate_universe(GameConfig(
+                seed=7, universe_size=40, enable_ferrengi=False, enable_planets=False,
+            ))
+            universe.players["A"] = Player(
+                id="A",
+                name="Alpha",
+                ship=Ship(holds=20, ship_class=ShipClass.MERCHANT_CRUISER, genesis=1),
+                sector_id=20,
+                credits=1_000,
+                turns_today=0,
+            )
+            universe.sectors[20].occupant_ids.append("A")
+            result = apply_action(universe, "A", Action(kind=ActionKind.DEPLOY_GENESIS, args={}))
+            assert result.ok
+            planet = next(iter(universe.planets.values()))
+            return planet
+        finally:
+            K.GENESIS_START_MODE = prior_mode
+            K.GENESIS_MIN_HOPS_FROM_STARDOCK = prior_hops
     finally:
-        K.GENESIS_START_MODE = prior_mode
-        K.GENESIS_MIN_HOPS_FROM_STARDOCK = prior_hops
+        K.GENESIS_START_MODE = _prior_genesis_start_mode
+        K.GENESIS_MIN_HOPS_FROM_STARDOCK = _prior_genesis_min_hops_from_stardock
 
 
 def test_legacy_planet_keeps_the_seed():
@@ -47,26 +53,36 @@ def test_live_planet_starts_empty():
 
 
 def test_live_sector_stops_at_five_even_without_the_economy_cap():
-    prior_mode = K.GENESIS_START_MODE
-    prior_econ = K.PLANET_ECONOMY_MODE
-    K.PLANET_ECONOMY_MODE = "legacy"
+    _prior_planet_economy_mode = K.PLANET_ECONOMY_MODE
+    _prior_genesis_start_mode = K.GENESIS_START_MODE
     try:
-        K.GENESIS_START_MODE = "legacy"
-        assert K.sector_has_planet_room(5) is True
-        K.GENESIS_START_MODE = "live"
-        assert K.sector_has_planet_room(5) is False
-        assert K.sector_has_planet_room(4) is True
+        prior_mode = K.GENESIS_START_MODE
+        prior_econ = K.PLANET_ECONOMY_MODE
+        try:
+            K.PLANET_ECONOMY_MODE = "legacy"
+            K.GENESIS_START_MODE = "legacy"
+            assert K.sector_has_planet_room(5) is True
+            K.GENESIS_START_MODE = "live"
+            assert K.sector_has_planet_room(5) is False
+            assert K.sector_has_planet_room(4) is True
+        finally:
+            K.GENESIS_START_MODE = prior_mode
+            K.PLANET_ECONOMY_MODE = prior_econ
     finally:
-        K.GENESIS_START_MODE = prior_mode
-        K.PLANET_ECONOMY_MODE = prior_econ
+        K.PLANET_ECONOMY_MODE = _prior_planet_economy_mode
+        K.GENESIS_START_MODE = _prior_genesis_start_mode
 
 
 def test_torpedo_price_stays_on_the_hardware_switch():
-    prior = K.GENESIS_START_MODE
-    K.GENESIS_START_MODE = "live"
+    _prior_genesis_start_mode = K.GENESIS_START_MODE
     try:
-        assert K.genesis_torpedo_cost() == K.genesis_torpedo_cost()
-        live_cost = K.genesis_torpedo_cost()
+        prior = K.GENESIS_START_MODE
+        try:
+            K.GENESIS_START_MODE = "live"
+            assert K.genesis_torpedo_cost() == K.genesis_torpedo_cost()
+            live_cost = K.genesis_torpedo_cost()
+        finally:
+            K.GENESIS_START_MODE = "legacy"
+        assert K.genesis_torpedo_cost() == live_cost
     finally:
-        K.GENESIS_START_MODE = "legacy"
-    assert K.genesis_torpedo_cost() == live_cost
+        K.GENESIS_START_MODE = _prior_genesis_start_mode

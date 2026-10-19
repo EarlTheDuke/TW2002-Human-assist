@@ -6,28 +6,40 @@ import tw2k.engine.constants as K
 
 
 def test_legacy_iss_and_scout_stay_on_the_bible_chart():
-    K.SHIP_ROSTER_MODE = "legacy"
-    assert K.ship_cost("imperial_starship") == 339_000
-    assert K.ship_specs()["scout_marauder"]["max_fighters"] == 150
+    _prior_ship_roster_mode = K.SHIP_ROSTER_MODE
+    try:
+        K.SHIP_ROSTER_MODE = "legacy"
+        assert K.ship_cost("imperial_starship") == 339_000
+        assert K.ship_specs()["scout_marauder"]["max_fighters"] == 150
+    finally:
+        K.SHIP_ROSTER_MODE = _prior_ship_roster_mode
 
 
 def test_live_iss_is_329000_and_does_not_edit_the_chart():
-    K.SHIP_ROSTER_MODE = "live"
+    _prior_ship_roster_mode = K.SHIP_ROSTER_MODE
     try:
-        assert K.ship_cost("imperial_starship") == 329_000
-        assert K.ship_specs()["imperial_starship"]["cost"] == 329_000
-        assert K.SHIP_SPECS_TW2002["imperial_starship"]["cost"] == 339_000
+        try:
+            K.SHIP_ROSTER_MODE = "live"
+            assert K.ship_cost("imperial_starship") == 329_000
+            assert K.ship_specs()["imperial_starship"]["cost"] == 329_000
+            assert K.SHIP_SPECS_TW2002["imperial_starship"]["cost"] == 339_000
+        finally:
+            K.SHIP_ROSTER_MODE = "legacy"
     finally:
-        K.SHIP_ROSTER_MODE = "legacy"
+        K.SHIP_ROSTER_MODE = _prior_ship_roster_mode
 
 
 def test_live_scout_carries_250_fighters():
-    K.SHIP_ROSTER_MODE = "live"
+    _prior_ship_roster_mode = K.SHIP_ROSTER_MODE
     try:
-        assert K.ship_specs()["scout_marauder"]["max_fighters"] == 250
-        assert K.SHIP_SPECS_TW2002["scout_marauder"]["max_fighters"] == 150
+        try:
+            K.SHIP_ROSTER_MODE = "live"
+            assert K.ship_specs()["scout_marauder"]["max_fighters"] == 250
+            assert K.SHIP_SPECS_TW2002["scout_marauder"]["max_fighters"] == 150
+        finally:
+            K.SHIP_ROSTER_MODE = "legacy"
     finally:
-        K.SHIP_ROSTER_MODE = "legacy"
+        K.SHIP_ROSTER_MODE = _prior_ship_roster_mode
 
 
 def test_named_hulls_already_match_the_screen():

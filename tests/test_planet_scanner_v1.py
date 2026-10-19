@@ -58,23 +58,27 @@ def test_off_does_not_sell_or_reveal() -> None:
 
 
 def test_on_reads_unshielded_planets_only() -> None:
-    u, bare, shielded = _world()
-    K.PLANET_SCANNER_MODE = "live"
+    _prior_planet_scanner_mode = K.PLANET_SCANNER_MODE
     try:
-        choices, prices = _shop(u)
-        assert "planet_scanner" in choices
-        assert prices["planet_scanner"] == 30_000
-        bought = apply_action(u, "A", Action(kind=ActionKind.BUY_EQUIP, args={"item": "planet_scanner", "qty": 1}))
-        assert bought.ok is True
-        assert u.players["A"].credits == 20_000
-        assert u.players["A"].ship.planet_scanner is True
-        again = apply_action(u, "A", Action(kind=ActionKind.BUY_EQUIP, args={"item": "planet_scanner", "qty": 1}))
-        assert again.ok is False
-        seen = _planet_brief(bare, u.players["A"])
-        assert seen["owner_id"] == "B"
-        assert seen["fighters"] == 40
-        assert "fighters" not in _planet_brief(shielded, u.players["A"])
-        u.players["A"].ship.planet_scanner = False
-        assert "fighters" not in _planet_brief(bare, u.players["A"])
+        u, bare, shielded = _world()
+        try:
+            K.PLANET_SCANNER_MODE = "live"
+            choices, prices = _shop(u)
+            assert "planet_scanner" in choices
+            assert prices["planet_scanner"] == 30_000
+            bought = apply_action(u, "A", Action(kind=ActionKind.BUY_EQUIP, args={"item": "planet_scanner", "qty": 1}))
+            assert bought.ok is True
+            assert u.players["A"].credits == 20_000
+            assert u.players["A"].ship.planet_scanner is True
+            again = apply_action(u, "A", Action(kind=ActionKind.BUY_EQUIP, args={"item": "planet_scanner", "qty": 1}))
+            assert again.ok is False
+            seen = _planet_brief(bare, u.players["A"])
+            assert seen["owner_id"] == "B"
+            assert seen["fighters"] == 40
+            assert "fighters" not in _planet_brief(shielded, u.players["A"])
+            u.players["A"].ship.planet_scanner = False
+            assert "fighters" not in _planet_brief(bare, u.players["A"])
+        finally:
+            K.PLANET_SCANNER_MODE = "legacy"
     finally:
-        K.PLANET_SCANNER_MODE = "legacy"
+        K.PLANET_SCANNER_MODE = _prior_planet_scanner_mode

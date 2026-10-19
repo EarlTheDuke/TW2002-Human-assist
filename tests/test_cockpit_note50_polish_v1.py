@@ -79,59 +79,67 @@ def _colonist_line(page, expected: str) -> str:
 
 @pytest.fixture
 def world(tmp_path):
-    sync = pytest.importorskip("playwright.sync_api").sync_playwright
-    pw = sync().start()
-    host = CuHost(tmp_path, TOK, max_days=12)
-    host.__enter__()
-    browser, page = _page(pw, host, TOK, "P2")
-    _your_move(page)
+    _prior_planet_growth_mode = K.PLANET_GROWTH_MODE
     try:
-        yield {"page": page, "universe": host.runner.state.universe, "host": host, "pw": pw}
+        sync = pytest.importorskip("playwright.sync_api").sync_playwright
+        pw = sync().start()
+        host = CuHost(tmp_path, TOK, max_days=12)
+        host.__enter__()
+        browser, page = _page(pw, host, TOK, "P2")
+        _your_move(page)
+        try:
+            yield {"page": page, "universe": host.runner.state.universe, "host": host, "pw": pw}
+        finally:
+            K.PLANET_GROWTH_MODE = "legacy"
+            browser.close()
+            host.__exit__(None, None, None)
+            pw.stop()
     finally:
-        K.PLANET_GROWTH_MODE = "legacy"
-        browser.close()
-        host.__exit__(None, None, None)
-        pw.stop()
+        K.PLANET_GROWTH_MODE = _prior_planet_growth_mode
 
 
 def test_the_half_cap_line_shows_only_when_the_switch_is_on(world):
-    page = world["page"]
-    universe = world["universe"]
-    me = universe.players["P2"]
-    planet = next(iter(universe.planets.values()))
-    old = universe.sectors.get(planet.sector_id)
-    if old is not None and planet.id in getattr(old, "planet_ids", []):
-        old.planet_ids.remove(planet.id)
-    planet.sector_id = int(me.sector_id)
-    planet.owner_id = "P2"
-    planet.class_id = PlanetClass.M
-    planet.fighters = 0
-    planet.shields = 0
-    planet.name = "Phoenix"
-    planet.colonists[Commodity.ORGANICS] = 2500
-    if planet.id not in universe.sectors[me.sector_id].planet_ids:
-        universe.sectors[me.sector_id].planet_ids.append(planet.id)
-    _next(page, world["host"])
-    page.locator("#here button", has_text="Phoenix").click()
-    page.locator("#dangerOk").click()
-    page.wait_for_function(
-        "() => (document.querySelector('#lastResult').textContent || '').toLowerCase().includes('land')",
-        timeout=20_000,
-    )
-    assert page.locator("[data-colonists=trend]").count() == 0
-    from tw2k.engine.observation import build_observation
-    owned = build_observation(universe, "P2").owned_planets
-    assert all("colonists_text" not in row for row in owned)
-    K.PLANET_GROWTH_MODE = "tw2002"
-    _next(page, world["host"])
-    text = _colonist_line(page, "below half the class cap (30,000), about 5% more each day")
-    assert text == "below half the class cap (30,000), about 5% more each day"
-    _shoot(page, "below", "[data-colonists=trend]")
-    planet.colonists[Commodity.ORGANICS] = 20_000
-    _next(page, world["host"])
-    above = _colonist_line(page, "above half the class cap (30,000), about 5% die off each day")
-    assert above == "above half the class cap (30,000), about 5% die off each day"
-    _shoot(page, "above", "[data-colonists=trend]")
+    _prior_planet_growth_mode = K.PLANET_GROWTH_MODE
+    try:
+        page = world["page"]
+        universe = world["universe"]
+        me = universe.players["P2"]
+        planet = next(iter(universe.planets.values()))
+        old = universe.sectors.get(planet.sector_id)
+        if old is not None and planet.id in getattr(old, "planet_ids", []):
+            old.planet_ids.remove(planet.id)
+        planet.sector_id = int(me.sector_id)
+        planet.owner_id = "P2"
+        planet.class_id = PlanetClass.M
+        planet.fighters = 0
+        planet.shields = 0
+        planet.name = "Phoenix"
+        planet.colonists[Commodity.ORGANICS] = 2500
+        if planet.id not in universe.sectors[me.sector_id].planet_ids:
+            universe.sectors[me.sector_id].planet_ids.append(planet.id)
+        _next(page, world["host"])
+        page.locator("#here button", has_text="Phoenix").click()
+        page.locator("#dangerOk").click()
+        page.wait_for_function(
+            "() => (document.querySelector('#lastResult').textContent || '').toLowerCase().includes('land')",
+            timeout=20_000,
+        )
+        assert page.locator("[data-colonists=trend]").count() == 0
+        from tw2k.engine.observation import build_observation
+        owned = build_observation(universe, "P2").owned_planets
+        assert all("colonists_text" not in row for row in owned)
+        K.PLANET_GROWTH_MODE = "tw2002"
+        _next(page, world["host"])
+        text = _colonist_line(page, "below half the class cap (30,000), about 5% more each day")
+        assert text == "below half the class cap (30,000), about 5% more each day"
+        _shoot(page, "below", "[data-colonists=trend]")
+        planet.colonists[Commodity.ORGANICS] = 20_000
+        _next(page, world["host"])
+        above = _colonist_line(page, "above half the class cap (30,000), about 5% die off each day")
+        assert above == "above half the class cap (30,000), about 5% die off each day"
+        _shoot(page, "above", "[data-colonists=trend]")
+    finally:
+        K.PLANET_GROWTH_MODE = _prior_planet_growth_mode
 
 
 def _open_build(page) -> str:
@@ -147,78 +155,82 @@ def _finish_build(universe, planet) -> None:
 
 
 def test_a_citadel_climbs_from_level_1_to_level_3(world):
-    page = world["page"]
-    universe = world["universe"]
-    me = universe.players["P2"]
-    planet = next(iter(universe.planets.values()))
-    old = universe.sectors.get(planet.sector_id)
-    if old is not None and planet.id in getattr(old, "planet_ids", []):
-        old.planet_ids.remove(planet.id)
-    planet.sector_id = int(me.sector_id)
-    planet.owner_id = "P2"
-    planet.class_id = PlanetClass.M
-    planet.name = "Phoenix"
-    planet.fighters = 0
-    planet.shields = 0
-    if planet.id not in universe.sectors[me.sector_id].planet_ids:
-        universe.sectors[me.sector_id].planet_ids.append(planet.id)
-    for mode in ("legacy", "tw2002"):
-        K.PLANET_GROWTH_MODE = mode
-        planet.citadel_level = 1
-        planet.citadel_target = 0
-        planet.citadel_complete_day = None
-        planet.colonists[Commodity.ORGANICS] = 5000
-        for level in (2, 3):
-            cols, fuel, organics, equipment, days = K.citadel_class_cost("M", level)
-            planet.stockpile[Commodity.FUEL_ORE] = 0
-            planet.stockpile[Commodity.ORGANICS] = organics
-            planet.stockpile[Commodity.EQUIPMENT] = equipment
-            if me.planet_landed != planet.id:
+    _prior_planet_growth_mode = K.PLANET_GROWTH_MODE
+    try:
+        page = world["page"]
+        universe = world["universe"]
+        me = universe.players["P2"]
+        planet = next(iter(universe.planets.values()))
+        old = universe.sectors.get(planet.sector_id)
+        if old is not None and planet.id in getattr(old, "planet_ids", []):
+            old.planet_ids.remove(planet.id)
+        planet.sector_id = int(me.sector_id)
+        planet.owner_id = "P2"
+        planet.class_id = PlanetClass.M
+        planet.name = "Phoenix"
+        planet.fighters = 0
+        planet.shields = 0
+        if planet.id not in universe.sectors[me.sector_id].planet_ids:
+            universe.sectors[me.sector_id].planet_ids.append(planet.id)
+        for mode in ("legacy", "tw2002"):
+            K.PLANET_GROWTH_MODE = mode
+            planet.citadel_level = 1
+            planet.citadel_target = 0
+            planet.citadel_complete_day = None
+            planet.colonists[Commodity.ORGANICS] = 5000
+            for level in (2, 3):
+                cols, fuel, organics, equipment, days = K.citadel_class_cost("M", level)
+                planet.stockpile[Commodity.FUEL_ORE] = 0
+                planet.stockpile[Commodity.ORGANICS] = organics
+                planet.stockpile[Commodity.EQUIPMENT] = equipment
+                if me.planet_landed != planet.id:
+                    _next(page, world["host"])
+                    page.locator("#here button", has_text="Phoenix").click()
+                    page.locator("#dangerOk").click()
+                    page.wait_for_function(
+                        "() => (document.querySelector('#lastResult').textContent || '').toLowerCase().includes('land')",
+                        timeout=20_000,
+                    )
+                else:
+                    _next(page, world["host"])
+                short = _open_build(page)
+                assert "Short: fuel ore" in short
+                assert f"{fuel:,}" in short or str(fuel) in short
+                page.locator("#dangerOk").click()
+                assert int(planet.citadel_target or 0) <= int(planet.citadel_level)
+                planet.stockpile[Commodity.FUEL_ORE] = fuel
                 _next(page, world["host"])
-                page.locator("#here button", has_text="Phoenix").click()
+                ready = _open_build(page)
+                assert "Short:" not in ready
+                assert f"{days} day" in ready
+                assert "Ready day" in ready
+                assert f"(have {fuel:,})" in ready or f"(have {fuel})" in ready
+                if level == 2 and mode == "legacy":
+                    _shoot(page, "build", "#menu")
                 page.locator("#dangerOk").click()
                 page.wait_for_function(
-                    "() => (document.querySelector('#lastResult').textContent || '').toLowerCase().includes('land')",
+                    "() => /began|citadel/i.test(document.querySelector('#lastResult').textContent || '')",
                     timeout=20_000,
                 )
-            else:
+                page.wait_for_function(
+                    "() => ((document.querySelector('[data-citadel=level]') || {}).textContent || '').includes('building toward "
+                    + str(level)
+                    + "')",
+                    timeout=20_000,
+                )
+                card = page.locator("[data-citadel=level]").inner_text()
+                assert f"building toward {level}" in card
+                assert "ready day" in card.lower()
+                _finish_build(universe, planet)
                 _next(page, world["host"])
-            short = _open_build(page)
-            assert "Short: fuel ore" in short
-            assert f"{fuel:,}" in short or str(fuel) in short
-            page.locator("#dangerOk").click()
-            assert int(planet.citadel_target or 0) <= int(planet.citadel_level)
-            planet.stockpile[Commodity.FUEL_ORE] = fuel
-            _next(page, world["host"])
-            ready = _open_build(page)
-            assert "Short:" not in ready
-            assert f"{days} day" in ready
-            assert "Ready day" in ready
-            assert f"(have {fuel:,})" in ready or f"(have {fuel})" in ready
-            if level == 2 and mode == "legacy":
-                _shoot(page, "build", "#menu")
-            page.locator("#dangerOk").click()
-            page.wait_for_function(
-                "() => /began|citadel/i.test(document.querySelector('#lastResult').textContent || '')",
-                timeout=20_000,
-            )
-            page.wait_for_function(
-                "() => ((document.querySelector('[data-citadel=level]') || {}).textContent || '').includes('building toward "
-                + str(level)
-                + "')",
-                timeout=20_000,
-            )
-            card = page.locator("[data-citadel=level]").inner_text()
-            assert f"building toward {level}" in card
-            assert "ready day" in card.lower()
-            _finish_build(universe, planet)
-            _next(page, world["host"])
-            done = page.locator("[data-citadel=level]").inner_text()
-            assert f"level {level}" in done
-            perk = page.locator("[data-perk=now]").inner_text()
-            assert ("Combat Control Computer" if level == 2 else "Quasar cannon") in perk
-            if level == 3 and mode == "tw2002":
-                _shoot(page, "citadel", "[data-citadel=level]")
+                done = page.locator("[data-citadel=level]").inner_text()
+                assert f"level {level}" in done
+                perk = page.locator("[data-perk=now]").inner_text()
+                assert ("Combat Control Computer" if level == 2 else "Quasar cannon") in perk
+                if level == 3 and mode == "tw2002":
+                    _shoot(page, "citadel", "[data-citadel=level]")
+    finally:
+        K.PLANET_GROWTH_MODE = _prior_planet_growth_mode
 
 
 def test_two_cockpits_fight_outside_fedspace(tmp_path, monkeypatch):

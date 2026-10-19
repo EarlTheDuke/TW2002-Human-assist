@@ -113,42 +113,66 @@ class CuHost:
         # UI, not the scanner rules (SCANNERS_HIDDEN_INFO.md), so the host runs INFO_MODE legacy.
         import tw2k.engine.constants as K
 
-        self._info_mode, K.INFO_MODE = K.INFO_MODE, "legacy"
-        # free_port reserves the port across processes before uvicorn binds it.
-        self.port = free_port()
-        self.server = self._uvicorn.Server(
-            self._uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning")
-        )
-        self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
-        self.thread.start()
-        deadline = time.time() + 20
-        while time.time() < deadline and not self.server.started:
-            time.sleep(0.05)
-        if not self.server.started:
+        self._info_mode = K.INFO_MODE
+        try:
+            K.INFO_MODE = "legacy"
+            # free_port reserves the port across processes before uvicorn binds it.
+            self.port = free_port()
+            self.server = self._uvicorn.Server(
+                self._uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning")
+            )
+            self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
+            self.thread.start()
+            deadline = time.time() + 20
+            while time.time() < deadline and not self.server.started:
+                time.sleep(0.05)
+            if not self.server.started:
+                raise AssertionError("host did not start")
+            deadline = time.time() + 20
+            # Wait for the park too: a test that reads the seat's port right after
+            # `with CuHost(...)` must see the parking port, not the start sector.
+            while time.time() < deadline and not (self.runner.state.universe is not None and self.parked):
+                time.sleep(0.1)
+            return self
+        except BaseException:
+            if self.server is not None:
+                self.server.should_exit = True
+            if self.thread is not None and self.thread.is_alive():
+                self.thread.join(timeout=15)
+            if self.port:
+                from tests._port_lock import release_ports
+
+                release_ports(self.port)
+                self.port = 0
             K.INFO_MODE = self._info_mode
-        assert self.server.started, "host did not start"
-        deadline = time.time() + 20
-        # Wait for the park too: a test that reads the seat's port right after
-        # `with CuHost(...)` must see the parking port, not the start sector.
-        while time.time() < deadline and not (self.runner.state.universe is not None and self.parked):
-            time.sleep(0.1)
-        return self
+            raise
 
     def __exit__(self, *exc) -> None:
-        self.server.should_exit = True
-        self.thread.join(timeout=15)
-        if self.port:
-            from tests._port_lock import release_ports
-
-            release_ports(self.port)
-        from tw2k.media.custom_queue import current
-
-        running = current()
-        if running is not None:
-            running.stop()
         import tw2k.engine.constants as K
 
-        K.INFO_MODE = self._info_mode
+        try:
+            if self.server is not None:
+                self.server.should_exit = True
+            if self.thread is not None:
+                self.thread.join(timeout=15)
+            if self.port:
+                from tests._port_lock import release_ports
+
+                release_ports(self.port)
+            from tw2k.media.custom_queue import current
+
+            running = current()
+            if running is not None:
+                running.stop()
+        finally:
+            # The match writes the day length onto the module global. Put it back even when
+            # the server thread is still winding down, and do not let that thread write it again.
+            saved_day = getattr(self.runner, "_saved_day_seconds", None)
+            if saved_day is not None:
+                K.TURN_REGEN_DAY_SECONDS = saved_day
+                self.runner._saved_day_seconds = None
+            if hasattr(self, "_info_mode"):
+                K.INFO_MODE = self._info_mode
 
     @property
     def base(self) -> str:

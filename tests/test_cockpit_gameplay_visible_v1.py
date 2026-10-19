@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import tw2k.engine.constants as K
 from tw2k.engine.models import Commodity, MineDeployment, MineType
 
 from tests._cu_host import CuHost
@@ -38,41 +39,43 @@ def _shoot(page, stem: str, selector: str) -> None:
 
 @pytest.fixture(scope="module")
 def page(tmp_path_factory):
-    sync = pytest.importorskip("playwright.sync_api").sync_playwright
-    pw = sync().start()
-    host = CuHost(tmp_path_factory.mktemp("visible"), TOK)
-    host.__enter__()
-    import tw2k.engine.constants as K
-
-    K.INFO_MODE = "tw2002"
-    universe = host.runner.state.universe
-    me = universe.players["P2"]
-    sector = universe.sectors[me.sector_id]
-    sector.mines.append(MineDeployment(owner_id="P2", kind=MineType.ARMID, count=5))
-    sector.beacon = "Danger, Ferrengi"
-    dest = int(sector.warps[0])
-    me.known_warps[dest] = []
-    ship = me.ship
-    ship.mines[MineType.ATOMIC] = 1
-    ship.ether_probes = 3
-    ship.genesis = 2
-    ship.photon_missiles = 1
-    ship.corbomite = 4
-    ship.marker_beacons = 2
-    ship.psychic_probe = 1
-    ship.scanner = "holo"
-    ship.cargo[Commodity.FUEL_ORE] = 10
-    ship.cargo_cost[Commodity.FUEL_ORE] = 26.0
-    me.experience = 1500
-    me.inbox.append({"from": "P1", "kind": "hail", "message": "Meet me at StarDock", "day": 1})
-    browser, opened = _page(pw, host)
-    opened.code = sector.port.code
+    _prior_info_mode = K.INFO_MODE
     try:
-        yield opened
+        sync = pytest.importorskip("playwright.sync_api").sync_playwright
+        pw = sync().start()
+        host = CuHost(tmp_path_factory.mktemp("visible"), TOK)
+        host.__enter__()
+        K.INFO_MODE = "tw2002"
+        universe = host.runner.state.universe
+        me = universe.players["P2"]
+        sector = universe.sectors[me.sector_id]
+        sector.mines.append(MineDeployment(owner_id="P2", kind=MineType.ARMID, count=5))
+        sector.beacon = "Danger, Ferrengi"
+        dest = int(sector.warps[0])
+        me.known_warps[dest] = []
+        ship = me.ship
+        ship.mines[MineType.ATOMIC] = 1
+        ship.ether_probes = 3
+        ship.genesis = 2
+        ship.photon_missiles = 1
+        ship.corbomite = 4
+        ship.marker_beacons = 2
+        ship.psychic_probe = 1
+        ship.scanner = "holo"
+        ship.cargo[Commodity.FUEL_ORE] = 10
+        ship.cargo_cost[Commodity.FUEL_ORE] = 26.0
+        me.experience = 1500
+        me.inbox.append({"from": "P1", "kind": "hail", "message": "Meet me at StarDock", "day": 1})
+        browser, opened = _page(pw, host)
+        opened.code = sector.port.code
+        try:
+            yield opened
+        finally:
+            browser.close()
+            host.__exit__(None, None, None)
+            pw.stop()
     finally:
-        browser.close()
-        host.__exit__(None, None, None)
-        pw.stop()
+        K.INFO_MODE = _prior_info_mode
 
 
 def test_carried_gear_shows_on_the_ship_and_zeros_on_ship_info(page) -> None:

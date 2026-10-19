@@ -690,18 +690,22 @@ def test_bot_action_passes_the_seat_validator():
 # ---- legacy ---------------------------------------------------------------------------------------------
 
 def test_legacy_mode_has_no_verb_key_event_or_prompt():
-    K.PLANET_TRADE_MODE = "legacy"
-    u, sid, a, pl = _lab()
-    assert "planet_trade" not in {x.kind for x in legal_actions(u, "A")}
-    obs = build_observation(u, "A").model_dump(mode="json")
-    assert "planet_trade_available" not in obs["sector"]["port"]
-    assert "planet_trade" not in json.dumps(obs["legal_actions"])
-    res = _pt(u, planet_id=900, commodity="organics", qty=100)
-    assert not res.ok and "unsupported" in res.error and pl.stockpile[ORG] == 3_000 and a.credits == 10_000
-    assert not [e for e in u.events if e.kind == EventKind.PLANET_TRADE]
-    assert "PLANETARY TRADE" not in get_system_prompt()
-    a.alive = False
-    assert "planet_trade" not in {x.kind for x in legal_actions(u, "A")}
+    _prior_planet_trade_mode = K.PLANET_TRADE_MODE
+    try:
+        K.PLANET_TRADE_MODE = "legacy"
+        u, sid, a, pl = _lab()
+        assert "planet_trade" not in {x.kind for x in legal_actions(u, "A")}
+        obs = build_observation(u, "A").model_dump(mode="json")
+        assert "planet_trade_available" not in obs["sector"]["port"]
+        assert "planet_trade" not in json.dumps(obs["legal_actions"])
+        res = _pt(u, planet_id=900, commodity="organics", qty=100)
+        assert not res.ok and "unsupported" in res.error and pl.stockpile[ORG] == 3_000 and a.credits == 10_000
+        assert not [e for e in u.events if e.kind == EventKind.PLANET_TRADE]
+        assert "PLANETARY TRADE" not in get_system_prompt()
+        a.alive = False
+        assert "planet_trade" not in {x.kind for x in legal_actions(u, "A")}
+    finally:
+        K.PLANET_TRADE_MODE = _prior_planet_trade_mode
 
 
 def test_prompt_paragraph_only_under_tw2002():

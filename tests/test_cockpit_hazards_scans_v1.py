@@ -93,24 +93,32 @@ def _install():
 
     @pytest.fixture(scope="module")
     def world(tmp_path_factory):
-        sync = pytest.importorskip("playwright.sync_api").sync_playwright
-        pw = sync().start()
-        host = CuHost(tmp_path_factory.mktemp("hazards"), TOK)
-        host.__enter__()
-        K.INFO_MODE = "tw2002"
-        universe = host.runner.state.universe
-        me = universe.players["P2"]
-        me.ship.scanner = "holo"
-        me.ship.shields = 400
-        browser, page = _page(pw, host)
+        _prior_info_mode = K.INFO_MODE
+        _prior_planet_landing_combat_mode = K.PLANET_LANDING_COMBAT_MODE
+        _prior_offensive_clash_mode = K.OFFENSIVE_CLASH_MODE
         try:
-            yield {"page": page, "universe": universe, "host": host}
+            sync = pytest.importorskip("playwright.sync_api").sync_playwright
+            pw = sync().start()
+            host = CuHost(tmp_path_factory.mktemp("hazards"), TOK)
+            host.__enter__()
+            K.INFO_MODE = "tw2002"
+            universe = host.runner.state.universe
+            me = universe.players["P2"]
+            me.ship.scanner = "holo"
+            me.ship.shields = 400
+            browser, page = _page(pw, host)
+            try:
+                yield {"page": page, "universe": universe, "host": host}
+            finally:
+                K.PLANET_LANDING_COMBAT_MODE = "legacy"
+                K.OFFENSIVE_CLASH_MODE = "legacy"
+                browser.close()
+                host.__exit__(None, None, None)
+                pw.stop()
         finally:
-            K.PLANET_LANDING_COMBAT_MODE = "legacy"
-            K.OFFENSIVE_CLASH_MODE = "legacy"
-            browser.close()
-            host.__exit__(None, None, None)
-            pw.stop()
+            K.INFO_MODE = _prior_info_mode
+            K.PLANET_LANDING_COMBAT_MODE = _prior_planet_landing_combat_mode
+            K.OFFENSIVE_CLASH_MODE = _prior_offensive_clash_mode
 
     return world
 
@@ -119,45 +127,49 @@ world = _install()
 
 
 def test_landing_names_the_holder_before_it_posts(world):
-    page = world["page"]
-    universe = world["universe"]
-    me = universe.players["P2"]
-    planet = next(iter(universe.planets.values()))
+    _prior_planet_landing_combat_mode = K.PLANET_LANDING_COMBAT_MODE
+    try:
+        page = world["page"]
+        universe = world["universe"]
+        me = universe.players["P2"]
+        planet = next(iter(universe.planets.values()))
 
-    def plant():
-        _move_planet(universe, planet, me.sector_id)
-        planet.owner_id = "P1"
-        planet.citadel_level = 1
-        planet.fighters = 300
-        planet.shields = 40
-        planet.name = "Held Rock"
-        _sit(universe, "P1", me.sector_id)
+        def plant():
+            _move_planet(universe, planet, me.sector_id)
+            planet.owner_id = "P1"
+            planet.citadel_level = 1
+            planet.fighters = 300
+            planet.shields = 40
+            planet.name = "Held Rock"
+            _sit(universe, "P1", me.sector_id)
 
-    _next(page, plant)
-    page.locator("#here button", has_text="Land on").click()
-    page.wait_for_selector("#menu", timeout=10_000)
-    text = page.locator("#menu").inner_text()
-    assert "HBot holds this planet" in text
-    assert "not on this scan" in text
-    _shoot(page, "land", "#menu")
-    page.keyboard.press("Escape")
-    page.keyboard.press("A")
-    page.wait_for_selector(".frm", timeout=10_000)
-    options = page.locator(".frm option").evaluate_all("els => els.map(el => el.textContent)")
-    assert not any("Held Rock" in (row or "") for row in options)
-    page.keyboard.press("Escape")
-    K.PLANET_LANDING_COMBAT_MODE = "tw2002"
-    _next(page)
-    page.locator("#here button", has_text="Land on").click()
-    page.wait_for_selector("#menu")
-    armed = page.locator("#menu").inner_text()
-    assert "Fighters 300" in armed
-    assert "shields 40" in armed
-    _shoot(page, "land-armed", "#menu")
-    page.keyboard.press("Escape")
-    assert _planet_fighters_defend(planet) is True
-    K.PLANET_LANDING_COMBAT_MODE = "legacy"
-    assert _planet_fighters_defend(planet) is False
+        _next(page, plant)
+        page.locator("#here button", has_text="Land on").click()
+        page.wait_for_selector("#menu", timeout=10_000)
+        text = page.locator("#menu").inner_text()
+        assert "HBot holds this planet" in text
+        assert "not on this scan" in text
+        _shoot(page, "land", "#menu")
+        page.keyboard.press("Escape")
+        page.keyboard.press("A")
+        page.wait_for_selector(".frm", timeout=10_000)
+        options = page.locator(".frm option").evaluate_all("els => els.map(el => el.textContent)")
+        assert not any("Held Rock" in (row or "") for row in options)
+        page.keyboard.press("Escape")
+        K.PLANET_LANDING_COMBAT_MODE = "tw2002"
+        _next(page)
+        page.locator("#here button", has_text="Land on").click()
+        page.wait_for_selector("#menu")
+        armed = page.locator("#menu").inner_text()
+        assert "Fighters 300" in armed
+        assert "shields 40" in armed
+        _shoot(page, "land-armed", "#menu")
+        page.keyboard.press("Escape")
+        assert _planet_fighters_defend(planet) is True
+        K.PLANET_LANDING_COMBAT_MODE = "legacy"
+        assert _planet_fighters_defend(planet) is False
+    finally:
+        K.PLANET_LANDING_COMBAT_MODE = _prior_planet_landing_combat_mode
 
 
 def test_density_scan_lists_each_neighbour(world):
@@ -228,42 +240,48 @@ def test_fighters_and_mines_name_the_trader(world):
 
 
 def test_offensive_clash_stays_on_todays_path(world):
-    from tw2k.engine.combat import _resolve_fighter_sector_combat
+    _prior_offensive_clash_mode = K.OFFENSIVE_CLASH_MODE
+    _prior_owner_hazard_notice_mode = K.OWNER_HAZARD_NOTICE_MODE
+    try:
+        from tw2k.engine.combat import _resolve_fighter_sector_combat
 
-    universe = world["universe"]
-    me = universe.players["P2"]
-    sector = universe.sectors[me.sector_id]
-    saved_fighters = sector.fighters
-    saved_shields = int(me.ship.shields)
-    saved_count = int(me.ship.fighters)
-    me.ship.shields = 50
-    me.ship.fighters = 20
-    sector.fighters = FighterDeployment(owner_id="P1", count=5, mode=FighterMode.OFFENSIVE)
-    K.OFFENSIVE_CLASH_MODE = "legacy"
-    _resolve_fighter_sector_combat(universe, "P2", me.sector_id)
-    assert int(me.ship.shields) == 50
-    me.ship.shields = 50
-    me.ship.fighters = 20
-    sector.fighters = FighterDeployment(owner_id="P1", count=5, mode=FighterMode.OFFENSIVE)
-    K.OFFENSIVE_CLASH_MODE = "tw2002"
-    _resolve_fighter_sector_combat(universe, "P2", me.sector_id)
-    assert int(me.ship.shields) < 50
-    K.OFFENSIVE_CLASH_MODE = "legacy"
-    from tw2k.engine.observation import _event_visible_base
+        universe = world["universe"]
+        me = universe.players["P2"]
+        sector = universe.sectors[me.sector_id]
+        saved_fighters = sector.fighters
+        saved_shields = int(me.ship.shields)
+        saved_count = int(me.ship.fighters)
+        me.ship.shields = 50
+        me.ship.fighters = 20
+        sector.fighters = FighterDeployment(owner_id="P1", count=5, mode=FighterMode.OFFENSIVE)
+        K.OFFENSIVE_CLASH_MODE = "legacy"
+        _resolve_fighter_sector_combat(universe, "P2", me.sector_id)
+        assert int(me.ship.shields) == 50
+        me.ship.shields = 50
+        me.ship.fighters = 20
+        sector.fighters = FighterDeployment(owner_id="P1", count=5, mode=FighterMode.OFFENSIVE)
+        K.OFFENSIVE_CLASH_MODE = "tw2002"
+        _resolve_fighter_sector_combat(universe, "P2", me.sector_id)
+        assert int(me.ship.shields) < 50
+        K.OFFENSIVE_CLASH_MODE = "legacy"
+        from tw2k.engine.observation import _event_visible_base
 
-    notice = next(ev for ev in reversed(universe.events) if ev.payload.get("defender_owner") == "P1")
-    saved_payload = dict(notice.payload)
-    notice.payload["_witnesses"] = []
-    notice.payload.pop("victim", None)
-    assert _event_visible_base(notice, "P1", universe) is False
-    K.OWNER_HAZARD_NOTICE_MODE = "tw2002"
-    assert _event_visible_base(notice, "P1", universe) is True
-    K.OWNER_HAZARD_NOTICE_MODE = "legacy"
-    notice.payload.clear()
-    notice.payload.update(saved_payload)
-    sector.fighters = saved_fighters
-    me.ship.shields = saved_shields
-    me.ship.fighters = saved_count
+        notice = next(ev for ev in reversed(universe.events) if ev.payload.get("defender_owner") == "P1")
+        saved_payload = dict(notice.payload)
+        notice.payload["_witnesses"] = []
+        notice.payload.pop("victim", None)
+        assert _event_visible_base(notice, "P1", universe) is False
+        K.OWNER_HAZARD_NOTICE_MODE = "tw2002"
+        assert _event_visible_base(notice, "P1", universe) is True
+        K.OWNER_HAZARD_NOTICE_MODE = "legacy"
+        notice.payload.clear()
+        notice.payload.update(saved_payload)
+        sector.fighters = saved_fighters
+        me.ship.shields = saved_shields
+        me.ship.fighters = saved_count
+    finally:
+        K.OFFENSIVE_CLASH_MODE = _prior_offensive_clash_mode
+        K.OWNER_HAZARD_NOTICE_MODE = _prior_owner_hazard_notice_mode
 
 
 def test_citadel_form_shows_the_cost_before_confirm(world):

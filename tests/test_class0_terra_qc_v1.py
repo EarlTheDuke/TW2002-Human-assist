@@ -223,22 +223,26 @@ def test_extern_sweep_event_order_is_deterministic(tw) -> None:
 
 def test_legacy_universe_matches_class0_free_generation(legacy) -> None:
     """Legacy generation: no AC/Rylos, no MSL, no Terra; tw2002 moves only the two special sectors."""
-    u_leg = generate_universe(GameConfig(seed=4242, universe_size=400, enable_planets=True))
-    assert u_leg.class0_sectors == {} and u_leg.msl_sectors == [] and u_leg.terra_colonists is None
-    K.CLASS0_MODE = "tw2002"
+    _prior_class0_mode = K.CLASS0_MODE
     try:
-        u_tw = generate_universe(GameConfig(seed=4242, universe_size=400, enable_planets=True))
+        u_leg = generate_universe(GameConfig(seed=4242, universe_size=400, enable_planets=True))
+        assert u_leg.class0_sectors == {} and u_leg.msl_sectors == [] and u_leg.terra_colonists is None
+        try:
+            K.CLASS0_MODE = "tw2002"
+            u_tw = generate_universe(GameConfig(seed=4242, universe_size=400, enable_planets=True))
+        finally:
+            K.CLASS0_MODE = "legacy"
+        specials = set(u_tw.class0_sectors.values())
+        assert len(specials) == 2
+        for sid, s in u_leg.sectors.items():
+            t = u_tw.sectors[sid]
+            assert s.warps == t.warps
+            assert s.planet_ids == t.planet_ids
+            if sid not in specials:
+                assert (s.port.model_dump() if s.port else None) == (t.port.model_dump() if t.port else None), sid
+        assert u_leg.rng.random() == u_tw.rng.random()
     finally:
-        K.CLASS0_MODE = "legacy"
-    specials = set(u_tw.class0_sectors.values())
-    assert len(specials) == 2
-    for sid, s in u_leg.sectors.items():
-        t = u_tw.sectors[sid]
-        assert s.warps == t.warps
-        assert s.planet_ids == t.planet_ids
-        if sid not in specials:
-            assert (s.port.model_dump() if s.port else None) == (t.port.model_dump() if t.port else None), sid
-    assert u_leg.rng.random() == u_tw.rng.random()
+        K.CLASS0_MODE = _prior_class0_mode
 
 
 def test_plant_seat_brain_buys_defence_at_class0(tw) -> None:

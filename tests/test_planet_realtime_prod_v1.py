@@ -65,17 +65,21 @@ def test_default_is_midnight_only_and_the_clock_is_not_saved():
 
 
 def test_live_slice_pays_nine_and_the_day_tick_pays_the_rest_once():
-    K.PLANET_REALTIME_PROD_MODE = "live"
+    _prior_planet_realtime_prod_mode = K.PLANET_REALTIME_PROD_MODE
     try:
-        planet = _home()
-        planet.prod_clock_at = 0.0
-        refresh_planet_production(_Bag(planet), now=SLICE_S)
-        assert _fuel(planet) == 9
-        _close_realtime_production(_Bag(planet), now=SLICE_S)
-        assert _fuel(planet) == 30
-        assert planet.prod_clock_at is None
-        assert planet.prod_paid_s == 0
-        assert planet.prod_remain == {}
-        assert "prod_clock_at" not in planet.model_dump()
+        try:
+            K.PLANET_REALTIME_PROD_MODE = "live"
+            planet = _home()
+            planet.prod_clock_at = 0.0
+            refresh_planet_production(_Bag(planet), now=SLICE_S)
+            assert _fuel(planet) == 9
+            _close_realtime_production(_Bag(planet), now=SLICE_S)
+            assert _fuel(planet) == 30
+            assert planet.prod_clock_at is None
+            assert planet.prod_paid_s == 0
+            assert planet.prod_remain == {}
+            assert "prod_clock_at" not in planet.model_dump()
+        finally:
+            K.PLANET_REALTIME_PROD_MODE = "legacy"
     finally:
-        K.PLANET_REALTIME_PROD_MODE = "legacy"
+        K.PLANET_REALTIME_PROD_MODE = _prior_planet_realtime_prod_mode

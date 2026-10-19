@@ -48,25 +48,33 @@ def test_default_stays_legacy() -> None:
 
 
 def test_live_keeps_the_goods_while_the_level_builds() -> None:
-    prior = K.PLANET_NW_MODE
-    K.PLANET_NW_MODE = "live"
+    _prior_planet_nw_mode = K.PLANET_NW_MODE
     try:
-        before = _planet_asset_value(_planet(building=False, done=False))
-        during = _planet_asset_value(_planet(building=True, done=False))
-        done = _planet_asset_value(_planet(building=False, done=True))
-        extra = _planet_asset_value(_planet(building=True, done=False, extra_fuel=10))
+        prior = K.PLANET_NW_MODE
+        try:
+            K.PLANET_NW_MODE = "live"
+            before = _planet_asset_value(_planet(building=False, done=False))
+            during = _planet_asset_value(_planet(building=True, done=False))
+            done = _planet_asset_value(_planet(building=False, done=True))
+            extra = _planet_asset_value(_planet(building=True, done=False, extra_fuel=10))
+        finally:
+            K.PLANET_NW_MODE = prior
+        assert during == before
+        assert done == before
+        assert extra - during == 10 * K.COMMODITY_BASE_PRICE["fuel_ore"]
     finally:
-        K.PLANET_NW_MODE = prior
-    assert during == before
-    assert done == before
-    assert extra - during == 10 * K.COMMODITY_BASE_PRICE["fuel_ore"]
+        K.PLANET_NW_MODE = _prior_planet_nw_mode
 
 
 def test_live_does_not_change_the_growth_tax() -> None:
-    prior = K.PLANET_NW_MODE
-    K.PLANET_NW_MODE = "live"
+    _prior_planet_nw_mode = K.PLANET_NW_MODE
     try:
-        legacy_basis = planet_tax_value(_planet(building=True, done=False))
+        prior = K.PLANET_NW_MODE
+        try:
+            K.PLANET_NW_MODE = "live"
+            legacy_basis = planet_tax_value(_planet(building=True, done=False))
+        finally:
+            K.PLANET_NW_MODE = prior
+        assert planet_tax_value(_planet(building=True, done=False)) == legacy_basis
     finally:
-        K.PLANET_NW_MODE = prior
-    assert planet_tax_value(_planet(building=True, done=False)) == legacy_basis
+        K.PLANET_NW_MODE = _prior_planet_nw_mode
