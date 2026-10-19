@@ -1552,6 +1552,18 @@ PLANET_MAX_COLONISTS = {
     "H": 100_000,
     "U": 3_000,
 }
+# EIS CompDisplays.html Planetary Specs: J lists planet types, not one world.
+# Names from TWFAQ_20PLANET.txt, except H, which S1_planet_handbook_v1.01.html
+# calls Volcanic (line 772).
+PLANET_CLASS_NAMES = {
+    "M": "Earth",
+    "K": "Desert",
+    "L": "Mountainous",
+    "O": "Oceanic",
+    "C": "Glacial",
+    "H": "Volcanic",
+    "U": "Gaseous",
+}
 PLANET_MAX_STOCK = {
     "M": {"fuel_ore": 100_000, "organics": 100_000, "equipment": 100_000},
     "K": {"fuel_ore": 200_000, "organics": 50_000, "equipment": 10_000},
@@ -5040,11 +5052,16 @@ def class0_hold_formula_live() -> bool:
 
 
 # v311-exp-alignment-trade-gaps-v1 (NOTE 87) TRD-q, row 110.
-# +1 for a good haggle and +2 for a great one. REPORT2 s3 and s7 are not in
-# this repo. Cabal haggling.html does not print the split. The amounts are
-# the NOTE's reading of REPORT2. Which counter is great is UNVERIFIED: see
-# economy.haggle_experience. DISCOVERY_EXP_MODE stays the first-dock award.
-# Stored default stays legacy (the credit gap, capped at PORT_HAGGLE_XP_CAP).
+# +1 for a good haggle and +2 for a great one. UNVERIFIED, searched:
+# docs/reference/tw2002/eis_tw2002_v3_docs/HardwareMenu.html lines 240-241
+# ("a good deal... The better the deal, the more points"), S2_cabal_formulas.html
+# (no haggle-xp table), S7_softdocs_slice-10.txt ("haggle for 2 points", a
+# player method, not a split), and Eugene Hung's player tips (exact best
+# price pays 5). None of those is REPORT2 s3/s7, and the 5 disagrees with
+# the +1/+2 reading, so the amounts stay. Which counter is great stays the
+# hidden bound: see economy.haggle_experience. DISCOVERY_EXP_MODE stays the
+# first-dock award. Stored default stays legacy (the credit gap, capped at
+# PORT_HAGGLE_XP_CAP).
 HAGGLE_EXP_MODE = "legacy"  # "legacy" | "live"
 HAGGLE_EXP_GOOD = 1
 HAGGLE_EXP_GREAT = 2
@@ -5056,9 +5073,11 @@ def haggle_exp_live() -> bool:
 
 
 # v311-exp-alignment-trade-gaps-v1 (NOTE 87) SD-n, row 112.
-# EIS ShipyardMenu, Change Ship Registration: "a hefty fee" and a new name.
-# The page prints no price. GAP 3.17 says about 5,000 in a sample TEDIT.
-# SHIP_RENAME_COST and the name length are UNVERIFIED.
+# EIS ShipyardMenu.html lines 104-112: "a hefty fee" and a new name. The page
+# prints no price, no length, and no turn cost. UNVERIFIED, searched: that
+# page, the TW2002 Bible ship-name paragraph (no fee), and GAP 3.17 (about
+# 5,000 in a sample TEDIT). The fee stays 5,000, the name stays 30 characters,
+# and the action spends 0 turns (class0.handle_ship_rename).
 SHIP_RENAME_MODE = "legacy"  # "legacy" | "live"
 SHIP_RENAME_COST = 5_000  # UNVERIFIED (GAP 3.17 sample TEDIT; EIS prints no number)
 SHIP_RENAME_NAME_MAX = 30  # UNVERIFIED (EIS ShipyardMenu prints no length)
