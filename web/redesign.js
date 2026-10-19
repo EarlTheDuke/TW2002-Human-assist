@@ -529,20 +529,493 @@
     }
     return g;
   }
+  /* ship3d-start */
+  // cockpit-ship-view-3d-v2. Shaded meshes drawn in the page, not a trace of the
+  // Markham ANSI or the EIS prints. The classic outline of each hull is UNVERIFIED.
+  // Layered SVG keeps the ship view under the 300 KB budget and shares this mesh
+  // with the warp scene. No WebGL (the probe below fails) falls back to the NOTE 77 outline.
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const LOFT = {
+    escape_pod: [[30, 12, 14], [8, 16, 18], [-8, 14, 16], [-28, 9, 11]],
+    merchant_cruiser: [[72, 8, 11], [24, 12, 16], [-16, 11, 15], [-58, 7, 10]],
+    scout_marauder: [[86, 4.2, 5], [36, 5.4, 6.2], [-8, 5.6, 6.6], [-62, 3.6, 4.4]],
+    missile_frigate: [[76, 6, 9], [24, 10, 13], [-20, 9, 12], [-64, 6, 8]],
+    battleship: [[64, 9, 26], [10, 13, 34], [-28, 11, 22], [-60, 8, 14]],
+    corporate_flagship: [[72, 11, 16], [18, 16, 24], [-22, 15, 22], [-66, 10, 15]],
+    colonial_transport: [[38, 18, 26], [4, 22, 32], [-30, 20, 30], [-60, 14, 22]],
+    cargotran: [[46, 15, 22], [2, 18, 26], [-36, 17, 25], [-74, 12, 18]],
+    merchant_freighter: [[34, 22, 34], [4, 28, 42], [-22, 26, 40], [-46, 18, 30]],
+    imperial_starship: [[90, 14, 20], [28, 20, 28], [-16, 18, 26], [-80, 12, 18]],
+    havoc_gunstar: [[62, 9, 16], [14, 13, 22], [-22, 12, 18], [-54, 9, 13]],
+    star_master: [[62, 7, 10], [16, 11, 15], [-18, 10, 14], [-52, 7, 10]],
+    constellation: [[66, 8, 16], [14, 12, 22], [-26, 11, 18], [-62, 8, 12]],
+    tkhasi_orion: [[78, 4, 6], [22, 7, 10], [-14, 8, 11], [-56, 5, 7]],
+    tholian_sentinel: [[30, 16, 32], [0, 20, 40], [-24, 16, 30], [-46, 11, 18]],
+    taurean_mule: [[34, 18, 24], [-2, 22, 30], [-30, 20, 28], [-62, 15, 22]],
+    interdictor_cruiser: [[48, 16, 24], [8, 20, 30], [-26, 19, 28], [-66, 14, 20]],
+  };
+  let shipGlKnown = null;
+  let shipForceOutline = false;
+  const shipScene = {
+    key: "", mode: "", motion: "drift", fit: 1, hold: false, raf: 0,
+    faces: [], polys: [], marks: [], shield: null,
+    userYaw: null, userPitch: null, spin: 0, lastT: null, dragging: false, orbit: 0.85,
+  };
+  function shipSolidOn() {
+    if (shipForceOutline) return false;
+    if (shipGlKnown != null) return shipGlKnown;
+    try {
+      const canvas = document.createElement("canvas");
+      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      shipGlKnown = !!gl;
+      if (gl) {
+        const lose = gl.getExtension("WEBGL_lose_context");
+        if (lose) lose.loseContext();
+      }
+    } catch (err) {
+      shipGlKnown = false;
+    }
+    return shipGlKnown;
+  }
+  function shipMotion() {
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const phone = window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
+    if (reduce) return "still";
+    if (phone) return "static";
+    return "drift";
+  }
+  function mixRgb(a, b, t) {
+    return a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  }
+  function parseHex(hex) {
+    const raw = String(hex || "#7aa2ff").replace("#", "");
+    const full = raw.length === 3 ? raw.replace(/./g, (ch) => ch + ch) : raw;
+    const n = parseInt(full, 16);
+    const rgb = Number.isFinite(n) ? n : 0x7aa2ff;
+    return [(rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255];
+  }
+  function vsub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function vdot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function vcross(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  }
+  function vlen(a) { return Math.hypot(a[0], a[1], a[2]); }
+  function vnorm(a) {
+    const len = vlen(a) || 1;
+    return [a[0] / len, a[1] / len, a[2] / len];
+  }
+  function rotPoint(p, yaw, pitch) {
+    const cy = Math.cos(yaw);
+    const sy = Math.sin(yaw);
+    const x1 = p[0] * cy + p[2] * sy;
+    const z1 = -p[0] * sy + p[2] * cy;
+    const cp = Math.cos(pitch);
+    const sp = Math.sin(pitch);
+    return [x1, p[1] * cp - z1 * sp, p[1] * sp + z1 * cp];
+  }
+  function pushFace(faces, pts, rgb, opacity, emissive, ref) {
+    const e1 = vsub(pts[1], pts[0]);
+    const e2 = vsub(pts[2], pts[0]);
+    const raw = vcross(e1, e2);
+    if (vlen(raw) < 0.08) return;
+    const mid = [0, 0, 0];
+    pts.forEach((p) => { mid[0] += p[0]; mid[1] += p[1]; mid[2] += p[2]; });
+    mid[0] /= pts.length;
+    mid[1] /= pts.length;
+    mid[2] /= pts.length;
+    const origin = ref || [0, mid[1], mid[2]];
+    const ordered = vdot(raw, vsub(mid, origin)) < 0 ? pts.slice().reverse() : pts.slice();
+    faces.push({ pts: ordered, rgb: rgb, opacity: opacity == null ? 1 : opacity, emissive: !!emissive });
+  }
+  function octagon(x, sy, sz, dy, dz) {
+    const pts = [];
+    for (let i = 0; i < 8; i++) {
+      const t = (i + 0.5) * Math.PI / 4;
+      pts.push([x, dy + Math.cos(t) * sy, dz + Math.sin(t) * sz]);
+    }
+    return pts;
+  }
+  function loftAt(faces, sections, dy, dz, rgb, opacity, emissive) {
+    const rings = sections.map((s) => octagon(s[0], s[1], s[2], dy, dz));
+    for (let i = 0; i < rings.length - 1; i++) {
+      const a = rings[i];
+      const b = rings[i + 1];
+      const cx = (sections[i][0] + sections[i + 1][0]) / 2;
+      for (let k = 0; k < 8; k++) {
+        const k2 = (k + 1) % 8;
+        pushFace(faces, [a[k], a[k2], b[k2], b[k]], rgb, opacity, emissive, [cx, dy, dz]);
+      }
+    }
+    pushFace(faces, rings[0], rgb, opacity, emissive, [sections[0][0] - 4, dy, dz]);
+    const last = sections.length - 1;
+    pushFace(faces, rings[last], rgb, opacity, emissive, [sections[last][0] + 4, dy, dz]);
+  }
+  function boxAt(faces, x, y, z, sx, sy, sz, rgb, opacity, emissive) {
+    const hx = sx / 2;
+    const hy = sy / 2;
+    const hz = sz / 2;
+    const p = [
+      [x - hx, y - hy, z - hz], [x + hx, y - hy, z - hz], [x + hx, y + hy, z - hz], [x - hx, y + hy, z - hz],
+      [x - hx, y - hy, z + hz], [x + hx, y - hy, z + hz], [x + hx, y + hy, z + hz], [x - hx, y + hy, z + hz],
+    ];
+    [[0, 1, 2, 3], [4, 7, 6, 5], [0, 4, 5, 1], [2, 6, 7, 3], [0, 3, 7, 4], [1, 5, 6, 2]].forEach((quad) => {
+      pushFace(faces, quad.map((i) => p[i]), rgb, opacity, emissive, [x, y, z]);
+    });
+  }
+  function buildHullFaces(sh, def) {
+    const sections = LOFT[sh.class] || LOFT.merchant_cruiser;
+    const accent = parseHex(def.accent || "#7aa2ff");
+    const hull = mixRgb([18, 28, 52], accent, 0.62);
+    const metal = mixRgb([32, 42, 64], accent, 0.4);
+    const glass = mixRgb([220, 248, 255], accent, 0.22);
+    const tw = !!(sh.transwarp && sh.transwarp.fitted);
+    const glow = tw ? [255, 110, 255] : [190, 255, 255];
+    const faces = [];
+    loftAt(faces, sections, 0, 0, hull, 1, false);
+    const nose = sections[0];
+    const mid = sections[1];
+    const tail = sections[sections.length - 1];
+    const detail = new Set(String(def.detail || "").split(" ").filter(Boolean));
+    if (detail.has("bridge")) {
+      loftAt(faces, [
+        [mid[0] + 12, 2.6, 3.4],
+        [mid[0], 3.8, 4.6],
+        [mid[0] - 14, 2.2, 2.8],
+      ], mid[1] + 1.2, 0, glass, 1, false);
+    }
+    if (detail.has("pods")) {
+      const z = mid[2] + 8;
+      [-1, 1].forEach((sign) => {
+        loftAt(faces, [
+          [mid[0] + 16, 7, 7],
+          [mid[0] - 12, 8.5, 8.5],
+          [tail[0] + 8, 5.5, 5.5],
+        ], -6, sign * z, metal, 1, false);
+      });
+    }
+    if (detail.has("wings")) {
+      [-1, 1].forEach((sign) => {
+        loftAt(faces, [
+          [mid[0] + 8, 1.1, 16],
+          [tail[0] + 16, 0.7, 4],
+        ], 0, sign * (mid[2] + 1), metal, 1, false);
+      });
+    }
+    if (detail.has("nacelles")) {
+      [-1, 1].forEach((sign) => {
+        loftAt(faces, [
+          [mid[0] - 4, 2.5, 2.5],
+          [tail[0] - 2, 3.2, 3.2],
+          [tail[0] - 24, 2, 2],
+        ], -mid[1] * 0.4, sign * (mid[2] + 6), accent, 1, false);
+      });
+      if ((def.engines || 1) >= 4) {
+        [-1, 1].forEach((sign) => {
+          loftAt(faces, [
+            [mid[0] - 2, 2.1, 2.1],
+            [tail[0], 2.8, 2.8],
+            [tail[0] - 22, 1.7, 1.7],
+          ], mid[1] * 0.55, sign * (mid[2] + 4), accent, 1, false);
+        });
+      }
+    }
+    if (detail.has("guns") || sh.class === "imperial_starship") {
+      [-1, 1].forEach((sign) => {
+        boxAt(faces, nose[0] + 6, nose[1] * 0.2, sign * (nose[2] * 0.35 + 5), 22, 1.6, 1.6, accent, 1, false);
+      });
+    }
+    if (detail.has("rails")) {
+      boxAt(faces, (nose[0] + mid[0]) / 2, mid[1] + 1.2, 0, Math.abs(nose[0] - mid[0]), 1.8, 3.2, accent, 1, false);
+    }
+    if (detail.has("dish")) {
+      loftAt(faces, [[mid[0] + 1, 1.2, 8], [mid[0] - 2, 0.7, 6.5]], mid[1] + 9, 0, accent, 1, false);
+      boxAt(faces, mid[0], mid[1] + 5, 0, 1.4, 8, 1.4, metal, 1, false);
+    }
+    if (detail.has("ring")) {
+      const radY = nose[1] + 11;
+      const radZ = nose[2] + 8;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        boxAt(faces, nose[0] - 4, Math.cos(a) * radY, Math.sin(a) * radZ, 6, 3.2, 3.2, accent, 1, false);
+      }
+    }
+    const engines = Math.max(1, def.engines || 1);
+    for (let i = 0; i < engines; i++) {
+      const z = (i - (engines - 1) / 2) * (engines > 3 ? 8 : 12);
+      boxAt(faces, tail[0] - 4, -2, z, 8, 4.6, 4.6, metal, 1, false);
+      boxAt(faces, tail[0] - 12, -2, z, 8, 2.2, 2.2, glow, 0.95, true);
+    }
+    return faces;
+  }
+  function cameraFace(face, yaw, pitch, fit, ox, oy) {
+    const world = face.pts.map((p) => rotPoint([p[0] * fit, p[1] * fit, p[2] * fit], yaw, pitch));
+    const raw = vcross(vsub(world[1], world[0]), vsub(world[2], world[0]));
+    const n = vnorm(raw);
+    if (n[2] <= 0.04) return null;
+    const light = vnorm([-0.28, 0.84, 0.46]);
+    const nd = Math.max(0, vdot(n, light));
+    const spec = face.emissive ? 0.15 : Math.pow(nd, 10) * 0.45;
+    const amount = face.emissive ? 0.78 + 0.22 * nd : 0.22 + 0.8 * nd;
+    const fill = "rgb(" + face.rgb.map((c) => Math.max(0, Math.min(255, Math.round(c * amount + 255 * spec)))).join(",") + ")";
+    const depth = world.reduce((sum, p) => sum + p[2], 0) / world.length;
+    const pts = world.map((p) => {
+      const s = 900 / (430 - p[2]);
+      return [ox + p[0] * s, oy - p[1] * s];
+    });
+    return {
+      points: pts.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" "),
+      fill: fill,
+      opacity: face.opacity.toFixed(2),
+      depth: depth,
+    };
+  }
+  function shipSolidMarkup(sh, def, ox, oy) {
+    const drawn = [];
+    buildHullFaces(sh, def).forEach((face) => {
+      const cam = cameraFace(face, 0.82, 0.5, 1, ox, oy);
+      if (cam) drawn.push(cam);
+    });
+    drawn.sort((a, b) => a.depth - b.depth);
+    return drawn.map((cam) => '<polygon points="' + cam.points + '" fill="' + cam.fill + '" opacity="' + cam.opacity + '"/>').join("");
+  }
+  function fighterSlots(n, orbit) {
+    const slots = [];
+    let left = n;
+    let ring = 0;
+    while (left > 0 && ring < 6) {
+      const radius = 56 + ring * 12;
+      const room = Math.max(10, Math.floor((2 * Math.PI * radius) / 7.4));
+      const use = Math.min(room, left);
+      for (let i = 0; i < use; i++) {
+        const a = orbit * (1 + ring * 0.08) + ((i + 0.5) / use) * Math.PI * 2 + ring * 0.35;
+        slots.push({
+          x: Math.cos(a) * radius,
+          y: (ring % 2 ? 7 : -5) + Math.sin(a * 2) * 1.4,
+          z: Math.sin(a) * radius * 0.58,
+          a: a,
+        });
+      }
+      left -= use;
+      ring += 1;
+    }
+    return slots;
+  }
+  function stopShipLoop() {
+    if (shipScene.raf) cancelAnimationFrame(shipScene.raf);
+    shipScene.raf = 0;
+  }
+  function shipPose(now, canonical) {
+    if (canonical || shipScene.hold || shipScene.motion !== "drift") {
+      return { yaw: 0.82, pitch: 0.5, orbit: 0.85 };
+    }
+    if (shipScene.dragging) {
+      return { yaw: shipScene.userYaw, pitch: shipScene.userPitch, orbit: shipScene.orbit || 0.85 };
+    }
+    const t = (now || performance.now()) / 1000;
+    if (shipScene.lastT != null) shipScene.spin += Math.min(0.05, Math.max(0, t - shipScene.lastT)) * 0.28;
+    shipScene.lastT = t;
+    shipScene.orbit = t * 0.7;
+    const yaw = (shipScene.userYaw == null ? 0.82 : shipScene.userYaw) + shipScene.spin;
+    const pitch = (shipScene.userPitch == null ? 0.5 : shipScene.userPitch) + Math.sin(t * 0.45) * 0.07;
+    return { yaw: yaw, pitch: pitch, orbit: shipScene.orbit };
+  }
+  function drawShipFrame(now, canonical) {
+    if (shipScene.mode !== "solid" || !shipScene.polys.length) return;
+    const pose = shipPose(now, canonical);
+    const body = $("shipSvg") && $("shipSvg").querySelector("[data-testid=ship-body]");
+    const back = $("shipSvg") && $("shipSvg").querySelector("[data-testid=fighter-back]");
+    const front = $("shipSvg") && $("shipSvg").querySelector("[data-testid=fighter-front]");
+    if (!body || !back || !front) return;
+    const drawn = [];
+    shipScene.faces.forEach((face, index) => {
+      const cam = cameraFace(face, pose.yaw, pose.pitch, shipScene.fit, 200, 124);
+      const poly = shipScene.polys[index];
+      if (!cam) {
+        poly.style.display = "none";
+        return;
+      }
+      poly.style.display = "";
+      poly.setAttribute("points", cam.points);
+      poly.setAttribute("fill", cam.fill);
+      poly.setAttribute("opacity", cam.opacity);
+      drawn.push({ poly: poly, depth: cam.depth });
+    });
+    drawn.sort((a, b) => a.depth - b.depth);
+    drawn.forEach((item) => body.appendChild(item.poly));
+    const sh = shipScene.sh || {};
+    const have = Number(sh.shields) || 0;
+    const cap = Number(sh.shield_cap) || 0;
+    if (shipScene.shield) {
+      if (have > 0 && cap > 0) {
+        const sp = Math.min(1, have / cap);
+        shipScene.shield.style.display = "";
+        shipScene.shield.setAttribute("cx", "200");
+        shipScene.shield.setAttribute("cy", "124");
+        shipScene.shield.setAttribute("rx", (78 * shipScene.fit).toFixed(1));
+        shipScene.shield.setAttribute("ry", (46 * shipScene.fit).toFixed(1));
+        shipScene.shield.setAttribute("stroke-width", (1 + sp * 1.6).toFixed(1));
+        shipScene.shield.setAttribute("opacity", (0.35 + sp * 0.4).toFixed(2));
+        body.appendChild(shipScene.shield);
+      } else {
+        shipScene.shield.style.display = "none";
+      }
+    }
+    const slots = fighterSlots(shipScene.marks.length, pose.orbit);
+    const oy = 124;
+    const ox = 200;
+    slots.forEach((slot, i) => {
+      const radius = Math.hypot(slot.x, slot.z / 0.58) || 1;
+      const here = rotPoint([slot.x * shipScene.fit, slot.y * shipScene.fit, slot.z * shipScene.fit], pose.yaw, pose.pitch);
+      const ahead = rotPoint([
+        Math.cos(slot.a + 0.22) * radius * shipScene.fit,
+        slot.y * shipScene.fit,
+        Math.sin(slot.a + 0.22) * radius * 0.58 * shipScene.fit,
+      ], pose.yaw, pose.pitch);
+      const sHere = 900 / (430 - here[2]);
+      const sAhead = 900 / (430 - ahead[2]);
+      const x = ox + here[0] * sHere;
+      const y = oy - here[1] * sHere;
+      const x2 = ox + ahead[0] * sAhead;
+      const y2 = oy - ahead[1] * sAhead;
+      const mark = shipScene.marks[i];
+      (here[2] >= 0 ? front : back).appendChild(mark);
+      const rot = Math.atan2(y2 - y, x2 - x) * 180 / Math.PI + 90;
+      const scale = Math.max(0.55, Math.min(1.15, sHere / 2.15));
+      mark.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot.toFixed(1) + ") scale(" + scale.toFixed(2) + ")");
+    });
+  }
+  function startShipLoop() {
+    if (shipScene.raf) return;
+    const step = (now) => {
+      shipScene.raf = 0;
+      if (shipScene.hold || shipScene.motion !== "drift" || shipScene.mode !== "solid") return;
+      drawShipFrame(now, false);
+      shipScene.raf = requestAnimationFrame(step);
+    };
+    shipScene.raf = requestAnimationFrame(step);
+  }
+  function bindShipDrag() {
+    const svg = $("shipSvg");
+    if (!svg || svg.dataset.dragBound) return;
+    svg.dataset.dragBound = "1";
+    let drag = null;
+    svg.addEventListener("pointerdown", (ev) => {
+      if (shipScene.motion !== "drift" || shipScene.mode !== "solid") return;
+      if (ev.button != null && ev.button !== 0) return;
+      const shownYaw = (shipScene.userYaw == null ? 0.82 : shipScene.userYaw) + shipScene.spin;
+      const shownPitch = shipScene.userPitch == null ? 0.5 : shipScene.userPitch;
+      shipScene.spin = 0;
+      shipScene.userYaw = shownYaw;
+      shipScene.userPitch = shownPitch;
+      drag = { x: ev.clientX, y: ev.clientY, yaw: shownYaw, pitch: shownPitch };
+      shipScene.dragging = true;
+      svg.classList.add("is-drag");
+      try { svg.setPointerCapture(ev.pointerId); } catch (err) { /* the picture still turns */ }
+    });
+    svg.addEventListener("pointermove", (ev) => {
+      if (!drag) return;
+      shipScene.userYaw = drag.yaw + (ev.clientX - drag.x) * 0.012;
+      shipScene.userPitch = Math.max(-0.35, Math.min(1.05, drag.pitch + (ev.clientY - drag.y) * 0.01));
+      drawShipFrame(performance.now(), false);
+    });
+    const end = () => {
+      if (!drag) return;
+      drag = null;
+      shipScene.dragging = false;
+      shipScene.spin = 0;
+      svg.classList.remove("is-drag");
+    };
+    svg.addEventListener("pointerup", end);
+    svg.addEventListener("pointercancel", end);
+  }
+  function renderShipScene(sh, def, plan) {
+    const svg = $("shipSvg");
+    if (!svg) return;
+    const solid = shipSolidOn();
+    const motion = shipMotion();
+    const fit = motion === "static" ? 0.72 : 1;
+    const tw = !!(sh.transwarp && sh.transwarp.fitted);
+    const key = [sh.class || "", plan.triangles, solid ? "s" : "o", tw ? 1 : 0, fit, motion].join("|");
+    svg.setAttribute("data-view", solid ? "solid" : "outline");
+    svg.setAttribute("data-motion", motion);
+    svg.setAttribute("data-fit", String(fit));
+    shipScene.mode = solid ? "solid" : "outline";
+    shipScene.motion = motion;
+    shipScene.fit = fit;
+    shipScene.sh = sh;
+    shipScene.def = def;
+    if (shipScene.key !== key) {
+      shipScene.key = key;
+      stopShipLoop();
+      if (!solid) {
+        svg.innerHTML = '<g data-testid="starfield">' + starfield() + "</g>"
+          + '<g class="hull-float" data-testid="ship-hull">'
+          + '<g data-testid="ship-body" data-model="outline" transform="translate(200 124)">' + shipBody(sh, def) + "</g>"
+          + fighterMarks(plan.triangles)
+          + "</g>";
+        shipScene.faces = [];
+        shipScene.polys = [];
+        shipScene.marks = [];
+        shipScene.shield = null;
+      } else {
+        shipScene.faces = buildHullFaces(sh, def);
+        svg.innerHTML = '<g data-testid="starfield">' + starfield() + "</g>"
+          + '<g class="hull-float" data-testid="ship-hull">'
+          + '<g data-testid="fighter-back"></g>'
+          + '<g data-testid="ship-body" data-model="solid"></g>'
+          + '<g data-testid="fighter-front"></g>'
+          + "</g>";
+        const body = svg.querySelector("[data-testid=ship-body]");
+        shipScene.polys = shipScene.faces.map(() => {
+          const poly = document.createElementNS(SVGNS, "polygon");
+          body.appendChild(poly);
+          return poly;
+        });
+        const bubble = document.createElementNS(SVGNS, "ellipse");
+        bubble.setAttribute("fill", "none");
+        bubble.setAttribute("stroke", "#55ffff");
+        bubble.setAttribute("stroke-dasharray", "5 4");
+        bubble.setAttribute("data-testid", "shield-bubble");
+        bubble.style.display = "none";
+        body.appendChild(bubble);
+        shipScene.shield = bubble;
+        shipScene.marks = [];
+        const back = svg.querySelector("[data-testid=fighter-back]");
+        for (let i = 0; i < plan.triangles; i++) {
+          const path = document.createElementNS(SVGNS, "path");
+          path.setAttribute("class", "fighter");
+          path.setAttribute("data-testid", "fighter-triangle");
+          path.setAttribute("d", "M0,-3.1 L2.35,2.45 L-2.35,2.45 Z");
+          path.setAttribute("fill", "#ff2a2a");
+          path.setAttribute("stroke", "#ff8888");
+          path.setAttribute("stroke-width", "0.4");
+          back.appendChild(path);
+          shipScene.marks.push(path);
+        }
+      }
+    }
+    bindShipDrag();
+    if (shipScene.hold || motion !== "drift" || !solid) {
+      if (solid) drawShipFrame(0, true);
+      stopShipLoop();
+      return;
+    }
+    drawShipFrame(performance.now(), false);
+    startShipLoop();
+  }
+  /* ship3d-end */
+
   function paintShipView(sh, def) {
     const plan = fighterPlan(sh.fighters);
     const svg = $("shipSvg");
+    if (!svg) return;
     svg.setAttribute("data-hull", sh.class || "ship");
     svg.setAttribute("data-kind", def.kind || "arrow");
     svg.setAttribute("data-fighters", String(plan.fighters));
     svg.setAttribute("data-triangles", String(plan.triangles));
     svg.setAttribute("data-scale", String(plan.scale));
     svg.setAttribute("aria-label", def.name + ", " + fmt(plan.fighters) + " fighters");
-    svg.innerHTML = starfield()
-      + '<g class="hull-float" data-testid="ship-hull">'
-      + '<g data-testid="ship-body" transform="translate(200 124)">' + shipBody(sh, def) + "</g>"
-      + fighterMarks(plan.triangles)
-      + "</g>";
+    renderShipScene(sh, def, plan);
     const row = $("fighterRow");
     if (plan.scale > 1) {
       const word = plan.scale === 1 ? "fighter" : "fighters";
@@ -634,9 +1107,13 @@
     root.setAttribute("data-motion", motion);
     root.classList.toggle("is-still", motion !== "play");
     svg.hidden = false;
+    const solidWarp = shipSolidOn();
+    const warpBody = solidWarp ? shipSolidMarkup(sh, def, 200, 130) : shipBody(sh, def);
+    const warpXform = solidWarp ? "" : ' transform="translate(200 130)"';
     svg.innerHTML = warpStars()
-      + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" transform="translate(200 130)">'
-      + shipBody(sh, def) + "</g></g>";
+      + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
+      + (solidWarp ? "solid" : "outline") + '"' + warpXform + ">"
+      + warpBody + "</g></g>";
     if (video) {
       video.hidden = true;
       video.onerror = null;
@@ -4931,6 +5408,30 @@
     serverWaits() { return Number(state.waitStreak || 0); },
     resetWaits() { waitStreak = 0; state.waitStreak = 0; },
     do(kind, args) { return act(kind, args || {}, kind); },
+  };
+  window.__tw2kShip = {
+    hulls() { return Object.keys(SHIPS); },
+    hasModel(hull) { return Array.isArray(LOFT[hull]) && LOFT[hull].length >= 2; },
+    mode() { const svg = $("shipSvg"); return svg ? (svg.getAttribute("data-view") || "") : ""; },
+    motion() { const svg = $("shipSvg"); return svg ? (svg.getAttribute("data-motion") || "") : ""; },
+    fit() { const svg = $("shipSvg"); return svg ? Number(svg.getAttribute("data-fit") || 1) : 1; },
+    forceOutline(on) {
+      shipForceOutline = !!on;
+      shipScene.key = "";
+      if (S && S.ship) paintShip();
+    },
+    hold() {
+      shipScene.hold = true;
+      stopShipLoop();
+      if (shipScene.mode === "solid") drawShipFrame(0, true);
+      return 1;
+    },
+    markup(hull) {
+      const def = SHIPS[hull] || { name: hull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
+      const sample = { class: hull, fighters: 0, shields: 0, shield_cap: 0, transwarp: {} };
+      if (!shipSolidOn()) return "outline";
+      return shipSolidMarkup(sample, def, 200, 130);
+    },
   };
   window.__tw2kWarp = {
     ready() { return !!(warpManifest && warpManifest.hulls && warpManifest.hulls.merchant_cruiser); },
