@@ -92,7 +92,7 @@ from .planets import (
     _pay_planet_value_tax,
     refresh_planet_production,
 )
-from .rob_steal import clear_all_busts, handle_rob, handle_steal
+from .rob_steal import busts_clear_this_extern, clear_all_busts, handle_rob, handle_steal
 from .victory import (
     _award_xp,
     _check_victory,
@@ -460,7 +460,22 @@ def recover_turns(player, elapsed_s: float) -> int:
 
 
 def tick_day(universe: Universe) -> None:
-    """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets."""
+    """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets.
+
+    Extern jobs already on this path (NOTE 82 DAY-b, cabal glossary Extern /
+    Midnight). No new switch: they already run.
+    - overnight fighter retreats, then a tow drop on retreat
+    - Ferrengi encounters, alliance expiry, turn reset, daily experience
+    - corp mixed-alignment penalty and a dead C.E.O. (corp.extern_corp_step)
+    - Class 0 / MSL fighter and mine sweep (class0.extern_sweep) and Terra regen
+    - empty-ship repossession in FedSpace (fleet.extern_repossess)
+    - FedSpace tows for too many fighters and for crowding (fed.run_tows)
+    - port regeneration, bust-record clearing, photon waves, cloak fails
+    - FedSpace NavHaz cleared, other NavHaz dispersed (hardware.tick_navhaz)
+    - Ferrengi and alien movement, planet production, citadels, treasury, tax
+    Class 0 and StarDock fighter, shield and hold prices already follow the
+    day (fighter_unit_price, shield_unit_price, hold_day_base).
+    """
     _overnight_retreats(universe)
     _overnight_ferrengi_encounters(universe)
     if K.tow_on():  # SHIP_TOW.md tt11j: an overnight retreat / flee drops the tow
@@ -516,7 +531,7 @@ def tick_day(universe: Universe) -> None:
         tick_federals(universe)
 
     regenerate_ports(universe)
-    if K.rob_tw2002():
+    if K.rob_tw2002() and busts_clear_this_extern(universe):
         clear_all_busts(universe)
     if K.hardware_tw2002():
         tick_photon_waves(universe)
@@ -2787,6 +2802,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "armid_mines": mines_aboard,
         "limpet_mines": mines_aboard,
         "atomic_mines": mines_aboard,
+        "ether_probes": int(getattr(player.ship, "ether_probes", 0) or 0),
         "cloak": int(getattr(player.ship, "cloaks", 0) or 0),
         "mine_disruptor": int(getattr(player.ship, "mine_disruptors", 0) or 0),
         **v2_have(player.ship),
@@ -2809,6 +2825,8 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
             return ActionResult(ok=False, error="exceeds ship genesis capacity")
         if item == "photon_missiles":
             return ActionResult(ok=False, error="exceeds ship photon capacity")
+        if item == "ether_probes":
+            return ActionResult(ok=False, error="exceeds ship probe capacity")
         if item == "cloak":
             return ActionResult(ok=False, error="exceeds ship cloak capacity")
         if item == "mine_disruptor":

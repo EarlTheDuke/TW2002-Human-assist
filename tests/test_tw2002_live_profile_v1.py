@@ -94,6 +94,9 @@ HELPERS = (
     "bot_diplomacy_live",
     "port_buy_price_anchor_on",
     "start_colonist_nw_live",
+    "bust_record_clear_live",
+    "ship_chart_cap_live",
+    "corp_planet_disband_v306",
 )
 
 
@@ -101,7 +104,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 92
+    assert len(names) == 95
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -131,6 +134,9 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.YARD_STATS_MODE == "legacy"
     assert K.PORT_BUY_PRICE_ANCHOR_MODE == "legacy"
     assert K.START_COLONIST_NW_MODE == "legacy"
+    assert K.BUST_CLEAR_MODE == "legacy"
+    assert K.SHIP_CHART_CAP_MODE == "legacy"
+    assert K.CORP_PLANET_DISBAND_MODE == "legacy"
     assert K.EXP_SCORE_MODE == "legacy"
     assert K.CLASS_M_NW_MODE == "legacy"
     assert K.CLASS_M_DROP_MODE == "legacy"

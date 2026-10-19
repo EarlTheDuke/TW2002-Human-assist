@@ -1033,6 +1033,12 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
     Holds with no per-ship max still stop at 150.
     Cloaks / disruptors use HARDWARE_MODE global caps when tw2002.
     """
+    if item == "ether_probes":
+        # NOTE 82 SD-e. Bible: any ship, 25. The pod is not on the chart
+        # (UNVERIFIED); the same 25 applies. Off, probes stay uncapped.
+        if not ship_chart_cap_live():
+            return None
+        return max(0, int(PROBE_CHART_MAX) - int(have))
     if item == "cloak":
         if not hardware_tw2002():
             return 0
@@ -4119,6 +4125,19 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PORT_BUY_PRICE_ANCHOR_MODE",
         "D25-1 (NOTE 69): hungry buy quotes use the live anchors, not the 1.93x full-hold curve",
     ),
+    # NOTE 82 rows 94, 96, 97. Rows 95 and 98 were already on this tip.
+    "bust_record_clear_live": (
+        "BUST_CLEAR_MODE",
+        "NOTE 82 TRD-k: a game may clear bust records daily or every 7 days",
+    ),
+    "ship_chart_cap_live": (
+        "SHIP_CHART_CAP_MODE",
+        "NOTE 82 SD-e: an ether probe cap of 25, with the Bible chart caps",
+    ),
+    "corp_planet_disband_v306": (
+        "CORP_PLANET_DISBAND_MODE",
+        "NOTE 82 PLN-q: on disband the C.E.O.'s sector stays, the rest go unclaimed",
+    ),
 }
 
 
@@ -4441,3 +4460,44 @@ START_COLONIST_NW_MODE = "legacy"  # "legacy" | "live"
 def start_colonist_nw_live() -> bool:
     """True when free start colonists still on the home planet are not in net worth."""
     return START_COLONIST_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-extern-gaps-v1 (NOTE 82) TRD-k, row 94. REV v3.05: a TEDIT setting
+# chooses how often Extern clears bust records. It defaults to nightly and
+# can be as high as every 28th day. The cabal editor sample is "Clear Busts
+# Every : 1 Days". "legacy" keeps today's clear-every-Extern. "live" reads
+# GameConfig.bust_clear_days (1 or 7). REPORT.md is on Ben's PC (UNVERIFIED).
+# The missed-Extern catch-up is not built: this day tick always runs.
+BUST_CLEAR_MODE = "legacy"  # "legacy" | "live"
+
+
+def bust_record_clear_live() -> bool:
+    """True when this game's bust-clear interval is honored (1 day or 7)."""
+    return BUST_CLEAR_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-extern-gaps-v1 (NOTE 82) SD-e, row 96. The Bible ship chart already
+# caps mines, genesis and photons on SHIP_SPECS_TW2002, and cloaks are 5
+# (CLOAK_MAX, "the maximum any ship can carry is five"). Probes were uncapped.
+# The Bible says any ship carries at most 25. "legacy" leaves probes uncapped.
+PROBE_CHART_MAX = 25
+SHIP_CHART_CAP_MODE = "legacy"  # "legacy" | "live"
+
+
+def ship_chart_cap_live() -> bool:
+    """True when a ship stops at 25 ether probes."""
+    return SHIP_CHART_CAP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-extern-gaps-v1 (NOTE 82) PLN-q, row 97. Today's rule is
+# CORP_DISBAND_PLANETS "owner_keeps". REV v3.06 gives the C.E.O. the planets
+# in his sector and leaves the rest unclaimed. "legacy" keeps owner_keeps.
+# The older constant "v306" still selects that path on its own.
+CORP_PLANET_DISBAND_MODE = "legacy"  # "legacy" | "v306"
+
+
+def corp_planet_disband_v306() -> bool:
+    """True when a disband follows REV v3.06 for planets."""
+    if CORP_DISBAND_PLANETS == "v306" or CORP_PLANET_DISBAND_MODE == "v306":
+        return True
+    return tw2002_live_profile() or v311_profile()
