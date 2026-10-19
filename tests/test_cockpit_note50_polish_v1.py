@@ -221,7 +221,11 @@ def test_a_citadel_climbs_from_level_1_to_level_3(world):
                 _shoot(page, "citadel", "[data-citadel=level]")
 
 
-def test_two_cockpits_fight_outside_fedspace(tmp_path):
+def test_two_cockpits_fight_outside_fedspace(tmp_path, monkeypatch):
+    monkeypatch.setattr(K, "CAPTURE_SLACK", 0)
+    monkeypatch.setattr(K, "CAPTURE_RULE", "min_qty")
+    monkeypatch.setattr(K, "CAPTURE_FAIL_PCT", 0)
+    monkeypatch.setattr(K, "CAPTURE_WHEN_SD", "capture")
     sync = pytest.importorskip("playwright.sync_api").sync_playwright
     pw = sync().start()
     host = CuHost(tmp_path, TOK, p1_token=TOK1, max_days=6, turns_per_day=30)
@@ -282,8 +286,10 @@ def test_two_cockpits_fight_outside_fedspace(tmp_path):
             page = pages[actor]
             df = int(universe.players[other].ship.fighters)
             ds = int(universe.players[other].ship.shields)
-            defense = (df + ds) * combat_odds_of(universe.players[other])
-            qty = min_capture_qty(defense, combat_odds_of(universe.players[actor])) + 1
+            defender_odds = combat_odds_of(universe.players[other])
+            attacker_odds = combat_odds_of(universe.players[actor])
+            defense = (df + ds) * defender_odds
+            qty = min_capture_qty(defense, attacker_odds) + 1
             attacker_ship = universe.players[actor].ship
             if int(attacker_ship.fighters) < qty:
                 attacker_ship.fighters = qty
@@ -305,8 +311,15 @@ def test_two_cockpits_fight_outside_fedspace(tmp_path):
                 }""",
                 universe.players[other].name,
             )
+            # The form caps the box at the fighters in the last observation. The hull
+            # was just given `qty`, so raise that cap or the cockpit posts the old
+            # total, which is exactly the capture minimum.
             page.locator(".frm input[type=number]").evaluate(
-                "(el, n) => { el.value = String(n); }",
+                """(el, n) => {
+                  el.value = String(n);
+                  el.max = String(n);
+                  el.dataset.cap = String(n);
+                }""",
                 qty,
             )
             previous = page.locator("#lastResult").inner_text()
@@ -342,6 +355,14 @@ def test_two_cockpits_fight_outside_fedspace(tmp_path):
             if "ship destroyed" in text or "ship destroyed" in heard:
                 lost = other if "ship destroyed" in text else actor
                 both = text + "\n" + heard
+                if "(captured)" in both:
+                    pytest.fail(
+                        "captured instead of destroyed: "
+                        f"qty={qty} min_capture_qty={min_capture_qty(defense, attacker_odds)} "
+                        f"defense={defense} attacker_odds={attacker_odds} defender_odds={defender_odds} "
+                        f"CAPTURE_SLACK={K.CAPTURE_SLACK} CAPTURE_RULE={K.CAPTURE_RULE} "
+                        f"CAPTURE_FAIL_PCT={K.CAPTURE_FAIL_PCT} CAPTURE_WHEN_SD={K.CAPTURE_WHEN_SD}\n{both}"
+                    )
                 assert "escaped in a pod" in both or "ship destroyed" in both
                 assert "Credits on board lost" in both
                 _shoot(page, "fight", "#lastResult")
