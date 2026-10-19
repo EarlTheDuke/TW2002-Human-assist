@@ -7,7 +7,8 @@ import time
 from html import escape
 from typing import Any, Iterable
 
-from .security import DAY_PRESETS, UNIVERSE_SIZES, credits_phrase, turns_phrase
+from ..engine import constants as K
+from .security import DAY_PRESETS, UNIVERSE_SIZES, ai_label, credits_phrase, turns_phrase
 
 FULL_TEXT = "The beta is full right now, try again later"
 
@@ -73,8 +74,40 @@ def page(title: str, body: str, *, brand: str, refresh_s: int | None = None) -> 
     )
 
 
+def disclaimer_points() -> tuple[str, ...]:
+    """The about-page lines. Off, they are the stored list. On, the AI line matches the option."""
+    if not K.lobby_ai_seat_on():
+        return DISCLAIMER_POINTS
+    out = []
+    for point in DISCLAIMER_POINTS:
+        if point.startswith("AI players are not available"):
+            out.append(
+                "AI opponents are optional seats. Heuristic is free. "
+                "An LLM seat uses a key you paste for that game; the server does not store it."
+            )
+        else:
+            out.append(point)
+    return tuple(out)
+
+
+def ai_call_estimate(turns_per_day: int, opponents: int, brain: str) -> str:
+    """Calls per game day for the pace on the form.
+
+    UNVERIFIED: one model call per turn per LLM seat. Heuristic is zero.
+    """
+    if brain != "llm" or int(opponents) <= 0:
+        return "Estimate: 0 model calls per game day with the heuristic brain."
+    calls = max(0, int(turns_per_day)) * int(opponents) * int(K.LOBBY_AI_CALLS_PER_TURN)
+    seats = int(opponents)
+    noun = "seat" if seats == 1 else "seats"
+    return (
+        f"Estimate: about {calls:,} model calls per game day "
+        f"for {seats} LLM {noun} at this pace (one call per turn, UNVERIFIED)."
+    )
+
+
 def disclaimer(brand: str, next_url: str = "/") -> str:
-    points = "".join(f"<li>{escape(p)}</li>" for p in DISCLAIMER_POINTS)
+    points = "".join(f"<li>{escape(p)}</li>" for p in disclaimer_points())
     body = (
         "<p class=\"sub\">Before you play</p><div class=\"card\"><ul class=\"points\">" + points + "</ul>"
         "<form method=\"post\" action=\"/accept\">"
@@ -85,7 +118,7 @@ def disclaimer(brand: str, next_url: str = "/") -> str:
 
 
 def about(brand: str) -> str:
-    points = "".join(f"<li>{escape(p)}</li>" for p in DISCLAIMER_POINTS)
+    points = "".join(f"<li>{escape(p)}</li>" for p in disclaimer_points())
     body = ("<p class=\"sub\">About these test games</p><div class=\"card\"><ul class=\"points\">" + points +
             "</ul><p><a class=\"btn\" href=\"/\">Back to the lobby</a></p></div>")
     return page("About", body, brand=brand)
@@ -176,7 +209,8 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         rows.append(
             f"<tr><td><b>{escape(g['name'])}</b><br><span class=\"note\">"
             f"{'v3.11' if s['rules'] == 'v311' else 'legacy'} rules &middot; {s['universe_size']} sectors &middot; "
-            f"{_day_label(s['day_seconds'])} days &middot; {s['bots']} bots<br>{escape(credits_phrase(s))}"
+            f"{_day_label(s['day_seconds'])} days &middot; {s['bots']} bots{_ai_card(s)}"
+            f"<br>{escape(credits_phrase(s))}"
             f"<br>{escape(turns_phrase(s))}</span></td>"
             f"<td>{_status_tag(g['status'])} <span class=\"note\">{escape(day)}</span></td>"
             f"<td>{open_seats} of {s['humans']} seats open</td><td>{join} {watch} {end}</td></tr>"
@@ -242,6 +276,18 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
     return page("Lobby", body, brand=brand)
 
 
+def _ai_card(settings: dict[str, Any]) -> str:
+    """Lobby row fragment. Empty when the game has no AI seats, so today's rows stay put."""
+    try:
+        n = int(settings.get("ai_opponents") or 0)
+    except (TypeError, ValueError):
+        return ""
+    if n <= 0:
+        return ""
+    label = ai_label(str(settings.get("ai_brain") or "heuristic"))
+    return f" &middot; {n} {escape(label)}"
+
+
 def _opt(value: str, label: str, selected: str) -> str:
     sel = " selected" if str(value) == str(selected) else ""
     return f"<option value=\"{escape(str(value))}\"{sel}>{escape(label)}</option>"
@@ -268,7 +314,8 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
          "starting_package": "v311", "bots": "2", "ferrengi": "on", "day": "30m", "humans": "1",
          "visibility": "listed", "starting_credits": "original", "starting_credits_custom": "",
          "home_planet_name": "", "turns_per_day_custom": "", "hold_until_human": "on"}
-    v.update({k: str(val) for k, val in (values or {}).items()})
+    # The key and the endpoint are never copied into the page, including after a validation error.
+    v.update({k: str(val) for k, val in (values or {}).items() if k not in ("ai_key", "ai_endpoint")})
     err = f"<div class=\"err\">{escape(error)}</div>" if error else ""
     sizes = "".join(_opt(str(n), f"{n} sectors", v["universe_size"]) for n in UNIVERSE_SIZES)
     days = "".join(_opt(k, _DAY_NAMES.get(k, f"{k} ({secs} s)"), v["day"])
@@ -289,6 +336,69 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             hint_turns = int(picked_turns)
         except ValueError:
             hint_turns = 250
+    ai_fields = ""
+    ai_script = ""
+    if K.lobby_ai_seat_on():
+        v.setdefault("ai_opponents", "0")
+        v.setdefault("ai_brain", "heuristic")
+        try:
+            ai_n = int(v["ai_opponents"])
+        except (TypeError, ValueError):
+            ai_n = 0
+        brain = v["ai_brain"] if v["ai_brain"] in ("heuristic", "llm") else "heuristic"
+        ai_opts = "".join(_opt(str(n), str(n), v["ai_opponents"]) for n in range(5))
+        brains = (
+            _opt("heuristic", "Heuristic (free)", brain)
+            + _opt("llm", "LLM (your key)", brain)
+        )
+        hidden = "" if brain == "llm" else " hidden"
+        estimate = escape(ai_call_estimate(hint_turns, ai_n, brain))
+        per = int(K.LOBBY_AI_CALLS_PER_TURN)
+        ai_fields = (
+            f'<label for="ai_opponents">AI opponents</label><select id="ai_opponents" name="ai_opponents">{ai_opts}</select>'
+            f'<label for="ai_brain">Brain for each AI seat</label><select id="ai_brain" name="ai_brain">{brains}</select>'
+            f'<div id="aiKeyBox"{hidden}>'
+            '<label for="ai_endpoint">Endpoint URL</label>'
+            '<input id="ai_endpoint" name="ai_endpoint" type="url" autocomplete="off" value="">'
+            '<label for="ai_key">API key</label>'
+            '<input id="ai_key" name="ai_key" type="password" autocomplete="off" value="">'
+            '<p class="note">Your key stays in memory for this game only. It is not stored, and it is not shown again.</p>'
+            "</div>"
+            f'<p class="note" id="aiCallHint">{estimate}</p>'
+        )
+        ai_script = (
+            "<script>\n"
+            f"const aiCallsPerTurn = {per};\n"
+            "function aiTurns() {\n"
+            "  const picked = document.getElementById('turns_per_day').value;\n"
+            "  if (picked === 'custom') return Number(document.getElementById('turns_per_day_custom').value) || 250;\n"
+            "  if (picked === 'original' || picked === '') return 250;\n"
+            "  return Number(picked) || 250;\n"
+            "}\n"
+            "function paintAiHint() {\n"
+            "  const turns = aiTurns();\n"
+            "  const seats = Number(document.getElementById('ai_opponents').value) || 0;\n"
+            "  const brain = document.getElementById('ai_brain').value;\n"
+            "  const box = document.getElementById('aiKeyBox');\n"
+            "  if (box) box.hidden = brain !== 'llm';\n"
+            "  const hint = document.getElementById('aiCallHint');\n"
+            "  if (!hint) return;\n"
+            "  if (brain !== 'llm' || seats < 1) {\n"
+            "    hint.textContent = 'Estimate: 0 model calls per game day with the heuristic brain.';\n"
+            "    return;\n"
+            "  }\n"
+            "  const calls = turns * seats * aiCallsPerTurn;\n"
+            "  const noun = seats === 1 ? 'seat' : 'seats';\n"
+            "  hint.textContent = 'Estimate: about ' + calls.toLocaleString() + ' model calls per game day for '\n"
+            "    + seats + ' LLM ' + noun + ' at this pace (one call per turn, UNVERIFIED).';\n"
+            "}\n"
+            "['ai_opponents','ai_brain','turns_per_day','turns_per_day_custom'].forEach((id) => {\n"
+            "  const el = document.getElementById(id);\n"
+            "  if (el) el.addEventListener('input', paintAiHint);\n"
+            "  if (el) el.addEventListener('change', paintAiHint);\n"
+            "});\n"
+            "</script>\n"
+        )
     body = f"""<p class="sub">New game</p>{_waiting_banner(waiting)}{err}
 <form method="post" action="/new" class="card">
 <label for="name">Game name</label><input id="name" name="name" maxlength="40" required value="{escape(v['name'])}">
@@ -342,7 +452,7 @@ function paintDayHint() {{
 <p class="note">Optional. 1 to 30 characters. Blank uses your trader name plus 's Home.</p>
 <label for="humans">Open human seats</label><select id="humans" name="humans">{humans}</select>
 <label for="bots">Code bots</label><select id="bots" name="bots">{bots}</select>
-<label for="ferrengi">Ferrengi</label><select id="ferrengi" name="ferrengi">{_opt('on', 'On', v['ferrengi'])}{_opt('off', 'Off', v['ferrengi'])}</select>
+{ai_fields}{ai_script}<label for="ferrengi">Ferrengi</label><select id="ferrengi" name="ferrengi">{_opt('on', 'On', v['ferrengi'])}{_opt('off', 'Off', v['ferrengi'])}</select>
 <label for="visibility">Who can find it</label><select id="visibility" name="visibility">{_opt('listed', 'Listed in the lobby', v['visibility'])}{_opt('link', 'Link only', v['visibility'])}</select>
 <input type="hidden" name="hold_until_human" value="off">
 <label class="check" for="hold_until_human"><input id="hold_until_human" name="hold_until_human" type="checkbox" value="on"{hold_checked}>Hold the clock until the first player opens a seat</label>
@@ -359,8 +469,25 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
     key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
     length = _DAY_NAMES.get(key, key)
     shown = f"<p>Day length: {escape(length)}</p>" if length else ""
+    ai_n = 0
+    try:
+        ai_n = int(settings.get("ai_opponents") or 0)
+    except (TypeError, ValueError):
+        ai_n = 0
+    ai_line = ""
+    if ai_n > 0:
+        brain = str(settings.get("ai_brain") or "heuristic")
+        label = ai_label(brain)
+        try:
+            turns_n = int(settings.get("turns_per_day") or 0)
+        except (TypeError, ValueError):
+            turns_n = 0
+        ai_line = (
+            f"<p>{ai_n} {escape(label)}. Those seats are not join links. "
+            f"{escape(ai_call_estimate(turns_n, ai_n, brain))}</p>"
+        )
     body = (f"<p class=\"sub\">Game created</p><div class=\"card\"><h2>{escape(game['name'])}</h2>"
-            f"{shown}"
+            f"{shown}{ai_line}"
             "<p>One join link per open seat. Send each link to one player; the first person to open it gets the seat.</p>"
             f"{links}<p>Watch link (read-only)<code class=\"link\">{escape(watch_link)}</code></p>"
             f"<form method=\"post\" action=\"/games/{game['id']}/join\" style=\"display:inline\">"

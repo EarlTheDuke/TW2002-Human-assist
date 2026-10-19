@@ -5,7 +5,7 @@ from __future__ import annotations
 from html import escape
 
 from ..engine import constants as K
-from .pages import DISCLAIMER_POINTS
+from .pages import disclaimer_points
 
 # One anchor per section. The table of contents and the tests both use this list.
 SECTIONS: tuple[tuple[str, str], ...] = (
@@ -26,6 +26,7 @@ SECTIONS: tuple[tuple[str, str], ...] = (
     ("rankings", "Rankings and the end of the game"),
     ("tax", "Tax, bank and interest"),
     ("turns", "Turns and days"),
+    ("ai-opponents", "AI opponents"),
     ("disclaimer", "Beta disclaimer"),
 )
 
@@ -218,6 +219,7 @@ def _section(sid: str, f: dict) -> str:
         "rankings": _rankings,
         "tax": _tax,
         "turns": _turns,
+        "ai-opponents": _ai_opponents,
         "disclaimer": _disclaimer,
     }[sid](f)
     return f'<section id="{sid}"><h2>{escape(title)}</h2>{body}</section>'
@@ -782,8 +784,32 @@ def _day_clock() -> str:
     )
 
 
+def _ai_opponents(_f: dict) -> str:
+    return (
+        "<p>A lobby game can add AI opponents next to the code bots when the host has turned that option on. "
+        "Each AI seat plays through the same cockpit a person uses. It does not look at the game's private data.</p>"
+        "<p>The brain for each of those seats is Heuristic (free) or LLM (your key). "
+        "Heuristic needs no key. LLM is bring your own key: you paste an API key and an endpoint URL for that game. "
+        "The server never pays for a model and never ships a key.</p>"
+        "<p>What is kept: the number of AI seats and which brain you picked. "
+        "What is not kept: the key and the endpoint stay in the server's memory for that game only. "
+        "They are not written to disk, saves, logs, the spectator feed, error pages, or the admin page. "
+        "A log line shows key **** and the last four characters. "
+        "After you submit, the key is not sent back to any browser. "
+        "The key is dropped when the game ends or the server restarts. "
+        "The seat then plays the heuristic brain, and the cockpit says so.</p>"
+        "<p>AI seats are labelled AI (heuristic) or AI (LLM) in the lobby, the rankings, the end screen, "
+        "and the trader list. The seat timer and the day clock treat them like any seat. "
+        "An AI seat posts no faster than the server's per-seat action limit. "
+        "The new-game form shows an estimate of model calls per game day for the pace you picked. "
+        "There is a per-game call cap and a per-minute limit. Past either one, or if the endpoint errors, "
+        "the seat plays the heuristic brain.</p>"
+        '<p class="note">Hosting notes for this option live with the lobby, not in the v3.11 rule set.</p>'
+    )
+
+
 def _disclaimer(_f: dict) -> str:
-    items = "".join(f"<li>{escape(point)}</li>" for point in DISCLAIMER_POINTS)
+    items = "".join(f"<li>{escape(point)}</li>" for point in disclaimer_points())
     return (
         "<ul>" + items + "</ul>"
         "<p>This manual describes the game as the engine is configured in this process. "

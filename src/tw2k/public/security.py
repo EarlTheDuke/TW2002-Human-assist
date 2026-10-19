@@ -10,9 +10,12 @@ import secrets
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
+
+from ..engine import constants as K
 
 GUEST_COOKIE = "gwc_guest"
 WATCH_COOKIE_PREFIX = "gwc_w_"
@@ -159,6 +162,12 @@ class GameForm:
     turns_per_day_override: int | None = None
     # Off unless the new-game form sends it. Missing stays today's start.
     hold_until_human: bool = False
+    # NOTE 100. Zero unless LOBBY_AI_SEAT_MODE is on and the form asked for seats.
+    # The key and the endpoint never enter settings().
+    ai_opponents: int = 0
+    ai_brain: str = "heuristic"
+    ai_key: str = field(default="", repr=False)
+    ai_endpoint: str = field(default="", repr=False)
 
     def settings(self) -> dict[str, Any]:
         out = {
@@ -182,6 +191,9 @@ class GameForm:
             out["turns_per_day_override"] = self.turns_per_day_override
         if self.hold_until_human:
             out["hold_until_human"] = True
+        if self.ai_opponents:
+            out["ai_opponents"] = int(self.ai_opponents)
+            out["ai_brain"] = self.ai_brain if self.ai_brain in ("heuristic", "llm") else "heuristic"
         return out
 
 
@@ -220,6 +232,38 @@ _ALLOWED = {"name", "rules", "universe_size", "max_days", "turns_per_day", "star
 
 _TURNS_MIN = 50
 _TURNS_MAX = 5_000
+# Accepted only while LOBBY_AI_SEAT_MODE is on. Off, these stay unknown fields.
+_AI_FIELDS = {"ai_opponents", "ai_brain", "ai_key", "ai_endpoint"}
+
+
+def ai_label(brain: str) -> str:
+    """The name a human sees for an AI seat. Rankings, the end screen and the trader list use it."""
+    return "AI (LLM)" if brain == "llm" else "AI (heuristic)"
+
+
+def _allowed_fields() -> set[str]:
+    if K.lobby_ai_seat_on():
+        return set(_ALLOWED) | _AI_FIELDS
+    return set(_ALLOWED)
+
+
+def _ai_endpoint(raw) -> str:
+    """http or https, no userinfo. The address stays in memory; it is not logged."""
+    text = str(raw or "").strip()
+    if not text or len(text) > 300 or any(ord(ch) < 32 or ch.isspace() for ch in text):
+        raise FormError("endpoint URL must be an http or https address")
+    parts = urlsplit(text)
+    if parts.scheme not in ("http", "https") or not parts.hostname or parts.username or parts.password:
+        raise FormError("endpoint URL must be an http or https address")
+    return text
+
+
+def _ai_key(raw) -> str:
+    """One line, kept off the GameForm's settings and out of every error string."""
+    text = str(raw or "")
+    if not text.strip() or len(text) > 500 or any(ord(ch) < 32 for ch in text):
+        raise FormError("An LLM seat needs your API key on one line.")
+    return text.strip()
 
 _CREDITS_MAX = 10_000_000
 
@@ -322,7 +366,7 @@ def _hold_flag(data: dict) -> bool:
 
 def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameForm:
     presets = presets or DAY_PRESETS
-    unknown = set(data) - _ALLOWED
+    unknown = set(data) - _allowed_fields()
     if unknown:
         raise FormError(f"unknown field: {sorted(unknown)[0]}")
     name = str(data.get("name", "")).strip()
@@ -347,6 +391,21 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
     if vis is not None and str(vis).strip() not in ("listed", "link"):
         raise FormError("visibility must be listed or link")
     turns_override = _turns_override(data)
+    ai_n = 0
+    brain = "heuristic"
+    ai_key = ""
+    ai_endpoint = ""
+    if K.lobby_ai_seat_on():
+        ai_n = _as_int(data, "ai_opponents", 0, 0, 4)
+        brain = str(data.get("ai_brain", "heuristic")).strip().lower() or "heuristic"
+        if brain not in ("heuristic", "llm"):
+            raise FormError("AI brain must be heuristic or llm")
+        if ai_n and brain == "llm":
+            # Read into locals the caller moves into process memory. Not into settings().
+            ai_endpoint = _ai_endpoint(data.get("ai_endpoint"))
+            ai_key = _ai_key(data.get("ai_key"))
+        elif not ai_n:
+            brain = "heuristic"
     return GameForm(
         name=name,
         rules=rules,
@@ -364,6 +423,10 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         home_planet_name=home_planet_name(data.get("home_planet_name")),
         turns_per_day_override=turns_override,
         hold_until_human=_hold_flag(data),
+        ai_opponents=ai_n,
+        ai_brain=brain,
+        ai_key=ai_key,
+        ai_endpoint=ai_endpoint,
     )
 
 
