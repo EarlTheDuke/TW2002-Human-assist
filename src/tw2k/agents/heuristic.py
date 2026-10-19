@@ -21,6 +21,8 @@ from tw2k.engine.constants import (
     SCANNER_DENSITY,
     SCANNER_HOLO,
     bot_hazard_memory_live,
+    bots_escape_live,
+    bots_ferrengi_recovery_live,
     info_tw2002,
     scanner_room,
 )
@@ -283,6 +285,18 @@ class HeuristicAgent(BaseAgent):
         return None
 
     async def act(self, obs: Observation) -> Action:
+        action = await self._act_untracked(obs)
+        # The trail is only read while escape is on. Off, this turn writes nothing.
+        if bots_escape_live():
+            here = int((obs.sector or {}).get("id") or 0)
+            kind = getattr(action.kind, "value", str(action.kind))
+            trail = self.__dict__.setdefault("_escape_trail", [])
+            trail.append((here, kind == "trade"))
+            if len(trail) > 40:
+                del trail[:-40]
+        return action
+
+    async def _act_untracked(self, obs: Observation) -> Action:
         # A new v3.11 trader starts on the home planet (NOTE 66). This bot never
         # lands on its own, so a landed ship is the opening: blast off first.
         if getattr(obs, "planet_landed", None) is not None:
@@ -340,6 +354,12 @@ class HeuristicAgent(BaseAgent):
         if opened is not None:
             return opened
 
+        # NOTE 92. Off, dock_step returns None and the fighter buy below is unchanged.
+        if int(obs.sector.get("id") or 0) == STARDOCK_SECTOR:
+            step = self._dock_upgrade(obs)
+            if step is not None:
+                return step
+
         # At StarDock: consider outfitting & upgrading before heading out
         if obs.sector["id"] == 1 and obs.credits > 50_000:
             room = self._legal_max(obs, "buy_equip", "fighters")
@@ -384,6 +404,11 @@ class HeuristicAgent(BaseAgent):
                 # QC: nothing to sell or buy here. Remember it so the walk stops hopping
                 # back to a drained pair of ports (seed 250925 P6 orbited 572/687/744 days 5-10).
                 self._dry_port[here] = int(getattr(obs, "day", 0) or 0)
+
+        # NOTE 92. Off, this is None and the walk below is unchanged.
+        heading = self._recovery_heading(obs)
+        if heading is not None:
+            return heading
 
         # Fogged play: fit a scanner at StarDock, then scan before blind warps.
         if info_tw2002():
@@ -452,6 +477,16 @@ class HeuristicAgent(BaseAgent):
                 adj = safe_adj
             elif adj and bad:
                 return self._stay_put(obs, "No safe warp. Ferrengal and sectors that hit this ship today are closed.")
+        if bots_ferrengi_recovery_live():
+            loss = self._ferrengi_losses(obs)
+            safe_adj = [a for a in adj if int(a["id"]) not in loss]
+            if loss and safe_adj:
+                adj = safe_adj
+            elif loss and adj:
+                return self._stay_put(obs, "No safe warp. Ferrengi took holds in every exit within the last 2 days.")
+        escaped = self._escape_heading(obs, adj)
+        if escaped is not None:
+            return escaped
         if adj and self._short_for_warp(obs):
             return Action(kind=ActionKind.WAIT, thought="Not enough turns left for a warp; waiting for tomorrow.")
         if adj:
@@ -521,7 +556,73 @@ class HeuristicAgent(BaseAgent):
                 thought=f"Warping to {choice['id']} ({reason}, port={choice.get('port')}).",
             )
 
+        escaped = self._escape_heading(obs, adj)
+        if escaped is not None:
+            return escaped
         return Action(kind=ActionKind.WAIT, args={}, thought="No warps from this sector; waiting a tick.")
+
+    def _dock_upgrade(self, obs: Observation) -> Action | None:
+        from .bot_upgrades import dock_step
+
+        ship = obs.ship or {}
+        step = dock_step(
+            here=int(obs.sector.get("id") or 0),
+            class_key=str(ship.get("class") or ""),
+            holds=int(ship.get("holds") or 0),
+            max_holds=int(ship.get("hold_cap") or ship.get("max_holds") or 0),
+            fighters=int(ship.get("fighters") or 0),
+            credits=int(obs.credits or 0),
+            day=int(getattr(obs, "day", 1) or 1),
+            legal_actions=getattr(obs, "legal_actions", None),
+        )
+        if step is None:
+            return None
+        return Action(kind=ActionKind(step["kind"]), args=dict(step["args"]), thought=step["thought"])
+
+    def _recovery_heading(self, obs: Observation) -> Action | None:
+        from .bot_upgrades import recovery_course
+
+        legal = self._legal(obs)
+        ship = obs.ship or {}
+        step = recovery_course(
+            here=int(obs.sector.get("id") or 0),
+            holds=int(ship.get("holds") or 0),
+            plot_legal=self._course_executable(legal),
+            warp_legal=True,
+        )
+        if step is None:
+            return None
+        return Action(kind=ActionKind(step["kind"]), args=dict(step["args"]), thought=step["thought"])
+
+    def _escape_heading(self, obs: Observation, adj: list) -> Action | None:
+        from .bot_upgrades import escape_course
+
+        legal = self._legal(obs)
+        step = escape_course(
+            here=int(obs.sector.get("id") or 0),
+            adjacent_ids=[int(a["id"]) for a in (adj or []) if a.get("id") is not None],
+            last_from=self._last_from,
+            trail=list(self.__dict__.get("_escape_trail") or []),
+            plot_legal=self._course_executable(legal),
+            warp_legal=True,
+        )
+        if step is None:
+            return None
+        return Action(kind=ActionKind(step["kind"]), args=dict(step["args"]), thought=step["thought"])
+
+    @staticmethod
+    def _course_executable(legal: dict) -> bool:
+        execute = ((legal.get("plot_course") or {}).get("params") or {}).get("execute") or {}
+        return bool(execute.get("legal")) if isinstance(execute, dict) else False
+
+    def _ferrengi_losses(self, obs: Observation) -> set[int]:
+        from .bot_upgrades import ferrengi_loss_sectors
+
+        return ferrengi_loss_sectors(
+            getattr(obs, "recent_events", None),
+            getattr(obs, "day", None),
+            getattr(obs, "self_id", None),
+        )
 
     @staticmethod
     def _legal(obs: Observation) -> dict:
@@ -864,6 +965,13 @@ class HeuristicAgent(BaseAgent):
                 candidates = safe
             elif bad:
                 return self._stay_put(obs, thought)
+        if bots_ferrengi_recovery_live():
+            loss = self._ferrengi_losses(obs)
+            safe = [a for a in candidates if int(a["id"]) not in loss]
+            if safe:
+                candidates = safe
+            elif loss:
+                return self._stay_put(obs, thought + " Ferrengi took holds on the only exit.")
         choice = min(candidates, key=lambda a: (self._visit_counts.get(int(a["id"]), 0), int(a["id"])))
         self._last_from = here
         self._last_to = int(choice["id"])
