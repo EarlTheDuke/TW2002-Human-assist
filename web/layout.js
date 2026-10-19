@@ -1,7 +1,9 @@
-/* cockpit-dashboard-custom-v1. The redesign deck only.
+/* cockpit-dashboard-custom-v1, extended by cockpit-custom-layout-v1.
  *
  * Trade Wars 2002 has no panel dashboard. A classic resizable client is
  * UNVERIFIED. With nothing saved, the stylesheet grid is left alone.
+ * Font and zoom stay the controls from that first slice. This file does
+ * not add a second pair.
  */
 (function () {
   "use strict";
@@ -35,7 +37,7 @@
   let menuDrag = false;
 
   function blank() {
-    return { v: 1, order: ORDER.slice(), hidden: [], cols: null, rows: null, font: null, zoom: 1 };
+    return { v: 1, order: ORDER.slice(), hidden: [], cols: null, rows: null, font: null, zoom: 1, mapBoost: 0 };
   }
   function gameId() {
     const match = (location.pathname || "").match(/\/g\/([^/]+)/);
@@ -57,7 +59,7 @@
     return Array.isArray(list) && list.length === base.length && list.every((n, i) => Math.abs(Number(n) - base[i]) < 0.02);
   }
   function isBlank(data) {
-    return sameOrder(data.order) && !data.hidden.length && !data.cols && !data.rows && !data.font && data.zoom === 1;
+    return sameOrder(data.order) && !data.hidden.length && !data.cols && !data.rows && !data.font && data.zoom === 1 && !data.mapBoost;
   }
   function clampTracks(value, base) {
     if (!Array.isArray(value) || value.length !== base.length) return null;
@@ -79,6 +81,8 @@
     next.font = Number.isFinite(font) && font >= 12 && font <= 24 ? Math.round(font) : null;
     const zoom = Math.round(Number(data.zoom) * 10) / 10;
     next.zoom = Number.isFinite(zoom) && zoom >= 0.8 && zoom <= 1.5 ? zoom : 1;
+    const boost = Number(data.mapBoost);
+    next.mapBoost = Number.isFinite(boost) ? Math.max(0, Math.min(4, Math.round(boost))) : 0;
     return next;
   }
   function read() {
@@ -101,6 +105,26 @@
   function tracks(custom, fallback) {
     return (custom || fallback).slice();
   }
+  function navSlot() {
+    const navIndex = state.order.indexOf("nav");
+    return SLOTS[navIndex >= 0 ? navIndex : 1];
+  }
+  function boostedCols(cols) {
+    if (!state.mapBoost) return cols;
+    const base = (cols || DEFAULT_COLS).slice();
+    const slot = navSlot();
+    const start = slot.col - 1;
+    const span = slot.span || 1;
+    for (let i = 0; i < span && start + i < base.length; i += 1) base[start + i] += state.mapBoost * 1.15;
+    return base;
+  }
+  function boostedRows(rows) {
+    if (!state.mapBoost) return rows;
+    const base = (rows || DEFAULT_ROWS).slice();
+    const idx = navSlot().row === 2 ? 1 : 0;
+    base[idx] += state.mapBoost * 0.9;
+    return base;
+  }
   function apply() {
     const useGrid = wide();
     const customOrder = useGrid && !sameOrder(state.order);
@@ -117,11 +141,14 @@
       el.style.gridColumn = slot.span ? slot.col + " / span " + slot.span : String(slot.col);
       el.style.gridRow = String(slot.row);
     });
-    if (useGrid && state.cols) deck.style.gridTemplateColumns = state.cols.map((n) => n.toFixed(4) + "fr").join(" ");
+    const colTracks = useGrid ? boostedCols(state.cols) : null;
+    const rowTracks = useGrid ? boostedRows(state.rows) : null;
+    if (useGrid && (state.cols || state.mapBoost) && colTracks) deck.style.gridTemplateColumns = colTracks.map((n) => n.toFixed(4) + "fr").join(" ");
     else deck.style.gridTemplateColumns = "";
-    if (useGrid && state.rows) {
-      deck.style.gridTemplateRows = "minmax(0," + state.rows[0].toFixed(4) + "fr) minmax(80px," + state.rows[1].toFixed(4) + "fr)";
+    if (useGrid && (state.rows || state.mapBoost) && rowTracks) {
+      deck.style.gridTemplateRows = "minmax(0," + rowTracks[0].toFixed(4) + "fr) minmax(80px," + rowTracks[1].toFixed(4) + "fr)";
     } else deck.style.gridTemplateRows = "";
+    document.body.setAttribute("data-map-boost", String(state.mapBoost || 0));
     if (state.font) {
       document.body.classList.add("deck-tuned");
       document.body.style.setProperty("--cockpit-font", state.font + "px");
@@ -133,6 +160,7 @@
     else document.body.style.zoom = "";
     document.body.setAttribute("data-deck", isBlank(state) ? "default" : "custom");
     placeSplitters();
+    refreshPanelMenus();
     if (!menuDrag) paintMenu();
   }
 
@@ -276,6 +304,12 @@
     write();
     apply();
   }
+  function setMap(delta) {
+    state.mapBoost = Math.max(0, Math.min(4, (state.mapBoost || 0) + delta));
+    write();
+    apply();
+  }
+  const MAP_WORDS = ["Default", "Large", "Larger", "Huge", "Maximum"];
   function reset() {
     state = blank();
     try { localStorage.removeItem(storageKey()); } catch (e) { /* already clear */ }
@@ -285,9 +319,12 @@
   function paintMenu() {
     const fontRead = document.querySelector("[data-testid=font-readout]");
     const zoomRead = document.querySelector("[data-testid=zoom-readout]");
+    const mapRead = document.querySelector("[data-testid=map-size]");
     if (fontRead) fontRead.textContent = state.font ? state.font + "px" : "Default";
     if (zoomRead) zoomRead.textContent = Math.round(state.zoom * 100) + "%";
+    if (mapRead) mapRead.textContent = MAP_WORDS[state.mapBoost] || "Default";
     const canMove = wide();
+    const lastVisible = state.hidden.length >= ORDER.length - 1;
     list.innerHTML = "";
     state.order.forEach((id, index) => {
       const name = (PANELS.find((row) => row[0] === id) || [id, id])[1];
@@ -298,9 +335,15 @@
       const shown = state.hidden.indexOf(id) < 0;
       row.innerHTML = '<button type="button" class="grip" data-grip="' + id + '" aria-label="Drag ' + name + '"' + (canMove ? "" : " hidden") + '>↕</button>'
         + '<label><input type="checkbox" data-testid="show-' + id + '"' + (shown ? " checked" : "") + '> ' + name + '</label>'
-        + '<button type="button" data-move="-1" data-testid="up-' + id + '"' + (canMove ? "" : " hidden") + (index === 0 ? " disabled" : "") + '>Up</button>'
-        + '<button type="button" data-move="1" data-testid="down-' + id + '"' + (canMove ? "" : " hidden") + (index === state.order.length - 1 ? " disabled" : "") + '>Down</button>';
+        + '<span class="layout-actions">'
+        + '<button type="button" data-move="-1" data-testid="up-' + id + '"' + (canMove ? "" : " hidden") + (index === 0 ? " disabled" : "") + '>Move up</button>'
+        + '<button type="button" data-move="1" data-testid="down-' + id + '"' + (canMove ? "" : " hidden") + (index === state.order.length - 1 ? " disabled" : "") + '>Move down</button>'
+        + '<button type="button" data-testid="hide-' + id + '"' + (!shown || lastVisible ? " disabled" : "") + '>Hide</button>'
+        + '<button type="button" data-testid="show-panel-' + id + '"' + (shown ? " disabled" : "") + '>Show</button>'
+        + '</span>';
       row.querySelector("input").addEventListener("change", (ev) => toggle(id, ev.target.checked));
+      row.querySelector("[data-testid=hide-" + id + "]").addEventListener("click", () => toggle(id, false));
+      row.querySelector("[data-testid=show-panel-" + id + "]").addEventListener("click", () => toggle(id, true));
       row.querySelectorAll("[data-move]").forEach((button) => {
         button.addEventListener("click", () => move(id, Number(button.dataset.move)));
       });
@@ -357,6 +400,107 @@
     });
   }
 
+  function refreshPanelMenus() {
+    const canMove = wide();
+    const lastVisible = state.hidden.length >= ORDER.length - 1;
+    PANELS.forEach((row) => {
+      const id = row[0];
+      const pop = document.querySelector('[data-testid="panel-menu-pop-' + id + '"]');
+      const opener = document.querySelector('[data-testid="panel-menu-' + id + '"]');
+      if (!pop) return;
+      const shown = state.hidden.indexOf(id) < 0;
+      const index = state.order.indexOf(id);
+      const panel = document.getElementById(id);
+      if (!shown) pop.hidden = true;
+      if (opener) opener.hidden = !shown;
+      pop.querySelector('[data-cmd="up"]').disabled = !canMove || index <= 0;
+      pop.querySelector('[data-cmd="down"]').disabled = !canMove || index >= state.order.length - 1;
+      pop.querySelector('[data-cmd="hide"]').disabled = !shown || lastVisible;
+      pop.querySelector('[data-cmd="show"]').disabled = shown;
+      const larger = pop.querySelector('[data-cmd="larger"]');
+      const smaller = pop.querySelector('[data-cmd="smaller"]');
+      if (larger) larger.disabled = state.mapBoost >= 4;
+      if (smaller) smaller.disabled = !state.mapBoost;
+      if (panel && panel.hidden) pop.hidden = true;
+    });
+    const larger = document.querySelector("[data-testid=map-larger]");
+    const smaller = document.querySelector("[data-testid=map-smaller]");
+    if (larger) larger.disabled = state.mapBoost >= 4;
+    if (smaller) smaller.disabled = !state.mapBoost;
+  }
+
+  function placePop(button, pop) {
+    const rect = button.getBoundingClientRect();
+    pop.style.top = Math.max(4, Math.min(rect.bottom + 2, window.innerHeight - 180)) + "px";
+    pop.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 168)) + "px";
+  }
+
+  function closePops(except) {
+    document.querySelectorAll(".panel-menu").forEach((pop) => {
+      if (pop !== except) pop.hidden = true;
+    });
+  }
+
+  function mountPanelMenus() {
+    PANELS.forEach((row) => {
+      const id = row[0];
+      const name = row[1];
+      const panel = document.getElementById(id);
+      if (!panel || panel.querySelector("[data-testid=panel-menu-" + id + "]")) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "panel-menu-open";
+      button.dataset.testid = "panel-menu-" + id;
+      button.textContent = "Panel";
+      button.setAttribute("aria-haspopup", "menu");
+      button.setAttribute("aria-label", name + " panel");
+      const pop = document.createElement("div");
+      pop.className = "panel-menu";
+      pop.hidden = true;
+      pop.dataset.testid = "panel-menu-pop-" + id;
+      pop.setAttribute("role", "menu");
+      pop.setAttribute("aria-label", name);
+      const items = [
+        ["up", "Move up"],
+        ["down", "Move down"],
+        ["hide", "Hide"],
+        ["show", "Show"],
+      ];
+      if (id === "nav") items.push(["larger", "Larger map"], ["smaller", "Smaller map"]);
+      items.forEach((item) => {
+        const cmd = document.createElement("button");
+        cmd.type = "button";
+        cmd.dataset.cmd = item[0];
+        cmd.textContent = item[1];
+        cmd.setAttribute("role", "menuitem");
+        pop.appendChild(cmd);
+      });
+      shieldKeys(button);
+      shieldKeys(pop);
+      pop.addEventListener("click", (ev) => {
+        const cmd = ev.target && ev.target.closest ? ev.target.closest("[data-cmd]") : null;
+        if (!cmd || cmd.disabled) return;
+        ev.stopPropagation();
+        if (cmd.dataset.cmd === "up") move(id, -1);
+        else if (cmd.dataset.cmd === "down") move(id, 1);
+        else if (cmd.dataset.cmd === "hide") toggle(id, false);
+        else if (cmd.dataset.cmd === "show") toggle(id, true);
+        else if (cmd.dataset.cmd === "larger") setMap(1);
+        else if (cmd.dataset.cmd === "smaller") setMap(-1);
+      });
+      button.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        const open = pop.hidden;
+        closePops();
+        pop.hidden = !open;
+        if (!pop.hidden) placePop(button, pop);
+      });
+      panel.appendChild(button);
+      document.body.appendChild(pop);
+    });
+  }
+
   function openMenu() { menu.hidden = false; paintMenu(); }
   function closeMenu() { menu.hidden = true; }
   openBtn.addEventListener("click", (ev) => { ev.stopPropagation(); menu.hidden ? openMenu() : closeMenu(); });
@@ -366,19 +510,44 @@
   document.querySelector("[data-testid=font-inc]").addEventListener("click", () => setFont(1));
   document.querySelector("[data-testid=zoom-dec]").addEventListener("click", () => setZoom(-0.1));
   document.querySelector("[data-testid=zoom-inc]").addEventListener("click", () => setZoom(0.1));
+  const mapLarger = document.querySelector("[data-testid=map-larger]");
+  const mapSmaller = document.querySelector("[data-testid=map-smaller]");
+  if (mapLarger) mapLarger.addEventListener("click", () => setMap(1));
+  if (mapSmaller) mapSmaller.addEventListener("click", () => setMap(-1));
+  function shieldKeys(node) {
+    node.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") return;
+      ev.stopPropagation();
+    });
+  }
+  shieldKeys(menu);
   document.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape" && !menu.hidden) {
+    if (ev.key !== "Escape") return;
+    const openPop = document.querySelector(".panel-menu:not([hidden])");
+    if (openPop) {
+      openPop.hidden = true;
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
+    if (!menu.hidden) {
       ev.preventDefault();
       ev.stopPropagation();
       closeMenu();
     }
   }, true);
+  document.addEventListener("click", (ev) => {
+    const target = ev.target;
+    if (target && target.closest && (target.closest(".panel-menu") || target.closest(".panel-menu-open"))) return;
+    closePops();
+  });
   const seatSelect = document.getElementById("seatSelect");
   if (seatSelect) seatSelect.addEventListener("change", () => { state = read(); apply(); });
   window.addEventListener("resize", () => apply());
   if (window.ResizeObserver) new ResizeObserver(() => placeSplitters()).observe(deck);
   if (wideQ.addEventListener) wideQ.addEventListener("change", () => apply());
 
+  mountPanelMenus();
   state = read();
   apply();
   window.__tw2kLayout = {

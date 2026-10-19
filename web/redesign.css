@@ -51,7 +51,9 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 @media (max-width:700px){#shipSvg .hull-float{animation:none}}
 #shipSvg.is-drag{cursor:grabbing}
 #fighterRow,#shipStats,#holds{flex:0 0 auto}
-#shipStats{padding:6px 10px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:13px}
+#shipStats{padding:6px 10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11em),1fr));gap:2px 14px;font-size:13px}
+#ship{overflow:auto}
+.bar{min-width:0}
 .bar{display:flex;gap:6px;align-items:center}.bar .t{flex:1;height:8px;border:1px solid var(--dk);background:#111}.bar .f{display:block;height:100%}
 #here{padding:8px 10px}
 .porttbl{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:8px}
@@ -70,7 +72,7 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #menu[data-screen="rules"]{overflow:auto}
 #menu .row{padding:2px 0}#menu .row kbd{color:var(--y);font:inherit}
 #menu input{background:#000;color:var(--y);border:1px solid var(--c);font:inherit;padding:4px 8px}
-@media (max-width:1366px) and (min-width:701px){#cmdline{flex-wrap:nowrap;gap:2px 8px;padding:4px 8px}.title-frame{font-size:9px;line-height:1.05;padding:0 4px}.stat b{font-size:14px}.stat i{font-size:9px;margin-right:3px}.prompt{font-size:12px}}
+@media (max-width:1366px) and (min-width:701px){#cmdline{flex-wrap:nowrap;gap:2px 8px;padding:4px 8px}.title-frame{font-size:9px;line-height:1.05;padding:0 4px}.stat b{font-size:14px}.stat i{font-size:9px;margin-right:3px}.prompt{font-size:12px}.manual-link{margin-left:0}}
 @media (max-width:1100px){#deck{grid-template-columns:1fr 1fr;grid-template-areas:"view nav" "ship here" "term term"}}
 @media (max-width:700px){body{font-size:12px;overflow:hidden;height:100vh}.hide-s{display:none}
  .title-frame{font-size:9px;line-height:1.02;padding:0 3px}
@@ -142,7 +144,7 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 .scan,#sectorText,#sceneTag{z-index:2}
 .vp-controls{display:flex;gap:8px;align-items:center;padding:4px 8px}
 .holds{display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px;width:100%;min-width:0}
-.hold{border:1px solid var(--br);padding:3px 6px;flex:1 1 22%;min-width:0}
+.hold{border:1px solid var(--br);padding:3px 6px;flex:1 1 5.5em;min-width:min(100%,5.5em);overflow:hidden}
 .hold b{color:var(--y);font-weight:normal}
 .fighters{display:block;padding:0 10px 4px;color:var(--r);font-size:12px;line-height:1.35}
 .fighters:empty{display:none;padding:0}
@@ -162,8 +164,22 @@ body.deck-tuned #cmdline{flex-wrap:wrap}
 #layoutMenu{position:fixed;z-index:40;top:10%;left:22%;right:22%;max-height:76%;overflow:auto;background:#000;border:2px double var(--c);padding:12px 16px;box-shadow:0 0 0 4px #0000aa}
 #layoutMenu .layout-head{display:flex;justify-content:space-between;align-items:center;color:var(--y);margin-bottom:8px}
 #layoutMenu button{font:inherit;background:#000;color:var(--c);border:1px solid var(--dc);padding:2px 8px;cursor:pointer}
-#layoutMenu .layout-row{display:flex;gap:8px;align-items:center;padding:3px 0}
-#layoutMenu .layout-row label{flex:1}
+#layoutMenu .layout-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:3px 0}
+#layoutMenu .layout-row label{flex:1 1 8em}
+#layoutMenu .layout-actions{display:flex;flex-wrap:wrap;gap:4px}
+.panel>h2{padding-right:76px}
+.panel-menu-open{position:absolute;top:2px;right:4px;z-index:6;font:inherit;background:#000;color:var(--c);border:1px solid var(--dc);padding:0 6px;cursor:pointer}
+.panel-menu{position:fixed;z-index:45;display:flex;flex-direction:column;gap:2px;min-width:148px;background:#000;border:1px solid var(--c);padding:4px}
+.panel-menu button{font:inherit;background:#000;color:var(--c);border:1px solid var(--dc);padding:2px 8px;cursor:pointer;text-align:left}
+.panel-menu button:disabled,#layoutMenu button:disabled{color:var(--dk);cursor:default}
+@media (max-width:1100px){
+  body[data-map-boost="1"] #nav{max-height:320px}
+  body[data-map-boost="1"] #map{min-height:240px}
+  body[data-map-boost="2"] #nav{max-height:460px}
+  body[data-map-boost="2"] #map{min-height:380px}
+  body[data-map-boost="3"] #nav,body[data-map-boost="4"] #nav{max-height:none}
+  body[data-map-boost="3"] #map,body[data-map-boost="4"] #map{min-height:68vh}
+}
 #layoutMenu .grip{touch-action:none;cursor:grab;color:var(--y)}
 #layoutMenu .layout-setting{display:flex;gap:8px;align-items:center;padding:6px 0}
 #layoutMenu [data-testid=layout-reset]{margin-top:8px;color:var(--y);border-color:var(--y)}
