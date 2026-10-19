@@ -4071,6 +4071,28 @@ def ai_cockpit_seat_on() -> bool:
     return AI_COCKPIT_SEAT_MODE == "tw2002" or tw2002_live_profile()
 
 
+# lobby-ai-opponents-v1 (NOTE 100). Off leaves the Galaxy War Command form and
+# the worker command as they are today. On lets a lobby game add 0-4
+# cockpit-only AI seats. Stored default off. V311_PROFILE does not turn this
+# on, and it is not a profile helper. The server never stores or ships an LLM key.
+LOBBY_AI_SEAT_MODE = "off"  # "off" | "on"
+
+# UNVERIFIED: one model call per turn is the planning estimate. A refused
+# turn that is chosen again can spend another call.
+LOBBY_AI_CALLS_PER_TURN = 1
+# Per game, across that game's LLM seats. Past this the seat plays heuristic.
+# UNVERIFIED: 400 is a hosting guard, not a measured TWGS figure.
+LOBBY_AI_CALL_CAP = 400
+# Calls that may start in any 60-second window. A turn past the limit plays heuristic.
+# UNVERIFIED: 6 per minute is a hosting guard.
+LOBBY_AI_CALLS_PER_MINUTE = 6
+
+
+def lobby_ai_seat_on() -> bool:
+    """True only when this process set LOBBY_AI_SEAT_MODE to on."""
+    return LOBBY_AI_SEAT_MODE == "on"
+
+
 # cockpit-gaps-v1 (NOTE 56). Legacy observations carry no cockpit block.
 # tw2002 adds one block to the seat's own harness observation: the last
 # action's verdict, the port's quote and counter, this seat's last-seen

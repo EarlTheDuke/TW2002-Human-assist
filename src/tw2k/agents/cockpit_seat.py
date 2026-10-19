@@ -16,6 +16,11 @@ world before it warps, waits out an HTTP 429 from the live action route,
 drops a plotted course the route refused, and stays out of a sector an event
 already named as a hazard. An optional LLM hook reads its key from the
 environment and is skipped when that variable is empty, so tests open no socket.
+
+NOTE 100. A lobby game may call ``run(..., lobby=True)`` while
+LOBBY_AI_SEAT_MODE is on. That path still uses only the four cockpit routes.
+The lobby passes the key as an argument. An empty key does not read the
+environment and does not open a socket.
 """
 
 from __future__ import annotations
@@ -181,13 +186,22 @@ class CockpitSeat:
         ]
 
     async def run(self, days: int, *, idle_s: float = 600.0, max_posts: int = 6000,
-                  llm_ask: Callable[..., Any] | None = None) -> dict[str, Any]:
+                  llm_ask: Callable[..., Any] | None = None, lobby: bool = False,
+                  llm_key: str | None = None, fallback_line: str | None = None) -> dict[str, Any]:
         """Play ``days`` game days from the day the seat starts on. Returns the day table, refusals, and gaps.
 
         NOTE 56 item 7a: ``days`` counts from now. A seat that joins on day 4 with
         days=1 plays day 4.
+
+        NOTE 100. ``lobby=True`` is the Galaxy War Command seat. It runs when
+        LOBBY_AI_SEAT_MODE is on and does not turn AI_COCKPIT_SEAT_MODE on.
+        ``llm_key`` is used only for that call. None on the lobby path means
+        an empty key, so the process environment is not read.
         """
-        if not K.ai_cockpit_seat_on():
+        if lobby:
+            if not K.lobby_ai_seat_on():
+                raise CockpitSeatOff("LOBBY_AI_SEAT_MODE is off")
+        elif not K.ai_cockpit_seat_on():
             raise CockpitSeatOff("AI_COCKPIT_SEAT_MODE is legacy")
         reference = await self.read("reference")
         first = await self.read("observation", {"wait_s": 2, "peek": 1})
@@ -214,6 +228,7 @@ class CockpitSeat:
         last_progress = time.monotonic()
         finished = days <= 0 or bool(first.get("game_over"))
         seen_day = start_day
+        announced = False
         while not finished:
             if time.monotonic() - last_progress > idle_s:
                 raise CockpitSeatError("no turn opened for the seat")
@@ -243,11 +258,10 @@ class CockpitSeat:
                 await asyncio.sleep(0.05)
                 continue
             last_progress = time.monotonic()
-            picked = llm_choose(obs, cockpit, ask=llm_ask)
-            if picked is None:
-                kind, args, why = brain.decide(obs, cockpit)
-            else:
-                kind, args, why = picked
+            kind, args, why = _pick_turn(
+                obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
+                fallback_line=fallback_line, announced=announced,
+            )
             day = int(obs.get("day") or 0)
             row = table[day]
             report["posts"] += 1
@@ -295,6 +309,8 @@ class CockpitSeat:
                 row["refused"] += 1
                 brain.refused(kind, args, error)
             elif ok:
+                if why == "llm-fallback":
+                    announced = True
                 brain.done(kind, args, verdict=bool(result.get("verdict")))
                 if kind == "trade":
                     row["trades"] += 1
@@ -1216,6 +1232,37 @@ def cockpit_llm_key() -> str:
     return os.environ.get(LLM_KEY_ENV, "").strip()
 
 
+def _pick_turn(
+    obs: dict[str, Any],
+    cockpit: dict[str, Any] | None,
+    brain: SeatBrain,
+    *,
+    lobby: bool,
+    llm_key: str | None,
+    llm_ask: Callable[..., Any] | None,
+    fallback_line: str | None,
+    announced: bool,
+) -> tuple[str, dict[str, Any], str]:
+    """Heuristic, one LLM choice, or a single public line when the LLM cannot play.
+
+    The line is a broadcast the cockpit already shows. It is not a new Observation field.
+    """
+    if lobby:
+        # An omitted lobby key is empty. Do not fall through to TW2K_COCKPIT_LLM_KEY.
+        picked = llm_choose(obs, cockpit, key="" if llm_key is None else llm_key, ask=llm_ask)
+    else:
+        picked = llm_choose(obs, cockpit, ask=llm_ask)
+    legal = {str(row.get("kind")) for row in (obs.get("legal_actions") or []) if row.get("legal")}
+    lasting = bool(getattr(llm_ask, "lasting_fallback", False))
+    missing = lobby and llm_ask is not None and not str(llm_key or "").strip()
+    if (fallback_line and not announced and picked is None and llm_ask is not None
+            and (lasting or missing) and "broadcast" in legal):
+        return "broadcast", {"message": str(fallback_line)[:200]}, "llm-fallback"
+    if picked is None:
+        return brain.decide(obs, cockpit)
+    return picked
+
+
 def llm_choose(
     obs: dict[str, Any],
     cockpit: dict[str, Any] | None = None,
@@ -1250,15 +1297,17 @@ def _coerce_llm(picked: Any) -> tuple[str, dict[str, Any], str] | None:
     return kind, args, why
 
 
-def _llm_http_choose(key: str, obs: dict[str, Any], cockpit: dict[str, Any] | None) -> Any:
-    """OpenAI-compatible chat completion. The URL comes from the environment too.
+def _llm_http_choose(key: str, obs: dict[str, Any], cockpit: dict[str, Any] | None,
+                     *, url: str | None = None) -> Any:
+    """OpenAI-compatible chat completion. The URL comes from the environment or the caller.
 
     UNVERIFIED: no single public endpoint is specified for this hook, so the
-    operator supplies ``TW2K_COCKPIT_LLM_URL``. Missing URL returns None and
-    does not open a socket. The key is sent as a bearer header and is not logged.
+    operator supplies ``TW2K_COCKPIT_LLM_URL``. A lobby seat passes ``url`` and
+    does not put the key or the address in the environment. Missing URL returns
+    None and does not open a socket. The key is sent as a bearer header and is not logged.
     """
-    url = os.environ.get(LLM_URL_ENV, "").strip()
-    if not url or not key:
+    endpoint = os.environ.get(LLM_URL_ENV, "").strip() if url is None else str(url).strip()
+    if not endpoint or not key:
         return None
     legal = [row.get("kind") for row in (obs.get("legal_actions") or []) if row.get("legal")]
     prompt = {
@@ -1278,7 +1327,7 @@ def _llm_http_choose(key: str, obs: dict[str, Any], cockpit: dict[str, Any] | No
         ],
     }).encode()
     req = urllib.request.Request(
-        url,
+        endpoint,
         data=body,
         headers={"authorization": f"Bearer {key}", "content-type": "application/json"},
         method="POST",
