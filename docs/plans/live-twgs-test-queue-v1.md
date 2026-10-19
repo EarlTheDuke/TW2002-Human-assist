@@ -4,6 +4,8 @@ Cur can run these on Ben's server with a new test character. Nothing below was c
 
 Settled in this slice, and not queued: an unmanned Interdictor does not hold, a cloak or a landing or a port visit drops the well, and a fighter-menu retreat is allowed past an Interdictor Cruiser. Sources are in `src/tw2k/engine/combat.py` (`hull_interdict_reason`, `retreat_block`).
 
+The ordered run, with setup, keys, and turn and credit estimates, is `docs/plans/live-twgs-run-sheet-v1.md`. Blank results go in `docs/plans/live-twgs-results-template-v1.csv`. Fill a copy of that CSV. `python3 scripts/live_queue_proposals.py` prints a dry-run proposal and writes nothing.
+
 | Item | Current value | What to do on live TWGS | What to record | Constant it settles |
 |---|---|---|---|---|
 | Ferrengi kill experience | Assault trader 50, battle cruiser 100, dreadnought 150 | Kill one of each hull with a good trader (alignment above 0) and again with a neutral or evil trader. Read experience before and after. | The experience change for each hull, and whether alignment changed the award | `FERRENGI_XP_BY_HULL` |
@@ -38,7 +40,7 @@ Numbers a v3.11 source does not settle. Each row is the live test that would pin
 | StarDock / Class 0 later kill | 890,000 fighters, rating 5,000 | After that port is rebuilt, kill it again, or kill a different special port | Fighters spent and the rating on the second kill | `SPECIAL_PORT_FIGS_AFTER`, `SPECIAL_PORT_RATING_AFTER` |
 | Special-port return fire | not modelled; a wave only spends the fighters sent | Same attacks | Shields and fighters the port removes per wave | no constant yet |
 | Planet collision chance | 10 percent per planet over the cap of 5, never past 100 | Overload a sector past the planet limit and run Extern for several days | Whether a collision happens, and how many planets are lost | `PLANET_COLLISION_PCT_PER_EXCESS` |
-| Collision log wording | "Unstable planetary mass in sector N" every night; the loss line names the planets and leaves the sector number out | Same overload | The exact daily-log lines | the two `PLANET_COLLISION` summaries |
+| Collision log wording | "Unstable planetary mass in sector N" every night; the loss line names the planets and leaves the sector number out | Same overload | The exact daily-log lines | no named constant. The two daily-log sentences are inline in the day tick |
 | Sector 1 overload | skipped (Old FAQ v2) | Overload sector 1 if the game allows it | Whether Extern collides planets there | the `STARDOCK_SECTOR` skip in `_planet_collisions` |
 
 ## Live TWGS test queue (NOTE 103)
@@ -58,3 +60,11 @@ Numbers a v3.11 source does not settle. Searched before these rows were added: `
 | Good haggle experience | +1 | Make a deal that beats the offer and stops short of the hidden bound | Experience before and after | `HAGGLE_EXP_GOOD` |
 | Great haggle experience | +2, when the accepted price reaches the hidden bound | Repeat and take the price the port will not beat | Experience before and after, and whether 5 is awarded for the exact best price | `HAGGLE_EXP_GREAT` |
 | Ship rename | 5000 credits, 30 characters, 0 turns | At the shipyard, rename the ship | Credits taken, the longest name accepted, and the turn counter | `SHIP_RENAME_COST`, `SHIP_RENAME_NAME_MAX` |
+
+## Live TWGS test queue (NOTE 110)
+
+One added check. NOTE 103 mapped Computer B to backtrack on this cockpit. The original backtrack key is `<`. This row asks what B does on the original TW2002 Computer menu. It does not add a constant.
+
+| item | current value | live test | what to record | constant |
+|---|---|---|---|---|
+| Computer menu B | This cockpit's Computer menu uses B for backtrack. The original backtrack key is `<` | On the original TW2002 Computer menu, read the label next to B. Press B. From a prompt, after one move, press `<` | The menu label for B, and whether B and `<` do the same thing | none, cockpit key, not an engine constant |
