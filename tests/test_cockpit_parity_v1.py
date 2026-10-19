@@ -20,7 +20,10 @@ def test_every_verb_has_a_button() -> None:
     forms = JS.split("const FORM_SPECS = ", 1)[1].split("function renderGenericForm", 1)[0]
     covered = _quoted(s3) | _quoted(groups)
     # Ship-exit verbs stay off the bot pad while SHIP_EXIT_MODE is legacy. The redesign has the forms.
+    # ship_rename stays off the bot pad while SHIP_RENAME_MODE is legacy. The redesign yard has the form.
     gated = set() if K.ship_exit_on() else {"jettison", "self_destruct"}
+    if not K.ship_rename_live():
+        gated.add("ship_rename")
     missing = [k.value for k in ActionKind if k.value not in covered and k.value not in gated]
     assert missing == []
     for kind in covered - _quoted(s3):

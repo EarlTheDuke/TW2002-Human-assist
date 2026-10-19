@@ -219,7 +219,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                     ActionKind.UNDERGROUND_ENTER, ActionKind.UNDERGROUND_CONTRACT, ActionKind.UNDERGROUND_CLAIM,
                 ))
                 and ((K.tavern_on() and K.stardock_extra_on()) or k != ActionKind.TRICRON)
-                and (K.stardock_extra_on() or k != ActionKind.CINEPLEX)]
+                and (K.stardock_extra_on() or k != ActionKind.CINEPLEX)
+                and (K.ship_rename_live() or k != ActionKind.SHIP_RENAME)]
 
     release_stale_landing(universe, player)
     landed = player.planet_landed is not None
@@ -1710,6 +1711,12 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     if K.avoid_live():
         out.append(_la(ActionKind.AVOID, legal=True, cost=0,
                        params={"sector": "a sector id, or 0 to clear the list"}))
+
+    # Absent while SHIP_RENAME_MODE is legacy, so the pin keeps the old catalog.
+    if K.ship_rename_live():
+        from .class0 import ship_rename_spec
+        ok, why, params = ship_rename_spec(universe, player_id)
+        out.append(_la(ActionKind.SHIP_RENAME, legal=ok, reason=why, params=params))
 
     # Absent while SHIP_EXIT_MODE is legacy, so the pin keeps the old catalog.
     if K.ship_exit_on():

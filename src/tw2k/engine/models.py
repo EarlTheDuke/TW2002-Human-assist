@@ -370,6 +370,8 @@ class EventKind(str, Enum):
     ALIEN_FLED = "alien_fled"
     ALIEN_MINED = "alien_mined"
     ALIEN_CAPTURED = "alien_captured"
+    # v311-exp-alignment-trade-gaps-v1 (NOTE 87). Never emitted while SHIP_RENAME_MODE is legacy.
+    SHIP_RENAMED = "ship_renamed"
 
 
 # ---------------------------------------------------------------------------
