@@ -99,8 +99,17 @@ def test_neutral_landing_claim_is_distinguishable_from_genesis() -> None:
     assert owned[neutral.id]["colonists_total"] == 0
     assert owned[gen_id]["origin"] == "genesis"
     # The engine agrees the claim world cannot build yet, and says why.
+    # Citadel fidelity lists every missing good in words. This seed's unclaimed
+    # world is class K, so level 1 asks for 400 fuel ore, 300 organics,
+    # 600 equipment, and 1000 colonists.
     la = {x.kind: x for x in legal_actions(u, "P1")}["build_citadel"]
-    assert la.legal is False and "fuel_ore" in (la.reason or "")
+    assert la.legal is False
+    assert la.reason == (
+        "need 400 fuel ore on planet (have 0); "
+        "need 300 organics on planet (have 0); "
+        "need 600 equipment on planet (have 0); "
+        "need 1000 colonists on planet (have 0)"
+    )
 
 
 def test_orphan_claim_planet_is_claim_origin() -> None:
