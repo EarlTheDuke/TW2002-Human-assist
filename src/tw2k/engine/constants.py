@@ -4373,6 +4373,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "MAIL_MODE",
         "NOTE 103: a hail flashes for an open cockpit and waits as mail when the seat is offline",
     ),
+    "legacy_day_clock_live": (
+        "LEGACY_DAY_CLOCK_MODE",
+        "NOTE 104: a legacy game with its own day length rolls on that clock while a seat holds the turn",
+    ),
     "colonist_units_live": (
         "COLONIST_UNITS_MODE",
         "NOTE 89: a non-M drop turns Terra people into handbook colonists, one thousand per hold",
@@ -4704,6 +4708,22 @@ DAY_ROLL_CLOCK_MODE = "legacy"  # "legacy" | "live"
 def day_roll_clock_live() -> bool:
     """True when a held turn still lets the day roll on the clock."""
     return DAY_ROLL_CLOCK_MODE == "live" or v311_profile()
+
+
+# beta-playtest2-blockers-v1 (NOTE 104) row 164. Legacy used to roll the day only
+# when every seat was out of turns, so one human with a turn left held the galaxy.
+# "live" and a game that set its own day length (serve --day-seconds, or a lobby
+# game) roll that day on the clock, mark plus the day length, whoever still has
+# turns, including while a seat holds the turn. Dawn still refills turns. No day
+# length does nothing, so a scripted match stays put. The v3.11 regen clock
+# already rolls, so this path stays quiet under it. Rows 160, 162 and 163 stay
+# unused. Stored default stays legacy.
+LEGACY_DAY_CLOCK_MODE = "legacy"  # "legacy" | "live"
+
+
+def legacy_day_clock_live() -> bool:
+    """True when a legacy game with its own day length rolls that day on the clock."""
+    return LEGACY_DAY_CLOCK_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # v311-followups-v1 (NOTE 75). The free home-planet colonists are a clone

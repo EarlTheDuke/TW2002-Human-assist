@@ -823,9 +823,17 @@ def _day_clock() -> str:
         )
     else:
         clock = "The day does not roll while a seat holds its turn."
+    legacy = ""
+    if K.legacy_day_clock_live() and not K.day_roll_clock_live():
+        legacy = (
+            "<p>A legacy game that has its own day length rolls that day on the clock, "
+            "even while a seat holds its turn. Dawn refills the turns. "
+            "With no day length the day waits until every seat is done.</p>"
+        )
     return (
         f"<p>{_profile('Turn regen across the day', K.turn_regen_live(), only_v311=False)} {regen}</p>"
         f"<p>{_profile('Day roll while a seat holds the turn', K.day_roll_clock_live(), only_v311=True)} {clock}</p>"
+        f"{legacy}"
     )
 
 
@@ -1280,7 +1288,9 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "PLANET_VALUE_SCORE_MODE",
     ),
     "tax": ("bank_deposit", "bank_withdraw", "bank_transfer", "TAX_RULE_MODE"),
-    "turns": ("wait", "TURN_REGEN_MODE", "DAY_ROLL_CLOCK_MODE", "LIVE_PACE_MODE"),
+    "turns": (
+        "wait", "TURN_REGEN_MODE", "DAY_ROLL_CLOCK_MODE", "LEGACY_DAY_CLOCK_MODE", "LIVE_PACE_MODE",
+    ),
     "hardware": (
         "buy_equip", "scan", "probe", "query_limpets", "remove_limpet", "launch_beacon",
         "HARDWARE_PRICE_MODE", "DETECT_GEAR_MODE", "PLANET_SCANNER_MODE", "SCANNER_FOG_MODE",

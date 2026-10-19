@@ -170,6 +170,37 @@ def day_length_hint(day_seconds: int, turns_per_day: int, max_days: int) -> str:
     return f"{name} days: {days} days take about {span}; a turn comes back every {every}"
 
 
+def _day_note(g: dict[str, Any], info: dict[str, Any]) -> str:
+    """The running day, or the finished line once the engine has ended the match.
+
+    A 10-day game dawns day 11 when time runs out. The lobby says day 10 of 10.
+    """
+    raw = info.get("day")
+    if raw is None:
+        return ""
+    try:
+        day = int(raw)
+    except (TypeError, ValueError):
+        return ""
+    settings = g.get("settings") or {}
+    try:
+        cap = int(settings.get("max_days") or 0)
+    except (TypeError, ValueError):
+        cap = 0
+    done = g.get("status") == "finished" or bool(info.get("finished")) or (cap > 0 and day > cap)
+    if not done:
+        return f"day {day}"
+    played = min(day, cap) if cap else day
+    shown = cap or played
+    name = str(info.get("winner") or "").strip()
+    reason = str(info.get("win_reason") or "").strip()
+    if name and reason:
+        return f"finished, day {played} of {shown}, winner {name} ({reason})"
+    if name:
+        return f"finished, day {played} of {shown}, winner {name}"
+    return f"finished, day {played} of {shown}"
+
+
 def _day_label(seconds: int) -> str:
     for k, v in DAY_PRESETS.items():
         if v == int(seconds):
@@ -199,7 +230,7 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
     for g in games:
         s = g["settings"]
         info = live.get(g["id"], {})
-        day = f"day {info['day']}" if info.get("day") is not None else ""
+        day = _day_note(g, info)
         open_seats = g.get("open_seats", 0)
         join = (f"<form method=\"post\" action=\"/games/{g['id']}/join\" style=\"display:inline\">"
                 "<button class=\"primary\" type=\"submit\">Join</button></form>") if open_seats and not closed else ""
@@ -245,7 +276,8 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         seen.add(g["id"])
         finished.append(
             f"<tr data-finished=\"{escape(g['id'])}\"><td><b>{escape(g['name'])}</b></td>"
-            f"<td>{_status_tag('finished')}</td><td></td></tr>"
+            f"<td>{_status_tag('finished')} <span class=\"note\">{escape(_day_note(g, live.get(g['id'], {})))}</span></td>"
+            f"<td></td></tr>"
         )
     finished_html = (
         f"<h2>Finished</h2><div class=\"card\" id=\"finished\"><table class=\"games\"><tbody>{''.join(finished)}</tbody></table></div>"
@@ -404,6 +436,7 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 <label for="name">Game name</label><input id="name" name="name" maxlength="40" required value="{escape(v['name'])}">
 <fieldset><legend>Rules</legend>
 <label for="rules">Rule set</label><select id="rules" name="rules">{_opt('v311', 'v3.11 (recommended)', v['rules'])}{_opt('legacy', 'Legacy (this project)', v['rules'])}</select>
+<p class="note" id="rulesPortHint">Ports open full and restock 5% of max each dawn.</p>
 <label for="starting_package">Starting package</label><select id="starting_package" name="starting_package">{_opt('v311', 'v3.11 starting package', v['starting_package'])}{_opt('classic', 'Classic (legacy rules only)', v['starting_package'])}</select>
 <p class="note">v3.11 rules always use the v3.11 starting package.</p>
 <label for="starting_credits">Starting credits</label><select id="starting_credits" name="starting_credits">{_opt('original', 'Original (v3.11 default, 300 cr)', v['starting_credits'])}{_opt('10000', '10,000', v['starting_credits'])}{_opt('100000', '100,000', v['starting_credits'])}{_opt('1000000', '1,000,000', v['starting_credits'])}{_opt('custom', 'Custom', v['starting_credits'])}</select>

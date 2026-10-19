@@ -495,6 +495,9 @@ def build_harness_router(runner) -> APIRouter:
             body["cockpit"] = cockpit_block(runner.state.universe, agent)
         if K.turn_regen_live() and runner.state.universe is not None:
             body["turn_clock"] = _turn_clock(agent.player_id)
+        elif runner.day_clock() is not None:
+            # NOTE 104. A legacy game with its own day length still reports the dawn.
+            body["turn_clock"] = _turn_clock(agent.player_id)
         spec = getattr(runner, "_spec", None)
         override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
         body["starting_credits_line"] = K.starting_credits_line(override, K.opening_original_credits())
@@ -556,6 +559,7 @@ def build_harness_router(runner) -> APIRouter:
             out["next_turn_at"] = now + wait
         clock = runner.day_clock()
         if clock is not None:
+            out["day_started_at"] = clock["day_started_at"]
             out["next_day_at"] = clock["next_day_at"]
             out["next_day_in_s"] = round(max(0.0, clock["next_day_at"] - now), 1)
         return out
