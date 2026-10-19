@@ -877,7 +877,9 @@ def game_status(universe: Universe) -> dict[str, int]:
         fighters += int(player.ship.fighters or 0)
         mines += sum(int(n) for n in (player.ship.mines or {}).values())
     for rec in getattr(universe, "parked_ships", {}).values():
-        fighters += int(rec.ship.fighters or 0)
+        # GAP 14.4 rides on the v3.11 profile. Legacy still counts these fighters.
+        if not _K.v311_profile():
+            fighters += int(rec.ship.fighters or 0)
         mines += sum(int(n) for n in (rec.ship.mines or {}).values())
     aliens = sum(1 for row in getattr(universe, "aliens", {}).values() if getattr(row, "alive", True))
     return {
