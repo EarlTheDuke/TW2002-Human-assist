@@ -529,7 +529,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.ALLIANCE_PROPOSED: ("alliance_id", "target"),
     EventKind.ALLIANCE_FORMED: ("alliance_id", "members"),
     EventKind.ALLIANCE_BROKEN: ("alliance_id", "breaker"),
-    EventKind.HAIL: ("target", "message"),
+    EventKind.HAIL: ("target", "message", "delivery", "ttl_s"),
     EventKind.BROADCAST: ("message",),
     EventKind.AGENT_THOUGHT: ("thought", "auto_wait", "external_idle", "turns_skipped"),
     EventKind.AGENT_ERROR: ("error", "external_timeout"),

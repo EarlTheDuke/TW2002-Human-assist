@@ -3373,18 +3373,36 @@ def _handle_hail(universe: Universe, pid: str, action: Action) -> ActionResult:
     message = action.args.get("message", "")[:1000]
     if target_id not in universe.players:
         return ActionResult(ok=False, error="unknown target")
-    universe.players[target_id].inbox.append({
-        "from": pid,
-        "kind": "hail",
-        "message": message,
-        "day": universe.day,
-        "tick": universe.tick,
-    })
+    target = universe.players[target_id]
+    payload: dict = {"target": target_id, "message": message}
+    if K.mail_live():
+        from .presence import seat_online
+
+        if seat_online(universe, target_id):
+            payload["delivery"] = "live"
+            payload["ttl_s"] = int(K.HAIL_SHOW_SECONDS)
+        else:
+            payload["delivery"] = "mail"
+            target.inbox.append({
+                "from": pid,
+                "kind": "mail",
+                "message": message,
+                "day": universe.day,
+                "tick": universe.tick,
+            })
+    else:
+        target.inbox.append({
+            "from": pid,
+            "kind": "hail",
+            "message": message,
+            "day": universe.day,
+            "tick": universe.tick,
+        })
     universe.emit(
         EventKind.HAIL,
         actor_id=pid,
-        payload={"target": target_id, "message": message},
-        summary=f"{player.name} → {universe.players[target_id].name}: {_truncate_for_feed(message, 100)}",
+        payload=payload,
+        summary=f"{player.name} → {target.name}: {_truncate_for_feed(message, 100)}",
     )
     return ActionResult(ok=True, turns_spent=0)
 
