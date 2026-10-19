@@ -25,6 +25,7 @@ from .combat import (
     _resolve_ship_attack_tw2002,
     _resolve_ship_combat,
     attack_cap,
+    hull_interdict_reason,
     live_challenge,
     open_challenge,
     retreat_block,
@@ -43,6 +44,7 @@ from .ferrengi import (
     _ferrengi_regen,
     _ferrengi_roam_and_hunt,
     _spawn_ferrengi,
+    settle_ferrengi_pace_day,
     apply_ferrengi_tribute,
     clear_ferrengi_encounter,
     live_ferrengi_encounter,
@@ -546,6 +548,10 @@ def tick_day(universe: Universe) -> None:
     if universe.config.enable_ferrengi:
         _ferrengi_regen(universe)
         _spawn_ferrengi(universe)
+        # NOTE 86 FER-d. A scripted day spends the rest of the 30 s clock
+        # before the once-a-day hunt. Profile-off never enters this.
+        if K.ferrengi_pace_on():
+            settle_ferrengi_pace_day(universe)
         _ferrengi_roam_and_hunt(universe)
     if K.alien_on():  # ALIEN_TRADERS.md al4/al7: replace the dead, then hop
         from .alien import alien_day_step
@@ -922,6 +928,18 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
             summary=f"{player.name} tried to warp to {target_id} (no warp)",
         )
         return ActionResult(ok=False, error=f"no warp from {player.sector_id} to {target_id}")
+
+    # NOTE 86 CMB-m. The cruiser holds the sector before a turn is spent.
+    held_by_hull = hull_interdict_reason(universe, pid)
+    if held_by_hull is not None:
+        universe.emit(
+            EventKind.WARP_BLOCKED,
+            actor_id=pid,
+            sector_id=player.sector_id,
+            payload={"target": target_id, "reason": "interdictor_cruiser"},
+            summary=f"{player.name} tried to warp to {target_id} ({held_by_hull})",
+        )
+        return ActionResult(ok=False, error=held_by_hull)
 
     cost = _warp_cost_for(player)
     if K.tow_on():  # SHIP_TOW.md tt6: tower TPW + 2 x towed TPW while a tow is engaged
@@ -4595,6 +4613,9 @@ def _handle_retreat(universe: Universe, pid: str, action: Action) -> ActionResul
         choices = [w for w in sector.warps if w not in K.FEDSPACE_SECTORS] or list(sector.warps)
         if not choices:
             return _reject_free("no warp out to flee the Ferrengi")
+        held_by_hull = hull_interdict_reason(universe, pid)
+        if held_by_hull is not None:
+            return _reject_free(held_by_hull)
         dest = int(choices[0])
         cost = _warp_cost_for(player)
         if player.turns_today + cost > player.turns_per_day:

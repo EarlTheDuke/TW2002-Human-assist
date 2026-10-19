@@ -1398,6 +1398,14 @@ class MatchRunner:
             clock = {}
             self._turn_clock = clock
         now = time.time()
+        # NOTE 86 FER-d. One clock for the whole pass. Off, this never runs,
+        # so the Ferrengi roam roll stays where it was.
+        if K.ferrengi_pace_on():
+            mark = getattr(self, "_ferrengi_pace_at", None)
+            if mark is not None:
+                from ..engine.ferrengi import note_ferrengi_pace
+                note_ferrengi_pace(universe, now - float(mark))
+            self._ferrengi_pace_at = now
         for agent in agents:
             player = universe.players[agent.player_id]
             if not player.alive:

@@ -368,6 +368,18 @@ def handle_ship_transwarp(universe: Universe, pid: str, action: Action) -> Actio
             tow.release(universe, player.ship, pid, "type1_transwarp")  # tt17: Type 1 shuts the beam
         elif towee is not None:
             tow_ctx = tow.begin_move(universe, pid)
+    # NOTE 86 CMB-m. A living Interdictor Cruiser holds TransWarp the same way it holds a warp.
+    from .combat import hull_interdict_reason
+    held_by_hull = hull_interdict_reason(universe, pid)
+    if held_by_hull is not None:
+        universe.emit(
+            EventKind.WARP_BLOCKED,
+            actor_id=pid,
+            sector_id=here,
+            payload={"target": dest_id, "reason": "interdictor_cruiser"},
+            summary=f"{player.name} tried to TransWarp to {dest_id} ({held_by_hull})",
+        )
+        return ActionResult(ok=False, error=held_by_hull)
     # tw12b: a planetary Interdictor holds a TransWarp out like a warp (cabal planets.html).
     from .runner import _clear_photon_damp, _try_interdict
     held = _try_interdict(universe, pid, universe.sectors[here])
