@@ -20,6 +20,9 @@ Prices below are this game's figures, so you can budget. Record the live screen,
 | F | Pods, after the TEDIT delay is set | the delay in midnights, twice; two replacement ships | the two lost ships |
 | G | Port shots that are not kills | 8 classes, a few turns each, fighters for a return shot | no |
 | H | Planet overload | several Extern days, and the planets you build | yes |
+| J | One warp in a Merchant Cruiser and a Scout, then one shield at StarDock | a few turns, one shield | no |
+| K | Underground, one steal, one rob, a corpie if the game has one | the turns those visits take | no |
+| L | One midnight, FedSpace, colonists, one port upgrade, one limpet | visits and one jettison. Not a port kill | no |
 | I | Class 0 and StarDock kills | first kill about 248,000 fighters, later kill about 890,000 | yes |
 
 ## Group A. TEDIT only
@@ -74,6 +77,16 @@ Read: the menu label for B, and whether B and `<` do the same thing.
 
 Settles: none, cockpit key, not an engine constant. NOTE 103 made B backtrack on this cockpit. The original backtrack key is `<`.
 
+### Real-time hop time
+
+item_id: n112-hop-time
+
+Keys: warp one sector in the Merchant Cruiser. Time the hop. Change to a Scout if the shipyard has one, warp one sector, and time that hop. If a SysOp speed setting is on the screen, change it and repeat both warps.
+
+Read: seconds for each hull, and the speed setting.
+
+Settles: a per-hull travel time, only if the screen or the editor prints one. This game spends turns per warp and does not delay the hop.
+
 ## Group C. Trading, then the shipyard
 
 Turns: about 20 for the trip. The rename itself is 0 turns. Credits: `SHIP_RENAME_COST` is 5,000, plus whatever the port quotes for the two haggling deals.
@@ -110,6 +123,16 @@ Read: credits taken, the longest name accepted, and the turn counter.
 
 Settles: `SHIP_RENAME_COST` (5,000) and `SHIP_RENAME_NAME_MAX` (30).
 
+### Shield unit price
+
+item_id: n112-shield-price
+
+Keys: at StarDock, buy one shield. Come back on a second day and buy one shield again. Read that day's fighter price on the same visit.
+
+Read: the credit price each day, next to that day's fighter price.
+
+Settles: a shield price, only if the screen prints one. The flat 10 stays until then. The fighter wave in this game is 160 to 239.
+
 ## Group D. Small fights, not ports
 
 Turns: about 15. Credits: 100 fighters is 5,000 at `FIGHTER_COST` 50, plus losses. A Missile Frigate is 100,800 in this game if this character has to buy one. Record the live shipyard price.
@@ -125,6 +148,36 @@ Keys: from the Missile Frigate, send 100 fighters at the Merchant Cruiser. Note 
 Read: fighters and shields left on both ships after each pass.
 
 Settles: `docs/plans/ship-odds-exchange-v1.md`. No new switch. `RULINGS_v311.md` is not in the repo. The expected split is attacker loses ceil(R / A) when P >= R, else the defender loses floor(P / D).
+
+### Ship-odds loss split
+
+item_id: n112-ship-odds
+
+Keys: no second fight. The NOTE 96 row above is this measurement.
+
+Read: the same fighters and shields.
+
+Settles: `docs/plans/ship-odds-exchange-v1.md`. Already queued. No new switch.
+
+### Attack turn cost
+
+item_id: n112-attack-turns
+
+Keys: attack one ship. Read the turn counter before and after. Repeat from the other hull.
+
+Read: turns spent, and whether that number changes with the hull.
+
+Settles: the attack entry of the turn-cost table. This game spends 5 turns.
+
+### Attacker destroyed by its own attack
+
+item_id: n112-attacker-destroyed
+
+Keys: from the weaker ship, send every fighter into the stronger ship.
+
+Read: whether the attacker is podded.
+
+Settles: no constant until a screen shows it. This game does not destroy the attacker for spending its own fighters.
 
 ### Alien kill alignment share
 
@@ -267,6 +320,152 @@ Keys: overload sector 1 only if the game can spare it. Run Extern.
 Read: whether Extern collides planets there.
 
 Settles: `STARDOCK_SECTOR` (1), the skip of that sector in the day tick.
+
+## Group J. One warp, already counted above
+
+The hop is in Group B and the shield buy is in Group C. This heading is the order-table row for those two steps.
+
+## Group K. Underground, steal, and rob
+
+Turns: the trip to StarDock's Underground, one steal, and one rob. Credits: whatever the screen charges for a name change, one Tri-Cron, and one illegal good. A corpie is needed for the paired steal-dump-flee. Try the solo pass on the same character.
+
+Setup: the same test character. Do not blow a port. Do not use a beta game.
+
+### Steal-dump-flee, solo
+
+item_id: n115-sdf-solo
+
+Keys: with a corpie, run one steal-dump-flee cycle. Then try the same cycle with one ship.
+
+Read: the turns spent, whether the penalty landed, and the solo steps if the game allows them.
+
+Settles: none until the screen shows a solo procedure. The glossary says SDF needs another corpie and does not give the steps. The flee penalty in this game is already one turn on the next land or port.
+
+### Underground name change
+
+item_id: n115-ug-name
+
+Keys: in the Underground, change the trader's name.
+
+Read: credits taken, and whether the price moves with experience.
+
+Settles: a name-change price, only if the screen prints one. `UG_NAME_CHANGE` is false until then.
+
+### Tri-Cron
+
+item_id: n115-tricron
+
+Keys: buy one Tri-Cron round.
+
+Read: the cost, and what one round does.
+
+Settles: a Tri-Cron cost, only if the screen prints one. `TAVERN_TRICRON` is off. The tip is free and the game is not built.
+
+### Illegal goods
+
+item_id: n115-illegal
+
+Keys: buy one illegal good, if the Underground sells any.
+
+Read: the item name and the price.
+
+Settles: a price, only if the screen prints one. Singles Bar, Library, Cineplex, and illegal goods are named and not built.
+
+### Rob and steal success awards
+
+item_id: n115-rob-steal
+
+Keys: steal a known number of holds, then rob a known number of credits.
+
+Read: alignment and experience before and after, next to the holds and the credits.
+
+Settles: `STEAL_SUCCESS_ALIGN_DIVISOR`, `STEAL_SUCCESS_EXP_DIVISOR`, `ROB_SUCCESS_ALIGN_DIVISOR`, and `ROB_SUCCESS_EXP_DIVISOR`. The stand-in is steal max(1, qty // 6) alignment and max(1, qty // 15) experience, and rob divides credits by 10,000. Marked UNVERIFIED.
+
+## Group L. Midnight, FedSpace, colonists, one upgrade, one limpet
+
+Turns: one midnight of watching, the trip into FedSpace, one jettison, one port upgrade, one colonist attack, and one limpet removal. Credits: the limpet fee on the screen, the upgrade, and the colonists you jettison. Do not blow a port. A Class 0 visit here is a limpet removal, not a kill.
+
+Setup: one good trader for the jettison and the tax. One evil ship that is not an Imperial StarShip for the FedSpace hunt. A planet you can afford to damage for the colonist attack.
+
+### Remaining Extern jobs
+
+item_id: n117-extern-jobs
+
+Keys: watch one midnight. List any job the screen names.
+
+Read: the job name and the numbers on that line. Compare with the jobs this game already runs: retreats, Ferrengi, the corp penalty, the Class 0 sweep, Terra, empty-ship repo, Fed tows, port regen, busts, photons, cloaks, NavHaz, aliens, planets, citadels, treasury, and tax.
+
+Settles: none until a screen names a missing job.
+
+### Tax alignment
+
+item_id: n117-tax-align
+
+Keys: pay the daily tax on that same midnight, or the next one.
+
+Read: alignment before and after, next to the credits taken.
+
+Settles: an alignment figure, only if the screen prints one. This game does not change alignment on the daily tax.
+
+### Fed hold confiscation
+
+item_id: n117-fed-holds
+
+Keys: violate FedLaw in FedSpace. Read the hold line.
+
+Read: holds taken, and what the violation was.
+
+Settles: a hold count, only if the screen prints one. Confiscation is not built.
+
+### Evil trader hunted in FedSpace
+
+item_id: n117-evil-hunt
+
+Keys: enter FedSpace in an evil ship that is not an Imperial StarShip. Do it once in a sector with a Federal, and once in a sector without one.
+
+Read: whether the ship is podded, towed, or left alone.
+
+Settles: none until the screen shows a hunt. An evil Imperial StarShip is already repossessed. Other evil ships are not hunted.
+
+### Jettison colonist cap
+
+item_id: n117-jettison
+
+Keys: while good, jettison more than 250 colonists in one day. Repeat the next day.
+
+Read: alignment lost each day.
+
+Settles: `_COLONIST_CAP`, only if the screen prints a cap. This game stops a good trader at 250 alignment in one day. The formula page says -1 per colonist, one time per extern, and does not print 250.
+
+### Port-upgrade alignment
+
+item_id: n117-port-upgrade
+
+Keys: upgrade one port. Read alignment and experience before and after.
+
+Read: both deltas.
+
+Settles: an alignment figure, only if the screen prints one. This game does not change alignment on a port upgrade.
+
+### Colonist-kill alignment
+
+item_id: n117-colonist-kill
+
+Keys: attack colonists on a planet. Read alignment and experience before and after.
+
+Read: both deltas, and whether the planet remains.
+
+Settles: an alignment figure, only if the screen prints one. Destroying a planet is already -1 alignment and +50 experience. Killing colonists on a planet has no separate award.
+
+### Limpet removal fee
+
+item_id: n117-limpet
+
+Keys: remove one limpet at StarDock, and one at a Class 0 port. Do not blow either port.
+
+Read: the credit price on each screen.
+
+Settles: `LIMPET_REMOVAL_COST` (1250, marked UNVERIFIED).
 
 ## Group I. Class 0 and StarDock kills
 

@@ -33,6 +33,21 @@ ALLOW = {
     "docs/plans/live-twgs-test-queue-v1.md": (
         "Pointer back to the queue this sheet orders. Not a settled constant."
     ),
+    "docs/playtests/ports/ECONOMY_SCALE.md": (
+        "NOTE 112 searched this playtest for a shield unit price. Not a constant."
+    ),
+    "docs/reference/tw2002/GAP_MAP.md": (
+        "NOTE 112 cites gap rows 5.7 and 12.3. Not a constant."
+    ),
+    "docs/playtests/fedspace/STARDOCK_TAVERN.md": (
+        "NOTE 115 cites the tavern playtest. Not a constant."
+    ),
+    "docs/playtests/ports/ROB_STEAL.md": (
+        "NOTE 115 cites the rob and steal playtest. Not a constant."
+    ),
+    "docs/plans/gap-map-refresh-v6.md": (
+        "NOTE 117 cites the still-open gap ranks. Not a constant."
+    ),
 }
 
 COLUMNS = (
@@ -72,6 +87,11 @@ def test_named_constants_exist_or_are_allow_listed() -> None:
     assert (ROOT / "docs/plans/ship-odds-exchange-v1.md").is_file()
     assert (ROOT / "docs/plans/live-twgs-run-sheet-v1.md").is_file()
     assert (ROOT / "docs/plans/live-twgs-test-queue-v1.md").is_file()
+    assert (ROOT / "docs/playtests/ports/ECONOMY_SCALE.md").is_file()
+    assert (ROOT / "docs/reference/tw2002/GAP_MAP.md").is_file()
+    assert (ROOT / "docs/playtests/fedspace/STARDOCK_TAVERN.md").is_file()
+    assert (ROOT / "docs/playtests/ports/ROB_STEAL.md").is_file()
+    assert (ROOT / "docs/plans/gap-map-refresh-v6.md").is_file()
     assert not (ROOT / "RULINGS_v311.md").exists()
     assert not (ROOT / "docs" / "RULINGS_v311.md").exists()
 
