@@ -33,3 +33,43 @@ The picture is redrawn from the observation whenever the cockpit refreshes, so a
 ## Where the diff sits
 
 `#ship` in `web/redesign.html`, the ship-view functions in `web/redesign.js`, and the `#shipSvg` rules in `web/redesign.css`. The deck grid is left for NOTE 81. The I-key "Ship information" text is the same list it was.
+
+# NOTE 116 — cockpit-ship-view-plan-v1
+
+COMMANDER NOTE 116. Research, then a plan, plus a small prototype on the redesign cockpit only. No engine change, so no new switch and no helper row. `COCKPIT_LAYOUT` stays legacy unless the page is the redesign. `/bot` (`web/bot.html`, `web/bot.js`, `web/bot-parity.js`) is not edited. The NOTE 77 record above is unchanged in meaning: this section is the later plan Ben asked for.
+
+PR #48 (NOTE 113, custom layout) is still open, so this slice does not edit `web/layout.js`, `web/redesign.html`, or `web/redesign.css`. The prototype stylesheet is `web/ship-view-plan.css`, attached from `web/redesign.js`.
+
+## What Ben asked for
+
+Keep the stat lines that are already easy to read. Add a ship picture that is visually striking, one for each hull. The picture may be the original Trade Wars 2002 ship art, or our own ship floating in space. Red triangles around the hull must match the fighter count: one triangle per fighter up to a cap, then neat clusters that print a count when the bay is large. The warp clips from NOTE 111 should later use the same art.
+
+## Options
+
+1. **Copy or trace the original ANSI pictures.** The shipyard help says ANSI users see a top view and a front view of each hull. `docs/plans/classic-ship-art-research-v1.md` records the licence. Drew Markham drew those images and the cinema scenes for EIS / Gary Martin. They are not released under a licence this project can reuse. The EIS wallpaper set is Creative Commons Attribution-NonCommercial-NoDerivs 3.0: display and distribute with credit, no modifications, and no use in a new design. That is not a licence to trace the ships into this cockpit. The Classic Series prints are sold by EIS. This option is closed.
+
+2. **Keep our own shaded meshes, and group the fighters into counted clusters.** NOTE 77 drew an outline per hull. NOTE 94 replaced the picture the player sees with a lofted mesh in the same SVG (`LOFT` and `buildHullFaces` in `web/redesign.js`), one red triangle per fighter up to 200, then a single legend `each triangle = N fighters`. The stat block was not touched. This option keeps that mesh and that legend, and on the prototype hulls packs the scaled triangles into at most four clusters, one in each corner of the picture, so the counts stay readable when the panel is short. Each cluster prints the number of fighters it stands for. The counts add up to the real fighter total. Under the cap there is still one triangle per fighter and no cluster label.
+
+3. **A full WebGL scene (three.js or similar).** NOTE 94 measured this and left it. A pinned three.js build is about 150 KB gzipped before any hull is added, it would paint a second canvas beside `#shipSvg`, and the warp scene is already an SVG that shares `shipSolidMarkup`. The mesh code stays a few kilobytes, under the 300 KB ship-view budget. A second renderer would also make the later warp-clip match harder.
+
+## Recommendation
+
+Option 2. The art is the geometry already in `web/redesign.js` (`SHIPS`, `HULL_NORM`, `LOFT`), drawn for this project from the public role of each hull (small scout, bulky hauler, lifeboat). It is not a tracing of the Markham ANSI or the EIS prints. Colour and the classic outline of each hull stay **UNVERIFIED**.
+
+The prototype paints three hulls this way: Merchant Cruiser, Scout Marauder, and Escape Pod. The other hulls keep the NOTE 77 rings and the NOTE 94 mesh until a follow-up extends the clusters. The readable stat lines stay the same words and order: Fighters, Shields, Holds, armid mines, limpet mines, Cloaks, Disruptors, then the tow line.
+
+The NOTE 77 legend stays, including on a clustered hull, so the older ship-view tests still see `each triangle = N fighters`. The cluster counts are the extra line Ben asked for. A later note can drop the single legend once every hull uses clusters.
+
+## Art source and licence
+
+- **Source:** original SVG geometry in `web/redesign.js`. No image file was added. No EIS, ANSI, or Drew Markham picture was copied, traced, or converted.
+- **Licence:** our own work, the same decision recorded in `docs/plans/classic-ship-art-research-v1.md` and in the NOTE 77 licence section above.
+- **Not used:** Martech / EIS copyright in the ANSI ship images; EIS wallpaper CC BY-NC-ND 3.0 (no derivatives, no new design).
+
+## Warp clips
+
+NOTE 111 (`web/warp-variants.js`, `web/media/warp-clips.json`, the warp block in `web/redesign.js`) already paints the warp body with `shipSolidMarkup` when the solid mesh is on. Those clips are on PR #43, which is not merged here, and this note does not edit them. When that work is on the tip, the clips should keep using this same mesh so the ship in the warp matches the ship in the panel. They should not switch to the ANSI pictures.
+
+## Where this diff sits
+
+`web/redesign.js` (cluster packing on the three hulls, and a stylesheet tag) and `web/ship-view-plan.css`. The layout files from NOTE 113 are left alone.
