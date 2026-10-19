@@ -396,12 +396,13 @@ def generate_universe(config: GameConfig) -> Universe:
     n = config.universe_size
 
     adj = _build_connected_graph(rng, n, config.avg_warps)
+    one_way = K.one_way_fraction_for(config)
     if K.universe_topology_live():
-        adj = _one_way_some_edges(rng, adj, config.one_way_fraction, allow_traps=True)
+        adj = _one_way_some_edges(rng, adj, one_way, allow_traps=True)
         _add_tunnels(rng, adj)
         _cut_one_bubble(rng, adj)
     else:
-        adj = _one_way_some_edges(rng, adj, config.one_way_fraction)
+        adj = _one_way_some_edges(rng, adj, one_way)
     layout = _compute_layout(adj, n, rng)
 
     sectors: dict[int, Sector] = {}
@@ -423,28 +424,33 @@ def generate_universe(config: GameConfig) -> Universe:
         booked.name = "Sol-1 StarDock"
         sectors[K.STARDOCK_SECTOR].port = booked
 
-    # Place Federal ports in FedSpace (excluding sector 1)
-    for fed_sid in K.FEDSPACE_SECTORS:
-        if fed_sid == K.STARDOCK_SECTOR:
-            continue
-        if rng.random() < 0.6:
-            port = _make_port(rng, PortClass.FEDERAL, fed_sid, config.seed)
-            # Federal ports actually trade all three at fixed price — we model as class 7 (BBB) equivalent
-            port = _make_port(rng, PortClass.CLASS_7_BBB, fed_sid, config.seed)
-            port.class_id = PortClass.FEDERAL
-            sectors[fed_sid].port = port
+    # Place Federal ports in FedSpace (excluding sector 1). The live bang
+    # skips these decorative ports; the clone path still draws them so the
+    # main rng, and everything after it, stays put.
+    _place_decorative_fed_ports(rng, sectors, config)
 
     # Place random ports in non-FedSpace sectors
-    for sid in range(max(K.FEDSPACE_SECTORS) + 1, n + 1):
-        if rng.random() < K.PORT_SPAWN_PROBABILITY:
-            cls = _pick_port_class(rng)
-            sectors[sid].port = _make_port(rng, cls, sid, config.seed)
+    _place_trade_ports(rng, sectors, config, K.PORT_SPAWN_PROBABILITY)
 
     universe = Universe(config=config, sectors=sectors)
 
     # Seed planets (existing civilizations scattered through the galaxy)
     if config.enable_planets:
         _seed_planets(rng, universe)
+
+    pinned_class0: tuple[int, int] | None = None
+    if K.big_bang_density_live():
+        # Class 0 is chosen on the clone layout, then the fill is replaced.
+        # Sol (sector 1), Terra and StarDock are left where they are.
+        if K.class0_tw2002():
+            from .class0 import choose_class0_sectors
+            pinned_class0 = choose_class0_sectors(universe)
+        _strip_clone_fill(universe)
+        side = random.Random(f"tw2k-big-bang-density:{config.seed}")
+        skip = set(pinned_class0) if pinned_class0 else set()
+        _place_trade_ports(side, universe.sectors, config, K.V311_PORT_DENSITY, skip)
+        if config.enable_planets:
+            _seed_planets(side, universe, K.V311_PLANET_DENSITY, skip)
 
     # Pre-seed Ferrengi raiders so the first day has genuine threat. Without
     # this the first Ferrengi don't appear until the end of day 1 (tick_day),
@@ -461,7 +467,7 @@ def generate_universe(config: GameConfig) -> Universe:
     # rng keyed on the seed so generator / universe.rng draws stay identical
     # across CLASS0_MODE (legacy placement is a no-op that clears the fields).
     from .class0 import place_class0_ports
-    place_class0_ports(universe)
+    place_class0_ports(universe, pinned=pinned_class0)
 
     # fedspace-police-v1: Federals (isolated rng; no-op under FED_MODE legacy)
     from .fed import place_federals, place_fed_starships
@@ -496,11 +502,61 @@ def _seed_initial_ferrengi(rng: random.Random, universe: Universe) -> None:
         universe.ferrengi[fid] = ship
 
 
-def _seed_planets(rng: random.Random, universe: Universe) -> None:
+def _place_decorative_fed_ports(rng: random.Random, sectors: dict[int, Sector], config: GameConfig) -> None:
+    """Ours-only Federal ports in sectors 2-10. No source in the original."""
+    for fed_sid in K.FEDSPACE_SECTORS:
+        if fed_sid == K.STARDOCK_SECTOR:
+            continue
+        if rng.random() < 0.6:
+            port = _make_port(rng, PortClass.FEDERAL, fed_sid, config.seed)
+            # Federal ports actually trade all three at fixed price — we model as class 7 (BBB) equivalent
+            port = _make_port(rng, PortClass.CLASS_7_BBB, fed_sid, config.seed)
+            port.class_id = PortClass.FEDERAL
+            sectors[fed_sid].port = port
+
+
+def _place_trade_ports(
+    rng: random.Random,
+    sectors: dict[int, Sector],
+    config: GameConfig,
+    probability: float,
+    skip: set[int] | None = None,
+) -> None:
+    blocked = skip or set()
+    n = config.universe_size
+    for sid in range(max(K.FEDSPACE_SECTORS) + 1, n + 1):
+        if sid in blocked:
+            continue
+        if rng.random() < probability:
+            cls = _pick_port_class(rng)
+            sectors[sid].port = _make_port(rng, cls, sid, config.seed)
+
+
+def _strip_clone_fill(universe: Universe) -> None:
+    """Remove clone ports and planets. Sector 1 (Sol / StarDock) stays."""
+    for sid, sector in universe.sectors.items():
+        if int(sid) == int(K.STARDOCK_SECTOR):
+            continue
+        sector.port = None
+        sector.planet_ids.clear()
+    universe.planets.clear()
+    universe.next_planet_id = 1
+
+
+def _seed_planets(
+    rng: random.Random,
+    universe: Universe,
+    probability: float | None = None,
+    skip: set[int] | None = None,
+) -> None:
     n = universe.config.universe_size
+    chance = universe.config.planet_spawn_probability if probability is None else probability
+    blocked = skip or set()
     planet_id = 1
     for sid in range(max(K.FEDSPACE_SECTORS) + 1, n + 1):
-        if rng.random() < universe.config.planet_spawn_probability:
+        if sid in blocked:
+            continue
+        if rng.random() < chance:
             cls = rng.choice(list(PlanetClass))
             planet = Planet(
                 id=planet_id,

@@ -231,7 +231,7 @@ def _complete_citadels(universe: Universe) -> None:
 
 def _accrue_planet_treasury(universe: Universe) -> None:
     """2% interest, once per day, for citadels at level 1 or higher."""
-    cap = K.PLANET_TREASURY_CAP
+    cap = K.planet_treasury_cap()
     pct = K.PLANET_TREASURY_INTEREST_PCT
     for planet in universe.planets.values():
         if int(planet.citadel_level or 0) < 1 or int(planet.treasury) <= 0:
