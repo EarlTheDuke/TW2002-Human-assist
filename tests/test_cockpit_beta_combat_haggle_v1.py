@@ -49,26 +49,34 @@ def _show(page, host):
 
 @pytest.fixture(scope="module")
 def world(tmp_path_factory):
+    import tw2k.engine.constants as K
+
     sync = pytest.importorskip("playwright.sync_api").sync_playwright
     pw = sync().start()
+    saved_info = K.INFO_MODE
+    browser = None
+    host = None
+    page = None
     try:
-        browser = pw.chromium.launch(headless=True)
-    except Exception as exc:
+        try:
+            browser = pw.chromium.launch(headless=True)
+        except Exception as exc:
+            pytest.skip(f"chromium is not installed: {exc}")
+        host = CuHost(tmp_path_factory.mktemp("note71"), TOK, seed=7112)
+        host.__enter__()
+        if host.port in range(8099, 8120) or host.port in range(8031, 8037):
+            pytest.fail(f"host bound a protected port {host.port}")
+        page = _open(browser, host)
+        yield {"page": page, "host": host, "browser": browser}
+    finally:
+        if page is not None:
+            page.close()
+        if browser is not None:
+            browser.close()
+        if host is not None:
+            host.__exit__(None, None, None)
         pw.stop()
-        pytest.skip(f"chromium is not installed: {exc}")
-    host = CuHost(tmp_path_factory.mktemp("note71"), TOK, seed=7112)
-    host.__enter__()
-    if host.port in range(8099, 8120) or host.port in range(8031, 8037):
-        host.__exit__(None, None, None)
-        browser.close()
-        pw.stop()
-        pytest.fail(f"host bound a protected port {host.port}")
-    page = _open(browser, host)
-    yield {"page": page, "host": host, "browser": browser}
-    page.close()
-    browser.close()
-    host.__exit__(None, None, None)
-    pw.stop()
+        K.INFO_MODE = saved_info
 
 
 def test_enter_on_a_select_does_not_post_and_typing_replaces_a_prefill(world):
