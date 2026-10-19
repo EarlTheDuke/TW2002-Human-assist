@@ -26,6 +26,13 @@ SECTIONS: tuple[tuple[str, str], ...] = (
     ("rankings", "Rankings and the end of the game"),
     ("tax", "Tax, bank and interest"),
     ("turns", "Turns and days"),
+    ("hardware", "Hardware"),
+    ("stardock-services", "StarDock services"),
+    ("communications", "Communications"),
+    ("computer-reports", "Computer reports"),
+    ("death-and-pods", "Death and escape pods"),
+    ("feds-and-ferrengi-v311", "Feds and Ferrengi"),
+    ("towing-and-transwarp", "Towing and TransWarp"),
     ("ai-opponents", "AI opponents"),
     ("disclaimer", "Beta disclaimer"),
 )
@@ -86,6 +93,15 @@ _COMPUTER = (
     ("K", "Your known universe"),
     ("A", "Make an announcement"),
     ("O", "Avoid sectors"),
+    ("L", "Trader rankings"),
+    ("C", "Ship catalog"),
+    ("Y", "Planets you own"),
+    ("J", "Planet specs"),
+    ("D", "Today's log"),
+    ("M", "Read mail"),
+    ("B", "Backtrack one sector"),
+    ("S", "Quick stats"),
+    ("E", "Find a known route"),
     ("Q", "Exit the computer"),
 )
 
@@ -159,6 +175,7 @@ def _facts(config) -> dict:
         "max_days": max_days,
         "scoped": config is not None,
         "bust_clear_days": getattr(config, "bust_clear_days", None) if config is not None else None,
+        "death_delay": K.death_delay_days(config),
     }
 
 
@@ -188,6 +205,7 @@ def render(brand: str, config=None, *, lobby: bool = True) -> str:
         f"<h1>{escape(brand)}</h1>",
         nav,
         f"<p>{escape(scope)}</p>",
+        _rules_block(),
         f'<nav class="toc" aria-label="Contents"><h2>Contents</h2><ol>{toc}</ol></nav>',
     ]
     for sid, _title in SECTIONS:
@@ -219,6 +237,13 @@ def _section(sid: str, f: dict) -> str:
         "rankings": _rankings,
         "tax": _tax,
         "turns": _turns,
+        "hardware": _hardware,
+        "stardock-services": _stardock_services,
+        "communications": _communications,
+        "computer-reports": _computer_reports,
+        "death-and-pods": _death_and_pods,
+        "feds-and-ferrengi-v311": _feds_and_ferrengi,
+        "towing-and-transwarp": _towing_and_transwarp,
         "ai-opponents": _ai_opponents,
         "disclaimer": _disclaimer,
     }[sid](f)
@@ -276,12 +301,20 @@ def _walkthrough(f: dict) -> str:
 
 
 def _command_keys(_f: dict) -> str:
+    computer = []
+    for key, meaning in _COMPUTER:
+        if key == "B":
+            computer.append((
+                "N",
+                f"NavPoints. {_n(K.NAVPOINT_SLOTS)} named sectors you already know. Plot uses that known path.",
+            ))
+        computer.append((key, meaning))
     return (
         "<p>These are the redesign cockpit keys. They are the original Trade Wars letters. "
         "The same letter can mean a different order while you are landed.</p>"
         + _table(("Key", "What it does"), _KEYS)
-        + "<h3>Computer menu</h3><p>Press C first.</p>"
-        + _table(("Key", "What it does"), _COMPUTER)
+        + "<h3>Computer menu</h3><p>Press C first. These letters do not change what a key does in space.</p>"
+        + _table(("Key", "What it does"), computer)
         + _src("Trade Wars 2002 command letters, as wired on the redesign cockpit.")
     )
 
@@ -430,6 +463,11 @@ def _citadels(_f: dict) -> str:
         f"<p>The treasury pays {_n(K.PLANET_TREASURY_INTEREST_PCT)} percent a day. "
         f"The Quasar cannon needs level {_n(K.QUASAR_MIN_LEVEL)}. "
         f"The interdictor needs level {_n(K.INTERDICTOR_MIN_LEVEL)} and burns {_n(K.INTERDICTOR_FUEL)} fuel.</p>"
+        + _gated(
+            K.citadel_park_live(),
+            "a ship on your own level 1 citadel is parked inside it. A Fed tow skips it, and another trader cannot attack it there.",
+            "landing on a citadel leaves the ship in the sector. It is not parked inside.",
+        )
         + _src("Citadel class cost table and the handbook perk lines (treasury, Quasar, interdictor).")
     )
 
@@ -758,6 +796,7 @@ def _turns(f: dict) -> str:
         f"A day lasts {_n(f['day_seconds'])} seconds ({minute_text} minutes) in this game.</p>"
         f"<p>{escape(hint)}</p>"
         + _day_clock()
+        + _dawn_refill()
         + _src("The game's turn pocket and day length, read from this game's settings when you opened the manual from a game.")
     )
 
@@ -816,3 +855,461 @@ def _disclaimer(_f: dict) -> str:
         "It does not change any rule.</p>"
         + _src("The beta disclaimer shown before you enter a test game.")
     )
+
+
+def _gated(on: bool, live: str, old: str) -> str:
+    """One sentence for a switched rule. A v3.11 page always says so, even when that helper is off."""
+    if K.v311_profile():
+        sentence = f"in v3.11 games, {live if on else old}"
+    elif on:
+        sentence = f"In this game, {live}"
+    else:
+        sentence = f"In legacy games, {old}"
+    return f"<p>{sentence}</p>"
+
+
+def _mode(flag: bool, *, follows_profile: bool) -> str:
+    if not follows_profile:
+        return "on" if flag else "off"
+    if K.v311_profile() and flag:
+        return "v3.11"
+    if flag:
+        return "on"
+    return "legacy"
+
+
+def _rules_block() -> str:
+    profile = "v3.11" if K.v311_profile() else "legacy"
+    rows: list[tuple[str, str]] = [("Profile", profile)]
+    flags: dict[str, tuple[bool, bool]] = {
+        "getting-started": (K.starting_package_live(), True),
+        "walkthrough": (K.home_planet_live(), True),
+        "command-keys": (True, False),
+        "moving": (K.course_max_live(), True),
+        "trading": (K.haggle_live(), True),
+        "ports": (K.port_class_live(), True),
+        "ship-trade-in": (K.trade_in_live(), True),
+        "combat": (K.offensive_clash_held(), True),
+        "ferrengi": (K.ferrengi_engage_on(), True),
+        "planets": (K.planet_prod_live(), True),
+        "citadels": (K.citadel_park_live(), True),
+        "colonists": (K.terra_colonist_live(), True),
+        "corporations": (K.corp_rank_live(), True),
+        "alignment": (K.discovery_exp_live(), True),
+        "rankings": (K.exp_score_live(), True),
+        "tax": (K.tax_v311(), True),
+        "turns": (K.turn_regen_live(), True),
+        "hardware": (K.planet_scanner_live(), True),
+        "stardock-services": (K.ship_rename_live(), True),
+        "communications": (K.radio_channel_live(), True),
+        "computer-reports": (K.daily_stats_live(), True),
+        "death-and-pods": (K.death_pod_live(), True),
+        "feds-and-ferrengi-v311": (K.fed_ships_live(), True),
+        "towing-and-transwarp": (K.tow_on() and K.ship_tw_on(), False),
+        "ai-opponents": (True, False),
+        "disclaimer": (True, False),
+    }
+    for sid, title in SECTIONS:
+        flag, follows = flags[sid]
+        rows.append((title, _mode(flag, follows_profile=follows)))
+    return (
+        '<section id="rules-in-this-game"><h2>Rules in this game</h2>'
+        "<p>The profile row names the rule set for this game. "
+        "A section marked v3.11 follows the v3.11 rule. Legacy means that rule is the older one. "
+        "On means the rule is already what a normal game does.</p>"
+        + _table(("Item", "Mode"), rows)
+        + "</section>"
+    )
+
+
+def _dawn_refill() -> str:
+    if K.turn_regen_live():
+        return _gated(
+            True,
+            "dawn does not refill the whole pocket. Spent turns come back across the day and stop at the daily allowance.",
+            "dawn refills every turn.",
+        )
+    return _gated(
+        False,
+        "dawn does not refill the whole pocket.",
+        "dawn refills every turn you spent. Turns do not trickle back during the day.",
+    )
+
+
+def _cap(class_key: str, item: str) -> str:
+    room = K.equip_room(class_key, item, 0)
+    if room is None:
+        return "no cap"
+    return _n(room)
+
+
+def _hardware(f: dict) -> str:
+    ship = K.STARTING_SHIP
+    name = escape(f["ship"])
+    prices = K.hardware_v2_prices()
+    probe_cap = _cap(ship, "ether_probes")
+    rows = [
+        ("Cloak", _n(K.CLOAK_COST), _cap(ship, "cloak")),
+        ("Corbomite", _n(prices.get("corbomite", K.CORBOMITE_COST)), _cap(ship, "corbomite")),
+        ("Mine disruptor", _n(K.disruptor_cost()), _cap(ship, "mine_disruptor")),
+        ("Marker beacon", _n(prices.get("marker_beacon", K.BEACON_COST)), _cap(ship, "marker_beacon")),
+        ("Ether probe", _n(K.ether_probe_cost()), probe_cap),
+        ("Photon missile", _n(K.PHOTON_MISSILE_COST), _n(int((K.hull_spec(ship) or {}).get("max_photons") or 0))),
+        ("Density scanner", _n(K.scanner_cost("density_scanner")), "one scanner"),
+        ("Holo scanner", _n(K.scanner_cost("holo_scanner")), "one scanner, replaces density"),
+        ("Planet scanner", _n(K.PLANET_SCANNER_COST) if K.planet_scanner_live() else "not sold", _cap(ship, "planet_scanner")),
+    ]
+    limpet = (
+        f"<p>Limpet removal is a service at StarDock or a Class 0 port, not an item you carry. "
+        f"The fee is {_n(K.LIMPET_REMOVAL_COST)} credits and it clears every limpet on your ship.</p>"
+    )
+    scanner = _gated(
+        K.planet_scanner_live(),
+        f"StarDock sells a planet scanner for {_n(K.PLANET_SCANNER_COST)} credits. "
+        "It shows the fighters on a planet that has no shields. A shielded planet stays dark.",
+        "StarDock does not sell a planet scanner. Planet fighters stay visible without one.",
+    )
+    fog = _gated(
+        K.scanner_fog_live(),
+        "until you land, or until a planet scanner reads an unshielded planet, the owner, fighters and shields stay hidden.",
+        "a sector list still names a planet's owner, and the owner still sees fighters without landing.",
+    )
+    return (
+        f"<p>Prices and caps below are for the starting hull, the {name}. "
+        "Another hull uses its own chart. A cap of 0 means this hull cannot carry that item.</p>"
+        + _table(("Item", "Price", "Cap on the starting hull"), rows)
+        + limpet
+        + "<p>An ether probe flies the lanes toward the sector you name and stops at the first hostile fighters.</p>"
+        + _gated(
+            K.probe_shootdown_live(),
+            "the report names who owned the fighters that destroyed the probe.",
+            "the report says the probe was destroyed. It does not name who owned the fighters.",
+        )
+        + scanner
+        + fog
+        + _gated(
+            K.photon_follow_damp_live(),
+            "a ship that enters a sector while a photon wave is up also has the planet quasar damped.",
+            "a ship that was not in the sector when the photon fired still faces the quasar.",
+        )
+        + _src("StarDock hardware prices and per-ship caps, read from the engine for the starting hull.")
+    )
+
+
+def _stardock_services(f: dict) -> str:
+    rename = _gated(
+        K.ship_rename_live(),
+        f"the shipyard changes this ship's name and registration for {_n(K.SHIP_RENAME_COST)} credits. "
+        f"The name can be {_n(K.SHIP_RENAME_NAME_MAX)} characters.",
+        "the shipyard does not sell a new name or registration.",
+    )
+    bust_days = f.get("bust_clear_days")
+    if K.bust_record_clear_live() and bust_days in (1, 7):
+        bust_live = f"Police clear bust records every {_n(int(bust_days))} day, when that switch is on."
+    else:
+        bust_live = (
+            "Police can clear bust records every day, or every 7 days when the game sets that interval. "
+            "With no interval set, they clear every day."
+        )
+    bust = _gated(
+        K.bust_record_clear_live(),
+        bust_live,
+        "a bust blocks that port until the next day, and every day clears every bust.",
+    )
+    return (
+        "<p>StarDock, in sector "
+        f"{_n(K.STARDOCK_SECTOR)}, holds the shipyard, the tavern, the underground, the bank and Police HQ.</p>"
+        + rename
+        + f"<p>The tavern is {_on(K.tavern_on())}. An announcement costs {_n(K.TAVERN_ANNOUNCE_COST)} credits. "
+        f"A drink or a meal costs {_n(K.TAVERN_DRINK_COST)} credits. Talk and graffiti are free. "
+        f"Grimy charges {_n(K.GRIMY_TRACE_COST)} credits to trace a trader and "
+        f"{_n(K.GRIMY_PASSWORD_COST)} credits for a password.</p>"
+        + f"<p>The underground opens when your alignment is {_n(K.UG_MAX_ALIGNMENT)} or lower. "
+        f"A contract starts at {_n(K.UG_CONTRACT_MIN)} credits, "
+        f"{_n(K.UG_CREDITS_PER_ALIGN)} credits per alignment point.</p>"
+        + "<p>The bank takes deposits, withdrawals and transfers. The tax section states the interest.</p>"
+        + f"<p>Police HQ is in sector {_n(K.STARDOCK_SECTOR)}. "
+        f"Alignment must be at least {_n(K.POLICE_MIN_ALIGNMENT)}. "
+        f"A commission is granted from alignment {_n(K.COMMISSION_APPLY_MIN)} up to, but not including, "
+        f"{_n(K.COMMISSION_ALIGNMENT)}. It sets your alignment to {_n(K.COMMISSION_ALIGNMENT)}.</p>"
+        + f"<p>A bounty is posted at Police HQ on an evil trader. The minimum is {_n(K.REWARD_MIN)} credits. "
+        f"You gain 1 alignment per {_n(K.REWARD_ALIGN_PER)} credits posted. "
+        "The killer claims it at the same desk after that trader's ship is destroyed.</p>"
+        + bust
+        + _src("StarDock services: shipyard, tavern, underground, bank, Police HQ, commission and bounties.")
+    )
+
+
+def _communications(_f: dict) -> str:
+    hail = _gated(
+        K.mail_live(),
+        f"a hail to an open cockpit flashes for {_n(K.HAIL_SHOW_SECONDS)} seconds. "
+        "A hail to a trader who is away waits as mail, and the cockpit says there is new mail.",
+        "a hail is delivered into the other trader's mail either way. There is no separate flash.",
+    )
+    radio = _gated(
+        K.radio_channel_live(),
+        f"your corporation shares a radio channel from 0 to {_n(K.RADIO_CHANNEL_MAX)}. "
+        "Only corp mates on that channel hear it.",
+        "corporation chat is the one memo. There is no radio channel.",
+    )
+    fed = _gated(
+        K.fedcomm_live(),
+        f"when the nightly sweep clears your fighters in a Federation lane, you also get the line: {escape(K.FEDCOMM_MSL_LINE)}",
+        "the nightly sweep still clears Federation lanes. You do not get a separate Federation note.",
+    )
+    return (
+        "<p>Y reads mail. A direct hail is its own order. Computer A makes an announcement. "
+        "A corporation memo is on the corporate menu.</p>"
+        + hail
+        + radio
+        + fed
+        + _src("Hail, mail, the corporation radio channel, and the Federation lane note.")
+    )
+
+
+def _computer_reports(_f: dict) -> str:
+    stats = _gated(
+        K.daily_stats_live(),
+        "game status counts ports, planets, traders, aliens, and fighters and mines in use. "
+        "Fighters sitting on an unmanned ship are left out of that fighter total.",
+        "game status does not publish those daily counts.",
+    )
+    corps = _gated(
+        K.corp_rank_live(),
+        "corporations are ranked by the members' experience added together, with their alignment added beside it.",
+        "there is no corporation ranking screen.",
+    )
+    traders = _gated(
+        K.trader_rank_list_live(),
+        "Computer L lists every trader by experience: place, name, title, experience, corporation, ship, and whether they are alive.",
+        "Computer L has no experience list of every trader.",
+    )
+    return (
+        "<p>Press C, then the letter. D is today's log, including a hit on fighters you own. "
+        "S is quick stats: name, rank, experience, alignment, turns left, credits, day, fighters, shields and holds. "
+        "N stores named sectors you already know. B warps back one sector when a lane goes there. "
+        "E finds a path between two sectors already in your computer. "
+        "C lists the ship catalog. Y lists planets you own. J shows one planet's specs. "
+        "R is the port report. K is the map you have seen.</p>"
+        + stats
+        + corps
+        + traders
+        + _src("Computer reports on the redesign cockpit, including the daily log, daily counts and rankings.")
+    )
+
+
+def _death_and_pods(f: dict) -> str:
+    delay_days = int(f.get("death_delay") or 0) if K.death_delay_live() else 0
+    if delay_days > 0:
+        wait = f"a new pod cannot move until {_n(delay_days)} midnights have passed."
+    else:
+        wait = "no death delay is set, so a new pod can move at once."
+    pod = _gated(
+        K.death_pod_live(),
+        f"a destroyed ship becomes an escape pod with a clean loadout. You lose {_n(int(K.POD_EXP_LOSS * 100))} percent of your experience.",
+        f"a destroyed ship becomes an escape pod. You lose {_n(int(K.POD_EXP_LOSS * 100))} percent of your experience. "
+        "The clean pod loadout is not applied.",
+    )
+    cash = _gated(
+        K.pod_cash_live(),
+        f"after another player kills you, the pod holds {_n(K.POD_CASH_CREDITS)} credits.",
+        "the pod does not use that fixed credit amount.",
+    )
+    lock = _gated(
+        K.death_delay_live(),
+        wait,
+        "a pod can act on the turn you land in it. A wait of several midnights is not applied.",
+    )
+    return (
+        f"<p>You can lose a ship {_n(K.PODS_PER_DAY)} times in one day and come back in a pod. "
+        "The next loss that day eliminates you.</p>"
+        + pod
+        + cash
+        + lock
+        + _src("Escape pod, how many losses a day you can survive, and the death delay on this game.")
+    )
+
+
+def _feds_and_ferrengi(_f: dict) -> str:
+    from ..engine.fed import FED_SPECS
+    captains = ", ".join(f"{rank} {name}" for name, rank, _density in FED_SPECS)
+    ships = _gated(
+        K.fed_ships_live(),
+        "three federal ships are in space: Intrepid at StarDock, then Valiant and Lexington in the next two sectors.",
+        "those three federal ships are not placed.",
+    )
+    tow = (
+        f"<p>FedSpace holds at most {_n(K.FED_SHIPS_PER_SECTOR)} ships in a sector and tows the rest. "
+        f"A ship with more than {_n(K.FED_TOW_FIGHTER_LIMIT)} fighters is towed.</p>"
+    )
+    drop = _gated(
+        K.fedspace_deploy_live(),
+        "dropping fighters in FedSpace is answered at once. You lose a tenth of the fighters and a tenth of the holds.",
+        "you cannot drop fighters in FedSpace.",
+    )
+    quasar = _gated(
+        K.ferrengal_quasar_live(),
+        "entering Ferrengal draws one quasar shot. Landing there does not.",
+        "Ferrengal does not fire a quasar at a ship that enters.",
+    )
+    gold = _gated(
+        K.gold_alien_live(),
+        f"destroying an alien while another of that race is in the sector puts you on that race's list of {_n(K.GOLD_GRUDGE_LIMIT)}. "
+        "The fight itself does not get harder.",
+        "destroying an alien does not start a race grudge.",
+    )
+    return (
+        f"<p>The federal captains are {escape(captains)}.</p>"
+        + ships
+        + tow
+        + drop
+        + "<p>Ferrengi rules are in the Ferrengi section. Ferrengal is their home sector.</p>"
+        + quasar
+        + gold
+        + _src("Federal ships, FedSpace tows, Ferrengal, and the gold-alien grudge.")
+    )
+
+
+def _towing_and_transwarp(f: dict) -> str:
+    ship = K.STARTING_SHIP
+    reach = K.transport_range(ship)
+    interdictor = K.transport_range("interdictor_cruiser")
+    tow = (
+        f"<p>W tows another ship when towing is {_on(K.tow_on())}. "
+        f"You cannot tow a ship that still has fighters on board. "
+        f"The turn cost adds your hull's turns per warp to {_n(K.TOW_TOWEE_TPW_MULT)} times the towed hull's. "
+        "A pod cannot be towed. Releasing the tow is its own order.</p>"
+    )
+    tw = (
+        f"<p>Ship TransWarp is {_on(K.ship_tw_on())}. The drive costs {_n(K.SHIP_TW_TYPE1_COST)} credits "
+        f"and burns {_n(K.SHIP_TW_ORE_PER_HOP)} fuel ore per hop. "
+        "The Imperial StarShip, the Corporate Flagship and the Havoc Gunstar can carry it. "
+        f"A tow upgrade costs {_n(K.SHIP_TW_TYPE2_COST)} credits and burns {_n(K.SHIP_TW_TOW_ORE_PER_HOP)} ore per hop.</p>"
+    )
+    pad = (
+        f"<p>X is the transporter. The starting hull, the {escape(f['ship'])}, beams {_n(reach)} hops. "
+        f"An Interdictor beams {_n(interdictor)} hops.</p>"
+    )
+    hull = _gated(
+        K.special_hull_rules_on(),
+        "an Interdictor also holds every other ship in its sector, and a Tholian defending its own corporation's planet fights at 4 to 1.",
+        "an Interdictor does not hold other ships, and a Tholian does not fight at 4 to 1.",
+    )
+    planet = (
+        f"<p>A citadel TransWarp needs level {_n(K.PLANET_TRANSWARP_MIN_LEVEL)} and burns "
+        f"{_n(K.PLANET_TRANSWARP_FUEL_PER_SECTOR)} fuel per sector.</p>"
+    )
+    return (
+        tow + tw + pad + hull + planet
+        + _src("Towing, ship TransWarp, the transporter pad, and citadel TransWarp.")
+    )
+
+
+# Action or switch -> section id. The v2 test requires every player action and every
+# profile switch to be here or in EXEMPT. The page itself does not print these names.
+_COVERS: dict[str, tuple[str, ...]] = {
+    "getting-started": ("STARTING_PACKAGE_MODE", "HOME_PLANET_MODE"),
+    "moving": (
+        "warp", "plot_course", "avoid",
+        "COURSE_MAX_MODE", "ONE_WAY_SHARE_MODE", "AUTOPILOT_PORT_STOP_MODE", "AVOID_MODE",
+        "BIG_BANG_DENSITY_MODE",
+    ),
+    "trading": (
+        "trade", "rob", "steal", "planet_trade",
+        "PORT_PRICE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
+        "HAGGLE_EXP_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
+        "PORT_CLASS_MAP_MODE", "PORT_CLASS_NUMBER_FIX_MODE", "CLASS0_HOLD_FORMULA_MODE",
+        "HOLD_RULES_MODE", "SHOP_PRICE_MODE",
+    ),
+    "ports": (
+        "port_upgrade", "port_build",
+        "PORT_ATTACK_MODE", "PORT_ATTACK_ALL_CLASSES_MODE", "SPECIAL_PORT_DEFENCE_MODE",
+    ),
+    "ship-trade-in": (
+        "buy_ship", "sell_ship",
+        "SHIP_ROSTER_MODE", "TRADE_IN_MODE", "TRADE_IN_PARTS_MODE", "YARD_STATS_MODE",
+    ),
+    "combat": (
+        "attack", "cloak", "fire_disruptor", "photon_missile", "deploy_atomic", "surrender",
+        "retreat", "pay_toll", "recall_deployed", "deploy_fighters", "deploy_mines",
+        "jettison", "self_destruct",
+        "OFFENSIVE_CLASH_MODE", "KILL_CASH_MODE", "SHIP_FLEE_MODE", "PLANET_LANDING_COMBAT_MODE",
+        "RIVAL_STRENGTH_MODE", "SPECIAL_HULL_RULES_MODE", "PHOTON_FOLLOW_DAMP_MODE",
+        "CAPTURE_CREDIT_LINE_MODE", "ATOMIC_DETONATOR_MODE", "ALIEN_COMBAT_FIX_MODE", "SHIP_EXIT_MODE",
+    ),
+    "ferrengi": (
+        "FERRENGI_ENGAGE_MODE", "FERRENGI_GRUDGE_MODE", "FERRENGI_PACE_MODE", "FERRENGI_REWARD_MODE",
+    ),
+    "planets": (
+        "land_planet", "liftoff", "deploy_genesis", "claim_planet", "planet_destroy",
+        "load_planet_cargo", "dump_planet_cargo",
+        "GENESIS_NAME_MODE", "GENESIS_START_MODE", "PLANET_PROD_MODE", "PLANET_COLLISION_MODE",
+        "PLANET_BUST_EXP_MODE", "PLANET_COLONIST_CAP_MODE", "PLANET_GROWTH_MODE", "PLANET_NW_MODE",
+        "OWN_PLANET_TURN_MODE", "OWN_PLANET_FIGHTER_MODE", "LANDED_STATE_MODE",
+    ),
+    "citadels": (
+        "build_citadel", "set_military_reaction", "deposit_treasury", "withdraw_treasury",
+        "set_quasar_sector", "set_quasar_atm", "deposit_planet_defense", "withdraw_planet_defense",
+        "CITADEL_DAYS_MODE", "CITADEL_COST_MODE", "CITADEL_PERK_MODE", "CITADEL_PARK_MODE",
+        "CITADEL_TABLE_FIX_MODE", "TREASURY_CAP_MODE", "PLANET_SHIELD_ACTIVE_MODE",
+        "PLANET_SHIELD_MODE", "PLANET_DIVIDEND_PAY_MODE",
+    ),
+    "colonists": (
+        "assign_colonists", "terra_colonists",
+        "TERRA_COLONIST_MODE", "COLONIST_UNITS_MODE", "COLONIST_NW_UNITS_MODE",
+        "START_COLONIST_NW_MODE", "CLASS_M_DROP_MODE", "CLASS_M_FIDELITY_MODE",
+        "CLASS_M_GENESIS_MODE", "CLASS_M_NW_MODE", "ASSIGN_POOL_FIX_MODE",
+    ),
+    "corporations": (
+        "corp_create", "corp_invite", "corp_join", "corp_leave", "corp_set_password", "corp_drop",
+        "corp_transfer", "corp_deposit", "corp_withdraw", "corp_memo",
+        "propose_alliance", "accept_alliance", "break_alliance",
+        "ship_set_corporate", "ship_set_personal", "ship_set_password",
+        "CORP_EXP_PENALTY_MODE", "CORP_PLANET_DISBAND_MODE",
+    ),
+    "alignment": ("DISCOVERY_EXP_MODE", "EXP_SOURCES_MODE"),
+    "rankings": (
+        "EXP_SCORE_MODE", "RANK_DISPLAY_MODE", "NW_ESTIMATE_MODE", "GENESIS_SCORE_MODE",
+        "PLANET_VALUE_SCORE_MODE",
+    ),
+    "tax": ("bank_deposit", "bank_withdraw", "bank_transfer", "TAX_RULE_MODE"),
+    "turns": ("wait", "TURN_REGEN_MODE", "DAY_ROLL_CLOCK_MODE", "LIVE_PACE_MODE"),
+    "hardware": (
+        "buy_equip", "scan", "probe", "query_limpets", "remove_limpet", "launch_beacon",
+        "HARDWARE_PRICE_MODE", "DETECT_GEAR_MODE", "PLANET_SCANNER_MODE", "SCANNER_FOG_MODE",
+        "SHIP_CHART_CAP_MODE", "PROBE_SHOOTDOWN_MODE",
+    ),
+    "stardock-services": (
+        "ship_rename", "apply_commission", "post_reward", "claim_reward",
+        "tavern_announce", "tavern_talk", "tavern_graffiti", "tavern_order",
+        "grimy_ask", "grimy_curse", "underground_enter", "underground_contract", "underground_claim",
+        "tricron", "cineplex",
+        "SHIP_RENAME_MODE", "BUST_CLEAR_MODE",
+    ),
+    "communications": ("hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE"),
+    "computer-reports": (
+        "DAILY_STATS_MODE", "CORP_RANK_MODE", "TRADER_RANK_LIST_MODE",
+        "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE",
+    ),
+    "death-and-pods": ("DEATH_DELAY_MODE", "DEATH_POD_MODE", "POD_CASH_MODE"),
+    "feds-and-ferrengi-v311": ("FED_SHIPS_MODE", "FEDSPACE_DEPLOY_MODE", "FERRENGAL_QUASAR_MODE"),
+    "towing-and-transwarp": (
+        "ship_transwarp", "ship_transport", "tow_engage", "tow_release",
+        "planet_transwarp", "planet_buy_transporter", "planet_transport",
+    ),
+}
+
+MANUAL_COVERAGE: dict[str, str] = {
+    name: sid for sid, names in _COVERS.items() for name in names
+}
+
+# Not a thing a player does. Each reason is why it is left off the page's coverage map.
+EXEMPT: tuple[tuple[str, str], ...] = (
+    ("ACTION_RESULT_MODE", "How an AI seat's result is shaped. A player does not set it."),
+    ("API_ARGS_MODE", "How an AI seat sends arguments. A player does not set it."),
+    ("BOT_HAZARD_MEMORY_MODE", "A code bot remembers a hazard. A player does not use it."),
+    ("BOT_DIPLOMACY_MODE", "A code bot answers a hail. A player does not use it."),
+    ("BOT_BANK_FLOAT_MODE", "A code bot keeps cash before a deposit. A player does not use it."),
+    ("SEAT_IDLE_START_MODE", "When an empty seat's idle clock starts. A player does not set it."),
+)
