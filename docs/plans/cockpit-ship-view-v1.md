@@ -73,3 +73,13 @@ NOTE 111 (`web/warp-variants.js`, `web/media/warp-clips.json`, the warp block in
 ## Where this diff sits
 
 `web/redesign.js` (cluster packing on the three hulls, and a stylesheet tag) and `web/ship-view-plan.css`. The layout files from NOTE 113 are left alone.
+
+# NOTE 118 — ship-view-all-hulls-v1
+
+COMMANDER NOTE 118. The NOTE 116 picture now covers every hull in `ShipClass`, including the Escape Pod. No engine change, so no new switch and no helper row. `COCKPIT_LAYOUT` stays legacy unless the page is the redesign. `/bot` is not edited. No EIS, ANSI, or Drew Markham picture is copied or traced. The meshes stay the ones in `LOFT` / `buildHullFaces`.
+
+Above 200 fighters, every hull packs the same triangles into at most four corner clusters and prints the fighter count on each cluster. The counts add up to the bay. The stat lines and the legend `each triangle = N fighters` stay as they were. Under the cap there is still one triangle per fighter and no cluster label.
+
+The ship panel from NOTE 113 can be hidden, shown, and resized (the map can be made larger, and the column splitter can move). While the panel is hidden the clusters keep their last places. When it is on screen again, or when the panel changes size, they sit in the corners of the picture, inside the drawing, and they do not pile up on the hull. On a wide deck the column stays wide enough to read the legend and the four counts, so enlarging the map and moving the splitter does not crush the picture into a one-letter strip.
+
+A warp clip from NOTE 111 paints the hull that is flying, with `buildHullFaces` — the same mesh as the ship panel. The camera still comes from the clip. The clip does not switch to the ANSI pictures.
