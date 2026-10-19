@@ -13,7 +13,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 #dayClock{white-space:nowrap}
 @keyframes blink{50%{border-color:var(--br);color:var(--br)}}
 select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;margin-left:auto}
-#deck{display:grid;gap:8px;padding:8px;min-height:0;flex:1;grid-template-columns:1.15fr 1fr 0.95fr;grid-template-rows:minmax(0,1.35fr) minmax(110px,0.7fr);grid-template-areas:"view nav ship" "here here term"}
+#deck{display:grid;gap:8px;padding:8px;min-height:0;flex:1;position:relative;grid-template-columns:1.15fr 1fr 0.95fr;grid-template-rows:minmax(0,1.35fr) minmax(110px,0.7fr);grid-template-areas:"view nav ship" "here here term"}
 .panel{border:1px solid var(--b);background:#000;position:relative;min-width:0;min-height:0;overflow:auto}
 .panel>h2{margin:0;padding:4px 8px;font-size:13px;font-weight:normal;color:var(--w);background:linear-gradient(90deg,#0000aa,#000 70%);letter-spacing:1px}
 #viewport{grid-area:view}#nav{grid-area:nav;display:flex;flex-direction:column;overflow:hidden}#ship{grid-area:ship;display:flex;flex-direction:column;overflow:hidden}#context{grid-area:here}#term{grid-area:term}
@@ -138,3 +138,31 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 #map circle.hit{fill:transparent;stroke:none;pointer-events:all}
 #nav.enlarged{position:fixed;inset:0;z-index:30;width:100%;height:100%;max-height:none;background:#000}
 #nav.enlarged #map{width:100%;height:auto;flex:1 1 auto}
+#layoutOpen{flex:0 0 auto;font:inherit;background:#000;color:var(--c);border:1px solid var(--dc);padding:2px 8px;cursor:pointer;white-space:nowrap}
+@media (min-width:1367px) and (max-width:1680px){#cmdline{gap:6px 10px}}
+body.deck-tuned #cmdline{flex-wrap:wrap}
+#layoutMenu{position:fixed;z-index:40;top:10%;left:22%;right:22%;max-height:76%;overflow:auto;background:#000;border:2px double var(--c);padding:12px 16px;box-shadow:0 0 0 4px #0000aa}
+#layoutMenu .layout-head{display:flex;justify-content:space-between;align-items:center;color:var(--y);margin-bottom:8px}
+#layoutMenu button{font:inherit;background:#000;color:var(--c);border:1px solid var(--dc);padding:2px 8px;cursor:pointer}
+#layoutMenu .layout-row{display:flex;gap:8px;align-items:center;padding:3px 0}
+#layoutMenu .layout-row label{flex:1}
+#layoutMenu .grip{touch-action:none;cursor:grab;color:var(--y)}
+#layoutMenu .layout-setting{display:flex;gap:8px;align-items:center;padding:6px 0}
+#layoutMenu [data-testid=layout-reset]{margin-top:8px;color:var(--y);border-color:var(--y)}
+.splitter{position:absolute;z-index:4;padding:0;border:0;background:transparent;touch-action:none}
+.splitter.v{cursor:col-resize}
+.splitter.h{cursor:row-resize}
+.splitter:focus-visible{outline:1px solid var(--y);background:rgba(85,255,255,.28)}
+@media (max-width:1100px){.splitter{display:none !important}}
+body.deck-tuned,
+body.deck-tuned #cmdline,
+body.deck-tuned .panel,
+body.deck-tuned .panel>h2,
+body.deck-tuned #shipStats,
+body.deck-tuned #log,
+body.deck-tuned #sectorText,
+body.deck-tuned #keys,
+body.deck-tuned #lastResult,
+body.deck-tuned .prompt-line,
+body.deck-tuned #layoutMenu{font-size:var(--cockpit-font)}
+@media (max-width:700px){#layoutMenu{left:4%;right:4%;top:8%}}
