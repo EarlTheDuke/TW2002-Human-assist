@@ -156,6 +156,11 @@ def port_class_trades(class_id: int) -> tuple[bool | None, bool | None, bool | N
     """Buy/sell book for a class number. True means the port buys from the player."""
     cid = int(class_id)
     table = _PORT_CLASS_TRADES_LIVE if port_class_live() else PORT_CLASS_TRADES
+    # NOTE 98 TRD-c. Live class 7 is SSS. Class 8 stays the StarDock id, so a
+    # generated BBB cannot take that number. The dock's buy-all book is already
+    # the BBB tuple. Legacy numbers are unchanged while the fix is off.
+    if port_class_number_fix() and port_class_live() and cid == 7:
+        return (False, False, False)
     return table.get(cid, (None, None, None))
 # First successful trade of a visit. A later trade in that sector costs 0.
 PORT_DOCK_TURN_COST = 1
@@ -3040,7 +3045,12 @@ ALIEN_AGGRESSION = "never"                # al9 UNVERIFIED; any other value is r
 ALIEN_FLEE_RULE = "player"                # al13 SOURCE-CONFLICT: "player" | "always"
 ALIEN_INTERDICTED = True                  # al13 UNVERIFIED
 ALIEN_KILL_EXP_RULE = "bible"             # al15 SOURCE-CONFLICT: "bible" | "player"
-ALIEN_KILL_ALIGN_SHARE = 0.5              # al16 UNVERIFIED
+# al16. Half the alien's alignment, subtracted, so an evil alien raises a good
+# trader. UNVERIFIED, searched: TWBible_original_v1x.txt lines 466-467 (the half
+# and the quarter are experience; alignment goes up "depending on their
+# alignment"), Gypsy_Big_Dummies_Guide.html (no half or quarter sentence),
+# classictw_docs_wiki/Alignment.html "Kill aliens" (no fraction).
+ALIEN_KILL_ALIGN_SHARE = 0.5
 ALIEN_LOOT_CREDITS = True                 # al17 UNVERIFIED
 ALIEN_BOUNTY = 0
 ALIEN_CAPTURE = True                      # al19
@@ -4271,6 +4281,15 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "GENESIS_NAME_MODE",
         "NOTE 90: a Genesis deploy can take the name the player typed",
     ),
+    # NOTE 98 rows 138 and 142. Rows 139, 140 and 141 were already the stored rule.
+    "port_attack_all_classes": (
+        "PORT_ATTACK_ALL_CLASSES_MODE",
+        "NOTE 98 TRD-n: a port with a known rating can be destroyed; unmeasured classes stay unset",
+    ),
+    "port_class_number_fix": (
+        "PORT_CLASS_NUMBER_FIX_MODE",
+        "NOTE 98 TRD-c: live class 7 is SSS while StarDock stays id 8",
+    ),
 }
 
 
@@ -4871,3 +4890,48 @@ def autopilot_port_stop_live() -> bool:
 def genesis_name_live() -> bool:
     """True when a Genesis deploy keeps a name the player typed."""
     return GENESIS_NAME_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-rules-gaps-v4 (NOTE 98). Stored defaults stay legacy.
+# Row 139 is unused: deploy_genesis is already 25 in XP_AWARDS_TW2002 and
+# GENESIS_ALIGNMENT is already 10 (runner._handle_deploy_genesis).
+# Row 140 is unused: citadel_fidelity_rules() is already the S1 goods path
+# with no credits, for a default game and for V311.
+# Row 141 is unused: ALIEN_KILL_EXP_RULE "bible" is already half or quarter
+# experience. Alignment stays half the alien's alignment. The half-experience
+# alignment reading is not in the Bible or Gypsy.
+PORT_ATTACK_ALL_CLASSES_MODE = "legacy"  # "legacy" | "live"
+# cabal formulas.html safe minimum. The page says the 22 is approximate.
+PORT_BLOW_FIGS_PER_RATING = 22
+# classictw_docs_wiki Alignment.html: destroying a port is -50 alignment.
+# The attack itself is still PORT_ATTACK_ALIGNMENT (-5), so a blow is -55,
+# the same -55 the cabal subtracts when a trader dies on a blown port.
+PORT_BLOW_ALIGNMENT = -50
+# Class 6 is the only measured pair (REPORT2 section 8): rating 98, barrage 598.
+# Classes 0-5 and 7-9 have no rating and no barrage in the sources below.
+# UNVERIFIED, searched: docs/reference/tw2002/eis_tw2002_v3_docs/Tactical.html
+# (no class table; Starport Construction says destroy a port when the universe
+# is full), stardock_manuals_and_text_docs/TWBible_original_v1x.txt
+# "Destroying Class 0 Ports" (no rating), cabal_strategy_site/formulas.html
+# "Destroying a port, Defensive Rating vs Figs Needed" (rating times about 22
+# divided by odds; the return shot "has no consistent pattern"; class 0 and
+# StarDock do not use the formula), classictw_docs_wiki/Alignment.html
+# (destroying a port is -50 alignment and 50 experience). No page gives port
+# fighters from the port's size, and no page gives a capture outcome.
+PORT_CLASS_NUMBER_FIX_MODE = "legacy"  # "legacy" | "live"
+
+
+def port_attack_all_classes() -> bool:
+    """True when a known port rating can destroy the port."""
+    return PORT_ATTACK_ALL_CLASSES_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def port_figs_to_blow(rating: int, odds: float) -> int:
+    """Fighters one wave must send. Truncates the way the cabal example does."""
+    safe = float(odds) if float(odds) > 0 else 1.0
+    return int(int(rating) * PORT_BLOW_FIGS_PER_RATING / safe)
+
+
+def port_class_number_fix() -> bool:
+    """True when live class 7 trades and displays as SSS. StarDock stays id 8."""
+    return PORT_CLASS_NUMBER_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
