@@ -1,0 +1,2815 @@
+{
+  "home_sector": 74,
+  "planet_id": 12,
+  "colonists_before": 191000,
+  "goods_needed": {
+    "fuel_ore": 300,
+    "organics": 200,
+    "equipment": 250
+  },
+  "goods_dumped": {
+    "fuel_ore": 300,
+    "organics": 200,
+    "equipment": 250
+  },
+  "terra_holds_taken": 30,
+  "build": {
+    "ok": false,
+    "error": "need 1000000 colonists on planet (have 221000)"
+  },
+  "planet_after": {
+    "id": 12,
+    "name": "Cockpit's Home",
+    "class": "M",
+    "owner_id": "P2",
+    "corp_ticker": null,
+    "citadel_level": 0,
+    "citadel_target": 0,
+    "citadel_complete_day": null,
+    "citadel_next_build": {
+      "level": 1,
+      "credits": 0,
+      "colonists": 1000000,
+      "fuel_ore": 300,
+      "organics": 200,
+      "equipment": 250,
+      "days": 4,
+      "colonists_have": 221000,
+      "colonists_short": 779000,
+      "possible": false,
+      "blocker": "colonists 221000/1000000 on planet",
+      "colonists_consumed": false
+    },
+    "colonists": {
+      "fuel_ore": 75000,
+      "organics": 65000,
+      "equipment": 81000,
+      "colonists": 0
+    },
+    "colonists_total": 221000,
+    "fighters": 0,
+    "shields": 0,
+    "military_reaction_pct": 0,
+    "quasar_sector_pct": 0,
+    "quasar_atm_pct": 0,
+    "has_transporter": false,
+    "treasury": 0,
+    "stockpile": {
+      "fuel_ore": 300,
+      "organics": 200,
+      "equipment": 250
+    }
+  },
+  "log": [
+    {
+      "read": "citadel_next_build",
+      "need": {
+        "level": 1,
+        "credits": 0,
+        "colonists": 1000000,
+        "fuel_ore": 300,
+        "organics": 200,
+        "equipment": 250,
+        "days": 4,
+        "colonists_have": 191000,
+        "colonists_short": 809000,
+        "possible": false,
+        "blocker": "fuel_ore 0/300 on planet",
+        "colonists_consumed": false
+      },
+      "home_sector": 74,
+      "planet_id": 12
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok"
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 1,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "terra_colonists",
+      "args": {
+        "mode": "take",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "colonists",
+        "qty": 20000,
+        "pool": "colonists"
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 1,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "terra_colonists",
+      "args": {
+        "mode": "take",
+        "qty": 10
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "colonists",
+        "qty": 10000,
+        "pool": "colonists"
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 1,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 64,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 17
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 19
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 19
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "reread",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "fuel_ore",
+        "qty": 20,
+        "unit_price": 21
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "fuel_ore",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 37
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 37
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 37
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 38
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 38
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 38
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 38
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 38
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 39
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "organics",
+        "qty": 20,
+        "unit_price": 39
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "organics",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 35
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 35
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 35
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 35
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 36
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 36
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 36
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 37
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 37
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 37
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 37
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 20,
+        "unit_price": 38
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 20
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "liftoff",
+      "args": {},
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 50,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "trade",
+      "args": {
+        "side": "buy",
+        "commodity": "equipment",
+        "qty": 10,
+        "unit_price": 38
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "reread",
+      "error": null
+    },
+    {
+      "kind": "plot_course",
+      "args": {
+        "target": 74,
+        "execute": true
+      },
+      "outcome": "ok",
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "dump_planet_cargo",
+      "args": {
+        "planet_id": 12,
+        "commodity": "equipment",
+        "qty": 10
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "land_planet",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": true,
+      "error": null
+    },
+    {
+      "kind": "build_citadel",
+      "args": {
+        "planet_id": 12
+      },
+      "outcome": "ok",
+      "ok": false,
+      "error": "need 1000000 colonists on planet (have 221000)"
+    }
+  ]
+}
