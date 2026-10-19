@@ -107,7 +107,12 @@ def test_flag_on_leaves_stardock_then_docks_or_waits(tmp_path, monkeypatch) -> N
             await http.aclose()
 
     log = asyncio.run(_go())
-    assert log[0]["sections"] == ["rules_in_force", "rules", "scoring", "ranks", "ships", "prices"]
+    # NOTE 97 kept the first six and added the computer tables after prices.
+    assert log[0]["sections"] == [
+        "rules_in_force", "rules", "scoring", "ranks", "ships", "prices",
+        "planet_classes", "citadel_tables", "combat_odds", "flee_rule",
+        "haggle_bands", "exp_alignment",
+    ]
     warp = log[2]
     dock = log[3]
     assert warp["from_sector"] == 1
