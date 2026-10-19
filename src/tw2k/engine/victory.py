@@ -224,6 +224,17 @@ def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
         and K.class_m_fidelity_live()
     ):
         colonist_total //= int(K.CLASS_M_PEOPLE_PER_THOUSAND)
+    elif (
+        not tax_basis
+        and K.colonist_nw_units()
+        and not K.colonist_units_live()
+        and str(getattr(planet.class_id, "value", planet.class_id)) != "M"
+        and int(K.colonists_per_hold()) > 1
+    ):
+        # The cargo-unit switch is off, so a Terra drop still stored people
+        # in the handbook pool. Score the thousands. When that switch is on
+        # the pool is already handbook units and dividing again would zero it.
+        colonist_total //= int(K.colonists_per_hold())
     colonist_value = colonist_total * K.COLONIST_PRICE
 
     stockpile_value = 0
