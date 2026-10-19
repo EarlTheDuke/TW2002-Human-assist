@@ -48,21 +48,25 @@ def _spread(commodity: Commodity) -> int:
 
 
 def test_legacy_quotes_and_ship_costs_match_ae1d5c4() -> None:
-    saved = K.ECONOMY_SCALE_MODE
-    K.ECONOMY_SCALE_MODE = "legacy"
+    _prior_economy_scale_mode = K.ECONOMY_SCALE_MODE
     try:
-        assert port_sell_price(_full(3, FUEL, 50), FUEL) == 11
-        assert port_buy_price(_full(1, FUEL, -50), FUEL) == 13
-        assert port_sell_price(_full(1, ORG, 50), ORG) == 15
-        assert port_buy_price(_full(3, ORG, -50), ORG) == 18
-        assert port_sell_price(_full(1, EQ, 50), EQ) == 22
-        assert port_buy_price(_full(3, EQ, -50), EQ) == 26
-        for key, spec in K.SHIP_SPECS.items():
-            assert K.ship_cost(key) == int(spec["cost"])
-        assert K.fighter_unit_price(4) == K.FIGHTER_COST == 50
-        assert K.hold_total_price("scout_marauder", 10, 3, 4) == 800 * 3
+        saved = K.ECONOMY_SCALE_MODE
+        try:
+            K.ECONOMY_SCALE_MODE = "legacy"
+            assert port_sell_price(_full(3, FUEL, 50), FUEL) == 11
+            assert port_buy_price(_full(1, FUEL, -50), FUEL) == 13
+            assert port_sell_price(_full(1, ORG, 50), ORG) == 15
+            assert port_buy_price(_full(3, ORG, -50), ORG) == 18
+            assert port_sell_price(_full(1, EQ, 50), EQ) == 22
+            assert port_buy_price(_full(3, EQ, -50), EQ) == 26
+            for key, spec in K.SHIP_SPECS.items():
+                assert K.ship_cost(key) == int(spec["cost"])
+            assert K.fighter_unit_price(4) == K.FIGHTER_COST == 50
+            assert K.hold_total_price("scout_marauder", 10, 3, 4) == 800 * 3
+        finally:
+            K.ECONOMY_SCALE_MODE = saved
     finally:
-        K.ECONOMY_SCALE_MODE = saved
+        K.ECONOMY_SCALE_MODE = _prior_economy_scale_mode
 
 
 def test_chart_spreads_and_the_fuel_integer_gap() -> None:
@@ -101,16 +105,20 @@ def test_no_class_pair_prints_more_than_the_chart_trip() -> None:
 
 
 def test_mode_switch_changes_the_next_quote() -> None:
-    saved = K.ECONOMY_SCALE_MODE
+    _prior_economy_scale_mode = K.ECONOMY_SCALE_MODE
     try:
-        K.ECONOMY_SCALE_MODE = "tw2002"
-        assert K.COMMODITY_BASE_PRICE["equipment"] == 102
-        assert dict(K.COMMODITY_BASE_PRICE.items())["fuel_ore"] == 26
-        K.ECONOMY_SCALE_MODE = "legacy"
-        assert K.COMMODITY_BASE_PRICE["equipment"] == 36
-        assert K.COMMODITY_BASE_PRICE.get("organics") == 25
+        saved = K.ECONOMY_SCALE_MODE
+        try:
+            K.ECONOMY_SCALE_MODE = "tw2002"
+            assert K.COMMODITY_BASE_PRICE["equipment"] == 102
+            assert dict(K.COMMODITY_BASE_PRICE.items())["fuel_ore"] == 26
+            K.ECONOMY_SCALE_MODE = "legacy"
+            assert K.COMMODITY_BASE_PRICE["equipment"] == 36
+            assert K.COMMODITY_BASE_PRICE.get("organics") == 25
+        finally:
+            K.ECONOMY_SCALE_MODE = saved
     finally:
-        K.ECONOMY_SCALE_MODE = saved
+        K.ECONOMY_SCALE_MODE = _prior_economy_scale_mode
 
 
 def test_fighter_wave_stays_inside_160_to_239() -> None:

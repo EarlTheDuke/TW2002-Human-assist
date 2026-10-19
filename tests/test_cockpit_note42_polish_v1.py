@@ -65,19 +65,25 @@ def _install():
 
     @pytest.fixture(scope="module")
     def world(tmp_path_factory):
-        sync = pytest.importorskip("playwright.sync_api").sync_playwright
-        pw = sync().start()
-        host = CuHost(tmp_path_factory.mktemp("n42"), TOK)
-        host.__enter__()
-        browser, page = _page(pw, host)
+        _prior_siege_report_mode = K.SIEGE_REPORT_MODE
+        _prior_planet_landing_combat_mode = K.PLANET_LANDING_COMBAT_MODE
         try:
-            yield {"page": page, "universe": host.runner.state.universe, "host": host}
+            sync = pytest.importorskip("playwright.sync_api").sync_playwright
+            pw = sync().start()
+            host = CuHost(tmp_path_factory.mktemp("n42"), TOK)
+            host.__enter__()
+            browser, page = _page(pw, host)
+            try:
+                yield {"page": page, "universe": host.runner.state.universe, "host": host}
+            finally:
+                K.SIEGE_REPORT_MODE = "legacy"
+                K.PLANET_LANDING_COMBAT_MODE = "legacy"
+                browser.close()
+                host.__exit__(None, None, None)
+                pw.stop()
         finally:
-            K.SIEGE_REPORT_MODE = "legacy"
-            K.PLANET_LANDING_COMBAT_MODE = "legacy"
-            browser.close()
-            host.__exit__(None, None, None)
-            pw.stop()
+            K.SIEGE_REPORT_MODE = _prior_siege_report_mode
+            K.PLANET_LANDING_COMBAT_MODE = _prior_planet_landing_combat_mode
 
     return world
 
@@ -107,44 +113,50 @@ def test_a_mine_hit_says_the_avoid_line_once(world):
 
 
 def test_a_landing_that_destroys_the_ship_names_the_losses(world):
-    page = world["page"]
-    universe = world["universe"]
-    me = universe.players["P2"]
-    sector = universe.sectors[me.sector_id]
-    sector.fighters = None
-    sector.mines = [row for row in sector.mines if row.owner_id == "P2"]
-    me.fighter_challenge = None
-    planet = next(iter(universe.planets.values()))
-    old = universe.sectors.get(planet.sector_id)
-    if old is not None and planet.id in getattr(old, "planet_ids", []):
-        old.planet_ids.remove(planet.id)
-    planet.sector_id = int(me.sector_id)
-    planet.owner_id = "P1"
-    planet.citadel_level = 0
-    planet.fighters = 400
-    planet.shields = 0
-    planet.military_reaction_pct = 100
-    planet.name = "Phoenix"
-    if planet.id not in sector.planet_ids:
-        sector.planet_ids.append(planet.id)
-    me.ship.fighters = 30
-    me.ship.shields = 0
-    K.PLANET_LANDING_COMBAT_MODE = "tw2002"
-    K.SIEGE_REPORT_MODE = "tw2002"
+    _prior_planet_landing_combat_mode = K.PLANET_LANDING_COMBAT_MODE
+    _prior_siege_report_mode = K.SIEGE_REPORT_MODE
     try:
-        _next(page, world["host"])
-        page.locator("#here button", has_text="Phoenix").click()
-        page.locator("#dangerOk").click()
-        page.wait_for_function(
-            "() => { const t = document.querySelector('#lastResult').textContent || '';"
-            " if (t.includes('ship destroyed') && t.includes('fighters killed')) { window.__hit = t; return true; } return false; }",
-            timeout=20_000,
-        )
-        text = page.evaluate("() => window.__hit")
-        assert "of the planet's fighters" in text
-        assert "of your fighters" in text
-        assert "Credits on board lost" in text
-        _shoot(page, "siege", "#lastResult")
+        page = world["page"]
+        universe = world["universe"]
+        me = universe.players["P2"]
+        sector = universe.sectors[me.sector_id]
+        sector.fighters = None
+        sector.mines = [row for row in sector.mines if row.owner_id == "P2"]
+        me.fighter_challenge = None
+        planet = next(iter(universe.planets.values()))
+        old = universe.sectors.get(planet.sector_id)
+        if old is not None and planet.id in getattr(old, "planet_ids", []):
+            old.planet_ids.remove(planet.id)
+        planet.sector_id = int(me.sector_id)
+        planet.owner_id = "P1"
+        planet.citadel_level = 0
+        planet.fighters = 400
+        planet.shields = 0
+        planet.military_reaction_pct = 100
+        planet.name = "Phoenix"
+        if planet.id not in sector.planet_ids:
+            sector.planet_ids.append(planet.id)
+        me.ship.fighters = 30
+        me.ship.shields = 0
+        try:
+            K.PLANET_LANDING_COMBAT_MODE = "tw2002"
+            K.SIEGE_REPORT_MODE = "tw2002"
+            _next(page, world["host"])
+            page.locator("#here button", has_text="Phoenix").click()
+            page.locator("#dangerOk").click()
+            page.wait_for_function(
+                "() => { const t = document.querySelector('#lastResult').textContent || '';"
+                " if (t.includes('ship destroyed') && t.includes('fighters killed')) { window.__hit = t; return true; } return false; }",
+                timeout=20_000,
+            )
+            text = page.evaluate("() => window.__hit")
+            assert "of the planet's fighters" in text
+            assert "of your fighters" in text
+            assert "Credits on board lost" in text
+            _shoot(page, "siege", "#lastResult")
+        finally:
+            K.PLANET_LANDING_COMBAT_MODE = "legacy"
+            K.SIEGE_REPORT_MODE = "legacy"
     finally:
-        K.PLANET_LANDING_COMBAT_MODE = "legacy"
-        K.SIEGE_REPORT_MODE = "legacy"
+        K.PLANET_LANDING_COMBAT_MODE = _prior_planet_landing_combat_mode
+        K.SIEGE_REPORT_MODE = _prior_siege_report_mode

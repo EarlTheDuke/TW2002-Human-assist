@@ -38,43 +38,51 @@ def test_legacy_refuses_a_fedspace_drop():
 
 
 def test_live_takes_ten_percent_and_places_nothing():
-    universe, player = _seat(30, 35)
-    K.FEDSPACE_DEPLOY_MODE = "live"
+    _prior_fedspace_deploy_mode = K.FEDSPACE_DEPLOY_MODE
     try:
-        result = _drop(universe, 5)
-        assert result.ok is True
-        assert player.ship.fighters == 27
-        assert player.ship.holds == 31
-        assert universe.sectors[1].fighters is None
-        assert player.turns_today == K.TURN_COST["deploy_fighters"]
-
-        universe, player = _seat(20, 10)
-        result = _drop(universe, 10)
-        assert result.ok is True
-        assert player.ship.fighters == 18
-        assert universe.sectors[1].fighters is None
-
         universe, player = _seat(30, 35)
-        player.ship.cargo[Commodity.FUEL_ORE] = 35
-        _drop(universe, 5)
-        assert player.ship.holds == 31
-        assert player.ship.cargo_used == 31
+        try:
+            K.FEDSPACE_DEPLOY_MODE = "live"
+            result = _drop(universe, 5)
+            assert result.ok is True
+            assert player.ship.fighters == 27
+            assert player.ship.holds == 31
+            assert universe.sectors[1].fighters is None
+            assert player.turns_today == K.TURN_COST["deploy_fighters"]
+
+            universe, player = _seat(20, 10)
+            result = _drop(universe, 10)
+            assert result.ok is True
+            assert player.ship.fighters == 18
+            assert universe.sectors[1].fighters is None
+
+            universe, player = _seat(30, 35)
+            player.ship.cargo[Commodity.FUEL_ORE] = 35
+            _drop(universe, 5)
+            assert player.ship.holds == 31
+            assert player.ship.cargo_used == 31
+        finally:
+            K.FEDSPACE_DEPLOY_MODE = "legacy"
     finally:
-        K.FEDSPACE_DEPLOY_MODE = "legacy"
+        K.FEDSPACE_DEPLOY_MODE = _prior_fedspace_deploy_mode
 
 
 def test_live_still_offers_a_drop_when_the_sector_is_full():
-    universe, _player = _seat(30, 35)
-    universe.sectors[1].fighters = FighterDeployment(
-        owner_id="P1", count=K.SECTOR_FIGHTER_CAP, mode=FighterMode.DEFENSIVE,
-    )
-    offered = {item.kind: item for item in legal_actions(universe, "P1")}
-    assert offered["deploy_fighters"].legal is False
-    assert offered["deploy_fighters"].reason == "cannot deploy fighters in FedSpace"
-    K.FEDSPACE_DEPLOY_MODE = "live"
+    _prior_fedspace_deploy_mode = K.FEDSPACE_DEPLOY_MODE
     try:
+        universe, _player = _seat(30, 35)
+        universe.sectors[1].fighters = FighterDeployment(
+            owner_id="P1", count=K.SECTOR_FIGHTER_CAP, mode=FighterMode.DEFENSIVE,
+        )
         offered = {item.kind: item for item in legal_actions(universe, "P1")}
-        assert offered["deploy_fighters"].legal is True
-        assert offered["deploy_fighters"].params["qty"]["max"] == 30
+        assert offered["deploy_fighters"].legal is False
+        assert offered["deploy_fighters"].reason == "cannot deploy fighters in FedSpace"
+        try:
+            K.FEDSPACE_DEPLOY_MODE = "live"
+            offered = {item.kind: item for item in legal_actions(universe, "P1")}
+            assert offered["deploy_fighters"].legal is True
+            assert offered["deploy_fighters"].params["qty"]["max"] == 30
+        finally:
+            K.FEDSPACE_DEPLOY_MODE = "legacy"
     finally:
-        K.FEDSPACE_DEPLOY_MODE = "legacy"
+        K.FEDSPACE_DEPLOY_MODE = _prior_fedspace_deploy_mode

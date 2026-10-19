@@ -259,97 +259,103 @@ def test_the_lobby_form_validates_the_home_planet_name(tmp_path) -> None:
 
 def test_the_cockpit_names_the_owner_and_keeps_terra_apart(tmp_path) -> None:
     """Redesign only. The card says the planet is yours. Terra is its own row."""
-    sync = pytest.importorskip("playwright.sync_api").sync_playwright
-    import uvicorn
-
-    from tests._port_lock import claim_ports
-    from tw2k.server.app import create_app
-    from tw2k.server.runner import AgentSpec, MatchSpec
-
-    base_port = claim_ports(1, low=40000, high=46000)
-    token = "n" * 40
-    app = create_app(auto_start=False)
-    runner = app.state.runner
-    runner._saves_root = tmp_path / "saves"
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=base_port, log_level="warning"))
-    ready = {"ok": False}
-
-    async def start() -> None:
-        while not server.started:
-            await asyncio.sleep(0.05)
-        await runner.start(MatchSpec(
-            config=GameConfig(
-                seed=66, universe_size=200, max_days=3, turns_per_day=250,
-                starting_credits=20_000, enable_ferrengi=False, enable_planets=True, action_delay_s=0.0,
-            ),
-            agents=[AgentSpec(player_id="P1", name="Guest 1", kind="external", external_token=token)],
-            action_delay_s=0.05, external_timeout_s=600.0,
-        ))
-        for _ in range(400):
-            agent = next((a for a in runner.state.agents if getattr(a, "player_id", None) == "P1"), None)
-            if agent is not None and agent.awaiting_input and runner.state.universe is not None:
-                break
-            await asyncio.sleep(0.05)
-        ready["ok"] = True
-
-    async def main() -> None:
-        task = asyncio.create_task(start())
-        await server.serve()
-        task.cancel()
-        await runner.stop()
-
-    saved = K.INFO_MODE
-    K.INFO_MODE = "legacy"
-    thread = threading.Thread(target=lambda: asyncio.run(main()), daemon=True)
-    thread.start()
-    deadline = time.time() + 40
-    while time.time() < deadline and not ready["ok"]:
-        time.sleep(0.1)
-    pw = sync().start()
-    browser = pw.chromium.launch()
+    _prior_info_mode = K.INFO_MODE
+    base_port = None
     try:
-        assert ready["ok"]
-        universe = runner.state.universe
-        me = universe.players["P1"]
-        planet = Planet(
-            id=46, sector_id=me.sector_id, name="Guest 1 Home", class_id=PlanetClass.M,
-            owner_id="P1", origin="other",
-            colonists={Commodity.FUEL_ORE: 45_000, Commodity.ORGANICS: 65_000, Commodity.EQUIPMENT: 81_000, Commodity.COLONISTS: 0},
-        )
-        universe.planets[46] = planet
-        universe.sectors[me.sector_id].planet_ids.append(46)
-        me.planet_landed = 46
-        agent = next(a for a in runner.state.agents if a.player_id == "P1")
-        agent.current_observation = build_observation(universe, "P1")
-        page = browser.new_page(viewport={"width": 1280, "height": 800})
-        page.goto(f"http://127.0.0.1:{base_port}/bot?layout=redesign&seat=P1&token={token}")
-        page.wait_for_selector("[data-claim=owner]", timeout=20_000)
-        card = page.locator("[data-claim=owner]").inner_text()
-        assert "Claimed by: Guest 1 (you)" in card
-        assert "Your home planet" in card
-        SHOTS.mkdir(parents=True, exist_ok=True)
-        page.screenshot(path=str(SHOTS / "1280-home.png"))
-        me.planet_landed = None
-        if me.sector_id != 1:
-            try:
-                universe.sectors[me.sector_id].occupant_ids.remove("P1")
-            except ValueError:
-                pass
-            me.sector_id = 1
-            if "P1" not in universe.sectors[1].occupant_ids:
-                universe.sectors[1].occupant_ids.append("P1")
-        agent.current_observation = build_observation(universe, "P1")
-        page.reload()
-        page.wait_for_selector("[data-terra=row]", timeout=20_000)
-        terra = page.locator("[data-terra=row]").inner_text()
-        assert "Terra (colonist source, cannot be claimed)" in terra
-        assert "Colonists" in terra
-        mixed = page.locator("[data-planet=class]").all_inner_texts()
-        assert not any(text.strip() == "(M) Terra" for text in mixed)
-        page.screenshot(path=str(SHOTS / "1280-terra.png"))
+        sync = pytest.importorskip("playwright.sync_api").sync_playwright
+        import uvicorn
+
+        from tests._port_lock import claim_ports, release_ports
+        from tw2k.server.app import create_app
+        from tw2k.server.runner import AgentSpec, MatchSpec
+
+        base_port = claim_ports(1, low=40000, high=46000)
+        token = "n" * 40
+        app = create_app(auto_start=False)
+        runner = app.state.runner
+        runner._saves_root = tmp_path / "saves"
+        server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=base_port, log_level="warning"))
+        ready = {"ok": False}
+
+        async def start() -> None:
+            while not server.started:
+                await asyncio.sleep(0.05)
+            await runner.start(MatchSpec(
+                config=GameConfig(
+                    seed=66, universe_size=200, max_days=3, turns_per_day=250,
+                    starting_credits=20_000, enable_ferrengi=False, enable_planets=True, action_delay_s=0.0,
+                ),
+                agents=[AgentSpec(player_id="P1", name="Guest 1", kind="external", external_token=token)],
+                action_delay_s=0.05, external_timeout_s=600.0,
+            ))
+            for _ in range(400):
+                agent = next((a for a in runner.state.agents if getattr(a, "player_id", None) == "P1"), None)
+                if agent is not None and agent.awaiting_input and runner.state.universe is not None:
+                    break
+                await asyncio.sleep(0.05)
+            ready["ok"] = True
+
+        async def main() -> None:
+            task = asyncio.create_task(start())
+            await server.serve()
+            task.cancel()
+            await runner.stop()
+
+        K.INFO_MODE = "legacy"
+        thread = threading.Thread(target=lambda: asyncio.run(main()), daemon=True)
+        thread.start()
+        deadline = time.time() + 40
+        while time.time() < deadline and not ready["ok"]:
+            time.sleep(0.1)
+        pw = sync().start()
+        browser = pw.chromium.launch()
+        try:
+            assert ready["ok"]
+            universe = runner.state.universe
+            me = universe.players["P1"]
+            planet = Planet(
+                id=46, sector_id=me.sector_id, name="Guest 1 Home", class_id=PlanetClass.M,
+                owner_id="P1", origin="other",
+                colonists={Commodity.FUEL_ORE: 45_000, Commodity.ORGANICS: 65_000, Commodity.EQUIPMENT: 81_000, Commodity.COLONISTS: 0},
+            )
+            universe.planets[46] = planet
+            universe.sectors[me.sector_id].planet_ids.append(46)
+            me.planet_landed = 46
+            agent = next(a for a in runner.state.agents if a.player_id == "P1")
+            agent.current_observation = build_observation(universe, "P1")
+            page = browser.new_page(viewport={"width": 1280, "height": 800})
+            page.goto(f"http://127.0.0.1:{base_port}/bot?layout=redesign&seat=P1&token={token}")
+            page.wait_for_selector("[data-claim=owner]", timeout=20_000)
+            card = page.locator("[data-claim=owner]").inner_text()
+            assert "Claimed by: Guest 1 (you)" in card
+            assert "Your home planet" in card
+            SHOTS.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(SHOTS / "1280-home.png"))
+            me.planet_landed = None
+            if me.sector_id != 1:
+                try:
+                    universe.sectors[me.sector_id].occupant_ids.remove("P1")
+                except ValueError:
+                    pass
+                me.sector_id = 1
+                if "P1" not in universe.sectors[1].occupant_ids:
+                    universe.sectors[1].occupant_ids.append("P1")
+            agent.current_observation = build_observation(universe, "P1")
+            page.reload()
+            page.wait_for_selector("[data-terra=row]", timeout=20_000)
+            terra = page.locator("[data-terra=row]").inner_text()
+            assert "Terra (colonist source, cannot be claimed)" in terra
+            assert "Colonists" in terra
+            mixed = page.locator("[data-planet=class]").all_inner_texts()
+            assert not any(text.strip() == "(M) Terra" for text in mixed)
+            page.screenshot(path=str(SHOTS / "1280-terra.png"))
+        finally:
+            browser.close()
+            pw.stop()
+            server.should_exit = True
+            thread.join(timeout=15)
     finally:
-        browser.close()
-        pw.stop()
-        server.should_exit = True
-        thread.join(timeout=15)
-        K.INFO_MODE = saved
+        K.INFO_MODE = _prior_info_mode
+        if base_port is not None:
+            release_ports(base_port)
+

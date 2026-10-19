@@ -92,25 +92,29 @@ def _install():
 
     @pytest.fixture(scope="module")
     def world(tmp_path_factory):
-        sync = pytest.importorskip("playwright.sync_api").sync_playwright
-        pw = sync().start()
-        host = CuHost(tmp_path_factory.mktemp("d8"), TOK)
-        host.__enter__()
-        saved_info = K.INFO_MODE
-        K.INFO_MODE = "tw2002"
-        universe = host.runner.state.universe
-        me = universe.players["P2"]
-        me.ship.scanner = "holo"
-        me.ship.fighters = 800
-        me.ship.shields = 200
-        browser, page = _page(pw, host)
+        _prior_info_mode = K.INFO_MODE
         try:
-            yield {"page": page, "universe": universe, "host": host}
+            sync = pytest.importorskip("playwright.sync_api").sync_playwright
+            pw = sync().start()
+            host = CuHost(tmp_path_factory.mktemp("d8"), TOK)
+            host.__enter__()
+            saved_info = K.INFO_MODE
+            K.INFO_MODE = "tw2002"
+            universe = host.runner.state.universe
+            me = universe.players["P2"]
+            me.ship.scanner = "holo"
+            me.ship.fighters = 800
+            me.ship.shields = 200
+            browser, page = _page(pw, host)
+            try:
+                yield {"page": page, "universe": universe, "host": host}
+            finally:
+                K.INFO_MODE = saved_info
+                browser.close()
+                host.__exit__(None, None, None)
+                pw.stop()
         finally:
-            K.INFO_MODE = saved_info
-            browser.close()
-            host.__exit__(None, None, None)
-            pw.stop()
+            K.INFO_MODE = _prior_info_mode
 
     return world
 

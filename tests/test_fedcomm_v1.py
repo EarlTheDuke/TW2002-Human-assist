@@ -41,13 +41,17 @@ def test_off_keeps_the_old_note() -> None:
 
 
 def test_on_sends_the_lane_note() -> None:
-    u, lane = _world()
-    K.FEDCOMM_MODE = "live"
+    _prior_fedcomm_mode = K.FEDCOMM_MODE
     try:
-        extern_sweep(u)
-        note = u.players["A"].inbox[-1]
-        assert note["from"] == "FedComm"
-        assert note["message"] == "Don't deploy fighters in the MSL's."
-        assert note["sector_id"] == lane
+        u, lane = _world()
+        try:
+            K.FEDCOMM_MODE = "live"
+            extern_sweep(u)
+            note = u.players["A"].inbox[-1]
+            assert note["from"] == "FedComm"
+            assert note["message"] == "Don't deploy fighters in the MSL's."
+            assert note["sector_id"] == lane
+        finally:
+            K.FEDCOMM_MODE = "legacy"
     finally:
-        K.FEDCOMM_MODE = "legacy"
+        K.FEDCOMM_MODE = _prior_fedcomm_mode

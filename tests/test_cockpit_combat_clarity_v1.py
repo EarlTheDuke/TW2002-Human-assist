@@ -70,22 +70,26 @@ def _install():
 
     @pytest.fixture(scope="module")
     def world(tmp_path_factory):
-        sync = pytest.importorskip("playwright.sync_api").sync_playwright
-        saved = K.RIVAL_STRENGTH_MODE
-        K.RIVAL_STRENGTH_MODE = "live"
-        pw = sync().start()
-        host = CuHost(tmp_path_factory.mktemp("combat"), TOK)
-        host.__enter__()
-        universe = host.runner.state.universe
-        me = universe.players["P2"]
-        browser, page = _page(pw, host)
+        _prior_rival_strength_mode = K.RIVAL_STRENGTH_MODE
         try:
-            yield {"page": page, "universe": universe, "me": me}
+            sync = pytest.importorskip("playwright.sync_api").sync_playwright
+            saved = K.RIVAL_STRENGTH_MODE
+            K.RIVAL_STRENGTH_MODE = "live"
+            pw = sync().start()
+            host = CuHost(tmp_path_factory.mktemp("combat"), TOK)
+            host.__enter__()
+            universe = host.runner.state.universe
+            me = universe.players["P2"]
+            browser, page = _page(pw, host)
+            try:
+                yield {"page": page, "universe": universe, "me": me}
+            finally:
+                browser.close()
+                host.__exit__(None, None, None)
+                pw.stop()
+                K.RIVAL_STRENGTH_MODE = saved
         finally:
-            browser.close()
-            host.__exit__(None, None, None)
-            pw.stop()
-            K.RIVAL_STRENGTH_MODE = saved
+            K.RIVAL_STRENGTH_MODE = _prior_rival_strength_mode
 
     return world
 

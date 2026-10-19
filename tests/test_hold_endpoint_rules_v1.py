@@ -31,16 +31,20 @@ def test_legacy_omits_the_hold_rule() -> None:
 
 
 def test_live_names_hold_and_ok_versus_rejected() -> None:
-    prior = K.HOLD_RULES_MODE
-    K.HOLD_RULES_MODE = "live"
+    _prior_hold_rules_mode = K.HOLD_RULES_MODE
     try:
-        prompt = get_system_prompt()
-        hint = _hint()
+        prior = K.HOLD_RULES_MODE
+        try:
+            K.HOLD_RULES_MODE = "live"
+            prompt = get_system_prompt()
+            hint = _hint()
+        finally:
+            K.HOLD_RULES_MODE = prior
+        for text in (prompt, hint):
+            assert "POST /hold {hold:true}" in text
+            assert "POST /hold {hold:false} ends the slot and spends no turn." in text
+            assert "ok means the engine applied it" in text
+            assert "rejected means the engine refused it" in text
+            assert "A 0-turn ok still ends the slot." in text
     finally:
-        K.HOLD_RULES_MODE = prior
-    for text in (prompt, hint):
-        assert "POST /hold {hold:true}" in text
-        assert "POST /hold {hold:false} ends the slot and spends no turn." in text
-        assert "ok means the engine applied it" in text
-        assert "rejected means the engine refused it" in text
-        assert "A 0-turn ok still ends the slot." in text
+        K.HOLD_RULES_MODE = _prior_hold_rules_mode

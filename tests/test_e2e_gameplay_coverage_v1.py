@@ -744,25 +744,39 @@ class _TwoSeat:
 
     def __enter__(self):
         self._info = K.INFO_MODE
-        K.INFO_MODE = "legacy"
-        self.thread.start()
-        deadline = time.time() + 20
-        while time.time() < deadline:
-            universe = self.runner.state.universe
-            if self.server.started and universe is not None and "P2" in universe.players:
-                return self
-            time.sleep(0.05)
-        raise AssertionError("two-seat server did not start")
+        try:
+            K.INFO_MODE = "legacy"
+            self.thread.start()
+            deadline = time.time() + 20
+            while time.time() < deadline:
+                universe = self.runner.state.universe
+                if self.server.started and universe is not None and "P2" in universe.players:
+                    return self
+                time.sleep(0.05)
+            raise AssertionError("two-seat server did not start")
+        except BaseException:
+            self.server.should_exit = True
+            if self.thread.is_alive():
+                self.thread.join(timeout=15)
+            if self.port:
+                from tests._port_lock import release_ports
+
+                release_ports(self.port)
+                self.port = 0
+            K.INFO_MODE = self._info
+            raise
 
     def __exit__(self, *exc) -> None:
-        self.server.should_exit = True
-        self.thread.join(timeout=15)
-        if self.port:
-            from tests._port_lock import release_ports
+        try:
+            self.server.should_exit = True
+            self.thread.join(timeout=15)
+            if self.port:
+                from tests._port_lock import release_ports
 
-            release_ports(self.port)
-        if self._info is not None:
-            K.INFO_MODE = self._info
+                release_ports(self.port)
+        finally:
+            if self._info is not None:
+                K.INFO_MODE = self._info
 
     @property
     def base(self) -> str:

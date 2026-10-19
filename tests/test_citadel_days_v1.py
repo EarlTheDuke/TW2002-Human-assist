@@ -27,18 +27,22 @@ def test_default_keeps_the_scaled_days_and_the_s1_colonists():
 
 
 def test_live_uses_the_screen_days_and_keeps_one_thousand_colonists():
-    K.CITADEL_DAYS_MODE = "live"
+    _prior_citadel_days_mode = K.CITADEL_DAYS_MODE
     try:
-        assert K.citadel_build_days(4) == 4
-        assert K.citadel_build_days(2) == 2
-        assert K.citadel_build_days(8) == 8
-        assert K.citadel_build_days(18) == 18
-        colonists, fuel, organics, equipment, days = K.citadel_class_cost("M", 1)
-        assert colonists == 1_000
-        assert (fuel, organics, equipment) == (300, 200, 250)
-        assert days == 4
-        assert K.citadel_class_cost("L", 1)[-1] == 2
-        assert K.citadel_class_cost("U", 1)[-1] == 8
-        assert K.citadel_class_cost("H", 6)[-1] == 18
+        try:
+            K.CITADEL_DAYS_MODE = "live"
+            assert K.citadel_build_days(4) == 4
+            assert K.citadel_build_days(2) == 2
+            assert K.citadel_build_days(8) == 8
+            assert K.citadel_build_days(18) == 18
+            colonists, fuel, organics, equipment, days = K.citadel_class_cost("M", 1)
+            assert colonists == 1_000
+            assert (fuel, organics, equipment) == (300, 200, 250)
+            assert days == 4
+            assert K.citadel_class_cost("L", 1)[-1] == 2
+            assert K.citadel_class_cost("U", 1)[-1] == 8
+            assert K.citadel_class_cost("H", 6)[-1] == 18
+        finally:
+            K.CITADEL_DAYS_MODE = "legacy"
     finally:
-        K.CITADEL_DAYS_MODE = "legacy"
+        K.CITADEL_DAYS_MODE = _prior_citadel_days_mode

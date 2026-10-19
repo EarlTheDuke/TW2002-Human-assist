@@ -64,36 +64,40 @@ def test_two_cruisers_trade_one_for_one_and_a_scout_does_not() -> None:
 
 
 def test_express_stops_at_a_port_only_when_the_cockpit_asks() -> None:
-    cfg = GameConfig(seed=91, universe_size=60, max_days=2, turns_per_day=200,
-                     enable_ferrengi=False, enable_planets=False)
-    u = generate_universe(cfg)
-    start, target, mid = _course(u)
-    p = _seat(u, "P1", start)
-    saved = K.V311_PROFILE
+    _prior_v311_profile = K.V311_PROFILE
     try:
-        def _back() -> None:
-            if p.sector_id != start:
-                u.sectors[p.sector_id].occupant_ids.remove(p.id)
-                p.sector_id = start
-                u.sectors[start].occupant_ids.append(p.id)
-            p.turns_today = 0
+        cfg = GameConfig(seed=91, universe_size=60, max_days=2, turns_per_day=200,
+                         enable_ferrengi=False, enable_planets=False)
+        u = generate_universe(cfg)
+        start, target, mid = _course(u)
+        p = _seat(u, "P1", start)
+        saved = K.V311_PROFILE
+        try:
+            def _back() -> None:
+                if p.sector_id != start:
+                    u.sectors[p.sector_id].occupant_ids.remove(p.id)
+                    p.sector_id = start
+                    u.sectors[start].occupant_ids.append(p.id)
+                p.turns_today = 0
 
-        off = apply_action(u, "P1", Action(kind=ActionKind.PLOT_COURSE, args={
-            "target": target, "execute": True, "stop_at_ports": True}))
-        assert off.ok and p.sector_id == target
-        _back()
-        K.V311_PROFILE = "v311"
-        flown = apply_action(u, "P1", Action(kind=ActionKind.PLOT_COURSE, args={
-            "target": target, "execute": True}))
-        assert flown.ok and p.sector_id == target
-        _back()
-        paused = apply_action(u, "P1", Action(kind=ActionKind.PLOT_COURSE, args={
-            "target": target, "execute": True, "stop_at_ports": True}))
-        assert paused.ok and p.sector_id == mid
-        ev = next(e for e in reversed(u.events) if e.kind.value == "autopilot" and (e.payload or {}).get("stopped") == "port")
-        assert ev.payload["hops_done"] >= 1
+            off = apply_action(u, "P1", Action(kind=ActionKind.PLOT_COURSE, args={
+                "target": target, "execute": True, "stop_at_ports": True}))
+            assert off.ok and p.sector_id == target
+            _back()
+            K.V311_PROFILE = "v311"
+            flown = apply_action(u, "P1", Action(kind=ActionKind.PLOT_COURSE, args={
+                "target": target, "execute": True}))
+            assert flown.ok and p.sector_id == target
+            _back()
+            paused = apply_action(u, "P1", Action(kind=ActionKind.PLOT_COURSE, args={
+                "target": target, "execute": True, "stop_at_ports": True}))
+            assert paused.ok and p.sector_id == mid
+            ev = next(e for e in reversed(u.events) if e.kind.value == "autopilot" and (e.payload or {}).get("stopped") == "port")
+            assert ev.payload["hops_done"] >= 1
+        finally:
+            K.V311_PROFILE = saved
     finally:
-        K.V311_PROFILE = saved
+        K.V311_PROFILE = _prior_v311_profile
 
 
 def _genesis_sector(u):
@@ -108,25 +112,29 @@ def _genesis_sector(u):
 
 
 def test_a_typed_genesis_name_is_kept_only_under_the_profile() -> None:
-    cfg = GameConfig(seed=92, universe_size=80, max_days=2, turns_per_day=50,
-                     enable_ferrengi=False, enable_planets=True)
-    u = generate_universe(cfg)
-    sid = _genesis_sector(u)
-    p = _seat(u, "P1", sid)
-    p.ship.genesis = 1
-    saved = K.V311_PROFILE
+    _prior_v311_profile = K.V311_PROFILE
     try:
-        off = apply_action(u, "P1", Action(kind=ActionKind.DEPLOY_GENESIS, args={"name": "Genesis One"}))
-        assert off.ok
-        named = [pl for pl in u.planets.values() if pl.sector_id == sid]
-        assert named and named[-1].name != "Genesis One"
-        named[-1].sector_id = -1
-        u.sectors[sid].planet_ids.clear()
+        cfg = GameConfig(seed=92, universe_size=80, max_days=2, turns_per_day=50,
+                         enable_ferrengi=False, enable_planets=True)
+        u = generate_universe(cfg)
+        sid = _genesis_sector(u)
+        p = _seat(u, "P1", sid)
         p.ship.genesis = 1
-        K.V311_PROFILE = "v311"
-        on = apply_action(u, "P1", Action(kind=ActionKind.DEPLOY_GENESIS, args={"name": "Genesis One"}))
-        assert on.ok
-        again = [pl for pl in u.planets.values() if pl.sector_id == sid]
-        assert again[-1].name == "Genesis One"
+        saved = K.V311_PROFILE
+        try:
+            off = apply_action(u, "P1", Action(kind=ActionKind.DEPLOY_GENESIS, args={"name": "Genesis One"}))
+            assert off.ok
+            named = [pl for pl in u.planets.values() if pl.sector_id == sid]
+            assert named and named[-1].name != "Genesis One"
+            named[-1].sector_id = -1
+            u.sectors[sid].planet_ids.clear()
+            p.ship.genesis = 1
+            K.V311_PROFILE = "v311"
+            on = apply_action(u, "P1", Action(kind=ActionKind.DEPLOY_GENESIS, args={"name": "Genesis One"}))
+            assert on.ok
+            again = [pl for pl in u.planets.values() if pl.sector_id == sid]
+            assert again[-1].name == "Genesis One"
+        finally:
+            K.V311_PROFILE = saved
     finally:
-        K.V311_PROFILE = saved
+        K.V311_PROFILE = _prior_v311_profile

@@ -46,18 +46,22 @@ def test_default_shields_fight_before_level_five():
 
 
 def test_live_shields_wait_for_level_five_and_keep_the_stock():
-    K.PLANET_SHIELD_ACTIVE_MODE = "live"
+    _prior_planet_shield_active_mode = K.PLANET_SHIELD_ACTIVE_MODE
     try:
-        early = _planet(3)
-        assert K.fighting_planet_shields(early) == 0
-        _a, _d, left, rounds = _planet_odds_fight(_player(), early)
-        assert left == 0
-        assert rounds == []
-        assert early.shields == 10
-        ready = _planet(5)
-        assert K.fighting_planet_shields(ready) == 10
-        _a, _d, left, rounds = _planet_odds_fight(_player(), ready)
-        assert left == 5
-        assert rounds[0]["phase"] == "shields"
+        try:
+            K.PLANET_SHIELD_ACTIVE_MODE = "live"
+            early = _planet(3)
+            assert K.fighting_planet_shields(early) == 0
+            _a, _d, left, rounds = _planet_odds_fight(_player(), early)
+            assert left == 0
+            assert rounds == []
+            assert early.shields == 10
+            ready = _planet(5)
+            assert K.fighting_planet_shields(ready) == 10
+            _a, _d, left, rounds = _planet_odds_fight(_player(), ready)
+            assert left == 5
+            assert rounds[0]["phase"] == "shields"
+        finally:
+            K.PLANET_SHIELD_ACTIVE_MODE = "legacy"
     finally:
-        K.PLANET_SHIELD_ACTIVE_MODE = "legacy"
+        K.PLANET_SHIELD_ACTIVE_MODE = _prior_planet_shield_active_mode

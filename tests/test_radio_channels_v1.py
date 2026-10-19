@@ -42,20 +42,24 @@ def test_off_is_not_offered() -> None:
 
 
 def test_on_reaches_only_the_tuned_mate() -> None:
-    u = _world()
-    K.RADIO_CHANNEL_MODE = "live"
+    _prior_radio_channel_mode = K.RADIO_CHANNEL_MODE
     try:
-        kinds = {a.kind for a in legal_actions(u, "A")}
-        assert "radio" in kinds
-        bad = apply_action(u, "A", Action(kind=ActionKind.RADIO, args={"channel": 60001}))
-        assert bad.ok is False
-        assert apply_action(u, "A", Action(kind=ActionKind.RADIO, args={"channel": 12})).ok
-        assert apply_action(u, "B", Action(kind=ActionKind.RADIO, args={"channel": 12})).ok
-        assert apply_action(u, "C", Action(kind=ActionKind.RADIO, args={"channel": 12})).ok is False
-        sent = apply_action(u, "A", Action(kind=ActionKind.RADIO, args={"message": "hold"}))
-        assert sent.ok is True
-        assert u.players["B"].inbox[-1]["message"] == "hold"
-        assert u.players["B"].inbox[-1]["channel"] == 12
-        assert u.players["C"].inbox == []
+        u = _world()
+        try:
+            K.RADIO_CHANNEL_MODE = "live"
+            kinds = {a.kind for a in legal_actions(u, "A")}
+            assert "radio" in kinds
+            bad = apply_action(u, "A", Action(kind=ActionKind.RADIO, args={"channel": 60001}))
+            assert bad.ok is False
+            assert apply_action(u, "A", Action(kind=ActionKind.RADIO, args={"channel": 12})).ok
+            assert apply_action(u, "B", Action(kind=ActionKind.RADIO, args={"channel": 12})).ok
+            assert apply_action(u, "C", Action(kind=ActionKind.RADIO, args={"channel": 12})).ok is False
+            sent = apply_action(u, "A", Action(kind=ActionKind.RADIO, args={"message": "hold"}))
+            assert sent.ok is True
+            assert u.players["B"].inbox[-1]["message"] == "hold"
+            assert u.players["B"].inbox[-1]["channel"] == 12
+            assert u.players["C"].inbox == []
+        finally:
+            K.RADIO_CHANNEL_MODE = "legacy"
     finally:
-        K.RADIO_CHANNEL_MODE = "legacy"
+        K.RADIO_CHANNEL_MODE = _prior_radio_channel_mode

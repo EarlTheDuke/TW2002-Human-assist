@@ -22,12 +22,16 @@ def test_default_is_one_turn_then_free() -> None:
 
 
 def test_live_names_the_same_visit_rule() -> None:
-    prior = K.TRADE_TURN_MODE
-    K.TRADE_TURN_MODE = "live"
+    _prior_trade_turn_mode = K.TRADE_TURN_MODE
     try:
-        player = _player()
-        assert trade_turn_cost(player) == 1
-        begin_port_visit(player)
-        assert trade_turn_cost(player) == 0
+        prior = K.TRADE_TURN_MODE
+        try:
+            K.TRADE_TURN_MODE = "live"
+            player = _player()
+            assert trade_turn_cost(player) == 1
+            begin_port_visit(player)
+            assert trade_turn_cost(player) == 0
+        finally:
+            K.TRADE_TURN_MODE = prior
     finally:
-        K.TRADE_TURN_MODE = prior
+        K.TRADE_TURN_MODE = _prior_trade_turn_mode
