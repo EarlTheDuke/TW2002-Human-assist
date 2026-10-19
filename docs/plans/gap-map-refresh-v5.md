@@ -1,3 +1,5 @@
+Superseded by gap-map-refresh-v6.md
+
 # gap-map-refresh-v5
 
 Plan only. Every October row, graded at tip `f969cee`. A row is Match when the original rule is what a normal game does now. Match-behind-flag means the original rule is in the code and the named switch stays off. Partial means part of the rule is in. Different means the game still does something else. Missing means this pass found no handler. Ben-decision is a number Ben has not chosen. Class M colonists and random StarDock stay in that last bucket.
