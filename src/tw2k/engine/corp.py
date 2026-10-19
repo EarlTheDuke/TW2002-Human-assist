@@ -269,9 +269,12 @@ def handle_corp_join(universe: Universe, pid: str, action: Action) -> ActionResu
         return ActionResult(ok=False, error="one break-in attempt per day")
     reason = _join_block(universe, pid, corp, password)
     if reason == "wrong password" and corp is not None:
-        player.corp_breakins_today = int(getattr(player, "corp_breakins_today", 0) or 0) + 1
-        if int(K.CORP_BREAKIN_ALIGN_LOSS):
-            player.alignment -= int(K.CORP_BREAKIN_ALIGN_LOSS)
+        already = int(getattr(player, "corp_breakins_today", 0) or 0)
+        player.corp_breakins_today = already + 1
+        # formulas.html: -1, one time per extern. A later guess the same day does not pay again.
+        loss = int(K.corp_breakin_align_loss())
+        if loss and already == 0:
+            player.alignment -= loss
         _emit(universe, EventKind.CORP_BREAKIN_FAILED, pid, f"{player.name} failed to join {ticker}",
               {"ticker": ticker})
         return ActionResult(ok=False, error="wrong password")

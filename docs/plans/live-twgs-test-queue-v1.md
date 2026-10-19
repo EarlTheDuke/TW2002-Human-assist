@@ -94,3 +94,20 @@ GAP 14.5. Rob, steal, bust, the flee penalty, and the Underground password ladde
 | Tri-Cron | `TAVERN_TRICRON` is off. The tip is free and the game is not built | Buy one Tri-Cron round | The cost and what one round does | a Tri-Cron cost, only if the screen prints one |
 | Illegal goods | Singles Bar, Library, Cineplex, and illegal goods are named and not built | Buy one illegal good, if the Underground sells any | The item name and the price | a price, only if the screen prints one |
 | Rob and steal success awards | steal `max(1, qty // 6)` alignment and `max(1, qty // 15)` experience; rob divides credits by 10,000. Marked UNVERIFIED | Steal a known number of holds, then rob a known number of credits. Read alignment and experience before and after | The two deltas next to the holds and the credits | `STEAL_SUCCESS_ALIGN_DIVISOR`, `STEAL_SUCCESS_EXP_DIVISOR`, `ROB_SUCCESS_ALIGN_DIVISOR`, `ROB_SUCCESS_EXP_DIVISOR` |
+
+## Live TWGS test queue (NOTE 117)
+
+GAP 5.20, 1.15, and the confirmed corp-break-in line of GAP 9.5 are switched (profile rows 167-169). These rows were read and not switched. No number below is printed in a saved source.
+
+Searched: `docs/plans/gap-map-refresh-v6.md` still-open ranks 6-11 and 27, `classictw_docs_wiki/Feds.html` (confiscate holds, no count), `classictw_docs_wiki/Imperial_StarShip.html` and `Iago_War_Manual.txt` (evil ISS avoids FedSpace; the three Federals are not a hunt of every evil trader), `cabal_strategy_site/formulas.html` (MBBS rob EXP * 6 and steal EXP / 21, already `ROB_CREDIT_FACTOR` and `STEAL_HOLD_DIVISOR`; alignment table), `classictw_docs_wiki/Alignment.html` (upgrade and colonist-kill cells are ellipses), `runner.tick_day` (the named Extern jobs already run).
+
+| item | current value | live test | what to record | constant |
+|---|---|---|---|---|
+| Remaining Extern jobs | `tick_day` already runs retreats, Ferrengi, the corp penalty, the Class 0 sweep, Terra, empty-ship repo, Fed tows, port regen, busts, photons, cloaks, NavHaz, aliens, planets, citadels, treasury, and tax. Collisions and special-port rebuilds already have switches | Watch one midnight and list any job the screen names that is not in that list | The job name and the numbers on that line | none until a screen names a missing job |
+| Fed hold confiscation | not built. Feds.html says the Feds can confiscate holds from a ship that violates FedLaw. No count | Violate FedLaw in FedSpace and read the hold line | Holds taken, and what the violation was | a hold count, only if the screen prints one |
+| Evil trader hunted in FedSpace | an evil ISS is already repossessed. Other evil ships are not hunted | Enter FedSpace in an evil ship that is not an ISS, in a sector with a Federal, and in a sector without one | Whether the ship is podded, towed, or left alone | none until the screen shows a hunt |
+| Jettison colonist cap | 250 alignment in one day, good traders only. formulas.html says -1 per colonist, one time per extern, and does not print 250 | Jettison more than 250 colonists in one day while good. Repeat the next day | Alignment lost each day | `_COLONIST_CAP`, only if the screen prints a cap |
+| Tax alignment | no alignment change on the daily tax | Pay the daily tax and read alignment before and after | The alignment delta next to the credits taken | an alignment figure, only if the screen prints one |
+| Port-upgrade alignment | no alignment change on a port upgrade. Alignment.html says upgrading a port gives you "..." | Upgrade one port and read alignment and experience | Both deltas | an alignment figure, only if the screen prints one |
+| Colonist-kill alignment | destroying a planet is already -1 alignment and +50 experience. Killing colonists on a planet has no separate award. Alignment.html says "..." | Attack colonists on a planet and read alignment and experience | Both deltas, and whether the planet remains | an alignment figure, only if the screen prints one |
+| Limpet removal fee | `LIMPET_REMOVAL_COST` 1250, marked UNVERIFIED | Remove one limpet at StarDock and at a Class 0 port | The credit price on each screen | `LIMPET_REMOVAL_COST` |
