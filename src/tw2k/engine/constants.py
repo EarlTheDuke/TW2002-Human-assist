@@ -1722,6 +1722,32 @@ def elimination_deaths(config=None) -> int:
         return 0
     return MAX_DEATHS_BEFORE_ELIM
 
+
+def tournament_active(config=None) -> tuple[str, int] | None:
+    """Lockout that counts blow-ups, or None when this game leaves it off.
+
+    TWGS v2.17 (TWGS_v2_Revision_History): Lockout Mode is Pods and Deaths,
+    Deaths Only, or None. Maximum Times Blown Up is the threshold. None, and
+    an unset game, add no limit and leave elimination_deaths alone. This is
+    match setup, not a V311 helper. The printed maximum is UNVERIFIED.
+    """
+    mode = getattr(config, "tournament_lockout", None)
+    raw = getattr(config, "tournament_kill_threshold", None)
+    if mode is None or raw is None:
+        return None
+    mode = str(mode).strip().lower()
+    if mode in ("", "none", "off", "na", "n/a"):
+        return None
+    if mode not in ("deaths", "pods_and_deaths"):
+        return None
+    try:
+        threshold = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if threshold <= 0:
+        return None
+    return mode, threshold
+
 # --- Experience / alignment ranks --------------------------------------------
 # Tuple of (threshold_xp, rank_name) inclusive; choose highest matching.
 RANK_TABLE: list[tuple[int, str]] = [
@@ -2746,7 +2772,11 @@ UG_CONTRACT_SELF = True                 # tv16 CONFIRMED
 UG_CONTRACT_PAYOUT_ON = "ship_destroyed"  # tv17 UNVERIFIED
 UG_CONTRACT_ON_ELIMINATION = "sink"     # tv17 UNVERIFIED
 UG_SHOW_CONTRACTS = "totals"            # tv18 UNVERIFIED
-UG_NAME_CHANGE = False                  # tv19
+UG_NAME_CHANGE = False                  # tv19 stored flag stays off
+# NOTE 91 SD-m. STARDOCK_EXTRA.md saw 247 on a live screen. tv19 says the price
+# follows experience and the formula is unknown, so this stays a flat price. UNVERIFIED.
+UG_NAME_PRICE = 247
+UG_NAME_MAX = 30                        # length UNVERIFIED; same bound as a home planet name
 TAVERN_TRICRON = "on"                   # tv20 built in stardock-leftovers-v1; gated by STARDOCK_EXTRA_MODE
 BOT_TAVERN_POLICY = "off"               # tv26
 
@@ -4174,6 +4204,11 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "ATOMIC_DETONATOR_MODE",
         "SD-l (NOTE 78): the detonator is the planet killer; the port-nuke atomic mine is retired",
     ),
+    # NOTE 91 commander row 123. Rows 122, 124 and 125 are not helpers.
+    "underground_mafia_live": (
+        "UNDERGROUND_MODE",
+        "NOTE 91 SD-m: the Underground changes a trader's name for UG_NAME_PRICE",
+    ),
 }
 
 
@@ -4659,6 +4694,18 @@ ATOMIC_DETONATOR_MODE = "legacy"  # "legacy" | "live"
 def atomic_detonator_live() -> bool:
     """True when the detonator is the planet killer and the port-nuke mine is retired."""
     return ATOMIC_DETONATOR_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# NOTE 91 SD-m (commander row 123). Password, alignment under 200, the
+# six-password ladder and hit contracts stay on through TAVERN_MODE.
+# Cabal glossary.html names "various illegal goods" and prints no catalog,
+# so this switch does not sell a shelf. UNVERIFIED.
+UNDERGROUND_MODE = "legacy"  # "legacy" | "live"
+
+
+def underground_mafia_live() -> bool:
+    """True when the Underground will change a trader's name for UG_NAME_PRICE."""
+    return UNDERGROUND_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def atomic_mine_retired_error() -> str:

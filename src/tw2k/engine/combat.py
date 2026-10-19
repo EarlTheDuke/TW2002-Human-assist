@@ -992,6 +992,24 @@ def _destroy_ship_legacy(universe: Universe, pid: str, reason: str, killer_id: s
     threshold = K.elimination_deaths(universe.config)
     if threshold and player.deaths >= threshold:
         _eliminate(universe, player, killer_id)
+    else:
+        _apply_tournament_lockout(universe, player, killer_id, "ship_destroyed")
+
+
+def _apply_tournament_lockout(universe: Universe, player, killer_id: str | None, outcome: str) -> None:
+    """Count this blow-up when the game set a lockout. Unset games return immediately."""
+    if not player.alive:
+        return
+    spec = K.tournament_active(getattr(universe, "config", None))
+    if spec is None:
+        return
+    mode, threshold = spec
+    counts = outcome == "ship_destroyed" or (mode == "pods_and_deaths" and outcome == "escape_pod")
+    if not counts:
+        return
+    player.tournament_blows = int(player.tournament_blows) + 1
+    if int(player.tournament_blows) >= int(threshold):
+        _eliminate(universe, player, killer_id)
 
 
 def _eliminate(universe: Universe, player, killer_id: str | None) -> None:
@@ -1267,3 +1285,5 @@ def _destroy_ship_tw2002(
     threshold = K.elimination_deaths(universe.config)
     if threshold and player.deaths >= threshold:
         _eliminate(universe, player, killer_id)
+    else:
+        _apply_tournament_lockout(universe, player, killer_id, outcome)

@@ -249,7 +249,7 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
     v = {"name": "", "rules": "v311", "universe_size": "1000", "max_days": "30", "turns_per_day": "250",
          "starting_package": "v311", "bots": "2", "ferrengi": "on", "day": "30m", "humans": "1",
          "visibility": "listed", "starting_credits": "original", "starting_credits_custom": "",
-         "home_planet_name": ""}
+         "home_planet_name": "", "tournament_lockout": "none", "tournament_kill_threshold": ""}
     v.update({k: str(val) for k, val in (values or {}).items()})
     err = f"<div class=\"err\">{escape(error)}</div>" if error else ""
     sizes = "".join(_opt(str(n), f"{n} sectors", v["universe_size"]) for n in UNIVERSE_SIZES)
@@ -267,6 +267,9 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 <label for="starting_credits">Starting credits</label><select id="starting_credits" name="starting_credits">{_opt('original', 'Original (v3.11 default, 300 cr)', v['starting_credits'])}{_opt('10000', '10,000', v['starting_credits'])}{_opt('100000', '100,000', v['starting_credits'])}{_opt('1000000', '1,000,000', v['starting_credits'])}{_opt('custom', 'Custom', v['starting_credits'])}</select>
 <label for="starting_credits_custom">Custom amount</label><input id="starting_credits_custom" name="starting_credits_custom" type="number" min="0" max="10000000" value="{escape(v['starting_credits_custom'])}">
 <p class="note">Original leaves the package as it is (300 cr under v3.11). A preset or a custom amount, 0 to 10,000,000, is the opening credits for every human and every bot.</p>
+<label for="tournament_lockout">Tournament lockout</label><select id="tournament_lockout" name="tournament_lockout">{_opt('none', 'Off', v['tournament_lockout'])}{_opt('deaths', 'Deaths only', v['tournament_lockout'])}{_opt('pods_and_deaths', 'Pods and deaths', v['tournament_lockout'])}</select>
+<label for="tournament_kill_threshold">Maximum times blown up</label><input id="tournament_kill_threshold" name="tournament_kill_threshold" type="number" min="1" max="99" value="{escape(v['tournament_kill_threshold'])}">
+<p class="note">Off leaves the elimination rule this game already uses. Deaths only counts a destroyed ship. Pods and deaths also counts an escape pod. The number is how many of those remove the trader. Blank stays off.</p>
 <label for="universe_size">Universe size</label><select id="universe_size" name="universe_size">{sizes}</select>
 <label for="max_days">Max days</label><input id="max_days" name="max_days" type="number" min="1" max="365" value="{escape(v['max_days'])}">
 <label for="turns_per_day">Turns per day</label><input id="turns_per_day" name="turns_per_day" type="number" min="20" max="2000" value="{escape(v['turns_per_day'])}">

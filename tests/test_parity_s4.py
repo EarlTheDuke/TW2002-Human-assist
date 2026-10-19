@@ -364,6 +364,8 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"target": targets[0], "amount": least})
     if ak is ActionKind.UNDERGROUND_CLAIM:
         return Action(kind=ak, args={})
+    if ak is ActionKind.UNDERGROUND_RENAME:
+        return Action(kind=ak, args={"name": "Renamed Trader"})
     if ak is ActionKind.TRICRON:
         return Action(kind=ak, args={})
     if ak is ActionKind.CINEPLEX:
@@ -379,7 +381,11 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
 def test_every_verb_matches_engine(label: str, fx) -> None:
     pid, u = fx if isinstance(fx, tuple) else ("P1", fx)
     las = {la.kind: la for la in legal_actions(u, pid)}
-    offered = [k for k in ALL if (k != "avoid" or K.avoid_live()) and (k != "radio" or K.radio_channel_live())]
+    offered = [k for k in ALL
+               if (k != "avoid" or K.avoid_live())
+               and (k != "radio" or K.radio_channel_live())
+               and (k not in ("jettison", "self_destruct") or K.ship_exit_on())
+               and (k != "underground_rename" or K.underground_mafia_live())]
     assert set(las) == set(offered)
     assert all(la.detail == "precise" for la in las.values()), [k for k, la in las.items() if la.detail != "precise"]
     for kind in offered:

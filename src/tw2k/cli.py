@@ -304,6 +304,16 @@ def serve(
         help="Name for the first human seat's home planet (1 to 30 characters). "
         "Omit to use the trader's name.",
     ),
+    tournament_lockout: str = typer.Option(
+        None,
+        "--tournament-lockout",
+        help="Per-game lockout: none, deaths, or pods_and_deaths. Omit to leave it off.",
+    ),
+    tournament_kill_threshold: int = typer.Option(
+        None,
+        "--tournament-kill-threshold",
+        help="Maximum times blown up before that lockout removes the trader (1 to 99). Omit to leave it off.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -580,6 +590,8 @@ def serve(
         turn_regen_day_seconds=day_length,
         starting_credits_override=credits_override,
         home_planet_name=home_planet_name,
+        tournament_lockout=tournament_lockout,
+        tournament_kill_threshold=tournament_kill_threshold,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

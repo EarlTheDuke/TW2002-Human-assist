@@ -4817,6 +4817,7 @@ def _bind_corpships() -> None:
 
 
 def _bind_tavern() -> None:
+    from .cineplex import handle_cineplex
     from .tavern import (
         handle_announce,
         handle_claim,
@@ -4826,10 +4827,10 @@ def _bind_tavern() -> None:
         handle_graffiti,
         handle_grimy_ask,
         handle_order,
+        handle_rename,
         handle_talk,
         handle_tricron,
     )
-    from .cineplex import handle_cineplex
     _DISPATCH[ActionKind.CINEPLEX] = handle_cineplex
     _DISPATCH[ActionKind.TAVERN_ANNOUNCE] = handle_announce
     _DISPATCH[ActionKind.TAVERN_TALK] = handle_talk
@@ -4841,6 +4842,7 @@ def _bind_tavern() -> None:
     _DISPATCH[ActionKind.UNDERGROUND_ENTER] = handle_enter
     _DISPATCH[ActionKind.UNDERGROUND_CONTRACT] = handle_contract
     _DISPATCH[ActionKind.UNDERGROUND_CLAIM] = handle_claim
+    _DISPATCH[ActionKind.UNDERGROUND_RENAME] = handle_rename
 
 
 def _bind_fed_handlers() -> None:

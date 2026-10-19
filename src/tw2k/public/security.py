@@ -155,6 +155,8 @@ class GameForm:
     # None is Original: the worker does not pass an override.
     starting_credits_override: int | None = None
     home_planet_name: str | None = None
+    tournament_lockout: str | None = None
+    tournament_kill_threshold: int | None = None
 
     def settings(self) -> dict[str, Any]:
         out = {
@@ -174,6 +176,9 @@ class GameForm:
             out["starting_credits_override"] = self.starting_credits_override
         if self.home_planet_name:
             out["home_planet_name"] = self.home_planet_name
+        if self.tournament_lockout and self.tournament_kill_threshold is not None:
+            out["tournament_lockout"] = self.tournament_lockout
+            out["tournament_kill_threshold"] = self.tournament_kill_threshold
         return out
 
 
@@ -208,7 +213,7 @@ def _as_bool(data: dict, key: str, default: bool) -> bool:
 
 _ALLOWED = {"name", "rules", "universe_size", "max_days", "turns_per_day", "starting_package", "bots", "ferrengi",
             "day", "humans", "listed", "visibility", "starting_credits", "starting_credits_custom",
-            "home_planet_name"}
+            "home_planet_name", "tournament_lockout", "tournament_kill_threshold"}
 
 _CREDITS_MAX = 10_000_000
 
@@ -266,6 +271,21 @@ def _credits_override(data: dict) -> int | None:
     return val
 
 
+def _tournament(data: dict) -> tuple[str | None, int | None]:
+    """Off unless the form names a lockout and a maximum. Blank stays off."""
+    if "tournament_lockout" not in data and "tournament_kill_threshold" not in data:
+        return None, None
+    text = str(data.get("tournament_lockout") or "").strip().lower().replace(" ", "_").replace("-", "_")
+    if text in ("", "none", "off", "n/a", "na"):
+        return None, None
+    aliases = {"deaths": "deaths", "deaths_only": "deaths", "pods_and_deaths": "pods_and_deaths"}
+    if text not in aliases:
+        raise FormError("tournament lockout must be none, deaths, or pods and deaths")
+    if str(data.get("tournament_kill_threshold") or "").strip() == "":
+        raise FormError("Type a maximum times blown up.")
+    return aliases[text], _as_int(data, "tournament_kill_threshold", 1, 1, 99)
+
+
 def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameForm:
     presets = presets or DAY_PRESETS
     unknown = set(data) - _ALLOWED
@@ -292,6 +312,7 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
     listed = _as_bool(data, "listed", True) if vis is None else str(vis).strip() == "listed"
     if vis is not None and str(vis).strip() not in ("listed", "link"):
         raise FormError("visibility must be listed or link")
+    lockout, blows = _tournament(data)
     return GameForm(
         name=name,
         rules=rules,
@@ -307,6 +328,8 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         day_seconds=int(presets[day]),
         starting_credits_override=_credits_override(data),
         home_planet_name=home_planet_name(data.get("home_planet_name")),
+        tournament_lockout=lockout,
+        tournament_kill_threshold=blows,
     )
 
 

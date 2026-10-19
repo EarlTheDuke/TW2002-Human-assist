@@ -108,6 +108,8 @@ def tavern_block() -> str:
         "(banked credits are safe), the "
         f"{int(K.UG_EXP_HALVE_AT)}th halves your experience, the {int(K.UG_MURDER_AT)}th gets you murdered.\n"
     )
+    if K.underground_mafia_live():
+        text += f"A name change inside costs {int(K.UG_NAME_PRICE)} credits.\n"
     if K.stardock_extra_on():
         text += (
             f"Tri-Cron is {int(K.TRICRON_ROUNDS)} rounds of three crons placed 2-3-1. "

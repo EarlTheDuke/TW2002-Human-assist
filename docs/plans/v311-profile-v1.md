@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (93 helpers)
+## The switch set (94 helpers)
 
 Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses rows 85-89.
 
@@ -105,10 +105,13 @@ Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses 
 | 94 | `BUST_CLEAR_MODE` | `bust_record_clear_live` | NOTE 82 TRD-k. REV v3.05: TEDIT sets how often Extern clears bust records. It defaults to nightly ("Clear Busts Every : 1 Days" in the cabal editor sample) and can be every 28th day. Stored default stays legacy, which still clears every Extern. Live reads `GameConfig.bust_clear_days`: 1 or 7. REPORT.md is on Ben's PC (UNVERIFIED). Rows 83-93 are left open | - |
 | 96 | `SHIP_CHART_CAP_MODE` | `ship_chart_cap_live` | NOTE 82 SD-e. Mines, genesis and photons already follow the Bible ship chart on `SHIP_SPECS_TW2002` (`equip_room`). Cloaks are already 5 for any ship (`CLOAK_MAX`). Live adds the Bible probe cap of 25. Legacy leaves probes uncapped. The pod uses the same 25 (UNVERIFIED; the chart has no probe column) | - |
 | 97 | `CORP_PLANET_DISBAND_MODE` | `corp_planet_disband_v306` | NOTE 82 PLN-q. Today's rule stays `CORP_DISBAND_PLANETS` `owner_keeps`. Live is REV v3.06: planets in the C.E.O.'s sector become his, and the rest are unclaimed. The older constant `v306` still selects that path. Unclaimed is the existing orphan, not a fighter-style rogue owner | - |
+| 123 | `UNDERGROUND_MODE` | `underground_mafia_live` | NOTE 91 SD-m, commander row 123. The tavern Underground stays on through `TAVERN_MODE`: alignment at most 199, a password, the 4/5/6 ladder, and hit contracts. Live adds a name change at `UG_NAME_PRICE` (247, the live-screen price). The experience formula is unknown, so the price is flat (UNVERIFIED). Cabal glossary names various illegal goods and prints no catalog, so no shelf was added (UNVERIFIED). `UG_NAME_CHANGE` stays False. Stored default stays legacy | - |
 
 Rows 95 and 98 were already done on this tip, so they are not helpers. Row 95, Class 0 price change and FedSpace tows and clean-up, already run in `tick_day`: `fighter_unit_price`, `shield_unit_price` and `hold_day_base` move with the day; `fed.run_tows` tows ships; `class0.extern_sweep` clears MSL and Class 0 fighters and mines; `hardware.tick_navhaz` clears FedSpace NavHaz. Row 98, the C.E.O. leaving, already dissolves the corp and rogues fighters outside his sector (`corp.handle_corp_leave`, `corp.disband`).
 
 Rows 91 and 92 were already done on this tip, so they are not helpers. Row 91, player-kill experience, already uses `COMBAT_EXP_DIVISOR` (`opposite` 15, `same` 35, `neutral` 25) and `KILL_EXP_SHARE` 0.10 (`victory.combat_rewards`, `victory.kill_rewards`). The cabal page prints one experience formula for MBBS and Gold, and says the sector-fighter experience is the same as MBBS. A separate classic experience table is not printed. Row 92, armid mines, already detonates `count // 2` of them (`hardware.armid_detonation_hits`) at `ARMID_DAMAGE_TW2002` (20), or 30 when the live shop card is on (`armid_hit_damage`). CMB-c is a plan only (`docs/plans/ship-odds-exchange-v1.md`), not a helper.
+
+Rows 122, 124 and 125 are not helpers. Row 122, good and evil perks, already runs with the stored defaults: `is_fedsafe` (`victory.py`) keeps FedSpace protection while alignment is at least 0 and experience is at most 999; `fed_lock_on` (`ship_transwarp.py`) lets a commissioned trader TransWarp into FedSpace; `alignment_allows_crime` (`rob_steal.py`) is the evil gate for rob and steal; `check_iss_repo_on_move` (`fed.py`) repossesses an uncloaked evil Imperial StarShip. Putting those behind a default-off switch would change the profile-off game. Row 124, the FedSpace ship limit, already tows at Extern: `FED_SHIPS_PER_SECTOR` is 5 and `run_tows` (`fed.py`) keeps that many ships per FedSpace sector, then `_tow_player` uses `FED_TOW_DEST`. `tick_day` (`runner.py`) calls it. Row 125, tournament lockout, is a per-game lobby option (`GameConfig.tournament_lockout` and `tournament_kill_threshold`, default unset). It sits beside `PODS_PER_DAY` and `DEATH_DELAY_MODE` and does not change them. It is never on under `V311_PROFILE`, because a lockout on every v3.11 game would change who is removed. Off, `elimination_deaths` is the only threshold.
 
 
 

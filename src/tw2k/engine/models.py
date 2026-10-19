@@ -236,6 +236,7 @@ class EventKind(str, Enum):
     UG_MURDER = "ug_murder"
     UG_CONTRACT = "ug_contract"
     UG_CLAIM = "ug_claim"
+    UG_RENAME = "ug_rename"  # NOTE 91. Never emitted while UNDERGROUND_MODE is legacy.
     TRICRON = "tricron"  # stardock-leftovers-v1. Never emitted under STARDOCK_EXTRA_MODE legacy.
     CINEPLEX = "cineplex"  # flavor only. Never emitted under STARDOCK_EXTRA_MODE legacy.
     SHIP_TRANSWARP = "ship_transwarp"
@@ -668,6 +669,7 @@ class Player(BaseModel):
             "jettison_day": 0,
             "jettison_colonists": 0,
             "death_delay_left": 0,
+            "tournament_blows": 0,
         })
 
     id: str
@@ -696,6 +698,9 @@ class Player(BaseModel):
     # NOTE 79 CMB-n. Midnights left before a pod may act. 0 means flying.
     # Omitted from dumps while 0.
     death_delay_left: int = 0
+    # NOTE 91 DAY-e. Blow-ups counted toward this game's tournament lockout.
+    # Omitted from dumps while 0, so an unset game stays identical.
+    tournament_blows: int = 0
     # Sector of the open port visit. Cleared when the player leaves.
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None
@@ -1208,6 +1213,44 @@ class GameConfig(BaseModel):
             raise ValueError("death delay must be a whole number of days")
         return days
 
+    # NOTE 91 DAY-e. None is off (today's elimination_deaths only). "deaths"
+    # counts a destroyed ship. "pods_and_deaths" also counts an escape pod.
+    # Left out of dumps while None. Not turned on by V311_PROFILE.
+    tournament_lockout: str | None = None
+    # How many counted blow-ups remove the trader. None leaves the lockout off.
+    # The TEDIT maximum is UNVERIFIED; this slice accepts 1 to 99.
+    tournament_kill_threshold: int | None = None
+
+    @field_validator("tournament_lockout", mode="before")
+    @classmethod
+    def _check_tournament_lockout(cls, value: Any) -> Any:
+        if value is None or value == "":
+            return None
+        text = str(value).strip().lower().replace(" ", "_").replace("-", "_")
+        aliases = {
+            "none": None, "off": None, "na": None, "n/a": None,
+            "deaths": "deaths", "deaths_only": "deaths",
+            "pods_and_deaths": "pods_and_deaths",
+        }
+        if text not in aliases:
+            raise ValueError("tournament lockout must be none, deaths, or pods_and_deaths")
+        return aliases[text]
+
+    @field_validator("tournament_kill_threshold", mode="before")
+    @classmethod
+    def _check_tournament_kills(cls, value: Any) -> Any:
+        if value is None or value == "":
+            return None
+        if isinstance(value, bool):
+            raise ValueError("maximum times blown up must be a whole number from 1 to 99")
+        try:
+            count = int(value)
+        except (TypeError, ValueError):
+            raise ValueError("maximum times blown up must be a whole number from 1 to 99") from None
+        if not 1 <= count <= 99:
+            raise ValueError("maximum times blown up must be a whole number from 1 to 99")
+        return count
+
     @field_validator("turn_regen_day_seconds", mode="before")
     @classmethod
     def _check_day_seconds(cls, value: Any) -> Any:
@@ -1243,6 +1286,10 @@ class GameConfig(BaseModel):
             data.pop("bust_clear_days", None)
         if isinstance(data, dict) and data.get("death_delay", 0) is None:
             data.pop("death_delay", None)
+        if isinstance(data, dict) and data.get("tournament_lockout", 0) is None:
+            data.pop("tournament_lockout", None)
+        if isinstance(data, dict) and data.get("tournament_kill_threshold", 0) is None:
+            data.pop("tournament_kill_threshold", None)
         return data
 
 

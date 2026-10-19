@@ -95,6 +95,7 @@ class ActionKind(str, Enum):
     UNDERGROUND_ENTER = "underground_enter"
     UNDERGROUND_CONTRACT = "underground_contract"
     UNDERGROUND_CLAIM = "underground_claim"
+    UNDERGROUND_RENAME = "underground_rename"  # NOTE 91; absent unless UNDERGROUND_MODE is live
     TRICRON = "tricron"  # stardock-leftovers-v1
     CINEPLEX = "cineplex"  # stardock-leftovers-v1
     AVOID = "avoid"  # avoid-list-v1

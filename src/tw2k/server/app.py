@@ -226,6 +226,8 @@ def create_app(
     turn_regen_day_seconds: float | None = None,
     starting_credits_override: int | None = None,
     home_planet_name: str | None = None,
+    tournament_lockout: str | None = None,
+    tournament_kill_threshold: int | None = None,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -294,6 +296,8 @@ def create_app(
                 turn_regen_day_seconds=turn_regen_day_seconds,
                 starting_credits_override=starting_credits_override,
                 home_planet_name=home_planet_name,
+                tournament_lockout=tournament_lockout,
+                tournament_kill_threshold=tournament_kill_threshold,
             )
             spec.paused = start_paused
             spec.resume_from = _public.resume_path()
@@ -1173,6 +1177,16 @@ def create_app(
                 if "home_planet_name" in body and body["home_planet_name"] is not None
                 else home_planet_name
             ),
+            tournament_lockout=(
+                body["tournament_lockout"]
+                if "tournament_lockout" in body and body["tournament_lockout"] is not None
+                else tournament_lockout
+            ),
+            tournament_kill_threshold=(
+                int(body["tournament_kill_threshold"])
+                if "tournament_kill_threshold" in body and body["tournament_kill_threshold"] is not None
+                else tournament_kill_threshold
+            ),
         )
         if body.get("external_hold_max_actions") is not None:
             spec.external_hold_max_actions = max(0, int(body["external_hold_max_actions"]))
@@ -1274,6 +1288,8 @@ def _build_default_spec(
     turn_regen_day_seconds: float | None = None,
     starting_credits_override: int | None = None,
     home_planet_name: str | None = None,
+    tournament_lockout: str | None = None,
+    tournament_kill_threshold: int | None = None,
 ) -> MatchSpec:
     _apply_port_stock_fidelity()
     _apply_haggle_live()
@@ -1337,6 +1353,10 @@ def _build_default_spec(
         cfg_kwargs["starting_credits_override"] = starting_credits_override
     if home_planet_name:
         cfg_kwargs["home_planet_name"] = home_planet_name
+    if tournament_lockout:
+        cfg_kwargs["tournament_lockout"] = tournament_lockout
+    if tournament_kill_threshold is not None:
+        cfg_kwargs["tournament_kill_threshold"] = tournament_kill_threshold
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each

@@ -72,6 +72,7 @@ REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "underground_enter": ("password",),
     "underground_contract": ("target", "amount"),
     "underground_claim": (),
+    "underground_rename": ("name",),
     "port_upgrade": ("commodity", "units"),
     "port_build": ("planet_id", "port_class"),
     "ship_set_password": ("password",),
