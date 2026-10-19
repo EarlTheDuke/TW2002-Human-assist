@@ -1,0 +1,26 @@
+item_id,constant,current_value,observed_text,observed_value,date,tester,notes
+n96-ferrengi-xp,FERRENGI_XP_BY_HULL,"Assault trader 50, battle cruiser 100, dreadnought 150",,,,,"Ferrengi kill experience"
+n96-ferrengi-align,FERRENGI_ALIGN_ON_KILL,"+10, and only when alignment is already above 0",,,,,"Ferrengi alignment on a kill"
+n96-ferrengal-quasar,FERRENGAL_QUASAR_FUEL; FERRENGAL_QUASAR_PCT,"10,000 fuel at 10 percent",,,,,"Ferrengal quasar"
+n96-ferrengi-banding,FERRENGI_BAND_STRONG,more_fighters_than_this_ship,,,,,Ferrengi banding cutoff
+n96-ferrengi-clock,FERRENGI_PACE_MODE,legacy: a pace hop relocates and the tribute menu opens on the day tick,,,,,Ferrengi attack clock
+n96-course-max,V311_COURSE_MAX_HOPS,45,,,,,Plotted course limit
+n96-death-delay-max,GameConfig.death_delay,any whole number of days; no ceiling in the code,,,,,Death delay maximum
+n96-flying-pod,death_delay_days,a flying pod does not start a new sentence,,,,,Flying pod sentence
+n96-ship-odds,docs/plans/ship-odds-exchange-v1.md,"attacker loses ceil(R / A) when P >= R, else the defender loses floor(P / D)",,,,,"Ship-odds loss split"
+n98-port-rating,PORT_DEFENSE_RATING; PORT_LASER_BARRAGE,"unset except class 6: rating 98, barrage 598",,,,,"Port rating and barrage, classes 0-5 and 7-9"
+n98-port-fighters,"a new constant, only if the screen prints a formula or a fighter count",no formula,,,,,Port fighters from the port's size
+n98-class0-stardock-blow,PORT_DEFENSE_RATING,the cabal 22 formula is not used,,,,,Class 0 and StarDock blow
+n98-port-capture,none until a screen shows a capture,not implemented,,,,,Port capture
+n98-alien-align,ALIEN_KILL_ALIGN_SHARE,0.5,,,,,Alien kill alignment share
+n102-special-first,SPECIAL_PORT_FIGS_FIRST; SPECIAL_PORT_RATING_FIRST,"248,000 fighters spent, rating 2,500",,,,,"StarDock / Class 0 first kill"
+n102-special-later,SPECIAL_PORT_FIGS_AFTER; SPECIAL_PORT_RATING_AFTER,"890,000 fighters, rating 5,000",,,,,"StarDock / Class 0 later kill"
+n102-special-return,no constant yet,not modelled; a wave only spends the fighters sent,,,,,Special-port return fire
+n102-collision-chance,PLANET_COLLISION_PCT_PER_EXCESS,"10 percent per planet over the cap of 5, never past 100",,,,,"Planet collision chance"
+n102-collision-log,no named constant. The two daily-log sentences are inline in the day tick,"Unstable planetary mass in sector N every night; the loss line names the planets and leaves the sector number out",,,,,"Collision log wording"
+n102-sector1,STARDOCK_SECTOR,skipped (Old FAQ v2),,,,,Sector 1 overload
+n103-quick-backtrack,the two keys in the cockpit,"> quick stats, < backtrack",,,,,"Quick-stats and backtrack keys"
+n97-haggle-good,HAGGLE_EXP_GOOD,+1,,,,,Good haggle experience
+n97-haggle-great,HAGGLE_EXP_GREAT,"+2, when the accepted price reaches the hidden bound",,,,,"Great haggle experience"
+n97-ship-rename,SHIP_RENAME_COST; SHIP_RENAME_NAME_MAX,"5000 credits, 30 characters, 0 turns",,,,,"Ship rename"
+n110-computer-b,"none, cockpit key, not an engine constant","This cockpit's Computer menu uses B for backtrack. The original backtrack key is <",,,,,"Computer menu B"
