@@ -469,7 +469,7 @@ def run_tows(universe: Universe) -> int:
             continue
         if int(p.sector_id) not in K.FEDSPACE_SECTORS:
             continue
-        if int(p.ship.fighters) > int(K.FED_TOW_FIGHTER_LIMIT):
+        if int(p.ship.fighters) > int(K.fed_tow_fighter_limit()):
             if _tow_player(universe, pid, reason="arms") is not None:
                 towed += 1
     # f12: parking — per FedSpace sector, keep at most FED_SHIPS_PER_SECTOR;
@@ -691,14 +691,15 @@ def fedspace_hint(universe: Universe, player) -> dict[str, Any] | None:
     ships_here = len(visible)
     limit = int(K.FED_SHIPS_PER_SECTOR)
     my_f = int(player.ship.fighters)
-    arms = my_f > int(K.FED_TOW_FIGHTER_LIMIT)
+    tow_limit = int(K.fed_tow_fighter_limit())
+    arms = my_f > tow_limit
     # f12: the latest arrivals beyond the limit go (as far as this seat can see).
     parking = player.id in visible and visible.index(player.id) >= limit
     return {
         "ships_here": ships_here,
         "limit": limit,
         "my_fighters": my_f,
-        "tow_fighter_limit": int(K.FED_TOW_FIGHTER_LIMIT),
+        "tow_fighter_limit": tow_limit,
         "will_be_towed": bool(arms or parking),
     }
 
