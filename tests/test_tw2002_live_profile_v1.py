@@ -129,6 +129,9 @@ HELPERS = (
     "legacy_day_clock_live",
     "price_scale_live",
     "evil_trade_loop_live",
+    "fedsafe_fighter_cap_live",
+    "fed_tow_limit_live",
+    "corp_breakin_align_live",
 )
 
 
@@ -136,7 +139,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 127
+    assert len(names) == 130
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -212,4 +215,7 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.LEGACY_DAY_CLOCK_MODE == "legacy"
     assert K.PRICE_SCALE_MODE == "legacy"
     assert K.EVIL_TRADE_LOOP_MODE == "legacy"
+    assert K.FEDSAFE_FIGHTER_CAP_MODE == "legacy"
+    assert K.FED_TOW_LIMIT_MODE == "legacy"
+    assert K.CORP_BREAKIN_ALIGN_MODE == "legacy"
 

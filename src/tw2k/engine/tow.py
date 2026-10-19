@@ -580,7 +580,7 @@ def extern_hold_why(universe: Universe, rec: ParkedShip) -> str | None:
         return "not_same_sector"
     if tower.planet_landed is not None:
         return "landed"
-    if int(tower.ship.fighters) > int(K.FED_TOW_FIGHTER_LIMIT):
+    if int(tower.ship.fighters) > int(K.fed_tow_fighter_limit()):
         return "tower_has_too_many_fighters"
     if K.TOW_EXTERN_REQUIRE_GOOD and int(tower.alignment) < 0:
         return "tower_not_good"

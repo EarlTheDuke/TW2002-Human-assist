@@ -4423,6 +4423,18 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "EVIL_TRADE_LOOP_MODE",
         "NOTE 115 GAP 14.5: a negative-alignment seat steals, dumps, and beams, or robs and beams",
     ),
+    "fedsafe_fighter_cap_live": (
+        "FEDSAFE_FIGHTER_CAP_MODE",
+        "NOTE 117 GAP 5.20: more than 50 fighters removes FedSpace protection",
+    ),
+    "fed_tow_limit_live": (
+        "FED_TOW_LIMIT_MODE",
+        "NOTE 117 GAP 1.15: Extern tows a FedSpace ship with more than 50 fighters",
+    ),
+    "corp_breakin_align_live": (
+        "CORP_BREAKIN_ALIGN_MODE",
+        "NOTE 117 GAP 9.5: the first wrong corp password in a day costs 1 alignment",
+    ),
 }
 
 
@@ -4774,6 +4786,55 @@ EVIL_TRADE_LOOP_MODE = "legacy"  # "legacy" | "live"
 def evil_trade_loop_live() -> bool:
     """True when a negative-alignment seat runs the steal-dump and rob-transport loops."""
     return EVIL_TRADE_LOOP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311 gap-partials-batch-1 (NOTE 117) rows 167-169. Stored flags stay legacy.
+# 167: Iago "50 or less" and the Bible "more than 50" (S3 bible, FedSpace protection).
+# One Iago line says "less than 50"; FEDSPACE_POLICE.md f9 keeps the 50-or-less reading.
+# 168: Bible "over 50 fighters" towed. Gypsy 99+ stays FED_TOW_FIGHTER_LIMIT 98.
+# 169: formulas.html, breaking into another corp, -1 alignment, one time per extern, exp 0.
+FEDSAFE_FIGHTER_CAP_MODE = "legacy"  # "legacy" | "live"
+FEDSAFE_FIGHTER_CAP = 50
+FED_TOW_LIMIT_MODE = "legacy"  # "legacy" | "live"
+FED_TOW_LIVE_LIMIT = 50
+CORP_BREAKIN_ALIGN_MODE = "legacy"  # "legacy" | "live"
+CORP_BREAKIN_ALIGN_LIVE = 1
+
+
+def fedsafe_fighter_cap_live() -> bool:
+    """True when more than 50 fighters removes FedSpace protection."""
+    return FEDSAFE_FIGHTER_CAP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def fedsafe_max_fighters() -> int | None:
+    """Fighter ceiling for is_fedsafe. None means fighter count does not matter."""
+    if fedsafe_fighter_cap_live():
+        return int(FEDSAFE_FIGHTER_CAP)
+    return FEDSAFE_MAX_FIGHTERS
+
+
+def fed_tow_limit_live() -> bool:
+    """True when Extern uses the Bible tow line instead of the stored Gypsy line."""
+    return FED_TOW_LIMIT_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def fed_tow_fighter_limit() -> int:
+    """Tow a FedSpace ship with more fighters than this."""
+    if fed_tow_limit_live():
+        return int(FED_TOW_LIVE_LIMIT)
+    return int(FED_TOW_FIGHTER_LIMIT)
+
+
+def corp_breakin_align_live() -> bool:
+    """True when the first wrong corp password in a day costs alignment."""
+    return CORP_BREAKIN_ALIGN_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def corp_breakin_align_loss() -> int:
+    """Alignment taken for one corp break-in this day. Zero keeps the stored path."""
+    if corp_breakin_align_live():
+        return int(CORP_BREAKIN_ALIGN_LIVE)
+    return int(CORP_BREAKIN_ALIGN_LOSS)
 
 
 # v311-followups-v1 (NOTE 75). The free home-planet colonists are a clone

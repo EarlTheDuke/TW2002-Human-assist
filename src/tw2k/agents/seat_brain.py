@@ -5876,7 +5876,7 @@ class SeatBrain:
         import tw2k.engine.constants as _K
         if not _K.fed_tw2002() or v.here is None:
             return None
-        if int(self._ship_fighters(v)) <= int(_K.FED_TOW_FIGHTER_LIMIT):
+        if int(self._ship_fighters(v)) <= int(_K.fed_tow_fighter_limit()):
             return None
         path = self._known_path(v, int(v.here), int(target))
         if not path:

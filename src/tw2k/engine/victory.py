@@ -81,12 +81,13 @@ def is_fedsafe(player) -> bool:
     FED_MODE tw2002 (FEDSPACE_POLICE.md f9): the SOURCE-CONFLICT floors are switches -
     K.FEDSAFE_MIN_ALIGNMENT (0; Iago/Bible "positive" reading = 1) and K.FEDSAFE_MAX_FIGHTERS
     (None; Iago "ftrs on your ship is 50 or less" = 50). Defaults keep the u1 rule.
+    NOTE 117 reads that 50 through fedsafe_max_fighters when the profile is on.
     """
     min_align = 0
     max_figs = None
     if K.FED_MODE == "tw2002":
         min_align = int(K.FEDSAFE_MIN_ALIGNMENT)
-        max_figs = K.FEDSAFE_MAX_FIGHTERS
+        max_figs = K.fedsafe_max_fighters()
     if int(player.alignment) < min_align or int(player.experience) > K.FEDSAFE_MAX_EXPERIENCE:
         return False
     if max_figs is not None:
