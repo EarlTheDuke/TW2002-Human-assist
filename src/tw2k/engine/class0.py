@@ -520,6 +520,70 @@ def class0_equip_prices(day: int) -> dict[str, int]:
     }
 
 
+def _ship_rename_params(player) -> dict[str, Any]:
+    return {
+        "name": {"type": "str", "required": True, "max_length": int(K.SHIP_RENAME_NAME_MAX)},
+        "cost": int(K.SHIP_RENAME_COST),
+        "current": str(player.ship.name) if player is not None else "",
+    }
+
+
+def clean_ship_name(raw: Any) -> tuple[str | None, str | None]:
+    """(name, error). A blank or odd name is refused. Length is UNVERIFIED."""
+    if not isinstance(raw, str):
+        return None, "name must be text"
+    cleaned = " ".join(raw.split())
+    if not cleaned:
+        return None, "name the ship"
+    if len(cleaned) > int(K.SHIP_RENAME_NAME_MAX):
+        return None, f"name must be at most {K.SHIP_RENAME_NAME_MAX} characters"
+    if any(ord(ch) < 32 or ord(ch) > 126 for ch in cleaned):
+        return None, "name must be plain text"
+    return cleaned, None
+
+
+def ship_rename_spec(universe: Universe, pid: str) -> tuple[bool, str | None, dict[str, Any]]:
+    """Legal list for Change Ship Registration. Absent from the caller when the switch is off."""
+    player = universe.players.get(pid)
+    params = _ship_rename_params(player)
+    if not K.ship_rename_live():
+        return False, "unsupported action", params
+    if player is None or int(player.sector_id) != int(K.STARDOCK_SECTOR):
+        return False, "must be at StarDock (sector 1)", params
+    cost = int(K.SHIP_RENAME_COST)
+    if int(player.credits) < cost:
+        return False, f"insufficient credits ({player.credits} < {cost})", params
+    return True, None, params
+
+
+def handle_ship_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
+    """EIS ShipyardMenu, Change Ship Registration. Price is UNVERIFIED."""
+    if not K.ship_rename_live():
+        return ActionResult(ok=False, error="unsupported action")
+    player = universe.players[pid]
+    if int(player.sector_id) != int(K.STARDOCK_SECTOR):
+        return ActionResult(ok=False, error="must be at StarDock (sector 1)")
+    cleaned, why = clean_ship_name((action.args or {}).get("name"))
+    if why or cleaned is None:
+        return ActionResult(ok=False, error=why or "name the ship")
+    if cleaned == str(player.ship.name):
+        return ActionResult(ok=False, error="that is already this ship's name")
+    cost = int(K.SHIP_RENAME_COST)
+    if int(player.credits) < cost:
+        return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {cost})")
+    old = str(player.ship.name)
+    player.credits -= cost
+    player.ship.name = cleaned
+    universe.emit(
+        EventKind.SHIP_RENAMED,
+        actor_id=pid,
+        sector_id=player.sector_id,
+        payload={"old_name": old, "name": cleaned, "cost": cost},
+        summary=f"{player.name} registers the ship as {cleaned}",
+    )
+    return ActionResult(ok=True, turns_spent=0)
+
+
 def planet_citadel_level_cap(planet: Planet, level: int = 2) -> None:
     if int(planet.citadel_level or 0) > level:
         planet.citadel_level = level
