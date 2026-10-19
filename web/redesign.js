@@ -294,6 +294,8 @@
     const el = $("lastResult");
     el.textContent = text || "";
     el.className = bad ? "bad" : "";
+    const stop = $("portStop");
+    if (stop) stop.remove();
   }
   function verdictAction(v) {
     const a = v.args || {};
@@ -1461,7 +1463,9 @@
     const hopCost = Number((courseCard && courseCard.turns_per_hop) || (((LA("plot_course") || {}).params || {}).execute || {}).first_hop_turns || 0);
     const left = Number((S && S.turns_remaining) || 0);
     if (hopCost > left) { setResult("REFUSED — first hop unaffordable (need " + hopCost + " turns, have " + left + ").", true); return; }
-    act("plot_course", { target: target, execute: true }, "engage course to " + target);
+    const args = { target: target, execute: true };
+    if ((((LA("plot_course") || {}).params || {}).execute || {}).stop_at_ports) args.stop_at_ports = true;
+    act("plot_course", args, "engage course to " + target);
   }
 
   function paintShip() {
@@ -1871,6 +1875,11 @@
       } else {
         input = document.createElement("input");
         input.type = spec.type === "int" ? "number" : "text";
+        if (kind === "deploy_genesis" && name === "name") {
+          label.childNodes[0].textContent = "Planet name ";
+          if (spec.max) input.maxLength = spec.max;
+          if (spec.default) input.value = spec.default;
+        }
         if (spec.min != null) input.min = spec.min;
         if (kind === "attack" && name === "qty") {
           const aboard = Number(((S || {}).ship || {}).fighters || 0);
@@ -4631,6 +4640,30 @@
     const result = resp && resp.result;
     if (result && result.ok === false && hopsDone < 1) {
       setResult("REFUSED — " + plainWords(result.error || resp.reason || "refused"), true);
+      return;
+    }
+    if (facts.stopped === "port" && hopsDone >= 1 && here !== target) {
+      setResult("Autopilot stopped at the port in " + here + ". " + hopsDone + " of " + planned + " hops toward " + target + ".", false);
+      const bar = document.createElement("div");
+      bar.id = "portStop";
+      const go = document.createElement("button");
+      go.type = "button";
+      go.textContent = "Continue";
+      go.addEventListener("click", () => engage());
+      const stay = document.createElement("button");
+      stay.type = "button";
+      stay.textContent = "Stop here";
+      stay.addEventListener("click", () => { courseCard = null; plotted = null; setResult("Autopilot off. You are in " + here + ".", false); mapSig = ""; map(); });
+      const port = document.createElement("button");
+      port.type = "button";
+      port.textContent = "Port";
+      port.addEventListener("click", () => openForm("trade"));
+      bar.appendChild(go);
+      bar.appendChild(stay);
+      bar.appendChild(port);
+      $("lastResult").insertAdjacentElement("afterend", bar);
+      mapSig = "";
+      map();
       return;
     }
     if (hopsDone >= 1 && here === target && (!planned || hopsDone >= planned)) {

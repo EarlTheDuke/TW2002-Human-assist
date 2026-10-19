@@ -110,6 +110,8 @@ HELPERS = (
     "probe_shootdown_live",
     "ferrengi_reward_live",
     "ferrengal_quasar_live",
+    "autopilot_port_stop_live",
+    "genesis_name_live",
 )
 
 
@@ -117,7 +119,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 108
+    assert len(names) == 110
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -167,6 +169,8 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.BIG_BANG_DENSITY_MODE == "legacy"
     assert K.ONE_WAY_SHARE_MODE == "legacy"
     assert K.ATOMIC_DETONATOR_MODE == "legacy"
+    assert K.AUTOPILOT_PORT_STOP_MODE == "legacy"
+    assert K.GENESIS_NAME_MODE == "legacy"
     assert K.ATOMIC_MINES_PORT_NUKE is True
     assert K.PLANET_TREASURY_CAP == 10_000_000
     assert K.DEFAULT_ONE_WAY_FRACTION == 0.15

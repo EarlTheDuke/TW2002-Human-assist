@@ -4212,6 +4212,14 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "FERRENGAL_QUASAR_MODE",
         "NOTE 85 FER-h: Ferrengal fires a quasar shot at a ship that enters",
     ),
+    "autopilot_port_stop_live": (
+        "AUTOPILOT_PORT_STOP_MODE",
+        "NOTE 90 MOV-k: an express warp pauses at a port sector when the cockpit asks it to",
+    ),
+    "genesis_name_live": (
+        "GENESIS_NAME_MODE",
+        "NOTE 90: a Genesis deploy can take the name the player typed",
+    ),
 }
 
 
@@ -4777,3 +4785,26 @@ def ferrengi_grudge_on() -> bool:
 def ferrengi_pace_on() -> bool:
     """True when Ferrengi hop on the 30 s clock instead of the once-a-day roll."""
     return FERRENGI_PACE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-live-rulings-v2 (NOTE 90). Stored defaults stay legacy.
+# Ship-vs-ship odds already follow the Bible chart on every exchange, so no
+# SHIP_ODDS_MODE. Alien hops into FedSpace are not forbidden by a v3.11 line
+# found in the docs, so no ALIEN_FEDSPACE_MODE. Rows 118 and 121 stay unused.
+AUTOPILOT_PORT_STOP_MODE = "legacy"  # "legacy" | "live"
+# Help text in live_twgs/transcript.txt (AUTOPILOT MENU): express pauses in
+# sectors with ports. The cockpit sends stop_at_ports. A code bot does not.
+GENESIS_NAME_MODE = "legacy"  # "legacy" | "live"
+# live_twgs/transcript.txt after a Genesis launch: "What do you want to name
+# this planet?" The prompt prints no length. 30 matches the home-planet rule.
+GENESIS_NAME_MAX = 30
+
+
+def autopilot_port_stop_live() -> bool:
+    """True when an express warp may pause at a port the cockpit asked about."""
+    return AUTOPILOT_PORT_STOP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def genesis_name_live() -> bool:
+    """True when a Genesis deploy keeps a name the player typed."""
+    return GENESIS_NAME_MODE == "live" or tw2002_live_profile() or v311_profile()
