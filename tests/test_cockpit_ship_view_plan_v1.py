@@ -20,7 +20,7 @@ CAP = 200
 CLUSTER_MAX = 4
 LABELS = ("Fighters", "Shields", "Holds", "armid mines", "limpet mines", "Cloaks", "Disruptors", "Towing nothing")
 VIEWPORTS = ((1280, 720), (1600, 1000), (390, 844))
-PROTO = ("merchant_cruiser", "scout_marauder", "escape_pod")
+PROTO = tuple(cls.value for cls in ShipClass)
 
 
 def _text(path: Path) -> str:
@@ -64,10 +64,11 @@ def test_plan_names_the_art_and_bot_stays_plain() -> None:
     assert "Attribution-NonCommercial-NoDerivs" in plan
     assert "Drew Markham" in plan
     js = _text(JS)
-    block = js.split("const PROTOTYPE_HULLS = ", 1)[1][:180]
-    for hull in PROTO:
-        assert hull in block
+    assert "const PROTOTYPE_HULLS" not in js
     assert "fighterClusters" in js
+    assert "shipViewHull" in js
+    for hull in PROTO:
+        assert hull in js
     css = _text(ROOT / "web" / "ship-view-plan.css")
     assert "fighter-cluster-count" in css
     for name in ("bot.html", "bot.js", "bot-parity.js", "layout.js", "redesign.html", "redesign.css"):
