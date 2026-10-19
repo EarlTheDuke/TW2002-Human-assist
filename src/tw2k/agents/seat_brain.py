@@ -1180,6 +1180,10 @@ class SeatBrain:
 
     # ------------------------------------------------------------------ ladder
     def _ladder(self, v: View) -> tuple[dict[str, Any], Intent]:
+        if self._evil_loop_owns(v):
+            step = self._evil_trade_step(v)
+            if step is not None:
+                return step, Intent("trade")
         skipped: list[str] = []
         if self.value_allocator and v.worlds():
             tail = (self._allocate,)
@@ -1560,9 +1564,10 @@ class SeatBrain:
         return plot, Intent(kind, STARDOCK)
 
     def _earn(self, v: View):
-        crime = self._crime_action(v)
-        if crime is not None:
-            return crime, Intent("trade")
+        if not self._evil_loop_owns(v):
+            crime = self._crime_action(v)
+            if crime is not None:
+                return crime, Intent("trade")
         self._note_refused_sells(v)
         # Price the one-hop port neighbours of the first route before milking a thin pair.
         # Empty holds only - cargo already aboard goes to a buyer first.
@@ -4452,6 +4457,33 @@ class SeatBrain:
         if self.mem is not None and self.mem.psychic_unit is None:
             self.mem.psychic_unit = int(listed)
         return self._haggle_from_memory(args)
+
+    def _evil_loop_owns(self, v: View) -> bool:
+        """The v3.11 loop applies only when the switch is on and alignment allows crime."""
+        import tw2k.engine.constants as _K
+        if not _K.evil_trade_loop_live():
+            return False
+        try:
+            align = int(v.obs.get("alignment") or 0)
+        except (TypeError, ValueError):
+            return False
+        return align <= int(_K.ROB_MIN_ALIGNMENT)
+
+    def _evil_trade_step(self, v: View) -> dict[str, Any] | None:
+        """One SDT or RTR step. Off, this returns before it reads the port."""
+        import tw2k.engine.constants as _K
+        from tw2k.engine.evil_trade import next_evil_step
+        if not _K.evil_trade_loop_live():
+            return None
+        last = None
+        if self.mem is not None and self.mem.last_crime_sector is not None:
+            last = int(self.mem.last_crime_sector)
+        step = next_evil_step(v, last_crime_sector=last)
+        if step is None:
+            return None
+        if step["kind"] in ("steal", "rob") and self.mem is not None and v.here is not None:
+            self.mem.last_crime_sector = int(v.here)
+        return self._act(step["kind"], step.get("args") or {}, str(step.get("thought") or "evil trade loop"))
 
     def _crime_action(self, v: View) -> dict[str, Any] | None:
         """Rob or steal only when the original gates are already true.
