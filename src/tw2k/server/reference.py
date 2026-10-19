@@ -166,6 +166,8 @@ def game_reference(player=None, day: int = 1, max_days: int | None = None) -> di
             },
         ],
     }
+    rate, over, _min_align = K.tax_terms()
+    out["tax"] = {"rate_pct": int(rate), "over": int(over)}
     if K.cockpit_fields_on():
         out["sections"].append(_not_in_original())
     return out

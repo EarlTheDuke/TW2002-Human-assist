@@ -112,8 +112,9 @@ def test_day7_shows_last_night_no_tax_and_the_net_worth_line(world):
     page.wait_for_selector("#menu", timeout=10_000)
     text = page.locator("#menu").inner_text()
     assert "Last night: no tax" in text
-    assert "Day 6: 7,826 cr, alignment +5" in text
-    assert "10% of the cash on your ship when it is over 49,999 at dawn; the bank is not taxed" in text
+    assert "Overnight Federation tax for the night before day 6: 7,826 cr, alignment +5." in text
+    assert "Last night: 7,826" not in text
+    assert "5% of the cash on your ship when it is over 100,000 at dawn; the bank is not taxed" in text
     assert "Under v3.11 rules you are ranked by experience" in text
     assert "Bought holds and fighters left in sectors are not counted." in text
     page.keyboard.press("Escape")

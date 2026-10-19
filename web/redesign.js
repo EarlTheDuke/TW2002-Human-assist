@@ -676,9 +676,27 @@
     if (!best || facts.tax == null) return null;
     return best;
   }
+  let taxTerms = null;
+  async function loadTaxTerms() {
+    if (taxTerms) return taxTerms;
+    try {
+      const data = await api("/" + state.seat + "/reference");
+      const tax = data && data.tax;
+      if (tax && tax.rate_pct != null && tax.over != null) {
+        taxTerms = { rate: Number(tax.rate_pct), over: Number(tax.over) };
+      }
+    } catch (err) {
+      taxTerms = null;
+    }
+    return taxTerms;
+  }
+  function taxRulePhrase() {
+    if (!taxTerms) return "the dawn tax is taken from the cash on your ship; the bank is not taxed";
+    return taxTerms.rate + "% of the cash on your ship when it is over " + fmt(taxTerms.over) + " at dawn; the bank is not taxed";
+  }
   function taxSentence(ev) {
     const facts = (ev && ev.facts) || {};
-    return "Overnight Federation tax. Day " + ev.day + ": " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0);
+    return "Overnight Federation tax for the night before day " + ev.day + ": " + fmt(facts.tax) + " cr, alignment +" + fmt(facts.align_gain || 0) + ".";
   }
   function overnightTax() {
     const best = newestTax();
@@ -688,14 +706,14 @@
       taxFresh = true;
     }
     if (!taxFresh) return "";
-    return taxSentence(best) + ".";
+    return taxSentence(best);
   }
   function lastTaxLine() {
     const best = newestTax();
     const today = Number(S && S.day);
     if (!best) return today > 1 ? "Last night: no tax" : "";
     if (Number(best.day) === today) return taxSentence(best);
-    return taxSentence(best) + ". Last night: no tax";
+    return taxSentence(best) + " Last night: no tax";
   }
   function sectorText() {
     const s = S.sector;
@@ -2430,7 +2448,7 @@
     amtLabel.appendChild(amount);
     wrap.appendChild(sideLabel);
     wrap.appendChild(amtLabel);
-    const submit = () => {
+    const submit = async () => {
       const n = Number(amount.value);
       if (!n) { setResult("Type an amount.", true); return; }
       const which = side.value === "withdraw" ? wd : dep;
@@ -2440,9 +2458,12 @@
         slot.innerHTML = "";
         act(side.value === "withdraw" ? "bank_withdraw" : "bank_deposit", { amount: n }, side.value);
       };
-      if (side.value === "withdraw" && Number((S && S.credits) || 0) + n > 49999) {
-        confirmWords("Withdraw", "Withdraw " + fmt(n) + " cr? The dawn tax takes 10% of the cash on your ship when it is over 49,999.", post);
-        return;
+      if (side.value === "withdraw") {
+        await loadTaxTerms();
+        if (taxTerms && Number((S && S.credits) || 0) + n > taxTerms.over) {
+          confirmWords("Withdraw", "Withdraw " + fmt(n) + " cr? The dawn tax takes " + taxTerms.rate + "% of the cash on your ship when it is over " + fmt(taxTerms.over) + ".", post);
+          return;
+        }
       }
       post();
     };
@@ -2897,7 +2918,8 @@
     const sectorWord = explored === 1 ? "sector" : "sectors";
     overlay("Known Universe", '<div class="row">You have explored ' + fmt(explored) + " " + sectorWord + (universeSize ? ", " + pct + "% of the universe" : "") + ".</div>" + body);
   }
-  function gameStatus() {
+  async function gameStatus() {
+    await loadTaxTerms();
     const stats = S.daily_stats || {};
     const lines = [
       ["Day", S.day + " of " + S.max_days],
@@ -2909,7 +2931,7 @@
       ["Experience", fmt(S.experience)],
       ["Alignment", fmt(S.alignment) + " " + (S.alignment_label || "")],
       ["Overnight tax", lastTaxLine() || "none yet"],
-      ["Tax due tomorrow", S.tax_due_tomorrow == null ? "none" : fmt(S.tax_due_tomorrow) + " cr (10% of the cash on your ship when it is over 49,999 at dawn; the bank is not taxed)"],
+      ["Tax due tomorrow", S.tax_due_tomorrow == null ? "none" : fmt(S.tax_due_tomorrow) + " cr (" + taxRulePhrase() + ")"],
       ["Planets", fmt((S.owned_planets || []).length)],
       ["Known ports", fmt((S.known_ports || []).length)],
       ["Known sectors", fmt(Object.keys(S.known_warps || {}).length)],
