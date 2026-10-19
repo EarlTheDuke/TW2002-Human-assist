@@ -67,6 +67,38 @@ def _warp_cost(player) -> int:
     return K.warp_turns(player.ship.ship_class.value)
 
 
+def _hold_schedule(
+    class_key: str, holds: int, next_price: int, day: int, room: int, *, max_holds: int,
+) -> dict[str, Any]:
+    """Total for each amount, and the credits the next hold adds."""
+    totals: dict[str, int] = {}
+    per_hold: list[int] = []
+    prev = 0
+    for qty in range(1, int(room) + 1):
+        total = int(K.hold_total_price(class_key, holds, qty, day))
+        totals[str(qty)] = total
+        per_hold.append(total - prev)
+        prev = total
+    return {
+        "next_price": int(next_price),
+        "afford": int(room),
+        "holds": int(holds),
+        "max_holds": int(max_holds),
+        "totals": totals,
+        "per_hold": per_hold,
+    }
+
+
+def _cite_colonists(nxt: dict[str, Any] | None, planet) -> None:
+    """Name the citadel colonist unit on the build quote. No-op while clarity is off."""
+    if not nxt or not K.colonist_clarity_on() or planet is None:
+        return
+    from .observation import _annotate_citadel_units
+
+    have = sum(int(n) for n in planet.colonists.values())
+    _annotate_citadel_units(nxt, planet, have)
+
+
 def _need_turns(player, cost: int) -> str | None:
     if _turns_left(player) < cost:
         return f"out of turns ({_turns_left(player)} left, needs {cost})"
@@ -396,6 +428,18 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "qty": {"type": "int", "required": True, "min": 1, "max_by": qty_max},
             "unit_price": {"type": "int", "required": False, "listed_by": listed},
         }
+        pending = player.haggle_counter if isinstance(getattr(player, "haggle_counter", None), dict) else None
+        if (
+            pending
+            and pending.get("sector_id") == player.sector_id
+            and (K.cockpit_fields_on() or K.action_result_report())
+        ):
+            trade_params["counter"] = {
+                "commodity": pending.get("commodity"),
+                "side": pending.get("side"),
+                "listed": int(pending.get("listed") or 0),
+                "counter": int(pending.get("counter") or 0),
+            }
         if K.port_stock_fidelity_live() and why:
             trade_params["why"] = why
         out.append(_la(ActionKind.TRADE, legal=reason is None, reason=reason, cost=tc, params=trade_params))
@@ -896,6 +940,15 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         }
         if at_special:
             params["dock_turns"] = dock_turns
+        if "holds" in prices and (K.cockpit_fields_on() or K.action_result_report()):
+            room = int(equip_max.get("holds") or 0)
+            if room >= 1:
+                spec = K.hull_spec(player.ship.ship_class.value) or {}
+                cap = int(spec["max_holds"]) if "max_holds" in spec else int(player.ship.holds) + room
+                params["hold_quote"] = _hold_schedule(
+                    player.ship.ship_class.value, int(player.ship.holds), int(prices["holds"]), day, room,
+                    max_holds=cap,
+                )
         buy_cost = dock_turns if at_special else 0
         if not equip_choices:
             buy_reason = "cannot afford any equipment (or all capacities full)"
@@ -1132,6 +1185,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             reason, citadel_params["next"] = _fidelity_citadel_legal(landed_planet, nl)
         elif K.CITADEL_COST_MODE == "class":
             reason, citadel_params["next"] = _class_citadel_legal(landed_planet, nl)
+        _cite_colonists(citadel_params.get("next"), landed_planet)
     out.append(_la(ActionKind.BUILD_CITADEL, legal=reason is None, reason=reason,
                    cost=int(K.TURN_COST.get("land_planet", 3)), params=citadel_params))
 

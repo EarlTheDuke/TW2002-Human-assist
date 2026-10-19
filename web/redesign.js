@@ -3,6 +3,12 @@
   "use strict";
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => Number(n || 0).toLocaleString("en-US");
+  function colonistWords(n, stored) {
+    const count = Number(n || 0);
+    if (stored === "people") return "Colonists (1000s) " + fmt(Math.floor(count / 1000)) + " (" + fmt(count) + " people)";
+    if (stored === "thousands") return "Colonists (1000s) " + fmt(count) + " (" + fmt(count * 1000) + " people)";
+    return "Colonists " + fmt(count);
+  }
   const esc = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   const COM = { fuel_ore: ["Fuel Ore", "#ffff55"], organics: ["Organics", "#55ff55"], equipment: ["Equipment", "#55ffff"], colonists: ["Colonists", "#ffffff"] };
   const KEYS = [
@@ -1513,7 +1519,8 @@
     });
     if (s.terra) {
       const pool = s.terra.colonists_available != null ? s.terra.colonists_available : 0;
-      t += '<span class="g">Planets </span><span class="y">:</span> <span class="c" data-planet="class" data-terra="row">(M) Terra (colonist source, cannot be claimed). Colonists ' + fmt(pool) + "</span>\n";
+      const terraWords = s.terra.colonists_stored ? colonistWords(pool, s.terra.colonists_stored) : "Colonists " + fmt(pool);
+      t += '<span class="g">Planets </span><span class="y">:</span> <span class="c" data-planet="class" data-terra="row">(M) Terra (colonist source, cannot be claimed). ' + terraWords + "</span>\n";
     }
     if (Number(s.nav_hazard_pct) > 0) {
       t += '<span class="g">NavHaz  </span><span class="y">:</span> <span class="c" data-navhaz="here">' + fmt(s.nav_hazard_pct) + "%</span>\n";
@@ -2132,7 +2139,7 @@
             if (burned > 0 && shown !== Number(made)) why = ", colonists eat " + fmt(burned);
           }
         }
-        body += '<div style="color:' + meta[1] + '" data-day="' + k + '">' + esc(meta[0]) + '</div><div class="c">Colonists ' + fmt(cols) + "  On planet " + fmt(stock) + (shown == null ? "" : "  " + fmt(shown) + " per day" + why) + "</div>";
+        body += '<div style="color:' + meta[1] + '" data-day="' + k + '">' + esc(meta[0]) + '</div><div class="c" data-colonists="unit">' + colonistWords(cols, landed.colonists_stored) + "  On planet " + fmt(stock) + (shown == null ? "" : "  " + fmt(shown) + " per day" + why) + "</div>";
       });
       if (owned && owned.fighters_per_day != null) body += '<div data-day="fighters">Fighters</div><div class="c">' + fmt(owned.fighters_per_day) + " per day</div>";
       const trend = (owned && owned.colonists_text) || landed.colonists_text;
@@ -2575,6 +2582,7 @@
       wrap.appendChild(hint);
       const qtyEl = fields.find((el) => el.dataset.n === "qty");
       if (CK) haggleLines(wrap, listed, sideEl, comEl, qtyEl, priceEl, saved);
+      else if (a.params && a.params.counter) counterField(wrap, a.params.counter, qtyEl);
       const capNote = document.createElement("div");
       capNote.className = "c";
       capNote.dataset.trade = "cap";
@@ -2622,7 +2630,7 @@
       if (item) item.addEventListener("change", paint);
       paint();
       wrap.appendChild(note);
-      holdTotalLine(wrap, item, fields.find((el) => el.dataset.n === "qty"));
+      holdTotalLine(wrap, item, fields.find((el) => el.dataset.n === "qty"), a.params && a.params.hold_quote);
     }
     if (kind === "buy_ship") {
       const nets = ((a.params.ship_class || {}).net_cost_by) || {};
@@ -2694,6 +2702,22 @@
       }
     }
   }
+  function counterField(wrap, counter, qtyEl) {
+    const line = document.createElement("div");
+    line.className = "haggle";
+    line.dataset.haggle = "counter";
+    const paint = () => {
+      const qty = Math.max(0, Number((qtyEl && qtyEl.value) || 0));
+      const each = Number(counter.counter || 0);
+      const side = counter.side === "sell" ? "We'll buy them for " : "We'll sell them for ";
+      if (!each) { line.hidden = true; return; }
+      line.hidden = false;
+      line.textContent = "Port counters: " + side + (qty ? fmt(each * qty) + " credits (" + fmt(each) + " each). Your offer?" : fmt(each) + " cr each.");
+    };
+    if (qtyEl) qtyEl.addEventListener("input", paint);
+    paint();
+    wrap.appendChild(line);
+  }
   function haggleLines(wrap, listed, sideEl, comEl, qtyEl, priceEl, saved) {
     // cockpit-gaps-v1 item 2. Original haggle (transcript.txt 2456-2470): "We'll sell them for 317 credits.",
     // offer 280, "We'll sell them for 309 credits.", ... "Very well, we'll take that offer." A failed haggle
@@ -2762,10 +2786,11 @@
     wrap.appendChild(accept);
     wrap.appendChild(ended);
   }
-  function holdTotalLine(wrap, item, qtyEl) {
+  function holdTotalLine(wrap, item, qtyEl, fromForm) {
     // cockpit-gaps-v1 item 5. Original StarDock: "A  Cargo holds : 550 credits / next hold 14" (transcript.txt 4174)
     // and, once an amount is typed, "The cost for 10 more holds is 6,410 credits." (4186) before you confirm.
-    const hq = CK && CK.hold_quote;
+    // NOTE 101: also the rise per hold, from the cockpit quote or the buy form.
+    const hq = (CK && CK.hold_quote) || fromForm;
     if (!hq) return;
     const line = document.createElement("div");
     line.className = "haggle";
@@ -2776,8 +2801,11 @@
       const qty = Number((qtyEl && qtyEl.value) || 0);
       const head = "Cargo holds: " + fmt(hq.next_price) + " credits / next hold. You can buy " + fmt(hq.afford) + ". You have " + fmt(hq.holds) + " of " + fmt(hq.max_holds) + ".";
       const total = qty > 0 ? (hq.totals || {})[String(qty)] : null;
-      if (qty > 0 && total == null) line.textContent = head + " You cannot afford " + fmt(qty) + " more holds.";
-      else line.textContent = head + (total != null ? " The cost for " + fmt(qty) + " more hold" + (qty === 1 ? "" : "s") + " is " + fmt(total) + " credits." : "");
+      const rises = Array.isArray(hq.per_hold) ? hq.per_hold : [];
+      const shown = rises.slice(0, 6).map((n) => fmt(n)).join(", ");
+      const rise = shown ? " The price rises per hold: " + shown + (rises.length > 6 ? ", ..." : "") + "." : "";
+      if (qty > 0 && total == null) line.textContent = head + " You cannot afford " + fmt(qty) + " more holds." + rise;
+      else line.textContent = head + (total != null ? " The cost for " + fmt(qty) + " more hold" + (qty === 1 ? "" : "s") + " is " + fmt(total) + " credits." : "") + rise;
     };
     if (item) item.addEventListener("change", paint);
     if (qtyEl) qtyEl.addEventListener("input", paint);
@@ -3174,7 +3202,9 @@
     const wrap = document.createElement("div");
     wrap.className = "frm";
     wrap.dataset.screen = "terra";
-    wrap.innerHTML = '<div class="y">TERRA</div><div class="c" data-terra="pool">Terra holds ' + fmt(pool) + " of " + fmt(cap) + " colonists. Free holds " + fmt(Number(((S.ship || {}).holds || 0) - Object.values((S.ship || {}).cargo || {}).reduce((sum, n) => sum + Number(n || 0), 0))) + ".</div>";
+    const poolWords = a.params.colonists_stored ? colonistWords(pool, a.params.colonists_stored) : "Colonists " + fmt(pool);
+    const capWords = a.params.colonists_stored ? colonistWords(cap, a.params.colonists_stored) : fmt(cap) + " colonists";
+    wrap.innerHTML = '<div class="y">TERRA</div><div class="c" data-terra="pool">Terra holds ' + poolWords + " of " + capWords + ". Free holds " + fmt(Number(((S.ship || {}).holds || 0) - Object.values((S.ship || {}).cargo || {}).reduce((sum, n) => sum + Number(n || 0), 0))) + ".</div>";
     if (!a.legal) {
       const why = document.createElement("div");
       why.textContent = plainReason(a.reason);
@@ -3570,7 +3600,10 @@
       const readyDay = planet.citadel_complete_day || ((String(a.reason || "").match(/done day (\d+)/) || [])[1] || "");
       note = "Citadel L" + (target || level) + " is being built" + (readyDay ? ", ready day " + readyDay : "") + ".";
     } else {
-      note = "Citadel level " + level + ". Fuel ore " + fmt(next.fuel_ore || next.credits || 0) + " (have " + fmt(have("fuel_have", "fuel_ore")) + "). Organics " + fmt(next.organics || 0) + " (have " + fmt(have("organics_have", "organics")) + "). Equipment " + fmt(next.equipment || 0) + " (have " + fmt(have("equipment_have", "equipment")) + "). Colonists " + fmt(next.colonists || 0) + " (have " + fmt(next.colonists_have != null ? next.colonists_have : cols) + "). " + dayWord + "." + ready + (gaps.length ? " Short: " + gaps.join(", ") + "." : "");
+      const colBit = next.plain
+        ? esc(next.plain)
+        : "Colonists " + fmt(next.colonists || 0) + " (have " + fmt(next.colonists_have != null ? next.colonists_have : cols) + ")";
+      note = "Citadel level " + level + ". Fuel ore " + fmt(next.fuel_ore || next.credits || 0) + " (have " + fmt(have("fuel_have", "fuel_ore")) + "). Organics " + fmt(next.organics || 0) + " (have " + fmt(have("organics_have", "organics")) + "). Equipment " + fmt(next.equipment || 0) + " (have " + fmt(have("equipment_have", "equipment")) + "). " + colBit + ". " + dayWord + "." + ready + (gaps.length ? " Short: " + gaps.join(", ") + "." : "");
     }
     if (!a.legal) {
       confirmWords("Build citadel", note);

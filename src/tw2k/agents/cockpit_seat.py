@@ -123,8 +123,9 @@ class CockpitSeat:
         answers 429 once 30 posts land inside 10 seconds. The seat waits and
         retries the same turn. A 409 means the day clock moved the turn on.
         """
+        self._posted = None
         try:
-            await self.post_action(turn_seq, kind, args)
+            self._posted = await self.post_action(turn_seq, kind, args)
         except CockpitHTTPError as exc:
             text = _http_text(exc.detail)
             if exc.status == 409 and "game_over" in text:
@@ -297,7 +298,7 @@ class CockpitSeat:
                 finished = True
                 break
             last_turn = turn
-            result = await self._result(turn, fields=cockpit is not None)
+            result = await self._result(turn, fields=cockpit is not None, posted=getattr(self, "_posted", None))
             _note_result(table, day, result, turn)
             ok = result.get("ok")
             if ok is False:
@@ -330,13 +331,29 @@ class CockpitSeat:
         report["final"] = _snapshot(final_obs)
         return report
 
-    async def _result(self, turn: int, *, fields: bool = False) -> dict[str, Any]:
-        """The engine's verdict for ``turn``: the cockpit verdict field when it is on, else status last_result.
+    async def _result(self, turn: int, *, fields: bool = False, posted: dict[str, Any] | None = None) -> dict[str, Any]:
+        """The engine's verdict for ``turn``.
 
-        The verdict carries the day, credits and net worth right after the action, so
-        the day row ends after its last result even when the day rolls before the
-        next read. Without it, the row ends at the last read of that day.
+        ACTION_RESULT_MODE=report puts ok, reason, turns and the credits change on
+        the POST answer, so the seat does not have to read status last_result.
+        The cockpit verdict field, when it is on, still carries the day and net worth.
         """
+        report = posted.get("result") if isinstance(posted, dict) else None
+        posted_verdict = None
+        if isinstance(report, dict) and report.get("ok") is not None and "credits_change" in report:
+            posted_verdict = {
+                "ok": report.get("ok"),
+                "error": report.get("reason") if report.get("reason") is not None else report.get("error"),
+                "verdict": True,
+                "turns_spent": report.get("turns_spent"),
+                "credits_change": report.get("credits_change"),
+                "credits": report.get("credits"),
+                "day": report.get("day"),
+                "sector": report.get("sector_id"),
+                "reason": report.get("reason"),
+            }
+            if not fields:
+                return posted_verdict
         for _ in range(200):
             body = await self.read("observation", {"wait_s": 1, "peek": 1})
             verdict = (body.get("cockpit") or {}).get("verdict") or {}
@@ -349,6 +366,8 @@ class CockpitSeat:
                 }
             last = body.get("last_result") or {}
             if not fields and int(last.get("turn_seq") or -1) >= turn:
+                if posted_verdict is not None:
+                    return posted_verdict
                 obs = body.get("observation") or {}
                 return {"ok": last.get("ok"), "error": last.get("error"), "game_over": body.get("game_over"),
                         "observation": obs}
@@ -411,12 +430,15 @@ def _note_result(table: dict[int, dict[str, Any]], day: int, result: dict[str, A
     if row is None:
         return
     if result.get("verdict"):
-        if int(result.get("day") or 0) != day:
+        day_on_result = result.get("day")
+        if day_on_result is not None and int(day_on_result) != day:
             return
         # A cached read from before this action must not move the day end back.
         row["verdict_turn"] = int(turn)
         if result.get("credits") is not None:
             row["credits_end"] = int(result["credits"])
+        elif result.get("credits_change") is not None:
+            row["credits_end"] = int(row["credits_end"]) + int(result["credits_change"])
         if result.get("net_worth") is not None:
             row["net_worth_end"] = int(result["net_worth"])
         if result.get("sector") is not None:
@@ -562,6 +584,8 @@ class SeatBrain:
         self._turn_gaps: set[str] | None = None
         self.hold_price = int(hold_price or 0)
         self.dock_trip = False
+        self.hold_curve = False
+        self.counter_field = False
         # NOTE 56: the cockpit block for this turn (None on a legacy server).
         self.cockpit: dict[str, Any] | None = None
 
@@ -593,7 +617,13 @@ class SeatBrain:
 
     def read_log(self, ev: dict[str, Any]) -> None:
         summary = str(ev.get("summary") or "")
-        if "counter " in summary and self.cockpit is None:
+        if (
+            "counter " in summary
+            and self.cockpit is None
+            and not getattr(self, "counter_field", False)
+            and not K.action_result_report()
+            and not K.cockpit_fields_on()
+        ):
             self.gap("counter_in_log")
         low = summary.lower()
         sid = ev.get("sector_id")
@@ -606,9 +636,15 @@ class SeatBrain:
         if kind == "trade":
             side = str(args.get("side") or "")
             countered = "counter" in error
-            if side in self.haggle and not (countered and self.cockpit is not None):
+            if side in self.haggle and not (countered and (self.cockpit is not None or getattr(self, "counter_field", False))):
                 self.haggle[side] = 100
-            if countered and self.cockpit is None:
+            if (
+                countered
+                and self.cockpit is None
+                and not getattr(self, "counter_field", False)
+                and not K.action_result_report()
+                and not K.cockpit_fields_on()
+            ):
                 self.gap("counter_in_log")
         if kind == "warp" and self.last_plan:
             self.bad_warps.add((int(self.last_plan.get("from") or 0), int(args.get("target") or 0)))
@@ -808,9 +844,24 @@ class SeatBrain:
             return "wait", {}, "no trip fits in today's turns"
         return self._go(obs, warp, target, first, why)
 
-    def _take_counter(self, trade: dict[str, Any], cargo: dict[str, int], free: int, credits: int):
-        """NOTE 56: the trade form shows the port's counter. Offer what it says, as the original's [default]."""
+    def _pending_counter(self, trade: dict[str, Any]) -> dict[str, Any] | None:
         pending = (self.cockpit or {}).get("haggle")
+        if pending:
+            return pending
+        counter = (trade.get("params") or {}).get("counter")
+        if not isinstance(counter, dict) or not counter.get("counter"):
+            return None
+        self.counter_field = True
+        return {
+            "commodity": counter.get("commodity"),
+            "side": counter.get("side"),
+            "next_offer": int(counter.get("counter") or 0),
+            "counter": int(counter.get("counter") or 0),
+        }
+
+    def _take_counter(self, trade: dict[str, Any], cargo: dict[str, int], free: int, credits: int):
+        """The trade form's counter field. Offer what it says, as the original's [default]."""
+        pending = self._pending_counter(trade)
         if not pending:
             return None
         name = str(pending.get("commodity") or "")
@@ -945,13 +996,16 @@ class SeatBrain:
         holds = int(ship.get("holds") or 0)
         room = int(ship.get("hold_cap") or holds) - holds
         quote = (self.cockpit or {}).get("hold_quote")
-        if quote is not None:
+        if not quote:
+            quote = (shop.get("params") or {}).get("hold_quote")
+        if quote is not None and (quote.get("totals") or quote.get("per_hold")):
             # NOTE 56: the StarDock form prints the total for each amount before CONFIRM.
             totals = {int(q): int(t) for q, t in (quote.get("totals") or {}).items()}
             fits = [q for q, total in totals.items() if q <= min(most, room) and credits - total >= (holds + q) * 70]
             if not fits:
                 return None
             qty = max(fits)
+            self.hold_curve = True
             return "buy_equip", {"item": "holds", "qty": qty}, f"buy {qty} holds for {totals[qty]:,} cr"
         qty = min(5, most, room)
         if qty <= 0 or price <= 0:
@@ -1093,7 +1147,7 @@ class SeatBrain:
         price = self.hold_price or 0
         if price <= 0:
             return None
-        if self.cockpit is None:
+        if self.cockpit is None and not self.hold_curve:
             self.gap("hold_curve")
         if credits < 4 * int(5 * price * 1.15) + (holds + 5) * 70:
             return None
