@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import socket
 import time
 from pathlib import Path
 
@@ -224,23 +223,11 @@ def test_an_auto_wait_logs_its_own_cost_and_the_refill(monkeypatch, tmp_path):
     assert row["turns_used"] != net
 
 
-def _safe_port() -> int:
-    for port in (8058, 8053, 8054, 8059, 8052):
-        with socket.socket() as sock:
-            try:
-                sock.bind(("127.0.0.1", port))
-            except OSError:
-                continue
-            return port
-    raise RuntimeError("no safe cockpit port")
-
-
 def test_redesign_reports_rules_and_the_bank_warning(tmp_path, monkeypatch):
     sync = pytest.importorskip("playwright.sync_api").sync_playwright
     from tests._cu_host import CuHost
 
     monkeypatch.delenv("COCKPIT_LAYOUT", raising=False)
-    monkeypatch.setattr("tests._cu_host.free_port", lambda start=8050: _safe_port())
     SHOTS.mkdir(parents=True, exist_ok=True)
     with CuHost(tmp_path, TOK, park_at=1, fuel=0) as host, sync() as pw:
         world = host.runner.state.universe

@@ -10,12 +10,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.models import EventKind, FighterDeployment, FighterMode, MineDeployment, MineType
+from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import _planet_fighters_defend
 from tw2k.engine.scanners import handle_probe
-
-from tests._cu_host import CuHost
 
 TOK = "hazard-token-p2-000000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-hazards-scans-v1"
@@ -49,6 +49,20 @@ def _back(page, needle: str) -> None:
         timeout=20_000,
     )
     page.wait_for_function("() => document.querySelector('#waitchip').textContent === 'YOUR MOVE'", timeout=20_000)
+
+
+def _paint(page, host, universe) -> None:
+    """Escape, push a fresh seat snapshot, and wait until that paint finishes."""
+    page.keyboard.press("Escape")
+    agent = next(a for a in host.runner.state.agents if a.player_id == "P2")
+    agent.current_observation = build_observation(universe, "P2")
+    page.evaluate(
+        "() => {"
+        " const el = document.querySelector('#lastResult');"
+        " if (el) el.textContent = '';"
+        " return window.__tw2kTest.refreshNow();"
+        "}"
+    )
 
 
 def _next(page, mutate=None) -> None:
@@ -343,19 +357,23 @@ def test_port_report_marks_a_port_never_visited(world):
 def test_owner_hears_when_their_mine_hits(world):
     page = world["page"]
     universe = world["universe"]
-
-    def hit():
-        universe.emit(
-            EventKind.MINE_DETONATED,
-            actor_id="P2",
-            sector_id=universe.players["P2"].sector_id,
-            payload={"hits": 1, "damage": 30, "victim": "P1"},
-            summary="1 armid mines hit HBot",
-        )
-
-    _next(page, hit)
+    host = world["host"]
+    # Catch the page up first so an older unalerted fight cannot outrank the mine.
+    _paint(page, host, universe)
+    universe.emit(
+        EventKind.MINE_DETONATED,
+        actor_id="P2",
+        sector_id=universe.players["P2"].sector_id,
+        payload={"hits": 1, "damage": 30, "victim": "P1"},
+        summary="1 armid mines hit HBot",
+    )
+    _paint(page, host, universe)
     page.wait_for_function(
-        "() => (document.querySelector('#lastResult').textContent || '').includes('for 30 damage')",
+        "() => {"
+        " const last = (document.querySelector('#lastResult').textContent || '');"
+        " const log = (document.querySelector('#log').textContent || '');"
+        " return last.includes('Your mines hit') && log.includes('for 30 damage');"
+        "}",
         timeout=20_000,
     )
     text = page.locator("#lastResult").inner_text()
@@ -377,12 +395,18 @@ def test_small_lines_name_the_command_and_the_probe(world):
     assert "in sector" in summary
     assert "1 sector out" in summary
     empty = next(sid for sid, sector in universe.sectors.items() if sector.port is None and sid != me.sector_id)
-
-    def move():
-        _sit(universe, "P2", empty)
-
-    _next(page, move)
-    assert page.locator("#here button", has_text="Rob this port").count() == 0
+    _sit(universe, "P2", empty)
+    _paint(page, world["host"], universe)
+    page.wait_for_function(
+        """(id) => {
+          const sector = document.querySelector('#pSector');
+          const here = document.querySelector('#here');
+          if (!sector || !here || sector.textContent !== String(id)) return false;
+          return ![...here.querySelectorAll('button')].some((b) => (b.textContent || '').includes('Rob this port'));
+        }""",
+        arg=empty,
+        timeout=20_000,
+    )
     page.keyboard.press("C")
     page.keyboard.press("K")
     page.wait_for_selector("#menu", timeout=10_000)
