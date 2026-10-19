@@ -28,6 +28,34 @@ VIEW_W, VIEW_H = 1280, 800
 # must never bind those (a free-port scan starting at 8033 could steal 8033/8035).
 RESERVED_TEST_PORTS = frozenset(range(8031, 8037)) | frozenset(range(8099, 8120))
 
+# Several cockpit fixtures start two hosts. Each one swaps INFO_MODE to legacy.
+# The second must not snapshot the first host's temporary value and write it
+# back when it stops, or the rest of the process stays on legacy.
+_info_depth = 0
+_info_saved: str | None = None
+
+
+def push_legacy_info() -> None:
+    global _info_depth, _info_saved
+    import tw2k.engine.constants as K
+
+    if _info_depth == 0:
+        _info_saved = K.INFO_MODE
+    _info_depth += 1
+    K.INFO_MODE = "legacy"
+
+
+def pop_legacy_info() -> None:
+    global _info_depth, _info_saved
+    import tw2k.engine.constants as K
+
+    if _info_depth <= 0:
+        return
+    _info_depth -= 1
+    if _info_depth == 0 and _info_saved is not None:
+        K.INFO_MODE = _info_saved
+        _info_saved = None
+
 
 def free_port(start: int = 8050) -> int:
     from tests._port_lock import claim_ports
@@ -111,11 +139,10 @@ class CuHost:
     def __enter__(self) -> CuHost:
         # The cockpit tests drive the free scan and read today's adjacent view: they test the
         # UI, not the scanner rules (SCANNERS_HIDDEN_INFO.md), so the host runs INFO_MODE legacy.
-        import tw2k.engine.constants as K
-
-        self._info_mode = K.INFO_MODE
+        self._info_pushed = False
         try:
-            K.INFO_MODE = "legacy"
+            push_legacy_info()
+            self._info_pushed = True
             # free_port reserves the port across processes before uvicorn binds it.
             self.port = free_port()
             self.server = self._uvicorn.Server(
@@ -144,7 +171,9 @@ class CuHost:
 
                 release_ports(self.port)
                 self.port = 0
-            K.INFO_MODE = self._info_mode
+            if self._info_pushed:
+                pop_legacy_info()
+                self._info_pushed = False
             raise
 
     def __exit__(self, *exc) -> None:
@@ -171,8 +200,9 @@ class CuHost:
             if saved_day is not None:
                 K.TURN_REGEN_DAY_SECONDS = saved_day
                 self.runner._saved_day_seconds = None
-            if hasattr(self, "_info_mode"):
-                K.INFO_MODE = self._info_mode
+            if self._info_pushed:
+                pop_legacy_info()
+                self._info_pushed = False
 
     @property
     def base(self) -> str:
