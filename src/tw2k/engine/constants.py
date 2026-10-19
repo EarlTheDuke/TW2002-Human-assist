@@ -4357,6 +4357,14 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "CAPTURE_CREDIT_LINE_MODE",
         "NOTE 105: a capture already takes credits on hand the same way as a destroy; the cockpit says so",
     ),
+    "colonist_units_live": (
+        "COLONIST_UNITS_MODE",
+        "NOTE 89: a non-M drop turns Terra people into handbook colonists, one thousand per hold",
+    ),
+    "colonist_nw_units": (
+        "COLONIST_NW_UNITS_MODE",
+        "NOTE 89: cargo colonists stored as people are scored as handbook thousands",
+    ),
 }
 
 
@@ -5152,3 +5160,65 @@ CAPTURE_CREDIT_LINE_MODE = "legacy"  # "legacy" | "live"
 def capture_credit_line_live() -> bool:
     """True when a capture result says the credits that were on board."""
     return CAPTURE_CREDIT_LINE_MODE == "live" or tw2002_live_profile() or v311_profile()
+# terra-colonist-units-fix-v1 (NOTE 89). Terra live stores people in the hold
+# (TERRA_LIVE_PER_HOLD). Class M already converts. Every other class stores
+# handbook colonists, so a drop of one hold must land as 1, not 1,000.
+# "legacy" keeps the one-to-one copy. "live" divides on the way down and
+# multiplies on the way up. A remainder is refused.
+# The net-worth switch prices those people as handbook thousands. A non-M
+# planet that already stores handbook units is not divided again.
+COLONIST_UNITS_MODE = "legacy"  # "legacy" | "live"
+COLONIST_NW_UNITS_MODE = "legacy"  # "legacy" | "live"
+COLONIST_MOVE_BY_THOUSAND = "colonists move by the thousand"
+
+
+def colonist_units_live() -> bool:
+    """True when a non-M planet speaks handbook colonists and the hold speaks people."""
+    return COLONIST_UNITS_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def colonist_nw_units() -> bool:
+    """True when people in a cargo hold are scored as handbook thousands."""
+    return COLONIST_NW_UNITS_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def colonist_handbook_transfer(class_id) -> bool:
+    """True when this planet's colonist move crosses the people/handbook line.
+
+    Class M keeps its own people path. Legacy Terra stores one colonist per
+    hold, which is already the handbook unit, so there is nothing to convert.
+    """
+    token = str(getattr(class_id, "value", class_id))
+    return token != "M" and colonist_units_live() and int(colonists_per_hold()) > 1
+
+
+def colonist_people_to_handbook(people: int) -> tuple[int, bool]:
+    """Handbook colonists for this many cargo people, and whether it was exact."""
+    per = int(colonists_per_hold())
+    amount = int(people)
+    if per <= 1:
+        return amount, True
+    return amount // per, amount % per == 0
+
+
+def colonist_handbook_to_people(units: int) -> int:
+    """Cargo people for this many handbook colonists."""
+    per = int(colonists_per_hold())
+    amount = int(units)
+    if per <= 1:
+        return amount
+    return amount * per
+
+
+def colonist_score_qty(qty: int) -> int:
+    """Colonists net worth should count. People in a hold become thousands.
+
+    Iago War Manual: one hold is one thousand people. S1 / TWFAQ_20PLANET
+    counts the handbook colonist in thousands, and COLONIST_PRICE is that unit.
+    """
+    amount = int(qty)
+    if amount <= 0:
+        return 0
+    if colonist_nw_units() and int(colonists_per_hold()) > 1:
+        return amount // int(colonists_per_hold())
+    return amount

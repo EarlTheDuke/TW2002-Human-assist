@@ -1041,13 +1041,20 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         for name, have in list(dump_max.items()):
             if name == Commodity.COLONISTS.value:
                 room = col_room
-                if room is not None and K.class_m_transfer_on(landed_planet.class_id):
+                if K.colonist_handbook_transfer(landed_planet.class_id):
+                    per = int(K.colonists_per_hold())
+                    have = have - (have % per)
+                    if room is not None:
+                        room = int(room) * per
+                elif room is not None and K.class_m_transfer_on(landed_planet.class_id):
                     room = K.class_m_cargo_for_people(int(room))
             else:
                 held = int(landed_planet.stockpile.get(Commodity(name), 0))
                 room = K.planet_stock_room(landed_planet.class_id.value, name, held)
             if room is not None:
                 dump_max[name] = min(have, int(room))
+            elif name == Commodity.COLONISTS.value and K.colonist_handbook_transfer(landed_planet.class_id):
+                dump_max[name] = have
         dump_max = {name: qty for name, qty in dump_max.items() if qty > 0}
     if owned_reason:
         reason = owned_reason
@@ -1072,8 +1079,16 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         pools = {c.value: int(n) for c, n in landed_planet.colonists.items()}
         room = K.colonist_drop_room(landed_planet.class_id.value, pools, total_col)
         if room is not None:
-            cap = K.class_m_cargo_for_people(int(room)) if K.class_m_transfer_on(landed_planet.class_id) else int(room)
+            if K.class_m_transfer_on(landed_planet.class_id):
+                cap = K.class_m_cargo_for_people(int(room))
+            elif K.colonist_handbook_transfer(landed_planet.class_id):
+                cap = int(room) * int(K.colonists_per_hold())
+            else:
+                cap = int(room)
             ship_room = min(ship_cols, cap)
+    if owned_landed and ship_room > 0 and K.colonist_handbook_transfer(landed_planet.class_id):
+        per = int(K.colonists_per_hold())
+        ship_room = ship_room - (ship_room % per)
     from_choices = (["ship"] if ship_room > 0 else []) + sorted(pools_have)
     if owned_reason:
         reason = owned_reason

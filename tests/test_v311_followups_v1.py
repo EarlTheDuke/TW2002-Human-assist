@@ -31,7 +31,12 @@ def test_the_switch_stays_legacy_until_the_profile_is_on(monkeypatch) -> None:
 
 
 def test_day_zero_net_worth_skips_the_free_start_and_counts_terra_cargo(monkeypatch) -> None:
-    """A new v3.11 game's day-0 net worth has no colonist value. Terra cargo does."""
+    """A new v3.11 game's day-0 net worth has no colonist value. Terra cargo does.
+
+    Iago War Manual, Colonists: one hold is one thousand people. S1 / TWFAQ_20PLANET
+    heads the production table "colonists (thousands)". COLONIST_PRICE is that
+    handbook thousand (row 66), so 1,000 people in the hold are one Terra hold.
+    """
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     universe, player = _seat()
     grant_starting_planet(universe, player)
@@ -46,6 +51,8 @@ def test_day_zero_net_worth_skips_the_free_start_and_counts_terra_cargo(monkeypa
     planet.colonists.update(saved)
     planet.free_start_colonists = sum(int(n) for n in saved.values())
     player.ship.cargo[Commodity.COLONISTS] = 1000
+    assert full_net_worth(universe, player) - bare == K.COLONIST_PRICE
+    player.ship.cargo[Commodity.COLONISTS] = 1000 * int(K.colonists_per_hold())
     assert full_net_worth(universe, player) - bare == 1000 * K.COLONIST_PRICE
 
 

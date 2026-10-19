@@ -1535,6 +1535,15 @@ def _ship_dict(ship) -> dict[str, Any]:
         "cargo_free": ship.cargo_free,
     }
     from . import constants as K
+    if K.colonist_units_live() and int(K.colonists_per_hold()) > 1:
+        ship_view["cargo_holds"] = {
+            c.value: (
+                K.colonist_holds_for_cargo(int(ship.cargo.get(c, 0) or 0))
+                if c == Commodity.COLONISTS
+                else int(ship.cargo.get(c, 0) or 0)
+            )
+            for c in Commodity
+        }
     if K.ship_tw_on():
         from .ship_transwarp import drive_fitted, fuel_ore
         ore = fuel_ore(ship)
@@ -2685,8 +2694,11 @@ def _action_hint(
                 except Exception:
                     pass
             if colonists > 0:
+                holds_note = ""
+                if K.colonist_units_live() and int(K.colonists_per_hold()) > 1:
+                    holds_note = f" ({K.colonist_holds_for_cargo(colonists)} holds)"
                 hints.append(
-                    f"You have {colonists} colonists in cargo — land on a planet you own and use "
+                    f"You have {colonists} colonists in cargo{holds_note} — land on a planet you own and use "
                     f"`assign_colonists from=ship to=<fuel_ore|organics|equipment|colonists> qty=<n>` to deposit."
                 )
             photon = getattr(ship, "photon_missiles", 0) or 0

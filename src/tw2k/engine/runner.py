@@ -2212,12 +2212,13 @@ def _handle_load_planet_cargo(universe: Universe, pid: str, action: Action) -> A
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     cargo_move = qty
-    holds_needed = qty
     if commodity == Commodity.COLONISTS and K.class_m_transfer_on(planet.class_id):
         cargo_move = K.class_m_cargo_for_people(qty)
         if cargo_move <= 0 or K.class_m_people_for_cargo(cargo_move) != qty:
             return ActionResult(ok=False, error="class M colonists move by the thousand")
-        holds_needed = K.colonist_holds_for_cargo(cargo_move)
+    elif commodity == Commodity.COLONISTS and K.colonist_handbook_transfer(planet.class_id):
+        cargo_move = K.colonist_handbook_to_people(qty)
+    holds_needed = K.colonist_holds_for_cargo(cargo_move) if commodity == Commodity.COLONISTS else qty
     if player.ship.cargo_used + holds_needed > player.ship.holds:
         return ActionResult(ok=False, error="not enough cargo holds")
 
@@ -2288,7 +2289,15 @@ def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> A
         if error is not None:
             return error
         pool = _production_pool(pool)
-        planet_add = K.class_m_people_for_cargo(qty) if K.class_m_transfer_on(planet.class_id) else qty
+        if K.class_m_transfer_on(planet.class_id):
+            planet_add = K.class_m_people_for_cargo(qty)
+        elif K.colonist_handbook_transfer(planet.class_id):
+            handbook, whole = K.colonist_people_to_handbook(qty)
+            if not whole:
+                return ActionResult(ok=False, error=K.COLONIST_MOVE_BY_THOUSAND)
+            planet_add = handbook
+        else:
+            planet_add = qty
         total_col = sum(int(n) for n in planet.colonists.values())
         blocked = K.colonist_drop_error(
             planet.class_id.value, int(planet.colonists.get(pool, 0)), total_col, planet_add,
@@ -2382,6 +2391,15 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
             if ship_qty <= 0 or K.class_m_people_for_cargo(ship_qty) != qty:
                 return ActionResult(ok=False, error="class M colonists move by the thousand")
             planet_qty = qty
+    elif K.colonist_handbook_transfer(planet.class_id):
+        if src == "ship" and dst != "ship":
+            handbook, whole = K.colonist_people_to_handbook(qty)
+            if not whole:
+                return ActionResult(ok=False, error=K.COLONIST_MOVE_BY_THOUSAND)
+            planet_qty = handbook
+        elif dst == "ship" and src != "ship":
+            ship_qty = K.colonist_handbook_to_people(qty)
+            planet_qty = qty
     if src == "ship" and dst != "ship":
         total_col = sum(int(n) for n in planet.colonists.values())
         dest = pool_keys[dst]
@@ -2406,7 +2424,7 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
 
     # Deposit
     if dst == "ship":
-        holds_needed = K.colonist_holds_for_cargo(ship_qty) if K.class_m_transfer_on(planet.class_id) else qty
+        holds_needed = K.colonist_holds_for_cargo(ship_qty)
         used = player.ship.cargo_used
         if used + holds_needed > player.ship.holds:
             # Refund withdrawal to avoid losing colonists
@@ -2909,14 +2927,16 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     if total > spec["holds"]:
         keep = spec["holds"]
         for c in [Commodity.EQUIPMENT, Commodity.ORGANICS, Commodity.FUEL_ORE, Commodity.COLONISTS]:
-            n = player.ship.cargo.get(c, 0)
+            n = int(player.ship.cargo.get(c, 0) or 0)
+            holds_of = K.colonist_holds_for_cargo(n) if c == Commodity.COLONISTS else n
             if keep <= 0:
                 player.ship.cargo[c] = 0
-            elif n > keep:
-                player.ship.cargo[c] = keep
+            elif holds_of > keep:
+                per = int(K.colonists_per_hold()) if c == Commodity.COLONISTS else 1
+                player.ship.cargo[c] = keep * per
                 keep = 0
             else:
-                keep -= n
+                keep -= holds_of
 
     payload: dict = {"ship_class": class_key, "net_cost": net_cost}
     if receipt is not None:
