@@ -6,9 +6,9 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (115 helpers)
+## The switch set (116 helpers)
 
-The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112.
+The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112. NOTE 104 uses row 164. Rows 160, 162 and 163 stay unused.
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -127,6 +127,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 149 | `PLANET_BUST_EXP_MODE` | `planet_bust_exp_live` | NOTE 102 GAP 14.3: the owner may destroy the planet they created. Genesis pays 25 and the destroy pays 50, which is the glossary's 75 and not more. Stored default stays legacy | - |
 | 153 | `CAPTURE_CREDIT_LINE_MODE` | `capture_credit_line_live` | NOTE 105: gb15 and the MBBS manual take the credits a captured player is carrying, the same as a kill. The engine already does that. Live, the cockpit line says "Credits on board lost". Stored default stays legacy, so the line stays as it was | - |
 | 161 | `MAIL_MODE` | `mail_live` | NOTE 103 GAP 13.1 and 13.3: a hail to an open cockpit, or to a code bot, flashes for about 10 seconds. A hail to an offline trader is stored mail, and the cockpit says New Mail. Stored default stays legacy, so every hail still lands in the inbox | rows 162 and 163 unused: the computer helpers and the fighter lines do not need a switch |
+| 164 | `LEGACY_DAY_CLOCK_MODE` | `legacy_day_clock_live` | NOTE 104: a legacy game that set its own day length rolls that day on the clock, mark plus the day length, whoever still has turns, including while a seat holds the turn. Dawn still refills turns. No day length does nothing, so a scripted match stays put. The regen clock already rolls, so this is a no-op under it. Stored default stays legacy | rows 160, 162 and 163 stay unused |
 
 Row 147 is unused. Alien traders already refuse a sector that holds fighters (`alien._fighter_blocked`, `alien_day_step`) and take mine hits (`apply_mines_to_alien`). Federal ships already refuse those sectors (`fed._fed_blocked`). Ferrengi already ignore fighters (`FERRENGI_FIGHTER_BLOCK` is False; Iago's War Manual v1.1) and take armid hits (`FERRENGI_HIT_MINES`, `_apply_mines_to_ferrengi`). That is the stored rule, so `NPC_FIGHTER_SECTOR_MODE` is not added.
 

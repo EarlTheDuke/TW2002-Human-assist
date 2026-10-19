@@ -77,6 +77,41 @@ def brand() -> str:
 # --------------------------------------------------------------------------- switches
 
 
+def health_payload(runner) -> dict[str, Any]:
+    """What the lobby reads from /healthz.
+
+    A finished engine names the winner even while the scheduler is still
+    unwinding a held turn. The day number stays the engine's day.
+    """
+    from ..engine import constants as K
+
+    u = runner.state.universe
+    spec = getattr(runner, "_spec", None)
+    override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
+    turns_override = getattr(getattr(spec, "config", None), "turns_per_day_override", None)
+    seat = next(iter(u.players.values()), None) if u is not None else None
+    original_turns = int(seat.turns_per_day) if seat is not None else K.opening_original_turns()
+    engine_done = bool(u is not None and getattr(u, "finished", False))
+    winner = None
+    reason = None
+    if u is not None and (engine_done or runner.state.status == "finished"):
+        reason = str(getattr(u, "win_reason", "") or "") or None
+        wid = getattr(u, "winner_id", None)
+        if wid and wid in u.players:
+            winner = u.players[wid].name
+    return {
+        "ok": True,
+        "status": runner.state.status,
+        "day": int(u.day) if u is not None else None,
+        "finished": runner.state.status == "finished" or engine_done,
+        "holding_for_human": bool(getattr(runner, "_hold_until_human", False)),
+        "starting_credits": K.starting_credits_line(override, K.opening_original_credits()),
+        "turns_per_day": K.turns_per_day_line(turns_override, original_turns),
+        "winner": winner,
+        "win_reason": reason,
+    }
+
+
 def apply_switch_overlay(raw: str | None = None) -> dict[str, str]:
     """Set the per-game switches named in ``TW2K_SWITCH_OVERLAY`` (only ``*_MODE`` and
     ``V311_PROFILE`` names that exist and hold a string). Returns what was set."""
@@ -371,20 +406,7 @@ def install(app, runner) -> None:
 
         @app.get("/healthz")
         async def healthz() -> dict[str, Any]:
-            u = runner.state.universe
-            from ..engine import constants as K
-
-            spec = getattr(runner, "_spec", None)
-            override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
-            turns_override = getattr(getattr(spec, "config", None), "turns_per_day_override", None)
-            seat = next(iter(u.players.values()), None) if u is not None else None
-            original_turns = int(seat.turns_per_day) if seat is not None else K.opening_original_turns()
-            return {"ok": True, "status": runner.state.status,
-                    "day": int(u.day) if u is not None else None,
-                    "finished": runner.state.status == "finished",
-                    "holding_for_human": bool(getattr(runner, "_hold_until_human", False)),
-                    "starting_credits": K.starting_credits_line(override, K.opening_original_credits()),
-                    "turns_per_day": K.turns_per_day_line(turns_override, original_turns)}
+            return health_payload(runner)
 
         @app.post("/control/seat-token")
         async def seat_token(request: Request) -> dict[str, Any]:

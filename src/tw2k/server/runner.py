@@ -797,6 +797,9 @@ class MatchRunner:
 
             # Turn loop: round-robin agents, day advances when all have exhausted turns.
             regen_clock = self._regen_day_clock()
+            # NOTE 104. A legacy game with its own day length uses the same mark.
+            # The regen clock already rolls, so that game does not take this path too.
+            legacy_clock = self._legacy_day_clock(universe)
             # NOTE 93. A lobby game can wait here until the first human opens a seat.
             # No day mark and no bot turn until then. A resumed day already started.
             self._hold_until_human = bool(getattr(self._spec, "hold_until_human", False))
@@ -806,7 +809,7 @@ class MatchRunner:
                 self._hold_until_human = False
             if resume_meta is not None and resume_meta.get("day_started_at"):
                 self._hold_until_human = False
-            if regen_clock and not self._hold_until_human:
+            if (regen_clock or legacy_clock) and not self._hold_until_human:
                 # NOTE 60 item 2 (RULINGS s5): day 1 starts now and each day lasts the day length.
                 # A resumed game keeps the day it was in.
                 self._live_day_mark = time.time()
@@ -820,7 +823,7 @@ class MatchRunner:
                 if getattr(self, "_hold_until_human", False):
                     if self._first_human_opened():
                         self._hold_until_human = False
-                        if regen_clock:
+                        if regen_clock or legacy_clock:
                             self._live_day_mark = time.time()
                         self._turn_clock = {}
                         for held in universe.players.values():
@@ -838,9 +841,11 @@ class MatchRunner:
                     await self._async_day_round(agents, universe)
                     continue
 
-                if regen_clock and time.time() - self._live_day_mark >= float(K.TURN_REGEN_DAY_SECONDS):
+                day_mark = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
+                if ((regen_clock or legacy_clock) and day_mark
+                        and time.time() - day_mark >= float(K.TURN_REGEN_DAY_SECONDS)):
                     # The day rolls on the clock, whoever still has turns; the trickle keeps paying.
-                    if K.day_roll_clock_live():
+                    if self._rolls_while_held(universe):
                         await self._roll_clock_if_due(universe)
                     else:
                         self._live_day_mark = time.time()
@@ -869,8 +874,8 @@ class MatchRunner:
                         or not universe.players[a.player_id].alive
                         for a in agents
                     )
-                    if all_done and regen_clock:
-                        # NOTE 60 item 2: everyone is resting; the day rolls on the clock above.
+                    if all_done and (regen_clock or legacy_clock):
+                        # NOTE 60 item 2 / NOTE 104: everyone is resting; the day rolls on the clock above.
                         await self._sleep_scaled(0.05)
                     elif all_done:
                         if K.live_pace() and K.starting_package_live():
@@ -1399,6 +1404,25 @@ class MatchRunner:
         """NOTE 60 item 2: under the v3.11 turn clock the day rolls on that clock."""
         return K.live_pace() and K.starting_package_live() and K.turn_regen_live()
 
+    def _legacy_day_clock(self, universe: Universe | None = None) -> bool:
+        """NOTE 104. A legacy game with its own day length rolls on that clock.
+
+        The regen clock already rolls, so this stays off under it. No day length
+        does nothing, which keeps a scripted match on the old day boundary.
+        """
+        if self._regen_day_clock() or not K.legacy_day_clock_live():
+            return False
+        u = universe if universe is not None else getattr(self.state, "universe", None)
+        if u is None:
+            return False
+        return getattr(u.config, "turn_regen_day_seconds", None) is not None
+
+    def _rolls_while_held(self, universe: Universe | None = None) -> bool:
+        """True when the day mark can pass while a seat still holds the turn."""
+        if self._legacy_day_clock(universe):
+            return True
+        return bool(self._regen_day_clock() and K.day_roll_clock_live())
+
     def _first_human_opened(self) -> bool:
         """True once any human seat has called the harness (opened the cockpit)."""
         for agent in self.state.agents:
@@ -1408,7 +1432,7 @@ class MatchRunner:
 
     def day_clock(self) -> dict | None:
         """When the current day started and when the next one rolls (epoch seconds), or None."""
-        if not self._regen_day_clock():
+        if not self._regen_day_clock() and not self._legacy_day_clock():
             return None
         mark = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
         if not mark:
@@ -1494,7 +1518,7 @@ class MatchRunner:
 
     async def _roll_clock_if_due(self, universe: Universe) -> bool:
         """NOTE 74. Roll every day the mark has passed. The next mark is the old one plus the day length."""
-        if not self._regen_day_clock() or not K.day_roll_clock_live():
+        if not self._rolls_while_held(universe):
             return False
         day_s = float(K.TURN_REGEN_DAY_SECONDS)
         mark = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
@@ -1534,7 +1558,7 @@ class MatchRunner:
                 raise TimeoutError
             slice_s = left
             universe = self.state.universe
-            if universe is not None and K.day_roll_clock_live() and self._regen_day_clock():
+            if universe is not None and self._rolls_while_held(universe):
                 mark = float(getattr(self, "_live_day_mark", 0.0) or 0.0)
                 due = (mark + float(K.TURN_REGEN_DAY_SECONDS) - time.time()) if mark else left
                 if due <= 0:
@@ -1590,9 +1614,14 @@ class MatchRunner:
                     try:
                         return await asyncio.wait_for(asyncio.shield(act_task), timeout=0.05), False
                     except TimeoutError:
+                        held = self.state.universe
+                        if held is not None and self._rolls_while_held(held):
+                            await self._roll_clock_if_due(held)
                         continue
                 agent.turn_deadline_at = time.time() + full_s  # type: ignore[attr-defined]
                 try:
+                    if self._rolls_while_held(self.state.universe):
+                        return await self._wait_acting_task(act_task, full_s), False
                     return await asyncio.wait_for(asyncio.shield(act_task), timeout=full_s), False
                 except TimeoutError:
                     act_task.cancel()
@@ -1607,7 +1636,7 @@ class MatchRunner:
 
         if not idle_rule or attended_fn(window_s):
             agent.turn_deadline_at = time.time() + full_s  # type: ignore[attr-defined]
-            if K.day_roll_clock_live() and self._regen_day_clock():
+            if self._rolls_while_held(self.state.universe):
                 return await self._wait_acting(agent.act(obs), full_s), False
             return await asyncio.wait_for(agent.act(obs), timeout=full_s), False
 
@@ -1623,7 +1652,7 @@ class MatchRunner:
                 remaining = max(0.1, full_s - min(idle_s, full_s))
                 agent.turn_deadline_at = time.time() + remaining  # type: ignore[attr-defined]
                 try:
-                    if K.day_roll_clock_live() and self._regen_day_clock():
+                    if self._rolls_while_held(self.state.universe):
                         return await self._wait_acting_task(act_task, remaining), False
                     return await asyncio.wait_for(asyncio.shield(act_task), timeout=remaining), False
                 except TimeoutError:

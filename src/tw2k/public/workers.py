@@ -120,11 +120,17 @@ def ai_seat_ids(humans: int, ai: int) -> list[str]:
 
 def switch_overlay(settings: dict[str, Any]) -> dict[str, str]:
     # NOTE 74: every self-hosted beta game rolls the day on the clock.
-    out: dict[str, str] = {"DAY_ROLL_CLOCK_MODE": "live"}
+    # NOTE 104: a legacy game also rolls on its own day length, opens selling
+    # ports full, and does not auto-WAIT before the first client. v3.11 already
+    # has those rules through the profile, so only the day-clock switch is added.
+    out: dict[str, str] = {"DAY_ROLL_CLOCK_MODE": "live", "LEGACY_DAY_CLOCK_MODE": "live"}
     if settings.get("rules") == "v311":
         out["V311_PROFILE"] = "v311"
-    elif settings.get("starting_package") == "v311":
-        out["STARTING_PACKAGE_MODE"] = "live"
+    else:
+        out["PORT_STOCK_FIDELITY_MODE"] = "live"
+        out["SEAT_IDLE_START_MODE"] = "live"
+        if settings.get("starting_package") == "v311":
+            out["STARTING_PACKAGE_MODE"] = "live"
     return out
 
 
