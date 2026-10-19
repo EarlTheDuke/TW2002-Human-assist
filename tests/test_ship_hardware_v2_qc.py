@@ -200,31 +200,40 @@ def test_plant_entry_order_navhaz_before_limpet(tw) -> None:
 def test_free_port_skips_reserved_live_range(monkeypatch) -> None:
     """Reserved live ports stay unused even when a bind would succeed there.
 
-    8031-8036 and 8099-8119 are the live games. Binding 8040-8044 to force a
-    walk collided with those games and with other tests, so the check pretends
-    that range is busy and the reserved ports are free. The shared port book
-    is not consulted.
+    Every port looks free and the shared port book is empty, so the reserved
+    set is the only thing that moves the scan. Below 8120 the open pockets are
+    8038-8040, 8043-8044, and 8050-8054.
     """
     import tw2k.public.config as cfg
     from tests import _port_lock
     from tests._cu_host import RESERVED_TEST_PORTS, free_port
 
-    assert frozenset(range(8031, 8037)) | frozenset(range(8099, 8120)) == RESERVED_TEST_PORTS
-    busy = set(range(8040, 8045))
-    monkeypatch.setattr(cfg, "port_is_free", lambda port, host="127.0.0.1": port not in busy)
+    reserved = frozenset().union(
+        range(8031, 8038),
+        (8041, 8042),
+        range(8045, 8050),
+        range(8055, 8060),
+        range(8060, 8099),
+        range(8099, 8120),
+    )
+    allowed = set(range(8038, 8041)) | set(range(8043, 8045)) | set(range(8050, 8055))
+    assert reserved == RESERVED_TEST_PORTS
+    assert {p for p in range(8031, 8120) if p not in RESERVED_TEST_PORTS} == allowed
+    assert 8037 in RESERVED_TEST_PORTS
+    assert 8058 in RESERVED_TEST_PORTS and 8059 in RESERVED_TEST_PORTS
+
+    monkeypatch.setattr(cfg, "port_is_free", lambda port, host="127.0.0.1": True)
     monkeypatch.setattr(_port_lock, "_read", lambda: {})
     monkeypatch.setattr(_port_lock, "_write", lambda data: None)
 
-    got = free_port()
-    assert got == 8050
-    assert got not in RESERVED_TEST_PORTS
-    # A scan that starts inside the live band still walks out of it.
-    got_low = free_port(start=8031)
-    assert got_low == 8037
-    assert got_low not in RESERVED_TEST_PORTS
-    got_high = free_port(start=8099)
-    assert got_high == 8120
-    assert got_high not in RESERVED_TEST_PORTS
+    assert free_port() == 8050
+    assert free_port(start=8031) == 8038
+    assert free_port(start=8041) == 8043
+    assert free_port(start=8045) == 8050
+    assert free_port(start=8055) == 8120
+    assert free_port(start=8099) == 8120
+    for port in (8050, 8038, 8043, 8120):
+        assert port not in RESERVED_TEST_PORTS
 
 
 def test_scanners_legacy_golden_delta_is_own_ship_and_legal_only(tw, monkeypatch) -> None:
