@@ -6076,9 +6076,10 @@ class SeatBrain:
             home = int(self.mem.home_sector)
         execute = v.params("plot_course").get("execute") or {}
         course_ok = bool(execute.get("legal")) if isinstance(execute, dict) else False
+        nav = getattr(self, "_nav_universe", None)
         step = recovery_course(
             here=int(v.here), holds=holds,
-            plot_legal=course_ok, warp_legal=True, home=home,
+            plot_legal=course_ok, warp_legal=True, home=home, universe=nav,
         )
         if step is None:
             adj = [int(c) for c in v.choices("warp", "target")]
@@ -6088,7 +6089,7 @@ class SeatBrain:
             step = escape_course(
                 here=int(v.here), adjacent_ids=adj, last_from=last,
                 trail=list(self.__dict__.get("_escape_trail") or []),
-                plot_legal=course_ok, warp_legal=True,
+                plot_legal=course_ok, warp_legal=True, universe=nav,
             )
         if step is None:
             return None

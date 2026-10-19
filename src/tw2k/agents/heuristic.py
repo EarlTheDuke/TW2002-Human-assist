@@ -589,6 +589,7 @@ class HeuristicAgent(BaseAgent):
             holds=int(ship.get("holds") or 0),
             plot_legal=self._course_executable(legal),
             warp_legal=True,
+            universe=self._course_universe(),
         )
         if step is None:
             return None
@@ -605,10 +606,16 @@ class HeuristicAgent(BaseAgent):
             trail=list(self.__dict__.get("_escape_trail") or []),
             plot_legal=self._course_executable(legal),
             warp_legal=True,
+            universe=self._course_universe(),
         )
         if step is None:
             return None
         return Action(kind=ActionKind(step["kind"]), args=dict(step["args"]), thought=step["thought"])
+
+    def _course_universe(self) -> object | None:
+        # The attribute name must not match this method. Assigning the universe
+        # onto the method would make every later turn raise.
+        return getattr(self, "_course_universe_ref", None) or getattr(self, "_tw_universe", None)
 
     @staticmethod
     def _course_executable(legal: dict) -> bool:

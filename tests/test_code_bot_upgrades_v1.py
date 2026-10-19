@@ -168,6 +168,27 @@ def test_escape_plots_out_of_a_dead_end_only_when_on(monkeypatch):
     ) is None
 
 
+def test_escape_uses_a_waypoint_when_stardock_is_past_the_hop_limit(monkeypatch):
+    monkeypatch.setattr(K, "BOTS_ESCAPE_MODE", "live")
+
+    class _Sec:
+        def __init__(self, warps: list[int]) -> None:
+            self.warps = warps
+
+    uni = type("_Uni", (), {})()
+    uni.sectors = {i: _Sec([i - 1] if i > 1 else []) for i in range(1, 81)}
+
+    step = escape_course(
+        here=80, adjacent_ids=[], last_from=None, trail=[],
+        plot_legal=True, warp_legal=True, universe=uni,
+    )
+    assert step is not None
+    assert step["kind"] == "plot_course"
+    # Legacy plot limit is 60 hops. Sector 1 is 79 hops down this lane.
+    assert step["args"]["target"] == 20
+    assert step["args"]["execute"] is True
+
+
 def test_seat_brain_upgrade_hook_stays_quiet_until_the_switch(monkeypatch):
     brain = SeatBrain()
     obs = {
@@ -192,19 +213,25 @@ def test_seat_brain_upgrade_hook_stays_quiet_until_the_switch(monkeypatch):
 
 
 def _stuck_days(rows: list, days: list) -> list[int]:
-    """A day with no trade that also holds a 20-action one- or two-sector loop."""
+    """A no-trade day spent in one or two sectors, or a 20-action warp/plot pocket.
+
+    Trailing end-of-day waits after a long trip are not a dead end.
+    """
     by_day: dict[int, list] = {}
     for row, day in zip(rows, days, strict=True):
         by_day.setdefault(int(day), []).append(row)
     stuck: list[int] = []
     for day, chunk in by_day.items():
-        if any(row[1] == "trade" for row in chunk):
+        if any(row[1] == "trade" for row in chunk) or len(chunk) < 20:
             continue
-        if len(chunk) < 20:
+        if len({row[0] for row in chunk}) <= 2:
+            stuck.append(day)
             continue
         for i in range(0, len(chunk) - 19):
             window = chunk[i:i + 20]
             kinds = [row[1] for row in window]
+            if all(k == "wait" for k in kinds):
+                continue
             if len({row[0] for row in window}) <= 2 and all(
                 k in ("warp", "plot_course", "wait") for k in kinds
             ):

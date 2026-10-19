@@ -195,6 +195,11 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "exp0": int(p.experience), "align0": int(p.alignment),
             "bank_carry": 0, "bank_detours": 0, "broke_days": 0,
         }
+        # Read only while a NOTE 92 switch is on. Profile-off never consults it.
+        if st[pid]["brain"] is not None:
+            st[pid]["brain"]._nav_universe = u
+        if st[pid]["agent"] is not None:
+            st[pid]["agent"]._course_universe_ref = u
     if reader_start == "f1":
         for pid, row in st.items():
             if row["kind"] == "R":
