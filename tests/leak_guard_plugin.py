@@ -1,7 +1,9 @@
 """Opt-in leak guard. Not loaded unless pytest is given -p.
 
     pytest -p tests.leak_guard_plugin
-    pytest -p tests/leak_guard_plugin.py
+
+pytest -p imports a module name. A filesystem path
+(`-p tests/leak_guard_plugin.py`) raises ImportError.
 
 After each test, compare every UPPER_CASE global in the engine modules below,
 and every CAPTURE_, COMBAT_, SHIP_, FLEET_, or V311_ environment variable, with
