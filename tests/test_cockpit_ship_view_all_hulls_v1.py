@@ -51,7 +51,8 @@ def test_viewports_run_in_their_own_processes() -> None:
     script = str(Path(__file__).resolve())
     for spec in VIEWPORTS:
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(ROOT)
+        # src before the repo root, or the child imports a stale tw2k that has no INFO_MODE.
+        env["PYTHONPATH"] = str(ROOT / "src") + os.pathsep + str(ROOT)
         proc = subprocess.run(
             [sys.executable, script, spec],
             cwd=str(ROOT),
