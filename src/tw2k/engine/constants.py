@@ -3234,6 +3234,36 @@ def port_buy_price_anchor_on() -> bool:
     return PORT_BUY_PRICE_ANCHOR_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
+# NOTE 112 row 165. GAP 2.5. ECONOMY_SCALE_MODE is already "tw2002", and one
+# base still cannot hit both sides of the economy2 100% chart
+# (ECONOMY_CALIBRATION.md). Bible hull prices already come from
+# SHIP_COST_TW2002 on that scale. This switch prices each side from the
+# chart total, then keeps the existing stock, MCIC, and experience slope.
+# It wins over PORT_PRICE_MODE. Stored default stays legacy so the digests
+# do not move. Shields have no sourced unit price and stay off this switch.
+PRICE_SCALE_MODE = "legacy"  # "legacy" | "live"
+# 250-hold totals. Selling port full, MCIC 50. Buying port empty, MCIC -50.
+# Experience 0, no haggle. economy2.html 100% charts. The experience table
+# on that page averages equipment at 11,760 / 32,405. SOURCE-CONFLICT.
+# This follows the 100% chart, as ECONOMY_CALIBRATION.md does.
+PRICE_SCALE_SELL_250 = {"fuel_ore": 3_675, "organics": 6_964, "equipment": 12_190}
+PRICE_SCALE_BUY_250 = {"fuel_ore": 8_791, "organics": 17_712, "equipment": 31_910}
+PRICE_SCALE_HOLDS = 250
+PRICE_SCALE_SELL_MCIC = 50
+PRICE_SCALE_BUY_MCIC = -50
+
+
+def price_scale_live() -> bool:
+    """True when a port quote starts from the economy2 chart, not one base."""
+    return PRICE_SCALE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def price_scale_unit(total: int) -> int:
+    """Nearest whole credit per hold for a 250-hold chart total."""
+    holds = PRICE_SCALE_HOLDS
+    return (int(total) + holds // 2) // holds
+
+
 # port-regen-mcic-v1. Appended so later slices can rebase cleanly.
 # "legacy": a day adds 5% of that commodity's productivity.
 # "live": a day adds 5% of the max stock. One visit cannot move more than
@@ -4376,6 +4406,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "legacy_day_clock_live": (
         "LEGACY_DAY_CLOCK_MODE",
         "NOTE 104: a legacy game with its own day length rolls on that clock while a seat holds the turn",
+    ),
+    "price_scale_live": (
+        "PRICE_SCALE_MODE",
+        "NOTE 112 GAP 2.5: each side of a trade quotes the economy2 100% chart, then the existing slope",
     ),
     "colonist_units_live": (
         "COLONIST_UNITS_MODE",
