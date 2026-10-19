@@ -48,3 +48,13 @@ GeneralNew.html gives `<` and `>` to quick stats. The v3.11 revision history say
 | item | current value | live test | what to record | constant |
 |---|---|---|---|---|
 | Quick-stats and backtrack keys | `>` quick stats, `<` backtrack | From a prompt, press each key | Which screen opens | the two keys in the cockpit |
+
+## Live TWGS test queue (NOTE 97)
+
+Numbers a v3.11 source does not settle. Searched before these rows were added: `CompDisplays.html` (J is a type catalog, no colonist table), `HardwareMenu.html` (better deal, more points, no amounts), `ShipyardMenu.html` ("hefty fee", no price and no length), S2 `S2_cabal_formulas.html` (no haggle-experience table), S7 `S7_softdocs_slice-10.txt` ("haggle for 2 points" as a player method). A player tip says the exact best price pays 5 experience. That tip was not adopted.
+
+| item | current value | live test | what to record | constant |
+|---|---|---|---|---|
+| Good haggle experience | +1 | Make a deal that beats the offer and stops short of the hidden bound | Experience before and after | `HAGGLE_EXP_GOOD` |
+| Great haggle experience | +2, when the accepted price reaches the hidden bound | Repeat and take the price the port will not beat | Experience before and after, and whether 5 is awarded for the exact best price | `HAGGLE_EXP_GREAT` |
+| Ship rename | 5000 credits, 30 characters, 0 turns | At the shipyard, rename the ship | Credits taken, the longest name accepted, and the turn counter | `SHIP_RENAME_COST`, `SHIP_RENAME_NAME_MAX` |
