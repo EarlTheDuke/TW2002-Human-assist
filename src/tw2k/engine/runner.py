@@ -186,6 +186,8 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
         return ActionResult(ok=False, error=f"unknown player {player_id}")
     if not player.alive:
         return ActionResult(ok=False, error="player is destroyed")
+    if int(getattr(player, "death_delay_left", 0) or 0) > 0:
+        return ActionResult(ok=False, error="death delay")
 
     from .legality import release_stale_landing
     release_stale_landing(universe, player)
@@ -502,6 +504,9 @@ def tick_day(universe: Universe) -> None:
             # x3: the first login after midnight, +1 experience and +1 alignment.
             player.experience = int(player.experience) + K.xp_award("daily")
             player.alignment = int(player.alignment) + K.DAILY_ALIGNMENT
+        left = int(getattr(player, "death_delay_left", 0) or 0)
+        if left > 0:
+            player.death_delay_left = left - 1
         player.photon_damped_sector_id = None
         # Photon scramble decays one tick per real game day
         if player.ship.photon_disabled_ticks > 0:
@@ -774,6 +779,10 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
     player = universe.players[pid]
     rng = _rng_for(universe)
     damage = 0
+    # NOTE 79 SD-o. Mines and fighters already skip while the wave is up.
+    # This stamps the same quasar damp a following ship would otherwise miss.
+    if K.photon_follow_damp_live() and sector_photon_active(sector):
+        player.photon_damped_sector_id = sector.id
     # HARDWARE_MODE tw2002 entry order (SHIP_HARDWARE_V2.md v26): NavHaz, one limpet,
     # armids, sector quasar, fighters. Legacy keeps list-order mines then fighters.
     entry_order = K.hardware_tw2002()

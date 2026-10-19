@@ -204,8 +204,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     sector = universe.sectors[player.sector_id]
     out: list[LegalAction] = []
 
-    if not player.alive:
-        return [_la(k, legal=False, reason="player is destroyed", detail="precise") for k in ActionKind
+    if not player.alive or int(getattr(player, "death_delay_left", 0) or 0) > 0:
+        locked = "player is destroyed" if not player.alive else "death delay"
+        return [_la(k, legal=False, reason=locked, detail="precise") for k in ActionKind
                 if (K.hardware_tw2002() or k != ActionKind.LAUNCH_BEACON)
                 and (K.planet_trade_on() or k != ActionKind.PLANET_TRADE)
                 and (K.port_upgrade_on() or k not in (ActionKind.PORT_UPGRADE, ActionKind.PORT_BUILD))
