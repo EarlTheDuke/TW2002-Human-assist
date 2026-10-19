@@ -127,6 +127,7 @@ HELPERS = (
     "capture_credit_line_live",
     "mail_live",
     "legacy_day_clock_live",
+    "price_scale_live",
 )
 
 
@@ -134,7 +135,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 125
+    assert len(names) == 126
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -208,4 +209,5 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.BOT_BANK_FLOAT_MODE == "legacy"
     assert K.MAIL_MODE == "legacy"
     assert K.LEGACY_DAY_CLOCK_MODE == "legacy"
+    assert K.PRICE_SCALE_MODE == "legacy"
 
