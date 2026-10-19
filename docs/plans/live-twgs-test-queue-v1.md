@@ -82,3 +82,15 @@ Searched before these rows were added: `docs/playtests/ports/ECONOMY_SCALE.md` (
 | Attack turn cost | an attack spends 5 turns | Attack a ship and read the turn counter before and after | Turns spent, and whether that number changes with the hull | `TURN_COST["attack"]` |
 | Attacker destroyed by its own attack | the attack does not destroy the attacker | Send every fighter into a stronger ship | Whether the attacker is podded | no constant until a screen shows it |
 | Real-time hop time | no delay. Movement spends turns per warp | Warp one sector in a Merchant Cruiser and in a Scout. Time the hop. Repeat after a SysOp speed change if one is set | Seconds for each hull, and the speed setting | a per-hull travel time, only if the screen or the editor prints one |
+
+## Live TWGS test queue (NOTE 115)
+
+GAP 14.5. Rob, steal, bust, the flee penalty, and the Underground password ladder are already built. These rows have no closed number in the repo, so they were not coded. Searched: `classictw_docs_wiki/Glossary.html` (SDF, SDT, SST, Flee Penalty), `docs/playtests/fedspace/STARDOCK_TAVERN.md` (tv19-tv21), `docs/playtests/ports/ROB_STEAL.md` (r22). Player-advice figures that were not adopted: upgrade equipment to 1260-1510, steal exactly 250, keep experience over 7500, and 14 million per 1,000 turns.
+
+| item | current value | live test | what to record | constant |
+|---|---|---|---|---|
+| Steal-dump-flee, solo | not built. The glossary says SDF needs another corpie and does not give the steps. The flee penalty is already one turn on the next land or port | With a corpie, run one steal-dump-flee cycle. Also try it with one ship | The turns spent, whether the penalty landed, and the solo steps if the game allows them | none until the screen shows a solo procedure |
+| Underground name change | `UG_NAME_CHANGE` is false. The price formula is unknown | In the Underground, change the trader's name | Credits taken and whether the price moves with experience | a name-change price, only if the screen prints one |
+| Tri-Cron | `TAVERN_TRICRON` is off. The tip is free and the game is not built | Buy one Tri-Cron round | The cost and what one round does | a Tri-Cron cost, only if the screen prints one |
+| Illegal goods | Singles Bar, Library, Cineplex, and illegal goods are named and not built | Buy one illegal good, if the Underground sells any | The item name and the price | a price, only if the screen prints one |
+| Rob and steal success awards | steal `max(1, qty // 6)` alignment and `max(1, qty // 15)` experience; rob divides credits by 10,000. Marked UNVERIFIED | Steal a known number of holds, then rob a known number of credits. Read alignment and experience before and after | The two deltas next to the holds and the credits | `STEAL_SUCCESS_ALIGN_DIVISOR`, `STEAL_SUCCESS_EXP_DIVISOR`, `ROB_SUCCESS_ALIGN_DIVISOR`, `ROB_SUCCESS_EXP_DIVISOR` |

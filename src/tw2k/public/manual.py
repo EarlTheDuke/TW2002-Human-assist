@@ -346,6 +346,7 @@ def _trading(f: dict) -> str:
         + _buy_anchor()
         + _price_scale()
         + _busts(f)
+        + _evil_trade_loop()
         + _src("Port haggling notes (HAGGLE.md), the live buy-price anchor, and the bust clear on the day tick.")
     )
 
@@ -768,6 +769,24 @@ def _busts(f: dict) -> str:
             "7 clears when the day number is a multiple of 7."
         )
     return f"<p>{_profile('Bust-clear interval', on, only_v311=False)} {rule}</p>"
+
+
+def _evil_trade_loop() -> str:
+    floor = _n(K.ROB_MIN_ALIGNMENT)
+    if K.evil_trade_loop_live():
+        body = (
+            f"A trader at alignment {floor} or lower steals equipment, lands, and dumps it, "
+            "then beams to another of their ships. With no equipment to steal, they rob, then beam. "
+            f"A steal is at most experience divided by {_n(K.STEAL_HOLD_DIVISOR)} holds. "
+            f"A rob is at most experience times {_n(K.ROB_CREDIT_FACTOR)} credits. "
+            "Cargo stays aboard until it is dumped or sold. Beaming does not carry it."
+        )
+    else:
+        body = (
+            "The steal-dump-transport and rob-transport loops are off. "
+            "Rob and steal still follow the port rules already loaded."
+        )
+    return f"<p>{_profile('Evil trade loops', K.evil_trade_loop_live(), only_v311=False)} {body}</p>"
 
 
 def _photon_wave() -> str:
@@ -1257,7 +1276,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "PORT_PRICE_MODE", "PRICE_SCALE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
         "HAGGLE_EXP_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
         "PORT_CLASS_MAP_MODE", "PORT_CLASS_NUMBER_FIX_MODE", "CLASS0_HOLD_FORMULA_MODE",
-        "HOLD_RULES_MODE", "SHOP_PRICE_MODE",
+        "HOLD_RULES_MODE", "SHOP_PRICE_MODE", "EVIL_TRADE_LOOP_MODE",
     ),
     "ports": (
         "port_upgrade", "port_build",
