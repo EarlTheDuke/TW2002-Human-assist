@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import socket
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -280,16 +279,9 @@ def test_redesign_hides_the_item_unless_this_seat_is_the_creator_and_bot_is_unto
 
 
 def _free_port(start: int = 8210) -> int:
-    for port in range(start, start + 80):
-        if port in BLOCKED:
-            continue
-        with socket.socket() as sock:
-            try:
-                sock.bind(("127.0.0.1", port))
-                return port
-            except OSError:
-                continue
-    raise RuntimeError("no free test port")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(1, low=start, high=start + 80, avoid=set(BLOCKED), sequential=True)
 
 
 def test_screenshots_at_1280_and_390(tmp_path, monkeypatch) -> None:

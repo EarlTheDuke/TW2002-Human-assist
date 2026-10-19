@@ -10,7 +10,6 @@ is missing.
 from __future__ import annotations
 
 import asyncio
-import socket
 import threading
 import time
 from pathlib import Path
@@ -31,16 +30,11 @@ RESERVED_TEST_PORTS = frozenset(range(8031, 8037)) | frozenset(range(8099, 8120)
 
 
 def free_port(start: int = 8050) -> int:
-    for port in range(start, start + 200):
-        if port in RESERVED_TEST_PORTS:
-            continue
-        with socket.socket() as s:
-            try:
-                s.bind(("127.0.0.1", port))
-                return port
-            except OSError:
-                continue
-    raise RuntimeError("no free port >= 8040 outside 8031-8036")
+    from tests._port_lock import claim_ports
+
+    return claim_ports(
+        1, low=start, high=start + 200, avoid=set(RESERVED_TEST_PORTS), sequential=True,
+    )
 
 
 class CuHost:
@@ -55,12 +49,13 @@ class CuHost:
         self.seed, self.park_at, self.fuel = seed, park_at, fuel
         self.day_seconds = day_seconds  # NOTE 60: GameConfig.turn_regen_day_seconds (None = unset)
         self.parked = False  # set once P2 sits on the parking port with its fuel
-        self.port = free_port()
+        self.port = 0
         self.app = create_app(auto_start=False)
         self.runner = self.app.state.runner
         self.runner._saves_root = tmp / "saves"
-        self.server = uvicorn.Server(uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning"))
-        self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
+        self.server = None
+        self.thread = None
+        self._uvicorn = uvicorn
 
     async def _start(self) -> None:
         while not self.server.started:
@@ -119,21 +114,33 @@ class CuHost:
         import tw2k.engine.constants as K
 
         self._info_mode, K.INFO_MODE = K.INFO_MODE, "legacy"
+        # free_port reserves the port across processes before uvicorn binds it.
+        self.port = free_port()
+        self.server = self._uvicorn.Server(
+            self._uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning")
+        )
+        self.thread = threading.Thread(target=lambda: asyncio.run(self._main()), daemon=True)
         self.thread.start()
         deadline = time.time() + 20
-        # Wait for the park too: a test that reads the seat's port right after
-        # `with CuHost(...)` must see the parking port, not the start sector.
-        while time.time() < deadline and not (self.server.started and self.runner.state.universe is not None
-                                              and self.parked):
-            time.sleep(0.1)
+        while time.time() < deadline and not self.server.started:
+            time.sleep(0.05)
         if not self.server.started:
             K.INFO_MODE = self._info_mode
         assert self.server.started, "host did not start"
+        deadline = time.time() + 20
+        # Wait for the park too: a test that reads the seat's port right after
+        # `with CuHost(...)` must see the parking port, not the start sector.
+        while time.time() < deadline and not (self.runner.state.universe is not None and self.parked):
+            time.sleep(0.1)
         return self
 
     def __exit__(self, *exc) -> None:
         self.server.should_exit = True
         self.thread.join(timeout=15)
+        if self.port:
+            from tests._port_lock import release_ports
+
+            release_ports(self.port)
         from tw2k.media.custom_queue import current
 
         running = current()

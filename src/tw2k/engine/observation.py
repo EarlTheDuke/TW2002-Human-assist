@@ -622,6 +622,13 @@ def _event_to_dict(event: Event, viewer_id: str | None = None) -> dict[str, Any]
             and "credits_lost" in (event.payload or {})):
         view.setdefault("facts", {})
         view["facts"]["credits_lost"] = int(event.payload["credits_lost"])
+    # NOTE 105. The number is on the capture event only while the cockpit
+    # sentence is on. The victim and the captor see it. A witness does not (gb16).
+    if (viewer_id and event.kind is EventKind.SHIP_CAPTURED
+            and "credits_lost" in (event.payload or {})
+            and (event.payload.get("victim") == viewer_id or event.actor_id == viewer_id)):
+        view.setdefault("facts", {})
+        view["facts"]["credits_lost"] = int(event.payload["credits_lost"])
     if not view["facts"]:
         view.pop("facts")
     return view
