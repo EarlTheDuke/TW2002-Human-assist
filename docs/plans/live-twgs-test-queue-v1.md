@@ -27,3 +27,16 @@ Items whose numbers are not settled by a v3.11 source. Run each one on Ben's ser
 | Class 0 and StarDock blow | the cabal 22 formula is not used | Blow one Class 0 port and StarDock only if the game can spare them. The cabal rule of thumb is about 248,000 fighters and 32,000 shields on an Interdictor the first time | Fighters sent, shields lost, the rating before and after, and whether the other special ports' ratings rose | `PORT_DEFENSE_RATING` for classes 0 and 9 |
 | Port capture | not implemented. A blown port stays in the sector | After a destroy, try to claim or capture the port | Whether any command captures a port, or the only result is the destroyed port | none until a screen shows a capture |
 | Alien kill alignment share | `ALIEN_KILL_ALIGN_SHARE` 0.5, subtracted from the alien's alignment. Experience is already half if opposite and a quarter if the same | Kill one alien of the other alignment and one of the same alignment. Note your alignment before and after, and the alien's alignment and experience | The alignment change next to the alien's alignment and its experience, so the half-experience reading can be kept or dropped | `ALIEN_KILL_ALIGN_SHARE` |
+
+## Live TWGS test queue (NOTE 102)
+
+Numbers a v3.11 source does not settle. Each row is the live test that would pin the constant. Use a new test character. Do not use a running beta game.
+
+| item | current value | live test | what to record | constant |
+|---|---|---|---|---|
+| StarDock / Class 0 first kill | 248,000 fighters spent, rating 2,500 | Attack StarDock or a Class 0 port with a stock Interdictor until it goes down. A corpie may feed fighters. | Fighters spent, shields lost, waves, and the defensive rating before the kill | `SPECIAL_PORT_FIGS_FIRST`, `SPECIAL_PORT_RATING_FIRST` |
+| StarDock / Class 0 later kill | 890,000 fighters, rating 5,000 | After that port is rebuilt, kill it again, or kill a different special port | Fighters spent and the rating on the second kill | `SPECIAL_PORT_FIGS_AFTER`, `SPECIAL_PORT_RATING_AFTER` |
+| Special-port return fire | not modelled; a wave only spends the fighters sent | Same attacks | Shields and fighters the port removes per wave | no constant yet |
+| Planet collision chance | 10 percent per planet over the cap of 5, never past 100 | Overload a sector past the planet limit and run Extern for several days | Whether a collision happens, and how many planets are lost | `PLANET_COLLISION_PCT_PER_EXCESS` |
+| Collision log wording | "Unstable planetary mass in sector N" every night; the loss line names the planets and leaves the sector number out | Same overload | The exact daily-log lines | the two `PLANET_COLLISION` summaries |
+| Sector 1 overload | skipped (Old FAQ v2) | Overload sector 1 if the game allows it | Whether Extern collides planets there | the `STARDOCK_SECTOR` skip in `_planet_collisions` |

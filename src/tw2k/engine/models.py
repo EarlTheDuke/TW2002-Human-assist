@@ -294,6 +294,8 @@ class EventKind(str, Enum):
     PLANET_TRANSPORT = "planet_transport"
     PLANET_COLONISTS_KILLED = "planet_colonists_killed"
     PLANET_DESTROYED = "planet_destroyed"
+    # NOTE 102. Nightly overload collision. Never emitted while PLANET_COLLISION_MODE is legacy.
+    PLANET_COLLISION = "planet_collision"
     RECALL_DEPLOYED = "recall_deployed"
     SURRENDER = "surrender"
     FIGHTER_CHALLENGE = "fighter_challenge"
@@ -463,7 +465,11 @@ class MineDeployment(BaseModel):
 class Sector(BaseModel):
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"port_destroyed_day": None})
+        return _omit_defaults(handler(self), {
+            "port_destroyed_day": None,
+            "special_port_figs": 0,
+            "special_port_down_day": None,
+        })
 
     id: int
     warps: list[int] = Field(default_factory=list)
@@ -481,6 +487,10 @@ class Sector(BaseModel):
     beacon: str | None = None
     # port-upgrade-build-v1. Day a port here was destroyed. Omitted while None.
     port_destroyed_day: int | None = None
+    # NOTE 102. Fighters spent on a StarDock or Class 0 port, and the day it went
+    # down. Omitted while 0 / None so a legacy sector dump stays identical.
+    special_port_figs: int = 0
+    special_port_down_day: int | None = None
     # Display hint for the map view (computed at generation time)
     x: float = 0.0
     y: float = 0.0
@@ -1296,6 +1306,7 @@ class Universe(BaseModel):
             "gold_grudges": {},
             "ferrengi_pace_bank_s": 0.0,
             "ferrengi_pace_covered_s": 0.0,
+            "special_ports_destroyed": 0,
         })
         # A server restart clears Gold grudges. Never write the list out.
         if isinstance(data, dict):
@@ -1348,6 +1359,8 @@ class Universe(BaseModel):
     ferrengi_grudges: set[str] = Field(default_factory=set)
     # NOTE 86 FER-d. Seconds not yet spent on a 30 s move roll, and seconds of
     # this day already fed from the live clock. Omitted while 0.
+    # NOTE 102. How many StarDock or Class 0 ports have been destroyed. Omitted while 0.
+    special_ports_destroyed: int = 0
     ferrengi_pace_bank_s: float = 0.0
     ferrengi_pace_covered_s: float = 0.0
     # STARDOCK_TAVERN.md tv28. Omitted while None so a legacy dump stays byte-identical.

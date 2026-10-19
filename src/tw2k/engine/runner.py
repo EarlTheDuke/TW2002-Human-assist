@@ -565,6 +565,11 @@ def tick_day(universe: Universe) -> None:
         from .port_build import advance_construction
         advance_construction(universe)
 
+    if K.special_port_defence_live():
+        _rebuild_special_ports(universe)
+    if K.planet_collision_live():
+        _planet_collisions(universe)
+
     universe.emit(
         EventKind.DAY_TICK,
         payload={"day": universe.day},
@@ -1044,11 +1049,15 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
         if here is not None and here.sector_id == player.sector_id:
             return ActionResult(ok=False, error="lift off first")
     sector = universe.sectors[player.sector_id]
-    if sector.port is None or (
-        sector.port.class_id == PortClass.STARDOCK and not K.port_class_live()
+    port = sector.port
+    if K.special_port_defence_live() and port is not None and getattr(sector, "special_port_down_day", None) is not None:
+        # Iago v1.1: the port is still there, marked destroyed, and docking kills you.
+        _destroy_ship(universe, pid, reason="port radiation")
+        return ActionResult(ok=False, error="the port is radiating — you are destroyed", turns_spent=0)
+    if port is None or (
+        port.class_id == PortClass.STARDOCK and not K.port_class_live()
     ):
         return ActionResult(ok=False, error="no trading port in this sector")
-    port = sector.port
     if K.port_attack_all_classes() and getattr(sector, "port_destroyed_day", None) is not None:
         # Iago: the port is still in the sector, and docking there is fatal.
         _destroy_ship(universe, pid, "destroyed port")
@@ -1443,8 +1452,15 @@ def _handle_atomic_detonation(
 def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult:
     player = universe.players[pid]
     target_id = action.args.get("target")
-    if K.port_attack_live() and str(target_id) == "port":
-        return _handle_port_attack(universe, pid, action)
+    if str(target_id) == "port":
+        port_here = getattr(universe.sectors[player.sector_id], "port", None)
+        special = (
+            K.special_port_defence_live()
+            and port_here is not None
+            and int(port_here.class_id) in (int(PortClass.STARDOCK), int(PortClass.FEDERAL))
+        )
+        if special or K.port_attack_live():
+            return _handle_port_attack(universe, pid, action)
     if target_id is None:
         return ActionResult(ok=False, error="attack requires target player id")
     if K.challenge_on() and live_challenge(universe, pid) is not None:
@@ -1531,6 +1547,16 @@ def _handle_port_attack(universe: Universe, pid: str, action: Action) -> ActionR
     cost = K.TURN_COST["attack"]
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
+    if (
+        K.special_port_defence_live()
+        and int(port.class_id) in (int(PortClass.STARDOCK), int(PortClass.FEDERAL))
+    ):
+        sector = universe.sectors[player.sector_id]
+        if getattr(sector, "special_port_down_day", None) is not None:
+            return ActionResult(ok=False, error="the port is radiating", turns_spent=0)
+        player.alignment += K.PORT_ATTACK_ALIGNMENT
+        player.ship.fighters -= qty
+        return _attack_special_port(universe, pid, player, sector, port, qty, cost)
     player.alignment += K.PORT_ATTACK_ALIGNMENT
     player.ship.fighters -= qty
     cls = int(port.class_id)
@@ -1591,6 +1617,127 @@ def _handle_port_attack(universe: Universe, pid: str, action: Action) -> ActionR
         summary=f"{player.name} attacked the port",
     )
     return ActionResult(ok=True, turns_spent=cost)
+
+
+def _attack_special_port(universe, pid, player, sector, port, qty: int, cost: int) -> ActionResult:
+    """Spend fighters against StarDock or a Class 0 port. A short wave does not kill it."""
+    prior = int(getattr(universe, "special_ports_destroyed", 0) or 0)
+    budget = K.special_port_figs_needed(prior)
+    rating = K.special_port_rating(prior)
+    sector.special_port_figs = int(getattr(sector, "special_port_figs", 0) or 0) + int(qty)
+    destroyed = int(sector.special_port_figs) >= int(budget)
+    if destroyed:
+        sector.special_port_figs = 0
+        sector.special_port_down_day = int(universe.day)
+        universe.special_ports_destroyed = prior + 1
+        if K.exp_sources_live():
+            player.experience = int(player.experience) + int(K.PORT_DESTROY_EXPERIENCE)
+            player.alignment = int(player.alignment) - int(K.PORT_DESTROY_ALIGNMENT)
+        universe.emit(
+            EventKind.PORT_DESTROYED,
+            actor_id=pid,
+            sector_id=sector.id,
+            payload={"class": int(port.class_id), "rating": rating, "fighters": qty},
+            summary=f"!!! Port in {sector.id} destroyed. Radiation for {K.SPECIAL_PORT_RADIATION_DAYS} days !!!",
+        )
+    universe.emit(
+        EventKind.COMBAT,
+        actor_id=pid,
+        sector_id=sector.id,
+        payload={
+            "exchange_kind": "special_port",
+            "vs": "port",
+            "attacker": player.name,
+            "defender": "port",
+            "attacker_f": qty,
+            "attacker_s": int(player.ship.shields),
+            "defender_f": 0,
+            "defender_s": 0,
+            "attacker_losses": qty,
+            "defender_losses": 0,
+            "outcome": "destroyed" if destroyed else "survived",
+            "sector_claimed": False,
+            "planet_id": None,
+            "planet_name": "",
+            "citadel_level": 0,
+            "sent": qty,
+            "defender_fled": False,
+            "port_class": int(port.class_id),
+            "defensive_rating": rating,
+            "fighters_spent": int(qty) if destroyed else int(sector.special_port_figs),
+            "fighters_needed": budget,
+            "barrage": None,
+        },
+        summary=f"{player.name} attacked the port",
+    )
+    return ActionResult(ok=True, turns_spent=cost)
+
+
+def _rebuild_special_ports(universe: Universe) -> None:
+    """The Feds put StarDock and the Class 0 ports back when the radiation clears."""
+    days = int(K.SPECIAL_PORT_RADIATION_DAYS)
+    for sid in sorted(universe.sectors):
+        sector = universe.sectors[sid]
+        down = getattr(sector, "special_port_down_day", None)
+        if down is None or sector.port is None:
+            continue
+        if int(universe.day) < int(down) + days:
+            continue
+        sector.special_port_down_day = None
+        sector.special_port_figs = 0
+        universe.emit(
+            EventKind.PORT_DESTROYED,
+            sector_id=sid,
+            payload={"rebuilt": True, "class": int(sector.port.class_id)},
+            summary=f"The Feds rebuilt the port in sector {sid}",
+        )
+
+
+def _planet_collisions(universe: Universe) -> None:
+    """Extern: an overloaded sector may lose two planets. No draw unless one is over the cap."""
+    over = [
+        sid for sid in sorted(universe.sectors)
+        if sid != K.STARDOCK_SECTOR
+        and len(universe.sectors[sid].planet_ids) > int(K.PLANETS_PER_SECTOR_CAP)
+    ]
+    if not over:
+        return
+    from .hardware import add_navhaz
+
+    rng = _rng_for(universe)
+    for sid in over:
+        sector = universe.sectors[sid]
+        universe.emit(
+            EventKind.PLANET_COLLISION,
+            sector_id=sid,
+            payload={"overloaded": True, "planets": len(sector.planet_ids)},
+            summary=f"Unstable planetary mass in sector {sid}",
+        )
+        excess = len(sector.planet_ids) - int(K.PLANETS_PER_SECTOR_CAP)
+        pct = min(100, excess * int(K.PLANET_COLLISION_PCT_PER_EXCESS))
+        if rng.randrange(100) >= pct:
+            continue
+        ids = [int(pid) for pid in sector.planet_ids if int(pid) in universe.planets]
+        rng.shuffle(ids)
+        names = []
+        for planet_id in ids[:2]:
+            planet = universe.planets.get(planet_id)
+            if planet is None:
+                continue
+            names.append(str(planet.name))
+            for other in universe.players.values():
+                if other.planet_landed == planet.id:
+                    other.planet_landed = None
+            sector.planet_ids = [item for item in sector.planet_ids if int(item) != planet_id]
+            del universe.planets[planet_id]
+            add_navhaz(sector, int(K.NAVHAZ_PER_PLANET_DESTROYED))
+        if names:
+            universe.emit(
+                EventKind.PLANET_COLLISION,
+                sector_id=sid,
+                payload={"destroyed": names},
+                summary=f"{' and '.join(names)} lost to unstable planetary mass",
+            )
 
 
 def _attack_qty(player, action: Action) -> tuple[int, ActionResult | None]:
