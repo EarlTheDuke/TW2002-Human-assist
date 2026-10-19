@@ -111,7 +111,7 @@
   let SC = "";
   let TD = "";
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
-  let courseCard = null, cameFrom = null, mapEnlarged = false, mapSuppressClick = false;
+  let courseCard = null, cameFrom = null, mapEnlarged = false, mapSuppressClick = false, engageFocus = false, refreshCount = 0;
   const mapView = { k: 1, x: 0, y: 0 };
   const mapPointers = new Map();
   let mapPtr = null, mapPinch = null, mapDownNode = null;
@@ -1256,6 +1256,32 @@
     el.textContent = "auto-WAIT " + left + "s";
     el.className = "seat-timer" + (left < 30 ? " amber" : "");
   }
+  function dawnLeft() {
+    if (!TC) return null;
+    if (TC.next_day_in_s != null) return leftOf(dayDeadline);
+    if (TC.next_day_at != null) return Math.max(0, Number(TC.next_day_at) - Date.now() / 1000);
+    return null;
+  }
+  function paintDayEnds() {
+    // NOTE 106. Only when the observation carries a next dawn. No clock, no new line.
+    const stat = $("turnsStat");
+    if (!stat) return;
+    let el = $("dayEnds");
+    if (!el) {
+      el = document.createElement("span");
+      el.id = "dayEnds";
+      el.dataset.testid = "day-ends";
+      stat.appendChild(el);
+    }
+    const left = dawnLeft();
+    if (!S || left == null) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    el.textContent = "Day " + S.day + " ends in " + clockRemain(left) + "; turns refill at dawn";
+  }
   function paintClocks() {
     const day = $("dayClock");
     if (day) {
@@ -1263,6 +1289,7 @@
       day.textContent = left == null ? "" : ", next day in " + clockRemain(left);
     }
     if (S && $("turns")) $("turns").textContent = turnFace();
+    paintDayEnds();
     paintSeatTimer();
     const stat = $("turnsStat");
     if (stat) {
@@ -1716,6 +1743,7 @@
     const sentence = "plotted course " + full.join(" > ") + ", " + hops.length + " hops" + (turns ? ", " + turns + " turns" : "");
     rememberLine(sentence);
     mapSig = "";
+    engageFocus = true;
     await refresh();
     setResult(sentence);
   }
@@ -1741,7 +1769,12 @@
     const grey = hopCost > left ? " dim" : "";
     html += '<button type="button" class="eng' + grey + '" data-testid="engage">Engage Express</button><button type="button" data-testid="course-cancel">Cancel</button>';
     box.innerHTML = html;
-    box.querySelector("[data-testid=engage]").addEventListener("click", engage);
+    const engageBtn = box.querySelector("[data-testid=engage]");
+    engageBtn.addEventListener("click", engage);
+    if (engageFocus) {
+      engageFocus = false;
+      engageBtn.focus();
+    }
     box.querySelector("[data-testid=course-cancel]").addEventListener("click", () => { courseCard = null; mapSig = ""; map(); });
     const avoid = box.querySelector("[data-testid=avoid-link]");
     if (avoid) avoid.addEventListener("click", () => avoidForm());
@@ -2052,6 +2085,8 @@
   function reveal(el) {
     if (!el) return;
     try { el.scrollIntoView({ block: "center", inline: "nearest" }); } catch (e) { /* keep the form */ }
+    const active = document.activeElement;
+    if (active && el.contains(active)) return;
     const focus = el.querySelector("input, select, textarea, button");
     if (focus && focus.focus) {
       try { focus.focus(); } catch (e) { /* a hidden panel */ }
@@ -2091,6 +2126,11 @@
       openFormKind = null;
       restore = null;
     }
+    // NOTE 106. A refresh used to rebuild #formSlot every 2 s, so a choice still
+    // open in a <select> died with the old element and Enter sent the default.
+    // The same form with the same inputs stays in the document.
+    const openSlot = $("formSlot");
+    if (restore && openSlot && openSlot.querySelector(".frm")) return;
     if (restore) {
       const active = document.activeElement;
       if (active && active.dataset && active.dataset.n) formFocus = active.dataset.n;
@@ -2929,6 +2969,7 @@
     slot.appendChild(wrap);
     pct.focus();
     pct.select();
+    reveal(wrap);
   }
   function disruptorForm(saved) {
     const slot = $("formSlot");
@@ -2962,6 +3003,7 @@
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
     wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
+    reveal(wrap);
   }
   function transwarpForm(saved) {
     const slot = $("formSlot");
@@ -3007,6 +3049,7 @@
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
     wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
+    reveal(wrap);
   }
   function yoursHere() {
     const group = (S.sector || {}).fighter_group;
@@ -3050,17 +3093,29 @@
     modeLabel.appendChild(mode);
     wrap.appendChild(leaveLabel);
     wrap.appendChild(modeLabel);
+    const confirm = button("CONFIRM", () => submit());
+    confirm.dataset.role = "confirm";
+    const paintConfirm = () => {
+      const want = Number(leave.value);
+      const have = yoursHere().count;
+      const word = mode.value || "defensive";
+      if (leave.value === "" || !Number.isFinite(want) || want < 0) { confirm.textContent = "CONFIRM"; return; }
+      if (want > have) confirm.textContent = "Deploy " + fmt(want - have) + " " + word;
+      else if (want < have) confirm.textContent = "Take " + fmt(have - want);
+      else confirm.textContent = "Set " + word;
+    };
     const submit = () => {
       const want = Number(leave.value);
       if (leave.value === "" || !Number.isFinite(want) || want < 0) { setResult("Type an amount.", true); return; }
       const have = yoursHere().count;
       const onShip = Number((S.ship || {}).fighters || 0);
       const room = Math.max(0, cap - onShip);
+      const word = mode.value || "defensive";
       if (want === have) {
-        if (mode.value && mode.value !== yoursHere().mode && onShip > 0 && legal("deploy_fighters")) {
+        if (word && word !== yoursHere().mode && onShip > 0 && legal("deploy_fighters")) {
           openFormKind = null;
           slot.innerHTML = "";
-          act("deploy_fighters", { qty: 1, mode: mode.value }, "set fighter mode");
+          act("deploy_fighters", { qty: 1, mode: word }, "Set " + word);
           return;
         }
         setResult("That many are already in this sector.", true);
@@ -3072,7 +3127,7 @@
         const diff = want - have;
         if (diff > onShip) { setResult("You only have " + fmt(onShip) + " fighters on board.", true); return; }
         if (!legal("deploy_fighters")) { setResult(plainReason((LA("deploy_fighters") || {}).reason), true); return; }
-        act("deploy_fighters", { qty: diff, mode: mode.value }, "leave fighters");
+        act("deploy_fighters", { qty: diff, mode: word }, "Deploy " + fmt(diff) + " " + word);
         return;
       }
       let diff = have - want;
@@ -3083,13 +3138,18 @@
       if (!legal("recall_deployed")) { setResult(plainReason((LA("recall_deployed") || {}).reason), true); return; }
       act("recall_deployed", { what: "fighters", qty: diff }, "take fighters");
     };
-    wrap.appendChild(button("CONFIRM", submit));
+    leave.addEventListener("input", paintConfirm);
+    mode.addEventListener("change", paintConfirm);
+    mode.addEventListener("input", paintConfirm);
+    paintConfirm();
+    wrap.appendChild(confirm);
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
     wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
     const again = (saved && formFocus && wrap.querySelector('[data-n="' + formFocus + '"]')) || leave;
     again.focus();
     if (again.type === "number" || again.type === "text") again.select();
+    reveal(wrap);
   }
   function mineCounts() {
     const aboard = (S.ship || {}).mines || {};
@@ -3189,6 +3249,7 @@
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
     slot.appendChild(wrap);
     if (qty) { qty.focus(); qty.select(); }
+    reveal(wrap);
   }
   function terraForm(saved) {
     const slot = $("formSlot");
@@ -3393,6 +3454,7 @@
     slot.appendChild(wrap);
     amount.focus();
     amount.select();
+    reveal(wrap);
   }
   function quasarForm(kind, saved) {
     const slot = $("formSlot");
@@ -3436,6 +3498,7 @@
     slot.appendChild(wrap);
     pct.focus();
     pct.select();
+    reveal(wrap);
   }
   function jumpForm(kind, saved) {
     const slot = $("formSlot");
@@ -3481,6 +3544,7 @@
     wrap.addEventListener("keydown", (ev) => formKey(ev, submit));
     slot.appendChild(wrap);
     dest.focus();
+    reveal(wrap);
   }
   function formPreview(kind) {
     const planet = landedPlanet();
@@ -3685,6 +3749,7 @@
     const go = () => {
       const n = Number(input.value);
       m.hidden = true;
+      if (input.blur) input.blur();
       if (n) done(n);
     };
     $("sectorGo").addEventListener("click", go);
@@ -3990,6 +4055,7 @@
       first.focus();
       if (first.select) first.select();
     }
+    reveal(wrap);
   }
   function tavernText(which, saved) {
     const kind = which || (saved && saved.which) || "tavern_talk";
@@ -4150,6 +4216,7 @@
     slot.appendChild(wrap);
     input.focus();
     input.select();
+    reveal(wrap);
   }
   function memoForm(saved) {
     const a = LA("corp_memo") || { legal: false, reason: "" };
@@ -4208,6 +4275,7 @@
     slot.appendChild(wrap);
     password.focus();
     password.select();
+    reveal(wrap);
   }
   function dropForm(a, saved) {
     const spec = a || LA("corp_drop") || { legal: false, reason: "", params: {} };
@@ -4247,6 +4315,7 @@
     wrap.appendChild(button("ESC", () => { openFormKind = null; slot.innerHTML = ""; }));
     wrap.addEventListener("keydown", (ev) => formKey(ev, go));
     slot.appendChild(wrap);
+    reveal(wrap);
   }
   function transferForm(a, saved) {
     const spec = a || LA("corp_transfer") || { legal: false, reason: "", params: {} };
@@ -4318,6 +4387,7 @@
     slot.appendChild(wrap);
     qty.focus();
     qty.select();
+    reveal(wrap);
   }
   function commanderName(id) {
     const row = ((S && S.other_players) || []).find((item) => item.id === id);
@@ -4908,9 +4978,15 @@
       return;
     }
     if (k === "M") {
-      const w = S.sector.warps_out || [];
-      if (w.length === 1) return go(w[0]);
+      // NOTE 106. M always asks. One exit is the default, so Enter takes it.
+      // A typed sector that is not next door plots and waits for Engage.
+      const w = (S.sector.warps_out || []).map(Number);
       askSector((n) => go(n));
+      const input = $("sectorAsk");
+      if (input && w.length === 1) {
+        input.value = String(w[0]);
+        input.select();
+      }
       return;
     }
     if (k === "P") return openForm("trade");
@@ -5549,7 +5625,7 @@
     syncSeatTimer(st);
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     const dayBefore = S ? Number(S.day) : null;
-    if (st.observation) { S = st.observation; render(); }
+    if (st.observation) { S = st.observation; render(); refreshCount += 1; }
     if (!state.busy && S && dayBefore != null && Number(S.day) === dayBefore) justActed = false;
     await fetchEvents();
     keys();
@@ -5635,6 +5711,13 @@
     serverWaits() { return Number(state.waitStreak || 0); },
     resetWaits() { waitStreak = 0; state.waitStreak = 0; },
     do(kind, args) { return act(kind, args || {}, kind); },
+    refreshCount() { return refreshCount; },
+    refreshNow() { return refresh(); },
+    setTurnClock(clock) {
+      TC = clock || null;
+      syncClocks();
+      paintClocks();
+    },
   };
   window.__tw2kShip = {
     hulls() { return Object.keys(SHIPS); },
