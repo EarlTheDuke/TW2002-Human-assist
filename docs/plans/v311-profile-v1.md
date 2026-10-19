@@ -6,10 +6,9 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (99 helpers)
+## The switch set (101 helpers)
 
-Row 84 is still reserved for NOTE 75 and is not in this table yet. NOTE 78 uses rows 85-89. NOTE 86 uses rows 105-107.
-The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`).
+The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. NOTE 86 uses rows 105-107. NOTE 89 uses rows 116 and 117. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`).
 
 | # | switch | helper | why it is on | MASTER_PLAN note |
 |---|---|---|---|---|
@@ -112,6 +111,8 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 105 | `SPECIAL_HULL_RULES_MODE` | `special_hull_rules_on` | NOTE 86 CMB-m: a living Interdictor Cruiser holds every other ship in its sector (warp, TransWarp, combat flee, fighter retreat, Ferrengi-encounter flee), and a Tholian Sentinel defending a planet of its own corp fights at 4:1. Both need `ship_roster_live`. Stored default stays legacy | row 104 CMB-l was already the stored default |
 | 106 | `FERRENGI_GRUDGE_MODE` | `ferrengi_grudge_on` | NOTE 86 FER-c: the Ferrengi that was attacked remembers that trader and hops toward them. A neighbour bands into a sector where the target has more fighters than this ship and another Ferrengi is already there or one hop away. The strong-target cutoff is UNVERIFIED. Stored default stays legacy | - |
 | 107 | `FERRENGI_PACE_MODE` | `ferrengi_pace_on` | NOTE 86 FER-d: each living Ferrengi has a 1-in-20 chance to hop every 30 seconds (`FERRENGI_MOVE_ONE_IN`, `FERRENGI_MOVE_INTERVAL_S`). Regeneration stays one 20% step per day (`FERRENGI_REGEN_PCT`). The once-a-day hunt still makes the attack. Stored default stays legacy | row 108 SD-q was already the stored default |
+| 116 | `COLONIST_UNITS_MODE` | `colonist_units_live` | NOTE 89: Terra live puts 1,000 people in a hold. A non-M drop of those people used to land as that many handbook colonists (30 holds became 30,000, then grew, and net worth priced each one). The switch divides by `TERRA_LIVE_PER_HOLD` on the way onto the planet and multiplies on the way back. A remainder is refused with "colonists move by the thousand". Class M keeps its people path. Holds are `ceil(people / per_hold)` in the free-hold caps, jettison, and the cargo listings. Stored default stays legacy | - |
+| 117 | `COLONIST_NW_UNITS_MODE` | `colonist_nw_units` | NOTE 89: colonists in the hold are people, and `COLONIST_PRICE` is one handbook thousand. The switch scores `people // 1,000`. A non-M planet is not divided again while `colonist_units_live()` is on, because that switch already stored handbook units. Class M keeps `CLASS_M_NW_MODE`. The growth-dividend basis stays on the stored count. Stored default stays legacy | - |
 
 Rows 95 and 98 were already done on this tip, so they are not helpers. Row 95, Class 0 price change and FedSpace tows and clean-up, already run in `tick_day`: `fighter_unit_price`, `shield_unit_price` and `hold_day_base` move with the day; `fed.run_tows` tows ships; `class0.extern_sweep` clears MSL and Class 0 fighters and mines; `hardware.tick_navhaz` clears FedSpace NavHaz. Row 98, the C.E.O. leaving, already dissolves the corp and rogues fighters outside his sector (`corp.handle_corp_leave`, `corp.disband`).
 
@@ -191,3 +192,11 @@ Five switches, stored default `"legacy"`. The profile turns the helpers on and d
 - Densities. Live generation still draws the clone ports and planets on the main rng, records the Class 0 sectors that layout would pick, then replaces the fill from a side rng: about 40% ports, up to 20% planets, and no decorative Fed ports in sectors 2-10. StarDock stays sector 1. Terra's pool is unchanged. Class 0 is installed in the sectors the clone layout chose, so a density-only flip does not move Alpha Centauri or Rylos. A one-way flip can, because the lanes moved.
 - One-way share. `one_way_fraction_for` returns 0.03 only when the helper is on and `one_way_fraction` was not set on the game config. An explicit setting, including 0.15, is kept.
 - Detonator. `atomic_detonator_live()` makes `atomic_mines_sold()` false. The port-nuke mine is not sold and deploy is refused. The detonator path is unchanged: colonists first (a detonator set while colonists remain destroys the ship; `planet_destroy` clears them), then the planet. `ATOMIC_MINES_PORT_NUKE` stays True.
+
+## Colonist units (NOTE 89, terra-colonist-units-fix-v1)
+
+Rows 116 and 117. With the profile on, `terra_colonists` take of 30 holds puts 30,000 people in cargo. `_handle_assign_colonists` used to copy that count onto any planet that was not Class M, so a Class C world gained 30,000 handbook colonists. They grew, and `full_net_worth` priced them at `COLONIST_PRICE`.
+
+`COLONIST_UNITS_MODE` stays `"legacy"`. The profile turns `colonist_units_live()` on. A non-M drop converts with `people // TERRA_LIVE_PER_HOLD` and a non-M pickup multiplies back. A remainder is "colonists move by the thousand". Class M is unchanged. Cargo holds are `ceil(people / colonists_per_hold())` for the free-hold cap, a jettison (alignment is one per hold), the ship `cargo_holds` listing, and the observation cargo line.
+
+`COLONIST_NW_UNITS_MODE` stays `"legacy"`. The profile turns `colonist_nw_units()` on. People still in the hold are scored as handbook thousands. A non-M planet is left as stored when the units switch is also on, so 30 handbook colonists stay 30. Turning only the net-worth switch on, with Terra still packing people and the units switch off, divides that planet pool once so the old 1,000x drop is not scored at `COLONIST_PRICE` per person.

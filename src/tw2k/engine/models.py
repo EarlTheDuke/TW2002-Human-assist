@@ -901,7 +901,11 @@ class Player(BaseModel):
                 if _qty <= 0:
                     continue
                 _paid = float(self.ship.cargo_cost.get(_commodity, 0.0) or 0.0)
-                cargo_value += int(round(_qty * _paid)) if _paid > 0 else _qty * int(_base)
+                if _paid > 0:
+                    cargo_value += round(_qty * _paid)
+                else:
+                    scored = K.colonist_score_qty(_qty) if _commodity == Commodity.COLONISTS else _qty
+                    cargo_value += scored * int(_base)
         else:
             cargo_value = (
                 self.ship.cargo.get(Commodity.FUEL_ORE, 0) * K.COMMODITY_BASE_PRICE["fuel_ore"]
@@ -910,7 +914,7 @@ class Player(BaseModel):
                 # Colonists in cargo were almost certainly bought from StarDock
                 # at K.COLONIST_PRICE per head — value them at what they cost
                 # to acquire, not at zero.
-                + self.ship.cargo.get(Commodity.COLONISTS, 0) * K.COLONIST_PRICE
+                + K.colonist_score_qty(self.ship.cargo.get(Commodity.COLONISTS, 0)) * K.COLONIST_PRICE
             )
         ship_value = int(K.ship_cost(self.ship.ship_class.value) * K.NW_HULL_FRACTION)
         # Ship equipment — valued at StarDock buy price (mirrors
