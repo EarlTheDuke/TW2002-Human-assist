@@ -21,6 +21,7 @@ from tw2k.engine.constants import (
     hold_total_price,
     holds_affordable,
     hull_spec,
+    plot_course_hop_limit,
 )
 
 # Cargo hulls a trader steps up through. Combat hulls stay on their own ladder.
@@ -38,6 +39,26 @@ def _legal(legal_actions: list | None) -> dict[str, dict]:
 
 def _ok(legal: dict, kind: str) -> bool:
     return bool((legal.get(kind) or {}).get("legal"))
+
+
+def _course_target(universe: Any, here: int, goal: int) -> int:
+    """A plot target on the shortest course to ``goal`` that the hop limit accepts.
+
+    A course longer than ``plot_course_hop_limit`` is refused whole, so a bot
+    in a far pocket would repeat that refusal and never leave. The waypoint is
+    the furthest sector on that course the limit still allows.
+    """
+    if universe is None or int(here) == int(goal):
+        return int(goal)
+    from tw2k.engine.runner import _bfs_path
+
+    limit = int(plot_course_hop_limit())
+    path = _bfs_path(
+        universe, int(here), int(goal), max_depth=max(limit, len(universe.sectors)),
+    )
+    if not path or len(path) <= limit:
+        return int(goal)
+    return int(path[limit - 1])
 
 
 def ferrengi_loss_sectors(events: list | None, day: int | None, me: str | None) -> set[int]:
@@ -180,6 +201,7 @@ def recovery_course(
     plot_legal: bool,
     warp_legal: bool,
     home: int | None = None,
+    universe: Any = None,
 ) -> dict[str, Any] | None:
     """Plot to StarDock (or home) when holds are under the floor. None when off."""
     if not bots_ferrengi_recovery_live():
@@ -192,7 +214,7 @@ def recovery_course(
     # the course is still the way out, so a false warp_legal does not block it.
     if not plot_legal or warp_legal is None:
         return None
-    target = int(STARDOCK_SECTOR)
+    target = _course_target(universe, int(here), int(STARDOCK_SECTOR))
     why = "holds under the floor; StarDock to rebuy"
     if home is not None and int(home) != int(here) and int(home) != int(STARDOCK_SECTOR):
         # Home is the fallback the note allows. Holds are sold at StarDock, so that comes first.
@@ -212,6 +234,7 @@ def escape_course(
     trail: list[tuple[int, bool]],
     plot_legal: bool,
     warp_legal: bool,
+    universe: Any = None,
 ) -> dict[str, Any] | None:
     """Shortest legal course to StarDock out of a dead end, a one-way, or a 20-action loop.
 
@@ -237,18 +260,23 @@ def escape_course(
         and int(last_from) not in ids
         and not fresh
     )
-    window = trail[-int(BOTS_ESCAPE_WINDOW):]
+    # Plot out before a 20-action pocket is on the log. Eight quiet actions in
+    # one or two sectors is enough to call it a trap; a two-port trade still
+    # has a trade in that span and is left alone.
+    lead = min(8, int(BOTS_ESCAPE_WINDOW))
+    window = trail[-lead:]
     looping = (
-        len(window) >= int(BOTS_ESCAPE_WINDOW)
+        len(window) >= lead
         and not any(traded for _s, traded in window)
         and len({int(s) for s, _t in window}) <= 2
     )
     if not (dead or one_way or looping):
         return None
+    target = _course_target(universe, int(here), int(STARDOCK_SECTOR))
     return {
         "kind": "plot_course",
-        "args": {"target": int(STARDOCK_SECTOR), "execute": True},
-        "thought": "dead end or one-way; shortest course out to StarDock",
+        "args": {"target": int(target), "execute": True},
+        "thought": "dead end or one-way; shortest course out toward StarDock",
     }
 
 
