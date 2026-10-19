@@ -151,7 +151,12 @@ def planet_destroy_reason(universe: Universe, player, planet) -> str | None:
         planet.corp_ticker and player.corp_ticker and planet.corp_ticker == player.corp_ticker
     )
     allied = owner is not None and _are_allied(universe, player.id, owner)
-    if owner is None or owner == player.id or same_corp or allied:
+    # NOTE 102 GAP 14.3: the owner may destroy the planet they just created.
+    # A corp mate, an ally, and an unclaimed planet stay friendly.
+    if owner == player.id:
+        if not K.planet_bust_exp_live():
+            return "planet is friendly"
+    elif owner is None or same_corp or allied:
         return "planet is friendly"
     if int(planet.fighters) > 0 or int(planet.shields) > 0:
         return "planet still has defenders"
