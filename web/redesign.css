@@ -96,6 +96,15 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 .dk{color:var(--dk)}.small{font-size:12px}
 #viewport.fx-warp #sceneImg{animation:warp .7s ease-out}#viewport.fx-trade #scene{animation:trade .6s}
 @keyframes warp{0%{transform:scale(1.25);filter:blur(6px) brightness(2) hue-rotate(60deg)}100%{transform:none;filter:none}}
+#warpClip{position:absolute;inset:0;z-index:4;background:#000;overflow:hidden;pointer-events:none}
+#warpSvg{width:100%;height:100%;display:block;background:radial-gradient(ellipse at 42% 50%,#071428,#000 70%)}
+#warpVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#warpClip .streaks{transform-box:view-box;transform-origin:center;animation:star-streak 2s linear forwards}
+@keyframes star-streak{0%{transform:translateX(28px) scaleX(.45);opacity:.35}100%{transform:translateX(-110px) scaleX(1.85);opacity:.9}}
+#warpClip .warp-ship{transform-box:fill-box;transform-origin:center;animation:warp-jump 2s cubic-bezier(.15,.2,.4,1) forwards}
+@keyframes warp-jump{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(168px,0) scale(.2);opacity:.15}}
+@media (prefers-reduced-motion:reduce){#warpClip .streaks,#warpClip .warp-ship{animation:none}}
+#warpClip.is-still .streaks,#warpClip.is-still .warp-ship{animation:none}
 @keyframes trade{0%{box-shadow:inset 0 0 0 4px var(--y)}100%{box-shadow:none}}
 .panel>h2{border-bottom:1px solid #0000aa}
 #cmdline{background:linear-gradient(#000,#000010)}

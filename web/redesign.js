@@ -550,6 +550,149 @@
     }
   }
 
+  // cockpit-warp-ship-clips-v1. Classic per-hull warp cinema is UNVERIFIED and not
+  // free to trace. Each hull's sequence is drawn from our own silhouette above.
+  // A hull with no rows in web/media/warp-clips.json falls back to warp.out.
+  let warpManifest = null;
+  let warpManifestPromise = null;
+  let warpPlays = 0;
+  let warpTimer = 0;
+  function ensureWarpManifest() {
+    if (warpManifest) return Promise.resolve(warpManifest);
+    if (!warpManifestPromise) {
+      warpManifestPromise = fetch("/static/media/warp-clips.json", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((data) => { warpManifest = data || { hulls: {} }; return warpManifest; })
+        .catch(() => { warpManifest = { hulls: {}, fallback_clip: "warp.out", duration_ms: 2000 }; return warpManifest; });
+    }
+    return warpManifestPromise;
+  }
+  function chooseWarpClip(hull, rnd) {
+    const table = (warpManifest && warpManifest.hulls) || {};
+    const list = Array.isArray(table[hull]) ? table[hull].filter((row) => row && row.id) : [];
+    if (!list.length) {
+      return {
+        fallback: true,
+        id: (warpManifest && warpManifest.fallback_clip) || "warp.out",
+        hull: hull || "",
+        kind: "fallback",
+      };
+    }
+    let roll = typeof rnd === "function" ? Number(rnd()) : Math.random();
+    if (!Number.isFinite(roll)) roll = 0;
+    if (roll < 0) roll = 0;
+    if (roll >= 1) roll = 0.999999;
+    const clip = list[Math.floor(roll * list.length)];
+    return {
+      fallback: false,
+      id: String(clip.id),
+      hull: hull,
+      kind: clip.kind || "svg",
+      duration_ms: clip.duration_ms,
+      webm: clip.webm || "",
+      mp4: clip.mp4 || "",
+      poster: clip.poster || "",
+    };
+  }
+  function warpMotion() {
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const mode = ($("viewport") && $("viewport").getAttribute("data-mode")) || "live";
+    if (mode === "off") return "off";
+    if (reduce || mode === "stills") return "still";
+    return "play";
+  }
+  function warpStars() {
+    let seed = 80;
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    let lines = "";
+    for (let i = 0; i < 42; i++) {
+      const y = rnd() * 244 + 8;
+      const x = rnd() * 340 + 8;
+      const w = 16 + rnd() * 78;
+      lines += '<line x1="' + x.toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + (x + w).toFixed(1) + '" y2="' + y.toFixed(1)
+        + '" stroke="#b9dcff" stroke-width="' + (0.6 + rnd() * 1.1).toFixed(2) + '" opacity="' + (0.28 + rnd() * 0.55).toFixed(2) + '"/>';
+    }
+    return '<g class="streaks" data-testid="warp-streaks">' + lines + "</g>";
+  }
+  function showWarpClip(chosen) {
+    const root = $("warpClip");
+    const svg = $("warpSvg");
+    const video = $("warpVideo");
+    if (!root || !svg) return;
+    const motion = warpMotion();
+    if (motion === "off") { root.hidden = true; return; }
+    const sh = (S && S.ship) || {};
+    const def = SHIPS[chosen.hull] || SHIPS[sh.class] || { name: chosen.hull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
+    const ms = Number(chosen.duration_ms) || Number(warpManifest && warpManifest.duration_ms) || 2000;
+    const file = chosen.kind === "file" && (chosen.webm || chosen.mp4);
+    root.hidden = false;
+    root.setAttribute("data-hull", chosen.hull);
+    root.setAttribute("data-clip", chosen.id);
+    root.setAttribute("data-kind", file ? "file" : "svg");
+    root.setAttribute("data-motion", motion);
+    root.classList.toggle("is-still", motion !== "play");
+    svg.hidden = false;
+    svg.innerHTML = warpStars()
+      + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" transform="translate(200 130)">'
+      + shipBody(sh, def) + "</g></g>";
+    if (video) {
+      video.hidden = true;
+      video.onerror = null;
+      try { video.pause(); } catch (e) { /* no file yet */ }
+      video.removeAttribute("src");
+      if (file && motion === "play") {
+        video.hidden = false;
+        svg.hidden = true;
+        video.src = "/static/media/" + (chosen.webm || chosen.mp4);
+        video.play().catch(() => { video.hidden = true; svg.hidden = false; });
+        video.onerror = () => { video.hidden = true; svg.hidden = false; };
+      }
+    }
+    const generic = document.getElementById("vpClip");
+    if (generic) generic.hidden = true;
+    warpPlays += 1;
+    root.setAttribute("data-plays", String(warpPlays));
+    if (warpTimer) clearTimeout(warpTimer);
+    warpTimer = setTimeout(() => {
+      root.hidden = true;
+      if (video) { try { video.pause(); } catch (e) { /* already quiet */ } }
+    }, ms);
+  }
+  function holdWarp(atMs) {
+    const root = $("warpClip");
+    if (!root || root.hidden) return 0;
+    if (warpTimer) { clearTimeout(warpTimer); warpTimer = 0; }
+    const anims = root.getAnimations({ subtree: true });
+    anims.forEach((anim) => {
+      if (atMs != null) { try { anim.currentTime = atMs; } catch (e) { /* stay on this frame */ } }
+      anim.pause();
+    });
+    return anims.length;
+  }
+  function isRealMove(ev) {
+    if (!ev || !S || ev.actor_id !== S.self_id) return false;
+    if (ev.kind === "warp") {
+      const f = ev.facts || {};
+      const from = f.from != null ? Number(f.from) : Number(ev.sector_id);
+      const to = f.to != null ? Number(f.to) : (f.target != null ? Number(f.target) : NaN);
+      return to !== from;
+    }
+    if (ev.kind === "autopilot") {
+      const f = ev.facts || {};
+      return !!f.executed && Number(f.hops_done || 0) >= 1;
+    }
+    return false;
+  }
+  async function playWarpClips(live) {
+    if (!live || !live.some(isRealMove)) return false;
+    await ensureWarpManifest();
+    const hull = String((S && S.ship && S.ship.class) || "");
+    const chosen = chooseWarpClip(hull);
+    if (chosen.fallback) return false;
+    showWarpClip(chosen);
+    return true;
+  }
+
   const known = (id) => !!((S.known_warps || {})[id] || (S.known_warps || {})[String(id)]);
   function outOfTurns() {
     return !!(S && Number(S.turns_remaining) <= 0);
@@ -4519,11 +4662,19 @@
     noteCourse(fresh);
     if (S) { paintLog(); paintAttackAlert(); }
     if (fresh.some((ev) => ev.kind === "autopilot")) { mapSig = ""; map(); }
+    const hist = catchingUp ? fresh.filter((ev) => ev.seq <= state.mediaHistoryUntil) : [];
+    const live = catchingUp ? fresh.filter((ev) => ev.seq > state.mediaHistoryUntil) : fresh;
+    const playedHull = await playWarpClips(live);
     if (window.TW2KMedia && fresh.length) {
-      const hist = catchingUp ? fresh.filter((ev) => ev.seq <= state.mediaHistoryUntil) : [];
-      const live = catchingUp ? fresh.filter((ev) => ev.seq > state.mediaHistoryUntil) : fresh;
       if (hist.length) window.TW2KMedia.onEvents(clipEvents(hist), S, { history: true });
-      if (live.length) window.TW2KMedia.onEvents(clipEvents(live), S);
+      const liveMedia = clipEvents(live).filter((ev) => {
+        if (!ev) return false;
+        if (ev.kind === "warp_blocked" || ev.kind === "plot_course") return false;
+        return true;
+      });
+      // The hull scene already played. The real-move events still go to onEvents
+      // so a listener sees the batch. hullPlayed tells the player not to start warp.out as well.
+      if (liveMedia.length) window.TW2KMedia.onEvents(liveMedia, S, playedHull ? { hullPlayed: true } : undefined);
     }
   }
 
@@ -4746,7 +4897,32 @@
     },
     serverWaits() { return Number(state.waitStreak || 0); },
     resetWaits() { waitStreak = 0; state.waitStreak = 0; },
+    do(kind, args) { return act(kind, args || {}, kind); },
   };
+  window.__tw2kWarp = {
+    ready() { return !!(warpManifest && warpManifest.hulls && warpManifest.hulls.merchant_cruiser); },
+    hulls() { return Object.keys((warpManifest && warpManifest.hulls) || {}); },
+    pick(hull, rnd) { return chooseWarpClip(hull, rnd); },
+    setList(hull, list) {
+      if (!warpManifest) return false;
+      if (!warpManifest.hulls) warpManifest.hulls = {};
+      warpManifest.hulls[hull] = list;
+      return true;
+    },
+    hold(ms) { return holdWarp(ms); },
+    state() {
+      const root = $("warpClip");
+      return {
+        plays: warpPlays,
+        hidden: !root || root.hidden,
+        hull: root ? root.getAttribute("data-hull") : "",
+        clip: root ? root.getAttribute("data-clip") : "",
+        kind: root ? root.getAttribute("data-kind") : "",
+        motion: root ? root.getAttribute("data-motion") : "",
+      };
+    },
+  };
+  ensureWarpManifest();
   $("mapZoomIn").addEventListener("click", () => zoomMap(1.25));
   $("mapZoomOut").addEventListener("click", () => zoomMap(1 / 1.25));
   $("mapCenter").addEventListener("click", () => { mapView.x = 0; mapView.y = 0; applyMapView(); });

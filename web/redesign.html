@@ -34,6 +34,10 @@
     <div id="vpScreen" role="img" aria-label="View from the cockpit">
       <canvas id="vpStars" class="vp-stars" data-testid="viewport-stars" aria-hidden="true"></canvas>
       <img id="sceneStill" data-testid="scene-still" alt="" hidden />
+      <div id="warpClip" data-testid="warp-clip" data-plays="0" hidden>
+        <svg id="warpSvg" data-testid="warp-svg" viewBox="0 0 400 260" role="img" aria-label="Warp"></svg>
+        <video id="warpVideo" data-testid="warp-video" muted playsinline hidden></video>
+      </div>
       <div class="scan"></div>
       <div id="sectorText" class="ansi"></div>
       <div id="sceneTag" class="ansi"></div>
