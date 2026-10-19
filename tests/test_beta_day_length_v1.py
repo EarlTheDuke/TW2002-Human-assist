@@ -115,12 +115,17 @@ def test_the_cockpit_shows_the_day_clock_and_the_refill(monkeypatch, tmp_path) -
     from tw2k.server.runner import AgentSpec, MatchSpec
 
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    # The match copies this game's 600s day onto the process-wide clock and the
+    # server thread outlives the test. Put the saved value back with the test.
+    monkeypatch.setattr(K, "TURN_REGEN_DAY_SECONDS", K.TURN_REGEN_DAY_SECONDS)
     from tests._port_lock import claim_ports
 
     port = claim_ports(1, low=40000, high=46000)
     app = create_app(auto_start=False)
     runner = app.state.runner
     runner._saves_root = tmp_path / "saves"
+
+    server_box: dict = {}
 
     async def _main() -> None:
         await runner.start(MatchSpec(
@@ -132,28 +137,38 @@ def test_the_cockpit_shows_the_day_clock_and_the_refill(monkeypatch, tmp_path) -
             action_delay_s=0.05, external_timeout_s=30.0,
         ))
         server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+        server_box["server"] = server
         await server.serve()
 
     thread = threading.Thread(target=lambda: asyncio.run(_main()), daemon=True)
     thread.start()
-    base = f"http://127.0.0.1:{port}"
-    for _ in range(80):
-        try:
-            if httpx.get(base + "/bot?layout=redesign", timeout=0.5).status_code == 200:
-                break
-        except httpx.HTTPError:
-            time.sleep(0.1)
-    else:
-        raise RuntimeError("cockpit did not start")
-    SHOTS.mkdir(parents=True, exist_ok=True)
-    with sync() as pw:
-        browser = pw.chromium.launch()
-        for width, tag in ((1280, "1280"), (390, "390")):
-            page = browser.new_page(viewport={"width": width, "height": 800})
-            page.goto(f"{base}/bot?layout=redesign&seat=P2&token={TOK}")
-            page.wait_for_function("document.querySelector('#dayClock').textContent.includes('next day in')", timeout=15000)
-            text = page.locator("#turns").inner_text()
-            assert "(full)" in text or "+1 every" in text
-            page.screenshot(path=str(SHOTS / f"{tag}-clock.png"))
-            page.close()
-        browser.close()
+    try:
+        base = f"http://127.0.0.1:{port}"
+        for _ in range(80):
+            try:
+                if httpx.get(base + "/bot?layout=redesign", timeout=0.5).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                time.sleep(0.1)
+        else:
+            raise RuntimeError("cockpit did not start")
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        with sync() as pw:
+            browser = pw.chromium.launch()
+            for width, tag in ((1280, "1280"), (390, "390")):
+                page = browser.new_page(viewport={"width": width, "height": 800})
+                page.goto(f"{base}/bot?layout=redesign&seat=P2&token={TOK}")
+                page.wait_for_function("document.querySelector('#dayClock').textContent.includes('next day in')", timeout=15000)
+                text = page.locator("#turns").inner_text()
+                assert "(full)" in text or "+1 every" in text
+                page.screenshot(path=str(SHOTS / f"{tag}-clock.png"))
+                page.close()
+            browser.close()
+    finally:
+        server = server_box.get("server")
+        if server is not None:
+            server.should_exit = True
+        thread.join(timeout=15)
+        from tests._port_lock import release_ports
+
+        release_ports(port)
