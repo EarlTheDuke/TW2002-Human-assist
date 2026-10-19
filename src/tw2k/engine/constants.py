@@ -4138,6 +4138,15 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "CORP_PLANET_DISBAND_MODE",
         "NOTE 82 PLN-q: on disband the C.E.O.'s sector stays, the rest go unclaimed",
     ),
+    # NOTE 79 rows 90 and 93. Rows 91 and 92 were already on this tip.
+    "photon_follow_damp_live": (
+        "PHOTON_FOLLOW_DAMP_MODE",
+        "NOTE 79 SD-o: a ship that enters a live photon wave has the quasar damped",
+    ),
+    "death_delay_live": (
+        "DEATH_DELAY_MODE",
+        "NOTE 79 CMB-n: a pod can be locked out for N midnights",
+    ),
 }
 
 
@@ -4501,3 +4510,43 @@ def corp_planet_disband_v306() -> bool:
     if CORP_DISBAND_PLANETS == "v306" or CORP_PLANET_DISBAND_MODE == "v306":
         return True
     return tw2002_live_profile() or v311_profile()
+
+
+# v311-combat-gaps-v1 (NOTE 79) SD-o, row 90. A photon into the next sector
+# already neutralizes that sector's mines and fighters for the wave
+# (hardware.mark_sector_photon_wave, runner sector_photon_active) and damps
+# the quasars for the shooter and anyone already there. "live" also damps
+# the quasars for a ship that enters while the wave is still up. S1: below
+# citadel L5, or under 200 shields, the cannon does not fire. L5 with 200
+# shields still fires. Stored default stays legacy.
+PHOTON_FOLLOW_DAMP_MODE = "legacy"  # "legacy" | "live"
+
+
+def photon_follow_damp_live() -> bool:
+    """True when a following ship inherits the photon wave's quasar damp."""
+    return PHOTON_FOLLOW_DAMP_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# v311-combat-gaps-v1 (NOTE 79) CMB-n, row 93. S7 #16: death delay 0 lets the
+# pod fly at once. 1 or more keeps the pilot out until that many midnights
+# pass. A pod destroyed while that sentence is running has the same number
+# added again. Whether a pod that is already flying starts a new sentence
+# when it is destroyed is not what that paragraph says (UNVERIFIED). The
+# TEDIT maximum is not printed (UNVERIFIED). Stored default stays legacy,
+# which ignores GameConfig.death_delay.
+DEATH_DELAY_MODE = "legacy"  # "legacy" | "live"
+
+
+def death_delay_live() -> bool:
+    """True when GameConfig.death_delay locks a fresh pod out."""
+    return DEATH_DELAY_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def death_delay_days(config) -> int:
+    """Midnights a new pod must wait. 0 when the switch is off or unset."""
+    if not death_delay_live():
+        return 0
+    raw = getattr(config, "death_delay", None)
+    if raw is None:
+        return 0
+    return max(0, int(raw))
