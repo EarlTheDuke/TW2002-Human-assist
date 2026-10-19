@@ -443,6 +443,24 @@ class Lobby:
         log.info("accept %s", self.tag(request))
         return resp
 
+    def _waiting(self, request: Request) -> list[dict[str, Any]]:
+        """Active games this guest can still open, so the new-game screen can point at them."""
+        guest = self.accepted(request)
+        if guest is None:
+            return []
+        rows: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for g in self.store.guest_games(guest["id"]):
+            if g["status"] not in ACTIVE:
+                continue
+            rows.append({"id": g["id"], "name": g["name"], "href": f"/resume/{g['id']}"})
+            seen.add(g["id"])
+        for g in self.store.created_games(guest["id"]):
+            if g["status"] not in ACTIVE or g["id"] in seen:
+                continue
+            rows.append({"id": g["id"], "name": g["name"], "href": f"/games/{g['id']}/join"})
+        return rows
+
     async def new_form(self, request: Request) -> Response:
         gate = self._need_accept(request)
         if gate:
@@ -451,7 +469,7 @@ class Lobby:
             return self.msg("Closed", "New games are switched off right now.", 503)
         if self.full_for(1):
             return self.msg("Beta full", pages.FULL_TEXT, 503)
-        return self.html(pages.new_game(self.brand, presets=self.cfg.day_presets))
+        return self.html(pages.new_game(self.brand, presets=self.cfg.day_presets, waiting=self._waiting(request)))
 
     async def create(self, request: Request) -> Response:
         api = request.url.path.startswith("/api/")
@@ -469,7 +487,8 @@ class Lobby:
         except (FormError, ValueError) as exc:
             if api:
                 return JSONResponse({"detail": str(exc)}, status_code=400)
-            return self.html(pages.new_game(self.brand, error=str(exc), values=form, presets=self.cfg.day_presets),
+            return self.html(pages.new_game(self.brand, error=str(exc), values=form, presets=self.cfg.day_presets,
+                                            waiting=self._waiting(request)),
                              400)
         if self.closed:
             return self._api_or(api, 503, "New games are switched off right now.", request)
@@ -711,7 +730,8 @@ class Lobby:
         return JSONResponse({"id": g["id"], "name": g["name"], "status": g["status"], "day": info.get("day"),
                              "finished": info.get("finished"), "open_seats":
                              sum(1 for s in self.store.seats(g["id"]) if not s["guest_id"]),
-                             "starting_credits": pages.credits_phrase(g["settings"])})
+                             "starting_credits": pages.credits_phrase(g["settings"]),
+                             "turns_per_day": pages.turns_phrase(g["settings"])})
 
     async def status(self, request: Request) -> Response:
         open_seats = sum(1 for g in self._listed() for _ in range(g["open_seats"]))

@@ -304,6 +304,17 @@ def serve(
         help="Name for the first human seat's home planet (1 to 30 characters). "
         "Omit to use the trader's name.",
     ),
+    turns_per_day_override: int = typer.Option(
+        None,
+        "--turns-per-day-override",
+        help="Turns per day for every seat, human and bot (50 to 5000). "
+        "Omit to keep the original pocket.",
+    ),
+    hold_until_human: bool = typer.Option(
+        False,
+        "--hold-until-human",
+        help="Do not start the day clock or the bot turns until a human seat is opened.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -322,6 +333,11 @@ def serve(
         credits_override = _Kday.parse_credits_override(starting_credits_override)
     except ValueError as exc:
         console.print(f"[red]error:[/] --starting-credits-override: {exc}")
+        raise typer.Exit(code=2) from None
+    try:
+        turns_override = _Kday.parse_turns_override(turns_per_day_override)
+    except ValueError as exc:
+        console.print(f"[red]error:[/] --turns-per-day-override: {exc}")
         raise typer.Exit(code=2) from None
 
     # Parse per-agent overrides from comma lists. Blanks in a slot fall
@@ -580,6 +596,8 @@ def serve(
         turn_regen_day_seconds=day_length,
         starting_credits_override=credits_override,
         home_planet_name=home_planet_name,
+        turns_per_day_override=turns_override,
+        hold_until_human=hold_until_human,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 
