@@ -394,7 +394,7 @@ def disband(universe: Universe, corp: Corporation) -> None:
                 md.corp_ticker = None
                 kept.append(md)
         sector.mines = kept
-    if K.CORP_DISBAND_PLANETS == "v306":
+    if K.corp_planet_disband_v306():
         # REV 372-374: planets in the C.E.O.'s sector become his, the rest are orphaned (QC 57: the
         # orphan event names the real former owner instead of None).
         for planet in list(universe.planets.values()):
@@ -783,7 +783,7 @@ def handle_deploy_mines(universe: Universe, pid: str, action: Action) -> ActionR
         return ActionResult(ok=False, error=err)
     ticker = player.corp_ticker if ownership == "corporate" else None
     if kind == MineType.ATOMIC and not K.atomic_mines_sold():
-        return ActionResult(ok=False, error="atomic mines are retired (ATOMIC_MINES_PORT_NUKE off)")
+        return ActionResult(ok=False, error=K.atomic_mine_retired_error())
     if qty <= 0 or qty > player.ship.mines.get(kind, 0):
         return ActionResult(ok=False, error="insufficient mines")
     if sector.id in K.FEDSPACE_SECTORS:

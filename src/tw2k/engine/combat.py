@@ -1247,6 +1247,10 @@ def _destroy_ship_tw2002(
             player.credits = max(int(player.credits), int(K.POD_CASH_CREDITS))
         _place(universe, player, dest)
         outcome = "escape_pod"
+        # NOTE 79 CMB-n. S7 #16: N midnights before the pod may act. 0 flies at once.
+        delay = K.death_delay_days(universe.config)
+        if delay > 0:
+            player.death_delay_left = delay
         # The summary reaches the killer and every witness; where the pod went does not (fog).
         tail = f"escaped in a pod [pod {player.pods_today}/{K.PODS_PER_DAY} today]"
     else:
@@ -1258,6 +1262,11 @@ def _destroy_ship_tw2002(
         _place(universe, player, dest)
         # d9/d11: out until midnight; the free scout waits at StarDock.
         player.turns_today = max(int(player.turns_today), int(player.turns_per_day))
+        # S7 #16: a pod blown up while the pilot is still knocked out adds
+        # another N days. A pod that was already flying does not (UNVERIFIED).
+        delay = K.death_delay_days(universe.config)
+        if delay > 0 and int(player.death_delay_left or 0) > 0:
+            player.death_delay_left = int(player.death_delay_left) + delay
         outcome = "ship_destroyed"
         tail = "SHIP DESTROYED - out until tomorrow, a free Scout waits at StarDock"
 
