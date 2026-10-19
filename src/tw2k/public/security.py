@@ -155,6 +155,10 @@ class GameForm:
     # None is Original: the worker does not pass an override.
     starting_credits_override: int | None = None
     home_planet_name: str | None = None
+    # None is Original (250 on the lobby form). A number replaces every seat.
+    turns_per_day_override: int | None = None
+    # Off unless the new-game form sends it. Missing stays today's start.
+    hold_until_human: bool = False
 
     def settings(self) -> dict[str, Any]:
         out = {
@@ -174,6 +178,10 @@ class GameForm:
             out["starting_credits_override"] = self.starting_credits_override
         if self.home_planet_name:
             out["home_planet_name"] = self.home_planet_name
+        if self.turns_per_day_override is not None:
+            out["turns_per_day_override"] = self.turns_per_day_override
+        if self.hold_until_human:
+            out["hold_until_human"] = True
         return out
 
 
@@ -208,7 +216,10 @@ def _as_bool(data: dict, key: str, default: bool) -> bool:
 
 _ALLOWED = {"name", "rules", "universe_size", "max_days", "turns_per_day", "starting_package", "bots", "ferrengi",
             "day", "humans", "listed", "visibility", "starting_credits", "starting_credits_custom",
-            "home_planet_name"}
+            "home_planet_name", "turns_per_day_custom", "hold_until_human"}
+
+_TURNS_MIN = 50
+_TURNS_MAX = 5_000
 
 _CREDITS_MAX = 10_000_000
 
@@ -230,6 +241,15 @@ def starting_credits_line(override: int | None, original: int) -> str:
     if override is None:
         return f"Starting credits: {int(original):,} (original)"
     return f"Starting credits: {int(override):,} (test setting)"
+
+
+def turns_phrase(settings: dict) -> str:
+    """Lobby card line. Original is the pocket this game already used."""
+    override = settings.get("turns_per_day_override")
+    if override is None:
+        shown = int(settings.get("turns_per_day") or 250)
+        return f"Turns per day: {shown:,} (original)"
+    return f"Turns per day: {int(override):,} (game setting)"
 
 
 def credits_phrase(settings: dict) -> str:
@@ -266,6 +286,40 @@ def _credits_override(data: dict) -> int | None:
     return val
 
 
+def _turns_override(data: dict) -> int | None:
+    """Original (missing, 'original', or 250) is no override. Else 50..5,000."""
+    if "turns_per_day" not in data and "turns_per_day_custom" not in data:
+        return None
+    raw = data.get("turns_per_day", "original")
+    if isinstance(raw, bool):
+        raise FormError("turns per day must be a whole number")
+    if raw is None:
+        return None
+    text = str(raw).strip().lower().replace(",", "").replace("_", "")
+    if text in ("", "original", "none", "250"):
+        return None
+    if text == "custom":
+        if "turns_per_day_custom" not in data or str(data.get("turns_per_day_custom", "")).strip() == "":
+            raise FormError("Type a turns-per-day amount.")
+        return _as_int(data, "turns_per_day_custom", 0, _TURNS_MIN, _TURNS_MAX)
+    if isinstance(raw, float) or "." in text:
+        raise FormError("turns per day must be a whole number")
+    try:
+        val = int(text)
+    except ValueError:
+        raise FormError("turns per day must be a whole number") from None
+    if not _TURNS_MIN <= val <= _TURNS_MAX:
+        raise FormError(f"turns per day must be between {_TURNS_MIN} and {_TURNS_MAX}")
+    return val
+
+
+def _hold_flag(data: dict) -> bool:
+    """Missing stays off, so an old post still starts the clock today."""
+    if "hold_until_human" not in data:
+        return False
+    return _as_bool(data, "hold_until_human", False)
+
+
 def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameForm:
     presets = presets or DAY_PRESETS
     unknown = set(data) - _ALLOWED
@@ -292,12 +346,13 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
     listed = _as_bool(data, "listed", True) if vis is None else str(vis).strip() == "listed"
     if vis is not None and str(vis).strip() not in ("listed", "link"):
         raise FormError("visibility must be listed or link")
+    turns_override = _turns_override(data)
     return GameForm(
         name=name,
         rules=rules,
         universe_size=size,
         max_days=_as_int(data, "max_days", 30, 1, 365),
-        turns_per_day=_as_int(data, "turns_per_day", 250, 20, 2000),
+        turns_per_day=250 if turns_override is None else int(turns_override),
         starting_package=start,
         bots=_as_int(data, "bots", 2, 0, 5),
         ferrengi=_as_bool(data, "ferrengi", True),
@@ -307,6 +362,8 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         day_seconds=int(presets[day]),
         starting_credits_override=_credits_override(data),
         home_planet_name=home_planet_name(data.get("home_planet_name")),
+        turns_per_day_override=turns_override,
+        hold_until_human=_hold_flag(data),
     )
 
 

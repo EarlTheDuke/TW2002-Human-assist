@@ -1173,6 +1173,9 @@ class GameConfig(BaseModel):
     # NOTE 65 item 0. None keeps today's opening credits. A number is what every
     # seat starts with. Left out of dumps while None, so old saves stay put.
     starting_credits_override: int | None = None
+    # NOTE 93. None keeps today's turn pocket. A number is the turns every seat
+    # gets. Left out of dumps while None, so old saves stay put.
+    turns_per_day_override: int | None = None
     # NOTE 66. None keeps "<trader>'s Home" (legacy: "<trader> Home"). The lobby
     # name, when set, is the first human seat's planet. Left out of dumps while None.
     home_planet_name: str | None = None
@@ -1225,6 +1228,11 @@ class GameConfig(BaseModel):
     def _check_credits_override(cls, value: Any) -> Any:
         return K.parse_credits_override(value)
 
+    @field_validator("turns_per_day_override", mode="before")
+    @classmethod
+    def _check_turns_override(cls, value: Any) -> Any:
+        return K.parse_turns_override(value)
+
     @field_validator("home_planet_name", mode="before")
     @classmethod
     def _check_home_planet_name(cls, value: Any) -> Any:
@@ -1244,6 +1252,8 @@ class GameConfig(BaseModel):
             del data["turn_regen_day_seconds"]
         if isinstance(data, dict) and data.get("starting_credits_override", 0) is None:
             data.pop("starting_credits_override", None)
+        if isinstance(data, dict) and data.get("turns_per_day_override", 0) is None:
+            data.pop("turns_per_day_override", None)
         if isinstance(data, dict) and data.get("home_planet_name", 0) is None:
             data.pop("home_planet_name", None)
         if isinstance(data, dict) and data.get("bust_clear_days", 0) is None:

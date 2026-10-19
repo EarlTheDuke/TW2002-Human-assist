@@ -370,14 +370,53 @@ def starting_credits_line(override: int | None, original: int) -> str:
     return f"Starting credits: {int(override):,} (test setting)"
 
 
+# NOTE 93. None keeps today's pocket. A number is the turns every seat gets.
+# 50 to 5,000. The lobby's Original choice does not set this.
+TURNS_OVERRIDE_MIN = 50
+TURNS_OVERRIDE_MAX = 5_000
+
+
+def parse_turns_override(value: object) -> int | None:
+    """Per-game turns per day, or None for the original pocket."""
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    if isinstance(value, bool):
+        raise ValueError("turns per day must be a whole number")
+    try:
+        number = int(str(value).strip().replace(",", "").replace("_", ""))
+    except (TypeError, ValueError):
+        raise ValueError("turns per day must be a whole number") from None
+    if not TURNS_OVERRIDE_MIN <= number <= TURNS_OVERRIDE_MAX:
+        raise ValueError(
+            f"turns per day must be between {TURNS_OVERRIDE_MIN} and {TURNS_OVERRIDE_MAX}"
+        )
+    return number
+
+
+def opening_original_turns() -> int:
+    """The pocket a seat gets when the game did not pick an override."""
+    return LIVE_STARTING_TURNS if starting_package_live() else STARTING_TURNS_PER_DAY
+
+
+def turns_per_day_line(override: int | None, original: int) -> str:
+    """Game-info sentence. An override is a game setting."""
+    if override is None:
+        return f"Turns per day: {int(original):,} (original)"
+    return f"Turns per day: {int(override):,} (game setting)"
+
+
 def opening_loadout(spec_credits: int, spec_turns: int, slot: int,
-                    credits_override: int | None = None) -> tuple[int, int, int]:
+                    credits_override: int | None = None,
+                    turns_override: int | None = None) -> tuple[int, int, int]:
     """Credits, turns per day, and fighters for seat `slot`.
 
     Legacy keeps the ±1000 credit skew. Live uses the measured pocket and
     skips the skew, which is larger than the whole 300-credit stake.
     A credits_override replaces the credits only, for every seat, with no skew.
-    None leaves this function byte-for-byte as it was.
+    A turns_override replaces the turn pocket only, for every seat.
+    None leaves that half of this function byte-for-byte as it was.
     """
     if starting_package_live():
         # The engine default of 1,000 means the caller did not ask. A live
@@ -392,6 +431,8 @@ def opening_loadout(spec_credits: int, spec_turns: int, slot: int,
         credits, turns, fighters = int(spec_credits) + skew, int(spec_turns), STARTING_FIGHTERS
     if credits_override is not None:
         credits = int(credits_override)
+    if turns_override is not None:
+        turns = int(turns_override)
     return credits, turns, fighters
 
 # --- Operator directives ------------------------------------------------------

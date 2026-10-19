@@ -97,7 +97,9 @@
   // is live, so the legacy lines are unchanged.
   let TC = null;
   // NOTE 65 item 0. The server's starting-credits sentence. Empty until the first refresh.
+  // NOTE 93. The server's turns-per-day sentence. Empty until the first refresh.
   let SC = "";
+  let TD = "";
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
   let courseCard = null, cameFrom = null, mapEnlarged = false, mapSuppressClick = false;
   const mapView = { k: 1, x: 0, y: 0 };
@@ -1189,6 +1191,7 @@
   }
   let dayDeadline = null;
   let turnDeadline = null;
+  let seatDeadline = null;
   function clockRemain(total) {
     let s = Math.max(0, Math.round(Number(total) || 0));
     const h = Math.floor(s / 3600);
@@ -1220,6 +1223,29 @@
     const nextText = next == null ? "" : ", next in " + (next < 90 ? Math.max(1, Math.round(next)) + " s" : everyWords(next));
     return left + "/" + cap + " (+1 every " + everyWords(TC.seconds_per_turn) + nextText + ")";
   }
+  function syncSeatTimer(st) {
+    // NOTE 93. The server's seat deadline, counted down here. Amber under 30 s.
+    if (!state.awaiting || !st || st.deadline_at == null || st.server_time == null) {
+      seatDeadline = null;
+      return;
+    }
+    const left = Number(st.deadline_at) - Number(st.server_time);
+    seatDeadline = Number.isFinite(left) ? performance.now() + Math.max(0, left) * 1000 : null;
+  }
+  function paintSeatTimer() {
+    const el = $("seatTimer");
+    if (!el) return;
+    if (!state.awaiting || seatDeadline == null) {
+      el.hidden = true;
+      el.textContent = "";
+      el.className = "seat-timer";
+      return;
+    }
+    const left = Math.max(0, Math.ceil((seatDeadline - performance.now()) / 1000));
+    el.hidden = false;
+    el.textContent = "auto-WAIT " + left + "s";
+    el.className = "seat-timer" + (left < 30 ? " amber" : "");
+  }
   function paintClocks() {
     const day = $("dayClock");
     if (day) {
@@ -1227,6 +1253,7 @@
       day.textContent = left == null ? "" : ", next day in " + clockRemain(left);
     }
     if (S && $("turns")) $("turns").textContent = turnFace();
+    paintSeatTimer();
     const stat = $("turnsStat");
     if (stat) {
       stat.title = TC
@@ -3717,7 +3744,8 @@
     const rows = lines.map(([k, v]) => '<div class="row"><span class="g">' + esc(k) + '</span> <span class="c">' + esc(v) + "</span></div>").join("");
     const note = '<div class="row" data-worth="note">' + esc(worthNote()) + "</div>";
     const info = SC ? '<div class="row" data-game-info="credits"><span class="c">' + esc(SC) + "</span></div>" : "";
-    overlay("Game Status", rows + note + info);
+    const turnsInfo = TD ? '<div class="row" data-game-info="turns"><span class="c">' + esc(TD) + "</span></div>" : "";
+    overlay("Game Status", rows + note + info + turnsInfo);
   }
   function worthNote() {
     // NOTE 71 sentence; under NOTE 73's estimate switch the engine sends what it now counts.
@@ -5320,6 +5348,8 @@
     TC = st.turn_clock || null;
     syncClocks();
     SC = st.starting_credits_line || "";
+    TD = st.turns_per_day_line || "";
+    syncSeatTimer(st);
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     const dayBefore = S ? Number(S.day) : null;
     if (st.observation) { S = st.observation; render(); }

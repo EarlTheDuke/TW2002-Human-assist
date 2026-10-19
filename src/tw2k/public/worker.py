@@ -376,10 +376,15 @@ def install(app, runner) -> None:
 
             spec = getattr(runner, "_spec", None)
             override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
+            turns_override = getattr(getattr(spec, "config", None), "turns_per_day_override", None)
+            seat = next(iter(u.players.values()), None) if u is not None else None
+            original_turns = int(seat.turns_per_day) if seat is not None else K.opening_original_turns()
             return {"ok": True, "status": runner.state.status,
                     "day": int(u.day) if u is not None else None,
                     "finished": runner.state.status == "finished",
-                    "starting_credits": K.starting_credits_line(override, K.opening_original_credits())}
+                    "holding_for_human": bool(getattr(runner, "_hold_until_human", False)),
+                    "starting_credits": K.starting_credits_line(override, K.opening_original_credits()),
+                    "turns_per_day": K.turns_per_day_line(turns_override, original_turns)}
 
         @app.post("/control/seat-token")
         async def seat_token(request: Request) -> dict[str, Any]:
