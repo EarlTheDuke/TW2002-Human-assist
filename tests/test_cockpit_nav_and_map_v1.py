@@ -170,13 +170,21 @@ class _FakeWorker:
 
 
 def _lobby(tmp_path: Path):
-    cfg = C.LobbyConfig(root=tmp_path / "selfhost", port=47299, game_ports=range(47300, 47310), tick_s=3600.0)
+    from tests._cu_host import LOBBY_FREE_START, free_port
+
+    lobby_port = free_port(LOBBY_FREE_START)
+    game_base = free_port(LOBBY_FREE_START, count=10)
+    cfg = C.LobbyConfig(
+        root=tmp_path / "selfhost", port=lobby_port,
+        game_ports=range(game_base, game_base + 10), tick_s=3600.0,
+    )
     app = create_lobby_app(cfg, port_probe=lambda _p: True)
     lob = app.state.lobby
+    lob._held_ports = [lobby_port, *range(game_base, game_base + 10)]
 
     async def fake_start(gid, *, resume):
-        lob.workers.workers[gid] = _FakeWorker(47300)
-        lob.store.set_game(gid, status="running", port=47300)
+        lob.workers.workers[gid] = _FakeWorker(game_base)
+        lob.store.set_game(gid, status="running", port=game_base)
         return True
 
     async def fake_stop(gid, *, lobby_secret, spectator_token, graceful=True):
@@ -190,7 +198,7 @@ def _lobby(tmp_path: Path):
 
 
 def test_item0_the_form_shows_the_choice_and_the_card_shows_the_line(tmp_path) -> None:
-    client, _lob = _lobby(tmp_path)
+    client, lob = _lobby(tmp_path)
     try:
         assert client.post("/api/accept", json={}).status_code == 200
         html = client.get("/new").text
@@ -216,12 +224,15 @@ def test_item0_the_form_shows_the_choice_and_the_card_shows_the_line(tmp_path) -
         assert client.get(f"/api/games/{original.json()['id']}").json()["starting_credits"].endswith("(original)")
     finally:
         client.__exit__(None, None, None)
+        from tests._port_lock import release_ports
+
+        release_ports(*lob._held_ports)
 
 
 def _free_block(n: int) -> int:
-    from tests._port_lock import claim_ports
+    from tests._cu_host import LOBBY_FREE_START, free_port
 
-    return claim_ports(n, low=40000, high=46000)
+    return free_port(LOBBY_FREE_START, count=n)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows host")

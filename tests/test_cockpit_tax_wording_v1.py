@@ -10,10 +10,9 @@ from pathlib import Path
 
 import pytest
 
+from tests._cu_host import CuHost
 from tw2k.engine import constants as K
 from tw2k.engine.models import EventKind
-
-from tests._cu_host import CuHost
 
 TOK = "note83-tax-token-p2-00000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-tax-wording-v1"
@@ -37,28 +36,18 @@ def _show(page, host):
     page.wait_for_timeout(400)
 
 
-def _claim_port() -> int:
-    """A free port at or above 8200, reserved through the shared test port book."""
-    from tests._cu_host import RESERVED_TEST_PORTS
-    from tests._port_lock import claim_ports
-
-    return claim_ports(
-        1, low=8200, high=8400, avoid=set(RESERVED_TEST_PORTS), sequential=True,
-    )
-
-
 def _host(tmp_path_factory, name):
     import tests._cu_host as cu
     from tests._port_lock import release_ports
 
-    port = _claim_port()
+    port = cu.free_port()
     real = cu.free_port
     cu.free_port = lambda start=8050: port
     host = None
     try:
         host = CuHost(tmp_path_factory.mktemp(name), TOK, seed=8301)
         host.__enter__()
-        if host.port in cu.RESERVED_TEST_PORTS or host.port < 8200:
+        if not cu.allowed_test_port(host.port):
             raise AssertionError(f"host bound port {host.port}")
         host._locked_port = port
         return host

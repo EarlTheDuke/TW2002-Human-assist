@@ -16,9 +16,9 @@ from tw2k.server.runner import AgentSpec, MatchSpec
 
 
 def _port() -> int:
-    from tests._port_lock import claim_ports
+    from tests._cu_host import free_port
 
-    return claim_ports(1, low=42000, high=42100, sequential=True)
+    return free_port()
 
 
 def test_a_held_turn_reaches_day_3_on_a_10_second_clock(tmp_path: Path, monkeypatch) -> None:

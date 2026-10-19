@@ -198,15 +198,17 @@ def test_plant_entry_order_navhaz_before_limpet(tw) -> None:
 
 
 def test_free_port_skips_reserved_live_range(monkeypatch) -> None:
-    """Reserved live ports stay unused even when a bind would succeed there.
+    """8060 and every higher port stays out of the free_port scan.
 
-    Every port looks free and the shared port book is empty, so the reserved
-    set is the only thing that moves the scan. Below 8120 the open pockets are
-    8038-8040, 8043-8044, and 8050-8054.
+    Open pockets are 8038-8040, 8043-8044, and 8050-8054. When none of those
+    are free at or above the start, the helper binds port 0. It never scans
+    8120-8249, including when the pockets are busy or the start is past them.
     """
+    import socket
+
     import tw2k.public.config as cfg
     from tests import _port_lock
-    from tests._cu_host import RESERVED_TEST_PORTS, free_port
+    from tests._cu_host import OPEN_TEST_PORTS, RESERVED_TEST_PORTS, free_port
 
     reserved = frozenset().union(
         range(8031, 8038),
@@ -218,21 +220,85 @@ def test_free_port_skips_reserved_live_range(monkeypatch) -> None:
     )
     allowed = set(range(8038, 8041)) | set(range(8043, 8045)) | set(range(8050, 8055))
     assert reserved == RESERVED_TEST_PORTS
+    assert set(OPEN_TEST_PORTS) == allowed
     assert {p for p in range(8031, 8120) if p not in RESERVED_TEST_PORTS} == allowed
     assert 8037 in RESERVED_TEST_PORTS
     assert 8058 in RESERVED_TEST_PORTS and 8059 in RESERVED_TEST_PORTS
 
+    calls: list[tuple[int, int, int]] = []
+    real_claim = _port_lock.claim_ports
+
+    def _spy(n, *, low, high, avoid=None, sequential=False):
+        calls.append((n, low, high))
+        return real_claim(n, low=low, high=high, avoid=avoid, sequential=sequential)
+
     monkeypatch.setattr(cfg, "port_is_free", lambda port, host="127.0.0.1": True)
     monkeypatch.setattr(_port_lock, "_read", lambda: {})
     monkeypatch.setattr(_port_lock, "_write", lambda data: None)
+    monkeypatch.setattr(_port_lock, "claim_ports", _spy)
 
     assert free_port() == 8050
     assert free_port(start=8031) == 8038
     assert free_port(start=8041) == 8043
     assert free_port(start=8045) == 8050
-    assert free_port(start=8055) == 8120
-    assert free_port(start=8099) == 8120
-    for port in (8050, 8038, 8043, 8120):
+    for count, low, high in calls:
+        assert count == 1
+        assert low >= 8038 and high <= 8055
+        assert not set(range(low, high)) & set(range(8120, 8250))
+    calls.clear()
+    assert free_port(count=2) == 8050
+    assert calls == [(2, 8050, 8055)]
+
+    book: dict[str, float] = {}
+    binds: list[tuple[str, int]] = []
+    offered = iter([8120, 45555, 8249, 47001, 8125, 47002, 47010])
+
+    class _Sock:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def bind(self, addr):
+            binds.append(addr)
+            self._port = next(offered) if addr[1] == 0 else addr[1]
+
+        def getsockname(self):
+            return ("127.0.0.1", self._port)
+
+        def close(self):
+            return None
+
+    def _read():
+        return dict(book)
+
+    def _write(data):
+        book.clear()
+        book.update(data)
+
+    monkeypatch.setattr(cfg, "port_is_free", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(_port_lock, "_read", _read)
+    monkeypatch.setattr(_port_lock, "_write", _write)
+    monkeypatch.setattr(socket, "socket", lambda *args, **kwargs: _Sock())
+
+    calls.clear()
+    assert free_port() == 45555
+    assert free_port(start=8055) == 47001
+    assert free_port(start=8099) == 47002
+    assert free_port(start=8099, count=10) == 47010
+    assert len(calls) == 1
+    count, low, high = calls[0]
+    assert count == 1
+    assert low >= 8038 and high <= 8055
+    assert not set(range(low, high)) & set(range(8120, 8250))
+    assert any(addr == ("127.0.0.1", 0) for addr in binds)
+    assert all(addr[1] == 0 or addr[1] >= 8250 for addr in binds)
+    assert "45555" in book and "47001" in book and "47002" in book and "47010" in book
+    for blocked in ("8120", "8249", "8125"):
+        assert blocked not in book
+    for port in (45555, 47001, 47002, 47010):
+        assert port not in range(8120, 8250)
         assert port not in RESERVED_TEST_PORTS
 
 
