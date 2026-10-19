@@ -4838,7 +4838,11 @@ def colonist_handbook_to_people(units: int) -> int:
 
 
 def colonist_score_qty(qty: int) -> int:
-    """Colonists net worth should count. People in a hold become thousands."""
+    """Colonists net worth should count. People in a hold become thousands.
+
+    Iago War Manual: one hold is one thousand people. S1 / TWFAQ_20PLANET
+    counts the handbook colonist in thousands, and COLONIST_PRICE is that unit.
+    """
     amount = int(qty)
     if amount <= 0:
         return 0
