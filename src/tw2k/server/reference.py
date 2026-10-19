@@ -93,6 +93,118 @@ def _haggle_band() -> str:
     return f"{low}% to {high}% of the offer"
 
 
+def stardock_class_label() -> int:
+    """CV-e. Live map shows StarDock as Class 9. The stored id stays 8 (TRD-c)."""
+    if K.port_class_live():
+        return 9
+    from tw2k.engine.models import PortClass
+
+    return int(PortClass.STARDOCK)
+
+
+def _planet_class_rows() -> list[dict[str, Any]]:
+    """J catalog. Ratios, caps, and citadel costs are the engine tables."""
+    goods = ("fuel_ore", "organics", "equipment")
+    rows = []
+    for letter, title in K.PLANET_CLASS_NAMES.items():
+        ratio = K.PLANET_PROD_PER_UNIT[letter]
+        citadel = []
+        for level in range(1, int(K.CITADEL_LEVELS) + 1):
+            colonists, fuel, organics, equipment, days = K.citadel_class_cost(letter, level)
+            citadel.append({
+                "level": level,
+                "colonists": int(colonists),
+                "fuel_ore": int(fuel),
+                "organics": int(organics),
+                "equipment": int(equipment),
+                "days": int(days),
+            })
+        shown = "/".join(str(int(n)) for n in ratio)
+        cap = int(K.PLANET_MAX_COLONISTS[letter])
+        rows.append({
+            "letter": letter,
+            "name": title,
+            "per_unit": {good: int(ratio[i]) for i, good in enumerate(goods)},
+            "max_colonists": cap,
+            "citadel": citadel,
+            "value": f"{shown} colonists per unit, max colonists {cap}",
+            "source": "src/tw2k/engine/constants.py PLANET_PROD_PER_UNIT, PLANET_MAX_COLONISTS, citadel_class_cost()",
+        })
+    return rows
+
+
+def _citadel_rows() -> list[dict[str, Any]]:
+    rows = []
+    for letter in K.PLANET_CLASS_NAMES:
+        for level in range(1, int(K.CITADEL_LEVELS) + 1):
+            colonists, fuel, organics, equipment, days = K.citadel_class_cost(letter, level)
+            rows.append({
+                "name": f"{letter} L{level}",
+                "value": (
+                    f"colonists {int(colonists)}, fuel {int(fuel)}, organics {int(organics)}, "
+                    f"equipment {int(equipment)}, days {int(days)}"
+                ),
+                "source": "src/tw2k/engine/constants.py citadel_class_cost()",
+            })
+    return rows
+
+
+def _combat_rows() -> list[dict[str, Any]]:
+    rows = [
+        {
+            "name": "Planet offense",
+            "value": f"{int(K.PLANET_OFFENSE_ODDS)} to 1",
+            "source": "src/tw2k/engine/constants.py PLANET_OFFENSE_ODDS",
+        },
+        {
+            "name": "Planet defense",
+            "value": f"{int(K.PLANET_DEFENSE_ODDS)} attacker fighters per planet fighter",
+            "source": "src/tw2k/engine/constants.py PLANET_DEFENSE_ODDS",
+        },
+        {
+            "name": "Planet shields",
+            "value": f"{int(K.PLANET_SHIELD_ODDS)} attacker fighters per shield",
+            "source": "src/tw2k/engine/constants.py PLANET_SHIELD_ODDS",
+        },
+    ]
+    for key, spec in K.ship_specs().items():
+        odds = spec.get("offensive_odds")
+        if odds is None:
+            continue
+        rows.append({
+            "name": spec.get("display_name") or key,
+            "value": f"{odds} to 1, {int(spec.get('fighters_per_attack') or 0)} fighters per attack",
+            "source": "src/tw2k/engine/constants.py ship_specs()",
+        })
+    return rows
+
+
+def _exp_rows() -> list[dict[str, Any]]:
+    source = "src/tw2k/engine/constants.py xp_award()"
+    keys = (
+        "trade", "warp", "kill_player", "kill_ferr", "build_citadel_lvl",
+        "deploy_genesis", "claim_planet", "alliance", "scan", "probe",
+        "first_dock", "daily", "destroy_planet", "destroy_port",
+    )
+    rows = [
+        {"name": key, "value": int(K.xp_award(key)), "source": source}
+        for key in keys
+        if int(K.xp_award(key)) or key in ("warp",)
+    ]
+    rows.extend([
+        {"name": "Kill experience share", "value": K.KILL_EXP_SHARE, "source": "src/tw2k/engine/constants.py KILL_EXP_SHARE"},
+        {"name": "Kill alignment share", "value": K.KILL_ALIGN_SHARE, "source": "src/tw2k/engine/constants.py KILL_ALIGN_SHARE"},
+        {
+            "name": "Combat experience divisor",
+            "value": ", ".join(f"{name} {int(num)}" for name, num in K.COMBAT_EXP_DIVISOR.items()),
+            "source": "src/tw2k/engine/constants.py COMBAT_EXP_DIVISOR",
+        },
+        {"name": "Daily alignment", "value": int(K.DAILY_ALIGNMENT), "source": "src/tw2k/engine/constants.py DAILY_ALIGNMENT"},
+        {"name": "Genesis alignment", "value": int(K.GENESIS_ALIGNMENT), "source": "src/tw2k/engine/constants.py GENESIS_ALIGNMENT"},
+    ])
+    return rows
+
+
 def _rules_in_force(player, turns_per_day: int) -> dict[str, Any]:
     """DOC-b. Switches that are on, and the numbers this game is using."""
     rate, over, align = K.tax_terms()
@@ -167,6 +279,12 @@ def game_reference(player=None, day: int = 1, max_days: int | None = None) -> di
         f"jackpot {int(K.TRICRON_OPENING_JACKPOT):,} cr. "
         f"{corp_line}"
     )
+    from tw2k.engine.models import PortClass
+
+    rules += (
+        f" StarDock is shown as Class {stardock_class_label()}. "
+        f"Its stored id stays {int(PortClass.STARDOCK)}."
+    )
     out: dict[str, Any] = {
         "day": today,
         "ship_class": ship_class,
@@ -198,8 +316,67 @@ def game_reference(player=None, day: int = 1, max_days: int | None = None) -> di
                 "source": "src/tw2k/engine/constants.py",
                 "rows": _prices(ship_class, holds, today),
             },
+            {
+                "id": "planet_classes",
+                "title": "Planet classes",
+                "source": "docs/reference/tw2002/eis_tw2002_v3_docs/CompDisplays.html Planetary Specs; S1_planet_handbook_v1.01.html",
+                "body": "Computer J lists one row per planet class. Your own worlds stay under Your planets.",
+                "rows": _planet_class_rows(),
+            },
+            {
+                "id": "citadel_tables",
+                "title": "Citadel tables",
+                "source": "docs/reference/tw2002/S1_planet_handbook_v1.01.html; src/tw2k/engine/constants.py citadel_class_cost()",
+                "rows": _citadel_rows(),
+            },
+            {
+                "id": "combat_odds",
+                "title": "Combat odds",
+                "source": "docs/reference/tw2002/S2_cabal_formulas.html; src/tw2k/engine/constants.py ship_specs()",
+                "rows": _combat_rows(),
+            },
+            {
+                "id": "flee_rule",
+                "title": "Flee rule",
+                "source": "src/tw2k/engine/constants.py COMBAT_FLEE_RATIO, FLEE_PENALTY_TURNS",
+                "body": "An attacker with more fighters than this multiple of the defender's fighters plus shields can be fled.",
+                "rows": [
+                    {
+                        "name": "Flee ratio",
+                        "value": K.COMBAT_FLEE_RATIO,
+                        "source": "src/tw2k/engine/constants.py COMBAT_FLEE_RATIO",
+                    },
+                    {
+                        "name": "Flee penalty",
+                        "value": int(K.FLEE_PENALTY_TURNS),
+                        "source": "src/tw2k/engine/constants.py FLEE_PENALTY_TURNS",
+                    },
+                ],
+            },
+            {
+                "id": "haggle_bands",
+                "title": "Haggle bands",
+                "source": "docs/reference/tw2002/eis_tw2002_v3_docs/HardwareMenu.html; src/tw2k/engine/constants.py",
+                "body": (
+                    "A better deal is worth more experience. The +1 and +2 split is UNVERIFIED, "
+                    "searched: HardwareMenu.html, S2, S7, and the Eugene Hung tips (those say 5 for an exact best price)."
+                ),
+                "rows": [
+                    {"name": "Offer window", "value": _haggle_band(), "source": "src/tw2k/engine/constants.py haggle window"},
+                    {"name": "Good haggle", "value": int(K.HAGGLE_EXP_GOOD), "source": "src/tw2k/engine/constants.py HAGGLE_EXP_GOOD"},
+                    {"name": "Great haggle", "value": int(K.HAGGLE_EXP_GREAT), "source": "src/tw2k/engine/constants.py HAGGLE_EXP_GREAT"},
+                    {"name": "Legacy cap", "value": int(K.PORT_HAGGLE_XP_CAP), "source": "src/tw2k/engine/constants.py PORT_HAGGLE_XP_CAP"},
+                ],
+            },
+            {
+                "id": "exp_alignment",
+                "title": "Experience and alignment",
+                "source": "docs/reference/tw2002/S2_cabal_formulas.html; src/tw2k/engine/constants.py xp_award()",
+                "rows": _exp_rows(),
+            },
         ],
     }
+    out["stardock_class"] = stardock_class_label()
     rate, over, _min_align = K.tax_terms()
     out["tax"] = {"rate_pct": int(rate), "over": int(over)}
     if K.cockpit_fields_on():
