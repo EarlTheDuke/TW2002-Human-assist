@@ -1,7 +1,10 @@
 """Shared helpers for the /bot browser tests (G2 mode=cu, G3 seat claim).
 
 `CuHost` runs the real app + a match on a background thread on a free local
-port. The default scan starts at 8050 and skips the reserved live ports.
+port. The default is an open pocket at or above 8050. When those are busy,
+the helper binds port 0 and takes an OS ephemeral port. It does not scan
+8120-8249.
+
 Heuristic P1, external P2 parked on a two-way trading port with 10 fuel ore. `browser`
 yields a Playwright Chromium, or skips when Playwright / the browser binary
 is missing.
@@ -61,9 +64,17 @@ def release_info_mode(holder) -> None:
         _info_saved = None
 
 
-# Live games and standing test servers. A scan may use 8038-8040, 8043-8044,
-# and 8050-8054. Every other port from 8031 through 8119 is reserved.
-# 8037 is a live game. 8058 is the watcher and 8059 is the Commander test.
+# Live games and standing test servers. free_port may hand out only the open
+# pockets below. Every other port from 8031 through 8119 is listed here so
+# other claim_ports callers can avoid them. 8060 and above stay out of the
+# free_port walk, including 8120-8249; this set stops at 8119 so a host that
+# deliberately claims 8200+ still can. 8037 is a live game. 8058 is the
+# watcher and 8059 is the Commander test.
+OPEN_TEST_PORTS = (
+    8038, 8039, 8040,
+    8043, 8044,
+    8050, 8051, 8052, 8053, 8054,
+)
 RESERVED_TEST_PORTS = frozenset().union(
     range(8031, 8038),
     (8041, 8042),
@@ -72,14 +83,54 @@ RESERVED_TEST_PORTS = frozenset().union(
     range(8060, 8099),
     range(8099, 8120),
 )
+_EPHEMERAL_TRIES = 16
+_SCAN_GAP = range(8120, 8250)
 
 
 def free_port(start: int = 8050) -> int:
+    """An open-pocket port, or an OS ephemeral port when those are busy.
+
+    The walk is only OPEN_TEST_PORTS at or above ``start``. It does not scan
+    8060 or any higher port, so 8120-8249 is never visited. Binding port 0
+    is the fallback.
+    """
     from tests._port_lock import claim_ports
 
-    return claim_ports(
-        1, low=start, high=start + 200, avoid=set(RESERVED_TEST_PORTS), sequential=True,
-    )
+    candidates = [p for p in OPEN_TEST_PORTS if p >= int(start)]
+    if candidates:
+        window = set(range(candidates[0], candidates[-1] + 1))
+        try:
+            return claim_ports(
+                1,
+                low=candidates[0],
+                high=candidates[-1] + 1,
+                avoid=window - set(candidates),
+                sequential=True,
+            )
+        except RuntimeError:
+            pass
+    return _ephemeral_port()
+
+
+def _ephemeral_port() -> int:
+    """Bind port 0 and record the OS assignment in the shared port book."""
+    import socket
+
+    from tests._port_lock import _HOLD_S, _read, _write, port_lock
+
+    with port_lock():
+        taken = _read()
+        held = {int(k) for k in taken}
+        for _ in range(_EPHEMERAL_TRIES):
+            with socket.socket() as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = int(sock.getsockname()[1])
+            if port in held or port in RESERVED_TEST_PORTS or port in _SCAN_GAP or port < 8060:
+                continue
+            taken[str(port)] = time.time() + _HOLD_S
+            _write(taken)
+            return port
+    raise RuntimeError("no ephemeral port")
 
 
 class CuHost:
