@@ -25,7 +25,7 @@ SIZES = ((1280, 720), (1600, 1000), (390, 844))
 
 
 def test_manifest_lists_ten_svg_variants_and_stays_small() -> None:
-    doc = json.loads(MANIFEST.read_text())
+    doc = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert doc["fallback_clip"] == "warp.out"
     assert set(doc["hulls"]) == set(HULLS)
     cameras = set()
@@ -51,9 +51,9 @@ def test_manifest_lists_ten_svg_variants_and_stays_small() -> None:
     assert {"flash", "fold", "fade"} <= exits
     assert MANIFEST.stat().st_size < 60 * 1024
     assert VARIANTS.stat().st_size < 60 * 1024
-    bot = (ROOT / "web" / "bot.html").read_text()
+    bot = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")
     assert "warp-variants" not in bot
-    assert "warp-clips.json" not in (ROOT / "web" / "bot.js").read_text()
+    assert "warp-clips.json" not in (ROOT / "web" / "bot.js").read_text(encoding="utf-8")
 
 
 def _ready(page) -> None:
@@ -213,7 +213,8 @@ def test_variants_play_on_a_real_move_only(tmp_path: Path, monkeypatch) -> None:
             assert all(seen[i] != seen[i + 1] for i in range(19)), seen
             assert max(paints) < 16, paints
             (shots / "frame-ms.txt").write_text(
-                f"preview {same['paint']}\njump {max(paints)}\nframe {frame}\n"
+                f"preview {same['paint']}\njump {max(paints)}\nframe {frame}\n",
+                encoding="utf-8",
             )
 
             wide.locator("[data-testid=viewport-mode-stills]").click()
@@ -283,7 +284,7 @@ def test_variants_play_on_a_real_move_only(tmp_path: Path, monkeypatch) -> None:
     art.mkdir(parents=True, exist_ok=True)
     for png in shots.glob("*.png"):
         (art / png.name).write_bytes(png.read_bytes())
-    (art / "frame-ms.txt").write_text(paint_note.read_text())
+    (art / "frame-ms.txt").write_text(paint_note.read_text(encoding="utf-8"), encoding="utf-8")
     _contact_sheet(shots, art)
 
 
