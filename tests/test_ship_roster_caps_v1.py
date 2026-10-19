@@ -174,19 +174,23 @@ def test_each_new_ship_buys_and_reads_its_caps() -> None:
 
 
 def test_prices_match_the_spec_and_legacy_keeps_the_old_roster() -> None:
-    for key, spec in K.ship_specs().items():
-        assert K.ship_cost(key) == int(spec["cost"])
-        assert int(spec["holds"]) <= int(spec["max_holds"])
-    previous = K.ECONOMY_SCALE_MODE
+    _prior_economy_scale_mode = K.ECONOMY_SCALE_MODE
     try:
-        K.ECONOMY_SCALE_MODE = "legacy"
-        assert set(K.ship_specs()) == set(K.SHIP_SPECS)
-        assert "star_master" not in K.ship_specs()
-        assert K.ship_specs()["cargotran"]["turns_per_warp"] == 3
-        assert K.ship_specs()["havoc_gunstar"]["holds"] == 65
-        assert K.ship_cost("battleship") == 880_000
+        for key, spec in K.ship_specs().items():
+            assert K.ship_cost(key) == int(spec["cost"])
+            assert int(spec["holds"]) <= int(spec["max_holds"])
+        previous = K.ECONOMY_SCALE_MODE
+        try:
+            K.ECONOMY_SCALE_MODE = "legacy"
+            assert set(K.ship_specs()) == set(K.SHIP_SPECS)
+            assert "star_master" not in K.ship_specs()
+            assert K.ship_specs()["cargotran"]["turns_per_warp"] == 3
+            assert K.ship_specs()["havoc_gunstar"]["holds"] == 65
+            assert K.ship_cost("battleship") == 880_000
+        finally:
+            K.ECONOMY_SCALE_MODE = previous
     finally:
-        K.ECONOMY_SCALE_MODE = previous
+        K.ECONOMY_SCALE_MODE = _prior_economy_scale_mode
 
 
 def _reject(universe, item: str, qty: int) -> None:

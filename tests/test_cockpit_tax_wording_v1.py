@@ -37,16 +37,51 @@ def _show(page, host):
     page.wait_for_timeout(400)
 
 
-def _host(tmp_path_factory, name):
-    host = CuHost(tmp_path_factory.mktemp(name), TOK, seed=8301)
-    host.__enter__()
-    # The helper skips its own reserved ports and starts at 8050. Refusing
-    # every port from 8031 through 8119 made these three tests fail on that start.
+def _claim_port() -> int:
+    """A free port at or above 8200, reserved through the shared test port book."""
     from tests._cu_host import RESERVED_TEST_PORTS
-    if host.port in RESERVED_TEST_PORTS:
+    from tests._port_lock import claim_ports
+
+    return claim_ports(
+        1, low=8200, high=8400, avoid=set(RESERVED_TEST_PORTS), sequential=True,
+    )
+
+
+def _host(tmp_path_factory, name):
+    import tests._cu_host as cu
+    from tests._port_lock import release_ports
+
+    port = _claim_port()
+    real = cu.free_port
+    cu.free_port = lambda start=8050: port
+    host = None
+    try:
+        host = CuHost(tmp_path_factory.mktemp(name), TOK, seed=8301)
+        host.__enter__()
+        if host.port in cu.RESERVED_TEST_PORTS or host.port < 8200:
+            raise AssertionError(f"host bound port {host.port}")
+        host._locked_port = port
+        return host
+    except BaseException:
+        try:
+            if host is not None and hasattr(host, "_info_mode"):
+                host.__exit__(None, None, None)
+        finally:
+            release_ports(port)
+        raise
+    finally:
+        cu.free_port = real
+
+
+def _stop(host) -> None:
+    from tests._port_lock import release_ports
+
+    try:
         host.__exit__(None, None, None)
-        pytest.fail(f"host bound a reserved port {host.port}")
-    return host
+    finally:
+        port = getattr(host, "_locked_port", None)
+        if port:
+            release_ports(port)
 
 
 def _shoot(page, stem):
@@ -104,12 +139,11 @@ def test_legacy_withdraw_uses_the_five_percent_line(browser, tmp_path_factory):
         assert "5% of the cash on your ship when it is over 100,000." in narrow
         assert OLD_WARN not in narrow
     finally:
-        host.__exit__(None, None, None)
+        _stop(host)
 
 
-def test_v311_withdraw_keeps_the_ten_percent_line(browser, tmp_path_factory):
-    prior = K.V311_PROFILE
-    K.V311_PROFILE = "v311"
+def test_v311_withdraw_keeps_the_ten_percent_line(browser, tmp_path_factory, monkeypatch):
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
     host = _host(tmp_path_factory, "note83-v311")
     try:
         page = _open(browser, host, 1280, 800)
@@ -117,8 +151,7 @@ def test_v311_withdraw_keeps_the_ten_percent_line(browser, tmp_path_factory):
         assert OLD_WARN in text
         assert "5% of the cash on your ship when it is over 100,000." not in text
     finally:
-        K.V311_PROFILE = prior
-        host.__exit__(None, None, None)
+        _stop(host)
 
 
 def test_the_dawn_line_names_the_night_and_an_older_tax_is_not_last_night(browser, tmp_path_factory):
@@ -155,4 +188,4 @@ def test_the_dawn_line_names_the_night_and_an_older_tax_is_not_last_night(browse
         assert "Last night: no tax" in status
         assert "Last night: 49,950" not in status
     finally:
-        host.__exit__(None, None, None)
+        _stop(host)

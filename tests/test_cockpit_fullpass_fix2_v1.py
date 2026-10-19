@@ -59,46 +59,54 @@ def _sector(page) -> str:
 
 @pytest.fixture(scope="module")
 def seats(tmp_path_factory):
-    sync = pytest.importorskip("playwright.sync_api").sync_playwright
-    old = K.HAGGLE_LIVE_MODE
-    K.HAGGLE_LIVE_MODE = "live"
-    pw = sync().start()
-    port_host = CuHost(tmp_path_factory.mktemp("fix2-port"), PORT_TOK)
-    port_host.__enter__()
-    dock_host = CuHost(tmp_path_factory.mktemp("fix2-dock"), DOCK_TOK, park_at=1)
-    dock_host.__enter__()
-    port_browser, port_page = _page(pw, port_host, PORT_TOK)
-    dock_browser, dock_page = _page(pw, dock_host, DOCK_TOK)
+    _prior_haggle_live_mode = K.HAGGLE_LIVE_MODE
     try:
-        yield {"port": port_page, "dock": dock_page}
+        sync = pytest.importorskip("playwright.sync_api").sync_playwright
+        old = K.HAGGLE_LIVE_MODE
+        K.HAGGLE_LIVE_MODE = "live"
+        pw = sync().start()
+        port_host = CuHost(tmp_path_factory.mktemp("fix2-port"), PORT_TOK)
+        port_host.__enter__()
+        dock_host = CuHost(tmp_path_factory.mktemp("fix2-dock"), DOCK_TOK, park_at=1)
+        dock_host.__enter__()
+        port_browser, port_page = _page(pw, port_host, PORT_TOK)
+        dock_browser, dock_page = _page(pw, dock_host, DOCK_TOK)
+        try:
+            yield {"port": port_page, "dock": dock_page}
+        finally:
+            port_browser.close()
+            dock_browser.close()
+            port_host.__exit__(None, None, None)
+            dock_host.__exit__(None, None, None)
+            pw.stop()
+            K.HAGGLE_LIVE_MODE = old
     finally:
-        port_browser.close()
-        dock_browser.close()
-        port_host.__exit__(None, None, None)
-        dock_host.__exit__(None, None, None)
-        pw.stop()
-        K.HAGGLE_LIVE_MODE = old
+        K.HAGGLE_LIVE_MODE = _prior_haggle_live_mode
 
 
 def test_haggle_launcher_stays_legacy_until_asked(monkeypatch) -> None:
-    from tw2k.server.app import _apply_haggle_live
-
-    monkeypatch.delenv("TW2K_HAGGLE_LIVE", raising=False)
-    old = K.HAGGLE_LIVE_MODE
+    _prior_haggle_live_mode = K.HAGGLE_LIVE_MODE
     try:
-        K.HAGGLE_LIVE_MODE = "legacy"
-        _apply_haggle_live()
-        assert K.HAGGLE_LIVE_MODE == "legacy"
-        monkeypatch.setenv("TW2K_HAGGLE_LIVE", "live")
-        _apply_haggle_live()
-        assert K.HAGGLE_LIVE_MODE == "live"
-        monkeypatch.setenv("TW2K_HAGGLE_LIVE", "nope")
-        K.HAGGLE_LIVE_MODE = "legacy"
-        _apply_haggle_live()
-        assert K.HAGGLE_LIVE_MODE == "legacy"
-    finally:
-        K.HAGGLE_LIVE_MODE = old
+        from tw2k.server.app import _apply_haggle_live
+
         monkeypatch.delenv("TW2K_HAGGLE_LIVE", raising=False)
+        old = K.HAGGLE_LIVE_MODE
+        try:
+            K.HAGGLE_LIVE_MODE = "legacy"
+            _apply_haggle_live()
+            assert K.HAGGLE_LIVE_MODE == "legacy"
+            monkeypatch.setenv("TW2K_HAGGLE_LIVE", "live")
+            _apply_haggle_live()
+            assert K.HAGGLE_LIVE_MODE == "live"
+            monkeypatch.setenv("TW2K_HAGGLE_LIVE", "nope")
+            K.HAGGLE_LIVE_MODE = "legacy"
+            _apply_haggle_live()
+            assert K.HAGGLE_LIVE_MODE == "legacy"
+        finally:
+            K.HAGGLE_LIVE_MODE = old
+            monkeypatch.delenv("TW2K_HAGGLE_LIVE", raising=False)
+    finally:
+        K.HAGGLE_LIVE_MODE = _prior_haggle_live_mode
 
 
 def test_trading_column_shows_units_wanted(seats) -> None:

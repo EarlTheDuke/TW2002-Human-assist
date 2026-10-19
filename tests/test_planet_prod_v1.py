@@ -30,37 +30,53 @@ def _world(fuel: int, organics: int = 0, stock_org: int = 0) -> Universe:
 
 
 def test_legacy_hundred_fuel_colonists_make_three():
-    K.PLANET_PROD_MODE = "legacy"
-    universe = _world(100)
-    _advance_planets(universe)
-    assert universe.planets[1].stockpile[Commodity.FUEL_ORE] == 3
+    _prior_planet_prod_mode = K.PLANET_PROD_MODE
+    try:
+        K.PLANET_PROD_MODE = "legacy"
+        universe = _world(100)
+        _advance_planets(universe)
+        assert universe.planets[1].stockpile[Commodity.FUEL_ORE] == 3
+    finally:
+        K.PLANET_PROD_MODE = _prior_planet_prod_mode
 
 
 def test_live_1500_fuel_colonists_make_500():
-    K.PLANET_PROD_MODE = "live"
+    _prior_planet_prod_mode = K.PLANET_PROD_MODE
     try:
-        universe = _world(1500)
-        _advance_planets(universe)
-        assert universe.planets[1].stockpile[Commodity.FUEL_ORE] == 500
-        crowded = _world(20_000, organics=700)
-        _advance_planets(crowded)
-        assert crowded.planets[1].stockpile[Commodity.ORGANICS] == 100
+        try:
+            K.PLANET_PROD_MODE = "live"
+            universe = _world(1500)
+            _advance_planets(universe)
+            assert universe.planets[1].stockpile[Commodity.FUEL_ORE] == 500
+            crowded = _world(20_000, organics=700)
+            _advance_planets(crowded)
+            assert crowded.planets[1].stockpile[Commodity.ORGANICS] == 100
+        finally:
+            K.PLANET_PROD_MODE = "legacy"
     finally:
-        K.PLANET_PROD_MODE = "legacy"
+        K.PLANET_PROD_MODE = _prior_planet_prod_mode
 
 
 def test_live_population_above_half_shrinks():
-    K.PLANET_PROD_MODE = "live"
+    _prior_planet_prod_mode = K.PLANET_PROD_MODE
     try:
-        universe = _world(20_000)
-        _advance_planets(universe)
-        assert sum(universe.planets[1].colonists.values()) == 19_000
+        try:
+            K.PLANET_PROD_MODE = "live"
+            universe = _world(20_000)
+            _advance_planets(universe)
+            assert sum(universe.planets[1].colonists.values()) == 19_000
+        finally:
+            K.PLANET_PROD_MODE = "legacy"
     finally:
-        K.PLANET_PROD_MODE = "legacy"
+        K.PLANET_PROD_MODE = _prior_planet_prod_mode
 
 
 def test_legacy_population_above_half_does_not_shrink():
-    K.PLANET_PROD_MODE = "legacy"
-    universe = _world(20_000)
-    _advance_planets(universe)
-    assert sum(universe.planets[1].colonists.values()) == 20_000
+    _prior_planet_prod_mode = K.PLANET_PROD_MODE
+    try:
+        K.PLANET_PROD_MODE = "legacy"
+        universe = _world(20_000)
+        _advance_planets(universe)
+        assert sum(universe.planets[1].colonists.values()) == 20_000
+    finally:
+        K.PLANET_PROD_MODE = _prior_planet_prod_mode

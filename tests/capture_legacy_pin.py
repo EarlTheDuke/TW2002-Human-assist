@@ -60,86 +60,80 @@ def _stable_text(text: str) -> bytes:
 
 def legacy_capture_digest() -> str:
     """Exact-minimum attacks on a manned ship and an unmanned ship, then 3 day ticks."""
-    if hasattr(K, "CAPTURE_MODE"):
-        K.CAPTURE_MODE = "legacy"
-    if hasattr(K, "PLANET_TRADE_MODE"):  # planetary-trading-v1: later tw2002 modes are flipped too
-        K.PLANET_TRADE_MODE = "legacy"
-    if hasattr(K, "CORPSHIP_MODE"):  # corp-ships-furb-v1
-        K.CORPSHIP_MODE = "legacy"
-    if hasattr(K, "PORT_UPGRADE_MODE"):  # port-upgrade-build-v1
-        K.PORT_UPGRADE_MODE = "legacy"
-    if hasattr(K, "BANK_MODE"):  # galactic-bank-tax-v1
-        K.BANK_MODE = "legacy"
-    if hasattr(K, "CORP_MODE"):  # corp-rules-v1
-        K.CORP_MODE = "legacy"
-    if hasattr(K, "ALIEN_MODE"):  # alien-traders-v1
-        K.ALIEN_MODE = "legacy"
-    if hasattr(K, "CORP_BOTS_MODE"):  # bots-use-corps-v1
-        K.CORP_BOTS_MODE = "legacy"
-    if hasattr(K, "LLM_PARITY_MODE"):  # llm-rules-parity-v1
-        K.LLM_PARITY_MODE = "legacy"
-    if hasattr(K, "LLM_PLANET_NUDGE_MODE"):
-        K.LLM_PLANET_NUDGE_MODE = "legacy"
-    if hasattr(K, "LLM_QUASAR_NUDGE_MODE"):
-        K.LLM_QUASAR_NUDGE_MODE = "off"
-    if hasattr(K, "BOTS_BANK_MODE"):
-        K.BOTS_BANK_MODE = "legacy"
-    if hasattr(K, "TAVERN_MODE"):
-        K.TAVERN_MODE = "legacy"
-    if hasattr(K, "BOTS_WAR_MODE"):
-        K.BOTS_WAR_MODE = "legacy"
-    if hasattr(K, "CORP_FIX_MODE"):
-        K.CORP_FIX_MODE = "legacy"
-    if hasattr(K, "BOTS_TAVERN_MODE"):
-        K.BOTS_TAVERN_MODE = "legacy"
-    if hasattr(K, "BOTS_DEPLOY_MODE"):
-        K.BOTS_DEPLOY_MODE = "legacy"
-    if hasattr(K, "STARDOCK_EXTRA_MODE"):
-        K.STARDOCK_EXTRA_MODE = "legacy"
-    if hasattr(K, "CITADEL_FIDELITY_MODE"):
-        K.CITADEL_FIDELITY_MODE = "legacy"
-    if hasattr(K, "H_RECOVERY_MODE"):
-        K.H_RECOVERY_MODE = "legacy"
-    for name in ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
-                 "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE",  # fullgame-fixes-v2
-                 "FED_OUTPOST_MODE"):  # class0-outpost-label: FedSpace outposts no longer shown as class 0
-        if hasattr(K, name):
-            setattr(K, name, "legacy")
-    h = hashlib.sha256()
-    h.update(get_system_prompt().encode())
-    u = generate_universe(GameConfig(seed=11, universe_size=60, enable_ferrengi=False, enable_planets=False))
-    sector = next(s for s in sorted(u.sectors) if int(s) > 10)
-    _sit(u, "A", sector, 20)
-    _sit(u, "B", sector, 0)
-    ship = Ship(ship_class=ShipClass.MERCHANT_FREIGHTER, name="spare", holds=10, fighters=0, shields=0)
-    sid = _new_ship_id(u)
-    ship.fleet_id = sid
-    u.parked_ships[sid] = ParkedShip(id=sid, owner_id="B", sector_id=int(sector), ship=ship, parked_day=u.day)
+    forced = {
+        "CAPTURE_MODE": "legacy",
+        "PLANET_TRADE_MODE": "legacy",  # planetary-trading-v1
+        "CORPSHIP_MODE": "legacy",  # corp-ships-furb-v1
+        "PORT_UPGRADE_MODE": "legacy",  # port-upgrade-build-v1
+        "BANK_MODE": "legacy",  # galactic-bank-tax-v1
+        "CORP_MODE": "legacy",  # corp-rules-v1
+        "ALIEN_MODE": "legacy",  # alien-traders-v1
+        "CORP_BOTS_MODE": "legacy",  # bots-use-corps-v1
+        "LLM_PARITY_MODE": "legacy",  # llm-rules-parity-v1
+        "LLM_PLANET_NUDGE_MODE": "legacy",
+        "LLM_QUASAR_NUDGE_MODE": "off",
+        "BOTS_BANK_MODE": "legacy",
+        "TAVERN_MODE": "legacy",
+        "BOTS_WAR_MODE": "legacy",
+        "CORP_FIX_MODE": "legacy",
+        "BOTS_TAVERN_MODE": "legacy",
+        "BOTS_DEPLOY_MODE": "legacy",
+        "STARDOCK_EXTRA_MODE": "legacy",
+        "CITADEL_FIDELITY_MODE": "legacy",
+        "H_RECOVERY_MODE": "legacy",
+        "PLANET_DIVIDEND_MODE": "legacy",
+        "HUNT_MODE": "legacy",
+        "COMBAT_FRAMING_MODE": "legacy",
+        "SLOW_HULL_HINT_MODE": "legacy",
+        "COMBAT_SCANNER_MODE": "legacy",
+        "GENESIS_HULL_MODE": "legacy",
+        "MINE_OVERFLOW_MODE": "legacy",  # fullgame-fixes-v2
+        "FED_OUTPOST_MODE": "legacy",  # class0-outpost-label
+    }
+    prior = {}
+    try:
+        for name, value in forced.items():
+            if hasattr(K, name):
+                prior[name] = getattr(K, name)
+                setattr(K, name, value)
+        h = hashlib.sha256()
+        h.update(get_system_prompt().encode())
+        u = generate_universe(GameConfig(seed=11, universe_size=60, enable_ferrengi=False, enable_planets=False))
+        sector = next(s for s in sorted(u.sectors) if int(s) > 10)
+        _sit(u, "A", sector, 20)
+        _sit(u, "B", sector, 0)
+        ship = Ship(ship_class=ShipClass.MERCHANT_FREIGHTER, name="spare", holds=10, fighters=0, shields=0)
+        sid = _new_ship_id(u)
+        ship.fleet_id = sid
+        u.parked_ships[sid] = ParkedShip(id=sid, owner_id="B", sector_id=int(sector), ship=ship, parked_day=u.day)
 
-    def snap(tag: str):
-        h.update(tag.encode())
-        for pid in ("A", "B"):
-            if pid not in u.players:
-                continue
-            o = build_observation(u, pid)
-            h.update(_stable(o.model_dump_json()))
-            h.update(_stable_text(format_observation(o)))
-        h.update(_stable(json.dumps([e.model_dump(mode="json") for e in u.events], sort_keys=True)))
+        def snap(tag: str):
+            h.update(tag.encode())
+            for pid in ("A", "B"):
+                if pid not in u.players:
+                    continue
+                o = build_observation(u, pid)
+                h.update(_stable(o.model_dump_json()))
+                h.update(_stable_text(format_observation(o)))
+            h.update(_stable(json.dumps([e.model_dump(mode="json") for e in u.events], sort_keys=True)))
 
-    snap("before")
-    apply_action(u, "A", Action(kind=ActionKind.ATTACK, args={"target": "B", "qty": 1}))
-    snap("manned")
-    _sit(u, "A", sector, 20)
-    owner = u.parked_ships[sid].owner_id
-    apply_action(u, "A", Action(kind=ActionKind.ATTACK, args={"target": f"ship:{sid}", "qty": 1}))
-    snap("unmanned")
-    h.update(str(sid in u.parked_ships).encode())
-    h.update(owner.encode())
-    for _ in range(3):
-        tick_day(u)
-        h.update(_stable(u.model_dump_json()))
-    h.update(str(K.COMBAT_MODE).encode())
-    return h.hexdigest()[:24]
+        snap("before")
+        apply_action(u, "A", Action(kind=ActionKind.ATTACK, args={"target": "B", "qty": 1}))
+        snap("manned")
+        _sit(u, "A", sector, 20)
+        owner = u.parked_ships[sid].owner_id
+        apply_action(u, "A", Action(kind=ActionKind.ATTACK, args={"target": f"ship:{sid}", "qty": 1}))
+        snap("unmanned")
+        h.update(str(sid in u.parked_ships).encode())
+        h.update(owner.encode())
+        for _ in range(3):
+            tick_day(u)
+            h.update(_stable(u.model_dump_json()))
+        h.update(str(K.COMBAT_MODE).encode())
+        return h.hexdigest()[:24]
+    finally:
+        for name, value in prior.items():
+            setattr(K, name, value)
 
 
 if __name__ == "__main__":

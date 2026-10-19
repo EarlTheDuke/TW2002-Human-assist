@@ -25,10 +25,14 @@ def test_default_uses_the_ship_table() -> None:
 
 
 def test_live_names_the_same_ship_costs() -> None:
-    prior = K.WARP_COST_MODE
-    K.WARP_COST_MODE = "live"
+    _prior_warp_cost_mode = K.WARP_COST_MODE
     try:
-        assert K.warp_turns("merchant_cruiser") == 3
-        assert K.warp_turns("merchant_freighter") == 2
+        prior = K.WARP_COST_MODE
+        try:
+            K.WARP_COST_MODE = "live"
+            assert K.warp_turns("merchant_cruiser") == 3
+            assert K.warp_turns("merchant_freighter") == 2
+        finally:
+            K.WARP_COST_MODE = prior
     finally:
-        K.WARP_COST_MODE = prior
+        K.WARP_COST_MODE = _prior_warp_cost_mode

@@ -66,42 +66,46 @@ def test_default_keeps_the_old_chart_and_the_failed_turn():
 
 
 def test_live_band_is_flat_and_a_wild_sell_still_costs_a_turn():
-    K.HAGGLE_WINDOW_MODE = "live"
+    _prior_haggle_window_mode = K.HAGGLE_WINDOW_MODE
     try:
-        assert haggle_room_pct(0) == K.PORT_HAGGLE_LIVE_ROOM_PCT
-        assert haggle_room_pct(-800) == K.PORT_HAGGLE_LIVE_ROOM_PCT
+        try:
+            K.HAGGLE_WINDOW_MODE = "live"
+            assert haggle_room_pct(0) == K.PORT_HAGGLE_LIVE_ROOM_PCT
+            assert haggle_room_pct(-800) == K.PORT_HAGGLE_LIVE_ROOM_PCT
 
-        universe, player = _seat()
-        port = _port(universe, PortClass.CLASS_1_BSS, FUEL, -100, 0)
-        listed = port_buy_price(port, FUEL, 0)
-        ask = round(listed * 104 / 100)
-        assert ask <= haggle_bound(listed, -100, "sell")
-        won = _trade(universe, "sell", "fuel_ore", ask)
-        assert won.ok, won.error
-        assert player.credits == 500_000 + ask
+            universe, player = _seat()
+            port = _port(universe, PortClass.CLASS_1_BSS, FUEL, -100, 0)
+            listed = port_buy_price(port, FUEL, 0)
+            ask = round(listed * 104 / 100)
+            assert ask <= haggle_bound(listed, -100, "sell")
+            won = _trade(universe, "sell", "fuel_ore", ask)
+            assert won.ok, won.error
+            assert player.credits == 500_000 + ask
 
-        universe, player = _seat()
-        port = _port(universe, PortClass.CLASS_1_BSS, FUEL, -100, 0)
-        listed = port_buy_price(port, FUEL, 0)
-        wild = round(listed * 137 / 100)
-        assert wild <= round(listed * K.PORT_HAGGLE_MAX_PCT / 100)
-        credits = player.credits
-        held = player.ship.cargo[FUEL]
-        lost = _trade(universe, "sell", "fuel_ore", wild)
-        assert lost.ok is False
-        assert lost.error == "the port lost patience"
-        assert player.credits == credits
-        assert player.ship.cargo[FUEL] == held
-        assert player.turns_today == K.PORT_HAGGLE_FAIL_TURNS
+            universe, player = _seat()
+            port = _port(universe, PortClass.CLASS_1_BSS, FUEL, -100, 0)
+            listed = port_buy_price(port, FUEL, 0)
+            wild = round(listed * 137 / 100)
+            assert wild <= round(listed * K.PORT_HAGGLE_MAX_PCT / 100)
+            credits = player.credits
+            held = player.ship.cargo[FUEL]
+            lost = _trade(universe, "sell", "fuel_ore", wild)
+            assert lost.ok is False
+            assert lost.error == "the port lost patience"
+            assert player.credits == credits
+            assert player.ship.cargo[FUEL] == held
+            assert player.turns_today == K.PORT_HAGGLE_FAIL_TURNS
 
-        universe, player = _seat()
-        player.ship.cargo[FUEL] = 0
-        port = _port(universe, PortClass.CLASS_5_SBS, EQ, 100, 3000)
-        listed = port_sell_price(port, EQ, 0)
-        bid = round(listed * 95 / 100)
-        assert bid >= haggle_bound(listed, 100, "buy")
-        bought = _trade(universe, "buy", "equipment", bid)
-        assert bought.ok, bought.error
-        assert player.credits == 500_000 - bid
+            universe, player = _seat()
+            player.ship.cargo[FUEL] = 0
+            port = _port(universe, PortClass.CLASS_5_SBS, EQ, 100, 3000)
+            listed = port_sell_price(port, EQ, 0)
+            bid = round(listed * 95 / 100)
+            assert bid >= haggle_bound(listed, 100, "buy")
+            bought = _trade(universe, "buy", "equipment", bid)
+            assert bought.ok, bought.error
+            assert player.credits == 500_000 - bid
+        finally:
+            K.HAGGLE_WINDOW_MODE = "legacy"
     finally:
-        K.HAGGLE_WINDOW_MODE = "legacy"
+        K.HAGGLE_WINDOW_MODE = _prior_haggle_window_mode

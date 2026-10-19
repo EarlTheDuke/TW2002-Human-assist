@@ -84,45 +84,49 @@ def test_default_still_has_a_way_out_and_a_way_back():
 
 
 def test_live_map_has_a_dead_end_a_trap_a_tunnel_and_a_bubble():
-    K.UNIVERSE_TOPOLOGY_MODE = "live"
+    _prior_universe_topology_mode = K.UNIVERSE_TOPOLOGY_MODE
     try:
-        universe = generate_universe(
-            GameConfig(seed=42, universe_size=200, enable_ferrengi=True)
-        )
-        adj = _adj(universe)
-        dead = sorted(sid for sid, neigh in adj.items() if not neigh)
-        assert dead
-        assert all(sid > 10 for sid in dead)
-        assert _reaches_all_from_one(adj)
-        trapped = _cannot_reach_one(adj)
-        assert trapped
-        assert _long_one_ways(adj)
-        closed = [
-            sid
-            for sid, neigh in adj.items()
-            if sid > 10 and not neigh and any(sid in adj[other] for other in adj)
-        ]
-        assert closed
-        home = universe.ferrengal_sector
-        assert home in dead
-        player = Player(
-            id="P1",
-            name="P1",
-            sector_id=dead[0],
-            credits=1000,
-            ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER),
-        )
-        universe.players["P1"] = player
-        result = _handle_plot_course(
-            universe,
-            "P1",
-            Action(kind=ActionKind.PLOT_COURSE, args={"target": 1}),
-        )
-        assert result.ok is False
-        assert result.error == "no route to target"
-        player.known_warps = {1: [2]}
-        hint = _action_hint({"id": dead[0], "warps_out": []}, player, [], universe)
-        assert "DEAD END" in hint
-        assert "fully connected" not in hint
+        try:
+            K.UNIVERSE_TOPOLOGY_MODE = "live"
+            universe = generate_universe(
+                GameConfig(seed=42, universe_size=200, enable_ferrengi=True)
+            )
+            adj = _adj(universe)
+            dead = sorted(sid for sid, neigh in adj.items() if not neigh)
+            assert dead
+            assert all(sid > 10 for sid in dead)
+            assert _reaches_all_from_one(adj)
+            trapped = _cannot_reach_one(adj)
+            assert trapped
+            assert _long_one_ways(adj)
+            closed = [
+                sid
+                for sid, neigh in adj.items()
+                if sid > 10 and not neigh and any(sid in adj[other] for other in adj)
+            ]
+            assert closed
+            home = universe.ferrengal_sector
+            assert home in dead
+            player = Player(
+                id="P1",
+                name="P1",
+                sector_id=dead[0],
+                credits=1000,
+                ship=Ship(ship_class=ShipClass.MERCHANT_CRUISER),
+            )
+            universe.players["P1"] = player
+            result = _handle_plot_course(
+                universe,
+                "P1",
+                Action(kind=ActionKind.PLOT_COURSE, args={"target": 1}),
+            )
+            assert result.ok is False
+            assert result.error == "no route to target"
+            player.known_warps = {1: [2]}
+            hint = _action_hint({"id": dead[0], "warps_out": []}, player, [], universe)
+            assert "DEAD END" in hint
+            assert "fully connected" not in hint
+        finally:
+            K.UNIVERSE_TOPOLOGY_MODE = "legacy"
     finally:
-        K.UNIVERSE_TOPOLOGY_MODE = "legacy"
+        K.UNIVERSE_TOPOLOGY_MODE = _prior_universe_topology_mode

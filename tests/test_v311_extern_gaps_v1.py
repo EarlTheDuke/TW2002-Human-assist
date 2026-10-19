@@ -263,13 +263,17 @@ def test_profile_uses_the_v306_planet_rule(monkeypatch) -> None:
 
 
 def test_old_v306_constant_still_selects_the_path() -> None:
-    universe = _world()
-    saved = K.CORP_DISBAND_PLANETS
-    K.CORP_DISBAND_PLANETS = "v306"
+    _prior_corp_disband_planets = K.CORP_DISBAND_PLANETS
     try:
-        assert K.CORP_PLANET_DISBAND_MODE == "legacy"
-        home, away = _leave_with_planets(universe)
+        universe = _world()
+        saved = K.CORP_DISBAND_PLANETS
+        try:
+            K.CORP_DISBAND_PLANETS = "v306"
+            assert K.CORP_PLANET_DISBAND_MODE == "legacy"
+            home, away = _leave_with_planets(universe)
+        finally:
+            K.CORP_DISBAND_PLANETS = saved
+        assert home.owner_id == "P1"
+        assert away.owner_id is None
     finally:
-        K.CORP_DISBAND_PLANETS = saved
-    assert home.owner_id == "P1"
-    assert away.owner_id is None
+        K.CORP_DISBAND_PLANETS = _prior_corp_disband_planets

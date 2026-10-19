@@ -35,17 +35,21 @@ def test_off_omits_the_screen() -> None:
 
 
 def test_on_counts_the_universe() -> None:
-    u = _world()
-    K.DAILY_STATS_MODE = "live"
+    _prior_daily_stats_mode = K.DAILY_STATS_MODE
     try:
-        stats = game_status(u)
-        assert stats["ports"] > 0
-        assert stats["planets"] == len(u.planets)
-        assert stats["traders"] == 1
-        assert stats["aliens"] >= 0
-        assert stats["fighters_in_use"] >= 10
-        assert stats["mines_in_use"] >= 0
-        dumped = build_observation(u, "A").model_dump()
-        assert dumped["daily_stats"] == stats
+        u = _world()
+        try:
+            K.DAILY_STATS_MODE = "live"
+            stats = game_status(u)
+            assert stats["ports"] > 0
+            assert stats["planets"] == len(u.planets)
+            assert stats["traders"] == 1
+            assert stats["aliens"] >= 0
+            assert stats["fighters_in_use"] >= 10
+            assert stats["mines_in_use"] >= 0
+            dumped = build_observation(u, "A").model_dump()
+            assert dumped["daily_stats"] == stats
+        finally:
+            K.DAILY_STATS_MODE = "legacy"
     finally:
-        K.DAILY_STATS_MODE = "legacy"
+        K.DAILY_STATS_MODE = _prior_daily_stats_mode

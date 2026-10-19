@@ -48,12 +48,16 @@ TOK = "note64-classm-token-p2-00000000000"
 
 @pytest.fixture
 def v311():
-    old = K.V311_PROFILE
-    K.V311_PROFILE = "v311"
+    _prior_v311_profile = K.V311_PROFILE
     try:
-        yield
+        old = K.V311_PROFILE
+        try:
+            K.V311_PROFILE = "v311"
+            yield
+        finally:
+            K.V311_PROFILE = old
     finally:
-        K.V311_PROFILE = old
+        K.V311_PROFILE = _prior_v311_profile
 
 
 def _world(class_id: PlanetClass = PlanetClass.M, **pools: int) -> Planet:
@@ -141,22 +145,26 @@ def test_a_day_paid_in_slices_matches_the_daily_number(v311):
 
 def test_profile_off_and_other_classes_are_unchanged():
     """Profile off is the old game: class M keeps the handbook unit as stored and the legacy table."""
-    assert not K.class_m_fidelity_live()
-    planet = _world(fuel_ore=1_500, organics=700)
-    assert planet_growth_status(planet.class_id, planet.colonists, 0)["production"] == {
-        "fuel_ore": 45, "organics": 35, "equipment": 0,
-    }
-    _apply_one_day(planet)
-    assert _made(planet) == (45, 13, 0, 60)
-    assert fighters_from_colonists(PlanetClass.M, {"fuel_ore": 1_500_000}) == 50_000
-    old = K.V311_PROFILE
-    K.V311_PROFILE = "v311"
+    _prior_v311_profile = K.V311_PROFILE
     try:
-        class_l = _world(PlanetClass.L, fuel_ore=1_500, organics=700)
-        _apply_one_day(class_l)
-        assert _made(class_l) == (750, 140, 0, 73)
+        assert not K.class_m_fidelity_live()
+        planet = _world(fuel_ore=1_500, organics=700)
+        assert planet_growth_status(planet.class_id, planet.colonists, 0)["production"] == {
+            "fuel_ore": 45, "organics": 35, "equipment": 0,
+        }
+        _apply_one_day(planet)
+        assert _made(planet) == (45, 13, 0, 60)
+        assert fighters_from_colonists(PlanetClass.M, {"fuel_ore": 1_500_000}) == 50_000
+        old = K.V311_PROFILE
+        try:
+            K.V311_PROFILE = "v311"
+            class_l = _world(PlanetClass.L, fuel_ore=1_500, organics=700)
+            _apply_one_day(class_l)
+            assert _made(class_l) == (750, 140, 0, 73)
+        finally:
+            K.V311_PROFILE = old
     finally:
-        K.V311_PROFILE = old
+        K.V311_PROFILE = _prior_v311_profile
 
 
 def test_the_owner_sees_the_server_daily_numbers(v311):

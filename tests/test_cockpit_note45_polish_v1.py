@@ -94,22 +94,26 @@ def test_navhaz_shows_on_the_sector_line(world):
 
 
 def test_the_avoid_form_lists_the_saved_sectors(world):
-    page = world["page"]
-    universe = world["universe"]
-    universe.players["P2"].avoided_sectors = [12, 40]
-    K.AVOID_MODE = "live"
+    _prior_avoid_mode = K.AVOID_MODE
     try:
-        _next(page, world["host"])
-        page.keyboard.press("C")
-        page.keyboard.press("O")
-        page.wait_for_selector(".frm", timeout=10_000)
-        text = page.locator(".frm").inner_text()
-        assert "12" in text and "40" in text
-        _shoot(page, "avoid", ".frm")
-        page.keyboard.press("Escape")
+        page = world["page"]
+        universe = world["universe"]
+        universe.players["P2"].avoided_sectors = [12, 40]
+        try:
+            K.AVOID_MODE = "live"
+            _next(page, world["host"])
+            page.keyboard.press("C")
+            page.keyboard.press("O")
+            page.wait_for_selector(".frm", timeout=10_000)
+            text = page.locator(".frm").inner_text()
+            assert "12" in text and "40" in text
+            _shoot(page, "avoid", ".frm")
+            page.keyboard.press("Escape")
+        finally:
+            K.AVOID_MODE = "legacy"
+            universe.players["P2"].avoided_sectors = []
     finally:
-        K.AVOID_MODE = "legacy"
-        universe.players["P2"].avoided_sectors = []
+        K.AVOID_MODE = _prior_avoid_mode
 
 
 def test_terra_uses_the_original_planet_line(world):
@@ -181,16 +185,20 @@ def test_the_same_product_is_not_a_colonist_move(world):
 
 
 def test_a_class_m_card_shows_the_colonist_trend(world):
-    page = world["page"]
-    universe = world["universe"]
-    planet = next(p for p in universe.planets.values() if p.name == "Haul Rock")
-    planet.class_id = PlanetClass.M
-    K.CLASS_M_FIDELITY_MODE = "live"
+    _prior_class_m_fidelity_mode = K.CLASS_M_FIDELITY_MODE
     try:
-        _next(page, world["host"])
-        page.wait_for_selector("[data-colonists=trend]", timeout=10_000)
-        text = page.locator("[data-colonists=trend]").inner_text()
-        assert text
-        _shoot(page, "trend", ".planet")
+        page = world["page"]
+        universe = world["universe"]
+        planet = next(p for p in universe.planets.values() if p.name == "Haul Rock")
+        planet.class_id = PlanetClass.M
+        try:
+            K.CLASS_M_FIDELITY_MODE = "live"
+            _next(page, world["host"])
+            page.wait_for_selector("[data-colonists=trend]", timeout=10_000)
+            text = page.locator("[data-colonists=trend]").inner_text()
+            assert text
+            _shoot(page, "trend", ".planet")
+        finally:
+            K.CLASS_M_FIDELITY_MODE = "legacy"
     finally:
-        K.CLASS_M_FIDELITY_MODE = "legacy"
+        K.CLASS_M_FIDELITY_MODE = _prior_class_m_fidelity_mode

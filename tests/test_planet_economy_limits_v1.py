@@ -108,16 +108,20 @@ def test_production_and_growth_stop_at_the_cap() -> None:
 
 
 def test_legacy_mode_still_grows_past_the_cap() -> None:
-    previous = K.PLANET_ECONOMY_MODE
-    K.PLANET_ECONOMY_MODE = "legacy"
+    _prior_planet_economy_mode = K.PLANET_ECONOMY_MODE
     try:
-        universe, planet = _lab(PlanetClass.M)
-        planet.stockpile[Commodity.FUEL_ORE] = K.PLANET_MAX_STOCK["M"]["fuel_ore"]
-        planet.colonists[Commodity.FUEL_ORE] = 10_000
-        _advance_planets(universe)
-        assert int(planet.stockpile[Commodity.FUEL_ORE]) > K.PLANET_MAX_STOCK["M"]["fuel_ore"]
+        previous = K.PLANET_ECONOMY_MODE
+        try:
+            K.PLANET_ECONOMY_MODE = "legacy"
+            universe, planet = _lab(PlanetClass.M)
+            planet.stockpile[Commodity.FUEL_ORE] = K.PLANET_MAX_STOCK["M"]["fuel_ore"]
+            planet.colonists[Commodity.FUEL_ORE] = 10_000
+            _advance_planets(universe)
+            assert int(planet.stockpile[Commodity.FUEL_ORE]) > K.PLANET_MAX_STOCK["M"]["fuel_ore"]
+        finally:
+            K.PLANET_ECONOMY_MODE = previous
     finally:
-        K.PLANET_ECONOMY_MODE = previous
+        K.PLANET_ECONOMY_MODE = _prior_planet_economy_mode
 
 
 def test_sixth_planet_is_refused_and_pays_nothing() -> None:
@@ -142,21 +146,25 @@ def test_sixth_planet_is_refused_and_pays_nothing() -> None:
 
 
 def test_legacy_mode_allows_a_sixth_planet() -> None:
-    previous = K.PLANET_ECONOMY_MODE
-    K.PLANET_ECONOMY_MODE = "legacy"
+    _prior_planet_economy_mode = K.PLANET_ECONOMY_MODE
     try:
-        u = _universe()
-        sid = _deep_sector(u)
-        _fill_sector(u, sid, 5)
-        _move(u, "P1", sid)
-        player = u.players["P1"]
-        player.ship.genesis = 1
-        res = apply_action(u, "P1", Action(kind=ActionKind.DEPLOY_GENESIS, args={}))
-        assert res.ok, res.error
-        assert player.ship.genesis == 0
-        assert len(u.sectors[sid].planet_ids) == 6
+        previous = K.PLANET_ECONOMY_MODE
+        try:
+            K.PLANET_ECONOMY_MODE = "legacy"
+            u = _universe()
+            sid = _deep_sector(u)
+            _fill_sector(u, sid, 5)
+            _move(u, "P1", sid)
+            player = u.players["P1"]
+            player.ship.genesis = 1
+            res = apply_action(u, "P1", Action(kind=ActionKind.DEPLOY_GENESIS, args={}))
+            assert res.ok, res.error
+            assert player.ship.genesis == 0
+            assert len(u.sectors[sid].planet_ids) == 6
+        finally:
+            K.PLANET_ECONOMY_MODE = previous
     finally:
-        K.PLANET_ECONOMY_MODE = previous
+        K.PLANET_ECONOMY_MODE = _prior_planet_economy_mode
 
 
 def test_dump_past_the_cap_returns_the_cargo() -> None:
@@ -246,17 +254,21 @@ def test_class_u_unload_stops_at_3000() -> None:
 
 
 def test_stock_is_priced_at_the_published_base() -> None:
-    assert planet_stock_unit_price("fuel_ore") == 26
-    assert planet_stock_unit_price("organics") == 56
-    assert planet_stock_unit_price("equipment") == 102
-    planet = Planet(id=3, sector_id=20, name="Vault", class_id=PlanetClass.M)
-    planet.stockpile[Commodity.FUEL_ORE] = 10
-    planet.stockpile[Commodity.ORGANICS] = 2
-    planet.stockpile[Commodity.EQUIPMENT] = 1
-    assert _planet_asset_value(planet) == 10 * 26 + 2 * 56 + 102
-    previous = K.PLANET_ECONOMY_MODE
-    K.PLANET_ECONOMY_MODE = "legacy"
+    _prior_planet_economy_mode = K.PLANET_ECONOMY_MODE
     try:
         assert planet_stock_unit_price("fuel_ore") == 26
+        assert planet_stock_unit_price("organics") == 56
+        assert planet_stock_unit_price("equipment") == 102
+        planet = Planet(id=3, sector_id=20, name="Vault", class_id=PlanetClass.M)
+        planet.stockpile[Commodity.FUEL_ORE] = 10
+        planet.stockpile[Commodity.ORGANICS] = 2
+        planet.stockpile[Commodity.EQUIPMENT] = 1
+        assert _planet_asset_value(planet) == 10 * 26 + 2 * 56 + 102
+        previous = K.PLANET_ECONOMY_MODE
+        try:
+            K.PLANET_ECONOMY_MODE = "legacy"
+            assert planet_stock_unit_price("fuel_ore") == 26
+        finally:
+            K.PLANET_ECONOMY_MODE = previous
     finally:
-        K.PLANET_ECONOMY_MODE = previous
+        K.PLANET_ECONOMY_MODE = _prior_planet_economy_mode

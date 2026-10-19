@@ -85,27 +85,33 @@ def _confirm(page):
 
 @pytest.fixture(scope="module")
 def seats(tmp_path_factory):
-    sync = pytest.importorskip("playwright.sync_api").sync_playwright
-    saved = (K.HAGGLE_LIVE_MODE, K.SHIP_EXIT_MODE)
-    K.HAGGLE_LIVE_MODE = "live"
-    K.SHIP_EXIT_MODE = "tw2002"
-    pw = sync().start()
-    dock_host = CuHost(tmp_path_factory.mktemp("blank-dock"), DOCK_TOK, park_at=1)
-    dock_host.__enter__()
-    port_host = CuHost(tmp_path_factory.mktemp("blank-port"), PORT_TOK)
-    port_host.__enter__()
-    port_host.runner.state.universe.players["P2"].ship.cargo[Commodity.COLONISTS] = 4
-    dock_browser, dock_page = _page(pw, dock_host, DOCK_TOK)
-    port_browser, port_page = _page(pw, port_host, PORT_TOK)
+    _prior_haggle_live_mode = K.HAGGLE_LIVE_MODE
+    _prior_ship_exit_mode = K.SHIP_EXIT_MODE
     try:
-        yield {"dock": dock_page, "port": port_page}
+        sync = pytest.importorskip("playwright.sync_api").sync_playwright
+        saved = (K.HAGGLE_LIVE_MODE, K.SHIP_EXIT_MODE)
+        K.HAGGLE_LIVE_MODE = "live"
+        K.SHIP_EXIT_MODE = "tw2002"
+        pw = sync().start()
+        dock_host = CuHost(tmp_path_factory.mktemp("blank-dock"), DOCK_TOK, park_at=1)
+        dock_host.__enter__()
+        port_host = CuHost(tmp_path_factory.mktemp("blank-port"), PORT_TOK)
+        port_host.__enter__()
+        port_host.runner.state.universe.players["P2"].ship.cargo[Commodity.COLONISTS] = 4
+        dock_browser, dock_page = _page(pw, dock_host, DOCK_TOK)
+        port_browser, port_page = _page(pw, port_host, PORT_TOK)
+        try:
+            yield {"dock": dock_page, "port": port_page}
+        finally:
+            dock_browser.close()
+            port_browser.close()
+            dock_host.__exit__(None, None, None)
+            port_host.__exit__(None, None, None)
+            pw.stop()
+            K.HAGGLE_LIVE_MODE, K.SHIP_EXIT_MODE = saved
     finally:
-        dock_browser.close()
-        port_browser.close()
-        dock_host.__exit__(None, None, None)
-        port_host.__exit__(None, None, None)
-        pw.stop()
-        K.HAGGLE_LIVE_MODE, K.SHIP_EXIT_MODE = saved
+        K.HAGGLE_LIVE_MODE = _prior_haggle_live_mode
+        K.SHIP_EXIT_MODE = _prior_ship_exit_mode
 
 
 def test_bank_amount_stays_empty_and_confirm_or_enter_posts_nothing(seats) -> None:

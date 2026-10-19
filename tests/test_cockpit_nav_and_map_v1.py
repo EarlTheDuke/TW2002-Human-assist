@@ -81,40 +81,44 @@ def test_item0_no_override_is_todays_opening_and_an_override_hits_every_seat(mon
 
 
 def _runner(tmp_path: Path, override: int | None, *, live: bool):
-    if live:
-        K.V311_PROFILE = "v311"
-    cfg = GameConfig(
-        seed=21, universe_size=40, max_days=2, turns_per_day=80,
-        starting_credits=20_000, enable_ferrengi=False, enable_planets=True,
-        action_delay_s=0.0, starting_credits_override=override,
-    )
-    spec = MatchSpec(
-        config=cfg,
-        agents=[
-            AgentSpec(player_id="P1", name="Human", kind="external", external_token="t" * 40),
-            AgentSpec(player_id="P2", name="Bot", kind="heuristic"),
-        ],
-        action_delay_s=0.0,
-        paused=True,
-        external_idle_wait_s=0.0,
-    )
-    runner = MatchRunner(Broadcaster(), saves_root=tmp_path / "saves")
-
-    async def go():
-        await runner.start(spec)
-        for _ in range(400):
-            if runner.state.universe is not None and runner.state.universe.players:
-                break
-            await asyncio.sleep(0.01)
-        got = runner.state.universe
-        snap = W.write_snapshot(runner, "test", tmp_path / "snaps")
-        await runner.stop()
-        return got, snap
-
+    _prior_v311_profile = K.V311_PROFILE
     try:
-        return asyncio.run(go())
+        if live:
+            K.V311_PROFILE = "v311"
+        cfg = GameConfig(
+            seed=21, universe_size=40, max_days=2, turns_per_day=80,
+            starting_credits=20_000, enable_ferrengi=False, enable_planets=True,
+            action_delay_s=0.0, starting_credits_override=override,
+        )
+        spec = MatchSpec(
+            config=cfg,
+            agents=[
+                AgentSpec(player_id="P1", name="Human", kind="external", external_token="t" * 40),
+                AgentSpec(player_id="P2", name="Bot", kind="heuristic"),
+            ],
+            action_delay_s=0.0,
+            paused=True,
+            external_idle_wait_s=0.0,
+        )
+        runner = MatchRunner(Broadcaster(), saves_root=tmp_path / "saves")
+
+        async def go():
+            await runner.start(spec)
+            for _ in range(400):
+                if runner.state.universe is not None and runner.state.universe.players:
+                    break
+                await asyncio.sleep(0.01)
+            got = runner.state.universe
+            snap = W.write_snapshot(runner, "test", tmp_path / "snaps")
+            await runner.stop()
+            return got, snap
+
+        try:
+            return asyncio.run(go())
+        finally:
+            K.V311_PROFILE = "legacy"
     finally:
-        K.V311_PROFILE = "legacy"
+        K.V311_PROFILE = _prior_v311_profile
 
 
 def test_item0_the_runner_pays_the_override_to_the_human_and_the_bot(tmp_path, monkeypatch) -> None:
