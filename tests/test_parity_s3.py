@@ -30,6 +30,14 @@ JS = (ROOT / "web" / "bot.js").read_text(encoding="utf-8")
 PRECISE = ("warp", "scan", "wait", "trade", "plot_course", "probe", "hail", "broadcast")
 
 
+def _offered_kinds() -> list[str]:
+    """Living-seat catalog. Avoid, radio, and the ship-exit pair stay out while their switches are off."""
+    return [k.value for k in ActionKind
+            if (k is not ActionKind.AVOID or K.avoid_live())
+            and (k is not ActionKind.RADIO or K.radio_channel_live())
+            and (k not in (ActionKind.JETTISON, ActionKind.SELF_DESTRUCT) or K.ship_exit_on())]
+
+
 def _universe(seed: int = 21):
     cfg = GameConfig(seed=seed, universe_size=80, max_days=3, turns_per_day=12, starting_credits=25_000,
                      enable_ferrengi=False, enable_planets=True)
@@ -142,7 +150,7 @@ def test_matrix_legal_matches_apply_action(label: str, u) -> None:
     if not u.players["P1"].alive:
         offered = [k.value for k in ActionKind]
     else:
-        offered = [k.value for k in ActionKind if (k is not ActionKind.AVOID or K.avoid_live()) and (k is not ActionKind.RADIO or K.radio_channel_live())]
+        offered = _offered_kinds()
     assert len(las) == len(offered), "one entry per offered ActionKind"
     for kind in PRECISE:
         la = las[kind]
@@ -165,7 +173,7 @@ def test_query_is_pure_and_deterministic() -> None:
     b = [la.model_dump() for la in legal_actions(u, "P1")]
     after = json.dumps(u.model_dump(mode="json"), sort_keys=True, default=str)
     assert a == b and before == after
-    offered = [k.value for k in ActionKind if (k is not ActionKind.AVOID or K.avoid_live()) and (k is not ActionKind.RADIO or K.radio_channel_live())]
+    offered = _offered_kinds()
     assert [x["kind"] for x in a] == offered  # engine order; avoid is absent while its switch is off
 
 
@@ -192,7 +200,7 @@ def test_observation_and_llm_message_carry_legality(monkeypatch) -> None:
     u = _universe()
     obs = build_observation(u, "P1")
     kinds = {e["kind"] for e in obs.legal_actions}
-    expected = {k.value for k in ActionKind if (k is not ActionKind.AVOID or K.avoid_live()) and (k is not ActionKind.RADIO or K.radio_channel_live())}
+    expected = set(_offered_kinds())
     assert kinds == expected
     warp = next(e for e in obs.legal_actions if e["kind"] == "warp")
     assert warp["legal"] is True and warp["params"]["target"]["choices"] == list(u.sectors[1].warps)

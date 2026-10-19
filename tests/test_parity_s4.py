@@ -372,6 +372,12 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"sector": 0})
     if ak is ActionKind.RADIO:
         return Action(kind=ak, args={"channel": 1, "message": "hold"})
+    if ak is ActionKind.JETTISON:
+        c = first("commodity", "colonists")
+        mb = (p.get("qty") or {}).get("max_by") or {}
+        return Action(kind=ak, args={"commodity": c, "qty": max(1, int(mb.get(c, 1)))})
+    if ak is ActionKind.SELF_DESTRUCT:
+        return Action(kind=ak, args={})
     raise AssertionError(f"no builder for {kind}")
 
 
@@ -379,7 +385,9 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
 def test_every_verb_matches_engine(label: str, fx) -> None:
     pid, u = fx if isinstance(fx, tuple) else ("P1", fx)
     las = {la.kind: la for la in legal_actions(u, pid)}
-    offered = [k for k in ALL if (k != "avoid" or K.avoid_live()) and (k != "radio" or K.radio_channel_live())]
+    offered = [k for k in ALL
+               if (k != "avoid" or K.avoid_live()) and (k != "radio" or K.radio_channel_live())
+               and (k not in ("jettison", "self_destruct") or K.ship_exit_on())]
     assert set(las) == set(offered)
     assert all(la.detail == "precise" for la in las.values()), [k for k, la in las.items() if la.detail != "precise"]
     for kind in offered:
