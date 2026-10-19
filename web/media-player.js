@@ -414,16 +414,22 @@
     if (!newest || typeof newest.seq !== "number") return;
     const fresh = list.filter((ev) => ev && typeof ev.seq === "number" && ev.seq > state.lastSeq);
     if (!fresh.length) return;
+    // The redesign hull scene already showed this move. Keep the events in the
+    // batch (callers count them) and do not start a second warp.out.
+    const clipHere = opts.hullPlayed
+      ? fresh.filter((ev) => ev.kind !== "warp" && ev.kind !== "autopilot")
+      : fresh;
     const v2 = state.manifest && state.manifest.version >= 2 && R;
     // No manifest yet: keep history and live events in one queue (history first)
     // so a live clip cannot play ahead of the backlog. A failed fetch clears it.
     if (!state.manifest) {
       if (state.manifestFailed) return;
       if (!state.pendingEvents) state.pendingEvents = [];
-      for (const ev of fresh) {
+      for (const ev of clipHere) {
         state.pendingEvents.push({ ev, history: !!opts.history });
         if (state.pendingEvents.length > 400) state.pendingEvents.shift();
       }
+      if (opts.hullPlayed && !clipHere.length) return;
       if (opts.history) {
         state.lastSeq = Math.max(state.lastSeq, newest.seq);
         if (state.visit_sector == null && state.obs && state.obs.sector) state.visit_sector = state.obs.sector.id;
@@ -443,14 +449,19 @@
       }
       return;
     }
-    if (!v2) { onEvent(newest); return; }
+    if (!v2) {
+      if (clipHere.length) onEvent(clipHere[clipHere.length - 1]);
+      else state.lastSeq = Math.max(state.lastSeq, newest.seq);
+      return;
+    }
     state.lastSeq = Math.max(state.lastSeq, newest.seq);
+    if (!clipHere.length) return;
     if (state.visit_sector == null && state.obs && state.obs.sector) state.visit_sector = state.obs.sector.id;
     if (!state.session) state.session = R.createSession(state.manifest);
     const view = state.obs || { self_id: null, sector: {} };
-    const items = R.resolve(fresh, view, state, state.manifest);
+    const items = R.resolve(clipHere, view, state, state.manifest);
     const hidden = typeof document !== "undefined" && document.hidden;
-    const selfSeqs = fresh.filter((ev) => ev.actor_id === view.self_id && ev.kind !== "agent_thought" && ev.kind !== "llm_usage").map((ev) => ev.seq);
+    const selfSeqs = clipHere.filter((ev) => ev.actor_id === view.self_id && ev.kind !== "agent_thought" && ev.kind !== "llm_usage").map((ev) => ev.seq);
     const postedSeq = selfSeqs.length ? Math.max(...selfSeqs) : undefined;
     const step = state.session.consider(items, Date.now(), {
       hidden, maxSeq: state.lastSeq, postedSeq, recordCooldown: viewportMode() !== "off" && cuSetting() !== "off",
@@ -462,7 +473,7 @@
     // No clip started. Off stays quiet. CU still uses the slot. The default
     // layout plays the still inside the viewport so it cannot cover the ship.
     if (!step.playing && viewportMode() !== "off" && cuSetting() !== "off") {
-      const show = [...fresh].reverse().find((ev) => ev.kind !== "agent_thought" && ev.kind !== "llm_usage");
+      const show = [...clipHere].reverse().find((ev) => ev.kind !== "agent_thought" && ev.kind !== "llm_usage");
       if (show) showFallback(resolveKind(show.kind), show.kind);
     }
   }
