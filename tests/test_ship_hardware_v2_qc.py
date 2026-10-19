@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import socket
-
 import pytest
 
 import tw2k.engine.constants as K
@@ -199,27 +197,43 @@ def test_plant_entry_order_navhaz_before_limpet(tw) -> None:
     assert limpets_on_target(u, "A") == []
 
 
-def test_free_port_skips_reserved_live_range() -> None:
+def test_free_port_skips_reserved_live_range(monkeypatch) -> None:
+    """Reserved live ports stay unused even when a bind would succeed there.
+
+    Every port looks free and the shared port book is empty, so the reserved
+    set is the only thing that moves the scan. Below 8120 the open pockets are
+    8038-8040, 8043-8044, and 8050-8054.
+    """
+    import tw2k.public.config as cfg
+    from tests import _port_lock
     from tests._cu_host import RESERVED_TEST_PORTS, free_port
 
-    assert frozenset(range(8031, 8037)) | frozenset(range(8099, 8120)) == RESERVED_TEST_PORTS
-    # Occupy 8040 so the helper must walk past it; still must never return 8031-8036.
-    held = []
-    try:
-        for p in range(8040, 8045):
-            s = socket.socket()
-            s.bind(("127.0.0.1", p))
-            held.append(s)
-        # Default start is 8040; with 8040-8044 held, next free is >=8045.
-        got = free_port()
-        assert got not in RESERVED_TEST_PORTS
-        assert got >= 8045
-        # Even if asked to start inside the reserved band, never return 8031-8036.
-        got2 = free_port(start=8031)
-        assert got2 not in RESERVED_TEST_PORTS
-    finally:
-        for s in held:
-            s.close()
+    reserved = frozenset().union(
+        range(8031, 8038),
+        (8041, 8042),
+        range(8045, 8050),
+        range(8055, 8060),
+        range(8060, 8099),
+        range(8099, 8120),
+    )
+    allowed = set(range(8038, 8041)) | set(range(8043, 8045)) | set(range(8050, 8055))
+    assert reserved == RESERVED_TEST_PORTS
+    assert {p for p in range(8031, 8120) if p not in RESERVED_TEST_PORTS} == allowed
+    assert 8037 in RESERVED_TEST_PORTS
+    assert 8058 in RESERVED_TEST_PORTS and 8059 in RESERVED_TEST_PORTS
+
+    monkeypatch.setattr(cfg, "port_is_free", lambda port, host="127.0.0.1": True)
+    monkeypatch.setattr(_port_lock, "_read", lambda: {})
+    monkeypatch.setattr(_port_lock, "_write", lambda data: None)
+
+    assert free_port() == 8050
+    assert free_port(start=8031) == 8038
+    assert free_port(start=8041) == 8043
+    assert free_port(start=8045) == 8050
+    assert free_port(start=8055) == 8120
+    assert free_port(start=8099) == 8120
+    for port in (8050, 8038, 8043, 8120):
+        assert port not in RESERVED_TEST_PORTS
 
 
 def test_scanners_legacy_golden_delta_is_own_ship_and_legal_only(tw, monkeypatch) -> None:

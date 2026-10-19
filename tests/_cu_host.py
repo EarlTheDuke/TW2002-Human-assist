@@ -1,8 +1,8 @@
 """Shared helpers for the /bot browser tests (G2 mode=cu, G3 seat claim).
 
 `CuHost` runs the real app + a match on a background thread on a free local
-port >= 8050, skipping the reserved live/QC range 8031-8036: heuristic P1,
-external P2 parked on a two-way trading port with 10 fuel ore. `browser`
+port. The default scan starts at 8050 and skips the reserved live ports.
+Heuristic P1, external P2 parked on a two-way trading port with 10 fuel ore. `browser`
 yields a Playwright Chromium, or skips when Playwright / the browser binary
 is missing.
 """
@@ -61,9 +61,17 @@ def release_info_mode(holder) -> None:
         _info_saved = None
 
 
-# Live hosted matches and the full QC game occupy 8031-8036; browser tests
-# must never bind those (a free-port scan starting at 8033 could steal 8033/8035).
-RESERVED_TEST_PORTS = frozenset(range(8031, 8037)) | frozenset(range(8099, 8120))
+# Live games and standing test servers. A scan may use 8038-8040, 8043-8044,
+# and 8050-8054. Every other port from 8031 through 8119 is reserved.
+# 8037 is a live game. 8058 is the watcher and 8059 is the Commander test.
+RESERVED_TEST_PORTS = frozenset().union(
+    range(8031, 8038),
+    (8041, 8042),
+    range(8045, 8050),
+    range(8055, 8060),
+    range(8060, 8099),
+    range(8099, 8120),
+)
 
 
 def free_port(start: int = 8050) -> int:
