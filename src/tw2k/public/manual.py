@@ -558,9 +558,17 @@ def _corp_join() -> str:
             f"loses experience at the next day. The loss is {formula}. "
             f"Experience does not go below {_n(floor)}."
         )
+    if K.corp_breakin_align_live():
+        breakin = (
+            "The first wrong corporation password in a day costs 1 alignment. "
+            "Experience does not change. A later wrong password that day does not."
+        )
+    else:
+        breakin = "A wrong corporation password does not change alignment."
     return (
         f"<p>{_profile('Alignment join check', rule == 'join_check', only_v311=True)} {join}</p>"
         f"<p>{penalty}</p>"
+        f"<p>{_profile('Corp break-in alignment', K.corp_breakin_align_live(), only_v311=False)} {breakin}</p>"
     )
 
 
@@ -1195,9 +1203,21 @@ def _feds_and_ferrengi(_f: dict) -> str:
         "three federal ships are in space: Intrepid at StarDock, then Valiant and Lexington in the next two sectors.",
         "those three federal ships are not placed.",
     )
+    tow_limit = K.fed_tow_fighter_limit()
     tow = (
-        f"<p>FedSpace holds at most {_n(K.FED_SHIPS_PER_SECTOR)} ships in a sector and tows the rest. "
-        f"A ship with more than {_n(K.FED_TOW_FIGHTER_LIMIT)} fighters is towed.</p>"
+        f"<p>{_profile('FedSpace tow limit', K.fed_tow_limit_live(), only_v311=False)} "
+        f"FedSpace holds at most {_n(K.FED_SHIPS_PER_SECTOR)} ships in a sector and tows the rest. "
+        f"A ship with more than {_n(tow_limit)} fighters is towed.</p>"
+    )
+    if K.fedsafe_fighter_cap_live():
+        shield = (
+            f"A trader with more than {_n(K.FEDSAFE_FIGHTER_CAP)} fighters is not protected in FedSpace."
+        )
+    else:
+        shield = "How many fighters you carry does not remove FedSpace protection."
+    fighter_cap = (
+        f"<p>{_profile('FedSpace fighter protection', K.fedsafe_fighter_cap_live(), only_v311=False)} "
+        f"{shield}</p>"
     )
     drop = _gated(
         K.fedspace_deploy_live(),
@@ -1219,6 +1239,7 @@ def _feds_and_ferrengi(_f: dict) -> str:
         f"<p>The federal captains are {escape(captains)}.</p>"
         + ships
         + tow
+        + fighter_cap
         + drop
         + "<p>Ferrengi rules are in the Ferrengi section. Ferrengal is their home sector.</p>"
         + quasar
@@ -1322,7 +1343,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "corp_transfer", "corp_deposit", "corp_withdraw", "corp_memo",
         "propose_alliance", "accept_alliance", "break_alliance",
         "ship_set_corporate", "ship_set_personal", "ship_set_password",
-        "CORP_EXP_PENALTY_MODE", "CORP_PLANET_DISBAND_MODE",
+        "CORP_EXP_PENALTY_MODE", "CORP_PLANET_DISBAND_MODE", "CORP_BREAKIN_ALIGN_MODE",
     ),
     "alignment": ("DISCOVERY_EXP_MODE", "EXP_SOURCES_MODE"),
     "rankings": (
@@ -1351,7 +1372,10 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE",
     ),
     "death-and-pods": ("DEATH_DELAY_MODE", "DEATH_POD_MODE", "POD_CASH_MODE"),
-    "feds-and-ferrengi-v311": ("FED_SHIPS_MODE", "FEDSPACE_DEPLOY_MODE", "FERRENGAL_QUASAR_MODE"),
+    "feds-and-ferrengi-v311": (
+        "FED_SHIPS_MODE", "FEDSPACE_DEPLOY_MODE", "FERRENGAL_QUASAR_MODE",
+        "FEDSAFE_FIGHTER_CAP_MODE", "FED_TOW_LIMIT_MODE",
+    ),
     "towing-and-transwarp": (
         "ship_transwarp", "ship_transport", "tow_engage", "tow_release",
         "planet_transwarp", "planet_buy_transporter", "planet_transport",
