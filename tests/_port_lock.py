@@ -3,34 +3,91 @@
 `port_is_free` binds and then closes. Two tests can both see the same port as
 free and then both listen on it. `claim_ports` records the choice under a
 lock so the next claim skips it, even before the listener has bound.
+
+The lock file lives in the system temp directory. POSIX takes it with
+`fcntl.flock`. Windows takes it with `msvcrt.locking`. `fcntl` is imported
+only on POSIX, because Windows has no such module.
 """
 
 from __future__ import annotations
 
-import fcntl
 import json
+import os
 import random
+import tempfile
 import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
 _THREAD = threading.Lock()
-_PATH = Path("/tmp/tw2k-test-ports.lock")
-_BOOK = Path("/tmp/tw2k-test-ports.json")
+_DIR = Path(tempfile.gettempdir())
+_PATH = _DIR / "tw2k-test-ports.lock"
+_BOOK = _DIR / "tw2k-test-ports.json"
 _HOLD_S = 180.0
+_LOCK_WAIT_S = 120.0
+
+
+def _open_lock():
+    """Binary, unbuffered handle. Windows cannot lock a text-mode file."""
+    _DIR.mkdir(parents=True, exist_ok=True)
+    fd = os.open(os.fspath(_PATH), os.O_RDWR | os.O_CREAT, 0o666)
+    return os.fdopen(fd, "r+b", buffering=0)
+
+
+def _lock_byte(handle) -> None:
+    """One locked byte. An empty file cannot be locked on Windows."""
+    handle.seek(0, os.SEEK_END)
+    if handle.tell() == 0:
+        handle.write(b"\0")
+        handle.flush()
+    handle.seek(0)
+
+
+def _acquire(handle) -> None:
+    if os.name == "nt":
+        import msvcrt
+
+        _lock_byte(handle)
+        deadline = time.time() + _LOCK_WAIT_S
+        while True:
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                return
+            except OSError:
+                if time.time() >= deadline:
+                    raise TimeoutError("could not lock the test port book") from None
+                time.sleep(0.05)
+    import fcntl
+
+    fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+
+
+def _release(handle) -> None:
+    if os.name == "nt":
+        import msvcrt
+
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+    import fcntl
+
+    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 @contextmanager
 def port_lock():
     """One holder, in this process or another."""
-    _PATH.parent.mkdir(parents=True, exist_ok=True)
-    with _THREAD, _PATH.open("a") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+    with _THREAD:
+        handle = _open_lock()
         try:
-            yield
+            _acquire(handle)
+            try:
+                yield
+            finally:
+                _release(handle)
         finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            handle.close()
 
 
 def _read() -> dict[str, float]:
@@ -43,7 +100,9 @@ def _read() -> dict[str, float]:
 
 
 def _write(data: dict[str, float]) -> None:
-    _BOOK.write_text(json.dumps(data), encoding="utf-8")
+    tmp = _BOOK.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data), encoding="utf-8")
+    os.replace(tmp, _BOOK)
 
 
 def claim_ports(n: int, *, low: int, high: int, avoid: set[int] | None = None, sequential: bool = False) -> int:
