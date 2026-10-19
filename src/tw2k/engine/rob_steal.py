@@ -56,6 +56,22 @@ def clear_all_busts(universe: Universe) -> None:
             sector.port.bust_player_id = None
 
 
+def busts_clear_this_extern(universe: Universe) -> bool:
+    """Whether this day tick wipes port bust records.
+
+    Off, every Extern clears, which is what the engine already did. On, the
+    game setting is 1 (nightly, REV v3.05 and the cabal editor sample) or 7.
+    The day number has already moved forward for this tick. A missed Extern
+    catching up later is not built: this tick always runs.
+    """
+    if not K.bust_record_clear_live():
+        return True
+    interval = getattr(universe.config, "bust_clear_days", None)
+    if interval != 7:
+        return True
+    return int(universe.day) % 7 == 0
+
+
 def _truncate_cargo_to_holds(player: Player) -> None:
     ship = player.ship
     cap = max(1, int(ship.holds))
