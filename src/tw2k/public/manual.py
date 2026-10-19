@@ -344,12 +344,19 @@ def _combat(_f: dict) -> str:
 
 
 def _ferrengi(_f: dict) -> str:
+    if K.ferrengi_reward_live():
+        kill = (
+            f"A good trader (alignment above 0) gains {_n(K.FERRENGI_ALIGN_ON_KILL)} alignment. "
+            "A neutral or evil trader does not. Experience is a flat award by hull. "
+        )
+    else:
+        kill = f"Killing one moves alignment by {_n(K.FERRENGI_ALIGN_ON_KILL)}. "
     return (
         f"<p>A Ferrengi encounter is {escape(K.FERRENGI_ENCOUNTER)}. "
         f"Tribute asks for about {_n(K.FERRENGI_TRIBUTE_HOLDS)} holds or "
         f"{_n(int(K.FERRENGI_TRIBUTE_CREDIT_PCT * 100))} percent of your credits.</p>"
         "<p>You can pay, flee or fight. Attacking one makes a grudge: that Ferrengi, and later ones, treat you as hostile. "
-        f"Killing one moves alignment by {_n(K.FERRENGI_ALIGN_ON_KILL)}. "
+        f"{kill}"
         f"They start leaving you alone for the first {_n(K.FERRENGI_STARTUP_GRACE_DAYS)} days, "
         f"and a bounty is {_n(K.FERRENGI_BOUNTY_PER_AGG)} credits per point of aggression.</p>"
         + _src("Ferrengi encounter rules in the engine: tribute first, then a grudge if you attack.")

@@ -2018,9 +2018,23 @@ FERRENGI_ENCOUNTER = "tribute"
 FERRENGI_FIGHTER_BLOCK = False  # Iago: Ferrengi ignore deployed fighters
 FERRENGI_HIT_MINES = True
 FERRENGI_ALIGN_ON_KILL = 10
+# UNVERIFIED. The Bible calls a Ferrengi kill a "BIG alignment raise" and pays the
+# bounty whether alignment is negative or positive. It does not give experience by
+# hull. These stand in for that award when FERRENGI_REWARD_MODE is live. A hull
+# that is not listed keeps the clone formula (kill_ferr x aggression).
+FERRENGI_XP_BY_HULL = {
+    FERRENGI_HULL_ASSAULT: 50,
+    FERRENGI_HULL_CRUISER: 100,
+    FERRENGI_HULL_DREAD: 150,
+}
 FERRENGI_REGEN_PCT = 0.20  # TEDIT 20% of hull max
 FERRENGAL_MINES = 50  # Bible
 FERRENGAL_FIGHTERS = 1000  # UNVERIFIED stand-in for "cloud of Ferrengi ftrs"
+# UNVERIFIED strength. The S1 sector example is 10,000 fuel at 10% (burns 1,000,
+# deals 333). Ferrengal is a sector, not a planet with a fuel stock, so the shot
+# uses these constants and does not burn ore.
+FERRENGAL_QUASAR_FUEL = 10_000
+FERRENGAL_QUASAR_PCT = 10
 FERRENGAL_MIN_HOPS = 8
 FERRENGAL_SPAWN_RADIUS = 3
 FERRENGI_TRIBUTE_HOLDS = 5  # UNVERIFIED
@@ -4119,6 +4133,18 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PORT_BUY_PRICE_ANCHOR_MODE",
         "D25-1 (NOTE 69): hungry buy quotes use the live anchors, not the 1.93x full-hold curve",
     ),
+    "probe_shootdown_live": (
+        "PROBE_SHOOTDOWN_MODE",
+        "NOTE 85 MOV-c: a shot-down probe names the sector and who owned the fighters",
+    ),
+    "ferrengi_reward_live": (
+        "FERRENGI_REWARD_MODE",
+        "NOTE 85 FER-e: alignment up for a good trader, experience by hull",
+    ),
+    "ferrengal_quasar_live": (
+        "FERRENGAL_QUASAR_MODE",
+        "NOTE 85 FER-h: Ferrengal fires a quasar shot at a ship that enters",
+    ),
 }
 
 
@@ -4441,3 +4467,42 @@ START_COLONIST_NW_MODE = "legacy"  # "legacy" | "live"
 def start_colonist_nw_live() -> bool:
     """True when free start colonists still on the home planet are not in net worth."""
     return START_COLONIST_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def ferrengi_kill_xp(hull: str | None, aggression: int) -> int:
+    """Experience for one Ferrengi kill under the live reward.
+
+    A known hull pays the flat UNVERIFIED award. Anything else keeps the clone
+    formula so an unlisted hull does not invent a new number.
+    """
+    award = FERRENGI_XP_BY_HULL.get(str(hull or ""))
+    if award is None:
+        return int(aggression) * int(xp_award("kill_ferr"))
+    return int(award)
+
+
+# v311-hazard-scanner-gaps-v1 (NOTE 85). Stored defaults stay legacy. The profile
+# turns the helpers on. Rows 100 and 103 are unused: density/holo scanners and
+# corporate deploy are already the stored rule (INFO_MODE, CORP_MODE).
+PROBE_SHOOTDOWN_MODE = "legacy"  # "legacy" | "live"
+
+
+def probe_shootdown_live() -> bool:
+    """True when a destroyed probe's event names who owned the fighters."""
+    return PROBE_SHOOTDOWN_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+FERRENGI_REWARD_MODE = "legacy"  # "legacy" | "live"
+
+
+def ferrengi_reward_live() -> bool:
+    """True when a Ferrengi kill pays alignment only to a good trader, and xp by hull."""
+    return FERRENGI_REWARD_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+FERRENGAL_QUASAR_MODE = "legacy"  # "legacy" | "live"
+
+
+def ferrengal_quasar_live() -> bool:
+    """True when entering Ferrengal draws a quasar shot."""
+    return FERRENGAL_QUASAR_MODE == "live" or tw2002_live_profile() or v311_profile()

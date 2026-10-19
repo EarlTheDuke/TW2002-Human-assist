@@ -375,6 +375,24 @@ def _resolve_ship_combat(universe: Universe, attacker_id: str, target) -> None:
         _destroy_ship(universe, attacker_id, reason="combat", killer_id=killer_id, by_other=by_other)
 
 
+def _grant_ferrengi_kill(universe: Universe, attacker, target) -> None:
+    """Alignment and experience for destroying a Ferrengi ship.
+
+    Legacy pays +FERRENGI_ALIGN_ON_KILL to every trader and kill_ferr experience
+    times aggression. Live pays that alignment only when the trader is already
+    good (alignment above 0) and a flat UNVERIFIED experience award by hull.
+    The bounty is applied by the caller.
+    """
+    if K.ferrengi_reward_live():
+        if int(attacker.alignment) > 0:
+            attacker.alignment += int(K.FERRENGI_ALIGN_ON_KILL)
+        if attacker.alive:
+            attacker.experience += K.ferrengi_kill_xp(getattr(target, "hull", None), int(target.aggression))
+        return
+    attacker.alignment += int(K.FERRENGI_ALIGN_ON_KILL)
+    _award_xp(universe, attacker.id, "kill_ferr", multiplier=int(target.aggression))
+
+
 def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
     """Bounty path for a Ferrengi, the existing death path for a player."""
     attacker = universe.players[attacker_id]
@@ -388,8 +406,7 @@ def _defender_destroyed(universe: Universe, attacker_id: str, target) -> None:
         bounty = K.FERRENGI_BOUNTY_PER_AGG * target.aggression
         salvage = int(getattr(target, "credits", 0) or 0)
         attacker.credits += bounty + salvage
-        attacker.alignment += int(K.FERRENGI_ALIGN_ON_KILL)
-        _award_xp(universe, attacker_id, "kill_ferr", multiplier=target.aggression)
+        _grant_ferrengi_kill(universe, attacker, target)
         record_ferrengi_grudge(universe, attacker_id)
         clear_ferrengi_encounter(universe, attacker_id)
         for good, qty in list((getattr(target, "cargo", None) or {}).items()):
@@ -892,10 +909,25 @@ def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) 
         ),
     )
 
+    deaths_before = victim.deaths
     if d_fighters <= 0:
         _destroy_ship(universe, victim.id, reason="ferrengi", killer_id=attacker_npc.id, by_other=True)
     if a_fighters <= 0:
         attacker_npc.alive = False
+        # The player-attacks path already pays. This path used to pay nothing.
+        # Live pays bounty, alignment and hull experience only when the trader
+        # is still in the fight. No salvage and no extra RNG.
+        if K.ferrengi_reward_live() and victim.alive and victim.deaths == deaths_before:
+            bounty = int(K.FERRENGI_BOUNTY_PER_AGG) * int(attacker_npc.aggression)
+            victim.credits += bounty
+            _grant_ferrengi_kill(universe, victim, attacker_npc)
+            universe.emit(
+                EventKind.SHIP_DESTROYED,
+                actor_id=victim.id,
+                sector_id=victim.sector_id,
+                payload={"victim": attacker_npc.id, "kind": "ferrengi", "bounty": bounty, "salvage": 0},
+                summary=f"{victim.name} destroyed {attacker_npc.name} (+{bounty}cr bounty)",
+            )
 
 
 def _destroy_ship(
