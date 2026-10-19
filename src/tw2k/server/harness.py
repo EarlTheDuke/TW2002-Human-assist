@@ -498,6 +498,10 @@ def build_harness_router(runner) -> APIRouter:
         spec = getattr(runner, "_spec", None)
         override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
         body["starting_credits_line"] = K.starting_credits_line(override, K.opening_original_credits())
+        turns_override = getattr(getattr(spec, "config", None), "turns_per_day_override", None)
+        player = runner.state.universe.players.get(agent.player_id) if runner.state.universe is not None else None
+        original_turns = int(player.turns_per_day) if player is not None else K.opening_original_turns()
+        body["turns_per_day_line"] = K.turns_per_day_line(turns_override, original_turns)
         return body
 
     @router.get("/{player_id}/route")
