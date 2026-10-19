@@ -17,6 +17,7 @@ import httpx
 
 from . import worker as W
 from .config import LobbyConfig, assert_lobby_port
+from .security import ai_label
 
 BOT_NAMES = ("Vega", "Orion", "Lyra", "Rigel", "Talon")
 _STRIP_ENV_PREFIXES = ("TW2K_", "TW2002_")
@@ -97,6 +98,26 @@ def seat_ids(humans: int) -> list[str]:
     return [f"P{i + 1}" for i in range(humans)]
 
 
+def ai_count(settings: dict[str, Any]) -> int:
+    """AI seats on the worker command. Zero while LOBBY_AI_SEAT_MODE is off."""
+    from ..engine import constants as K
+
+    if not K.lobby_ai_seat_on():
+        return 0
+    try:
+        n = int(settings.get("ai_opponents") or 0)
+    except (TypeError, ValueError):
+        return 0
+    if n <= 0:
+        return 0
+    return min(4, n)
+
+
+def ai_seat_ids(humans: int, ai: int) -> list[str]:
+    """External seats after the human seats. They are not join links."""
+    return [f"P{humans + i + 1}" for i in range(ai)]
+
+
 def switch_overlay(settings: dict[str, Any]) -> dict[str, str]:
     # NOTE 74: every self-hosted beta game rolls the day on the clock.
     out: dict[str, str] = {"DAY_ROLL_CLOCK_MODE": "live"}
@@ -111,7 +132,10 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
                   idle_wait_s: float = 3.0) -> list[str]:
     humans = int(settings["humans"])
     bots = int(settings["bots"])
-    names = [f"Guest {i + 1}" for i in range(humans)] + list(BOT_NAMES[:bots])
+    ai = ai_count(settings)
+    names = [f"Guest {i + 1}" for i in range(humans)]
+    names += [ai_label(str(settings.get("ai_brain") or "heuristic")) for _ in range(ai)]
+    names += list(BOT_NAMES[:bots])
     cmd = [
         python or sys.executable, "-m", "tw2k.cli", "serve",
         "--host", "127.0.0.1", "--port", str(port),
@@ -119,9 +143,9 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
         "--universe-size", str(int(settings["universe_size"])),
         "--max-days", str(int(settings["max_days"])),
         "--turns-per-day", str(int(settings["turns_per_day"])),
-        "--num-agents", str(humans + bots),
+        "--num-agents", str(humans + bots + ai),
         "--agent-kind", "heuristic",
-        "--external", ",".join(seat_ids(humans)),
+        "--external", ",".join(seat_ids(humans) + ai_seat_ids(humans, ai)),
         "--external-tokens-file", str(game_dir / "tokens.json"),
         "--external-idle-wait-s", f"{idle_wait_s:g}",
         "--day-seconds", f"{float(settings['day_seconds']):g}",
