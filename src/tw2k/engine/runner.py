@@ -1308,7 +1308,7 @@ def _handle_deploy_mines(universe: Universe, pid: str, action: Action) -> Action
     except ValueError:
         return ActionResult(ok=False, error="invalid mine type")
     if kind == MineType.ATOMIC and not K.atomic_mines_sold():
-        return ActionResult(ok=False, error="atomic mines are retired (ATOMIC_MINES_PORT_NUKE off)")
+        return ActionResult(ok=False, error=K.atomic_mine_retired_error())
     if qty <= 0 or qty > player.ship.mines.get(kind, 0):
         return ActionResult(ok=False, error="insufficient mines")
     if sector.id in K.FEDSPACE_SECTORS:
@@ -3230,10 +3230,15 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     blocked = None
     if K.avoid_live():
         blocked = {int(s) for s in player.avoided_sectors if int(s) != target_id}
+    limit = K.plot_course_hop_limit()
+    # Live searches past 45 so a longer course is named. Legacy stays at 60.
+    search = max(limit, len(universe.sectors)) if K.course_max_live() else limit
     path = _bfs_path(
         universe, player.sector_id, target_id,
-        max_depth=K.PLOT_COURSE_MAX_DEPTH * 6, blocked=blocked,
+        max_depth=search, blocked=blocked,
     )
+    if path and len(path) > limit:
+        return ActionResult(ok=False, error=f"plotted course is longer than {limit} hops")
     if not path:
         universe.emit(
             EventKind.WARP_BLOCKED,
@@ -3376,9 +3381,15 @@ def query_route(universe: Universe, pid: str, target: object) -> dict:
     if K.avoid_live():
         avoiding = sorted(int(s) for s in player.avoided_sectors)
         blocked = {s for s in avoiding if s != target_id}
+    limit = K.plot_course_hop_limit()
+    search = max(limit, len(universe.sectors)) if K.course_max_live() else limit
     path = [] if target_id == sector else _bfs_path(
-        universe, sector, target_id, max_depth=K.PLOT_COURSE_MAX_DEPTH * 6, blocked=blocked,
+        universe, sector, target_id, max_depth=search, blocked=blocked,
     )
+    if target_id != sector and path and len(path) > limit:
+        assert universe.seq == seq and len(universe.events) == events and player.turns_today == turns
+        return {"ok": False, "error": f"plotted course is longer than {limit} hops",
+                "from": sector, "target": target_id, "path": [], "avoiding": avoiding}
     if target_id != sector and not path:
         assert universe.seq == seq and len(universe.events) == events and player.turns_today == turns
         return {"ok": False, "error": "no route", "from": sector, "target": target_id, "path": [],
@@ -3843,8 +3854,8 @@ def _handle_deposit_treasury(universe: Universe, pid: str, action: Action) -> Ac
     amount = ready
     if int(player.credits) < amount:
         return ActionResult(ok=False, error="not enough credits")
-    if int(planet.treasury) + amount > K.PLANET_TREASURY_CAP:
-        return ActionResult(ok=False, error=f"planet treasury cap is {K.PLANET_TREASURY_CAP}")
+    if int(planet.treasury) + amount > K.planet_treasury_cap():
+        return ActionResult(ok=False, error=f"planet treasury cap is {K.planet_treasury_cap()}")
     player.credits -= amount
     planet.treasury += amount
     _emit_treasury(universe, player, planet, "deposit", amount)

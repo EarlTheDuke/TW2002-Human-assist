@@ -1332,7 +1332,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                            "pct": {"type": "int", "required": True, "min": 0, "max": 100}}))
 
     level_ok = owned_landed and int(landed_planet.citadel_level or 0) >= 1
-    room = max(0, K.PLANET_TREASURY_CAP - int(landed_planet.treasury)) if owned_landed else 0
+    treasury_cap = K.planet_treasury_cap()
+    room = max(0, treasury_cap - int(landed_planet.treasury)) if owned_landed else 0
     deposit_max = min(int(player.credits), room) if level_ok else 0
     withdraw_max = int(landed_planet.treasury) if level_ok else 0
 
@@ -1346,9 +1347,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             reason = empty_reason
         else:
             reason = _need_turns(player, cost)
-        out.append(_la(kind, legal=reason is None, reason=reason, cost=cost,
-                       params={"planet_id": pid_param,
-                               "amount": {"type": "int", "required": True, "min": 1, "max": max(1, maxima)}}))
+        params = {"planet_id": pid_param,
+                  "amount": {"type": "int", "required": True, "min": 1, "max": max(1, maxima)}}
+        # Cockpit room line. Only while the S1 cap is on, so a legacy legal list stays put.
+        if kind is ActionKind.DEPOSIT_TREASURY and K.treasury_cap_live() and owned_landed:
+            params["room"] = int(room)
+            params["capacity"] = int(treasury_cap)
+        out.append(_la(kind, legal=reason is None, reason=reason, cost=cost, params=params))
 
     _treasury_la(ActionKind.DEPOSIT_TREASURY, deposit_max, "not enough credits, or the planet treasury is full")
     _treasury_la(ActionKind.WITHDRAW_TREASURY, withdraw_max, "nothing in the planet treasury")
