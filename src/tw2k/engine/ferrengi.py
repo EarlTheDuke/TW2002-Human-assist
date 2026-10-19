@@ -560,9 +560,10 @@ def _hop_distance(universe: Universe, start: int, goal: int, limit: int = 40) ->
 def preferred_ferrengi_dest(universe: Universe, ferr: FerrengiShip, choices: list[int]) -> int | None:
     """A hop toward a grudge, or into a neighbour's strong target. None keeps the random hop.
 
-    The strong-target cutoff (more fighters than this ship) is UNVERIFIED. Banding
-    also wants another Ferrengi already in that sector or on another hop into it,
-    which is the Bible's "travel in groups" read, not a numbered rule.
+    UNVERIFIED, searched: TWBible_original_v1x.txt line 177 ("travel in groups",
+    no fighter number) and TWFAQ_FERRSPEC_ferrengi.txt (no banding rule). The
+    cutoff stays "more fighters than this ship". Banding also wants another
+    Ferrengi already in that sector or on another hop into it.
     """
     if not K.ferrengi_grudge_on() or not choices:
         return None

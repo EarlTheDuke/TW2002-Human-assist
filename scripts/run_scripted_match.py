@@ -363,6 +363,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             "exceptions": s["exceptions"], "forced_done": s["forced_done"], "wasted_turns": s["wasted_turns"],
             "aba_bounces": aba_bounces(s["rows"]), "daily": s["daily"],
         }
+        # SEAT_XP is a report switch. Unset, this dict stays the legacy shape the bank pin hashes.
+        if os.environ.get("SEAT_XP"):
+            players[pid]["experience"] = int(p.experience)
         # An all-legacy digest hashes this dict. The key appears only while a tw2002
         # switch that this slice teaches is on, so the legacy golden stays put.
         if K.rob_tw2002() or K.hardware_tw2002() or K.class0_tw2002():

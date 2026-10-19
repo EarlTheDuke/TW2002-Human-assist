@@ -1200,7 +1200,8 @@ class GameConfig(BaseModel):
 
     # NOTE 79 CMB-n. None is death delay 0 (the pod flies at once). A number
     # is how many midnights a new pod waits, once DEATH_DELAY_MODE is live.
-    # Left out of dumps while None. No printed maximum (UNVERIFIED).
+    # Left out of dumps while None. UNVERIFIED, searched: S7 #16 and cabal
+    # twgs.html "<7> Death Delay : Yes". No printed maximum. Queued.
     death_delay: int | None = None
 
     @field_validator("death_delay", mode="before")

@@ -542,9 +542,16 @@ def retreat_block(universe: Universe, pid: str) -> str | None:
         return "no warp back to the sector you came from"
     if interdictor_planet(universe, pid, sector) is not None:
         return "a planetary interdictor holds this sector"
-    held = hull_interdict_reason(universe, pid)
-    if held is not None:
-        return held
+    # NOTE 96. v3.06, still standing in the history through Pending v3.11:
+    # "Can't retreat from fighters if an Interdictor Generator is present on
+    # a planet in the sector. You can if an IC is in the sector, though."
+    # (tw-attac_TW2002_v3_revision_history_to_v3.11.html lines 380-381, under
+    # the 03/18/98 v3.06 header at line 341). The docs-wiki flavor text says
+    # no other ship can warp out (Interdictor_Cruiser.html line 95). That
+    # still holds warp and TransWarp. Cabal fleeing.html lines 76-77 (Psion,
+    # tests on v3.13) says an attacker's IG keeps a trader from fleeing.
+    # v3.13 is later than 3.11, so it does not override this sentence. A
+    # combat flee still goes through hull_interdict_reason.
     return None
 
 
@@ -641,13 +648,37 @@ def _flee_destination(universe: Universe, defender, sector) -> int | None:
     return universe.rng.choice(picks)
 
 
+def _interdictor_well_is_down(other) -> bool:
+    """v3.09: a ship does not interdict while cloaked, landed, or in a port.
+
+    docs/reference/tw2002/classictw_museum_wiki/tw-attac_TW2002_v3_revision_history_to_v3.11.html
+    line 309, in the v3.09 block (header line 181; the next older release is
+    v3.08 at line 311): "Ships can't interdict while cloaked or on a planet or port."
+    Pending v3.11 (line 77) and v3.10 do not reverse it.
+    """
+    ship = other.ship
+    if getattr(ship, "cloaked", False):
+        return True
+    if getattr(other, "planet_landed", None) is not None:
+        return True
+    if getattr(other, "port_visit_sector_id", None) is not None:
+        return True
+    return False
+
+
 def hull_interdict_reason(universe: Universe, pid: str) -> str | None:
     """Why this pilot cannot leave, or None.
 
-    NOTE 86 CMB-m. A living Interdictor Cruiser holds every other ship in its
-    sector, including a corp mate. The Interdictor itself can still leave.
+    NOTE 86 CMB-m, corrected by NOTE 96 from the v3 history through v3.11.
+    A manned Interdictor Cruiser holds every other living ship in its sector,
+    including a corp mate. The Interdictor itself can still leave. Warp,
+    TransWarp, a Ferrengi flee, and a combat flee use this. A fighter-menu
+    retreat does not: see retreat_block.
     Off unless the special-hull switch and the live roster are both on.
-    An unmanned parked Interdictor is UNVERIFIED and does not hold.
+    An unmanned parked hull is not a player, so it is not scanned.
+    classictw_museum_wiki/tw-attac_TW2002_v3_revision_history_to_v3.11.html
+    line 726 (03/05/97, before the v3.00 header at line 693, still standing):
+    "Unoccupied ships can't have Interdictor on."
     """
     if not K.special_hull_rules_on() or not K.ship_roster_live():
         return None
@@ -660,8 +691,11 @@ def hull_interdict_reason(universe: Universe, pid: str) -> str | None:
     for other in universe.players.values():
         if other.id == pid or not other.alive or int(other.sector_id) != here:
             continue
-        if other.ship.ship_class.value == "interdictor_cruiser":
-            return "an Interdictor Cruiser holds this sector"
+        if other.ship.ship_class.value != "interdictor_cruiser":
+            continue
+        if _interdictor_well_is_down(other):
+            continue
+        return "an Interdictor Cruiser holds this sector"
     return None
 
 
@@ -1308,8 +1342,12 @@ def _destroy_ship_tw2002(
         _place(universe, player, dest)
         # d9/d11: out until midnight; the free scout waits at StarDock.
         player.turns_today = max(int(player.turns_today), int(player.turns_per_day))
-        # S7 #16: a pod blown up while the pilot is still knocked out adds
-        # another N days. A pod that was already flying does not (UNVERIFIED).
+        # S7 #16 (S7_softdocs_slice-10.txt lines 373-376): days are added when
+        # the pod is attacked while the pilot is knocked out. A pod that is
+        # already flying does not start a sentence. UNVERIFIED, searched:
+        # S7 #16, OldBBS_TW.faq.txt #12, OldBBS_TW2002V8.faq.txt #12,
+        # Slice-10_Slice_War_Manual.txt #16. None of them says a flying pod
+        # begins a new sentence. Queued in live-twgs-test-queue-v1.md.
         delay = K.death_delay_days(universe.config)
         if delay > 0 and int(player.death_delay_left or 0) > 0:
             player.death_delay_left = int(player.death_delay_left) + delay
