@@ -128,9 +128,12 @@ class NavHost:
         await self.runner.stop()
 
     def __enter__(self) -> NavHost:
-        self._info = K.INFO_MODE
+        from tests._cu_host import pop_legacy_info, push_legacy_info
+
+        self._info_pushed = False
         try:
-            K.INFO_MODE = "legacy"
+            push_legacy_info()
+            self._info_pushed = True
             # _free_block reserves the port across processes before uvicorn binds it.
             self.port = _free_block(1)
             self.server = self._uvicorn.Server(
@@ -159,10 +162,14 @@ class NavHost:
 
                 release_ports(self.port)
                 self.port = 0
-            K.INFO_MODE = self._info
+            if self._info_pushed:
+                pop_legacy_info()
+                self._info_pushed = False
             raise
 
     def __exit__(self, *exc) -> None:
+        from tests._cu_host import pop_legacy_info
+
         try:
             if self.server is not None:
                 self.server.should_exit = True
@@ -173,7 +180,9 @@ class NavHost:
 
                 release_ports(self.port)
         finally:
-            K.INFO_MODE = self._info
+            if getattr(self, "_info_pushed", False):
+                pop_legacy_info()
+                self._info_pushed = False
 
     @property
     def base(self) -> str:

@@ -115,12 +115,13 @@ def test_the_cockpit_shows_the_day_clock_and_the_refill(monkeypatch, tmp_path) -
     from tw2k.server.runner import AgentSpec, MatchSpec
 
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
-    from tests._port_lock import claim_ports
+    from tests._port_lock import claim_ports, release_ports
 
     port = claim_ports(1, low=40000, high=46000)
     app = create_app(auto_start=False)
     runner = app.state.runner
     runner._saves_root = tmp_path / "saves"
+    box: dict = {"server": None}
 
     async def _main() -> None:
         await runner.start(MatchSpec(
@@ -132,28 +133,43 @@ def test_the_cockpit_shows_the_day_clock_and_the_refill(monkeypatch, tmp_path) -
             action_delay_s=0.05, external_timeout_s=30.0,
         ))
         server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-        await server.serve()
+        box["server"] = server
+        try:
+            await server.serve()
+        finally:
+            await runner.stop()
 
     thread = threading.Thread(target=lambda: asyncio.run(_main()), daemon=True)
     thread.start()
-    base = f"http://127.0.0.1:{port}"
-    for _ in range(80):
-        try:
-            if httpx.get(base + "/bot?layout=redesign", timeout=0.5).status_code == 200:
-                break
-        except httpx.HTTPError:
-            time.sleep(0.1)
-    else:
-        raise RuntimeError("cockpit did not start")
-    SHOTS.mkdir(parents=True, exist_ok=True)
-    with sync() as pw:
-        browser = pw.chromium.launch()
-        for width, tag in ((1280, "1280"), (390, "390")):
-            page = browser.new_page(viewport={"width": width, "height": 800})
-            page.goto(f"{base}/bot?layout=redesign&seat=P2&token={TOK}")
-            page.wait_for_function("document.querySelector('#dayClock').textContent.includes('next day in')", timeout=15000)
-            text = page.locator("#turns").inner_text()
-            assert "(full)" in text or "+1 every" in text
-            page.screenshot(path=str(SHOTS / f"{tag}-clock.png"))
-            page.close()
-        browser.close()
+    try:
+        base = f"http://127.0.0.1:{port}"
+        for _ in range(80):
+            try:
+                if httpx.get(base + "/bot?layout=redesign", timeout=0.5).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                time.sleep(0.1)
+        else:
+            raise RuntimeError("cockpit did not start")
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        with sync() as pw:
+            browser = pw.chromium.launch()
+            for width, tag in ((1280, "1280"), (390, "390")):
+                page = browser.new_page(viewport={"width": width, "height": 800})
+                page.goto(f"{base}/bot?layout=redesign&seat=P2&token={TOK}")
+                page.wait_for_function("document.querySelector('#dayClock').textContent.includes('next day in')", timeout=15000)
+                text = page.locator("#turns").inner_text()
+                assert "(full)" in text or "+1 every" in text
+                page.screenshot(path=str(SHOTS / f"{tag}-clock.png"))
+                page.close()
+            browser.close()
+    finally:
+        server = box["server"]
+        if server is not None:
+            server.should_exit = True
+        thread.join(timeout=15)
+        saved_day = getattr(runner, "_saved_day_seconds", None)
+        if saved_day is not None:
+            K.TURN_REGEN_DAY_SECONDS = saved_day
+            runner._saved_day_seconds = None
+        release_ports(port)

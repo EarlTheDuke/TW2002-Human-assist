@@ -81,3 +81,10 @@ def test_a_held_turn_reaches_day_3_on_a_10_second_clock(tmp_path: Path, monkeypa
     finally:
         server.should_exit = True
         thread.join(timeout=15)
+        saved_day = getattr(runner, "_saved_day_seconds", None)
+        if saved_day is not None:
+            K.TURN_REGEN_DAY_SECONDS = saved_day
+            runner._saved_day_seconds = None
+        from tests._port_lock import release_ports
+
+        release_ports(port)

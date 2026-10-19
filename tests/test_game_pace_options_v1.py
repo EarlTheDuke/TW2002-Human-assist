@@ -160,24 +160,30 @@ def test_the_clock_and_the_bots_wait_for_the_first_open_seat(monkeypatch, tmp_pa
             hold_until_human=True,
         ))
 
-    with TestClient(app, client=("127.0.0.1", 50000)) as client:
-        client.portal.call(_start)
-        time.sleep(0.45)
-        assert runner.day_clock() is None
-        assert runner.state.universe is not None
-        assert runner.state.universe.tick == 0
-        opened = client.get(
-            "/harness/v1/P2/observation?peek=1",
-            headers={"Authorization": "Bearer " + TOK},
-        )
-        assert opened.status_code == 200
-        assert opened.json()["turns_per_day_line"] == "Turns per day: 250 (original)"
-        deadline = time.time() + 5
-        while time.time() < deadline and runner.day_clock() is None:
-            time.sleep(0.05)
-        clock = runner.day_clock()
-        assert clock is not None
-        assert time.time() - float(clock["day_started_at"]) < 3
+    try:
+        with TestClient(app, client=("127.0.0.1", 50000)) as client:
+            client.portal.call(_start)
+            time.sleep(0.45)
+            assert runner.day_clock() is None
+            assert runner.state.universe is not None
+            assert runner.state.universe.tick == 0
+            opened = client.get(
+                "/harness/v1/P2/observation?peek=1",
+                headers={"Authorization": "Bearer " + TOK},
+            )
+            assert opened.status_code == 200
+            assert opened.json()["turns_per_day_line"] == "Turns per day: 250 (original)"
+            deadline = time.time() + 5
+            while time.time() < deadline and runner.day_clock() is None:
+                time.sleep(0.05)
+            clock = runner.day_clock()
+            assert clock is not None
+            assert time.time() - float(clock["day_started_at"]) < 3
+    finally:
+        saved_day = getattr(runner, "_saved_day_seconds", None)
+        if saved_day is not None:
+            K.TURN_REGEN_DAY_SECONDS = saved_day
+            runner._saved_day_seconds = None
 
 
 def test_the_redesign_cockpit_counts_the_seat_timer(monkeypatch, tmp_path) -> None:
@@ -190,12 +196,13 @@ def test_the_redesign_cockpit_counts_the_seat_timer(monkeypatch, tmp_path) -> No
     import uvicorn
 
     monkeypatch.setattr(K, "V311_PROFILE", "legacy")
-    from tests._port_lock import claim_ports
+    from tests._port_lock import claim_ports, release_ports
 
     port = claim_ports(1, low=41000, high=46000)
     app = create_app(auto_start=False)
     runner = app.state.runner
     runner._saves_root = tmp_path / "saves"
+    box: dict = {"server": None}
 
     async def _main() -> None:
         await runner.start(MatchSpec(
@@ -205,33 +212,44 @@ def test_the_redesign_cockpit_counts_the_seat_timer(monkeypatch, tmp_path) -> No
             action_delay_s=0.0, external_timeout_s=20.0, external_idle_wait_s=0.0,
         ))
         server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-        await server.serve()
+        box["server"] = server
+        try:
+            await server.serve()
+        finally:
+            await runner.stop()
 
     thread = threading.Thread(target=lambda: asyncio.run(_main()), daemon=True)
     thread.start()
-    base = f"http://127.0.0.1:{port}"
-    for _ in range(80):
-        try:
-            if httpx.get(base + "/bot?layout=redesign", timeout=0.5).status_code == 200:
-                break
-        except httpx.HTTPError:
-            time.sleep(0.1)
-    else:
-        raise RuntimeError("cockpit did not start")
-    with sync() as pw:
-        browser = pw.chromium.launch()
-        page = browser.new_page(viewport={"width": 1280, "height": 800})
-        page.goto(f"{base}/bot?layout=redesign&seat=P1&token={TOK}")
-        page.wait_for_selector("#seatTimer:not([hidden])", timeout=15000)
-        text = page.locator("#seatTimer").inner_text()
-        assert text.startswith("auto-WAIT ")
-        left = int(text.removeprefix("auto-WAIT ").removesuffix("s"))
-        assert 0 <= left < 30
-        assert "amber" in (page.locator("#seatTimer").get_attribute("class") or "")
-        page.screenshot(path="/tmp/note93-seat-timer.png")
-        narrow = browser.new_page(viewport={"width": 390, "height": 844})
-        narrow.goto(f"{base}/bot?layout=redesign&seat=P1&token={TOK}")
-        narrow.wait_for_selector("#seatTimer:not([hidden])", timeout=15000)
-        assert "amber" in (narrow.locator("#seatTimer").get_attribute("class") or "")
-        narrow.screenshot(path="/tmp/note93-seat-timer-390.png")
-        browser.close()
+    try:
+        base = f"http://127.0.0.1:{port}"
+        for _ in range(80):
+            try:
+                if httpx.get(base + "/bot?layout=redesign", timeout=0.5).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                time.sleep(0.1)
+        else:
+            raise RuntimeError("cockpit did not start")
+        with sync() as pw:
+            browser = pw.chromium.launch()
+            page = browser.new_page(viewport={"width": 1280, "height": 800})
+            page.goto(f"{base}/bot?layout=redesign&seat=P1&token={TOK}")
+            page.wait_for_selector("#seatTimer:not([hidden])", timeout=15000)
+            text = page.locator("#seatTimer").inner_text()
+            assert text.startswith("auto-WAIT ")
+            left = int(text.removeprefix("auto-WAIT ").removesuffix("s"))
+            assert 0 <= left < 30
+            assert "amber" in (page.locator("#seatTimer").get_attribute("class") or "")
+            page.screenshot(path="/tmp/note93-seat-timer.png")
+            narrow = browser.new_page(viewport={"width": 390, "height": 844})
+            narrow.goto(f"{base}/bot?layout=redesign&seat=P1&token={TOK}")
+            narrow.wait_for_selector("#seatTimer:not([hidden])", timeout=15000)
+            assert "amber" in (narrow.locator("#seatTimer").get_attribute("class") or "")
+            narrow.screenshot(path="/tmp/note93-seat-timer-390.png")
+            browser.close()
+    finally:
+        server = box["server"]
+        if server is not None:
+            server.should_exit = True
+        thread.join(timeout=15)
+        release_ports(port)
