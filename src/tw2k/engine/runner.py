@@ -1049,6 +1049,10 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
     ):
         return ActionResult(ok=False, error="no trading port in this sector")
     port = sector.port
+    if K.port_attack_all_classes() and getattr(sector, "port_destroyed_day", None) is not None:
+        # Iago: the port is still in the sector, and docking there is fatal.
+        _destroy_ship(universe, pid, "destroyed port")
+        return ActionResult(ok=True, turns_spent=0)
     if getattr(port, "construction", None):
         return ActionResult(ok=False, error="that port is under construction")
     if K.rob_tw2002() and getattr(port, "bust_player_id", None) == pid:
@@ -1531,36 +1535,59 @@ def _handle_port_attack(universe: Universe, pid: str, action: Action) -> ActionR
     player.ship.fighters -= qty
     cls = int(port.class_id)
     barrage = K.PORT_LASER_BARRAGE.get(cls)
+    rating = K.PORT_DEFENSE_RATING.get(cls)
     destroyed = False
+    port_destroyed = False
+    special = port.class_id in (PortClass.STARDOCK, PortClass.FEDERAL)
     if barrage is not None and barrage > int(player.ship.shields):
         _destroy_ship(universe, pid, "port laser barrage")
         destroyed = True
+    elif (
+        K.port_attack_all_classes()
+        and rating is not None
+        and not special
+        and qty >= K.port_figs_to_blow(rating, K.combat_hull(player.ship.ship_class.value)[0])
+    ):
+        player.alignment += K.PORT_BLOW_ALIGNMENT
+        universe.sectors[player.sector_id].port_destroyed_day = universe.day
+        port_destroyed = True
+        _award_xp(universe, pid, "destroy_port")
+        universe.emit(
+            EventKind.PORT_DESTROYED,
+            actor_id=pid,
+            sector_id=player.sector_id,
+            payload={"port_class": cls, "defensive_rating": rating, "sent": qty},
+            summary=f"{player.name} destroyed the port in {player.sector_id}",
+        )
+    payload = {
+        "exchange_kind": "port",
+        "vs": "port",
+        "attacker": player.name,
+        "defender": "port",
+        "attacker_f": qty,
+        "attacker_s": int(player.ship.shields),
+        "defender_f": 0,
+        "defender_s": 0,
+        "attacker_losses": qty,
+        "defender_losses": 0,
+        "outcome": "destroyed" if destroyed else "survived",
+        "sector_claimed": False,
+        "planet_id": None,
+        "planet_name": "",
+        "citadel_level": 0,
+        "sent": qty,
+        "defender_fled": False,
+        "port_class": cls,
+        "defensive_rating": rating,
+        "barrage": barrage,
+    }
+    if K.port_attack_all_classes():
+        payload["port_destroyed"] = port_destroyed
     universe.emit(
         EventKind.COMBAT,
         actor_id=pid,
         sector_id=player.sector_id,
-        payload={
-            "exchange_kind": "port",
-            "vs": "port",
-            "attacker": player.name,
-            "defender": "port",
-            "attacker_f": qty,
-            "attacker_s": int(player.ship.shields),
-            "defender_f": 0,
-            "defender_s": 0,
-            "attacker_losses": qty,
-            "defender_losses": 0,
-            "outcome": "destroyed" if destroyed else "survived",
-            "sector_claimed": False,
-            "planet_id": None,
-            "planet_name": "",
-            "citadel_level": 0,
-            "sent": qty,
-            "defender_fled": False,
-            "port_class": cls,
-            "defensive_rating": K.PORT_DEFENSE_RATING.get(cls),
-            "barrage": barrage,
-        },
+        payload=payload,
         summary=f"{player.name} attacked the port",
     )
     return ActionResult(ok=True, turns_spent=cost)

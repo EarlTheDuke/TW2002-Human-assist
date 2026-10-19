@@ -133,6 +133,8 @@ class PortClass(int, Enum):
         if K.port_class_live():
             codes[1] = "BBS"
             codes[6] = "BSS"
+        if K.port_class_number_fix() and K.port_class_live():
+            codes[7] = "SSS"
         return codes[self.value]
 
 
