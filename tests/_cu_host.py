@@ -181,7 +181,8 @@ def _ephemeral_port(count: int = 1) -> int:
 class CuHost:
     def __init__(self, tmp: Path, token: str, *, max_days: int = 3, turns_per_day: int = 60,
                  seed: int = 250925, park_at: int | None = None, fuel: int = 10,
-                 p1_token: str | None = None, day_seconds: float | None = None) -> None:
+                 p1_token: str | None = None, day_seconds: float | None = None,
+                 game_length: str | None = None, turns_per_day_override: int | None = None) -> None:
         import uvicorn
 
         self.token = token
@@ -189,6 +190,8 @@ class CuHost:
         self.max_days, self.turns_per_day = max_days, turns_per_day
         self.seed, self.park_at, self.fuel = seed, park_at, fuel
         self.day_seconds = day_seconds  # NOTE 60: GameConfig.turn_regen_day_seconds (None = unset)
+        self.game_length = game_length
+        self.turns_per_day_override = turns_per_day_override
         self.parked = False  # set once P2 sits on the parking port with its fuel
         self.port = 0
         self.app = create_app(auto_start=False)
@@ -201,11 +204,16 @@ class CuHost:
     async def _start(self) -> None:
         while not self.server.started:
             await asyncio.sleep(0.05)
+        extra: dict = {}
+        if self.game_length:
+            extra["game_length"] = self.game_length
+        if self.turns_per_day_override is not None:
+            extra["turns_per_day_override"] = self.turns_per_day_override
         await self.runner.start(MatchSpec(
             config=GameConfig(seed=self.seed, universe_size=200, max_days=self.max_days, turns_per_day=self.turns_per_day,
                               starting_credits=50_000,
                               enable_ferrengi=False, enable_planets=True, action_delay_s=0.0,
-                              turn_regen_day_seconds=self.day_seconds),
+                              turn_regen_day_seconds=self.day_seconds, **extra),
             agents=[
                 AgentSpec(player_id="P1", name="HBot", kind="external", external_token=self.p1_token)
                 if self.p1_token else

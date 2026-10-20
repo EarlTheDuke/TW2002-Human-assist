@@ -505,6 +505,10 @@ def build_harness_router(runner) -> APIRouter:
         player = runner.state.universe.players.get(agent.player_id) if runner.state.universe is not None else None
         original_turns = int(player.turns_per_day) if player is not None else K.opening_original_turns()
         body["turns_per_day_line"] = K.turns_per_day_line(turns_override, original_turns)
+        # NOTE 131. Only a full-length game. Fast test days and the flag-off path add no key.
+        if getattr(getattr(spec, "config", None), "game_length", None) == "full" and player is not None:
+            left = max(0, int(player.turns_per_day) - int(player.turns_today))
+            body["turns_left_line"] = f"Turns left today: {left:,} of {int(player.turns_per_day):,}"
         return body
 
     @router.get("/{player_id}/route")
