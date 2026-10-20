@@ -222,7 +222,8 @@ def _end_button(g: dict[str, Any]) -> str:
 
 def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[str, Any]], closed: bool,
           full: bool, live: dict[str, dict[str, Any]], owned: Iterable[dict[str, Any]] | None = None,
-          notes: dict[str, str] | None = None, seat_links: dict[str, str] | None = None) -> str:
+          notes: dict[str, str] | None = None, seat_links: dict[str, str] | None = None,
+          seat_rows: dict[str, list[dict[str, str]]] | None = None) -> str:
     mine = list(mine)
     owned = list(owned or [])
     seated = {g["id"] for g in mine}
@@ -236,13 +237,26 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         join = (f"<form method=\"post\" action=\"/games/{g['id']}/join\" style=\"display:inline\">"
                 "<button class=\"primary\" type=\"submit\">Join</button></form>") if open_seats and not closed else ""
         watch = "" if g["id"] in seated else f"<a class=\"btn\" href=\"/g/{g['id']}/watch\">Watch</a>"
-        cockpit_note = escape((notes or {}).get(g["id"], ""))
-        cockpit_href = (seat_links or {}).get(g["id"], "")
-        cockpit_link = (
-            f'<a class="btn" href="{escape(cockpit_href)}" data-cockpit="seat">AI seat</a>'
-            if cockpit_href else ""
-        )
-        cockpit_line = f"<br>{cockpit_note}" if cockpit_note else ""
+        detail = (seat_rows or {}).get(g["id"]) or []
+        if detail:
+            bits = []
+            for item in detail:
+                bits.append(
+                    f'<div data-cockpit="seat">{escape(item.get("status") or "")} '
+                    f'<a class="btn" href="{escape(item.get("href") or "")}">Open {escape(item.get("seat") or "seat")}</a> '
+                    f'<form method="post" action="{escape(item.get("stop") or "")}" style="display:inline">'
+                    f'<button type="submit">Stop</button></form></div>'
+                )
+            cockpit_line = "".join(bits)
+            cockpit_link = ""
+        else:
+            cockpit_note = escape((notes or {}).get(g["id"], ""))
+            cockpit_href = (seat_links or {}).get(g["id"], "")
+            cockpit_link = (
+                f'<a class="btn" href="{escape(cockpit_href)}" data-cockpit="seat">AI seat</a>'
+                if cockpit_href else ""
+            )
+            cockpit_line = f"<br>{cockpit_note}" if cockpit_note else ""
         # The seat row carries the button once the creator has sat down.
         end = _end_button(g) if g["id"] in running_owned and g["id"] not in seated else ""
         rows.append(
@@ -470,8 +484,23 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
         v.setdefault("ai_cockpit", "off")
         v.setdefault("ai_cockpit_provider", "scripted")
         v.setdefault("ai_cockpit_model", "")
+        v.setdefault("ai_cockpit_count", "1")
+        v.setdefault("ai_cockpit_level", "hard")
         provider = v["ai_cockpit_provider"] if v["ai_cockpit_provider"] in (
             "scripted", "grok", "openai", "anthropic") else "scripted"
+        try:
+            count_picked = str(int(v.get("ai_cockpit_count") or 1))
+        except (TypeError, ValueError):
+            count_picked = "1"
+        if count_picked not in ("1", "2", "3", "4"):
+            count_picked = "1"
+        level_picked = v["ai_cockpit_level"] if v["ai_cockpit_level"] in ("easy", "normal", "hard") else "hard"
+        counts = "".join(_opt(str(n), str(n), count_picked) for n in range(1, 5))
+        levels = (
+            _opt("easy", "Easy", level_picked)
+            + _opt("normal", "Normal", level_picked)
+            + _opt("hard", "Hard", level_picked)
+        )
         providers = (
             _opt("scripted", "Scripted (no key)", provider)
             + _opt("grok", "Grok", provider)
@@ -483,8 +512,14 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             '<input type="hidden" name="ai_cockpit" value="off">'
             f'<label class="check" for="ai_cockpit"><input id="ai_cockpit" name="ai_cockpit" '
             f'type="checkbox" value="on"{checked}>AI cockpit seat</label>'
-            '<p class="note">One more seat. It plays from the rendered cockpit. '
+            '<p class="note">Up to four more seats. Each plays from the rendered cockpit on its own. '
+            "Easy looks briefly and takes a weak trade. Normal trades a shorter route. "
+            "Hard plays the long game and shops only when the days left can pay for it. "
             "A live provider reads its key from the lobby process environment. The key is not stored and not shown.</p>"
+            f'<label for="ai_cockpit_count">AI cockpit seats</label>'
+            f'<select id="ai_cockpit_count" name="ai_cockpit_count">{counts}</select>'
+            f'<label for="ai_cockpit_level">Difficulty</label>'
+            f'<select id="ai_cockpit_level" name="ai_cockpit_level">{levels}</select>'
             f'<label for="ai_cockpit_provider">AI cockpit provider</label>'
             f'<select id="ai_cockpit_provider" name="ai_cockpit_provider">{providers}</select>'
             '<label for="ai_cockpit_model">Model</label>'
@@ -558,7 +593,7 @@ function paintDayHint() {{
 
 
 def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str]], watch_link: str,
-            cockpit: dict[str, str] | None = None) -> str:
+            cockpit: dict[str, Any] | None = None) -> str:
     links = "".join(f"<p>Seat {escape(seat)}<code class=\"link\">{escape(url)}</code></p>" for seat, url in join_links)
     settings = game.get("settings") or {}
     key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
@@ -584,7 +619,21 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
             f"{escape(ai_call_estimate(turns_n, ai_n, brain))}</p>"
         )
     cockpit_line = ""
-    if cockpit and cockpit.get("status"):
+    seats = list((cockpit or {}).get("seats") or [])
+    if seats:
+        blocks = []
+        for item in seats:
+            href = escape(str(item.get("href") or ""))
+            seat = escape(str(item.get("seat") or "the AI seat"))
+            stop = escape(str(item.get("stop") or ""))
+            blocks.append(
+                f'<p data-cockpit="status">{escape(str(item.get("status") or ""))}</p>'
+                f'<p><a class="btn" href="{href}" data-cockpit="seat">Open {seat}</a> '
+                f'<form method="post" action="{stop}" style="display:inline">'
+                f'<button type="submit" data-cockpit="stop">Stop {seat}</button></form></p>'
+            )
+        cockpit_line = "".join(blocks)
+    elif cockpit and cockpit.get("status"):
         href = escape(cockpit.get("href") or "")
         seat = escape(cockpit.get("seat") or "the AI seat")
         cockpit_line = (

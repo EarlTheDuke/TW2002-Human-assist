@@ -323,10 +323,10 @@ class MockMind:
         return action
 
 
-def build_provider(name: str, model: str = "", mock_script: str = ""):
+def build_provider(name: str, model: str = "", mock_script: str = "", level: str = "hard"):
     key = (name or "scripted").strip().lower()
     if key == "scripted":
-        return ScriptedTrader()
+        return ScriptedTrader(level=level)
     if key == "mock":
         return MockMind.load(mock_script or model)
     if key in ("grok", "xai"):
