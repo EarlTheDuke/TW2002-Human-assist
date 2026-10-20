@@ -78,6 +78,39 @@ def add_counts(left: dict[str, int], right: dict[str, int]) -> dict[str, int]:
     return {key: int(left.get(key, 0)) + int(right.get(key, 0)) for key in ("tests", "failures", "errors", "skipped")}
 
 
+def nodeid_from_junit(classname: str, name: str, file: str | None = None) -> str:
+    """Pytest node id for one junit testcase.
+
+    The runner reruns this id. A classname of ``tests.test_mod.TestX`` and no
+    ``file`` attribute still resolves to ``tests/test_mod.py::TestX::name``.
+    """
+    classname = classname or ""
+    name = name or ""
+    if file:
+        module = file.replace("\\", "/")
+        if module.endswith(".py"):
+            module = module[:-3]
+        module = module.replace("/", ".")
+        extra = classname[len(module):].lstrip(".") if classname.startswith(module) else ""
+        head = file.replace("\\", "/")
+        return "::".join(part for part in (head, extra, name) if part)
+    bits = classname.split(".")
+    for end in range(len(bits), 0, -1):
+        candidate = Path(*bits[:end]).with_suffix(".py")
+        if (ROOT / candidate).is_file():
+            extra = bits[end:]
+            return "::".join([candidate.as_posix(), *extra, name])
+    return f"{classname}::{name}" if classname else name
+
+
+def case_nodeid(case: ET.Element) -> str:
+    return nodeid_from_junit(
+        case.attrib.get("classname", ""),
+        case.attrib.get("name", ""),
+        case.attrib.get("file"),
+    )
+
+
 def failed_names(path: Path) -> list[str]:
     if not path.is_file():
         return []
@@ -85,12 +118,87 @@ def failed_names(path: Path) -> list[str]:
     names = []
     for case in root.iter("testcase"):
         if case.find("failure") is not None or case.find("error") is not None:
-            names.append(f"{case.attrib.get('classname', '')}::{case.attrib.get('name', '')}")
+            names.append(case_nodeid(case))
     return names
+
+
+def passed_names(path: Path) -> set[str]:
+    """Node ids that ran and passed. A skip or a failure is not a pass."""
+    if not path.is_file():
+        return set()
+    root = ET.parse(path).getroot()
+    names = set()
+    for case in root.iter("testcase"):
+        if case.find("failure") is None and case.find("error") is None and case.find("skipped") is None:
+            names.add(case_nodeid(case))
+    return names
+
+
+def classify_rerun(failed: list[str], passed_on_rerun: set[str]) -> tuple[list[str], list[str]]:
+    """Split a failure list into flaky and still-failed.
+
+    A name that passed on a rerun is flaky. It is not added to the passed count.
+    A name that did not pass stays failed.
+    """
+    flaky = [name for name in failed if name in passed_on_rerun]
+    still = [name for name in failed if name not in passed_on_rerun]
+    return flaky, still
 
 
 def _cpus() -> int:
     return max(1, os.cpu_count() or 1)
+
+
+def _node_path(node_id: str) -> Path:
+    rel = node_id.split("::", 1)[0]
+    path = Path(rel)
+    if not path.is_absolute():
+        path = ROOT / path
+    return path
+
+
+def rerun_nodeids(node_ids: list[str], work: Path, attempts: int) -> tuple[list[str], list[str], float]:
+    """Rerun only these node ids, up to ``attempts`` times.
+
+    Returns ``(flaky, still_failed, seconds)``. A pass is flaky, not a pass.
+    Unit nodes share one process. Each browser file keeps its own process.
+    """
+    pending = list(dict.fromkeys(node_ids))
+    flaky: list[str] = []
+    started = time.time()
+    tries = max(0, int(attempts))
+    for attempt in range(1, tries + 1):
+        if not pending:
+            break
+        passed = _run_nodes(pending, work / f"attempt-{attempt}")
+        gained, pending = classify_rerun(pending, passed)
+        flaky.extend(gained)
+        print(
+            f"rerun {attempt} passed {len(gained)} still {len(pending)}",
+            flush=True,
+        )
+    return flaky, pending, time.time() - started
+
+
+def _run_nodes(node_ids: list[str], work: Path) -> set[str]:
+    unit: list[str] = []
+    browser: dict[str, list[str]] = {}
+    for node_id in node_ids:
+        path = _node_path(node_id)
+        if path.is_file() and is_browser_file(path):
+            browser.setdefault(path.as_posix(), []).append(node_id)
+        else:
+            unit.append(node_id)
+    passed: set[str] = set()
+    if unit:
+        junit = work / "unit.xml"
+        run_pytest(unit, log=work / "unit.log", junit=junit)
+        passed |= passed_names(junit)
+    for index, ids in enumerate(browser.values()):
+        junit = work / f"browser-{index}.xml"
+        run_pytest(ids, log=work / f"browser-{index}.log", junit=junit)
+        passed |= passed_names(junit)
+    return passed
 
 
 def execute(tests_dir: Path, work: Path, *, unit_workers: int | None = None, browser_workers: int | None = None) -> dict:
