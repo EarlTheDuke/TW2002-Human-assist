@@ -27,6 +27,7 @@ _YARD = re.compile(
 )
 _YARD_PRICE = re.compile(r"([\d,]+)\s+cr\.", re.I)
 _RESERVE = 20_000
+_COURSE = re.compile(r"Course to (\d+):\s*([0-9 >]+)")
 
 
 def _int(text: object) -> int:
@@ -61,9 +62,18 @@ def _hold_cap(ship: str) -> int:
 
 
 class ScriptedTrader:
-    """Reads the sector, port and holds, then trades, buys gear, and spends the day."""
+    """Reads the sector, port and holds, then trades, buys gear, and spends the day.
 
-    def __init__(self) -> None:
+    ``level`` is easy (wander and take a weak local trade), normal (settle sooner,
+    holds and fighters only), or hard (the long-game trader). Anything else is hard.
+    """
+
+    def __init__(self, level: str = "hard") -> None:
+        text = (level or "hard").strip().lower()
+        self.level = text if text in ("easy", "normal", "hard") else "hard"
+        self.plot_to = 0
+        self.home_ask = 0
+        self.settled_day = 0
         self.ports: dict[int, dict[str, dict[str, int]]] = {}
         self.codes: dict[int, str] = {}
         self.danger: set[int] = set()
@@ -133,19 +143,35 @@ class ScriptedTrader:
         cargo = _holds(str(screen.get("holds") or ""))
         self.hold_cap = _hold_cap(str(screen.get("ship") or ""))
         self._remember(sector, screen)
-        action = (
-            self._modal(screen, labels, turns)
-            or self._form(screen, labels, credits)
-            or self._leave_danger(sector, screen, cargo)
-            or self._sell(screen, sector, cargo, turns)
-            or self._buy(screen, sector, cargo, turns)
-            or self._stardock(screen, labels, credits)
-            or self._open_yard(labels, screen)
-            or self._open_bank(screen, labels, credits)
-            or self._planet(screen, labels)
-            or self._warp(screen, sector, cargo, turns)
-            or self._spend(screen, turns)
-        )
+        if self.level == "easy":
+            self.plot_to = 0
+            action = (
+                self._modal(screen, labels, turns)
+                or self._form(screen, labels, credits)
+                or self._leave_danger(sector, screen, cargo)
+                or self._easy_trade(screen, cargo)
+                or self._easy_warp(screen, sector, turns)
+                or self._spend(screen, turns)
+            )
+        else:
+            self._sync_plot(sector, turns, credits)
+            plotted = self._plot_step(screen, labels, sector) if self._plot_blocks(screen) else None
+            action = (
+                self._modal(screen, labels, turns)
+                or self._form(screen, labels, credits)
+                or self._leave_danger(sector, screen, cargo)
+                or plotted
+                or self._sell(screen, sector, cargo, turns)
+                or self._plot_step(screen, labels, sector)
+                or self._return_home(screen, sector, cargo)
+                or self._buy(screen, sector, cargo, turns)
+                or self._stardock(screen, labels, credits)
+                or self._open_yard(labels, screen)
+                or self._open_bank(screen, labels, credits)
+                or self._planet(screen, labels)
+                or self._warp(screen, sector, cargo, turns)
+                or self._spend(screen, turns)
+            )
         if sector:
             self.previous = sector
             self.visited.add(sector)
@@ -209,7 +235,8 @@ class ScriptedTrader:
         return self._next_gear() is not None
 
     def _next_gear(self) -> str | None:
-        for item in ("holds", "fighters", "shields"):
+        items = ("holds", "fighters") if self.level == "normal" else ("holds", "fighters", "shields")
+        for item in items:
             if item not in self.bought:
                 return item
         return None
@@ -350,6 +377,9 @@ class ScriptedTrader:
         if _DAY_END.search(text) and any(row.upper() == "CONFIRM" for row in labels):
             self.plan_note = "end the day" if turns >= 3 else "spend the last turns"
             return Action("click", label="CONFIRM")
+        # A course plot is a menu the seat opened on purpose. Leave it up.
+        if self.plot_to and self._plot_menu(text):
+            return None
         self.plan_note = "close the dialog"
         return Action("press", key="Escape")
 
@@ -458,7 +488,7 @@ class ScriptedTrader:
         unit = int(price_match.group(1).replace(",", "")) if price_match else 0
         cap_match = _UP_TO.search(note)
         cap = int(cap_match.group(1).replace(",", "")) if cap_match else 0
-        want = 20 if item == "fighters" else 10
+        want = 20 if item == "fighters" and self.level != "normal" else 10
         if unit and credits > unit:
             want = min(want, max(1, (credits - _RESERVE) // unit))
         if cap:
@@ -608,6 +638,8 @@ class ScriptedTrader:
         return Action("click", label=label)
 
     def _open_yard(self, labels: list[str], screen: dict) -> Action | None:
+        if self.level != "hard":
+            return None
         if not self._at_dock(screen) or self._best_spread() <= 0 or "ship" in self.bought:
             return None
         if self._gear_pending():
@@ -805,19 +837,35 @@ class ScriptedTrader:
                         best = (value, ask_at, bid_at, cycle)
         return best
 
-    def _settled(self, sector: int) -> bool:
-        """A short pair that pays and can be reached from this sector."""
-        value, ask, _bid, cycle = self._best_run()
-        if not (cycle and cycle <= 14 and value >= 2000):
-            return False
+    def _pair_reached(self, sector: int, ask: int) -> bool:
         if not sector or sector == ask:
             return True
         return self._hops(sector, ask) is not None
 
+    def _settled(self, sector: int) -> bool:
+        """A short pair that pays and can be reached from this sector.
+
+        Hard waits for about 2,000 credits inside 14 turns. Normal takes a
+        smaller pair, and any paying pair once eight ports are priced.
+        """
+        value, ask, _bid, cycle = self._best_run()
+        reached = self._pair_reached(sector, ask)
+        need, cycle_cap = (700, 20) if self.level == "normal" else (2000, 14)
+        if cycle and cycle <= cycle_cap and value >= need and reached:
+            return True
+        if self.level == "normal" and self._priced_ports() >= 8 and value > 0 and cycle and reached:
+            return True
+        return False
+
+    def _gear_done(self) -> bool:
+        if self.level == "normal":
+            return "holds" in self.bought and "fighters" in self.bought
+        return "fighters" in self.bought and "shields" in self.bought and "ship" in self.bought
+
     def _should_shop(self, sector: int, turns: int) -> bool:
         if not self._settled(sector) or sector == 1 or self.shop_day == self.day or self._best_spread() <= 0:
             return False
-        if "fighters" in self.bought and "shields" in self.bought and "ship" in self.bought:
+        if self._gear_done():
             return False
         if self._hops(sector, 1) is None:
             return False
@@ -861,6 +909,14 @@ class ScriptedTrader:
                     if dest != sector:
                         options.append((dest, str(label).strip(), 3))
         if not options:
+            # Every safe lane is gone. Plot a course instead of ending the day in place.
+            if not flee and turns > 3 and not self.plot_to:
+                dest = self.home_ask or self._best_ask_sector() or (1 if sector != 1 else 0)
+                if dest and dest != sector:
+                    self.plot_to = dest
+                    action = self._plot_step(screen, list(screen.get("labels") or []), sector)
+                    if action is not None:
+                        return action
             return None
         if flee:
             picked = self._flee_choice(options)
@@ -1009,6 +1065,191 @@ class ScriptedTrader:
         if step is not None and any(item[0] == step for item in options):
             return step
         return max(options, key=score)[0]
+
+    def _easy_trade(self, screen: dict, cargo: dict[str, int]) -> Action | None:
+        """Sell whatever this port buys, then buy the first thing on offer."""
+        for row in screen.get("rows") or []:
+            button = str(row.get("button") or "")
+            if not button.upper().startswith("SELL"):
+                continue
+            cells = [str(cell) for cell in (row.get("cells") or [])]
+            name = next((good for good in _GOODS if cells and good.lower() in cells[0].lower()), "")
+            if name and cargo.get(name, 0) <= 0:
+                continue
+            self.plan_note = "sell " + button
+            return Action("click", label=button)
+        if _room(str(screen.get("ship") or ""), cargo) <= 0:
+            return None
+        for row in screen.get("rows") or []:
+            button = str(row.get("button") or "")
+            if button.upper().startswith("BUY"):
+                self.plan_note = "buy " + button
+                return Action("click", label=button)
+        return None
+
+    def _easy_warp(self, screen: dict, sector: int, turns: int) -> Action | None:
+        """Wander, including a one-way, toward a sector that has not been seen."""
+        options: list[tuple[int, str]] = []
+        for label in screen.get("warps") or []:
+            match = _WARP.match(str(label).strip())
+            if match is None:
+                continue
+            dest = int(match.group(1))
+            if dest in self.danger:
+                continue
+            cost_match = _WARP_COST.search(str(label))
+            cost = int(cost_match.group(1)) if cost_match else 3
+            if turns < cost:
+                continue
+            options.append((dest, str(label).strip()))
+        if not options:
+            return None
+        fresh = [item for item in options if item[0] not in self.visited]
+        pool = fresh or options
+        pool.sort(key=lambda item: (item[0] == self.previous, item[0] in self.visited, item[0]))
+        self.plan_note = "wander " + pool[0][1]
+        return Action("click", label=pool[0][1])
+
+    def _wants_bank(self, credits: int) -> bool:
+        if self.bank_day == self.day or self._gear_pending():
+            return False
+        return credits >= _RESERVE + 5_000
+
+    def _wants_dock(self, sector: int) -> bool:
+        """Gear is still worth buying and the known map has no way to StarDock.
+
+        The day a pair is first good enough is spent running it. The course
+        plotter is for a later day, when the return to StarDock was never seen.
+        """
+        if sector == 1 or self.shop_day == self.day or self._gear_done():
+            return False
+        if self._hops(sector, 1) is not None:
+            return False
+        # The day after a pair is good enough, leave for StarDock.
+        if self._settled(sector) and self.settled_day and self.day > self.settled_day and self._best_spread() > 0:
+            return True
+        # A priced pocket with no known way back, as on seed 4242, still needs the dock.
+        return self.day >= 3 and self._priced_ports() >= 6 and self._best_spread() > 0
+
+    def _still_shopping(self, credits: int) -> bool:
+        """Stay at StarDock until holds, weapons, and the ship decision are done."""
+        if credits < 500 or self._gear_done():
+            return False
+        left = any(place not in (0, 1) for place in self.visited)
+        if self._best_spread() <= 0 and left:
+            return False
+        return True
+
+    def _sync_plot(self, sector: int, turns: int, credits: int) -> None:
+        """Plot a course when the known warp list cannot reach the next goal."""
+        if self._settled(sector) and not self.settled_day:
+            self.settled_day = self.day or 1
+        # Stay on the computer's course until the ship arrives. A partial path
+        # in memory is not a reason to wander off it.
+        if self.plot_to and (not sector or sector == self.plot_to):
+            self.plot_to = 0
+        if self.plot_to or turns <= 0:
+            return
+        if self._wants_dock(sector):
+            _value, ask, _bid, _cycle = self._best_run()
+            if ask and not self.home_ask:
+                self.home_ask = ask
+            self.plot_to = 1
+            return
+        if sector == 1 and not self._still_shopping(credits) and not self._wants_bank(credits):
+            dest = self.home_ask
+            if not dest:
+                _value, dest, _bid, _cycle = self._best_run()
+            # The computer's course home is shorter than the long way we explored.
+            if dest and dest != sector:
+                self.plot_to = dest
+
+    def _plot_menu(self, text: str) -> bool:
+        low = text.lower()
+        return "computer command" in low or "course plotter" in low or "destination sector" in low
+
+    def _plot_blocks(self, screen: dict) -> bool:
+        if not self.plot_to:
+            return False
+        if self._plot_menu(str(screen.get("menuText") or "")):
+            return True
+        return bool(str(screen.get("course") or "").strip())
+
+    def _computer_label(self, labels: list[str]) -> str:
+        for row in labels:
+            folded = row.replace(" ", "").lower()
+            if folded.endswith("computer"):
+                return row
+        return ""
+
+    def _course_path(self, course: str, target: int) -> list[int]:
+        match = _COURSE.search(course or "")
+        if match is None or int(match.group(1)) != target:
+            return []
+        return [int(part) for part in match.group(2).split() if part.isdigit()]
+
+    def _plot_step(self, screen: dict, labels: list[str], sector: int) -> Action | None:
+        """Drive the on-screen course plotter the way a person would, then take the next hop."""
+        target = self.plot_to
+        if not target:
+            return None
+        course = str(screen.get("course") or "")
+        path = self._course_path(course, target)
+        if path:
+            if sector in path:
+                index = path.index(sector)
+                if index + 1 < len(path):
+                    nxt = path[index + 1]
+                    for label in screen.get("warps") or []:
+                        match = _WARP.match(str(label).strip())
+                        if match and int(match.group(1)) == nxt:
+                            self.plan_note = "follow the plotted course"
+                            return Action("click", label=str(label).strip())
+                    # The hop is not a live button (not enough turns, or it is dim).
+                    # Falling through lets the day end instead of waiting out the clock.
+                    return None
+            replot = next((row for row in labels if "re-plot" in row.lower()), "")
+            if replot:
+                self.plan_note = "re-plot the course"
+                return Action("click", label=replot)
+            return None
+        elif course.strip():
+            cancel = next((row for row in labels if row.lower() == "cancel"), "")
+            if cancel:
+                self.plan_note = "clear the other course"
+                return Action("click", label=cancel)
+        menu = str(screen.get("menuText") or "")
+        if "destination sector" in menu.lower():
+            typed = str(screen.get("sectorAsk") or "").strip()
+            if typed != str(target):
+                self.plan_note = "name the destination"
+                return Action("type", selector="#sectorAsk", text=str(target))
+            self.plan_note = "plot the course"
+            return Action("click", label="ENTER")
+        if self._plot_menu(menu):
+            self.plan_note = "open the course plotter"
+            return Action("press", key="F")
+        computer = self._computer_label(labels)
+        if computer:
+            self.plan_note = "open the computer"
+            return Action("click", label=computer)
+        self.plan_note = "open the computer"
+        return Action("press", key="C")
+
+    def _return_home(self, screen: dict, sector: int, cargo: dict[str, int]) -> Action | None:
+        """After StarDock, go back to the pair that paid for the trip."""
+        dest = self.home_ask
+        if not dest or sector == dest or self.plot_to or any(cargo.values()) or not self._gear_done():
+            if sector and sector == dest:
+                self.home_ask = 0
+            return None
+        step = self._first_step(sector, dest)
+        if step is None:
+            return None
+        action = self._click_warp(sector, step)
+        if action is not None:
+            self.plan_note = "return to the pair"
+        return action
 
     def _spend(self, screen: dict, turns: int) -> Action:
         chip = str(screen.get("chip") or "")

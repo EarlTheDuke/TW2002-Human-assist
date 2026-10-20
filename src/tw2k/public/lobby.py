@@ -231,13 +231,20 @@ class Lobby:
                     )
                 if cock_seats:
                     settings = g["settings"]
-                    self.cockpit_rows[gid] = {
-                        "seat": cock_seats[0],
-                        "token": tokens[cock_seats[0]],
-                        "provider": str(settings.get("ai_cockpit_provider") or "scripted"),
-                        "model": str(settings.get("ai_cockpit_model") or ""),
-                        "proc": None,
-                    }
+                    level = str(settings.get("ai_cockpit_level") or "hard")
+                    if level not in ("easy", "normal", "hard"):
+                        level = "hard"
+                    self.cockpit_rows[gid] = [
+                        {
+                            "seat": seat,
+                            "token": tokens[seat],
+                            "provider": str(settings.get("ai_cockpit_provider") or "scripted"),
+                            "model": str(settings.get("ai_cockpit_model") or ""),
+                            "level": level,
+                            "proc": None,
+                        }
+                        for seat in cock_seats
+                    ]
                 w = self.workers.spawn(gid, g["settings"], port, brand=self.brand,
                                        lobby_secret=self.secrets.lobby_secret(gid),
                                        spectator_token=self.secrets.spectator_token(gid),
@@ -291,7 +298,8 @@ class Lobby:
 
     def launch_browser_seat(self, gid: str, seat: str, token: str, *, run_dir: Path,
                             base_url: str, provider: str = "scripted", model: str = "",
-                            max_turns: int = 40, min_interval: float = 1.0, path: str | None = None):
+                            level: str = "", max_turns: int = 40, min_interval: float = 1.0,
+                            path: str | None = None):
         """Start the rendered-screen player for this seat when the switch is on.
 
         The child opens the seat link and does not receive engine objects. The
@@ -301,26 +309,35 @@ class Lobby:
 
         return launch_player(
             base_url=base_url, gid=gid, seat=seat, token=token, run_dir=Path(run_dir),
-            provider=provider, model=model, max_turns=max_turns, min_interval=min_interval,
-            path=path,
+            provider=provider, model=model, level=level, max_turns=max_turns,
+            min_interval=min_interval, path=path,
         )
 
-    def _launch_cockpit(self, gid: str):
-        """Start the browser player for a seat the new-game form asked for.
+    def _cockpit_entries(self, gid: str) -> list[dict[str, Any]]:
+        """One dict from older callers, or the list of seats this game launched."""
+        row = self.cockpit_rows.get(gid)
+        if row is None:
+            return []
+        if isinstance(row, dict):
+            return [row]
+        return [item for item in row if isinstance(item, dict)]
 
-        The child opens the worker's /bot page, which is the same screen a
-        person gets through the lobby. The harness AI list does not include
-        this seat, so nothing else drives it.
+    def _launch_cockpit(self, gid: str):
+        """Start one browser player per AI cockpit seat the form asked for.
+
+        Each child opens the worker's /bot page with its own seat token. The
+        harness AI list does not include these seats, so nothing else drives them.
+        A single dict (the older one-seat shape) is launched the same way.
         """
         from ..engine import constants as K
         from .ai_cockpit_launch import direct_seat_url
 
         if not K.ai_cockpit_seat_on():
             return None
-        row = self.cockpit_rows.get(gid)
+        rows = self._cockpit_entries(gid)
         w = self.workers.workers.get(gid)
         g = self.store.game(gid)
-        if row is None or w is None or g is None:
+        if not rows or w is None or g is None:
             return None
         settings = g["settings"]
         try:
@@ -328,37 +345,82 @@ class Lobby:
             turns = max(1, int(settings.get("turns_per_day") or 1))
         except (TypeError, ValueError):
             days, turns = 1, 1
-        proc = self.launch_browser_seat(
-            gid, str(row["seat"]), str(row["token"]),
-            run_dir=self.workers.game_dir(gid) / "ai-cockpit",
-            base_url=f"http://127.0.0.1:{w.port}",
-            provider=str(row["provider"] or "scripted"),
-            model=str(row["model"] or ""),
-            max_turns=max(80, days * turns * 2),
-            min_interval=1.0,
-            path=direct_seat_url(str(row["seat"]), str(row["token"])),
-        )
-        row["proc"] = proc
-        return proc
+        procs = []
+        for row in rows:
+            seat = str(row["seat"])
+            level = str(row.get("level") or settings.get("ai_cockpit_level") or "hard")
+            proc = self.launch_browser_seat(
+                gid, seat, str(row["token"]),
+                run_dir=self.workers.game_dir(gid) / "ai-cockpit" / seat,
+                base_url=f"http://127.0.0.1:{w.port}",
+                provider=str(row.get("provider") or "scripted"),
+                model=str(row.get("model") or ""),
+                level=level,
+                max_turns=max(80, days * turns * 2),
+                min_interval=1.0,
+                path=direct_seat_url(seat, str(row["token"])),
+            )
+            row["proc"] = proc
+            procs.append(proc)
+        if len(procs) == 1:
+            return procs[0]
+        return procs
 
     def cockpit_status(self, gid: str) -> str:
         """Status text for the lobby. Empty when this game has no cockpit seat."""
         from .ai_cockpit_launch import status_line
 
-        row = self.cockpit_rows.get(gid)
+        rows = self._cockpit_entries(gid)
         g = self.store.game(gid)
         settings = (g or {}).get("settings") or {}
-        if row is None and not settings.get("ai_cockpit"):
+        if not rows and not settings.get("ai_cockpit"):
             return ""
-        provider = str((row or {}).get("provider") or settings.get("ai_cockpit_provider") or "scripted")
-        model = str((row or {}).get("model") or settings.get("ai_cockpit_model") or "")
-        proc = (row or {}).get("proc")
-        running = proc is not None and proc.poll() is None
-        return status_line(provider, model, running)
+        if not rows:
+            provider = str(settings.get("ai_cockpit_provider") or "scripted")
+            model = str(settings.get("ai_cockpit_model") or "")
+            return status_line(provider, model, False)
+        lines = []
+        several = len(rows) > 1
+        for row in rows:
+            proc = row.get("proc")
+            running = proc is not None and proc.poll() is None
+            lines.append(status_line(
+                str(row.get("provider") or settings.get("ai_cockpit_provider") or "scripted"),
+                str(row.get("model") or settings.get("ai_cockpit_model") or ""),
+                running,
+                seat=str(row.get("seat") or "") if several else "",
+                level=str(row.get("level") or ""),
+            ))
+        return "\n".join(lines)
+
+    def cockpit_public(self, gid: str) -> list[dict[str, str]]:
+        """Creator-facing rows. Paths only: the seat token stays on the redirect."""
+        from .ai_cockpit_launch import status_line
+
+        rows = self._cockpit_entries(gid)
+        several = len(rows) > 1
+        out: list[dict[str, str]] = []
+        for row in rows:
+            seat = str(row.get("seat") or "")
+            proc = row.get("proc")
+            running = proc is not None and proc.poll() is None
+            href = f"/games/{gid}/ai-seat/{seat}" if several else f"/games/{gid}/ai-seat"
+            out.append({
+                "seat": seat,
+                "status": status_line(
+                    str(row.get("provider") or "scripted"),
+                    str(row.get("model") or ""),
+                    running,
+                    seat=seat if several else "",
+                    level=str(row.get("level") or ""),
+                ),
+                "href": href,
+                "stop": f"/games/{gid}/ai-seat/{seat}/stop",
+            })
+        return out
 
     def _drop_cockpit(self, gid: str, *, forget: bool = False) -> None:
-        row = self.cockpit_rows.get(gid)
-        if row is not None:
+        for row in self._cockpit_entries(gid):
             proc = row.get("proc")
             if proc is not None and proc.poll() is None:
                 proc.terminate()
@@ -366,8 +428,21 @@ class Lobby:
         if forget:
             self.cockpit_rows.pop(gid, None)
 
+    def stop_cockpit_seat(self, gid: str, seat: str) -> bool:
+        """Stop one cockpit process. False when that seat is not in this game."""
+        for row in self._cockpit_entries(gid):
+            if str(row.get("seat") or "") != seat:
+                continue
+            proc = row.get("proc")
+            if proc is not None and proc.poll() is None:
+                proc.terminate()
+            row["proc"] = None
+            log.info("ai cockpit stop game=%s seat=%s", gid, seat)
+            return True
+        return False
+
     async def ai_seat_view(self, request: Request) -> Response:
-        """Creator redirect to the cockpit seat. The token stays out of the lobby HTML."""
+        """Creator redirect to one cockpit seat. The token stays out of the lobby HTML."""
         gate = self._need_accept(request)
         if gate:
             return gate
@@ -376,12 +451,36 @@ class Lobby:
         g = self.store.game(gid)
         if guest is None or g is None or g.get("creator") != guest["id"]:
             return self.msg("Not allowed", "That seat view is for the person who created the game.", 403)
-        row = self.cockpit_rows.get(gid)
-        if row is None:
+        rows = self._cockpit_entries(gid)
+        if not rows:
             return self.msg("No AI seat", "This game has no AI cockpit seat.", 404)
+        wanted = str(request.path_params.get("seat") or "")
+        if wanted:
+            row = next((item for item in rows if str(item.get("seat") or "") == wanted), None)
+            if row is None:
+                return self.msg("No AI seat", "That AI cockpit seat is not in this game.", 404)
+        else:
+            row = rows[0]
         from .ai_cockpit_launch import cockpit_seat_url
 
         return RedirectResponse(cockpit_seat_url(gid, str(row["seat"]), str(row["token"])), status_code=303)
+
+    async def ai_seat_stop(self, request: Request) -> Response:
+        """Creator stop for one cockpit process. The seat token is not logged."""
+        gate = self._need_accept(request)
+        if gate:
+            return gate
+        if not self.same_origin(request):
+            return self.msg("Not allowed", "That form came from another site.", 403)
+        guest = self.accepted(request)
+        gid = request.path_params["gid"]
+        seat = str(request.path_params.get("seat") or "")
+        g = self.store.game(gid)
+        if guest is None or g is None or g.get("creator") != guest["id"]:
+            return self.msg("Not allowed", "That stop button is for the person who created the game.", 403)
+        if not self.stop_cockpit_seat(gid, seat):
+            return self.msg("No AI seat", "That AI cockpit seat is not in this game.", 404)
+        return RedirectResponse("/", status_code=303)
 
     async def _run_ai(self, gid: str, base: str, tokens: dict[str, str], *, brain: str, key: str,
                       url: str, days: int, idle_s: float) -> None:
@@ -577,10 +676,14 @@ class Lobby:
             for gid, row in self.cockpit_rows.items()
             if row and any(g["id"] == gid and g.get("creator") == guest_id for g in games)
         }
+        seat_rows = {
+            gid: self.cockpit_public(gid)
+            for gid in seat_links
+        }
         return self.html(pages.lobby(
             self.brand, games=games, mine=self.store.guest_games(guest_id),
             owned=self.store.created_games(guest_id), closed=self.closed, full=self.full_for(1), live=self.live,
-            notes=notes, seat_links=seat_links,
+            notes=notes, seat_links=seat_links, seat_rows=seat_rows,
         ))
 
     async def about(self, request: Request) -> Response:
@@ -708,19 +811,25 @@ class Lobby:
         links = [(seat, f"{base}/join/{gid}/{seat}?k={self.invite_key(gid, seat)}") for seat in seat_ids(parsed.humans)]
         watch = f"{base}/g/{gid}/watch" + ("" if parsed.listed else f"?k={self.secrets.watch_key(gid)}")
         cockpit = None
-        if self.cockpit_rows.get(gid):
-            row = self.cockpit_rows[gid]
+        public = self.cockpit_public(gid)
+        if public:
             cockpit = {
                 "status": self.cockpit_status(gid),
-                "seat": str(row["seat"]),
+                "seat": public[0]["seat"],
                 "href": f"/games/{gid}/ai-seat",
+                "seats": public,
             }
         if api:
             payload = {"id": gid, "name": parsed.name, "status": g["status"], "join_links": dict(links),
                        "watch_link": watch}
             if cockpit:
-                payload["ai_cockpit"] = {"seat": cockpit["seat"], "status": cockpit["status"],
-                                         "href": cockpit["href"]}
+                payload["ai_cockpit"] = {
+                    "seat": cockpit["seat"], "status": cockpit["status"], "href": cockpit["href"],
+                    "seats": [
+                        {"seat": item["seat"], "status": item["status"], "href": item["href"]}
+                        for item in cockpit.get("seats") or []
+                    ],
+                }
             return JSONResponse(payload)
         return self.html(pages.created(self.brand, game=g, join_links=links, watch_link=watch, cockpit=cockpit))
 
@@ -1190,6 +1299,8 @@ def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = Non
         Route("/new", lobby.create, methods=["POST"]),
         Route("/join/{gid:str}/{seat:str}", lobby.join_link),
         Route("/games/{gid:str}/join", lobby.join, methods=["POST"]),
+        Route("/games/{gid:str}/ai-seat/{seat:str}/stop", lobby.ai_seat_stop, methods=["POST"]),
+        Route("/games/{gid:str}/ai-seat/{seat:str}", lobby.ai_seat_view),
         Route("/games/{gid:str}/ai-seat", lobby.ai_seat_view),
         Route("/games/{gid:str}/end", lobby.end_game, methods=["POST"]),
         Route("/resume/{gid:str}", lobby.resume),

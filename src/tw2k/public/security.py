@@ -173,6 +173,8 @@ class GameForm:
     ai_cockpit: bool = False
     ai_cockpit_provider: str = "scripted"
     ai_cockpit_model: str = ""
+    ai_cockpit_count: int = 1
+    ai_cockpit_level: str = "hard"
     # NOTE 131. None is fast test days and is left out of settings. "full" is a
     # full-length game. The field exists only while the process flag is v311.
     game_length: str | None = None
@@ -206,6 +208,8 @@ class GameForm:
             out["ai_cockpit"] = True
             out["ai_cockpit_provider"] = self.ai_cockpit_provider
             out["ai_cockpit_model"] = self.ai_cockpit_model
+            out["ai_cockpit_count"] = int(self.ai_cockpit_count)
+            out["ai_cockpit_level"] = self.ai_cockpit_level
         if self.game_length == "full":
             out["game_length"] = "full"
         return out
@@ -249,8 +253,11 @@ _TURNS_MAX = 5_000
 # Accepted only while LOBBY_AI_SEAT_MODE is on. Off, these stay unknown fields.
 _AI_FIELDS = {"ai_opponents", "ai_brain", "ai_key", "ai_endpoint"}
 # Accepted only while AI_COCKPIT_SEAT_MODE is on. Off, these stay unknown fields.
-_COCKPIT_FIELDS = {"ai_cockpit", "ai_cockpit_provider", "ai_cockpit_model"}
+_COCKPIT_FIELDS = {
+    "ai_cockpit", "ai_cockpit_provider", "ai_cockpit_model", "ai_cockpit_count", "ai_cockpit_level",
+}
 _COCKPIT_PROVIDERS = {"scripted", "grok", "openai", "anthropic"}
+_COCKPIT_LEVELS = {"easy", "normal", "hard"}
 
 
 def ai_label(brain: str) -> str:
@@ -275,6 +282,13 @@ def _cockpit_provider(raw) -> str:
         text = "grok"
     if text not in _COCKPIT_PROVIDERS:
         raise FormError("AI cockpit provider must be scripted, grok, openai, or anthropic")
+    return text
+
+
+def _cockpit_level(raw) -> str:
+    text = str(raw or "hard").strip().lower()
+    if text not in _COCKPIT_LEVELS:
+        raise FormError("AI cockpit level must be easy, normal, or hard")
     return text
 
 
@@ -469,11 +483,16 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
     cockpit = False
     cockpit_provider = "scripted"
     cockpit_model = ""
+    cockpit_count = 1
+    cockpit_level = "hard"
     if K.ai_cockpit_seat_on():
         cockpit = _as_bool(data, "ai_cockpit", False)
         if cockpit:
             cockpit_provider = _cockpit_provider(data.get("ai_cockpit_provider"))
             cockpit_model = _cockpit_model(data.get("ai_cockpit_model"))
+            if "ai_cockpit_count" in data:
+                cockpit_count = _as_int(data, "ai_cockpit_count", 1, 1, 4)
+            cockpit_level = _cockpit_level(data.get("ai_cockpit_level", "hard"))
     return GameForm(
         name=name,
         rules=rules,
@@ -498,6 +517,8 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         ai_cockpit=cockpit,
         ai_cockpit_provider=cockpit_provider,
         ai_cockpit_model=cockpit_model,
+        ai_cockpit_count=cockpit_count,
+        ai_cockpit_level=cockpit_level,
         game_length=length,
     )
 

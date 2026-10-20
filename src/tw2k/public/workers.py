@@ -119,12 +119,19 @@ def ai_seat_ids(humans: int, ai: int) -> list[str]:
 
 
 def cockpit_count(settings: dict[str, Any]) -> int:
-    """One rendered-screen seat when the form asked and the switch is on. Else zero."""
+    """Rendered-screen seats when the form asked and the switch is on. Else zero.
+
+    A missing count is one seat. The form allows up to four.
+    """
     from ..engine import constants as K
 
-    if not K.ai_cockpit_seat_on():
+    if not K.ai_cockpit_seat_on() or not settings.get("ai_cockpit"):
         return 0
-    return 1 if settings.get("ai_cockpit") else 0
+    try:
+        count = int(settings.get("ai_cockpit_count") or 1)
+    except (TypeError, ValueError):
+        count = 1
+    return min(4, max(1, count))
 
 
 def cockpit_seat_ids(humans: int, ai: int, cockpit: int) -> list[str]:
@@ -163,7 +170,10 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
     cockpit = cockpit_count(settings)
     names = [f"Guest {i + 1}" for i in range(humans)]
     names += [ai_label(str(settings.get("ai_brain") or "heuristic")) for _ in range(ai)]
-    names += ["AI cockpit"] * cockpit
+    if cockpit <= 1:
+        names += ["AI cockpit"] * cockpit
+    else:
+        names += [f"AI cockpit {i + 1}" for i in range(cockpit)]
     names += list(BOT_NAMES[:bots])
     cmd = [
         python or sys.executable, "-m", "tw2k.cli", "serve",
