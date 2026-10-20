@@ -675,6 +675,9 @@ class Player(BaseModel):
             "avoided_sectors": [],
             "seat_timeout_streak": 0,
             "seat_timeouts_today": 0,
+            "played_today": False,
+            "idle_days": 0,
+            "inactive_deleted": False,
             "reject_loop_key": "",
             "reject_loop_count": 0,
             "radio_channel": None,
@@ -727,6 +730,11 @@ class Player(BaseModel):
     # seat-deadline-autopass-v1. Omitted while 0 so a legacy dump stays identical.
     seat_timeout_streak: int = 0
     seat_timeouts_today: int = 0
+    # NOTE 151. A successful action marks the day. Extern counts days with none.
+    # Omitted at the defaults so a legacy dump stays identical.
+    played_today: bool = False
+    idle_days: int = 0
+    inactive_deleted: bool = False
     # api-arg-hardening-v1. Omitted at the defaults so a legacy dump stays identical.
     reject_loop_key: str = ""
     reject_loop_count: int = 0
@@ -1002,7 +1010,10 @@ def _cap_operator_dialogue_entry(entry: dict[str, Any]) -> dict[str, Any]:
 class Corporation(BaseModel):
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"password": ""})
+        return _omit_defaults(handler(self), {
+            "password": "",
+            "kept_after_inactive_ceo": False,
+        })
 
     ticker: str
     name: str
@@ -1014,6 +1025,8 @@ class Corporation(BaseModel):
     planet_ids: list[int] = Field(default_factory=list)
     invited_ids: list[str] = Field(default_factory=list)
     formed_day: int = 0
+    # NOTE 151. Set when the C.E.O. is deleted for inactivity. Omitted while false.
+    kept_after_inactive_ceo: bool = False
 
 
 # ---------------------------------------------------------------------------

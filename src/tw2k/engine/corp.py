@@ -580,6 +580,30 @@ def handle_corp_withdraw(universe: Universe, pid: str, action: Action) -> Action
     return ActionResult(ok=False, error="unsupported action")
 
 
+def delete_inactive_user(universe: Universe, player) -> None:
+    """Remove a trader who has been quiet for INACTIVE_USER_DAYS.
+
+    A C.E.O. deleted this way does not dissolve the corporation. Iago notes that
+    a corporation continues after its C.E.O. is deleted for non-play.
+    """
+    ticker = player.corp_ticker
+    corp = universe.corporations.get(ticker) if ticker else None
+    if corp is not None and player.id == corp.ceo_id:
+        corp.kept_after_inactive_ceo = True
+        corp.member_ids = [mid for mid in corp.member_ids if mid != player.id]
+        player.corp_ticker = None
+    elif corp is not None:
+        remove_member(universe, player.id, corp, dissolve=False)
+    player.alive = False
+    player.inactive_deleted = True
+    _emit(
+        universe, EventKind.PLAYER_ELIMINATED, player.id,
+        f"{player.name} was deleted after {int(K.INACTIVE_USER_DAYS)} inactive days",
+        {"reason": "inactive", "days": int(K.INACTIVE_USER_DAYS)},
+        player.sector_id,
+    )
+
+
 def extern_corp_step(universe: Universe) -> None:
     for player in universe.players.values():
         player.corp_breakins_today = 0
@@ -591,6 +615,8 @@ def extern_corp_step(universe: Universe) -> None:
     for corp in list(universe.corporations.values()):
         ceo = universe.players.get(corp.ceo_id)
         if ceo is None or not ceo.alive:
+            if corp.kept_after_inactive_ceo:
+                continue
             disband(universe, corp)
             continue
         for mid in list(corp.member_ids):

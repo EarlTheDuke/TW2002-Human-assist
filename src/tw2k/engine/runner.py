@@ -313,6 +313,8 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     # Check victory after every applied action
     _check_victory(universe)
 
+    if result.ok and K.inactive_user_live():
+        player.played_today = True
     return _note_reject(universe, player, action, result)
 
 
@@ -480,6 +482,24 @@ def recover_turns(player, elapsed_s: float) -> int:
     return applied
 
 
+def _note_inactive_users(universe: Universe) -> None:
+    """NOTE 151. Off, this returns before it reads a player."""
+    if not K.inactive_user_live():
+        return
+    from .corp import delete_inactive_user
+
+    for player in list(universe.players.values()):
+        if not player.alive:
+            continue
+        if player.played_today:
+            player.played_today = False
+            player.idle_days = 0
+            continue
+        player.idle_days = int(player.idle_days) + 1
+        if player.idle_days >= int(K.INACTIVE_USER_DAYS):
+            delete_inactive_user(universe, player)
+
+
 def tick_day(universe: Universe) -> None:
     """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets.
 
@@ -497,6 +517,7 @@ def tick_day(universe: Universe) -> None:
     Class 0 and StarDock fighter, shield and hold prices already follow the
     day (fighter_unit_price, shield_unit_price, hold_day_base).
     """
+    _note_inactive_users(universe)
     _overnight_retreats(universe)
     _overnight_ferrengi_encounters(universe)
     if K.tow_on():  # SHIP_TOW.md tt11j: an overnight retreat / flee drops the tow
