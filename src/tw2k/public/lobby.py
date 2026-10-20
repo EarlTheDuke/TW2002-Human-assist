@@ -46,7 +46,7 @@ from .security import (
     sha256_hex,
 )
 from .store import ACTIVE, LIVE, Store
-from .workers import WorkerManager, admin_headers, ai_count, ai_seat_ids, seat_ids
+from .workers import WorkerManager, admin_headers, ai_count, ai_seat_ids, cockpit_count, cockpit_seat_ids, seat_ids
 
 log = logging.getLogger("tw2k.lobby")
 
@@ -97,6 +97,7 @@ class Lobby:
         self._port_probe = port_probe
         self.ai_memory = AiMemory()
         self.ai_tasks: dict[str, asyncio.Task] = {}
+        self.cockpit_rows: dict[str, dict[str, Any]] = {}
         self._task: asyncio.Task | None = None
         self._admin_csrf = hmac.new(secrets.token_bytes(32), b"admin", hashlib.sha256).hexdigest()
         self._shutdown_key = secrets.token_hex(24)
@@ -218,7 +219,8 @@ class Lobby:
                 humans_n = int(g["settings"]["humans"])
                 human_seats = seat_ids(humans_n)
                 ai_seats = ai_seat_ids(humans_n, ai_count(g["settings"]))
-                tokens = {seat: new_seat_token() for seat in [*human_seats, *ai_seats]}
+                cock_seats = cockpit_seat_ids(humans_n, len(ai_seats), cockpit_count(g["settings"]))
+                tokens = {seat: new_seat_token() for seat in [*human_seats, *ai_seats, *cock_seats]}
                 for seat in human_seats:
                     self.store.set_seat_hash(gid, seat, None)
                 if ai_seats:
@@ -226,6 +228,15 @@ class Lobby:
                         gid, {seat: tokens[seat] for seat in ai_seats},
                         brain=str(g["settings"].get("ai_brain") or "heuristic"),
                     )
+                if cock_seats:
+                    settings = g["settings"]
+                    self.cockpit_rows[gid] = {
+                        "seat": cock_seats[0],
+                        "token": tokens[cock_seats[0]],
+                        "provider": str(settings.get("ai_cockpit_provider") or "scripted"),
+                        "model": str(settings.get("ai_cockpit_model") or ""),
+                        "proc": None,
+                    }
                 w = self.workers.spawn(gid, g["settings"], port, brand=self.brand,
                                        lobby_secret=self.secrets.lobby_secret(gid),
                                        spectator_token=self.secrets.spectator_token(gid),
@@ -240,8 +251,10 @@ class Lobby:
                 self.activity[gid] = time.time()
                 self.store.set_game(gid, status="running", last_activity=time.time())
                 self._launch_ai(gid)
+                self._launch_cockpit(gid)
                 return True
             log.warning("start game=%s: worker did not come up", gid)
+            self._drop_cockpit(gid, forget=True)
             await self.workers.stop(gid, lobby_secret=self.secrets.lobby_secret(gid),
                                     spectator_token=self.secrets.spectator_token(gid), graceful=False)
             self.store.set_game(gid, status="failed", note="worker did not come up")
@@ -275,6 +288,100 @@ class Lobby:
             brain=row.brain, key=row.key, url=row.url, days=days, idle_s=idle_s,
         ))
 
+    def launch_browser_seat(self, gid: str, seat: str, token: str, *, run_dir: Path,
+                            base_url: str, provider: str = "scripted", model: str = "",
+                            max_turns: int = 40, min_interval: float = 1.0, path: str | None = None):
+        """Start the rendered-screen player for this seat when the switch is on.
+
+        The child opens the seat link and does not receive engine objects. The
+        token is the seat link's token; this method does not log it.
+        """
+        from .ai_cockpit_launch import launch_player
+
+        return launch_player(
+            base_url=base_url, gid=gid, seat=seat, token=token, run_dir=Path(run_dir),
+            provider=provider, model=model, max_turns=max_turns, min_interval=min_interval,
+            path=path,
+        )
+
+    def _launch_cockpit(self, gid: str):
+        """Start the browser player for a seat the new-game form asked for.
+
+        The child opens the worker's /bot page, which is the same screen a
+        person gets through the lobby. The harness AI list does not include
+        this seat, so nothing else drives it.
+        """
+        from ..engine import constants as K
+        from .ai_cockpit_launch import direct_seat_url
+
+        if not K.ai_cockpit_seat_on():
+            return None
+        row = self.cockpit_rows.get(gid)
+        w = self.workers.workers.get(gid)
+        g = self.store.game(gid)
+        if row is None or w is None or g is None:
+            return None
+        settings = g["settings"]
+        try:
+            days = max(1, int(settings.get("max_days") or 1))
+            turns = max(1, int(settings.get("turns_per_day") or 1))
+        except (TypeError, ValueError):
+            days, turns = 1, 1
+        proc = self.launch_browser_seat(
+            gid, str(row["seat"]), str(row["token"]),
+            run_dir=self.workers.game_dir(gid) / "ai-cockpit",
+            base_url=f"http://127.0.0.1:{w.port}",
+            provider=str(row["provider"] or "scripted"),
+            model=str(row["model"] or ""),
+            max_turns=max(80, days * turns * 2),
+            min_interval=1.0,
+            path=direct_seat_url(str(row["seat"]), str(row["token"])),
+        )
+        row["proc"] = proc
+        return proc
+
+    def cockpit_status(self, gid: str) -> str:
+        """Status text for the lobby. Empty when this game has no cockpit seat."""
+        from .ai_cockpit_launch import status_line
+
+        row = self.cockpit_rows.get(gid)
+        g = self.store.game(gid)
+        settings = (g or {}).get("settings") or {}
+        if row is None and not settings.get("ai_cockpit"):
+            return ""
+        provider = str((row or {}).get("provider") or settings.get("ai_cockpit_provider") or "scripted")
+        model = str((row or {}).get("model") or settings.get("ai_cockpit_model") or "")
+        proc = (row or {}).get("proc")
+        running = proc is not None and proc.poll() is None
+        return status_line(provider, model, running)
+
+    def _drop_cockpit(self, gid: str, *, forget: bool = False) -> None:
+        row = self.cockpit_rows.get(gid)
+        if row is not None:
+            proc = row.get("proc")
+            if proc is not None and proc.poll() is None:
+                proc.terminate()
+            row["proc"] = None
+        if forget:
+            self.cockpit_rows.pop(gid, None)
+
+    async def ai_seat_view(self, request: Request) -> Response:
+        """Creator redirect to the cockpit seat. The token stays out of the lobby HTML."""
+        gate = self._need_accept(request)
+        if gate:
+            return gate
+        guest = self.accepted(request)
+        gid = request.path_params["gid"]
+        g = self.store.game(gid)
+        if guest is None or g is None or g.get("creator") != guest["id"]:
+            return self.msg("Not allowed", "That seat view is for the person who created the game.", 403)
+        row = self.cockpit_rows.get(gid)
+        if row is None:
+            return self.msg("No AI seat", "This game has no AI cockpit seat.", 404)
+        from .ai_cockpit_launch import cockpit_seat_url
+
+        return RedirectResponse(cockpit_seat_url(gid, str(row["seat"]), str(row["token"])), status_code=303)
+
     async def _run_ai(self, gid: str, base: str, tokens: dict[str, str], *, brain: str, key: str,
                       url: str, days: int, idle_s: float) -> None:
         try:
@@ -288,6 +395,7 @@ class Lobby:
     async def stop_game(self, gid: str, *, status: str, graceful: bool = True) -> None:
         async with self.lock(gid):
             self._drop_ai(gid)
+            self._drop_cockpit(gid)
             await self.workers.stop(gid, lobby_secret=self.secrets.lobby_secret(gid),
                                     spectator_token=self.secrets.spectator_token(gid), graceful=graceful)
             self.store.set_game(gid, status=status, pid=None)
@@ -460,9 +568,18 @@ class Lobby:
             return gate
         guest = self.accepted(request)
         guest_id = guest["id"]
+        games = self._listed()
+        notes = {g["id"]: self.cockpit_status(g["id"]) for g in games}
+        notes = {gid: text for gid, text in notes.items() if text}
+        seat_links = {
+            gid: f"/games/{gid}/ai-seat"
+            for gid, row in self.cockpit_rows.items()
+            if row and any(g["id"] == gid and g.get("creator") == guest_id for g in games)
+        }
         return self.html(pages.lobby(
-            self.brand, games=self._listed(), mine=self.store.guest_games(guest_id),
+            self.brand, games=games, mine=self.store.guest_games(guest_id),
             owned=self.store.created_games(guest_id), closed=self.closed, full=self.full_for(1), live=self.live,
+            notes=notes, seat_links=seat_links,
         ))
 
     async def about(self, request: Request) -> Response:
@@ -582,16 +699,29 @@ class Lobby:
         finally:
             if not ok:
                 self._drop_ai(gid)
+                self._drop_cockpit(gid, forget=True)
         if not ok:
             return self._api_or(api, 503, "The game could not start. Please try again later.", request)
         g = self.store.game(gid)
         base = self._base_url(request)
         links = [(seat, f"{base}/join/{gid}/{seat}?k={self.invite_key(gid, seat)}") for seat in seat_ids(parsed.humans)]
         watch = f"{base}/g/{gid}/watch" + ("" if parsed.listed else f"?k={self.secrets.watch_key(gid)}")
+        cockpit = None
+        if self.cockpit_rows.get(gid):
+            row = self.cockpit_rows[gid]
+            cockpit = {
+                "status": self.cockpit_status(gid),
+                "seat": str(row["seat"]),
+                "href": f"/games/{gid}/ai-seat",
+            }
         if api:
-            return JSONResponse({"id": gid, "name": parsed.name, "status": g["status"], "join_links": dict(links),
-                                 "watch_link": watch})
-        return self.html(pages.created(self.brand, game=g, join_links=links, watch_link=watch))
+            payload = {"id": gid, "name": parsed.name, "status": g["status"], "join_links": dict(links),
+                       "watch_link": watch}
+            if cockpit:
+                payload["ai_cockpit"] = {"seat": cockpit["seat"], "status": cockpit["status"],
+                                         "href": cockpit["href"]}
+            return JSONResponse(payload)
+        return self.html(pages.created(self.brand, game=g, join_links=links, watch_link=watch, cockpit=cockpit))
 
     def _base_url(self, request: Request) -> str:
         scheme = "https" if self.secure(request) else request.url.scheme
@@ -1060,6 +1190,7 @@ def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = Non
         Route("/new", lobby.create, methods=["POST"]),
         Route("/join/{gid:str}/{seat:str}", lobby.join_link),
         Route("/games/{gid:str}/join", lobby.join, methods=["POST"]),
+        Route("/games/{gid:str}/ai-seat", lobby.ai_seat_view),
         Route("/games/{gid:str}/end", lobby.end_game, methods=["POST"]),
         Route("/resume/{gid:str}", lobby.resume),
         Route("/status", lobby.status),

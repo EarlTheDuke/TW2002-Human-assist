@@ -118,6 +118,27 @@ def ai_seat_ids(humans: int, ai: int) -> list[str]:
     return [f"P{humans + i + 1}" for i in range(ai)]
 
 
+def cockpit_count(settings: dict[str, Any]) -> int:
+    """One rendered-screen seat when the form asked and the switch is on. Else zero."""
+    from ..engine import constants as K
+
+    if not K.ai_cockpit_seat_on():
+        return 0
+    return 1 if settings.get("ai_cockpit") else 0
+
+
+def cockpit_seat_ids(humans: int, ai: int, cockpit: int) -> list[str]:
+    """The cockpit seat sits after the human seats and the harness AI seats."""
+    return [f"P{humans + ai + i + 1}" for i in range(cockpit)]
+
+
+def external_seat_ids(settings: dict[str, Any]) -> list[str]:
+    humans = int(settings["humans"])
+    ai = ai_count(settings)
+    cockpit = cockpit_count(settings)
+    return seat_ids(humans) + ai_seat_ids(humans, ai) + cockpit_seat_ids(humans, ai, cockpit)
+
+
 def switch_overlay(settings: dict[str, Any]) -> dict[str, str]:
     # NOTE 74: every self-hosted beta game rolls the day on the clock.
     # NOTE 104: a legacy game also rolls on its own day length, opens selling
@@ -139,8 +160,10 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
     humans = int(settings["humans"])
     bots = int(settings["bots"])
     ai = ai_count(settings)
+    cockpit = cockpit_count(settings)
     names = [f"Guest {i + 1}" for i in range(humans)]
     names += [ai_label(str(settings.get("ai_brain") or "heuristic")) for _ in range(ai)]
+    names += ["AI cockpit"] * cockpit
     names += list(BOT_NAMES[:bots])
     cmd = [
         python or sys.executable, "-m", "tw2k.cli", "serve",
@@ -149,9 +172,9 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
         "--universe-size", str(int(settings["universe_size"])),
         "--max-days", str(int(settings["max_days"])),
         "--turns-per-day", str(int(settings["turns_per_day"])),
-        "--num-agents", str(humans + bots + ai),
+        "--num-agents", str(humans + bots + ai + cockpit),
         "--agent-kind", "heuristic",
-        "--external", ",".join(seat_ids(humans) + ai_seat_ids(humans, ai)),
+        "--external", ",".join(external_seat_ids(settings)),
         "--external-tokens-file", str(game_dir / "tokens.json"),
         "--external-idle-wait-s", f"{idle_wait_s:g}",
         "--day-seconds", f"{float(settings['day_seconds']):g}",

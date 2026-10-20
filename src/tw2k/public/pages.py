@@ -221,7 +221,8 @@ def _end_button(g: dict[str, Any]) -> str:
 
 
 def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[str, Any]], closed: bool,
-          full: bool, live: dict[str, dict[str, Any]], owned: Iterable[dict[str, Any]] | None = None) -> str:
+          full: bool, live: dict[str, dict[str, Any]], owned: Iterable[dict[str, Any]] | None = None,
+          notes: dict[str, str] | None = None, seat_links: dict[str, str] | None = None) -> str:
     mine = list(mine)
     owned = list(owned or [])
     seated = {g["id"] for g in mine}
@@ -235,6 +236,13 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         join = (f"<form method=\"post\" action=\"/games/{g['id']}/join\" style=\"display:inline\">"
                 "<button class=\"primary\" type=\"submit\">Join</button></form>") if open_seats and not closed else ""
         watch = "" if g["id"] in seated else f"<a class=\"btn\" href=\"/g/{g['id']}/watch\">Watch</a>"
+        cockpit_note = escape((notes or {}).get(g["id"], ""))
+        cockpit_href = (seat_links or {}).get(g["id"], "")
+        cockpit_link = (
+            f'<a class="btn" href="{escape(cockpit_href)}" data-cockpit="seat">AI seat</a>'
+            if cockpit_href else ""
+        )
+        cockpit_line = f"<br>{cockpit_note}" if cockpit_note else ""
         # The seat row carries the button once the creator has sat down.
         end = _end_button(g) if g["id"] in running_owned and g["id"] not in seated else ""
         rows.append(
@@ -242,9 +250,9 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
             f"{'v3.11' if s['rules'] == 'v311' else 'legacy'} rules &middot; {s['universe_size']} sectors &middot; "
             f"{_day_label(s['day_seconds'])} days &middot; {s['bots']} bots{_ai_card(s)}"
             f"<br>{escape(credits_phrase(s))}"
-            f"<br>{escape(turns_phrase(s))}</span></td>"
+            f"<br>{escape(turns_phrase(s))}{cockpit_line}</span></td>"
             f"<td>{_status_tag(g['status'])} <span class=\"note\">{escape(day)}</span></td>"
-            f"<td>{open_seats} of {s['humans']} seats open</td><td>{join} {watch} {end}</td></tr>"
+            f"<td>{open_seats} of {s['humans']} seats open</td><td>{join} {watch} {cockpit_link} {end}</td></tr>"
         )
     table = ("<table class=\"games\"><thead><tr><th>Game</th><th>Status</th><th>Seats</th><th></th></tr></thead>"
              "<tbody>" + "".join(rows) + "</tbody></table>") if rows else "<p class=\"note\">No open games yet.</p>"
@@ -431,6 +439,32 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             "});\n"
             "</script>\n"
         )
+    cockpit_fields = ""
+    if K.ai_cockpit_seat_on():
+        v.setdefault("ai_cockpit", "off")
+        v.setdefault("ai_cockpit_provider", "scripted")
+        v.setdefault("ai_cockpit_model", "")
+        provider = v["ai_cockpit_provider"] if v["ai_cockpit_provider"] in (
+            "scripted", "grok", "openai", "anthropic") else "scripted"
+        providers = (
+            _opt("scripted", "Scripted (no key)", provider)
+            + _opt("grok", "Grok", provider)
+            + _opt("openai", "OpenAI", provider)
+            + _opt("anthropic", "Anthropic", provider)
+        )
+        checked = " checked" if v.get("ai_cockpit") == "on" else ""
+        cockpit_fields = (
+            '<input type="hidden" name="ai_cockpit" value="off">'
+            f'<label class="check" for="ai_cockpit"><input id="ai_cockpit" name="ai_cockpit" '
+            f'type="checkbox" value="on"{checked}>AI cockpit seat</label>'
+            '<p class="note">One more seat. It plays from the rendered cockpit. '
+            "A live provider reads its key from the lobby process environment. The key is not stored and not shown.</p>"
+            f'<label for="ai_cockpit_provider">AI cockpit provider</label>'
+            f'<select id="ai_cockpit_provider" name="ai_cockpit_provider">{providers}</select>'
+            '<label for="ai_cockpit_model">Model</label>'
+            f'<input id="ai_cockpit_model" name="ai_cockpit_model" maxlength="80" '
+            f'value="{escape(v["ai_cockpit_model"])}">'
+        )
     body = f"""<p class="sub">New game</p>{_waiting_banner(waiting)}{err}
 <form method="post" action="/new" class="card">
 <label for="name">Game name</label><input id="name" name="name" maxlength="40" required value="{escape(v['name'])}">
@@ -486,7 +520,7 @@ function paintDayHint() {{
 <label for="humans">Open human seats</label><select id="humans" name="humans">{humans}</select>
 <label for="bots">Code bots</label><select id="bots" name="bots">{bots}</select>
 {ai_fields}{ai_script}<label for="ferrengi">Ferrengi</label><select id="ferrengi" name="ferrengi">{_opt('on', 'On', v['ferrengi'])}{_opt('off', 'Off', v['ferrengi'])}</select>
-<label for="visibility">Who can find it</label><select id="visibility" name="visibility">{_opt('listed', 'Listed in the lobby', v['visibility'])}{_opt('link', 'Link only', v['visibility'])}</select>
+{cockpit_fields}<label for="visibility">Who can find it</label><select id="visibility" name="visibility">{_opt('listed', 'Listed in the lobby', v['visibility'])}{_opt('link', 'Link only', v['visibility'])}</select>
 <input type="hidden" name="hold_until_human" value="off">
 <label class="check" for="hold_until_human"><input id="hold_until_human" name="hold_until_human" type="checkbox" value="on"{hold_checked}>Hold the clock until the first player opens a seat</label>
 <p class="note">On for a new game from this form. The day clock and the bots wait until someone opens a seat. Uncheck to start at once, which is how games start today when this box is left off.</p>
@@ -496,7 +530,8 @@ function paintDayHint() {{
     return page("New game", body, brand=brand)
 
 
-def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str]], watch_link: str) -> str:
+def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str]], watch_link: str,
+            cockpit: dict[str, str] | None = None) -> str:
     links = "".join(f"<p>Seat {escape(seat)}<code class=\"link\">{escape(url)}</code></p>" for seat, url in join_links)
     settings = game.get("settings") or {}
     key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
@@ -519,8 +554,17 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
             f"<p>{ai_n} {escape(label)}. Those seats are not join links. "
             f"{escape(ai_call_estimate(turns_n, ai_n, brain))}</p>"
         )
+    cockpit_line = ""
+    if cockpit and cockpit.get("status"):
+        href = escape(cockpit.get("href") or "")
+        seat = escape(cockpit.get("seat") or "the AI seat")
+        cockpit_line = (
+            f'<p data-cockpit="status">{escape(cockpit["status"])}</p>'
+            f'<p>Watch it on the spectator link above, or open the seat view '
+            f'<a class="btn" href="{href}" data-cockpit="seat">Open {seat}</a>.</p>'
+        )
     body = (f"<p class=\"sub\">Game created</p><div class=\"card\"><h2>{escape(game['name'])}</h2>"
-            f"{shown}{ai_line}"
+            f"{shown}{ai_line}{cockpit_line}"
             "<p>One join link per open seat. Send each link to one player; the first person to open it gets the seat.</p>"
             f"{links}<p>Watch link (read-only)<code class=\"link\">{escape(watch_link)}</code></p>"
             f"<form method=\"post\" action=\"/games/{game['id']}/join\" style=\"display:inline\">"
