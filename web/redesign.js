@@ -1202,6 +1202,11 @@
   let warpManifestPromise = null;
   let warpPlays = 0;
   let warpTimer = 0;
+  let warpHideTimer = 0;
+  // The picture runs 1.5–3s. The other cockpit hears the move on the 2s
+  // refresh, and a 1.5s hide had already dropped the clip before its pause
+  // hook ran. Stay up through that refresh so the clip can still be paused.
+  const WARP_LINGER_MS = 4000;
   let warpBag = [];
   let lastWarpId = "";
   let warpSpinRaf = 0;
@@ -1374,15 +1379,30 @@
     else if (next.kind) merged.kind = next.kind;
     return { chosen: merged, hooked: true };
   }
-  function skipWarp() {
+  function clearWarpTimers() {
+    if (warpTimer) { clearTimeout(warpTimer); warpTimer = 0; }
+    if (warpHideTimer) { clearTimeout(warpHideTimer); warpHideTimer = 0; }
+  }
+  function settleWarp() {
+    stopWarpSpin();
+    const root = $("warpClip");
+    if (!root || root.hidden) return;
+    root.getAnimations({ subtree: true }).forEach((anim) => {
+      try { anim.pause(); } catch (e) { /* already settled */ }
+    });
+  }
+  function hideWarp() {
     stopWarpSpin();
     const root = $("warpClip");
     const video = $("warpVideo");
-    if (warpTimer) { clearTimeout(warpTimer); warpTimer = 0; }
     if (video) {
       try { video.pause(); } catch (e) { /* already quiet */ }
     }
     if (root) root.hidden = true;
+  }
+  function skipWarp() {
+    clearWarpTimers();
+    hideWarp();
   }
   function warpHullMarkup(sh, def, style) {
     const sample = {
@@ -1438,7 +1458,7 @@
     const resolved = withClipSource(chosen);
     chosen = resolved.chosen;
     const motion = warpMotion();
-    if (motion === "off") { root.hidden = true; return; }
+    if (motion === "off") { clearWarpTimers(); root.hidden = true; return; }
     const sh = (S && S.ship) || {};
     const liveClass = String((sh && sh.class) || "");
     const clipHull = chosen.hull || liveClass;
@@ -1505,20 +1525,25 @@
     if (generic) generic.hidden = true;
     warpPlays += 1;
     root.setAttribute("data-plays", String(warpPlays));
-    if (warpTimer) clearTimeout(warpTimer);
-    warpTimer = setTimeout(() => {
-      stopWarpSpin();
-      root.hidden = true;
-      if (video) { try { video.pause(); } catch (e) { /* already quiet */ } }
-    }, ms);
+    clearWarpTimers();
+    // Pause on the last picture frame, then keep the clip up through the
+    // other cockpit's refresh so hold() can still report that pause.
+    warpTimer = setTimeout(settleWarp, ms);
+    warpHideTimer = setTimeout(hideWarp, Math.max(ms, WARP_LINGER_MS));
   }
   function holdWarp(atMs) {
     const root = $("warpClip");
     if (!root || root.hidden) return 0;
     stopWarpSpin();
+    clearWarpTimers();
+    const pending = root.getAnimations({ subtree: true });
+    pending.forEach((anim) => {
+      if (atMs != null) { try { anim.currentTime = atMs; } catch (e) { /* stay on this frame */ } }
+      anim.pause();
+    });
     if (atMs != null) applyWarpHull(atMs);
-    if (warpTimer) { clearTimeout(warpTimer); warpTimer = 0; }
     const anims = root.getAnimations({ subtree: true });
+    if (!anims.length) return pending.length;
     anims.forEach((anim) => {
       if (atMs != null) { try { anim.currentTime = atMs; } catch (e) { /* stay on this frame */ } }
       anim.pause();

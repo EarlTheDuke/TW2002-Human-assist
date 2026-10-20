@@ -32,18 +32,34 @@ function use118(old) {
   };
 }
 
+// The classic hull-meshes.js script has already run. Publish that API before
+// the module import yields, so a pause or reduced-motion check cannot land
+// in the gap while this file is still awaiting.
+const live = root.TW2KHullMeshes;
+if (live && live.buildHullFaces && live.projectFace && live.markup) {
+  use126({
+    buildHullFaces: live.buildHullFaces,
+    projectFace: live.projectFace,
+    hullMarkup: live.markup,
+  });
+}
+
 try {
   const api = await import("/static/hull-meshes.mjs");
   if (!api.buildHullFaces || !api.projectFace || !api.hullMarkup) throw new Error("hull-meshes.mjs");
   use126(api);
 } catch (err) {
-  await new Promise(function (resolve, reject) {
-    const script = document.createElement("script");
-    script.src = "/static/hull-mesh.js";
-    script.onload = function () { resolve(); };
-    script.onerror = function () { reject(err); };
-    document.head.appendChild(script);
-  });
-  if (!root.TW2KHullMesh || !root.TW2KHullMesh.buildFaces) throw err;
-  use118(root.TW2KHullMesh);
+  if (root.TW2KWarpHull && root.TW2KWarpHull.source === "note126") {
+    // The classic script already supplied the same meshes.
+  } else {
+    await new Promise(function (resolve, reject) {
+      const script = document.createElement("script");
+      script.src = "/static/hull-mesh.js";
+      script.onload = function () { resolve(); };
+      script.onerror = function () { reject(err); };
+      document.head.appendChild(script);
+    });
+    if (!root.TW2KHullMesh || !root.TW2KHullMesh.buildFaces) throw err;
+    use118(root.TW2KHullMesh);
+  }
 }
