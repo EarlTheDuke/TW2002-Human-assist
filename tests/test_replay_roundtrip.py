@@ -174,9 +174,17 @@ def test_replay_reconstructs_final_state(tmp_path: Path) -> None:
 
     def _engine_events(events):
         out = [e for e in events if e.kind is not EventKind.GAME_START]
-        # Drop trailing GAME_OVER-from-replay_eof (replay sometimes caps a
-        # mid-game-finished log with a marker; real matches end on the
-        # engine's time-limit / economic / elimination GAME_OVER only).
+        # 64c71962 emits a synthetic GAME_OVER {reason: replay_eof} when the
+        # recorded log ends before the engine's own finish, so the UI can
+        # show EOF. That marker is a surface wrapper. A real engine
+        # GAME_OVER (time-limit, economic, elimination) has a different
+        # reason and still has to count.
+        if (
+            out
+            and out[-1].kind is EventKind.GAME_OVER
+            and out[-1].payload.get("reason") == "replay_eof"
+        ):
+            out = out[:-1]
         return out
 
     rep_counts = Counter(e.kind for e in _engine_events(u.events))

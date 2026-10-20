@@ -48,9 +48,11 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #warps button,.verb,#keys button{font:inherit;background:#000;border:1px solid var(--dc);color:var(--c);padding:4px 10px;margin:2px;cursor:pointer}
 #warps button:hover,.verb:hover,#keys button:hover{background:var(--b);color:var(--w)}
 #shipSvg{width:100%;height:auto;aspect-ratio:400/260;flex:0 0 auto;max-height:140px;display:block;background:radial-gradient(ellipse at 50% 45%,#0a1a32,#000 70%);overflow:hidden;cursor:grab;touch-action:pan-y}
+/* 1280x800 leaves the cargo row 5px past the card, and the fleet legend adds another 9px. A 124px picture keeps both inside. */
+@media (max-height:820px) and (min-height:781px) and (min-width:701px){#shipSvg{max-height:124px;height:124px}}
 @media (min-height:900px){#shipSvg{max-height:164px}}
-@media (max-height:780px){#shipSvg{flex:1 1 auto;min-height:0;max-height:34%}}
-@media (max-width:700px){#shipSvg{flex:0 0 auto;max-height:210px}}
+@media (max-height:780px){#shipSvg{flex:1 1 auto;min-height:0;height:auto;max-height:34%}}
+@media (max-width:700px){#shipSvg{flex:0 0 auto;height:auto;aspect-ratio:400/260;max-height:210px}}
 #shipSvg .hull-float{animation:ship-float 5.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes ship-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @media (prefers-reduced-motion:reduce){#shipSvg .hull-float{animation:none}}
