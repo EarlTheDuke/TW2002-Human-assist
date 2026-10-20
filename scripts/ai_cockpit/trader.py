@@ -14,7 +14,9 @@ _WARP = re.compile(r"^\d+:(\d+)")
 _WARP_COST = re.compile(r"\((\d+)t\)", re.I)
 _CATALOG = re.compile(r"\b(?:armid|limpet|atomic)\s+mines\b|\bmine disruptor\b", re.I)
 _OWN_FIGHTERS = re.compile(r"your fighters here:[^.]*\.", re.I)
-_DANGER = re.compile(r"ferrengi|hostile fighters|\boffensive\b|\bmines\b", re.I)
+_DANGER = re.compile(r"ferrengi|hostile fighters|\boffensive\b|\bmines\b|\balien\b", re.I)
+_ENTERED = re.compile(r"entering\s+(\d+)", re.I)
+_DENSITY = re.compile(r"Sector\s+(\d+)\s+==>\s+([\d,]+)", re.I)
 _DAY_END = re.compile(r"ends your day", re.I)
 _COUNTER = re.compile(r"for\s+([\d,]+)\s+cr", re.I)
 _EACH = re.compile(r"([\d,]+)\s+cr each", re.I)
@@ -102,6 +104,13 @@ class ScriptedTrader:
         self.plan_note = ""
         self.hold_cap = 20
         self.last_usage = None
+        self.credits = 0
+        self.scanner = False
+        self.scanned: set[int] = set()
+        self.fresh_chain = 0
+        self.pair_blocked = 0
+        self.scout_day = 0
+        self.scan_pending = 0
 
     def decide(self, view) -> Action:
         if not view.manual_read:
@@ -141,8 +150,10 @@ class ScriptedTrader:
             self.bank = None
             self.yard = None
             self.dock_waits = 0
+            self.fresh_chain = 0
         elif turns > self.day_turns:
             self.day_turns = turns
+        self.credits = credits
         cargo = _holds(str(screen.get("holds") or ""))
         self.hold_cap = _hold_cap(str(screen.get("ship") or ""))
         self._remember(sector, screen)
@@ -185,6 +196,7 @@ class ScriptedTrader:
             return
         if self._threatened(screen):
             self.danger.add(sector)
+        self._note_warnings(screen)
         book = self.ports.setdefault(sector, {})
         for row in screen.get("rows") or []:
             cells = [str(cell) for cell in (row.get("cells") or [])]
@@ -203,6 +215,7 @@ class ScriptedTrader:
                 slot["ask"] = price
             else:
                 continue
+            slot["now"] = qty
             if qty:
                 slot["avail"] = max(int(slot.get("avail") or 0), qty)
         code = _PORT_CODE.search(str(screen.get("port") or ""))
@@ -219,14 +232,33 @@ class ScriptedTrader:
             self.warp_labels[(sector, dest)] = str(label).strip()
 
     def _threatened(self, screen: dict) -> bool:
-        """Ferrengi, hostile fighters, and deployed mines. A gear list is not a threat."""
+        """Ferrengi, hostile fighters, aliens, and deployed mines. A gear list is not a threat."""
         here = str(screen.get("here") or "")
         form = str(screen.get("formText") or "")
         if form:
             here = here.replace(form, " ")
         notes = _OWN_FIGHTERS.sub(" ", _CATALOG.sub(" ", here))
         notes += "\n" + str(screen.get("threat") or "")
+        notes += "\n" + str(screen.get("last") or "")
         return _DANGER.search(notes) is not None
+
+    def _note_warnings(self, screen: dict) -> None:
+        """Remember a sector the arrival text already named as mined or crowded."""
+        text = str(screen.get("last") or "") + "\n" + str(screen.get("here") or "")
+        if re.search(r"\bmines\b", text, re.I):
+            for match in _ENTERED.finditer(text):
+                self.danger.add(int(match.group(1)))
+        last = str(screen.get("last") or "")
+        for match in _DENSITY.finditer(last):
+            sid = int(match.group(1))
+            density = int(match.group(2).replace(",", ""))
+            tail = last[match.start():match.end() + 80]
+            if density >= 200 or re.search(r"mines|ferrengi|alien", tail, re.I):
+                self.danger.add(sid)
+        here = _int(screen.get("sector"))
+        if self.scan_pending == here and (_DENSITY.search(last) or re.search(r"NavHaz", last, re.I)):
+            self.scanned.add(here)
+            self.scan_pending = 0
 
     def _at_dock(self, screen: dict) -> bool:
         blob = " ".join(
@@ -238,10 +270,25 @@ class ScriptedTrader:
         return self._next_gear() is not None
 
     def _next_gear(self) -> str | None:
-        items = ("holds", "fighters")
-        for item in items:
+        for item in ("holds", "fighters"):
             if item not in self.bought:
                 return item
+        return None
+
+    def _extra_gear(self) -> str | None:
+        """A scanner or one probe, once holds and fighters are aboard and the credits cover it."""
+        if self.level == "easy" or self._next_gear():
+            return None
+        if "density_scanner" not in self.bought and self.credits >= 2_500:
+            return "density_scanner"
+        # The legacy shelf has probes when it does not list a scanner. Buy one.
+        if (
+            "density_scanner" in self.bought
+            and not self.scanner
+            and "ether_probes" not in self.bought
+            and self.credits >= 8_000
+        ):
+            return "ether_probes"
         return None
 
     def _known_bid(self, good: str) -> int:
@@ -434,13 +481,20 @@ class ScriptedTrader:
         if self.gear and "item" in fields:
             return self._gear_step(fields, credits)
         if "BUY EQUIP" in text.upper() and "item" in fields:
-            item = self._next_gear() or "fighters"
+            item = self._next_gear() or self._extra_gear()
+            if not item:
+                self.plan_note = "the shelf is done"
+                if any(row.upper() == "ESC" for row in labels):
+                    return Action("click", label="ESC")
+                return Action("press", key="Escape")
             self.gear = {"item": item, "phase": "select"}
             return self._gear_step(fields, credits)
         if "BANK" in text.upper() or (self.bank and "amount" in fields):
             return self._bank_step(fields, credits, labels)
         if "ship_class" in fields or (self.yard and "SHIPYARD" in text.upper()):
             return self._yard_step(screen, fields, labels)
+        if "tier" in fields:
+            return self._scan_action(screen, labels)
         if "TERRA" in text.upper() and "mode" in fields:
             return self._terra_step(fields, labels)
         trade = "TRADE" in text.upper() or "port counter" in text.lower() or "unit_price" in fields
@@ -484,6 +538,8 @@ class ScriptedTrader:
         return str(max(1, qty))
 
     def _gear_qty(self, item: str, fields: dict, credits: int) -> str:
+        if item in ("density_scanner", "ether_probes"):
+            return "1"
         if item == "holds":
             return self._hold_qty(fields, credits)
         note = str(fields.get("note") or "")
@@ -503,6 +559,16 @@ class ScriptedTrader:
         phase = self.gear["phase"]
         item = self.gear["item"]
         if phase == "select":
+            options = fields.get("itemOptions") or []
+            if item == "density_scanner" and options and item not in options:
+                self.bought.add("density_scanner")
+                if "ether_probes" in options and "ether_probes" not in self.bought and credits >= 8_000:
+                    item = "ether_probes"
+                    self.gear["item"] = item
+                else:
+                    self.gear = None
+                    self.plan_note = "no scanner on the list"
+                    return Action("press", key="Escape")
             self.gear["phase"] = "qty"
             self.plan_note = f"choose {item}"
             return Action("type", selector='[data-n="item"]', text=item)
@@ -512,6 +578,8 @@ class ScriptedTrader:
             self.plan_note = f"qty {qty} {item}"
             return Action("type", selector='[data-n="qty"]', text=qty)
         self.bought.add(item)
+        if item == "density_scanner":
+            self.scanner = True
         self.gear = None
         self.shop_day = self.day
         self.plan_note = f"buy {item}"
@@ -632,17 +700,17 @@ class ScriptedTrader:
             return None
         if self.gear and self.gear.get("phase") != "select":
             return None
-        if not self._gear_pending():
+        item = self._next_gear() or self._extra_gear()
+        if not item:
             return None
         label = next((row for row in labels if row.lower().startswith("stardock: buy gear")), "")
         if not label:
-            if self._at_dock(screen) and self.dock_waits < 2:
+            if self._at_dock(screen) and self._gear_pending() and self.dock_waits < 2:
                 self.dock_waits += 1
                 self.plan_note = "stay for gear"
                 return Action("wait", ms=400)
             return None
         self.dock_waits = 0
-        item = self._next_gear() or "fighters"
         self.gear = {"item": item, "phase": "select"}
         self.plan_note = "open stardock"
         return Action("click", label=label)
@@ -693,6 +761,19 @@ class ScriptedTrader:
         # No route on the screen means the trip does not give up a day's profit.
         if daily <= 0:
             return True
+        # A thin or empty ask cannot fill extra holds. Sailing to StarDock
+        # spends the hull's score and does not raise the day's profit.
+        _value, ask, _bid, _cycle = self._best_run()
+        if ask and self._ask_empty(ask):
+            return False
+        book = self.ports.get(ask) or {}
+        on_screen = [
+            int(slot["now"])
+            for slot in book.values()
+            if isinstance(slot, dict) and slot.get("ask") is not None and "now" in slot
+        ]
+        if on_screen and max(on_screen) < (self.hold_cap or 20):
+            return False
         lost_turns = max(1, hops) * 3 * 2 + 6
         return self._pays(0, daily, lost_turns)
 
@@ -868,7 +949,7 @@ class ScriptedTrader:
             return self._avail(slot)
         return int(slot.get("avail") or 0) or cap
 
-    def _best_run(self, cap: int | None = None, tpw: int | None = None) -> tuple[int, int, int, int]:
+    def _best_run(self, cap: int | None = None, tpw: int | None = None, *, stocked: bool = False) -> tuple[int, int, int, int]:
         """Best seen pair as (credits it can earn today, ask sector, bid sector, turn cycle).
 
         A ship quote passes its own hold count and turns per warp. That quote
@@ -884,7 +965,11 @@ class ScriptedTrader:
                 if not isinstance(slot, dict) or slot.get("ask") is None:
                     continue
                 ask = int(slot["ask"])
-                ask_qty = self._stock(slot, use_cap, quoted=tpw is not None)
+                if stocked and ("now" not in slot or int(slot["now"]) <= 0):
+                    continue
+                ask_qty = (
+                    int(slot["now"]) if stocked else self._stock(slot, use_cap, quoted=tpw is not None)
+                )
                 for bid_at, other in self.ports.items():
                     if bid_at == ask_at:
                         continue
@@ -894,6 +979,8 @@ class ScriptedTrader:
                     bid = int(booked["bid"])
                     if bid <= ask:
                         continue
+                    if stocked and ("now" not in booked or int(booked["now"]) <= 0):
+                        continue
                     hops = self._hops(ask_at, bid_at)
                     back = self._hops(bid_at, ask_at)
                     if hops is None or back is None:
@@ -901,7 +988,9 @@ class ScriptedTrader:
                     cycle = hops * step + 1 + back * step + 1
                     if cycle > turns:
                         continue
-                    bid_qty = self._stock(booked, use_cap, quoted=tpw is not None)
+                    bid_qty = (
+                        int(booked["now"]) if stocked else self._stock(booked, use_cap, quoted=tpw is not None)
+                    )
                     per = max(1, min(use_cap, ask_qty, bid_qty))
                     trips = max(1, turns // cycle)
                     units = min(ask_qty, bid_qty, per * trips)
@@ -944,12 +1033,18 @@ class ScriptedTrader:
         return self._ship_closed()
 
     def _on_route(self, sector: int) -> bool:
-        """Trade the best pair. Hard does that after shopping even when the pair is still thin."""
+        """Trade the best pair. Hard does that after shopping even when the pair is still thin.
+
+        Once a pair was good enough to settle, a smaller restock does not send
+        the ship back out into sectors it has not seen.
+        """
         if self._settled(sector):
+            return True
+        value, ask, _bid, cycle = self._best_run()
+        if self.settled_day and value > 0 and ask and cycle and self._pair_reached(sector, ask):
             return True
         if self.level != "hard" or not self._gear_done():
             return False
-        value, ask, _bid, cycle = self._best_run()
         return bool(value > 0 and ask and cycle)
 
     def _should_shop(self, sector: int, turns: int) -> bool:
@@ -1030,7 +1125,7 @@ class ScriptedTrader:
                 if action is not None:
                     return action
         if self._on_route(sector) and not any(cargo.values()):
-            _value, ask_at, _bid_at, cycle = self._best_run()
+            _value, ask_at, _bid_at, cycle = self._route_run(sector)
             if ask_at and ask_at != sector and self._trip_fits(sector, ask_at, cargo, turns):
                 step = self._first_step(sector, ask_at)
                 if step is not None and not (self.level == "hard" and step == self.previous):
@@ -1045,12 +1140,29 @@ class ScriptedTrader:
                 and self._reachable(sector, ask_at, turns)
             ):
                 step = self._first_step(sector, ask_at)
-                if step is not None:
+                if step is not None and self._step_known(step, ask_at):
                     action = self._click_warp(sector, step)
                     if action is not None:
                         self.plan_note = "park on the pair " + (action.label or "")
                         return action
-            if ask_at == sector and turns < (cycle or 8):
+            if ask_at == sector:
+                # Sitting on the ask. Buying already had its chance. An unseen
+                # warp from here is how seed 7 walked into Ferrengal after the
+                # first trade, once the real quantity was too small to look settled.
+                if self._ask_empty(ask_at):
+                    self.pair_blocked = self.day
+                if self.level == "hard":
+                    _live, live_ask, _live_bid, _live_cycle = self._best_run(stocked=True)
+                    if live_ask and live_ask != sector and self._trip_fits(sector, live_ask, cargo, turns):
+                        step = self._first_step(sector, live_ask)
+                        if step is not None and self._step_known(step, live_ask):
+                            action = self._click_warp(sector, step)
+                            if action is not None:
+                                self.plan_note = "trade the stocked pair " + (action.label or "")
+                                return action
+                scout = self._scout(screen, list(screen.get("labels") or []), sector, options, turns)
+                if scout is not None:
+                    return scout
                 return None
         # A few leftover turns cannot finish a seen pair. Don't wander off it.
         if (
@@ -1067,7 +1179,14 @@ class ScriptedTrader:
             ):
                 self.plan_note = "wait out the last day"
                 return None
+        survey = self._survey(screen, list(screen.get("labels") or []), sector, options)
+        if survey is not None:
+            return survey
         dest = self._explore_choice(sector, options)
+        if dest in self.visited:
+            self.fresh_chain = 0
+        else:
+            self.fresh_chain += 1
         self.plan_note = "warp " + self.warp_labels.get((sector, dest), "")
         label = self.warp_labels.get((sector, dest))
         if label:
@@ -1108,8 +1227,8 @@ class ScriptedTrader:
             value = 0
             if dest == self.previous:
                 value -= 5
-            if dest not in self.visited:
-                value += 2
+            if dest in self.visited:
+                value += 3
             return value
 
         return max(options, key=score)[1]
@@ -1139,8 +1258,89 @@ class ScriptedTrader:
             step = prev[step]
         return step
 
+    def _route_run(self, sector: int) -> tuple[int, int, int, int]:
+        """The pair to fly. Hard uses a stocked pair when the best one is empty."""
+        best = self._best_run()
+        if self.level != "hard" or self.pair_blocked != self.day:
+            return best
+        stocked = self._best_run(stocked=True)
+        if stocked[0] > 0:
+            return stocked
+        return best
+
+    def _ask_empty(self, sector: int) -> bool:
+        book = self.ports.get(sector) or {}
+        asks = [slot for slot in book.values() if isinstance(slot, dict) and slot.get("ask") is not None]
+        if not asks:
+            return False
+        return all("now" in slot and int(slot["now"]) <= 0 for slot in asks)
+
+    def _step_known(self, step: int, goal: int) -> bool:
+        """A hop we have already seen, or the pair port itself. Not a new sector."""
+        return step in self.visited or step == goal
+
+    def _survey(self, screen: dict, labels: list[str], sector: int, options: list[tuple[int, str, int]]) -> Action | None:
+        """Read density before stepping into a sector this seat has not visited."""
+        if not self.scanner or sector in self.scanned:
+            return None
+        if not any(dest not in self.visited for dest, _text, _cost in options):
+            return None
+        return self._scan_action(screen, labels)
+
+    def _scout(
+        self,
+        screen: dict,
+        labels: list[str],
+        sector: int,
+        options: list[tuple[int, str, int]],
+        turns: int,
+    ) -> Action | None:
+        """Hard looks one sector further when the pair on screen has nothing to buy."""
+        if self.level != "hard" or not self.scanner or self.scout_day == self.day or turns < 8:
+            return None
+        if sector not in self.scanned:
+            action = self._scan_action(screen, labels)
+            if action is not None:
+                return action
+            return None
+        fresh = [item for item in options if item[0] not in self.visited and item[0] not in self.danger]
+        if not fresh:
+            return None
+        self.scout_day = self.day
+        self.fresh_chain = 0
+        dest = fresh[0][0]
+        action = self._click_warp(sector, dest)
+        if action is not None:
+            self.plan_note = "look past the empty pair " + (action.label or "")
+        return action
+
+    def _scan_action(self, screen: dict, labels: list[str]) -> Action | None:
+        fields = screen.get("fields") or {}
+        text = str(screen.get("formText") or "")
+        if screen.get("formOpen") and ("tier" in fields or "scan" in text.lower()):
+            tier = str(fields.get("tier") or "")
+            options = fields.get("tierOptions") or []
+            if tier not in ("density", "ether") and (not options or "density" in options or "ether" in options):
+                pick = "density" if not options or "density" in options else "ether"
+                self.plan_note = "choose the " + pick + " scan"
+                return Action("type", selector='[data-n="tier"]', text=pick)
+            if any(row.upper() == "CONFIRM" for row in labels):
+                self.plan_note = "read the scan"
+                return Action("click", label="CONFIRM")
+        if re.search(r"buy a density scanner|no long range scanner", str(screen.get("last") or ""), re.I):
+            self.scanner = False
+            return None
+        label = next((row for row in labels if "long range" in row.lower()), "")
+        self.scan_pending = _int(screen.get("sector"))
+        if label:
+            self.plan_note = "scan the next sectors"
+            return Action("click", label=label)
+        self.plan_note = "scan the next sectors"
+        return Action("press", key="S")
+
     def _explore_choice(self, sector: int, options: list[tuple[int, str, int]]) -> int:
         fresh = [item for item in options if item[0] not in self.visited]
+        known = [item for item in options if item[0] in self.visited]
 
         def score(item: tuple[int, str, int]) -> int:
             dest = item[0]
@@ -1152,6 +1352,14 @@ class ScriptedTrader:
             value += sum(1 for nxt in self.links.get(dest, {}) if nxt not in self.visited)
             return value
 
+        # A threat already on the map means the next new sector can be mined.
+        # Walk back onto sectors already seen. Before any threat, keep looking:
+        # the paying pair is several new hops out.
+        if self.danger and self.fresh_chain >= 3 and known:
+            back = [item for item in known if item[0] == self.previous]
+            if back:
+                return back[0][0]
+            return max(known, key=score)[0]
         if fresh:
             return max(fresh, key=score)[0]
         step = self._toward_unseen(sector)
@@ -1297,7 +1505,9 @@ class ScriptedTrader:
 
     def _still_shopping(self, credits: int) -> bool:
         """Stay at StarDock until holds, weapons, and the ship decision are done."""
-        if credits < 500 or self._gear_done():
+        if credits < 500:
+            return False
+        if not self._next_gear() and not self._extra_gear():
             return False
         left = any(place not in (0, 1) for place in self.visited)
         if self._best_spread() <= 0 and left:
