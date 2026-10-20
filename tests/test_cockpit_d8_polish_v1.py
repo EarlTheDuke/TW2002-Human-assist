@@ -229,26 +229,112 @@ def test_a_shieldless_repulse_skips_the_zero_shields(world):
         K.SIEGE_REPORT_MODE = _prior_siege_report_mode
 
 
+def _own_phoenix(universe):
+    """Put an L0 Phoenix in this sector. The landing copy must not depend on an earlier test naming it."""
+    me = universe.players["P2"]
+    me.planet_landed = None
+    sector = universe.sectors[int(me.sector_id)]
+    planet = next((p for p in universe.planets.values() if p.name == "Phoenix"), None)
+    if planet is None:
+        planet = next((p for p in universe.planets.values() if int(p.sector_id) == int(me.sector_id)), None)
+    if planet is None:
+        planet = next(iter(universe.planets.values()))
+    old = universe.sectors.get(planet.sector_id)
+    if old is not None and planet.id in getattr(old, "planet_ids", []) and int(planet.sector_id) != int(me.sector_id):
+        old.planet_ids.remove(planet.id)
+    planet.sector_id = int(me.sector_id)
+    if planet.id not in sector.planet_ids:
+        sector.planet_ids.append(planet.id)
+    planet.name = "Phoenix"
+    planet.citadel_level = 0
+    planet.fighters = 40
+    planet.shields = 0
+    planet.owner_id = "P1"
+    planet.military_reaction_pct = 0
+    return planet
+
+
+def _phoenix_facts(body: dict) -> bool:
+    planets = ((body.get("observation") or {}).get("sector") or {}).get("planets") or []
+    row = next((p for p in planets if p.get("name") == "Phoenix"), None)
+    if row is None:
+        return False
+    return (
+        int(row.get("citadel_level") or 0) == 0
+        and row.get("fighters") == 40
+        and row.get("shields") == 0
+    )
+
+
+def _advance_to_phoenix(page, host) -> None:
+    """End the turn, then return once a new observation carries this Phoenix.
+
+    The chip can leave and re-enter YOUR MOVE on the same cached turn. The
+    landing sentence is read from that cache, so the wait is the observation
+    the server built after the L0 edit.
+    """
+    host.runner._wait_streak = {"P2": 0}
+    agent = next(a for a in host.runner.state.agents if a.player_id == "P2")
+    start = int(getattr(agent, "turn_seq", 0) or 0)
+    page.keyboard.press("Escape")
+    page.evaluate(
+        "() => { if (window.__tw2kTest) window.__tw2kTest.resetWaits();"
+        " const el = document.querySelector('#lastResult'); if (el) el.textContent = ''; }"
+    )
+    page.keyboard.press(".")
+    for _ in range(40):
+        with page.expect_response(lambda r: r.request.method == "GET" and "/P2/observation" in r.url) as caught:
+            pass
+        response = caught.value
+        menu = page.locator("#menu")
+        if menu.count() and menu.is_visible() and "ends your day" in (menu.inner_text() or ""):
+            page.keyboard.press("Escape")
+            host.runner._wait_streak = {"P2": 0}
+            page.evaluate("() => window.__tw2kTest && window.__tw2kTest.resetWaits()")
+            page.keyboard.press(".")
+            continue
+        try:
+            body = response.json()
+        except Exception:
+            body = {}
+        seq = int(body.get("turn_seq") or 0)
+        if seq > start and body.get("awaiting_input"):
+            if _phoenix_facts(body):
+                return
+            planets = ((body.get("observation") or {}).get("sector") or {}).get("planets")
+            raise AssertionError(planets)
+        if page.locator("#waitchip").inner_text() == "YOUR MOVE":
+            page.keyboard.press(".")
+    raise AssertionError("Phoenix was not on a new turn")
+
+
+def _open_phoenix(page) -> str:
+    page.keyboard.press("Escape")
+    page.evaluate("() => window.__tw2kTest && window.__tw2kTest.refreshNow()")
+    page.locator("#here button", has_text="Phoenix").click()
+    page.wait_for_selector("#menu")
+    text = page.locator("#menu").inner_text()
+    # A poll can paint the previous turn between the refresh and the click.
+    # Close that menu and open Phoenix from the observation that just arrived.
+    if "Its fighters will fight your landing." not in text or "Combat Control" in text:
+        page.keyboard.press("Escape")
+        page.evaluate("() => window.__tw2kTest && window.__tw2kTest.refreshNow()")
+        page.locator("#here button", has_text="Phoenix").click()
+        page.wait_for_selector("#menu")
+        text = page.locator("#menu").inner_text()
+    return text
+
+
 def test_an_l0_planet_does_not_claim_a_combat_computer(world):
     _prior_planet_landing_combat_mode = K.PLANET_LANDING_COMBAT_MODE
     try:
         page = world["page"]
         universe = world["universe"]
-        me = universe.players["P2"]
-        planet = next(p for p in universe.planets.values() if p.name == "Phoenix")
-        planet.citadel_level = 0
-        planet.fighters = 40
-        planet.shields = 0
-        planet.owner_id = "P1"
+        _own_phoenix(universe)
         try:
             K.PLANET_LANDING_COMBAT_MODE = "tw2002"
-            _next(page, world["host"])
-            page.locator("#here button", has_text="Phoenix").click()
-            page.wait_for_function(
-                "() => (document.querySelector('#menu')?.innerText || '').includes('Its fighters will fight your landing.')",
-                timeout=10_000,
-            )
-            text = page.locator("#menu").inner_text()
+            _advance_to_phoenix(page, world["host"])
+            text = _open_phoenix(page)
             assert "Its fighters will fight your landing." in text
             assert "Combat Control" not in text
             _shoot(page, "land", "#menu")
