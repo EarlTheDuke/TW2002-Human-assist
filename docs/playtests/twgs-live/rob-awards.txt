@@ -1,0 +1,13 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+No steal and no rob was offered, so no per-attempt alignment or experience delta was on the screen.
+
+Port menu while Alignment=0:
+<A> Attack this Port
+<T> Trade at this Port
+<Q> Quit, nevermind
+
+Info after the visits:
+Rank and Exp   : 1 points, Alignment=0 Neutral
+
+The 1 experience point was "For finding this unused port you receive 1 experience point(s)." It was not a rob or a steal.

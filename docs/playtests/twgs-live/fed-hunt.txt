@@ -1,0 +1,36 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+Info before any FedSpace pass:
+Trader Name    : Civilian N129Cur
+Rank and Exp   : 1 points, Alignment=0 Neutral
+Ship Info      : Martel Matra Merchant Cruiser
+
+Jettison, sector 50, not FedSpace:
+Colonists=20
+20 holds of Colonists jettisoned into deep space.
+
+Info after that jettison:
+Rank and Exp   : 1 points, Alignment=0 Neutral
+
+A neutral Merchant Cruiser then walked FedSpace sectors 1, 2, 3, 4, 5, 6 and 7.
+Every one said: Beacon  : FedSpace, FedLaw Enforced
+None of them listed a Federal ship. No tow. No pod. No hunt line.
+
+Port attack warning, class 1 Salayna Annex in sector 6, and again at the class 2 port in sector 157:
+Attacks on Federation ports are prohibited!
+Captain, you do realize what this will mean?
+Are you sure you want to really destroy this port?
+Answered No. First officer: glad you changed your mind. Alignment stayed 0.
+
+The evil-ship pass was not run. Alignment was still 0, and the other traders' ships were not attacked.
+
+Related screen text, not a hunt of this ship:
+Journal 10/18/54 09:17:49 AM:
+The Federation hereby posts a reward of 118 credits
+  for the destruction of Groktester2's ship!
+The Federation hereby posts a reward of 200 credits
+  for the destruction of Pr8Ceo's ship!
+
+Police HQ, Ten Most Wanted:
+  1 Rude          1 Pr8Ceo                              4            28,200
+  2 Rude         ** Groktester2                         1               118

@@ -1,0 +1,7 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+No steal-dump-flee prompt appeared.
+
+The port menu for this one ship, alignment 0, was Attack / Trade / Quit.
+There was no second ship on this character, and no corporate partner was used.
+A solo cycle could not be started. No turn count and no flee penalty line.

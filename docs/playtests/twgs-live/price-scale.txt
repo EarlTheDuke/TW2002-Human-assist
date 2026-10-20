@@ -1,0 +1,25 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+Experience 0 or 1. The screen never printed MCIC. The column is "% of max".
+
+Class 3 New Mytus, sector 2, Fuel Ore Selling 2710, 100%:
+We'll sell them for 11 credits.
+Accepted. (Sigh) Very well, pay up and take them away.
+
+Class 1 Salayna Annex, sector 6, Fuel Ore Buying 1260, 100%, 1 on board:
+We'll buy them for 27 credits.
+Accepted. Oh well, maybe I can sell these to some other fool, we'll take them.
+
+Same port, Equipment Selling 1860, 100%, asked for 1:
+We'll sell them for 56 credits.
+Offer 0: Nothing in this universe is free, my friend. Not bought.
+
+Class 2 Klingenstjerna Primus, sector 157, Organics Selling 1540, 100%:
+We'll sell them for 31 credits.
+Accepted. I hate haggling, they're all yours.
+
+Class 9 Stargate Alpha I, sector 144, Organics Buying 2836, 94%, 1 on board:
+We'll buy them for 66 credits.
+Accepted. You insult my intelligence, but we'll buy them anyway.
+Same screen: Fuel Ore Buying 2836 94%. Equipment Buying 2406 80%. Those two were not quoted.
+
+Class 0, same day: fighters 218 credits each, shields 131 credits per point, next hold 629.
