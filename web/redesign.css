@@ -118,7 +118,7 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 #warpClip[data-exit="gate"] .warp-ship{animation-name:warp-exit-gate}
 @keyframes warp-exit-fade{0%{transform:translate(24px,6px) scale(1.04);opacity:1}100%{transform:translate(-36px,-10px) scale(.28);opacity:0}}
 @keyframes warp-exit-fold{0%{transform:scale(1,1);opacity:1}68%{transform:scaleX(.12) scaleY(1.05);opacity:.85}100%{transform:scale(.04);opacity:0}}
-@keyframes warp-exit-flash{0%{transform:scale(1);opacity:1;filter:brightness(1)}35%{filter:brightness(2.6)}100%{transform:translate(140px,0) scale(.16);opacity:0;filter:brightness(1)}}
+@keyframes warp-exit-flash{0%{transform:scale(1);opacity:1;filter:brightness(1) drop-shadow(0 0 0 var(--warp-flash,#fff))}35%{filter:brightness(2.6) drop-shadow(0 0 16px var(--warp-flash,#fff))}100%{transform:translate(140px,0) scale(.16);opacity:0;filter:brightness(1)}}
 @keyframes warp-exit-gate{0%{transform:scale(1);opacity:1}42%{transform:scale(.7);opacity:1}100%{transform:scale(.06);opacity:0}}
 #warpClip .warp-stars{transform-box:view-box;transform-origin:200px 130px;animation-duration:var(--warp-ms,2s);animation-fill-mode:forwards}
 #warpClip[data-stars="tunnel"] .warp-stars{animation-name:warp-tunnel;animation-timing-function:linear}
