@@ -4704,6 +4704,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "HAGGLE_TABLE_MODE",
         "NOTE 150 GAP 2.6: a counter uses the cabal product table",
     ),
+    "comms_v311_live": (
+        "COMMS_V311_MODE",
+        "NOTE 142: sub-space radio, Fed Comm, a same-sector hail, and the corporation memo",
+    ),
 }
 
 
@@ -5504,6 +5508,22 @@ NAVPOINT_SLOTS = 4  # EIS GeneralNew.html: four programmable NavPoints
 def mail_live() -> bool:
     """True when an offline hail is stored mail and an online hail only flashes."""
     return MAIL_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+# NOTE 142. EIS GlobalCommands: Fed Comm (`), sub-space radio ('), hailing (=).
+# EIS CompMisc: channel 0 turns the radio off; Fed Comm and hails can be turned off.
+# EIS CorporateMenu: a corporate memo goes to the corporation.
+# v3.11 revision history: a live message lasts about 10 seconds and is not mail.
+# A line is 155 characters (GlobalCommands). Stored default stays legacy.
+# "1" does not turn this on. V311_PROFILE "v311" does.
+COMMS_V311_MODE = "legacy"  # "legacy" | "v311"
+COMMS_LINE_MAX = 155
+COMMS_MIN_GAP_S = 2.0
+
+
+def comms_v311_live() -> bool:
+    """True when player messages follow the v3.11 comm-link rules."""
+    return COMMS_V311_MODE == "v311" or v311_profile()
 
 
 # NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1

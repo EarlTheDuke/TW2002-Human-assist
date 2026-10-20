@@ -82,8 +82,23 @@
     <div id="here"></div>
   </section>
 
-  <section id="term" class="panel">
-    <h2 class="ansi"><span class="m">◄</span> SUBSPACE LOG</h2>
+  <section id="term" class="panel" data-testid="comms-panel" aria-label="Comms">
+    <h2 class="ansi"><span class="m">◄</span> COMMS</h2>
+    <div id="turnLog" class="ansi" data-testid="turn-log"></div>
+    <form id="commsForm" class="comms-form" data-testid="comms-form" data-ai-send hidden>
+      <label>To <select id="commsKind" data-testid="comms-kind">
+        <option value="fed">Fed Comm</option>
+        <option value="radio">Sub-space radio</option>
+        <option value="hail">Hail</option>
+        <option value="corp">Corporation</option>
+      </select></label>
+      <label id="commsChannelLabel">Channel <input id="commsChannel" data-testid="comms-channel" inputmode="numeric" maxlength="5" autocomplete="off" /></label>
+      <label id="commsTargetLabel">Trader <select id="commsTarget" data-testid="comms-target"></select></label>
+      <label>Message <input id="commsMessage" data-testid="comms-message" maxlength="155" autocomplete="off" /></label>
+      <button type="button" id="commsTune" data-testid="comms-tune">Tune</button>
+      <button type="button" id="commsSend" data-testid="comms-send">Send</button>
+      <button type="button" id="commsFed" data-testid="comms-fed">Fed Comm off</button>
+    </form>
     <div id="log" class="ansi" data-testid="log"></div>
   </section>
 </main>
