@@ -622,8 +622,35 @@ function paintDayHint() {{
 
 
 def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str]], watch_link: str,
-            cockpit: dict[str, Any] | None = None) -> str:
-    links = "".join(f"<p>Seat {escape(seat)}<code class=\"link\">{escape(url)}</code></p>" for seat, url in join_links)
+            cockpit: dict[str, Any] | None = None,
+            cockpit_links: list[tuple[str, str]] | None = None) -> str:
+    sent = ""
+    if cockpit_links:
+        rows = "".join(
+            f'<p>Seat {escape(seat)}<code class="link" data-testid="seat-link" data-seat="{escape(seat)}">'
+            f"{escape(url)}</code></p>"
+            for seat, url in cockpit_links
+        )
+        sent = (
+            "<p>Send each player their cockpit link. It opens the new cockpit. "
+            "The token in the link is that seat's password. Send each link to one person.</p>"
+            f"{rows}"
+        )
+        links = "".join(
+            f"<p>Lobby invite {escape(seat)}<code class=\"link\">{escape(url)}</code></p>" for seat, url in join_links
+        )
+        invite_note = (
+            "<p>A lobby invite asks the player to confirm, then opens the same cockpit. "
+            "The first person to open a seat gets it.</p>"
+        )
+    else:
+        links = "".join(
+            f"<p>Seat {escape(seat)}<code class=\"link\">{escape(url)}</code></p>" for seat, url in join_links
+        )
+        invite_note = (
+            "<p>One join link per open seat. Send each link to one player; "
+            "the first person to open it gets the seat.</p>"
+        )
     settings = game.get("settings") or {}
     key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
     length = _DAY_NAMES.get(key, key)
@@ -672,8 +699,7 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
         )
     body = (f"<p class=\"sub\">Game created</p><div class=\"card\"><h2>{escape(game['name'])}</h2>"
             f"{_profile_line(str(settings.get('rules') or 'legacy'))}"
-            f"{shown}{ai_line}{cockpit_line}"
-            "<p>One join link per open seat. Send each link to one player; the first person to open it gets the seat.</p>"
+            f"{shown}{ai_line}{cockpit_line}{sent}{invite_note}"
             f"{links}<p>Watch link (read-only)<code class=\"link\">{escape(watch_link)}</code></p>"
             f"<form method=\"post\" action=\"/games/{game['id']}/join\" style=\"display:inline\">"
             "<button class=\"primary\" type=\"submit\">Take a seat myself</button></form> "
@@ -684,8 +710,8 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
 def join_confirm(brand: str, *, game: dict[str, Any], seat: str, key: str, error: str | None = None) -> str:
     err = f"<div class=\"err\">{escape(error)}</div>" if error else ""
     settings = game.get("settings") or {}
-    key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
-    length = _DAY_NAMES.get(key, key)
+    day_key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
+    length = _DAY_NAMES.get(day_key, day_key)
     shown = f"<p>Day length: {escape(length)}</p>" if length else ""
     body = (f"<p class=\"sub\">Join a game</p><div class=\"card\"><h2>{escape(game['name'])}</h2>"
             f"{shown}"
