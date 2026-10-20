@@ -5657,12 +5657,11 @@
   }
   async function refreshCreator() {
     const gid = gameId();
-    state.canEnd = false;
     state.gameName = "";
-    if (!gid) return;
+    if (!gid) { state.canEnd = false; return; }
     try {
       const r = await fetch("/api/games/" + encodeURIComponent(gid) + "/creator", { credentials: "same-origin" });
-      if (!r.ok) return;
+      if (!r.ok) { state.canEnd = false; return; }
       const data = await r.json();
       state.gameName = data.name || "";
       state.canEnd = !!(data.creator && data.status === "running" && data.seat && data.seat === state.seat);
