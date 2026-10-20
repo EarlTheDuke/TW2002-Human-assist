@@ -228,6 +228,7 @@ def create_app(
     home_planet_name: str | None = None,
     turns_per_day_override: int | None = None,
     hold_until_human: bool = False,
+    game_length: str | None = None,
 ) -> FastAPI:
     from .runner import _default_saves_root
 
@@ -298,6 +299,7 @@ def create_app(
                 home_planet_name=home_planet_name,
                 turns_per_day_override=turns_per_day_override,
                 hold_until_human=hold_until_human,
+                game_length=game_length,
             )
             spec.paused = start_paused
             spec.resume_from = _public.resume_path()
@@ -1187,6 +1189,11 @@ def create_app(
                 if "hold_until_human" in body
                 else hold_until_human
             ),
+            game_length=(
+                body["game_length"]
+                if "game_length" in body and body["game_length"] is not None
+                else game_length
+            ),
         )
         if body.get("external_hold_max_actions") is not None:
             spec.external_hold_max_actions = max(0, int(body["external_hold_max_actions"]))
@@ -1290,6 +1297,7 @@ def _build_default_spec(
     home_planet_name: str | None = None,
     turns_per_day_override: int | None = None,
     hold_until_human: bool = False,
+    game_length: str | None = None,
 ) -> MatchSpec:
     _apply_port_stock_fidelity()
     _apply_haggle_live()
@@ -1355,6 +1363,10 @@ def _build_default_spec(
         cfg_kwargs["home_planet_name"] = home_planet_name
     if turns_per_day_override is not None:
         cfg_kwargs["turns_per_day_override"] = turns_per_day_override
+    if game_length:
+        chosen_length = K.parse_game_length(game_length)
+        if chosen_length:
+            cfg_kwargs["game_length"] = chosen_length
     cfg = GameConfig(**cfg_kwargs)
 
     # Per-agent overrides — slot N of the list maps to player P(N+1). Each

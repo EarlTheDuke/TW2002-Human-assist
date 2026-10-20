@@ -173,6 +173,9 @@ class GameForm:
     ai_cockpit: bool = False
     ai_cockpit_provider: str = "scripted"
     ai_cockpit_model: str = ""
+    # NOTE 131. None is fast test days and is left out of settings. "full" is a
+    # full-length game. The field exists only while the process flag is v311.
+    game_length: str | None = None
 
     def settings(self) -> dict[str, Any]:
         out = {
@@ -203,6 +206,8 @@ class GameForm:
             out["ai_cockpit"] = True
             out["ai_cockpit_provider"] = self.ai_cockpit_provider
             out["ai_cockpit_model"] = self.ai_cockpit_model
+        if self.game_length == "full":
+            out["game_length"] = "full"
         return out
 
 
@@ -259,6 +264,8 @@ def _allowed_fields() -> set[str]:
         fields |= _AI_FIELDS
     if K.ai_cockpit_seat_on():
         fields |= _COCKPIT_FIELDS
+    if K.full_length_turn_limits_on():
+        fields.add("game_length")
     return fields
 
 
@@ -320,6 +327,9 @@ def starting_credits_line(override: int | None, original: int) -> str:
 
 def turns_phrase(settings: dict) -> str:
     """Lobby card line. Original is the pocket this game already used."""
+    if settings.get("game_length") == "full":
+        shown = int(settings.get("turns_per_day") or K.FULL_LENGTH_TURNS_PER_DAY)
+        return f"Turns per day: {shown:,} (full-length)"
     override = settings.get("turns_per_day_override")
     if override is None:
         shown = int(settings.get("turns_per_day") or 250)
@@ -388,6 +398,16 @@ def _turns_override(data: dict) -> int | None:
     return val
 
 
+def _game_length(data: dict) -> str | None:
+    """Missing or fast is today's test day. Full is the only other choice."""
+    if "game_length" not in data:
+        return None
+    try:
+        return K.parse_game_length(data.get("game_length"))
+    except ValueError as exc:
+        raise FormError(str(exc)) from None
+
+
 def _hold_flag(data: dict) -> bool:
     """Missing stays off, so an old post still starts the clock today."""
     if "hold_until_human" not in data:
@@ -422,6 +442,15 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
     if vis is not None and str(vis).strip() not in ("listed", "link"):
         raise FormError("visibility must be listed or link")
     turns_override = _turns_override(data)
+    max_days = _as_int(data, "max_days", 30, 1, 365)
+    length = _game_length(data) if K.full_length_turn_limits_on() else None
+    if length == "full":
+        cap = K.full_length_daily_cap(max_days)
+        turns_override = cap
+        day = "24h"
+        day_seconds = int(presets["24h"]) if "24h" in presets else int(K.FULL_LENGTH_DAY_SECONDS)
+    else:
+        day_seconds = int(presets[day])
     ai_n = 0
     brain = "heuristic"
     ai_key = ""
@@ -449,7 +478,7 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         name=name,
         rules=rules,
         universe_size=size,
-        max_days=_as_int(data, "max_days", 30, 1, 365),
+        max_days=max_days,
         turns_per_day=250 if turns_override is None else int(turns_override),
         starting_package=start,
         bots=_as_int(data, "bots", 2, 0, 5),
@@ -457,7 +486,7 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         day=day,
         humans=_as_int(data, "humans", 1, 1, 4),
         listed=listed,
-        day_seconds=int(presets[day]),
+        day_seconds=day_seconds,
         starting_credits_override=_credits_override(data),
         home_planet_name=home_planet_name(data.get("home_planet_name")),
         turns_per_day_override=turns_override,
@@ -469,6 +498,7 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         ai_cockpit=cockpit,
         ai_cockpit_provider=cockpit_provider,
         ai_cockpit_model=cockpit_model,
+        game_length=length,
     )
 
 
