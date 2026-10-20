@@ -1,0 +1,1234 @@
+{
+  "version": 1,
+  "note": "Captured pictures of the ten procedural warp scenes for each hull.",
+  "generated": {
+    "about": "Drop generated (AI) videos here later. Each entry replaces the captured file for that clip id when webm is a non-empty path. Paths are relative to /static/warp-video/ (for example generated/merchant_cruiser/01.webm) unless they start with / or http. An empty webm is ignored and the captured file plays. Leave clips empty until those files exist. Shape: {\"id\": \"merchant_cruiser.streak.01\", \"webm\": \"generated/merchant_cruiser/01.webm\", \"duration_ms\": 1600}.",
+    "clips": []
+  },
+  "hulls": {
+    "escape_pod": [
+      {
+        "n": "01",
+        "id": "escape_pod.streak.01",
+        "webm": "escape_pod/01.webm",
+        "duration_ms": 1600,
+        "bytes": 8433
+      },
+      {
+        "n": "02",
+        "id": "escape_pod.chase.02",
+        "webm": "escape_pod/02.webm",
+        "duration_ms": 1800,
+        "bytes": 9430
+      },
+      {
+        "n": "03",
+        "id": "escape_pod.headon.03",
+        "webm": "escape_pod/03.webm",
+        "duration_ms": 2100,
+        "bytes": 12679
+      },
+      {
+        "n": "04",
+        "id": "escape_pod.top.04",
+        "webm": "escape_pod/04.webm",
+        "duration_ms": 2400,
+        "bytes": 4265
+      },
+      {
+        "n": "05",
+        "id": "escape_pod.side.05",
+        "webm": "escape_pod/05.webm",
+        "duration_ms": 2700,
+        "bytes": 5048
+      },
+      {
+        "n": "06",
+        "id": "escape_pod.gate.06",
+        "webm": "escape_pod/06.webm",
+        "duration_ms": 1500,
+        "bytes": 9347
+      },
+      {
+        "n": "07",
+        "id": "escape_pod.headon.07",
+        "webm": "escape_pod/07.webm",
+        "duration_ms": 1900,
+        "bytes": 3065
+      },
+      {
+        "n": "08",
+        "id": "escape_pod.top.08",
+        "webm": "escape_pod/08.webm",
+        "duration_ms": 2300,
+        "bytes": 9969
+      },
+      {
+        "n": "09",
+        "id": "escape_pod.side.09",
+        "webm": "escape_pod/09.webm",
+        "duration_ms": 2600,
+        "bytes": 14465
+      },
+      {
+        "n": "10",
+        "id": "escape_pod.chase.10",
+        "webm": "escape_pod/10.webm",
+        "duration_ms": 3000,
+        "bytes": 6161
+      }
+    ],
+    "merchant_cruiser": [
+      {
+        "n": "01",
+        "id": "merchant_cruiser.streak.01",
+        "webm": "merchant_cruiser/01.webm",
+        "duration_ms": 1600,
+        "bytes": 9893
+      },
+      {
+        "n": "02",
+        "id": "merchant_cruiser.chase.02",
+        "webm": "merchant_cruiser/02.webm",
+        "duration_ms": 1800,
+        "bytes": 11953
+      },
+      {
+        "n": "03",
+        "id": "merchant_cruiser.headon.03",
+        "webm": "merchant_cruiser/03.webm",
+        "duration_ms": 2100,
+        "bytes": 16311
+      },
+      {
+        "n": "04",
+        "id": "merchant_cruiser.top.04",
+        "webm": "merchant_cruiser/04.webm",
+        "duration_ms": 2400,
+        "bytes": 8580
+      },
+      {
+        "n": "05",
+        "id": "merchant_cruiser.side.05",
+        "webm": "merchant_cruiser/05.webm",
+        "duration_ms": 2700,
+        "bytes": 6512
+      },
+      {
+        "n": "06",
+        "id": "merchant_cruiser.gate.06",
+        "webm": "merchant_cruiser/06.webm",
+        "duration_ms": 1500,
+        "bytes": 11399
+      },
+      {
+        "n": "07",
+        "id": "merchant_cruiser.headon.07",
+        "webm": "merchant_cruiser/07.webm",
+        "duration_ms": 1900,
+        "bytes": 5130
+      },
+      {
+        "n": "08",
+        "id": "merchant_cruiser.top.08",
+        "webm": "merchant_cruiser/08.webm",
+        "duration_ms": 2300,
+        "bytes": 15747
+      },
+      {
+        "n": "09",
+        "id": "merchant_cruiser.side.09",
+        "webm": "merchant_cruiser/09.webm",
+        "duration_ms": 2600,
+        "bytes": 17552
+      },
+      {
+        "n": "10",
+        "id": "merchant_cruiser.chase.10",
+        "webm": "merchant_cruiser/10.webm",
+        "duration_ms": 3000,
+        "bytes": 9747
+      }
+    ],
+    "scout_marauder": [
+      {
+        "n": "01",
+        "id": "scout_marauder.streak.01",
+        "webm": "scout_marauder/01.webm",
+        "duration_ms": 1600,
+        "bytes": 8848
+      },
+      {
+        "n": "02",
+        "id": "scout_marauder.chase.02",
+        "webm": "scout_marauder/02.webm",
+        "duration_ms": 1800,
+        "bytes": 11246
+      },
+      {
+        "n": "03",
+        "id": "scout_marauder.headon.03",
+        "webm": "scout_marauder/03.webm",
+        "duration_ms": 2100,
+        "bytes": 17577
+      },
+      {
+        "n": "04",
+        "id": "scout_marauder.top.04",
+        "webm": "scout_marauder/04.webm",
+        "duration_ms": 2400,
+        "bytes": 6208
+      },
+      {
+        "n": "05",
+        "id": "scout_marauder.side.05",
+        "webm": "scout_marauder/05.webm",
+        "duration_ms": 2700,
+        "bytes": 5302
+      },
+      {
+        "n": "06",
+        "id": "scout_marauder.gate.06",
+        "webm": "scout_marauder/06.webm",
+        "duration_ms": 1500,
+        "bytes": 10865
+      },
+      {
+        "n": "07",
+        "id": "scout_marauder.headon.07",
+        "webm": "scout_marauder/07.webm",
+        "duration_ms": 1900,
+        "bytes": 4077
+      },
+      {
+        "n": "08",
+        "id": "scout_marauder.top.08",
+        "webm": "scout_marauder/08.webm",
+        "duration_ms": 2300,
+        "bytes": 12696
+      },
+      {
+        "n": "09",
+        "id": "scout_marauder.side.09",
+        "webm": "scout_marauder/09.webm",
+        "duration_ms": 2600,
+        "bytes": 16925
+      },
+      {
+        "n": "10",
+        "id": "scout_marauder.chase.10",
+        "webm": "scout_marauder/10.webm",
+        "duration_ms": 3000,
+        "bytes": 7826
+      }
+    ],
+    "missile_frigate": [
+      {
+        "n": "01",
+        "id": "missile_frigate.streak.01",
+        "webm": "missile_frigate/01.webm",
+        "duration_ms": 1600,
+        "bytes": 9362
+      },
+      {
+        "n": "02",
+        "id": "missile_frigate.chase.02",
+        "webm": "missile_frigate/02.webm",
+        "duration_ms": 1800,
+        "bytes": 12307
+      },
+      {
+        "n": "03",
+        "id": "missile_frigate.headon.03",
+        "webm": "missile_frigate/03.webm",
+        "duration_ms": 2100,
+        "bytes": 14659
+      },
+      {
+        "n": "04",
+        "id": "missile_frigate.top.04",
+        "webm": "missile_frigate/04.webm",
+        "duration_ms": 2400,
+        "bytes": 7104
+      },
+      {
+        "n": "05",
+        "id": "missile_frigate.side.05",
+        "webm": "missile_frigate/05.webm",
+        "duration_ms": 2700,
+        "bytes": 5855
+      },
+      {
+        "n": "06",
+        "id": "missile_frigate.gate.06",
+        "webm": "missile_frigate/06.webm",
+        "duration_ms": 1500,
+        "bytes": 11758
+      },
+      {
+        "n": "07",
+        "id": "missile_frigate.headon.07",
+        "webm": "missile_frigate/07.webm",
+        "duration_ms": 1900,
+        "bytes": 4854
+      },
+      {
+        "n": "08",
+        "id": "missile_frigate.top.08",
+        "webm": "missile_frigate/08.webm",
+        "duration_ms": 2300,
+        "bytes": 14095
+      },
+      {
+        "n": "09",
+        "id": "missile_frigate.side.09",
+        "webm": "missile_frigate/09.webm",
+        "duration_ms": 2600,
+        "bytes": 16809
+      },
+      {
+        "n": "10",
+        "id": "missile_frigate.chase.10",
+        "webm": "missile_frigate/10.webm",
+        "duration_ms": 3000,
+        "bytes": 9443
+      }
+    ],
+    "battleship": [
+      {
+        "n": "01",
+        "id": "battleship.streak.01",
+        "webm": "battleship/01.webm",
+        "duration_ms": 1600,
+        "bytes": 9551
+      },
+      {
+        "n": "02",
+        "id": "battleship.chase.02",
+        "webm": "battleship/02.webm",
+        "duration_ms": 1800,
+        "bytes": 12606
+      },
+      {
+        "n": "03",
+        "id": "battleship.headon.03",
+        "webm": "battleship/03.webm",
+        "duration_ms": 2100,
+        "bytes": 12896
+      },
+      {
+        "n": "04",
+        "id": "battleship.top.04",
+        "webm": "battleship/04.webm",
+        "duration_ms": 2400,
+        "bytes": 7743
+      },
+      {
+        "n": "05",
+        "id": "battleship.side.05",
+        "webm": "battleship/05.webm",
+        "duration_ms": 2700,
+        "bytes": 7244
+      },
+      {
+        "n": "06",
+        "id": "battleship.gate.06",
+        "webm": "battleship/06.webm",
+        "duration_ms": 1500,
+        "bytes": 11479
+      },
+      {
+        "n": "07",
+        "id": "battleship.headon.07",
+        "webm": "battleship/07.webm",
+        "duration_ms": 1900,
+        "bytes": 5109
+      },
+      {
+        "n": "08",
+        "id": "battleship.top.08",
+        "webm": "battleship/08.webm",
+        "duration_ms": 2300,
+        "bytes": 14574
+      },
+      {
+        "n": "09",
+        "id": "battleship.side.09",
+        "webm": "battleship/09.webm",
+        "duration_ms": 2600,
+        "bytes": 18782
+      },
+      {
+        "n": "10",
+        "id": "battleship.chase.10",
+        "webm": "battleship/10.webm",
+        "duration_ms": 3000,
+        "bytes": 9892
+      }
+    ],
+    "corporate_flagship": [
+      {
+        "n": "01",
+        "id": "corporate_flagship.streak.01",
+        "webm": "corporate_flagship/01.webm",
+        "duration_ms": 1600,
+        "bytes": 11543
+      },
+      {
+        "n": "02",
+        "id": "corporate_flagship.chase.02",
+        "webm": "corporate_flagship/02.webm",
+        "duration_ms": 1800,
+        "bytes": 13755
+      },
+      {
+        "n": "03",
+        "id": "corporate_flagship.headon.03",
+        "webm": "corporate_flagship/03.webm",
+        "duration_ms": 2100,
+        "bytes": 15371
+      },
+      {
+        "n": "04",
+        "id": "corporate_flagship.top.04",
+        "webm": "corporate_flagship/04.webm",
+        "duration_ms": 2400,
+        "bytes": 10207
+      },
+      {
+        "n": "05",
+        "id": "corporate_flagship.side.05",
+        "webm": "corporate_flagship/05.webm",
+        "duration_ms": 2700,
+        "bytes": 8418
+      },
+      {
+        "n": "06",
+        "id": "corporate_flagship.gate.06",
+        "webm": "corporate_flagship/06.webm",
+        "duration_ms": 1500,
+        "bytes": 12410
+      },
+      {
+        "n": "07",
+        "id": "corporate_flagship.headon.07",
+        "webm": "corporate_flagship/07.webm",
+        "duration_ms": 1900,
+        "bytes": 6079
+      },
+      {
+        "n": "08",
+        "id": "corporate_flagship.top.08",
+        "webm": "corporate_flagship/08.webm",
+        "duration_ms": 2300,
+        "bytes": 17158
+      },
+      {
+        "n": "09",
+        "id": "corporate_flagship.side.09",
+        "webm": "corporate_flagship/09.webm",
+        "duration_ms": 2600,
+        "bytes": 15937
+      },
+      {
+        "n": "10",
+        "id": "corporate_flagship.chase.10",
+        "webm": "corporate_flagship/10.webm",
+        "duration_ms": 3000,
+        "bytes": 11665
+      }
+    ],
+    "colonial_transport": [
+      {
+        "n": "01",
+        "id": "colonial_transport.streak.01",
+        "webm": "colonial_transport/01.webm",
+        "duration_ms": 1600,
+        "bytes": 11123
+      },
+      {
+        "n": "02",
+        "id": "colonial_transport.chase.02",
+        "webm": "colonial_transport/02.webm",
+        "duration_ms": 1800,
+        "bytes": 13285
+      },
+      {
+        "n": "03",
+        "id": "colonial_transport.headon.03",
+        "webm": "colonial_transport/03.webm",
+        "duration_ms": 2100,
+        "bytes": 16299
+      },
+      {
+        "n": "04",
+        "id": "colonial_transport.top.04",
+        "webm": "colonial_transport/04.webm",
+        "duration_ms": 2400,
+        "bytes": 8903
+      },
+      {
+        "n": "05",
+        "id": "colonial_transport.side.05",
+        "webm": "colonial_transport/05.webm",
+        "duration_ms": 2700,
+        "bytes": 7885
+      },
+      {
+        "n": "06",
+        "id": "colonial_transport.gate.06",
+        "webm": "colonial_transport/06.webm",
+        "duration_ms": 1500,
+        "bytes": 11523
+      },
+      {
+        "n": "07",
+        "id": "colonial_transport.headon.07",
+        "webm": "colonial_transport/07.webm",
+        "duration_ms": 1900,
+        "bytes": 5332
+      },
+      {
+        "n": "08",
+        "id": "colonial_transport.top.08",
+        "webm": "colonial_transport/08.webm",
+        "duration_ms": 2300,
+        "bytes": 15493
+      },
+      {
+        "n": "09",
+        "id": "colonial_transport.side.09",
+        "webm": "colonial_transport/09.webm",
+        "duration_ms": 2600,
+        "bytes": 21347
+      },
+      {
+        "n": "10",
+        "id": "colonial_transport.chase.10",
+        "webm": "colonial_transport/10.webm",
+        "duration_ms": 3000,
+        "bytes": 10206
+      }
+    ],
+    "cargotran": [
+      {
+        "n": "01",
+        "id": "cargotran.streak.01",
+        "webm": "cargotran/01.webm",
+        "duration_ms": 1600,
+        "bytes": 10572
+      },
+      {
+        "n": "02",
+        "id": "cargotran.chase.02",
+        "webm": "cargotran/02.webm",
+        "duration_ms": 1800,
+        "bytes": 13522
+      },
+      {
+        "n": "03",
+        "id": "cargotran.headon.03",
+        "webm": "cargotran/03.webm",
+        "duration_ms": 2100,
+        "bytes": 14334
+      },
+      {
+        "n": "04",
+        "id": "cargotran.top.04",
+        "webm": "cargotran/04.webm",
+        "duration_ms": 2400,
+        "bytes": 10090
+      },
+      {
+        "n": "05",
+        "id": "cargotran.side.05",
+        "webm": "cargotran/05.webm",
+        "duration_ms": 2700,
+        "bytes": 8112
+      },
+      {
+        "n": "06",
+        "id": "cargotran.gate.06",
+        "webm": "cargotran/06.webm",
+        "duration_ms": 1500,
+        "bytes": 11973
+      },
+      {
+        "n": "07",
+        "id": "cargotran.headon.07",
+        "webm": "cargotran/07.webm",
+        "duration_ms": 1900,
+        "bytes": 5469
+      },
+      {
+        "n": "08",
+        "id": "cargotran.top.08",
+        "webm": "cargotran/08.webm",
+        "duration_ms": 2300,
+        "bytes": 16763
+      },
+      {
+        "n": "09",
+        "id": "cargotran.side.09",
+        "webm": "cargotran/09.webm",
+        "duration_ms": 2600,
+        "bytes": 22892
+      },
+      {
+        "n": "10",
+        "id": "cargotran.chase.10",
+        "webm": "cargotran/10.webm",
+        "duration_ms": 3000,
+        "bytes": 11090
+      }
+    ],
+    "merchant_freighter": [
+      {
+        "n": "01",
+        "id": "merchant_freighter.streak.01",
+        "webm": "merchant_freighter/01.webm",
+        "duration_ms": 1600,
+        "bytes": 11557
+      },
+      {
+        "n": "02",
+        "id": "merchant_freighter.chase.02",
+        "webm": "merchant_freighter/02.webm",
+        "duration_ms": 1800,
+        "bytes": 12178
+      },
+      {
+        "n": "03",
+        "id": "merchant_freighter.headon.03",
+        "webm": "merchant_freighter/03.webm",
+        "duration_ms": 2100,
+        "bytes": 14544
+      },
+      {
+        "n": "04",
+        "id": "merchant_freighter.top.04",
+        "webm": "merchant_freighter/04.webm",
+        "duration_ms": 2400,
+        "bytes": 8507
+      },
+      {
+        "n": "05",
+        "id": "merchant_freighter.side.05",
+        "webm": "merchant_freighter/05.webm",
+        "duration_ms": 2700,
+        "bytes": 8978
+      },
+      {
+        "n": "06",
+        "id": "merchant_freighter.gate.06",
+        "webm": "merchant_freighter/06.webm",
+        "duration_ms": 1500,
+        "bytes": 12024
+      },
+      {
+        "n": "07",
+        "id": "merchant_freighter.headon.07",
+        "webm": "merchant_freighter/07.webm",
+        "duration_ms": 1900,
+        "bytes": 5718
+      },
+      {
+        "n": "08",
+        "id": "merchant_freighter.top.08",
+        "webm": "merchant_freighter/08.webm",
+        "duration_ms": 2300,
+        "bytes": 15258
+      },
+      {
+        "n": "09",
+        "id": "merchant_freighter.side.09",
+        "webm": "merchant_freighter/09.webm",
+        "duration_ms": 2600,
+        "bytes": 20385
+      },
+      {
+        "n": "10",
+        "id": "merchant_freighter.chase.10",
+        "webm": "merchant_freighter/10.webm",
+        "duration_ms": 3000,
+        "bytes": 10186
+      }
+    ],
+    "havoc_gunstar": [
+      {
+        "n": "01",
+        "id": "havoc_gunstar.streak.01",
+        "webm": "havoc_gunstar/01.webm",
+        "duration_ms": 1600,
+        "bytes": 9204
+      },
+      {
+        "n": "02",
+        "id": "havoc_gunstar.chase.02",
+        "webm": "havoc_gunstar/02.webm",
+        "duration_ms": 1800,
+        "bytes": 11769
+      },
+      {
+        "n": "03",
+        "id": "havoc_gunstar.headon.03",
+        "webm": "havoc_gunstar/03.webm",
+        "duration_ms": 2100,
+        "bytes": 13540
+      },
+      {
+        "n": "04",
+        "id": "havoc_gunstar.top.04",
+        "webm": "havoc_gunstar/04.webm",
+        "duration_ms": 2400,
+        "bytes": 7628
+      },
+      {
+        "n": "05",
+        "id": "havoc_gunstar.side.05",
+        "webm": "havoc_gunstar/05.webm",
+        "duration_ms": 2700,
+        "bytes": 6492
+      },
+      {
+        "n": "06",
+        "id": "havoc_gunstar.gate.06",
+        "webm": "havoc_gunstar/06.webm",
+        "duration_ms": 1500,
+        "bytes": 11526
+      },
+      {
+        "n": "07",
+        "id": "havoc_gunstar.headon.07",
+        "webm": "havoc_gunstar/07.webm",
+        "duration_ms": 1900,
+        "bytes": 5120
+      },
+      {
+        "n": "08",
+        "id": "havoc_gunstar.top.08",
+        "webm": "havoc_gunstar/08.webm",
+        "duration_ms": 2300,
+        "bytes": 14368
+      },
+      {
+        "n": "09",
+        "id": "havoc_gunstar.side.09",
+        "webm": "havoc_gunstar/09.webm",
+        "duration_ms": 2600,
+        "bytes": 17552
+      },
+      {
+        "n": "10",
+        "id": "havoc_gunstar.chase.10",
+        "webm": "havoc_gunstar/10.webm",
+        "duration_ms": 3000,
+        "bytes": 9295
+      }
+    ],
+    "imperial_starship": [
+      {
+        "n": "01",
+        "id": "imperial_starship.streak.01",
+        "webm": "imperial_starship/01.webm",
+        "duration_ms": 1600,
+        "bytes": 14378
+      },
+      {
+        "n": "02",
+        "id": "imperial_starship.chase.02",
+        "webm": "imperial_starship/02.webm",
+        "duration_ms": 1800,
+        "bytes": 19178
+      },
+      {
+        "n": "03",
+        "id": "imperial_starship.headon.03",
+        "webm": "imperial_starship/03.webm",
+        "duration_ms": 2100,
+        "bytes": 18974
+      },
+      {
+        "n": "04",
+        "id": "imperial_starship.top.04",
+        "webm": "imperial_starship/04.webm",
+        "duration_ms": 2400,
+        "bytes": 17516
+      },
+      {
+        "n": "05",
+        "id": "imperial_starship.side.05",
+        "webm": "imperial_starship/05.webm",
+        "duration_ms": 2700,
+        "bytes": 12734
+      },
+      {
+        "n": "06",
+        "id": "imperial_starship.gate.06",
+        "webm": "imperial_starship/06.webm",
+        "duration_ms": 1500,
+        "bytes": 16517
+      },
+      {
+        "n": "07",
+        "id": "imperial_starship.headon.07",
+        "webm": "imperial_starship/07.webm",
+        "duration_ms": 1900,
+        "bytes": 8615
+      },
+      {
+        "n": "08",
+        "id": "imperial_starship.top.08",
+        "webm": "imperial_starship/08.webm",
+        "duration_ms": 2300,
+        "bytes": 23675
+      },
+      {
+        "n": "09",
+        "id": "imperial_starship.side.09",
+        "webm": "imperial_starship/09.webm",
+        "duration_ms": 2600,
+        "bytes": 27009
+      },
+      {
+        "n": "10",
+        "id": "imperial_starship.chase.10",
+        "webm": "imperial_starship/10.webm",
+        "duration_ms": 3000,
+        "bytes": 17659
+      }
+    ],
+    "star_master": [
+      {
+        "n": "01",
+        "id": "star_master.streak.01",
+        "webm": "star_master/01.webm",
+        "duration_ms": 1600,
+        "bytes": 8685
+      },
+      {
+        "n": "02",
+        "id": "star_master.chase.02",
+        "webm": "star_master/02.webm",
+        "duration_ms": 1800,
+        "bytes": 10873
+      },
+      {
+        "n": "03",
+        "id": "star_master.headon.03",
+        "webm": "star_master/03.webm",
+        "duration_ms": 2100,
+        "bytes": 14441
+      },
+      {
+        "n": "04",
+        "id": "star_master.top.04",
+        "webm": "star_master/04.webm",
+        "duration_ms": 2400,
+        "bytes": 6001
+      },
+      {
+        "n": "05",
+        "id": "star_master.side.05",
+        "webm": "star_master/05.webm",
+        "duration_ms": 2700,
+        "bytes": 6052
+      },
+      {
+        "n": "06",
+        "id": "star_master.gate.06",
+        "webm": "star_master/06.webm",
+        "duration_ms": 1500,
+        "bytes": 10745
+      },
+      {
+        "n": "07",
+        "id": "star_master.headon.07",
+        "webm": "star_master/07.webm",
+        "duration_ms": 1900,
+        "bytes": 4239
+      },
+      {
+        "n": "08",
+        "id": "star_master.top.08",
+        "webm": "star_master/08.webm",
+        "duration_ms": 2300,
+        "bytes": 12091
+      },
+      {
+        "n": "09",
+        "id": "star_master.side.09",
+        "webm": "star_master/09.webm",
+        "duration_ms": 2600,
+        "bytes": 16397
+      },
+      {
+        "n": "10",
+        "id": "star_master.chase.10",
+        "webm": "star_master/10.webm",
+        "duration_ms": 3000,
+        "bytes": 8190
+      }
+    ],
+    "constellation": [
+      {
+        "n": "01",
+        "id": "constellation.streak.01",
+        "webm": "constellation/01.webm",
+        "duration_ms": 1600,
+        "bytes": 12331
+      },
+      {
+        "n": "02",
+        "id": "constellation.chase.02",
+        "webm": "constellation/02.webm",
+        "duration_ms": 1800,
+        "bytes": 15761
+      },
+      {
+        "n": "03",
+        "id": "constellation.headon.03",
+        "webm": "constellation/03.webm",
+        "duration_ms": 2100,
+        "bytes": 16285
+      },
+      {
+        "n": "04",
+        "id": "constellation.top.04",
+        "webm": "constellation/04.webm",
+        "duration_ms": 2400,
+        "bytes": 11495
+      },
+      {
+        "n": "05",
+        "id": "constellation.side.05",
+        "webm": "constellation/05.webm",
+        "duration_ms": 2700,
+        "bytes": 9729
+      },
+      {
+        "n": "06",
+        "id": "constellation.gate.06",
+        "webm": "constellation/06.webm",
+        "duration_ms": 1500,
+        "bytes": 14343
+      },
+      {
+        "n": "07",
+        "id": "constellation.headon.07",
+        "webm": "constellation/07.webm",
+        "duration_ms": 1900,
+        "bytes": 6436
+      },
+      {
+        "n": "08",
+        "id": "constellation.top.08",
+        "webm": "constellation/08.webm",
+        "duration_ms": 2300,
+        "bytes": 18507
+      },
+      {
+        "n": "09",
+        "id": "constellation.side.09",
+        "webm": "constellation/09.webm",
+        "duration_ms": 2600,
+        "bytes": 23555
+      },
+      {
+        "n": "10",
+        "id": "constellation.chase.10",
+        "webm": "constellation/10.webm",
+        "duration_ms": 3000,
+        "bytes": 12847
+      }
+    ],
+    "tkhasi_orion": [
+      {
+        "n": "01",
+        "id": "tkhasi_orion.streak.01",
+        "webm": "tkhasi_orion/01.webm",
+        "duration_ms": 1600,
+        "bytes": 9570
+      },
+      {
+        "n": "02",
+        "id": "tkhasi_orion.chase.02",
+        "webm": "tkhasi_orion/02.webm",
+        "duration_ms": 1800,
+        "bytes": 11841
+      },
+      {
+        "n": "03",
+        "id": "tkhasi_orion.headon.03",
+        "webm": "tkhasi_orion/03.webm",
+        "duration_ms": 2100,
+        "bytes": 19586
+      },
+      {
+        "n": "04",
+        "id": "tkhasi_orion.top.04",
+        "webm": "tkhasi_orion/04.webm",
+        "duration_ms": 2400,
+        "bytes": 6867
+      },
+      {
+        "n": "05",
+        "id": "tkhasi_orion.side.05",
+        "webm": "tkhasi_orion/05.webm",
+        "duration_ms": 2700,
+        "bytes": 6011
+      },
+      {
+        "n": "06",
+        "id": "tkhasi_orion.gate.06",
+        "webm": "tkhasi_orion/06.webm",
+        "duration_ms": 1500,
+        "bytes": 10678
+      },
+      {
+        "n": "07",
+        "id": "tkhasi_orion.headon.07",
+        "webm": "tkhasi_orion/07.webm",
+        "duration_ms": 1900,
+        "bytes": 4605
+      },
+      {
+        "n": "08",
+        "id": "tkhasi_orion.top.08",
+        "webm": "tkhasi_orion/08.webm",
+        "duration_ms": 2300,
+        "bytes": 12982
+      },
+      {
+        "n": "09",
+        "id": "tkhasi_orion.side.09",
+        "webm": "tkhasi_orion/09.webm",
+        "duration_ms": 2600,
+        "bytes": 15581
+      },
+      {
+        "n": "10",
+        "id": "tkhasi_orion.chase.10",
+        "webm": "tkhasi_orion/10.webm",
+        "duration_ms": 3000,
+        "bytes": 8430
+      }
+    ],
+    "tholian_sentinel": [
+      {
+        "n": "01",
+        "id": "tholian_sentinel.streak.01",
+        "webm": "tholian_sentinel/01.webm",
+        "duration_ms": 1600,
+        "bytes": 10884
+      },
+      {
+        "n": "02",
+        "id": "tholian_sentinel.chase.02",
+        "webm": "tholian_sentinel/02.webm",
+        "duration_ms": 1800,
+        "bytes": 11569
+      },
+      {
+        "n": "03",
+        "id": "tholian_sentinel.headon.03",
+        "webm": "tholian_sentinel/03.webm",
+        "duration_ms": 2100,
+        "bytes": 15813
+      },
+      {
+        "n": "04",
+        "id": "tholian_sentinel.top.04",
+        "webm": "tholian_sentinel/04.webm",
+        "duration_ms": 2400,
+        "bytes": 6830
+      },
+      {
+        "n": "05",
+        "id": "tholian_sentinel.side.05",
+        "webm": "tholian_sentinel/05.webm",
+        "duration_ms": 2700,
+        "bytes": 7571
+      },
+      {
+        "n": "06",
+        "id": "tholian_sentinel.gate.06",
+        "webm": "tholian_sentinel/06.webm",
+        "duration_ms": 1500,
+        "bytes": 11367
+      },
+      {
+        "n": "07",
+        "id": "tholian_sentinel.headon.07",
+        "webm": "tholian_sentinel/07.webm",
+        "duration_ms": 1900,
+        "bytes": 4909
+      },
+      {
+        "n": "08",
+        "id": "tholian_sentinel.top.08",
+        "webm": "tholian_sentinel/08.webm",
+        "duration_ms": 2300,
+        "bytes": 13146
+      },
+      {
+        "n": "09",
+        "id": "tholian_sentinel.side.09",
+        "webm": "tholian_sentinel/09.webm",
+        "duration_ms": 2600,
+        "bytes": 19921
+      },
+      {
+        "n": "10",
+        "id": "tholian_sentinel.chase.10",
+        "webm": "tholian_sentinel/10.webm",
+        "duration_ms": 3000,
+        "bytes": 8831
+      }
+    ],
+    "taurean_mule": [
+      {
+        "n": "01",
+        "id": "taurean_mule.streak.01",
+        "webm": "taurean_mule/01.webm",
+        "duration_ms": 1600,
+        "bytes": 10657
+      },
+      {
+        "n": "02",
+        "id": "taurean_mule.chase.02",
+        "webm": "taurean_mule/02.webm",
+        "duration_ms": 1800,
+        "bytes": 12532
+      },
+      {
+        "n": "03",
+        "id": "taurean_mule.headon.03",
+        "webm": "taurean_mule/03.webm",
+        "duration_ms": 2100,
+        "bytes": 12140
+      },
+      {
+        "n": "04",
+        "id": "taurean_mule.top.04",
+        "webm": "taurean_mule/04.webm",
+        "duration_ms": 2400,
+        "bytes": 8469
+      },
+      {
+        "n": "05",
+        "id": "taurean_mule.side.05",
+        "webm": "taurean_mule/05.webm",
+        "duration_ms": 2700,
+        "bytes": 8045
+      },
+      {
+        "n": "06",
+        "id": "taurean_mule.gate.06",
+        "webm": "taurean_mule/06.webm",
+        "duration_ms": 1500,
+        "bytes": 11741
+      },
+      {
+        "n": "07",
+        "id": "taurean_mule.headon.07",
+        "webm": "taurean_mule/07.webm",
+        "duration_ms": 1900,
+        "bytes": 5213
+      },
+      {
+        "n": "08",
+        "id": "taurean_mule.top.08",
+        "webm": "taurean_mule/08.webm",
+        "duration_ms": 2300,
+        "bytes": 15112
+      },
+      {
+        "n": "09",
+        "id": "taurean_mule.side.09",
+        "webm": "taurean_mule/09.webm",
+        "duration_ms": 2600,
+        "bytes": 17180
+      },
+      {
+        "n": "10",
+        "id": "taurean_mule.chase.10",
+        "webm": "taurean_mule/10.webm",
+        "duration_ms": 3000,
+        "bytes": 10421
+      }
+    ],
+    "interdictor_cruiser": [
+      {
+        "n": "01",
+        "id": "interdictor_cruiser.streak.01",
+        "webm": "interdictor_cruiser/01.webm",
+        "duration_ms": 1600,
+        "bytes": 10819
+      },
+      {
+        "n": "02",
+        "id": "interdictor_cruiser.chase.02",
+        "webm": "interdictor_cruiser/02.webm",
+        "duration_ms": 1800,
+        "bytes": 13602
+      },
+      {
+        "n": "03",
+        "id": "interdictor_cruiser.headon.03",
+        "webm": "interdictor_cruiser/03.webm",
+        "duration_ms": 2100,
+        "bytes": 16745
+      },
+      {
+        "n": "04",
+        "id": "interdictor_cruiser.top.04",
+        "webm": "interdictor_cruiser/04.webm",
+        "duration_ms": 2400,
+        "bytes": 8293
+      },
+      {
+        "n": "05",
+        "id": "interdictor_cruiser.side.05",
+        "webm": "interdictor_cruiser/05.webm",
+        "duration_ms": 2700,
+        "bytes": 8528
+      },
+      {
+        "n": "06",
+        "id": "interdictor_cruiser.gate.06",
+        "webm": "interdictor_cruiser/06.webm",
+        "duration_ms": 1500,
+        "bytes": 12384
+      },
+      {
+        "n": "07",
+        "id": "interdictor_cruiser.headon.07",
+        "webm": "interdictor_cruiser/07.webm",
+        "duration_ms": 1900,
+        "bytes": 5748
+      },
+      {
+        "n": "08",
+        "id": "interdictor_cruiser.top.08",
+        "webm": "interdictor_cruiser/08.webm",
+        "duration_ms": 2300,
+        "bytes": 14584
+      },
+      {
+        "n": "09",
+        "id": "interdictor_cruiser.side.09",
+        "webm": "interdictor_cruiser/09.webm",
+        "duration_ms": 2600,
+        "bytes": 21627
+      },
+      {
+        "n": "10",
+        "id": "interdictor_cruiser.chase.10",
+        "webm": "interdictor_cruiser/10.webm",
+        "duration_ms": 3000,
+        "bytes": 11457
+      }
+    ]
+  }
+}

@@ -1212,6 +1212,7 @@
   let lastWarpId = "";
   let warpSpinRaf = 0;
   let warpFrame = null;
+  let warpPlayToken = 0;
   function warpMesh() {
     const live = window.TW2KWarpHull;
     if (live && live.buildHullFaces && live.projectFace && live.hullMarkup) return live;
@@ -1459,13 +1460,24 @@
     const resolved = withClipSource(chosen);
     chosen = resolved.chosen;
     const motion = warpMotion();
-    if (motion === "off") { clearWarpTimers(); root.hidden = true; return; }
+    if (motion === "off") {
+      clearWarpTimers();
+      stopWarpSpin();
+      if (video) {
+        warpPlayToken += 1;
+        video.onerror = null;
+        try { video.pause(); } catch (e) { /* already quiet */ }
+      }
+      root.hidden = true;
+      return;
+    }
     const sh = (S && S.ship) || {};
     const liveClass = String((sh && sh.class) || "");
     const clipHull = chosen.hull || liveClass;
     const def = SHIPS[clipHull] || SHIPS[liveClass] || { name: clipHull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
     const ms = Number(chosen.duration_ms) || Number(warpManifest && warpManifest.duration_ms) || 2000;
     const file = chosen.kind === "file" && (chosen.webm || chosen.mp4);
+    const playingFile = !!(file && motion === "play");
     root.style.setProperty("--warp-ms", ms + "ms");
     const style = warpStyleOf(chosen);
     const same = !liveClass || liveClass === clipHull;
@@ -1480,7 +1492,7 @@
     root.hidden = false;
     root.setAttribute("data-hull", chosen.hull);
     root.setAttribute("data-clip", chosen.id);
-    root.setAttribute("data-kind", file ? "file" : "svg");
+    root.setAttribute("data-kind", playingFile ? "file" : "svg");
     root.setAttribute("data-motion", motion);
     root.setAttribute("data-variant", style ? style.n : "");
     root.setAttribute("data-exit", style ? style.exit : "jump");
@@ -1488,7 +1500,7 @@
     root.setAttribute("data-stars", style ? style.stars : "streaks");
     root.setAttribute("data-ship", flying.class);
     root.setAttribute("data-duration", String(ms));
-    root.setAttribute("data-clip-source", resolved.hooked && file ? "hook" : "procedural");
+    root.setAttribute("data-clip-source", resolved.hooked && playingFile ? "hook" : "procedural");
     root.classList.toggle("is-still", motion !== "play");
     svg.hidden = false;
     const drawn = warpHullMarkup(flying, def, style);
@@ -1506,20 +1518,32 @@
       el.style.animationDuration = ms + "ms";
     });
     root.setAttribute("data-paint-ms", (performance.now() - paintAt).toFixed(2));
-    if (!file && motion === "play") startWarpSpin();
+    if (!playingFile && motion === "play") startWarpSpin();
     else stopWarpSpin();
+    // The file sits on top of the SVG. The SVG stays in the tree so a pause
+    // can still see the hull animation (the other cockpit's hold hook).
     if (video) {
-      video.hidden = true;
+      const token = (warpPlayToken += 1);
       video.onerror = null;
       try { video.pause(); } catch (e) { /* no file yet */ }
-      video.removeAttribute("src");
-      if (file && motion === "play") {
+      if (playingFile) {
+        const drop = () => {
+          if (token !== warpPlayToken) return;
+          video.hidden = true;
+          root.setAttribute("data-kind", "svg");
+          root.setAttribute("data-clip-source", "procedural");
+        };
         video.hidden = false;
-        svg.hidden = true;
+        video.muted = true;
+        video.onerror = drop;
         video.src = clipMediaUrl(chosen.webm || chosen.mp4);
         if (chosen.poster) video.poster = clipMediaUrl(chosen.poster);
-        video.play().catch(() => { video.hidden = true; svg.hidden = false; });
-        video.onerror = () => { video.hidden = true; svg.hidden = false; };
+        const started = video.play();
+        if (started && started.catch) started.catch(drop);
+      } else {
+        video.hidden = true;
+        video.removeAttribute("src");
+        video.removeAttribute("poster");
       }
     }
     const generic = document.getElementById("vpClip");
@@ -1537,6 +1561,13 @@
     if (!root || root.hidden) return 0;
     stopWarpSpin();
     clearWarpTimers();
+    const video = $("warpVideo");
+    if (video && !video.hidden) {
+      try { video.pause(); } catch (e) { /* already held */ }
+      if (atMs != null && Number.isFinite(video.duration)) {
+        try { video.currentTime = Math.min(video.duration, Math.max(0, atMs) / 1000); } catch (e) { /* stay */ }
+      }
+    }
     const pending = root.getAnimations({ subtree: true });
     pending.forEach((anim) => {
       if (atMs != null) { try { anim.currentTime = atMs; } catch (e) { /* stay on this frame */ } }
@@ -1568,9 +1599,16 @@
   async function playWarpClips(live) {
     if (!live || !live.some(isRealMove)) return false;
     await ensureWarpManifest();
+    const source = window.TW2KWarpClipSource;
+    if (source && source.ready && typeof source.ready.then === "function") {
+      try { await source.ready; } catch (err) { /* catalog missed; the live scene still plays */ }
+    }
     const hull = String((S && S.ship && S.ship.class) || "");
     const chosen = chooseWarpClip(hull);
     if (chosen.fallback) return false;
+    // paint() probes the live scene and does not set this. resolve() uses it
+    // so a file replaces the picture only on a real move.
+    chosen.playback = "move";
     showWarpClip(chosen);
     return true;
   }
