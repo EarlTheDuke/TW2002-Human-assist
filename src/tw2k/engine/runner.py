@@ -847,8 +847,9 @@ def _apply_sector_hazards(universe: Universe, pid: str, sector, *, entry_verb: s
                 summary=f"{hits} armid mines hit {player.name} {entry_verb} {sector.id} ({dmg} dmg)",
             )
         elif md.kind == MineType.LIMPET:
-            if sector_photon_active(sector):
-                continue  # h7: photon wave neutralizes limpets too
+            # S1 item 2 is not on the photon skip list. Legacy still skips it.
+            if sector_photon_active(sector) and not K.photon_limpet_live():
+                continue
             if entry_order:
                 if limpet_taken:
                     continue  # v27: one limpet per entry
