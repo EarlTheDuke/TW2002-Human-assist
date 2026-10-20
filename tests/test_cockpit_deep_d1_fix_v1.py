@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
+from tests._cu_host import CuHost
 from tw2k.engine.bank import collect_daily_tax
 from tw2k.engine.models import FerrengiShip
-
-from tests._cu_host import CuHost
+from tw2k.engine.observation import build_observation
 
 PORT_TOK = "deep-port-token-p2-000000000000"
 TURN_TOK = "deep-turn-token-p2-000000000000"
@@ -26,9 +26,21 @@ def _page(pw, host, token):
 
 
 def _quiet(page) -> None:
+    """Escape, then wait until the chip is ready and a command key is enabled.
+
+    The chip flips to YOUR MOVE while the previous action is still busy.
+    F and Q pressed in that window are dropped, and the tax poll does not run.
+    """
     page.keyboard.press("Escape")
     page.wait_for_function(
-        "() => { const t = document.querySelector('#waitchip').textContent; return t === 'YOUR MOVE' || t === 'NO TURNS'; }",
+        """() => {
+          const chip = document.querySelector('#waitchip');
+          const key = document.querySelector('#keys button[data-key]');
+          if (!chip || !key) return false;
+          const label = chip.textContent;
+          const ready = label === 'YOUR MOVE' || label === 'NO TURNS';
+          return ready && !key.disabled;
+        }""",
         timeout=20_000,
     )
 
@@ -70,13 +82,27 @@ def seats(tmp_path_factory):
     )
     here = universe.sectors[planet.sector_id]
     beyond = None
+    # Prefer a hop with no port, so an express warp still arrives when the
+    # cockpit pauses at ports.
     for hop in here.warps:
-        for nxt in universe.sectors[int(hop)].warps:
-            if int(nxt) not in (planet.sector_id, int(hop)):
-                beyond = int(nxt)
+        hop_id = int(hop)
+        if universe.sectors[hop_id].port is not None:
+            continue
+        for nxt in universe.sectors[hop_id].warps:
+            nxt_id = int(nxt)
+            if nxt_id not in (planet.sector_id, hop_id):
+                beyond = nxt_id
                 break
         if beyond is not None:
             break
+    if beyond is None:
+        for hop in here.warps:
+            for nxt in universe.sectors[int(hop)].warps:
+                if int(nxt) not in (planet.sector_id, int(hop)):
+                    beyond = int(nxt)
+                    break
+            if beyond is not None:
+                break
     if beyond is None:
         raise RuntimeError("no two-hop course from the planet sector")
     turn_host = CuHost(tmp_path_factory.mktemp("deep-turn"), TURN_TOK)
@@ -87,7 +113,7 @@ def seats(tmp_path_factory):
     turn_browser, turn_page = _page(pw, turn_host, TURN_TOK)
     try:
         yield {
-            "port": port_page, "turn": turn_page, "universe": universe,
+            "port": port_page, "turn": turn_page, "universe": universe, "host": port_host,
             "origin": planet.sector_id, "beyond": beyond, "finish": planet.citadel_complete_day,
         }
     finally:
@@ -164,16 +190,21 @@ def test_plotted_course_log_starts_at_the_origin(seats) -> None:
     origin = seats["origin"]
     beyond = seats["beyond"]
     port.keyboard.press("c")
+    port.wait_for_selector("#menu[data-screen=computer]", timeout=10_000)
     port.keyboard.press("f")
+    port.wait_for_selector("#sectorAsk", timeout=10_000)
     port.locator("#sectorAsk").fill(str(beyond))
     port.keyboard.press("Enter")
     port.wait_for_function(
         "(origin) => new RegExp('plotted course ' + origin + ' >').test(document.querySelector('#lastResult').textContent || '')",
         arg=origin, timeout=20_000,
     )
+    port.locator("button.eng").wait_for(state="visible", timeout=10_000)
+    _quiet(port)
     port.locator("button.eng").click()
     port.wait_for_function(
-        "() => /^ok —/.test(document.querySelector('#lastResult').textContent || '') || /Autopilot: arrived/.test(document.querySelector('#lastResult').textContent || '')",
+        "() => /Autopilot: arrived/.test(document.querySelector('#lastResult').textContent || '')"
+        " || /Autopilot stopped/.test(document.querySelector('#lastResult').textContent || '')",
         timeout=20_000,
     )
     log = port.locator("#log").inner_text()
@@ -183,9 +214,15 @@ def test_plotted_course_log_starts_at_the_origin(seats) -> None:
 
 def test_overnight_tax_shows_on_the_status_screen(seats) -> None:
     port = seats["port"]
+    _quiet(port)
     me = seats["universe"].players["P2"]
+    # Alignment 0 is exempt once the v3.11 tax is on. 100 is taxed either way.
+    me.alignment = 100
     me.credits = 200_000
     collect_daily_tax(seats["universe"])
+    agent = next(a for a in seats["host"].runner.state.agents if a.player_id == "P2")
+    agent.current_observation = build_observation(seats["universe"], "P2")
+    port.evaluate("() => window.__tw2kTest.refreshNow()")
     port.wait_for_selector("[data-tax=overnight]", timeout=15_000)
     port.keyboard.press("v")
     port.wait_for_function("() => /Overnight Federation tax/.test(document.querySelector('#menu').textContent || '')", timeout=10_000)
