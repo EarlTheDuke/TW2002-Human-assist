@@ -3,9 +3,9 @@
 Every piece reads its own env value and does nothing when that value is unset:
 
 * ``TW2K_SWITCH_OVERLAY`` - JSON ``{"V311_PROFILE": "v311", ...}`` set on ``constants`` at start.
-* ``TW2K_PUBLIC_MODE=1`` - only the cockpit, the claim link, the harness, static files, the
-  health route and the (token-gated) spectator routes answer; ``/control/*``, ``/api/*`` and
-  every other route answer only a loopback call carrying ``TW2K_LOBBY_SECRET``.
+* ``TW2K_PUBLIC_MODE=1`` - only the cockpit, the claim link, the player manual, the harness,
+  static files, the health route and the (token-gated) spectator routes answer; ``/control/*``,
+  ``/api/*`` and every other route answer only a loopback call carrying ``TW2K_LOBBY_SECRET``.
 * ``TW2K_BASE_PATH=/g/<id>`` - pages, claim cookies and redirects work under the lobby prefix.
 * ``TW2K_BRAND`` - the player-facing name on the cockpit and spectator pages.
 * ``TW2K_SNAPSHOT_DIR`` - the game is snapshotted on every day roll and every 5 minutes.
@@ -142,7 +142,7 @@ def apply_switch_overlay(raw: str | None = None) -> dict[str, str]:
 
 # The routes a seated player or a spectator needs. The spectator ones stay behind the
 # spectator gate (TW2K_SPECTATOR_TOKEN); the harness checks the seat token itself.
-OPEN_EXACT = frozenset({"/", "/bot", "/bot/claim", "/healthz", "/spectate",
+OPEN_EXACT = frozenset({"/", "/bot", "/bot/claim", "/manual", "/healthz", "/spectate",
                         "/state", "/events", "/history", "/highlights", "/ws"})
 OPEN_PREFIXES = ("/static/", "/harness/v1/")
 
@@ -268,6 +268,36 @@ def rewrite_cookie(value: str, base: str) -> str:
     if not base:
         return value
     return re.sub(r"(?i)(;\s*Path=)(/[^;]*)", lambda m: m.group(1) + base + m.group(2), value)
+
+
+class AcceptBasePath:
+    """Answer /g/<id>/... on this worker, not only on the lobby proxy.
+
+    The lobby strips that prefix before it forwards. A browser that opens the
+    worker's own /bot page, including the scripted cockpit seat, does not.
+    The page already points at /g/<id>/static and /g/<id>/harness, so those
+    requests have to land on the same routes. Lobby-only /control stays closed:
+    the public lock still sees the path after this prefix is removed.
+    """
+
+    def __init__(self, app, *, base: str) -> None:
+        self.app = app
+        self.base = (base or "").rstrip("/")
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self.base and scope.get("type") in ("http", "websocket"):
+            path = scope.get("path") or "/"
+            prefix = self.base
+            if path == prefix or path.startswith(prefix + "/"):
+                scope = dict(scope)
+                rest = path[len(prefix):] or "/"
+                scope["path"] = rest
+                raw = scope.get("raw_path")
+                if isinstance(raw, (bytes, bytearray)):
+                    mark = prefix.encode("ascii")
+                    if raw == mark or raw.startswith(mark + b"/"):
+                        scope["raw_path"] = raw[len(mark):] or b"/"
+        await self.app(scope, receive, send)
 
 
 class PageRewrite:
@@ -485,3 +515,5 @@ def install(app, runner) -> None:
         app.add_middleware(PublicLock)
     if base or brand_name:
         app.add_middleware(PageRewrite, base=base, brand_name=brand_name)
+    if base:
+        app.add_middleware(AcceptBasePath, base=base)
