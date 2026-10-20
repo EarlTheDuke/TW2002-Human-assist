@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests._regression import is_browser_file, split_files
+from tests._regression import classify_rerun, is_browser_file, nodeid_from_junit, split_files
 from tests._screenshot import save_screenshot
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +36,40 @@ class _Page:
         if self.calls == 1:
             raise BlockingIOError(11, "Resource temporarily unavailable")
         return b"png"
+
+
+def test_junit_classname_is_a_pytest_nodeid() -> None:
+    assert nodeid_from_junit(
+        "tests.test_regression_runner_v1",
+        "test_browser_files_are_split_from_unit_files",
+    ) == "tests/test_regression_runner_v1.py::test_browser_files_are_split_from_unit_files"
+    assert nodeid_from_junit(
+        "tests.test_phase_abc.TestPhaseA",
+        "test_doc_exists",
+    ) == "tests/test_phase_abc.py::TestPhaseA::test_doc_exists"
+
+
+def test_a_rerun_pass_is_flaky_and_not_passed() -> None:
+    flaky, still = classify_rerun(
+        ["tests/test_a.py::test_one", "tests/test_a.py::test_two"],
+        {"tests/test_a.py::test_one"},
+    )
+    assert flaky == ["tests/test_a.py::test_one"]
+    assert still == ["tests/test_a.py::test_two"]
+    assert "tests/test_a.py::test_one" not in still
+
+
+def test_repeat_help_names_a_flaky_rerun() -> None:
+    import subprocess
+    import sys
+
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "run_regression.py"), "--help"],
+        check=False, capture_output=True, text=True,
+    )
+    assert proc.returncode == 0
+    assert "--repeat" in proc.stdout
+    assert "flaky" in proc.stdout
 
 
 def test_screenshot_retries_a_blocking_io_error(tmp_path: Path) -> None:

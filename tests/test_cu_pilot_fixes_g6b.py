@@ -22,7 +22,7 @@ import httpx
 
 from tests._cu_host import CuHost
 from tw2k.engine import GameConfig, generate_universe
-from tw2k.engine.models import Player
+from tw2k.engine.models import Commodity, Player
 from tw2k.engine.observation import build_observation, status_fields
 from tw2k.engine.runner import _record_port_intel
 from tw2k.server.app import create_app
@@ -176,6 +176,24 @@ def test_latest_pilot_run_skips_test_saves_and_dry_runs(tmp_path: Path, monkeypa
         assert report.main(["--latest"]) == 1
 
 
+def _fill_route_stock(host) -> None:
+    """The seed-1 pair generates with empty sell stock. A route cannot start until a buy fits."""
+    universe = host.runner.state.universe
+    for sid, name in ((A, "fuel_ore"), (B, "equipment")):
+        stock = universe.sectors[sid].port.stock[Commodity(name)]
+        stock.current = int(stock.maximum)
+
+
+def _route_toast_ok(text: str) -> bool:
+    low = text.lower()
+    return "ROUTE" in text and "rejected" not in low and "did not start" not in low
+
+
+def _route_toast_bad(text: str) -> bool:
+    low = text.lower()
+    return "rejected" in low or "did not start" in low
+
+
 # ------------------------------------------------------------------ browser: (a) (c) (e)
 def test_browser_run_route_button_is_enabled_and_clicks(browser, tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("TW2K_SPECTATOR_TOKEN", raising=False)
@@ -184,21 +202,73 @@ def test_browser_run_route_button_is_enabled_and_clicks(browser, tmp_path: Path,
         me = host.runner.state.universe.players["P2"]
         me.trade_log = _trade_log()
         _remember_pair(host)
+        _fill_route_stock(host)
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         page.goto(f"{host.base}/bot?seat=P2&mode=cu&token={TOK}")
-        page.wait_for_selector("#cuTurn.turn", timeout=20_000)
+        # The open turn may have been snapshotted before the stock and the trade log.
+        # Spend that turn, then go on only once this sector can buy the route's fuel.
+        page.wait_for_function(
+            """async ({token, sector, commodity}) => {
+              const headers = {authorization: 'Bearer ' + token, 'content-type': 'application/json'};
+              const r = await fetch('/harness/v1/P2/observation?peek=1', {headers});
+              if (!r.ok) return false;
+              const body = await r.json();
+              const obs = body.observation || {};
+              const here = Number((obs.sector || {}).id);
+              const trade = (obs.legal_actions || []).find((a) => a.kind === 'trade') || {};
+              const buy = (((trade.params || {}).commodity || {}).buy_choices) || [];
+              if (body.awaiting_input && here === sector && trade.legal && buy.includes(commodity)) return true;
+              if (body.awaiting_input && window.__routeRefresh !== body.turn_seq) {
+                window.__routeRefresh = body.turn_seq;
+                await fetch('/harness/v1/P2/action', {
+                  method: 'POST', headers,
+                  body: JSON.stringify({turn_seq: body.turn_seq, action: {kind: 'wait', args: {}}}),
+                });
+              }
+              return false;
+            }""",
+            arg={"token": TOK, "sector": A, "commodity": "fuel_ore"},
+        )
+        page.wait_for_selector("#cuTurn.turn")
+        # Latch every toast. A poll replaces "ROUTE … starting" with the first
+        # step's result before the next check, and that replacement is not a refusal.
+        page.evaluate(
+            """() => {
+              const t = document.querySelector('#cuToast');
+              window.__routeToasts = [];
+              if (!t) return;
+              const note = () => {
+                const text = (t.textContent || '').trim();
+                if (text) window.__routeToasts.push(text);
+              };
+              new MutationObserver(note).observe(t, {subtree: true, childList: true, characterData: true});
+            }"""
+        )
         page.locator("[data-testid=cu-route]").click()
         go = page.locator("[data-testid=route-go]")
-        go.wait_for(timeout=5_000)
+        page.wait_for_function(
+            """() => {
+              const b = document.querySelector('[data-testid=route-go]');
+              return !!b && !b.disabled;
+            }"""
+        )
         assert go.is_enabled(), "RUN ROUTE stayed disabled with valid cycles and a known pair"
         why = page.locator("[data-testid=route-why]")
         assert why.count() == 0 or why.inner_text().strip() == ""
-        go.click()
-        page.wait_for_function(
-            "(() => { const t = document.querySelector('#cuToast');"
-            " return t && /ROUTE/.test(t.textContent) && !/rejected|did not start/i.test(t.textContent); })()",
-            timeout=45_000,
+        with page.expect_response(lambda r: r.request.method == "POST" and "/macro" in r.url) as caught:
+            go.click()
+        body = caught.value.json()
+        assert body.get("started") is True, body
+        toasts = page.evaluate(
+            """() => {
+              const now = ((document.querySelector('#cuToast') || {}).textContent || '').trim();
+              const rows = (window.__routeToasts || []).slice();
+              if (now && rows[rows.length - 1] !== now) rows.push(now);
+              return rows;
+            }"""
         )
+        assert any(_route_toast_ok(text) for text in toasts), toasts
+        assert not any(_route_toast_bad(text) for text in toasts), toasts
 
 
 def test_browser_route_form_drops_a_stale_refusal_and_skips_a_bad_pair(browser, tmp_path: Path, monkeypatch) -> None:

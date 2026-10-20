@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import secrets
+import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -311,6 +312,68 @@ class _FakeLLM(BaseHTTPRequestHandler):
         return
 
 
+class _SeatIdleClock:
+    """``time.monotonic`` for the cockpit seat only.
+
+    The seat treats a quiet ``idle_s`` as "no turn opened". Under load that
+    quiet stretch is often the other player's turn, or one long action that
+    has not been posted yet. This clock runs while it is P2's turn, and once
+    the match snapshot has been frozen for ``idle_s``. A slow neighbour does
+    not spend the budget. A turn that is open and unanswered still does.
+    """
+
+    def __init__(self, runner: object, idle_s: float) -> None:
+        self.runner = runner
+        self.idle_s = float(idle_s)
+        self._origin = time.monotonic()
+        self._charged = 0.0
+        self._last = self._origin
+        self._prev: tuple | None = None
+        self._same_for = 0.0
+        self._our = False
+        self._seen = False
+
+    def _snap(self) -> tuple:
+        state = self.runner.state
+        universe = getattr(state, "universe", None)
+        agents = list(getattr(state, "agents", None) or [])
+        idx = int(getattr(state, "current_player_idx", 0) or 0)
+        current = agents[idx].player_id if agents and 0 <= idx < len(agents) else ""
+        agent = next((row for row in agents if getattr(row, "player_id", None) == "P2"), None)
+        wait = getattr(state, "turn_wait", None) or {}
+        holder = str(wait.get("player_id") or "")
+        awaiting = bool(agent is not None and getattr(agent, "awaiting_input", False))
+        seq = int(getattr(agent, "turn_seq", 0) or 0) if agent is not None else 0
+        day = int(getattr(universe, "day", 0) or 0) if universe is not None else 0
+        events = len(getattr(universe, "events", []) or []) if universe is not None else 0
+        return (current, holder, awaiting, seq, day, events, getattr(state, "status", ""))
+
+    def monotonic(self) -> float:
+        now = time.monotonic()
+        delta = now - self._last
+        self._last = now
+        snap = self._snap()
+        if snap == self._prev:
+            self._same_for += delta
+        else:
+            self._same_for = 0.0
+        self._prev = snap
+        current, holder, awaiting = snap[0], snap[1], snap[2]
+        our_turn = awaiting or holder == "P2" or current == "P2"
+        frozen = self._same_for >= self.idle_s
+        # The gap that ends on this sample belonged to the previous sample.
+        # A long action by the other seat arrives as one delta together with
+        # the events it posted, so that delta is not charged to this seat.
+        if self._seen and (self._our or frozen):
+            self._charged += delta
+        self._seen = True
+        self._our = our_turn
+        return self._origin + self._charged
+
+    def __getattr__(self, name: str):
+        return getattr(time, name)
+
+
 def test_fake_endpoint_calls_then_falls_back(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     monkeypatch.setattr(K, "LOBBY_AI_SEAT_MODE", "on")
@@ -360,6 +423,9 @@ def test_fake_endpoint_calls_then_falls_back(tmp_path, monkeypatch) -> None:
     async def _go() -> tuple[dict, list[str]]:
         await runner.start(_spec("AI (LLM)"))
         assert await _wait_until(lambda: runner.state.universe is not None, tries=500, dt=0.05)
+        # The seat's idle budget starts once a turn can be answered. Time the
+        # scheduler spends on the other seat does not count as "no turn opened".
+        monkeypatch.setattr(seat, "time", _SeatIdleClock(runner, 90))
         try:
             report = await seat.run_http(
                 http, "P2", TOK2, 2, lobby=True, idle_s=90, llm_key=secret, llm_ask=budget,
