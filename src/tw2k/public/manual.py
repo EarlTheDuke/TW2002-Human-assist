@@ -456,7 +456,16 @@ def _planets(f: dict) -> str:
         f"A sector holds at most {_n(K.PLANETS_PER_SECTOR_CAP)} planets.</p>"
         "<p>You can give a planet orders only when you or your corporation own it. "
         "Terra is not a planet you can claim.</p>"
-        + _src("S1 planet handbook class table, the home-planet opening, and the Genesis torpedo price.")
+        + _gated(
+            K.planet_zdy_live(),
+            f"destroying a planet that another trader is on kills that trader. "
+            f"You gain {_n(K.ZDY_EXP_NUM)} experience for each {_n(K.ZDY_EXP_DEN)} of their experience, "
+            f"and alignment moves by {_n(K.ZDY_ALIGN_NUM)} the other way for each {_n(K.ZDY_ALIGN_DEN)} of their alignment. "
+            f"Blowing the planet is still {_n(K.xp_award('destroy_planet'))} experience and "
+            f"{_n(K.PLANET_DESTROY_ALIGNMENT_TW2002)} alignment.",
+            "destroying a planet lifts anyone else off it. You do not gain their experience.",
+        )
+        + _src("S1 planet handbook class table, the home-planet opening, the Genesis torpedo price, and the cabal planet-kill awards.")
     )
 
 
@@ -482,6 +491,17 @@ def _citadels(_f: dict) -> str:
             K.citadel_park_live(),
             "a ship on your own level 1 citadel is parked inside it. A Fed tow skips it, and another trader cannot attack it there.",
             "landing on a citadel leaves the ship in the sector. It is not parked inside.",
+        )
+        + _gated(
+            K.quasar_atm_order_live(),
+            "a landing takes one atmosphere shot, and a second only after the last shield falls.",
+            "a landing with no shields takes two atmosphere shots before the fight.",
+        )
+        + _gated(
+            K.planet_interdict_safe_live(),
+            f"an interdictor does not hold a ship at StarDock. Terra is that sector. "
+            f"Anywhere else it still burns {_n(K.INTERDICTOR_FUEL)} fuel.",
+            "an interdictor in StarDock holds a ship the same as anywhere else.",
         )
         + _src("Citadel class cost table and the handbook perk lines (treasury, Quasar, interdictor).")
     )
@@ -1361,7 +1381,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "load_planet_cargo", "dump_planet_cargo",
         "GENESIS_NAME_MODE", "GENESIS_START_MODE", "PLANET_PROD_MODE", "PLANET_COLLISION_MODE",
         "PLANET_BUST_EXP_MODE", "PLANET_COLONIST_CAP_MODE", "PLANET_GROWTH_MODE", "PLANET_NW_MODE",
-        "OWN_PLANET_TURN_MODE", "OWN_PLANET_FIGHTER_MODE", "LANDED_STATE_MODE",
+        "OWN_PLANET_TURN_MODE", "OWN_PLANET_FIGHTER_MODE", "LANDED_STATE_MODE", "PLANET_ZDY_MODE",
     ),
     "citadels": (
         "build_citadel", "set_military_reaction", "deposit_treasury", "withdraw_treasury",
@@ -1369,6 +1389,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "CITADEL_DAYS_MODE", "CITADEL_COST_MODE", "CITADEL_PERK_MODE", "CITADEL_PARK_MODE",
         "CITADEL_TABLE_FIX_MODE", "TREASURY_CAP_MODE", "PLANET_SHIELD_ACTIVE_MODE",
         "PLANET_SHIELD_MODE", "PLANET_DIVIDEND_PAY_MODE",
+        "QUASAR_ATM_ORDER_MODE", "PLANET_INTERDICT_SAFE_MODE",
     ),
     "colonists": (
         "assign_colonists", "terra_colonists",

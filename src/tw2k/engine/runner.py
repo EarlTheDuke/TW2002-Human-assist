@@ -1987,7 +1987,14 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         if _fire_atmospheric_quasar(universe, pid, planet):
             _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
-        if K.fighting_planet_shields(planet) <= 0 and _fire_atmospheric_quasar(universe, pid, planet):
+        # S1: the second atmosphere shot waits until the last shield falls.
+        # That shot is on_shields_down below. Legacy also fires it now when
+        # no shields are fighting.
+        if (
+            not K.quasar_atm_order_live()
+            and K.fighting_planet_shields(planet) <= 0
+            and _fire_atmospheric_quasar(universe, pid, planet)
+        ):
             _clear_photon_damp(player, sector.id)
             return ActionResult(ok=True, turns_spent=cost)
 
@@ -4224,6 +4231,8 @@ def _apply_quasar_to_ship(universe: Universe, pid: str, damage: int, planet, mod
 
 def _try_interdict(universe: Universe, pid: str, sector) -> ActionResult | None:
     """Hold one hostile warp. Photon damp does not affect the interdictor."""
+    if K.planet_interdict_quiet(sector.id):
+        return None
     player = universe.players[pid]
     planets = [universe.planets[item] for item in sector.planet_ids if item in universe.planets]
     for planet in sorted(planets, key=lambda item: item.id):
@@ -4697,8 +4706,32 @@ def _handle_planet_destroy(universe: Universe, pid: str, action: Action) -> Acti
     return ActionResult(ok=True, turns_spent=cost)
 
 
+def _award_planet_zdy(universe: Universe, pid: str, planet) -> None:
+    """Pod every other trader on this planet and pay the cabal products.
+
+    The +50 experience and -1 alignment for the blow stay in _remove_planet.
+    A citadel's extra blow experience is not printed, so it is not added.
+    """
+    if not K.planet_zdy_live():
+        return
+    killer = universe.players.get(pid)
+    if killer is None:
+        return
+    victims = [
+        other for other in list(universe.players.values())
+        if other.id != pid and other.alive and other.planet_landed == planet.id
+    ]
+    for other in victims:
+        exp = int(other.experience)
+        align = int(other.alignment)
+        _destroy_ship(universe, other.id, reason="planet_zdy", killer_id=pid, by_other=True)
+        killer.experience = int(killer.experience) + K.zdy_kill_experience(exp)
+        killer.alignment = int(killer.alignment) + K.zdy_kill_alignment(align)
+
+
 def _remove_planet(universe: Universe, pid: str, planet, *, via: str = "planet_destroy") -> None:
     """The planet goes: landers lift off, x7 rank award, NavHaz (tw2002), PLANET_DESTROYED."""
+    _award_planet_zdy(universe, pid, planet)
     player = universe.players[pid]
     sector = universe.sectors[planet.sector_id]
     gone = planet.id

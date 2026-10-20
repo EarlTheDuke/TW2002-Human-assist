@@ -4495,6 +4495,18 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "CORP_BREAKIN_ALIGN_MODE",
         "NOTE 117 GAP 9.5: the first wrong corp password in a day costs 1 alignment",
     ),
+    "planet_zdy_live": (
+        "PLANET_ZDY_MODE",
+        "NOTE 143 GAP 6.10: destroying a planet kills a trader who is on it for enemy experience x 0.1666 and alignment x -0.3333",
+    ),
+    "quasar_atm_order_live": (
+        "QUASAR_ATM_ORDER_MODE",
+        "NOTE 143: a landing takes one atmosphere shot, and a second only after the last shield falls",
+    ),
+    "planet_interdict_safe_live": (
+        "PLANET_INTERDICT_SAFE_MODE",
+        "NOTE 143: an interdictor does not hold a ship at StarDock, and Terra is that sector",
+    ),
 }
 
 
@@ -5488,6 +5500,68 @@ def colonist_quote(stored: int, *, people: bool) -> dict[str, int | str]:
 # The 30-hold haul is the NOTE 101 example (one Terra take). A published
 # "trips remaining" figure was not found. UNVERIFIED as a screen quote.
 CITADEL_HAUL_HOLDS = 30
+
+
+# NOTE 143 GAP 6.10. cabal formulas.html, tested on Classic Gold and MBBS:
+# killing a trader who is on the planet by destroying it pays
+# (enemy experience x 0.1666) plus the planet blow, and
+# (enemy alignment x -0.3333) plus the blow. The blow is already
+# destroy_planet (50) and PLANET_DESTROY_ALIGNMENT_TW2002 (1).
+# 10,000 x 0.1666 is 1,666. 10,000 x 0.3333 is 3,333.
+# A citadel makes the blow experience "more". That extra is not printed.
+# Colonist-kill alignment is an ellipsis on the Alignment page.
+# "legacy" lifts the other trader off. "v311" pods them and pays the two products.
+PLANET_ZDY_MODE = "legacy"  # "legacy" | "v311"
+ZDY_EXP_NUM = 1666
+ZDY_EXP_DEN = 10_000
+ZDY_ALIGN_NUM = 3333
+ZDY_ALIGN_DEN = 10_000
+
+
+def planet_zdy_live() -> bool:
+    """True when destroying a planet kills a trader who is sitting on it."""
+    return PLANET_ZDY_MODE == "v311" or v311_profile()
+
+
+def zdy_kill_experience(enemy_exp: int) -> int:
+    """Experience for the trader, apart from the 50 for blowing the planet."""
+    return int(int(enemy_exp) * ZDY_EXP_NUM / ZDY_EXP_DEN)
+
+
+def zdy_kill_alignment(enemy_align: int) -> int:
+    """Alignment for the trader, apart from the -1 for blowing the planet.
+
+    Truncates toward zero so 10,000 x 0.3333 is 3,333, matching the printed examples.
+    """
+    scaled = int(int(enemy_align) * ZDY_ALIGN_NUM / ZDY_ALIGN_DEN)
+    return -scaled
+
+
+# NOTE 143. S1 atmosphere order: one shot, then shields, then another shot
+# only after the last shield falls. Legacy also fires that second shot up
+# front when no shields are fighting.
+QUASAR_ATM_ORDER_MODE = "legacy"  # "legacy" | "v311"
+
+
+def quasar_atm_order_live() -> bool:
+    """True when a shieldless landing takes one atmosphere shot, not two."""
+    return QUASAR_ATM_ORDER_MODE == "v311" or v311_profile()
+
+
+# NOTE 143. Revision history through v3.11 (03/05/97): "Interdictor generators
+# don't function at StarDock and Terra." Terra's colonists are in the StarDock
+# sector, so that one sector is both places. Everywhere else the 500-fuel hold stays.
+PLANET_INTERDICT_SAFE_MODE = "legacy"  # "legacy" | "v311"
+
+
+def planet_interdict_safe_live() -> bool:
+    """True when an interdictor is quiet at StarDock."""
+    return PLANET_INTERDICT_SAFE_MODE == "v311" or v311_profile()
+
+
+def planet_interdict_quiet(sector_id: int) -> bool:
+    """True when this sector's interdictor must not hold a ship."""
+    return planet_interdict_safe_live() and int(sector_id) == int(STARDOCK_SECTOR)
 
 
 def citadel_colonist_quote(
