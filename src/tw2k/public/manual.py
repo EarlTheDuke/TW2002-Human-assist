@@ -1169,6 +1169,24 @@ def _stardock_services(f: dict) -> str:
 
 
 def _communications(_f: dict) -> str:
+    if K.comms_v311_live():
+        return (
+            "<p>The Comms panel sits on the deck with the other panels. "
+            f"Messages are shown at the start of your turn and last {_n(K.HAIL_SHOW_SECONDS)} seconds. "
+            f"A line is {_n(K.COMMS_LINE_MAX)} characters. "
+            f"You wait {_n(K.COMMS_MIN_GAP_S)} seconds between messages.</p>"
+            + _gated(
+                True,
+                f"sub-space radio uses a channel from 1 to {_n(K.RADIO_CHANNEL_MAX)}. "
+                "Everyone tuned to that channel hears it. Channel 0 turns the radio off, and that is how you start. "
+                "Fed Comm goes to every trader who has not turned it off. "
+                "A hail goes to one trader in your sector and is not stored as mail. "
+                "A corporation memo goes only to the other members. "
+                "An AI cockpit seat can read those lines on the screen. It does not send yet.",
+                "",
+            )
+            + _src("Fed Comm, sub-space radio, a private hail, and the corporation memo.")
+        )
     hail = _gated(
         K.mail_live(),
         f"a hail to an open cockpit flashes for {_n(K.HAIL_SHOW_SECONDS)} seconds. "
@@ -1431,7 +1449,9 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "tricron", "cineplex",
         "SHIP_RENAME_MODE", "BUST_CLEAR_MODE",
     ),
-    "communications": ("hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE"),
+    "communications": (
+        "hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE", "COMMS_V311_MODE",
+    ),
     "computer-reports": (
         "DAILY_STATS_MODE", "CORP_RANK_MODE", "TRADER_RANK_LIST_MODE",
         "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE",

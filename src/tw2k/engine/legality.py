@@ -531,13 +531,30 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     # ---- comms (precise) ------------------------------------------------------
     # hail: engine only requires a known player id (alive or not); we list alive first.
+    # NOTE 142: a v3.11 hail is a trader in this sector.
     others_all = [pid for pid in universe.players if pid != player_id]
-    hail_targets = sorted(others_all, key=lambda pid: (not universe.players[pid].alive, pid))
-    out.append(_la(ActionKind.HAIL, legal=bool(hail_targets), reason="no other commanders in this match", cost=0,
+    if K.comms_v311_live():
+        hail_targets = sorted(
+            pid for pid in others_all
+            if universe.players[pid].alive and int(universe.players[pid].sector_id) == int(player.sector_id)
+        )
+        hail_reason = "no other trader in this sector"
+    else:
+        hail_targets = sorted(others_all, key=lambda pid: (not universe.players[pid].alive, pid))
+        hail_reason = "no other commanders in this match"
+    out.append(_la(ActionKind.HAIL, legal=bool(hail_targets), reason=hail_reason, cost=0,
                    params={"target": {"type": "str", "required": True, "choices": hail_targets},
                            "message": {"type": "str", "required": True}}))
     out.append(_la(ActionKind.BROADCAST, legal=True, cost=0, params={"message": {"type": "str", "required": True}}))
-    if K.radio_channel_live():
+    if K.comms_v311_live():
+        out.append(_la(
+            ActionKind.RADIO, legal=True, cost=0,
+            params={
+                "channel": {"type": "int", "required": False, "min": 0, "max": int(K.RADIO_CHANNEL_MAX)},
+                "message": {"type": "str", "required": False},
+            },
+        ))
+    elif K.radio_channel_live():
         out.append(_la(
             ActionKind.RADIO, legal=bool(player.corp_ticker), cost=0,
             reason="radio is corp chat",

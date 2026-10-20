@@ -678,6 +678,10 @@ class Player(BaseModel):
             "reject_loop_key": "",
             "reject_loop_count": 0,
             "radio_channel": None,
+            "turn_log": [],
+            "comms_sent_at": 0.0,
+            "fedcomm_mute": False,
+            "hail_mute": False,
             "self_destruct_lock_day": 0,
             "jettison_day": 0,
             "jettison_colonists": 0,
@@ -752,6 +756,12 @@ class Player(BaseModel):
     corp_ticker: str | None = None
     # radio-channels-v1. Subspace channel. Omitted while unset.
     radio_channel: int | None = None
+    # NOTE 142. Incoming v3.11 messages. Omitted while empty, mute flags while false,
+    # and the send clock while 0, so a legacy dump stays identical.
+    turn_log: list[dict] = Field(default_factory=list)
+    comms_sent_at: float = 0.0
+    fedcomm_mute: bool = False
+    hail_mute: bool = False
     # ship-exit-v1. Omitted at 0 so a legacy dump stays identical.
     self_destruct_lock_day: int = 0
     jettison_day: int = 0

@@ -41,7 +41,7 @@ _SCREEN = r"""
     const box = el.getBoundingClientRect();
     return box.width > 0 && box.height > 0;
   };
-  const buttons = Array.from(document.querySelectorAll('button, a')).filter(visible);
+  const buttons = Array.from(document.querySelectorAll('button, a')).filter((el) => visible(el) && !el.closest('[data-ai-send]'));
   const labels = buttons.filter((el) => !el.disabled && !el.classList.contains('dim')).map((el) =>
     (el.innerText || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()
   ).filter(Boolean);
@@ -109,6 +109,7 @@ _SCREEN = r"""
     menuText: menuOpen ? (menu.innerText || '').replace(/\s+/g, ' ').trim() : '',
     course: text('#course'),
     sectorAsk: ask && visible(ask) ? (ask.value || '') : '',
+    comms: text('[data-testid=turn-log]'),
   };
 }
 """

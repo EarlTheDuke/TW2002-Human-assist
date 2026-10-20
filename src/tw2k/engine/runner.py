@@ -3375,6 +3375,9 @@ def _handle_corp_leave(universe: Universe, pid: str, action: Action) -> ActionRe
 
 
 def _handle_hail(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.comms_v311_live():
+        from .comms import send_hail
+        return send_hail(universe, pid, action)
     player = universe.players[pid]
     target_id = action.args.get("target")
     message = action.args.get("message", "")[:1000]
@@ -3416,6 +3419,9 @@ def _handle_hail(universe: Universe, pid: str, action: Action) -> ActionResult:
 
 def _handle_radio(universe: Universe, pid: str, action: Action) -> ActionResult:
     """Corp subspace. Channel 0 to 60000. Only mates on that channel hear it."""
+    if K.comms_v311_live():
+        from .comms import send_radio
+        return send_radio(universe, pid, action)
     if not K.radio_channel_live():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
@@ -3453,6 +3459,9 @@ def _handle_radio(universe: Universe, pid: str, action: Action) -> ActionResult:
 
 
 def _handle_broadcast(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.comms_v311_live() and str((action.args or {}).get("link") or "") == "fed":
+        from .comms import send_fed
+        return send_fed(universe, pid, action)
     player = universe.players[pid]
     message = action.args.get("message", "")[:1000]
     for other_id, other in universe.players.items():
@@ -3934,6 +3943,9 @@ def _handle_corp_withdraw(universe: Universe, pid: str, action: Action) -> Actio
 
 
 def _handle_corp_memo(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.comms_v311_live():
+        from .comms import send_corp
+        return send_corp(universe, pid, action)
     player = universe.players[pid]
     if player.corp_ticker is None or player.corp_ticker not in universe.corporations:
         return ActionResult(ok=False, error="not in a corporation")

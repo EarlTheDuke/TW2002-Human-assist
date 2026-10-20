@@ -6325,6 +6325,99 @@
       setResult("You were attacked by " + who + (lost == null ? "." : ". You lost " + lost + "."), true);
     }
   }
+  function paintComms() {
+    const box = $("turnLog");
+    const form = $("commsForm");
+    if (!box) return;
+    const rows = S && S.turn_log;
+    const on = Array.isArray(rows);
+    if (form) form.hidden = !on;
+    box.replaceChildren();
+    if (!on) return;
+    const head = document.createElement("div");
+    head.className = "dim";
+    head.dataset.testid = "turn-log-head";
+    head.textContent = state.awaiting ? "At the start of your turn" : "Messages";
+    box.appendChild(head);
+    rows.forEach((row) => {
+      const line = document.createElement("div");
+      line.dataset.kind = String((row && row.kind) || "");
+      line.textContent = String((row && row.line) || "");
+      box.appendChild(line);
+    });
+    const meta = (S && S.comms) || {};
+    const channel = $("commsChannel");
+    if (channel && document.activeElement !== channel) channel.value = String(meta.radio_channel || 0);
+    const target = $("commsTarget");
+    if (target) {
+      const here = Array.isArray(meta.here) ? meta.here : [];
+      const picked = target.value;
+      target.replaceChildren();
+      here.forEach((trader) => {
+        const opt = document.createElement("option");
+        opt.value = String(trader.id || "");
+        opt.textContent = String(trader.name || trader.id || "");
+        target.appendChild(opt);
+      });
+      if (picked && Array.from(target.options).some((opt) => opt.value === picked)) target.value = picked;
+    }
+    const corp = $("commsKind") && $("commsKind").querySelector('option[value="corp"]');
+    if (corp) corp.disabled = !meta.corp;
+    const fed = $("commsFed");
+    if (fed) fed.textContent = meta.fedcomm === false ? "Fed Comm on" : "Fed Comm off";
+    syncCommsFields();
+  }
+  function syncCommsFields() {
+    const kind = ($("commsKind") && $("commsKind").value) || "fed";
+    const channel = $("commsChannelLabel");
+    const tune = $("commsTune");
+    const target = $("commsTargetLabel");
+    if (channel) channel.hidden = kind !== "radio";
+    if (tune) tune.hidden = kind !== "radio";
+    if (target) target.hidden = kind !== "hail";
+  }
+  function sendComms() {
+    const kind = ($("commsKind") && $("commsKind").value) || "fed";
+    const message = ($("commsMessage") && $("commsMessage").value) || "";
+    if (kind === "radio") {
+      const channel = Number(($("commsChannel") && $("commsChannel").value) || 0);
+      act("radio", { channel: channel, message: message }, "sub-space radio");
+      return;
+    }
+    if (kind === "hail") {
+      const target = ($("commsTarget") && $("commsTarget").value) || "";
+      act("hail", { target: target, message: message }, "hail");
+      return;
+    }
+    if (kind === "corp") {
+      act("corp_memo", { message: message }, "corporation memo");
+      return;
+    }
+    act("broadcast", { link: "fed", message: message }, "Fed Comm");
+  }
+  function bindComms() {
+    const form = $("commsForm");
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = "1";
+    form.addEventListener("submit", (ev) => ev.preventDefault());
+    const kind = $("commsKind");
+    if (kind) kind.addEventListener("change", syncCommsFields);
+    const tune = $("commsTune");
+    if (tune) tune.addEventListener("click", () => {
+      const channel = Number(($("commsChannel") && $("commsChannel").value) || 0);
+      act("radio", { channel: channel }, "tune radio");
+    });
+    const send = $("commsSend");
+    if (send) send.addEventListener("click", sendComms);
+    const fed = $("commsFed");
+    if (fed) fed.addEventListener("click", () => {
+      const turnOn = ((S && S.comms) || {}).fedcomm === false;
+      act("broadcast", { link: "fed", listen: turnOn }, turnOn ? "Fed Comm on" : "Fed Comm off");
+    });
+    syncCommsFields();
+  }
+  bindComms();
+
   function render() {
     if (S && S.planet_landed != null) {
       surface = true;
@@ -6383,6 +6476,7 @@
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
     paintScene();
     paintLog();
+    paintComms();
     paintAttackAlert();
     sectorText();
     map();
