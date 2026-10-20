@@ -36,7 +36,7 @@ def test_manifest_lists_ten_svg_variants_and_stays_small() -> None:
         numbers = []
         for row in rows:
             assert row["kind"] == "svg"
-            assert row["duration_ms"] == 2000
+            assert 1500 <= row["duration_ms"] <= 3000
             head, style, number = row["id"].rsplit(".", 2)
             assert head == hull
             assert style == row["style"]
@@ -46,7 +46,8 @@ def test_manifest_lists_ten_svg_variants_and_stays_small() -> None:
             stars.add(row["stars"])
             exits.add(row["exit"])
         assert numbers == [f"{n:02d}" for n in range(1, 11)]
-    assert {"side", "chase", "headon", "top"} <= cameras
+        assert len({row["duration_ms"] for row in rows}) == 10
+    assert {"side", "chase", "headon", "top", "gate"} <= cameras
     assert {"streaks", "tunnel", "nebula", "sparse"} <= stars
     assert {"flash", "fold", "fade"} <= exits
     assert MANIFEST.stat().st_size < 60 * 1024
