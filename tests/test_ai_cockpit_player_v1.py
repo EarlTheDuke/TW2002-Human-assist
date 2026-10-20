@@ -704,6 +704,236 @@ def test_the_lobby_option_is_hidden_until_the_switch_is_on(monkeypatch, tmp_path
     assert "/g/game/watch" in card
 
 
+def test_easy_wanders_and_buys_a_weak_local_trade() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    easy = ScriptedTrader(level="easy")
+    bought = easy.decide(_view({
+        "sector": "8", "day": "1", "turns": "20", "credits": "50,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "rows": [{"cells": ["Organics", "Selling 40/100", "40", "90", "0"], "button": "BUY 10"}],
+        "labels": ["BUY 10", "1:9 (3t) one-way", "StarDock: buy gear"],
+        "warps": ["1:9 (3t) one-way"],
+    }))
+    assert bought.label == "BUY 10"
+    wandered = easy.decide(_view({
+        "sector": "8", "day": "1", "turns": "19", "credits": "49,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:9 (3t) one-way", "StarDock: buy gear"],
+        "warps": ["1:9 (3t) one-way"],
+    }))
+    assert wandered.label == "1:9 (3t) one-way"
+    fled = ScriptedTrader(level="easy").decide(_view({
+        "sector": "4", "day": "1", "turns": "10", "credits": "50,000 cr", "chip": "YOUR MOVE",
+        "here": "Ferrengi Marauder, 40 fighters",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:4 (3t)", "2:12 (3t)"],
+        "labels": ["1:4 (3t)", "2:12 (3t)"],
+    }))
+    assert fled.label.endswith("12 (3t)")
+
+
+def test_normal_settles_sooner_and_skips_shields() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    def arm(trader: ScriptedTrader) -> None:
+        trader.ports[10] = {"Equipment": {"ask": 10, "avail": 100}}
+        trader.ports[11] = {"Equipment": {"bid": 18, "avail": 100}}
+        trader.links[10] = {11: 3}
+        trader.links[11] = {10: 3}
+        trader.day_turns = 40
+        trader.hold_cap = 20
+
+    normal = ScriptedTrader(level="normal")
+    hard = ScriptedTrader(level="hard")
+    arm(normal)
+    arm(hard)
+    assert normal._settled(10) is True
+    assert hard._settled(10) is False
+    normal.bought.update({"holds", "fighters"})
+    normal.day = 2
+    normal.links[1] = {10: 3}
+    normal.warp_labels[(1, 10)] = "1:10 (3t)"
+    dock = normal.decide(_view({
+        "sector": "1", "day": "2", "turns": "30", "credits": "10,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/40",
+        "port": "StarDock",
+        "labels": ["StarDock: buy gear", "Shipyards", "1:10 (3t)"],
+        "warps": ["1:10 (3t)"],
+    }))
+    assert dock.label != "StarDock: buy gear"
+    assert dock.label != "Shipyards"
+    assert "shields" not in normal.plan_note
+
+
+def test_hard_plots_a_course_when_stardock_was_never_linked() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="hard")
+    trader.ports[35] = {"Organics": {"ask": 20, "avail": 90}}
+    trader.ports[16] = {"Organics": {"bid": 96, "avail": 90}}
+    trader.links[35] = {16: 3}
+    trader.links[16] = {35: 3}
+    trader.warp_labels[(35, 16)] = "1:16 (3t)"
+    trader.warp_labels[(16, 35)] = "1:35 (3t)"
+    trader.day = 2
+    trader.settled_day = 1
+    trader.day_turns = 40
+    trader.visited = {16, 35}
+    trader.hold_cap = 20
+    assert trader._hops(35, 1) is None
+    assert trader._wants_dock(35) is True
+    base = {
+        "sector": "35", "day": "2", "turns": "30", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["C Computer", "1:16 (3t)"],
+        "warps": ["1:16 (3t)"],
+    }
+    opened = trader.decide(_view(base))
+    assert opened.label == "C Computer"
+    menu = dict(base, menuOpen=True, menuText="Computer command <F> Course Plotter")
+    plotted = trader.decide(_view(menu))
+    assert plotted.op == "press" and plotted.key == "F"
+    asking = dict(menu, menuText="What is the destination sector? ENTER Esc to close", sectorAsk="")
+    named = trader.decide(_view(asking))
+    assert named.op == "type" and named.selector == "#sectorAsk" and named.text == "1"
+    asking["sectorAsk"] = "1"
+    asking["labels"] = ["ENTER", "C Computer"]
+    entered = trader.decide(_view(asking))
+    assert entered.label == "ENTER"
+    course = dict(base)
+    course["course"] = "Course to 1: 35 > 9 > 1. 2 hops, 6 turns."
+    course["warps"] = ["1:9 (3t) one-way"]
+    course["labels"] = ["1:9 (3t) one-way", "Engage Express", "Cancel"]
+    hopped = trader.decide(_view(course))
+    assert hopped.label == "1:9 (3t) one-way"
+    stalled = dict(course)
+    stalled["turns"] = "2"
+    stalled["warps"] = []
+    stalled["labels"] = ["Engage Express", "Cancel"]
+    stalled["course"] = "Course to 1: 35 > 9 > 1. 2 hops, 6 turns."
+    skipped = trader.decide(_view(stalled))
+    assert skipped.op != "wait"
+    pocket = ScriptedTrader(level="hard")
+    for sector in range(20, 26):
+        pocket.ports[sector] = {"Equipment": {"ask": 50, "avail": 10}}
+    pocket.ports[20] = {"Equipment": {"ask": 40, "avail": 20}}
+    pocket.ports[21] = {"Equipment": {"bid": 48, "avail": 20}}
+    pocket.links[20] = {21: 3}
+    pocket.links[21] = {20: 3}
+    pocket.day_turns = 40
+    pocket.hold_cap = 20
+    pocket.day = 2
+    assert pocket._settled(20) is False
+    assert pocket._wants_dock(20) is False
+    pocket.day = 3
+    assert pocket._wants_dock(20) is True
+    opened_late = pocket.decide(_view({
+        "sector": "20", "day": "3", "turns": "40", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["C Computer", "1:21 (3t)"],
+        "warps": ["1:21 (3t)"],
+    }))
+    assert opened_late.label == "C Computer"
+
+
+def test_several_cockpit_seats_each_get_a_process_and_a_stop(monkeypatch, tmp_path: Path) -> None:
+    from tw2k.public import pages
+    from tw2k.public import security as S
+    from tw2k.public import workers as WM
+    from tw2k.public.lobby import Lobby
+
+    monkeypatch.setattr(K, "AI_COCKPIT_SEAT_MODE", "legacy")
+    with pytest.raises(S.FormError, match="unknown field: ai_cockpit_count"):
+        S.parse_game_form({"name": "Alpha", "ai_cockpit_count": "2"})
+    with pytest.raises(S.FormError, match="unknown field: ai_cockpit_level"):
+        S.parse_game_form({"name": "Alpha", "ai_cockpit_level": "easy"})
+
+    monkeypatch.setattr(K, "AI_COCKPIT_SEAT_MODE", "tw2002")
+    shown = pages.new_game("Galaxy War Command")
+    assert 'name="ai_cockpit_count"' in shown
+    assert 'name="ai_cockpit_level"' in shown
+    assert 'value="hard" selected' in shown
+    form = S.parse_game_form({
+        "name": "Alpha", "humans": 1, "bots": 2, "ai_cockpit": "on",
+        "ai_cockpit_count": "2", "ai_cockpit_level": "normal",
+    })
+    settings = form.settings()
+    assert settings["ai_cockpit_count"] == 2
+    assert settings["ai_cockpit_level"] == "normal"
+    assert "ai_key" not in settings
+    off = S.parse_game_form({"name": "Alpha", "ai_cockpit": "off", "ai_cockpit_count": "4"}).settings()
+    assert "ai_cockpit" not in off
+    assert WM.cockpit_count(off) == 0
+    assert WM.cockpit_count(settings) == 2
+    joined = " ".join(WM.serve_command(settings, 47313, tmp_path))
+    assert "--external P1,P2,P3" in joined
+    assert "--num-agents 5" in joined
+    assert "AI cockpit" in joined
+
+    lobby = Lobby.__new__(Lobby)
+    token_a = "seat-token-alpha"
+    token_b = "seat-token-beta"
+    lobby.cockpit_rows = {
+        "game": [
+            {"seat": "P2", "token": token_a, "provider": "scripted", "model": "", "level": "normal", "proc": None},
+            {"seat": "P3", "token": token_b, "provider": "scripted", "model": "", "level": "hard", "proc": None},
+        ],
+    }
+    lobby.workers = type("W", (), {
+        "workers": {"game": type("P", (), {"port": 8050})()},
+        "game_dir": lambda self, gid: tmp_path / gid,
+    })()
+    lobby.store = type("S", (), {"game": lambda self, gid: {"settings": settings}})()
+    launched: list[dict] = []
+
+    def fake_launch(*args, **kwargs):
+        launched.append({"args": args, **kwargs})
+        return type("Proc", (), {"poll": lambda self: None, "terminate": lambda self: None})()
+
+    monkeypatch.setattr(lobby, "launch_browser_seat", fake_launch)
+    lobby._launch_cockpit("game")
+    assert [row["args"][1] for row in launched] == ["P2", "P3"]
+    assert [row["level"] for row in launched] == ["normal", "hard"]
+    assert token_a not in str(launched[0]["run_dir"])
+    assert launched[0]["run_dir"] != launched[1]["run_dir"]
+    card = pages.created(
+        "Galaxy War Command",
+        game={"id": "game", "name": "Alpha", "settings": {**settings, "day_seconds": 1800}},
+        join_links=[], watch_link="http://127.0.0.1/g/game/watch",
+        cockpit={"status": "two", "seat": "P2", "href": "/games/game/ai-seat",
+                 "seats": lobby.cockpit_public("game")},
+    )
+    assert "AI cockpit seat P2: scripted normal, running" in card
+    assert "AI cockpit seat P3: scripted hard, running" in card
+    assert 'data-cockpit="stop"' in card
+    assert "/games/game/ai-seat/P2/stop" in card
+    assert "/games/game/ai-seat/P3/stop" in card
+    assert token_a not in card and token_b not in card
+    stopped = {"n": 0}
+
+    class Proc:
+        def poll(self):
+            return None
+
+        def terminate(self):
+            stopped["n"] += 1
+
+    lobby.cockpit_rows["game"][0]["proc"] = Proc()
+    lobby.cockpit_rows["game"][1]["proc"] = Proc()
+    assert lobby.stop_cockpit_seat("game", "P2") is True
+    assert stopped["n"] == 1
+    assert lobby.cockpit_rows["game"][1]["proc"].poll() is None
+
+
 def _numbers(log: str, key: str) -> list[int]:
     import re
 
