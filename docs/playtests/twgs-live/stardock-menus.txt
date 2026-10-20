@@ -1,0 +1,85 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+Sector 144. Beacon: FedSpace, FedLaw Enforced.
+Ports: Stargate Alpha I, Class 9 (Special) (StarDock)
+
+Port choice:
+<A> Attack this Port
+<S> Land on the StarDock
+<T> Trade at this Port
+<Q> Quit, nevermind
+
+After landing, one turn deducted. <StarDock> Where to?
+
+Obvious places:
+<C> The CinePlex Videon Theatres
+<G> The 2nd National Galactic Bank
+<H> The Stellar Hardware Emporium
+<L> The Libram Universitatus
+<P> The Federal Space Police HQ
+<S> The Federation Shipyards
+<T> The Lost Trader's Tavern
+
+Not on that list:
+B opens: This is a rather seedy looking single's bar. Are you sure you want to go in there?
+U opens the Underground door: What's the password, eh?
+
+Tavern menu:
+<A> Make an Announcement
+<B> Buy something from the bar
+<C> Eavesdrop on conversations
+<E> Order some food
+<G> Try your hand at Tri-Cron
+<T> Talk to the grimy Trader in back
+<U> Use the facilities
+<;> Chat with fellow bar-mates
+
+Tavern prices read on this visit:
+Announcement: There is a 100 credit charge for posting an announcement.
+Bar: The barkeep eyes you and says: "It'll be 80 credits, will you pay?" Declined.
+Food: (24 credits/plate, pay it?) Declined.
+
+Hardware menu:
+<A> Atomic Detonators  <B> Marker Beacons  <C> Corbomite Devices
+<D> Cloaking Devices  <E> SubSpace Ether Probes  <F> Planet Scanners
+<L> Limpet Tracking Mines  <M> Space Mines  <P> Photon Missiles
+<R> Long Range Scanners  <S> Mine Disruptors  <T> Genesis Torpedoes
+<W> TransWarp Drives  <Y> Psychic Probes
+
+Library, no charge:
+<A> Archive of Alien Races
+<B> Archive of Galactic Organizations
+<C> Miscellaneous Documents
+<Q> To Leave
+
+Police:
+<A> Apply for a Federal Commission
+<C> Claim a Federation Reward
+<E> Examine the Ten Most Wanted List
+<P> Post a Reward on someone
+
+Shipyard:
+<B> Buy a New Ship
+<S> Sell extra Ships
+<E> Examine Ship Specs
+<P> Buy Class 0 Items
+<R> Change Ship Registration
+
+Class 0 prices, Sol and the shipyard, same list:
+A  Cargo holds     :    629 credits / next hold
+B  Fighters        :    218 credits per fighter
+C  Shield Points   :    131 credits per point
+Bought 1 shield. Credits 228, then 96.
+
+Bank:
+<D> Make a Deposit
+<E> Examine Balance
+<T> Transfer Funds
+<W> Withdraw Funds
+
+Grimy, this visit, declined:
+STARDOCK: Would ye pay me 23 credits for it?
+UNDERGROUND: 2,500 credits, then on the next ask 600 credits.
+PASSWORD as a topic: 1,500 credits.
+The free follow-up after declining UNDERGROUND: The password will cost ya 160, will ye pay?
+Paid 160. Credits 300, then 140.

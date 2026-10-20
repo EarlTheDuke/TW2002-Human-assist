@@ -1,0 +1,20 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+Underground menu has no goods for sale. The keys are Collect, View hits, Name change, Place a contract, Leave.
+No item name and no goods price appeared there.
+
+Singles bar, StarDock B, answered Yes:
+You feel rather nervous as you enter this rather seedy establishment.
+But after a few drinks you begin to carouse with members of the opposite
+sex and you forget about your surroundings. You emerge from the place
+a few hours later with a nasty headache and you notice that your account
+on your VidCreditCard is much lower than when you entered.
+Credits on the previous tavern line: 140.
+Next hardware line: You have 93 credits.
+The screen did not print the price. The balance fell by 47. No item name.
+
+Cineplex, show 1:
+You'll LOVE "Vulcan Thunder" hehheh100 Credits Please (Pay it? Y/N)
+Declined. The other titles on the board were Ferrengi Nights, Star Trek XXXVII, Lil' Neutron, Debbie Does Rigel. Their prices were not opened.
+
+Library charged nothing and listed archives, not goods.

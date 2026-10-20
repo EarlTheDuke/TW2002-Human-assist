@@ -1,0 +1,21 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+Underground menu, after the door opened. The new-password question was declined, so the door password was not changed.
+
+<C> Collect on Contract
+<H> View Hit Contracts
+<N> Get your Name Changed
+<P> Place a Contract
+<Q> Leave this place
+
+N:
+You move over to take a seat next to Kal Durak's desk as
+the alien searches his computer for info about you.
+
+"Seems you're a total unknown, this'll be cheap."
+"We can give you a new identity for 100 credits."
+
+"Well, is it a deal?"
+Answered No.
+
+Info at that time: Rank and Exp : 1 points, Alignment=0 Neutral. Credits on hand were 140, then later 93. The 100 credit price was not paid.
