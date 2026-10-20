@@ -652,6 +652,17 @@ def full_length_turns_override(config: object, existing: int | None) -> int | No
     return full_length_daily_cap(int(getattr(config, "max_days", None) or FULL_LENGTH_REFERENCE_DAYS))
 
 
+# NOTE 136. A playtest can move the day mark so a 24-hour day can roll without
+# waiting. Stored default is legacy. "1" does not turn this on, and
+# V311_PROFILE does not either. It is not a profile helper.
+PLAYTEST_CLOCK_NUDGE_MODE = "legacy"  # "legacy" | "on"
+
+
+def playtest_clock_nudge_on() -> bool:
+    """True only when this process set PLAYTEST_CLOCK_NUDGE_MODE to on."""
+    return PLAYTEST_CLOCK_NUDGE_MODE == "on"
+
+
 def opening_loadout(spec_credits: int, spec_turns: int, slot: int,
                     credits_override: int | None = None,
                     turns_override: int | None = None) -> tuple[int, int, int]:
