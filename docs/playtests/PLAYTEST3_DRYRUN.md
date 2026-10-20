@@ -1,55 +1,76 @@
 # Playtest 3 dry run
 
-NOTE 153. Checklist: `docs/playtests/PLAYTEST3_READINESS.md` on `track-g-note136` (that file is not on this tip). This run followed that list on `feature/grokbot-player` at `ea20cf86`, with the two routing fixes below.
+NOTE 155. Checklist: `docs/playtests/PLAYTEST3_READINESS.md` on `track-g-note136` (that file is not on this tip). This run was recorded on `feature/grokbot-player` at `7b831056`, branch `track-g-note155`. The commit is replayed onto `fdd4f11`.
 
-Game `7b31c521`, "Playtest 3 dry run". Lobby `127.0.0.1:8020`, worker `8021`. State `/tmp/playtest3-dryrun2` (not in the repo). `V311_PROFILE=v311` came from the form's v3.11 rule set. Shots are in `playtest3-dryrun-v1/`.
+Game `176a6837`, "Playtest 3 dry run". Lobby `127.0.0.1:8020`, worker `8023`. State `/tmp/playtest3-dryrun10` (not in the repo). `V311_PROFILE=v311` came from the form's v3.11 rule set. Shots are in `playtest3-dryrun-v1/`.
 
 ## Ports
 
-The lobby refuses 8031–8098, so the open pockets inside that block cannot host it. 8099–8119 are the standing lobby. This run used 8020 for the lobby and 8021 for the game. Both are outside 8031–8037, 8041, 8042, 8045–8049, 8055–8119, and 8099–8119.
+The lobby refuses 8031–8098, so the open pockets inside that block cannot host it. 8099–8119 are the standing lobby. This run used 8020 for the lobby and 8023 for the game. Both are outside 8031–8037, 8041, 8042, 8045–8049, 8055–8119, and 8099–8119.
 
 ## Lineup
 
 The readiness list asks for a full-length 2-day game, one scripted cockpit, one code bot, and one heuristic AI opponent. This note asks for 3 fast days, 2 human browser seats, and 2 AI cockpit seats. The dry run used that request:
 
 - Rule set v3.11, 100,000 credits, Original 250 turns, 200 sectors, 3 days
-- Game length fast, day length 300 seconds (a `5m` preset added for this lobby only)
+- Game length fast, day length 480 seconds (the `8m` preset on this lobby only)
 - 2 human seats, 1 code bot (Vega), 0 harness AI opponents, Ferrengi on
 - 2 scripted hard AI cockpit seats
 - Listed, hold the clock until the first player opens a seat
 
 `AI_COCKPIT_SEAT_MODE` stays `legacy` in the tree. The lobby process set it to `tw2002` before `run()`, which is what shows the cockpit checkbox. v3.11 does not turn that switch on by itself.
 
-## Fixes before the rerun
+## What changed for this pass
 
-Two small public-mode bugs stopped the first pass. The engine was not changed. Profile-off behavior is unchanged. The scripted-match digests were not at risk.
+The engine was left alone. `/bot` (the old page) was left alone. No profile-off guard moved. The scripted-match digests were not re-run; no engine file changed, so they stay at `24863a3d` for seed 250925 and `98a47c8a` for seed 4242.
 
-1. A browser on the worker's own `/bot` page, which is how the scripted cockpit seat opens, asks for `/g/<id>/static` and `/g/<id>/harness` because the page is rewritten with `TW2K_BASE_PATH`. The worker only served those routes without the prefix, so the script loaded and the screen stayed `day=- turns=-- sector=-`. `AcceptBasePath` strips that prefix on the worker. The public lock still sees the path after the strip, so `/control` stays closed.
-2. The in-game Manual link is rewritten to `/g/<id>/manual`. `/manual` was outside the open list, so the cockpit received `{"detail":"not available in this game"}`. `/manual` is now an open path. The player manual has no seat token.
+1. The created page prints one cockpit link per human seat. The link is `seat_link`: `{origin}/g/{id}/bot?seat=…&token=…&layout=redesign`. The origin is the Cloudflare share base when the request arrives on loopback with `X-Forwarded-Host` and `X-Forwarded-Proto: https`. The link is plain text in `code.link` with `user-select: all`, so it can be copied. Opening that link claims the seat for the guest, which is how the creator ends the game. A later resume in the same lobby process keeps the published human token, so the printed link still matches. The raw token stays out of sqlite; the lobby stores the sha256 only.
+2. The scripted seat acts only when the chip says `YOUR MOVE`. A click while the chip says `WAITING` was queued and fired on a later turn, so the buy and the sell missed day 1. The runner now waits out `WAITING` and clicks the visible trade button by its exact label. On a known one-hop pair the scripted trader's first two decisions are a buy and then a sell.
+3. The worker serves `/g/<id>/manual` and `/g/<id>/static` on its own port. The scripted seat opens the worker directly, and the rewritten page asks for those prefixed paths. `/control` stays closed after the prefix is stripped.
 
-After the fix the scripted seats parsed the screen and played. P3 log: `screen day=1 turns=250 credits=100,000 cr nw=123,650 chip=YOUR MOVE sector=189`, then lift off and warps. By day 3, P3 had sold cargo (`credits=102,280`) and P4 had bought and sold (`step 69 click BUY 32`).
+The earlier Guest 1 miss was the dry-run driver. It left the port after one hop and treated the previous result line as a new trade. This run waits until the result line itself says `buy` or `sell`. Both human seats bought on day 1.
+
+The second human fight needs both seats in Vega's sector before either one attacks. The first hit, taken while the other seat is still buying fighters, lets Vega leave before the second seat presses A. This run held the second seat until both had fighters, then seat 1 struck and seat 2 struck on the following turn, while the scheduler was still waiting on seat 2.
 
 ## Checklist
 
 | Item | Result | Evidence |
 | --- | --- | --- |
 | Disclaimer, "I understand" | Pass | `playtest3-dryrun-v1/01-disclaimer.png` |
-| New-game lineup above | Pass | `02b-form-filled.png`, created page "Day length: 300s" |
+| New-game lineup above | Pass | `02b-form-filled.png`. Created page: "Day length: 480s". |
 | Created page: scripted cockpit running | Pass | "AI cockpit seat P3: scripted hard, running" and the same for P4. `03-created.png` |
-| Created page: https token cockpit links with `layout=redesign` | Fail | The page prints lobby join links, `http://127.0.0.1:8020/join/7b31c521/P1?k=…` and P2. Opening one lands on `/g/7b31c521/bot?seat=P1&mode=cu`, which is the redesign cockpit. The link itself has no `token` and no `layout=redesign`. That shape is the unmerged note 136 created page. |
-| Both seats land at home, 100,000 cr, 250/250, YOUR MOVE, day line | Pass | P1 sector 29, "You are LANDED on Guest 1's Home", `TURNS250/250 (full)`, "Day 1 ends in 04:56", YOUR MOVE, 100,000 cr. `04-cockpit-p1.png`. P2 sector 147, Guest 2's Home, same pocket, first paint was WAITING until P1 moved. `04-cockpit-p2.png`. The turn line and the day line sit in the header stat, and both were readable at 1280. |
+| Created page: per-seat cockpit link, token, `layout=redesign`, copyable, https when sharing is on | Pass | The scratch lobby has no tunnel, so the page printed `http://127.0.0.1:8020/g/176a6837/bot?seat=P1&token=…&layout=redesign` and the same for P2, under "Send each player their cockpit link." The link is a text block. The same builder, given `X-Forwarded-Host: blue-pond.trycloudflare.com` and `X-Forwarded-Proto: https`, prints `https://blue-pond.trycloudflare.com/g/{id}/bot?seat=P1&token=…&layout=redesign`. `tests/test_selfhost_beta_v1.py::test_created_page_prints_one_copyable_cockpit_link_per_seat` checks that URL, `user-select:all`, and that opening P1's link claims P1. `03-created.png` |
+| Both seats land at home, 100,000 cr, 250/250, YOUR MOVE, day line | Pass | P1 sector 18, "You are LANDED on Guest 1's Home", `TURNS250/250 (full)`, "Day 1 ends in 07:58", YOUR MOVE, 100,000 cr. `04-cockpit-p1.png`. P2 sector 40, Guest 2's Home, same pocket; the first paint was WAITING until P1 moved. `04-cockpit-p2.png`. The turn line and the day line sit in the header stat, and both were readable at 1280. |
 | Q, lift off, "ok — lifted off." | Pass | Both seats: "ok — lifted off. Turns spent 1. Credits +0." `06-liftoff-P1.png`, `06-liftoff-P2.png` |
-| Trade at a BUY or SELL port | Pass on P2, fail on P1 | P2 at Beta-147 Class 5 (SBS) clicked BUY 20. The match log is `Guest 2 buy 20 fuel_ore @ 15cr = 300cr`. End credits 88,817 match 100,000 − 300 − 1,015 fighters − 9,868 tax. Holds at the end were 20/20. `07-trade-P2.png`. P1's first ports had nothing to sell into empty holds, and the driver moved on after one hop. Guest 1 has no trade event. End credits 89,087 match 100,000 − 1,015 − 9,898 tax. |
-| Warp one hop, clip, turn drop | Pass | P1 `1:29 (3t)`, clip `merchant_cruiser.gate.06`, "ok — warped 109 → 29. Turns spent 3." `08-warp-clip-P1.png`, `08-warp-P1.png`. P2 clip `merchant_cruiser.streak.01`, "ok — warped 147 → 15. Turns spent 3." |
+| Trade at a BUY or SELL port | Pass | P1 at sector 18: "ok — buy 20 organics @ 34 cr = 680 cr." Event: "Guest 1 buy 20 organics @ 34cr = 680cr". `07-trade-P1.png`. P2 at sector 40: "ok — buy 20 fuel ore @ 17 cr = 340 cr." Event: "Guest 2 buy 20 fuel_ore @ 17cr = 340cr". `07-trade-P2.png` |
+| Warp one hop, clip, turn drop | Pass | P1 `1:11 (3t)`, clip `merchant_cruiser.chase.10`, "ok — warped 18 → 11. Turns spent 3." `08-warp-clip-P1.png`. P2 `1:49 (3t)`, clip `merchant_cruiser.gate.06`, "ok — warped 40 → 49. Turns spent 3." `08-warp-clip-P2.png` |
 | StarDock, Class 9, Terra unclaimable | Pass | Both reached sector 1. "Sol-1 StarDock, Class 9 (STARDOCK)". "Terra (colonist source, cannot be claimed)." `09-stardock-P1.png` |
-| Buy fighters, "ok — bought … fighters" | Pass | Both: "ok — bought 5 fighters for 1,015 cr." `10-fighters-P1.png` |
-| Fight the code bot | Pass | Attack list: "Vega, a Merchant Cruiser, 430 fighters, 0 shields (code bot)". Both seats sent 10 fighters in sector 1. Log: "Combat in 1: Guest 1 sent 10 fighters, lost 10; Vega lost 0 shields and 10 fighters" and the same line for Guest 2. Fighters on the day-2 header are 25 (30 starting + 5 bought − 10 lost). `11-combat-P1.png` shows Vega in sector 1; the result line in that shot is still the fighter purchase because the driver matched the previous ok line. |
-| Manual is the v3.11 player manual, with the full-length paragraph | Pass for the manual, fail for that paragraph | Both seats opened Manual from the header. Title "Galaxy War Command", "These numbers are this game's settings", Profile row v3.11. `12-manual-P1.png`. The fast game's page does not include "Full-length games use a 24-hour day". That paragraph is added when the game is full-length. This run was a 300-second day. |
+| Buy fighters, "ok — bought … fighters" | Pass | Both: "ok — bought 5 fighters for 1,015 cr. Turns spent 0." `10-fighters-P1.png`, `10-fighters-P2.png` |
+| Fight the code bot | Pass | Both seats sent 10 fighters at Vega in sector 1. P1: "You lost 10 fighters and 0 shields, 25 fighters remain. Vega lost 10 fighters and 0 shields." P2: the same line, Vega then on 410 fighters. Events: "Combat in 1: Guest 1 sent 10 fighters, lost 10; Vega lost 0 shields and 10 fighters" and the same for Guest 2. `11-combat-P1.png`, `11-combat-P2.png` |
+| Manual is the v3.11 player manual | Pass | Both seats opened Manual from the header. Title "Galaxy War Command", "These numbers are this game's settings", Profile row v3.11. `12-manual-P1.png` |
+| Manual includes the full-length 24-hour paragraph | N/A | This was a fast game (480-second day). That paragraph is printed for a full-length game. The fast game's manual does not include it, and the manual renderer was left unchanged. |
 | Layout: larger font, then Reset layout | Pass | Both seats: computed `--cockpit-font` was `17px`, then `default` after Reset layout. `13-layout-P1.png`, `14-layout-reset-P1.png` |
-| Day 2, each seat acts | Pass | Header DAY 2/3. Subspace log "Day 2 dawns". P1 "ok — warped 1 → 42" clip `merchant_cruiser.headon.03`. P2 the same hop, clip `merchant_cruiser.chase.02`. `08-warp-P1-day2.png` |
-| Day 3, each seat acts | Pass | Header DAY 3/3. P1 "ok — warped 42 → 1. Turns spent 3, 1 came back." clip `merchant_cruiser.headon.07`. P2 the same hop, clip `merchant_cruiser.top.08`. `08-warp-P1-day3.png` |
-| Creator ends the game | Pass | `?` menu, End game for everyone, confirm. Header chip GAME OVER. Panel on P1: "GAME OVER - Ended by the game's creator. Decided by experience: 1st AI cockpit 2 10, 2nd AI cockpit 1 8, 3rd Vega 4, 4th Guest 2 3, 5th Guest 1 1. You finished 5th of 5." P2 shows the same ranking and "You finished 4th of 5." Match event: "Ended by the game's creator. AI cockpit 2 leads on experience (10)". `16-game-over-p1.png`, `16-game-over-p2.png` |
+| Day 2, each seat acts | Pass | "Day 2 dawns". P1 "ok — warped 1 → 7. Turns spent 3, 1 came back." clip `merchant_cruiser.side.09`. P2 "ok — warped 1 → 7. Turns spent 3." clip `merchant_cruiser.headon.03`. `08-warp-P1-day2.png`, `08-warp-P2-day2.png` |
+| Day 3, each seat acts | Pass | "Day 3 dawns". Header DAY 3/3. P1 "ok — warped 7 → 1. Turns spent 3." clip `merchant_cruiser.side.05`. P2 "ok — warped 7 → 1. Turns spent 3, 1 came back." clip `merchant_cruiser.top.08`. `08-warp-P1-day3.png` |
+| Scripted AI seats trade on day 1 | Pass | While the screen still said day 1, P3 clicked `step 10 BUY 20` and `step 13 SELL 20` (and a second pair at steps 16 and 19). P4 clicked `step 9 BUY 20` and `step 12 SELL 20` (and a second pair at steps 15 and 18). Events before dawn: "AI cockpit 1 buy 20 organics @ 29cr = 580cr" and "AI cockpit 1 sell 20 organics @ 62cr = 1240cr (+660cr profit)". The same buy and sell for AI cockpit 2. |
+| Creator ends the game | Pass | `?` menu, End game for everyone, confirm. Header chip GAME OVER. Panel on P1: "GAME OVER - Ended by the game's creator. Decided by experience: 1st AI cockpit 2 21, 2nd AI cockpit 1 20, 3rd Vega 11, 4th Guest 1 4, 5th Guest 2 4. You finished 4th of 5." Match event: "Ended by the game's creator. AI cockpit 2 leads on experience (21)". Scores P4 21, P3 20, Vega 11, Guest 1 4, Guest 2 4. `16-game-over-p1.png`, `16-game-over-p2.png` |
 
-## What this run changed in the tree
+## Shots
 
-`src/tw2k/public/worker.py` adds `AcceptBasePath` and puts `/manual` on the open list. `tests/test_selfhost_beta_v1.py` covers the prefixed manual and static routes, and checks that `/g/<id>/control/end` still answers only the lobby. No profile helper was added. No profile-off guard moved.
+![Created page, cockpit links](playtest3-dryrun-v1/03-created.png)
+
+![Landed, 100,000 credits](playtest3-dryrun-v1/04-cockpit-p1.png)
+
+![Guest 1 buys organics](playtest3-dryrun-v1/07-trade-P1.png)
+
+![Guest 2 buys fuel](playtest3-dryrun-v1/07-trade-P2.png)
+
+![StarDock](playtest3-dryrun-v1/09-stardock-P1.png)
+
+![Guest 1 fights Vega](playtest3-dryrun-v1/11-combat-P1.png)
+
+![Guest 2 fights Vega](playtest3-dryrun-v1/11-combat-P2.png)
+
+![Manual, profile v3.11](playtest3-dryrun-v1/12-manual-P1.png)
+
+![Game over](playtest3-dryrun-v1/16-game-over-p1.png)
