@@ -52,7 +52,7 @@ legend{color:#ffd27f;padding:0 6px}
 .err{background:#3a1212;border:1px solid #a33;border-radius:8px;padding:10px 14px}
 .note{color:#8aa0b8;font-size:14px}
 ul.points li{margin:6px 0}
-code.link{display:block;word-break:break-all;background:#070b14;border:1px solid #1f2d45;padding:8px;border-radius:6px}
+code.link{display:block;word-break:break-all;user-select:all;-webkit-user-select:all;cursor:text;background:#070b14;border:1px solid #1f2d45;padding:8px;border-radius:6px}
 footer{border-top:1px solid #142034;padding:14px 16px 20px;font-size:14px;color:#8aa0b8;text-align:center}
 @media (max-width:600px){table.games thead{display:none}table.games td{display:block;border:0;padding:4px 0}
   table.games tr{display:block;border-bottom:1px solid #1a2638;padding:8px 0}}
@@ -617,7 +617,8 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
             f"{rows}"
         )
         links = "".join(
-            f"<p>Lobby invite {escape(seat)}<code class=\"link\">{escape(url)}</code></p>" for seat, url in join_links
+            f"<p>Lobby invite {escape(seat)}<code class=\"link\">{escape(url)}</code></p>"
+            for seat, url in join_links
         )
         invite_note = (
             "<p>A lobby invite asks the player to confirm, then opens the same cockpit. "

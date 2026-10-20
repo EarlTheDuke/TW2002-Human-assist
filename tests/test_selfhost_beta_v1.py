@@ -291,6 +291,7 @@ def test_item2_seat_token_is_handed_over_once_and_only_hashed(make_lobby, tmp_pa
     r2 = c.post(f"/api/games/{g['id']}/resume", json={})
     token2 = r2.json()["claim_url"].split("token=")[1]
     assert token2 == token
+    assert lob.seat_links[g["id"]]["P1"] == token
     assert lob.store.seats(g["id"])[0]["token_hash"] == hashlib.sha256(token2.encode()).hexdigest()
     other = TestClient(c.app)
     _accept(other)
@@ -365,6 +366,52 @@ def test_item2_one_join_link_per_open_seat(make_lobby) -> None:
     assert friend.get(f"/join/{g['id']}/P2?k=wrong").status_code == 404
     r = friend.post(f"/api/games/{g['id']}/join", json={"seat": "P2", "k": k})
     assert r.status_code == 200 and r.json()["seat"] == "P2"
+
+
+def test_created_page_prints_one_copyable_cockpit_link_per_seat(make_lobby) -> None:
+    """Each human seat gets an https cockpit link when the request is forwarded."""
+    from tw2k.public.workers import seat_ids
+
+    c, lob = make_lobby(client=("127.0.0.1", 5000))
+    real = lob.start_game
+
+    async def start(gid, *, resume):
+        ok = await real(gid, resume=resume)
+        game = lob.store.game(gid) or {}
+        humans = int((game.get("settings") or {}).get("humans") or 1)
+        lob.seat_links[gid] = {seat: f"tok{seat}" for seat in seat_ids(humans)}
+        return ok
+
+    lob.start_game = start
+    _accept(c)
+    headers = {
+        "host": "127.0.0.1:8020",
+        "x-forwarded-host": "blue-pond.trycloudflare.com",
+        "x-forwarded-proto": "https",
+    }
+    r = c.post("/api/games", json={"name": "Links", "humans": 2}, headers=headers)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    gid = body["id"]
+    links = body["cockpit_links"]
+    assert sorted(links) == ["P1", "P2"]
+    for seat in ("P1", "P2"):
+        assert links[seat] == (
+            f"https://blue-pond.trycloudflare.com/g/{gid}/bot?seat={seat}&token=tok{seat}&layout=redesign"
+        )
+    page = c.post("/new", data={"name": "Page", "humans": "2"}, headers=headers)
+    assert page.status_code == 200, page.text
+    assert "user-select:all" in page.text
+    assert page.text.count('data-testid="seat-link"') == 2
+    assert "layout=redesign" in page.text
+    assert "Send each player their cockpit link" in page.text
+    assert "Lobby invite P1" in page.text
+    opened = c.get(f"/g/{gid}/bot?seat=P1&token=tokP1", headers={"accept": "text/html"})
+    assert opened.status_code == 200
+    guest = lob.store.guest(hashlib.sha256(c.cookies.get("gwc_guest").encode()).hexdigest())
+    assert lob.store.guest_seat(gid, guest["id"]) == "P1"
+    c.get(f"/g/{gid}/bot?seat=P2&token=not-the-token", headers={"accept": "text/html"})
+    assert lob.store.seats(gid)[1]["guest_id"] is None
 
 
 def _lock_app() -> Starlette:
