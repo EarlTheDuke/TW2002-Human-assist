@@ -151,11 +151,20 @@ class LobbyConfig:
 
 
 def port_is_free(port: int, host: str = "127.0.0.1") -> bool:
-    """True when nothing listens on host:port. Binds briefly; never connects to or signals the owner."""
+    """True when nothing listens on host:port. Binds briefly; never connects to or signals the owner.
+
+    A connection the server already closed can keep the port in wait for a minute.
+    That is not a listener. On POSIX the probe sets SO_REUSEADDR so a restart can
+    bind again while that wait runs. A socket that is still listening still fails
+    the bind. Windows keeps the exclusive probe, because SO_REUSEADDR there would
+    hide a live listener.
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        elif os.name != "nt":
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((host, port))
         return True
     except OSError:

@@ -9,6 +9,7 @@ import hmac
 import json
 import logging
 import logging.handlers
+import os
 import secrets
 import shutil
 import time
@@ -210,7 +211,13 @@ class Lobby:
             w = self.workers.workers.get(gid)
             if w is not None and w.alive():
                 return True
-            snap = W.latest_snapshot(self.workers.game_dir(gid) / "snapshots") if resume else None
+            snap = None
+            if resume:
+                snap, corrupt = W.choose_snapshot(self.workers.game_dir(gid) / "snapshots")
+                if corrupt:
+                    log.warning("corrupt save game=%s", gid)
+                    self.store.set_game(gid, status="failed", pid=None, note=W.CORRUPT_SAVE)
+                    return False
             taken = self.workers.ports_in_use() | self.reserved_ports
             port = pick_port(self.cfg, taken, probe=self._probe)
             if port is None:
@@ -223,7 +230,12 @@ class Lobby:
                 human_seats = seat_ids(humans_n)
                 ai_seats = ai_seat_ids(humans_n, ai_count(g["settings"]))
                 cock_seats = cockpit_seat_ids(humans_n, len(ai_seats), cockpit_count(g["settings"]))
-                tokens = {seat: new_seat_token() for seat in [*human_seats, *ai_seats, *cock_seats]}
+                memory = self.seat_links.get(gid) or {}
+                saved = self._load_seat_tokens(gid)
+                tokens = {}
+                for seat in [*human_seats, *ai_seats, *cock_seats]:
+                    tokens[seat] = self._kept_token(memory.get(seat)) or saved.get(seat) or new_seat_token()
+                self._store_seat_tokens(gid, tokens)
                 self.seat_links[gid] = {seat: tokens[seat] for seat in human_seats}
                 for seat in human_seats:
                     self.store.set_seat_hash(gid, seat, sha256_hex(tokens[seat]))
@@ -368,6 +380,12 @@ class Lobby:
                 path=direct_seat_url(seat, str(row["token"])),
             )
             row["proc"] = proc
+            if proc is not None and getattr(proc, "pid", None):
+                pid_path = self.workers.game_dir(gid) / "ai-cockpit" / "player.pid"
+                if len(rows) > 1:
+                    pid_path = self.workers.game_dir(gid) / "ai-cockpit" / seat / "player.pid"
+                pid_path.parent.mkdir(parents=True, exist_ok=True)
+                pid_path.write_text(str(int(proc.pid)) + "\n", encoding="ascii")
             procs.append(proc)
         if len(procs) == 1:
             return procs[0]
@@ -521,18 +539,66 @@ class Lobby:
         except httpx.HTTPError:
             return None
 
+    def _kept_token(self, value: object) -> str | None:
+        """A seat token this process or the seat file already issued. Short values are not tokens."""
+        if isinstance(value, str) and len(value) >= 32:
+            return value
+        return None
+
+    def _seat_token_path(self, gid: str) -> Path:
+        return self.workers.game_dir(gid) / "seat-tokens.json"
+
+    def _load_seat_tokens(self, gid: str) -> dict[str, str]:
+        """Tokens that must keep working after this process dies. Missing or damaged reads as none."""
+        path = self._seat_token_path(gid)
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return {}
+        if not isinstance(data, dict):
+            return {}
+        out: dict[str, str] = {}
+        for key, value in data.items():
+            if isinstance(key, str) and isinstance(value, str) and len(value) >= 32:
+                out[key] = value
+        return out
+
+    def _store_seat_tokens(self, gid: str, tokens: dict[str, str]) -> None:
+        """Remember the current seat tokens on disk. The file is not the sqlite hash, and it is not logged."""
+        path = self._seat_token_path(gid)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        current = self._load_seat_tokens(gid)
+        current.update({str(seat): str(token) for seat, token in tokens.items() if token})
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(current, sort_keys=True) + "\n", encoding="utf-8")
+        try:
+            os.chmod(tmp, 0o600)
+        except OSError:
+            pass
+        os.replace(tmp, path)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+
     async def hand_seat(self, gid: str, seat: str) -> str | None:
         """The seat's token, set on the worker; only its hash stays with the lobby.
 
-        A cockpit link already published for this seat keeps that same token.
-        A seat with no published link gets a fresh one.
+        A token already printed in a cockpit link, or saved for a restart, is
+        the one the worker keeps. A seat with neither gets a fresh token, and
+        that token is saved so the link still works after this process dies.
         """
-        published = (self.seat_links.get(gid) or {}).get(seat)
-        token = published or new_seat_token()
+        token = (
+            self._kept_token((self.seat_links.get(gid) or {}).get(seat))
+            or self._load_seat_tokens(gid).get(seat)
+            or new_seat_token()
+        )
         r = await self.worker_call(gid, "POST", "/control/seat-token", {"seat": seat, "token": token})
         if r is None or r.status_code != 200:
             return None
         self.store.set_seat_hash(gid, seat, sha256_hex(token))
+        self.seat_links.setdefault(gid, {})[seat] = token
+        self._store_seat_tokens(gid, {seat: token})
         return token
 
     def claim_url(self, gid: str, seat: str, token: str) -> str:
@@ -631,7 +697,12 @@ class Lobby:
         restore = self.store.games(LIVE)
         for g in restore:
             log.info("restore game=%s from its latest snapshot", g["id"])
-        await asyncio.gather(*(self.start_game(g["id"], resume=True) for g in restore))
+        results = await asyncio.gather(*(self.start_game(g["id"], resume=True) for g in restore),
+                                       return_exceptions=True)
+        for g, item in zip(restore, results, strict=True):
+            if isinstance(item, Exception):
+                log.exception("restore game=%s failed", g["id"])
+                self.store.set_game(g["id"], status="failed", pid=None, note=W.CORRUPT_SAVE)
         self._task = asyncio.create_task(self._loop())
 
     async def shutdown(self) -> None:
@@ -694,10 +765,19 @@ class Lobby:
             gid: self.cockpit_public(gid)
             for gid in seat_links
         }
+        owned = self.store.created_games(guest_id)
+        mine = self.store.guest_games(guest_id)
+        trouble = []
+        seen: set[str] = set()
+        for g in list(owned) + list(mine):
+            if g["id"] in seen or g.get("status") != "failed" or g.get("note") != W.CORRUPT_SAVE:
+                continue
+            seen.add(g["id"])
+            trouble.append(g)
         return self.html(pages.lobby(
-            self.brand, games=games, mine=self.store.guest_games(guest_id),
-            owned=self.store.created_games(guest_id), closed=self.closed, full=self.full_for(1), live=self.live,
-            notes=notes, seat_links=seat_links, seat_rows=seat_rows,
+            self.brand, games=games, mine=mine,
+            owned=owned, closed=self.closed, full=self.full_for(1), live=self.live,
+            notes=notes, seat_links=seat_links, seat_rows=seat_rows, trouble=trouble,
         ))
 
     async def about(self, request: Request) -> Response:
@@ -1196,6 +1276,8 @@ class Lobby:
         text = {"finished": "This game has finished.", "failed": "This game stopped working and was not restarted.",
                 "stopped": "The host stopped this game.", "archived": "This game was archived."}.get(
             g["status"], "This game is not running.")
+        if g["status"] == "failed" and g.get("note") == W.CORRUPT_SAVE:
+            text = W.CORRUPT_SAVE
         return self.msg("Not running", text, 410) if wants_html else JSONResponse({"detail": text}, status_code=410)
 
     async def game_ws(self, ws: WebSocket) -> None:
@@ -1315,17 +1397,32 @@ class _BodyCap:
 
 def _apply_lobby_ai_env() -> None:
     """Host switch. Unset leaves the stored default. Only ``on`` and ``off`` are read."""
-    import os
-
-    from ..engine import constants as K
-
     raw = os.environ.get("LOBBY_AI_SEAT_MODE", "").strip().lower()
     if raw in ("on", "off"):
+        from ..engine import constants as K
+
         K.LOBBY_AI_SEAT_MODE = raw
 
 
-def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = None, port_probe=None) -> Starlette:
+def _apply_host_switches() -> None:
+    """Process switches for this lobby. Unset leaves each stored default.
+
+    ``AI_COCKPIT_SEAT_MODE`` accepts ``legacy`` or ``tw2002``.
+    ``FULL_LENGTH_TURN_LIMITS_MODE`` accepts ``legacy`` or ``v311``. ``1`` does not flip it.
+    """
+    from ..engine import constants as K
+
     _apply_lobby_ai_env()
+    cockpit = os.environ.get("AI_COCKPIT_SEAT_MODE", "").strip().lower()
+    if cockpit in ("legacy", "tw2002"):
+        K.AI_COCKPIT_SEAT_MODE = cockpit
+    length = os.environ.get("FULL_LENGTH_TURN_LIMITS_MODE", "").strip().lower()
+    if length in ("legacy", "v311"):
+        K.FULL_LENGTH_TURN_LIMITS_MODE = length
+
+
+def create_lobby_app(cfg: LobbyConfig | None = None, *, python: str | None = None, port_probe=None) -> Starlette:
+    _apply_host_switches()
     cfg = cfg or LobbyConfig.from_env()
     lobby = Lobby(cfg, python=python, port_probe=port_probe)
 
