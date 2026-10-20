@@ -1045,14 +1045,15 @@ def _quasar_and_interdictor() -> str:
 
 
 def _comms_panel() -> str:
-    """NOTE 142 and NOTE 145. COMMS_V311_MODE is not loaded in this process."""
+    """NOTE 142 and NOTE 145. Always names COMMS_V311_MODE and both switch states."""
     return (
         "<p>The redesign cockpit has a Comms panel on the deck. It is the turn log, labeled Comms, and the send form. "
         "You see that form when COMMS_V311_MODE is v311. The v3.11 profile turns that switch on. The string 1 does not. "
-        "While the switch is off, the sentences above are what you get, and the send form stays hidden. "
+        "While COMMS_V311_MODE is off, the send form stays hidden. You read mail with Y, a direct hail is its own order, "
+        "and a hail is filed as mail. "
         "The older cockpit page does not show this panel. Its Comms card stays the inbox and the diplomacy list.</p>"
         "<p>While the panel is on, messages show at the start of your turn and last "
-        f"{_n(K.HAIL_SHOW_SECONDS)} seconds. A line is 155 characters. You wait 2 seconds between sends. "
+        f"{_n(K.HAIL_SHOW_SECONDS)} seconds. A line is {_n(K.COMMS_LINE_MAX)} characters. You wait 2 seconds between sends. "
         "The form is To, then Message, then Send. To is Fed Comm, Sub-space radio, Hail, or Corporation. "
         f"Sub-space radio uses a channel from 1 to {_n(K.RADIO_CHANNEL_MAX)}. "
         "Everyone tuned to that channel hears it. Channel 0 turns the radio off, and that is how you start. Tune sets the channel. "
@@ -1356,8 +1357,9 @@ def _stardock_services(f: dict) -> str:
 
 
 def _communications(_f: dict) -> str:
+    """One section. It always names COMMS_V311_MODE and says what the switch does on and off."""
     if K.comms_v311_live():
-        return (
+        now = (
             "<p>The Comms panel sits on the deck with the other panels. "
             f"Messages are shown at the start of your turn and last {_n(K.HAIL_SHOW_SECONDS)} seconds. "
             f"A line is {_n(K.COMMS_LINE_MAX)} characters. "
@@ -1373,33 +1375,39 @@ def _communications(_f: dict) -> str:
                 "The reply is a short line, it waits 2 seconds between messages, and it may send one corporation memo about its plan.",
                 "",
             )
-            + _src("Fed Comm, sub-space radio, a private hail, and the corporation memo.")
         )
-    hail = _gated(
-        K.mail_live(),
-        f"a hail to an open cockpit flashes for {_n(K.HAIL_SHOW_SECONDS)} seconds. "
-        "A hail to a trader who is away waits as mail, and the cockpit says there is new mail.",
-        "a hail is delivered into the other trader's mail either way. There is no separate flash.",
-    )
-    radio = _gated(
-        K.radio_channel_live(),
-        f"your corporation shares a radio channel from 0 to {_n(K.RADIO_CHANNEL_MAX)}. "
-        "Only corp mates on that channel hear it.",
-        "corporation chat is the one memo. There is no radio channel.",
-    )
-    fed = _gated(
-        K.fedcomm_live(),
-        f"when the nightly sweep clears your fighters in a Federation lane, you also get the line: {escape(K.FEDCOMM_MSL_LINE)}",
-        "the nightly sweep still clears Federation lanes. You do not get a separate Federation note.",
-    )
+    else:
+        hail = _gated(
+            K.mail_live(),
+            f"a hail to an open cockpit flashes for {_n(K.HAIL_SHOW_SECONDS)} seconds. "
+            "A hail to a trader who is away waits as mail, and the cockpit says there is new mail.",
+            "a hail is delivered into the other trader's mail either way. There is no separate flash.",
+        )
+        radio = _gated(
+            K.radio_channel_live(),
+            f"your corporation shares a radio channel from 0 to {_n(K.RADIO_CHANNEL_MAX)}. "
+            "Only corp mates on that channel hear it.",
+            "corporation chat is the one memo. There is no radio channel.",
+        )
+        fed = _gated(
+            K.fedcomm_live(),
+            f"when the nightly sweep clears your fighters in a Federation lane, you also get the line: {escape(K.FEDCOMM_MSL_LINE)}",
+            "the nightly sweep still clears Federation lanes. You do not get a separate Federation note.",
+        )
+        now = (
+            "<p>Y reads mail. A direct hail is its own order. Computer A makes an announcement. "
+            "A corporation memo is on the corporate menu.</p>"
+            + hail
+            + radio
+            + fed
+        )
     return (
-        "<p>Y reads mail. A direct hail is its own order. Computer A makes an announcement. "
-        "A corporation memo is on the corporate menu.</p>"
-        + hail
-        + radio
-        + fed
+        now
         + _comms_panel()
-        + _src("Hail, mail, the corporation radio channel, Fed Comm, and the redesign Comms panel.")
+        + _src(
+            "Hail, mail, the corporation radio channel, Fed Comm, sub-space radio, "
+            "a private hail, the corporation memo, and the redesign Comms panel."
+        )
     )
 
 
