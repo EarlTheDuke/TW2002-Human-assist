@@ -290,11 +290,64 @@ def test_item2_seat_token_is_handed_over_once_and_only_hashed(make_lobby, tmp_pa
     lob.store.__init__(lob.cfg.db_path)
     r2 = c.post(f"/api/games/{g['id']}/resume", json={})
     token2 = r2.json()["claim_url"].split("token=")[1]
-    assert token2 != token
+    assert token2 == token
     assert lob.store.seats(g["id"])[0]["token_hash"] == hashlib.sha256(token2.encode()).hexdigest()
     other = TestClient(c.app)
     _accept(other)
     assert other.post(f"/api/games/{g['id']}/join", json={}).status_code == 409
+
+
+def test_tokens_from_both_old_paths_still_authenticate(make_lobby, tmp_path) -> None:
+    """A printed #70 link and a saved #73 file token both still open the seat.
+
+    The worker learns the raw token. Authentication is the harness compare
+    against that token. The sqlite row keeps only the sha256.
+    """
+    from tw2k.public.security import new_seat_token, sha256_hex
+    from tw2k.server.harness_tokens import verify
+
+    c, lob = make_lobby()
+    _accept(c)
+    published = new_seat_token()
+    g = _game(c, humans=1)
+    gid = g["id"]
+    lob.seat_links[gid] = {"P1": published}
+    lob.store.set_seat_hash(gid, "P1", sha256_hex(published))
+    path = lob._seat_token_path(gid)
+    if path.exists():
+        path.unlink()
+    joined = c.post(f"/api/games/{gid}/join", json={})
+    assert joined.status_code == 200, joined.text
+    handed = joined.json()["claim_url"].split("token=", 1)[1]
+    worker = lob.calls[-1][1]["token"]
+    assert handed == published == worker
+    assert verify(published, worker)
+    assert not verify(new_seat_token(), worker)
+    assert lob.store.seats(gid)[0]["token_hash"] == sha256_hex(published)
+    assert published.encode() not in (tmp_path / "selfhost" / "lobby.sqlite3").read_bytes()
+    lob.seat_links.clear()
+    again = c.post(f"/api/games/{gid}/resume", json={})
+    assert again.json()["claim_url"].split("token=", 1)[1] == published
+    assert verify(published, lob.calls[-1][1]["token"])
+
+    filed = new_seat_token()
+    g2 = _game(c, humans=1)
+    gid2 = g2["id"]
+    lob.seat_links.pop(gid2, None)
+    lob.store.set_seat_hash(gid2, "P1", None)
+    lob._store_seat_tokens(gid2, {"P1": filed})
+    mode = lob._seat_token_path(gid2).stat().st_mode & 0o777
+    assert mode == 0o600
+    lob.seat_links.clear()
+    joined2 = c.post(f"/api/games/{gid2}/join", json={})
+    assert joined2.status_code == 200, joined2.text
+    handed2 = joined2.json()["claim_url"].split("token=", 1)[1]
+    worker2 = lob.calls[-1][1]["token"]
+    assert handed2 == filed == worker2
+    assert verify(filed, worker2)
+    assert not verify(published, worker2)
+    assert lob.store.seats(gid2)[0]["token_hash"] == sha256_hex(filed)
+    assert filed.encode() not in (tmp_path / "selfhost" / "lobby.sqlite3").read_bytes()
 
 
 def test_item2_one_join_link_per_open_seat(make_lobby) -> None:
