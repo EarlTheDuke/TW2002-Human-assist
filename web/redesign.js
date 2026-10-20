@@ -4391,6 +4391,18 @@
       });
     });
   }
+  function selfDestructInGame() {
+    return !!LA("self_destruct");
+  }
+  function beginSelfDestruct() {
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "begin-self-destruct";
+    m.innerHTML = '<div class="y">Begin Self Destruct</div><div data-ask="destruct">ARE YOU SURE CAPTAIN? (Y/N) [N]</div>'
+      + '<br><span class="dk">Y to confirm. N or Enter aborts.</span>';
+    reveal(m);
+  }
   function backtrack() {
     const prev = typeof cameFrom === "number" ? cameFrom : null;
     const warps = (((S && S.sector) || {}).warps_out || []).map(Number);
@@ -5579,7 +5591,10 @@
       ? '<div class="row"><button type="button" id="endForEveryone" data-testid="end-for-everyone">End game for everyone</button></div>'
       : "";
     return '<div class="y">' + (which === "C" ? "Computer command" : "Main menu") + "</div>" + clockNote +
-      list.map(([kk, l]) => '<div class="row"><kbd>&lt;' + kk + "&gt;</kbd> <span class=\"c\">" + l + "</span></div>").join("") +
+      list.map(([kk, l]) => {
+        const label = which === "C" && kk === "B" && selfDestructInGame() ? "Begin Self Destruct" : l;
+        return '<div class="row"><kbd>&lt;' + kk + "&gt;</kbd> <span class=\"c\">" + label + "</span></div>";
+      }).join("") +
       endRow + '<br><span class="dk">Esc to close</span>';
   }
   function wireEnd() {
@@ -5588,6 +5603,26 @@
   }
   function key(k) {
     const m = $("menu");
+    if (m && m.dataset.screen === "begin-self-destruct") {
+      if (k === "Y") {
+        m.hidden = true;
+        m.dataset.screen = "";
+        return act("self_destruct", {}, "self-destruct");
+      }
+      if (k === "N" || k === "Enter") {
+        m.hidden = true;
+        m.dataset.screen = "";
+        setResult("Self Destruct Aborted...", false);
+        return;
+      }
+      if (k === "Escape") {
+        m.hidden = true;
+        m.dataset.screen = "";
+        inComputer = false;
+        return;
+      }
+      return;
+    }
     if (outOfTurns() && !["Escape", "?", "D", "C", "I", "V", "G", "Y", "Z", "<", ">"].includes(k)) { setResult(noTurnsLine(), true); return; }
     if (k === "Escape") {
       const menuOpen = !m.hidden;
@@ -5619,7 +5654,7 @@
       if (k === "D") return dailyLog();
       if (k === "M") return readMail();
       if (k === "N") return navPoints();
-      if (k === "B") return backtrack();
+      if (k === "B") return selfDestructInGame() ? beginSelfDestruct() : backtrack();
       if (k === "S") return quickStats();
       if (k === "E") return findRoute();
       m.hidden = true;
@@ -5806,7 +5841,10 @@
       if (/ship destroyed/i.test(summary) && line.indexOf("ship destroyed") < 0) line = plainWords(summary);
     });
     const lost = boardCreditsLost(afterSeq);
-    if (lost && /ship destroyed/i.test(line) && line.indexOf("Credits on board lost") < 0) {
+    const losers = shipLossSides(afterSeq);
+    // Only the seat that lost the ship. A killer still sees the tribute, and
+    // must not also be told the victim's cash left the board.
+    if (lost && /ship destroyed/i.test(line) && line.indexOf("Credits on board lost") < 0 && (losers.mine || !losers.other)) {
       line += ". Credits on board lost: " + fmt(lost) + " cr";
     }
     return line;
@@ -6059,9 +6097,9 @@
       const ignored = answered ? "" : ignoredTributeLine(before - 1);
       if (ignored && body.indexOf("You ignored") < 0) body += ". " + ignored;
       const losers = shipLossSides(before - 1);
-      if (/ship destroyed/i.test(body) && !/Credits on board lost/i.test(body)) {
+      if (/ship destroyed/i.test(body) && !/Credits on board lost/i.test(body) && (losers.mine || !losers.other)) {
         let amount = boardCreditsLost(before - 1);
-        if (!amount && (losers.mine || !losers.other)) {
+        if (!amount) {
           if (delta < 0) amount = -delta;
           else if (delta > 0) amount = delta;
           else if (losers.mine && Number(creditsBefore) > 0) amount = Number(creditsBefore);
