@@ -1,0 +1,20 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+Computer menu, the label beside B:
+<B> Begin Self Destruct
+
+B:
+ARE YOU SURE CAPTAIN? (Y/N) [N]
+Answered N.
+Self Destruct Aborted...
+
+After one warp, 157 to 50, the < key:
+<Move>
+Warping to Sector 157
+That Warp Lane is not adjacent.
+The shortest path (4 hops, 12 turns) from sector 50 to sector 157 is:
+50 > (538) > (144) > (203) > 157
+Engage the Autopilot? (Y/N/Single step/Express) [Y]
+Answered N. The autopilot did not fly.
+
+B asks to destroy the ship. < plots a course back to the previous sector. They are not the same command.

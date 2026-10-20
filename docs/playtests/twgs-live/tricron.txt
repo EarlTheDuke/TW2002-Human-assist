@@ -1,0 +1,25 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+Tavern G:
+
+The current Tri-Cron Champion is Kal Durak with a score of 5000
+The jackpot now stands at 5,000 credits.
+
+Instructions, accepted as shown:
+The game will last for 10 rounds. In each round you will be dealt three Crons.
+Each Cron is a number from 0 to 9.
+which position your next cron will occupy - 1 (hundreds), 2 (tens) or 3 (ones).
+The winning number will be added to the winner's cumulative total.
+If you are declared the winner, your payback is 2 to 1.
+If you are the Top Player you win all accumulated money in the Top Player Jackpot.
+The current ante is 100 credits per match.
+
+One match was played. Credits before the ante: 128.
+Sample round lines:
+Round 1: Dealer hand = 941   House wins. Your total = 0 House total = 941
+Round 3: Dealer hand = 885   You win! Your total = 919
+Round 10: Dealer hand = 594   You win! Your total = 4472 House total = 154
+You win 100 credits!  Play again?
+You have 228 credits.
+Play again was declined.
+Net of the match: 128 to 228, which is the 100 credit profit on a 100 credit ante at 2 to 1.

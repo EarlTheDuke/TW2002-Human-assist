@@ -1,0 +1,15 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+Show today's log, daily journal S.D. 10/19/54:
+
+The Ferrengi moved at 12:00:01 AM, on 10/19/54
+
+Computer, Scan Daily Log, entire history. The journal body on each of these midnights is only that one line:
+
+10/11/54 07:32:26 AM: The Ferrengi moved at 07:32:26 AM, on 10/11/54
+10/12/54 12:00:01 AM: The Ferrengi moved at 12:00:01 AM, on 10/12/54
+10/13/54 12:00:01 AM: The Ferrengi moved at 12:00:01 AM, on 10/13/54
+10/18/54 12:00:01 AM: The Ferrengi moved at 12:00:01 AM, on 10/18/54
+10/19/54 12:00:01 AM: The Ferrengi moved at 12:00:01 AM, on 10/19/54
+
+No tax, tow, bust, port, planet, or other job name is in those journals.

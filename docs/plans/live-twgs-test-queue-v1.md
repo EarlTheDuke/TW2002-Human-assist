@@ -6,6 +6,32 @@ Settled in this slice, and not queued: an unmanned Interdictor does not hold, a 
 
 The ordered run, with setup, keys, and turn and credit estimates, is `docs/plans/live-twgs-run-sheet-v1.md`. Blank results go in `docs/plans/live-twgs-results-template-v1.csv`. Fill a copy of that CSV. `python3 scripts/live_queue_proposals.py` prints a dry-run proposal and writes nothing.
 
+## NOTE 129 results
+
+Played 19 Oct 2026 on TWGS v2.20b, Trade Wars 2002 ver 3.34b, in TW Test Game 2, as a new character. No other trader was logged in or attacked. No engine constant was changed. Captures are in `docs/playtests/twgs-live/`. Two confirmed, five different, four blocked.
+
+Unnamed nightly jobs. CONFIRMED. The journal line is "The Ferrengi moved at 12:00:01 AM, on 10/19/54", and the same single line is the journal on 10/11, 10/12, 10/13 and 10/18. No other job is named. Gap row 12.4 gets no new job. `nightly-jobs.txt`.
+
+Fed hunt. BLOCKED. Twenty colonist holds jettisoned and alignment stayed 0 Neutral, so the evil-ship pass was not run. A neutral Merchant Cruiser walked FedSpace sectors 1 through 7 and was left alone. No Federal ship was in them. `fed-hunt.txt`.
+
+StarDock menus. DIFFERENT. Live sector 144, Stargate Alpha I, class 9. The where-to list is Cineplex, Bank, Hardware, Libram Universitatus, Police, Shipyards, Tavern. B is a singles bar and U is the Underground door, and neither letter is on that list. Drink is 80 credits, food is 24 a plate, announcement is 100. Class 0 fighters are 218 and shields are 131 a point. Ours has no library and no singles bar. `TAVERN_DRINK_COST` is 20, `TAVERN_FOOD_COST` is 20, and the shield price is the flat 10. Unlocks gap row 1.8 for the library, the singles bar, and the 131 shield price. `stardock-menus.txt`.
+
+Second rob table. BLOCKED. At alignment 0 the port list is Attack, Trade, Quit. No second table was printed. `rob-table.txt`.
+
+Underground name change. DIFFERENT. At 1 experience the screen said "Seems you're a total unknown, this'll be cheap" and "We can give you a new identity for 100 credits." The deal was declined. `UG_NAME_CHANGE` is false. Unlocks gap row 11.7 with that 100 credit price for a total unknown. A second experience point was not measured. `name-change.txt`.
+
+Tri-Cron. CONFIRMED. Ante 100, 10 rounds, three crons from 0 to 9, positions 1, 2 and 3, greater total wins, payback 2 to 1, jackpot 5,000, champion score 5,000. One match paid "You win 100 credits!" and the balance went from 128 to 228. Matches `TRICRON_ANTE`, `TRICRON_ROUNDS` and `TRICRON_OPENING_JACKPOT`. Gap row 11.8 already has those numbers. `tricron.txt`.
+
+Illegal-goods prices. DIFFERENT. The Underground menu sells no good. The singles bar printed no item and no price; the balance fell from 140 to 93, which is 47 credits. Cineplex show 1 asked "100 Credits Please" for Vulcan Thunder. `CINEPLEX_COST` is 0. Unlocks gap rows 1.8 and 11.7 with the 100 credit ticket. The 47 credit bar charge has no item name. `illegal-goods.txt`.
+
+Per-attempt alignment and experience awards. BLOCKED. No steal and no rob was offered, so no delta was on the screen. `rob-awards.txt`.
+
+Solo steal-dump-flee. BLOCKED. The one ship never got a steal prompt, and no solo steps appeared. `sdf-solo.txt`.
+
+Economy price scale. DIFFERENT. Opening quotes, experience 0 or 1, and the screen does not print MCIC. Fuel selling at 100 percent of max: 11. Fuel buying at 100 percent: 27. Organics selling at 100 percent: 31. Organics buying at 94 percent: 66. Equipment selling at 100 percent: 56. The chart anchors behind `PRICE_SCALE_SELL_250` and `PRICE_SCALE_BUY_250` are about 15, 35, 28, 71 and 49 for those same sides. Unlocks gap row 2.5 with these quotes, not a new formula. `price-scale.txt`.
+
+Computer menu B. DIFFERENT. The live label is "Begin Self Destruct". B asks "ARE YOU SURE CAPTAIN?" and N says "Self Destruct Aborted...". The `<` key plots a course back to the previous sector. This cockpit uses B for backtrack. No engine constant. `computer-b.txt`.
+
 | Item | Current value | What to do on live TWGS | What to record | Constant it settles |
 |---|---|---|---|---|
 | Ferrengi kill experience | Assault trader 50, battle cruiser 100, dreadnought 150 | Kill one of each hull with a good trader (alignment above 0) and again with a neutral or evil trader. Read experience before and after. | The experience change for each hull, and whether alignment changed the award | `FERRENGI_XP_BY_HULL` |
