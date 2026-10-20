@@ -6650,6 +6650,7 @@
       rememberSeat();
       const sign = document.querySelector(".sign-in");
       if (sign) sign.hidden = true;
+      openLink();
     } catch (e) {
       state.connected = false;
       $("err").hidden = false;
@@ -6815,7 +6816,94 @@
       if (S) map();
     }).observe($("map"));
   }
+  // A dropped browser comes back on its own. The socket waits longer after each miss,
+  // then the seat reads the harness again so the screen matches the game.
+  let linkSock = null;
+  let linkTimer = 0;
+  let linkDelay = 500;
+  let linkAttempts = 0;
+  const linkWaits = [];
+  const LINK_CAP = 15000;
+  function hostSocketUrl() {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    return proto + "//" + `${location.host}/ws`;
+  }
+  function clearReconnect() {
+    const err = $("err");
+    if (!err || err.dataset.kind !== "reconnect") return;
+    err.hidden = true;
+    err.textContent = "";
+    delete err.dataset.kind;
+  }
+  function noteDrop(e) {
+    const text = String((e && e.message) || e || "");
+    const err = $("err");
+    if (!err) return;
+    if (/join link/i.test(text)) {
+      err.hidden = false;
+      err.dataset.kind = "auth";
+      err.textContent = text;
+      state.connected = false;
+      return;
+    }
+    err.hidden = false;
+    err.dataset.kind = "reconnect";
+    err.textContent = "Lost the host. Reconnecting.";
+  }
+  function scheduleLink(wait) {
+    linkWaits.push(wait);
+    linkTimer = setTimeout(() => {
+      linkTimer = 0;
+      openLink();
+    }, wait);
+  }
+  async function resyncSeat(fromSocket) {
+    if (!state.connected || state.busy) return;
+    try {
+      await refresh();
+      if (fromSocket) clearReconnect();
+    } catch (e) {
+      noteDrop(e);
+    }
+  }
+  function openLink() {
+    if (!state.connected) return;
+    linkAttempts += 1;
+    let sock;
+    try {
+      sock = new WebSocket(hostSocketUrl());
+    } catch (e) {
+      const wait = linkDelay;
+      linkDelay = Math.min(linkDelay * 2, LINK_CAP);
+      scheduleLink(wait);
+      return;
+    }
+    linkSock = sock;
+    sock.onopen = () => {
+      if (linkSock !== sock) return;
+      linkDelay = 500;
+      resyncSeat(true);
+    };
+    sock.onmessage = () => {};
+    sock.onerror = () => {};
+    sock.onclose = () => {
+      if (linkSock !== sock) return;
+      linkSock = null;
+      if (!state.connected) return;
+      noteDrop();
+      const wait = linkDelay;
+      linkDelay = Math.min(linkDelay * 2, LINK_CAP);
+      scheduleLink(wait);
+    };
+  }
+  window.__tw2kLink = {
+    attempts() { return linkAttempts; },
+    waits() { return linkWaits.slice(); },
+    drop() { if (linkSock) linkSock.close(); },
+  };
   if (state.token || params.get("mode") === "cu") connect();
-  setInterval(() => { if (state.connected && !state.busy) refresh().catch((e) => { $("err").hidden = false; $("err").textContent = String(e.message || e); }); }, 2000);
+  setInterval(() => {
+    if (state.connected && !state.busy) resyncSeat().catch((e) => noteDrop(e));
+  }, 2000);
   setInterval(() => { if (S) paintClocks(); }, 1000);
 })();

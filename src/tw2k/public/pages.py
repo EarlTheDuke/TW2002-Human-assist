@@ -223,7 +223,8 @@ def _end_button(g: dict[str, Any]) -> str:
 def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[str, Any]], closed: bool,
           full: bool, live: dict[str, dict[str, Any]], owned: Iterable[dict[str, Any]] | None = None,
           notes: dict[str, str] | None = None, seat_links: dict[str, str] | None = None,
-          seat_rows: dict[str, list[dict[str, str]]] | None = None) -> str:
+          seat_rows: dict[str, list[dict[str, str]]] | None = None,
+          trouble: Iterable[dict[str, Any]] | None = None) -> str:
     mine = list(mine)
     owned = list(owned or [])
     seated = {g["id"] for g in mine}
@@ -324,7 +325,14 @@ def lobby(brand: str, *, games: Iterable[dict[str, Any]], mine: Iterable[dict[st
         '+"\\" href=\\""+href+"\\">Re-open "+String(r.seat).replace(/[<>&]/g,"")+"</a></p>";});'
         'box.innerHTML=html;box.hidden=false;})();</script>'
     )
-    body = (f"<p class=\"sub\">Closed beta lobby</p>{mine_html}{reopen}"
+    trouble_rows = []
+    for g in trouble or []:
+        trouble_rows.append(
+            f'<p data-testid="save-trouble" data-game="{escape(g["id"])}">'
+            f'The save for <b>{escape(g["name"])}</b> could not be read, so that game was not started again.</p>'
+        )
+    trouble_html = f'<div class="err">{"".join(trouble_rows)}</div>' if trouble_rows else ""
+    body = (f"<p class=\"sub\">Closed beta lobby</p>{trouble_html}{mine_html}{reopen}"
             f"<div class=\"row\"><h2>Games</h2>{new}</div>"
             f"<div class=\"card\">{table}</div>{finished_html}")
     return page("Lobby", body, brand=brand)
