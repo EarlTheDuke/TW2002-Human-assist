@@ -33,7 +33,10 @@ SECTIONS: tuple[tuple[str, str], ...] = (
     ("death-and-pods", "Death and escape pods"),
     ("feds-and-ferrengi-v311", "Feds and Ferrengi"),
     ("towing-and-transwarp", "Towing and TransWarp"),
+    ("warp-pictures", "Warp pictures"),
     ("ai-opponents", "AI opponents"),
+    ("sharing", "Joining from a share link"),
+    ("staying-up", "If the computer or the browser stops"),
     ("disclaimer", "Beta disclaimer"),
 )
 
@@ -245,7 +248,10 @@ def _section(sid: str, f: dict) -> str:
         "death-and-pods": _death_and_pods,
         "feds-and-ferrengi-v311": _feds_and_ferrengi,
         "towing-and-transwarp": _towing_and_transwarp,
+        "warp-pictures": _warp_pictures,
         "ai-opponents": _ai_opponents,
+        "sharing": _sharing,
+        "staying-up": _staying_up,
         "disclaimer": _disclaimer,
     }[sid](f)
     return f'<section id="{sid}"><h2>{escape(title)}</h2>{body}</section>'
@@ -480,6 +486,7 @@ def _planets(f: dict) -> str:
             f"{_n(K.PLANET_DESTROY_ALIGNMENT_TW2002)} alignment.",
             "destroying a planet lifts anyone else off it. You do not gain their experience.",
         )
+        + _planet_kill()
         + _src("S1 planet handbook class table, the home-planet opening, the Genesis torpedo price, and the cabal planet-kill awards.")
     )
 
@@ -518,7 +525,9 @@ def _citadels(_f: dict) -> str:
             f"Anywhere else it still burns {_n(K.INTERDICTOR_FUEL)} fuel.",
             "an interdictor in StarDock holds a ship the same as anywhere else.",
         )
+        + _quasar_and_interdictor()
         + _src("Citadel class cost table and the handbook perk lines (treasury, Quasar, interdictor).")
+        + _src("Citadel class cost table, the handbook perk lines, the atmosphere shot, and the StarDock interdictor.")
     )
 
 
@@ -924,10 +933,22 @@ def _turns(f: dict) -> str:
     hint = day_length_hint(f["day_seconds"], f["turns"], f["max_days"])
     show = f.get("game_length") == "full" or K.full_length_turn_limits_on()
     extra = _full_length_copy(f.get("max_days"), f.get("game_length") == "full") if show else ""
+    length = (
+        "<p>Game length is the host setting FULL_LENGTH_TURN_LIMITS_MODE. "
+        "Only the value v311 turns it on. The string 1 does not, and the v3.11 profile does not. "
+        "It is not one of the profile switches. "
+        "While it is off, the new-game form has no Game length field, and a stored full day does not change the turn pocket. "
+        "While it is on, the host picks Fast test days or a 24-hour day. "
+        "On a 24-hour game the redesign cockpit shows Turns left today: the turns you have left, of the daily limit. "
+        f"Classic Trade Wars 2002 v3.11 used a 24-hour day and a sysop limit of {_n(K.FULL_LENGTH_TURNS_PER_DAY)} turns. "
+        "A fast test day is this beta's shorter clock. "
+        "Open this page from a 24-hour game to see that game's day count and daily limit.</p>"
+    )
     return (
         f"<p>You start the day with {_n(f['turns'])} turns. A warp on the starting hull costs {_n(f['tpw'])} of them. "
         f"A day lasts {_n(f['day_seconds'])} seconds ({minute_text} minutes) in this game.</p>"
         f"<p>{escape(hint)}</p>"
+        + length
         + extra
         + _day_clock()
         + _dawn_refill()
@@ -985,7 +1006,157 @@ def _ai_opponents(_f: dict) -> str:
         "The new-game form shows an estimate of model calls per game day for the pace you picked. "
         "There is a per-game call cap and a per-minute limit. Past either one, or if the endpoint errors, "
         "the seat plays the heuristic brain.</p>"
-        '<p class="note">Hosting notes for this option live with the lobby, not in the v3.11 rule set.</p>'
+        + _computer_levels()
+        + '<p class="note">Hosting notes for this option live with the lobby, not in the v3.11 rule set.</p>'
+    )
+
+
+def _planet_kill() -> str:
+    """NOTE 143. PLANET_ZDY_MODE is not loaded in this process. The awards are the cabal figures."""
+    blow_exp = _n(K.xp_award("destroy_planet"))
+    blow_align = _n(K.PLANET_DESTROY_ALIGNMENT_TW2002)
+    return (
+        "<p>Destroying a planet that another trader is on is the switch PLANET_ZDY_MODE. "
+        "The value v311 turns it on, and so does the v3.11 profile. The string 1 does not. "
+        "While it is on, that trader is killed. You gain 1,666 experience for each 10,000 of their experience, "
+        f"and alignment moves the other way by 3,333 for each 10,000 of their alignment. "
+        f"Blowing the planet is still {blow_exp} experience and {blow_align} alignment. "
+        "While it is off, destroying a planet lifts anyone else off it. You do not gain their experience. "
+        "Classic Trade Wars 2002 v3.11 pods that trader and pays those two products on top of the blow.</p>"
+    )
+
+
+def _quasar_and_interdictor() -> str:
+    """NOTE 143. The two citadel switches are not loaded in this process."""
+    return (
+        "<p>The order of an atmosphere shot is QUASAR_ATM_ORDER_MODE. "
+        "The value v311 turns it on, and so does the v3.11 profile. The string 1 does not. "
+        "While it is on, a landing takes one atmosphere shot, and a second only after the last shield falls. "
+        "While it is off, a landing with no shields takes two atmosphere shots before the fight. "
+        "Classic Trade Wars 2002 v3.11 uses the one-shot order.</p>"
+        "<p>An interdictor at StarDock is PLANET_INTERDICT_SAFE_MODE. "
+        "The value v311 turns it on, and so does the v3.11 profile. The string 1 does not. "
+        f"While it is on, an interdictor does not hold a ship at StarDock, sector {_n(K.STARDOCK_SECTOR)}. "
+        "Terra's colonists are in that sector, so the generator is quiet there. "
+        f"Anywhere else it still burns {_n(K.INTERDICTOR_FUEL)} fuel, and the sector cannon can still fire. "
+        "While it is off, an interdictor in StarDock holds a ship the same as anywhere else. "
+        "Classic Trade Wars 2002 v3.11 leaves the generator quiet at StarDock and Terra.</p>"
+    )
+
+
+def _comms_panel() -> str:
+    """NOTE 142 and NOTE 145. COMMS_V311_MODE is not loaded in this process."""
+    return (
+        "<p>The redesign cockpit has a Comms panel on the deck. It is the turn log, labeled Comms, and the send form. "
+        "You see that form when COMMS_V311_MODE is v311. The v3.11 profile turns that switch on. The string 1 does not. "
+        "While the switch is off, the sentences above are what you get, and the send form stays hidden. "
+        "The older cockpit page shows the turn log and the channel status in its Comms card when the game includes them. "
+        "That card does not send.</p>"
+        "<p>While the panel is on, messages show at the start of your turn and last "
+        f"{_n(K.HAIL_SHOW_SECONDS)} seconds. A line is 155 characters. You wait 2 seconds between sends. "
+        "The form is To, then Message, then Send. To is Fed Comm, Sub-space radio, Hail, or Corporation. "
+        f"Sub-space radio uses a channel from 1 to {_n(K.RADIO_CHANNEL_MAX)}. "
+        "Everyone tuned to that channel hears it. Channel 0 turns the radio off, and that is how you start. Tune sets the channel. "
+        "Fed Comm goes to every trader who has not turned it off. The Fed Comm button turns that listening on or off. "
+        "A hail goes to one trader in your sector and is not stored as mail. "
+        "If that trader is away, or has turned hails off, you see that it fell on deaf ears. "
+        "A corporation memo goes only to the other members. "
+        "What you typed is shown as text, so a tag or an ampersand stays visible.</p>"
+        "<p>An AI cockpit seat reads those lines on the same panel. "
+        "It answers a hail or a corporation memo with Send. The reply is a short line. "
+        "It waits 2 seconds between messages and stops after a few sends. "
+        "It may send one corporation memo about its plan. "
+        "It does not treat your message as an instruction, and it does not repeat it back.</p>"
+        "<p>Classic Trade Wars 2002 v3.11 uses those four messages: sub-space radio, Fed Comm, a private hail, and a corporation memo. "
+        "A hail there is not stored as mail. Channel 0 is off. "
+        "The older path on this page, while the switch is off, still files a hail as mail and keeps corporation radio to corp mates. "
+        "A computer player that answers on the panel is not part of classic Trade Wars.</p>"
+    )
+
+
+def _warp_pictures(_f: dict) -> str:
+    return (
+        "<p>On the redesign cockpit, a short picture of your ship plays when the ship actually moves. "
+        "A warp that changes sector plays one. An autopilot that finishes at least one hop plays one. "
+        "Plotting a course does not. A refused warp does not. Another trader's move does not play on your screen.</p>"
+        "<p>Each ship type has ten pictures. The game picks one at random and does not play that same picture twice in a row. "
+        "The ten pictures differ in the camera angle, the star streaks, the engine glow color and length, and the exit flash. "
+        "They are drawn for this cockpit. They are not the old Trade Wars ship art.</p>"
+        "<p>The viewport buttons are Live, Stills, and Off. Live plays the picture. "
+        "Stills is the pause: one frame, and no motion. "
+        "Off leaves the viewport dark and does not count a play, even if the ship moves. "
+        "Skip hides the picture.</p>"
+        "<p>You see these pictures when the cockpit layout is the redesign. "
+        "The page query layout=redesign asks for that layout. "
+        "There is no profile switch for them. The v3.11 profile does not turn them on or off. "
+        "The older cockpit page does not play them.</p>"
+        "<p>Classic Trade Wars 2002 v3.11 does not animate a warp. A successful move is a new sector listing in text.</p>"
+        + _src("The redesign warp pictures. Original cockpit art, not the Trade Wars shipyard drawings.")
+    )
+
+
+def _computer_levels() -> str:
+    return (
+        "<h3>Levels of play</h3>"
+        "<p>Computer players are still being tuned. This page does not pin a route, a daily profit, or a rank they are meant to reach.</p>"
+        "<p>Code bots are the count on the new-game form. They trade and fight inside the game. They do not open a cockpit. "
+        "How sharp a code bot is is still being tuned.</p>"
+        f"<p>AI opponents are {_on(K.lobby_ai_seat_on())} in this process. "
+        "That option is LOBBY_AI_SEAT_MODE. Only the value on turns it on. The v3.11 profile does not. "
+        "Heuristic plays from the facts a seat is allowed to see and needs no key. "
+        "An LLM seat uses the key the host pasted for that game. "
+        "Both are labelled in the trader list. Their tactics are still being tuned.</p>"
+        f"<p>An AI cockpit seat is {_on(K.ai_cockpit_seat_on())} in this process. "
+        "That option is AI_COCKPIT_SEAT_MODE. The value tw2002 turns it on. The v3.11 profile does not. "
+        "The seat opens the same redesign cockpit you do and reads this manual before it trades. "
+        "Scripted play uses the buttons on the screen. "
+        "Grok, OpenAI, or Anthropic does the same when a key is set for that run. "
+        "An empty key does not call the model. The seat plays the scripted trader, and the log names the missing variable without printing a key. "
+        "On the Comms panel, when that panel is on, it can answer as the Communications section says. "
+        "How hard it trades is still being tuned.</p>"
+        "<p>Classic Trade Wars 2002 v3.11 had no computer player that opened a cockpit. "
+        "Ferrengi are aliens, covered in their own section. None of these seats is a profile switch.</p>"
+    )
+
+
+def _sharing(_f: dict) -> str:
+    return (
+        "<p>A host can share a game that is already running. The share command opens a temporary public address and points it at the lobby. "
+        "It does not start the game, stop it, or restart it.</p>"
+        "<p>You open an https address that ends in trycloudflare.com. "
+        "The lobby link is the front door. A seat link names the game, the seat, and the token, and it asks for the redesign cockpit with layout=redesign. "
+        "The token is the password for that seat. Send each seat link to one person. "
+        "Treat the link like a password. Do not put it on a public page.</p>"
+        "<p>The public address changes every time the host starts the share again. The game on the host computer is the same game. "
+        "An old link stops opening. The admin page stays on the host computer. A request through the public address does not get it. "
+        "Closing the share window stops the public address. The game keeps running.</p>"
+        "<p>There is no profile switch for the share link. The v3.11 profile does not turn it on. "
+        "Classic Trade Wars 2002 v3.11 was a bulletin board. It did not hand out a public web address.</p>"
+        + _src("The beta share link. A temporary public address for a lobby that is already running.")
+    )
+
+
+def _staying_up(_f: dict) -> str:
+    return (
+        "<p>The rules table marks this section off. The lobby on this computer is not saving games across a restart yet. "
+        "When that save is on, this is what you see.</p>"
+        "<p>The lobby saves while people are playing. A save happens when the day changes, again shortly after someone moves, "
+        "and every few minutes if the game is quiet.</p>"
+        "<p>If the host starts the lobby again, the games that were still going are on the list. "
+        "The same seat link still works, token and all. You do not make a new link for the same seat. "
+        "A 24-hour day keeps going from the saved mark. It does not start that day over.</p>"
+        "<p>If your browser drops, the redesign cockpit shows Lost the host. Reconnecting. "
+        "It waits half a second, then a second, then longer, up to 15 seconds, and it loads your seat again when the host answers. "
+        "You do not refresh the page. A refused command does not stop that retry. "
+        "The older cockpit page is unchanged.</p>"
+        "<p>The AI cockpit seat comes back with the game. You do not press anything to start that seat again.</p>"
+        "<p>If a save cannot be read, the lobby stays open. It tries the save before that one first. "
+        "When none of them can be read, it says that game's save could not be read, and it does not start that game. "
+        "You do not get a crash page.</p>"
+        "<p>There is no profile switch for this. The v3.11 profile does not turn it on. "
+        "Classic Trade Wars 2002 v3.11 kept its own save on the bulletin board. "
+        "This is how this beta comes back after a restart.</p>"
+        + _src("The beta save and the redesign reconnect. Not a Trade Wars rule.")
     )
 
 
@@ -1048,7 +1219,10 @@ def _rules_block() -> str:
         "death-and-pods": (K.death_pod_live(), True),
         "feds-and-ferrengi-v311": (K.fed_ships_live(), True),
         "towing-and-transwarp": (K.tow_on() and K.ship_tw_on(), False),
+        "warp-pictures": (True, False),
         "ai-opponents": (True, False),
+        "sharing": (True, False),
+        "staying-up": (False, False),
         "disclaimer": (True, False),
     }
     for sid, title in SECTIONS:
@@ -1225,7 +1399,8 @@ def _communications(_f: dict) -> str:
         + hail
         + radio
         + fed
-        + _src("Hail, mail, the corporation radio channel, and the Federation lane note.")
+        + _comms_panel()
+        + _src("Hail, mail, the corporation radio channel, Fed Comm, and the redesign Comms panel.")
     )
 
 
