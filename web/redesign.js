@@ -1414,9 +1414,12 @@
       shield_cap: (sh && sh.shield_cap) || 0,
       transwarp: (sh && sh.transwarp) || {},
     };
+    const painted = Object.assign({}, def);
+    if (style && style.glow) painted.glow = style.glow;
+    if (style && style.plume) painted.plume = style.plume;
     const api = warpMesh();
-    const faces = api ? api.buildHullFaces(sample, def) : [];
-    warpFrame = { sample: sample, def: def, style: style || null };
+    const faces = api ? api.buildHullFaces(sample, painted) : [];
+    warpFrame = { sample: sample, def: painted, style: style || null };
     if (!shipSolidOn() || !api) {
       const angle = style ? (style.yaw * 36).toFixed(1) : "0";
       return {
@@ -1429,7 +1432,7 @@
       };
     }
     const pose = warpPose(style, 0);
-    const html = api.hullMarkup(sample, def, pose.yaw, pose.pitch, pose.fit, 200, 130);
+    const html = api.hullMarkup(sample, painted, pose.yaw, pose.pitch, pose.fit, 200, 130);
     return { model: "solid", mesh: "panel", source: api.source, faces: faces.length, xform: "", html: html };
   }
   function warpMotion() {
@@ -1498,6 +1501,11 @@
     root.setAttribute("data-exit", style ? style.exit : "jump");
     root.setAttribute("data-camera", style ? style.camera : "");
     root.setAttribute("data-stars", style ? style.stars : "streaks");
+    root.setAttribute("data-glow", style && style.glow ? style.glow : "");
+    root.setAttribute("data-plume", style && style.plume ? String(style.plume) : "");
+    root.setAttribute("data-streak", style && style.streak != null ? String(style.streak) : "");
+    root.setAttribute("data-flash", style && style.flash ? style.flash : "");
+    if (style && style.flash) root.style.setProperty("--warp-flash", style.flash);
     root.setAttribute("data-ship", flying.class);
     root.setAttribute("data-duration", String(ms));
     root.setAttribute("data-clip-source", resolved.hooked && playingFile ? "hook" : "procedural");
@@ -1510,7 +1518,12 @@
     const field = style && window.TW2KWarpVariants
       ? window.TW2KWarpVariants.stars(chosen.id, style.stars)
       : warpStars();
-    svg.innerHTML = field
+    const flash = style && style.exit === "flash"
+      ? '<ellipse data-testid="warp-flash" cx="200" cy="130" rx="'
+        + (22 + Number(style.plume || 12) * 0.35).toFixed(1)
+        + '" ry="16" fill="' + style.flash + '" opacity="0.32"/>'
+      : "";
+    svg.innerHTML = field + flash
       + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
       + drawn.model + '"' + drawn.xform + ">"
       + drawn.html + "</g></g>";
