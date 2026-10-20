@@ -39,6 +39,7 @@
       <div id="warpClip" data-testid="warp-clip" data-plays="0" hidden>
         <svg id="warpSvg" data-testid="warp-svg" viewBox="0 0 400 260" role="img" aria-label="Warp"></svg>
         <video id="warpVideo" data-testid="warp-video" muted playsinline hidden></video>
+        <button type="button" id="warpSkip" data-testid="warp-skip">Skip</button>
       </div>
       <div class="scan"></div>
       <div id="sectorText" class="ansi"></div>
@@ -120,6 +121,7 @@
 <script src="/static/viewport.js"></script>
 <script src="/static/hull-meshes.js"></script>
 <script src="/static/warp-variants.js"></script>
+<script type="module" src="/static/warp-hull.mjs"></script>
 <script src="/static/redesign.js"></script>
 <script src="/static/layout.js"></script>
 </body>
