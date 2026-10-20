@@ -115,6 +115,7 @@
   // NOTE 93. The server's turns-per-day sentence. Empty until the first refresh.
   let SC = "";
   let TD = "";
+  let TL = "";
   let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
   let courseCard = null, cameFrom = null, mapEnlarged = false, mapSuppressClick = false, engageFocus = false, refreshCount = 0;
   const mapView = { k: 1, x: 0, y: 0 };
@@ -1652,6 +1653,24 @@
     if (TC.next_day_at != null) return Math.max(0, Number(TC.next_day_at) - Date.now() / 1000);
     return null;
   }
+  function paintFullLengthTurns() {
+    // NOTE 131. The sentence is present only when the game is full-length.
+    const stat = $("turnsStat");
+    if (!stat) return;
+    let el = $("turnsLeftToday");
+    if (!TL) {
+      if (el) el.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement("span");
+      el.id = "turnsLeftToday";
+      el.dataset.testid = "turns-left-today";
+      stat.appendChild(el);
+    }
+    el.hidden = false;
+    el.textContent = TL;
+  }
   function paintDayEnds() {
     // NOTE 106. Only when the observation carries a next dawn. No clock, no new line.
     const stat = $("turnsStat");
@@ -1681,6 +1700,7 @@
       day.textContent = left == null || over ? "" : ", next day in " + clockRemain(left);
     }
     if (S && $("turns")) $("turns").textContent = turnFace();
+    paintFullLengthTurns();
     paintDayEnds();
     paintSeatTimer();
     const stat = $("turnsStat");
@@ -6271,6 +6291,7 @@
     syncClocks();
     SC = st.starting_credits_line || "";
     TD = st.turns_per_day_line || "";
+    TL = st.turns_left_line || "";
     syncSeatTimer(st);
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     const dayBefore = S ? Number(S.day) : null;

@@ -1194,6 +1194,10 @@ class GameConfig(BaseModel):
     # NOTE 93. None keeps today's turn pocket. A number is the turns every seat
     # gets. Left out of dumps while None, so old saves stay put.
     turns_per_day_override: int | None = None
+    # NOTE 131. None, fast, and legacy are omitted. "full" is a full-length game.
+    # The process flag stays legacy until it is set to v311, so a stored "full"
+    # does nothing while that flag is off.
+    game_length: str | None = None
     # NOTE 66. None keeps "<trader>'s Home" (legacy: "<trader> Home"). The lobby
     # name, when set, is the first human seat's planet. Left out of dumps while None.
     home_planet_name: str | None = None
@@ -1252,6 +1256,11 @@ class GameConfig(BaseModel):
     def _check_turns_override(cls, value: Any) -> Any:
         return K.parse_turns_override(value)
 
+    @field_validator("game_length", mode="before")
+    @classmethod
+    def _check_game_length(cls, value: Any) -> Any:
+        return K.parse_game_length(value)
+
     @field_validator("home_planet_name", mode="before")
     @classmethod
     def _check_home_planet_name(cls, value: Any) -> Any:
@@ -1273,6 +1282,8 @@ class GameConfig(BaseModel):
             data.pop("starting_credits_override", None)
         if isinstance(data, dict) and data.get("turns_per_day_override", 0) is None:
             data.pop("turns_per_day_override", None)
+        if isinstance(data, dict) and data.get("game_length", 0) is None:
+            data.pop("game_length", None)
         if isinstance(data, dict) and data.get("home_planet_name", 0) is None:
             data.pop("home_planet_name", None)
         if isinstance(data, dict) and data.get("bust_clear_days", 0) is None:

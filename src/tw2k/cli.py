@@ -315,6 +315,12 @@ def serve(
         "--hold-until-human",
         help="Do not start the day clock or the bot turns until a human seat is opened.",
     ),
+    game_length: str = typer.Option(
+        None,
+        "--game-length",
+        help="full for a full-length game (24-hour day and the v3.11 daily turn limit). "
+        "Omit, or fast, for today's test days.",
+    ),
 ) -> None:
     """Start the spectator web server."""
     import os as _os
@@ -338,6 +344,11 @@ def serve(
         turns_override = _Kday.parse_turns_override(turns_per_day_override)
     except ValueError as exc:
         console.print(f"[red]error:[/] --turns-per-day-override: {exc}")
+        raise typer.Exit(code=2) from None
+    try:
+        chosen_length = _Kday.parse_game_length(game_length)
+    except ValueError as exc:
+        console.print(f"[red]error:[/] --game-length: {exc}")
         raise typer.Exit(code=2) from None
 
     # Parse per-agent overrides from comma lists. Blanks in a slot fall
@@ -598,6 +609,7 @@ def serve(
         home_planet_name=home_planet_name,
         turns_per_day_override=turns_override,
         hold_until_human=hold_until_human,
+        game_length=chosen_length,
     )
     uvicorn.run(application, host=host, port=port, log_level="info")
 

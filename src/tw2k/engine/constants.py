@@ -412,6 +412,66 @@ def turns_per_day_line(override: int | None, original: int) -> str:
     return f"Turns per day: {int(override):,} (game setting)"
 
 
+# NOTE 131 full-length-turn-limits-v1. Stored default is legacy. "1" does not
+# turn this on, and V311_PROFILE does not either. It is not a profile helper.
+# "v311" is the only value that lets a full-length game replace the daily pocket.
+FULL_LENGTH_TURN_LIMITS_MODE = "legacy"  # "legacy" | "v311"
+# Cabal glossary "Classic": 250 turns per day. RULINGS s2 uses the same 250
+# (LIVE_STARTING_TURNS). Gypsy's 750 is one sample game, not this default.
+FULL_LENGTH_TURNS_PER_DAY = 250
+# A classic game is VICTORY_DEFAULT_MAX_DAYS (30). 30 x 250 = 7,500 turns.
+FULL_LENGTH_REFERENCE_DAYS = 30
+FULL_LENGTH_DAY_SECONDS = 24 * 3600
+
+
+def full_length_turn_limits_on() -> bool:
+    """True only when this process set FULL_LENGTH_TURN_LIMITS_MODE to v311."""
+    return FULL_LENGTH_TURN_LIMITS_MODE == "v311"
+
+
+def full_length_daily_cap(max_days: int) -> int:
+    """Turns per day for a full-length game.
+
+    Thirty days or fewer keep the v3.11 sysop pocket of 250. A longer game
+    lowers the daily limit so the whole game stays near 7,500 turns, and the
+    limit stays inside the existing 50 to 5,000 range.
+    """
+    days = max(1, int(max_days))
+    if days <= FULL_LENGTH_REFERENCE_DAYS:
+        cap = FULL_LENGTH_TURNS_PER_DAY
+    else:
+        cap = (FULL_LENGTH_TURNS_PER_DAY * FULL_LENGTH_REFERENCE_DAYS) // days
+    if cap < TURNS_OVERRIDE_MIN:
+        cap = TURNS_OVERRIDE_MIN
+    if cap > TURNS_OVERRIDE_MAX:
+        cap = TURNS_OVERRIDE_MAX
+    return int(cap)
+
+
+def parse_game_length(value: object) -> str | None:
+    """'full' for a full-length game. Fast, legacy, and a blank stay omitted."""
+    if value is None:
+        return None
+    text = str(value).strip().lower()
+    if text in ("", "fast", "legacy", "test", "none"):
+        return None
+    if text == "full":
+        return "full"
+    raise ValueError("game length must be fast or full")
+
+
+def full_length_turns_override(config: object, existing: int | None) -> int | None:
+    """The daily cap when this process and this game both asked for full-length.
+
+    Flag off, or a fast test day, returns `existing` unchanged.
+    """
+    if not full_length_turn_limits_on():
+        return existing
+    if getattr(config, "game_length", None) != "full":
+        return existing
+    return full_length_daily_cap(int(getattr(config, "max_days", None) or FULL_LENGTH_REFERENCE_DAYS))
+
+
 def opening_loadout(spec_credits: int, spec_turns: int, slot: int,
                     credits_override: int | None = None,
                     turns_override: int | None = None) -> tuple[int, int, int]:

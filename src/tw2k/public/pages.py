@@ -439,6 +439,32 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             "});\n"
             "</script>\n"
         )
+    length_fields = ""
+    length_script = ""
+    if K.full_length_turn_limits_on():
+        v.setdefault("game_length", "fast")
+        picked_length = v["game_length"] if v["game_length"] in ("fast", "full") else "fast"
+        length_fields = (
+            '<label for="game_length">Game length</label>'
+            f'<select id="game_length" name="game_length">'
+            f'{_opt("fast", "Fast test days", picked_length)}'
+            f'{_opt("full", "Full-length", picked_length)}</select>'
+            "<p class=\"note\">Fast test days keep today's day length and turn pocket. "
+            "Full-length uses a 24-hour day and the v3.11 daily turn limit "
+            f"({K.FULL_LENGTH_TURNS_PER_DAY:,} on a {K.FULL_LENGTH_REFERENCE_DAYS}-day game). "
+            "A longer game lowers that limit so the whole game stays near "
+            f"{K.FULL_LENGTH_TURNS_PER_DAY * K.FULL_LENGTH_REFERENCE_DAYS:,} turns.</p>"
+        )
+        length_script = (
+            "<script>\n"
+            "document.getElementById('game_length').addEventListener('change', function () {\n"
+            "  if (this.value !== 'full') return;\n"
+            "  const day = document.getElementById('day');\n"
+            "  if (day) { for (const opt of day.options) { if (opt.value === '24h') day.value = '24h'; } }\n"
+            "  if (typeof paintDayHint === 'function') paintDayHint();\n"
+            "});\n"
+            "</script>\n"
+        )
     cockpit_fields = ""
     if K.ai_cockpit_seat_on():
         v.setdefault("ai_cockpit", "off")
@@ -481,7 +507,7 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 <p class="note">Original is 250 turns for every seat, the same pocket as today. 500, 1,000, or a custom amount from 50 to 5,000 replaces that pocket for every human and every bot.</p>
 <label for="universe_size">Universe size</label><select id="universe_size" name="universe_size">{sizes}</select>
 <label for="max_days">Max days</label><input id="max_days" name="max_days" type="number" min="1" max="365" value="{escape(v['max_days'])}">
-<label for="day">Day length</label><select id="day" name="day">{days}</select>
+{length_fields}<label for="day">Day length</label><select id="day" name="day">{days}</select>
 <p class="note" id="dayHint">{escape(day_length_hint(int((presets or DAY_PRESETS).get(v['day'], 1800)), hint_turns, int(v['max_days'] or 30)))}</p>
 <script>
 const dayPresets = {json.dumps(presets or DAY_PRESETS)};
@@ -513,6 +539,7 @@ function paintDayHint() {{
 }}
 ["day", "turns_per_day", "turns_per_day_custom", "max_days"].forEach((id) => document.getElementById(id).addEventListener("input", paintDayHint));
 </script>
+{length_script}
 </fieldset>
 <fieldset><legend>Players</legend>
 <label for="home_planet_name">Home planet name</label><input id="home_planet_name" name="home_planet_name" maxlength="30" value="{escape(v['home_planet_name'])}">
@@ -537,6 +564,8 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
     key = _day_label(int(settings["day_seconds"])) if settings.get("day_seconds") else ""
     length = _DAY_NAMES.get(key, key)
     shown = f"<p>Day length: {escape(length)}</p>" if length else ""
+    if settings.get("game_length") == "full":
+        shown += "<p>Full-length game. The daily turn limit is the v3.11 pocket, lowered when the game is longer than 30 days.</p>"
     ai_n = 0
     try:
         ai_n = int(settings.get("ai_opponents") or 0)

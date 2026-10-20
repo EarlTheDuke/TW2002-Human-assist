@@ -173,6 +173,7 @@ def _facts(config) -> dict:
         "tax_over": int(over),
         "tax_align": int(align),
         "max_days": max_days,
+        "game_length": getattr(config, "game_length", None) if config is not None else None,
         "scoped": config is not None,
         "bust_clear_days": getattr(config, "bust_clear_days", None) if config is not None else None,
         "death_delay": K.death_delay_days(config),
@@ -841,16 +842,47 @@ def _tax(f: dict) -> str:
     )
 
 
+def _full_length_copy(max_days: int | None, active: bool) -> str:
+    """v3.11 sysop turns-per-day, and how a longer game lowers the daily limit."""
+    cap = int(K.FULL_LENGTH_TURNS_PER_DAY)
+    days = int(K.FULL_LENGTH_REFERENCE_DAYS)
+    budget = cap * days
+    floor = int(K.TURNS_OVERRIDE_MIN)
+    this = ""
+    if active and max_days:
+        mine = K.full_length_daily_cap(int(max_days))
+        this = (
+            f"<p>This game is full-length: {_n(int(max_days))} days, "
+            f"{_n(mine)} turns per day, and a day of {_n(int(K.FULL_LENGTH_DAY_SECONDS))} seconds.</p>"
+        )
+    return (
+        "<p>Full-length games use a 24-hour day and the v3.11 sysop turn limit of "
+        f"{_n(cap)} turns per day. A game of {_n(days)} days or fewer keeps that {_n(cap)}. "
+        f"A longer game lowers the daily limit so the whole game stays near {_n(budget)} turns "
+        f"({_n(days)} times {_n(cap)}), and the limit never goes below {_n(floor)}. "
+        "Fast test days keep the day length and the turn pocket already chosen for the game.</p>"
+        + this
+        + _src(
+            "Cabal glossary Classic: 1,000 sectors and 250 turns per day. "
+            "RULINGS s2 uses the same 250. "
+            "Gypsy's Big Dummy's Guide lists 750 turns for one sample game; that sample is not this default."
+        )
+    )
+
+
 def _turns(f: dict) -> str:
     from .pages import day_length_hint
 
     minutes = f["day_seconds"] / 60
     minute_text = str(int(minutes)) if minutes == int(minutes) else f"{minutes:.1f}"
     hint = day_length_hint(f["day_seconds"], f["turns"], f["max_days"])
+    show = f.get("game_length") == "full" or K.full_length_turn_limits_on()
+    extra = _full_length_copy(f.get("max_days"), f.get("game_length") == "full") if show else ""
     return (
         f"<p>You start the day with {_n(f['turns'])} turns. A warp on the starting hull costs {_n(f['tpw'])} of them. "
         f"A day lasts {_n(f['day_seconds'])} seconds ({minute_text} minutes) in this game.</p>"
         f"<p>{escape(hint)}</p>"
+        + extra
         + _day_clock()
         + _dawn_refill()
         + _src("The game's turn pocket and day length, read from this game's settings when you opened the manual from a game.")
