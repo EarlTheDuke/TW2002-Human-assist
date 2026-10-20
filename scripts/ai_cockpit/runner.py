@@ -761,6 +761,17 @@ def _open(page, url: str, log_path: Path) -> bool:
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=30_000)
         page.wait_for_selector("#waitchip", timeout=20_000)
+        # The header says YOUR MOVE before the seat connects. Wait for a sector.
+        page.wait_for_function(
+            """() => {
+              const sector = document.querySelector('#pSector');
+              const sign = document.querySelector('.sign-in');
+              const text = sector ? (sector.textContent || '').trim() : '';
+              const signedOut = !!(sign && !sign.hidden);
+              return !!text && text !== '-' && !signedOut;
+            }""",
+            timeout=20_000,
+        )
         return True
     except Exception as exc:
         _write_log(log_path, f"the seat page did not open: {exc.__class__.__name__}")
