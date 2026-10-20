@@ -99,9 +99,15 @@ def test_the_day_clock_counts_down_and_resets(monkeypatch, tmp_path) -> None:
         assert first.status_code == 200
         clock = first.json()["turn_clock"]
         assert 5 <= clock["next_day_in_s"] <= 7
-        time.sleep(1.1)
-        second = client.get("/harness/v1/P2/observation?peek=1", headers={"Authorization": "Bearer " + "t" * 40})
-        assert second.json()["turn_clock"]["next_day_in_s"] < clock["next_day_in_s"]
+        later = clock["next_day_in_s"]
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            second = client.get("/harness/v1/P2/observation?peek=1", headers={"Authorization": "Bearer " + "t" * 40})
+            later = second.json()["turn_clock"]["next_day_in_s"]
+            if later < clock["next_day_in_s"]:
+                break
+            time.sleep(0.05)
+        assert later < clock["next_day_in_s"]
         runner._live_day_mark = time.time()
         rolled = client.get("/harness/v1/P2/observation?peek=1", headers={"Authorization": "Bearer " + "t" * 40})
         assert rolled.json()["turn_clock"]["next_day_in_s"] > 8

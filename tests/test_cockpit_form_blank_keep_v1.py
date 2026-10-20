@@ -17,12 +17,12 @@ import tw2k.engine.constants as K
 from tw2k.engine.models import Commodity
 
 from tests._cu_host import CuHost
+from tests._refresh import wait_refreshes
 
 DOCK_TOK = "blank-dock-token-p2-0000000000000"
 PORT_TOK = "blank-port-token-p2-0000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-form-blank-keep-v1"
 WIDTHS = ((1920, 1080, "1920"), (390, 844, "390"))
-REFRESH_WAIT_MS = 6_500
 
 
 def _page(pw, host, token):
@@ -53,7 +53,7 @@ def _clear_and_wait(page, box: str) -> str:
     before = page.locator(box).input_value()
     assert before != "", "the form should open with a default in the box"
     page.locator(box).fill("")
-    page.wait_for_timeout(REFRESH_WAIT_MS)
+    wait_refreshes(page, 3)
     assert page.locator(".frm").count() == 1
     assert page.locator(box).input_value() == "", "the refresh put a value back into the cleared box"
     return before
@@ -123,13 +123,13 @@ def test_bank_amount_stays_empty_and_confirm_or_enter_posts_nothing(seats) -> No
     default = _clear_and_wait(dock, box)
     _refused_without_post(dock, _confirm(dock))
     _shoot(dock, "bank-blank")
-    dock.wait_for_timeout(2_500)
+    wait_refreshes(dock, 1)
     assert dock.locator(box).input_value() == ""
     dock.locator(box).focus()
     _refused_without_post(dock, lambda: dock.keyboard.press("Enter"))
     assert dock.locator(box).input_value() == ""
     dock.locator(box).fill("123")
-    dock.wait_for_timeout(REFRESH_WAIT_MS)
+    wait_refreshes(dock, 3)
     assert dock.locator(box).input_value() == "123"
     _quiet(dock)
     dock.get_by_role("button", name="Bank").click()
