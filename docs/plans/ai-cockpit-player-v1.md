@@ -45,11 +45,11 @@ The loop stops when the chip says GAME OVER, the stop file exists, or `--max-tur
 | `openai` | `OPENAI_API_KEY` | `OPENAI_MODEL` (default `gpt-4o`) |
 | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (default `claude-sonnet-4-5`) |
 
-`--level` selects a scripted difficulty. Easy wanders, including along a one-way, and takes the first local buy after it sells. Normal locks a shorter pair (about 700 credits in a day, or any paying pair after eight priced ports) and buys holds and fighters only. Hard is the long-game trader below. A live provider ignores the level. The default is hard.
+`--level` selects a scripted difficulty. Easy wanders for a few sectors, including along a one-way, then keeps the thinnest one-hop pair it has seen and does not buy gear at StarDock. Normal locks a pair worth about 700 credits in a day, or any paying pair after eight priced ports, and buys holds and fighters only. Hard locks that same pair. It opens the course plotter when StarDock was never linked, and it follows that course or buys a ship only when the extra the ports can fill, over the days left, beats the turns the trip spends and the quote plus its trade-in. Otherwise it keeps trading the same way normal does, and it does not fly the same course back into fighters. A live provider ignores the level. The default is hard.
 
 The scripted trader reads the manual, then plays from the screen text. It records the sector, the port prices and quantities, the directed warps, and the holds. It keeps to unvisited lanes until a short pair, reachable from the current sector, can earn about 2,000 credits in a day from the stock on screen. It does not lock the first thin route, and it does not take a one-way warp until the return leg has already been on screen. It sells into the best reachable bid and buys the load with the best credits per turn, declining a counter that loses to a better reachable bid. A refused haggle is left. If the next lap does not fit, it parks on the buying port. On the last day, a handful of leftover turns that cannot finish a seen pair are waits, then the day-end confirm. On the opening visit to StarDock, and again once a paying route is known, it buys holds when the spread covers the price, then fighters and shields, and it compares shipyard deals the same way. Surplus credits go to the bank. A planet is claimed only when its per-day production beats the port pair; otherwise the ship lifts off. Sectors whose text showed Ferrengi, deployed mines, or hostile fighters are not warped back into. The StarDock gear list names Armid, Limpet, and Atomic mines; that catalog is not a threat. It keeps acting while the chip says YOUR MOVE, confirms a day-end dialog, waits on NO TURNS for the next day, and stops when the chip says GAME OVER.
 
-On the day after a pair first pays, and from day 3 in a priced pocket that still has no known way to StarDock, hard and normal open the on-screen computer, press F for the course plotter, type the destination, and follow the next hop the computer named, including a one-way. That is the same plot the cockpit draws for a person. The player does not call the route API itself. After the shop, the same plotter is used to get back when the return leg was never seen. A day-end confirm still closes over the computer menu.
+On the day after a pair first pays, and from day 3 in a priced pocket that still has no known way to StarDock, hard and normal open the on-screen computer, press F for the course plotter, and type the destination. Hard then reads the hop count. It follows the course, including a one-way, only when more holds over the days left can earn back the turns the round trip spends. A course that cannot pay is cancelled and the ship stays on its route. At the yard, hard buys a ship only when the extra the ports on screen can fill, over the days left, beats the quote plus its trade-in credit and the turns to get home. A hull the route cannot load is declined, and hard does not cross the map to ask again. After that it hauls only between the two ports of its best one-hop pair. Normal still follows the course and stops after holds and fighters. That is the same plot the cockpit draws for a person. The player does not call the route API itself. After the shop, the same plotter is used to get back when the return leg was never seen. A day-end confirm still closes over the computer menu.
 
 `--provider mock` reads a JSON list of canned replies and runs each one through the same system prompt, user prompt, and on-screen validation as a live model. A reply that is not a visible action is fed back into the next prompt. No key is read.
 
@@ -91,16 +91,19 @@ Seed 4242, Commander:
 
 Finish, seed 4242: Commander 79,281, H2 77,823, H1 75,967, H3 72,864.
 
-NOTE 140 runs the same bench once for each scripted level. Day 11 is the board after day 10. Hard on seed 250925 is still first. On seed 4242 the hard seat does reach StarDock (the day-4 drop is the outfit) and then spends the trip home; it finishes last. Normal, which stops after holds and fighters, uses the same course plotter and finishes first on that seed.
+NOTE 140 runs the same bench once for each scripted level. Day 11 is the board after day 10. Easy stops after a short look and a thin pair, so it finishes behind both other seats. Normal and hard lock the same paying pair. Hard buys a ship only when the ports on screen can fill the extra holds and the days left earn back the quote plus the trade-in; on these seeds it keeps the cruiser and keeps trading. Hard is ahead of normal on 250925 and tied with normal on 4242 and on seed 99.
 
 | Level | Seed | Rank | Net worth | Finish board |
 | --- | --- | --- | --- | --- |
-| easy | 250925 | 1 | 78,521 | Commander 78,521, H3 78,474, H1 74,426, H2 70,607 |
-| easy | 4242 | 4 | 70,445 | H2 77,823, H1 75,940, H3 72,804, Commander 70,445 |
-| normal | 250925 | 2 | 75,880 | H3 78,494, Commander 75,880, H1 74,486, H2 70,607 |
-| normal | 4242 | 1 | 103,227 | Commander 103,227, H2 77,763, H1 75,980, H3 72,824 |
-| hard | 250925 | 1 | 81,506 | Commander 81,506, H3 77,214, H1 74,486, H2 70,607 |
-| hard | 4242 | 4 | 71,386 | H2 77,763, H1 75,967, H3 72,864, Commander 71,386 |
+| easy | 250925 | 3 | 72,301 | H3 78,534, H1 74,466, Commander 72,301, H2 70,607 |
+| easy | 4242 | 4 | 72,061 | H2 77,823, H1 75,960, H3 72,864, Commander 72,061 |
+| easy | 99 | 4 | 72,601 | H2 79,507, H1 74,655, H3 73,449, Commander 72,601 |
+| normal | 250925 | 1 | 79,914 | Commander 79,914, H3 77,234, H1 74,486, H2 70,607 |
+| normal | 4242 | 1 | 102,721 | Commander 102,721, H2 77,763, H1 75,980, H3 72,844 |
+| normal | 99 | 1 | 115,710 | Commander 115,710, H2 79,507, H1 74,655, H3 73,299 |
+| hard | 250925 | 1 | 87,906 | Commander 87,906, H3 77,234, H1 74,486, H2 70,607 |
+| hard | 4242 | 1 | 102,721 | Commander 102,721, H2 77,763, H1 75,980, H3 72,844 |
+| hard | 99 | 1 | 115,710 | Commander 115,710, H2 79,507, H1 74,655, H3 73,299 |
 
 Keys are read from the environment at call time. They are not written into source, the run log, `actions.jsonl`, or screenshots' text sidecars. Logs replace key values, `sk-...`, `xai-...`, bearer tokens, and `token=` query values with `[redacted]`.
 
