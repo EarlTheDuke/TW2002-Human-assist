@@ -11,9 +11,10 @@ The clock nudge is off unless PLAYTEST_CLOCK_NUDGE_MODE=on. "1" does not flip it
 from __future__ import annotations
 
 import asyncio
+import datetime
 import http.client
+import ipaddress
 import ssl
-import subprocess
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -145,18 +146,51 @@ class _Proxy(BaseHTTPRequestHandler):
 
 
 def _cert(directory: Path) -> tuple[str, str]:
-    cert = directory / "proxy.crt"
-    key = directory / "proxy.key"
-    subprocess.run(
-        [
-            "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
-            "-keyout", str(key), "-out", str(cert), "-days", "1",
-            "-subj", "/CN=127.0.0.1",
-        ],
-        check=True,
-        capture_output=True,
+    """A one-day cert for 127.0.0.1, written with the cryptography library."""
+    pytest.importorskip("cryptography")
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    cert_path = directory / "proxy.crt"
+    key_path = directory / "proxy.key"
+    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "127.0.0.1")])
+    now = datetime.datetime.now(datetime.UTC)
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(private.public_key())
+        .serial_number(x509.random_serial_number())
+        .add_extension(
+            x509.SubjectAlternativeName([x509.IPAddress(ipaddress.IPv4Address("127.0.0.1"))]),
+            critical=False,
+        )
     )
-    return str(cert), str(key)
+    if hasattr(builder, "not_valid_before_utc"):
+        builder = builder.not_valid_before_utc(now).not_valid_after_utc(now + datetime.timedelta(days=1))
+    else:
+        naive = now.replace(tzinfo=None)
+        builder = builder.not_valid_before(naive).not_valid_after(naive + datetime.timedelta(days=1))
+    issued = builder.sign(private, hashes.SHA256())
+    key_path.write_bytes(private.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ))
+    cert_path.write_bytes(issued.public_bytes(serialization.Encoding.PEM))
+    return str(cert_path), str(key_path)
+
+
+def test_the_proxy_cert_loads_from_python(tmp_path) -> None:
+    pytest.importorskip("cryptography")
+    cert, key = _cert(tmp_path)
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(cert, key)
+    text = Path(cert).read_text(encoding="utf-8")
+    assert "BEGIN CERTIFICATE" in text
 
 
 def _wait_http(url: str, timeout_s: float = 30) -> None:
