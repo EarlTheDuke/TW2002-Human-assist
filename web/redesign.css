@@ -106,7 +106,7 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 @keyframes warp{0%{transform:scale(1.25);filter:blur(6px) brightness(2) hue-rotate(60deg)}100%{transform:none;filter:none}}
 #warpClip{position:absolute;inset:0;z-index:4;background:#000;overflow:hidden;pointer-events:none}
 #warpSvg{width:100%;height:100%;display:block;background:radial-gradient(ellipse at 42% 50%,#071428,#000 70%)}
-#warpVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#warpVideo{position:absolute;inset:0;z-index:5;width:100%;height:100%;object-fit:cover;background:#000}
 #warpSkip{position:absolute;right:8px;bottom:8px;z-index:6;pointer-events:auto;font:inherit;background:#000;color:var(--y);border:1px solid var(--dc);padding:2px 8px}
 #warpClip .streaks{transform-box:view-box;transform-origin:center;animation-name:star-streak;animation-duration:var(--warp-ms,2s);animation-timing-function:linear;animation-fill-mode:forwards}
 @keyframes star-streak{0%{transform:translateX(28px) scaleX(.45);opacity:.35}100%{transform:translateX(-110px) scaleX(1.85);opacity:.9}}
