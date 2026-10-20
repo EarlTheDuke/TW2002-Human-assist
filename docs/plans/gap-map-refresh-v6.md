@@ -122,7 +122,7 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 22 | 14.1 | Partial | M | Course plot is in. Avoids are `AVOID_MODE` row 35. The other original computer helpers are not | `runner._handle_plot_course` | |
 | 23 | 11.11 | Partial | S | Density and one-way share are flagged (rows 87 and 88). The rest of the original Big Bang screen is not | `universe.generate_universe` | universe.py |
 | 24 | 6.7 | Partial | S | Genesis class choice is only partly the original. `PLANET_CLASS_MODE` exists and the profile leaves it off because v3.11 genesis class is random, which that switch does not do | `runner` genesis handler | constants.py |
-| 25 | 6.10 | Partial | S | Destroying a planet is in. The colonist-kill rule is only partly the original | `runner._handle_planet_destroy` | |
+| 25 | 6.10 | Partial | S | Destroying a planet is in. A trader on it is `PLANET_ZDY_MODE` (NOTE 143). Colonist-kill alignment is still unpublished | `runner._remove_planet` | |
 | 26 | 6.11 | Partial | S | The v3.06 disband split is flagged. Other corporate planet quirks are not | `corp._planets_on_leave` | |
 | 27 | 9.5 | Partial | S | Some alignment hits exist. Profile row 111 says the stored list was already in, and it is still not the full list | `victory.combat_rewards` | |
 | 28 | 5.14 | Partial | S | Experience drops on death. Alignment from the loss is only partly the original. `ALIGNMENT_MODE` is a no-op (legacy and live match) | `combat._destroy_ship_tw2002` | |
@@ -279,14 +279,14 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 6.7 Partial. Genesis class choice is only partly the original. `PLANET_CLASS_MODE` is not in the profile because v3.11 class is random and that switch does not roll it. `constants.planet_class_live`.
 6.8 Match. Planetary trading is on. `PLANET_TRADE_MODE` is tw2002. `constants.planet_trade_on`.
 6.9 Match-behind-flag `CITADEL_PARK_MODE` row 45. Overnight parking inside a citadel is coded and off. `fleet.citadel_home`.
-6.10 Partial. Destroying a planet is in. The colonist-kill rule is only partly the original. `runner._handle_planet_destroy`.
+6.10 Partial. Destroying a planet is in. Killing a trader who is on it is `PLANET_ZDY_MODE` (NOTE 143): enemy experience times 0.1666 and enemy alignment times -0.3333, on top of the blow. Colonist-kill alignment is still unpublished, and a citadel's extra blow experience is not printed. `runner._remove_planet`.
 6.11 Partial. `CORP_PLANET_DISBAND_MODE` row 97, NOTE 82, gives the v3.06 split and stays off. Other corporate planet quirks still disagree. `corp.disband`.
 6.12 Partial. Planet-destroy experience is the stored 50 from `constants.xp_award`. Alignment uses `PLANET_DESTROY_ALIGNMENT_TW2002` = 1. No switch covers that conflict. The create-and-destroy experience loop is 14.3.
 6.13 Match-behind-flag `PLANET_DIVIDEND_PAY_MODE` row 41. Turning it off stops the growth dividend. The profile selects off. `constants.planet_dividend_off`.
 6.14 Match-behind-flag `CITADEL_PERK_MODE` row 27. L2 and L5 perk lines are coded and off. `runner._handle_set_military_reaction`.
 7.2 Match-behind-flag `CITADEL_DAYS_MODE` row 2. Build days can use the slower scale. `constants.citadel_days_live`.
 7.3 Match. A finished level still grants fighters and shields. `planets._complete_citadels`.
-7.4 Match. Atmospheric quasar factor is the original one. `runner._apply_sector_hazards`.
+7.4 Match. Atmospheric quasar factor stays the MBBS times 2. A shieldless landing's second shot is `QUASAR_ATM_ORDER_MODE` (NOTE 143). `runner._handle_land_planet`.
 7.5 Match-behind-flag `TREASURY_CAP_MODE` row 85, NOTE 78. The S1 cap is coded. The stored cap stays 10,000,000. `runner._handle_deposit_treasury`.
 8.1 Different. Ferrengi hulls still disagree. `ferrengi.hull_spec`. No hull switch.
 8.2 Match-behind-flag `FERRENGI_ENGAGE_MODE` row 58. The engage path is coded and off. Tribute amounts are UNVERIFIED. `constants.ferrengi_engage_on`.
