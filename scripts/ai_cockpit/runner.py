@@ -152,6 +152,7 @@ def play(
     stop_file: Path | None,
     headless: bool = True,
     model: str = "",
+    mock_script: str = "",
 ) -> int:
     """Play until the seat is done. Returns 0 on a clean stop."""
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -169,7 +170,7 @@ def play(
         _write_modules(run_dir)
         return 1
 
-    provider = build_provider(provider_name, model)
+    provider = build_provider(provider_name, model, mock_script)
     gate = RateGate(min_interval)
     manual_read = False
     manual_excerpt = ""

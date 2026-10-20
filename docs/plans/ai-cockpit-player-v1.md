@@ -40,13 +40,52 @@ The loop stops when the chip says GAME OVER, the stop file exists, or `--max-tur
 | `--provider` | Key variable | Default model variable |
 | --- | --- | --- |
 | `scripted` | none | rule-based trader, offline |
+| `mock` | none | replays a JSON list from `--mock-script` |
 | `grok` (alias `xai`) | `XAI_API_KEY` | `XAI_MODEL` (default `grok-4`) |
 | `openai` | `OPENAI_API_KEY` | `OPENAI_MODEL` (default `gpt-4o`) |
 | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (default `claude-sonnet-4-5`) |
 
-The scripted trader reads the manual, then plays from the screen text. It records the sector, the port code and prices, the directed warps, and the holds. It sells where the port is buying unless a seen port pays more and the hop still fits. It buys where the port is selling when a seen bid is higher and the turns left cover the sale. Once that pair is known it stays on it: a one-way warp is not taken just to look around, and if the next full trip does not fit it parks on the selling port for the next day. On the last day those leftover turns are waits, then the day-end confirm. A counter below a better reachable bid for the same good is declined. A refused haggle is left. At StarDock it buys one hold when it can pay, and more only when the seen spread is wider than the unit price, then fighters. It does not leave a known route to shop for gear. Sectors whose text showed Ferrengi, deployed mines, or hostile fighters are not warped back into. The StarDock gear list names Armid, Limpet, and Atomic mines; that catalog is not a threat. It keeps acting while the chip says YOUR MOVE, waits on NO TURNS for the next day, and stops when the chip says GAME OVER.
+The scripted trader reads the manual, then plays from the screen text. It records the sector, the port prices and quantities, the directed warps, and the holds. It keeps to unvisited lanes until a short pair, reachable from the current sector, can earn about 2,000 credits in a day from the stock on screen. It does not lock the first thin route, and it does not take a one-way warp until the return leg has already been on screen. It sells into the best reachable bid and buys the load with the best credits per turn, declining a counter that loses to a better reachable bid. A refused haggle is left. If the next lap does not fit, it parks on the buying port. On the last day, a handful of leftover turns that cannot finish a seen pair are waits, then the day-end confirm. On the opening visit to StarDock, and again once a paying route is known, it buys holds when the spread covers the price, then fighters and shields, and it compares shipyard deals the same way. Surplus credits go to the bank. A planet is claimed only when its per-day production beats the port pair; otherwise the ship lifts off. Sectors whose text showed Ferrengi, deployed mines, or hostile fighters are not warped back into. The StarDock gear list names Armid, Limpet, and Atomic mines; that catalog is not a threat. It keeps acting while the chip says YOUR MOVE, confirms a day-end dialog, waits on NO TURNS for the next day, and stops when the chip says GAME OVER.
 
-On seed 250925 the seat starts at sector 16 with net worth 72,227. The 9-turn, 3-day game is one organics trip on each trading day and still finishes at 74,037. The same seat with 24 turns repeats the 16/35 pair and finished at 77,437 (gain 5,210). The previous trader on that same 24-turn game wandered off the pair and finished at 74,857, including a load it bought and could not sell. Day 1 has no port stock to buy, so a 1-day game still ends at 72,297 after the fuel sale, without the old wander down the one-way warp to 126.
+`--provider mock` reads a JSON list of canned replies and runs each one through the same system prompt, user prompt, and on-screen validation as a live model. A reply that is not a visible action is fed back into the next prompt. No key is read.
+
+A 10-day bench seats the scripted commander with three heuristic code bots (universe 200, 40 turns a day, Ferrengi on, no gifted fuel) on seeds 250925 and 4242. Rank is by net worth. Day 1 is the opening board. The day 11 line is the board after day 10.
+
+Seed 250925, Commander:
+
+| Day | Before NW | Rank | After NW | Rank |
+| --- | --- | --- | --- | --- |
+| 1 | 72,601 | 1 | 72,601 | 1 |
+| 2 | 71,524 | 4 | 72,601 | 1 |
+| 3 | 71,608 | 4 | 72,601 | 2 |
+| 4 | 73,795 | 1 | 73,961 | 1 |
+| 5 | 75,258 | 1 | 75,301 | 1 |
+| 6 | 76,554 | 1 | 71,611 | 3 |
+| 7 | 77,663 | 1 | 73,183 | 3 |
+| 8 | 78,543 | 1 | 73,865 | 2 |
+| 9 | 73,896 | 2 | 75,493 | 1 |
+| 10 | 74,694 | 3 | 76,439 | 2 |
+| 11 | 74,961 | 2 | 81,411 | 1 |
+
+Finish, seed 250925: Commander 81,411, H3 78,454, H1 74,466, H2 70,607.
+
+Seed 4242, Commander:
+
+| Day | Before NW | Rank | After NW | Rank |
+| --- | --- | --- | --- | --- |
+| 1 | 72,601 | 1 | 72,601 | 1 |
+| 2 | 72,601 | 1 | 72,601 | 1 |
+| 3 | 70,576 | 4 | 73,369 | 1 |
+| 4 | 69,883 | 4 | 74,141 | 2 |
+| 5 | 70,209 | 4 | 75,501 | 2 |
+| 6 | 69,889 | 4 | 76,561 | 1 |
+| 7 | 70,673 | 4 | 77,481 | 1 |
+| 8 | 70,849 | 4 | 78,021 | 1 |
+| 9 | 70,897 | 4 | 78,501 | 1 |
+| 10 | 70,785 | 4 | 78,921 | 1 |
+| 11 | 70,481 | 4 | 79,281 | 1 |
+
+Finish, seed 4242: Commander 79,281, H2 77,823, H1 75,967, H3 72,864.
 
 Keys are read from the environment at call time. They are not written into source, the run log, `actions.jsonl`, or screenshots' text sidecars. Logs replace key values, `sk-...`, `xai-...`, bearer tokens, and `token=` query values with `[redacted]`.
 
