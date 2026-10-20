@@ -12,8 +12,8 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 |---|---|---|
 | Match | 50 | 57 |
 | Match-behind-flag | 17 | 67 |
-| Partial | 53 | 37 |
-| Different | 38 | 7 |
+| Partial | 53 | 38 |
+| Different | 38 | 6 |
 | Missing | 11 | 1 |
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
@@ -102,7 +102,7 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 2 | 5.7 | Different | L | Ship versus ship is still not the original exchange. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 4 | 5.6 | Different | M | Toll math still disagrees | `runner._toll_blocks` | |
-| 5 | 8.1 | Different | M | Ferrengi hull numbers still disagree. Engage, pace, grudge, and reward already have switches | `ferrengi.hull_spec` | |
+| 5 | 8.1 | Partial | M | Hull counts already match FERRSPEC. The attack formula is `FERRENGI_ATTACK_MODE` (NOTE 148) and stays off. Bible odds still conflict with the approximate FERRSPEC column | `ferrengi.hull_spec`, `combat._resolve_ferrengi_chart_attack` | |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
 | 7 | 11.9 | Partial | M | Feds tow and answer some crimes. Not every evil-trader attack | `fed.protect_fedspace_attack` | |
 | 8 | 5.20 | Partial | M | FedSpace combat has penalties and is not the full police response | `fed.protect_fedspace_attack` | |
@@ -243,7 +243,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 4.7 Match. Mine disruptors are on. `hardware` disruptor path.
 4.8 Partial. Armid detonation is the stored half-count at 20 damage (`hardware.armid_detonation_hits`, profile row 92). The shop price moves only under `HARDWARE_PRICE_MODE` row 14. `constants.armid_hit_damage`.
 4.9 Partial. Limpets attach and can be queried. Removal is only partly the original service. `combat._attach_limpet`.
-4.10 Partial. Photons are already limited by `max_photons` on the frigate and the ISS in `SHIP_SPECS_TW2002`. They damp a quasar for one approach, and `PHOTON_FOLLOW_DAMP_MODE` row 90 damps a ship that enters the wave. They do not do the full sector shutdown. `runner` photon handler.
+4.10 Partial. Photons are already limited by `max_photons` on the frigate and the ISS in `SHIP_SPECS_TW2002`. They damp a quasar for one approach, and `PHOTON_FOLLOW_DAMP_MODE` row 90 damps a ship that enters the wave. Armids and sector fighters already sit out. A limpet still attaching is `PHOTON_LIMPET_MODE` row 174, NOTE 148, and stays off. The interdictor is not on the S1 skip list. `runner` photon handler.
 4.11 Match. Density info needs a bought scanner. `scanners.scan_reason`, `runner._buy_scanner`.
 4.12 Match. Holo info needs a bought scanner. `scanners.scan_reason`, `runner._handle_scan`.
 4.13 Match-behind-flag `PLANET_SCANNER_MODE` row 43. Shielded planets stay visible until the scanner is on. `observation._planet_brief`, `runner._buy_planet_scanner`.
@@ -267,7 +267,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 5.14 Partial. Experience drops on death. Alignment from the loss is only partly the original. `combat._destroy_ship_tw2002`.
 5.15 Match. Furbing another ship's holds is on. `combat._destroy_ship`.
 5.17 Match. Corbomite and disruptors fire in combat. `combat._resolve_ship_attack_tw2002`.
-5.18 Partial. A photon damps a quasar for one approach. `PHOTON_FOLLOW_DAMP_MODE` row 90 covers a ship that enters while the wave is up. It does not do the full sector shutdown.
+5.18 Partial. A photon damps a quasar for one approach. `PHOTON_FOLLOW_DAMP_MODE` row 90 covers a ship that enters while the wave is up. A limpet during that wave is `PHOTON_LIMPET_MODE` row 174, NOTE 148. The interdictor still holds, matching the S1 list.
 5.19 Match-behind-flag `PLANET_LANDING_COMBAT_MODE` row 54. Landing on a defended planet is a fight only when the switch is on. A normal game still seizes. `constants.planet_landing_combat_on`.
 5.20 Partial. FedSpace combat has penalties. It is not the full original police response. `fed.protect_fedspace_attack`.
 6.1 Match-behind-flag `SCANNER_FOG_MODE` row 44. Planet fighters and shields stay hidden until the planet scanner is on. `observation._planet_brief`.
@@ -288,7 +288,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 7.3 Match. A finished level still grants fighters and shields. `planets._complete_citadels`.
 7.4 Match. Atmospheric quasar factor stays the MBBS times 2. A shieldless landing's second shot is `QUASAR_ATM_ORDER_MODE` (NOTE 143). `runner._handle_land_planet`.
 7.5 Match-behind-flag `TREASURY_CAP_MODE` row 85, NOTE 78. The S1 cap is coded. The stored cap stays 10,000,000. `runner._handle_deposit_treasury`.
-8.1 Different. Ferrengi hulls still disagree. `ferrengi.hull_spec`. No hull switch.
+8.1 Partial. Hull counts and the approximate FERRSPEC odds are already stored. A Ferrengi attack is `FERRENGI_ATTACK_MODE` row 173, NOTE 148: one volley at 1,000 / 2,000 / 5,000 fighters. Legacy stays the three-round roll. Bible odds still conflict with that approximate column. `combat._resolve_ferrengi_chart_attack`.
 8.2 Match-behind-flag `FERRENGI_ENGAGE_MODE` row 58. The engage path is coded and off. Tribute amounts are UNVERIFIED. `constants.ferrengi_engage_on`.
 8.3 Match-behind-flag `FERRENGI_PACE_MODE` row 107 and `FERRENGI_GRUDGE_MODE` row 106, NOTE 86. Movement chance and the grudge hop are coded and off. `runner.tick_day`.
 8.4 Match-behind-flag `FERRENGI_REWARD_MODE` row 101, NOTE 85. The bounty is already paid. Live alignment and experience by hull stay off. `combat._grant_ferrengi_kill`.

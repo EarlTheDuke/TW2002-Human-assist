@@ -436,7 +436,16 @@ def _ferrengi(_f: dict) -> str:
         f"{kill}"
         f"They start leaving you alone for the first {_n(K.FERRENGI_STARTUP_GRACE_DAYS)} days, "
         f"and a bounty is {_n(K.FERRENGI_BOUNTY_PER_AGG)} credits per point of aggression.</p>"
-        + _src("Ferrengi encounter rules in the engine: tribute first, then a grudge if you attack.")
+        + _gated(
+            K.ferrengi_attack_live(),
+            f"a Ferrengi attack sends one volley, at most {_n(K.FERRENGI_FIGHTERS_PER_ATTACK[K.FERRENGI_HULL_ASSAULT])} "
+            f"fighters from an Assault Trader, {_n(K.FERRENGI_FIGHTERS_PER_ATTACK[K.FERRENGI_HULL_CRUISER])} from a "
+            f"Battle Cruiser, or {_n(K.FERRENGI_FIGHTERS_PER_ATTACK[K.FERRENGI_HULL_DREAD])} from a Dreadnought, "
+            "at that hull's odds.",
+            "a Ferrengi attack uses three rolls and can send every fighter it has.",
+        )
+        + _src("Ferrengi encounter rules in the engine: tribute first, then a grudge if you attack. "
+               "FERRSPEC fighters per attack.")
     )
 
 
@@ -835,8 +844,8 @@ def _photon_wave() -> str:
     span = "the next day" if days == 1 else f"{_n(days)} days"
     if K.hardware_tw2002():
         body = (
-            "A photon fired into the next sector, Computer then P, shuts that sector's mines and fighters "
-            f"until {span}. Limpets do not attach during the wave. "
+            "A photon fired into the next sector, Computer then P, shuts that sector's armid mines and fighters "
+            f"until {span}. "
             "The shooter, and anyone already in that sector, is marked so the planet quasar does not fire, "
             f"unless the citadel is level 5 or higher and has at least {_n(K.QUASAR_PHOTON_SHIELD_MIN)} shields. "
             "A ship that was not there, and enters while the wave is still up, still faces the quasar. "
@@ -849,6 +858,11 @@ def _photon_wave() -> str:
     return (
         f"<p>{body} This is the hardware rule already loaded. It is not a v3.11-only switch. "
         f"In this process it is {state}.</p>"
+        + _gated(
+            K.photon_limpet_live(),
+            "a limpet still attaches while that wave is up. Armid mines still do not detonate.",
+            "a limpet does not attach while that wave is up.",
+        )
     )
 
 
@@ -1378,9 +1392,11 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "OFFENSIVE_CLASH_MODE", "KILL_CASH_MODE", "SHIP_FLEE_MODE", "PLANET_LANDING_COMBAT_MODE",
         "RIVAL_STRENGTH_MODE", "SPECIAL_HULL_RULES_MODE", "PHOTON_FOLLOW_DAMP_MODE",
         "CAPTURE_CREDIT_LINE_MODE", "ATOMIC_DETONATOR_MODE", "ALIEN_COMBAT_FIX_MODE", "SHIP_EXIT_MODE",
+        "PHOTON_LIMPET_MODE",
     ),
     "ferrengi": (
         "FERRENGI_ENGAGE_MODE", "FERRENGI_GRUDGE_MODE", "FERRENGI_PACE_MODE", "FERRENGI_REWARD_MODE",
+        "FERRENGI_ATTACK_MODE",
     ),
     "planets": (
         "land_planet", "liftoff", "deploy_genesis", "claim_planet", "planet_destroy",
