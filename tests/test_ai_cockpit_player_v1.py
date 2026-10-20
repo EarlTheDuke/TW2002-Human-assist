@@ -167,7 +167,6 @@ def test_scripted_player_reads_the_manual_and_sells(tmp_path: Path) -> None:
     with CuHost(tmp_path / "host", TOKEN) as host:
         assert host.port not in RESERVED_TEST_PORTS
         assert host.port not in FORBIDDEN
-        assert host.port < 8060
         assert allowed_test_port(host.port)
         url = f"{host.base}/bot?seat=P2&mode=cu&token={TOKEN}&layout=redesign"
         proc = subprocess.run(
@@ -441,7 +440,6 @@ def test_scripted_player_gains_net_worth_over_three_days(tmp_path: Path) -> None
     with CuHost(tmp_path / "host", TOKEN, max_days=3, turns_per_day=9) as host:
         assert host.port not in RESERVED_TEST_PORTS
         assert host.port not in FORBIDDEN
-        assert host.port < 8060
         assert allowed_test_port(host.port)
         url = f"{host.base}/bot?seat=P2&mode=cu&token={TOKEN}&layout=redesign"
         proc = subprocess.run(
@@ -474,7 +472,9 @@ def test_scripted_player_buys_holds_and_fighters_at_stardock(tmp_path: Path) -> 
     pytest.importorskip("playwright.sync_api")
     run = tmp_path / "yard"
     with CuHost(tmp_path / "host", TOKEN, max_days=1, turns_per_day=12, park_at=1) as host:
-        assert host.port not in FORBIDDEN and host.port < 8060
+        assert host.port not in RESERVED_TEST_PORTS
+        assert host.port not in FORBIDDEN
+        assert allowed_test_port(host.port)
         url = f"{host.base}/bot?seat=P2&mode=cu&token={TOKEN}&layout=redesign"
         proc = subprocess.run(
             [sys.executable, str(PLAYER), "--url", url, "--provider", "scripted",
