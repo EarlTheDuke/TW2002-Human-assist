@@ -256,6 +256,12 @@ class ReplayRunner(MatchRunner):
                 agent_kind=ag.kind,
                 color=color,
             )
+            from ..engine.presence import mark_ai_cockpit
+            from ..engine.runner import inactive_clock
+
+            mark_ai_cockpit(player)
+            if getattr(universe, "inactive_users_armed", False):
+                player.last_action_at = float(inactive_clock())
             universe.players[ag.player_id] = player
             universe.sectors[start_sid].occupant_ids.append(ag.player_id)
             player.known_sectors.add(start_sid)

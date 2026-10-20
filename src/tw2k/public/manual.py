@@ -954,7 +954,9 @@ def _turns(f: dict) -> str:
         + _dawn_refill()
         + _gated(
             K.inactive_user_live(),
-            "an inactive trader is deleted after 30 days without a successful action. "
+            "an inactive trader is deleted after 30 real days without a successful action. "
+            "Game days do not count. A connected seat stays, and so does an AI cockpit seat. "
+            "A game that started before this rule does not delete anyone. "
             "If that trader is the C.E.O., the corporation keeps its other members.",
             "an inactive trader stays in the game.",
         )

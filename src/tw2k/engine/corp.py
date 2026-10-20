@@ -5,7 +5,10 @@ Legacy handlers stay in runner.py. This module runs only while K.corp_rules_on()
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+_inactive_log = logging.getLogger("tw2k.inactive")
 
 from . import constants as K
 from .actions import Action, ActionKind, ActionResult
@@ -580,11 +583,12 @@ def handle_corp_withdraw(universe: Universe, pid: str, action: Action) -> Action
     return ActionResult(ok=False, error="unsupported action")
 
 
-def delete_inactive_user(universe: Universe, player) -> None:
-    """Remove a trader who has been quiet for INACTIVE_USER_DAYS.
+def delete_inactive_user(universe: Universe, player, *, elapsed_s: float | None = None) -> None:
+    """Remove a trader who has been quiet for 30 wall-clock days.
 
     A C.E.O. deleted this way does not dissolve the corporation. Iago notes that
-    a corporation continues after its C.E.O. is deleted for non-play.
+    a corporation continues after its C.E.O. is deleted for non-play. Every
+    deletion is logged.
     """
     ticker = player.corp_ticker
     corp = universe.corporations.get(ticker) if ticker else None
@@ -594,12 +598,20 @@ def delete_inactive_user(universe: Universe, player) -> None:
         player.corp_ticker = None
     elif corp is not None:
         remove_member(universe, player.id, corp, dissolve=False)
+    elapsed = float(K.INACTIVE_USER_SPAN_S if elapsed_s is None else elapsed_s)
     player.alive = False
     player.inactive_deleted = True
+    _inactive_log.warning(
+        "inactive deletion id=%s name=%s elapsed_s=%.0f game_day=%s",
+        player.id,
+        player.name,
+        elapsed,
+        universe.day,
+    )
     _emit(
         universe, EventKind.PLAYER_ELIMINATED, player.id,
         f"{player.name} was deleted after {int(K.INACTIVE_USER_DAYS)} inactive days",
-        {"reason": "inactive", "days": int(K.INACTIVE_USER_DAYS)},
+        {"reason": "inactive", "days": int(K.INACTIVE_USER_DAYS), "elapsed_s": int(elapsed)},
         player.sector_id,
     )
 
