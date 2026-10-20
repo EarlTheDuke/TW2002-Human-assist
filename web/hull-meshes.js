@@ -1,5 +1,5 @@
 /* ship-view-full-v1. Shared hull meshes for the redesign ship panel and the warp clips.
-   Our own lofts. No EIS print, no Drew Markham ANSI, no traced cinema.
+   Our own lofts. No copied ANSI, no traced cinema.
    Classic page: window.TW2KHullMeshes
    Module: import { buildHullFaces } from "/static/hull-meshes.mjs"
 */
