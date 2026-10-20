@@ -5724,15 +5724,33 @@
     const took = paid.split(":").slice(1).join(":").replace(/\.\s*$/, "").trim();
     return "You ignored the " + ferr + ": it took " + (took || "tribute");
   }
+  // The cash that left the destroyed ship. credits_lost is on the victim's
+  // destroy event; credits_recovered is the killer's copy of the same number.
+  // Either one is fixed on the event. A later read of S.credits can already
+  // match the pre-fight read, and that 0 change used to drop the sentence.
+  function boardCreditsLost(afterSeq) {
+    let lost = 0;
+    streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+      if (!row || (row.seq || 0) <= afterSeq) return;
+      const facts = eventFacts(row);
+      const taken = Number(facts.credits_lost || 0);
+      const recovered = Number(facts.credits_recovered || 0);
+      if (taken) lost = taken;
+      else if (recovered && !lost) lost = recovered;
+    });
+    return lost;
+  }
   function destroyedExtra(afterSeq) {
     let line = "";
     streamLog.concat((S && S.recent_events) || []).forEach((row) => {
       if (!row || (row.seq || 0) <= afterSeq) return;
       const summary = String(row.summary || "");
       if (/ship destroyed/i.test(summary) && line.indexOf("ship destroyed") < 0) line = plainWords(summary);
-      const lost = eventFacts(row).credits_lost;
-      if (lost && line.indexOf("Credits on board lost") < 0) line += (line ? ". " : "") + "Credits on board lost: " + fmt(lost) + " cr";
     });
+    const lost = boardCreditsLost(afterSeq);
+    if (lost && /ship destroyed/i.test(line) && line.indexOf("Credits on board lost") < 0) {
+      line += ". Credits on board lost: " + fmt(lost) + " cr";
+    }
     return line;
   }
   // NOTE 105. The capture event carries credits_lost only while the v3.11
@@ -5983,9 +6001,14 @@
       const ignored = answered ? "" : ignoredTributeLine(before - 1);
       if (ignored && body.indexOf("You ignored") < 0) body += ". " + ignored;
       const losers = shipLossSides(before - 1);
-      if (/ship destroyed/i.test(body) && !/Credits on board lost/i.test(body) && (losers.mine || !losers.other)) {
-        if (delta < 0) body += ". Credits on board lost: " + fmt(-delta) + " cr";
-        else if (delta > 0) body += ". Credits on board lost: " + fmt(delta) + " cr";
+      if (/ship destroyed/i.test(body) && !/Credits on board lost/i.test(body)) {
+        let amount = boardCreditsLost(before - 1);
+        if (!amount && (losers.mine || !losers.other)) {
+          if (delta < 0) amount = -delta;
+          else if (delta > 0) amount = delta;
+          else if (losers.mine && Number(creditsBefore) > 0) amount = Number(creditsBefore);
+        }
+        if (amount) body += ". Credits on board lost: " + fmt(amount) + " cr";
       }
       if (/ship destroyed/i.test(body)) {
         const had = new Set(avoidIds(avoidBefore));
