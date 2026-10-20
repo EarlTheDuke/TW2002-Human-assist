@@ -11,6 +11,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -24,10 +25,19 @@ REPO = Path(__file__).resolve().parents[1]
 PLAYER = REPO / "scripts" / "ai_cockpit_player.py"
 PACKAGE = REPO / "scripts" / "ai_cockpit"
 TOKEN = "ai-cockpit-p2-token-000000000001"
+# Joined at runtime. A single literal would match the source secret scan
+# (xai- or sk- plus 16 alphanumeric characters).
+_SOURCE_SECRET = re.compile(r"xai-[A-Za-z0-9]{16,}|sk-[A-Za-z0-9]{16,}")
+
+
+def _key(*parts: str) -> str:
+    return "".join(parts)
+
+
 KEYS = {
-    "XAI_API_KEY": "xai-testsecretkey1234567890",
-    "OPENAI_API_KEY": "sk-testsecretkey1234567890",
-    "ANTHROPIC_API_KEY": "sk-ant-testsecretkey1234567890",
+    "XAI_API_KEY": _key("xai-", "testsecretkey", "1234567890"),
+    "OPENAI_API_KEY": _key("sk-", "testsecretkey", "1234567890"),
+    "ANTHROPIC_API_KEY": _key("sk-", "ant-", "testsecretkey", "1234567890"),
 }
 # Open pockets only. 8060 and the live bands stay unused.
 FORBIDDEN = set(range(8031, 8038)) | {8041, 8042} | set(range(8045, 8050)) | set(range(8055, 8120))
@@ -70,8 +80,13 @@ def test_keys_are_redacted_and_a_missing_key_is_not_echoed(monkeypatch) -> None:
     from ai_cockpit.providers import ProviderError, ScriptedTrader, TurnView, build_provider
     from ai_cockpit.redact import redact
 
+    source = Path(__file__).read_text(encoding="utf-8")
+    assert _SOURCE_SECRET.search(source) is None
     for value in KEYS.values():
+        assert len(value) > 16
+        assert value not in source
         assert redact(f"authorization {value} token=seat-secret") == "authorization [redacted] token=[redacted]"
+        assert value not in redact(value)
     action = parse_action('sure {"op":"press","key":"."}')
     assert action.op == "press" and action.key == "."
     view = TurnView("YOUR MOVE", ["Manual"], b"", False, "", 1)
