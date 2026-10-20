@@ -10,7 +10,7 @@ Each picture uses the shaded hull from the ship panel (`buildHullFaces` and `cam
 
 - Camera: a side pass, a chase view, head-on toward the viewer, or top-down.
 - Stars: streaks, a tunnel of rings, a nebula tint, or a sparse deep field.
-- Exit: the original jump, a flash, a fold, or a fade. Each run is 2 seconds.
+- Exit: the original jump, a flash, a fold, a fade, or a gate. NOTE 127 sets each picture between 1.5 and 3 seconds.
 
 The star layer is seeded from the clip id, so the same id always draws the same frame. `web/warp-variants.js` holds that table and the star drawing. It is one script tag on the redesign page. There is no new library and no video file. The manifest and that script are each under 60 KB.
 
