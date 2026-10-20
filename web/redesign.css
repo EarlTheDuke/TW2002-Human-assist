@@ -13,8 +13,13 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .seat-timer.amber{border-color:#ffbf47;color:#ffbf47}
 .manual-link{color:var(--c);margin-left:8px;white-space:nowrap;flex-shrink:0;font-size:16px;text-decoration:underline}
 #dayClock{white-space:nowrap}
-#dayEnds{margin-left:8px;color:var(--y);white-space:nowrap}
-#turnsLeftToday{margin-left:8px;color:var(--g);white-space:nowrap}
+#dayEnds,#turnsLeftToday{position:absolute;left:8px;right:8px;margin-left:0;white-space:normal;line-height:1.3;background:#000}
+#turnsLeftToday{top:calc(100% + 2px);color:var(--g)}
+#dayEnds{top:calc(100% + 2px);color:var(--y)}
+#cmdline:has(#turnsLeftToday:not([hidden])) #dayEnds:not([hidden]){top:calc(100% + 1.35em)}
+#cmdline:has(#turnsLeftToday:not([hidden])):not(:has(#dayEnds:not([hidden]))),
+#cmdline:not(:has(#turnsLeftToday)):has(#dayEnds:not([hidden])){margin-bottom:1.55em}
+#cmdline:has(#turnsLeftToday:not([hidden])):has(#dayEnds:not([hidden])){margin-bottom:3em}
 @keyframes blink{50%{border-color:var(--br);color:var(--br)}}
 select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;margin-left:auto}
 #deck{display:grid;gap:8px;padding:8px;min-height:0;flex:1;position:relative;grid-template-columns:1.15fr 1fr 0.95fr;grid-template-rows:minmax(0,1.35fr) minmax(110px,0.7fr);grid-template-areas:"view nav ship" "here here term"}

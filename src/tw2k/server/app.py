@@ -237,6 +237,7 @@ def create_app(
     from ..public import worker as _public
 
     _public.apply_switch_overlay()
+    _public.apply_playtest_clock_nudge()
 
     def _write_seat_links(spec: MatchSpec) -> None:
         """G3: one claim link per external seat in .tw2k/seat_links/ (`tw2k serve` only)."""
