@@ -168,6 +168,11 @@ class GameForm:
     ai_brain: str = "heuristic"
     ai_key: str = field(default="", repr=False)
     ai_endpoint: str = field(default="", repr=False)
+    # NOTE 128. Off unless AI_COCKPIT_SEAT_MODE is on and the form asked for the seat.
+    # The provider and the model are stored. A key is never a form field here.
+    ai_cockpit: bool = False
+    ai_cockpit_provider: str = "scripted"
+    ai_cockpit_model: str = ""
 
     def settings(self) -> dict[str, Any]:
         out = {
@@ -194,6 +199,10 @@ class GameForm:
         if self.ai_opponents:
             out["ai_opponents"] = int(self.ai_opponents)
             out["ai_brain"] = self.ai_brain if self.ai_brain in ("heuristic", "llm") else "heuristic"
+        if self.ai_cockpit:
+            out["ai_cockpit"] = True
+            out["ai_cockpit_provider"] = self.ai_cockpit_provider
+            out["ai_cockpit_model"] = self.ai_cockpit_model
         return out
 
 
@@ -234,6 +243,9 @@ _TURNS_MIN = 50
 _TURNS_MAX = 5_000
 # Accepted only while LOBBY_AI_SEAT_MODE is on. Off, these stay unknown fields.
 _AI_FIELDS = {"ai_opponents", "ai_brain", "ai_key", "ai_endpoint"}
+# Accepted only while AI_COCKPIT_SEAT_MODE is on. Off, these stay unknown fields.
+_COCKPIT_FIELDS = {"ai_cockpit", "ai_cockpit_provider", "ai_cockpit_model"}
+_COCKPIT_PROVIDERS = {"scripted", "grok", "openai", "anthropic"}
 
 
 def ai_label(brain: str) -> str:
@@ -242,9 +254,28 @@ def ai_label(brain: str) -> str:
 
 
 def _allowed_fields() -> set[str]:
+    fields = set(_ALLOWED)
     if K.lobby_ai_seat_on():
-        return set(_ALLOWED) | _AI_FIELDS
-    return set(_ALLOWED)
+        fields |= _AI_FIELDS
+    if K.ai_cockpit_seat_on():
+        fields |= _COCKPIT_FIELDS
+    return fields
+
+
+def _cockpit_provider(raw) -> str:
+    text = str(raw or "scripted").strip().lower()
+    if text == "xai":
+        text = "grok"
+    if text not in _COCKPIT_PROVIDERS:
+        raise FormError("AI cockpit provider must be scripted, grok, openai, or anthropic")
+    return text
+
+
+def _cockpit_model(raw) -> str:
+    text = str(raw or "").strip()
+    if len(text) > 80 or any(ord(ch) < 32 for ch in text):
+        raise FormError("model name must be 80 characters or fewer")
+    return text
 
 
 def _ai_endpoint(raw) -> str:
@@ -406,6 +437,14 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
             ai_key = _ai_key(data.get("ai_key"))
         elif not ai_n:
             brain = "heuristic"
+    cockpit = False
+    cockpit_provider = "scripted"
+    cockpit_model = ""
+    if K.ai_cockpit_seat_on():
+        cockpit = _as_bool(data, "ai_cockpit", False)
+        if cockpit:
+            cockpit_provider = _cockpit_provider(data.get("ai_cockpit_provider"))
+            cockpit_model = _cockpit_model(data.get("ai_cockpit_model"))
     return GameForm(
         name=name,
         rules=rules,
@@ -427,6 +466,9 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         ai_brain=brain,
         ai_key=ai_key,
         ai_endpoint=ai_endpoint,
+        ai_cockpit=cockpit,
+        ai_cockpit_provider=cockpit_provider,
+        ai_cockpit_model=cockpit_model,
     )
 
 
