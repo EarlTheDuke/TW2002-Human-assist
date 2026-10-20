@@ -1,0 +1,11 @@
+TWGS v2.20b. Trade Wars 2002 ver 3.34b. Game: TW Test Game 2. Character: N129Cur. 19 Oct 2026.
+
+Alignment stayed 0. See fed-hunt.txt.
+
+At a normal port the choice list for this neutral trader was only:
+<A> Attack this Port
+<T> Trade at this Port
+<Q> Quit, nevermind
+R at that prompt returned to the command line. No rob amount, no second table, no success line.
+
+Game settings screen: MBBS Compatibility=False. That is not a rob result.
