@@ -170,11 +170,23 @@ def _event_visible_base(event: Event, player_id: str, universe: Universe) -> boo
     if kind == EventKind.PLANET_TRADE:  # PLANETARY_TRADING.md pt24 (PLANET_TRADE_FEED)
         if _K.PLANET_TRADE_FEED == "actor_only":
             return event.actor_id == player_id
+    # NOTE 142. A v3.11 radio or Fed Comm line is not the public announcement.
+    # The payload link is set only by that path. Anyone not on the channel,
+    # and anyone who turned Fed Comm off, is left out of _witnesses.
+    if kind == EventKind.BROADCAST and (event.payload or {}).get("link") in ("radio", "fed"):
+        if event.actor_id == player_id:
+            return True
+        witnesses = (event.payload or {}).get("_witnesses")
+        return isinstance(witnesses, (list, tuple, set)) and player_id in witnesses
     if kind in _PUBLIC_EVENTS:
         return True
     if kind in _ACTOR_ONLY_EVENTS:
         return event.actor_id == player_id
     if kind in _HAIL_EVENTS:
+        # A hail that fell on deaf ears is the sender's line. The other trader
+        # does not receive it (v3.11: a hail is not mail).
+        if (event.payload or {}).get("delivery") == "lost":
+            return event.actor_id == player_id
         target = event.payload.get("target")
         return event.actor_id == player_id or target == player_id
     if kind in _CORP_EVENTS or kind in (
@@ -808,6 +820,9 @@ class Observation(BaseModel):
     # NOTE 101. Need, have, and the unit for the citadel the seat is standing on.
     # Omitted while colonist clarity is off, so a legacy dump grows no key.
     citadel_next_build: dict[str, Any] | None = None
+    # NOTE 142. Omitted while the comms switch is legacy, so a digest grows no key.
+    turn_log: list[dict[str, Any]] | None = None
+    comms: dict[str, Any] | None = None
 
     @model_serializer(mode="wrap")
     def _omit_null_fed_blocks(self, handler):
@@ -848,6 +863,10 @@ class Observation(BaseModel):
                     data.pop(key, None)
             if data.get("citadel_next_build") is None:  # NOTE 101
                 data.pop("citadel_next_build", None)
+            if data.get("turn_log") is None:  # NOTE 142
+                data.pop("turn_log", None)
+            if data.get("comms") is None:
+                data.pop("comms", None)
         return data
 
 
@@ -1232,6 +1251,11 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     from .legality import legal_actions as _legal_actions
     from .runner import alignment_label
     legal = [la.model_dump() for la in _legal_actions(universe, player_id)]
+    turn_log = None
+    comms_view = None
+    if _K.comms_v311_live():
+        from .comms import seat_view
+        turn_log, comms_view = seat_view(universe, player)
     known_sectors = _known_sectors(universe, player)
     bank_view = None
     if K.bank_on() and (K.BANK_BALANCE_VIEW == "always" or player.sector_id == K.STARDOCK_SECTOR):
@@ -1286,6 +1310,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         orphaned_planets=orphaned_planets,
         inbox=list(player.inbox[-40:]),
         recent_events=recent_events,
+        turn_log=turn_log,
+        comms=comms_view,
         alliances=alliances,
         corp=corp_summary,
         corporations=_public_corporations(universe),

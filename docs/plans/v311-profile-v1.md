@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (127 helpers)
+## The switch set (128 helpers)
 
 The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112. NOTE 104 uses row 164. NOTE 112 uses row 165. NOTE 115 uses row 166. NOTE 117 uses rows 167, 168 and 169. NOTE 143 uses rows 170, 171 and 172. NOTE 148 uses rows 173 and 174. NOTE 150 uses row 175. Rows 160, 162 and 163 stay unused. The ship-versus-ship loss split and a real-time travel time stay queued in `docs/plans/live-twgs-test-queue-v1.md`, not switched.
 
@@ -139,6 +139,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 173 | `FERRENGI_ATTACK_MODE` | `ferrengi_attack_live` | NOTE 148 GAP 8.1: a Ferrengi attack sends one volley, capped at the FERRSPEC fighters per attack (Assault Trader 1,000, Battle Cruiser 2,000, Dreadnought 5,000) at that hull's odds. The three-round roll stays the stored path. Stored default stays legacy | - |
 | 174 | `PHOTON_LIMPET_MODE` | `photon_limpet_live` | NOTE 148 GAP 4.10: S1 still attaches a limpet during a photon wave. Armids, sector fighters, and a quasar that is not behind 200 planetary shields stay down. The interdictor is not on that skip list. Stored default stays legacy | - |
 | 175 | `HAGGLE_TABLE_MODE` | `haggle_table_live` | NOTE 150 GAP 2.6: a counter uses the cabal product table. Equipment at MCIC -20 is 110.2 percent and fuel at MCIC -90 is 149.4 percent. Between two printed rows the page says to interpolate. Outside that span the straight 110 to 149 line stays. This wins over the measured window when both are on. Stored default stays legacy | - |
+| 176 | `COMMS_V311_MODE` | `comms_v311_live` | NOTE 142: sub-space radio is a channel from 1 to 60000 heard by everyone on it, and channel 0 is off. Fed Comm is the global line and can be turned off. A hail is one trader in the same sector and is not mail. A corporation memo stays inside the corp. Lines are 155 characters, wait 2 seconds apart, and show at the start of a turn for 10 seconds. Stored default stays legacy. `"1"` does not turn it on | - |
 
 Row 147 is unused. Alien traders already refuse a sector that holds fighters (`alien._fighter_blocked`, `alien_day_step`) and take mine hits (`apply_mines_to_alien`). Federal ships already refuse those sectors (`fed._fed_blocked`). Ferrengi already ignore fighters (`FERRENGI_FIGHTER_BLOCK` is False; Iago's War Manual v1.1) and take armid hits (`FERRENGI_HIT_MINES`, `_apply_mines_to_ferrengi`). That is the stored rule, so `NPC_FIGHTER_SECTOR_MODE` is not added.
 
