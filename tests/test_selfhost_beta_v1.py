@@ -349,6 +349,39 @@ def test_item2_public_mode_answers_only_the_lobby(monkeypatch) -> None:
     assert lobby.post("/control/pause").status_code == 404
 
 
+def test_direct_cockpit_loads_manual_and_static_under_the_base_path(monkeypatch) -> None:
+    """The scripted seat opens the worker's own /bot page. That page points at
+    /g/<id>/static and /g/<id>/manual. Those land on the real routes. /control stays closed."""
+    monkeypatch.setenv(W.ENV_LOBBY_SECRET, "s" * 64)
+    seen: list[str] = []
+
+    async def ok(request):
+        seen.append(request.scope["path"])
+        return PlainTextResponse("manual page" if request.scope["path"] == "/manual" else "ok")
+
+    routes = [
+        Route("/manual", ok),
+        Route("/static/{rest:path}", ok),
+        Route("/control/end", ok, methods=["POST"]),
+    ]
+    inner = Starlette(routes=routes)
+    inner.add_middleware(W.PublicLock)
+    inner.add_middleware(W.PageRewrite, base="/g/abc", brand_name="")
+    inner.add_middleware(W.AcceptBasePath, base="/g/abc")
+    outside = TestClient(inner)
+    manual = outside.get("/g/abc/manual")
+    assert manual.status_code == 200 and "manual page" in manual.text
+    static = outside.get("/g/abc/static/redesign.js")
+    assert static.status_code == 200
+    assert seen == ["/manual", "/static/redesign.js"]
+    direct = outside.get("/manual")
+    assert direct.status_code == 200
+    blocked = outside.post("/g/abc/control/end")
+    assert blocked.status_code == 404 and blocked.json() == {"detail": "not available in this game"}
+    lobby = TestClient(inner, client=("127.0.0.1", 5000))
+    assert lobby.post("/g/abc/control/end", headers={W.LOBBY_HEADER: "s" * 64}).status_code == 200
+
+
 def test_item2_public_worker_refuses_to_start_without_its_secrets(monkeypatch) -> None:
     from fastapi import FastAPI
 
