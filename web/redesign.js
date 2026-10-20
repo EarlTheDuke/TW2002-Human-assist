@@ -683,8 +683,10 @@
   /* ship3d-start */
   // cockpit-ship-view-3d-v2. Shaded meshes drawn in the page, not a trace of the
   // Markham ANSI or the EIS prints. The classic outline of each hull is UNVERIFIED.
-  // Layered SVG keeps the ship view under the 300 KB budget and shares this mesh
-  // with the warp scene. No WebGL (the probe below fails) falls back to the NOTE 77 outline.
+  // Layered SVG keeps the ship view under the 300 KB budget. The mesh is
+  // window.TW2KHullMeshes (web/hull-meshes.js). Warp clips import the same
+  // faces through /static/hull-meshes.mjs.
+  // No WebGL (the probe below fails) falls back to the NOTE 77 outline.
   const SVGNS = "http://www.w3.org/2000/svg";
   let shipGlKnown = null;
   let shipForceOutline = false;
@@ -1202,6 +1204,78 @@
   let warpTimer = 0;
   let warpBag = [];
   let lastWarpId = "";
+  let warpSpinRaf = 0;
+  let warpFrame = null;
+  function warpMesh() {
+    const live = window.TW2KWarpHull;
+    if (live && live.buildHullFaces && live.projectFace && live.hullMarkup) return live;
+    const api = window.TW2KHullMeshes;
+    if (api && api.buildHullFaces && api.projectFace && api.markup) {
+      return {
+        source: "note126",
+        buildHullFaces: api.buildHullFaces,
+        projectFace: api.projectFace,
+        hullMarkup: api.markup,
+      };
+    }
+    const old = window.TW2KHullMesh;
+    if (old && old.buildFaces && old.project) {
+      return {
+        source: "note118",
+        buildHullFaces: function (ship, def) { return old.buildFaces(ship, def); },
+        projectFace: function (face, yaw, pitch, fit, ox, oy) { return old.project(face, yaw, pitch, fit, ox, oy); },
+        hullMarkup: function (ship, def, yaw, pitch, fit, ox, oy) {
+          const drawn = [];
+          old.buildFaces(ship, def).forEach((face) => {
+            const cam = old.project(face, yaw, pitch, fit || 1, ox, oy);
+            if (cam) drawn.push(cam);
+          });
+          drawn.sort((a, b) => a.depth - b.depth);
+          return drawn.map((cam) => '<polygon points="' + cam.points + '" fill="' + cam.fill + '" opacity="' + cam.opacity + '"/>').join("");
+        },
+      };
+    }
+    return null;
+  }
+  function stopWarpSpin() {
+    if (warpSpinRaf) cancelAnimationFrame(warpSpinRaf);
+    warpSpinRaf = 0;
+  }
+  // Same spin as the ship panel: 0.28 rad/s, pitch wobble sin(t * 0.45) * 0.07.
+  function warpPose(style, elapsed) {
+    const yaw0 = style && style.yaw != null ? style.yaw : 0.82;
+    const pitch0 = style && style.pitch != null ? style.pitch : 0.5;
+    const t = Math.max(0, Number(elapsed) || 0) / 1000;
+    return {
+      yaw: yaw0 + t * 0.28,
+      pitch: pitch0 + Math.sin(t * 0.45) * 0.07,
+      fit: style && style.fit ? style.fit : 1,
+    };
+  }
+  function warpHullHtml(elapsed) {
+    const api = warpMesh();
+    const frame = warpFrame;
+    if (!api || !frame) return "";
+    const pose = warpPose(frame.style, elapsed);
+    const root = $("warpClip");
+    if (root) root.setAttribute("data-yaw", pose.yaw.toFixed(3));
+    return api.hullMarkup(frame.sample, frame.def, pose.yaw, pose.pitch, pose.fit, 200, 130);
+  }
+  function applyWarpHull(elapsed) {
+    const body = document.querySelector("#warpSvg [data-testid=warp-body]");
+    if (!body || body.getAttribute("data-model") !== "solid") return;
+    body.innerHTML = warpHullHtml(elapsed);
+  }
+  function startWarpSpin() {
+    stopWarpSpin();
+    if (!warpFrame || warpMotion() !== "play") return;
+    const t0 = performance.now();
+    const step = (now) => {
+      applyWarpHull(now - t0);
+      warpSpinRaf = requestAnimationFrame(step);
+    };
+    warpSpinRaf = requestAnimationFrame(step);
+  }
   function ensureWarpManifest() {
     if (warpManifest) return Promise.resolve(warpManifest);
     if (!warpManifestPromise) {
@@ -1277,6 +1351,39 @@
     if (!api || !chosen || !chosen.id) return null;
     return api.lookup(chosen.id);
   }
+  function clipMediaUrl(src) {
+    const text = String(src || "");
+    if (!text) return "";
+    if (/^(https?:|blob:|data:)/i.test(text) || text.charAt(0) === "/") return text;
+    return "/static/media/" + text;
+  }
+  // TW2KWarpClipSource.resolve may replace this variant with a file.
+  // Documented on web/warp-variants.js. Null keeps the procedural picture.
+  function withClipSource(chosen) {
+    const api = window.TW2KWarpClipSource;
+    if (!api || typeof api.resolve !== "function" || !chosen) return { chosen: chosen, hooked: false };
+    let next = null;
+    try { next = api.resolve(chosen); } catch (err) { next = null; }
+    if (!next || typeof next !== "object") return { chosen: chosen, hooked: false };
+    const merged = Object.assign({}, chosen);
+    if (next.webm) merged.webm = next.webm;
+    if (next.mp4) merged.mp4 = next.mp4;
+    if (next.poster) merged.poster = next.poster;
+    if (next.duration_ms) merged.duration_ms = next.duration_ms;
+    if (next.kind === "file" || next.webm || next.mp4) merged.kind = "file";
+    else if (next.kind) merged.kind = next.kind;
+    return { chosen: merged, hooked: true };
+  }
+  function skipWarp() {
+    stopWarpSpin();
+    const root = $("warpClip");
+    const video = $("warpVideo");
+    if (warpTimer) { clearTimeout(warpTimer); warpTimer = 0; }
+    if (video) {
+      try { video.pause(); } catch (e) { /* already quiet */ }
+    }
+    if (root) root.hidden = true;
+  }
   function warpHullMarkup(sh, def, style) {
     const sample = {
       class: (sh && sh.class) || "",
@@ -1285,35 +1392,23 @@
       shield_cap: (sh && sh.shield_cap) || 0,
       transwarp: (sh && sh.transwarp) || {},
     };
-    const faces = buildHullFaces(sample, def);
-    if (!shipSolidOn()) {
+    const api = warpMesh();
+    const faces = api ? api.buildHullFaces(sample, def) : [];
+    warpFrame = { sample: sample, def: def, style: style || null };
+    if (!shipSolidOn() || !api) {
       const angle = style ? (style.yaw * 36).toFixed(1) : "0";
       return {
         model: "outline",
         mesh: "outline",
+        source: api ? api.source : "",
         faces: faces.length,
         xform: ' transform="translate(200 130) rotate(' + angle + ')"',
         html: shipBody(sample, def),
       };
     }
-    if (!style) {
-      return { model: "solid", mesh: "panel", faces: faces.length, xform: "", html: shipSolidMarkup(sample, def, 200, 130) };
-    }
-    const drawn = [];
-    faces.forEach((face) => {
-      const cam = cameraFace(face, style.yaw, style.pitch, style.fit || 1, 200, 130);
-      if (cam) drawn.push(cam);
-    });
-    if (drawn.length < 4) {
-      drawn.length = 0;
-      faces.forEach((face) => {
-        const cam = cameraFace(face, style.yaw, 0.45, style.fit || 1, 200, 130);
-        if (cam) drawn.push(cam);
-      });
-    }
-    drawn.sort((a, b) => a.depth - b.depth);
-    const html = drawn.map((cam) => '<polygon points="' + cam.points + '" fill="' + cam.fill + '" opacity="' + cam.opacity + '"/>').join("");
-    return { model: "solid", mesh: "panel", faces: faces.length, xform: "", html: html };
+    const pose = warpPose(style, 0);
+    const html = api.hullMarkup(sample, def, pose.yaw, pose.pitch, pose.fit, 200, 130);
+    return { model: "solid", mesh: "panel", source: api.source, faces: faces.length, xform: "", html: html };
   }
   function warpMotion() {
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1340,6 +1435,8 @@
     const svg = $("warpSvg");
     const video = $("warpVideo");
     if (!root || !svg) return;
+    const resolved = withClipSource(chosen);
+    chosen = resolved.chosen;
     const motion = warpMotion();
     if (motion === "off") { root.hidden = true; return; }
     const sh = (S && S.ship) || {};
@@ -1348,6 +1445,7 @@
     const def = SHIPS[clipHull] || SHIPS[liveClass] || { name: clipHull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
     const ms = Number(chosen.duration_ms) || Number(warpManifest && warpManifest.duration_ms) || 2000;
     const file = chosen.kind === "file" && (chosen.webm || chosen.mp4);
+    root.style.setProperty("--warp-ms", ms + "ms");
     const style = warpStyleOf(chosen);
     const same = !liveClass || liveClass === clipHull;
     const flying = {
@@ -1368,9 +1466,12 @@
     root.setAttribute("data-camera", style ? style.camera : "");
     root.setAttribute("data-stars", style ? style.stars : "streaks");
     root.setAttribute("data-ship", flying.class);
+    root.setAttribute("data-duration", String(ms));
+    root.setAttribute("data-clip-source", resolved.hooked && file ? "hook" : "procedural");
     root.classList.toggle("is-still", motion !== "play");
     svg.hidden = false;
     const drawn = warpHullMarkup(flying, def, style);
+    root.setAttribute("data-mesh-source", drawn.source || "");
     root.setAttribute("data-mesh", drawn.mesh || drawn.model);
     root.setAttribute("data-faces", String(drawn.faces || 0));
     const field = style && window.TW2KWarpVariants
@@ -1380,7 +1481,12 @@
       + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
       + drawn.model + '"' + drawn.xform + ">"
       + drawn.html + "</g></g>";
+    svg.querySelectorAll(".warp-ship, .streaks, .warp-stars").forEach((el) => {
+      el.style.animationDuration = ms + "ms";
+    });
     root.setAttribute("data-paint-ms", (performance.now() - paintAt).toFixed(2));
+    if (!file && motion === "play") startWarpSpin();
+    else stopWarpSpin();
     if (video) {
       video.hidden = true;
       video.onerror = null;
@@ -1389,7 +1495,8 @@
       if (file && motion === "play") {
         video.hidden = false;
         svg.hidden = true;
-        video.src = "/static/media/" + (chosen.webm || chosen.mp4);
+        video.src = clipMediaUrl(chosen.webm || chosen.mp4);
+        if (chosen.poster) video.poster = clipMediaUrl(chosen.poster);
         video.play().catch(() => { video.hidden = true; svg.hidden = false; });
         video.onerror = () => { video.hidden = true; svg.hidden = false; };
       }
@@ -1400,6 +1507,7 @@
     root.setAttribute("data-plays", String(warpPlays));
     if (warpTimer) clearTimeout(warpTimer);
     warpTimer = setTimeout(() => {
+      stopWarpSpin();
       root.hidden = true;
       if (video) { try { video.pause(); } catch (e) { /* already quiet */ } }
     }, ms);
@@ -1407,6 +1515,8 @@
   function holdWarp(atMs) {
     const root = $("warpClip");
     if (!root || root.hidden) return 0;
+    stopWarpSpin();
+    if (atMs != null) applyWarpHull(atMs);
     if (warpTimer) { clearTimeout(warpTimer); warpTimer = 0; }
     const anims = root.getAnimations({ subtree: true });
     anims.forEach((anim) => {
@@ -6287,6 +6397,9 @@
       return true;
     },
     hold(ms) { return holdWarp(ms); },
+    skip() { skipWarp(); return true; },
+    consider(events) { return playWarpClips(events); },
+    selfId() { return (S && S.self_id) || ""; },
     paint(hull, id) {
       const table = (warpManifest && warpManifest.hulls) || {};
       const list = Array.isArray(table[hull]) ? table[hull] : [];
@@ -6312,6 +6425,12 @@
       };
     },
   };
+  const warpSkip = $("warpSkip");
+  if (warpSkip) warpSkip.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    skipWarp();
+  });
   ensureWarpManifest();
   $("mapZoomIn").addEventListener("click", () => zoomMap(1.25));
   $("mapZoomOut").addEventListener("click", () => zoomMap(1 / 1.25));

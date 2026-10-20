@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "fallback_clip": "warp.out",
   "duration_ms": 2000,
   "hulls": {
@@ -7,7 +7,7 @@
       {
         "id": "escape_pod.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -19,7 +19,7 @@
       {
         "id": "escape_pod.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -31,7 +31,7 @@
       {
         "id": "escape_pod.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -43,7 +43,7 @@
       {
         "id": "escape_pod.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -55,7 +55,7 @@
       {
         "id": "escape_pod.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -65,21 +65,21 @@
         "fit": 0.9
       },
       {
-        "id": "escape_pod.chase.06",
+        "id": "escape_pod.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "escape_pod.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -91,7 +91,7 @@
       {
         "id": "escape_pod.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -103,7 +103,7 @@
       {
         "id": "escape_pod.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -115,7 +115,7 @@
       {
         "id": "escape_pod.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -129,7 +129,7 @@
       {
         "id": "merchant_cruiser.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -141,7 +141,7 @@
       {
         "id": "merchant_cruiser.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -153,7 +153,7 @@
       {
         "id": "merchant_cruiser.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -165,7 +165,7 @@
       {
         "id": "merchant_cruiser.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -177,7 +177,7 @@
       {
         "id": "merchant_cruiser.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -187,21 +187,21 @@
         "fit": 0.9
       },
       {
-        "id": "merchant_cruiser.chase.06",
+        "id": "merchant_cruiser.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "merchant_cruiser.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -213,7 +213,7 @@
       {
         "id": "merchant_cruiser.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -225,7 +225,7 @@
       {
         "id": "merchant_cruiser.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -237,7 +237,7 @@
       {
         "id": "merchant_cruiser.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -251,7 +251,7 @@
       {
         "id": "scout_marauder.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -263,7 +263,7 @@
       {
         "id": "scout_marauder.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -275,7 +275,7 @@
       {
         "id": "scout_marauder.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -287,7 +287,7 @@
       {
         "id": "scout_marauder.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -299,7 +299,7 @@
       {
         "id": "scout_marauder.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -309,21 +309,21 @@
         "fit": 0.9
       },
       {
-        "id": "scout_marauder.chase.06",
+        "id": "scout_marauder.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "scout_marauder.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -335,7 +335,7 @@
       {
         "id": "scout_marauder.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -347,7 +347,7 @@
       {
         "id": "scout_marauder.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -359,7 +359,7 @@
       {
         "id": "scout_marauder.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -373,7 +373,7 @@
       {
         "id": "missile_frigate.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -385,7 +385,7 @@
       {
         "id": "missile_frigate.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -397,7 +397,7 @@
       {
         "id": "missile_frigate.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -409,7 +409,7 @@
       {
         "id": "missile_frigate.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -421,7 +421,7 @@
       {
         "id": "missile_frigate.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -431,21 +431,21 @@
         "fit": 0.9
       },
       {
-        "id": "missile_frigate.chase.06",
+        "id": "missile_frigate.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "missile_frigate.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -457,7 +457,7 @@
       {
         "id": "missile_frigate.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -469,7 +469,7 @@
       {
         "id": "missile_frigate.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -481,7 +481,7 @@
       {
         "id": "missile_frigate.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -495,7 +495,7 @@
       {
         "id": "battleship.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -507,7 +507,7 @@
       {
         "id": "battleship.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -519,7 +519,7 @@
       {
         "id": "battleship.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -531,7 +531,7 @@
       {
         "id": "battleship.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -543,7 +543,7 @@
       {
         "id": "battleship.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -553,21 +553,21 @@
         "fit": 0.9
       },
       {
-        "id": "battleship.chase.06",
+        "id": "battleship.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "battleship.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -579,7 +579,7 @@
       {
         "id": "battleship.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -591,7 +591,7 @@
       {
         "id": "battleship.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -603,7 +603,7 @@
       {
         "id": "battleship.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -617,7 +617,7 @@
       {
         "id": "corporate_flagship.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -629,7 +629,7 @@
       {
         "id": "corporate_flagship.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -641,7 +641,7 @@
       {
         "id": "corporate_flagship.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -653,7 +653,7 @@
       {
         "id": "corporate_flagship.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -665,7 +665,7 @@
       {
         "id": "corporate_flagship.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -675,21 +675,21 @@
         "fit": 0.9
       },
       {
-        "id": "corporate_flagship.chase.06",
+        "id": "corporate_flagship.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "corporate_flagship.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -701,7 +701,7 @@
       {
         "id": "corporate_flagship.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -713,7 +713,7 @@
       {
         "id": "corporate_flagship.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -725,7 +725,7 @@
       {
         "id": "corporate_flagship.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -739,7 +739,7 @@
       {
         "id": "colonial_transport.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -751,7 +751,7 @@
       {
         "id": "colonial_transport.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -763,7 +763,7 @@
       {
         "id": "colonial_transport.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -775,7 +775,7 @@
       {
         "id": "colonial_transport.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -787,7 +787,7 @@
       {
         "id": "colonial_transport.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -797,21 +797,21 @@
         "fit": 0.9
       },
       {
-        "id": "colonial_transport.chase.06",
+        "id": "colonial_transport.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "colonial_transport.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -823,7 +823,7 @@
       {
         "id": "colonial_transport.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -835,7 +835,7 @@
       {
         "id": "colonial_transport.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -847,7 +847,7 @@
       {
         "id": "colonial_transport.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -861,7 +861,7 @@
       {
         "id": "cargotran.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -873,7 +873,7 @@
       {
         "id": "cargotran.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -885,7 +885,7 @@
       {
         "id": "cargotran.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -897,7 +897,7 @@
       {
         "id": "cargotran.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -909,7 +909,7 @@
       {
         "id": "cargotran.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -919,21 +919,21 @@
         "fit": 0.9
       },
       {
-        "id": "cargotran.chase.06",
+        "id": "cargotran.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "cargotran.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -945,7 +945,7 @@
       {
         "id": "cargotran.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -957,7 +957,7 @@
       {
         "id": "cargotran.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -969,7 +969,7 @@
       {
         "id": "cargotran.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -983,7 +983,7 @@
       {
         "id": "merchant_freighter.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -995,7 +995,7 @@
       {
         "id": "merchant_freighter.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1007,7 +1007,7 @@
       {
         "id": "merchant_freighter.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1019,7 +1019,7 @@
       {
         "id": "merchant_freighter.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -1031,7 +1031,7 @@
       {
         "id": "merchant_freighter.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -1041,21 +1041,21 @@
         "fit": 0.9
       },
       {
-        "id": "merchant_freighter.chase.06",
+        "id": "merchant_freighter.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "merchant_freighter.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -1067,7 +1067,7 @@
       {
         "id": "merchant_freighter.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -1079,7 +1079,7 @@
       {
         "id": "merchant_freighter.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -1091,7 +1091,7 @@
       {
         "id": "merchant_freighter.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -1105,7 +1105,7 @@
       {
         "id": "havoc_gunstar.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -1117,7 +1117,7 @@
       {
         "id": "havoc_gunstar.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1129,7 +1129,7 @@
       {
         "id": "havoc_gunstar.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1141,7 +1141,7 @@
       {
         "id": "havoc_gunstar.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -1153,7 +1153,7 @@
       {
         "id": "havoc_gunstar.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -1163,21 +1163,21 @@
         "fit": 0.9
       },
       {
-        "id": "havoc_gunstar.chase.06",
+        "id": "havoc_gunstar.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "havoc_gunstar.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -1189,7 +1189,7 @@
       {
         "id": "havoc_gunstar.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -1201,7 +1201,7 @@
       {
         "id": "havoc_gunstar.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -1213,7 +1213,7 @@
       {
         "id": "havoc_gunstar.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -1227,7 +1227,7 @@
       {
         "id": "imperial_starship.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -1239,7 +1239,7 @@
       {
         "id": "imperial_starship.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1251,7 +1251,7 @@
       {
         "id": "imperial_starship.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1263,7 +1263,7 @@
       {
         "id": "imperial_starship.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -1275,7 +1275,7 @@
       {
         "id": "imperial_starship.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -1285,21 +1285,21 @@
         "fit": 0.9
       },
       {
-        "id": "imperial_starship.chase.06",
+        "id": "imperial_starship.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "imperial_starship.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -1311,7 +1311,7 @@
       {
         "id": "imperial_starship.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -1323,7 +1323,7 @@
       {
         "id": "imperial_starship.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -1335,7 +1335,7 @@
       {
         "id": "imperial_starship.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -1349,7 +1349,7 @@
       {
         "id": "star_master.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -1361,7 +1361,7 @@
       {
         "id": "star_master.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1373,7 +1373,7 @@
       {
         "id": "star_master.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1385,7 +1385,7 @@
       {
         "id": "star_master.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -1397,7 +1397,7 @@
       {
         "id": "star_master.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -1407,21 +1407,21 @@
         "fit": 0.9
       },
       {
-        "id": "star_master.chase.06",
+        "id": "star_master.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "star_master.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -1433,7 +1433,7 @@
       {
         "id": "star_master.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -1445,7 +1445,7 @@
       {
         "id": "star_master.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -1457,7 +1457,7 @@
       {
         "id": "star_master.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -1471,7 +1471,7 @@
       {
         "id": "constellation.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -1483,7 +1483,7 @@
       {
         "id": "constellation.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1495,7 +1495,7 @@
       {
         "id": "constellation.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1507,7 +1507,7 @@
       {
         "id": "constellation.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -1519,7 +1519,7 @@
       {
         "id": "constellation.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -1529,21 +1529,21 @@
         "fit": 0.9
       },
       {
-        "id": "constellation.chase.06",
+        "id": "constellation.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "constellation.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -1555,7 +1555,7 @@
       {
         "id": "constellation.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -1567,7 +1567,7 @@
       {
         "id": "constellation.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -1579,7 +1579,7 @@
       {
         "id": "constellation.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -1593,7 +1593,7 @@
       {
         "id": "tkhasi_orion.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -1605,7 +1605,7 @@
       {
         "id": "tkhasi_orion.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1617,7 +1617,7 @@
       {
         "id": "tkhasi_orion.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1629,7 +1629,7 @@
       {
         "id": "tkhasi_orion.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -1641,7 +1641,7 @@
       {
         "id": "tkhasi_orion.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -1651,21 +1651,21 @@
         "fit": 0.9
       },
       {
-        "id": "tkhasi_orion.chase.06",
+        "id": "tkhasi_orion.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "tkhasi_orion.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -1677,7 +1677,7 @@
       {
         "id": "tkhasi_orion.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -1689,7 +1689,7 @@
       {
         "id": "tkhasi_orion.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -1701,7 +1701,7 @@
       {
         "id": "tkhasi_orion.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -1715,7 +1715,7 @@
       {
         "id": "tholian_sentinel.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -1727,7 +1727,7 @@
       {
         "id": "tholian_sentinel.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1739,7 +1739,7 @@
       {
         "id": "tholian_sentinel.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1751,7 +1751,7 @@
       {
         "id": "tholian_sentinel.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -1763,7 +1763,7 @@
       {
         "id": "tholian_sentinel.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -1773,21 +1773,21 @@
         "fit": 0.9
       },
       {
-        "id": "tholian_sentinel.chase.06",
+        "id": "tholian_sentinel.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "tholian_sentinel.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -1799,7 +1799,7 @@
       {
         "id": "tholian_sentinel.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -1811,7 +1811,7 @@
       {
         "id": "tholian_sentinel.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -1823,7 +1823,7 @@
       {
         "id": "tholian_sentinel.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -1837,7 +1837,7 @@
       {
         "id": "taurean_mule.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -1849,7 +1849,7 @@
       {
         "id": "taurean_mule.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1861,7 +1861,7 @@
       {
         "id": "taurean_mule.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1873,7 +1873,7 @@
       {
         "id": "taurean_mule.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -1885,7 +1885,7 @@
       {
         "id": "taurean_mule.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -1895,21 +1895,21 @@
         "fit": 0.9
       },
       {
-        "id": "taurean_mule.chase.06",
+        "id": "taurean_mule.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "taurean_mule.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -1921,7 +1921,7 @@
       {
         "id": "taurean_mule.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -1933,7 +1933,7 @@
       {
         "id": "taurean_mule.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -1945,7 +1945,7 @@
       {
         "id": "taurean_mule.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
@@ -1959,7 +1959,7 @@
       {
         "id": "interdictor_cruiser.streak.01",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1600,
         "style": "streak",
         "camera": "side",
         "stars": "streaks",
@@ -1971,7 +1971,7 @@
       {
         "id": "interdictor_cruiser.chase.02",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1800,
         "style": "chase",
         "camera": "chase",
         "stars": "streaks",
@@ -1983,7 +1983,7 @@
       {
         "id": "interdictor_cruiser.headon.03",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2100,
         "style": "headon",
         "camera": "headon",
         "stars": "tunnel",
@@ -1995,7 +1995,7 @@
       {
         "id": "interdictor_cruiser.top.04",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2400,
         "style": "top",
         "camera": "top",
         "stars": "sparse",
@@ -2007,7 +2007,7 @@
       {
         "id": "interdictor_cruiser.side.05",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2700,
         "style": "side",
         "camera": "side",
         "stars": "nebula",
@@ -2017,21 +2017,21 @@
         "fit": 0.9
       },
       {
-        "id": "interdictor_cruiser.chase.06",
+        "id": "interdictor_cruiser.gate.06",
         "kind": "svg",
-        "duration_ms": 2000,
-        "style": "chase",
-        "camera": "chase",
-        "stars": "tunnel",
-        "exit": "fold",
-        "yaw": 0.12,
-        "pitch": 0.55,
-        "fit": 0.8
+        "duration_ms": 1500,
+        "style": "gate",
+        "camera": "gate",
+        "stars": "gate",
+        "exit": "gate",
+        "yaw": 0.62,
+        "pitch": 0.22,
+        "fit": 0.78
       },
       {
         "id": "interdictor_cruiser.headon.07",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 1900,
         "style": "headon",
         "camera": "headon",
         "stars": "sparse",
@@ -2043,7 +2043,7 @@
       {
         "id": "interdictor_cruiser.top.08",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2300,
         "style": "top",
         "camera": "top",
         "stars": "streaks",
@@ -2055,7 +2055,7 @@
       {
         "id": "interdictor_cruiser.side.09",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 2600,
         "style": "side",
         "camera": "side",
         "stars": "tunnel",
@@ -2067,7 +2067,7 @@
       {
         "id": "interdictor_cruiser.chase.10",
         "kind": "svg",
-        "duration_ms": 2000,
+        "duration_ms": 3000,
         "style": "chase",
         "camera": "chase",
         "stars": "nebula",
