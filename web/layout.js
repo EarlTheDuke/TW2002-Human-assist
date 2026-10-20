@@ -12,7 +12,7 @@
     ["nav", "Nav computer"],
     ["ship", "Ship"],
     ["context", "Here"],
-    ["term", "Subspace log"],
+    ["term", "Comms"],
   ];
   const ORDER = PANELS.map((row) => row[0]);
   const SLOTS = [
