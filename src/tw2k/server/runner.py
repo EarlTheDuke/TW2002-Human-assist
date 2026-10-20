@@ -1702,6 +1702,8 @@ class MatchRunner:
                 base_tpd = getattr(spec.config, "turns_per_day", K.STARTING_TURNS_PER_DAY)
                 override = getattr(spec.config, "starting_credits_override", None)
                 turns_override = getattr(spec.config, "turns_per_day_override", None)
+                # NOTE 131. Flag off returns the override unchanged, including None.
+                turns_override = K.full_length_turns_override(spec.config, turns_override)
                 credits, turns_per_day, fighters = K.opening_loadout(
                     base_credits, base_tpd, i, override, turns_override)
                 ship.fighters = fighters
