@@ -1,0 +1,806 @@
+"""NOTE 136 playtest3-readiness-v1.
+
+Ben's beta flow: a lobby game with starting credits, AI seats, a scripted
+cockpit seat, full-length days, and the redesign cockpit. Two people open
+the &token= seat links through an https proxy. Each plays, then the creator
+ends the game.
+
+The clock nudge is off unless PLAYTEST_CLOCK_NUDGE_MODE=on. "1" does not flip it.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import http.client
+import ssl
+import subprocess
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+import pytest
+
+import tests._cu_host as cu
+import tw2k.engine.constants as K
+from tw2k.public import pages
+from tw2k.public import worker as W
+from tw2k.public.workers import admin_headers
+
+ROOT = Path(__file__).resolve().parents[1]
+SHOTS = Path("/opt/cursor/artifacts/note136")
+
+
+def test_clock_nudge_stays_legacy_until_it_is_turned_on(monkeypatch) -> None:
+    assert K.PLAYTEST_CLOCK_NUDGE_MODE == "legacy"
+    assert K.playtest_clock_nudge_on() is False
+    monkeypatch.setattr(K, "PLAYTEST_CLOCK_NUDGE_MODE", "1")
+    assert K.playtest_clock_nudge_on() is False
+    monkeypatch.setattr(K, "PLAYTEST_CLOCK_NUDGE_MODE", "on")
+    assert K.playtest_clock_nudge_on() is True
+    assert "/manual" in W.OPEN_EXACT
+
+
+def test_join_form_keeps_the_invite_key() -> None:
+    html = pages.join_confirm(
+        "Galaxy War Command",
+        game={"id": "ab12", "name": "Alpha", "settings": {"day_seconds": 86400}},
+        seat="P2",
+        key="invite-secret",
+    )
+    assert 'name="k" value="invite-secret"' in html
+    assert "Real time, 24 h" in html
+    assert 'value="24h"' not in html
+
+
+def test_worker_accepts_the_game_prefix_on_its_own_port() -> None:
+    """The scripted seat opens the worker directly, and the page asks for /g/<id>/static."""
+    seen: dict[str, str] = {}
+
+    async def app(scope, receive, send):
+        seen["path"] = scope.get("path") or ""
+        seen["raw"] = (scope.get("raw_path") or b"").decode("ascii")
+
+    async def receive():
+        return {"type": "http.request"}
+
+    async def send(_message):
+        return None
+
+    gate = W.AcceptBasePath(app, base="/g/ab12")
+
+    async def hit(path: str) -> None:
+        await gate({"type": "http", "path": path, "raw_path": path.encode("ascii")}, receive, send)
+
+    asyncio.run(hit("/g/ab12/static/redesign.js"))
+    assert seen["path"] == "/static/redesign.js"
+    assert seen["raw"] == "/static/redesign.js"
+    asyncio.run(hit("/static/redesign.css"))
+    assert seen["path"] == "/static/redesign.css"
+    asyncio.run(hit("/g/ab12/harness/v1/P4/observation"))
+    assert seen["path"] == "/harness/v1/P4/observation"
+    asyncio.run(hit("/g/other/static/redesign.js"))
+    assert seen["path"] == "/g/other/static/redesign.js"
+
+
+def test_created_page_shows_the_cockpit_token_link() -> None:
+    link = "https://blue-pond.trycloudflare.com/g/ab12/bot?seat=P1&token=sekret&layout=redesign"
+    html = pages.created(
+        "Galaxy War Command",
+        game={"id": "ab12", "name": "Alpha", "settings": {"day_seconds": 86400, "game_length": "full"}},
+        join_links=[("P1", "https://blue-pond.trycloudflare.com/join/ab12/P1?k=invite")],
+        watch_link="https://blue-pond.trycloudflare.com/g/ab12/watch",
+        cockpit_links=[("P1", link)],
+    )
+    assert 'data-testid="seat-link"' in html
+    assert "layout=redesign" in html and "token=sekret" in html
+    assert "Send each player their cockpit link" in html
+    assert "Full-length game" in html
+
+
+class _Proxy(BaseHTTPRequestHandler):
+    lobby_port = 0
+    public_host = ""
+
+    def log_message(self, fmt: str, *args) -> None:
+        return
+
+    def _forward(self) -> None:
+        length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length) if length else b""
+        host = self.public_host
+        headers = {
+            k: v
+            for k, v in self.headers.items()
+            if k.lower() not in ("host", "content-length", "accept-encoding", "connection")
+        }
+        headers["Host"] = host
+        headers["X-Forwarded-Proto"] = "https"
+        headers["X-Forwarded-Host"] = host
+        headers["X-Forwarded-For"] = "127.0.0.1"
+        conn = http.client.HTTPConnection("127.0.0.1", self.lobby_port, timeout=120)
+        try:
+            conn.request(self.command, self.path, body=body, headers=headers)
+            resp = conn.getresponse()
+            data = resp.read()
+            self.send_response(resp.status)
+            for key, value in resp.getheaders():
+                if key.lower() in ("transfer-encoding", "connection", "content-length"):
+                    continue
+                self.send_header(key, value)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        finally:
+            conn.close()
+
+    def do_GET(self) -> None:
+        self._forward()
+
+    def do_POST(self) -> None:
+        self._forward()
+
+    def do_HEAD(self) -> None:
+        self._forward()
+
+
+def _cert(directory: Path) -> tuple[str, str]:
+    cert = directory / "proxy.crt"
+    key = directory / "proxy.key"
+    subprocess.run(
+        [
+            "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+            "-keyout", str(key), "-out", str(cert), "-days", "1",
+            "-subj", "/CN=127.0.0.1",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return str(cert), str(key)
+
+
+def _wait_http(url: str, timeout_s: float = 30) -> None:
+    import httpx
+
+    deadline = time.time() + timeout_s
+    last = ""
+    while time.time() < deadline:
+        try:
+            if httpx.get(url, timeout=1.0, verify=False).status_code < 500:
+                return
+        except Exception as exc:
+            last = str(exc)
+        time.sleep(0.2)
+    raise RuntimeError(f"never answered {url}: {last}")
+
+
+def test_two_humans_play_two_days_through_the_proxy(monkeypatch, tmp_path) -> None:
+    """Creator, two token links, two days, then the creator ends the game."""
+    sync = pytest.importorskip("playwright.sync_api").sync_playwright
+    import uvicorn
+
+    from tw2k.public.config import LobbyConfig
+    from tw2k.public.lobby import create_lobby_app
+
+    monkeypatch.setenv("LOBBY_AI_SEAT_MODE", "on")
+    monkeypatch.setenv("PLAYTEST_CLOCK_NUDGE_MODE", "on")
+    monkeypatch.setattr(K, "LOBBY_AI_SEAT_MODE", "on")
+    monkeypatch.setattr(K, "AI_COCKPIT_SEAT_MODE", "tw2002")
+    monkeypatch.setattr(K, "FULL_LENGTH_TURN_LIMITS_MODE", "v311")
+
+    base = cu.free_port(cu.LOBBY_FREE_START, count=4)
+    lobby_port, proxy_port = base, base + 1
+    game_ports = range(base + 2, base + 4)
+    for port in (lobby_port, proxy_port, *game_ports):
+        assert port != 8099
+        assert cu.allowed_test_port(port)
+    assert lobby_port not in game_ports
+
+    cfg = LobbyConfig(
+        port=lobby_port,
+        game_ports=game_ports,
+        root=tmp_path / "lobby",
+        idle_s=3600,
+        tick_s=30,
+        boot_timeout_s=90,
+        max_games=1,
+    )
+    app = create_lobby_app(cfg, port_probe=lambda _p: True)
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=lobby_port, log_level="warning"))
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    proxy: ThreadingHTTPServer | None = None
+    notes: dict[str, str] = {}
+    try:
+        _wait_http(f"http://127.0.0.1:{lobby_port}/healthz")
+        cert, key = _cert(tmp_path)
+        _Proxy.lobby_port = lobby_port
+        _Proxy.public_host = f"127.0.0.1:{proxy_port}"
+        proxy = ThreadingHTTPServer(("127.0.0.1", proxy_port), _Proxy)
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(cert, key)
+        proxy.socket = ctx.wrap_socket(proxy.socket, server_side=True)
+        threading.Thread(target=proxy.serve_forever, daemon=True).start()
+        origin = f"https://127.0.0.1:{proxy_port}"
+        _wait_http(origin + "/healthz")
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        _drive(sync, origin, app.state.lobby, notes)
+    finally:
+        if proxy is not None:
+            proxy.shutdown()
+        server.should_exit = True
+        thread.join(timeout=20)
+        from tests._port_lock import release_ports
+
+        release_ports(lobby_port, proxy_port, *game_ports)
+    (SHOTS / "notes.txt").write_text("\n".join(f"{k}: {v}" for k, v in notes.items()) + "\n", encoding="utf-8")
+
+
+def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
+    with sync() as pw:
+        browser = pw.chromium.launch()
+        try:
+            creator = browser.new_context(
+                ignore_https_errors=True, viewport={"width": 1280, "height": 720},
+                color_scheme="dark", forced_colors="none",
+            )
+            guest = browser.new_context(
+                ignore_https_errors=True, viewport={"width": 1280, "height": 720},
+                color_scheme="dark", forced_colors="none",
+            )
+            home = creator.new_page()
+            home.goto(origin + "/", wait_until="domcontentloaded")
+            home.screenshot(path=str(SHOTS / "01-disclaimer.png"))
+            home.get_by_role("button", name="I understand").click()
+            home.wait_for_url(origin + "/")
+            home.get_by_role("link", name="New game").click()
+            home.wait_for_selector("#game_length")
+            home.fill("#name", "Playtest 3")
+            home.select_option("#universe_size", "200")
+            home.fill("#max_days", "2")
+            home.select_option("#starting_credits", "100000")
+            home.select_option("#humans", "2")
+            home.select_option("#bots", "1")
+            home.select_option("#ai_opponents", "1")
+            home.select_option("#ai_brain", "heuristic")
+            home.check("#ai_cockpit")
+            home.select_option("#ai_cockpit_provider", "scripted")
+            home.select_option("#game_length", "full")
+            home.screenshot(path=str(SHOTS / "02-new-game.png"))
+            home.get_by_role("button", name="Create game").click()
+            home.wait_for_selector("[data-testid=seat-link]", timeout=90_000)
+            home.screenshot(path=str(SHOTS / "03-created-links.png"))
+            links = {
+                row.get_attribute("data-seat"): row.inner_text().strip()
+                for row in home.locator("[data-testid=seat-link]").all()
+            }
+            assert set(links) == {"P1", "P2"}
+            for seat, url in links.items():
+                assert url.startswith(origin + "/g/")
+                assert f"seat={seat}" in url and "token=" in url and "layout=redesign" in url
+                assert "127.0.0.1:" + str(origin.rsplit(":", 1)[-1]) in url
+            notes["links"] = "two https cockpit links with token and layout=redesign"
+            created = home.locator("body").inner_text()
+            assert "Full-length" in created
+            assert "AI cockpit" in created
+            gid = links["P1"].split("/g/")[1].split("/")[0]
+
+            p1 = creator.new_page()
+            p1.goto(links["P1"], wait_until="domcontentloaded")
+            p2 = guest.new_page()
+            p2.goto(links["P2"], wait_until="domcontentloaded")
+            if p2.get_by_role("button", name="I understand").count():
+                p2.get_by_role("button", name="I understand").click()
+            _wait_cockpit(p1)
+            _wait_cockpit(p2)
+            for seat, page in (("P1", p1), ("P2", p2)):
+                page.bring_to_front()
+                page.screenshot(path=str(SHOTS / f"0{4 if seat == 'P1' else 5}-cockpit-{seat.lower()}.png"))
+            for page in (p1, p2):
+                assert "Turns left today" in page.locator("[data-testid=turns-left-today]").inner_text()
+                turns = page.locator("[data-testid=turns-left-today]")
+                box = turns.bounding_box()
+                assert box and box["width"] > 80, box
+
+            goals = {"P1": _fresh(), "P2": _fresh()}
+            pages = {"P1": p1, "P2": p2}
+            (SHOTS / "progress.txt").write_text("", encoding="utf-8")
+            deadline = time.time() + 540
+            last_ai = 0.0
+            while time.time() < deadline and not all(_day_done(row) for row in goals.values()):
+                moved = False
+                for seat, page in pages.items():
+                    if _chip(page) != "YOUR MOVE":
+                        continue
+                    page.bring_to_front()
+                    if _day_done(goals[seat]):
+                        before = _result(page)
+                        page.keyboard.press(".")
+                        _settle(page, before, 8)
+                    else:
+                        _step(page, seat, goals[seat], lobby, gid, notes)
+                    moved = True
+                    break
+                if time.time() - last_ai > 15:
+                    _progress(f"goals={goals} ai={_ai_tail(lobby, gid)}")
+                    last_ai = time.time()
+                if not moved:
+                    page = pages["P1" if int(time.time()) % 2 == 0 else "P2"]
+                    page.bring_to_front()
+                    time.sleep(0.25)
+            else:
+                if not all(_day_done(row) for row in goals.values()):
+                    _progress(f"STOP goals={goals} ai={_ai_tail(lobby, gid)}")
+                    tail = (SHOTS / "progress.txt").read_text(encoding="utf-8")[-1500:]
+                    raise AssertionError(f"day 1 did not finish: {goals}\n{tail}")
+
+            _manual(p1)
+            _layout(p1)
+            _layout(p2, prefix="p2-")
+            _rewind(lobby, gid)
+            _wait_day(p1, "2")
+            _wait_day(p2, "2")
+            p1.screenshot(path=str(SHOTS / "13-day-2.png"))
+            notes["day"] = "day 2 after the playtest clock moved one day length"
+            for seat, page in pages.items():
+                _one_more(page, seat, notes)
+
+            p1.bring_to_front()
+            p1.keyboard.press("Escape")
+            p1.keyboard.press("?")
+            p1.locator("[data-testid=end-for-everyone]").wait_for(timeout=15_000)
+            _js_click(p1, "[data-testid=end-for-everyone]")
+            p1.locator("#dangerOk").wait_for(timeout=5_000)
+            _js_click(p1, "#dangerOk")
+            p1.wait_for_selector("[data-game-over=panel]", timeout=20_000)
+            over = p1.locator("[data-game-over=panel]").inner_text()
+            assert "Ended by the game's creator" in over
+            p2.wait_for_selector("[data-game-over=panel]", timeout=20_000)
+            assert "Ended by the game's creator" in p2.locator("[data-game-over=panel]").inner_text()
+            p1.screenshot(path=str(SHOTS / "14-game-over.png"))
+            notes["end"] = over
+        finally:
+            browser.close()
+
+
+def _fresh() -> dict[str, bool]:
+    return {"trade": False, "warp": False, "dock": False, "gear": False, "fight": False}
+
+
+def _day_done(row: dict[str, bool]) -> bool:
+    return row["trade"] and row["warp"] and row["dock"] and row["gear"] and row["fight"]
+
+
+def _has_text(page, selector: str, text: str) -> bool:
+    return bool(page.evaluate(
+        """([sel, text]) => [...document.querySelectorAll(sel)].some((node) => (node.textContent || '').includes(text))""",
+        [selector, text],
+    ))
+
+
+def _js_click_text(page, selector: str, text: str) -> bool:
+    return bool(page.evaluate(
+        """([sel, text]) => {
+          const el = [...document.querySelectorAll(sel)].find((node) => (node.textContent || '').includes(text));
+          if (!el) return false;
+          el.click();
+          return true;
+        }""",
+        [selector, text],
+    ))
+
+
+def _js_click(page, selector: str) -> bool:
+    return bool(page.evaluate(
+        """(sel) => {
+          const el = document.querySelector(sel);
+          if (!el) return false;
+          el.click();
+          return true;
+        }""",
+        selector,
+    ))
+
+
+def _progress(line: str) -> None:
+    path = SHOTS / "progress.txt"
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(f"{time.strftime('%H:%M:%S')} {line}\n")
+
+
+def _ai_tail(lobby, gid: str) -> str:
+    try:
+        path = lobby.workers.game_dir(gid) / "ai-cockpit" / "player.log"
+        if not path.is_file():
+            return "no ai log"
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        return " || ".join(lines[-6:])
+    except Exception as exc:
+        return str(exc)
+
+
+def _result(page) -> str:
+    try:
+        return page.locator("#lastResult").inner_text(timeout=1000)
+    except Exception:
+        return ""
+
+
+def _settle(page, before: str, timeout_s: float = 12) -> str:
+    """Wait until the last line changes or the turn is no longer ours."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        now = _result(page)
+        if now != before or _chip(page) != "YOUR MOVE":
+            return now
+        time.sleep(0.2)
+    return _result(page)
+
+
+def _chip(page) -> str:
+    try:
+        return page.locator("#waitchip").inner_text(timeout=1000).strip()
+    except Exception:
+        return ""
+
+
+def _wait_cockpit(page) -> None:
+    page.wait_for_function(
+        """() => {
+          const credits = document.querySelector('#credits');
+          const turns = document.querySelector('[data-testid=turns-left-today]');
+          return credits && credits.textContent && credits.textContent !== '-' && turns && turns.textContent;
+        }""",
+        timeout=40_000,
+    )
+    info = page.evaluate(
+        """() => {
+          const deck = document.querySelector('#deck');
+          const box = deck ? deck.getBoundingClientRect() : null;
+          return {
+            forced: matchMedia('(forced-colors: active)').matches,
+            bg: getComputedStyle(document.body).backgroundColor,
+            deck: box ? {w: box.width, h: box.height, y: box.top} : null,
+            here: (document.querySelector('#here') || {}).textContent || '',
+            warps: (document.querySelector('#warps') || {}).textContent || '',
+            err: (document.querySelector('#err') || {}).textContent || '',
+          };
+        }"""
+    )
+    (SHOTS / "cockpit-debug.txt").write_text(str(info) + "\n", encoding="utf-8")
+
+
+def _sector(page) -> str:
+    return page.locator("#pSector").inner_text().strip()
+
+
+def _here(page) -> str:
+    return page.locator("#here").inner_text()
+
+
+def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[str, str]) -> None:
+    page.keyboard.press("Escape")
+    before = _result(page)
+    if _js_click_text(page, "#here button", "Lift off"):
+        outcome = _settle(page, before)
+        _progress(f"{seat} liftoff chip={_chip(page)!r} result={outcome[:160]!r} sector={_sector(page)}")
+        if "lift" in outcome.lower() or not _has_text(page, "#here button", "Lift off"):
+            notes.setdefault(f"{seat}-liftoff", outcome[:180] or "left the home planet")
+        return
+    if not row["fight"] and _attack_bot(page):
+        row["fight"] = True
+        notes[f"{seat}-fight"] = _result(page)[:180]
+        _progress(f"{seat} fight {notes[f'{seat}-fight']!r}")
+        page.screenshot(path=str(SHOTS / f"09-combat-{seat}.png"))
+        return
+    if not row["trade"] and page.locator("#here button.tbtn").count():
+        selector = "#here button.tbtn.buy" if page.locator("#here button.tbtn.buy").count() else "#here button.tbtn.sell"
+        _js_click(page, selector)
+        outcome = _settle(page, before)
+        _progress(f"{seat} trade result={outcome[:160]!r}")
+        if outcome.lower().startswith("ok"):
+            row["trade"] = True
+            notes[f"{seat}-trade"] = outcome[:180]
+            page.screenshot(path=str(SHOTS / f"06-trade-{seat}.png"))
+        return
+    if not row["warp"]:
+        before_plays = int(page.locator("#warpClip").get_attribute("data-plays") or "0")
+        if before_plays > 0:
+            clip = page.locator("#warpClip").get_attribute("data-clip") or ""
+            row["warp"] = True
+            notes[f"{seat}-warp"] = clip
+            page.screenshot(path=str(SHOTS / f"07-warp-{seat}.png"))
+            _progress(f"{seat} warp already playing {clip!r}")
+        elif page.locator("#warps button").count() and not _has_text(page, "#here button", "Lift off"):
+            _js_click(page, "#warps button")
+            try:
+                page.wait_for_function(
+                    f"""() => Number(document.querySelector('#warpClip').getAttribute('data-plays') || 0) > {before_plays}""",
+                    timeout=8_000,
+                )
+            except Exception:
+                page.wait_for_timeout(1200)
+            clip = page.locator("#warpClip").get_attribute("data-clip") or ""
+            plays = int(page.locator("#warpClip").get_attribute("data-plays") or "0")
+            _progress(f"{seat} warp plays={plays} clip={clip!r} sector={_sector(page)}")
+            if plays > before_plays:
+                row["warp"] = True
+                notes[f"{seat}-warp"] = clip
+                page.screenshot(path=str(SHOTS / f"07-warp-{seat}.png"))
+            else:
+                detail = page.evaluate(
+                    """() => ({
+                      sector: (document.querySelector('#pSector') || {}).textContent,
+                      result: (document.querySelector('#lastResult') || {}).textContent,
+                      plays: (document.querySelector('#warpClip') || {}).getAttribute('data-plays'),
+                      clip: (document.querySelector('#warpClip') || {}).getAttribute('data-clip'),
+                    })"""
+                )
+                (SHOTS / "warp-debug.txt").write_text(str(detail) + "\n", encoding="utf-8")
+                _progress(f"{seat} warp failed {detail}")
+            return
+        if row["warp"]:
+            return
+    if not row["dock"]:
+        if _at_dock(page):
+            row["dock"] = True
+            notes[f"{seat}-dock"] = _here(page)[:180]
+            page.screenshot(path=str(SHOTS / f"08-stardock-{seat}.png"))
+            return
+        _engage(page, 1)
+        return
+    if row["dock"] and not row["gear"]:
+        if _has_text(page, "#here button", "StarDock: buy gear"):
+            if _buy_fighters(page):
+                row["gear"] = True
+                notes[f"{seat}-gear"] = _result(page)[:180]
+            return
+        if not _at_dock(page):
+            _engage(page, 1)
+        return
+    if not row["trade"]:
+        here = _sector(page)
+        seen = {bit for bit in notes.get(f"{seat}-seen", "").split(",") if bit}
+        _progress(f"{seat} still looking for a port in {here}")
+        moved = page.evaluate(
+            """(seen) => {
+              const buttons = [...document.querySelectorAll('#warps button')];
+              const dest = (btn) => ((btn.textContent || '').match(/:([0-9]+)/) || [])[1] || '';
+              const fresh = buttons.find((btn) => dest(btn) && !seen.includes(dest(btn)));
+              const pick = fresh || buttons[0];
+              if (!pick) return false;
+              pick.click();
+              return dest(pick) || true;
+            }""",
+            list(seen),
+        )
+        if moved:
+            seen.add(here)
+            if isinstance(moved, str):
+                seen.add(moved)
+            notes[f"{seat}-seen"] = ",".join(sorted(seen))
+            _settle(page, before, 8)
+        return
+    if not row["fight"]:
+        if _attack_bot(page):
+            row["fight"] = True
+            notes[f"{seat}-fight"] = _result(page)[:180]
+            _progress(f"{seat} fight {notes[f'{seat}-fight']!r}")
+            page.screenshot(path=str(SHOTS / f"09-combat-{seat}.png"))
+            return
+        target = _bot_sector(lobby, gid, seat)
+        if target is None:
+            raise AssertionError("no code bot on the board")
+        if _sector(page) == str(target):
+            raise AssertionError(f"{seat} is in {target} but cannot attack the code bot: {_here(page)[:240]}")
+        _engage(page, target)
+        return
+    page.keyboard.press(".")
+
+
+def _at_dock(page) -> bool:
+    text = _here(page)
+    return "StarDock" in text or _sector(page) == "1"
+
+
+def _engage(page, sector: int) -> bool:
+    if _sector(page) == str(sector):
+        return True
+    before = _result(page)
+    if page.locator("[data-testid=engage]").count():
+        _js_click(page, "[data-testid=engage]")
+        outcome = _settle(page, before, 20)
+        _progress(f"engage {sector} -> sector={_sector(page)} result={outcome[:140]!r}")
+        return "refused" not in outcome.lower()
+    page.keyboard.press("c")
+    page.keyboard.press("f")
+    try:
+        page.locator("#sectorAsk").wait_for(timeout=4_000)
+    except Exception:
+        page.keyboard.press("Escape")
+        _progress(f"engage {sector} no prompt chip={_chip(page)!r} result={_result(page)[:120]!r}")
+        return False
+    page.locator("#sectorAsk").fill(str(sector))
+    _js_click(page, "#sectorGo")
+    try:
+        page.locator("[data-testid=engage]").wait_for(timeout=8_000)
+    except Exception:
+        page.keyboard.press("Escape")
+        _progress(f"engage {sector} no button result={_result(page)[:140]!r}")
+        return False
+    _js_click(page, "[data-testid=engage]")
+    outcome = _settle(page, before, 20)
+    _progress(f"engage {sector} -> sector={_sector(page)} result={outcome[:140]!r}")
+    return "refused" not in outcome.lower()
+
+
+def _buy_fighters(page) -> bool:
+    before = _result(page)
+    _js_click_text(page, "#here button", "StarDock: buy gear")
+    select = page.locator("#formSlot select[data-n=item]")
+    try:
+        select.wait_for(timeout=6_000)
+    except Exception:
+        _progress("gear form did not open: " + _result(page)[:160])
+        return False
+    chosen = page.evaluate(
+        """() => {
+          const sel = document.querySelector('#formSlot select[data-n=item]');
+          if (!sel) return '';
+          const opts = [...sel.options].filter((opt) => !opt.disabled);
+          const fighter = opts.find((opt) => /fighter/i.test(opt.value) || /fighter/i.test(opt.textContent || ''));
+          return (fighter || opts[0] || {}).value || '';
+        }"""
+    )
+    if not chosen:
+        _progress("gear list was empty")
+        return False
+    select.select_option(value=chosen)
+    qty = page.locator("#formSlot input[data-n=qty]")
+    if qty.count():
+        qty.fill("5")
+    _js_click_text(page, "#formSlot button", "CONFIRM")
+    outcome = _settle(page, before)
+    _progress(f"gear {chosen!r} result={outcome[:160]!r}")
+    return bool(outcome) and "refused" not in outcome.lower() and "not accepted" not in outcome.lower()
+
+
+def _attack_bot(page) -> bool:
+    if "(code bot)" not in _here(page) and page.locator("#here button", has_text="Attack").count() == 0:
+        return False
+    page.keyboard.press("a")
+    form = page.locator("#formSlot")
+    try:
+        form.wait_for(timeout=4_000)
+    except Exception:
+        return False
+    select = form.locator("select[data-n=target]")
+    if select.count() == 0:
+        return False
+    labels = select.locator("option").all_inner_texts()
+    chosen = next((label for label in labels if "code bot" in label.lower()), "")
+    if not chosen:
+        page.keyboard.press("Escape")
+        return False
+    select.select_option(label=chosen)
+    qty = form.locator("input[data-n=qty]")
+    if qty.count() and not qty.input_value():
+        qty.fill("1")
+    form.locator("button", has_text="CONFIRM").click()
+    page.wait_for_timeout(800)
+    result = page.locator("#lastResult").inner_text()
+    if "not accepted" in result.lower() or "refused" in result.lower():
+        return False
+    return True
+
+
+def _bot_sector(lobby, gid: str, seat: str) -> int | None:
+    import httpx
+
+    worker = lobby.workers.workers.get(gid)
+    if worker is None:
+        return None
+    headers = admin_headers(lobby.secrets.lobby_secret(gid), lobby.secrets.spectator_token(gid))
+    data = httpx.get(f"http://127.0.0.1:{worker.port}/state", headers=headers, timeout=10).json()
+    me = next((row for row in data.get("players") or [] if row.get("id") == seat), None)
+    bots = [row for row in data.get("players") or [] if row.get("kind") == "heuristic" and row.get("alive", True)]
+    if not bots:
+        return None
+    if me is None:
+        return int(bots[0]["sector_id"])
+    here = int(me["sector_id"])
+    bots.sort(key=lambda row: abs(int(row["sector_id"]) - here))
+    return int(bots[0]["sector_id"])
+
+
+def _manual(page) -> None:
+    page.bring_to_front()
+    with page.context.expect_page() as popped:
+        page.evaluate("() => document.querySelector('#manualLink').click()")
+    manual = popped.value
+    manual.wait_for_load_state("domcontentloaded")
+    body = manual.locator("body").inner_text()
+    manual.screenshot(path=str(SHOTS / "10-manual.png"), full_page=False)
+    assert "Full-length games use" in body
+    assert "not available in this game" not in body.lower()
+    manual.close()
+
+
+def _layout(page, prefix: str = "") -> None:
+    page.bring_to_front()
+    _js_click(page, "[data-testid=layout-open]")
+    page.locator("[data-testid=layout-menu]").wait_for()
+    page.locator("[data-testid=font-inc]").click()
+    page.wait_for_function("() => document.body.getAttribute('data-deck') === 'custom'")
+    stored = page.evaluate("() => Object.keys(localStorage).some((k) => k.indexOf('tw2k-deck-v1:') === 0)")
+    assert stored
+    page.screenshot(path=str(SHOTS / f"11-layout-{prefix}saved.png"))
+    page.locator("[data-testid=layout-reset]").click()
+    page.wait_for_function("() => document.body.getAttribute('data-deck') === 'default'")
+    cleared = page.evaluate("() => Object.keys(localStorage).every((k) => k.indexOf('tw2k-deck-v1:') !== 0)")
+    assert cleared
+    page.screenshot(path=str(SHOTS / f"12-layout-{prefix}reset.png"))
+    page.locator("[data-testid=layout-close]").click()
+
+
+def _rewind(lobby, gid: str) -> None:
+    import httpx
+
+    worker = lobby.workers.workers[gid]
+    headers = admin_headers(lobby.secrets.lobby_secret(gid), lobby.secrets.spectator_token(gid))
+    response = httpx.post(
+        f"http://127.0.0.1:{worker.port}/control/rewind-day",
+        headers=headers,
+        json={},
+        timeout=10,
+    )
+    assert response.status_code == 200, response.text
+    deadline = time.time() + 25
+    day = None
+    while time.time() < deadline:
+        day = httpx.get(f"http://127.0.0.1:{worker.port}/state", headers=headers, timeout=10).json().get("day")
+        if day == 2:
+            _progress(f"server day {day}")
+            return
+        time.sleep(0.4)
+    raise AssertionError(f"server day stayed {day} after rewind")
+
+
+def _wait_day(page, day: str) -> None:
+    try:
+        page.evaluate("() => window.__tw2kTest && window.__tw2kTest.refreshNow()")
+    except Exception:
+        pass
+    try:
+        page.wait_for_function(
+            """(day) => {
+              const el = document.querySelector('#sbDay');
+              return !!el && (el.textContent || '').trim() === day;
+            }""",
+            arg=day,
+            timeout=40_000,
+        )
+    except Exception:
+        got = ""
+        try:
+            got = page.evaluate("() => (document.querySelector('#sbDay') || {}).textContent || ''")
+        except Exception:
+            got = ""
+        raise AssertionError(f"cockpit day is {got!r}, wanted {day}") from None
+
+
+def _one_more(page, seat: str, notes: dict[str, str]) -> None:
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        if _chip(page) == "YOUR MOVE":
+            if page.locator("#here button.tbtn").count():
+                _js_click(page, "#here button.tbtn")
+            elif page.locator("#warps button").count():
+                _js_click(page, "#warps button")
+            else:
+                page.keyboard.press(".")
+            notes[f"{seat}-day2"] = "acted on day 2"
+            page.wait_for_timeout(500)
+            return
+        time.sleep(0.3)
+    raise AssertionError(f"{seat} never moved on day 2")
