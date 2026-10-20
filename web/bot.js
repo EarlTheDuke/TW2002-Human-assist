@@ -1041,6 +1041,19 @@
     rows($("inbox"), [...inbox].reverse().slice(0, 20), (m) => row(`${m.kind || "msg"} from ${m.from}`, [
       m.day !== undefined ? `day ${m.day}${m.tick !== undefined ? "." + m.tick : ""}` : null, m.ticker ? `[${m.ticker}]` : null, m.message,
     ]), "inbox empty");
+    const log = obs.turn_log;
+    rows($("turnLogList"), Array.isArray(log) ? log : [], (m) => row(m.line || m.message || "(message)", [
+      m.kind || null, m.from_name || null, m.channel != null && m.channel !== "" ? `ch ${m.channel}` : null,
+    ]), Array.isArray(log) ? "no messages this turn" : "off");
+    const meta = obs.comms;
+    const here = meta && Array.isArray(meta.here) ? meta.here.map((t) => t.name || t.id).filter(Boolean).join(", ") : "";
+    kv($("commsStatus"), meta ? [
+      ["Radio", meta.radio_channel ? `channel ${meta.radio_channel}` : "off"],
+      ["Fed Comm", meta.fedcomm === false ? "off" : "on"],
+      ["Hails", meta.hails === false ? "off" : "on"],
+      ["In sector", here || "none"],
+      ["Corp", meta.corp || "none"],
+    ] : [["Comms", "off"]]);
     rows($("alliances"), obs.alliances || [], (a) => row(`Alliance ${a.id}`, [
       a.active ? "active" : "proposed", `members ${(a.members || []).join(", ")}`, `by ${a.proposed_by}`, a.formed_day !== undefined && a.formed_day !== null ? `day ${a.formed_day}` : null,
     ]), "no alliances");
