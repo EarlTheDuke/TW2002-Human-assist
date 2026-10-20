@@ -482,6 +482,11 @@ def generate_universe(config: GameConfig) -> Universe:
         from .port_build import stamp_port_cap
         stamp_port_cap(universe)
 
+    # NOTE 151. Arm only at generation. A game already running when the switch
+    # turns on stays disarmed, and a later tick will not delete its traders.
+    if K.inactive_user_live():
+        universe.inactive_users_armed = True
+
     return universe
 
 
