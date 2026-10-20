@@ -31,13 +31,16 @@ def _text(path: Path) -> str:
 
 def test_every_hull_is_ours_and_bot_stays_plain() -> None:
     js = _text(JS)
+    meshes = _text(ROOT / "web" / "hull-meshes.js")
     assert "const PROTOTYPE_HULLS" not in js
     assert "shipViewHull" in js
     assert "buildHullFaces" in js
+    assert "TW2KHullMeshes" in meshes
+    assert "function buildHullFaces" in meshes
     plan = _text(ROOT / "docs" / "plans" / "cockpit-ship-view-v1.md")
     assert "NOTE 118" in plan
     assert "Drew Markham" in plan
-    loft = js.split("const LOFT = ", 1)[1][:1800]
+    loft = meshes.split("var LOFT = ", 1)[1][:2200]
     for cls in ShipClass:
         assert cls.value + ":" in loft
     for name in ("bot.html", "bot.js", "bot-parity.js"):
