@@ -8,7 +8,8 @@ Every piece reads its own env value and does nothing when that value is unset:
   ``/api/*`` and every other route answer only a loopback call carrying ``TW2K_LOBBY_SECRET``.
 * ``TW2K_BASE_PATH=/g/<id>`` - pages, claim cookies and redirects work under the lobby prefix.
 * ``TW2K_BRAND`` - the player-facing name on the cockpit and spectator pages.
-* ``TW2K_SNAPSHOT_DIR`` - the game is snapshotted on every day roll and every 5 minutes.
+* ``TW2K_SNAPSHOT_DIR`` - the game is snapshotted on every day roll, again once play has
+  moved on, and every 5 minutes while it is quiet.
 * ``TW2K_RESUME_SNAPSHOT`` - the game starts from that snapshot instead of a new universe.
 """
 
@@ -35,7 +36,9 @@ ENV_RESUME = "TW2K_RESUME_SNAPSHOT"
 LOBBY_HEADER = "x-tw2k-lobby"
 
 SNAPSHOT_EVERY_S = 300.0
+SNAPSHOT_MOVE_GAP_S = 2.0
 SNAPSHOT_KEEP = 3
+CORRUPT_SAVE = "This game's save could not be read, so it was not started again."
 
 _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 _BASE_RE = re.compile(r"^/g/[a-z0-9][a-z0-9-]{0,39}$")
@@ -398,6 +401,9 @@ def write_snapshot(runner, reason: str, directory: Path | None = None) -> Path |
     override = getattr(getattr(spec, "config", None), "starting_credits_override", None)
     if override is not None:
         meta["starting_credits_override"] = int(override)
+    from ..engine import constants as K
+
+    meta["day_seconds"] = float(K.TURN_REGEN_DAY_SECONDS)
     stamp = int(meta["saved_at"] * 1000)
     final = target / f"snap-{stamp:015d}.jsonl"
     tmp = target / f".snap-{stamp:015d}.tmp"
@@ -413,6 +419,8 @@ def write_snapshot(runner, reason: str, directory: Path | None = None) -> Path |
         except OSError:
             pass
     runner._last_snapshot_at = time.time()
+    events = getattr(universe, "events", None) or []
+    runner._last_snapshot_seq = int(getattr(events[-1], "seq", 0) or 0) if events else 0
     return final
 
 
@@ -431,15 +439,44 @@ def load_snapshot(path: str | os.PathLike[str]):
     return meta, universe
 
 
+def choose_snapshot(directory: Path) -> tuple[Path | None, bool]:
+    """Pick a snapshot that loads.
+
+    ``(None, False)`` when the folder has no save yet, so the game starts new.
+    ``(path, False)`` for the newest file that loads. An older file is used when
+    a newer one is damaged. ``(None, True)`` when every file fails to load.
+    """
+    folder = Path(directory)
+    if not folder.is_dir():
+        return None, False
+    snaps = sorted(folder.glob("snap-*.jsonl"))
+    if not snaps:
+        return None, False
+    for path in reversed(snaps):
+        try:
+            load_snapshot(path)
+        except Exception:
+            continue
+        return path, False
+    return None, True
+
+
 def maybe_snapshot(runner, *, rolled: bool = False) -> None:
-    """Snapshot on a day roll, or when the last one is 5 minutes old."""
+    """Snapshot on a day roll, shortly after play moves on, or every 5 quiet minutes."""
     directory = getattr(runner, "_snapshot_dir", None)
     if directory is None:
         return
+    now = time.time()
     last = float(getattr(runner, "_last_snapshot_at", 0.0) or 0.0)
-    if rolled or time.time() - last >= SNAPSHOT_EVERY_S:
+    universe = getattr(getattr(runner, "state", None), "universe", None)
+    events = getattr(universe, "events", None) or []
+    seq = int(getattr(events[-1], "seq", 0) or 0) if events else 0
+    prev = getattr(runner, "_last_snapshot_seq", None)
+    moved = prev is not None and seq != int(prev)
+    if rolled or now - last >= SNAPSHOT_EVERY_S or (moved and now - last >= SNAPSHOT_MOVE_GAP_S):
         try:
-            write_snapshot(runner, "day roll" if rolled else "timer", directory)
+            reason = "day roll" if rolled else ("play" if moved else "timer")
+            write_snapshot(runner, reason, directory)
         except OSError:
             runner._last_snapshot_at = time.time()
 
