@@ -107,7 +107,7 @@ def test_item8_two_real_games_through_the_lobby(tmp_path) -> None:
 
         assert json.loads(asyncio.run(ws_frame()))
 
-        # graceful lobby restart: both games come back from snapshots with rotated tokens
+        # graceful lobby restart: both games come back, and the seat token still works
         _stop(lob, root, url)
         for g in (g1, g2):
             assert list((root / "games" / g["id"] / "snapshots").glob("snap-*.jsonl"))
@@ -115,7 +115,7 @@ def test_item8_two_real_games_through_the_lobby(tmp_path) -> None:
         for g in (g1, g2):
             assert a.get(f"/api/games/{g['id']}").json()["status"] == "running"
         assert a.get(f"/g/{g1['id']}/harness/v1/P1/observation?peek=1",
-                     headers={"X-TW2K-Seat": "P1"}).status_code == 401
+                     headers={"authorization": f"Bearer {claims[g1['id']]}", "X-TW2K-Seat": "P1"}).status_code == 200
         again = a.post(f"/api/games/{g1['id']}/resume", json={}).json()["claim_url"]
         a.get(again)
         assert a.get(f"/g/{g1['id']}/harness/v1/P1/observation?peek=1",
