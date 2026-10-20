@@ -84,7 +84,9 @@ def _run(tmp_path: Path, body: str, *, fail: bool = False, plugin: str = "tests.
             "-p", plugin,
             "-p", "no:cacheprovider",
             "--noconftest",
-            "-q", "--tb=line",
+            # The report line is written in teardown. Captured stdout drops it,
+            # so the parent would not see LEAK.
+            "-q", "-s", "--tb=line",
             str(path),
         ],
         cwd=ROOT,
