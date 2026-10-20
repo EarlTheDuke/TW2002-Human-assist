@@ -14,9 +14,11 @@ Each picture uses the shaded hull from the ship panel (`buildHullFaces` and `cam
 
 The star layer is seeded from the clip id, so the same id always draws the same frame. `web/warp-variants.js` holds that table and the star drawing. It is one script tag on the redesign page. There is no new library and no video file. The manifest and that script are each under 60 KB.
 
+NOTE 146 gives each of those ten pictures its own engine plume. The color and the length sit on the style row (`glow`, `plume`), the star streaks tilt by `streak`, and a flash exit uses `flash` for the burst. The colors are the ship panel's own accents. The plume is drawn by the same mesh as the panel, only when the clip asks for it, so the ship view itself stays put. A real move still picks one id at random and will not play that id twice in a row. Viewport Off, Stills, and Skip are unchanged.
+
 ## When it plays
 
-A real move (a warp that changes sector, or an autopilot that finishes at least one hop) picks one id at random for this seat. The next jump for that seat is a different id. The pick stays in the page. It is not sent to the server.
+A real move (a warp that changes sector, or an autopilot that finishes at least one hop) picks one id at random for this seat. The next jump for that seat is a different id, including across a run of fifty jumps. The pick stays in the page. It is not sent to the server.
 
 A refused warp and a plotted course do not play a clip. A hull missing from the file still falls back to `warp.out`. When a hull clip does play, `hullPlayed` still stops `warp.out` from starting as well.
 

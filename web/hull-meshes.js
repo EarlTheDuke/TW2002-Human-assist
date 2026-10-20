@@ -201,7 +201,14 @@
     var metal = mixRgb([32, 42, 64], accent, 0.4);
     var glass = mixRgb([220, 248, 255], accent, 0.22);
     var tw = !!(ship.transwarp && ship.transwarp.fitted);
-    var glow = tw ? [255, 110, 255] : [190, 255, 255];
+    var glow = spec.glow ? parseHex(spec.glow) : (tw ? [255, 110, 255] : [190, 255, 255]);
+    var glen = 8;
+    var gthick = 2.2;
+    var asked = Number(spec.plume);
+    if (asked > 0) {
+      glen = asked;
+      gthick = Math.max(1.6, Math.min(4.2, 1.4 + asked * 0.05));
+    }
     var faces = [];
     loftAt(faces, sections, 0, 0, hull, 1, false);
     var nose = sections[0];
@@ -279,7 +286,7 @@
     for (e = 0; e < engines; e++) {
       var ez = (e - (engines - 1) / 2) * (engines > 3 ? 8 : 12);
       boxAt(faces, tail[0] - 4, -2, ez, 8, 4.6, 4.6, metal, 1, false);
-      boxAt(faces, tail[0] - 12, -2, ez, 8, 2.2, 2.2, glow, 0.95, true);
+      boxAt(faces, tail[0] - 4 - glen, -2, ez, glen, gthick, 2.2, glow, 0.95, true);
     }
     return faces;
   }
