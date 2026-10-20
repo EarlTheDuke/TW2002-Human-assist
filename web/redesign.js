@@ -730,6 +730,15 @@
   function shipSolidMarkup(sh, def, ox, oy) {
     return meshes().markup(sh, def, 0.82, 0.5, 1, ox, oy);
   }
+  function rotPoint(p, yaw, pitch) {
+    const cy = Math.cos(yaw);
+    const sy = Math.sin(yaw);
+    const x1 = p[0] * cy + p[2] * sy;
+    const z1 = -p[0] * sy + p[2] * cy;
+    const cp = Math.cos(pitch);
+    const sp = Math.sin(pitch);
+    return [x1, p[1] * cp - z1 * sp, p[1] * sp + z1 * cp];
+  }
   function fighterSlots(n, orbit) {
     const slots = [];
     let left = n;
@@ -798,6 +807,7 @@
     if (svg) {
       svg.setAttribute("data-shield", shield.cap > 0 ? shield.frac.toFixed(2) : "0");
       svg.setAttribute("data-damage", shield.low ? "low" : "ok");
+      svg.setAttribute("data-yaw", pose.yaw.toFixed(3));
       const far = svg.querySelector("[data-testid=starfield-far]");
       const near = svg.querySelector("[data-testid=starfield-near]");
       if (far && near && !canonical && !shipScene.hold) {
@@ -1026,13 +1036,13 @@
           body.appendChild(poly);
           return poly;
         });
-        const glow = document.createElementNS(SVGNS, "ellipse");
-        glow.setAttribute("fill", "#7ef0ff");
-        glow.setAttribute("stroke", "none");
-        glow.setAttribute("data-testid", "shield-glow");
-        glow.style.display = "none";
-        body.appendChild(glow);
-        shipScene.glow = glow;
+        const shieldGlow = document.createElementNS(SVGNS, "ellipse");
+        shieldGlow.setAttribute("fill", "#7ef0ff");
+        shieldGlow.setAttribute("stroke", "none");
+        shieldGlow.setAttribute("data-testid", "shield-glow");
+        shieldGlow.style.display = "none";
+        body.appendChild(shieldGlow);
+        shipScene.glow = shieldGlow;
         const bubble = document.createElementNS(SVGNS, "ellipse");
         bubble.setAttribute("fill", "none");
         bubble.setAttribute("stroke", "#55ffff");
@@ -6246,6 +6256,14 @@
       stopShipLoop();
       if (shipScene.mode === "solid") drawShipFrame(0, true);
       return 1;
+    },
+    release() {
+      shipScene.hold = false;
+      if (!shipScene.paused && shipScene.motion === "drift" && shipScene.mode === "solid") {
+        shipScene.lastT = null;
+        startShipLoop();
+      }
+      return shipScene.hold ? 0 : 1;
     },
     markup(hull) {
       const def = SHIPS[hull] || { name: hull || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
