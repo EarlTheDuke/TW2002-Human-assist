@@ -204,22 +204,42 @@ def _frame(name: str) -> str:
     return text.center(inner)
 
 
+def _prefix_quoted_roots(text: str, base: str, roots: tuple[str, ...]) -> str:
+    """Prefix root-absolute paths in quotes, including backtick template strings."""
+    if not base:
+        return text
+    for quote in ('"', "'", "`"):
+        for root in roots:
+            text = text.replace(f"{quote}{root}", f"{quote}{base}{root}")
+    return text
+
+
+def _prefix_ws_host(text: str, base: str) -> str:
+    """Keep the page host, and put the lobby prefix on the websocket path."""
+    if not base:
+        return text
+    for marker in ("${location.host}/ws", "${window.location.host}/ws"):
+        swapped = marker.replace("/ws", base + "/ws", 1)
+        if swapped not in text:
+            text = text.replace(marker, swapped)
+    return text
+
+
 def rewrite_text(path: str, text: str, *, base: str, brand_name: str) -> str:
     """The prefix and the brand for one served page or script (no-op with both unset)."""
+    from .share_url import rewrite_embedded_urls
+
     name = path.rsplit("/", 1)[-1].split("?", 1)[0]
     is_html = path in ("/", "/bot", "/bot2", "/play", "/manual") or name.endswith(".html")
     if base:
         if is_html:
             for attr in ('src="/', 'href="/', 'action="/'):
                 text = text.replace(attr, attr[:-1] + base + "/")
-        elif name == "redesign.js":
-            text = text.replace('"/harness/v1"', f'"{base}/harness/v1"')
-            text = text.replace('"/static/', f'"{base}/static/')
-        elif name == "app.js":
-            text = _APP_JS_PATH.sub(lambda m: f"{m.group(1)}{base}/{m.group(2)}", text)
-            text = text.replace("${location.host}/ws", "${location.host}" + base + "/ws")
         elif name.endswith(".js"):
-            text = text.replace('"/static/', f'"{base}/static/')
+            text = _prefix_quoted_roots(text, base, ("/harness/", "/static/"))
+            text = _prefix_ws_host(text, base)
+            if name in ("app.js", "play.js"):
+                text = _APP_JS_PATH.sub(lambda m: f"{m.group(1)}{base}/{m.group(2)}", text)
         elif name.endswith(".css"):
             for opener in ("url(/static/", 'url("/static/', "url('/static/"):
                 text = text.replace(opener, opener.replace("/static/", f"{base}/static/"))
@@ -232,10 +252,13 @@ def rewrite_text(path: str, text: str, *, base: str, brand_name: str) -> str:
             text = _TAGLINE.sub(BRAND_LINE, text)
         elif name == "app.js":
             text = text.replace("`TW2K - Day ", f"`{brand_name} - Day ")
-    return text
+    return rewrite_embedded_urls(text, base)
 
 
 def rewrite_location(value: str, base: str) -> str:
+    from .share_url import loopback_to_path
+
+    value = loopback_to_path(value)
     if base and value.startswith("/") and not value.startswith("//") and not value.startswith(base + "/"):
         return base + value
     return value
