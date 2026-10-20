@@ -313,6 +313,104 @@ def test_the_scripted_trader_pairs_ports_haggles_and_avoids_danger() -> None:
     assert 1 not in trader.danger
 
 
+def test_the_scripted_trader_keeps_a_port_pair_and_declines_a_bad_counter() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader()
+    # A neighbour pays more for the fuel, and the hop still leaves a turn to sell.
+    held = trader.decide(_view({
+        "sector": "16", "day": "1", "turns": "9", "credits": "49,317 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 10 Organics 0 Equipment 0",
+        "ship": "Holds 10/20",
+        "port": "Port Hydra Class 6 BBS",
+        "rows": [{
+            "cells": ["Fuel Ore", "Buying, room 1000", "1000", "33", "10"],
+            "button": "SELL 10",
+        }],
+        "labels": ["SELL 10", "1:35 (3t)"],
+        "warps": ["1:35 (3t)"],
+    }))
+    assert held.label == "SELL 10"
+    trader.ports[35] = {"Fuel Ore": {"bid": 39}}
+    trader.links[16] = {35: 3}
+    trader.warp_labels[(16, 35)] = "1:35 (3t)"
+    moved = trader.decide(_view({
+        "sector": "16", "day": "1", "turns": "9", "credits": "49,317 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 10 Organics 0 Equipment 0",
+        "ship": "Holds 10/20",
+        "port": "Port Hydra Class 6 BBS",
+        "rows": [{
+            "cells": ["Fuel Ore", "Buying, room 1000", "1000", "33", "10"],
+            "button": "SELL 10",
+        }],
+        "labels": ["SELL 10", "1:35 (3t)"],
+        "warps": ["1:35 (3t)"],
+    }))
+    assert moved.label == "1:35 (3t)"
+    # Empty holds, and the organics pair is already on the map. Don't wander.
+    trader.ports[16]["Organics"] = {"bid": 96}
+    trader.ports[35]["Organics"] = {"ask": 53}
+    trader.links[35] = {16: 3}
+    trader.warp_labels[(35, 16)] = "1:16 (3t)"
+    paired = trader.decide(_view({
+        "sector": "16", "day": "2", "turns": "24", "credits": "49,647 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Hydra Class 6 BBS",
+        "rows": [{
+            "cells": ["Organics", "Buying, room 1000", "1000", "96", "0"],
+            "button": "",
+        }],
+        "labels": ["1:35 (3t)", "2:126 (3t)"],
+        "warps": ["1:35 (3t)", "2:126 (3t)"],
+    }))
+    assert paired.label == "1:35 (3t)"
+    # Three turns cannot finish another sale. Park on the seller, don't take the one-way.
+    parked = trader.decide(_view({
+        "sector": "16", "day": "2", "maxDay": "3", "turns": "3", "credits": "51,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Hydra Class 6 BBS",
+        "labels": ["1:35 (3t)", "2:126 (3t)"],
+        "warps": ["1:35 (3t)", "2:126 (3t)"],
+    }))
+    assert parked.label == "1:35 (3t)"
+    # The last day has nowhere to deliver a parked ship, so the leftover turns are waits.
+    last = trader.decide(_view({
+        "sector": "16", "day": "3", "maxDay": "3", "turns": "3", "credits": "51,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Hydra Class 6 BBS",
+        "labels": ["1:35 (3t)", "2:126 (3t)"],
+        "warps": ["1:35 (3t)", "2:126 (3t)"],
+    }))
+    assert last.op == "press" and last.key == "."
+    # Fuel at 39 is the best fuel bid. Organics paying 96 must not sink this sale.
+    fuel_ok = trader.decide(_view({
+        "sector": "35", "day": "2", "turns": "8", "credits": "49,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 10 Organics 0 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE",
+        "haggle": "We'll buy them for 39 cr each.",
+        "fields": {"unit_price": "39", "qty": "10"},
+        "labels": ["CONFIRM", "ESC"],
+        "warps": ["1:16 (3t)"],
+    }))
+    assert fuel_ok.label == "CONFIRM"
+    low = trader.decide(_view({
+        "sector": "35", "day": "2", "turns": "8", "credits": "49,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 20 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE",
+        "haggle": "We'll buy them for 10 cr each.",
+        "fields": {"unit_price": "10", "qty": "20"},
+        "labels": ["CONFIRM", "ESC"],
+        "warps": ["1:16 (3t)"],
+    }))
+    assert low.label == "ESC"
+
+
 def test_a_live_reply_is_checked_priced_and_retried(monkeypatch) -> None:
     sys.path.insert(0, str(REPO / "scripts"))
     from ai_cockpit import providers as minds
@@ -435,16 +533,17 @@ def _numbers(log: str, key: str) -> list[int]:
 
 
 def test_scripted_player_gains_net_worth_over_three_days(tmp_path: Path) -> None:
+    """Three days at 24 turns. The 9-turn baseline gained 1,810 (72,227 to 74,037)."""
     pytest.importorskip("playwright.sync_api")
     run = tmp_path / "run"
-    with CuHost(tmp_path / "host", TOKEN, max_days=3, turns_per_day=9) as host:
+    with CuHost(tmp_path / "host", TOKEN, max_days=3, turns_per_day=24) as host:
         assert host.port not in RESERVED_TEST_PORTS
         assert host.port not in FORBIDDEN
         assert allowed_test_port(host.port)
         url = f"{host.base}/bot?seat=P2&mode=cu&token={TOKEN}&layout=redesign"
         proc = subprocess.run(
             [sys.executable, str(PLAYER), "--url", url, "--provider", "scripted",
-             "--max-turns", "60", "--min-interval", "0", "--run-dir", str(run)],
+             "--max-turns", "80", "--min-interval", "0", "--run-dir", str(run)],
             cwd=REPO,
             capture_output=True,
             text=True,
@@ -457,7 +556,9 @@ def test_scripted_player_gains_net_worth_over_three_days(tmp_path: Path) -> None
     days = set(_numbers(log, "day"))
     assert {1, 2, 3} <= days, log[-4000:]
     worth = _numbers(log, "nw")
-    assert worth and worth[-1] > worth[0], log[-4000:]
+    assert worth and worth[-1] - worth[0] >= 4_000, log[-4000:]
+    actions = [json.loads(line) for line in (run / "actions.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert not any("126" in str(row.get("label") or "") for row in actions), actions
     assert "game over" in log
     blob = log + proc.stdout + proc.stderr
     for path in run.iterdir():
