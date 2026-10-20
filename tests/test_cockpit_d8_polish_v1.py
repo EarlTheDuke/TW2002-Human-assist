@@ -244,7 +244,10 @@ def test_an_l0_planet_does_not_claim_a_combat_computer(world):
             K.PLANET_LANDING_COMBAT_MODE = "tw2002"
             _next(page, world["host"])
             page.locator("#here button", has_text="Phoenix").click()
-            page.wait_for_selector("#menu", timeout=10_000)
+            page.wait_for_function(
+                "() => (document.querySelector('#menu')?.innerText || '').includes('Its fighters will fight your landing.')",
+                timeout=10_000,
+            )
             text = page.locator("#menu").inner_text()
             assert "Its fighters will fight your landing." in text
             assert "Combat Control" not in text

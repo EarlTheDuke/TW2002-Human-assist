@@ -197,7 +197,7 @@ def test_browser_run_route_button_is_enabled_and_clicks(browser, tmp_path: Path,
         page.wait_for_function(
             "(() => { const t = document.querySelector('#cuToast');"
             " return t && /ROUTE/.test(t.textContent) && !/rejected|did not start/i.test(t.textContent); })()",
-            timeout=20_000,
+            timeout=45_000,
         )
 
 

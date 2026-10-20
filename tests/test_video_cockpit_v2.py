@@ -344,7 +344,10 @@ def test_skip_and_cu_timer_do_not_replay_a_stale_dock(browser, tmp_path: Path, m
         page.wait_for_selector("[data-testid=media-hud]:not([hidden])", timeout=5_000)
         assert "docking" in page.locator("#mediaHudCaption").inner_text().casefold()
         assert "trade_port" in (page.locator("#mediaHudStill").get_attribute("src") or "")
-        page.wait_for_timeout(3200)
+        page.wait_for_function(
+            "() => { const hud = document.querySelector('[data-testid=media-hud]'); return !hud || hud.hidden; }",
+            timeout=3_200,
+        )
         assert page.locator("[data-testid=media-hud]").is_hidden()
         _scan_after(page, trade)
         page.wait_for_timeout(300)

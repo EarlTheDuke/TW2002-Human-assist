@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests._cu_host import CuHost
+from tests._refresh import wait_refreshes
 
 TOK = "nav-e2e-token-p2-0000000000000000"
 
@@ -66,7 +67,7 @@ def test_server_course_turn_cost_and_a_centred_map(tmp_path: Path, monkeypatch) 
             hops = len(info["path"])
             turns = hops * int(info["cost"])
             assert f"{hops} hops, {turns} turns" in page.locator("#warps .eng").inner_text()
-            page.wait_for_timeout(2500)
+            wait_refreshes(page, 1)
             assert page.locator("#map").get_attribute("data-route") == route
             if info["planets"]:
                 page.evaluate(

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from tests._cu_host import CuHost
+from tests._refresh import wait_refreshes
 
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = ROOT / "docs" / "playtests" / "cockpit-redesign-fix2-v1"
@@ -75,7 +76,7 @@ def test_fix_list(tmp_path: Path, monkeypatch) -> None:
             page.wait_for_selector(".frm", timeout=10_000)
             qty = page.locator(".frm input[data-n=qty]")
             qty.fill("7")
-            page.wait_for_timeout(3200)
+            wait_refreshes(page, 1)
             assert page.locator(".frm").count() == 1
             assert qty.input_value() == "7"
             page.screenshot(path=str(SHOTS / "1440-form.png"))
