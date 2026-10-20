@@ -15,8 +15,9 @@ import time
 from pathlib import Path
 
 from ai_cockpit.actions import Action, ActionError, reject_reason
-from ai_cockpit.providers import ProviderError, TurnView, build_provider
+from ai_cockpit.providers import ProviderError, TurnView, resolve_provider
 from ai_cockpit.redact import redact
+from ai_cockpit.trader import guard_outgoing
 
 _LABELS = r"""
 () => Array.from(document.querySelectorAll('button, a')).filter((el) => {
@@ -73,6 +74,48 @@ _SCREEN = r"""
   });
   const ask = document.querySelector('#sectorAsk');
   if (ask && visible(ask)) selectors.push('#sectorAsk');
+  const commsForm = document.querySelector('#commsForm');
+  const commsOpen = !!(commsForm && !commsForm.hidden && visible(commsForm));
+  const commsLines = Array.from(document.querySelectorAll('#turnLog > div[data-kind]')).map((el) => ({
+    kind: el.dataset.kind || '',
+    line: (el.textContent || '').replace(/\s+/g, ' ').trim(),
+  })).filter((row) => row.line);
+  const commsTargets = [];
+  const corpOpt = document.querySelector('#commsKind option[value="corp"]');
+  const commsCorp = !!(commsOpen && corpOpt && !corpOpt.disabled);
+  if (commsOpen) {
+    const addSel = (sel) => {
+      const el = document.querySelector(sel);
+      if (el && visible(el) && !el.disabled) selectors.push(sel);
+    };
+    const target = document.querySelector('#commsTarget');
+    if (target) {
+      Array.from(target.options).forEach((opt) => {
+        if (!opt.disabled) commsTargets.push({
+          id: opt.value,
+          name: (opt.textContent || '').replace(/\s+/g, ' ').trim(),
+        });
+      });
+    }
+    addSel('#commsKind');
+    addSel('#commsTarget');
+    addSel('#commsMessage');
+    addSel('#commsChannel');
+    addSel('#commsSend');
+    addSel('#commsTune');
+    addSel('#commsFed');
+    const kind = document.querySelector('#commsKind');
+    if (kind && visible(kind)) {
+      fields.commsKind = kind.value || '';
+      fields.commsKindOptions = Array.from(kind.options).filter((opt) => !opt.disabled).map((opt) => opt.value);
+    }
+    const message = document.querySelector('#commsMessage');
+    if (message && visible(message)) fields.commsMessage = message.value || '';
+    if (target && visible(target)) {
+      fields.commsTarget = target.value || '';
+      fields.commsTargetOptions = Array.from(target.options).filter((opt) => !opt.disabled).map((opt) => opt.value);
+    }
+  }
   const form = document.querySelector('#formSlot');
   const formText = form ? (form.innerText || '').replace(/\s+/g, ' ').trim() : '';
   const menu = document.querySelector('#menu');
@@ -110,6 +153,7 @@ _SCREEN = r"""
     course: text('#course'),
     sectorAsk: ask && visible(ask) ? (ask.value || '') : '',
     comms: text('[data-testid=turn-log]'),
+    commsOpen, commsLines, commsTargets, commsCorp,
   };
 }
 """
@@ -176,7 +220,9 @@ def play(
         _write_modules(run_dir)
         return 1
 
-    provider = build_provider(provider_name, model, mock_script, level)
+    provider, fallback = resolve_provider(provider_name, model, mock_script, level)
+    if fallback:
+        _write_log(log_path, fallback)
     gate = RateGate(min_interval)
     manual_read = False
     manual_excerpt = ""
@@ -245,6 +291,7 @@ def play(
                     _write_log(log_path, f"step {step} skipped: {reason}")
                     action = Action("wait", ms=200)
                 note = str(getattr(provider, "plan_note", "") or "")
+                action = guard_outgoing(action)
                 try:
                     opened = _act(page, action)
                     if opened is not None:

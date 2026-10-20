@@ -3,9 +3,28 @@
 from __future__ import annotations
 
 import re
+import time
 from collections import deque
 
 from ai_cockpit.actions import Action
+from ai_cockpit.redact import secret_values
+
+# The Comms panel already enforces these. The seat obeys them from the screen.
+LINE_MAX = 155
+SEND_GAP_S = 2.0
+SEND_CAP = 3
+QUIET_BEFORE_MEMO = 8
+REPLY_LINES = (
+    "Copy. I hear you. Staying on my route.",
+    "Understood. Holding course and watching the port.",
+    "Received. I will keep to the trade I can see.",
+)
+_HAIL = re.compile(r"^(.+?) hails you: .+$")
+_MEMO = re.compile(r"^Corporate memo \([^)]+\) (.+?): .+$")
+_UNSAFE_OUT = re.compile(
+    r"sk-|xai-|bearer\s|system prompt|ignore (?:all |any |previous |prior )?instructions|api[_ ]?key",
+    re.I,
+)
 
 _GOODS = ("Fuel Ore", "Organics", "Equipment")
 _PORT_CODE = re.compile(r"Class\s+\d+\s+([BSX]{3})", re.I)
@@ -111,6 +130,12 @@ class ScriptedTrader:
         self.pair_blocked = 0
         self.scout_day = 0
         self.scan_pending = 0
+        self.comms_job: dict | None = None
+        self.answered: set[str] = set()
+        self.sent = 0
+        self.last_send = 0.0
+        self.memo_sent = False
+        self.quiet = 0
 
     def decide(self, view) -> Action:
         if not view.manual_read:
@@ -157,10 +182,12 @@ class ScriptedTrader:
         cargo = _holds(str(screen.get("holds") or ""))
         self.hold_cap = _hold_cap(str(screen.get("ship") or ""))
         self._remember(sector, screen)
+        comms = self._comms(screen, allow_new=not screen.get("menuOpen"))
         if self.level == "easy":
             self.plot_to = 0
             action = (
-                self._modal(screen, labels, turns)
+                comms
+                or self._modal(screen, labels, turns)
                 or self._form(screen, labels, credits)
                 or self._leave_danger(sector, screen, cargo)
                 or self._easy_trade(screen, sector, cargo)
@@ -171,7 +198,8 @@ class ScriptedTrader:
             self._sync_plot(sector, turns, credits)
             plotted = self._plot_step(screen, labels, sector) if self._plot_blocks(screen) else None
             action = (
-                self._modal(screen, labels, turns)
+                comms
+                or self._modal(screen, labels, turns)
                 or self._form(screen, labels, credits)
                 or self._leave_danger(sector, screen, cargo)
                 or plotted
@@ -1649,3 +1677,171 @@ class ScriptedTrader:
             return Action("wait", ms=500)
         self.plan_note = "spend a turn"
         return Action("press", key=".")
+
+    def _gap_remaining(self) -> float:
+        if not self.last_send:
+            return 0.0
+        return max(0.0, SEND_GAP_S - (time.monotonic() - self.last_send))
+
+    def _comms(self, screen: dict, *, allow_new: bool) -> Action | None:
+        """Answer a hail or memo on the Comms panel, or send one plan memo."""
+        if self.comms_job:
+            return self._comms_step(screen)
+        if not allow_new or not screen.get("commsOpen"):
+            return None
+        if self.sent >= SEND_CAP:
+            self.plan_note = "comms cap"
+            return None
+        incoming = self._next_incoming(screen)
+        if incoming:
+            self.quiet = 0
+            self.comms_job = incoming
+            return self._comms_step(screen)
+        if screen.get("commsCorp") and not self.memo_sent and not screen.get("formOpen"):
+            self.quiet += 1
+            if self.quiet >= QUIET_BEFORE_MEMO:
+                self.comms_job = {
+                    "kind": "corp",
+                    "phase": "kind",
+                    "text": self._plan_line(screen),
+                    "key": "plan",
+                    "waits": 0,
+                }
+                return self._comms_step(screen)
+        return None
+
+    def _next_incoming(self, screen: dict) -> dict | None:
+        """The next hail or memo on the turn log. The message body is not used."""
+        targets = screen.get("commsTargets") or []
+        for row in screen.get("commsLines") or []:
+            kind = str(row.get("kind") or "")
+            line = " ".join(str(row.get("line") or "").split())
+            if not line or line in self.answered:
+                continue
+            if kind == "hail":
+                match = _HAIL.match(line)
+                if match is None:
+                    continue
+                sender = match.group(1).strip()
+                target = next(
+                    (item for item in targets if str(item.get("name") or "").casefold() == sender.casefold()),
+                    None,
+                )
+                if target is None or not target.get("id"):
+                    continue
+                return {
+                    "kind": "hail",
+                    "phase": "kind",
+                    "target": str(target.get("id")),
+                    "text": self._reply_line(),
+                    "key": line,
+                    "waits": 0,
+                }
+            if kind == "corp":
+                if _MEMO.match(line) is None or self.memo_sent:
+                    continue
+                return {
+                    "kind": "corp",
+                    "phase": "kind",
+                    "text": self._reply_line(),
+                    "key": line,
+                    "waits": 0,
+                }
+        return None
+
+    def _reply_line(self) -> str:
+        return REPLY_LINES[self.sent % len(REPLY_LINES)]
+
+    def _plan_line(self, screen: dict) -> str:
+        cargo = _holds(str(screen.get("holds") or ""))
+        held = [name for name in _GOODS if cargo.get(name, 0) > 0]
+        sector = _int(screen.get("sector"))
+        if held:
+            line = f"Plan: sell {held[0]} where a port is buying, then hold that route."
+        elif sector:
+            line = f"Plan: work the ports from sector {sector} and hold the route."
+        else:
+            line = "Plan: sell where the port buys, then hold for the next day."
+        return line[:LINE_MAX]
+
+    def _comms_step(self, screen: dict) -> Action | None:
+        job = self.comms_job or {}
+        phase = job.get("phase")
+        fields = screen.get("fields") or {}
+        selectors = [str(row) for row in (screen.get("selectors") or [])]
+        if phase == "kind":
+            if str(fields.get("commsKind") or "") == job["kind"]:
+                job["phase"] = "target" if job["kind"] == "hail" else "message"
+                return self._comms_step(screen)
+            job["phase"] = "target" if job["kind"] == "hail" else "message"
+            self.plan_note = "comms kind"
+            return Action("type", selector="#commsKind", text=str(job["kind"]))
+        if phase == "target":
+            if "#commsTarget" not in selectors:
+                job["waits"] = int(job.get("waits") or 0) + 1
+                if job["waits"] > 4:
+                    self.comms_job = None
+                    self.plan_note = "hail list missing"
+                    return None
+                self.plan_note = "wait for the hail list"
+                return Action("wait", ms=200)
+            if str(fields.get("commsTarget") or "") == str(job.get("target") or ""):
+                job["phase"] = "message"
+                return self._comms_step(screen)
+            job["phase"] = "message"
+            self.plan_note = "comms target"
+            return Action("type", selector="#commsTarget", text=str(job.get("target") or ""))
+        if phase == "message":
+            if str(fields.get("commsMessage") or "") == job["text"]:
+                job["phase"] = "send"
+                return self._comms_step(screen)
+            job["phase"] = "send"
+            self.plan_note = "comms message"
+            return Action("type", selector="#commsMessage", text=str(job["text"]))
+        if "#commsSend" not in selectors:
+            job["waits"] = int(job.get("waits") or 0) + 1
+            if job["waits"] > 4:
+                self.comms_job = None
+                self.plan_note = "send is not on screen"
+                return None
+            self.plan_note = "wait for send"
+            return Action("wait", ms=200)
+        remain = self._gap_remaining()
+        if remain > 0.05:
+            self.plan_note = "wait for the comms gap"
+            return Action("wait", ms=int(remain * 1000) + 50)
+        self.sent += 1
+        self.last_send = time.monotonic()
+        if job.get("kind") == "corp":
+            self.memo_sent = True
+        if job.get("key"):
+            self.answered.add(str(job["key"]))
+        self.comms_job = None
+        self.plan_note = "send comms"
+        return Action("click", selector="#commsSend", label="Send")
+
+
+def safe_comms_text(text: str) -> str:
+    """A line that can go on the Comms panel: short, and not a secret or a prompt."""
+    cleaned = " ".join(str(text or "").split())
+    if len(cleaned) > LINE_MAX:
+        cleaned = cleaned[:LINE_MAX].rstrip()
+    leaked = any(secret and secret in cleaned for secret in secret_values())
+    if not cleaned or leaked or _UNSAFE_OUT.search(cleaned):
+        return REPLY_LINES[0]
+    return cleaned
+
+
+def guard_outgoing(action: Action) -> Action:
+    """Keep a typed Comms line inside the panel rules. Other actions pass through."""
+    selector = action.selector.replace(" ", "")
+    if action.op != "type" or selector not in {"#commsMessage", "[data-testid=comms-message]"}:
+        return action
+    return Action(
+        op="type",
+        label=action.label,
+        selector=action.selector,
+        text=safe_comms_text(action.text),
+        key=action.key,
+        ms=action.ms,
+    )

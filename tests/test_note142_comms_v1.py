@@ -309,7 +309,7 @@ def test_manual_names_the_v311_comms_panel(monkeypatch) -> None:
     switched = render("Galaxy War Command")
     assert "The Comms panel sits on the deck" in switched
     assert "In this game, sub-space radio uses a channel from 1 to 60,000." in switched
-    assert "An AI cockpit seat can read those lines on the screen. It does not send yet." in switched
+    assert "An AI cockpit seat reads those lines on this same panel and answers a hail or a memo with Send." in switched
     assert "You wait 2 seconds between messages." in switched
     monkeypatch.setattr(K, "COMMS_V311_MODE", "legacy")
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
