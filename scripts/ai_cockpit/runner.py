@@ -265,14 +265,20 @@ def play(
                         _capture(page, run_dir, step, "game over")
                         _write_log(log_path, "game over")
                         break
-                    if chip == "NO TURNS":
-                        idle += 1
-                        if idle > 8:
-                            _write_log(log_path, "the day did not roll")
-                            code = 1
-                            break
-                        continue
-                    idle = 0
+                if chip == "NO TURNS":
+                    idle += 1
+                    if idle > 8:
+                        _write_log(log_path, "the day did not roll")
+                        code = 1
+                        break
+                    continue
+                if not seat_may_act(chip):
+                    if idle == 0:
+                        _write_log(log_path, f"waiting, chip {chip or 'blank'}")
+                    idle += 1
+                    page.wait_for_timeout(300)
+                    continue
+                idle = 0
                 screen = _screen(page)
                 _write_screen(log_path, step, screen)
                 view = _view(page, run_dir, step, manual_read, manual_excerpt, screen, history)
@@ -417,6 +423,15 @@ def _chip(page) -> str:
         return ""
 
 
+def seat_may_act(chip: str) -> bool:
+    """Clicks only on this seat's own turn.
+
+    A warp clicked while the chip says WAITING is queued and fires later,
+    which moves the ship before the trade click can land.
+    """
+    return (chip or "").strip() == "YOUR MOVE"
+
+
 def _wait_chip(page) -> None:
     """Wait until the seat can act, or the game has stopped asking."""
     # 20s missed the chip on the loaded Windows box. The seat stays attended
@@ -518,16 +533,58 @@ def _act(page, action: Action):
     if action.op == "type":
         _type(page, action)
         return None
-    target = _locator(page, action)
     if _opens_manual(action):
+        target = _locator(page, action)
         with page.expect_popup(timeout=8_000) as popup:
             target.click(timeout=8_000)
         manual = popup.value
         manual.wait_for_load_state("domcontentloaded", timeout=15_000)
         return manual
+    if _click_visible(page, action):
+        return None
+    target = _locator(page, action)
     target.click(timeout=8_000)
     page.wait_for_timeout(300)
     return None
+
+
+_CLICK_LABEL = r"""
+(label) => {
+  const want = String(label || "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (!want) return false;
+  const nodes = document.querySelectorAll("#here button, #here a, button, a");
+  for (const el of nodes) {
+    if (el.disabled || el.classList.contains("dim")) continue;
+    const style = getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden") continue;
+    if (style.pointerEvents === "none") continue;
+    const text = (el.innerText || el.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (text !== want) continue;
+    const box = el.getBoundingClientRect();
+    if (box.width < 1 || box.height < 1) continue;
+    el.click();
+    return true;
+  }
+  return false;
+}
+"""
+
+
+def _click_visible(page, action: Action) -> bool:
+    """Click a visible control by its exact label, retrying while the table rebuilds."""
+    label = (action.label or "").strip()
+    if not label or action.selector:
+        return False
+    for _ in range(8):
+        try:
+            hit = bool(page.evaluate(_CLICK_LABEL, label))
+        except Exception:
+            hit = False
+        if hit:
+            page.wait_for_timeout(300)
+            return True
+        page.wait_for_timeout(250)
+    return False
 
 
 def _type(page, action: Action) -> None:

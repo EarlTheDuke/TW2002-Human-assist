@@ -210,6 +210,55 @@ def _view(screen: dict, *, manual: bool = True, labels: list[str] | None = None)
     return TurnView("screen", shown, b"", manual, "Getting started", 1, screen=screen)
 
 
+def test_the_scripted_seat_acts_only_on_its_own_turn() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.runner import seat_may_act
+
+    assert seat_may_act("YOUR MOVE")
+    assert not seat_may_act("WAITING")
+    assert not seat_may_act("")
+    assert not seat_may_act("NO TURNS")
+
+
+def test_day_one_known_pair_buys_then_sells() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="hard")
+    trader.ports[20] = {"Organics": {"bid": 30}}
+    trader.links[20] = {12: 3}
+    bought = trader.decide(_view({
+        "sector": "12", "day": "1", "turns": "240", "credits": "100,000 cr", "chip": "YOUR MOVE",
+        "maxDay": "3",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Example Class 2 BSS",
+        "here": "Port Example Class 2 BSS",
+        "rows": [{
+            "cells": ["Organics", "Selling 500/2000", "500", "12", "0"],
+            "button": "BUY 20",
+        }],
+        "labels": ["BUY 20", "1:20 (3t)"],
+        "warps": ["1:20 (3t)"],
+    }))
+    assert bought.op == "click" and bought.label == "BUY 20"
+    sold = trader.decide(_view({
+        "sector": "20", "day": "1", "turns": "236", "credits": "99,760 cr", "chip": "YOUR MOVE",
+        "maxDay": "3",
+        "holds": "Fuel Ore 0 Organics 20 Equipment 0",
+        "ship": "Holds 20/20",
+        "port": "Port Buyer Class 2 SBS",
+        "here": "Port Buyer Class 2 SBS",
+        "rows": [{
+            "cells": ["Organics", "Buying, room 1000", "1000", "30", "20"],
+            "button": "SELL 20",
+        }],
+        "labels": ["SELL 20", "1:12 (3t)"],
+        "warps": ["1:12 (3t)"],
+    }))
+    assert sold.op == "click" and sold.label == "SELL 20"
+
+
 def test_the_scripted_trader_pairs_ports_haggles_and_avoids_danger() -> None:
     sys.path.insert(0, str(REPO / "scripts"))
     from ai_cockpit.trader import ScriptedTrader
