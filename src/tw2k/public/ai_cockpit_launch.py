@@ -27,6 +27,21 @@ def cockpit_seat_url(gid: str, seat: str, token: str) -> str:
     )
 
 
+def direct_seat_url(seat: str, token: str) -> str:
+    """The worker's own cockpit path. The lobby proxies the public link above."""
+    return (
+        f"/bot?seat={quote(seat, safe='')}"
+        f"&mode=cu&token={quote(token, safe='')}&layout=redesign"
+    )
+
+
+def status_line(provider: str, model: str, running: bool) -> str:
+    """Lobby text for the seat. It names the provider and whether the process is up."""
+    extra = f" {model}" if model else ""
+    state = "running" if running else "stopped"
+    return f"AI cockpit seat: {provider}{extra}, {state}"
+
+
 def player_script() -> Path:
     here = Path(__file__).resolve()
     for parent in here.parents:
@@ -44,21 +59,25 @@ def launch_player(
     token: str,
     run_dir: Path,
     provider: str = "scripted",
+    model: str = "",
     max_turns: int = 40,
     min_interval: float = 1.0,
+    path: str | None = None,
     python: str | None = None,
     popen=subprocess.Popen,
 ):
     """Spawn the browser player when the cockpit-seat switch is on.
 
     Returns None while AI_COCKPIT_SEAT_MODE is legacy. The log line names the
-    seat and the provider. It does not include the token or an API key.
+    seat, the provider, and the model. It does not include the token or an API key.
+    ``path`` defaults to the public lobby link. The lobby passes the worker's
+    ``/bot`` path so the child does not need a lobby cookie.
     """
     if not K.ai_cockpit_seat_on():
         return None
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
-    url = base_url.rstrip("/") + cockpit_seat_url(gid, seat, token)
+    url = base_url.rstrip("/") + (path or cockpit_seat_url(gid, seat, token))
     cmd = [
         python or sys.executable,
         str(player_script()),
@@ -68,6 +87,8 @@ def launch_player(
         "--max-turns", str(int(max_turns)),
         "--min-interval", str(float(min_interval)),
     ]
+    if model:
+        cmd.extend(["--model", model])
     # The seat link has to reach the child. The log names the seat only.
-    log.info("ai cockpit player seat=%s provider=%s", seat, provider)
+    log.info("ai cockpit player seat=%s provider=%s model=%s", seat, provider, model or "-")
     return popen(cmd)
