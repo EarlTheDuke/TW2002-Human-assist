@@ -55,3 +55,15 @@ That stops the tunnel. The lobby and the games keep running. Players' old links 
 ## The link changes every run
 
 Each run prints a new `https://....trycloudflare.com` address. The previous address dies when you stop the tunnel or start another one. The game on this PC is the same game. Send the new lobby link, and send new seat links, because the host name in the old ones no longer works.
+
+## If the computer or the browser stops
+
+The lobby saves each game while people are playing. A save happens when the day changes, again shortly after someone does something, and every few minutes if the game is quiet.
+
+If you restart the server, open the lobby again. The games that were still going are on the list. The same seat link still works, token and all. You do not make a new link for the same seat. A full-length game stays on the day it was on. The day clock keeps going from where it left off. It does not start that day over.
+
+If a player's browser drops, the cockpit tries the connection again on its own. It waits a little longer between tries, then loads that seat again when the server answers. The player does not have to refresh the page.
+
+The AI cockpit seat comes back with the game. You do not press anything to start that seat again.
+
+If a save file is damaged, the lobby stays open. It says that game's save could not be read, and it does not start that game. It tries the save before that one first. You get the message when none of the saves can be read. You do not get a crash page.
