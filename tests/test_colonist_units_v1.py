@@ -192,17 +192,18 @@ def test_net_worth_prices_people_as_thousands(monkeypatch) -> None:
     assert _planet_asset_value(swollen) == 30 * K.COLONIST_PRICE
 
 
-def test_seed_250925_n1_net_worth_stays_under_270k(monkeypatch) -> None:
-    """Profile-on 10-day seed 250925. N1's full net worth stays under 270,000.
+def test_seed_250925_n1_net_worth_stays_under_340k(monkeypatch) -> None:
+    """Profile-on 10-day seed 250925. N1's full net worth stays under 340,000.
 
     NOTE 89 measured this run under 150,000, which caught a non-M landing that
     scored 30 holds as 30,000 colonists. That landing still converts. With the
     economy2 chart forced off, the same profile-on seats finish N1 at 83,688.
-    NOTE 112 turns the chart on with the profile, and N1 then sells 522 times
-    for 386,510 realized profit and ends at 261,168, of which 251,653 is
-    credits. Planet assets are the gap between full and public net worth:
-    1,370 on the one class M world, guarded under 20,000. A 30-hold mis-score
-    at COLONIST_PRICE 10 would add about 300,000 and still fail both ceilings.
+    NOTE 112 turns the chart on with the profile. NOTE 150's cabal table then
+    takes a first ask inside the printed percent, and N1 sells 606 times and
+    ends at 321,290, of which 308,113 is credits. Planet assets are the gap
+    between full and public net worth: 1,370 on the one class M world, guarded
+    under 20,000. A 30-hold mis-score at COLONIST_PRICE 10 would add about
+    300,000 and still fail both ceilings.
     """
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     spec = importlib.util.spec_from_file_location(
@@ -218,9 +219,9 @@ def test_seed_250925_n1_net_worth_stays_under_270k(monkeypatch) -> None:
     )
     assert result["days_played"] == 10
     assert n1["exceptions"] == 0
-    # Measured this run: 261,168 full, 251,653 credits, planet gap 1,370.
-    # 270,000 leaves a little room for the same trade path. 20,000 is the
+    # Measured this run: 321,290 full, 308,113 credits, planet gap 1,370.
+    # 340,000 leaves a little room for the same trade path. 20,000 is the
     # planet-asset guard: the class M world scored 1,370, and a non-M drop
     # scored as people would clear this by itself.
-    assert n1["net_worth"] < 270_000
+    assert n1["net_worth"] < 340_000
     assert n1["net_worth"] - n1["public_net_worth"] < 20_000

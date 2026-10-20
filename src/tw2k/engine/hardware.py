@@ -596,7 +596,9 @@ def handle_launch_beacon(universe: Universe, pid: str, action: Action) -> Action
 
 # --- Psychic probe (v10-v12) ----------------------------------------------------
 
-def psychic_reading(listed: int, final_unit: int, mcic: int, side: str) -> float:
+def psychic_reading(
+    listed: int, final_unit: int, mcic: int, side: str, commodity: str | None = None,
+) -> float:
     """Percent of the best price the port would have taken (Bible: shown after the trade).
 
     Sell: your price over the highest bid it would pay. Buy: the lowest ask it would take
@@ -604,7 +606,7 @@ def psychic_reading(listed: int, final_unit: int, mcic: int, side: str) -> float
     """
     from .economy import haggle_bound
 
-    bound = int(haggle_bound(int(listed), int(mcic), side))
+    bound = int(haggle_bound(int(listed), int(mcic), side, commodity))
     if side == "sell":
         pct = 100.0 * int(final_unit) / bound if bound > 0 else 100.0
     else:
@@ -617,7 +619,7 @@ def emit_psychic_probe(universe: Universe, pid: str, commodity: str, side: str,
     player = universe.players[pid]
     if not K.hardware_tw2002() or int(getattr(player.ship, "psychic_probe", 0) or 0) <= 0:
         return
-    pct = psychic_reading(listed, final_unit, mcic, side)
+    pct = psychic_reading(listed, final_unit, mcic, side, commodity)
     universe.emit(
         EventKind.PSYCHIC_PROBE,
         actor_id=pid,
