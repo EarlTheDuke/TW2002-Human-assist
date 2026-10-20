@@ -57,6 +57,10 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--max-turns", type=int, default=40, help="most actions to take")
     parser.add_argument("--min-interval", type=float, default=1.0, help="seconds between actions")
     parser.add_argument("--stop-file", default="", help="when this path exists, stop")
+    parser.add_argument(
+        "--level", default="hard",
+        help="scripted difficulty: easy, normal, or hard (live providers ignore it)",
+    )
     parser.add_argument("--headed", action="store_true", help="show the browser window")
     parser.add_argument("--check-imports", action="store_true", help="exit 3 if tw2k was imported")
     return parser.parse_args(argv)
@@ -85,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
             headless=not args.headed,
             model=str(args.model or ""),
             mock_script=str(args.mock_script or ""),
+            level=str(args.level or "hard"),
         )
     except Exception as exc:
         print(redact(f"{exc.__class__.__name__}: {exc}"), file=sys.stderr)

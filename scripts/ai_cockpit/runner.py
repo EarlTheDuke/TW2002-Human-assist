@@ -71,6 +71,8 @@ _SCREEN = r"""
       selectors.push('[data-n="' + name + '"]');
     }
   });
+  const ask = document.querySelector('#sectorAsk');
+  if (ask && visible(ask)) selectors.push('#sectorAsk');
   const form = document.querySelector('#formSlot');
   const formText = form ? (form.innerText || '').replace(/\s+/g, ' ').trim() : '';
   const menu = document.querySelector('#menu');
@@ -105,6 +107,8 @@ _SCREEN = r"""
     })(),
     menuOpen,
     menuText: menuOpen ? (menu.innerText || '').replace(/\s+/g, ' ').trim() : '',
+    course: text('#course'),
+    sectorAsk: ask && visible(ask) ? (ask.value || '') : '',
   };
 }
 """
@@ -153,6 +157,7 @@ def play(
     headless: bool = True,
     model: str = "",
     mock_script: str = "",
+    level: str = "hard",
 ) -> int:
     """Play until the seat is done. Returns 0 on a clean stop."""
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -170,7 +175,7 @@ def play(
         _write_modules(run_dir)
         return 1
 
-    provider = build_provider(provider_name, model, mock_script)
+    provider = build_provider(provider_name, model, mock_script, level)
     gate = RateGate(min_interval)
     manual_read = False
     manual_excerpt = ""

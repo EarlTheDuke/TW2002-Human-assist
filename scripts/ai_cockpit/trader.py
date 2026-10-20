@@ -27,6 +27,7 @@ _YARD = re.compile(
 )
 _YARD_PRICE = re.compile(r"([\d,]+)\s+cr\.", re.I)
 _RESERVE = 20_000
+_COURSE = re.compile(r"Course to (\d+):\s*([0-9 >]+)")
 
 
 def _int(text: object) -> int:
@@ -61,9 +62,21 @@ def _hold_cap(ship: str) -> int:
 
 
 class ScriptedTrader:
-    """Reads the sector, port and holds, then trades, buys gear, and spends the day."""
+    """Reads the sector, port and holds, then trades, buys gear, and spends the day.
 
-    def __init__(self) -> None:
+    ``level`` is easy (wander and take a weak local trade), normal (settle sooner,
+    holds and fighters only), or hard (the long-game trader). Anything else is hard.
+    """
+
+    def __init__(self, level: str = "hard") -> None:
+        text = (level or "hard").strip().lower()
+        self.level = text if text in ("easy", "normal", "hard") else "hard"
+        self.plot_to = 0
+        self.home_ask = 0
+        self.settled_day = 0
+        self.dock_go = False
+        self.dock_skip_day = 0
+        self.ship_skip_profit = 0
         self.ports: dict[int, dict[str, dict[str, int]]] = {}
         self.codes: dict[int, str] = {}
         self.danger: set[int] = set()
@@ -133,19 +146,35 @@ class ScriptedTrader:
         cargo = _holds(str(screen.get("holds") or ""))
         self.hold_cap = _hold_cap(str(screen.get("ship") or ""))
         self._remember(sector, screen)
-        action = (
-            self._modal(screen, labels, turns)
-            or self._form(screen, labels, credits)
-            or self._leave_danger(sector, screen, cargo)
-            or self._sell(screen, sector, cargo, turns)
-            or self._buy(screen, sector, cargo, turns)
-            or self._stardock(screen, labels, credits)
-            or self._open_yard(labels, screen)
-            or self._open_bank(screen, labels, credits)
-            or self._planet(screen, labels)
-            or self._warp(screen, sector, cargo, turns)
-            or self._spend(screen, turns)
-        )
+        if self.level == "easy":
+            self.plot_to = 0
+            action = (
+                self._modal(screen, labels, turns)
+                or self._form(screen, labels, credits)
+                or self._leave_danger(sector, screen, cargo)
+                or self._easy_trade(screen, sector, cargo)
+                or self._easy_warp(screen, sector, cargo, turns)
+                or self._spend(screen, turns)
+            )
+        else:
+            self._sync_plot(sector, turns, credits)
+            plotted = self._plot_step(screen, labels, sector) if self._plot_blocks(screen) else None
+            action = (
+                self._modal(screen, labels, turns)
+                or self._form(screen, labels, credits)
+                or self._leave_danger(sector, screen, cargo)
+                or plotted
+                or self._sell(screen, sector, cargo, turns)
+                or self._plot_step(screen, labels, sector)
+                or self._return_home(screen, sector, cargo)
+                or self._buy(screen, sector, cargo, turns)
+                or self._stardock(screen, labels, credits)
+                or self._open_yard(labels, screen)
+                or self._open_bank(screen, labels, credits)
+                or self._planet(screen, labels)
+                or self._warp(screen, sector, cargo, turns)
+                or self._spend(screen, turns)
+            )
         if sector:
             self.previous = sector
             self.visited.add(sector)
@@ -209,7 +238,8 @@ class ScriptedTrader:
         return self._next_gear() is not None
 
     def _next_gear(self) -> str | None:
-        for item in ("holds", "fighters", "shields"):
+        items = ("holds", "fighters")
+        for item in items:
             if item not in self.bought:
                 return item
         return None
@@ -350,6 +380,9 @@ class ScriptedTrader:
         if _DAY_END.search(text) and any(row.upper() == "CONFIRM" for row in labels):
             self.plan_note = "end the day" if turns >= 3 else "spend the last turns"
             return Action("click", label="CONFIRM")
+        # A course plot is a menu the seat opened on purpose. Leave it up.
+        if self.plot_to and self._plot_menu(text):
+            return None
         self.plan_note = "close the dialog"
         return Action("press", key="Escape")
 
@@ -458,7 +491,7 @@ class ScriptedTrader:
         unit = int(price_match.group(1).replace(",", "")) if price_match else 0
         cap_match = _UP_TO.search(note)
         cap = int(cap_match.group(1).replace(",", "")) if cap_match else 0
-        want = 20 if item == "fighters" else 10
+        want = 10
         if unit and credits > unit:
             want = min(want, max(1, (credits - _RESERVE) // unit))
         if cap:
@@ -487,6 +520,10 @@ class ScriptedTrader:
     def _leave_danger(self, sector: int, screen: dict, cargo: dict[str, int]) -> Action | None:
         if sector not in self.danger:
             return None
+        # Re-plotting the same course flies back into the fighters. Drop it and trade.
+        if self.plot_to:
+            self.plot_to = 0
+            self.dock_go = False
         action = self._warp(screen, sector, cargo, _int(screen.get("turns")), flee=True)
         if action is not None:
             self.plan_note = "leave danger"
@@ -512,7 +549,10 @@ class ScriptedTrader:
             other = self._bid_sector(name) if name else 0
             other_bid = self._known_bid(name) if name else 0
             if other and other != sector and other_bid > price and self._reachable(sector, other, turns):
-                continue
+                # A path that only turns around is not a better sale. Sell here.
+                step = self._first_step(sector, other)
+                if self.level != "hard" or step not in (None, self.previous):
+                    continue
             if best is None or price > best[0]:
                 best = (price, button, name)
         if best is None:
@@ -555,7 +595,7 @@ class ScriptedTrader:
             return None
         if _REFUSED.search(str(screen.get("last") or "")):
             return None
-        if self._settled(sector):
+        if self._on_route(sector):
             _value, ask_at, _bid_at, _cycle = self._best_run()
             if ask_at and ask_at != sector and self._reachable(sector, ask_at, turns):
                 return None
@@ -608,7 +648,9 @@ class ScriptedTrader:
         return Action("click", label=label)
 
     def _open_yard(self, labels: list[str], screen: dict) -> Action | None:
-        if not self._at_dock(screen) or self._best_spread() <= 0 or "ship" in self.bought:
+        if self.level != "hard":
+            return None
+        if not self._at_dock(screen) or self._best_spread() <= 0 or self._ship_closed():
             return None
         if self._gear_pending():
             return None
@@ -618,6 +660,41 @@ class ScriptedTrader:
         self.yard = {"phase": "look"}
         self.plan_note = "read the shipyard"
         return Action("click", label=label)
+
+    def _days_left(self) -> int:
+        if self.max_day and self.day:
+            return max(0, self.max_day - self.day + 1)
+        return 10
+
+    def _daily_profit(self) -> int:
+        """Credits the best seen pair can earn in one day, from the screen."""
+        return self._best_run()[0]
+
+    def _pays(self, cost: int, extra_per_day: int, lost_turns: int, daily: int | None = None) -> bool:
+        """True when the extra daily profit over the days left beats the cost.
+
+        Lost turns are priced at the current route: that many turns would have
+        earned ``daily * lost_turns / turns_per_day``.
+        """
+        if daily is None:
+            daily = self._daily_profit()
+        day_turns = max(1, self.day_turns or 40)
+        lost_days = lost_turns / day_turns
+        left = self._days_left() - lost_days
+        if left <= 0 or extra_per_day <= 0:
+            return False
+        return extra_per_day * left > cost + lost_days * daily
+
+    def _dock_trip_pays(self, hops: int) -> bool:
+        """A round trip to StarDock pays when more holds can earn the lost days back."""
+        if self.level != "hard":
+            return True
+        daily = self._daily_profit()
+        # No route on the screen means the trip does not give up a day's profit.
+        if daily <= 0:
+            return True
+        lost_turns = max(1, hops) * 3 * 2 + 6
+        return self._pays(0, daily, lost_turns)
 
     def _yard_pays(self, screen: dict, text: str) -> bool:
         match = _YARD.search(text)
@@ -629,21 +706,37 @@ class ScriptedTrader:
         price = int(price_match.group(1).replace(",", "")) if price_match else 0
         if "you get" in text.lower() and "back" in text.lower():
             price = 0
-        current = _hold_cap(str(screen.get("ship") or ""))
+        # The headline is the net after trade-in. The old hull still leaves the
+        # score, so the cost is that net plus the trade-in credit on the quote.
+        trade_in = re.search(r"trade-in sells your ship for\s+([\d,]+)\s+cr", text, re.I)
+        if trade_in and price:
+            price += int(trade_in.group(1).replace(",", ""))
+        current = max(1, _hold_cap(str(screen.get("ship") or "")))
         if holds <= current:
             return False
-        spread = self._best_spread()
-        trips = max(1, self._remaining_trips())
-        current_tpw = 3
-        for costs in self.links.values():
-            if costs:
-                current_tpw = min(costs.values())
-                break
-        old_cycle = max(2, current_tpw * 2 + 2)
-        new_cycle = max(2, tpw * 2 + 2)
-        old_profit = current * spread * max(1, trips * old_cycle // new_cycle)
-        new_profit = holds * spread * trips
-        return new_profit - old_profit > price
+        daily = self._daily_profit()
+        if daily <= 0:
+            return False
+        now = re.search(r"(\d+)\s+turns per warp", str(screen.get("ship") or ""), re.I)
+        old_tpw = int(now.group(1)) if now else 3
+        # Extra profit is only what the ports on screen can fill. A bigger hull
+        # that the route cannot load does not pay for itself.
+        old_profit = self._best_run(current, old_tpw)[0]
+        new_profit = self._best_run(holds, tpw)[0]
+        extra = new_profit - old_profit
+        return self._pays(price, extra, self._return_turns(), daily=old_profit)
+
+    def _return_turns(self) -> int:
+        dest = self.home_ask
+        if not dest:
+            _value, dest, _bid, _cycle = self._best_run()
+        day_turns = self.day_turns or 40
+        if not dest:
+            return day_turns
+        hops = self._hops(1, dest)
+        if hops is None:
+            return day_turns * 2
+        return hops * 3 + 4
 
     def _yard_step(self, screen: dict, fields: dict, labels: list[str]) -> Action:
         text = str(screen.get("formText") or "")
@@ -676,7 +769,7 @@ class ScriptedTrader:
             self.plan_note = "buy the ship"
             if any(row.upper() == "CONFIRM" for row in labels):
                 return Action("click", label="CONFIRM")
-        self.bought.add("ship")
+        self.ship_skip_profit = max(self.ship_skip_profit, max(1, self._daily_profit()))
         self.yard = None
         self.plan_note = "keep the current ship"
         if any(row.upper() == "ESC" for row in labels):
@@ -769,17 +862,29 @@ class ScriptedTrader:
         qty = int(slot.get("avail") or 0)
         return qty if qty > 0 else 100
 
-    def _best_run(self) -> tuple[int, int, int, int]:
-        """Best seen pair as (credits it can earn today, ask sector, bid sector, turn cycle)."""
+    def _stock(self, slot: dict, cap: int, *, quoted: bool) -> int:
+        """Quantity a route can move. A ship quote does not invent a full load."""
+        if not quoted:
+            return self._avail(slot)
+        return int(slot.get("avail") or 0) or cap
+
+    def _best_run(self, cap: int | None = None, tpw: int | None = None) -> tuple[int, int, int, int]:
+        """Best seen pair as (credits it can earn today, ask sector, bid sector, turn cycle).
+
+        A ship quote passes its own hold count and turns per warp. That quote
+        uses the quantity on screen, so a hull the ports cannot fill earns nothing
+        extra. The live route still treats a missing quantity as a full load.
+        """
         best = (0, 0, 0, 0)
         turns = self.day_turns or 40
-        cap = max(1, self.hold_cap or 20)
+        use_cap = max(1, cap if cap is not None else (self.hold_cap or 20))
+        step = 3 if tpw is None else max(1, tpw)
         for ask_at, book in self.ports.items():
             for name, slot in book.items():
                 if not isinstance(slot, dict) or slot.get("ask") is None:
                     continue
                 ask = int(slot["ask"])
-                ask_qty = self._avail(slot)
+                ask_qty = self._stock(slot, use_cap, quoted=tpw is not None)
                 for bid_at, other in self.ports.items():
                     if bid_at == ask_at:
                         continue
@@ -793,11 +898,11 @@ class ScriptedTrader:
                     back = self._hops(bid_at, ask_at)
                     if hops is None or back is None:
                         continue
-                    cycle = hops * 3 + 1 + back * 3 + 1
+                    cycle = hops * step + 1 + back * step + 1
                     if cycle > turns:
                         continue
-                    bid_qty = self._avail(booked)
-                    per = max(1, min(cap, ask_qty, bid_qty))
+                    bid_qty = self._stock(booked, use_cap, quoted=tpw is not None)
+                    per = max(1, min(use_cap, ask_qty, bid_qty))
                     trips = max(1, turns // cycle)
                     units = min(ask_qty, bid_qty, per * trips)
                     value = (bid - ask) * units
@@ -805,21 +910,57 @@ class ScriptedTrader:
                         best = (value, ask_at, bid_at, cycle)
         return best
 
-    def _settled(self, sector: int) -> bool:
-        """A short pair that pays and can be reached from this sector."""
-        value, ask, _bid, cycle = self._best_run()
-        if not (cycle and cycle <= 14 and value >= 2000):
-            return False
+    def _pair_reached(self, sector: int, ask: int) -> bool:
         if not sector or sector == ask:
             return True
         return self._hops(sector, ask) is not None
 
+    def _settled(self, sector: int) -> bool:
+        """A short pair that pays and can be reached from this sector.
+
+        Both seats take a pair worth about 700 credits inside 20 turns,
+        and any paying pair once eight ports are priced.
+        Hard then shops only when the days left can pay the trip back.
+        """
+        value, ask, _bid, cycle = self._best_run()
+        reached = self._pair_reached(sector, ask)
+        if cycle and cycle <= 20 and value >= 700 and reached:
+            return True
+        if self._priced_ports() >= 8 and value > 0 and cycle and reached:
+            return True
+        return False
+
+    def _ship_closed(self) -> bool:
+        """The yard is finished, or a dearer ship did not pay. Do not cross the map to ask again."""
+        if "ship" in self.bought:
+            return True
+        return self.ship_skip_profit > 0
+
+    def _gear_done(self) -> bool:
+        if "holds" not in self.bought or "fighters" not in self.bought:
+            return False
+        if self.level == "normal":
+            return True
+        return self._ship_closed()
+
+    def _on_route(self, sector: int) -> bool:
+        """Trade the best pair. Hard does that after shopping even when the pair is still thin."""
+        if self._settled(sector):
+            return True
+        if self.level != "hard" or not self._gear_done():
+            return False
+        value, ask, _bid, cycle = self._best_run()
+        return bool(value > 0 and ask and cycle)
+
     def _should_shop(self, sector: int, turns: int) -> bool:
         if not self._settled(sector) or sector == 1 or self.shop_day == self.day or self._best_spread() <= 0:
             return False
-        if "fighters" in self.bought and "shields" in self.bought and "ship" in self.bought:
+        if self._gear_done():
             return False
-        if self._hops(sector, 1) is None:
+        hops = self._hops(sector, 1)
+        if hops is None:
+            return False
+        if self.level == "hard" and not self._dock_trip_pays(hops):
             return False
         back = self._best_ask_sector() or sector
         if self._hops(1, back) is None and self._hops(1, sector) is None:
@@ -861,6 +1002,14 @@ class ScriptedTrader:
                     if dest != sector:
                         options.append((dest, str(label).strip(), 3))
         if not options:
+            # Every safe lane is gone. Plot a course instead of ending the day in place.
+            if not flee and turns > 3 and not self.plot_to:
+                dest = self.home_ask or self._best_ask_sector() or (1 if sector != 1 else 0)
+                if dest and dest != sector:
+                    self.plot_to = dest
+                    action = self._plot_step(screen, list(screen.get("labels") or []), sector)
+                    if action is not None:
+                        return action
             return None
         if flee:
             picked = self._flee_choice(options)
@@ -876,15 +1025,15 @@ class ScriptedTrader:
         goal = self._trade_target(sector, cargo)
         if any(cargo.values()) and goal and goal != sector and self._trip_fits(sector, goal, cargo, turns):
             step = self._first_step(sector, goal)
-            if step is not None:
+            if step is not None and not (self.level == "hard" and step == self.previous):
                 action = self._click_warp(sector, step)
                 if action is not None:
                     return action
-        if self._settled(sector) and not any(cargo.values()):
+        if self._on_route(sector) and not any(cargo.values()):
             _value, ask_at, _bid_at, cycle = self._best_run()
             if ask_at and ask_at != sector and self._trip_fits(sector, ask_at, cargo, turns):
                 step = self._first_step(sector, ask_at)
-                if step is not None:
+                if step is not None and not (self.level == "hard" and step == self.previous):
                     action = self._click_warp(sector, step)
                     if action is not None:
                         self.plan_note = "run the pair " + (action.label or "")
@@ -1009,6 +1158,279 @@ class ScriptedTrader:
         if step is not None and any(item[0] == step for item in options):
             return step
         return max(options, key=score)[0]
+
+    def _easy_locked(self) -> bool:
+        """Easy stops looking after a few sectors, or once the first day is over."""
+        return self.day >= 2 or len(self.visited) >= 3
+
+    def _worst_run(self) -> tuple[int, int, int, str] | None:
+        """Smallest one-hop pair already on screen: (spread, ask, bid, good)."""
+        found: tuple[int, int, int, str] | None = None
+        for ask_at, book in self.ports.items():
+            for name, slot in book.items():
+                if not isinstance(slot, dict) or slot.get("ask") is None:
+                    continue
+                ask = int(slot["ask"])
+                for bid_at, other in self.ports.items():
+                    if bid_at == ask_at:
+                        continue
+                    booked = other.get(name) or {}
+                    if not isinstance(booked, dict) or not booked.get("bid"):
+                        continue
+                    bid = int(booked["bid"])
+                    if bid <= ask:
+                        continue
+                    hops = self._hops(ask_at, bid_at)
+                    if hops is None or hops > 1:
+                        continue
+                    spread = bid - ask
+                    if found is None or spread < found[0]:
+                        found = (spread, ask_at, bid_at, name)
+        return found
+
+    def _easy_trade(self, screen: dict, sector: int, cargo: dict[str, int]) -> Action | None:
+        """Sell locally, then buy. Once easy stops looking it keeps the worst pair."""
+        pair = self._worst_run() if self._easy_locked() else None
+        good = pair[3] if pair else ""
+        ask_at = pair[1] if pair else 0
+        for row in screen.get("rows") or []:
+            button = str(row.get("button") or "")
+            if not button.upper().startswith("SELL"):
+                continue
+            cells = [str(cell) for cell in (row.get("cells") or [])]
+            name = next((item for item in _GOODS if cells and item.lower() in cells[0].lower()), "")
+            if name and cargo.get(name, 0) <= 0:
+                continue
+            if good and name != good:
+                continue
+            self.plan_note = "sell " + button
+            return Action("click", label=button)
+        if pair and ask_at and sector != ask_at:
+            return None
+        if _room(str(screen.get("ship") or ""), cargo) <= 0:
+            return None
+        picked: tuple[int, str] | None = None
+        for row in screen.get("rows") or []:
+            button = str(row.get("button") or "")
+            if not button.upper().startswith("BUY"):
+                continue
+            cells = [str(cell) for cell in (row.get("cells") or [])]
+            name = next((item for item in _GOODS if cells and item.lower() in cells[0].lower()), "")
+            if good and name != good:
+                continue
+            ask = self._row_price(cells)
+            bid = self._known_bid(name) if name else 0
+            rank = (bid - ask) if bid else -ask
+            if picked is None or rank < picked[0]:
+                picked = (rank, button)
+        if picked is None:
+            return None
+        self.plan_note = "buy " + picked[1]
+        return Action("click", label=picked[1])
+
+    def _easy_warp(self, screen: dict, sector: int, cargo: dict[str, int], turns: int) -> Action | None:
+        """Wander a little, including a one-way. Then stay on the worst pair. Never shop."""
+        if self._easy_locked():
+            pair = self._worst_run()
+            if pair is None:
+                return None
+            _spread, ask_at, bid_at, good = pair
+            dest = bid_at if cargo.get(good, 0) > 0 else ask_at
+            if not dest or dest == sector:
+                return None
+            label = self.warp_labels.get((sector, dest), "")
+            if not label:
+                return None
+            self.plan_note = "weak pair " + label
+            return Action("click", label=label)
+        options: list[tuple[int, str]] = []
+        for label in screen.get("warps") or []:
+            match = _WARP.match(str(label).strip())
+            if match is None:
+                continue
+            dest = int(match.group(1))
+            if dest in self.danger or dest == 1:
+                continue
+            cost_match = _WARP_COST.search(str(label))
+            cost = int(cost_match.group(1)) if cost_match else 3
+            if turns < cost:
+                continue
+            options.append((dest, str(label).strip()))
+        if not options:
+            return None
+        fresh = [item for item in options if item[0] not in self.visited]
+        pool = fresh or options
+        pool.sort(key=lambda item: (item[0] == self.previous, item[0] in self.visited, item[0]))
+        self.plan_note = "wander " + pool[0][1]
+        return Action("click", label=pool[0][1])
+
+    def _wants_bank(self, credits: int) -> bool:
+        if self.bank_day == self.day or self._gear_pending():
+            return False
+        return credits >= _RESERVE + 5_000
+
+    def _wants_dock(self, sector: int) -> bool:
+        """Gear is still worth buying and the known map has no way to StarDock.
+
+        The day a pair is first good enough is spent running it. The course
+        plotter is for a later day, when the return to StarDock was never seen.
+        Hard follows that course only when the days left can pay the trip back.
+        """
+        if sector == 1 or self.shop_day == self.day or self._gear_done():
+            return False
+        if self.level == "hard" and self.dock_skip_day == self.day:
+            return False
+        if self._hops(sector, 1) is not None:
+            return False
+        # The day after a pair is good enough, or a priced pocket with no way back.
+        # Hard already committed on an earlier day. A dip in the quote does not cancel the trip.
+        settled = (
+            bool(self.settled_day)
+            and self.day > self.settled_day
+            and self._best_spread() > 0
+            and (self.level == "hard" or self._settled(sector))
+        )
+        pocket = self.day >= 3 and self._priced_ports() >= 6 and self._best_spread() > 0
+        if not settled and not pocket:
+            return False
+        return True
+
+    def _still_shopping(self, credits: int) -> bool:
+        """Stay at StarDock until holds, weapons, and the ship decision are done."""
+        if credits < 500 or self._gear_done():
+            return False
+        left = any(place not in (0, 1) for place in self.visited)
+        if self._best_spread() <= 0 and left:
+            return False
+        return True
+
+    def _sync_plot(self, sector: int, turns: int, credits: int) -> None:
+        """Plot a course when the known warp list cannot reach the next goal."""
+        if self._settled(sector) and not self.settled_day:
+            self.settled_day = self.day or 1
+        # Stay on the computer's course until the ship arrives. A partial path
+        # in memory is not a reason to wander off it.
+        if self.plot_to and (not sector or sector == self.plot_to):
+            self.plot_to = 0
+            self.dock_go = False
+        if self.plot_to or turns <= 0:
+            return
+        if self._wants_dock(sector):
+            # A handful of leftover turns on the last day cannot finish a dock trip.
+            last = bool(self.max_day and self.day and self.day >= self.max_day)
+            if not (last and turns < 8):
+                _value, ask, _bid, _cycle = self._best_run()
+                if ask and not self.home_ask:
+                    self.home_ask = ask
+                self.plot_to = 1
+                return
+        if sector == 1 and not self._still_shopping(credits) and not self._wants_bank(credits):
+            dest = self.home_ask
+            if not dest:
+                _value, dest, _bid, _cycle = self._best_run()
+            # The computer's course home is shorter than the long way we explored.
+            if dest and dest != sector:
+                self.plot_to = dest
+
+    def _plot_menu(self, text: str) -> bool:
+        low = text.lower()
+        return "computer command" in low or "course plotter" in low or "destination sector" in low
+
+    def _plot_blocks(self, screen: dict) -> bool:
+        if not self.plot_to:
+            return False
+        if self._plot_menu(str(screen.get("menuText") or "")):
+            return True
+        return bool(str(screen.get("course") or "").strip())
+
+    def _computer_label(self, labels: list[str]) -> str:
+        for row in labels:
+            folded = row.replace(" ", "").lower()
+            if folded.endswith("computer"):
+                return row
+        return ""
+
+    def _course_path(self, course: str, target: int) -> list[int]:
+        match = _COURSE.search(course or "")
+        if match is None or int(match.group(1)) != target:
+            return []
+        return [int(part) for part in match.group(2).split() if part.isdigit()]
+
+    def _plot_step(self, screen: dict, labels: list[str], sector: int) -> Action | None:
+        """Drive the on-screen course plotter the way a person would, then take the next hop."""
+        target = self.plot_to
+        if not target:
+            return None
+        course = str(screen.get("course") or "")
+        path = self._course_path(course, target)
+        if path and target == 1 and self.level == "hard" and not self.dock_go:
+            hops_left = len(path) - 1
+            if sector in path:
+                hops_left = len(path) - 1 - path.index(sector)
+            if not self._dock_trip_pays(hops_left):
+                self.plot_to = 0
+                self.dock_skip_day = self.day or 1
+                self.plan_note = "the dock trip does not pay"
+                cancel = next((row for row in labels if row.lower() == "cancel"), "")
+                if cancel:
+                    return Action("click", label=cancel)
+                return None
+            self.dock_go = True
+        if path:
+            if sector in path:
+                index = path.index(sector)
+                if index + 1 < len(path):
+                    nxt = path[index + 1]
+                    for label in screen.get("warps") or []:
+                        match = _WARP.match(str(label).strip())
+                        if match and int(match.group(1)) == nxt:
+                            self.plan_note = "follow the plotted course"
+                            return Action("click", label=str(label).strip())
+                    # The hop is not a live button (not enough turns, or it is dim).
+                    # Falling through lets the day end instead of waiting out the clock.
+                    return None
+            replot = next((row for row in labels if "re-plot" in row.lower()), "")
+            if replot:
+                self.plan_note = "re-plot the course"
+                return Action("click", label=replot)
+            return None
+        elif course.strip():
+            cancel = next((row for row in labels if row.lower() == "cancel"), "")
+            if cancel:
+                self.plan_note = "clear the other course"
+                return Action("click", label=cancel)
+        menu = str(screen.get("menuText") or "")
+        if "destination sector" in menu.lower():
+            typed = str(screen.get("sectorAsk") or "").strip()
+            if typed != str(target):
+                self.plan_note = "name the destination"
+                return Action("type", selector="#sectorAsk", text=str(target))
+            self.plan_note = "plot the course"
+            return Action("click", label="ENTER")
+        if self._plot_menu(menu):
+            self.plan_note = "open the course plotter"
+            return Action("press", key="F")
+        computer = self._computer_label(labels)
+        if computer:
+            self.plan_note = "open the computer"
+            return Action("click", label=computer)
+        self.plan_note = "open the computer"
+        return Action("press", key="C")
+
+    def _return_home(self, screen: dict, sector: int, cargo: dict[str, int]) -> Action | None:
+        """After StarDock, go back to the pair that paid for the trip."""
+        dest = self.home_ask
+        if not dest or sector == dest or self.plot_to or any(cargo.values()) or not self._gear_done():
+            if sector and sector == dest:
+                self.home_ask = 0
+            return None
+        step = self._first_step(sector, dest)
+        if step is None:
+            return None
+        action = self._click_warp(sector, step)
+        if action is not None:
+            self.plan_note = "return to the pair"
+        return action
 
     def _spend(self, screen: dict, turns: int) -> Action:
         chip = str(screen.get("chip") or "")
