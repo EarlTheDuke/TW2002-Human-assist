@@ -1,5 +1,5 @@
 /* cockpit-warp-variants-v1. Ten seeded warp pictures per hull.
-   The mesh stays in redesign.js. This file only names the cameras,
+   The mesh lives in hull-meshes.js (window.TW2KHullMeshes). This file only names the cameras,
    star fields, and exits, and draws the star layer. No network. */
 (function () {
   var STYLES = [
