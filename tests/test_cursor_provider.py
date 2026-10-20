@@ -20,6 +20,19 @@ def test_unwrap_agent_print_json_prefers_text_key() -> None:
     assert _unwrap_agent_print_json(wrapped) == inner
 
 
+def _resolved_cursor_cli():
+    """c8c1587a looks up node + index.js before create_subprocess_exec.
+
+    These tests mock the process, so the lookup has to return a pair or
+    `_invoke_cursor_cli` raises "CLI not found" and never reaches the mock.
+    The nonzero-exit assertion still matches `agent exited`.
+    """
+    return patch(
+        "tw2k.agents.llm._resolve_cursor_cli",
+        return_value=("/fake/node", "/fake/index.js", None),
+    )
+
+
 @pytest.mark.asyncio
 async def test_invoke_cursor_cli_success() -> None:
     raw_action = {
@@ -32,12 +45,17 @@ async def test_invoke_cursor_cli_success() -> None:
     mock_proc.communicate = AsyncMock(return_value=(outer.encode("utf-8"), b""))
     mock_proc.returncode = 0
 
-    with patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec:
+    with _resolved_cursor_cli(), patch(
+        "asyncio.create_subprocess_exec", new_callable=AsyncMock
+    ) as mock_exec:
         mock_exec.return_value = mock_proc
         ag = LLMAgent("P1", "C", provider="cursor", model="composer-2-fast")
         out = await ag._invoke_cursor_cli("ping")
     assert "wait" in out
     mock_exec.assert_called_once()
+    argv = mock_exec.call_args.args
+    assert argv[0] == "/fake/node"
+    assert argv[1] == "/fake/index.js"
 
 
 @pytest.mark.asyncio
@@ -46,7 +64,9 @@ async def test_invoke_cursor_cli_nonzero_exit() -> None:
     mock_proc.communicate = AsyncMock(return_value=(b"", b"auth failed"))
     mock_proc.returncode = 1
 
-    with patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec:
+    with _resolved_cursor_cli(), patch(
+        "asyncio.create_subprocess_exec", new_callable=AsyncMock
+    ) as mock_exec:
         mock_exec.return_value = mock_proc
         ag = LLMAgent("P1", "C", provider="cursor", model="m")
         with pytest.raises(RuntimeError, match="agent exited"):
@@ -65,7 +85,9 @@ async def test_call_cursor_populates_last_diag() -> None:
     mock_proc.communicate = AsyncMock(return_value=(outer.encode("utf-8"), b""))
     mock_proc.returncode = 0
 
-    with patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec:
+    with _resolved_cursor_cli(), patch(
+        "asyncio.create_subprocess_exec", new_callable=AsyncMock
+    ) as mock_exec:
         mock_exec.return_value = mock_proc
         ag = LLMAgent("P1", "C", provider="cursor", model="composer-2-fast")
         text = await ag._call_cursor('{"obs":true}')
