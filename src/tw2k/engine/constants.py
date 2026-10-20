@@ -2161,10 +2161,19 @@ def hardware_tw2002() -> bool:
     return HARDWARE_MODE == "tw2002"
 
 
+def photon_limpet_live() -> bool:
+    """True when a limpet still attaches in a sector whose photon wave is up."""
+    return PHOTON_LIMPET_MODE == "v311" or v311_profile()
+
+
 # Armid (h1/h2). Legacy keeps ARMID_DAMAGE=100 and MINE_MAX_HITS_PER_MOVE random.
 ARMID_DAMAGE_TW2002 = 20
 # Photon wave duration in day-ticks (h7). TEDIT sample "1 seconds" -> 1 tick.
 PHOTON_WAVE_DURATION = 1
+# NOTE 148 GAP 4.10. S1 "The Photon Advantage" skips armids, the quasar, and
+# sector fighters. Item 2, a limpet, is not on that skip list. "legacy" keeps
+# today's skip. "v311" lets the limpet attach while the wave is up.
+PHOTON_LIMPET_MODE = "legacy"  # "legacy" | "v311"
 # Cloak (h12-h16)
 CLOAK_COST = 25_000
 CLOAK_MAX = 5
@@ -2330,6 +2339,14 @@ FERRENGI_ODDS_BY_HULL = {
     "assault_trader": 1.0,
     "battle_cruiser": 1.2,
     "dreadnought": 1.4,
+}
+# TWFAQ_FERRSPEC_ferrengi.txt "Fighters per Attack". The odds above are the
+# same file's approximate column. A Ferrengi that attacks still sends every
+# fighter through the three-round roll until FERRENGI_ATTACK_MODE is v311.
+FERRENGI_FIGHTERS_PER_ATTACK = {
+    FERRENGI_HULL_ASSAULT: 1_000,
+    FERRENGI_HULL_CRUISER: 2_000,
+    FERRENGI_HULL_DREAD: 5_000,
 }
 # Encounter: "tribute" opens Flee/Attack/Surrender; "auto_combat" = legacy immediate fight.
 FERRENGI_ENCOUNTER = "tribute"
@@ -2641,6 +2658,22 @@ def combat_framing_on() -> bool:
 
 def slow_hull_hint_on() -> bool:
     return SLOW_HULL_HINT_MODE == "tw2002"
+
+
+# NOTE 148 GAP 8.1. FERRSPEC fighters per attack: 1,000 / 2,000 / 5,000.
+# "legacy" keeps the three-round roll that can send every fighter.
+# "v311" sends one volley, capped at that chart, at the hull odds.
+FERRENGI_ATTACK_MODE = "legacy"  # "legacy" | "v311"
+
+
+def ferrengi_attack_live() -> bool:
+    """True when a Ferrengi attack uses the chart volley instead of three rolls."""
+    return FERRENGI_ATTACK_MODE == "v311" or v311_profile()
+
+
+def ferrengi_fighters_per_attack(hull: str | None) -> int:
+    """FERRSPEC fighters one attack from this hull may send."""
+    return int(FERRENGI_FIGHTERS_PER_ATTACK.get(str(hull or ""), 1_000))
 
 
 def ferrengi_odds_for_hull(hull: str | None) -> float:
@@ -4703,6 +4736,14 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "haggle_table_live": (
         "HAGGLE_TABLE_MODE",
         "NOTE 150 GAP 2.6: a counter uses the cabal product table",
+    ),
+    "ferrengi_attack_live": (
+        "FERRENGI_ATTACK_MODE",
+        "NOTE 148 GAP 8.1: a Ferrengi attack sends one chart volley",
+    ),
+    "photon_limpet_live": (
+        "PHOTON_LIMPET_MODE",
+        "NOTE 148 GAP 4.10: a limpet still attaches during a photon wave",
     ),
 }
 

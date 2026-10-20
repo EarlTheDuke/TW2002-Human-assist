@@ -905,8 +905,84 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
         ferrengi_retaliate(universe, target, attacker)
 
 
+def _resolve_ferrengi_chart_attack(universe: Universe, attacker_npc, victim) -> None:
+    """One Ferrengi volley at the FERRSPEC cap and hull odds.
+
+    Same loss split the player attack already uses: when the volley beats the
+    defense the attacker loses ceil(defense / odds) fighters, otherwise the
+    defender loses floor(power / odds) units, shields first.
+    """
+    cap = K.ferrengi_fighters_per_attack(getattr(attacker_npc, "hull", ""))
+    aboard = max(0, int(attacker_npc.fighters))
+    qty = min(aboard, cap)
+    a_odds = combat_odds_of(attacker_npc)
+    d_odds = combat_odds_of(victim)
+    d_f = int(victim.ship.fighters)
+    d_s = int(victim.ship.shields)
+    d_disabled = int(getattr(victim.ship, "photon_disabled_ticks", 0) or 0) > 0
+    s_eff = 0 if d_disabled else d_s
+    power = qty * a_odds
+    defense = (s_eff + d_f) * d_odds
+    if a_odds > 0 and power >= defense:
+        att_losses = min(qty, int(math.ceil(defense / a_odds)))
+        sh_lost, f_lost = s_eff, d_f
+    else:
+        att_losses = qty
+        units = int(math.floor(power / d_odds)) if d_odds > 0 else 0
+        sh_lost = min(s_eff, units)
+        f_lost = min(d_f, max(0, units - sh_lost))
+    a_fighters = aboard - int(att_losses)
+    d_fighters = d_f - int(f_lost)
+    d_shields = d_s - int(sh_lost)
+    attacker_npc.fighters = a_fighters
+    victim.ship.fighters = d_fighters
+    victim.ship.shields = d_shields
+    universe.emit(
+        EventKind.COMBAT,
+        actor_id=attacker_npc.id,
+        sector_id=victim.sector_id,
+        payload={
+            "exchange_kind": "ferrengi_chart",
+            "fighters_sent": int(qty),
+            "fighters_per_attack": int(cap),
+            "attacker": attacker_npc.id,
+            "defender": victim.id,
+            "attacker_f": a_fighters,
+            "attacker_s": int(attacker_npc.shields),
+            "defender_f": d_fighters,
+            "defender_s": d_shields,
+            "attacker_fighters_lost": int(att_losses),
+        },
+        summary=(
+            f"Ferrengi combat in {victim.sector_id}: "
+            f"{attacker_npc.name} sent {int(qty)} "
+            f"[F{a_fighters} S{int(attacker_npc.shields)}] vs "
+            f"{victim.name}[F{d_fighters} S{d_shields}]"
+        ),
+    )
+    deaths_before = victim.deaths
+    if d_fighters <= 0:
+        _destroy_ship(universe, victim.id, reason="ferrengi", killer_id=attacker_npc.id, by_other=True)
+    if a_fighters <= 0:
+        attacker_npc.alive = False
+        if K.ferrengi_reward_live() and victim.alive and victim.deaths == deaths_before:
+            bounty = int(K.FERRENGI_BOUNTY_PER_AGG) * int(attacker_npc.aggression)
+            victim.credits += bounty
+            _grant_ferrengi_kill(universe, victim, attacker_npc)
+            universe.emit(
+                EventKind.SHIP_DESTROYED,
+                actor_id=victim.id,
+                sector_id=victim.sector_id,
+                payload={"victim": attacker_npc.id, "kind": "ferrengi", "bounty": bounty, "salvage": 0},
+                summary=f"{victim.name} destroyed {attacker_npc.name} (+{bounty}cr bounty)",
+            )
+
+
 def _resolve_ship_combat_attacker_npc(universe: Universe, attacker_npc, victim) -> None:
     """Same shape as _resolve_ship_combat but the attacker is a Ferrengi NPC."""
+    if K.ferrengi_attack_live():
+        _resolve_ferrengi_chart_attack(universe, attacker_npc, victim)
+        return
     rng = universe.rng
     a_fighters = attacker_npc.fighters
     a_shields = attacker_npc.shields
