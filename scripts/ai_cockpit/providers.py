@@ -8,6 +8,7 @@ import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from ai_cockpit.actions import Action, ActionError, parse_action, reject_reason
 from ai_cockpit.cost import Usage, price_usage
@@ -20,10 +21,13 @@ PLAYBOOK = (
     "You have no map of the engine and no private data. "
     "On your first turn, open the header Manual link and read the player manual "
     "before you trade or move. "
-    "Then play a trader: sell cargo where the port is buying, and buy where the port "
-    "is selling when you already know a port that pays more for that good. "
-    "When a trade form shows a port counter, confirm that price. "
-    "At StarDock, buy one hold and then fighters when you can pay. "
+    "Then play a trader. Explore until several ports are on screen, and keep the pair "
+    "with the best spread. Sell where a port is buying, and buy where a port is selling "
+    "when a seen port pays more and the turns left cover the sale. "
+    "Decline a counter that loses to a better reachable bid. "
+    "At StarDock, upgrade holds and the ship when that spread covers the price, "
+    "buy fighters and shields, and deposit surplus credits at the bank. "
+    "Claim a planet only when its per-day production beats the port pair. "
     "Do not warp into a sector whose screen showed Ferrengi, mines, or hostile fighters. "
     "Use every turn. When the chip says NO TURNS, wait for the next day. "
     "When the chip says GAME OVER, stop. "
@@ -260,10 +264,71 @@ def anthropic_provider() -> _HTTPMind:
     )
 
 
-def build_provider(name: str, model: str = ""):
+class MockMind:
+    """Replays canned replies through the same prompt and validation path as a live model."""
+
+    def __init__(self, replies: list[str]) -> None:
+        self.replies = list(replies)
+        self.prompts: list[str] = []
+        self.systems: list[str] = []
+        self.last_usage: Usage | None = None
+        self.plan_note = ""
+
+    @classmethod
+    def load(cls, path: str) -> MockMind:
+        script = (path or "").strip()
+        if not script:
+            raise ProviderError("mock provider needs --mock-script")
+        try:
+            payload = json.loads(Path(script).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ProviderError("mock script could not be read") from exc
+        rows = payload.get("replies") if isinstance(payload, dict) else payload
+        if not isinstance(rows, list) or not rows:
+            raise ProviderError("mock script needs a list of replies")
+        return cls([str(row) for row in rows])
+
+    def decide(self, view: TurnView) -> Action:
+        errors: list[str] = []
+        action = Action("wait", ms=400)
+        system = system_prompt(view.manual_excerpt if view.manual_read else "")
+        for _attempt in range(_ATTEMPTS):
+            if not self.replies:
+                break
+            self.systems.append(system)
+            self.prompts.append(_prompt(view, errors))
+            text = self.replies.pop(0)
+            try:
+                parsed = parse_action(text)
+            except ActionError as exc:
+                errors.append(redact(str(exc)))
+                continue
+            reason = reject_reason(
+                parsed,
+                list(view.labels),
+                selectors=list((view.screen or {}).get("selectors") or []),
+                fields=list(((view.screen or {}).get("fields") or {}).keys()),
+            )
+            if reason:
+                errors.append(reason)
+                continue
+            action = parsed
+            errors.clear()
+            break
+        self.last_usage = Usage(provider="mock", model="canned")
+        if errors:
+            self.plan_note = "invalid action, waiting"
+            return Action("wait", ms=400)
+        self.plan_note = ""
+        return action
+
+
+def build_provider(name: str, model: str = "", mock_script: str = ""):
     key = (name or "scripted").strip().lower()
     if key == "scripted":
         return ScriptedTrader()
+    if key == "mock":
+        return MockMind.load(mock_script or model)
     if key in ("grok", "xai"):
         mind = grok_provider()
     elif key == "openai":
@@ -271,6 +336,6 @@ def build_provider(name: str, model: str = ""):
     elif key == "anthropic":
         mind = anthropic_provider()
     else:
-        raise ProviderError("provider must be scripted, grok, openai, or anthropic")
+        raise ProviderError("provider must be scripted, mock, grok, openai, or anthropic")
     mind.model_override = (model or "").strip()
     return mind

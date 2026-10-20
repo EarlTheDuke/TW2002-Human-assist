@@ -50,8 +50,9 @@ def check_imports() -> int:
 def _parse(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Play a cockpit seat from the rendered screen.")
     parser.add_argument("--url", default="", help="seat link, including token, mode=cu, and layout=redesign")
-    parser.add_argument("--provider", default="scripted", help="scripted, grok, openai, or anthropic")
+    parser.add_argument("--provider", default="scripted", help="scripted, mock, grok, openai, or anthropic")
     parser.add_argument("--model", default="", help="model name for a live provider; empty uses that provider's default")
+    parser.add_argument("--mock-script", default="", help="JSON list of canned replies for --provider mock")
     parser.add_argument("--run-dir", default="runs/ai-cockpit", help="folder for screens and the action log")
     parser.add_argument("--max-turns", type=int, default=40, help="most actions to take")
     parser.add_argument("--min-interval", type=float, default=1.0, help="seconds between actions")
@@ -83,6 +84,7 @@ def main(argv: list[str] | None = None) -> int:
             stop_file=stop,
             headless=not args.headed,
             model=str(args.model or ""),
+            mock_script=str(args.mock_script or ""),
         )
     except Exception as exc:
         print(redact(f"{exc.__class__.__name__}: {exc}"), file=sys.stderr)
