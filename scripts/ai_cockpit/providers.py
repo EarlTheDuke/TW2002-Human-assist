@@ -9,22 +9,31 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 
-from ai_cockpit.actions import Action, ActionError, parse_action
+from ai_cockpit.actions import Action, ActionError, parse_action, reject_reason
+from ai_cockpit.cost import Usage, price_usage
 from ai_cockpit.redact import redact
+from ai_cockpit.trader import ScriptedTrader
 
-SYSTEM = (
+PLAYBOOK = (
     "You are a person playing Galaxy War Command at the cockpit. "
-    "You see only the screenshot and the visible text. "
+    "You see only the screenshot, the visible text, and the notes below. "
     "You have no map of the engine and no private data. "
     "On your first turn, open the header Manual link and read the player manual "
     "before you trade or move. "
-    "Then play like a trader: sell cargo the port is buying when a SELL button is on screen, "
-    "confirm a form that is already open, and otherwise press the wait key. "
+    "Then play a trader: sell cargo where the port is buying, and buy where the port "
+    "is selling when you already know a port that pays more for that good. "
+    "When a trade form shows a port counter, confirm that price. "
+    "At StarDock, buy one hold and then fighters when you can pay. "
+    "Do not warp into a sector whose screen showed Ferrengi, mines, or hostile fighters. "
+    "Use every turn. When the chip says NO TURNS, wait for the next day. "
+    "When the chip says GAME OVER, stop. "
     "Reply with one JSON object and nothing else. "
     'The object is {"op":"click"|"type"|"press"|"wait","label":"","selector":"","text":"","key":"","ms":0}. '
-    "click uses the visible label or a CSS selector of something on the screen. "
-    "type fills the focused field. press is one key such as \".\". wait pauses for ms."
+    "click uses a label that is on the screen now. "
+    "type fills a visible field. press is one key such as \".\" or \"Escape\". wait pauses for ms."
 )
+
+_ATTEMPTS = 3
 
 
 class ProviderError(RuntimeError):
@@ -39,30 +48,39 @@ class TurnView:
     manual_read: bool
     manual_excerpt: str
     step: int
+    screen: dict = field(default_factory=dict)
+    history: list = field(default_factory=list)
 
 
-@dataclass
-class ScriptedTrader:
-    """A short offline trader. It reads the manual, sells once, then waits a turn."""
+def system_prompt(manual_excerpt: str) -> str:
+    """The standing instructions, plus the manual text the seat page showed."""
+    excerpt = (manual_excerpt or "").strip()
+    if not excerpt:
+        return PLAYBOOK + "\n\nThe player manual is not in memory yet. Open it before you trade."
+    return PLAYBOOK + "\n\nPlayer manual, as shown on the seat page:\n" + excerpt[:6000]
 
-    sold: bool = False
-    looks: int = 0
 
-    def decide(self, view: TurnView) -> Action:
-        labels = [row.strip() for row in view.labels if row and row.strip()]
-        upper = [row.upper() for row in labels]
-        if not view.manual_read:
-            return Action("click", label="Manual")
-        if any(row == "CONFIRM" for row in upper):
-            return Action("click", label="CONFIRM")
-        if not self.sold:
-            if any(row.startswith("SELL") for row in upper):
-                self.sold = True
-                return Action("click", label="SELL")
-            self.looks += 1
-            if self.looks < 8:
-                return Action("wait", ms=400)
-        return Action("press", key=".")
+def _usage_from_payload(payload: dict, style: str, provider: str, model: str) -> Usage:
+    usage = payload.get("usage") or {}
+    if not isinstance(usage, dict):
+        usage = {}
+    if style == "anthropic":
+        return price_usage(
+            provider, model,
+            input_tokens=int(usage.get("input_tokens") or 0),
+            output_tokens=int(usage.get("output_tokens") or 0),
+            cached_tokens=int(usage.get("cache_read_input_tokens") or 0),
+            cache_write_tokens=int(usage.get("cache_creation_input_tokens") or 0),
+        )
+    details = usage.get("prompt_tokens_details") or {}
+    if not isinstance(details, dict):
+        details = {}
+    return price_usage(
+        provider, model,
+        input_tokens=int(usage.get("prompt_tokens") or 0),
+        output_tokens=int(usage.get("completion_tokens") or 0),
+        cached_tokens=int(details.get("cached_tokens") or 0),
+    )
 
 
 @dataclass
@@ -74,19 +92,46 @@ class _HTTPMind:
     default_model: str
     style: str
     extra_headers: dict[str, str] = field(default_factory=dict)
+    model_override: str = ""
+    last_usage: Usage | None = None
+    plan_note: str = ""
 
     def decide(self, view: TurnView) -> Action:
         key = (os.environ.get(self.env_key) or "").strip()
         if not key:
             raise ProviderError(f"{self.name} needs {self.env_key} in the environment")
-        model = (os.environ.get(self.model_env) or self.default_model).strip()
-        body = self._body(view, model)
-        raw = _post_json(self.url, body, self._headers(key))
-        text = _message_text(raw, self.style)
-        try:
-            return parse_action(text)
-        except ActionError as exc:
-            raise ProviderError(redact(f"{self.name} reply was not an action: {exc}")) from exc
+        model = (self.model_override or os.environ.get(self.model_env) or self.default_model).strip()
+        errors: list[str] = []
+        total = Usage(provider=self.name, model=model)
+        action = Action("wait", ms=400)
+        for _attempt in range(_ATTEMPTS):
+            body = self._body(view, model, errors)
+            raw = _post_json(self.url, body, self._headers(key))
+            total.add(_usage_from_payload(raw, self.style, self.name, model))
+            text = _message_text(raw, self.style)
+            try:
+                parsed = parse_action(text)
+            except ActionError as exc:
+                errors.append(redact(str(exc)))
+                continue
+            reason = reject_reason(
+                parsed,
+                list(view.labels),
+                selectors=list((view.screen or {}).get("selectors") or []),
+                fields=list(((view.screen or {}).get("fields") or {}).keys()),
+            )
+            if reason:
+                errors.append(reason)
+                continue
+            action = parsed
+            errors.clear()
+            break
+        self.last_usage = total
+        if errors:
+            self.plan_note = "invalid action, waiting"
+            return Action("wait", ms=400)
+        self.plan_note = ""
+        return action
 
     def _headers(self, key: str) -> dict[str, str]:
         headers = {"content-type": "application/json"}
@@ -98,14 +143,15 @@ class _HTTPMind:
         headers.update(self.extra_headers)
         return headers
 
-    def _body(self, view: TurnView, model: str) -> dict:
-        prompt = _prompt(view)
+    def _body(self, view: TurnView, model: str, errors: list[str]) -> dict:
+        prompt = _prompt(view, errors)
+        system = system_prompt(view.manual_excerpt if view.manual_read else "")
         encoded = base64.standard_b64encode(view.screenshot_png).decode("ascii")
         if self.style == "anthropic":
             return {
                 "model": model,
                 "max_tokens": 300,
-                "system": SYSTEM,
+                "system": system,
                 "messages": [{
                     "role": "user",
                     "content": [
@@ -121,7 +167,7 @@ class _HTTPMind:
             "model": model,
             "temperature": 0,
             "messages": [
-                {"role": "system", "content": SYSTEM},
+                {"role": "system", "content": system},
                 {
                     "role": "user",
                     "content": [
@@ -133,19 +179,22 @@ class _HTTPMind:
         }
 
 
-def _prompt(view: TurnView) -> str:
+def _prompt(view: TurnView, errors: list[str] | None = None) -> str:
     manual = "You have already read the player manual." if view.manual_read else (
         "You have not read the player manual yet. Open it before you trade."
     )
-    excerpt = ""
-    if view.manual_excerpt:
-        excerpt = "\nManual excerpt:\n" + view.manual_excerpt[:4000]
     labels = "\n".join(f"- {row}" for row in view.labels[:80])
+    history = "\n".join(f"- {row}" for row in (view.history or [])[-8:])
+    recent = f"\nRecent screens and actions:\n{history}\n" if history else ""
+    complaint = ""
+    if errors:
+        complaint = "\nThe last reply was not a visible action: " + "; ".join(errors[-3:]) + "\nChoose a label from the list.\n"
     return (
         f"Step {view.step}. {manual}\n"
+        f"{recent}"
+        f"{complaint}"
         f"Visible controls:\n{labels}\n\n"
         f"Visible text:\n{view.visible_text[:8000]}"
-        f"{excerpt}"
     )
 
 
@@ -211,14 +260,17 @@ def anthropic_provider() -> _HTTPMind:
     )
 
 
-def build_provider(name: str):
+def build_provider(name: str, model: str = ""):
     key = (name or "scripted").strip().lower()
     if key == "scripted":
         return ScriptedTrader()
     if key in ("grok", "xai"):
-        return grok_provider()
-    if key == "openai":
-        return openai_provider()
-    if key == "anthropic":
-        return anthropic_provider()
-    raise ProviderError("provider must be scripted, grok, openai, or anthropic")
+        mind = grok_provider()
+    elif key == "openai":
+        mind = openai_provider()
+    elif key == "anthropic":
+        mind = anthropic_provider()
+    else:
+        raise ProviderError("provider must be scripted, grok, openai, or anthropic")
+    mind.model_override = (model or "").strip()
+    return mind

@@ -66,3 +66,51 @@ def parse_action(payload: object) -> Action:
         key=_clip(payload.get("key"), 40),
         ms=ms,
     )
+
+
+def _folded(labels: list[str]) -> list[str]:
+    return [row.strip() for row in labels if row and str(row).strip()]
+
+
+def label_on_screen(label: str, labels: list[str]) -> bool:
+    """True when a click label is one of the visible controls."""
+    wanted = (label or "").strip()
+    if not wanted:
+        return False
+    rows = _folded(labels)
+    if any(row.casefold() == wanted.casefold() for row in rows):
+        return True
+    head = wanted.casefold()
+    if head in ("sell", "buy") or head.startswith("sell ") or head.startswith("buy "):
+        kind = "sell" if head.startswith("sell") else "buy"
+        return any(row.casefold().startswith(kind) for row in rows)
+    return False
+
+
+def reject_reason(action: Action, labels: list[str], *, selectors: list[str] | None = None,
+                  fields: list[str] | None = None) -> str:
+    """Empty when the action matches a visible control. Otherwise the reason it does not."""
+    if action.op == "wait":
+        return ""
+    if action.op == "press":
+        if not action.key or len(action.key) > 20:
+            return "press needs one key"
+        return ""
+    if action.op == "type":
+        if not action.text:
+            return "type needs text"
+        known = {row.casefold() for row in (selectors or [])}
+        names = {row.casefold() for row in (fields or [])}
+        selector = action.selector.strip()
+        if selector and selector.casefold() not in known and not any(name in selector.casefold() for name in names):
+            return "that field is not on screen"
+        return ""
+    if action.op == "click":
+        if label_on_screen(action.label, labels):
+            return ""
+        selector = action.selector.strip()
+        known = {row.casefold() for row in (selectors or [])}
+        if selector and selector.casefold() in known:
+            return ""
+        return "that control is not on screen"
+    return "op is not usable"

@@ -44,9 +44,15 @@ The loop stops when the chip says GAME OVER, the stop file exists, or `--max-tur
 | `openai` | `OPENAI_API_KEY` | `OPENAI_MODEL` (default `gpt-4o`) |
 | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (default `claude-sonnet-4-5`) |
 
-The scripted trader reads the manual, clicks the first SELL button it can see, and otherwise presses `.` to spend a turn.
+The scripted trader reads the manual, then plays from the screen text. It records the sector, the port code and prices, and the holds. It sells where the port is buying and buys where the port is selling when a known port pays more. A counter on a trade form is confirmed. At StarDock it buys one hold and then fighters, and it stays in that sector until both purchases are done. Sectors whose text showed Ferrengi, deployed mines, or hostile fighters are not warped back into. The StarDock gear list names Armid, Limpet, and Atomic mines; that catalog is not a threat. It keeps acting while the chip says YOUR MOVE, waits on NO TURNS for the next day, and stops when the chip says GAME OVER.
 
 Keys are read from the environment at call time. They are not written into source, the run log, `actions.jsonl`, or screenshots' text sidecars. Logs replace key values, `sk-...`, `xai-...`, bearer tokens, and `token=` query values with `[redacted]`.
+
+A live provider's system prompt is the trading playbook plus the manual text captured from the seat page. Each call also gets a short memory of the last few screens and actions. A reply that is not a click, type, press, or wait on a control that is on the screen is rejected and asked again, up to two retries, and then the runner waits. Each reply's token counts are priced with the same USD-per-million table as `src/tw2k/engine/llm_pricing.py` (curated 2026-04-22; the player keeps its own copy and does not import that module). The run log gains a line:
+
+```
+cost provider=grok model=grok-4 input_tokens=120 output_tokens=40 usd=0.000960
+```
 
 ## How Ben adds a key later
 
@@ -65,14 +71,18 @@ python3 scripts/ai_cockpit_player.py \
 
 The lobby does not store the key. A live provider that finds an empty variable stops with a message that names the variable and does not echo a key.
 
-## Lobby hook
+## Lobby seat
 
 `AI_COCKPIT_SEAT_MODE` already exists. The stored value stays `legacy`. `ai_cockpit_seat_on()` is true when that value is `tw2002` or when `TW2002_LIVE_PROFILE` is `live`. `V311_PROFILE` does not turn it on, and the helper is not in `V311_PROFILE_HELPERS`.
 
-`Lobby.launch_browser_seat(...)` and `tw2k.public.ai_cockpit_launch.launch_player(...)` start the runner only while the switch is on. While it is legacy they return None and start no process. `start_game` does not call them, so today's harness AI seats are unchanged. A later lobby control can call `launch_browser_seat` with the game id, the seat, and that seat's token. The child receives the seat link and nothing from the engine.
+While the switch is legacy, the new-game form has no AI cockpit seat control, and `ai_cockpit`, `ai_cockpit_provider`, and `ai_cockpit_model` are unknown fields. While it is on, the Players section offers **AI cockpit seat**, a provider (scripted, Grok, OpenAI, Anthropic), and a model name. The form does not ask for a key. `settings()` stores the provider and the model only when the box is checked.
 
-The log line is `ai cockpit player seat=Pn provider=...`. It does not include the token.
+`start_game` adds that one external seat after the human seats and any harness AI seats. The harness driver does not receive it. After the worker is healthy, the lobby starts `scripts/ai_cockpit_player.py` against the worker's `/bot?seat=Pn&mode=cu&token=...&layout=redesign` link. The log line is `ai cockpit player seat=Pn provider=... model=...`. It does not include the token.
+
+The created page and the lobby row show `AI cockpit seat: <provider>, running` (or `stopped`). **Watch** is the spectator. **AI seat** and **Open Pn** go to `/games/<id>/ai-seat`, which redirects the creator to the seat page. The token is not written into the lobby HTML.
+
+The runner reloads the original seat link if the page closes or the chip disappears, presses Escape when a click is swallowed by a dialog, and exits 0 when the chip says GAME OVER. A stop file still ends the run. `Lobby.launch_browser_seat(...)` still returns None while the switch is legacy.
 
 ## Tests
 
-`tests/test_ai_cockpit_player_v1.py` runs the scripted provider against a `CuHost` on a port from `free_port`. The port is an open pocket below 8060 and outside 8031-8037, 8041, 8042, 8045-8049, and 8055-8119. The same file checks the source has no `tw2k` import, the player process loads no `tw2k` module, and a run that has keys in its environment does not write those keys or the seat token into the text log.
+`tests/test_ai_cockpit_player_v1.py` runs the scripted provider against a `CuHost` on a port from `free_port`. The port is an open pocket below 8060 and outside 8031-8037, 8041, 8042, 8045-8049, and 8055-8119. One game lasts three days and must finish with a higher net worth than it started. The same file checks the source has no `tw2k` import, the player process loads no `tw2k` module, a run that has keys in its environment does not write those keys or the seat token into the text log, and the new-game control is missing while the switch is legacy.
