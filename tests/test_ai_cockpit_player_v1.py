@@ -734,6 +734,29 @@ def test_easy_wanders_and_buys_a_weak_local_trade() -> None:
         "labels": ["1:4 (3t)", "2:12 (3t)"],
     }))
     assert fled.label.endswith("12 (3t)")
+    # After a short look, easy keeps the thinner pair and does not outfit.
+    stuck = ScriptedTrader(level="easy")
+    stuck.visited.update({2, 3, 4})
+    stuck.day = 2
+    stuck.ports[8] = {"Organics": {"ask": 10, "avail": 40}}
+    stuck.ports[9] = {"Organics": {"bid": 80, "avail": 40}, "Equipment": {"bid": 30, "avail": 40}}
+    stuck.ports[12] = {"Equipment": {"ask": 20, "avail": 40}}
+    stuck.links = {8: {9: 3}, 9: {8: 3, 12: 3}, 12: {9: 3}}
+    stuck.warp_labels = {
+        (8, 9): "1:9 (3t)",
+        (9, 8): "1:8 (3t)",
+        (9, 12): "2:12 (3t)",
+        (12, 9): "1:9 (3t)",
+    }
+    weak = stuck.decide(_view({
+        "sector": "9", "day": "2", "turns": "30", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:8 (3t)", "2:12 (3t)", "StarDock: buy gear"],
+        "warps": ["1:8 (3t)", "2:12 (3t)"],
+    }))
+    assert weak.label == "2:12 (3t)"
+    assert "stardock" not in weak.label.lower()
 
 
 def test_normal_settles_sooner_and_skips_shields() -> None:
@@ -753,7 +776,7 @@ def test_normal_settles_sooner_and_skips_shields() -> None:
     arm(normal)
     arm(hard)
     assert normal._settled(10) is True
-    assert hard._settled(10) is False
+    assert hard._settled(10) is True
     normal.bought.update({"holds", "fighters"})
     normal.day = 2
     normal.links[1] = {10: 3}
@@ -843,6 +866,86 @@ def test_hard_plots_a_course_when_stardock_was_never_linked() -> None:
         "warps": ["1:21 (3t)"],
     }))
     assert opened_late.label == "C Computer"
+
+
+def test_hard_skips_a_dock_trip_and_a_ship_that_cannot_pay_back() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="hard")
+    trader.ports[20] = {"Equipment": {"ask": 40, "avail": 20}}
+    trader.ports[21] = {"Equipment": {"bid": 48, "avail": 20}}
+    trader.links[20] = {21: 3}
+    trader.links[21] = {20: 3}
+    trader.day = 9
+    trader.max_day = 10
+    trader.day_turns = 40
+    trader.hold_cap = 20
+    trader.settled_day = 7
+    trader.plot_to = 1
+    trader.dock_go = False
+    late = trader.decide(_view({
+        "sector": "20", "day": "9", "maxDay": "10", "turns": "30", "credits": "40,000 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "course": "Course to 1: 20 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 14 > 15 > 16 > 17 > 1. 12 hops, 36 turns.",
+        "labels": ["Cancel", "1:3 (3t)"],
+        "warps": ["1:3 (3t)"],
+    }))
+    assert late.label == "Cancel"
+    assert trader.plot_to == 0
+    quote = (
+        "CargoTran: 41,625 cr. Holds 75, fighters 400, shields 1,000, 4 turns per warp, "
+        "no photons, no TransWarp."
+    )
+    assert trader._yard_pays({"ship": "Holds 0/20"}, quote) is False
+    freighter = (
+        "Merchant Freighter: 23,075 cr. Holds 65, fighters 150, shields 200, 2 turns per warp."
+    )
+    assert trader._yard_pays({"ship": "Holds 0/20"}, freighter) is False
+    rich = ScriptedTrader(level="hard")
+    rich.ports[10] = {"Equipment": {"ask": 20, "avail": 400}}
+    rich.ports[11] = {"Equipment": {"bid": 120, "avail": 400}}
+    rich.links[10] = {11: 3}
+    rich.links[11] = {10: 3}
+    rich.day = 2
+    rich.max_day = 10
+    rich.day_turns = 40
+    rich.hold_cap = 20
+    cheap = "Merchant Freighter: 2,000 cr. Holds 40, fighters 50, shields 50, 3 turns per warp."
+    assert rich._yard_pays({"ship": "Holds 0/20"}, cheap) is True
+    # After the yard is declined, a thin pair is still the route. Hard stays on it.
+    trader.bought.update({"holds", "fighters", "shields"})
+    trader.ship_skip_profit = 500
+    trader.day = 4
+    trader.warp_labels[(21, 20)] = "1:20 (3t)"
+    assert trader._settled(21) is False
+    assert trader._gear_done() is True
+    stayed = trader.decide(_view({
+        "sector": "21", "day": "4", "maxDay": "10", "turns": "30", "credits": "40,000 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:20 (3t)", "2:30 (3t)"],
+        "warps": ["1:20 (3t)", "2:30 (3t)"],
+    }))
+    assert stayed.label == "1:20 (3t)"
+    medium = ScriptedTrader(level="hard")
+    medium.ports[10] = {"Equipment": {"ask": 40, "avail": 200}}
+    medium.ports[11] = {"Equipment": {"bid": 70, "avail": 200}}
+    medium.links[1] = {10: 3}
+    medium.links[10] = {1: 3, 11: 3}
+    medium.links[11] = {10: 3}
+    medium.day = 3
+    medium.max_day = 10
+    medium.day_turns = 40
+    medium.hold_cap = 20
+    scout = (
+        "Scout Marauder: 5,625 cr. Holds 25, fighters 150, shields 100, 2 turns per warp, "
+        "no photons, no TransWarp. Trade-in sells your ship for 10,325 cr and you fly the new one."
+    )
+    assert medium._yard_pays({"ship": "Holds 0/20"}, scout) is False
 
 
 def test_several_cockpit_seats_each_get_a_process_and_a_stop(monkeypatch, tmp_path: Path) -> None:

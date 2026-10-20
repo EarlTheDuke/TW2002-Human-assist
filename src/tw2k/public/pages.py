@@ -513,7 +513,8 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             f'<label class="check" for="ai_cockpit"><input id="ai_cockpit" name="ai_cockpit" '
             f'type="checkbox" value="on"{checked}>AI cockpit seat</label>'
             '<p class="note">Up to four more seats. Each plays from the rendered cockpit on its own. '
-            "Easy wanders. Normal trades a shorter route. Hard plays the long game. "
+            "Easy looks briefly and takes a weak trade. Normal trades a shorter route. "
+            "Hard plays the long game and shops only when the days left can pay for it. "
             "A live provider reads its key from the lobby process environment. The key is not stored and not shown.</p>"
             f'<label for="ai_cockpit_count">AI cockpit seats</label>'
             f'<select id="ai_cockpit_count" name="ai_cockpit_count">{counts}</select>'
