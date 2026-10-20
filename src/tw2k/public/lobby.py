@@ -28,6 +28,7 @@ from . import worker as W
 from .config import LobbyConfig, pick_port
 from .proxy import Proxy
 from .ai_seat import AiMemory, drive_seats, mask_key
+from .share_url import request_origin
 from .security import (
     GUEST_COOKIE,
     GUEST_COOKIE_MAX_AGE,
@@ -724,8 +725,7 @@ class Lobby:
         return self.html(pages.created(self.brand, game=g, join_links=links, watch_link=watch, cockpit=cockpit))
 
     def _base_url(self, request: Request) -> str:
-        scheme = "https" if self.secure(request) else request.url.scheme
-        return f"{scheme}://{request.headers.get('host') or request.url.netloc}"
+        return request_origin(request.headers, request.url.scheme, request.url.netloc)
 
     def _api_or(self, api: bool, status: int, text: str, request: Request, *, title: str | None = None) -> Response:
         if api:
