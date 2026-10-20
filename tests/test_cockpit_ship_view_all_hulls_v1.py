@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 if __name__ == "__main__":
@@ -16,6 +17,7 @@ if __name__ == "__main__":
 import pytest
 
 from tests._cu_host import CuHost
+from tests._screenshot import force_blocking_stdio, save_screenshot
 from tw2k.engine.models import ShipClass
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,26 +54,34 @@ def test_every_hull_is_ours_and_bot_stays_plain() -> None:
 
 def test_viewports_run_in_their_own_processes() -> None:
     script = str(Path(__file__).resolve())
-    for spec in VIEWPORTS:
-        env = os.environ.copy()
-        # src before the repo root, or the child imports a stale tw2k that has no INFO_MODE.
-        env["PYTHONPATH"] = str(ROOT / "src") + os.pathsep + str(ROOT)
-        proc = subprocess.run(
-            [sys.executable, script, spec],
-            cwd=str(ROOT),
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            env=env,
-            timeout=180,
-        )
-        tail = (proc.stdout or "")[-2500:] + (proc.stderr or "")[-2500:]
-        assert proc.returncode == 0, spec + "\n" + tail
-        assert "VIEWPORT_OK " + spec in (proc.stdout or ""), tail
+    # A captured pipe fills during a long run and the next screenshot raises
+    # BlockingIOError. Write the child log to a file the parent reads after.
+    with tempfile.TemporaryDirectory(prefix="viewports-all-") as tmp:
+        folder = Path(tmp)
+        for spec in VIEWPORTS:
+            env = os.environ.copy()
+            # src before the repo root, or the child imports a stale tw2k that has no INFO_MODE.
+            env["PYTHONPATH"] = str(ROOT / "src") + os.pathsep + str(ROOT)
+            out = folder / f"{spec}.out"
+            err = folder / f"{spec}.err"
+            with out.open("w", encoding="utf-8") as stdout, err.open("w", encoding="utf-8") as stderr:
+                proc = subprocess.run(
+                    [sys.executable, script, spec],
+                    cwd=str(ROOT),
+                    check=False,
+                    stdout=stdout,
+                    stderr=stderr,
+                    env=env,
+                    timeout=180,
+                )
+            text = out.read_text(encoding="utf-8", errors="replace")
+            tail = (text + err.read_text(encoding="utf-8", errors="replace"))[-4000:]
+            assert proc.returncode == 0, spec + "\n" + tail
+            assert "VIEWPORT_OK " + spec in text, tail
 
 
 def _browser(width: int, height: int) -> None:
+    force_blocking_stdio()
     sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
     import tempfile
 
@@ -277,7 +287,7 @@ def _shot(page, name: str) -> None:
     _freeze(page)
     page.locator("#shipSvg").evaluate("el => el.scrollIntoView({block: 'center', inline: 'nearest'})")
     path = SHOTS / name
-    page.screenshot(path=str(path))
+    save_screenshot(page, path)
     assert path.stat().st_size > 5000, path
 
 

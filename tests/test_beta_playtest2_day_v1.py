@@ -22,6 +22,8 @@ from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
 
 TOKEN = "h" * 40
+# Shortest day the clock accepts. 20s made the same check wait a minute.
+DAY_S = 10.0
 
 
 def _port() -> int:
@@ -111,8 +113,8 @@ def _clock(port: int) -> dict | None:
 
 
 def test_a_held_legacy_turn_rolls_three_days_and_refills(tmp_path: Path, monkeypatch) -> None:
-    """--day-seconds 20, switch live: at least three dawns in 70 s, turns back each dawn."""
-    with _held_game(tmp_path, monkeypatch, day_seconds=20, mode="live") as (runner, port):
+    """A short day length still rolls three dawns and puts the turns back."""
+    with _held_game(tmp_path, monkeypatch, day_seconds=DAY_S, mode="live") as (runner, port):
         deadline = time.time() + 15
         while time.time() < deadline and runner.state.universe is None:
             time.sleep(0.05)
@@ -121,11 +123,11 @@ def test_a_held_legacy_turn_rolls_three_days_and_refills(tmp_path: Path, monkeyp
         universe.players["P1"].turns_today = 40
         seen: list[int] = []
         last = 1
-        deadline = time.time() + 70
+        deadline = time.time() + DAY_S * 4 + 8
         while time.time() < deadline:
             day = int(runner.state.universe.day)
             if day > last:
-                settle = time.time() + 1.0
+                settle = time.time() + 0.25
                 turns = int(runner.state.universe.players["P1"].turns_today)
                 while turns != 0 and time.time() < settle:
                     time.sleep(0.02)
@@ -135,15 +137,15 @@ def test_a_held_legacy_turn_rolls_three_days_and_refills(tmp_path: Path, monkeyp
                 last = day
             if day >= 4:
                 break
-            time.sleep(0.25)
+            time.sleep(0.05)
         assert int(runner.state.universe.day) >= 4, runner.state.universe.day
         assert seen[:3] == [0, 0, 0], seen
         clock = runner.day_clock()
         assert clock is not None
-        assert abs(clock["next_day_at"] - clock["day_started_at"] - 20) < 0.5
+        assert abs(clock["next_day_at"] - clock["day_started_at"] - DAY_S) < 0.5
         payload = _clock(port)
         assert payload is not None
-        assert payload["day_seconds"] == 20
+        assert payload["day_seconds"] == DAY_S
         assert payload["day_started_at"] == pytest.approx(clock["day_started_at"])
         assert payload["next_day_at"] == pytest.approx(clock["next_day_at"])
 
@@ -155,7 +157,10 @@ def test_without_a_day_length_the_held_turn_does_not_roll(tmp_path: Path, monkey
         while time.time() < deadline and runner.state.universe is None:
             time.sleep(0.05)
         assert runner.state.universe is not None
-        time.sleep(2)
+        settled = time.time() + 0.4
+        while time.time() < settled:
+            assert int(runner.state.universe.day) == 1
+            time.sleep(0.05)
         assert int(runner.state.universe.day) == 1
         assert runner.day_clock() is None
         assert _clock(port) is None
@@ -164,12 +169,15 @@ def test_without_a_day_length_the_held_turn_does_not_roll(tmp_path: Path, monkey
 def test_the_switch_off_does_not_roll_a_short_day(tmp_path: Path, monkeypatch) -> None:
     """Stored legacy ignores --day-seconds. One day length passes and the day stays 1."""
     assert K.LEGACY_DAY_CLOCK_MODE == "legacy"
-    with _held_game(tmp_path, monkeypatch, day_seconds=20, mode="legacy") as (runner, port):
+    with _held_game(tmp_path, monkeypatch, day_seconds=DAY_S, mode="legacy") as (runner, port):
         deadline = time.time() + 15
         while time.time() < deadline and runner.state.universe is None:
             time.sleep(0.05)
         assert runner.state.universe is not None
-        time.sleep(22)
+        deadline = time.time() + DAY_S + 0.4
+        while time.time() < deadline:
+            assert int(runner.state.universe.day) == 1
+            time.sleep(0.05)
         assert int(runner.state.universe.day) == 1
         assert runner.day_clock() is None
         assert _clock(port) is None

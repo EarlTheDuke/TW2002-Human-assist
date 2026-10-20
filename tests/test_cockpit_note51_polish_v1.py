@@ -13,6 +13,7 @@ from tw2k.engine.models import Commodity, PlanetClass
 from tw2k.engine.observation import build_observation
 
 from tests._cu_host import CuHost
+from tests._refresh import wait_refreshes
 
 TOK = "note51-polish-token-p2-00000000000"
 TOK1 = "note51-polish-token-p1-00000000000"
@@ -308,6 +309,6 @@ def test_leave_product_starts_with_a_quantity(world):
     page.keyboard.press("v")
     page.wait_for_selector(".frm input[type=number]", timeout=10_000)
     assert int(page.locator(".frm input[type=number]").input_value()) == 12
-    page.wait_for_timeout(2500)
+    wait_refreshes(page, 1)
     assert int(page.locator(".frm input[type=number]").input_value()) == 12
     _shoot(page, "leave", ".frm")

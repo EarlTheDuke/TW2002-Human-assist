@@ -9,6 +9,7 @@ import pytest
 
 import tw2k.engine.constants as K
 from tests._cu_host import CuHost
+from tests._refresh import wait_refreshes
 
 PORT_TOK = "fix2-port-token-p2-000000000000"
 DOCK_TOK = "fix2-dock-token-p2-000000000000"
@@ -208,7 +209,7 @@ def test_bank_form_survives_refresh_then_deposit_and_withdraw(seats) -> None:
     amount = dock.locator(".frm [data-n=amount]").input_value()
     assert amount.isdigit() and int(amount) > 0
     assert "Balance" in dock.locator(".frm").inner_text()
-    dock.wait_for_timeout(6_500)
+    wait_refreshes(dock, 3)
     assert dock.locator(".frm[data-screen=bank]").count() == 1
     assert dock.locator(".frm [data-n=amount]").input_value() == amount
     assert "Balance" in dock.locator(".frm").inner_text()
