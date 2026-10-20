@@ -92,11 +92,22 @@ def pytest_sessionstart(session) -> None:
 
 
 def _emit(item, message: str) -> None:
-    reporter = item.config.pluginmanager.getplugin("terminalreporter")
-    if reporter is not None:
-        reporter.write_line(message)
+    # Pytest capture swallows terminalreporter.write_line during teardown, so a
+    # report-mode LEAK line never reaches the subprocess stdout the tests read.
+    capman = item.config.pluginmanager.getplugin("capturemanager")
+
+    def write() -> None:
+        reporter = item.config.pluginmanager.getplugin("terminalreporter")
+        if reporter is not None:
+            reporter.write_line(message)
+        else:
+            print(message, flush=True)
+
+    if capman is not None:
+        with capman.global_and_fixture_disabled():
+            write()
     else:
-        print(message, flush=True)
+        write()
     path = os.environ.get("TW2K_LEAK_GUARD_LOG")
     if path:
         with Path(path).open("a", encoding="utf-8") as handle:

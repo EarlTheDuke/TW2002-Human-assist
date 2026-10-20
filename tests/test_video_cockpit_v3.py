@@ -27,34 +27,50 @@ FIXTURES = ROOT / "tests" / "fixtures" / "media_events"
 LIVE = json.loads((MEDIA / "manifest.json").read_text(encoding="utf-8-sig"))
 CATALOG = json.loads((MEDIA / "clips" / "v3-pilot" / "clips_manifest_v3.json").read_text(encoding="utf-8"))
 TOK = "v3-e2e-token-p2-00000000000000"
-PLAY = """async (clips) => {
-  const bad = [];
-  for (const c of clips) {
-    const v = document.createElement("video");
-    v.muted = true;
-    v.playsInline = true;
-    const webm = document.createElement("source");
-    webm.src = c.webm;
-    webm.type = "video/webm";
-    const mp4 = document.createElement("source");
-    mp4.src = c.mp4;
-    mp4.type = "video/mp4";
-    v.append(webm, mp4);
-    document.body.appendChild(v);
-    const start = performance.now();
-    const played = await Promise.race([
-      v.play().then(() => "ok").catch((err) => String(err)),
-      new Promise((resolve) => setTimeout(() => resolve("play-timeout"), 4000)),
-    ]);
-    while (v.currentTime <= 0 && performance.now() - start < 6000) {
-      await new Promise((r) => setTimeout(r, 40));
-    }
-    if (!(v.currentTime > 0)) bad.push(c.id + " " + played);
-    v.pause();
-    v.remove();
-  }
-  return bad;
-}"""
+def _play_clips(page, clips: list[dict]) -> list[str]:
+    """Each clip must reach currentTime > 0.
+
+    The cockpit page is overflow hidden. WebKit leaves currentTime at 0 for a
+    video element parked past that box, even after play() resolves. Pinning
+    the element on screen lets the clock run. The wait stays in Playwright
+    because a long in-page loop also stalls that clock. The pass condition
+    is still currentTime > 0 in Chromium, Firefox, and WebKit.
+    """
+    bad: list[str] = []
+    for clip in clips:
+        played = page.evaluate(
+            """async (c) => {
+              const old = document.getElementById("clip-probe");
+              if (old) { old.pause(); old.remove(); }
+              const v = document.createElement("video");
+              v.id = "clip-probe";
+              v.muted = true;
+              v.playsInline = true;
+              v.style.cssText = "position:fixed;left:8px;top:8px;width:320px;height:180px;z-index:80";
+              const webm = document.createElement("source");
+              webm.src = c.webm;
+              webm.type = "video/webm";
+              const mp4 = document.createElement("source");
+              mp4.src = c.mp4;
+              mp4.type = "video/mp4";
+              v.append(webm, mp4);
+              document.body.appendChild(v);
+              try { await v.play(); return "ok"; }
+              catch (err) { return String(err); }
+            }""",
+            clip,
+        )
+        if played != "ok":
+            bad.append(f"{clip['id']} {played}")
+            continue
+        try:
+            page.wait_for_function(
+                "() => { const v = document.getElementById('clip-probe'); return !!v && v.currentTime > 0; }",
+                timeout=6_000,
+            )
+        except Exception:
+            bad.append(f"{clip['id']} {played}")
+    return bad
 
 
 def _errors(data: dict, root: Path = MEDIA) -> list[str]:
@@ -224,7 +240,7 @@ def test_fourteen_clips_play_in_chromium_firefox_and_webkit(tmp_path: Path, monk
             page.goto(f"{host.base}/bot?seat=P2&token={TOK}")
             page.wait_for_selector("#viewport", timeout=20_000)
             page.mouse.click(8, 8)
-            bad = page.evaluate(PLAY, clips)
+            bad = _play_clips(page, clips)
             assert bad == [], (name, bad)
             browser.close()
 
