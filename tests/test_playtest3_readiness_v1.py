@@ -376,15 +376,22 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
             _wait_day(p2, "2")
             p1.screenshot(path=str(SHOTS / "13-day-2.png"))
             notes["day"] = "day 2 after the playtest clock moved one day length"
-            for seat, page in pages.items():
-                _one_more(page, seat, notes)
+            _day2_move(pages, notes)
 
             p1.bring_to_front()
             p1.keyboard.press("Escape")
-            p1.keyboard.press("?")
-            p1.locator("[data-testid=end-for-everyone]").wait_for(timeout=15_000)
-            _js_click(p1, "[data-testid=end-for-everyone]")
-            p1.locator("#dangerOk").wait_for(timeout=5_000)
+            opened = False
+            deadline = time.time() + 20
+            while time.time() < deadline:
+                if p1.locator("#dangerOk").count() and p1.locator("#dangerOk").is_visible():
+                    opened = True
+                    break
+                if p1.locator("[data-testid=end-for-everyone]").count() == 0:
+                    p1.keyboard.press("?")
+                else:
+                    _js_click(p1, "[data-testid=end-for-everyone]")
+                time.sleep(0.25)
+            assert opened, "end confirm never opened"
             _js_click(p1, "#dangerOk")
             p1.wait_for_selector("[data-game-over=panel]", timeout=20_000)
             over = p1.locator("[data-game-over=panel]").inner_text()
@@ -527,6 +534,7 @@ def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[st
         _progress(f"{seat} fight {notes[f'{seat}-fight']!r}")
         page.screenshot(path=str(SHOTS / f"09-combat-{seat}.png"))
         return
+    before = _result(page)
     if not row["trade"] and page.locator("#here button.tbtn").count():
         selector = "#here button.tbtn.buy" if page.locator("#here button.tbtn.buy").count() else "#here button.tbtn.sell"
         _js_click(page, selector)
@@ -720,7 +728,7 @@ def _attack_bot(page) -> bool:
     qty = form.locator("input[data-n=qty]")
     if qty.count() and not qty.input_value():
         qty.fill("1")
-    form.locator("button", has_text="CONFIRM").click()
+    form.locator("button", has_text="CONFIRM").evaluate("el => el.click()")
     page.wait_for_timeout(800)
     result = page.locator("#lastResult").inner_text()
     if "not accepted" in result.lower() or "refused" in result.lower():
@@ -760,21 +768,43 @@ def _manual(page) -> None:
     manual.close()
 
 
+def _menu_click(page, selector: str) -> None:
+    """Click a layout control that the live deck keeps moving under the pointer.
+
+    The cockpit animations never settle, so a pointer click waits out its
+    budget. The button's own click listener is what saves the deck, and the
+    caller still checks the deck attribute and localStorage afterwards.
+    """
+    hit = page.evaluate(
+        """(sel) => {
+          const el = document.querySelector(sel);
+          if (!el) return false;
+          el.scrollIntoView({block: 'center', inline: 'nearest'});
+          el.click();
+          return true;
+        }""",
+        selector,
+    )
+    assert hit, selector
+
+
 def _layout(page, prefix: str = "") -> None:
     page.bring_to_front()
-    _js_click(page, "[data-testid=layout-open]")
+    _menu_click(page, "[data-testid=layout-open]")
     page.locator("[data-testid=layout-menu]").wait_for()
-    page.locator("[data-testid=font-inc]").click()
+    before_font = page.locator("[data-testid=font-readout]").inner_text()
+    _menu_click(page, "[data-testid=font-inc]")
     page.wait_for_function("() => document.body.getAttribute('data-deck') === 'custom'")
+    assert page.locator("[data-testid=font-readout]").inner_text() != before_font
     stored = page.evaluate("() => Object.keys(localStorage).some((k) => k.indexOf('tw2k-deck-v1:') === 0)")
     assert stored
     page.screenshot(path=str(SHOTS / f"11-layout-{prefix}saved.png"))
-    page.locator("[data-testid=layout-reset]").click()
+    _menu_click(page, "[data-testid=layout-reset]")
     page.wait_for_function("() => document.body.getAttribute('data-deck') === 'default'")
     cleared = page.evaluate("() => Object.keys(localStorage).every((k) => k.indexOf('tw2k-deck-v1:') !== 0)")
     assert cleared
     page.screenshot(path=str(SHOTS / f"12-layout-{prefix}reset.png"))
-    page.locator("[data-testid=layout-close]").click()
+    _menu_click(page, "[data-testid=layout-close]")
 
 
 def _rewind(lobby, gid: str) -> None:
@@ -823,18 +853,42 @@ def _wait_day(page, day: str) -> None:
         raise AssertionError(f"cockpit day is {got!r}, wanted {day}") from None
 
 
-def _one_more(page, seat: str, notes: dict[str, str]) -> None:
-    deadline = time.time() + 60
-    while time.time() < deadline:
-        if _chip(page) == "YOUR MOVE":
-            if page.locator("#here button.tbtn").count():
+def _day2_move(pages: dict, notes: dict[str, str]) -> None:
+    """One real day-2 action from each human, in whichever order the turn arrives.
+
+    Waiting on P1 first left P2 holding the scheduler, so P1's chip stayed
+    WAITING until the 60s budget ran out. A seat that has already moved passes
+    at once, and a seat that has not moves on the turn it is offered.
+    """
+    pending = set(pages)
+    deadline = time.time() + 180
+    while pending and time.time() < deadline:
+        acted = False
+        for seat, page in pages.items():
+            page.bring_to_front()
+            if _chip(page) != "YOUR MOVE":
+                continue
+            before = _result(page)
+            if seat not in pending:
+                page.keyboard.press(".")
+            elif page.locator("#here button.tbtn").count():
                 _js_click(page, "#here button.tbtn")
+                if page.locator("#formSlot button", has_text="CONFIRM").count():
+                    _js_click(page, "#formSlot button")
             elif page.locator("#warps button").count():
                 _js_click(page, "#warps button")
             else:
                 page.keyboard.press(".")
-            notes[f"{seat}-day2"] = "acted on day 2"
-            page.wait_for_timeout(500)
-            return
-        time.sleep(0.3)
-    raise AssertionError(f"{seat} never moved on day 2")
+            outcome = _settle(page, before, 15)
+            landed = outcome != before or _chip(page) != "YOUR MOVE"
+            if seat in pending and landed:
+                pending.discard(seat)
+                notes[f"{seat}-day2"] = (outcome or "acted on day 2")[:180]
+                _progress(f"{seat} day 2 {notes[f'{seat}-day2']!r}")
+            acted = True
+            break
+        if not acted:
+            time.sleep(0.2)
+    if pending:
+        who = ", ".join(sorted(pending))
+        raise AssertionError(f"{who} never moved on day 2")
