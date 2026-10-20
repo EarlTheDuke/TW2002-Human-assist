@@ -277,6 +277,7 @@ class Lobby:
                 self._launch_cockpit(gid)
                 return True
             log.warning("start game=%s: worker did not come up", gid)
+            self.seat_links.pop(gid, None)
             self._drop_cockpit(gid, forget=True)
             await self.workers.stop(gid, lobby_secret=self.secrets.lobby_secret(gid),
                                     spectator_token=self.secrets.spectator_token(gid), graceful=False)
@@ -521,6 +522,7 @@ class Lobby:
         async with self.lock(gid):
             self._drop_ai(gid)
             self._drop_cockpit(gid)
+            self.seat_links.pop(gid, None)
             await self.workers.stop(gid, lobby_secret=self.secrets.lobby_secret(gid),
                                     spectator_token=self.secrets.spectator_token(gid), graceful=graceful)
             self.store.set_game(gid, status=status, pid=None)
@@ -898,6 +900,7 @@ class Lobby:
             if not ok:
                 self._drop_ai(gid)
                 self._drop_cockpit(gid, forget=True)
+                self.seat_links.pop(gid, None)
         if not ok:
             return self._api_or(api, 503, "The game could not start. Please try again later.", request)
         g = self.store.game(gid)
