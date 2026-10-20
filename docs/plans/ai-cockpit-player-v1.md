@@ -105,6 +105,23 @@ NOTE 140 runs the same bench once for each scripted level. Day 11 is the board a
 | hard | 4242 | 1 | 102,721 | Commander 102,721, H2 77,763, H1 75,980, H3 72,844 |
 | hard | 99 | 1 | 115,710 | Commander 115,710, H2 79,507, H1 74,655, H3 73,299 |
 
+NOTE 149 reads the same cockpit. A Ferrengi ship, hostile fighters, aliens, or mines on the sector screen send the ship back, and a sector named that way is not entered again. Once a pair is good enough to run, a thinner restock does not open an unseen sector. That is the seed 7 path: normal and hard used to die in Ferrengal on day 1, and they now stay on the pair the port screen already showed. The legacy gear list has no density scanner, so normal and hard buy one ether probe. Hard trades a second pair when the best ask on screen is empty, and it does not sail to StarDock for holds that ask cannot fill. Hard finishes strictly ahead of normal on 250925, 4242, and 7, and tied with normal on 99. Hard stays at or above normal, and both stay above easy, on every seed.
+
+| Level | Seed | Rank | Net worth | Finish board |
+| --- | --- | --- | --- | --- |
+| easy | 250925 | 3 | 72,301 | H3 78,534, H1 74,466, Commander 72,301, H2 70,607 |
+| easy | 4242 | 4 | 72,061 | H2 77,823, H1 75,960, H3 72,864, Commander 72,061 |
+| easy | 99 | 4 | 72,601 | H2 79,507, H1 74,655, H3 73,449, Commander 72,601 |
+| easy | 7 | 2 | 72,601 | H1 75,160, Commander 72,601, H3 22,605, H2 20,490 |
+| normal | 250925 | 1 | 78,693 | Commander 78,693, H3 77,234, H1 74,486, H2 70,607 |
+| normal | 4242 | 1 | 99,915 | Commander 99,915, H2 77,783, H1 75,980, H3 72,864 |
+| normal | 99 | 1 | 115,710 | Commander 115,710, H2 79,507, H1 74,655, H3 73,299 |
+| normal | 7 | 2 | 73,859 | H1 75,160, Commander 73,859, H3 22,630, H2 20,290 |
+| hard | 250925 | 1 | 81,914 | Commander 81,914, H3 77,234, H1 74,486, H2 70,607 |
+| hard | 4242 | 1 | 102,721 | Commander 102,721, H2 77,763, H1 75,980, H3 72,844 |
+| hard | 99 | 1 | 115,710 | Commander 115,710, H2 79,507, H1 74,655, H3 73,299 |
+| hard | 7 | 2 | 74,238 | H1 75,160, Commander 74,238, H3 22,605, H2 20,490 |
+
 Keys are read from the environment at call time. They are not written into source, the run log, `actions.jsonl`, or screenshots' text sidecars. Logs replace key values, `sk-...`, `xai-...`, bearer tokens, and `token=` query values with `[redacted]`.
 
 A live provider's system prompt is the trading playbook plus the manual text captured from the seat page. Each call also gets a short memory of the last few screens and actions. A reply that is not a click, type, press, or wait on a control that is on the screen is rejected and asked again, up to two retries, and then the runner waits. Each reply's token counts are priced with the same USD-per-million table as `src/tw2k/engine/llm_pricing.py` (curated 2026-04-22; the player keeps its own copy and does not import that module). The run log gains a line:
