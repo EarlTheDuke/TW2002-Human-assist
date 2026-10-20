@@ -789,7 +789,8 @@ def test_normal_settles_sooner_and_skips_shields() -> None:
         "labels": ["StarDock: buy gear", "Shipyards", "1:10 (3t)"],
         "warps": ["1:10 (3t)"],
     }))
-    assert dock.label != "StarDock: buy gear"
+    assert dock.label == "StarDock: buy gear"
+    assert normal.gear is not None and normal.gear["item"] == "density_scanner"
     assert dock.label != "Shipyards"
     assert "shields" not in normal.plan_note
 
@@ -946,6 +947,191 @@ def test_hard_skips_a_dock_trip_and_a_ship_that_cannot_pay_back() -> None:
         "no photons, no TransWarp. Trade-in sells your ship for 10,325 cr and you fly the new one."
     )
     assert medium._yard_pays({"ship": "Holds 0/20"}, scout) is False
+
+
+def test_a_known_pair_is_not_left_for_an_unseen_sector() -> None:
+    """Seed 7: the organics pair is on screen and the ask has no stock. Stay put."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="normal")
+    trader.day = 1
+    trader.max_day = 10
+    trader.day_turns = 40
+    trader.hold_cap = 20
+    trader.visited = {4, 117}
+    trader.previous = 117
+    rows = [
+        {"cells": ["Fuel Ore", "Buying, room 2,928", "2,928", "33", "0"], "button": ""},
+        {"cells": ["Organics", "Selling 0/2,629", "0", "73", "0"], "button": ""},
+        {"cells": ["Equipment", "Buying, room 2,744", "2,744", "172", "0"], "button": ""},
+    ]
+    trader.ports[117] = {"Organics": {"bid": 99, "avail": 2987, "now": 2987}}
+    trader.links[117] = {32: 3, 4: 3}
+    trader.links[32] = {117: 3, 101: 3}
+    trader.warp_labels[(32, 117)] = "2:117 (3t)"
+    trader.warp_labels[(32, 101)] = "1:101 (3t)"
+    stayed = trader.decide(_view({
+        "sector": "32", "day": "1", "maxDay": "10", "turns": "34", "credits": "49,951 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Class 2 BSB",
+        "rows": rows,
+        "labels": ["1:101 (3t)", "2:117 (3t)"],
+        "warps": ["1:101 (3t)", "2:117 (3t)"],
+    }))
+    assert stayed.label != "1:101 (3t)"
+    assert 101 not in trader.visited
+    alien = ScriptedTrader(level="hard")
+    fled = alien.decide(_view({
+        "sector": "8", "day": "1", "turns": "20", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "here": "Alien trader, 12 fighters",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:2 (3t)", "2:9 (3t)"],
+        "labels": ["1:2 (3t)", "2:9 (3t)"],
+    }))
+    assert fled.label == "1:2 (3t)" or fled.label == "2:9 (3t)"
+    assert 8 in alien.danger
+    remembered = alien.decide(_view({
+        "sector": "2", "day": "1", "turns": "17", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "here": "clear",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:8 (3t)", "2:9 (3t)"],
+        "labels": ["1:8 (3t)", "2:9 (3t)"],
+    }))
+    assert remembered.label == "2:9 (3t)"
+    warned = ScriptedTrader(level="hard")
+    warned.decide(_view({
+        "sector": "9", "day": "1", "turns": "19", "credits": "0 cr", "chip": "YOUR MOVE",
+        "last": "25 armid mines hit Commander entering 48 (500 dmg)",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:48 (6t)", "2:120 (6t)"],
+        "labels": ["1:48 (6t)", "2:120 (6t)"],
+    }))
+    assert 48 in warned.danger
+    dense = ScriptedTrader(level="hard")
+    dense.scanner = True
+    dense.scan_pending = 9
+    dense.decide(_view({
+        "sector": "9", "day": "2", "turns": "30", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "last": "Sector 48 ==> 5,500 Warps : 1 NavHaz : 0% Anom : No",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:48 (3t)", "2:120 (3t)"],
+        "labels": ["1:48 (3t)", "2:120 (3t)"],
+    }))
+    assert 48 in dense.danger
+    assert 9 in dense.scanned
+
+
+def test_one_probe_when_the_shelf_has_no_scanner() -> None:
+    """The legacy gear list has probes. Buy one, then stop."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="hard")
+    trader.bought.update({"holds", "fighters"})
+    trader.credits = 40_000
+    trader.gear = {"item": "density_scanner", "phase": "select"}
+    first = trader.decide(_view({
+        "sector": "1", "day": "2", "turns": "28", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "formOpen": True, "formText": "BUY EQUIP",
+        "fields": {"item": "holds", "itemOptions": ["holds", "fighters", "ether_probes"]},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert first.op == "type" and first.text == "ether_probes"
+    trader.gear = {"item": "ether_probes", "phase": "confirm"}
+    assert trader.decide(_view({
+        "sector": "1", "day": "2", "turns": "28", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "formOpen": True, "formText": "BUY EQUIP",
+        "fields": {"item": "ether_probes", "qty": "1", "itemOptions": ["holds", "fighters", "ether_probes"]},
+        "labels": ["CONFIRM"],
+    })).label == "CONFIRM"
+    assert "ether_probes" in trader.bought
+    again = trader.decide(_view({
+        "sector": "1", "day": "2", "turns": "28", "credits": "35,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "labels": ["StarDock: buy gear", "Bank"],
+        "warps": [],
+    }))
+    assert again.label != "StarDock: buy gear"
+
+
+def test_a_thin_restock_stays_on_the_known_pair() -> None:
+    """Seed 7 day 2: the real quantity is small. Do not walk into an unseen sector."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="normal")
+    trader.settled_day = 1
+    trader.visited = {4, 117, 32}
+    trader.previous = 117
+    trader.ports[32] = {"Organics": {"ask": 73, "avail": 4, "now": 0}}
+    trader.ports[117] = {"Organics": {"bid": 99, "avail": 4, "now": 4}}
+    trader.links[32] = {117: 3, 101: 3}
+    trader.links[117] = {32: 3}
+    trader.warp_labels[(32, 117)] = "2:117 (3t)"
+    trader.warp_labels[(32, 101)] = "1:101 (3t)"
+    stayed = trader.decide(_view({
+        "sector": "32", "day": "2", "maxDay": "10", "turns": "31", "credits": "50,151 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Class 2 BSB",
+        "rows": [{"cells": ["Organics", "Selling 0/2,629", "0", "73", "0"], "button": ""}],
+        "labels": ["1:101 (3t)", "2:117 (3t)"],
+        "warps": ["1:101 (3t)", "2:117 (3t)"],
+    }))
+    assert stayed.label != "1:101 (3t)"
+    assert 101 not in trader.visited
+
+
+def test_a_quiet_map_keeps_looking_and_a_threat_walks_back() -> None:
+    """The paying pair is several new hops out. Back up only after a threat."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="normal")
+    trader.fresh_chain = 5
+    trader.visited = {1, 2, 3}
+    trader.previous = 2
+    options = [(2, "1:2 (3t)", 3), (5, "2:5 (3t)", 3)]
+    assert trader._explore_choice(4, options) == 5
+    trader.danger.add(9)
+    assert trader._explore_choice(4, options) == 2
+
+
+def test_hard_trades_a_stocked_pair_when_the_best_ask_is_empty() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    hard = ScriptedTrader(level="hard")
+    hard.day = 4
+    hard.max_day = 10
+    hard.day_turns = 40
+    hard.hold_cap = 20
+    hard.visited = {10, 11, 12, 13}
+    hard.ports[10] = {"Equipment": {"ask": 20, "avail": 400, "now": 0}}
+    hard.ports[11] = {"Equipment": {"bid": 80, "avail": 400, "now": 400}}
+    hard.ports[12] = {"Organics": {"ask": 30, "avail": 80, "now": 80}}
+    hard.ports[13] = {"Organics": {"bid": 50, "avail": 80, "now": 80}}
+    hard.links[10] = {11: 3, 12: 3}
+    hard.links[11] = {10: 3}
+    hard.links[12] = {10: 3, 13: 3}
+    hard.links[13] = {12: 3}
+    hard.warp_labels[(10, 12)] = "2:12 (3t)"
+    hard.warp_labels[(10, 11)] = "1:11 (3t)"
+    hard.pair_blocked = 4
+    moved = hard.decide(_view({
+        "sector": "10", "day": "4", "maxDay": "10", "turns": "30", "credits": "40,000 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "rows": [{"cells": ["Equipment", "Selling 0/400", "0", "20", "0"], "button": ""}],
+        "labels": ["1:11 (3t)", "2:12 (3t)"],
+        "warps": ["1:11 (3t)", "2:12 (3t)"],
+    }))
+    assert moved.label == "2:12 (3t)"
 
 
 def test_several_cockpit_seats_each_get_a_process_and_a_stop(monkeypatch, tmp_path: Path) -> None:
