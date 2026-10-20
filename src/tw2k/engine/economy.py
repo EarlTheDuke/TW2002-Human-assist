@@ -117,13 +117,25 @@ def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int
     return _unit_price(base, base * stock_mult * mcic_mult * exp_mult)
 
 
-def haggle_room_pct(mcic: int) -> float:
-    """Percent of the first offer a counter may reach. Hidden. See HAGGLE.md."""
-    if K.haggle_window_live():
-        return float(K.PORT_HAGGLE_LIVE_ROOM_PCT)
+def _straight_haggle_pct(mcic: int) -> float:
+    """The stored 110 to 149 line. abs(MCIC) stops at the span."""
     span = min(K.PORT_HAGGLE_MCIC_SPAN, max(0, abs(int(mcic))))
     extra = K.PORT_HAGGLE_MAX_PCT - K.PORT_HAGGLE_MIN_PCT
     return K.PORT_HAGGLE_MIN_PCT + extra * span / K.PORT_HAGGLE_MCIC_SPAN
+
+
+def haggle_room_pct(mcic: int, commodity: str | None = None) -> float:
+    """Percent of the first offer a counter may reach. Hidden. See HAGGLE.md."""
+    if K.haggle_table_live() and commodity is not None:
+        tenths = K.haggle_table_tenths(commodity, mcic)
+        if tenths is not None:
+            return tenths / 10.0
+        # A product or MCIC the cabal page does not print stays on the line,
+        # even when the measured window is also on.
+        return _straight_haggle_pct(mcic)
+    if K.haggle_window_live():
+        return float(K.PORT_HAGGLE_LIVE_ROOM_PCT)
+    return _straight_haggle_pct(mcic)
 
 
 def haggle_experience(bargain: int, span: int) -> int:
@@ -148,13 +160,22 @@ def haggle_experience(bargain: int, span: int) -> int:
     return int(K.HAGGLE_EXP_GOOD)
 
 
-def haggle_bound(listed: int, mcic: int, side: str) -> int:
+def haggle_bound(listed: int, mcic: int, side: str, commodity: str | None = None) -> int:
     """Farthest counter the port will take, in credits.
 
     Sell side: the highest price the player may ask.
     Buy side: the lowest price the player may bid.
     """
-    pct = haggle_room_pct(mcic)
+    if K.haggle_table_live() and commodity is not None:
+        tenths = K.haggle_table_tenths(commodity, mcic)
+        if tenths is not None:
+            if side == "sell":
+                return max(int(listed), (int(listed) * int(tenths) + 500) // 1000)
+            floor = (int(listed) * (2000 - int(tenths)) + 500) // 1000
+            return min(int(listed), max(1, floor))
+        pct = _straight_haggle_pct(mcic)
+    else:
+        pct = haggle_room_pct(mcic)
     if side == "sell":
         return max(listed, round(listed * pct / 100.0))
     floor = round(listed * (200.0 - pct) / 100.0)
@@ -315,7 +336,7 @@ def execute_trade(
     # rng stays in the signature so existing callers do not change.
     del rng
 
-    if K.haggle_live():
+    if K.haggle_live() and not K.haggle_table_live():
         kind, value = _live_haggle(player, commodity, side, listed, offered)
         if kind != "accept":
             return False, 0, 0, str(value), None
@@ -329,13 +350,16 @@ def execute_trade(
             final_unit = listed
             haggled = False
         else:
-            bound = haggle_bound(listed, _stored_mcic(port, commodity), side)
+            bound = haggle_bound(listed, _stored_mcic(port, commodity), side, commodity)
             within = offered >= bound if side == "buy" else offered <= bound
             # A sell past the live wild-bid line ends the trade even if a later
-            # edit widens the accept band. Buy-side instant-end percent was not
-            # measured, so a low buy fails only by missing the band above.
+            # edit widens the accept band. The cabal table prints fuel at 149.4
+            # percent, past that line, so the table keeps its own ceiling.
+            # Buy-side instant-end percent was not measured, so a low buy fails
+            # only by missing the band above.
             wild = (
-                K.haggle_window_live()
+                not K.haggle_table_live()
+                and K.haggle_window_live()
                 and side == "sell"
                 and listed > 0
                 and offered * 100 > listed * K.PORT_HAGGLE_LIVE_END_PCT
@@ -390,7 +414,7 @@ def execute_trade(
     if haggled:
         bargain = abs(final_unit - listed)
         if bargain:
-            bound = haggle_bound(listed, _stored_mcic(port, commodity), side)
+            bound = haggle_bound(listed, _stored_mcic(port, commodity), side, commodity)
             span = abs(int(bound) - int(listed))
             player.experience = int(player.experience) + haggle_experience(bargain, span)
         msg = f"haggle won at {final_unit}cr (list {listed})"

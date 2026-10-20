@@ -201,7 +201,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 2.3 Match-behind-flag `PORT_PRICE_MODE` row 21. The original price curve is coded and off. `economy.port_sell_price`.
 2.4 Match. Each port has its own MCIC and productivity. `economy._stored_mcic`.
 2.5 Different. Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002. `economy.port_sell_price`, `constants.ship_cost`.
-2.6 Match-behind-flag `HAGGLE_LIVE_MODE` row 31. The live window is coded and off. `HAGGLE_COUNTER_MODE` row 74 and `HAGGLE_EXP_MODE` row 110 sit beside it. `economy.haggle_bound`, `economy.haggle_experience`.
+2.6 Match-behind-flag `HAGGLE_LIVE_MODE` row 31. The live window is coded and off. `HAGGLE_COUNTER_MODE` row 74 and `HAGGLE_EXP_MODE` row 110 sit beside it. The cabal product table is `HAGGLE_TABLE_MODE` row 175, NOTE 150, and stays off. Equipment at MCIC -20 is 110.2 percent on that table, not the straight line. `economy.haggle_bound`, `economy.haggle_experience`.
 2.7 Match. The first trade in a sector costs a turn. Later trades there do not. `economy.trade_turn_cost`.
 2.8 Match-behind-flag `PORT_REGEN_MODE` row 22. Five percent restock is coded and off. `economy.regenerate_ports`.
 2.9 Match-behind-flag `PORT_STOCK_FIDELITY_MODE` row 51. Opening the day on the live stock curve is coded and off. `universe._make_port`.

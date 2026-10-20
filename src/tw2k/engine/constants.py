@@ -198,6 +198,186 @@ PORT_HAGGLE_FAIL_TURNS = 1
 # amount. One deal stops at this cap.
 PORT_HAGGLE_XP_CAP = 10
 
+# Cabal haggling.html counter percent, in tenths (1494 means 149.4%).
+# Fuel prints -46 twice and skips -47. The unit prices step by 0.2, so the
+# first of those two rows is the missing -47. Every other MCIC is the printed label.
+HAGGLE_COUNTER_TABLE: dict[str, tuple[tuple[int, int], ...]] = {
+    "fuel_ore": (
+        (-90, 1494),
+        (-89, 1488),
+        (-88, 1482),
+        (-87, 1476),
+        (-86, 1470),
+        (-85, 1464),
+        (-84, 1458),
+        (-83, 1452),
+        (-82, 1446),
+        (-81, 1440),
+        (-80, 1434),
+        (-79, 1429),
+        (-78, 1423),
+        (-77, 1417),
+        (-76, 1411),
+        (-75, 1405),
+        (-74, 1399),
+        (-73, 1393),
+        (-72, 1387),
+        (-71, 1381),
+        (-70, 1375),
+        (-69, 1369),
+        (-68, 1363),
+        (-67, 1357),
+        (-66, 1351),
+        (-65, 1345),
+        (-64, 1342),
+        (-63, 1336),
+        (-62, 1330),
+        (-61, 1324),
+        (-60, 1318),
+        (-59, 1312),
+        (-58, 1306),
+        (-57, 1300),
+        (-56, 1294),
+        (-55, 1291),
+        (-54, 1285),
+        (-53, 1279),
+        (-52, 1273),
+        (-51, 1267),
+        (-50, 1261),
+        (-49, 1255),
+        (-48, 1249),
+        (-47, 1246),
+        (-46, 1240),
+        (-45, 1234),
+        (-44, 1228),
+        (-43, 1222),
+        (-42, 1219),
+        (-41, 1209),
+        (-40, 1208),
+    ),
+    "organics": (
+        (-75, 1405),
+        (-74, 1399),
+        (-73, 1393),
+        (-72, 1387),
+        (-71, 1381),
+        (-70, 1375),
+        (-69, 1369),
+        (-68, 1363),
+        (-67, 1357),
+        (-66, 1351),
+        (-65, 1345),
+        (-64, 1339),
+        (-63, 1336),
+        (-62, 1330),
+        (-61, 1324),
+        (-60, 1318),
+        (-59, 1312),
+        (-58, 1306),
+        (-57, 1300),
+        (-56, 1294),
+        (-55, 1291),
+        (-54, 1285),
+        (-53, 1279),
+        (-52, 1273),
+        (-51, 1267),
+        (-50, 1261),
+        (-49, 1255),
+        (-48, 1252),
+        (-47, 1246),
+        (-46, 1236),
+        (-45, 1233),
+        (-44, 1227),
+        (-43, 1224),
+        (-42, 1214),
+        (-41, 1213),
+        (-40, 1203),
+        (-39, 1200),
+        (-38, 1194),
+        (-37, 1191),
+        (-36, 1181),
+        (-35, 1178),
+        (-34, 1172),
+        (-33, 1166),
+        (-32, 1160),
+        (-31, 1157),
+        (-30, 1154),
+    ),
+    "equipment": (
+        (-65, 1347),
+        (-64, 1341),
+        (-63, 1336),
+        (-62, 1330),
+        (-61, 1324),
+        (-60, 1319),
+        (-59, 1313),
+        (-58, 1307),
+        (-57, 1302),
+        (-56, 1296),
+        (-55, 1291),
+        (-54, 1285),
+        (-53, 1279),
+        (-52, 1274),
+        (-51, 1268),
+        (-50, 1262),
+        (-49, 1254),
+        (-48, 1247),
+        (-47, 1246),
+        (-46, 1241),
+        (-45, 1235),
+        (-44, 1229),
+        (-43, 1224),
+        (-42, 1218),
+        (-41, 1213),
+        (-40, 1208),
+        (-39, 1201),
+        (-38, 1196),
+        (-37, 1190),
+        (-36, 1185),
+        (-35, 1180),
+        (-34, 1174),
+        (-33, 1169),
+        (-32, 1164),
+        (-31, 1158),
+        (-30, 1152),
+        (-29, 1149),
+        (-28, 1144),
+        (-27, 1136),
+        (-26, 1132),
+        (-25, 1126),
+        (-24, 1122),
+        (-23, 1117),
+        (-22, 1110),
+        (-21, 1105),
+        (-20, 1102),
+    ),
+}
+
+def haggle_table_tenths(commodity: str | None, mcic: int) -> int | None:
+    """Cabal counter percent in tenths, or None when that product has no printed row.
+
+    Between two printed MCICs the page says to interpolate. Outside the printed
+    span the straight 110 to 149 line still applies.
+    """
+    token = str(getattr(commodity, "value", commodity) or "")
+    rows = HAGGLE_COUNTER_TABLE.get(token)
+    if not rows:
+        return None
+    target = int(mcic)
+    if target < rows[0][0] or target > rows[-1][0]:
+        return None
+    for index, (mark, tenths) in enumerate(rows):
+        if mark == target:
+            return int(tenths)
+        if mark > target:
+            left_mark, left = rows[index - 1]
+            span = mark - left_mark
+            pos = target - left_mark
+            return int(round(left + (tenths - left) * pos / span))
+    return None
+
+
+
 # "legacy": the hidden room is 110% to 149% of the first offer, by MCIC.
 # "live": a one-shot counter is taken only inside the band seen on TWGS
 # v3.34b. A sell may ask up to +8%. A buy may bid down to -8% (the same
@@ -3608,6 +3788,19 @@ def haggle_live() -> bool:
     return HAGGLE_LIVE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
+# NOTE 150 GAP 2.6. Cabal haggling.html prints a counter percent per product
+# and MCIC. The straight 110-149 line stays the stored path. "v311" uses the
+# printed table, and interpolates only between two printed rows. A product or
+# MCIC the page does not print keeps the line. This wins over the later
+# measured window when both are on.
+HAGGLE_TABLE_MODE = "legacy"  # "legacy" | "v311"
+
+
+def haggle_table_live() -> bool:
+    """True when a counter uses the cabal product table instead of one line."""
+    return HAGGLE_TABLE_MODE == "v311" or v311_profile()
+
+
 # discovery-exp-daily-bonus-v1. Off, the first trader at a port still gets the
 # one point, and the midnight bonus still follows the rank switch.
 # On, each player gets one point the first time they trade at a port, and the
@@ -4506,6 +4699,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "planet_interdict_safe_live": (
         "PLANET_INTERDICT_SAFE_MODE",
         "NOTE 143: an interdictor does not hold a ship at StarDock, and Terra is that sector",
+    ),
+    "haggle_table_live": (
+        "HAGGLE_TABLE_MODE",
+        "NOTE 150 GAP 2.6: a counter uses the cabal product table",
     ),
 }
 

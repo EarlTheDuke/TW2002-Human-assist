@@ -350,6 +350,12 @@ def _trading(f: dict) -> str:
         f"When it is on, a counter has to sit between {_n(room)} and {_n(end)} percent of the quote. "
         f"The older window runs from {_n(K.PORT_HAGGLE_MIN_PCT)} to {_n(K.PORT_HAGGLE_MAX_PCT)} percent. "
         f"A failed haggle costs {_n(K.PORT_HAGGLE_FAIL_TURNS)} turn.</p>"
+        + _gated(
+            K.haggle_table_live(),
+            "a counter follows the cabal product table. Equipment at MCIC -20 takes 110.2 percent, "
+            "and fuel at MCIC -90 takes 149.4 percent. A product or MCIC that page does not print keeps the straight line.",
+            "every product uses one straight line from 110 percent to 149 percent.",
+        )
         + _buy_anchor()
         + _price_scale()
         + _busts(f)
@@ -1353,7 +1359,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "trading": (
         "trade", "rob", "steal", "planet_trade",
         "PORT_PRICE_MODE", "PRICE_SCALE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
-        "HAGGLE_EXP_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
+        "HAGGLE_EXP_MODE", "HAGGLE_TABLE_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
         "PORT_CLASS_MAP_MODE", "PORT_CLASS_NUMBER_FIX_MODE", "CLASS0_HOLD_FORMULA_MODE",
         "HOLD_RULES_MODE", "SHOP_PRICE_MODE", "EVIL_TRADE_LOOP_MODE",
     ),

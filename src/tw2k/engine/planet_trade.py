@@ -292,7 +292,7 @@ def handle_planet_trade(universe: Universe, pid: str, action: Action) -> ActionR
             if K.PLANET_TRADE_HAGGLE == "no_counter":
                 bound = quote
             else:  # "as_ship_sell": HAGGLE.md's ship-sale bound on the lot
-                bound = haggle_bound(quote, _stored_mcic(port, commodity), "sell")
+                bound = haggle_bound(quote, _stored_mcic(port, commodity), "sell", commodity)
             if offer > bound:
                 universe.emit(
                     EventKind.TRADE_FAILED, actor_id=pid, sector_id=sector.id,
@@ -321,7 +321,7 @@ def handle_planet_trade(universe: Universe, pid: str, action: Action) -> ActionR
         if paid > quote:
             bargain = (paid - quote + qty // 2) // qty  # per-unit bargain, as a ship counter is judged
             if bargain > 0:
-                bound = haggle_bound(quote, _stored_mcic(port, commodity), "sell")
+                bound = haggle_bound(quote, _stored_mcic(port, commodity), "sell", commodity)
                 span = max(0, (int(bound) - int(quote) + qty // 2) // qty)
                 player.experience = int(player.experience) + haggle_experience(bargain, span)
         if first_for_me if K.discovery_exp_live() else unused_port:
