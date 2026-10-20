@@ -39,7 +39,7 @@ KEYS = {
     "OPENAI_API_KEY": _key("sk-", "testsecretkey", "1234567890"),
     "ANTHROPIC_API_KEY": _key("sk-", "ant-", "testsecretkey", "1234567890"),
 }
-# Open pockets only. 8060 and the live bands stay unused.
+# Protected live bands. free_port may still hand out an OS ephemeral port above them.
 FORBIDDEN = set(range(8031, 8038)) | {8041, 8042} | set(range(8045, 8050)) | set(range(8055, 8120))
 
 
