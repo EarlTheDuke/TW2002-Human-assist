@@ -45,7 +45,11 @@ The loop stops when the chip says GAME OVER, the stop file exists, or `--max-tur
 | `openai` | `OPENAI_API_KEY` | `OPENAI_MODEL` (default `gpt-4o`) |
 | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (default `claude-sonnet-4-5`) |
 
+`--level` selects a scripted difficulty. Easy wanders, including along a one-way, and takes the first local buy after it sells. Normal locks a shorter pair (about 700 credits in a day, or any paying pair after eight priced ports) and buys holds and fighters only. Hard is the long-game trader below. A live provider ignores the level. The default is hard.
+
 The scripted trader reads the manual, then plays from the screen text. It records the sector, the port prices and quantities, the directed warps, and the holds. It keeps to unvisited lanes until a short pair, reachable from the current sector, can earn about 2,000 credits in a day from the stock on screen. It does not lock the first thin route, and it does not take a one-way warp until the return leg has already been on screen. It sells into the best reachable bid and buys the load with the best credits per turn, declining a counter that loses to a better reachable bid. A refused haggle is left. If the next lap does not fit, it parks on the buying port. On the last day, a handful of leftover turns that cannot finish a seen pair are waits, then the day-end confirm. On the opening visit to StarDock, and again once a paying route is known, it buys holds when the spread covers the price, then fighters and shields, and it compares shipyard deals the same way. Surplus credits go to the bank. A planet is claimed only when its per-day production beats the port pair; otherwise the ship lifts off. Sectors whose text showed Ferrengi, deployed mines, or hostile fighters are not warped back into. The StarDock gear list names Armid, Limpet, and Atomic mines; that catalog is not a threat. It keeps acting while the chip says YOUR MOVE, confirms a day-end dialog, waits on NO TURNS for the next day, and stops when the chip says GAME OVER.
+
+On the day after a pair first pays, and from day 3 in a priced pocket that still has no known way to StarDock, hard and normal open the on-screen computer, press F for the course plotter, type the destination, and follow the next hop the computer named, including a one-way. That is the same plot the cockpit draws for a person. The player does not call the route API itself. After the shop, the same plotter is used to get back when the return leg was never seen. A day-end confirm still closes over the computer menu.
 
 `--provider mock` reads a JSON list of canned replies and runs each one through the same system prompt, user prompt, and on-screen validation as a live model. A reply that is not a visible action is fed back into the next prompt. No key is read.
 
@@ -87,6 +91,17 @@ Seed 4242, Commander:
 
 Finish, seed 4242: Commander 79,281, H2 77,823, H1 75,967, H3 72,864.
 
+NOTE 140 runs the same bench once for each scripted level. Day 11 is the board after day 10. Hard on seed 250925 is still first. On seed 4242 the hard seat does reach StarDock (the day-4 drop is the outfit) and then spends the trip home; it finishes last. Normal, which stops after holds and fighters, uses the same course plotter and finishes first on that seed.
+
+| Level | Seed | Rank | Net worth | Finish board |
+| --- | --- | --- | --- | --- |
+| easy | 250925 | 1 | 78,521 | Commander 78,521, H3 78,474, H1 74,426, H2 70,607 |
+| easy | 4242 | 4 | 70,445 | H2 77,823, H1 75,940, H3 72,804, Commander 70,445 |
+| normal | 250925 | 2 | 75,880 | H3 78,494, Commander 75,880, H1 74,486, H2 70,607 |
+| normal | 4242 | 1 | 103,227 | Commander 103,227, H2 77,763, H1 75,980, H3 72,824 |
+| hard | 250925 | 1 | 81,506 | Commander 81,506, H3 77,214, H1 74,486, H2 70,607 |
+| hard | 4242 | 4 | 71,386 | H2 77,763, H1 75,967, H3 72,864, Commander 71,386 |
+
 Keys are read from the environment at call time. They are not written into source, the run log, `actions.jsonl`, or screenshots' text sidecars. Logs replace key values, `sk-...`, `xai-...`, bearer tokens, and `token=` query values with `[redacted]`.
 
 A live provider's system prompt is the trading playbook plus the manual text captured from the seat page. Each call also gets a short memory of the last few screens and actions. A reply that is not a click, type, press, or wait on a control that is on the screen is rejected and asked again, up to two retries, and then the runner waits. Each reply's token counts are priced with the same USD-per-million table as `src/tw2k/engine/llm_pricing.py` (curated 2026-04-22; the player keeps its own copy and does not import that module). The run log gains a line:
@@ -116,14 +131,14 @@ The lobby does not store the key. A live provider that finds an empty variable s
 
 `AI_COCKPIT_SEAT_MODE` already exists. The stored value stays `legacy`. `ai_cockpit_seat_on()` is true when that value is `tw2002` or when `TW2002_LIVE_PROFILE` is `live`. `V311_PROFILE` does not turn it on, and the helper is not in `V311_PROFILE_HELPERS`.
 
-While the switch is legacy, the new-game form has no AI cockpit seat control, and `ai_cockpit`, `ai_cockpit_provider`, and `ai_cockpit_model` are unknown fields. While it is on, the Players section offers **AI cockpit seat**, a provider (scripted, Grok, OpenAI, Anthropic), and a model name. The form does not ask for a key. `settings()` stores the provider and the model only when the box is checked.
+While the switch is legacy, the new-game form has no AI cockpit seat control, and `ai_cockpit`, `ai_cockpit_provider`, `ai_cockpit_model`, `ai_cockpit_count`, and `ai_cockpit_level` are unknown fields. While it is on, the Players section offers **AI cockpit seat**, a count from 1 to 4, a difficulty (easy, normal, hard), a provider (scripted, Grok, OpenAI, Anthropic), and a model name. The form does not ask for a key. `settings()` stores the provider, the model, the count, and the level only when the box is checked. A missing count is one seat. The default level is hard.
 
-`start_game` adds that one external seat after the human seats and any harness AI seats. The harness driver does not receive it. After the worker is healthy, the lobby starts `scripts/ai_cockpit_player.py` against the worker's `/bot?seat=Pn&mode=cu&token=...&layout=redesign` link. The log line is `ai cockpit player seat=Pn provider=... model=...`. It does not include the token.
+`start_game` adds those external seats after the human seats and any harness AI seats. The harness driver does not receive them. After the worker is healthy, the lobby starts one `scripts/ai_cockpit_player.py` per seat, each with its own token, run directory, and `--level`, against the worker's `/bot?seat=Pn&mode=cu&token=...&layout=redesign` link. The log line is `ai cockpit player seat=Pn provider=... model=... level=...`. It does not include the token.
 
-The created page and the lobby row show `AI cockpit seat: <provider>, running` (or `stopped`). **Watch** is the spectator. **AI seat** and **Open Pn** go to `/games/<id>/ai-seat`, which redirects the creator to the seat page. The token is not written into the lobby HTML.
+The created page and the lobby row show one status line per seat (`AI cockpit seat: scripted hard, running`, or with the seat id when there are several) plus **Open** and a creator **Stop** button. Stop terminates that one process. **Watch** is the spectator. The single-seat **AI seat** link goes to `/games/<id>/ai-seat`, which redirects the creator to the seat page. The token is not written into the lobby HTML.
 
 The runner reloads the original seat link if the page closes or the chip disappears, presses Escape when a click is swallowed by a dialog, and exits 0 when the chip says GAME OVER. A stop file still ends the run. `Lobby.launch_browser_seat(...)` still returns None while the switch is legacy.
 
 ## Tests
 
-`tests/test_ai_cockpit_player_v1.py` runs the scripted provider against a `CuHost` on a port from `free_port`. That is an open pocket, or an OS ephemeral port that `allowed_test_port` accepts, outside 8031-8119 and 8120-8249. One game lasts three days and must finish with a higher net worth than it started. The same file checks the source has no `tw2k` import, the player process loads no `tw2k` module, a run that has keys in its environment does not write those keys or the seat token into the text log, and the new-game control is missing while the switch is legacy.
+`tests/test_ai_cockpit_player_v1.py` runs the scripted provider against a `CuHost` on a port from `free_port`. That is an open pocket, or an OS ephemeral port that `allowed_test_port` accepts, outside 8031-8119 and 8120-8249. One game lasts three days and must finish with a higher net worth than it started. The same file checks the source has no `tw2k` import, the player process loads no `tw2k` module, a run that has keys in its environment does not write those keys or the seat token into the text log, and the new-game control is missing while the switch is legacy. Easy must buy a weak local offer and then take a one-way. Normal must settle on a pair hard still walks past, and must not buy shields. Hard must open the computer, plot sector 1, and take the hop the course names. Two cockpit seats must launch two processes, and the stop control must name a path with no token.

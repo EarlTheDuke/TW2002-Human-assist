@@ -35,11 +35,17 @@ def direct_seat_url(seat: str, token: str) -> str:
     )
 
 
-def status_line(provider: str, model: str, running: bool) -> str:
-    """Lobby text for the seat. It names the provider and whether the process is up."""
+def status_line(provider: str, model: str, running: bool, *, seat: str = "", level: str = "") -> str:
+    """Lobby text for one seat. It names the provider and whether the process is up.
+
+    ``seat`` and ``level`` are omitted when empty, so a single scripted seat still
+    reads "AI cockpit seat: scripted, running".
+    """
     extra = f" {model}" if model else ""
     state = "running" if running else "stopped"
-    return f"AI cockpit seat: {provider}{extra}, {state}"
+    who = f" {seat}" if seat else ""
+    rank = f" {level}" if level else ""
+    return f"AI cockpit seat{who}: {provider}{extra}{rank}, {state}"
 
 
 def player_script() -> Path:
@@ -60,6 +66,7 @@ def launch_player(
     run_dir: Path,
     provider: str = "scripted",
     model: str = "",
+    level: str = "",
     max_turns: int = 40,
     min_interval: float = 1.0,
     path: str | None = None,
@@ -89,6 +96,11 @@ def launch_player(
     ]
     if model:
         cmd.extend(["--model", model])
+    if level:
+        cmd.extend(["--level", level])
     # The seat link has to reach the child. The log names the seat only.
-    log.info("ai cockpit player seat=%s provider=%s model=%s", seat, provider, model or "-")
+    log.info(
+        "ai cockpit player seat=%s provider=%s model=%s level=%s",
+        seat, provider, model or "-", level or "hard",
+    )
     return popen(cmd)
