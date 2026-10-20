@@ -470,6 +470,8 @@ def interdictor_planet(universe: Universe, pid: str, sector):
     """A planet hostile to `pid` in `sector` that can interdict now. Read only (no fuel burn)."""
     from .models import Commodity
 
+    if K.planet_interdict_quiet(sector.id):
+        return None
     for item in sorted(sector.planet_ids):
         planet = universe.planets.get(item)
         if planet is None:

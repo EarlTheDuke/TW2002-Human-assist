@@ -239,6 +239,8 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 ## 6. Planets (remaining gaps only; shipped work B1-E3 is not re-listed)
 
 > Already built and not repeated: citadel L1-L6 effects, treasury and 2% interest, military reaction, planet shields, quasar sector/atmosphere, planet transwarp and transporter, planet_destroy, land/odds combat, corp-planet dissolve rules. See docs\plans\planetary-warfare-comparison.md (note: its "missing" list is stale) and docs\playtests\planetary-warfare\SUMMARY.md.
+>
+> NOTE 143. An interdictor is quiet at StarDock, and Terra is that sector, behind `PLANET_INTERDICT_SAFE_MODE`. Elsewhere it still burns 500 fuel.
 
 | # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
 |---|---|---|---|---|
@@ -251,7 +253,7 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 | 6.7 Genesis class choice | Planet class is random and weighted by how crowded the sector is. [Misc_JPhints_JohnPritchett.txt] UNVERIFIED (one source) | K.PLANET_CLASS_WEIGHTS fixed weights. | Partial | S / Low |
 | 6.8 Planetary trading | A mobile planet parked under a port can sell its goods to that port at a fixed price (MBBS 100%). [cabal glossary.html, REV v3.0x] CONFIRMED | Missing (grep found no planet-to-port selling). | Missing | M / Med |
 | 6.9 Ship exchange and overnight parking in a citadel | Citadel lets you park a ship overnight and swap into another of your ships; CEO ships are never swappable. [Bible, EIS CitadelMenu] CONFIRMED | Missing (single-ship model). | Missing | M / Low |
-| 6.10 Planet killer rules | Atomic detonator destroys a planet after its colonists are dead, -50 alignment; killing a trader on a planet gives +0.17 x their exp +50, -0.33 x their alignment -1. [Bible, cabal formulas.html] SOURCE-CONFLICT (-50 vs -1) | planet_destroy (runner.py:2876) zeroes colonists then removes; alignment -50. | Partial | S / Low |
+| 6.10 Planet killer rules | Atomic detonator destroys a planet after its colonists are dead, -50 alignment; killing a trader on a planet gives +0.17 x their exp +50, -0.33 x their alignment -1. [Bible, cabal formulas.html] SOURCE-CONFLICT (-50 vs -1) | Colonists, then the planet. The blow is -1 alignment and +50 experience while rank is tw2002. Killing a trader who is on it is `PLANET_ZDY_MODE` (NOTE 143): enemy experience x 0.1666 and enemy alignment x -0.3333, on top of that blow. Colonist-kill alignment is still an ellipsis. A citadel's extra blow experience is not printed. | Partial; ZDY Match-behind-flag | S / Low |
 | 6.11 Corp planet quirks | On corp disband planets in the CEO's sector go to the CEO, others become Rogue; Tholian Sentinel defends corp planets at 4:1. [REV v3.06, docs wiki Tholian_Sentinel] CONFIRMED | Every living owner keeps planets (deliberate difference, runner.py _release_dissolved_corp_planets); no Sentinel. | Different | S / Low |
 | 6.12 Planet-based exp and alignment | Creating a planet gives +25 exp and +10 alignment; planet busting loops give 75 exp per cycle. [docs wiki Alignment, cabal glossary.html] CONFIRMED | XP_AWARDS deploy_genesis 100, claim_planet 75; no alignment change. | Different | S / Low |
 | 6.13 Planet value dividend | Not in the original. | planets.py _pay_planet_value_tax pays owners a credit dividend (K.PLANET_VALUE_TAX_RATE). | Different | S / Low (ours-only; decide keep or remove) |
@@ -263,7 +265,7 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 |---|---|---|---|---|
 | 7.2 Build time | 2 to 7 weeks to L6 depending on class. [S1_planet_handbook_v1.01.html] CONFIRMED | K.CITADEL_BUILD_TIME_SCALE = 0.25 (deliberate for a 30-day match). | Different | S / Low |
 | 7.3 Free fighters/shields on completion | None in the original. [S1_planet_handbook_v1.01.html] CONFIRMED | Gift constants are 0 (no-op). | Match | S / Low |
-| 7.4 Atmospheric quasar damage factor | TWGS Classic uses x0.5, MBBS uses x2. [cabal formulas.html vs S1_planet_handbook] SOURCE-CONFLICT | Ours picked MBBS x2 (recorded decision in the planetary docs). | Match | S / Low |
+| 7.4 Atmospheric quasar damage factor | TWGS Classic uses x0.5, MBBS uses x2. [cabal formulas.html vs S1_planet_handbook] SOURCE-CONFLICT | The factor stays MBBS x2. A shieldless landing's second shot is `QUASAR_ATM_ORDER_MODE` (NOTE 143): off, that landing fires twice; on, the second shot waits until shields actually fall. | Match; shot order Match-behind-flag | S / Low |
 | 7.5 Treasury cap | 999,999,999,999,999. [S1_planet_handbook_v1.01.html] CONFIRMED | K.PLANET_TREASURY_CAP 10,000,000. | Different | S / Low |
 
 ## 8. Aliens, NPCs, bad guys
