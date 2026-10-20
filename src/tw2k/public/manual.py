@@ -1196,7 +1196,8 @@ def _communications(_f: dict) -> str:
                 "Fed Comm goes to every trader who has not turned it off. "
                 "A hail goes to one trader in your sector and is not stored as mail. "
                 "A corporation memo goes only to the other members. "
-                "An AI cockpit seat can read those lines on the screen. It does not send yet.",
+                "An AI cockpit seat reads those lines on this same panel and answers a hail or a memo with Send. "
+                "The reply is a short line, it waits 2 seconds between messages, and it may send one corporation memo about its plan.",
                 "",
             )
             + _src("Fed Comm, sub-space radio, a private hail, and the corporation memo.")
