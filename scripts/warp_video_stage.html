@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Warp video stage</title>
+  <link rel="stylesheet" href="/static/redesign.css" />
+  <style>
+    html, body { margin: 0; width: 400px; height: 260px; overflow: hidden; background: #000; }
+    #warpClip { width: 400px; height: 260px; }
+  </style>
+</head>
+<body>
+  <div id="warpClip" data-testid="warp-clip">
+    <svg id="warpSvg" viewBox="0 0 400 260" role="img" aria-label="Warp"></svg>
+  </div>
+  <script src="/static/hull-meshes.js"></script>
+  <script src="/static/warp-variants.js"></script>
+  <script type="module" src="/static/warp-hull.mjs"></script>
+  <script>
+    var DEFS = {
+      escape_pod: { accent: "#55ffff", detail: "", engines: 1 },
+      merchant_cruiser: { accent: "#7aa2ff", detail: "pods bridge", engines: 2 },
+      scout_marauder: { accent: "#5dffc8", detail: "bridge", engines: 2 },
+      missile_frigate: { accent: "#ffb15a", detail: "rails bridge", engines: 2 },
+      battleship: { accent: "#c5c8ff", detail: "bridge guns", engines: 3 },
+      corporate_flagship: { accent: "#ff77ff", detail: "bridge pods", engines: 3 },
+      colonial_transport: { accent: "#7dff7d", detail: "pods", engines: 2 },
+      cargotran: { accent: "#ffe566", detail: "pods", engines: 2 },
+      merchant_freighter: { accent: "#7af0ff", detail: "pods bridge", engines: 2 },
+      imperial_starship: { accent: "#ffe9a0", detail: "bridge nacelles", engines: 4 },
+      havoc_gunstar: { accent: "#ff8844", detail: "guns bridge", engines: 3 },
+      star_master: { accent: "#9ad7ff", detail: "dish bridge", engines: 2 },
+      constellation: { accent: "#d0d6ff", detail: "nacelles bridge", engines: 4 },
+      tkhasi_orion: { accent: "#ff6d8a", detail: "wings bridge", engines: 2 },
+      tholian_sentinel: { accent: "#62f0c8", detail: "bridge", engines: 2 },
+      taurean_mule: { accent: "#d7b48a", detail: "pods", engines: 2 },
+      interdictor_cruiser: { accent: "#ff5cab", detail: "ring bridge", engines: 4 }
+    };
+
+    function mesh() {
+      return window.TW2KWarpHull;
+    }
+
+    function pose(style, elapsed) {
+      var t = Math.max(0, Number(elapsed) || 0) / 1000;
+      return {
+        yaw: style.yaw + t * 0.28,
+        pitch: style.pitch + Math.sin(t * 0.45) * 0.07,
+        fit: style.fit || 1
+      };
+    }
+
+    var frame = null;
+
+    function hullHtml(elapsed) {
+      var api = mesh();
+      if (!api || !frame) return "";
+      var at = pose(frame.style, elapsed);
+      var root = document.getElementById("warpClip");
+      root.setAttribute("data-yaw", at.yaw.toFixed(3));
+      return api.hullMarkup(frame.sample, frame.def, at.yaw, at.pitch, at.fit, 200, 130);
+    }
+
+    window.seekClip = function (ms) {
+      var root = document.getElementById("warpClip");
+      var body = document.querySelector("#warpSvg [data-testid=warp-body]");
+      if (body) body.innerHTML = hullHtml(ms);
+      var anims = root.getAnimations({ subtree: true });
+      anims.forEach(function (anim) {
+        try { anim.currentTime = ms; } catch (e) { /* keep */ }
+        anim.pause();
+      });
+      return new Promise(function (resolve) {
+        requestAnimationFrame(function () { resolve(anims.length); });
+      });
+    };
+
+    window.prepareClip = function (hull, n) {
+      var styles = window.TW2KWarpVariants.styles;
+      var style = null;
+      var i;
+      for (i = 0; i < styles.length; i++) {
+        if (styles[i].n === String(n).padStart(2, "0") || Number(styles[i].n) === Number(n)) style = styles[i];
+      }
+      if (!style) throw new Error("style " + n);
+      var api = mesh();
+      if (!api || api.source !== "note126") throw new Error("mesh");
+      var id = hull + "." + style.style + "." + style.n;
+      var def = DEFS[hull] || { accent: "#7aa2ff", detail: "bridge", engines: 2 };
+      var sample = { class: hull, fighters: 0, shields: 0, shield_cap: 0, transwarp: {} };
+      frame = { style: style, sample: sample, def: def };
+      var root = document.getElementById("warpClip");
+      var svg = document.getElementById("warpSvg");
+      var ms = style.duration_ms;
+      root.hidden = false;
+      root.style.setProperty("--warp-ms", ms + "ms");
+      root.setAttribute("data-hull", hull);
+      root.setAttribute("data-clip", id);
+      root.setAttribute("data-exit", style.exit);
+      root.setAttribute("data-stars", style.stars);
+      root.classList.remove("is-still");
+      var html = api.hullMarkup(sample, def, style.yaw, style.pitch, style.fit, 200, 130);
+      var field = window.TW2KWarpVariants.stars(id, style.stars);
+      svg.innerHTML = field
+        + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="solid">'
+        + html + "</g></g>";
+      svg.querySelectorAll(".warp-ship, .streaks, .warp-stars").forEach(function (el) {
+        el.style.animationDuration = ms + "ms";
+      });
+      return new Promise(function (resolve) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            window.seekClip(0).then(function (count) {
+              resolve({ id: id, duration_ms: ms, animations: count, hull: hull, n: style.n });
+            });
+          });
+        });
+      });
+    };
+  </script>
+</body>
+</html>
