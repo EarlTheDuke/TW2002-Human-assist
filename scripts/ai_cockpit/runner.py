@@ -101,7 +101,7 @@ _SCREEN = r"""
       const box = document.querySelector('#sectorText');
       if (!box) return '';
       return (box.innerText || '').split('\n').map((line) => line.replace(/\s+/g, ' ').trim()).filter((line) => {
-        if (/ferrengi|hostile fighters|\bmines\b/i.test(line)) return true;
+        if (/ferrengi|hostile fighters|\bmines\b|\balien\b/i.test(line)) return true;
         return /\boffensive\b/i.test(line) && !/yours/i.test(line);
       }).join(' | ');
     })(),
