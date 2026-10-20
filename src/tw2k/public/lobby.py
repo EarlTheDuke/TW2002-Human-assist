@@ -29,7 +29,7 @@ from ..engine.constants import lobby_idle_limit_s as _idle_limit
 from .config import LobbyConfig, pick_port
 from .proxy import Proxy
 from .ai_seat import AiMemory, drive_seats, mask_key
-from .share_url import request_origin
+from .share_url import request_origin, seat_link
 from .security import (
     GUEST_COOKIE,
     GUEST_COOKIE_MAX_AGE,
@@ -100,6 +100,7 @@ class Lobby:
         self.ai_memory = AiMemory()
         self.ai_tasks: dict[str, asyncio.Task] = {}
         self.cockpit_rows: dict[str, dict[str, Any]] = {}
+        self.seat_links: dict[str, dict[str, str]] = {}
         self._task: asyncio.Task | None = None
         self._admin_csrf = hmac.new(secrets.token_bytes(32), b"admin", hashlib.sha256).hexdigest()
         self._shutdown_key = secrets.token_hex(24)
@@ -223,8 +224,9 @@ class Lobby:
                 ai_seats = ai_seat_ids(humans_n, ai_count(g["settings"]))
                 cock_seats = cockpit_seat_ids(humans_n, len(ai_seats), cockpit_count(g["settings"]))
                 tokens = {seat: new_seat_token() for seat in [*human_seats, *ai_seats, *cock_seats]}
+                self.seat_links[gid] = {seat: tokens[seat] for seat in human_seats}
                 for seat in human_seats:
-                    self.store.set_seat_hash(gid, seat, None)
+                    self.store.set_seat_hash(gid, seat, sha256_hex(tokens[seat]))
                 if ai_seats:
                     self.ai_memory.hold_tokens(
                         gid, {seat: tokens[seat] for seat in ai_seats},
@@ -516,8 +518,13 @@ class Lobby:
             return None
 
     async def hand_seat(self, gid: str, seat: str) -> str | None:
-        """A fresh token for this seat, set on the worker; only its hash stays with the lobby."""
-        token = new_seat_token()
+        """The seat's token, set on the worker; only its hash stays with the lobby.
+
+        A cockpit link already published for this seat keeps that same token.
+        A seat with no published link gets a fresh one.
+        """
+        published = (self.seat_links.get(gid) or {}).get(seat)
+        token = published or new_seat_token()
         r = await self.worker_call(gid, "POST", "/control/seat-token", {"seat": seat, "token": token})
         if r is None or r.status_code != 200:
             return None
@@ -810,6 +817,10 @@ class Lobby:
         g = self.store.game(gid)
         base = self._base_url(request)
         links = [(seat, f"{base}/join/{gid}/{seat}?k={self.invite_key(gid, seat)}") for seat in seat_ids(parsed.humans)]
+        cockpit_links = [
+            (seat, seat_link(base, gid, seat, token))
+            for seat, token in (self.seat_links.get(gid) or {}).items()
+        ]
         watch = f"{base}/g/{gid}/watch" + ("" if parsed.listed else f"?k={self.secrets.watch_key(gid)}")
         cockpit = None
         public = self.cockpit_public(gid)
@@ -823,6 +834,8 @@ class Lobby:
         if api:
             payload = {"id": gid, "name": parsed.name, "status": g["status"], "join_links": dict(links),
                        "watch_link": watch}
+            if cockpit_links:
+                payload["cockpit_links"] = dict(cockpit_links)
             if cockpit:
                 payload["ai_cockpit"] = {
                     "seat": cockpit["seat"], "status": cockpit["status"], "href": cockpit["href"],
@@ -832,7 +845,10 @@ class Lobby:
                     ],
                 }
             return JSONResponse(payload)
-        return self.html(pages.created(self.brand, game=g, join_links=links, watch_link=watch, cockpit=cockpit))
+        return self.html(pages.created(
+            self.brand, game=g, join_links=links, watch_link=watch, cockpit=cockpit,
+            cockpit_links=cockpit_links,
+        ))
 
     def _base_url(self, request: Request) -> str:
         return request_origin(request.headers, request.url.scheme, request.url.netloc)
@@ -1092,6 +1108,29 @@ class Lobby:
             return True, {"authorization": f"Bearer {self.secrets.spectator_token(gid)}"}
         return True, {}
 
+    def _claim_published_seat(self, request: Request, gid: str) -> None:
+        """Opening a cockpit link with its token takes that lobby seat.
+
+        The worker still checks the token. This only records who sat down,
+        so the lobby can show the seat as taken and the creator can end
+        the game from the cockpit.
+        """
+        if request.method != "GET":
+            return
+        guest = self.accepted(request)
+        if guest is None:
+            return
+        seat = str(request.query_params.get("seat") or "").strip().upper()
+        token = str(request.query_params.get("token") or "")
+        published = (self.seat_links.get(gid) or {}).get(seat)
+        if not published or not token or len(token) != len(published):
+            return
+        if not hmac.compare_digest(token, published):
+            return
+        if self.store.guest_seat(gid, guest["id"]):
+            return
+        self._claim(gid, guest["id"], seat)
+
     async def game_http(self, request: Request) -> Response:
         g, rest = self._route_game(request)
         wants_html = "text/html" in request.headers.get("accept", "")
@@ -1124,6 +1163,7 @@ class Lobby:
         except TooLarge:
             return JSONResponse({"detail": "request too large"}, status_code=413)
         self.activity[gid] = time.time()
+        self._claim_published_seat(request, gid)
         resp = await self.proxy.http(request, w.port, rest, body=body, extra=extra)
         for k, v in _SECURITY_HEADERS.items():
             if k not in ("x-frame-options", "content-security-policy"):

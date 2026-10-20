@@ -1565,6 +1565,10 @@ class MatchRunner:
                     await self._roll_clock_if_due(universe)
                     continue
                 slice_s = min(left, due)
+            # A playtest rewind moves the day mark. Look again within a second.
+            # With the switch off, the wait is the same length it already was.
+            if K.playtest_clock_nudge_on():
+                slice_s = min(slice_s, 1.0)
             try:
                 return await asyncio.wait_for(asyncio.shield(task), timeout=max(0.05, slice_s))
             except TimeoutError:

@@ -112,6 +112,15 @@ def health_payload(runner) -> dict[str, Any]:
     }
 
 
+def apply_playtest_clock_nudge() -> None:
+    """Read PLAYTEST_CLOCK_NUDGE_MODE. Only ``on`` flips the switch. Unset stays legacy."""
+    from ..engine import constants as K
+
+    raw = os.environ.get("PLAYTEST_CLOCK_NUDGE_MODE", "").strip().lower()
+    if raw == "on":
+        K.PLAYTEST_CLOCK_NUDGE_MODE = "on"
+
+
 def apply_switch_overlay(raw: str | None = None) -> dict[str, str]:
     """Set the per-game switches named in ``TW2K_SWITCH_OVERLAY`` (only ``*_MODE`` and
     ``V311_PROFILE`` names that exist and hold a string). Returns what was set."""
@@ -502,6 +511,25 @@ def install(app, runner) -> None:
             path = write_snapshot(runner, "shutdown", getattr(runner, "_snapshot_dir", None))
             asyncio.get_running_loop().call_later(0.3, signal.raise_signal, signal.SIGINT)
             return {"ok": True, "file": path.name if path else None}
+
+        @app.post("/control/rewind-day")
+        async def rewind_day(request: Request) -> dict[str, Any]:
+            """Lobby-only. Move the day mark back one day length so the clock can roll.
+
+            Answers 404 unless PLAYTEST_CLOCK_NUDGE_MODE is on. The turn loop
+            itself is unchanged.
+            """
+            _lobby_only(request)
+            from ..engine import constants as K
+
+            if not K.playtest_clock_nudge_on():
+                raise HTTPException(status_code=404, detail="not available")
+            mark = float(getattr(runner, "_live_day_mark", 0.0) or 0.0)
+            if not mark:
+                raise HTTPException(status_code=409, detail="the day has not started")
+            day_s = float(K.TURN_REGEN_DAY_SECONDS)
+            runner._live_day_mark = mark - day_s - 1.0
+            return {"ok": True, "day_started_at": runner._live_day_mark}
 
         @app.post("/control/end")
         async def end_for_creator(request: Request) -> dict[str, Any]:
