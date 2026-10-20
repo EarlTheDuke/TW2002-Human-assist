@@ -275,6 +275,23 @@ class Lobby:
             brain=row.brain, key=row.key, url=row.url, days=days, idle_s=idle_s,
         ))
 
+    def launch_browser_seat(self, gid: str, seat: str, token: str, *, run_dir: Path,
+                            base_url: str, provider: str = "scripted",
+                            max_turns: int = 40, min_interval: float = 1.0):
+        """Start the rendered-screen player for this seat when the switch is on.
+
+        AI_COCKPIT_SEAT_MODE stays legacy, so start_game does not call this.
+        A later lobby control can. The child opens the seat link and does not
+        receive engine objects. The token is the seat link's token; this method
+        does not log it.
+        """
+        from .ai_cockpit_launch import launch_player
+
+        return launch_player(
+            base_url=base_url, gid=gid, seat=seat, token=token, run_dir=Path(run_dir),
+            provider=provider, max_turns=max_turns, min_interval=min_interval,
+        )
+
     async def _run_ai(self, gid: str, base: str, tokens: dict[str, str], *, brain: str, key: str,
                       url: str, days: int, idle_s: float) -> None:
         try:
