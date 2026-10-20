@@ -23,17 +23,19 @@
    A throw or a non-object result keeps the procedural picture.
 */
 (function () {
+  // NOTE 146. Ten pictures. Camera, starfield, plume, and exit flash all differ.
+  // Glow colors are the same accents as the ship panel. No filmed art.
   var STYLES = [
-    { n: "01", style: "streak", camera: "side", stars: "streaks", exit: "jump", yaw: 1.35, pitch: 0.18, fit: 0.92, duration_ms: 1600 },
-    { n: "02", style: "chase", camera: "chase", stars: "streaks", exit: "fade", yaw: 0.28, pitch: 0.48, fit: 0.84, duration_ms: 1800 },
-    { n: "03", style: "headon", camera: "headon", stars: "tunnel", exit: "flash", yaw: -1.35, pitch: 0.2, fit: 0.76, duration_ms: 2100 },
-    { n: "04", style: "top", camera: "top", stars: "sparse", exit: "fade", yaw: 0.45, pitch: 1.05, fit: 0.7, duration_ms: 2400 },
-    { n: "05", style: "side", camera: "side", stars: "nebula", exit: "fold", yaw: 1.75, pitch: 0.1, fit: 0.9, duration_ms: 2700 },
-    { n: "06", style: "gate", camera: "gate", stars: "gate", exit: "gate", yaw: 0.62, pitch: 0.22, fit: 0.78, duration_ms: 1500 },
-    { n: "07", style: "headon", camera: "headon", stars: "sparse", exit: "fade", yaw: -1.2, pitch: 0.28, fit: 0.74, duration_ms: 1900 },
-    { n: "08", style: "top", camera: "top", stars: "streaks", exit: "flash", yaw: 0.85, pitch: 1.12, fit: 0.66, duration_ms: 2300 },
-    { n: "09", style: "side", camera: "side", stars: "tunnel", exit: "fade", yaw: 2.05, pitch: 0.26, fit: 0.88, duration_ms: 2600 },
-    { n: "10", style: "chase", camera: "chase", stars: "nebula", exit: "flash", yaw: 0.5, pitch: 0.34, fit: 0.86, duration_ms: 3000 }
+    { n: "01", style: "streak", camera: "side", stars: "streaks", exit: "jump", yaw: 1.35, pitch: 0.18, fit: 0.92, duration_ms: 1600, glow: "#9fffff", plume: 12, streak: 0, flash: "#f4ffff" },
+    { n: "02", style: "chase", camera: "chase", stars: "streaks", exit: "fade", yaw: 0.28, pitch: 0.48, fit: 0.84, duration_ms: 1800, glow: "#5dffc8", plume: 22, streak: 14, flash: "#d9fff2" },
+    { n: "03", style: "headon", camera: "headon", stars: "tunnel", exit: "flash", yaw: -1.35, pitch: 0.2, fit: 0.76, duration_ms: 2100, glow: "#ffb15a", plume: 16, streak: -16, flash: "#ffe2c2" },
+    { n: "04", style: "top", camera: "top", stars: "sparse", exit: "fade", yaw: 0.45, pitch: 1.05, fit: 0.7, duration_ms: 2400, glow: "#c5c8ff", plume: 34, streak: 8, flash: "#eceeff" },
+    { n: "05", style: "side", camera: "side", stars: "nebula", exit: "fold", yaw: 1.75, pitch: 0.1, fit: 0.9, duration_ms: 2700, glow: "#ff77ff", plume: 20, streak: -10, flash: "#ffd6ff" },
+    { n: "06", style: "gate", camera: "gate", stars: "gate", exit: "gate", yaw: 0.62, pitch: 0.22, fit: 0.78, duration_ms: 1500, glow: "#ffe566", plume: 10, streak: 22, flash: "#fff6c8" },
+    { n: "07", style: "headon", camera: "headon", stars: "sparse", exit: "fade", yaw: -1.2, pitch: 0.28, fit: 0.74, duration_ms: 1900, glow: "#7af0ff", plume: 30, streak: -22, flash: "#dffbff" },
+    { n: "08", style: "top", camera: "top", stars: "streaks", exit: "flash", yaw: 0.85, pitch: 1.12, fit: 0.66, duration_ms: 2300, glow: "#ff8844", plume: 18, streak: 18, flash: "#ffd2b8" },
+    { n: "09", style: "side", camera: "side", stars: "tunnel", exit: "fade", yaw: 2.05, pitch: 0.26, fit: 0.88, duration_ms: 2600, glow: "#ff6d8a", plume: 26, streak: -6, flash: "#ffd5de" },
+    { n: "10", style: "chase", camera: "chase", stars: "nebula", exit: "flash", yaw: 0.5, pitch: 0.34, fit: 0.86, duration_ms: 3000, glow: "#7aa2ff", plume: 38, streak: 4, flash: "#dce6ff" }
   ];
 
   function hashId(id) {
@@ -102,11 +104,17 @@
       }
       return '<g class="warp-stars" data-testid="warp-stars" data-stars="gate">' + body + "</g>";
     }
+    var style = lookup(id) || {};
+    var tilt = (Number(style.streak) || 0) * Math.PI / 180;
+    var cosp = Math.cos(tilt);
+    var sinp = Math.sin(tilt);
     for (i = 0; i < 36; i++) {
       var y = rnd() * 244 + 8;
       var x = rnd() * 300 + 8;
       var w = 18 + rnd() * 70;
-      body += '<line x1="' + x.toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + (x + w).toFixed(1) + '" y2="' + y.toFixed(1)
+      var x2 = x + cosp * w;
+      var y2 = y + sinp * w;
+      body += '<line x1="' + x.toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1)
         + '" stroke="#b9dcff" stroke-width="' + (0.6 + rnd() * 1.1).toFixed(2) + '" opacity="' + (0.28 + rnd() * 0.55).toFixed(2) + '"/>';
     }
     return '<g class="streaks" data-testid="warp-streaks" data-stars="streaks">' + body + "</g>";
