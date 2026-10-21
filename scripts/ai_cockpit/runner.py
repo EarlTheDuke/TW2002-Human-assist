@@ -634,6 +634,7 @@ def play(
         _write_modules(run_dir)
         return 1
 
+    _write_log(log_path, "process started")
     provider, fallback = resolve_provider(provider_name, model, mock_script, level)
     if fallback:
         _write_log(log_path, fallback)
@@ -645,12 +646,11 @@ def play(
     idle = 0
     try:
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=headless)
-            page = browser.new_page(viewport={"width": 1280, "height": 800})
+            browser, page = _open_when_ready(playwright, url, log_path, headless)
+            if browser is None or page is None:
+                _write_modules(run_dir)
+                return 1
             try:
-                if not _open(page, url, log_path):
-                    _write_modules(run_dir)
-                    return 1
                 _write_log(log_path, "seat page open " + redact(url))
                 step = 1
                 limit = max(0, int(max_turns))
@@ -755,6 +755,36 @@ def _memory_line(step: int, screen: dict, action: Action) -> str:
         action.label or action.key or action.text or action.selector,
     ]
     return " ".join(str(bit) for bit in bits if bit)
+
+
+def _open_when_ready(playwright, url: str, log_path: Path, headless: bool, timeout_s: float = 90):
+    """Launch the browser and open the seat, retrying until the port is up.
+
+    The first navigation used to fail once (the worker had answered /healthz
+    but the seat page was not ready, or Chromium was not up yet) and the
+    process exited. The game then waits on that seat until something connects,
+    so the other seats never finish the day, and the only log line was missing
+    because this process had already gone.
+    """
+    deadline = time.monotonic() + timeout_s
+    while True:
+        browser = None
+        try:
+            browser = playwright.chromium.launch(headless=headless)
+            page = browser.new_page(viewport={"width": 1280, "height": 800})
+            if _open(page, url, log_path):
+                return browser, page
+            _write_log(log_path, "seat page was not ready; retrying")
+        except Exception as exc:
+            _write_log(log_path, f"browser did not start: {exc.__class__.__name__}")
+        if browser is not None:
+            try:
+                browser.close()
+            except Exception:
+                pass
+        if time.monotonic() >= deadline:
+            return None, None
+        time.sleep(1)
 
 
 def _open(page, url: str, log_path: Path) -> bool:
