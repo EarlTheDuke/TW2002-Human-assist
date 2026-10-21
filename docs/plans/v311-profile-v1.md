@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (132 helpers)
+## The switch set (133 helpers)
 
 The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112. NOTE 104 uses row 164. NOTE 112 uses row 165. NOTE 115 uses row 166. NOTE 117 uses rows 167, 168 and 169. NOTE 143 uses rows 170, 171 and 172. NOTE 148 uses rows 173 and 174. NOTE 150 uses row 175. NOTE 142 uses row 176. NOTE 151 uses rows 177 and 178. Rows 160, 162 and 163 stay unused. The ship-versus-ship loss split and a real-time travel time stay queued in `docs/plans/live-twgs-test-queue-v1.md`, not switched.
 
@@ -144,6 +144,9 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 178 | `INACTIVITY_TIMEOUT_MODE` | `inactivity_timeout_live` | NOTE 151 GAP 12.4: a lobby game with no open tab sleeps after 14,400 seconds. That is the editor's inactivity timeout. Off, the lobby keeps the idle setting it was given. Stored default stays legacy | - |
 | 179 | `TWO_WAY_WARP_MODE` | `two_way_warp_live` | NOTE 157 GAP 1.2: extra two-way lanes equal 30 percent of the sector count, on top of the spanning tree. A 1,000-sector game adds 300. A game that sets `avg_warps` keeps that average. Cabal `twgs.html` calls 30 percent the total, which cannot connect the map, so the extra-lane reading is the one in GAP_MAP 1.2. Stored default stays legacy. `"1"` does not turn it on | row 177 unused |
 | 180 | `REENTRY_FIGHTERS_MODE` | `reentry_fighters_live` | NOTE 158: after Ship Destroyed the free Scout gets the smaller of 250 fighters and this game's initial fighters, and no more than the scout can hold. The v3.11 revision replaced a grant of up to 2,500. Off, the scout has 0 fighters. Stored default stays legacy. `"1"` does not turn it on | - |
+| 187 | `BOUNTY_GOOD_MODE` | `bounty_good_live` | NOTE 163 GAP 9.5: at Police HQ, a bounty on a good trader (alignment above 0) costs 1 alignment per 250 credits and no experience. The credits stay a claimable pot. An evil target stays the reward, +1 alignment per 1,000. A neutral target is still refused. Off, a good target is refused. Stored default stays legacy. `"1"` does not turn it on. `TW2002_LIVE_PROFILE` does not turn it on | rows 181-186 reserved |
+
+Rows 181 through 186 are not in this file. Row 181 is NavPoints on queued #89. Rows 182-186 are NOTE 162, queued on #93. This note starts at 187.
 
 Row 147 is unused. Alien traders already refuse a sector that holds fighters (`alien._fighter_blocked`, `alien_day_step`) and take mine hits (`apply_mines_to_alien`). Federal ships already refuse those sectors (`fed._fed_blocked`). Ferrengi already ignore fighters (`FERRENGI_FIGHTER_BLOCK` is False; Iago's War Manual v1.1) and take armid hits (`FERRENGI_HIT_MINES`, `_apply_mines_to_ferrengi`). That is the stored rule, so `NPC_FIGHTER_SECTOR_MODE` is not added.
 

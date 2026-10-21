@@ -532,9 +532,12 @@ def reward_targets(universe: Universe, poster_id: str) -> list[str]:
     """Targets the poster may name under REWARD_TARGET_RULE."""
     if K.REWARD_TARGET_RULE == "listed":
         return [r["id"] for r in most_wanted(universe) if r["id"] != poster_id]
+    bounty = K.bounty_good_live()
     return sorted(
         pid for pid, p in universe.players.items()
-        if pid != poster_id and p.alive and int(p.alignment) < 0
+        if pid != poster_id and p.alive and (
+            int(p.alignment) < 0 or (bounty and int(p.alignment) > 0)
+        )
     )
 
 
@@ -593,7 +596,25 @@ def handle_post_reward(universe: Universe, pid: str, action: Action) -> ActionRe
     if target_id not in reward_targets(universe, pid):
         return ActionResult(ok=False, error="invalid reward target")
     target = universe.players[target_id]
-    if int(target.alignment) >= 0:
+    align = int(target.alignment)
+    if align > 0 and K.bounty_good_live():
+        loss = amount // int(K.BOUNTY_ALIGN_PER)
+        player.credits -= amount
+        player.alignment = int(player.alignment) - loss
+        if not hasattr(universe, "posted_rewards") or universe.posted_rewards is None:
+            universe.posted_rewards = {}
+        universe.posted_rewards.setdefault(target_id, []).append(
+            {"poster_id": pid, "amount": amount, "day": int(universe.day)}
+        )
+        universe.emit(
+            EventKind.REWARD_POSTED,
+            actor_id=pid,
+            sector_id=player.sector_id,
+            payload={"target_id": target_id, "amount": amount, "align_loss": loss},
+            summary=f"{player.name} posts {amount} cr bounty on {target.name}",
+        )
+        return ActionResult(ok=True, turns_spent=0)
+    if align >= 0:
         return ActionResult(ok=False, error="target is not evil")
     player.credits -= amount
     gain = amount // int(K.REWARD_ALIGN_PER)
@@ -727,7 +748,11 @@ def police_legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bo
     if not ok:
         reason = err
     elif not targets:
-        reason = "no evil targets to post a reward on"
+        reason = (
+            "no trader to post on"
+            if K.bounty_good_live()
+            else "no evil targets to post a reward on"
+        )
     elif int(player.credits) < int(K.REWARD_MIN):
         reason = f"need at least {K.REWARD_MIN} credits"
     else:
