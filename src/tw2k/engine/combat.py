@@ -1114,6 +1114,35 @@ def _destroy_ship(
         apply_corbomite(universe, pid, killer_id, corbomite)  # v3: the killer takes the blast; a flown ship never hits itself
 
 
+def _legacy_destroy_summary(universe: Universe, player, reason: str) -> str:
+    """Legacy destroy line. Off, it stays death #N/3. On, unlimited omits /3."""
+    if K.times_blown_live() and K.elimination_deaths(universe.config) == 0:
+        tail = "ejected to StarDock [times blown up: unlimited]"
+    else:
+        tail = f"ejected to StarDock [death #{player.deaths}/{K.MAX_DEATHS_BEFORE_ELIM}]"
+    return f"*** {player.name}'s ship destroyed ({reason}); {tail} ***"
+
+
+def fighter_report(universe: Universe, pid: str) -> list[dict]:
+    """Sectors where this trader owns fighters. Empty while the switch is off.
+
+    A deployment whose count is 0 is omitted. Another owner's fighters are omitted.
+    """
+    if not K.fighter_report_live():
+        return []
+    rows = []
+    for sector in universe.sectors.values():
+        dep = sector.fighters
+        if dep is None or dep.owner_id != pid:
+            continue
+        count = int(dep.count)
+        if count <= 0:
+            continue
+        rows.append({"sector_id": int(sector.id), "count": count})
+    rows.sort(key=lambda row: int(row["sector_id"]))
+    return rows
+
+
 def _destroy_ship_legacy(universe: Universe, pid: str, reason: str, killer_id: str | None) -> None:
     """DEATH_MODE legacy: StarDock, a fresh Merchant Cruiser, credits x0.75."""
     player = universe.players[pid]
@@ -1173,10 +1202,7 @@ def _destroy_ship_legacy(universe: Universe, pid: str, reason: str, killer_id: s
             "killer_id": killer_id,
             "_witnesses": witnesses,
         },
-        summary=(
-            f"*** {player.name}'s ship destroyed ({reason}); "
-            f"ejected to StarDock [death #{player.deaths}/{K.MAX_DEATHS_BEFORE_ELIM}] ***"
-        ),
+        summary=_legacy_destroy_summary(universe, player, reason),
     )
 
     threshold = K.elimination_deaths(universe.config)

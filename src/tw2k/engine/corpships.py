@@ -253,11 +253,34 @@ def _release_tow(universe: Universe, rec: ParkedShip) -> None:
 
 
 def on_corp_extinct(universe: Universe, ticker: str) -> None:
-    """cs24: parked corporate hulls of a dead corp become defunct. A manned one waits until he leaves it."""
+    """cs24: parked corporate hulls of a dead corp become defunct. A manned one waits until he leaves it.
+
+    NOTE 164. While CORP_SHIP_DISBAND_MODE is on, a parked hull in the living
+    C.E.O.'s sector becomes that C.E.O.'s personal ship. The rest stay defunct.
+    """
+    ceo_id = None
+    ceo_sector = None
+    if K.corp_ship_disband_live():
+        corp = universe.corporations.get(ticker)
+        ceo = universe.players.get(corp.ceo_id) if corp is not None else None
+        if ceo is not None and ceo.alive:
+            ceo_id = ceo.id
+            ceo_sector = int(ceo.sector_id)
     for rec in list(universe.parked_ships.values()):
         if rec.ship.corp_ticker != ticker:
             continue
         _release_tow(universe, rec)
+        if ceo_id is not None and int(rec.sector_id) == ceo_sector:
+            rec.owner_id = ceo_id
+            rec.ship.corp_ticker = None
+            universe.emit(
+                EventKind.SHIP_FLAG_CHANGED,
+                actor_id=ceo_id,
+                sector_id=int(rec.sector_id),
+                payload={"flag": "personal", "ticker": None, "ship_id": int(rec.id)},
+                summary=f"ship {rec.id} in the C.E.O.'s sector is now the C.E.O.'s",
+            )
+            continue
         rec.owner_id = K.DEFUNCT_OWNER
         rec.ship.corp_ticker = None
         universe.emit(

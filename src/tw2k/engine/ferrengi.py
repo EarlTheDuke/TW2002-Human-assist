@@ -83,9 +83,7 @@ def ferrengi_density(ferr: FerrengiShip) -> int:
 
 
 def ferrengi_odds(ferr: FerrengiShip) -> float:
-    if K.ferrengi_tw2002() and ferr.hull:
-        return float(K.FERRENGI_ODDS_BY_HULL.get(ferr.hull, K.FERRENGI_COMBAT_ODDS))
-    return float(K.FERRENGI_COMBAT_ODDS)
+    return K.ferrengi_odds_for_hull(ferr.hull if K.ferrengi_tw2002() else None)
 
 
 def _ferrengi_strength_scale(universe: Universe) -> float:
