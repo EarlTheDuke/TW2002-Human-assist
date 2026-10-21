@@ -1441,7 +1441,14 @@ def _destroy_ship_tw2002(
         dest = K.STARDOCK_SECTOR
         if exp_before > 0:
             player.experience = exp_before - int(exp_before * K.SD_EXP_LOSS)
-        player.alignment = align_before - int(align_before * K.SD_ALIGN_LOSS)
+        # NOTE 166. The button is the only path that reads the MBBS split.
+        # A kill still halves both signs.
+        if not (
+            reason == "self_destruct"
+            and K.self_destruct_align_live()
+            and align_before >= 0
+        ):
+            player.alignment = align_before - int(align_before * K.SD_ALIGN_LOSS)
         _strip_ship(player, K.SD_RESTART_HULL)
         player.ship.fighters = K.reentry_fighter_grant()
         _place(universe, player, dest)

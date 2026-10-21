@@ -1591,6 +1591,13 @@ def _death_and_pods(f: dict) -> str:
         + cash
         + lock
         + figs
+        + "<p>Self-destruct alignment is the switch SELF_DESTRUCT_ALIGN_MODE. "
+        "The v3.11 profile turns it on. The string 1 does not.</p>"
+        + _gated(
+            K.self_destruct_align_live(),
+            "Pressing self-destruct cuts experience in half. A negative alignment is cut in half. A good alignment stays.",
+            "Pressing self-destruct cuts experience in half and cuts alignment in half, good or bad.",
+        )
         + "<p>Times blown up are the switch TIMES_BLOWN_MODE. "
         "The v3.11 profile turns it on. The string 1 does not.</p>"
         + blown
@@ -1721,7 +1728,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "combat": (
         "attack", "cloak", "fire_disruptor", "photon_missile", "deploy_atomic", "surrender",
         "retreat", "pay_toll", "recall_deployed", "deploy_fighters", "deploy_mines",
-        "jettison", "self_destruct",
+        "jettison", "self_destruct", "SELF_DESTRUCT_ALIGN_MODE",
         "OFFENSIVE_CLASH_MODE", "KILL_CASH_MODE", "SHIP_FLEE_MODE", "PLANET_LANDING_COMBAT_MODE",
         "RIVAL_STRENGTH_MODE", "SPECIAL_HULL_RULES_MODE", "PHOTON_FOLLOW_DAMP_MODE",
         "CAPTURE_CREDIT_LINE_MODE", "ATOMIC_DETONATOR_MODE", "ALIEN_COMBAT_FIX_MODE", "SHIP_EXIT_MODE",

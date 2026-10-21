@@ -4839,6 +4839,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "FIGHTER_REPORT_MODE",
         "NOTE 164 GAP 13.4: the fighter report lists owned fighters and omits a count of 0",
     ),
+    "self_destruct_align_live": (
+        "SELF_DESTRUCT_ALIGN_MODE",
+        "NOTE 166 GAP 5.14: a self-destruct leaves a good alignment unchanged and halves a bad one",
+    ),
 }
 
 
@@ -5891,6 +5895,22 @@ FIGHTER_REPORT_MODE = "legacy"  # "legacy" | "v311"
 def fighter_report_live() -> bool:
     """True when fighter_report lists this trader's sectors and omits a count of 0."""
     return FIGHTER_REPORT_MODE == "v311" or v311_profile()
+
+
+# NOTE 166 GAP 5.14. EIS CompMisc says a self-destruct affects rank and
+# alignment and that the pilot has no turns the day after. The MBBS manual
+# prints the amounts: 50 percent of experience, and a bad alignment cut in
+# half. It does not print a new number for a good alignment. Off, the
+# ship-destroyed path still halves both signs. On, a self-destruct leaves an
+# alignment of 0 or more where it is and still halves a negative one.
+# Experience stays the 50 percent cut. A kill by someone else is not this
+# button. "1" does not turn this on.
+SELF_DESTRUCT_ALIGN_MODE = "legacy"  # "legacy" | "v311"
+
+
+def self_destruct_align_live() -> bool:
+    """True when a self-destruct leaves a non-negative alignment unchanged."""
+    return SELF_DESTRUCT_ALIGN_MODE == "v311" or v311_profile()
 
 
 # NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1
