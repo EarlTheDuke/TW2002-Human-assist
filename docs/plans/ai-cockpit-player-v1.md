@@ -124,6 +124,40 @@ NOTE 149 reads the same cockpit. A Ferrengi ship, hostile fighters, aliens, or m
 | hard | 99 | 1 | 115,710 | Commander 115,710, H2 79,507, H1 74,655, H3 73,299 |
 | hard | 7 | 2 | 74,238 | H1 75,160, Commander 74,238, H3 22,605, H2 20,490 |
 
+NOTE 152 runs that seat with `V311_PROFILE=v311`. The haggle counter's unit price is the each-price. A home planet lifts off. Hail, radio, fedcomm, broadcast, announcement, and planet trade close. A Ferrengi boarding is a retreat, and the plotted course is dropped. A fighter seen in passing is forgotten the next day. A sector that boarded the ship stays closed until the day rolls, and the ship does not step back into it. When the seat paints "Turns left today", that sentence is the pocket the trader plans inside. This profile bench keeps a 40-turn test day. The game opens at 300 credits on a home planet, and the net worth includes the colonists. Hard finishes tied with normal, and both finish ahead of easy, on 250925, 4242, 99, and 7. Seed 7 is alive on every level.
+
+| Level | Seed | Rank | Net worth | Finish board |
+| --- | --- | --- | --- | --- |
+| easy | 250925 | 3 | 45,904 | H2 49,453, H3 46,070, Commander 45,904, H1 45,605 |
+| easy | 4242 | 4 | 45,904 | H3 55,277, H2 50,686, H1 48,355, Commander 45,904 |
+| easy | 99 | 4 | 46,457 | H3 55,830, H2 49,226, H1 49,129, Commander 46,457 |
+| easy | 7 | 2 | 45,904 | H3 50,196, Commander 45,904, H1 45,612, H2 45,612 |
+| normal | 250925 | 1 | 51,899 | Commander 51,899, H2 50,022, H3 47,386, H1 45,605 |
+| normal | 4242 | 3 | 52,872 | H3 58,524, H2 54,329, Commander 52,872, H1 49,154 |
+| normal | 99 | 1 | 63,712 | Commander 63,712, H3 51,139, H1 50,433, H2 49,804 |
+| normal | 7 | 1 | 51,804 | Commander 51,804, H3 49,884, H1 45,609, H2 45,608 |
+| hard | 250925 | 1 | 51,899 | Commander 51,899, H2 50,022, H3 47,386, H1 45,605 |
+| hard | 4242 | 3 | 52,872 | H3 58,524, H2 54,329, Commander 52,872, H1 49,154 |
+| hard | 99 | 1 | 63,712 | Commander 63,712, H3 51,139, H1 50,433, H2 49,804 |
+| hard | 7 | 1 | 51,804 | Commander 51,804, H3 49,884, H1 45,609, H2 45,608 |
+
+The same seat, with `V311_PROFILE` left at legacy, was run again under `FULL_LENGTH_TURN_LIMITS_MODE=v311` for a full-length game whose day is 24 hours. The screen paints `Turns left today: N of 250`, and that sentence is the pocket. A loaded ship at StarDock drops a plotted course home and delivers. A long day buys the product on the current screen, including a buyer more than two hops away, and normal leaves an empty ask instead of sitting out the pocket. The warning "One more Wait ends your day" is refused once. The same warning again ends the day, so a screen with nothing left to do does not spend the action budget. Easy still takes that wait. Hard finishes at or above normal, and both finish ahead of easy, on 250925, 4242, 99, and 7. Seed 7 is alive on every level.
+
+| Level | Seed | Rank | Net worth | Finish board |
+| --- | --- | --- | --- | --- |
+| easy | 250925 | 1 | 72,301 | Commander 72,301, H1 47,503, H2 46,223, H3 17,831 |
+| easy | 4242 | 2 | 72,061 | H3 96,466, Commander 72,061, H2 48,293, H1 31,726 |
+| easy | 99 | 2 | 72,601 | H1 76,461, Commander 72,601, H2 71,327, H3 18,293 |
+| easy | 7 | 1 | 72,601 | Commander 72,601, H2 57,345, H1 48,594, H3 42,699 |
+| normal | 250925 | 1 | 155,510 | Commander 155,510, H3 94,907, H2 61,429, H1 40,175 |
+| normal | 4242 | 1 | 116,227 | Commander 116,227, H3 96,298, H2 49,166, H1 28,293 |
+| normal | 99 | 1 | 94,961 | Commander 94,961, H1 76,461, H2 71,327, H3 18,293 |
+| normal | 7 | 1 | 73,862 | Commander 73,862, H1 59,969, H3 56,307, H2 55,375 |
+| hard | 250925 | 1 | 155,510 | Commander 155,510, H3 94,907, H2 61,429, H1 40,175 |
+| hard | 4242 | 1 | 129,775 | Commander 129,775, H3 96,490, H2 49,083, H1 27,660 |
+| hard | 99 | 1 | 108,191 | Commander 108,191, H1 76,461, H2 71,327, H3 18,293 |
+| hard | 7 | 1 | 120,405 | Commander 120,405, H3 54,192, H1 52,417, H2 50,488 |
+
 Keys are read from the environment at call time. They are not written into source, the run log, `actions.jsonl`, or screenshots' text sidecars. Logs replace key values, `sk-...`, `xai-...`, bearer tokens, and `token=` query values with `[redacted]`.
 
 A live provider's system prompt is the trading playbook plus the manual text captured from the seat page. Each call also gets a short memory of the last few screens and actions. A reply that is not a click, type, press, or wait on a control that is on the screen is rejected and asked again, up to two retries, and then the runner waits. Each reply's token counts are priced with the same USD-per-million table as `src/tw2k/engine/llm_pricing.py` (curated 2026-04-22; the player keeps its own copy and does not import that module). The run log gains a line:

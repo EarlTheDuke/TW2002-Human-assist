@@ -1134,6 +1134,444 @@ def test_hard_trades_a_stocked_pair_when_the_best_ask_is_empty() -> None:
     assert moved.label == "2:12 (3t)"
 
 
+def test_a_new_day_leaves_an_empty_ask_for_a_restocked_pair() -> None:
+    """Hard sat on sector 53 for the rest of seed 4242. The other pair had goods yesterday."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    hard = ScriptedTrader(level="hard")
+    hard.day = 6
+    hard.max_day = 10
+    hard.day_turns = 40
+    hard.hold_cap = 20
+    hard.visited = {53, 40, 12, 13}
+    hard.previous = 40
+    hard.ports[53] = {"Equipment": {"ask": 20, "avail": 400, "now": 0}}
+    hard.ports[40] = {"Equipment": {"bid": 80, "avail": 400, "now": 0}}
+    hard.ports[12] = {"Organics": {"ask": 30, "avail": 80, "now": 0}}
+    hard.ports[13] = {"Organics": {"bid": 50, "avail": 80, "now": 0}}
+    hard.links[53] = {40: 3}
+    hard.links[40] = {53: 3, 12: 3}
+    hard.links[12] = {40: 3, 13: 3}
+    hard.links[13] = {12: 3}
+    hard.warp_labels[(53, 40)] = "1:40 (3t)"
+    moved = hard.decide(_view({
+        "sector": "53", "day": "7", "maxDay": "10", "turns": "40", "credits": "3,566 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Class 2 SSB",
+        "rows": [{"cells": ["Equipment", "Selling 0/400", "0", "20", "0"], "button": ""}],
+        "labels": ["1:40 (3t)"],
+        "warps": ["1:40 (3t)"],
+    }))
+    assert moved.label == "1:40 (3t)"
+    assert hard.ports[12]["Organics"]["now"] == 80
+    stuck = ScriptedTrader(level="hard")
+    stuck.day = 7
+    stuck.settled_day = 1
+    stuck.dock_blocked = True
+    stuck.bought.update({"holds", "fighters", "ship"})
+    stuck.visited = {32, 117}
+    stuck.ports[32] = {"Organics": {"ask": 73, "avail": 4, "now": 0}}
+    stuck.ports[117] = {"Organics": {"bid": 99, "avail": 4, "now": 4}}
+    stuck.links[32] = {101: 3}
+    stuck.links[101] = {32: 3, 117: 3}
+    stuck.links[117] = {101: 3}
+    stuck.warp_labels[(32, 101)] = "1:101 (3t)"
+    stayed = stuck.decide(_view({
+        "sector": "32", "day": "7", "maxDay": "10", "turns": "30", "credits": "40,000 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "rows": [{"cells": ["Organics", "Selling 0/4", "0", "73", "0"], "button": ""}],
+        "labels": ["1:101 (3t)"],
+        "warps": ["1:101 (3t)"],
+    }))
+    assert stayed.label != "1:101 (3t)"
+    assert stayed.key == "."
+
+
+def test_a_boxed_sector_steps_through_one_already_seen() -> None:
+    """Seed 4242: sector 53's only exit was marked, and the course to the ask was cancelled."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    hard = ScriptedTrader(level="hard")
+    hard.day = 7
+    hard.max_day = 10
+    hard.day_turns = 40
+    hard.visited = {53, 40, 106}
+    hard.previous = 40
+    hard.danger = {40}
+    hard.banned_plots.add(1)
+    hard.links[53] = {40: 3}
+    hard.links[40] = {53: 3, 106: 3}
+    hard.links[106] = {40: 3}
+    hard.warp_labels[(53, 40)] = "1:40 (3t)"
+    left = hard.decide(_view({
+        "sector": "53", "day": "7", "maxDay": "10", "turns": "40", "credits": "3,566 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:40 (3t)"],
+        "warps": ["1:40 (3t)"],
+    }))
+    assert left.label == "1:40 (3t)"
+    assert "marked sector" in hard.plan_note
+    # Stepping back into the ship that just boarded us loops the day away.
+    boarded = ScriptedTrader(level="hard")
+    boarded.day = 7
+    boarded.fought = {40}
+    boarded.danger = {40}
+    boarded.visited = {53, 40}
+    boarded.bought.update({"holds", "fighters"})
+    boarded.dock_blocked = True
+    boarded.links[53] = {40: 3}
+    boarded.warp_labels[(53, 40)] = "1:40 (3t)"
+    skipped = boarded.decide(_view({
+        "sector": "53", "day": "7", "maxDay": "10", "turns": "20", "credits": "3,566 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:40 (3t)"],
+        "warps": ["1:40 (3t)"],
+    }))
+    assert skipped.label != "1:40 (3t)"
+    # 53 and 120 only lead back. 106 is marked and leads on to 91.
+    trapped = ScriptedTrader(level="hard")
+    trapped.danger = {40, 106}
+    trapped.visited = {40, 53, 106, 120, 91}
+    trapped.previous = 53
+    trapped.links[40] = {53: 3, 120: 3, 106: 3}
+    trapped.links[106] = {40: 3, 91: 3}
+    trapped.links[53] = {40: 3}
+    trapped.links[120] = {40: 3}
+    trapped.links[91] = {106: 3}
+    trapped.warp_labels[(40, 53)] = "1:53 (3t)"
+    trapped.warp_labels[(40, 120)] = "4:120 (3t)"
+    trapped.warp_labels[(40, 106)] = "2:106 (3t)"
+    onward = trapped.decide(_view({
+        "sector": "40", "day": "7", "maxDay": "10", "turns": "28", "credits": "3,566 cr",
+        "chip": "YOUR MOVE",
+        "here": "Ferrengi fighter",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:53 (3t)", "2:106 (3t)", "4:120 (3t)"],
+        "warps": ["1:53 (3t)", "2:106 (3t)", "4:120 (3t)"],
+    }))
+    assert onward.label == "2:106 (3t)"
+    parked = ScriptedTrader(level="hard")
+    parked.day = 7
+    parked.max_day = 10
+    parked.day_turns = 40
+    parked.settled_day = 2
+    parked.dock_blocked = True
+    parked.bought.update({"holds", "fighters", "ship"})
+    parked.visited = {112, 40, 66, 85}
+    parked.previous = 194
+    parked.ports[112] = {"Organics": {"ask": 10, "avail": 20, "now": 0}}
+    parked.ports[85] = {"Organics": {"bid": 40, "avail": 20, "now": 0}}
+    parked.ports[66] = {"Equipment": {"ask": 15, "avail": 10, "now": 0}}
+    parked.ports[13] = {"Equipment": {"bid": 40, "avail": 10, "now": 10}}
+    parked.links[112] = {40: 3, 85: 3}
+    parked.links[85] = {112: 3}
+    parked.links[40] = {112: 3, 66: 3}
+    parked.links[66] = {40: 3, 13: 3}
+    parked.links[13] = {66: 3}
+    parked.warp_labels[(112, 40)] = "1:40 (3t)"
+    parked.warp_labels[(112, 99)] = "2:99 (3t)"
+    left_ask = parked.decide(_view({
+        "sector": "112", "day": "7", "maxDay": "10", "turns": "40", "credits": "876 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "rows": [{"cells": ["Organics", "Selling 0/20", "0", "10", "0"], "button": ""}],
+        "labels": ["1:40 (3t)", "2:99 (3t)"],
+        "warps": ["1:40 (3t)", "2:99 (3t)"],
+    }))
+    assert left_ask.label == "1:40 (3t)"
+    assert 99 not in parked.visited
+
+
+def test_a_new_day_forgets_a_fighter_and_keeps_a_mine() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    hard = ScriptedTrader(level="hard")
+    hard.day = 5
+    hard.decide(_view({
+        "sector": "15", "day": "5", "maxDay": "10", "turns": "20", "credits": "3,000 cr",
+        "chip": "YOUR MOVE",
+        "here": "Ferrengi fighter",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:86 (3t)"],
+        "labels": ["1:86 (3t)"],
+    }))
+    assert 15 in hard.danger
+    assert 15 in hard.ships
+    hard.decide(_view({
+        "sector": "12", "day": "6", "maxDay": "10", "turns": "40", "credits": "3,000 cr",
+        "chip": "YOUR MOVE",
+        "last": "25 armid mines hit Commander entering 48 (500 dmg)",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:34 (3t)"],
+        "labels": ["1:34 (3t)"],
+    }))
+    assert 15 not in hard.danger
+    assert 48 in hard.danger
+    boarded = ScriptedTrader(level="hard")
+    boarded.day = 5
+    boarded.decide(_view({
+        "sector": "15", "day": "5", "turns": "20", "credits": "3,000 cr", "chip": "YOUR MOVE",
+        "here": "Ferrengi Fighter Attack! boards Commander: flee, attack or surrender",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "labels": ["Retreat", "Attack", "Surrender"],
+        "warps": ["1:86 (3t)"],
+    }))
+    assert 15 in boarded.fought
+    assert 15 in boarded.danger
+    same_day = boarded.decide(_view({
+        "sector": "86", "day": "5", "maxDay": "10", "turns": "17", "credits": "3,000 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:15 (3t)", "2:89 (3t)"],
+        "labels": ["1:15 (3t)", "2:89 (3t)"],
+    }))
+    assert same_day.label != "1:15 (3t)"
+    nxt = boarded.decide(_view({
+        "sector": "86", "day": "6", "maxDay": "10", "turns": "40", "credits": "3,000 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "warps": ["1:15 (3t)", "2:89 (3t)"],
+        "labels": ["1:15 (3t)", "2:89 (3t)"],
+    }))
+    # The fighter moves overnight. The lane is open again the next day.
+    assert 15 not in boarded.danger
+    assert nxt.label != ""
+
+
+def test_hard_delivers_a_leftover_along_the_known_hop() -> None:
+    """Seed 4242 day 4: one unit left, and the buyer is back through sector 89.
+
+    The unseen warp is not a delivery. Taking it is how hard missed the pair.
+    """
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    hard = ScriptedTrader(level="hard")
+    hard.day = 4
+    hard.max_day = 10
+    hard.day_turns = 40
+    hard.hold_cap = 21
+    hard.previous = 89
+    hard.visited = {40, 86, 89, 106}
+    hard.bought.update({"holds", "fighters", "ship"})
+    hard.dock_blocked = True
+    hard.ports[40] = {"Equipment": {"ask": 20, "avail": 40, "now": 40}}
+    hard.ports[106] = {"Equipment": {"bid": 80, "avail": 40, "now": 40}}
+    hard.ports[86] = {"Equipment": {"bid": 30, "avail": 10, "now": 10}}
+    hard.links[86] = {89: 3, 15: 3}
+    hard.links[89] = {86: 3, 106: 3}
+    hard.links[106] = {89: 3, 40: 3}
+    hard.links[40] = {106: 3}
+    hard.warp_labels[(86, 89)] = "2:89 (3t)"
+    hard.warp_labels[(86, 15)] = "1:15 (3t)"
+    moved = hard.decide(_view({
+        "sector": "86", "day": "4", "maxDay": "10", "turns": "40", "credits": "1,909 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 1",
+        "ship": "Holds 1/21",
+        "port": "Class 1 BBB",
+        "rows": [{
+            "cells": ["Equipment", "Buying, room 100", "100", "30", "0"],
+            "button": "SELL 1",
+        }],
+        "labels": ["SELL 1", "1:15 (3t)", "2:89 (3t)"],
+        "warps": ["1:15 (3t)", "2:89 (3t)"],
+    }))
+    assert moved.label == "2:89 (3t)"
+    assert 15 not in hard.visited
+    # The same turnaround keeps hard on a pair instead of an unseen warp.
+    parked = ScriptedTrader(level="hard")
+    parked.day = 3
+    parked.max_day = 10
+    parked.day_turns = 40
+    parked.hold_cap = 21
+    parked.previous = 19
+    parked.visited = {12, 19, 28}
+    parked.settled_day = 2
+    parked.bought.update({"holds", "fighters", "ship"})
+    parked.dock_blocked = True
+    parked.ports[12] = {"Organics": {"ask": 20, "avail": 40, "now": 40}}
+    parked.ports[28] = {"Organics": {"bid": 60, "avail": 40, "now": 40}}
+    parked.links[28] = {19: 3, 84: 3}
+    parked.links[19] = {28: 3, 12: 3}
+    parked.links[12] = {19: 3}
+    parked.warp_labels[(28, 19)] = "1:19 (3t)"
+    parked.warp_labels[(28, 84)] = "2:84 (3t)"
+    back = parked.decide(_view({
+        "sector": "28", "day": "3", "maxDay": "10", "turns": "30", "credits": "1,200 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/21",
+        "labels": ["1:19 (3t)", "2:84 (3t)"],
+        "warps": ["1:19 (3t)", "2:84 (3t)"],
+    }))
+    assert back.label == "1:19 (3t)"
+    assert 84 not in parked.visited
+
+
+def test_the_v311_table_price_is_the_each_not_the_total() -> None:
+    """A v3.11 counter prints the total in credits and the unit in parentheses."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader()
+    trader.ports[35] = {"Organics": {"bid": 96}}
+    trader.links[16] = {35: 3}
+    trader.warp_labels[(16, 35)] = "1:35 (3t)"
+    low = trader.decide(_view({
+        "sector": "16", "day": "2", "turns": "20", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 20 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE",
+        "haggle": "Port counters: We'll buy them for 1,580 credits (20 each). Your offer?",
+        "fields": {"unit_price": "1580", "qty": "20"},
+        "labels": ["CONFIRM", "ESC"],
+        "warps": ["1:35 (3t)"],
+    }))
+    assert low.label == "ESC"
+    fair = trader.decide(_view({
+        "sector": "16", "day": "2", "turns": "20", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE",
+        "haggle": "We'll sell them for 1,580 credits (20 at 79 cr).",
+        "fields": {"unit_price": "1580", "qty": "20"},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert fair.label == "CONFIRM"
+
+
+def test_turns_left_today_limits_the_hop() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader()
+    trader.ports[35] = {"Fuel Ore": {"bid": 39}}
+    trader.links[16] = {35: 3}
+    trader.warp_labels[(16, 35)] = "1:35 (3t)"
+    stayed = trader.decide(_view({
+        "sector": "16", "day": "2", "maxDay": "10", "turns": "40",
+        "turnsLeft": "Turns left today: 2 of 250",
+        "credits": "49,317 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 10 Organics 0 Equipment 0",
+        "ship": "Holds 10/20",
+        "port": "Port Hydra Class 6 BBS",
+        "rows": [{
+            "cells": ["Fuel Ore", "Buying, room 1000", "1000", "33", "10"],
+            "button": "SELL 10",
+        }],
+        "labels": ["SELL 10", "1:35 (3t)"],
+        "warps": ["1:35 (3t)"],
+    }))
+    assert stayed.label == "SELL 10"
+    assert trader.day_turns == 250
+
+
+def test_a_ferrengi_boarding_is_a_retreat() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader()
+    fled = trader.decide(_view({
+        "sector": "48", "day": "1", "turns": "20", "credits": "300 cr", "chip": "YOUR MOVE",
+        "here": "Ferrengi Marauder, 40 fighters",
+        "last": "** Ferrengi Fighter Attack! ** Marauder boards Commander in 48: flee, attack or surrender",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "labels": ["Attack", "Retreat", "Surrender", "1:32 (3t)"],
+        "warps": ["1:32 (3t)"],
+    }))
+    assert fled.label == "Retreat"
+    trader.plot_to = 1
+    trader.danger.add(9)
+    dropped = trader.decide(_view({
+        "sector": "35", "day": "2", "turns": "30", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "course": "Course to 1: 35 > 9 > 1. 2 hops, 6 turns.",
+        "labels": ["Cancel", "1:9 (3t)"],
+        "warps": ["1:9 (3t)"],
+    }))
+    assert dropped.label == "Cancel"
+    assert trader.plot_to == 0
+    assert trader.dock_blocked is True
+    assert 1 in trader.banned_plots
+    again = trader.decide(_view({
+        "sector": "35", "day": "2", "turns": "30", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "labels": ["C Computer", "1:9 (3t)"],
+        "warps": ["1:9 (3t)"],
+    }))
+    assert again.label != "C Computer"
+    closed = trader.decide(_view({
+        "sector": "48", "day": "1", "turns": "20", "credits": "300 cr", "chip": "YOUR MOVE",
+        "formOpen": True,
+        "formText": "ATTACK target ferrengi_1",
+        "fields": {"target": "ferrengi_1", "qty": "1"},
+        "labels": ["CONFIRM", "ESC", "Retreat"],
+        "last": "flee, attack or surrender",
+    }))
+    assert closed.label == "Retreat"
+
+
+def test_the_home_planet_lifts_off_and_comms_close() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    hard = ScriptedTrader()
+    left = hard.decide(_view({
+        "sector": "88", "day": "1", "turns": "40", "credits": "300 cr", "chip": "YOUR MOVE",
+        "here": "Class M Claimed by: Commander (you) Your home planet Organics 65,000 per day",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "labels": ["QLift off", "NColonists", "Claim planet"],
+    }))
+    assert "lift off" in left.label.lower()
+    easy = ScriptedTrader(level="easy")
+    easy_left = easy.decide(_view({
+        "sector": "88", "day": "1", "turns": "40", "credits": "300 cr", "chip": "YOUR MOVE",
+        "here": "Class M Unclaimed Organics 400 per day",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "labels": ["QLift off", "Claim planet", "1:47 (3t)"],
+        "warps": ["1:47 (3t)"],
+    }))
+    assert "lift off" in easy_left.label.lower()
+    hail = hard.decide(_view({
+        "sector": "12", "day": "1", "turns": "20", "credits": "300 cr", "chip": "YOUR MOVE",
+        "formOpen": True,
+        "formText": "HAIL ONE PLAYER This goes only to that player, not the whole sector.",
+        "fields": {"target": "P1", "message": "Hello"},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert hail.label == "ESC"
+    planet = hard.decide(_view({
+        "sector": "12", "day": "1", "turns": "20", "credits": "300 cr", "chip": "YOUR MOVE",
+        "formOpen": True,
+        "formText": "PLANET TRADE This planet can sell Organics for 40 cr at the quote.",
+        "fields": {"planet_id": "1", "commodity": "organics", "qty": "1"},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert planet.label == "ESC"
+    radio = hard.decide(_view({
+        "sector": "12", "day": "1", "turns": "20", "credits": "300 cr", "chip": "YOUR MOVE",
+        "formOpen": True,
+        "formText": "RADIO Say it on your channel.",
+        "fields": {"message": "Hello"},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert radio.label == "ESC"
+
+
 def test_several_cockpit_seats_each_get_a_process_and_a_stop(monkeypatch, tmp_path: Path) -> None:
     from tw2k.public import pages
     from tw2k.public import security as S
@@ -1221,6 +1659,174 @@ def test_several_cockpit_seats_each_get_a_process_and_a_stop(monkeypatch, tmp_pa
     assert lobby.stop_cockpit_seat("game", "P2") is True
     assert stopped["n"] == 1
     assert lobby.cockpit_rows["game"][1]["proc"].poll() is None
+
+
+def test_a_loaded_long_day_drops_the_home_course_at_stardock() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader()
+    trader.day = 3
+    trader.plot_to = 57
+    trader.home_ask = 57
+    trader.dock_go = True
+    trader.bought.update({"holds", "fighters"})
+    sold = trader.decide(_view({
+        "sector": "1", "day": "3", "turns": "200",
+        "turnsLeft": "Turns left today: 200 of 250",
+        "credits": "20,143 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 10",
+        "ship": "Holds 10/20",
+        "port": "StarDock Class 9 SSS",
+        "here": "StarDock",
+        "course": "Course to 57: 1 > 57. 1 hop, 3 turns.",
+        "rows": [{
+            "cells": ["Equipment", "Buying, room 1000", "1000", "80", "10"],
+            "button": "SELL 10",
+        }],
+        "labels": ["SELL 10", "1:57 (3t)"],
+        "warps": ["1:57 (3t)"],
+    }))
+    assert sold.label == "SELL 10"
+    assert trader.plot_to == 0
+    assert trader.dock_go is False
+    short = ScriptedTrader()
+    short.day = 3
+    short.home_ask = 57
+    short.bought.update({"holds", "fighters", "density_scanner", "ether_probes"})
+    short.dock_blocked = True
+    plotted = short.decide(_view({
+        "sector": "1", "day": "3", "turns": "30", "credits": "20,143 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 10/20",
+        "here": "StarDock",
+        "labels": ["C Computer"],
+    }))
+    assert plotted.label == "C Computer"
+    assert short.plot_to == 57
+
+
+def test_a_long_day_keeps_its_turns_and_buys_a_far_buyer() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    warning = {
+        "sector": "30", "day": "4", "turns": "200",
+        "turnsLeft": "Turns left today: 200 of 250",
+        "credits": "41,266 cr", "chip": "YOUR MOVE",
+        "menuOpen": True,
+        "menuText": "One more Wait ends your day (200 turns left). Continue?",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "labels": ["CONFIRM"],
+    }
+    hard = ScriptedTrader()
+    kept = hard.decide(_view(warning))
+    assert kept.key == "Escape"
+    again = hard.decide(_view(warning))
+    assert again.label == "CONFIRM"
+    easy = ScriptedTrader(level="easy")
+    ended = easy.decide(_view(warning))
+    assert ended.label == "CONFIRM"
+    short_wait = ScriptedTrader()
+    still = short_wait.decide(_view({
+        "sector": "30", "day": "4", "turns": "12", "credits": "41,266 cr", "chip": "YOUR MOVE",
+        "menuOpen": True,
+        "menuText": "One more Wait ends your day (12 turns left). Continue?",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "labels": ["CONFIRM"],
+    }))
+    assert still.label == "CONFIRM"
+
+    trader = ScriptedTrader()
+    trader.ports[14] = {"Fuel Ore": {"bid": 40, "now": 40, "avail": 40}}
+    for src, dest in ((10, 11), (11, 12), (12, 13), (13, 14)):
+        trader.links.setdefault(src, {})[dest] = 3
+        trader.links.setdefault(dest, {})[src] = 3
+    bought = trader.decide(_view({
+        "sector": "10", "day": "4", "turns": "200",
+        "turnsLeft": "Turns left today: 200 of 250",
+        "credits": "41,266 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Far Class 1 SBB",
+        "rows": [{
+            "cells": ["Fuel Ore", "Selling, have 40", "40", "10", "20"],
+            "button": "BUY 20",
+        }],
+        "labels": ["BUY 20", "1:11 (3t)"],
+        "warps": ["1:11 (3t)"],
+    }))
+    assert bought.label == "BUY 20"
+    near = ScriptedTrader()
+    near.ports[14] = {"Fuel Ore": {"bid": 40, "now": 40, "avail": 40}}
+    for src, dest in ((10, 11), (11, 12), (12, 13), (13, 14)):
+        near.links.setdefault(src, {})[dest] = 3
+        near.links.setdefault(dest, {})[src] = 3
+    skipped = near.decide(_view({
+        "sector": "10", "day": "4", "turns": "30", "credits": "41,266 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Far Class 1 SBB",
+        "rows": [{
+            "cells": ["Fuel Ore", "Selling, have 40", "40", "10", "20"],
+            "button": "BUY 20",
+        }],
+        "labels": ["BUY 20", "1:11 (3t)"],
+        "warps": ["1:11 (3t)"],
+    }))
+    assert skipped.label != "BUY 20"
+    local = ScriptedTrader()
+    local.ports[11] = {"Fuel Ore": {"bid": 30, "now": 40, "avail": 40}}
+    local.ports[20] = {"Equipment": {"ask": 5, "now": 100, "avail": 100}}
+    local.ports[21] = {"Equipment": {"bid": 80, "now": 100, "avail": 100}}
+    local.links[10] = {20: 3}
+    local.links[20] = {10: 3, 21: 3}
+    local.links[21] = {20: 3}
+    local.links[11] = {10: 3}
+    local.links[10][11] = 3
+    stayed = local.decide(_view({
+        "sector": "10", "day": "4", "turns": "200",
+        "turnsLeft": "Turns left today: 200 of 250",
+        "credits": "41,266 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Here Class 1 SBB",
+        "rows": [{
+            "cells": ["Fuel Ore", "Selling 40/40", "40", "10", "0"],
+            "button": "BUY 20",
+        }],
+        "labels": ["BUY 20", "1:20 (3t)", "2:11 (3t)"],
+        "warps": ["1:20 (3t)", "2:11 (3t)"],
+    }))
+    assert stayed.label == "BUY 20"
+    normal = ScriptedTrader(level="normal")
+    normal.visited.add(12)
+    normal.ports[12] = {"Fuel Ore": {"bid": 50, "now": 100, "avail": 100}}
+    normal.links[12] = {10: 3}
+    empty = {
+        "sector": "10", "day": "3", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Empty Class 1 SBB",
+        "rows": [{
+            "cells": ["Fuel Ore", "Selling 0/40", "0", "10", "0"],
+        }],
+        "labels": ["1:12 (3t)"],
+        "warps": ["1:12 (3t)"],
+    }
+    left = normal.decide(_view({
+        **empty,
+        "turns": "200",
+        "turnsLeft": "Turns left today: 200 of 250",
+    }))
+    assert left.label == "1:12 (3t)"
+    assert normal.plan_note.startswith("leave the empty ask")
+    parked = ScriptedTrader(level="normal")
+    parked.visited.add(12)
+    parked.ports[12] = {"Fuel Ore": {"bid": 50, "now": 100, "avail": 100}}
+    parked.links[12] = {10: 3}
+    stayed_put = parked.decide(_view({**empty, "turns": "12"}))
+    assert stayed_put.key == "."
 
 
 def _numbers(log: str, key: str) -> list[int]:
