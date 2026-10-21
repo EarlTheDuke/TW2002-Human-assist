@@ -1,14 +1,16 @@
-# V311 remaining gaps (NOTE 166)
+# V311 remaining gaps (NOTE 167)
 
-NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. NOTE 164 adds four switches. Two of those switches sit on rows NOTE 163 already graded, and those rows are counted once. NOTE 166 matches the next five bottom rows that have a printed source. Each row is listed once.
+NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. NOTE 164 adds four switches. Two of those switches sit on rows NOTE 163 already graded, and those rows are counted once. NOTE 166 matches the next five bottom rows that have a printed source. NOTE 167 records the R1-R14 rulings and moves 1.6, 2.5, 4.1, 6.2, 6.3, 11.11, and 12.3 to Match. 14.6 stays Different. Each row is listed once.
 
-The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203. NOTE 166 uses row 204. Rows 205-212 stay free.
+The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203. NOTE 166 uses row 204. NOTE 167 uses rows 213-215. Rows 205-212 stay free.
 
-**157 of 171 rows match the original rule (91.8%).** That count is Match 71 plus Match-behind-flag 86. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 71 of 171 (41.5%). The other rows are Partial 8, Different 4, Missing 0, and Ben-decision 2. Twelve rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
+**164 of 171 rows match the original rule (95.9%).** That count is Match 78 plus Match-behind-flag 86. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 78 of 171 (45.6%). The other rows are Partial 4, Different 2, Missing 0, and Ben-decision 1. Six rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) stays Ben-decision. The class M population cap (6.3) is Match.
 
-NOTE 163's 129 already includes 6.11 and 13.4. NOTE 164 adds the grades for 8.1 and 12.6 only. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on 6.11 and 13.4, not a second grade. NOTE 166 adds 9.8, 10.1, 1.15, 5.14, and 5.20.
+NOTE 163's 129 already includes 6.11 and 13.4. NOTE 164 adds the grades for 8.1 and 12.6 only. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on 6.11 and 13.4, not a second grade. NOTE 166 adds 9.8, 10.1, 1.15, 5.14, and 5.20. NOTE 167 adds 1.6, 2.5, 4.1, 6.2, 6.3, 11.11, and 12.3. 14.6 stays Different.
 
 `docs/plans/V311_SOURCE_CONFLICTS.md` is on this tip. NOTE 164 updates the Ferrengi odds row and the times-blown row there.
+
+The open rows below are what is still Partial, Different, or Missing. NOTE 167's grade moves are in the section of that name.
 ## Matched in NOTE 163
 
 - **6.7 Genesis class.** Match. The launch rolls a class when the torpedo commits, and a requested class is ignored. `PLANET_CLASS_MODE` stays off the profile because it would roll only M and U. The crowding note prints no weights.
@@ -40,15 +42,7 @@ These were on the "can build now" list. A normal game already does the printed r
 
 ## Needs Ben's ruling
 
-Two sources disagree, or the difference is a choice Ben already made and has not reopened. Where queued #83, #87, or #88 wrote the pair, the section name is the one in `V311_SOURCE_CONFLICTS.md`.
-
-- **1.6 Terra colonists.** Partial. Regen of 750 a day and a one-turn load are in. The profile opens the pool at 30,000 with 1,000 people per hold. The Bible's "about 100,000" was not adopted. Deliberate choice by Ben. Small.
-- **2.5 Price scale vs ship cost.** Different. `ECONOMY_SCALE_MODE` is already tw2002, and prices and hull costs still do not sit on one scale. The cabal samples are not a printed default. No printed number. Large.
-- **4.1 Genesis price.** Partial. Genesis works. The engine price is 25,000. A sample TEDIT prints 80,000. This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
-- **6.2 Class-table citadel costs.** Partial. The class goods are on, and build days are `CITADEL_DAYS_MODE`. The class M level-1 colonist figure is Ben's NOTE 19 choice, the same hold as row 6.3. Deliberate choice by Ben. Small.
-- **11.11 Big Bang options.** Partial. Density, the one-way share, and the 30 percent extra two-way lanes (NOTE 157, queued #87) are switches. Bubbles are `UNIVERSE_TOPOLOGY_MODE`, and the profile leaves them off because code bots trap in dead ends. Gold options stay off as a Gold add-on. Deliberate choice by Ben. Medium.
-- **12.3 Real-time movement.** Different. Ships still move by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` stays off because the original produces at Extern. The October map marked this deliberate. Deliberate choice by Ben. Large.
-- **14.6 Ours-only systems.** Different. Alliances, the planet dividend, the credit win, and the day cap are still in this game. The profile leaves alliances out because they are not in the original. This map does not delete them. Deliberate choice by Ben. Large.
+NOTE 167 closed this list. The fourteen choices are in `docs/plans/V311_RULINGS_FOR_BEN.md`. StarDock (1.5) stays Ben-decision because moving it is not feasible. That note is in the same rulings section.
 
 ## Can't verify without the real game
 
@@ -59,6 +53,27 @@ A number was not printed, or the gap line no longer names the missing piece. Gue
 - **5.7 Ship versus ship.** Different. The exchange is still not the original. CMB-c is `docs/plans/ship-odds-exchange-v1.md` only. The attacker picking fighters is printed. The exchange formula is not. No printed number. Large.
 - **6.10 Planet killer.** Partial. The blow is −1 alignment and +50 experience, which is the current choice in `V311_SOURCE_CONFLICTS.md`, NOTE 143, "Destroying a planet". Killing a trader on the planet is `PLANET_ZDY_MODE`. Colonist-kill alignment is an ellipsis, and a citadel's extra blow experience is not printed. No printed number. Small.
 - **12.4 Nightly Extern.** Partial. The jobs named on the every-row line are in, or they are behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` (NOTE 151, queued #83) deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). The map says a job past that list has no name. No printed number. Medium.
+
+## NOTE 167 matched
+
+Commander, for Ben, 2026-10-20. The slate stands. Profile rows 213-215. `"1"` does not turn a new switch on. `TW2002_LIVE_PROFILE` does not either.
+
+- **1.6 Terra colonists.** Match. `PRINTED_TERRA_MODE` row 213. Off, and on under the profile, the pool opens at 100,000 and one colonist fills one hold. The explicit `TERRA_COLONIST_MODE` still opens at 30,000 with 1,000 per hold, and the profile does not select it.
+- **1.15 FedSpace tow.** Already Match-behind-flag. `FED_TOW_LIMIT_MODE`. No second switch.
+- **2.5 Price scale vs ship cost.** Match. Bible hull prices and the cabal port chart stay two lists. No scale was invented.
+- **4.1 Genesis price.** Match. `GENESIS_BIBLE_PRICE_MODE` row 215. The profile charges 25,000 even while the live shop card is on. Armid, limpet, and probe prices on that card stay. The card alone, with the profile off, still charges 20,000.
+- **5.14 Self-destruct.** Already Match-behind-flag. `SELF_DESTRUCT_ALIGN_MODE`. No second switch.
+- **5.20 FedSpace fighters.** Already Match-behind-flag. `FEDSAFE_FIGHTER_CAP_MODE`. No chase was added.
+- **6.2 Class-table citadel costs.** Match. Class M level 1 stays 1,000 colonists.
+- **6.3 Class M cap.** Match. The cap is 30,000. `PRINTED_CLASS_M_MODE` row 214. A home planet placed under the profile uses 45, 65, and 81. The explicit fidelity switch still asks for 1,000,000 and still places 45,000 / 65,000 / 81,000, and the profile does not select it.
+- **8.1 Ferrengi odds.** Already Match-behind-flag. `FERRENGI_ODDS_MODE`. No second switch.
+- **9.8 Rob and steal.** Already Match. Factors 6 and 21.
+- **10.1 Corporate FlagShip.** Already Match. `CFS_CEO_RULE` is `purchase`.
+- **11.11 Big Bang.** Match. Bubbles stay 0 and Gold stays off.
+- **12.3 Turns.** Match. Ships spend turns. `PLANET_REALTIME_PROD_MODE` stays off.
+- **12.6 Times blown up.** Already Match-behind-flag. `TIMES_BLOWN_MODE`. No second switch.
+- **14.6 House rules.** Different. They stay in the program. The profile leaves alliances and the dividend off. Nothing was deleted.
+- **1.5 StarDock.** Stays Ben-decision. The move to a hidden sector is not feasible. The bank pin and the action digests are measured with StarDock in sector 1.
 
 ## NOTE 166 matched
 

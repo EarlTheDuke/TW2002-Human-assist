@@ -24,13 +24,17 @@ def test_clarity_stays_off_until_a_live_switch(monkeypatch) -> None:
     assert K.colonist_clarity_on() is False
     assert K.COLONIST_UNITS_MODE == "legacy"
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
-    assert K.colonist_clarity_on() is True
+    assert K.colonist_clarity_on() is False
     assert K.COLONIST_UNITS_MODE == "legacy"
+    from tests.test_colonist_units_v1 import _thousand
+    _thousand(monkeypatch)
+    assert K.colonist_clarity_on() is True
 
 
 def test_table_terra_hold_class_m_and_class_c(monkeypatch) -> None:
     """30 holds are 30,000 people: 30 thousands on class M, 30 colonists on class C."""
-    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    from tests.test_colonist_units_v1 import _thousand
+    _thousand(monkeypatch)
     u = _world()
     _take(u, 30)
     ship = u.players["P1"].ship
@@ -46,7 +50,8 @@ def test_table_terra_hold_class_m_and_class_c(monkeypatch) -> None:
 
 
 def test_table_production_cap_and_net_worth(monkeypatch) -> None:
-    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    from tests.test_colonist_units_v1 import _thousand
+    _thousand(monkeypatch)
     assert K.CLASS_M_CATEGORY_CAP == 30_000 * 1_000
     assert 3 * 30_000 == 90_000
     peak = daily_production(PlanetClass.M, {Commodity.FUEL_ORE: 15_000_000})
@@ -66,7 +71,8 @@ def test_table_production_cap_and_net_worth(monkeypatch) -> None:
 
 
 def test_one_thousand_units_can_start_level_1_and_999_cannot(monkeypatch) -> None:
-    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    from tests.test_colonist_units_v1 import _thousand
+    _thousand(monkeypatch)
     u = _world()
     planet = _land(u, PlanetClass.M)
     planet.stockpile[Commodity.FUEL_ORE] = 300
@@ -83,7 +89,8 @@ def test_one_thousand_units_can_start_level_1_and_999_cannot(monkeypatch) -> Non
 
 
 def test_citadel_sentence_at_221_units(monkeypatch) -> None:
-    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    from tests.test_colonist_units_v1 import _thousand
+    _thousand(monkeypatch)
     u = _world()
     planet = _land(u, PlanetClass.M)
     planet.colonists[Commodity.FUEL_ORE] = 221_000

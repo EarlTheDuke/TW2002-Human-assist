@@ -66,9 +66,12 @@ def _worked(class_id: PlanetClass | str, count: int) -> int:
     stays at the peak above 15,000 instead of an invented falloff.
     """
     n = int(count)
-    if not _class_m_people(class_id):
-        return n
-    return min(n // int(K.CLASS_M_PEOPLE_PER_THOUSAND), int(K.PLANET_MAX_COLONISTS["M"]) // 2)
+    if _class_m_people(class_id):
+        return min(n // int(K.CLASS_M_PEOPLE_PER_THOUSAND), int(K.PLANET_MAX_COLONISTS["M"]) // 2)
+    # NOTE 167 R7. The handbook peak is half of 30,000, not half of 30,000 thousand.
+    if _class_id(class_id).value == "M" and K.printed_class_m_live() and K.planet_prod_live():
+        return min(n, int(K.PLANET_MAX_COLONISTS["M"]) // 2)
+    return n
 
 
 def daily_production(class_id: PlanetClass | str, colonists: dict) -> dict[str, int]:

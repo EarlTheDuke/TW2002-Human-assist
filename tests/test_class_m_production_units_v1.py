@@ -77,66 +77,52 @@ def _made(planet: Planet) -> tuple[int, int, int, int]:
 
 
 def test_the_s1_example_makes_500_fuel_100_organics_and_60_fighters(v311):
-    """S1: "if you placed 1,500 colonists under Fuel Ore on a Class M planet (FOE= 3/7/13, n/10), the colonists
-    would produce 500 units of fuel and 50 fighters per day. If you added another 700 colonists to produce
-    Organics, you would get 500 Fuel, 100 Organics, and 60 fighters per day." NOTE 19: those are thousands."""
-    assert K.class_m_fidelity_live()
-    fuel = _world(fuel_ore=1_500_000)
+    """S1 prints 1,500 colonists, not 1,500 thousand. NOTE 167 keeps that count."""
+    assert K.class_m_fidelity_live() is False
+    fuel = _world(fuel_ore=1_500)
     _apply_one_day(fuel)
     assert _made(fuel) == (500, 0, 0, 50)
-    both = _world(fuel_ore=1_500_000, organics=700_000)
+    both = _world(fuel_ore=1_500, organics=700)
     _apply_one_day(both)
     assert _made(both) == (500, 100, 0, 60)
-    assert fighters_from_colonists(PlanetClass.M, {"fuel_ore": 1_500_000, "organics": 700_000}) == 60
+    assert fighters_from_colonists(PlanetClass.M, {"fuel_ore": 1_500, "organics": 700}) == 60
 
 
 def test_the_191000_start_on_fuel_makes_63_fuel_and_6_fighters(v311):
-    """S1 ratio 3 and fighters n/10 (30 per fighter on fuel), NOTE 19 thousands: 191,000 people are 191 thousand,
-    191 // 3 = 63 fuel and 191 // 30 = 6 fighters a day (D16 saw 63,666 and 6,366)."""
-    planet = _world(fuel_ore=K.LIVE_STARTING_COLONISTS)
+    """S1 ratio 3. 191 printed colonists are 191 // 3 = 63 fuel and 191 // 30 = 6 fighters."""
+    planet = _world(fuel_ore=191)
     _apply_one_day(planet)
     assert _made(planet) == (63, 0, 0, 6)
-    assert planet_growth_status(planet.class_id, {"fuel_ore": 191_000}, 0)["production"] == {
+    assert planet_growth_status(planet.class_id, {"fuel_ore": 191}, 0)["production"] == {
         "fuel_ore": 63, "organics": 0, "equipment": 0,
     }
 
 
 def test_class_m_output_stops_at_the_s1_max_per_day(v311):
-    """S1 class M table: Max Prod/Day at 15,000 colonists, Max/Day 5,000 / 2,142 / 1,153 and fighters 829 a day;
-    "The daily production of FOE products is based on a bell curve, so the maximum production occurs at 50% of
-    the maximum population." No curve shape is published, so above 15,000k a pool stays at the peak."""
-    for people in (15_000_000, 25_000_000):
+    """S1 class M peaks at 15,000 colonists: 5,000 / 2,142 / 1,153 and 829 fighters."""
+    for people in (15_000, 25_000):
         planet = _world(fuel_ore=people, organics=people, equipment=people)
         _apply_one_day(planet)
         assert _made(planet) == (5_000, 2_142, 1_153, 829), people
-    assert fighters_from_colonists(PlanetClass.M, {"fuel_ore": 29_000_000, "organics": 29_000_000, "equipment": 29_000_000}) == 829
+    assert fighters_from_colonists(PlanetClass.M, {"fuel_ore": 29_000, "organics": 29_000, "equipment": 29_000}) == 829
 
 
 def test_class_m_below_half_the_pool_cap_grows(v311):
-    """S1: "Colonists below the 50% mark tend to multiply and increase." Each class M product pool holds
-    30,000 thousand (NOTE 19 (b)); the rate is not published, so the engine's 5% stays. Above half a pool does
-    not shrink; only the extra above the pool cap dies back (NOTE 19 (c))."""
-    planet = _world(fuel_ore=1_500_000, organics=700_000)
+    """Below half of 30,000 the colony grows about 5%. Above that half it dies off about 5%."""
+    planet = _world(fuel_ore=1_500, organics=700)
     assert planet_growth_status(planet.class_id, planet.colonists, 0)["growth_active"] is True
     _apply_one_day(planet)
-    assert planet.colonists[Commodity.FUEL_ORE] == 1_575_000
-    assert planet.colonists[Commodity.ORGANICS] == 735_000
-    start = _world(colonists=K.LIVE_STARTING_COLONISTS)
-    _apply_one_day(start)
-    assert start.colonists[Commodity.COLONISTS] == 200_550
-    full = _world(fuel_ore=20_000_000)
-    assert planet_growth_status(full.class_id, full.colonists, 0)["growth_active"] is False
+    assert planet.colonists[Commodity.FUEL_ORE] == 1_575
+    assert planet.colonists[Commodity.ORGANICS] == 735
+    full = _world(fuel_ore=20_000)
     _apply_one_day(full)
-    assert full.colonists[Commodity.FUEL_ORE] == 20_000_000
-    over = _world(fuel_ore=K.CLASS_M_CATEGORY_CAP + 10_000_000)
-    _apply_one_day(over)
-    assert over.colonists[Commodity.FUEL_ORE] == K.CLASS_M_CATEGORY_CAP + 9_500_000
-    assert "grows about 5% a day" in colonist_trend(PlanetClass.M, 191_000)
+    assert full.colonists[Commodity.FUEL_ORE] == 19_000
+    assert "die off" in colonist_trend(PlanetClass.M, 20_000)
 
 
 def test_a_day_paid_in_slices_matches_the_daily_number(v311):
     """The day-slice split (_split_units, prod_remain) pays the corrected daily number once a day."""
-    planet = _world(fuel_ore=20_000_000)
+    planet = _world(fuel_ore=15_000)
     day = int(K.TURN_REGEN_DAY_SECONDS)
     for _ in range(4):
         _accrue_planet(planet, day // 4)
@@ -172,11 +158,11 @@ def test_the_owner_sees_the_server_daily_numbers(v311):
     u, _players = _make_universe(seed=64001)
     owner = next(iter(u.players.values()))
     planet = _plant(u, owner.id, class_id=PlanetClass.M, level=0)
-    planet.colonists = {Commodity.FUEL_ORE: 1_500_000, Commodity.ORGANICS: 700_000, Commodity.EQUIPMENT: 0, Commodity.COLONISTS: 0}
+    planet.colonists = {Commodity.FUEL_ORE: 1_500, Commodity.ORGANICS: 700, Commodity.EQUIPMENT: 0, Commodity.COLONISTS: 0}
     row = next(p for p in build_observation(u, owner.id).owned_planets if p["id"] == planet.id)
     assert row["production"] == {"fuel_ore": 500, "organics": 100, "equipment": 0}
     assert row["fighters_per_day"] == 60
-    assert "(i.e. 2,200 thousands)" in row["colonists_text"]
+    assert "below half the class cap (30,000)" in row["colonists_text"]
 
 
 def test_the_planet_card_shows_the_class_m_day(tmp_path):
@@ -247,16 +233,28 @@ def test_the_planet_card_shows_the_class_m_day(tmp_path):
 
 
 def test_every_citadel_row_matches_s1_under_the_profile(v311):
-    """S1 section VII, all 42 class/level rows (colonists, fuel ore, organics, equipment, days); class M
-    colonists are people (NOTE 19), so 1,000 thousand is 1,000,000. Class U L3: "Colo 3000 3000 8000 6000 8000 6000"."""
+    """S1 section VII, all 42 class/level rows. NOTE 167 reads class M as printed, so level 1 is 1,000."""
     rows = _s1_rows()
     assert sum(len(levels) for levels in rows.values()) == 42
+    assert K.class_m_fidelity_live() is False
     for cls, levels in rows.items():
         for level, (colonists, fuel, organics, equipment, days) in enumerate(levels, start=1):
-            want = (colonists * (K.CLASS_M_PEOPLE_PER_THOUSAND if cls == "M" else 1), fuel, organics, equipment, days)
-            assert K.citadel_class_cost(cls, level) == want, (cls, level)
+            assert K.citadel_class_cost(cls, level) == (colonists, fuel, organics, equipment, days), (cls, level)
+    assert K.citadel_class_cost("M", 1)[0] == 1_000
+    assert K.planet_colonist_cap("M") == 30_000
     assert K.planet_colonist_cap("U") == 8_000
     assert K.citadel_class_cost("K", 5)[1] == 800
+
+
+def test_explicit_fidelity_still_asks_for_a_million():
+    """NOTE 19 stays available on its own switch. The profile does not select it."""
+    prior = K.CLASS_M_FIDELITY_MODE
+    try:
+        K.CLASS_M_FIDELITY_MODE = "live"
+        assert K.V311_PROFILE != "v311"
+        assert K.citadel_class_cost("M", 1)[0] == 1_000_000
+    finally:
+        K.CLASS_M_FIDELITY_MODE = prior
 
 
 def test_class_u_level_3_asks_for_8000_only_with_the_switch():
