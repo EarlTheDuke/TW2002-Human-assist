@@ -955,6 +955,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "item": {"type": "str", "required": True, "choices": equip_choices, "unit_price_by": prices},
             "qty": {"type": "int", "required": True, "min": 1, "max_by": equip_max},
         }
+        if K.federation_hall_live():
+            from .v311_buildable import shop_screen
+            params["shop_screen"] = shop_screen(equip_choices, prices, equip_max)
         if at_special:
             params["dock_turns"] = dock_turns
         if "holds" in prices and (K.cockpit_fields_on() or K.action_result_report()):
@@ -1785,6 +1788,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "underground_enter": ActionKind.UNDERGROUND_ENTER,
             "underground_contract": ActionKind.UNDERGROUND_CONTRACT,
             "underground_claim": ActionKind.UNDERGROUND_CLAIM,
+            "underground_rename": ActionKind.UNDERGROUND_RENAME,
             "tricron": ActionKind.TRICRON,
         }
         for kind_val, legal, reason, params, cost in tavern_legal_specs(universe, player_id):
@@ -1809,7 +1813,17 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         ok, why, params = ship_rename_spec(universe, player_id)
         out.append(_la(ActionKind.SHIP_RENAME, legal=ok, reason=why, params=params))
 
-    # Absent while SHIP_EXIT_MODE is legacy, so the pin keeps the old catalog.
+    # Absent while the NOTE 162 switches are legacy, so the pin keeps the old catalog.
+    if K.federation_hall_live():
+        from .v311_buildable import federation_hall_spec
+        ok, why, params = federation_hall_spec(universe, player_id)
+        out.append(_la(ActionKind.FEDERATION_HALL, legal=ok, reason=why, cost=0, params=params))
+
+    if K.cim_live():
+        from .v311_buildable import cim_spec
+        ok, why, params = cim_spec(universe, player_id)
+        out.append(_la(ActionKind.CIM, legal=ok, reason=why, cost=0, params=params))
+
     if K.ship_exit_on():
         from .ship_exit import jettison_spec, self_destruct_spec
         ok, why, cost, params = jettison_spec(universe, player_id)

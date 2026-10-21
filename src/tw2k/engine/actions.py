@@ -102,6 +102,9 @@ class ActionKind(str, Enum):
     JETTISON = "jettison"  # ship-exit-v1
     SELF_DESTRUCT = "self_destruct"  # ship-exit-v1
     SHIP_RENAME = "ship_rename"  # v311-exp-alignment-trade-gaps-v1 (NOTE 87)
+    FEDERATION_HALL = "federation_hall"  # NOTE 162 GAP 1.8
+    UNDERGROUND_RENAME = "underground_rename"  # NOTE 162 GAP 11.7
+    CIM = "cim"  # NOTE 162 GAP 14.1
 
 
 class Action(BaseModel):

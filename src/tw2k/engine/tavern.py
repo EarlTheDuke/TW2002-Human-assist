@@ -421,6 +421,41 @@ def handle_contract(universe: Universe, pid: str, action: Action) -> ActionResul
     return ActionResult(ok=True, turns_spent=0)
 
 
+def _clean_name(raw: Any) -> str | None:
+    text = "".join(ch for ch in str(raw if raw is not None else "") if 32 <= ord(ch) < 127)
+    text = " ".join(text.split())
+    if not text or len(text) > int(K.UG_NAME_MAX):
+        return None
+    return text
+
+
+def handle_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if not K.ug_name_live():
+        return ActionResult(ok=False, error="unsupported action")
+    player = universe.players[pid]
+    why = guard(player)
+    if why:
+        return ActionResult(ok=False, error=why)
+    if int(player.ug_entered_day) != int(universe.day):
+        return ActionResult(ok=False, error="enter the Underground first")
+    if int(player.experience) > int(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE):
+        return ActionResult(ok=False, error="the Underground has not priced this trader")
+    name = _clean_name((action.args or {}).get("name"))
+    if name is None:
+        return ActionResult(ok=False, error=f"name must be 1..{int(K.UG_NAME_MAX)} characters")
+    cost = int(K.UG_NAME_UNKNOWN_COST)
+    if int(player.credits) < cost:
+        return ActionResult(ok=False, error="not enough credits")
+    old = player.name
+    player.credits -= cost
+    player.name = name
+    _actor(
+        universe, player, EventKind.UG_RENAME, f"{old} is now {name}",
+        {"old_name": old, "name": name, "cost": cost},
+    )
+    return ActionResult(ok=True, turns_spent=0)
+
+
 def handle_claim(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not on():
         return ActionResult(ok=False, error="unsupported action")
@@ -607,6 +642,24 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
         "enter the Underground first" if not entered else "nothing to claim",
         {"pending": pending},
     )
+    if K.ug_name_live():
+        priced = int(player.experience) <= int(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE)
+        affordable = int(player.credits) >= int(K.UG_NAME_UNKNOWN_COST)
+        if not entered:
+            rename_reason = "enter the Underground first"
+        elif not priced:
+            rename_reason = "the Underground has not priced this trader"
+        elif not affordable:
+            rename_reason = "not enough credits"
+        else:
+            rename_reason = ""
+        add(
+            "underground_rename",
+            entered and priced and affordable,
+            rename_reason,
+            {"name": {"type": "str", "required": True, "max": int(K.UG_NAME_MAX)},
+             "cost": int(K.UG_NAME_UNKNOWN_COST)},
+        )
     if K.stardock_extra_on():
         ante = int(K.TRICRON_ANTE)
         add(

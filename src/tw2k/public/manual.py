@@ -558,8 +558,15 @@ def _corporations(_f: dict) -> str:
     return (
         f"<p>T opens the corporate menu. A corporation has a password. "
         f"It can hold up to {_n(K.CORP_MAX_MEMBERS)} members. "
+        "CORP_CARGO_TREASURY_MODE moves cargo between members and uses the corporation treasury. "
         "Members share the corporation's planets. Creating one, joining one, and the password are on that menu. "
         "The C.E.O. leaving ends the corporation.</p>"
+        + _gated(
+            K.corp_cargo_treasury_live(),
+            "members in the same sector can also move fuel ore, organics, equipment, and colonists. "
+            "Any member can put credits into the corporation treasury. Only the C.E.O. can take them out.",
+            "fuel ore, organics, equipment, colonists, and the corporation treasury do not move. Deposit is refused.",
+        )
         + _corp_leave()
         + _corp_join()
         + _corp_planets()
@@ -1372,6 +1379,22 @@ def _stardock_services(f: dict) -> str:
         + f"<p>The underground opens when your alignment is {_n(K.UG_MAX_ALIGNMENT)} or lower. "
         f"A contract starts at {_n(K.UG_CONTRACT_MIN)} credits, "
         f"{_n(K.UG_CREDITS_PER_ALIGN)} credits per alignment point.</p>"
+        + "<p>UG_NAME_MODE is a new name from the Underground.</p>"
+        + _gated(
+            K.ug_name_live(),
+            f"a total unknown, experience {_n(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE)} or less, "
+            f"can buy a new name for {_n(K.UG_NAME_UNKNOWN_COST)} credits. "
+            "A trader the Underground already knows is not given a price.",
+            "the Underground does not sell a new name.",
+        )
+        + "<p>FEDERATION_HALL_MODE opens Federation Hall and the hardware shop screen.</p>"
+        + _gated(
+            K.federation_hall_live(),
+            "Federation Hall lists each corporation's registration, the day it was formed, and its members, "
+            "with the C.E.O. marked, and ranks them by experience. "
+            "The hardware counter shows a line for each item it sells.",
+            "Federation Hall is closed, and the hardware counter is only the buy list.",
+        )
         + "<p>The bank takes deposits, withdrawals and transfers. The tax section states the interest.</p>"
         + f"<p>Police HQ is in sector {_n(K.STARDOCK_SECTOR)}. "
         f"Alignment must be at least {_n(K.POLICE_MIN_ALIGNMENT)}. "
@@ -1468,6 +1491,7 @@ def _computer_reports(_f: dict) -> str:
         "S is quick stats: name, rank, experience, alignment, turns left, credits, day, fighters, shields and holds. "
         "B warps back one sector when a lane goes there. "
         "E finds a path between two sectors already in your computer. "
+        "CIM_MODE is Computer Interrogation Mode. "
         "C lists the ship catalog. Y lists planets you own. J shows one planet's specs. "
         "R is the port report. K is the map you have seen.</p>"
         "<p>NavPoints are the switch NAVPOINT_MODE. "
@@ -1478,6 +1502,12 @@ def _computer_reports(_f: dict) -> str:
             "Terra and StarDock are already on the list. Plotting one lays in a course. "
             "A sector outside FedSpace, that is not where you are, and that holds none of your fighters, reports No Scan.",
             "there is no NavPoints menu.",
+        )
+        + _gated(
+            K.cim_live(),
+            "CIM answers I for sectors you have explored, R for ports you have explored, F for a path, and Q to leave. "
+            "A port line is unavailable when hostile fighters hold that sector. The count and the owner are not shown.",
+            "CIM is not on the computer.",
         )
         + stats
         + corps
@@ -1536,6 +1566,12 @@ def _feds_and_ferrengi(_f: dict) -> str:
         "three federal ships are in space: Intrepid at StarDock, then Valiant and Lexington in the next two sectors.",
         "those three federal ships are not placed.",
     )
+    hunt = _gated(
+        K.fed_hunt_live(),
+        "an evil ship that is not an Imperial StarShip is destroyed when a Federal is in that sector. "
+        "A sector with no Federal is left alone. An evil Imperial StarShip is still repossessed on the move.",
+        "an evil ship that is not an Imperial StarShip is left alone when a Federal is in that sector.",
+    )
     tow_limit = K.fed_tow_fighter_limit()
     tow = (
         f"<p>{_profile('FedSpace tow limit', K.fed_tow_limit_live(), only_v311=False)} "
@@ -1571,6 +1607,8 @@ def _feds_and_ferrengi(_f: dict) -> str:
     return (
         f"<p>The federal captains are {escape(captains)}.</p>"
         + ships
+        + "<p>FED_HUNT_MODE is a Federal destroying an evil ship that meets one.</p>"
+        + hunt
         + tow
         + fighter_cap
         + drop
@@ -1680,6 +1718,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "propose_alliance", "accept_alliance", "break_alliance",
         "ship_set_corporate", "ship_set_personal", "ship_set_password",
         "CORP_EXP_PENALTY_MODE", "CORP_PLANET_DISBAND_MODE", "CORP_BREAKIN_ALIGN_MODE",
+        "CORP_CARGO_TREASURY_MODE",
     ),
     "alignment": ("DISCOVERY_EXP_MODE", "EXP_SOURCES_MODE"),
     "rankings": (
@@ -1700,21 +1739,23 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "ship_rename", "apply_commission", "post_reward", "claim_reward",
         "tavern_announce", "tavern_talk", "tavern_graffiti", "tavern_order",
         "grimy_ask", "grimy_curse", "underground_enter", "underground_contract", "underground_claim",
+        "underground_rename", "federation_hall",
         "tricron", "cineplex",
-        "SHIP_RENAME_MODE", "BUST_CLEAR_MODE", "BOUNTY_GOOD_MODE",
+        "SHIP_RENAME_MODE", "BUST_CLEAR_MODE", "UG_NAME_MODE", "FEDERATION_HALL_MODE", "BOUNTY_GOOD_MODE",
     ),
     "communications": (
         "hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE", "COMMS_V311_MODE",
     ),
     "computer-reports": (
+        "cim",
         "DAILY_STATS_MODE", "CORP_RANK_MODE", "TRADER_RANK_LIST_MODE",
-        "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE",
+        "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE", "CIM_MODE",
         "navpoint", "NAVPOINT_MODE",
     ),
     "death-and-pods": ("DEATH_DELAY_MODE", "DEATH_POD_MODE", "POD_CASH_MODE", "REENTRY_FIGHTERS_MODE"),
     "feds-and-ferrengi-v311": (
         "FED_SHIPS_MODE", "FEDSPACE_DEPLOY_MODE", "FERRENGAL_QUASAR_MODE",
-        "FEDSAFE_FIGHTER_CAP_MODE", "FED_TOW_LIMIT_MODE",
+        "FEDSAFE_FIGHTER_CAP_MODE", "FED_TOW_LIMIT_MODE", "FED_HUNT_MODE",
     ),
     "towing-and-transwarp": (
         "ship_transwarp", "ship_transport", "tow_engage", "tow_release",

@@ -3956,7 +3956,7 @@ def _handle_probe(universe: Universe, pid: str, action: Action) -> ActionResult:
 
 
 def _handle_corp_deposit(universe: Universe, pid: str, action: Action) -> ActionResult:
-    if K.corp_rules_on() and K.CORP_TREASURY == "off":
+    if K.corp_rules_on() and K.CORP_TREASURY == "off" and not K.corp_cargo_treasury_live():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
     if player.corp_ticker is None or player.corp_ticker not in universe.corporations:
@@ -3977,7 +3977,7 @@ def _handle_corp_deposit(universe: Universe, pid: str, action: Action) -> Action
 
 
 def _handle_corp_withdraw(universe: Universe, pid: str, action: Action) -> ActionResult:
-    if K.corp_rules_on() and K.CORP_TREASURY == "off":
+    if K.corp_rules_on() and K.CORP_TREASURY == "off" and not K.corp_cargo_treasury_live():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
     if player.corp_ticker is None or player.corp_ticker not in universe.corporations:
@@ -5244,6 +5244,7 @@ def _bind_corpships() -> None:
 
 
 def _bind_tavern() -> None:
+    from .cineplex import handle_cineplex
     from .tavern import (
         handle_announce,
         handle_claim,
@@ -5253,10 +5254,10 @@ def _bind_tavern() -> None:
         handle_graffiti,
         handle_grimy_ask,
         handle_order,
+        handle_rename,
         handle_talk,
         handle_tricron,
     )
-    from .cineplex import handle_cineplex
     _DISPATCH[ActionKind.CINEPLEX] = handle_cineplex
     _DISPATCH[ActionKind.TAVERN_ANNOUNCE] = handle_announce
     _DISPATCH[ActionKind.TAVERN_TALK] = handle_talk
@@ -5268,6 +5269,7 @@ def _bind_tavern() -> None:
     _DISPATCH[ActionKind.UNDERGROUND_ENTER] = handle_enter
     _DISPATCH[ActionKind.UNDERGROUND_CONTRACT] = handle_contract
     _DISPATCH[ActionKind.UNDERGROUND_CLAIM] = handle_claim
+    _DISPATCH[ActionKind.UNDERGROUND_RENAME] = handle_rename
 
 
 def _bind_fed_handlers() -> None:
@@ -5296,6 +5298,15 @@ def _bind_ship_exit() -> None:
 
 
 _bind_ship_exit()
+
+
+def _bind_note162() -> None:
+    from .v311_buildable import handle_cim, handle_federation_hall
+    _DISPATCH[ActionKind.FEDERATION_HALL] = handle_federation_hall
+    _DISPATCH[ActionKind.CIM] = handle_cim
+
+
+_bind_note162()
 
 
 def _bind_ship_rename() -> None:

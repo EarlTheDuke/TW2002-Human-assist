@@ -224,6 +224,8 @@ class EventKind(str, Enum):
     REWARD_POSTED = "reward_posted"
     REWARD_CLAIMED = "reward_claimed"
     COMMISSION_GRANTED = "commission_granted"
+    FEDERATION_HALL = "federation_hall"  # NOTE 162. Never emitted while FEDERATION_HALL_MODE is legacy.
+    CIM_REPORT = "cim_report"  # NOTE 162. Never emitted while CIM_MODE is legacy.
     # stardock-tavern-underground-v1. Never emitted under TAVERN_MODE legacy.
     TAVERN_ANNOUNCE = "tavern_announce"
     TAVERN_TALK = "tavern_talk"
@@ -238,6 +240,7 @@ class EventKind(str, Enum):
     UG_MURDER = "ug_murder"
     UG_CONTRACT = "ug_contract"
     UG_CLAIM = "ug_claim"
+    UG_RENAME = "ug_rename"  # NOTE 162. Never emitted while UG_NAME_MODE is legacy.
     TRICRON = "tricron"  # stardock-leftovers-v1. Never emitted under STARDOCK_EXTRA_MODE legacy.
     CINEPLEX = "cineplex"  # flavor only. Never emitted under STARDOCK_EXTRA_MODE legacy.
     SHIP_TRANSWARP = "ship_transwarp"
