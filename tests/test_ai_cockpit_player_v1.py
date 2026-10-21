@@ -159,6 +159,9 @@ def test_the_lobby_hook_stays_idle_until_the_switch_is_on(tmp_path: Path, monkey
     assert TOKEN not in caplog.text
     for value in KEYS.values():
         assert value not in caplog.text
+    spawned_log = (tmp_path / "on" / "player.log").read_text(encoding="utf-8")
+    assert "spawned seat=P2" in spawned_log
+    assert TOKEN not in spawned_log
 
 
 def test_scripted_player_reads_the_manual_and_sells(tmp_path: Path) -> None:
