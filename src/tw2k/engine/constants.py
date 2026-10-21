@@ -4749,7 +4749,52 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "COMMS_V311_MODE",
         "NOTE 142: sub-space radio, Fed Comm, a same-sector hail, and the corporation memo",
     ),
+    "inactive_user_live": (
+        "INACTIVE_USER_MODE",
+        "NOTE 151 GAP 12.4: an inactive trader is deleted after 30 real days",
+    ),
+    "inactivity_timeout_live": (
+        "INACTIVITY_TIMEOUT_MODE",
+        "NOTE 151 GAP 12.4: a quiet game sleeps after 14400 seconds",
+    ),
 }
+
+
+# NOTE 151 GAP 12.4. Cabal twgs.html and the modern manual print 30 days until an
+# inactive user is deleted. Gypsy's v2.03 sample prints 7. Off, nobody is deleted
+# for a quiet stretch. On, Extern deletes a trader with no successful action for
+# 30 wall-clock days. Game days do not count: a fast test day is still one real
+# day on the clock. A connected seat and an AI cockpit seat stay. A game that
+# was generated before this switch was on is not armed, so turning the switch
+# on later does not delete anyone in that game. A C.E.O. deleted this way
+# leaves the corporation in place.
+INACTIVE_USER_MODE = "legacy"  # "legacy" | "v311"
+INACTIVE_USER_DAYS = 30
+INACTIVE_USER_SPAN_S = INACTIVE_USER_DAYS * 24 * 60 * 60
+# The same editor prints an inactivity timeout of 14,400 seconds. Off, the lobby
+# keeps its own idle setting. On, a quiet lobby game sleeps after that long.
+INACTIVITY_TIMEOUT_MODE = "legacy"  # "legacy" | "v311"
+INACTIVITY_TIMEOUT_S = 14_400
+
+
+def inactive_user_live() -> bool:
+    """True when Extern may delete a trader after 30 quiet wall-clock days.
+
+    The game also has to have been generated while this was already on.
+    """
+    return INACTIVE_USER_MODE == "v311" or v311_profile()
+
+
+def inactivity_timeout_live() -> bool:
+    """True when a quiet lobby game uses the 14,400 second inactivity timeout."""
+    return INACTIVITY_TIMEOUT_MODE == "v311" or v311_profile()
+
+
+def lobby_idle_limit_s(configured: float) -> float:
+    """Seconds a lobby game may sit with no tab before it sleeps."""
+    if inactivity_timeout_live():
+        return float(INACTIVITY_TIMEOUT_S)
+    return float(configured)
 
 
 # beta-polish-computer-reports-v1 (NOTE 88) row 114. A code bot that banks its

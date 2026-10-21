@@ -952,6 +952,19 @@ def _turns(f: dict) -> str:
         + extra
         + _day_clock()
         + _dawn_refill()
+        + _gated(
+            K.inactive_user_live(),
+            "an inactive trader is deleted after 30 real days without a successful action. "
+            "Game days do not count. A connected seat stays, and so does an AI cockpit seat. "
+            "A game that started before this rule does not delete anyone. "
+            "If that trader is the C.E.O., the corporation keeps its other members.",
+            "an inactive trader stays in the game.",
+        )
+        + _gated(
+            K.inactivity_timeout_live(),
+            "a quiet lobby game sleeps after 14,400 seconds.",
+            "a quiet lobby game sleeps after the lobby's own idle setting.",
+        )
         + _src("The game's turn pocket and day length, read from this game's settings when you opened the manual from a game.")
     )
 
@@ -1635,6 +1648,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "tax": ("bank_deposit", "bank_withdraw", "bank_transfer", "TAX_RULE_MODE"),
     "turns": (
         "wait", "TURN_REGEN_MODE", "DAY_ROLL_CLOCK_MODE", "LEGACY_DAY_CLOCK_MODE", "LIVE_PACE_MODE",
+        "INACTIVE_USER_MODE", "INACTIVITY_TIMEOUT_MODE",
     ),
     "hardware": (
         "buy_equip", "scan", "probe", "query_limpets", "remove_limpet", "launch_beacon",
