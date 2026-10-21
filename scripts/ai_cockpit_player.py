@@ -81,11 +81,12 @@ def main(argv: list[str] | None = None) -> int:
     from ai_cockpit.runner import play
 
     stop = Path(args.stop_file) if args.stop_file else None
+    run = Path(args.run_dir)
     try:
         return play(
             url=args.url,
             provider_name=args.provider,
-            run_dir=Path(args.run_dir),
+            run_dir=run,
             max_turns=int(args.max_turns),
             min_interval=float(args.min_interval),
             stop_file=stop,
@@ -95,7 +96,14 @@ def main(argv: list[str] | None = None) -> int:
             level=str(args.level or "hard"),
         )
     except Exception as exc:
-        print(redact(f"{exc.__class__.__name__}: {exc}"), file=sys.stderr)
+        line = redact(f"{exc.__class__.__name__}: {exc}")
+        try:
+            run.mkdir(parents=True, exist_ok=True)
+            with (run / "player.log").open("a", encoding="utf-8") as handle:
+                handle.write(line + "\n")
+        except OSError:
+            pass
+        print(line, file=sys.stderr)
         return 1
 
 
