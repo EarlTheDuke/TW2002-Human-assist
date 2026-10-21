@@ -27,6 +27,7 @@ from tw2k.agents.pathb_client import MailboxPolicy, SeatClient, TurnContext, leg
 from tw2k.engine import GameConfig
 from tw2k.engine.models import EventKind
 from tw2k.server.app import create_app
+from tw2k.server.harness import rules_verbs
 from tw2k.server.runner import AgentSpec, MatchSpec
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -92,9 +93,11 @@ def test_two_pathb_brains_plus_unattended_seat_no_stalls(tmp_path: Path) -> None
         # radio (radio-channels-v1) makes it 89. That switch stays off, so the verb is refused.
         # jettison and self_destruct (ship-exit-v1) make it 91. That switch stays off,
         # so legal_actions omits them; the rules list still names every ActionKind.
-        # ship_rename (NOTE 87) makes it 92. That switch stays off, so legal_actions
-        # omits it; the rules list still names it.
-        assert a.rules.get("system_prompt") and "warp" in (a.rules.get("verbs") or []) and len(a.rules["verbs"]) == 92
+        # ship_rename (NOTE 87) made the catalog 92. navpoint (NOTE 159) is the
+        # next ActionKind. Those switches stay off, so legal_actions omits them;
+        # the rules list still names every ActionKind the stored modes publish.
+        assert a.rules.get("system_prompt") and a.rules.get("verbs") == rules_verbs()
+        assert "warp" in a.rules["verbs"]
         # No external timeout errors for the attended seats; idle auto-waits only for P4.
         errs = [e for e in u.events if e.kind is EventKind.AGENT_ERROR and e.actor_id in ("P2", "P3")
                 and (e.payload or {}).get("external_timeout")]
