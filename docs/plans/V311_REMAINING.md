@@ -1,14 +1,22 @@
-# V311 remaining gaps (NOTE 161)
+# V311 remaining gaps (NOTE 163)
 
-Docs only. No switch was added.
+NOTE 161 listed the open rows. NOTE 163 matched the next five that are not Track G's 14 rulings and not the live-measurement rows (2.15, 4.8, 5.7, 6.10, 12.4).
 
-The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`, read on tip `fdd4f117` and then checked against queued #83 (NOTE 151), #86 (NOTE 155), #87 (NOTE 157), #88 (NOTE 158), and #89 (NOTE 159). None of those five moves a row out of Partial, Different, or Missing. #86 does not touch the gap map. The other four fill part of a row and leave the grade where it was: #83 the inactive-user delete on 12.4, #87 the extra two-way lanes on 1.2 (already Match-behind-flag) and the rest of 11.11, #88 the re-entry Scout and the tournament wording on 12.6, #89 NavPoints on 14.1.
+The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. This branch is cut from `ffd42e03`. Queued #89 (NavPoints, row 181) and #93 (NOTE 162, rows 182-186) are not in this file. The new switch is profile row 187.
 
-**124 of 171 rows match the original rule (72.5%).** That count is Match 57 plus Match-behind-flag 67. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 57 of 171 (33.3%). The other rows are Partial 38, Different 6, Missing 1, and Ben-decision 2. Forty-five rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
+**129 of 171 rows match the original rule (75.4%).** That count is Match 59 plus Match-behind-flag 70. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 59 of 171 (34.5%). The other rows are Partial 33, Different 6, Missing 1, and Ben-decision 2. Forty rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
 
 `docs/plans/V311_SOURCE_CONFLICTS.md` is not on this tip. Queued #83, #87, and #88 each add their own copy. A ruling row below names the NOTE section that copy will contain.
 
-Ten of the 45 are not work. The printed rule is already in the game, or it is already behind a switch, and the grade line was not moved. The other 35 are grouped by what blocks them. Size is the slice: small, medium, or large.
+Ten of the open rows are not work. The printed rule is already in the game, or it is already behind a switch, and the grade line was not moved. The other 30 are grouped by what blocks them. Size is the slice: small, medium, or large.
+
+## Matched in NOTE 163
+
+- **6.7 Genesis class.** Match. The launch rolls a class when the torpedo commits, and a requested class is ignored. `PLANET_CLASS_MODE` stays off the profile because it would roll only M and U. The crowding note prints no weights.
+- **6.11 Corp planet quirks.** Match-behind-flag. `CORP_PLANET_DISBAND_MODE` and `SPECIAL_HULL_RULES_MODE` are the two printed quirks. No further quirk is named.
+- **9.2 Ways to gain experience.** Match. Trade, the first dock, midnight, genesis, a port destroy, and the kill share are the stored awards. An alien's own experience is not printed.
+- **9.5 Other alignment sources.** Match-behind-flag. `BOUNTY_GOOD_MODE` row 187. A bounty on a good trader costs 1 alignment per 250 credits and no experience. The other named sources were already in.
+- **13.4 Fighter and combat reports.** Match-behind-flag. `OWNER_HAZARD_NOTICE_MODE` and `SIEGE_REPORT_MODE`. The Bible does not print a further report set.
 
 ## Can build now
 
@@ -52,13 +60,8 @@ A number was not printed, or the gap line no longer names the missing piece. Gue
 - **2.15 Attack a port.** Partial. Blowing a port is behind `PORT_ATTACK_MODE` and `PORT_ATTACK_ALL_CLASSES_MODE`. Classes 0 through 5 and 7 through 9 have no measured rating or barrage. No printed number. Medium.
 - **4.8 Armid price.** Partial. Detonation is the stored half-count at 20. The shop price moves only under `HARDWARE_PRICE_MODE`. The unit price is sysop-set, and the 4,000 is a sample. No printed number. Small.
 - **5.7 Ship versus ship.** Different. The exchange is still not the original. CMB-c is `docs/plans/ship-odds-exchange-v1.md` only. The attacker picking fighters is printed. The exchange formula is not. No printed number. Large.
-- **6.7 Genesis class.** Partial. `PLANET_CLASS_MODE` does not roll a class, and the profile leaves it off because v3.11 genesis class is random. The crowding weights are one unverified note. No printed number. Small.
 - **6.10 Planet killer.** Partial. The blow is −1 alignment and +50 experience, which is the current choice in `V311_SOURCE_CONFLICTS.md`, NOTE 143, "Destroying a planet". Killing a trader on the planet is `PLANET_ZDY_MODE`. Colonist-kill alignment is an ellipsis, and a citadel's extra blow experience is not printed. No printed number. Small.
-- **6.11 Corp planet quirks.** Partial. The v3.06 disband split is `CORP_PLANET_DISBAND_MODE`. The Tholian 4:1 is `SPECIAL_HULL_RULES_MODE`. The map does not name the other quirk. No printed number. Small.
-- **9.2 Ways to gain experience.** Partial. Trade, the first dock, the midnight point, genesis, a port destroy, and the kill shares are in. An alien's own experience is not printed, so a Ferrengi kill cannot pay half of it. No printed number. Small.
-- **9.5 Other alignment sources.** Partial. The reward, the tax, jettison, genesis, a port blow, and a corp break-in are in. The map says the list is still not full and does not name the missing line. No printed number. Small.
 - **12.4 Nightly Extern.** Partial. The jobs named on the every-row line are in, or they are behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` (NOTE 151, queued #83) deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). The map says a job past that list has no name. No printed number. Medium.
-- **13.4 Fighter and combat reports.** Partial. Owner hazard notices and the siege report are switches. The Bible does not print the rest of the report set. No printed number. Small.
 
 ## Grade not moved
 
