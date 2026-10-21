@@ -31,13 +31,16 @@ PRECISE = ("warp", "scan", "wait", "trade", "plot_course", "probe", "hail", "bro
 
 
 def _offered_kinds() -> list[str]:
-    """Living-seat catalog. Avoid, radio, ship rename, NavPoints, and the ship-exit pair stay out while their switches are off."""
+    """Living-seat catalog. Avoid, radio, ship rename, NavPoints, the NOTE 162 verbs, and the ship-exit pair stay out while their switches are off."""
     return [k.value for k in ActionKind
             if (k is not ActionKind.AVOID or K.avoid_live())
             and (k is not ActionKind.RADIO or K.radio_channel_live())
             and (k not in (ActionKind.JETTISON, ActionKind.SELF_DESTRUCT) or K.ship_exit_on())
             and (k is not ActionKind.SHIP_RENAME or K.ship_rename_live())
-            and (k is not ActionKind.NAVPOINT or K.navpoint_live())]
+            and (k is not ActionKind.NAVPOINT or K.navpoint_live())
+            and (k is not ActionKind.FEDERATION_HALL or K.federation_hall_live())
+            and (k is not ActionKind.UNDERGROUND_RENAME or K.ug_name_live())
+            and (k is not ActionKind.CIM or K.cim_live())]
 
 
 def _universe(seed: int = 21):
