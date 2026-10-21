@@ -534,6 +534,16 @@ def play(
                                 break
                             continue
                         idle = 0
+                    if chip != "YOUR MOVE":
+                        # The server is not offering a turn. A click from here never lands.
+                        _write_log(log_path, "waiting for the turn")
+                        idle += 1
+                        if idle > 8:
+                            _write_log(log_path, "the turn did not arrive")
+                            code = 1
+                            break
+                        continue
+                    idle = 0
                     screen = _screen(page)
                     _write_screen(log_path, step, screen)
                     view = _view(page, run_dir, step, manual_read, manual_excerpt, screen, history)
