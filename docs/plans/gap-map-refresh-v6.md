@@ -10,15 +10,15 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 
 | Grade | v5 | v6 |
 |---|---|---|
-| Match | 50 | 69 |
-| Match-behind-flag | 17 | 83 |
-| Partial | 53 | 13 |
+| Match | 50 | 71 |
+| Match-behind-flag | 17 | 86 |
+| Partial | 53 | 8 |
 | Different | 38 | 4 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
 
-NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186 and moves 21 more rows. 14.1 is Match-behind-flag through `CIM_MODE` row 186. NOTE 164 moves 8.1 and 12.6 from Partial to Match-behind-flag. The ship switch and the fighter-report switch sit on 6.11 and 13.4 and do not grade those rows again.
+NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186 and moves 21 more rows. 14.1 is Match-behind-flag through `CIM_MODE` row 186. NOTE 164 moves 8.1 and 12.6 from Partial to Match-behind-flag. The ship switch and the fighter-report switch sit on 6.11 and 13.4 and do not grade those rows again. NOTE 166 moves 9.8 and 10.1 to Match, and 1.15, 5.14, and 5.20 to Match-behind-flag. The new switch is `SELF_DESTRUCT_ALIGN_MODE` row 204. 1.15 and 5.20 were already `FED_TOW_LIMIT_MODE` and `FEDSAFE_FIGHTER_CAP_MODE`. Rows 205-212 stay free.
 
 ## What moved
 
@@ -104,13 +104,8 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 2 | 5.7 | Different | L | Ship versus ship is still not the original exchange. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
-| 8 | 5.20 | Partial | M | FedSpace combat has penalties and is not the full police response | `fed.protect_fedspace_attack` | |
-| 10 | 9.8 | Partial | M | A rob pays from experience. The full pricing limit is not the original table. `ROB_MODE` is already tw2002 | `rob_steal.max_rob_credits`, `rob_steal.handle_rob` | |
-| 11 | 1.15 | Partial | S | A tow fires at 99 fighters (`FED_TOW_FIGHTER_LIMIT` 98). The Bible line is 50. No switch | `fed.run_tows` | constants.py |
 | 23 | 11.11 | Partial | S | Density, one-way share, and the 30 percent two-way lanes are flagged (rows 87, 88, and 178). Bubbles, the course-length generator, and the Gold options are not | `universe.generate_universe` | universe.py |
 | 25 | 6.10 | Partial | S | Destroying a planet is in. A trader on it is `PLANET_ZDY_MODE` (NOTE 143). Colonist-kill alignment is still unpublished | `runner._remove_planet` | |
-| 28 | 5.14 | Partial | S | Experience drops on death. Alignment from the loss is only partly the original. `ALIGNMENT_MODE` is a no-op (legacy and live match) | `combat._destroy_ship_tw2002` | |
-| 30 | 10.1 | Partial | S | Creating a corporation is in. The purchase rule still has a source conflict (`CFS_CEO_RULE`) | `corp.handle_corp_create` | |
 | 35 | 14.6 | Different | L | Systems that were never in the original are still in this game. This map does not delete them | several | |
 
 Rows that are Partial only because a named switch stays off are Match-behind-flag above, not in this list. `12.4` stays here for the jobs that still have no name.
@@ -169,7 +164,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 1.12 Match. A sector holds at most 5 planets. `constants.sector_has_planet_room` while `planet_limits_on` (stored `PLANET_ECONOMY_MODE` tw2002).
 1.13 Match-behind-flag `UNIVERSE_TOPOLOGY_MODE`. Dead ends, traps, tunnels, and one bubble. The profile leaves this off. `universe._add_tunnels`, `universe._cut_one_bubble`.
 1.14 Match. FedSpace keeps 5 ships per sector and tows the rest. `fed.run_tows`.
-1.15 Partial. Feds tow a ship with 99 or more fighters. The Bible says 50. `constants.FED_TOW_FIGHTER_LIMIT`, `fed.run_tows`. No switch.
+1.15 Match-behind-flag `FED_TOW_LIMIT_MODE` row 168, NOTE 117. Off, Extern tows a FedSpace ship with more than 98 fighters. On, the Bible line is more than 50. NOTE 166 moves the grade. No second switch. `fed.run_tows`.
 1.16 Match. A good trader with under 1000 experience is already safe in FedSpace. `victory.is_fedsafe`, `constants.FEDSAFE_MAX_EXPERIENCE`.
 1.17 Match. The nightly Extern sweep runs. `class0.extern_sweep` from `runner.tick_day`.
 1.18 Match-behind-flag `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. Sectors 2 through 10 get no decorative federal ports when the switch is on. `universe._place_decorative_fed_ports`.
@@ -243,12 +238,12 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 5.11 Match. Surrender is a verb. `combat` challenge settle.
 5.12 Match-behind-flag `DEATH_POD_MODE` row 29. A destroyed ship becomes a pod. The clean loadout stays off. `combat._strip_ship`, `combat._destroy_ship_tw2002`.
 5.13 Match-behind-flag `DEATH_DELAY_MODE` row 93, NOTE 79. A pod can be locked out for N midnights. Legacy ignores the setting. Two pods a day and out-until-midnight are the stored death path. `REENTRY_FIGHTERS_MODE` row 180, NOTE 158, stocks the free Scout. `runner.tick_day`, `combat._destroy_ship_tw2002`.
-5.14 Partial. Experience drops on death. Alignment from the loss is only partly the original. `combat._destroy_ship_tw2002`.
+5.14 Match-behind-flag `SELF_DESTRUCT_ALIGN_MODE` row 204, NOTE 166. A self-destruct cuts experience in half. On, a negative alignment is cut in half and a good alignment stays. Off, both signs are halved. A kill by someone else still halves both signs. The two-day sit is the existing lock. `combat._destroy_ship_tw2002`.
 5.15 Match. Furbing another ship's holds is on. `combat._destroy_ship`.
 5.17 Match. Corbomite and disruptors fire in combat. `combat._resolve_ship_attack_tw2002`.
 5.18 Match-behind-flag `PHOTON_FOLLOW_DAMP_MODE` row 90. A follower who enters the wave is damped when that switch is on. Decloak and the quasar damp are already in the wave. The limpet is `PHOTON_LIMPET_MODE` row 174, NOTE 148. The interdictor still holds, matching S1.
 5.19 Match-behind-flag `PLANET_LANDING_COMBAT_MODE` row 54. Landing on a defended planet is a fight only when the switch is on. A normal game still seizes. `constants.planet_landing_combat_on`.
-5.20 Partial. FedSpace combat has penalties. It is not the full original police response. `fed.protect_fedspace_attack`.
+5.20 Match-behind-flag `FEDSAFE_FIGHTER_CAP_MODE` row 167, NOTE 117. On, more than 50 fighters removes FedSpace protection. Off, the fighter count does not. The rest of a police chase is not printed, so none was added. NOTE 166 moves the grade. `fed.protect_fedspace_attack`.
 6.1 Match-behind-flag `SCANNER_FOG_MODE` row 44. Planet fighters and shields stay hidden until the planet scanner is on. `observation._planet_brief`.
 6.2 Partial. Citadel costs follow the class table that is on (`CITADEL_COST_MODE` via `citadel_fidelity_rules`, already true). Build days are `CITADEL_DAYS_MODE` row 2. The class M level-1 colonist figure is Ben's choice (6.3). `constants.citadel_fidelity_rules`.
 6.3 Ben-decision. Class M population cap stays 30,000 until Ben chooses. The die-off rule is behind `PLANET_PROD_MODE` row 26. `constants.planet_prod_live`.
@@ -282,9 +277,9 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 9.5 Match-behind-flag `BOUNTY_GOOD_MODE` row 187, NOTE 163. A bounty on a good trader costs 1 alignment per 250 credits and no experience. A reward on an evil trader, the tax, jettison, genesis, a port blow, a corp break-in, a port upgrade, the underground contract, and cursing the Grimy Trader are already in. A line the sources do not name was not added. `fed.handle_post_reward`.
 9.6 Match. Rank titles are already the original ladders, and traders are ordered by experience. `RANK_TITLES_MODE` is a no-op. NOTE 158 added no second switch. `victory.rank_for`.
 9.7 Match-behind-flag `CITADEL_PERK_MODE` row 27. The L2 and L5 perk set is coded and off. A wider good-trader versus evil-trader chart was not found as a second switch. `constants.citadel_perk_live`.
-9.8 Partial. A rob pays from experience. The full pricing limit is not the original table. `rob_steal.max_rob_credits`.
+9.8 Match. A rob pays up to experience times 6. A steal takes up to experience divided by 21. Those are the stored MBBS factors. The classic pair, times 3 and divided by 30, is not switched on. `rob_steal.max_rob_credits`.
 9.9 Match-behind-flag `MIXED_CORP_EXP_RULE` row 72. The cabal least-extreme loss is selected by the profile and stays off in the stored value. `corp.mixed_loss`.
-10.1 Partial. Creating a corporation is in. The purchase rule still has a source conflict. `CFS_CEO_RULE`, `corp.handle_corp_create`.
+10.1 Match. Filing a charter is in. `CFS_CEO_RULE` is `purchase`: only the C.E.O. buys a Corporate FlagShip, including a spare, and a member can be handed the helm. The use-only reading is not switched on. `corp.flagship_buy_block`.
 10.2 Match-behind-flag `CORP_ALIGNMENT_RULE` row 71. The invite, the password, and the C.E.O. approval are in. The sign-agreement check stays off until the profile selects `join_check`. `corp._join_block`, `corp.handle_corp_join`.
 10.3 Match-behind-flag `CORP_ALIGNMENT_RULE` row 71. The profile join check refuses a sign conflict. The stored value stays mixed, so a normal game does not. `corp._join_block`.
 10.4 Match. The stored join path uses `CORP_MAX_MEMBERS` 5. `GameConfig.corp_max_members` default 2 is the legacy `CORP_MODE` path only. `corp._join_block`, `corp.handle_corp_join`.

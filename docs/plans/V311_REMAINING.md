@@ -1,12 +1,12 @@
-# V311 remaining gaps (NOTE 164)
+# V311 remaining gaps (NOTE 166)
 
-NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. NOTE 164 adds four switches. Two of those switches sit on rows NOTE 163 already graded, and those rows are counted once. Each row is listed once.
+NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. NOTE 164 adds four switches. Two of those switches sit on rows NOTE 163 already graded, and those rows are counted once. NOTE 166 matches the next five bottom rows that have a printed source. Each row is listed once.
 
-The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203.
+The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203. NOTE 166 uses row 204. Rows 205-212 stay free.
 
-**152 of 171 rows match the original rule (88.9%).** That count is Match 69 plus Match-behind-flag 83. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 69 of 171 (40.4%). The other rows are Partial 13, Different 4, Missing 0, and Ben-decision 2. Seventeen rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
+**157 of 171 rows match the original rule (91.8%).** That count is Match 71 plus Match-behind-flag 86. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 71 of 171 (41.5%). The other rows are Partial 8, Different 4, Missing 0, and Ben-decision 2. Twelve rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
 
-NOTE 163's 129 already includes 6.11 and 13.4. NOTE 164 adds the grades for 8.1 and 12.6 only. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on 6.11 and 13.4, not a second grade.
+NOTE 163's 129 already includes 6.11 and 13.4. NOTE 164 adds the grades for 8.1 and 12.6 only. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on 6.11 and 13.4, not a second grade. NOTE 166 adds 9.8, 10.1, 1.15, 5.14, and 5.20.
 
 `docs/plans/V311_SOURCE_CONFLICTS.md` is on this tip. NOTE 164 updates the Ferrengi odds row and the times-blown row there.
 ## Matched in NOTE 163
@@ -43,14 +43,9 @@ These were on the "can build now" list. A normal game already does the printed r
 Two sources disagree, or the difference is a choice Ben already made and has not reopened. Where queued #83, #87, or #88 wrote the pair, the section name is the one in `V311_SOURCE_CONFLICTS.md`.
 
 - **1.6 Terra colonists.** Partial. Regen of 750 a day and a one-turn load are in. The profile opens the pool at 30,000 with 1,000 people per hold. The Bible's "about 100,000" was not adopted. Deliberate choice by Ben. Small.
-- **1.15 FedSpace fighter limit.** Partial. `FED_TOW_LIMIT_MODE` (NOTE 117) tows above 50 when it is on. The stored game tows above 98. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "FedSpace fighter tow" (Bible over 50, Gypsy 99 or more). Source conflict. Small.
 - **2.5 Price scale vs ship cost.** Different. `ECONOMY_SCALE_MODE` is already tw2002, and prices and hull costs still do not sit on one scale. The cabal samples are not a printed default. No printed number. Large.
 - **4.1 Genesis price.** Partial. Genesis works. The engine price is 25,000. A sample TEDIT prints 80,000. This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
-- **5.14 Exp and alignment on death.** Partial. A pod drops experience. Self-destruct alignment is the open half: the wiki and the MBBS manuals do not say the same thing (`docs/playtests/combat/DEATH_ESCAPE_PODS.md`, d13). This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
-- **5.20 Combat in FedSpace.** Partial. Penalties exist. They are not the full police response, and that script is thin. The fighter ceiling is `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Fedsafe fighter ceiling" (50 or less, or no ceiling). `FEDSAFE_FIGHTER_CAP_MODE` uses 50 when it is on. Source conflict. Medium.
 - **6.2 Class-table citadel costs.** Partial. The class goods are on, and build days are `CITADEL_DAYS_MODE`. The class M level-1 colonist figure is Ben's NOTE 19 choice, the same hold as row 6.3. Deliberate choice by Ben. Small.
-- **9.8 Rob and steal caps.** Partial. A rob pays from experience. The stored factors are the MBBS pair, 6 and 21. The classic pair has no switch. `V311_SOURCE_CONFLICTS.md`, NOTE 150, "Rob and steal caps". Source conflict. Small.
-- **10.1 Create a corporation.** Partial. Filing a charter is in. `CFS_CEO_RULE` is still `purchase` or `use`. This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
 - **11.11 Big Bang options.** Partial. Density, the one-way share, and the 30 percent extra two-way lanes (NOTE 157, queued #87) are switches. Bubbles are `UNIVERSE_TOPOLOGY_MODE`, and the profile leaves them off because code bots trap in dead ends. Gold options stay off as a Gold add-on. Deliberate choice by Ben. Medium.
 - **12.3 Real-time movement.** Different. Ships still move by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` stays off because the original produces at Extern. The October map marked this deliberate. Deliberate choice by Ben. Large.
 - **14.6 Ours-only systems.** Different. Alliances, the planet dividend, the credit win, and the day cap are still in this game. The profile leaves alliances out because they are not in the original. This map does not delete them. Deliberate choice by Ben. Large.
@@ -64,6 +59,18 @@ A number was not printed, or the gap line no longer names the missing piece. Gue
 - **5.7 Ship versus ship.** Different. The exchange is still not the original. CMB-c is `docs/plans/ship-odds-exchange-v1.md` only. The attacker picking fighters is printed. The exchange formula is not. No printed number. Large.
 - **6.10 Planet killer.** Partial. The blow is −1 alignment and +50 experience, which is the current choice in `V311_SOURCE_CONFLICTS.md`, NOTE 143, "Destroying a planet". Killing a trader on the planet is `PLANET_ZDY_MODE`. Colonist-kill alignment is an ellipsis, and a citadel's extra blow experience is not printed. No printed number. Small.
 - **12.4 Nightly Extern.** Partial. The jobs named on the every-row line are in, or they are behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` (NOTE 151, queued #83) deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). The map says a job past that list has no name. No printed number. Medium.
+
+## NOTE 166 matched
+
+Taken from the bottom of the lists above, skipping a row whose missing piece has no printed number, and skipping the readings the rulings sheet told us not to turn on. NOTE 162 already built the can-build rows, so those were left. Profile row 204. The other four rows were already the printed rule, so they get no second switch. `"1"` does not turn the new switch on.
+
+- **14.6, 12.3, 11.11.** Left. The printed v3.11 reading is the stored game: leave the house rules in the program, move by turns, and do not build bubbles. A switch that deleted them, or that turned the clock or the bubbles on, is the reading the sheet rejected.
+- **12.4, 6.10, 5.7, 4.8, 2.15.** Left. The missing piece has no printed number.
+- **9.8 Rob and steal caps.** Match. No new switch. The stored factors are experience times 6 and experience divided by 21. That is the MBBS pair the sample screen agrees with. The classic pair stays off.
+- **10.1 Corporate FlagShip.** Match. No new switch. `CFS_CEO_RULE` is `purchase`. Only the C.E.O. buys one, including a spare. A member can be handed the helm. The use-only reading stays off.
+- **5.20 FedSpace fighters.** Match-behind-flag. No new switch. `FEDSAFE_FIGHTER_CAP_MODE` row 167 already removes protection above 50 fighters when the profile is on. The rest of a police chase is not printed, so none was added.
+- **5.14 Self-destruct alignment.** Match-behind-flag. `SELF_DESTRUCT_ALIGN_MODE` row 204. Off, the button halves experience and halves alignment of either sign. On, experience is still cut in half, a negative alignment is cut in half, and a good alignment stays. A kill by someone else still halves both signs. The two-day lock stays the existing one. Source: the MBBS manual for the amounts, and EIS CompMisc for the button.
+- **1.15 FedSpace tow.** Match-behind-flag. No new switch. `FED_TOW_LIMIT_MODE` row 168 already tows above 50 when the profile is on. Off, the tow stays above 98.
 
 ## NOTE 164 matched
 
