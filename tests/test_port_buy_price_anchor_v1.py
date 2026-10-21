@@ -331,11 +331,11 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
 
     With V311_PROFILE on, the buy-price anchor and the economy2 chart are both
     on. A haggle counter is the port's next offer, not a refusal. NOTE 157's
-    extra two-way lanes move this map, so the old no-route plot is gone. N3's
-    four refusals are buys that ask for more empty holds than the ship has
-    (5, 10, 25 and 30). None of them is a quote from the anchor. Every seat
-    still sells at a profit. Day-10 net worth is reported next to the same run
-    with the profile off.
+    extra two-way lanes move this map, so the old no-route plot is gone.
+    NOTE 167 keeps one colonist per hold, so N3's one refusal is a buy that
+    asks for more empty holds than the ship has (35). It is not a quote from
+    the anchor. Every seat still sells at a profit. Day-10 net worth is
+    reported next to the same run with the profile off.
     """
     assert K.V311_PROFILE == "legacy"
     off = _ten_day("legacy")
@@ -343,12 +343,9 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
     assert K.V311_PROFILE == "legacy"
     report = {"on": on, "off": off}
     assert on["N3-P1"]["rejected_top"] == [
-        ["trade: You only have 10 empty holds.", 1],
-        ["trade: You only have 25 empty holds.", 1],
-        ["trade: You only have 30 empty holds.", 1],
-        ["trade: You only have 5 empty holds.", 1],
+        ["trade: You only have 35 empty holds.", 1],
     ], report
-    assert _refused(on["N3-P1"]) == 4, report
+    assert _refused(on["N3-P1"]) == 1, report
     assert all(_refused(row) == 0 for name, row in on.items() if name != "N3-P1"), report
     assert sum(row["realized_profit"] for row in on.values()) > 0, report
     assert sum(row["sells"] for row in on.values()) > 0, report

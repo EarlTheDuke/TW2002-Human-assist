@@ -119,3 +119,24 @@ In play, A is a v3.11 game that still knows when to stop. Today alliances are of
 ## Suggested reply
 
 R1: A. R2: A. R3: A. R4: A. R5: B. R6: A. R7: A. R8: A. R9: B. R10: A. R11: A. R12: A. R13: A. R14: A.
+
+## Rulings (decided by Commander for Ben, 2026-10-20)
+
+The slate stands. No option was closer to TW2002 v3.11 as run by TWGS. MBBS is the tie-break where a screen prints no amounts. Profile rows 213, 214, and 215 are the new switches. The other rulings were already the stored game or an existing switch.
+
+- **R1 A.** Terra opens at 100,000 and one colonist fills one hold (cabal `twgs.html`).
+- **R2 A.** FedSpace tows a ship with more than 50 fighters (TWGS Bible). Already `FED_TOW_LIMIT_MODE`.
+- **R3 A.** Bible ship prices and the cabal port chart stay separate lists. No source prints one scale.
+- **R4 A.** A genesis torpedo costs 25,000 (TWGS Bible and Iago).
+- **R5 B.** A self-destruct halves experience and a bad alignment. MBBS prints no new number for a good alignment (EIS CompMisc prints no amounts). Already `SELF_DESTRUCT_ALIGN_MODE`.
+- **R6 A.** More than 50 fighters removes FedSpace protection (TWGS Bible). No police chase is printed. Already `FEDSAFE_FIGHTER_CAP_MODE`.
+- **R7 A.** Class M citadel level 1 is 1,000 colonists and the cap is 30,000 (S1 handbook, same column as the other classes). Row 6.3 uses that reading.
+- **R8 A.** Ferrengi odds are 1.2 / 1.4 / 1.4 (TWGS Bible). The spec sheet calls its odds a guess. Already `FERRENGI_ODDS_MODE`.
+- **R9 B.** Rob is experience times 6 and steal is experience divided by 21 (MBBS, and the sample settings screen).
+- **R10 A.** Only the C.E.O. buys a Corporate FlagShip, including a spare, and a member can be handed the helm (v3.11 menu, "owning").
+- **R11 A.** The sample Big Bang screen prints 0 bubbles, and Gold stays off.
+- **R12 A.** Ships spend turns and planets produce when the day changes. EIS `GeneralUpdated.html` describes a faster ship escaping and a sysop move delay. Option C would stop spending turns, so that delay was not built.
+- **R13 A.** The sample screen prints Tournament Mode off and times blown up unlimited (cabal `twgs.html`). Already `TIMES_BLOWN_MODE`.
+- **R14 A.** Alliances, the planet dividend, the credit win, and the day cap stay in the program. The profile leaves alliances and the dividend off. The grade stays Different.
+
+**1.5 dropped.** StarDock stays in sector 1. Gypsy's sample puts it in a sector players must find, and Terra alone in sector 1. Moving it would change the bank pin `9b607d3dae940c0b1a69f6d7` and the action digests `24863a3d` / `98a47c8a`, so the move is not feasible.

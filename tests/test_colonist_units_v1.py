@@ -63,7 +63,20 @@ def _take(u, qty: int):
     return res
 
 
-def test_switch_stays_legacy_until_the_profile(monkeypatch) -> None:
+def _thousand(monkeypatch) -> None:
+    """NOTE 19 people path. NOTE 167 keeps it off the v3.11 profile."""
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    monkeypatch.setattr(K, "TERRA_COLONIST_MODE", "live")
+    monkeypatch.setattr(K, "COLONIST_UNITS_MODE", "live")
+    monkeypatch.setattr(K, "COLONIST_NW_UNITS_MODE", "live")
+    monkeypatch.setattr(K, "CLASS_M_FIDELITY_MODE", "live")
+    monkeypatch.setattr(K, "CLASS_M_DROP_MODE", "live")
+    monkeypatch.setattr(K, "CLASS_M_NW_MODE", "live")
+    monkeypatch.setattr(K, "PLANET_PROD_MODE", "live")
+    monkeypatch.setattr(K, "SHIP_EXIT_MODE", "tw2002")
+
+
+def test_switch_stays_legacy_until_its_own_mode(monkeypatch) -> None:
     assert K.COLONIST_UNITS_MODE == "legacy"
     assert K.COLONIST_NW_UNITS_MODE == "legacy"
     assert K.colonist_units_live() is False
@@ -71,13 +84,17 @@ def test_switch_stays_legacy_until_the_profile(monkeypatch) -> None:
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     assert K.COLONIST_UNITS_MODE == "legacy"
     assert K.COLONIST_NW_UNITS_MODE == "legacy"
+    assert K.colonist_units_live() is False
+    assert K.colonist_nw_units() is False
+    assert K.printed_terra_live() is True
+    _thousand(monkeypatch)
     assert K.colonist_units_live() is True
     assert K.colonist_nw_units() is True
 
 
 def test_thirty_holds_land_as_thirty_on_class_c(monkeypatch) -> None:
     """Live quote: take qty=30 is 30,000 people; the Class C pool gains 30, not 30,000."""
-    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    _thousand(monkeypatch)
     u = _world()
     _take(u, 30)
     ship = u.players["P1"].ship
@@ -118,7 +135,7 @@ def test_thirty_holds_land_as_thirty_on_class_c(monkeypatch) -> None:
 
 
 def test_class_m_still_stores_people(monkeypatch) -> None:
-    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    _thousand(monkeypatch)
     u = _world()
     _take(u, 30)
     planet = _land(u, PlanetClass.M)
@@ -147,7 +164,7 @@ def test_legacy_drop_stays_one_to_one() -> None:
 
 
 def test_holds_and_the_cargo_line_count_thousands(monkeypatch) -> None:
-    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    _thousand(monkeypatch)
     u = _world()
     _take(u, 30)
     ship = u.players["P1"].ship
@@ -169,8 +186,9 @@ def test_net_worth_prices_people_as_thousands(monkeypatch) -> None:
     u = _world()
     player = u.players["P1"]
     bare = player.net_worth
-    player.ship.cargo[Commodity.COLONISTS] = 30_000
+    player.ship.cargo[Commodity.COLONISTS] = 30
     player.ship.cargo_cost[Commodity.COLONISTS] = 0.0
+    # NOTE 167 R1. One colonist is one colonist. 30 of them score as 30.
     assert player.net_worth - bare == 30 * K.COLONIST_PRICE
     planet = Planet(
         id=3, sector_id=12, name="C", class_id=PlanetClass.C, owner_id="P1", origin="genesis",
@@ -179,7 +197,7 @@ def test_net_worth_prices_people_as_thousands(monkeypatch) -> None:
     assert _planet_asset_value(planet) == 30 * K.COLONIST_PRICE
     monkeypatch.setattr(K, "COLONIST_UNITS_MODE", "legacy")
     monkeypatch.setattr(K, "TERRA_COLONIST_MODE", "live")
-    assert K.colonist_units_live() is True  # the profile still turns it on
+    assert K.colonist_units_live() is False  # NOTE 167: the profile keeps one colonist per hold
     monkeypatch.setattr(K, "V311_PROFILE", "legacy")
     monkeypatch.setattr(K, "COLONIST_NW_UNITS_MODE", "live")
     monkeypatch.setattr(K, "TERRA_COLONIST_MODE", "live")

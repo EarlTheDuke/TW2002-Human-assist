@@ -457,7 +457,7 @@ def test_join_check_drift_stays_in_and_the_extern_penalty_still_runs(monkeypatch
     assert u.players["P2"].experience == 5_000 - loss
 
 
-def test_class_m_flags_default_legacy_and_v311_turns_the_helpers_on(monkeypatch):
+def test_class_m_flags_default_legacy_and_v311_keeps_the_printed_counts(monkeypatch):
     assert K.CLASS_M_NW_MODE == "legacy"
     assert K.CLASS_M_DROP_MODE == "legacy"
     assert K.CLASS_M_GENESIS_MODE == "legacy"
@@ -466,10 +466,20 @@ def test_class_m_flags_default_legacy_and_v311_turns_the_helpers_on(monkeypatch)
     assert K.class_m_genesis_units() is False
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     assert K.CLASS_M_NW_MODE == "legacy"
+    assert K.class_m_nw_units() is False
+    assert K.class_m_drop_units() is False
+    assert K.class_m_genesis_units() is False
+    assert K.class_m_fidelity_live() is False
+    assert K.printed_class_m_live() is True
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    monkeypatch.setattr(K, "CLASS_M_FIDELITY_MODE", "live")
+    monkeypatch.setattr(K, "CLASS_M_NW_MODE", "live")
+    monkeypatch.setattr(K, "CLASS_M_DROP_MODE", "live")
+    monkeypatch.setattr(K, "CLASS_M_GENESIS_MODE", "live")
+    assert K.class_m_fidelity_live() is True
     assert K.class_m_nw_units() is True
     assert K.class_m_drop_units() is True
     assert K.class_m_genesis_units() is True
-    assert K.class_m_fidelity_live() is True
 
 
 def test_class_m_net_worth_legacy_prices_each_person():
@@ -505,7 +515,7 @@ def test_class_m_net_worth_live_prices_thousands_and_keeps_the_tax_basis(monkeyp
 
 
 def test_class_m_net_worth_v311_leaves_the_free_start_out(monkeypatch):
-    """NOTE 75. The free start is still 191,000 people, and the tax basis still prices each one. Net worth does not."""
+    """NOTE 75 and NOTE 167. The free start is 45, 65, and 81. Tax prices each one. Net worth does not."""
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     u = _u()
     player = u.players["P1"]
@@ -513,9 +523,9 @@ def test_class_m_net_worth_v311_leaves_the_free_start_out(monkeypatch):
     grant_starting_planet(u, player)
     home = next(pl for pl in u.planets.values() if pl.owner_id == "P1")
     assert home.class_id == PlanetClass.M
-    assert sum(home.colonists.values()) == K.LIVE_STARTING_COLONISTS
+    assert sum(home.colonists.values()) == 191
     assert full_net_worth(u, player) - before == 0
-    assert planet_tax_value(home) == K.LIVE_STARTING_COLONISTS * K.COLONIST_PRICE
+    assert planet_tax_value(home) == 191 * K.COLONIST_PRICE
     other = _valued_planet(PlanetClass.L, 4_000)
     assert _planet_asset_value(other) == 4_000 * K.COLONIST_PRICE
 
@@ -598,21 +608,23 @@ def test_class_m_drop_room_is_quoted_in_cargo_units(monkeypatch):
     assert over.ok is False and "cap" in (over.error or "")
 
 
-def test_class_m_drops_v311_keep_terra_people(monkeypatch):
+def test_class_m_drops_v311_keep_one_colonist_per_hold(monkeypatch):
+    """NOTE 167 R1. The profile stores one colonist per hold on class M too."""
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
-    assert K.colonists_per_hold() == K.CLASS_M_PEOPLE_PER_THOUSAND
+    assert K.colonists_per_hold() == 1
+    assert K.class_m_drop_units() is False
     u = _u()
     planet = _land_world(u)
     player = u.players["P1"]
-    player.ship.cargo[Commodity.COLONISTS] = 2_000
+    player.ship.cargo[Commodity.COLONISTS] = 2
     assert player.ship.cargo_used == 2
-    assert _act(u, "P1", "dump_planet_cargo", planet_id=planet.id, commodity="colonists", qty=2_000, pool="fuel_ore").ok
-    assert planet.colonists[Commodity.FUEL_ORE] == 2_000
+    assert _act(u, "P1", "dump_planet_cargo", planet_id=planet.id, commodity="colonists", qty=2, pool="fuel_ore").ok
+    assert planet.colonists[Commodity.FUEL_ORE] == 2
     assert player.ship.cargo[Commodity.COLONISTS] == 0
-    assert _load_max(u) == 2_000
-    assert _act(u, "P1", "load_planet_cargo", planet_id=planet.id, commodity="colonists", qty=2_000, pool="fuel_ore").ok
+    assert _load_max(u) == 2
+    assert _act(u, "P1", "load_planet_cargo", planet_id=planet.id, commodity="colonists", qty=2, pool="fuel_ore").ok
     assert planet.colonists[Commodity.FUEL_ORE] == 0
-    assert player.ship.cargo[Commodity.COLONISTS] == 2_000
+    assert player.ship.cargo[Commodity.COLONISTS] == 2
     assert player.ship.cargo_used == 2
 
 
@@ -663,7 +675,7 @@ def test_class_m_genesis_seed_scales_only_class_m(monkeypatch):
 def test_class_m_genesis_v311_starts_empty(monkeypatch):
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     monkeypatch.setattr(K, "PLANET_CLASS_WEIGHTS", {"M": 1.0})
-    assert K.class_m_genesis_units() is True
+    assert K.class_m_genesis_units() is False
     assert K.genesis_start_live() is True
     u = _u()
     planet = _genesis(u, {"M": 1.0})

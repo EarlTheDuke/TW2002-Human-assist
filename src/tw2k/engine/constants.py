@@ -1512,6 +1512,10 @@ def ether_probe_cost() -> int:
 
 
 def genesis_torpedo_cost() -> int:
+    # NOTE 167 R4 A. The Bible and Iago print 25,000. The live card's 20,000
+    # stays available only while this ruling is off.
+    if genesis_bible_price_live():
+        return GENESIS_TORPEDO_COST
     if hardware_price_live() or planet_class_live():
         return GENESIS_TORPEDO_COST_LIVE
     return GENESIS_TORPEDO_COST
@@ -3649,6 +3653,8 @@ TERRA_LIVE_PER_HOLD = 1_000
 
 def terra_colonist_live() -> bool:
     """True when Terra opens at 30,000 and a hold carries 1,000 colonists."""
+    if printed_terra_live():
+        return False
     return TERRA_COLONIST_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
@@ -4283,6 +4289,8 @@ CLASS_M_CATEGORY_CAP = 30_000 * CLASS_M_PEOPLE_PER_THOUSAND
 
 def class_m_fidelity_live() -> bool:
     """True when class M uses people, not the handbook unit, as stored."""
+    if printed_class_m_live():
+        return False
     return CLASS_M_FIDELITY_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
@@ -4533,7 +4541,9 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "port_regen_live": ("PORT_REGEN_MODE", "MASTER_PLAN yes"),
     "shop_price_live": ("SHOP_PRICE_MODE", "MASTER_PLAN yes"),
     "genesis_start_live": ("GENESIS_START_MODE", "MASTER_PLAN yes"),
-    "terra_colonist_live": ("TERRA_COLONIST_MODE", "MASTER_PLAN yes"),
+    # NOTE 167 R1 A. The profile no longer selects the 30,000 / 1,000 Terra path.
+    # terra_colonist_live stays in the live-profile helper list and returns
+    # False while PRINTED_TERRA_MODE is on.
     "planet_prod_live": ("PLANET_PROD_MODE", "MASTER_PLAN yes"),
     "citadel_perk_live": ("CITADEL_PERK_MODE", "MASTER_PLAN yes"),
     "exp_score_live": ("EXP_SCORE_MODE", "MASTER_PLAN yes, Ben confirm"),
@@ -4558,7 +4568,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "daily_stats_live": ("DAILY_STATS_MODE", "MASTER_PLAN yes"),
     "fedcomm_live": ("FEDCOMM_MODE", "MASTER_PLAN yes"),
     "corp_rank_live": ("CORP_RANK_MODE", "MASTER_PLAN yes"),
-    "class_m_fidelity_live": ("CLASS_M_FIDELITY_MODE", "MASTER_PLAN yes (Ben NOTE 19)"),
+    # NOTE 167 R7 A. The profile no longer multiplies class M by 1,000.
     "port_stock_fidelity_live": ("PORT_STOCK_FIDELITY_MODE", "MASTER_PLAN yes"),
     "ship_exit_on": ("SHIP_EXIT_MODE", "MASTER_PLAN yes"),
     "rival_strength_live": ("RIVAL_STRENGTH_MODE", "MASTER_PLAN yes"),
@@ -4574,9 +4584,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
     "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
-    "class_m_nw_units": ("CLASS_M_NW_MODE", "S1 / NOTE 19 (class M net worth is thousands, not people)"),
-    "class_m_drop_units": ("CLASS_M_DROP_MODE", "S1 / NOTE 19 and terra-colonists-v1 (a hold of Terra colonists is one thousand people)"),
-    "class_m_genesis_units": ("CLASS_M_GENESIS_MODE", "S1 class M L1 is 1,000 thousand; the 2,500 seed is handbook units"),
+    # NOTE 167 R7 A. The thousand-unit class M helpers stay off the profile.
     "corp_exp_penalty_taken": ("CORP_EXP_PENALTY_MODE", "Hekate TWGS table: the event names the experience taken, not the formula"),
     "corp_leaver_to_ceo": ("CORP_LEAVER_DEPLOYMENTS", "live TWGS v3.34b: a leaver's corporate fighters stay with the corp under the C.E.O."),
     "corp_join_check": ("CORP_ALIGNMENT_RULE", "EIS join: signs must agree, 0 fits either side, later drift is not an oust"),
@@ -4726,14 +4734,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PRICE_SCALE_MODE",
         "NOTE 112 GAP 2.5: each side of a trade quotes the economy2 100% chart, then the existing slope",
     ),
-    "colonist_units_live": (
-        "COLONIST_UNITS_MODE",
-        "NOTE 89: a non-M drop turns Terra people into handbook colonists, one thousand per hold",
-    ),
-    "colonist_nw_units": (
-        "COLONIST_NW_UNITS_MODE",
-        "NOTE 89: cargo colonists stored as people are scored as handbook thousands",
-    ),
+    # NOTE 167 R1 A. One colonist fills one hold, so the thousand-unit cargo helpers stay off.
     "evil_trade_loop_live": (
         "EVIL_TRADE_LOOP_MODE",
         "NOTE 115 GAP 14.5: a negative-alignment seat steals, dumps, and beams, or robs and beams",
@@ -4842,6 +4843,18 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "self_destruct_align_live": (
         "SELF_DESTRUCT_ALIGN_MODE",
         "NOTE 166 GAP 5.14: a self-destruct leaves a good alignment unchanged and halves a bad one",
+    ),
+    "printed_terra_live": (
+        "PRINTED_TERRA_MODE",
+        "NOTE 167 R1 A: Terra opens at 100,000 and one colonist fills one hold",
+    ),
+    "printed_class_m_live": (
+        "PRINTED_CLASS_M_MODE",
+        "NOTE 167 R7 A: class M citadel level 1 is 1,000 people and the population cap is 30,000",
+    ),
+    "genesis_bible_price_live": (
+        "GENESIS_BIBLE_PRICE_MODE",
+        "NOTE 167 R4 A: a genesis torpedo costs 25,000",
     ),
 }
 
@@ -5020,16 +5033,22 @@ CLASS_M_GENESIS_MODE = "legacy"  # "legacy" | "live"
 
 def class_m_nw_units() -> bool:
     """True when class M net worth prices handbook thousands."""
+    if printed_class_m_live():
+        return False
     return CLASS_M_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def class_m_drop_units() -> bool:
     """True when a class M colonist drop converts Terra holds into people."""
+    if printed_class_m_live():
+        return False
     return CLASS_M_DROP_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def class_m_genesis_units() -> bool:
     """True when a class M genesis seed is stored as people."""
+    if printed_class_m_live():
+        return False
     return CLASS_M_GENESIS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
@@ -5913,6 +5932,46 @@ def self_destruct_align_live() -> bool:
     return SELF_DESTRUCT_ALIGN_MODE == "v311" or v311_profile()
 
 
+# NOTE 167. Commander, for Ben, 2026-10-20. The profile keeps the printed
+# v3.11 numbers. "1" does not turn these on. The live profile does not either.
+# PRINTED_TERRA_MODE wins over TERRA_COLONIST_MODE, COLONIST_UNITS_MODE, and
+# COLONIST_NW_UNITS_MODE. PRINTED_CLASS_M_MODE wins over the four class-M
+# thousand-unit switches. GENESIS_BIBLE_PRICE_MODE wins over the live shop
+# card's 20,000 genesis price and leaves the rest of that card alone.
+PRINTED_TERRA_MODE = "legacy"  # "legacy" | "v311"
+PRINTED_CLASS_M_MODE = "legacy"  # "legacy" | "v311"
+GENESIS_BIBLE_PRICE_MODE = "legacy"  # "legacy" | "v311"
+
+
+def printed_terra_live() -> bool:
+    """True when Terra is the cabal 100,000 pool and one colonist per hold."""
+    return PRINTED_TERRA_MODE == "v311" or v311_profile()
+
+
+def printed_class_m_live() -> bool:
+    """True when class M uses the handbook counts, not thousands of people."""
+    return PRINTED_CLASS_M_MODE == "v311" or v311_profile()
+
+
+def genesis_bible_price_live() -> bool:
+    """True when a genesis torpedo costs the Bible 25,000."""
+    return GENESIS_BIBLE_PRICE_MODE == "v311" or v311_profile()
+
+
+def home_planet_count(raw: int) -> int:
+    """Colonists placed in one home-planet pool.
+
+    The constants are the NOTE 19 people counts, 45 thousand stored as
+    45,000. NOTE 167 R7 reads the new-character transcript as printed, so
+    the profile places 45, 65, and 81. An explicit class-M fidelity switch
+    with the profile off still places the people counts.
+    """
+    amount = int(raw)
+    if printed_class_m_live():
+        return amount // int(CLASS_M_PEOPLE_PER_THOUSAND)
+    return amount
+
+
 # NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1
 # on a personal first dock, already run under DISCOVERY_EXP_MODE (runner.tick_day,
 # runner._handle_trade). Atomic destruction of an ordinary port already pays
@@ -6022,11 +6081,15 @@ COLONIST_MOVE_BY_THOUSAND = "colonists move by the thousand"
 
 def colonist_units_live() -> bool:
     """True when a non-M planet speaks handbook colonists and the hold speaks people."""
+    if printed_terra_live():
+        return False
     return COLONIST_UNITS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def colonist_nw_units() -> bool:
     """True when people in a cargo hold are scored as handbook thousands."""
+    if printed_terra_live():
+        return False
     return COLONIST_NW_UNITS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 

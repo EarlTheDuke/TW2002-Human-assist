@@ -237,8 +237,9 @@ def test_terra_is_not_a_planet_and_still_costs_one_turn(monkeypatch) -> None:
     before = int(u.terra_colonists)
     taken = apply_action(u, "P1", Action(kind=ActionKind.TERRA_COLONISTS, args={"mode": "take", "qty": 1}))
     assert taken.ok is True and taken.turns_spent == K.TERRA_LOAD_TURNS == 1, taken.error
-    assert int(u.terra_colonists) == before - K.TERRA_LIVE_PER_HOLD
-    assert p.ship.cargo[Commodity.COLONISTS] == K.TERRA_LIVE_PER_HOLD
+    assert int(u.terra_colonists) == before - K.colonists_per_hold()
+    assert p.ship.cargo[Commodity.COLONISTS] == K.colonists_per_hold()
+    assert K.colonists_per_hold() == 1
 
 
 def test_the_lobby_form_validates_the_home_planet_name(tmp_path) -> None:

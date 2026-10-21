@@ -33,15 +33,14 @@ def test_the_switch_stays_legacy_until_the_profile_is_on(monkeypatch) -> None:
 def test_day_zero_net_worth_skips_the_free_start_and_counts_terra_cargo(monkeypatch) -> None:
     """A new v3.11 game's day-0 net worth has no colonist value. Terra cargo does.
 
-    Iago War Manual, Colonists: one hold is one thousand people. S1 / TWFAQ_20PLANET
-    heads the production table "colonists (thousands)". COLONIST_PRICE is that
-    handbook thousand (row 66), so 1,000 people in the hold are one Terra hold.
+    NOTE 167 R1: one colonist is one colonist. The free start is the transcript
+    45 / 65 / 81, and it stays out of net worth.
     """
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     universe, player = _seat()
     grant_starting_planet(universe, player)
     planet = next(pl for pl in universe.planets.values() if pl.owner_id == "P1")
-    assert planet.free_start_colonists == sum(int(n) for n in planet.colonists.values())
+    assert planet.free_start_colonists == sum(int(n) for n in planet.colonists.values()) == 191
     bare = full_net_worth(universe, player)
     saved = dict(planet.colonists)
     for key in list(planet.colonists):
@@ -50,10 +49,10 @@ def test_day_zero_net_worth_skips_the_free_start_and_counts_terra_cargo(monkeypa
     assert full_net_worth(universe, player) == bare
     planet.colonists.update(saved)
     planet.free_start_colonists = sum(int(n) for n in saved.values())
-    player.ship.cargo[Commodity.COLONISTS] = 1000
+    player.ship.cargo[Commodity.COLONISTS] = 1
     assert full_net_worth(universe, player) - bare == K.COLONIST_PRICE
-    player.ship.cargo[Commodity.COLONISTS] = 1000 * int(K.colonists_per_hold())
-    assert full_net_worth(universe, player) - bare == 1000 * K.COLONIST_PRICE
+    player.ship.cargo[Commodity.COLONISTS] = 30
+    assert full_net_worth(universe, player) - bare == 30 * K.COLONIST_PRICE
 
 
 def test_hauled_colonists_count_and_a_departure_spends_the_free_start_first(monkeypatch) -> None:
@@ -62,11 +61,11 @@ def test_hauled_colonists_count_and_a_departure_spends_the_free_start_first(monk
     grant_starting_planet(universe, player)
     planet = next(pl for pl in universe.planets.values() if pl.owner_id == "P1")
     pool = Commodity.FUEL_ORE
-    planet.colonists[pool] -= 1000
-    spend_free_start(planet, 1000)
+    planet.colonists[pool] -= 1
+    spend_free_start(planet, 1)
     assert planet.free_start_colonists == sum(int(n) for n in planet.colonists.values())
     before = full_net_worth(universe, player)
-    planet.colonists[pool] += 1000
+    planet.colonists[pool] += 1
     gained = full_net_worth(universe, player) - before
     assert gained == K.COLONIST_PRICE
 
