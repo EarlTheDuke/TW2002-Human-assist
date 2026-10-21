@@ -125,6 +125,8 @@ _SCREEN = r"""
   return {
     sector: text('#pSector'),
     turns: text('#tl'),
+    turnsFace: text('#turns'),
+    turnsLeft: text('#turnsLeftToday'),
     credits: text('#credits'),
     nw: text('#nw'),
     day: text('#sbDay'),
@@ -402,6 +404,7 @@ def _write_screen(log_path: Path, step: int, screen: dict) -> None:
         "screen "
         f"day={screen.get('day') or '-'} "
         f"turns={screen.get('turns') or '-'} "
+        f"left={screen.get('turnsLeft') or '-'} "
         f"credits={screen.get('credits') or '-'} "
         f"nw={screen.get('nw') or '-'} "
         f"chip={screen.get('chip') or '-'} "
