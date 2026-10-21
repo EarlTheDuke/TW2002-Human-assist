@@ -10,6 +10,7 @@ import copy
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -27,49 +28,152 @@ FIXTURES = ROOT / "tests" / "fixtures" / "media_events"
 LIVE = json.loads((MEDIA / "manifest.json").read_text(encoding="utf-8-sig"))
 CATALOG = json.loads((MEDIA / "clips" / "v3-pilot" / "clips_manifest_v3.json").read_text(encoding="utf-8"))
 TOK = "v3-e2e-token-p2-00000000000000"
-def _play_clips(page, clips: list[dict]) -> list[str]:
-    """Each clip must reach currentTime > 0.
+# play() on Windows WebKit can ignore the page forever. Race it. The clock
+# budget is short so fourteen clips on three browsers stay under two minutes
+# even when the first path does not move currentTime.
+_PLAY_MS = 1_000
+_CLOCK_MS = 1_200
+_INPAGE = """async ({clip, playMs, clockMs}) => {
+  const old = document.getElementById("clip-probe");
+  if (old) { old.pause(); old.remove(); }
+  const v = document.createElement("video");
+  v.id = "clip-probe";
+  v.muted = true;
+  v.playsInline = true;
+  const webm = document.createElement("source");
+  webm.src = clip.webm;
+  webm.type = "video/webm";
+  const mp4 = document.createElement("source");
+  mp4.src = clip.mp4;
+  mp4.type = "video/mp4";
+  v.append(webm, mp4);
+  document.body.appendChild(v);
+  const played = await Promise.race([
+    v.play().then(() => "ok").catch((err) => String(err)),
+    new Promise((resolve) => setTimeout(() => resolve("play-timeout"), playMs)),
+  ]);
+  const start = performance.now();
+  while (v.currentTime <= 0 && performance.now() - start < clockMs) {
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  const seen = v.currentTime;
+  v.pause();
+  v.remove();
+  return {played, time: seen};
+}"""
+_PINNED = """async ({clip, playMs}) => {
+  const old = document.getElementById("clip-probe");
+  if (old) { old.pause(); old.remove(); }
+  const v = document.createElement("video");
+  v.id = "clip-probe";
+  v.muted = true;
+  v.playsInline = true;
+  v.style.cssText = "position:fixed;left:8px;top:8px;width:320px;height:180px;z-index:80";
+  const webm = document.createElement("source");
+  webm.src = clip.webm;
+  webm.type = "video/webm";
+  const mp4 = document.createElement("source");
+  mp4.src = clip.mp4;
+  mp4.type = "video/mp4";
+  v.append(webm, mp4);
+  document.body.appendChild(v);
+  return await Promise.race([
+    v.play().then(() => "ok").catch((err) => String(err)),
+    new Promise((resolve) => setTimeout(() => resolve("play-timeout"), playMs)),
+  ]);
+}"""
 
-    The cockpit page is overflow hidden. WebKit leaves currentTime at 0 for a
-    video element parked past that box, even after play() resolves. Pinning
-    the element on screen lets the clock run. The wait stays in Playwright
-    because a long in-page loop also stalls that clock. The pass condition
-    is still currentTime > 0 in Chromium, Firefox, and WebKit.
-    """
-    bad: list[str] = []
-    for clip in clips:
-        played = page.evaluate(
-            """async (c) => {
-              const old = document.getElementById("clip-probe");
-              if (old) { old.pause(); old.remove(); }
-              const v = document.createElement("video");
-              v.id = "clip-probe";
-              v.muted = true;
-              v.playsInline = true;
-              v.style.cssText = "position:fixed;left:8px;top:8px;width:320px;height:180px;z-index:80";
-              const webm = document.createElement("source");
-              webm.src = c.webm;
-              webm.type = "video/webm";
-              const mp4 = document.createElement("source");
-              mp4.src = c.mp4;
-              mp4.type = "video/mp4";
-              v.append(webm, mp4);
-              document.body.appendChild(v);
-              try { await v.play(); return "ok"; }
-              catch (err) { return String(err); }
-            }""",
-            clip,
+
+def _browser_name(page) -> str:
+    browser = page.context.browser
+    if browser is None:
+        return "unknown"
+    return browser.browser_type.name
+
+
+def _inpage_time(page, clip: dict) -> tuple[float, str]:
+    try:
+        result = page.evaluate(
+            _INPAGE, {"clip": clip, "playMs": _PLAY_MS, "clockMs": _CLOCK_MS},
         )
-        if played != "ok":
-            bad.append(f"{clip['id']} {played}")
-            continue
+    except Exception as exc:
+        return 0.0, f"inpage {exc}"
+    return float(result["time"] or 0), str(result["played"])
+
+
+def _pinned_time(page, clip: dict) -> tuple[float, str]:
+    """Pin the clip on screen and read currentTime from outside the page.
+
+    An in-page wait stalls the WebKit clock on an overflow-hidden cockpit.
+    Polling from Python leaves the page idle so the clock can move. play()
+    is still raced, and this path is only the fallback.
+    """
+    try:
+        played = str(page.evaluate(_PINNED, {"clip": clip, "playMs": _PLAY_MS}))
+    except Exception as exc:
+        return 0.0, f"pinned {exc}"
+    seen = 0.0
+    deadline = time.monotonic() + (_CLOCK_MS / 1000)
+    while time.monotonic() < deadline:
         try:
-            page.wait_for_function(
-                "() => { const v = document.getElementById('clip-probe'); return !!v && v.currentTime > 0; }",
-                timeout=6_000,
-            )
-        except Exception:
-            bad.append(f"{clip['id']} {played}")
+            seen = float(page.evaluate(
+                "() => { const v = document.getElementById('clip-probe'); return v ? v.currentTime : 0; }"
+            ) or 0)
+        except Exception as exc:
+            played = f"{played} {exc}"
+            break
+        if seen > 0:
+            break
+        time.sleep(0.04)
+    try:
+        page.evaluate(
+            "() => { const v = document.getElementById('clip-probe'); if (v) { v.pause(); v.remove(); } }"
+        )
+    except Exception:
+        pass
+    return seen, played
+
+
+def _paths_for(browser: str) -> tuple[str, str]:
+    """Primary path, then the one fallback for this browser.
+
+    Windows WebKit blocks on the on-screen pin, so WebKit stays on the
+    in-page clock unless that clock leaves currentTime at 0. Chromium and
+    Firefox use the same order and only pin a clip that did not advance.
+    """
+    if browser == "webkit":
+        return ("inpage", "pinned")
+    return ("inpage", "pinned")
+
+
+def _attempt(page, clip: dict, path: str) -> tuple[float, str]:
+    if path == "pinned":
+        return _pinned_time(page, clip)
+    return _inpage_time(page, clip)
+
+
+def _play_clips(page, clips: list[dict]) -> list[str]:
+    """Each clip must reach currentTime > 0. play() resolving is not enough."""
+    browser = _browser_name(page)
+    primary, fallback = _paths_for(browser)
+    chosen: str | None = None
+    played = "not-run"
+    for path in (primary, fallback):
+        seen, played = _attempt(page, clips[0], path)
+        if seen > 0:
+            chosen = path
+            break
+    bad: list[str] = []
+    if chosen is None:
+        bad.append(f"{browser} {clips[0]['id']} {played}")
+    for clip in clips[1:]:
+        path = chosen or primary
+        seen, played = _attempt(page, clip, path)
+        if not seen > 0:
+            other = fallback if path == primary else primary
+            seen, played = _attempt(page, clip, other)
+        if not seen > 0:
+            bad.append(f"{browser} {clip['id']} {played}")
     return bad
 
 
