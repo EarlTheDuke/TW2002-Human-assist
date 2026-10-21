@@ -277,8 +277,11 @@ def test_scripted_player_reads_the_manual_and_sells(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stderr + proc.stdout
     actions = [json.loads(line) for line in (run / "actions.jsonl").read_text(encoding="utf-8").splitlines()]
     labels = [row["label"] for row in actions]
+    notes = [str(row.get("note") or "") for row in actions]
     assert "Manual" in labels
-    assert any(row == "SELL" or str(row).upper().startswith("SELL") for row in labels)
+    assert any(row == "SELL" or str(row).upper().startswith("SELL") for row in labels) or any(
+        note.startswith("haggle sell") or note.startswith("offer ") for note in notes
+    )
     manual = (run / "text-manual.txt").read_text(encoding="utf-8")
     assert "Getting started" in manual
     blob = "\n".join(
@@ -320,7 +323,7 @@ def test_the_scripted_trader_pairs_ports_haggles_and_avoids_danger() -> None:
         "labels": ["SELL 10", "1:20 (3t)"],
         "warps": ["1:20 (3t)"],
     }))
-    assert sold.label == "SELL 10"
+    assert sold.key == "P" and trader.deal == {"side": "sell", "commodity": "fuel_ore", "qty": "10"}
     # The port at 20 pays less than this one asks, so the pair is worth buying.
     trader.ports[20] = {"Organics": {"bid": 30}}
     bought = trader.decide(_view({
@@ -335,7 +338,7 @@ def test_the_scripted_trader_pairs_ports_haggles_and_avoids_danger() -> None:
         "labels": ["BUY 8"],
         "warps": ["1:20 (3t)"],
     }))
-    assert bought.label == "BUY 8"
+    assert bought.key == "P" and trader.deal["side"] == "buy" and trader.deal["qty"] == "8"
     confirmed = trader.decide(_view({
         "sector": "12", "day": "1", "turns": "8", "credits": "50,000 cr", "chip": "YOUR MOVE",
         "formOpen": True, "formText": "TRADE Port counters: We'll buy them",
@@ -426,7 +429,7 @@ def test_the_scripted_trader_keeps_a_port_pair_and_declines_a_bad_counter() -> N
         "labels": ["SELL 10", "1:35 (3t)"],
         "warps": ["1:35 (3t)"],
     }))
-    assert held.label == "SELL 10"
+    assert held.key == "P" and trader.deal["commodity"] == "fuel_ore"
     trader.ports[35] = {"Fuel Ore": {"bid": 39}}
     trader.links[16] = {35: 3}
     trader.warp_labels[(16, 35)] = "1:35 (3t)"
@@ -492,7 +495,18 @@ def test_the_scripted_trader_keeps_a_port_pair_and_declines_a_bad_counter() -> N
         "labels": ["CONFIRM", "ESC"],
         "warps": ["1:16 (3t)"],
     }))
-    assert fuel_ok.label == "CONFIRM"
+    assert fuel_ok.op == "type" and fuel_ok.selector == '[data-n="unit_price"]' and fuel_ok.text == "42"
+    taken = trader.decide(_view({
+        "sector": "35", "day": "2", "turns": "8", "credits": "49,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 10 Organics 0 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE",
+        "haggle": "We'll buy them for 39 cr each.",
+        "fields": {"unit_price": "42", "qty": "10"},
+        "labels": ["CONFIRM", "ESC"],
+        "warps": ["1:16 (3t)"],
+    }))
+    assert taken.label == "CONFIRM"
     low = trader.decide(_view({
         "sector": "35", "day": "2", "turns": "8", "credits": "49,000 cr", "chip": "YOUR MOVE",
         "holds": "Fuel Ore 0 Organics 20 Equipment 0",
@@ -504,6 +518,100 @@ def test_the_scripted_trader_keeps_a_port_pair_and_declines_a_bad_counter() -> N
         "warps": ["1:16 (3t)"],
     }))
     assert low.label == "ESC"
+
+
+def test_a_port_row_opens_the_trade_form_and_offers_the_chart_edge() -> None:
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader()
+    opened = trader.decide(_view({
+        "sector": "54", "day": "2", "turns": "17", "credits": "35 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 5",
+        "ship": "Holds 5/20",
+        "port": "Port Polaris Class 3 SBB",
+        "rows": [{
+            "cells": ["Equipment", "Buying, room 400", "400", "132", "5"],
+            "button": "SELL 5",
+        }],
+        "labels": ["SELL 5", "3:147 (3t)"],
+        "warps": ["3:147 (3t)"],
+    }))
+    assert opened.key == "P"
+    assert trader.deal == {"side": "sell", "commodity": "equipment", "qty": "5"}
+    blank = {
+        "sector": "54", "day": "2", "turns": "17", "credits": "35 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 5",
+        "formOpen": True,
+        "formText": "TRADE list 132 cr",
+        "labels": ["CONFIRM", "ESC"],
+    }
+    side = trader.decide(_view({
+        **blank,
+        "fields": {"side": "buy", "commodity": "fuel_ore", "qty": "", "unit_price": "132",
+                   "commodityOptions": ["equipment", "fuel_ore"]},
+    }))
+    assert side.op == "type" and side.selector == '[data-n="side"]' and side.text == "sell"
+    good = trader.decide(_view({
+        **blank,
+        "fields": {"side": "sell", "commodity": "fuel_ore", "qty": "", "unit_price": "",
+                   "commodityOptions": ["equipment", "fuel_ore"]},
+    }))
+    assert good.op == "type" and good.selector == '[data-n="commodity"]' and good.text == "equipment"
+    qty = trader.decide(_view({
+        **blank,
+        "fields": {"side": "sell", "commodity": "equipment", "qty": "", "unit_price": "132"},
+    }))
+    assert qty.op == "type" and qty.selector == '[data-n="qty"]' and qty.text == "5"
+    # The quote line is painted from the quantity. The price field is the list
+    # until then, and the offer still has to be the chart edge.
+    bare = trader.decide(_view({
+        **blank,
+        "fields": {"side": "sell", "commodity": "equipment", "qty": "5", "unit_price": "132"},
+    }))
+    assert bare.op == "type" and bare.selector == '[data-n="unit_price"]' and bare.text == "145"
+    offer = trader.decide(_view({
+        **blank,
+        "formText": "TRADE We'll buy them for 660 credits (5 at 132 cr).",
+        "haggle": "We'll buy them for 660 credits (5 at 132 cr).",
+        "fields": {"side": "sell", "commodity": "equipment", "qty": "5", "unit_price": "132"},
+    }))
+    assert offer.op == "type" and offer.selector == '[data-n="unit_price"]' and offer.text == "145"
+    taken = trader.decide(_view({
+        **blank,
+        "formText": "TRADE We'll buy them for 660 credits (5 at 132 cr).",
+        "haggle": "We'll buy them for 660 credits (5 at 132 cr).",
+        "fields": {"side": "sell", "commodity": "equipment", "qty": "5", "unit_price": "145"},
+    }))
+    assert taken.label == "CONFIRM"
+    assert trader.deal is None
+    # A buy quote uses the same form. 79 cr listed is offered at the 90 percent ceiling.
+    buyer = ScriptedTrader()
+    buyer.ports[10] = {"Equipment": {"bid": 100}}
+    buyer.links[54] = {10: 3}
+    buyer.links[10] = {54: 3}
+    buyer.decide(_view({
+        "sector": "54", "day": "2", "turns": "30", "credits": "2,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "port": "Port Polaris Class 3 BBS",
+        "rows": [{
+            "cells": ["Equipment", "Selling 40/40", "40", "79", "0"],
+            "button": "BUY 20",
+        }],
+        "labels": ["BUY 20"],
+        "warps": ["1:10 (3t)"],
+    }))
+    fair = buyer.decide(_view({
+        "sector": "54", "day": "2", "turns": "30", "credits": "2,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE We'll sell them for 1,580 credits (20 at 79 cr).",
+        "haggle": "We'll sell them for 1,580 credits (20 at 79 cr).",
+        "fields": {"side": "buy", "commodity": "equipment", "qty": "20", "unit_price": "79"},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert fair.op == "type" and fair.text == "72"
 
 
 def test_the_scripted_trader_keeps_the_best_pair_and_banks_the_surplus() -> None:
@@ -1553,7 +1661,103 @@ def test_the_v311_table_price_is_the_each_not_the_total() -> None:
         "fields": {"unit_price": "1580", "qty": "20"},
         "labels": ["CONFIRM", "ESC"],
     }))
-    assert fair.label == "CONFIRM"
+    assert fair.op == "type" and fair.selector == '[data-n="unit_price"]' and fair.text == "72"
+    paid = trader.decide(_view({
+        "sector": "16", "day": "2", "turns": "20", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE",
+        "haggle": "We'll sell them for 1,580 credits (20 at 79 cr).",
+        "fields": {"unit_price": "72", "qty": "20"},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert paid.label == "CONFIRM"
+
+
+def test_a_seen_lane_is_costed_and_the_bank_pays_a_load() -> None:
+    """A 6-turn warp loses to the 3-turn lane. A thin cash box withdraws a load."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="hard")
+    trader.day = 2
+    trader.max_day = 5
+    trader.day_turns = 40
+    trader.hold_cap = 20
+    trader.ports[10] = {"Equipment": {"ask": 40, "avail": 20, "now": 20}}
+    trader.ports[11] = {"Equipment": {"bid": 100, "avail": 20, "now": 20}}
+    # The direct warp is one hop and eight turns. The lane through 30 is six.
+    trader.links = {12: {10: 8, 30: 3}, 30: {10: 3, 12: 3}, 10: {11: 3, 30: 3}, 11: {10: 3}}
+    trader.warp_labels = {(12, 10): "1:10 (8t)", (12, 30): "2:30 (3t)", (30, 10): "1:10 (3t)"}
+    step = trader.decide(_view({
+        "sector": "12", "day": "2", "maxDay": "5", "turns": "40", "credits": "2,000 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:10 (8t)", "2:30 (3t)"],
+        "warps": ["1:10 (8t)", "2:30 (3t)"],
+    }))
+    assert step.label == "2:30 (3t)"
+    trader.credits = 100
+    trader.bought.update({"holds", "fighters"})
+    trader.bank = {"phase": "amount"}
+    drew = trader.decide(_view({
+        "sector": "1", "day": "3", "maxDay": "5", "turns": "20", "credits": "100 cr",
+        "chip": "YOUR MOVE",
+        "formOpen": True,
+        "formText": "BANK Balance 5,000 cr. Room 9,000 cr.",
+        "fields": {"side": "deposit", "amount": ""},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert drew.op == "type" and drew.selector == '[data-n="side"]' and drew.text == "withdraw"
+
+
+def test_a_settled_ship_stays_on_sectors_it_has_seen() -> None:
+    """After a pair pays, an unseen warp is a mine. Go back the way we came."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="hard")
+    trader.day = 4
+    trader.settled_day = 2
+    trader.previous = 147
+    trader.visited.update({54, 147})
+    trader.warp_labels = {(54, 147): "3:147 (3t)", (54, 7): "1:7 (3t)"}
+    step = trader.decide(_view({
+        "sector": "54", "day": "4", "maxDay": "5", "turns": "29", "credits": "4,882 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:7 (3t)", "3:147 (3t)"],
+        "warps": ["1:7 (3t)", "3:147 (3t)"],
+    }))
+    assert step.label == "3:147 (3t)"
+    trader.danger.add(147)
+    held = trader.decide(_view({
+        "sector": "54", "day": "4", "maxDay": "5", "turns": "26", "credits": "4,882 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:7 (3t)", "3:147 (3t)"],
+        "warps": ["1:7 (3t)", "3:147 (3t)"],
+    }))
+    assert held.op == "press" and held.key == "."
+    docked = ScriptedTrader(level="hard")
+    docked.day = 4
+    docked.settled_day = 2
+    docked.bought.update({"holds", "fighters"})
+    docked.visited.update({1, 119})
+    docked.danger.add(119)
+    docked.warp_labels = {(1, 68): "1:68 (3t)", (1, 119): "2:119 (3t)"}
+    left = docked.decide(_view({
+        "sector": "1", "day": "4", "maxDay": "5", "turns": "37", "credits": "3,552 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:68 (3t)", "2:119 (3t)"],
+        "warps": ["1:68 (3t)", "2:119 (3t)"],
+    }))
+    assert left.label == "1:68 (3t)"
 
 
 def test_turns_left_today_limits_the_hop() -> None:
@@ -1578,7 +1782,7 @@ def test_turns_left_today_limits_the_hop() -> None:
         "labels": ["SELL 10", "1:35 (3t)"],
         "warps": ["1:35 (3t)"],
     }))
-    assert stayed.label == "SELL 10"
+    assert stayed.key == "P"
     assert trader.day_turns == 250
 
 
@@ -1789,7 +1993,7 @@ def test_a_loaded_long_day_drops_the_home_course_at_stardock() -> None:
         "labels": ["SELL 10", "1:57 (3t)"],
         "warps": ["1:57 (3t)"],
     }))
-    assert sold.label == "SELL 10"
+    assert sold.key == "P"
     assert trader.plot_to == 0
     assert trader.dock_go is False
     short = ScriptedTrader()
@@ -1858,7 +2062,7 @@ def test_a_long_day_keeps_its_turns_and_buys_a_far_buyer() -> None:
         "labels": ["BUY 20", "1:11 (3t)"],
         "warps": ["1:11 (3t)"],
     }))
-    assert bought.label == "BUY 20"
+    assert bought.key == "P" and trader.deal["qty"] == "20"
     near = ScriptedTrader()
     near.ports[14] = {"Fuel Ore": {"bid": 40, "now": 40, "avail": 40}}
     for src, dest in ((10, 11), (11, 12), (12, 13), (13, 14)):
@@ -1876,7 +2080,7 @@ def test_a_long_day_keeps_its_turns_and_buys_a_far_buyer() -> None:
         "labels": ["BUY 20", "1:11 (3t)"],
         "warps": ["1:11 (3t)"],
     }))
-    assert skipped.label != "BUY 20"
+    assert skipped.key != "P" and skipped.label != "BUY 20"
     local = ScriptedTrader()
     local.ports[11] = {"Fuel Ore": {"bid": 30, "now": 40, "avail": 40}}
     local.ports[20] = {"Equipment": {"ask": 5, "now": 100, "avail": 100}}
@@ -1900,7 +2104,7 @@ def test_a_long_day_keeps_its_turns_and_buys_a_far_buyer() -> None:
         "labels": ["BUY 20", "1:20 (3t)", "2:11 (3t)"],
         "warps": ["1:20 (3t)", "2:11 (3t)"],
     }))
-    assert stayed.label == "BUY 20"
+    assert stayed.key == "P" and local.deal["commodity"] == "fuel_ore"
     normal = ScriptedTrader(level="normal")
     normal.visited.add(12)
     normal.ports[12] = {"Fuel Ore": {"bid": 50, "now": 100, "avail": 100}}

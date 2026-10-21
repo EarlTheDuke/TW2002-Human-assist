@@ -126,7 +126,10 @@ _SCREEN = r"""
   const formText = form ? (form.innerText || '').replace(/\s+/g, ' ').trim() : '';
   const menu = document.querySelector('#menu');
   const menuOpen = !!(menu && !menu.hidden && visible(menu));
-  const haggle = document.querySelector('[data-haggle="counter"]');
+  const counter = document.querySelector('[data-haggle="counter"]');
+  const quote = document.querySelector('[data-haggle="quote"]');
+  const lineOf = (el) => (el && visible(el) ? (el.innerText || '').replace(/\s+/g, ' ').trim() : '');
+  const haggle = lineOf(counter) || lineOf(quote);
   const gear = document.querySelector('[data-gear="price"]');
   return {
     sector: text('#pSector'),
@@ -146,7 +149,7 @@ _SCREEN = r"""
     warps, rows, labels, selectors, fields,
     formOpen: !!formText,
     formText,
-    haggle: haggle && visible(haggle) ? (haggle.innerText || '').replace(/\s+/g, ' ').trim() : '',
+    haggle,
     gearNote: gear && visible(gear) ? (gear.innerText || '').replace(/\s+/g, ' ').trim() : '',
     threat: (() => {
       const box = document.querySelector('#sectorText');
