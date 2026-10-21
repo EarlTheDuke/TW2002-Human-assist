@@ -44,6 +44,7 @@
     ["B", "Backtrack", null],
     ["S", "Quick stats", null],
     ["E", "Find route", null],
+    ["I", "CIM", null],
     ["Q", "Exit Computer", null],
   ];
   const HULL = {
@@ -4375,6 +4376,61 @@
     });
     input.focus();
   }
+  function federationHall(a) {
+    const hall = ((a && a.params) || {}).hall || {};
+    const listed = hall.listed || [];
+    const rows = listed.length
+      ? listed.map((row) => {
+        const members = (row.members || []).map((member) => member.name + (member.ceo ? " C.E.O." : "")).join(", ");
+        return '<div class="row" data-hall="reg">' + esc(row.registration) + " " + esc(row.name)
+          + (members ? " " + esc(members) : "") + "</div>";
+      }).join("")
+      : '<div class="row">No registrations.</div>';
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "federation-hall";
+    m.innerHTML = '<div class="y">Federation Hall</div>' + rows
+      + '<div class="row"><button type="button" id="hallRead">Read</button></div><br><span class="dk">Esc to close</span>';
+    $("hallRead").addEventListener("click", () => {
+      m.hidden = true;
+      act("federation_hall", {}, "federation hall");
+    });
+  }
+  function cimScreen() {
+    const a = LA("cim") || { legal: false, reason: "not in this game" };
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "cim";
+    if (!a.legal) {
+      m.innerHTML = '<div class="y">CIM</div><div class="row" data-cim="reason">' + esc(plainReason(a.reason)) + "</div>"
+        + '<br><span class="dk">Esc to close</span>';
+      return;
+    }
+    const send = (query, target) => {
+      const args = { query };
+      if (target != null) args.target = target;
+      act("cim", args, "CIM " + query);
+    };
+    m.innerHTML = '<div class="y">CIM</div><div class="row">'
+      + '<button type="button" data-cim="I">I</button> '
+      + '<button type="button" data-cim="R">R</button> '
+      + '<button type="button" data-cim="F">F</button> '
+      + '<button type="button" data-cim="Q">Q</button></div>'
+      + '<br><span class="dk">Esc to close</span>';
+    m.querySelectorAll("[data-cim]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const query = btn.getAttribute("data-cim");
+        m.hidden = true;
+        if (query === "F") {
+          askSector((n) => send("F", n));
+          return;
+        }
+        send(query);
+      });
+    });
+  }
   function navPoints() {
     const spec = LA("navpoint");
     if (!spec) { setResult("That is not a computer command.", true); return; }
@@ -4877,6 +4933,11 @@
     add("underground_enter", "Enter underground", () => ugEnter());
     add("underground_contract", "Contract", () => ugContract());
     add("underground_claim", "Claim underground", (a) => confirmWords("Claim underground", "Claim " + fmt((a.params || {}).pending || 0) + " cr?", () => act("underground_claim", {}, "claim")));
+    add("underground_rename", "New name", () => {
+      dockForm("underground_rename", "NEW NAME", "The Underground prices an unknown trader.", [
+        { n: "name", label: "name" },
+      ], null, (values) => act("underground_rename", { name: values.name }, "new name"));
+    });
     add("cineplex", "Cineplex", (a) => {
       const cost = Number((a.params || {}).cost || 0);
       const line = cost ? "The picture costs " + fmt(cost) + " cr. It has no secrets." : "The picture is free. It has no secrets.";
@@ -4889,6 +4950,7 @@
       confirmWords("Tri-Cron", "Ante " + fmt(ante) + " cr. " + rounds + " rounds. Pays 2:1." + (pot ? " Jackpot " + fmt(pot) + " cr." : ""), () => act("tricron", {}, "tricron"));
     });
     add("apply_commission", "Federal commission", () => confirmWords("Federal commission", "Apply for a Federal commission? You can take it once.", () => act("apply_commission", {}, "commission")));
+    add("federation_hall", "Federation Hall", (a) => federationHall(a));
     add("post_reward", "Post a reward", () => postReward());
     add("claim_reward", "Claim a reward", () => act("claim_reward", {}, "reward"));
     add("ship_set_password", "Ship password", () => shipPassword());
@@ -5054,7 +5116,7 @@
     });
     const item = document.createElement("select");
     item.dataset.n = "item";
-    ["credits", "fighters", "shields", "armid_mines", "limpet_mines"].forEach((name) => {
+    (((params.item || {}).choices) || []).forEach((name) => {
       const o = document.createElement("option");
       o.value = name;
       o.textContent = name.replaceAll("_", " ");
@@ -5160,22 +5222,18 @@
       confirmWords("Leave", line, () => act("corp_leave", {}, "leave"));
     });
     add("corp_memo", "Memo", () => memoForm());
-    if ((LA("corp_deposit") || {}).legal) {
-      add("corp_deposit", "Deposit credits", (a) => {
-        const max = Number((((a.params || {}).amount || {}).max) || (S && S.credits) || 0);
-        dockForm("corpDeposit", "DEPOSIT CREDITS", "Up to " + fmt(max) + " cr.", [
-          { n: "amount", label: "amount", type: "number", min: 1 },
-        ], null, (values) => act("corp_deposit", { amount: Number(values.amount) }, "deposit"));
-      });
-    }
-    if ((LA("corp_withdraw") || {}).legal) {
-      add("corp_withdraw", "Withdraw credits", (a) => {
-        const max = Number((((a.params || {}).amount || {}).max) || 0);
-        dockForm("corpWithdraw", "WITHDRAW CREDITS", "Up to " + fmt(max) + " cr.", [
-          { n: "amount", label: "amount", type: "number", min: 1 },
-        ], null, (values) => act("corp_withdraw", { amount: Number(values.amount) }, "withdraw"));
-      });
-    }
+    add("corp_deposit", "Deposit credits", (a) => {
+      const max = Number((((a.params || {}).amount || {}).max) || (S && S.credits) || 0);
+      dockForm("corpDeposit", "DEPOSIT CREDITS", "Up to " + fmt(max) + " cr.", [
+        { n: "amount", label: "amount", type: "number", min: 1 },
+      ], null, (values) => act("corp_deposit", { amount: Number(values.amount) }, "deposit"));
+    });
+    add("corp_withdraw", "Withdraw credits", (a) => {
+      const max = Number((((a.params || {}).amount || {}).max) || 0);
+      dockForm("corpWithdraw", "WITHDRAW CREDITS", "Up to " + fmt(max) + " cr.", [
+        { n: "amount", label: "amount", type: "number", min: 1 },
+      ], null, (values) => act("corp_withdraw", { amount: Number(values.amount) }, "withdraw"));
+    });
     add("corp_set_password", "Set password", () => passwordForm());
     add("corp_drop", "Drop member", (a) => dropForm(a));
     const ceo = button("Transfer C.E.O.", () => setResult("Handing the C.E.O. seat to another member is not in this game.", true));
@@ -5709,6 +5767,7 @@
       if (k === "B") return selfDestructInGame() ? beginSelfDestruct() : backtrack();
       if (k === "S") return quickStats();
       if (k === "E") return findRoute();
+      if (k === "I") return cimScreen();
       m.hidden = true;
       if (c[2]) return openForm(c[2]);
       return;

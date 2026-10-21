@@ -29,6 +29,16 @@ def test_every_verb_has_a_button() -> None:
     if not K.navpoint_live():
         gated.add("navpoint")
         assert 'LA("navpoint")' in REDESIGN
+    # NOTE 162. These verbs stay off /bot. The redesign has the buttons.
+    for kind, live in (
+        ("federation_hall", K.federation_hall_live()),
+        ("underground_rename", K.ug_name_live()),
+        ("cim", K.cim_live()),
+    ):
+        if live:
+            continue
+        gated.add(kind)
+        assert f'"{kind}"' in REDESIGN
     missing = [k.value for k in ActionKind if k.value not in covered and k.value not in gated]
     assert missing == []
     for kind in covered - _quoted(s3):
