@@ -347,6 +347,32 @@ def _opt(value: str, label: str, selected: str) -> str:
     return f"<option value=\"{escape(str(value))}\"{sel}>{escape(label)}</option>"
 
 
+def _profile_line(rules: str) -> str:
+    """Display only. The rules select still posts the profile. Stored defaults stay put."""
+    picked = "v311" if str(rules) == "v311" else "legacy"
+    label = "v3.11" if picked == "v311" else "legacy"
+    return (
+        f'<p class="note" id="rulesProfile" data-profile="{picked}">'
+        f"Profile: {label}. This is the profile the new game will use. "
+        "It does not change the stored defaults.</p>"
+    )
+
+
+_RULES_PROFILE_SCRIPT = """<script>
+function paintRulesProfile() {
+  const rules = document.getElementById("rules");
+  const el = document.getElementById("rulesProfile");
+  if (!rules || !el) return;
+  const v311 = rules.value === "v311";
+  el.dataset.profile = v311 ? "v311" : "legacy";
+  el.textContent = (v311 ? "Profile: v3.11" : "Profile: legacy")
+    + ". This is the profile the new game will use. It does not change the stored defaults.";
+}
+document.getElementById("rules").addEventListener("change", paintRulesProfile);
+</script>
+"""
+
+
 def _waiting_banner(waiting: Iterable[dict[str, Any]] | None) -> str:
     rows = [row for row in (waiting or []) if row.get("href")]
     if not rows:
@@ -532,6 +558,8 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
 <label for="name">Game name</label><input id="name" name="name" maxlength="40" required value="{escape(v['name'])}">
 <fieldset><legend>Rules</legend>
 <label for="rules">Rule set</label><select id="rules" name="rules">{_opt('v311', 'v3.11 (recommended)', v['rules'])}{_opt('legacy', 'Legacy (this project)', v['rules'])}</select>
+{_profile_line(v['rules'])}
+{_RULES_PROFILE_SCRIPT}
 <p class="note" id="rulesPortHint">Ports open full and restock 5% of max each dawn.</p>
 <label for="starting_package">Starting package</label><select id="starting_package" name="starting_package">{_opt('v311', 'v3.11 starting package', v['starting_package'])}{_opt('classic', 'Classic (legacy rules only)', v['starting_package'])}</select>
 <p class="note">v3.11 rules always use the v3.11 starting package.</p>
@@ -643,6 +671,7 @@ def created(brand: str, *, game: dict[str, Any], join_links: list[tuple[str, str
             f'<a class="btn" href="{href}" data-cockpit="seat">Open {seat}</a>.</p>'
         )
     body = (f"<p class=\"sub\">Game created</p><div class=\"card\"><h2>{escape(game['name'])}</h2>"
+            f"{_profile_line(str(settings.get('rules') or 'legacy'))}"
             f"{shown}{ai_line}{cockpit_line}"
             "<p>One join link per open seat. Send each link to one player; the first person to open it gets the seat.</p>"
             f"{links}<p>Watch link (read-only)<code class=\"link\">{escape(watch_link)}</code></p>"
