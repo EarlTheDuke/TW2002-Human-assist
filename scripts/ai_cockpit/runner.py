@@ -651,7 +651,11 @@ def play(
                 _write_modules(run_dir)
                 return 1
             try:
-                _write_log(log_path, "seat page open " + redact(url))
+                # "seat page is open" must not be a substring of the failure
+                # line "the seat page did not open". A loaded Windows box writes
+                # that failure while Chromium is still starting, and a check for
+                # "seat page open" then treated the dead seat as ready.
+                _write_log(log_path, "seat page is open " + redact(url))
                 step = 1
                 limit = max(0, int(max_turns))
                 while step <= limit:
@@ -757,7 +761,7 @@ def _memory_line(step: int, screen: dict, action: Action) -> str:
     return " ".join(str(bit) for bit in bits if bit)
 
 
-def _open_when_ready(playwright, url: str, log_path: Path, headless: bool, timeout_s: float = 90):
+def _open_when_ready(playwright, url: str, log_path: Path, headless: bool, timeout_s: float = 240):
     """Launch the browser and open the seat, retrying until the port is up.
 
     The first navigation used to fail once (the worker had answered /healthz
@@ -765,6 +769,10 @@ def _open_when_ready(playwright, url: str, log_path: Path, headless: bool, timeo
     process exited. The game then waits on that seat until something connects,
     so the other seats never finish the day, and the only log line was missing
     because this process had already gone.
+
+    90s was enough on an idle VM and not on the loaded Windows merge box:
+    launching Chromium plus one slow page load used the whole budget, the
+    process exited, and the scheduler sat on that seat.
     """
     deadline = time.monotonic() + timeout_s
     while True:
@@ -789,8 +797,8 @@ def _open_when_ready(playwright, url: str, log_path: Path, headless: bool, timeo
 
 def _open(page, url: str, log_path: Path) -> bool:
     try:
-        page.goto(url, wait_until="domcontentloaded", timeout=30_000)
-        page.wait_for_selector("#waitchip", timeout=20_000)
+        page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+        page.wait_for_selector("#waitchip", timeout=45_000)
         # The header says YOUR MOVE before the seat connects. Wait for a sector.
         page.wait_for_function(
             """() => {
@@ -800,7 +808,7 @@ def _open(page, url: str, log_path: Path) -> bool:
               const signedOut = !!(sign && !sign.hidden);
               return !!text && text !== '-' && !signedOut;
             }""",
-            timeout=20_000,
+            timeout=45_000,
         )
         return True
     except Exception as exc:
@@ -838,7 +846,10 @@ def _chip(page) -> str:
 
 def _wait_chip(page) -> None:
     """Wait until the seat can act, or the game has stopped asking."""
-    _wait_until(page, ("YOUR MOVE", "GAME OVER", "NO TURNS"), 20_000)
+    # 20s missed the chip on the loaded Windows box. The seat stays attended
+    # while this process is up, so giving up early left the scheduler on the
+    # full external timeout instead of the action.
+    _wait_until(page, ("YOUR MOVE", "GAME OVER", "NO TURNS"), 90_000)
 
 
 def _wait_until(page, chips: tuple[str, ...], timeout: int) -> None:
