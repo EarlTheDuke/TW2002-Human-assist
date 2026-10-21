@@ -113,6 +113,24 @@ def _credential(request: Request, player_id: str | None = None) -> str:
 _BANK_KINDS = {ActionKind.BANK_DEPOSIT, ActionKind.BANK_WITHDRAW, ActionKind.BANK_TRANSFER}
 
 
+def rules_verbs() -> list[str]:
+    """Verb names `/rules` publishes.
+
+    Every ActionKind, minus the families whose stored mode is off. The parity
+    catalog compares against this list instead of a hardcoded count.
+    """
+    verbs = [k.value for k in ActionKind]
+    if not K.rob_tw2002():
+        verbs = [v for v in verbs if v not in ("rob", "steal")]
+    if not K.hardware_tw2002():
+        verbs = [v for v in verbs if v not in ("cloak", "fire_disruptor", "remove_limpet", "launch_beacon", "deploy_atomic")]
+    if not K.class0_tw2002():
+        verbs = [v for v in verbs if v != "terra_colonists"]
+    if not K.planet_trade_on():  # planetary-trading-v1: legacy has no <N> verb
+        verbs = [v for v in verbs if v != "planet_trade"]
+    return verbs
+
+
 def rewrite_api_args(action: Action) -> None:
     """Bank clients may send credits or qty. The engine reads amount."""
     if action.kind not in _BANK_KINDS:
@@ -408,15 +426,7 @@ def build_harness_router(runner) -> APIRouter:
     @router.get("/rules")
     async def rules(request: Request) -> dict[str, Any]:
         _authenticate_any(request)
-        verbs = [k.value for k in ActionKind]
-        if not K.rob_tw2002():
-            verbs = [v for v in verbs if v not in ("rob", "steal")]
-        if not K.hardware_tw2002():
-            verbs = [v for v in verbs if v not in ("cloak", "fire_disruptor", "remove_limpet", "launch_beacon", "deploy_atomic")]
-        if not K.class0_tw2002():
-            verbs = [v for v in verbs if v != "terra_colonists"]
-        if not K.planet_trade_on():  # planetary-trading-v1: legacy has no <N> verb
-            verbs = [v for v in verbs if v != "planet_trade"]
+        verbs = rules_verbs()
         return {
             "system_prompt": get_system_prompt(),
             "verbs": verbs,
