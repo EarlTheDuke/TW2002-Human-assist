@@ -10,13 +10,15 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 
 | Grade | v5 | v6 |
 |---|---|---|
-| Match | 50 | 57 |
-| Match-behind-flag | 17 | 67 |
-| Partial | 53 | 38 |
+| Match | 50 | 59 |
+| Match-behind-flag | 17 | 70 |
+| Partial | 53 | 33 |
 | Different | 38 | 6 |
 | Missing | 11 | 1 |
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
+
+NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Rows 181-186 stay reserved for queued #89 and #93.
 
 ## What moved
 
@@ -121,10 +123,7 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 21 | 8.8 | Partial | M | Fighters fight players. There is no separate NPC crew | `fed.place_federals` | |
 | 22 | 14.1 | Partial | M | Course plot is in. Avoids are `AVOID_MODE` row 35. The other original computer helpers are not | `runner._handle_plot_course` | |
 | 23 | 11.11 | Partial | S | Density, one-way share, and the 30 percent two-way lanes are flagged (rows 87, 88, and 178). Bubbles, the course-length generator, and the Gold options are not | `universe.generate_universe` | universe.py |
-| 24 | 6.7 | Partial | S | Genesis class choice is only partly the original. `PLANET_CLASS_MODE` exists and the profile leaves it off because v3.11 genesis class is random, which that switch does not do | `runner` genesis handler | constants.py |
 | 25 | 6.10 | Partial | S | Destroying a planet is in. A trader on it is `PLANET_ZDY_MODE` (NOTE 143). Colonist-kill alignment is still unpublished | `runner._remove_planet` | |
-| 26 | 6.11 | Partial | S | The v3.06 disband split is flagged. Other corporate planet quirks are not | `corp._planets_on_leave` | |
-| 27 | 9.5 | Partial | S | Some alignment hits exist. Profile row 111 says the stored list was already in, and it is still not the full list | `victory.combat_rewards` | |
 | 28 | 5.14 | Partial | S | Experience drops on death. Alignment from the loss is only partly the original. `ALIGNMENT_MODE` is a no-op (legacy and live match) | `combat._destroy_ship_tw2002` | |
 | 29 | 3.20 | Partial | M | A federal commission exists. The ISS rule is only partly the original. Profile rows 104 and 108 were already the stored default, so no commission switch was added | `victory.is_commissioned`, `fed.check_iss_repo_on_move` | |
 | 30 | 10.1 | Partial | S | Creating a corporation is in. The purchase rule still has a source conflict (`CFS_CEO_RULE`) | `corp.handle_corp_create` | |
@@ -276,11 +275,11 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 6.4 Match-behind-flag `PLANET_PROD_MODE` row 26. Fuel from colonists divided by 3, and the 5 percent die-off. `constants.planet_prod_live`.
 6.5 Match-behind-flag `GENESIS_START_MODE` row 24. A new planet starts empty. `constants.genesis_start_live`.
 6.6 Match. Five planets per sector, same as 1.12. The overload collision is a separate nightly job, `PLANET_COLLISION_MODE` row 148, NOTE 102, and stays off. `constants.sector_has_planet_room`, `runner._planet_collisions`.
-6.7 Partial. Genesis class choice is only partly the original. `PLANET_CLASS_MODE` is not in the profile because v3.11 class is random and that switch does not roll it. `constants.planet_class_live`.
+6.7 Match. A Genesis launch rolls a class from `PLANET_CLASS_WEIGHTS` when the torpedo commits. A requested class is ignored. `PLANET_CLASS_MODE` stays off the profile because it would limit the roll to M and U, and v3.11 class is random. The crowding weights are one note with no numbers, so they are not applied. `runner._handle_deploy_genesis`.
 6.8 Match. Planetary trading is on. `PLANET_TRADE_MODE` is tw2002. `constants.planet_trade_on`.
 6.9 Match-behind-flag `CITADEL_PARK_MODE` row 45. Overnight parking inside a citadel is coded and off. `fleet.citadel_home`.
 6.10 Partial. Destroying a planet is in. Killing a trader who is on it is `PLANET_ZDY_MODE` (NOTE 143): enemy experience times 0.1666 and enemy alignment times -0.3333, on top of the blow. Colonist-kill alignment is still unpublished, and a citadel's extra blow experience is not printed. `runner._remove_planet`.
-6.11 Partial. `CORP_PLANET_DISBAND_MODE` row 97, NOTE 82, gives the v3.06 split and stays off. Other corporate planet quirks still disagree. `corp.disband`.
+6.11 Match-behind-flag `CORP_PLANET_DISBAND_MODE` row 97, NOTE 82, and `SPECIAL_HULL_RULES_MODE` row 105, NOTE 86. On a disband, planets in the C.E.O.'s sector become his and the rest are unclaimed. A Tholian defending its corp planet fights at 4:1. The map does not name a further quirk, so none was added. `corp.disband`, `combat.hull_interdict_reason`.
 6.12 Partial. Planet-destroy experience is the stored 50 from `constants.xp_award`. Alignment uses `PLANET_DESTROY_ALIGNMENT_TW2002` = 1. No switch covers that conflict. The create-and-destroy experience loop is 14.3.
 6.13 Match-behind-flag `PLANET_DIVIDEND_PAY_MODE` row 41. Turning it off stops the growth dividend. The profile selects off. `constants.planet_dividend_off`.
 6.14 Match-behind-flag `CITADEL_PERK_MODE` row 27. L2 and L5 perk lines are coded and off. `runner._handle_set_military_reaction`.
@@ -297,10 +296,10 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 8.8 Partial. Fighters fight players. There is no separate NPC crew. `fed.place_federals`.
 8.9 Match-behind-flag `GOLD_ALIEN_MODE`. Gold-mode aliens are coded and off. The v3.11 profile does not turn `gold_alien_live` on. `alien.note_gold_grudge`.
 9.1 Match-behind-flag `STARTING_PACKAGE_MODE` row 1. The clean start package is coded and off. `runner.grant_starting_planet`.
-9.2 Partial. Midnight +1 and the personal first dock run under `DISCOVERY_EXP_MODE` row 32. Destroying StarDock or a Class 0 port is `EXP_SOURCES_MODE` row 145, NOTE 102. Not every original source is in. `runner.tick_day`, `runner._handle_trade`.
+9.2 Match. A trade pays 1, the first dock pays 1, midnight pays 1 experience and 1 alignment, genesis pays 25, destroying a port pays 50, and a kill pays 10 percent of the victim's experience. Those are `XP_AWARDS_TW2002` while `RANK_MODE` is tw2002. An alien's own experience is not printed, so a Ferrengi kill does not pay half of one. `runner._handle_trade`, `runner.tick_day`, `victory.kill_rewards`.
 9.3 Match. Experience from a player kill uses `COMBAT_EXP_DIVISOR` 15/35/25 and `KILL_EXP_SHARE` 0.10. `victory.combat_rewards`, `victory.kill_rewards`. Profile row 91.
 9.4 Match. Alignment already moves by the fighters lost times the other alignment, divided by 5000. `constants.COMBAT_ALIGN_DIVISOR`, `victory.combat_rewards`.
-9.5 Partial. Some other alignment hits exist. Not the full list. Profile row 111 was already the stored set. `victory.combat_rewards`.
+9.5 Match-behind-flag `BOUNTY_GOOD_MODE` row 187, NOTE 163. A bounty on a good trader costs 1 alignment per 250 credits and no experience. A reward on an evil trader, the tax, jettison, genesis, a port blow, a corp break-in, a port upgrade, the underground contract, and cursing the Grimy Trader are already in. A line the sources do not name was not added. `fed.handle_post_reward`.
 9.6 Match. Rank titles are already the original ladders, and traders are ordered by experience. `RANK_TITLES_MODE` is a no-op. NOTE 158 added no second switch. `victory.rank_for`.
 9.7 Match-behind-flag `CITADEL_PERK_MODE` row 27. The L2 and L5 perk set is coded and off. A wider good-trader versus evil-trader chart was not found as a second switch. `constants.citadel_perk_live`.
 9.8 Partial. A rob pays from experience. The full pricing limit is not the original table. `rob_steal.max_rob_credits`.
@@ -338,7 +337,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 13.1 Partial. A direct hail exists. It is not the full original hail. `runner._handle_hail`. This tip has no separate mail switch.
 13.2 Match-behind-flag `RADIO_CHANNEL_MODE` row 46. Radio channels are coded and off. `runner._handle_radio`.
 13.3 Partial. Mail is the inbox a hail already writes. The original mail service is not in. `runner._handle_hail`.
-13.4 Partial. Owner hazard notices are `OWNER_HAZARD_NOTICE_MODE` row 55. Siege order is `SIEGE_REPORT_MODE` row 59. They are not the full original report set. `constants.owner_hazard_notice_on`.
+13.4 Match-behind-flag `OWNER_HAZARD_NOTICE_MODE` row 55 and `SIEGE_REPORT_MODE` row 59. The owner is told about a landing, a fighter hit, a mine, and a siege. The Bible does not print a further report set, so none was added. `observation._event_visible_base`.
 13.5 Match. An ether-probe report is the route it walked, and it names the sector where fighters destroyed it. `scanners.handle_probe`.
 13.6 Match-behind-flag `FEDCOMM_MODE` row 48. The FedComm notice is coded and off. `class0.extern_sweep`.
 14.1 Partial. The computer can plot a course (`runner._handle_plot_course`, `runner.query_route`). Avoids are `AVOID_MODE` row 35. Not every original helper is in. NavPoints and the NOTE 103 computer keys are not on this tip.

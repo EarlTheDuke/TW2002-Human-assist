@@ -2730,6 +2730,7 @@ POLICE_MIN_ALIGNMENT = 0
 COMMISSION_APPLY_MIN = 500       # apply when 500 <= align < COMMISSION_ALIGNMENT
 REWARD_MIN = 1000                # UNVERIFIED minimum
 REWARD_ALIGN_PER = 1000          # +1 alignment per this many credits
+BOUNTY_ALIGN_PER = 250           # formulas.html: -1 alignment per 250 credits on a good trader
 
 # f9 optional floors (defaults keep today's is_fedsafe)
 FEDSAFE_MIN_ALIGNMENT = 0
@@ -4765,6 +4766,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "REENTRY_FIGHTERS_MODE",
         "NOTE 158: the free Scout after Ship Destroyed gets min(250, initial fighters)",
     ),
+    "bounty_good_live": (
+        "BOUNTY_GOOD_MODE",
+        "NOTE 163 GAP 9.5: a bounty on a good trader costs 1 alignment per 250 credits and no experience",
+    ),
 }
 
 
@@ -5654,6 +5659,18 @@ REENTRY_FIGHTER_CAP = 250
 def reentry_fighters_live() -> bool:
     """True when Ship Destroyed stocks the free Scout from the initial-fighter cap."""
     return REENTRY_FIGHTERS_MODE == "v311" or v311_profile()
+
+
+# NOTE 163 GAP 9.5. cabal formulas.html "Posting a bounty on a Good":
+# -1 alignment per 250 credits, and the experience cell is 0. A reward on an
+# evil trader stays +1 per REWARD_ALIGN_PER. Off, a good target is still refused.
+# "1" does not turn this on. TW2002_LIVE_PROFILE does not turn this on.
+BOUNTY_GOOD_MODE = "legacy"  # "legacy" | "v311"
+
+
+def bounty_good_live() -> bool:
+    """True when Police HQ accepts a bounty on a trader whose alignment is above 0."""
+    return BOUNTY_GOOD_MODE == "v311" or v311_profile()
 
 
 def reentry_fighter_grant(initial: int | None = None) -> int:
