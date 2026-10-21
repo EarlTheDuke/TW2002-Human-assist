@@ -11,14 +11,14 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Grade | v5 | v6 |
 |---|---|---|
 | Match | 50 | 59 |
-| Match-behind-flag | 17 | 70 |
-| Partial | 53 | 33 |
+| Match-behind-flag | 17 | 72 |
+| Partial | 53 | 31 |
 | Different | 38 | 6 |
 | Missing | 11 | 1 |
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
 
-NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Rows 181-186 stay reserved for queued #89 and #93.
+NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. NOTE 164 moves 8.1 and 12.6 from Partial to Match-behind-flag. The ship switch and the fighter-report switch sit on 6.11 and 13.4 and do not grade those rows again. After both notes the picture is Match 59, Match-behind-flag 72, Partial 31, Different 6, Missing 1, Ben-decision 2. Rows 181-186 stay reserved for queued #89 and #93.
 
 ## What moved
 
@@ -68,7 +68,7 @@ Only rows whose grade changed. Evidence is `file:function`.
 | 5.19 | Match | Match-behind-flag | `PLANET_LANDING_COMBAT_MODE` row 54. Legacy seizes a defended planet. `constants.planet_landing_combat_on` |
 | 6.1 | Missing | Match-behind-flag | `SCANNER_FOG_MODE` row 44. `observation._planet_brief` |
 | 6.9 | Missing | Match-behind-flag | `CITADEL_PARK_MODE` row 45. `fleet.citadel_home` |
-| 6.11 | Different | Partial | disband split is `CORP_PLANET_DISBAND_MODE` row 97, NOTE 82. `corp.disband`. Other corp-planet quirks have no second switch |
+| 6.11 | Different | Match-behind-flag | planets stay `CORP_PLANET_DISBAND_MODE` row 97, NOTE 82. Parked ships in the C.E.O.'s sector are `CORP_SHIP_DISBAND_MODE` row 201, NOTE 164. `corpships.on_corp_extinct` |
 | 6.12 | Different | Partial | destroy experience 50 is already `constants.xp_award`. Alignment stays `PLANET_DESTROY_ALIGNMENT_TW2002` = 1. No switch for that conflict |
 | 6.14 | Different | Match-behind-flag | `CITADEL_PERK_MODE` row 27. `runner._handle_set_military_reaction` |
 | 7.5 | Different | Match-behind-flag | `TREASURY_CAP_MODE` row 85, NOTE 78. `runner._handle_deposit_treasury` |
@@ -104,7 +104,6 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 2 | 5.7 | Different | L | Ship versus ship is still not the original exchange. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 4 | 5.6 | Different | M | Toll math still disagrees | `runner._toll_blocks` | |
-| 5 | 8.1 | Partial | M | Hull counts already match FERRSPEC. The attack formula is `FERRENGI_ATTACK_MODE` (NOTE 148) and stays off. Bible odds still conflict with the approximate FERRSPEC column | `ferrengi.hull_spec`, `combat._resolve_ferrengi_chart_attack` | |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
 | 7 | 11.9 | Partial | M | Feds tow and answer some crimes. Not every evil-trader attack | `fed.protect_fedspace_attack` | |
 | 8 | 5.20 | Partial | M | FedSpace combat has penalties and is not the full police response | `fed.protect_fedspace_attack` | |
@@ -129,7 +128,6 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 30 | 10.1 | Partial | S | Creating a corporation is in. The purchase rule still has a source conflict (`CFS_CEO_RULE`) | `corp.handle_corp_create` | |
 | 31 | 10.2 | Partial | S | Joining is in. Sign agreement is `CORP_ALIGNMENT_RULE` row 71. The other checks are only partly the original | `corp._join_block` | |
 | 32 | 10.7 | Partial | S | Corp assets and member locations are only partly visible | `corp.member_block`, `corp.public_corporations` | |
-| 33 | 12.6 | Partial | M | Tournament options are only partly the original | `victory.check_victory` | |
 | 34 | 14.5 | Missing | L | No coded evil-trading loop | `src/tw2k/agents` | Track D NOTE 92 owns that tree |
 | 35 | 14.6 | Different | L | Systems that were never in the original are still in this game. This map does not delete them | several | |
 
@@ -279,7 +277,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 6.8 Match. Planetary trading is on. `PLANET_TRADE_MODE` is tw2002. `constants.planet_trade_on`.
 6.9 Match-behind-flag `CITADEL_PARK_MODE` row 45. Overnight parking inside a citadel is coded and off. `fleet.citadel_home`.
 6.10 Partial. Destroying a planet is in. Killing a trader who is on it is `PLANET_ZDY_MODE` (NOTE 143): enemy experience times 0.1666 and enemy alignment times -0.3333, on top of the blow. Colonist-kill alignment is still unpublished, and a citadel's extra blow experience is not printed. `runner._remove_planet`.
-6.11 Match-behind-flag `CORP_PLANET_DISBAND_MODE` row 97, NOTE 82, and `SPECIAL_HULL_RULES_MODE` row 105, NOTE 86. On a disband, planets in the C.E.O.'s sector become his and the rest are unclaimed. A Tholian defending its corp planet fights at 4:1. The map does not name a further quirk, so none was added. `corp.disband`, `combat.hull_interdict_reason`.
+6.11 Match-behind-flag. `CORP_PLANET_DISBAND_MODE` row 97 and `SPECIAL_HULL_RULES_MODE` row 105 are the planet split and the Tholian 4:1. NOTE 163 graded the row on those two. `CORP_SHIP_DISBAND_MODE` row 201, NOTE 164, is the ship sentence in the same v3.06 revision: a parked ship in the living C.E.O.'s sector becomes that C.E.O.'s, and a parked ship outside it stays defunct. That switch does not grade the row a second time. `corp.disband`, `corpships.on_corp_extinct`.
 6.12 Partial. Planet-destroy experience is the stored 50 from `constants.xp_award`. Alignment uses `PLANET_DESTROY_ALIGNMENT_TW2002` = 1. No switch covers that conflict. The create-and-destroy experience loop is 14.3.
 6.13 Match-behind-flag `PLANET_DIVIDEND_PAY_MODE` row 41. Turning it off stops the growth dividend. The profile selects off. `constants.planet_dividend_off`.
 6.14 Match-behind-flag `CITADEL_PERK_MODE` row 27. L2 and L5 perk lines are coded and off. `runner._handle_set_military_reaction`.
@@ -287,7 +285,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 7.3 Match. A finished level still grants fighters and shields. `planets._complete_citadels`.
 7.4 Match. Atmospheric quasar factor stays the MBBS times 2. A shieldless landing's second shot is `QUASAR_ATM_ORDER_MODE` (NOTE 143). `runner._handle_land_planet`.
 7.5 Match-behind-flag `TREASURY_CAP_MODE` row 85, NOTE 78. The S1 cap is coded. The stored cap stays 10,000,000. `runner._handle_deposit_treasury`.
-8.1 Partial. Hull counts and the approximate FERRSPEC odds are already stored. A Ferrengi attack is `FERRENGI_ATTACK_MODE` row 173, NOTE 148: one volley at 1,000 / 2,000 / 5,000 fighters. Legacy stays the three-round roll. Bible odds still conflict with that approximate column. `combat._resolve_ferrengi_chart_attack`.
+8.1 Match-behind-flag. Hull counts and the approximate FERRSPEC odds stay the stored table. `FERRENGI_ODDS_MODE` row 200, NOTE 164, reads the Bible chart: 1.2 / 1.4 / 1.4, an Assault Trader volley of 2,000, and a holo scanner on that hull. It stays off. `FERRENGI_ATTACK_MODE` row 173, NOTE 148, is still the one-volley gate and still uses the FERRSPEC 1,000 while the odds switch is off. `constants.ferrengi_odds_for_hull`, `combat._resolve_ferrengi_chart_attack`.
 8.2 Match-behind-flag `FERRENGI_ENGAGE_MODE` row 58. The engage path is coded and off. Tribute amounts are UNVERIFIED. `constants.ferrengi_engage_on`.
 8.3 Match-behind-flag `FERRENGI_PACE_MODE` row 107 and `FERRENGI_GRUDGE_MODE` row 106, NOTE 86. Movement chance and the grudge hop are coded and off. `runner.tick_day`.
 8.4 Match-behind-flag `FERRENGI_REWARD_MODE` row 101, NOTE 85. The bounty is already paid. Live alignment and experience by hull stay off. `combat._grant_ferrengi_kill`.
@@ -332,12 +330,12 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 12.3 Different. Movement is still by turns, not by the clock. `DAY_ROLL_CLOCK_MODE` row 81 rolls the day while a seat holds the turn. Planet goods can accrue on `PLANET_REALTIME_PROD_MODE`, which the profile leaves off. `runner.apply_action`.
 12.4 Partial. `runner.tick_day` runs retreats, Ferrengi, corp penalty, the Class 0 sweep, Terra regen, empty-ship repossession, Fed tows, port regen, bust clearing, photon waves, cloak fails, NavHaz, alien hops, planet production, citadels, treasury, and tax. Collisions and special-port rebuilds stay behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` row 177, NOTE 151, deletes a disconnected human after 30 quiet wall-clock days in a game that was generated with the switch on, and stays off. A connected seat and an AI cockpit seat stay. `INACTIVITY_TIMEOUT_MODE` row 178 sleeps a quiet lobby game after 14,400 seconds and stays off. Not every original nightly job is named.
 12.5 Match-behind-flag `EXP_SCORE_MODE` row 28. A normal game still ends on net worth. Experience ranking is coded and off. The day cap, the last player standing, the credit bar, and a creator end have no printed v3.11 number. NOTE 158 left them. `victory.check_victory`.
-12.6 Partial. The v3.11 sample prints tournament mode off and unlimited times blown up. The later lockout is not a v3.11 number. `DEATH_DELAY_MODE` is the timeout. `victory.end_rule_line`.
+12.6 Match-behind-flag. The v3.11 sample prints tournament mode off and unlimited times blown up. `TIMES_BLOWN_MODE` row 202, NOTE 164, says so on the legacy destroy line when elimination is off, and stays off. The later lockout was not added. `DEATH_DELAY_MODE` is the timeout. `combat._legacy_destroy_summary`.
 12.7 Match-behind-flag `DAILY_STATS_MODE` row 47. The daily stats screen is coded and off. `observation.build_observation`.
 13.1 Partial. A direct hail exists. It is not the full original hail. `runner._handle_hail`. This tip has no separate mail switch.
 13.2 Match-behind-flag `RADIO_CHANNEL_MODE` row 46. Radio channels are coded and off. `runner._handle_radio`.
 13.3 Partial. Mail is the inbox a hail already writes. The original mail service is not in. `runner._handle_hail`.
-13.4 Match-behind-flag `OWNER_HAZARD_NOTICE_MODE` row 55 and `SIEGE_REPORT_MODE` row 59. The owner is told about a landing, a fighter hit, a mine, and a siege. The Bible does not print a further report set, so none was added. `observation._event_visible_base`.
+13.4 Match-behind-flag. `OWNER_HAZARD_NOTICE_MODE` row 55 and `SIEGE_REPORT_MODE` row 59 tell the owner about a landing, a fighter hit, a mine, and a siege. NOTE 163 graded the row on those two. `FIGHTER_REPORT_MODE` row 203, NOTE 164, is a separate list of sectors where that trader owns fighters, omitting a count of 0. It is not an observation field, and it does not grade the row a second time. `observation._event_visible_base`, `combat.fighter_report`.
 13.5 Match. An ether-probe report is the route it walked, and it names the sector where fighters destroyed it. `scanners.handle_probe`.
 13.6 Match-behind-flag `FEDCOMM_MODE` row 48. The FedComm notice is coded and off. `class0.extern_sweep`.
 14.1 Partial. The computer can plot a course (`runner._handle_plot_course`, `runner.query_route`). Avoids are `AVOID_MODE` row 35. Not every original helper is in. NavPoints and the NOTE 103 computer keys are not on this tip.
