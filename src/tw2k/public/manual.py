@@ -696,6 +696,11 @@ def _rankings(f: dict) -> str:
         "<p>When the day cap ends the game, the screen starts "
         "GAME OVER - time ran out after the last day, then the places and the measure, "
         "experience or net worth.</p>"
+        "<p>v3.11 ranks traders by experience. Net worth has no printed formula. "
+        "The day cap, the last player standing, the credit bar, and a creator end stay, "
+        "because no v3.11 page prints a number for them. "
+        "The end announcement is that GAME OVER panel. "
+        "A 155-character player line is the communications rule.</p>"
         f"<p>{_profile('Paid-cargo net-worth note', K.nw_estimate_live(), only_v311=False)} {worth}</p>"
         + _creator_end()
         + _src("The end rule and the end screen are built by the victory code. "
@@ -1464,13 +1469,20 @@ def _death_and_pods(f: dict) -> str:
         wait,
         "a pod can act on the turn you land in it. A wait of several midnights is not applied.",
     )
+    figs = _gated(
+        K.reentry_fighters_live(),
+        f"the free Scout carries {_n(K.reentry_fighter_grant())} fighters, "
+        f"the smaller of {_n(K.REENTRY_FIGHTER_CAP)} and this game's initial fighters.",
+        "the free Scout at StarDock has no fighters.",
+    )
     return (
         f"<p>You can lose a ship {_n(K.PODS_PER_DAY)} times in one day and come back in a pod. "
-        "The next loss that day eliminates you.</p>"
+        "The next loss that day is Ship Destroyed: no turns until the day rolls, then a free Scout at StarDock.</p>"
         + pod
         + cash
         + lock
-        + _src("Escape pod, how many losses a day you can survive, and the death delay on this game.")
+        + figs
+        + _src("Escape pod, how many losses a day you can survive, the death delay, and the free Scout's fighters.")
     )
 
 
@@ -1655,7 +1667,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "DAILY_STATS_MODE", "CORP_RANK_MODE", "TRADER_RANK_LIST_MODE",
         "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE",
     ),
-    "death-and-pods": ("DEATH_DELAY_MODE", "DEATH_POD_MODE", "POD_CASH_MODE"),
+    "death-and-pods": ("DEATH_DELAY_MODE", "DEATH_POD_MODE", "POD_CASH_MODE", "REENTRY_FIGHTERS_MODE"),
     "feds-and-ferrengi-v311": (
         "FED_SHIPS_MODE", "FEDSPACE_DEPLOY_MODE", "FERRENGAL_QUASAR_MODE",
         "FEDSAFE_FIGHTER_CAP_MODE", "FED_TOW_LIMIT_MODE",

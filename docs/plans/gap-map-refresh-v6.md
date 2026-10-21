@@ -263,7 +263,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 5.10 Match-behind-flag `SPECIAL_HULL_RULES_MODE` row 105, NOTE 86. An Interdictor holds other ships, and a Tholian defending its corp planet fights at 4:1. Both need the roster switch. `combat.hull_interdict_reason`.
 5.11 Match. Surrender is a verb. `combat` challenge settle.
 5.12 Match-behind-flag `DEATH_POD_MODE` row 29. A destroyed ship becomes a pod. The clean loadout stays off. `combat._strip_ship`, `combat._destroy_ship_tw2002`.
-5.13 Match-behind-flag `DEATH_DELAY_MODE` row 93, NOTE 79. A pod can be locked out for N midnights. Legacy ignores the setting. `runner.tick_day`.
+5.13 Match-behind-flag `DEATH_DELAY_MODE` row 93, NOTE 79. A pod can be locked out for N midnights. Legacy ignores the setting. Two pods a day and out-until-midnight are the stored death path. `REENTRY_FIGHTERS_MODE` row 177, NOTE 158, stocks the free Scout. `runner.tick_day`, `combat._destroy_ship_tw2002`.
 5.14 Partial. Experience drops on death. Alignment from the loss is only partly the original. `combat._destroy_ship_tw2002`.
 5.15 Match. Furbing another ship's holds is on. `combat._destroy_ship`.
 5.17 Match. Corbomite and disruptors fire in combat. `combat._resolve_ship_attack_tw2002`.
@@ -301,7 +301,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 9.3 Match. Experience from a player kill uses `COMBAT_EXP_DIVISOR` 15/35/25 and `KILL_EXP_SHARE` 0.10. `victory.combat_rewards`, `victory.kill_rewards`. Profile row 91.
 9.4 Match. Alignment already moves by the fighters lost times the other alignment, divided by 5000. `constants.COMBAT_ALIGN_DIVISOR`, `victory.combat_rewards`.
 9.5 Partial. Some other alignment hits exist. Not the full list. Profile row 111 was already the stored set. `victory.combat_rewards`.
-9.6 Match. Rank titles are already the original ladders. `RANK_TITLES_MODE` is a no-op. `victory.rank_for`.
+9.6 Match. Rank titles are already the original ladders, and traders are ordered by experience. `RANK_TITLES_MODE` is a no-op. NOTE 158 added no second switch. `victory.rank_for`.
 9.7 Match-behind-flag `CITADEL_PERK_MODE` row 27. The L2 and L5 perk set is coded and off. A wider good-trader versus evil-trader chart was not found as a second switch. `constants.citadel_perk_live`.
 9.8 Partial. A rob pays from experience. The full pricing limit is not the original table. `rob_steal.max_rob_credits`.
 9.9 Match-behind-flag `MIXED_CORP_EXP_RULE` row 72. The cabal least-extreme loss is selected by the profile and stays off in the stored value. `corp.mixed_loss`.
@@ -315,7 +315,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 10.8 Match. A corp memo exists. `corp` memo path on `CORP_MODE` tw2002.
 10.9 Partial. Corporate fighters and mines exist. Corporate ships are only partly the original. `CORPSHIP_MODE` is tw2002. `corp.handle_deploy_fighters`.
 10.10 Match. A C.E.O. leaving dissolves the corp and rogues fighters outside his sector. `corp.handle_corp_leave`, `corp.disband`. Profile row 98.
-10.11 Match-behind-flag `CORP_RANK_MODE` row 49. The corporation ranking screen is coded and off. `observation.build_observation`.
+10.11 Match-behind-flag `CORP_RANK_MODE` row 49. The corporation ranking screen is coded and off. The trader list is `TRADER_RANK_LIST_MODE`, ordered by experience. NOTE 158 added no second screen. `observation.build_observation`.
 10.12 Match-behind-flag `ALLIANCE_MODE` row left out of the profile (not in the original). Alliances are coded and off. `constants.alliance_live`.
 11.1 Match-behind-flag `HARDWARE_PRICE_MODE` row 14. The live shop card is coded and off. `constants.hardware_price_live`.
 11.2 Match-behind-flag `SHIP_ROSTER_MODE` row 4 and `TRADE_IN_MODE` row 13. The yard and the 90 percent trade-in stay off. `constants.ship_specs`.
@@ -332,8 +332,8 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 12.2 Match-behind-flag `TURN_REGEN_MODE` row 5. Turns can come back across 24 hours. `LIVE_PACE_MODE` row 6 goes with it. `constants.turn_regen_live`.
 12.3 Different. Movement is still by turns, not by the clock. `DAY_ROLL_CLOCK_MODE` row 81 rolls the day while a seat holds the turn. Planet goods can accrue on `PLANET_REALTIME_PROD_MODE`, which the profile leaves off. `runner.apply_action`.
 12.4 Partial. `runner.tick_day` runs retreats, Ferrengi, corp penalty, the Class 0 sweep, Terra regen, empty-ship repossession, Fed tows, port regen, bust clearing, photon waves, cloak fails, NavHaz, alien hops, planet production, citadels, treasury, and tax. Collisions and special-port rebuilds stay behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. Not every original nightly job is named.
-12.5 Match-behind-flag `EXP_SCORE_MODE` row 28. A normal game still ends on net worth. Experience ranking is coded and off. `victory.check_victory`.
-12.6 Partial. Tournament options are only partly the original. `victory.end_rule_line`.
+12.5 Match-behind-flag `EXP_SCORE_MODE` row 28. A normal game still ends on net worth. Experience ranking is coded and off. The day cap, the last player standing, the credit bar, and a creator end have no printed v3.11 number. NOTE 158 left them. `victory.check_victory`.
+12.6 Partial. The v3.11 sample prints tournament mode off and unlimited times blown up. The later lockout is not a v3.11 number. `DEATH_DELAY_MODE` is the timeout. `victory.end_rule_line`.
 12.7 Match-behind-flag `DAILY_STATS_MODE` row 47. The daily stats screen is coded and off. `observation.build_observation`.
 13.1 Partial. A direct hail exists. It is not the full original hail. `runner._handle_hail`. This tip has no separate mail switch.
 13.2 Match-behind-flag `RADIO_CHANNEL_MODE` row 46. Radio channels are coded and off. `runner._handle_radio`.
