@@ -333,6 +333,12 @@ def _command_keys(_f: dict) -> str:
 
 
 def _moving(_f: dict) -> str:
+    lanes = _gated(
+        K.two_way_warp_live(),
+        "Big Bang adds extra two-way lanes equal to 30 percent of the sector count, on top of a path that joins every sector. "
+        "A 1,000-sector game adds 300.",
+        "extra lanes are added until the average is about 2.7 warps a sector.",
+    )
     return (
         "<p>M warps to an adjacent sector. The button under a warp shows the turn cost. "
         "A grey warp costs more turns than you have.</p>"
@@ -340,6 +346,10 @@ def _moving(_f: dict) -> str:
         "and which lanes are one-way. Engage Express flies the next hop, then the one after, until you stop it or the course ends. "
         "Enter does the same thing when a course is on screen.</p>"
         "<p>Avoid (Computer, O) tells the plotter to stay out of a sector. Clearing the list uses sector 0.</p>"
+        "<p>Extra two-way lanes are the switch TWO_WAY_WARP_MODE. "
+        "The v3.11 profile turns it on. The string 1 does not. "
+        "One-way lanes stay ONE_WAY_SHARE_MODE, about 3 percent when that switch is on.</p>"
+        + lanes
         + _src("Trade Wars course plotter, plus the cockpit course card: a plot spends no turn and Express flies the plotted hops.")
     )
 
@@ -1568,7 +1578,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "getting-started": ("STARTING_PACKAGE_MODE", "HOME_PLANET_MODE"),
     "moving": (
         "warp", "plot_course", "avoid",
-        "COURSE_MAX_MODE", "ONE_WAY_SHARE_MODE", "AUTOPILOT_PORT_STOP_MODE", "AVOID_MODE",
+        "COURSE_MAX_MODE", "ONE_WAY_SHARE_MODE", "TWO_WAY_WARP_MODE", "AUTOPILOT_PORT_STOP_MODE", "AVOID_MODE",
         "BIG_BANG_DENSITY_MODE",
     ),
     "trading": (
