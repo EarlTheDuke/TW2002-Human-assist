@@ -158,6 +158,21 @@ The same seat, with `V311_PROFILE` left at legacy, was run again under `FULL_LEN
 | hard | 99 | 1 | 108,191 | Commander 108,191, H1 76,461, H2 71,327, H3 18,293 |
 | hard | 7 | 1 | 120,405 | Commander 120,405, H3 54,192, H1 52,417, H2 50,488 |
 
+NOTE 171 keeps that same screen. The pair it runs is the one it can already see, costed by the warp turns on those lanes. Once a pair has paid, a marked neighbouring lane keeps the next warp on a sector already visited. StarDock can still leave when that lane is the one marked. A dock trip waits until the wallet holds 500 credits. A sell quote is offered at 110 percent and a buy quote at 90 percent, the tightest v3.11 counter the chart still takes. A counter already on the screen is accepted or declined as written. Holds are bought up to what that route earns over the days left and what the ports can fill. Surplus above the reserve goes to the bank, and a balance comes back out when the cash on board cannot buy a load.
+
+Measured on the same harness as NOTE 152: hard level, `V311_PROFILE=v311`, 40 turns a day, 5 days, seeds 250925, 4242, and 99. Before is `9f0426ca`. Rank is harness `full_net_worth` at the day-6 roll. Credits are the cash on board. Every seat was alive.
+
+| | Seed | Rank | Net worth | Credits | Finish board |
+| --- | --- | --- | --- | --- | --- |
+| before | 250925 | 1 | 37,966 | 4,882 | Commander 37,966, H1 36,350, H3 35,887, H2 33,811 |
+| after | 250925 | 1 | 37,966 | 4,882 | Commander 37,966, H1 36,350, H3 35,887, H2 33,811 |
+| before | 4242 | 2 | 39,719 | 5,569 | H1 40,321, Commander 39,719, H2 37,688, H3 34,459 |
+| after | 4242 | 1 | 42,773 | 8,954 | Commander 42,773, H1 40,321, H2 37,688, H3 34,459 |
+| before | 99 | 1 | 40,592 | 6,904 | Commander 40,592, H1 38,271, H2 36,503, H3 34,406 |
+| after | 99 | 1 | 41,840 | 7,095 | Commander 41,840, H1 38,271, H2 36,503, H3 34,406 |
+
+Seed 250925 played the same clicks. Seed 4242 moved from rank 2 to rank 1. Seed 99 stayed rank 1 with a higher net worth and more credits.
+
 Keys are read from the environment at call time. They are not written into source, the run log, `actions.jsonl`, or screenshots' text sidecars. Logs replace key values, `sk-...`, `xai-...`, bearer tokens, and `token=` query values with `[redacted]`.
 
 A live provider's system prompt is the trading playbook plus the manual text captured from the seat page. Each call also gets a short memory of the last few screens and actions. A reply that is not a click, type, press, or wait on a control that is on the screen is rejected and asked again, up to two retries, and then the runner waits. Each reply's token counts are priced with the same USD-per-million table as `src/tw2k/engine/llm_pricing.py` (curated 2026-04-22; the player keeps its own copy and does not import that module). The run log gains a line:
