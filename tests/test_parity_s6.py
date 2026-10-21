@@ -93,8 +93,9 @@ def test_two_pathb_brains_plus_unattended_seat_no_stalls(tmp_path: Path) -> None
         # radio (radio-channels-v1) makes it 89. That switch stays off, so the verb is refused.
         # jettison and self_destruct (ship-exit-v1) make it 91. That switch stays off,
         # so legal_actions omits them; the rules list still names every ActionKind.
-        # ship_rename (NOTE 87) made the catalog 92. navpoint (NOTE 159) is the
-        # next ActionKind. Those switches stay off, so legal_actions omits them;
+        # ship_rename (NOTE 87) made the catalog 92. navpoint (NOTE 159),
+        # federation_hall, underground_rename, and cim (NOTE 162) are the later
+        # ActionKinds. Those switches stay off, so legal_actions omits them;
         # the rules list still names every ActionKind the stored modes publish.
         assert a.rules.get("system_prompt") and a.rules.get("verbs") == rules_verbs()
         assert "warp" in a.rules["verbs"]
