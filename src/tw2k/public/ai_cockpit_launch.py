@@ -9,6 +9,7 @@ that has not turned AI_COCKPIT_SEAT_MODE on gets None and no process.
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -46,6 +47,15 @@ def status_line(provider: str, model: str, running: bool, *, seat: str = "", lev
     who = f" {seat}" if seat else ""
     rank = f" {level}" if level else ""
     return f"AI cockpit seat{who}: {provider}{extra}{rank}, {state}"
+
+
+def player_popen_kwargs() -> dict:
+    """Windows: new process group, still windowless. POSIX: a new session."""
+    if os.name == "nt":
+        group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+        hidden = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        return {"creationflags": int(group) | int(hidden)}
+    return {"start_new_session": True}
 
 
 def player_script() -> Path:
@@ -103,4 +113,4 @@ def launch_player(
         "ai cockpit player seat=%s provider=%s model=%s level=%s",
         seat, provider, model or "-", level or "hard",
     )
-    return popen(cmd)
+    return popen(cmd, **player_popen_kwargs())

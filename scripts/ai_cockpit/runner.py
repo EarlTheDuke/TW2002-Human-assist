@@ -14,7 +14,9 @@ import json
 import os
 import re
 import signal
+import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -196,6 +198,22 @@ class RateGate:
 _CLEANUP_READY = False
 _STOPPING = False
 _PLAYER_MARK = "ai_cockpit_player.py"
+# Windows-only. Held here so a POSIX test can still build the flag word.
+_CREATE_NEW_PROCESS_GROUP = 0x00000200
+_CREATE_NO_WINDOW = 0x08000000
+
+
+def popen_kwargs() -> dict:
+    """Isolate the player so a tree kill cannot reach whoever started it.
+
+    Windows pairs the new process group with the windowless flag. POSIX starts
+    a new session, the same setsid the cleanup tries again in-process.
+    """
+    if os.name == "nt":
+        group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", _CREATE_NEW_PROCESS_GROUP)
+        hidden = getattr(subprocess, "CREATE_NO_WINDOW", _CREATE_NO_WINDOW)
+        return {"creationflags": int(group) | int(hidden)}
+    return {"start_new_session": True}
 
 
 def engine_modules() -> list[str]:
@@ -213,7 +231,9 @@ def install_process_cleanup() -> None:
     if _CLEANUP_READY:
         return
     _CLEANUP_READY = True
-    if os.name == "posix":
+    if os.name == "nt":
+        _arm_parent_death()
+    elif os.name == "posix":
         try:
             os.setsid()
         except OSError:
@@ -248,6 +268,9 @@ def kill_process_tree(pid: int, *, group: bool | None = None) -> None:
     its own group, because that group may belong to the caller.
     """
     if pid <= 1:
+        return
+    if os.name == "nt":
+        _kill_windows_tree(pid)
         return
     own = pid == os.getpid()
     leader = _signal_group(pid, own, group)
@@ -284,12 +307,20 @@ def _on_stop_signal(signum: int, _frame) -> None:
 
 
 def _arm_parent_death() -> None:
-    """Ask the kernel to SIGTERM this process when its parent dies.
+    """End this process when its parent is gone.
 
-    The check after prctl closes the race where the parent exits before
-    the request is installed. A parent of pid 1 at startup means that
-    race already happened.
+    POSIX asks the kernel for SIGTERM via prctl. Windows has no prctl, so a
+    daemon thread polls the parent pid. A parent of pid 1 at startup means
+    the parent already exited.
     """
+    if os.name == "nt":
+        _arm_parent_poll()
+        return
+    if os.name == "posix":
+        _arm_parent_prctl()
+
+
+def _arm_parent_prctl() -> None:
     try:
         libc = ctypes.CDLL("libc.so.6", use_errno=True)
         libc.prctl.argtypes = [
@@ -303,6 +334,122 @@ def _arm_parent_death() -> None:
     if os.getppid() == 1:
         kill_own_children()
         raise SystemExit(1)
+
+
+def _arm_parent_poll() -> None:
+    parent = os.getppid()
+    if parent <= 1:
+        kill_own_children()
+        raise SystemExit(1)
+    threading.Thread(
+        target=_watch_parent, args=(parent,), name="ai-cockpit-parent", daemon=True,
+    ).start()
+
+
+def _watch_parent(parent: int) -> None:
+    while _process_alive(parent):
+        time.sleep(0.2)
+    kill_own_children()
+    os._exit(1)
+
+
+def _kill_windows_tree(pid: int) -> None:
+    """taskkill /T walks children. Killing our own pid would take the interpreter too."""
+    if pid == os.getpid():
+        for child in _windows_children(pid):
+            _taskkill_tree(child)
+        return
+    _taskkill_tree(pid)
+
+
+def _taskkill_tree(pid: int) -> None:
+    if pid <= 1:
+        return
+    flags = 0
+    if os.name == "nt":
+        flags = int(getattr(subprocess, "CREATE_NO_WINDOW", _CREATE_NO_WINDOW))
+    subprocess.run(
+        ["taskkill", "/T", "/F", "/PID", str(int(pid))],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+        creationflags=flags,
+    )
+
+
+def _windows_children(pid: int) -> list[int]:
+    """Direct child pids. An empty list on POSIX, where /proc is the source."""
+    try:
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    except (OSError, AttributeError):
+        return []
+    snapshot = 0x00000002
+    kernel.CreateToolhelp32Snapshot.restype = ctypes.c_void_p
+    kernel.CreateToolhelp32Snapshot.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
+    kernel.Process32FirstW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    kernel.Process32NextW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+    handle = kernel.CreateToolhelp32Snapshot(snapshot, 0)
+    if not handle or handle == ctypes.c_void_p(-1).value:
+        return []
+    entry = _ProcessEntry()
+    entry.dwSize = ctypes.sizeof(entry)
+    found: list[int] = []
+    try:
+        if not kernel.Process32FirstW(handle, ctypes.byref(entry)):
+            return found
+        while True:
+            if int(entry.th32ParentProcessID) == pid:
+                found.append(int(entry.th32ProcessID))
+            if not kernel.Process32NextW(handle, ctypes.byref(entry)):
+                break
+    finally:
+        kernel.CloseHandle(handle)
+    return found
+
+
+class _ProcessEntry(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", ctypes.c_ulong),
+        ("cntUsage", ctypes.c_ulong),
+        ("th32ProcessID", ctypes.c_ulong),
+        ("th32DefaultHeapID", ctypes.c_void_p),
+        ("th32ModuleID", ctypes.c_ulong),
+        ("cntThreads", ctypes.c_ulong),
+        ("th32ParentProcessID", ctypes.c_ulong),
+        ("pcPriClassBase", ctypes.c_long),
+        ("dwFlags", ctypes.c_ulong),
+        ("szExeFile", ctypes.c_wchar * 260),
+    ]
+
+
+def _windows_alive(pid: int) -> bool:
+    """True while Windows still reports the process as running."""
+    if pid <= 0:
+        return False
+    try:
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    except (OSError, AttributeError):
+        return False
+    kernel.OpenProcess.restype = ctypes.c_void_p
+    kernel.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+    kernel.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+    handle = kernel.OpenProcess(0x1000, 0, int(pid))
+    if not handle:
+        return False
+    code = ctypes.c_ulong()
+    try:
+        ok = kernel.GetExitCodeProcess(handle, ctypes.byref(code))
+    finally:
+        kernel.CloseHandle(handle)
+    return bool(ok) and int(code.value) == 259
+
+
+def _process_alive(pid: int) -> bool:
+    if os.name == "nt":
+        return _windows_alive(pid)
+    return _alive(pid)
 
 
 def _signal_group(pid: int, own: bool, group: bool | None) -> bool:
@@ -326,10 +473,10 @@ def _targets(pid: int, own: bool, *, leader: bool) -> list[int]:
 
 def _signal_tree(pid: int, sig: int, *, own: bool, leader: bool) -> None:
     _signal_many(_targets(pid, own, leader=leader), sig)
-    if leader:
+    if leader and os.name == "posix":
         try:
             os.killpg(pid, sig)
-        except OSError:
+        except (OSError, AttributeError):
             pass
 
 
