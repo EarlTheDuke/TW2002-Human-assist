@@ -76,7 +76,7 @@ def _run_player(
         stderr=subprocess.PIPE,
         text=True,
         env=env,
-        start_new_session=True,
+        **runner.popen_kwargs(),
     )
     _PLAYER_PIDS.append(proc.pid)
     timed_out: subprocess.TimeoutExpired | None = None
@@ -111,6 +111,8 @@ def _output_text(value: str | bytes | None) -> str:
 def _pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
+    if os.name == "nt":
+        return _import_runner()._windows_alive(pid)
     try:
         os.kill(pid, 0)
     except OSError:
@@ -237,6 +239,7 @@ def test_the_lobby_hook_stays_idle_until_the_switch_is_on(tmp_path: Path, monkey
     class _Proc:
         def __init__(self, cmd, **kwargs):
             seen["cmd"] = cmd
+            seen["kwargs"] = kwargs
 
     with caplog.at_level("INFO"):
         proc = launch_player(
@@ -250,6 +253,11 @@ def test_the_lobby_hook_stays_idle_until_the_switch_is_on(tmp_path: Path, monkey
     assert TOKEN not in caplog.text
     for value in KEYS.values():
         assert value not in caplog.text
+    if os.name == "nt":
+        assert seen["kwargs"]["creationflags"] & 0x00000200
+        assert seen["kwargs"]["creationflags"] & 0x08000000
+    else:
+        assert seen["kwargs"]["start_new_session"] is True
 
 
 def test_scripted_player_reads_the_manual_and_sells(tmp_path: Path) -> None:
@@ -1989,12 +1997,16 @@ def test_a_timeout_kills_the_player_process_tree(tmp_path: Path) -> None:
     """A detached grandchild dies with the player when the run times out."""
     pidfile = tmp_path / "child.pid"
     script = tmp_path / "ai_cockpit_player.py"
+    if os.name == "nt":
+        isolate = "    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW,"
+    else:
+        isolate = "    start_new_session=True,"
     script.write_text(
         "\n".join([
             "import subprocess, sys, time",
             "child = subprocess.Popen(",
             "    [sys.executable, '-c', 'import time; time.sleep(120)'],",
-            "    start_new_session=True,",
+            isolate,
             ")",
             f"open({str(pidfile)!r}, 'w', encoding='utf-8').write(str(child.pid))",
             "time.sleep(120)",
@@ -2014,7 +2026,7 @@ def test_a_timeout_kills_the_player_process_tree(tmp_path: Path) -> None:
 
 
 def test_the_player_process_exits_when_its_parent_dies(tmp_path: Path) -> None:
-    """The runner's parent-death signal ends the player after the parent is gone."""
+    """Parent death ends the player: prctl on POSIX, a parent-pid poll on Windows."""
     pidfile = tmp_path / "player.pid"
     player = tmp_path / "sleep_player.py"
     parent = tmp_path / "parent.py"
@@ -2030,12 +2042,16 @@ def test_the_player_process_exits_when_its_parent_dies(tmp_path: Path) -> None:
         ]),
         encoding="utf-8",
     )
+    if os.name == "nt":
+        isolate = "    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW,"
+    else:
+        isolate = "    start_new_session=True,"
     parent.write_text(
         "\n".join([
             "import os, subprocess, sys, time",
             "proc = subprocess.Popen(",
             f"    [sys.executable, {str(player)!r}, 'ai_cockpit_player.py'],",
-            "    start_new_session=True,",
+            isolate,
             ")",
             f"open({str(pidfile)!r}, 'w', encoding='utf-8').write(str(proc.pid))",
             "time.sleep(1)",
@@ -2062,3 +2078,73 @@ def test_the_player_process_exits_when_its_parent_dies(tmp_path: Path) -> None:
             parent_proc.wait(timeout=5)
         if pid:
             _import_runner().kill_process_tree(pid, group=True)
+
+
+def test_posix_group_kill_uses_killpg(monkeypatch) -> None:
+    """A session leader is signaled with killpg, and only on POSIX."""
+    import signal
+
+    runner = _import_runner()
+    monkeypatch.setattr(runner.os, "name", "posix")
+    calls: list[tuple[int, int]] = []
+    monkeypatch.setattr(runner.os, "killpg", lambda pid, sig: calls.append((pid, sig)), raising=False)
+    monkeypatch.setattr(runner, "_signal_many", lambda *_args, **_kwargs: None)
+    runner._signal_tree(77, signal.SIGTERM, own=False, leader=False)
+    assert calls == []
+    runner._signal_tree(77, signal.SIGTERM, own=False, leader=True)
+    assert calls == [(77, signal.SIGTERM)]
+    assert runner.popen_kwargs() == {"start_new_session": True}
+
+
+def test_windows_tree_kill_parent_poll_and_launch_flags(monkeypatch) -> None:
+    """os.name == 'nt' never calls killpg. taskkill, the poll, and both launch flags do the work."""
+    import signal
+
+    import tw2k.public.ai_cockpit_launch as launch
+
+    runner = _import_runner()
+    monkeypatch.setattr(runner.os, "name", "nt")
+    monkeypatch.setattr(launch.os, "name", "nt")
+    killed: list[int] = []
+    monkeypatch.setattr(runner, "_taskkill_tree", lambda pid: killed.append(pid))
+    runner.kill_process_tree(4321, group=True)
+    assert killed == [4321]
+
+    monkeypatch.setattr(runner.os, "getpid", lambda: 80)
+    monkeypatch.setattr(runner, "_windows_children", lambda pid: [9, 10])
+    runner.kill_process_tree(80)
+    assert killed == [4321, 9, 10]
+
+    flags = runner.popen_kwargs()["creationflags"]
+    assert flags & 0x00000200
+    assert flags & 0x08000000
+    assert "start_new_session" not in runner.popen_kwargs()
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("killpg")
+
+    monkeypatch.setattr(runner.os, "killpg", boom, raising=False)
+    monkeypatch.setattr(runner, "_signal_many", lambda *_args, **_kwargs: None)
+    runner._signal_tree(77, signal.SIGTERM, own=False, leader=True)
+
+    notes: list[str] = []
+    monkeypatch.setattr(runner, "kill_own_children", lambda: notes.append("children"))
+    exited: dict[str, int] = {}
+    monkeypatch.setattr(runner.os, "_exit", lambda code: exited.setdefault("code", code))
+    monkeypatch.setattr(runner, "_process_alive", lambda pid: False)
+    runner._watch_parent(222)
+    assert notes == ["children"]
+    assert exited["code"] == 1
+
+    armed: list[str] = []
+    monkeypatch.setattr(runner, "_arm_parent_poll", lambda: armed.append("poll"))
+    monkeypatch.setattr(runner, "_arm_parent_prctl", lambda: armed.append("prctl"))
+    runner._arm_parent_death()
+    assert armed == ["poll"]
+
+    # Path.resolve cannot build a WindowsPath on this Linux VM, so the flag
+    # word is checked directly. launch_player passes that same dict through.
+    launched = launch.player_popen_kwargs()
+    assert "start_new_session" not in launched
+    assert launched["creationflags"] & 0x00000200
+    assert launched["creationflags"] & 0x08000000
