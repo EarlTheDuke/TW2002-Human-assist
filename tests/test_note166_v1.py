@@ -48,7 +48,7 @@ def test_row_204_is_the_only_new_helper() -> None:
     text = _PROFILE.read_text(encoding="utf-8")
     assert K.V311_PROFILE_HELPERS["self_destruct_align_live"][0] == "SELF_DESTRUCT_ALIGN_MODE"
     assert f"## The switch set ({len(K.V311_PROFILE_HELPERS)} helpers)" in text
-    assert len(K.V311_PROFILE_HELPERS) == 144
+    assert len(K.V311_PROFILE_HELPERS) == 140
     assert "| 204 |" in text
     assert "SELF_DESTRUCT_ALIGN_MODE" in text
 
