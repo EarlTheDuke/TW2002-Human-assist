@@ -1971,7 +1971,14 @@ def info_tw2002() -> bool:
 
 
 def scanner_room(class_key: str) -> str | None:
-    """The best scanner this hull can carry (s3)."""
+    """The best scanner this hull can carry (s3).
+
+    The v3.05 revision lets a Ferrengi Assault Trader carry a density or holo
+    scanner, and the Bible chart prints Both. That room is on only while
+    FERRENGI_ODDS_MODE is live. Off, the assault trader stays off this table.
+    """
+    if class_key == "assault_trader" and ferrengi_odds_live():
+        return SCANNER_HOLO
     return SCANNER_BY_HULL.get(class_key)
 
 
@@ -2340,6 +2347,18 @@ FERRENGI_ODDS_BY_HULL = {
     "battle_cruiser": 1.2,
     "dreadnought": 1.4,
 }
+# Bible ship chart (docs/reference/tw2002/S3_tw2002_bible_v1.htm): Assault
+# Trader 1.2:1, Battle Cruiser 1.4:1, Dreadnaught 1.4:1. The stored dict above
+# stays the FERRSPEC column. FERRENGI_ODDS_MODE reads this table.
+FERRENGI_BIBLE_ODDS_BY_HULL = {
+    "assault_trader": 1.2,
+    "battle_cruiser": 1.4,
+    "dreadnought": 1.4,
+}
+# Bible "Fig Max / Fig Per Attack" for the Assault Trader is 3,000 / 2,000.
+# FERRSPEC prints 1,000 for that cell. Battle Cruiser 2,000 and Dreadnought
+# 5,000 match FERRSPEC, so only the assault cell changes with the odds switch.
+FERRENGI_BIBLE_ASSAULT_FIGHTERS_PER_ATTACK = 2_000
 # TWFAQ_FERRSPEC_ferrengi.txt "Fighters per Attack". The odds above are the
 # same file's approximate column. A Ferrengi that attacks still sends every
 # fighter through the three-round roll until FERRENGI_ATTACK_MODE is v311.
@@ -2672,14 +2691,23 @@ def ferrengi_attack_live() -> bool:
 
 
 def ferrengi_fighters_per_attack(hull: str | None) -> int:
-    """FERRSPEC fighters one attack from this hull may send."""
-    return int(FERRENGI_FIGHTERS_PER_ATTACK.get(str(hull or ""), 1_000))
+    """Fighters one attack from this hull may send.
+
+    FERRSPEC is the stored chart. The Bible assault cell is 2,000, and that
+    cell is used only while FERRENGI_ODDS_MODE is on. FERRENGI_ATTACK_MODE
+    still decides whether the volley is capped at all.
+    """
+    key = str(hull or "")
+    if key == FERRENGI_HULL_ASSAULT and ferrengi_odds_live():
+        return int(FERRENGI_BIBLE_ASSAULT_FIGHTERS_PER_ATTACK)
+    return int(FERRENGI_FIGHTERS_PER_ATTACK.get(key, 1_000))
 
 
 def ferrengi_odds_for_hull(hull: str | None) -> float:
     """Public odds of a Ferrengi hull (what sector.ferrengi shows), same table the engine uses."""
     if hull and ferrengi_tw2002():
-        return float(FERRENGI_ODDS_BY_HULL.get(hull, FERRENGI_COMBAT_ODDS))
+        table = FERRENGI_BIBLE_ODDS_BY_HULL if ferrengi_odds_live() else FERRENGI_ODDS_BY_HULL
+        return float(table.get(hull, FERRENGI_COMBAT_ODDS))
     return float(FERRENGI_COMBAT_ODDS)
 
 
@@ -4770,6 +4798,22 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "BOUNTY_GOOD_MODE",
         "NOTE 163 GAP 9.5: a bounty on a good trader costs 1 alignment per 250 credits and no experience",
     ),
+    "ferrengi_odds_live": (
+        "FERRENGI_ODDS_MODE",
+        "NOTE 164 GAP 8.1: Bible Ferrengi odds are 1.2 / 1.4 / 1.4, and an Assault Trader sends 2,000",
+    ),
+    "corp_ship_disband_live": (
+        "CORP_SHIP_DISBAND_MODE",
+        "NOTE 164 GAP 6.11: a parked corporate ship in the living C.E.O.'s sector becomes the C.E.O.'s",
+    ),
+    "times_blown_live": (
+        "TIMES_BLOWN_MODE",
+        "NOTE 164 GAP 12.6: with elimination off, the destroy line says times blown up are unlimited",
+    ),
+    "fighter_report_live": (
+        "FIGHTER_REPORT_MODE",
+        "NOTE 164 GAP 13.4: the fighter report lists owned fighters and omits a count of 0",
+    ),
 }
 
 
@@ -5685,6 +5729,64 @@ def reentry_fighter_grant(initial: int | None = None) -> int:
     if room is not None:
         grant = min(grant, int(room))
     return grant
+
+
+# NOTE 164 GAP 8.1. S3 Bible ship chart: Assault Trader 1.2:1 and 2,000 fighters
+# per attack, Battle Cruiser 1.4:1, Dreadnaught 1.4:1. The v3.05 revision lets
+# the Assault Trader carry a density or holo scanner, and that chart prints
+# Both. FERRSPEC stays the stored odds (1.0 / 1.2 / 1.4) and the stored
+# assault volley (1,000). "1" does not turn this on. V311_PROFILE "v311" does.
+# FERRENGI_ATTACK_MODE stays the one-volley gate and still reads the FERRSPEC
+# counts while this switch is off.
+FERRENGI_ODDS_MODE = "legacy"  # "legacy" | "v311"
+
+
+def ferrengi_odds_live() -> bool:
+    """True when Ferrengi odds, the assault volley, and that scanner follow the Bible chart."""
+    return FERRENGI_ODDS_MODE == "v311" or v311_profile()
+
+
+# NOTE 164 GAP 6.11. v3.06 revision history: when a corporation is disbanded,
+# planets and ships in the C.E.O.'s sector become the C.E.O.'s. Outside that
+# sector, ships become abandoned. Planets are already CORP_PLANET_DISBAND_MODE.
+# Off, every parked corporate hull becomes defunct, which is what cs24 asserts.
+# On, a parked hull in the living C.E.O.'s sector becomes that C.E.O.'s
+# personal ship. A dead C.E.O. takes nothing. The ship the C.E.O. is flying
+# waits until they leave it. "1" does not turn this on.
+CORP_SHIP_DISBAND_MODE = "legacy"  # "legacy" | "v311"
+
+
+def corp_ship_disband_live() -> bool:
+    """True when a parked corporate ship in the living C.E.O.'s sector becomes the C.E.O.'s."""
+    return CORP_SHIP_DISBAND_MODE == "v311" or v311_profile()
+
+
+# NOTE 164 GAP 12.6. Cabal twgs.html prints Tournament Mode Off and Maximum
+# times blown up Unlimited. A later lockout is not a v3.11 number and is not
+# added. Off, the legacy destroy line still prints death #N/3. On, and only
+# when elimination_deaths is 0, that line says unlimited and does not print
+# /3. DEATH_MODE and DEATH_DELAY_MODE stay as they are. "1" does not turn
+# this on.
+TIMES_BLOWN_MODE = "legacy"  # "legacy" | "v311"
+
+
+def times_blown_live() -> bool:
+    """True when an unlimited game says so on the legacy destroy line."""
+    return TIMES_BLOWN_MODE == "v311" or v311_profile()
+
+
+# NOTE 164 GAP 13.4. The v3.11 revision stopped the fighter report from listing
+# sectors with 0 fighters. The Bible tells a trader to leave one fighter so
+# the report fires when someone finds the planet. Off, fighter_report returns
+# nothing. On, it lists sectors where that trader owns a count above 0. No
+# hit sentence is invented, and the list is not an observation field. "1"
+# does not turn this on.
+FIGHTER_REPORT_MODE = "legacy"  # "legacy" | "v311"
+
+
+def fighter_report_live() -> bool:
+    """True when fighter_report lists this trader's sectors and omits a count of 0."""
+    return FIGHTER_REPORT_MODE == "v311" or v311_profile()
 
 
 # NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1

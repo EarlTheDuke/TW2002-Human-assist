@@ -454,14 +454,29 @@ def _ferrengi(_f: dict) -> str:
         f"and a bounty is {_n(K.FERRENGI_BOUNTY_PER_AGG)} credits per point of aggression.</p>"
         + _gated(
             K.ferrengi_attack_live(),
-            f"a Ferrengi attack sends one volley, at most {_n(K.FERRENGI_FIGHTERS_PER_ATTACK[K.FERRENGI_HULL_ASSAULT])} "
-            f"fighters from an Assault Trader, {_n(K.FERRENGI_FIGHTERS_PER_ATTACK[K.FERRENGI_HULL_CRUISER])} from a "
-            f"Battle Cruiser, or {_n(K.FERRENGI_FIGHTERS_PER_ATTACK[K.FERRENGI_HULL_DREAD])} from a Dreadnought, "
+            f"a Ferrengi attack sends one volley, at most {_n(K.ferrengi_fighters_per_attack(K.FERRENGI_HULL_ASSAULT))} "
+            f"fighters from an Assault Trader, {_n(K.ferrengi_fighters_per_attack(K.FERRENGI_HULL_CRUISER))} from a "
+            f"Battle Cruiser, or {_n(K.ferrengi_fighters_per_attack(K.FERRENGI_HULL_DREAD))} from a Dreadnought, "
             "at that hull's odds.",
             "a Ferrengi attack uses three rolls and can send every fighter it has.",
         )
+        + "<p>Ferrengi odds are the switch FERRENGI_ODDS_MODE. "
+        "The v3.11 profile turns it on. The string 1 does not.</p>"
+        + _gated(
+            K.ferrengi_odds_live(),
+            f"an Assault Trader fights at {K.ferrengi_odds_for_hull(K.FERRENGI_HULL_ASSAULT):.1f} to 1 "
+            f"and one attack sends at most {_n(K.ferrengi_fighters_per_attack(K.FERRENGI_HULL_ASSAULT))} fighters. "
+            f"A Battle Cruiser fights at {K.ferrengi_odds_for_hull(K.FERRENGI_HULL_CRUISER):.1f} to 1. "
+            f"A Dreadnought fights at {K.ferrengi_odds_for_hull(K.FERRENGI_HULL_DREAD):.1f} to 1. "
+            "The Assault Trader can carry a holo scanner.",
+            f"an Assault Trader fights at {K.FERRENGI_ODDS_BY_HULL[K.FERRENGI_HULL_ASSAULT]:.1f} to 1 "
+            f"and one attack sends at most {_n(K.FERRENGI_FIGHTERS_PER_ATTACK[K.FERRENGI_HULL_ASSAULT])} fighters. "
+            f"A Battle Cruiser fights at {K.FERRENGI_ODDS_BY_HULL[K.FERRENGI_HULL_CRUISER]:.1f} to 1. "
+            f"A Dreadnought fights at {K.FERRENGI_ODDS_BY_HULL[K.FERRENGI_HULL_DREAD]:.1f} to 1. "
+            "The Assault Trader has no scanner room.",
+        )
         + _src("Ferrengi encounter rules in the engine: tribute first, then a grudge if you attack. "
-               "FERRSPEC fighters per attack.")
+               "FERRSPEC fighters per attack, and the Bible ship chart for the odds switch.")
     )
 
 
@@ -652,8 +667,17 @@ def _corp_planets() -> str:
             "When the corporation ends, a planet stays with its owner if that owner is still playing. "
             "A planet whose owner is gone is unclaimed."
         )
+    ships = _gated(
+        K.corp_ship_disband_live(),
+        "a parked corporate ship in the C.E.O.'s sector becomes the C.E.O.'s. "
+        "A parked ship in any other sector is abandoned. A dead C.E.O. takes none of them.",
+        "a parked corporate ship becomes a defunct corporation ship, in the C.E.O.'s sector and outside it.",
+    )
     return (
         f"<p>{leave} {_profile('Corp planet disband', v306, only_v311=False)} {end}</p>"
+        "<p>Corporate ships on disband are the switch CORP_SHIP_DISBAND_MODE. "
+        "The v3.11 profile turns it on. The string 1 does not.</p>"
+        + ships
     )
 
 
@@ -1462,8 +1486,16 @@ def _computer_reports(_f: dict) -> str:
         "Computer L lists every trader by experience: place, name, title, experience, corporation, ship, and whether they are alive.",
         "Computer L has no experience list of every trader.",
     )
+    report = _gated(
+        K.fighter_report_live(),
+        "the fighter report lists each sector where you own fighters, and it leaves out a sector whose count is 0.",
+        "there is no fighter report of the sectors where you own fighters.",
+    )
     return (
-        "<p>Press C, then the letter. D is today's log, including a hit on fighters you own. "
+        "<p>The fighter report is the switch FIGHTER_REPORT_MODE. "
+        "The v3.11 profile turns it on. The string 1 does not.</p>"
+        + report
+        + "<p>Press C, then the letter. D is today's log, including a hit on fighters you own. "
         "S is quick stats: name, rank, experience, alignment, turns left, credits, day, fighters, shields and holds. "
         "N stores named sectors you already know. B warps back one sector when a lane goes there. "
         "E finds a path between two sectors already in your computer. "
@@ -1504,6 +1536,11 @@ def _death_and_pods(f: dict) -> str:
         f"the smaller of {_n(K.REENTRY_FIGHTER_CAP)} and this game's initial fighters.",
         "the free Scout at StarDock has no fighters.",
     )
+    blown = _gated(
+        K.times_blown_live(),
+        "the destroy line says times blown up are unlimited when this game does not eliminate a trader for ship losses.",
+        "the destroy line still counts deaths toward the stored limit of 3.",
+    )
     return (
         f"<p>You can lose a ship {_n(K.PODS_PER_DAY)} times in one day and come back in a pod. "
         "The next loss that day is Ship Destroyed: no turns until the day rolls, then a free Scout at StarDock.</p>"
@@ -1511,6 +1548,9 @@ def _death_and_pods(f: dict) -> str:
         + cash
         + lock
         + figs
+        + "<p>Times blown up are the switch TIMES_BLOWN_MODE. "
+        "The v3.11 profile turns it on. The string 1 does not.</p>"
+        + blown
         + _src("Escape pod, how many losses a day you can survive, the death delay, and the free Scout's fighters.")
     )
 
@@ -1638,7 +1678,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     ),
     "ferrengi": (
         "FERRENGI_ENGAGE_MODE", "FERRENGI_GRUDGE_MODE", "FERRENGI_PACE_MODE", "FERRENGI_REWARD_MODE",
-        "FERRENGI_ATTACK_MODE",
+        "FERRENGI_ATTACK_MODE", "FERRENGI_ODDS_MODE",
     ),
     "planets": (
         "land_planet", "liftoff", "deploy_genesis", "claim_planet", "planet_destroy",
@@ -1667,6 +1707,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "propose_alliance", "accept_alliance", "break_alliance",
         "ship_set_corporate", "ship_set_personal", "ship_set_password",
         "CORP_EXP_PENALTY_MODE", "CORP_PLANET_DISBAND_MODE", "CORP_BREAKIN_ALIGN_MODE",
+        "CORP_SHIP_DISBAND_MODE",
     ),
     "alignment": ("DISCOVERY_EXP_MODE", "EXP_SOURCES_MODE"),
     "rankings": (
@@ -1695,9 +1736,12 @@ _COVERS: dict[str, tuple[str, ...]] = {
     ),
     "computer-reports": (
         "DAILY_STATS_MODE", "CORP_RANK_MODE", "TRADER_RANK_LIST_MODE",
-        "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE",
+        "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE", "FIGHTER_REPORT_MODE",
     ),
-    "death-and-pods": ("DEATH_DELAY_MODE", "DEATH_POD_MODE", "POD_CASH_MODE", "REENTRY_FIGHTERS_MODE"),
+    "death-and-pods": (
+        "DEATH_DELAY_MODE", "DEATH_POD_MODE", "POD_CASH_MODE", "REENTRY_FIGHTERS_MODE",
+        "TIMES_BLOWN_MODE",
+    ),
     "feds-and-ferrengi-v311": (
         "FED_SHIPS_MODE", "FEDSPACE_DEPLOY_MODE", "FERRENGAL_QUASAR_MODE",
         "FEDSAFE_FIGHTER_CAP_MODE", "FED_TOW_LIMIT_MODE",
