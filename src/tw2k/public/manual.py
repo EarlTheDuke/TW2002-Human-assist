@@ -37,6 +37,7 @@ SECTIONS: tuple[tuple[str, str], ...] = (
     ("ai-opponents", "AI opponents"),
     ("sharing", "Joining from a share link"),
     ("staying-up", "If the computer or the browser stops"),
+    ("v311-mode", "v3.11 mode"),
     ("disclaimer", "Beta disclaimer"),
 )
 
@@ -252,6 +253,7 @@ def _section(sid: str, f: dict) -> str:
         "ai-opponents": _ai_opponents,
         "sharing": _sharing,
         "staying-up": _staying_up,
+        "v311-mode": _v311_mode,
         "disclaimer": _disclaimer,
     }[sid](f)
     return f'<section id="{sid}"><h2>{escape(title)}</h2>{body}</section>'
@@ -267,6 +269,7 @@ def _getting_started(f: dict) -> str:
         f"{pocket}</p>"
         "<p>Read this page, then use the cockpit. The header Manual button opens this page in a new tab. "
         "Z still opens the short rules panel. ? still opens help.</p>"
+        "<p>The <a href=\"#v311-mode\">v3.11 mode</a> section lists every switch that profile turns on.</p>"
         "<p>The map shows sectors you have visited and the lanes between them. A lane can be one-way. "
         "The course card (Computer, then F) plots a path and does not spend a turn. Engage Express flies it.</p>"
         + _src("Trade Wars 2002 command set and the v3.11 starting package measured for this clone. "
@@ -310,6 +313,13 @@ def _walkthrough(f: dict) -> str:
 def _command_keys(_f: dict) -> str:
     computer = []
     for key, meaning in _COMPUTER:
+        if key == "Q" and K.cim_live():
+            computer.append((
+                "I",
+                "CIM. Sectors you have explored, ports you have explored, and a path between them. "
+                "A port line stays hidden when hostile fighters hold that sector. "
+                "Outside this menu, I is still your ship.",
+            ))
         if key == "B" and K.navpoint_live():
             computer.append((
                 "N",
@@ -558,7 +568,8 @@ def _corporations(_f: dict) -> str:
     return (
         f"<p>T opens the corporate menu. A corporation has a password. "
         f"It can hold up to {_n(K.CORP_MAX_MEMBERS)} members. "
-        "CORP_CARGO_TREASURY_MODE moves cargo between members and uses the corporation treasury. "
+        "Corp mates in the same sector can hand fuel ore, organics, equipment, and colonists across, "
+        "and the corporation can hold credits. That is the switch CORP_CARGO_TREASURY_MODE. "
         "Members share the corporation's planets. Creating one, joining one, and the password are on that menu. "
         "The C.E.O. leaving ends the corporation.</p>"
         + _gated(
@@ -1157,12 +1168,15 @@ def _computer_levels() -> str:
 
 def _sharing(_f: dict) -> str:
     return (
+        "<p>Each player gets one seat link. "
+        "A seat link names the game, the seat, and the token, and it asks for the redesign cockpit with layout=redesign. "
+        "The token is the password for that seat. Send each seat link to one person. "
+        "Opening another player's link does not put you in their chair. "
+        "Treat the link like a password. Do not put it on a public page.</p>"
         "<p>A host can share a game that is already running. The share command opens a temporary public address and points it at the lobby. "
         "It does not start the game, stop it, or restart it.</p>"
         "<p>You open an https address that ends in trycloudflare.com. "
-        "The lobby link is the front door. A seat link names the game, the seat, and the token, and it asks for the redesign cockpit with layout=redesign. "
-        "The token is the password for that seat. Send each seat link to one person. "
-        "Treat the link like a password. Do not put it on a public page.</p>"
+        "The lobby link is the front door.</p>"
         "<p>The public address changes every time the host starts the share again. The game on the host computer is the same game. "
         "An old link stops opening. The admin page stays on the host computer. A request through the public address does not get it. "
         "Closing the share window stops the public address. The game keeps running.</p>"
@@ -1227,6 +1241,171 @@ def _mode(flag: bool, *, follows_profile: bool) -> str:
     return "legacy"
 
 
+# Plain words for a new player. One sentence per switch in V311_PROFILE_HELPERS.
+# The v3.11 mode section prints every key. Do not use the phrase the sync test forbids.
+_SWITCH_PLAIN: dict[str, str] = {
+    "STARTING_PACKAGE_MODE": "You start in a Merchant Cruiser with the small v3.11 pocket and a free class M home planet.",
+    "CITADEL_DAYS_MODE": "A citadel takes the printed number of days for its class and level.",
+    "CITADEL_COST_MODE": "Building a citadel costs that class's goods, not a credit fee.",
+    "SHIP_ROSTER_MODE": "The shipyard lists the full hull catalog.",
+    "TURN_REGEN_MODE": "Spent turns come back across the day and stop at the daily allowance. Dawn does not refill the whole pocket.",
+    "LIVE_PACE_MODE": "Turns come back on the clock, a little at a time, for the length of the day you picked.",
+    "OFFENSIVE_CLASH_MODE": "A fighter attack trades one for one, up to the wave that ship can throw.",
+    "TAX_RULE_MODE": "With enough cash and positive alignment, the bank takes a tax once a day and pays a little alignment back.",
+    "FEDSPACE_DEPLOY_MODE": "Dropping fighters in FedSpace is answered at once. You lose a share of the fighters and a share of the holds.",
+    "PORT_CLASS_MAP_MODE": "Port classes use the original buy and sell letters.",
+    "HAGGLE_WINDOW_MODE": "A port's first offer sits in the haggle band.",
+    "OWN_PLANET_TURN_MODE": "Landing on your own planet, and lifting off it, costs no turns.",
+    "TRADE_IN_MODE": "The shipyard pays a trade-in for the hull you are flying.",
+    "HARDWARE_PRICE_MODE": "StarDock hardware uses the v3.11 price card.",
+    "PLANET_SHIELD_ACTIVE_MODE": "Planetary shields are the level 5 citadel system.",
+    "GENESIS_SCORE_MODE": "A planet you created is scored without the older bonus.",
+    "ACTION_RESULT_MODE": "A computer seat is told whether an order worked. You do not set this from the cockpit.",
+    "ASSIGN_POOL_FIX_MODE": "Colonists you assign to the colonist pool stay in that pool.",
+    "HOLD_RULES_MODE": "Extra holds follow the printed hold rule.",
+    "PLANET_NW_MODE": "A planet's product counts toward net worth on the v3.11 scale.",
+    "PORT_PRICE_MODE": "Port prices follow the experience and product chart.",
+    "PORT_REGEN_MODE": "Ports restock a slice of their maximum each dawn.",
+    "SHOP_PRICE_MODE": "Extra holds, fighters, and shields use the shop formulas.",
+    "GENESIS_START_MODE": "A new planet starts with no colonists and, usually, no product.",
+    "TERRA_COLONIST_MODE": "Terra's colonist pool, the group per hold, and the daily growth use the v3.11 figures.",
+    "PLANET_PROD_MODE": "Colonists make fuel, organics, and equipment by the class table.",
+    "CITADEL_PERK_MODE": "Citadel perks follow the handbook list for each level.",
+    "EXP_SCORE_MODE": "The game can rank you by experience.",
+    "DEATH_POD_MODE": "A destroyed ship becomes an escape pod with a clean loadout, and you lose a share of your experience.",
+    "PORT_ATTACK_MODE": "You can attack a port.",
+    "HAGGLE_LIVE_MODE": "Haggling uses the live offer bands.",
+    "DISCOVERY_EXP_MODE": "Finding a new sector pays experience.",
+    "FED_SHIPS_MODE": "Three federal ships are in space, starting with the Intrepid at StarDock.",
+    "DETECT_GEAR_MODE": "A scan can see the gear another ship is carrying.",
+    "AVOID_MODE": "Computer O lets you tell the plotter to stay out of a sector.",
+    "OWN_PLANET_FIGHTER_MODE": "Fighters on a planet you own follow the v3.11 landing rule.",
+    "RANK_DISPLAY_MODE": "Your rank is shown from experience.",
+    "API_ARGS_MODE": "A computer seat sends its orders in the shape the seat expects. You do not set this.",
+    "PLANET_COLONIST_CAP_MODE": "A planet stops taking colonists at its class cap.",
+    "LANDED_STATE_MODE": "The game remembers that you are landed, and the landed keys apply.",
+    "PLANET_DIVIDEND_PAY_MODE": "Planet dividends are not paid.",
+    "PLANET_VALUE_SCORE_MODE": "A planet's value toward the score follows experience.",
+    "PLANET_SCANNER_MODE": "StarDock sells a planet scanner. It reads fighters on an unshielded planet.",
+    "SCANNER_FOG_MODE": "Until you land, or a scanner reads an unshielded planet, the owner, fighters, and shields stay hidden.",
+    "CITADEL_PARK_MODE": "A ship on your own level 1 citadel is parked inside it.",
+    "RADIO_CHANNEL_MODE": "Your corporation can share a radio channel.",
+    "DAILY_STATS_MODE": "Game status counts ports, planets, traders, aliens, and fighters and mines in use.",
+    "FEDCOMM_MODE": "A cleared Federation lane can send you a Federation note.",
+    "CORP_RANK_MODE": "Corporations are ranked by the members' experience added together.",
+    "CLASS_M_FIDELITY_MODE": "A class M planet stores each product in its own cap.",
+    "PORT_STOCK_FIDELITY_MODE": "A port's stock opens and refills by the v3.11 percentages.",
+    "SHIP_EXIT_MODE": "You can jettison cargo, and you can self-destruct.",
+    "RIVAL_STRENGTH_MODE": "Another trader's strength is the published figure.",
+    "PLANET_LANDING_COMBAT_MODE": "Landing on a defended planet can start a fight.",
+    "OWNER_HAZARD_NOTICE_MODE": "You are told when your own fighters or mines are hit.",
+    "SHIP_FLEE_MODE": "A ship can flee a fight on the published chance.",
+    "PLANET_SHIELD_MODE": "Planetary shields work once the citadel is level 5.",
+    "FERRENGI_ENGAGE_MODE": "A Ferrengi can stop you and demand tribute.",
+    "SIEGE_REPORT_MODE": "A siege of your planet is reported to you.",
+    "PLANET_GROWTH_MODE": "Population grows under half the cap and dies back over half.",
+    "KILL_CASH_MODE": "Destroying another trader does not pay you their credits.",
+    "POD_CASH_MODE": "After another player destroys you, the escape pod holds a small credit purse.",
+    "YARD_STATS_MODE": "The shipyard shows each hull's holds, fighters, shields, and turns per warp.",
+    "CITADEL_TABLE_FIX_MODE": "A class U citadel uses the handbook colonist figure at the level that table fixes.",
+    "HOME_PLANET_MODE": "You begin landed on a free class M home planet outside FedSpace.",
+    "CLASS_M_NW_MODE": "Class M product is scored as thousands of units, not as loose people.",
+    "CLASS_M_DROP_MODE": "One hold of Terra colonists is one group of people on a class M planet.",
+    "CLASS_M_GENESIS_MODE": "A new class M planet's first level uses the handbook colonist seed.",
+    "CORP_EXP_PENALTY_MODE": "When the corporation takes experience, the message names the amount taken.",
+    "CORP_LEAVER_DEPLOYMENTS": "Fighters you deployed for the corporation stay with the corporation, under the C.E.O., when you leave.",
+    "CORP_ALIGNMENT_RULE": "You can join only when your alignment and the C.E.O.'s do not have opposite signs. Zero fits either side.",
+    "MIXED_CORP_EXP_RULE": "A mixed corporation's shared experience uses the smaller of the two alignment extremes, divided by 4.",
+    "ALIEN_COMBAT_FIX_MODE": "Alien fighters trade one for one, and shields soak damage first.",
+    "HAGGLE_COUNTER_MODE": "A port's counter-offer keeps your turn, and holds are checked first.",
+    "BOT_HAZARD_MEMORY_MODE": "A code bot does not flee back into Ferrengal or a mined sector. You do not set this.",
+    "TRADE_IN_PARTS_MODE": "The shipyard itemises the old ship when you trade it in.",
+    "TRADER_RANK_LIST_MODE": "Computer L lists every trader by experience.",
+    "NW_ESTIMATE_MODE": "The net-worth note follows what you paid for cargo.",
+    "SEAT_IDLE_START_MODE": "An empty seat's idle clock starts when someone first connects.",
+    "BOT_DIPLOMACY_MODE": "A code bot can answer a hail and an alliance. You do not set this.",
+    "DAY_ROLL_CLOCK_MODE": "The day rolls on the clock even while a seat still holds its turn.",
+    "START_COLONIST_NW_MODE": "The free colonists you start with are left out of net worth.",
+    "PORT_BUY_PRICE_ANCHOR_MODE": "A hungry port's buy quote uses the live price anchors.",
+    "BUST_CLEAR_MODE": "Police can clear bust records every day, or every 7 days, when the game sets that interval.",
+    "SHIP_CHART_CAP_MODE": "Ether probes, and the other chart items, stop at the printed cap.",
+    "CORP_PLANET_DISBAND_MODE": "When a corporation ends, planets in the C.E.O.'s sector stay with the C.E.O. The rest go unclaimed.",
+    "PHOTON_FOLLOW_DAMP_MODE": "A ship that enters a sector while a photon wave is up also has the planet quasar damped.",
+    "DEATH_DELAY_MODE": "A new pod can be locked out for a number of midnights.",
+    "TREASURY_CAP_MODE": "A citadel treasury can hold the printed maximum.",
+    "COURSE_MAX_MODE": "A plotted course that is too long is refused.",
+    "BIG_BANG_DENSITY_MODE": "A new universe places ports and planets on the v3.11 spread, with no decorative Fed ports in the early sectors.",
+    "ONE_WAY_SHARE_MODE": "A small share of lanes are one-way when the game does not set another share.",
+    "ATOMIC_DETONATOR_MODE": "The atomic detonator destroys a planet. The old port-nuke mine is not sold.",
+    "SPECIAL_HULL_RULES_MODE": "An Interdictor holds every other ship, and a Tholian defends a corporation planet at four to one.",
+    "FERRENGI_GRUDGE_MODE": "A Ferrengi you attacked comes looking for you, and neighbours can join in on a strong target.",
+    "FERRENGI_PACE_MODE": "Ferrengi move on the live clock, and they grow back a share of their strength each day.",
+    "PROBE_SHOOTDOWN_MODE": "A shot-down ether probe names the sector and who owned the fighters.",
+    "FERRENGI_REWARD_MODE": "Destroying a Ferrengi pays alignment to a good trader, and experience by the hull.",
+    "FERRENGAL_QUASAR_MODE": "Entering Ferrengal draws one quasar shot. Landing there does not.",
+    "AUTOPILOT_PORT_STOP_MODE": "Express can pause in a port sector when you ask it to.",
+    "GENESIS_NAME_MODE": "You can type the name of a planet when you fire a Genesis torpedo.",
+    "PORT_ATTACK_ALL_CLASSES_MODE": "A port whose class you know can be destroyed.",
+    "PORT_CLASS_NUMBER_FIX_MODE": "Class 7 is the SSS port. StarDock stays its own class.",
+    "CLASS0_HOLD_FORMULA_MODE": "Class 0 holds use the printed total for that hull.",
+    "HAGGLE_EXP_MODE": "A good haggle pays a little experience. A great one pays more.",
+    "SHIP_RENAME_MODE": "The shipyard sells a new registration and a new ship name.",
+    "EXP_SOURCES_MODE": "Destroying a port pays experience and costs alignment.",
+    "SPECIAL_PORT_DEFENCE_MODE": "StarDock and Class 0 have a huge fighter budget, and the Feds rebuild them.",
+    "PLANET_COLLISION_MODE": "A sector with too many planets can lose two of them when the day rolls.",
+    "PLANET_BUST_EXP_MODE": "Creating a planet and destroying it can pay experience to the owner.",
+    "BOT_BANK_FLOAT_MODE": "A code bot keeps enough cash for a full hold before it deposits the rest. You do not set this.",
+    "CAPTURE_CREDIT_LINE_MODE": "Capturing a ship takes the credits on board, the same as destroying it, and the screen says so.",
+    "MAIL_MODE": "A hail flashes on an open cockpit and waits as mail when that trader is away.",
+    "LEGACY_DAY_CLOCK_MODE": "A game with its own day length rolls on that clock while a seat holds the turn.",
+    "PRICE_SCALE_MODE": "Each side of a trade starts from the full-price chart, then moves with the stock.",
+    "COLONIST_UNITS_MODE": "Dropping Terra colonists on a planet that is not class M turns people into colonist groups.",
+    "COLONIST_NW_UNITS_MODE": "Colonists in your holds are scored as groups, not as one person each.",
+    "EVIL_TRADE_LOOP_MODE": "A negative-alignment trader can steal, dump, and beam, or rob and beam.",
+    "FEDSAFE_FIGHTER_CAP_MODE": "Carrying too many fighters removes your FedSpace protection.",
+    "FED_TOW_LIMIT_MODE": "A ship in FedSpace with too many fighters can be towed out.",
+    "CORP_BREAKIN_ALIGN_MODE": "The first wrong corporation password in a day costs alignment.",
+    "PLANET_ZDY_MODE": "Destroying a planet kills a trader who is on it, and pays experience and alignment from that trader.",
+    "QUASAR_ATM_ORDER_MODE": "A landing takes one atmosphere shot, and a second only after the last shield falls.",
+    "PLANET_INTERDICT_SAFE_MODE": "An interdictor does not hold a ship at StarDock, and Terra is that sector.",
+    "HAGGLE_TABLE_MODE": "A port's counter-offer uses the product table.",
+    "FERRENGI_ATTACK_MODE": "A Ferrengi attack fires one chart volley.",
+    "PHOTON_LIMPET_MODE": "A limpet can still attach during a photon wave.",
+    "COMMS_V311_MODE": "The Comms panel sends sub-space radio, Fed Comm, a hail to someone in your sector, and a corporation memo.",
+    "INACTIVE_USER_MODE": "A trader with no successful action for a long stretch of real days can be removed.",
+    "INACTIVITY_TIMEOUT_MODE": "A quiet game can sleep after a long stretch with nobody playing.",
+    "TWO_WAY_WARP_MODE": "Big Bang adds extra two-way lanes on top of a path that joins every sector.",
+    "REENTRY_FIGHTERS_MODE": "The free Scout after Ship Destroyed carries a small fighter grant.",
+    "NAVPOINT_MODE": "The computer sets, lists, and clears named NavPoints, including Terra and StarDock, and a course can plot to one.",
+    "FEDERATION_HALL_MODE": "Federation Hall lists each corporation. The hardware counter can show a shop screen.",
+    "CORP_CARGO_TREASURY_MODE": "Corp mates in the same sector can move cargo. Members can put credits in the treasury, and only the C.E.O. can take them out.",
+    "UG_NAME_MODE": "A total unknown can buy a new name from the Underground.",
+    "FED_HUNT_MODE": "An evil ship that meets a Federal is destroyed, unless it is an Imperial StarShip.",
+    "CIM_MODE": "CIM lists sectors and ports you have explored, and a path. A port line stays hidden when hostile fighters hold that sector.",
+    "BOUNTY_GOOD_MODE": "A bounty on a good trader costs alignment and no experience.",
+}
+
+
+def _v311_mode(_f: dict) -> str:
+    """NOTE 173. Every profile switch, in plain words. The stored default stays legacy."""
+    profile = "v3.11" if K.v311_profile() else "legacy"
+    rows: list[tuple[str, str, str]] = []
+    for helper, (switch, _why) in K.V311_PROFILE_HELPERS.items():
+        on = bool(getattr(K, helper)())
+        rows.append((switch, _SWITCH_PLAIN[switch], "on" if on else "off"))
+    return (
+        f"<p>v3.11 mode is the profile for the whole game. In this process it is {profile}. "
+        "On the new-game form, Rules shows Profile: legacy or Profile: v3.11. "
+        "That line names the profile the new game will use. It does not change the stored defaults.</p>"
+        "<p>Setting V311_PROFILE to v311 turns every switch in this list on together. "
+        "The string 1 does not. "
+        "Each switch keeps its own stored default until that profile is on. "
+        "A switch can also be on by itself. The last column is what this process is doing right now.</p>"
+        + _table(("Switch", "What you see", "In this process"), rows)
+        + _src("The v3.11 profile switch list. This page reads it. It does not change a stored default.")
+    )
+
+
 def _rules_block() -> str:
     profile = "v3.11" if K.v311_profile() else "legacy"
     rows: list[tuple[str, str]] = [("Profile", profile)]
@@ -1259,6 +1438,7 @@ def _rules_block() -> str:
         "ai-opponents": (True, False),
         "sharing": (True, False),
         "staying-up": (False, False),
+        "v311-mode": (K.v311_profile(), True),
         "disclaimer": (True, False),
     }
     for sid, title in SECTIONS:
@@ -1379,7 +1559,9 @@ def _stardock_services(f: dict) -> str:
         + f"<p>The underground opens when your alignment is {_n(K.UG_MAX_ALIGNMENT)} or lower. "
         f"A contract starts at {_n(K.UG_CONTRACT_MIN)} credits, "
         f"{_n(K.UG_CREDITS_PER_ALIGN)} credits per alignment point.</p>"
-        + "<p>UG_NAME_MODE is a new name from the Underground.</p>"
+        + "<p>A total unknown can buy a new trader name in the Underground. "
+        "You have to be inside, and the Underground only prices that name while your experience is still 1 or less. "
+        "The switch is UG_NAME_MODE.</p>"
         + _gated(
             K.ug_name_live(),
             f"a total unknown, experience {_n(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE)} or less, "
@@ -1387,7 +1569,10 @@ def _stardock_services(f: dict) -> str:
             "A trader the Underground already knows is not given a price.",
             "the Underground does not sell a new name.",
         )
-        + "<p>FEDERATION_HALL_MODE opens Federation Hall and the hardware shop screen.</p>"
+        + "<p>Federation Hall is the corporation list at StarDock. "
+        "You read each registration, the day that corporation was formed, and its members, with the C.E.O. marked. "
+        "The hardware counter can show the same goods as a shop screen, one line and a price each. "
+        "The switch is FEDERATION_HALL_MODE.</p>"
         + _gated(
             K.federation_hall_live(),
             "Federation Hall lists each corporation's registration, the day it was formed, and its members, "
@@ -1400,7 +1585,7 @@ def _stardock_services(f: dict) -> str:
         f"Alignment must be at least {_n(K.POLICE_MIN_ALIGNMENT)}. "
         f"A commission is granted from alignment {_n(K.COMMISSION_APPLY_MIN)} up to, but not including, "
         f"{_n(K.COMMISSION_ALIGNMENT)}. It sets your alignment to {_n(K.COMMISSION_ALIGNMENT)}.</p>"
-        + f"<p>A bounty is posted at Police HQ on an evil trader. The minimum is {_n(K.REWARD_MIN)} credits. "
+        + f"<p>A bounty is posted at Police HQ. On an evil trader the minimum is {_n(K.REWARD_MIN)} credits. "
         f"You gain 1 alignment per {_n(K.REWARD_ALIGN_PER)} credits posted. "
         "The killer claims it at the same desk after that trader's ship is destroyed.</p>"
         + _gated(
@@ -1459,8 +1644,14 @@ def _communications(_f: dict) -> str:
             + radio
             + fed
         )
+    lead = (
+        "<p>You can talk to other traders. "
+        "When the Comms panel is on, you pick who hears you and press Send. "
+        "When it is off, you still have mail, a hail, an announcement, and a corporation memo.</p>"
+    )
     return (
-        now
+        lead
+        + now
         + _comms_panel()
         + _src(
             "Hail, mail, the corporation radio channel, Fed Comm, sub-space radio, "
@@ -1491,11 +1682,18 @@ def _computer_reports(_f: dict) -> str:
         "S is quick stats: name, rank, experience, alignment, turns left, credits, day, fighters, shields and holds. "
         "B warps back one sector when a lane goes there. "
         "E finds a path between two sectors already in your computer. "
-        "CIM_MODE is Computer Interrogation Mode. "
         "C lists the ship catalog. Y lists planets you own. J shows one planet's specs. "
         "R is the port report. K is the map you have seen.</p>"
-        "<p>NavPoints are the switch NAVPOINT_MODE. "
+        "<p>NavPoints are saved sectors you can aim a course at. "
+        "Press C, then N, when that letter is on the menu. Terra and StarDock are already named. "
+        "A sector you have not scanned says No Scan. "
+        "NavPoints are the switch NAVPOINT_MODE. "
         "The v3.11 profile turns it on. The string 1 does not.</p>"
+        "<p>CIM is the computer's memory of where you have been. "
+        "Press C, then I, when that letter is on the menu. "
+        "I asks for sectors you have explored, R for ports, F for a path, and Q leaves. "
+        "Outside the computer menu, I is still your ship. "
+        "CIM_MODE is Computer Interrogation Mode.</p>"
         + _gated(
             K.navpoint_live(),
             f"the computer menu sets, lists, and clears {_n(K.NAVPOINT_SLOTS)} named NavPoints. "
