@@ -18,7 +18,7 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
 
-NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Rows 181-186 stay reserved for queued #89 and #93.
+NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159); 14.1 stays Partial. Rows 182-186 stay reserved for queued #93.
 
 ## What moved
 
@@ -340,7 +340,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 13.4 Match-behind-flag `OWNER_HAZARD_NOTICE_MODE` row 55 and `SIEGE_REPORT_MODE` row 59. The owner is told about a landing, a fighter hit, a mine, and a siege. The Bible does not print a further report set, so none was added. `observation._event_visible_base`.
 13.5 Match. An ether-probe report is the route it walked, and it names the sector where fighters destroyed it. `scanners.handle_probe`.
 13.6 Match-behind-flag `FEDCOMM_MODE` row 48. The FedComm notice is coded and off. `class0.extern_sweep`.
-14.1 Partial. The computer can plot a course (`runner._handle_plot_course`, `runner.query_route`). Avoids are `AVOID_MODE` row 35. Not every original helper is in. NavPoints and the NOTE 103 computer keys are not on this tip.
+14.1 Partial. The computer can plot a course (`runner._handle_plot_course`, `runner.query_route`). Avoids are `AVOID_MODE` row 35. NavPoints are `NAVPOINT_MODE` row 181, NOTE 159: four named slots, Terra and StarDock, set, list, clear, and a course. Backtrack, quick stats, find route, and CIM are not that whole menu. `navpoints.menu_rows`.
 14.2 Match. Towing is on. `TOW_MODE` is tw2002. `constants.tow_on`.
 14.3 Match-behind-flag `PLANET_BUST_EXP_MODE` row 149, NOTE 102. The owner may destroy the planet they created for 75 experience (genesis 25 plus destroy 50). `legality.planet_destroy_reason`.
 14.4 Match. An unmanned ship can still hold fighters. While `V311_PROFILE` is on, `observation` game status leaves those fighters out of the V-screen total. Legacy still counts them. No switch was added for that display. Profile GAP 14.4 note.

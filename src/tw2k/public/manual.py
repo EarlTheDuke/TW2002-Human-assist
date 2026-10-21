@@ -310,10 +310,11 @@ def _walkthrough(f: dict) -> str:
 def _command_keys(_f: dict) -> str:
     computer = []
     for key, meaning in _COMPUTER:
-        if key == "B":
+        if key == "B" and K.navpoint_live():
             computer.append((
                 "N",
-                f"NavPoints. {_n(K.NAVPOINT_SLOTS)} named sectors you already know. Plot uses that known path.",
+                f"NavPoints. Set, list, and clear {_n(K.NAVPOINT_SLOTS)} named sectors. "
+                "Terra and StarDock are already listed. Plot lays in a course.",
             ))
             if K.v311_profile():
                 meaning = (
@@ -1465,14 +1466,26 @@ def _computer_reports(_f: dict) -> str:
     return (
         "<p>Press C, then the letter. D is today's log, including a hit on fighters you own. "
         "S is quick stats: name, rank, experience, alignment, turns left, credits, day, fighters, shields and holds. "
-        "N stores named sectors you already know. B warps back one sector when a lane goes there. "
+        "B warps back one sector when a lane goes there. "
         "E finds a path between two sectors already in your computer. "
         "C lists the ship catalog. Y lists planets you own. J shows one planet's specs. "
         "R is the port report. K is the map you have seen.</p>"
+        "<p>NavPoints are the switch NAVPOINT_MODE. "
+        "The v3.11 profile turns it on. The string 1 does not.</p>"
+        + _gated(
+            K.navpoint_live(),
+            f"the computer menu sets, lists, and clears {_n(K.NAVPOINT_SLOTS)} named NavPoints. "
+            "Terra and StarDock are already on the list. Plotting one lays in a course. "
+            "A sector outside FedSpace, that is not where you are, and that holds none of your fighters, reports No Scan.",
+            "there is no NavPoints menu.",
+        )
         + stats
         + corps
         + traders
-        + _src("Computer reports on the redesign cockpit, including the daily log, daily counts and rankings.")
+        + _src(
+            "Computer reports on the redesign cockpit, including the daily log, daily counts and rankings. "
+            "NavPoints: EIS GeneralNew.html, Navigate.html, Tactical.html, and the v3.11 revision history line No Scan."
+        )
     )
 
 
@@ -1696,6 +1709,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "computer-reports": (
         "DAILY_STATS_MODE", "CORP_RANK_MODE", "TRADER_RANK_LIST_MODE",
         "OWNER_HAZARD_NOTICE_MODE", "SIEGE_REPORT_MODE",
+        "navpoint", "NAVPOINT_MODE",
     ),
     "death-and-pods": ("DEATH_DELAY_MODE", "DEATH_POD_MODE", "POD_CASH_MODE", "REENTRY_FIGHTERS_MODE"),
     "feds-and-ferrengi-v311": (

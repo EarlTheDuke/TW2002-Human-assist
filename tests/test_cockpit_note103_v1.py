@@ -73,10 +73,14 @@ def test_mail_helpers_and_fighter_line(tmp_path, monkeypatch) -> None:
                 _shot(page, f"{width}-mail.png")
                 page.keyboard.press("Escape")
                 page.keyboard.press("c")
+                page.wait_for_selector("#menu[data-screen=computer]", timeout=10_000)
+                assert "NavPoints" not in page.locator("#menu").inner_text()
                 page.keyboard.press("n")
-                page.wait_for_selector("#menu[data-screen=navpoints] [data-nav='1']", timeout=10_000)
-                assert page.locator("[data-nav]").count() == 4
-                _shot(page, f"{width}-nav.png")
+                page.wait_for_function(
+                    "() => (document.querySelector('#lastResult') || {}).textContent.includes('not a computer command')",
+                    timeout=10_000,
+                )
+                assert page.locator("#menu[data-screen=navpoints]").count() == 0
                 page.keyboard.press("Escape")
                 page.keyboard.press("c")
                 page.keyboard.press("e")

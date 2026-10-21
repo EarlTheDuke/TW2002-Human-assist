@@ -361,7 +361,7 @@ Ours-vs-original note: docs\plans\planetary-warfare-comparison.md predates the s
 
 | # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
 |---|---|---|---|---|
-| 14.1 Computer menu helpers | Avoids, backtrack, NavPoints, quick stats, Find Route, CIM mapping. [EIS GeneralNew.html, Navigate, cabal glossary.html] CONFIRMED | PLOT_COURSE and known_* maps only. | Partial | M / Low |
+| 14.1 Computer menu helpers | Avoids, backtrack, NavPoints, quick stats, Find Route, CIM mapping. [EIS GeneralNew.html, Navigate, cabal glossary.html] CONFIRMED | `NAVPOINT_MODE` (NOTE 159) sets, lists, and clears four named NavPoints and plots a course to one. Legacy has no NavPoints menu. Avoids and the course plotter were already in. Not every helper. | Partial | M / Low |
 | 14.2 Towing and tractor beam | Tow another ship (furbing, carrying fighters); pre-lock before combat. [cabal glossary.html, docs wiki Furbing] CONFIRMED | Missing. | Missing | L / Low |
 | 14.3 Planet busting for exp | Create then destroy planets for 75 exp per loop. [cabal glossary.html] CONFIRMED | genesis xp 100, planet_destroy; loop cost vs reward not examined. | Different | S / Low |
 | 14.4 Unmanned-ship fighters | Fighters on unmanned ships are excluded from universe totals. [docs wiki Interdictor_Cruiser] CONFIRMED | n/a (single ship). | Missing | S / Low |

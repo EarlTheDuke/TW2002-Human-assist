@@ -3536,6 +3536,12 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     """
     player = universe.players[pid]
     target = action.args.get("target")
+    if "navpoint" in action.args and K.navpoint_live():
+        from .navpoints import resolve_navpoint
+        found = resolve_navpoint(player, action.args.get("navpoint"))
+        if found is None:
+            return ActionResult(ok=False, error="no such NavPoint")
+        target = found
     if target is None:
         return ActionResult(ok=False, error="plot_course requires 'target' sector id")
     try:
@@ -3719,7 +3725,14 @@ def query_route(universe: Universe, pid: str, target: object) -> dict:
     try:
         target_id = int(target)  # type: ignore[arg-type]
     except (TypeError, ValueError):
-        return {"ok": False, "error": "target must be a sector number", "from": sector, "path": []}
+        if K.navpoint_live():
+            from .navpoints import resolve_navpoint
+            found = resolve_navpoint(player, target)
+            if found is None:
+                return {"ok": False, "error": "no such NavPoint", "from": sector, "path": []}
+            target_id = found
+        else:
+            return {"ok": False, "error": "target must be a sector number", "from": sector, "path": []}
     if target_id not in universe.sectors:
         return {"ok": False, "error": "no such sector", "from": sector, "target": target_id, "path": []}
     blocked = None
@@ -5089,6 +5102,11 @@ def _handle_pay_toll(universe: Universe, pid: str, action: Action) -> ActionResu
     return ActionResult(ok=True, turns_spent=K.TURN_COST["pay_toll"])
 
 
+def _handle_navpoint(universe: Universe, pid: str, action: Action) -> ActionResult:
+    from .navpoints import apply_navpoint
+    return apply_navpoint(universe, pid, action)
+
+
 def _handle_avoid(universe: Universe, pid: str, action: Action) -> ActionResult:
     """Add a sector the computer will not plot through, or clear the list with 0."""
     if not K.avoid_live():
@@ -5128,6 +5146,7 @@ _DISPATCH: dict[ActionKind, Callable] = {
     ActionKind.CLAIM_PLANET: _handle_claim_planet,
     ActionKind.PLOT_COURSE: _handle_plot_course,
     ActionKind.AVOID: _handle_avoid,
+    ActionKind.NAVPOINT: _handle_navpoint,
     ActionKind.PHOTON_MISSILE: _handle_photon_missile,
     ActionKind.CLOAK: handle_cloak,
     ActionKind.FIRE_DISRUPTOR: handle_fire_disruptor,
