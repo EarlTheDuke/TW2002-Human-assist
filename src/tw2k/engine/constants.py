@@ -4766,6 +4766,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "REENTRY_FIGHTERS_MODE",
         "NOTE 158: the free Scout after Ship Destroyed gets min(250, initial fighters)",
     ),
+    "navpoint_live": (
+        "NAVPOINT_MODE",
+        "NOTE 159 GAP 14.1: four named NavPoints, plus Terra and StarDock, as course destinations",
+    ),
     "bounty_good_live": (
         "BOUNTY_GOOD_MODE",
         "NOTE 163 GAP 9.5: a bounty on a good trader costs 1 alignment per 250 credits and no experience",
@@ -5616,9 +5620,9 @@ def ship_rename_live() -> bool:
 # with an open cockpit (or any code bot) is that flash. A hail to an offline
 # trader is stored mail, and the cockpit says New Mail. Stored default stays
 # legacy, so every hail still lands in the inbox and the digests do not move.
-# Rows 162 and 163 are unused: NavPoints, backtrack, quick stats, and find
-# route read the seat's known map in the cockpit, and fighter reports are
-# lines on the daily log the owner can already see.
+# Rows 162 and 163 stay unused: backtrack, quick stats, and find route read
+# the seat's known map in the cockpit, and fighter reports are lines on the
+# daily log the owner can already see. NavPoints are NOTE 159, row 181.
 MAIL_MODE = "legacy"  # "legacy" | "live"
 HAIL_SHOW_SECONDS = 10
 NAVPOINT_SLOTS = 4  # EIS GeneralNew.html: four programmable NavPoints
@@ -5685,6 +5689,21 @@ def reentry_fighter_grant(initial: int | None = None) -> int:
     if room is not None:
         grant = min(grant, int(room))
     return grant
+
+
+# NOTE 159 GAP 14.1, row 181. EIS GeneralNew.html, Navigate.html, Tactical.html:
+# four programmable NavPoints, plus Terra (sector 1) and StarDock.
+# The v3.11 history prints "No Scan" when the sector is not FedSpace,
+# not where you are, and holds none of your fighters. Stored default stays
+# legacy. "1" does not turn this on. V311_PROFILE "v311" does.
+# The docs do not print a name length. 20 is the box this game uses.
+NAVPOINT_MODE = "legacy"  # "legacy" | "v311"
+NAVPOINT_NAME_MAX = 20
+
+
+def navpoint_live() -> bool:
+    """True when the computer menu can set, list, and clear NavPoints."""
+    return NAVPOINT_MODE == "v311" or v311_profile()
 
 
 # NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1

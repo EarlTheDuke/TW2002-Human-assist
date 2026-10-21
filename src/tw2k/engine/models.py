@@ -374,6 +374,8 @@ class EventKind(str, Enum):
     ALIEN_CAPTURED = "alien_captured"
     # v311-exp-alignment-trade-gaps-v1 (NOTE 87). Never emitted while SHIP_RENAME_MODE is legacy.
     SHIP_RENAMED = "ship_renamed"
+    # NOTE 159. Never emitted while NAVPOINT_MODE is legacy.
+    NAVPOINT = "navpoint"
 
 
 # ---------------------------------------------------------------------------
@@ -673,6 +675,7 @@ class Player(BaseModel):
             "turn_regen_at": None,
             "turn_regen_frac": 0.0,
             "avoided_sectors": [],
+            "navpoints": [],
             "seat_timeout_streak": 0,
             "seat_timeouts_today": 0,
             "played_today": False,
@@ -729,6 +732,8 @@ class Player(BaseModel):
     turn_regen_frac: float = 0.0
     # avoid-list-v1. Sectors the computer will not plot through. Omitted while empty.
     avoided_sectors: list[int] = Field(default_factory=list)
+    # NOTE 159. Named NavPoints. Omitted while empty so a legacy dump stays identical.
+    navpoints: list[dict[str, Any]] = Field(default_factory=list)
     # seat-deadline-autopass-v1. Omitted while 0 so a legacy dump stays identical.
     seat_timeout_streak: int = 0
     seat_timeouts_today: int = 0

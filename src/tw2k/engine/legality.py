@@ -1817,6 +1817,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         ok, why, cost, params = self_destruct_spec(universe, player_id)
         out.append(_la(ActionKind.SELF_DESTRUCT, legal=ok, reason=why, cost=cost, params=params))
 
+    # Last, and only while the switch is on. Off, it is absent so the legacy
+    # catalog, and the profile-off digests, stay as they were.
+    if K.navpoint_live():
+        from .navpoints import legal_spec as navpoint_legal_spec
+        ok, why, params = navpoint_legal_spec(universe, player_id)
+        out.append(_la(ActionKind.NAVPOINT, legal=ok, reason=why, cost=0, params=params))
+
     return out
 
 

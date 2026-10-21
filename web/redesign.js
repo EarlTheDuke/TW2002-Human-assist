@@ -103,6 +103,7 @@
     seat: (params.get("seat") || "P2").toUpperCase(),
     token: params.get("token") || fragmentToken() || "",
     connected: false, awaiting: false, busy: false, turnSeq: 0, canEnd: false, gameName: "",
+    pendingScreen: "",
     eventsSince: 0, mediaHistoryUntil: null, mediaCaughtUp: false,
   };
   // cockpit-gaps-v1: the server's cockpit block (verdict, haggle, port notes, hold quote).
@@ -4308,19 +4309,6 @@
     overlay("Mail", body);
     $("menu").dataset.screen = "mail";
   }
-  function navKey() {
-    return "navpoints:" + (state.seat || "");
-  }
-  function loadNavPoints() {
-    let saved = [];
-    try { saved = JSON.parse(localStorage.getItem(navKey()) || "[]"); } catch (e) { saved = []; }
-    const slots = [];
-    for (let i = 0; i < 4; i += 1) {
-      const row = saved[i] || {};
-      slots.push({ name: String(row.name || ""), sector: row.sector == null ? "" : String(row.sector) });
-    }
-    return slots;
-  }
   function knownSector(id) {
     const n = Number(id);
     if (!n) return false;
@@ -4365,42 +4353,86 @@
     }
     return path.reverse();
   }
+  function askDestination() {
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "course-ask";
+    m.innerHTML = '<div class="y">Sector number, or a NavPoint name?</div><input id="sectorAsk" /> <button type="button" id="sectorGo">ENTER</button><br><span class="dk">Esc to close</span>';
+    const input = $("sectorAsk");
+    const goAsk = () => {
+      const raw = String(input.value || "").trim();
+      m.hidden = true;
+      if (input.blur) input.blur();
+      if (/^\d+$/.test(raw) && Number(raw)) { go(Number(raw)); return; }
+      if (raw) loadCourse(raw);
+    };
+    $("sectorGo").addEventListener("click", goAsk);
+    input.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
+      if (ev.key === "Escape") { ev.preventDefault(); m.hidden = true; return; }
+      if (ev.key === "Enter") { ev.preventDefault(); goAsk(); }
+    });
+    input.focus();
+  }
   function navPoints() {
-    const slots = loadNavPoints();
+    const spec = LA("navpoint");
+    if (!spec) { setResult("That is not a computer command.", true); return; }
+    const params = spec.params || {};
+    const rows = params.rows || [];
     const m = $("menu");
     m.hidden = false;
     inComputer = false;
     m.dataset.screen = "navpoints";
-    const rows = slots.map((slot, i) => {
-      return '<div class="row" data-nav="' + (i + 1) + '">Nav ' + (i + 1)
-        + ' <input data-nav-name="' + i + '" value="' + esc(slot.name).replace(/"/g, "") + '" maxlength="16">'
-        + ' <input data-nav-sector="' + i + '" value="' + esc(slot.sector).replace(/"/g, "") + '" inputmode="numeric">'
-        + ' <button type="button" data-nav-plot="' + i + '">Plot</button></div>';
+    const attr = (value) => esc(value == null ? "" : value).replace(/"/g, "");
+    const programmable = rows.filter((row) => row.kind === "set").map((row) => {
+      const slot = row.slot;
+      return '<div class="row" data-nav="' + slot + '">Nav ' + slot
+        + ' <input data-nav-name="' + slot + '" value="' + attr(row.name) + '" maxlength="20">'
+        + ' <input data-nav-sector="' + slot + '" value="' + attr(row.sector) + '" inputmode="numeric">'
+        + ' <button type="button" data-nav-set="' + slot + '">Set</button>'
+        + ' <button type="button" data-nav-clear="' + slot + '">Clear</button>'
+        + ' <button type="button" data-nav-plot="' + slot + '">Plot</button>'
+        + ' <span data-nav-scan="' + slot + '">' + esc(row.scan || "") + "</span></div>";
     }).join("");
-    m.innerHTML = '<div class="y">NavPoints</div><div class="row">Four named sectors you already know.</div>'
-      + rows + '<div class="row"><button type="button" data-nav-save="1">Save</button></div><br><span class="dk">Esc to close</span>';
-    const save = () => {
-      const next = [0, 1, 2, 3].map((i) => ({
-        name: (m.querySelector('[data-nav-name="' + i + '"]') || {}).value || "",
-        sector: (m.querySelector('[data-nav-sector="' + i + '"]') || {}).value || "",
-      }));
-      localStorage.setItem(navKey(), JSON.stringify(next));
-      return next;
-    };
-    m.querySelector("[data-nav-save]").addEventListener("click", () => {
-      save();
-      setResult("NavPoints saved.", false);
+    const fixed = rows.filter((row) => row.kind === "fixed").map((row) => {
+      return '<div class="row" data-nav-fixed="' + attr(row.slot) + '">' + esc(row.name)
+        + " sector " + esc(row.sector)
+        + ' <button type="button" data-nav-plot="' + attr(row.slot) + '">Plot</button>'
+        + ' <span data-nav-scan="' + attr(row.slot) + '">' + esc(row.scan || "") + "</span></div>";
+    }).join("");
+    m.innerHTML = '<div class="y">NavPoints</div>'
+      + '<div class="row">' + esc(params.prompt || "") + "</div>"
+      + '<div class="row">' + esc(params.move || "") + "</div>"
+      + programmable + fixed + '<br><span class="dk">Esc to close</span>';
+    const field = (slot, kind) => (m.querySelector('[data-nav-' + kind + '="' + slot + '"]') || {}).value || "";
+    m.querySelectorAll("[data-nav-set]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const slot = btn.getAttribute("data-nav-set");
+        act("navpoint", {
+          op: "set",
+          slot: Number(slot),
+          name: field(slot, "name"),
+          sector: Number(field(slot, "sector")),
+        }, "set NavPoint " + slot);
+      });
+    });
+    m.querySelectorAll("[data-nav-clear]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const slot = btn.getAttribute("data-nav-clear");
+        act("navpoint", { op: "clear", slot: Number(slot) }, "clear NavPoint " + slot);
+      });
     });
     m.querySelectorAll("[data-nav-plot]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const next = save();
-        const slot = next[Number(btn.getAttribute("data-nav-plot"))];
-        const sector = Number(slot.sector);
-        if (!knownSector(sector)) { setResult("That sector is not in your computer.", true); return; }
-        const path = knownRoute((S.sector || {}).id, sector);
+        const slot = btn.getAttribute("data-nav-plot");
+        const row = rows.find((item) => String(item.slot) === String(slot)) || {};
+        const name = row.kind === "set" ? field(slot, "name") : row.name;
+        const sector = row.kind === "set" ? field(slot, "sector") : row.sector;
         m.hidden = true;
-        if (!path || !path.length) { setResult("No known route to " + sector + ".", true); return; }
-        setResult("Known route to " + (slot.name || sector) + ": " + path.join(" - ") + " (" + (path.length - 1) + " hops).", false);
+        if (name) { loadCourse(name); return; }
+        if (sector) { loadCourse(sector); return; }
+        setResult("That NavPoint is empty.", true);
       });
     });
   }
@@ -5595,8 +5627,11 @@
       }).catch((e) => setResult(String(e.message || e), true));
     });
   }
+  function computerKeys() {
+    return LA("navpoint") ? CKEYS : CKEYS.filter((row) => row[0] !== "N");
+  }
   function menuHtml(which) {
-    const list = which === "C" ? CKEYS : MENU_KEYS;
+    const list = which === "C" ? computerKeys() : MENU_KEYS;
     const clockNote = TC
       ? '<div class="row">Under v3.11, turns come back a little at a time all day. The day rolls on the clock, not when everyone is out of turns.</div>'
       : "";
@@ -5653,10 +5688,14 @@
     if (k === "<") { backtrack(); return; }
     if (inComputer) {
       inComputer = false;
-      const c = CKEYS.find((x) => x[0] === k);
+      const c = computerKeys().find((x) => x[0] === k);
       if (!c) { m.hidden = true; setResult("That is not a computer command.", true); return; }
       if (k === "Q") { m.hidden = true; return; }
-      if (k === "F") { m.hidden = true; askSector((n) => go(n)); return; }
+      if (k === "F") {
+        m.hidden = true;
+        if (LA("navpoint")) return askDestination();
+        return askSector((n) => go(n));
+      }
       if (k === "R") return portReport();
       if (k === "K") return knownUniverse();
       if (k === "O") { m.hidden = true; return avoidForm(); }
@@ -5675,6 +5714,7 @@
       return;
     }
     if (k === "?" || k === "C") {
+      if (!S) { state.pendingScreen = k; return; }
       m.hidden = false;
       inComputer = k === "C";
       m.dataset.screen = k === "C" ? "computer" : "main";
@@ -6501,7 +6541,21 @@
     syncSeatTimer(st);
     if (st.video_custom === true && window.TW2KMedia && window.TW2KMedia.setVideoCustom) window.TW2KMedia.setVideoCustom(true);
     const dayBefore = S ? Number(S.day) : null;
-    if (st.observation) { S = st.observation; render(); refreshCount += 1; }
+    if (st.observation) {
+      S = st.observation;
+      render();
+      refreshCount += 1;
+      const open = $("menu");
+      if (open && !open.hidden && open.dataset.screen === "computer") {
+        const listed = open.innerText.indexOf("NavPoints") >= 0;
+        if (!!LA("navpoint") !== listed) open.innerHTML = menuHtml("C");
+      }
+      if (state.pendingScreen) {
+        const which = state.pendingScreen;
+        state.pendingScreen = "";
+        key(which);
+      }
+    }
     if (!state.busy && S && dayBefore != null && Number(S.day) === dayBefore) justActed = false;
     await fetchEvents();
     keys();

@@ -512,7 +512,7 @@ def build_harness_router(runner) -> APIRouter:
         return body
 
     @router.get("/{player_id}/route")
-    async def route(player_id: str, request: Request, target: int) -> dict[str, Any]:
+    async def route(player_id: str, request: Request, target: str) -> dict[str, Any]:
         """NOTE 65 item 2. Read-only course over the real warp graph.
 
         Same avoids as plot_course. No event, no turn, and it works when it

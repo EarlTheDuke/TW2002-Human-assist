@@ -8,6 +8,7 @@ from tw2k.engine import constants as K
 ROOT = Path(__file__).resolve().parents[1]
 JS = (ROOT / "web" / "bot.js").read_text(encoding="utf-8")
 HTML = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")
+REDESIGN = (ROOT / "web" / "redesign.js").read_text(encoding="utf-8")
 
 
 def _quoted(block: str) -> set[str]:
@@ -24,6 +25,10 @@ def test_every_verb_has_a_button() -> None:
     gated = set() if K.ship_exit_on() else {"jettison", "self_destruct"}
     if not K.ship_rename_live():
         gated.add("ship_rename")
+    # NavPoints stay off /bot. The redesign Computer menu lists them while NAVPOINT_MODE is v311.
+    if not K.navpoint_live():
+        gated.add("navpoint")
+        assert 'LA("navpoint")' in REDESIGN
     missing = [k.value for k in ActionKind if k.value not in covered and k.value not in gated]
     assert missing == []
     for kind in covered - _quoted(s3):

@@ -370,6 +370,8 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={})
     if ak is ActionKind.AVOID:
         return Action(kind=ak, args={"sector": 0})
+    if ak is ActionKind.NAVPOINT:
+        return Action(kind=ak, args={"op": "list"})
     if ak is ActionKind.SHIP_RENAME:
         return Action(kind=ak, args={"name": "Renamed"})
     if ak is ActionKind.RADIO:
@@ -389,6 +391,7 @@ def test_every_verb_matches_engine(label: str, fx) -> None:
     las = {la.kind: la for la in legal_actions(u, pid)}
     offered = [k for k in ALL
                if (k != "avoid" or K.avoid_live())
+               and (k != "navpoint" or K.navpoint_live())
                and (k != "radio" or K.radio_channel_live())
                and (k not in ("jettison", "self_destruct") or K.ship_exit_on())
                and (k != "ship_rename" or K.ship_rename_live())]

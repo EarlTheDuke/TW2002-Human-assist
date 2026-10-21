@@ -98,6 +98,7 @@ class ActionKind(str, Enum):
     TRICRON = "tricron"  # stardock-leftovers-v1
     CINEPLEX = "cineplex"  # stardock-leftovers-v1
     AVOID = "avoid"  # avoid-list-v1
+    NAVPOINT = "navpoint"  # NOTE 159 navpoints-v1
     JETTISON = "jettison"  # ship-exit-v1
     SELF_DESTRUCT = "self_destruct"  # ship-exit-v1
     SHIP_RENAME = "ship_rename"  # v311-exp-alignment-trade-gaps-v1 (NOTE 87)
