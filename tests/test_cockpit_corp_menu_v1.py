@@ -151,11 +151,13 @@ def test_memo_posts_the_message(world) -> None:
     assert action["args"]["message"] == "Meet at Terra"
 
 
-def test_deposit_and_withdraw_are_hidden_while_the_treasury_is_off(world) -> None:
+def test_deposit_and_withdraw_say_why_while_the_treasury_is_off(world) -> None:
     page = world["page"]
     _menu(page)
-    assert page.get_by_role("button", name="Deposit credits", exact=True).count() == 0
-    assert page.get_by_role("button", name="Withdraw credits", exact=True).count() == 0
+    page.get_by_role("button", name="Deposit credits", exact=True).click()
+    assert "unsupported" in page.locator("#lastResult").inner_text().lower()
+    page.get_by_role("button", name="Withdraw credits", exact=True).click()
+    assert "unsupported" in page.locator("#lastResult").inner_text().lower()
 
 
 def test_set_password_posts_the_word(world) -> None:

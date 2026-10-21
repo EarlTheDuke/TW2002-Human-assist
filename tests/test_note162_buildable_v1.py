@@ -82,7 +82,8 @@ def test_federation_hall_is_absent_until_the_switch(monkeypatch) -> None:
     _legacy(monkeypatch)
     universe = _world()
     _corp(universe)
-    assert "federation_hall" not in _kinds(universe)
+    closed = next(la for la in legal_actions(universe, "P1") if la.kind == "federation_hall")
+    assert closed.legal is False
     equip = next(la for la in legal_actions(universe, "P1") if la.kind == "buy_equip")
     assert "shop_screen" not in equip.params
     refused = apply_action(universe, "P1", Action(kind=ActionKind.FEDERATION_HALL, args={}))
@@ -140,7 +141,8 @@ def test_underground_name_fails_off_and_passes_for_a_total_unknown(monkeypatch) 
     player.experience = 1
     player.ug_entered_day = int(universe.day)
     player.ug_password_known = True
-    assert "underground_rename" not in _kinds(universe)
+    closed = next(la for la in legal_actions(universe, "P1") if la.kind == "underground_rename")
+    assert closed.legal is False
     refused = apply_action(universe, "P1", Action(kind=ActionKind.UNDERGROUND_RENAME, args={"name": "Nyx"}))
     assert refused.ok is False
     assert player.name == "Ann"
@@ -195,7 +197,8 @@ def test_cim_is_absent_until_the_switch_and_hides_a_blocked_port(monkeypatch) ->
     player.known_warps[2] = [1]
     player.known_ports[2] = {"code": "BBS", "class": "2"}
     universe.sectors[2].fighters = FighterDeployment(owner_id="P9", count=4)
-    assert "cim" not in _kinds(universe)
+    closed = next(la for la in legal_actions(universe, "P1") if la.kind == "cim")
+    assert closed.legal is False
     assert apply_action(universe, "P1", Action(kind=ActionKind.CIM, args={"query": "I"})).ok is False
 
     monkeypatch.setattr(K, "CIM_MODE", "v311")

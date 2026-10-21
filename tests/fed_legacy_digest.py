@@ -14,6 +14,25 @@ NEW_UNIVERSE_KEYS = ("federals", "posted_rewards", "pending_rewards",
                      "ferrengal_sector", "ferrengi_grudges")  # + ferrengi-aliens-v1
 NEW_PLAYER_KEYS = ("commission_used", "fed_hail_sent", "ferrengi_encounter")
 NEW_FERRENGI_KEYS = ("hull", "credits", "cargo")  # ferrengi-aliens-v1 FerrengiShip fields
+# NOTE 162. These verbs stay in legal_actions while their switches are off, refused.
+# Legacy play does not use them. The pin hashes the catalog without those rows.
+REFUSED_CATALOG = frozenset({"federation_hall", "underground_rename", "cim"})
+
+
+def _without_refused_catalog(observation):
+    rows = observation.legal_actions or []
+    kept = [
+        row for row in rows
+        if not (
+            isinstance(row, dict)
+            and row.get("kind") in REFUSED_CATALOG
+            and row.get("legal") is False
+            and row.get("reason") == "not in this game"
+        )
+    ]
+    if len(kept) == len(rows):
+        return observation
+    return observation.model_copy(update={"legal_actions": kept})
 
 
 def legacy_run_digest(root: Path, seats: str = "N3,H", days: int = 2, seed: int = 250925,
@@ -59,8 +78,9 @@ def _legacy_run_digest(root: Path, seats: str, days: int, seed: int, flip: tuple
 
     def bo(u, pid, *a, **k):
         o = bo0(u, pid, *a, **k)
-        h.update(o.model_dump_json().encode())
-        h.update(P.format_observation(o).encode())
+        hashed = _without_refused_catalog(o)
+        h.update(hashed.model_dump_json().encode())
+        h.update(P.format_observation(hashed).encode())
         return o
 
     def aa(u, pid, act):
