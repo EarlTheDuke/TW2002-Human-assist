@@ -124,6 +124,6 @@ R1: A. R2: A. R3: A. R4: A. R5: B. R6: A. R7: A. R8: A. R9: B. R10: A. R11: A. R
 
 - 10.1 Corporate FlagShip: only the C.E.O. buys one and only the C.E.O. boards one. Switch `CFS_CEO_USE_MODE`, row 213. Source: Gypsy's guide.
 - 6.10 Destroying a planet: 50 alignment, as the Bible prints. Switch `PLANET_BLOW_ALIGN_MODE`, row 214. The cabal -1 stays the legacy value.
-- 8.1 Ferrengi odds: keep FERRSPEC 1.0 / 1.2 / 1.4. The 1.2 / 1.4 / 1.6 line is a later MBBS addendum. No switch.
+- 8.1 Ferrengi odds: the Bible ship chart, 1.2 / 1.4 / 1.4 and an Assault Trader volley of 2,000. Switch `FERRENGI_ODDS_MODE`, row 200 (NOTE 164). This corrects the first NOTE 177 reading, which missed the Bible table. Stored FERRSPEC stays the legacy value.
 
 Ben can reverse any of these by setting the switch back; each is legacy by default and on only under V311_PROFILE=v311.

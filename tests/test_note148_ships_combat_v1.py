@@ -72,10 +72,12 @@ def test_ferrengi_attack_fails_off_and_passes_on(monkeypatch) -> None:
     monkeypatch.setattr(K, "FERRENGI_ATTACK_MODE", "legacy")
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     assert K.FERRENGI_ATTACK_MODE == "legacy"
+    assert K.FERRENGI_ODDS_MODE == "legacy"
+    # The profile also turns on Bible odds: 2,000 fighters at 1.2, so 1,000 remain.
     ferr, victim = scene()
     assert ferr.alive is True
-    assert ferr.fighters == 2_000
-    assert victim.ship.fighters == 19_000
+    assert ferr.fighters == 1_000
+    assert victim.ship.fighters == 17_600
 
 
 def test_photon_limpet_fails_off_and_passes_on(monkeypatch) -> None:

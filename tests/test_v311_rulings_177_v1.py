@@ -2,8 +2,8 @@
 
 10.1 gains CFS_CEO_USE_MODE, row 213: only a C.E.O. boards a Corporate FlagShip.
 6.10 gains PLANET_BLOW_ALIGN_MODE, row 214: blowing a planet costs 50 alignment (Bible).
-8.1 keeps the stored FERRSPEC odds 1.0 / 1.2 / 1.4 (v3 FERRSPEC and the Slice manual); the
-1.2 / 1.4 / 1.6 line is the later MBBS addendum, so no switch is added.
+8.1 is NOTE 164's FERRENGI_ODDS_MODE (row 200, the Bible chart); the stored FERRSPEC
+table stays the legacy value.
 Both switches are legacy by default and turn on only under V311_PROFILE=v311, not "1".
 """
 from __future__ import annotations
