@@ -6,16 +6,21 @@ so unapproving a take falls back without removing fallback_still.
 
 from __future__ import annotations
 
+import atexit
 import copy
+import ctypes
 import json
+import os
+import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
 import pytest
 
-from tests._cu_host import CuHost
+from tests._cu_host import RESERVED_TEST_PORTS, CuHost, allowed_test_port
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -28,6 +33,164 @@ FIXTURES = ROOT / "tests" / "fixtures" / "media_events"
 LIVE = json.loads((MEDIA / "manifest.json").read_text(encoding="utf-8-sig"))
 CATALOG = json.loads((MEDIA / "clips" / "v3-pilot" / "clips_manifest_v3.json").read_text(encoding="utf-8"))
 TOK = "v3-e2e-token-p2-00000000000000"
+# A stuck WebKit play() never returns to Python. The in-page race is the
+# first bound. This one kills the browser process tree if that race is
+# ignored. It stays under the two-minute file budget.
+_HARD_S = 3.5
+_CREATE_NO_WINDOW = 0x08000000
+_REAP: list[int] = []
+
+
+def _sigkill(pid: int) -> None:
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except OSError:
+        pass
+
+
+def _taskkill_tree(pid: int) -> None:
+    """taskkill /T /F, same tree walk the cockpit player uses on Windows."""
+    if pid <= 1 or pid == os.getpid():
+        return
+    flags = int(getattr(subprocess, "CREATE_NO_WINDOW", _CREATE_NO_WINDOW)) if os.name == "nt" else 0
+    subprocess.run(
+        ["taskkill", "/T", "/F", "/PID", str(int(pid))],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+        creationflags=flags,
+    )
+
+
+def _children(pid: int) -> list[int]:
+    if os.name == "nt":
+        return _windows_children(pid)
+    found: list[int] = []
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return found
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            stat = (entry / "stat").read_text(encoding="utf-8")
+        except OSError:
+            continue
+        cut = stat.rfind(")")
+        parts = stat[cut + 2:].split()
+        if len(parts) > 1 and int(parts[1]) == pid:
+            found.append(int(entry.name))
+    return found
+
+
+def _descendants(pid: int) -> list[int]:
+    found: list[int] = []
+    stack = _children(pid)
+    while stack:
+        cur = stack.pop()
+        if cur in found or cur == os.getpid():
+            continue
+        found.append(cur)
+        stack.extend(_children(cur))
+    return found
+
+
+def _kill_tree(pid: int) -> None:
+    if pid <= 1 or pid == os.getpid():
+        return
+    if os.name == "nt":
+        _taskkill_tree(pid)
+        return
+    for child in reversed(_descendants(pid)):
+        _sigkill(child)
+    _sigkill(pid)
+
+
+def _reap_browsers() -> None:
+    for pid in list(_REAP):
+        _kill_tree(pid)
+    _REAP.clear()
+
+
+atexit.register(_reap_browsers)
+
+
+class _ProcessEntry(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", ctypes.c_ulong),
+        ("cntUsage", ctypes.c_ulong),
+        ("th32ProcessID", ctypes.c_ulong),
+        ("th32DefaultHeapID", ctypes.c_void_p),
+        ("th32ModuleID", ctypes.c_ulong),
+        ("cntThreads", ctypes.c_ulong),
+        ("th32ParentProcessID", ctypes.c_ulong),
+        ("pcPriClassBase", ctypes.c_long),
+        ("dwFlags", ctypes.c_ulong),
+        ("szExeFile", ctypes.c_wchar * 260),
+    ]
+
+
+def _windows_children(pid: int) -> list[int]:
+    try:
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    except (OSError, AttributeError):
+        return []
+    kernel.CreateToolhelp32Snapshot.restype = ctypes.c_void_p
+    kernel.CreateToolhelp32Snapshot.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
+    kernel.Process32FirstW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    kernel.Process32NextW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+    handle = kernel.CreateToolhelp32Snapshot(0x00000002, 0)
+    if not handle or handle == ctypes.c_void_p(-1).value:
+        return []
+    entry = _ProcessEntry()
+    entry.dwSize = ctypes.sizeof(entry)
+    found: list[int] = []
+    try:
+        if not kernel.Process32FirstW(handle, ctypes.byref(entry)):
+            return found
+        while True:
+            if int(entry.th32ParentProcessID) == pid:
+                found.append(int(entry.th32ProcessID))
+            if not kernel.Process32NextW(handle, ctypes.byref(entry)):
+                break
+    finally:
+        kernel.CloseHandle(handle)
+    return found
+
+
+def _driver_pid(playwright) -> int | None:
+    impl = getattr(playwright, "_impl_obj", None)
+    conn = getattr(impl, "_connection", None) if impl is not None else None
+    transport = getattr(conn, "_transport", None) if conn is not None else None
+    proc = getattr(transport, "_proc", None) if transport is not None else None
+    pid = getattr(proc, "pid", None)
+    return int(pid) if pid else None
+
+
+def _bounded(fn, pids: list[int], driver: int | None, seconds: float):
+    """Return fn() unless it is still running after `seconds`.
+
+    The browser tree is killed first. If Python is still blocked, the
+    Playwright driver is killed too, which closes the pipe.
+    """
+    done = threading.Event()
+
+    def watch() -> None:
+        if done.wait(seconds):
+            return
+        for pid in pids:
+            _kill_tree(pid)
+        if driver and not done.wait(1.0):
+            _kill_tree(driver)
+
+    threading.Thread(target=watch, name="clip-hard-timeout", daemon=True).start()
+    try:
+        return fn()
+    finally:
+        done.set()
+
+
 # play() on Windows WebKit can ignore the page forever. Race it. The clock
 # budget is short so fourteen clips on three browsers stay under two minutes
 # even when the first path does not move currentTime.
@@ -146,20 +309,26 @@ def _paths_for(browser: str) -> tuple[str, str]:
     return ("inpage", "pinned")
 
 
-def _attempt(page, clip: dict, path: str) -> tuple[float, str]:
-    if path == "pinned":
-        return _pinned_time(page, clip)
-    return _inpage_time(page, clip)
+def _attempt(page, clip: dict, path: str, pids: list[int], driver: int | None) -> tuple[float, str]:
+    def run() -> tuple[float, str]:
+        if path == "pinned":
+            return _pinned_time(page, clip)
+        return _inpage_time(page, clip)
+
+    try:
+        return _bounded(run, pids, driver, _HARD_S)
+    except Exception as exc:
+        return 0.0, f"hard-timeout {exc}"
 
 
-def _play_clips(page, clips: list[dict]) -> list[str]:
+def _play_clips(page, clips: list[dict], pids: list[int], driver: int | None) -> list[str]:
     """Each clip must reach currentTime > 0. play() resolving is not enough."""
     browser = _browser_name(page)
     primary, fallback = _paths_for(browser)
     chosen: str | None = None
     played = "not-run"
     for path in (primary, fallback):
-        seen, played = _attempt(page, clips[0], path)
+        seen, played = _attempt(page, clips[0], path, pids, driver)
         if seen > 0:
             chosen = path
             break
@@ -168,10 +337,10 @@ def _play_clips(page, clips: list[dict]) -> list[str]:
         bad.append(f"{browser} {clips[0]['id']} {played}")
     for clip in clips[1:]:
         path = chosen or primary
-        seen, played = _attempt(page, clip, path)
+        seen, played = _attempt(page, clip, path, pids, driver)
         if not seen > 0:
             other = fallback if path == primary else primary
-            seen, played = _attempt(page, clip, other)
+            seen, played = _attempt(page, clip, other, pids, driver)
         if not seen > 0:
             bad.append(f"{browser} {clip['id']} {played}")
     return bad
@@ -333,20 +502,36 @@ def test_fourteen_clips_play_in_chromium_firefox_and_webkit(tmp_path: Path, monk
               "mp4": f"/static/media/clips/v3-pilot/{row['mp4']}"} for row in CATALOG["clips"]]
     assert len(clips) == 14
     with CuHost(tmp_path, TOK) as host, sync_playwright() as p:
+        assert allowed_test_port(host.port)
+        assert host.port not in RESERVED_TEST_PORTS
+        driver = _driver_pid(p)
         for name in ("chromium", "firefox", "webkit"):
+            before = set(_descendants(os.getpid()))
             if name == "chromium":
                 browser = p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
             elif name == "firefox":
                 browser = p.firefox.launch(firefox_user_prefs={"media.autoplay.default": 0})
             else:
                 browser = p.webkit.launch()
-            page = browser.new_page(viewport={"width": 1280, "height": 800})
-            page.goto(f"{host.base}/bot?seat=P2&token={TOK}")
-            page.wait_for_selector("#viewport", timeout=20_000)
-            page.mouse.click(8, 8)
-            bad = _play_clips(page, clips)
-            assert bad == [], (name, bad)
-            browser.close()
+            born = [pid for pid in _descendants(os.getpid()) if pid not in before]
+            _REAP.extend(born)
+            try:
+                page = browser.new_page(viewport={"width": 1280, "height": 800})
+                page.goto(f"{host.base}/bot?seat=P2&token={TOK}", timeout=20_000)
+                page.wait_for_selector("#viewport", timeout=20_000)
+                page.mouse.click(8, 8)
+                bad = _play_clips(page, clips, born, driver)
+                assert bad == [], (name, bad)
+            finally:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+                for pid in born:
+                    _kill_tree(pid)
+                for pid in born:
+                    if pid in _REAP:
+                        _REAP.remove(pid)
 
 
 def test_approved_clip_plays_and_a_missing_file_falls_back(tmp_path: Path, monkeypatch) -> None:
