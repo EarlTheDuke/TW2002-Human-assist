@@ -258,6 +258,9 @@ def test_the_lobby_hook_stays_idle_until_the_switch_is_on(tmp_path: Path, monkey
         assert seen["kwargs"]["creationflags"] & 0x08000000
     else:
         assert seen["kwargs"]["start_new_session"] is True
+    spawned_log = (tmp_path / "on" / "player.log").read_text(encoding="utf-8")
+    assert "spawned seat=P2" in spawned_log
+    assert TOKEN not in spawned_log
 
 
 def test_scripted_player_reads_the_manual_and_sells(tmp_path: Path) -> None:

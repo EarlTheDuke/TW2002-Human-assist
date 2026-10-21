@@ -339,6 +339,7 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
             goals = {"P1": _fresh(), "P2": _fresh()}
             pages = {"P1": p1, "P2": p2}
             (SHOTS / "progress.txt").write_text("", encoding="utf-8")
+            _wait_ai(lobby, gid)
             deadline = time.time() + 540
             last_ai = 0.0
             while time.time() < deadline and not all(_day_done(row) for row in goals.values()):
@@ -449,15 +450,53 @@ def _progress(line: str) -> None:
         handle.write(f"{time.strftime('%H:%M:%S')} {line}\n")
 
 
-def _ai_tail(lobby, gid: str) -> str:
+def _ai_logs(lobby, gid: str) -> list[Path]:
+    """Seat logs live in ai-cockpit/<seat>/, not in ai-cockpit/player.log."""
+    root = lobby.workers.game_dir(gid) / "ai-cockpit"
+    if not root.is_dir():
+        return []
+    found: list[Path] = []
+    direct = root / "player.log"
+    if direct.is_file():
+        found.append(direct)
+    found.extend(sorted(root.glob("*/player.log")))
+    found.extend(sorted(root.glob("*/player.err")))
+    return found
+
+
+def _ai_text(lobby, gid: str) -> str:
     try:
-        path = lobby.workers.game_dir(gid) / "ai-cockpit" / "player.log"
-        if not path.is_file():
+        paths = _ai_logs(lobby, gid)
+        if not paths:
             return "no ai log"
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-        return " || ".join(lines[-6:])
+        chunks = []
+        for path in paths:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            where = path.parent.name if path.parent.name != "ai-cockpit" else "ai-cockpit"
+            chunks.append(f"{where}/{path.name}: " + " || ".join(lines[-6:]))
+        return " // ".join(chunks)
     except Exception as exc:
         return str(exc)
+
+
+def _ai_tail(lobby, gid: str) -> str:
+    return _ai_text(lobby, gid)
+
+
+def _wait_ai(lobby, gid: str, timeout_s: float = 120) -> None:
+    """Block until the cockpit seat has the page open.
+
+    Day 1 used to start while this process was still launching. The scheduler
+    holds that seat until the first client connects, so P2 never finished.
+    """
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        text = _ai_text(lobby, gid)
+        if "seat page open" in text:
+            _progress(f"ai ready {text[-400:]}")
+            return
+        time.sleep(0.5)
+    raise AssertionError(f"ai cockpit did not open: {_ai_text(lobby, gid)}")
 
 
 def _result(page) -> str:
