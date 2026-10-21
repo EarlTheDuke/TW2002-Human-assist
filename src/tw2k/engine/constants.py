@@ -4770,6 +4770,27 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "NAVPOINT_MODE",
         "NOTE 159 GAP 14.1: four named NavPoints, plus Terra and StarDock, as course destinations",
     ),
+    # NOTE 162 rows 182-186. Row 181 is NavPoints, already in this dict.
+    "federation_hall_live": (
+        "FEDERATION_HALL_MODE",
+        "NOTE 162 GAP 1.8: Federation Hall lists corp registrations, and the hardware counter shows a shop screen",
+    ),
+    "corp_cargo_treasury_live": (
+        "CORP_CARGO_TREASURY_MODE",
+        "NOTE 162 GAP 10.6: corp mates can move cargo, and credits can go into the corp treasury",
+    ),
+    "ug_name_live": (
+        "UG_NAME_MODE",
+        "NOTE 162 GAP 11.7: the Underground sells a new name to a total unknown for 100 credits",
+    ),
+    "fed_hunt_live": (
+        "FED_HUNT_MODE",
+        "NOTE 162 GAP 11.9: an evil ship that meets a Federal is destroyed",
+    ),
+    "cim_live": (
+        "CIM_MODE",
+        "NOTE 162 GAP 14.1: CIM lists explored sectors and ports, and plots a path",
+    ),
     "bounty_good_live": (
         "BOUNTY_GOOD_MODE",
         "NOTE 163 GAP 9.5: a bounty on a good trader costs 1 alignment per 250 credits and no experience",
@@ -5704,6 +5725,70 @@ NAVPOINT_NAME_MAX = 20
 def navpoint_live() -> bool:
     """True when the computer menu can set, list, and clear NavPoints."""
     return NAVPOINT_MODE == "v311" or v311_profile()
+
+
+# NOTE 162 GAP 1.8, row 182. Gypsy: Federation Hall lists a corporation's
+# registration, the date, and the members, with the C.E.O. marked, and ranks
+# them by experience. The hardware counter otherwise stays a buy list.
+# Stored default stays legacy. "1" does not turn this on.
+FEDERATION_HALL_MODE = "legacy"  # "legacy" | "v311"
+
+
+def federation_hall_live() -> bool:
+    """True when StarDock opens Federation Hall and the hardware shop screen."""
+    return FEDERATION_HALL_MODE == "v311" or v311_profile()
+
+
+# NOTE 162 GAP 10.6, row 183. EIS already moves credits, fighters, shields, and
+# mines. Holds of fuel, organics, equipment, and colonists, and the corp
+# treasury, stay refused until this is on. Stored default stays legacy.
+CORP_CARGO_TREASURY_MODE = "legacy"  # "legacy" | "v311"
+CORP_CARGO_ITEMS = ("fuel_ore", "organics", "equipment", "colonists")
+
+
+def corp_cargo_treasury_live() -> bool:
+    """True when corp mates can move cargo and use the corporation treasury."""
+    return CORP_CARGO_TREASURY_MODE == "v311" or v311_profile()
+
+
+# NOTE 162 GAP 11.7, row 184. Iago: alignment 200 or lower can change a name
+# and post bounties. The door, the password, and the bounties are already in.
+# A live capture priced a total unknown (experience 1) at 100 credits. A higher
+# experience was not given a formula, so this refuses that trader. UG_NAME_CHANGE
+# stays false. Stored default stays legacy. "1" does not turn this on.
+UG_NAME_MODE = "legacy"  # "legacy" | "v311"
+UG_NAME_UNKNOWN_COST = 100
+UG_NAME_UNKNOWN_MAX_EXPERIENCE = 1
+UG_NAME_MAX = 30  # UNVERIFIED (the live screen did not print a length)
+
+
+def ug_name_live() -> bool:
+    """True when the Underground will sell a new name to a total unknown."""
+    return UG_NAME_MODE == "v311" or v311_profile()
+
+
+# NOTE 162 GAP 11.9, row 185. Iago: meeting a Federal while evil is goodbye.
+# An empty FedSpace sector is left alone. The live walk of sectors 1-7 with no
+# Federal in them was left alone. An evil ISS is already repossessed. Stored
+# default stays legacy. "1" does not turn this on.
+FED_HUNT_MODE = "legacy"  # "legacy" | "v311"
+
+
+def fed_hunt_live() -> bool:
+    """True when a Federal in the sector destroys an evil ship that is not an ISS."""
+    return FED_HUNT_MODE == "v311" or v311_profile()
+
+
+# NOTE 162 GAP 14.1, row 186. Iago and the Bible: from the computer, CIM
+# answers I (explored sectors), R (explored ports), F (a path), and Q.
+# Hostile fighters hide that sector's port line. Avoids, the course plotter,
+# and the known-map cockpit keys were already in. Stored default stays legacy.
+CIM_MODE = "legacy"  # "legacy" | "v311"
+
+
+def cim_live() -> bool:
+    """True when the computer answers CIM for explored sectors, ports, and a path."""
+    return CIM_MODE == "v311" or v311_profile()
 
 
 # NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1

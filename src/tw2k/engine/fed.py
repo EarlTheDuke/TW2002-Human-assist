@@ -275,6 +275,31 @@ def maybe_fed_hail(universe: Universe, pid: str) -> None:
     )
 
 
+def hunt_evil_meeting_federal(universe: Universe, pid: str) -> None:
+    """Iago: an evil ship that meets a Federal is destroyed. Off, this returns first."""
+    if not K.fed_hunt_live() or not fed_tw2002():
+        return
+    player = universe.players.get(pid)
+    if player is None or not player.alive:
+        return
+    if int(player.alignment) >= 0 or _ship_cloaked(player):
+        return
+    if player.ship.ship_class in (ShipClass.ESCAPE_POD, ShipClass.IMPERIAL_STARSHIP):
+        return
+    feds = federals_in_sector(universe, player.sector_id)
+    if not feds:
+        return
+    universe.emit(
+        EventKind.FED_RESPONSE,
+        actor_id=pid,
+        sector_id=player.sector_id,
+        payload={"reason": "evil trader met a Federal", "fed": feds[0].name},
+        summary=f"{feds[0].name} destroys {player.name}",
+    )
+    from .combat import _destroy_ship
+    _destroy_ship(universe, pid, reason="federal", by_other=True)
+
+
 def check_iss_repo_on_move(universe: Universe, pid: str) -> None:
     """f22: after a warp, destroy evil ISS per ISS_REPO_MODE (unless cloaked)."""
     if not fed_tw2002():
@@ -283,6 +308,10 @@ def check_iss_repo_on_move(universe: Universe, pid: str) -> None:
     if player is None or not player.alive:
         return
     maybe_fed_hail(universe, pid)
+    hunt_evil_meeting_federal(universe, pid)
+    player = universe.players.get(pid)
+    if player is None or not player.alive:
+        return
     if not _is_iss(player) or int(player.alignment) >= 0:
         return
     if _ship_cloaked(player):

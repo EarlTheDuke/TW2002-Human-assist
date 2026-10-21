@@ -374,6 +374,12 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
         return Action(kind=ak, args={"op": "list"})
     if ak is ActionKind.SHIP_RENAME:
         return Action(kind=ak, args={"name": "Renamed"})
+    if ak is ActionKind.FEDERATION_HALL:
+        return Action(kind=ak, args={})
+    if ak is ActionKind.UNDERGROUND_RENAME:
+        return Action(kind=ak, args={"name": "Renamed"})
+    if ak is ActionKind.CIM:
+        return Action(kind=ak, args={"query": "Q"})
     if ak is ActionKind.RADIO:
         return Action(kind=ak, args={"channel": 1, "message": "hold"})
     if ak is ActionKind.JETTISON:
@@ -394,7 +400,10 @@ def test_every_verb_matches_engine(label: str, fx) -> None:
                and (k != "navpoint" or K.navpoint_live())
                and (k != "radio" or K.radio_channel_live())
                and (k not in ("jettison", "self_destruct") or K.ship_exit_on())
-               and (k != "ship_rename" or K.ship_rename_live())]
+               and (k != "ship_rename" or K.ship_rename_live())
+               and (k != "federation_hall" or K.federation_hall_live())
+               and (k != "underground_rename" or K.ug_name_live())
+               and (k != "cim" or K.cim_live())]
     assert set(las) == set(offered)
     assert all(la.detail == "precise" for la in las.values()), [k for k, la in las.items() if la.detail != "precise"]
     for kind in offered:

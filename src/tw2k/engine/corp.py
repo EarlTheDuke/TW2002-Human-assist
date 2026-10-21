@@ -485,6 +485,32 @@ def _ship_room(ship, item: str) -> int:
     return 0
 
 
+def _cargo_have(ship, item: str) -> int:
+    try:
+        kind = Commodity(item)
+    except ValueError:
+        return 0
+    return int(ship.cargo.get(kind, 0) or 0)
+
+
+def _cargo_room(ship, item: str) -> int:
+    free = int(ship.cargo_free)
+    if item == "colonists" and K.terra_colonist_live():
+        return free * max(1, int(K.colonists_per_hold()))
+    return free
+
+
+def _move_hold_cargo(giver, receiver, item: str, qty: int) -> None:
+    kind = Commodity(item)
+    have = int(giver.ship.cargo.get(kind, 0) or 0)
+    paid = float(giver.ship.cargo_cost.get(kind, 0.0) or 0.0)
+    moved = (paid * qty / have) if have > 0 and paid > 0 else 0.0
+    giver.ship.cargo[kind] = have - qty
+    giver.ship.cargo_cost[kind] = paid - moved
+    receiver.ship.cargo[kind] = int(receiver.ship.cargo.get(kind, 0) or 0) + qty
+    receiver.ship.cargo_cost[kind] = float(receiver.ship.cargo_cost.get(kind, 0.0) or 0.0) + moved
+
+
 def _ship_have(ship, item: str) -> int:
     if item == "credits":
         return 0
@@ -547,6 +573,8 @@ def handle_corp_transfer(universe: Universe, pid: str, action: Action) -> Action
                     if x in ("credits", "fighters", "shields")
                     or (x == "armid_mines" and "armid" in K.CORP_TRANSFER_MINE_KINDS)
                     or (x == "limpet_mines" and "limpet" in K.CORP_TRANSFER_MINE_KINDS))
+    if K.corp_cargo_treasury_live():
+        allowed = allowed + tuple(K.CORP_CARGO_ITEMS)
     if item not in allowed or direction not in ("give", "take") or qty < 1:
         return ActionResult(ok=False, error="invalid transfer")
     if target is None or target.corp_ticker != corp.ticker or target_id == pid or not target.alive:
@@ -558,17 +586,21 @@ def handle_corp_transfer(universe: Universe, pid: str, action: Action) -> Action
     if K.hardware_tw2002() and getattr(target.ship, "cloaked", False):
         return ActionResult(ok=False, error="that trader is cloaked")
     giver, receiver = (player, target) if direction == "give" else (target, player)
+    cargo_item = item in K.CORP_CARGO_ITEMS
     if item == "credits":
         if giver.credits < qty:
             return ActionResult(ok=False, error=f"at most {giver.credits} credits")
     else:
-        have = _ship_have(giver.ship, item)
-        room = _ship_room(receiver.ship, item)
+        have = _cargo_have(giver.ship, item) if cargo_item else _ship_have(giver.ship, item)
+        room = _cargo_room(receiver.ship, item) if cargo_item else _ship_room(receiver.ship, item)
         if qty > have:
             return ActionResult(ok=False, error=f"at most {have}")
         if qty > room:
             return ActionResult(ok=False, error=f"the ship can take {room} more")
-    _move_cargo(giver, receiver, item, qty)
+    if cargo_item:
+        _move_hold_cargo(giver, receiver, item, qty)
+    else:
+        _move_cargo(giver, receiver, item, qty)
     _emit(universe, EventKind.CORP_TRANSFER, pid,
           f"{player.name} transferred {qty} {item}",
           {"ticker": corp.ticker, "target": target_id, "item": item, "qty": qty, "direction": direction})
@@ -1027,11 +1059,22 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
             if K.hardware_tw2002() and getattr(other.ship, "cloaked", False):
                 continue
             items = ("credits", "fighters", "shields", "armid_mines", "limpet_mines")
+            if K.corp_cargo_treasury_live():
+                items = items + tuple(K.CORP_CARGO_ITEMS)
             partners.append({
                 "player_id": mid, "name": other.name,
-                "give_room": {item: _ship_room(other.ship, item) for item in items},
-                "take_max": {item: (_ship_have(other.ship, item) if item != "credits" else int(other.credits))
-                             for item in items},
+                "give_room": {
+                    item: (_cargo_room(other.ship, item) if item in K.CORP_CARGO_ITEMS else _ship_room(other.ship, item))
+                    for item in items
+                },
+                "take_max": {
+                    item: (
+                        int(other.credits) if item == "credits"
+                        else _cargo_have(other.ship, item) if item in K.CORP_CARGO_ITEMS
+                        else _ship_have(other.ship, item)
+                    )
+                    for item in items
+                },
             })
     if not in_corp:
         xfer_reason = "not in a corporation"
@@ -1039,10 +1082,12 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
         xfer_reason = "no corp mate here in a ship"
     else:
         xfer_reason = None
+    item_choices = ["credits", "fighters", "shields", "armid_mines", "limpet_mines"]
+    if K.corp_cargo_treasury_live():
+        item_choices = item_choices + list(K.CORP_CARGO_ITEMS)
     out.append(_la(ActionKind.CORP_TRANSFER, legal=xfer_reason is None, reason=xfer_reason,
                    params={"target": {"type": "str", "required": True, "choices": [p["player_id"] for p in partners]},
-                           "item": {"type": "str", "required": True,
-                                    "choices": ["credits", "fighters", "shields", "armid_mines", "limpet_mines"]},
+                           "item": {"type": "str", "required": True, "choices": item_choices},
                            "qty": {"type": "int", "required": True, "min": 1},
                            "direction": {"type": "str", "required": True, "choices": ["give", "take"]},
                            "partners": partners}))
@@ -1050,7 +1095,31 @@ def append_legal(out: list, universe: Universe, player, player_id: str, _la) -> 
     memo_reason = None if memo_ok else ("not in a corporation" if not in_corp else "only the C.E.O. may send a memo")
     out.append(_la(ActionKind.CORP_MEMO, legal=memo_ok, reason=memo_reason,
                    params={"message": {"type": "str", "required": True, "max_len": 1000}}))
-    out.append(_la(ActionKind.CORP_DEPOSIT, legal=False, reason="unsupported action",
-                   params={"amount": {"type": "int", "required": True, "min": 1, "max": 0}}))
-    out.append(_la(ActionKind.CORP_WITHDRAW, legal=False, reason="unsupported action",
-                   params={"amount": {"type": "int", "required": True, "min": 1, "max": 0}}))
+    if K.corp_cargo_treasury_live():
+        if not in_corp:
+            dep_reason = "not in a corporation"
+            dep_max = 0
+        elif int(player.credits) <= 0:
+            dep_reason = "no credits to deposit"
+            dep_max = 0
+        else:
+            dep_reason = None
+            dep_max = int(player.credits)
+        out.append(_la(ActionKind.CORP_DEPOSIT, legal=dep_reason is None, reason=dep_reason,
+                       params={"amount": {"type": "int", "required": True, "min": 1, "max": dep_max}}))
+        treasury = int(corp.treasury) if corp is not None else 0
+        if not in_corp:
+            wd_reason = "not in a corporation"
+        elif corp.ceo_id != player_id:
+            wd_reason = "only the C.E.O. may withdraw"
+        elif treasury <= 0:
+            wd_reason = "corp treasury is empty"
+        else:
+            wd_reason = None
+        out.append(_la(ActionKind.CORP_WITHDRAW, legal=wd_reason is None, reason=wd_reason,
+                       params={"amount": {"type": "int", "required": True, "min": 1, "max": treasury}}))
+    else:
+        out.append(_la(ActionKind.CORP_DEPOSIT, legal=False, reason="unsupported action",
+                       params={"amount": {"type": "int", "required": True, "min": 1, "max": 0}}))
+        out.append(_la(ActionKind.CORP_WITHDRAW, legal=False, reason="unsupported action",
+                       params={"amount": {"type": "int", "required": True, "min": 1, "max": 0}}))

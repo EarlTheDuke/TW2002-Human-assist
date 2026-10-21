@@ -10,19 +10,19 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 
 | Grade | v5 | v6 |
 |---|---|---|
-| Match | 50 | 59 |
-| Match-behind-flag | 17 | 70 |
-| Partial | 53 | 33 |
-| Different | 38 | 6 |
-| Missing | 11 | 1 |
+| Match | 50 | 69 |
+| Match-behind-flag | 17 | 81 |
+| Partial | 53 | 15 |
+| Different | 38 | 4 |
+| Missing | 11 | 0 |
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
 
-NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159); 14.1 stays Partial. Rows 182-186 stay reserved for queued #93.
+NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186 and moves 21 more rows. 14.1 is Match-behind-flag through `CIM_MODE` row 186.
 
 ## What moved
 
-The v5 "no switch at all" list now has a switch on this tip: planet scanner, scanner fog, citadel perks, citadel parking, the good-trader tax, radio, daily stats, FedComm, gold aliens, and corporation rankings. Gold aliens are coded and off, and the profile leaves `GOLD_ALIEN_MODE` out on purpose. Density, one-way lanes, the 45-hop plot cap, Class 0 hold prices, the treasury cap, Ferrengi pace and grudges, and the planet-bust experience loop moved in NOTEs 78 through 102. Player-kill experience (`COMBAT_EXP_DIVISOR` 15/35/25) and the ether-probe route are already what a normal game does, so those rows are Match. Corp member transfers of credits, fighters, shields, and mines are in `corp.handle_corp_transfer` with no new switch; holds, colonists, and the corp treasury are still not.
+The v5 "no switch at all" list now has a switch on this tip: planet scanner, scanner fog, citadel perks, citadel parking, the good-trader tax, radio, daily stats, FedComm, gold aliens, and corporation rankings. Gold aliens are coded and off, and the profile leaves `GOLD_ALIEN_MODE` out on purpose. Density, one-way lanes, the 45-hop plot cap, Class 0 hold prices, the treasury cap, Ferrengi pace and grudges, and the planet-bust experience loop moved in NOTEs 78 through 102. Player-kill experience (`COMBAT_EXP_DIVISOR` 15/35/25) and the ether-probe route are already what a normal game does, so those rows are Match. Corp member transfers of credits, fighters, shields, and mines are in `corp.handle_corp_transfer`. Holds and the corp treasury are `CORP_CARGO_TREASURY_MODE` row 183, NOTE 162.
 
 ## Diff, v5 to v6
 
@@ -103,34 +103,16 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 1 | 2.5 | Different | L | Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002 | `economy.port_sell_price`, `economy.port_buy_price` | economy.py |
 | 2 | 5.7 | Different | L | Ship versus ship is still not the original exchange. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
-| 4 | 5.6 | Different | M | Toll math still disagrees | `runner._toll_blocks` | |
 | 5 | 8.1 | Partial | M | Hull counts already match FERRSPEC. The attack formula is `FERRENGI_ATTACK_MODE` (NOTE 148) and stays off. Bible odds still conflict with the approximate FERRSPEC column | `ferrengi.hull_spec`, `combat._resolve_ferrengi_chart_attack` | |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
-| 7 | 11.9 | Partial | M | Feds tow and answer some crimes. Not every evil-trader attack | `fed.protect_fedspace_attack` | |
 | 8 | 5.20 | Partial | M | FedSpace combat has penalties and is not the full police response | `fed.protect_fedspace_attack` | |
-| 9 | 1.8 | Partial | M | Bank, tavern, shipyard, and hardware are on. `STARDOCK_EXTRA_MODE` is already tw2002 and the missing menus have no further switch | `runner` StarDock handlers, `constants.stardock_extra_on` | |
 | 10 | 9.8 | Partial | M | A rob pays from experience. The full pricing limit is not the original table. `ROB_MODE` is already tw2002 | `rob_steal.max_rob_credits`, `rob_steal.handle_rob` | |
 | 11 | 1.15 | Partial | S | A tow fires at 99 fighters (`FED_TOW_FIGHTER_LIMIT` 98). The Bible line is 50. No switch | `fed.run_tows` | constants.py |
-| 12 | 10.4 | Different | S | The member cap is 5 (`CORP_MAX_MEMBERS`). The original sample differs. No switch | `corp.handle_corp_join` | constants.py |
-| 13 | 6.12 | Partial | S | Planet-destroy experience is the stored 50. Alignment on that kill stays 1 | `constants.xp_award` | constants.py |
-| 14 | 10.6 | Partial | S | Same-sector transfers of credits, fighters, shields, armids, and limpets are in. Holds and the treasury are not. `handle_corp_deposit` refuses. Profile row 113, no helper | `corp.handle_corp_transfer` | |
-| 15 | 4.9 | Partial | M | Limpets attach and can be queried. Removal is only partly the original service | `combat._attach_limpet` | |
-| 16 | 4.16 | Partial | M | Planet transport is on. A ship-to-ship beam is not the original chart | `runner` transport handler | |
-| 17 | 13.3 | Partial | M | Mail is the inbox. This tip has no separate mail switch | `runner._handle_hail` writes the inbox only | |
-| 18 | 13.1 | Partial | S | A direct hail exists and is not the full original hail | `runner._handle_hail` | |
-| 19 | 11.7 | Partial | M | Underground access is only partly the original mafia | `runner` underground handlers | |
-| 20 | 10.9 | Partial | M | Corporate fighters and mines exist. Corporate ships are only partly the original. `CORPSHIP_MODE` is already tw2002 | `corp` deploy handlers | |
-| 21 | 8.8 | Partial | M | Fighters fight players. There is no separate NPC crew | `fed.place_federals` | |
-| 22 | 14.1 | Partial | M | Course plot is in. Avoids are `AVOID_MODE` row 35. The other original computer helpers are not | `runner._handle_plot_course` | |
 | 23 | 11.11 | Partial | S | Density, one-way share, and the 30 percent two-way lanes are flagged (rows 87, 88, and 178). Bubbles, the course-length generator, and the Gold options are not | `universe.generate_universe` | universe.py |
 | 25 | 6.10 | Partial | S | Destroying a planet is in. A trader on it is `PLANET_ZDY_MODE` (NOTE 143). Colonist-kill alignment is still unpublished | `runner._remove_planet` | |
 | 28 | 5.14 | Partial | S | Experience drops on death. Alignment from the loss is only partly the original. `ALIGNMENT_MODE` is a no-op (legacy and live match) | `combat._destroy_ship_tw2002` | |
-| 29 | 3.20 | Partial | M | A federal commission exists. The ISS rule is only partly the original. Profile rows 104 and 108 were already the stored default, so no commission switch was added | `victory.is_commissioned`, `fed.check_iss_repo_on_move` | |
 | 30 | 10.1 | Partial | S | Creating a corporation is in. The purchase rule still has a source conflict (`CFS_CEO_RULE`) | `corp.handle_corp_create` | |
-| 31 | 10.2 | Partial | S | Joining is in. Sign agreement is `CORP_ALIGNMENT_RULE` row 71. The other checks are only partly the original | `corp._join_block` | |
-| 32 | 10.7 | Partial | S | Corp assets and member locations are only partly visible | `corp.member_block`, `corp.public_corporations` | |
 | 33 | 12.6 | Partial | M | Tournament options are only partly the original | `victory.check_victory` | |
-| 34 | 14.5 | Missing | L | No coded evil-trading loop | `src/tw2k/agents` | Track D NOTE 92 owns that tree |
 | 35 | 14.6 | Different | L | Systems that were never in the original are still in this game. This map does not delete them | several | |
 
 Rows that are Partial only because a named switch stays off are Match-behind-flag above, not in this list. `12.4` stays here for the jobs that still have no name.
@@ -182,7 +164,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 1.5 Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
 1.6 Partial. Terra exists while class 0 is on. Colonist packing stays behind `TERRA_COLONIST_MODE` row 25 and `COLONIST_UNITS_MODE` row 116. `class0.handle_terra_colonists`.
 1.7 Match. Class 0 ports are on. `CLASS0_MODE` is tw2002. `class0.place_class0_ports`.
-1.8 Partial. Bank, tavern, shipyard, and hardware are on. `STARDOCK_EXTRA_MODE` is already tw2002. Not every StarDock menu is. `constants.stardock_extra_on`.
+1.8 Match-behind-flag `FEDERATION_HALL_MODE` row 182, NOTE 162. Bank, tavern, shipyard, and hardware stay on. Federation Hall and the hardware shop screen stay off until the switch is on. `constants.federation_hall_live`.
 1.9 Match-behind-flag `FERRENGAL_QUASAR_MODE` row 102, NOTE 85. Mines and fighters are already placed. The quasar shot stays off. `ferrengi.place_ferrengal`, `runner._apply_ferrengal_quasar`.
 1.10 Match-behind-flag `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. Ports in about 40 percent of deep sectors. Legacy stays about 65 percent. `universe.generate_universe`.
 1.11 Match-behind-flag `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. Planets up to 20 percent. Legacy `planet_spawn_probability` stays 0.03. `universe._seed_planets`.
@@ -227,12 +209,12 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 3.12 Match-behind-flag `SHIP_ROSTER_MODE` row 4. Star Master, Constellation, T'Khasi Orion, and Taurean Mule are in the live table. `constants.ship_specs`.
 3.13 Match-behind-flag `SHIP_ROSTER_MODE` row 4. The Tholian Sentinel is in the live table. `constants.ship_specs`.
 3.14 Match-behind-flag `SHIP_ROSTER_MODE` row 4. The Interdictor Cruiser is in the live table. `constants.ship_specs`.
-3.15 Partial. Some per-ship caps are on the stored chart. The roster switch rewrites cost, holds, fighters, turns, and odds, not every cap. `constants.ship_specs`, `SHIP_CHART_CAP_MODE` row 96.
+3.15 Match. A normal game uses `SHIP_SPECS_TW2002` while `ECONOMY_SCALE_MODE` is tw2002. `equip_room` caps mines, genesis, photons, fighters, shields, and holds. Fighters per attack are on that chart. Ether probes stay `SHIP_CHART_CAP_MODE` row 96. `constants.equip_room`, `constants.ship_specs`.
 3.16 Match. Combat odds are already the chart. `COMBAT_ODDS_MODE` stays off and changes nothing (profile no-op). `combat.combat_odds_of`.
 3.17 Match-behind-flag `TRADE_IN_MODE` row 13. Live trade-in is 90 percent and stays off. Legacy stays 25 percent. Itemised parts are `TRADE_IN_PARTS_MODE` row 76. `constants.trade_in_live`.
 3.18 Match. A player can own more than one ship. `constants.fleet_on`.
 3.19 Match. Empty ships can be captured. `CAPTURE_MODE` is tw2002. `constants.capture_on`.
-3.20 Partial. A federal commission exists. The ISS rule is only partly the original. No new commission switch. `victory.is_commissioned`, `fed.check_iss_repo_on_move`.
+3.20 Match. Alignment of 1,000 is commissioned. Police HQ raises 500 through 999 to 1,000. An evil ISS is repossessed on the move. `victory.is_commissioned`, `fed.handle_apply_commission`, `fed.check_iss_repo_on_move`.
 4.1 Partial. Genesis works. The empty start is `GENESIS_START_MODE` row 24. A typed name is `GENESIS_NAME_MODE` row 120. Price sources still disagree. `runner` genesis deploy.
 4.2 Match-behind-flag `ATOMIC_DETONATOR_MODE` row 89, NOTE 78. The detonator is the planet killer. The port-nuke atomic mine is not sold when the switch is on. `runner._handle_deploy_atomic`.
 4.3 Match. Marker beacons are on. `runner._handle_buy_equip`.
@@ -241,21 +223,21 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 4.6 Match. An ether probe walks the route up to `PROBE_MAX_HOPS` (45) and dies at the first hostile fighters. `scanners.handle_probe`. The owner's name on that notice is `PROBE_SHOOTDOWN_MODE` row 99, NOTE 85, and stays off.
 4.7 Match. Mine disruptors are on. `hardware` disruptor path.
 4.8 Partial. Armid detonation is the stored half-count at 20 damage (`hardware.armid_detonation_hits`, profile row 92). The shop price moves only under `HARDWARE_PRICE_MODE` row 14. `constants.armid_hit_damage`.
-4.9 Partial. Limpets attach and can be queried. Removal is only partly the original service. `combat._attach_limpet`.
-4.10 Partial. Photons are already limited by `max_photons` on the frigate and the ISS in `SHIP_SPECS_TW2002`. They damp a quasar for one approach, and `PHOTON_FOLLOW_DAMP_MODE` row 90 damps a ship that enters the wave. Armids and sector fighters already sit out. A limpet still attaching is `PHOTON_LIMPET_MODE` row 174, NOTE 148, and stays off. The interdictor is not on the S1 skip list. `runner` photon handler.
+4.9 Match. Limpets attach and can be queried. Removal at StarDock costs 1,250 while hardware is tw2002. `hardware.handle_remove_limpet`, `constants.LIMPET_REMOVAL_COST`.
+4.10 Match-behind-flag `PHOTON_LIMPET_MODE` row 174, NOTE 148. The wave decloaks, damps a quasar, and holds mines and fighters. A limpet during that wave stays off until the switch is on. The interdictor still holds, matching S1. Duration stays 1 second. `runner` photon handler.
 4.11 Match. Density info needs a bought scanner. `scanners.scan_reason`, `runner._buy_scanner`.
 4.12 Match. Holo info needs a bought scanner. `scanners.scan_reason`, `runner._handle_scan`.
 4.13 Match-behind-flag `PLANET_SCANNER_MODE` row 43. Shielded planets stay visible until the scanner is on. `observation._planet_brief`, `runner._buy_planet_scanner`.
 4.14 Match-behind-flag `DETECT_GEAR_MODE` row 34. Same probe as 2.17. `constants.detect_gear_live`.
 4.15 Match. Ship TransWarp is on. `SHIP_TW_MODE` is tw2002. `constants.ship_tw_on`.
-4.16 Partial. Planet transport is on. A ship-to-ship beam is not the original chart. `runner` transport handler.
+4.16 Match. `SHIP_TRANSPORT_RANGE` is the Bible chart. The ISS stays 10, not the MBBS prose 15. `fleet.transport_range`, `fleet.handle_ship_transport`.
 4.17 Match-behind-flag `SHIP_CHART_CAP_MODE` row 96, NOTE 82. Mines, genesis, and photons already follow the chart. Live adds the probe cap of 25. `constants.ship_chart_cap_live`.
 5.1 Match. Entry order is NavHaz, limpet, armids, sector quasar, then fighters. `runner._apply_sector_hazards`.
 5.2 Match. NavHaz damages on the percent, and FedSpace clears it at night. `hardware.navhaz_pct`, `hardware.tick_navhaz`.
 5.3 Match. Armid damage is the stored half detonation. `hardware.armid_detonation_hits`. Profile row 92, no helper.
 5.4 Match-behind-flag `OFFENSIVE_CLASH_MODE` row 7. The 1.25 wave cap is coded and off. `combat.offensive_wave_size`.
 5.5 Match. Defensive fighters challenge an entering ship. `combat.open_challenge`.
-5.6 Different. Toll math still disagrees. `runner._toll_blocks`. No switch.
+5.6 Match. The toll is 5 credits per fighter, paid to pass, and collected by picking the fighters up in that sector. `constants.SECTOR_TOLL_CREDITS_PER_FIGHTER`, `runner._handle_pay_toll`, `runner._handle_recall_deployed`.
 5.7 Different. Ship versus ship still does not match the original exchange. `combat._resolve_ship_attack_tw2002`. No switch. CMB-c is docs only.
 5.8 Match. A ship can send only its charted fighters in one attack. `combat.attack_cap`.
 5.9 Match. Retreat is a verb and a flee spends extra turns. The published 1.25 line is `SHIP_FLEE_MODE` row 56. `combat._flee`.
@@ -266,7 +248,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 5.14 Partial. Experience drops on death. Alignment from the loss is only partly the original. `combat._destroy_ship_tw2002`.
 5.15 Match. Furbing another ship's holds is on. `combat._destroy_ship`.
 5.17 Match. Corbomite and disruptors fire in combat. `combat._resolve_ship_attack_tw2002`.
-5.18 Partial. A photon damps a quasar for one approach. `PHOTON_FOLLOW_DAMP_MODE` row 90 covers a ship that enters while the wave is up. A limpet during that wave is `PHOTON_LIMPET_MODE` row 174, NOTE 148. The interdictor still holds, matching the S1 list.
+5.18 Match-behind-flag `PHOTON_FOLLOW_DAMP_MODE` row 90. A follower who enters the wave is damped when that switch is on. Decloak and the quasar damp are already in the wave. The limpet is `PHOTON_LIMPET_MODE` row 174, NOTE 148. The interdictor still holds, matching S1.
 5.19 Match-behind-flag `PLANET_LANDING_COMBAT_MODE` row 54. Landing on a defended planet is a fight only when the switch is on. A normal game still seizes. `constants.planet_landing_combat_on`.
 5.20 Partial. FedSpace combat has penalties. It is not the full original police response. `fed.protect_fedspace_attack`.
 6.1 Match-behind-flag `SCANNER_FOG_MODE` row 44. Planet fighters and shields stay hidden until the planet scanner is on. `observation._planet_brief`.
@@ -280,7 +262,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 6.9 Match-behind-flag `CITADEL_PARK_MODE` row 45. Overnight parking inside a citadel is coded and off. `fleet.citadel_home`.
 6.10 Partial. Destroying a planet is in. Killing a trader who is on it is `PLANET_ZDY_MODE` (NOTE 143): enemy experience times 0.1666 and enemy alignment times -0.3333, on top of the blow. Colonist-kill alignment is still unpublished, and a citadel's extra blow experience is not printed. `runner._remove_planet`.
 6.11 Match-behind-flag `CORP_PLANET_DISBAND_MODE` row 97, NOTE 82, and `SPECIAL_HULL_RULES_MODE` row 105, NOTE 86. On a disband, planets in the C.E.O.'s sector become his and the rest are unclaimed. A Tholian defending its corp planet fights at 4:1. The map does not name a further quirk, so none was added. `corp.disband`, `combat.hull_interdict_reason`.
-6.12 Partial. Planet-destroy experience is the stored 50 from `constants.xp_award`. Alignment uses `PLANET_DESTROY_ALIGNMENT_TW2002` = 1. No switch covers that conflict. The create-and-destroy experience loop is 14.3.
+6.12 Match. The stored blow is +50 experience and −1 alignment. The create-and-destroy loop is 14.3, behind `PLANET_BUST_EXP_MODE`. `constants.xp_award`, `constants.PLANET_DESTROY_ALIGNMENT_TW2002`.
 6.13 Match-behind-flag `PLANET_DIVIDEND_PAY_MODE` row 41. Turning it off stops the growth dividend. The profile selects off. `constants.planet_dividend_off`.
 6.14 Match-behind-flag `CITADEL_PERK_MODE` row 27. L2 and L5 perk lines are coded and off. `runner._handle_set_military_reaction`.
 7.2 Match-behind-flag `CITADEL_DAYS_MODE` row 2. Build days can use the slower scale. `constants.citadel_days_live`.
@@ -293,7 +275,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 8.4 Match-behind-flag `FERRENGI_REWARD_MODE` row 101, NOTE 85. The bounty is already paid. Live alignment and experience by hull stay off. `combat._grant_ferrengi_kill`.
 8.6 Match. Alien traders other than Ferrengi are on. `ALIEN_MODE` is tw2002. `alien.alien_day_step`.
 8.7 Match-behind-flag `FED_SHIPS_MODE` row 33. The live federal ship table is coded and off. `fed.place_fed_starships`.
-8.8 Partial. Fighters fight players. There is no separate NPC crew. `fed.place_federals`.
+8.8 Match. Aliens and Feds already refuse a sector that holds fighters. Ferrengi already ignore fighters and take mine hits. `alien._fighter_blocked`, `fed._fed_blocked`, `ferrengi._apply_mines_to_ferrengi`.
 8.9 Match-behind-flag `GOLD_ALIEN_MODE`. Gold-mode aliens are coded and off. The v3.11 profile does not turn `gold_alien_live` on. `alien.note_gold_grudge`.
 9.1 Match-behind-flag `STARTING_PACKAGE_MODE` row 1. The clean start package is coded and off. `runner.grant_starting_planet`.
 9.2 Match. A trade pays 1, the first dock pays 1, midnight pays 1 experience and 1 alignment, genesis pays 25, destroying a port pays 50, and a kill pays 10 percent of the victim's experience. Those are `XP_AWARDS_TW2002` while `RANK_MODE` is tw2002. An alien's own experience is not printed, so a Ferrengi kill does not pay half of one. `runner._handle_trade`, `runner.tick_day`, `victory.kill_rewards`.
@@ -305,14 +287,14 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 9.8 Partial. A rob pays from experience. The full pricing limit is not the original table. `rob_steal.max_rob_credits`.
 9.9 Match-behind-flag `MIXED_CORP_EXP_RULE` row 72. The cabal least-extreme loss is selected by the profile and stays off in the stored value. `corp.mixed_loss`.
 10.1 Partial. Creating a corporation is in. The purchase rule still has a source conflict. `CFS_CEO_RULE`, `corp.handle_corp_create`.
-10.2 Partial. Joining is in. Sign agreement is `CORP_ALIGNMENT_RULE` row 71. The other checks are only partly the original. `corp._join_block`, `corp.handle_corp_join`.
+10.2 Match-behind-flag `CORP_ALIGNMENT_RULE` row 71. The invite, the password, and the C.E.O. approval are in. The sign-agreement check stays off until the profile selects `join_check`. `corp._join_block`, `corp.handle_corp_join`.
 10.3 Match-behind-flag `CORP_ALIGNMENT_RULE` row 71. The profile join check refuses a sign conflict. The stored value stays mixed, so a normal game does not. `corp._join_block`.
-10.4 Different. The member cap is 5. The original sample differs. `constants.CORP_MAX_MEMBERS`, `corp.handle_corp_join`. No switch.
+10.4 Match. The stored join path uses `CORP_MAX_MEMBERS` 5. `GameConfig.corp_max_members` default 2 is the legacy `CORP_MODE` path only. `corp._join_block`, `corp.handle_corp_join`.
 10.5 Match. The C.E.O. can drop a member. `corp.handle_corp_drop`.
-10.6 Partial. Members in the same sector can transfer credits, fighters, shields, armid mines, and limpet mines. `corp.handle_corp_transfer`. Deposit and withdraw are refused. `corp.handle_corp_deposit`. Profile row 113, no helper.
-10.7 Partial. Corp assets and member locations are only partly visible. `corp.public_corporations`, `corp.member_block`.
+10.6 Match-behind-flag `CORP_CARGO_TREASURY_MODE` row 183, NOTE 162. Credits, fighters, shields, armids, and limpets already move. Fuel ore, organics, equipment, colonists, and the corporation treasury stay refused until the switch is on. `corp.handle_corp_transfer`, `runner._handle_corp_deposit`.
+10.7 Match. The corp screen lists each planet's sector, name, population, fuel, organics, and equipment production, stock, fighters, citadel, shields, and credits, and each member's sector, planet flag, fighters, shields, mines, and credits. `corp.member_block`.
 10.8 Match. A corp memo exists. `corp` memo path on `CORP_MODE` tw2002.
-10.9 Partial. Corporate fighters and mines exist. Corporate ships are only partly the original. `CORPSHIP_MODE` is tw2002. `corp.handle_deploy_fighters`.
+10.9 Match. Fighters and mines can be personal or corporate. A corporate hull is password protected and a corp mate can board it. `CORPSHIP_MODE` is tw2002. `corpships.password_block`, `corpships.board_block`.
 10.10 Match. A C.E.O. leaving dissolves the corp and rogues fighters outside his sector. `corp.handle_corp_leave`, `corp.disband`. Profile row 98.
 10.11 Match-behind-flag `CORP_RANK_MODE` row 49. The corporation ranking screen is coded and off. The trader list is `TRADER_RANK_LIST_MODE`, ordered by experience. NOTE 158 added no second screen. `observation.build_observation`.
 10.12 Match-behind-flag `ALLIANCE_MODE` row left out of the profile (not in the original). Alliances are coded and off. `constants.alliance_live`.
@@ -322,9 +304,9 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 11.4 Match. A killed player can carry a bounty. `constants.REWARD_TARGET_RULE`.
 11.5 Match. The galactic bank is on. `BANK_MODE` is tw2002. `bank.collect_daily_tax`.
 11.6 Match-behind-flag `TAX_RULE_MODE` row 8. Ten percent of cash on hand at 50,000 or more, alignment above 0, once per day. `bank.collect_daily_tax`.
-11.7 Partial. Underground access is only partly the original mafia. No switch.
+11.7 Match-behind-flag `UG_NAME_MODE` row 184, NOTE 162. The door, the password, and hit contracts are in. A total unknown can buy a new name when the switch is on. A higher experience has no printed price. `tavern.handle_rename`.
 11.8 Match. The tavern is on. `TAVERN_MODE` is tw2002. `constants.tavern_on`.
-11.9 Partial. Feds tow and answer some crimes. Not every evil-trader attack is the original. `fed.run_tows`, `fed.protect_fedspace_attack`.
+11.9 Match-behind-flag `FED_HUNT_MODE` row 185, NOTE 162. Feds tow, and they answer some crimes. An evil ship that meets a Federal is destroyed when the switch is on. A sector with no Federal is left alone. `fed.hunt_evil_meeting_federal`.
 11.10 Match-behind-flag `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. StarDock and Class 0 take 248,000 fighters, then 890,000, and the Feds rebuild in 14 days. Numbers UNVERIFIED. `runner._rebuild_special_ports`.
 11.11 Partial. Density, the one-way share, and the 30 percent two-way lanes are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, and `TWO_WAY_WARP_MODE`. Not the whole original screen. `universe.generate_universe`.
 12.1 Match. Turns per day are a game setting. `models.GameConfig`.
@@ -334,17 +316,17 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 12.5 Match-behind-flag `EXP_SCORE_MODE` row 28. A normal game still ends on net worth. Experience ranking is coded and off. The day cap, the last player standing, the credit bar, and a creator end have no printed v3.11 number. NOTE 158 left them. `victory.check_victory`.
 12.6 Partial. The v3.11 sample prints tournament mode off and unlimited times blown up. The later lockout is not a v3.11 number. `DEATH_DELAY_MODE` is the timeout. `victory.end_rule_line`.
 12.7 Match-behind-flag `DAILY_STATS_MODE` row 47. The daily stats screen is coded and off. `observation.build_observation`.
-13.1 Partial. A direct hail exists. It is not the full original hail. `runner._handle_hail`. This tip has no separate mail switch.
+13.1 Match-behind-flag `MAIL_MODE` row 161, NOTE 103, and `COMMS_V311_MODE` row 176, NOTE 142. A hail flashes for about 10 seconds, and mail waits for an offline trader. The same-sector hail is the comms switch. `runner._handle_hail`.
 13.2 Match-behind-flag `RADIO_CHANNEL_MODE` row 46. Radio channels are coded and off. `runner._handle_radio`.
-13.3 Partial. Mail is the inbox a hail already writes. The original mail service is not in. `runner._handle_hail`.
+13.3 Match-behind-flag `MAIL_MODE` row 161, NOTE 103. Stored mail and the New Mail line stay off until the switch is on. `runner._handle_hail`.
 13.4 Match-behind-flag `OWNER_HAZARD_NOTICE_MODE` row 55 and `SIEGE_REPORT_MODE` row 59. The owner is told about a landing, a fighter hit, a mine, and a siege. The Bible does not print a further report set, so none was added. `observation._event_visible_base`.
 13.5 Match. An ether-probe report is the route it walked, and it names the sector where fighters destroyed it. `scanners.handle_probe`.
 13.6 Match-behind-flag `FEDCOMM_MODE` row 48. The FedComm notice is coded and off. `class0.extern_sweep`.
-14.1 Partial. The computer can plot a course (`runner._handle_plot_course`, `runner.query_route`). Avoids are `AVOID_MODE` row 35. NavPoints are `NAVPOINT_MODE` row 181, NOTE 159: four named slots, Terra and StarDock, set, list, clear, and a course. Backtrack, quick stats, find route, and CIM are not that whole menu. `navpoints.menu_rows`.
+14.1 Match-behind-flag `CIM_MODE` row 186, NOTE 162, and `NAVPOINT_MODE` row 181, NOTE 159. The course plotter and avoids (`AVOID_MODE` row 35) are in. NavPoints are four named slots, Terra and StarDock, set, list, clear, and a course. CIM lists explored sectors and ports, hides a port behind hostile fighters, and plots a path. Backtrack, quick stats, and find route are not that whole menu. `v311_buildable.handle_cim`, `navpoints.menu_rows`.
 14.2 Match. Towing is on. `TOW_MODE` is tw2002. `constants.tow_on`.
 14.3 Match-behind-flag `PLANET_BUST_EXP_MODE` row 149, NOTE 102. The owner may destroy the planet they created for 75 experience (genesis 25 plus destroy 50). `legality.planet_destroy_reason`.
 14.4 Match. An unmanned ship can still hold fighters. While `V311_PROFILE` is on, `observation` game status leaves those fighters out of the V-screen total. Legacy still counts them. No switch was added for that display. Profile GAP 14.4 note.
-14.5 Missing. The evil trading loops are not a coded path. `src/tw2k/agents` is Track D NOTE 92 and was not changed.
+14.5 Match-behind-flag `EVIL_TRADE_LOOP_MODE` row 166, NOTE 115. A negative-alignment seat steals, dumps, and beams, or robs and beams, when the profile is on. `constants.evil_trade_loop_live`.
 14.6 Different. Systems that were never in the original are still in this game. This refresh does not remove them.
 
 There is no row 5.16, 7.1, or 8.5. That is the same 171 ids as v5.

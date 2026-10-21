@@ -1,14 +1,12 @@
-# V311 remaining gaps (NOTE 163)
+# V311 remaining gaps (NOTE 162)
 
-NOTE 161 listed the open rows. NOTE 163 matched the next five that are not Track G's 14 rulings and not the live-measurement rows (2.15, 4.8, 5.7, 6.10, 12.4).
+NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. Each row is listed once.
 
-The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. This branch is cut from `ffd42e03`. Queued #89 (NavPoints, row 181) and #93 (NOTE 162, rows 182-186) are not in this file. The new switch is profile row 187.
+The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. NavPoints stay on #89, at row 181. The new switches on this branch are profile rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163.
 
-**129 of 171 rows match the original rule (75.4%).** That count is Match 59 plus Match-behind-flag 70. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 59 of 171 (34.5%). The other rows are Partial 33, Different 6, Missing 1, and Ben-decision 2. Forty rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
+**150 of 171 rows match the original rule (87.7%).** That count is Match 69 plus Match-behind-flag 81. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 69 of 171 (40.4%). The other rows are Partial 15, Different 4, Missing 0, and Ben-decision 2. Nineteen rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
 
 `docs/plans/V311_SOURCE_CONFLICTS.md` is not on this tip. Queued #83, #87, and #88 each add their own copy. A ruling row below names the NOTE section that copy will contain.
-
-Ten of the open rows are not work. The printed rule is already in the game, or it is already behind a switch, and the grade line was not moved. The other 30 are grouped by what blocks them. Size is the slice: small, medium, or large.
 
 ## Matched in NOTE 163
 
@@ -18,21 +16,26 @@ Ten of the open rows are not work. The printed rule is already in the game, or i
 - **9.5 Other alignment sources.** Match-behind-flag. `BOUNTY_GOOD_MODE` row 187. A bounty on a good trader costs 1 alignment per 250 credits and no experience. The other named sources were already in.
 - **13.4 Fighter and combat reports.** Match-behind-flag. `OWNER_HAZARD_NOTICE_MODE` and `SIEGE_REPORT_MODE`. The Bible does not print a further report set.
 
-## Can build now
+## Built in NOTE 162
 
-The rule is printed in the in-repo docs. Nothing here is waiting on a second source or on Ben.
+Five switches, each defaulting to legacy. `V311_PROFILE=v311` turns the helper on. The string `1` does not.
 
-- **1.8 Class 9 StarDock services.** Partial. Bank, tavern, shipyard, and hardware are on. Federation Hall, and the shop screens that are still only buy lists, are not. Feature not built. Medium.
-- **3.15 Per-ship capacity table.** Partial. The roster switch rewrites cost, holds, fighters, turns, and odds. Mines, genesis, photons, and the probe cap are already on their own chart switches. The caps that switch does not rewrite are still open. Feature not built. Small.
-- **4.16 Ship transporter.** Partial. A ship-to-ship beam is in, with `SHIP_TRANSPORT_RANGE`. The gap line still says that table is not the Bible chart, so the remaining work is any hull whose range disagrees with that chart. Feature not built. Small.
-- **5.6 Toll fighters.** Different. The toll is not 5 credits per fighter, and it is not collected by visiting the sector. Iago and the cabal formulas print the 5. Feature not built. Medium.
-- **10.4 Members limit.** Different. Join uses `GameConfig.corp_max_members`, whose default is 2. The TEDIT sample is 5, and `CORP_MAX_MEMBERS` is already 5. Feature not built. Small.
-- **10.6 Transfers between members.** Partial. Credits, fighters, shields, armids, and limpets move in the same sector. Holds and the corp treasury do not, and deposit is refused. Feature not built. Small.
-- **10.7 Corp assets and member locations.** Partial. The corp screen does not show every planet field and member field the EIS corporate menu lists. Feature not built. Small.
-- **10.9 Corporate ships.** Partial. Corporate fighters and mines are in, and `CORPSHIP_MODE` is already tw2002. Corporate ships are only partly the original shared, password-protected hulls. Feature not built. Medium.
-- **11.7 Underground.** Partial. The door, the password, and the Grimy are in. The original mafia shop is not that whole menu. Feature not built. Medium.
-- **11.9 Fed attack on evil players.** Partial. Feds tow, and they answer some crimes. They do not yet hunt every evil trader who enters FedSpace. Feature not built. Medium.
-- **14.1 Computer menu helpers.** Partial. Avoids were already in. NavPoints are `NAVPOINT_MODE` (NOTE 159, queued #89): four named points, Terra, StarDock, and a course. Backtrack, quick stats, and find route read the known map and were left without a switch. CIM mapping is not built. Feature not built. Medium.
+- **1.8 Class 9 StarDock services.** Match-behind-flag. `FEDERATION_HALL_MODE` row 182. Federation Hall lists registrations, and the hardware counter shows a shop screen.
+- **10.6 Transfers between members.** Match-behind-flag. `CORP_CARGO_TREASURY_MODE` row 183. Cargo holds move between members, and the corporation treasury takes deposits.
+- **11.7 Underground.** Match-behind-flag. `UG_NAME_MODE` row 184. A total unknown buys a new name for 100 credits. A higher experience has no printed price, so it is refused.
+- **11.9 Fed attack on evil players.** Match-behind-flag. `FED_HUNT_MODE` row 185. An evil ship that meets a Federal is destroyed. A sector with no Federal is left alone.
+- **14.1 Computer menu helpers.** Match-behind-flag. `CIM_MODE` row 186. CIM lists explored sectors and ports, hides a port behind hostile fighters, and plots a path. NavPoints stay on queued NOTE 159.
+
+## Already the stored game
+
+These were on the "can build now" list. A normal game already does the printed rule. A switch that defaulted to legacy would have changed that game, or it would have had nothing to turn on.
+
+- **3.15 Per-ship capacity table.** Match. `SHIP_SPECS_TW2002` and `equip_room` already cap mines, genesis, photons, fighters, shields, and holds.
+- **4.16 Ship transporter.** Match. `SHIP_TRANSPORT_RANGE` is the Bible chart. The ISS stays 10.
+- **5.6 Toll fighters.** Match. The toll is 5 credits per fighter, and the pot is collected by picking the fighters up in that sector.
+- **10.4 Members limit.** Match. The stored join path uses `CORP_MAX_MEMBERS` 5. The config default of 2 is the legacy corporation path.
+- **10.7 Corp assets and member locations.** Match. `member_block` already lists the planet fields and member fields on the EIS corporate menu.
+- **10.9 Corporate ships.** Match. `CORPSHIP_MODE` is tw2002. Corporate hulls are password protected, and a corp mate can board one.
 
 ## Needs Ben's ruling
 
@@ -63,17 +66,17 @@ A number was not printed, or the gap line no longer names the missing piece. Gue
 - **6.10 Planet killer.** Partial. The blow is −1 alignment and +50 experience, which is the current choice in `V311_SOURCE_CONFLICTS.md`, NOTE 143, "Destroying a planet". Killing a trader on the planet is `PLANET_ZDY_MODE`. Colonist-kill alignment is an ellipsis, and a citadel's extra blow experience is not printed. No printed number. Small.
 - **12.4 Nightly Extern.** Partial. The jobs named on the every-row line are in, or they are behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` (NOTE 151, queued #83) deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). The map says a job past that list has no name. No printed number. Medium.
 
-## Grade not moved
+## Grades moved in NOTE 162
 
-These stay Partial, Different, or Missing on the map. The printed rule is already what the game does, or it is already behind a switch. They are not in the three lists above.
+These ten were already what the game does, or they were already behind a switch. The every-row line now says so.
 
-- **3.20 Federal commission and the ISS.** A trader at 1,000 alignment is commissioned, Police HQ raises 500 through 999 to 1,000, and an evil ISS is repossessed on the move.
-- **4.9 Limpet removal.** Attach, query, and the StarDock fee of 1,250 are in while hardware is tw2002.
-- **4.10 Photon missile.** The wave decloaks, damps a quasar, and holds mines and fighters. A limpet during that wave is `PHOTON_LIMPET_MODE`. The interdictor still holds, which matches S1. Duration stays 1 second (`V311_SOURCE_CONFLICTS.md`, NOTE 148, "Photon wave duration").
-- **5.18 Photon interaction.** A follower who enters the wave is `PHOTON_FOLLOW_DAMP_MODE`. Decloak and the quasar damp are already in the wave. The same limpet switch and the same interdictor hold as 4.10.
-- **6.12 Planet destroy experience.** The stored blow is +50 experience and −1 alignment, the same choice as the NOTE 143 conflict row. The create-and-destroy loop is 14.3, behind `PLANET_BUST_EXP_MODE`.
-- **8.8 NPCs and player fighters.** Aliens and Feds already refuse a sector that holds fighters. Ferrengi already ignore fighters and take mine hits. No second switch was added.
-- **10.2 Joining.** The invite, the password, and the C.E.O. approval are in. The sign-agreement check is `CORP_ALIGNMENT_RULE` and stays off in the stored value.
-- **13.1 Direct messages.** `MAIL_MODE` flashes a hail for about 10 seconds and stores mail for an offline trader. `COMMS_V311_MODE` is the same-sector hail. The every-row line still says there is no mail switch.
-- **13.3 Mail.** Stored mail and the New Mail line are the same `MAIL_MODE` switch. The every-row line still says mail is only the inbox a hail writes.
-- **14.5 Evil trading loops.** `EVIL_TRADE_LOOP_MODE` (NOTE 115) steals, dumps, and beams, or robs and beams, and the profile turns it on. The every-row line still says there is no coded path.
+- **3.20 Federal commission and the ISS.** Match.
+- **4.9 Limpet removal.** Match.
+- **4.10 Photon missile.** Match-behind-flag. `PHOTON_LIMPET_MODE`.
+- **5.18 Photon interaction.** Match-behind-flag. `PHOTON_FOLLOW_DAMP_MODE` and `PHOTON_LIMPET_MODE`.
+- **6.12 Planet destroy experience.** Match. +50 experience and −1 alignment.
+- **8.8 NPCs and player fighters.** Match.
+- **10.2 Joining.** Match-behind-flag. `CORP_ALIGNMENT_RULE`.
+- **13.1 Direct messages.** Match-behind-flag. `MAIL_MODE` and `COMMS_V311_MODE`.
+- **13.3 Mail.** Match-behind-flag. `MAIL_MODE`.
+- **14.5 Evil trading loops.** Match-behind-flag. `EVIL_TRADE_LOOP_MODE`.
