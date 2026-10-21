@@ -28,8 +28,11 @@ from .rob_steal import seed_port_credits
 # ---------------------------------------------------------------------------
 
 
-def _build_connected_graph(rng: random.Random, n: int, avg_warps: float) -> dict[int, set[int]]:
-    """Build a connected directed graph over sector IDs 1..n."""
+def _build_connected_graph(rng: random.Random, n: int, target_edges: int) -> dict[int, set[int]]:
+    """Build a connected directed graph over sector IDs 1..n.
+
+    `target_edges` counts undirected lanes, including the spanning tree.
+    """
     # Start with a random spanning tree rooted at sector 1.
     order = list(range(2, n + 1))
     rng.shuffle(order)
@@ -43,8 +46,6 @@ def _build_connected_graph(rng: random.Random, n: int, avg_warps: float) -> dict
         edges.add((a, b))
         available.append(sid)
 
-    # Target number of undirected edges
-    target_edges = int(n * avg_warps / 2)
     tries = 0
     while len(edges) < target_edges and tries < target_edges * 10:
         a = rng.randint(1, n)
@@ -395,7 +396,12 @@ def generate_universe(config: GameConfig) -> Universe:
     rng = random.Random(config.seed)
     n = config.universe_size
 
-    adj = _build_connected_graph(rng, n, config.avg_warps)
+    adj = _build_connected_graph(
+        rng, n, K.two_way_edge_target(
+            n, config.avg_warps,
+            game_set_average="avg_warps" in getattr(config, "model_fields_set", ()),
+        ),
+    )
     one_way = K.one_way_fraction_for(config)
     if K.universe_topology_live():
         adj = _one_way_some_edges(rng, adj, one_way, allow_traps=True)
