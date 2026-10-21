@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import heapq
 import re
 import time
 from collections import deque
@@ -55,6 +56,7 @@ _YARD = re.compile(
 _YARD_PRICE = re.compile(r"([\d,]+)\s+cr\.", re.I)
 _RESERVE = 20_000
 _COURSE = re.compile(r"Course to (\d+):\s*([0-9 >]+)")
+_BANK_BAL = re.compile(r"balance\s+([\d,]+)", re.I)
 
 
 def _int(text: object) -> int:
@@ -94,6 +96,24 @@ def _quoted_unit(text: str) -> int:
         match = pattern.search(text or "")
         if match:
             return int(match.group(1).replace(",", ""))
+    return 0
+
+
+def _counter_offer(listed: int, text: str) -> int:
+    """A price the v3.11 counter still takes, read from the quote on the form.
+
+    The chart's tightest port pays 110 percent of a sale and takes about 90
+    percent of a purchase. Those two are inside every wider port, and the
+    screen never prints the port's own column. A line that already says the
+    port countered is the port's number.
+    """
+    if listed <= 0 or "port counter" in (text or "").lower():
+        return 0
+    low = (text or "").lower()
+    if "we'll buy" in low or "buy them" in low:
+        return max(listed, (listed * 110) // 100)
+    if "we'll sell" in low or "sell them" in low:
+        return min(listed, max(1, (listed * 90 + 99) // 100))
     return 0
 
 
@@ -459,6 +479,29 @@ class ScriptedTrader:
             return False
         return True
 
+    def _path_turns(self, src: int, dest: int) -> int | None:
+        """Turn cost of a path over warps already on screen. Danger stays closed."""
+        if not src or not dest:
+            return None
+        if src == dest:
+            return 0
+        best: dict[int, int] = {src: 0}
+        heap: list[tuple[int, int]] = [(0, src)]
+        while heap:
+            spent, cur = heapq.heappop(heap)
+            if spent != best.get(cur):
+                continue
+            if cur == dest:
+                return spent
+            for nxt, cost in self.links.get(cur, {}).items():
+                if nxt in self.danger or not self._edge_ok(cur, nxt):
+                    continue
+                nxt_spent = spent + max(1, int(cost))
+                if nxt_spent < best.get(nxt, 10**9):
+                    best[nxt] = nxt_spent
+                    heapq.heappush(heap, (nxt_spent, nxt))
+        return None
+
     def _hops(self, src: int, dest: int) -> int | None:
         if not src or not dest:
             return None
@@ -477,9 +520,29 @@ class ScriptedTrader:
                 queue.append(nxt)
         return None
 
+    def _costs_vary(self) -> bool:
+        sample: int | None = None
+        for nbrs in self.links.values():
+            for cost in nbrs.values():
+                if sample is None:
+                    sample = int(cost)
+                elif int(cost) != sample:
+                    return True
+        return False
+
     def _first_step(self, src: int, dest: int) -> int | None:
+        """First warp toward dest. Equal lane costs stay a hop count.
+
+        A dearer warp that is also the shorter hop loses once a cheaper
+        path is already on the map.
+        """
         if src == dest:
             return None
+        if self._costs_vary():
+            return self._cheap_step(src, dest)
+        return self._hop_step(src, dest)
+
+    def _hop_step(self, src: int, dest: int) -> int | None:
         prev: dict[int, int] = {}
         queue: deque[int] = deque([src])
         while queue:
@@ -496,23 +559,44 @@ class ScriptedTrader:
                 queue.append(nxt)
         return None
 
+    def _cheap_step(self, src: int, dest: int) -> int | None:
+        best: dict[int, tuple[int, int]] = {src: (0, 0)}
+        prev: dict[int, int] = {}
+        heap: list[tuple[int, int, int]] = [(0, 0, src)]
+        while heap:
+            spent, hops, cur = heapq.heappop(heap)
+            if (spent, hops) != best.get(cur):
+                continue
+            if cur == dest:
+                step = dest
+                while prev[step] != src:
+                    step = prev[step]
+                return step
+            for nxt, cost in self.links.get(cur, {}).items():
+                if nxt == src or nxt in self.danger or not self._edge_ok(cur, nxt):
+                    continue
+                nxt_spent = spent + max(1, int(cost))
+                nxt_hops = hops + 1
+                rank = (nxt_spent, nxt_hops)
+                if rank < best.get(nxt, (10**9, 10**9)):
+                    best[nxt] = rank
+                    prev[nxt] = cur
+                    heapq.heappush(heap, (nxt_spent, nxt_hops, nxt))
+        return None
+
     def _can_cash_out(self, src: int, buy_at: int, sell_at: int, turns: int) -> bool:
-        out = self._hops(src, buy_at)
-        back = self._hops(buy_at, sell_at)
+        out = self._path_turns(src, buy_at)
+        back = self._path_turns(buy_at, sell_at)
         if out is None or back is None:
             return False
-        need = out * 3 + 1 + back * 3 + (0 if buy_at == sell_at else 1)
+        need = out + 1 + back + (0 if buy_at == sell_at else 1)
         return turns >= need
 
     def _reachable(self, src: int, dest: int, turns: int) -> bool:
-        hops = self._hops(src, dest)
-        if hops is None:
+        spent = self._path_turns(src, dest)
+        if spent is None:
             return False
-        if hops == 0:
-            return True
-        step = self._first_step(src, dest)
-        cost = self.links.get(src, {}).get(step or 0, 3)
-        return turns >= hops * cost
+        return spent == 0 or turns >= spent
 
     def _remaining_trips(self) -> int:
         cycle = 8
@@ -639,7 +723,7 @@ class ScriptedTrader:
             self.gear = {"item": item, "phase": "select"}
             return self._gear_step(fields, credits)
         if "BANK" in text.upper() or (self.bank and "amount" in fields):
-            return self._bank_step(fields, credits, labels)
+            return self._bank_step(fields, credits, labels, text)
         if "ship_class" in fields or (self.yard and "SHIPYARD" in text.upper()):
             return self._yard_step(screen, fields, labels)
         if "tier" in fields:
@@ -675,6 +759,12 @@ class ScriptedTrader:
                 if any(row.upper() == "ESC" for row in labels):
                     return Action("click", label="ESC")
                 return Action("press", key="Escape")
+            listed = _quoted_unit(text)
+            offer = _counter_offer(listed, text)
+            typed = _int(fields.get("unit_price"))
+            if offer and offer != listed and offer != typed and "unit_price" in fields:
+                self.plan_note = "offer " + str(offer)
+                return Action("type", selector='[data-n="unit_price"]', text=str(offer))
             self.plan_note = "accept the port's price"
             return Action("click", label="CONFIRM")
         if any(row.upper() == "ESC" for row in labels):
@@ -693,13 +783,20 @@ class ScriptedTrader:
         if unit:
             self.hold_price = unit
         spread = self._best_spread()
-        trips = self._remaining_trips()
+        _value, _ask, _bid, cycle = self._best_run()
+        day_trips = max(1, (self.day_turns or 40) // cycle) if cycle else 1
+        days = max(1, self.max_day - self.day + 1) if self.max_day and self.day else 1
+        earns = spread * day_trips * days
         qty = 1
-        if unit > 0 and spread * trips > unit:
-            qty = min(cap, max(1, (spread * trips) // unit))
-            if credits > unit:
-                qty = min(qty, max(1, (credits - _RESERVE) // unit))
-        return str(max(1, qty))
+        if unit > 0 and earns > unit:
+            qty = min(cap, max(1, earns // unit))
+        stock = self._route_units()
+        if stock and self.hold_cap:
+            qty = min(qty, max(1, stock))
+        if unit and credits > unit:
+            cash = credits - _RESERVE if credits > _RESERVE else credits
+            qty = min(qty, max(1, cash // unit))
+        return str(max(1, min(cap, qty)))
 
     def _gear_qty(self, item: str, fields: dict, credits: int) -> str:
         if item in ("density_scanner", "ether_probes"):
@@ -808,14 +905,15 @@ class ScriptedTrader:
             if not self._can_cash_out(src, src, sector, turns):
                 continue
             hops = self._hops(src, sector)
-            if hops is None:
+            spent = self._path_turns(src, sector)
+            if hops is None or spent is None:
                 continue
             # A 40-turn day will not commit to a long buyer before it has settled.
             # A full pocket can fly that route, and refusing it is how the ship
             # sat on the ask until the wait warning ended the day.
             if not self._settled(src) and hops > 2 and (self.day_turns or 0) <= 40:
                 continue
-            cycle = 1 + hops * 3 + (0 if hops == 0 else 1)
+            cycle = spent + 1 + (0 if spent == 0 else 1)
             score = ((price - ask) * qty) / max(1, cycle)
             if best is None or score > best[0]:
                 best = (score, sector, price)
@@ -847,6 +945,11 @@ class ScriptedTrader:
             if ask <= 0:
                 continue
             qty = self._button_qty(button, room)
+            if ask > 0 and self.credits > 0:
+                affordable = self.credits // ask
+                if affordable <= 0:
+                    continue
+                qty = min(qty, affordable)
             scored = self._bid_score(name, sector, ask, qty, turns)
             if scored is None:
                 continue
@@ -1042,18 +1145,64 @@ class ScriptedTrader:
         self.plan_note = "open the bank"
         return Action("click", label=label)
 
-    def _bank_step(self, fields: dict, credits: int, labels: list[str]) -> Action | None:
+    def _load_cost(self) -> int:
+        """Credits one full load of the dearest seen ask would take."""
+        ask = 0
+        for book in self.ports.values():
+            for slot in book.values():
+                if isinstance(slot, dict) and slot.get("ask"):
+                    ask = max(ask, int(slot["ask"]))
+        holds = max(1, self.hold_cap or 1)
+        if ask <= 0:
+            return _RESERVE
+        return max(ask, ask * holds)
+
+    def _route_units(self) -> int:
+        """Units the best seen pair can actually move in one load."""
+        _value, ask_at, bid_at, _cycle = self._best_run()
+        if not ask_at or not bid_at:
+            return 0
+        best = 0
+        book = self.ports.get(ask_at) or {}
+        other = self.ports.get(bid_at) or {}
+        for name, slot in book.items():
+            if not isinstance(slot, dict) or slot.get("ask") is None:
+                continue
+            booked = other.get(name) or {}
+            if not isinstance(booked, dict) or not booked.get("bid"):
+                continue
+            qty = min(self._avail(slot), self._avail(booked))
+            best = max(best, qty)
+        return best
+
+    def _bank_step(self, fields: dict, credits: int, labels: list[str], text: str = "") -> Action | None:
         phase = (self.bank or {}).get("phase") or "amount"
         if phase == "amount" and "amount" in fields:
-            amount = str(max(1, credits - _RESERVE))
             if self.bank is None:
                 self.bank = {}
+            balance = 0
+            bal = _BANK_BAL.search(text or "")
+            if bal:
+                balance = int(bal.group(1).replace(",", ""))
+            load = self._load_cost()
+            side = str(fields.get("side") or "")
+            if balance > 0 and credits < load and side != "withdraw" and "side" in fields:
+                self.bank["side"] = "withdraw"
+                self.plan_note = "withdraw for a load"
+                return Action("type", selector='[data-n="side"]', text="withdraw")
+            if side == "withdraw" or self.bank.get("side") == "withdraw":
+                amount = str(max(1, min(balance or load, max(1, load - credits))))
+                self.bank["phase"] = "confirm"
+                self.plan_note = "withdraw " + amount
+                return Action("type", selector='[data-n="amount"]', text=amount)
+            amount = str(max(1, credits - _RESERVE))
             self.bank["phase"] = "confirm"
             self.plan_note = "deposit " + amount
             return Action("type", selector='[data-n="amount"]', text=amount)
+        withdrawing = (self.bank or {}).get("side") == "withdraw"
         self.bank_day = self.day
         self.bank = None
-        self.plan_note = "deposit the surplus"
+        self.plan_note = "withdraw the load" if withdrawing else "deposit the surplus"
         if any(row.upper() == "CONFIRM" for row in labels):
             return Action("click", label="CONFIRM")
         return Action("press", key="Escape")
@@ -1158,11 +1307,18 @@ class ScriptedTrader:
                         continue
                     if stocked and ("now" not in booked or int(booked["now"]) <= 0):
                         continue
-                    hops = self._hops(ask_at, bid_at)
-                    back = self._hops(bid_at, ask_at)
-                    if hops is None or back is None:
-                        continue
-                    cycle = hops * step + 1 + back * step + 1
+                    if tpw is None:
+                        there = self._path_turns(ask_at, bid_at)
+                        back_turns = self._path_turns(bid_at, ask_at)
+                        if there is None or back_turns is None:
+                            continue
+                        cycle = there + 1 + back_turns + 1
+                    else:
+                        hops = self._hops(ask_at, bid_at)
+                        back = self._hops(bid_at, ask_at)
+                        if hops is None or back is None:
+                            continue
+                        cycle = hops * step + 1 + back * step + 1
                     if cycle > turns:
                         continue
                     bid_qty = (
@@ -1225,6 +1381,9 @@ class ScriptedTrader:
         return False
 
     def _should_shop(self, sector: int, turns: int) -> bool:
+        # A dock trip with an empty wallet spends the turns the pair would have used.
+        if 0 < self.credits < 500:
+            return False
         if not self._settled(sector) or sector == 1 or self.shop_day == self.day or self._best_spread() <= 0:
             return False
         if self._gear_done() or not self._shelf_open():
@@ -1397,7 +1556,24 @@ class ScriptedTrader:
         survey = self._survey(screen, list(screen.get("labels") or []), sector, options)
         if survey is not None:
             return survey
+        adjacent_threat = False
+        for label in screen.get("warps") or []:
+            match = _WARP.match(str(label).strip())
+            if match and int(match.group(1)) in self.danger:
+                adjacent_threat = True
+                break
+        # Off the dock, a marked neighbour means the unseen exits stay closed.
+        # StarDock still leaves: the known lane home can be the threatened one.
+        if (
+            self.settled_day
+            and sector != 1
+            and adjacent_threat
+            and not any(item[0] in self.visited for item in options)
+        ):
+            return None
         dest = self._explore_choice(sector, options)
+        if not dest:
+            return None
         if dest in self.visited:
             self.fresh_chain = 0
         else:
@@ -1413,8 +1589,8 @@ class ScriptedTrader:
 
     def _trip_fits(self, sector: int, goal: int, cargo: dict[str, int], turns: int) -> bool:
         if any(cargo.values()):
-            hops = self._hops(sector, goal)
-            return hops is not None and turns >= hops * 3 + 1
+            spent = self._path_turns(sector, goal)
+            return spent is not None and turns >= spent + 1
         seller = 0
         for name, slot in (self.ports.get(goal) or {}).items():
             if isinstance(slot, dict) and slot.get("ask") is not None and self._known_bid(name) > int(slot["ask"]):
@@ -1627,6 +1803,18 @@ class ScriptedTrader:
             value += sum(1 for nxt in self.links.get(dest, {}) if nxt not in self.visited)
             return value
 
+        # A paying pair is already on the map. Prefer a sector already seen.
+        # An unseen exit is allowed only when no known exit is safe. The caller
+        # skips that exit when a neighbouring lane is already marked.
+        if self.settled_day and known:
+            goal = self._best_ask_sector()
+            step = self._first_step(sector, goal) if goal else None
+            if step is not None and any(item[0] == step for item in known):
+                return step
+            back = [item for item in known if item[0] == self.previous]
+            if back:
+                return back[0][0]
+            return max(known, key=score)[0]
         # A threat already on the map means the next new sector can be mined.
         # Walk back onto sectors already seen. Before any threat, keep looking:
         # the paying pair is several new hops out.
@@ -1759,7 +1947,7 @@ class ScriptedTrader:
         plotter is for a later day, when the return to StarDock was never seen.
         Hard follows that course only when the days left can pay the trip back.
         """
-        if sector == 1 or self.shop_day == self.day or self._gear_done() or self.dock_blocked:
+        if 0 < self.credits < 500 or sector == 1 or self.shop_day == self.day or self._gear_done() or self.dock_blocked:
             return False
         if not self._shelf_open():
             return False

@@ -492,7 +492,18 @@ def test_the_scripted_trader_keeps_a_port_pair_and_declines_a_bad_counter() -> N
         "labels": ["CONFIRM", "ESC"],
         "warps": ["1:16 (3t)"],
     }))
-    assert fuel_ok.label == "CONFIRM"
+    assert fuel_ok.op == "type" and fuel_ok.selector == '[data-n="unit_price"]' and fuel_ok.text == "42"
+    taken = trader.decide(_view({
+        "sector": "35", "day": "2", "turns": "8", "credits": "49,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 10 Organics 0 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE",
+        "haggle": "We'll buy them for 39 cr each.",
+        "fields": {"unit_price": "42", "qty": "10"},
+        "labels": ["CONFIRM", "ESC"],
+        "warps": ["1:16 (3t)"],
+    }))
+    assert taken.label == "CONFIRM"
     low = trader.decide(_view({
         "sector": "35", "day": "2", "turns": "8", "credits": "49,000 cr", "chip": "YOUR MOVE",
         "holds": "Fuel Ore 0 Organics 20 Equipment 0",
@@ -1553,7 +1564,103 @@ def test_the_v311_table_price_is_the_each_not_the_total() -> None:
         "fields": {"unit_price": "1580", "qty": "20"},
         "labels": ["CONFIRM", "ESC"],
     }))
-    assert fair.label == "CONFIRM"
+    assert fair.op == "type" and fair.selector == '[data-n="unit_price"]' and fair.text == "72"
+    paid = trader.decide(_view({
+        "sector": "16", "day": "2", "turns": "20", "credits": "40,000 cr", "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "formOpen": True,
+        "formText": "TRADE",
+        "haggle": "We'll sell them for 1,580 credits (20 at 79 cr).",
+        "fields": {"unit_price": "72", "qty": "20"},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert paid.label == "CONFIRM"
+
+
+def test_a_seen_lane_is_costed_and_the_bank_pays_a_load() -> None:
+    """A 6-turn warp loses to the 3-turn lane. A thin cash box withdraws a load."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="hard")
+    trader.day = 2
+    trader.max_day = 5
+    trader.day_turns = 40
+    trader.hold_cap = 20
+    trader.ports[10] = {"Equipment": {"ask": 40, "avail": 20, "now": 20}}
+    trader.ports[11] = {"Equipment": {"bid": 100, "avail": 20, "now": 20}}
+    # The direct warp is one hop and eight turns. The lane through 30 is six.
+    trader.links = {12: {10: 8, 30: 3}, 30: {10: 3, 12: 3}, 10: {11: 3, 30: 3}, 11: {10: 3}}
+    trader.warp_labels = {(12, 10): "1:10 (8t)", (12, 30): "2:30 (3t)", (30, 10): "1:10 (3t)"}
+    step = trader.decide(_view({
+        "sector": "12", "day": "2", "maxDay": "5", "turns": "40", "credits": "2,000 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:10 (8t)", "2:30 (3t)"],
+        "warps": ["1:10 (8t)", "2:30 (3t)"],
+    }))
+    assert step.label == "2:30 (3t)"
+    trader.credits = 100
+    trader.bought.update({"holds", "fighters"})
+    trader.bank = {"phase": "amount"}
+    drew = trader.decide(_view({
+        "sector": "1", "day": "3", "maxDay": "5", "turns": "20", "credits": "100 cr",
+        "chip": "YOUR MOVE",
+        "formOpen": True,
+        "formText": "BANK Balance 5,000 cr. Room 9,000 cr.",
+        "fields": {"side": "deposit", "amount": ""},
+        "labels": ["CONFIRM", "ESC"],
+    }))
+    assert drew.op == "type" and drew.selector == '[data-n="side"]' and drew.text == "withdraw"
+
+
+def test_a_settled_ship_stays_on_sectors_it_has_seen() -> None:
+    """After a pair pays, an unseen warp is a mine. Go back the way we came."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit.trader import ScriptedTrader
+
+    trader = ScriptedTrader(level="hard")
+    trader.day = 4
+    trader.settled_day = 2
+    trader.previous = 147
+    trader.visited.update({54, 147})
+    trader.warp_labels = {(54, 147): "3:147 (3t)", (54, 7): "1:7 (3t)"}
+    step = trader.decide(_view({
+        "sector": "54", "day": "4", "maxDay": "5", "turns": "29", "credits": "4,882 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:7 (3t)", "3:147 (3t)"],
+        "warps": ["1:7 (3t)", "3:147 (3t)"],
+    }))
+    assert step.label == "3:147 (3t)"
+    trader.danger.add(147)
+    held = trader.decide(_view({
+        "sector": "54", "day": "4", "maxDay": "5", "turns": "26", "credits": "4,882 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:7 (3t)", "3:147 (3t)"],
+        "warps": ["1:7 (3t)", "3:147 (3t)"],
+    }))
+    assert held.op == "press" and held.key == "."
+    docked = ScriptedTrader(level="hard")
+    docked.day = 4
+    docked.settled_day = 2
+    docked.bought.update({"holds", "fighters"})
+    docked.visited.update({1, 119})
+    docked.danger.add(119)
+    docked.warp_labels = {(1, 68): "1:68 (3t)", (1, 119): "2:119 (3t)"}
+    left = docked.decide(_view({
+        "sector": "1", "day": "4", "maxDay": "5", "turns": "37", "credits": "3,552 cr",
+        "chip": "YOUR MOVE",
+        "holds": "Fuel Ore 0 Organics 0 Equipment 0",
+        "ship": "Holds 0/20",
+        "labels": ["1:68 (3t)", "2:119 (3t)"],
+        "warps": ["1:68 (3t)", "2:119 (3t)"],
+    }))
+    assert left.label == "1:68 (3t)"
 
 
 def test_turns_left_today_limits_the_hop() -> None:
