@@ -68,12 +68,15 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse(argv)
+    _import_root()
+    from ai_cockpit.runner import install_process_cleanup
+
+    install_process_cleanup()
     if args.check_imports:
         return check_imports()
     if not args.url:
         print("a seat url is required", file=sys.stderr)
         return 2
-    _import_root()
     from ai_cockpit.redact import redact
     from ai_cockpit.runner import play
 

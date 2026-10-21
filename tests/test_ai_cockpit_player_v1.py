@@ -9,11 +9,13 @@ seat is absent while AI_COCKPIT_SEAT_MODE is legacy.
 from __future__ import annotations
 
 import ast
+import atexit
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -41,6 +43,101 @@ KEYS = {
 }
 # Protected live bands. free_port may still hand out an OS ephemeral port above them.
 FORBIDDEN = set(range(8031, 8038)) | {8041, 8042} | set(range(8045, 8050)) | set(range(8055, 8120))
+_PLAYER_PIDS: list[int] = []
+
+
+def _import_runner():
+    scripts = str(REPO / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import ai_cockpit.runner as runner
+
+    return runner
+
+
+def _cleanup_players_at_exit() -> None:
+    runner = _import_runner()
+    for pid in list(_PLAYER_PIDS):
+        runner.kill_process_tree(pid, group=True)
+
+
+atexit.register(_cleanup_players_at_exit)
+
+
+def _run_player(
+    cmd: list[str], *, timeout: float, env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a player in its own session and always kill the process tree."""
+    runner = _import_runner()
+    proc = subprocess.Popen(
+        cmd,
+        cwd=REPO,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
+    )
+    _PLAYER_PIDS.append(proc.pid)
+    timed_out: subprocess.TimeoutExpired | None = None
+    stdout = ""
+    stderr = ""
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        timed_out = exc
+        stdout = _output_text(exc.stdout)
+        stderr = _output_text(exc.stderr)
+    finally:
+        runner.kill_process_tree(proc.pid, group=True)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+    if timed_out is not None:
+        raise timed_out
+    code = proc.returncode if proc.returncode is not None else 1
+    return subprocess.CompletedProcess(cmd, code, _output_text(stdout), _output_text(stderr))
+
+
+def _output_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    return value
+
+
+def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _wait_until_pid_dead(pid: int, seconds: float) -> bool:
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        if not _pid_alive(pid):
+            return True
+        time.sleep(0.05)
+    return not _pid_alive(pid)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def no_ai_cockpit_player_after_the_suite():
+    """Fail the AI-seat file if a player process is still running at the end."""
+    yield
+    runner = _import_runner()
+    left = runner.running_player_pids()
+    try:
+        assert not left, f"ai_cockpit_player.py still running: {left}"
+    finally:
+        for pid in left:
+            runner.kill_process_tree(pid, group=True)
 
 
 def _sources() -> list[Path]:
@@ -62,12 +159,9 @@ def test_the_player_sources_do_not_import_the_engine() -> None:
 
 
 def test_the_player_process_does_not_load_the_engine() -> None:
-    proc = subprocess.run(
+    proc = _run_player(
         [sys.executable, str(PLAYER), "--check-imports"],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=False,
+        timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.strip() == "engine import check: clean"
@@ -106,13 +200,10 @@ def test_a_stop_file_ends_the_run_before_the_browser(tmp_path: Path) -> None:
     stop = tmp_path / "STOP"
     stop.write_text("stop", encoding="utf-8")
     run = tmp_path / "run"
-    proc = subprocess.run(
+    proc = _run_player(
         [sys.executable, str(PLAYER), "--url", "http://127.0.0.1:9/bot?token=secret",
          "--provider", "scripted", "--run-dir", str(run), "--stop-file", str(stop)],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=False,
+        timeout=30,
         env={**os.environ, **KEYS},
     )
     assert proc.returncode == 0, proc.stderr
@@ -169,13 +260,9 @@ def test_scripted_player_reads_the_manual_and_sells(tmp_path: Path) -> None:
         assert host.port not in FORBIDDEN
         assert allowed_test_port(host.port)
         url = f"{host.base}/bot?seat=P2&mode=cu&token={TOKEN}&layout=redesign"
-        proc = subprocess.run(
+        proc = _run_player(
             [sys.executable, str(PLAYER), "--url", url, "--provider", "scripted",
              "--max-turns", "12", "--min-interval", "0", "--run-dir", str(run)],
-            cwd=REPO,
-            capture_output=True,
-            text=True,
-            check=False,
             timeout=90,
             env={**os.environ, **KEYS, "PYTHONPATH": str(REPO / "src")},
         )
@@ -1846,13 +1933,9 @@ def test_scripted_player_gains_net_worth_over_three_days(tmp_path: Path) -> None
         assert host.port not in FORBIDDEN
         assert allowed_test_port(host.port)
         url = f"{host.base}/bot?seat=P2&mode=cu&token={TOKEN}&layout=redesign"
-        proc = subprocess.run(
+        proc = _run_player(
             [sys.executable, str(PLAYER), "--url", url, "--provider", "scripted",
              "--max-turns", "60", "--min-interval", "0", "--run-dir", str(run)],
-            cwd=REPO,
-            capture_output=True,
-            text=True,
-            check=False,
             timeout=240,
             env={**os.environ, **KEYS, "PYTHONPATH": str(REPO / "src")},
         )
@@ -1880,13 +1963,9 @@ def test_scripted_player_buys_holds_and_fighters_at_stardock(tmp_path: Path) -> 
         assert host.port not in FORBIDDEN
         assert allowed_test_port(host.port)
         url = f"{host.base}/bot?seat=P2&mode=cu&token={TOKEN}&layout=redesign"
-        proc = subprocess.run(
+        proc = _run_player(
             [sys.executable, str(PLAYER), "--url", url, "--provider", "scripted",
              "--max-turns", "18", "--min-interval", "0", "--run-dir", str(run)],
-            cwd=REPO,
-            capture_output=True,
-            text=True,
-            check=False,
             timeout=150,
             env={**os.environ, **KEYS, "PYTHONPATH": str(REPO / "src")},
         )
@@ -1897,3 +1976,82 @@ def test_scripted_player_buys_holds_and_fighters_at_stardock(tmp_path: Path) -> 
     texts = [str(row["text"]) for row in actions]
     assert any(label.startswith("StarDock") for label in labels), labels
     assert "holds" in texts and "fighters" in texts, texts
+
+
+def test_a_timeout_kills_the_player_process_tree(tmp_path: Path) -> None:
+    """A detached grandchild dies with the player when the run times out."""
+    pidfile = tmp_path / "child.pid"
+    script = tmp_path / "ai_cockpit_player.py"
+    script.write_text(
+        "\n".join([
+            "import subprocess, sys, time",
+            "child = subprocess.Popen(",
+            "    [sys.executable, '-c', 'import time; time.sleep(120)'],",
+            "    start_new_session=True,",
+            ")",
+            f"open({str(pidfile)!r}, 'w', encoding='utf-8').write(str(child.pid))",
+            "time.sleep(120)",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    with pytest.raises(subprocess.TimeoutExpired):
+        _run_player([sys.executable, str(script)], timeout=3)
+    text = pidfile.read_text(encoding="utf-8") if pidfile.is_file() else ""
+    assert text.strip().isdigit(), "the player did not start its child before the timeout"
+    child_pid = int(text.strip())
+    assert _wait_until_pid_dead(child_pid, 2)
+    runner = _import_runner()
+    assert child_pid not in runner.running_player_pids()
+    assert runner.running_player_pids() == []
+
+
+def test_the_player_process_exits_when_its_parent_dies(tmp_path: Path) -> None:
+    """The runner's parent-death signal ends the player after the parent is gone."""
+    pidfile = tmp_path / "player.pid"
+    player = tmp_path / "sleep_player.py"
+    parent = tmp_path / "parent.py"
+    player.write_text(
+        "\n".join([
+            "import sys",
+            f"sys.path.insert(0, {str(REPO / 'scripts')!r})",
+            "from ai_cockpit.runner import install_process_cleanup",
+            "install_process_cleanup()",
+            "import time",
+            "time.sleep(60)",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    parent.write_text(
+        "\n".join([
+            "import os, subprocess, sys, time",
+            "proc = subprocess.Popen(",
+            f"    [sys.executable, {str(player)!r}, 'ai_cockpit_player.py'],",
+            "    start_new_session=True,",
+            ")",
+            f"open({str(pidfile)!r}, 'w', encoding='utf-8').write(str(proc.pid))",
+            "time.sleep(1)",
+            "os._exit(0)",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    parent_proc = subprocess.Popen([sys.executable, str(parent)])
+    pid = 0
+    try:
+        parent_proc.wait(timeout=10)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and not pidfile.is_file():
+            time.sleep(0.05)
+        assert pidfile.is_file()
+        pid = int(pidfile.read_text(encoding="utf-8").strip())
+        _PLAYER_PIDS.append(pid)
+        assert _wait_until_pid_dead(pid, 5), f"player {pid} survived its parent"
+        assert pid not in _import_runner().running_player_pids()
+    finally:
+        if parent_proc.poll() is None:
+            parent_proc.kill()
+            parent_proc.wait(timeout=5)
+        if pid:
+            _import_runner().kill_process_tree(pid, group=True)

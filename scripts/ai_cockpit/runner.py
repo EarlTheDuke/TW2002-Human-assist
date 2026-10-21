@@ -8,8 +8,12 @@ the original seat link.
 
 from __future__ import annotations
 
+import atexit
+import ctypes
 import json
+import os
 import re
+import signal
 import sys
 import time
 from pathlib import Path
@@ -189,8 +193,265 @@ class RateGate:
         self._last = time.monotonic()
 
 
+_CLEANUP_READY = False
+_STOPPING = False
+_PLAYER_MARK = "ai_cockpit_player.py"
+
+
 def engine_modules() -> list[str]:
     return sorted(name for name in sys.modules if name == "tw2k" or name.startswith("tw2k."))
+
+
+def install_process_cleanup() -> None:
+    """Kill child processes on exit, on SIGTERM or SIGINT, and if the parent dies.
+
+    A new session keeps a later group signal from reaching the process that
+    launched the player. When this process is already a session leader the
+    extra setsid is skipped.
+    """
+    global _CLEANUP_READY
+    if _CLEANUP_READY:
+        return
+    _CLEANUP_READY = True
+    if os.name == "posix":
+        try:
+            os.setsid()
+        except OSError:
+            pass
+        _arm_parent_death()
+        signal.signal(signal.SIGTERM, _on_stop_signal)
+        signal.signal(signal.SIGINT, _on_stop_signal)
+    atexit.register(kill_own_children)
+
+
+def kill_own_children() -> None:
+    """SIGTERM, then SIGKILL, every process this player started."""
+    global _STOPPING
+    if _STOPPING:
+        return
+    _STOPPING = True
+    try:
+        kill_process_tree(os.getpid())
+    finally:
+        _STOPPING = False
+
+
+def kill_process_tree(pid: int, *, group: bool | None = None) -> None:
+    """Stop `pid` and every descendant.
+
+    SIGTERM goes out first. Anything still alive after a short wait is
+    SIGKILL'd, and the walk is repeated so a child started during the
+    first signal is included. A process-group leader other than this
+    process also has its group signaled. Pass group=True when the caller
+    started `pid` as a session leader and the process may already be
+    gone: the group id is still that pid. This process does not signal
+    its own group, because that group may belong to the caller.
+    """
+    if pid <= 1:
+        return
+    own = pid == os.getpid()
+    leader = _signal_group(pid, own, group)
+    _signal_tree(pid, signal.SIGTERM, own=own, leader=leader)
+    if _wait_until_dead(_targets(pid, own, leader=leader), 0.5):
+        return
+    _signal_tree(pid, signal.SIGKILL, own=own, leader=leader)
+    _wait_until_dead(_targets(pid, own, leader=leader), 0.5)
+
+
+def running_player_pids() -> list[int]:
+    """Live processes whose command line names the cockpit player."""
+    found: list[int] = []
+    me = os.getpid()
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return found
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        pid = int(entry.name)
+        if pid == me or not _alive(pid):
+            continue
+        if _PLAYER_MARK in _cmdline(pid):
+            found.append(pid)
+    return sorted(found)
+
+
+def _on_stop_signal(signum: int, _frame) -> None:
+    if _STOPPING:
+        return
+    kill_own_children()
+    raise SystemExit(128 + int(signum))
+
+
+def _arm_parent_death() -> None:
+    """Ask the kernel to SIGTERM this process when its parent dies.
+
+    The check after prctl closes the race where the parent exits before
+    the request is installed. A parent of pid 1 at startup means that
+    race already happened.
+    """
+    try:
+        libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        libc.prctl.argtypes = [
+            ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong,
+        ]
+        libc.prctl.restype = ctypes.c_int
+        if libc.prctl(1, signal.SIGTERM, 0, 0, 0) != 0:
+            return
+    except (OSError, AttributeError):
+        return
+    if os.getppid() == 1:
+        kill_own_children()
+        raise SystemExit(1)
+
+
+def _signal_group(pid: int, own: bool, group: bool | None) -> bool:
+    if own:
+        return False
+    if group is None:
+        return _group_leader(pid)
+    return bool(group)
+
+
+def _targets(pid: int, own: bool, *, leader: bool) -> list[int]:
+    found = _descendants(pid)
+    if leader:
+        for member in _group_members(pid):
+            if member not in found:
+                found.append(member)
+    if not own and pid not in found:
+        found.append(pid)
+    return found
+
+
+def _signal_tree(pid: int, sig: int, *, own: bool, leader: bool) -> None:
+    _signal_many(_targets(pid, own, leader=leader), sig)
+    if leader:
+        try:
+            os.killpg(pid, sig)
+        except OSError:
+            pass
+
+
+def _group_members(pid: int) -> list[int]:
+    members: list[int] = []
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return members
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        one = int(entry.name)
+        fields = _stat_fields(one)
+        if len(fields) < 3:
+            continue
+        try:
+            pgrp = int(fields[2])
+        except ValueError:
+            continue
+        if pgrp == pid and _alive(one):
+            members.append(one)
+    return members
+
+
+def _signal_many(pids: list[int], sig: int) -> None:
+    for one in pids:
+        if one <= 1:
+            continue
+        try:
+            os.kill(one, sig)
+        except OSError:
+            pass
+
+
+def _wait_until_dead(pids: list[int], seconds: float) -> bool:
+    deadline = time.monotonic() + seconds
+    while True:
+        if all(not _alive(one) for one in pids):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+
+
+def _descendants(pid: int) -> list[int]:
+    children = _children_by_parent()
+    ordered: list[int] = []
+    stack = list(children.get(pid, []))
+    seen: set[int] = set()
+    while stack:
+        child = stack.pop()
+        if child in seen or child <= 1:
+            continue
+        seen.add(child)
+        ordered.append(child)
+        stack.extend(children.get(child, []))
+    return ordered
+
+
+def _children_by_parent() -> dict[int, list[int]]:
+    found: dict[int, list[int]] = {}
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return found
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        fields = _stat_fields(int(entry.name))
+        if len(fields) < 2:
+            continue
+        try:
+            ppid = int(fields[1])
+        except ValueError:
+            continue
+        found.setdefault(ppid, []).append(int(entry.name))
+    return found
+
+
+def _group_leader(pid: int) -> bool:
+    fields = _stat_fields(pid)
+    if len(fields) < 3:
+        return False
+    try:
+        return int(fields[2]) == pid
+    except ValueError:
+        return False
+
+
+def _alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    fields = _stat_fields(pid)
+    if not fields:
+        return False
+    return fields[0] != "Z"
+
+
+def _stat_fields(pid: int) -> list[str]:
+    try:
+        raw = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    cut = raw.rfind(")")
+    if cut < 0:
+        return []
+    return raw[cut + 2:].split()
+
+
+def _cmdline(pid: int) -> str:
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return ""
+    return raw.replace(b"\x00", b" ").decode("utf-8", "replace")
 
 
 def play(
@@ -207,6 +468,7 @@ def play(
     level: str = "hard",
 ) -> int:
     """Play until the seat is done. Returns 0 on a clean stop."""
+    install_process_cleanup()
     run_dir.mkdir(parents=True, exist_ok=True)
     log_path = run_dir / "player.log"
     actions_path = run_dir / "actions.jsonl"
@@ -231,90 +493,93 @@ def play(
     history: list[str] = []
     code = 0
     idle = 0
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=headless)
-        page = browser.new_page(viewport={"width": 1280, "height": 800})
-        try:
-            if not _open(page, url, log_path):
-                _write_modules(run_dir)
-                return 1
-            _write_log(log_path, "seat page open " + redact(url))
-            step = 1
-            limit = max(0, int(max_turns))
-            while step <= limit:
-                if stop_file is not None and stop_file.is_file():
-                    _write_log(log_path, f"stop file at step {step}")
-                    break
-                gate.wait()
-                if not _ready(page, url, log_path):
-                    code = 1
-                    break
-                _wait_chip(page)
-                chip = _chip(page)
-                if chip == "GAME OVER":
-                    _capture(page, run_dir, step, "game over")
-                    _write_log(log_path, "game over")
-                    break
-                if chip == "NO TURNS":
-                    _write_log(log_path, "no turns, waiting for the next day")
-                    _wait_until(page, ("YOUR MOVE", "GAME OVER"), 20_000)
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=headless)
+            page = browser.new_page(viewport={"width": 1280, "height": 800})
+            try:
+                if not _open(page, url, log_path):
+                    _write_modules(run_dir)
+                    return 1
+                _write_log(log_path, "seat page open " + redact(url))
+                step = 1
+                limit = max(0, int(max_turns))
+                while step <= limit:
+                    if stop_file is not None and stop_file.is_file():
+                        _write_log(log_path, f"stop file at step {step}")
+                        break
+                    gate.wait()
+                    if not _ready(page, url, log_path):
+                        code = 1
+                        break
+                    _wait_chip(page)
                     chip = _chip(page)
                     if chip == "GAME OVER":
                         _capture(page, run_dir, step, "game over")
                         _write_log(log_path, "game over")
                         break
                     if chip == "NO TURNS":
-                        idle += 1
-                        if idle > 8:
-                            _write_log(log_path, "the day did not roll")
-                            code = 1
+                        _write_log(log_path, "no turns, waiting for the next day")
+                        _wait_until(page, ("YOUR MOVE", "GAME OVER"), 20_000)
+                        chip = _chip(page)
+                        if chip == "GAME OVER":
+                            _capture(page, run_dir, step, "game over")
+                            _write_log(log_path, "game over")
                             break
-                        continue
-                    idle = 0
-                screen = _screen(page)
-                _write_screen(log_path, step, screen)
-                view = _view(page, run_dir, step, manual_read, manual_excerpt, screen, history)
-                try:
-                    action = provider.decide(view)
-                except (ProviderError, ActionError) as exc:
-                    _record(actions_path, step, Action("wait", ms=0), note=redact(str(exc)))
-                    _write_log(log_path, redact(str(exc)))
-                    code = 1
-                    break
-                usage = getattr(provider, "last_usage", None)
-                if usage is not None:
-                    _write_log(log_path, usage.line())
-                reason = reject_reason(
-                    action, list(view.labels),
-                    selectors=list(screen.get("selectors") or []),
-                    fields=list((screen.get("fields") or {}).keys()),
-                )
-                if reason and action.op == "click":
-                    _write_log(log_path, f"step {step} skipped: {reason}")
-                    action = Action("wait", ms=200)
-                note = str(getattr(provider, "plan_note", "") or "")
-                action = guard_outgoing(action)
-                try:
-                    opened = _act(page, action)
-                    if opened is not None:
-                        manual_excerpt = _read_manual(opened, run_dir)
-                        manual_read = True
-                        note = "read the player manual"
-                        opened.close()
-                except Exception as exc:
-                    note = redact(exc.__class__.__name__)
-                    _write_log(log_path, f"step {step} did not land: {note}")
-                    _settle(page, url, log_path)
-                _record(actions_path, step, action, note=note)
-                shown = action.label or action.key or action.selector or action.text
-                _write_log(log_path, f"step {step} {action.op} {redact(shown)}")
-                history.append(_memory_line(step, screen, action))
-                del history[:-_HISTORY]
-                step += 1
-            else:
-                _write_log(log_path, "max turns reached")
-        finally:
-            browser.close()
+                        if chip == "NO TURNS":
+                            idle += 1
+                            if idle > 8:
+                                _write_log(log_path, "the day did not roll")
+                                code = 1
+                                break
+                            continue
+                        idle = 0
+                    screen = _screen(page)
+                    _write_screen(log_path, step, screen)
+                    view = _view(page, run_dir, step, manual_read, manual_excerpt, screen, history)
+                    try:
+                        action = provider.decide(view)
+                    except (ProviderError, ActionError) as exc:
+                        _record(actions_path, step, Action("wait", ms=0), note=redact(str(exc)))
+                        _write_log(log_path, redact(str(exc)))
+                        code = 1
+                        break
+                    usage = getattr(provider, "last_usage", None)
+                    if usage is not None:
+                        _write_log(log_path, usage.line())
+                    reason = reject_reason(
+                        action, list(view.labels),
+                        selectors=list(screen.get("selectors") or []),
+                        fields=list((screen.get("fields") or {}).keys()),
+                    )
+                    if reason and action.op == "click":
+                        _write_log(log_path, f"step {step} skipped: {reason}")
+                        action = Action("wait", ms=200)
+                    note = str(getattr(provider, "plan_note", "") or "")
+                    action = guard_outgoing(action)
+                    try:
+                        opened = _act(page, action)
+                        if opened is not None:
+                            manual_excerpt = _read_manual(opened, run_dir)
+                            manual_read = True
+                            note = "read the player manual"
+                            opened.close()
+                    except Exception as exc:
+                        note = redact(exc.__class__.__name__)
+                        _write_log(log_path, f"step {step} did not land: {note}")
+                        _settle(page, url, log_path)
+                    _record(actions_path, step, action, note=note)
+                    shown = action.label or action.key or action.selector or action.text
+                    _write_log(log_path, f"step {step} {action.op} {redact(shown)}")
+                    history.append(_memory_line(step, screen, action))
+                    del history[:-_HISTORY]
+                    step += 1
+                else:
+                    _write_log(log_path, "max turns reached")
+            finally:
+                browser.close()
+    finally:
+        kill_own_children()
     _write_modules(run_dir)
     return code
 
