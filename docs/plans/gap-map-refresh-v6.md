@@ -28,7 +28,7 @@ Only rows whose grade changed. Evidence is `file:function`.
 
 | Row | v5 | v6 | Evidence |
 |---|---|---|---|
-| 1.2 | Different | Match-behind-flag | `ONE_WAY_SHARE_MODE` row 88, NOTE 78. `constants.one_way_fraction_for` |
+| 1.2 | Different | Match-behind-flag | `ONE_WAY_SHARE_MODE` row 88, NOTE 78. Extra two-way lanes are `TWO_WAY_WARP_MODE` row 178, NOTE 157. `constants.one_way_fraction_for`, `constants.two_way_edge_target` |
 | 1.3 | Different | Match-behind-flag | `COURSE_MAX_MODE` row 86, NOTE 78. `constants.plot_course_hop_limit`, `runner._handle_plot_course`. 45 is UNVERIFIED |
 | 1.9 | Partial | Match-behind-flag | `FERRENGAL_QUASAR_MODE` row 102, NOTE 85. `runner._apply_ferrengal_quasar` |
 | 1.10 | Different | Match-behind-flag | `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. `universe.generate_universe` |
@@ -120,7 +120,7 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 20 | 10.9 | Partial | M | Corporate fighters and mines exist. Corporate ships are only partly the original. `CORPSHIP_MODE` is already tw2002 | `corp` deploy handlers | |
 | 21 | 8.8 | Partial | M | Fighters fight players. There is no separate NPC crew | `fed.place_federals` | |
 | 22 | 14.1 | Partial | M | Course plot is in. Avoids are `AVOID_MODE` row 35. The other original computer helpers are not | `runner._handle_plot_course` | |
-| 23 | 11.11 | Partial | S | Density and one-way share are flagged (rows 87 and 88). The rest of the original Big Bang screen is not | `universe.generate_universe` | universe.py |
+| 23 | 11.11 | Partial | S | Density, one-way share, and the 30 percent two-way lanes are flagged (rows 87, 88, and 178). Bubbles, the course-length generator, and the Gold options are not | `universe.generate_universe` | universe.py |
 | 24 | 6.7 | Partial | S | Genesis class choice is only partly the original. `PLANET_CLASS_MODE` exists and the profile leaves it off because v3.11 genesis class is random, which that switch does not do | `runner` genesis handler | constants.py |
 | 25 | 6.10 | Partial | S | Destroying a planet is in. A trader on it is `PLANET_ZDY_MODE` (NOTE 143). Colonist-kill alignment is still unpublished | `runner._remove_planet` | |
 | 26 | 6.11 | Partial | S | The v3.06 disband split is flagged. Other corporate planet quirks are not | `corp._planets_on_leave` | |
@@ -177,7 +177,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 ## Every row
 
 1.1 Match. Default universe is 1000 sectors. `models.GameConfig` reads `constants.DEFAULT_UNIVERSE_SIZE`. `universe.generate_universe`.
-1.2 Match-behind-flag `ONE_WAY_SHARE_MODE` row 88, NOTE 78. About 3 percent when the game does not set `one_way_fraction`. Legacy stays 0.15. `constants.one_way_fraction_for`.
+1.2 Match-behind-flag `ONE_WAY_SHARE_MODE` row 88, NOTE 78, and `TWO_WAY_WARP_MODE` row 178, NOTE 157. About 3 percent one-way when the game does not set `one_way_fraction`. Legacy one-way stays 0.15. Extra two-way lanes are 30 percent of the sector count. Legacy stays average 2.7. `constants.one_way_fraction_for`, `constants.two_way_edge_target`.
 1.3 Match-behind-flag `COURSE_MAX_MODE` row 86, NOTE 78. A plotted course longer than 45 hops is refused. The 45 is UNVERIFIED. Legacy still searches 60. `constants.plot_course_hop_limit`, `runner._handle_plot_course`.
 1.4 Match. FedSpace is sectors 1 through 10. `constants.FEDSPACE_SECTORS`. `fed.protect_fedspace_attack`.
 1.5 Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
@@ -327,7 +327,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 11.8 Match. The tavern is on. `TAVERN_MODE` is tw2002. `constants.tavern_on`.
 11.9 Partial. Feds tow and answer some crimes. Not every evil-trader attack is the original. `fed.run_tows`, `fed.protect_fedspace_attack`.
 11.10 Match-behind-flag `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. StarDock and Class 0 take 248,000 fighters, then 890,000, and the Feds rebuild in 14 days. Numbers UNVERIFIED. `runner._rebuild_special_ports`.
-11.11 Partial. Density and the one-way share are `BIG_BANG_DENSITY_MODE` and `ONE_WAY_SHARE_MODE`. Not the whole original screen. `universe.generate_universe`.
+11.11 Partial. Density, the one-way share, and the 30 percent two-way lanes are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, and `TWO_WAY_WARP_MODE`. Not the whole original screen. `universe.generate_universe`.
 12.1 Match. Turns per day are a game setting. `models.GameConfig`.
 12.2 Match-behind-flag `TURN_REGEN_MODE` row 5. Turns can come back across 24 hours. `LIVE_PACE_MODE` row 6 goes with it. `constants.turn_regen_live`.
 12.3 Different. Movement is still by turns, not by the clock. `DAY_ROLL_CLOCK_MODE` row 81 rolls the day while a seat holds the turn. Planet goods can accrue on `PLANET_REALTIME_PROD_MODE`, which the profile leaves off. `runner.apply_action`.

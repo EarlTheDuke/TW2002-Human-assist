@@ -330,23 +330,26 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
     """10-day code-only run, seed 250925, seats N3 N2 N1 H.
 
     With V311_PROFILE on, the buy-price anchor and the economy2 chart are both
-    on. A haggle counter is the port's next offer, not a refusal. N1 plotting a
-    sector that has no route is one refusal. N3's other two are a second sell
-    of equipment the first ask already traded: that ask sits inside the cabal
-    table, so the holds are empty. Neither refusal is a quote from the anchor.
-    Every seat still sells at a profit. Day-10 net worth is reported next to
-    the same run with the profile off.
+    on. A haggle counter is the port's next offer, not a refusal. NOTE 157's
+    extra two-way lanes move this map, so the old no-route plot is gone. N3's
+    four refusals are buys that ask for more empty holds than the ship has
+    (5, 10, 25 and 30). None of them is a quote from the anchor. Every seat
+    still sells at a profit. Day-10 net worth is reported next to the same run
+    with the profile off.
     """
     assert K.V311_PROFILE == "legacy"
     off = _ten_day("legacy")
     on = _ten_day("v311")
     assert K.V311_PROFILE == "legacy"
     report = {"on": on, "off": off}
-    assert _refused(on["N1-P3"]) == 1, report
-    assert on["N1-P3"]["rejected_top"] == [["plot_course: no route to target", 1]], report
-    assert on["N3-P1"]["rejected_top"] == [["trade: You only have 0 Equipment in your holds.", 2]], report
-    assert _refused(on["N3-P1"]) == 2, report
-    assert all(_refused(row) == 0 for name, row in on.items() if name not in ("N1-P3", "N3-P1")), report
+    assert on["N3-P1"]["rejected_top"] == [
+        ["trade: You only have 10 empty holds.", 1],
+        ["trade: You only have 25 empty holds.", 1],
+        ["trade: You only have 30 empty holds.", 1],
+        ["trade: You only have 5 empty holds.", 1],
+    ], report
+    assert _refused(on["N3-P1"]) == 4, report
+    assert all(_refused(row) == 0 for name, row in on.items() if name != "N3-P1"), report
     assert sum(row["realized_profit"] for row in on.values()) > 0, report
     assert sum(row["sells"] for row in on.values()) > 0, report
     print("NOTE69 day-10 net worth", report)

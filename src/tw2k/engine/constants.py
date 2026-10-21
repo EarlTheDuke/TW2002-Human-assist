@@ -4749,6 +4749,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "COMMS_V311_MODE",
         "NOTE 142: sub-space radio, Fed Comm, a same-sector hail, and the corporation memo",
     ),
+    "two_way_warp_live": (
+        "TWO_WAY_WARP_MODE",
+        "NOTE 157 GAP 1.2: extra two-way lanes are 30% of the sector count",
+    ),
 }
 
 
@@ -5353,6 +5357,26 @@ V311_ONE_WAY_FRACTION = 0.03
 def one_way_share_live() -> bool:
     """True when an unset one-way share is about 3%."""
     return ONE_WAY_SHARE_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+TWO_WAY_WARP_MODE = "legacy"  # "legacy" | "v311"
+# Big_Bang.html option F and cabal twgs.html. The printed density is 30% of
+# the sector count. 100% is one two-way warp per sector. A total of 30% cannot
+# connect the map, so the live count is that many extra lanes on the spanning
+# tree (GAP_MAP 1.2). A game that sets avg_warps keeps that average.
+V311_TWO_WAY_WARP_FRACTION = 0.30
+
+
+def two_way_warp_live() -> bool:
+    """True when extra two-way lanes are 30% of the sector count."""
+    return TWO_WAY_WARP_MODE == "v311" or v311_profile()
+
+
+def two_way_edge_target(n: int, avg_warps: float, *, game_set_average: bool) -> int:
+    """Undirected lanes, including the spanning tree. Off keeps average 2.7."""
+    if game_set_average or not two_way_warp_live():
+        return int(n * avg_warps / 2)
+    return (n - 1) + int(n * V311_TWO_WAY_WARP_FRACTION)
 
 
 def one_way_fraction_for(config) -> float:
