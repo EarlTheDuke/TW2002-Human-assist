@@ -9,8 +9,11 @@ that has not turned AI_COCKPIT_SEAT_MODE on gets None and no process.
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import sys
+import time
+import urllib.request
 from pathlib import Path
 from urllib.parse import quote
 
@@ -57,6 +60,33 @@ def player_script() -> Path:
     raise FileNotFoundError("scripts/ai_cockpit_player.py")
 
 
+def _append(path: Path, line: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(line.rstrip("\n") + "\n")
+
+
+def port_is_ready(base_url: str, timeout_s: float = 20) -> bool:
+    """True once the worker answers /healthz.
+
+    The lobby's health check can return before this process is spawned.
+    A second look here is the gap where the child used to open a dead port,
+    exit, and leave no log for the seat folder the test was not reading.
+    """
+    url = base_url.rstrip("/") + "/healthz"
+    deadline = time.monotonic() + max(0.0, timeout_s)
+    while True:
+        try:
+            with urllib.request.urlopen(url, timeout=2) as resp:
+                if int(getattr(resp, "status", 200) or 200) < 500:
+                    return True
+        except Exception:
+            pass
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.25)
+
+
 def launch_player(
     *,
     base_url: str,
@@ -84,7 +114,13 @@ def launch_player(
         return None
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
+    log_path = run_dir / "player.log"
+    # Written and closed before the child starts, so Windows can open the
+    # same path. The child appends; the parent does not keep the handle.
+    _append(log_path, f"spawned seat={seat}")
     url = base_url.rstrip("/") + (path or cockpit_seat_url(gid, seat, token))
+    if popen is subprocess.Popen and not port_is_ready(base_url):
+        _append(log_path, "worker port was not answering; starting anyway")
     cmd = [
         python or sys.executable,
         str(player_script()),
@@ -103,4 +139,29 @@ def launch_player(
         "ai cockpit player seat=%s provider=%s model=%s level=%s",
         seat, provider, model or "-", level or "hard",
     )
-    return popen(cmd)
+    # stderr goes to player.err, a different file from player.log, so the
+    # child can append the log on Windows without a sharing violation.
+    # A windowless parent (the merge box) has no console for the child to
+    # inherit; the same flags the game worker uses keep that from killing
+    # the process before it can write.
+    flags: dict = {}
+    if os.name == "nt":
+        flags["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+    else:
+        flags["start_new_session"] = True
+    err = open(run_dir / "player.err", "ab", buffering=0)
+    try:
+        proc = popen(
+            cmd,
+            cwd=str(run_dir),
+            stdin=subprocess.DEVNULL,
+            stdout=err,
+            stderr=subprocess.STDOUT,
+            **flags,
+        )
+    except Exception:
+        _append(log_path, "the player process did not start")
+        raise
+    finally:
+        err.close()
+    return proc

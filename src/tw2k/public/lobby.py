@@ -350,6 +350,10 @@ class Lobby:
             days, turns = 1, 1
         procs = []
         for row in rows:
+            running = row.get("proc")
+            if running is not None and running.poll() is None:
+                procs.append(running)
+                continue
             seat = str(row["seat"])
             level = str(row.get("level") or settings.get("ai_cockpit_level") or "hard")
             proc = self.launch_browser_seat(
@@ -565,6 +569,8 @@ class Lobby:
                 info = None
             if info:
                 self.live[gid] = info
+                if g["status"] == "running" and not info.get("finished"):
+                    self._launch_cockpit(gid)
             # A finished game leaves the running list at once, while the worker
             # stays up so the end screen and the watch page keep loading.
             # set_game stamps updated_at, which is when the archive clock starts.
