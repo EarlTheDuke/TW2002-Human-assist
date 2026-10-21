@@ -4761,6 +4761,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "TWO_WAY_WARP_MODE",
         "NOTE 157 GAP 1.2: extra two-way lanes are 30% of the sector count",
     ),
+    "reentry_fighters_live": (
+        "REENTRY_FIGHTERS_MODE",
+        "NOTE 158: the free Scout after Ship Destroyed gets min(250, initial fighters)",
+    ),
 }
 
 
@@ -5634,6 +5638,36 @@ COMMS_MIN_GAP_S = 2.0
 def comms_v311_live() -> bool:
     """True when player messages follow the v3.11 comm-link rules."""
     return COMMS_V311_MODE == "v311" or v311_profile()
+
+
+# NOTE 158. v3.11 revision history: a trader who comes back in a Scout Marauder
+# gets the minimum of 250 fighters and the Initial Fighters setting, instead of
+# up to 2,500. Cabal twgs.html leaves Initial fighters blank. RULINGS s2 prints
+# 30. The stored start is STARTING_FIGHTERS (20). Off, the free Scout stays
+# empty, which is what Ship Destroyed does today. On, the grant is that
+# minimum, and also no more than the scout can hold. The stored ship table
+# holds 150. The v3.11 roster holds 250. "1" does not turn this on.
+REENTRY_FIGHTERS_MODE = "legacy"  # "legacy" | "v311"
+REENTRY_FIGHTER_CAP = 250
+
+
+def reentry_fighters_live() -> bool:
+    """True when Ship Destroyed stocks the free Scout from the initial-fighter cap."""
+    return REENTRY_FIGHTERS_MODE == "v311" or v311_profile()
+
+
+def reentry_fighter_grant(initial: int | None = None) -> int:
+    """Fighters on the free Scout. 0 while the switch is off."""
+    if not reentry_fighters_live():
+        return 0
+    if initial is None:
+        initial = LIVE_STARTING_FIGHTERS if starting_package_live() else STARTING_FIGHTERS
+    grant = min(REENTRY_FIGHTER_CAP, max(0, int(initial)))
+    spec = hull_spec(SD_RESTART_HULL) or {}
+    room = spec.get("max_fighters")
+    if room is not None:
+        grant = min(grant, int(room))
+    return grant
 
 
 # NOTE 102 GAP 9.2. The midnight +1 for a trader who spent a turn, and the +1

@@ -1417,6 +1417,7 @@ def _destroy_ship_tw2002(
             player.experience = exp_before - int(exp_before * K.SD_EXP_LOSS)
         player.alignment = align_before - int(align_before * K.SD_ALIGN_LOSS)
         _strip_ship(player, K.SD_RESTART_HULL)
+        player.ship.fighters = K.reentry_fighter_grant()
         _place(universe, player, dest)
         # d9/d11: out until midnight; the free scout waits at StarDock.
         player.turns_today = max(int(player.turns_today), int(player.turns_per_day))
