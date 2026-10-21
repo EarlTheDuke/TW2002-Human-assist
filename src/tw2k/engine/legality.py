@@ -1827,39 +1827,29 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         ok, why, params = navpoint_legal_spec(universe, player_id)
         out.append(_la(ActionKind.NAVPOINT, legal=ok, reason=why, cost=0, params=params))
 
-    # NOTE 162. These stay in the catalog so parity can see one entry per verb.
-    # Off, each one is refused. On, the helper's own spec decides.
+    # NOTE 162. Off, these stay out of the catalog so the legacy observation
+    # hashes stay the old catalog. On, the helper's own spec decides.
+    # The tavern loop already adds underground_rename while UG_NAME_MODE is on.
     have = {row.kind for row in out}
-    if ActionKind.FEDERATION_HALL.value not in have:
-        if K.federation_hall_live():
-            from .v311_buildable import federation_hall_spec
-            ok, why, params = federation_hall_spec(universe, player_id)
-            out.append(_la(ActionKind.FEDERATION_HALL, legal=ok, reason=why, cost=0, params=params))
-        else:
-            out.append(_la(ActionKind.FEDERATION_HALL, legal=False, reason="not in this game"))
-    if ActionKind.UNDERGROUND_RENAME.value not in have:
-        if K.ug_name_live():
-            from .tavern import legal_specs as tavern_legal_specs
-            rename = next(
-                (row for row in tavern_legal_specs(universe, player_id) if row[0] == "underground_rename"),
-                None,
-            )
-            if rename is None:
-                out.append(_la(ActionKind.UNDERGROUND_RENAME, legal=False, reason="not in this game"))
-            else:
-                _kind, legal, reason, params, cost = rename
-                out.append(_la(
-                    ActionKind.UNDERGROUND_RENAME, legal=legal, reason=reason or None, cost=cost, params=params,
-                ))
-        else:
-            out.append(_la(ActionKind.UNDERGROUND_RENAME, legal=False, reason="not in this game"))
-    if ActionKind.CIM.value not in have:
-        if K.cim_live():
-            from .v311_buildable import cim_spec
-            ok, why, params = cim_spec(universe, player_id)
-            out.append(_la(ActionKind.CIM, legal=ok, reason=why, cost=0, params=params))
-        else:
-            out.append(_la(ActionKind.CIM, legal=False, reason="not in this game"))
+    if K.federation_hall_live() and ActionKind.FEDERATION_HALL.value not in have:
+        from .v311_buildable import federation_hall_spec
+        ok, why, params = federation_hall_spec(universe, player_id)
+        out.append(_la(ActionKind.FEDERATION_HALL, legal=ok, reason=why, cost=0, params=params))
+    if K.ug_name_live() and ActionKind.UNDERGROUND_RENAME.value not in have:
+        from .tavern import legal_specs as tavern_legal_specs
+        rename = next(
+            (row for row in tavern_legal_specs(universe, player_id) if row[0] == "underground_rename"),
+            None,
+        )
+        if rename is not None:
+            _kind, legal, reason, params, cost = rename
+            out.append(_la(
+                ActionKind.UNDERGROUND_RENAME, legal=legal, reason=reason or None, cost=cost, params=params,
+            ))
+    if K.cim_live() and ActionKind.CIM.value not in have:
+        from .v311_buildable import cim_spec
+        ok, why, params = cim_spec(universe, player_id)
+        out.append(_la(ActionKind.CIM, legal=ok, reason=why, cost=0, params=params))
 
     return out
 

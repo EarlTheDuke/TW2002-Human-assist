@@ -5686,7 +5686,11 @@
     });
   }
   function computerKeys() {
-    return LA("navpoint") ? CKEYS : CKEYS.filter((row) => row[0] !== "N");
+    return CKEYS.filter((row) => {
+      if (row[0] === "N" && !LA("navpoint")) return false;
+      if (row[0] === "I" && !LA("cim")) return false;
+      return true;
+    });
   }
   function menuHtml(which) {
     const list = which === "C" ? computerKeys() : MENU_KEYS;
