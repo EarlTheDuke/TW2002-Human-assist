@@ -36,3 +36,20 @@ def seat_online(universe, player_id: str) -> bool:
     if kind not in ("external", "human"):
         return True
     return cockpit_open(universe, player_id)
+
+
+def mark_ai_cockpit(player) -> None:
+    """A lobby AI cockpit seat is named 'AI cockpit' or 'AI cockpit N'."""
+    name = str(getattr(player, "name", "") or "")
+    if name == "AI cockpit" or name.startswith("AI cockpit "):
+        player.ai_cockpit = True
+
+
+def inactive_deletion_exempt(universe, player) -> bool:
+    """Connected seats and AI cockpit seats are not inactive-user deletions."""
+    if getattr(player, "ai_cockpit", False):
+        return True
+    name = str(getattr(player, "name", "") or "")
+    if name == "AI cockpit" or name.startswith("AI cockpit "):
+        return True
+    return seat_online(universe, player.id)

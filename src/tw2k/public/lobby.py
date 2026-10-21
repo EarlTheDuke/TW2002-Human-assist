@@ -25,6 +25,7 @@ from starlette.websockets import WebSocket
 
 from . import pages
 from . import worker as W
+from ..engine.constants import lobby_idle_limit_s as _idle_limit
 from .config import LobbyConfig, pick_port
 from .proxy import Proxy
 from .ai_seat import AiMemory, drive_seats, mask_key
@@ -566,7 +567,7 @@ class Lobby:
                 g = dict(g)
                 g["status"] = "finished"
             last = max(self.activity.get(gid, 0.0), float(g["last_activity"] or 0.0))
-            if self.open_ws.get(gid, 0) == 0 and now - last > self.cfg.idle_s:
+            if self.open_ws.get(gid, 0) == 0 and now - last > _idle_limit(self.cfg.idle_s):
                 done = g["status"] == "finished" or bool(info and info.get("finished"))
                 await self.stop_game(gid, status="finished" if done else "sleeping")
                 continue
@@ -578,7 +579,7 @@ class Lobby:
             if w is None or not w.alive() or self.lock(gid).locked():
                 continue
             last = max(self.activity.get(gid, 0.0), float(g["last_activity"] or 0.0))
-            if self.open_ws.get(gid, 0) == 0 and now - last > self.cfg.idle_s:
+            if self.open_ws.get(gid, 0) == 0 and now - last > _idle_limit(self.cfg.idle_s):
                 await self.stop_game(gid, status="finished")
         for g in self.store.games(("finished", "failed", "sleeping", "stopped")):
             still = self.workers.workers.get(g["id"])

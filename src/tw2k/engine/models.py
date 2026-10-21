@@ -675,6 +675,11 @@ class Player(BaseModel):
             "avoided_sectors": [],
             "seat_timeout_streak": 0,
             "seat_timeouts_today": 0,
+            "played_today": False,
+            "idle_days": 0,
+            "last_action_at": None,
+            "ai_cockpit": False,
+            "inactive_deleted": False,
             "reject_loop_key": "",
             "reject_loop_count": 0,
             "radio_channel": None,
@@ -727,6 +732,15 @@ class Player(BaseModel):
     # seat-deadline-autopass-v1. Omitted while 0 so a legacy dump stays identical.
     seat_timeout_streak: int = 0
     seat_timeouts_today: int = 0
+    # NOTE 151. Wall-clock seconds of the last successful action. Extern deletes
+    # a quiet disconnected human after INACTIVE_USER_SPAN_S. Omitted at the
+    # defaults so a legacy dump stays identical. played_today and idle_days
+    # are the old game-day counter and stay unset.
+    played_today: bool = False
+    idle_days: int = 0
+    last_action_at: float | None = None
+    ai_cockpit: bool = False
+    inactive_deleted: bool = False
     # api-arg-hardening-v1. Omitted at the defaults so a legacy dump stays identical.
     reject_loop_key: str = ""
     reject_loop_count: int = 0
@@ -1002,7 +1016,10 @@ def _cap_operator_dialogue_entry(entry: dict[str, Any]) -> dict[str, Any]:
 class Corporation(BaseModel):
     @model_serializer(mode="wrap")
     def _save_resume_fields(self, handler: SerializerFunctionWrapHandler) -> Any:
-        return _omit_defaults(handler(self), {"password": ""})
+        return _omit_defaults(handler(self), {
+            "password": "",
+            "kept_after_inactive_ceo": False,
+        })
 
     ticker: str
     name: str
@@ -1014,6 +1031,8 @@ class Corporation(BaseModel):
     planet_ids: list[int] = Field(default_factory=list)
     invited_ids: list[str] = Field(default_factory=list)
     formed_day: int = 0
+    # NOTE 151. Set when the C.E.O. is deleted for inactivity. Omitted while false.
+    kept_after_inactive_ceo: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -1332,6 +1351,7 @@ class Universe(BaseModel):
             "ferrengi_pace_bank_s": 0.0,
             "ferrengi_pace_covered_s": 0.0,
             "special_ports_destroyed": 0,
+            "inactive_users_armed": False,
         })
         # A server restart clears Gold grudges. Never write the list out.
         if isinstance(data, dict):
@@ -1388,6 +1408,9 @@ class Universe(BaseModel):
     special_ports_destroyed: int = 0
     ferrengi_pace_bank_s: float = 0.0
     ferrengi_pace_covered_s: float = 0.0
+    # NOTE 151. True only when this universe was generated while inactive-user
+    # deletion was already on. Omitted while false so a legacy dump stays identical.
+    inactive_users_armed: bool = False
     # STARDOCK_TAVERN.md tv28. Omitted while None so a legacy dump stays byte-identical.
     tavern: dict[str, Any] | None = None
 

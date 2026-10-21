@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextvars
 import random
+import time
 from collections import deque
 from collections.abc import Callable
 
@@ -313,6 +314,12 @@ def apply_action(universe: Universe, player_id: str, action: Action) -> ActionRe
     # Check victory after every applied action
     _check_victory(universe)
 
+    if (
+        result.ok
+        and getattr(universe, "inactive_users_armed", False)
+        and K.inactive_user_live()
+    ):
+        player.last_action_at = float(inactive_clock())
     return _note_reject(universe, player, action, result)
 
 
@@ -480,6 +487,41 @@ def recover_turns(player, elapsed_s: float) -> int:
     return applied
 
 
+def inactive_clock() -> float:
+    """Wall clock for inactive-user deletion. Tests replace this."""
+    return time.time()
+
+
+def _note_inactive_users(universe: Universe) -> None:
+    """NOTE 151. Off, or unarmed, this returns before it reads a player.
+
+    Quiet time is wall-clock seconds since the last successful action, not
+    game days. A fast day does not move the clock. A connected seat and an
+    AI cockpit seat stay. Every deletion is logged.
+    """
+    if not K.inactive_user_live():
+        return
+    if not getattr(universe, "inactive_users_armed", False):
+        return
+    from .corp import delete_inactive_user
+    from .presence import inactive_deletion_exempt
+
+    now = float(inactive_clock())
+    span = float(K.INACTIVE_USER_SPAN_S)
+    for player in list(universe.players.values()):
+        if not player.alive:
+            continue
+        if inactive_deletion_exempt(universe, player):
+            continue
+        seen = getattr(player, "last_action_at", None)
+        if seen is None:
+            player.last_action_at = now
+            continue
+        elapsed = now - float(seen)
+        if elapsed >= span:
+            delete_inactive_user(universe, player, elapsed_s=elapsed)
+
+
 def tick_day(universe: Universe) -> None:
     """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets.
 
@@ -497,6 +539,7 @@ def tick_day(universe: Universe) -> None:
     Class 0 and StarDock fighter, shield and hold prices already follow the
     day (fighter_unit_price, shield_unit_price, hold_day_base).
     """
+    _note_inactive_users(universe)
     _overnight_retreats(universe)
     _overnight_ferrengi_encounters(universe)
     if K.tow_on():  # SHIP_TOW.md tt11j: an overnight retreat / flee drops the tow
