@@ -4,7 +4,8 @@
 Lineup, in seat order:
 
 * AI cockpit and AI cockpit 2, decided by the cockpit scripted trader
-  (``tw2k.agents.cockpit_seat.SeatBrain``). No model key.
+  (``tw2k.agents.cockpit_seat.SeatBrain``). No model key. AI cockpit also
+  sets NavPoint "Lane" on a neighboring sector and plots that name once.
 * Code bots N3, N2, N1, and the heuristic H.
 
 ``V311_PROFILE`` is set to ``v311`` here and is not written back. The stored
@@ -276,6 +277,33 @@ def run_soak(seed: int, days: int, universe_size: int) -> dict[str, Any]:
 
     findings = _audit(universe, int(universe.day))
     day_rows: list[dict[str, Any]] = []
+    # AI cockpit sets one NavPoint and lays in a course to it. The other
+    # cockpit seat keeps trading. A failed try is retried on a later turn.
+    nav = {"set": False, "used": False, "sector": None, "set_day": None, "use_day": None, "errors": []}
+
+    def cockpit_nav(pid: str, player, obs: dict) -> dict[str, Any] | None:
+        if player.name != "AI cockpit":
+            return None
+        if nav["used"] or len(nav["errors"]) >= 8:
+            return None
+        if player.planet_landed or obs.get("fighter_challenge") or obs.get("ferrengi_encounter"):
+            return None
+        here = int(player.sector_id)
+        if not nav["set"]:
+            hops = [int(w) for w in universe.sectors[here].warps if int(w) in universe.sectors]
+            if not hops:
+                return None
+            nav["sector"] = hops[0]
+            return {
+                "kind": "navpoint",
+                "args": {"op": "set", "slot": 1, "name": "Lane", "sector": hops[0]},
+                "thought": "log NavPoint Lane",
+            }
+        return {
+            "kind": "plot_course",
+            "args": {"navpoint": "Lane", "execute": True},
+            "thought": "lay in NavPoint Lane",
+        }
     order = list(state)
     steps = 0
     max_steps = 400_000
@@ -344,7 +372,10 @@ def run_soak(seed: int, days: int, universe_size: int) -> dict[str, Any]:
             obs_model = build_observation(universe, pid)
             obs = obs_model.model_dump(mode="json")
             try:
-                if row["kind"] == "scripted":
+                steered = cockpit_nav(pid, player, obs) if row["kind"] == "scripted" else None
+                if steered is not None:
+                    act = steered
+                elif row["kind"] == "scripted":
                     kind, args, thought = row["brain"].decide(obs)
                     act = {"kind": kind, "args": args, "thought": thought}
                 elif row["brain"] is not None:
@@ -386,10 +417,21 @@ def run_soak(seed: int, days: int, universe_size: int) -> dict[str, Any]:
             spent = max(0, int(player.turns_today) - turns_before) if int(universe.day) == day_before else 0
             row["actions"] += 1
             row["kinds"][kind] += 1
-            seen = {(row["where"], row["what"]) for row in findings}
-            for row in _player_bits(universe, universe.players[pid], int(universe.day), pid):
-                if (row["where"], row["what"]) not in seen:
-                    findings.append(row)
+            if player.name == "AI cockpit" and act.get("thought") in ("log NavPoint Lane", "lay in NavPoint Lane"):
+                if ok and kind == "navpoint":
+                    nav["set"] = True
+                    nav["set_day"] = int(universe.day)
+                elif ok and kind == "plot_course":
+                    nav["used"] = True
+                    nav["use_day"] = int(universe.day)
+                elif not ok and len(nav["errors"]) < 8:
+                    nav["errors"].append(f"d{universe.day} {kind}: {err[:120]}")
+                    if kind == "navpoint":
+                        nav["set"] = False
+            seen = {(item["where"], item["what"]) for item in findings}
+            for item in _player_bits(universe, universe.players[pid], int(universe.day), pid):
+                if (item["where"], item["what"]) not in seen:
+                    findings.append(item)
             if ok:
                 row["ok"] += 1
             else:
@@ -417,6 +459,16 @@ def run_soak(seed: int, days: int, universe_size: int) -> dict[str, Any]:
         asyncio.run(play())
     finally:
         K.regen_now = prior
+
+    if not nav["set"] or not nav["used"]:
+        findings.append({
+            "day": int(nav["use_day"] or nav["set_day"] or universe.day),
+            "what": (
+                f"AI cockpit did not set and use a NavPoint "
+                f"(set={nav['set']} used={nav['used']} {nav['errors']})"
+            ),
+            "where": "P1",
+        })
 
     # Worth path: a seat that ends more than 20x its day-1 worth, and grew
     # by at least a million, is an outlier. Day 1 includes the home planet.
@@ -454,6 +506,7 @@ def run_soak(seed: int, days: int, universe_size: int) -> dict[str, Any]:
         "win_reason": universe.win_reason, "steps": steps,
         "profile": K.V311_PROFILE, "helpers_on": sum(1 for name in K.V311_PROFILE_HELPERS if getattr(K, name)()),
         "findings": findings, "days": day_rows, "seats": seats,
+        "navpoint": nav,
     }
 
 
@@ -469,8 +522,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text + "\n", encoding="utf-8")
+    point = result.get("navpoint") or {}
     print(f"SOAK seed {result['seed']} day {result['day_reached']} steps {result['steps']} "
-          f"findings {len(result['findings'])} game_over {result['game_over']}")
+          f"findings {len(result['findings'])} game_over {result['game_over']} "
+          f"nav set={point.get('set')} d{point.get('set_day')} sector {point.get('sector')} "
+          f"used={point.get('used')} d{point.get('use_day')}")
     for row in result["findings"][:40]:
         print(f"FIND d{row['day']} {row['where']}: {row['what']}")
     return 0
