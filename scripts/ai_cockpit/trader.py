@@ -28,6 +28,7 @@ _UNSAFE_OUT = re.compile(
 )
 
 _GOODS = ("Fuel Ore", "Organics", "Equipment")
+_COMMODITY = {"Fuel Ore": "fuel_ore", "Organics": "organics", "Equipment": "equipment"}
 _PORT_CODE = re.compile(r"Class\s+\d+\s+([BSX]{3})", re.I)
 _NUMBER = re.compile(r"[\d,]+")
 _WARP = re.compile(r"^\d+:(\d+)")
@@ -99,22 +100,29 @@ def _quoted_unit(text: str) -> int:
     return 0
 
 
-def _counter_offer(listed: int, text: str) -> int:
+def _counter_offer(listed: int, text: str, *, side: str = "") -> int:
     """A price the v3.11 counter still takes, read from the quote on the form.
 
     The chart's tightest port pays 110 percent of a sale and takes about 90
     percent of a purchase. Those two are inside every wider port, and the
     screen never prints the port's own column. A line that already says the
-    port countered is the port's number.
+    port countered is the port's number. ``side`` is the form's own choice
+    when the quote line has not been painted yet.
     """
     if listed <= 0 or "port counter" in (text or "").lower():
         return 0
     low = (text or "").lower()
     if "we'll buy" in low or "buy them" in low:
+        kind = "sell"
+    elif "we'll sell" in low or "sell them" in low:
+        kind = "buy"
+    elif side in ("buy", "sell"):
+        kind = side
+    else:
+        return 0
+    if kind == "sell":
         return max(listed, (listed * 110) // 100)
-    if "we'll sell" in low or "sell them" in low:
-        return min(listed, max(1, (listed * 90 + 99) // 100))
-    return 0
+    return min(listed, max(1, (listed * 90 + 99) // 100))
 
 
 def _screen_turns(screen: dict) -> tuple[int, int | None]:
@@ -171,6 +179,9 @@ class ScriptedTrader:
         self.links: dict[int, dict[int, int]] = {}
         self.warp_labels: dict[tuple[int, int], str] = {}
         self.pending_good = ""
+        self.deal: dict[str, str] | None = None
+        self.passed_trades: set[tuple[int, str, str]] = set()
+        self.trade_sector = 0
         self.hold_price = 0
         self.shop_day = 0
         self.bank_day = 0
@@ -250,6 +261,9 @@ class ScriptedTrader:
         elif turns > self.day_turns:
             self.day_turns = turns
         self.credits = credits
+        if sector != self.trade_sector:
+            self.passed_trades.clear()
+            self.trade_sector = sector
         cargo = _holds(str(screen.get("holds") or ""))
         self.hold_cap = _hold_cap(str(screen.get("ship") or ""))
         self._remember(sector, screen)
@@ -701,8 +715,46 @@ class ScriptedTrader:
                     return False
         return True
 
+    def _drop_deal(self, sector: int) -> None:
+        """A refused quote is not opened again until the ship leaves."""
+        if self.deal:
+            self.passed_trades.add((sector, self.deal["side"], self.deal["commodity"]))
+        self.deal = None
+
+    def _open_deal(self, side: str, good: str, qty: int) -> Action | None:
+        """Open the trade form. The list-price button never reaches the haggle."""
+        commodity = _COMMODITY.get(good, "")
+        if not commodity or qty <= 0:
+            return None
+        self.deal = {"side": side, "commodity": commodity, "qty": str(qty)}
+        self.pending_good = good
+        self.plan_note = f"haggle {side} {qty} {good}"
+        return Action("press", key="P")
+
+    def _deal_step(self, fields: dict) -> Action | None:
+        """Fill side, commodity, and quantity before the offer is typed."""
+        deal = self.deal
+        if not deal or "unit_price" not in fields:
+            return None
+        if "side" in fields and str(fields.get("side") or "") != deal["side"]:
+            self.plan_note = "choose " + deal["side"]
+            return Action("type", selector='[data-n="side"]', text=deal["side"])
+        options = fields.get("commodityOptions")
+        if isinstance(options, list) and options and deal["commodity"] not in options:
+            self.deal = None
+            self.plan_note = "that cargo is not on the form"
+            return Action("press", key="Escape")
+        if "commodity" in fields and str(fields.get("commodity") or "") != deal["commodity"]:
+            self.plan_note = "choose " + deal["commodity"]
+            return Action("type", selector='[data-n="commodity"]', text=deal["commodity"])
+        if "qty" in fields and str(fields.get("qty") or "") != deal["qty"]:
+            self.plan_note = "qty " + deal["qty"]
+            return Action("type", selector='[data-n="qty"]', text=deal["qty"])
+        return None
+
     def _form(self, screen: dict, labels: list[str], credits: int) -> Action | None:
         if not screen.get("formOpen"):
+            self.deal = None
             self.gear = None if self.gear and self.gear.get("phase") == "confirm" else self.gear
             self.bank = None if self.bank and self.bank.get("phase") == "confirm" else self.bank
             self.yard = None if self.yard and self.yard.get("phase") == "confirm" else self.yard
@@ -750,21 +802,37 @@ class ScriptedTrader:
             sector = _int(screen.get("sector"))
             turns = _int(screen.get("turns"))
             if _REFUSED.search(text):
+                self._drop_deal(sector)
                 self.plan_note = "the haggle failed"
                 if any(row.upper() == "ESC" for row in labels):
                     return Action("click", label="ESC")
                 return Action("press", key="Escape")
             if not self._counter_ok(screen, sector, turns):
+                self._drop_deal(sector)
                 self.plan_note = "decline the counter"
                 if any(row.upper() == "ESC" for row in labels):
                     return Action("click", label="ESC")
                 return Action("press", key="Escape")
+            if self.deal and "port counter" not in text.lower():
+                step = self._deal_step(fields)
+                if step is not None:
+                    return step
             listed = _quoted_unit(text)
-            offer = _counter_offer(listed, text)
+            if self.deal is not None:
+                if listed:
+                    self.deal["listed"] = str(listed)
+                elif self.deal.get("listed"):
+                    listed = _int(self.deal["listed"])
+                else:
+                    listed = _int(fields.get("unit_price"))
+                    if listed:
+                        self.deal["listed"] = str(listed)
+            offer = _counter_offer(listed, text, side=(self.deal or {}).get("side", ""))
             typed = _int(fields.get("unit_price"))
             if offer and offer != listed and offer != typed and "unit_price" in fields:
                 self.plan_note = "offer " + str(offer)
                 return Action("type", selector='[data-n="unit_price"]', text=str(offer))
+            self.deal = None
             self.plan_note = "accept the port's price"
             return Action("click", label="CONFIRM")
         if any(row.upper() == "ESC" for row in labels):
@@ -879,10 +947,16 @@ class ScriptedTrader:
             other_bid = self._known_bid(name) if name else 0
             if other and other != sector and other_bid > price and self._reachable(sector, other, turns):
                 continue
+            if (sector, "sell", _COMMODITY.get(name, "")) in self.passed_trades:
+                continue
             if best is None or price > best[0]:
                 best = (price, button, name)
         if best is None:
             return None
+        amount = self._button_qty(best[1], cargo.get(best[2], 0) if best[2] else 0)
+        opened = self._open_deal("sell", best[2], amount)
+        if opened is not None:
+            return opened
         self.pending_good = best[2]
         self.plan_note = "sell " + best[1]
         return Action("click", label=best[1])
@@ -932,7 +1006,7 @@ class ScriptedTrader:
                 # on this screen first. Leaving it empty is how the pocket was spent.
                 if (self.day_turns or 0) <= 40 or self._ask_empty(sector):
                     return None
-        best: tuple[float, str, str] | None = None
+        best: tuple[float, str, str, int] | None = None
         for row in screen.get("rows") or []:
             button = str(row.get("button") or "")
             if not button.upper().startswith("BUY"):
@@ -950,13 +1024,18 @@ class ScriptedTrader:
                 if affordable <= 0:
                     continue
                 qty = min(qty, affordable)
+            if (sector, "buy", _COMMODITY.get(name, "")) in self.passed_trades:
+                continue
             scored = self._bid_score(name, sector, ask, qty, turns)
             if scored is None:
                 continue
             if best is None or scored[0] > best[0]:
-                best = (scored[0], button, name)
+                best = (scored[0], button, name, qty)
         if best is None:
             return None
+        opened = self._open_deal("buy", best[2], best[3])
+        if opened is not None:
+            return opened
         self.pending_good = best[2]
         self.plan_note = "buy " + best[1]
         return Action("click", label=best[1])

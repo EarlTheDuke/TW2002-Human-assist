@@ -171,7 +171,24 @@ Measured on the same harness as NOTE 152: hard level, `V311_PROFILE=v311`, 40 tu
 | before | 99 | 1 | 40,592 | 6,904 | Commander 40,592, H1 38,271, H2 36,503, H3 34,406 |
 | after | 99 | 1 | 41,840 | 7,095 | Commander 41,840, H1 38,271, H2 36,503, H3 34,406 |
 
-Seed 250925 played the same clicks. Seed 4242 moved from rank 2 to rank 1. Seed 99 stayed rank 1 with a higher net worth and more credits.
+Seed 250925 played the same 80 clicks over those 5 days. Every warp it had seen cost 3 turns, so costing the lanes picked the same hop, and the port row's list-price button never opened the trade form. The 110/90 offer ran only when that form was already up. The seat now presses P for a buy or a sell, fills the side, the commodity, and the quantity, and types the chart-edge price before CONFIRM. A counter already on the form is still accepted or declined as written.
+
+The same harness was run again for 10 days on seeds 250925, 4242, 99, 7, and 12345. Before is still `9f0426ca`. Rank is harness `full_net_worth` at the day-11 roll. Every seat was alive. Seed 250925 made 21 offers and finished ahead of its 5-day tie.
+
+| | Seed | Rank | Net worth | Credits | Finish board |
+| --- | --- | --- | --- | --- | --- |
+| before | 250925 | 1 | 58,426 | 12,282 | Commander 58,426, H3 49,006, H1 48,911, H2 46,046 |
+| after | 250925 | 1 | 61,892 | 15,348 | Commander 61,892, H1 48,402, H3 46,909, H2 46,346 |
+| before | 4242 | 1 | 57,888 | 8,680 | Commander 57,888, H1 55,946, H2 49,163, H3 46,576 |
+| after | 4242 | 1 | 136,214 | 29,786 | Commander 136,214, H3 60,084, H2 57,106, H1 53,589 |
+| before | 99 | 1 | 64,704 | 14,782 | Commander 64,704, H1 51,975, H2 51,910, H3 47,465 |
+| after | 99 | 1 | 127,900 | 63,495 | Commander 127,900, H1 54,086, H2 50,373, H3 46,878 |
+| before | 7 | 1 | 51,294 | 5,690 | Commander 51,294, H3 49,575, H1 47,721, H2 46,431 |
+| after | 7 | 1 | 75,506 | 29,902 | Commander 75,506, H3 50,238, H2 47,571, H1 47,180 |
+| before | 12345 | 4 | 27,054 | 0 | H1 52,566, H2 51,077, H3 49,561, Commander 27,054 |
+| after | 12345 | 1 | 67,844 | 21,636 | Commander 67,844, H1 50,809, H3 50,155, H2 49,967 |
+
+Two hard seats in one game, seed 250925, same 10 days, with H1, H2, and H3 still at the table. Day 11: Rival rank 1, net worth 73,141, 22,876 credits; Commander rank 2, net worth 57,992, 11,448 credits. Then H3 49,047, H2 47,987, H1 46,800. Both cockpit seats were alive and both finished ahead of the code bots.
 
 Keys are read from the environment at call time. They are not written into source, the run log, `actions.jsonl`, or screenshots' text sidecars. Logs replace key values, `sk-...`, `xai-...`, bearer tokens, and `token=` query values with `[redacted]`.
 
