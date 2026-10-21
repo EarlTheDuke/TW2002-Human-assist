@@ -1379,6 +1379,12 @@ def _stardock_services(f: dict) -> str:
         + f"<p>A bounty is posted at Police HQ on an evil trader. The minimum is {_n(K.REWARD_MIN)} credits. "
         f"You gain 1 alignment per {_n(K.REWARD_ALIGN_PER)} credits posted. "
         "The killer claims it at the same desk after that trader's ship is destroyed.</p>"
+        + _gated(
+            K.bounty_good_live(),
+            f"a bounty on a good trader costs 1 alignment per {_n(K.BOUNTY_ALIGN_PER)} credits and no experience.",
+            "a good trader cannot have a bounty posted.",
+        )
+        + f"<p>{_profile('Bounty on a good trader', K.bounty_good_live(), only_v311=True)}</p>"
         + bust
         + _src("StarDock services: shipyard, tavern, underground, bank, Police HQ, commission and bounties.")
     )
@@ -1682,7 +1688,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "tavern_announce", "tavern_talk", "tavern_graffiti", "tavern_order",
         "grimy_ask", "grimy_curse", "underground_enter", "underground_contract", "underground_claim",
         "tricron", "cineplex",
-        "SHIP_RENAME_MODE", "BUST_CLEAR_MODE",
+        "SHIP_RENAME_MODE", "BUST_CLEAR_MODE", "BOUNTY_GOOD_MODE",
     ),
     "communications": (
         "hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE", "COMMS_V311_MODE",
