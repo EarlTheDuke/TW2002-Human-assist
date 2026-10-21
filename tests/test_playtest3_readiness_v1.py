@@ -14,7 +14,9 @@ import asyncio
 import datetime
 import http.client
 import ipaddress
+import json
 import ssl
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -119,7 +121,8 @@ class _Proxy(BaseHTTPRequestHandler):
         headers["X-Forwarded-Proto"] = "https"
         headers["X-Forwarded-Host"] = host
         headers["X-Forwarded-For"] = "127.0.0.1"
-        conn = http.client.HTTPConnection("127.0.0.1", self.lobby_port, timeout=120)
+        # The create POST waits out a slow worker boot. This has to outlive it.
+        conn = http.client.HTTPConnection("127.0.0.1", self.lobby_port, timeout=300)
         try:
             conn.request(self.command, self.path, body=body, headers=headers)
             resp = conn.getresponse()
@@ -208,6 +211,134 @@ def _wait_http(url: str, timeout_s: float = 30) -> None:
     raise RuntimeError(f"never answered {url}: {last}")
 
 
+def _wait_seat_links(page, timeout_s: float = 60) -> None:
+    """The created page has the links, or it is the boot-failure page.
+
+    Waiting out a selector timeout hid that page. The create click already
+    waited for the worker, so this only covers the HTML arriving.
+    """
+    deadline = time.time() + timeout_s
+    last = ""
+    while time.time() < deadline:
+        if page.locator("[data-testid=seat-link]").count():
+            return
+        try:
+            last = " ".join(page.locator("body").inner_text(timeout=1_000).split())
+        except Exception as exc:
+            last = str(exc)
+        if "could not start" in last.lower():
+            raise AssertionError("the game did not start: " + last[:500])
+        time.sleep(0.25)
+    raise AssertionError("seat links never appeared: " + last[:500])
+
+
+def _tail(path: Path, n: int = 40) -> str:
+    if not path.is_file():
+        return ""
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    return "\n".join(lines[-n:])
+
+
+def _latest_gid(lobby) -> str | None:
+    try:
+        games = lobby.store.games()
+    except Exception:
+        return None
+    if not games:
+        return None
+    return str(games[-1].get("id") or "") or None
+
+
+def _seat_logs(lobby, gid: str | None) -> str:
+    if not gid:
+        return "no game id"
+    root = lobby.workers.game_dir(gid) / "ai-cockpit"
+    if not root.is_dir():
+        return "no ai-cockpit directory"
+    paths = sorted(root.glob("player.log")) + sorted(root.glob("*/player.log"))
+    paths += sorted(root.glob("player.err")) + sorted(root.glob("*/player.err"))
+    if not paths:
+        return "no player.log or player.err"
+    chunks = []
+    for path in paths:
+        body = _tail(path) or "(empty)"
+        chunks.append(f"--- {path.relative_to(root)} ---\n{body}")
+    return "\n".join(chunks)
+
+
+def _scheduler_state(lobby, gid: str | None) -> str:
+    if not gid:
+        return "no game id"
+    procs = []
+    try:
+        rows = lobby._cockpit_entries(gid)
+    except Exception:
+        rows = []
+    for row in rows:
+        proc = row.get("proc")
+        exit_code = None if proc is None else proc.poll()
+        procs.append(f"{row.get('seat')} pid={getattr(proc, 'pid', None)} exit={exit_code}")
+    cockpit = "cockpit=[" + "; ".join(procs) + "]"
+    worker = lobby.workers.workers.get(gid)
+    if worker is None:
+        return cockpit + " worker=missing"
+    import httpx
+
+    try:
+        data = httpx.get(
+            f"http://127.0.0.1:{worker.port}/state",
+            headers=admin_headers(lobby.secrets.lobby_secret(gid), lobby.secrets.spectator_token(gid)),
+            timeout=5,
+        ).json()
+    except Exception as exc:
+        return f"{cockpit} state unread ({exc.__class__.__name__}: {exc})"
+    seats = []
+    for row in data.get("players") or []:
+        seats.append(
+            f"{row.get('id')}:{row.get('kind')} alive={row.get('alive')} "
+            f"sector={row.get('sector_id')} turns={row.get('turns_today')}/{row.get('turns_per_day')}"
+        )
+    return (
+        f"status={data.get('status')} day={data.get('day')} finished={data.get('finished')} "
+        f"turn_wait={json.dumps(data.get('turn_wait'), default=str)} "
+        f"seats=[{'; '.join(seats)}] {cockpit}"
+    )
+
+
+def _worker_log(lobby, gid: str | None) -> str:
+    logs = lobby.cfg.logs_dir
+    if gid:
+        path = logs / f"game-{gid}.log"
+        if path.is_file():
+            return f"--- game-{gid}.log ---\n{_tail(path)}"
+    found = sorted(logs.glob("game-*.log")) if logs.is_dir() else []
+    if not found:
+        return "no worker log"
+    path = found[-1]
+    return f"--- {path.name} ---\n{_tail(path)}"
+
+
+def _failure_report(lobby, gid: str | None, exc: BaseException, notes: dict | None = None) -> str:
+    """What the merge runner dropped: seat logs, player.err, scheduler state."""
+    parts = [
+        "PLAYTEST FAILURE",
+        f"{type(exc).__name__}: {exc}",
+        "scheduler: " + _scheduler_state(lobby, gid),
+        "seat logs:",
+        _seat_logs(lobby, gid),
+        "worker:",
+        _worker_log(lobby, gid),
+    ]
+    progress = _tail(SHOTS / "progress.txt", 20)
+    if progress:
+        parts.append("progress:\n" + progress)
+    if notes:
+        shown = {key: value for key, value in notes.items() if key != "links"}
+        if shown:
+            parts.append("notes: " + json.dumps(shown, default=str)[:1500])
+    return "\n".join(parts)
+
+
 def test_two_humans_play_two_days_through_the_proxy(monkeypatch, tmp_path) -> None:
     """Creator, two token links, two days, then the creator ends the game."""
     sync = pytest.importorskip("playwright.sync_api").sync_playwright
@@ -236,7 +367,9 @@ def test_two_humans_play_two_days_through_the_proxy(monkeypatch, tmp_path) -> No
         root=tmp_path / "lobby",
         idle_s=3600,
         tick_s=30,
-        boot_timeout_s=90,
+        # An idle VM boots in a few seconds. The loaded Windows merge box
+        # spent the old 90s cap inside the create POST, and the click gave up.
+        boot_timeout_s=240,
         max_games=1,
     )
     app = create_lobby_app(cfg, port_probe=lambda _p: True)
@@ -258,7 +391,20 @@ def test_two_humans_play_two_days_through_the_proxy(monkeypatch, tmp_path) -> No
         origin = f"https://127.0.0.1:{proxy_port}"
         _wait_http(origin + "/healthz")
         SHOTS.mkdir(parents=True, exist_ok=True)
-        _drive(sync, origin, app.state.lobby, notes)
+        played: dict[str, str | None] = {"gid": None}
+        try:
+            _drive(sync, origin, app.state.lobby, notes, played)
+        except Exception as exc:
+            try:
+                gid = played.get("gid") or _latest_gid(app.state.lobby)
+                report = _failure_report(app.state.lobby, gid, exc, notes)
+            except Exception as report_exc:
+                report = (
+                    f"PLAYTEST FAILURE\n{type(exc).__name__}: {exc}\n"
+                    f"report failed: {type(report_exc).__name__}: {report_exc}"
+                )
+            print(report, file=sys.stderr, flush=True)
+            raise AssertionError(report) from exc
     finally:
         if proxy is not None:
             proxy.shutdown()
@@ -270,7 +416,7 @@ def test_two_humans_play_two_days_through_the_proxy(monkeypatch, tmp_path) -> No
     (SHOTS / "notes.txt").write_text("\n".join(f"{k}: {v}" for k, v in notes.items()) + "\n", encoding="utf-8")
 
 
-def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
+def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, str | None]) -> None:
     with sync() as pw:
         browser = pw.chromium.launch()
         try:
@@ -301,8 +447,10 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
             home.select_option("#ai_cockpit_provider", "scripted")
             home.select_option("#game_length", "full")
             home.screenshot(path=str(SHOTS / "02-new-game.png"))
-            home.get_by_role("button", name="Create game").click()
-            home.wait_for_selector("[data-testid=seat-link]", timeout=90_000)
+            # The form POST does not return until the worker is healthy.
+            # Playwright's 30s click cap fired while that boot was still going.
+            home.get_by_role("button", name="Create game").click(timeout=300_000)
+            _wait_seat_links(home)
             home.screenshot(path=str(SHOTS / "03-created-links.png"))
             links = {
                 row.get_attribute("data-seat"): row.inner_text().strip()
@@ -318,6 +466,7 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
             assert "Full-length" in created
             assert "AI cockpit" in created
             gid = links["P1"].split("/g/")[1].split("/")[0]
+            played["gid"] = gid
 
             p1 = creator.new_page()
             p1.goto(links["P1"], wait_until="domcontentloaded")
@@ -340,7 +489,11 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
             pages = {"P1": p1, "P2": p2}
             (SHOTS / "progress.txt").write_text("", encoding="utf-8")
             _wait_ai(lobby, gid)
-            deadline = time.time() + 540
+            # A healthy run on this VM finishes the whole test in about two
+            # minutes. The old 540s cap was the loaded Windows run that never
+            # left day 1, because the seat-open check had matched the failure
+            # line and the scheduler was still on that seat.
+            deadline = time.time() + 720
             last_ai = 0.0
             while time.time() < deadline and not all(_day_done(row) for row in goals.values()):
                 moved = False
@@ -382,7 +535,7 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
             p1.bring_to_front()
             p1.keyboard.press("Escape")
             opened = False
-            deadline = time.time() + 20
+            deadline = time.time() + 45
             while time.time() < deadline:
                 if p1.locator("#dangerOk").count() and p1.locator("#dangerOk").is_visible():
                     opened = True
@@ -401,6 +554,12 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str]) -> None:
             assert "Ended by the game's creator" in p2.locator("[data-game-over=panel]").inner_text()
             p1.screenshot(path=str(SHOTS / "14-game-over.png"))
             notes["end"] = over
+        except Exception:
+            try:
+                notes["page"] = " ".join(home.locator("body").inner_text(timeout=2_000).split())[:800]
+            except Exception:
+                pass
+            raise
         finally:
             browser.close()
 
@@ -483,16 +642,86 @@ def _ai_tail(lobby, gid: str) -> str:
     return _ai_text(lobby, gid)
 
 
-def _wait_ai(lobby, gid: str, timeout_s: float = 120) -> None:
+def _seat_page_is_open(text: str) -> bool:
+    """The success line is 'seat page is open'.
+
+    'the seat page did not open' contains the older phrase 'seat page open'.
+    Matching that phrase marked a dead seat ready, and day 1 then ran until
+    the cap while the scheduler stayed on it.
+    """
+    return any(line.strip().startswith("seat page is open") for line in text.splitlines())
+
+
+def test_a_failed_open_is_not_a_ready_seat(tmp_path) -> None:
+    """The failure sentence must not count, and a failure still prints the logs."""
+    assert not _seat_page_is_open("the seat page did not open: TimeoutError")
+    assert not _seat_page_is_open("P3/player.log: the seat page did not open: TimeoutError")
+    assert _seat_page_is_open("seat page is open http://127.0.0.1/bot?seat=P3")
+    assert _seat_page_is_open(
+        "the seat page did not open: Error\nseat page is open http://127.0.0.1/bot\n"
+    )
+    root = tmp_path / "games" / "ab" / "ai-cockpit" / "P3"
+    root.mkdir(parents=True)
+    (root / "player.log").write_text("the seat page did not open: TimeoutError\n", encoding="utf-8")
+    (root / "player.err").write_text("browser closed\n", encoding="utf-8")
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "game-ab.log").write_text("worker boot\n", encoding="utf-8")
+
+    class Proc:
+        pid = 9
+
+        def poll(self):
+            return 1
+
+    class Workers:
+        workers: dict = {}
+
+        def game_dir(self, gid):
+            return tmp_path / "games" / gid
+
+    class Lobby:
+        workers = Workers()
+        cfg = type("C", (), {"logs_dir": logs})()
+
+        def _cockpit_entries(self, gid):
+            return [{"seat": "P3", "proc": Proc()}]
+
+    report = _failure_report(Lobby(), "ab", AssertionError("day 1 did not finish"))
+    assert "PLAYTEST FAILURE" in report
+    assert "player.err" in report
+    assert "browser closed" in report
+    assert "the seat page did not open" in report
+    assert "exit=1" in report
+    assert "worker boot" in report
+    assert "turn_wait" not in report
+    assert "worker=missing" in report
+
+
+def _seat_log_text(lobby, gid: str) -> str:
+    root = lobby.workers.game_dir(gid) / "ai-cockpit"
+    if not root.is_dir():
+        return ""
+    parts: list[str] = []
+    direct = root / "player.log"
+    paths = ([direct] if direct.is_file() else []) + sorted(root.glob("*/player.log"))
+    for path in paths:
+        parts.append(path.read_text(encoding="utf-8", errors="replace"))
+    return "\n".join(parts)
+
+
+def _wait_ai(lobby, gid: str, timeout_s: float = 360) -> None:
     """Block until the cockpit seat has the page open.
 
     Day 1 used to start while this process was still launching. The scheduler
     holds that seat until the first client connects, so P2 never finished.
+    The open budget is one slow Chromium launch on the loaded Windows box,
+    not the few seconds this VM needs.
     """
     deadline = time.time() + timeout_s
     while time.time() < deadline:
-        text = _ai_text(lobby, gid)
-        if "seat page open" in text:
+        text = _seat_log_text(lobby, gid)
+        if _seat_page_is_open(text):
             _progress(f"ai ready {text[-400:]}")
             return
         time.sleep(0.5)
@@ -506,7 +735,7 @@ def _result(page) -> str:
         return ""
 
 
-def _settle(page, before: str, timeout_s: float = 12) -> str:
+def _settle(page, before: str, timeout_s: float = 25) -> str:
     """Wait until the last line changes or the turn is no longer ours."""
     deadline = time.time() + timeout_s
     while time.time() < deadline:
@@ -531,7 +760,7 @@ def _wait_cockpit(page) -> None:
           const turns = document.querySelector('[data-testid=turns-left-today]');
           return credits && credits.textContent && credits.textContent !== '-' && turns && turns.textContent;
         }""",
-        timeout=40_000,
+        timeout=90_000,
     )
     info = page.evaluate(
         """() => {
@@ -597,7 +826,7 @@ def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[st
             try:
                 page.wait_for_function(
                     f"""() => Number(document.querySelector('#warpClip').getAttribute('data-plays') || 0) > {before_plays}""",
-                    timeout=8_000,
+                    timeout=20_000,
                 )
             except Exception:
                 page.wait_for_timeout(1200)
@@ -690,7 +919,7 @@ def _engage(page, sector: int) -> bool:
     before = _result(page)
     if page.locator("[data-testid=engage]").count():
         _js_click(page, "[data-testid=engage]")
-        outcome = _settle(page, before, 20)
+        outcome = _settle(page, before, 40)
         _progress(f"engage {sector} -> sector={_sector(page)} result={outcome[:140]!r}")
         return "refused" not in outcome.lower()
     page.keyboard.press("c")
@@ -710,7 +939,7 @@ def _engage(page, sector: int) -> bool:
         _progress(f"engage {sector} no button result={_result(page)[:140]!r}")
         return False
     _js_click(page, "[data-testid=engage]")
-    outcome = _settle(page, before, 20)
+    outcome = _settle(page, before, 40)
     _progress(f"engage {sector} -> sector={_sector(page)} result={outcome[:140]!r}")
     return "refused" not in outcome.lower()
 
@@ -881,7 +1110,7 @@ def _wait_day(page, day: str) -> None:
               return !!el && (el.textContent || '').trim() === day;
             }""",
             arg=day,
-            timeout=40_000,
+            timeout=90_000,
         )
     except Exception:
         got = ""
@@ -900,7 +1129,7 @@ def _day2_move(pages: dict, notes: dict[str, str]) -> None:
     at once, and a seat that has not moves on the turn it is offered.
     """
     pending = set(pages)
-    deadline = time.time() + 180
+    deadline = time.time() + 300
     while pending and time.time() < deadline:
         acted = False
         for seat, page in pages.items():
@@ -918,7 +1147,7 @@ def _day2_move(pages: dict, notes: dict[str, str]) -> None:
                 _js_click(page, "#warps button")
             else:
                 page.keyboard.press(".")
-            outcome = _settle(page, before, 15)
+            outcome = _settle(page, before, 30)
             landed = outcome != before or _chip(page) != "YOUR MOVE"
             if seat in pending and landed:
                 pending.discard(seat)
