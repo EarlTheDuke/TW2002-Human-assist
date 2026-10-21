@@ -919,6 +919,13 @@ def test_hard_plots_a_course_when_stardock_was_never_linked() -> None:
     asking["labels"] = ["ENTER", "C Computer"]
     entered = trader.decide(_view(asking))
     assert entered.label == "ENTER"
+    nav_ask = dict(menu, menuText="Sector number, or a NavPoint name? ENTER Esc to close", sectorAsk="")
+    nav_named = trader.decide(_view(nav_ask))
+    assert nav_named.op == "type" and nav_named.selector == "#sectorAsk" and nav_named.text == "1"
+    nav_ask["sectorAsk"] = "1"
+    nav_ask["labels"] = ["ENTER", "C Computer"]
+    nav_go = trader.decide(_view(nav_ask))
+    assert nav_go.label == "ENTER"
     course = dict(base)
     course["course"] = "Course to 1: 35 > 9 > 1. 2 hops, 6 turns."
     course["warps"] = ["1:9 (3t) one-way"]

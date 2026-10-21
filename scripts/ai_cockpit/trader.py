@@ -578,7 +578,7 @@ class ScriptedTrader:
             self.plan_note = "end the day" if turns >= 3 else "spend the last turns"
             return Action("click", label="CONFIRM")
         # A course plot is a menu the seat opened on purpose. Leave it up.
-        if self.plot_to and self._plot_menu(text):
+        if self._plot_menu(text) and (self.plot_to or self._course_prompt(text)):
             return None
         self.plan_note = "close the dialog"
         return Action("press", key="Escape")
@@ -1832,9 +1832,14 @@ class ScriptedTrader:
             if dest and dest != sector and dest not in self.banned_plots:
                 self.plot_to = dest
 
+    def _course_prompt(self, text: str) -> bool:
+        """The plotter asks for a sector. With NavPoints on, it also accepts a name."""
+        low = text.lower()
+        return "destination sector" in low or "navpoint name" in low
+
     def _plot_menu(self, text: str) -> bool:
         low = text.lower()
-        return "computer command" in low or "course plotter" in low or "destination sector" in low
+        return "computer command" in low or "course plotter" in low or self._course_prompt(text)
 
     def _plot_blocks(self, screen: dict) -> bool:
         if not self.plot_to:
@@ -1911,7 +1916,7 @@ class ScriptedTrader:
                 self.plan_note = "clear the other course"
                 return Action("click", label=cancel)
         menu = str(screen.get("menuText") or "")
-        if "destination sector" in menu.lower():
+        if self._course_prompt(menu):
             typed = str(screen.get("sectorAsk") or "").strip()
             if typed != str(target):
                 self.plan_note = "name the destination"
