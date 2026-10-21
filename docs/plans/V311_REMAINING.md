@@ -1,20 +1,21 @@
-# V311 remaining gaps (NOTE 162)
+# V311 remaining gaps (NOTE 164)
 
-NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. Each row is listed once.
+NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. NOTE 164 adds four switches. Two of those switches sit on rows NOTE 163 already graded, and those rows are counted once. Each row is listed once.
 
-The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. NavPoints stay on #89, at row 181. The new switches on this branch are profile rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163.
+The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203.
 
-**150 of 171 rows match the original rule (87.7%).** That count is Match 69 plus Match-behind-flag 81. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 69 of 171 (40.4%). The other rows are Partial 15, Different 4, Missing 0, and Ben-decision 2. Nineteen rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
+**152 of 171 rows match the original rule (88.9%).** That count is Match 69 plus Match-behind-flag 83. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 69 of 171 (40.4%). The other rows are Partial 13, Different 4, Missing 0, and Ben-decision 2. Seventeen rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
 
-`docs/plans/V311_SOURCE_CONFLICTS.md` is not on this tip. Queued #83, #87, and #88 each add their own copy. A ruling row below names the NOTE section that copy will contain.
+NOTE 163's 129 already includes 6.11 and 13.4. NOTE 164 adds the grades for 8.1 and 12.6 only. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on 6.11 and 13.4, not a second grade.
 
+`docs/plans/V311_SOURCE_CONFLICTS.md` is on this tip. NOTE 164 updates the Ferrengi odds row and the times-blown row there.
 ## Matched in NOTE 163
 
 - **6.7 Genesis class.** Match. The launch rolls a class when the torpedo commits, and a requested class is ignored. `PLANET_CLASS_MODE` stays off the profile because it would roll only M and U. The crowding note prints no weights.
-- **6.11 Corp planet quirks.** Match-behind-flag. `CORP_PLANET_DISBAND_MODE` and `SPECIAL_HULL_RULES_MODE` are the two printed quirks. No further quirk is named.
+- **6.11 Corp planet quirks.** Match-behind-flag, counted once. `CORP_PLANET_DISBAND_MODE` and `SPECIAL_HULL_RULES_MODE` are the planet split and the Tholian 4:1. `CORP_SHIP_DISBAND_MODE` (NOTE 164, row 201) is the ship sentence in the same v3.06 revision. It does not add a second grade.
 - **9.2 Ways to gain experience.** Match. Trade, the first dock, midnight, genesis, a port destroy, and the kill share are the stored awards. An alien's own experience is not printed.
 - **9.5 Other alignment sources.** Match-behind-flag. `BOUNTY_GOOD_MODE` row 187. A bounty on a good trader costs 1 alignment per 250 credits and no experience. The other named sources were already in.
-- **13.4 Fighter and combat reports.** Match-behind-flag. `OWNER_HAZARD_NOTICE_MODE` and `SIEGE_REPORT_MODE`. The Bible does not print a further report set.
+- **13.4 Fighter and combat reports.** Match-behind-flag, counted once. `OWNER_HAZARD_NOTICE_MODE` and `SIEGE_REPORT_MODE` tell the owner about a landing, a fighter hit, a mine, and a siege. `FIGHTER_REPORT_MODE` (NOTE 164, row 203) is a separate list of sectors where that trader owns fighters, omitting a count of 0. It is not an observation field, and it does not add a second grade.
 
 ## Built in NOTE 162
 
@@ -24,7 +25,7 @@ Five switches, each defaulting to legacy. `V311_PROFILE=v311` turns the helper o
 - **10.6 Transfers between members.** Match-behind-flag. `CORP_CARGO_TREASURY_MODE` row 183. Cargo holds move between members, and the corporation treasury takes deposits.
 - **11.7 Underground.** Match-behind-flag. `UG_NAME_MODE` row 184. A total unknown buys a new name for 100 credits. A higher experience has no printed price, so it is refused.
 - **11.9 Fed attack on evil players.** Match-behind-flag. `FED_HUNT_MODE` row 185. An evil ship that meets a Federal is destroyed. A sector with no Federal is left alone.
-- **14.1 Computer menu helpers.** Match-behind-flag. `CIM_MODE` row 186. CIM lists explored sectors and ports, hides a port behind hostile fighters, and plots a path. NavPoints stay on queued NOTE 159.
+- **14.1 Computer menu helpers.** Match-behind-flag. `CIM_MODE` row 186. CIM lists explored sectors and ports, hides a port behind hostile fighters, and plots a path. NavPoints are `NAVPOINT_MODE` row 181.
 
 ## Already the stored game
 
@@ -48,12 +49,10 @@ Two sources disagree, or the difference is a choice Ben already made and has not
 - **5.14 Exp and alignment on death.** Partial. A pod drops experience. Self-destruct alignment is the open half: the wiki and the MBBS manuals do not say the same thing (`docs/playtests/combat/DEATH_ESCAPE_PODS.md`, d13). This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
 - **5.20 Combat in FedSpace.** Partial. Penalties exist. They are not the full police response, and that script is thin. The fighter ceiling is `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Fedsafe fighter ceiling" (50 or less, or no ceiling). `FEDSAFE_FIGHTER_CAP_MODE` uses 50 when it is on. Source conflict. Medium.
 - **6.2 Class-table citadel costs.** Partial. The class goods are on, and build days are `CITADEL_DAYS_MODE`. The class M level-1 colonist figure is Ben's NOTE 19 choice, the same hold as row 6.3. Deliberate choice by Ben. Small.
-- **8.1 Ferrengi odds.** Partial. The one-volley attack is `FERRENGI_ATTACK_MODE` (NOTE 148) and stays off. The odds stay 1.0 / 1.2 / 1.4. `V311_SOURCE_CONFLICTS.md`, NOTE 148, "Ferrengi combat odds" (FERRSPEC, or the Bible chart). Source conflict. Small.
 - **9.8 Rob and steal caps.** Partial. A rob pays from experience. The stored factors are the MBBS pair, 6 and 21. The classic pair has no switch. `V311_SOURCE_CONFLICTS.md`, NOTE 150, "Rob and steal caps". Source conflict. Small.
 - **10.1 Create a corporation.** Partial. Filing a charter is in. `CFS_CEO_RULE` is still `purchase` or `use`. This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
 - **11.11 Big Bang options.** Partial. Density, the one-way share, and the 30 percent extra two-way lanes (NOTE 157, queued #87) are switches. Bubbles are `UNIVERSE_TOPOLOGY_MODE`, and the profile leaves them off because code bots trap in dead ends. Gold options stay off as a Gold add-on. Deliberate choice by Ben. Medium.
 - **12.3 Real-time movement.** Different. Ships still move by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` stays off because the original produces at Extern. The October map marked this deliberate. Deliberate choice by Ben. Large.
-- **12.6 Tournament mode.** Partial. The v3.11 sample prints tournament mode off and unlimited times blown up. `V311_SOURCE_CONFLICTS.md`, NOTE 158, "Times blown up" (unlimited, or a later lockout). `DEATH_DELAY_MODE` stays the timeout. Source conflict. Small.
 - **14.6 Ours-only systems.** Different. Alliances, the planet dividend, the credit win, and the day cap are still in this game. The profile leaves alliances out because they are not in the original. This map does not delete them. Deliberate choice by Ben. Large.
 
 ## Can't verify without the real game
@@ -65,6 +64,15 @@ A number was not printed, or the gap line no longer names the missing piece. Gue
 - **5.7 Ship versus ship.** Different. The exchange is still not the original. CMB-c is `docs/plans/ship-odds-exchange-v1.md` only. The attacker picking fighters is printed. The exchange formula is not. No printed number. Large.
 - **6.10 Planet killer.** Partial. The blow is −1 alignment and +50 experience, which is the current choice in `V311_SOURCE_CONFLICTS.md`, NOTE 143, "Destroying a planet". Killing a trader on the planet is `PLANET_ZDY_MODE`. Colonist-kill alignment is an ellipsis, and a citadel's extra blow experience is not printed. No printed number. Small.
 - **12.4 Nightly Extern.** Partial. The jobs named on the every-row line are in, or they are behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` (NOTE 151, queued #83) deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). The map says a job past that list has no name. No printed number. Medium.
+
+## NOTE 164 matched
+
+Profile rows 200-203. Each switch stays legacy until `V311_PROFILE` is `v311`. `"1"` does not turn one on.
+
+- **8.1 Ferrengi odds.** Match-behind-flag. This is a new grade. `FERRENGI_ODDS_MODE` row 200. Off, odds stay 1.0 / 1.2 / 1.4 and an Assault Trader sends 1,000 with no scanner room. On, the Bible chart is 1.2 / 1.4 / 1.4, that volley is 2,000, and the hull can carry a holo scanner. `FERRENGI_ATTACK_MODE` still uses the FERRSPEC 1,000 while the odds switch is off. Source: `S3_tw2002_bible_v1.htm` and the v3.05 scanner line.
+- **6.11 Corp ships on disband.** Not a new grade. `CORP_SHIP_DISBAND_MODE` row 201. Off, every parked corporate hull becomes defunct. On, a parked hull in the living C.E.O.'s sector becomes that C.E.O.'s, ships outside stay defunct, and a dead C.E.O. takes nothing. Planets stay `CORP_PLANET_DISBAND_MODE`. The Tholian 4:1 stays `SPECIAL_HULL_RULES_MODE`. The ship the C.E.O. is flying is unchanged until they leave it. Source: v3.06 revision, ships in the C.E.O.'s sector.
+- **12.6 Times blown up.** Match-behind-flag. This is a new grade. `TIMES_BLOWN_MODE` row 202. Off, the legacy destroy line stays `death #N/3`. On, and only when elimination is off, that line says unlimited and does not print `/3`. No lockout was added. `DEATH_MODE` and `DEATH_DELAY_MODE` stay as they are. Source: cabal `twgs.html`, Tournament Mode Off and Maximum times blown up Unlimited.
+- **13.4 Fighter report.** Not a new grade. `FIGHTER_REPORT_MODE` row 203. Off, `fighter_report` returns nothing. On, it lists sectors where that trader owns fighters and omits a count of 0. Owner notices stay `OWNER_HAZARD_NOTICE_MODE`. Siege losses stay `SIEGE_REPORT_MODE`. The list is not an observation field. Source: the revision that stopped the fighter report from showing sectors with 0 fighters.
 
 ## Grades moved in NOTE 162
 
