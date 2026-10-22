@@ -339,7 +339,8 @@ def test_day_one_known_pair_buys_then_sells() -> None:
         "labels": ["BUY 20", "1:20 (3t)"],
         "warps": ["1:20 (3t)"],
     }))
-    assert bought.op == "click" and bought.label == "BUY 20"
+    # v3.11 trades go through the trade form (14c64e1): P opens it with the deal set.
+    assert bought.key == "P" and trader.deal == {"side": "buy", "commodity": "organics", "qty": "20"}
     sold = trader.decide(_view({
         "sector": "20", "day": "1", "turns": "236", "credits": "99,760 cr", "chip": "YOUR MOVE",
         "maxDay": "3",
@@ -354,7 +355,7 @@ def test_day_one_known_pair_buys_then_sells() -> None:
         "labels": ["SELL 20", "1:12 (3t)"],
         "warps": ["1:12 (3t)"],
     }))
-    assert sold.op == "click" and sold.label == "SELL 20"
+    assert sold.key == "P" and trader.deal == {"side": "sell", "commodity": "organics", "qty": "20"}
 
 
 def test_the_scripted_trader_pairs_ports_haggles_and_avoids_danger() -> None:
