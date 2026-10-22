@@ -617,21 +617,48 @@ def play(
     mock_script: str = "",
     level: str = "hard",
 ) -> int:
-    """Play until the seat is done. Returns 0 on a clean stop."""
-    install_process_cleanup()
+    """Play until the seat is done. Returns 0 on a clean stop.
+
+    modules.txt is written on every way out: a clean stop, a failure, an
+    exception, or SystemExit from the stop signal.
+    """
+    global _STOP_FILE
+    _STOP_FILE = stop_file
     run_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        return _play(
+            url=url, provider_name=provider_name, run_dir=run_dir, max_turns=max_turns,
+            min_interval=min_interval, stop_file=stop_file, headless=headless, model=model,
+            mock_script=mock_script, level=level,
+        )
+    finally:
+        _write_modules(run_dir)
+
+
+def _play(
+    *,
+    url: str,
+    provider_name: str,
+    run_dir: Path,
+    max_turns: int,
+    min_interval: float,
+    stop_file: Path | None,
+    headless: bool,
+    model: str,
+    mock_script: str,
+    level: str,
+) -> int:
+    install_process_cleanup()
     log_path = run_dir / "player.log"
     actions_path = run_dir / "actions.jsonl"
     if stop_file is not None and stop_file.is_file():
         _write_log(log_path, "stop file present before the browser opened")
-        _write_modules(run_dir)
         return 0
 
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         _write_log(log_path, "Playwright is not installed")
-        _write_modules(run_dir)
         return 1
 
     _write_log(log_path, "process started")
@@ -648,7 +675,9 @@ def play(
         with sync_playwright() as playwright:
             browser, page = _open_when_ready(playwright, url, log_path, headless)
             if browser is None or page is None:
-                _write_modules(run_dir)
+                if _stop_requested():
+                    _write_log(log_path, "stop file while the seat page was opening")
+                    return 0
                 return 1
             try:
                 # "seat page is open" must not be a substring of the failure
@@ -744,7 +773,6 @@ def play(
                 browser.close()
     finally:
         kill_own_children()
-    _write_modules(run_dir)
     return code
 
 
@@ -776,6 +804,8 @@ def _open_when_ready(playwright, url: str, log_path: Path, headless: bool, timeo
     """
     deadline = time.monotonic() + timeout_s
     while True:
+        if _stop_requested():
+            return None, None
         browser = None
         try:
             browser = playwright.chromium.launch(headless=headless)
@@ -790,7 +820,7 @@ def _open_when_ready(playwright, url: str, log_path: Path, headless: bool, timeo
                 browser.close()
             except Exception:
                 pass
-        if time.monotonic() >= deadline:
+        if time.monotonic() >= deadline or _stop_requested():
             return None, None
         time.sleep(1)
 
@@ -853,16 +883,24 @@ def _wait_chip(page) -> None:
 
 
 def _wait_until(page, chips: tuple[str, ...], timeout: int) -> None:
-    wanted = json.dumps(list(chips))
-    try:
-        page.wait_for_function(
-            "(names) => { const c = document.querySelector('#waitchip'); "
-            "const t = c ? c.textContent : ''; return names.indexOf(t) >= 0; }",
-            arg=json.loads(wanted),
-            timeout=timeout,
-        )
-    except Exception:
-        return
+    """Wait for one of `chips`, in one-second slices so a stop file ends the wait."""
+    names = list(chips)
+    deadline = time.monotonic() + timeout / 1000.0
+    while True:
+        left = deadline - time.monotonic()
+        if left <= 0 or _stop_requested():
+            return
+        try:
+            page.wait_for_function(
+                "(names) => { const c = document.querySelector('#waitchip'); "
+                "const t = c ? c.textContent : ''; return names.indexOf(t) >= 0; }",
+                arg=names,
+                timeout=max(1, int(min(1.0, left) * 1000)),
+            )
+            return
+        except Exception as exc:
+            if "Timeout" not in exc.__class__.__name__:
+                return
 
 
 def _screen(page) -> dict:
@@ -1024,6 +1062,16 @@ def _write_log(path: Path, line: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(redact(line) + "\n")
+
+
+_STOP_FILE: Path | None = None
+
+
+def _stop_requested() -> bool:
+    try:
+        return _STOP_FILE is not None and _STOP_FILE.is_file()
+    except OSError:
+        return False
 
 
 def _write_modules(run_dir: Path) -> None:
