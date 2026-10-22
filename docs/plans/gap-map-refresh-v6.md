@@ -12,14 +12,15 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 |---|---|---|
 | Match | 50 | 72 |
 | Match-behind-flag | 17 | 85 |
-| Partial | 53 | 8 |
-| Different | 38 | 4 |
+| Partial | 53 | 10 |
+| Different | 38 | 2 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
 
 NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186 and moves 21 more rows. 14.1 is Match-behind-flag through `CIM_MODE` row 186. NOTE 164 moves 8.1 and 12.6 from Partial to Match-behind-flag. The ship switch and the fighter-report switch sit on 6.11 and 13.4 and do not grade those rows again.
 NOTE 177 moved five more Partial rows. 5.14, 5.20, and 9.8 were already the original and are Match. 6.10 (`PLANET_BLOW_ALIGN_MODE` row 214) and 10.1 (`CFS_CEO_USE_MODE` row 213) are Match-behind-flag after the rulings in `V311_SOURCE_CONFLICTS.md`. 8.1 is counted once, under NOTE 164's `FERRENGI_ODDS_MODE`.
+NOTE 178 moved two Different rows to Partial. 5.7: the tw2002 exchange already in the code is the S4/S6 Safety Rating model (chosen count, per-attack cap, hull odds, shields first, flee); only the exact loss split is unprinted. 14.6: the instant credits win is off under `ECON_WIN_MODE` row 215; alliances and play_to_day_cap stay. 11.11 stays Partial: bubbles are Gold-only (S1). 12.3 (real-time movement) stays Different: the game is turn-based by design and no speed table is printed. 12.4 stays Partial: every nightly job the sources name (MSL sweep and level-2 cap, tows, cloak fails, corp penalty, colonist trim, break-in alignment) is already in `tick_day`; no further job is printed. 2.5 is an economy call, not a source call.
 
 ## What moved
 
@@ -102,12 +103,12 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | Rank | Row | Grade | Size | Why it still shows | Files | NOTE 104 |
 |---|---|---|---|---|---|---|
 | 1 | 2.5 | Different | L | Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002 | `economy.port_sell_price`, `economy.port_buy_price` | economy.py |
-| 2 | 5.7 | Different | L | Ship versus ship is still not the original exchange. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
+| 2 | 5.7 | Partial | L | NOTE 178: the Safety Rating model is coded; the exact loss split is unprinted. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
 | 11 | 1.15 | Partial | S | A tow fires at 99 fighters (`FED_TOW_FIGHTER_LIMIT` 98). The Bible line is 50. No switch | `fed.run_tows` | constants.py |
 | 23 | 11.11 | Partial | S | Density, one-way share, and the 30 percent two-way lanes are flagged (rows 87, 88, and 178). Bubbles, the course-length generator, and the Gold options are not | `universe.generate_universe` | universe.py |
-| 35 | 14.6 | Different | L | Systems that were never in the original are still in this game. This map does not delete them | several | |
+| 35 | 14.6 | Partial | L | NOTE 178: no instant credits win under `ECON_WIN_MODE` row 215. Alliances and play_to_day_cap stay | several | |
 
 Rows that are Partial only because a named switch stays off are Match-behind-flag above, not in this list. `12.4` stays here for the jobs that still have no name.
 
@@ -232,7 +233,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 5.4 Match-behind-flag `OFFENSIVE_CLASH_MODE` row 7. The 1.25 wave cap is coded and off. `combat.offensive_wave_size`.
 5.5 Match. Defensive fighters challenge an entering ship. `combat.open_challenge`.
 5.6 Match. The toll is 5 credits per fighter, paid to pass, and collected by picking the fighters up in that sector. `constants.SECTOR_TOLL_CREDITS_PER_FIGHTER`, `runner._handle_pay_toll`, `runner._handle_recall_deployed`.
-5.7 Different. Ship versus ship still does not match the original exchange. `combat._resolve_ship_attack_tw2002`. No switch. CMB-c is docs only.
+5.7 Partial. The tw2002 exchange is the S4/S6 Safety Rating model. The exact loss split is not printed. `combat._resolve_ship_attack_tw2002`. No switch. CMB-c is docs only.
 5.8 Match. A ship can send only its charted fighters in one attack. `combat.attack_cap`.
 5.9 Match. Retreat is a verb and a flee spends extra turns. The published 1.25 line is `SHIP_FLEE_MODE` row 56. `combat._flee`.
 5.10 Match-behind-flag `SPECIAL_HULL_RULES_MODE` row 105, NOTE 86. An Interdictor holds other ships, and a Tholian defending its corp planet fights at 4:1. Both need the roster switch. `combat.hull_interdict_reason`.
@@ -302,7 +303,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 11.8 Match. The tavern is on. `TAVERN_MODE` is tw2002. `constants.tavern_on`.
 11.9 Match-behind-flag `FED_HUNT_MODE` row 185, NOTE 162. Feds tow, and they answer some crimes. An evil ship that meets a Federal is destroyed when the switch is on. A sector with no Federal is left alone. `fed.hunt_evil_meeting_federal`.
 11.10 Match-behind-flag `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. StarDock and Class 0 take 248,000 fighters, then 890,000, and the Feds rebuild in 14 days. Numbers UNVERIFIED. `runner._rebuild_special_ports`.
-11.11 Partial. Density, the one-way share, and the 30 percent two-way lanes are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, and `TWO_WAY_WARP_MODE`. Not the whole original screen. `universe.generate_universe`.
+11.11 Partial. Density, the one-way share, and the 30 percent two-way lanes are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, and `TWO_WAY_WARP_MODE`. Not the whole original screen. Bubbles are Gold-only (S1), so v3.11 needs none. `universe.generate_universe`.
 12.1 Match. Turns per day are a game setting. `models.GameConfig`.
 12.2 Match-behind-flag `TURN_REGEN_MODE` row 5. Turns can come back across 24 hours. `LIVE_PACE_MODE` row 6 goes with it. `constants.turn_regen_live`.
 12.3 Different. Movement is still by turns, not by the clock. `DAY_ROLL_CLOCK_MODE` row 81 rolls the day while a seat holds the turn. Planet goods can accrue on `PLANET_REALTIME_PROD_MODE`, which the profile leaves off. `runner.apply_action`.
@@ -321,6 +322,6 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 14.3 Match-behind-flag `PLANET_BUST_EXP_MODE` row 149, NOTE 102. The owner may destroy the planet they created for 75 experience (genesis 25 plus destroy 50). `legality.planet_destroy_reason`.
 14.4 Match. An unmanned ship can still hold fighters. While `V311_PROFILE` is on, `observation` game status leaves those fighters out of the V-screen total. Legacy still counts them. No switch was added for that display. Profile GAP 14.4 note.
 14.5 Match-behind-flag `EVIL_TRADE_LOOP_MODE` row 166, NOTE 115. A negative-alignment seat steals, dumps, and beams, or robs and beams, when the profile is on. `constants.evil_trade_loop_live`.
-14.6 Different. Systems that were never in the original are still in this game. This refresh does not remove them.
+14.6 Partial. The instant credits win is off under `ECON_WIN_MODE` row 215 (NOTE 178). Alliances and play_to_day_cap stay. `victory._check_victory`.
 
 There is no row 5.16, 7.1, or 8.5. That is the same 171 ids as v5.
