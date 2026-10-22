@@ -294,6 +294,7 @@ def _wait_port(port: int) -> None:
     raise AssertionError(f"port {port} stayed busy ({_listen_pids(port)}; {_port_states(port)})")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX only: os.killpg and /proc")
 def test_kill_and_restart_keeps_the_game_the_seat_and_the_clock(tmp_path: Path) -> None:
     base = _block(4)
     root = tmp_path / "selfhost"
@@ -430,6 +431,7 @@ def test_kill_and_restart_keeps_the_game_the_seat_and_the_clock(tmp_path: Path) 
         release_ports(*range(base, base + 4))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX only: os.killpg and /proc")
 def test_a_corrupt_save_is_a_lobby_message(tmp_path: Path) -> None:
     base = _block(4)
     root = tmp_path / "selfhost"
