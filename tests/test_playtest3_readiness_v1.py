@@ -15,8 +15,10 @@ import datetime
 import http.client
 import ipaddress
 import json
+import os
 import ssl
 import sys
+import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -31,7 +33,9 @@ from tw2k.public import worker as W
 from tw2k.public.workers import admin_headers
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = Path("/opt/cursor/artifacts/note136")
+# Screenshots of a run. TW2K_SHOT_DIR overrides; the default is a temp folder,
+# so a box without /opt/cursor (or a read-only one) can still run the test.
+SHOTS = Path(os.environ.get("TW2K_SHOT_DIR") or (Path(tempfile.gettempdir()) / "tw2k_note136"))
 
 
 def test_clock_nudge_stays_legacy_until_it_is_turned_on(monkeypatch) -> None:
@@ -1121,6 +1125,26 @@ def _wait_day(page, day: str) -> None:
         raise AssertionError(f"cockpit day is {got!r}, wanted {day}") from None
 
 
+def _turns_left(page) -> int | None:
+    """The first number on the turns-left line, or None when it cannot be read."""
+    try:
+        text = page.locator("[data-testid=turns-left-today]").inner_text(timeout=1000)
+    except Exception:
+        return None
+    digits = ""
+    for ch in text:
+        if ch.isdigit():
+            digits += ch
+        elif digits:
+            break
+    return int(digits) if digits else None
+
+
+def _spent(page, start: int | None) -> bool:
+    now = _turns_left(page)
+    return start is not None and now is not None and now < start
+
+
 def _day2_move(pages: dict, notes: dict[str, str]) -> None:
     """One real day-2 action from each human, in whichever order the turn arrives.
 
@@ -1129,6 +1153,11 @@ def _day2_move(pages: dict, notes: dict[str, str]) -> None:
     at once, and a seat that has not moves on the turn it is offered.
     """
     pending = set(pages)
+    # A move that lands can leave #lastResult reading the same text as the
+    # last one (two equal trades), and the chip can flip to WAITING before
+    # _settle looks. The server-side turn counter is the proof: a seat whose
+    # turns-left number dropped since day 2 began has moved.
+    start = {seat: _turns_left(page) for seat, page in pages.items()}
     deadline = time.time() + 300
     while pending and time.time() < deadline:
         acted = False
@@ -1148,13 +1177,18 @@ def _day2_move(pages: dict, notes: dict[str, str]) -> None:
             else:
                 page.keyboard.press(".")
             outcome = _settle(page, before, 30)
-            landed = outcome != before or _chip(page) != "YOUR MOVE"
+            landed = outcome != before or _chip(page) != "YOUR MOVE" or _spent(page, start.get(seat))
             if seat in pending and landed:
                 pending.discard(seat)
                 notes[f"{seat}-day2"] = (outcome or "acted on day 2")[:180]
                 _progress(f"{seat} day 2 {notes[f'{seat}-day2']!r}")
             acted = True
             break
+        for seat in list(pending):
+            if _spent(pages[seat], start.get(seat)):
+                pending.discard(seat)
+                notes[f"{seat}-day2"] = "acted on day 2 (turns left dropped)"
+                _progress(f"{seat} day 2 turns left dropped")
         if not acted:
             time.sleep(0.2)
     if pending:
