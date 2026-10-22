@@ -1383,6 +1383,8 @@ _SWITCH_PLAIN: dict[str, str] = {
     "FED_HUNT_MODE": "An evil ship that meets a Federal is destroyed, unless it is an Imperial StarShip.",
     "CIM_MODE": "CIM lists sectors and ports you have explored, and a path. A port line stays hidden when hostile fighters hold that sector.",
     "BOUNTY_GOOD_MODE": "A bounty on a good trader costs alignment and no experience.",
+    "CFS_CEO_USE_MODE": "Only the C.E.O. may board a corporation's Corporate FlagShip.",
+    "PLANET_BLOW_ALIGN_MODE": "Destroying a planet costs 50 alignment.",
 }
 
 
@@ -1895,6 +1897,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "GENESIS_NAME_MODE", "GENESIS_START_MODE", "PLANET_PROD_MODE", "PLANET_COLLISION_MODE",
         "PLANET_BUST_EXP_MODE", "PLANET_COLONIST_CAP_MODE", "PLANET_GROWTH_MODE", "PLANET_NW_MODE",
         "OWN_PLANET_TURN_MODE", "OWN_PLANET_FIGHTER_MODE", "LANDED_STATE_MODE", "PLANET_ZDY_MODE",
+        "PLANET_BLOW_ALIGN_MODE",
     ),
     "citadels": (
         "build_citadel", "set_military_reaction", "deposit_treasury", "withdraw_treasury",
@@ -1916,7 +1919,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "propose_alliance", "accept_alliance", "break_alliance",
         "ship_set_corporate", "ship_set_personal", "ship_set_password",
         "CORP_EXP_PENALTY_MODE", "CORP_PLANET_DISBAND_MODE", "CORP_BREAKIN_ALIGN_MODE",
-        "CORP_CARGO_TREASURY_MODE",
+        "CORP_CARGO_TREASURY_MODE", "CFS_CEO_USE_MODE",
     ),
     "alignment": ("DISCOVERY_EXP_MODE", "EXP_SOURCES_MODE"),
     "rankings": (
