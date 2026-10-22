@@ -297,6 +297,7 @@ def test_item2_seat_token_is_handed_over_once_and_only_hashed(make_lobby, tmp_pa
     assert other.post(f"/api/games/{g['id']}/join", json={}).status_code == 409
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX only: Windows has no 0o600 file mode")
 def test_tokens_from_both_old_paths_still_authenticate(make_lobby, tmp_path) -> None:
     """A printed #70 link and a saved #73 file token both still open the seat.
 
