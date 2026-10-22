@@ -4795,6 +4795,14 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "BOUNTY_GOOD_MODE",
         "NOTE 163 GAP 9.5: a bounty on a good trader costs 1 alignment per 250 credits and no experience",
     ),
+    "cfs_ceo_use_live": (
+        "CFS_CEO_USE_MODE",
+        "NOTE 177 GAP 10.1: only a C.E.O. may board a Corporate FlagShip (Gypsy: only C.E.O.'s can use them)",
+    ),
+    "planet_blow_align_live": (
+        "PLANET_BLOW_ALIGN_MODE",
+        "NOTE 177 GAP 6.10: destroying a planet costs 50 alignment (Bible), not 1",
+    ),
 }
 
 
@@ -6071,3 +6079,35 @@ def citadel_colonist_quote(
         "haul_holds": haul,
         "plain": plain,
     }
+
+
+# NOTE 177 GAP 10.1 (ruling, V311_SOURCE_CONFLICTS.md). bc24 CFS_CEO_RULE keeps
+# "only the C.E.O. buys a FlagShip". Gypsy_Big_Dummies_Guide: "Only C.E.O.'s can
+# use Corporate Flagships so they are not available for trade." On, a corp mate
+# who is not the C.E.O. cannot board a parked Corporate FlagShip. Legacy lets him.
+CFS_CEO_USE_MODE = "legacy"  # "legacy" | "v311"
+
+
+def cfs_ceo_use_live() -> bool:
+    """True when only a C.E.O. may board a Corporate FlagShip he does not own."""
+    return CFS_CEO_USE_MODE == "v311" or v311_profile()
+
+
+# NOTE 177 GAP 6.10 (ruling). Bible (S3): destroying a planet "takes your
+# alignment down (50 points down)". Cabal formulas.html prints -1. The ruling
+# takes the Bible. On, the blow costs PLANET_BLOW_ALIGN_V311; legacy keeps
+# PLANET_DESTROY_ALIGNMENT_TW2002 (1). The +50 experience is the same both ways.
+PLANET_BLOW_ALIGN_MODE = "legacy"  # "legacy" | "v311"
+PLANET_BLOW_ALIGN_V311 = 50
+
+
+def planet_blow_align_live() -> bool:
+    """True when blowing a planet costs the Bible's 50 alignment."""
+    return PLANET_BLOW_ALIGN_MODE == "v311" or v311_profile()
+
+
+def planet_blow_alignment_loss() -> int:
+    """Alignment the blow takes while RANK_MODE is tw2002."""
+    if planet_blow_align_live():
+        return int(PLANET_BLOW_ALIGN_V311)
+    return int(PLANET_DESTROY_ALIGNMENT_TW2002)

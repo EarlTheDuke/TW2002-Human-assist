@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (139 helpers)
+## The switch set (141 helpers)
 
 The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112. NOTE 104 uses row 164. NOTE 112 uses row 165. NOTE 115 uses row 166. NOTE 117 uses rows 167, 168 and 169. NOTE 143 uses rows 170, 171 and 172. NOTE 148 uses rows 173 and 174. NOTE 150 uses row 175. NOTE 142 uses row 176. NOTE 151 uses rows 177 and 178. NOTE 157 uses row 179. NOTE 158 uses row 180. NOTE 159 uses row 181. NOTE 162 uses rows 182-186. NOTE 163 uses row 187. Rows 160, 162 and 163 stay unused. The ship-versus-ship loss split and a real-time travel time stay queued in `docs/plans/live-twgs-test-queue-v1.md`, not switched.
 
@@ -151,6 +151,8 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 185 | `FED_HUNT_MODE` | `fed_hunt_live` | NOTE 162 GAP 11.9: an evil ship that is not an Imperial StarShip is destroyed when a Federal is in that sector. A sector with no Federal is left alone. An evil Imperial StarShip stays on the stored repossession path. Stored default stays legacy. `"1"` does not turn it on | - |
 | 186 | `CIM_MODE` | `cim_live` | NOTE 162 GAP 14.1: CIM answers I for explored sectors, R for explored ports, F for a path, and Q to leave. Hostile fighters make that sector's port line unavailable, with no count and no owner. Avoids, the course plotter, and NavPoints were already in. Stored default stays legacy. `"1"` does not turn it on | - |
 | 187 | `BOUNTY_GOOD_MODE` | `bounty_good_live` | NOTE 163 GAP 9.5: at Police HQ, a bounty on a good trader (alignment above 0) costs 1 alignment per 250 credits and no experience. The credits stay a claimable pot. An evil target stays the reward, +1 alignment per 1,000. A neutral target is still refused. Off, a good target is refused. Stored default stays legacy. `"1"` does not turn it on. `TW2002_LIVE_PROFILE` does not turn it on | - |
+| 213 | `CFS_CEO_USE_MODE` | `cfs_ceo_use_live` | NOTE 177 GAP 10.1: only a C.E.O. may board a Corporate FlagShip he does not own (Gypsy: "Only C.E.O.'s can use Corporate Flagships"). bc24 purchase rule stays. |
+| 214 | `PLANET_BLOW_ALIGN_MODE` | `planet_blow_align_live` | NOTE 177 GAP 6.10: destroying a planet costs 50 alignment (Bible S3) instead of 1 (cabal formulas). +50 experience unchanged. |
 
 Row 181 is NavPoints (NOTE 159). Rows 182-186 are NOTE 162. Row 187 is the good-trader bounty (NOTE 163).
 

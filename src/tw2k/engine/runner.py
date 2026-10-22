@@ -4812,7 +4812,7 @@ def _remove_planet(universe: Universe, pid: str, planet, *, via: str = "planet_d
     del universe.planets[gone]
     if K.rank_tw2002():
         # x7 / conflict 14: -1 alignment and +50 experience when the planet goes.
-        player.alignment -= K.PLANET_DESTROY_ALIGNMENT_TW2002
+        player.alignment -= K.planet_blow_alignment_loss()  # NOTE 177: 50 under PLANET_BLOW_ALIGN_MODE
         _award_xp(universe, pid, "destroy_planet")
     if K.hardware_tw2002():
         add_navhaz(sector, int(K.NAVHAZ_PER_PLANET_DESTROYED))  # v22: the debris is NavHaz
