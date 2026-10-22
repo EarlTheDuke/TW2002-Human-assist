@@ -4847,6 +4847,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "FIGHTER_REPORT_MODE",
         "NOTE 164 GAP 13.4: the fighter report lists owned fighters and omits a count of 0",
     ),
+    "econ_win_off_live": (
+        "ECON_WIN_MODE",
+        "NOTE 178 GAP 14.6: no instant credits win; the original game has no such end (ours-only system)",
+    ),
 }
 
 
@@ -6213,3 +6217,15 @@ def planet_blow_alignment_loss() -> int:
     if planet_blow_align_live():
         return int(PLANET_BLOW_ALIGN_V311)
     return int(PLANET_DESTROY_ALIGNMENT_TW2002)
+
+
+# NOTE 178 GAP 14.6. The instant "economic dominance" win at VICTORY_CREDITS_THRESHOLD
+# credits on hand is ours only: v3.11 has no credits win (Bible, Big Dummies Guide; the
+# end-rule line already says the original game has no end date). On, credits on hand
+# never end the game. Elimination and the day cap stay. Legacy keeps the instant win.
+ECON_WIN_MODE = "legacy"  # "legacy" | "v311"
+
+
+def econ_win_off_live() -> bool:
+    """True when credits on hand never end the game (no instant economic win)."""
+    return ECON_WIN_MODE == "v311" or v311_profile()

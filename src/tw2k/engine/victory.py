@@ -358,6 +358,8 @@ def end_rule_line(max_days: int) -> str:
         )
     else:
         measure = "the trader with the highest net worth wins"
+    if K.econ_win_off_live():  # NOTE 178: no instant credits win in v3.11
+        return f"How this game ends: at the end of Day {days} {measure}."
     return (
         f"How this game ends: at the end of Day {days} {measure}. "
         f"Instant win: {bar} credits on hand."
@@ -553,7 +555,7 @@ def check_victory(universe: Universe) -> None:
     # but attainable with aggressive upgrades + raiding + planet farming).
     # Also gated by play_to_day_cap so a long watch-match can't be cut short
     # by a credit spike.
-    if not play_to_cap:
+    if not play_to_cap and not K.econ_win_off_live():  # NOTE 178 GAP 14.6
         threshold = economic_threshold(universe.config.max_days)
         for p in alive:
             if p.credits >= threshold:

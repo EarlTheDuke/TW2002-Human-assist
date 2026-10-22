@@ -1413,6 +1413,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "CORP_SHIP_DISBAND_MODE": "When a corporation ends, a parked corporate ship in the C.E.O.'s sector becomes the C.E.O.'s.",
     "TIMES_BLOWN_MODE": "With elimination off, times blown up are unlimited.",
     "FIGHTER_REPORT_MODE": "The fighter report lists the sectors where you own fighters.",
+    "ECON_WIN_MODE": "Credits on hand never end the game early; there is no instant credits win.",
 }
 
 
@@ -1968,7 +1969,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "alignment": ("DISCOVERY_EXP_MODE", "EXP_SOURCES_MODE"),
     "rankings": (
         "EXP_SCORE_MODE", "RANK_DISPLAY_MODE", "NW_ESTIMATE_MODE", "GENESIS_SCORE_MODE",
-        "PLANET_VALUE_SCORE_MODE",
+        "PLANET_VALUE_SCORE_MODE", "ECON_WIN_MODE",
     ),
     "tax": ("bank_deposit", "bank_withdraw", "bank_transfer", "TAX_RULE_MODE"),
     "turns": (
