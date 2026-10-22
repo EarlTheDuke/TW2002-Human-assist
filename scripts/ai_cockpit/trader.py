@@ -144,6 +144,11 @@ def _screen_turns(screen: dict) -> tuple[int, int | None]:
     return _int(screen.get("turns")), None
 
 
+def _turn_clock(screen: dict) -> bool:
+    """The turns stat says "(+1 every ...)" only while the server's turn clock is live."""
+    return "+1 every" in str(screen.get("turnsFace") or "").lower()
+
+
 class ScriptedTrader:
     """Reads the sector, port and holds, then trades, buys gear, and spends the day.
 
@@ -174,6 +179,11 @@ class ScriptedTrader:
         self.max_day = 0
         self.day_turns = 0
         self.bought: set[str] = set()
+        # NOTE 172. Mid-game refits: the day each item was last bought again,
+        # and items the StarDock form says this hull cannot take any more of.
+        self.refit_day: dict[str, int] = {}
+        self.maxed: set[str] = set()
+        self.first_gear_day = 0
         self.gear: dict[str, str] | None = None
         self.dock_waits = 0
         self.links: dict[int, dict[int, int]] = {}
@@ -432,6 +442,33 @@ class ScriptedTrader:
             and self.credits >= 8_000
         ):
             return "ether_probes"
+        return self._refit_item()
+
+    def _refit_item(self) -> str | None:
+        """NOTE 172. More holds, fighters, or shields once the wallet can carry them.
+
+        Holds come first, and only when the paying pair can fill more than the
+        hull carries now. Fighters and shields wait for 8,000 credits on board
+        and take a slice of the cash. Each item is bought again at most once a
+        day, and an item the form says is full is not asked for again.
+        """
+        if self.level == "easy" or not self._gear_done() or not self.day:
+            return None
+        if not self.first_gear_day or self.day <= self.first_gear_day:
+            return None
+        order = ("holds", "fighters", "shields") if self.level == "hard" else ("holds", "fighters")
+        for item in order:
+            if item in self.maxed or self.refit_day.get(item) == self.day:
+                continue
+            if item == "holds":
+                unit = self.hold_price or 0
+                if self._route_units() <= self.hold_cap or self._best_spread() <= 0:
+                    continue
+                if self.credits < max(2_000, unit * 5):
+                    continue
+                return item
+            if self.credits >= 8_000:
+                return item
         return None
 
     def _known_bid(self, good: str) -> int:
@@ -659,6 +696,10 @@ class ScriptedTrader:
         text = str(screen.get("menuText") or "")
         if screen.get("formOpen"):
             return None
+        if _DAY_END.search(text) and _turn_clock(screen):
+            # NOTE 172. The clock rolls the day on its own and keeps paying turns.
+            self.plan_note = "keep the clock's turns"
+            return Action("press", key="Escape")
         if _DAY_END.search(text) and any(row.upper() == "CONFIRM" for row in labels):
             # "One more Wait ends your day" still has a full pocket behind it.
             # Confirming that warning is how a 250-turn day was thrown away.
@@ -872,6 +913,16 @@ class ScriptedTrader:
         if item == "holds":
             return self._hold_qty(fields, credits)
         note = str(fields.get("note") or "")
+        if item in ("fighters", "shields") and self._gear_done():
+            # A refit spends about a seventh of the cash on board, so the next load still fits.
+            unit_match = _EACH.search(note)
+            unit = int(unit_match.group(1).replace(",", "")) if unit_match else 0
+            cap_match = _UP_TO.search(note)
+            cap = int(cap_match.group(1).replace(",", "")) if cap_match else 0
+            want = max(1, (credits // 7) // unit) if unit else 10
+            if cap:
+                want = min(want, cap)
+            return str(max(1, want))
         price_match = _EACH.search(note)
         unit = int(price_match.group(1).replace(",", "")) if price_match else 0
         cap_match = _UP_TO.search(note)
@@ -898,20 +949,38 @@ class ScriptedTrader:
                     self.gear = None
                     self.plan_note = "no scanner on the list"
                     return Action("press", key="Escape")
+            if self._gear_done() and options and item not in options:
+                self.maxed.add(item)
+                self.gear = None
+                self.plan_note = f"no {item} on the list"
+                return Action("press", key="Escape")
             self.gear["phase"] = "qty"
             self.plan_note = f"choose {item}"
             return Action("type", selector='[data-n="item"]', text=item)
         if phase == "qty":
+            cap_match = _UP_TO.search(str(fields.get("note") or ""))
+            if self._gear_done() and cap_match and int(cap_match.group(1).replace(",", "")) <= 0:
+                self.maxed.add(item)
+                self.refit_day[item] = self.day
+                self.gear = None
+                self.plan_note = f"{item} are full"
+                return Action("press", key="Escape")
             qty = self._gear_qty(item, fields, credits)
             self.gear["phase"] = "confirm"
             self.plan_note = f"qty {qty} {item}"
             return Action("type", selector='[data-n="qty"]', text=qty)
+        if self._gear_done() and item in ("holds", "fighters", "shields"):
+            self.refit_day[item] = self.day
+            self.plan_note = f"refit {item}"
         self.bought.add(item)
+        if self._gear_done() and not self.first_gear_day:
+            self.first_gear_day = self.day
         if item == "density_scanner":
             self.scanner = True
         self.gear = None
         self.shop_day = self.day
-        self.plan_note = f"buy {item}"
+        if not self.plan_note.startswith("refit"):
+            self.plan_note = f"buy {item}"
         return Action("click", label="CONFIRM")
 
     def _leave_danger(self, sector: int, screen: dict, cargo: dict[str, int]) -> Action | None:
@@ -1140,6 +1209,9 @@ class ScriptedTrader:
         price = int(price_match.group(1).replace(",", "")) if price_match else 0
         if "you get" in text.lower() and "back" in text.lower():
             price = 0
+        # A hull the cash on board cannot pay for is not a choice today.
+        if price and 0 < self.credits < price:
+            return False
         # The headline is the net after trade-in. The old hull still leaves the
         # score, so the cost is that net plus the trade-in credit on the quote.
         trade_in = re.search(r"trade-in sells your ship for\s+([\d,]+)\s+cr", text, re.I)
@@ -1435,7 +1507,8 @@ class ScriptedTrader:
         """The yard is finished, or a dearer ship did not pay. Do not cross the map to ask again."""
         if "ship" in self.bought:
             return True
-        return self.ship_skip_profit > 0
+        # NOTE 172. A hull declined earlier is quoted again once the route pays half as much again.
+        return self.ship_skip_profit > 0 and self._daily_profit() * 2 < self.ship_skip_profit * 3
 
     def _gear_done(self) -> bool:
         """Holds and fighters are aboard. The yard is a look when the ship is already there.
@@ -1465,12 +1538,16 @@ class ScriptedTrader:
             return False
         if not self._settled(sector) or sector == 1 or self.shop_day == self.day or self._best_spread() <= 0:
             return False
-        if self._gear_done() or not self._shelf_open():
+        refit = self._refit_item() if self._gear_done() else None
+        if (self._gear_done() and not refit) or not self._shelf_open():
             return False
         hops = self._hops(sector, 1)
         if hops is None:
             return False
-        if self.level == "hard" and not self._dock_trip_pays(hops):
+        # Fighters and shields alone are worth a short detour, not a crossing.
+        if refit and refit != "holds" and hops > 2:
+            return False
+        if self.level == "hard" and (refit in (None, "holds")) and not self._dock_trip_pays(hops):
             return False
         back = self._best_ask_sector() or sector
         if self._hops(1, back) is None and self._hops(1, sector) is None:
@@ -2220,6 +2297,12 @@ class ScriptedTrader:
         if "NO TURNS" in chip or "GAME OVER" in chip or turns <= 0:
             self.plan_note = "wait for the day"
             return Action("wait", ms=500)
+        if _turn_clock(screen) and turns < 9:
+            # NOTE 172. On the v3.11 turn clock a Wait only burns a turn the clock
+            # just paid. A person lets the clock refill until a round trip fits.
+            # With turns in hand the old Wait still moves the screen on.
+            self.plan_note = "let the turn clock refill"
+            return Action("wait", ms=1500)
         self.plan_note = "spend a turn"
         return Action("press", key=".")
 
