@@ -80,6 +80,10 @@ def board_block(universe: Universe, pid: str, rec: ParkedShip) -> str | None:
         return "not your ship (own ships only)"
     if not _same_corp(player, rec.ship.corp_ticker):
         return "not your ship (own ships only)"
+    if K.cfs_ceo_use_live() and getattr(rec.ship.ship_class, "value", rec.ship.ship_class) == "corporate_flagship":
+        corp = universe.corporations.get(player.corp_ticker or "")
+        if corp is None or corp.ceo_id != pid:
+            return "only a C.E.O. may fly a Corporate FlagShip"
     if K.CORPSHIP_BOARD_CAP:
         from .fleet import fleet_size
         if fleet_size(universe, pid) >= int(K.FLEET_MAX_SHIPS):

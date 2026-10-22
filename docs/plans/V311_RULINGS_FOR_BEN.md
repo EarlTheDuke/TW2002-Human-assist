@@ -119,3 +119,11 @@ In play, A is a v3.11 game that still knows when to stop. Today alliances are of
 ## Suggested reply
 
 R1: A. R2: A. R3: A. R4: A. R5: B. R6: A. R7: A. R8: A. R9: B. R10: A. R11: A. R12: A. R13: A. R14: A.
+
+## NOTE 177 rulings (Commander, under Ben's delegation: lean toward the original v3.11)
+
+- 10.1 Corporate FlagShip: only the C.E.O. buys one and only the C.E.O. boards one. Switch `CFS_CEO_USE_MODE`, row 213. Source: Gypsy's guide.
+- 6.10 Destroying a planet: 50 alignment, as the Bible prints. Switch `PLANET_BLOW_ALIGN_MODE`, row 214. The cabal -1 stays the legacy value.
+- 8.1 Ferrengi odds: keep FERRSPEC 1.0 / 1.2 / 1.4. The 1.2 / 1.4 / 1.6 line is a later MBBS addendum. No switch.
+
+Ben can reverse any of these by setting the switch back; each is legacy by default and on only under V311_PROFILE=v311.
