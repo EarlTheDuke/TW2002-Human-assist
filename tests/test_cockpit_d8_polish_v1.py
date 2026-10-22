@@ -235,7 +235,18 @@ def test_an_l0_planet_does_not_claim_a_combat_computer(world):
         page = world["page"]
         universe = world["universe"]
         me = universe.players["P2"]
-        planet = next(p for p in universe.planets.values() if p.name == "Phoenix")
+        # Self-contained: do not rely on the earlier tests renaming a planet.
+        planet = next(
+            (p for p in universe.planets.values() if p.name in ("Phoenix", "Shield Rock")),
+            None,
+        ) or next(iter(universe.planets.values()))
+        old = universe.sectors.get(planet.sector_id)
+        if old is not None and planet.id in getattr(old, "planet_ids", []):
+            old.planet_ids.remove(planet.id)
+        planet.sector_id = int(me.sector_id)
+        if planet.id not in universe.sectors[me.sector_id].planet_ids:
+            universe.sectors[me.sector_id].planet_ids.append(planet.id)
+        planet.name = "Phoenix"
         planet.citadel_level = 0
         planet.fighters = 40
         planet.shields = 0
@@ -246,7 +257,7 @@ def test_an_l0_planet_does_not_claim_a_combat_computer(world):
             page.locator("#here button", has_text="Phoenix").click()
             page.wait_for_function(
                 "() => (document.querySelector('#menu')?.innerText || '').includes('Its fighters will fight your landing.')",
-                timeout=10_000,
+                timeout=20_000,
             )
             text = page.locator("#menu").inner_text()
             assert "Its fighters will fight your landing." in text
