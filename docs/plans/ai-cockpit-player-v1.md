@@ -230,3 +230,20 @@ The runner reloads the original seat link if the page closes or the chip disappe
 ## Tests
 
 `tests/test_ai_cockpit_player_v1.py` runs the scripted provider against a `CuHost` on a port from `free_port`. That is an open pocket, or an OS ephemeral port that `allowed_test_port` accepts, outside 8031-8119 and 8120-8249. One game lasts three days and must finish with a higher net worth than it started. The same file checks the source has no `tw2k` import, the player process loads no `tw2k` module, a run that has keys in its environment does not write those keys or the seat token into the text log, and the new-game control is missing while the switch is legacy. Easy must buy a weak local offer and then take a one-way. Normal must settle on a pair hard still walks past, and must not buy shields. Hard must open the computer, plot sector 1, and take the hop the course names. Two cockpit seats must launch two processes, and the stop control must name a path with no token. The AI-seat tests start `ai_cockpit_player.py` in its own session and kill that process tree on teardown, at exit, and on a timeout. The suite fails if an `ai_cockpit_player.py` process is still running when the file finishes.
+
+## NOTE 172: mid-game moves
+
+The seat still sees only the cockpit page. Once the opening holds and fighters are aboard, a later day at StarDock buys more holds when the paying pair can fill more than the hull carries, then fighters and (hard only) shields with about a seventh of the cash on board once 8,000 credits are aboard. Each item is bought again at most once a day. An item the form lists as full, or does not list, is not asked for again. A hull declined at the yard is quoted again once the route pays half as much again, and a hull the cash on board cannot pay for is not chosen. On the v3.11 turn clock (the turns stat reads "+1 every ..."), a seat with fewer than 9 turns lets the clock refill instead of pressing Wait, and the "ends your day" warning is closed instead of confirmed. With turns in hand, or on a legacy day, the old Wait is unchanged.
+
+`scripts/ai_cockpit_bench.py` is the bench: H1, H2, H3 heuristic plus the scripted hard Commander through the `mode=cu` link, universe 200, 40 turns a day, Ferrengi on, `V311_PROFILE=v311` in that process only, ports 8020-8030. `--day-seconds 90` puts the v3.11 turn clock on a 90-second day. Rank is `full_net_worth` at the day-11 roll. Before is `196fa5d`. The code bots also move between runs because the clock is wall time, so a single run per seed is noisy.
+
+| | Seed | Rank | Net worth | Credits | Finish board |
+| --- | --- | --- | --- | --- | --- |
+| before | 250925 | 3 | 46,480 | 336 | H1 53,865, H3 50,182, Commander 46,480, H2 46,329 |
+| after | 250925 | 4 | 45,887 | 283 | H1 54,259, H3 49,717, H2 48,348, Commander 45,887 |
+| before | 4242 | 1 | 64,430 | 11,008 | Commander 64,430, H2 62,371, H1 59,301, H3 49,793 |
+| after | 4242 | 1 | 50,609 | 419 | Commander 50,609, H1 49,541, H2 48,006, H3 47,084 |
+| before | 99 | 4 | 56,845 | 11,215 | H1 59,856, H2 58,605, H3 58,602, Commander 56,845 |
+| after | 99 | 1 | 63,307 | 17,677 | Commander 63,307, H1 60,976, H2 58,625, H3 58,602 |
+
+No refit fired on these seeds: the cash on board stayed under the 8,000 mark while the ship sat at StarDock.
