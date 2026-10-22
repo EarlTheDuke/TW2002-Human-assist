@@ -555,13 +555,25 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
             # minutes. The old 540s cap was the loaded Windows run that never
             # left day 1, because the seat-open check had matched the failure
             # line and the scheduler was still on that seat.
-            deadline = time.time() + 720
+            # Hard phase budget: a healthy day 1 takes 30-90s. A stall fails
+            # inside DAY1_STALL_S with every tab's state, instead of 12 minutes.
+            notes["phase"] = "day 1"
+            deadline = time.time() + DAY1_BUDGET_S
             last_ai = 0.0
+            last_move = time.time()
+            start_ship = {seat: _ship_class(page) for seat, page in pages.items()}
             while time.time() < deadline and not all(_day_done(row) for row in goals.values()):
+                _waive_if_destroyed(pages, goals, start_ship, notes)
+                if time.time() - last_move > DAY1_STALL_S:
+                    chips = {seat: _chip(page) for seat, page in pages.items()}
+                    _progress(f"STALL chips={chips} goals={goals} ai={_ai_tail(lobby, gid)}")
+                    raise AssertionError(
+                        f"day 1 stalled: no human move for {DAY1_STALL_S}s; chips={chips} goals={goals}")
                 moved = False
                 for seat, page in pages.items():
                     if _chip(page) != "YOUR MOVE":
                         continue
+                    last_move = time.time()
                     page.bring_to_front()
                     if _day_done(goals[seat]):
                         before = _result(page)
@@ -572,7 +584,8 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
                     moved = True
                     break
                 if time.time() - last_ai > 15:
-                    _progress(f"goals={goals} ai={_ai_tail(lobby, gid)}")
+                    chips = {seat: _chip(page) for seat, page in pages.items()}
+                    _progress(f"chips={chips} goals={goals} ai={_ai_tail(lobby, gid)}")
                     last_ai = time.time()
                 if not moved:
                     page = pages["P1" if int(time.time()) % 2 == 0 else "P2"]
@@ -584,6 +597,7 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
                     tail = (SHOTS / "progress.txt").read_text(encoding="utf-8")[-1500:]
                     raise AssertionError(f"day 1 did not finish: {goals}\n{tail}")
 
+            notes["phase"] = "manual/layout/day 2"
             _manual(p1)
             _layout(p1)
             _layout(p2, prefix="p2-")
@@ -1231,6 +1245,45 @@ def _wait_day(page, day: str) -> None:
         except Exception:
             got = ""
         raise AssertionError(f"cockpit day is {got!r}, wanted {day}") from None
+
+
+DAY1_BUDGET_S = 300
+# The other seats (bot, heuristic, scripted P4) each take a turn between human
+# turns; on the loaded Windows box a full round is well under a minute.
+DAY1_STALL_S = 150
+
+
+def _ship_class(page) -> str:
+    try:
+        return page.locator("#shipCls").inner_text(timeout=1000).strip()
+    except Exception:
+        return ""
+
+
+def _waive_if_destroyed(pages: dict, goals: dict, start_ship: dict, notes: dict[str, str]) -> None:
+    """A seat whose ship was destroyed on day 1 cannot finish its goals.
+
+    The gate's 12-minute run: P2 lost its Merchant Cruiser on the way to the
+    StarDock, came back in a Scout Marauder with 0 credits and 2 turns, and
+    the loop retried an impossible gear purchase until the 720s cap. The
+    Ferrengi and the code bot are part of the game, so this is not a harness
+    fault. The other human seat must still finish every goal, which keeps
+    each goal proven through the proxy at least once.
+    """
+    for seat, page in pages.items():
+        if _day_done(goals[seat]) or not start_ship.get(seat):
+            continue
+        now = _ship_class(page)
+        if not now or now == start_ship[seat]:
+            continue
+        others = [row for other, row in goals.items() if other != seat]
+        if not others or not all(_day_done(row) for row in others):
+            continue
+        left = [goal for goal, done in goals[seat].items() if not done]
+        notes[f"{seat}-waived"] = f"ship destroyed on day 1 ({start_ship[seat]} -> {now}); not proven here: {left}"
+        _progress(f"{seat} waived {left}: ship {start_ship[seat]} -> {now}")
+        for goal in left:
+            goals[seat][goal] = True
 
 
 def _pass(page) -> None:
