@@ -95,7 +95,8 @@ def test_zdy_awards_fail_off_and_pass_on(monkeypatch) -> None:
     _universe, killer, victim = scene()
     assert victim.deaths == 1
     assert killer.experience == 2_716
-    assert killer.alignment == 4_332
+    # NOTE 177: the profile also turns on PLANET_BLOW_ALIGN_MODE, so the blow is -50, not -1.
+    assert killer.alignment == 4_332 - (int(K.PLANET_BLOW_ALIGN_V311) - 1)
 
 
 def test_shieldless_atmosphere_shot_fails_off_and_passes_on(monkeypatch) -> None:
