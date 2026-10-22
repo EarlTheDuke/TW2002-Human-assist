@@ -565,7 +565,7 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
                     page.bring_to_front()
                     if _day_done(goals[seat]):
                         before = _result(page)
-                        page.keyboard.press(".")
+                        _pass(page)
                         _settle(page, before, 8)
                     else:
                         _step(page, seat, goals[seat], lobby, gid, notes)
@@ -1233,6 +1233,33 @@ def _wait_day(page, day: str) -> None:
         raise AssertionError(f"cockpit day is {got!r}, wanted {day}") from None
 
 
+def _pass(page) -> None:
+    """Spend this turn without ending the seat's day.
+
+    Since 1dd63a6 a fourth Wait in a row opens "One more Wait ends your day"
+    and waits for CONFIRM. A bare "." left that dialog open: the seat held the
+    turn until the server's idle timeout, and a confirmed Wait would end the
+    day. When the dialog shows, close it and take a warp instead.
+    """
+    page.keyboard.press(".")
+    try:
+        page.wait_for_function(
+            """() => {
+              const m = document.querySelector('#menu');
+              return !!(m && !m.hidden && m.dataset.screen === 'Wait' && document.querySelector('#dangerOk'));
+            }""",
+            timeout=1_500,
+        )
+    except Exception:
+        return
+    page.keyboard.press("Escape")
+    page.wait_for_function("() => { const m = document.querySelector('#menu'); return !m || m.hidden; }", timeout=5_000)
+    if not _js_click(page, "#warps button"):
+        # No lane to take: end the day after all rather than hold the turn.
+        page.keyboard.press(".")
+        page.locator("#dangerOk").click(timeout=5_000)
+
+
 def _turns_left(page) -> int | None:
     """The first number on the turns-left line, or None when it cannot be read."""
     try:
@@ -1275,7 +1302,7 @@ def _day2_move(pages: dict, notes: dict[str, str]) -> None:
                 continue
             before = _result(page)
             if seat not in pending:
-                page.keyboard.press(".")
+                _pass(page)
             elif page.locator("#here button.tbtn").count():
                 _js_click(page, "#here button.tbtn")
                 if page.locator("#formSlot button", has_text="CONFIRM").count():
@@ -1283,7 +1310,7 @@ def _day2_move(pages: dict, notes: dict[str, str]) -> None:
             elif page.locator("#warps button").count():
                 _js_click(page, "#warps button")
             else:
-                page.keyboard.press(".")
+                _pass(page)
             outcome = _settle(page, before, 30)
             landed = outcome != before or _chip(page) != "YOUR MOVE" or _spent(page, start.get(seat))
             if seat in pending and landed:
