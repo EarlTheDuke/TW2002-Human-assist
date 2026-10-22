@@ -152,6 +152,33 @@ class _Proxy(BaseHTTPRequestHandler):
         self._forward()
 
 
+class _TLSProxyServer(ThreadingHTTPServer):
+    """TLS per connection, in that connection's own thread.
+
+    Wrapping the listening socket ran every handshake inside accept() on the
+    one serve_forever thread, with no timeout. Chromium opens speculative
+    sockets that may never send a ClientHello, and one of those stalled every
+    later request: a cockpit tab that never loaded, or polls that stopped
+    for good while the direct-to-worker AI seat played on (the Windows hang).
+    """
+
+    daemon_threads = True
+
+    def __init__(self, address, handler, ctx: ssl.SSLContext) -> None:
+        self.tls = ctx
+        super().__init__(address, handler)
+
+    def finish_request(self, request, client_address) -> None:
+        request.settimeout(15)
+        try:
+            request = self.tls.wrap_socket(request, server_side=True)
+        except (OSError, ssl.SSLError):
+            request.close()
+            return
+        request.settimeout(330)
+        super().finish_request(request, client_address)
+
+
 def _cert(directory: Path) -> tuple[str, str]:
     """A one-day cert for 127.0.0.1, written with the cryptography library."""
     pytest.importorskip("cryptography")
@@ -387,10 +414,9 @@ def test_two_humans_play_two_days_through_the_proxy(monkeypatch, tmp_path) -> No
         cert, key = _cert(tmp_path)
         _Proxy.lobby_port = lobby_port
         _Proxy.public_host = f"127.0.0.1:{proxy_port}"
-        proxy = ThreadingHTTPServer(("127.0.0.1", proxy_port), _Proxy)
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ctx.load_cert_chain(cert, key)
-        proxy.socket = ctx.wrap_socket(proxy.socket, server_side=True)
+        proxy = _TLSProxyServer(("127.0.0.1", proxy_port), _Proxy, ctx)
         threading.Thread(target=proxy.serve_forever, daemon=True).start()
         origin = f"https://127.0.0.1:{proxy_port}"
         _wait_http(origin + "/healthz")
@@ -476,8 +502,7 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
             p1.goto(links["P1"], wait_until="domcontentloaded")
             p2 = guest.new_page()
             p2.goto(links["P2"], wait_until="domcontentloaded")
-            if p2.get_by_role("button", name="I understand").count():
-                p2.get_by_role("button", name="I understand").click()
+            _accept_if_asked(p2)
             _wait_cockpit(p1)
             _wait_cockpit(p2)
             for seat, page in (("P1", p1), ("P2", p2)):
@@ -563,9 +588,26 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
                 notes["page"] = " ".join(home.locator("body").inner_text(timeout=2_000).split())[:800]
             except Exception:
                 pass
+            _dump_pages({"creator": creator, "guest": guest}, notes)
             raise
         finally:
             browser.close()
+
+
+def _dump_pages(contexts: dict, notes: dict[str, str]) -> None:
+    """On a failure, every open tab: a screenshot, its URL, and its visible text."""
+    for name, ctx in contexts.items():
+        for i, page in enumerate(list(ctx.pages)):
+            tag = f"fail-{name}-{i}"
+            try:
+                page.screenshot(path=str(SHOTS / f"{tag}.png"))
+            except Exception as exc:
+                notes[f"{tag}-shot"] = type(exc).__name__
+            try:
+                text = " ".join(page.locator("body").inner_text(timeout=2_000).split())[:600]
+            except Exception as exc:
+                text = f"<{type(exc).__name__}>"
+            notes[tag] = f"{page.url} :: {text}"
 
 
 def _fresh() -> dict[str, bool]:
@@ -755,6 +797,15 @@ def _chip(page) -> str:
         return page.locator("#waitchip").inner_text(timeout=1000).strip()
     except Exception:
         return ""
+
+
+def _accept_if_asked(page) -> None:
+    """The guest gets the server-rendered disclaimer first; accept it and wait for the cockpit URL."""
+    button = page.get_by_role("button", name="I understand")
+    page.wait_for_selector("form[action$='/accept'] button, #credits", timeout=30_000)
+    if button.count():
+        with page.expect_navigation(wait_until="domcontentloaded", timeout=30_000):
+            button.click()
 
 
 def _wait_cockpit(page) -> None:
