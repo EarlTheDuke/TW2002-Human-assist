@@ -195,7 +195,11 @@ class Lobby:
         origin = request.headers.get("origin")
         if not origin or origin == "null":
             return origin is None
-        return urlsplit(origin).netloc.lower() == (request.headers.get("host") or "").lower()
+        # A tunnel that rewrites Host to 127.0.0.1 keeps the public name in
+        # X-Forwarded-Host; request_origin already trusts it only on loopback.
+        public = urlsplit(request_origin(request.headers, request.url.scheme, request.url.netloc)).netloc
+        got = urlsplit(origin).netloc.lower()
+        return got in {(request.headers.get("host") or "").lower(), public.lower()}
 
     # ------------------------------------------------------------------ worker lifecycle
     def _probe(self, port: int) -> bool:

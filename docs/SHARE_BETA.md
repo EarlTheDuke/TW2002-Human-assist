@@ -56,6 +56,10 @@ That stops the tunnel. The lobby and the games keep running. Players' old links 
 
 Each run prints a new `https://....trycloudflare.com` address. The previous address dies when you stop the tunnel or start another one. The game on this PC is the same game. Send the new lobby link, and send new seat links, because the host name in the old ones no longer works.
 
+## Which links work through the tunnel
+
+The lobby page, the created-game seat links, the lobby invite links, and a cockpit link with `mode=cu&token=` all open on the `trycloudflare.com` name. The lobby builds every link from the name the browser used, so none of them point at `127.0.0.1`. If you run `cloudflared` with `--http-host-header`, the lobby reads the public name from `X-Forwarded-Host` instead, and the New game and Join forms still work.
+
 ## If the computer or the browser stops
 
 The lobby saves each game while people are playing. A save happens when the day changes, again shortly after someone does something, and every few minutes if the game is quiet.
