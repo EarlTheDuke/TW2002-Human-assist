@@ -106,11 +106,37 @@ def test_created_page_shows_the_cockpit_token_link() -> None:
 
 
 class _Proxy(BaseHTTPRequestHandler):
+    """The public TLS edge in front of the lobby, with keep-alive on both legs.
+
+    The first version spoke HTTP/1.0 to the browser and opened a fresh
+    upstream connection per request. Two cockpits polling every two seconds
+    left thousands of TIME_WAIT sockets on Windows, and Chromium began to
+    get ERR_NO_BUFFER_SPACE: assets that never loaded, polls that stopped.
+    """
+
+    protocol_version = "HTTP/1.1"
     lobby_port = 0
     public_host = ""
+    timeout = 330
 
     def log_message(self, fmt: str, *args) -> None:
         return
+
+    def _upstream(self, fresh: bool = False) -> http.client.HTTPConnection:
+        conn = getattr(self, "_conn", None)
+        if conn is None or fresh:
+            if conn is not None:
+                conn.close()
+            # The create POST waits out a slow worker boot. This has to outlive it.
+            conn = http.client.HTTPConnection("127.0.0.1", self.lobby_port, timeout=300)
+            self._conn = conn
+        return conn
+
+    def finish(self) -> None:
+        conn = getattr(self, "_conn", None)
+        if conn is not None:
+            conn.close()
+        super().finish()
 
     def _forward(self) -> None:
         length = int(self.headers.get("Content-Length") or 0)
@@ -119,28 +145,34 @@ class _Proxy(BaseHTTPRequestHandler):
         headers = {
             k: v
             for k, v in self.headers.items()
-            if k.lower() not in ("host", "content-length", "accept-encoding", "connection")
+            if k.lower() not in ("host", "content-length", "accept-encoding", "connection", "keep-alive")
         }
         headers["Host"] = host
         headers["X-Forwarded-Proto"] = "https"
         headers["X-Forwarded-Host"] = host
         headers["X-Forwarded-For"] = "127.0.0.1"
-        # The create POST waits out a slow worker boot. This has to outlive it.
-        conn = http.client.HTTPConnection("127.0.0.1", self.lobby_port, timeout=300)
-        try:
-            conn.request(self.command, self.path, body=body, headers=headers)
-            resp = conn.getresponse()
-            data = resp.read()
-            self.send_response(resp.status)
-            for key, value in resp.getheaders():
-                if key.lower() in ("transfer-encoding", "connection", "content-length"):
-                    continue
-                self.send_header(key, value)
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
+        for attempt in (0, 1):
+            conn = self._upstream(fresh=attempt > 0)
+            try:
+                conn.request(self.command, self.path, body=body, headers=headers)
+                resp = conn.getresponse()
+                data = resp.read()
+                break
+            except (http.client.RemoteDisconnected, BrokenPipeError, ConnectionResetError):
+                # uvicorn closed an idle keep-alive socket; a request it never read is safe to resend.
+                if attempt:
+                    raise
+        if resp.will_close:
+            self._upstream(fresh=True)
+        self.send_response(resp.status)
+        for key, value in resp.getheaders():
+            if key.lower() in ("transfer-encoding", "connection", "content-length", "keep-alive"):
+                continue
+            self.send_header(key, value)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        if self.command != "HEAD":
             self.wfile.write(data)
-        finally:
-            conn.close()
 
     def do_GET(self) -> None:
         self._forward()
@@ -175,7 +207,6 @@ class _TLSProxyServer(ThreadingHTTPServer):
         except (OSError, ssl.SSLError):
             request.close()
             return
-        request.settimeout(330)
         super().finish_request(request, client_address)
 
 
@@ -499,8 +530,10 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
             played["gid"] = gid
 
             p1 = creator.new_page()
-            p1.goto(links["P1"], wait_until="domcontentloaded")
             p2 = guest.new_page()
+            for tag, page in (("P1", p1), ("P2", p2)):
+                _watch_net(page, tag)
+            p1.goto(links["P1"], wait_until="domcontentloaded")
             p2.goto(links["P2"], wait_until="domcontentloaded")
             _accept_if_asked(p2)
             _wait_cockpit(p1)
@@ -594,8 +627,29 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
             browser.close()
 
 
+_PENDING: dict[str, dict[int, tuple[str, str, str]]] = {}
+
+
+def _watch_net(page, tag: str) -> None:
+    """Every failed or non-OK request a cockpit tab makes, to net.txt."""
+    def log(line: str) -> None:
+        with open(SHOTS / "net.txt", "a", encoding="utf-8") as fh:
+            fh.write(f"{time.strftime('%H:%M:%S')} {tag} {line}\n")
+
+    pending = _PENDING.setdefault(tag, {})
+    page.on("request", lambda r: pending.__setitem__(id(r), (time.strftime("%H:%M:%S"), r.method, r.url)))
+    page.on("requestfinished", lambda r: pending.pop(id(r), None))
+    page.on("requestfailed", lambda r: pending.pop(id(r), None))
+    page.on("requestfailed", lambda r: log(f"FAILED {r.method} {r.url} {r.failure}"))
+    page.on("response", lambda r: r.status >= 400 and log(f"{r.status} {r.request.method} {r.url}"))
+    page.on("console", lambda m: m.type in ("error", "warning") and log(f"console.{m.type} {m.text[:300]}"))
+    page.on("pageerror", lambda e: log(f"pageerror {str(e)[:300]}"))
+
+
 def _dump_pages(contexts: dict, notes: dict[str, str]) -> None:
     """On a failure, every open tab: a screenshot, its URL, and its visible text."""
+    for tag, pending in _PENDING.items():
+        notes[f"pending-{tag}"] = " | ".join(f"{t} {m} {u}" for t, m, u in list(pending.values())[:20])
     for name, ctx in contexts.items():
         for i, page in enumerate(list(ctx.pages)):
             tag = f"fail-{name}-{i}"
@@ -813,7 +867,10 @@ def _wait_cockpit(page) -> None:
         """() => {
           const credits = document.querySelector('#credits');
           const turns = document.querySelector('[data-testid=turns-left-today]');
-          return credits && credits.textContent && credits.textContent !== '-' && turns && turns.textContent;
+          // 'complete' means every stylesheet and script finished: a tab whose
+          // assets stalled showed credits from the first paint but never polled.
+          return document.readyState === 'complete' && credits && credits.textContent
+            && credits.textContent !== '-' && turns && turns.textContent;
         }""",
         timeout=90_000,
     )
