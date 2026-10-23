@@ -2447,7 +2447,10 @@
     applyMapView();
     bindMapPointer(svg);
     svg.setAttribute("data-route", serverPath.join(","));
-    const row = $("warps");
+    // A poll that changed nothing keeps the same buttons, so a click aimed at
+    // one is not lost to a node swapped out from under the pointer.
+    const liveRow = $("warps");
+    const row = document.createElement(liveRow.tagName);
     row.innerHTML = '<span class="g">Warps:</span> ';
     (S.sector.warps_out || []).forEach((w, i) => {
       const b = document.createElement("button");
@@ -2486,6 +2489,14 @@
       row.appendChild(eng);
       row.appendChild(cancel);
     }
+    keepIfSame(liveRow, row);
+  }
+  function keepIfSame(live, draft) {
+    if (live.innerHTML === draft.innerHTML) return false;
+    const top = live.scrollTop;
+    live.replaceChildren(...Array.from(draft.childNodes));
+    live.scrollTop = top;
+    return true;
   }
   function oneWay(id) {
     const back = (S.known_warps || {})[String(id)];
@@ -2636,8 +2647,11 @@
         if (el.dataset.touched) touched.add(el.dataset.n);
       });
     }
-    const box = $("here");
-    box.innerHTML = "";
+    // Without a form to restore, build off-screen and keep the old nodes when
+    // nothing changed. Buttons used to be replaced every 2 s and clicks missed.
+    const liveBox = $("here");
+    const box = restore ? liveBox : document.createElement("div");
+    if (restore) box.innerHTML = "";
     const s = S.sector, sh = S.ship || {};
     const landed = landedPlanet();
     if (landed) {
@@ -2834,6 +2848,7 @@
     const slot = document.createElement("div");
     slot.id = "formSlot";
     box.appendChild(slot);
+    if (!restore) { keepIfSame(liveBox, box); return; }
     if (restore === "bank") bankForm(saved);
     else if (restore === "fighters") fighterForm(saved);
     else     if (restore === "mines") mineForm(saved);
@@ -6828,7 +6843,11 @@
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     return proto + "//" + `${location.host}/ws`;
   }
+  // The reconnect line waits out a short blip, and any good read clears it.
+  const DROP_SHOW_MS = 3000;
+  let dropTimer = 0;
   function clearReconnect() {
+    if (dropTimer) { clearTimeout(dropTimer); dropTimer = 0; }
     const err = $("err");
     if (!err || err.dataset.kind !== "reconnect") return;
     err.hidden = true;
@@ -6846,9 +6865,16 @@
       state.connected = false;
       return;
     }
-    err.hidden = false;
-    err.dataset.kind = "reconnect";
-    err.textContent = "Lost the host. Reconnecting.";
+    if (dropTimer || err.dataset.kind === "reconnect") return;
+    dropTimer = setTimeout(() => {
+      dropTimer = 0;
+      const box = $("err");
+      if (!box || !state.connected) return;
+      if (!box.hidden && box.dataset.kind !== "reconnect" && box.textContent) return;
+      box.hidden = false;
+      box.dataset.kind = "reconnect";
+      box.textContent = "Lost the host. Reconnecting.";
+    }, DROP_SHOW_MS);
   }
   function scheduleLink(wait) {
     linkWaits.push(wait);
@@ -6861,7 +6887,7 @@
     if (!state.connected || state.busy) return;
     try {
       await refresh();
-      if (fromSocket) clearReconnect();
+      clearReconnect();
     } catch (e) {
       noteDrop(e);
     }
@@ -6897,6 +6923,8 @@
     };
   }
   window.__tw2kLink = {
+    dropShowMs: DROP_SHOW_MS,
+    noteDrop(e) { noteDrop(e); },
     attempts() { return linkAttempts; },
     waits() { return linkWaits.slice(); },
     drop() { if (linkSock) linkSock.close(); },
