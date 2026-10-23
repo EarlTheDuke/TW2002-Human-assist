@@ -4884,6 +4884,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PORT_MAX_STOCK_MODE",
         "GAP 2.5 / playtest 3: a port holds the printed 950 to 2,720 units, so a 1-hop pair drains like the original",
     ),
+    "port_drain_curve_live": (
+        "PORT_DRAIN_CURVE_MODE",
+        "Follow-up to row 223: quotes follow the economy3 Merf table and a port restocks 10 percent of its maximum a day (economy2)",
+    ),
 }
 
 
@@ -6343,3 +6347,31 @@ def port_max_stock(draw: int) -> int:
         return PORT_DEFAULT_MAX_STOCK + int(draw)
     span = V311_PORT_MAX_STOCK_MAX - V311_PORT_MAX_STOCK_MIN
     return V311_PORT_MAX_STOCK_MIN + (int(draw) + 500) * span // 2000
+
+
+# Row 224, follow-up to row 223 (GAP 2.5 / playtest 3). Cabal economy3 prints a
+# Merf pair of 1,500-unit ports, MCIC 50/-50, experience 0. Equipment: the
+# selling port's price goes 2,889 at 100% to 3,957 at 61% and 5,614 at 5%, so it
+# rises about 0.97 of its full-port price per unit drained. The buying port pays
+# 8,813 hungry, 7,774 after taking 39%, and 6,193 after 95%, so it falls about
+# 0.31 per unit filled. Trip 10 profit (3,818) is 64% of trip 1 (5,923).
+# Those printed prices were haggled, so their spread is 3.05x; the clone's
+# unhaggled economy2 anchors are 2.6x (equipment 49/128), and the printed
+# slopes would keep only 57%. Both slopes are scaled by 0.83 (0.80 and 0.26),
+# which keeps the printed 64% for equipment (organics 63%, fuel 60%).
+# economy2's T-Edit port: maximum 2610/950/2100 with productivity 261/95/210 a
+# day, so a day restocks 10 percent of the maximum, not 5.
+PORT_DRAIN_CURVE_MODE = "legacy"  # "legacy" | "live"
+V311_SELL_DRAIN_RISE = 0.80
+V311_BUY_FILL_FALL = 0.26
+V311_PORT_REGEN_PER_DAY = 0.10
+
+
+def port_drain_curve_live() -> bool:
+    """True when quotes and daily restock follow economy3 and economy2."""
+    return PORT_DRAIN_CURVE_MODE == "live" or v311_profile()
+
+
+def port_regen_per_day() -> float:
+    """Share of a product's maximum a port restocks each day."""
+    return V311_PORT_REGEN_PER_DAY if port_drain_curve_live() else PORT_REGEN_PER_DAY
