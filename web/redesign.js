@@ -2267,10 +2267,16 @@
     const hopCost = Number(courseCard.turns_per_hop || 0);
     const left = Number((S && S.turns_remaining) || 0);
     const grey = hopCost > left ? " dim" : "";
-    html += '<button type="button" class="eng' + grey + '" data-testid="engage">Engage Express</button><button type="button" data-testid="course-cancel">Cancel</button>';
+    // Playtest 3 leftovers: v3.11 autopilot asks at each port; <E> Express is the non-stop choice.
+    const stops = !!(((LA("plot_course") || {}).params || {}).execute || {}).stop_at_ports;
+    html += '<button type="button" class="eng' + grey + '" data-testid="engage">' + (stops ? "Engage (stops at ports)" : "Engage Express") + "</button>";
+    if (stops) html += '<button type="button" class="eng' + grey + '" data-testid="engage-express" data-express="1" title="Express non-stop: no pause at ports on the way">Express non-stop</button>';
+    html += '<button type="button" data-testid="course-cancel">Cancel</button>';
     box.innerHTML = html;
     const engageBtn = box.querySelector("[data-testid=engage]");
-    engageBtn.addEventListener("click", engage);
+    engageBtn.addEventListener("click", () => engage());
+    const expressBtn = box.querySelector("[data-testid=engage-express]");
+    if (expressBtn) expressBtn.addEventListener("click", () => engage(true));
     if (engageFocus) {
       engageFocus = false;
       engageBtn.focus();
@@ -2484,12 +2490,24 @@
       eng.className = "eng";
       eng.textContent = "ENGAGE  " + hops + " hops, " + (hops * hopCost) + " turns";
       if (hopCost > Number((S && S.turns_remaining) || 0)) eng.classList.add("dim");
-      eng.addEventListener("click", engage);
+      eng.addEventListener("click", () => engage());
+      row.appendChild(eng);
+      // Playtest 3 leftovers: v3.11 autopilot asks at each port; <E> Express flies non-stop (TWINSTR AUTOPILOT MENU).
+      if ((((LA("plot_course") || {}).params || {}).execute || {}).stop_at_ports) {
+        const ex = document.createElement("button");
+        ex.type = "button";
+        ex.className = "eng";
+        ex.dataset.express = "1";
+        ex.title = "Express non-stop: no pause at ports on the way";
+        ex.textContent = "EXPRESS";
+        if (hopCost > Number((S && S.turns_remaining) || 0)) ex.classList.add("dim");
+        ex.addEventListener("click", () => engage(true));
+        row.appendChild(ex);
+      }
       const cancel = document.createElement("button");
       cancel.type = "button";
       cancel.textContent = "✕";
       cancel.addEventListener("click", () => { ignorePlotSeq = plotted.seq || ignorePlotSeq; plotted = null; mapSig = ""; map(); });
-      row.appendChild(eng);
       row.appendChild(cancel);
     }
     keepIfSame(liveRow, row);
@@ -2515,7 +2533,7 @@
     }
     loadCourse(id);
   }
-  function engage() {
+  function engage(express) {
     const target = courseCard ? courseCard.target : (plotted && plotted.target);
     if (target == null) return;
     if (S && S.planet_landed != null) { setResult("REFUSED — Lift off first", true); return; }
@@ -2523,8 +2541,8 @@
     const left = Number((S && S.turns_remaining) || 0);
     if (hopCost > left) { setResult("REFUSED — first hop unaffordable (need " + hopCost + " turns, have " + left + ").", true); return; }
     const args = { target: target, execute: true };
-    if ((((LA("plot_course") || {}).params || {}).execute || {}).stop_at_ports) args.stop_at_ports = true;
-    act("plot_course", args, "engage course to " + target);
+    if (!express && (((LA("plot_course") || {}).params || {}).execute || {}).stop_at_ports) args.stop_at_ports = true;
+    act("plot_course", args, (express ? "express to " : "engage course to ") + target);
   }
 
   function paintShip() {
@@ -6396,6 +6414,12 @@
       go.type = "button";
       go.textContent = "Continue";
       go.addEventListener("click", () => engage());
+      const ex = document.createElement("button");
+      ex.type = "button";
+      ex.dataset.express = "1";
+      ex.textContent = "Express";
+      ex.title = "Express non-stop to " + target;
+      ex.addEventListener("click", () => engage(true));
       const stay = document.createElement("button");
       stay.type = "button";
       stay.textContent = "Stop here";
@@ -6405,6 +6429,7 @@
       port.textContent = "Port";
       port.addEventListener("click", () => openForm("trade"));
       bar.appendChild(go);
+      bar.appendChild(ex);
       bar.appendChild(stay);
       bar.appendChild(port);
       $("lastResult").insertAdjacentElement("afterend", bar);

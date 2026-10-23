@@ -1367,7 +1367,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "PROBE_SHOOTDOWN_MODE": "A shot-down ether probe names the sector and who owned the fighters.",
     "FERRENGI_REWARD_MODE": "Destroying a Ferrengi pays alignment to a good trader, and experience by the hull.",
     "FERRENGAL_QUASAR_MODE": "Entering Ferrengal draws one quasar shot. Landing there does not.",
-    "AUTOPILOT_PORT_STOP_MODE": "Express can pause in a port sector when you ask it to.",
+    "AUTOPILOT_PORT_STOP_MODE": "Autopilot pauses at each port on the way, as in v3.11; choose Express to fly non-stop.",
     "GENESIS_NAME_MODE": "You can type the name of a planet when you fire a Genesis torpedo.",
     "PORT_ATTACK_ALL_CLASSES_MODE": "A port whose class you know can be destroyed.",
     "PORT_CLASS_NUMBER_FIX_MODE": "Class 7 is the SSS port. StarDock stays its own class.",
