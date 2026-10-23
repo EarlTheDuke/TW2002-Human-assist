@@ -4880,6 +4880,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "HAGGLE_ROUNDS_MODE",
         "Playtest 3: the cabal table is the get-lost line, not a one-shot accept; the measured rounds close the deal",
     ),
+    "alliance_off_live": (
+        "ALLIANCE_OFF_MODE",
+        "GAP 14.6: the Bible's alliances are unenforced gentleman's agreements; no in-game pact, corporations only",
+    ),
 }
 
 
@@ -6313,3 +6317,17 @@ HAGGLE_ROUNDS_MODE = "legacy"  # "legacy" | "live"
 def haggle_rounds_live() -> bool:
     """True when a counter is negotiated in rounds and the cabal table only ends talks."""
     return HAGGLE_ROUNDS_MODE == "live" or v311_profile()
+
+
+# GAP 14.6. The Bible (S3, "Secret Alliances and Treaties"): a corporation may
+# offer not to attack you, but "These are by no means binding and are not
+# enforced". v3.11 has corporations, not a game-enforced pact. Off, propose and
+# accept alliance stay. On, they are refused; break stays so an old save can
+# leave a pact. play_to_day_cap stays (R14 A).
+ALLIANCE_OFF_MODE = "legacy"  # "legacy" | "live"
+ALLIANCE_OFF_REASON = "v3.11 has no in-game alliance; agreements are unenforced. Use a corporation (T)"
+
+
+def alliance_off_live() -> bool:
+    """True when the game offers no enforced alliance, only corporations."""
+    return ALLIANCE_OFF_MODE == "live" or v311_profile()
