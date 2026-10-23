@@ -1228,6 +1228,8 @@ def _handle_trade(universe: Universe, pid: str, action: Action) -> ActionResult:
             "unit": unit,
             "note": msg,
             "realized_profit": realized,
+            # Playtest 3 leftovers: set at emit time so the feed index stays fixed.
+            **({"_private": True} if K.trade_private_live() else {}),
         },
         summary=f"{player.name} {side} {qty} {commodity.value} @ {unit}cr = {total}cr{note}{pnl_tag}",
     )

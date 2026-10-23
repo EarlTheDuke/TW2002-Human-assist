@@ -4876,6 +4876,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "FULL_GAME_BALANCE_MODE",
         "Track K: every seat in a full-length game opens with the same credits (no per-seat skew)",
     ),
+    "trade_private_live": (
+        "TRADE_PRIVATE_MODE",
+        "Playtest 3 leftovers: a rival in the sector does not see your port trade, its quantity or its price",
+    ),
 }
 
 
@@ -6289,3 +6293,18 @@ def full_game_balance_live() -> bool:
 def full_game_even_start(config: object) -> bool:
     """True when this game is full-length and the balance switch is on."""
     return full_game_balance_live() and getattr(config, "game_length", None) == "full"
+
+
+# Playtest 3 leftovers (c). The playtest saw "Guest 1 sell 20 equipment @ 137"
+# in COMMS. Legacy shows a port trade, with quantity, price and profit, to
+# every trader in the sector (the default "witnessed" event rule). v3.11 has
+# no such line: a port deal happens inside the port menu, other traders see
+# only who is in the sector (TWINSTR.DOC port and sector display; the daily
+# log covers combat and planets, not trades). "live" keeps a trade event for
+# its own trader. Spectators and the actor are unchanged.
+TRADE_PRIVATE_MODE = "legacy"  # "legacy" | "live"
+
+
+def trade_private_live() -> bool:
+    """True when a port trade is shown only to the trader who made it."""
+    return TRADE_PRIVATE_MODE == "live" or v311_profile()

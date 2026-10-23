@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (148 helpers)
+## The switch set (149 helpers)
 
 The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112. NOTE 104 uses row 164. NOTE 112 uses row 165. NOTE 115 uses row 166. NOTE 117 uses rows 167, 168 and 169. NOTE 143 uses rows 170, 171 and 172. NOTE 148 uses rows 173 and 174. NOTE 150 uses row 175. NOTE 142 uses row 176. NOTE 151 uses rows 177 and 178. NOTE 157 uses row 179. NOTE 158 uses row 180. NOTE 159 uses row 181. NOTE 162 uses rows 182-186. NOTE 163 uses row 187. NOTE 164 uses rows 200, 201, 202, and 203. Rows 160, 162 and 163 stay unused. The ship-versus-ship loss split and a real-time travel time stay queued in `docs/plans/live-twgs-test-queue-v1.md`, not switched.
 
@@ -160,6 +160,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 215 | `ECON_WIN_MODE` | `econ_win_off_live` | NOTE 178 GAP 14.6: no instant credits win. The 100,000,000-credit "economic dominance" end is ours only; v3.11 has no credits win. Elimination and the day cap stay. Stored default stays legacy. `"1"` does not turn it on. |
 | 216 | `FULL_GAME_TURNS_MODE` | `full_game_turns_live` | Track K: a full-length game keeps the host's turns per day (Original is the v3.11 sysop 250) for any number of days. Legacy divides 7,500 turns across the days and replaces the host's choice. Fast test games are unchanged. Stored default stays legacy. `"1"` does not turn it on. |
 | 217 | `FULL_GAME_BALANCE_MODE` | `full_game_balance_live` | Track K: every seat in a full-length game opens with the same credits; the legacy classic +/-1,000 per-seat skew is dropped. The v3.11 package already has no skew. Fast test games are unchanged. Stored default stays legacy. `"1"` does not turn it on. |
+| 220 | `TRADE_PRIVATE_MODE` | `trade_private_live` | Playtest 3 leftovers: a port trade (quantity, price, profit) is shown only to its trader, not to rivals in the sector. v3.11 announces no port deal. Spectators unchanged. Stored default stays legacy. |
 
 Row 181 is NavPoints (NOTE 159). Rows 182-186 are NOTE 162. Row 187 is the good-trader bounty (NOTE 163). NOTE 164 uses rows 200-203. Those four switches do not grade 6.11 or 13.4 a second time. The stored game stays the FERRSPEC Ferrengi column, defunct corporate ships, the death `#N/3` line, and an empty fighter report.
 
