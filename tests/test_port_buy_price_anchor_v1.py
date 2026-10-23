@@ -347,10 +347,13 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
     # buys it used to. Row 221 (BIG_BANG_BUILT_MODE) builds more ports, which
     # moves the bots' trades: the refusals left are N3's three sells of an
     # empty Equipment/Organics hold (seed 250925), a holds slip by the planner,
-    # never a haggle or a quote from the anchor.
+    # never a haggle or a quote from the anchor. Row 223 (PORT_MAX_STOCK_MODE)
+    # resizes the ports and moves the trades again: the run now meets one N1
+    # plot to an unreachable target, a known planner slip, not a quote refusal.
+    slips = ("in your holds", "plot_course: no route")
     for seat, row in on.items():
         for reason, _count in row["rejected_top"]:
-            assert "in your holds" in str(reason) or str(reason).startswith("trade: counter "), (seat, report)
+            assert any(x in str(reason) for x in slips) or str(reason).startswith("trade: counter "), (seat, report)
     assert sum(_refused(row) for row in on.values()) <= 3, report
     assert sum(row["realized_profit"] for row in on.values()) > 0, report
     assert sum(row["sells"] for row in on.values()) > 0, report
