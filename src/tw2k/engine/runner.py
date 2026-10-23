@@ -2136,8 +2136,8 @@ def _handle_land_planet(universe: Universe, pid: str, action: Action) -> ActionR
         # orphans from an eliminated player keep owner_id=None until the
         # explicit claim_planet action, so the citadel/fighter inheritance
         # step remains visible and intentional.
-        if _planet_was_orphaned(universe, planet.id):
-            pass
+        if _planet_was_orphaned(universe, planet.id) or K.land_claim_explicit_live():
+            pass  # v3.11: Claim Ownership is its own step
         else:
             planet.owner_id = pid
             planet.corp_ticker = player.corp_ticker
@@ -2857,7 +2857,7 @@ def _handle_claim_planet(universe: Universe, pid: str, action: Action) -> Action
             f"planet {planet.name} is corp-owned ([{planet.corp_ticker}]); "
             "cannot claim an abandoned corp holding this way"
         )
-    if not _planet_was_orphaned(universe, planet.id):
+    if not _planet_was_orphaned(universe, planet.id) and not K.land_claim_explicit_live():
         return _reject_free(
             f"planet {planet.name} is neutral, not a former-player orphan; "
             "land_planet claims neutral planets automatically"

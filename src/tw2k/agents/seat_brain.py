@@ -1227,6 +1227,12 @@ class SeatBrain:
                 candidates.append(self._act("claim_planet", {"planet_id": int(v.landed)},
                                             f"claim orphan {o.get('name', v.landed)} (L{o.get('citadel_level', 0)}, "
                                             f"{o.get('fighters', 0)} fighters)"))
+        elif _land_claim_explicit() and v.ok("claim_planet"):
+            # Playtest 3 leftovers: under LAND_CLAIM_MODE landing leaves a neutral planet unowned.
+            choices = [int(c) for c in v.choices("claim_planet", "planet_id")]
+            if not choices or int(v.landed) in choices:
+                candidates.append(self._act("claim_planet", {"planet_id": int(v.landed)},
+                                            f"claim ownership of planet {v.landed}"))
         planet = v.planet(v.landed)
         work_site = planet is not None and planet in v.worlds()
         if work_site:
@@ -6164,3 +6170,9 @@ def tw_reserve_view(o: dict[str, Any], plan_hops: int | None = None) -> dict[str
         legal.append(la)
     out["legal_actions"] = legal
     return out
+
+
+def _land_claim_explicit() -> bool:
+    from tw2k.engine import constants as _K
+
+    return bool(_K.land_claim_explicit_live())

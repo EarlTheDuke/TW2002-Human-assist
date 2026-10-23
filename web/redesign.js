@@ -1899,6 +1899,7 @@
     const known = p.fighters != null || p.shields != null;
     const garrison = known ? "Fighters " + fmt(p.fighters || 0) + ", shields " + fmt(p.shields || 0) + "." : "Fighters and shields are not on this scan.";
     // Playtest 3: an unowned planet is not "yours" until it is claimed.
+    if (!p.owner_id && (((LA("claim_planet") || {}).params || {}).claims_neutral)) return "Unclaimed planet. Landing does not claim it: once landed, use Claim planet to make it yours. " + garrison;
     if (!p.owner_id) return "Unclaimed planet. Landing claims it (a dead trader's planet waits for Claim planet). " + garrison;
     if (p.owner_id === S.self_id) return "Your planet. " + garrison;
     const holds = traderName(p.owner_id) + " holds this planet. " + garrison;
