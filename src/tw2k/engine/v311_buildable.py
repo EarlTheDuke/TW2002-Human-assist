@@ -128,10 +128,29 @@ def _cim_ports(universe: Universe, player) -> list[dict[str, Any]]:
             rows.append({"sector_id": sid, "info": "unavailable"})
             continue
         entry = player.known_ports.get(sid) or player.known_ports.get(str(sid)) or {}
+        # Playtest 4: CIM R printed nothing. TWGS's port report lists each
+        # commodity as buying or selling with its amount and percent of max,
+        # from the trader's own last look (known_ports), never live stock.
+        goods: dict[str, dict[str, Any]] = {}
+        for name, row in (entry.get("stock") or {}).items():
+            if not isinstance(row, dict):
+                continue
+            side = row.get("side")
+            if side not in ("buys_from_player", "sells_to_player"):
+                continue
+            cur = int(row.get("current") or 0)
+            top = int(row.get("max") or 0)
+            goods[str(name)] = {
+                "side": "buying" if side == "buys_from_player" else "selling",
+                "qty": cur,
+                "pct": (cur * 100 // top) if top > 0 else 0,
+            }
         rows.append({
             "sector_id": sid,
             "port": entry.get("code") or entry.get("port"),
             "class": entry.get("class"),
+            "last_seen_day": entry.get("last_seen_day"),
+            "goods": goods,
         })
     return rows
 
