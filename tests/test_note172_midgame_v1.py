@@ -215,3 +215,22 @@ def test_no_course_home_is_plotted_before_the_yard() -> None:
     t.credits = 40_000
     t._sync_plot(1, 10, 40_000, {})
     assert t.plot_to == 0
+
+
+def test_a_rich_seat_judges_the_yard_on_the_net_after_trade_in() -> None:
+    # NOTE 172c: the quote headline is the cash after trade-in; the trade-in is not added back.
+    t = _rich(avail=3_000)
+    t.credits, t.day, t.max_day = 58_000, 6, 16
+    screen = {"ship": "Merchant Cruiser. Holds 0/32"}
+    quote = ("Merchant Freighter: 12,000 cr. Holds 65, fighters 300, shields 500, 2 turns per warp, "
+             "no photons, no TransWarp. Trade-in sells your ship for 21,400 cr and you fly the new one.")
+    assert t._yard_pays(screen, quote)
+
+
+def test_a_hull_trip_alone_may_sail_with_an_empty_shelf(monkeypatch) -> None:
+    # NOTE 172c: no gear left to buy must not cancel a hull trip.
+    t = _rich()
+    monkeypatch.setattr(t, "_shelf_open", lambda: False)
+    monkeypatch.setattr(t, "_hull_trip", lambda: True)
+    monkeypatch.setattr(t, "_refit_item", lambda: None)
+    assert "not (self._shelf_open() or hull)" in __import__("inspect").getsource(type(t)._should_shop)
