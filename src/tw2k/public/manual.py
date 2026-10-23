@@ -388,6 +388,10 @@ def _trading(f: dict) -> str:
         "Inside it a sale takes up to 3 percent over the quote; a bigger ask gets a counter 1 percent over, "
         "and the next ask has to be at or under that counter. A buy takes up to 12 percent under; "
         "a lower bid gets a counter 4 percent under. A refused haggle costs a turn and ends the visit.</p>"
+        + "<p>" + _profile("Port size", K.port_max_stock_live(), only_v311=False) + " "
+        + f"When it is on, a new port holds {_n(K.V311_PORT_MAX_STOCK_MIN)} to {_n(K.V311_PORT_MAX_STOCK_MAX)} units of a product, "
+        "as the printed ports do, so a full hold takes a few percent off a port pair each trip and the profit shrinks as it drains. "
+        "Ship prices and port prices stay on their own printed lists.</p>"
         + _buy_anchor()
         + _price_scale()
         + _busts(f)
@@ -1323,6 +1327,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "FEDCOMM_MODE": "A cleared Federation lane can send you a Federation note.",
     "CORP_RANK_MODE": "Corporations are ranked by the members' experience added together.",
     "CLASS_M_FIDELITY_MODE": "A class M planet stores each product in its own cap.",
+    "PORT_MAX_STOCK_MODE": "A new port holds the printed 950 to 2,720 units of a product, so port pairs drain.",
     "PORT_STOCK_FIDELITY_MODE": "A port's stock opens and refills by the v3.11 percentages.",
     "SHIP_EXIT_MODE": "You can jettison cargo, and you can self-destruct.",
     "RIVAL_STRENGTH_MODE": "Another trader's strength is the published figure.",
@@ -1919,7 +1924,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "trading": (
         "trade", "rob", "steal", "planet_trade",
         "PORT_PRICE_MODE", "PRICE_SCALE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
-        "HAGGLE_EXP_MODE", "HAGGLE_TABLE_MODE", "HAGGLE_ROUNDS_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
+        "HAGGLE_EXP_MODE", "HAGGLE_TABLE_MODE", "HAGGLE_ROUNDS_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE", "PORT_MAX_STOCK_MODE",
         "PORT_CLASS_MAP_MODE", "PORT_CLASS_NUMBER_FIX_MODE", "CLASS0_HOLD_FORMULA_MODE",
         "HOLD_RULES_MODE", "SHOP_PRICE_MODE", "EVIL_TRADE_LOOP_MODE",
     ),

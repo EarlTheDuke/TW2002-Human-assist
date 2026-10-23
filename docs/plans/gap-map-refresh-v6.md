@@ -11,9 +11,9 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Grade | v5 | v6 |
 |---|---|---|
 | Match | 50 | 72 |
-| Match-behind-flag | 17 | 85 |
+| Match-behind-flag | 17 | 86 |
 | Partial | 53 | 10 |
-| Different | 38 | 2 |
+| Different | 38 | 1 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
@@ -102,7 +102,7 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 
 | Rank | Row | Grade | Size | Why it still shows | Files | NOTE 104 |
 |---|---|---|---|---|---|---|
-| 1 | 2.5 | Different | L | Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002 | `economy.port_sell_price`, `economy.port_buy_price` | economy.py |
+| 1 | 2.5 | Match-behind-flag | L | Ruled R3 A: ports quote the economy2 chart (`ECONOMY_SCALE_MODE`, price scale) and ships the Bible chart; no source welds them. Port maximums are the printed 950 to 2,720 (`PORT_MAX_STOCK_MODE` row 223), so a pair drains as in economy3 | `economy.port_sell_price`, `universe._make_port` | test_port_max_stock_v1.py |
 | 2 | 5.7 | Partial | L | NOTE 178: the Safety Rating model is coded; the exact loss split is unprinted. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
@@ -176,7 +176,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 2.2 Match-behind-flag `PORT_CLASS_MAP_MODE` row 10 and `PORT_CLASS_NUMBER_FIX_MODE` row 142, NOTE 98. Class 7 displays as SSS. Class 8 stays the StarDock id. Class 9 stays the built SSS port. `constants.port_class_live`.
 2.3 Match-behind-flag `PORT_PRICE_MODE` row 21. The original price curve is coded and off. `economy.port_sell_price`.
 2.4 Match. Each port has its own MCIC and productivity. `economy._stored_mcic`.
-2.5 Different. Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002. `economy.port_sell_price`, `constants.ship_cost`.
+2.5 Match-behind-flag. R3 A: two printed lists, ports on the economy2 chart and ships on the Bible chart; no source prints one scale, so none is invented. The playtest 3 note that 1-hop pairs barely deplete came from port maximums of 2,500 to 4,500; `PORT_MAX_STOCK_MODE` row 223 uses the printed 950 to 2,720 (Bible Tarsus, economy2, economy3 "1,500 ... roughly average"). `economy.port_sell_price`, `universe._make_port`.
 2.6 Match-behind-flag `HAGGLE_LIVE_MODE` row 31. The live window is coded and off. `HAGGLE_COUNTER_MODE` row 74 and `HAGGLE_EXP_MODE` row 110 sit beside it. The cabal product table is `HAGGLE_TABLE_MODE` row 175, NOTE 150, and stays off. Equipment at MCIC -20 is 110.2 percent on that table, not the straight line. `economy.haggle_bound`, `economy.haggle_experience`.
 2.7 Match. The first trade in a sector costs a turn. Later trades there do not. `economy.trade_turn_cost`.
 2.8 Match-behind-flag `PORT_REGEN_MODE` row 22. Five percent restock is coded and off. `economy.regenerate_ports`.
