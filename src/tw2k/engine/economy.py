@@ -197,9 +197,13 @@ def _live_haggle(player: Player, commodity: Commodity, side: str, listed: int, o
         if side == "sell" and offered <= counter:
             player.haggle_counter = None
             return "accept", offered
-        if side == "sell" and offered * 100 <= base * 112:
+        if side == "sell" and offered * 100 <= base * 112 and not K.haggle_rounds_live():
             player.haggle_counter = None
             return "accept", offered
+        if K.haggle_rounds_live():
+            # Playtest 3: the second ask closes at or under the port's counter.
+            player.haggle_counter = None
+            return "end", "the port lost patience"
         if side == "buy" and offered >= counter:
             player.haggle_counter = None
             return "accept", offered
@@ -336,7 +340,16 @@ def execute_trade(
     # rng stays in the signature so existing callers do not change.
     del rng
 
-    if K.haggle_live() and not K.haggle_table_live():
+    rounds = K.haggle_rounds_live()
+    if rounds:
+        # Playtest 3: past the cabal line the port ends the talk at once.
+        better = (side == "buy" and offered < listed) or (side == "sell" and offered > listed)
+        if better:
+            line = haggle_bound(listed, _stored_mcic(port, commodity), side, commodity)
+            if (side == "sell" and offered > line) or (side == "buy" and offered < line):
+                player.haggle_counter = None
+                return False, 0, 0, "the port lost patience", None
+    if (K.haggle_live() and not K.haggle_table_live()) or rounds:
         kind, value = _live_haggle(player, commodity, side, listed, offered)
         if kind != "accept":
             return False, 0, 0, str(value), None

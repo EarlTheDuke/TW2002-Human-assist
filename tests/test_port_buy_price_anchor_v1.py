@@ -342,14 +342,11 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
     on = _ten_day("v311")
     assert K.V311_PROFILE == "legacy"
     report = {"on": on, "off": off}
-    assert on["N3-P1"]["rejected_top"] == [
-        ["trade: You only have 10 empty holds.", 1],
-        ["trade: You only have 25 empty holds.", 1],
-        ["trade: You only have 30 empty holds.", 1],
-        ["trade: You only have 5 empty holds.", 1],
-    ], report
-    assert _refused(on["N3-P1"]) == 4, report
-    assert all(_refused(row) == 0 for name, row in on.items() if name != "N3-P1"), report
+    # Playtest 3 (HAGGLE_ROUNDS_MODE, on under the profile): the cockpit seat
+    # sells at the quote, so this map's run no longer meets the four short-hold
+    # buys it used to, and no seat is refused.
+    assert on["N3-P1"]["rejected_top"] == [], report
+    assert all(_refused(row) == 0 for row in on.values()), report
     assert sum(row["realized_profit"] for row in on.values()) > 0, report
     assert sum(row["sells"] for row in on.values()) > 0, report
     print("NOTE69 day-10 net worth", report)
