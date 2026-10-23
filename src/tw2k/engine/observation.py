@@ -167,6 +167,9 @@ def _event_visible_base(event: Event, player_id: str, universe: Universe) -> boo
     once the event is emitted.
     """
     kind = event.kind
+    if kind == EventKind.TRADE and (event.payload or {}).get("_private"):
+        # Playtest 3 leftovers (TRADE_PRIVATE_MODE): a port deal is the trader's own business.
+        return event.actor_id == player_id
     if kind == EventKind.PLANET_TRADE:  # PLANETARY_TRADING.md pt24 (PLANET_TRADE_FEED)
         if _K.PLANET_TRADE_FEED == "actor_only":
             return event.actor_id == player_id

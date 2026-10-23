@@ -371,7 +371,10 @@ def _trading(f: dict) -> str:
     return (
         "<p>P docks and trades. The first trade of a visit costs "
         f"{_n(K.PORT_DOCK_TURN_COST)} turn. A later trade in the same sector costs none.</p>"
-        f"<p>A successful trade gives {_n(K.XP_AWARDS['trade'])} experience, up to {_n(K.PORT_HAGGLE_XP_CAP)} from haggling. "
+        f"<p>{_profile('Private trades', K.trade_private_live(), only_v311=False)} "
+        + ("Other traders in the sector do not see your trades or their prices.</p>" if K.trade_private_live()
+           else "Other traders in the sector see each trade you make, with its quantity and price.</p>")
+        + f"<p>A successful trade gives {_n(K.XP_AWARDS['trade'])} experience, up to {_n(K.PORT_HAGGLE_XP_CAP)} from haggling. "
         f"Price also moves with experience, capped at {_n(K.PORT_PRICE_EXPERIENCE_CAP)}.</p>"
         f"<p>The live haggle window is {_on(K.haggle_window_live())} in this process. "
         f"When it is on, a counter has to sit between {_n(room)} and {_n(end)} percent of the quote. "
@@ -1427,6 +1430,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "FULL_GAME_BALANCE_MODE": "Every seat in a full-length game starts with the same credits.",
     "HAGGLE_ROUNDS_MODE": "A port haggles in rounds: a small ask is taken, a bigger one is countered, and past the product table it says get lost.",
     "LAND_CLAIM_MODE": "Landing on an unowned planet does not claim it; use Claim planet (v3.11 Claim Ownership).",
+    "TRADE_PRIVATE_MODE": "Your port trades, with their quantities and prices, are not shown to other traders in the sector.",
 }
 
 
@@ -1922,7 +1926,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "BIG_BANG_DENSITY_MODE",
     ),
     "trading": (
-        "trade", "rob", "steal", "planet_trade",
+        "trade", "rob", "steal", "planet_trade", "TRADE_PRIVATE_MODE",
         "PORT_PRICE_MODE", "PRICE_SCALE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
         "HAGGLE_EXP_MODE", "HAGGLE_TABLE_MODE", "HAGGLE_ROUNDS_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
         "PORT_CLASS_MAP_MODE", "PORT_CLASS_NUMBER_FIX_MODE", "CLASS0_HOLD_FORMULA_MODE",

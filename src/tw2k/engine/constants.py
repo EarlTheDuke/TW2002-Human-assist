@@ -4884,6 +4884,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "LAND_CLAIM_MODE",
         "Playtest 3 leftovers: landing on an unowned planet does not claim it; Claim Ownership does (TWINSTR <O>)",
     ),
+    "trade_private_live": (
+        "TRADE_PRIVATE_MODE",
+        "Playtest 3 leftovers: a rival in the sector does not see your port trade, its quantity or its price",
+    ),
 }
 
 
@@ -6332,3 +6336,18 @@ LAND_CLAIM_MODE = "legacy"  # "legacy" | "live"
 def land_claim_explicit_live() -> bool:
     """True when landing leaves an unowned planet unowned until claim_planet."""
     return LAND_CLAIM_MODE == "live" or v311_profile()
+
+
+# Playtest 3 leftovers (c). The playtest saw "Guest 1 sell 20 equipment @ 137"
+# in COMMS. Legacy shows a port trade, with quantity, price and profit, to
+# every trader in the sector (the default "witnessed" event rule). v3.11 has
+# no such line: a port deal happens inside the port menu, other traders see
+# only who is in the sector (TWINSTR.DOC port and sector display; the daily
+# log covers combat and planets, not trades). "live" keeps a trade event for
+# its own trader. Spectators and the actor are unchanged.
+TRADE_PRIVATE_MODE = "legacy"  # "legacy" | "live"
+
+
+def trade_private_live() -> bool:
+    """True when a port trade is shown only to the trader who made it."""
+    return TRADE_PRIVATE_MODE == "live" or v311_profile()
