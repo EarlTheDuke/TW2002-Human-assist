@@ -513,10 +513,7 @@ def test_a_dropped_socket_backs_off_and_resyncs(tmp_path: Path) -> None:
               window.__tw2kLink.drop();
             }"""
         )
-        page.wait_for_function(
-            "() => document.querySelector('#err') && document.querySelector('#err').dataset.kind === 'reconnect'",
-            timeout=10_000,
-        )
+        # Playtest 3: a blip shorter than the debounce no longer flashes the banner.
         page.wait_for_function(
             """() => {
               const waits = window.__tw2kLink.waits();
