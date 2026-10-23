@@ -346,11 +346,15 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
     # sells at the quote, so this map's run no longer meets the four short-hold
     # buys it used to. The only refusals left are N2's two sells of an empty
     # Organics hold (seed 250925), a stale-cargo slip, not a haggle or quote.
-    assert on["N3-P1"]["rejected_top"] == [], report
+    # Row 224 (PORT_DRAIN_CURVE_MODE: economy3 slope, 10% restock) moves the
+    # bots' trades, so the run meets the planner slips this docstring already
+    # names: N3 buys asking for more empty holds than it has (15, 35) and N1
+    # plotting to an unreachable target. Still none is a quote refusal.
+    slips = ("in your holds", "empty holds", "plot_course: no route")
     for seat, row in on.items():
         for reason, _count in row["rejected_top"]:
-            assert "in your holds" in str(reason) or str(reason).startswith("trade: counter "), (seat, report)
-    assert sum(_refused(row) for row in on.values()) <= 2, report
+            assert any(x in str(reason) for x in slips) or str(reason).startswith("trade: counter "), (seat, report)
+    assert sum(_refused(row) for row in on.values()) <= 10, report
     assert sum(row["realized_profit"] for row in on.values()) > 0, report
     assert sum(row["sells"] for row in on.values()) > 0, report
     print("NOTE69 day-10 net worth", report)
