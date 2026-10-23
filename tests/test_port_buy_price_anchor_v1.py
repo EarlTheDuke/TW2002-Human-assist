@@ -344,13 +344,14 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
     report = {"on": on, "off": off}
     # Playtest 3 (HAGGLE_ROUNDS_MODE, on under the profile): the cockpit seat
     # sells at the quote, so this map's run no longer meets the four short-hold
-    # buys it used to. The only refusals left are N2's two sells of an empty
-    # Organics hold (seed 250925), a stale-cargo slip, not a haggle or quote.
-    assert on["N3-P1"]["rejected_top"] == [], report
+    # buys it used to. Row 221 (BIG_BANG_BUILT_MODE) builds more ports, which
+    # moves the bots' trades: the refusals left are N3's three sells of an
+    # empty Equipment/Organics hold (seed 250925), a holds slip by the planner,
+    # never a haggle or a quote from the anchor.
     for seat, row in on.items():
         for reason, _count in row["rejected_top"]:
             assert "in your holds" in str(reason) or str(reason).startswith("trade: counter "), (seat, report)
-    assert sum(_refused(row) for row in on.values()) <= 2, report
+    assert sum(_refused(row) for row in on.values()) <= 3, report
     assert sum(row["realized_profit"] for row in on.values()) > 0, report
     assert sum(row["sells"] for row in on.values()) > 0, report
     print("NOTE69 day-10 net worth", report)
