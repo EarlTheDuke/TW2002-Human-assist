@@ -66,11 +66,13 @@ def port_sell_price(port: Port, commodity: Commodity, experience: int = 0) -> in
             0.05,
             1.0 + (K.PRICE_SCALE_SELL_MCIC - K.PORT_MCIC_DEFAULT_SELL) * K.PORT_MCIC_POINT,
         )
-        raw = anchor * (stock_mult / chart_stock) * (mcic_mult / chart_mcic) * exp_mult
+        slope = (1.0 + K.V311_SELL_DRAIN_RISE * (1.0 - frac)) if K.port_drain_curve_live() else stock_mult / chart_stock
+        raw = anchor * slope * (mcic_mult / chart_mcic) * exp_mult
         return _unit_price(anchor, raw)
     if K.port_price_live():
         anchor = K.PORT_PRICE_LIVE_SELL_FULL[commodity.value]
-        raw = anchor * (stock_mult / K.PORT_PRICE_SELL_FULL_MULT) * mcic_mult * exp_mult
+        slope = (1.0 + K.V311_SELL_DRAIN_RISE * (1.0 - frac)) if K.port_drain_curve_live() else stock_mult / K.PORT_PRICE_SELL_FULL_MULT
+        raw = anchor * slope * mcic_mult * exp_mult
         return _unit_price(anchor, raw)
     return _unit_price(base, base * stock_mult * mcic_mult * exp_mult)
 
@@ -102,7 +104,8 @@ def port_buy_price(port: Port, commodity: Commodity, experience: int = 0) -> int
             0.05,
             1.0 + (K.PORT_MCIC_DEFAULT_BUY - K.PRICE_SCALE_BUY_MCIC) * K.PORT_MCIC_POINT,
         )
-        raw = anchor * (stock_mult / chart_stock) * (mcic_mult / chart_mcic) * exp_mult
+        slope = (1.0 - K.V311_BUY_FILL_FALL * frac) if K.port_drain_curve_live() else stock_mult / chart_stock
+        raw = anchor * slope * (mcic_mult / chart_mcic) * exp_mult
         return _unit_price(anchor, raw)
     if K.port_price_live():
         anchor = K.PORT_PRICE_LIVE_BUY_FULL[commodity.value]
@@ -445,11 +448,11 @@ def regenerate_ports(universe: Universe) -> None:
         for commodity, stock in port.stock.items():
             prod = int(port.productivity.get(commodity, 0) or 0)
             if K.port_stock_fidelity_live() and port.buys(commodity):
-                give_back = round(int(stock.maximum) * K.PORT_REGEN_PER_DAY)
+                give_back = round(int(stock.maximum) * K.port_regen_per_day())
                 stock.current = max(0, int(stock.current) - give_back)
                 continue
             if K.port_regen_live() or K.port_open_full() or K.port_stock_fidelity_live():
-                gain = round(int(stock.maximum) * K.PORT_REGEN_PER_DAY)
+                gain = round(int(stock.maximum) * K.port_regen_per_day())
             else:
-                gain = round(prod * K.PORT_REGEN_PER_DAY)
+                gain = round(prod * K.port_regen_per_day())
             stock.current = max(0, min(stock.maximum, stock.current + gain))

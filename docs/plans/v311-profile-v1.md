@@ -6,7 +6,7 @@ It is its own switch. `TW2002_LIVE_PROFILE` stays as it is (MASTER_PLAN: "build 
 
 Sources: `C:\Users\sugar\tw2002_reference\RULINGS_v311.md` (s1-s7 and Addendum A) and `C:\Users\sugar\tw2002_reference\MASTER_PLAN.md` ("Engine switches still defaulting to legacy").
 
-## The switch set (154 helpers)
+## The switch set (155 helpers)
 
 The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved for NOTE 75 and is not in this table. NOTE 78 uses rows 85-89. NOTE 85 uses rows 99, 101 and 102. Rows 100 and 103 are unused: density and holo scans already need the bought device (`INFO_MODE` tw2002, `src/tw2k/engine/scanners.py` `scan_reason`), and corporate versus personal deploy is already the stored corp rule (`CORP_MODE` tw2002, `CORP_DEPLOY_DEFAULT` corporate, `src/tw2k/engine/corp.py` `deploy_friend`, `handle_deploy_fighters`, `handle_deploy_mines`). NOTE 86 uses rows 105-107. NOTE 87 uses rows 109, 110 and 112. NOTE 104 uses row 164. NOTE 112 uses row 165. NOTE 115 uses row 166. NOTE 117 uses rows 167, 168 and 169. NOTE 143 uses rows 170, 171 and 172. NOTE 148 uses rows 173 and 174. NOTE 150 uses row 175. NOTE 142 uses row 176. NOTE 151 uses rows 177 and 178. NOTE 157 uses row 179. NOTE 158 uses row 180. NOTE 159 uses row 181. NOTE 162 uses rows 182-186. NOTE 163 uses row 187. NOTE 164 uses rows 200, 201, 202, and 203. Rows 160, 162 and 163 stay unused. The ship-versus-ship loss split and a real-time travel time stay queued in `docs/plans/live-twgs-test-queue-v1.md`, not switched.
 
@@ -166,6 +166,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 221 | `BIG_BANG_BUILT_MODE` | `big_bang_built_live` | GAP 11.11: Big_Bang.html C max starports 40%, D initial starports to build 95%. The bang builds 38%; the cap stays about 40%. Bubbles Gold-only, 0 (R11 A). |
 | 222 | `ALLIANCE_OFF_MODE` | `alliance_off_live` | GAP 14.6: Bible "Secret Alliances and Treaties": "by no means binding and are not enforced". Propose and accept alliance are refused; break stays; corporations are the team. play_to_day_cap stays (R14 A). |
 | 223 | `PORT_MAX_STOCK_MODE` | `port_max_stock_live` | GAP 2.5 / playtest 3: a port product maximum is 950 to 2,720 (Bible Tarsus 2720/2020/1470, economy2 2610/950/2100, economy3 "1,500 ... roughly average"), not 2,500 to 4,500, so a 1-hop pair drains about 4 percent a trip. Prices keep both lists (R3 A). |
+| 224 | `PORT_DRAIN_CURVE_MODE` | `port_drain_curve_live` | Follow-up to row 223: the stock slope follows the cabal economy3 Merf table (printed haggled slopes +0.97 / -0.31 per unit drained/filled; scaled by 0.83 to +0.80 / -0.26 for the clone's narrower unhaggled spread, so trip 10 keeps about 64% of trip 1), and a day restocks 10 percent of the maximum (economy2 T-Edit: 2610/950/2100 with productivity 261/95/210). |
 
 Row 181 is NavPoints (NOTE 159). Rows 182-186 are NOTE 162. Row 187 is the good-trader bounty (NOTE 163). NOTE 164 uses rows 200-203. Those four switches do not grade 6.11 or 13.4 a second time. The stored game stays the FERRSPEC Ferrengi column, defunct corporate ships, the death `#N/3` line, and an empty fighter report.
 
