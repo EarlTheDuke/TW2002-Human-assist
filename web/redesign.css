@@ -225,3 +225,6 @@ body.deck-tuned #lastResult,
 body.deck-tuned .prompt-line,
 body.deck-tuned #layoutMenu{font-size:var(--cockpit-font)}
 @media (max-width:700px){#layoutMenu{left:4%;right:4%;top:8%}}
+/* Playtest 3: the error line floats over the deck, so showing or hiding it never moves a button. */
+#err{position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:950;margin:0;max-width:min(92vw,760px);padding:4px 12px;background:rgba(40,0,0,.92);border:1px solid #f55;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+#err[data-kind=reconnect]{pointer-events:none}
