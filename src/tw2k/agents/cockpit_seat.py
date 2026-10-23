@@ -1030,6 +1030,12 @@ class SeatBrain:
             if qty <= 0 or listed <= 0:
                 continue
             offer = listed * self.haggle["sell"] // 100
+            from ..engine import constants as _K
+
+            if _K.haggle_rounds_live():
+                # Playtest 3: an ask over the quote is countered in rounds and the
+                # seat's view of the quote can lag, so it sells at the quote.
+                offer = listed
             if offer < listed:
                 offer = listed
             paid = float(basis.get(name) or 0)
