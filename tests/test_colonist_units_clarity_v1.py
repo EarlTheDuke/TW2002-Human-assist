@@ -96,7 +96,8 @@ def test_citadel_sentence_at_221_units(monkeypatch) -> None:
     assert quote["have_people"] == 221_000
     assert quote["plain"] == (
         "Level 1 needs 1,000 (thousands) colonists = 1,000,000; "
-        "you have 221 (thousands); about 26 more Terra trips with 30 holds"
+        # Playtest 4: the haul is this ship's 40 holds, not a fixed 30.
+        "you have 221 (thousands); about 20 more Terra trips with 40 holds"
     )
     listed = {la.kind: la for la in legal_actions(u, "P1")}
     assert listed["build_citadel"].params["next"]["plain"] == quote["plain"]
