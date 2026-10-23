@@ -5424,17 +5424,30 @@
     const credit = Number(shipParams.trade_in || 0);
     const price = spare[key] != null ? Number(spare[key]) : null;
     const money = net < 0 ? "You get " + fmt(-net) + " cr back" : "The cost is " + fmt(net) + " cr";
-    const holds = toH < fromH
-      ? "drop from " + fmt(fromH) + " holds to " + fmt(toH)
-      : (toH > fromH ? "go from " + fmt(fromH) + " holds to " + fmt(toH) : "keep " + fmt(fromH) + " holds");
-    const gear = (name, from, to) => {
-      if (to === from) return "";
-      return (to > from ? ", gain " : ", lose ") + fmt(Math.abs(to - from)) + " " + name;
-    };
+    // Playtest 3: say what the hull arrives with and what it can hold at most.
+    // TWINSTR.DOC line 1524: fighters, shields and gear stay with a traded-in ship.
+    const parts = shipParams.trade_in_parts != null;
+    const startH = Number(s.holds != null ? s.holds : toH);
+    const keepF = parts ? 0 : Math.min(fromF, toF);
+    const keepS = parts ? 0 : Math.min(fromS, toS);
+    const fit = "It arrives with " + fmt(startH) + " holds (max " + fmt(toH) + "), "
+      + fmt(keepF) + " fighters (max " + fmt(toF) + "), " + fmt(keepS) + " shields (max " + fmt(toS) + ")";
+    const left = parts && (fromF || fromS)
+      ? ". Your " + fmt(fromF) + " fighters and " + fmt(fromS) + " shields stay with the old ship"
+      : "";
     const deal = "Trade-in " + fmt(credit) + " cr"
       + (price == null ? "" : ", the new ship is " + fmt(price) + " cr")
       + ", net " + fmt(net) + " cr. ";
-    const line = "Want to buy it? " + deal + money + " and " + holds + gear("fighters", fromF, toF) + gear("shields", fromS, toS) + ".";
+    const oldKey = ship.ship_class || ship.class || "";
+    const newCost = Number((stats[key] || {}).cost);
+    const oldCost = Number((stats[oldKey] || {}).cost);
+    let worth = "";
+    if (Number.isFinite(newCost) && Number.isFinite(oldCost) && Number.isFinite(net)) {
+      const delta = Math.round((newCost - oldCost) / 2) - net;
+      worth = " Net worth " + (delta < 0 ? "−" : "+") + fmt(Math.abs(delta)) + " cr for the hull (a hull counts at half its price)"
+        + (left ? ", less the gear you leave" : "") + ".";
+    }
+    const line = "Want to buy it? " + deal + money + ". " + fit + left + "." + worth;
     const m = $("menu");
     m.hidden = false;
     inComputer = false;
