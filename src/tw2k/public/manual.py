@@ -398,6 +398,11 @@ def _trading(f: dict) -> str:
         + f"When it is on, a new port holds {_n(K.V311_PORT_MAX_STOCK_MIN)} to {_n(K.V311_PORT_MAX_STOCK_MAX)} units of a product, "
         "as the printed ports do, so a full hold takes a few percent off a port pair each trip and the profit shrinks as it drains. "
         "Ship prices and port prices stay on their own printed lists.</p>"
+        + "<p>" + _profile("Drain curve and restock", K.port_drain_curve_live(), only_v311=False) + " "
+        + "When it is on, prices follow the printed Merf run: a selling port's price climbs about 1 percent for every "
+        "1 percent you take, a buying port pays about 0.3 percent less for every 1 percent it fills, and after ten "
+        "trips a pair still earns about two thirds of the first trip. "
+        f"A port restocks {round(K.V311_PORT_REGEN_PER_DAY * 100)} percent of its maximum each day.</p>"
         + _buy_anchor()
         + _price_scale()
         + _busts(f)
@@ -1347,6 +1352,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "CORP_RANK_MODE": "Corporations are ranked by the members' experience added together.",
     "CLASS_M_FIDELITY_MODE": "A class M planet stores each product in its own cap.",
     "PORT_MAX_STOCK_MODE": "A new port holds the printed 950 to 2,720 units of a product, so port pairs drain.",
+    "PORT_DRAIN_CURVE_MODE": "Prices follow the printed drain table and ports restock 10 percent a day.",
     "PORT_STOCK_FIDELITY_MODE": "A port's stock opens and refills by the v3.11 percentages.",
     "SHIP_EXIT_MODE": "You can jettison cargo, and you can self-destruct.",
     "RIVAL_STRENGTH_MODE": "Another trader's strength is the published figure.",
@@ -1947,7 +1953,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "trading": (
         "trade", "rob", "steal", "planet_trade", "TRADE_PRIVATE_MODE",
         "PORT_PRICE_MODE", "PRICE_SCALE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
-        "HAGGLE_EXP_MODE", "HAGGLE_TABLE_MODE", "HAGGLE_ROUNDS_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE", "PORT_MAX_STOCK_MODE",
+        "HAGGLE_EXP_MODE", "HAGGLE_TABLE_MODE", "HAGGLE_ROUNDS_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE", "PORT_MAX_STOCK_MODE", "PORT_DRAIN_CURVE_MODE",
         "PORT_CLASS_MAP_MODE", "PORT_CLASS_NUMBER_FIX_MODE", "CLASS0_HOLD_FORMULA_MODE",
         "HOLD_RULES_MODE", "SHOP_PRICE_MODE", "EVIL_TRADE_LOOP_MODE",
     ),
