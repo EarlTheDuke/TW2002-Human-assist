@@ -4876,6 +4876,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "FULL_GAME_BALANCE_MODE",
         "Track K: every seat in a full-length game opens with the same credits (no per-seat skew)",
     ),
+    "haggle_rounds_live": (
+        "HAGGLE_ROUNDS_MODE",
+        "Playtest 3: the cabal table is the get-lost line, not a one-shot accept; the measured rounds close the deal",
+    ),
 }
 
 
@@ -6289,3 +6293,23 @@ def full_game_balance_live() -> bool:
 def full_game_even_start(config: object) -> bool:
     """True when this game is full-length and the balance switch is on."""
     return full_game_balance_live() and getattr(config, "game_length", None) == "full"
+
+
+# Playtest 3 (GALAXY-WAR-PLAYTEST-3). Under the v3.11 profile the cabal table
+# (HAGGLE_TABLE_MODE) took a single counter up to 110-149 percent, so asks 22
+# percent over list and bids 23 percent under were accepted in one shot.
+# Cabal haggling.html says that percent is the most the port will "consider
+# reasonable enough to continue haggling"; it then counters, and the page
+# tells the player to close near the port's last offer. "live" keeps the
+# table as the line past which the port says get lost (a turn is wasted and
+# the visit ends), and runs the measured TWGS rounds of HAGGLE_LIVE_MODE
+# inside it: a sell takes +3 percent, +4 to +12 percent gets a counter at +1
+# percent, and the second ask must sit at or under that counter. A buy keeps
+# the measured -12 percent / -4 percent counter band, cut off at the table.
+# Default stays legacy so the pin and the digests do not move.
+HAGGLE_ROUNDS_MODE = "legacy"  # "legacy" | "live"
+
+
+def haggle_rounds_live() -> bool:
+    """True when a counter is negotiated in rounds and the cabal table only ends talks."""
+    return HAGGLE_ROUNDS_MODE == "live" or v311_profile()

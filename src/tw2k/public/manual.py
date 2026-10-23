@@ -383,6 +383,11 @@ def _trading(f: dict) -> str:
             "and fuel at MCIC -90 takes 149.4 percent. A product or MCIC that page does not print keeps the straight line.",
             "every product uses one straight line from 110 percent to 149 percent.",
         )
+        + "<p>" + _profile("Haggle rounds", K.haggle_rounds_live(), only_v311=False) + " "
+        + "When it is on, the product table above is only the line past which the port says get lost. "
+        "Inside it a sale takes up to 3 percent over the quote; a bigger ask gets a counter 1 percent over, "
+        "and the next ask has to be at or under that counter. A buy takes up to 12 percent under; "
+        "a lower bid gets a counter 4 percent under. A refused haggle costs a turn and ends the visit.</p>"
         + _buy_anchor()
         + _price_scale()
         + _busts(f)
@@ -1416,6 +1421,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "ECON_WIN_MODE": "Credits on hand never end the game early; there is no instant credits win.",
     "FULL_GAME_TURNS_MODE": "A full-length game keeps the host's turns per day (250 if left at Original), however many days it runs.",
     "FULL_GAME_BALANCE_MODE": "Every seat in a full-length game starts with the same credits.",
+    "HAGGLE_ROUNDS_MODE": "A port haggles in rounds: a small ask is taken, a bigger one is countered, and past the product table it says get lost.",
 }
 
 
@@ -1913,7 +1919,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "trading": (
         "trade", "rob", "steal", "planet_trade",
         "PORT_PRICE_MODE", "PRICE_SCALE_MODE", "HAGGLE_WINDOW_MODE", "HAGGLE_LIVE_MODE", "HAGGLE_COUNTER_MODE",
-        "HAGGLE_EXP_MODE", "HAGGLE_TABLE_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
+        "HAGGLE_EXP_MODE", "HAGGLE_TABLE_MODE", "HAGGLE_ROUNDS_MODE", "PORT_BUY_PRICE_ANCHOR_MODE", "PORT_REGEN_MODE", "PORT_STOCK_FIDELITY_MODE",
         "PORT_CLASS_MAP_MODE", "PORT_CLASS_NUMBER_FIX_MODE", "CLASS0_HOLD_FORMULA_MODE",
         "HOLD_RULES_MODE", "SHOP_PRICE_MODE", "EVIL_TRADE_LOOP_MODE",
     ),

@@ -4392,6 +4392,8 @@ class SeatBrain:
         mem = self.mem
         if mem is None or mem.psychic_pct is None:
             return args
+        if _haggle_rounds():
+            return args
         if int(getattr(self, "_psychic_aboard", 0) or 0) <= 0:
             return args
         if args.get("unit_price") is not None:
@@ -4425,6 +4427,10 @@ class SeatBrain:
         +8% band instead. A reading near the best (>= 95%) asks nothing extra.
         """
         if not self._hardware_on() or str(args.get("side") or "") != "sell" or args.get("unit_price") is not None:
+            return args
+        if _haggle_rounds():
+            # Playtest 3: a port that haggles in rounds counters an ask the seat
+            # cannot follow up, so the seat trades at the quote.
             return args
         mem = self.mem
         if mem is None or mem.psychic_pct is None or int(getattr(self, "_psychic_aboard", 0) or 0) <= 0:
@@ -6164,3 +6170,9 @@ def tw_reserve_view(o: dict[str, Any], plan_hops: int | None = None) -> dict[str
         legal.append(la)
     out["legal_actions"] = legal
     return out
+
+
+def _haggle_rounds() -> bool:
+    from ..engine import constants as K
+
+    return K.haggle_rounds_live()
