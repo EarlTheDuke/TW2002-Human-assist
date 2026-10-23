@@ -11,8 +11,8 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Grade | v5 | v6 |
 |---|---|---|
 | Match | 50 | 72 |
-| Match-behind-flag | 17 | 85 |
-| Partial | 53 | 10 |
+| Match-behind-flag | 17 | 86 |
+| Partial | 53 | 9 |
 | Different | 38 | 2 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 2 |
@@ -108,7 +108,7 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
 | 11 | 1.15 | Partial | S | A tow fires at 99 fighters (`FED_TOW_FIGHTER_LIMIT` 98). The Bible line is 50. No switch | `fed.run_tows` | constants.py |
 | 23 | 11.11 | Partial | S | Density, one-way share, and the 30 percent two-way lanes are flagged (rows 87, 88, and 178). Bubbles, the course-length generator, and the Gold options are not | `universe.generate_universe` | universe.py |
-| 35 | 14.6 | Match behind flag | L | No instant credits win (`ECON_WIN_MODE` row 215). No enforced alliance (`ALLIANCE_OFF_MODE` row 222; Bible "Secret Alliances and Treaties": "by no means binding and are not enforced"). play_to_day_cap stays as the match harness (R14 A) | several | test_alliance_off_v1.py |
+| 35 | 14.6 | Match-behind-flag | L | No instant credits win (`ECON_WIN_MODE` row 215). No enforced alliance (`ALLIANCE_OFF_MODE` row 222; Bible "Secret Alliances and Treaties": "by no means binding and are not enforced"). play_to_day_cap stays as the match harness (R14 A) | several | test_alliance_off_v1.py |
 
 Rows that are Partial only because a named switch stays off are Match-behind-flag above, not in this list. `12.4` stays here for the jobs that still have no name.
 
@@ -322,6 +322,6 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 14.3 Match-behind-flag `PLANET_BUST_EXP_MODE` row 149, NOTE 102. The owner may destroy the planet they created for 75 experience (genesis 25 plus destroy 50). `legality.planet_destroy_reason`.
 14.4 Match. An unmanned ship can still hold fighters. While `V311_PROFILE` is on, `observation` game status leaves those fighters out of the V-screen total. Legacy still counts them. No switch was added for that display. Profile GAP 14.4 note.
 14.5 Match-behind-flag `EVIL_TRADE_LOOP_MODE` row 166, NOTE 115. A negative-alignment seat steals, dumps, and beams, or robs and beams, when the profile is on. `constants.evil_trade_loop_live`.
-14.6 Match behind flag. The instant credits win is off under `ECON_WIN_MODE` row 215 (NOTE 178). Alliances are off under `ALLIANCE_OFF_MODE` row 222: the Bible calls corporate treaties "by no means binding and are not enforced", so v3.11 has corporations and no in-game pact. play_to_day_cap stays (R14 A). `victory._check_victory`, `legality`, `runner._handle_propose_alliance`.
+14.6 Match-behind-flag. The instant credits win is off under `ECON_WIN_MODE` row 215 (NOTE 178). Alliances are off under `ALLIANCE_OFF_MODE` row 222: the Bible calls corporate treaties "by no means binding and are not enforced", so v3.11 has corporations and no in-game pact. play_to_day_cap stays (R14 A). `victory._check_victory`, `legality`, `runner._handle_propose_alliance`.
 
 There is no row 5.16, 7.1, or 8.5. That is the same 171 ids as v5.
