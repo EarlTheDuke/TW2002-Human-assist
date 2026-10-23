@@ -1235,11 +1235,9 @@ class ScriptedTrader:
         # A hull the cash on board cannot pay for is not a choice today.
         if price and 0 < self.credits < price:
             return False
-        # The headline is the net after trade-in. The old hull still leaves the
-        # score, so the cost is that net plus the trade-in credit on the quote.
-        trade_in = re.search(r"trade-in sells your ship for\s+([\d,]+)\s+cr", text, re.I)
-        if trade_in and price:
-            price += int(trade_in.group(1).replace(",", ""))
+        # NOTE 172c. The headline is the cash after trade-in, and the cash is
+        # what the extra holds earn back. Adding the trade-in credit back priced
+        # every hull at full list, so no hull ever paid.
         current = max(1, _hold_cap(str(screen.get("ship") or "")))
         if holds <= current:
             return False
@@ -1573,7 +1571,9 @@ class ScriptedTrader:
         # on board by day 13 and never sailed back: no refit was due, so the
         # yard was never on the way.
         hull = self._hull_trip()
-        if (self._gear_done() and not refit and not hull) or not self._shelf_open():
+        # NOTE 172c. The shelf is gear only. A hull trip alone has nothing on it,
+        # so the seed 99 seat with 58,000 on board never sailed for the yard.
+        if (self._gear_done() and not refit and not hull) or not (self._shelf_open() or hull):
             return False
         hops = self._hops(sector, 1)
         if hops is None:
