@@ -157,6 +157,8 @@ def _ephemeral_port(count: int = 1) -> int:
                 socks.append(first)
                 first.bind(("127.0.0.1", 0))
                 base = int(first.getsockname()[1])
+                if base + count - 1 > 65535:
+                    continue
                 ports = list(range(base, base + count))
                 if any(port in held or blocked(port) for port in ports):
                     continue
