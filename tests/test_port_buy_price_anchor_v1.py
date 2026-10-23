@@ -358,7 +358,7 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
     for seat, row in on.items():
         for reason, _count in row["rejected_top"]:
             assert any(x in str(reason) for x in slips) or str(reason).startswith("trade: counter "), (seat, report)
-    assert sum(_refused(row) for row in on.values()) <= 10, report
+    assert sum(_refused(row) for row in on.values()) <= 1, report
     assert sum(row["realized_profit"] for row in on.values()) > 0, report
     assert sum(row["sells"] for row in on.values()) > 0, report
     print("NOTE69 day-10 net worth", report)
