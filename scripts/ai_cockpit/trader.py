@@ -44,6 +44,7 @@ _PAREN_EACH = re.compile(r"\(([\d,]+)\s+each\)", re.I)
 _AT_CR = re.compile(r"\bat\s+([\d,]+)\s+cr\b", re.I)
 _FOR_UNIT = re.compile(r"\bfor\s+([\d,]+)\s+cr\b", re.I)
 _TURNS_LEFT = re.compile(r"turns left today:\s*([\d,]+)\s+of\s+([\d,]+)", re.I)
+_CLOCK_RATE = re.compile(r"\+1 every\s+([\d.]+)\s*s", re.I)
 _TURNS_FACE = re.compile(r"^\s*([\d,]+)\s*/\s*([\d,]+)")
 _BOARDING = re.compile(r"flee,\s*attack or surrender|ferrengi fighter attack|ferrengi boarding", re.I)
 _COMMS = re.compile(r"\b(hail|radio|fed\s*comm|broadcast|announcement)\b", re.I)
@@ -56,6 +57,8 @@ _YARD = re.compile(
 )
 _YARD_PRICE = re.compile(r"([\d,]+)\s+cr\.", re.I)
 _RESERVE = 20_000
+# NOTE 172b. Cash on board that makes a StarDock trip a small part of it.
+_RICH = 20_000
 _COURSE = re.compile(r"Course to (\d+):\s*([0-9 >]+)")
 _BANK_BAL = re.compile(r"balance\s+([\d,]+)", re.I)
 
@@ -195,6 +198,12 @@ class ScriptedTrader:
         self.hold_price = 0
         self.shop_day = 0
         self.bank_day = 0
+        self.refill_slept = False
+        self.hull_day = 0
+        self.clock_waits = 0
+        self.clock_wait_day = 0
+        self.clock_live = False
+        self.ship_skip_credits = 0
         self.bank: dict[str, str] | None = None
         self.yard: dict[str, str] | None = None
         self.yard_quotes: dict[str, str] = {}
@@ -317,6 +326,14 @@ class ScriptedTrader:
             self.visited.add(sector)
         if not (action.op == "press" and action.key in (".", "Escape")):
             self.wait_holds = 0
+        # NOTE 172b. The server stands a seat down for the day at its fourth
+        # Wait in a row. Any other move it applies starts the count again.
+        if action.op == "press" and action.key == ".":
+            if self.day != self.clock_wait_day:
+                self.clock_waits, self.clock_wait_day = 0, self.day
+            self.clock_waits += 1
+        elif action.op == "click" or action.op == "type":
+            self.clock_waits = 0
         return action
 
     def _restock_seen(self) -> None:
@@ -1141,12 +1158,18 @@ class ScriptedTrader:
         if self._gear_pending():
             return None
         # A warp is the route. Stopping to read the yard let a fighter reach the
-        # pair sector before this ship did.
-        if any(_WARP.match(str(row).strip()) for row in labels):
+        # pair sector before this ship did. NOTE 172b: the warp buttons are
+        # always on screen, so that only holds for the opening visit. Later, a
+        # full wallet reads the yard once a day.
+        later = bool(self.first_gear_day and self.day and self.day > self.first_gear_day)
+        if any(_WARP.match(str(row).strip()) for row in labels) and not (later and self.credits >= _RICH):
+            return None
+        if self.hull_day == self.day:
             return None
         label = next((row for row in labels if row.lower() == "shipyards"), "")
         if not label:
             return None
+        self.hull_day = self.day
         self.yard = {"phase": "look"}
         self.plan_note = "read the shipyard"
         return Action("click", label=label)
@@ -1276,6 +1299,7 @@ class ScriptedTrader:
             if any(row.upper() == "CONFIRM" for row in labels):
                 return Action("click", label="CONFIRM")
         self.ship_skip_profit = max(self.ship_skip_profit, max(1, self._daily_profit()))
+        self.ship_skip_credits = max(1, self.credits)
         self.yard = None
         self.plan_note = "keep the current ship"
         if any(row.upper() == "ESC" for row in labels):
@@ -1285,7 +1309,7 @@ class ScriptedTrader:
     def _open_bank(self, screen: dict, labels: list[str], credits: int) -> Action | None:
         if not self._at_dock(screen) or self.bank_day == self.day:
             return None
-        if self._gear_pending():
+        if self._gear_pending() or self._saving_for_hull():
             return None
         if credits < _RESERVE + 5_000:
             return None
@@ -1508,7 +1532,13 @@ class ScriptedTrader:
         if "ship" in self.bought:
             return True
         # NOTE 172. A hull declined earlier is quoted again once the route pays half as much again.
-        return self.ship_skip_profit > 0 and self._daily_profit() * 2 < self.ship_skip_profit * 3
+        if self.ship_skip_profit <= 0:
+            return False
+        # NOTE 172b. Or once the cash on board has doubled: a hull the wallet
+        # could not pay for at the last quote may fit now.
+        if self.ship_skip_credits and self.credits >= self.ship_skip_credits * 2:
+            return False
+        return self._daily_profit() * 2 < self.ship_skip_profit * 3
 
     def _gear_done(self) -> bool:
         """Holds and fighters are aboard. The yard is a look when the ship is already there.
@@ -1539,23 +1569,45 @@ class ScriptedTrader:
         if not self._settled(sector) or sector == 1 or self.shop_day == self.day or self._best_spread() <= 0:
             return False
         refit = self._refit_item() if self._gear_done() else None
-        if (self._gear_done() and not refit) or not self._shelf_open():
+        # NOTE 172b. A full wallet asks about a hull too. Seed 99 held 73,000
+        # on board by day 13 and never sailed back: no refit was due, so the
+        # yard was never on the way.
+        hull = self._hull_trip()
+        if (self._gear_done() and not refit and not hull) or not self._shelf_open():
             return False
         hops = self._hops(sector, 1)
         if hops is None:
             return False
-        # Fighters and shields alone are worth a short detour, not a crossing.
-        if refit and refit != "holds" and hops > 2:
+        # Fighters and shields alone are worth a short detour, not a crossing,
+        # until the cash on board makes the crossing a small part of it.
+        if refit and refit != "holds" and hops > 2 and not hull and self.credits < _RICH:
             return False
-        if self.level == "hard" and (refit in (None, "holds")) and not self._dock_trip_pays(hops):
+        if self.level == "hard" and not hull and (refit in (None, "holds")) and not self._dock_trip_pays(hops):
             return False
         back = self._best_ask_sector() or sector
         if self._hops(1, back) is None and self._hops(1, sector) is None:
             return False
         hops = self._hops(sector, 1) or 1
+        # NOTE 172b. On the v3.11 clock the pocket never holds a long crossing.
+        # The course is followed a few hops at a time as the clock pays.
+        if self.clock_live and (hull or refit) and turns >= 6:
+            return True
         return turns > hops * 3
 
+    def _saving_for_hull(self) -> bool:
+        """NOTE 172b. The yard is paid from the cash on board, so hard banks once the hull is settled."""
+        return self.level == "hard" and self._gear_done() and not self._ship_closed()
+
+    def _hull_trip(self) -> bool:
+        """NOTE 172b. Hard with rich cash and an open yard goes to read the hulls."""
+        if self.level != "hard" or not self._gear_done() or self._ship_closed():
+            return False
+        if self.hull_day == self.day:
+            return False
+        return self.credits >= _RICH
+
     def _warp(self, screen: dict, sector: int, cargo: dict[str, int], turns: int, *, flee: bool = False) -> Action | None:
+        self.clock_live = _turn_clock(screen)
         options: list[tuple[int, str, int]] = []
         for label in screen.get("warps") or []:
             match = _WARP.match(str(label).strip())
@@ -1629,7 +1681,8 @@ class ScriptedTrader:
             picked = self._flee_choice(options)
             self.plan_note = "leave danger"
             return Action("click", label=picked)
-        if self._should_shop(sector, turns) and not any(cargo.values()):
+        # NOTE 172b. A two-way pair never flies empty. Rich, the load rides along.
+        if self._should_shop(sector, turns) and (not any(cargo.values()) or self.credits >= _RICH):
             step = self._first_step(sector, 1)
             if step is not None:
                 action = self._click_warp(sector, step)
@@ -1694,6 +1747,18 @@ class ScriptedTrader:
                     if left is not None:
                         return left
                 return None
+        # NOTE 172b. On the v3.11 turn clock the turns arrive a few at a time.
+        # Spending each 3 on a lane already seen ping-ponged seed 99 between
+        # two sectors for five days with no trade and no StarDock trip. With a
+        # paying pair known, a person lets the clock refill until a round fits.
+        if (
+            not flee
+            and _turn_clock(screen)
+            and turns < 9
+            and self._refill_goal(sector, cargo)
+            and self._clock_waits_left()
+        ):
+            return self._clock_refill(screen, turns)
         # A few leftover turns cannot finish a seen pair. Don't wander off it.
         if (
             self._last_day(screen)
@@ -2092,7 +2157,7 @@ class ScriptedTrader:
         return Action("click", label=pool[0][1])
 
     def _wants_bank(self, credits: int) -> bool:
-        if self.bank_day == self.day or self._gear_pending():
+        if self.bank_day == self.day or self._gear_pending() or self._saving_for_hull():
             return False
         return credits >= _RESERVE + 5_000
 
@@ -2168,6 +2233,9 @@ class ScriptedTrader:
                 if 1 not in self.banned_plots:
                     self.plot_to = 1
                 return
+        # NOTE 172b. The yard is read before the course home is plotted.
+        if sector == 1 and self._hull_trip() and self.yard is None:
+            return
         if sector == 1 and not self._still_shopping(credits) and not self._wants_bank(credits):
             dest = self.home_ask
             if not dest:
@@ -2284,6 +2352,10 @@ class ScriptedTrader:
             if sector and sector == dest:
                 self.home_ask = 0
             return None
+        # NOTE 172b. Read the yard before leaving. The trip home ran ahead of
+        # it, so seed 99 refitted twice and never saw a hull quote.
+        if sector == 1 and self._hull_trip() and self.yard is None:
+            return None
         step = self._first_step(sector, dest)
         if step is None:
             return None
@@ -2291,6 +2363,37 @@ class ScriptedTrader:
         if action is not None:
             self.plan_note = "return to the pair"
         return action
+
+    def _refill_goal(self, sector: int, cargo: dict[str, int]) -> bool:
+        """A known buyer for the cargo aboard, or a known paying pair, is worth the clock's wait."""
+        if any(cargo.values()):
+            goal = self._trade_target(sector, cargo)
+        else:
+            goal = self._best_ask_sector() if self._best_spread() > 0 else 0
+        return bool(goal) and (goal == sector or self._hops(sector, goal) is not None)
+
+    def _clock_waits_left(self) -> bool:
+        """Two Waits in a row at most. A third and fourth would end the day."""
+        return self.refill_slept or self.day != self.clock_wait_day or self.clock_waits < 2
+
+    def _clock_refill(self, screen: dict, turns: int) -> Action:
+        """NOTE 172b. Let the v3.11 clock pay turns, then hand the turn back.
+
+        The server holds the match on this seat's move and only credits the
+        clock's turns on the next pass. A browser pause alone stalls the whole
+        game (seed 250925 sat on day 4). So pause until about nine turns are
+        due, then one Wait (1 turn) runs the pass that pays them.
+        """
+        if not self.refill_slept:
+            match = _CLOCK_RATE.search(str(screen.get("turnsFace") or ""))
+            rate = float(match.group(1)) if match else 2.0
+            need = max(1, 10 - max(0, turns))
+            self.refill_slept = True
+            self.plan_note = "let the turn clock refill"
+            return Action("wait", ms=int(min(30.0, max(1.5, need * rate)) * 1000))
+        self.refill_slept = False
+        self.plan_note = "take the clock's turns"
+        return Action("press", key=".")
 
     def _spend(self, screen: dict, turns: int) -> Action:
         chip = str(screen.get("chip") or "")
@@ -2301,8 +2404,8 @@ class ScriptedTrader:
             # NOTE 172. On the v3.11 turn clock a Wait only burns a turn the clock
             # just paid. A person lets the clock refill until a round trip fits.
             # With turns in hand the old Wait still moves the screen on.
-            self.plan_note = "let the turn clock refill"
-            return Action("wait", ms=1500)
+            if self._clock_waits_left():
+                return self._clock_refill(screen, turns)
         self.plan_note = "spend a turn"
         return Action("press", key=".")
 
