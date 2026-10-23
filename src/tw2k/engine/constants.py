@@ -4896,6 +4896,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "ALLIANCE_OFF_MODE",
         "GAP 14.6: the Bible's alliances are unenforced gentleman's agreements; no in-game pact, corporations only",
     ),
+    "port_max_stock_live": (
+        "PORT_MAX_STOCK_MODE",
+        "GAP 2.5 / playtest 3: a port holds the printed 950 to 2,720 units, so a 1-hop pair drains like the original",
+    ),
 }
 
 
@@ -6393,3 +6397,29 @@ ALLIANCE_OFF_REASON = "v3.11 has no in-game alliance; agreements are unenforced.
 def alliance_off_live() -> bool:
     """True when the game offers no enforced alliance, only corporations."""
     return ALLIANCE_OFF_MODE == "live" or v311_profile()
+
+
+# GAP 2.5 and the playtest 3 balance note (1-hop pairs barely deplete). The
+# clone's port holds 2,500 to 4,500 units of a product. The printed ports are
+# smaller: the Bible's unused Tarsus shows 2720, 2020 and 1470 at 100%;
+# cabal economy2's SBB shows 2610, 950 and 2100; economy3 calls 1,500 "roughly
+# average amounts for ports" and drains a pair about 4 percent a trip with a
+# 65-hold Merf. On, the maximum is drawn from 950 to 2,720 (the printed span)
+# from the same random draw, so later sectors do not move. Prices stay on the
+# two printed lists (R3 A): ships on the Bible chart, ports on economy2.
+PORT_MAX_STOCK_MODE = "legacy"  # "legacy" | "live"
+V311_PORT_MAX_STOCK_MIN = 950
+V311_PORT_MAX_STOCK_MAX = 2720
+
+
+def port_max_stock_live() -> bool:
+    """True when a new port's product maximum uses the printed 950 to 2,720 span."""
+    return PORT_MAX_STOCK_MODE == "live" or v311_profile()
+
+
+def port_max_stock(draw: int) -> int:
+    """A port's product maximum from the legacy draw, randint(-500, 1500)."""
+    if not port_max_stock_live():
+        return PORT_DEFAULT_MAX_STOCK + int(draw)
+    span = V311_PORT_MAX_STOCK_MAX - V311_PORT_MAX_STOCK_MIN
+    return V311_PORT_MAX_STOCK_MIN + (int(draw) + 500) * span // 2000

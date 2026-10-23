@@ -11,9 +11,9 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Grade | v5 | v6 |
 |---|---|---|
 | Match | 50 | 73 |
-| Match-behind-flag | 17 | 87 |
+| Match-behind-flag | 17 | 88 |
 | Partial | 53 | 7 |
-| Different | 38 | 2 |
+| Different | 38 | 1 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 2 |
 | Total | 171 | 171 |
@@ -176,7 +176,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 2.2 Match-behind-flag `PORT_CLASS_MAP_MODE` row 10 and `PORT_CLASS_NUMBER_FIX_MODE` row 142, NOTE 98. Class 7 displays as SSS. Class 8 stays the StarDock id. Class 9 stays the built SSS port. `constants.port_class_live`.
 2.3 Match-behind-flag `PORT_PRICE_MODE` row 21. The original price curve is coded and off. `economy.port_sell_price`.
 2.4 Match. Each port has its own MCIC and productivity. `economy._stored_mcic`.
-2.5 Different. Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002. `economy.port_sell_price`, `constants.ship_cost`.
+2.5 Match-behind-flag. R3 A: two printed lists, ports on the economy2 chart and ships on the Bible chart; no source prints one scale, so none is invented. The playtest 3 note that 1-hop pairs barely deplete came from port maximums of 2,500 to 4,500; `PORT_MAX_STOCK_MODE` row 223 uses the printed 950 to 2,720 (Bible Tarsus, economy2, economy3 "1,500 ... roughly average"). `economy.port_sell_price`, `universe._make_port`.
 2.6 Match-behind-flag `HAGGLE_LIVE_MODE` row 31. The live window is coded and off. `HAGGLE_COUNTER_MODE` row 74 and `HAGGLE_EXP_MODE` row 110 sit beside it. The cabal product table is `HAGGLE_TABLE_MODE` row 175, NOTE 150, and stays off. Equipment at MCIC -20 is 110.2 percent on that table, not the straight line. `economy.haggle_bound`, `economy.haggle_experience`.
 2.7 Match. The first trade in a sector costs a turn. Later trades there do not. `economy.trade_turn_cost`.
 2.8 Match-behind-flag `PORT_REGEN_MODE` row 22. Five percent restock is coded and off. `economy.regenerate_ports`.
