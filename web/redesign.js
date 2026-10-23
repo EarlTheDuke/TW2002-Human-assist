@@ -1894,10 +1894,13 @@
     const row = ((S && S.other_players) || []).find((r) => r.id === id);
     return (row && row.name) || id;
   }
+  let tradePick = null;
   function landLine(p) {
     const known = p.fighters != null || p.shields != null;
     const garrison = known ? "Fighters " + fmt(p.fighters || 0) + ", shields " + fmt(p.shields || 0) + "." : "Fighters and shields are not on this scan.";
-    if (!p.owner_id || p.owner_id === S.self_id) return "Your planet. " + garrison;
+    // Playtest 3: an unowned planet is not "yours" until it is claimed.
+    if (!p.owner_id) return "Unclaimed planet. Landing claims it (a dead trader's planet waits for Claim planet). " + garrison;
+    if (p.owner_id === S.self_id) return "Your planet. " + garrison;
     const holds = traderName(p.owner_id) + " holds this planet. " + garrison;
     if (Number(p.citadel_level || 0) >= 2) return holds + " This planet has a Combat Control computer: its fighters and shields will fight your landing.";
     if (known) return holds + " Its fighters will fight your landing.";
@@ -3144,8 +3147,19 @@
         }
         paintHint();
       };
-      if (sideEl) sideEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); });
-      if (comEl) comEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); });
+      // Playtest 3: a fresh form keeps the side the player last picked here
+      // when the port still lists it, instead of flipping to another pair.
+      const remember = () => { tradePick = { side: sideEl && sideEl.value, com: comEl && comEl.value, port: S && S.sector && S.sector.id }; };
+      if (!saved && tradePick && sideEl && tradePick.port === (S && S.sector && S.sector.id)) {
+        const sideOk = Array.from(sideEl.options).some((o) => o.value === tradePick.side);
+        if (sideOk && Object.entries(listed).some(([name, sides]) => tradable(name) && sides && sides[tradePick.side])) {
+          sideEl.value = tradePick.side;
+          if (comEl && tradePick.com && tradable(tradePick.com) && (listed[tradePick.com] || {})[tradePick.side]) comEl.value = tradePick.com;
+          if (priceEl) priceEl.value = "";
+        }
+      }
+      if (sideEl) sideEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); remember(); });
+      if (comEl) comEl.addEventListener("change", () => { if (priceEl) priceEl.value = ""; fill(); remember(); });
       fill();
       wrap.appendChild(hint);
       const qtyEl = fields.find((el) => el.dataset.n === "qty");
