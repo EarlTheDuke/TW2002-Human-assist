@@ -4036,6 +4036,8 @@ def _handle_corp_memo(universe: Universe, pid: str, action: Action) -> ActionRes
 
 
 def _handle_propose_alliance(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.alliance_off_live():
+        return ActionResult(ok=False, error=K.ALLIANCE_OFF_REASON)
     player = universe.players[pid]
     target_id = action.args.get("target")
     if target_id not in universe.players or target_id == pid:
@@ -4072,6 +4074,8 @@ def _handle_propose_alliance(universe: Universe, pid: str, action: Action) -> Ac
 
 
 def _handle_accept_alliance(universe: Universe, pid: str, action: Action) -> ActionResult:
+    if K.alliance_off_live():
+        return ActionResult(ok=False, error=K.ALLIANCE_OFF_REASON)
     aid = action.args.get("alliance_id")
     ally = universe.alliances.get(aid) if aid else None
     if ally is None:

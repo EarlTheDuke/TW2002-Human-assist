@@ -4892,6 +4892,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "BIG_BANG_BUILT_MODE",
         "GAP 11.11: the bang builds 95 percent of the 40 percent possible starports, so the rest stay buildable",
     ),
+    "alliance_off_live": (
+        "ALLIANCE_OFF_MODE",
+        "GAP 14.6: the Bible's alliances are unenforced gentleman's agreements; no in-game pact, corporations only",
+    ),
 }
 
 
@@ -6375,3 +6379,17 @@ def bang_port_probability() -> float:
     if big_bang_built_live():
         return V311_PORT_DENSITY * PORT_BUILD_INITIAL_BUILT_PCT / 100.0
     return V311_PORT_DENSITY
+
+
+# GAP 14.6. The Bible (S3, "Secret Alliances and Treaties"): a corporation may
+# offer not to attack you, but "These are by no means binding and are not
+# enforced". v3.11 has corporations, not a game-enforced pact. Off, propose and
+# accept alliance stay. On, they are refused; break stays so an old save can
+# leave a pact. play_to_day_cap stays (R14 A).
+ALLIANCE_OFF_MODE = "legacy"  # "legacy" | "live"
+ALLIANCE_OFF_REASON = "v3.11 has no in-game alliance; agreements are unenforced. Use a corporation (T)"
+
+
+def alliance_off_live() -> bool:
+    """True when the game offers no enforced alliance, only corporations."""
+    return ALLIANCE_OFF_MODE == "live" or v311_profile()
