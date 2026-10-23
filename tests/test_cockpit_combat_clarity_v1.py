@@ -141,6 +141,7 @@ def test_escape_pod_reads_as_an_escape_pod(world) -> None:
     page = world["page"]
 
     def pod() -> None:
+        _sit(world["universe"], "P1", int(world["me"].sector_id))
         world["universe"].players["P1"].ship.ship_class = ShipClass.ESCAPE_POD
 
     _next(page, pod)
