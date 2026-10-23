@@ -210,7 +210,7 @@ def _make_port(rng: random.Random, class_id: PortClass, sector_id: int, seed: in
         if deal is None:
             continue
         commodity = mapping[idx]
-        maximum = K.PORT_DEFAULT_MAX_STOCK + rng.randint(-500, 1500)
+        maximum = K.port_max_stock(rng.randint(-500, 1500))
         # The old 35-95% draw stays in the stream so later sectors do not move.
         rng.uniform(0.35, 0.95)
         if K.port_stock_fidelity_live():
