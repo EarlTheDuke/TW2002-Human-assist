@@ -228,3 +228,7 @@ body.deck-tuned #layoutMenu{font-size:var(--cockpit-font)}
 /* Playtest 3: the error line floats over the deck, so showing or hiding it never moves a button. */
 #err{position:fixed;top:44px;left:50%;transform:translateX(-50%);z-index:950;margin:0;max-width:min(92vw,760px);padding:4px 12px;background:rgba(40,0,0,.92);border:1px solid #f55;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.6)}
 #err[data-kind=reconnect]{pointer-events:none}
+/* Playtest 3: the stat that decides the game reads largest. */
+.stat.score b#xp{font-size:1.25em}
+.stat.wins{outline:1px solid #cc0;outline-offset:1px}
+#place{margin-left:4px;white-space:nowrap}
