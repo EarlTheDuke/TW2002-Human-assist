@@ -1357,13 +1357,16 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     allied_active = {m for a in universe.alliances.values() if a.active and player_id in a.member_ids for m in a.member_ids}
     propose_targets = [pid for pid in others_all if pid not in allied_active]
     reason = None if propose_targets else ("no other commanders in this match" if not others_all else "already allied with everyone")
+    if K.alliance_off_live():
+        reason = K.ALLIANCE_OFF_REASON
     out.append(_la(ActionKind.PROPOSE_ALLIANCE, legal=reason is None, reason=reason,
                    params={"target": {"type": "str", "required": True, "choices": propose_targets},
                            "terms": {"type": "str", "required": False}}))
 
     acceptable = [a.id for a in universe.alliances.values()
                   if player_id in a.member_ids and not a.active and a.proposed_by != player_id]
-    out.append(_la(ActionKind.ACCEPT_ALLIANCE, legal=bool(acceptable), reason="no alliance proposal pending for you",
+    accept_reason = K.ALLIANCE_OFF_REASON if K.alliance_off_live() else "no alliance proposal pending for you"
+    out.append(_la(ActionKind.ACCEPT_ALLIANCE, legal=bool(acceptable) and not K.alliance_off_live(), reason=accept_reason,
                    params={"alliance_id": {"type": "str", "required": True, "choices": acceptable}}))
 
     # NB: the engine lets you "break" an inactive (still-proposed) alliance too; mirror it.

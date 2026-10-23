@@ -598,6 +598,10 @@ def _corporations(_f: dict) -> str:
             "Any member can put credits into the corporation treasury. Only the C.E.O. can take them out.",
             "fuel ore, organics, equipment, colonists, and the corporation treasury do not move. Deposit is refused.",
         )
+        + "<p>" + _profile("No alliances", K.alliance_off_live(), only_v311=False) + " "
+        + "When it is on, propose and accept alliance are refused. A pact between corporations is a "
+        "gentleman's agreement the game does not enforce; your corporation is your team. "
+        "Break alliance stays so an old pact can end.</p>"
         + _corp_leave()
         + _corp_join()
         + _corp_planets()
@@ -1352,6 +1356,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "TRADER_RANK_LIST_MODE": "Computer L lists every trader by experience.",
     "NW_ESTIMATE_MODE": "The net-worth note follows what you paid for cargo.",
     "SEAT_IDLE_START_MODE": "An empty seat's idle clock starts when someone first connects.",
+    "ALLIANCE_OFF_MODE": "The game offers no enforced alliance; corporations are the only team.",
     "BOT_DIPLOMACY_MODE": "A code bot can answer a hail and an alliance. You do not set this.",
     "DAY_ROLL_CLOCK_MODE": "The day rolls on the clock even while a seat still holds its turn.",
     "START_COLONIST_NW_MODE": "The free colonists you start with are left out of net worth.",
@@ -1973,6 +1978,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "ship_set_corporate", "ship_set_personal", "ship_set_password",
         "CORP_EXP_PENALTY_MODE", "CORP_PLANET_DISBAND_MODE", "CORP_BREAKIN_ALIGN_MODE",
         "CORP_CARGO_TREASURY_MODE", "CORP_SHIP_DISBAND_MODE", "CFS_CEO_USE_MODE",
+        "ALLIANCE_OFF_MODE",
     ),
     "alignment": ("DISCOVERY_EXP_MODE", "EXP_SOURCES_MODE"),
     "rankings": (
