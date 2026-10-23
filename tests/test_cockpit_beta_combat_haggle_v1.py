@@ -172,6 +172,11 @@ def test_stardock_buttons_stay_put_and_the_yard_and_bank_ask_first(world):
     page.locator("#formSlot button", has_text="CONFIRM").click()
     page.wait_for_selector("[data-yard=confirm]", timeout=10_000)
     assert "Want to buy it?" in page.locator("[data-yard=confirm]").inner_text()
+    # Playtest 3: the confirm names what the ship carries apart from its max.
+    yard_text = page.locator("[data-yard=confirm]").inner_text()
+    assert "It arrives with" in yard_text, yard_text
+    assert "(max " in yard_text, yard_text
+    assert "go from" not in yard_text, yard_text
     assert posts == []
     page.locator("#dangerNo").click()
     page.wait_for_timeout(300)
