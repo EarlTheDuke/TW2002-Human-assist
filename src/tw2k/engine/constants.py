@@ -4888,6 +4888,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "TRADE_PRIVATE_MODE",
         "Playtest 3 leftovers: a rival in the sector does not see your port trade, its quantity or its price",
     ),
+    "big_bang_built_live": (
+        "BIG_BANG_BUILT_MODE",
+        "GAP 11.11: the bang builds 95 percent of the 40 percent possible starports, so the rest stay buildable",
+    ),
 }
 
 
@@ -6351,3 +6355,23 @@ TRADE_PRIVATE_MODE = "legacy"  # "legacy" | "live"
 def trade_private_live() -> bool:
     """True when a port trade is shown only to the trader who made it."""
     return TRADE_PRIVATE_MODE == "live" or v311_profile()
+
+
+# GAP 11.11. Big_Bang.html prints "C - Maximum Possible Starports ... Default is
+# 40%" and "D - Initial Starports to Build ... Default is 95%". Off, the density
+# switch builds every possible port (40 percent of sectors). On, the bang builds
+# 40 x 95 = 38 percent; the port cap (PORT_BUILD_INITIAL_BUILT_PCT 95) is then
+# about 40 percent. Bubbles are Gold-only (S1) and stay at 0, R11 A.
+BIG_BANG_BUILT_MODE = "legacy"  # "legacy" | "live"
+
+
+def big_bang_built_live() -> bool:
+    """True when the bang builds only the initial share of the possible starports."""
+    return BIG_BANG_BUILT_MODE == "live" or v311_profile()
+
+
+def bang_port_probability() -> float:
+    """Chance a sector past FedSpace gets a port when the density switch is on."""
+    if big_bang_built_live():
+        return V311_PORT_DENSITY * PORT_BUILD_INITIAL_BUILT_PCT / 100.0
+    return V311_PORT_DENSITY
