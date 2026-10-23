@@ -5505,7 +5505,14 @@
       worth = " Net worth " + (delta < 0 ? "−" : "+") + fmt(Math.abs(delta)) + " cr for the hull (a hull counts at half its price)"
         + (left ? ", less the gear you leave" : "") + ".";
     }
-    const line = "Want to buy it? " + deal + money + ". " + fit + left + "." + worth;
+    // Playtest 3 leftovers (e): cargo moves to the new hull (runner _handle_buy_ship). What does not
+    // fit the new holds is lost, equipment kept first, then organics, fuel ore, colonists.
+    const carried = usedHolds(ship);
+    const cargo = !carried ? " You carry no cargo."
+      : carried <= startH ? " Your cargo (" + fmt(carried) + " holds) moves to the new ship."
+      : " Your cargo moves to the new ship, but only " + fmt(startH) + " of its " + fmt(carried)
+        + " holds fit: the rest is lost (equipment is kept first, then organics, fuel ore, colonists).";
+    const line = "Want to buy it? " + deal + money + ". " + fit + left + "." + cargo + worth;
     const m = $("menu");
     m.hidden = false;
     inComputer = false;
