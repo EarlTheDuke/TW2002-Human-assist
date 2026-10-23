@@ -1242,18 +1242,23 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     # claim_planet: landed on a former-player orphan.
     cp_cost = int(K.TURN_COST.get("claim_planet", 2))
     if landed_planet is None:
-        reason = "must be landed on the orphaned planet first"
+        reason = ("must be landed on the planet first" if K.land_claim_explicit_live()
+                  else "must be landed on the orphaned planet first")
     elif landed_planet.owner_id is not None:
         reason = f"planet {landed_planet.name} is already owned by {landed_planet.owner_id}"
     elif landed_planet.corp_ticker is not None:
         reason = f"planet {landed_planet.name} is corp-owned ([{landed_planet.corp_ticker}])"
-    elif not _planet_was_orphaned(universe, landed_planet.id):
+    elif not _planet_was_orphaned(universe, landed_planet.id) and not K.land_claim_explicit_live():
         reason = f"planet {landed_planet.name} is neutral, not a former-player orphan (land_planet claims it automatically)"
     else:
         reason = _need_turns(player, cp_cost)
+    cp_params: dict = {"planet_id": {"type": "int", "required": False,
+                                     "choices": [landed_planet.id] if landed_planet is not None else []}}
+    if K.land_claim_explicit_live():
+        # Playtest 3 leftovers: the cockpit reads this to say landing does not claim.
+        cp_params["claims_neutral"] = {"type": "bool", "required": False, "default": True}
     out.append(_la(ActionKind.CLAIM_PLANET, legal=reason is None, reason=reason, cost=cp_cost,
-                   params={"planet_id": {"type": "int", "required": False,
-                                         "choices": [landed_planet.id] if landed_planet is not None else []}}))
+                   params=cp_params))
 
     # ---- HARDWARE_MODE tw2002: cloak / disruptor / limpet removal ----------------
     if K.hardware_tw2002():
