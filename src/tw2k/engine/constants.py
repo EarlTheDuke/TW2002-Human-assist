@@ -4880,6 +4880,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "HAGGLE_ROUNDS_MODE",
         "Playtest 3: the cabal table is the get-lost line, not a one-shot accept; the measured rounds close the deal",
     ),
+    "land_claim_explicit_live": (
+        "LAND_CLAIM_MODE",
+        "Playtest 3 leftovers: landing on an unowned planet does not claim it; Claim Ownership does (TWINSTR <O>)",
+    ),
 }
 
 
@@ -6313,3 +6317,18 @@ HAGGLE_ROUNDS_MODE = "legacy"  # "legacy" | "live"
 def haggle_rounds_live() -> bool:
     """True when a counter is negotiated in rounds and the cabal table only ends talks."""
     return HAGGLE_ROUNDS_MODE == "live" or v311_profile()
+
+
+# Playtest 3 leftovers (b). In v3.11 landing on a planet does not make it
+# yours: the planet menu's <O> Claim Ownership "lets the entire universe know
+# who controls the planet" and sets it Personal or Corporate (TWINSTR.DOC,
+# Someguy_TWINSTR.txt PLANET MENU; EIS PlanetMenu.html "Claim Ownership"; MBBS
+# war manual: after a landing "you must Claim Ownership of it immediately").
+# Legacy claims an empty neutral planet on landing with no prompt. "live"
+# leaves it unowned until claim_planet, which then takes neutral planets too.
+LAND_CLAIM_MODE = "legacy"  # "legacy" | "live"
+
+
+def land_claim_explicit_live() -> bool:
+    """True when landing leaves an unowned planet unowned until claim_planet."""
+    return LAND_CLAIM_MODE == "live" or v311_profile()

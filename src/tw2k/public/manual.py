@@ -518,6 +518,10 @@ def _planets(f: dict) -> str:
         f"A sector holds at most {_n(K.PLANETS_PER_SECTOR_CAP)} planets.</p>"
         "<p>You can give a planet orders only when you or your corporation own it. "
         "Terra is not a planet you can claim.</p>"
+        f"<p>{_profile('Claim ownership', K.land_claim_explicit_live(), only_v311=False)} "
+        + ("Landing on an unowned planet does not make it yours. Use Claim planet once landed, as with <O> Claim Ownership in v3.11.</p>"
+           if K.land_claim_explicit_live() else
+           "Landing on an empty unowned planet claims it. A dead trader's planet still needs Claim planet.</p>")
         + _gated(
             K.planet_zdy_live(),
             f"destroying a planet that another trader is on kills that trader. "
@@ -1422,6 +1426,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "FULL_GAME_TURNS_MODE": "A full-length game keeps the host's turns per day (250 if left at Original), however many days it runs.",
     "FULL_GAME_BALANCE_MODE": "Every seat in a full-length game starts with the same credits.",
     "HAGGLE_ROUNDS_MODE": "A port haggles in rounds: a small ask is taken, a bigger one is countered, and past the product table it says get lost.",
+    "LAND_CLAIM_MODE": "Landing on an unowned planet does not claim it; use Claim planet (v3.11 Claim Ownership).",
 }
 
 
@@ -1946,7 +1951,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     ),
     "planets": (
         "land_planet", "liftoff", "deploy_genesis", "claim_planet", "planet_destroy",
-        "load_planet_cargo", "dump_planet_cargo",
+        "load_planet_cargo", "dump_planet_cargo", "LAND_CLAIM_MODE",
         "GENESIS_NAME_MODE", "GENESIS_START_MODE", "PLANET_PROD_MODE", "PLANET_COLLISION_MODE",
         "PLANET_BUST_EXP_MODE", "PLANET_COLONIST_CAP_MODE", "PLANET_GROWTH_MODE", "PLANET_NW_MODE",
         "OWN_PLANET_TURN_MODE", "OWN_PLANET_FIGHTER_MODE", "LANDED_STATE_MODE", "PLANET_ZDY_MODE",
