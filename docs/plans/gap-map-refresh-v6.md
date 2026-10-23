@@ -103,7 +103,7 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | Rank | Row | Grade | Size | Why it still shows | Files | NOTE 104 |
 |---|---|---|---|---|---|---|
 | 1 | 2.5 | Different | L | Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002 | `economy.port_sell_price`, `economy.port_buy_price` | economy.py |
-| 2 | 5.7 | Partial | L | NOTE 178: the Safety Rating model is coded; the exact loss split is unprinted. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
+| 2 | 5.7 | Match | L | The exchange is the printed expected value: sent x own odds / target odds removes shields then fighters (S3 Scout 2:1 kills 500 with 250, S2 1:1 loses 1,000 for 1,000, S7 fighters-to-use). S7: random factors unknown, so none. Tests pin it | `combat._resolve_ship_attack_tw2002` | test_combat_exchange_sources_v1.py |
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
 | 11 | 1.15 | Partial | S | A tow fires at 99 fighters (`FED_TOW_FIGHTER_LIMIT` 98). The Bible line is 50. No switch | `fed.run_tows` | constants.py |
@@ -233,7 +233,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 5.4 Match-behind-flag `OFFENSIVE_CLASH_MODE` row 7. The 1.25 wave cap is coded and off. `combat.offensive_wave_size`.
 5.5 Match. Defensive fighters challenge an entering ship. `combat.open_challenge`.
 5.6 Match. The toll is 5 credits per fighter, paid to pass, and collected by picking the fighters up in that sector. `constants.SECTOR_TOLL_CREDITS_PER_FIGHTER`, `runner._handle_pay_toll`, `runner._handle_recall_deployed`.
-5.7 Partial. The tw2002 exchange is the S4/S6 Safety Rating model. The exact loss split is not printed. `combat._resolve_ship_attack_tw2002`. No switch. CMB-c is docs only.
+5.7 Match. The tw2002 exchange is the S4/S6 Safety Rating model and the printed expected value (S3 Scout Marauder, S2 1:1 example, S7 capture formula). No source prints a random term (S7 "unable to determine the random factors"), so the loss split is the expected value under every profile. No switch; `tests/test_combat_exchange_sources_v1.py` pins the printed examples. `combat._resolve_ship_attack_tw2002`.
 5.8 Match. A ship can send only its charted fighters in one attack. `combat.attack_cap`.
 5.9 Match. Retreat is a verb and a flee spends extra turns. The published 1.25 line is `SHIP_FLEE_MODE` row 56. `combat._flee`.
 5.10 Match-behind-flag `SPECIAL_HULL_RULES_MODE` row 105, NOTE 86. An Interdictor holds other ships, and a Tholian defending its corp planet fights at 4:1. Both need the roster switch. `combat.hull_interdict_reason`.
