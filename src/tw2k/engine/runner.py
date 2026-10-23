@@ -2902,46 +2902,9 @@ def _weighted_choice(rng: random.Random, weights: dict[str, float]) -> str:
     return next(iter(weights))
 
 
-def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResult:
-    player = universe.players[pid]
-    if K.fleet_on():
-        from .fleet import buy_spare, wants_spare
-        if wants_spare(action):  # SHIP_FLEET.md fl4: buy without trade-in (legacy ignores the arg)
-            return buy_spare(universe, pid, str(action.args.get("ship_class") or ""))
-    if player.sector_id != K.STARDOCK_SECTOR:
-        return ActionResult(ok=False, error="must be at StarDock")
-    class_key = action.args.get("ship_class")
-    spec = K.ship_specs().get(class_key or "")
-    if spec is None:
-        return ActionResult(ok=False, error=f"unknown ship class {class_key!r}")
-    if spec.get("corp_only") and player.corp_ticker is None:
-        return ActionResult(ok=False, error="ship is corporation-only")
-    from .corp import flagship_buy_block
-    blocked = flagship_buy_block(universe, pid, str(class_key or ""))
-    if blocked:
-        return ActionResult(ok=False, error=blocked)
-    if K.ship_min_alignment(spec, 0) > player.alignment:
-        return ActionResult(ok=False, error=f"alignment too low for {class_key}")
-    if spec.get("unique"):
-        # Only one Imperial StarShip in the universe
-        for p in universe.players.values():
-            if p.ship.ship_class.value == class_key:
-                return ActionResult(ok=False, error="this ship class is already owned elsewhere")
-        for parked in universe.parked_ships.values():  # fl6: parked ships count (empty under legacy)
-            if parked.ship.ship_class.value == class_key:
-                return ActionResult(ok=False, error="this ship class is already owned elsewhere")
-
-    from .corpships import exmember_tradein_block
-    traded = exmember_tradein_block(player)
-    if traded:
-        return ActionResult(ok=False, error=traded)
-    old_ship = player.ship
-    old_key = old_ship.ship_class.value
-    receipt = K.trade_in_receipt(old_key, ship=old_ship) if K.trade_in_parts_live() else None
-    net_cost = K.net_hull_cost(old_key, class_key, ship=old_ship)
-    if player.credits < net_cost:
-        return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {net_cost})")
-
+def swap_hull(player: "Player", class_key: str, spec: dict, net_cost: int, parts: bool) -> None:
+    """Apply a StarDock hull purchase to the player. Shared by the buy handler and
+    the yard's net-worth preview (legality), so the preview cannot drift."""
     player.credits -= net_cost
     from .models import ShipClass as SC  # local import to avoid cycle in runtime edits
     player.ship.ship_class = SC(class_key)
@@ -2949,7 +2912,7 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     player.ship.dock_log.clear()
     if K.info_tw2002():
         player.ship.scanner = None  # s4: the scanner stays with the old ship
-    if receipt is not None:
+    if parts:
         # Fighters, shields, mines and the other gear go with the old ship.
         # The new hull starts at its stock fit (0 fighters). Cargo stays,
         # clipped to the new holds: TWINSTR.DOC line 1524 lists fighters,
@@ -2991,6 +2954,50 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
             else:
                 keep -= holds_of
 
+
+
+def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResult:
+    player = universe.players[pid]
+    if K.fleet_on():
+        from .fleet import buy_spare, wants_spare
+        if wants_spare(action):  # SHIP_FLEET.md fl4: buy without trade-in (legacy ignores the arg)
+            return buy_spare(universe, pid, str(action.args.get("ship_class") or ""))
+    if player.sector_id != K.STARDOCK_SECTOR:
+        return ActionResult(ok=False, error="must be at StarDock")
+    class_key = action.args.get("ship_class")
+    spec = K.ship_specs().get(class_key or "")
+    if spec is None:
+        return ActionResult(ok=False, error=f"unknown ship class {class_key!r}")
+    if spec.get("corp_only") and player.corp_ticker is None:
+        return ActionResult(ok=False, error="ship is corporation-only")
+    from .corp import flagship_buy_block
+    blocked = flagship_buy_block(universe, pid, str(class_key or ""))
+    if blocked:
+        return ActionResult(ok=False, error=blocked)
+    if K.ship_min_alignment(spec, 0) > player.alignment:
+        return ActionResult(ok=False, error=f"alignment too low for {class_key}")
+    if spec.get("unique"):
+        # Only one Imperial StarShip in the universe
+        for p in universe.players.values():
+            if p.ship.ship_class.value == class_key:
+                return ActionResult(ok=False, error="this ship class is already owned elsewhere")
+        for parked in universe.parked_ships.values():  # fl6: parked ships count (empty under legacy)
+            if parked.ship.ship_class.value == class_key:
+                return ActionResult(ok=False, error="this ship class is already owned elsewhere")
+
+    from .corpships import exmember_tradein_block
+    traded = exmember_tradein_block(player)
+    if traded:
+        return ActionResult(ok=False, error=traded)
+    old_ship = player.ship
+    old_key = old_ship.ship_class.value
+    receipt = K.trade_in_receipt(old_key, ship=old_ship) if K.trade_in_parts_live() else None
+    net_cost = K.net_hull_cost(old_key, class_key, ship=old_ship)
+    if player.credits < net_cost:
+        return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {net_cost})")
+
+    swap_hull(player, class_key, spec, net_cost, receipt is not None)
+
     payload: dict = {"ship_class": class_key, "net_cost": net_cost}
     if receipt is not None:
         payload["trade_in"] = receipt
@@ -3001,7 +3008,11 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         actor_id=pid,
         sector_id=player.sector_id,
         payload=payload,
-        summary=f"{player.name} bought a {spec['display_name']} ({net_cost} cr)",
+        summary=(
+            f"{player.name} bought a {spec['display_name']} (trade-in paid {-net_cost} cr back)"
+            if receipt is not None and net_cost < 0
+            else f"{player.name} bought a {spec['display_name']} ({net_cost} cr)"
+        ),
     )
     return ActionResult(ok=True, turns_spent=0)
 
