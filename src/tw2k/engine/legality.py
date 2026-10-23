@@ -89,14 +89,14 @@ def _hold_schedule(
     }
 
 
-def _cite_colonists(nxt: dict[str, Any] | None, planet) -> None:
+def _cite_colonists(nxt: dict[str, Any] | None, planet, haul_holds: int | None = None) -> None:
     """Name the citadel colonist unit on the build quote. No-op while clarity is off."""
     if not nxt or not K.colonist_clarity_on() or planet is None:
         return
     from .observation import _annotate_citadel_units
 
     have = sum(int(n) for n in planet.colonists.values())
-    _annotate_citadel_units(nxt, planet, have)
+    _annotate_citadel_units(nxt, planet, have, haul_holds)
 
 
 def _need_turns(player, cost: int) -> str | None:
@@ -817,6 +817,16 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                                                       "net_cost_by": net_cost_by, "trade_in": trade_in, "blocked_by": blocked_by}}))
                 if K.trade_in_parts_live():
                     out[-1].params["ship_class"]["trade_in_parts"] = K.trade_in_receipt(old_key, ship=player.ship)
+                    # Playtest 4: the yard's net-worth line is the engine's own figure
+                    # after the swap, not a client guess from half hull prices.
+                    from .runner import swap_hull
+                    before_nw = int(player.net_worth)
+                    nw_delta_by: dict[str, int] = {}
+                    for key, spec in K.ship_specs().items():
+                        trial = player.model_copy(deep=True)
+                        swap_hull(trial, key, spec, net_cost_by[key], True)
+                        nw_delta_by[key] = int(trial.net_worth) - before_nw
+                    out[-1].params["ship_class"]["net_worth_delta_by"] = nw_delta_by
                 if K.yard_stats_on():
                     # v311-daylen-and-yard-v1 item 5: the hull figures of the roster in play.
                     out[-1].params["ship_class"]["stats_by"] = {
@@ -1205,7 +1215,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             reason, citadel_params["next"] = _fidelity_citadel_legal(landed_planet, nl)
         elif K.CITADEL_COST_MODE == "class":
             reason, citadel_params["next"] = _class_citadel_legal(landed_planet, nl)
-        _cite_colonists(citadel_params.get("next"), landed_planet)
+        _cite_colonists(citadel_params.get("next"), landed_planet, int(player.ship.holds))
     out.append(_la(ActionKind.BUILD_CITADEL, legal=reason is None, reason=reason,
                    cost=int(K.TURN_COST.get("land_planet", 3)), params=citadel_params))
 

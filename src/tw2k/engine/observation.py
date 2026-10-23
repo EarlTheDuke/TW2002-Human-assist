@@ -1867,7 +1867,7 @@ def _colonist_stored_label(planet) -> str | None:
     return None
 
 
-def _annotate_citadel_units(next_build: dict[str, Any] | None, planet, available: int) -> None:
+def _annotate_citadel_units(next_build: dict[str, Any] | None, planet, available: int, haul_holds: int | None = None) -> None:
     if not next_build or not _K.colonist_clarity_on():
         return
     people = _colonist_stored_label(planet) == "people"
@@ -1875,7 +1875,10 @@ def _annotate_citadel_units(next_build: dict[str, Any] | None, planet, available
         return
     need = int(next_build.get("colonists") or 0)
     have = int(next_build.get("colonists_have") if next_build.get("colonists_have") is not None else available)
-    next_build.update(_K.citadel_colonist_quote(int(next_build.get("level") or 0), need, have, people=people))
+    # Playtest 4: the Terra-trips line used a fixed 30 holds after the player
+    # had bought more. The viewer's own holds are the haul when known.
+    haul = int(haul_holds) if haul_holds and int(haul_holds) > 0 else _K.CITADEL_HAUL_HOLDS
+    next_build.update(_K.citadel_colonist_quote(int(next_build.get("level") or 0), need, have, people=people, haul_holds=haul))
 
 
 def _planet_numbers_visible(planet, viewer) -> bool:
@@ -2019,7 +2022,8 @@ def _planet_brief(planet, viewer=None) -> dict[str, Any]:
     stored = _colonist_stored_label(planet)
     if stored:
         brief["colonists_stored"] = stored
-    _annotate_citadel_units(next_build, planet, available_colonists)
+    viewer_holds = getattr(getattr(viewer, "ship", None), "holds", None) if viewer is not None else None
+    _annotate_citadel_units(next_build, planet, available_colonists, viewer_holds)
     return brief
 
 
