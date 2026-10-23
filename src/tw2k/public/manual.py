@@ -815,6 +815,8 @@ def _ship_trade_in(f: dict) -> str:
         surplus = "A credit larger than the next hull is not paid back."
     return (
         f"<p>{body} {surplus} {pod}</p>"
+        "<p>Cargo moves to the new ship in both modes. If it does not fit the new holds, the rest is lost: "
+        "equipment is kept first, then organics, fuel ore and colonists. Sell first if you want the credits.</p>"
         f"<p>{_profile('Part-by-part trade-in', K.trade_in_parts_live(), only_v311=False)} "
         f"{_profile('Trade-in surplus', K.trade_in_live(), only_v311=False)}</p>"
         + _src("The shipyard trade-in. Parts mode itemises the ship. The surplus gate is the live trade-in fraction.")
