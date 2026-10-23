@@ -4571,6 +4571,50 @@
       else out.textContent = path.join(" - ") + " (" + (path.length - 1) + " hops)";
     });
   }
+  // Playtest 3: the score that wins sits big in the top bar with the seat's place,
+  // and one click lists every trader. The rule is the engine's own end_rule line.
+  function standingRows() {
+    const exp = scoreByExp();
+    if (Array.isArray(S.trader_rankings) && S.trader_rankings.length) {
+      return S.trader_rankings.map((row) => ({ name: row.name, me: row.name === S.self_name, exp: row.experience, nw: null, title: row.title, alive: row.alive }));
+    }
+    const rows = (S.rivals || []).map((r) => ({ name: r.name, me: false, exp: r.experience, nw: r.net_worth, title: r.rank, alive: r.alive }));
+    rows.push({ name: S.self_name || "You", me: true, exp: S.experience, nw: S.net_worth, title: S.rank, alive: true });
+    const key = (r) => Number((exp ? r.exp : r.nw) || 0);
+    rows.sort((a, b) => key(b) - key(a) || String(a.name).localeCompare(String(b.name)));
+    return rows;
+  }
+  function scoreByExp() {
+    if (S && S.end_rule) return /most experience/.test(S.end_rule);
+    return false;
+  }
+  function placeWord(n) {
+    const t = n % 100;
+    if (t >= 11 && t <= 13) return n + "th";
+    return n + ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
+  }
+  function paintStanding() {
+    const exp = scoreByExp();
+    const rows = standingRows();
+    const at = rows.findIndex((r) => r.me);
+    $("xpBtn").textContent = exp ? "Score (Exp)" : "Exp";
+    $("xpStat").classList.toggle("wins", exp);
+    $("nwStat").classList.toggle("wins", !exp);
+    const place = at >= 0 && rows.length > 1 ? placeWord(at + 1) + " of " + rows.length : "";
+    $("place").textContent = place ? " " + place : "";
+    $("xpStat").title = (S.end_rule || "") + (place ? " You are " + place + "." : "");
+  }
+  function standingsPage() {
+    const exp = scoreByExp();
+    const rule = S.end_rule || (exp ? "" : "This game ranks traders by net worth.");
+    const rows = standingRows().map((r, i) => '<div class="row" data-standing="' + (i + 1) + '"' + (r.me ? ' data-me="1"' : "") + ">"
+      + '<span class="y">' + placeWord(i + 1) + "</span> " + esc(r.name || "") + (r.me ? " (you)" : "")
+      + (r.title ? ' <span class="m">' + esc(r.title) + "</span>" : "")
+      + " " + (r.exp != null ? fmt(r.exp) + " exp" : "exp unknown")
+      + (r.nw != null ? ", net worth " + fmt(r.nw) + " cr" : "")
+      + (r.alive === false ? " (dead)" : "") + "</div>").join("");
+    overlay("Standings", '<div class="row" data-standing="rule">' + esc(rule) + "</div>" + rows);
+  }
   function overlay(title, body) {
     const m = $("menu");
     m.hidden = false;
@@ -6606,6 +6650,7 @@
     const over = state.gameOver || (Number(S.max_days) > 0 && Number(S.day) > Number(S.max_days));
     $("sbDay").textContent = String(over && Number(S.max_days) > 0 ? Math.min(Number(S.day), Number(S.max_days)) : S.day);
     $("xp").textContent = fmt(S.experience);
+    paintStanding();
     $("maxDays").textContent = String(S.max_days);
     paintVerdict();
     $("nw").textContent = fmt(S.net_worth);
@@ -6702,6 +6747,8 @@
   $("connectBtn").addEventListener("click", connect);
   const nwBtn = $("nwBtn");
   if (nwBtn) nwBtn.addEventListener("click", () => { if (S) netWorthPage(); });
+  const xpBtn = $("xpBtn");
+  if (xpBtn) xpBtn.addEventListener("click", () => { if (S) standingsPage(); });
   document.addEventListener("focusin", (ev) => {
     const t = ev.target;
     if (!t || t.tagName !== "INPUT") return;
