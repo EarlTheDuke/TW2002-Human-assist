@@ -10,8 +10,8 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 
 | Grade | v5 | v6 |
 |---|---|---|
-| Match | 50 | 73 |
-| Match-behind-flag | 17 | 85 |
+| Match | 50 | 72 |
+| Match-behind-flag | 17 | 86 |
 | Partial | 53 | 9 |
 | Different | 38 | 2 |
 | Missing | 11 | 0 |
@@ -107,7 +107,7 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
 | 11 | 1.15 | Partial | S | A tow fires at 99 fighters (`FED_TOW_FIGHTER_LIMIT` 98). The Bible line is 50. No switch | `fed.run_tows` | constants.py |
-| 23 | 11.11 | Match behind flag | S | Density, one-way share, 30 percent two-way lanes (rows 87, 88, 178) and the 95 percent initial starports (`BIG_BANG_BUILT_MODE` row 221). Course length 45 holds (test). Bubbles and Gold options are Gold-only (S1), so v3.11 has none | `universe.generate_universe` | universe.py |
+| 23 | 11.11 | Match-behind-flag | S | Density, one-way share, 30 percent two-way lanes (rows 87, 88, 178) and the 95 percent initial starports (`BIG_BANG_BUILT_MODE` row 221). Course length 45 holds (test). Bubbles and Gold options are Gold-only (S1), so v3.11 has none | `universe.generate_universe` | universe.py |
 | 35 | 14.6 | Partial | L | NOTE 178: no instant credits win under `ECON_WIN_MODE` row 215. Alliances and play_to_day_cap stay | several | |
 
 Rows that are Partial only because a named switch stays off are Match-behind-flag above, not in this list. `12.4` stays here for the jobs that still have no name.
@@ -303,7 +303,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 11.8 Match. The tavern is on. `TAVERN_MODE` is tw2002. `constants.tavern_on`.
 11.9 Match-behind-flag `FED_HUNT_MODE` row 185, NOTE 162. Feds tow, and they answer some crimes. An evil ship that meets a Federal is destroyed when the switch is on. A sector with no Federal is left alone. `fed.hunt_evil_meeting_federal`.
 11.10 Match-behind-flag `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. StarDock and Class 0 take 248,000 fighters, then 890,000, and the Feds rebuild in 14 days. Numbers UNVERIFIED. `runner._rebuild_special_ports`.
-11.11 Match behind flag. Density, the one-way share, the 30 percent two-way lanes and the 95 percent initial starports are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, `TWO_WAY_WARP_MODE` and `BIG_BANG_BUILT_MODE` (Big_Bang.html C 40%, D 95%). The B course length 45 is checked by test. Bubbles are Gold-only (S1), so v3.11 needs none (R11 A). `universe.generate_universe`.
+11.11 Match-behind-flag. Density, the one-way share, the 30 percent two-way lanes and the 95 percent initial starports are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, `TWO_WAY_WARP_MODE` and `BIG_BANG_BUILT_MODE` (Big_Bang.html C 40%, D 95%). The B course length 45 is checked by test. Bubbles are Gold-only (S1), so v3.11 needs none (R11 A). `universe.generate_universe`.
 12.1 Match. Turns per day are a game setting. `models.GameConfig`.
 12.2 Match-behind-flag `TURN_REGEN_MODE` row 5. Turns can come back across 24 hours. `LIVE_PACE_MODE` row 6 goes with it. `constants.turn_regen_live`.
 12.3 Different. Movement is still by turns, not by the clock. `DAY_ROLL_CLOCK_MODE` row 81 rolls the day while a seat holds the turn. Planet goods can accrue on `PLANET_REALTIME_PROD_MODE`, which the profile leaves off. `runner.apply_action`.
