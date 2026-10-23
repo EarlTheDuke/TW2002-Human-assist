@@ -4876,6 +4876,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "FULL_GAME_BALANCE_MODE",
         "Track K: every seat in a full-length game opens with the same credits (no per-seat skew)",
     ),
+    "land_claim_explicit_live": (
+        "LAND_CLAIM_MODE",
+        "Playtest 3 leftovers: landing on an unowned planet does not claim it; Claim Ownership does (TWINSTR <O>)",
+    ),
 }
 
 
@@ -6289,3 +6293,18 @@ def full_game_balance_live() -> bool:
 def full_game_even_start(config: object) -> bool:
     """True when this game is full-length and the balance switch is on."""
     return full_game_balance_live() and getattr(config, "game_length", None) == "full"
+
+
+# Playtest 3 leftovers (b). In v3.11 landing on a planet does not make it
+# yours: the planet menu's <O> Claim Ownership "lets the entire universe know
+# who controls the planet" and sets it Personal or Corporate (TWINSTR.DOC,
+# Someguy_TWINSTR.txt PLANET MENU; EIS PlanetMenu.html "Claim Ownership"; MBBS
+# war manual: after a landing "you must Claim Ownership of it immediately").
+# Legacy claims an empty neutral planet on landing with no prompt. "live"
+# leaves it unowned until claim_planet, which then takes neutral planets too.
+LAND_CLAIM_MODE = "legacy"  # "legacy" | "live"
+
+
+def land_claim_explicit_live() -> bool:
+    """True when landing leaves an unowned planet unowned until claim_planet."""
+    return LAND_CLAIM_MODE == "live" or v311_profile()
