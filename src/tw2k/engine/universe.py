@@ -454,7 +454,7 @@ def generate_universe(config: GameConfig) -> Universe:
         _strip_clone_fill(universe)
         side = random.Random(f"tw2k-big-bang-density:{config.seed}")
         skip = set(pinned_class0) if pinned_class0 else set()
-        _place_trade_ports(side, universe.sectors, config, K.V311_PORT_DENSITY, skip)
+        _place_trade_ports(side, universe.sectors, config, K.bang_port_probability(), skip)
         if config.enable_planets:
             _seed_planets(side, universe, K.V311_PLANET_DENSITY, skip)
 

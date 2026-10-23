@@ -360,6 +360,9 @@ def _moving(_f: dict) -> str:
         "<p>Extra two-way lanes are the switch TWO_WAY_WARP_MODE. "
         "The v3.11 profile turns it on. The string 1 does not. "
         "One-way lanes stay ONE_WAY_SHARE_MODE, about 3 percent when that switch is on.</p>"
+        + "<p>" + _profile("Initial starports", K.big_bang_built_live(), only_v311=False) + " "
+        + "When it is on, a new universe builds 95 percent of its 40 percent possible starports, "
+        "so about 38 sectors in 100 have a port and the rest can be built later. Bubbles stay off.</p>"
         + lanes
         + _src("Trade Wars course plotter, plus the cockpit course card: a plot spends no turn and Express flies the plotted hops.")
     )
@@ -1364,6 +1367,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "TREASURY_CAP_MODE": "A citadel treasury can hold the printed maximum.",
     "COURSE_MAX_MODE": "A plotted course that is too long is refused.",
     "BIG_BANG_DENSITY_MODE": "A new universe places ports and planets on the v3.11 spread, with no decorative Fed ports in the early sectors.",
+    "BIG_BANG_BUILT_MODE": "A new universe builds 95 percent of the possible starports, as the Big Bang default does.",
     "ONE_WAY_SHARE_MODE": "A small share of lanes are one-way when the game does not set another share.",
     "ATOMIC_DETONATOR_MODE": "The atomic detonator destroys a planet. The old port-nuke mine is not sold.",
     "SPECIAL_HULL_RULES_MODE": "An Interdictor holds every other ship, and a Tholian defends a corporation planet at four to one.",
@@ -1914,7 +1918,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "moving": (
         "warp", "plot_course", "avoid",
         "COURSE_MAX_MODE", "ONE_WAY_SHARE_MODE", "TWO_WAY_WARP_MODE", "AUTOPILOT_PORT_STOP_MODE", "AVOID_MODE",
-        "BIG_BANG_DENSITY_MODE",
+        "BIG_BANG_DENSITY_MODE", "BIG_BANG_BUILT_MODE",
     ),
     "trading": (
         "trade", "rob", "steal", "planet_trade",
